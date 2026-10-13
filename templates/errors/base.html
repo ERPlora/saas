@@ -1,0 +1,49 @@
+{% load static %}
+{% load i18n %}
+<!DOCTYPE html>
+{% comment %}
+  Ported from ERPlora/saas `templates/errors/base.html` (origin/develop c5ca8cae8). Same stylesheets,
+  vendored (no CDN). Without the OutfitKit bundle (it goes away, PLAN §16.11) the error pages paint
+  their own fallback markup, the one `error-pages.css` styles.
+{% endcomment %}
+<html lang="{{ LANGUAGE_CODE }}"{% if 'dark' in theme %} class="ion-palette-dark"{% endif %}>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#1496d6">
+    <title>{% block title %}ERPlora Cloud{% endblock %}</title>
+
+    <link rel="icon" type="image/x-icon" href="{% static 'img/favicon.ico' %}">
+
+    <link rel="stylesheet" href="{% static 'vendor/ionic/css/core.css' %}">
+    <link rel="stylesheet" href="{% static 'vendor/ionic/css/normalize.css' %}">
+    <link rel="stylesheet" href="{% static 'vendor/ionic/css/typography.css' %}">
+    <link rel="stylesheet" href="{% static 'vendor/ionic/css/palettes/dark.class.css' %}">
+    {% include "partials/erplora_fonts.html" %}
+    <link rel="stylesheet" href="{% static 'css/ionic-theme.css' %}">
+    <link rel="stylesheet" href="{% static 'vendor/outfitkit/palettes.css' %}">
+    <link rel="stylesheet" href="{% static 'css/outfitkit-theme.css' %}">
+    <link rel="stylesheet" href="{% static 'css/error-pages.css' %}">
+
+    <script nonce="{{ csp_nonce }}">
+      (function () {
+        function currentTheme() {
+          var match = document.cookie.match(/(?:^|;\s*)theme=([^;]*)/);
+          return match ? decodeURIComponent(match[1]) : "{{ theme|escapejs }}";
+        }
+        var media = window.matchMedia("(prefers-color-scheme: dark)");
+        function applyTheme() {
+          if (currentTheme() !== "system") return;
+          document.documentElement.classList.toggle("ion-palette-dark", media.matches);
+        }
+        applyTheme();
+        if (media.addEventListener) media.addEventListener("change", applyTheme);
+        else if (media.addListener) media.addListener(applyTheme);
+      })();
+    </script>
+</head>
+<body>
+    {% block error_content %}{% endblock %}
+</body>
+</html>

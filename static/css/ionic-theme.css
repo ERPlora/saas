@@ -1,0 +1,305 @@
+/* Tema de marca ERPlora usando el mecanismo OFICIAL de Ionic: variables --ion-*.
+   (No son clases custom; es la API de theming de Ionic.) Dark por .ion-palette-dark
+   (importamos @ionic/react/css/palettes/dark.class.css en main.tsx). */
+
+:root {
+  /* Brand → primary de Ionic */
+  --ion-color-primary: #1496d6;
+  --ion-color-primary-rgb: 20, 150, 214;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #1284bc;
+  --ion-color-primary-tint: #2ca1da;
+
+  /* Escala neutra (grises puros, sin tinte azul) — fondo casi blanco con
+     superficies blancas separadas por elevación, estilo Linear/Vercel/Notion.
+     El color de marca aparece solo como acento, nunca en el lienzo. */
+  --ion-background-color: #f6f7f9;
+  --ion-background-color-rgb: 246, 247, 249;
+  --ion-text-color: #1a1c20;
+  --ion-text-color-rgb: 26, 28, 32;
+
+  --ion-toolbar-background: var(--ion-background-color);
+  --ion-item-background: #ffffff;
+  --ion-card-background: #ffffff;
+  --ion-border-color: #e7e9ee;
+
+  --ion-font-family: var(--font-body, "IBM Plex Sans", sans-serif);
+
+  /* Rampa neutra (Ionic la nombra --ion-background-color-step-*); los nombres legacy
+     --ion-color-step-* los aliasamos para no romper consumidores. Mismo grafo que el Hub. */
+  --ion-background-color-step-50: #f3f4f6;
+  --ion-background-color-step-100: #eceef1;
+  --ion-background-color-step-150: #e3e5ea;
+  --ion-background-color-step-200: #d8dbe1;
+  --ion-background-color-step-250: #cdd1d8;
+  --ion-background-color-step-300: #c0c4cd;
+  --ion-background-color-step-500: #8b8f99;
+  --ion-background-color-step-700: #4a4e57;
+  --ion-background-color-step-850: #2a2d33;
+
+  --ion-color-step-50: var(--ion-background-color-step-50);
+  --ion-color-step-100: var(--ion-background-color-step-100);
+  --ion-color-step-150: var(--ion-background-color-step-150);
+  --ion-color-step-200: var(--ion-background-color-step-200);
+  --ion-color-step-250: var(--ion-background-color-step-250);
+  --ion-color-step-300: var(--ion-background-color-step-300);
+  --ion-color-step-500: var(--ion-background-color-step-500);
+  --ion-color-step-700: var(--ion-background-color-step-700);
+  --ion-color-step-850: var(--ion-background-color-step-850);
+
+  /* Paleta semántica completa (alineada con los tokens --color-* de erplora-theme).
+     Necesaria porque Cloud NO carga el core.css de Ionic (resets globales): los
+     componentes con color="success|warning|danger|…" resuelven via .ion-color-*
+     (definidas abajo) → estos sets. */
+  --ion-color-secondary: #6366f1;
+  --ion-color-secondary-rgb: 99, 102, 241;
+  --ion-color-secondary-contrast: #ffffff;
+  --ion-color-secondary-contrast-rgb: 255, 255, 255;
+  --ion-color-secondary-shade: #575ad4;
+  --ion-color-secondary-tint: #7376f2;
+
+  --ion-color-success: #23944e;
+  --ion-color-success-rgb: 35, 148, 78;
+  --ion-color-success-contrast: #ffffff;
+  --ion-color-success-contrast-rgb: 255, 255, 255;
+  --ion-color-success-shade: #1f8245;
+  --ion-color-success-tint: #399f60;
+
+  --ion-color-warning: #e8a912;
+  --ion-color-warning-rgb: 232, 169, 18;
+  --ion-color-warning-contrast: #1c1b18;
+  --ion-color-warning-contrast-rgb: 28, 27, 24;
+  --ion-color-warning-shade: #cc9510;
+  --ion-color-warning-tint: #eab22a;
+
+  --ion-color-danger: #d6404f;
+  --ion-color-danger-rgb: 214, 64, 79;
+  --ion-color-danger-contrast: #ffffff;
+  --ion-color-danger-contrast-rgb: 255, 255, 255;
+  --ion-color-danger-shade: #bc3846;
+  --ion-color-danger-tint: #da5361;
+
+  --ion-color-medium: #6b7280;
+  --ion-color-medium-rgb: 107, 114, 128;
+  --ion-color-medium-contrast: #ffffff;
+  --ion-color-medium-contrast-rgb: 255, 255, 255;
+  --ion-color-medium-shade: #5e636f;
+  --ion-color-medium-tint: #797f8b;
+
+  --ion-color-light: #f4f5f8;
+  --ion-color-light-rgb: 244, 245, 248;
+  --ion-color-light-contrast: #18181b;
+  --ion-color-light-contrast-rgb: 24, 24, 27;
+  --ion-color-light-shade: #d7d8da;
+  --ion-color-light-tint: #f5f6f9;
+
+  --ion-color-dark: #222428;
+  --ion-color-dark-rgb: 34, 36, 40;
+  --ion-color-dark-contrast: #ffffff;
+  --ion-color-dark-contrast-rgb: 255, 255, 255;
+  --ion-color-dark-shade: #1e2023;
+  --ion-color-dark-tint: #383a3e;
+
+  /* info y accent: Ionic no los trae por defecto, pero el SaaS los necesita (venían de
+     --color-info / --color-accent de DaisyUI). info = azul informativo (distinto del
+     primary de marca); accent = verde de acento. Definidos aquí para que TODO --color-*
+     tenga un destino --ion-* y la migración sea 1:1. */
+  --ion-color-info: #0ea5e9;
+  --ion-color-info-rgb: 14, 165, 233;
+  --ion-color-info-contrast: #ffffff;
+  --ion-color-info-contrast-rgb: 255, 255, 255;
+  --ion-color-info-shade: #0c91cd;
+  --ion-color-info-tint: #26aeeb;
+
+  --ion-color-accent: #22c55e;
+  --ion-color-accent-rgb: 34, 197, 94;
+  --ion-color-accent-contrast: #ffffff;
+  --ion-color-accent-contrast-rgb: 255, 255, 255;
+  --ion-color-accent-shade: #1ead53;
+  --ion-color-accent-tint: #38cb6e;
+}
+
+/* Clases .ion-color-* (mapeo color="X" → --ion-color-base): viven en el core.css
+   de Ionic, que Cloud NO carga (sus resets globales chocaban con el CSS propio).
+   Sin esto, todo ion-button/ion-badge/ion-chip con color= pinta transparente. */
+.ion-color-primary { --ion-color-base: var(--ion-color-primary); --ion-color-base-rgb: var(--ion-color-primary-rgb); --ion-color-contrast: var(--ion-color-primary-contrast); --ion-color-contrast-rgb: var(--ion-color-primary-contrast-rgb); --ion-color-shade: var(--ion-color-primary-shade); --ion-color-tint: var(--ion-color-primary-tint); }
+.ion-color-secondary { --ion-color-base: var(--ion-color-secondary); --ion-color-base-rgb: var(--ion-color-secondary-rgb); --ion-color-contrast: var(--ion-color-secondary-contrast); --ion-color-contrast-rgb: var(--ion-color-secondary-contrast-rgb); --ion-color-shade: var(--ion-color-secondary-shade); --ion-color-tint: var(--ion-color-secondary-tint); }
+.ion-color-success { --ion-color-base: var(--ion-color-success); --ion-color-base-rgb: var(--ion-color-success-rgb); --ion-color-contrast: var(--ion-color-success-contrast); --ion-color-contrast-rgb: var(--ion-color-success-contrast-rgb); --ion-color-shade: var(--ion-color-success-shade); --ion-color-tint: var(--ion-color-success-tint); }
+.ion-color-warning { --ion-color-base: var(--ion-color-warning); --ion-color-base-rgb: var(--ion-color-warning-rgb); --ion-color-contrast: var(--ion-color-warning-contrast); --ion-color-contrast-rgb: var(--ion-color-warning-contrast-rgb); --ion-color-shade: var(--ion-color-warning-shade); --ion-color-tint: var(--ion-color-warning-tint); }
+.ion-color-danger { --ion-color-base: var(--ion-color-danger); --ion-color-base-rgb: var(--ion-color-danger-rgb); --ion-color-contrast: var(--ion-color-danger-contrast); --ion-color-contrast-rgb: var(--ion-color-danger-contrast-rgb); --ion-color-shade: var(--ion-color-danger-shade); --ion-color-tint: var(--ion-color-danger-tint); }
+.ion-color-medium { --ion-color-base: var(--ion-color-medium); --ion-color-base-rgb: var(--ion-color-medium-rgb); --ion-color-contrast: var(--ion-color-medium-contrast); --ion-color-contrast-rgb: var(--ion-color-medium-contrast-rgb); --ion-color-shade: var(--ion-color-medium-shade); --ion-color-tint: var(--ion-color-medium-tint); }
+.ion-color-light { --ion-color-base: var(--ion-color-light); --ion-color-base-rgb: var(--ion-color-light-rgb); --ion-color-contrast: var(--ion-color-light-contrast); --ion-color-contrast-rgb: var(--ion-color-light-contrast-rgb); --ion-color-shade: var(--ion-color-light-shade); --ion-color-tint: var(--ion-color-light-tint); }
+.ion-color-dark { --ion-color-base: var(--ion-color-dark); --ion-color-base-rgb: var(--ion-color-dark-rgb); --ion-color-contrast: var(--ion-color-dark-contrast); --ion-color-contrast-rgb: var(--ion-color-dark-contrast-rgb); --ion-color-shade: var(--ion-color-dark-shade); --ion-color-tint: var(--ion-color-dark-tint); }
+.ion-color-info { --ion-color-base: var(--ion-color-info); --ion-color-base-rgb: var(--ion-color-info-rgb); --ion-color-contrast: var(--ion-color-info-contrast); --ion-color-contrast-rgb: var(--ion-color-info-contrast-rgb); --ion-color-shade: var(--ion-color-info-shade); --ion-color-tint: var(--ion-color-info-tint); }
+.ion-color-accent { --ion-color-base: var(--ion-color-accent); --ion-color-base-rgb: var(--ion-color-accent-rgb); --ion-color-contrast: var(--ion-color-accent-contrast); --ion-color-contrast-rgb: var(--ion-color-accent-contrast-rgb); --ion-color-shade: var(--ion-color-accent-shade); --ion-color-tint: var(--ion-color-accent-tint); }
+
+/* Mismo selector que Ionic (:root.ion-palette-dark, especificidad 0,1,1) para
+   ganarle; al cargarse después en main.tsx, nuestros valores neutros mandan. */
+:root.ion-palette-dark {
+  /* Dark neutro (zinc), coherente con el light. Canónico = Hub develop (outfitkit#14). */
+  --ion-background-color: #0b0c0e;
+  --ion-background-color-rgb: 11, 12, 14;
+  --ion-text-color: #f4f5f7;
+  --ion-text-color-rgb: 244, 245, 247;
+
+  --ion-color-medium: #9aa0ac;
+  --ion-color-medium-rgb: 154, 160, 172;
+
+  --ion-toolbar-background: var(--ion-background-color);
+  --ion-item-background: #16181c;
+  --ion-card-background: #16181c;
+  --ion-border-color: #26282e;
+
+  --ion-color-step-50: #16181c;
+  --ion-color-step-100: #1d2025;
+  --ion-color-step-150: #26282e;
+  --ion-color-step-200: #2f323a;
+  --ion-color-step-250: #383b44;
+  --ion-color-step-300: #41454f;
+  --ion-color-step-500: #6b7280;
+  --ion-color-step-700: #aab0bc;
+  --ion-color-step-850: #d7dae0;
+
+  --ion-color-primary: #2aa6e4;
+  --ion-color-primary-rgb: 42, 166, 228;
+  --ion-color-primary-shade: #2592c9;
+  --ion-color-primary-tint: #3fafe7;
+
+  /* info/accent en dark: un toque más claros para legibilidad sobre fondo oscuro. */
+  --ion-color-info: #38bdf8;
+  --ion-color-info-rgb: 56, 189, 248;
+  --ion-color-info-shade: #32a6db;
+  --ion-color-info-tint: #4cc4f9;
+
+  --ion-color-accent: #4ade80;
+  --ion-color-accent-rgb: 74, 222, 128;
+  --ion-color-accent-shade: #40c370;
+  --ion-color-accent-tint: #5ce18d;
+}
+
+/* Diálogo estándar del dashboard (modales custom migrados a ion-modal, 2026-06-11).
+   Centrado, auto-height (mismo patrón .ion-page display:block que erplora-theme-modal).
+   Ancho por modal vía style="--width: NNNpx". Lo abre/cierra el controller
+   vanilla de cloud-ui.js (hooks data-dialog-*). */
+ion-modal.erplora-dialog {
+  --width: 480px;
+  --max-width: 92vw;
+  --height: auto;
+  --border-radius: 14px;
+}
+ion-modal.erplora-dialog .ion-page {
+  position: relative;
+  display: block;
+  contain: content;
+}
+ion-modal.erplora-dialog .erplora-dialog-body {
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 16px;
+}
+ion-modal.erplora-dialog ion-toolbar {
+  --padding-start: 16px;
+  --padding-end: 8px;
+}
+/* Tamaños del modal global (#global-modal): $modal.size → data-size (sm|md|lg). */
+ion-modal.erplora-dialog[data-size="sm"] { --width: 420px; }
+ion-modal.erplora-dialog[data-size="lg"] { --width: 720px; }
+
+/* Drawer del asistente: anclado a la derecha, ancho cómodo en desktop. */
+ion-modal.erplora-assistant {
+  --width: 420px;
+  --height: 100%;
+  --border-radius: 0;
+  justify-content: flex-end;
+}
+@media (max-width: 640px) {
+  ion-modal.erplora-assistant { --width: 100%; }
+}
+
+/* Drawer lateral genérico (components/drawer/drawer.html migrado a ion-modal,
+   2026-06-11). Mismo patrón que el drawer del asistente: panel a toda altura
+   anclado al borde derecho/izquierdo; ancho por instancia vía --width inline. */
+ion-modal.erplora-drawer-right,
+ion-modal.erplora-drawer-left {
+  --width: 420px;
+  --height: 100%;
+  --border-radius: 0;
+}
+ion-modal.erplora-drawer-right { justify-content: flex-end; }
+ion-modal.erplora-drawer-left { justify-content: flex-start; }
+ion-modal.erplora-drawer-right .ion-page,
+ion-modal.erplora-drawer-left .ion-page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  contain: content;
+}
+ion-modal.erplora-drawer-right .erplora-drawer-body,
+ion-modal.erplora-drawer-left .erplora-drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+ion-modal.erplora-drawer-right ion-toolbar,
+ion-modal.erplora-drawer-left ion-toolbar {
+  --padding-start: 16px;
+  --padding-end: 8px;
+}
+@media (max-width: 640px) {
+  ion-modal.erplora-drawer-right,
+  ion-modal.erplora-drawer-left { --width: 100%; }
+}
+
+/* ── Minimum touch target inside an overlay (saas#1671) ──────────────────────────────
+ * The 44px floor of saas#1625 hangs on `.dash-main` (dashboard-shell.css) and NO overlay is
+ * inside it: the dialogs, the global modal and the drawer are `ion-modal`s included from
+ * `base.html`, and Ionic presents them at the top of `ion-app`. Their actions therefore kept
+ * the size `ios` mode draws them at — the X of every header at 36x32, the Cancel/Confirm/OK of
+ * every footer at 32 tall — around two thirds of Apple's HIG minimum and of Material's 48dp.
+ *
+ * The rule goes here, on `ion-modal` itself, and not surface by surface: an overlay IS a
+ * touch surface, so every modal the product adds inherits the floor instead of having to
+ * remember it. BOTH axes, because a 36x44 target misses a fingertip exactly as reliably as a
+ * 36x32 one — what is being sized is the target, not the drawing, which stays as compact as
+ * `ios` mode paints it.
+ *
+ * Measured, in a browser and with `elementFromPoint`, by tests/visual/test_dashboard_overlays.py. */
+ion-modal ion-button { min-height: 44px; min-width: 44px; }
+ion-modal ion-button::part(native) { min-height: 44px; min-width: 44px; }
+
+/* Modal de Apariencia: diálogo centrado y compacto (no a pantalla completa).
+   Altura automática SIN ion-content (que colapsaría): el .ion-page mide su
+   contenido y crece según necesite (patrón oficial de auto-height en Ionic). */
+ion-modal.erplora-theme-modal {
+  --width: 440px;
+  --max-width: 92vw;
+  --height: auto;
+  --border-radius: 16px;
+}
+ion-modal.erplora-theme-modal .ion-page {
+  position: relative;
+  display: block;
+  contain: content;
+}
+ion-modal.erplora-theme-modal .erplora-theme-body {
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 16px;
+}
+/* Sin botón en slot=start, el título de Ionic pierde el padding inicial: lo damos. */
+ion-modal.erplora-theme-modal ion-toolbar {
+  --padding-start: 16px;
+  --padding-end: 8px;
+}
+
+/* Un `ion-modal` que Ionic todavía no ha definido pinta sus hijos EN EL FLUJO de la
+   página: el cuerpo del modal de pago —spinner + «Cargando formulario de pago…»—
+   aparece en medio de la pantalla sin que nadie lo haya abierto, y si el bundle de
+   Ionic no llega (basta un rechazo de CSP) se queda girando para siempre sin que se
+   haya hecho ni una llamada a Stripe (saas#1565). Ionic no trae guard propio.
+   Mismo patrón que `ok-error-page:not(:defined)` en error-pages.css. */
+ion-modal:not(:defined) {
+  display: none;
+}

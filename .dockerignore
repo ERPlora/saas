@@ -1,0 +1,15 @@
+# Build context of the saas image (Dockerfile). The SPA bundle and STATIC_ROOT are built inside.
+**/.git
+.github
+**/node_modules
+**/__pycache__
+**/*.pyc
+**/.venv
+**/.env*
+**/.pytest_cache
+**/.ruff_cache
+frontend/dist
+staticfiles
+docs
+db.sqlite3
+**/.terraform

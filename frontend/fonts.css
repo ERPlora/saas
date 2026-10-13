@@ -1,0 +1,9 @@
+/* The SaaS's typeface: IBM Plex, as the template pages had it (`templates/partials/erplora_fonts.html`
+   + `static/css/ionic-theme.css`), from the same files vendored under static/ (the CSP admits no CDN;
+   Vite bundles the woff2 files the @font-face rules name). Imported by main.ts after the shell's
+   theme, whose system font stack (packages/ui variables.css) it replaces. */
+@import '../static/css/erplora-fonts.css';
+
+:root {
+  --ion-font-family: var(--font-body);
+}

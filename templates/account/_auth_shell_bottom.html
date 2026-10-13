@@ -1,0 +1,19 @@
+{% comment %}
+  BOTTOM half of the auth wrapper: closes the card and paints the optional footer.
+  See `account/_auth_shell_top.html` for why it is split in two.
+
+  Include parameters:
+    auth_footer_link  — where the footer link goes; without it no footer is painted.
+    auth_footer_label — its text (already translated by the includer).
+
+  The footer is `data-web-only`: every caller points it at the dashboard settings, whose menu has
+  Billing — a door out of the installed app (saas#2083, `partials/app_shell_head.html`).
+{% endcomment %}
+            </ion-card-content>
+        </ion-card>
+        {% if auth_footer_link %}
+        <p class="foot" style="text-transform:none;" data-web-only><a href="{{ auth_footer_link }}">{{ auth_footer_label }}</a></p>
+        {% endif %}
+    </div>
+</div>
+{% include 'account/_auth_scripts.html' %}

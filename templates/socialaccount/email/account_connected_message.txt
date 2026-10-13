@@ -1,0 +1,10 @@
+{% extends "account/email/base_message.txt" %}
+{% load i18n %}
+
+{% block content %}{% autoescape off %}{% blocktrans with provider=provider.name %}From now on you can also sign in to your account with {{ provider }}.{% endblocktrans %}
+
+- {% trans "IP address" %}: {{ ip }}
+- {% trans "Browser" %}: {{ user_agent }}
+- {% trans "Date" %}: {{ timestamp }}
+
+{% blocktrans %}If it was not you, write to us right away at {{ support_email }}: someone else may be able to sign in to your account.{% endblocktrans %}{% endautoescape %}{% endblock content %}

@@ -1,0 +1,16 @@
+{% load i18n %}
+{% comment %}
+  Ionic auth topbar: back arrow top left (ion-header > ion-toolbar). Browser only: inside the
+  installed app the first screen has nothing to go back to (saas#2083). saas-next phase 1 has no
+  landing yet: «home» is the launcher of erplora.com.
+{% endcomment %}
+<ion-header class="ion-no-border auth-header">
+    <ion-toolbar class="auth-toolbar">
+        <ion-buttons slot="start">
+            <ion-button href="{% url 'home' %}" fill="clear" shape="round" class="auth-back" data-web-only
+                        aria-label="{% trans 'Back to home' %}">
+                <iconify-icon icon="lucide:arrow-left" slot="icon-only" width="22" height="22"></iconify-icon>
+            </ion-button>
+        </ion-buttons>
+    </ion-toolbar>
+</ion-header>

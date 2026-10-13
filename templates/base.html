@@ -1,0 +1,87 @@
+{% load static %}
+{% load i18n %}
+<!DOCTYPE html>
+{% comment %}
+  Ported from ERPlora/saas `templates/base.html` (origin/develop c5ca8cae8), trimmed to what the
+  sign-in pages paint. Same stylesheets in the same order, Ionic core in `ios` mode and Iconify,
+  all vendored under static/ (the CSP admits no CDN). Left out, because no page of phase 1 uses
+  them: the installed-app head (`partials/app_shell_head.html`), Open Graph/SEO tags, htmx, the
+  analytics and cookie banner, Stripe.js, the OutfitKit bundle and tabbar, the global
+  modal/toast/dialog includes and the dashboard scripts. Block 1a replaces these pages with Ionic
+  Vue (PLAN-SAAS §6).
+
+  Dark mode = the `ion-palette-dark` class on <html>; `system` follows `prefers-color-scheme`.
+{% endcomment %}
+<html lang="{{ LANGUAGE_CODE }}"{% if 'dark' in theme %} class="ion-palette-dark"{% endif %}>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <script nonce="{{ csp_nonce }}">
+      (function () {
+        function currentTheme() {
+          var m = document.cookie.match(/(?:^|;\s*)theme=([^;]*)/);
+          return m ? decodeURIComponent(m[1]) : "{{ theme|escapejs }}";
+        }
+        var mq = window.matchMedia("(prefers-color-scheme: dark)");
+        function apply() {
+          if (currentTheme() !== "system") return;
+          document.documentElement.classList.toggle("ion-palette-dark", mq.matches);
+        }
+        apply();
+        if (mq.addEventListener) mq.addEventListener("change", apply);
+        else if (mq.addListener) mq.addListener(apply);
+      })();
+    </script>
+    <meta name="robots" content="noindex, nofollow">
+    <title>{% block title %}ERPlora Cloud{% endblock %}</title>
+
+    <link rel="icon" type="image/x-icon" href="{% static 'img/favicon.ico' %}">
+    <meta name="theme-color" content="#0091CE">
+
+    <link rel="stylesheet" href="{% static 'css/preflight.css' %}">
+    <link rel="stylesheet" href="{% static 'css/erplora-theme.css' %}">
+    <link rel="stylesheet" href="{% static 'css/native-controls.css' %}">
+    {% include "partials/erplora_fonts.html" %}
+    <link rel="stylesheet" href="{% static 'css/erplora-logo.css' %}">
+    <link rel="stylesheet" href="{% static 'css/cloud.css' %}">
+    <link rel="stylesheet" href="{% static 'vendor/ionic/css/padding.css' %}">
+    <link rel="stylesheet" href="{% static 'vendor/ionic/css/text-alignment.css' %}">
+    <link rel="stylesheet" href="{% static 'vendor/ionic/css/flex-utils.css' %}">
+    <link rel="stylesheet" href="{% static 'css/ionic-theme.css' %}">
+    {# OutfitKit palettes and layout primitives, vendored from @erplora/outfitkit (was jsDelivr). #}
+    <link rel="stylesheet" href="{% static 'vendor/outfitkit/palettes.css' %}">
+    <link rel="stylesheet" href="{% static 'css/outfitkit-theme.css' %}">
+    <link rel="stylesheet" href="{% static 'vendor/outfitkit/layout.css' %}">
+    <link rel="stylesheet" href="{% static 'css/ionic-utilities.css' %}">
+    {# Never inside @layer: it must beat the unlayered CSS Ionic injects at runtime (saas#1728). #}
+    <link rel="stylesheet" href="{% static 'css/ion-card-content-utilities.css' %}">
+
+    <!-- Trusted Types Policy — passthrough policy -->
+    <script nonce="{{ csp_nonce }}">
+        if (window.trustedTypes && trustedTypes.createPolicy) {
+            trustedTypes.createPolicy('default', {
+                createHTML: (s) => s,
+                createScriptURL: (s) => s,
+                createScript: (s) => s,
+            });
+        }
+    </script>
+
+    <!-- Iconify, self-hosted; icons-offline.js preloads the icons in use (no network). -->
+    <script src="{% static 'vendor/iconify/iconify.min.js' %}" nonce="{{ csp_nonce }}"></script>
+    <script src="{% static 'vendor/iconify-icon/iconify-icon.min.js' %}" nonce="{{ csp_nonce }}"></script>
+    <script src="{% static 'vendor/iconify-data/icons-offline.js' %}" nonce="{{ csp_nonce }}"></script>
+
+    <!-- Ionic Core (web components), ESM loader only, `ios` mode set before it loads (SaaS-Hub parity). -->
+    <script nonce="{{ csp_nonce }}">window.Ionic = { config: { mode: 'ios' } };</script>
+    <script type="module" src="{% static 'vendor/ionic/ionic.esm.js' %}" nonce="{{ csp_nonce }}"></script>
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div id="app-root">
+        {% block content %}{% endblock %}
+    </div>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

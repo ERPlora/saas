@@ -1,0 +1,161 @@
+/* ============================================================
+   ERPlora · Tema + tokens base
+   ──────────────────────────────────────────────────────────
+   Tokens de tipo, espaciado y los puentes --ink / --brand que
+   consume el logo. La UI es Ionic (ion-*) + OutFitKit (ok-*), así que de
+   AQUÍ se eliminaron los --color-* / --radius-* / --size-* de DaisyUI.
+
+   ⚠️ Eso NO significa que DaisyUI haya desaparecido del SaaS: el bundle
+   CONGELADO style.css sigue definiendo su capa de tema
+   ([data-theme=erplora-*] → --color-base-*, --color-primary…) y hay reglas
+   vivas que la consumen. Ese fichero no se puede regenerar (no hay build),
+   así que se deja intacto; lo que NO se hace es escribir tokens DaisyUI
+   nuevos aquí ni vocabulario DaisyUI nuevo en las plantillas.
+
+   Los --mod-* (categorías de módulo) son de ERPlora, no DaisyUI:
+   se conservan aquí con sus 4 variantes de tema.
+   ============================================================ */
+
+/* Las fuentes se sirven same-origin desde erplora-fonts.css. */
+
+:root {
+  --font-display: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --font-body:    'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --font-mono:    'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+
+  --weight-regular:  400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+
+  --text-xs:   0.75rem;
+  --text-sm:   0.875rem;
+  --text-base: 1rem;
+  --text-lg:   1.125rem;
+  --text-xl:   1.25rem;
+  --text-2xl:  1.5rem;
+  --text-3xl:  1.875rem;
+  --text-4xl:  2.5rem;
+  --text-5xl:  3.25rem;
+  --text-6xl:  4rem;
+
+  --tracking-tighter: -0.03em;
+  --tracking-tight:   -0.015em;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+}
+
+/* ============================================================
+   Categorías de módulo (--mod-*) — tokens de ERPlora (no DaisyUI)
+   ------------------------------------------------------------
+   Cuatro variantes de tema (light/dark azul + light/dark terracotta),
+   seleccionadas por [data-theme="…"] en <html> (server-set en
+   base.html). Los consume erplora-admin.css + los tiles de módulos
+   del dashboard y el marketplace. Sin equivalente Ionic: se conservan.
+   ============================================================ */
+
+/* ── Azul · default ── */
+:root,
+[data-theme="erplora-light"] {
+  --mod-orange: oklch(62% 0.18 35);
+  --mod-blue:   oklch(55% 0.17 250);
+  --mod-green:  oklch(58% 0.14 150);
+  --mod-amber:  oklch(72% 0.15 75);
+  --mod-red:    oklch(60% 0.20 25);
+  --mod-purple: oklch(58% 0.17 295);
+  --mod-teal:   oklch(60% 0.10 200);
+
+  --ink:   oklch(20% 0.012 250);
+  --brand: oklch(55% 0.17 250);
+}
+
+[data-theme="erplora-dark"] {
+  --mod-orange: oklch(68% 0.17 35);
+  --mod-blue:   oklch(72% 0.16 250);
+  --mod-green:  oklch(70% 0.14 150);
+  --mod-amber:  oklch(80% 0.14 75);
+  --mod-red:    oklch(70% 0.18 25);
+  --mod-purple: oklch(70% 0.15 295);
+  --mod-teal:   oklch(68% 0.10 200);
+
+  --ink:   oklch(95% 0.005 250);
+  --brand: oklch(72% 0.16 250);
+}
+
+/* ── Naranja · terracotta ── */
+[data-theme="erplora-orange-light"] {
+  --mod-orange: oklch(62% 0.18 35);
+  --mod-blue:   oklch(55% 0.17 250);
+  --mod-green:  oklch(58% 0.14 150);
+  --mod-amber:  oklch(72% 0.15 75);
+  --mod-red:    oklch(60% 0.20 25);
+  --mod-purple: oklch(58% 0.17 295);
+  --mod-teal:   oklch(60% 0.10 200);
+
+  --ink:   oklch(20% 0.012 60);
+  --brand: oklch(62% 0.18 35);
+}
+
+[data-theme="erplora-orange-dark"] {
+  --mod-orange: oklch(68% 0.17 35);
+  --mod-blue:   oklch(72% 0.16 250);
+  --mod-green:  oklch(70% 0.14 150);
+  --mod-amber:  oklch(80% 0.14 75);
+  --mod-red:    oklch(70% 0.18 25);
+  --mod-purple: oklch(70% 0.15 295);
+  --mod-teal:   oklch(68% 0.10 200);
+
+  --ink:   oklch(95% 0.005 60);
+  --brand: oklch(68% 0.17 35);
+}
+
+html, body { font-family: var(--font-body); }
+
+/* ── Display headlines ── */
+.font-display { font-family: var(--font-display); letter-spacing: var(--tracking-tighter); }
+.font-mono    { font-family: var(--font-mono); }
+
+/* ── Subtle striped placeholder for product imagery ── */
+.placeholder-stripes {
+  background-image: repeating-linear-gradient(
+    135deg,
+    color-mix(in oklch, currentColor 6%, transparent) 0 1px,
+    transparent 1px 12px
+  );
+}
+
+/* ── Compact data tables (admin) ── */
+.table-data th {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-medium);
+  font-size:   var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: color-mix(in oklch, currentColor 60%, transparent);
+}
+
+/* ── Dock active state polish ── */
+.dock .dock-active {
+  color: var(--ion-color-primary);
+  font-weight: var(--weight-semibold);
+}
+
+/* Hide scrollbars for horizontal scrollers but keep scroll */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+
+/* ── App-region for admin shell: full viewport, no body scroll ── */
+.app-shell {
+  height: 100dvh;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  overflow: hidden;
+}
+@media (max-width: 768px) {
+  .app-shell { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,95 @@
+/* Fallback compartido para errores HTTP: la experiencia principal la pinta
+   ok-error-page y sus acciones son ion-button. Este light DOM solo aparece
+   mientras cargan los Web Components o si JavaScript no llega a ejecutarse. */
+html,
+body {
+  min-height: 100%;
+  margin: 0;
+  background: var(--ion-background-color);
+  color: var(--ion-text-color);
+  font-family: var(--ion-font-family);
+}
+
+ok-error-page:not(:defined) {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 2.5rem 1.25rem;
+  box-sizing: border-box;
+}
+
+ok-error-page:not(:defined) > ion-button {
+  display: none;
+}
+
+.error-page-fallback {
+  width: min(100%, 35rem);
+  display: grid;
+  justify-items: center;
+  gap: 1.25rem;
+  text-align: center;
+}
+
+.error-page-fallback__code {
+  margin: 0;
+  color: var(--ion-color-medium);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.error-page-fallback h1 {
+  margin: 0;
+  font-size: var(--ok-type-page-title-compact-size, clamp(2rem, 1.55rem + 2vw, 3.25rem));
+  font-weight: var(--ok-type-page-title-weight, 650);
+  line-height: var(--ok-type-page-title-leading, 1.04);
+  letter-spacing: -0.025em;
+}
+
+.error-page-fallback p {
+  max-width: 44ch;
+  margin: 0;
+  color: var(--ok-muted, var(--ion-color-medium));
+  font-size: var(--ok-type-intro-size, 1.0625rem);
+  line-height: var(--ok-type-intro-leading, 1.6);
+}
+
+.error-page-fallback__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.error-page-fallback__actions a {
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 1.25rem;
+  border: 1px solid var(--ion-border-color);
+  border-radius: var(--ok-radius-pill, 999px);
+  background: var(--ion-card-background);
+  color: var(--ion-text-color);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.error-page-fallback__actions a:first-child {
+  border-color: var(--ion-color-primary);
+  background: var(--ion-color-primary);
+  color: var(--ion-color-primary-contrast);
+}
+
+@media (max-width: 30rem) {
+  .error-page-fallback__actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .error-page-fallback__actions a {
+    width: 100%;
+  }
+}

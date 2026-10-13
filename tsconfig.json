@@ -1,0 +1,15 @@
+{
+  "extends": "./packages/ui/tsconfig.base.json",
+  "compilerOptions": { "allowJs": true, "resolveJsonModule": true },
+  "include": [
+    "frontend/**/*",
+    "accounts/frontend/**/*",
+    "hubs/frontend/**/*",
+    "marketplace/frontend/**/*",
+    "billing/frontend/**/*",
+    "*.ts",
+    "*.js",
+    "packages/ui/src/shell/shims.d.ts"
+  ],
+  "exclude": ["node_modules", "frontend/dist"]
+}

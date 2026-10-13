@@ -1,0 +1,584 @@
+# Spanish translations of saas-next (ported from ERPlora/saas origin/develop).
+# Copyright (C) 2026 ERPlora
+# This file is distributed under the same license as ERPlora.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: saas-next\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-13 15:40+0200\n"
+"PO-Revision-Date: 2025-11-02 18:10+0000\n"
+"Last-Translator: ERPlora\n"
+"Language-Team: Spanish\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: accounts/adapters.py:61
+msgid "Google can only be linked by signing in with the Google account of your email."
+msgstr "Google solo se vincula entrando con la cuenta de Google de tu correo."
+
+#: accounts/admin.py:40
+msgid "Personal info"
+msgstr "Información personal"
+
+#: accounts/admin.py:41
+msgid "Permissions"
+msgstr "Permisos"
+
+#: accounts/admin.py:42
+msgid "Important dates"
+msgstr "Fechas importantes"
+
+#: accounts/models.py:48
+msgid "email"
+msgstr "correo electrónico"
+
+#: accounts/models.py:49
+msgid "first name"
+msgstr "nombre"
+
+#: accounts/models.py:50
+msgid "last name"
+msgstr "apellidos"
+
+#: accounts/models.py:52
+msgid "language"
+msgstr "idioma"
+
+#: accounts/models.py:54
+msgid "active"
+msgstr "activo"
+
+#: accounts/models.py:55
+msgid "staff status"
+msgstr "es del equipo"
+
+#: accounts/models.py:56
+msgid "date joined"
+msgstr "fecha de alta"
+
+#: accounts/models.py:65 accounts/models.py:95
+msgid "user"
+msgstr "usuario"
+
+#: accounts/models.py:66
+msgid "users"
+msgstr "usuarios"
+
+#: accounts/models.py:88
+msgid "Owner"
+msgstr "Propietario"
+
+#: accounts/models.py:89
+msgid "Admin"
+msgstr "Administrador"
+
+#: accounts/models.py:90
+msgid "Manager"
+msgstr "Gestor"
+
+#: accounts/models.py:91
+msgid "Employee"
+msgstr "Empleado"
+
+#: accounts/models.py:97
+msgid "hub"
+msgstr "hub"
+
+#: accounts/models.py:98
+msgid "role"
+msgstr "rol"
+
+#: accounts/models.py:99
+msgid "created at"
+msgstr "creado el"
+
+#: accounts/models.py:102
+msgid "hub membership"
+msgstr "miembro de un hub"
+
+#: accounts/models.py:103
+msgid "hub memberships"
+msgstr "miembros de hubs"
+
+#: accounts/models.py:132
+msgid "exchange code"
+msgstr "código de acceso"
+
+#: accounts/models.py:133
+msgid "exchange codes"
+msgstr "códigos de acceso"
+
+#: accounts/templates/accounts/google_no_account.html:11
+#: accounts/templates/accounts/google_no_account.html:20
+msgid "No ERPlora account for this Google account"
+msgstr "No hay ninguna cuenta de ERPlora para esta cuenta de Google"
+
+#: accounts/templates/accounts/google_no_account.html:18
+#: templates/account/login.html:24
+#: templates/socialaccount/authentication_error.html:17
+#: templates/socialaccount/login.html:34
+#: templates/socialaccount/login_cancelled.html:17
+msgid "Global panel"
+msgstr "Panel global"
+
+#: accounts/templates/accounts/google_no_account.html:21
+#, python-format
+msgid "%(account_email)s has no ERPlora account. Ask whoever manages your business to invite you, or sign in with the account that has access."
+msgstr "%(account_email)s no tiene cuenta de ERPlora. Pide a quien gestiona tu negocio que te invite, o entra con la cuenta que sí tiene acceso."
+
+#: accounts/templates/accounts/google_no_account.html:23
+msgid "Use another account"
+msgstr "Usar otra cuenta"
+
+#: accounts/templates/accounts/hub_access_denied.html:10
+msgid "No access to this hub"
+msgstr "Sin acceso a este hub"
+
+#: accounts/templates/accounts/hub_access_denied.html:13
+msgid "403 · No access"
+msgstr "403 · Sin acceso"
+
+#: accounts/templates/accounts/hub_access_denied.html:14
+msgid "You don't have access to this hub"
+msgstr "No tienes acceso a este hub"
+
+#: accounts/templates/accounts/hub_access_denied.html:16
+#, python-format
+msgid "%(account_email)s is not a member of %(hub_host)s. Ask whoever manages that hub to invite you, or sign in with the account that has access."
+msgstr "%(account_email)s no es miembro de %(hub_host)s. Pide a quien gestiona ese hub que te invite, o entra con la cuenta que sí tiene acceso."
+
+#: accounts/templates/accounts/hub_access_denied.html:18
+#, python-format
+msgid "This account is not a member of %(hub_host)s. Ask whoever manages that hub to invite you, or sign in with the account that has access."
+msgstr "Esta cuenta no es miembro de %(hub_host)s. Pide a quien gestiona ese hub que te invite, o entra con la cuenta que sí tiene acceso."
+
+#: accounts/templates/accounts/hub_access_denied.html:26
+#: accounts/templates/accounts/hub_link_invalid.html:21
+msgid "Home"
+msgstr "Inicio"
+
+#: accounts/templates/accounts/hub_access_denied.html:27
+msgid "Back to the hub"
+msgstr "Volver al hub"
+
+#: accounts/templates/accounts/hub_access_denied.html:28
+#: accounts/templates/accounts/hub_link_invalid.html:22
+msgid "Contact Support"
+msgstr "Contactar Soporte"
+
+#: accounts/templates/accounts/hub_link_invalid.html:9
+msgid "Invalid sign-in link"
+msgstr "Enlace de acceso no válido"
+
+#: accounts/templates/accounts/hub_link_invalid.html:12
+msgid "400 · Invalid link"
+msgstr "400 · Enlace no válido"
+
+#: accounts/templates/accounts/hub_link_invalid.html:13
+msgid "This sign-in link doesn't lead to a hub"
+msgstr "Este enlace de acceso no lleva a ningún hub"
+
+#: accounts/templates/accounts/hub_link_invalid.html:14
+msgid "The address it wanted to return to is not an ERPlora hub, so we stopped here. Open your hub and start the sign-in from its own screen."
+msgstr "La dirección a la que quería volver no es un hub de ERPlora, así que nos hemos parado aquí. Abre tu hub y entra desde su propia pantalla."
+
+#: accounts/templates/accounts/hub_login_form.html:14
+#: accounts/templates/accounts/hub_login_form.html:20
+msgid "Opening your business…"
+msgstr "Abriendo tu negocio…"
+
+#: accounts/templates/accounts/hub_login_form.html:21
+#: templates/account/login.html:93
+msgid "Continue"
+msgstr "Continuar"
+
+#: accounts/templates/accounts/launch.html:10
+#: accounts/templates/accounts/launch.html:17
+msgid "Choose a business"
+msgstr "Elige un negocio"
+
+#: accounts/templates/accounts/launch.html:31
+msgid "Your account doesn't belong to any business yet. Ask whoever manages one to invite you."
+msgstr "Tu cuenta aún no pertenece a ningún negocio. Pide a quien gestione uno que te invite."
+
+#: accounts/templates/accounts/launch.html:36
+msgid "Sign Out"
+msgstr "Cerrar Sesión"
+
+#: templates/account/_auth_code_field.html:10
+msgid "Verification code"
+msgstr "Código de verificación"
+
+#: templates/account/_auth_header.html:11
+msgid "Back to home"
+msgstr "Volver al inicio"
+
+#: templates/account/_auth_shell_top.html:19 templates/account/login.html:17
+#: templates/socialaccount/login.html:27
+msgid "ERPlora Cloud"
+msgstr "ERPlora Cloud"
+
+#: templates/account/email/base_message.txt:1
+msgid "Hello from ERPlora!"
+msgstr "¡Hola de parte de ERPlora!"
+
+#: templates/account/email/base_message.txt:5
+msgid "Thank you for using ERPlora."
+msgstr "Gracias por usar ERPlora."
+
+#: templates/account/login.html:5
+msgid "Sign In"
+msgstr "Iniciar Sesión"
+
+#: templates/account/login.html:38
+msgid "Enter your email and password. New here? We'll create your account."
+msgstr "Introduce tu email y tu contraseña. ¿Es tu primera vez? Te creamos la cuenta."
+
+#: templates/account/login.html:54
+msgid "Email"
+msgstr "Correo electrónico"
+
+#: templates/account/login.html:63
+msgid "Password"
+msgstr "Contraseña"
+
+#: templates/account/login.html:74
+msgid "Keep me signed in"
+msgstr "Mantener la sesión iniciada"
+
+#: templates/account/login.html:76
+msgid "Forgot your password?"
+msgstr "¿Olvidaste tu contraseña?"
+
+#: templates/account/login.html:101
+msgid "or"
+msgstr "o"
+
+#: templates/account/login.html:116 templates/socialaccount/login.html:15
+#: templates/socialaccount/login.html:57
+msgid "Continue with Google"
+msgstr "Continuar con Google"
+
+#: templates/account/login.html:125
+msgid "By continuing you agree to our"
+msgstr "Al continuar aceptas nuestros"
+
+#: templates/account/login.html:126
+msgid "Terms"
+msgstr "Términos"
+
+#: templates/account/login.html:128
+msgid "Privacy Policy"
+msgstr "Política de Privacidad"
+
+#: templates/socialaccount/authentication_error.html:10
+#: templates/socialaccount/authentication_error.html:19
+msgid "We could not sign you in with Google"
+msgstr "No hemos podido iniciar tu sesión con Google"
+
+#: templates/socialaccount/authentication_error.html:20
+msgid "Something went wrong while signing in with Google. Try again, or sign in with your email and password."
+msgstr "Algo ha fallado al iniciar sesión con Google. Vuelve a intentarlo o entra con tu email y tu contraseña."
+
+#: templates/socialaccount/authentication_error.html:22
+#: templates/socialaccount/login_cancelled.html:22
+msgid "Back to sign in"
+msgstr "Volver a iniciar sesión"
+
+#: templates/socialaccount/email/account_connected_message.txt:4
+#, python-format
+msgid "From now on you can also sign in to your account with %(provider)s."
+msgstr "A partir de ahora también puedes entrar en tu cuenta con %(provider)s."
+
+#: templates/socialaccount/email/account_connected_message.txt:6
+msgid "IP address"
+msgstr "Dirección IP"
+
+#: templates/socialaccount/email/account_connected_message.txt:7
+msgid "Browser"
+msgstr "Navegador"
+
+#: templates/socialaccount/email/account_connected_message.txt:8
+msgid "Date"
+msgstr "Fecha"
+
+#: templates/socialaccount/email/account_connected_message.txt:10
+#, python-format
+msgid "If it was not you, write to us right away at %(support_email)s: someone else may be able to sign in to your account."
+msgstr "Si no has sido tú, escríbenos cuanto antes a %(support_email)s: otra persona podría entrar en tu cuenta."
+
+#: templates/socialaccount/email/account_connected_subject.txt:1
+#, python-format
+msgid "%(provider)s sign-in was added to your account"
+msgstr "Se ha añadido el acceso con %(provider)s a tu cuenta"
+
+#: templates/socialaccount/login.html:42
+msgid "Redirecting you to Google to finish signing in…"
+msgstr "Te estamos redirigiendo a Google para terminar de iniciar sesión…"
+
+#: templates/socialaccount/login_cancelled.html:10
+#: templates/socialaccount/login_cancelled.html:19
+msgid "Sign-in cancelled"
+msgstr "Inicio de sesión cancelado"
+
+#: templates/socialaccount/login_cancelled.html:20
+msgid "You cancelled signing in with Google. Try again, or sign in with your email and password."
+msgstr "Has cancelado el inicio de sesión con Google. Vuelve a intentarlo o entra con tu email y tu contraseña."
+
+#: accounts/admin.py
+#: accounts/templates/admin/accounts/hubs.html
+msgid "Open in the Hub admin"
+msgstr "Abrir en el admin del Hub"
+
+#: accounts/admin.py
+#: accounts/templates/admin/accounts/hubs.html
+msgid "Hub admin"
+msgstr "Admin del Hub"
+
+#: accounts/templates/accounts/hub_login_form.html
+msgid "Opening the Hub admin…"
+msgstr "Abriendo el admin del Hub…"
+
+#: accounts/admin.py
+#: accounts/templates/admin/accounts/hubmembership/change_list.html
+msgid "Hubs"
+msgstr "Hubs"
+
+#: accounts/templates/admin/accounts/hubs.html
+msgid "Hub"
+msgstr "Hub"
+
+#: accounts/templates/admin/accounts/hubs.html
+msgid "Members"
+msgstr "Miembros"
+
+#: accounts/templates/admin/accounts/hubs.html
+msgid "No hub has members yet."
+msgstr "Ningún hub tiene miembros todavía."
+
+#: accounts/admin.py
+msgid "Turn on two-factor authentication and sign in again before opening the Hub admin."
+msgstr "Activa la verificación en dos pasos y vuelve a iniciar sesión antes de abrir el admin del Hub."
+
+#: accounts/admin.py
+msgid "The access to the Hub admin expired or was already used. Open it again from this page."
+msgstr "El acceso al admin del Hub ha caducado o ya se usó. Vuelve a abrirlo desde esta página."
+
+#: accounts/admin.py
+msgid "The Hub sent ERPlora a request it could not read. Try again; if it keeps happening, tell the development team."
+msgstr "El Hub envió a ERPlora una petición que no pudo leer. Vuelve a intentarlo; si sigue pasando, avisa al equipo de desarrollo."
+
+#: accounts/admin.py
+msgid "ERPlora rejected the Hub's signed request (wrong internal key or clock out of sync). Tell the development team."
+msgstr "ERPlora rechazó la petición firmada del Hub (clave interna incorrecta o reloj desfasado). Avisa al equipo de desarrollo."
+
+#: accounts/admin.py
+msgid "The Hub could not reach ERPlora to check the access. Try again in a moment."
+msgstr "El Hub no pudo contactar con ERPlora para comprobar el acceso. Vuelve a intentarlo en un momento."
+
+#: accounts/admin.py
+msgid "The Hub does not accept your account's role. Only ERPlora's administrators and support can open the Hub admin."
+msgstr "El Hub no acepta el rol de tu cuenta. Solo los administradores y el soporte de ERPlora pueden abrir el admin del Hub."
+
+#: accounts/admin.py
+msgid "Your account is not part of ERPlora's staff, so it cannot open the Hub admin."
+msgstr "Tu cuenta no es del personal de ERPlora, así que no puede abrir el admin del Hub."
+
+#: accounts/admin.py
+msgid "Your account is deactivated in the Hub admin. Ask an ERPlora administrator to reactivate it."
+msgstr "Tu cuenta está desactivada en el admin del Hub. Pide a un administrador de ERPlora que la reactive."
+
+#: accounts/admin.py
+msgid "The Hub admin could not be opened. Try again from this page."
+msgstr "No se pudo abrir el admin del Hub. Vuelve a intentarlo desde esta página."
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Two-factor authentication"
+msgstr "Verificación en dos pasos"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Enter the 6-digit code from your authenticator app, or one of your recovery codes."
+msgstr "Introduce el código de 6 dígitos de tu app autenticadora, o uno de tus códigos de recuperación."
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Verify"
+msgstr "Verificar"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Back to settings"
+msgstr "Volver a configuración"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Loading…"
+msgstr "Cargando…"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Something went wrong. Please try again."
+msgstr "Algo ha ido mal. Inténtalo de nuevo."
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Authenticator app"
+msgstr "App autenticadora"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "On"
+msgstr "Activada"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Off"
+msgstr "Desactivada"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "You are asked for a code from your app after your password."
+msgstr "Se te pedirá un código de tu app después de tu contraseña."
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Turn off"
+msgstr "Desactivar"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Codes from an app such as Google Authenticator or 1Password, asked after your password."
+msgstr "Códigos de una app como Google Authenticator o 1Password, pedidos después de tu contraseña."
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Set up authenticator app"
+msgstr "Configurar app autenticadora"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Recovery codes"
+msgstr "Códigos de recuperación"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+#, python-format
+msgid "%(unused)s unused — each one signs you in once if you lose your authenticator."
+msgid_plural "%(unused)s unused — each one signs you in once if you lose your authenticator."
+msgstr[0] "%(unused)s sin usar — te inicia sesión una vez si pierdes tu autenticador."
+msgstr[1] "%(unused)s sin usar — cada uno te inicia sesión una vez si pierdes tu autenticador."
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "View"
+msgstr "Ver"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Generate new"
+msgstr "Generar nuevos"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "You have used all your recovery codes. Generate a new set now."
+msgstr "Has usado todos tus códigos de recuperación. Genera un nuevo conjunto ahora."
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Generate new codes"
+msgstr "Generar nuevos códigos"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Without them, losing your authenticator locks you out of your account."
+msgstr "Sin ellos, perder tu autenticador te bloquea el acceso a tu cuenta."
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Generate recovery codes"
+msgstr "Generar códigos de recuperación"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Set up your authenticator app"
+msgstr "Configura tu app autenticadora"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Scan this code with your authenticator app, then type the number it shows."
+msgstr "Escanea este código con tu app autenticadora, luego escribe el número que muestra."
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "QR code"
+msgstr "Código QR"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Can't scan? Enter this key by hand:"
+msgstr "¿No puedes escanear? Introduce esta clave a mano:"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Turn on"
+msgstr "Activar"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Cancel"
+msgstr "Cancelar"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Turn off the authenticator app?"
+msgstr "¿Desactivar la app autenticadora?"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "You will sign in with your password only."
+msgstr "Iniciarás sesión solo con tu contraseña."
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Keep it on"
+msgstr "Mantenerla activada"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Each code signs you in once if you lose your authenticator. Keep them somewhere safe."
+msgstr "Cada código te inicia sesión una vez si pierdes tu autenticador. Guárdalos en un lugar seguro."
+
+#. 2FA Vue pages (accounts/frontend/pages)
+#, python-format
+msgid "%(unused)s of %(total)s unused"
+msgstr "%(unused)s de %(total)s sin usar"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "You have no codes left. Generate a new set now, before you need one."
+msgstr "No te quedan códigos. Genera un nuevo conjunto ahora, antes de necesitar uno."
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Download"
+msgstr "Descargar"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Back"
+msgstr "Volver"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Generate new recovery codes?"
+msgstr "¿Generar nuevos códigos de recuperación?"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+#, python-format
+msgid "This replaces your %(count)s unused code."
+msgid_plural "This replaces your %(count)s unused codes."
+msgstr[0] "Esto reemplaza tu %(count)s código sin usar."
+msgstr[1] "Esto reemplaza tus %(count)s códigos sin usar."
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "You have no unused codes left, so nothing is thrown away."
+msgstr "No te quedan códigos sin usar, así que no se descarta nada."
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Generate"
+msgstr "Generar"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Confirm it's you"
+msgstr "Confirma que eres tú"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Account security"
+msgstr "Seguridad de la cuenta"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Enter your password to change your sign-in security."
+msgstr "Introduce tu contraseña para cambiar tu seguridad de inicio de sesión."
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Confirm"
+msgstr "Confirmar"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Can't use your password?"
+msgstr "¿No puedes usar tu contraseña?"
+
+#. 2FA Vue pages (accounts/frontend/pages)
+msgid "Can't use your authenticator?"
+msgstr "¿No puedes usar tu autenticador?"

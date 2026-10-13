@@ -1,0 +1,33 @@
+{
+  "name": "saas",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.34.7",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "test": "vitest run",
+    "typecheck": "vue-tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@erplora/ui": "workspace:*",
+    "@ionic/vue": "8.8.9",
+    "qrcode": "^1.5.4",
+    "vue": "^3.5.0",
+    "vue-i18n": "^11.0.0",
+    "vue-router": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/qrcode": "^1.5.6",
+    "@vue/test-utils": "^2.0.0",
+    "eslint": "^9.0.0",
+    "eslint-plugin-vue": "^10.11.1",
+    "happy-dom": "^21.0.1",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.71.2",
+    "vite": "^6.0.0",
+    "vitest": "^3.0.0",
+    "vue-tsc": "^3.3.13"
+  }
+}

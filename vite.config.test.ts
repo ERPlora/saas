@@ -1,0 +1,102 @@
+// The Vite config is a contract with Django (`packages/live/live/spa.py` and `LIVE["spa"]` in
+// `config/settings.py`): the dev server URLs and the manifest Django reads come from here.
+import { existsSync, readdirSync } from 'node:fs';
+import { dirname, join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import type { Plugin, PluginOption } from 'vite';
+import { describe, expect, it } from 'vitest';
+
+import config, { FRONTEND_APPS } from './vite.config';
+
+const SAAS_DIR = dirname(fileURLToPath(import.meta.url));
+/** The shell stylesheet `erplora:tailwind-sources` appends the project's frontends to. */
+const SHELL_GLOBAL_CSS = join(SAAS_DIR, 'packages', 'ui', 'src', 'shell', 'theme', 'global.css');
+
+function plugins(options: PluginOption[] | undefined): Plugin[] {
+  return ((options ?? []).flat(Infinity as 1) as unknown[]).filter(Boolean) as Plugin[];
+}
+
+function pluginNames(options: PluginOption[] | undefined): string[] {
+  return plugins(options).flatMap((p) => ('name' in p ? [p.name] : []));
+}
+
+/** The apps of saas-next with a frontend: root directories next to `base/` holding a `frontend/` (no `apps/`, PLAN §20.2). */
+function rootAppsWithFrontend(): string[] {
+  return readdirSync(SAAS_DIR, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && entry.name !== 'node_modules' && !entry.name.startsWith('.'))
+    .filter((entry) => existsSync(join(SAAS_DIR, entry.name, 'frontend')))
+    .map((entry) => entry.name);
+}
+
+/** The globs Tailwind reads class names from, relative to this directory (`not ` for an exclusion). */
+function tailwindSources(): string[] {
+  const sources = plugins(config.plugins).find((p) => p.name === 'erplora:tailwind-sources');
+  if (!sources) throw new Error('plugin erplora:tailwind-sources not found');
+  (sources.configResolved as unknown as (resolved: { root: string }) => void)({ root: SAAS_DIR });
+  const transform = sources.transform as unknown as (code: string, id: string) => { code: string };
+  const base = relative(dirname(SHELL_GLOBAL_CSS), SAAS_DIR);
+  return [...transform('', SHELL_GLOBAL_CSS).code.matchAll(/^@source (not )?"([^"]+)";$/gm)].map(
+    ([, not, glob]) => `${not ?? ''}${glob.slice(base.length + 1)}`,
+  );
+}
+
+describe('vite.config', () => {
+  it('serves from the saas-next directory under /static/spa/ (dev and build alike)', () => {
+    expect(config.root).toBe(SAAS_DIR);
+    expect(config.base).toBe('/static/spa/');
+  });
+
+  it('uses the shared ERPlora plugins (Vue, Tailwind, defines)', () => {
+    expect(pluginNames(config.plugins)).toEqual(expect.arrayContaining(['vite:vue', 'erplora:defines']));
+  });
+
+  it('builds frontend/main.ts into frontend/dist with the manifest Django reads', () => {
+    const build = config.build ?? {};
+    expect(build.outDir).toBe('frontend/dist');
+    expect(build.emptyOutDir).toBe(true);
+    // settings.LIVE["spa"]["manifest"] = SPA_DIST / ".vite" / "manifest.json"
+    expect(build.manifest).toBe('.vite/manifest.json');
+    expect(build.target).toBe('es2022');
+    // settings.LIVE["spa"]["entry"] = "frontend/main.ts" is the manifest key of this input.
+    expect(build.rollupOptions?.input).toBe('frontend/main.ts');
+  });
+
+  it("runs the dev server on localhost:5174 only (hub-next's owns 5173), with absolute asset URLs and HMR there", () => {
+    // live/spa.py points DEBUG pages at http://localhost:5174/static/spa/{@vite/client,frontend/main.ts}.
+    expect(config.server).toMatchObject({
+      host: 'localhost',
+      port: 5174,
+      strictPort: true,
+      origin: 'http://localhost:5174',
+      hmr: { host: 'localhost', port: 5174 },
+    });
+  });
+
+  it('knows every root app with a frontend/ (saas-next has no apps/, PLAN §20.2)', () => {
+    expect(FRONTEND_APPS).toContain('accounts');
+    expect(rootAppsWithFrontend().filter((app) => !FRONTEND_APPS.includes(app))).toEqual([]);
+  });
+
+  it("has Tailwind read the entry's and every app's frontend, never apps/ (gone) nor tests", () => {
+    expect(tailwindSources()).toEqual([
+      'frontend/**/*.{vue,ts}',
+      ...FRONTEND_APPS.map((app) => `${app}/frontend/**/*.{vue,ts}`),
+      'not **/*.test.ts',
+    ]);
+  });
+
+  it('tests the shell entry and every app frontend in happy-dom', () => {
+    expect(config.test?.environment).toBe('happy-dom');
+    expect(config.test?.include).toEqual(
+      expect.arrayContaining([
+        'frontend/**/*.test.ts',
+        ...FRONTEND_APPS.map((app) => `${app}/frontend/**/*.test.ts`),
+        'vite.config.test.ts',
+        'eslint.config.test.ts',
+      ]),
+    );
+    expect(config.test?.include?.filter((glob) => glob.startsWith('apps/'))).toEqual([]);
+    // Vitest's default `exclude` drops every `vite.config.*`, this test included.
+    expect(config.test?.exclude).toEqual(['**/node_modules/**', '**/dist/**']);
+  });
+});

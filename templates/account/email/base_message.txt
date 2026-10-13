@@ -1,0 +1,14 @@
+{% load i18n %}{% autoescape off %}{% blocktrans %}Hello from ERPlora!{% endblocktrans %}
+
+{% block content %}{% endblock content %}
+
+{% blocktrans %}Thank you for using ERPlora.{% endblocktrans %}
+https://erplora.com
+{% endautoescape %}
+{% comment %}
+  Wrapper of the allauth mails that have no template of their own (password reset, «Google was
+  linked»…), ported from ERPlora/saas. allauth's own says «Hello from {{ site_name }}!», and that
+  name comes from the `Site` row («example.com»). The brand is written here and does NOT depend on
+  `Site`: a misconfigured deployment may break a link, but must not make the mail look like
+  phishing.
+{% endcomment %}

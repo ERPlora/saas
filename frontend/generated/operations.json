@@ -1,0 +1,4 @@
+{
+  "base.session.me": { "method": "get", "path": "/api/me" },
+  "accounts.hub.list": { "method": "get", "path": "/api/accounts/hubs" }
+}

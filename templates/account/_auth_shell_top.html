@@ -1,0 +1,30 @@
+{% load i18n %}
+{% comment %}
+  Mitad de ARRIBA del envoltorio de las pantallas de auth (topbar + logo + tarjeta abierta).
+  Se cierra con `account/_auth_shell_bottom.html`.
+
+  Por qué DOS parciales y no un layout intermedio: las páginas de allauth rellenan
+  `{% templatetag openblock %} block content {% templatetag closeblock %}`, que es el mismo
+  nombre del bloque principal de nuestro `base.html`, y Django no deja anidar dos bloques
+  homónimos. Sobrescribir cada página —que es lo que ya hace `templates/account/*.html`— es
+  el patrón que había; esto solo evita repetir el envoltorio nueve veces.
+
+  Parámetros del include:
+    auth_subtitle — el rótulo monoespaciado bajo «ERPlora Cloud» (ya traducido por quien incluye).
+{% endcomment %}
+{% include 'account/_auth_header.html' %}
+<div class="login-shell">
+    <div class="auth-card">
+        <div class="flex flex-col items-center gap-3">
+            <span class="erp-logo lg" role="img" aria-label="{% trans 'ERPlora Cloud' %}">
+                <i class="erp-nw"></i><i class="erp-n"></i><i class="erp-ne"></i>
+                <i class="erp-w"></i><i class="erp-hub"></i><i class="erp-e"></i>
+                <i class="erp-sw"></i><i class="erp-s"></i><i class="erp-se"></i>
+            </span>
+            <div>
+                <h1 class="biz-name">ERPlora Cloud</h1>
+                <div class="biz-sub">{{ auth_subtitle }}</div>
+            </div>
+        </div>
+        <ion-card class="glass">
+            <ion-card-content class="ion-padding">

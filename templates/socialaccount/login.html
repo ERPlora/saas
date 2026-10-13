@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% comment %}
+ERPlora override of allauth's bare "socialaccount/login.html" interstitial (ported from
+ERPlora/saas origin/develop `templates/socialaccount/login.html`).
+
+A plain navigation to GET /auth/google/login/?next=… does not leave for Google: with
+SOCIALACCOUNT_LOGIN_ON_GET=False (anti login-CSRF), allauth answers that GET with THIS page.
+It is an ERPlora-styled card that auto-forwards to Google on load (a CSRF-protected POST, so the
+LOGIN_ON_GET=False posture is preserved). The visible button is the no-JS fallback.
+{% endcomment %}
+
+{% block title %}{% trans "Continue with Google" %} - ERPlora Cloud{% endblock %}
+
+{% block extra_css %}
+{% include 'account/_auth_styles.html' %}
+{% endblock %}
+
+{% block content %}
+{% include 'account/_auth_header.html' %}
+<div class="login-shell">
+    <div class="auth-card">
+
+        <div class="flex flex-col items-center gap-3">
+            <span class="erp-logo lg" role="img" aria-label="{% trans 'ERPlora Cloud' %}">
+                <i class="erp-nw"></i><i class="erp-n"></i><i class="erp-ne"></i>
+                <i class="erp-w"></i><i class="erp-hub"></i><i class="erp-e"></i>
+                <i class="erp-sw"></i><i class="erp-s"></i><i class="erp-se"></i>
+            </span>
+            <div>
+                <h1 class="biz-name">ERPlora Cloud</h1>
+                <div class="biz-sub">{% trans "Global panel" %}</div>
+            </div>
+        </div>
+
+        <ion-card class="glass">
+            <ion-card-content class="ion-padding" style="text-align:center;">
+
+                <p class="foot" style="text-transform:none; font-size:13px; margin:0 0 1.25rem;">
+                    {% trans "Redirecting you to Google to finish signing in…" %}
+                </p>
+
+                {% comment %}
+                POST (not GET) keeps SOCIALACCOUNT_LOGIN_ON_GET=False intact — the CSRF token below
+                is what makes it a POST. action="" posts to the current URL so ?next= survives; the
+                hidden field mirrors it (allauth checks it again on the POST).
+                {% endcomment %}
+                <form method="post" action="" data-google-autosubmit>
+                    {% csrf_token %}
+                    {% if request.GET.next %}<input type="hidden" name="next" value="{{ request.GET.next }}">{% endif %}
+                    {% if request.GET.process %}<input type="hidden" name="process" value="{{ request.GET.process }}">{% endif %}
+                    <ion-button type="submit" fill="outline" size="large" expand="block">
+                        <span class="iconify" data-icon="ion:logo-google" aria-hidden="true"></span>
+                        <span style="margin-inline-start:.5rem;">{% trans "Continue with Google" %}</span>
+                    </ion-button>
+                </form>
+
+                <ion-spinner name="crescent" style="margin-top:1rem;" aria-hidden="true"></ion-spinner>
+
+            </ion-card-content>
+        </ion-card>
+
+    </div>
+</div>
+
+{# Auto-forward to Google on load. No-JS falls back to the styled button above. #}
+<script nonce="{{ csp_nonce }}">
+    (function () {
+        var f = document.querySelector('form[data-google-autosubmit]');
+        if (f) { f.submit(); }
+    })();
+</script>
+{% endblock content %}

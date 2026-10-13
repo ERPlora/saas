@@ -1,0 +1,37 @@
+{% load i18n %}
+{% comment %}
+  Puente ion-input → <input type="hidden" name="…">.
+  ion-input (Ionic) vive en Shadow DOM y NO participa en el POST nativo de un <form>
+  (FormData no incluye su valor). Para usar el input de Ionic en los formularios de
+  Django auth, cada <ion-input data-bind="campo"> tiene un hermano oculto
+  <input type="hidden" name="campo"> y este script copia el valor (en cada cambio y
+  justo antes de enviar, lo que cubre también el autofill del navegador). CSP-safe (nonce).
+{% endcomment %}
+<script nonce="{{ csp_nonce }}">
+  (function () {
+    var inputs = document.querySelectorAll('ion-input[data-bind]');
+    for (var i = 0; i < inputs.length; i++) {
+      (function (inp) {
+        var name = inp.getAttribute('data-bind');
+        var form = inp.closest('form');
+        if (!form) return;
+        var hid = form.querySelector('input[type="hidden"][name="' + name + '"]');
+        if (!hid) return;
+        var sync = function () {
+          var v = inp.value;
+          // Fallback autofill: el gestor de contraseñas rellena el <input> interno
+          // del Shadow DOM y a veces ion-input.value no se actualiza → lo leemos.
+          if ((v == null || v === '') && inp.shadowRoot) {
+            var native = inp.shadowRoot.querySelector('input');
+            if (native && native.value) v = native.value;
+          }
+          hid.value = v != null ? v : '';
+        };
+        inp.addEventListener('ionInput', sync);
+        inp.addEventListener('ionChange', sync);
+        form.addEventListener('submit', sync);
+        sync(); // prefill (re-render con valor)
+      })(inputs[i]);
+    }
+  })();
+</script>
