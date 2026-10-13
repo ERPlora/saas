@@ -1,0 +1,15 @@
+{% load i18n icons %}
+{% comment %}
+  The CTAs of an industry page's closing band: sign up (the sign-in, where an account is also
+  created, as in the navbar) and the store (/apps/, decision 19). On the solid band the outline
+  button turns white (public/components/cta_band.html). No demo CTA: /demo is out of scope
+  (plan §3.b).
+{% endcomment %}
+<ion-button size="large" color="light" href="{% url 'account_login' %}">
+  <span slot="start">{% icon "rocket-outline" %}</span>
+  {% trans "Get started free" %}
+</ion-button>
+<ion-button size="large" fill="outline" href="{% url 'public:store' %}">
+  <span slot="start">{% icon "storefront-outline" %}</span>
+  {% trans "Browse apps" %}
+</ion-button>

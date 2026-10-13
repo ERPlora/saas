@@ -1,0 +1,87 @@
+{% load static i18n icons public_assets %}<!DOCTYPE html>
+{% comment %}
+  The public web's base (landing, pricing, legal, the app store…): Django templates for SEO.
+  Port of apps/public/templates/public/public_base.html (origin/develop), with the same sections:
+  the SEO head, the pre-launch strip, {% templatetag openblock %} block content {% templatetag closeblock %} with the navbar,
+  <main>{% templatetag openblock %} block page_content {% templatetag closeblock %}</main> and the footer, and the cookie banner.
+
+  What changed (spec §8.4): no OutfitKit, no CDN, no loose ionic.esm.js, no htmx. CSS and JS come
+  from ONE Vite entry, frontend/public.ts ({% templatetag openblock %} public_assets {% templatetag closeblock %}, with the
+  response's CSP nonce): it registers the ion-* the templates use and brings Ionic's CSS, the
+  @erplora/ui tokens and the stylesheets of public/static/public/. The ok-* components are HTML + CSS
+  partials (public/components/), icons are SVG painted on the server ({% templatetag openblock %} icon {% templatetag closeblock %}).
+  No PWA manifest, back bar or app-shell head: the Tauri app does not open these pages in phase 1.
+  Light theme, as before for every visitor without a theme cookie.
+{% endcomment %}
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="{% block meta_description %}{% trans "ERPlora - The ERP that adapts to your business, not the other way around. POS, inventory, CRM, invoicing and more" %}{% endblock %}">
+    <title>{% block title %}ERPlora{% endblock %}</title>
+
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ request.build_absolute_uri }}">
+    <meta property="og:title" content="{% block og_title %}{% trans "ERPlora · The modular ERP/POS for your business" %}{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}{% trans "The ERP that adapts to your business, not the other way around. POS, inventory, CRM, invoicing, and an app library that keeps growing." %}{% endblock %}">
+    <meta property="og:image" content="{% block og_image %}https://{{ request.get_host }}{% static 'public/img/og-image.png' %}{% endblock %}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:site_name" content="ERPlora">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{% block twitter_title %}{% trans "ERPlora · The modular ERP/POS for your business" %}{% endblock %}">
+    <meta name="twitter:description" content="{% block twitter_description %}{% trans "The ERP that adapts to your business, not the other way around. POS, inventory, CRM, invoicing, and an app library that keeps growing." %}{% endblock %}">
+    <meta name="twitter:image" content="{% block twitter_image %}https://{{ request.get_host }}{% static 'public/img/og-image.png' %}{% endblock %}">
+
+    <link rel="icon" type="image/x-icon" href="{% static 'img/favicon.ico' %}">
+    <link rel="apple-touch-icon" href="{% static 'public/img/apple-touch-icon.png' %}">
+    <meta name="theme-color" content="#0091CE">
+    <link rel="canonical" href="{% block canonical_url %}https://{{ request.get_host }}{{ request.path }}{% endblock %}">
+
+    {% block hreflang %}
+    <link rel="alternate" hreflang="en" href="https://{{ request.get_host }}{{ request.path }}">
+    <link rel="alternate" hreflang="es" href="https://{{ request.get_host }}{{ request.path }}">
+    <link rel="alternate" hreflang="x-default" href="https://{{ request.get_host }}{{ request.path }}">
+    {% endblock %}
+
+    {% block meta_robots %}{% endblock %}
+    {% block extra_seo %}{% endblock %}
+
+    {% comment %} Scroll reveal (public/components/reveal.html) hides its blocks only once this class is
+       on <html>, set before the first paint; if frontend/public.ts has not revealed them in 3 s
+       (slow network, blocked script), `ep-reveal-timeout` shows everything. {% endcomment %}
+    <script nonce="{{ csp_nonce }}">
+      document.documentElement.classList.add('ep-js');
+      setTimeout(function () { document.documentElement.classList.add('ep-reveal-timeout'); }, 3000);
+    </script>
+    {% public_assets %}
+    {% block extra_css %}{% endblock %}
+
+    {% block analytics %}{% include 'public/partials/analytics.html' %}{% endblock %}
+    {% block extra_head_scripts %}{% endblock %}
+</head>
+<body>
+    {% include 'public/partials/dev_banner.html' %}
+    {% block content %}
+    {% include 'public/partials/navbar.html' %}
+
+    <main>
+        {% block page_content %}{% endblock %}
+    </main>
+
+    {% include 'public/partials/footer.html' %}
+
+    {% block cookie_banner %}
+        {% include 'public/partials/cookie_banner.html' %}
+    {% endblock %}
+    {% endblock %}
+
+    {% comment %} Outside {% templatetag openblock %} block content {% templatetag closeblock %} on purpose: a page that replaces
+       that block whole would drop it, and the public forms answer with `messages.*` and a redirect
+       (saas#1754). {% endcomment %}
+    {% block messages %}{% include 'public/partials/messages.html' %}{% endblock %}
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

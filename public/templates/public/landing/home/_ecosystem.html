@@ -1,0 +1,22 @@
+{% load i18n icons %}
+{% comment %}
+  «One ecosystem. Two modes.»: the old «Marketplace» section (_ecosystem.html of origin/develop) as
+  our own catalogue. Every app is ours (no third party, no marketplace) and a premium app is
+  included in the paid plans (decision 17). The examples are real premium apps of the catalogue,
+  never invented names; without one, an honest generic line.
+{% endcomment %}
+  <section id="ecosystem" class="ep-section ep-section--compact ep-section--center ep-section--divider">
+    <header class="ep-section-head">
+      <span class="ep-eyebrow">{% trans 'Apps' %}</span>
+      <h2 class="ep-section-title">{% trans 'One ecosystem. Two modes.' %}</h2>
+    </header>
+    <div class="ep-reveal" data-reveal="up">
+      {% include "public/components/bento.html" with items_template="public/landing/home/_ecosystem_items.html" cols=2 cols_md=2 %}
+    </div>
+    <div class="mt-10 flex justify-center">
+      <a href="{% url 'public:store' %}" class="inline-flex items-center gap-2 text-sm font-semibold text-primary group">
+        <span>{% trans "Explore the apps" %}</span>
+        {% icon "lucide:arrow-right" css_class="transition-transform group-hover:translate-x-1" %}
+      </a>
+    </div>
+  </section>

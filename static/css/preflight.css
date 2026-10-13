@@ -1,31 +1,30 @@
-/* preflight.css — el reset global de la app.
+/* preflight.css — the app's global reset.
 
-   🪦 Venía dentro de `static/css/style.css`, el bundle congelado de Tailwind + DaisyUI, en
-   su `@layer base`. Al borrar el bundle (rebanada 3) se fue con él y volvieron los estilos
-   por defecto del navegador: márgenes en los headings, viñetas en las listas, `padding` en
-   los formularios. El gate visual lo cazó en 146 capturas con diferencias del 4 al 14%.
+   🪦 It came inside `static/css/style.css`, the frozen Tailwind + DaisyUI bundle, in its
+   `@layer base`. Deleting the bundle (slice 3) took it away and the browser's default styles
+   came back: margins on headings, bullets on lists, `padding` on forms. The visual gate caught
+   it in 146 screenshots with differences of 4 to 14%.
 
-   Se conserva TAL CUAL, sin reinterpretarlo: es el preflight de Tailwind 4, un reset
-   conocido y estable, y copiarlo verbatim es lo único que garantiza que no se mueva un
-   píxel. Ahora es NUESTRO: editable, sin build, y sin 96 KB de utilidades muertas al lado.
+   It is kept AS IS, without reinterpreting it: it is Tailwind 4's preflight, a well-known,
+   stable reset, and copying it verbatim is the only way to guarantee that not a pixel moves.
+   Now it is OURS: editable, no build, and without 96 KB of dead utilities next to it.
 
-   🔴 Va dentro de `@layer base` a propósito. En la cascada, lo que NO está en capa gana a
-   lo que sí, así que un reset SIN capa ganaría a las utilidades (que van en
-   `@layer utilities`) y dejaría muerto cualquier `mb-4` sobre un heading. La capa es lo
-   que lo mantiene por debajo de todo lo demás.
-   ⚠️ Los dos tokens de fuente que leía —`--default-font-family` y
-   `--default-mono-font-family`— los definía el `@layer theme` del bundle y se fueron con
-   él. Se resuelven a lo que valían de verdad, ni más ni menos:
+   🔴 It lives inside `@layer base` on purpose. In the cascade, what is NOT in a layer beats
+   what is, so an UNLAYERED reset would beat the utilities (in `@layer utilities`) and kill
+   any `mb-4` on a heading. The layer is what keeps it below everything else.
+   ⚠️ The two font tokens it read —`--default-font-family` and
+   `--default-mono-font-family`— were defined by the bundle's `@layer theme` and went with
+   it. They resolve to what they really were, no more, no less:
 
-     · sans → la pila GENÉRICA (`ui-sans-serif, system-ui, …`). El bundle la tenía en
-       `--font-sans` y NO era IBM Plex: la fuente de marca la ponen `--ion-font-family` y
-       `--font-body` sobre `body`, no aquí. Apuntar esto a IBM Plex "porque es la nuestra"
-       mueve las métricas de todo lo que hereda de `html`, y el gate visual lo vio en 43
-       capturas.
-     · mono → `--font-mono`, que en el bundle acababa resolviendo a IBM Plex Mono (lo
-       redefinía más abajo, y en CSS gana la última). Ese sí es el nuestro.
+     · sans → the GENERIC stack (`ui-sans-serif, system-ui, …`). The bundle had it in
+       `--font-sans` and it was NOT IBM Plex: the brand font comes from `--ion-font-family`
+       and `--font-body` on `body`, not from here. Pointing this at IBM Plex "because it is
+       ours" moves the metrics of everything that inherits from `html`, and the visual gate
+       saw it in 43 screenshots.
+     · mono → `--font-mono`, which in the bundle ended up resolving to IBM Plex Mono (it was
+       redefined further down, and in CSS the last one wins). That one is ours.
 
-   Guardia: tests/unit/test_frozen_bundle_is_gone.py */
+   Guard: tests/unit/test_frozen_bundle_is_gone.py (ERPlora/saas). */
 
 @layer base {
   *,:after,:before,::backdrop { box-sizing:border-box;border:0 solid;margin:0;padding:0 }

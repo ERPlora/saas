@@ -52,8 +52,16 @@ def test_accounts_is_an_app_whose_router_the_api_mounts():
 
 
 def test_live_mount_app_routers_mounts_base_and_accounts():
-    """Both are platform LiveAppConfigs (round 15, PLAN §20), so the loop mounts both, in INSTALLED_APPS order."""
-    assert mount_app_routers(build_api(urls_namespace="config-test-mount")) == ["base", "accounts"]
+    """Platform LiveAppConfigs (round 15, PLAN §20) with an api.py, mounted in INSTALLED_APPS order."""
+    assert mount_app_routers(build_api(urls_namespace="config-test-mount")) == [
+        "base",
+        "accounts",
+        # The app catalog (round 16, PLAN §21): before hubs, which reads it.
+        "apps",
+        "hubs",
+        # The public web: GET /api/v1/app/release/ (public.app.release).
+        "public",
+    ]
 
 
 def test_base_and_accounts_routes_are_mounted_exactly_once():
@@ -76,7 +84,10 @@ def test_openapi_is_served_with_operation_names_as_ids(client):
         "1",
     )
     assert schema["paths"]["/api/me"]["get"]["operationId"] == "base.session.me"
-    assert schema["paths"]["/api/accounts/hubs"]["get"]["operationId"] == "accounts.hub.list"
+    assert (
+        schema["paths"]["/api/accounts/hubs"]["get"]["operationId"]
+        == "accounts.hub.list"
+    )
     ids = [
         op["operationId"]
         for methods in schema["paths"].values()

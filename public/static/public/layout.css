@@ -1,0 +1,499 @@
+/* layout.css — the layout primitives of the public web as plain CSS (no web component).
+ *
+ * Port of OutfitKit's layout.css (0.1.136; PLAN §16.11), with only the classes the public templates
+ * use, renamed to `ep-*` and read from the `--ep-*` tokens (theme.css). Same values, same look:
+ * container, 12-column grid, auto-fitting card grid, marketing sections with their head, eyebrow,
+ * title and subtitle, the editorial surfaces (search, accordion, prose, titles) and the stackable
+ * table. Geometry and typography are CSS; behaviour and state are Ionic components.
+ */
+
+:root {
+  --ep-grid-gap: clamp(0.75rem, 1.5vw, 1.25rem);
+  --ep-section-pad-y-compact: clamp(2rem, 4vw, 3rem);
+  --ep-section-pad-y-standard: clamp(2.5rem, 5vw, 4.5rem);
+  --ep-section-pad-y-featured: clamp(3.5rem, 6vw, 5.5rem);
+  --ep-section-pad-y: var(--ep-section-pad-y-standard);
+  --ep-section-head-space: clamp(1.75rem, 3vw, 2.5rem);
+}
+
+/* ===== Container ===== */
+
+.ep-container {
+  width: 100%;
+  max-width: var(--ep-container-max, 1140px);
+  margin-inline: auto;
+  padding-inline: var(--ep-spacing, var(--ion-padding, 16px));
+  box-sizing: border-box;
+}
+
+.ep-container-fluid {
+  width: 100%;
+  min-width: 0;
+  padding-inline: var(--ep-spacing, var(--ion-padding, 16px));
+  box-sizing: border-box;
+}
+
+/* ===== 12-column grid (Ionic's breakpoints: md 768 / lg 992 / xl 1200) ===== */
+
+.ep-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--ep-grid-gap);
+}
+
+.ep-col {
+  grid-column: span 12;
+  min-width: 0;
+}
+
+/* A card grid with no breakpoint classes: auto-fit adapts it to the width it has. */
+.ep-grid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(var(--ep-card-min, 16rem), 100%), 1fr));
+  gap: var(--ep-grid-gap);
+}
+
+@media (min-width: 768px) {
+  .ep-md-3 { grid-column: span 3; }
+  .ep-md-4 { grid-column: span 4; }
+  .ep-md-6 { grid-column: span 6; }
+  .ep-md-8 { grid-column: span 8; }
+  .ep-md-9 { grid-column: span 9; }
+  .ep-md-12 { grid-column: span 12; }
+}
+
+@media (min-width: 992px) {
+  .ep-lg-3 { grid-column: span 3; }
+  .ep-lg-4 { grid-column: span 4; }
+  .ep-lg-6 { grid-column: span 6; }
+  .ep-lg-8 { grid-column: span 8; }
+  .ep-lg-9 { grid-column: span 9; }
+  .ep-lg-12 { grid-column: span 12; }
+}
+
+/* ===== Marketing section =====
+ *
+ *   <section class="ep-section ep-section--center ep-section--divider">
+ *     <header class="ep-section-head">
+ *       <span class="ep-eyebrow">Platform</span>
+ *       <h2 class="ep-section-title">All in one</h2>
+ *       <p class="ep-section-sub">…</p>
+ *     </header>
+ *     …
+ *   </section>
+ *
+ * Centred with padding-inline: max(…) on the element itself, so the divider spans the full width.
+ * Or full-bleed with an explicit `.ep-container.ep-section-content` inside.
+ */
+
+.ep-section {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding-block: var(--ep-section-pad-y);
+  padding-inline: max(
+    var(--ep-spacing, 1.25rem),
+    calc((100% - var(--ep-container-max, 1140px)) / 2 + var(--ep-spacing, 1.25rem))
+  );
+  color: var(--ep-text, var(--ion-text-color, #18181b));
+  font-family: var(--ep-font, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif);
+}
+
+.ep-section-content {
+  box-sizing: border-box;
+  padding-block: var(--ep-section-pad-y);
+}
+
+.ep-section--compact {
+  --ep-section-pad-y: var(--ep-section-pad-y-compact);
+  --ep-section-head-space: clamp(1.5rem, 2.5vw, 2rem);
+}
+
+.ep-section--featured {
+  --ep-section-pad-y: var(--ep-section-pad-y-featured);
+  --ep-section-head-space: clamp(2rem, 4vw, 3rem);
+}
+
+.ep-section--divider {
+  border-top: 1px solid color-mix(in oklab, var(--ep-text, var(--ion-text-color, #18181b)) 8%, transparent);
+}
+
+/* An alternate surface for the rhythm between sections. */
+.ep-section--soft {
+  background: color-mix(
+    in oklab,
+    var(--ep-text, var(--ion-text-color, #18181b)) 2.5%,
+    var(--ep-surface, var(--ion-background-color, #fff))
+  );
+}
+
+.ep-section-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  margin-bottom: var(--ep-section-head-space);
+  max-width: 56ch;
+}
+
+.ep-section--center .ep-section-head {
+  align-items: center;
+  text-align: center;
+  margin-inline: auto;
+}
+
+.ep-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  align-self: flex-start;
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  font-size: var(--ep-type-eyebrow-size, 0.72rem);
+  font-weight: var(--ep-type-eyebrow-weight, 600);
+  line-height: var(--ep-type-eyebrow-leading, 1.2);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ep-primary, var(--ion-color-primary, #1496d6));
+  background: color-mix(in oklab, var(--ep-primary, var(--ion-color-primary, #1496d6)) 12%, transparent);
+  border: 1px solid color-mix(in oklab, var(--ep-primary, var(--ion-color-primary, #1496d6)) 22%, transparent);
+}
+
+.ep-section--center .ep-eyebrow {
+  align-self: center;
+}
+
+.ep-section-title {
+  margin: 0;
+  font-family: var(--ep-font-display, var(--ep-font, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif));
+  font-size: var(--ep-type-section-title-size, clamp(1.75rem, 1.1rem + 2.6vw, 2.85rem));
+  line-height: var(--ep-type-section-title-leading, 1.06);
+  letter-spacing: -0.025em;
+  font-weight: var(--ep-type-section-title-weight, 650);
+}
+
+.ep-section-sub {
+  margin: 0;
+  font-size: var(--ep-type-intro-size, clamp(1rem, 0.95rem + 0.25vw, 1.125rem));
+  line-height: var(--ep-type-intro-leading, 1.6);
+  color: var(--ep-muted, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.62));
+}
+
+/* ===== Editorial and documentation surfaces ===== */
+
+ion-searchbar.ep-search {
+  --background: var(--ep-surface, var(--ion-card-background, #fff));
+  --border-radius: 0.875rem;
+  --box-shadow: 0 10px 28px -22px color-mix(in oklab, var(--ep-text, var(--ion-text-color, #18181b)) 45%, transparent);
+  --color: var(--ep-text, var(--ion-text-color, #18181b));
+  --icon-color: var(--ep-primary, var(--ion-color-primary, #1496d6));
+  --placeholder-color: var(--ep-text, var(--ion-text-color, #18181b));
+  --placeholder-opacity: 0.55;
+  padding-inline: 0;
+  margin-block-end: 1rem;
+}
+
+ion-accordion.ep-accordion {
+  --background: var(--ep-surface, var(--ion-card-background, var(--ion-background-color, #fff)));
+}
+
+ion-item.ep-accordion-header {
+  --background: var(--ep-surface, var(--ion-card-background, var(--ion-background-color, #fff)));
+  --color: var(--ep-text, var(--ion-text-color, #18181b));
+  --padding-start: 1.125rem;
+  --inner-padding-end: 1rem;
+  font-weight: 600;
+}
+
+ion-item.ep-accordion-header .ep-icon {
+  color: var(--ep-primary, var(--ion-color-primary, #1496d6));
+  margin-inline-end: 0.75rem;
+}
+
+.ep-accordion-body {
+  padding: 0.25rem 1.25rem 1.5rem;
+  background: var(--ep-surface, var(--ion-card-background, var(--ion-background-color, #fff)));
+}
+
+.ep-prose {
+  color: var(--ep-text, var(--ion-text-color, #18181b));
+  line-height: 1.7;
+}
+
+.ep-prose h2 {
+  margin: 1.5rem 0 0.75rem;
+  font-family: var(--ep-font-display, var(--ep-font, system-ui, sans-serif));
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.ep-prose h3 {
+  margin: 1.25rem 0 0.5rem;
+  font-family: var(--ep-font-display, var(--ep-font, system-ui, sans-serif));
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.ep-prose p {
+  margin: 0.5rem 0;
+}
+
+.ep-prose :is(ul, ol) {
+  margin: 0.5rem 0;
+  padding-inline-start: 1.5rem;
+}
+
+.ep-prose ul {
+  list-style: disc;
+}
+
+.ep-prose ol {
+  list-style: decimal;
+}
+
+.ep-prose li {
+  margin: 0.25rem 0;
+  line-height: 1.6;
+}
+
+.ep-prose table {
+  width: 100%;
+  margin: 1rem 0;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.ep-prose :is(th, td) {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid color-mix(in oklab, var(--ep-text, var(--ion-text-color, #18181b)) 12%, transparent);
+  text-align: start;
+}
+
+.ep-prose th {
+  background: color-mix(in oklab, var(--ep-text, var(--ion-text-color, #18181b)) 5%, transparent);
+  font-weight: 600;
+}
+
+.ep-prose code {
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.25rem;
+  background: color-mix(in oklab, var(--ep-text, var(--ion-text-color, #18181b)) 6%, transparent);
+  font-size: 0.875em;
+}
+
+.ep-prose pre {
+  overflow-x: auto;
+  margin: 1rem 0;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background: color-mix(in oklab, var(--ep-text, var(--ion-text-color, #18181b)) 6%, transparent);
+}
+
+.ep-prose pre code {
+  padding: 0;
+  background: none;
+}
+
+/* A rendered Mermaid diagram (frontend/public.ts) is a picture, not code: no code surface. */
+.ep-prose pre.mermaid[data-processed] {
+  overflow-x: auto;
+  background: none;
+  text-align: center;
+}
+
+.ep-prose blockquote {
+  margin: 1rem 0;
+  padding: 0.5rem 1rem;
+  border-inline-start: 3px solid var(--ep-primary, var(--ion-color-primary, #1496d6));
+  border-radius: 0 0.5rem 0.5rem 0;
+  background: color-mix(in oklab, var(--ep-primary, var(--ion-color-primary, #1496d6)) 5%, transparent);
+}
+
+.ep-prose strong {
+  font-weight: 600;
+}
+
+.ep-prose hr {
+  margin: 1.5rem 0;
+  border: 0;
+  border-top: 1px solid color-mix(in oklab, var(--ep-text, var(--ion-text-color, #18181b)) 12%, transparent);
+}
+
+/* Editorial titles and text: display for the main hero, page title for inner headings. */
+.ep-display-title,
+.ep-page-title {
+  margin: 0;
+  font-family: var(--ep-font-display, var(--ep-font, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif));
+  letter-spacing: -0.045em;
+}
+
+.ep-display-title {
+  font-size: var(--ep-type-display-size, clamp(3rem, 2.25rem + 3vw, 4.5rem));
+  font-weight: var(--ep-type-display-weight, 650);
+  line-height: var(--ep-type-display-leading, 1);
+}
+
+.ep-page-title {
+  font-size: var(--ep-type-page-title-size, clamp(2.35rem, 1.75rem + 2.6vw, 4rem));
+  font-weight: var(--ep-type-page-title-weight, 650);
+  line-height: var(--ep-type-page-title-leading, 1.04);
+  text-wrap: balance;
+}
+
+.ep-intro,
+.ep-body {
+  margin: 0;
+  color: var(--ep-muted, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.62));
+  text-wrap: pretty;
+}
+
+.ep-intro {
+  font-size: var(--ep-type-intro-size, clamp(1rem, 0.95rem + 0.25vw, 1.125rem));
+  line-height: var(--ep-type-intro-leading, 1.6);
+}
+
+.ep-body {
+  font-size: var(--ep-type-body-size, 1rem);
+  line-height: var(--ep-type-body-leading, 1.6);
+}
+
+/* ===== Stackable table (.ep-table-stack), the «no more tables» pattern =====
+ *
+ * A table on desktop; under 768 px each row is a stacked card and each cell paints its column
+ * label before it (`content: attr(data-title)`). Works with a <table>, with divs
+ * (.ep-thead/.ep-trow > .ep-tcell[data-title]) and with ion-grid/ion-row/ion-col.
+ * .ep-table-surface frames an editorial table; .ep-table-group marks a section row.
+ * Tokens: --ep-table-cols (columns of the non-<table> markup), --ep-table-label-w (45%).
+ */
+
+.ep-table-stack {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--ep-font, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif);
+  color: var(--ep-text, var(--ion-text-color, #18181b));
+}
+
+table.ep-table-stack {
+  border-collapse: collapse;
+}
+
+.ep-table-surface {
+  width: 100%;
+  overflow-x: auto;
+  background: var(--ep-surface, var(--ion-card-background, #fff));
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--ep-text, var(--ion-text-color, #18181b)) 6%, transparent);
+}
+
+.ep-table-surface > .ep-table-stack {
+  margin: 0;
+}
+
+.ep-table-surface > .ep-table-stack :is(tbody tr:last-child td, .ep-trow:last-child .ep-tcell) {
+  border-bottom: 0;
+}
+
+.ep-table-stack > .ep-thead,
+.ep-table-stack > .ep-trow {
+  display: grid;
+  grid-template-columns: var(--ep-table-cols, repeat(auto-fit, minmax(0, 1fr)));
+  align-items: center;
+}
+
+.ep-table-stack :is(th, td, .ep-tcell) {
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.ep-table-stack :is(thead th, .ep-thead .ep-tcell) {
+  font-weight: 600;
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+  color: var(--ep-muted, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.62));
+}
+
+.ep-table-stack :is(tr, .ep-trow, .ep-thead) {
+  border-bottom: 1px solid color-mix(in oklab, var(--ep-text, var(--ion-text-color, #18181b)) 10%, transparent);
+}
+
+@media (max-width: 767px) {
+  .ep-table-surface {
+    overflow: visible;
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  table.ep-table-stack,
+  table.ep-table-stack :is(thead, tbody, tfoot, tr, th, td),
+  .ep-table-stack > .ep-trow {
+    display: block;
+  }
+
+  /* The header is hidden from sight, not from screen readers. */
+  .ep-table-stack :is(thead, .ep-thead) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .ep-table-stack :is(tbody tr, .ep-trow) {
+    border: 0;
+    border-radius: 12px;
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+    background: var(--ep-surface, var(--ion-card-background, #fff));
+    box-shadow: 0 1px 3px color-mix(in oklab, var(--ep-text, var(--ion-text-color, #18181b)) 9%, transparent);
+  }
+
+  /* A group row is an editorial label, not another data card. */
+  .ep-table-stack :is(tbody tr.ep-table-group, .ep-trow.ep-table-group) {
+    margin: 1.25rem 0 0.35rem;
+    border-radius: 0;
+    overflow: visible;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .ep-table-stack :is(td, .ep-tcell) {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    position: relative;
+    border: none;
+    border-bottom: 1px solid color-mix(in oklab, var(--ep-text, var(--ion-text-color, #18181b)) 7%, transparent);
+    padding: 0.55rem 0.75rem;
+    padding-inline-start: calc(var(--ep-table-label-w, 45%) + 0.75rem);
+    white-space: normal;
+    text-align: left;
+  }
+
+  .ep-table-stack :is(td, .ep-tcell):last-child {
+    border-bottom: none;
+  }
+
+  .ep-table-stack :is(td, .ep-tcell)::before {
+    content: attr(data-title);
+    position: absolute;
+    top: 0.55rem;
+    inset-inline-start: 0.75rem;
+    width: calc(var(--ep-table-label-w, 45%) - 1rem);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-weight: 600;
+    font-size: 0.82rem;
+    color: var(--ep-muted, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.62));
+  }
+
+  /* Cells without a label (actions…): the full width, no ::before. */
+  .ep-table-stack :is(td, .ep-tcell):not([data-title]),
+  .ep-table-stack :is(td, .ep-tcell)[data-title=''] {
+    padding-inline-start: 0.75rem;
+  }
+}

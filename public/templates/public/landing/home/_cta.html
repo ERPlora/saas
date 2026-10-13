@@ -1,0 +1,13 @@
+{% load i18n %}
+{% comment %}
+  The closing band: port of landing/home/sections/_cta.html (origin/develop). Its «Try the demo»
+  waits for /demo (block 7, plan §3.b).
+{% endcomment %}
+  <div class="ep-container ep-section-content ep-section--compact">
+    <div class="ep-reveal" data-reveal="scale">
+      {% trans "Start today" as eyebrow %}
+      {% trans "Your ERP, ready in 5 minutes." as heading %}
+      {% trans "No installation, no consultants, no credit card to try it. Spin up a hub and explore." as subheading %}
+      {% include "public/components/cta_band.html" with eyebrow=eyebrow heading=heading subheading=subheading actions_template="public/landing/home/_cta_actions.html" only %}
+    </div>
+  </div>

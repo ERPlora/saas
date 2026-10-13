@@ -24,6 +24,14 @@ async function restricted(code: string, filePath: string): Promise<string[]> {
   return result.messages.filter((m) => m.ruleId === 'no-restricted-globals').map((m) => m.message);
 }
 
+/** The elements whose `slot="…"` attribute the lint reports as Vue 2 syntax. */
+async function deprecatedSlots(code: string, filePath: string): Promise<string[]> {
+  const [result] = await eslint.lintText(code, { filePath });
+  return result.messages
+    .filter((m) => m.ruleId === 'vue/no-deprecated-slot-attribute')
+    .map((m) => code.split('\n')[m.line - 1].trim().split(/[\s>]/)[0]);
+}
+
 describe('eslint config', () => {
   it.each(['fetch', 'EventSource', 'WebSocket', 'XMLHttpRequest'])('forbids %s in an app page and in the entry', async (name) => {
     const code = `export const x = ${name};\n`;
@@ -57,6 +65,20 @@ describe('eslint config', () => {
 
   it("leaves the repo's virtualenv alone (the scripts Django and ninja ship)", async () => {
     expect(await eslint.isPathIgnored('.venv/lib/python3.14/site-packages/django/contrib/admin/static/admin/js/core.js')).toBe(true);
+  });
+
+  it('allows the Web Components slot on ion-* and HubIcon, no longer on the retired ok-* (PLAN §16.11)', async () => {
+    const code = [
+      '<template>',
+      '  <ion-button>',
+      '    <ion-icon slot="start" />',
+      '    <HubIcon slot="end" icon="ion:home" />',
+      '    <ok-button slot="end" />',
+      '  </ion-button>',
+      '</template>',
+      '',
+    ].join('\n');
+    expect(await deprecatedSlots(code, 'accounts/frontend/pages/Page.vue')).toEqual(['<ok-button']);
   });
 
   it("leaves the template pages' vendored scripts alone", async () => {

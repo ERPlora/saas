@@ -1,0 +1,11 @@
+{% extends "errors/base.html" %}
+{% load i18n %}
+{% comment %}
+  Django renders `400.html` by name (`django.views.defaults.bad_request`, e.g. a SuspiciousOperation);
+  without it, a bare `<h1>` with no way back (ERPlora/saas#1474).
+{% endcomment %}
+
+{% block title %}400 — {% trans "Bad Request" %} · ERPlora Cloud{% endblock %}
+{% block code %}{% trans "400 · Bad Request" %}{% endblock %}
+{% block heading %}{% trans "We couldn't read that request" %}{% endblock %}
+{% block message %}{% trans "Something in the request was malformed. Try again from ERPlora." %}{% endblock %}

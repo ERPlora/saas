@@ -1,0 +1,30 @@
+/* ep-reveal (public/components/reveal.html): port of <ok-reveal>. A block is hidden only once the
+ * inline script of public_base.html marked <html> with `ep-js` (without JavaScript everything
+ * shows); frontend/public.ts adds `is-revealed` when it enters the viewport, and after 3 s
+ * `ep-reveal-timeout` shows whatever is left. */
+.ep-reveal {
+  display: block;
+  width: 100%;
+}
+html.ep-js .ep-reveal {
+  transition:
+    opacity var(--ep-reveal-duration, 0.65s) cubic-bezier(0.22, 0.7, 0.2, 1) var(--ep-reveal-delay, 0ms),
+    transform var(--ep-reveal-duration, 0.65s) cubic-bezier(0.22, 0.7, 0.2, 1) var(--ep-reveal-delay, 0ms);
+}
+html.ep-js:not(.ep-reveal-timeout) .ep-reveal:not(.is-revealed) {
+  opacity: 0;
+  transform: translateY(18px);
+  will-change: opacity, transform;
+}
+html.ep-js:not(.ep-reveal-timeout) .ep-reveal[data-reveal='fade']:not(.is-revealed) { transform: none; }
+html.ep-js:not(.ep-reveal-timeout) .ep-reveal[data-reveal='scale']:not(.is-revealed) { transform: scale(0.95); }
+html.ep-js:not(.ep-reveal-timeout) .ep-reveal[data-reveal='left']:not(.is-revealed) { transform: translateX(-28px); }
+html.ep-js:not(.ep-reveal-timeout) .ep-reveal[data-reveal='right']:not(.is-revealed) { transform: translateX(28px); }
+@media (prefers-reduced-motion: reduce) {
+  html.ep-js .ep-reveal,
+  html.ep-js:not(.ep-reveal-timeout) .ep-reveal:not(.is-revealed) {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

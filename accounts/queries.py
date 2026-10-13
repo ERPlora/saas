@@ -10,6 +10,7 @@ from allauth.mfa.models import Authenticator
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db.models import Count
+from django.utils.translation import gettext
 from live.context import OperationContext
 from live.errors import Unauthorized
 from live.operations import operation
@@ -77,7 +78,7 @@ def hub_list(ctx: OperationContext, data: HubListIn) -> dict[str, Any]:
     (anonymous) is refused, whatever route or stream asks.
     """
     if ctx.actor is None:
-        raise Unauthorized("Sign in to see your businesses.")
+        raise Unauthorized(gettext("Sign in to see your businesses."))
     return {
         "hubs": [
             {"slug": slug, "host": urlsplit(hub_origin(slug)).netloc, "url": hub_login_url(slug)}

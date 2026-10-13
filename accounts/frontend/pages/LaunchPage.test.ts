@@ -1,5 +1,5 @@
-// The launcher (`/launch`), the entry of erplora.com, ported from `accounts/launch.html` and the
-// view `handoff.launch`: it reads the account's hubs (`accounts.hub.list`) and, with ONE, jumps
+// The launcher (`/launch`), the entry of erplora.com, ported from ERPlora/saas `accounts/launch.html`
+// and the view `handoff.launch`: it reads the account's hubs (`accounts.hub.list`) and, with ONE, jumps
 // straight to it; with several, lists them (the jump of each one is a Django page, `/hub-login/`,
 // so it is a full navigation); with none, says so. «Sign Out» posts Django's logout form.
 import { ApiError } from '@erplora/ui/sdk';

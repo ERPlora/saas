@@ -1,0 +1,12 @@
+{% comment %}
+  ep-bento: port of <ok-bento> (OutfitKit). The grid of a bento section: 6 columns on desktop, 4
+  under 900 px and one under 560 px; its items are public/components/bento_item.html.
+  Styles: public/static/public/components/bento.css.
+
+  Usage:
+    {% include "public/components/bento.html" with items_template="public/<page>/_bento_items.html" cols=6 cols_md=4 %}
+
+  Variables: items_template (required, the template with the items); cols (2 to 6, default 6);
+  cols_md (2 to 4, default 4: the columns between 561 and 900 px).
+{% endcomment %}
+<div class="ep-bento ep-bento--c{{ cols|default:6 }} ep-bento--md{{ cols_md|default:4 }}">{% include items_template %}</div>

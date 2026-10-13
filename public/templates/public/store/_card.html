@@ -1,0 +1,8 @@
+{% load i18n %}
+{% comment %}
+  A card of the store (public/store/list.html), from a card of public/store.py (`_card`): the
+  app's icon (inline, cleaned by apps.app.list), its category, name, «Premium» badge, summary and
+  access («Free» or «Included in the paid plans», decision 17), linking its page.
+{% endcomment %}
+{% if app.premium %}{% trans "Premium" as badge %}{% endif %}
+{% include "public/components/product_card.html" with icon_svg=app.icon_svg category=app.category_label name=app.name badge=badge price=app.access_label href=app.href body=app.summary %}

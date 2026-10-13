@@ -1,0 +1,302 @@
+/* public-landing.css — the base rules of the public pages (Ionic + the ep-* partials).
+ *
+ * Port of static/css/public-landing.css of the old SaaS. Left behind, with the reason: the
+ * <ok-navbar>/<ok-footer> adjustments and the old language links (the navbar and the footer are
+ * components now: components/navbar.css and footer.css), the unused .surface helper, and the
+ * process-stage and PIN boxes of the retired demo (/demo is out of scope, plan §3.b).
+ * Bundled by frontend/public.ts after the theme, the layout and landing.css.
+ */
+
+html,
+body {
+  margin: 0;
+  background: var(--ion-background-color, #fafafa);
+  color: var(--ion-text-color, #18181b);
+  font-family: var(--ion-font-family, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif);
+  -webkit-font-smoothing: antialiased;
+
+  /* The public pages scroll the DOCUMENT (no Ionic shell with <ion-content>): undo any body lock
+     an app sheet might impose, or the content under the hero would be cut off. */
+  position: static;
+  height: auto;
+  max-height: none;
+  overflow-x: clip; /* clip, not scroll: the reveal's pre-animation offset must not add a scrollbar */
+  overflow-y: auto;
+  touch-action: auto;
+}
+
+/* The main content grows and pushes the footer down. */
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+body > main {
+  flex: 1 0 auto;
+}
+
+.text-muted {
+  color: rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.6);
+}
+
+/* While the navbar's mobile panel is open the page behind it does not scroll. */
+html.ep-navbar-open,
+html.ep-navbar-open body {
+  overflow: hidden;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Ionic components on the public pages: only ADJUSTMENTS here, and the patterns Ionic does not
+   cover (static tables, filter bars).
+   ───────────────────────────────────────────────────────────────────── */
+
+/* ion-card on the landing: flat with a border (the site's language, like the product card), not
+   Ionic's default elevation. No margin (it breaks the grids) and full width. */
+main ion-card {
+  margin: 0;
+  width: 100%;
+  /* !important: beats the box-shadow/border-radius Ionic sets on :host. */
+  box-shadow: none !important;
+  border: 1px solid var(--ion-border-color, #ececec) !important;
+  border-radius: 16px !important;
+}
+
+/* The rhythm of the public cards. Ionic's ios styles are injected after this sheet, so the
+   padding is explicit and !important: titles never stick to the edge. */
+main ion-card ion-card-header {
+  padding: 1.5rem 1.5rem 0.5rem !important;
+}
+main ion-card ion-card-title {
+  font-size: var(--ep-type-card-title-size, 1.15rem);
+  font-weight: var(--ep-type-card-title-weight, 620);
+  line-height: var(--ep-type-card-title-leading, 1.25);
+  letter-spacing: -0.02em;
+}
+main ion-card ion-card-content {
+  padding: 1.5rem !important;
+}
+main ion-card ion-card-header + ion-card-content {
+  padding-top: 0 !important;
+}
+
+/* Inputs are ion-input/ion-textarea (form-associated: native POST). Space between fields. */
+.contact-fields ion-input,
+.contact-fields ion-textarea,
+.contact-fields ion-button {
+  margin-top: 0.75rem;
+}
+
+/* Ionic does not draw the outline of fill="outline" in ios mode. The component and its accessible
+   states stay; the visual boundary is completed here, one shared pattern for every public form. */
+main ion-input.ios[fill="outline"],
+main ion-textarea.ios[fill="outline"] {
+  border: 1px solid var(--ion-border-color, #e5e7eb);
+  border-radius: 12px;
+  --padding-start: 0.875rem;
+  --padding-end: 0.875rem;
+  --padding-top: 0.75rem;
+  --padding-bottom: 0.75rem;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+main ion-input.ios[fill="outline"]:focus-within,
+main ion-textarea.ios[fill="outline"]:focus-within {
+  border-color: var(--ion-color-primary, #1496d6);
+  box-shadow: 0 0 0 3px rgba(20, 150, 214, 0.14);
+}
+
+/* An ion-chip used as a filter needs a real touch target and a visible focus. */
+main ion-chip[role="button"] {
+  min-height: 2.75rem;
+  margin: 0;
+  padding-inline: 0.625rem;
+}
+main ion-chip[role="button"]:focus-visible {
+  outline: 2px solid var(--ion-color-primary, #1496d6);
+  outline-offset: 2px;
+}
+
+/* A catalogue filter bar: one touch row on a phone so the content shows early; wraps from tablet. */
+.public-filter-bar {
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.125rem;
+  overscroll-behavior-inline: contain;
+  scroll-snap-type: inline proximity;
+}
+.public-filter-bar > ion-chip {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+}
+.public-filter-bar > ion-chip > svg {
+  flex: 0 0 auto;
+  margin-inline-end: 0.375rem;
+}
+.public-filter-bar > ion-chip > span {
+  margin-inline-start: 0.25rem;
+}
+@media (min-width: 768px) {
+  .public-filter-bar {
+    flex-wrap: wrap;
+    justify-content: center;
+    overflow-x: visible;
+  }
+}
+
+/* CTAs on the whole public site: sentence case, weight and air between icon and text. */
+ion-button::part(native) {
+  text-transform: none;
+  letter-spacing: -0.01em;
+  font-weight: 600;
+}
+ion-button [slot="start"] { margin-inline-end: 0.5em; display: inline-flex; }
+ion-button [slot="end"] { margin-inline-start: 0.5em; display: inline-flex; }
+
+/* The version pill of the hero: a touch more weight. */
+.hero-bg .kbd-pill { font-weight: 500; }
+
+/* The shared list of public preferences (/cookies/). The group stays open and light; the only
+   closed surface is the responsive table. */
+.public-preference-list {
+  display: grid;
+  gap: clamp(1.75rem, 3vw, 2.5rem);
+}
+.public-preference-group {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  padding-block-end: clamp(1.75rem, 3vw, 2.5rem);
+  border-bottom: 1px solid color-mix(in oklab, var(--ion-text-color) 8%, transparent);
+}
+.public-preference-group:last-child {
+  padding-block-end: 0;
+  border-bottom: 0;
+}
+.public-preference-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+}
+.public-preference-copy {
+  min-width: 0;
+}
+.public-preference-title {
+  margin: 0;
+  font-family: var(--ep-font-display, var(--ep-font));
+  font-size: var(--ep-type-card-title-size, 1.15rem);
+  font-weight: var(--ep-type-card-title-weight, 620);
+  line-height: var(--ep-type-card-title-leading, 1.25);
+  letter-spacing: -0.02em;
+}
+.public-preference-copy p {
+  max-width: 65ch;
+  margin: 0.45rem 0 0;
+  color: var(--ep-muted, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.62));
+  font-size: var(--ep-type-card-body-size, 0.92rem);
+  line-height: var(--ep-type-card-body-leading, 1.55);
+}
+.public-preference-control {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+main ion-toggle.cookie-toggle {
+  min-height: 2.75rem;
+}
+main ion-toggle:focus-visible {
+  outline: 2px solid var(--ion-color-primary, #1496d6);
+  outline-offset: 3px;
+  border-radius: 999px;
+}
+.public-table-code {
+  color: var(--ion-color-primary, #1496d6);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+.public-table-meta {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--ep-muted, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.62));
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 639px) {
+  .public-preference-header {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+  .public-preference-control {
+    justify-content: space-between;
+  }
+}
+
+/* The layered flex utilities lose to Ionic's unlayered `display: block` on an ion-* element
+   (<ion-card-content class="flex">): restated here without a layer. Same effect on a <div>. */
+ion-card-content.flex,
+ion-card.flex,
+ion-item.flex { display: flex; }
+ion-card-content.inline-flex { display: inline-flex; }
+ion-card-content.flex-row { flex-direction: row; }
+ion-card-content.flex-col { flex-direction: column; }
+ion-card-content.items-center { align-items: center; }
+ion-card-content.items-start { align-items: flex-start; }
+ion-card-content.justify-between { justify-content: space-between; }
+ion-card-content.justify-center { justify-content: center; }
+
+/* The "pre-launch" strip (partials/dev_banner.html), before the sticky navbar: it scrolls away
+   and the navbar stays. */
+.dev-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--ion-color-primary, #0091ce);
+  color: var(--ion-color-primary-contrast, #fff);
+  font-size: 0.85rem;
+  line-height: 1.3;
+  text-align: center;
+  position: relative;
+  z-index: 50;
+}
+.dev-banner__icon {
+  font-size: 1.05rem;
+  flex: none;
+}
+.dev-banner__text strong {
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+@media (max-width: 480px) {
+  .dev-banner {
+    font-size: 0.78rem;
+    padding: 0.45rem 0.75rem;
+  }
+}
+
+/* reCAPTCHA v3's floating badge leaves the viewport on a phone and covers the CTAs; the legal
+   notice Google's terms require goes inline next to the contact form instead. */
+.grecaptcha-badge {
+  visibility: hidden;
+}
+
+/* The error pages (404.html, 500.html): the section fills the space between navbar and footer. */
+.ep-error-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+}
+
+/* Server messages (partials/messages.html) without JavaScript; with it they become toasts. */
+.ep-server-messages {
+  display: grid;
+  gap: 0.5rem;
+  padding-block: 1rem;
+}

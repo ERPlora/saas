@@ -1,22 +1,19 @@
 /* ============================================================
-   ERPlora · Tema + tokens base
+   ERPlora · Theme + base tokens
    ──────────────────────────────────────────────────────────
-   Tokens de tipo, espaciado y los puentes --ink / --brand que
-   consume el logo. La UI es Ionic (ion-*) + OutFitKit (ok-*), así que de
-   AQUÍ se eliminaron los --color-* / --radius-* / --size-* de DaisyUI.
+   Type and spacing tokens and the --ink / --brand bridges the
+   logo consumes. The UI is Ionic (ion-*), so DaisyUI's
+   --color-* / --radius-* / --size-* were removed from HERE.
 
-   ⚠️ Eso NO significa que DaisyUI haya desaparecido del SaaS: el bundle
-   CONGELADO style.css sigue definiendo su capa de tema
-   ([data-theme=erplora-*] → --color-base-*, --color-primary…) y hay reglas
-   vivas que la consumen. Ese fichero no se puede regenerar (no hay build),
-   así que se deja intacto; lo que NO se hace es escribir tokens DaisyUI
-   nuevos aquí ni vocabulario DaisyUI nuevo en las plantillas.
+   DaisyUI's frozen style.css bundle, which still defined its theme
+   layer in ERPlora/saas, is gone as well (see preflight.css): no
+   DaisyUI tokens or vocabulary are written here or in the templates.
 
-   Los --mod-* (categorías de módulo) son de ERPlora, no DaisyUI:
-   se conservan aquí con sus 4 variantes de tema.
+   The --mod-* (module categories) are ERPlora's, not DaisyUI's:
+   they are kept here with their 4 theme variants.
    ============================================================ */
 
-/* Las fuentes se sirven same-origin desde erplora-fonts.css. */
+/* The fonts are served same-origin from erplora-fonts.css. */
 
 :root {
   --font-display: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
@@ -51,15 +48,16 @@
 }
 
 /* ============================================================
-   Categorías de módulo (--mod-*) — tokens de ERPlora (no DaisyUI)
+   Module categories (--mod-*) — ERPlora tokens (not DaisyUI)
    ------------------------------------------------------------
-   Cuatro variantes de tema (light/dark azul + light/dark terracotta),
-   seleccionadas por [data-theme="…"] en <html> (server-set en
-   base.html). Los consume erplora-admin.css + los tiles de módulos
-   del dashboard y el marketplace. Sin equivalente Ionic: se conservan.
+   Four theme variants (light/dark blue + light/dark terracotta),
+   selected by [data-theme="…"] on <html> (set by the server in
+   ERPlora/saas's base.html). There they fed erplora-admin.css and the
+   module tiles of the dashboard and the marketplace. No Ionic
+   equivalent: they are kept.
    ============================================================ */
 
-/* ── Azul · default ── */
+/* ── Blue · default ── */
 :root,
 [data-theme="erplora-light"] {
   --mod-orange: oklch(62% 0.18 35);
@@ -87,7 +85,7 @@
   --brand: oklch(72% 0.16 250);
 }
 
-/* ── Naranja · terracotta ── */
+/* ── Orange · terracotta ── */
 [data-theme="erplora-orange-light"] {
   --mod-orange: oklch(62% 0.18 35);
   --mod-blue:   oklch(55% 0.17 250);

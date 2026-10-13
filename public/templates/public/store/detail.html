@@ -1,0 +1,81 @@
+{% extends "public/store/app_base.html" %}
+{% load i18n icons %}
+{% comment %}
+  /apps/<id>/, the «Overview» tab (public/store.py). Port of modules/partials/tab_overview.html
+  (origin/develop): the description, the «Required apps» card (one linked ion-item per listed app,
+  with its icon and access; an unlisted one only by name, saas#2644) and the details (category,
+  access, the business types it is built for). Its SoftwareApplication JSON-LD (spec §8.2).
+{% endcomment %}
+
+{% block title %}{{ app.name }} · {% trans "ERPlora apps" %}{% endblock %}
+{% block og_title %}{{ app.name }} · {% trans "ERPlora apps" %}{% endblock %}
+{% block twitter_title %}{{ app.name }} · {% trans "ERPlora apps" %}{% endblock %}
+{% block extra_seo %}<script type="application/ld+json">{{ json_ld }}</script>{% endblock %}
+
+{% block tab_content %}
+<div class="ep-store-overview">
+  <div class="ep-store-overview__main">
+    <ion-card class="ep-store-card">
+      <ion-card-header>
+        <ion-card-title>{% trans "About this app" %}</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="ep-prose">{{ app.description|default:app.summary|linebreaks }}</div>
+      </ion-card-content>
+    </ion-card>
+
+    {% if required %}
+    <ion-card class="ep-store-required">
+      <ion-card-header>
+        <ion-card-title>{% trans "Required apps" %}</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <p class="ep-store-required__intro">{% trans "This app needs these apps, which turn on with it:" %}</p>
+        <ion-list lines="full">
+          {% for row in required %}
+          {% if row.card %}
+          <ion-item button detail="true" href="{{ row.card.href }}">
+            <span slot="start" class="ep-store-required__icon">{{ row.card.icon_svg }}</span>
+            <ion-label>{{ row.name }}</ion-label>
+            <span slot="end">{% if row.card.premium %}{% trans "Premium" as pill %}{% include "public/components/status_pill.html" with tone="primary" label=pill size="sm" %}{% else %}{% include "public/components/status_pill.html" with tone="success" label=row.card.access_label size="sm" %}{% endif %}</span>
+          </ion-item>
+          {% else %}
+          <ion-item>
+            <span slot="start" class="ep-store-required__icon">{% icon "apps-outline" %}</span>
+            <ion-label>{{ row.name }}</ion-label>
+          </ion-item>
+          {% endif %}
+          {% endfor %}
+        </ion-list>
+      </ion-card-content>
+    </ion-card>
+    {% endif %}
+  </div>
+
+  <ion-card class="ep-store-card ep-store-details">
+    <ion-card-header>
+      <ion-card-title>{% trans "Details" %}</ion-card-title>
+    </ion-card-header>
+    <ion-card-content>
+      <ion-list lines="full">
+        {% if app.category_label %}
+        <ion-item>
+          <ion-label>{% trans "Category" %}</ion-label>
+          <ion-note slot="end">{{ app.category_label }}</ion-note>
+        </ion-item>
+        {% endif %}
+        <ion-item>
+          <ion-label>{% trans "Access" %}</ion-label>
+          <ion-note slot="end">{{ app.access_label }}</ion-note>
+        </ion-item>
+        {% if built_for %}
+        <ion-item lines="none">
+          <ion-label>{% trans "Built for" %}</ion-label>
+          <ion-note slot="end">{{ built_for|join:", " }}</ion-note>
+        </ion-item>
+        {% endif %}
+      </ion-list>
+    </ion-card-content>
+  </ion-card>
+</div>
+{% endblock %}

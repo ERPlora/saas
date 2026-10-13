@@ -1,0 +1,29 @@
+{% load i18n icons %}
+{% comment %}
+  The apps of the catalogue (the old «Modules» section, _modules.html of origin/develop): the six
+  featured cards are the first listed apps by section and name (apps.app.list, spec §8.1), each with
+  its own icon and a link to its page in the store. Without any listed app the section is omitted
+  (spec §5.3). The id is the old anchor, kept for the links that point at it.
+{% endcomment %}
+{% if total_apps %}
+  <section id="modulos" class="ep-section ep-section--compact ep-section--divider">
+    <header class="ep-section-head">
+      <span class="ep-eyebrow">{% trans 'Apps' %}</span>
+      <h2 class="ep-section-title">{% trans 'Everything your company needs. In one place.' %}</h2>
+      <p class="ep-section-sub">{% blocktrans trimmed count counter=total_apps %}{{ counter }} app designed to fit with the rest. Start with the ones you need today and turn on the rest as you grow.{% plural %}{{ counter }} apps designed to fit together. Start with the ones you need today and turn on the rest as you grow.{% endblocktrans %}</p>
+    </header>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% for app in featured_apps %}
+        <div class="ep-reveal" data-reveal="up" data-reveal-delay="{{ forloop.counter0|add:forloop.counter0|add:forloop.counter0 }}0">
+          {% include "public/components/feature_card.html" with icon_svg=app.icon_svg eyebrow=app.eyebrow heading=app.name body=app.summary href=app.url only %}
+        </div>
+      {% endfor %}
+    </div>
+    <div class="mt-10 flex justify-center">
+      <a href="{% url 'public:store' %}" class="inline-flex items-center gap-2 text-sm font-semibold text-primary group">
+        <span>{% blocktrans trimmed count counter=total_apps %}See the {{ counter }} app{% plural %}See the {{ counter }} apps{% endblocktrans %}</span>
+        {% icon "lucide:arrow-right" css_class="transition-transform group-hover:translate-x-1" %}
+      </a>
+    </div>
+  </section>
+{% endif %}

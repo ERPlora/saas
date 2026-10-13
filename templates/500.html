@@ -1,0 +1,15 @@
+{% extends "errors/base.html" %}
+{% load i18n %}
+{% comment %}
+  Django renders `500.html` by name (`django.views.defaults.server_error`): the project's
+  `handler500` (`public.errors.server_error`) sends here every failure outside the public web and
+  the API; the public web keeps `public/500.html`. Django renders it with an empty context (no
+  request, no context processors), so nothing here may need either: no `request.`, no `user`, no
+  `{% url %}`. Ported from ERPlora/saas `templates/500.html` (origin/develop c5ca8cae8) without
+  OutfitKit and without its «Try again» link, which needed the request.
+{% endcomment %}
+
+{% block title %}500 — {% trans "Server Error" %} · ERPlora Cloud{% endblock %}
+{% block code %}{% trans "500 · Internal Server Error" %}{% endblock %}
+{% block heading %}{% trans "Something went wrong on our end" %}{% endblock %}
+{% block message %}{% trans "Your data is safe. Try this page again or return to ERPlora while we investigate." %}{% endblock %}

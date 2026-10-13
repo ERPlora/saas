@@ -1,0 +1,473 @@
+{% extends "public/public_base.html" %}
+{% load i18n %}
+{% comment %}
+  The terms of use. Port of apps/public/legal/templates/legal/terms.html (origin/develop) with the
+  same sections, numbering and text, on the shared reading pattern with ep-* classes. The Tauri app
+  does not open the public web in phase 1, so the web-only/app-only doubles are gone. Every number
+  is read, never typed: the exit package from HUB_EXIT_PACKAGE_TTL_DAYS, the suspension clock from
+  public.legal.SUSPENDED_HUB_DELETE_DAYS and the trial of §4 from the plans on sale (public/legal.py).
+
+  Legal text changed in the port (L7), with the date: §1 and §7.3 spoke of modules bought from a
+  marketplace; every app is ours now, and a premium app is included in the paid plans (spec §8.3,
+  decision 17). Contract: public/tests/test_legal.py.
+{% endcomment %}
+
+{% block title %}{% trans "Terms of Use" %} · ERPlora{% endblock %}
+
+{% block meta_description %}{% trans "ERPlora's Terms and Conditions of Use. Rules governing the use of our ERP/POS SaaS platform and services." %}{% endblock %}
+
+{% block og_title %}{% trans "Terms of Use" %} · ERPlora{% endblock %}
+{% block og_description %}{% trans "Terms and Conditions of use of the ERPlora platform." %}{% endblock %}
+
+{% block page_content %}
+  {% trans "Service terms" as hero_eyebrow %}
+  {% trans "Terms of Use" as hero_title %}
+  {% trans "The rules governing access to and use of ERPlora's modular ERP and POS cloud services." as hero_description %}
+  {% include "public/partials/page_hero.html" with hero_eyebrow=hero_eyebrow hero_title=hero_title hero_description=hero_description hero_compact=True %}
+
+  <section class="ep-section--compact ep-section--divider">
+    <div class="ep-container ep-section-content">
+      <article class="ep-prose max-w-4xl mx-auto">
+        <p class="text-sm text-fg/60"><strong>{% trans "Last updated:" %}</strong> {% trans "October 13, 2026" %}</p>
+
+        <p>
+          {% blocktrans trimmed %}
+          ERPLORA CLOUD S.L., with Tax ID (CIF) B27593136 and registered address at Avda
+          Lisboa 17, Pta. C, 28822 Coslada (Madrid) (hereinafter, "ERPlora"), provides
+          cloud-based business management services (SaaS) through https://erplora.com
+          and the <em>*.erplora.com</em> hubs or the customer's own domains.
+          {% endblocktrans %}
+        </p>
+        <p>{% trans "Use of the service implies full acceptance of these terms." %}</p>
+
+        <h2>{% trans "1. Service" %}</h2>
+        <p>
+          {% blocktrans trimmed %}
+          ERPlora offers a modular, multi-tenant ERP/POS SaaS platform, deployed on
+          European cloud infrastructure, with features such as sales, inventory, and
+          customer management, invoicing, tax integrations (VeriFactu), and a catalogue of
+          apps of its own that the customer turns on in their Hub: the free apps come with
+          every plan, and the premium apps are included in the paid plans.
+          {% endblocktrans %}
+        </p>
+        <p>
+          {% blocktrans trimmed %}
+          The service is provided "as is" without warranties of fitness for a specific
+          purpose beyond what is described in the official documentation.
+          {% endblocktrans %}
+        </p>
+
+        <h2>{% trans "2. Registration and account" %}</h2>
+        <p>
+          {% blocktrans trimmed %}
+          To use the service, the customer must create an account providing accurate
+          information. The customer is responsible for maintaining the confidentiality
+          of their credentials and for all activity carried out under their account.
+          Any unauthorized use must be reported immediately to
+          {% endblocktrans %}
+          <a href="mailto:soporte@erplora.com" class="text-primary">soporte@erplora.com</a>.
+        </p>
+
+        <h2>{% trans "3. Subscriptions and payments" %}</h2>
+        <ul>
+          <li>{% blocktrans trimmed %}Plans and prices are published at{% endblocktrans %} <a href="{% url 'public:pricing' %}" class="text-primary">/pricing/</a> {% blocktrans trimmed %}and may be updated; changes affect future renewals, not the current period.{% endblocktrans %}</li>
+          <li>{% blocktrans trimmed %}Payment is made through a recurring subscription (monthly or annual) via Stripe. ERPlora <strong>does NOT</strong> store card data — it is managed by Stripe.{% endblocktrans %}</li>
+          <li>{% trans "The invoice is issued using the billing details provided by the customer." %}</li>
+          <li>{% blocktrans trimmed %}Non-payment at maturity will result in suspension of the service after a 7-day grace period with prior notice. A suspended Hub keeps its data intact and can be brought back by resuming the subscription.{% endblocktrans %}</li>
+          <li>{% blocktrans trimmed with days=suspended_hub_delete_days %}A Hub that remains suspended for {{ days }} days is deleted, together with its data. The account holder is notified beforehand, by email and with a specific date, and receives the copy described in section 5.1.{% endblocktrans %}</li>
+        </ul>
+
+        {% comment %} saas#2217: the written basis of what checkout enforces since saas#2205 (a paid UK
+             sale needs a UK VAT number) and saas#2216 (the number is looked up in HMRC's register).
+             The example number is tested against the code that accepts it. {% endcomment %}
+        <section id="united-kingdom">
+          <h3>{% trans "3.1 Customers in the United Kingdom" %}</h3>
+          <p>
+            {% blocktrans trimmed %}
+            In the United Kingdom, ERPlora sells its paid plans and modules only to businesses, for
+            use in the course of their business. By
+            subscribing to a paid service with a billing address in the United Kingdom, the customer
+            declares that it acts as a business and not as a consumer.
+            {% endblocktrans %}
+          </p>
+          <ul>
+            <li>{% blocktrans trimmed %}A customer registered for VAT in the United Kingdom must provide its UK VAT registration number (for example GB123456782) before paying. ERPlora may check it against the register of HM Revenue &amp; Customs (HMRC).{% endblocktrans %}</li>
+            <li>{% blocktrans trimmed %}A business that is not registered for VAT in the United Kingdom, for example because it is below the registration threshold, may instead give its business website and declare that it buys for its business. ERPlora keeps that evidence with the subscription and may ask for other commercial documents.{% endblocktrans %}</li>
+            <li>{% blocktrans trimmed %}ERPlora may refuse a paid subscription, or decline to renew it, when neither the number nor that evidence is given, or when HMRC does not have the number on its register.{% endblocktrans %}</li>
+            <li>{% blocktrans trimmed %}These sales are invoiced without Spanish VAT. The customer accounts for any UK VAT that is due under the reverse charge.{% endblocktrans %}</li>
+            <li>{% trans "The free plan is not affected: it charges nothing and asks for no VAT number." %}</li>
+          </ul>
+        </section>
+
+        <h2>{% trans "4. Trial period and cancellation" %}</h2>
+        <ul>
+          {% if trial_days_max %}
+          <li>{% if trial_days_min == trial_days_max %}{% blocktrans trimmed count days=trial_days_max %}A paid plan chosen when creating a Hub comes with a free trial of {{ days }} day, shown on the pricing page at the time of signup; a promotional code applied at signup may set a different length. Moving a Hub that is already in service to a paid plan does not start a new trial. If not cancelled before the end of the trial, the first period is billed automatically.{% plural %}A paid plan chosen when creating a Hub comes with a free trial of {{ days }} days, shown on the pricing page at the time of signup; a promotional code applied at signup may set a different length. Moving a Hub that is already in service to a paid plan does not start a new trial. If not cancelled before the end of the trial, the first period is billed automatically.{% endblocktrans %}{% else %}{% blocktrans trimmed with min_days=trial_days_min max_days=trial_days_max %}A paid plan chosen when creating a Hub comes with a free trial of between {{ min_days }} and {{ max_days }} days depending on the plan, shown on the pricing page at the time of signup; a promotional code applied at signup may set a different length. Moving a Hub that is already in service to a paid plan does not start a new trial. If not cancelled before the end of the trial, the first period is billed automatically.{% endblocktrans %}{% endif %}</li>
+          {% endif %}
+          <li>{% blocktrans trimmed %}The customer may cancel the subscription at any time from the dashboard; the service will remain active until the end of the already-paid period, with no prorated refund except as provided by mandatory consumer protection regulations where applicable.{% endblocktrans %}</li>
+        </ul>
+
+        <h2>{% trans "5. Ownership of customer data" %}</h2>
+        <p>
+          {% blocktrans trimmed %}
+          The data that the customer enters into their Hub (end customers, sales,
+          inventory, etc.) is the property of the customer. ERPlora acts as data
+          PROCESSOR under Art. 28 GDPR; the processing terms are detailed in the
+          {% endblocktrans %}
+          <a href="{% url 'public:privacy' %}" class="text-primary">{% trans "Privacy Policy" %}</a>
+          {% blocktrans trimmed %}
+          and, where applicable, in the Data Processing Addendum (DPA) signed between
+          the parties.
+          {% endblocktrans %}
+        </p>
+        <p>
+          {% blocktrans trimmed %}
+          While the Hub is active, the customer may export their data from it at any
+          time. If the subscription lapses, the Hub is paused and its data is kept
+          intact; the customer is notified in writing, with a specific date, before
+          anything is deleted.
+          {% endblocktrans %}
+        </p>
+
+        <h3>{% trans "5.1 What the customer receives when their Hub is deleted" %}</h3>
+        <p>
+          {% blocktrans trimmed %}
+          Before deleting a Hub, ERPlora prepares a complete copy of it for the customer:
+          the full database of the Hub and all the files it had stored, in a single
+          archive that is NOT encrypted, so that it can be opened and kept without any
+          ERPlora software or key.
+          {% endblocktrans %}
+        </p>
+        <p>
+          {% blocktrans trimmed with days=exit_package_days %}
+          A download link is sent to the account holder by email and remains available
+          for {{ days }} days from the date of that email. After that date the copy is
+          deleted and cannot be recovered, by the customer or by ERPlora.
+          {% endblocktrans %}
+        </p>
+        <p>
+          {% blocktrans trimmed %}
+          Keeping the accounting and tax documentation for the legally required period
+          is the customer's responsibility as the party subject to those obligations
+          (6 years, article 30 of the Spanish Commercial Code; 4 years of tax limitation,
+          article 66 of the General Tax Act). ERPlora is the software producer and,
+          in respect of the data, the processor: its obligation on termination is to
+          return or delete the data, which is what the copy described above does.
+          {% endblocktrans %}
+        </p>
+
+        <h2>{% trans "6. Availability and SLA" %}</h2>
+        <p>
+          {% blocktrans trimmed %}
+          ERPlora makes reasonable efforts to maintain 99.5% monthly availability.
+          Scheduled interruptions are notified at least 48 hours in advance.
+          Unscheduled interruptions are handled according to internal incident processes.
+          {% endblocktrans %}
+        </p>
+        <p>
+          {% blocktrans trimmed %}
+          Compensation for SLA breaches, if any, is set out in the specific contract
+          signed with the customer.
+          {% endblocktrans %}
+        </p>
+        {% comment %}
+          ADR-0269. The 48-hour notice above predates the update model and a customer reads it as
+          "you will warn me before you touch my terminal". Updates are not covered by it: they do
+          not stop the service, so they are not an interruption to schedule. Said out loud here so
+          the two clauses cannot be read against each other.
+        {% endcomment %}
+        <p>
+          {% blocktrans trimmed %}
+          Updates to the service are not scheduled interruptions: they are applied
+          without stopping the service and are governed by section 7.
+          {% endblocktrans %}
+        </p>
+
+        {% comment %}
+          Section 7 is written against three sources, not invented:
+
+          - Art. 85.3 TRLGDCU — a clause reserving unilateral modification is ABUSIVE, and therefore
+            void, "salvo que concurran motivos válidos especificados en el contrato". Hence 7.2: the
+            list of reasons is not decoration, it is what keeps the rest of the section standing.
+          - Arts. 126 and 126 bis TRLGDCU (= art. 19 of Directive (EU) 2019/770) — a modification
+            BEYOND what conformity requires needs a valid reason, no extra cost, clear information,
+            and, when it hurts access or use more than minimally, advance notice ON A DURABLE MEDIUM
+            plus 30 calendar days to walk away free of charge. 126 bis.4 would let us skip the
+            termination right by offering the unmodified version — we cannot: the fleet runs one
+            version (ADR-0269). So the right is real and it is granted.
+          - Art. 8.2/8.3 of the same Directive — we must supply the updates needed to stay in
+            conformity, and we are shielded from a fault caused solely by an update the customer
+            chose not to install, but only if we announced it AND its consequences. That is 7.7.
+
+          Those articles bind us for CONSUMERS. Nearly every customer is a business and therefore
+          is not one, but we cannot classify them reliably at signup and the promise is the same
+          either way, so the section grants the regime to everybody (7.5, last paragraph).
+
+          Not legal advice and not written by a lawyer: pm#69 carries the list of what a
+          professional has to check before this is relied on.
+        {% endcomment %}
+        <h2>{% trans "7. Updates and versions" %}</h2>
+
+        <h3>{% trans "7.1 ERPlora applies the updates" %}</h3>
+        <p>
+          {% blocktrans trimmed %}
+          ERPlora keeps the service up to date and applies updates to the customer's Hub
+          itself, without the customer having to request them. The customer does not choose
+          the version they run and cannot postpone an update: the whole fleet runs the
+          current version, and that is what allows ERPlora to fix faults, close security
+          holes, and keep pace with tax regulations for every customer at the same time.
+          {% endblocktrans %}
+        </p>
+        <p>
+          {% blocktrans trimmed %}
+          The customer may bring an update forward at any time from the Hub, both for the
+          service and for each module. What they cannot do is postpone it.
+          {% endblocktrans %}
+        </p>
+
+        <h3>{% trans "7.2 Valid reasons for updating" %}</h3>
+        <p>
+          {% blocktrans trimmed %}
+          ERPlora modifies the service only for the following valid reasons, which are stated
+          here because a power to modify the contract unilaterally requires them:
+          {% endblocktrans %}
+        </p>
+        <ul>
+          <li>{% trans "to correct faults and keep the service in conformity with the contract and its documentation;" %}</li>
+          <li>{% trans "to close security vulnerabilities;" %}</li>
+          <li>{% trans "to adapt the service to changes in the applicable law, in particular tax and electronic invoicing rules;" %}</li>
+          <li>{% trans "to keep the service working with the third-party systems it depends on: the tax authority, the payment provider, browsers, operating systems, and devices;" %}</li>
+          <li>{% trans "to improve the service and add features, and to retire technically obsolete components, always within the limits of section 7.3." %}</li>
+        </ul>
+
+        <h3>{% trans "7.3 What ERPlora undertakes with every update" %}</h3>
+        <ul>
+          <li>
+            <strong>{% trans "Continuity." %}</strong>
+            {% blocktrans trimmed %}
+            The new version is started and checked before the previous one is withdrawn.
+            An update is not, in itself, an interruption of the service and is therefore
+            not a scheduled interruption for the purposes of section 6.
+            {% endblocktrans %}
+          </li>
+          <li>
+            <strong>{% trans "Backward compatibility." %}</strong>
+            {% blocktrans trimmed %}
+            An update does not destroy the customer's data and does not leave the Hub
+            with fewer functions than it had before.
+            {% endblocktrans %}
+          </li>
+          <li>
+            <strong>{% trans "Automatic reversion." %}</strong>
+            {% blocktrans trimmed %}
+            If the new version does not start correctly, the previous one is restored
+            automatically and the customer carries on working with it.
+            {% endblocktrans %}
+          </li>
+          <li>
+            <strong>{% trans "Notice of visible changes." %}</strong>
+            {% blocktrans trimmed %}
+            Changes that alter the way the day-to-day sale is operated — from signing in
+            to charging — are announced before they take effect, under section 7.5.
+            {% endblocktrans %}
+          </li>
+          <li>
+            <strong>{% trans "Traceability." %}</strong>
+            {% blocktrans trimmed %}
+            The Hub shows the version in use and a history of the updates applied,
+            stating which version each one came from and went to.
+            {% endblocktrans %}
+          </li>
+        </ul>
+        <p>{% trans "The apps turned on in the Hub are updated under these same rules." %}</p>
+
+        <h3>{% trans "7.4 An update never costs the customer anything" %}</h3>
+        <p>
+          {% blocktrans trimmed %}
+          An update does not change the price of the contracted plan, does not put behind an
+          extra charge a feature the customer already had, and does not oblige the customer to
+          buy hardware or software in order to carry on using what they contracted.
+          {% endblocktrans %}
+        </p>
+
+        <h3>{% trans "7.5 Notice, and the right to terminate" %}</h3>
+        <p>
+          {% blocktrans trimmed %}
+          Updates needed to keep the service in conformity — correcting faults, security, and
+          adapting to changes in the law — are applied without prior notice: holding them back
+          would leave the customer worse off, not better.
+          {% endblocktrans %}
+        </p>
+        <p>
+          {% blocktrans trimmed %}
+          Where a modification goes beyond that and negatively affects the customer's access to
+          the service or their use of it, other than to a minor extent, ERPlora will inform the
+          customer with reasonable advance notice, on a durable medium, of the features and the
+          timing of the modification and of the right set out in the following paragraph.
+          {% endblocktrans %}
+        </p>
+        <p>
+          {% blocktrans trimmed %}
+          That notice is given by email to the address on the account. Announcing it inside the
+          product as well does not replace the email: a message the customer only sees by logging
+          in is not, on its own, a durable medium.
+          {% endblocktrans %}
+        </p>
+        <p>
+          {% blocktrans trimmed %}
+          In that case the customer may terminate the contract at no charge within thirty
+          calendar days from receiving that information or from the moment ERPlora makes the
+          modification, whichever is later. On terminating, ERPlora refunds the proportional
+          part of the price paid for the period not yet used, and the customer keeps the right
+          to export their data under section 5.
+          {% endblocktrans %}
+        </p>
+        <p>
+          {% blocktrans trimmed %}
+          For customers who are consumers, this section gives effect to articles 126 and 126 bis
+          of the consolidated text of the General Law for the Defence of Consumers and Users.
+          ERPlora applies it to every customer, consumer or not, because it cannot reliably tell
+          them apart and does not intend to.
+          {% endblocktrans %}
+        </p>
+
+        <h3>{% trans "7.6 ERPlora answers for its own updates" %}</h3>
+        <p>
+          {% blocktrans trimmed %}
+          If an update leaves the service not in conformity with the contract or its
+          documentation, that is ERPlora's responsibility, and the general wording of section 1
+          does not exclude it. ERPlora will restore conformity without undue delay and at no
+          cost to the customer.
+          {% endblocktrans %}
+        </p>
+        <p>
+          {% blocktrans trimmed %}
+          If it does not, the customer may claim a reduction of the price proportional to the
+          time during which the service was affected and, where the lack of conformity is not
+          minor, terminate the contract. The customer does not have to prove that ERPlora was at
+          fault: showing the lack of conformity is enough.
+          {% endblocktrans %}
+        </p>
+
+        <h3>{% trans "7.7 Desktop and mobile application" %}</h3>
+        <p>
+          {% blocktrans trimmed %}
+          The installable application is the exception: it is never updated on its own. ERPlora
+          announces that a new version is available and informs the customer of the consequences
+          of not installing it; the customer decides when to install it.
+          {% endblocktrans %}
+        </p>
+        <p>
+          {% blocktrans trimmed %}
+          Where the customer does not install, within a reasonable time, an update that ERPlora
+          has supplied and announced in that way, ERPlora does not answer for a lack of
+          conformity that is due solely to that uninstalled update.
+          {% endblocktrans %}
+        </p>
+
+        <h3>{% trans "7.8 Invoicing software" %}</h3>
+        <p>
+          {% blocktrans trimmed %}
+          When an update affects the components subject to the regulation on the requirements of
+          invoicing computer systems, the responsible declaration for the new version is
+          published, and the previous ones remain available, in the
+          {% endblocktrans %}
+          <a href="{% url 'public:declaracion_responsable' %}" class="text-primary">{% trans "public archive of responsible declarations" %}</a>.
+        </p>
+
+        <h3>{% trans "7.9 Relationship with the rest of these terms" %}</h3>
+        <p>
+          {% blocktrans trimmed %}
+          The undertakings in this section are specific obligations of ERPlora and prevail over
+          the general wording of section 1. Except for what section 7.6 provides, they do not
+          create an availability commitment beyond section 6.
+          {% endblocktrans %}
+        </p>
+        <p>
+          {% blocktrans trimmed %}
+          This policy is explained in plain language, without legal wording, on the
+          {% endblocktrans %}
+          <a href="{% url 'public:updates' %}" class="text-primary">{% trans "Updates page" %}</a>.
+        </p>
+
+        <h2>{% trans "8. Acceptable use" %}</h2>
+        <p>{% trans "It is prohibited to:" %}</p>
+        <ul>
+          <li>{% trans "Use the service for unlawful or fraudulent activities, or activities that infringe the rights of third parties." %}</li>
+          <li>{% trans "Reverse engineer, decompile, or attempt to access the source code beyond the components published as open source." %}</li>
+          <li>{% trans "Attempt to compromise security, overload the infrastructure, or access other customers' data." %}</li>
+          <li>{% trans "Resell the service without ERPlora's express authorization." %}</li>
+        </ul>
+        <p>{% trans "Breach may result in immediate suspension without refund, without prejudice to any applicable legal action." %}</p>
+
+        <h2>{% trans "9. Intellectual property" %}</h2>
+        <p>
+          {% blocktrans trimmed %}
+          All software, design, documentation, and trademarks of the platform are the
+          property of ERPLORA CLOUD S.L. or its licensors. The customer receives a
+          non-exclusive, non-transferable, and revocable license to use the service
+          during the subscription period.
+          {% endblocktrans %}
+        </p>
+
+        <h2>{% trans "10. Limitation of liability" %}</h2>
+        <p>
+          {% blocktrans trimmed %}
+          To the maximum extent permitted by law, ERPlora's aggregate liability to
+          the customer for any claim arising from the service will be limited to the
+          amount actually paid by the customer in the 12 months prior to the event
+          giving rise to the claim.
+          {% endblocktrans %}
+        </p>
+        <p>
+          {% blocktrans trimmed %}
+          ERPlora is not liable for indirect damages, loss of profit, or data loss
+          when the customer has reasonable backup mechanisms of their own and when
+          the breach is not attributable to willful misconduct or gross negligence by
+          ERPlora.
+          {% endblocktrans %}
+        </p>
+        <p>
+          {% blocktrans trimmed %}
+          When the customer is a consumer under the terms of the General Law for the
+          Defense of Consumers and Users, the above limitations will be interpreted in
+          accordance with that regulation, with consumer legal protection prevailing.
+          {% endblocktrans %}
+        </p>
+
+        {% comment %}
+          The heading gained "to these terms" on purpose (ADR-0269): this clause is about changing
+          the CONTRACT, and reading it as covering the software would subject every release to a
+          30-day notice we do not give. Section 7 is the one that governs the software.
+        {% endcomment %}
+        <h2>{% trans "11. Changes to these terms" %}</h2>
+        <p>
+          {% blocktrans trimmed %}
+          ERPlora may modify these terms. Substantial changes will be notified at
+          least 30 days in advance. Continued use of the service after they take
+          effect implies acceptance.
+          {% endblocktrans %}
+        </p>
+        <p>{% trans "Changes to the software itself are governed by section 7." %}</p>
+
+        <h2>{% trans "12. Termination" %}</h2>
+        <p>{% trans "Either party may terminate the contract:" %}</p>
+        <ul>
+          <li>{% trans "At any time (customer), in accordance with section 4." %}</li>
+          <li>{% trans "For serious breach, following notice with a 15-calendar-day cure period." %}</li>
+          <li>{% trans "Due to insolvency, bankruptcy, or cessation of activity of the other party." %}</li>
+        </ul>
+
+        <h2>{% trans "13. Applicable law and jurisdiction" %}</h2>
+        <p>
+          {% blocktrans trimmed %}
+          These terms are governed by Spanish law. For any dispute, the parties
+          submit to the Courts of the city of Madrid, waiving any other jurisdiction
+          that might otherwise apply, without prejudice to consumer jurisdiction where
+          applicable.
+          {% endblocktrans %}
+        </p>
+      </article>
+    </div>
+  </section>
+{% endblock %}

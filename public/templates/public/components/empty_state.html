@@ -1,0 +1,18 @@
+{% load icons %}
+{% comment %}
+  ep-empty-state: port of <ok-empty-state> (OutfitKit). A centred, muted icon with a heading, a
+  message and an optional action, for a list or a search with nothing to show.
+  Styles: public/static/public/components/empty-state.css.
+
+  Usage:
+    {% include "public/components/empty_state.html" with icon="search-outline" heading=title message=text action_template="public/<page>/_clear_filters.html" %}
+
+  Variables: heading; message; icon (a baked `set:name`, default `file-tray-outline`); action_template
+  (a template with the ion-button).
+{% endcomment %}
+<div class="ep-empty-state">
+    <span class="ep-empty-state__icon">{% if icon %}{% icon icon %}{% else %}{% icon "file-tray-outline" %}{% endif %}</span>
+    {% if heading %}<h2 class="ep-empty-state__heading">{{ heading }}</h2>{% endif %}
+    {% if message %}<p class="ep-empty-state__message">{{ message }}</p>{% endif %}
+    {% if action_template %}<div class="ep-empty-state__action">{% include action_template %}</div>{% endif %}
+</div>

@@ -1,0 +1,94 @@
+{% extends "public/public_base.html" %}
+{% load i18n %}
+{% comment %}
+  The cookie policy (LSSI-CE art. 22.2). Port of apps/public/legal/templates/legal/cookies.html
+  (origin/develop) with the same sections and text, on the shared reading pattern with ep-* classes.
+  One correction: the essential cookies are named as the settings that set them call them
+  (public/legal.py), so the language cookie is `_lang`, not the `django_language` the old page
+  named. The per-cookie list of every group lives on the cookie settings page (/cookies/).
+  Contract: public/tests/test_legal.py.
+{% endcomment %}
+
+{% block title %}{% trans "Cookie Policy" %} · ERPlora{% endblock %}
+
+{% block meta_description %}{% trans "ERPlora's Cookie Policy. How we use cookies in accordance with the LSSI-CE and AEPD guidelines." %}{% endblock %}
+
+{% block og_title %}{% trans "Cookie Policy" %} · ERPlora{% endblock %}
+{% block og_description %}{% trans "ERPlora's Cookie Policy. Types of cookies we use and how to manage them." %}{% endblock %}
+
+{% block page_content %}
+  {% trans "Privacy preferences" as hero_eyebrow %}
+  {% trans "Cookie Policy" as hero_title %}
+  {% trans "How ERPlora uses essential and optional cookies, and how you can manage your preferences." as hero_description %}
+  {% include "public/partials/page_hero.html" with hero_compact=True %}
+
+  <section class="ep-section--compact ep-section--divider">
+    <div class="ep-container ep-section-content">
+      <article class="ep-prose max-w-4xl mx-auto">
+        <p class="text-sm text-fg/60"><strong>{% trans "Last updated:" %}</strong> {% trans "May 26, 2026" %}</p>
+
+        <p>
+          {% blocktrans trimmed %}
+          ERPLORA CLOUD S.L. uses cookies and similar technologies on https://erplora.com
+          and in the SaaS service dashboards, in accordance with Article 22.2 of Law
+          34/2002 (LSSI-CE) and the AEPD guidelines on cookie use (2023).
+          {% endblocktrans %}
+        </p>
+
+        <h2>{% trans "1. What is a cookie?" %}</h2>
+        <p>
+          {% blocktrans trimmed %}
+          A cookie is a small file that a website stores on your device to remember
+          information about your visit (for example, language or session status).
+          {% endblocktrans %}
+        </p>
+
+        <h2>{% trans "2. Types of cookies we use" %}</h2>
+        <p><strong>{% trans "a) Technical" %}</strong> {% trans "(exempt from consent — necessary for operation):" %}</p>
+        <ul>
+          <li><strong>{{ session_cookie_name }}</strong> {% trans "(Django): keeps you logged in." %}</li>
+          <li><strong>{{ csrf_cookie_name }}</strong> {% trans "(Django): protects forms against CSRF." %}</li>
+          <li><strong>{{ consent_cookie_name }}</strong>: {% trans "remembers your cookie preferences." %}</li>
+          <li><strong>{{ language_cookie_name }}</strong>: {% trans "your preferred language." %}</li>
+        </ul>
+
+        <p><strong>{% trans "b) Analytics" %}</strong> {% trans "(require your consent):" %}</p>
+        <ul>
+          <li><strong>_ga, _ga_*, _gid</strong> {% trans "(Google Analytics, if active): aggregated and anonymized usage analysis." %}</li>
+        </ul>
+
+        <p><strong>{% trans "c) Advertising / marketing" %}</strong> {% trans "(require your consent):" %}</p>
+        <ul>
+          <li>{% blocktrans trimmed %}We currently do <strong>NOT</strong> use cookies of this type. If we add them in the future, we will update this policy and request renewed consent.{% endblocktrans %}</li>
+        </ul>
+
+        <h2>{% trans "3. Managing your preferences" %}</h2>
+        <p>
+          {% blocktrans trimmed %}
+          The first time you visit erplora.com we show you a banner to accept,
+          reject, or configure non-technical cookies. You can change your choice
+          at any time from the "Cookies" link in the footer.
+          {% endblocktrans %}
+        </p>
+        <p>{% trans "Your browser also lets you block or delete cookies; see:" %}</p>
+        <ul>
+          <li>Chrome: <code>chrome://settings/cookies</code></li>
+          <li>Firefox: <code>about:preferences#privacy</code></li>
+          <li>{% trans "Safari: Preferences > Privacy" %}</li>
+        </ul>
+
+        <h2>{% trans "4. Retention" %}</h2>
+        <ul>
+          <li>{% trans "Session cookies: until the browser is closed." %}</li>
+          <li>{% trans "Persistent cookies: maximum 24 months, in accordance with AEPD recommendations." %}</li>
+        </ul>
+
+        <h2>{% trans "5. More information" %}</h2>
+        <ul>
+          <li><a href="{% url 'public:privacy' %}" class="text-primary">{% trans "Privacy Policy" %}</a></li>
+          <li><a href="https://www.aepd.es" target="_blank" rel="noopener noreferrer" class="text-primary">{% trans "AEPD — Guide on cookie use" %}</a></li>
+        </ul>
+      </article>
+    </div>
+  </section>
+{% endblock %}

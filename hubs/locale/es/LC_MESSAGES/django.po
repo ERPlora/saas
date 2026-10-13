@@ -1,0 +1,893 @@
+# Spanish translations of the hubs app of saas-next (English is the source).
+# Copyright (C) 2026 ERPlora
+# This file is distributed under the same license as ERPlora.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: saas-next\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-13 23:53+0200\n"
+"PO-Revision-Date: 2026-10-13 22:14+0200\n"
+"Last-Translator: ERPlora\n"
+"Language-Team: Spanish\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: admin.py:24 admin.py:38
+msgid "Display"
+msgstr "Presentación"
+
+#: admin.py:50
+msgid "Card"
+msgstr "Tarjeta"
+
+#: admin.py:51
+msgid "Price"
+msgstr "Precio"
+
+#: admin.py:52
+msgid "Availability"
+msgstr "Disponibilidad"
+
+#: admin.py:54
+msgid "What the plan includes"
+msgstr "Qué incluye el plan"
+
+#: admin.py:57
+msgid "Database limits per hub"
+msgstr "Límites de base de datos por hub"
+
+#: admin.py:58
+msgid "Stripe"
+msgstr "Stripe"
+
+#: admin.py:59
+msgid "History"
+msgstr "Historial"
+
+#: apps.py:16
+msgid "Businesses"
+msgstr "Negocios"
+
+#: emails.py:33
+msgid "Somebody"
+msgstr "Alguien"
+
+#: emails.py:35
+#, python-format
+msgid "%(who)s invited you to join %(business)s on ERPlora as %(role)s."
+msgstr ""
+"%(who)s te ha invitado a unirte a %(business)s en ERPlora como %(role)s."
+
+#: emails.py:46
+#, python-format
+msgid "Accept the invitation: %(url)s"
+msgstr "Acepta la invitación: %(url)s"
+
+#: emails.py:50
+#, python-format
+msgid "The invitation expires on %(date)s."
+msgstr "La invitación caduca el %(date)s."
+
+#: emails.py:57
+#, python-format
+msgid ""
+"You do not have an ERPlora account yet: sign in with Google with this "
+"address, or set a password here: %(url)s"
+msgstr ""
+"Aún no tienes cuenta en ERPlora: entra con Google con esta dirección o crea "
+"una contraseña aquí: %(url)s"
+
+#: emails.py:62
+#, python-format
+msgid "%(who)s invited you to %(business)s"
+msgstr "%(who)s te ha invitado a %(business)s"
+
+#: emails.py:72
+#, python-format
+msgid "%(who)s wants to hand %(business)s over to you"
+msgstr "%(who)s quiere traspasarte %(business)s"
+
+#: emails.py:77
+#, python-format
+msgid "%(who)s offers you the ownership of %(business)s on ERPlora."
+msgstr "%(who)s te ofrece la propiedad de %(business)s en ERPlora."
+
+#: emails.py:80
+#, python-format
+msgid "Accept or decline it before %(date)s: %(url)s"
+msgstr "Acéptala o recházala antes del %(date)s: %(url)s"
+
+#: emails.py:87
+msgid ""
+"The billing does not move with the business: whoever pays for it today keeps "
+"paying until they change it."
+msgstr ""
+"La facturación no cambia con el negocio: quien lo paga hoy lo sigue pagando "
+"hasta que lo cambie."
+
+#: emails.py:96
+#, python-format
+msgid "%(who)s now owns %(business)s"
+msgstr "%(who)s ya es propietario de %(business)s"
+
+#: emails.py:102
+#, python-format
+msgid ""
+"%(who)s accepted the ownership of %(business)s. You stay on it as an "
+"administrator."
+msgstr ""
+"%(who)s ha aceptado la propiedad de %(business)s. Tú sigues en él como "
+"administrador."
+
+#: emails.py:107
+#, python-format
+msgid ""
+"The billing did not move: the invoices still go to the same payer until it "
+"is changed in %(url)s."
+msgstr ""
+"La facturación no ha cambiado: las facturas siguen yendo al mismo pagador "
+"hasta que se cambie en %(url)s."
+
+#: emails.py:117
+#, python-format
+msgid "%(business)s was deleted"
+msgstr "%(business)s se ha eliminado"
+
+#: emails.py:119
+#, python-format
+msgid "%(business)s was deleted and no longer opens."
+msgstr "%(business)s se ha eliminado y ya no se abre."
+
+#: emails.py:122
+#, python-format
+msgid ""
+"You can recover it until %(date)s from %(url)s. After that date it is erased "
+"for good."
+msgstr ""
+"Puedes recuperarlo hasta el %(date)s desde %(url)s. Después de esa fecha se "
+"borra para siempre."
+
+#: models.py:114
+msgid "Free"
+msgstr "Gratis"
+
+#: models.py:115
+msgid "Basic"
+msgstr "Basic"
+
+#: models.py:116
+msgid "Pro"
+msgstr "Pro"
+
+#: models.py:117
+msgid "Enterprise"
+msgstr "Enterprise"
+
+#: models.py:120
+msgid "Community forum"
+msgstr "Foro de la comunidad"
+
+#: models.py:121
+msgid "Email"
+msgstr "Correo electrónico"
+
+#: models.py:122
+msgid "Priority email"
+msgstr "Correo electrónico prioritario"
+
+#: models.py:123
+msgid "Agreed in contract"
+msgstr "Acordado en contrato"
+
+#: models.py:127
+msgid "Stable identifier of the plan (free, starter…)."
+msgstr "Identificador estable del plan (free, starter…)."
+
+#: models.py:128 models.py:221
+msgid "name (English)"
+msgstr "nombre (inglés)"
+
+#: models.py:129 models.py:222
+msgid "name (Spanish)"
+msgstr "nombre (español)"
+
+#: models.py:130 models.py:223
+msgid "description (English)"
+msgstr "descripción (inglés)"
+
+#: models.py:131 models.py:224
+msgid "description (Spanish)"
+msgstr "descripción (español)"
+
+#: models.py:133
+msgid "Monthly price in EUR, VAT excluded (net)."
+msgstr "Precio mensual en EUR, sin IVA (neto)."
+
+#: models.py:136
+msgid "Annual price in EUR, VAT excluded (0 = no annual option)."
+msgstr "Precio anual en EUR, sin IVA (0 = sin opción anual)."
+
+#: models.py:138
+msgid "features (English)"
+msgstr "características (inglés)"
+
+#: models.py:139
+msgid "features (Spanish)"
+msgstr "características (español)"
+
+#: models.py:140
+msgid "badge (English)"
+msgstr "distintivo (inglés)"
+
+#: models.py:141
+msgid "badge (Spanish)"
+msgstr "distintivo (español)"
+
+#: models.py:142
+msgid "Available for new subscriptions."
+msgstr "Disponible para suscripciones nuevas."
+
+#: models.py:143
+msgid "Only offered as an upgrade, never at sign-up."
+msgstr "Solo se ofrece como mejora, nunca en el alta."
+
+#: models.py:145
+msgid "Never offered to customers; only staff may buy it (saas#1052)."
+msgstr ""
+"Nunca se ofrece a clientes; solo el personal puede contratarlo (saas#1052)."
+
+#: models.py:148
+msgid "Stripe price of the monthly option."
+msgstr "Precio de Stripe de la opción mensual."
+
+#: models.py:150
+msgid "Stripe price of the annual option."
+msgstr "Precio de Stripe de la opción anual."
+
+#: models.py:152
+msgid "Free trial days (0 = no trial)."
+msgstr "Días de prueba gratis (0 = sin prueba)."
+
+#: models.py:155
+msgid "Hubs a customer may run on this plan (0 = unlimited)."
+msgstr "Hubs que un cliente puede tener con este plan (0 = ilimitados)."
+
+#: models.py:157
+msgid "Devices per hub (0 = unlimited)."
+msgstr "Dispositivos por hub (0 = ilimitados)."
+
+#: models.py:158
+msgid "Active users per hub (0 = unlimited)."
+msgstr "Usuarios activos por hub (0 = ilimitados)."
+
+#: models.py:160
+msgid "Database transactions a hub runs at a time per process (PLAN §14.2)."
+msgstr ""
+"Transacciones de base de datos que un hub ejecuta a la vez por proceso (PLAN "
+"§14.2)."
+
+#: models.py:163
+msgid "Longest database statement of a hub, in seconds (PLAN §14.2)."
+msgstr ""
+"Duración máxima de una sentencia de base de datos de un hub, en segundos "
+"(PLAN §14.2)."
+
+#: models.py:175 models.py:616
+msgid "plan"
+msgstr "plan"
+
+#: models.py:176
+msgid "plans"
+msgstr "planes"
+
+#: models.py:190
+#, python-format
+msgid "%(days)d-day free trial"
+msgid_plural "%(days)d-day free trial"
+msgstr[0] "%(days)d día de prueba gratis"
+msgstr[1] "%(days)d días de prueba gratis"
+
+#: models.py:226
+msgid "Hex colour, e.g. #ff6b35."
+msgstr "Color hexadecimal, p. ej. #ff6b35."
+
+#: models.py:259 models.py:273
+msgid "Stable code used by the API. Never change it."
+msgstr "Código estable que usa la API. No lo cambies nunca."
+
+#: models.py:262
+msgid "sector"
+msgstr "sector"
+
+#: models.py:263
+msgid "sectors"
+msgstr "sectores"
+
+#: models.py:284
+msgid ""
+"Enter a vertical made of lowercase letters, digits and underscores, starting "
+"with a letter."
+msgstr ""
+"Escribe un vertical con minúsculas, dígitos y guiones bajos, que empiece por "
+"una letra."
+
+#: models.py:287
+msgid ""
+"Template a new hub of this type starts from (hair_salon, restaurant…); blank "
+"for none."
+msgstr ""
+"Plantilla de la que parte un hub nuevo de este tipo (hair_salon, "
+"restaurant…); vacío si no tiene."
+
+#: models.py:291 models.py:420
+msgid "business type"
+msgstr "tipo de negocio"
+
+#: models.py:292
+msgid "business types"
+msgstr "tipos de negocio"
+
+#: models.py:315
+#, python-format
+msgid "Another business type is already called «%(name)s»."
+msgstr "Ya hay otro tipo de negocio que se llama «%(name)s»."
+
+#: models.py:323
+#, python-format
+msgid "No app of the catalog builds the vertical «%(vertical)s»."
+msgstr "Ninguna app del catálogo construye el vertical «%(vertical)s»."
+
+#: models.py:336
+msgid "Enter the label of an app: lowercase letters, digits and underscores."
+msgstr "Escribe la etiqueta de una app: minúsculas, dígitos y guiones bajos."
+
+#: models.py:357
+msgid "owner"
+msgstr "propietario"
+
+#: models.py:359
+msgid "legal name"
+msgstr "razón social"
+
+#: models.py:360
+msgid "tax ID"
+msgstr "NIF"
+
+#: models.py:361 models.py:409
+msgid "address"
+msgstr "dirección"
+
+#: models.py:362
+msgid "city"
+msgstr "ciudad"
+
+#: models.py:363
+msgid "postal code"
+msgstr "código postal"
+
+#: models.py:364 models.py:411
+msgid "country"
+msgstr "país"
+
+#: models.py:365
+msgid "billing email"
+msgstr "correo de facturación"
+
+#: models.py:366
+msgid "same as the business"
+msgstr "igual que el negocio"
+
+#: models.py:373 models.py:429
+msgid "billing profile"
+msgstr "datos de facturación"
+
+#: models.py:374
+msgid "billing profiles"
+msgstr "datos de facturación"
+
+#: models.py:392
+msgid "Preparing"
+msgstr "Preparando"
+
+#: models.py:393 models.py:601 queries.py:578
+msgid "Active"
+msgstr "Activo"
+
+#: models.py:394 models.py:603
+msgid "Payment pending"
+msgstr "Pago pendiente"
+
+#: models.py:395
+msgid "Suspended"
+msgstr "Suspendido"
+
+#: models.py:396
+msgid "Deleted"
+msgstr "Eliminado"
+
+#: models.py:397
+msgid "Purged"
+msgstr "Borrado definitivamente"
+
+#: models.py:400
+msgid "Nothing"
+msgstr "Nada"
+
+#: models.py:401
+msgid "Register"
+msgstr "Registrar"
+
+#: models.py:402
+msgid "Delete"
+msgstr "Eliminar"
+
+#: models.py:403
+msgid "Restore"
+msgstr "Recuperar"
+
+#: models.py:410
+msgid "name"
+msgstr "nombre"
+
+#: models.py:411
+msgid "ISO 3166-1 alpha-2, e.g. ES."
+msgstr "ISO 3166-1 alfa-2, p. ej. ES."
+
+#: models.py:412
+msgid "time zone"
+msgstr "zona horaria"
+
+#: models.py:413
+msgid "language"
+msgstr "idioma"
+
+#: models.py:431 models.py:570 models.py:620
+msgid "status"
+msgstr "estado"
+
+#: models.py:432
+msgid "ready at"
+msgstr "listo el"
+
+#: models.py:433
+msgid "provisioning asked at"
+msgstr "alta pedida el"
+
+#: models.py:434
+msgid "deletion asked at"
+msgstr "eliminación pedida el"
+
+#: models.py:435
+msgid "state version"
+msgstr "versión del estado"
+
+#: models.py:436
+msgid "state version the Hub has"
+msgstr "versión del estado que tiene el Hub"
+
+#: models.py:439
+msgid "registry version"
+msgstr "versión del registro"
+
+#: models.py:442
+msgid "last refusal of the Hub"
+msgstr "último rechazo del Hub"
+
+#: models.py:443
+msgid "refused at"
+msgstr "rechazado el"
+
+#: models.py:445
+msgid "call the Hub owes an answer to"
+msgstr "llamada pendiente de respuesta del Hub"
+
+#: models.py:447 models.py:571
+msgid "created at"
+msgstr "creado el"
+
+#: models.py:452 models.py:499
+msgid "business"
+msgstr "negocio"
+
+#: models.py:453
+msgid "businesses"
+msgstr "negocios"
+
+#: models.py:489
+msgctxt "hub role"
+msgid "Owner"
+msgstr "Propietario"
+
+#: models.py:490
+msgctxt "hub role"
+msgid "Admin"
+msgstr "Administrador"
+
+#: models.py:491
+msgctxt "hub role"
+msgid "Manager"
+msgstr "Encargado"
+
+#: models.py:492
+msgctxt "hub role"
+msgid "Employee"
+msgstr "Empleado"
+
+#: models.py:501
+msgid "user"
+msgstr "usuario"
+
+#: models.py:504
+msgid "role"
+msgstr "rol"
+
+#: models.py:511
+msgid "invited by"
+msgstr "invitado por"
+
+#: models.py:513
+msgid "message"
+msgstr "mensaje"
+
+#: models.py:514
+msgid "invited at"
+msgstr "invitado el"
+
+#: models.py:515
+msgid "invitation expires at"
+msgstr "la invitación caduca el"
+
+#: models.py:516
+msgid "joined at"
+msgstr "se unió el"
+
+#: models.py:517
+msgid "accepted at"
+msgstr "aceptó el"
+
+#: models.py:518
+msgid "last opened at"
+msgstr "último acceso"
+
+#: models.py:522
+msgid "member"
+msgstr "miembro"
+
+#: models.py:523
+msgid "members"
+msgstr "miembros"
+
+#: models.py:552 queries.py:579
+msgid "Pending"
+msgstr "Pendiente"
+
+#: models.py:553
+msgid "Accepted"
+msgstr "Aceptado"
+
+#: models.py:554
+msgid "Declined"
+msgstr "Rechazado"
+
+#: models.py:555 models.py:605
+msgid "Cancelled"
+msgstr "Cancelado"
+
+#: models.py:556 queries.py:580
+msgid "Expired"
+msgstr "Caducado"
+
+#: models.py:568
+msgid "from"
+msgstr "de"
+
+#: models.py:569
+msgid "to"
+msgstr "para"
+
+#: models.py:572
+msgid "expires at"
+msgstr "caduca el"
+
+#: models.py:573
+msgid "resolved at"
+msgstr "resuelto el"
+
+#: models.py:577
+msgid "ownership transfer"
+msgstr "traspaso de propiedad"
+
+#: models.py:578
+msgid "ownership transfers"
+msgstr "traspasos de propiedad"
+
+#: models.py:602
+msgid "Trial"
+msgstr "Prueba"
+
+#: models.py:604
+msgid "Unpaid"
+msgstr "Impagado"
+
+#: models.py:606
+msgid "Incomplete"
+msgstr "Incompleto"
+
+#: models.py:607
+msgid "Incomplete, expired"
+msgstr "Incompleto, caducado"
+
+#: models.py:608
+msgid "Paused"
+msgstr "En pausa"
+
+#: models.py:611
+msgid "Monthly"
+msgstr "Mensual"
+
+#: models.py:612
+msgid "Annual"
+msgstr "Anual"
+
+#: models.py:618
+msgid "trial plan"
+msgstr "plan de prueba"
+
+#: models.py:621
+msgid "billing"
+msgstr "facturación"
+
+#: models.py:633
+msgid "subscription"
+msgstr "suscripción"
+
+#: models.py:634
+msgid "subscriptions"
+msgstr "suscripciones"
+
+#: models.py:651
+msgid "Included in the plan"
+msgstr "Incluido en el plan"
+
+#: models.py:652
+msgid "Bought"
+msgstr "Comprado"
+
+#: models.py:656
+msgid "module"
+msgstr "módulo"
+
+#: models.py:657
+msgid "source"
+msgstr "origen"
+
+#: models.py:658
+msgid "valid until"
+msgstr "válido hasta"
+
+#: models.py:665
+msgid "subscription item"
+msgstr "elemento de la suscripción"
+
+#: models.py:666
+msgid "subscription items"
+msgstr "elementos de la suscripción"
+
+#: queries.py:155
+msgid "Sign in to see your businesses."
+msgstr "Inicia sesión para ver tus negocios."
+
+#: queries.py:160
+msgid "This business does not exist or you have no access to it."
+msgstr "Este negocio no existe o no tienes acceso a él."
+
+#: queries.py:183
+msgid "Your role in this business does not allow it."
+msgstr "Tu rol en este negocio no lo permite."
+
+#: schemas.py:120
+msgid "Choose one of the countries ERPlora serves."
+msgstr "Elige uno de los países en los que está ERPlora."
+
+#: schemas.py:127
+msgid "Enter a valid email address."
+msgstr "Escribe un correo electrónico válido."
+
+#: schemas.py:135
+msgid "Enter a path of the business, starting with /."
+msgstr "Escribe una ruta del negocio que empiece por /."
+
+#: schemas.py:143
+msgid "Choose a valid time zone."
+msgstr "Elige una zona horaria válida."
+
+#: services.py:120 services.py:415
+msgid "This business was deleted."
+msgstr "Este negocio se ha eliminado."
+
+#: services.py:143
+msgid "Businesses cannot be created right now. Try again in a few minutes."
+msgstr ""
+"Ahora mismo no se pueden crear negocios. Inténtalo dentro de unos minutos."
+
+#: services.py:149 services.py:599
+msgid "This address belongs to ERPlora's staff and cannot join a business."
+msgstr ""
+"Esta dirección es del equipo de ERPlora y no puede unirse a un negocio."
+
+#: services.py:178
+msgid ""
+"You already have a free business. Change its plan to create another one."
+msgstr "Ya tienes un negocio gratuito. Cambia su plan para crear otro."
+
+#: services.py:216
+msgid ""
+"Use only lowercase letters, digits and hyphens, without a hyphen at the "
+"start or the end."
+msgstr ""
+"Usa solo minúsculas, dígitos y guiones, sin guion al principio ni al final."
+
+#: services.py:218
+#, python-format
+msgid "Use at least %(min)d characters."
+msgstr "Usa al menos %(min)d caracteres."
+
+#: services.py:219
+#, python-format
+msgid "Use at most %(max)d characters."
+msgstr "Usa como mucho %(max)d caracteres."
+
+#: services.py:220
+msgid "The address cannot start with “xn--”."
+msgstr "La dirección no puede empezar por «xn--»."
+
+#: services.py:230 services.py:237
+msgid "This address is reserved. Choose another one."
+msgstr "Esta dirección está reservada. Elige otra."
+
+#: services.py:235 services.py:316 services.py:922
+msgid "Invalid payload"
+msgstr "Los datos enviados no son válidos."
+
+#: services.py:245
+msgid "This address is taken. Choose another one."
+msgstr "Esta dirección ya está ocupada. Elige otra."
+
+#: services.py:317
+msgid "Type the name of the business to delete it."
+msgstr "Escribe el nombre del negocio para eliminarlo."
+
+#: services.py:377
+msgid "This business is not deleted."
+msgstr "Este negocio no está eliminado."
+
+#: services.py:381
+msgid "This business was erased for good and cannot be recovered."
+msgstr "Este negocio se borró para siempre y no se puede recuperar."
+
+#: services.py:410
+msgid "This business is still being prepared."
+msgstr "Este negocio aún se está preparando."
+
+#: services.py:413
+msgid "This business is suspended until its payment is settled."
+msgstr "Este negocio está suspendido hasta que se resuelva el pago."
+
+#: services.py:443
+msgid "Confirm it is you with your authenticator app to open the business."
+msgstr ""
+"Confirma que eres tú con tu app de autenticación para abrir el negocio."
+
+#: services.py:482
+msgid "Only the Hub reports a business ready."
+msgstr "Solo el Hub avisa de que un negocio está listo."
+
+#: services.py:504
+msgid "This member does not exist or you have no access to it."
+msgstr "Este miembro no existe o no tienes acceso a él."
+
+#: services.py:529
+msgid "You cannot change your own membership."
+msgstr "No puedes cambiar tu propia pertenencia."
+
+#: services.py:531 services.py:588
+msgid "You cannot manage a member whose role is equal to or above yours."
+msgstr "No puedes gestionar a un miembro con un rol igual o superior al tuyo."
+
+#: services.py:533 services.py:575
+msgid "You cannot hand out a role equal to or above yours."
+msgstr "No puedes dar un rol igual o superior al tuyo."
+
+#: services.py:542
+#, python-format
+msgid "This plan covers %(cap)s people and they are all taken."
+msgstr "Este plan cubre %(cap)s personas y ya están todas."
+
+#: services.py:581
+#, python-format
+msgid "%(email)s is already on this business."
+msgstr "%(email)s ya está en este negocio."
+
+#: services.py:584
+#, python-format
+msgid "%(email)s already has an invitation waiting. Resend it instead."
+msgstr "%(email)s ya tiene una invitación pendiente. Reenvíala."
+
+#: services.py:639
+msgid "This person has not answered yet: cancel the invitation."
+msgstr "Esta persona aún no ha respondido: cancela la invitación."
+
+#: services.py:655
+msgid "This person already answered the invitation."
+msgstr "Esta persona ya respondió a la invitación."
+
+#: services.py:699
+msgid "This invitation does not exist or is no longer yours to answer."
+msgstr "Esta invitación no existe o ya no te corresponde responderla."
+
+#: services.py:711
+msgid "This invitation expired. Ask whoever invited you to send it again."
+msgstr ""
+"Esta invitación ha caducado. Pide a quien te invitó que te la vuelva a "
+"enviar."
+
+#: services.py:770
+msgid ""
+"Invite this person to the business first: it can only go to somebody already "
+"on it."
+msgstr ""
+"Invita antes a esta persona al negocio: solo se puede traspasar a alguien "
+"que ya esté en él."
+
+#: services.py:774
+msgid "You already own this business."
+msgstr "Ya eres el propietario de este negocio."
+
+#: services.py:779
+msgid "There is already a transfer of this business waiting for an answer."
+msgstr "Ya hay un traspaso de este negocio esperando respuesta."
+
+#: services.py:807
+msgid "This transfer does not exist or is not yours to answer."
+msgstr "Este traspaso no existe o no te corresponde responderlo."
+
+#: services.py:815
+msgid "This transfer was already answered."
+msgstr "Este traspaso ya se respondió."
+
+#: services.py:817
+msgid "This transfer expired. Ask the owner to send it again."
+msgstr "Este traspaso ha caducado. Pide al propietario que lo vuelva a enviar."
+
+#: services.py:835
+msgid "You are no longer on this business."
+msgstr "Ya no estás en este negocio."
+
+#: services.py:838
+msgid ""
+"This business already changed hands: ask its current owner to transfer it."
+msgstr ""
+"Este negocio ya cambió de manos: pide a su propietario actual que lo "
+"traspase."
+
+#: services.py:922
+msgid "Enter a valid tax ID for the country of the payer."
+msgstr "Escribe un NIF válido para el país del pagador."
+
+#: spanish_copy.py:396
+#, python-format
+msgid "This Spanish copy lost its accents: %(words)s."
+msgstr "Este texto en español ha perdido sus tildes: %(words)s."
+
+#: spanish_copy.py:410
+#, python-format
+msgid ""
+"This is English (%(words)s): the Spanish column takes the translation, not "
+"the copy."
+msgstr ""
+"Esto está en inglés (%(words)s): la columna en español lleva la traducción, "
+"no la copia."

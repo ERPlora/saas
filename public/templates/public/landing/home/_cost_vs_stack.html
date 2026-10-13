@@ -1,0 +1,50 @@
+{% load i18n icons %}
+{% comment %}
+  «One platform, one invoice»: what a typical stack costs against ERPlora. Port of
+  landing/home/sections/_cost_vs_stack.html (origin/develop). The «from» price is the cheapest plan
+  a visitor can sign up for (Plan, through public/landing.py); without a plan on sale the cell
+  names no price.
+{% endcomment %}
+  <section class="ep-section ep-section--compact ep-section--center ep-section--divider">
+    <header class="ep-section-head">
+      <span class="ep-eyebrow">{% trans 'One ERP, one invoice' %}</span>
+      <h2 class="ep-section-title">{% trans 'One platform. Zero technical team. Zero surprises.' %}</h2>
+      <p class="ep-section-sub">{% trans 'What you probably pay today vs. what it costs to have all of that inside ERPlora.' %}</p>
+    </header>
+    <div class="ep-reveal" data-reveal="up">
+      {% trans "included" as included %}
+      <table class="ep-table-stack">
+          <thead>
+            <tr>
+              <th>{% trans "Function" %}</th>
+              <th>{% trans "Typical tool" %}</th>
+              <th>{% trans "Average cost / month" %}</th>
+              <th class="text-right">{% trans "Status" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td data-title="{% trans 'Function' %}">{% trans "Electronic invoicing" %}</td><td data-title="{% trans 'Typical tool' %}">FacturaDirecta / Holded</td><td data-title="{% trans 'Average cost / month' %}" class="font-mono">€39</td><td data-title="{% trans 'Status' %}" class="text-right">{% include "public/components/status_pill.html" with tone="success" size="sm" label=included only %}</td></tr>
+            <tr><td data-title="{% trans 'Function' %}">{% trans "Accounting" %}</td><td data-title="{% trans 'Typical tool' %}">QuickBooks / Sage</td><td data-title="{% trans 'Average cost / month' %}" class="font-mono">€65</td><td data-title="{% trans 'Status' %}" class="text-right">{% include "public/components/status_pill.html" with tone="success" size="sm" label=included only %}</td></tr>
+            <tr><td data-title="{% trans 'Function' %}">{% trans "Inventory + warehouse" %}</td><td data-title="{% trans 'Typical tool' %}">Cin7 / TradeGecko</td><td data-title="{% trans 'Average cost / month' %}" class="font-mono">€89</td><td data-title="{% trans 'Status' %}" class="text-right">{% include "public/components/status_pill.html" with tone="success" size="sm" label=included only %}</td></tr>
+            <tr><td data-title="{% trans 'Function' %}">{% trans "CRM" %}</td><td data-title="{% trans 'Typical tool' %}">HubSpot / Pipedrive</td><td data-title="{% trans 'Average cost / month' %}" class="font-mono">€95</td><td data-title="{% trans 'Status' %}" class="text-right">{% include "public/components/status_pill.html" with tone="success" size="sm" label=included only %}</td></tr>
+            <tr><td data-title="{% trans 'Function' %}">{% trans "HR and payroll" %}</td><td data-title="{% trans 'Typical tool' %}">Factorial / BambooHR</td><td data-title="{% trans 'Average cost / month' %}" class="font-mono">€78</td><td data-title="{% trans 'Status' %}" class="text-right">{% include "public/components/status_pill.html" with tone="success" size="sm" label=included only %}</td></tr>
+            <tr><td data-title="{% trans 'Function' %}">{% trans "E-commerce + POS" %}</td><td data-title="{% trans 'Typical tool' %}">Shopify + Square</td><td data-title="{% trans 'Average cost / month' %}" class="font-mono">€112</td><td data-title="{% trans 'Status' %}" class="text-right">{% include "public/components/status_pill.html" with tone="success" size="sm" label=included only %}</td></tr>
+            <tr><td data-title="{% trans 'Function' %}">{% trans "Support tickets" %}</td><td data-title="{% trans 'Typical tool' %}">Zendesk / Intercom</td><td data-title="{% trans 'Average cost / month' %}" class="font-mono">€55</td><td data-title="{% trans 'Status' %}" class="text-right">{% include "public/components/status_pill.html" with tone="success" size="sm" label=included only %}</td></tr>
+            <tr class="font-semibold" style="background:rgba(var(--ion-color-primary-rgb,20,150,214),0.06)">
+              <td colspan="2">{% trans "Typical stack total" %}</td>
+              <td data-title="{% trans 'Average cost / month' %}" class="font-mono">€533</td>
+              <td data-title="{% trans 'Status' %}" class="text-right text-primary">{% if cheapest_plan %}{% blocktrans with price=cheapest_plan.price_monthly|floatformat:'-2' %}vs. ERPlora from €{{ price }}{% endblocktrans %}{% endif %}</td>
+            </tr>
+          </tbody>
+        </table>
+      <p class="mt-6 text-center text-xs text-fg/70">
+        {% trans "* Estimated costs for SMBs with 10–25 employees. Public vendor pricing as of May 2026." %}
+      </p>
+      <div class="mt-10 flex justify-center">
+        <a href="{% url 'public:pricing' %}#comparativa" class="inline-flex items-center gap-2 text-sm font-semibold text-primary group">
+          <span>{% trans "See the full comparison" %}</span>
+          {% icon "lucide:arrow-right" css_class="transition-transform group-hover:translate-x-1" %}
+        </a>
+      </div>
+    </div>
+  </section>

@@ -1,0 +1,7 @@
+{% load cookie_consent_tags %}
+{% comment %}
+  The cookie banner while the visitor has not chosen for every cookie group (django-cookie-consent).
+  Included by public_base.html in {% templatetag openblock %} block cookie_banner {% templatetag closeblock %}; /cookies/ empties that block.
+{% endcomment %}
+{% not_accepted_or_declined_cookie_groups request as cookie_groups %}
+{% if cookie_groups %}{% include 'cookie_consent/cookielaw_banner.html' %}{% endif %}

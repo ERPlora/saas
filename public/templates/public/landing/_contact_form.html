@@ -1,0 +1,98 @@
+{% load i18n icons %}
+{% comment %}
+  The contact form, on the home and on /contact/: a plain Django POST answered with a redirect
+  (PRG), port of landing/partials/contact_form.html (origin/develop). reCAPTCHA was retired
+  (ADR-0154): public/landing.py limits the form per address. The result is a server message
+  painted by the base, so this partial no longer paints its own. The required fields are checked
+  here before posting, because the ion-input elements are custom elements and show no native
+  tooltip; the server checks them again. The fields are Material (md) outlines: an outline does
+  not paint in ios mode.
+{% endcomment %}
+<form id="contact-form" class="contact-fields" method="post" action="{% url 'public:contact_submit' %}" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.path }}">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <ion-input mode="md" label="{% trans 'First name' %}" label-placement="floating" fill="outline"
+                   name="first_name" type="text" required
+                   error-text="{% trans 'This field is required' %}"
+                   placeholder="{% trans 'Anne' %}"></ion-input>
+        <ion-input mode="md" label="{% trans 'Last name' %}" label-placement="floating" fill="outline"
+                   name="last_name" type="text" required
+                   error-text="{% trans 'This field is required' %}"
+                   placeholder="{% trans 'Garcia' %}"></ion-input>
+    </div>
+
+    <ion-input mode="md" class="mt-3" label="{% trans 'Work email' %}" label-placement="floating" fill="outline"
+               name="email" type="email" required
+               error-text="{% trans 'Enter a valid email address' %}"
+               placeholder="you@company.com"></ion-input>
+
+    <ion-input mode="md" class="mt-3" label="{% trans 'Phone (optional)' %}" label-placement="floating" fill="outline"
+               name="phone" type="tel"
+               placeholder="+34 600 000 000"></ion-input>
+
+    <ion-textarea mode="md" class="mt-3" label="{% trans 'What do you need?' %}" label-placement="floating" fill="outline"
+                  name="message" rows="4" required
+                  error-text="{% trans 'This field is required' %}"
+                  placeholder="{% trans 'Migrate from Holded, looking to add payroll and WMS...' %}"></ion-textarea>
+
+    <ion-button class="mt-4" type="submit" expand="block">
+        <span slot="start">{% icon "lucide:send" %}</span>
+        {% trans "Get in touch" %}
+    </ion-button>
+    <p class="text-xs text-fg/70 mt-2">{% trans "We typically respond within 4 business hours." %}</p>
+</form>
+
+{% trans 'This field is required' as required_error %}{% trans 'Enter a valid email address' as email_error %}
+<script nonce="{{ csp_nonce }}">
+    (function () {
+        var form = document.getElementById('contact-form');
+        if (!form) return;
+        var EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+        var REQUIRED_ERROR = "{{ required_error|escapejs }}";
+        var EMAIL_ERROR = "{{ email_error|escapejs }}";
+
+        // Checks the required ion-input/ion-textarea (custom elements: no native tooltip), marks
+        // ion-invalid/ion-touched so Ionic shows the error-text, and focuses the first invalid one.
+        function validate() {
+            var firstInvalid = null;
+            var fields = form.querySelectorAll('ion-input[required], ion-textarea[required]');
+            for (var i = 0; i < fields.length; i++) {
+                var el = fields[i];
+                var val = (el.value == null ? '' : ('' + el.value)).trim();
+                var isEmail = el.getAttribute('type') === 'email';
+                var invalid = !val || (isEmail && !EMAIL_RE.test(val));
+                if (isEmail) el.setAttribute('error-text', val ? EMAIL_ERROR : REQUIRED_ERROR);
+                el.classList.toggle('ion-invalid', invalid);
+                el.classList.toggle('ion-valid', !invalid);
+                el.classList.add('ion-touched');
+                el.setAttribute('aria-invalid', invalid ? 'true' : 'false');
+                if (invalid && !firstInvalid) firstInvalid = el;
+            }
+            if (firstInvalid) {
+                firstInvalid.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                if (typeof firstInvalid.setFocus === 'function') firstInvalid.setFocus();
+                return false;
+            }
+            return true;
+        }
+
+        form.addEventListener('submit', function (e) {
+            if (form.dataset.verified === '1') return;  // the second submit, already checked
+            e.preventDefault();
+            if (!validate()) return;
+            form.dataset.verified = '1';
+            form.submit();
+        });
+
+        // Clears the invalid state while typing.
+        form.addEventListener('ionInput', function (e) {
+            var el = e.target;
+            if (el.classList && el.classList.contains('ion-invalid')) {
+                el.classList.remove('ion-invalid');
+                el.removeAttribute('aria-invalid');
+            }
+        });
+    })();
+</script>

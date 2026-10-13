@@ -1,9 +1,9 @@
-/* Tema de marca ERPlora usando el mecanismo OFICIAL de Ionic: variables --ion-*.
-   (No son clases custom; es la API de theming de Ionic.) Dark por .ion-palette-dark
-   (importamos @ionic/react/css/palettes/dark.class.css en main.tsx). */
+/* ERPlora brand theme through Ionic's OFFICIAL mechanism: the --ion-* variables.
+   (They are not custom classes; this is Ionic's theming API.) Dark through .ion-palette-dark
+   (we imported @ionic/react/css/palettes/dark.class.css in main.tsx). */
 
 :root {
-  /* Brand → primary de Ionic */
+  /* Brand → Ionic's primary */
   --ion-color-primary: #1496d6;
   --ion-color-primary-rgb: 20, 150, 214;
   --ion-color-primary-contrast: #ffffff;
@@ -11,9 +11,9 @@
   --ion-color-primary-shade: #1284bc;
   --ion-color-primary-tint: #2ca1da;
 
-  /* Escala neutra (grises puros, sin tinte azul) — fondo casi blanco con
-     superficies blancas separadas por elevación, estilo Linear/Vercel/Notion.
-     El color de marca aparece solo como acento, nunca en el lienzo. */
+  /* Neutral scale (pure greys, no blue tint) — an almost-white background with white
+     surfaces separated by elevation, Linear/Vercel/Notion style. The brand colour only
+     shows up as an accent, never on the canvas. */
   --ion-background-color: #f6f7f9;
   --ion-background-color-rgb: 246, 247, 249;
   --ion-text-color: #1a1c20;
@@ -26,8 +26,8 @@
 
   --ion-font-family: var(--font-body, "IBM Plex Sans", sans-serif);
 
-  /* Rampa neutra (Ionic la nombra --ion-background-color-step-*); los nombres legacy
-     --ion-color-step-* los aliasamos para no romper consumidores. Mismo grafo que el Hub. */
+  /* Neutral ramp (Ionic names it --ion-background-color-step-*); the legacy names
+     --ion-color-step-* are aliased so no consumer breaks. Same graph as the Hub. */
   --ion-background-color-step-50: #f3f4f6;
   --ion-background-color-step-100: #eceef1;
   --ion-background-color-step-150: #e3e5ea;
@@ -48,10 +48,10 @@
   --ion-color-step-700: var(--ion-background-color-step-700);
   --ion-color-step-850: var(--ion-background-color-step-850);
 
-  /* Paleta semántica completa (alineada con los tokens --color-* de erplora-theme).
-     Necesaria porque Cloud NO carga el core.css de Ionic (resets globales): los
-     componentes con color="success|warning|danger|…" resuelven via .ion-color-*
-     (definidas abajo) → estos sets. */
+  /* Complete semantic palette (aligned with erplora-theme's --color-* tokens).
+     Needed because Cloud does NOT load Ionic's core.css (global resets): the components
+     with color="success|warning|danger|…" resolve through .ion-color-* (defined below)
+     → these sets. */
   --ion-color-secondary: #6366f1;
   --ion-color-secondary-rgb: 99, 102, 241;
   --ion-color-secondary-contrast: #ffffff;
@@ -101,10 +101,10 @@
   --ion-color-dark-shade: #1e2023;
   --ion-color-dark-tint: #383a3e;
 
-  /* info y accent: Ionic no los trae por defecto, pero el SaaS los necesita (venían de
-     --color-info / --color-accent de DaisyUI). info = azul informativo (distinto del
-     primary de marca); accent = verde de acento. Definidos aquí para que TODO --color-*
-     tenga un destino --ion-* y la migración sea 1:1. */
+  /* info and accent: Ionic does not ship them by default, but the SaaS needs them (they
+     came from DaisyUI's --color-info / --color-accent). info = informational blue (not the
+     brand's primary); accent = accent green. Defined here so EVERY --color-* has an --ion-*
+     target and the migration is 1:1. */
   --ion-color-info: #0ea5e9;
   --ion-color-info-rgb: 14, 165, 233;
   --ion-color-info-contrast: #ffffff;
@@ -120,9 +120,9 @@
   --ion-color-accent-tint: #38cb6e;
 }
 
-/* Clases .ion-color-* (mapeo color="X" → --ion-color-base): viven en el core.css
-   de Ionic, que Cloud NO carga (sus resets globales chocaban con el CSS propio).
-   Sin esto, todo ion-button/ion-badge/ion-chip con color= pinta transparente. */
+/* The .ion-color-* classes (mapping color="X" → --ion-color-base) live in Ionic's
+   core.css, which Cloud does NOT load (its global resets clashed with our own CSS).
+   Without this, every ion-button/ion-badge/ion-chip with color= paints transparent. */
 .ion-color-primary { --ion-color-base: var(--ion-color-primary); --ion-color-base-rgb: var(--ion-color-primary-rgb); --ion-color-contrast: var(--ion-color-primary-contrast); --ion-color-contrast-rgb: var(--ion-color-primary-contrast-rgb); --ion-color-shade: var(--ion-color-primary-shade); --ion-color-tint: var(--ion-color-primary-tint); }
 .ion-color-secondary { --ion-color-base: var(--ion-color-secondary); --ion-color-base-rgb: var(--ion-color-secondary-rgb); --ion-color-contrast: var(--ion-color-secondary-contrast); --ion-color-contrast-rgb: var(--ion-color-secondary-contrast-rgb); --ion-color-shade: var(--ion-color-secondary-shade); --ion-color-tint: var(--ion-color-secondary-tint); }
 .ion-color-success { --ion-color-base: var(--ion-color-success); --ion-color-base-rgb: var(--ion-color-success-rgb); --ion-color-contrast: var(--ion-color-success-contrast); --ion-color-contrast-rgb: var(--ion-color-success-contrast-rgb); --ion-color-shade: var(--ion-color-success-shade); --ion-color-tint: var(--ion-color-success-tint); }
@@ -134,10 +134,10 @@
 .ion-color-info { --ion-color-base: var(--ion-color-info); --ion-color-base-rgb: var(--ion-color-info-rgb); --ion-color-contrast: var(--ion-color-info-contrast); --ion-color-contrast-rgb: var(--ion-color-info-contrast-rgb); --ion-color-shade: var(--ion-color-info-shade); --ion-color-tint: var(--ion-color-info-tint); }
 .ion-color-accent { --ion-color-base: var(--ion-color-accent); --ion-color-base-rgb: var(--ion-color-accent-rgb); --ion-color-contrast: var(--ion-color-accent-contrast); --ion-color-contrast-rgb: var(--ion-color-accent-contrast-rgb); --ion-color-shade: var(--ion-color-accent-shade); --ion-color-tint: var(--ion-color-accent-tint); }
 
-/* Mismo selector que Ionic (:root.ion-palette-dark, especificidad 0,1,1) para
-   ganarle; al cargarse después en main.tsx, nuestros valores neutros mandan. */
+/* Same selector as Ionic (:root.ion-palette-dark, specificity 0,1,1) to beat it;
+   loaded after it in main.tsx, our neutral values win. */
 :root.ion-palette-dark {
-  /* Dark neutro (zinc), coherente con el light. Canónico = Hub develop (outfitkit#14). */
+  /* Neutral dark (zinc), consistent with the light one. Canonical = the Hub's develop (ERPlora issue outfitkit#14). */
   --ion-background-color: #0b0c0e;
   --ion-background-color-rgb: 11, 12, 14;
   --ion-text-color: #f4f5f7;
@@ -166,7 +166,7 @@
   --ion-color-primary-shade: #2592c9;
   --ion-color-primary-tint: #3fafe7;
 
-  /* info/accent en dark: un toque más claros para legibilidad sobre fondo oscuro. */
+  /* info/accent in dark: a touch lighter to read well on a dark background. */
   --ion-color-info: #38bdf8;
   --ion-color-info-rgb: 56, 189, 248;
   --ion-color-info-shade: #32a6db;
@@ -178,10 +178,10 @@
   --ion-color-accent-tint: #5ce18d;
 }
 
-/* Diálogo estándar del dashboard (modales custom migrados a ion-modal, 2026-06-11).
-   Centrado, auto-height (mismo patrón .ion-page display:block que erplora-theme-modal).
-   Ancho por modal vía style="--width: NNNpx". Lo abre/cierra el controller
-   vanilla de cloud-ui.js (hooks data-dialog-*). */
+/* The dashboard's standard dialog (custom modals migrated to ion-modal, 2026-06-11).
+   Centred, auto-height (same .ion-page display:block pattern as erplora-theme-modal).
+   Width per modal through style="--width: NNNpx". Opened and closed by the vanilla
+   controller of cloud-ui.js (data-dialog-* hooks). */
 ion-modal.erplora-dialog {
   --width: 480px;
   --max-width: 92vw;
@@ -202,11 +202,11 @@ ion-modal.erplora-dialog ion-toolbar {
   --padding-start: 16px;
   --padding-end: 8px;
 }
-/* Tamaños del modal global (#global-modal): $modal.size → data-size (sm|md|lg). */
+/* Sizes of the global modal (#global-modal): $modal.size → data-size (sm|md|lg). */
 ion-modal.erplora-dialog[data-size="sm"] { --width: 420px; }
 ion-modal.erplora-dialog[data-size="lg"] { --width: 720px; }
 
-/* Drawer del asistente: anclado a la derecha, ancho cómodo en desktop. */
+/* The assistant's drawer: anchored to the right, a comfortable width on desktop. */
 ion-modal.erplora-assistant {
   --width: 420px;
   --height: 100%;
@@ -217,9 +217,9 @@ ion-modal.erplora-assistant {
   ion-modal.erplora-assistant { --width: 100%; }
 }
 
-/* Drawer lateral genérico (components/drawer/drawer.html migrado a ion-modal,
-   2026-06-11). Mismo patrón que el drawer del asistente: panel a toda altura
-   anclado al borde derecho/izquierdo; ancho por instancia vía --width inline. */
+/* Generic side drawer (components/drawer/drawer.html migrated to ion-modal,
+   2026-06-11). Same pattern as the assistant's drawer: a full-height panel anchored to
+   the right/left edge; width per instance through an inline --width. */
 ion-modal.erplora-drawer-right,
 ion-modal.erplora-drawer-left {
   --width: 420px;
@@ -269,9 +269,9 @@ ion-modal.erplora-drawer-left ion-toolbar {
 ion-modal ion-button { min-height: 44px; min-width: 44px; }
 ion-modal ion-button::part(native) { min-height: 44px; min-width: 44px; }
 
-/* Modal de Apariencia: diálogo centrado y compacto (no a pantalla completa).
-   Altura automática SIN ion-content (que colapsaría): el .ion-page mide su
-   contenido y crece según necesite (patrón oficial de auto-height en Ionic). */
+/* Appearance modal: a centred, compact dialog (not full screen).
+   Automatic height WITHOUT ion-content (which would collapse): the .ion-page measures its
+   content and grows as needed (Ionic's official auto-height pattern). */
 ion-modal.erplora-theme-modal {
   --width: 440px;
   --max-width: 92vw;
@@ -288,18 +288,17 @@ ion-modal.erplora-theme-modal .erplora-theme-body {
   overflow-y: auto;
   padding: 16px;
 }
-/* Sin botón en slot=start, el título de Ionic pierde el padding inicial: lo damos. */
+/* Without a button in slot=start, Ionic's title loses its leading padding: we add it. */
 ion-modal.erplora-theme-modal ion-toolbar {
   --padding-start: 16px;
   --padding-end: 8px;
 }
 
-/* Un `ion-modal` que Ionic todavía no ha definido pinta sus hijos EN EL FLUJO de la
-   página: el cuerpo del modal de pago —spinner + «Cargando formulario de pago…»—
-   aparece en medio de la pantalla sin que nadie lo haya abierto, y si el bundle de
-   Ionic no llega (basta un rechazo de CSP) se queda girando para siempre sin que se
-   haya hecho ni una llamada a Stripe (saas#1565). Ionic no trae guard propio.
-   Mismo patrón que `ok-error-page:not(:defined)` en error-pages.css. */
+/* An `ion-modal` that Ionic has not defined yet paints its children IN THE FLOW of the
+   page: the body of the payment modal —spinner + «Loading payment form…»— shows up in the
+   middle of the screen without anyone opening it, and if Ionic's bundle does not arrive (a
+   CSP refusal is enough) it keeps spinning forever without a single call to Stripe
+   (saas#1565). Ionic ships no guard of its own: hide it until the element is defined. */
 ion-modal:not(:defined) {
   display: none;
 }

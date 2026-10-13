@@ -1,0 +1,10 @@
+{% load i18n %}
+{% comment %} The premium cell of the ecosystem section: included in the paid plans (decision 17). {% endcomment %}
+<p style="margin:0 0 .25rem">{% trans "Included in the paid plans: turn them on when your business needs them." %}</p>
+<ul style="list-style:none;padding:0;margin:.75rem 0 0;display:flex;flex-direction:column;gap:.5rem;font-size:.92rem">
+  {% for name in premium_app_examples %}
+  <li>+ {{ name }}</li>
+  {% empty %}
+  <li>+ {% trans "More premium apps as the catalogue grows" %}</li>
+  {% endfor %}
+</ul>

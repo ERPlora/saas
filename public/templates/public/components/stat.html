@@ -1,0 +1,14 @@
+{% comment %}
+  ep-stat: port of <ok-stat> (OutfitKit). A figure with its label above and a hint below.
+  Styles: public/static/public/components/stat.css.
+
+  Usage:
+    {% include "public/components/stat.html" with label=label value=count hint=hint %}
+
+  Variables: value (the figure); label; hint. Each is painted only when given.
+{% endcomment %}
+<div class="ep-stat">
+    {% if label %}<p class="ep-stat__label">{{ label }}</p>{% endif %}
+    {% if value %}<p class="ep-stat__value">{{ value }}</p>{% endif %}
+    {% if hint %}<p class="ep-stat__hint">{{ hint }}</p>{% endif %}
+</div>

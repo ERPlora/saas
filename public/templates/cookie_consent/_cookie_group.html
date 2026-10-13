@@ -1,0 +1,72 @@
+{% load i18n cookie_consent_tags %}
+{% comment %}
+  One cookie group of /cookies/: name, description, state and its cookies. Port of
+  templates/cookie_consent/_cookie_group.html of the old SaaS (ep-* instead of ok-*). The required
+  group is always active; the others have a toggle (cookiegroup_list.html posts it).
+{% endcomment %}
+{# The groups are stored in English (init_cookie_groups) and translated by the catalogue. #}
+{% translate cookie_group.name as group_name %}
+{% blocktrans asvar toggle_label %}Allow {{ group_name }}{% endblocktrans %}
+<section class="public-preference-group" aria-labelledby="cookie-group-{{ cookie_group.varname }}">
+    <header class="public-preference-header">
+        <div class="public-preference-copy">
+            <h3 class="public-preference-title" id="cookie-group-{{ cookie_group.varname }}">
+                {{ group_name }}
+            </h3>
+            <p>{% translate cookie_group.description %}</p>
+        </div>
+
+        <div class="public-preference-control">
+            {% if cookie_group.is_required %}
+                {% trans "Always active" as always_active %}
+                {% include "public/components/status_pill.html" with tone="success" icon="checkmark-circle-outline" label=always_active only %}
+            {% else %}
+                {% if request|cookie_group_accepted:cookie_group.varname %}
+                    {% trans "Enabled" as state_label %}
+                    {% include "public/components/status_pill.html" with tone="success" label=state_label hook="cookie-state" only %}
+                {% else %}
+                    {% trans "Disabled" as state_label %}
+                    {% include "public/components/status_pill.html" with tone="neutral" label=state_label hook="cookie-state" only %}
+                {% endif %}
+                <ion-toggle
+                    class="cookie-toggle"
+                    data-group="{{ cookie_group.varname }}"
+                    {% if request|cookie_group_accepted:cookie_group.varname %}checked{% endif %}
+                    aria-label="{{ toggle_label }}"></ion-toggle>
+            {% endif %}
+        </div>
+    </header>
+
+    {% with cookies=cookie_group.cookie_set.all %}
+    {% if cookies %}
+        <div class="ep-table-surface">
+            <table class="ep-table-stack">
+                <thead>
+                    <tr>
+                        <th>{% trans "Cookie name" %}</th>
+                        <th>{% trans "Description" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cookie in cookies %}
+                        <tr>
+                            <td data-title="{% trans 'Cookie name' %}">
+                                <code class="public-table-code">{{ cookie.name }}</code>
+                                {% if cookie.domain %}
+                                    <span class="public-table-meta">{{ cookie.domain }}</span>
+                                {% endif %}
+                            </td>
+                            <td data-title="{% trans 'Description' %}">
+                                {% if cookie.description %}{% translate cookie.description %}{% else %}—{% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        {% trans "No cookies are currently assigned to this category." as no_cookies %}
+        {% include "public/components/inline_feedback.html" with tone="info" message=no_cookies only %}
+    {% endif %}
+    {% endwith %}
+</section>

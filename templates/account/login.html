@@ -29,9 +29,9 @@
             <ion-card-content class="ion-padding">
 
             {% comment %}
-            Pantalla unificada: registro = login (ADR-0154). El segundo factor, cuando la
-            cuenta lo tiene, es una ETAPA de allauth (allauth.mfa) y vive en su propia
-            página — aquí solo se pide el primer factor.
+            One screen for both: sign-up = sign-in (ADR-0154). The second factor, when the
+            account has one, is an allauth STAGE (allauth.mfa) on its own page: here only the
+            first factor is asked for.
             {% endcomment %}
             <p class="foot" style="text-transform:none; font-size:13px; text-align:center; margin:0 0 1rem;">
                 {% trans "Enter your email and password. New here? We'll create your account." %}
@@ -47,7 +47,7 @@
                     <div class="non-field-error">{{ form.non_field_errors.0 }}</div>
                 {% endif %}
 
-                {# Campos con ion-input (Ionic) + <input hidden> puente para el POST (ver _auth_scripts.html). #}
+                {# Fields with ion-input (Ionic) + a hidden <input> bridge for the POST (see _auth_scripts.html). #}
                 <div class="field">
                     <ion-input mode="md" data-bind="login" type="email" name="login_ion"
                                label="{% trans 'Email' %}" label-placement="floating" fill="outline"

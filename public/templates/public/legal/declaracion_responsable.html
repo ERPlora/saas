@@ -1,0 +1,119 @@
+{% extends "public/public_base.html" %}
+{% load i18n %}
+{% comment %}
+  The declaración responsable of the Hub (art. 13 RRSIF) and the archive of every version. Port of
+  apps/public/legal/templates/legal/declaracion_responsable.html (origin/develop) with the same
+  sections and text, on the shared reading pattern with ep-* classes. The view is
+  public/declaracion.py; contract: public/tests/test_declaracion.py.
+{% endcomment %}
+
+{% block title %}{% trans "Responsible declaration (VERI*FACTU)" %} · ERPlora{% endblock %}
+{% block meta_description %}{% trans "Responsible declaration of ERPlora Hub as an invoicing software system, under article 13 of RD 1007/2023. Full archive of every version." %}{% endblock %}
+{% block og_title %}{% trans "Responsible declaration (VERI*FACTU)" %} · ERPlora{% endblock %}
+{% block og_description %}{% trans "ERPlora certifies, under its own responsibility, that ERPlora Hub complies with article 29.2.j) of the Spanish General Tax Act." %}{% endblock %}
+
+{% block page_content %}
+  {% trans "Tax compliance" as hero_eyebrow %}
+  {% trans "Responsible declaration" as hero_title %}
+  {% trans "ERPLORA CLOUD SL certifies, under its own responsibility, that ERPlora Hub complies with article 29.2.j) of the Spanish General Tax Act, as required by article 13 of RD 1007/2023." as hero_description %}
+  {% include "public/partials/page_hero.html" with hero_compact=True %}
+
+  <section class="ep-section--compact ep-section--divider">
+    <div class="ep-container ep-section-content">
+      <article class="ep-prose max-w-4xl mx-auto">
+
+        {# A readable summary before the legal text: it is what almost everyone comes to look at. #}
+        <dl>
+          <dt><strong>{% trans "Version" %}</strong></dt>
+          <dd>{{ declaration.version }}{% if not is_current %} — {% trans "superseded" %}{% endif %}</dd>
+          <dt><strong>{% trans "Modality" %}</strong></dt>
+          <dd><code>{{ declaration.modality }}</code></dd>
+          {% comment %}
+            The date and the place exist in the archive BEFORE the signature (art. 13.4 asks for
+            them and the text declares them), so the row is labelled by the real status: labelling
+            «Signed» a version that is not signed asserts an act that has not happened yet.
+          {% endcomment %}
+          {% if declaration.is_signed %}
+            <dt data-state="signed"><strong>{% trans "Signed" %}</strong></dt>
+          {% else %}
+            <dt data-state="pending-signature"><strong>{% trans "Signature declared for" %}</strong></dt>
+          {% endif %}
+          <dd>{{ declaration.signed_at }} — {{ declaration.signed_on|date:"Y-m-d" }}</dd>
+        </dl>
+
+        {% if declaration.is_signed %}
+          <p>
+            <a href="{% url 'public:declaracion_responsable_pdf' declaration.version %}">
+              {% trans "Open the signed copy (PDF)" %}</a>
+            &nbsp;·&nbsp;
+            <a href="{% url 'public:declaracion_responsable_pdf' declaration.version %}?download=1">
+              {% trans "Download it" %}</a>
+          </p>
+          {% comment %}
+            A browser's PDF viewer does NOT check signatures: it shows the document and says nothing
+            about whether the signature is good. Without saying so, the page invites confusing «it
+            opens» with «it is signed and valid». Checking it means downloading it.
+          {% endcomment %}
+          <p class="text-sm text-fg/60">
+            {% blocktrans trimmed %}
+            Signed with a qualified certificate (PAdES). A browser's PDF viewer does not check
+            signatures: to verify it, download the file and open it with AutoFirma, Adobe Reader or
+            the Spanish government's validation service,
+            {% endblocktrans %}
+            <a href="https://valide.redsara.es" rel="noopener noreferrer" target="_blank">VALIDe</a>.
+          </p>
+        {% else %}
+          {% comment %}
+            A declaration is published as text and signed later, not both at once. In that window
+            the version in force has NO signed copy, and saying «the signed copy is delivered to the
+            customer and the reseller at the moment of acquisition» would be false right on the page
+            that certifies compliance. The real state is said, and the last copy that does exist is
+            linked: the archive withdraws none (art. 13.3).
+          {% endcomment %}
+          <p data-note="pending-signature">
+            <strong>{% trans "Pending signature." %}</strong>
+            {% blocktrans trimmed %}
+            This version is published as its text. Its signed copy is not available yet and will be
+            added to this archive as soon as it is signed.
+            {% endblocktrans %}
+            {% if latest_signed %}
+              {% blocktrans trimmed with signed_version=latest_signed.version %}
+              The most recent signed copy is the one of {{ signed_version }}.
+              {% endblocktrans %}
+              <a href="{% url 'public:declaracion_responsable_pdf' latest_signed.version %}?download=1">
+                {% trans "Download it" %}</a>
+            {% endif %}
+          </p>
+        {% endif %}
+
+        {% comment %}
+          The text is a Spanish legal instrument and is published as it is, untranslated: whoever
+          reads it (the AEAT) requires so. The rest of the page goes through i18n.
+        {% endcomment %}
+        <hr>
+        {{ declaration_html|safe }}
+      </article>
+    </div>
+  </section>
+
+  <section class="ep-section--compact ep-section--divider">
+    <div class="ep-container ep-section-content">
+      <article class="ep-prose max-w-4xl mx-auto">
+        <h2>{% trans "Archive of all versions" %}</h2>
+        <p>{% trans "Article 13.3 of RD 1007/2023 requires the producer to keep the responsible declarations of every version of the system. None of them is ever withdrawn." %}</p>
+        <ul>
+          {% for entry in archive %}
+            <li>
+              <a href="{% url 'public:declaracion_responsable_version' entry.version %}">{{ entry.version }}</a>
+              — <code>{{ entry.modality }}</code> — {{ entry.signed_on|date:"Y-m-d" }}
+              {% if entry.is_signed %}
+                — <a href="{% url 'public:declaracion_responsable_pdf' entry.version %}?download=1">{% trans "signed PDF" %}</a>
+              {% endif %}
+              {% if forloop.first %}({% trans "in force" %}){% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      </article>
+    </div>
+  </section>
+{% endblock %}

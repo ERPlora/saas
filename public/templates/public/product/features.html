@@ -1,0 +1,56 @@
+{% extends "public/public_base.html" %}
+{% load i18n %}
+{% comment %}
+  /features/ — port of apps/public/product/templates/product/features.html (origin/develop): the
+  hero, the bento of the platform, «Built with modern technology» and the closing call to action,
+  with the same texts. The ok-* are the component partials of public/components/; the stack card
+  no longer names OutfitKit, which is gone (PLAN §16.11).
+{% endcomment %}
+
+{% block title %}{% trans "Features" %} · ERPlora{% endblock %}
+
+{% block meta_description %}{% trans "Explore ERPlora features: lightning-fast POS, modular architecture, cloud-native design, multi-currency support, real-time analytics, and more." %}{% endblock %}
+
+{% block og_title %}{% trans "Features" %} · ERPlora{% endblock %}
+{% block og_description %}{% trans "Lightning-fast POS, modular architecture, cloud-native design, multi-currency support, and real-time analytics." %}{% endblock %}
+
+{% block page_content %}
+  {% trans "Platform" as hero_eyebrow %}
+  {% trans "Powerful features for modern businesses." as hero_title %}
+  {% trans "ERPlora combines cutting-edge technology with intuitive design to deliver a complete, modular ERP — no technical team required." as hero_description %}
+  {% include "public/partials/page_hero.html" with hero_eyebrow=hero_eyebrow hero_title=hero_title hero_description=hero_description hero_compact=True %}
+
+  <section class="ep-section--compact ep-section--divider">
+    <div class="ep-container ep-section-content">
+      <div class="ep-reveal" data-reveal="up">
+        {% include "public/components/bento.html" with items_template="public/product/_features_bento.html" cols=6 only %}
+      </div>
+    </div>
+  </section>
+
+  <section class="ep-section--compact ep-section--soft ep-section--divider">
+    <div class="ep-container ep-section-content ep-section--center">
+      <header class="ep-section-head">
+        <span class="ep-eyebrow">{% trans "Under the hood" %}</span>
+        <h2 class="ep-section-title">{% trans "Built with modern technology." %}</h2>
+      </header>
+      <div class="ep-reveal" data-reveal="up">
+        <div class="grid sm:grid-cols-2 gap-4">
+          {% trans "Frontend" as heading %}
+          {% include "public/components/feature_card.html" with icon="lucide:monitor" heading=heading body_template="public/product/_features_stack.html" stack="frontend" only %}
+          {% trans "Backend" as heading %}
+          {% include "public/components/feature_card.html" with icon="lucide:server" heading=heading body_template="public/product/_features_stack.html" stack="backend" only %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="ep-container ep-section-content ep-section--compact">
+    <div class="ep-reveal" data-reveal="scale">
+      {% trans "Get started" as eyebrow %}
+      {% trans "Ready to get started?" as heading %}
+      {% trans "Spin up your ERPlora hub for free and start managing your business today." as subheading %}
+      {% include "public/components/cta_band.html" with eyebrow=eyebrow heading=heading subheading=subheading actions_template="public/product/_features_cta_actions.html" only %}
+    </div>
+  </div>
+{% endblock %}

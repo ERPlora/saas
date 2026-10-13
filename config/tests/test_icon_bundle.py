@@ -15,19 +15,28 @@ BUNDLE = SAAS_NEXT / "static" / "vendor" / "iconify-data" / "icons-offline.js"
 #: `<iconify-icon icon="lucide:arrow-left">` and `<span class="iconify" data-icon="ion:logo-google">`.
 ICON_ATTRIBUTE = re.compile(r'(?:\bicon|data-icon)="([a-z0-9-]+:[a-z0-9-]+)"')
 BUNDLE_KEY = re.compile(r'"([a-z0-9-]+:[a-z0-9-]+)":\{')
+#: The public web paints its icons on the server from ``frontend/generated/public-icons.json``, not
+#: from this bundle; ``public/tests/test_icons.py`` checks those.
+PUBLIC_TEMPLATES = SAAS_NEXT / "public" / "templates"
 
 
 def _templates():
     yield from (SAAS_NEXT / "templates").rglob("*.html")
     # The templates of every app of saas-next (``base/``, ``accounts/``…, at the project root).
     for config in apps.get_app_configs():
-        if Path(config.path).is_relative_to(SAAS_NEXT):
-            yield from (Path(config.path) / "templates").rglob("*.html")
+        templates = Path(config.path) / "templates"
+        if templates.is_relative_to(SAAS_NEXT) and templates != PUBLIC_TEMPLATES:
+            yield from templates.rglob("*.html")
 
 
 def test_the_templates_of_the_apps_at_the_project_root_are_scanned():
     """Positive control: a layout change must not leave the apps' templates out silently."""
     assert any(path.is_relative_to(SAAS_NEXT / "accounts" / "templates") for path in _templates())
+
+
+def test_the_public_templates_are_left_out():
+    """``public/templates/`` bakes its icons server-side; ``public/tests/test_icons.py`` guards them."""
+    assert not any(path.is_relative_to(PUBLIC_TEMPLATES) for path in _templates())
 
 
 def test_every_static_icon_of_the_templates_is_bundled():

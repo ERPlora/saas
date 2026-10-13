@@ -5,6 +5,7 @@ from allauth.mfa.recovery_codes.internal.auth import RecoveryCodes
 from allauth.mfa.totp.internal.auth import TOTP, generate_totp_secret
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
+from django.utils import translation
 from live.errors import Unauthorized
 
 from accounts import queries
@@ -107,6 +108,12 @@ class TestHubList:
     def test_an_anonymous_caller_is_refused(self):
         with pytest.raises(Unauthorized):
             queries.hub_list(_ctx(None), HubListIn())
+
+    def test_the_refusal_speaks_the_language_of_the_request(self):
+        with translation.override("es"), pytest.raises(Unauthorized) as refused:
+            queries.hub_list(_ctx(None), HubListIn())
+
+        assert refused.value.message == "Inicia sesión para ver tus negocios."
 
 
 def test_hub_origin_is_the_scheme_and_host_of_the_hub_callback(settings):

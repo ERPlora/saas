@@ -1,0 +1,14 @@
+{% extends "public/public_base.html" %}
+{% load i18n %}
+{% comment %} /blog/ — «coming soon», not indexed (port of company/blog.html, origin/develop; F79). {% endcomment %}
+
+{% block title %}{% trans "Blog" %} · ERPlora{% endblock %}
+
+{% block meta_robots %}<meta name="robots" content="noindex, follow">{% endblock %}
+
+{% block page_content %}
+  {% trans "Insights" as hero_eyebrow %}
+  {% trans "Blog" as hero_title %}
+  {% trans "Product stories, practical ERP guidance, and lessons from the ERPlora team are coming soon." as hero_description %}
+  {% include "public/partials/page_hero.html" with hero_compact=True %}
+{% endblock %}

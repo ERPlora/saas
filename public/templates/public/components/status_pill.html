@@ -1,0 +1,16 @@
+{% load icons %}
+{% comment %}
+  ep-status-pill: port of <ok-status-pill> (OutfitKit). An inline state chip (table cells,
+  headings, lists) with a tonal background. Styles: public/static/public/components/status-pill.css.
+
+  Usage:
+    {% include "public/components/status_pill.html" with tone="success" label=state icon="checkmark-circle-outline" %}
+
+  Variables: label (the text); tone `neutral` (default), `success`, `warning`, `danger`, `info` or
+  `primary`; icon (a baked `set:name`, before the text) or dot (a coloured dot instead); size `sm`;
+  hook (adds a `data-<hook>` attribute for a page script to find the pill, e.g. `cookie-state`).
+{% endcomment %}
+<span class="ep-status-pill ep-status-pill--{{ tone|default:'neutral' }}{% if size == 'sm' %} ep-status-pill--sm{% endif %}"{% if hook %} data-{{ hook }}{% endif %}>
+    {% if dot %}<span class="ep-status-pill__dot" aria-hidden="true"></span>{% elif icon %}{% icon icon %}{% endif %}
+    <span class="ep-status-pill__label">{{ label }}</span>
+</span>

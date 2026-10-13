@@ -1,0 +1,116 @@
+/* ep-product-card (public/components/product_card.html): port of <ok-product-card>. */
+.ep-product-card {
+  box-sizing: border-box;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: clamp(1.1rem, 2vw, 1.5rem);
+  color: var(--ep-text, var(--ion-text-color, #18181b));
+  text-decoration: none;
+  background: var(--ep-surface, var(--ion-card-background, var(--ion-background-color, #fff)));
+  border: 1px solid var(--ep-border, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.1));
+  border-radius: var(--ep-radius, 16px);
+  position: relative;
+  font-family: var(--ep-font, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif);
+  transition: transform var(--ep-transition, 160ms ease), box-shadow var(--ep-transition, 160ms ease),
+    border-color var(--ep-transition, 160ms ease);
+}
+.ep-product-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in oklab, var(--ion-color-primary, #1496d6) 40%, var(--ep-border, #e7e9ee));
+  box-shadow: 0 18px 40px -24px color-mix(in oklab, var(--ion-color-primary, #1496d6) 55%, transparent);
+}
+.ep-product-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.ep-product-card__head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.ep-product-card__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 11px;
+  color: var(--ion-color-primary, #1496d6);
+  background: color-mix(in oklab, var(--ion-color-primary, #1496d6) 13%, transparent);
+  font-size: 1.25rem;
+  flex: 0 0 auto;
+}
+.ep-product-card__icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+.ep-product-card__category {
+  font-size: var(--ep-type-eyebrow-size, 0.72rem);
+  font-weight: var(--ep-type-eyebrow-weight, 600);
+  line-height: var(--ep-type-eyebrow-leading, 1.2);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ep-muted, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.62));
+}
+.ep-product-card__badge {
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ion-color-primary, #1496d6);
+  background: color-mix(in oklab, var(--ion-color-primary, #1496d6) 14%, transparent);
+  white-space: nowrap;
+}
+.ep-product-card__name {
+  margin: 0.3rem 0 0;
+  font-size: var(--ep-type-card-title-size, 1.15rem);
+  font-weight: var(--ep-type-card-title-weight, 620);
+  letter-spacing: -0.01em;
+  line-height: var(--ep-type-card-title-leading, 1.25);
+}
+.ep-product-card__body {
+  flex: 1;
+  color: var(--ep-muted, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.62));
+  font-size: var(--ep-type-card-body-size, 0.92rem);
+  line-height: var(--ep-type-card-body-leading, 1.55);
+}
+.ep-product-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.6rem;
+}
+.ep-product-card__price {
+  font-weight: 650;
+  font-size: 0.92rem;
+}
+.ep-product-card__go {
+  display: inline-flex;
+  color: var(--ion-color-primary, #1496d6);
+  font-size: 1.1rem;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity var(--ep-transition, 160ms ease), transform var(--ep-transition, 160ms ease);
+}
+.ep-product-card:hover .ep-product-card__go,
+.ep-product-card:focus-visible .ep-product-card__go {
+  opacity: 1;
+  transform: none;
+}
+/* An app's `icon_svg` (the store, spec §8.4) keeps the classes of `ionicons/icons`, which only
+   ion-icon's shadow CSS styled (ionicons 8, icon.css): without these an outline icon paints filled. */
+.ep-product-card__icon svg.ionicon {
+  fill: currentColor;
+  stroke: currentColor;
+}
+.ep-product-card__icon .ionicon-fill-none {
+  fill: none;
+}
+.ep-product-card__icon .ionicon-stroke-width {
+  stroke-width: 32px;
+}

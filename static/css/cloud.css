@@ -1,14 +1,13 @@
 /**
- * ERPlora Cloud — estilos específicos de la app (NO sistema de diseño)
+ * ERPlora Cloud — the app's own styles (NOT a design system)
  * ---------------------------------------------------------------------
- * El sistema de diseño compartido (Tailwind utils + temas + logo + layout
- * + shell de dashboard) vive en erplora-ui → style.css. Aquí solo quedan
- * clases propias de Cloud que no se comparten con el Hub.
+ * In ERPlora/saas the shared design system (Tailwind utils + themes + logo + layout + dashboard
+ * shell) lived in erplora-ui → style.css, and only Cloud's own classes, not shared with the Hub,
+ * stayed here. That bundle is gone, and so is OutfitKit's layout.css, which provided
+ * `.page-content` (PLAN §16.11).
  *
- * Cargado DESPUÉS de style.css en base.html, así que gana en cascada.
- * (Eliminadas las reglas muertas: [x-cloak] de Alpine, #htmx-indicator /
- *  .htmx-request y ::view-transition de HTMX — ambos frameworks retirados.
- *  .page-content NO se duplica aquí: la aporta layout.css.)
+ * (Dead rules removed: Alpine's [x-cloak], HTMX's #htmx-indicator / .htmx-request and
+ *  ::view-transition — both frameworks retired.)
  */
 
 /* ========================================

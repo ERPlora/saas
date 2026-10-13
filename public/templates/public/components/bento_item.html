@@ -1,0 +1,23 @@
+{% load icons %}
+{% comment %}
+  ep-bento-item: port of <ok-bento-item> (OutfitKit). A cell of public/components/bento.html,
+  spanning `cols` × `rows` tracks; on a phone every cell takes the whole width.
+  Styles: public/static/public/components/bento-item.css.
+
+  Usage:
+    {% include "public/components/bento_item.html" with cols=3 rows=2 tone="primary" icon="cube-outline" heading=title body=text %}
+
+  Variables: heading; body (plain text) or body_template (a template); icon (a baked `set:name`);
+  eyebrow; cols (1 to 6, default 2); rows (1 to 3, default 1); tone `default`, `primary`, `success`,
+  `warning` or `danger` (a tinted cell); glass (frosted surface); href (the cell is a link);
+  interactive (lifts on hover without being a link).
+{% endcomment %}
+<div class="ep-bento-item ep-bento-item--c{{ cols|default:2 }} ep-bento-item--r{{ rows|default:1 }}{% if tone and tone != 'default' %} ep-bento-item--{{ tone }}{% endif %}{% if glass %} ep-bento-item--glass{% endif %}{% if interactive %} ep-bento-item--interactive{% endif %}">
+    {% if href %}<a class="ep-bento-item__cell" href="{{ href }}">{% else %}<div class="ep-bento-item__cell">{% endif %}
+        {% if icon %}<span class="ep-bento-item__icon">{% icon icon %}</span>{% endif %}
+        {% if eyebrow %}<span class="ep-bento-item__eyebrow">{{ eyebrow }}</span>{% endif %}
+        {% if heading %}<h3 class="ep-bento-item__title">{{ heading }}</h3>{% endif %}
+        {% if body %}<p class="ep-bento-item__body">{{ body }}</p>{% endif %}
+        {% if body_template %}{% include body_template %}{% endif %}
+    {% if href %}</a>{% else %}</div>{% endif %}
+</div>

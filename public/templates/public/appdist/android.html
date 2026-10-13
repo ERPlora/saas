@@ -1,0 +1,164 @@
+{% extends "public/public_base.html" %}
+{% load i18n icons %}
+{% comment %}
+  /app/download/android/ while the Google Play listing does not exist (saas#1719). Port of
+  apps/public/appdist/templates/appdist/android.html (origin/develop).
+
+  Never painted while GOOGLE_PLAY_LISTING_LIVE is on: then the view answers 302 to Play, so
+  everything below is true by construction. A static server page: no loading or error state to
+  paint, there is no asynchronous call; the only state (listing live or under review) is decided
+  by the view before rendering.
+
+  What is NOT offered, on purpose: the APK. The CI uploads it as an internal QA artefact (ADR-0160,
+  hub#984); handing it out here would be exactly the failure hub#984 closed.
+{% endcomment %}
+
+{% block title %}{% trans "ERPlora for Android" %} · ERPlora{% endblock %}
+{% block meta_description %}{% trans "The ERPlora app for Android is on its way to Google Play. Meanwhile you can use ERPlora in your Android browser, and install the app on the Windows or Linux device that prints your receipts." %}{% endblock %}
+{% block og_title %}{% trans "ERPlora for Android" %}{% endblock %}
+{% block og_description %}{% trans "Coming to Google Play. Here is what works today while the listing is under review." %}{% endblock %}
+{% block twitter_title %}{% trans "ERPlora for Android" %}{% endblock %}
+{% block twitter_description %}{% trans "Coming to Google Play. Here is what works today while the listing is under review." %}{% endblock %}
+
+{% block page_content %}
+  {% trans "ERPlora for Android" as hero_eyebrow %}
+  {% trans "Coming to Google Play." as hero_title %}
+  {% trans "The Android app is built and its Google Play listing is under review. On Android we publish through Play and nowhere else, so that every install gets its security updates from Google — which means there is nothing to download here yet." as hero_description %}
+  {% include "public/partials/page_hero.html" with hero_compact=True %}
+
+  <section id="today" class="ep-section--compact ep-section--soft ep-section--divider">
+    <div class="ep-container ep-section-content">
+      <header class="ep-section-head">
+        <span class="ep-eyebrow">{% trans "No waiting required" %}</span>
+        <h2 class="ep-section-title">{% trans "What works today, without the Android app." %}</h2>
+        <p class="ep-section-sub">{% trans "The app is not what runs your business — your hub is, and it already runs everywhere. These three routes are live right now." %}</p>
+      </header>
+
+      {% trans "Available now" as available %}
+      <div class="ep-reveal" data-reveal="up">
+        <div class="ep-grid-cards">
+          <ion-card class="ion-no-margin">
+            <ion-card-content class="p-6 flex flex-col h-full">
+              <div class="flex items-start justify-between gap-4 mb-5">
+                <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+                  {% icon "lucide:globe" size=24 %}
+                </div>
+                {% include "public/components/status_pill.html" with tone="success" label=available dot=True only %}
+              </div>
+              <p class="font-mono text-xs uppercase tracking-wider text-fg/55 m-0 mb-2">{% trans "On your Android phone or tablet" %}</p>
+              <ion-card-title class="mb-3">{% trans "Open your hub in the browser" %}</ion-card-title>
+              <p class="text-sm text-fg/60 m-0 mb-6">{% trans "Your hub has its own web address and it works in Chrome on Android, full size. Add it to your home screen and it opens like an app. Everything works there except printing to a thermal printer, which is the one thing that needs the installed app." %}</p>
+              <ion-button class="mt-auto" href="{% url 'account_login' %}" expand="block">
+                {% trans "Create your free hub" %}
+                <span slot="end">{% icon "lucide:arrow-right" size=15 %}</span>
+              </ion-button>
+            </ion-card-content>
+          </ion-card>
+
+          <ion-card class="ion-no-margin">
+            <ion-card-content class="p-6 flex flex-col h-full">
+              <div class="flex items-start justify-between gap-4 mb-5">
+                <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+                  {% icon "logo-windows" size=24 %}
+                </div>
+                {% include "public/components/status_pill.html" with tone="success" label=available dot=True only %}
+              </div>
+              <p class="font-mono text-xs uppercase tracking-wider text-fg/55 m-0 mb-2">{% trans "Windows 10 / 11 · x64" %}</p>
+              <ion-card-title class="mb-3">{% trans "Install it on the till instead" %}</ion-card-title>
+              <p class="text-sm text-fg/60 m-0 mb-6">{% trans "If what you need is the receipt printer and the cash drawer, the device that has to run the app is the one at the counter — not the phone in your pocket. The Windows build is published and free." %}</p>
+              <ion-button class="mt-auto" href="{% url 'public:app_download' 'windows' %}" expand="block" fill="outline">
+                {% icon "download-outline" %}<span class="ml-2">{% trans "Download for Windows" %}</span>
+              </ion-button>
+            </ion-card-content>
+          </ion-card>
+
+          <ion-card class="ion-no-margin">
+            <ion-card-content class="p-6 flex flex-col h-full">
+              <div class="flex items-start justify-between gap-4 mb-5">
+                <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+                  {% icon "logo-tux" size=24 %}
+                </div>
+                {% include "public/components/status_pill.html" with tone="success" label=available dot=True only %}
+              </div>
+              <p class="font-mono text-xs uppercase tracking-wider text-fg/55 m-0 mb-2">{% trans "x86_64 · AppImage" %}</p>
+              <ion-card-title class="mb-3">{% trans "Or on a Linux machine" %}</ion-card-title>
+              <p class="text-sm text-fg/60 m-0 mb-6">{% trans "The same app, portable, for a dedicated machine on your business network. It prints and opens the drawer exactly like the Windows one." %}</p>
+              <ion-button class="mt-auto" href="{% url 'public:app_download' 'linux' %}" expand="block" fill="outline">
+                {% icon "download-outline" %}<span class="ml-2">{% trans "Download for Linux" %}</span>
+              </ion-button>
+            </ion-card-content>
+          </ion-card>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="why-play-only" class="ep-section--compact ep-section--divider ep-section--center">
+    <div class="ep-container ep-section-content">
+      <header class="ep-section-head">
+        <span class="ep-eyebrow">{% trans "Why there is no download button here" %}</span>
+        <h2 class="ep-section-title">{% trans "On Android we ship through Google Play only." %}</h2>
+      </header>
+
+      <div class="ep-reveal" data-reveal="up">
+        <ion-card class="ion-no-margin text-left">
+          <ion-card-content class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div class="flex gap-4 items-start">
+                <div class="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+                  {% icon "lucide:shield-check" size=24 %}
+                </div>
+                <div>
+                  <strong class="block mb-2">{% trans "Updates that arrive on their own" %}</strong>
+                  <p class="text-sm text-fg/60 m-0">{% trans "An app installed from a file never updates itself. A till that stays two versions behind is a till that stops matching what your invoices have to say." %}</p>
+                </div>
+              </div>
+
+              <div class="flex gap-4 items-start">
+                <div class="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+                  {% icon "lucide:badge-check" size=24 %}
+                </div>
+                <div>
+                  <strong class="block mb-2">{% trans "One signed identity" %}</strong>
+                  <p class="text-sm text-fg/60 m-0">{% trans "Every ERPlora install comes from the same signed listing, so you always know the app on your counter is ours and nobody else's." %}</p>
+                </div>
+              </div>
+
+              <div class="flex gap-4 items-start">
+                <div class="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+                  {% icon "lucide:bell" size=24 %}
+                </div>
+                <div>
+                  <strong class="block mb-2">{% trans "This page becomes the listing" %}</strong>
+                  <p class="text-sm text-fg/60 m-0">{% trans "The day Google approves it, this same address takes you straight to Google Play. Any link or bookmark you already have keeps working — there is nothing for you to update." %}</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-6 pt-4">
+              {% trans "Waiting on Google, not on us" as heading %}
+              {% trans "The build is finished and submitted. Review times are Google's to decide, so we do not publish a date we cannot keep." as message %}
+              {% include "public/components/inline_feedback.html" with tone="info" heading=heading message=message only %}
+            </div>
+          </ion-card-content>
+        </ion-card>
+      </div>
+    </div>
+  </section>
+
+  <section id="get-started" class="ep-section--compact ep-section--center">
+    <div class="ep-container ep-section-content">
+      <header class="ep-section-head">
+        <h2 class="ep-section-title">{% trans "You need a hub before you need the app." %}</h2>
+        <p class="ep-section-sub">{% trans "The app opens your hub, so start there: create it free, then install the app on the device at the counter. No credit card." %}</p>
+      </header>
+      <div class="flex flex-wrap justify-center gap-3">
+        <ion-button href="{% url 'account_login' %}">
+          {% trans "Create your free hub" %}
+          <span slot="end">{% icon "lucide:arrow-right" size=15 %}</span>
+        </ion-button>
+        <ion-button fill="outline" href="{% url 'public:app' %}">{% trans "See what the app does" %}</ion-button>
+      </div>
+    </div>
+  </section>
+{% endblock %}

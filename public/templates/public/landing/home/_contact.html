@@ -1,0 +1,34 @@
+{% load i18n %}
+{% comment %}
+  «Want to see ERPlora with your own data?»: port of landing/home/sections/_contact.html
+  (origin/develop). The trial is the real one of the plans on sale (contact_trial_note,
+  public/landing.py), no longer a typed «15-day»; without a trial on sale the line is omitted.
+{% endcomment %}
+  <section id="contacto" class="ep-section--featured ep-section--soft">
+    <div class="ep-container ep-section-content">
+      <div class="grid md:grid-cols-2 gap-12 items-start">
+        <div class="ep-reveal" data-reveal="left">
+          <div class="kbd-pill kbd-pill-glass mb-4">{% trans "Contact" %}</div>
+          <h2 class="font-display font-semibold text-3xl sm:text-4xl tracking-tighter">
+            {% trans "Want to see ERPlora" %}<br/>{% trans "with your own data?" %}
+          </h2>
+          <p class="mt-4 text-fg/65">
+            {% trans "Start free in minutes with your own hub — the Free plan is free forever, no card required." %}
+            {% if contact_trial_note %}{{ contact_trial_note }}{% endif %}
+          </p>
+          <div class="mt-6 space-y-2 text-sm">
+            <div class="flex gap-3 items-center"><span class="font-mono text-xs uppercase text-fg/70 w-20">{% trans "Email" %}</span><a href="mailto:info@erplora.com" class="text-primary">info@erplora.com</a></div>
+            <div class="flex gap-3 items-center"><span class="font-mono text-xs uppercase text-fg/70 w-20">{% trans "WhatsApp" %}</span><a href="https://wa.me/34643759040" target="_blank" rel="noopener" class="text-primary">{% trans "Chat with us" %}</a></div>
+          </div>
+        </div>
+
+        <div class="ep-reveal" data-reveal="right" data-reveal-delay="100">
+          <ion-card>
+            <ion-card-content>
+              {% include "public/landing/_contact_form.html" %}
+            </ion-card-content>
+          </ion-card>
+        </div>
+      </div>
+    </div>
+  </section>

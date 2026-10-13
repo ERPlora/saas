@@ -1,0 +1,203 @@
+{% extends "public/public_base.html" %}
+{% load i18n icons %}
+{% comment %}
+  /app/ — port of apps/public/appdist/templates/appdist/index.html (origin/develop): the public page
+  of the installable app `com.erplora.app` (ADR-0196/0160/0180). It only announces what the app does
+  TODAY: a NETWORK ESC/POS printer, the drawer through the printer's port, the notice of a new
+  version. No Bluetooth (hub#388), no published macOS build, no auto-start (hub#389).
+
+  The button of each platform goes to public:app_download, which picks store or installer; the
+  view only says whether each store is live (`app_ms_store`, `app_google_play`), so the label
+  matches the channel. Android never reads as a download (hub#984).
+{% endcomment %}
+
+{% block title %}{% trans "The ERPlora app" %} · ERPlora{% endblock %}
+{% block meta_description %}{% trans "One app for the device at your counter: it opens your ERPlora hub and it is what prints thermal receipts and opens your cash drawer. Free for Windows, Linux and Android." %}{% endblock %}
+
+{% block page_content %}
+  {% trans "The ERPlora app" as hero_eyebrow %}
+  {% trans "Your hub and your hardware, in a single app." as hero_title %}
+  {% trans "Install it on the device at your counter. It opens your hub like any other window — and while it is open, it is what talks to the receipt printer and the cash drawer on your network." as hero_description %}
+  {% include "public/partials/page_hero.html" with hero_compact=True %}
+
+  <section id="what-it-is" class="ep-section--compact ep-section--soft ep-section--divider ep-section--center">
+    <div class="ep-container ep-section-content">
+      <header class="ep-section-head">
+        <span class="ep-eyebrow">{% trans "One app, not two" %}</span>
+        <h2 class="ep-section-title">{% trans "There is nothing to pair and nothing else to install." %}</h2>
+        <p class="ep-section-sub">{% trans "ERPlora runs in the browser and works there for everything except one thing: a browser cannot reach a thermal printer. The app is the same ERPlora, in its own window, with that access — so the till that charges is the till that prints." %}</p>
+      </header>
+
+      <div class="ep-reveal" data-reveal="up">
+        <div class="ep-grid-cards">
+          <ion-card class="ion-no-margin text-left">
+            <ion-card-content class="p-6">
+              <div class="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center mb-5 text-primary">
+                {% icon "lucide:link" size=24 %}
+              </div>
+              <strong class="block mb-2">{% trans "Install once" %}</strong>
+              <p class="text-sm text-fg/60 m-0">{% trans "The first launch asks which hub is yours and remembers it. From then on the app opens straight into your business." %}</p>
+            </ion-card-content>
+          </ion-card>
+
+          <ion-card class="ion-no-margin text-left">
+            <ion-card-content class="p-6">
+              <div class="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center mb-5 text-primary">
+                {% icon "lucide:scan-line" size=24 %}
+              </div>
+              <strong class="block mb-2">{% trans "Finds your printer on its own" %}</strong>
+              <p class="text-sm text-fg/60 m-0">{% trans "It scans your local network and asks it by name, so you never type an IP address. If your router later hands the printer a different address, the app follows it." %}</p>
+            </ion-card-content>
+          </ion-card>
+
+          <ion-card class="ion-no-margin text-left">
+            <ion-card-content class="p-6">
+              <div class="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center mb-5 text-primary">
+                {% icon "lucide:bell" size=24 %}
+              </div>
+              <strong class="block mb-2">{% trans "Tells you when there is a new version" %}</strong>
+              <p class="text-sm text-fg/60 m-0">{% trans "The app checks what we publish and points you at the new installer. It never interrupts a sale to do it, and it never updates itself behind your back." %}</p>
+            </ion-card-content>
+          </ion-card>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="hardware" class="ep-section--compact ep-section--divider ep-section--center">
+    <div class="ep-container ep-section-content">
+      <header class="ep-section-head">
+        <span class="ep-eyebrow">{% trans "Supported hardware" %}</span>
+        <h2 class="ep-section-title">{% trans "A deliberately simple hardware model." %}</h2>
+        <p class="ep-section-sub">{% trans "We support the counter hardware a shop actually has, over the one connection that is reliable — the local network — instead of maintaining a different driver stack for every device and operating system." %}</p>
+      </header>
+
+      <div class="ep-reveal" data-reveal="up">
+        <ion-card class="ion-no-margin text-left">
+          <ion-card-content class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div class="flex gap-4 items-start">
+                <div class="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+                  {% icon "lucide:printer" size=24 %}
+                </div>
+                <div>
+                  <strong class="block mb-2">{% trans "Receipt printer" %}</strong>
+                  <p class="text-sm text-fg/60 m-0">{% trans "A network ESC/POS printer using Ethernet or Wi-Fi and TCP port 9100. Receipts, invoices, delivery notes, kitchen orders, barcode labels and the cash-up report." %}</p>
+                </div>
+              </div>
+
+              <div class="flex gap-4 items-start">
+                <div class="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+                  {% icon "lucide:archive" size=24 %}
+                </div>
+                <div>
+                  <strong class="block mb-2">{% trans "Cash drawer" %}</strong>
+                  <p class="text-sm text-fg/60 m-0">{% trans "A compatible drawer connected to the assigned receipt printer's drawer port. It opens with the sale." %}</p>
+                </div>
+              </div>
+
+              <div class="flex gap-4 items-start">
+                <div class="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+                  {% icon "lucide:scan-line" size=24 %}
+                </div>
+                <div>
+                  <strong class="block mb-2">{% trans "Barcode scanner" %}</strong>
+                  <p class="text-sm text-fg/60 m-0">{% trans "Keyboard-style scanners type straight into the field, in the app and in the browser alike. Nothing to install and nothing to configure." %}</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-center gap-3 mt-6 pt-4">
+              {% trans "Network only" as label %}
+              {% include "public/components/status_pill.html" with tone="info" label=label dot=True only %}
+              <p class="text-sm text-fg/60 m-0">{% trans "USB and Bluetooth printer transport are not supported." %}</p>
+            </div>
+          </ion-card-content>
+        </ion-card>
+      </div>
+    </div>
+  </section>
+
+  <section id="downloads" class="ep-section--compact ep-section--soft ep-section--divider">
+    <div class="ep-container ep-section-content">
+      <header class="ep-section-head">
+        <span class="ep-eyebrow">{% trans "Free with every plan" %}</span>
+        <h2 class="ep-section-title">{% trans "Install it on the device at your counter." %}</h2>
+        <p class="ep-section-sub">{% trans "Pick the platform of the device that stays at your business, next to the printer. You always get the latest published version." %}</p>
+      </header>
+
+      <div class="ep-reveal" data-reveal="up">
+        <div class="ep-grid-cards">
+          <ion-card class="ion-no-margin">
+            <ion-card-content class="p-6 flex flex-col h-full">
+              <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-5 text-primary">
+                {% icon "logo-windows" size=24 %}
+              </div>
+              <p class="font-mono text-xs uppercase tracking-wider text-fg/55 m-0 mb-2">{% trans "Windows 10 / 11 · x64" %}</p>
+              <ion-card-title class="mb-3">Windows</ion-card-title>
+              <p class="text-sm text-fg/60 m-0 mb-6">{% trans "The usual choice for a fixed till workstation." %}</p>
+              <ion-button class="mt-auto" href="{% url 'public:app_download' 'windows' %}" expand="block">
+                {% icon "download-outline" %}<span class="ml-2">{% if app_ms_store %}{% trans "Get it from Microsoft Store" %}{% else %}{% trans "Download the app" %}{% endif %}</span>
+              </ion-button>
+            </ion-card-content>
+          </ion-card>
+
+          <ion-card class="ion-no-margin">
+            <ion-card-content class="p-6 flex flex-col h-full">
+              <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-5 text-primary">
+                {% icon "logo-tux" size=24 %}
+              </div>
+              <p class="font-mono text-xs uppercase tracking-wider text-fg/55 m-0 mb-2">{% trans "x86_64 · AppImage" %}</p>
+              <ion-card-title class="mb-3">Linux</ion-card-title>
+              <p class="text-sm text-fg/60 m-0 mb-6">{% trans "For a dedicated machine on your business network." %}</p>
+              <ion-button class="mt-auto" href="{% url 'public:app_download' 'linux' %}" expand="block" fill="outline">
+                {% icon "download-outline" %}<span class="ml-2">{% trans "Download the app" %}</span>
+              </ion-button>
+            </ion-card-content>
+          </ion-card>
+
+          <ion-card class="ion-no-margin">
+            <ion-card-content class="p-6 flex flex-col h-full">
+              <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-5 text-primary">
+                {% icon "logo-google-playstore" size=24 %}
+              </div>
+              <p class="font-mono text-xs uppercase tracking-wider text-fg/55 m-0 mb-2">{% trans "Android 9 or later" %}</p>
+              <ion-card-title class="mb-3">Android</ion-card-title>
+              <p class="text-sm text-fg/60 m-0 mb-6">{% trans "The same app on a phone or tablet — for taking orders at the table." %}</p>
+              {% comment %} Never «Download»: on Android the only channel is Play (hub#984). While the
+                 listing is under review the button says so instead of promising it, because the
+                 destination is the page of /app/download/android/, not Play (saas#1719). {% endcomment %}
+              <ion-button class="mt-auto" href="{% url 'public:app_download' 'android' %}" expand="block" fill="outline">
+                {% icon "logo-google-playstore" %}<span class="ml-2">{% if app_google_play %}{% trans "Get it on Google Play" %}{% else %}{% trans "Coming to Google Play" %}{% endif %}</span>
+              </ion-button>
+            </ion-card-content>
+          </ion-card>
+        </div>
+      </div>
+
+      <div class="mt-8 max-w-2xl mx-auto">
+        {% trans "On a Mac, an iPhone or an iPad" as heading %}
+        {% trans "There is no build for those yet — open ERPlora in your browser instead. Everything works there except printing thermal receipts, which needs the app." as message %}
+        {% include "public/components/inline_feedback.html" with tone="info" heading=heading message=message only %}
+      </div>
+    </div>
+  </section>
+
+  <section id="get-started" class="ep-section--compact ep-section--center">
+    <div class="ep-container ep-section-content">
+      <header class="ep-section-head">
+        <h2 class="ep-section-title">{% trans "You need a hub before you need the app." %}</h2>
+        <p class="ep-section-sub">{% trans "The app opens your hub, so start there: create it free, then install the app on the device at the counter. No credit card." %}</p>
+      </header>
+      <div class="flex flex-wrap justify-center gap-3">
+        <ion-button href="{% url 'account_login' %}">
+          {% trans "Create your free hub" %}
+          <span slot="end">{% icon "lucide:arrow-right" size=15 %}</span>
+        </ion-button>
+        {% comment %} The pricing page reads Plan and comes with L7: its button appears with the route. {% endcomment %}
+        {% url "public:pricing" as pricing_url %}
+        {% if pricing_url %}<ion-button fill="outline" href="{{ pricing_url }}">{% trans "See plans" %}</ion-button>{% endif %}
+      </div>
+    </div>
+  </section>
+{% endblock %}

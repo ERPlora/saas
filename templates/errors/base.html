@@ -2,10 +2,15 @@
 {% load i18n %}
 <!DOCTYPE html>
 {% comment %}
-  Ported from ERPlora/saas `templates/errors/base.html` (origin/develop c5ca8cae8). Same stylesheets,
-  vendored (no CDN). Without the OutfitKit bundle (it goes away, PLAN §16.11) the error pages paint
-  their own fallback markup, the one `error-pages.css` styles.
+  Layout of the error pages Django and allauth render by name (`400.html`, `403.html`,
+  `403_csrf.html`, `404.html`, `429.html`, `500.html` at the root of `templates/`; the public web
+  has its own 404 and 500, `public.errors`). Ported from ERPlora/saas `templates/errors/base.html` (origin/develop c5ca8cae8)
+  without OutfitKit (PLAN §16.11): the page is the plain HTML that used to be the fallback of its
+  error-page component, styled by `error-pages.css`, so it paints and its links work with no
+  JavaScript. A page fills `title`, `code`, `heading` and `message`, and may replace `actions`.
+  `theme` (`base.context_processors.theme`) falls back to `system` where no context processor ran.
 {% endcomment %}
+{% get_current_language as LANGUAGE_CODE %}
 <html lang="{{ LANGUAGE_CODE }}"{% if 'dark' in theme %} class="ion-palette-dark"{% endif %}>
 <head>
     <meta charset="UTF-8">
@@ -22,15 +27,13 @@
     <link rel="stylesheet" href="{% static 'vendor/ionic/css/palettes/dark.class.css' %}">
     {% include "partials/erplora_fonts.html" %}
     <link rel="stylesheet" href="{% static 'css/ionic-theme.css' %}">
-    <link rel="stylesheet" href="{% static 'vendor/outfitkit/palettes.css' %}">
-    <link rel="stylesheet" href="{% static 'css/outfitkit-theme.css' %}">
     <link rel="stylesheet" href="{% static 'css/error-pages.css' %}">
 
     <script nonce="{{ csp_nonce }}">
       (function () {
         function currentTheme() {
           var match = document.cookie.match(/(?:^|;\s*)theme=([^;]*)/);
-          return match ? decodeURIComponent(match[1]) : "{{ theme|escapejs }}";
+          return match ? decodeURIComponent(match[1]) : "{{ theme|default:'system'|escapejs }}";
         }
         var media = window.matchMedia("(prefers-color-scheme: dark)");
         function applyTheme() {
@@ -44,6 +47,16 @@
     </script>
 </head>
 <body>
-    {% block error_content %}{% endblock %}
+    <main class="error-page">
+        <div class="error-page__content">
+            <p class="error-page__code">{% block code %}{% endblock %}</p>
+            <h1>{% block heading %}{% endblock %}</h1>
+            <p>{% block message %}{% endblock %}</p>
+            <nav class="error-page__actions">
+                {% block actions %}<a href="/">{% trans "Home" %}</a>{% endblock %}
+                <a href="mailto:info@erplora.com">{% trans "Contact Support" %}</a>
+            </nav>
+        </div>
+    </main>
 </body>
 </html>

@@ -11,5 +11,8 @@
 frontend/dist
 staticfiles
 docs
+# …except the guides /help/ renders (public/help.py).
+!docs/en/help/**
+!docs/es/help/**
 db.sqlite3
 **/.terraform

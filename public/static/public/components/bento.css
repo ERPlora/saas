@@ -1,0 +1,30 @@
+/* ep-bento (public/components/bento.html): port of <ok-bento>. 6 columns (ep-bento--c2…c6), 4
+ * under 900 px (ep-bento--md2…md4), one under 560 px. */
+.ep-bento {
+  --ep-bento-cols: 6;
+  --ep-bento-cols-md: 4;
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(var(--ep-bento-cols), minmax(0, 1fr));
+  grid-auto-rows: minmax(120px, auto);
+  gap: 1rem;
+}
+.ep-bento--c2 { --ep-bento-cols: 2; }
+.ep-bento--c3 { --ep-bento-cols: 3; }
+.ep-bento--c4 { --ep-bento-cols: 4; }
+.ep-bento--c5 { --ep-bento-cols: 5; }
+.ep-bento--c6 { --ep-bento-cols: 6; }
+.ep-bento--md2 { --ep-bento-cols-md: 2; }
+.ep-bento--md3 { --ep-bento-cols-md: 3; }
+.ep-bento--md4 { --ep-bento-cols-md: 4; }
+@media (max-width: 900px) {
+  .ep-bento {
+    grid-template-columns: repeat(var(--ep-bento-cols-md), minmax(0, 1fr));
+  }
+}
+@media (max-width: 560px) {
+  .ep-bento {
+    grid-template-columns: 1fr;
+    grid-auto-rows: auto;
+  }
+}

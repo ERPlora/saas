@@ -1,3 +1,4 @@
+from django.utils.translation import gettext_lazy as _
 from live.meta import LiveAppConfig
 
 
@@ -9,7 +10,7 @@ class AccountsConfig(LiveAppConfig):
     name = "accounts"
     label = "accounts"
     kind = "platform"
-    verbose_name = "Accounts"
+    verbose_name = _("Accounts")
 
     def ready(self):
         from accounts import checks  # noqa: F401  (registers the system checks)

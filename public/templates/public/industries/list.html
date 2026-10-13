@@ -1,0 +1,114 @@
+{% extends "public/public_base.html" %}
+{% load i18n icons %}
+{% comment %}
+  /industries/ (public/industries.py, index): every active business type, filtered by sector in the
+  page. Port of apps/public/industries/templates/industries/list.html (origin/develop) without
+  ok-*: the cards are public/components/product_card.html inside a wrapper that carries the
+  sector for the filter and the business type's colour, the closing band is
+  public/components/cta_band.html and its CTA opens the store (/apps/) instead of the marketplace.
+  The icons are already baked keys (the view falls back to ion:business-outline).
+{% endcomment %}
+
+{% block title %}{% trans "Business types" %} · ERPlora{% endblock %}
+{% block meta_description %}{% trans "Discover how ERPlora adapts to your business, with the apps a restaurant, a salon, a shop or a clinic comes with." %}{% endblock %}
+{% block og_title %}{% trans "Business types" %} · ERPlora{% endblock %}
+{% block og_description %}{% trans "Discover how ERPlora adapts to your business, with the apps every type of business comes with." %}{% endblock %}
+
+{% block page_content %}
+  {% trans "Industries" as hero_eyebrow %}
+  {% trans "ERPlora for your business." as hero_title %}
+  {% if total_count %}
+    {% blocktrans trimmed count total=total_count asvar hero_description %}
+      Find your business type and see the apps it comes with: ERPlora is ready for {{ total }} type of business.
+    {% plural %}
+      Find your business type and see the apps it comes with: ERPlora is ready for {{ total }} types of business.
+    {% endblocktrans %}
+  {% endif %}
+  {% include "public/partials/page_hero.html" with hero_eyebrow=hero_eyebrow hero_title=hero_title hero_description=hero_description %}
+
+  <section class="ep-section--compact ep-section--soft ep-section--divider">
+    <div class="ep-container ep-section-content">
+      {% if industries %}
+        {# The sector filter appears only when it offers more than one path. #}
+        {% if sectors|length > 1 %}
+        <div class="public-filter-bar mb-8" aria-label="{% trans 'Filter by sector' %}">
+          <ion-chip class="sector-filter" color="primary" data-sector="all" role="button" tabindex="0" aria-pressed="true">
+            {% icon "apps-outline" %}
+            {% trans "All" context "business sectors" %}
+          </ion-chip>
+          {% for sector in sectors %}
+          <ion-chip class="sector-filter" color="medium" data-sector="{{ sector.code }}" role="button" tabindex="0" aria-pressed="false">
+            {% icon sector.icon %}
+            {{ sector.name }}
+            <span class="text-xs opacity-60">({{ sector.type_count }})</span>
+          </ion-chip>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="ep-grid-cards" id="business-types-grid">
+          {% for industry in industries %}
+          {% url 'public:industries_detail' industry.slug as industry_url %}
+          <div class="industry-card" data-sector="{{ industry.sector_code }}"{% if industry.color %} style="--ion-color-primary: {{ industry.color }}"{% endif %}>
+            {% include "public/components/product_card.html" with name=industry.name category=industry.sector_name href=industry_url icon=industry.icon %}
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        {% trans "No business types yet" as empty_heading %}
+        {% trans "Business types are being configured. Check back soon." as empty_message %}
+        {% include "public/components/empty_state.html" with icon="business-outline" heading=empty_heading message=empty_message %}
+      {% endif %}
+    </div>
+  </section>
+
+  <div class="ep-container ep-section-content ep-section--compact">
+    <div class="ep-reveal" data-reveal="scale">
+      {% trans "Fully modular" as cta_eyebrow %}
+      {% trans "Not seeing your business?" as cta_heading %}
+      {% trans "ERPlora is fully modular. Browse the app catalogue to build the setup any business needs." as cta_subheading %}
+      {% include "public/components/cta_band.html" with variant="soft" eyebrow=cta_eyebrow heading=cta_heading subheading=cta_subheading actions_template="public/industries/_list_actions.html" %}
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+<script nonce="{{ csp_nonce }}">
+function filterBySector(sector, chip, updateUrl) {
+    document.querySelectorAll('.sector-filter').forEach(function (element) {
+        element.setAttribute('color', 'medium');
+        element.setAttribute('aria-pressed', 'false');
+    });
+    chip.setAttribute('color', 'primary');
+    chip.setAttribute('aria-pressed', 'true');
+    document.querySelectorAll('.industry-card').forEach(function (card) {
+        card.style.display = (sector === 'all' || card.dataset.sector === sector) ? '' : 'none';
+    });
+    if (updateUrl !== false) {
+        const url = new URL(window.location.href);
+        if (sector === 'all') url.searchParams.delete('sector');
+        else url.searchParams.set('sector', sector);
+        window.history.replaceState({}, '', url);
+    }
+}
+
+// Wired here, never with inline handlers: the public CSP allows only scripts with its nonce.
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.sector-filter').forEach(function (chip) {
+        chip.addEventListener('click', function () { filterBySector(chip.dataset.sector, chip); });
+        chip.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                filterBySector(chip.dataset.sector, chip);
+            }
+        });
+    });
+    const selectedSector = new URLSearchParams(window.location.search).get('sector');
+    if (selectedSector) {
+        const selectedChip = document.querySelector('.sector-filter[data-sector="' + CSS.escape(selectedSector) + '"]');
+        if (selectedChip) filterBySector(selectedSector, selectedChip, false);
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,132 @@
+# Spanish translations of the apps app of saas-next (English is the source).
+# Copyright (C) 2026 ERPlora
+# This file is distributed under the same license as ERPlora.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: saas-next\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-13 22:40+0200\n"
+"PO-Revision-Date: 2026-10-13 22:40+0200\n"
+"Last-Translator: ERPlora\n"
+"Language-Team: Spanish\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: apps.py:18
+msgid "Apps"
+msgstr "Apps"
+
+#: models.py:30 models.py:71
+msgid "app"
+msgstr "app"
+
+#: models.py:31
+msgid "apps"
+msgstr "apps"
+
+#: models.py:47 models.py:48
+msgid "app documentation"
+msgstr "documentación de la app"
+
+#: models.py:65
+msgid "Free"
+msgstr "Gratis"
+
+#: models.py:66
+msgid "Basic"
+msgstr "Basic"
+
+#: models.py:67
+msgid "Pro"
+msgstr "Pro"
+
+#: models.py:68
+msgid "Enterprise"
+msgstr "Enterprise"
+
+#: models.py:77
+msgid "Enter the label of an app of the Hub (inventory, whatsapp_inbox…)."
+msgstr "Escribe la etiqueta de una app del Hub (inventory, whatsapp_inbox…)."
+
+#: models.py:80
+msgid "The label of the paid app in the Hub, as the catalog lists it."
+msgstr "La etiqueta de la app de pago en el Hub, tal como la lista el catálogo."
+
+#: models.py:83
+msgid "tier"
+msgstr "nivel"
+
+#: models.py:86
+msgid "monthly price (cents)"
+msgstr "precio mensual (céntimos)"
+
+#: models.py:88
+msgid "Net monthly price in euro cents, VAT excluded."
+msgstr "Precio mensual neto en céntimos de euro, sin IVA."
+
+#: models.py:91
+msgid "annual price (cents)"
+msgstr "precio anual (céntimos)"
+
+#: models.py:94
+msgid "Net annual price in euro cents, VAT excluded (0 = no annual option)."
+msgstr "Precio anual neto en céntimos de euro, sin IVA (0 = sin opción anual)."
+
+#: models.py:98
+msgid "Stripe product"
+msgstr "producto de Stripe"
+
+#: models.py:101
+msgid "Stripe monthly price"
+msgstr "precio mensual de Stripe"
+
+#: models.py:104
+msgid "Stripe annual price"
+msgstr "precio anual de Stripe"
+
+#: models.py:107
+msgid "active"
+msgstr "activo"
+
+#: models.py:107
+msgid "On sale for new purchases."
+msgstr "A la venta para compras nuevas."
+
+#: models.py:114
+msgid "module"
+msgstr "módulo"
+
+#: models.py:115
+msgid "modules"
+msgstr "módulos"
+
+#: models.py:134
+#, python-format
+msgid ""
+"There is no app “%(slug)s” in the catalog: the Hub registers its apps when "
+"it starts."
+msgstr ""
+"No hay ninguna app «%(slug)s» en el catálogo: el Hub registra sus apps al "
+"arrancar."
+
+#: models.py:146
+#, python-format
+msgid ""
+"The app “%(slug)s” is free: only a paid (premium) app is sold as a module."
+msgstr ""
+"La app «%(slug)s» es gratuita: solo una app de pago (premium) se vende como "
+"módulo."
+
+#: queries.py:103
+#, python-format
+msgid "There is no app “%(id)s” in the catalog."
+msgstr "No hay ninguna app «%(id)s» en el catálogo."
+
+#: queries.py:186
+#, python-format
+msgid "The app “%(id)s” has no documentation yet."
+msgstr "La app «%(id)s» aún no tiene documentación."

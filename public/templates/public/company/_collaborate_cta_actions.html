@@ -1,0 +1,4 @@
+{% load i18n %}
+{% comment %} The actions of the closing band of /collaborate/ (on the solid band an outline button turns white). {% endcomment %}
+<ion-button size="large" color="light" href="{% url 'public:contact' %}?subject=Collaborator+Program">{% trans "Apply Now" %}</ion-button>
+<ion-button size="large" fill="outline" href="mailto:{{ SUPPORT_EMAIL }}?subject=Collaborator%20Program">{% trans "Email Us" %}</ion-button>

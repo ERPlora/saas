@@ -1,0 +1,39 @@
+{% extends "public/public_base.html" %}
+{% load i18n %}
+{% comment %}
+  /about/ — port of apps/public/company/templates/company/about.html (origin/develop): the hero and
+  the three cards. The third no longer says that a module marketplace lets developers extend
+  ERPlora: there are no third-party modules (spec §8.3); every app is ours.
+{% endcomment %}
+
+{% block title %}{% trans "About Us" %} · ERPlora{% endblock %}
+
+{% block meta_description %}{% trans "About ERPlora: building the future of modular ERP systems for small and medium businesses. Flexible, affordable, and powerful." %}{% endblock %}
+
+{% block og_title %}{% trans "About Us" %} · ERPlora{% endblock %}
+{% block og_description %}{% trans "Building the future of modular ERP systems. Flexible, affordable, and powerful tools for every business." %}{% endblock %}
+
+{% block page_content %}
+  {% trans "About" as hero_eyebrow %}
+  {% trans "About ERPlora." as hero_title %}
+  {% trans "Building the future of modular ERP systems for small and medium businesses." as hero_description %}
+  {% include "public/partials/page_hero.html" with hero_eyebrow=hero_eyebrow hero_title=hero_title hero_description=hero_description %}
+
+  <section class="ep-section--compact ep-section--soft ep-section--divider">
+    <div class="ep-container ep-section-content">
+      <div class="ep-reveal" data-reveal="up">
+        <div class="ep-grid-cards">
+          {% trans "Our Mission" as heading %}
+          {% trans "Provide businesses with a flexible, affordable and powerful ERP. Every business deserves professional-grade tools without forced subscriptions or vendor lock-in." as body %}
+          {% include "public/components/feature_card.html" with icon="lucide:target" heading=heading body=body only %}
+          {% trans "Our Technology" as heading %}
+          {% trans "Built with Django 6.1 and modern web components. A cloud-native architecture on AWS, one database per hub, with daily backups and high availability keeps your business running." as body %}
+          {% include "public/components/feature_card.html" with icon="lucide:cpu" heading=heading body=body only %}
+          {% trans "Our Apps" as heading %}
+          {% trans "Every app is built by the ERPlora team and shares one database, one interface and one login. Free apps or premium features — you choose what fits your business." as body %}
+          {% include "public/components/feature_card.html" with icon="lucide:boxes" heading=heading body=body only %}
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}

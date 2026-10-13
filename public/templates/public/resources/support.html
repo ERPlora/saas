@@ -1,0 +1,121 @@
+{% extends "public/public_base.html" %}
+{% load i18n icons %}
+{% comment %}
+  /support/ — port of apps/public/resources/templates/resources/support.html (origin/develop): the
+  three routes (the guides, the contact form, the support address) and what to send. Not indexed,
+  as before. The contact page comes with the landing (L7) at its address of today, /contact/; the
+  support address is SUPPORT_EMAIL (public/context_processors.py).
+{% endcomment %}
+
+{% block title %}{% trans "Support" %} · ERPlora{% endblock %}
+
+{% block meta_description %}{% trans "Get practical ERPlora support: search the Help Center, contact the team, and learn what information to include when reporting a problem." %}{% endblock %}
+
+{% block meta_robots %}<meta name="robots" content="noindex, follow">{% endblock %}
+
+{% block page_content %}
+  {% trans "Support" as hero_eyebrow %}
+  {% trans "We are here to help." as hero_title %}
+  {% trans "Find a practical answer or send our team the context needed to investigate your problem." as hero_description %}
+  {% include "public/partials/page_hero.html" with hero_compact=True %}
+
+  <section class="ep-section--compact ep-section--soft ep-section--divider">
+    <div class="ep-container ep-section-content">
+      <header class="ep-section-head">
+        <span class="ep-eyebrow">{% trans "Support options" %}</span>
+        <h2 class="ep-section-title">{% trans "Choose the right route" %}</h2>
+        <p class="ep-section-sub">{% trans "Start with the guides for common questions. Contact us when the problem needs investigation or involves your account." %}</p>
+      </header>
+
+      <div class="ep-grid-cards">
+        {% url "public:help" as help_url %}
+        {% trans "Search the Help Center" as heading %}
+        {% trans "Read current guides for access, trusted devices, modules, settings, users, printing, and hardware." as body %}
+        {% include "public/components/feature_card.html" with icon="lucide:book-open" heading=heading body=body href=help_url only %}
+
+        {% trans "Contact support" as heading %}
+        {% trans "Use the contact form to describe the problem and give us an email address where we can reply." as body %}
+        {% include "public/components/feature_card.html" with icon="lucide:message-square-warning" heading=heading body=body href="/contact/" only %}
+
+        {% trans "Email the team" as heading %}
+        {% blocktrans with support_email=SUPPORT_EMAIL asvar body %}Email {{ support_email }} when you cannot use the contact form.{% endblocktrans %}
+        {% with mail_url="mailto:"|add:SUPPORT_EMAIL|add:"?subject=ERPlora%20Support" %}
+        {% include "public/components/feature_card.html" with icon="lucide:mail" heading=heading body=body href=mail_url only %}
+        {% endwith %}
+      </div>
+    </div>
+  </section>
+
+  <section class="ep-section--compact ep-section--divider">
+    <div class="ep-container ep-section-content">
+      <header class="ep-section-head">
+        <span class="ep-eyebrow">{% trans "Before you contact us" %}</span>
+        <h2 class="ep-section-title">{% trans "Help us reproduce the problem" %}</h2>
+        <p class="ep-section-sub">{% trans "A short, precise report lets us investigate without asking you to repeat the same information." %}</p>
+      </header>
+
+      <div class="ep-grid">
+        <ion-card class="ep-col ep-md-8">
+          <ion-card-content class="ion-padding">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="flex gap-3 items-start">
+                <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary">
+                  {% icon "business-outline" size=22 %}
+                </div>
+                <div>
+                  <ion-card-title>{% trans "Identify the affected Hub" %}</ion-card-title>
+                  <p class="text-sm text-fg/60 mt-1">{% trans "Include the Hub or business name so we can find your account quickly." %}</p>
+                </div>
+              </div>
+              <div class="flex gap-3 items-start">
+                <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary">
+                  {% icon "trail-sign-outline" size=22 %}
+                </div>
+                <div>
+                  <ion-card-title>{% trans "Describe the exact steps" %}</ion-card-title>
+                  <p class="text-sm text-fg/60 mt-1">{% trans "Tell us which app or module you opened, what you selected, and what you expected to happen." %}</p>
+                </div>
+              </div>
+              <div class="flex gap-3 items-start">
+                <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary">
+                  {% icon "alert-circle-outline" size=22 %}
+                </div>
+                <div>
+                  <ion-card-title>{% trans "Copy the visible message" %}</ion-card-title>
+                  <p class="text-sm text-fg/60 mt-1">{% trans "Include the complete error text and, when useful, a screenshot without private customer data." %}</p>
+                </div>
+              </div>
+              <div class="flex gap-3 items-start">
+                <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary">
+                  {% icon "phone-portrait-outline" size=22 %}
+                </div>
+                <div>
+                  <ion-card-title>{% trans "Add device context" %}</ion-card-title>
+                  <p class="text-sm text-fg/60 mt-1">{% trans "Mention the device, operating system, browser, and whether the problem also happens on another device." %}</p>
+                </div>
+              </div>
+            </div>
+          </ion-card-content>
+        </ion-card>
+
+        <ion-card class="ep-col ep-md-4">
+          <ion-card-content class="ion-padding">
+            <div class="flex flex-col gap-4">
+              <div class="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                {% icon "shield-checkmark-outline" size=22 %}
+              </div>
+              <div>
+                <ion-card-title>{% trans "Keep credentials private" %}</ion-card-title>
+                <p class="text-fg/60">{% trans "Never send passwords, PINs, recovery codes, signing keys, or complete payment details in a support message." %}</p>
+              </div>
+              <div>
+                <ion-card-title>{% trans "Reporting from your Hub" %}</ion-card-title>
+                <p class="text-fg/60">{% trans "When you are signed in, open Help & Support and use Report a Problem. The Hub adds useful account and browser context automatically." %}</p>
+              </div>
+            </div>
+          </ion-card-content>
+        </ion-card>
+      </div>
+    </div>
+  </section>
+{% endblock %}

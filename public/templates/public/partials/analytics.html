@@ -1,0 +1,37 @@
+{% load cookie_consent_tags %}
+{% comment %}
+  GDPR opt-in gate (issue #958): NEITHER tracker is loaded, not even the external <script src>,
+  until the visitor has explicitly accepted the "analytical" cookie group (cookie banner or
+  /cookies/). Being signed in is NOT consent. Google's Consent Mode only says what Google may
+  store, not whether the browser may contact googletagmanager.com at all, so it is not used: the
+  script tag stays out of the DOM before consent.
+
+  Never on credential pages (`is_credentials_page`: sign-in, sign-up, 2FA, password reset):
+  `send_page_view` sends the full URL the moment gtag loads, and on a password-reset URL that is
+  the one-time token. Clarity records the screen, so it also needs `is_public_page` (an anonymous
+  visitor on the public half). The context comes from public.context_processors.public_site.
+  Contract: public/tests/test_analytics.py.
+{% endcomment %}
+{% if GA_MEASUREMENT_ID and not is_credentials_page and request|cookie_group_accepted:"analytical" %}
+<script async src="https://www.googletagmanager.com/gtag/js?id={{ GA_MEASUREMENT_ID }}" nonce="{{ csp_nonce }}"></script>
+<script nonce="{{ csp_nonce }}">
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+
+    gtag('js', new Date());
+    gtag('config', '{{ GA_MEASUREMENT_ID|escapejs }}', { send_page_view: true });
+
+    window.addEventListener('popstate', function () {
+        gtag('event', 'page_view', { page_path: window.location.pathname });
+    });
+</script>
+{% endif %}
+{% if CLARITY_PROJECT_ID and is_public_page and not is_credentials_page and request|cookie_group_accepted:"analytical" %}
+<script nonce="{{ csp_nonce }}">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "{{ CLARITY_PROJECT_ID|escapejs }}");
+</script>
+{% endif %}

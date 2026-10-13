@@ -1,0 +1,66 @@
+{% extends "public/public_base.html" %}
+{% load static i18n icons %}
+{% comment %}
+  /apps/ (public/store.py): the store. Port of modules/pages/index.html and modules/marketplace.html
+  (origin/develop): the hero with the count, the filter bar and the apps in sections, one per
+  category in the order of live.meta, each a grid of product cards (icon, category, name, Premium
+  badge, summary and access). The filters are links and a GET form (no htmx): ?q=, ?category= and
+  ?premium=0|1. Empty states of spec §5.3: no listed app at all (noindex), or filters that match
+  nothing (with «Clear filters»).
+{% endcomment %}
+
+{% block title %}{% trans "Apps" %} · ERPlora{% endblock %}
+{% block meta_description %}{% trans "Browse the ERPlora apps by category and turn on only the ones your business needs. They all share one database, one interface and one login." %}{% endblock %}
+{% block meta_robots %}{% if catalog_empty %}<meta name="robots" content="noindex">{% endif %}{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'public/store.css' %}">{% endblock %}
+
+{% block page_content %}
+  {% blocktrans count counter=total asvar hero_eyebrow %}{{ counter }} app{% plural %}{{ counter }} apps{% endblocktrans %}
+  {% trans "Turn on only the" as hero_title %}
+  {% trans "apps you need." as hero_title_accent %}
+  {% trans "Every app fits with the others inside your Hub. Browse them by category and turn on only what you need." as hero_description %}
+  {% include "public/partials/page_hero.html" with hero_eyebrow=hero_eyebrow hero_title=hero_title hero_title_accent=hero_title_accent hero_description=hero_description %}
+
+  {% if catalog_empty %}
+  <section class="ep-section ep-section--compact">
+    {% trans "No apps published yet." as empty_heading %}
+    {% include "public/components/empty_state.html" with icon="apps-outline" heading=empty_heading %}
+  </section>
+  {% else %}
+  <section class="ep-section ep-section--compact ep-section--soft ep-section--divider ep-store-filters-section">
+    <form class="ep-store-search" method="get" action="{% url 'public:store' %}" role="search">
+      <ion-searchbar class="ep-search" name="q" value="{{ q }}" placeholder="{% trans 'Search apps' %}" aria-label="{% trans 'Search apps' %}" debounce="0"></ion-searchbar>
+      {% if category %}<input type="hidden" name="category" value="{{ category }}">{% endif %}
+      {% if premium %}<input type="hidden" name="premium" value="{{ premium }}">{% endif %}
+    </form>
+    <nav class="ep-store-filters" aria-label="{% trans 'Filter by category' %}">
+      {% for chip in category_chips %}
+      <a class="ep-store-filters__chip" href="{{ chip.href }}"{% if chip.active %} aria-current="true"{% endif %}><ion-chip color="{% if chip.active %}primary{% else %}medium{% endif %}">{{ chip.label }}<span class="ep-store-filters__count">{{ chip.count }}</span></ion-chip></a>
+      {% endfor %}
+    </nav>
+    <nav class="ep-store-filters" aria-label="{% trans 'Filter by access' %}">
+      {% for chip in access_chips %}
+      <a class="ep-store-filters__chip" href="{{ chip.href }}"{% if chip.active %} aria-current="true"{% endif %}><ion-chip color="{% if chip.active %}primary{% else %}medium{% endif %}">{{ chip.label }}</ion-chip></a>
+      {% endfor %}
+    </nav>
+  </section>
+
+  {% for group in groups %}
+  <section{% if group.id %} id="category-{{ group.id }}"{% endif %} class="ep-section ep-section--compact ep-section--divider{% cycle '' ' ep-section--soft' %}">
+    {% if group.label %}
+    <header class="ep-store__group-head">
+      <h2 class="ep-store__group-title">{{ group.label }} <span class="ep-store__group-count">{{ group.apps|length }}</span></h2>
+    </header>
+    {% endif %}
+    <div class="ep-store__grid">
+      {% for app in group.apps %}{% include "public/store/_card.html" %}{% endfor %}
+    </div>
+  </section>
+  {% empty %}
+  <section class="ep-section ep-section--compact">
+    {% trans "No app matches your search." as empty_heading %}
+    {% include "public/components/empty_state.html" with icon="search-outline" heading=empty_heading action_template="public/store/_clear_filters.html" %}
+  </section>
+  {% endfor %}
+  {% endif %}
+{% endblock %}

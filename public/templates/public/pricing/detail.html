@@ -1,0 +1,82 @@
+{% extends "public/public_base.html" %}
+{% load i18n icons %}
+{% comment %}
+  /pricing/<slug>/ — port of apps/public/pricing/templates/pricing/detail.html (origin/develop): the
+  plan with its net price, the ex-VAT note and its trial; what it includes; and the other plans on
+  sale. The trial is the pill: the features list the plan's own lines (the cards of /pricing/ end
+  with the trial line instead). The CTA follows the session, as the navbar does: sign up, or the
+  launcher for a customer with a session (the old `hubs:create` page does not exist in saas-next).
+  Data: public/pricing.py (hubs.plan.list). Contract: public/tests/test_pricing.py.
+{% endcomment %}
+
+{% block title %}{{ plan.name }} — {% trans "Pricing" %} · ERPlora{% endblock %}
+{% block meta_description %}{{ plan.description }}{% endblock %}
+
+{% block page_content %}
+<section class="ep-section--compact">
+    <div class="ep-container ep-section-content">
+
+        <ion-card class="mb-8">
+            <ion-card-content class="p-8">
+                <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+                    <div class="flex-grow">
+                        <h1 class="heading-lg mb-2">{{ plan.name }}</h1>
+                        {% if plan.description %}<p class="text-fg/60 mb-6">{{ plan.description }}</p>{% endif %}
+
+                        <div class="mb-6">
+                            <span class="text-5xl font-bold">{{ plan.price_monthly|floatformat:2 }} &euro;</span>
+                            <span class="text-fg/60 ml-2">{{ plan.period }}</span>
+                            {% include "public/partials/_vat_note.html" with class="text-sm text-fg/60 mt-2 mb-0" %}
+                        </div>
+
+                        {% if plan.has_trial and not plan.upgrade_only %}
+                        {% blocktrans with days=plan.trial_period_days asvar trial_label %}{{ days }} days free trial{% endblocktrans %}
+                        {% include "public/components/status_pill.html" with tone="success" label=trial_label only %}
+                        {% endif %}
+                    </div>
+
+                    <div class="flex flex-col gap-2 md:min-w-[16rem]">
+                        <ion-button size="large" color="primary" href="{% if user.is_authenticated %}{{ launcher }}{% else %}{% url 'account_login' %}{% endif %}">
+                            <span slot="start">{% icon "rocket-outline" %}</span>
+                            {% trans "Get Started" %}
+                        </ion-button>
+                    </div>
+                </div>
+            </ion-card-content>
+        </ion-card>
+
+        {% if plan.own_features %}
+        <ion-card class="mb-8">
+            <ion-card-content class="p-8">
+                <h2 class="text-2xl font-semibold mb-6">{% trans "What's included" %}</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {% for feature in plan.own_features %}
+                    <div class="flex items-center gap-3">
+                        <span class="text-success flex-shrink-0">{% icon "checkmark-circle-outline" %}</span>
+                        <span>{{ feature }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </ion-card-content>
+        </ion-card>
+        {% endif %}
+
+        {% if other_plans %}
+        <div class="mt-12">
+            <h2 class="text-xl font-semibold mb-4">{% trans "Other plans" %}</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {% for other in other_plans %}
+                <ion-card button href="{{ other.url }}" class="no-underline text-inherit">
+                    <ion-card-content class="p-5">
+                        <h3 class="font-semibold mb-1">{{ other.name }}</h3>
+                        {% if other.description %}<p class="text-sm text-fg/60 mb-2">{{ other.description|truncatechars:80 }}</p>{% endif %}
+                        <div class="text-lg font-bold">{{ other.price_monthly|floatformat:2 }} &euro;<span class="text-sm font-normal text-fg/60">{{ other.period }}</span></div>
+                    </ion-card-content>
+                </ion-card>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

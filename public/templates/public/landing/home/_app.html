@@ -1,0 +1,26 @@
+{% load i18n icons %}
+{% comment %}
+  The installable app (ADR-0196): one app that is the hub's window AND the access to the counter's
+  hardware. Port of landing/home/sections/_app.html (origin/develop).
+{% endcomment %}
+  <section id="app" class="ep-section--soft">
+    <section class="ep-section ep-section--compact ep-section--center">
+      <header class="ep-section-head">
+        <span class="ep-eyebrow">{% trans 'The ERPlora app' %}</span>
+        <h2 class="ep-section-title">{% trans 'Your hardware, connected.' %}</h2>
+        <p class="ep-section-sub">{% blocktrans trimmed %}One free app on the device at your counter. It opens your ERPlora hub like any other window — and while it is open, it is what prints your receipts and opens your cash drawer.{% endblocktrans %}</p>
+      </header>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="ep-reveal" data-reveal="up">{% trans 'Install' as heading %}{% trans "One app for Windows, Linux and Android. Run it on the device that stays next to your hardware." as body %}{% include "public/components/feature_card.html" with icon="lucide:download" eyebrow="01" heading=heading body=body only %}</div>
+        <div class="ep-reveal" data-reveal="up" data-reveal-delay="80">{% trans 'Open your hub' as heading %}{% trans "The first launch asks which hub is yours and remembers it. Nothing to pair, no port-forwarding, no public IPs." as body %}{% include "public/components/feature_card.html" with icon="lucide:link" eyebrow="02" heading=heading body=body only %}</div>
+        <div class="ep-reveal" data-reveal="up" data-reveal-delay="160">{% trans 'Detect' as heading %}{% trans "It finds the ESC/POS printers on your local network by itself, and follows one that changes address." as body %}{% include "public/components/feature_card.html" with icon="lucide:scan-line" eyebrow="03" heading=heading body=body only %}</div>
+        <div class="ep-reveal" data-reveal="up" data-reveal-delay="240">{% trans 'Print' as heading %}{% trans "Receipts, kitchen orders and labels reach the printer, and the cash drawer opens with the sale." as body %}{% include "public/components/feature_card.html" with icon="lucide:printer" eyebrow="04" heading=heading body=body only %}</div>
+      </div>
+      <div class="mt-10 flex justify-center">
+        <a href="{% url 'public:app' %}" class="inline-flex items-center gap-2 text-sm font-semibold text-primary group">
+          <span>{% trans "How the app works" %}</span>
+          {% icon "lucide:arrow-right" css_class="transition-transform group-hover:translate-x-1" %}
+        </a>
+      </div>
+    </section>
+  </section>

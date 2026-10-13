@@ -1,0 +1,14 @@
+{% load i18n icons %}
+{% comment %}
+  The "pre-launch" strip, site-wide on the public web. It goes BEFORE the sticky navbar: an
+  announcement bar that scrolls away while the navbar stays. Styles: .dev-banner in
+  public/static/public/public-landing.css.
+{% endcomment %}
+<div class="dev-banner" role="status">
+    {% icon "construct-outline" css_class="dev-banner__icon" %}
+    <span class="dev-banner__text">
+        <strong>{% trans "Pre-launch" %}</strong>
+        ·
+        {% trans "ERPlora is in active development. You're viewing a product preview." %}
+    </span>
+</div>

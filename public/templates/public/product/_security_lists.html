@@ -1,0 +1,30 @@
+{% load i18n %}
+{% comment %}
+  The body of the four cards of /security/: `list` is "auth", "data", "infrastructure" or
+  "compliance". Only what the platform does today (Ioan, 2026-10-13): server sessions and a
+  one-time code to enter the hub (PLAN-SAAS §2, no JWT), Google as the only social sign-in,
+  Django's PBKDF2, AWS in Spain with its WAF and the ALB (ADR-0499, no Cloudflare, no CDN), Aurora's
+  daily backups kept 14 days (aws-next), no uptime SLA and no reCAPTCHA.
+{% endcomment %}
+<ul class="list-none p-0 m-0 flex flex-col gap-2">
+{% if list == "auth" %}
+  <li>✓ {% trans "Server-side sessions in secure cookies (Secure, HttpOnly, SameSite)" %}</li>
+  <li>✓ {% trans "One-time code to enter your hub" %}</li>
+  <li>✓ {% trans "Sign in with Google" %}</li>
+{% elif list == "data" %}
+  <li>✓ {% trans "Encryption in transit and at rest" %}</li>
+  <li>✓ {% trans "HTTPS/TLS 1.3 required" %}</li>
+  <li>✓ {% trans "Regular security audits" %}</li>
+  <li>✓ {% trans "Salted password hashing (PBKDF2)" %}</li>
+{% elif list == "infrastructure" %}
+  <li>✓ {% trans "Amazon Web Services, Spain region (eu-south-2, Aragón)" %}</li>
+  <li>✓ {% trans "Automated backups" %}</li>
+  <li>✓ {% trans "DDoS protection and WAF on AWS" %}</li>
+  <li>✓ {% trans "High availability on AWS, with daily backups" %}</li>
+{% else %}
+  <li>✓ {% trans "GDPR compliant" %}</li>
+  <li>✓ {% trans "Cookie consent (django-cookie-consent)" %}</li>
+  <li>✓ {% trans "Rate limiting per IP and WAF" %}</li>
+  <li>✓ {% trans "Data retention policies" %}</li>
+{% endif %}
+</ul>

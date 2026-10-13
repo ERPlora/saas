@@ -1,0 +1,14 @@
+{% load i18n icons %}
+{% comment %}
+  The CTAs of /industries/'s closing band: the store (/apps/, decision 19) and the contact page.
+  /contact/ comes with L7, so until its URL name exists the button uses the fixed path.
+{% endcomment %}
+{% url 'public:contact' as contact_url %}
+<ion-button color="primary" href="{% url 'public:store' %}">
+  <span slot="start">{% icon "storefront-outline" %}</span>
+  {% trans "Browse apps" %}
+</ion-button>
+<ion-button fill="outline" href="{{ contact_url|default:'/contact/' }}">
+  <span slot="start">{% icon "mail-outline" %}</span>
+  {% trans "Contact us" %}
+</ion-button>

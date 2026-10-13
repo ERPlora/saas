@@ -1,0 +1,14 @@
+{% load i18n %}
+{% comment %}
+  The navbar's links, one <a> each, in this order of the old navbar: Features, Apps (the store,
+  labelled «Apps» in en and es, spec decision 19), Pricing, Contact. Only routes that exist: each lot
+  adds its page's link here in its turn (plan §3.i), always with {% templatetag openblock %} url {% templatetag closeblock %}:
+
+      <a href="{% templatetag openblock %} url 'public:features' {% templatetag closeblock %}">{% templatetag openblock %} trans "Features" {% templatetag closeblock %}</a>
+
+  The same markup serves the desktop bar and the mobile panel (components/navbar.css).
+{% endcomment %}
+<a href="{% url 'public:features' %}">{% trans "Features" %}</a>
+<a href="{% url 'public:store' %}">{% trans "Apps" %}</a>
+<a href="{% url 'public:pricing' %}">{% trans "Pricing" %}</a>
+<a href="{% url 'public:contact' %}">{% trans "Contact" %}</a>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The frame of every account screen (sign-in, its errors, the launcher), ported from the template
+// The frame of every account screen (sign-in, its errors, the launcher), ported from ERPlora/saas's
 // partials `account/_auth_header.html` + `_auth_shell_top.html` + `_auth_shell_bottom.html`: the
 // back arrow home (Lucide's, as the template had it), the logo with «ERPlora Cloud» and a subtitle,
 // a glass card holding the screen (default slot) and an optional foot under the card (`foot`).

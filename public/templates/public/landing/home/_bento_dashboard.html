@@ -1,0 +1,19 @@
+{% load i18n %}
+{% comment %} The large glass cell of the platform bento: the live dashboard mockup (landing.css). {% endcomment %}
+<span class="bento-stat-lbl" style="font-weight:600;text-transform:uppercase;letter-spacing:.05em">{% trans "Live dashboard" %}</span>
+<h3 style="margin:.15rem 0 .6rem;font-size:1.4rem;font-weight:620;letter-spacing:-0.02em">{% trans "See sales, stock and cash in real time" %}</h3>
+<div class="hero-mockup" style="transform:none;margin-top:auto">
+  <div class="mockup-bar"><i></i><i></i><i></i><span class="url">hub.erplora.com/overview</span></div>
+  <div class="mockup-main" style="padding:.9rem 1rem">
+    <div class="mockup-row">
+      <div class="mockup-kpi"><span class="lbl">{% trans "Revenue" %}</span><span class="num">€48.2k</span><span class="delta up">↑ 12 %</span></div>
+      <div class="mockup-kpi"><span class="lbl">{% trans "Tickets" %}</span><span class="num">1,204</span><span class="delta up">↑ 8 %</span></div>
+      <div class="mockup-kpi"><span class="lbl">{% trans "Margin" %}</span><span class="num">38 %</span><span class="delta up">↑ 3</span></div>
+    </div>
+    <div class="mockup-chart" style="margin-top:.7rem">
+      <i style="height:40%"></i><i style="height:58%"></i><i style="height:48%"></i><i style="height:66%"></i>
+      <i style="height:72%"></i><i style="height:60%"></i><i style="height:84%"></i><i style="height:76%"></i>
+      <i style="height:90%"></i><i style="height:82%"></i><i style="height:94%"></i><i style="height:99%"></i>
+    </div>
+  </div>
+</div>

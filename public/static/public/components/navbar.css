@@ -1,0 +1,171 @@
+/* ep-navbar (public/partials/navbar.html): port of <ok-navbar sticky glass>. A sticky glass bar
+ * with the brand, the links and the actions; at 800 px and below the links and the actions live in
+ * a side panel from the right that frontend/public.ts opens (data-open), over a backdrop. */
+.ep-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: block;
+  background: color-mix(in oklab, var(--ep-surface, var(--ion-card-background, #fff)) 72%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  backdrop-filter: blur(14px) saturate(1.4);
+  border-bottom: 1px solid color-mix(in oklab, var(--ep-text, var(--ion-text-color, #1c1b17)) 9%, transparent);
+  color: var(--ep-text, var(--ion-text-color, #1c1b17));
+  font-family: var(--ep-font, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif);
+}
+/* `backdrop-filter` makes the bar the containing block of its fixed descendants: open, the bar
+   drops the glass so the side panel and its backdrop are laid out against the viewport. */
+.ep-navbar[data-open] {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: var(--ep-surface, var(--ion-card-background, #fff));
+}
+.ep-navbar__bar {
+  position: relative;
+  max-width: var(--ep-container-max, 1140px);
+  margin-inline: auto;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem var(--ep-spacing, var(--ion-padding, 16px));
+}
+.ep-navbar__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-inline-end: auto;
+  font-weight: 700;
+  color: var(--ep-text, var(--ion-text-color, #18181b));
+  text-decoration: none;
+}
+.ep-navbar__logo {
+  height: 1.75rem;
+  width: auto;
+}
+.ep-navbar__name {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.ep-navbar__panel {
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+}
+.ep-navbar__links {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+.ep-navbar__links:empty {
+  display: none;
+}
+.ep-navbar__links a {
+  color: var(--ep-text, var(--ion-text-color, #1c1b17));
+  text-decoration: none;
+  font-size: 0.95rem;
+  transition: color var(--ep-transition, 150ms ease);
+}
+@media (hover: hover) {
+  .ep-navbar__links a:hover {
+    color: var(--ep-primary, var(--ion-color-primary, #3880ff));
+  }
+}
+.ep-navbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.ep-navbar__burger,
+.ep-navbar__panel-head,
+.ep-navbar__backdrop {
+  display: none;
+}
+.ep-navbar__burger,
+.ep-navbar__close {
+  --color: var(--ep-text, var(--ion-text-color, #1c1b17));
+  --padding-start: 0.5rem;
+  --padding-end: 0.5rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+@media (max-width: 800px) {
+  .ep-navbar__bar {
+    padding-block: 0.25rem;
+  }
+  .ep-navbar__burger {
+    display: inline-flex;
+  }
+  .ep-navbar__panel {
+    position: fixed;
+    inset: 0 0 0 auto;
+    z-index: 51;
+    width: min(20rem, 86vw);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 0.5rem var(--ep-spacing, 1rem) max(var(--ep-spacing, 1rem), env(safe-area-inset-bottom));
+    overflow-y: auto;
+    background: var(--ep-surface, var(--ion-card-background, #fff));
+  }
+  /* Closed, the panel is not laid out at all: translated off-screen it would widen the page. */
+  .ep-navbar:not([data-open]) .ep-navbar__panel {
+    display: none;
+  }
+  .ep-navbar[data-open] .ep-navbar__panel {
+    animation: ep-navbar-slide-in 250ms ease;
+  }
+  .ep-navbar__panel-head {
+    display: flex;
+    justify-content: flex-end;
+    min-height: 2.75rem;
+  }
+  .ep-navbar__links {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+  .ep-navbar__links a {
+    min-height: 3.25rem;
+    display: flex;
+    align-items: center;
+    padding-inline: 0.25rem;
+    font-size: 1rem;
+    border-top: 1px solid var(--ep-border-soft, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.07));
+  }
+  .ep-navbar__links a:first-child {
+    border-top: 0;
+  }
+  .ep-navbar__actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.6rem;
+    margin-top: auto;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--ep-border, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.12));
+  }
+  /* 3rem, not the 2.75rem floor: a subpixel measurement mid-slide must not drop under 44 px. */
+  .ep-navbar__actions ion-button {
+    width: 100%;
+    min-height: 3rem;
+    margin: 0;
+  }
+  .ep-navbar[data-open] .ep-navbar__backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: var(--ep-scrim, rgba(0, 0, 0, 0.5));
+  }
+}
+@keyframes ep-navbar-slide-in {
+  from { transform: translateX(100%); }
+  to { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ep-navbar[data-open] .ep-navbar__panel {
+    animation: none;
+  }
+}

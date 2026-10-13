@@ -1,9 +1,10 @@
 // The Vite config is a contract with Django (`packages/live/live/spa.py` and `LIVE["spa"]` in
 // `config/settings.py`): the dev server URLs and the manifest Django reads come from here.
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { Plugin, PluginOption } from 'vite';
+import { build, type Plugin, type PluginOption } from 'vite';
 import { describe, expect, it } from 'vitest';
 
 import config, { FRONTEND_APPS } from './vite.config';
@@ -50,15 +51,35 @@ describe('vite.config', () => {
     expect(pluginNames(config.plugins)).toEqual(expect.arrayContaining(['vite:vue', 'erplora:defines']));
   });
 
-  it('builds frontend/main.ts into frontend/dist with the manifest Django reads', () => {
+  it('builds the SPA and the public web into frontend/dist with the manifest Django reads', () => {
     const build = config.build ?? {};
     expect(build.outDir).toBe('frontend/dist');
     expect(build.emptyOutDir).toBe(true);
     // settings.LIVE["spa"]["manifest"] = SPA_DIST / ".vite" / "manifest.json"
     expect(build.manifest).toBe('.vite/manifest.json');
     expect(build.target).toBe('es2022');
-    // settings.LIVE["spa"]["entry"] = "frontend/main.ts" is the manifest key of this input.
-    expect(build.rollupOptions?.input).toBe('frontend/main.ts');
+    // The manifest keys of the two entries: settings.LIVE["spa"]["entry"] (the SPA) and
+    // public.templatetags.public_assets.PUBLIC_ENTRY (the public web's Django templates, spec §8.4).
+    expect(build.rollupOptions?.input).toEqual(['frontend/main.ts', 'frontend/public.ts']);
+  });
+
+  it("never copies a public directory into the build: `public/` is the public web's Django app", async () => {
+    // Vite's default publicDir is `<root>/public`, which here is Python code and tests: they would end
+    // up in frontend/dist and be served under /static/spa/. A real build proves the setting holds.
+    expect(config.publicDir).toBe(false);
+    const work = mkdtempSync(join(tmpdir(), 'saas-public-dir-'));
+    writeFileSync(join(work, 'entry.ts'), 'export const entry = 1;\n');
+    await build({
+      configFile: false,
+      logLevel: 'silent',
+      root: SAAS_DIR,
+      publicDir: config.publicDir,
+      build: { outDir: join(work, 'dist'), emptyOutDir: true, rollupOptions: { input: join(work, 'entry.ts') } },
+    });
+    const files = readdirSync(join(work, 'dist'), { recursive: true }).map(String);
+    expect(files).not.toContain('apps.py');
+    expect(files.filter((file) => file.startsWith('tests'))).toEqual([]);
+    expect(files.filter((file) => file.endsWith('.js')).length).toBeGreaterThan(0);
   });
 
   it("runs the dev server on localhost:5174 only (hub-next's owns 5173), with absolute asset URLs and HMR there", () => {

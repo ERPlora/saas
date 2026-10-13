@@ -1,0 +1,34 @@
+/* ep-empty-state (public/components/empty_state.html): port of <ok-empty-state>. */
+.ep-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.5rem;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 2.5rem 1.25rem;
+}
+.ep-empty-state__icon {
+  display: inline-flex;
+  font-size: 64px;
+  color: var(--ion-color-medium, #92949c);
+  opacity: 0.5;
+  margin-bottom: 0.25rem;
+}
+.ep-empty-state__heading {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--ion-text-color, #1f2933);
+}
+.ep-empty-state__message {
+  margin: 0;
+  max-width: 38ch;
+  font-size: 0.9375rem;
+  color: var(--ion-color-medium, #92949c);
+}
+.ep-empty-state__action {
+  margin-top: 1rem;
+}

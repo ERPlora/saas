@@ -1,0 +1,50 @@
+{% load static i18n icons %}
+{% comment %}
+  The public navbar: port of <ok-navbar sticky glass> (OutfitKit) as HTML + CSS
+  (public/static/public/components/navbar.css) plus a few lines of frontend/public.ts.
+  Brand on the left; the links (public/partials/nav_links.html) and the actions on the right.
+  At 800 px and below the links and the actions move into a side panel from the right that the
+  burger opens; the panel closes with its close button, the backdrop, Esc or a link. Everything is
+  in the light DOM: crawlable.
+
+  The actions follow the session (saas#1608): an anonymous visitor is offered to start free (the
+  sign-in, where an account is also created); a customer with a session gets one link into the
+  product, the SPA's launcher. No demo CTA: /demo is out of scope (block 7, plan §3.b). Reading
+  `user` makes Django stamp `Vary: Cookie`, so no shared cache serves one customer's navbar to the
+  next visitor. Contract: public/tests/test_templates.py.
+{% endcomment %}
+<nav class="ep-navbar" aria-label="{% trans 'Main' %}" data-navbar>
+    <div class="ep-navbar__bar">
+        <a class="ep-navbar__brand" href="{% url 'home' %}" aria-label="ERPlora">
+            <img class="ep-navbar__logo" src="{% static 'public/img/logo.png' %}" alt="" width="28" height="28">
+            <span class="ep-navbar__name">ERPlora</span>
+        </a>
+        <ion-button class="ep-navbar__burger" fill="clear" aria-label="{% trans 'Menu' %}" aria-controls="ep-navbar-panel" aria-expanded="false" data-navbar-toggle>
+            {% icon "menu-outline" %}
+        </ion-button>
+        <div class="ep-navbar__panel" id="ep-navbar-panel" data-navbar-panel>
+            <div class="ep-navbar__panel-head">
+                <ion-button class="ep-navbar__close" fill="clear" aria-label="{% trans 'Close' %}" data-navbar-close>
+                    {% icon "close-outline" %}
+                </ion-button>
+            </div>
+            <div class="ep-navbar__links">
+                {% include 'public/partials/nav_links.html' %}
+            </div>
+            <div class="ep-navbar__actions">
+                {% if user.is_authenticated %}
+                <ion-button href="/launch" size="small">
+                    {% trans "Dashboard" %}
+                    <span slot="end">{% icon "arrow-forward-outline" %}</span>
+                </ion-button>
+                {% else %}
+                <ion-button href="{% url 'account_login' %}" size="small">
+                    {% trans "Start free" %}
+                    <span slot="end">{% icon "arrow-forward-outline" %}</span>
+                </ion-button>
+                {% endif %}
+            </div>
+        </div>
+        <div class="ep-navbar__backdrop" data-navbar-close></div>
+    </div>
+</nav>

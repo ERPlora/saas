@@ -1,0 +1,106 @@
+/* ep-footer (public/partials/footer.html): port of <ok-footer class="public-footer">. A grid of
+ * columns (the brand one twice as wide) and a bottom bar with the copyright and the legal links. */
+.ep-footer {
+  display: block;
+  background: var(--ep-surface, var(--ion-card-background, #fff));
+  border-top: 1px solid var(--ep-border, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.12));
+  color: var(--ep-text, var(--ion-text-color, #1c1b17));
+  font-family: var(--ep-font, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif);
+}
+.ep-footer__columns {
+  max-width: var(--ep-container-max, 1140px);
+  margin-inline: auto;
+  padding: 2rem var(--ep-spacing, var(--ion-padding, 16px));
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+.ep-footer__brand-column {
+  grid-column: span 2;
+}
+@media (max-width: 400px) {
+  .ep-footer__brand-column {
+    grid-column: auto;
+  }
+}
+.ep-footer__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: var(--ep-text, var(--ion-text-color, #18181b));
+}
+.ep-footer__logo {
+  height: 1.75rem;
+  width: auto;
+}
+.ep-footer__name {
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+}
+.ep-footer__tagline {
+  margin: 0.75rem 0 0.25rem;
+  font-size: 0.9rem;
+  color: rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.6);
+}
+.ep-footer__motto {
+  margin: 0 0 1rem;
+  font-size: 0.8rem;
+  font-style: italic;
+  color: rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.6);
+}
+.ep-footer__social {
+  display: flex;
+  gap: 0.6rem;
+  font-size: 1.1rem;
+}
+.ep-footer__social a {
+  display: inline-flex;
+  color: rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.55);
+}
+.ep-footer__heading {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 0.75rem;
+  color: rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.8);
+}
+.ep-footer__column a {
+  display: block;
+  padding: 0.2rem 0;
+  font-size: 0.9rem;
+  text-decoration: none;
+  color: rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.6);
+  overflow-wrap: anywhere;
+}
+.ep-footer__bottom {
+  max-width: var(--ep-container-max, 1140px);
+  margin-inline: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem var(--ep-spacing, var(--ion-padding, 16px));
+  border-top: 1px solid var(--ep-border-soft, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.07));
+  color: var(--ep-muted, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.55));
+  font-size: 0.85rem;
+}
+.ep-footer__legal {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+}
+.ep-footer__legal a {
+  text-decoration: none;
+  color: inherit;
+}
+@media (hover: hover) {
+  .ep-footer__column a:hover,
+  .ep-footer__social a:hover,
+  .ep-footer__legal a:hover {
+    color: var(--ep-primary, var(--ion-color-primary, #1496d6));
+  }
+}

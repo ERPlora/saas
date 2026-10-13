@@ -156,8 +156,7 @@ msgstr "%(account_email)s no es miembro de %(hub_host)s. Pide a quien gestiona e
 msgid "This account is not a member of %(hub_host)s. Ask whoever manages that hub to invite you, or sign in with the account that has access."
 msgstr "Esta cuenta no es miembro de %(hub_host)s. Pide a quien gestiona ese hub que te invite, o entra con la cuenta que sí tiene acceso."
 
-#: accounts/templates/accounts/hub_access_denied.html:26
-#: accounts/templates/accounts/hub_link_invalid.html:21
+#: templates/429.html:14 templates/errors/base.html:58
 msgid "Home"
 msgstr "Inicio"
 
@@ -165,8 +164,7 @@ msgstr "Inicio"
 msgid "Back to the hub"
 msgstr "Volver al hub"
 
-#: accounts/templates/accounts/hub_access_denied.html:28
-#: accounts/templates/accounts/hub_link_invalid.html:22
+#: templates/errors/base.html:59
 msgid "Contact Support"
 msgstr "Contactar Soporte"
 
@@ -284,8 +282,7 @@ msgstr "No hemos podido iniciar tu sesión con Google"
 msgid "Something went wrong while signing in with Google. Try again, or sign in with your email and password."
 msgstr "Algo ha fallado al iniciar sesión con Google. Vuelve a intentarlo o entra con tu email y tu contraseña."
 
-#: templates/socialaccount/authentication_error.html:22
-#: templates/socialaccount/login_cancelled.html:22
+#: templates/429.html:13
 msgid "Back to sign in"
 msgstr "Volver a iniciar sesión"
 
@@ -582,3 +579,115 @@ msgstr "¿No puedes usar tu contraseña?"
 #. 2FA Vue pages (accounts/frontend/pages)
 msgid "Can't use your authenticator?"
 msgstr "¿No puedes usar tu autenticador?"
+
+#: accounts/apps.py:13
+msgid "Accounts"
+msgstr "Cuentas"
+
+#: base/apps.py:17
+msgid "Base"
+msgstr "Base"
+
+#: accounts/queries.py:81
+msgid "Sign in to see your businesses."
+msgstr "Inicia sesión para ver tus negocios."
+
+#: base/operations.py:53
+msgid "The account is no longer active."
+msgstr "La cuenta ya no está activa."
+
+#: templates/400.html:8
+msgid "Bad Request"
+msgstr "Solicitud incorrecta"
+
+#: templates/400.html:9
+msgid "400 · Bad Request"
+msgstr "400 · Solicitud incorrecta"
+
+#: templates/400.html:10
+msgid "We couldn't read that request"
+msgstr "No hemos podido leer esa solicitud"
+
+#: templates/400.html:11
+msgid "Something in the request was malformed. Try again from ERPlora."
+msgstr "Algo en la solicitud venía mal formado. Vuelve a intentarlo desde ERPlora."
+
+#: templates/403.html:9
+msgid "Forbidden"
+msgstr "Acceso denegado"
+
+#: templates/403.html:10
+msgid "403 · Forbidden"
+msgstr "403 · Acceso denegado"
+
+#: templates/403.html:11
+msgid "You don't have access to this"
+msgstr "No tienes acceso a esto"
+
+#: templates/403.html:12
+msgid "Your account isn't allowed here. Sign in with another account or ask an administrator."
+msgstr "Tu cuenta no tiene permiso aquí. Entra con otra cuenta o pídeselo a un administrador."
+
+#: templates/403_csrf.html:8
+msgid "Session expired"
+msgstr "Sesión caducada"
+
+#: templates/403_csrf.html:9
+msgid "403 · Session expired"
+msgstr "403 · Sesión caducada"
+
+#: templates/403_csrf.html:10
+msgid "Your session expired while you were away"
+msgstr "Tu sesión ha caducado mientras no estabas"
+
+#: templates/403_csrf.html:11
+msgid "For your security the form was rejected. Go back, reload the page and try again."
+msgstr "Por seguridad se ha rechazado el formulario. Vuelve atrás, recarga la página y prueba otra vez."
+
+#: templates/404.html:10
+msgid "Page Not Found"
+msgstr "Página no encontrada"
+
+#: templates/404.html:11
+msgid "404 · Not found"
+msgstr "404 · No encontrado"
+
+#: templates/404.html:12
+msgid "We couldn't find this page"
+msgstr "No hemos podido encontrar esta página"
+
+#: templates/404.html:13
+msgid "Check the address or return to ERPlora to continue."
+msgstr "Comprueba la dirección o vuelve a ERPlora para continuar."
+
+#: templates/429.html:9
+msgid "Too Many Requests"
+msgstr "Demasiadas solicitudes"
+
+#: templates/429.html:10
+msgid "429 · Too many requests"
+msgstr "429 · Demasiadas solicitudes"
+
+#: templates/429.html:11
+msgid "Slow down for a moment"
+msgstr "Espera un momento"
+
+#: templates/429.html:12
+msgid "You have made too many attempts in a row. Wait about a minute and try again — after several failed sign-ins the wait can be up to five."
+msgstr "Has hecho demasiados intentos seguidos. Espera un minuto y vuelve a intentarlo; si has fallado al entrar varias veces, la espera puede llegar a cinco."
+
+#: templates/500.html:12
+msgid "Server Error"
+msgstr "Error del servidor"
+
+#: templates/500.html:13
+msgid "500 · Internal Server Error"
+msgstr "500 · Error interno del servidor"
+
+#: templates/500.html:14
+msgid "Something went wrong on our end"
+msgstr "Algo ha ido mal por nuestra parte"
+
+#: templates/500.html:15
+msgid "Your data is safe. Try this page again or return to ERPlora while we investigate."
+msgstr "Tus datos están a salvo. Vuelve a intentarlo o regresa a ERPlora mientras lo investigamos."

@@ -1,0 +1,6 @@
+{% load i18n icons %}
+{% comment %} The action of the landing's closing band. {% endcomment %}
+<ion-button size="large" color="light" href="{% url 'account_login' %}">
+  <span slot="start">{% icon "lucide:gift" %}</span>
+  {% trans "Start free" %}
+</ion-button>

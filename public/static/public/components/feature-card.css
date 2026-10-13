@@ -1,0 +1,86 @@
+/* ep-feature-card (public/components/feature_card.html): port of <ok-feature-card>. */
+.ep-feature-card {
+  box-sizing: border-box;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: clamp(1.2rem, 2vw, 1.6rem);
+  color: var(--ep-text, var(--ion-text-color, #18181b));
+  text-decoration: none;
+  background: var(--ep-surface, var(--ion-card-background, var(--ion-background-color, #fff)));
+  border: 1px solid var(--ep-border, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.1));
+  border-radius: var(--ep-radius, 16px);
+  position: relative;
+  overflow: hidden;
+  font-family: var(--ep-font, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif);
+  transition: transform var(--ep-transition, 160ms ease), box-shadow var(--ep-transition, 160ms ease),
+    border-color var(--ep-transition, 160ms ease);
+}
+/* The accent line on top that grows on hover. */
+.ep-feature-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--ion-color-primary, #1496d6), color-mix(in oklab, var(--ion-color-primary, #1496d6) 30%, transparent));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 200ms ease;
+}
+.ep-feature-card--glass {
+  background: color-mix(in oklab, var(--ep-surface, #fff) 62%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  backdrop-filter: blur(14px) saturate(1.4);
+  border-color: color-mix(in oklab, var(--ep-text, #18181b) 12%, transparent);
+}
+.ep-feature-card:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in oklab, var(--ion-color-primary, #1496d6) 40%, var(--ep-border, #e7e9ee));
+  box-shadow: 0 22px 48px -26px color-mix(in oklab, var(--ion-color-primary, #1496d6) 60%, transparent);
+}
+.ep-feature-card:hover::before {
+  transform: scaleX(1);
+}
+.ep-feature-card__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 13px;
+  color: var(--ion-color-primary, #1496d6);
+  background: color-mix(in oklab, var(--ion-color-primary, #1496d6) 13%, transparent);
+  font-size: 1.5rem;
+  margin-bottom: 0.35rem;
+}
+/* An app's own icon (icon_svg) carries no size of its own: the same 1em as a baked one. */
+.ep-feature-card__icon svg {
+  width: 1em;
+  height: 1em;
+}
+.ep-feature-card__eyebrow {
+  font-size: var(--ep-type-eyebrow-size, 0.72rem);
+  font-weight: var(--ep-type-eyebrow-weight, 600);
+  line-height: var(--ep-type-eyebrow-leading, 1.2);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ep-muted, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.62));
+}
+.ep-feature-card__title {
+  margin: 0;
+  font-size: var(--ep-type-card-title-size, 1.15rem);
+  font-weight: var(--ep-type-card-title-weight, 620);
+  letter-spacing: -0.015em;
+  line-height: var(--ep-type-card-title-leading, 1.25);
+}
+.ep-feature-card__body {
+  color: var(--ep-muted, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.62));
+  font-size: var(--ep-type-card-body-size, 0.92rem);
+  line-height: var(--ep-type-card-body-leading, 1.55);
+}
+.ep-feature-card__body > * {
+  margin: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ep-feature-card:hover { transform: none; }
+}

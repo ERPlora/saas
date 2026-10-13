@@ -1,5 +1,5 @@
 // The code input of every second-factor screen (sign-in, setup, reauthentication), ported from the
-// template partial `account/_auth_code_field.html`: one outlined md input, numeric keypad and the
+// ERPlora/saas partial `account/_auth_code_field.html`: one outlined md input, numeric keypad and the
 // browser's one-time-code autofill, room for a recovery code (16), its error under it.
 import { IonInput } from '@ionic/vue';
 import { describe, expect, it, vi } from 'vitest';

@@ -1,0 +1,82 @@
+{% extends "public/public_base.html" %}
+{% load static i18n icons %}
+{% comment %}
+  An app's page (public/store.py): the header and the tabs both tabs share. Port of the hero of
+  modules/pages/detail.html (origin/develop) as the ep-hero of public/partials/page_hero.html, split:
+  the way back to the store, the category, the name, the summary and the access on the left, the
+  card that says how to get it on the right. The button follows who is looking (saas#1568): a
+  visitor starts free (the sign-in, where the account is created), a customer goes to the dashboard
+  (the launcher), where a hub is picked and the app turned on. No price, tiers nor payment.
+
+  The tabs are links, one URL each (the old page swapped htmx fragments): «Overview» and, when the
+  app has documentation, «Documentation». The pages fill {% templatetag openblock %} block tab_content {% templatetag closeblock %}.
+{% endcomment %}
+
+{% block meta_description %}{{ app.summary }}{% endblock %}
+{% block og_description %}{{ app.summary }}{% endblock %}
+{% block twitter_description %}{{ app.summary }}{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'public/store.css' %}">{% endblock %}
+
+{% block page_content %}
+<section class="ep-hero ep-hero--split ep-hero--soft ep-hero--compact ep-store-hero">
+  <div class="ep-hero__layout">
+    <header class="ep-hero__copy">
+      <a class="ep-store-hero__back" href="{% url 'public:store' %}">{% icon "arrow-back-outline" %}<span>{% trans "Back to apps" %}</span></a>
+      {% if app.category_label %}<span class="ep-hero__eyebrow">{{ app.category_label }}</span>{% endif %}
+      <h1 class="ep-hero__title">{{ app.name }}</h1>
+      <div class="ep-hero__subtitle"><p>{{ app.summary }}</p></div>
+      <div class="ep-store-hero__access">
+        {% if app.premium %}
+          {% trans "Premium" as premium_label %}
+          {% include "public/components/status_pill.html" with tone="primary" label=premium_label icon="diamond-outline" %}
+          <span class="ep-store-hero__access-note">{{ app.access_label }}</span>
+        {% else %}
+          {% include "public/components/status_pill.html" with tone="success" label=app.access_label icon="checkmark-circle-outline" %}
+        {% endif %}
+      </div>
+      <div class="ep-hero__actions">
+        {% if user.is_authenticated %}
+        <ion-button href="{{ launcher }}">
+          {% trans "Go to dashboard" %}
+          <span slot="end">{% icon "arrow-forward-outline" %}</span>
+        </ion-button>
+        {% else %}
+        <ion-button href="{% url 'account_login' %}">
+          <span slot="start">{% icon "rocket-outline" %}</span>
+          {% trans "Start free" %}
+        </ion-button>
+        {% endif %}
+      </div>
+    </header>
+    <div class="ep-hero__media">
+      <ion-card class="ep-store-hero__card">
+        <ion-card-content>
+          <div class="ep-store-hero__card-body">
+            <span class="ep-store-hero__icon">{{ app.icon_svg }}</span>
+            <div>
+              <strong class="ep-store-hero__card-title">{% trans "Turn it on from your Hub" %}</strong>
+              <p class="ep-store-hero__card-text">
+                {% if user.is_authenticated %}
+                  {% trans "Apps are turned on from the Apps page of your Hub. Open your dashboard to choose the Hub." %}
+                {% else %}
+                  {% trans "Apps are turned on from the Apps page of your Hub. Create your free account to get one." %}
+                {% endif %}
+              </p>
+            </div>
+          </div>
+        </ion-card-content>
+      </ion-card>
+    </div>
+  </div>
+</section>
+
+<div class="ep-container ep-store-page">
+  <nav class="ep-store-tabs" aria-label="{% trans 'App sections' %}">
+    <a class="ep-store-tabs__tab" href="{% url 'public:store_detail' app.id %}"{% if tab == "overview" %} aria-current="page"{% endif %}>{% trans "Overview" %}</a>
+    {% if has_docs %}
+    <a class="ep-store-tabs__tab" href="{% url 'public:store_docs' app.id %}"{% if tab == "docs" %} aria-current="page"{% endif %}>{% trans "Documentation" %}</a>
+    {% endif %}
+  </nav>
+  {% block tab_content %}{% endblock %}
+</div>
+{% endblock %}

@@ -1,33 +1,33 @@
 /* ============================================================
    ERPlora · Logo Component
    ─────────────────────────────────────────────────────────────
-   Hub central + 8 módulos + 2 vectores diagonales · 100% CSS.
-   La marca propia de ERPlora — no genérica, no reutilizable
-   fuera del producto.
+   Central hub + 8 modules + 2 diagonal vectors · 100% CSS.
+   ERPlora's own mark — not generic, not reusable outside the
+   product.
 
-   Estructura · 9 elementos en orden de rejilla (NW → SE):
+   Structure · 9 elements in grid order (NW → SE):
      <div class="erp-logo">
        <i class="erp-nw"></i><i class="erp-n"></i><i class="erp-ne"></i>
        <i class="erp-w"></i><i class="erp-hub"></i><i class="erp-e"></i>
        <i class="erp-sw"></i><i class="erp-s"></i><i class="erp-se"></i>
      </div>
 
-   Lockup con wordmark:
+   Lockup with wordmark:
      <span class="erp-lockup">
        <div class="erp-logo">…</div>
        <span class="erp-wordmark">erplora</span>
      </span>
 
-   Tamaño · variable --u (1px = 72px total). Modificadores:
+   Size · variable --u (1px = 72px total). Modifiers:
      .erp-logo.xs   ≈ 16px (favicon)
      .erp-logo.sm   ≈ 32px
      .erp-logo.md   ≈ 56px  (default)
      .erp-logo.lg   ≈ 96px
      .erp-logo.xl   ≈ 144px
 
-   Consume tokens del tema activo:
-     --ink         · color de los módulos en tinta
-     --brand       · color del hub + mitad accent de NE/SW
+   Consumes tokens of the active theme:
+     --ink         · colour of the inked modules
+     --brand       · colour of the hub + accent half of NE/SW
    ============================================================ */
 
 .erp-logo {
@@ -36,11 +36,11 @@
   --erp-mark: var(--ink);
   --erp-accent: var(--brand);
 
-  /* ── Paleta modular (V5) ──
-     El AZUL es exclusivo del hub central (la plataforma). Los 8
-     módulos toman rojo / verde / amarillo (los módulos de negocio
-     que se instalan). Valores fijos del logo, no semánticos del
-     tema, para que la marca sea estable. */
+  /* ── Modular palette (V5) ──
+     BLUE belongs only to the central hub (the platform). The 8
+     modules take red / green / yellow (the business modules that
+     get installed). Fixed values of the logo, not the theme's
+     semantic ones, so the mark stays stable. */
   --erp-red:    #ef4444;
   --erp-green:  #10b981;
   --erp-yellow: #f59e0b;
@@ -63,7 +63,7 @@
   border-radius: calc(2 * var(--u));
 }
 
-/* ── Module positions + colores (V5) ── */
+/* ── Module positions + colours (V5) ── */
 .erp-logo > .erp-nw { left: calc(6  * var(--u)); top: calc(6  * var(--u)); background: var(--erp-red);    }
 .erp-logo > .erp-n  { left: calc(30 * var(--u)); top: calc(6  * var(--u)); background: var(--erp-green);  }
 .erp-logo > .erp-w  { left: calc(6  * var(--u)); top: calc(30 * var(--u)); background: var(--erp-green);  }
@@ -82,9 +82,9 @@
 }
 
 /* ── NE and SW corners (V5) ──
-   Antes eran cuadrados diagonal-split (mitad tinta / mitad accent).
-   En V5 son módulos sólidos como el resto, en amarillo, para que el
-   ritmo modular sea uniforme y el azul quede solo en el hub.
+   They used to be diagonal-split squares (half ink / half accent).
+   In V5 they are solid modules like the rest, in yellow, so the
+   modular rhythm is even and the blue stays on the hub alone.
 */
 .erp-logo > .erp-ne {
   left: calc(54 * var(--u));

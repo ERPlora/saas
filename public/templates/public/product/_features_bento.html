@@ -1,0 +1,17 @@
+{% load i18n %}
+{% comment %} The five cells of the platform's bento on /features/ (public/components/bento.html). {% endcomment %}
+{% trans "Lightning fast" as heading %}
+{% trans "Process transactions in milliseconds. Built on Django 6.1, with live updates on every device." as body %}
+{% include "public/components/bento_item.html" with cols=4 rows=1 tone="primary" icon="lucide:zap" heading=heading body=body only %}
+{% trans "Modular" as heading %}
+{% trans "Install only the modules you need and add more as you grow." as body %}
+{% include "public/components/bento_item.html" with cols=2 rows=1 icon="lucide:layers" heading=heading body=body only %}
+{% trans "Cloud-native" as heading %}
+{% trans "Daily backups, TLS and high availability on AWS. Access from anywhere." as body %}
+{% include "public/components/bento_item.html" with cols=2 rows=1 icon="lucide:cloud" heading=heading body=body only %}
+{% trans "Multi-platform" as heading %}
+{% trans "Phone, tablet, desktop and POS — all from the browser." as body %}
+{% include "public/components/bento_item.html" with cols=2 rows=1 icon="lucide:smartphone" heading=heading body=body only %}
+{% trans "Enterprise security" as heading %}
+{% trans "Server-side sessions in secure cookies, sign-in with Google and a WAF on AWS." as body %}
+{% include "public/components/bento_item.html" with cols=2 rows=1 tone="success" icon="lucide:shield-check" heading=heading body=body only %}

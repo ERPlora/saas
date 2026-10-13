@@ -1,0 +1,167 @@
+{% extends "public/public_base.html" %}
+{% load i18n %}
+{% comment %}
+  /updates/ — port of apps/public/product/templates/product/updates.html (origin/develop): the
+  plain-language half of the update policy (ADR-0269, pm#69). The binding text is clause 7 of
+  /legal/terms/; this page says the same thing to someone who runs a bar, not to a lawyer. If one
+  changes, the other has to change with it.
+
+  The terms come with the pages that read Plan (L7): until `public:terms` exists the closing band
+  still names section 7 and paints no button ({% templatetag openblock %} url … as {% templatetag closeblock %} does not raise), so nothing points
+  at a 404; the day it exists, the button appears.
+{% endcomment %}
+
+{% block title %}{% trans "Updates" %} · ERPlora{% endblock %}
+
+{% block meta_description %}{% trans "ERPlora updates your terminal itself, without asking and without stopping your work. What we commit to in exchange: no interruption, nothing lost, automatic rollback, and a history of what changed." %}{% endblock %}
+
+{% block og_title %}{% trans "Updates" %} · ERPlora{% endblock %}
+{% block og_description %}{% trans "Why we update your terminal without asking, and what we commit to in exchange." %}{% endblock %}
+
+{% block page_content %}
+  {% trans "Updates" as hero_eyebrow %}
+  {% trans "Always up to date. You do nothing." as hero_title %}
+  {% trans "We update your terminal ourselves. You do not choose a version, you do not plan a stop, and you do not press anything." as hero_description %}
+  {% include "public/partials/page_hero.html" with hero_compact=True %}
+
+  <section class="ep-section--compact ep-section--divider">
+    <div class="ep-container ep-section-content">
+      <article class="ep-prose max-w-3xl mx-auto">
+        <h2>{% trans "We do not ask you: we do it ourselves" %}</h2>
+        <p>
+          {% blocktrans trimmed %}
+          Because at eleven in the morning, with the place full, the honest answer to "do you
+          want to update?" is no — and it should be. If we asked, the day the answer really
+          mattered — a security fix, a change in the invoicing rules — the update would arrive
+          late, or never.
+          {% endblocktrans %}
+        </p>
+        <p>
+          {% blocktrans trimmed %}
+          So we do not ask: we do it ourselves. Everyone runs the same current version, which is
+          the only way we can fix something for one shop and have it fixed for all of them the
+          same afternoon.
+          {% endblocktrans %}
+        </p>
+        <p>
+          {% blocktrans trimmed %}
+          If you want something sooner, there is an Update button in your hub — for the hub and
+          for each module. You can bring it forward; the only thing you cannot do is leave it for
+          another day.
+          {% endblocktrans %}
+        </p>
+        <p>
+          {% blocktrans trimmed %}
+          That decision is only fair if we carry the weight of it. These are the four things we
+          owe you for not asking.
+          {% endblocktrans %}
+        </p>
+      </article>
+    </div>
+  </section>
+
+  <section class="ep-section--compact ep-section--soft ep-section--divider">
+    <div class="ep-container ep-section-content">
+      <header class="ep-section-head">
+        <span class="ep-eyebrow">{% trans "Our side of the deal" %}</span>
+        <h2 class="ep-section-title">{% trans "What we commit to." %}</h2>
+        <p class="ep-section-sub">{% trans "These four are written into the terms of service, not only here." %}</p>
+      </header>
+      <div class="ep-reveal" data-reveal="up">
+        <div class="ep-grid-cards">
+          {% trans "It does not stop your work" as heading %}
+          {% blocktrans trimmed asvar body %}
+          The new version starts up and is checked before the old one is switched off. There
+          is no moment when the till is down, so there is nothing for you to schedule.
+          {% endblocktrans %}
+          {% include "public/components/feature_card.html" with icon="lucide:circle-play" heading=heading body=body only %}
+          {% trans "It does not take anything away" as heading %}
+          {% blocktrans trimmed asvar body %}
+          An update never deletes your data and never leaves you with fewer things than you
+          could do yesterday. If something has to go, it is announced and it is replaced.
+          {% endblocktrans %}
+          {% include "public/components/feature_card.html" with icon="lucide:shield-check" heading=heading body=body only %}
+          {% trans "If it goes wrong, it goes back" as heading %}
+          {% blocktrans trimmed asvar body %}
+          If the new version does not start properly, the previous one comes back on its own.
+          You keep working with the one that worked, and we find out, not you.
+          {% endblocktrans %}
+          {% include "public/components/feature_card.html" with icon="lucide:undo-2" heading=heading body=body only %}
+          {% trans "You can see what changed" as heading %}
+          {% blocktrans trimmed asvar body %}
+          Your hub shows the version you are on and a short history of what was updated and
+          when. Only what actually changed appears there.
+          {% endblocktrans %}
+          {% include "public/components/feature_card.html" with icon="lucide:list-checks" heading=heading body=body only %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="ep-section--compact ep-section--divider">
+    <div class="ep-container ep-section-content">
+      <article class="ep-prose max-w-3xl mx-auto">
+        <h2>{% trans "When we do warn you" %}</h2>
+        <p>
+          {% blocktrans trimmed %}
+          There is one case where a change deserves your attention even though nothing stops:
+          when it touches the path you walk two hundred times a day and know by heart — signing
+          in, taking the order, charging. A button that moves there is not an improvement, it is
+          an interruption, even if the service never went down.
+          {% endblocktrans %}
+        </p>
+        <ul>
+          <li>{% blocktrans trimmed %}If a change touches that path, we announce it inside the product before it arrives.{% endblocktrans %}</li>
+          <li>{% blocktrans trimmed %}If it does not — fixes, speed, colours, settings screens, new features — it simply arrives.{% endblocktrans %}</li>
+        </ul>
+        <p>
+          {% blocktrans trimmed %}
+          We keep the bar there on purpose. If we announced everything, nobody would read
+          anything, and the day we needed you to read, you would not.
+          {% endblocktrans %}
+        </p>
+
+        <h2>{% trans "And if a change leaves you worse off" %}</h2>
+        <p>
+          {% blocktrans trimmed %}
+          If one of those announced changes takes away something you were using, and it is not a
+          trifle, you do not have to put up with it. We tell you by email before it lands, and
+          from then you have thirty days to leave without paying anything: we give you back the
+          part of the period you had paid for and not used. Your data leaves with you — you can
+          export it.
+          {% endblocktrans %}
+        </p>
+        <p>
+          {% blocktrans trimmed %}
+          And if an update breaks something, that one is on us. We fix it. If we do not fix it,
+          you pay less for the time it was broken, and you do not have to prove we did anything
+          wrong.
+          {% endblocktrans %}
+        </p>
+
+        <h2>{% trans "The app you install is different" %}</h2>
+        <p>
+          {% blocktrans trimmed %}
+          The desktop and mobile app is a program on your own machine, not on our servers, so we
+          never install it for you. We tell you there is a new version and you choose when. Your
+          hub is ours to keep up to date; your computer is yours.
+          {% endblocktrans %}
+        </p>
+      </article>
+    </div>
+  </section>
+
+  <div class="ep-container ep-section-content ep-section--compact">
+    <div class="ep-reveal" data-reveal="scale">
+      {% trans "The small print" as eyebrow %}
+      {% trans "The same thing, in contract language." as heading %}
+      {% trans "Everything on this page is section 7 of the terms of service. If the two ever disagree, the terms are the ones that bind us." as subheading %}
+      {% url "public:terms" as terms_url %}
+      {% if terms_url %}
+        {% include "public/components/cta_band.html" with variant="soft" eyebrow=eyebrow heading=heading subheading=subheading actions_template="public/product/_updates_cta_actions.html" terms_url=terms_url only %}
+      {% else %}
+        {% include "public/components/cta_band.html" with variant="soft" eyebrow=eyebrow heading=heading subheading=subheading only %}
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

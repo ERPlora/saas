@@ -1,0 +1,26 @@
+/* ep-stat (public/components/stat.html): port of <ok-stat>. */
+.ep-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+.ep-stat__label {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--ion-color-medium, #92949c);
+}
+.ep-stat__value {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--ion-text-color, #1f2933);
+}
+.ep-stat__hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--ion-color-medium, #92949c);
+}

@@ -1,0 +1,25 @@
+{
+  "version": "v2",
+  "modality": "SOLO VERI*FACTU",
+  "covers_from": "1.1.13",
+  "composition": [
+    "Núcleo de ejecución (runtime)",
+    "Motor fiscal",
+    "Módulos funcionales",
+    "Interfaz de usuario",
+    "Plano de control",
+    "verifactu-gateway"
+  ],
+  "signed_on": "2026-09-09",
+  "signed_at": "Coslada (Madrid), España",
+  "status": "pending_signature",
+  "signed_pdf": "",
+  "facts": {
+    "NombreRazon": "ERPLORA CLOUD SL",
+    "NIF": "B27593136",
+    "NombreSistemaInformatico": "ERPlora Hub",
+    "IdSistemaInformatico": "EC",
+    "TipoUsoPosibleSoloVerifactu": "S",
+    "TipoUsoPosibleMultiOT": "S"
+  }
+}

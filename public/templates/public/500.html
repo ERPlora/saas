@@ -1,0 +1,26 @@
+{% extends "public/public_base.html" %}
+{% load i18n %}
+{% comment %}
+  The public 500. It must render when the database is what failed, so it touches nothing that
+  reads it: no navbar (the session), no cookie banner and no analytics (the cookie groups). Only the
+  page, the stylesheets of the Vite entry and a way home.
+{% endcomment %}
+
+{% block title %}{% trans "Something went wrong" %} - ERPlora{% endblock %}
+{% block meta_robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block analytics %}{% endblock %}
+{# Messages live in the session, and the session may live in the database. #}
+{% block messages %}{% endblock %}
+
+{% block content %}
+  <main>
+    <section class="ep-section ep-section--center ep-error-page">
+      <header class="ep-section-head">
+        <span class="ep-eyebrow">500</span>
+        <h1 class="ep-section-title">{% trans "Something went wrong" %}</h1>
+        <p class="ep-section-sub">{% trans "Something went wrong on our side. Please try again in a few minutes." %}</p>
+      </header>
+      <ion-button href="{% url 'home' %}">{% trans "Back to the home page" %}</ion-button>
+    </section>
+  </main>
+{% endblock %}

@@ -1,0 +1,83 @@
+/* ep-cta-band (public/components/cta_band.html): port of <ok-cta-band>. */
+.ep-cta-band {
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  border-radius: var(--ep-radius-xl, 28px);
+  padding: clamp(2.5rem, 6vw, 4.5rem) clamp(1.5rem, 5vw, 4rem);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  font-family: var(--ep-font, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif);
+}
+/* Solid brand (default): text in contrast. */
+.ep-cta-band--solid {
+  color: var(--ep-primary-contrast, var(--ion-color-primary-contrast, #fff));
+  background:
+    radial-gradient(80% 120% at 0% 0%, color-mix(in oklab, #fff 22%, transparent), transparent 60%),
+    radial-gradient(80% 120% at 100% 100%, color-mix(in oklab, #000 18%, transparent), transparent 55%),
+    linear-gradient(120deg, var(--ep-primary, var(--ion-color-primary, #1496d6)), color-mix(in oklab, var(--ep-primary, var(--ion-color-primary, #1496d6)) 60%, #6d28d9 40%));
+}
+.ep-cta-band--soft {
+  color: var(--ep-text, var(--ion-text-color, #18181b));
+  background: linear-gradient(135deg, color-mix(in oklab, var(--ep-primary, #1496d6) 10%, var(--ep-surface, #fff)),
+    color-mix(in oklab, var(--ep-primary, #1496d6) 3%, var(--ep-surface, #fff)));
+  border: 1px solid color-mix(in oklab, var(--ep-primary, #1496d6) 22%, transparent);
+}
+.ep-cta-band--glass {
+  color: var(--ep-text, var(--ion-text-color, #18181b));
+  background: color-mix(in oklab, var(--ep-surface, #fff) 55%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  backdrop-filter: blur(18px) saturate(1.4);
+  border: 1px solid color-mix(in oklab, var(--ep-text, #18181b) 12%, transparent);
+}
+.ep-cta-band__eyebrow {
+  font-size: var(--ep-type-eyebrow-size, 0.72rem);
+  font-weight: var(--ep-type-eyebrow-weight, 600);
+  line-height: var(--ep-type-eyebrow-leading, 1.2);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ep-muted, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.62));
+}
+.ep-cta-band__title {
+  margin: 0;
+  max-width: 22ch;
+  font-family: var(--ep-font-display, var(--ep-font));
+  font-size: var(--ep-type-section-title-size, clamp(1.75rem, 1.1rem + 2.6vw, 2.85rem));
+  line-height: var(--ep-type-section-title-leading, 1.06);
+  letter-spacing: -0.03em;
+  font-weight: var(--ep-type-section-title-weight, 650);
+}
+.ep-cta-band__sub {
+  margin: 0;
+  max-width: 50ch;
+  font-size: var(--ep-type-intro-size, clamp(1rem, 0.95rem + 0.25vw, 1.125rem));
+  line-height: var(--ep-type-intro-leading, 1.6);
+  color: var(--ep-muted, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.62));
+}
+.ep-cta-band--solid .ep-cta-band__eyebrow,
+.ep-cta-band--solid .ep-cta-band__sub {
+  color: color-mix(in oklab, var(--ep-primary-contrast, #fff) 85%, transparent);
+}
+.ep-cta-band__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-top: 0.6rem;
+}
+/* On the solid band an outline button turns white. */
+.ep-cta-band--solid .ep-cta-band__actions ion-button[fill='outline'] {
+  --color: var(--ep-primary-contrast, #fff);
+  --color-hover: var(--ep-primary-contrast, #fff);
+  --color-focused: var(--ep-primary-contrast, #fff);
+  --color-activated: var(--ep-primary-contrast, #fff);
+  --border-color: color-mix(in oklab, var(--ep-primary-contrast, #fff) 62%, transparent);
+  --background-hover: color-mix(in oklab, var(--ep-primary-contrast, #fff) 12%, transparent);
+  --background-focused: color-mix(in oklab, var(--ep-primary-contrast, #fff) 16%, transparent);
+  --background-activated: color-mix(in oklab, var(--ep-primary-contrast, #fff) 20%, transparent);
+  --ripple-color: var(--ep-primary-contrast, #fff);
+}

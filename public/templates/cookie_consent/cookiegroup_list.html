@@ -1,0 +1,77 @@
+{% extends "public/public_base.html" %}
+{% load i18n %}
+{% comment %}
+  /cookies/ (django-cookie-consent's CookieGroupListView): the decision centre for the optional
+  cookies, one toggle per group. Overrides the package's template (public comes before
+  cookie_consent in INSTALLED_APPS). Port of templates/cookie_consent/cookiegroup_list.html of the
+  old SaaS, ep-* instead of ok-*. The legal policy text is another page, /legal/cookies/.
+{% endcomment %}
+
+{% block title %}{% trans "Cookie Settings" %} - ERPlora{% endblock %}
+
+{% block page_content %}
+  {% trans "Privacy controls" as hero_eyebrow %}
+  {% trans "Cookie preferences" as hero_title %}
+  {% trans "Choose which optional cookies ERPlora may use. Essential cookies remain active because the website cannot work securely without them." as hero_description %}
+  {% include "public/partials/page_hero.html" with hero_eyebrow=hero_eyebrow hero_title=hero_title hero_description=hero_description %}
+
+  <section class="ep-section--compact ep-section--soft ep-section--divider">
+    <div class="ep-container ep-section-content">
+      <header class="ep-section-head">
+        <span class="ep-eyebrow">{% trans "Your choice" %}</span>
+        <h2 class="ep-section-title">{% trans "Manage optional cookies" %}</h2>
+        <p class="ep-section-sub">
+          {% trans "You can change these preferences at any time. Each category shows the cookies currently configured in ERPlora." %}
+        </p>
+      </header>
+
+      <div class="public-preference-list">
+        {% for cookie_group in object_list %}
+          {% include "cookie_consent/_cookie_group.html" %}
+        {% empty %}
+          {% trans "No cookie categories are currently configured." as empty_message %}
+          {% include "public/components/inline_feedback.html" with tone="info" message=empty_message %}
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+{% endblock %}
+
+{# This page is already the whole decision centre: never the global banner on top of it. #}
+{% block cookie_banner %}{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+{# A toggle posts its group to accept or decline and the page reloads with the new state. #}
+<script nonce="{{ csp_nonce }}">
+(function () {
+  var ACCEPT = "{% url 'cookie_consent_accept' %}";
+  var DECLINE = "{% url 'cookie_consent_decline' %}";
+  var CSRF = "{{ csrf_token }}";
+  var ENABLED = "{{ _('Enabled')|escapejs }}";
+  var DISABLED = "{{ _('Disabled')|escapejs }}";
+  document.querySelectorAll('ion-toggle.cookie-toggle').forEach(function (toggle) {
+    toggle.addEventListener('ionChange', function (event) {
+      var state = toggle.closest('.public-preference-group').querySelector('[data-cookie-state]');
+      if (state) {
+        state.querySelector('.ep-status-pill__label').textContent = event.detail.checked ? ENABLED : DISABLED;
+        state.classList.toggle('ep-status-pill--success', event.detail.checked);
+        state.classList.toggle('ep-status-pill--neutral', !event.detail.checked);
+      }
+      var form = document.createElement('form');
+      form.method = 'POST';
+      form.action = event.detail.checked ? ACCEPT : DECLINE;
+      [['csrfmiddlewaretoken', CSRF], ['cookie_groups', toggle.dataset.group]].forEach(function (pair) {
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = pair[0];
+        input.value = pair[1];
+        form.appendChild(input);
+      });
+      document.body.appendChild(form);
+      form.submit();
+    });
+  });
+})();
+</script>
+{% endblock %}

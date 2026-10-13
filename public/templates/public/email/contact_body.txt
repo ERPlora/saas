@@ -1,0 +1,12 @@
+{% autoescape off %}New contact form submission from the ERPlora website:
+
+Name: {{ first_name }} {{ last_name }}
+Email: {{ email }}
+Phone: {{ phone|default:"Not provided" }}
+
+Message:
+{{ message }}
+
+---
+Sent from the ERPlora contact form
+{% endautoescape %}

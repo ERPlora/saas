@@ -1,6 +1,17 @@
-/* Fallback compartido para errores HTTP: la experiencia principal la pinta
-   ok-error-page y sus acciones son ion-button. Este light DOM solo aparece
-   mientras cargan los Web Components o si JavaScript no llega a ejecutarse. */
+/* HTTP error pages (templates/errors/base.html): plain HTML, links instead of buttons, so they
+   paint and work with no JavaScript. They used to be the fallback markup of a retired Web
+   Component (PLAN §16.11); its design tokens are ours now, --ep-*, with the values they had. */
+:root {
+  --ep-type-page-title-compact-size: clamp(2rem, 1.55rem + 2vw, 3.25rem);
+  --ep-type-page-title-weight: 650;
+  --ep-type-page-title-leading: 1.04;
+  /* 0.72, not 0.6: at 0.6 muted text fell short of WCAG AA 4.5:1 on the light background. */
+  --ep-muted: rgba(var(--ion-text-color-rgb), 0.72);
+  --ep-type-intro-size: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+  --ep-type-intro-leading: 1.6;
+  --ep-radius-pill: 999px;
+}
+
 html,
 body {
   min-height: 100%;
@@ -10,7 +21,7 @@ body {
   font-family: var(--ion-font-family);
 }
 
-ok-error-page:not(:defined) {
+.error-page {
   min-height: 100vh;
   min-height: 100dvh;
   display: grid;
@@ -19,11 +30,7 @@ ok-error-page:not(:defined) {
   box-sizing: border-box;
 }
 
-ok-error-page:not(:defined) > ion-button {
-  display: none;
-}
-
-.error-page-fallback {
+.error-page__content {
   width: min(100%, 35rem);
   display: grid;
   justify-items: center;
@@ -31,7 +38,7 @@ ok-error-page:not(:defined) > ion-button {
   text-align: center;
 }
 
-.error-page-fallback__code {
+.error-page__code {
   margin: 0;
   color: var(--ion-color-medium);
   font-size: 0.875rem;
@@ -40,56 +47,56 @@ ok-error-page:not(:defined) > ion-button {
   text-transform: uppercase;
 }
 
-.error-page-fallback h1 {
+.error-page__content h1 {
   margin: 0;
-  font-size: var(--ok-type-page-title-compact-size, clamp(2rem, 1.55rem + 2vw, 3.25rem));
-  font-weight: var(--ok-type-page-title-weight, 650);
-  line-height: var(--ok-type-page-title-leading, 1.04);
+  font-size: var(--ep-type-page-title-compact-size);
+  font-weight: var(--ep-type-page-title-weight);
+  line-height: var(--ep-type-page-title-leading);
   letter-spacing: -0.025em;
 }
 
-.error-page-fallback p {
+.error-page__content p:not(.error-page__code) {
   max-width: 44ch;
   margin: 0;
-  color: var(--ok-muted, var(--ion-color-medium));
-  font-size: var(--ok-type-intro-size, 1.0625rem);
-  line-height: var(--ok-type-intro-leading, 1.6);
+  color: var(--ep-muted);
+  font-size: var(--ep-type-intro-size);
+  line-height: var(--ep-type-intro-leading);
 }
 
-.error-page-fallback__actions {
+.error-page__actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 0.75rem;
 }
 
-.error-page-fallback__actions a {
+.error-page__actions a {
   min-height: 2.75rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding-inline: 1.25rem;
   border: 1px solid var(--ion-border-color);
-  border-radius: var(--ok-radius-pill, 999px);
+  border-radius: var(--ep-radius-pill);
   background: var(--ion-card-background);
   color: var(--ion-text-color);
   font-weight: 600;
   text-decoration: none;
 }
 
-.error-page-fallback__actions a:first-child {
+.error-page__actions a:first-child {
   border-color: var(--ion-color-primary);
   background: var(--ion-color-primary);
   color: var(--ion-color-primary-contrast);
 }
 
 @media (max-width: 30rem) {
-  .error-page-fallback__actions {
+  .error-page__actions {
     width: 100%;
     flex-direction: column;
   }
 
-  .error-page-fallback__actions a {
+  .error-page__actions a {
     width: 100%;
   }
 }

@@ -1,0 +1,30 @@
+{% load i18n %}
+{% comment %}
+  ep-pricing-card: port of <ok-pricing-card> (OutfitKit). A plan card: name, price and period, a
+  short description, the feature list with checks and the CTA at the bottom; `featured` raises it
+  with a brand border and a «Popular» badge. Styles: public/static/public/components/pricing-card.css.
+
+  Usage:
+    {% include "public/components/pricing_card.html" with name=plan.name price=plan.price period=per_month description=plan.description features=plan.features featured=plan.featured cta_template="public/<page>/_plan_cta.html" %}
+
+  Variables: name; price; period (e.g. «/month»); description; features (a list of strings) or
+  features_template (a template with your own list); featured; badge (replaces «Popular»; with
+  featured and no badge, «Popular»); cta_template (a template with the ion-button, full width).
+{% endcomment %}
+<div class="ep-pricing-card{% if featured %} ep-pricing-card--featured{% endif %}">
+    {% if badge %}<span class="ep-pricing-card__badge">{{ badge }}</span>{% elif featured %}<span class="ep-pricing-card__badge">{% trans "Popular" %}</span>{% endif %}
+    {% if name %}<div class="ep-pricing-card__name">{{ name }}</div>{% endif %}
+    {% if price %}
+    <div class="ep-pricing-card__price">
+        <span class="ep-pricing-card__amount">{{ price }}</span>
+        {% if period %}<span class="ep-pricing-card__period">{{ period }}</span>{% endif %}
+    </div>
+    {% endif %}
+    {% if description %}<p class="ep-pricing-card__description">{{ description }}</p>{% endif %}
+    {% if features %}
+    <ul class="ep-pricing-card__features">
+        {% for feature in features %}<li><span class="ep-pricing-card__check" aria-hidden="true">✓</span><span>{{ feature }}</span></li>{% endfor %}
+    </ul>
+    {% elif features_template %}{% include features_template %}{% endif %}
+    {% if cta_template %}<div class="ep-pricing-card__cta">{% include cta_template %}</div>{% endif %}
+</div>

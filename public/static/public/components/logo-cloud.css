@@ -1,0 +1,54 @@
+/* ep-logo-cloud (public/components/logo_cloud.html): port of <ok-logo-cloud>. */
+.ep-logo-cloud {
+  display: block;
+  width: 100%;
+  font-family: var(--ep-font, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif);
+}
+.ep-logo-cloud__label {
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ep-muted, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.55));
+  margin-bottom: 1.5rem;
+}
+.ep-logo-cloud__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(1.5rem, 5vw, 3.5rem);
+}
+.ep-logo-cloud__row > * {
+  opacity: 0.55;
+  filter: grayscale(1);
+  transition: opacity 200ms ease, filter 200ms ease;
+  max-height: var(--ep-logo-height, 30px);
+  width: auto;
+  font-weight: 650;
+  font-size: 1.1rem;
+  color: var(--ep-text, var(--ion-text-color, #18181b));
+}
+.ep-logo-cloud__row > *:hover {
+  opacity: 1;
+  filter: grayscale(0);
+}
+/* Marquee: a looping track (duplicate the logos in the template for a seamless loop). */
+.ep-logo-cloud--marquee .ep-logo-cloud__viewport {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+.ep-logo-cloud--marquee .ep-logo-cloud__row {
+  flex-wrap: nowrap;
+  width: max-content;
+  animation: ep-logo-cloud-scroll 28s linear infinite;
+}
+@keyframes ep-logo-cloud-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ep-logo-cloud--marquee .ep-logo-cloud__row { animation: none; flex-wrap: wrap; }
+}

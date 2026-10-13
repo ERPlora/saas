@@ -29,9 +29,10 @@ export default [
     languageOptions: { parserOptions: { parser: tseslint.parser } },
   },
   {
-    // `slot="start|end|icon-only"` on ion-*/ok-* is the Web Components slot, not Vue 2 syntax.
+    // `slot="start|end|icon-only"` on ion-* (and on HubIcon, whose root is an ion-icon) is the Web
+    // Components slot, not Vue 2 syntax. OutfitKit's ok-* are gone (PLAN §16.11).
     files: ['**/*.vue'],
-    rules: { 'vue/no-deprecated-slot-attribute': ['error', { ignore: ['/^ion-/', '/^ok-/'] }] },
+    rules: { 'vue/no-deprecated-slot-attribute': ['error', { ignore: ['/^ion-/', 'HubIcon'] }] },
   },
   {
     // The entry and the apps, at the project root next to `base/` (no `apps/`, PLAN §20.2).

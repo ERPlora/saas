@@ -1,0 +1,18 @@
+{% comment %}
+  Server messages (`messages.success(request, …)` and a redirect, saas#1754): painted as inline
+  notices (public/components/inline_feedback.html), so they are read without JavaScript too;
+  frontend/public.ts turns each one into an ion-toast and removes the list. `data-level` is the
+  message's level tag (success, info, warning, error, debug).
+{% endcomment %}
+{% if messages %}
+<div class="ep-server-messages ep-container" data-server-messages>
+    {% for message in messages %}
+    <div class="ep-server-messages__item" data-level="{{ message.level_tag }}">
+        {% if message.level_tag == 'error' %}{% include "public/components/inline_feedback.html" with tone="danger" message=message only %}
+        {% elif message.level_tag == 'success' %}{% include "public/components/inline_feedback.html" with tone="success" message=message only %}
+        {% elif message.level_tag == 'warning' %}{% include "public/components/inline_feedback.html" with tone="warning" message=message only %}
+        {% else %}{% include "public/components/inline_feedback.html" with tone="info" message=message only %}{% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}

@@ -1,0 +1,81 @@
+/* Cookie-consent banner (issue #958): cookie_consent/cookielaw_banner.html.
+ * Port of static/css/cookie-consent-banner.css of the old SaaS; the icon is the SVG of
+ * {% icon %} (it was <iconify-icon>). Only --ion-* tokens.
+ *
+ * z-index 60: above the page's own floating surfaces, so an unresolved GDPR choice is never hidden,
+ * and still below Ionic's overlays (ion-modal and ion-toast are portalled to <body> far higher).
+ */
+#cookie-consent-banner {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 60;
+  background: var(--ion-card-background, #fff);
+  border-top: 1px solid var(--ion-border-color, #ececec);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.1);
+  padding-block: 0.75rem max(0.75rem, env(safe-area-inset-bottom));
+}
+#cookie-consent-banner[hidden] {
+  display: none;
+}
+.cookie-consent-layout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+}
+.cookie-consent-copy {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  min-width: 0;
+  color: var(--ion-color-medium-shade, #545b63);
+}
+.cookie-consent-copy .ep-icon {
+  flex: 0 0 auto;
+  margin-top: 0.05rem;
+  color: var(--ion-color-primary, #1496d6);
+}
+.cookie-consent-copy p {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+.cookie-consent-copy a {
+  color: var(--ion-color-primary, #1496d6);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+.cookie-consent-actions {
+  display: grid;
+  grid-template-columns: repeat(3, max-content);
+  gap: 0.375rem;
+  flex: 0 0 auto;
+}
+.cookie-consent-actions ion-button {
+  min-height: 2.75rem;
+  height: 2.75rem;
+  margin: 0;
+  --padding-start: 0.75rem;
+  --padding-end: 0.75rem;
+}
+
+@media (max-width: 767px) {
+  .cookie-consent-layout {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.625rem;
+  }
+  .cookie-consent-copy p {
+    font-size: 0.8125rem;
+    line-height: 1.35;
+  }
+  .cookie-consent-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .cookie-consent-actions ion-button {
+    width: 100%;
+    --padding-start: 0.375rem;
+    --padding-end: 0.375rem;
+  }
+}

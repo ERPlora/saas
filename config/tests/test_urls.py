@@ -4,7 +4,7 @@ the internal redeem, the API, admin, health), then the SPA for every other path.
 import json
 
 import pytest
-from django.urls import resolve
+from django.urls import resolve, reverse
 from live.live_view import live_stream
 
 HOST = "localhost:8001"
@@ -22,11 +22,17 @@ def test_healthz_answers_without_the_database(client):
     assert response.json() == {"status": "ok"}
 
 
-def test_the_root_opens_the_launcher(client):
-    response = client.get("/")
+@pytest.mark.django_db
+@pytest.mark.usefixtures("spa_manifest")
+def test_the_root_is_the_public_landing_not_the_launcher(client):
+    """Plan §3.c: the landing takes `/` (L7); until then it redirected to `/launch`. The name
+    `home` stays the project's way to reverse `/` (allauth's templates, the error pages)."""
+    response = client.get("/", HTTP_HOST=HOST)
 
-    assert response.status_code == 302
-    assert response.url == "/launch"
+    assert response.status_code == 200
+    assert not is_shell(response)
+    assert resolve("/").view_name == "public:home"
+    assert reverse("home") == "/"
 
 
 def test_the_django_launcher_address_leads_to_the_vue_launcher(client):
@@ -52,6 +58,10 @@ def test_the_django_launcher_address_leads_to_the_vue_launcher(client):
         ("/accounts/3rdparty/login/error/", "socialaccount_login_error"),
         ("/_allauth/browser/v1/auth/login", "login"),
         ("/_allauth/browser/v1/auth/session", "current_session"),
+        # The public web (public/urls.py) and its cookie consent, before the SPA's catch-all.
+        ("/robots.txt", "robots_txt"),
+        ("/set-language/", "set_language"),
+        ("/cookies/", "cookie_consent_cookie_group_list"),
     ],
 )
 def test_routes(path, name):
@@ -69,7 +79,17 @@ def test_the_admin_is_mounted(client):
 @pytest.mark.django_db
 @pytest.mark.usefixtures("spa_manifest")
 @pytest.mark.parametrize(
-    "path", ["/login", "/login/error", "/launch", "/launchpad", "/password/reset", "/signup", "/accountsx", "/apiary"]
+    "path",
+    [
+        "/login",
+        "/login/error",
+        "/launch",
+        "/launchpad",
+        "/password/reset",
+        "/signup",
+        "/accountsx",
+        "/apiary",
+    ],
 )
 def test_spa_paths_get_the_shell(client, path):
     response = client.get(path, HTTP_HOST=HOST)
@@ -79,6 +99,8 @@ def test_spa_paths_get_the_shell(client, path):
 
 
 @pytest.mark.django_db
+# A 404 of the public web renders its page, which links the Vite build.
+@pytest.mark.usefixtures("spa_manifest")
 @pytest.mark.parametrize(
     "path",
     [
@@ -91,12 +113,18 @@ def test_spa_paths_get_the_shell(client, path):
         "/hub-login/nope",
         "/_allauth/nope",
         "/admin/nope/",
+        # The public web's segments, served now or by a later batch, and the retired ones.
+        "/pricing/nope/",
+        "/help/nope/",
+        "/developers/",
+        "/marketplace/",
     ],
 )
 def test_django_prefixes_never_get_the_shell(client, path):
     response = client.get(path, HTTP_HOST=HOST)
 
-    assert response.status_code in (302, 404)
+    # 301: `/marketplace/` moved for good to the store, `/apps/` (decision 19).
+    assert response.status_code in (301, 302, 404)
     assert not is_shell(response)
 
 
@@ -116,8 +144,14 @@ def test_the_built_shell_links_the_vite_build_with_nonces(client):
     html = response.content.decode()
     csp = response["Content-Security-Policy"]
     nonce = csp.split("'nonce-", 1)[1].split("'", 1)[0]
-    assert f'<script type="module" src="/static/spa/assets/main-abc123.js" nonce="{nonce}">' in html
-    assert f'<link rel="modulepreload" href="/static/spa/assets/vendor-789.js" nonce="{nonce}">' in html
+    assert (
+        f'<script type="module" src="/static/spa/assets/main-abc123.js" nonce="{nonce}">'
+        in html
+    )
+    assert (
+        f'<link rel="modulepreload" href="/static/spa/assets/vendor-789.js" nonce="{nonce}">'
+        in html
+    )
     assert '<link rel="stylesheet" href="/static/spa/assets/main-def456.css">' in html
 
 
@@ -146,7 +180,28 @@ def test_api_live_without_a_session_is_the_401_envelope(client):
 
 def test_csp_report(client):
     response = client.post(
-        "/csp-report/", json.dumps({"csp-report": {"violated-directive": "script-src"}}), content_type="application/json"
+        "/csp-report/",
+        json.dumps({"csp-report": {"violated-directive": "script-src"}}),
+        content_type="application/json",
     )
 
     assert response.status_code == 204
+
+
+# /webhooks/ is Django's (Stripe's single webhook, `/webhooks/stripe/`, PLAN-SAAS §4 and block 4): the
+# SPA must never swallow it. Until block 4 mounts the route, Stripe's POST gets a plain 404, not the
+# SPA's 405 (it only answers GET/HEAD) nor its shell.
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("spa_manifest")
+@pytest.mark.parametrize("method", ["get", "post"])
+def test_the_webhooks_prefix_is_reserved_for_django(client, method):
+    response = getattr(client, method)("/webhooks/stripe/", HTTP_HOST=HOST)
+
+    assert response.status_code == 404
+    assert not is_shell(response)
+
+
+def test_readyz_is_a_django_route():
+    assert resolve("/readyz").url_name == "readyz"

@@ -1,0 +1,24 @@
+{
+  "version": "v1",
+  "modality": "SOLO VERI*FACTU",
+  "covers_from": "0.0.0",
+  "composition": [
+    "Núcleo de ejecución (runtime)",
+    "Motor fiscal",
+    "Módulos funcionales",
+    "Interfaz de usuario",
+    "Plano de control"
+  ],
+  "signed_on": "2026-08-08",
+  "signed_at": "Coslada (Madrid), España",
+  "status": "signed",
+  "signed_pdf": "declaracion-responsable-v1-firmada.pdf",
+  "facts": {
+    "NombreRazon": "ERPLORA CLOUD SL",
+    "NIF": "B27593136",
+    "NombreSistemaInformatico": "ERPlora Hub",
+    "IdSistemaInformatico": "EC",
+    "TipoUsoPosibleSoloVerifactu": "S",
+    "TipoUsoPosibleMultiOT": "S"
+  }
+}

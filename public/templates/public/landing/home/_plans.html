@@ -1,0 +1,33 @@
+{% load i18n icons %}
+{% comment %}
+  The Cloud Hub plans: port of landing/home/sections/_plans.html (origin/develop) with
+  public/components/pricing_card.html. Free first (ADR-0154), every plan from the database; each
+  card ends with the plan's real trial (saas#2424). The «X/month with 21 % Spanish VAT» line is gone
+  (WORKFLOW F55): a selling screen shows the net price and the ex-VAT note, never a VAT figure.
+  Without any plan on sale the section is omitted.
+{% endcomment %}
+{% if plans %}
+  <section id="planes" class="ep-section--soft">
+    <section class="ep-section ep-section--center">
+      <header class="ep-section-head">
+        <span class="ep-eyebrow">{% trans 'Cloud Hub plans' %}</span>
+        <h2 class="ep-section-title">{% trans 'Start free. Scale when you need it.' %}</h2>
+        <p class="ep-section-sub">{% trans 'Every plan includes all the free apps, and the paid plans include the premium apps too — plans only change hub size, support and user count.' %}</p>
+      </header>
+      <div class="grid md:grid-cols-3 gap-5 items-stretch max-w-5xl mx-auto">
+        {% for plan in plans %}
+          <div class="ep-reveal" data-reveal="up" data-reveal-delay="{{ forloop.counter0|add:forloop.counter0 }}00">
+            {% include "public/components/pricing_card.html" with name=plan.name price=plan.price_label period=plan.period description=plan.description features=plan.display_features featured=plan.featured_label badge=plan.featured_label cta_template="public/landing/home/_plan_cta.html" %}
+          </div>
+        {% endfor %}
+      </div>
+      {% include "public/partials/_vat_note.html" with class="mt-8 text-center text-xs text-fg/70" %}
+      <div class="mt-10 flex justify-center">
+        <a href="{% url 'public:pricing' %}" class="inline-flex items-center gap-2 text-sm font-semibold text-primary group">
+          <span>{% trans "See all plans in detail" %}</span>
+          {% icon "lucide:arrow-right" css_class="transition-transform group-hover:translate-x-1" %}
+        </a>
+      </div>
+    </section>
+  </section>
+{% endif %}

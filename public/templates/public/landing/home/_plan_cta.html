@@ -1,0 +1,6 @@
+{% load i18n icons %}
+{% comment %} The CTA of a plan card on the home: start free (the sign-in, where an account is also created). {% endcomment %}
+<ion-button expand="block"{% if not plan.featured_label %} fill="outline"{% endif %} href="{% url 'account_login' %}">
+  <span slot="start">{% icon "lucide:arrow-right" %}</span>
+  {% trans "Start free" %}
+</ion-button>

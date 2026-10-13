@@ -4,6 +4,7 @@ from pathlib import Path
 
 from django.apps import apps
 from django.conf import settings
+from django.utils import translation
 from live.meta import LiveAppConfig, all_live_app_configs, module_configs
 
 
@@ -17,3 +18,12 @@ def test_accounts_is_a_platform_app_at_the_project_root():
     assert config.kind == "platform"
     assert config in all_live_app_configs()
     assert config not in module_configs()
+
+
+def test_its_name_is_translated():
+    """The admin's index lists it by ``verbose_name``."""
+    config = apps.get_app_config("accounts")
+
+    assert str(config.verbose_name) == "Accounts"
+    with translation.override("es"):
+        assert str(config.verbose_name) == "Cuentas"

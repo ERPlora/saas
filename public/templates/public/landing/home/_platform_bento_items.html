@@ -1,0 +1,28 @@
+{% load i18n %}
+{% comment %} The cells of the landing's platform bento (public/components/bento.html). {% endcomment %}
+{% include "public/components/bento_item.html" with cols=4 rows=2 glass=True body_template="public/landing/home/_bento_dashboard.html" only %}
+
+{% if total_apps %}{% blocktrans count counter=total_apps asvar apps_heading %}{{ counter }} app{% plural %}{{ counter }} apps{% endblocktrans %}{% else %}{% trans "Apps" as apps_heading %}{% endif %}
+{% trans "Activate only what you need. Switch plans in one click." as body %}
+{% include "public/components/bento_item.html" with cols=2 rows=1 tone="primary" icon="lucide:blocks" heading=apps_heading body=body only %}
+
+{% trans "uptime" as uptime %}
+{% trans "Per-tenant Hub, auto-provisioned and backed up." as body %}
+{% with uptime_heading="99.95% "|add:uptime %}{% include "public/components/bento_item.html" with cols=2 rows=1 icon="lucide:gauge" heading=uptime_heading body=body only %}{% endwith %}
+
+{% trans "Run it your way" as heading %}
+{% trans "Runs in the browser as an always-online cloud PWA on any device — phone, tablet or till — with the free app driving the printers and cash drawer at your counter." as body %}
+{% include "public/components/bento_item.html" with cols=3 rows=1 icon="lucide:smartphone" heading=heading body=body only %}
+
+{% trans "Compliant in your country" as heading %}
+{% trans "Electronic invoicing and a full audit trail that meet your country's regulations — Verifactu in Spain today, more markets on the way." as body %}
+{% include "public/components/bento_item.html" with cols=3 rows=1 tone="success" icon="lucide:shield-check" heading=heading body=body only %}
+
+{% comment %}
+  Where the AI's data lives: the assistant is served from Alibaba Cloud Model Studio, Germany
+  (Frankfurt) region, on a workspace whose deployment scope is the European Union, so the
+  COMPUTATION stays in the EU too, not just the storage. No bare «never leaves the EU»: the backup
+  providers may process outside the EEA under SCCs, and the privacy policy says so.
+{% endcomment %}
+{% trans "AI assistant on European servers" as heading %}
+{% include "public/components/bento_item.html" with cols=6 rows=1 tone="primary" icon="lucide:sparkles" heading=heading body_template="public/landing/home/_bento_ai.html" only %}

@@ -1,0 +1,27 @@
+{% extends "public/store/app_base.html" %}
+{% load i18n %}
+{% comment %}
+  /apps/<id>/docs/, the «Documentation» tab (public/store.py): the user part of the app's WORKBOOK
+  from shared.app_doc, rendered and cleaned by apps.app.doc (live.markdown; images on the Hub's
+  static origin, ```mermaid``` as pre.mermaid that frontend/public.ts paints, spec §6). In English
+  without an English document it is the Spanish one: a notice, and lang="es" on its container so a
+  screen reader reads it in Spanish (spec §5.3).
+{% endcomment %}
+
+{% block title %}{% blocktrans with name=app.name %}{{ name }} documentation{% endblocktrans %} · {% trans "ERPlora apps" %}{% endblock %}
+{% block og_title %}{% blocktrans with name=app.name %}{{ name }} documentation{% endblocktrans %} · {% trans "ERPlora apps" %}{% endblock %}
+{% block twitter_title %}{% blocktrans with name=app.name %}{{ name }} documentation{% endblocktrans %} · {% trans "ERPlora apps" %}{% endblock %}
+
+{% block tab_content %}
+<div class="ep-store-docs-page">
+  {% if doc_fallback %}
+    {% trans "This documentation is only available in Spanish." as fallback_notice %}
+    {% include "public/components/inline_feedback.html" with tone="info" message=fallback_notice %}
+  {% endif %}
+  <ion-card class="ep-store-card">
+    <ion-card-content>
+      <article class="ep-prose ep-store-docs" lang="{{ doc_lang }}">{{ doc_html }}</article>
+    </ion-card-content>
+  </ion-card>
+</div>
+{% endblock %}

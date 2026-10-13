@@ -1,0 +1,47 @@
+{% extends "public/public_base.html" %}
+{% load i18n %}
+{% comment %}
+  /security/ — port of apps/public/product/templates/product/security.html (origin/develop): the
+  hero, the four cards and the band to contact the team, with the same texts. The contact page
+  comes with the landing (L7) at its address of today, /contact/.
+{% endcomment %}
+
+{% block title %}{% trans "Security" %} · ERPlora{% endblock %}
+
+{% block meta_description %}{% trans "ERPlora security: server-side sessions in secure cookies, sign-in with Google, a WAF on AWS, GDPR compliance, and automatic encrypted backups." %}{% endblock %}
+
+{% block og_title %}{% trans "Security" %} · ERPlora{% endblock %}
+{% block og_description %}{% trans "Enterprise-grade security with secure sessions, a WAF on AWS, GDPR compliance, and encrypted backups." %}{% endblock %}
+
+{% block page_content %}
+  {% trans "Security" as hero_eyebrow %}
+  {% trans "Enterprise-grade security." as hero_title %}
+  {% trans "Your data security is our top priority. ERPlora implements industry-standard measures to protect your business." as hero_description %}
+  {% include "public/partials/page_hero.html" with hero_eyebrow=hero_eyebrow hero_title=hero_title hero_description=hero_description %}
+
+  <section class="ep-section--compact ep-section--soft ep-section--divider">
+    <div class="ep-container ep-section-content">
+      <div class="ep-reveal" data-reveal="up">
+        <div class="ep-grid-cards">
+          {% trans "Authentication & Authorization" as heading %}
+          {% include "public/components/feature_card.html" with icon="lucide:key-round" heading=heading body_template="public/product/_security_lists.html" list="auth" only %}
+          {% trans "Data Protection" as heading %}
+          {% include "public/components/feature_card.html" with icon="lucide:lock" heading=heading body_template="public/product/_security_lists.html" list="data" only %}
+          {% trans "Infrastructure Security" as heading %}
+          {% include "public/components/feature_card.html" with icon="lucide:server-cog" heading=heading body_template="public/product/_security_lists.html" list="infrastructure" only %}
+          {% trans "Compliance" as heading %}
+          {% include "public/components/feature_card.html" with icon="lucide:scale" heading=heading body_template="public/product/_security_lists.html" list="compliance" only %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="ep-container ep-section-content ep-section--compact">
+    <div class="ep-reveal" data-reveal="scale">
+      {% trans "Questions?" as eyebrow %}
+      {% trans "Talk to our security team." as heading %}
+      {% trans "Need a DPA, a pentest report or details on our infrastructure? We are happy to help." as subheading %}
+      {% include "public/components/cta_band.html" with variant="soft" eyebrow=eyebrow heading=heading subheading=subheading actions_template="public/product/_security_cta_actions.html" only %}
+    </div>
+  </div>
+{% endblock %}

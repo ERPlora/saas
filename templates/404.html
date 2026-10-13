@@ -1,0 +1,13 @@
+{% extends "errors/base.html" %}
+{% load i18n %}
+{% comment %}
+  Django renders `404.html` by name (`django.views.defaults.page_not_found`): the project's
+  `handler404` (`public.errors.page_not_found`) sends here every unknown path outside the public web
+  (sign-in, the jump to a hub, the admin, static files); the public web keeps `public/404.html`.
+  Ported from ERPlora/saas `templates/404.html` (origin/develop c5ca8cae8) without OutfitKit.
+{% endcomment %}
+
+{% block title %}404 — {% trans "Page Not Found" %} · ERPlora Cloud{% endblock %}
+{% block code %}{% trans "404 · Not found" %}{% endblock %}
+{% block heading %}{% trans "We couldn't find this page" %}{% endblock %}
+{% block message %}{% trans "Check the address or return to ERPlora to continue." %}{% endblock %}

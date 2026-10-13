@@ -1,0 +1,14 @@
+{% load i18n %}
+{% comment %}
+  The body of a plan card on /pricing/ (public/components/pricing_card.html, features_template):
+  the annual price when the plan has one, then the ✓ lines, in the partial's own list markup. The
+  lines end with the plan's real trial when a sign-up gets one (hubs.plan.list, saas#2424).
+{% endcomment %}
+{% if plan.price_annual %}
+<p class="text-xs text-fg/70 mb-2">{% blocktrans with price=plan.price_annual|floatformat:"-2" %}≈ €{{ price }}/year · 2 months free{% endblocktrans %}</p>
+{% endif %}
+{% if plan.display_features %}
+<ul class="ep-pricing-card__features">
+    {% for feature in plan.display_features %}<li><span class="ep-pricing-card__check" aria-hidden="true">✓</span><span>{{ feature }}</span></li>{% endfor %}
+</ul>
+{% endif %}

@@ -7,12 +7,16 @@ its real path, the same with the header or without it.
 """
 
 import asyncio
+import json
 from urllib.parse import urlsplit
 
 import pytest
 from asgiref.sync import async_to_sync
+from daphne.utils import parse_x_forwarded_for
 from django.core.signals import request_finished, request_started
 from django.db import close_old_connections
+from django.http import JsonResponse
+from django.urls import path
 
 from config.asgi import application
 
@@ -104,3 +108,93 @@ def test_a_client_root_path_does_not_reach_the_admin():
     # /x/admin/ is no Django route: the SPA answers it, as it does without the header.
     assert (status, location) == (200, "")
     assert SHELL_MARK in body
+
+
+# HTTPS behind the ALB (aws README, «Obligaciones de la app»): the ALB terminates TLS and reaches
+# Daphne over plain HTTP on port 8000 with X-Forwarded-For, X-Forwarded-Port and X-Forwarded-Proto.
+# Daphne runs with --proxy-headers (Dockerfile), which turns them into the scope's client and scheme,
+# and Django's SECURE_PROXY_SSL_HEADER reads the same header: either way `request.is_secure()` holds
+# (secure cookies, CSRF's origin check, absolute URLs).
+
+ALB_HEADERS = [
+    (b"x-forwarded-for", b"203.0.113.7"),
+    (b"x-forwarded-port", b"443"),
+    (b"x-forwarded-proto", b"https"),
+]
+
+
+def seen_by_django(request):
+    return JsonResponse(
+        {
+            "secure": request.is_secure(),
+            "scheme": request.scheme,
+            "client": request.META["REMOTE_ADDR"],
+        }
+    )
+
+
+# This module is the URLconf of the tests below (`as_seen_by_django`).
+urlpatterns = [path("seen", seen_by_django)]
+
+
+def daphne_scope(extra_headers: list, proxy_headers: bool) -> dict:
+    """The scope Daphne builds for ``GET /seen`` that reached it over plain HTTP from the ALB's
+    address, with ``--proxy-headers`` (as the Dockerfile runs it) or without."""
+    headers = [(b"host", HOST.encode()), *extra_headers]
+    client, scheme = ["10.0.1.20", 41000], "http"
+    if proxy_headers:
+        client, scheme = parse_x_forwarded_for(
+            {name: [value] for name, value in headers},
+            "X-Forwarded-For",
+            "X-Forwarded-Port",
+            "X-Forwarded-Proto",
+            client,
+            scheme,
+        )
+    return {
+        **http_scope("/seen", root_path=""),
+        "scheme": scheme,
+        "headers": headers,
+        "client": client,
+    }
+
+
+@pytest.fixture
+def as_seen_by_django(settings):
+    settings.ROOT_URLCONF = __name__
+
+    def seen(scope: dict) -> dict:
+        status, _headers, body = async_to_sync(_call)(scope)
+        assert status == 200, body
+        return json.loads(body)
+
+    return seen
+
+
+def test_a_request_through_the_alb_is_secure_with_daphne_proxy_headers(
+    as_seen_by_django,
+):
+    scope = daphne_scope(ALB_HEADERS, proxy_headers=True)
+
+    assert scope["scheme"] == "https"
+    assert as_seen_by_django(scope) == {
+        "secure": True,
+        "scheme": "https",
+        # The visitor's address, not the ALB's.
+        "client": "203.0.113.7",
+    }
+
+
+def test_the_forwarded_proto_alone_makes_it_secure(as_seen_by_django):
+    """Without --proxy-headers the scope says http: SECURE_PROXY_SSL_HEADER still reads the ALB's
+    header."""
+    seen = as_seen_by_django(daphne_scope(ALB_HEADERS, proxy_headers=False))
+
+    assert (seen["secure"], seen["scheme"]) == (True, "https")
+
+
+def test_plain_http_without_the_header_is_not_secure(as_seen_by_django):
+    """hub-next calls /internal on the private name, straight to the task, over plain HTTP."""
+    seen = as_seen_by_django(daphne_scope([], proxy_headers=True))
+
+    assert (seen["secure"], seen["scheme"]) == (False, "http")

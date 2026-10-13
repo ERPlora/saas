@@ -1,0 +1,14 @@
+{% load i18n %}
+{% comment %}
+  saas#1955: the three axes that really change from plan to plan. One partial, included by BOTH row
+  loops of the plan table (public and upgrade-only): two hand-kept copies of these cells is how a
+  table whose rows all say the same thing comes back. `max_devices`/`max_users` read 0 = unlimited
+  (ADR-0154). Port of apps/public/pricing/templates/pricing/_plan_compare_cells.html (origin/develop);
+  the column is «Apps included» (decision 19).
+{% endcomment %}
+<td data-title="{% trans 'Devices and users' %}">
+  {% if plan.max_devices %}{% blocktrans trimmed count devices=plan.max_devices %}{{ devices }} device{% plural %}{{ devices }} devices{% endblocktrans %}{% else %}{% trans "Unlimited devices" %}{% endif %}
+  · {% if plan.max_users %}{% blocktrans trimmed count users=plan.max_users %}{{ users }} user{% plural %}{{ users }} users{% endblocktrans %}{% else %}{% trans "Unlimited users" %}{% endif %}
+</td>
+<td data-title="{% trans 'Apps included' %}">{{ plan.included_level_label }}</td>
+<td data-title="{% trans 'Support' %}">{{ plan.support_level_label }}</td>

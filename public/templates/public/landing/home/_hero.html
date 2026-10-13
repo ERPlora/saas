@@ -1,0 +1,95 @@
+{% load i18n icons %}
+{% comment %}
+  The hero of the landing: port of landing/home/sections/_hero.html (origin/develop). Two doors,
+  and they are not interchangeable: signing up commits you, downloading installs software. The
+  third one, «Try the demo», waits for /demo (block 7, plan §3.b). The count is of the listed apps
+  (decision 19), shown only when there is one (spec §5.3).
+{% endcomment %}
+  <section class="hero-bg hero-bg-animated relative">
+    <div class="grid-overlay"></div>
+    <div class="ep-container">
+      <div class="pt-16 pb-14 lg:pt-24 lg:pb-24 grid lg:grid-cols-[1.05fr_1fr] gap-12 items-center relative">
+        <div class="ep-reveal" data-reveal="up">
+          <div class="kbd-pill kbd-pill-glass mb-6">
+            <span class="pulse-dot"></span>
+            {% trans "v3.4 · your whole business, in the cloud" %}
+          </div>
+          <h1 class="ep-display-title">
+            {% trans "One ERP." %}<br/>
+            {% trans "Infinite configurations." %}<br/>
+            <span class="text-primary">{% trans "Yours." %}</span>
+          </h1>
+          <p class="ep-intro mt-6 max-w-xl">
+            {% blocktrans trimmed %}
+            ERPlora replaces the stack of 12 tools that holds your SMB together with a single platform:
+            invoicing, inventory, CRM, HR, accounting and the modules you need — no technical team,
+            no hidden licenses, no surprises.
+            {% endblocktrans %}
+          </p>
+          <div class="mt-8 flex flex-wrap gap-3">
+            <ion-button href="{% url 'account_login' %}" size="large">
+              {% trans "Start free" %}
+              <span slot="end">{% icon "lucide:arrow-right" %}</span>
+            </ion-button>
+            <ion-button fill="clear" size="large" href="{% url 'public:downloads' %}">
+              <span slot="start">{% icon "lucide:download" %}</span>
+              {% trans "Downloads" %}
+            </ion-button>
+          </div>
+
+          <div class="mt-12 grid grid-cols-3 gap-6 max-w-lg">
+            {% if total_apps %}{% trans "Apps" as stat_label %}{% include "public/components/stat.html" with label=stat_label value=total_apps only %}{% endif %}
+            {% trans "Uptime" as stat_label %}{% include "public/components/stat.html" with label=stat_label value="99.95%" only %}
+            {% trans "Support" as stat_label %}{% include "public/components/stat.html" with label=stat_label value="24/7" only %}
+          </div>
+        </div>
+
+        {# The product mockup #}
+        <div class="ep-reveal" data-reveal="scale" data-reveal-delay="120">
+          <div class="hero-visual">
+            <div class="hero-shot">
+              <div class="hero-mockup">
+                <div class="mockup-bar"><i></i><i></i><i></i><span class="url">hub.erplora.com</span></div>
+                <div class="mockup-body">
+                  <div class="mockup-side"><i></i><i class="active"></i><i></i><i></i><i></i><i></i></div>
+                  <div class="mockup-main">
+                    <div class="mockup-row">
+                      <div class="mockup-kpi"><span class="lbl">{% trans "Sales" %}</span><span class="num">€12.4k</span><span class="delta up">↑ 18.2 %</span></div>
+                      <div class="mockup-kpi"><span class="lbl">{% trans "Orders" %}</span><span class="num">348</span><span class="delta up">↑ 6 %</span></div>
+                      <div class="mockup-kpi"><span class="lbl">{% trans "Stock" %}</span><span class="num">96 %</span><span class="delta warn">↓ 2</span></div>
+                    </div>
+                    <div class="mockup-chart">
+                      <i style="height:35%"></i><i style="height:55%"></i><i style="height:42%"></i>
+                      <i style="height:70%"></i><i style="height:60%"></i><i style="height:85%"></i>
+                      <i style="height:72%"></i><i style="height:92%"></i><i style="height:68%"></i>
+                      <i style="height:78%"></i><i style="height:88%"></i><i style="height:95%"></i>
+                    </div>
+                    <div class="mockup-list">
+                      <i></i>
+                      <i style="background: linear-gradient(90deg, color-mix(in oklch, var(--ion-text-color) 10%, transparent) 0 50%, color-mix(in oklch, var(--ion-color-success) 40%, transparent) 50% 100%)"></i>
+                      <i></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="hero-floating">
+              <div class="icon-wrap">{% icon "lucide:circle-check" size=20 %}</div>
+              <div>
+                <div class="ttl">{% trans "Ready in 5 minutes" %}</div>
+                <div class="sub">{% trans "Hub + database auto-provisioned" %}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {# Trust strip: the sectors (honest social proof, no fake logos) #}
+      <div class="ep-reveal" data-reveal="fade" data-reveal-delay="80">
+        <div class="pb-12">
+          {% trans "Built for every kind of business" as cloud_label %}
+          {% include "public/components/logo_cloud.html" with label=cloud_label logos_template="public/landing/home/_sectors.html" only %}
+        </div>
+      </div>
+    </div>
+  </section>

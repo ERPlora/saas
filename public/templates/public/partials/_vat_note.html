@@ -1,0 +1,24 @@
+{% load i18n %}
+{% comment %}
+  The ex-VAT note of the selling screens (saas#1835): port of templates/partials/_vat_note.html
+  (origin/develop). It goes right under the prices, not in a footer three screens away: the
+  complaint the forums document is not that a price is net, it is not being told that it is.
+
+  It carries no VAT figure on purpose (WORKFLOW F55): the rate is decided at checkout from the
+  buyer's tax ID and its VIES verdict; on a public page we do not know where the visitor is, so any
+  total painted here would be false for the Canary Islands, for the EU with a VAT number and for
+  outside the EU.
+
+  Usage:
+    {% include "public/partials/_vat_note.html" with class="mt-8 text-center text-xs text-fg/70" %}
+
+  `class` is optional, so each surface places it with its own spacing.
+{% endcomment %}
+<p class="{{ class|default:'text-xs text-fg/70' }}">
+  {% url 'public:terms' as terms_url %}
+  {% blocktrans trimmed %}
+    All prices exclude VAT. The VAT that applies to you is worked out at checkout
+    from the tax ID you enter, and you see it before you pay.
+    Our <a href="{{ terms_url }}">terms and conditions</a> apply.
+  {% endblocktrans %}
+</p>

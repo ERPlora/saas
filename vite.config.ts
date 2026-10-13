@@ -20,6 +20,9 @@ export default defineConfig({
   // From the string: under happy-dom (tests) the global `URL` is not Node's.
   root: dirname(fileURLToPath(import.meta.url)),
   base: '/static/spa/',
+  // No public directory: Vite's default, `<root>/public`, is the public web's Django app (Python and
+  // tests), which `vite build` would copy into frontend/dist and serve under /static/spa/.
+  publicDir: false,
   plugins: erploraVite({
     frontendSources: ['frontend/**/*.{vue,ts}', ...FRONTEND_APPS.map((app) => `${app}/frontend/**/*.{vue,ts}`)],
   }),
@@ -28,7 +31,8 @@ export default defineConfig({
     emptyOutDir: true,
     manifest: '.vite/manifest.json',
     target: 'es2022',
-    rollupOptions: { input: 'frontend/main.ts' },
+    // The SPA (LIVE["spa"]["entry"]) and the public web's Django templates (`{% public_assets %}`).
+    rollupOptions: { input: ['frontend/main.ts', 'frontend/public.ts'] },
   },
   server: {
     host: DEV_HOST,

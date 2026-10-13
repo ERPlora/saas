@@ -1,0 +1,33 @@
+{% comment %}
+  ep-hero: port of <ok-hero> (OutfitKit), the marketing hero of a page. Styles:
+  public/static/public/components/hero.css.
+
+  Usage:
+    {% trans "Privacy controls" as hero_eyebrow %}
+    {% include "public/partials/page_hero.html" with hero_eyebrow=hero_eyebrow hero_title=hero_title hero_compact=True %}
+
+  Variables: hero_title (the <h1>, required); hero_eyebrow; hero_title_accent (a second line in the
+  brand colour); hero_description; hero_note (small print under it); hero_actions_template (a
+  template with the CTAs); hero_visual_template (media beside or under the copy); hero_compact
+  (less padding, smaller title: the primary pages); hero_align `center` (default) or `split`
+  (copy and media side by side); hero_tone `soft` (default), `neutral` or `gradient`.
+{% endcomment %}
+<section class="ep-hero ep-hero--{{ hero_align|default:'center' }} ep-hero--{{ hero_tone|default:'soft' }}{% if hero_compact %} ep-hero--compact{% endif %}">
+  <div class="ep-hero__layout">
+    <header class="ep-hero__copy">
+      {% if hero_eyebrow %}<span class="ep-hero__eyebrow">{{ hero_eyebrow }}</span>{% endif %}
+      <h1 class="ep-hero__title">
+        {{ hero_title }}
+        {% if hero_title_accent %}<span class="ep-hero__accent">{{ hero_title_accent }}</span>{% endif %}
+      </h1>
+      {% if hero_description %}
+      <div class="ep-hero__subtitle">
+        <p>{{ hero_description }}</p>
+        {% if hero_note %}<p class="ep-hero__note">{{ hero_note }}</p>{% endif %}
+      </div>
+      {% endif %}
+      {% if hero_actions_template %}<div class="ep-hero__actions">{% include hero_actions_template %}</div>{% endif %}
+    </header>
+    {% if hero_visual_template %}<div class="ep-hero__media">{% include hero_visual_template %}</div>{% endif %}
+  </div>
+</section>

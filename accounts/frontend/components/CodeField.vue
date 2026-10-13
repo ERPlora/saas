@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The code input of every second-factor screen (the sign-in's 2FA step, the authenticator setup and
-// the reauthentication), ported from `account/_auth_code_field.html`: a 6-digit code from the app
-// or a recovery code (hence 16 characters, not 6), the numeric keypad and the browser's
+// the reauthentication), ported from ERPlora/saas `account/_auth_code_field.html`: a 6-digit code
+// from the app or a recovery code (hence 16 characters, not 6), the numeric keypad and the browser's
 // one-time-code autofill. Its error, when there is one, paints under it.
 import { IonInput } from '@ionic/vue';
 

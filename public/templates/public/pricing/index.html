@@ -1,0 +1,305 @@
+{% extends "public/public_base.html" %}
+{% load static i18n icons %}
+{% comment %}
+  /pricing/ — port of apps/public/pricing/templates/pricing/index.html (origin/develop): the hero,
+  the plan cards with the ex-VAT note and the trial note, the upgrade-only plans, the plan-by-plan
+  table, the two competitor tables, the FAQ and the closing band, with the same texts. What changed:
+  the ok-* are the component partials and ep-* classes (PLAN §16.11); the style block of the old page is
+  public/static/public/pricing.css; a premium app is included in the paid plans (decision 17), so
+  the copy no longer sells «premium add-ons» nor prices «per module», and the competitor table says
+  «app catalogue», not «marketplace»; the counter hardware is the ERPlora app, not the retired
+  Bridge (ADR-0196). Without any plan on sale the page says so instead of painting empty tables.
+  Data: public/pricing.py (hubs.plan.list). Contract: public/tests/test_pricing.py.
+{% endcomment %}
+
+{% block title %}{% trans "Plans" %} · ERPlora{% endblock %}
+{% block meta_description %}{% trans "ERPlora Cloud Hub plans — monthly or annual billing. Every plan includes the free apps, and the paid plans include the premium apps too. Switch anytime, no migration or data loss." %}{% endblock %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'public/pricing.css' %}">{% endblock %}
+
+{% block extra_seo %}
+<script type="application/ld+json">{{ json_ld_faq }}</script>
+{% endblock %}
+
+{% block page_content %}
+
+  {% if cheapest_plan.price_annual %}
+    {% trans "Cloud Hub plans · monthly or annual billing (2 months free)" as hero_eyebrow %}
+    {% trans "Prices shown per month. Pay for the year and get 2 months free." as hero_note %}
+  {% else %}
+    {% trans "Cloud Hub plans" as hero_eyebrow %}
+  {% endif %}
+  {% trans "Start free." as hero_title %}
+  {% trans "Scale when you need it." as hero_title_accent %}
+  {% trans "Every plan includes all the free apps, and the paid plans include the premium apps too. Switch plans in one click, with no migration or data loss. Cancel anytime." as hero_description %}
+  {% include "public/partials/page_hero.html" with hero_eyebrow=hero_eyebrow hero_title=hero_title hero_title_accent=hero_title_accent hero_description=hero_description hero_note=hero_note hero_compact=True %}
+
+  <!-- PLAN CARDS -->
+  <section class="ep-section--compact ep-section--divider">
+    <div class="ep-container ep-section-content">
+      {% if plans_main %}
+      <div class="grid md:grid-cols-3 gap-5 items-stretch">
+        {% for plan in plans_main %}
+          <div class="ep-reveal" data-reveal="up" data-reveal-delay="{{ forloop.counter0|add:forloop.counter0 }}00">
+            {% include "public/components/pricing_card.html" with name=plan.name price=plan.price_label period=plan.period description=plan.description featured=plan.featured_label badge=plan.featured_label features_template="public/pricing/_card_features.html" cta_template="public/pricing/_card_cta.html" %}
+          </div>
+        {% endfor %}
+      </div>
+
+      {% include "public/partials/_vat_note.html" with class="mt-8 text-center text-xs text-fg/70" %}
+      <p id="pricing-trial-note" class="mt-2 text-center text-xs text-fg/70">{{ trial_note }}</p>
+      {% elif not plans_pro %}
+        {% trans "There are no plans on sale right now." as empty_heading %}
+        {% trans "Write to us and we will help you get started." as empty_message %}
+        {% include "public/components/empty_state.html" with icon="file-tray-outline" heading=empty_heading message=empty_message action_template="public/pricing/_empty_action.html" only %}
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- UPGRADE-ONLY PLANS — reachable later from inside the dashboard -->
+  {% if plans_pro %}
+  <section class="ep-section--compact ep-section--soft ep-section--center ep-section--divider" id="upgrade-plans">
+    <div class="ep-container ep-section-content">
+      <header class="ep-section-head">
+        <span class="ep-eyebrow">{% trans "Scale anytime" %}</span>
+        <h2 class="ep-section-title">{% trans "Upgrade-only plans" %}</h2>
+        <p class="ep-section-sub">
+          {% blocktrans trimmed %}
+          You start with one of the plans above and grow inside the dashboard.
+          When your business needs more horsepower, switch to any of these tiers in one click —
+          no migration, no downtime, no data loss.
+          {% endblocktrans %}
+        </p>
+      </header>
+
+      <div class="ep-grid-cards">
+        {% for plan in plans_pro %}
+          <ion-card class="ion-no-margin">
+            <ion-card-header>
+              <span class="font-mono text-xs uppercase tracking-wider text-fg/60">{% trans "Professional tier" %}</span>
+              <h3 class="font-display font-semibold text-xl tracking-tight mt-1">{{ plan.name }}</h3>
+            </ion-card-header>
+            <ion-card-content>
+              <p class="font-display font-semibold text-2xl tracking-tight">
+                {{ plan.price_label }}
+                <span class="font-sans text-sm font-normal text-fg/60">{{ plan.period }}</span>
+              </p>
+              {% if plan.description %}<p class="mt-3 text-sm text-fg/70 leading-relaxed">{{ plan.description }}</p>{% endif %}
+              {% if plan.display_features %}
+                <ul class="mt-4 space-y-2 text-sm">
+                  {% for feature in plan.display_features|slice:":3" %}
+                    <li class="flex gap-2 items-start">
+                      {% icon "lucide:check" css_class="text-success mt-1" %}
+                      <span>{{ feature }}</span>
+                    </li>
+                  {% endfor %}
+                </ul>
+              {% endif %}
+            </ion-card-content>
+          </ion-card>
+        {% endfor %}
+      </div>
+
+      <p class="mt-10 text-center text-xs text-fg/70">
+        {% trans "Upgrade-only plans are activated from your dashboard once you have a hub. They are not part of the public signup flow." %}
+      </p>
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- FEATURE COMPARISON TABLE (PLAN VS PLAN) -->
+  {% if plans_main or plans_pro %}
+  <section class="ep-section--compact ep-section--divider">
+    <div class="ep-container ep-section-content">
+      <div class="text-center mb-10">
+        <div class="kbd-pill mb-3">{% trans "Full detail" %}</div>
+        <h2 class="font-display font-semibold text-3xl tracking-tighter">{% trans "Everything in each plan" %}</h2>
+        <p class="mt-3 text-fg/65 mx-auto max-w-2xl leading-relaxed">
+          {% blocktrans trimmed %}
+          Every plan is priced per hub, and one hub covers all your locations, devices and
+          users. You start on the plan that fits you today and move up a tier in one click
+          when you need a custom domain, the full API or a dedicated setup — no migration
+          and no downtime.
+          {% endblocktrans %}
+        </p>
+      </div>
+
+      <div class="ep-table-surface">
+        {% comment %} The id is a contract: /pricing/ renders three `.compare-table`s and the guard
+           in public/tests/test_pricing.py anchors on it. {% endcomment %}
+        <table id="plan-compare" class="compare-table ep-table-stack">
+          <thead>
+            <tr>
+              <th>{% trans "Plan" %}</th>
+              <th class="num">{% trans "Monthly, per hub" %}</th>
+              <th>{% trans "Devices and users" %}</th>
+              <th>{% trans "Apps included" %}</th>
+              <th>{% trans "Support" %}</th>
+              <th>{% trans "Access" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if plans_main %}
+            <tr class="cat ep-table-group"><td colspan="6">{% trans "Public plans · sign up directly" %}</td></tr>
+            {% for plan in plans_main %}
+              <tr{% if plan.featured_label %} class="primary-col"{% endif %}>
+                <td>
+                  <strong>{{ plan.name }}</strong>
+                  {% if plan.featured_label %}{% include "public/components/status_pill.html" with tone="primary" size="sm" label=plan.featured_label only %}{% endif %}
+                </td>
+                <td data-title="{% trans 'Monthly, per hub' %}" class="num">{{ plan.price_label }}</td>
+                {% include "public/pricing/_plan_compare_cells.html" %}
+                <td data-title="{% trans 'Access' %}"><a href="{% url 'account_login' %}" class="text-primary font-mono text-xs whitespace-nowrap">{% trans "Get started" %} →</a></td>
+              </tr>
+            {% endfor %}
+            {% endif %}
+
+            {% if plans_pro %}
+              <tr class="cat ep-table-group"><td colspan="6">{% trans "Professional · upgrade from inside the dashboard" %}</td></tr>
+              {% for plan in plans_pro %}
+                <tr>
+                  <td><strong>{{ plan.name }}</strong></td>
+                  <td data-title="{% trans 'Monthly, per hub' %}" class="num">{{ plan.price_label }}</td>
+                  {% include "public/pricing/_plan_compare_cells.html" %}
+                  <td data-title="{% trans 'Access' %}" class="text-fg/70 font-mono text-xs whitespace-nowrap">{% trans "Upgrade-only" %}</td>
+                </tr>
+              {% endfor %}
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+
+      <p class="mt-4 text-center text-xs text-fg/70">
+        {% trans "Plan names, prices and limits come straight from the live catalogue. Every plan runs on fully managed infrastructure — there is no server for you to set up or maintain." %}
+      </p>
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- COMPARISON VS COMPETITORS -->
+  <section id="comparativa" class="ep-section--compact ep-section--soft ep-section--divider">
+    <div class="ep-container ep-section-content">
+      <div class="text-center mb-12 max-w-2xl mx-auto">
+        <div class="kbd-pill mb-3">{% trans "why us" %}</div>
+        <h2 class="font-display font-semibold text-3xl tracking-tighter">{% trans "Why people pick ERPlora" %}</h2>
+        <p class="mt-3 text-fg/65">{% trans "We're not the cheapest tool on the market and we're not pretending to be. Here's the honest read on where we win — and against whom." %}</p>
+      </div>
+
+      <!-- BLOCK A: vs. enterprise ERPs (SAP, Odoo) -->
+      <div class="mb-14">
+        <div class="flex items-baseline gap-3 mb-2">
+          <span class="kbd-pill">{% trans "block 1" %}</span>
+          <h3 class="font-display font-semibold text-xl tracking-tight">{% trans "vs. enterprise ERPs" %} <span class="text-fg/50 font-normal">— SAP Business One, Odoo Enterprise</span></h3>
+        </div>
+        <p class="text-fg/65 max-w-3xl mb-5">{% trans "These are powerful systems, but they're priced and built for companies with an IT department and a 6-month implementation budget. If you're an SMB that just needs to start selling on Monday, the gap isn't in features — it's in everything that surrounds them." %}</p>
+
+        <div class="ep-table-surface">
+          <table class="compare-table ep-table-stack">
+            <thead>
+              <tr>
+                <th></th>
+                <th class="primary-col">ERPlora</th>
+                <th>SAP Business One</th>
+                <th>Odoo Enterprise</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>{% trans "Monthly entry cost" %}</td><td data-title="ERPlora" class="primary-col num">{% if cheapest_plan %}{{ cheapest_plan.price_label }}{% else %}—{% endif %}</td><td data-title="SAP Business One" class="num">€108<small class="opacity-60">/{% trans "user" %}</small></td><td data-title="Odoo Enterprise" class="num">€11.90<small class="opacity-60">/{% trans "user" %} × {% trans "every paid app" %}</small></td></tr>
+              <tr><td>{% trans "Time to first invoice" %}</td><td data-title="ERPlora" class="primary-col">{% trans "Same day" %}</td><td data-title="SAP Business One">{% trans "3–6 months" %}</td><td data-title="Odoo Enterprise">{% trans "2–3 months" %}</td></tr>
+              <tr><td>{% trans "Consultant / integrator required" %}</td><td data-title="ERPlora" class="primary-col yes">{% trans "No" %}</td><td data-title="SAP Business One">{% trans "Mandatory partner" %}</td><td data-title="Odoo Enterprise">{% trans "Strongly recommended" %}</td></tr>
+              <tr><td>{% trans "Stripe + bank reconciliation" %}</td><td data-title="ERPlora" class="primary-col"><span class="yes">{% icon "lucide:check" %}</span> {% trans "built-in" %}</td><td data-title="SAP Business One">{% trans "custom integration" %}</td><td data-title="Odoo Enterprise">{% trans "add-on module" %}</td></tr>
+
+              <tr class="cat ep-table-group"><td colspan="4">{% trans "Built for Spanish SMBs" %}</td></tr>
+              <tr><td>{% trans "Verifactu / TicketBAI / 303·390·347" %}</td><td data-title="ERPlora" class="primary-col"><span class="yes">{% icon "lucide:check" %}</span> {% trans "included, no add-on" %}</td><td data-title="SAP Business One">{% trans "paid localization" %}</td><td data-title="Odoo Enterprise">{% trans "paid localization" %}</td></tr>
+              <tr><td>{% trans "POS, kitchen display, counter app" %}</td><td data-title="ERPlora" class="primary-col"><span class="yes">{% icon "lucide:check" %}</span> {% trans "native" %}</td><td data-title="SAP Business One">{% trans "third-party" %}</td><td data-title="Odoo Enterprise">{% trans "third-party" %}</td></tr>
+              <tr><td>{% trans "Spanish-language support, EU-only data" %}</td><td data-title="ERPlora" class="primary-col"><span class="yes">{% icon "lucide:check" %}</span></td><td data-title="SAP Business One">{% trans "via partner" %}</td><td data-title="Odoo Enterprise">{% trans "EN-first" %}</td></tr>
+
+              <tr class="cat ep-table-group"><td colspan="4">{% trans "Made for 2026, not 2008" %}</td></tr>
+              <tr><td>{% trans "Native AI assistant (acts on your data)" %}</td><td data-title="ERPlora" class="primary-col"><span class="yes">{% icon "lucide:check" %}</span></td><td data-title="SAP Business One"><span class="no">{% icon "lucide:x" %}</span></td><td data-title="Odoo Enterprise">{% trans "paid add-on, read-only" %}</td></tr>
+              <tr><td>{% trans "Always online at the counter (cloud PWA)" %}</td><td data-title="ERPlora" class="primary-col"><span class="yes">{% icon "lucide:check" %}</span></td><td data-title="SAP Business One"><span class="no">{% icon "lucide:x" %}</span></td><td data-title="Odoo Enterprise">{% trans "partial" %}</td></tr>
+              <tr><td>{% trans "Per-hub pricing, not per-user" %}</td><td data-title="ERPlora" class="primary-col"><span class="yes">{% icon "lucide:check" %}</span> {% trans "flat, predictable" %}</td><td data-title="SAP Business One">{% trans "per named user" %}</td><td data-title="Odoo Enterprise">{% trans "per user × per app" %}</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="text-sm text-fg/70 mt-3 italic">{% trans "Bottom line: if your team is under 50 people, SAP and Odoo are selling you complexity you don't need yet, and charging you to implement it." %}</p>
+      </div>
+
+      <!-- BLOCK B: vs. vertical SaaS (Holded, Factorial, Zoho) -->
+      <div>
+        <div class="flex items-baseline gap-3 mb-2">
+          <span class="kbd-pill">{% trans "block 2" %}</span>
+          <h3 class="font-display font-semibold text-xl tracking-tight">{% trans "vs. vertical SaaS" %} <span class="text-fg/50 font-normal">— Holded, Factorial, Zoho One</span></h3>
+        </div>
+        <p class="text-fg/65 max-w-3xl mb-5">{% trans "These tools are well-made for one slice of your business. The trap is the second tool: by year two most teams are paying for Holded + Factorial + a POS + a separate inventory tool, and copying data between them by hand. We replace that stack with one system." %}</p>
+
+        <div class="ep-table-surface">
+          <table class="compare-table ep-table-stack">
+            <thead>
+              <tr>
+                <th></th>
+                <th class="primary-col">ERPlora</th>
+                <th>Holded</th>
+                <th>Factorial</th>
+                <th>Zoho One</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>{% trans "What it really covers" %}</td><td data-title="ERPlora" class="primary-col">{% trans "Accounting + POS + inventory + HR + CRM, in one DB" %}</td><td data-title="Holded">{% trans "Accounting + light CRM" %}</td><td data-title="Factorial">{% trans "HR only" %}</td><td data-title="Zoho One">{% trans "40 apps, loosely connected" %}</td></tr>
+
+              <tr class="cat ep-table-group"><td colspan="5">{% trans "Things they can't do" %}</td></tr>
+              <tr><td>{% trans "POS / TPV at the counter" %}</td><td data-title="ERPlora" class="primary-col"><span class="yes">{% icon "lucide:check" %}</span> {% trans "native" %}</td><td data-title="Holded"><span class="no">{% icon "lucide:x" %}</span></td><td data-title="Factorial"><span class="no">{% icon "lucide:x" %}</span></td><td data-title="Zoho One">{% trans "separate app" %}</td></tr>
+              <tr><td>{% trans "Kitchen display, table map, restaurant flow" %}</td><td data-title="ERPlora" class="primary-col"><span class="yes">{% icon "lucide:check" %}</span></td><td data-title="Holded"><span class="no">{% icon "lucide:x" %}</span></td><td data-title="Factorial"><span class="no">{% icon "lucide:x" %}</span></td><td data-title="Zoho One"><span class="no">{% icon "lucide:x" %}</span></td></tr>
+              <tr><td>{% trans "Receipt printers and cash drawer (counter app)" %}</td><td data-title="ERPlora" class="primary-col"><span class="yes">{% icon "lucide:check" %}</span></td><td data-title="Holded"><span class="no">{% icon "lucide:x" %}</span></td><td data-title="Factorial"><span class="no">{% icon "lucide:x" %}</span></td><td data-title="Zoho One"><span class="no">{% icon "lucide:x" %}</span></td></tr>
+              <tr><td>{% trans "Real multi-warehouse stock with lot/expiry" %}</td><td data-title="ERPlora" class="primary-col"><span class="yes">{% icon "lucide:check" %}</span></td><td data-title="Holded">{% trans "basic" %}</td><td data-title="Factorial"><span class="no">{% icon "lucide:x" %}</span></td><td data-title="Zoho One">{% trans "separate app" %}</td></tr>
+              <tr><td>{% trans "AI assistant that crosses modules" %}</td><td data-title="ERPlora" class="primary-col"><span class="yes">{% icon "lucide:check" %}</span> {% trans "one assistant, all your data" %}</td><td data-title="Holded"><span class="no">{% icon "lucide:x" %}</span></td><td data-title="Factorial"><span class="no">{% icon "lucide:x" %}</span></td><td data-title="Zoho One">{% trans "per-app, siloed" %}</td></tr>
+
+              <tr class="cat ep-table-group"><td colspan="5">{% trans "Architectural difference" %}</td></tr>
+              <tr><td>{% trans "Single database, one report covers everything" %}</td><td data-title="ERPlora" class="primary-col"><span class="yes">{% icon "lucide:check" %}</span></td><td data-title="Holded">{% trans "single tool" %}</td><td data-title="Factorial">{% trans "single tool" %}</td><td data-title="Zoho One"><span class="no">{% icon "lucide:x" %}</span> {% trans "40 silos" %}</td></tr>
+              <tr><td>{% trans "Add an app without buying a new product" %}</td><td data-title="ERPlora" class="primary-col"><span class="yes">{% icon "lucide:check" %}</span> {% trans "app catalogue, 1 click" %}</td><td data-title="Holded"><span class="no">{% icon "lucide:x" %}</span></td><td data-title="Factorial"><span class="no">{% icon "lucide:x" %}</span></td><td data-title="Zoho One">{% trans "buy another app" %}</td></tr>
+              <tr><td>{% trans "Total cost at year 2 (POS + accounting + HR + stock)" %}</td><td data-title="ERPlora" class="primary-col num">{% trans "1 bill" %}</td><td data-title="Holded" class="num">{% trans "+ 2–3 tools" %}</td><td data-title="Factorial" class="num">{% trans "+ 2–3 tools" %}</td><td data-title="Zoho One" class="num">{% trans "5+ subscriptions" %}</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="text-sm text-fg/70 mt-3 italic">{% trans "Bottom line: if your business only needs accounting, Holded is fine. The day you add a second register, a warehouse, or a kitchen, you're rebuilding your stack. We're the system you'd buy then — at the price you'd pay now." %}</p>
+      </div>
+
+      <p class="text-xs text-fg/65 text-center mt-10">{% trans "Pricing and feature data from each vendor's public site, last checked May 2026. We update this page whenever a competitor changes their offering — if you spot something out of date, tell us." %}</p>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section id="faq" class="ep-section--compact ep-section--divider">
+    <div class="ep-container ep-section-content">
+      <div class="text-center mb-8">
+        <div class="kbd-pill mb-3">{% trans "FAQ" %}</div>
+        <h2 class="font-display font-semibold text-3xl tracking-tighter">{% trans "Frequently asked questions" %}</h2>
+      </div>
+
+      {% comment %} One source: public.pricing.faq_items(). The same list feeds the FAQPage
+         JSON-LD of extra_seo, so the accordion and the markup cannot drift apart. {% endcomment %}
+      <ion-accordion-group value="{{ faq_items.0.key }}">
+        {% for item in faq_items %}
+        <ion-accordion value="{{ item.key }}">
+          <ion-item slot="header">
+            <ion-label>{{ item.question }}</ion-label>
+          </ion-item>
+          <div class="ion-padding" slot="content">{{ item.answer }}</div>
+        </ion-accordion>
+        {% endfor %}
+      </ion-accordion-group>
+    </div>
+  </section>
+
+  <!-- Closing CTA -->
+  <div class="ep-container ep-section-content ep-section--compact">
+    <div class="ep-reveal" data-reveal="scale">
+      {% trans "Whenever you want" as eyebrow %}
+      {% trans "Get going whenever you want." as heading %}
+      {% trans "Start free, no card required. Migrating from another system? Our support team moves your data for you." as subheading %}
+      {% include "public/components/cta_band.html" with eyebrow=eyebrow heading=heading subheading=subheading actions_template="public/pricing/_cta_actions.html" only %}
+    </div>
+  </div>
+
+{% endblock %}

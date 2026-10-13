@@ -1,0 +1,51 @@
+{% load static i18n icons %}
+{% comment %}
+  The public footer: port of <ok-footer class="public-footer"> (OutfitKit) as HTML + CSS
+  (public/static/public/components/footer.css). A responsive grid of columns (the brand one twice
+  as wide) and a bottom bar with the copyright and the legal links. The page columns (Product,
+  Company) live in public/partials/footer_links.html; Support and the legal links here. Only routes
+  that exist: each lot adds its links in its turn (plan §3.i), with {% templatetag openblock %} url {% templatetag closeblock %}.
+  In the order of the old footer, the bottom bar's legal links are Legal Notice, Privacy, Terms
+  and Cookies, then the declaración responsable (art. 13.2 RRSIF: at hand before buying); Support's
+  are Help Center, Support, Contact and the support address.
+{% endcomment %}
+<footer class="ep-footer">
+    <div class="ep-footer__columns">
+        <div class="ep-footer__brand-column">
+            <a class="ep-footer__brand" href="{% url 'home' %}">
+                <img class="ep-footer__logo" src="{% static 'public/img/logo.png' %}" alt="" width="28" height="28">
+                <span class="ep-footer__name">ERPlora</span>
+            </a>
+            <p class="ep-footer__tagline">{% trans "One ERP. Infinite configurations. Yours." %}</p>
+            <p class="ep-footer__motto">{% trans "Your business. Your rules." %}</p>
+            <div class="ep-footer__social">
+                <a href="https://www.facebook.com/erplora" target="_blank" rel="noopener" aria-label="Facebook">{% icon "logo-facebook" %}</a>
+                <a href="https://x.com/erplora" target="_blank" rel="noopener" aria-label="X (Twitter)">{% icon "logo-x" %}</a>
+                <a href="https://www.linkedin.com/company/erplora" target="_blank" rel="noopener" aria-label="LinkedIn">{% icon "logo-linkedin" %}</a>
+                <a href="https://www.tiktok.com/@erplora" target="_blank" rel="noopener" aria-label="TikTok">{% icon "logo-tiktok" %}</a>
+            </div>
+        </div>
+
+        {% include 'public/partials/footer_links.html' %}
+
+        <div class="ep-footer__column">
+            <h2 class="ep-footer__heading">{% trans "Support" %}</h2>
+            <a href="{% url 'public:help' %}">{% trans "Help Center" %}</a>
+            <a href="{% url 'public:support' %}">{% trans "Support" %}</a>
+            <a href="{% url 'public:contact' %}">{% trans "Contact" %}</a>
+            <a href="mailto:{{ SUPPORT_EMAIL }}">{{ SUPPORT_EMAIL }}</a>
+        </div>
+    </div>
+
+    <div class="ep-footer__bottom">
+        {% now "Y" as current_year %}
+        <span>{% blocktrans with year=current_year %}© {{ year }} erplora.com. All rights reserved.{% endblocktrans %}</span>
+        <span class="ep-footer__legal">
+            <a href="{% url 'public:legal_notice' %}">{% trans "Legal Notice" %}</a>
+            <a href="{% url 'public:privacy' %}">{% trans "Privacy" %}</a>
+            <a href="{% url 'public:terms' %}">{% trans "Terms" %}</a>
+            <a href="{% url 'cookie_consent_cookie_group_list' %}">{% trans "Cookies" %}</a>
+            <a href="{% url 'public:declaracion_responsable' %}">{% trans "Responsible declaration" %}</a>
+        </span>
+    </div>
+</footer>

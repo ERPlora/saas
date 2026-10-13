@@ -1,0 +1,73 @@
+{% load i18n icons %}
+{% comment %}
+  The global cookie banner: Customize (the /cookies/ page), Decline and Accept All. Port of
+  templates/cookie_consent/cookielaw_banner.html of the old SaaS, with ep-* instead of ok-* and
+  {% templatetag openblock %} icon {% templatetag closeblock %} instead of <iconify-icon>. Styles: public/static/public/cookie-consent-banner.css.
+  CSP-safe: no inline handlers, the script carries the response's nonce. Enter and Space work on
+  the three controls, as on a native button.
+{% endcomment %}
+<div id="cookie-consent-banner" role="region" aria-label="{% trans 'Cookie preferences' %}">
+    <div class="ep-container cookie-consent-layout">
+        <div class="cookie-consent-copy">
+            {% icon "lucide:shield-check" size=20 %}
+            <p id="cookie-consent-description">
+                {% trans "We use optional cookies to understand traffic and improve ERPlora." %}
+                <a href="{% url 'cookie_consent_cookie_group_list' %}">{% trans "Cookie details" %}</a>
+            </p>
+        </div>
+
+        <div class="cookie-consent-actions" role="group" aria-label="{% trans 'Cookie choices' %}">
+            <ion-button id="cookie-customize" fill="outline" size="small" href="{% url 'cookie_consent_cookie_group_list' %}">
+                {% trans "Customize" %}
+            </ion-button>
+            <ion-button id="cookie-decline" fill="outline" size="small">
+                {% trans "Decline" %}
+            </ion-button>
+            <ion-button id="cookie-accept" size="small">
+                {% trans "Accept All" %}
+            </ion-button>
+        </div>
+    </div>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+(function () {
+    function sendConsent(url) {
+        return fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'all_groups=on',
+            credentials: 'same-origin'
+        }).then(function (response) {
+            if (!response.ok) throw new Error('cookie consent: HTTP ' + response.status);
+            var banner = document.getElementById('cookie-consent-banner');
+            if (banner) banner.hidden = true;
+        }).catch(function (error) {
+            // The banner stays, so the visitor can try again; the failure is in the console.
+            console.error(error);
+        });
+    }
+    function activateOnKeyboard(control, action) {
+        if (!control) return;
+        control.addEventListener('keydown', function (event) {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            event.stopPropagation();
+            action();
+        });
+    }
+    var customize = document.getElementById('cookie-customize');
+    var accept = document.getElementById('cookie-accept');
+    var decline = document.getElementById('cookie-decline');
+    if (accept) accept.addEventListener('click', function () { sendConsent('{% url "cookie_consent_accept" %}'); });
+    if (decline) decline.addEventListener('click', function () { sendConsent('{% url "cookie_consent_decline" %}'); });
+    activateOnKeyboard(customize, function () {
+        window.location.assign(customize.getAttribute('href'));
+    });
+    activateOnKeyboard(decline, function () { sendConsent('{% url "cookie_consent_decline" %}'); });
+    activateOnKeyboard(accept, function () { sendConsent('{% url "cookie_consent_accept" %}'); });
+})();
+</script>

@@ -1,0 +1,14 @@
+{% comment %}
+  ep-reveal: port of <ok-reveal> (OutfitKit). Its content slides in when it enters the viewport
+  (IntersectionObserver in frontend/public.ts), respecting prefers-reduced-motion. Without
+  JavaScript, or 3 s after load if the script did not run, the content is simply shown.
+  Styles: public/static/public/components/reveal.css.
+
+  Usage:
+    {% include "public/components/reveal.html" with content_template="public/<page>/_block.html" variant="up" delay=80 %}
+
+  Variables: content_template (required, the template revealed); variant `up` (default), `fade`,
+  `scale`, `left` or `right`; delay in ms (to stagger several reveals). The same attributes work on
+  markup written in the page itself: <div class="ep-reveal" data-reveal="up" data-reveal-delay="80">.
+{% endcomment %}
+<div class="ep-reveal" data-reveal="{{ variant|default:'up' }}"{% if delay %} data-reveal-delay="{{ delay }}"{% endif %}>{% include content_template %}</div>

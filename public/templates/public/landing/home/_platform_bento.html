@@ -1,0 +1,18 @@
+{% load i18n %}
+{% comment %}
+  «One dashboard for your whole business»: port of landing/home/sections/_platform_bento.html
+  (origin/develop) as public/components/bento.html. The «Compliant in your country» cell no longer
+  links /compliance/: that page is out of the port (plan §7).
+{% endcomment %}
+  <section class="ep-section--soft">
+    <section class="ep-section">
+      <header class="ep-section-head">
+        <span class="ep-eyebrow">{% trans 'The platform' %}</span>
+        <h2 class="ep-section-title">{% trans 'One dashboard for your whole business.' %}</h2>
+        <p class="ep-section-sub">{% trans 'Every app shares the same data, the same look and the same login. No integrations to maintain.' %}</p>
+      </header>
+      <div class="ep-reveal" data-reveal="up">
+        {% include "public/components/bento.html" with items_template="public/landing/home/_platform_bento_items.html" cols=6 %}
+      </div>
+    </section>
+  </section>

@@ -6,11 +6,12 @@
   sign-in pages paint. Same stylesheets in the same order, Ionic core in `ios` mode and Iconify,
   all vendored under static/ (the CSP admits no CDN). Left out, because no page of phase 1 uses
   them: the installed-app head (`partials/app_shell_head.html`), Open Graph/SEO tags, htmx, the
-  analytics and cookie banner, Stripe.js, the OutfitKit bundle and tabbar, the global
-  modal/toast/dialog includes and the dashboard scripts. Block 1a replaces these pages with Ionic
-  Vue (PLAN-SAAS §6).
+  analytics and cookie banner, Stripe.js, the global modal/toast/dialog includes and the dashboard
+  scripts. Nor OutfitKit (its bundle, palettes, layout and theme), gone from erplora-next (PLAN
+  §16.11): no page painted an `ok-*`. Block 1a replaces these pages with Ionic Vue (PLAN-SAAS §6).
 
-  Dark mode = the `ion-palette-dark` class on <html>; `system` follows `prefers-color-scheme`.
+  Dark mode = the `ion-palette-dark` class on <html>; `theme` (`base.context_processors.theme`) is
+  the shell's mode and `system` follows `prefers-color-scheme`.
 {% endcomment %}
 <html lang="{{ LANGUAGE_CODE }}"{% if 'dark' in theme %} class="ion-palette-dark"{% endif %}>
 <head>
@@ -48,10 +49,6 @@
     <link rel="stylesheet" href="{% static 'vendor/ionic/css/text-alignment.css' %}">
     <link rel="stylesheet" href="{% static 'vendor/ionic/css/flex-utils.css' %}">
     <link rel="stylesheet" href="{% static 'css/ionic-theme.css' %}">
-    {# OutfitKit palettes and layout primitives, vendored from @erplora/outfitkit (was jsDelivr). #}
-    <link rel="stylesheet" href="{% static 'vendor/outfitkit/palettes.css' %}">
-    <link rel="stylesheet" href="{% static 'css/outfitkit-theme.css' %}">
-    <link rel="stylesheet" href="{% static 'vendor/outfitkit/layout.css' %}">
     <link rel="stylesheet" href="{% static 'css/ionic-utilities.css' %}">
     {# Never inside @layer: it must beat the unlayered CSS Ionic injects at runtime (saas#1728). #}
     <link rel="stylesheet" href="{% static 'css/ion-card-content-utilities.css' %}">

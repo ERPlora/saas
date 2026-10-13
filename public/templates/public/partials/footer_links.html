@@ -1,0 +1,28 @@
+{% load i18n %}
+{% comment %}
+  The footer's page columns, each a <div class="ep-footer__column"> with an
+  <h2 class="ep-footer__heading"> and its <a> links. In the order of the old footer:
+
+    Product: Features, Pricing, Security, Updates, Downloads, The ERPlora app, Apps (the store).
+    Company: About Us, Collaborate, Industries.
+
+  A column exists only with at least one link to a route that exists: the lot that ports a page
+  adds its link (and, for the first link of a column, the column) in its turn (plan §3.i), with
+  {% templatetag openblock %} url {% templatetag closeblock %}.
+{% endcomment %}
+<div class="ep-footer__column">
+    <h2 class="ep-footer__heading">{% trans "Product" %}</h2>
+    <a href="{% url 'public:features' %}">{% trans "Features" %}</a>
+    <a href="{% url 'public:pricing' %}">{% trans "Pricing" %}</a>
+    <a href="{% url 'public:security' %}">{% trans "Security" %}</a>
+    <a href="{% url 'public:updates' %}">{% trans "Updates" %}</a>
+    <a href="{% url 'public:downloads' %}">{% trans "Downloads" %}</a>
+    <a href="{% url 'public:app' %}">{% trans "The ERPlora app" %}</a>
+    <a href="{% url 'public:store' %}">{% trans "Apps" %}</a>
+</div>
+<div class="ep-footer__column">
+    <h2 class="ep-footer__heading">{% trans "Company" %}</h2>
+    <a href="{% url 'public:about' %}">{% trans "About Us" %}</a>
+    <a href="{% url 'public:collaborate' %}">{% trans "Collaborate" %}</a>
+    <a href="{% url 'public:industries_index' %}">{% trans "Industries" %}</a>
+</div>

@@ -1,0 +1,3785 @@
+# Spanish translations of the public web of saas-next (public/, round 16).
+# Copyright (C) 2026 ERPlora
+# This file is distributed under the same license as ERPlora.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: saas-next public\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-13 22:40+0200\n"
+"PO-Revision-Date: 2026-10-13 22:30+0200\n"
+"Last-Translator: ERPlora\n"
+"Language-Team: Spanish\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: errors.py:102
+msgid "Internal error"
+msgstr "Error interno"
+
+#: errors.py:118
+msgid "Server error"
+msgstr "Error del servidor"
+
+#: errors.py:119 templates/public/500.html:21
+msgid "Something went wrong on our side. Please try again in a few minutes."
+msgstr ""
+"Algo ha fallado por nuestra parte. Vuelve a intentarlo en unos minutos."
+
+#: management/commands/init_cookie_groups.py:23
+msgid "Essential cookies"
+msgstr "Cookies esenciales"
+
+#: management/commands/init_cookie_groups.py:25
+msgid ""
+"These cookies are necessary for the website to work and cannot be turned off."
+msgstr ""
+"Estas cookies son necesarias para que el sitio web funcione y no se pueden "
+"desactivar."
+
+#: management/commands/init_cookie_groups.py:32
+msgid "Analytical cookies"
+msgstr "Cookies analíticas"
+
+#: management/commands/init_cookie_groups.py:33
+msgid "These cookies help us understand how visitors use our website."
+msgstr ""
+"Estas cookies nos ayudan a entender cómo usan los visitantes nuestro sitio "
+"web."
+
+#: management/commands/init_cookie_groups.py:39
+msgid "Marketing cookies"
+msgstr "Cookies de marketing"
+
+#: management/commands/init_cookie_groups.py:40
+msgid "These cookies are used to show personalised advertising."
+msgstr "Estas cookies se usan para mostrar publicidad personalizada."
+
+#: management/commands/init_cookie_groups.py:53
+msgid "Session cookie that keeps you signed in"
+msgstr "Cookie de sesión que mantiene tu sesión iniciada"
+
+#: management/commands/init_cookie_groups.py:58
+msgid "Protection against cross-site request forgery"
+msgstr "Protección contra la falsificación de peticiones entre sitios (CSRF)"
+
+#: management/commands/init_cookie_groups.py:63
+msgid "The language you chose"
+msgstr "El idioma que elegiste"
+
+#: management/commands/init_cookie_groups.py:68
+msgid "The cookie choices you made"
+msgstr "Las preferencias de cookies que elegiste"
+
+#: management/commands/init_cookie_groups.py:70
+msgid "Notices shown after an action"
+msgstr "Avisos que se muestran tras una acción"
+
+#: management/commands/init_cookie_groups.py:71
+msgid "The colour theme you chose"
+msgstr "El tema de color que elegiste"
+
+#: management/commands/init_cookie_groups.py:72
+msgid "Google Analytics client identifier"
+msgstr "Identificador de cliente de Google Analytics"
+
+#: management/commands/init_cookie_groups.py:73
+msgid "Google Analytics session data"
+msgstr "Datos de sesión de Google Analytics"
+
+#: management/commands/init_cookie_groups.py:77
+msgid "Microsoft Clarity user identifier and preferences"
+msgstr "Identificador de usuario y preferencias de Microsoft Clarity"
+
+#: management/commands/init_cookie_groups.py:79
+msgid "Microsoft Clarity session identifier"
+msgstr "Identificador de sesión de Microsoft Clarity"
+
+#: management/commands/init_cookie_groups.py:83
+msgid "Microsoft Clarity first-seen user identifier"
+msgstr "Identificador de primera visita de Microsoft Clarity"
+
+#: management/commands/init_cookie_groups.py:88
+msgid "Microsoft/Bing unique browser identifier (set by Clarity)"
+msgstr "Identificador único de navegador de Microsoft/Bing (lo crea Clarity)"
+
+#: management/commands/init_cookie_groups.py:93
+msgid "Microsoft/Bing MUID-to-ANID transfer flag (set by Clarity)"
+msgstr ""
+"Indicador de transferencia de MUID a ANID de Microsoft/Bing (lo crea Clarity)"
+
+#: management/commands/init_cookie_groups.py:98
+msgid "Microsoft/Bing MUID refresh flag (set by Clarity)"
+msgstr "Indicador de renovación del MUID de Microsoft/Bing (lo crea Clarity)"
+
+#: management/commands/init_cookie_groups.py:103
+msgid "Microsoft/Bing MUID cross-domain sync (set by Clarity)"
+msgstr ""
+"Sincronización entre dominios del MUID de Microsoft/Bing (lo crea Clarity)"
+
+#: templates/cookie_consent/_cookie_group.html:9
+#, python-format
+msgid "Allow %(group_name)s"
+msgstr "Permitir %(group_name)s"
+
+#: templates/cookie_consent/_cookie_group.html:21
+msgid "Always active"
+msgstr "Siempre activas"
+
+#: templates/cookie_consent/_cookie_group.html:25
+#: templates/cookie_consent/cookiegroup_list.html:51
+msgid "Enabled"
+msgstr "Activadas"
+
+#: templates/cookie_consent/_cookie_group.html:28
+#: templates/cookie_consent/cookiegroup_list.html:52
+msgid "Disabled"
+msgstr "Desactivadas"
+
+#: templates/cookie_consent/_cookie_group.html:46
+#: templates/cookie_consent/_cookie_group.html:53
+msgid "Cookie name"
+msgstr "Nombre de la cookie"
+
+#: templates/cookie_consent/_cookie_group.html:47
+#: templates/cookie_consent/_cookie_group.html:59
+msgid "Description"
+msgstr "Descripción"
+
+#: templates/cookie_consent/_cookie_group.html:68
+msgid "No cookies are currently assigned to this category."
+msgstr "Ahora mismo no hay cookies asignadas a esta categoría."
+
+#: templates/cookie_consent/cookiegroup_list.html:10
+msgid "Cookie Settings"
+msgstr "Configuración de cookies"
+
+#: templates/cookie_consent/cookiegroup_list.html:13
+msgid "Privacy controls"
+msgstr "Controles de privacidad"
+
+#: templates/cookie_consent/cookiegroup_list.html:14
+#: templates/cookie_consent/cookielaw_banner.html:9
+msgid "Cookie preferences"
+msgstr "Preferencias de cookies"
+
+#: templates/cookie_consent/cookiegroup_list.html:15
+msgid ""
+"Choose which optional cookies ERPlora may use. Essential cookies remain "
+"active because the website cannot work securely without them."
+msgstr "Elige qué cookies opcionales puede usar ERPlora. Las cookies esenciales siguen activas porque sin ellas la web no puede funcionar de forma segura."
+
+#: templates/cookie_consent/cookiegroup_list.html:21
+msgid "Your choice"
+msgstr "Tú eliges"
+
+#: templates/cookie_consent/cookiegroup_list.html:22
+msgid "Manage optional cookies"
+msgstr "Gestiona las cookies opcionales"
+
+#: templates/cookie_consent/cookiegroup_list.html:24
+msgid ""
+"You can change these preferences at any time. Each category shows the "
+"cookies currently configured in ERPlora."
+msgstr "Puedes cambiar estas preferencias cuando quieras. Cada categoría muestra las cookies que ERPlora tiene configuradas ahora mismo."
+
+#: templates/cookie_consent/cookiegroup_list.html:32
+msgid "No cookie categories are currently configured."
+msgstr "Ahora mismo no hay categorías de cookies configuradas."
+
+#: templates/cookie_consent/cookielaw_banner.html:14
+msgid "We use optional cookies to understand traffic and improve ERPlora."
+msgstr "Usamos cookies opcionales para entender el tráfico y mejorar ERPlora."
+
+#: templates/cookie_consent/cookielaw_banner.html:15
+msgid "Cookie details"
+msgstr "Detalles de las cookies"
+
+#: templates/cookie_consent/cookielaw_banner.html:19
+msgid "Cookie choices"
+msgstr "Opciones de cookies"
+
+#: templates/cookie_consent/cookielaw_banner.html:21
+msgid "Customize"
+msgstr "Personalizar"
+
+#: templates/cookie_consent/cookielaw_banner.html:24
+msgid "Decline"
+msgstr "Rechazar"
+
+#: templates/cookie_consent/cookielaw_banner.html:27
+msgid "Accept All"
+msgstr "Aceptar todas"
+
+#: templates/public/404.html:8 templates/public/404.html:15
+msgid "Page not found"
+msgstr "Página no encontrada"
+
+#: templates/public/404.html:16
+msgid "The page you are looking for does not exist or has moved."
+msgstr "La página que buscas no existe o ha cambiado de dirección."
+
+#: templates/public/404.html:18 templates/public/500.html:23
+msgid "Back to the home page"
+msgstr "Volver a la página de inicio"
+
+#: templates/public/500.html:9 templates/public/500.html:20
+msgid "Something went wrong"
+msgstr "Algo ha fallado"
+
+#: templates/public/components/pricing_card.html:15
+msgid "Popular"
+msgstr "Popular"
+
+#: templates/public/partials/dev_banner.html:10
+msgid "Pre-launch"
+msgstr "Prelanzamiento"
+
+#: templates/public/partials/dev_banner.html:12
+msgid "ERPlora is in active development. You're viewing a product preview."
+msgstr "ERPlora está en pleno desarrollo. Estás viendo una vista previa del producto."
+
+#: templates/public/partials/footer.html:18
+msgid "One ERP. Infinite configurations. Yours."
+msgstr "Un ERP. Infinitas configuraciones. El tuyo."
+
+#: templates/public/partials/footer.html:19
+msgid "Your business. Your rules."
+msgstr "Tu negocio. Tus reglas."
+
+#: templates/public/partials/footer.html:31
+msgid "Support"
+msgstr "Soporte"
+
+#: templates/public/partials/footer.html:38
+#, python-format
+msgid "© %(year)s erplora.com. All rights reserved."
+msgstr "© %(year)s erplora.com. Todos los derechos reservados."
+
+#: templates/public/partials/footer.html:40
+msgid "Cookies"
+msgstr "Cookies"
+
+#: templates/public/partials/navbar.html:16
+msgid "Main"
+msgstr "Principal"
+
+#: templates/public/partials/navbar.html:22
+msgid "Menu"
+msgstr "Menú"
+
+#: templates/public/partials/navbar.html:27
+msgid "Close"
+msgstr "Cerrar"
+
+#: templates/public/partials/navbar.html:37
+msgid "Dashboard"
+msgstr "Panel"
+
+#: templates/public/partials/navbar.html:42
+msgid "Start free"
+msgstr "Empieza gratis"
+
+#: templates/public/public_base.html:20
+msgid ""
+"ERPlora - The ERP that adapts to your business, not the other way around. "
+"POS, inventory, CRM, invoicing and more"
+msgstr "ERPlora - El ERP que se adapta a tu negocio, y no al revés. TPV, inventario, CRM, facturación y más"
+
+#: templates/public/public_base.html:25 templates/public/public_base.html:33
+msgid "ERPlora · The modular ERP/POS for your business"
+msgstr "ERPlora · El ERP/TPV modular para tu negocio"
+
+#: templates/public/public_base.html:26 templates/public/public_base.html:34
+msgid ""
+"The ERP that adapts to your business, not the other way around. POS, "
+"inventory, CRM, invoicing, and an app library that keeps growing."
+msgstr "El ERP que se adapta a tu negocio, y no al revés. TPV, inventario, CRM, facturación y una biblioteca de apps que no para de crecer."
+
+#: templates/public/legal/legal_notice.html
+#: templates/public/partials/footer.html
+msgid "Legal Notice"
+msgstr "Aviso legal"
+
+#: templates/public/legal/legal_notice.html
+msgid ""
+"Legal Notice of ERPLORA CLOUD S.L. Identifying information of the "
+"erplora.com website owner in accordance with the LSSI-CE."
+msgstr ""
+"Aviso Legal de ERPLORA CLOUD S.L. Información identificativa del titular del "
+"sitio web erplora.com conforme a la LSSI-CE."
+
+#: templates/public/legal/legal_notice.html
+msgid "Legal Notice of ERPLORA CLOUD S.L., owner of erplora.com."
+msgstr "Aviso Legal de ERPLORA CLOUD S.L., titular de erplora.com."
+
+#: templates/public/legal/legal_notice.html
+msgid "Legal information"
+msgstr "Información legal"
+
+#: templates/public/legal/legal_notice.html
+msgid ""
+"Information about the owner of erplora.com, provided in accordance with the "
+"Spanish Information Society Services and Electronic Commerce Act (LSSI-CE)."
+msgstr ""
+"Información sobre el titular de erplora.com, facilitada conforme a la Ley de "
+"servicios de la sociedad de la información y de comercio electrónico (LSSI-"
+"CE)."
+
+#: templates/public/legal/legal_notice.html
+msgid "1. Owner Identification"
+msgstr "1. Identificación del Titular"
+
+#: templates/public/legal/legal_notice.html
+msgid "Company name:"
+msgstr "Razón social:"
+
+#: templates/public/legal/legal_notice.html
+msgid "Tax ID (CIF):"
+msgstr "CIF:"
+
+#: templates/public/legal/legal_notice.html
+msgid "Registered address:"
+msgstr "Domicilio social:"
+
+#: templates/public/legal/legal_notice.html
+msgid "Activity:"
+msgstr "Actividad:"
+
+#: templates/public/legal/legal_notice.html
+msgid ""
+"SaaS business management services (ERP/POS) — IAE Heading 845 (Electronic "
+"operation for third parties)"
+msgstr ""
+"Servicios SaaS de gestión empresarial (ERP/POS) — IAE Epígrafe 845 "
+"(Explotación electrónica por terceros)"
+
+#: templates/public/legal/legal_notice.html
+msgid "2. Contact"
+msgstr "2. Contacto"
+
+#: templates/public/legal/legal_notice.html
+msgid "Website:"
+msgstr "Sitio web:"
+
+#: templates/public/legal/legal_notice.html
+msgid "Email:"
+msgstr "Correo electrónico:"
+
+#: templates/public/legal/legal_notice.html
+msgid "3. Purpose and Activity"
+msgstr "3. Objeto y Actividad"
+
+#: templates/public/legal/legal_notice.html
+msgid ""
+"ERPlora is a modular SaaS (Software as a Service) business management "
+"platform aimed at small businesses and freelancers. It provides POS, "
+"inventory, invoicing, scheduling, bookings, team management, and other "
+"business tools, with native AI support."
+msgstr ""
+"ERPlora es una plataforma SaaS (Software como Servicio) de gestión "
+"empresarial modular dirigida a pymes y autónomos. Proporciona herramientas "
+"de TPV, inventario, facturación, agenda, reservas, gestión de equipo y otras "
+"funcionalidades de negocio, con soporte de inteligencia artificial nativa."
+
+#: templates/public/legal/legal_notice.html
+msgid "4. Intellectual and Industrial Property"
+msgstr "4. Propiedad Intelectual e Industrial"
+
+#: templates/public/legal/legal_notice.html
+msgid ""
+"The content, designs, text, images, logos, and other elements of this "
+"website are the property of ERPLORA CLOUD S.L. or its licensors, and are "
+"protected by Spanish and international intellectual and industrial property "
+"law. Reproduction, distribution, or modification without express "
+"authorization is prohibited."
+msgstr ""
+"Los contenidos, diseños, textos, imágenes, logotipos y demás elementos de "
+"este sitio web son propiedad de ERPLORA CLOUD S.L. o de sus licenciantes, y "
+"están protegidos por la legislación española e internacional sobre propiedad "
+"intelectual e industrial. Queda prohibida su reproducción, distribución o "
+"transformación sin autorización expresa."
+
+#: templates/public/legal/legal_notice.html
+msgid "5. Liability"
+msgstr "5. Responsabilidad"
+
+#: templates/public/legal/legal_notice.html
+msgid ""
+"ERPLORA CLOUD S.L. is not liable for damages arising from improper use of "
+"the services or the information contained on this site. Links to external "
+"sites are provided for reference only and do not imply any endorsement by "
+"ERPLORA CLOUD S.L."
+msgstr ""
+"ERPLORA CLOUD S.L. no se hace responsable de los daños o perjuicios "
+"derivados del uso incorrecto de los servicios o de la información contenida "
+"en este sitio. Los enlaces a sitios externos son facilitados únicamente como "
+"referencia y no implican ningún respaldo por parte de ERPLORA CLOUD S.L."
+
+#: templates/public/legal/legal_notice.html
+msgid "6. Applicable Law and Jurisdiction"
+msgstr "6. Legislación Aplicable y Jurisdicción"
+
+#: templates/public/legal/legal_notice.html
+msgid ""
+"These terms are governed by Spanish law. For the resolution of any dispute, "
+"the parties submit to the Courts of Madrid, unless applicable regulations "
+"establish another mandatory jurisdiction."
+msgstr ""
+"Las presentes condiciones se rigen por la legislación española. Para la "
+"resolución de cualquier controversia, las partes se someten a los Juzgados y "
+"Tribunales de Madrid, salvo que la normativa aplicable establezca otro fuero "
+"imperativo."
+
+#: templates/public/legal/privacy.html templates/public/legal/cookies.html
+msgid "Privacy Policy"
+msgstr "Política de Privacidad"
+
+#: templates/public/legal/privacy.html
+msgid ""
+"ERPlora's Privacy Policy. How we collect, use, and protect your data. GDPR "
+"compliance."
+msgstr ""
+"Política de Privacidad de ERPlora. Cómo recogemos, usamos y protegemos tus "
+"datos. Cumplimiento RGPD."
+
+#: templates/public/legal/privacy.html
+msgid ""
+"ERPlora's Privacy Policy. How we process your personal data in accordance "
+"with the GDPR."
+msgstr ""
+"Política de Privacidad de ERPlora. Cómo tratamos tus datos personales "
+"conforme al RGPD."
+
+#: templates/public/legal/privacy.html
+msgid "Privacy & data protection"
+msgstr "Privacidad y protección de datos"
+
+#: templates/public/legal/privacy.html
+msgid ""
+"How ERPlora collects, uses, and protects personal data in accordance with "
+"the GDPR and Spanish data protection law."
+msgstr ""
+"Cómo ERPlora recoge, usa y protege los datos personales conforme al RGPD y a "
+"la normativa española de protección de datos."
+
+#: templates/public/legal/privacy.html templates/public/legal/cookies.html
+msgid "Last updated:"
+msgstr "Última actualización:"
+
+#: templates/public/legal/privacy.html
+msgid ""
+"At ERPLORA CLOUD S.L. we take the protection of your personal data "
+"seriously. This policy explains what data we collect, why, and what rights "
+"you have, in accordance with Regulation (EU) 2016/679 (GDPR) and Organic Law "
+"3/2018, on the Protection of Personal Data and guarantee of digital rights "
+"(LOPD-GDD)."
+msgstr ""
+"En ERPLORA CLOUD S.L. nos tomamos en serio la protección de tus datos "
+"personales. Esta política explica qué datos recogemos, por qué y qué "
+"derechos tienes, conforme al Reglamento (UE) 2016/679 (RGPD) y a la Ley "
+"Orgánica 3/2018, de Protección de Datos Personales y garantía de los "
+"derechos digitales (LOPD-GDD)."
+
+#: templates/public/legal/privacy.html
+msgid "1. Data Controller"
+msgstr "1. Responsable del tratamiento"
+
+#: templates/public/legal/privacy.html
+msgid "Data protection contact:"
+msgstr "Contacto en materia de protección de datos:"
+
+#: templates/public/legal/privacy.html
+msgid "2. Data we process"
+msgstr "2. Datos que tratamos"
+
+#: templates/public/legal/privacy.html
+msgid "Account data:"
+msgstr "Datos de cuenta:"
+
+#: templates/public/legal/privacy.html
+msgid ""
+"name, email, password (hashed), language, time zone, interface preferences."
+msgstr ""
+"nombre, email, contraseña (hash), idioma, zona horaria, preferencias de "
+"interfaz."
+
+#: templates/public/legal/privacy.html
+msgid "Billing data:"
+msgstr "Datos de facturación:"
+
+#: templates/public/legal/privacy.html
+msgid ""
+"customer's company name, tax ID (NIF/CIF), fiscal address, payment method "
+"(managed by Stripe — ERPlora does NOT store card numbers), payment history."
+msgstr ""
+"razón social del cliente, NIF/CIF, domicilio fiscal, método de pago "
+"(gestionado por Stripe — ERPlora NO almacena números de tarjeta), historial "
+"de pagos."
+
+#: templates/public/legal/privacy.html
+msgid "ERP/POS operational data:"
+msgstr "Datos operativos del ERP/POS:"
+
+#: templates/public/legal/privacy.html
+msgid ""
+"data entered by the customer in their Hub (end customers, products, sales, "
+"employees, calendar, etc.). In this case ERPlora acts as data PROCESSOR; the "
+"CONTROLLER is the customer operating the Hub."
+msgstr ""
+"los introducidos por el cliente en su Hub (clientes finales, productos, "
+"ventas, empleados, agenda, etc.). En este caso ERPlora actúa como ENCARGADO "
+"del tratamiento; el RESPONSABLE es el cliente que opera el Hub."
+
+#: templates/public/legal/privacy.html
+msgid "Technical usage data:"
+msgstr "Datos de uso técnico:"
+
+#: templates/public/legal/privacy.html
+msgid ""
+"IP address, session identifier, access logs, error logs, service usage "
+"metrics."
+msgstr ""
+"dirección IP, identificador de sesión, logs de acceso, registros de errores, "
+"métricas de uso del servicio."
+
+#: templates/public/legal/privacy.html
+msgid "Cookies:"
+msgstr "Cookies:"
+
+#: templates/public/legal/privacy.html
+msgid "see the"
+msgstr "ver la"
+
+#: templates/public/legal/privacy.html templates/public/legal/cookies.html
+msgid "Cookie Policy"
+msgstr "Política de cookies"
+
+#: templates/public/legal/privacy.html
+msgid "3. Purposes and legal basis"
+msgstr "3. Finalidades y base jurídica"
+
+#: templates/public/legal/privacy.html
+msgid ""
+"Provision of the contracted SaaS service: performance of a contract (Art. "
+"6.1.b GDPR)."
+msgstr ""
+"Prestación del servicio SaaS contratado: ejecución de contrato (Art. 6.1.b "
+"RGPD)."
+
+#: templates/public/legal/privacy.html
+msgid ""
+"Invoicing and compliance with tax obligations: legal obligation (Art. 6.1.c "
+"GDPR; Commercial Code, General Tax Law)."
+msgstr ""
+"Facturación y cumplimiento de obligaciones fiscales: obligación legal (Art. "
+"6.1.c RGPD; Código de Comercio, Ley General Tributaria)."
+
+#: templates/public/legal/privacy.html
+msgid ""
+"Technical support to the customer: performance of a contract (Art. 6.1.b "
+"GDPR)."
+msgstr "Soporte técnico al cliente: ejecución de contrato (Art. 6.1.b RGPD)."
+
+#: templates/public/legal/privacy.html
+msgid ""
+"Commercial communications about similar products: legitimate interest (Art. "
+"6.1.f GDPR) with the right to object at any time."
+msgstr ""
+"Comunicaciones comerciales sobre productos similares: interés legítimo (Art. "
+"6.1.f RGPD) con derecho a oposición en cualquier momento."
+
+#: templates/public/legal/privacy.html
+msgid ""
+"Marketing communications outside the above scope: explicit consent (Art. "
+"6.1.a GDPR)."
+msgstr ""
+"Comunicaciones de marketing fuera del marco anterior: consentimiento expreso "
+"(Art. 6.1.a RGPD)."
+
+#: templates/public/legal/privacy.html
+msgid ""
+"Platform security and fraud prevention: legitimate interest (Art. 6.1.f "
+"GDPR)."
+msgstr ""
+"Seguridad de la plataforma y prevención de fraude: interés legítimo (Art. "
+"6.1.f RGPD)."
+
+#: templates/public/legal/privacy.html
+msgid "4. Retention periods"
+msgstr "4. Plazos de conservación"
+
+#: templates/public/legal/privacy.html
+msgid ""
+"Account and operational data: for the duration of the contractual "
+"relationship and, after its termination, for 6 years to comply with "
+"accounting and tax legal obligations (Commercial Code art. 30; General Tax "
+"Law art. 66), unless erasure is requested beforehand."
+msgstr ""
+"Datos de cuenta y operativos: mientras dure la relación contractual y, tras "
+"su finalización, durante 6 años para atender obligaciones legales contables "
+"y fiscales (Código de Comercio art. 30; Ley General Tributaria art. 66), "
+"salvo solicitud previa de supresión."
+
+#: templates/public/legal/privacy.html
+msgid "Billing data: 6 years from the last entry (art. 30 Commercial Code)."
+msgstr ""
+"Datos de facturación: 6 años desde el último asiento (art. 30 del Código de "
+"Comercio)."
+
+#: templates/public/legal/privacy.html
+msgid "Marketing data: until consent is withdrawn."
+msgstr "Datos de marketing: hasta retirada del consentimiento."
+
+#: templates/public/legal/privacy.html
+msgid "Technical logs: 12 months for security investigation purposes."
+msgstr "Logs técnicos: 12 meses para investigación de seguridad."
+
+#: templates/public/legal/privacy.html
+msgid "5. Recipients — Data processors"
+msgstr "5. Destinatarios — Encargados del tratamiento"
+
+#: templates/public/legal/privacy.html
+msgid ""
+"To provide the service, we engage the following PROCESSORS, with whom we "
+"have signed Art. 28 GDPR agreements:"
+msgstr ""
+"Para prestar el servicio, contratamos a los siguientes ENCARGADOS, con los "
+"que tenemos firmados acuerdos del Art. 28 RGPD:"
+
+#: templates/public/legal/privacy.html
+msgid "Stripe Payments Europe Ltd. (Irish):"
+msgstr "Stripe Payments Europe Ltd. (irlandés):"
+
+#: templates/public/legal/privacy.html
+msgid ""
+"payment processing. Does NOT receive the customer's ERP data, only billing "
+"data."
+msgstr ""
+"procesamiento de pagos. NO recibe datos del ERP del cliente, solo datos de "
+"facturación."
+
+#: templates/public/legal/privacy.html
+msgid ""
+"Alibaba (Netherlands) B.V. (Netherlands) — Alibaba Cloud Model Studio, "
+"Germany (Frankfurt) region:"
+msgstr ""
+"Alibaba (Netherlands) B.V. (Países Bajos) — Alibaba Cloud Model Studio, "
+"región Alemania (Fráncfort):"
+
+#: templates/public/legal/privacy.html
+msgid ""
+"provider of the language model the AI assistant uses BY DEFAULT. Processing "
+"takes place in the European Union. Used ONLY when the customer enables this "
+"feature and after explicit consent in the Hub, under a Data Processing "
+"Addendum incorporating EU Standard Contractual Clauses."
+msgstr ""
+"proveedor del modelo de lenguaje que el asistente IA usa POR DEFECTO. El "
+"tratamiento se realiza en la Unión Europea. Usado ÚNICAMENTE cuando el "
+"cliente activa esta funcionalidad y previo consentimiento explícito en el "
+"Hub, al amparo de un acuerdo de tratamiento de datos con Cláusulas "
+"Contractuales Tipo de la UE."
+
+#: templates/public/legal/privacy.html
+msgid "OpenAI Ireland Ltd. and Anthropic Ireland Ltd. (Ireland):"
+msgstr "OpenAI Ireland Ltd. y Anthropic Ireland Ltd. (Irlanda):"
+
+#: templates/public/legal/privacy.html
+msgid ""
+"BACKUP language model providers, used only if the European provider is "
+"unavailable. Each one under its own DPA."
+msgstr ""
+"proveedores de modelos de lenguaje de RESPALDO, usados solo si el proveedor "
+"europeo no está disponible. Cada uno bajo su propio DPA."
+
+#: templates/public/legal/privacy.html
+msgid "What the AI assistant does — and does not — receive"
+msgstr "Qué recibe —y qué no recibe— el asistente IA"
+
+#: templates/public/legal/privacy.html
+msgid ""
+"The assistant is OPTIONAL. If the customer does not enable it, no data "
+"whatsoever is sent to a language model provider."
+msgstr ""
+"El asistente es OPCIONAL. Si el cliente no lo activa, no se envía ningún "
+"dato a un proveedor de modelos de lenguaje."
+
+#: templates/public/legal/privacy.html
+msgid ""
+"Your hub database is never replicated or copied, neither to ERPlora nor to "
+"the model provider. The model holds no standing access to it and cannot "
+"query it on its own."
+msgstr ""
+"La base de datos de tu hub no se replica ni se copia en ningún momento, ni a "
+"ERPlora ni al proveedor del modelo. El modelo no tiene acceso permanente a "
+"ella ni puede consultarla por su cuenta."
+
+#: templates/public/legal/privacy.html
+msgid ""
+"The model receives only your message, any document you attach to it, and the "
+"result of the specific query each question requires. If you ask about "
+"today's sales, your hub runs that query locally and hands over only that "
+"result — there is no dump of your catalogue, your sales history or your "
+"customer file."
+msgstr ""
+"El modelo recibe únicamente tu mensaje, los documentos que le adjuntes y el "
+"resultado de la consulta concreta que requiere cada pregunta. Si preguntas "
+"por las ventas de hoy, tu hub ejecuta esa consulta en local y le entrega "
+"solo ese resultado: no hay volcado de tu catálogo, de tu histórico de ventas "
+"ni de tu fichero de clientes."
+
+#: templates/public/legal/privacy.html
+msgid ""
+"We do not store the content of the conversation: the platform acts as a "
+"stateless gateway between your hub and the provider. We only record a "
+"message counter and token consumption, for billing."
+msgstr ""
+"No conservamos el contenido de la conversación: la plataforma actúa como "
+"pasarela sin estado entre tu hub y el proveedor. Solo registramos un "
+"contador de mensajes y el consumo de tokens, a efectos de facturación."
+
+#: templates/public/legal/privacy.html
+msgid ""
+"None of these providers uses the data to train their models, under the API "
+"terms of service applicable to us."
+msgstr ""
+"Ninguno de estos proveedores utiliza los datos para entrenar sus modelos, "
+"conforme a las condiciones de servicio de API que nos resultan aplicables."
+
+#: templates/public/legal/privacy.html
+msgid "6. International transfers"
+msgstr "6. Transferencias internacionales"
+
+#: templates/public/legal/privacy.html
+msgid ""
+"The AI assistant is served from Alibaba Cloud Model Studio's Germany "
+"(Frankfurt) region, on a workspace whose deployment scope is restricted to "
+"the European Union: queries are processed inside the EU and are NOT "
+"transferred to China."
+msgstr ""
+"El asistente IA se sirve desde la región Alemania (Fráncfort) de Alibaba "
+"Cloud Model Studio, en un workspace cuyo ámbito de despliegue está "
+"restringido a la Unión Europea: las consultas se procesan dentro de la UE y "
+"no se transfieren a China."
+
+#: templates/public/legal/privacy.html
+msgid "7. Your rights"
+msgstr "7. Tus derechos"
+
+#: templates/public/legal/privacy.html
+msgid "You have the right to:"
+msgstr "Tienes derecho a:"
+
+#: templates/public/legal/privacy.html
+msgid "Access your data (Art. 15 GDPR)"
+msgstr "Acceder a tus datos (Art. 15 RGPD)"
+
+#: templates/public/legal/privacy.html
+msgid "Rectify them if inaccurate (Art. 16)"
+msgstr "Rectificarlos si son inexactos (Art. 16)"
+
+#: templates/public/legal/privacy.html
+msgid "Erase them when no longer necessary (Art. 17)"
+msgstr "Suprimirlos cuando ya no sean necesarios (Art. 17)"
+
+#: templates/public/legal/privacy.html
+msgid "Restrict their processing (Art. 18)"
+msgstr "Limitar su tratamiento (Art. 18)"
+
+#: templates/public/legal/privacy.html
+msgid "Port them to another controller in a structured format (Art. 20)"
+msgstr "Portarlos a otro responsable en formato estructurado (Art. 20)"
+
+#: templates/public/legal/privacy.html
+msgid ""
+"Object to processing based on legitimate interest or marketing (Art. 21)"
+msgstr ""
+"Oponerte al tratamiento basado en interés legítimo o marketing (Art. 21)"
+
+#: templates/public/legal/privacy.html
+msgid "Withdraw consent without retroactive effect (Art. 7.3)"
+msgstr "Retirar consentimientos sin efecto retroactivo (Art. 7.3)"
+
+#: templates/public/legal/privacy.html
+msgid "To exercise these rights:"
+msgstr "Para ejercer estos derechos:"
+
+#: templates/public/legal/privacy.html
+msgid ""
+"attaching a copy of your ID/NIE. You have the right to file a complaint with "
+"the"
+msgstr ""
+"adjuntando copia de tu DNI/NIE. Tienes derecho a presentar reclamación ante "
+"la"
+
+#: templates/public/legal/privacy.html
+msgid "Spanish Data Protection Agency (AEPD)"
+msgstr "Agencia Española de Protección de Datos (AEPD)"
+
+#: templates/public/legal/privacy.html
+msgid "if you believe your right has not been honored."
+msgstr "si consideras que tu derecho no ha sido atendido."
+
+#: templates/public/legal/privacy.html
+msgid "8. Source of data"
+msgstr "8. Procedencia"
+
+#: templates/public/legal/privacy.html
+msgid ""
+"You provide the data directly when registering and using the service. We do "
+"not obtain personal data from third parties, except for technical data "
+"generated by your browser and device when interacting with the platform."
+msgstr ""
+"Los datos los facilitas tú directamente al registrarte y al usar el "
+"servicio. No obtenemos datos personales de terceros, salvo los datos "
+"técnicos generados por tu navegador y dispositivo al interactuar con la "
+"plataforma."
+
+#: templates/public/legal/privacy.html
+msgid "9. Automated decisions"
+msgstr "9. Decisiones automatizadas"
+
+#: templates/public/legal/privacy.html
+msgid ""
+"We do not make automated decisions with legal effects on users. The Hub's AI "
+"assistant is a productivity tool under the customer's control; no action is "
+"executed without human confirmation when it affects critical data."
+msgstr ""
+"No tomamos decisiones automatizadas con efectos jurídicos sobre los "
+"usuarios. El asistente IA del Hub es una herramienta de productividad bajo "
+"control del cliente; ninguna acción se ejecuta sin confirmación humana "
+"cuando afecta a datos críticos."
+
+#: templates/public/legal/privacy.html
+msgid "10. Maintenance and updating of the system"
+msgstr "10. Mantenimiento y actualización del sistema"
+
+#: templates/public/legal/privacy.html
+msgid ""
+"ERPlora keeps and updates the software that processes the data on its own "
+"initiative, without the customer having to request it. This forms part of "
+"the service the customer contracts and is one of the security measures "
+"required by article 32 of the GDPR, in particular the ongoing integrity, "
+"availability, and resilience of the processing systems and the regular "
+"evaluation of the measures in place."
+msgstr ""
+"ERPlora mantiene y actualiza por iniciativa propia el software que trata los "
+"datos, sin que el cliente tenga que solicitarlo. Forma parte del servicio "
+"que el cliente contrata y es una de las medidas de seguridad que exige el "
+"artículo 32 del RGPD, en particular la integridad, la disponibilidad y la "
+"resiliencia permanentes de los sistemas de tratamiento y la evaluación "
+"regular de las medidas implantadas."
+
+#: templates/public/legal/privacy.html
+msgid ""
+"An update replaces the software, not the data: it does not change the "
+"purposes of the processing, the categories of data, the retention periods, "
+"or the recipients, and no data is copied outside the customer's Hub in order "
+"to carry it out."
+msgstr ""
+"Una actualización sustituye el software, no los datos: no cambia las "
+"finalidades del tratamiento, ni las categorías de datos, ni los plazos de "
+"conservación, ni los destinatarios, y para llevarla a cabo no se copia "
+"ningún dato fuera del Hub del cliente."
+
+#: templates/public/legal/privacy.html
+msgid ""
+"For that reason an update is not a change of sub-processor and does not open "
+"the right to object provided for in article 28.2 of the GDPR. That right is "
+"unaffected for the processors listed in section 5: any addition or "
+"replacement among them is notified in advance, and the customer may object."
+msgstr ""
+"Por eso una actualización no es un cambio de subencargado y no abre el "
+"derecho de oposición previsto en el artículo 28.2 del RGPD. Ese derecho "
+"queda intacto para los encargados que figuran en la cláusula 5: toda "
+"incorporación o sustitución entre ellos se notifica con antelación y el "
+"cliente puede oponerse."
+
+#: templates/public/legal/privacy.html
+msgid ""
+"The terms on which ERPlora updates the service, and what it undertakes in "
+"return, are set out in section 7 of the"
+msgstr ""
+"Las condiciones en las que ERPlora actualiza el servicio, y lo que se obliga "
+"a cumplir a cambio, están en la cláusula 7 de las"
+
+#: templates/public/legal/privacy.html
+msgid "Terms of Use"
+msgstr "Condiciones de uso"
+
+#: templates/public/legal/privacy.html
+msgid "11. Changes"
+msgstr "11. Modificaciones"
+
+#: templates/public/legal/privacy.html
+msgid ""
+"This policy may be updated. Material changes will be notified at least 30 "
+"days in advance by email to the registered account and/or through a "
+"prominent notice in the dashboard."
+msgstr ""
+"Esta política puede actualizarse. Las modificaciones materiales se "
+"notificarán con al menos 30 días de antelación por email a la cuenta "
+"registrada y/o mediante aviso destacado en el dashboard."
+
+#: templates/public/legal/cookies.html
+msgid ""
+"ERPlora's Cookie Policy. How we use cookies in accordance with the LSSI-CE "
+"and AEPD guidelines."
+msgstr ""
+"Política de cookies de ERPlora. Cómo usamos cookies conforme a la LSSI-CE y "
+"las directrices de la AEPD."
+
+#: templates/public/legal/cookies.html
+msgid ""
+"ERPlora's Cookie Policy. Types of cookies we use and how to manage them."
+msgstr ""
+"Política de cookies de ERPlora. Tipos de cookies que usamos y cómo "
+"gestionarlas."
+
+#: templates/public/legal/cookies.html
+msgid "Privacy preferences"
+msgstr "Preferencias de privacidad"
+
+#: templates/public/legal/cookies.html
+msgid ""
+"How ERPlora uses essential and optional cookies, and how you can manage your "
+"preferences."
+msgstr ""
+"Cómo usa ERPlora las cookies esenciales y las opcionales, y cómo puedes "
+"gestionar tus preferencias."
+
+#: templates/public/legal/cookies.html
+msgid "May 26, 2026"
+msgstr "26 de mayo de 2026"
+
+#: templates/public/legal/cookies.html
+msgid ""
+"ERPLORA CLOUD S.L. uses cookies and similar technologies on https://"
+"erplora.com and in the SaaS service dashboards, in accordance with Article "
+"22.2 of Law 34/2002 (LSSI-CE) and the AEPD guidelines on cookie use (2023)."
+msgstr ""
+"ERPLORA CLOUD S.L. utiliza cookies y tecnologías similares en https://"
+"erplora.com y en los dashboards del servicio SaaS, conforme al artículo 22.2 "
+"de la Ley 34/2002 (LSSI-CE) y las directrices de la AEPD sobre uso de "
+"cookies (2023)."
+
+#: templates/public/legal/cookies.html
+msgid "1. What is a cookie?"
+msgstr "1. ¿Qué es una cookie?"
+
+#: templates/public/legal/cookies.html
+msgid ""
+"A cookie is a small file that a website stores on your device to remember "
+"information about your visit (for example, language or session status)."
+msgstr ""
+"Una cookie es un pequeño archivo que un sitio web guarda en tu dispositivo "
+"para recordar información sobre tu visita (por ejemplo, idioma o estado de "
+"sesión)."
+
+#: templates/public/legal/cookies.html
+msgid "2. Types of cookies we use"
+msgstr "2. Tipos de cookies que usamos"
+
+#: templates/public/legal/cookies.html
+msgid "a) Technical"
+msgstr "a) Técnicas"
+
+#: templates/public/legal/cookies.html
+msgid "(exempt from consent — necessary for operation):"
+msgstr "(exentas de consentimiento — necesarias para el funcionamiento):"
+
+#: templates/public/legal/cookies.html
+msgid "(Django): keeps you logged in."
+msgstr "(Django): mantiene tu sesión iniciada."
+
+#: templates/public/legal/cookies.html
+msgid "(Django): protects forms against CSRF."
+msgstr "(Django): protege formularios frente a CSRF."
+
+#: templates/public/legal/cookies.html
+msgid "remembers your cookie preferences."
+msgstr "recuerda tus preferencias sobre cookies."
+
+#: templates/public/legal/cookies.html
+msgid "your preferred language."
+msgstr "tu idioma preferido."
+
+#: templates/public/legal/cookies.html
+msgid "b) Analytics"
+msgstr "b) Analíticas"
+
+#: templates/public/legal/cookies.html
+msgid "(require your consent):"
+msgstr "(requieren tu consentimiento):"
+
+#: templates/public/legal/cookies.html
+msgid ""
+"(Google Analytics, if active): aggregated and anonymized usage analysis."
+msgstr ""
+"(Google Analytics, si está activo): análisis de uso agregado y anonimizado."
+
+#: templates/public/legal/cookies.html
+msgid "c) Advertising / marketing"
+msgstr "c) Publicitarias / marketing"
+
+#: templates/public/legal/cookies.html
+msgid ""
+"We currently do <strong>NOT</strong> use cookies of this type. If we add "
+"them in the future, we will update this policy and request renewed consent."
+msgstr ""
+"Actualmente <strong>NO</strong> usamos cookies de este tipo. Si en el futuro "
+"las incorporamos, actualizaremos esta política y solicitaremos "
+"consentimiento renovado."
+
+#: templates/public/legal/cookies.html
+msgid "3. Managing your preferences"
+msgstr "3. Gestión de tus preferencias"
+
+#: templates/public/legal/cookies.html
+msgid ""
+"The first time you visit erplora.com we show you a banner to accept, reject, "
+"or configure non-technical cookies. You can change your choice at any time "
+"from the \"Cookies\" link in the footer."
+msgstr ""
+"Al entrar por primera vez en erplora.com te mostramos un banner para "
+"aceptar, rechazar o configurar las cookies no técnicas. Puedes cambiar tu "
+"elección en cualquier momento desde el enlace \"Cookies\" en el footer."
+
+#: templates/public/legal/cookies.html
+msgid "Your browser also lets you block or delete cookies; see:"
+msgstr "Tu navegador también permite bloquear o eliminar cookies; consulta:"
+
+#: templates/public/legal/cookies.html
+msgid "Safari: Preferences > Privacy"
+msgstr "Safari: Preferencias > Privacidad"
+
+#: templates/public/legal/cookies.html
+msgid "4. Retention"
+msgstr "4. Conservación"
+
+#: templates/public/legal/cookies.html
+msgid "Session cookies: until the browser is closed."
+msgstr "Cookies de sesión: hasta cerrar el navegador."
+
+#: templates/public/legal/cookies.html
+msgid ""
+"Persistent cookies: maximum 24 months, in accordance with AEPD "
+"recommendations."
+msgstr "Cookies persistentes: máximo 24 meses, conforme a recomendación AEPD."
+
+#: templates/public/legal/cookies.html
+msgid "5. More information"
+msgstr "5. Más información"
+
+#: templates/public/legal/cookies.html
+msgid "AEPD — Guide on cookie use"
+msgstr "AEPD — Guía sobre uso de cookies"
+
+#: templates/public/legal/declaracion_responsable.html
+msgid "Responsible declaration (VERI*FACTU)"
+msgstr "Declaración responsable (VERI*FACTU)"
+
+#: templates/public/legal/declaracion_responsable.html
+msgid ""
+"Responsible declaration of ERPlora Hub as an invoicing software system, "
+"under article 13 of RD 1007/2023. Full archive of every version."
+msgstr ""
+"Declaración responsable de ERPlora Hub como sistema informático de "
+"facturación, conforme al artículo 13 del RD 1007/2023. Archivo completo de "
+"todas sus versiones."
+
+#: templates/public/legal/declaracion_responsable.html
+msgid ""
+"ERPlora certifies, under its own responsibility, that ERPlora Hub complies "
+"with article 29.2.j) of the Spanish General Tax Act."
+msgstr ""
+"ERPlora declara bajo su responsabilidad que ERPlora Hub cumple el artículo "
+"29.2.j) de la Ley General Tributaria."
+
+#: templates/public/legal/declaracion_responsable.html
+msgid "Tax compliance"
+msgstr "Cumplimiento fiscal"
+
+#: templates/public/legal/declaracion_responsable.html
+#: templates/public/partials/footer.html
+msgid "Responsible declaration"
+msgstr "Declaración responsable"
+
+#: templates/public/legal/declaracion_responsable.html
+msgid ""
+"ERPLORA CLOUD SL certifies, under its own responsibility, that ERPlora Hub "
+"complies with article 29.2.j) of the Spanish General Tax Act, as required by "
+"article 13 of RD 1007/2023."
+msgstr ""
+"ERPLORA CLOUD SL declara bajo su responsabilidad que ERPlora Hub cumple el "
+"artículo 29.2.j) de la Ley General Tributaria, como exige el artículo 13 del "
+"RD 1007/2023."
+
+#: templates/public/legal/declaracion_responsable.html
+msgid "Version"
+msgstr "Versión"
+
+#: templates/public/legal/declaracion_responsable.html
+msgid "superseded"
+msgstr "sustituida"
+
+#: templates/public/legal/declaracion_responsable.html
+msgid "Modality"
+msgstr "Modalidad"
+
+#: templates/public/legal/declaracion_responsable.html
+msgid "Signed"
+msgstr "Firmada"
+
+#: templates/public/legal/declaracion_responsable.html
+msgid "Signature declared for"
+msgstr "Firma declarada para"
+
+#: templates/public/legal/declaracion_responsable.html
+msgid "Open the signed copy (PDF)"
+msgstr "Abrir la copia firmada (PDF)"
+
+#: templates/public/legal/declaracion_responsable.html
+msgid "Download it"
+msgstr "Descargarla"
+
+#: templates/public/legal/declaracion_responsable.html
+msgid ""
+"Signed with a qualified certificate (PAdES). A browser's PDF viewer does not "
+"check signatures: to verify it, download the file and open it with "
+"AutoFirma, Adobe Reader or the Spanish government's validation service,"
+msgstr ""
+"Firmada con certificado cualificado (PAdES). El visor de PDF del navegador "
+"no comprueba firmas: para verificarla, descarga el fichero y ábrelo con "
+"AutoFirma, Adobe Reader o el servicio de validación del Gobierno,"
+
+#: templates/public/legal/declaracion_responsable.html
+msgid "Pending signature."
+msgstr "Pendiente de firma."
+
+#: templates/public/legal/declaracion_responsable.html
+msgid ""
+"This version is published as its text. Its signed copy is not available yet "
+"and will be added to this archive as soon as it is signed."
+msgstr ""
+"Esta versión se publica como su texto. Su copia firmada todavía no está "
+"disponible y se añadirá a este archivo en cuanto se firme."
+
+#: templates/public/legal/declaracion_responsable.html
+#, python-format
+msgid "The most recent signed copy is the one of %(signed_version)s."
+msgstr "La copia firmada más reciente es la de %(signed_version)s."
+
+#: templates/public/legal/declaracion_responsable.html
+msgid "Archive of all versions"
+msgstr "Archivo de todas las versiones"
+
+#: templates/public/legal/declaracion_responsable.html
+msgid ""
+"Article 13.3 of RD 1007/2023 requires the producer to keep the responsible "
+"declarations of every version of the system. None of them is ever withdrawn."
+msgstr ""
+"El artículo 13.3 del RD 1007/2023 obliga al productor a guardar y conservar "
+"las declaraciones responsables de todas las versiones del sistema. Ninguna "
+"se retira nunca."
+
+#: templates/public/legal/declaracion_responsable.html
+msgid "signed PDF"
+msgstr "PDF firmado"
+
+#: templates/public/legal/declaracion_responsable.html
+msgid "in force"
+msgstr "en vigor"
+
+#: templates/public/partials/footer.html
+msgid "Privacy"
+msgstr "Privacidad"
+
+# --- The app store (L6): store.py, templates/public/store/, the menu and the footer ---
+
+#: store.py
+msgid "Included in the paid plans"
+msgstr "Incluida en los planes de pago"
+
+#: store.py
+msgid "Free"
+msgstr "Gratis"
+
+#: store.py
+msgid "All"
+msgstr "Todas"
+
+#: store.py templates/public/store/_card.html
+msgid "Premium"
+msgstr "Premium"
+
+#: templates/public/store/list.html templates/public/partials/nav_links.html
+#: templates/public/partials/footer_links.html
+msgid "Apps"
+msgstr "Apps"
+
+#: templates/public/partials/footer_links.html
+msgid "Product"
+msgstr "Producto"
+
+#: templates/public/store/list.html
+msgid ""
+"Browse the ERPlora apps by category and turn on only the ones your business "
+"needs. They all share one database, one interface and one login."
+msgstr "Explora las apps de ERPlora por categoría y activa solo las que necesita tu negocio. Todas comparten una base de datos, una interfaz y un inicio de sesión."
+
+#: templates/public/store/list.html
+msgid "%(counter)s app"
+msgid_plural "%(counter)s apps"
+msgstr[0] "%(counter)s app"
+msgstr[1] "%(counter)s apps"
+
+#: templates/public/store/list.html
+msgid "Turn on only the"
+msgstr "Activa solo las"
+
+#: templates/public/store/list.html
+msgid "apps you need."
+msgstr "apps que necesitas."
+
+#: templates/public/store/list.html
+msgid ""
+"Every app fits with the others inside your Hub. Browse them by category and "
+"turn on only what you need."
+msgstr "Cada app encaja con las demás dentro de tu Hub. Explóralas por categoría y activa solo lo que necesitas."
+
+#: templates/public/store/list.html
+msgid "No apps published yet."
+msgstr "Todavía no hay apps publicadas."
+
+#: templates/public/store/list.html
+msgid "Search apps"
+msgstr "Buscar apps"
+
+#: templates/public/store/list.html
+msgid "Filter by category"
+msgstr "Filtrar por categoría"
+
+#: templates/public/store/list.html
+msgid "Filter by access"
+msgstr "Filtrar por acceso"
+
+#: templates/public/store/list.html
+msgid "No app matches your search."
+msgstr "Ninguna app coincide con tu búsqueda."
+
+#: templates/public/store/_clear_filters.html
+msgid "Clear filters"
+msgstr "Quitar filtros"
+
+#: templates/public/store/app_base.html
+msgid "Back to apps"
+msgstr "Volver a las apps"
+
+#: templates/public/store/app_base.html
+msgid "Go to dashboard"
+msgstr "Ir al panel"
+
+#: templates/public/store/app_base.html
+msgid "Turn it on from your Hub"
+msgstr "Actívala desde tu Hub"
+
+#: templates/public/store/app_base.html
+msgid ""
+"Apps are turned on from the Apps page of your Hub. Open your dashboard to "
+"choose the Hub."
+msgstr "Las apps se activan desde la página Apps de tu Hub. Abre tu panel para elegir el Hub."
+
+#: templates/public/store/app_base.html
+msgid ""
+"Apps are turned on from the Apps page of your Hub. Create your free account "
+"to get one."
+msgstr "Las apps se activan desde la página Apps de tu Hub. Crea tu cuenta gratis para tener uno."
+
+#: templates/public/store/app_base.html
+msgid "App sections"
+msgstr "Secciones de la app"
+
+#: templates/public/store/app_base.html
+msgid "Overview"
+msgstr "Resumen"
+
+#: templates/public/store/app_base.html
+msgid "Documentation"
+msgstr "Documentación"
+
+#: templates/public/store/detail.html templates/public/store/docs.html
+msgid "ERPlora apps"
+msgstr "Apps de ERPlora"
+
+#: templates/public/store/detail.html
+msgid "About this app"
+msgstr "Sobre esta app"
+
+#: templates/public/store/detail.html
+msgid "Required apps"
+msgstr "Apps necesarias"
+
+#: templates/public/store/detail.html
+msgid "This app needs these apps, which turn on with it:"
+msgstr "Esta app necesita estas apps, que se activan con ella:"
+
+#: templates/public/store/detail.html
+msgid "Details"
+msgstr "Detalles"
+
+#: templates/public/store/detail.html
+msgid "Category"
+msgstr "Categoría"
+
+#: templates/public/store/detail.html
+msgid "Access"
+msgstr "Acceso"
+
+#: templates/public/store/detail.html
+msgid "Built for"
+msgstr "Pensada para"
+
+#: templates/public/store/docs.html
+msgid "%(name)s documentation"
+msgstr "Documentación de %(name)s"
+
+#: templates/public/store/docs.html
+msgid "This documentation is only available in Spanish."
+msgstr "Esta documentación solo está disponible en español."
+
+# --- The industries (L4): industries.py, templates/public/industries/ and the footer ---
+
+#: industries.py
+#, python-format
+msgid "POS and ERP software for your %(business)s"
+msgstr "Software TPV y ERP para tu %(business)s"
+
+#: industries.py
+#, python-format
+msgid "Plans start at €%(price)s per month per hub, VAT excluded."
+msgstr "Los planes empiezan en %(price)s € al mes por hub, IVA no incluido."
+
+#: industries.py
+#, python-format
+msgid "The %(plan)s plan is free and permanent, with no card."
+msgstr "El plan %(plan)s es gratis y permanente, sin tarjeta."
+
+#: industries.py
+#, python-format
+msgid "ERPlora is one modular cloud app that runs your %(business)s: point of sale, catalogue and stock, customers and invoicing, from any device."
+msgstr "ERPlora es una sola aplicación modular en la nube con la que llevas tu %(business)s: TPV, catálogo y stock, clientes y facturación, desde cualquier dispositivo."
+
+#: industries.py
+#, python-format
+msgid "You turn on only the apps you need — %(count)s in the catalogue — and they share one database, one interface and one login."
+msgstr "Activas solo las apps que necesitas —%(count)s en el catálogo— y todas comparten una base de datos, una interfaz y un único inicio de sesión."
+
+#: industries.py
+msgid "You turn on only the apps you need, and they share one database, one interface and one login."
+msgstr "Activas solo las apps que necesitas, y todas comparten una base de datos, una interfaz y un único inicio de sesión."
+
+#: industries.py
+#, python-format
+msgid "Yes. A %(business)s comes with %(count)s app of our catalogue out of the box — %(examples)s — and it works on the same data as everything else."
+msgid_plural "Yes. A %(business)s comes with %(count)s apps of our catalogue out of the box — among them %(examples)s — and they all work on the same data."
+msgstr[0] "Sí. Tu %(business)s trae de serie %(count)s app de nuestro catálogo —%(examples)s— y trabaja sobre los mismos datos que todo lo demás."
+msgstr[1] "Sí. Tu %(business)s trae de serie %(count)s apps de nuestro catálogo —entre ellas %(examples)s— y todas trabajan sobre los mismos datos."
+
+#: industries.py
+#, python-format
+msgid "Yes. A %(business)s runs on the same core as every other business we serve — point of sale, catalogue, customers and invoicing — and you turn on the apps of the catalogue as you need them."
+msgstr "Sí. Tu %(business)s funciona con el mismo núcleo que cualquier otro negocio al que servimos —TPV, catálogo, clientes y facturación— y vas activando las apps del catálogo según las necesitas."
+
+#: industries.py
+#, python-format
+msgid "Is ERPlora a good fit for a %(business)s?"
+msgstr "¿ERPlora encaja en tu %(business)s?"
+
+#: industries.py
+#, python-format
+msgid "Plans start at €%(price)s per month per hub, VAT excluded. One subscription covers the whole business — every device and every user in it — and the premium apps are included in the paid plans; you never pay per transaction."
+msgstr "Los planes empiezan en %(price)s € al mes por hub, IVA no incluido. Una suscripción cubre todo el negocio —todos sus dispositivos y todos sus usuarios— y las apps premium están incluidas en los planes de pago; nunca pagas por transacción."
+
+#: industries.py
+#, python-format
+msgid "The %(plan)s plan is free and permanent, and needs no card. Paid plans raise the limits and add support; the full table is on the pricing page."
+msgstr "El plan %(plan)s es gratis y permanente, y no pide tarjeta. Los planes de pago amplían los límites y añaden soporte; la tabla completa está en la página de precios."
+
+#: industries.py
+#, python-format
+msgid "How much does ERPlora cost for a %(business)s?"
+msgstr "¿Cuánto cuesta ERPlora para tu %(business)s?"
+
+#: industries.py
+#, python-format
+msgid "Start with the apps a %(business)s comes with — %(examples)s — and turn on more from the catalogue when the business asks for them."
+msgstr "Empieza con las apps que trae de serie tu %(business)s —%(examples)s— y activa más del catálogo cuando el negocio te las pida."
+
+#: industries.py
+msgid "Start with the core: point of sale, catalogue, customers and invoicing come with every hub. You then turn on apps from the catalogue one at a time, so you never configure something you are not using yet."
+msgstr "Empieza por el núcleo: TPV, catálogo, clientes y facturación vienen con cada hub. A partir de ahí activas apps del catálogo de una en una, así nunca configuras algo que todavía no usas."
+
+#: industries.py
+msgid "Which apps do I need to start?"
+msgstr "¿Qué apps necesito para empezar?"
+
+#: industries.py
+msgid "Do I need to install anything?"
+msgstr "¿Tengo que instalar algo?"
+
+#: industries.py
+msgid "No. ERPlora runs in the browser on the device you already have. There is also an installable app for the counter, which is what talks to receipt printers and the cash drawer; both see exactly the same data."
+msgstr "No. ERPlora funciona en el navegador del dispositivo que ya tienes. También hay una aplicación instalable para el mostrador, que es la que habla con las impresoras de tique y el cajón portamonedas; las dos ven exactamente los mismos datos."
+
+#: industries.py
+msgid "Can I add or remove apps later?"
+msgstr "¿Puedo añadir o quitar apps después?"
+
+#: industries.py
+msgid "Yes, at any time. Turning an app on takes one click and it starts working on your existing data; if you turn it off, your data stays where it is."
+msgstr "Sí, cuando quieras. Activar una app es un clic y empieza a trabajar sobre tus datos actuales; si la desactivas, tus datos se quedan donde están."
+
+#: templates/public/industries/list.html
+msgid "Business types"
+msgstr "Tipos de negocio"
+
+#: templates/public/industries/list.html
+msgid "Discover how ERPlora adapts to your business, with the apps a restaurant, a salon, a shop or a clinic comes with."
+msgstr "Descubre cómo ERPlora se adapta a tu negocio, con las apps que trae de serie un restaurante, una peluquería, una tienda o una clínica."
+
+#: templates/public/industries/list.html
+msgid "Discover how ERPlora adapts to your business, with the apps every type of business comes with."
+msgstr "Descubre cómo ERPlora se adapta a tu negocio, con las apps que trae de serie cada tipo de negocio."
+
+#: templates/public/industries/list.html templates/public/partials/footer_links.html
+msgid "Industries"
+msgstr "Industrias"
+
+#: templates/public/industries/list.html
+msgid "ERPlora for your business."
+msgstr "ERPlora para tu negocio."
+
+#: templates/public/industries/list.html
+#, python-format
+msgid "Find your business type and see the apps it comes with: ERPlora is ready for %(total)s type of business."
+msgid_plural "Find your business type and see the apps it comes with: ERPlora is ready for %(total)s types of business."
+msgstr[0] "Encuentra tu tipo de negocio y mira las apps que trae de serie: ERPlora está listo para %(total)s tipo de negocio."
+msgstr[1] "Encuentra tu tipo de negocio y mira las apps que trae de serie: ERPlora está listo para %(total)s tipos de negocio."
+
+#: templates/public/industries/list.html
+msgid "Filter by sector"
+msgstr "Filtrar por sector"
+
+#: templates/public/industries/list.html
+msgctxt "business sectors"
+msgid "All"
+msgstr "Todos"
+
+#: templates/public/industries/list.html
+msgid "No business types yet"
+msgstr "Todavía no hay tipos de negocio"
+
+#: templates/public/industries/list.html
+msgid "Business types are being configured. Check back soon."
+msgstr "Los tipos de negocio se están configurando. Vuelve pronto."
+
+#: templates/public/industries/list.html
+msgid "Fully modular"
+msgstr "Totalmente modular"
+
+#: templates/public/industries/list.html
+msgid "Not seeing your business?"
+msgstr "¿No ves tu negocio?"
+
+#: templates/public/industries/list.html
+msgid "ERPlora is fully modular. Browse the app catalogue to build the setup any business needs."
+msgstr "ERPlora es totalmente modular. Explora el catálogo de apps para montar la configuración que necesite cualquier negocio."
+
+#: templates/public/industries/_list_actions.html templates/public/industries/_detail_actions.html
+msgid "Browse apps"
+msgstr "Explorar apps"
+
+#: templates/public/industries/_list_actions.html
+msgid "Contact us"
+msgstr "Contáctanos"
+
+#: templates/public/industries/detail.html
+msgid "Apps included out of the box"
+msgstr "Apps que trae de serie"
+
+#: templates/public/industries/detail.html
+#, python-format
+msgid "Everything a %(business)s needs, turned on from day one."
+msgstr "Todo lo que necesita tu %(business)s, activado desde el primer día."
+
+#: templates/public/industries/detail.html
+msgid "FAQ"
+msgstr "Preguntas frecuentes"
+
+#: templates/public/industries/detail.html
+#, python-format
+msgid "Questions we get about %(name)s"
+msgstr "Preguntas que nos hacen sobre %(name)s"
+
+#: templates/public/industries/detail.html
+msgid "Read on"
+msgstr "Sigue leyendo"
+
+#: templates/public/industries/detail.html
+msgid "Everything else you'll want to check"
+msgstr "Todo lo demás que vas a querer mirar"
+
+#: templates/public/industries/detail.html
+msgid "Plans and prices"
+msgstr "Planes y precios"
+
+#: templates/public/industries/detail.html
+msgid "What each plan includes, and how we compare with the ERPs and the vertical tools you are probably also looking at."
+msgstr "Qué incluye cada plan y cómo nos comparamos con los ERP y las herramientas verticales que probablemente también estés mirando."
+
+#: templates/public/industries/detail.html
+msgid "The app catalogue"
+msgstr "El catálogo de apps"
+
+#: templates/public/industries/detail.html
+msgid "Every app we publish and what it does: you turn on only the ones you use."
+msgstr "Todas las apps que publicamos y lo que hace cada una: activas solo las que usas."
+
+#: templates/public/industries/detail.html
+msgid "How the product works"
+msgstr "Cómo funciona el producto"
+
+#: templates/public/industries/detail.html
+msgid "The point of sale, the catalogue, the assistant and the installable app for the counter."
+msgstr "El TPV, el catálogo, el asistente y la aplicación instalable del mostrador."
+
+#: templates/public/industries/detail.html
+msgid "Get started"
+msgstr "Empezar"
+
+#: templates/public/industries/detail.html
+#, python-format
+msgid "Start your %(business)s with ERPlora"
+msgstr "Arranca tu %(business)s con ERPlora"
+
+#: templates/public/industries/detail.html
+msgid "Create your free account and configure your business in minutes. No technical knowledge needed."
+msgstr "Crea tu cuenta gratis y configura tu negocio en minutos. No hacen falta conocimientos técnicos."
+
+#: templates/public/industries/detail.html
+msgid "Keep exploring"
+msgstr "Sigue explorando"
+
+#: templates/public/industries/detail.html
+msgid "Similar business types"
+msgstr "Tipos de negocio similares"
+
+#: templates/public/industries/_detail_actions.html
+msgid "Get started free"
+msgstr "Empieza gratis"
+
+#: templates/public/partials/footer_links.html
+msgid "Company"
+msgstr "Empresa"
+
+# --- L3a: product, company, resources, help, the app and /download/ (origin/develop .po) ---
+
+msgid "ERPlora for Android"
+msgstr "ERPlora para Android"
+
+msgid "The ERPlora app for Android is on its way to Google Play. Meanwhile you can use ERPlora in your Android browser, and install the app on the Windows or Linux device that prints your receipts."
+msgstr "La app de ERPlora para Android está de camino a Google Play. Mientras tanto puedes usar ERPlora en el navegador de tu Android e instalar la app en el equipo Windows o Linux que imprime tus tiques."
+
+msgid "Coming to Google Play. Here is what works today while the listing is under review."
+msgstr "Muy pronto en Google Play. Esto es lo que ya funciona hoy mientras la ficha está en revisión."
+
+msgid "Coming to Google Play."
+msgstr "Muy pronto en Google Play."
+
+msgid "The Android app is built and its Google Play listing is under review. On Android we publish through Play and nowhere else, so that every install gets its security updates from Google — which means there is nothing to download here yet."
+msgstr "La app de Android está terminada y su ficha de Google Play está en revisión. En Android publicamos por Play y por ningún otro sitio, para que cada instalación reciba sus actualizaciones de seguridad de Google — así que aquí todavía no hay nada que descargar."
+
+msgid "No waiting required"
+msgstr "Sin esperar a nadie"
+
+msgid "What works today, without the Android app."
+msgstr "Lo que ya funciona hoy, sin la app de Android."
+
+msgid "The app is not what runs your business — your hub is, and it already runs everywhere. These three routes are live right now."
+msgstr "Lo que lleva tu negocio no es la app: es tu hub, y tu hub ya funciona en todas partes. Estos tres caminos están disponibles ahora mismo."
+
+msgid "Available now"
+msgstr "Disponible ya"
+
+msgid "On your Android phone or tablet"
+msgstr "En tu móvil o tu tablet Android"
+
+msgid "Open your hub in the browser"
+msgstr "Abre tu hub en el navegador"
+
+msgid "Your hub has its own web address and it works in Chrome on Android, full size. Add it to your home screen and it opens like an app. Everything works there except printing to a thermal printer, which is the one thing that needs the installed app."
+msgstr "Tu hub tiene su propia dirección web y funciona en Chrome de Android, a pantalla completa. Añádelo a la pantalla de inicio y se abre como una app. Ahí funciona todo menos imprimir en una impresora térmica, que es lo único que necesita la app instalada."
+
+msgid "Create your free hub"
+msgstr "Crea tu hub gratis"
+
+msgid "Windows 10 / 11 · x64"
+msgstr "Windows 10 / 11 · x64"
+
+msgid "Install it on the till instead"
+msgstr "Instálala mejor en el TPV"
+
+msgid "If what you need is the receipt printer and the cash drawer, the device that has to run the app is the one at the counter — not the phone in your pocket. The Windows build is published and free."
+msgstr "Si lo que necesitas es la impresora de tiques y el cajón portamonedas, el equipo que tiene que llevar la app es el del mostrador, no el móvil que llevas encima. La versión de Windows está publicada y es gratis."
+
+msgid "Download for Windows"
+msgstr "Descargar para Windows"
+
+msgid "x86_64 · AppImage"
+msgstr "x86_64 · AppImage"
+
+msgid "Or on a Linux machine"
+msgstr "O en una máquina Linux"
+
+msgid "The same app, portable, for a dedicated machine on your business network. It prints and opens the drawer exactly like the Windows one."
+msgstr "La misma app, portable, para un equipo dedicado en la red de tu negocio. Imprime y abre el cajón igual que la de Windows."
+
+msgid "Download for Linux"
+msgstr "Descargar para Linux"
+
+msgid "Why there is no download button here"
+msgstr "Por qué aquí no hay botón de descarga"
+
+msgid "On Android we ship through Google Play only."
+msgstr "En Android distribuimos solo por Google Play."
+
+msgid "Updates that arrive on their own"
+msgstr "Actualizaciones que llegan solas"
+
+msgid "An app installed from a file never updates itself. A till that stays two versions behind is a till that stops matching what your invoices have to say."
+msgstr "Una app instalada desde un fichero no se actualiza nunca sola. Un TPV que se queda dos versiones atrás es un TPV que deja de cuadrar con lo que tienen que decir tus facturas."
+
+msgid "One signed identity"
+msgstr "Una única identidad firmada"
+
+msgid "Every ERPlora install comes from the same signed listing, so you always know the app on your counter is ours and nobody else's."
+msgstr "Todas las instalaciones de ERPlora salen de la misma ficha firmada, así que siempre sabes que la app de tu mostrador es la nuestra y no la de otro."
+
+msgid "This page becomes the listing"
+msgstr "Esta página se convertirá en la ficha"
+
+msgid "The day Google approves it, this same address takes you straight to Google Play. Any link or bookmark you already have keeps working — there is nothing for you to update."
+msgstr "El día que Google la apruebe, esta misma dirección te llevará directo a Google Play. Los enlaces y marcadores que ya tengas seguirán funcionando: no tienes que cambiar nada."
+
+msgid "Waiting on Google, not on us"
+msgstr "Depende de Google, no de nosotros"
+
+msgid "The build is finished and submitted. Review times are Google's to decide, so we do not publish a date we cannot keep."
+msgstr "La versión está terminada y enviada. Los plazos de revisión los decide Google, así que no publicamos una fecha que no podemos cumplir."
+
+msgid "You need a hub before you need the app."
+msgstr "Antes que la app necesitas un hub."
+
+msgid "The app opens your hub, so start there: create it free, then install the app on the device at the counter. No credit card."
+msgstr "La app abre tu hub, así que empieza por ahí: créalo gratis y luego instala la app en el dispositivo del mostrador. Sin tarjeta."
+
+msgid "See what the app does"
+msgstr "Mira lo que hace la app"
+
+msgid "The ERPlora app"
+msgstr "La app de ERPlora"
+
+msgid "One app for the device at your counter: it opens your ERPlora hub and it is what prints thermal receipts and opens your cash drawer. Free for Windows, Linux and Android."
+msgstr "Una sola app para el dispositivo de tu mostrador: abre tu hub de ERPlora y es la que imprime los tiques térmicos y abre el cajón portamonedas. Gratis para Windows, Linux y Android."
+
+msgid "Your hub and your hardware, in a single app."
+msgstr "Tu hub y tu hardware, en una sola app."
+
+msgid "Install it on the device at your counter. It opens your hub like any other window — and while it is open, it is what talks to the receipt printer and the cash drawer on your network."
+msgstr "Instálala en el dispositivo de tu mostrador. Abre tu hub como cualquier otra ventana — y mientras está abierta, es la que habla con la impresora de tiques y el cajón portamonedas de tu red."
+
+msgid "One app, not two"
+msgstr "Una app, no dos"
+
+msgid "There is nothing to pair and nothing else to install."
+msgstr "No hay nada que emparejar ni nada más que instalar."
+
+msgid "ERPlora runs in the browser and works there for everything except one thing: a browser cannot reach a thermal printer. The app is the same ERPlora, in its own window, with that access — so the till that charges is the till that prints."
+msgstr "ERPlora funciona en el navegador, y allí sirve para todo salvo para una cosa: un navegador no puede llegar a una impresora térmica. La app es la misma ERPlora, en su propia ventana, con ese acceso — así el TPV que cobra es el TPV que imprime."
+
+msgid "Install once"
+msgstr "Se instala una vez"
+
+msgid "The first launch asks which hub is yours and remembers it. From then on the app opens straight into your business."
+msgstr "El primer arranque pregunta cuál es tu hub y lo recuerda. A partir de ahí la app abre directamente tu negocio."
+
+msgid "Finds your printer on its own"
+msgstr "Encuentra tu impresora sola"
+
+msgid "It scans your local network and asks it by name, so you never type an IP address. If your router later hands the printer a different address, the app follows it."
+msgstr "Rastrea tu red local y pregunta por su nombre, así nunca escribes una dirección IP. Si más adelante tu router le da otra dirección a la impresora, la app la sigue."
+
+msgid "Tells you when there is a new version"
+msgstr "Te avisa cuando hay una versión nueva"
+
+msgid "The app checks what we publish and points you at the new installer. It never interrupts a sale to do it, and it never updates itself behind your back."
+msgstr "La app comprueba lo que publicamos y te lleva al instalador nuevo. Nunca interrumpe una venta para hacerlo, y nunca se actualiza sola a tus espaldas."
+
+msgid "Supported hardware"
+msgstr "Hardware compatible"
+
+msgid "A deliberately simple hardware model."
+msgstr "Un modelo de hardware deliberadamente simple."
+
+msgid "We support the counter hardware a shop actually has, over the one connection that is reliable — the local network — instead of maintaining a different driver stack for every device and operating system."
+msgstr "Damos soporte al hardware de mostrador que un negocio tiene de verdad, por la única conexión que es fiable —la red local—, en vez de mantener una pila de drivers distinta para cada dispositivo y cada sistema operativo."
+
+msgid "Receipt printer"
+msgstr "Impresora de tiques"
+
+msgid "A network ESC/POS printer using Ethernet or Wi-Fi and TCP port 9100. Receipts, invoices, delivery notes, kitchen orders, barcode labels and the cash-up report."
+msgstr "Una impresora ESC/POS de red por Ethernet o Wi-Fi y puerto TCP 9100. Tiques, facturas, albaranes, comandas de cocina, etiquetas de código de barras y el informe de cierre de caja."
+
+msgid "Cash drawer"
+msgstr "Cajón portamonedas"
+
+msgid "A compatible drawer connected to the assigned receipt printer's drawer port. It opens with the sale."
+msgstr "Un cajón compatible conectado al puerto de cajón de la impresora de tiques asignada. Se abre con la venta."
+
+msgid "Barcode scanner"
+msgstr "Escáner de códigos de barras"
+
+msgid "Keyboard-style scanners type straight into the field, in the app and in the browser alike. Nothing to install and nothing to configure."
+msgstr "Los escáneres de tipo teclado escriben directamente en el campo, igual en la app que en el navegador. Nada que instalar y nada que configurar."
+
+msgid "Network only"
+msgstr "Solo red"
+
+msgid "USB and Bluetooth printer transport are not supported."
+msgstr "El transporte de impresora por USB y por Bluetooth no está soportado."
+
+msgid "Free with every plan"
+msgstr "Gratis con cualquier plan"
+
+msgid "Install it on the device at your counter."
+msgstr "Instálala en el dispositivo de tu mostrador."
+
+msgid "Pick the platform of the device that stays at your business, next to the printer. You always get the latest published version."
+msgstr "Elige la plataforma del dispositivo que se queda en tu negocio, junto a la impresora. Siempre te llevas la última versión publicada."
+
+msgid "The usual choice for a fixed till workstation."
+msgstr "La opción habitual para un puesto de TPV fijo."
+
+msgid "Get it from Microsoft Store"
+msgstr "Consíguela en Microsoft Store"
+
+msgid "Download the app"
+msgstr "Descargar la app"
+
+msgid "For a dedicated machine on your business network."
+msgstr "Para una máquina dedicada en la red de tu negocio."
+
+msgid "Android 9 or later"
+msgstr "Android 9 o posterior"
+
+msgid "The same app on a phone or tablet — for taking orders at the table."
+msgstr "La misma app en un móvil o una tableta — para tomar comandas en la mesa."
+
+msgid "Get it on Google Play"
+msgstr "Consíguela en Google Play"
+
+msgid "Coming to Google Play"
+msgstr "Muy pronto en Google Play"
+
+msgid "On a Mac, an iPhone or an iPad"
+msgstr "En un Mac, un iPhone o un iPad"
+
+msgid "There is no build for those yet — open ERPlora in your browser instead. Everything works there except printing thermal receipts, which needs the app."
+msgstr "Todavía no hay versión para esos — abre ERPlora en el navegador. Allí funciona todo salvo imprimir tiques térmicos, que necesita la app."
+
+msgid "See plans"
+msgstr "Ver planes"
+
+msgid "About Us"
+msgstr "Sobre Nosotros"
+
+msgid "About ERPlora: building the future of modular ERP systems for small and medium businesses. Flexible, affordable, and powerful."
+msgstr "Sobre ERPlora: construyendo el futuro de los sistemas ERP modulares para pequeñas y medianas empresas. Flexible, asequible y potente."
+
+msgid "Building the future of modular ERP systems. Flexible, affordable, and powerful tools for every business."
+msgstr "Construyendo el futuro de los sistemas ERP modulares. Herramientas flexibles, asequibles y potentes para cada negocio."
+
+msgid "About"
+msgstr "Acerca de"
+
+msgid "About ERPlora."
+msgstr "Acerca de ERPlora."
+
+msgid "Building the future of modular ERP systems for small and medium businesses."
+msgstr "Construyendo el futuro de los sistemas ERP modulares para pequeñas y medianas empresas."
+
+msgid "Our Mission"
+msgstr "Nuestra Misión"
+
+msgid "Provide businesses with a flexible, affordable and powerful ERP. Every business deserves professional-grade tools without forced subscriptions or vendor lock-in."
+msgstr "Ofrecer a los negocios un ERP flexible, asequible y potente. Todo negocio merece herramientas de nivel profesional sin suscripciones forzadas ni dependencia de proveedor."
+
+msgid "Our Technology"
+msgstr "Nuestra Tecnología"
+
+msgid "Blog"
+msgstr "Blog"
+
+msgid "Insights"
+msgstr "Ideas"
+
+msgid "Product stories, practical ERP guidance, and lessons from the ERPlora team are coming soon."
+msgstr "Muy pronto: historias de producto, consejos prácticos de ERP y lo que vamos aprendiendo en el equipo de ERPlora."
+
+msgid "Careers"
+msgstr "Empleos"
+
+msgid "Future opportunities to join the team building ERPlora will be published here."
+msgstr "Aquí publicaremos las futuras oportunidades para unirte al equipo que construye ERPlora."
+
+msgid "Press"
+msgstr "Prensa"
+
+msgid "Company news, media resources, and official ERPlora announcements are coming soon."
+msgstr "Muy pronto: novedades de la empresa, material para prensa y anuncios oficiales de ERPlora."
+
+msgid "Ways to try ERPlora"
+msgstr "Formas de probar ERPlora"
+
+msgid "Two free ways to try ERPlora: create a free cloud hub in minutes, or install the free app so the device at your counter can print receipts and open the cash drawer. Both are free — no credit card."
+msgstr "Dos formas gratis de probar ERPlora: crea un hub cloud gratis en minutos, o instala la app gratuita para que el dispositivo de tu mostrador pueda imprimir tiques y abrir el cajón. Las dos son gratis — sin tarjeta."
+
+msgid "Try ERPlora"
+msgstr "Prueba ERPlora"
+
+msgid "Two free ways to try ERPlora."
+msgstr "Dos formas gratuitas de probar ERPlora."
+
+msgid "Both are free and end the same way — with your own hub. Create it in the cloud in a couple of minutes, or start by installing the app on the device at your counter. No credit card either way."
+msgstr "Las dos son gratis y acaban igual — con tu propio hub. Créalo en la nube en un par de minutos, o empieza instalando la app en el dispositivo de tu mostrador. Sin tarjeta en ninguno de los dos casos."
+
+msgid "Recommended"
+msgstr "Recomendado"
+
+msgid "Option A"
+msgstr "Opción A"
+
+msgid "Create your free hub in the cloud"
+msgstr "Crea tu hub gratis en la nube"
+
+msgid "Sign up and your hub is provisioned in minutes — nothing to install, nothing to maintain. It runs in the browser and is always available at the counter."
+msgstr "Regístrate y tu hub se aprovisiona en minutos: nada que instalar, nada que mantener. Funciona en el navegador y está siempre disponible en el mostrador."
+
+msgid "No credit card required"
+msgstr "Sin tarjeta de crédito"
+
+msgid "1 device, 3 local users"
+msgstr "1 dispositivo, 3 usuarios locales"
+
+msgid "Managed PostgreSQL, daily backups"
+msgstr "PostgreSQL gestionado, backups diarios"
+
+msgid "For counter hardware"
+msgstr "Para el hardware del mostrador"
+
+msgid "Option B"
+msgstr "Opción B"
+
+msgid "Install the ERPlora app"
+msgstr "Instala la app de ERPlora"
+
+msgid "One free app on the device at your counter: it opens your hub and it is what prints thermal receipts and opens the cash drawer. On first launch it walks you through creating your free hub — so this path is free too."
+msgstr "Una sola app gratis en el dispositivo de tu mostrador: abre tu hub y es la que imprime los tiques térmicos y abre el cajón portamonedas. En el primer arranque te guía para crear tu hub gratis — así que este camino también es gratis."
+
+msgid "See supported hardware and platforms"
+msgstr "Ver hardware y plataformas compatibles"
+
+msgid "Whichever you pick, ERPlora is free to try — you'll just create your free account, no credit card."
+msgstr "Elijas la que elijas, probar ERPlora es gratis: solo crearás tu cuenta gratuita, sin tarjeta."
+
+msgid "Help Center"
+msgstr "Centro de ayuda"
+
+msgid "Features"
+msgstr "Características"
+
+msgid "Security"
+msgstr "Seguridad"
+
+msgid "Updates"
+msgstr "Actualizaciones"
+
+msgid "Downloads"
+msgstr "Descargas"
+
+msgid "Lightning fast"
+msgstr "Ultrarrápido"
+
+msgid "Modular"
+msgstr "Modular"
+
+msgid "Install only the modules you need and add more as you grow."
+msgstr "Instala solo los módulos que necesitas y añade más a medida que creces."
+
+msgid "Cloud-native"
+msgstr "Cloud-native"
+
+msgid "Daily backups, TLS and high availability on AWS. Access from anywhere."
+msgstr "Copias diarias, TLS y alta disponibilidad en AWS. Accede desde cualquier lugar."
+
+msgid "Multi-platform"
+msgstr "Multiplataforma"
+
+msgid "Phone, tablet, desktop and POS — all from the browser."
+msgstr "Móvil, tablet, ordenador y TPV: todo desde el navegador."
+
+msgid "Enterprise security"
+msgstr "Seguridad empresarial"
+
+msgid "Server-side sessions in secure cookies, sign-in with Google and a WAF on AWS."
+msgstr "Sesiones de servidor en cookies seguras, inicio de sesión con Google y WAF en AWS."
+
+msgid "Sign in"
+msgstr "Iniciar sesión"
+
+msgid "Web Components"
+msgstr "Web Components"
+
+msgid "Reactivity & Interactivity"
+msgstr "Reactividad e interactividad"
+
+msgid "Cloud-first PWA"
+msgstr "PWA cloud-first"
+
+msgid "Per-tenant Hub, isolated"
+msgstr "Hub por cliente, aislado"
+
+msgid "Contact Security Team"
+msgstr "Contactar con el Equipo de Seguridad"
+
+msgid "Server-side sessions in secure cookies (Secure, HttpOnly, SameSite)"
+msgstr "Sesiones de servidor en cookies seguras (Secure, HttpOnly, SameSite)"
+
+msgid "One-time code to enter your hub"
+msgstr "Código de un solo uso para entrar en tu hub"
+
+msgid "Sign in with Google"
+msgstr "Inicio de sesión con Google"
+
+msgid "Encryption in transit and at rest"
+msgstr "Cifrado en tránsito y en reposo"
+
+msgid "HTTPS/TLS 1.3 required"
+msgstr "HTTPS/TLS 1.3 requerido"
+
+msgid "Regular security audits"
+msgstr "Auditorías de seguridad regulares"
+
+msgid "Salted password hashing (PBKDF2)"
+msgstr "Contraseñas guardadas con hash y sal (PBKDF2)"
+
+msgid "Amazon Web Services, Spain region (eu-south-2, Aragón)"
+msgstr "Amazon Web Services, región de España (eu-south-2, Aragón)"
+
+msgid "Automated backups"
+msgstr "Copias de seguridad automatizadas"
+
+msgid "DDoS protection and WAF on AWS"
+msgstr "Protección anti-DDoS y WAF en AWS"
+
+msgid "High availability on AWS, with daily backups"
+msgstr "Alta disponibilidad en AWS, con copias de seguridad diarias"
+
+msgid "GDPR compliant"
+msgstr "Cumple con GDPR"
+
+msgid "Cookie consent (django-cookie-consent)"
+msgstr "Consentimiento de cookies (django-cookie-consent)"
+
+msgid "Rate limiting per IP and WAF"
+msgstr "Límite de peticiones por IP y WAF"
+
+msgid "Data retention policies"
+msgstr "Políticas de retención de datos"
+
+msgid "Read section 7"
+msgstr "Leer la cláusula 7"
+
+msgid "Explore ERPlora features: lightning-fast POS, modular architecture, cloud-native design, multi-currency support, real-time analytics, and more."
+msgstr "Explora las características de ERPlora: POS ultrarrápido, arquitectura modular, diseño cloud-native, soporte multi-moneda, analíticas en tiempo real y más."
+
+msgid "Lightning-fast POS, modular architecture, cloud-native design, multi-currency support, and real-time analytics."
+msgstr "POS ultrarrápido, arquitectura modular, diseño cloud-native, soporte multi-moneda y analíticas en tiempo real."
+
+msgid "Platform"
+msgstr "Plataforma"
+
+msgid "Powerful features for modern businesses."
+msgstr "Funciones potentes para negocios modernos."
+
+msgid "ERPlora combines cutting-edge technology with intuitive design to deliver a complete, modular ERP — no technical team required."
+msgstr "ERPlora combina tecnología de vanguardia con un diseño intuitivo para ofrecer un ERP completo y modular — sin necesidad de equipo técnico."
+
+msgid "Under the hood"
+msgstr "Por dentro"
+
+msgid "Built with modern technology."
+msgstr "Construido con tecnología moderna."
+
+msgid "Frontend"
+msgstr "Frontend"
+
+msgid "Backend"
+msgstr "Backend"
+
+msgid "Ready to get started?"
+msgstr "¿Listo para comenzar?"
+
+msgid "Spin up your ERPlora hub for free and start managing your business today."
+msgstr "Crea tu hub de ERPlora gratis y empieza a gestionar tu negocio hoy."
+
+msgid "ERPlora security: server-side sessions in secure cookies, sign-in with Google, a WAF on AWS, GDPR compliance, and automatic encrypted backups."
+msgstr "Seguridad de ERPlora: sesiones de servidor en cookies seguras, inicio de sesión con Google, WAF en AWS, cumplimiento del RGPD y copias de seguridad cifradas automáticas."
+
+msgid "Enterprise-grade security with secure sessions, a WAF on AWS, GDPR compliance, and encrypted backups."
+msgstr "Seguridad de nivel empresarial con sesiones seguras, WAF en AWS, cumplimiento del RGPD y copias de seguridad cifradas."
+
+msgid "Enterprise-grade security."
+msgstr "Seguridad de nivel empresarial."
+
+msgid "Your data security is our top priority. ERPlora implements industry-standard measures to protect your business."
+msgstr "La seguridad de tus datos es nuestra máxima prioridad. ERPlora aplica medidas estándar del sector para proteger tu negocio."
+
+msgid "Authentication & Authorization"
+msgstr "Autenticación y Autorización"
+
+msgid "Data Protection"
+msgstr "Protección de Datos"
+
+msgid "Infrastructure Security"
+msgstr "Seguridad de Infraestructura"
+
+msgid "Compliance"
+msgstr "Cumplimiento"
+
+msgid "Questions?"
+msgstr "¿Preguntas?"
+
+msgid "Talk to our security team."
+msgstr "Habla con nuestro equipo de seguridad."
+
+msgid "Need a DPA, a pentest report or details on our infrastructure? We are happy to help."
+msgstr "¿Necesitas un DPA, un informe de pentest o detalles de nuestra infraestructura? Estaremos encantados de ayudar."
+
+msgid "ERPlora updates your terminal itself, without asking and without stopping your work. What we commit to in exchange: no interruption, nothing lost, automatic rollback, and a history of what changed."
+msgstr "ERPlora actualiza tu terminal por su cuenta, sin preguntar y sin parar tu trabajo. Lo que nos comprometemos a cumplir a cambio: sin interrupción, sin perder nada, vuelta atrás automática y un historial de lo que cambió."
+
+msgid "Why we update your terminal without asking, and what we commit to in exchange."
+msgstr "Por qué actualizamos tu terminal sin preguntar, y a qué nos comprometemos a cambio."
+
+msgid "Always up to date. You do nothing."
+msgstr "Siempre al día. Tú no haces nada."
+
+msgid "We update your terminal ourselves. You do not choose a version, you do not plan a stop, and you do not press anything."
+msgstr "Actualizamos tu terminal nosotros. No eliges versión, no planificas una parada y no pulsas nada."
+
+msgid "We do not ask you: we do it ourselves"
+msgstr "No te preguntamos: lo hacemos nosotros"
+
+msgid "Because at eleven in the morning, with the place full, the honest answer to \"do you want to update?\" is no — and it should be. If we asked, the day the answer really mattered — a security fix, a change in the invoicing rules — the update would arrive late, or never."
+msgstr "Porque a las once de la mañana, con el local lleno, la respuesta honesta a «¿quieres actualizar?» es no — y debe serlo. Si preguntáramos, el día en que la respuesta importara de verdad —un arreglo de seguridad, un cambio en las reglas de facturación— la actualización llegaría tarde, o no llegaría."
+
+msgid "So we do not ask: we do it ourselves. Everyone runs the same current version, which is the only way we can fix something for one shop and have it fixed for all of them the same afternoon."
+msgstr "Por eso no preguntamos: lo hacemos nosotros. Todo el mundo corre la misma versión vigente, que es la única forma de arreglar algo para un negocio y tenerlo arreglado para todos esa misma tarde."
+
+msgid "If you want something sooner, there is an Update button in your hub — for the hub and for each module. You can bring it forward; the only thing you cannot do is leave it for another day."
+msgstr "Si quieres algo antes, en tu hub hay un botón de Actualizar — para el hub y para cada módulo. Puedes adelantarlo; lo único que no puedes es dejarlo para otro día."
+
+msgid "That decision is only fair if we carry the weight of it. These are the four things we owe you for not asking."
+msgstr "Esa decisión solo es justa si cargamos nosotros con el peso. Estas son las cuatro cosas que te debemos por no preguntarte."
+
+msgid "Our side of the deal"
+msgstr "Nuestra parte del trato"
+
+msgid "What we commit to."
+msgstr "A qué nos comprometemos."
+
+msgid "These four are written into the terms of service, not only here."
+msgstr "Estas cuatro están escritas en las condiciones del servicio, no solo aquí."
+
+msgid "It does not stop your work"
+msgstr "No para tu trabajo"
+
+msgid "The new version starts up and is checked before the old one is switched off. There is no moment when the till is down, so there is nothing for you to schedule."
+msgstr "La versión nueva arranca y se comprueba antes de apagar la vieja. No hay ningún momento con la caja parada, así que no tienes nada que planificar."
+
+msgid "It does not take anything away"
+msgstr "No te quita nada"
+
+msgid "An update never deletes your data and never leaves you with fewer things than you could do yesterday. If something has to go, it is announced and it is replaced."
+msgstr "Una actualización nunca borra tus datos ni te deja con menos cosas de las que podías hacer ayer. Si algo tiene que irse, se anuncia y se sustituye."
+
+msgid "If it goes wrong, it goes back"
+msgstr "Si sale mal, vuelve atrás"
+
+msgid "If the new version does not start properly, the previous one comes back on its own. You keep working with the one that worked, and we find out, not you."
+msgstr "Si la versión nueva no arranca bien, la anterior vuelve sola. Sigues trabajando con la que funcionaba, y nos enteramos nosotros, no tú."
+
+msgid "You can see what changed"
+msgstr "Puedes ver qué cambió"
+
+msgid "Your hub shows the version you are on and a short history of what was updated and when. Only what actually changed appears there."
+msgstr "Tu hub muestra la versión en la que estás y un historial corto de qué se actualizó y cuándo. Ahí solo aparece lo que cambió de verdad."
+
+msgid "When we do warn you"
+msgstr "Cuándo sí te avisamos"
+
+msgid "There is one case where a change deserves your attention even though nothing stops: when it touches the path you walk two hundred times a day and know by heart — signing in, taking the order, charging. A button that moves there is not an improvement, it is an interruption, even if the service never went down."
+msgstr "Hay un caso en el que un cambio merece tu atención aunque no se pare nada: cuando toca el camino que recorres doscientas veces al día y te sabes de memoria —iniciar sesión, tomar la comanda, cobrar—. Un botón que se mueve ahí no es una mejora, es una interrupción, aunque el servicio no se haya caído ni un segundo."
+
+msgid "If a change touches that path, we announce it inside the product before it arrives."
+msgstr "Si un cambio toca ese camino, lo anunciamos dentro del producto antes de que llegue."
+
+msgid "If it does not — fixes, speed, colours, settings screens, new features — it simply arrives."
+msgstr "Si no lo toca —arreglos, velocidad, colores, pantallas de ajustes, funciones nuevas—, simplemente llega."
+
+msgid "We keep the bar there on purpose. If we announced everything, nobody would read anything, and the day we needed you to read, you would not."
+msgstr "Dejamos el listón ahí a propósito. Si lo anunciáramos todo, nadie leería nada, y el día que necesitáramos que leyeras, no leerías."
+
+msgid "And if a change leaves you worse off"
+msgstr "Y si un cambio te deja peor"
+
+msgid "If one of those announced changes takes away something you were using, and it is not a trifle, you do not have to put up with it. We tell you by email before it lands, and from then you have thirty days to leave without paying anything: we give you back the part of the period you had paid for and not used. Your data leaves with you — you can export it."
+msgstr "Si uno de esos cambios anunciados te quita algo que usabas, y no es una tontería, no tienes que aguantarte. Te lo decimos por correo antes de que llegue, y desde entonces tienes treinta días para irte sin pagar nada: te devolvemos la parte que no hayas usado del periodo que tenías pagado. Tus datos se van contigo — puedes exportarlos."
+
+msgid "And if an update breaks something, that one is on us. We fix it. If we do not fix it, you pay less for the time it was broken, and you do not have to prove we did anything wrong."
+msgstr "Y si una actualización rompe algo, esa es nuestra. La arreglamos. Si no la arreglamos, pagas menos por el tiempo que estuvo rota, y no tienes que demostrar que hicimos nada mal."
+
+msgid "The app you install is different"
+msgstr "La app que instalas es distinta"
+
+msgid "The desktop and mobile app is a program on your own machine, not on our servers, so we never install it for you. We tell you there is a new version and you choose when. Your hub is ours to keep up to date; your computer is yours."
+msgstr "La app de escritorio y móvil es un programa en tu propia máquina, no en nuestros servidores, así que nunca la instalamos por ti. Te decimos que hay una versión nueva y tú eliges cuándo. Tu hub es cosa nuestra mantenerlo al día; tu ordenador es tuyo."
+
+msgid "The small print"
+msgstr "La letra pequeña"
+
+msgid "The same thing, in contract language."
+msgstr "Lo mismo, en lenguaje de contrato."
+
+msgid "Everything on this page is section 7 of the terms of service. If the two ever disagree, the terms are the ones that bind us."
+msgstr "Todo lo de esta página es la cláusula 7 de las condiciones del servicio. Si alguna vez las dos no coinciden, las que nos obligan son las condiciones."
+
+msgid "Resources"
+msgstr "Recursos"
+
+msgid "Guides, references, and practical resources for using and extending ERPlora are coming soon."
+msgstr "Muy pronto: guías, referencias y recursos prácticos para usar y ampliar ERPlora."
+
+msgid "Help"
+msgstr "Ayuda"
+
+msgid "Help center."
+msgstr "Centro de ayuda."
+
+msgid "Practical guides for accessing, configuring, and operating your Hub."
+msgstr "Guías prácticas para entrar en tu hub, configurarlo y trabajar con él."
+
+msgid "Search in help..."
+msgstr "Buscar en la ayuda..."
+
+msgid "No guides found"
+msgstr "No hemos encontrado ninguna guía"
+
+msgid "Try a different search term."
+msgstr "Prueba con otra búsqueda."
+
+msgid "No help documentation found."
+msgstr "No se encontró documentación de ayuda."
+
+msgid "Get practical ERPlora support: search the Help Center, contact the team, and learn what information to include when reporting a problem."
+msgstr "Consigue ayuda práctica con ERPlora: busca en el Centro de ayuda, contacta con el equipo y aprende qué información incluir al reportar un problema."
+
+msgid "We are here to help."
+msgstr "Estamos aquí para ayudarte."
+
+msgid "Find a practical answer or send our team the context needed to investigate your problem."
+msgstr "Encuentra una respuesta práctica o dale a nuestro equipo el contexto que necesita para investigar tu problema."
+
+msgid "Support options"
+msgstr "Vías de soporte"
+
+msgid "Choose the right route"
+msgstr "Elige la vía adecuada"
+
+msgid "Start with the guides for common questions. Contact us when the problem needs investigation or involves your account."
+msgstr "Empieza por las guías para las dudas habituales. Escríbenos cuando el problema necesite investigación o afecte a tu cuenta."
+
+msgid "Search the Help Center"
+msgstr "Buscar en el Centro de ayuda"
+
+msgid "Read current guides for access, trusted devices, modules, settings, users, printing, and hardware."
+msgstr "Consulta las guías actuales sobre acceso, dispositivos de confianza, módulos, ajustes, usuarios, impresión y hardware."
+
+msgid "Contact support"
+msgstr "Contactar con soporte"
+
+msgid "Use the contact form to describe the problem and give us an email address where we can reply."
+msgstr "Usa el formulario de contacto para describir el problema y dinos un correo donde podamos responderte."
+
+msgid "Email the team"
+msgstr "Escribir al equipo"
+
+#, python-format
+msgid "Email %(support_email)s when you cannot use the contact form."
+msgstr "Escribe a %(support_email)s cuando no puedas usar el formulario de contacto."
+
+msgid "Before you contact us"
+msgstr "Antes de escribirnos"
+
+msgid "Help us reproduce the problem"
+msgstr "Ayúdanos a reproducir el problema"
+
+msgid "A short, precise report lets us investigate without asking you to repeat the same information."
+msgstr "Un informe breve y preciso nos deja investigar sin tener que pedirte la misma información otra vez."
+
+msgid "Identify the affected Hub"
+msgstr "Identifica el hub afectado"
+
+msgid "Include the Hub or business name so we can find your account quickly."
+msgstr "Incluye el nombre del Hub o del negocio para que podamos encontrar tu cuenta rápidamente."
+
+msgid "Describe the exact steps"
+msgstr "Describe los pasos exactos"
+
+msgid "Tell us which app or module you opened, what you selected, and what you expected to happen."
+msgstr "Dinos qué app o módulo abriste, qué seleccionaste y qué esperabas que pasara."
+
+msgid "Copy the visible message"
+msgstr "Copia el mensaje que ves"
+
+msgid "Include the complete error text and, when useful, a screenshot without private customer data."
+msgstr "Incluye el texto completo del error y, si ayuda, una captura sin datos privados de clientes."
+
+msgid "Add device context"
+msgstr "Añade el contexto del dispositivo"
+
+msgid "Mention the device, operating system, browser, and whether the problem also happens on another device."
+msgstr "Menciona el dispositivo, el sistema operativo, el navegador y si el problema pasa también en otro dispositivo."
+
+msgid "Keep credentials private"
+msgstr "No compartas credenciales"
+
+msgid "Never send passwords, PINs, recovery codes, signing keys, or complete payment details in a support message."
+msgstr "No mandes nunca contraseñas, PIN, códigos de recuperación, claves de firma ni datos de pago completos en un mensaje de soporte."
+
+msgid "Reporting from your Hub"
+msgstr "Reportar desde tu hub"
+
+msgid "When you are signed in, open Help & Support and use Report a Problem. The Hub adds useful account and browser context automatically."
+msgstr "Con la sesión iniciada, abre Ayuda y soporte y usa «Reportar un problema». El hub añade solo el contexto útil de la cuenta y del navegador."
+
+msgid "Built with Django 6.1 and modern web components. A cloud-native architecture on AWS, one database per hub, with daily backups and high availability keeps your business running."
+msgstr "Construido con Django 6.1 y web components modernos. Una arquitectura cloud-native en AWS, con una base de datos por hub, copias diarias y alta disponibilidad, mantiene tu negocio en marcha."
+
+msgid "Our Apps"
+msgstr "Nuestras apps"
+
+msgid "Every app is built by the ERPlora team and shares one database, one interface and one login. Free apps or premium features — you choose what fits your business."
+msgstr "Todas las apps las desarrolla el equipo de ERPlora y comparten una base de datos, una interfaz y un inicio de sesión. Apps gratuitas o funciones premium: tú eliges lo que encaja con tu negocio."
+
+msgid "All free apps included, VeriFactu ready"
+msgstr "Todas las apps gratuitas incluidas, listo para VeriFactu"
+
+msgid "Process transactions in milliseconds. Built on Django 6.1, with live updates on every device."
+msgstr "Procesa transacciones en milisegundos. Construido sobre Django 6.1, con actualizaciones en vivo en todos los dispositivos."
+
+#: templates/public/legal/privacy.html
+msgid "October 13, 2026"
+msgstr "13 de octubre de 2026"
+
+#: templates/public/legal/privacy.html
+msgid "Amazon Web Services EMEA SARL (Luxembourg) — Spain (Aragón) region, eu-south-2:"
+msgstr "Amazon Web Services EMEA SARL (Luxemburgo) — región de España (Aragón), eu-south-2:"
+
+#: templates/public/legal/privacy.html
+msgid "hosting, database, backups, storage, observability, network edge, DNS, and DDoS protection. Data hosted in data centers in Spain, within the European Union."
+msgstr "alojamiento, base de datos, copias de seguridad, almacenamiento, observabilidad, perímetro de red, DNS y protección anti-DDoS. Datos alojados en centros de datos en España, dentro de la Unión Europea."
+
+#: templates/public/legal/privacy.html
+msgid "Amazon Web Services EMEA SARL (Luxembourg) — Amazon SES, Ireland region, eu-west-1:"
+msgstr "Amazon Web Services EMEA SARL (Luxemburgo) — Amazon SES, región de Irlanda, eu-west-1:"
+
+#: templates/public/legal/privacy.html
+msgid "delivery of the service's transactional email. Processing takes place in the European Union."
+msgstr "envío del correo electrónico transaccional del servicio. El tratamiento se realiza en la Unión Europea."
+
+#: templates/public/legal/privacy.html
+msgid "Some processors may process data outside the EEA: the backup model providers, only if the European one is unavailable. These transfers are carried out under Standard Contractual Clauses (SCCs) approved by the European Commission (EU Decision 2021/914) or, when possible, by keeping the data within the EU through regional configuration. The customer may request a copy of the SCCs at"
+msgstr "Algunos encargados pueden tratar datos fuera del EEE: los proveedores de modelos de respaldo, solo si el europeo no está disponible. Estas transferencias se realizan amparadas en Cláusulas Contractuales Tipo (CCT) aprobadas por la Comisión Europea (Decisión UE 2021/914) o, cuando es posible, manteniendo el dato dentro de la UE mediante configuración regional. El cliente puede solicitar copia de las CCT en"
+
+# --- L7: the home, /contact/, /pricing/, /legal/terms/ and /collaborate/ (landing.py, pricing.py, legal.py, company.py and their templates; origin/develop .po where the copy is the same) ---
+
+msgid "All fields are required except the phone number."
+msgstr "Todos los campos son obligatorios excepto el teléfono."
+
+msgid "Enter a valid email address."
+msgstr "Introduce una dirección de correo electrónico válida."
+
+msgid "Thanks! We received your message and will reply within 4 business hours."
+msgstr "¡Gracias! Recibimos tu mensaje y responderemos en un plazo de 4 horas laborables."
+
+msgid "/ year per hub"
+msgstr "/ año por hub"
+
+msgid "/ year"
+msgstr "/ año"
+
+msgid "/ month per hub"
+msgstr "/ mes por hub"
+
+msgid "/ month"
+msgstr "/ mes"
+
+msgid "Free plan with no card required. Cancel anytime."
+msgstr "Plan Gratis sin tarjeta. Cancela cuando quieras."
+
+#, python-format
+msgid "Free plan with no card required; paid plans come with a free trial of %(min_days)d to %(max_days)d days, depending on the plan, when you create a Hub. Cancel anytime."
+msgstr "Plan Gratis sin tarjeta; los planes de pago incluyen de %(min_days)d a %(max_days)d días de prueba gratis, según el plan, al crear un Hub. Cancela cuando quieras."
+
+msgid "Not on paid plans right now, but you can start free with no card — the Free plan is free forever, so you can try it with your own data before you commit."
+msgstr "Ahora mismo no en los planes de pago, pero puedes empezar gratis sin tarjeta —el plan Free es gratis para siempre—, así que lo pruebas con tus propios datos antes de comprometerte."
+
+#, python-format
+msgid "Yes. Start free with no card — the Free plan is free forever. A paid plan chosen when creating a Hub comes with a free trial of %(min_days)d to %(max_days)d days, depending on the plan, using your own data, so you can be sure it fits before you commit. Moving a Hub that is already in service to a paid plan does not start a new trial."
+msgstr "Sí. Empieza gratis sin tarjeta —el plan Free es gratis para siempre. Un plan de pago elegido al crear un Hub incluye una prueba gratuita de %(min_days)d a %(max_days)d días, según el plan, con tus propios datos, para que compruebes que encaja antes de comprometerte. Pasar a un plan de pago un Hub que ya está en servicio no inicia un nuevo periodo de prueba."
+
+msgid "Can I switch plans at any time?"
+msgstr "¿Puedo cambiar de plan en cualquier momento?"
+
+msgid "What happens when I reach my user or invoice limits?"
+msgstr "¿Qué pasa cuando alcanzo los límites de usuarios o facturas?"
+
+msgid "There are no overage charges or surprise bills. We notify you as you approach your plan's limits, and you can track your usage anytime from your Hub control panel. When you reach a limit, just upgrade to the next plan in one click — your service is never interrupted."
+msgstr "No hay cargos por exceso ni facturas sorpresa. Te avisamos a medida que te acercas a los límites de tu plan y puedes consultar tu consumo en cualquier momento desde el panel de control de tu Hub. Cuando alcanzas un límite, basta con actualizar al siguiente plan con un clic: el servicio nunca se interrumpe."
+
+msgid "Is there a trial period?"
+msgstr "¿Hay periodo de prueba?"
+
+msgid "Do you migrate my data from another ERP?"
+msgstr "¿Migráis mis datos desde otro ERP?"
+
+msgid "Yes — our support team handles it for you. Just get in touch with your current ERP and we'll plan and run the migration together, so your data comes across without the hassle."
+msgstr "Sí, lo hace por ti nuestro equipo de soporte. Solo tienes que ponerte en contacto indicando tu ERP actual y planificamos y ejecutamos la migración juntos, para que tus datos lleguen sin complicaciones."
+
+msgid "Where is my data stored?"
+msgstr "¿Dónde se almacenan mis datos?"
+
+msgid "No — every price on this page is net. The VAT that applies to you is worked out at checkout from the tax ID you enter, and you see the exact amount before you pay. A Spanish NIF/CIF/NIE pays 21%. A company in another EU member state with a VAT number we validate against VIES pays 0% under the reverse charge, and accounts for the tax itself. The Canary Islands, Ceuta and Melilla, and customers outside the EU are outside the scope of Spanish VAT, which is not the same as a 0% rate."
+msgstr "No: todos los precios de esta página son sin IVA. El IVA que te corresponde se calcula en el checkout a partir del identificador fiscal que introduzcas, y ves el importe exacto antes de pagar. Un NIF/CIF/NIE español paga el 21 %. Una empresa de otro Estado miembro con un NIF-IVA que validamos contra VIES paga el 0 % por inversión del sujeto pasivo, y liquida ella el impuesto. Canarias, Ceuta y Melilla y los clientes de fuera de la UE quedan no sujetos al IVA español, que no es lo mismo que un tipo del 0 %."
+
+msgid "Apply Now"
+msgstr "Solicitar Ahora"
+
+msgid "Join the Program"
+msgstr "Únete al Programa"
+
+msgid "Collaborator Program"
+msgstr "Programa de Colaboradores"
+
+msgid "Join the ERPlora Collaborator Program: share your industry expertise, get a free modular ERP for a year with custom modules built for your business."
+msgstr "Únete al Programa de Colaboradores de ERPlora: comparte tu experiencia en el sector, obtén un ERP modular gratis durante un año con módulos a medida."
+
+msgid "We're a startup building a modular ERP. We need your industry expertise to build modules that actually work. In return: a free ERP for a year."
+msgstr "Somos una startup construyendo un ERP modular. Necesitamos tu experiencia en el sector para crear módulos que realmente funcionen. A cambio: un ERP gratis durante un año."
+
+msgid "We're looking for industry experts"
+msgstr "Buscamos expertos de todos los sectores"
+
+msgid "We're a startup building a modular, scalable ERP — not a conventional one. We need your real-world industry knowledge to build modules that actually work. In return, you get a free ERP tailored to your needs."
+msgstr "Somos una startup construyendo un ERP modular, escalable y no convencional. Necesitamos tu conocimiento real del sector para crear módulos que realmente funcionen. A cambio, obtienes un ERP gratuito adaptado a tus necesidades."
+
+msgid "Share your daily workflows, tools you use, what's missing, and what you wish you had."
+msgstr "Comparte tus flujos de trabajo diarios, las herramientas que usas, lo que te falta y lo que te gustaría tener."
+
+msgid "We build for you"
+msgstr "Desarrollamos para ti"
+
+msgid "We develop or adapt modules tailored to your specific needs — completely free."
+msgstr "Desarrollamos o adaptamos módulos a tu medida — completamente gratis."
+
+msgid "Use it free for a year"
+msgstr "Úsalo gratis durante un año"
+
+msgid "What we've already built"
+msgstr "Lo que ya hemos construido"
+
+msgid "ERPlora is a modular ERP with a minimalist core that does one thing: load modules. Everything else — invoicing, inventory, appointments, POS, accounting — are independent modules you install based on what you need."
+msgstr "ERPlora es un ERP modular con un núcleo minimalista que hace una sola cosa: cargar módulos. Todo lo demás — facturación, inventario, citas, TPV, contabilidad — son módulos independientes que instalas según lo que necesites."
+
+msgid "Complete POS system"
+msgstr "Sistema TPV completo"
+
+msgid "Modules constantly growing"
+msgstr "Módulos en constante crecimiento"
+
+msgid "Managed cloud infrastructure"
+msgstr "Infraestructura cloud gestionada"
+
+msgid "AI-powered setup assistant"
+msgstr "Asistente de configuración con IA"
+
+#, python-format
+msgid "%(s)s sectors, %(t)s business types"
+msgstr "%(s)s sectores, %(t)s tipos de negocio"
+
+msgid "What you get"
+msgstr "Qué obtienes"
+
+msgid "Free Hub for 1 year"
+msgstr "Hub gratuito durante 1 año"
+
+msgid "Custom modules at no cost"
+msgstr "Módulos a medida sin coste"
+
+msgid "We develop or adapt modules based on your specific business needs."
+msgstr "Desarrollamos o adaptamos módulos según las necesidades concretas de tu negocio."
+
+msgid "Direct access to our development team throughout the collaboration."
+msgstr "Acceso directo a nuestro equipo de desarrollo durante la colaboración."
+
+msgid "Permanent discount after year one"
+msgstr "Descuento permanente tras el primer año"
+
+msgid "Active collaborators enjoy a special permanent discount on any plan."
+msgstr "Los colaboradores activos disfrutan de un descuento permanente especial en cualquier plan."
+
+msgid "You don't need to code. Just share your industry knowledge and daily workflows."
+msgstr "No necesitas saber programar. Solo comparte tu conocimiento del sector y tus flujos de trabajo."
+
+msgid "What we ask in return"
+msgstr "Qué te pedimos a cambio"
+
+msgid "Honest feedback"
+msgstr "Feedback honesto"
+
+msgid "Tell us what works and what doesn't. Your input shapes the product."
+msgstr "Cuéntanos qué funciona y qué no. Tu opinión da forma al producto."
+
+msgid "Share what you actually need in your daily operations. No invented features — real workflows."
+msgstr "Comparte lo que realmente necesitas en tu día a día. Sin funcionalidades inventadas — flujos de trabajo reales."
+
+msgid "Occasional availability"
+msgstr "Disponibilidad puntual"
+
+msgid "We won't call every day. Just a few conversations to understand your workflows better."
+msgstr "No te llamaremos todos los días. Solo algunas conversaciones para entender mejor cómo trabajas."
+
+msgid "Built around you"
+msgstr "Pensado a tu medida"
+
+msgid "Any industry, any business"
+msgstr "Cualquier sector, cualquier negocio"
+
+msgid "Personal Services"
+msgstr "Servicios Personales"
+
+msgid "Hotels & Tourism"
+msgstr "Hoteles y Turismo"
+
+msgid "Healthcare"
+msgstr "Salud"
+
+msgid "Construction"
+msgstr "Construcción"
+
+msgid "Manufacturing"
+msgstr "Manufactura"
+
+msgid "Logistics"
+msgstr "Logística"
+
+msgid "Professional Services"
+msgstr "Servicios Profesionales"
+
+msgid "Education"
+msgstr "Educación"
+
+msgid "Real Estate"
+msgstr "Inmobiliaria"
+
+msgid "Automotive"
+msgstr "Automoción"
+
+msgid "Frequently asked questions"
+msgstr "Preguntas frecuentes"
+
+msgid "Not at all. We handle all the development. You just need to know your business and be willing to share your experience."
+msgstr "En absoluto. Nosotros nos encargamos de todo el desarrollo. Solo necesitas conocer tu negocio y estar dispuesto a compartir tu experiencia."
+
+msgid "What happens after the free year?"
+msgstr "¿Qué pasa después del año gratis?"
+
+msgid "Active collaborators receive a permanent special discount on any ERPlora plan. You keep all your data and modules."
+msgstr "Los colaboradores activos reciben un descuento especial permanente en cualquier plan de ERPlora. Conservas todos tus datos y módulos."
+
+msgid "Very little. A few conversations to explain your workflows and occasional feedback when we deliver new features. No daily commitment."
+msgstr "Muy poco. Algunas conversaciones para explicar tus flujos de trabajo y feedback puntual cuando entreguemos nuevas funciones. Sin compromiso diario."
+
+msgid "Can I leave the program anytime?"
+msgstr "¿Puedo dejar el programa en cualquier momento?"
+
+msgid "Yes. There's no lock-in. If you decide to leave, you keep access until the end of your free period."
+msgstr "Sí. No hay permanencia. Si decides irte, mantienes el acceso hasta el final de tu periodo gratuito."
+
+msgid "No strings attached"
+msgstr "Sin compromiso"
+
+msgid "Ready to build something great together?"
+msgstr "¿Preparado para construir algo grande juntos?"
+
+msgid "A custom ERP for your business. Free for a year. No strings attached."
+msgstr "Un ERP a medida para tu negocio. Gratis durante un año. Sin compromiso."
+
+msgid "First name"
+msgstr "Nombre"
+
+msgid "This field is required"
+msgstr "Este campo es obligatorio"
+
+msgid "Anne"
+msgstr "Anne"
+
+msgid "Garcia"
+msgstr "García"
+
+msgid "Work email"
+msgstr "Correo de trabajo"
+
+msgid "Enter a valid email address"
+msgstr "Introduce un correo electrónico válido"
+
+msgid "Phone (optional)"
+msgstr "Teléfono (opcional)"
+
+msgid "Migrate from Holded, looking to add payroll and WMS..."
+msgstr "Migrar desde Holded, buscando añadir nóminas y WMS..."
+
+msgid "Get in touch"
+msgstr "Ponte en contacto"
+
+msgid "We typically respond within 4 business hours."
+msgstr "Normalmente respondemos en un plazo de 4 horas laborables."
+
+msgid "Contact ERPlora. Have questions about our ERP system? Get in touch and we'll respond as soon as possible."
+msgstr "Contacta con ERPlora. ¿Tienes preguntas sobre nuestro sistema ERP? Escríbenos y te responderemos lo antes posible."
+
+msgid "Have questions about ERPlora? Get in touch with our team."
+msgstr "¿Tienes preguntas sobre ERPlora? Contacta con nuestro equipo."
+
+msgid "Get in Touch"
+msgstr "Contáctanos"
+
+msgid "Have questions? We'd love to hear from you. Send us a message and we'll respond as soon as possible."
+msgstr "¿Tienes preguntas? Nos encantaría saber de ti. Envíanos un mensaje y te responderemos lo antes posible."
+
+msgid "WhatsApp"
+msgstr "WhatsApp"
+
+msgid "Chat with us"
+msgstr "Escríbenos"
+
+msgid "Your hardware, connected."
+msgstr "Tu hardware, conectado."
+
+msgid "One app for Windows, Linux and Android. Run it on the device that stays next to your hardware."
+msgstr "Una sola app para Windows, Linux y Android. Ejecútala en el dispositivo que se queda junto a tu hardware."
+
+msgid "Detect"
+msgstr "Detectar"
+
+msgid "It finds the ESC/POS printers on your local network by itself, and follows one that changes address."
+msgstr "Encuentra sola las impresoras ESC/POS de tu red local, y sigue a la que cambia de dirección."
+
+msgid "Print"
+msgstr "Imprimir"
+
+msgid "Receipts, kitchen orders and labels reach the printer, and the cash drawer opens with the sale."
+msgstr "Los tiques, las comandas de cocina y las etiquetas llegan a la impresora, y el cajón se abre con la venta."
+
+msgid "Everything your company needs. In one place."
+msgstr "Todo lo que tu empresa necesita. En un solo lugar."
+
+msgid "Your assistant is served from the European Union — the computation too, not just the storage. No provider uses your data to train its models."
+msgstr "Tu asistente se sirve desde la Unión Europea — también el cómputo, no solo el almacenamiento. Ningún proveedor usa tus datos para entrenar sus modelos."
+
+msgid "How we handle your data"
+msgstr "Cómo tratamos tus datos"
+
+msgid "See sales, stock and cash in real time"
+msgstr "Ve ventas, stock y caja en tiempo real"
+
+msgid "Revenue"
+msgstr "Ingresos"
+
+msgid "Tickets"
+msgstr "Tickets"
+
+msgid "Margin"
+msgstr "Margen"
+
+msgid "How we compare."
+msgstr "Cómo nos comparamos."
+
+msgid "Public pricing data of each product as of May 2026. Competitors bill per user / month — ERPlora does not."
+msgstr "Datos de precios públicos de cada producto a mayo de 2026. La competencia factura por usuario / mes — ERPlora no."
+
+msgid "Entry cost"
+msgstr "Coste de entrada"
+
+msgid "user"
+msgstr "usuario"
+
+msgid "free"
+msgstr "gratis"
+
+msgid "1 free / all paid"
+msgstr "1 gratis / todas de pago"
+
+msgid "40+ (limited)"
+msgstr "40+ (limitado)"
+
+msgid "Per-user pricing"
+msgstr "Precio por usuario"
+
+msgid "No limit"
+msgstr "Sin límite"
+
+msgid "per user"
+msgstr "por usuario"
+
+msgid "Free (Win/Linux/Android)"
+msgstr "Gratis (Win/Linux/Android)"
+
+msgid "Cloud PWA — always online"
+msgstr "PWA cloud — siempre online"
+
+msgid "partial"
+msgstr "parcial"
+
+msgid "add-on"
+msgstr "complemento"
+
+msgid "Average rollout"
+msgstr "Despliegue medio"
+
+msgid "A few hours"
+msgstr "Unas horas"
+
+msgid "6 months"
+msgstr "6 meses"
+
+msgid "3 months"
+msgstr "3 meses"
+
+msgid "1 week"
+msgstr "1 semana"
+
+msgid "1 month"
+msgstr "1 mes"
+
+msgid "No"
+msgstr "No"
+
+msgid "Yes"
+msgstr "Sí"
+
+msgid "Full comparison"
+msgstr "Comparación completa"
+
+msgid "One ERP, one invoice"
+msgstr "Un ERP, una factura"
+
+msgid "One platform. Zero technical team. Zero surprises."
+msgstr "Una plataforma. Cero equipo técnico. Cero sorpresas."
+
+msgid "What you probably pay today vs. what it costs to have all of that inside ERPlora."
+msgstr "Lo que probablemente pagas hoy frente a lo que cuesta tener todo eso dentro de ERPlora."
+
+msgid "included"
+msgstr "incluido"
+
+msgid "Function"
+msgstr "Función"
+
+msgid "Typical tool"
+msgstr "Herramienta típica"
+
+msgid "Average cost / month"
+msgstr "Coste medio / mes"
+
+msgid "Status"
+msgstr "Estado"
+
+msgid "Electronic invoicing"
+msgstr "Facturación electrónica"
+
+msgid "Inventory + warehouse"
+msgstr "Inventario + almacén"
+
+msgid "CRM"
+msgstr "CRM"
+
+msgid "HR and payroll"
+msgstr "RRHH y nóminas"
+
+msgid "E-commerce + POS"
+msgstr "E-commerce + TPV"
+
+msgid "Typical stack total"
+msgstr "Total del stack típico"
+
+#, python-format
+msgid "vs. ERPlora from €%(price)s"
+msgstr "frente a ERPlora desde €%(price)s"
+
+msgid "* Estimated costs for SMBs with 10–25 employees. Public vendor pricing as of May 2026."
+msgstr "* Costes estimados para pymes de 10–25 empleados. Precios públicos de los proveedores a mayo de 2026."
+
+msgid "See the full comparison"
+msgstr "Ver la comparativa completa"
+
+msgid "Start today"
+msgstr "Empieza hoy"
+
+msgid "Your ERP, ready in 5 minutes."
+msgstr "Tu ERP, listo en 5 minutos."
+
+msgid "No installation, no consultants, no credit card to try it. Spin up a hub and explore."
+msgstr "Sin instalación, sin consultores, sin tarjeta para probarlo. Crea un terminal y explora."
+
+msgid "One ecosystem. Two modes."
+msgstr "Un ecosistema. Dos modos."
+
+msgid "Invoicing + accounting"
+msgstr "Facturación + contabilidad"
+
+msgid "Inventory + basic CRM"
+msgstr "Inventario + CRM básico"
+
+msgid "Employees + time tracking"
+msgstr "Empleados + control horario"
+
+msgid "Reports + audit"
+msgstr "Informes + auditoría"
+
+msgid "Mobile + cloud PWA"
+msgstr "Móvil + PWA en la nube"
+
+msgid "Core"
+msgstr "Core"
+
+msgid "Free forever"
+msgstr "Gratis para siempre"
+
+msgid "v3.4 · your whole business, in the cloud"
+msgstr "v3.4 · todo tu negocio, en la nube"
+
+msgid "One ERP."
+msgstr "Un ERP."
+
+msgid "Yours."
+msgstr "Tuyo."
+
+msgid "ERPlora replaces the stack of 12 tools that holds your SMB together with a single platform: invoicing, inventory, CRM, HR, accounting and the modules you need — no technical team, no hidden licenses, no surprises."
+msgstr "ERPlora reemplaza el conjunto de 12 herramientas que sostienen tu pyme con una única plataforma: facturación, inventario, CRM, RRHH, contabilidad y los módulos que necesites; sin equipo técnico, sin licencias ocultas, sin sorpresas."
+
+msgid "Uptime"
+msgstr "Tiempo Activo"
+
+msgid "Sales"
+msgstr "Ventas"
+
+msgid "Orders"
+msgstr "Pedidos"
+
+msgid "Stock"
+msgstr "Stock"
+
+msgid "Ready in 5 minutes"
+msgstr "Listo en 5 minutos"
+
+msgid "Hub + database auto-provisioned"
+msgstr "Hub + base de datos autoprovisionados"
+
+msgid "Built for every kind of business"
+msgstr "Hecho para todo tipo de negocio"
+
+msgid "Cloud Hub plans"
+msgstr "Planes de Cloud Hub"
+
+msgid "Start free. Scale when you need it."
+msgstr "Empieza gratis. Escala cuando lo necesites."
+
+msgid "See all plans in detail"
+msgstr "Ver todos los planes en detalle"
+
+msgid "Activate only what you need. Switch plans in one click."
+msgstr "Activa solo lo que necesitas. Cambia de plan en un clic."
+
+msgid "uptime"
+msgstr "tiempo activo"
+
+msgid "Run it your way"
+msgstr "Funciona a tu manera"
+
+msgid "Runs in the browser as an always-online cloud PWA on any device — phone, tablet or till — with the free app driving the printers and cash drawer at your counter."
+msgstr "Funciona en el navegador como una PWA cloud siempre en línea en cualquier dispositivo — móvil, tableta o TPV — con la app gratuita manejando las impresoras y el cajón de tu mostrador."
+
+msgid "Compliant in your country"
+msgstr "Conforme con la normativa de tu país"
+
+msgid "Electronic invoicing and a full audit trail that meet your country's regulations — Verifactu in Spain today, more markets on the way."
+msgstr "Facturación electrónica y traza de auditoría completa que cumplen la normativa vigente de tu país: Verifactu en España hoy, más mercados en camino."
+
+msgid "AI assistant on European servers"
+msgstr "Asistente IA en servidores europeos"
+
+msgid "Professional services"
+msgstr "Servicios profesionales"
+
+msgid "ERPlora's Terms and Conditions of Use. Rules governing the use of our ERP/POS SaaS platform and services."
+msgstr "Términos y Condiciones de uso de ERPlora. Normativa que rige el uso de nuestra plataforma ERP/POS SaaS y servicios."
+
+msgid "Terms and Conditions of use of the ERPlora platform."
+msgstr "Términos y Condiciones de uso de la plataforma ERPlora."
+
+msgid "The rules governing access to and use of ERPlora's modular ERP and POS cloud services."
+msgstr "Las reglas que rigen el acceso y el uso de los servicios en la nube de ERP y TPV modulares de ERPlora."
+
+msgid "ERPLORA CLOUD S.L., with Tax ID (CIF) B27593136 and registered address at Avda Lisboa 17, Pta. C, 28822 Coslada (Madrid) (hereinafter, \"ERPlora\"), provides cloud-based business management services (SaaS) through https://erplora.com and the <em>*.erplora.com</em> hubs or the customer's own domains."
+msgstr "ERPLORA CLOUD S.L., con CIF B27593136 y domicilio en Avda Lisboa 17, Pta. C, 28822 Coslada (Madrid) (en adelante, \"ERPlora\"), presta servicios de gestión empresarial en la nube (SaaS) a través de https://erplora.com y de los hubs <em>*.erplora.com</em> o dominios propios del cliente."
+
+msgid "Use of the service implies full acceptance of these terms."
+msgstr "El uso del servicio implica la aceptación plena de estas condiciones."
+
+msgid "1. Service"
+msgstr "1. Servicio"
+
+msgid "The service is provided \"as is\" without warranties of fitness for a specific purpose beyond what is described in the official documentation."
+msgstr "El servicio se presta \"tal cual\" sin garantías de adecuación a una finalidad específica más allá de lo descrito en la documentación oficial."
+
+msgid "2. Registration and account"
+msgstr "2. Registro y cuenta"
+
+msgid "To use the service, the customer must create an account providing accurate information. The customer is responsible for maintaining the confidentiality of their credentials and for all activity carried out under their account. Any unauthorized use must be reported immediately to"
+msgstr "Para usar el servicio, el cliente debe crear una cuenta facilitando datos veraces. El cliente es responsable de mantener la confidencialidad de sus credenciales y de toda actividad realizada bajo su cuenta. Debe notificar inmediatamente cualquier uso no autorizado a"
+
+msgid "3. Subscriptions and payments"
+msgstr "3. Suscripciones y pagos"
+
+msgid "and may be updated; changes affect future renewals, not the current period."
+msgstr "y pueden actualizarse; los cambios afectan a renovaciones futuras, no al periodo en curso."
+
+msgid "Payment is made through a recurring subscription (monthly or annual) via Stripe. ERPlora <strong>does NOT</strong> store card data — it is managed by Stripe."
+msgstr "El pago se realiza por suscripción periódica (mensual o anual) mediante Stripe. ERPlora <strong>NO</strong> almacena datos de tarjeta — los gestiona Stripe."
+
+msgid "The invoice is issued using the billing details provided by the customer."
+msgstr "La factura se emite con los datos de facturación que el cliente facilite."
+
+msgid "Non-payment at maturity will result in suspension of the service after a 7-day grace period with prior notice. A suspended Hub keeps its data intact and can be brought back by resuming the subscription."
+msgstr "El impago a vencimiento dará lugar a la suspensión del servicio tras 7 días de gracia con notificación previa. Un Hub suspendido conserva sus datos intactos y se recupera reanudando la suscripción."
+
+#, python-format
+msgid "A Hub that remains suspended for %(days)s days is deleted, together with its data. The account holder is notified beforehand, by email and with a specific date, and receives the copy described in section 5.1."
+msgstr "Un Hub que permanezca suspendido %(days)s días se elimina, junto con sus datos. Se avisa antes al titular, por correo electrónico y con fecha concreta, y se le entrega la copia descrita en el apartado 5.1."
+
+msgid "3.1 Customers in the United Kingdom"
+msgstr "3.1 Clientes en Reino Unido"
+
+msgid "In the United Kingdom, ERPlora sells its paid plans and modules only to businesses, for use in the course of their business. By subscribing to a paid service with a billing address in the United Kingdom, the customer declares that it acts as a business and not as a consumer."
+msgstr "En Reino Unido, ERPlora vende sus planes y módulos de pago solo a empresas y profesionales, para el ejercicio de su actividad. Al contratar un servicio de pago con dirección de facturación en Reino Unido, el cliente declara que actúa como empresa o profesional y no como consumidor."
+
+msgid "A customer registered for VAT in the United Kingdom must provide its UK VAT registration number (for example GB123456782) before paying. ERPlora may check it against the register of HM Revenue &amp; Customs (HMRC)."
+msgstr "El cliente registrado a efectos del IVA en el Reino Unido debe indicar su número de IVA británico (por ejemplo, GB123456782) antes de pagar. ERPlora puede comprobarlo en el registro de la administración tributaria británica (HMRC)."
+
+msgid "A business that is not registered for VAT in the United Kingdom, for example because it is below the registration threshold, may instead give its business website and declare that it buys for its business. ERPlora keeps that evidence with the subscription and may ask for other commercial documents."
+msgstr "Un negocio que no está dado de alta en el IVA británico, por ejemplo porque no alcanza el umbral de registro, puede dar en su lugar la web de su negocio y declarar que compra para su actividad. ERPlora conserva esa prueba con la suscripción y puede pedir otros documentos comerciales."
+
+msgid "ERPlora may refuse a paid subscription, or decline to renew it, when neither the number nor that evidence is given, or when HMRC does not have the number on its register."
+msgstr "ERPlora puede rechazar una suscripción de pago, o no renovarla, cuando no se da ni el número ni esa prueba, o cuando HMRC no tiene el número en su registro."
+
+msgid "These sales are invoiced without Spanish VAT. The customer accounts for any UK VAT that is due under the reverse charge."
+msgstr "Estas ventas se facturan sin IVA español. El cliente liquida el IVA británico que corresponda por inversión del sujeto pasivo."
+
+msgid "The free plan is not affected: it charges nothing and asks for no VAT number."
+msgstr "El plan gratuito no cambia: no cobra nada y no pide número de IVA."
+
+msgid "4. Trial period and cancellation"
+msgstr "4. Periodo de prueba y cancelación"
+
+#, python-format
+msgid "A paid plan chosen when creating a Hub comes with a free trial of between %(min_days)s and %(max_days)s days depending on the plan, shown on the pricing page at the time of signup; a promotional code applied at signup may set a different length. Moving a Hub that is already in service to a paid plan does not start a new trial. If not cancelled before the end of the trial, the first period is billed automatically."
+msgstr "Un plan de pago elegido al crear un Hub incluye un periodo de prueba sin cargo de entre %(min_days)s y %(max_days)s días según el plan, que se indica en la página de precios en el momento de la contratación; un código promocional aplicado al contratar puede fijar otra duración. Pasar a un plan de pago un Hub que ya está en servicio no inicia un nuevo periodo de prueba. Si no se cancela antes del fin de la prueba, se factura automáticamente el primer periodo."
+
+msgid "The customer may cancel the subscription at any time from the dashboard; the service will remain active until the end of the already-paid period, with no prorated refund except as provided by mandatory consumer protection regulations where applicable."
+msgstr "El cliente puede cancelar la suscripción en cualquier momento desde el dashboard; el servicio permanecerá activo hasta el fin del periodo ya abonado, sin reembolso prorrateado salvo lo dispuesto en la normativa imperativa de consumidores cuando aplique."
+
+msgid "5. Ownership of customer data"
+msgstr "5. Propiedad de los datos del cliente"
+
+msgid "and, where applicable, in the Data Processing Addendum (DPA) signed between the parties."
+msgstr "y, cuando proceda, en el Anexo de Tratamiento de Datos (DPA) firmado entre las partes."
+
+msgid "While the Hub is active, the customer may export their data from it at any time. If the subscription lapses, the Hub is paused and its data is kept intact; the customer is notified in writing, with a specific date, before anything is deleted."
+msgstr "Mientras el Hub está activo, el cliente puede exportar sus datos desde él en cualquier momento. Si la suscripción caduca, el Hub se pausa y sus datos se conservan intactos; se avisa al cliente por escrito, con fecha concreta, antes de borrar nada."
+
+msgid "5.1 What the customer receives when their Hub is deleted"
+msgstr "5.1 Qué recibe el cliente cuando se elimina su Hub"
+
+msgid "Before deleting a Hub, ERPlora prepares a complete copy of it for the customer: the full database of the Hub and all the files it had stored, in a single archive that is NOT encrypted, so that it can be opened and kept without any ERPlora software or key."
+msgstr "Antes de eliminar un Hub, ERPlora prepara para el cliente una copia completa: la base de datos entera del Hub y todos los ficheros que tuviera guardados, en un único archivo SIN CIFRAR, para que pueda abrirlo y conservarlo sin necesidad de software ni de claves de ERPlora."
+
+#, python-format
+msgid "A download link is sent to the account holder by email and remains available for %(days)s days from the date of that email. After that date the copy is deleted and cannot be recovered, by the customer or by ERPlora."
+msgstr "Se envía al titular un enlace de descarga por correo electrónico, disponible durante %(days)s días desde la fecha de ese correo. Pasada esa fecha la copia se borra y no se puede recuperar, ni por el cliente ni por ERPlora."
+
+msgid "Keeping the accounting and tax documentation for the legally required period is the customer's responsibility as the party subject to those obligations (6 years, article 30 of the Spanish Commercial Code; 4 years of tax limitation, article 66 of the General Tax Act). ERPlora is the software producer and, in respect of the data, the processor: its obligation on termination is to return or delete the data, which is what the copy described above does."
+msgstr "Conservar la documentación contable y fiscal durante el plazo legalmente exigido es responsabilidad del cliente, como obligado a ello (6 años, artículo 30 del Código de Comercio; 4 años de prescripción tributaria, artículo 66 de la Ley General Tributaria). ERPlora es el productor del software y, respecto de los datos, encargado del tratamiento: su obligación al terminar el servicio es devolverlos o suprimirlos, que es exactamente lo que hace la copia descrita arriba."
+
+msgid "6. Availability and SLA"
+msgstr "6. Disponibilidad y SLA"
+
+#, python-format
+msgid "ERPlora makes reasonable efforts to maintain 99.5%% monthly availability. Scheduled interruptions are notified at least 48 hours in advance. Unscheduled interruptions are handled according to internal incident processes."
+msgstr "ERPlora hace esfuerzos razonables por mantener una disponibilidad mensual del 99,5%%. Las interrupciones programadas se notifican con al menos 48 horas de antelación. Las interrupciones no programadas se gestionan según los procesos internos de incidentes."
+
+msgid "Compensation for SLA breaches, if any, is set out in the specific contract signed with the customer."
+msgstr "Las compensaciones por incumplimiento de SLA, en su caso, se reflejan en el contrato específico firmado con el cliente."
+
+msgid "Updates to the service are not scheduled interruptions: they are applied without stopping the service and are governed by section 7."
+msgstr "Las actualizaciones del servicio no son interrupciones programadas: se aplican sin detener el servicio y se rigen por la cláusula 7."
+
+msgid "7. Updates and versions"
+msgstr "7. Actualizaciones y versiones"
+
+msgid "7.1 ERPlora applies the updates"
+msgstr "7.1 Las actualizaciones las aplica ERPlora"
+
+msgid "ERPlora keeps the service up to date and applies updates to the customer's Hub itself, without the customer having to request them. The customer does not choose the version they run and cannot postpone an update: the whole fleet runs the current version, and that is what allows ERPlora to fix faults, close security holes, and keep pace with tax regulations for every customer at the same time."
+msgstr "ERPlora mantiene el servicio al día y aplica por su cuenta las actualizaciones al Hub del cliente, sin que el cliente tenga que solicitarlas. El cliente no elige la versión que ejecuta ni puede posponer una actualización: toda la flota corre la versión vigente, y es eso lo que permite a ERPlora corregir fallos, cerrar agujeros de seguridad y mantenerse al día con la normativa fiscal para todos los clientes a la vez."
+
+msgid "The customer may bring an update forward at any time from the Hub, both for the service and for each module. What they cannot do is postpone it."
+msgstr "El cliente puede adelantar una actualización en cualquier momento desde el Hub, tanto del servicio como de cada módulo. Lo que no puede es posponerla."
+
+msgid "7.2 Valid reasons for updating"
+msgstr "7.2 Motivos válidos para actualizar"
+
+msgid "ERPlora modifies the service only for the following valid reasons, which are stated here because a power to modify the contract unilaterally requires them:"
+msgstr "ERPlora modifica el servicio únicamente por los siguientes motivos válidos, que se especifican aquí porque una facultad de modificación unilateral del contrato los exige:"
+
+msgid "to correct faults and keep the service in conformity with the contract and its documentation;"
+msgstr "corregir fallos y mantener el servicio conforme con el contrato y con su documentación;"
+
+msgid "to close security vulnerabilities;"
+msgstr "cerrar vulnerabilidades de seguridad;"
+
+msgid "to adapt the service to changes in the applicable law, in particular tax and electronic invoicing rules;"
+msgstr "adaptar el servicio a cambios en la normativa aplicable, en particular la fiscal y la de facturación electrónica;"
+
+msgid "to keep the service working with the third-party systems it depends on: the tax authority, the payment provider, browsers, operating systems, and devices;"
+msgstr "mantener el servicio funcionando con los sistemas de terceros de los que depende: la Agencia Tributaria, el proveedor de pagos, los navegadores, los sistemas operativos y los dispositivos;"
+
+msgid "to improve the service and add features, and to retire technically obsolete components, always within the limits of section 7.3."
+msgstr "mejorar el servicio y añadir funciones, y retirar componentes técnicamente obsoletos, siempre dentro de los límites de la cláusula 7.3."
+
+msgid "7.3 What ERPlora undertakes with every update"
+msgstr "7.3 A qué se obliga ERPlora en toda actualización"
+
+msgid "Continuity."
+msgstr "Continuidad."
+
+msgid "The new version is started and checked before the previous one is withdrawn. An update is not, in itself, an interruption of the service and is therefore not a scheduled interruption for the purposes of section 6."
+msgstr "La versión nueva se arranca y se comprueba antes de retirar la anterior. Una actualización no es, por sí misma, una interrupción del servicio y, por tanto, no es una interrupción programada a efectos de la cláusula 6."
+
+msgid "Backward compatibility."
+msgstr "Retrocompatibilidad."
+
+msgid "An update does not destroy the customer's data and does not leave the Hub with fewer functions than it had before."
+msgstr "Una actualización no destruye los datos del cliente ni deja el Hub con menos funciones de las que tenía antes."
+
+msgid "Changes that alter the way the day-to-day sale is operated — from signing in to charging — are announced before they take effect, under section 7.5."
+msgstr "Los cambios que alteran la forma de operar la venta del día a día —desde iniciar sesión hasta cobrar— se anuncian antes de que entren en vigor, conforme a la cláusula 7.5."
+
+msgid "Traceability."
+msgstr "Trazabilidad."
+
+msgid "The Hub shows the version in use and a history of the updates applied, stating which version each one came from and went to."
+msgstr "El Hub muestra la versión en uso y un historial de las actualizaciones aplicadas, indicando de qué versión a qué versión fue cada una."
+
+msgid "7.4 An update never costs the customer anything"
+msgstr "7.4 Una actualización nunca le cuesta nada al cliente"
+
+msgid "An update does not change the price of the contracted plan, does not put behind an extra charge a feature the customer already had, and does not oblige the customer to buy hardware or software in order to carry on using what they contracted."
+msgstr "Una actualización no cambia el precio del plan contratado, no deja tras un cargo adicional una función que el cliente ya tenía, y no obliga al cliente a comprar hardware ni software para seguir usando lo que contrató."
+
+msgid "7.5 Notice, and the right to terminate"
+msgstr "7.5 Aviso y derecho a resolver"
+
+msgid "Updates needed to keep the service in conformity — correcting faults, security, and adapting to changes in the law — are applied without prior notice: holding them back would leave the customer worse off, not better."
+msgstr "Las actualizaciones necesarias para mantener el servicio conforme —corrección de fallos, seguridad y adaptación a cambios normativos— se aplican sin aviso previo: retenerlas dejaría al cliente peor, no mejor."
+
+msgid "Where a modification goes beyond that and negatively affects the customer's access to the service or their use of it, other than to a minor extent, ERPlora will inform the customer with reasonable advance notice, on a durable medium, of the features and the timing of the modification and of the right set out in the following paragraph."
+msgstr "Cuando una modificación vaya más allá de eso y afecte negativamente al acceso del cliente al servicio o a su uso, salvo que ese efecto negativo sea de menor importancia, ERPlora informará al cliente con una antelación razonable, en soporte duradero, de las características y el momento de la modificación y del derecho previsto en el párrafo siguiente."
+
+msgid "That notice is given by email to the address on the account. Announcing it inside the product as well does not replace the email: a message the customer only sees by logging in is not, on its own, a durable medium."
+msgstr "Ese aviso se da por correo electrónico a la dirección de la cuenta. Anunciarlo también dentro del producto no sustituye al correo: un mensaje que el cliente solo ve al iniciar sesión no es, por sí solo, soporte duradero."
+
+msgid "In that case the customer may terminate the contract at no charge within thirty calendar days from receiving that information or from the moment ERPlora makes the modification, whichever is later. On terminating, ERPlora refunds the proportional part of the price paid for the period not yet used, and the customer keeps the right to export their data under section 5."
+msgstr "En ese caso el cliente podrá resolver el contrato sin cargo alguno en un plazo de treinta días naturales desde que reciba esa información o desde que ERPlora realice la modificación, si esto último fuera posterior. Al resolver, ERPlora reembolsa la parte proporcional del precio pagado por el periodo aún no consumido, y el cliente conserva el derecho a exportar sus datos conforme a la cláusula 5."
+
+msgid "For customers who are consumers, this section gives effect to articles 126 and 126 bis of the consolidated text of the General Law for the Defence of Consumers and Users. ERPlora applies it to every customer, consumer or not, because it cannot reliably tell them apart and does not intend to."
+msgstr "Para los clientes que sean consumidores, esta cláusula da cumplimiento a los artículos 126 y 126 bis del texto refundido de la Ley General para la Defensa de los Consumidores y Usuarios. ERPlora la aplica a todos los clientes, sean o no consumidores, porque no puede distinguirlos con fiabilidad ni pretende hacerlo."
+
+msgid "7.6 ERPlora answers for its own updates"
+msgstr "7.6 ERPlora responde de sus propias actualizaciones"
+
+msgid "If an update leaves the service not in conformity with the contract or its documentation, that is ERPlora's responsibility, and the general wording of section 1 does not exclude it. ERPlora will restore conformity without undue delay and at no cost to the customer."
+msgstr "Si una actualización deja el servicio no conforme con el contrato o con su documentación, la responsabilidad es de ERPlora, y la redacción general de la cláusula 1 no la excluye. ERPlora restablecerá la conformidad sin demora indebida y sin coste alguno para el cliente."
+
+msgid "If it does not, the customer may claim a reduction of the price proportional to the time during which the service was affected and, where the lack of conformity is not minor, terminate the contract. The customer does not have to prove that ERPlora was at fault: showing the lack of conformity is enough."
+msgstr "Si no lo hace, el cliente podrá exigir una reducción del precio proporcional al tiempo durante el cual el servicio estuvo afectado y, cuando la falta de conformidad no sea de menor importancia, resolver el contrato. El cliente no tiene que probar que ERPlora actuó con culpa: basta con acreditar la falta de conformidad."
+
+msgid "7.7 Desktop and mobile application"
+msgstr "7.7 Aplicación de escritorio y móvil"
+
+msgid "The installable application is the exception: it is never updated on its own. ERPlora announces that a new version is available and informs the customer of the consequences of not installing it; the customer decides when to install it."
+msgstr "La aplicación instalable es la excepción: nunca se actualiza sola. ERPlora anuncia que hay una versión nueva disponible e informa al cliente de las consecuencias de no instalarla; el cliente decide cuándo instalarla."
+
+msgid "Where the customer does not install, within a reasonable time, an update that ERPlora has supplied and announced in that way, ERPlora does not answer for a lack of conformity that is due solely to that uninstalled update."
+msgstr "Cuando el cliente no instale, en un plazo razonable, una actualización que ERPlora haya suministrado y anunciado de ese modo, ERPlora no responde de la falta de conformidad que se deba únicamente a esa actualización no instalada."
+
+msgid "7.8 Invoicing software"
+msgstr "7.8 Software de facturación"
+
+msgid "When an update affects the components subject to the regulation on the requirements of invoicing computer systems, the responsible declaration for the new version is published, and the previous ones remain available, in the"
+msgstr "Cuando una actualización afecta a los componentes sujetos al reglamento de requisitos de los sistemas informáticos de facturación, la declaración responsable de la versión nueva se publica, y las anteriores siguen disponibles, en el"
+
+msgid "7.9 Relationship with the rest of these terms"
+msgstr "7.9 Relación con el resto de estas condiciones"
+
+msgid "The undertakings in this section are specific obligations of ERPlora and prevail over the general wording of section 1. Except for what section 7.6 provides, they do not create an availability commitment beyond section 6."
+msgstr "Los compromisos de esta cláusula son obligaciones específicas de ERPlora y prevalecen sobre la redacción general de la cláusula 1. Salvo por lo previsto en la cláusula 7.6, no crean un compromiso de disponibilidad más allá de la cláusula 6."
+
+msgid "This policy is explained in plain language, without legal wording, on the"
+msgstr "Esta política se explica en lenguaje llano, sin redacción jurídica, en la"
+
+msgid "8. Acceptable use"
+msgstr "8. Uso aceptable"
+
+msgid "It is prohibited to:"
+msgstr "Está prohibido:"
+
+msgid "Use the service for unlawful or fraudulent activities, or activities that infringe the rights of third parties."
+msgstr "Usar el servicio para actividades ilícitas, fraudulentas o que infrinjan derechos de terceros."
+
+msgid "Reverse engineer, decompile, or attempt to access the source code beyond the components published as open source."
+msgstr "Realizar ingeniería inversa, descompilar o intentar acceder al código fuente más allá de los componentes publicados como open source."
+
+msgid "Attempt to compromise security, overload the infrastructure, or access other customers' data."
+msgstr "Intentar comprometer la seguridad, sobrecargar la infraestructura, o acceder a datos de otros clientes."
+
+msgid "Resell the service without ERPlora's express authorization."
+msgstr "Revender el servicio sin autorización expresa de ERPlora."
+
+msgid "Breach may result in immediate suspension without refund, without prejudice to any applicable legal action."
+msgstr "El incumplimiento puede dar lugar a suspensión inmediata sin reembolso, sin perjuicio de las acciones legales que correspondan."
+
+msgid "All software, design, documentation, and trademarks of the platform are the property of ERPLORA CLOUD S.L. or its licensors. The customer receives a non-exclusive, non-transferable, and revocable license to use the service during the subscription period."
+msgstr "Todo el software, diseño, documentación y marcas de la plataforma son propiedad de ERPLORA CLOUD S.L. o de sus licenciantes. El cliente recibe una licencia no exclusiva, intransferible y revocable para usar el servicio durante el periodo de suscripción."
+
+msgid "10. Limitation of liability"
+msgstr "10. Limitación de responsabilidad"
+
+msgid "To the maximum extent permitted by law, ERPlora's aggregate liability to the customer for any claim arising from the service will be limited to the amount actually paid by the customer in the 12 months prior to the event giving rise to the claim."
+msgstr "En la máxima medida permitida por la ley, la responsabilidad agregada de ERPlora frente al cliente por cualquier reclamación derivada del servicio estará limitada al importe efectivamente abonado por el cliente en los 12 meses anteriores al hecho que originó la reclamación."
+
+msgid "ERPlora is not liable for indirect damages, loss of profit, or data loss when the customer has reasonable backup mechanisms of their own and when the breach is not attributable to willful misconduct or gross negligence by ERPlora."
+msgstr "ERPlora no responde por daños indirectos, lucro cesante o pérdida de datos cuando el cliente disponga de mecanismos razonables propios de respaldo y cuando el incumplimiento no sea imputable a dolo o negligencia grave de ERPlora."
+
+msgid "When the customer is a consumer under the terms of the General Law for the Defense of Consumers and Users, the above limitations will be interpreted in accordance with that regulation, with consumer legal protection prevailing."
+msgstr "Cuando el cliente sea consumidor en los términos de la Ley General para la Defensa de Consumidores y Usuarios, las limitaciones anteriores se interpretarán conforme a esta normativa, prevaleciendo la protección legal del consumidor."
+
+msgid "11. Changes to these terms"
+msgstr "11. Modificaciones de estas condiciones"
+
+msgid "Changes to the software itself are governed by section 7."
+msgstr "Las modificaciones del propio software se rigen por la cláusula 7."
+
+msgid "12. Termination"
+msgstr "12. Terminación"
+
+msgid "Either party may terminate the contract:"
+msgstr "Cualquiera de las partes puede resolver el contrato:"
+
+msgid "At any time (customer), in accordance with section 4."
+msgstr "En cualquier momento (cliente), conforme a la sección 4."
+
+msgid "For serious breach, following notice with a 15-calendar-day cure period."
+msgstr "Por incumplimiento grave, previa notificación con plazo de subsanación de 15 días naturales."
+
+msgid "Due to insolvency, bankruptcy, or cessation of activity of the other party."
+msgstr "Por insolvencia, concurso o cese de actividad de la otra parte."
+
+#, python-format
+msgid "All prices exclude VAT. The VAT that applies to you is worked out at checkout from the tax ID you enter, and you see it before you pay. Our <a href=\"%(terms_url)s\">terms and conditions</a> apply."
+msgstr "Todos los precios sin IVA. El IVA que te corresponde se calcula en el checkout a partir del NIF/CIF/NIE o NIF-IVA que introduzcas, y lo ves antes de pagar. Se aplican nuestros <a href=\"%(terms_url)s\">términos y condiciones</a>."
+
+msgid "Terms"
+msgstr "Términos"
+
+msgid "Pricing"
+msgstr "Precios"
+
+msgid "Collaborate"
+msgstr "Colabora"
+
+#, python-format
+msgid "≈ €%(price)s/year · 2 months free"
+msgstr "≈ %(price)s €/año · 2 meses gratis"
+
+msgid "Unlimited devices"
+msgstr "Dispositivos ilimitados"
+
+msgid "Unlimited users"
+msgstr "Usuarios ilimitados"
+
+#, python-format
+msgid "%(days)s days free trial"
+msgstr "%(days)s días de prueba gratis"
+
+msgid "What's included"
+msgstr "Qué incluye"
+
+msgid "Plans"
+msgstr "Planes"
+
+msgid "Cloud Hub plans · monthly or annual billing (2 months free)"
+msgstr "Planes de Hub Cloud · facturación mensual o anual (2 meses gratis)"
+
+msgid "Prices shown per month. Pay for the year and get 2 months free."
+msgstr "Precios mostrados por mes. Paga el año y llévate 2 meses gratis."
+
+msgid "Scale when you need it."
+msgstr "Escala cuando lo necesites."
+
+msgid "Scale anytime"
+msgstr "Escala cuando quieras"
+
+msgid "Upgrade-only plans"
+msgstr "Planes solo de mejora"
+
+msgid "You start with one of the plans above and grow inside the dashboard. When your business needs more horsepower, switch to any of these tiers in one click — no migration, no downtime, no data loss."
+msgstr "Empiezas con uno de los planes anteriores y creces dentro del dashboard. Cuando tu negocio necesita más potencia, cambia a cualquiera de estos niveles en un clic, sin migración, sin tiempos de inactividad y sin pérdida de datos."
+
+msgid "Professional tier"
+msgstr "Nivel profesional"
+
+msgid "Upgrade-only plans are activated from your dashboard once you have a hub. They are not part of the public signup flow."
+msgstr "Los planes solo de actualización se activan desde tu dashboard una vez tengas un hub. No forman parte del flujo de registro público."
+
+msgid "Full detail"
+msgstr "Detalle completo"
+
+msgid "Everything in each plan"
+msgstr "Todo lo incluido en cada plan"
+
+msgid "Every plan is priced per hub, and one hub covers all your locations, devices and users. You start on the plan that fits you today and move up a tier in one click when you need a custom domain, the full API or a dedicated setup — no migration and no downtime."
+msgstr "Cada plan se cobra por hub, y un hub cubre todos tus locales, dispositivos y usuarios. Empiezas con el plan que te encaja hoy y subes de nivel en un clic cuando necesites dominio propio, la API completa o una instalación dedicada — sin migraciones ni cortes de servicio."
+
+msgid "Plan"
+msgstr "Plan"
+
+msgid "Monthly, per hub"
+msgstr "Mensual, por hub"
+
+msgid "Public plans · sign up directly"
+msgstr "Planes públicos · regístrate directamente"
+
+msgid "Professional · upgrade from inside the dashboard"
+msgstr "Professional · actualiza desde el dashboard"
+
+msgid "Upgrade-only"
+msgstr "Solo mejora"
+
+msgid "Plan names, prices and limits come straight from the live catalogue. Every plan runs on fully managed infrastructure — there is no server for you to set up or maintain."
+msgstr "Los nombres, precios y límites de los planes salen directamente del catálogo en vivo. Todos los planes funcionan sobre infraestructura totalmente gestionada: no hay ningún servidor que tengas que montar ni mantener."
+
+msgid "why us"
+msgstr "por qué nosotros"
+
+msgid "We're not the cheapest tool on the market and we're not pretending to be. Here's the honest read on where we win — and against whom."
+msgstr "No somos la herramienta más barata del mercado y no pretendemos serlo. Esta es la lectura honesta de dónde ganamos — y frente a quién."
+
+msgid "block 1"
+msgstr "bloque 1"
+
+msgid "vs. enterprise ERPs"
+msgstr "frente a ERPs empresariales"
+
+msgid "These are powerful systems, but they're priced and built for companies with an IT department and a 6-month implementation budget. If you're an SMB that just needs to start selling on Monday, the gap isn't in features — it's in everything that surrounds them."
+msgstr "Son sistemas potentes, pero su precio y diseño están pensados para empresas con departamento de IT y un presupuesto de implantación de 6 meses. Si eres una pyme que solo necesita empezar a vender el lunes, la diferencia no está en las funciones — está en todo lo que las rodea."
+
+msgid "Monthly entry cost"
+msgstr "Coste de entrada mensual"
+
+msgid "every paid app"
+msgstr "cada app de pago"
+
+msgid "Time to first invoice"
+msgstr "Tiempo hasta la primera factura"
+
+msgid "Same day"
+msgstr "El mismo día"
+
+msgid "3–6 months"
+msgstr "3–6 meses"
+
+msgid "2–3 months"
+msgstr "2–3 meses"
+
+msgid "Consultant / integrator required"
+msgstr "Requiere consultor / integrador"
+
+msgid "Mandatory partner"
+msgstr "Partner obligatorio"
+
+msgid "Stripe + bank reconciliation"
+msgstr "Stripe + conciliación bancaria"
+
+msgid "built-in"
+msgstr "integrado"
+
+msgid "add-on module"
+msgstr "módulo adicional"
+
+msgid "Built for Spanish SMBs"
+msgstr "Hecho para pymes españolas"
+
+msgid "Verifactu / TicketBAI / 303·390·347"
+msgstr "Verifactu / TicketBAI / 303·390·347"
+
+msgid "included, no add-on"
+msgstr "incluido, sin extra"
+
+msgid "paid localization"
+msgstr "localización de pago"
+
+msgid "third-party"
+msgstr "de terceros"
+
+msgid "Spanish-language support, EU-only data"
+msgstr "Soporte en español, datos solo en la UE"
+
+msgid "via partner"
+msgstr "vía partner"
+
+msgid "EN-first"
+msgstr "Inglés primero"
+
+msgid "Made for 2026, not 2008"
+msgstr "Hecho para 2026, no para 2008"
+
+msgid "Native AI assistant (acts on your data)"
+msgstr "Asistente de IA nativo (actúa sobre tus datos)"
+
+msgid "paid add-on, read-only"
+msgstr "complemento de pago, solo lectura"
+
+msgid "Always online at the counter (cloud PWA)"
+msgstr "Siempre online en el mostrador (PWA cloud)"
+
+msgid "flat, predictable"
+msgstr "tarifa plana, predecible"
+
+msgid "per named user"
+msgstr "por usuario nominal"
+
+msgid "per user × per app"
+msgstr "por usuario × por app"
+
+msgid "Bottom line: if your team is under 50 people, SAP and Odoo are selling you complexity you don't need yet, and charging you to implement it."
+msgstr "En resumen: si tu equipo tiene menos de 50 personas, SAP y Odoo te venden una complejidad que aún no necesitas, y te cobran por implementarla."
+
+msgid "block 2"
+msgstr "bloque 2"
+
+msgid "vs. vertical SaaS"
+msgstr "frente a SaaS verticales"
+
+msgid "These tools are well-made for one slice of your business. The trap is the second tool: by year two most teams are paying for Holded + Factorial + a POS + a separate inventory tool, and copying data between them by hand. We replace that stack with one system."
+msgstr "Estas herramientas están bien hechas para una parte de tu negocio. La trampa es la segunda herramienta: al segundo año la mayoría de equipos pagan Holded + Factorial + un TPV + una herramienta de inventario aparte, y copian datos entre ellas a mano. Nosotros sustituimos ese stack por un solo sistema."
+
+msgid "What it really covers"
+msgstr "Lo que cubre de verdad"
+
+msgid "Accounting + POS + inventory + HR + CRM, in one DB"
+msgstr "Contabilidad + TPV + inventario + RRHH + CRM, en una sola BD"
+
+msgid "Accounting + light CRM"
+msgstr "Contabilidad + CRM básico"
+
+msgid "HR only"
+msgstr "Solo RRHH"
+
+msgid "40 apps, loosely connected"
+msgstr "40 apps, mal conectadas"
+
+msgid "Things they can't do"
+msgstr "Lo que no pueden hacer"
+
+msgid "POS / TPV at the counter"
+msgstr "POS / TPV en el mostrador"
+
+msgid "Kitchen display, table map, restaurant flow"
+msgstr "Pantalla de cocina, mapa de mesas, flujo de restaurante"
+
+msgid "Real multi-warehouse stock with lot/expiry"
+msgstr "Stock multi-almacén real con lote/caducidad"
+
+msgid "basic"
+msgstr "básico"
+
+msgid "AI assistant that crosses modules"
+msgstr "Asistente de IA que cruza módulos"
+
+msgid "one assistant, all your data"
+msgstr "un asistente, todos tus datos"
+
+msgid "per-app, siloed"
+msgstr "por app, en silos"
+
+msgid "Architectural difference"
+msgstr "Diferencia arquitectónica"
+
+msgid "Single database, one report covers everything"
+msgstr "Una sola base de datos, un informe lo cubre todo"
+
+msgid "single tool"
+msgstr "herramienta única"
+
+msgid "40 silos"
+msgstr "40 silos"
+
+msgid "Total cost at year 2 (POS + accounting + HR + stock)"
+msgstr "Coste total al 2.º año (TPV + contabilidad + RRHH + stock)"
+
+msgid "1 bill"
+msgstr "1 factura"
+
+msgid "+ 2–3 tools"
+msgstr "+ 2–3 herramientas"
+
+msgid "Bottom line: if your business only needs accounting, Holded is fine. The day you add a second register, a warehouse, or a kitchen, you're rebuilding your stack. We're the system you'd buy then — at the price you'd pay now."
+msgstr "En resumen: si tu negocio solo necesita contabilidad, Holded vale. El día que añadas una segunda caja, un almacén o una cocina, estarás rehaciendo tu stack. Somos el sistema que comprarías entonces — al precio que pagarías ahora."
+
+msgid "Pricing and feature data from each vendor's public site, last checked May 2026. We update this page whenever a competitor changes their offering — if you spot something out of date, tell us."
+msgstr "Datos de precios y funciones de la web pública de cada proveedor, última comprobación en mayo de 2026. Actualizamos esta página cuando un competidor cambia su oferta — si ves algo desactualizado, dínoslo."
+
+msgid "Get going whenever you want."
+msgstr "Empieza cuando quieras."
+
+msgid "Start free, no card required. Migrating from another system? Our support team moves your data for you."
+msgstr "Empieza gratis, sin tarjeta. ¿Migras desde otro sistema? Nuestro equipo de soporte mueve tus datos por ti."
+
+msgid "Too many messages from your network. Please try again in a little while."
+msgstr "Demasiados mensajes desde tu red. Vuelve a intentarlo dentro de un rato."
+
+msgid "Sorry, something went wrong sending your message. Please try again."
+msgstr "Lo sentimos, algo salió mal al enviar tu mensaje. Inténtalo de nuevo."
+
+msgid "Is VAT included in these prices?"
+msgstr "¿Estos precios llevan el IVA incluido?"
+
+msgid "Email Us"
+msgstr "Escríbenos"
+
+msgid "The process"
+msgstr "El proceso"
+
+msgid "How it works"
+msgstr "Cómo funciona"
+
+msgid "Tell us about your business"
+msgstr "Cuéntanos tu negocio"
+
+msgid "Priority support"
+msgstr "Soporte prioritario"
+
+msgid "No technical skills required"
+msgstr "No se necesitan conocimientos técnicos"
+
+msgid "Real needs and ideas"
+msgstr "Necesidades e ideas reales"
+
+msgid "Hospitality"
+msgstr "Hostelería"
+
+msgid "Retail"
+msgstr "Retail"
+
+msgid "Questions"
+msgstr "Preguntas"
+
+msgid "Do I need technical knowledge?"
+msgstr "¿Necesito conocimientos técnicos?"
+
+msgid "How much time do I need to invest?"
+msgstr "¿Cuánto tiempo necesito invertir?"
+
+msgid "Last name"
+msgstr "Apellidos"
+
+msgid "What do you need?"
+msgstr "¿Qué necesitas?"
+
+msgid "Contact Us"
+msgstr "Contáctanos"
+
+msgid "Contact"
+msgstr "Contacto"
+
+msgid "Contact Information"
+msgstr "Información de Contacto"
+
+msgid "Email"
+msgstr "Correo electrónico"
+
+msgid "Support Hours"
+msgstr "Horario de Soporte"
+
+msgid "Available"
+msgstr "Disponible"
+
+msgid "ERPlora · One ERP. Infinite configurations. Yours."
+msgstr "ERPlora · Un ERP. Infinitas configuraciones. Tuyo."
+
+msgid "One free app on the device at your counter. It opens your ERPlora hub like any other window — and while it is open, it is what prints your receipts and opens your cash drawer."
+msgstr "Una sola app gratis en el dispositivo de tu mostrador. Abre tu hub de ERPlora como cualquier otra ventana — y mientras está abierta, es la que imprime tus tiques y abre tu cajón portamonedas."
+
+msgid "Install"
+msgstr "Instalar"
+
+msgid "Open your hub"
+msgstr "Abre tu hub"
+
+msgid "The first launch asks which hub is yours and remembers it. Nothing to pair, no port-forwarding, no public IPs."
+msgstr "El primer arranque pregunta cuál es tu hub y lo recuerda. Nada que emparejar, sin redirección de puertos ni IPs públicas."
+
+msgid "How the app works"
+msgstr "Cómo funciona la app"
+
+msgid "Live dashboard"
+msgstr "Panel en vivo"
+
+msgid "Build to fit"
+msgstr "Construido a medida"
+
+msgid "Compare"
+msgstr "Comparar"
+
+msgid "premium"
+msgstr "premium"
+
+msgid "Counter hardware from the app"
+msgstr "Hardware de mostrador desde la app"
+
+msgid "Local fiscal compliance"
+msgstr "Cumplimiento fiscal local"
+
+msgid "Consultant required"
+msgstr "Consultor requerido"
+
+msgid "Want to see ERPlora"
+msgstr "¿Quieres ver ERPlora"
+
+msgid "with your own data?"
+msgstr "con tus propios datos?"
+
+msgid "Accounting"
+msgstr "Contabilidad"
+
+msgid "Support tickets"
+msgstr "Tickets de soporte"
+
+msgid "Extensions"
+msgstr "Extensiones"
+
+msgid "Infinite configurations."
+msgstr "Infinitas configuraciones."
+
+msgid "The platform"
+msgstr "La plataforma"
+
+msgid "One dashboard for your whole business."
+msgstr "Un solo panel para todo tu negocio."
+
+msgid "Per-tenant Hub, auto-provisioned and backed up."
+msgstr "Hub por inquilino, autoprovisionado y con copias de seguridad."
+
+msgid "Service terms"
+msgstr "Condiciones del servicio"
+
+msgid "Plans and prices are published at"
+msgstr "Los planes y precios están publicados en"
+
+msgid "The data that the customer enters into their Hub (end customers, sales, inventory, etc.) is the property of the customer. ERPlora acts as data PROCESSOR under Art. 28 GDPR; the processing terms are detailed in the"
+msgstr "Los datos que el cliente introduce en su Hub (clientes finales, ventas, inventario, etc.) son propiedad del cliente. ERPlora es ENCARGADO del tratamiento conforme al Art. 28 RGPD; las condiciones de tratamiento se detallan en la"
+
+msgid "Automatic reversion."
+msgstr "Vuelta atrás automática."
+
+msgid "If the new version does not start correctly, the previous one is restored automatically and the customer carries on working with it."
+msgstr "Si la versión nueva no arranca correctamente, se restaura la anterior de forma automática y el cliente sigue trabajando con ella."
+
+msgid "Notice of visible changes."
+msgstr "Aviso de los cambios visibles."
+
+msgid "public archive of responsible declarations"
+msgstr "archivo público de declaraciones responsables"
+
+msgid "Updates page"
+msgstr "página de Actualizaciones"
+
+msgid "9. Intellectual property"
+msgstr "9. Propiedad intelectual"
+
+msgid "ERPlora may modify these terms. Substantial changes will be notified at least 30 days in advance. Continued use of the service after they take effect implies acceptance."
+msgstr "ERPlora puede modificar estos términos. Los cambios sustanciales se notificarán con al menos 30 días de antelación. El uso continuado del servicio tras la entrada en vigor implica aceptación."
+
+msgid "13. Applicable law and jurisdiction"
+msgstr "13. Legislación aplicable y jurisdicción"
+
+msgid "These terms are governed by Spanish law. For any dispute, the parties submit to the Courts of the city of Madrid, waiving any other jurisdiction that might otherwise apply, without prejudice to consumer jurisdiction where applicable."
+msgstr "Estas condiciones se rigen por la ley española. Para cualquier controversia, las partes se someten a los Juzgados y Tribunales de Madrid capital, con renuncia a cualquier otro fuero que pudiera corresponderles, sin perjuicio del fuero del consumidor cuando éste resulte aplicable."
+
+msgid "Devices and users"
+msgstr "Dispositivos y usuarios"
+
+msgid "Get Started"
+msgstr "Comenzar"
+
+msgid "Other plans"
+msgstr "Otros planes"
+
+msgid "Start free."
+msgstr "Empieza gratis."
+
+msgid "Why people pick ERPlora"
+msgstr "Por qué eligen ERPlora"
+
+msgid "Strongly recommended"
+msgstr "Muy recomendado"
+
+msgid "custom integration"
+msgstr "integración a medida"
+
+msgid "native"
+msgstr "nativo"
+
+msgid "separate app"
+msgstr "app aparte"
+
+msgid "buy another app"
+msgstr "comprar otra app"
+
+msgid "5+ subscriptions"
+msgstr "5+ suscripciones"
+
+msgid "Whenever you want"
+msgstr "Cuando quieras"
+
+#, python-format
+msgid "Ready for more? A paid plan chosen when creating a Hub comes with a %(days)d-day free trial using your own data."
+msgid_plural "Ready for more? A paid plan chosen when creating a Hub comes with a %(days)d-day free trial using your own data."
+msgstr[0] "¿Quieres más? Un plan de pago elegido al crear un Hub incluye %(days)d día de prueba gratis con tus propios datos."
+msgstr[1] "¿Quieres más? Un plan de pago elegido al crear un Hub incluye %(days)d días de prueba gratis con tus propios datos."
+
+#, python-format
+msgid "Ready for more? A paid plan chosen when creating a Hub comes with a free trial of %(min_days)d to %(max_days)d days, depending on the plan, using your own data."
+msgstr "¿Quieres más? Un plan de pago elegido al crear un Hub incluye una prueba gratis de %(min_days)d a %(max_days)d días, según el plan, con tus propios datos."
+
+#, python-format
+msgid "Free plan with no card required; paid plans come with a %(days)d-day free trial when you create a Hub. Cancel anytime."
+msgid_plural "Free plan with no card required; paid plans come with a %(days)d-day free trial when you create a Hub. Cancel anytime."
+msgstr[0] "Plan Gratis sin tarjeta; los planes de pago incluyen %(days)d día de prueba gratis al crear un Hub. Cancela cuando quieras."
+msgstr[1] "Plan Gratis sin tarjeta; los planes de pago incluyen %(days)d días de prueba gratis al crear un Hub. Cancela cuando quieras."
+
+#, python-format
+msgid "Yes. Start free with no card — the Free plan is free forever. A paid plan chosen when creating a Hub comes with a %(days)d-day free trial using your own data, so you can be sure it fits before you commit. Moving a Hub that is already in service to a paid plan does not start a new trial."
+msgid_plural "Yes. Start free with no card — the Free plan is free forever. A paid plan chosen when creating a Hub comes with a %(days)d-day free trial using your own data, so you can be sure it fits before you commit. Moving a Hub that is already in service to a paid plan does not start a new trial."
+msgstr[0] "Sí. Empieza gratis sin tarjeta —el plan Free es gratis para siempre. Un plan de pago elegido al crear un Hub incluye una prueba gratuita de %(days)d día con tus propios datos, para que compruebes que encaja antes de comprometerte. Pasar a un plan de pago un Hub que ya está en servicio no inicia un nuevo periodo de prueba."
+msgstr[1] "Sí. Empieza gratis sin tarjeta —el plan Free es gratis para siempre. Un plan de pago elegido al crear un Hub incluye una prueba gratuita de %(days)d días con tus propios datos, para que compruebes que encaja antes de comprometerte. Pasar a un plan de pago un Hub que ya está en servicio no inicia un nuevo periodo de prueba."
+
+msgid "Yes. The change is immediate and the difference is prorated. There's no penalty or commitment period. Downgrading is also free — premium apps are turned off but their data is retained for 90 days."
+msgstr "Sí. El cambio es inmediato y la diferencia se prorratea. No hay penalización ni periodo de compromiso. Bajar de plan también es gratis: las apps premium se desactivan, pero sus datos se conservan 90 días."
+
+msgid "Entirely within the European Union: on Amazon Web Services, in its Spain region (eu-south-2, Aragón), on GDPR-compliant infrastructure. Your data never leaves the EU."
+msgstr "Íntegramente dentro de la Unión Europea: en Amazon Web Services, en su región de España (eu-south-2, Aragón), sobre infraestructura conforme al RGPD. Tus datos nunca salen de la UE."
+
+msgid "Do you charge per app or per usage?"
+msgstr "¿Cobráis por app o por uso?"
+
+msgid "Neither. You pay one fixed price per hub, the price of its plan. The free apps come with every plan and the premium apps are included in the paid plans, so turning an app on or off never changes your bill. We don't charge by usage — no per-transaction or metered fees — so your bill stays predictable every month."
+msgstr "Ni lo uno ni lo otro. Pagas un precio fijo por hub, el de su plan. Las apps gratuitas vienen con todos los planes y las apps premium están incluidas en los planes de pago, así que activar o desactivar una app nunca cambia tu factura. No cobramos por uso —ni comisiones por transacción ni tarifas medidas—, así que tu factura es previsible todos los meses."
+
+#, python-format
+msgid "Get a full ERPlora Hub on the %(plan)s plan — free for 12 months (valued at €%(price)s/year)."
+msgstr "Consigue un Hub de ERPlora completo con el plan %(plan)s, gratis durante 12 meses (valorado en %(price)s €/año)."
+
+msgid "Get a full ERPlora Hub free for 12 months."
+msgstr "Consigue un Hub de ERPlora completo, gratis durante 12 meses."
+
+#, python-format
+msgid "The full %(plan)s plan with all core features, no credit card required."
+msgstr "El plan %(plan)s completo con todas las funciones principales, sin tarjeta de crédito."
+
+msgid "A full Hub with all core features, no credit card required."
+msgstr "Un Hub completo con todas las funciones principales, sin tarjeta de crédito."
+
+#, python-format
+msgid "We cover %(s)s sectors and %(t)s business types."
+msgstr "Cubrimos %(s)s sectores y %(t)s tipos de negocio."
+
+msgid "Don't see yours? We want to hear from you too."
+msgstr "¿No ves el tuyo? También queremos saber de ti."
+
+msgid "ERPlora — one modular ERP/POS, infinite configurations. Turn on only the apps your business needs. Cloud Hub per tenant, plug-and-play counter hardware from the ERPlora app."
+msgstr "ERPlora: un ERP/TPV modular, infinitas configuraciones. Activa solo las apps que tu negocio necesita. Hub en la nube por cliente y hardware de mostrador listo para usar desde la app de ERPlora."
+
+#, python-format
+msgid "%(counter)s app designed to fit with the rest. Start with the ones you need today and turn on the rest as you grow."
+msgid_plural "%(counter)s apps designed to fit together. Start with the ones you need today and turn on the rest as you grow."
+msgstr[0] "%(counter)s app diseñada para encajar con el resto. Empieza con las que necesitas hoy y activa las demás a medida que creces."
+msgstr[1] "%(counter)s apps diseñadas para encajar entre sí. Empieza con las que necesitas hoy y activa las demás a medida que creces."
+
+msgid "Turn on only the apps your business needs."
+msgstr "Activa solo las apps que tu negocio necesita."
+
+#, python-format
+msgid "%(counter)s app. Turn it on and off without breaking anything. Switch between plans in one click."
+msgid_plural "%(counter)s apps. Turn them on and off without breaking anything. Switch between plans in one click."
+msgstr[0] "%(counter)s app. Actívala y desactívala sin romper nada. Cambia de plan en un clic."
+msgstr[1] "%(counter)s apps. Actívalas y desactívalas sin romper nada. Cambia de plan en un clic."
+
+msgid "ERPlora runs in the browser as an always-online cloud PWA, with a free app (Windows, Linux, Android) that drives the printers and cash drawer at your counter — no per-user fees. Start on the Free plan, then paid tiers add capacity, multi-device and the premium apps. There is no user cap: you scale capacity as you grow."
+msgstr "ERPlora funciona en el navegador como una PWA en la nube siempre en línea, con una app gratuita (Windows, Linux, Android) que maneja las impresoras y el cajón de tu mostrador, sin cuotas por usuario. Empieza con el plan Gratis; los planes de pago añaden capacidad, varios dispositivos y las apps premium. No hay tope de usuarios: amplías la capacidad a medida que creces."
+
+msgid "Start free in minutes with your own hub — the Free plan is free forever, no card required."
+msgstr "Empieza gratis en minutos con tu propio hub: el plan Gratis es gratis para siempre y no pide tarjeta."
+
+msgid "All the apps to run an SMB — free forever."
+msgstr "Todas las apps para llevar una pyme, gratis para siempre."
+
+msgid "Included in the paid plans: turn them on when your business needs them."
+msgstr "Incluidas en los planes de pago: actívalas cuando tu negocio las necesite."
+
+msgid "More premium apps as the catalogue grows"
+msgstr "Más apps premium a medida que crece el catálogo"
+
+msgid "Every plan includes all the free apps, and the paid plans include the premium apps too — plans only change hub size, support and user count."
+msgstr "Todos los planes incluyen todas las apps gratuitas, y los planes de pago incluyen también las apps premium: los planes solo cambian el tamaño del hub, el soporte y el número de usuarios."
+
+msgid "Every app shares the same data, the same look and the same login. No integrations to maintain."
+msgstr "Todas las apps comparten los mismos datos, el mismo aspecto y el mismo acceso. Sin integraciones que mantener."
+
+msgid "ERPlora offers a modular, multi-tenant ERP/POS SaaS platform, deployed on European cloud infrastructure, with features such as sales, inventory, and customer management, invoicing, tax integrations (VeriFactu), and a catalogue of apps of its own that the customer turns on in their Hub: the free apps come with every plan, and the premium apps are included in the paid plans."
+msgstr "ERPlora ofrece una plataforma SaaS multi-tenant tipo ERP/POS, modular, desplegada en infraestructura cloud europea, con funcionalidades como gestión de ventas, inventario, clientes, facturación, integraciones fiscales (VeriFactu) y un catálogo de apps propias que el cliente activa en su Hub: las apps gratuitas vienen con todos los planes y las apps premium están incluidas en los planes de pago."
+
+#, python-format
+msgid "A paid plan chosen when creating a Hub comes with a free trial of %(days)s day, shown on the pricing page at the time of signup; a promotional code applied at signup may set a different length. Moving a Hub that is already in service to a paid plan does not start a new trial. If not cancelled before the end of the trial, the first period is billed automatically."
+msgid_plural "A paid plan chosen when creating a Hub comes with a free trial of %(days)s days, shown on the pricing page at the time of signup; a promotional code applied at signup may set a different length. Moving a Hub that is already in service to a paid plan does not start a new trial. If not cancelled before the end of the trial, the first period is billed automatically."
+msgstr[0] "Un plan de pago elegido al crear un Hub incluye un periodo de prueba sin cargo de %(days)s día, que se indica en la página de precios en el momento de la contratación; un código promocional aplicado al contratar puede fijar otra duración. Pasar a un plan de pago un Hub que ya está en servicio no inicia un nuevo periodo de prueba. Si no se cancela antes del fin de la prueba, se factura automáticamente el primer periodo."
+msgstr[1] "Un plan de pago elegido al crear un Hub incluye un periodo de prueba sin cargo de %(days)s días, que se indica en la página de precios en el momento de la contratación; un código promocional aplicado al contratar puede fijar otra duración. Pasar a un plan de pago un Hub que ya está en servicio no inicia un nuevo periodo de prueba. Si no se cancela antes del fin de la prueba, se factura automáticamente el primer periodo."
+
+msgid "The apps turned on in the Hub are updated under these same rules."
+msgstr "Las apps activadas en el Hub se actualizan con estas mismas reglas."
+
+#, python-format
+msgid "%(devices)s device"
+msgid_plural "%(devices)s devices"
+msgstr[0] "%(devices)s dispositivo"
+msgstr[1] "%(devices)s dispositivos"
+
+#, python-format
+msgid "%(users)s user"
+msgid_plural "%(users)s users"
+msgstr[0] "%(users)s usuario"
+msgstr[1] "%(users)s usuarios"
+
+msgid "ERPlora Cloud Hub plans — monthly or annual billing. Every plan includes the free apps, and the paid plans include the premium apps too. Switch anytime, no migration or data loss."
+msgstr "Planes de Hub en la nube de ERPlora: facturación mensual o anual. Todos los planes incluyen las apps gratuitas, y los planes de pago incluyen también las apps premium. Cambia cuando quieras, sin migraciones ni pérdida de datos."
+
+msgid "Every plan includes all the free apps, and the paid plans include the premium apps too. Switch plans in one click, with no migration or data loss. Cancel anytime."
+msgstr "Todos los planes incluyen todas las apps gratuitas, y los planes de pago incluyen también las apps premium. Cambia de plan en un clic, sin migraciones ni pérdida de datos. Cancela cuando quieras."
+
+msgid "There are no plans on sale right now."
+msgstr "Ahora mismo no hay planes a la venta."
+
+msgid "Write to us and we will help you get started."
+msgstr "Escríbenos y te ayudamos a empezar."
+
+msgid "POS, kitchen display, counter app"
+msgstr "TPV, pantalla de cocina, app de mostrador"
+
+msgid "Per-hub pricing, not per-user"
+msgstr "Precio por hub, no por usuario"
+
+msgid "Receipt printers and cash drawer (counter app)"
+msgstr "Impresoras de tickets y cajón (app de mostrador)"
+
+msgid "Add an app without buying a new product"
+msgstr "Añadir una app sin comprar otro producto"
+
+msgid "App"
+msgstr "App"
+
+msgid "Our own app catalogue"
+msgstr "Catálogo de apps propias"
+
+#, python-format
+msgid "See the %(counter)s app"
+msgid_plural "See the %(counter)s apps"
+msgstr[0] "Ver la %(counter)s app"
+msgstr[1] "Ver las %(counter)s apps"
+
+#, python-format
+msgid "Explore the %(counter)s app"
+msgid_plural "Explore the %(counter)s apps"
+msgstr[0] "Explorar la %(counter)s app"
+msgstr[1] "Explorar las %(counter)s apps"
+
+msgid "Included apps"
+msgstr "Apps incluidas"
+
+msgid "Explore the apps"
+msgstr "Explorar las apps"
+
+msgid "Premium apps"
+msgstr "Apps premium"
+
+msgid "Apps included"
+msgstr "Apps incluidas"
+
+msgid "app catalogue, 1 click"
+msgstr "catálogo de apps, 1 clic"

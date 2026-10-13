@@ -8,9 +8,13 @@ import sys
 from pathlib import Path
 
 import pytest
+from django.apps import apps as django_apps
 from django.conf import settings
 from django.http.request import validate_host
 from live.csp import base_policy, debug_policy
+from live.meta import LiveAppConfig
+
+from config.tests.test_production_settings import IGNORE_DOTENV
 
 
 def test_the_hub_origin_pattern_is_derived_from_the_callback_template():
@@ -33,7 +37,14 @@ def test_development_answers_on_localhost(host):
 
 @pytest.mark.parametrize(
     "host",
-    ["hubs.localhost", "hub.localhost", "a.localhost", "erplora.com", "hubs.erplora.com", "hub.erplora.com"],
+    [
+        "hubs.localhost",
+        "hub.localhost",
+        "a.localhost",
+        "erplora.com",
+        "hubs.erplora.com",
+        "hub.erplora.com",
+    ],
 )
 def test_development_does_not_answer_on_a_hubs_host(host):
     assert not validate_host(host, settings.ALLOWED_HOSTS)
@@ -79,7 +90,8 @@ def test_iconify_may_create_its_trusted_types_policy():
 
 
 # Production settings are read in a fresh interpreter: `config.settings` is evaluated once per
-# process, from the environment and `saas-next/.env`.
+# process, from the environment and `saas-next/.env`. That interpreter ignores `saas-next/.env`
+# (IGNORE_DOTENV), so a developer's file never leaks in and these tests always run.
 
 SAAS_NEXT = Path(__file__).resolve().parents[2]
 PRODUCTION_ENV = {
@@ -101,7 +113,11 @@ def _settings_in_a_fresh_process(
         if key != "DEBUG" and not key.startswith(("GOOGLE_", "DJANGO_"))
     }
     return subprocess.run(
-        [sys.executable, "-c", f"import config.settings as s; print({expression})"],
+        [
+            sys.executable,
+            "-c",
+            f"{IGNORE_DOTENV}\nimport config.settings as s; print({expression})",
+        ],
         cwd=SAAS_NEXT,
         env={**base, **env},
         capture_output=True,
@@ -110,10 +126,6 @@ def _settings_in_a_fresh_process(
     )
 
 
-@pytest.mark.skipif(
-    (SAAS_NEXT / ".env").is_file(),
-    reason="saas-next/.env would leak into the fresh process",
-)
 def test_debug_is_off_unless_the_environment_turns_it_on():
     """A deploy that forgets DEBUG must not serve debug pages nor fall back to the local secrets:
     production is the default, development opts in (saas-next/.env, `DEBUG=True`)."""
@@ -125,10 +137,6 @@ def test_debug_is_off_unless_the_environment_turns_it_on():
     assert result.stdout.strip() == "False"
 
 
-@pytest.mark.skipif(
-    (SAAS_NEXT / ".env").is_file(),
-    reason="saas-next/.env would leak into the fresh process",
-)
 @pytest.mark.parametrize(
     "missing", ["GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET"]
 )
@@ -141,10 +149,6 @@ def test_production_refuses_to_start_without_google_credentials(missing):
     assert missing in result.stderr
 
 
-@pytest.mark.skipif(
-    (SAAS_NEXT / ".env").is_file(),
-    reason="saas-next/.env would leak into the fresh process",
-)
 def test_production_hands_google_an_https_callback():
     """Behind the load balancer the request arrives as http: the redirect_uri must still be https."""
     result = _settings_in_a_fresh_process(
@@ -155,10 +159,6 @@ def test_production_hands_google_an_https_callback():
     assert result.stdout.split() == ["True", "https"]
 
 
-@pytest.mark.skipif(
-    (SAAS_NEXT / ".env").is_file(),
-    reason="saas-next/.env would leak into the fresh process",
-)
 def test_production_answers_only_on_erplora_com_and_wants_three_letter_hubs():
     result = _settings_in_a_fresh_process(
         PRODUCTION_ENV, "(s.ALLOWED_HOSTS, s.LIVE['hub_slug_min_length'])"
@@ -168,15 +168,11 @@ def test_production_answers_only_on_erplora_com_and_wants_three_letter_hubs():
     assert result.stdout.strip() == str((["erplora.com"], 3))
 
 
-@pytest.mark.skipif(
-    (SAAS_NEXT / ".env").is_file(),
-    reason="saas-next/.env would leak into the fresh process",
-)
 def test_production_sends_the_staff_to_hubs_erplora_com_without_serving_it():
     """`hubs.erplora.com` is the Hub's alone (ronda 13, PLAN §18): the SaaS only posts there."""
     result = _settings_in_a_fresh_process(
         PRODUCTION_ENV,
-        "(s.HUB_ADMIN_CALLBACK_URL, [str(source) for source in s.SECURE_CSP['form-action']], s.ALLOWED_HOSTS)"
+        "(s.HUB_ADMIN_CALLBACK_URL, [str(source) for source in s.SECURE_CSP['form-action']], s.ALLOWED_HOSTS)",
     )
 
     assert result.returncode == 0, result.stderr
@@ -185,6 +181,32 @@ def test_production_sends_the_staff_to_hubs_erplora_com_without_serving_it():
     assert "https://hubs.erplora.com" in form_action
     assert not validate_host("hubs.erplora.com", allowed_hosts)
     assert not validate_host("hub.erplora.com", allowed_hosts)
+
+
+@pytest.mark.parametrize(
+    ("environment", "expected"),
+    [({}, "test_saas_next"), ({"TEST_DB_NAME": "test_saas_l2a"}, "test_saas_l2a")],
+)
+def test_the_test_database_name_comes_from_the_environment(environment, expected):
+    """Several sessions run pytest at once against the same Postgres: each one names its own test
+    database (``TEST_DB_NAME``) so they do not drop each other's. The environment wins over
+    saas-next/.env, so this runs in a fresh process even when that file exists."""
+    base = {key: value for key, value in os.environ.items() if key != "TEST_DB_NAME"}
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import config.settings as s; print(s.DATABASES['default']['TEST']['NAME'])",
+        ],
+        cwd=SAAS_NEXT,
+        env={**base, "DEBUG": "True", **environment},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == expected
 
 
 def test_development_keeps_http_for_the_local_callback(settings):
@@ -216,10 +238,41 @@ def test_live_precedes_daphne_so_its_runserver_starts_vite_too():
     assert {"ninja", "base", "accounts", "allauth.headless"} <= set(installed)
 
 
-def test_saas_next_has_no_apps_directory():
-    """``apps/`` only holds the modules a hub turns on and off; the SaaS has none, so its platform
-    apps live at the project root next to ``base/`` (round 15, PLAN §20.2)."""
-    assert not (settings.BASE_DIR / "apps").exists()
+def module_folders(path: Path) -> list[str]:
+    """The subfolders of ``path`` that hold an app of their own (an ``apps.py``), as hub-next's
+    ``apps/<id>/`` modules do; ``migrations`` and ``tests`` are never one."""
+    return sorted(
+        child.name
+        for child in path.iterdir()
+        if child.is_dir()
+        and child.name not in {"migrations", "tests"}
+        and (child / "apps.py").is_file()
+    )
+
+
+def test_saas_next_apps_is_the_platform_app_of_the_catalog_not_a_folder_of_modules():
+    """``saas-next/apps/`` is the platform app of the app catalog (round 16, PLAN §21.1 point 10,
+    spec decision 18): the owner of the ``shared`` schema (``App``, ``AppDoc``) and of ``Module``,
+    with ``label = "apps"`` and ``kind = "platform"``. It is not a folder of modules as hub-next's
+    ``apps/<id>/`` (round 15, PLAN §20.2): the SaaS turns nothing on or off, so it has no modules
+    and no subfolder of ``apps/`` is an app of its own."""
+    config = django_apps.get_app_config("apps")
+
+    assert isinstance(config, LiveAppConfig)
+    assert (config.name, config.label, config.kind) == ("apps", "apps", "platform")
+    assert Path(config.path) == settings.BASE_DIR / "apps"
+    assert module_folders(settings.BASE_DIR / "apps") == []
+
+
+def test_a_subfolder_with_its_own_apps_py_is_a_folder_of_modules(tmp_path):
+    """The guardrail above catches a module folder (positive) and ignores the rest (negative)."""
+    (tmp_path / "inventory").mkdir()
+    (tmp_path / "inventory" / "apps.py").write_text("")
+    for name in ("migrations", "tests", "locale"):
+        (tmp_path / name).mkdir()
+    (tmp_path / "tests" / "apps.py").write_text("")
+
+    assert module_folders(tmp_path) == ["inventory"]
 
 
 def test_the_debug_csp_lets_the_saas_vite_dev_server_in():
@@ -254,10 +307,6 @@ def test_the_spa_build_is_served_under_static_spa():
     assert settings.WHITENOISE_IMMUTABLE_FILE_TEST == r"^/static/spa/assets/"
 
 
-@pytest.mark.skipif(
-    (SAAS_NEXT / ".env").is_file(),
-    reason="saas-next/.env would leak into the fresh process",
-)
 def test_production_has_the_base_csp_and_no_dev_server():
     expression = (
         "(s.SECURE_CSP['connect-src'], s.LIVE['spa']['dev_server'], 'require-trusted-types-for' in s.SECURE_CSP,"
@@ -298,3 +347,86 @@ def test_no_mail_links_a_vue_page_that_does_not_exist_yet():
     """allauth builds the links of its mails from HEADLESS_FRONTEND_URLS even with HEADLESS_ONLY off:
     each key enters with its page, or the template flows would mail dead links."""
     assert settings.HEADLESS_FRONTEND_URLS == {}
+
+
+# The public web (round 16, public/): its apps, middlewares and settings.
+
+
+def test_the_public_web_is_installed_with_its_sitemaps_and_cookie_consent():
+    installed = settings.INSTALLED_APPS
+    assert "django.contrib.sitemaps" in installed
+    # `public` first: its templates override django-cookie-consent's.
+    assert installed.index("public") < installed.index("cookie_consent")
+
+
+def test_the_public_middlewares_are_installed():
+    middleware = settings.MIDDLEWARE
+    assert middleware.index("public.csp.PublicCSPMiddleware") > middleware.index(
+        "django.middleware.csp.ContentSecurityPolicyMiddleware"
+    )
+    assert "public.crawlers.NoIndexPrivatePathsMiddleware" in middleware
+    assert "public.cookies.CleanCookiesMiddleware" in middleware
+
+
+def test_every_template_knows_the_public_site():
+    processors = settings.TEMPLATES[0]["OPTIONS"]["context_processors"]
+    assert "public.context_processors.public_site" in processors
+
+
+def test_every_template_knows_the_shells_colour_mode():
+    """The template pages (sign-in, errors) paint light or dark from the `theme` cookie
+    (base/context_processors.py), right after the Google switch they also read."""
+    processors = settings.TEMPLATES[0]["OPTIONS"]["context_processors"]
+    google = processors.index("accounts.context_processors.google_login")
+    assert processors[google + 1] == "base.context_processors.theme"
+
+
+def test_development_takes_the_apps_images_from_the_local_hub():
+    assert settings.HUB_STATIC_BASE_URL == "http://hubs.localhost:8000/static/"
+
+
+def test_the_public_web_defaults():
+    assert (settings.GA_MEASUREMENT_ID, settings.CLARITY_PROJECT_ID) == ("", "")
+    assert settings.CONTACT_FORM_RATELIMIT == "10/h"
+    assert settings.PUBLIC_HOST == "erplora.com"
+    assert settings.INDEXNOW_KEY == "1e00b99c5f72af2baaba3e383f91725b"
+    assert (settings.COOKIE_CONSENT_NAME, settings.COOKIE_CONSENT_MAX_AGE) == (
+        "cookie_consent",
+        31536000,
+    )
+    # A written promise of the legal terms: the exit package of a deleted hub lasts 90 days.
+    assert settings.HUB_EXIT_PACKAGE_TTL_DAYS == 90
+
+
+def test_the_app_downloads_and_the_stores_defaults():
+    assert settings.DOWNLOADS_BUCKET == "erplora-saas"
+    assert settings.APP_DOWNLOAD_PREFIX == "downloads/app/latest"
+    assert settings.DOWNLOAD_URL_TTL == 300
+    assert settings.MICROSOFT_STORE_APP_ID == ""
+    assert settings.GOOGLE_PLAY_APP_ID == ""
+    # The Google Play listing is live (2026-10-01): the default that does not lie.
+    assert settings.GOOGLE_PLAY_LISTING_LIVE is True
+    # A private S3 bucket on AWS, Spain region; credentials from the task's role, never keys.
+    assert settings.DOWNLOADS_REGION == "eu-south-2"
+    assert settings.DOWNLOADS_ENDPOINT_URL == ""
+    assert not any(name.startswith("HETZNER_") for name in dir(settings))
+
+
+def test_development_cookies_need_no_https():
+    assert settings.COOKIE_CONSENT_SECURE is False
+    assert settings.LANGUAGE_COOKIE_SECURE is False
+
+
+def test_production_takes_the_apps_images_from_hubs_erplora_com_and_secures_its_cookies():
+    result = _settings_in_a_fresh_process(
+        PRODUCTION_ENV,
+        "(s.HUB_STATIC_BASE_URL, s.PUBLIC_HOST, s.COOKIE_CONSENT_SECURE, s.LANGUAGE_COOKIE_SECURE)",
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert ast.literal_eval(result.stdout.strip()) == (
+        "https://hubs.erplora.com/static/",
+        "erplora.com",
+        True,
+        True,
+    )

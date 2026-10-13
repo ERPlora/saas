@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The launcher (`/launch`), the entry of erplora.com (PLAN-SAAS §3.1 step 4): the page of
+// The launcher (`/launch`), the entry of erplora.com (PLAN-SAAS §3.1 step 4): the page of ERPlora/saas
 // `accounts/launch.html` and the view `handoff.launch`, same texts (their msgids, `../locale`). It
 // reads the account's hubs (`accounts.hub.list`): with ONE it jumps straight to it, with several it
 // lists them, with none it says so. The jump is `/hub-login/`, a Django page (the form that posts
@@ -152,7 +152,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* `launch.html`: «Sign Out» 1rem under the list. */
+/* As ERPlora/saas `launch.html`: «Sign Out» 1rem under the list. */
 .notice {
   margin-bottom: 1rem;
 }

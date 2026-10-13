@@ -1,4 +1,4 @@
-// The frame of every account screen, ported from the template partials `account/_auth_header.html`
+// The frame of every account screen, ported from ERPlora/saas's partials `account/_auth_header.html`
 // + `_auth_shell_top.html` + `_auth_shell_bottom.html`: a back arrow (Lucide's, as the template) to
 // home, the logo with «ERPlora Cloud» and a subtitle, a glass card with the screen's content, and
 // an optional foot under the card. Full bleed, outside the shell's chrome.

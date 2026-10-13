@@ -10,6 +10,19 @@ dependencies = [
     "whitenoise>=6.12",
     "python-decouple>=3.8",
     "django-allauth[socialaccount,headless,headless-spec,mfa]>=65.18",
+    # The public web (round 16): cookie consent, the contact form's rate limit, the app downloads
+    # bucket, IndexNow and the cleaning of the apps' icons.
+    "django-cookie-consent>=0.7",
+    "django-ratelimit>=4.1",
+    "boto3>=1.40",
+    "requests>=2.32",
+    "nh3>=0.3",
+    # Django's RedisCache client for the shared Valkey (VALKEY_URL).
+    "redis>=8.1.0",
+    # Mail through the SES API, signed by the task role (SES_REGION).
+    "django-ses>=4.8.2",
+    # The fiscal seal's .p12 (report_seal_expiry reads its certificate's expiry).
+    "cryptography>=50.0",
 ]
 
 [tool.uv]

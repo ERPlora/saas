@@ -1,0 +1,11 @@
+{% extends "errors/base.html" %}
+{% load i18n %}
+{% comment %}
+  Django renders `403_csrf.html` by name (`django.views.csrf.csrf_failure`): a form posted with a
+  CSRF token that no longer matches, typically the sign-in left open until the session expired.
+{% endcomment %}
+
+{% block title %}403 — {% trans "Session expired" %} · ERPlora Cloud{% endblock %}
+{% block code %}{% trans "403 · Session expired" %}{% endblock %}
+{% block heading %}{% trans "Your session expired while you were away" %}{% endblock %}
+{% block message %}{% trans "For your security the form was rejected. Go back, reload the page and try again." %}{% endblock %}

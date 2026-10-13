@@ -1,0 +1,15 @@
+{% comment %}
+  ep-logo-cloud: port of <ok-logo-cloud> (OutfitKit). A row of greyed logos (or names) that take
+  colour on hover, with a label above; `marquee` scrolls them in a loop (duplicate the logos in the
+  template for a seamless loop; stopped with prefers-reduced-motion).
+  Styles: public/static/public/components/logo-cloud.css.
+
+  Usage:
+    {% include "public/components/logo_cloud.html" with label=trusted_by logos_template="public/<page>/_logos.html" %}
+
+  Variables: logos_template (required: one <img> or <span> per logo); label; marquee.
+{% endcomment %}
+<div class="ep-logo-cloud{% if marquee %} ep-logo-cloud--marquee{% endif %}">
+    {% if label %}<div class="ep-logo-cloud__label">{{ label }}</div>{% endif %}
+    <div class="ep-logo-cloud__viewport"><div class="ep-logo-cloud__row">{% include logos_template %}</div></div>
+</div>

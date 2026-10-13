@@ -1,0 +1,379 @@
+{% extends "public/public_base.html" %}
+{% load i18n icons %}
+{% comment %}
+  /collaborate/ — port of apps/public/company/templates/company/collaborate.html (origin/develop):
+  the hero, how it works, what we built, what you get, what we ask, the industries, the FAQ and the
+  closing band, with the same texts and the ep-* classes (PLAN §16.11). What changed: the counts and
+  the plan of the free year come from the operations of hubs (public/company.py); the year is valued
+  at the cheapest paid plan on sale, never a plan read by its slug (WORKFLOW F63). The third-party
+  marketplace is gone (spec §8.3): the step «Monetize your expertise», the benefit «Revenue from paid
+  modules» and the FAQ on the 85 % share are out, and «Module marketplace» is our own app catalogue.
+  «Expected launch: September 2026» had passed and is out. Contract: public/tests/test_company.py.
+{% endcomment %}
+
+{% block title %}{% trans "Collaborator Program" %} · ERPlora{% endblock %}
+
+{% block meta_description %}{% trans "Join the ERPlora Collaborator Program: share your industry expertise, get a free modular ERP for a year with custom modules built for your business." %}{% endblock %}
+
+{% block og_title %}{% trans "Collaborator Program" %} · ERPlora{% endblock %}
+{% block og_description %}{% trans "We're a startup building a modular ERP. We need your industry expertise to build modules that actually work. In return: a free ERP for a year." %}{% endblock %}
+
+{% block page_content %}
+{% trans "Collaborator Program" as hero_eyebrow %}
+{% trans "We're looking for industry experts" as hero_title %}
+{% trans "We're a startup building a modular, scalable ERP — not a conventional one. We need your real-world industry knowledge to build modules that actually work. In return, you get a free ERP tailored to your needs." as hero_description %}
+{% include "public/partials/page_hero.html" with hero_eyebrow=hero_eyebrow hero_title=hero_title hero_description=hero_description hero_compact=True hero_actions_template="public/company/_collaborate_hero_actions.html" %}
+
+        <!-- How it works -->
+        <section class="ep-section--compact ep-section--soft ep-section--divider ep-section--center">
+          <div class="ep-container ep-section-content">
+            <header class="ep-section-head">
+              <span class="ep-eyebrow">{% trans "The process" %}</span>
+              <h2 class="ep-section-title">{% trans "How it works" %}</h2>
+            </header>
+            <div class="ep-reveal" data-reveal="up">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <ion-card class="">
+                    <ion-card-content class="p-6 text-center">
+                        <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                            <span class="text-2xl font-bold text-primary">1</span>
+                        </div>
+                        <h3 class="heading-sm">{% trans "Tell us about your business" %}</h3>
+                        <p class="text-fg/60">{% trans "Share your daily workflows, tools you use, what's missing, and what you wish you had." %}</p>
+                    </ion-card-content>
+                </ion-card>
+
+                <ion-card class="">
+                    <ion-card-content class="p-6 text-center">
+                        <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                            <span class="text-2xl font-bold text-primary">2</span>
+                        </div>
+                        <h3 class="heading-sm">{% trans "We build for you" %}</h3>
+                        <p class="text-fg/60">{% trans "We develop or adapt modules tailored to your specific needs — completely free." %}</p>
+                    </ion-card-content>
+                </ion-card>
+
+                <ion-card class="">
+                    <ion-card-content class="p-6 text-center">
+                        <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                            <span class="text-2xl font-bold text-primary">3</span>
+                        </div>
+                        <h3 class="heading-sm">{% trans "Use it free for a year" %}</h3>
+                        <p class="text-fg/60">{% if paid_plan %}{% blocktrans with plan=paid_plan.name price=paid_plan_annual|floatformat:'-2' %}Get a full ERPlora Hub on the {{ plan }} plan — free for 12 months (valued at €{{ price }}/year).{% endblocktrans %}{% else %}{% trans "Get a full ERPlora Hub free for 12 months." %}{% endif %}</p>
+                    </ion-card-content>
+                </ion-card>
+
+            </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- What we already have -->
+        <section class="ep-section--compact ep-section--divider">
+          <div class="ep-container ep-section-content">
+            <ion-card class="">
+                <ion-card-content class="p-6">
+                    <h2 class="heading-lg mb-4">{% trans "What we've already built" %}</h2>
+                    <p class="text-fg/60 mb-6">{% trans "ERPlora is a modular ERP with a minimalist core that does one thing: load modules. Everything else — invoicing, inventory, appointments, POS, accounting — are independent modules you install based on what you need." %}</p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="flex gap-3 items-center">
+                            <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                {% icon "checkmark-outline" css_class="text-primary" %}
+                            </div>
+                            <span class="text-sm">{% trans "Complete POS system" %}</span>
+                        </div>
+                        <div class="flex gap-3 items-center">
+                            <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                {% icon "checkmark-outline" css_class="text-primary" %}
+                            </div>
+                            <span class="text-sm">{% trans "Modules constantly growing" %}</span>
+                        </div>
+                        <div class="flex gap-3 items-center">
+                            <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                {% icon "checkmark-outline" css_class="text-primary" %}
+                            </div>
+                            <span class="text-sm">{% trans "Managed cloud infrastructure" %}</span>
+                        </div>
+                        <div class="flex gap-3 items-center">
+                            <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                {% icon "checkmark-outline" css_class="text-primary" %}
+                            </div>
+                            <span class="text-sm">{% trans "AI-powered setup assistant" %}</span>
+                        </div>
+                        <div class="flex gap-3 items-center">
+                            <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                {% icon "checkmark-outline" css_class="text-primary" %}
+                            </div>
+                            <span class="text-sm">{% trans "Our own app catalogue" %}</span>
+                        </div>
+                        {% if sector_count %}
+                        <div class="flex gap-3 items-center">
+                            <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                {% icon "checkmark-outline" css_class="text-primary" %}
+                            </div>
+                            <span class="text-sm">{% blocktrans with s=sector_count t=business_type_count %}{{ s }} sectors, {{ t }} business types{% endblocktrans %}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </ion-card-content>
+            </ion-card>
+          </div>
+        </section>
+
+        <!-- What you get -->
+        <section class="ep-section--compact ep-section--soft ep-section--divider">
+          <div class="ep-container ep-section-content">
+            <ion-card class="">
+                <ion-card-content class="p-6">
+                    <h2 class="heading-lg mb-6">{% trans "What you get" %}</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="flex gap-3 items-start">
+                            <div class="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center flex-shrink-0 mt-1">
+                                {% icon "checkmark-outline" css_class="text-success" %}
+                            </div>
+                            <div>
+                                <h4 class="font-semibold mb-1">{% trans "Free Hub for 1 year" %}</h4>
+                                <p class="text-fg/60 text-sm">{% if paid_plan %}{% blocktrans with plan=paid_plan.name %}The full {{ plan }} plan with all core features, no credit card required.{% endblocktrans %}{% else %}{% trans "A full Hub with all core features, no credit card required." %}{% endif %}</p>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3 items-start">
+                            <div class="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center flex-shrink-0 mt-1">
+                                {% icon "checkmark-outline" css_class="text-success" %}
+                            </div>
+                            <div>
+                                <h4 class="font-semibold mb-1">{% trans "Custom modules at no cost" %}</h4>
+                                <p class="text-fg/60 text-sm">{% trans "We develop or adapt modules based on your specific business needs." %}</p>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3 items-start">
+                            <div class="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center flex-shrink-0 mt-1">
+                                {% icon "checkmark-outline" css_class="text-success" %}
+                            </div>
+                            <div>
+                                <h4 class="font-semibold mb-1">{% trans "Priority support" %}</h4>
+                                <p class="text-fg/60 text-sm">{% trans "Direct access to our development team throughout the collaboration." %}</p>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3 items-start">
+                            <div class="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center flex-shrink-0 mt-1">
+                                {% icon "checkmark-outline" css_class="text-success" %}
+                            </div>
+                            <div>
+                                <h4 class="font-semibold mb-1">{% trans "Permanent discount after year one" %}</h4>
+                                <p class="text-fg/60 text-sm">{% trans "Active collaborators enjoy a special permanent discount on any plan." %}</p>
+                            </div>
+                        </div>
+
+
+                        <div class="flex gap-3 items-start">
+                            <div class="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center flex-shrink-0 mt-1">
+                                {% icon "checkmark-outline" css_class="text-success" %}
+                            </div>
+                            <div>
+                                <h4 class="font-semibold mb-1">{% trans "No technical skills required" %}</h4>
+                                <p class="text-fg/60 text-sm">{% trans "You don't need to code. Just share your industry knowledge and daily workflows." %}</p>
+                            </div>
+                        </div>
+                    </div>
+                </ion-card-content>
+            </ion-card>
+          </div>
+        </section>
+
+        <!-- What we ask -->
+        <section class="ep-section--compact ep-section--divider">
+          <div class="ep-container ep-section-content">
+            <ion-card class="">
+                <ion-card-content class="p-6">
+                    <h2 class="heading-lg mb-6">{% trans "What we ask in return" %}</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
+                                {% icon "chatbubbles-outline" css_class="text-primary" %}
+                            </div>
+                            <h4 class="font-semibold mb-2">{% trans "Honest feedback" %}</h4>
+                            <p class="text-fg/60 text-sm">{% trans "Tell us what works and what doesn't. Your input shapes the product." %}</p>
+                        </div>
+                        <div>
+                            <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
+                                {% icon "bulb-outline" css_class="text-primary" %}
+                            </div>
+                            <h4 class="font-semibold mb-2">{% trans "Real needs and ideas" %}</h4>
+                            <p class="text-fg/60 text-sm">{% trans "Share what you actually need in your daily operations. No invented features — real workflows." %}</p>
+                        </div>
+                        <div>
+                            <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
+                                {% icon "time-outline" css_class="text-primary" %}
+                            </div>
+                            <h4 class="font-semibold mb-2">{% trans "Occasional availability" %}</h4>
+                            <p class="text-fg/60 text-sm">{% trans "We won't call every day. Just a few conversations to understand your workflows better." %}</p>
+                        </div>
+                    </div>
+                </ion-card-content>
+            </ion-card>
+          </div>
+        </section>
+
+        <!-- Industries -->
+        <section class="ep-section--compact ep-section--soft ep-section--divider ep-section--center">
+          <div class="ep-container ep-section-content">
+            <header class="ep-section-head">
+              <span class="ep-eyebrow">{% trans "Built around you" %}</span>
+              <h2 class="ep-section-title">{% trans "Any industry, any business" %}</h2>
+            </header>
+            <p class="text-fg/60 text-center mb-8 max-w-2xl mx-auto">
+                {% if sector_count %}{% blocktrans with s=sector_count t=business_type_count %}We cover {{ s }} sectors and {{ t }} business types.{% endblocktrans %} {% endif %}{% trans "Don't see yours? We want to hear from you too." %}
+            </p>
+            <div class="ep-reveal" data-reveal="up">
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <ion-card class="">
+                    <ion-card-content class="p-4 text-center">
+                        <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-2">
+                            {% icon "restaurant-outline" css_class="text-primary" %}
+                        </div>
+                        <p class="font-semibold text-sm">{% trans "Hospitality" %}</p>
+                    </ion-card-content>
+                </ion-card>
+                <ion-card class="">
+                    <ion-card-content class="p-4 text-center">
+                        <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-2">
+                            {% icon "cart-outline" css_class="text-primary" %}
+                        </div>
+                        <p class="font-semibold text-sm">{% trans "Retail" %}</p>
+                    </ion-card-content>
+                </ion-card>
+                <ion-card class="">
+                    <ion-card-content class="p-4 text-center">
+                        <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-2">
+                            {% icon "cut-outline" css_class="text-primary" %}
+                        </div>
+                        <p class="font-semibold text-sm">{% trans "Personal Services" %}</p>
+                    </ion-card-content>
+                </ion-card>
+                <ion-card class="">
+                    <ion-card-content class="p-4 text-center">
+                        <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-2">
+                            {% icon "bed-outline" css_class="text-primary" %}
+                        </div>
+                        <p class="font-semibold text-sm">{% trans "Hotels & Tourism" %}</p>
+                    </ion-card-content>
+                </ion-card>
+                <ion-card class="">
+                    <ion-card-content class="p-4 text-center">
+                        <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-2">
+                            {% icon "medkit-outline" css_class="text-primary" %}
+                        </div>
+                        <p class="font-semibold text-sm">{% trans "Healthcare" %}</p>
+                    </ion-card-content>
+                </ion-card>
+                <ion-card class="">
+                    <ion-card-content class="p-4 text-center">
+                        <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-2">
+                            {% icon "construct-outline" css_class="text-primary" %}
+                        </div>
+                        <p class="font-semibold text-sm">{% trans "Construction" %}</p>
+                    </ion-card-content>
+                </ion-card>
+                <ion-card class="">
+                    <ion-card-content class="p-4 text-center">
+                        <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-2">
+                            {% icon "cog-outline" css_class="text-primary" %}
+                        </div>
+                        <p class="font-semibold text-sm">{% trans "Manufacturing" %}</p>
+                    </ion-card-content>
+                </ion-card>
+                <ion-card class="">
+                    <ion-card-content class="p-4 text-center">
+                        <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-2">
+                            {% icon "bus-outline" css_class="text-primary" %}
+                        </div>
+                        <p class="font-semibold text-sm">{% trans "Logistics" %}</p>
+                    </ion-card-content>
+                </ion-card>
+                <ion-card class="">
+                    <ion-card-content class="p-4 text-center">
+                        <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-2">
+                            {% icon "briefcase-outline" css_class="text-primary" %}
+                        </div>
+                        <p class="font-semibold text-sm">{% trans "Professional Services" %}</p>
+                    </ion-card-content>
+                </ion-card>
+                <ion-card class="">
+                    <ion-card-content class="p-4 text-center">
+                        <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-2">
+                            {% icon "school-outline" css_class="text-primary" %}
+                        </div>
+                        <p class="font-semibold text-sm">{% trans "Education" %}</p>
+                    </ion-card-content>
+                </ion-card>
+                <ion-card class="">
+                    <ion-card-content class="p-4 text-center">
+                        <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-2">
+                            {% icon "home-outline" css_class="text-primary" %}
+                        </div>
+                        <p class="font-semibold text-sm">{% trans "Real Estate" %}</p>
+                    </ion-card-content>
+                </ion-card>
+                <ion-card class="">
+                    <ion-card-content class="p-4 text-center">
+                        <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-2">
+                            {% icon "car-outline" css_class="text-primary" %}
+                        </div>
+                        <p class="font-semibold text-sm">{% trans "Automotive" %}</p>
+                    </ion-card-content>
+                </ion-card>
+            </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- FAQ -->
+        <section class="ep-section--compact ep-section--divider ep-section--center">
+          <div class="ep-container ep-section-content">
+            <header class="ep-section-head">
+              <span class="ep-eyebrow">{% trans "Questions" %}</span>
+              <h2 class="ep-section-title">{% trans "Frequently asked questions" %}</h2>
+            </header>
+            <div class="max-w-3xl mx-auto flex flex-col gap-4">
+                <ion-card class="">
+                    <ion-card-content class="p-6">
+                        <h4 class="font-semibold mb-2">{% trans "Do I need technical knowledge?" %}</h4>
+                        <p class="text-fg/60">{% trans "Not at all. We handle all the development. You just need to know your business and be willing to share your experience." %}</p>
+                    </ion-card-content>
+                </ion-card>
+                <ion-card class="">
+                    <ion-card-content class="p-6">
+                        <h4 class="font-semibold mb-2">{% trans "What happens after the free year?" %}</h4>
+                        <p class="text-fg/60">{% trans "Active collaborators receive a permanent special discount on any ERPlora plan. You keep all your data and modules." %}</p>
+                    </ion-card-content>
+                </ion-card>
+                <ion-card class="">
+                    <ion-card-content class="p-6">
+                        <h4 class="font-semibold mb-2">{% trans "How much time do I need to invest?" %}</h4>
+                        <p class="text-fg/60">{% trans "Very little. A few conversations to explain your workflows and occasional feedback when we deliver new features. No daily commitment." %}</p>
+                    </ion-card-content>
+                </ion-card>
+                <ion-card class="">
+                    <ion-card-content class="p-6">
+                        <h4 class="font-semibold mb-2">{% trans "Can I leave the program anytime?" %}</h4>
+                        <p class="text-fg/60">{% trans "Yes. There's no lock-in. If you decide to leave, you keep access until the end of your free period." %}</p>
+                    </ion-card-content>
+                </ion-card>
+            </div>
+          </div>
+        </section>
+
+        <!-- Final CTA -->
+        <div class="ep-container ep-section-content ep-section--compact">
+            <div class="ep-reveal" data-reveal="scale">
+                {% trans "No strings attached" as eyebrow %}
+                {% trans "Ready to build something great together?" as heading %}
+                {% trans "A custom ERP for your business. Free for a year. No strings attached." as subheading %}
+                {% include "public/components/cta_band.html" with eyebrow=eyebrow heading=heading subheading=subheading actions_template="public/company/_collaborate_cta_actions.html" SUPPORT_EMAIL=SUPPORT_EMAIL only %}
+            </div>
+        </div>
+
+{% endblock %}

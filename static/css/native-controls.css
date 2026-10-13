@@ -1,8 +1,8 @@
-/* native-controls.css — Estilo Ionic para los controles NATIVOS. Algunos forms deben
- * seguir siendo HTML nativo (POST nativo/multipart/FormData, admin, widgets Django):
- * estas clases replican el look de los ion-* directamente sobre los tokens --ion-*
- * (sin pasar por ningún puente --color-*).
- * Cubre: .input, .select, .textarea, .checkbox, .toggle, .radio, .file-input (+ -bordered/-sm). */
+/* native-controls.css — Ionic look for the NATIVE controls. Some forms must stay
+ * native HTML (native/multipart POST, FormData, the admin, Django widgets): these classes
+ * copy the look of the ion-* straight onto the --ion-* tokens (through no --color-*
+ * bridge).
+ * Covers: .input, .select, .textarea, .checkbox, .toggle, .radio, .file-input (+ -bordered/-sm). */
 
 .input,
 .select,
@@ -23,11 +23,11 @@
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-/* Las utilidades de ancho viven en `@layer utilities` (ionic-utilities.css) y el CSS
-   SIN capa gana al CSS EN capa, sea cual sea la especificidad: el `width: auto` de
-   arriba dejaba MUDO a `class="select w-full"`. Se repone aquí, sin capa y con dos
-   clases para ganar también por especificidad.
-   Guardia: tests/unit/test_layered_utilities_are_not_shadowed.py */
+/* The width utilities live in `@layer utilities` (ionic-utilities.css) and UNLAYERED CSS
+   beats LAYERED CSS whatever the specificity: the `width: auto` above SILENCED
+   `class="select w-full"`. It is restored here, unlayered and with two classes so it also
+   wins on specificity.
+   Guard: tests/unit/test_layered_utilities_are_not_shadowed.py (ERPlora/saas) */
 .input.w-full,
 .select.w-full,
 .textarea.w-full,

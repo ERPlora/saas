@@ -1,0 +1,117 @@
+{% extends "public/public_base.html" %}
+{% load i18n %}
+{% comment %}
+  /industries/<slug>/ (public/industries.py, detail). Port of
+  apps/public/industries/templates/industries/detail.html (origin/develop) without ok-*:
+  - the H1 is the buyer's literal question and the lead its answer (saas#1692); the view computes
+    both so the title, the meta description and the JSON-LD say exactly the same;
+  - the JSON-LD is serialised in the view (public/structured_data.py), never written here;
+  - ONE block of apps, the listed apps of the business type's vertical (spec §8.1, decision 13),
+    instead of «included» and «optional» modules; no block without them (spec §5.3);
+  - the FAQ renders the same list as the FAQPage JSON-LD (public.industries.faq_items);
+  - the onward links are /pricing/, /apps/ and /features/: /compliance/ is out of the port
+    (plan §7). /pricing/ comes with L7, so until its URL name exists the card uses the fixed path.
+    The page is pan-European: it names no country's tax law.
+{% endcomment %}
+
+{% block title %}{{ industry.headline }} · ERPlora{% endblock %}
+{% block meta_description %}{{ industry.lead }}{% endblock %}
+{% block og_title %}{{ industry.headline }} · ERPlora{% endblock %}
+{% block og_description %}{{ industry.lead }}{% endblock %}
+
+{% block extra_seo %}
+<script type="application/ld+json">{{ json_ld_application }}</script>
+<script type="application/ld+json">{{ json_ld_faq }}</script>
+{% endblock %}
+
+{% block page_content %}
+  {% include "public/partials/page_hero.html" with hero_eyebrow=industry.sector_name hero_title=industry.headline hero_description=industry.lead %}
+
+  {% if apps %}
+  <section class="ep-section--compact ep-section--soft ep-section--divider">
+    <div class="ep-container ep-section-content">
+      <header class="ep-section-head">
+        <span class="ep-eyebrow">{% blocktrans trimmed count counter=apps|length %}{{ counter }} app{% plural %}{{ counter }} apps{% endblocktrans %}</span>
+        <h2 class="ep-section-title">{% trans "Apps included out of the box" %}</h2>
+        <p class="ep-section-sub">{% blocktrans trimmed with business=industry.subject %}Everything a {{ business }} needs, turned on from day one.{% endblocktrans %}</p>
+      </header>
+      <div class="ep-grid-cards">
+        {% for app in apps %}
+        {% url 'public:store_detail' app.id as app_url %}
+        {% include "public/components/product_card.html" with name=app.name category=app.category badge=app.badge href=app_url icon_svg=app.icon_svg body=app.summary %}
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  <section id="faq" class="ep-section--compact ep-section--divider">
+    <div class="ep-container ep-section-content">
+      <header class="ep-section-head">
+        <span class="ep-eyebrow">{% trans "FAQ" %}</span>
+        <h2 class="ep-section-title">{% blocktrans trimmed with name=industry.name %}Questions we get about {{ name }}{% endblocktrans %}</h2>
+      </header>
+      <ion-accordion-group value="{{ faq_items.0.key }}">
+        {% for item in faq_items %}
+        <ion-accordion class="ep-accordion" value="{{ item.key }}">
+          <ion-item slot="header" class="ep-accordion-header">
+            <ion-label class="ion-text-wrap">{{ item.question }}</ion-label>
+          </ion-item>
+          <div class="ep-accordion-body" slot="content">{{ item.answer }}</div>
+        </ion-accordion>
+        {% endfor %}
+      </ion-accordion-group>
+    </div>
+  </section>
+
+  <section class="ep-section--compact ep-section--soft ep-section--divider">
+    <div class="ep-container ep-section-content">
+      <header class="ep-section-head">
+        <span class="ep-eyebrow">{% trans "Read on" %}</span>
+        <h2 class="ep-section-title">{% trans "Everything else you'll want to check" %}</h2>
+      </header>
+      {% url 'public:pricing' as pricing_url %}
+      {% url 'public:store' as store_url %}
+      {% url 'public:features' as features_url %}
+      {% trans "Plans and prices" as pricing_heading %}
+      {% trans "What each plan includes, and how we compare with the ERPs and the vertical tools you are probably also looking at." as pricing_body %}
+      {% trans "The app catalogue" as store_heading %}
+      {% trans "Every app we publish and what it does: you turn on only the ones you use." as store_body %}
+      {% trans "How the product works" as features_heading %}
+      {% trans "The point of sale, the catalogue, the assistant and the installable app for the counter." as features_body %}
+      <div class="ep-grid-cards">
+        {% include "public/components/feature_card.html" with icon="lucide:tag" heading=pricing_heading body=pricing_body href=pricing_url|default:'/pricing/' %}
+        {% include "public/components/feature_card.html" with icon="lucide:blocks" heading=store_heading body=store_body href=store_url %}
+        {% include "public/components/feature_card.html" with icon="lucide:layout-dashboard" heading=features_heading body=features_body href=features_url %}
+      </div>
+    </div>
+  </section>
+
+  <div class="ep-container ep-section-content ep-section--compact">
+    <div class="ep-reveal" data-reveal="scale">
+      {% trans "Get started" as cta_eyebrow %}
+      {% blocktrans trimmed with business=industry.subject asvar cta_heading %}Start your {{ business }} with ERPlora{% endblocktrans %}
+      {% trans "Create your free account and configure your business in minutes. No technical knowledge needed." as cta_subheading %}
+      {% include "public/components/cta_band.html" with eyebrow=cta_eyebrow heading=cta_heading subheading=cta_subheading actions_template="public/industries/_detail_actions.html" %}
+    </div>
+  </div>
+
+  {% if related %}
+  <section class="ep-section--compact ep-section--soft ep-section--divider">
+    <div class="ep-container ep-section-content">
+      <header class="ep-section-head">
+        <span class="ep-eyebrow">{% trans "Keep exploring" %}</span>
+        <h2 class="ep-section-title">{% trans "Similar business types" %}</h2>
+      </header>
+      <div class="ep-grid-cards">
+        {% for other in related %}
+        {% url 'public:industries_detail' other.slug as other_url %}
+        <div class="industry-card"{% if other.color %} style="--ion-color-primary: {{ other.color }}"{% endif %}>
+          {% include "public/components/product_card.html" with name=other.name category=industry.sector_name href=other_url icon=other.icon %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+{% endblock %}

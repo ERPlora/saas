@@ -7,10 +7,12 @@ deactivated account loses its stream.
 import pytest
 from django.contrib.auth.models import AnonymousUser
 from django.test import RequestFactory
+from django.utils import translation
 from live.context import OperationContext, Scope, get_builder
 from live.errors import Unauthorized
+from live.meta import all_live_app_configs, permissions_for_role
 
-from base.operations import ANONYMOUS_KEY, UserContextBuilder, UserScopeResolver
+from base.operations import ACCOUNT_ROLE, ANONYMOUS_KEY, UserContextBuilder, UserScopeResolver
 
 
 def request_for(user=None, language: str = "en"):
@@ -48,14 +50,18 @@ def test_an_anonymous_request_has_no_actor_and_keeps_its_language():
 
 
 @pytest.mark.django_db
-def test_a_signed_in_request_acts_as_its_user_with_no_permission_yet(ana):
+def test_a_signed_in_request_acts_as_its_user_with_the_account_role(ana):
+    """The panel's apps grant the role ``account`` their permissions (``role_permissions``); who
+    may act on a business is checked inside each operation, by the account's role there."""
     ctx = UserContextBuilder().from_request(request_for(ana))
 
-    assert (ctx.actor, ctx.scope, ctx.permissions) == (
-        ana,
-        Scope("user", str(ana.pk)),
-        frozenset(),
-    )
+    assert (ctx.actor, ctx.scope) == (ana, Scope("user", str(ana.pk)))
+    assert ctx.permissions == permissions_for_role(all_live_app_configs(), ACCOUNT_ROLE)
+    assert {"hubs.view", "hubs.manage"} <= ctx.permissions
+
+
+def test_an_anonymous_request_holds_no_permission():
+    assert UserContextBuilder().from_request(request_for()).permissions == frozenset()
 
 
 @pytest.mark.django_db
@@ -81,6 +87,18 @@ def test_refresh_of_a_user_that_is_gone_ends_the_stream(ana, change):
     # The executor answers Unauthorized with `bye`: the stream closes.
     with pytest.raises(Unauthorized):
         builder.refresh(ctx)
+
+
+@pytest.mark.django_db
+def test_the_end_of_a_stream_speaks_its_language(ana):
+    builder = UserContextBuilder()
+    ctx = builder.from_request(request_for(ana))
+    type(ana).objects.filter(pk=ana.pk).update(is_active=False)
+
+    with translation.override("es"), pytest.raises(Unauthorized) as refused:
+        builder.refresh(ctx)
+
+    assert refused.value.message == "La cuenta ya no está activa."
 
 
 def test_refresh_of_an_anonymous_context():

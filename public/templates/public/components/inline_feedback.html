@@ -1,0 +1,23 @@
+{% load icons %}
+{% comment %}
+  ep-inline-feedback: port of <ok-inline-feedback> (OutfitKit). An inline notice with a tone
+  accent and its icon (empty states of a list, form results, server messages).
+  Styles: public/static/public/components/inline-feedback.css.
+
+  Usage:
+    {% include "public/components/inline_feedback.html" with tone="info" heading=title message=text %}
+
+  Variables: message (plain text) or message_template (a template); heading; tone `info`
+  (default), `success`, `warning`, `danger` or `neutral` (each with its icon); actions_template (a
+  template with ion-buttons, beside the text on desktop and under it on a phone).
+{% endcomment %}
+<div class="ep-inline-feedback ep-inline-feedback--{{ tone|default:'info' }}" role="status">
+    <span class="ep-inline-feedback__icon">{% if tone == 'success' %}{% icon "checkmark-circle-outline" %}{% elif tone == 'warning' %}{% icon "warning-outline" %}{% elif tone == 'danger' %}{% icon "alert-circle-outline" %}{% else %}{% icon "information-circle-outline" %}{% endif %}</span>
+    <div class="ep-inline-feedback__row">
+        <div class="ep-inline-feedback__text">
+            {% if heading %}<div class="ep-inline-feedback__heading">{{ heading }}</div>{% endif %}
+            <div class="ep-inline-feedback__body">{% if message %}{{ message }}{% endif %}{% if message_template %}{% include message_template %}{% endif %}</div>
+        </div>
+        {% if actions_template %}<div class="ep-inline-feedback__actions">{% include actions_template %}</div>{% endif %}
+    </div>
+</div>

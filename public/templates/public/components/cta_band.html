@@ -1,0 +1,17 @@
+{% comment %}
+  ep-cta-band: port of <ok-cta-band> (OutfitKit). The closing call to action of a page: a wide
+  band, solid brand gradient by default. Styles: public/static/public/components/cta-band.css.
+
+  Usage:
+    {% include "public/components/cta_band.html" with eyebrow=kicker heading=title subheading=text actions_template="public/<page>/_cta_actions.html" %}
+
+  Variables: heading (the <h2>); eyebrow; subheading; actions_template (a template with the
+  ion-buttons; on the solid band an `ion-button fill="outline"` turns white); variant `solid`
+  (default), `soft` or `glass`.
+{% endcomment %}
+<div class="ep-cta-band ep-cta-band--{{ variant|default:'solid' }}">
+    {% if eyebrow %}<span class="ep-cta-band__eyebrow">{{ eyebrow }}</span>{% endif %}
+    {% if heading %}<h2 class="ep-cta-band__title">{{ heading }}</h2>{% endif %}
+    {% if subheading %}<p class="ep-cta-band__sub">{{ subheading }}</p>{% endif %}
+    {% if actions_template %}<div class="ep-cta-band__actions">{% include actions_template %}</div>{% endif %}
+</div>

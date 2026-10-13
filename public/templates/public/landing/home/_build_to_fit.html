@@ -1,0 +1,31 @@
+{% load i18n icons %}
+{% comment %}
+  «Build to fit»: port of landing/home/sections/_build_to_fit.html (origin/develop). The twelve
+  chips are the first listed apps by section and name (spec §8.1), each linking to the store
+  filtered by its section (`/apps/?category=`); an app of a section this SaaS does not know yet links
+  to the whole store. Without any listed app the section is omitted (spec §5.3).
+{% endcomment %}
+{% if total_apps %}
+  <section class="ep-section--soft">
+    <section class="ep-section ep-section--center">
+      <header class="ep-section-head">
+        <span class="ep-eyebrow">{% trans 'Build to fit' %}</span>
+        <h2 class="ep-section-title">{% trans 'Turn on only the apps your business needs.' %}</h2>
+        <p class="ep-section-sub">{% blocktrans trimmed count counter=total_apps %}{{ counter }} app. Turn it on and off without breaking anything. Switch between plans in one click.{% plural %}{{ counter }} apps. Turn them on and off without breaking anything. Switch between plans in one click.{% endblocktrans %}</p>
+      </header>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for app in chip_apps %}
+          <div class="ep-reveal" data-reveal="up" data-reveal-delay="{{ forloop.counter0|add:forloop.counter0 }}0">
+            {% include "public/components/product_card.html" with icon_svg=app.icon_svg category=app.category_label name=app.name href=app.store_url body=app.summary only %}
+          </div>
+        {% endfor %}
+      </div>
+      <div class="mt-10 flex justify-center">
+        <a href="{% url 'public:store' %}" class="inline-flex items-center gap-2 text-sm font-semibold text-primary group">
+          <span>{% blocktrans trimmed count counter=total_apps %}Explore the {{ counter }} app{% plural %}Explore the {{ counter }} apps{% endblocktrans %}</span>
+          {% icon "lucide:arrow-right" css_class="transition-transform group-hover:translate-x-1" %}
+        </a>
+      </div>
+    </section>
+  </section>
+{% endif %}

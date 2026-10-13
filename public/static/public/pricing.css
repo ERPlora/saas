@@ -1,0 +1,72 @@
+/* pricing.css — the comparison tables of /pricing/ (public/templates/public/pricing/index.html).
+ *
+ * Port of the <style> block of apps/public/pricing/templates/pricing/index.html (origin/develop),
+ * with only the rules the page uses: its .plan-card rules were dead (the cards were
+ * <ok-pricing-card>, now public/components/pricing_card.html). Linked by the page itself, like
+ * store.css, so the other pages do not carry it. The table frame and its stacking under 768 px are
+ * .ep-table-surface / .ep-table-stack (layout.css); this sheet only adds the page's typography and
+ * the brand column. Icons are {% icon %} SVGs (.ep-icon), no longer <iconify-icon>.
+ */
+
+.compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.compare-table th {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: color-mix(in oklch, var(--ion-text-color) 55%, transparent);
+  text-align: left;
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid color-mix(in oklch, var(--ion-text-color) 8%, transparent);
+}
+
+.compare-table th.primary-col {
+  color: var(--ion-color-primary);
+  background: color-mix(in oklch, var(--ion-color-primary) 8%, transparent);
+}
+
+.compare-table td {
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid color-mix(in oklch, var(--ion-text-color) 6%, transparent);
+  vertical-align: middle;
+}
+
+.compare-table td.primary-col,
+.compare-table tr.primary-col td {
+  background: color-mix(in oklch, var(--ion-color-primary) 5%, transparent);
+  font-weight: 500;
+}
+
+.compare-table tr.cat td {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: color-mix(in oklch, var(--ion-text-color) 55%, transparent);
+  background: color-mix(in oklch, var(--ion-color-step-50) 60%, transparent);
+  padding-top: 1rem;
+  padding-bottom: 0.5rem;
+}
+
+.compare-table .yes {
+  color: var(--ion-color-success);
+}
+
+.compare-table .no {
+  color: color-mix(in oklch, var(--ion-text-color) 35%, transparent);
+}
+
+.compare-table .yes .ep-icon,
+.compare-table .no .ep-icon {
+  vertical-align: -0.15em;
+}
+
+.compare-table .num {
+  font-family: var(--font-mono);
+}

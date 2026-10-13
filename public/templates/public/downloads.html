@@ -1,0 +1,91 @@
+{% extends "public/public_base.html" %}
+{% load i18n icons %}
+{% comment %}
+  /download/ — port of apps/public/landing/templates/landing/downloads.html (origin/develop): the
+  two free ways to try ERPlora, both through the free sign-up. A: create a free cloud hub
+  (recommended). B: install the app on the device at the counter; its per-platform buttons go to
+  public:app_download, which picks store or installer. The retired demo is never linked here.
+  The free plan includes the free apps; premium ones come with the paid plans (spec decision 17).
+{% endcomment %}
+
+{% block title %}{% trans "Ways to try ERPlora" %} · ERPlora{% endblock %}
+{% block meta_description %}{% trans "Two free ways to try ERPlora: create a free cloud hub in minutes, or install the free app so the device at your counter can print receipts and open the cash drawer. Both are free — no credit card." %}{% endblock %}
+
+{% block page_content %}
+  {% trans "Try ERPlora" as hero_eyebrow %}
+  {% trans "Two free ways to try ERPlora." as hero_title %}
+  {% trans "Both are free and end the same way — with your own hub. Create it in the cloud in a couple of minutes, or start by installing the app on the device at your counter. No credit card either way." as hero_description %}
+  {% include "public/partials/page_hero.html" with hero_compact=True %}
+
+  <section class="ep-section--compact ep-section--divider">
+    <div class="ep-container ep-section-content">
+      <div class="ep-grid-cards">
+
+        {% comment %} Path A — create a free cloud hub (the primary path). {% endcomment %}
+        <ion-card class="ion-no-margin">
+          <ion-card-content class="p-6 flex flex-col h-full">
+            <div class="flex items-start justify-between gap-4 mb-5">
+              <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+                {% icon "lucide:cloud" size=26 %}
+              </div>
+              {% trans "Recommended" as label %}
+              {% include "public/components/status_pill.html" with tone="success" label=label dot=True only %}
+            </div>
+            <p class="font-mono text-xs uppercase tracking-wider text-fg/55 m-0 mb-2">{% trans "Option A" %}</p>
+            <ion-card-title class="mb-3">{% trans "Create your free hub in the cloud" %}</ion-card-title>
+            <p class="text-fg/65 m-0 mb-5">{% trans "Sign up and your hub is provisioned in minutes — nothing to install, nothing to maintain. It runs in the browser and is always available at the counter." %}</p>
+            <ul class="space-y-2 text-sm mb-6">
+              <li class="flex gap-2 items-start"><span class="text-success mt-1">{% icon "lucide:check" size=14 %}</span><span>{% trans "No credit card required" %}</span></li>
+              <li class="flex gap-2 items-start"><span class="text-success mt-1">{% icon "lucide:check" size=14 %}</span><span>{% trans "1 device, 3 local users" %}</span></li>
+              <li class="flex gap-2 items-start"><span class="text-success mt-1">{% icon "lucide:check" size=14 %}</span><span>{% trans "All free apps included, VeriFactu ready" %}</span></li>
+              <li class="flex gap-2 items-start"><span class="text-success mt-1">{% icon "lucide:check" size=14 %}</span><span>{% trans "Managed PostgreSQL, daily backups" %}</span></li>
+            </ul>
+            <ion-button class="mt-auto" href="{% url 'account_login' %}" expand="block">
+              {% trans "Start free" %}
+              <span slot="end">{% icon "lucide:arrow-right" size=15 %}</span>
+            </ion-button>
+          </ion-card-content>
+        </ion-card>
+
+        {% comment %} Path B — install the app for the counter hardware (it still leads to the sign-up). {% endcomment %}
+        <ion-card class="ion-no-margin">
+          <ion-card-content class="p-6 flex flex-col h-full">
+            <div class="flex items-start justify-between gap-4 mb-5">
+              <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+                {% icon "lucide:printer" size=26 %}
+              </div>
+              {% trans "For counter hardware" as label %}
+              {% include "public/components/status_pill.html" with tone="info" label=label dot=True only %}
+            </div>
+            <p class="font-mono text-xs uppercase tracking-wider text-fg/55 m-0 mb-2">{% trans "Option B" %}</p>
+            <ion-card-title class="mb-3">{% trans "Install the ERPlora app" %}</ion-card-title>
+            <p class="text-fg/65 m-0 mb-5">{% trans "One free app on the device at your counter: it opens your hub and it is what prints thermal receipts and opens the cash drawer. On first launch it walks you through creating your free hub — so this path is free too." %}</p>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
+              <ion-button href="{% url 'public:app_download' 'windows' %}" fill="outline" size="small">
+                <span slot="start">{% icon "logo-windows" size=15 %}</span>
+                <span class="ml-1">Windows</span>
+              </ion-button>
+              <ion-button href="{% url 'public:app_download' 'linux' %}" fill="outline" size="small">
+                <span slot="start">{% icon "logo-tux" size=15 %}</span>
+                <span class="ml-1">Linux</span>
+              </ion-button>
+              <ion-button href="{% url 'public:app_download' 'android' %}" fill="outline" size="small">
+                <span slot="start">{% icon "logo-android" size=15 %}</span>
+                <span class="ml-1">Android</span>
+              </ion-button>
+            </div>
+            <ion-button class="mt-auto" fill="clear" size="small" href="{% url 'public:app' %}">
+              {% trans "See supported hardware and platforms" %}
+              <span slot="end">{% icon "lucide:arrow-right" size=15 %}</span>
+            </ion-button>
+          </ion-card-content>
+        </ion-card>
+
+      </div>
+
+      <p class="mt-8 text-center text-sm text-fg/65 max-w-2xl mx-auto">
+        {% trans "Whichever you pick, ERPlora is free to try — you'll just create your free account, no credit card." %}
+      </p>
+    </div>
+  </section>
+{% endblock %}

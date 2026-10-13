@@ -1,0 +1,14 @@
+{% extends "errors/base.html" %}
+{% load i18n %}
+{% comment %}
+  allauth renders `429.html` by name when a sign-in is rate limited
+  (`allauth/core/internal/ratelimit.py`); without it, a bare English page with no link, a dead end
+  inside the installed app (ERPlora/saas#1474).
+{% endcomment %}
+
+{% block title %}429 — {% trans "Too Many Requests" %} · ERPlora Cloud{% endblock %}
+{% block code %}{% trans "429 · Too many requests" %}{% endblock %}
+{% block heading %}{% trans "Slow down for a moment" %}{% endblock %}
+{% block message %}{% blocktrans trimmed %}You have made too many attempts in a row. Wait about a minute and try again — after several failed sign-ins the wait can be up to five.{% endblocktrans %}{% endblock %}
+{% block actions %}<a href="{% url 'account_login' %}">{% trans "Back to sign in" %}</a>
+                <a href="/">{% trans "Home" %}</a>{% endblock %}

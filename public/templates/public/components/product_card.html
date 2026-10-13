@@ -1,0 +1,31 @@
+{% load icons %}
+{% comment %}
+  ep-product-card: port of <ok-product-card> (OutfitKit). A catalogue card: icon tile, category,
+  badge, name, text and a footer with the price and, as a link, an arrow that appears on hover.
+  Styles: public/static/public/components/product-card.css.
+
+  Usage:
+    {% include "public/components/product_card.html" with icon="receipt-outline" category=category name=name badge=badge price=price href=url body=summary %}
+
+  Variables: name (the <h3>); body (plain text) or body_template; icon (a baked `set:name`) or
+  icon_svg (an inline SVG already cleaned with nh3 and marked safe by the view, e.g. the store's
+  `icon_svg`; a plain string is escaped); category; badge; price;
+  href (the card is a link).
+{% endcomment %}
+{% if href %}<a class="ep-product-card" href="{{ href }}">{% else %}<div class="ep-product-card">{% endif %}
+    <div class="ep-product-card__top">
+        <div class="ep-product-card__head">
+            {% if icon_svg %}<span class="ep-product-card__icon">{{ icon_svg }}</span>{% elif icon %}<span class="ep-product-card__icon">{% icon icon %}</span>{% endif %}
+            {% if category %}<span class="ep-product-card__category">{{ category }}</span>{% endif %}
+        </div>
+        {% if badge %}<span class="ep-product-card__badge">{{ badge }}</span>{% endif %}
+    </div>
+    {% if name %}<h3 class="ep-product-card__name">{{ name }}</h3>{% endif %}
+    <div class="ep-product-card__body">{% if body %}{{ body }}{% endif %}{% if body_template %}{% include body_template %}{% endif %}</div>
+    {% if price or href %}
+    <div class="ep-product-card__foot">
+        <span class="ep-product-card__price">{{ price|default:"" }}</span>
+        {% if href %}<span class="ep-product-card__go">{% icon "arrow-forward-outline" %}</span>{% endif %}
+    </div>
+    {% endif %}
+{% if href %}</a>{% else %}</div>{% endif %}

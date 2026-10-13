@@ -1,0 +1,72 @@
+{% extends "public/public_base.html" %}
+{% load i18n icons %}
+{% comment %}
+  /contact/ — port of apps/public/landing/templates/landing/contact/contact.html (origin/develop):
+  the compact hero, the form and the other ways to reach us, with the same texts and the ep-*
+  classes (PLAN §16.11). The form posts to /contact/submit/ (public/landing.py), which answers with
+  a message and a redirect back to #contacto; the messages are painted by the base
+  (public/partials/messages.html). Contract: public/tests/test_landing.py.
+{% endcomment %}
+
+{% block title %}{% trans "Contact Us" %} · ERPlora{% endblock %}
+
+{% block meta_description %}{% trans "Contact ERPlora. Have questions about our ERP system? Get in touch and we'll respond as soon as possible." %}{% endblock %}
+
+{% block og_title %}{% trans "Contact Us" %} · ERPlora{% endblock %}
+{% block og_description %}{% trans "Have questions about ERPlora? Get in touch with our team." %}{% endblock %}
+
+{% block page_content %}
+{% trans "Contact" as hero_eyebrow %}
+{% trans "Get in Touch" as hero_title %}
+{% trans "Have questions? We'd love to hear from you. Send us a message and we'll respond as soon as possible." as hero_description %}
+{% include "public/partials/page_hero.html" with hero_eyebrow=hero_eyebrow hero_title=hero_title hero_description=hero_description hero_compact=True %}
+
+<section id="contacto" class="ep-section">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+        <ion-card>
+            <ion-card-content>
+                {% include "public/landing/_contact_form.html" %}
+            </ion-card-content>
+        </ion-card>
+
+        <div>
+            <h2 class="font-display font-semibold text-2xl mb-6">{% trans "Contact Information" %}</h2>
+
+            <div class="flex flex-col gap-6 mb-8">
+                <a href="mailto:info@erplora.com" class="flex items-start gap-4 no-underline text-inherit">
+                    <div class="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        {% icon "mail-outline" css_class="text-2xl text-primary" %}
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm mb-1 text-fg/60">{% trans "Email" %}</p>
+                        <p class="font-medium">info@erplora.com</p>
+                    </div>
+                </a>
+
+                <a href="https://wa.me/34643759040" target="_blank" rel="noopener" class="flex items-start gap-4 no-underline text-inherit">
+                    <div class="w-12 h-12 rounded-lg bg-success/10 flex items-center justify-center shrink-0">
+                        {% icon "logo-whatsapp" css_class="text-2xl text-success" %}
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm mb-1 text-fg/60">{% trans "WhatsApp" %}</p>
+                        <p class="font-medium">{% trans "Chat with us" %}</p>
+                    </div>
+                </a>
+            </div>
+
+            <ion-card>
+                <ion-card-content>
+                    <h3 class="font-semibold mb-4">{% trans "Support Hours" %}</h3>
+                    <div class="flex flex-col gap-2 text-fg/60">
+                        <div class="flex justify-between">
+                            <span>{% trans "Available" %}</span>
+                            <span>24/7/365</span>
+                        </div>
+                    </div>
+                </ion-card-content>
+            </ion-card>
+        </div>
+    </div>
+</section>
+{% endblock %}

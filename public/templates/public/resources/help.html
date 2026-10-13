@@ -1,0 +1,78 @@
+{% extends "public/public_base.html" %}
+{% load i18n icons %}
+{% comment %}
+  /help/ — port of apps/public/resources/templates/resources/help.html (origin/develop): a search
+  over the guides of docs/<lang>/help/ (public/help.py), one Ionic accordion each, the first one
+  open. Not indexed, as before. States: no guide at all (a notice) and a search without results
+  (an empty state, shown by the script). `section.html` is the guide already rendered and cleaned
+  by live.markdown (nh3).
+{% endcomment %}
+
+{% block title %}{% trans "Help" %} · ERPlora{% endblock %}
+
+{% block meta_robots %}<meta name="robots" content="noindex, follow">{% endblock %}
+
+{% block page_content %}
+  {% trans "Help" as hero_eyebrow %}
+  {% trans "Help center." as hero_title %}
+  {% trans "Practical guides for accessing, configuring, and operating your Hub." as hero_description %}
+  {% include "public/partials/page_hero.html" with hero_compact=True %}
+
+  <section class="ep-section--compact ep-section--soft ep-section--divider">
+    <div class="ep-container ep-section-content">
+      {% if sections %}
+      <ion-searchbar id="help-search" class="ep-search"
+                     placeholder="{% trans 'Search in help...' %}"
+                     inputmode="search"
+                     debounce="120"
+                     show-clear-button="focus"></ion-searchbar>
+
+      <ion-accordion-group expand="inset" value="{{ sections.0.id }}">
+        {% for section in sections %}
+          <ion-accordion class="ep-accordion" value="{{ section.id }}" data-help-section>
+            <ion-item slot="header" lines="none" class="ep-accordion-header">
+              <span slot="start" class="text-primary">{% icon "lucide:book-open" size=19 %}</span>
+              <ion-label>{{ section.title }}</ion-label>
+            </ion-item>
+            <div slot="content" class="ep-accordion-body ep-prose">
+              {{ section.html|safe }}
+            </div>
+          </ion-accordion>
+        {% endfor %}
+      </ion-accordion-group>
+
+      <div id="help-no-results" hidden role="status" aria-live="polite">
+        {% trans "No guides found" as heading %}
+        {% trans "Try a different search term." as message %}
+        {% include "public/components/empty_state.html" with icon="search-outline" heading=heading message=message only %}
+      </div>
+      {% else %}
+        {% trans "No help documentation found." as message %}
+        {% include "public/components/inline_feedback.html" with tone="warning" message=message only %}
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+{% if sections %}
+<script nonce="{{ csp_nonce }}">
+(function () {
+  var search = document.getElementById('help-search');
+  var noResults = document.getElementById('help-no-results');
+  if (!search) return;
+  search.addEventListener('ionInput', function (event) {
+    var query = String(event.detail.value || '').toLowerCase();
+    var visible = 0;
+    document.querySelectorAll('[data-help-section]').forEach(function (section) {
+      var matches = !query || section.textContent.toLowerCase().includes(query);
+      section.style.display = matches ? '' : 'none';
+      if (matches) visible += 1;
+    });
+    if (noResults) noResults.hidden = !query || visible > 0;
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

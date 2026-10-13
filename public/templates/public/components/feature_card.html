@@ -1,0 +1,22 @@
+{% load icons %}
+{% comment %}
+  ep-feature-card: port of <ok-feature-card> (OutfitKit). A card with an icon tile, an optional
+  eyebrow, a title and a text; as a link it lifts on hover with an accent line on top.
+  Styles: public/static/public/components/feature-card.css.
+
+  Usage:
+    {% include "public/components/feature_card.html" with icon="receipt-outline" heading=title body=text href=url %}
+
+  Variables: heading; body (plain text) or body_template (a template, for rich text); icon (a
+  `set:name` baked by `pnpm gen:public-icons`: write it literally in the include so the generator
+  sees it) or icon_svg (an inline SVG already cleaned with nh3 and marked safe by the view, e.g. an
+  app's `icon_svg`, as in product_card); eyebrow; href (makes the card a link); glass (frosted
+  surface).
+{% endcomment %}
+{% if href %}<a class="ep-feature-card{% if glass %} ep-feature-card--glass{% endif %}" href="{{ href }}">{% else %}<div class="ep-feature-card{% if glass %} ep-feature-card--glass{% endif %}">{% endif %}
+    {% if icon_svg %}<span class="ep-feature-card__icon">{{ icon_svg }}</span>{% elif icon %}<span class="ep-feature-card__icon">{% icon icon %}</span>{% endif %}
+    {% if eyebrow %}<span class="ep-feature-card__eyebrow">{{ eyebrow }}</span>{% endif %}
+    {% if heading %}<h3 class="ep-feature-card__title">{{ heading }}</h3>{% endif %}
+    {% if body %}<div class="ep-feature-card__body">{{ body }}</div>{% endif %}
+    {% if body_template %}<div class="ep-feature-card__body">{% include body_template %}</div>{% endif %}
+{% if href %}</a>{% else %}</div>{% endif %}

@@ -1,0 +1,10 @@
+{% load i18n icons %}
+{% comment %} The actions of the closing band of /pricing/ (on the solid band an outline button turns white). {% endcomment %}
+<ion-button size="large" color="light" href="{% url 'account_login' %}">
+  {% trans "Start free" %}
+  <span slot="end">{% icon "lucide:arrow-right" %}</span>
+</ion-button>
+<ion-button size="large" fill="outline" href="{% url 'account_login' %}">
+  <span slot="start">{% icon "lucide:log-in" %}</span>
+  {% trans "Sign in" %}
+</ion-button>
