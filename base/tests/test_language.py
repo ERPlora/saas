@@ -17,7 +17,9 @@ from django.test import Client
 from base.operations import UserContextBuilder
 from base.tests.test_operations import request_for
 
-pytestmark = pytest.mark.django_db
+# Two tests render HTML (the SPA's page, the public web's): its assets come from a Vite manifest, which a
+# run without `vite build` (CI) lacks, so every test reads the fixture's.
+pytestmark = [pytest.mark.django_db, pytest.mark.usefixtures("spa_manifest")]
 
 HOST = "localhost:8001"
 
