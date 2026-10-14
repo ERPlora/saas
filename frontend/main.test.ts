@@ -453,6 +453,23 @@ describe('import order guards (hub#1060)', () => {
     expect(runtimeImports[0]).toBe('@erplora/ui/shell');
   });
 
+  it('puts «Skip to content» first in the page, in the language of the page (audit 2026-10-14, R-11)', async () => {
+    fakeShell();
+    document.documentElement.lang = 'es';
+    await main.boot({});
+    const link = document.body.firstElementChild as HTMLAnchorElement;
+    expect(link.id).toBe('skip-to-content');
+    expect(link.textContent).toBe('Saltar al contenido');
+    expect(entryEn.saas.skipLink).toBe('Skip to content');
+  });
+
+  it("loads the panel's chrome (skip link, touch targets, topbar) after the shell's theme (panel-chrome.css)", () => {
+    const source = readFileSync(join(HERE, 'main.ts'), 'utf8');
+    const chrome = source.indexOf("import './panel-chrome.css';");
+    expect(chrome).toBeGreaterThan(-1);
+    expect(chrome).toBeGreaterThan(source.indexOf("import './fonts.css';"));
+  });
+
   it("loads the SaaS's typeface after the shell's theme, so it wins the cascade (fonts.css)", () => {
     const source = readFileSync(join(HERE, 'main.ts'), 'utf8');
     const fonts = source.indexOf("import './fonts.css';");

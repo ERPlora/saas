@@ -54,6 +54,7 @@ function press(): void {
       v-else
       slot="start"
       name="ion:card-outline"
+      aria-hidden="true"
     />
     {{ mine ? $t('billing.notice.paying') : $t('billing.notice.pay', { amount }) }}
   </ion-button>

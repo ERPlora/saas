@@ -47,6 +47,18 @@ describe('RoleModal', () => {
     expect([...s.q('role-select').querySelectorAll('ion-select-option')].map((o) => o.textContent?.trim())).toEqual(['Manager', 'Employee']);
   });
 
+  it('«Change role» waits for another role than the current one (W-B16 of the mockups)', async () => {
+    const s = await setup(() => Response.json({}));
+    const submit = () => s.q('role-modal-submit') as HTMLElement & { disabled?: boolean };
+    expect(submit().disabled).toBe(true);
+    s.q('role-select').dispatchEvent(new CustomEvent('ionChange', { detail: { value: 'hub_employee' } }));
+    await flush();
+    expect(submit().disabled).toBe(false);
+    s.q('role-select').dispatchEvent(new CustomEvent('ionChange', { detail: { value: 'hub_manager' } }));
+    await flush();
+    expect(submit().disabled).toBe(true);
+  });
+
   it('changes it, says the new role, and closes', async () => {
     const s = await setup(() => Response.json({ ...MARTA, role: 'hub_employee', role_label: 'Employee' }));
     s.q('role-select').dispatchEvent(new CustomEvent('ionChange', { detail: { value: 'hub_employee' } }));
@@ -60,6 +72,9 @@ describe('RoleModal', () => {
 
   it('a lost connection is said in the person’s language', async () => {
     const s = await setup(() => Promise.reject(new TypeError('Failed to fetch')) as never);
+    // Another role picked: the unchanged one cannot be submitted.
+    s.q('role-select').dispatchEvent(new CustomEvent('ionChange', { detail: { value: 'hub_employee' } }));
+    await flush();
     s.q('role-modal-submit').click();
     await flush();
     expect(s.q('role-modal-error').textContent).toContain('We could not reach ERPlora. Check your connection and try again.');
@@ -67,6 +82,9 @@ describe('RoleModal', () => {
 
   it('keeps the dialog with a refusal', async () => {
     const s = await setup(() => apiError(403, 'permission_denied', 'You cannot hand out a role equal to or above yours.'));
+    // Another role picked: the unchanged one cannot be submitted.
+    s.q('role-select').dispatchEvent(new CustomEvent('ionChange', { detail: { value: 'hub_employee' } }));
+    await flush();
     s.q('role-modal-submit').click();
     await flush();
     expect(s.q('role-modal-error').textContent).toContain('You cannot hand out a role equal to or above yours.');

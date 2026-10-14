@@ -102,6 +102,7 @@ const body = computed(() => {
             v-else
             slot="start"
             name="lucide:credit-card"
+            aria-hidden="true"
           />
           {{ $t('billing.notice.changeCard') }}
         </ion-button>

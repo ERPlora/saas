@@ -3,7 +3,9 @@
 // enters their own payment details) — named in one line, each linked to its Settings, and keeps «Delete account»
 // off meanwhile. The
 // server decides in the end (409 with the same businesses, DeleteAccountDialog). Read from `hubs.business.list`, the
-// operation the server reads too (`can.delete`: the owner; `is_payer`: it pays for it).
+// operation the server reads too (`can.delete`: the owner; `is_payer`: it pays for it). While that list is not known
+// (loading, failed, or no answer in time) nothing says the account is free to go: deletion stays off, and a failure
+// is said with «Retry» (audit 2026-10-14, R-04/R-08).
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@ionic/vue', async (importOriginal) => ({
@@ -11,7 +13,7 @@ vi.mock('@ionic/vue', async (importOriginal) => ({
   IonModal: (await import('../__tests__/ion-modal-stub')).IonModalStub,
 }));
 
-import { flush, ionProps, mountPanel, profile } from '../__tests__/mount-panel';
+import { errorFrame, flush, HELLO, ionProps, LIVE_TIMEOUT_MS, mountPanel, profile, subId } from '../__tests__/mount-panel';
 import type { BusinessRowOut } from '../../../frontend/sdk-types';
 import DeleteAccountCard from './DeleteAccountCard.vue';
 
@@ -102,5 +104,48 @@ describe('DeleteAccountCard', () => {
     s.q('profile-delete')?.click();
     await flush();
     expect(s.q('delete-account')?.querySelector('.ion-delegate-host')).not.toBeNull();
+  });
+
+  it('keeps deletion off until it knows which businesses hold the account', async () => {
+    const s = await mountPanel(DeleteAccountCard, { props: { profile: profile() } });
+    await s.live();
+    expect(ionProps(s.q('profile-delete'), 'disabled')).toEqual({ disabled: true });
+    expect(s.q('profile-danger-error')).toBeNull();
+  });
+
+  it('says it could not check the businesses, with «Retry», and keeps deletion off when the list fails', async () => {
+    const s = await mountPanel(DeleteAccountCard, { props: { profile: profile() } });
+    const stream = await s.live();
+    stream.push(errorFrame(subId(s.client, 'hubs.business.list'), 'server_error'));
+    await flush();
+    expect(s.q('profile-danger-error')?.textContent).toContain('We could not check your businesses');
+    expect(s.q('profile-danger-error')?.textContent).toContain('You can delete your account once we know which businesses hold it.');
+    expect(s.q('profile-danger-retry')?.textContent).toContain('Retry');
+    expect(s.q('profile-danger-businesses')).toBeNull();
+    expect(ionProps(s.q('profile-delete'), 'disabled')).toEqual({ disabled: true });
+  });
+
+  it('says it could not check the businesses when no answer comes in time', async () => {
+    const s = await mountPanel(DeleteAccountCard, { props: { profile: profile() } });
+    await s.live();
+    await s.clock.advance(LIVE_TIMEOUT_MS);
+    expect(s.q('profile-danger-error')?.textContent).toContain('We could not check your businesses');
+    expect(ionProps(s.q('profile-delete'), 'disabled')).toEqual({ disabled: true });
+  });
+
+  it('«Retry» opens the stream again and lets the account go when nothing holds it', async () => {
+    const s = await mountPanel(DeleteAccountCard, { props: { profile: profile() } });
+    await s.live();
+    await s.clock.advance(LIVE_TIMEOUT_MS);
+    const before = s.net.streams.length;
+    s.q('profile-danger-retry')?.click();
+    await flush();
+    expect(s.net.streams.length).toBe(before + 1);
+    expect(s.q('profile-danger-error')).toBeNull();
+    expect(ionProps(s.q('profile-delete'), 'disabled')).toEqual({ disabled: true });
+    const stream = s.net.lastStream();
+    stream.push(HELLO);
+    await s.result(stream, 'hubs.business.list', page([]));
+    expect(ionProps(s.q('profile-delete'), 'disabled')).toEqual({ disabled: false });
   });
 });

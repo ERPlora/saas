@@ -51,6 +51,7 @@ void load();
           <HubIcon
             slot="start"
             name="ion:refresh-outline"
+            aria-hidden="true"
           />
           {{ $t('billing.payment.retry') }}
         </ion-button>

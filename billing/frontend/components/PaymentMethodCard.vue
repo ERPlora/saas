@@ -53,7 +53,10 @@ const failure = computed(() => {
         {{ $t('billing.payment.method.title') }}
       </div>
       <div class="payment-row">
-        <span class="payment-icon"><HubIcon name="lucide:credit-card" /></span>
+        <span class="payment-icon"><HubIcon
+          name="lucide:credit-card"
+          aria-hidden="true"
+        /></span>
         <div>
           <h2
             v-if="!method.unavailable"
@@ -103,6 +106,7 @@ const failure = computed(() => {
               v-else
               slot="start"
               name="lucide:credit-card"
+              aria-hidden="true"
             />
             {{ $t('billing.payment.method.change') }}
           </ion-button>

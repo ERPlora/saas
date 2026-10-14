@@ -2,46 +2,33 @@
 // Account → Security (mockups `account.html` «security»): the card «Sign-in» with a row each for the password
 // (PasswordRow), two-step verification (TwoFactorRow) and Google (ConnectedAccountsRow), from the live
 // `accounts.profile.get` (whether the account has a password); then the active sessions (SessionsTable), which
-// load on their own and take the height the card leaves (a nested `.panel-fill` of the page).
-import { InlineFeedback } from '@erplora/ui/components';
-import { HubIcon } from '@erplora/ui/shell';
+// load on their own and take the height the card leaves (a nested `.panel-fill` of the page). The account's
+// failure is said with «Retry», also when no answer comes in time: never a skeleton for ever (audit 2026-10-14 R-08).
 import { useLive } from '@erplora/ui/sdk';
-import { IonButton, IonCard, IonCardContent, IonSkeletonText } from '@ionic/vue';
+import { IonCard, IonCardContent, IonSkeletonText } from '@ionic/vue';
 import { computed } from 'vue';
 
+import LoadFailed from '../../../frontend/LoadFailed.vue';
+import { useLiveState } from '../../../frontend/live-state';
 import ConnectedAccountsRow from './ConnectedAccountsRow.vue';
 import PasswordRow from './PasswordRow.vue';
 import SessionsTable from './SessionsTable.vue';
 import TwoFactorRow from './TwoFactorRow.vue';
 
 const live = useLive('accounts.profile.get');
+const state = useLiveState(live);
 const profile = computed(() => live.data.value);
 </script>
 
 <template>
   <div class="tab-stack panel-fill">
-    <InlineFeedback
-      v-if="live.status.value === 'error' && !profile"
-      tone="danger"
-      data-testid="security-error"
+    <LoadFailed
+      v-if="state.failed.value"
+      testid="security-error"
+      retry-testid="security-retry"
       :heading="$t('accounts.account.profile.loadError')"
-    >
-      {{ $t('accounts.account.loadErrorBody') }}
-      <template #actions>
-        <ion-button
-          data-testid="security-retry"
-          size="small"
-          fill="outline"
-          @click="live.refresh()"
-        >
-          <HubIcon
-            slot="start"
-            name="ion:refresh-outline"
-          />
-          {{ $t('accounts.account.retry') }}
-        </ion-button>
-      </template>
-    </InlineFeedback>
+      @retry="state.retry()"
+    />
 
     <ion-card
       v-else-if="!profile"

@@ -17,7 +17,8 @@ vi.mock('@erplora/ui/shell', async (importOriginal) => ({
 
 import { toastError, toastSuccess } from '@erplora/ui/shell';
 
-import { describeCall, errorFrame, flush, ionProps, mountHubs, subId } from '../__tests__/mount-hubs';
+import { LIVE_TIMEOUT_MS } from '../../../frontend/live-state';
+import { BYE, describeCall, errorFrame, flush, ionProps, mountHubs, subId } from '../__tests__/mount-hubs';
 import BusinessSettings from '../components/BusinessSettings.vue';
 import BusinessSummary from '../components/BusinessSummary.vue';
 import DangerZone from '../components/DangerZone.vue';
@@ -157,6 +158,29 @@ describe('BusinessPage: the frame', () => {
     expect(s.testid('business-error').text()).toContain('Maybe you no longer have access to it, or there is a connection problem.');
     expect(s.testid('business-retry').exists()).toBe(true);
   });
+
+  it('the stream gone before any answer: an error with «Retry» after the time limit, never a skeleton for ever (R-08)', async () => {
+    const s = await setup('summary', null);
+    s.call.push(BYE);
+    await flush();
+    expect(s.testid('business-loading').exists()).toBe(true);
+    await s.clock.advance(LIVE_TIMEOUT_MS);
+    expect(s.testid('business-loading').exists()).toBe(false);
+    expect(s.testid('business-error').text()).toContain('We could not load this business');
+    const streams = s.net.streams.length;
+    await s.testid('business-retry').trigger('click');
+    await s.clock.advance(1);
+    expect(s.net.streams.length).toBeGreaterThan(streams);
+    expect(s.testid('business-loading').exists()).toBe(true);
+  });
+
+  it('an error has no tabbar: its sections would only repeat it (W-18 of the mockups)', async () => {
+    const s = await setup('members', null);
+    expect(s.page().props('tabs')).toHaveLength(4);
+    s.call.push(errorFrame(subId(s.client, 'hubs.business.get'), 'not_found'));
+    await flush();
+    expect(s.page().props('tabs')).toEqual([]);
+  });
 });
 
 describe('BusinessPage: the sections', () => {
@@ -222,6 +246,13 @@ describe('BusinessPage: deleted', () => {
     await flush();
     expect(s.calls().find((c) => c.path === '/api/hubs/businesses/restore')?.body).toEqual({ id: 'h1' });
     expect(toastSuccess).toHaveBeenCalledWith('Business recovered: Panadería López');
+  });
+
+  it('has no tabbar and shows its Summary whatever the address (W-B3 of the mockups)', async () => {
+    const s = await setup('members', DELETED);
+    expect(s.page().props('tabs')).toEqual([]);
+    expect(s.wrapper.findComponent(MembersTab).exists()).toBe(false);
+    expect(s.wrapper.findComponent(BusinessSummary).exists()).toBe(true);
   });
 
   it('an admin only reads that the owner can recover it', async () => {

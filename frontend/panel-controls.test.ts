@@ -118,3 +118,10 @@ describe('the panel: no action sheet, every list fills its page', () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe('the panel: live data says loading, error or empty truthfully (audit 2026-10-14, R-04 and R-08)', () => {
+  it('every component that follows live data reads it through `useLiveState` (never `data ?? []` as «empty»)', () => {
+    const offenders = SOURCES.filter((s) => /\buseLive\(/.test(s.source) && !/\buseLiveState\(/.test(s.source)).map((s) => s.file);
+    expect(offenders).toEqual([]);
+  });
+});

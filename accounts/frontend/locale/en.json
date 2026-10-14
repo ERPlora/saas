@@ -221,11 +221,12 @@
         "message": "Your account, your photo, your preferences and your API keys are deleted, and every session ends, also in the apps and in your businesses. This cannot be undone.",
         "lead": "Your account and what is in it go for good. Businesses you own have to be transferred or deleted first.",
         "owns": "You own {n} business: transfer or delete it before deleting your account. | You own {n} businesses: transfer or delete them before deleting your account.",
-        "pays": "You pay for {n} business of other people: ask its owner to enter their own payment details before deleting your account. | You pay for {n} businesses of other people: ask their owners to enter their own payment details before deleting your account."
+        "pays": "You pay for {n} business of other people: ask its owner to enter their own payment details before deleting your account. | You pay for {n} businesses of other people: ask their owners to enter their own payment details before deleting your account.",
+        "loadError": "We could not check your businesses",
+        "loadErrorBody": "You can delete your account once we know which businesses hold it. Check your connection and try again."
       },
       "loading": "Loading…",
       "retry": "Retry",
-      "loadErrorBody": "Check your connection and try again.",
       "security": {
         "heading": "Sign-in",
         "twoFactor": "Two-step verification",

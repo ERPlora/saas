@@ -6,13 +6,17 @@
 // off meanwhile. A
 // business in its 90 days of deletion holds nobody. Read from `hubs.business.list`, the operation the server reads
 // for the same rule (`accounts.services.businesses_holding`); the server decides in the end
-// (DeleteAccountDialog shows its 409 too).
+// (DeleteAccountDialog shows its 409 too). Until that list is known — loading, failed, or no answer in time —
+// nothing says the account is free to go: «Delete account» stays off, and a failure is said with «Retry» (audit
+// 2026-10-14 R-04/R-08).
 import { HubIcon } from '@erplora/ui/shell';
 import { useLive } from '@erplora/ui/sdk';
 import { IonButton, IonCard, IonCardContent } from '@ionic/vue';
 import { computed, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import LoadFailed from '../../../frontend/LoadFailed.vue';
+import { useLiveState } from '../../../frontend/live-state';
 import type { BusinessRowOut, ProfileOut } from '../../../frontend/sdk-types';
 import DeleteAccountDialog from './DeleteAccountDialog.vue';
 
@@ -25,6 +29,9 @@ const BUSINESS_PAGE = 100;
 
 const { locale } = useI18n();
 const live = useLive('hubs.business.list', () => ({ limit: BUSINESS_PAGE, offset: 0 }));
+const state = useLiveState(live, { isEmpty: (data) => data.rows.length === 0 });
+/** The server answered which businesses there are: only then may the card say whether any holds the account. */
+const known = computed(() => state.view.value === 'empty' || state.view.value === 'ready');
 const rows = computed<BusinessRowOut[]>(() => live.data.value?.rows ?? []);
 const owned = computed(() => rows.value.filter((row) => row.can.delete));
 const paid = computed(() => rows.value.filter((row) => !row.can.delete && row.is_payer && !row.deletion_requested_at));
@@ -73,8 +80,17 @@ const deleting = shallowRef(false);
           >
             {{ $t('accounts.account.delete.lead') }}
           </p>
+          <LoadFailed
+            v-if="state.failed.value"
+            class="held-error"
+            testid="profile-danger-error"
+            retry-testid="profile-danger-retry"
+            :heading="$t('accounts.account.delete.loadError')"
+            :message="$t('accounts.account.delete.loadErrorBody')"
+            @retry="state.retry()"
+          />
           <p
-            v-if="held"
+            v-else-if="held"
             class="held-line"
             data-testid="profile-danger-businesses"
           >
@@ -99,12 +115,13 @@ const deleting = shallowRef(false);
           data-testid="profile-delete"
           fill="outline"
           color="danger"
-          :disabled="held"
+          :disabled="!known || held"
           @click="deleting = true"
         >
           <HubIcon
             slot="start"
             name="lucide:user-x"
+            aria-hidden="true"
           />
           {{ $t('accounts.account.delete.confirm') }}
         </ion-button>
@@ -124,6 +141,9 @@ const deleting = shallowRef(false);
 }
 .danger-card .card-row {
   padding: 0;
+}
+.held-error {
+  margin-top: 8px;
 }
 .held-line {
   margin: 8px 0 0;

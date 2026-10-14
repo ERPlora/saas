@@ -3,6 +3,12 @@
     "userMenu": {
       "account": "Account",
       "themeNotSaved": "Couldn't save the appearance to your account."
-    }
+    },
+    "load": {
+      "heading": "We couldn't load this page",
+      "body": "Check your connection and try again.",
+      "retry": "Retry"
+    },
+    "skipLink": "Skip to content"
   }
 }

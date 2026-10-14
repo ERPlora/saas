@@ -1,12 +1,13 @@
 <script setup lang="ts">
 // «Change role» (mockups `business.html` «members-role»): the roles the account may give this member
 // (the server's `assignable_roles`; never the owner's, which only moves by a transfer),
-// `hubs.member.change_role`, and a toast with the new role. A refusal stays in the dialog.
+// `hubs.member.change_role`, and a toast with the new role. A refusal stays in the dialog. «Change role» waits
+// until another role than the current one is picked (W-B16 of the mockups; audit 2026-10-14 R-28).
 import { FormModal } from '@erplora/ui/components';
 import { toastSuccess } from '@erplora/ui/shell';
 import { useCommand } from '@erplora/ui/sdk';
 import { IonSelect, IonSelectOption } from '@ionic/vue';
-import { shallowRef, watch } from 'vue';
+import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { InvitableRole, MemberRowOut } from '../../../frontend/sdk-types';
@@ -22,6 +23,8 @@ const { t } = useI18n();
 const { forDialog } = useErrorText();
 const change = useCommand('hubs.member.change_role');
 const role = shallowRef<InvitableRole>('hub_employee');
+/** Nothing to save while the role picked is the member's own. */
+const unchanged = computed(() => !props.member || role.value === props.member.role);
 
 watch(
   [open, () => props.member],
@@ -56,6 +59,7 @@ async function save(): Promise<void> {
     :submit-label="$t('hubs.members.roleModal.submit')"
     submit-icon="ion:create-outline"
     :pending="change.pending.value"
+    :submit-disabled="unchanged"
     :error="forDialog(change.error.value)"
     @submit="save"
   >

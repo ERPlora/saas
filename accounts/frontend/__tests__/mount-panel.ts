@@ -24,10 +24,18 @@ import {
 } from '../../../packages/ui/src/sdk/__tests__/live-harness';
 import { OPERATION_ROUTES } from '../../../frontend/generated/operation-routes';
 import type { ApiKeyListOut, PreferencesOut, ProfileOut, SessionRowOut } from '../../../frontend/sdk-types';
-import en from '../locale/en.json';
-import es from '../locale/es.json';
+import saasEn from '../../../frontend/locale/en.json';
+import saasEs from '../../../frontend/locale/es.json';
+import accountsEn from '../locale/en.json';
+import accountsEs from '../locale/es.json';
 
-export { errorFrame, flush, resultFrame } from '../../../packages/ui/src/sdk/__tests__/live-harness';
+export { BYE, errorFrame, flush, HELLO, resultFrame } from '../../../packages/ui/src/sdk/__tests__/live-harness';
+export { LIVE_TIMEOUT_MS } from '../../../frontend/live-state';
+
+// The catalogues the shell merges at boot (`main.ts`): the entry's own (`saas.*`: «could not load», LoadFailed)
+// and the accounts' (`accounts.*`); different top-level keys, so they never collide.
+const en = { ...saasEn, ...accountsEn };
+const es = { ...saasEs, ...accountsEs };
 export type { ApiCall, StreamCall };
 
 // What `createShell` does at boot (`addIcons(ION_ICONS)`): `ion:` icons paint by name.

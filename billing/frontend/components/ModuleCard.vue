@@ -126,6 +126,7 @@ function keep(): void {
           <HubIcon
             slot="start"
             name="ion:refresh-outline"
+            aria-hidden="true"
           />
           {{ $t('billing.modules.keep') }}
         </ion-button>
@@ -139,6 +140,7 @@ function keep(): void {
           <HubIcon
             slot="start"
             name="ion:checkmark-outline"
+            aria-hidden="true"
           />
           {{ $t('billing.modules.owned') }}
         </ion-button>
@@ -154,6 +156,7 @@ function keep(): void {
           <HubIcon
             slot="start"
             name="ion:add-outline"
+            aria-hidden="true"
           />
           {{ interval === 'year' ? $t('billing.modules.addYear', { price }) : $t('billing.modules.add', { price }) }}
         </ion-button>

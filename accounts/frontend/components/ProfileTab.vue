@@ -1,44 +1,31 @@
 <script setup lang="ts">
 // Account → Profile (mockups `account.html` «profile»): the live `accounts.profile.get` — a skeleton while it
-// loads, its failure with «Retry», then «Your details» (ProfileForm) and the danger card, «Delete your account»
+// loads, its failure with «Retry» (also when no answer comes in time: never a skeleton for ever, audit
+// 2026-10-14 R-08), then «Your details» (ProfileForm) and the danger card, «Delete your account»
 // (DeleteAccountCard), shown on every surface (PLAN-SAAS §3.6 point 6: Google Play asks for it in the apps).
-import { InlineFeedback } from '@erplora/ui/components';
-import { HubIcon } from '@erplora/ui/shell';
 import { useLive } from '@erplora/ui/sdk';
-import { IonButton, IonCard, IonCardContent, IonSkeletonText } from '@ionic/vue';
+import { IonCard, IonCardContent, IonSkeletonText } from '@ionic/vue';
 import { computed } from 'vue';
 
+import LoadFailed from '../../../frontend/LoadFailed.vue';
+import { useLiveState } from '../../../frontend/live-state';
 import DeleteAccountCard from './DeleteAccountCard.vue';
 import ProfileForm from './ProfileForm.vue';
 
 const live = useLive('accounts.profile.get');
+const state = useLiveState(live);
 const profile = computed(() => live.data.value);
 </script>
 
 <template>
   <div class="tab-stack">
-    <InlineFeedback
-      v-if="live.status.value === 'error' && !profile"
-      tone="danger"
-      data-testid="profile-error"
+    <LoadFailed
+      v-if="state.failed.value"
+      testid="profile-error"
+      retry-testid="profile-retry"
       :heading="$t('accounts.account.profile.loadError')"
-    >
-      {{ $t('accounts.account.loadErrorBody') }}
-      <template #actions>
-        <ion-button
-          data-testid="profile-retry"
-          size="small"
-          fill="outline"
-          @click="live.refresh()"
-        >
-          <HubIcon
-            slot="start"
-            name="ion:refresh-outline"
-          />
-          {{ $t('accounts.account.retry') }}
-        </ion-button>
-      </template>
-    </InlineFeedback>
+      @retry="state.retry()"
+    />
 
     <ion-card
       v-else-if="!profile"

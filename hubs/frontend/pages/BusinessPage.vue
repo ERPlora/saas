@@ -7,7 +7,10 @@
 // recovered (the owner recovers it there); a payment pending or a suspension is said under the header.
 // Modules: turning apps on and off is the Hub's (PLAN §20.4), so the tab says so and the header's «Open»,
 // solid there as on the Summary, is its one action (no second «Open» in the card: Ioan, 2026-10-14).
-// Members fills the page between the topbar and the tabbar (`detail-fill` + `.panel-fill`).
+// Members fills the page between the topbar and the tabbar (`detail-fill` + `.panel-fill`). Its states are
+// truthful (`useLiveState`, audit 2026-10-14 R-08): no answer in time is an error with «Retry», never a skeleton
+// for ever; an error or a deleted business has no tabbar (W-18, W-B3: its sections would only repeat it), and a
+// deleted one shows its Summary whatever the address.
 import { formatDateTime, InlineFeedback, StatusPill } from '@erplora/ui/components';
 import { AppPage, HubIcon, type ShellTab, toastError, toastSuccess, useSurface, WebOnly } from '@erplora/ui/shell';
 import { useCommand, useLive } from '@erplora/ui/sdk';
@@ -15,6 +18,8 @@ import { IonButton, IonCard, IonCardContent, IonSkeletonText, IonSpinner } from 
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import { useLiveState } from '../../../frontend/live-state';
+import LoadFailed from '../../../frontend/LoadFailed.vue';
 import { reasonKey, statusPill } from '../business-status';
 import BusinessSettings from '../components/BusinessSettings.vue';
 import BusinessSummary from '../components/BusinessSummary.vue';
@@ -47,19 +52,23 @@ const { open, opening } = useOpenBusiness();
 const restore = useCommand('hubs.business.restore');
 const { text } = useErrorText();
 
+const load = useLiveState(live);
+
 const business = computed(() => live.data.value);
+const deleted = computed(() => business.value?.status === 'deleting');
+/** No tabbar on an error or a deleted business: every section would only repeat it. */
 const tabs = computed<ShellTab[]>(() =>
-  SECTIONS.map((section) => ({
+  deleted.value || (load.failed.value && !business.value) ? [] : SECTIONS.map((section) => ({
     id: section.id,
     label: t(`hubs.business.tabs.${section.id}`),
     icon: section.icon,
     to: `/businesses/${props.id}/${section.id}`,
   })),
 );
-
-const deleted = computed(() => business.value?.status === 'deleting');
+/** The section on screen: a deleted business only has its Summary (with the way to recover it). */
+const section = computed<Tab>(() => (deleted.value ? 'summary' : props.tab));
 /** Members is a list: it fills the page between the topbar and the tabbar (Ioan, 2026-10-14). */
-const fills = computed(() => props.tab === 'members');
+const fills = computed(() => section.value === 'members');
 const opensAtAll = computed(() => !!business.value && business.value.status !== 'suspended' && !deleted.value);
 const state = computed(() => {
   const now = business.value;
@@ -97,28 +106,14 @@ async function recover(): Promise<void> {
       class="page-stack"
       :class="{ 'panel-fill': fills }"
     >
-      <InlineFeedback
-        v-if="live.status.value === 'error' && !business"
-        tone="danger"
-        data-testid="business-error"
+      <LoadFailed
+        v-if="load.failed.value && !business"
         :heading="$t('hubs.business.loadError')"
-      >
-        {{ $t('hubs.business.loadErrorBody') }}
-        <template #actions>
-          <ion-button
-            data-testid="business-retry"
-            size="small"
-            fill="outline"
-            @click="live.refresh()"
-          >
-            <HubIcon
-              slot="start"
-              name="ion:refresh-outline"
-            />
-            {{ $t('hubs.common.retry') }}
-          </ion-button>
-        </template>
-      </InlineFeedback>
+        :message="$t('hubs.business.loadErrorBody')"
+        testid="business-error"
+        retry-testid="business-retry"
+        @retry="load.retry()"
+      />
 
       <div
         v-else-if="!business"
@@ -188,6 +183,7 @@ async function recover(): Promise<void> {
                 v-else
                 slot="start"
                 name="ion:refresh-outline"
+                aria-hidden="true"
               />
               {{ $t('hubs.danger.restore') }}
             </ion-button>
@@ -196,11 +192,14 @@ async function recover(): Promise<void> {
 
         <div
           class="biz-header ion-padding"
-          :class="{ 'is-compact': tab !== 'summary' }"
+          :class="{ 'is-compact': section !== 'summary' }"
           data-testid="business-header"
         >
           <div class="biz-header__main">
-            <span class="tile-icon"><HubIcon name="ion:storefront-outline" /></span>
+            <span class="tile-icon"><HubIcon
+              name="ion:storefront-outline"
+              aria-hidden="true"
+            /></span>
             <div class="biz-header__text">
               <p class="biz-header__title">
                 {{ business.name }}
@@ -220,7 +219,7 @@ async function recover(): Promise<void> {
           >
             <ion-button
               data-testid="business-open"
-              :fill="tab === 'summary' || tab === 'modules' ? 'solid' : 'outline'"
+              :fill="section === 'summary' || section === 'modules' ? 'solid' : 'outline'"
               :disabled="!business.can.open || !!opening"
               :aria-label="$t('hubs.common.openName', { name: business.name })"
               @click="open(business)"
@@ -235,6 +234,7 @@ async function recover(): Promise<void> {
                 v-else
                 slot="start"
                 name="ion:log-in-outline"
+                aria-hidden="true"
               />
               {{ $t('hubs.common.open') }}
             </ion-button>
@@ -256,19 +256,22 @@ async function recover(): Promise<void> {
         </p>
 
         <BusinessSummary
-          v-if="tab === 'summary'"
+          v-if="section === 'summary'"
           :business="business"
         />
         <MembersTab
-          v-else-if="tab === 'members'"
+          v-else-if="section === 'members'"
           :business="business"
         />
         <ion-card
-          v-else-if="tab === 'modules'"
+          v-else-if="section === 'modules'"
           data-testid="business-modules"
         >
           <ion-card-content class="ion-padding modules-card">
-            <span class="tile-icon"><HubIcon name="ion:apps-outline" /></span>
+            <span class="tile-icon"><HubIcon
+              name="ion:apps-outline"
+              aria-hidden="true"
+            /></span>
             <div class="modules-card__text">
               <h2 class="card-title">
                 {{ $t('hubs.business.modules.heading') }}

@@ -226,6 +226,7 @@ function run(): void {
           <HubIcon
             slot="start"
             :name="ICONS[action.kind]"
+            aria-hidden="true"
           />
           {{ label }}
         </ion-button>

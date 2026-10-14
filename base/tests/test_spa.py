@@ -101,3 +101,12 @@ def test_the_title_is_the_saas_one(client):
         "<title>ERPlora Cloud</title>"
         in client.get("/login", HTTP_HOST=HOST).content.decode()
     )
+
+
+def test_the_web_panel_can_be_zoomed(client):
+    """WCAG 1.4.4 (audit R-02): no maximum-scale nor user-scalable=no in the viewport."""
+    html = client.get("/login", HTTP_HOST=HOST).content.decode()
+
+    assert '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">' in html
+    assert "user-scalable" not in html
+    assert "maximum-scale" not in html

@@ -15,9 +15,11 @@ vi.mock('@erplora/ui/shell', async (importOriginal) => ({
   toastError: vi.fn(() => Promise.resolve()),
 }));
 
-import { toastInfo } from '@erplora/ui/shell';
+import { toastError, toastInfo } from '@erplora/ui/shell';
 
-import { resultFrame } from '../../../hubs/frontend/__tests__/mount-hubs';
+import { LIVE_TIMEOUT_MS } from '../../../frontend/live-state';
+import { mockResizeObserver } from '../../../packages/ui/src/components/DataTable/__tests__/harness';
+import { errorFrame, HELLO, resultFrame } from '../../../hubs/frontend/__tests__/mount-hubs';
 import { invoicePage, invoiceRow, unpaidRow } from '../__tests__/billing-fixtures';
 import { BAKERY, businessPage, businessRow, CAFE, PLAZA } from '../__tests__/fixtures';
 import { accessibleName, describeCall, flush, mountBilling, optionValue, type StreamCall } from '../__tests__/mount-billing';
@@ -34,8 +36,10 @@ beforeEach(() => viewport(DESK));
 afterEach(() => {
   viewport({ width: 1024, height: 768 });
   applySurface('web');
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
   vi.mocked(toastInfo).mockClear();
+  vi.mocked(toastError).mockClear();
   document.body.innerHTML = '';
 });
 
@@ -207,11 +211,11 @@ describe('InvoicesTab: the list', () => {
   });
 
   it('the PDF downloads the file the platform hub issued', async () => {
-    const download = vi.spyOn(browser, 'download').mockImplementation(() => {});
+    const download = vi.spyOn(browser, 'download').mockResolvedValue();
     const s = await setup();
     await s.show();
     await s.testid('invoices-row-00123-pdf').trigger('click');
-    expect(download).toHaveBeenCalledExactlyOnceWith('/api/billing/invoices/pdf?id=00123');
+    expect(download).toHaveBeenCalledExactlyOnceWith('/api/billing/invoices/pdf?id=00123', 'application/pdf');
   });
 
   it.each(['desktop', 'mobile', 'account'] as const)('on the %s surface the invoices are there, «Pay» is not', async (surface) => {
@@ -230,6 +234,75 @@ describe('InvoicesTab: the list', () => {
     await flush();
     expect(s.prop('error')).toBe('Something failed.');
     expect(s.prop<Record<string, string>>('labels')).toMatchObject({ loadError: 'We could not load your invoices', retry: 'Retry' });
+  });
+});
+
+describe('InvoicesTab: a list that does not load says so, never «No invoices yet» (audit 2026-10-14, R-04)', () => {
+  const failed = (s: Awaited<ReturnType<typeof setup>>) => ({
+    error: s.prop<string | undefined>('error'),
+    loading: s.prop<boolean>('loading'),
+    retry: s.testid('invoices-retry').exists(),
+    empty: s.testid('invoices-empty').exists(),
+  });
+
+  it('a query that fails: the reason and «Retry», not the empty state', async () => {
+    const s = await setup();
+    await s.push('hubs.business.list', businessPage([BAKERY]));
+    s.call.push(errorFrame(s.client.stream.subscriptions('billing.invoice.list')[0].id, 'internal_error'));
+    await flush();
+    expect(failed(s)).toEqual({ error: 'msg internal_error', loading: false, retry: true, empty: false });
+  });
+
+  it('nothing in time: an error with «Retry», never a spinner for ever', async () => {
+    const s = await setup();
+    await s.push('hubs.business.list', businessPage([BAKERY]));
+    // The time limit counts from the mount (opening the stream already took 150 ms of it).
+    await s.clock.advance(LIVE_TIMEOUT_MS - 1 - s.clock.now());
+    expect(s.prop('loading')).toBe(true);
+    await s.clock.advance(1);
+    expect(failed(s)).toEqual({ error: 'Check your connection and try again.', loading: false, retry: true, empty: false });
+  });
+
+  it('the stream refused (/api/live answers 503): it could not load, it does not say there are no invoices', async () => {
+    const s = await mountBilling(InvoicesTab, { path: '/billing/invoices' });
+    s.liveDown.value = true;
+    await s.clock.advance(150);
+    expect(s.client.stream.subscriptions('billing.invoice.list')).toHaveLength(1);
+    expect(s.wrapper.find('[data-testid="invoices-retry"]').exists()).toBe(true);
+    expect(s.wrapper.find('[data-testid="invoices-empty"]').exists()).toBe(false);
+    expect(s.wrapper.find('[data-testid="invoices-loading"]').exists()).toBe(false);
+  });
+
+  it('«Retry» opens the stream again and shows the invoices that come', async () => {
+    const s = await setup();
+    await s.clock.advance(LIVE_TIMEOUT_MS);
+    const before = s.net.streams.length;
+    await s.testid('invoices-retry').trigger('click');
+    await flush();
+    await s.clock.advance(150);
+    expect(s.net.streams.length).toBe(before + 1);
+    expect(s.prop('loading')).toBe(true);
+    const again = s.net.lastStream();
+    again.push(HELLO);
+    again.push(resultFrame(s.client.stream.subscriptions('billing.invoice.list')[0].id, invoicePage(ROWS), 1));
+    await flush();
+    expect(s.wrapper.findAll('[data-testid="invoices-row"]')).toHaveLength(3);
+    expect(s.prop('error')).toBeUndefined();
+  });
+
+  it('the businesses (only the filter’s options) failing do not block the invoices', async () => {
+    const s = await setup();
+    s.call.push(errorFrame(s.client.stream.subscriptions('hubs.business.list')[0].id, 'internal_error'));
+    await s.push('billing.invoice.list', invoicePage(ROWS));
+    expect(s.wrapper.findAll('[data-testid="invoices-row"]')).toHaveLength(3);
+    expect(s.prop('error')).toBeUndefined();
+  });
+
+  it('says it in Spanish', async () => {
+    const s = await setup('/billing/invoices', undefined, 'es');
+    await s.clock.advance(LIVE_TIMEOUT_MS);
+    expect(s.prop('error')).toBe('Comprueba tu conexión y vuelve a intentarlo.');
+    expect(s.prop<Record<string, string>>('labels')).toMatchObject({ loadError: 'No hemos podido cargar tus facturas', retry: 'Reintentar' });
   });
 });
 
@@ -319,7 +392,7 @@ describe('InvoicesTab: filters and search', () => {
   });
 
   it('«Download Excel» downloads what the filters show', async () => {
-    const download = vi.spyOn(browser, 'download').mockImplementation(() => {});
+    const download = vi.spyOn(browser, 'download').mockResolvedValue();
     const s = await setup('/billing/invoices?business=bakery&year=2026');
     await s.show([PAID]);
     const csv = s.testid('invoices-csv');
@@ -329,13 +402,60 @@ describe('InvoicesTab: filters and search', () => {
     expect(accessibleName(csv)).toBe('Download Excel');
     expect(csv.attributes('title')).toBe('The list of what the filters show, for your accountant (it opens in Excel)');
     await csv.trigger('click');
-    expect(download).toHaveBeenCalledExactlyOnceWith('/api/billing/invoices/csv?hub_id=bakery&year=2026');
+    expect(download).toHaveBeenCalledExactlyOnceWith('/api/billing/invoices/csv?hub_id=bakery&year=2026', 'text/csv');
+  });
+});
+
+describe('InvoicesTab: the toolbar on one line from 641 px (audit 2026-10-14, R-14)', () => {
+  /** A fake layout of the toolbar: the first item on line 1; «Download Excel» on line `csvLine`. */
+  function layOut(csvLine: () => 1 | 2) {
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      const isCsv = this.getAttribute('data-testid') === 'invoices-csv';
+      const top = isCsv ? (csvLine() === 1 ? 2 : 44) : 0;
+      const height = isCsv ? 32 : 36;
+      return { top, bottom: top + height, height, left: 0, right: 0, width: 0, x: 0, y: top, toJSON: () => ({}) } as DOMRect;
+    });
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(760);
+  }
+
+  it('when «Download Excel» falls to a second line, it folds to its icon, still named «Download Excel»', async () => {
+    const observers = mockResizeObserver();
+    let line: 1 | 2 = 1;
+    layOut(() => line);
+    const s = await setup('/billing/invoices?year=2026');
+    await s.show([PAID]);
+    observers.fire();
+    await flush();
+    expect(s.wrapper.classes()).not.toContain('invoices--compact');
+    line = 2;
+    observers.fire();
+    await flush();
+    expect(s.wrapper.classes()).toContain('invoices--compact');
+    const csv = s.testid('invoices-csv');
+    expect(accessibleName(csv)).toBe('Download Excel');
+    expect(csv.attributes('title')).toBe('The list of what the filters show, for your accountant (it opens in Excel)');
+    expect(csv.get('ion-icon').attributes('aria-hidden')).toBe('true');
+  });
+
+  it('a selection that comes or goes tries the full toolbar again', async () => {
+    const observers = mockResizeObserver();
+    let line: 1 | 2 = 2;
+    layOut(() => line);
+    const s = await setup('/billing/invoices?year=2026');
+    await s.show([PAID]);
+    observers.fire();
+    await flush();
+    expect(s.wrapper.classes()).toContain('invoices--compact');
+    line = 1;
+    s.table().vm.$emit('update:selected', ['00123']);
+    await flush();
+    expect(s.wrapper.classes()).not.toContain('invoices--compact');
   });
 });
 
 describe('InvoicesTab: selection', () => {
   it('«Download PDF (n)» downloads the selected ones issued, and says which are still being issued', async () => {
-    const download = vi.spyOn(browser, 'download').mockImplementation(() => {});
+    const download = vi.spyOn(browser, 'download').mockResolvedValue();
     const s = await setup();
     await s.show();
     expect(s.testid('invoices-pdf-selected').exists()).toBe(false);
@@ -344,12 +464,13 @@ describe('InvoicesTab: selection', () => {
     const button = s.testid('invoices-pdf-selected');
     expect(button.text()).toBe('Download PDF (2)');
     await button.trigger('click');
-    expect(download).toHaveBeenCalledExactlyOnceWith('/api/billing/invoices/pdf?id=00123');
+    await flush();
+    expect(download).toHaveBeenCalledExactlyOnceWith('/api/billing/invoices/pdf?id=00123', 'application/pdf');
     expect(toastInfo).toHaveBeenCalledWith('That invoice is still being issued: its PDF is ready in a few minutes.');
   });
 
   it('keeps the rows selected on another page', async () => {
-    const download = vi.spyOn(browser, 'download').mockImplementation(() => {});
+    const download = vi.spyOn(browser, 'download').mockResolvedValue();
     const s = await setup();
     await s.show([PAID], [BAKERY], 1, { total: 30 });
     s.table().vm.$emit('update:selected', ['00123']);
@@ -358,7 +479,158 @@ describe('InvoicesTab: selection', () => {
     s.table().vm.$emit('update:selected', ['00123', '00200']);
     await flush();
     await s.testid('invoices-pdf-selected').trigger('click');
+    await flush();
     expect(download.mock.calls.map(([url]) => url)).toEqual(['/api/billing/invoices/pdf?id=00123', '/api/billing/invoices/pdf?id=00200']);
+  });
+});
+
+describe('InvoicesTab: a file is saved only when it is the file (audit 2026-10-14, R-05)', () => {
+  /** The browser's network for the files: one answer per path; what was asked, kept. */
+  function serveFiles(answer: (url: string) => Response) {
+    const asked: string[] = [];
+    vi.stubGlobal('fetch', (url: string) => {
+      asked.push(url);
+      return Promise.resolve(answer(url));
+    });
+    return asked;
+  }
+  /** What reaches the disk: an object URL made for a blob and an anchor clicked. */
+  function watchSaves() {
+    const saved: string[] = [];
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:http://localhost/1');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      saved.push(this.getAttribute('download') ?? '');
+    });
+    return saved;
+  }
+  const envelope = (status: number, code: string, message: string) => Response.json({ error: { code, message } }, { status });
+  const pdfAction = (s: Awaited<ReturnType<typeof setup>>, id = '00123') => s.testid(`invoices-row-${id}-pdf`).element as HTMLElement & { disabled: boolean };
+  const press = async (s: Awaited<ReturnType<typeof setup>>, id: string) => {
+    await s.testid(id).trigger('click');
+    await flush();
+  };
+
+  it('a PDF the platform hub issued is saved under its name', async () => {
+    const asked = serveFiles(
+      () =>
+        new Response('%PDF-1.7', {
+          status: 200,
+          headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': 'attachment; filename="ERP-2026-00123.pdf"' },
+        }),
+    );
+    const saved = watchSaves();
+    const s = await setup();
+    await s.show();
+    await press(s, 'invoices-row-00123-pdf');
+    expect(asked).toEqual(['/api/billing/invoices/pdf?id=00123']);
+    expect(saved).toEqual(['ERP-2026-00123.pdf']);
+    expect(toastInfo).not.toHaveBeenCalled();
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it('one still being issued (404): says so, saves nothing, and its PDF waits', async () => {
+    serveFiles(() => envelope(404, 'billing.invoice_not_issued', 'This invoice is still being issued: its PDF is ready once it is.'));
+    const saved = watchSaves();
+    const s = await setup();
+    await s.show();
+    expect(pdfAction(s).disabled).toBe(false);
+    await press(s, 'invoices-row-00123-pdf');
+    expect(saved).toEqual([]);
+    expect(toastInfo).toHaveBeenCalledExactlyOnceWith('This invoice is still being issued: its PDF will be ready as soon as it finishes.');
+    expect(pdfAction(s).disabled).toBe(true);
+  });
+
+  it('its PDF waits until its row changes in the list (the server issued it again, or says more)', async () => {
+    serveFiles(() => envelope(404, 'billing.invoice_not_issued', 'This invoice is still being issued: its PDF is ready once it is.'));
+    watchSaves();
+    const s = await setup();
+    await s.show();
+    await press(s, 'invoices-row-00123-pdf');
+    expect(pdfAction(s).disabled).toBe(true);
+    // Another row changes: this one still waits.
+    await s.show([unpaidRow('i9', { total_cents: 100 }), ISSUING, PAID], undefined, 2);
+    expect(pdfAction(s).disabled).toBe(true);
+    await s.show([OPEN, ISSUING, { ...PAID, fiscal_status_label: 'Accepted with errors', fiscal_status: 'accepted_with_errors' }], undefined, 3);
+    expect(pdfAction(s).disabled).toBe(false);
+  });
+
+  it('the invoice service down (503): says it, saves nothing, and the PDF can be asked again', async () => {
+    serveFiles(() => envelope(503, 'billing.platform_unavailable', 'The invoice cannot be downloaded right now. Try again in a moment.'));
+    const saved = watchSaves();
+    const s = await setup();
+    await s.show();
+    await press(s, 'invoices-row-00123-pdf');
+    expect(saved).toEqual([]);
+    expect(toastError).toHaveBeenCalledExactlyOnceWith('The invoice service is not answering. Try again in a moment.');
+    expect(pdfAction(s).disabled).toBe(false);
+  });
+
+  it('without network: the panel’s sentence for it', async () => {
+    vi.stubGlobal('fetch', () => Promise.reject(new TypeError('Failed to fetch')));
+    const saved = watchSaves();
+    const s = await setup();
+    await s.show();
+    await press(s, 'invoices-row-00123-pdf');
+    expect(saved).toEqual([]);
+    expect(toastError).toHaveBeenCalledExactlyOnceWith('We could not reach ERPlora. Check your connection and try again.');
+  });
+
+  it('«Download Excel» that fails (503): says why and saves nothing', async () => {
+    const asked = serveFiles(() => envelope(503, 'service_unavailable', 'The service is not available right now.'));
+    const saved = watchSaves();
+    const s = await setup('/billing/invoices?year=2026');
+    await s.show([PAID]);
+    await press(s, 'invoices-csv');
+    expect(asked).toEqual(['/api/billing/invoices/csv?year=2026']);
+    expect(saved).toEqual([]);
+    expect(toastError).toHaveBeenCalledExactlyOnceWith('The service is not available right now.');
+  });
+
+  it('«Download PDF (n)»: each file on its own; the ones still being issued counted once, and they wait', async () => {
+    const asked = serveFiles((url) =>
+      url.endsWith('00123')
+        ? new Response('%PDF', { status: 200, headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': 'attachment; filename="ERP-2026-00123.pdf"' } })
+        : envelope(404, 'billing.invoice_not_issued', 'This invoice is still being issued: its PDF is ready once it is.'),
+    );
+    const saved = watchSaves();
+    const s = await setup();
+    await s.show([PAID, ISSUING, invoiceRow('00125')]);
+    s.table().vm.$emit('update:selected', ['00123', '00124', '00125']);
+    await flush();
+    await press(s, 'invoices-pdf-selected');
+    expect(asked).toEqual(['/api/billing/invoices/pdf?id=00123', '/api/billing/invoices/pdf?id=00125']);
+    expect(saved).toEqual(['ERP-2026-00123.pdf']);
+    expect(toastInfo).toHaveBeenCalledExactlyOnceWith('2 invoices are still being issued: their PDF is ready in a few minutes.');
+    expect(pdfAction(s, '00125').disabled).toBe(true);
+    expect(pdfAction(s, '00123').disabled).toBe(false);
+  });
+
+  it('«Download PDF (n)» with the invoice service down: one error, not one per file', async () => {
+    serveFiles(() => envelope(503, 'billing.platform_unavailable', 'The invoice cannot be downloaded right now. Try again in a moment.'));
+    const saved = watchSaves();
+    const s = await setup();
+    await s.show([PAID, invoiceRow('00125')]);
+    s.table().vm.$emit('update:selected', ['00123', '00125']);
+    await flush();
+    await press(s, 'invoices-pdf-selected');
+    expect(saved).toEqual([]);
+    expect(toastError).toHaveBeenCalledExactlyOnceWith('The invoice service is not answering. Try again in a moment.');
+  });
+
+  it('says it in Spanish', async () => {
+    serveFiles((url) =>
+      url.endsWith('00123')
+        ? envelope(404, 'billing.invoice_not_issued', 'Esta factura aún se está emitiendo.')
+        : envelope(503, 'billing.platform_unavailable', 'Ahora no se puede descargar la factura.'),
+    );
+    watchSaves();
+    const s = await setup('/billing/invoices', undefined, 'es');
+    await s.show([PAID, invoiceRow('00125')]);
+    await press(s, 'invoices-row-00123-pdf');
+    expect(toastInfo).toHaveBeenCalledExactlyOnceWith('Esta factura se está emitiendo: su PDF estará listo en cuanto termine.');
+    await press(s, 'invoices-row-00125-pdf');
+    expect(toastError).toHaveBeenCalledExactlyOnceWith('El servicio de facturas no responde. Prueba de nuevo en un momento.');
   });
 });
 

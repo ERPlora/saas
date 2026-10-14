@@ -55,6 +55,7 @@ const email = computed(() => session.user.value?.email || session.user.value?.la
                 <HubIcon
                   class="shell-brand-icon"
                   :name="icon"
+                  aria-hidden="true"
                 />
                 <ion-card-title
                   role="heading"
@@ -105,6 +106,7 @@ const email = computed(() => session.user.value?.email || session.user.value?.la
                 <HubIcon
                   slot="start"
                   name="ion:log-out-outline"
+                  aria-hidden="true"
                 />
                 {{ $t('hubs.common.signOut') }}
               </ion-button>

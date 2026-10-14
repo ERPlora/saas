@@ -93,6 +93,12 @@ describe('CancelPlanDialog', () => {
     expect(s.lines()).toContain('The unpaid invoice of Oct 10, 2026 (€36.29) stays pending: cancelling does not cancel it.');
   });
 
+  it('an unpaid invoice whose details did not load (its list failed) is still said, without its date', async () => {
+    const row = subscriptionRow('plaza', 'Bar La Plaza', { unpaid_invoice_id: 'i9' });
+    const s = await setup({ row, unpaid: null }, () => seats(2));
+    expect(s.lines()).toContain('The unpaid invoice stays pending: cancelling does not cancel it.');
+  });
+
   it('the people are not known: Free’s limits alone', async () => {
     const s = await setup({}, () => apiError(503, 'unavailable', 'Try again.'));
     expect(s.lines()[2]).toBe('Free covers 3 users and 1 device at a time.');

@@ -12,22 +12,28 @@
 //     only past the shortest page (README §3b);
 //   - per row, «Pay» (fixed and labelled; web only; disabled while it waits for another card) and the PDF
 //     once issued; a selection with «Download PDF (n)», which says the ones still being issued;
-//   - «Download Excel»: the CSV of everything the filters show, for the accountant.
-// Files are downloaded by the browser (`browser.ts`). Empty, it says why (Free charges nothing).
+//   - «Download Excel»: the CSV of everything the filters show, for the accountant. The toolbar stays on one
+//     line from 641 px (audit 2026-10-14, R-14): when the button falls to a second line it folds to its icon
+//     (named by its label) and the search narrows (`toolbar-fit.ts`); on a phone it reads «Excel».
+// Files are asked for and saved only when the answer is the file (`browser.ts`; audit 2026-10-14, R-05): one
+// still being issued (404) says so and its PDF waits, the invoice service down (503) says it, and nothing is
+// ever saved as `pdf.json`. Empty, it says why (Free charges nothing); failing, it says it could not load.
 import { DataTable, type DataTableAction, type DataTableActionEvent, type DataTableColumn, InlineFeedback, StatusPill } from '@erplora/ui/components';
-import { HubIcon, toastInfo, useSurface, WebOnly } from '@erplora/ui/shell';
-import { useLive, useLiveClient } from '@erplora/ui/sdk';
+import { HubIcon, toastError, toastInfo, useSurface, WebOnly } from '@erplora/ui/shell';
+import { type ApiError, useLive, useLiveClient } from '@erplora/ui/sdk';
 import { IonButton } from '@ionic/vue';
-import { computed, shallowRef, watch } from 'vue';
+import { type ComponentPublicInstance, computed, shallowRef, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
+import { useLiveState } from '../../../frontend/live-state';
 import { useErrorText } from '../../../hubs/frontend/error-text';
 import type { InvoiceFilterIn, InvoicePaymentStatus, InvoiceRowOut } from '../../../frontend/sdk-types';
 import { browser, operationUrl } from '../browser';
 import { formatDate } from '../format';
 import { formatAmount, invoiceBusinesses, invoiceName, invoicePill, yearOptions } from '../invoices';
 import { usePayInvoice } from '../pay';
+import { useToolbarFit } from '../toolbar-fit';
 import InvoiceFilters from './InvoiceFilters.vue';
 
 const PAGE_SIZES = [10, 25, 50];
@@ -134,7 +140,10 @@ const live = useLive('billing.invoice.list', () => ({
   offset: page.value * pageSize.value,
 }));
 const rows = computed<InvoiceRowOut[]>(() => live.data.value?.rows ?? []);
-const firstLoad = computed(() => live.status.value === 'loading' && !live.data.value);
+/** Loading, failed (the query, the stream, or nothing in time) or a real answer: never «No invoices yet» on a
+ *  failure (audit 2026-10-14, R-04). The businesses only feed the filter: their failure blocks nothing. */
+const state = useLiveState(live, { isEmpty: (data) => data.total === 0 });
+const loadError = computed(() => (state.failed.value ? text(state.error.value) || t('billing.load.reason') : undefined));
 
 // A page emptied elsewhere steps back to the last page that still has rows.
 watch(live.data, (now) => {
@@ -189,12 +198,14 @@ const actions = computed<DataTableAction<InvoiceRowOut>[]>(() => [
     icon: 'ion:download-outline',
     color: 'primary',
     hidden: (row) => !row.actions.includes('pdf'),
+    disabled: (row) => notIssued.value.has(row.id),
+    loading: (row) => fetching.value.has(row.id),
   },
 ]);
 
 function onAction({ actionId, row }: DataTableActionEvent<InvoiceRowOut>): void {
   if (actionId === 'pay' && row.can.pay) void pay(row);
-  else if (actionId === 'pdf') downloadPdfs([row]);
+  else if (actionId === 'pdf') void downloadPdfs([row]);
 }
 
 // ── Credit notes ────────────────────────────────────────────────────────────────────────────────
@@ -246,22 +257,84 @@ watch(rows, (now) => {
   for (const row of now) seen.set(row.id, row);
 });
 
-/** Downloads the PDF of the ones issued; says how many are still being issued. */
-function downloadPdfs(invoices: InvoiceRowOut[]): void {
+/** The invoices the server said are still being issued (404 `billing.invoice_not_issued`), with their row as it
+ *  was then: their PDF waits, as «Issuing» does, until the list sends that row changed. */
+const notIssued = shallowRef(new Map<string, string>());
+watch(rows, (now) => {
+  if (!notIssued.value.size) return;
+  const next = new Map(notIssued.value);
+  for (const row of now) if (next.get(row.id) !== undefined && next.get(row.id) !== JSON.stringify(row)) next.delete(row.id);
+  if (next.size !== notIssued.value.size) notIssued.value = next;
+});
+/** The PDFs being asked for now. */
+const fetching = shallowRef(new Set<string>());
+
+function withId(set: ReadonlySet<string>, id: string, on: boolean): Set<string> {
+  const next = new Set(set);
+  if (on) next.add(id);
+  else next.delete(id);
+  return next;
+}
+
+/** What a failed file says; `null` for one still being issued (said apart). */
+function fileError(error: ApiError): string | null {
+  if (error.code === 'billing.invoice_not_issued') return null;
+  if (error.code === 'billing.platform_unavailable') return t('billing.invoices.pdfUnavailable');
+  return text(error);
+}
+
+/** Downloads the PDF of each issued one, one after the other; says once how many are still being issued
+ *  (and once what failed, not per file). Alone, one still being issued says so in its own words. */
+async function downloadPdfs(invoices: InvoiceRowOut[]): Promise<void> {
   let waiting = 0;
+  let failure: string | null = null;
   for (const invoice of invoices) {
-    if (invoice.can.pdf) browser.download(operationUrl('billing.invoice.pdf', { id: invoice.id }));
-    else waiting += 1;
+    if (!invoice.can.pdf || notIssued.value.has(invoice.id)) {
+      waiting += 1;
+      continue;
+    }
+    fetching.value = withId(fetching.value, invoice.id, true);
+    try {
+      await browser.download(operationUrl('billing.invoice.pdf', { id: invoice.id }), 'application/pdf');
+    } catch (error) {
+      const said = fileError(error as ApiError);
+      if (said === null) {
+        notIssued.value = new Map(notIssued.value).set(invoice.id, JSON.stringify(invoice));
+        waiting += 1;
+      } else {
+        console.error('billing: an invoice PDF could not be downloaded', error);
+        failure ??= said;
+      }
+    } finally {
+      fetching.value = withId(fetching.value, invoice.id, false);
+    }
   }
-  if (waiting) void toastInfo(t('billing.invoices.pdfNotReady', { count: waiting }, waiting));
+  if (failure) void toastError(failure);
+  if (!waiting) return;
+  const alone = invoices.length === 1;
+  void toastInfo(alone ? t('billing.invoices.pdfIssuing') : t('billing.invoices.pdfNotReady', { count: waiting }, waiting));
 }
 
 function downloadSelected(): void {
-  downloadPdfs(selected.value.flatMap((id) => seen.get(id) ?? []));
+  void downloadPdfs(selected.value.flatMap((id) => seen.get(id) ?? []));
 }
 
-function downloadCsv(): void {
-  browser.download(operationUrl('billing.invoice.csv', filters.value));
+// ── The toolbar on one line ─────────────────────────────────────────────────────────────────────
+const csvButton = useTemplateRef<ComponentPublicInstance>('csvButton');
+const fit = useToolbarFit(computed(() => (csvButton.value?.$el as Element | undefined) ?? null));
+// «Download PDF (n)» comes and goes with the selection: the full toolbar may fit again, or not.
+watch(
+  () => selected.value.length > 0,
+  () => fit.retry(),
+);
+
+async function downloadCsv(): Promise<void> {
+  try {
+    await browser.download(operationUrl('billing.invoice.csv', filters.value), 'text/csv');
+  } catch (error) {
+    console.error('billing: the invoices CSV could not be downloaded', error);
+    void toastError(text(error as ApiError));
+  }
 }
 
 // ── Empty ───────────────────────────────────────────────────────────────────────────────────────
@@ -274,7 +347,7 @@ const freeBusiness = computed(() => {
 </script>
 
 <template>
-  <div class="invoices panel-fill">
+  <div :class="['invoices', 'panel-fill', { 'invoices--compact': fit.compact.value }]">
     <InlineFeedback
       v-if="unknownBusiness"
       tone="neutral"
@@ -302,8 +375,8 @@ const freeBusiness = computed(() => {
       :views="['table', 'cards']"
       :card-breakpoint="CARD_BREAKPOINT"
       :hide-toolbar-when-empty="!filtered"
-      :loading="firstLoad"
-      :error="live.status.value === 'error' ? text(live.error.value) || $t('billing.invoices.loadError') : undefined"
+      :loading="state.loading.value"
+      :error="loadError"
       :search-placeholder="$t('billing.invoices.search')"
       :labels="labels"
       :entity-label="entityLabel"
@@ -315,7 +388,7 @@ const freeBusiness = computed(() => {
       @load-more="windowPages += 1"
       @page-size-change="setPageSize"
       @action="onAction"
-      @retry="live.refresh()"
+      @retry="state.retry()"
     >
       <template #filters>
         <InvoiceFilters
@@ -341,11 +414,13 @@ const freeBusiness = computed(() => {
           <HubIcon
             slot="start"
             name="ion:download-outline"
+            aria-hidden="true"
           />
           {{ $t('billing.invoices.pdfSelected', { count: selected.length }) }}
         </ion-button>
         <ion-button
-          class="invoices-tool"
+          ref="csvButton"
+          class="invoices-tool invoices-csv"
           size="small"
           fill="outline"
           data-testid="invoices-csv"
@@ -356,6 +431,7 @@ const freeBusiness = computed(() => {
           <HubIcon
             slot="start"
             name="ion:download-outline"
+            aria-hidden="true"
           />
           <span class="csv-label--long">{{ $t('billing.invoices.csv') }}</span>
           <span
@@ -395,7 +471,10 @@ const freeBusiness = computed(() => {
           class="invoices-empty"
           data-testid="invoices-empty"
         >
-          <span class="invoices-empty__icon"><HubIcon :name="filtered ? 'ion:file-tray-outline' : 'ion:receipt-outline'" /></span>
+          <span class="invoices-empty__icon"><HubIcon
+            :name="filtered ? 'ion:file-tray-outline' : 'ion:receipt-outline'"
+            aria-hidden="true"
+          /></span>
           <template v-if="filtered">
             <span>{{ freeBusiness ? $t('billing.invoices.empty.freeBusiness', { name: freeBusiness.name }) : $t('billing.invoices.noMatches') }}</span>
             <ion-button
@@ -407,6 +486,7 @@ const freeBusiness = computed(() => {
               <HubIcon
                 slot="start"
                 name="ion:close-outline"
+                aria-hidden="true"
               />
               {{ $t('billing.invoices.showAll') }}
             </ion-button>
@@ -422,6 +502,7 @@ const freeBusiness = computed(() => {
                 <HubIcon
                   slot="start"
                   name="lucide:layers"
+                  aria-hidden="true"
                 />
                 {{ $t('billing.invoices.empty.plans') }}
               </ion-button>
@@ -448,12 +529,29 @@ const freeBusiness = computed(() => {
 .csv-label--short {
   display: none;
 }
+/* Folded (`toolbar-fit.ts`): «Download Excel» is its icon, named by its aria-label, and the search narrows
+   (DataTable's own box: 22rem, at least 12rem), so the toolbar keeps one line from 641 px (R-14). */
+@media (min-width: 641px) {
+  .invoices--compact .csv-label--long {
+    display: none;
+  }
+  .invoices--compact .invoices-csv > ion-icon {
+    margin-inline-end: 0;
+  }
+  .invoices--compact :deep(.data-table__search) {
+    flex-basis: 14rem;
+  }
+}
 @media (max-width: 640px) {
   .csv-label--long {
     display: none;
   }
   .csv-label--short {
     display: inline;
+  }
+  /* A real tap target on a phone (audit 2026-10-14, R-13). */
+  .invoices-tool {
+    min-height: 44px;
   }
 }
 .invoice-number {

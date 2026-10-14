@@ -20,7 +20,8 @@
         "body": "Only the owner of a business buys its plan and its modules. Create your own business, or ask its owner.",
         "action": "Go to Businesses"
       },
-      "unknownBusiness": "We could not find that business among yours: here is {name}. Pick another one above if you like."
+      "unknownBusiness": "We could not find that business among yours: here is {name}. Pick another one above if you like.",
+      "businessesError": "We could not load your businesses"
     },
     "picker": {
       "heading": "Which business is it for?",
@@ -210,7 +211,16 @@
       "lineMany": "{count} unpaid invoices: {amount}.",
       "viewOne": "View the invoice",
       "viewMany": "View the invoices",
-      "paid": "Invoice paid: {name} is up to date again"
+      "paid": "Invoice paid: {name} is up to date again",
+      "unknown": "We could not check whether you have unpaid invoices.",
+      "retry": "Retry",
+      "groupHeading": "{count} unpaid invoice: {amount} | {count} unpaid invoices: {amount}",
+      "groupSuspended": "{name} is suspended until it is paid ({amount}).",
+      "groupPastDue": "{name} is suspended on {date} if it is not paid ({amount}).",
+      "groupPastDueNoDate": "{name} is suspended if it is not paid soon ({amount}).",
+      "groupFooter": "Nothing is deleted: once an invoice is paid, its business works again at once.",
+      "appMany": "To pay them, go to erplora.com in your browser.",
+      "appDeclinedMany": "To change the card and pay them, go to erplora.com in your browser."
     },
     "invoices": {
       "title": "ERPlora invoices",
@@ -256,7 +266,9 @@
       "rectifies": "Rectifies {number}",
       "rectification": "Credit note {type} · {reason}",
       "rectificationNoReason": "Credit note {type}",
-      "csvShort": "Excel"
+      "csvShort": "Excel",
+      "pdfIssuing": "This invoice is still being issued: its PDF will be ready as soon as it finishes.",
+      "pdfUnavailable": "The invoice service is not answering. Try again in a moment."
     },
     "subscriptions": {
       "title": "Subscriptions",
@@ -347,6 +359,9 @@
         "unavailable": "VIES does not answer right now: we check it again when invoicing.",
         "outside_vies": "A UK number: it is not checked in VIES."
       }
+    },
+    "load": {
+      "reason": "Check your connection and try again."
     }
   }
 }

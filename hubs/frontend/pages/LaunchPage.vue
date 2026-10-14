@@ -10,9 +10,12 @@
 //   - one business → «Open X» (disabled while it is prepared, gone while suspended) and «Go to the
 //     panel», with why it does not open;
 //   - several → the server's order (the last opened first), «Open» on each, «Create another business».
-// Live data: `hubs.business.list` (the account's businesses and its pending invitations). Ionic reuses
-// the page when it comes back on screen: its address (`?notice=`) and the tab's title are read then.
-import { formatDateTime, InlineFeedback, StatusPill } from '@erplora/ui/components';
+// Live data: `hubs.business.list` (the account's businesses and its pending invitations), its states truthful
+// (`useLiveState`, audit 2026-10-14 R-08: no answer in time is an error with «Retry», never a spinner for ever).
+// A business that owes an invoice says its real deadline (R-06) and, on the web for whoever may pay it, «Pay the
+// invoice» (or «Change card») is the main action, «Open» the second (R-07; mockups `launch.html` «past-due»).
+// Ionic reuses the page when it comes back on screen: its address (`?notice=`) and the tab's title are read then.
+import { InlineFeedback, StatusPill } from '@erplora/ui/components';
 import { HubIcon, useSession, useSurface } from '@erplora/ui/shell';
 import { useLive } from '@erplora/ui/sdk';
 import { IonButton, IonProgressBar, IonSpinner, onIonViewWillEnter } from '@ionic/vue';
@@ -20,12 +23,15 @@ import { computed, onMounted, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
+import { useLiveState } from '../../../frontend/live-state';
+import LoadFailed from '../../../frontend/LoadFailed.vue';
 import type { BusinessRowOut, InvitationOut } from '../../../frontend/sdk-types';
-import { preparationFailed, reasonKey, statusPill } from '../business-status';
+import { preparationFailed, reasonDate, reasonKey, statusPill } from '../business-status';
 import BusinessCreateForm from '../components/BusinessCreateForm.vue';
 import BusinessPreparing from '../components/BusinessPreparing.vue';
 import CardShell from '../components/CardShell.vue';
 import DeclineDialog from '../components/DeclineDialog.vue';
+import UnpaidActions from '../components/UnpaidActions.vue';
 import { useAcceptInvitation } from '../invitations';
 import { useOpenBusiness } from '../open-business';
 
@@ -35,13 +41,14 @@ const PANEL = '/businesses';
 const { t, locale } = useI18n();
 const router = useRouter();
 const session = useSession();
-const { inApp } = useSurface();
+const { inApp, isWeb } = useSurface();
 
 const user = computed(() => session.user.value);
 const mfaUnavailable = shallowRef(false);
 // Signed out there is nothing to follow (and the stream would refuse it): only then no subscription.
 // Signing in or out reloads the page (allauth, Django's logout form), so this is decided once.
 const live = user.value ? useLive('hubs.business.list', { limit: 50, offset: 0 }) : null;
+const state = live ? useLiveState(live) : null;
 const { open, opening } = useOpenBusiness();
 const { accept, accepting } = useAcceptInvitation();
 
@@ -60,7 +67,7 @@ type Variant = 'signedOut' | 'loading' | 'error' | 'preparing' | 'failed' | 'inv
 const createdRow = computed(() => rows.value.find((row) => row.id === created.value?.id));
 const variant = computed<Variant>(() => {
   if (!live) return 'signedOut';
-  if (!live.data.value) return live.status.value === 'error' ? 'error' : 'loading';
+  if (!live.data.value) return state?.failed.value ? 'error' : 'loading';
   if (created.value) return createdRow.value && preparationFailed(createdRow.value) ? 'failed' : 'preparing';
   if (rows.value.length === 0) return invitations.value.length && !ownForm.value ? 'invited' : 'first';
   return rows.value.length === 1 ? 'one' : 'several';
@@ -162,8 +169,12 @@ function reason(business: BusinessRowOut, short = false): string {
   if (!key) return '';
   // With several nothing opens by itself: the neutral «ready in a few seconds».
   if (short && key === 'hubs.reason.preparing') return t('hubs.reason.preparingSoon');
-  return t(key, { date: formatDateTime(business.purge_after, locale.value) });
+  return t(key, { date: reasonDate(business, locale.value) });
 }
+
+/** On the web, whoever may pay a business's unpaid invoice is offered to pay it first (R-07). */
+const owes = (business: BusinessRowOut) =>
+  isWeb.value && !!business.pay_url && (business.status === 'past_due' || business.status === 'suspended');
 
 function meta(business: BusinessRowOut, withPlan: boolean): string {
   return withPlan && business.plan
@@ -231,6 +242,7 @@ onIonViewWillEnter(entered);
           <HubIcon
             slot="start"
             name="ion:log-in-outline"
+            aria-hidden="true"
           />
           {{ $t('hubs.launch.signedOut.signIn') }}
         </ion-button>
@@ -244,6 +256,7 @@ onIonViewWillEnter(entered);
           <HubIcon
             slot="start"
             name="ion:person-outline"
+            aria-hidden="true"
           />
           {{ $t('hubs.launch.signedOut.signUp') }}
         </ion-button>
@@ -268,27 +281,13 @@ onIonViewWillEnter(entered);
           <ion-spinner name="crescent" />
         </div>
 
-        <InlineFeedback
+        <LoadFailed
           v-else-if="variant === 'error'"
-          tone="danger"
-          data-testid="launch-error"
-        >
-          {{ $t('hubs.launch.loadError') }}
-          <template #actions>
-            <ion-button
-              data-testid="launch-retry"
-              size="small"
-              fill="outline"
-              @click="live?.refresh()"
-            >
-              <HubIcon
-                slot="start"
-                name="ion:refresh-outline"
-              />
-              {{ $t('hubs.common.retry') }}
-            </ion-button>
-          </template>
-        </InlineFeedback>
+          :heading="$t('hubs.launch.loadError')"
+          testid="launch-error"
+          retry-testid="launch-retry"
+          @retry="state?.retry()"
+        />
 
         <!-- ═══ Just created: preparing ═══ -->
         <template v-else-if="variant === 'preparing' && created">
@@ -307,6 +306,7 @@ onIonViewWillEnter(entered);
             <HubIcon
               slot="start"
               name="ion:grid-outline"
+              aria-hidden="true"
             />
             {{ $t('hubs.launch.preparing.meanwhile') }}
           </ion-button>
@@ -329,6 +329,7 @@ onIonViewWillEnter(entered);
             <HubIcon
               slot="start"
               name="ion:grid-outline"
+              aria-hidden="true"
             />
             {{ $t('hubs.common.goToPanel') }}
           </ion-button>
@@ -354,6 +355,7 @@ onIonViewWillEnter(entered);
               v-else
               slot="start"
               name="ion:log-in-outline"
+              aria-hidden="true"
             />
             {{ $t('hubs.invitation.accept') }}
           </ion-button>
@@ -368,6 +370,7 @@ onIonViewWillEnter(entered);
             <HubIcon
               slot="start"
               name="ion:close-outline"
+              aria-hidden="true"
             />
             {{ $t('hubs.invitation.decline') }}
           </ion-button>
@@ -381,6 +384,7 @@ onIonViewWillEnter(entered);
             <HubIcon
               slot="start"
               name="ion:add-outline"
+              aria-hidden="true"
             />
             {{ $t('hubs.launch.invited.createOwn') }}
           </ion-button>
@@ -404,6 +408,7 @@ onIonViewWillEnter(entered);
             <HubIcon
               slot="start"
               name="ion:grid-outline"
+              aria-hidden="true"
             />
             {{ $t('hubs.common.goToPanel') }}
           </ion-button>
@@ -443,7 +448,10 @@ onIonViewWillEnter(entered);
               :class="{ 'is-waiting': rows[0].status === 'preparing' }"
               data-testid="launch-business"
             >
-              <span class="biz-card__icon"><HubIcon name="ion:storefront-outline" /></span>
+              <span class="biz-card__icon"><HubIcon
+                name="ion:storefront-outline"
+                aria-hidden="true"
+              /></span>
               <div class="launch-biz__text">
                 <h2>{{ rows[0].name }}</h2>
                 <p class="mono launch-biz__url">
@@ -472,12 +480,20 @@ onIonViewWillEnter(entered);
               class="launch-progress"
               :aria-label="$t('hubs.preparing.progress')"
             />
+            <UnpaidActions
+              v-if="owes(rows[0])"
+              :business="rows[0]"
+              size="large"
+              expand="block"
+              class="launch-main"
+            />
             <ion-button
               v-if="opensAtAll(rows[0])"
               data-testid="launch-open"
               expand="block"
-              size="large"
-              class="launch-main"
+              :size="owes(rows[0]) ? undefined : 'large'"
+              :fill="owes(rows[0]) ? 'outline' : 'solid'"
+              :class="owes(rows[0]) ? 'launch-second' : 'launch-main'"
               :disabled="!rows[0].can_open || !!opening"
               @click="open(rows[0])"
             >
@@ -491,6 +507,7 @@ onIonViewWillEnter(entered);
                 v-else
                 slot="start"
                 name="ion:log-in-outline"
+                aria-hidden="true"
               />
               {{ opening === rows[0].id ? $t('hubs.open.opening', { name: rows[0].name }) : $t('hubs.common.openName', { name: rows[0].name }) }}
             </ion-button>
@@ -507,7 +524,10 @@ onIonViewWillEnter(entered);
               :class="{ 'is-waiting': business.status === 'preparing' }"
               data-testid="launch-business"
             >
-              <span class="biz-card__icon"><HubIcon name="ion:storefront-outline" /></span>
+              <span class="biz-card__icon"><HubIcon
+                name="ion:storefront-outline"
+                aria-hidden="true"
+              /></span>
               <div class="launch-biz__text">
                 <h2>{{ business.name }}</h2>
                 <p class="mono launch-biz__url">
@@ -530,6 +550,13 @@ onIonViewWillEnter(entered);
                 >
                   {{ reason(business, true) }}
                 </p>
+                <UnpaidActions
+                  v-if="owes(business)"
+                  :business="business"
+                  named
+                  size="small"
+                  class="launch-biz__pay"
+                />
               </div>
               <ion-button
                 v-if="opensAtAll(business)"
@@ -548,6 +575,7 @@ onIonViewWillEnter(entered);
                   v-else
                   slot="start"
                   name="ion:log-in-outline"
+                  aria-hidden="true"
                 />
                 {{ $t('hubs.common.open') }}
               </ion-button>
@@ -564,6 +592,7 @@ onIonViewWillEnter(entered);
             <HubIcon
               slot="start"
               name="ion:grid-outline"
+              aria-hidden="true"
             />
             {{ $t('hubs.common.goToPanel') }}
           </ion-button>
@@ -578,6 +607,7 @@ onIonViewWillEnter(entered);
             <HubIcon
               slot="start"
               name="ion:add-outline"
+              aria-hidden="true"
             />
             {{ $t('hubs.launch.several.createAnother') }}
           </ion-button>
@@ -610,6 +640,12 @@ onIonViewWillEnter(entered);
 }
 .launch-main {
   margin-top: 16px;
+}
+.launch-second {
+  margin-top: 10px;
+}
+.launch-biz__pay {
+  margin-top: 8px;
 }
 ion-button[expand='block'] + ion-button[expand='block'] {
   margin-top: 10px;

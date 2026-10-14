@@ -54,7 +54,8 @@ async function invoiceIds(page: Page): Promise<Record<string, string>> {
   return Object.fromEntries(rows.map((row) => [row.reference, row.id]));
 }
 
-const banner = (page: Page, name: string) => page.locator('[data-testid^="billing-unpaid-"]').filter({ hasText: name });
+/** What waits for a payment for business `name`: its line of the grouped notice (two or more unpaid, audit R-15). */
+const banner = (page: Page, name: string) => page.getByTestId('unpaid-group-item').filter({ hasText: name });
 
 /** Picks `option` in the `ion-select` hooked as `testid` (an Ionic popover). */
 async function pick(page: Page, testid: string, option: string): Promise<void> {
@@ -126,10 +127,13 @@ test.describe('billing', () => {
     const issuing = page.locator(`[data-testid="invoices-row"][data-id="${ids['E2EBAKERY_SEP-0001']}"]`);
     await expect(issuing).toContainText('Issuing');
     await expect(issuing.getByTestId(`invoices-row-${ids['E2EBAKERY_SEP-0001']}-pdf`)).toHaveCount(0);
-    // What waits for a payment: one banner per invoice.
-    await expect(banner(page, 'Bar La Plaza')).toContainText('We could not collect €36.29 from Bar La Plaza');
+    // What waits for a payment: two invoices, one notice (audit R-15), each business on its line, days only.
+    const group = page.getByTestId('billing-unpaid-group');
+    await expect(group).toContainText('2 unpaid invoices: €72.58');
+    await expect(banner(page, 'Bar La Plaza')).toContainText(/Bar La Plaza is suspended on \w{3} \d{1,2}, \d{4} if it is not paid \(€36\.29\)\./);
     await expect(banner(page, 'Bar La Plaza')).toContainText('The bank declined the card.');
-    await expect(banner(page, 'Bar Norte')).toContainText('We could not collect €36.29 from Bar Norte');
+    await expect(banner(page, 'Bar Norte')).toContainText('Bar Norte is suspended on');
+    expect(await group.innerText()).not.toMatch(/\d{1,2}:\d{2}/);
     await page.screenshot({ path: join(SHOTS_DIR, 'billing-past-due-1280-light.png'), fullPage: true });
     // Filters: one «Filters» control of the toolbar (a popover, nothing from the bottom): the business in a
     // popover select, the status in a segment; kept in the address and counted on the button.
@@ -142,6 +146,9 @@ test.describe('billing', () => {
     await expect(page).toHaveURL(/status=paid/);
     await expect(page.getByTestId('invoices-filters-count')).toHaveText('2');
     await expect(page.locator('ion-action-sheet')).toHaveCount(0);
+    // Escape closes the topmost overlay: wait until the business select's own popover has gone, or under load
+    // it is still leaving and takes the Escape (a race of the test, seen in full runs).
+    await expect(page.locator('ion-popover.select-popover')).toHaveCount(0);
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('invoices-filters-panel')).toBeHidden();
     await expect(page.getByTestId('invoices-empty')).toContainText('No invoice matches the search or the filters');
@@ -187,7 +194,8 @@ test.describe('billing', () => {
       await selectRow(ids['E2EBAKERY_SEP-0001']).click();
       await expect(page.getByTestId('invoices-pdf-selected')).toHaveText('Download PDF (1)');
       await page.getByTestId('invoices-pdf-selected').click();
-      await expect(toast(page, 'That invoice is still being issued: its PDF is ready in a few minutes.')).toBeVisible();
+      // Alone, it says so in its own words (R-05).
+      await expect(toast(page, 'This invoice is still being issued: its PDF will be ready as soon as it finishes.')).toBeVisible();
       await page.screenshot({ path: join(SHOTS_DIR, 'billing-selected-1280-light.png') });
     } finally {
       await new Promise<void>((closed) => {
@@ -195,6 +203,39 @@ test.describe('billing', () => {
         hub.close(() => closed());
       });
     }
+  });
+
+  test('PDF and CSV refused (R-05): a toast says why, the action waits, and no `.json` is ever saved', async ({ page }) => {
+    const saved: string[] = [];
+    page.on('download', (download) => saved.push(download.suggestedFilename()));
+    await page.goto('/billing/invoices');
+    const ids = await invoiceIds(page);
+    const issued = page.getByTestId(`invoices-row-${ids['E2EBAKERY_AUG-0001']}-pdf`);
+    // The platform hub away (nobody listens on the Hub's port): the server answers 503.
+    await issued.click();
+    await expect(toast(page, 'The invoice service is not answering. Try again in a moment.')).toBeVisible();
+    // The platform hub has no PDF of it yet: 404 «still being issued», and its «Download PDF» waits.
+    await page.route(/\/api\/billing\/invoices\/pdf\?/, (route) =>
+      route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: { code: 'billing.invoice_not_issued', message: 'This invoice is still being issued.' } }),
+      }),
+    );
+    await issued.click();
+    await expect(toast(page, 'This invoice is still being issued: its PDF will be ready as soon as it finishes.')).toBeVisible();
+    await expect(issued.locator('button')).toBeDisabled();
+    // The CSV refused the same way: said, not saved.
+    await page.route(/\/api\/billing\/invoices\/csv/, (route) =>
+      route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: { code: 'service_unavailable', message: 'The service is not answering.' } }),
+      }),
+    );
+    await page.getByTestId('invoices-csv').click();
+    await expect(toast(page, 'The service is not answering.')).toBeVisible();
+    expect(saved).toEqual([]);
   });
 
   test('«Download Excel»: the CSV of what the filters show, ready for Excel', async ({ page }) => {
@@ -221,9 +262,9 @@ test.describe('billing', () => {
     const ids = await invoiceIds(page);
     // Bar La Plaza: the bank declined the card — «Change card» first, «Pay» waits, saying why.
     const plaza = banner(page, 'Bar La Plaza');
-    await expect(plaza.getByTestId('unpaid-change-card')).toBeVisible();
+    await expect(plaza.getByTestId('unpaid-group-change-card')).toBeVisible();
     await expect(plaza.getByTestId('pay-invoice').locator('button')).toBeDisabled();
-    await expect(plaza.getByTestId('unpaid-why')).toHaveText('Change the card first: we do not charge the card the bank declined again.');
+    await expect(plaza.getByTestId('unpaid-group-why')).toHaveText('Change the card first: we do not charge the card the bank declined again.');
     await expect(page.getByTestId(`invoices-row-${ids['E2EPLAZA-0001']}-pay`).locator('button')).toBeDisabled();
     // Bar Norte: «Pay» → «Paying…» (every «Pay» waits) → Stripe's page of that invoice, asked once.
     const pay = banner(page, 'Bar Norte').getByTestId('pay-invoice');
@@ -258,7 +299,7 @@ test.describe('billing', () => {
       await route.fulfill({ json: { url: 'https://billing.stripe.com/p/session/e2e' } });
     });
     await page.goto('/billing/invoices');
-    await banner(page, 'Bar La Plaza').getByTestId('unpaid-change-card').click();
+    await banner(page, 'Bar La Plaza').getByTestId('unpaid-group-change-card').click();
     await page.waitForURL('https://billing.stripe.com/p/session/e2e');
     expect(opened).toEqual([{ hub_id: await businessIdOf(page.request, 'Bar La Plaza') }]);
   });
@@ -353,9 +394,8 @@ test.describe('billing', () => {
     await expect(page.getByTestId('invoices-row')).toHaveCount(4);
     await expect(page.getByTestId('pay-invoice')).toHaveCount(0);
     await expect(page.locator('[data-testid$="-pay"]')).toHaveCount(0);
-    await expect(page.getByTestId('unpaid-change-card')).toHaveCount(0);
-    await expect(banner(page, 'Bar La Plaza').getByTestId('unpaid-app')).toHaveText('To change the card and pay it, go to erplora.com in your browser.');
-    await expect(banner(page, 'Bar Norte').getByTestId('unpaid-app')).toHaveText('To pay it, go to erplora.com in your browser.');
+    await expect(page.getByTestId('unpaid-group-change-card')).toHaveCount(0);
+    await expect(page.getByTestId('unpaid-group-app')).toHaveText('To change the card and pay them, go to erplora.com in your browser.');
     await page.setViewportSize({ width: 390, height: 844 });
     await page.screenshot({ path: join(SHOTS_DIR, 'billing-default-mobile-390-light.png'), fullPage: true });
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -393,7 +433,7 @@ test.describe('billing', () => {
           await page.goto(`/billing/${tab}`);
           await expect(page.getByTestId(hook).first()).toBeVisible();
           // What waits for a payment is live: on top of every tab once the stream answers.
-          await expect(page.getByTestId(tab === 'invoices' ? 'unpaid-body' : 'billing-unpaid-text').first()).toBeVisible();
+          await expect(page.getByTestId(tab === 'invoices' ? 'billing-unpaid-group' : 'billing-unpaid-text').first()).toBeVisible();
           await settled(page);
           expect(await sidewaysScroll(page), `${tab} at ${width}`).toEqual([]);
           expect(await actionsOverflow(page), `${tab} at ${width}: actions over the previous column`).toEqual([]);

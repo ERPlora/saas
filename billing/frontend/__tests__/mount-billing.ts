@@ -1,6 +1,10 @@
 // Test helper of the Store's pages and components: the hubs harness (the SDK's fake clock and network on
 // the SaaS's op → route map, a session, a memory router) with the catalogues the Store paints with —
-// billing's, and hubs' for the shared error sentences (`useErrorText`, `hubs/frontend/error-text.ts`).
+// billing's, hubs' for the shared error sentences (`useErrorText`, `hubs/frontend/error-text.ts`) and the
+// entry's (`LoadFailed.vue`'s «could not load», merged by main.ts at runtime).
+//
+// `liveDown` makes `/api/live` refuse the stream (503, as with the SSE down in the audit of 2026-10-14,
+// R-04) until it is set back to `false`: the API still answers, and a stream opened after that is served.
 //
 // A test that opens a dialog mocks Ionic's overlay with the ui's stub, in its own file (hoisted):
 //   vi.mock('@ionic/vue', async (importOriginal) => ({
@@ -10,12 +14,14 @@
 import { createShellI18n, provideSession, type SessionMe } from '@erplora/ui/shell';
 import { LIVE_CLIENT_KEY } from '@erplora/ui/sdk';
 import { mount } from '@vue/test-utils';
-import { type Component, createApp, ref } from 'vue';
+import { type Component, createApp, ref, shallowRef } from 'vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
 import { createTestClient, flush, resultFrame, type StreamCall } from '../../../packages/ui/src/sdk/__tests__/live-harness';
 import { PopoverStub } from '../../../packages/ui/src/components/DataTable/__tests__/harness';
 import { OPERATION_ROUTES } from '../../../frontend/generated/operation-routes';
+import entryEn from '../../../frontend/locale/en.json';
+import entryEs from '../../../frontend/locale/es.json';
 import hubsEn from '../../../hubs/frontend/locale/en.json';
 import hubsEs from '../../../hubs/frontend/locale/es.json';
 import { describeCall, OWNER, SAAS_CONFIG, subId } from '../../../hubs/frontend/__tests__/mount-hubs';
@@ -48,7 +54,20 @@ export interface MountOptions {
 }
 
 export async function mountBilling(component: Component, options: MountOptions = {}) {
-  const harness = createTestClient({ routes: OPERATION_ROUTES }, SAAS_CONFIG);
+  /** `true`: `/api/live` answers 503 (the SSE down); the API keeps answering. */
+  const liveDown = shallowRef(false);
+  const served: { fetchImpl?: (url: string, init: RequestInit) => Promise<Response> } = {};
+  const harness = createTestClient(
+    {
+      routes: OPERATION_ROUTES,
+      fetchImpl: (url, init) =>
+        liveDown.value && url.startsWith(`${SAAS_CONFIG.liveUrl}?`)
+          ? Promise.resolve(Response.json({ error: { code: 'service_unavailable', message: 'Service unavailable' } }, { status: 503 }))
+          : served.fetchImpl!(url, init),
+    },
+    SAAS_CONFIG,
+  );
+  served.fetchImpl = harness.net.fetchImpl;
   if (options.api) harness.net.onApi(options.api);
   const router = createRouter({
     history: createMemoryHistory(),
@@ -61,7 +80,7 @@ export async function mountBilling(component: Component, options: MountOptions =
   provideSession(me, ref('live'), { app });
   const i18n = createShellI18n({
     locale: options.locale ?? 'en',
-    messages: { en: { ...hubsEn, ...en }, es: { ...hubsEs, ...es } },
+    messages: { en: { ...entryEn, ...hubsEn, ...en }, es: { ...entryEs, ...hubsEs, ...es } },
   });
   const wrapper = mount(component, {
     props: options.props,
@@ -85,5 +104,5 @@ export async function mountBilling(component: Component, options: MountOptions =
   const q = (id: string) => document.querySelector(`[data-testid="${id}"]`) as (HTMLElement & Record<string, unknown>) | null;
   /** Every element with that `data-testid`. */
   const qa = (id: string) => [...document.querySelectorAll(`[data-testid="${id}"]`)] as Array<HTMLElement & Record<string, unknown>>;
-  return { ...harness, router, wrapper, live, result, calls, me, i18n, q, qa };
+  return { ...harness, router, wrapper, live, result, calls, me, i18n, q, qa, liveDown };
 }

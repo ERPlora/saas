@@ -69,4 +69,10 @@ describe('panel-fill.css: the height chain of a panel page with a list', () => {
     // Never on a desk.
     expect(rule('.panel-fill .data-table__bar-main:has(> .data-table__search) > .data-table__title-wrap')).toBe('');
   });
+
+  it('on a desk or a tablet the search gives way first, so the toolbar stays in one row from 834 to 1180 px (R-14)', () => {
+    // A wrapping row breaks by the pieces' basis before anything shrinks: a small basis that grows keeps it whole.
+    expect(rule('.panel-fill .data-table .data-table__search', media(DESK))).toBe('flex: 1 1 11rem; min-width: 9rem; max-width: 22rem;');
+    expect(rule('.panel-fill .data-table .data-table__search')).toBe('');
+  });
 });

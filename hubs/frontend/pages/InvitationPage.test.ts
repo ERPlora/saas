@@ -14,7 +14,8 @@ vi.mock('@erplora/ui/shell', async (importOriginal) => ({
   toastError: vi.fn(() => Promise.resolve()),
 }));
 
-import { describeCall, enterView, errorFrame, flush, type MountOptions, mountHubs, subId } from '../__tests__/mount-hubs';
+import { LIVE_TIMEOUT_MS } from '../../../frontend/live-state';
+import { BYE, describeCall, enterView, errorFrame, flush, type MountOptions, mountHubs, subId } from '../__tests__/mount-hubs';
 import InvitationPage from './InvitationPage.vue';
 import { navigation } from '../open-business';
 
@@ -109,6 +110,21 @@ describe('InvitationPage', () => {
     await flush();
     expect(s.testid('invitation-error').text()).toContain('We could not load your invitations.');
     expect(s.testid('invitation-retry').exists()).toBe(true);
+  });
+
+  it('the stream gone before any answer: an error with «Retry» after the time limit, never a spinner for ever (R-08)', async () => {
+    const s = await setup(null);
+    s.call.push(BYE);
+    await flush();
+    expect(s.testid('invitation-loading').exists()).toBe(true);
+    await s.clock.advance(LIVE_TIMEOUT_MS);
+    expect(s.testid('invitation-loading').exists()).toBe(false);
+    expect(s.testid('invitation-error').text()).toContain('We could not load your invitations.');
+    expect(s.testid('invitation-expired').exists()).toBe(false);
+    const streams = s.net.streams.length;
+    await s.testid('invitation-retry').trigger('click');
+    await s.clock.advance(1);
+    expect(s.net.streams.length).toBeGreaterThan(streams);
   });
 
   it('names the tab again each time it is shown (Ionic reuses the page)', async () => {

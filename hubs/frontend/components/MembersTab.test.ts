@@ -19,7 +19,8 @@ vi.mock('@erplora/ui/shell', async (importOriginal) => ({
 
 import { toastError, toastSuccess } from '@erplora/ui/shell';
 
-import { accessibleName, apiError, describeCall, errorFrame, flush, mountHubs, subId } from '../__tests__/mount-hubs';
+import { LIVE_TIMEOUT_MS } from '../../../frontend/live-state';
+import { accessibleName, apiError, BYE, describeCall, errorFrame, flush, mountHubs, subId } from '../__tests__/mount-hubs';
 import { member } from '../__tests__/members';
 import MembersTab from './MembersTab.vue';
 
@@ -148,6 +149,21 @@ describe('MembersTab: the list', () => {
 });
 
 describe('MembersTab: a clean page (Ioan, 2026-10-14)', () => {
+  it('the stream gone before any answer: loading, then the table’s error with «Retry», never an empty list (R-04)', async () => {
+    const s = await setup();
+    s.call.push(BYE);
+    await flush();
+    expect(s.prop('loading')).toBe(true);
+    await s.clock.advance(LIVE_TIMEOUT_MS);
+    expect(s.prop('loading')).toBe(false);
+    expect(s.prop('error')).toBe('Check your connection and try again.');
+    const streams = s.net.streams.length;
+    s.table().vm.$emit('retry');
+    await s.clock.advance(1);
+    expect(s.net.streams.length).toBeGreaterThan(streams);
+    expect(s.prop('loading')).toBe(true);
+  });
+
   it('the list fills its section: a `.panel-fill` stack that grows in the page, the table with `fill`', async () => {
     const s = await setup();
     await s.show(page());

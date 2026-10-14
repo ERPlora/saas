@@ -1,15 +1,19 @@
 <script setup lang="ts">
 // What waits for a payment, on top of every tab of Billing (mockups `billing.html`; README §6.18): on
-// Invoices one banner per invoice not collected (UnpaidInvoiceNotice); on Subscriptions and Payment details
+// Invoices the banner of the invoice not collected (UnpaidInvoiceNotice), or ONE banner for two or more
+// (UnpaidGroupNotice; mockups «past-due-two», audit 2026-10-14 R-15); on Subscriptions and Payment details
 // the same warning in one line with a link to it (or to all of them). It also says «Invoice paid» when one
 // is paid (`unpaid.ts`). Nothing here sells: it shows on every surface, and the banners say off the web
-// how to pay.
+// how to pay. When the unpaid invoices could not be checked (audit 2026-10-14, R-04), off Invoices it says so
+// with «Retry» instead of keeping quiet; on Invoices the list itself shows them and says when it fails.
 import { HubIcon } from '@erplora/ui/shell';
+import { IonButton } from '@ionic/vue';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { formatAmount } from '../invoices';
 import { useUnpaidInvoices } from '../unpaid';
+import UnpaidGroupNotice from './UnpaidGroupNotice.vue';
 import UnpaidInvoiceNotice from './UnpaidInvoiceNotice.vue';
 
 const props = defineProps<{
@@ -17,7 +21,7 @@ const props = defineProps<{
 }>();
 
 const { t, locale } = useI18n();
-const { items } = useUnpaidInvoices();
+const { items, state } = useUnpaidInvoices();
 
 /** The one-line warning off Invoices: what is owed and where to see it. */
 const line = computed(() => {
@@ -46,12 +50,16 @@ const line = computed(() => {
 
 <template>
   <template v-if="tab === 'invoices'">
+    <UnpaidGroupNotice
+      v-if="items.length > 1"
+      :items="items"
+      data-testid="billing-unpaid-group"
+    />
     <UnpaidInvoiceNotice
-      v-for="item in items"
-      :key="item.invoice.id"
-      :invoice="item.invoice"
-      :business="item.business"
-      :data-testid="`billing-unpaid-${item.invoice.id}`"
+      v-else-if="items.length === 1"
+      :invoice="items[0].invoice"
+      :business="items[0].business"
+      :data-testid="`billing-unpaid-${items[0].invoice.id}`"
     />
   </template>
   <p
@@ -63,6 +71,7 @@ const line = computed(() => {
     <HubIcon
       class="billing-alert__icon"
       name="lucide:credit-card"
+      aria-hidden="true"
     />
     <span data-testid="billing-unpaid-text">{{ line.text }}</span>
     <router-link
@@ -71,6 +80,33 @@ const line = computed(() => {
     >
       {{ line.link }}
     </router-link>
+  </p>
+  <p
+    v-else-if="state.failed.value"
+    class="billing-alert billing-alert--unknown"
+    role="status"
+    data-testid="billing-unpaid-unknown"
+  >
+    <HubIcon
+      class="billing-alert__icon"
+      name="ion:alert-circle-outline"
+      aria-hidden="true"
+    />
+    <span data-testid="billing-unpaid-unknown-text">{{ $t('billing.notice.unknown') }}</span>
+    <ion-button
+      class="billing-alert__retry"
+      size="small"
+      fill="clear"
+      data-testid="billing-unpaid-retry"
+      @click="state.retry()"
+    >
+      <HubIcon
+        slot="start"
+        name="ion:refresh-outline"
+        aria-hidden="true"
+      />
+      {{ $t('billing.notice.retry') }}
+    </ion-button>
   </p>
 </template>
 
@@ -92,6 +128,20 @@ const line = computed(() => {
 .billing-alert__icon {
   flex: none;
   font-size: 16px;
+}
+.billing-alert--unknown {
+  border-inline-start-color: var(--ep-warning, var(--ion-color-warning));
+  color: var(--ep-warning-text, var(--ion-text-color));
+  background: var(--ep-warning-tint, color-mix(in srgb, var(--ion-color-warning) 12%, transparent));
+}
+.billing-alert__retry {
+  margin: 0 0 0 auto;
+  text-transform: none;
+}
+@media (max-width: 640px) {
+  .billing-alert__retry {
+    min-height: 44px;
+  }
 }
 .billing-alert__link {
   margin-inline-start: auto;

@@ -60,6 +60,7 @@ const tabs = computed<ShellTab[]>(() =>
         <HubIcon
           class="billing-lead__icon"
           name="ion:information-circle-outline"
+          aria-hidden="true"
         />
         <span>{{ $t('billing.page.lead') }}</span>
       </p>

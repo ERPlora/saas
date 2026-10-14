@@ -212,6 +212,7 @@ const value = (event: CustomEvent<{ value?: unknown }>) => String(event.detail.v
               v-else
               slot="start"
               name="ion:checkmark-outline"
+              aria-hidden="true"
             />
             {{ $t('hubs.settings.save') }}
           </ion-button>

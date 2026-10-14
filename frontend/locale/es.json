@@ -3,6 +3,12 @@
     "userMenu": {
       "account": "Cuenta",
       "themeNotSaved": "No se ha podido guardar la apariencia en tu cuenta."
-    }
+    },
+    "load": {
+      "heading": "No hemos podido cargar esta página",
+      "body": "Comprueba la conexión y vuelve a intentarlo.",
+      "retry": "Reintentar"
+    },
+    "skipLink": "Saltar al contenido"
   }
 }

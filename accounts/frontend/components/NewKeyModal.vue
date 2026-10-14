@@ -122,6 +122,7 @@ async function copy(): Promise<void> {
             <HubIcon
               slot="icon-only"
               name="lucide:copy"
+              aria-hidden="true"
             />
           </ion-button>
         </div>
@@ -201,6 +202,7 @@ async function copy(): Promise<void> {
         <HubIcon
           slot="start"
           name="ion:checkmark-outline"
+          aria-hidden="true"
         />
         {{ $t('accounts.account.keys.saved') }}
       </ion-button>

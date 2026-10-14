@@ -38,6 +38,14 @@ describe('UnpaidInvoiceNotice', () => {
     expect(s.wrapper.attributes('data-tone')).toBe('danger');
   });
 
+  it('dates are days, never the hour (audit 2026-10-14, R-15)', async () => {
+    const s = await notice({ invoice: unpaidRow('i1', { date: '2026-10-10T14:23:00Z' }), business: { ...PLAZA, unpaid_reason: 'payment_failed' } });
+    expect(s.q('unpaid-body').text()).toBe(
+      'Invoice REF-i1 of Oct 10, 2026 could not be collected. Pay it before Oct 17, 2026 or the business is suspended; nothing is deleted.',
+    );
+    expect(s.wrapper.text()).not.toMatch(/\d{1,2}:\d{2}/);
+  });
+
   it('on the web, «Pay the invoice» is the main action', async () => {
     const s = await notice({ invoice: unpaidRow('i1'), business: { ...PLAZA, unpaid_reason: 'payment_failed' } });
     expect(s.q('pay-invoice').text()).toBe('Pay the invoice · €36.29');

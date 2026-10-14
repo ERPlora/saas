@@ -20,6 +20,7 @@ import { IonButton, IonCard, IonCardContent, IonInput, IonLabel, IonSegment, Ion
 import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import { useLiveState } from '../../../frontend/live-state';
 import { useErrorText } from '../../../hubs/frontend/error-text';
 import type {
   AppSummaryOut,
@@ -63,6 +64,9 @@ const client = useLiveClient();
 // --- The business it sells to ----------------------------------------------------------------------
 
 const list = useLive('hubs.business.list', { limit: 100 });
+/** Loading, failed (the query, the stream, or nothing in time), none owned or some: «You have no business to
+ *  buy for» only with a real answer (audit 2026-10-14, R-04). */
+const listState = useLiveState(list, { isEmpty: (data) => ownedBusinesses(data.rows).length === 0 });
 const rows = computed(() => list.data.value?.rows ?? []);
 const owned = computed(() => ownedBusinesses(rows.value));
 /** What the owner picked here; until then, `?business=`. */
@@ -136,8 +140,8 @@ const subscription = computed(() => (catalog.value?.hub_id === business.value?.i
 const ready = computed(
   () => !!business.value && !!plans.value && !!apps.value && !!catalog.value && catalog.value.hub_id === business.value.id,
 );
-const noBusiness = computed(() => !!list.data.value && owned.value.length === 0);
-const listFailed = computed(() => list.status.value === 'error' && !list.data.value);
+const noBusiness = computed(() => listState.view.value === 'empty');
+const listFailed = listState.failed;
 const modules = computed(() => saleModules(apps.value ?? [], catalog.value?.modules ?? []));
 const interval = computed(() => moduleInterval(subscription.value));
 const saving = computed(() => annualSaving(plans.value ?? []));
@@ -354,7 +358,7 @@ async function keepTheModule(module: SaleModule): Promise<void> {
     <InlineFeedback
       v-if="failed || listFailed"
       tone="danger"
-      :heading="$t('billing.store.loadError')"
+      :heading="listFailed ? $t('billing.store.businessesError') : $t('billing.store.loadError')"
       data-testid="store-error"
     >
       {{ $t('billing.store.loadErrorBody') }}
@@ -362,11 +366,12 @@ async function keepTheModule(module: SaleModule): Promise<void> {
         <ion-button
           size="small"
           data-testid="store-retry"
-          @click="listFailed ? list.refresh() : retry()"
+          @click="listFailed ? listState.retry() : retry()"
         >
           <HubIcon
             slot="start"
             name="ion:refresh-outline"
+            aria-hidden="true"
           />
           {{ $t('billing.store.retry') }}
         </ion-button>
@@ -422,6 +427,7 @@ async function keepTheModule(module: SaleModule): Promise<void> {
             <HubIcon
               slot="start"
               name="ion:card-outline"
+              aria-hidden="true"
             />
             {{ $t('billing.unpaid.pay') }}
           </ion-button>
@@ -434,6 +440,7 @@ async function keepTheModule(module: SaleModule): Promise<void> {
             <HubIcon
               slot="start"
               name="ion:receipt-outline"
+              aria-hidden="true"
             />
             {{ $t('billing.unpaid.billing') }}
           </ion-button>
@@ -529,6 +536,7 @@ async function keepTheModule(module: SaleModule): Promise<void> {
             <HubIcon
               slot="start"
               name="ion:ticket-outline"
+              aria-hidden="true"
             />
             {{ $t('billing.promo.ask') }}
           </ion-button>
@@ -557,6 +565,7 @@ async function keepTheModule(module: SaleModule): Promise<void> {
               <HubIcon
                 slot="start"
                 name="ion:checkmark-outline"
+                aria-hidden="true"
               />
               {{ $t('billing.promo.apply') }}
             </ion-button>
@@ -570,6 +579,7 @@ async function keepTheModule(module: SaleModule): Promise<void> {
               <HubIcon
                 slot="start"
                 name="ion:close-outline"
+                aria-hidden="true"
               />
               {{ $t('billing.promo.remove') }}
             </ion-button>
@@ -718,6 +728,12 @@ async function keepTheModule(module: SaleModule): Promise<void> {
 }
 .store-period ion-segment-button::part(indicator-background) {
   border-radius: 7px;
+}
+/* A phone or a touch screen: 44 px to tap (audit 2026-10-14, R-13; `frontend/panel-chrome.css`). */
+@media (max-width: 640px), (pointer: coarse) {
+  .store-period ion-segment-button {
+    min-height: 44px;
+  }
 }
 .card-grid {
   display: grid;

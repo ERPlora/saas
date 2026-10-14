@@ -23,6 +23,8 @@ import {
 } from '../../../packages/ui/src/sdk/__tests__/live-harness';
 import { PopoverStub } from '../../../packages/ui/src/components/DataTable/__tests__/harness';
 import { OPERATION_ROUTES } from '../../../frontend/generated/operation-routes';
+import entryEn from '../../../frontend/locale/en.json';
+import entryEs from '../../../frontend/locale/es.json';
 import en from '../locale/en.json';
 import es from '../locale/es.json';
 
@@ -99,7 +101,11 @@ export async function mountHubs(component: Component, options: MountOptions = {}
     props: options.props,
     attachTo: document.body,
     global: {
-      plugins: [router, createShellI18n({ locale: options.locale ?? 'en', messages: { en, es } })],
+      // The entry's catalogue too (`saas.*`): the shared pieces of `frontend/` (LoadFailed) speak with it.
+      plugins: [
+        router,
+        createShellI18n({ locale: options.locale ?? 'en', messages: { en: { ...en, ...entryEn }, es: { ...es, ...entryEs } } }),
+      ],
       provide: { ...app._context.provides, [LIVE_CLIENT_KEY as symbol]: harness.client },
       // An inline `ion-popover` presents itself only in a real browser (the DataTable's row menu «⋮»).
       stubs: { IonPopover: PopoverStub, ...options.stubs },

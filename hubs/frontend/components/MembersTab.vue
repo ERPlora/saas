@@ -25,6 +25,7 @@ import { IonButton } from '@ionic/vue';
 import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import { useLiveState } from '../../../frontend/live-state';
 import type { BusinessDetailOut, MemberAction, MemberRowOut } from '../../../frontend/sdk-types';
 import { useErrorText } from '../error-text';
 import InviteModal from './InviteModal.vue';
@@ -73,6 +74,9 @@ const live = useLive('hubs.member.list', () => ({
   limit: pageSize.value * windowPages.value,
   offset: page.value * pageSize.value,
 }));
+// Truthful states (audit 2026-10-14, R-04): the stream down or no answer in time is the table's error.
+const load = useLiveState(live);
+const loadError = computed(() => (load.failed.value ? text(live.error.value) || t('saas.load.body') : undefined));
 const rows = computed<MemberRowOut[]>(() => live.data.value?.rows ?? []);
 const seats = computed(() => live.data.value?.seats ?? { used: 0, limit: null });
 const invitableRoles = computed(() => live.data.value?.invitable_roles ?? []);
@@ -182,6 +186,7 @@ async function withdrawOffer(id: string): Promise<void> {
           <HubIcon
             slot="start"
             name="ion:close-outline"
+            aria-hidden="true"
           />
           {{ $t('hubs.members.pendingTransfer.cancel') }}
         </ion-button>
@@ -201,8 +206,8 @@ async function withdrawOffer(id: string): Promise<void> {
       :page-size-chooser="(live.data.value?.total ?? 0) > PAGE_SIZES[0]"
       :views="['table', 'cards']"
       :card-breakpoint="CARD_BREAKPOINT"
-      :loading="live.status.value === 'loading' && !live.data.value"
-      :error="live.status.value === 'error' ? text(live.error.value) : undefined"
+      :loading="load.loading.value"
+      :error="loadError"
       :addable="invitableRoles.length > 0"
       :labels="labels"
       :entity-label="entityLabel"
@@ -215,7 +220,7 @@ async function withdrawOffer(id: string): Promise<void> {
       @page-size-change="setPageSize"
       @add="inviting = true"
       @action="onAction"
-      @retry="live.refresh()"
+      @retry="load.retry()"
     >
       <template #name="{ row }">
         <span class="member-name">

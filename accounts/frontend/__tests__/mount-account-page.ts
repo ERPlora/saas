@@ -7,8 +7,14 @@ import { vi } from 'vitest';
 import { type Component, createApp, ref } from 'vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
-import en from '../locale/en.json';
-import es from '../locale/es.json';
+import saasEn from '../../../frontend/locale/en.json';
+import saasEs from '../../../frontend/locale/es.json';
+import accountsEn from '../locale/en.json';
+import accountsEs from '../locale/es.json';
+
+// The catalogues the shell merges at boot (`main.ts`): the entry's own (`saas.*`) and the accounts' (`accounts.*`).
+const en = { ...saasEn, ...accountsEn };
+const es = { ...saasEs, ...accountsEs };
 
 export const ANONYMOUS: SessionMe = { user: null, permissions: [], menu: [], apps: [], language: 'en' };
 export const SIGNED_IN: SessionMe = { ...ANONYMOUS, user: { id: 'u1', label: 'Owner' } };

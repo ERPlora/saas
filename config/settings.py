@@ -468,6 +468,8 @@ LIVE = {
         "palette_default": "erplora",
         "palettes": ["erplora"],
         "title": "ERPlora Cloud",
+        # A web panel must zoom (WCAG 1.4.4); the Hub's point of sale keeps the fixed scale.
+        "user_scalable": True,
     },
     # This repo is its own pnpm workspace (packages/ui is a submodule inside it).
     "vite": {"command": ["pnpm", "run", "dev"], "cwd": str(BASE_DIR)},

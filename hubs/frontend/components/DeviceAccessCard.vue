@@ -49,6 +49,7 @@ defineProps<{
             <HubIcon
               slot="start"
               name="ion:download-outline"
+              aria-hidden="true"
             />
             {{ $t('hubs.business.devices.windows') }}
           </ion-button>
@@ -60,6 +61,7 @@ defineProps<{
             <HubIcon
               slot="start"
               name="lucide:smartphone"
+              aria-hidden="true"
             />
             {{ $t('hubs.business.devices.android') }}
           </ion-button>

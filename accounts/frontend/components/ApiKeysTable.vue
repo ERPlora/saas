@@ -3,8 +3,10 @@
 // (the keys not revoked, the newest first) in a DataTable that turns into cards up to 1180 px — name, prefix
 // (`erps_live_…`, how its owner tells it apart), permissions (the server's labels), created, last used, and
 // «Expires» (W-F14; an expired key is marked) — with «New key» (NewKeyModal) and, per row, «Revoke», confirmed
-// naming that key (W-F8) and said in a toast. Empty, it says what a key is for and offers the first one. Under the
-// table, that the keys of a business are made inside the business. The list fills the page (`fill`, Ioan 2026-10-14).
+// naming that key (W-F8) and said in a toast. Empty — a real answer of the server with no key — it says what a key is
+// for and offers the first one; a failed load (an error, or no answer in time) is said with «Retry», never as «no
+// keys» (audit 2026-10-14 R-04). Under the table, that the keys of a business are made inside the business. The
+// list fills the page (`fill`, Ioan 2026-10-14).
 import {
   ConfirmDialog,
   DataTable,
@@ -20,6 +22,7 @@ import { IonButton } from '@ionic/vue';
 import { computed, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import { useLiveState } from '../../../frontend/live-state';
 import type { ApiKeyRowOut } from '../../../frontend/sdk-types';
 import { useErrorText } from '../error-text';
 import NewKeyModal from './NewKeyModal.vue';
@@ -30,6 +33,9 @@ const CARD_BREAKPOINT = 1180;
 const { t, locale } = useI18n();
 const { text, forDialog } = useErrorText();
 const live = useLive('accounts.apikey.list');
+const state = useLiveState(live, { isEmpty: (data) => data.rows.length === 0 });
+/** Why the keys could not be loaded: the server's reason, or the connection's after a time-out. */
+const loadError = computed(() => (state.failed.value ? text(state.error.value) || t('accounts.account.errors.network') : undefined));
 const revoke = useCommand('accounts.apikey.revoke');
 
 const rows = computed<ApiKeyRowOut[]>(() => live.data.value?.rows ?? []);
@@ -97,15 +103,15 @@ async function confirmRevoke(): Promise<void> {
     :page-size-chooser="false"
     hide-toolbar-when-empty
     addable
-    :loading="live.status.value === 'loading' && !live.data.value"
-    :error="live.status.value === 'error' && !live.data.value ? text(live.error.value) || $t('accounts.account.errors.unexpected') : undefined"
+    :loading="state.loading.value"
+    :error="loadError"
     :labels="{ add: $t('accounts.account.keys.new'), loadError: $t('accounts.account.keys.loadError'), retry: $t('accounts.account.retry') }"
     :entity-label="(n: number) => $t('accounts.account.keys.entity', n)"
     :card-title="(row: ApiKeyRowOut) => row.name"
     :card-icon="() => 'ion:key-outline'"
     @add="creating = true"
     @action="onAction"
-    @retry="live.refresh()"
+    @retry="state.retry()"
   >
     <template #name="{ row }">
       <strong>{{ row.name }}</strong>
@@ -130,7 +136,12 @@ async function confirmRevoke(): Promise<void> {
         class="keys-empty"
         data-testid="api-keys-empty"
       >
-        <span class="keys-empty__icon"><HubIcon name="ion:key-outline" /></span>
+        <span class="keys-empty__icon">
+          <HubIcon
+            name="ion:key-outline"
+            aria-hidden="true"
+          />
+        </span>
         <span>{{ $t('accounts.account.keys.empty') }}</span>
         <ion-button
           data-testid="api-keys-empty-new"
@@ -139,6 +150,7 @@ async function confirmRevoke(): Promise<void> {
           <HubIcon
             slot="start"
             name="ion:add"
+            aria-hidden="true"
           />
           {{ $t('accounts.account.keys.new') }}
         </ion-button>
