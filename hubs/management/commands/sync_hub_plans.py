@@ -13,8 +13,13 @@ Catalogue:
   synced to Stripe.
 - ``starter`` / ``standard``: the paid plans sold on the web, with a 15-day trial (ADR-0154). The
   trial is never a ``features`` line: cards paint it from ``trial_period_days`` (saas#2424).
-- ``pro`` / ``enterprise`` / ``max``: upgrade-only, never on the public pricing page.
-- ``payment-test``: internal plan to exercise the billing chain end to end (saas#1052).
+- ``pro`` / ``enterprise`` / ``max``: ``upgrade_only``, bought from the Store as an upgrade of a paying
+  business, never at sign-up.
+- ``payment-test``: ``internal_only`` plan to exercise the billing chain end to end (saas#1052).
+
+Visibility: ``Plan.objects.public()`` (active and not ``internal_only``) is what ``/pricing/`` and the
+Store show, upgrade-only plans included (``public/`` paints them in its ``plans_pro`` block, saas#809);
+``upgrade_only`` = offered only as an upgrade of a paying business; ``internal_only`` = never shown.
 
 Changed from the original: no container sizing nor suspension price (a plan sizes no container,
 PLAN-SAAS §1); the
