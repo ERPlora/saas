@@ -24,19 +24,19 @@ Los administradores gestionan el acceso desde **Empleados**:
 
 - Crear o actualizar usuarios del Hub.
 - Asignar roles.
-- Revisar los permisos aportados por los módulos instalados.
+- Revisar los permisos aportados por las apps instaladas.
 - Desactivar el acceso cuando una persona ya no deba entrar.
 - Gestionar claves API cuando esa función esté disponible.
 
 ## Roles y permisos
 
-Los roles son locales al Hub. Sus permisos proceden del núcleo y de los módulos instalados, por lo que la lista disponible cambia con las capacidades del Hub.
+Los roles son locales al Hub. Sus permisos proceden del núcleo y de las apps instaladas, por lo que la lista disponible cambia con las capacidades del Hub.
 
-Concede únicamente el acceso necesario para el trabajo. Solo los roles propietario o administrador deberían modificar ajustes globales, usuarios, permisos de módulos o credenciales fiscales.
+Concede únicamente el acceso necesario para el trabajo. Solo los roles propietario o administrador deberían modificar ajustes globales, usuarios, permisos de apps o credenciales fiscales.
 
 ## Si un usuario no puede entrar
 
 - **No aparece la pantalla de PIN:** el dispositivo no es de confianza o no hay usuarios del Hub con PIN disponibles.
 - **El PIN se rechaza:** confirma el usuario seleccionado; después usa el acceso por email si hay que restablecerlo.
-- **Falta una página:** revisa el rol del usuario y los permisos del módulo correspondiente.
+- **Falta una página:** revisa el rol del usuario y los permisos de la app correspondiente.
 - **El usuario ya no existe:** un administrador debe recrear o reactivar el usuario del Hub; los datos guardados en el navegador no pueden restaurarlo.

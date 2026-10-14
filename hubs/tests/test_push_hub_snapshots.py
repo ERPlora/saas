@@ -19,6 +19,9 @@ from hubs.tests.test_reconcile_hub_states import fresh, run
 
 pytestmark = pytest.mark.django_db
 
+#: The advisory lock a run holds (the SaaS's convention, as ``base/tests/test_report_seal_expiry.py``).
+LOCK_KEY = "hashtext('erplora.saas.push_hub_snapshots')"
+
 
 def test_by_default_every_live_business_is_pushed_again(
     business, owner, hub_double, make_user
@@ -105,14 +108,17 @@ def test_with_the_hub_away_the_pass_ends_and_the_run_fails(
 def test_a_second_run_returns_at_once_while_one_holds_the_lock(
     business, hub_double, other_session
 ):
-    other_session.execute(
-        "SELECT pg_advisory_lock(%s)", [services.lock_key("push_hub_snapshots")]
-    )
+    other_session.execute(f"SELECT pg_advisory_lock({LOCK_KEY})")
 
     output = run("push_hub_snapshots")
 
     assert hub_double.calls == []
     assert "already running" in output
-    other_session.execute(
-        "SELECT pg_advisory_unlock(%s)", [services.lock_key("push_hub_snapshots")]
-    )
+    other_session.execute(f"SELECT pg_advisory_unlock({LOCK_KEY})")
+
+
+def test_the_lock_is_released_after_a_run(business, hub_double, other_session):
+    run("push_hub_snapshots")
+
+    assert other_session.execute(f"SELECT pg_try_advisory_lock({LOCK_KEY})").fetchone()[0] is True
+    other_session.execute(f"SELECT pg_advisory_unlock({LOCK_KEY})")

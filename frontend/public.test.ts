@@ -34,6 +34,15 @@ function htmlFiles(dir: string): string[] {
   });
 }
 
+/** Every ion-* tag the public templates write. */
+function usedIonTags(): Set<string> {
+  const used = new Set<string>();
+  for (const file of htmlFiles(PUBLIC_TEMPLATES)) {
+    for (const [, tag] of readFileSync(file, 'utf8').matchAll(/<(ion-[a-z-]+)/g)) used.add(tag);
+  }
+  return used;
+}
+
 /** The CSS this entry imports, in order, as paths relative to saas-next (or package names). */
 function importedSheets(): string[] {
   return [...SOURCE.matchAll(/^import '([^']+\.css)';$/gm)].map(([, spec]) =>
@@ -49,12 +58,14 @@ function page(html: string): Document {
 
 describe('the public entry: components and styles', () => {
   it('registers every ion-* the public templates use', () => {
-    const used = new Set<string>();
-    for (const file of htmlFiles(PUBLIC_TEMPLATES)) {
-      for (const [, tag] of readFileSync(file, 'utf8').matchAll(/<(ion-[a-z-]+)/g)) used.add(tag);
-    }
+    const used = usedIonTags();
     expect(used.size).toBeGreaterThan(0);
     expect([...used].filter((tag) => !(tag in ION_COMPONENTS))).toEqual([]);
+  });
+
+  it('registers nothing else but ion-toast, which the server messages create (L8)', () => {
+    const used = usedIonTags();
+    expect(Object.keys(ION_COMPONENTS).filter((tag) => tag !== 'ion-toast' && !used.has(tag))).toEqual([]);
   });
 
   it('defines each component from its @ionic/core module, so only those reach the bundle', () => {
@@ -102,11 +113,15 @@ describe('the public entry: components and styles', () => {
 });
 
 describe('the navbar panel', () => {
+  // Native buttons (L8): Ionic 8.8.9 copies an ion-button host's aria-* to its inner button once
+  // and never follows aria-expanded, so the burger and the close button are plain <button>s.
   const NAVBAR = `
     <nav class="ep-navbar" data-navbar>
-      <ion-button data-navbar-toggle aria-expanded="false" aria-controls="ep-navbar-panel">menu</ion-button>
+      <button type="button" class="ep-navbar__burger" data-navbar-toggle aria-expanded="false" aria-controls="ep-navbar-panel">menu</button>
       <div id="ep-navbar-panel" data-navbar-panel>
-        <ion-button data-navbar-close>close</ion-button>
+        <div class="ep-navbar__panel-head">
+          <button type="button" class="ep-navbar__close" data-navbar-close>close</button>
+        </div>
         <div class="ep-navbar__links"><a href="/features/">Features</a></div>
       </div>
       <div data-navbar-close class="ep-navbar__backdrop"></div>
@@ -128,7 +143,7 @@ describe('the navbar panel', () => {
 
   it('closes with the close button, the backdrop, Escape and a link', () => {
     const closers: Array<(doc: Document) => void> = [
-      (doc) => doc.querySelector<HTMLElement>('ion-button[data-navbar-close]')!.click(),
+      (doc) => doc.querySelector<HTMLElement>('button[data-navbar-close]')!.click(),
       (doc) => doc.querySelector<HTMLElement>('.ep-navbar__backdrop')!.click(),
       (doc) => doc.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })),
       (doc) => doc.querySelector<HTMLElement>('.ep-navbar__links a')!.click(),
@@ -140,6 +155,15 @@ describe('the navbar panel', () => {
       expect(doc.querySelector('[data-navbar-toggle]')!.getAttribute('aria-expanded')).toBe('false');
       expect(doc.documentElement.classList.contains('ep-navbar-open')).toBe(false);
     }
+  });
+
+  it('takes the focus to the close button and gives it back to the burger', () => {
+    const doc = opened();
+    expect(doc.activeElement).toBe(doc.querySelector('button[data-navbar-close]'));
+
+    doc.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+
+    expect(doc.activeElement).toBe(doc.querySelector('button[data-navbar-toggle]'));
   });
 
   it('does nothing on a page without the navbar (the 500 page)', () => {

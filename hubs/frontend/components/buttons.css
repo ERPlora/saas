@@ -1,0 +1,15 @@
+/* The icon of a button stands off its text (mockups: `.shell-btn-label`/`.btn-label`, 8px). Ionic's
+   own margin for a slotted icon is a fraction of an em and reads as glued. Included scoped
+   (`<style scoped src>`) by every page and component of the panel that puts an icon in a button: a
+   HubIcon is the parent's element, so the parent's scope reaches it. */
+ion-button > ion-icon[slot='start'],
+ion-button > ion-spinner[slot='start'] {
+  margin-inline-end: 0.45em;
+}
+ion-button > ion-icon[slot='start'] {
+  font-size: 1.15em;
+}
+/* A clear button that is a link to somewhere (not a neutral one) is painted in the primary colour. */
+ion-button.link-button {
+  --color: var(--ion-color-primary);
+}

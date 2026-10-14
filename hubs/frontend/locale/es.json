@@ -1,0 +1,376 @@
+{
+  "hubs": {
+    "common": {
+      "open": "Abrir",
+      "openName": "Abrir {name}",
+      "openBusiness": "Abrir negocio",
+      "goToPanel": "Ir al panel",
+      "retry": "Reintentar",
+      "cancel": "Cancelar",
+      "back": "Volver",
+      "signedInAs": "Conectado como {email}",
+      "signOut": "Cerrar sesión",
+      "copyAddress": "Copiar dirección",
+      "copied": "Dirección copiada",
+      "copyFailed": "No se ha podido copiar la dirección. Selecciónala y cópiala a mano.",
+      "reconnecting": "Reconectando… lo que ves puede tener unos segundos de retraso.",
+      "plan": "Plan {name}",
+      "lastOpened": "Último abierto",
+      "managedByOwner": "Lo gestiona el propietario",
+      "notYet": "Todavía no",
+      "unlimited": "Ilimitados",
+      "storeInBrowser": "Para cambiar de plan o añadir módulos, entra en erplora.com desde el navegador."
+    },
+    "roles": {
+      "hub_owner": "Propietario",
+      "hub_admin": "Administrador",
+      "hub_manager": "Encargado",
+      "hub_employee": "Empleado"
+    },
+    "status": {
+      "error": "Sin preparar"
+    },
+    "reason": {
+      "preparing": "Lo estamos preparando. Se abre solo cuando esté listo.",
+      "error": "No hemos podido prepararlo. Seguimos reintentándolo; si sigue fallando, avísanos.",
+      "pastDue": "Hay una factura sin pagar. Sigue funcionando 7 días más; págala para que no se suspenda.",
+      "pastDueApp": "Hay una factura sin pagar: sigue funcionando 7 días más. Para pagarla, entra en erplora.com desde el navegador.",
+      "suspended": "Suspendido por una factura sin pagar. Tus datos están a salvo: paga la factura y vuelve a funcionar al momento.",
+      "suspendedApp": "Suspendido por una factura sin pagar. Tus datos están a salvo. Para pagarla, entra en erplora.com desde el navegador.",
+      "deleting": "Eliminado. Puedes recuperarlo hasta el {date}.",
+      "preparingSoon": "Listo en unos segundos"
+    },
+    "open": {
+      "opening": "Abriendo {name}…"
+    },
+    "launch": {
+      "pageTitle": "Entrar",
+      "loadError": "No hemos podido cargar tus negocios.",
+      "mfaUnavailable": "La verificación en dos pasos aún no está disponible en esta cuenta.",
+      "signedOut": {
+        "title": "Entra en ERPlora",
+        "lead": "Entra con tu cuenta de ERPlora.",
+        "leadApp": "La app usa tu cuenta de erplora.com.",
+        "body": "Entra con tu correo o con Google. Al terminar vuelves aquí y eliges tu negocio.",
+        "signIn": "Iniciar sesión",
+        "signUp": "Crear una cuenta gratis"
+      },
+      "first": {
+        "title": "Crea tu negocio",
+        "lead": "Gratis y sin tarjeta: solo el nombre y el país.",
+        "or": "o",
+        "invited": "¿Te han invitado? La invitación aparece aquí si entras con el correo al que te llegó."
+      },
+      "preparing": {
+        "title": "Preparando {name}",
+        "lead": "Suele tardar unos segundos.",
+        "meanwhile": "Ir al panel mientras tanto"
+      },
+      "invited": {
+        "title": "Te han invitado a {name}",
+        "lead": "{inviter} te da acceso como {role}.",
+        "leadNoInviter": "Tienes acceso como {role}.",
+        "createOwn": "Crear mi propio negocio"
+      },
+      "one": {
+        "greeting": "Hola, {name}",
+        "greetingNoName": "Hola",
+        "lead": "¿Qué quieres hacer?",
+        "foot": "En el panel gestionas el negocio, el equipo y tu cuenta."
+      },
+      "several": {
+        "title": "¿Dónde trabajas hoy?",
+        "lead": "Elige un negocio para abrirlo.",
+        "createAnother": "Crear otro negocio"
+      },
+      "invitationBanner": {
+        "heading": "Te han invitado a {name}",
+        "action": "Ver la invitación"
+      }
+    },
+    "create": {
+      "heading": "¿Cómo se llama tu negocio?",
+      "lead": "Solo necesitamos el nombre y el país. Empiezas en el plan Gratis, sin tarjeta.",
+      "name": "Nombre del negocio",
+      "namePlaceholder": "Nombre de tu negocio",
+      "nameRequired": "Escribe el nombre de tu negocio.",
+      "country": "País",
+      "type": "Tipo de negocio (opcional)",
+      "typeUnknown": "Todavía no lo sé",
+      "typeHint": "Con el tipo, tu negocio nace con los módulos de tu sector. Puedes dejarlo en blanco.",
+      "typesFailed": "Ahora no se han podido cargar los tipos de negocio. Puedes crear el negocio sin tipo.",
+      "address": "Tu dirección será {host}",
+      "addressChecking": "Buscando una dirección libre…",
+      "foot": "Gratis y sin tarjeta. Puedes cambiar el nombre cuando quieras.",
+      "submit": "Crear mi negocio",
+      "created": "Negocio creado: {name}"
+    },
+    "preparing": {
+      "progress": "Progreso de la preparación",
+      "status": "Preparación de {name}",
+      "created": "Negocio creado",
+      "setup": "Preparando tu negocio",
+      "setupType": "Instalando los módulos de {type}",
+      "opensAlone": "Se abre solo al terminar",
+      "ready": "Listo para abrir"
+    },
+    "createModal": {
+      "title": "Crear negocio",
+      "preparingTitle": "Preparando {name}",
+      "readyTitle": "Tu negocio está listo",
+      "errorTitle": "No se ha podido preparar",
+      "closeHint": "Puedes cerrar esta ventana: lo verás en tu lista como «Preparando».",
+      "goToList": "Ir a mis negocios",
+      "readyAddress": "Tu dirección: {host}",
+      "error": "Hemos guardado {name}, pero no se ha podido preparar. Seguimos reintentándolo; si sigue fallando, avísanos."
+    },
+    "list": {
+      "title": "Negocios",
+      "lead": "Aquí gestionas tus negocios. Pulsa «Abrir» para trabajar en uno.",
+      "search": "Buscar por nombre o dirección web",
+      "create": "Crear negocio",
+      "loadError": "No hemos podido cargar tus negocios",
+      "recordSingular": "negocio",
+      "recordPlural": "negocios",
+      "columns": {
+        "name": "Negocio",
+        "host": "Dirección web",
+        "status": "Estado",
+        "plan": "Plan",
+        "role": "Rol",
+        "lastOpened": "Último uso"
+      },
+      "actions": {
+        "open": "Abrir",
+        "manage": "Gestionar",
+        "restore": "Recuperar",
+        "manageName": "Gestionar {name}",
+        "restoreName": "Recuperar {name}"
+      },
+      "empty": {
+        "heading": "Crea tu primer negocio",
+        "message": "Gratis y sin tarjeta: solo el nombre y el país.",
+        "invited": "¿Te han invitado? La invitación aparece aquí si entras con el correo al que te llegó."
+      },
+      "noResults": {
+        "heading": "Nada coincide con la búsqueda",
+        "message": "Prueba con otro nombre o dirección web.",
+        "showAll": "Mostrar todo"
+      },
+      "unpaid": {
+        "pastDueHeading": "{name} tiene una factura sin pagar",
+        "pastDueBody": "Sigue funcionando 7 días más; si no se paga antes, el negocio se suspende. No se borra nada.",
+        "suspendedHeading": "{name} está suspendido",
+        "suspendedBody": "Se suspendió por una factura sin pagar. No se borra nada: en cuanto se pague vuelve a funcionar.",
+        "app": "Para pagarla, entra en erplora.com desde el navegador."
+      },
+      "invitation": {
+        "heading": "Te han invitado a {name}",
+        "body": "{inviter} te da acceso como {role}. Acepta para verlo en tu lista.",
+        "bodyNoInviter": "Tienes acceso como {role}. Acepta para verlo en tu lista."
+      },
+      "ownership": {
+        "heading": "{from} te ofrece {name}",
+        "body": "Acéptalo antes del {date} para ser su propietario.",
+        "accept": "Aceptar la propiedad",
+        "decline": "Rechazar",
+        "accepted": "Ahora eres el propietario de {name}",
+        "declined": "Oferta rechazada"
+      },
+      "restored": "Negocio recuperado: {name}",
+      "deleted": "Negocio eliminado: {name}. Puedes recuperarlo hasta el {date}."
+    },
+    "invitation": {
+      "accept": "Aceptar y entrar",
+      "decline": "Rechazar",
+      "accepted": "Ya tienes acceso a {name}",
+      "declineTitle": "Rechazar la invitación",
+      "declineMessage": "{inviter} te invitó a {name}. Si la rechazas, tendrá que invitarte otra vez.",
+      "declineMessageNoInviter": "Te invitaron a {name}. Si la rechazas, tendrán que invitarte otra vez.",
+      "declined": "Invitación rechazada",
+      "pageTitle": "Te han invitado",
+      "lead": "Alguien te ha dado acceso a su negocio. Acepta para entrar.",
+      "byLine": "Te invita {inviter} · {role}",
+      "foot": "Podrás salir de un negocio cuando quieras desde el panel.",
+      "loadError": "No hemos podido cargar tus invitaciones.",
+      "expired": {
+        "title": "Esta invitación ya no vale",
+        "lead": "Ha caducado o ya se usó.",
+        "body": "Pide a quien te invitó que te la envíe otra vez, al correo con el que entras: {email}.",
+        "bodyNoEmail": "Pide a quien te invitó que te la envíe otra vez, al correo con el que entras.",
+        "createOwn": "Crear mi propio negocio"
+      }
+    },
+    "business": {
+      "loadError": "No hemos podido cargar este negocio",
+      "loadErrorBody": "Puede que ya no tengas acceso o que haya un problema de conexión.",
+      "tabsLabel": "Secciones del negocio",
+      "tabs": {
+        "summary": "Resumen",
+        "members": "Miembros",
+        "modules": "Módulos",
+        "settings": "Ajustes"
+      },
+      "deleting": {
+        "heading": "Se eliminará para siempre el {date}",
+        "body": "Lo eliminaste el {date} y ya no funciona. Hasta entonces puedes recuperarlo tal como estaba; te enviamos por correo el enlace para descargar sus datos.",
+        "bodyNotOwner": "Se eliminó el {date} y ya no funciona. Solo su propietario puede recuperarlo."
+      },
+      "plan": {
+        "eyebrow": "Plan",
+        "none": "Sin plan",
+        "trial": "Probando {plan} hasta el {date}",
+        "devices": "Dispositivos",
+        "users": "Usuarios",
+        "usersOf": "{used} de {limit}",
+        "deleted": "Se canceló al eliminar el negocio. Si lo recuperas, vuelve en Gratis."
+      },
+      "usage": {
+        "eyebrow": "Uso",
+        "title": "Personas en el negocio",
+        "people": "Personas",
+        "meter": "Plazas del plan",
+        "meterHint": "Miembros e invitaciones sin responder, sobre las que cubre el plan.",
+        "covered": "El plan cubre",
+        "hint": "Miembros e invitaciones sin responder."
+      },
+      "devices": {
+        "eyebrow": "En tus dispositivos",
+        "title": "Entra desde cualquier sitio",
+        "body": "Abre esta dirección en el navegador de la caja, la tableta o el móvil, o usa la app.",
+        "bodyApp": "Abre esta dirección en el navegador de tus otros dispositivos.",
+        "address": "Dirección web del negocio",
+        "windows": "App para Windows",
+        "android": "App para Android"
+      },
+      "facts": {
+        "eyebrow": "Datos",
+        "title": "Ficha del negocio",
+        "type": "Tipo",
+        "noType": "Sin indicar",
+        "country": "País",
+        "members": "Miembros",
+        "created": "Creado"
+      },
+      "modules": {
+        "heading": "Las apps se activan y desactivan dentro del negocio",
+        "body": "Abre el negocio y activa las apps que necesites desde su inicio. Las apps gratuitas siempre están incluidas.",
+        "action": "Abrir el negocio"
+      }
+    },
+    "settings": {
+      "title": "General",
+      "lead": "Lo que ves tú en ERPlora. Los datos que salen en los tiques se editan dentro del negocio.",
+      "name": "Nombre del negocio",
+      "country": "País",
+      "timezone": "Zona horaria",
+      "language": "Idioma del negocio",
+      "address": "Dirección web (no cambia: la usan tus dispositivos)",
+      "save": "Guardar cambios",
+      "saveHint": "Se activa al cambiar algo.",
+      "saved": "Cambios guardados",
+      "languages": {
+        "en": "English",
+        "es": "Español"
+      },
+      "countryLocked": "El país no cambia una vez listo el negocio: sus facturas son de un país."
+    },
+    "danger": {
+      "title": "Zona de peligro",
+      "deleteTitle": "Eliminar negocio",
+      "deleteBody": "Deja de funcionar al momento. Guardamos los datos 90 días por si cambias de idea y te enviamos un enlace para descargarlos.",
+      "deleteAction": "Eliminar negocio",
+      "ownerOnly": "Solo el propietario puede eliminar el negocio.",
+      "confirmTitle": "Eliminar {name}",
+      "confirmMessage": "Deja de funcionar ahora mismo para todos. Puedes recuperarlo durante 90 días; después se borra para siempre.",
+      "consequencePlan": "Su plan se cancela ahora: si lo recuperas, vuelve en Gratis.",
+      "consequenceEmail": "Te enviamos un correo con el enlace para descargar sus datos.",
+      "confirmLabel": "Escribe el nombre del negocio para confirmar",
+      "restore": "Recuperar negocio"
+    },
+    "members": {
+      "title": "Miembros",
+      "search": "Buscar por nombre o correo",
+      "invite": "Invitar",
+      "loadError": "No hemos podido cargar los miembros",
+      "recordSingular": "miembro",
+      "recordPlural": "miembros",
+      "you": "Tú",
+      "columns": {
+        "name": "Nombre",
+        "email": "Correo",
+        "role": "Rol",
+        "status": "Estado",
+        "lastAccess": "Último acceso"
+      },
+      "actions": {
+        "changeRole": "Cambiar rol",
+        "remove": "Quitar",
+        "resend": "Reenviar",
+        "cancel": "Cancelar invitación",
+        "transfer": "Transferir propiedad",
+        "changeRoleOf": "Cambiar el rol de {name}",
+        "removeName": "Quitar a {name}",
+        "resendTo": "Reenviar la invitación a {name}",
+        "cancelTo": "Cancelar la invitación a {name}",
+        "transferTo": "Transferir la propiedad a {name}"
+      },
+      "invitedOn": "Invitado el {date}",
+      "expiresOn": "Caduca el {date}",
+      "seats": "{used} de {limit} plazas del plan",
+      "seatsFull": "El plan no tiene plazas libres: cambia de plan o quita a alguien para invitar a más personas.",
+      "resent": "Invitación enviada otra vez a {email}",
+      "rolesHeading": "¿Qué puede hacer cada uno?",
+      "rolesOwner": "Propietario: todo, también el plan, transferir y eliminar el negocio.",
+      "rolesAdmin": "Administrador: equipo, módulos y ajustes.",
+      "rolesStaff": "Encargado y empleado: trabajan dentro del negocio. Los empleados que solo usan un PIN en la caja se gestionan dentro del negocio.",
+      "pendingTransfer": {
+        "heading": "Propiedad ofrecida a {email}",
+        "body": "Tiene hasta el {date} para aceptarla. Mientras tanto sigues siendo el propietario.",
+        "cancel": "Retirar la oferta",
+        "cancelled": "Oferta retirada"
+      },
+      "inviteModal": {
+        "title": "Invitar a {name}",
+        "email": "Correo",
+        "role": "Rol",
+        "message": "Mensaje (opcional)",
+        "submit": "Enviar invitación",
+        "sent": "Invitación enviada a {email}",
+        "hint": "Enviamos un correo con el enlace. La invitación dura 7 días."
+      },
+      "roleModal": {
+        "title": "Cambiar el rol de {name}",
+        "role": "Rol",
+        "submit": "Cambiar rol",
+        "changed": "{name} ahora es {role}"
+      },
+      "remove": {
+        "title": "Quitar a {name}",
+        "message": "{name} deja de tener acceso a {business} al momento. Su cuenta y sus otros negocios se quedan.",
+        "confirm": "Quitar del negocio",
+        "done": "{name} ya no está en el negocio"
+      },
+      "cancelInvite": {
+        "title": "Cancelar la invitación",
+        "message": "La invitación a {email} deja de valer y su enlace ya no deja entrar a nadie.",
+        "confirm": "Cancelar invitación",
+        "back": "Volver",
+        "done": "Invitación cancelada"
+      },
+      "transfer": {
+        "title": "Transferir {business}",
+        "message": "Ofrecemos la propiedad a {name}. Cuando la acepte, pasa a ser el propietario y tú, administrador.",
+        "consequenceWindow": "Tiene 7 días para aceptarla; hasta entonces no cambia nada.",
+        "consequenceBilling": "Las facturas siguen yendo al mismo pagador hasta que el nuevo propietario lo cambie.",
+        "confirmLabel": "Escribe el nombre del negocio para confirmar",
+        "confirm": "Ofrecer la propiedad",
+        "done": "Oferta enviada a {email}: tiene 7 días para aceptarla"
+      }
+    },
+    "errors": {
+      "network": "No hemos podido conectar con ERPlora. Revisa tu conexión e inténtalo de nuevo.",
+      "unexpected": "Algo ha fallado en ERPlora. Inténtalo de nuevo en unos minutos."
+    }
+  }
+}

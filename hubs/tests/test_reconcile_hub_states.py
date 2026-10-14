@@ -27,6 +27,9 @@ from hubs.tests.conftest import create_business
 
 pytestmark = pytest.mark.django_db
 
+#: The advisory lock a run holds (the SaaS's convention, as ``base/tests/test_report_seal_expiry.py``).
+LOCK_KEY = "hashtext('erplora.saas.reconcile_hub_states')"
+
 
 def run(command, *args):
     out = StringIO()
@@ -212,38 +215,39 @@ class TestReconcile:
     def test_a_second_run_returns_at_once_while_one_holds_the_lock(
         self, business, hub_double, other_session
     ):
-        other_session.execute(
-            "SELECT pg_advisory_lock(%s)", [services.lock_key("reconcile_hub_states")]
-        )
+        other_session.execute(f"SELECT pg_advisory_lock({LOCK_KEY})")
 
         output = run("reconcile_hub_states")
 
         assert hub_double.calls == []
         assert "already running" in output
-        other_session.execute(
-            "SELECT pg_advisory_unlock(%s)", [services.lock_key("reconcile_hub_states")]
-        )
+        other_session.execute(f"SELECT pg_advisory_unlock({LOCK_KEY})")
 
     def test_the_lock_is_released_after_a_run(
         self, business, hub_double, other_session
     ):
         run("reconcile_hub_states")
 
-        taken = other_session.execute(
-            "SELECT pg_try_advisory_lock(%s)",
-            [services.lock_key("reconcile_hub_states")],
-        ).fetchone()[0]
+        taken = other_session.execute(f"SELECT pg_try_advisory_lock({LOCK_KEY})").fetchone()[0]
 
         assert taken is True
-        other_session.execute(
-            "SELECT pg_advisory_unlock(%s)", [services.lock_key("reconcile_hub_states")]
-        )
+        other_session.execute(f"SELECT pg_advisory_unlock({LOCK_KEY})")
+
+    def test_the_lock_is_released_when_a_run_fails(
+        self, business, offline_hub, other_session
+    ):
+        with pytest.raises(CommandError):
+            run("reconcile_hub_states")
+
+        assert other_session.execute(f"SELECT pg_try_advisory_lock({LOCK_KEY})").fetchone()[0] is True
+        other_session.execute(f"SELECT pg_advisory_unlock({LOCK_KEY})")
 
 
-def test_the_two_commands_hold_different_locks():
-    assert services.lock_key("push_hub_snapshots") != services.lock_key(
-        "reconcile_hub_states"
-    )
+def test_the_lock_follows_the_saas_convention_and_is_its_own():
+    """``hashtext('erplora.saas.<command>')``, the key ``base``'s commands take (``migrate``,
+    ``report_seal_expiry``): one namespace for every lock of the SaaS's database."""
+    assert services.lock_name("reconcile_hub_states") == "erplora.saas.reconcile_hub_states"
+    assert services.lock_name("push_hub_snapshots") != services.lock_name("reconcile_hub_states")
 
 
 def test_nobody_enters_a_purged_business(business, owner):

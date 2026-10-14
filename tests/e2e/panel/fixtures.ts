@@ -98,6 +98,40 @@ export function shot(name: string): string {
   return join(ARTIFACTS, `${name}.png`);
 }
 
+/** The accounts of `panel_seed.py` (`e2e-<name>@example.com`), all with the same password. */
+export const panelAccount = (name: string): Credentials => ({ email: `e2e-${name}@example.com`, password: 'e2e-panel' });
+
+/**
+ * `tests/e2e/panel/panel_seed.py seed|clear`: the businesses panel's accounts and businesses (the
+ * launcher's variants, Businesses, a business's page, the invitations), always from scratch.
+ */
+export function seedPanel(action: 'seed' | 'clear' = 'seed'): void {
+  execFileSync('uv', ['run', 'python', 'tests/e2e/panel/panel_seed.py', action], {
+    cwd: SAAS_DIR,
+    env: { ...process.env, DEBUG: 'True' },
+    stdio: 'pipe',
+  });
+}
+
+/** The id of the business called `name` among the businesses of `request`'s account. */
+export async function businessIdOf(request: APIRequestContext, name: string): Promise<string> {
+  const response = await request.get('/api/hubs/businesses?limit=50&offset=0');
+  expect(response.status(), 'GET /api/hubs/businesses').toBe(200);
+  const rows = ((await response.json()) as { rows: Array<{ id: string; name: string }> }).rows;
+  const found = rows.find((row) => row.name === name);
+  if (!found) throw new Error(`no business ${name} for this account`);
+  return found.id;
+}
+
+/** `INTERNAL_SHARED_SECRET` of the local SaaS (`.env`), to sign what the Hub would send. */
+export function internalSecret(): string {
+  return execFileSync(
+    'uv',
+    ['run', 'python', '-c', 'import django,os;os.environ.setdefault("DJANGO_SETTINGS_MODULE","config.settings");django.setup();from django.conf import settings;print(settings.INTERNAL_SHARED_SECRET)'],
+    { cwd: SAAS_DIR, env: { ...process.env, DEBUG: 'True' }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
+  ).trim();
+}
+
 export const test = base.extend<{ signedInPage: Page }, { owner: Credentials }>({
   // Once per worker: the accounts exist before any spec signs in.
   owner: [

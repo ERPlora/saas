@@ -430,6 +430,67 @@ class TestRefusals:
 
         assert (fresh(business).last_hub_error, fresh(business).hub_error_at) == ("", None)
 
+    def test_a_refusal_re_runs_the_owners_lists_at_once(
+        self, business, owner, hub_double, monkeypatch, django_capture_on_commit_callbacks
+    ):
+        """The panel left «Preparing» only at the 300 s safety re-run: the write had no event. Now the
+        refusal is recorded by a command, on the owner's channel (as the Hub's ``ready``), and its event
+        re-runs the list and the page of the business."""
+        from live import operations
+        from live.live_registry import live_registry
+        from live.models import OutboxEvent
+
+        notified = []
+        monkeypatch.setattr(operations, "notify_hook", lambda scope, names: notified.append((scope.key, names)))
+        hub_double.answer("PUT", r"/internal/hubs/[^/]+$", 422, {"error": {"code": "unknown_vertical"}})
+
+        with django_capture_on_commit_callbacks(execute=True):
+            services.sync_hub(business.id)
+
+        event = OutboxEvent.objects.get(name="hubs.business.hub_error_changed")
+        assert (event.scope_kind, event.scope_key, event.actor) == ("user", str(owner.pk), "system")
+        assert event.payload == {"id": str(business.id), "hub_error": "unknown_vertical"}
+        assert notified == [(str(owner.pk), ["hubs.business.hub_error_changed"])]
+        assert {"hubs.business.list", "hubs.business.get"} <= live_registry.affected(notified[0][1])
+
+    def test_clearing_the_refusal_re_runs_them_too(self, business, owner, hub_double):
+        from live.models import OutboxEvent
+
+        Hub.objects.filter(pk=business.pk).update(last_hub_error="unknown_vertical", hub_error_at=timezone.now())
+
+        services.sync_hub(business.id)
+
+        (event,) = OutboxEvent.objects.filter(name="hubs.business.hub_error_changed")
+        assert (event.scope_key, event.payload) == (str(owner.pk), {"id": str(business.id), "hub_error": None})
+
+    def test_the_same_refusal_again_is_no_news(self, business, hub_double):
+        """``reconcile_hub_states`` retries every 15 minutes: an unchanged refusal records nothing more."""
+        from live.models import OutboxEvent
+
+        hub_double.answer("PUT", r"/internal/hubs/[^/]+$", 422, {"error": {"code": "unknown_vertical"}})
+
+        services.sync_hub(business.id)
+        services.sync_hub(business.id)
+
+        assert OutboxEvent.objects.filter(name="hubs.business.hub_error_changed").count() == 1
+
+    def test_a_push_without_a_refusal_records_nothing(self, business, hub_double):
+        from live.models import OutboxEvent
+
+        services.sync_hub(business.id)
+
+        assert not OutboxEvent.objects.filter(name="hubs.business.hub_error_changed").exists()
+
+    def test_only_the_platform_records_the_hubs_answer(self, business, owner):
+        from live.errors import PermissionDenied
+
+        from hubs.schemas import HubErrorIn
+
+        with pytest.raises(PermissionDenied):
+            services.business_record_hub_error(ctx_for(owner), HubErrorIn(id=business.id, hub_error="nope"))
+
+        assert fresh(business).last_hub_error == ""
+
     def test_a_hub_that_is_away_is_no_error_of_the_business(self, business, offline_hub):
         services.sync_hub(business.id)
 

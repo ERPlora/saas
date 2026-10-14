@@ -47,7 +47,7 @@ describe('eslint config', () => {
   });
 
   it('forbids it in the frontend of every root app (saas-next has no apps/, PLAN §20.2)', async () => {
-    const apps = [...new Set([...rootAppsWithFrontend(), 'accounts', 'hubs', 'marketplace', 'billing'])];
+    const apps = [...new Set([...rootAppsWithFrontend(), 'accounts', 'hubs', 'billing'])];
     for (const app of apps) {
       expect(await restricted('export const x = fetch;\n', `${app}/frontend/pages/Page.ts`), app).toHaveLength(1);
     }

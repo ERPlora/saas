@@ -8,7 +8,7 @@ El acceso por PIN solo aparece en un dispositivo de confianza que tenga al menos
 
 ### ¿Existe un asistente de configuración después del login?
 
-No. El dashboard muestra avisos concretos únicamente para módulos instalados que todavía necesitan configuración. La información global se gestiona en **Ajustes**.
+No. El dashboard muestra avisos concretos únicamente para apps instaladas que todavía necesitan configuración. La información global se gestiona en **Ajustes**.
 
 ### ¿Qué ocurre si borro los datos del navegador?
 

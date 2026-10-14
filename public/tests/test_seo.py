@@ -193,6 +193,7 @@ def test_every_linked_page_exists(client, llms):
     """A link in llms.txt is quoted verbatim by a model: it must answer 200."""
     links = re.findall(r"\]\((https://[^)]+)\)", llms.content.decode())
 
+    assert links, "no link found: a loop over nothing proves nothing"
     for link in links:
         assert link.startswith(f"{ORIGIN}/"), link
         assert (

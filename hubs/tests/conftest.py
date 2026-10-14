@@ -3,15 +3,14 @@
 from decimal import Decimal
 from io import StringIO
 
-import psycopg
 import pytest
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
-from django.db import connections
 from live.context import OperationContext, Scope
 from live.meta import all_live_app_configs, permissions_for_role
 
 from base.operations import ACCOUNT_ROLE
+from base.tests.conftest import other_session  # noqa: F401 - a second session, as another saas-cron task
 from hubs.tests.hub_double import HubDouble
 
 SECRET = "test-internal-secret"
@@ -146,18 +145,3 @@ def member_of(hub, user):
     from hubs.models import HubMember
 
     return HubMember.objects.get(hub=hub, user=user)
-
-@pytest.fixture
-def other_session(django_db_setup):
-    """A second database session, as a second run of the command would have."""
-    params = connections["default"].settings_dict
-    session = psycopg.connect(
-        dbname=params["NAME"],
-        user=params["USER"],
-        password=params["PASSWORD"],
-        host=params["HOST"],
-        port=params["PORT"],
-        autocommit=True,
-    )
-    yield session
-    session.close()

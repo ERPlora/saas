@@ -36,6 +36,7 @@ def call(name, hub, team):
     """Run the operation ``name`` on ``hub``; a refusal of the domain (409, 422) means it got past the role."""
     employee = member_of(hub, team["employee"]).id
     admin = member_of(hub, team["admin"]).id
+    invitation = member_of(hub, team["invitee"]).id
     return {
         "business.get": (queries.business_get, ByIdIn(id=hub.id)),
         "business.update": (
@@ -58,6 +59,8 @@ def call(name, hub, team):
             MemberRoleIn(id=employee, role="hub_manager"),
         ),
         "member.remove": (services.member_remove, ByIdIn(id=employee)),
+        "member.resend": (services.member_resend, ByIdIn(id=invitation)),
+        "member.cancel": (services.member_cancel, ByIdIn(id=invitation)),
         "ownership.transfer": (
             services.ownership_transfer,
             OwnershipTransferIn(hub_id=hub.id, member_id=admin),
@@ -84,6 +87,8 @@ MATRIX = {
     "member.invite": (OK, OK, DENIED, DENIED, HIDDEN, HIDDEN),
     "member.change_role": (OK, OK, DENIED, DENIED, HIDDEN, HIDDEN),
     "member.remove": (OK, OK, DENIED, DENIED, HIDDEN, HIDDEN),
+    "member.resend": (OK, OK, DENIED, DENIED, HIDDEN, HIDDEN),
+    "member.cancel": (OK, OK, DENIED, DENIED, HIDDEN, HIDDEN),
     "ownership.transfer": (OK, DENIED, DENIED, DENIED, HIDDEN, HIDDEN),
     "billing_profile.get": (OK, DENIED, DENIED, DENIED, HIDDEN, HIDDEN),
     "billing_profile.update": (OK, DENIED, DENIED, DENIED, HIDDEN, HIDDEN),
@@ -121,6 +126,7 @@ def test_every_operation_on_a_business_has_its_row():
         "hubs.business.list",
         "hubs.business.create",
         "hubs.business.mark_ready",
+        "hubs.business.record_hub_error",
         "hubs.address.propose",
         "hubs.invitation.list_mine",
         "hubs.invitation.accept",
@@ -128,9 +134,6 @@ def test_every_operation_on_a_business_has_its_row():
         "hubs.ownership.accept",
         "hubs.ownership.decline",
         "hubs.ownership.cancel",
-        # Same rule as change_role and remove (``_managed``), on an unanswered row.
-        "hubs.member.resend",
-        "hubs.member.cancel",
     }
     on_a_business = {
         name

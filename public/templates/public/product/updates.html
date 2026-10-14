@@ -4,11 +4,7 @@
   /updates/ — port of apps/public/product/templates/product/updates.html (origin/develop): the
   plain-language half of the update policy (ADR-0269, pm#69). The binding text is clause 7 of
   /legal/terms/; this page says the same thing to someone who runs a bar, not to a lawyer. If one
-  changes, the other has to change with it.
-
-  The terms come with the pages that read Plan (L7): until `public:terms` exists the closing band
-  still names section 7 and paints no button ({% templatetag openblock %} url … as {% templatetag closeblock %} does not raise), so nothing points
-  at a 404; the day it exists, the button appears.
+  changes, the other has to change with it. The closing band names section 7 and links it.
 {% endcomment %}
 
 {% block title %}{% trans "Updates" %} · ERPlora{% endblock %}
@@ -156,12 +152,7 @@
       {% trans "The small print" as eyebrow %}
       {% trans "The same thing, in contract language." as heading %}
       {% trans "Everything on this page is section 7 of the terms of service. If the two ever disagree, the terms are the ones that bind us." as subheading %}
-      {% url "public:terms" as terms_url %}
-      {% if terms_url %}
-        {% include "public/components/cta_band.html" with variant="soft" eyebrow=eyebrow heading=heading subheading=subheading actions_template="public/product/_updates_cta_actions.html" terms_url=terms_url only %}
-      {% else %}
-        {% include "public/components/cta_band.html" with variant="soft" eyebrow=eyebrow heading=heading subheading=subheading only %}
-      {% endif %}
+      {% include "public/components/cta_band.html" with variant="soft" eyebrow=eyebrow heading=heading subheading=subheading actions_template="public/product/_updates_cta_actions.html" only %}
     </div>
   </div>
 {% endblock %}

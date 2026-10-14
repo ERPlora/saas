@@ -1,4 +1,27 @@
 {
   "base.session.me": { "method": "get", "path": "/api/me" },
-  "accounts.hub.list": { "method": "get", "path": "/api/accounts/hubs" }
+  "accounts.hub.list": { "method": "get", "path": "/api/accounts/hubs" },
+  "hubs.business_type.list": { "method": "get", "path": "/api/catalog/business-types" },
+  "hubs.plan.list": { "method": "get", "path": "/api/plans" },
+  "hubs.business.list": { "method": "get", "path": "/api/hubs/businesses" },
+  "hubs.business.create": { "method": "post", "path": "/api/hubs/businesses" },
+  "hubs.business.get": { "method": "get", "path": "/api/hubs/businesses/detail" },
+  "hubs.business.update": { "method": "post", "path": "/api/hubs/businesses/update" },
+  "hubs.business.delete": { "method": "post", "path": "/api/hubs/businesses/delete" },
+  "hubs.business.restore": { "method": "post", "path": "/api/hubs/businesses/restore" },
+  "hubs.business.open": { "method": "post", "path": "/api/hubs/businesses/open" },
+  "hubs.address.propose": { "method": "get", "path": "/api/hubs/address" },
+  "hubs.member.list": { "method": "get", "path": "/api/hubs/members" },
+  "hubs.member.invite": { "method": "post", "path": "/api/hubs/members/invite" },
+  "hubs.member.change_role": { "method": "post", "path": "/api/hubs/members/change_role" },
+  "hubs.member.remove": { "method": "post", "path": "/api/hubs/members/remove" },
+  "hubs.member.resend": { "method": "post", "path": "/api/hubs/members/resend" },
+  "hubs.member.cancel": { "method": "post", "path": "/api/hubs/members/cancel" },
+  "hubs.invitation.list_mine": { "method": "get", "path": "/api/hubs/invitations" },
+  "hubs.invitation.accept": { "method": "post", "path": "/api/hubs/invitations/accept" },
+  "hubs.invitation.decline": { "method": "post", "path": "/api/hubs/invitations/decline" },
+  "hubs.ownership.transfer": { "method": "post", "path": "/api/hubs/ownership/transfer" },
+  "hubs.ownership.accept": { "method": "post", "path": "/api/hubs/ownership/accept" },
+  "hubs.ownership.decline": { "method": "post", "path": "/api/hubs/ownership/decline" },
+  "hubs.ownership.cancel": { "method": "post", "path": "/api/hubs/ownership/cancel" }
 }

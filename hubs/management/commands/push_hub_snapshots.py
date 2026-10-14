@@ -3,9 +3,10 @@
 The safety net of PLAN-SAAS §2.2 (every night, every business): pushes the snapshot of every live
 business, each with a newer version (the Hub ignores an equal one), so a Hub that lost what it had
 acknowledged is put right. ``--behind-only`` pushes only the snapshots the Hub is behind on
-(``pushed_state_version < state_version``). Under a Postgres advisory lock (a second run returns at
-once); a business that fails stays owed, never stops the batch, and the run ends with an error after
-its pass (the ``task_failed`` alarm).
+(``pushed_state_version < state_version``). Under the advisory lock
+``hashtext('erplora.saas.push_hub_snapshots')`` (``services.run_exclusively``; a second run returns at
+once); a business that fails stays owed, never stops the batch, and the run ends with an error after its
+pass (the ``task_failed`` alarm).
 """
 
 import logging

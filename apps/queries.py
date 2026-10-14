@@ -43,6 +43,10 @@ logger = logging.getLogger(__name__)
 SOURCE_LANGUAGE = "es"
 #: How long a rendered documentation is kept; a new document changes its hash, and so its key.
 DOC_CACHE_SECONDS = 60 * 60 * 24
+#: The version of what ``render_markdown`` produces, in the key: bumped when the renderer changes
+#: what it lets through (2: live 387d04f, stricter image paths), so HTML rendered before a deploy
+#: is never served after it.
+DOC_RENDER_VERSION = 2
 #: The sections of the store, in the order of live.meta's Category; an unknown one goes last.
 CATEGORY_ORDER = {value: position for position, value in enumerate(Category.values)}
 
@@ -194,7 +198,7 @@ def app_doc(ctx: OperationContext, data: AppByIdIn) -> dict[str, Any]:
             gettext("The app “%(id)s” has no documentation yet.") % {"id": app.id},
             code="apps.doc_not_found",
         )
-    key = f"apps:doc:{app.id}:{doc.lang}:{doc.source_hash}"
+    key = f"apps:doc:v{DOC_RENDER_VERSION}:{app.id}:{doc.lang}:{doc.source_hash}"
     html = cache.get(key)
     if html is None:
         html = render_markdown(

@@ -86,6 +86,18 @@ def without_noscript(source: str) -> str:
     return NOSCRIPT_BLOCK.sub("", source)
 
 
+#: The navbar's burger and close button (L8): native, because Ionic 8.8.9 copies the ``aria-*`` of
+#: an ``ion-button`` host to its inner button once and never follows ``aria-expanded``.
+NAVBAR_NATIVE_BUTTON = re.compile(
+    r'<button type="button" class="ep-navbar__(?:burger|close)"[^>]*\bdata-navbar-(?:toggle|close)\b[^>]*>'
+)
+
+
+def without_navbar_buttons(source: str) -> str:
+    """The second and last exception to native controls: the navbar's two disclosure buttons."""
+    return NAVBAR_NATIVE_BUTTON.sub("", source)
+
+
 def public_templates() -> list[Path]:
     return sorted(PUBLIC_TEMPLATES.rglob("*.html"))
 
@@ -261,8 +273,7 @@ def test_the_dev_banner_announces_the_pre_launch(client):
     assert 'role="status"' in banner
     assert "Pre-launch" in banner
     assert (
-        "ERPlora is in active development. You're viewing a product preview."
-        in banner
+        "ERPlora is in active development. You're viewing a product preview." in banner
     )
     assert "<svg" in banner
 
@@ -327,16 +338,83 @@ def test_the_navbar_labels_are_translated(client, ana):
     assert "Dashboard" not in navbar
 
 
-@pytest.mark.django_db
-def test_the_mobile_menu_is_an_ionic_control_with_its_labels(client):
-    navbar = navbar_of(get_page(client).content.decode())
+def opening_tag(html: str, marker: str, *, also: str = "") -> str:
+    """The opening tag of the one element that carries ``marker`` (and ``also``, if given)."""
+    tags = [
+        tag
+        for tag in re.findall(rf"<[a-z-]+\b[^>]*\b{marker}\b[^>]*>", html)
+        if also in tag
+    ]
+    assert len(tags) == 1, tags
+    return tags[0]
 
-    assert "data-navbar-toggle" in navbar
-    assert 'aria-controls="ep-navbar-panel"' in navbar
-    assert 'aria-expanded="false"' in navbar
-    assert 'aria-label="Menu"' in navbar
-    assert 'aria-label="Close"' in navbar
+
+@pytest.mark.django_db
+def test_the_mobile_menu_is_a_native_button_with_its_labels(client):
+    """L8: Ionic 8.8.9 copies the ``aria-*`` of an ``ion-button`` host to its inner button once and
+    never follows ``aria-expanded`` again: a screen reader heard «collapsed» with the panel open."""
+    navbar = navbar_of(get_page(client).content.decode())
+    burger = opening_tag(navbar, "data-navbar-toggle")
+    close = opening_tag(navbar, "data-navbar-close", also="ep-navbar__close")
+
+    assert burger.startswith('<button type="button"')
+    assert 'aria-controls="ep-navbar-panel"' in burger
+    assert 'aria-expanded="false"' in burger
+    assert 'aria-label="Menu"' in burger
+    assert close.startswith('<button type="button"')
+    assert 'aria-label="Close"' in close
     assert 'id="ep-navbar-panel"' in navbar
+
+
+#: A literal path in a template: an ``href`` or the fallback of a ``|default``.
+LITERAL_PATH = re.compile(r"""(?:href=|default:)["'](/[^"'{]*)["']""")
+
+
+def literal_paths_to_public_routes(source: str) -> list[str]:
+    """The literal paths of ``source`` that land on a route of the public web (``/`` included)."""
+    from public.urls import PUBLIC_PREFIXES
+
+    own = {"", *PUBLIC_PREFIXES}
+    return [
+        path
+        for path in LITERAL_PATH.findall(source)
+        if not path.startswith("/static/") and path.strip("/").split("/")[0] in own
+    ]
+
+
+def test_no_template_writes_the_path_of_a_public_route():
+    """L8: a route of the public web is a ``{% url %}``. A literal path survives a rename of the
+    route and points at a 404; ``|default:'/pricing/'`` waited for a URL name that exists now."""
+    offenders = [
+        f"{template.relative_to(PUBLIC_TEMPLATES)}: {path}"
+        for template in public_templates()
+        for path in literal_paths_to_public_routes(
+            without_comments(template.read_text(encoding="utf-8"))
+        )
+    ]
+
+    assert offenders == []
+
+
+def test_the_literal_path_sweep_catches_what_was_written():
+    """Positive control: the shapes the templates actually had, and what it must let through."""
+    source = (
+        '<ion-button href="/contact/">'
+        "{% include 'card.html' with href=\"/contact/\" %}"
+        "href=pricing_url|default:'/pricing/'"
+        "{{ contact_url|default:'/contact/' }}"
+        '<a href="/">'
+        '<img src="/static/public/img/logo.png"><a href="/static/public/x.pdf">'
+        '<a href="/launch"><a href="{% url \'public:contact\' %}"><a href="https://erplora.com/">'
+    )
+
+    assert literal_paths_to_public_routes(source) == [
+        "/contact/",
+        "/contact/",
+        "/pricing/",
+        "/contact/",
+        "/",
+    ]
 
 
 def test_navbar_and_footer_link_only_to_routes_that_exist():
@@ -503,7 +581,11 @@ def test_the_cookie_settings_page_says_so_when_there_are_no_groups(client):
 @pytest.mark.django_db
 def test_each_toggle_posts_its_group_to_accept_or_decline(client, cookie_groups):
     html = client.get(reverse("cookie_consent_cookie_group_list")).content.decode()
-    script = next(script for script in re.findall(r"<script\b.*?</script>", html, re.S) if "ion-toggle.cookie-toggle" in script)
+    script = next(
+        script
+        for script in re.findall(r"<script\b.*?</script>", html, re.S)
+        if "ion-toggle.cookie-toggle" in script
+    )
 
     assert reverse("cookie_consent_accept") in script
     assert reverse("cookie_consent_decline") in script
@@ -596,6 +678,8 @@ def test_public_templates_do_not_use_visible_native_controls():
             without_comments(template.read_text(encoding="utf-8"))
         )
         relative = template.relative_to(PUBLIC_TEMPLATES)
+        if relative == Path("public/partials/navbar.html"):
+            source = without_navbar_buttons(source)
         offenders += [
             f"{relative}: <{match.group(1).lower()}>"
             for match in NATIVE_VISIBLE_TAGS.finditer(source)
@@ -619,6 +703,19 @@ def test_the_noscript_exception_is_narrow():
 
     assert 'id="inside"' not in stripped
     assert 'id="outside"' in stripped
+
+
+def test_the_navbar_exception_is_narrow():
+    """Only the burger and the close button of the navbar, never any other native button."""
+    source = (
+        '<button type="button" class="ep-navbar__burger" aria-expanded="false" data-navbar-toggle>'
+        '<button type="button" class="ep-navbar__close" data-navbar-close>'
+        '<button type="button" class="ep-navbar__burger">'
+        '<button type="submit" data-navbar-toggle>'
+        '<button type="button" class="other" data-navbar-close>'
+    )
+
+    assert len(NATIVE_VISIBLE_TAGS.findall(without_navbar_buttons(source))) == 3
 
 
 def test_public_navigation_has_no_global_floating_back_control():
@@ -967,10 +1064,117 @@ def test_the_open_mobile_panel_is_not_trapped_by_the_glass_bar():
     """`backdrop-filter` makes the navbar the containing block of its fixed descendants: with it on,
     the side panel and its backdrop were laid out inside the 50 px bar instead of the viewport (seen
     in Chrome at 390 px). The open navbar drops the glass."""
-    css = re.sub(r"/\*.*?\*/", "", (COMPONENT_CSS / "navbar.css").read_text(encoding="utf-8"), flags=re.S)
+    css = re.sub(
+        r"/\*.*?\*/",
+        "",
+        (COMPONENT_CSS / "navbar.css").read_text(encoding="utf-8"),
+        flags=re.S,
+    )
     open_rule = re.search(r"\.ep-navbar\[data-open\]\s*\{([^}]*)\}", css)
 
     assert "backdrop-filter" in css, "the closed bar is glass"
     assert open_rule, "no rule for the open navbar"
     assert "backdrop-filter: none" in open_rule.group(1)
     assert "-webkit-backdrop-filter: none" in open_rule.group(1)
+
+
+# --- L8: the public web looks like today's (side-by-side captures, old | new) -------------------
+
+
+def css_rule(path: Path, selector: str, *, inside: str = "") -> str:
+    """The declarations of the first rule whose whole selector is ``selector`` (after ``inside``,
+    e.g. a media query, when given), with the comments dropped."""
+    css = re.sub(r"/\*.*?\*/", "", path.read_text(encoding="utf-8"), flags=re.DOTALL)
+    css = css[css.index(inside) :] if inside else css
+    match = re.search(rf"(?:^|[{{}};])\s*{re.escape(selector)}\s*\{{([^}}]*)\}}", css)
+    assert match, f"no rule {selector!r} in {path.name}"
+    return match.group(1)
+
+
+def test_the_navbar_links_are_brand_blue_on_the_bar_and_plain_in_the_panel():
+    """Today the links of the bar take the brand colour; inside the mobile panel, the text one."""
+    navbar = COMPONENT_CSS / "navbar.css"
+
+    assert "--ep-primary" in css_rule(navbar, ".ep-navbar__links a")
+    assert "--ep-text" in css_rule(
+        navbar, ".ep-navbar__links a", inside="@media (max-width: 800px)"
+    )
+
+
+@pytest.mark.parametrize(
+    ("sheet", "selector"),
+    [
+        ("navbar.css", ".ep-navbar__bar"),
+        ("footer.css", ".ep-footer__columns"),
+        ("footer.css", ".ep-footer__bottom"),
+    ],
+)
+def test_the_bar_and_the_footer_are_as_wide_as_today(sheet, selector):
+    """The old components measured 1140 px of content plus their padding (1172 px at 1440); with
+    the page's border-box they were 16 px narrower on each side."""
+    assert "box-sizing: content-box" in css_rule(COMPONENT_CSS / sheet, selector)
+
+
+def test_on_a_phone_the_footer_brand_takes_a_whole_row():
+    """At 390 px the brand sat in a column next to «Product»; today it spans the row above them,
+    whether the grid has one column or two."""
+    rule = css_rule(
+        COMPONENT_CSS / "footer.css",
+        ".ep-footer__brand-column",
+        inside="@media (max-width: 400px)",
+    )
+
+    assert "grid-column: 1 / -1" in rule
+
+
+def test_a_plan_card_lists_plain_checks_with_no_rule_and_no_stretch():
+    """Today: «✓ feature» as text, no line above the list, the button right after it."""
+    card = COMPONENT_CSS / "pricing-card.css"
+    features = css_rule(card, ".ep-pricing-card__features")
+    check = css_rule(card, ".ep-pricing-card__check")
+
+    assert "border-top" not in features
+    assert "flex: 1" not in features
+    assert "background" not in check
+    assert "border-radius" not in check
+
+
+def test_the_deed_title_has_the_size_of_a_page_title():
+    """The ``<h2 class="ep-deed-title">`` of the declaración responsable (``demote_h1``)."""
+    assert "font-size" in css_rule(
+        PUBLIC_STATIC / "layout.css", ".ep-prose .ep-deed-title"
+    )
+
+
+#: The title of a public page: «<page> · ERPlora».
+TITLE_BLOCK = re.compile(r"\{%\s*block title\s*%\}(.*?)\{%\s*endblock", re.DOTALL)
+
+
+def test_every_public_title_separates_the_brand_with_a_middle_dot():
+    """«Cookie Settings - ERPlora» and «Page not found - ERPlora» stood out among the
+    «<page> · ERPlora» of every other page (L8)."""
+    offenders = [
+        f"{template.relative_to(ROOT)}: {title.strip()}"
+        for template in public_templates()
+        for title in TITLE_BLOCK.findall(template.read_text(encoding="utf-8"))
+        if " - ERPlora" in title
+    ]
+
+    assert offenders == []
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("name", "args", "title"),
+    [
+        ("cookie_consent_cookie_group_list", [], "Cookie Settings · ERPlora"),
+        ("test_error_page", [404], "Page not found · ERPlora"),
+        ("test_error_page", [500], "Something went wrong · ERPlora"),
+    ],
+)
+def test_the_cookie_settings_and_the_error_titles_read_like_the_rest(
+    client, name, args, title
+):
+    html = client.get(reverse(name, args=args)).content.decode()
+
+    assert f"<title>{title}</title>" in html

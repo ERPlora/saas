@@ -5,7 +5,10 @@
   Brand on the left; the links (public/partials/nav_links.html) and the actions on the right.
   At 800 px and below the links and the actions move into a side panel from the right that the
   burger opens; the panel closes with its close button, the backdrop, Esc or a link. Everything is
-  in the light DOM: crawlable.
+  in the light DOM: crawlable. The burger and the close button are native <button>s styled as the
+  component (L8): Ionic 8.8.9 copies the aria-* of an ion-button host to its inner button once and
+  never follows aria-expanded, so a screen reader kept hearing «collapsed» with the panel open.
+  Their bars and cross are drawn in CSS, the 22 × 2 px of the old component (L8).
 
   The actions follow the session (saas#1608): an anonymous visitor is offered to start free (the
   sign-in, where an account is also created); a customer with a session gets one link into the
@@ -19,14 +22,14 @@
             <img class="ep-navbar__logo" src="{% static 'public/img/logo.png' %}" alt="" width="28" height="28">
             <span class="ep-navbar__name">ERPlora</span>
         </a>
-        <ion-button class="ep-navbar__burger" fill="clear" aria-label="{% trans 'Menu' %}" aria-controls="ep-navbar-panel" aria-expanded="false" data-navbar-toggle>
-            {% icon "menu-outline" %}
-        </ion-button>
+        <button type="button" class="ep-navbar__burger" aria-label="{% trans 'Menu' %}" aria-controls="ep-navbar-panel" aria-expanded="false" data-navbar-toggle>
+            <span class="ep-navbar__burger-lines" aria-hidden="true"></span>
+        </button>
         <div class="ep-navbar__panel" id="ep-navbar-panel" data-navbar-panel>
             <div class="ep-navbar__panel-head">
-                <ion-button class="ep-navbar__close" fill="clear" aria-label="{% trans 'Close' %}" data-navbar-close>
-                    {% icon "close-outline" %}
-                </ion-button>
+                <button type="button" class="ep-navbar__close" aria-label="{% trans 'Close' %}" data-navbar-close>
+                    <span class="ep-navbar__close-cross" aria-hidden="true"></span>
+                </button>
             </div>
             <div class="ep-navbar__links">
                 {% include 'public/partials/nav_links.html' %}

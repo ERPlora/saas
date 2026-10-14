@@ -226,6 +226,15 @@ ion-item.ep-accordion-header .ep-icon {
   font-weight: 600;
 }
 
+/* The title of a deed published inside a page (the declaración responsable): an <h2>, since the
+   hero is the page's <h1> (demote_h1), with the size it had as the old page's <h1>. */
+.ep-prose .ep-deed-title {
+  margin: 1.25rem 0 0.625rem;
+  font-size: 1.625rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
 .ep-prose h3 {
   margin: 1.25rem 0 0.5rem;
   font-family: var(--ep-font-display, var(--ep-font, system-ui, sans-serif));

@@ -1,0 +1,376 @@
+{
+  "hubs": {
+    "common": {
+      "open": "Open",
+      "openName": "Open {name}",
+      "openBusiness": "Open business",
+      "goToPanel": "Go to the panel",
+      "retry": "Retry",
+      "cancel": "Cancel",
+      "back": "Back",
+      "signedInAs": "Signed in as {email}",
+      "signOut": "Sign out",
+      "copyAddress": "Copy address",
+      "copied": "Address copied",
+      "copyFailed": "The address could not be copied. Select it and copy it by hand.",
+      "reconnecting": "Reconnecting… what you see may be a few seconds old.",
+      "plan": "Plan {name}",
+      "lastOpened": "Last opened",
+      "managedByOwner": "Managed by the owner",
+      "notYet": "Not yet",
+      "unlimited": "Unlimited",
+      "storeInBrowser": "To change your plan or add modules, go to erplora.com in your browser."
+    },
+    "roles": {
+      "hub_owner": "Owner",
+      "hub_admin": "Admin",
+      "hub_manager": "Manager",
+      "hub_employee": "Employee"
+    },
+    "status": {
+      "error": "Not prepared"
+    },
+    "reason": {
+      "preparing": "We are preparing it. It opens by itself when it is ready.",
+      "error": "We could not prepare it. We keep retrying; if it keeps failing, contact us.",
+      "pastDue": "There is an unpaid invoice. It keeps working for 7 more days; pay it so it is not suspended.",
+      "pastDueApp": "There is an unpaid invoice: it keeps working for 7 more days. To pay it, go to erplora.com in your browser.",
+      "suspended": "Suspended because of an unpaid invoice. Your data is safe: pay the invoice and it works again at once.",
+      "suspendedApp": "Suspended because of an unpaid invoice. Your data is safe. To pay it, go to erplora.com in your browser.",
+      "deleting": "Deleted. You can recover it until {date}.",
+      "preparingSoon": "Ready in a few seconds"
+    },
+    "open": {
+      "opening": "Opening {name}…"
+    },
+    "launch": {
+      "pageTitle": "Enter",
+      "loadError": "We could not load your businesses.",
+      "mfaUnavailable": "Two-factor authentication is not available on this account yet.",
+      "signedOut": {
+        "title": "Sign in to ERPlora",
+        "lead": "Sign in with your ERPlora account.",
+        "leadApp": "The app uses your erplora.com account.",
+        "body": "Sign in with your email or with Google. When you finish you come back here and choose your business.",
+        "signIn": "Sign in",
+        "signUp": "Create a free account"
+      },
+      "first": {
+        "title": "Create your business",
+        "lead": "Free and no card: just the name and the country.",
+        "or": "or",
+        "invited": "Invited? The invitation shows up here if you sign in with the email it was sent to."
+      },
+      "preparing": {
+        "title": "Preparing {name}",
+        "lead": "It usually takes a few seconds.",
+        "meanwhile": "Go to the panel meanwhile"
+      },
+      "invited": {
+        "title": "You have been invited to {name}",
+        "lead": "{inviter} gives you access as {role}.",
+        "leadNoInviter": "You have access as {role}.",
+        "createOwn": "Create my own business"
+      },
+      "one": {
+        "greeting": "Hello, {name}",
+        "greetingNoName": "Hello",
+        "lead": "What do you want to do?",
+        "foot": "In the panel you manage the business, the team and your account."
+      },
+      "several": {
+        "title": "Where are you working today?",
+        "lead": "Choose a business to open it.",
+        "createAnother": "Create another business"
+      },
+      "invitationBanner": {
+        "heading": "You have been invited to {name}",
+        "action": "See the invitation"
+      }
+    },
+    "create": {
+      "heading": "What is your business called?",
+      "lead": "We only need the name and the country. You start on the Free plan, without a card.",
+      "name": "Business name",
+      "namePlaceholder": "Your business's name",
+      "nameRequired": "Write the name of your business.",
+      "country": "Country",
+      "type": "Business type (optional)",
+      "typeUnknown": "I don't know yet",
+      "typeHint": "With the type, your business is born with the modules of its sector. You can leave it blank.",
+      "typesFailed": "The business types could not be loaded right now. You can create the business without one.",
+      "address": "Your address will be {host}",
+      "addressChecking": "Finding a free address…",
+      "foot": "Free and no card. You can change the name whenever you want.",
+      "submit": "Create my business",
+      "created": "Business created: {name}"
+    },
+    "preparing": {
+      "progress": "Preparation progress",
+      "status": "Preparation of {name}",
+      "created": "Business created",
+      "setup": "Setting up your business",
+      "setupType": "Installing the modules for {type}",
+      "opensAlone": "It opens by itself when it finishes",
+      "ready": "Ready to open"
+    },
+    "createModal": {
+      "title": "Create business",
+      "preparingTitle": "Preparing {name}",
+      "readyTitle": "Your business is ready",
+      "errorTitle": "It could not be prepared",
+      "closeHint": "You can close this window: you will see it in your list as «Preparing».",
+      "goToList": "Go to my businesses",
+      "readyAddress": "Your address: {host}",
+      "error": "We saved {name}, but it could not be prepared. We keep retrying; if it keeps failing, contact us."
+    },
+    "list": {
+      "title": "Businesses",
+      "lead": "Here you manage your businesses. Press «Open» to work in one.",
+      "search": "Search by name or web address",
+      "create": "Create business",
+      "loadError": "We could not load your businesses",
+      "recordSingular": "business",
+      "recordPlural": "businesses",
+      "columns": {
+        "name": "Business",
+        "host": "Web address",
+        "status": "Status",
+        "plan": "Plan",
+        "role": "Role",
+        "lastOpened": "Last used"
+      },
+      "actions": {
+        "open": "Open",
+        "manage": "Manage",
+        "restore": "Recover",
+        "manageName": "Manage {name}",
+        "restoreName": "Recover {name}"
+      },
+      "empty": {
+        "heading": "Create your first business",
+        "message": "Free and no card: just the name and the country.",
+        "invited": "Invited? The invitation shows up here if you sign in with the email it was sent to."
+      },
+      "noResults": {
+        "heading": "Nothing matches the search",
+        "message": "Try another name or web address.",
+        "showAll": "Show all"
+      },
+      "unpaid": {
+        "pastDueHeading": "{name} has an unpaid invoice",
+        "pastDueBody": "It keeps working for 7 more days; if it is not paid by then, the business is suspended. Nothing is deleted.",
+        "suspendedHeading": "{name} is suspended",
+        "suspendedBody": "It was suspended because of an unpaid invoice. Nothing is deleted: once it is paid it works again at once.",
+        "app": "To pay it, go to erplora.com in your browser."
+      },
+      "invitation": {
+        "heading": "You have been invited to {name}",
+        "body": "{inviter} gives you access as {role}. Accept to see it in your list.",
+        "bodyNoInviter": "You have access as {role}. Accept to see it in your list."
+      },
+      "ownership": {
+        "heading": "{from} offers you {name}",
+        "body": "Accept it before {date} to become its owner.",
+        "accept": "Accept the ownership",
+        "decline": "Decline",
+        "accepted": "You are now the owner of {name}",
+        "declined": "Offer declined"
+      },
+      "restored": "Business recovered: {name}",
+      "deleted": "Business deleted: {name}. You can recover it until {date}."
+    },
+    "invitation": {
+      "accept": "Accept and enter",
+      "decline": "Decline",
+      "accepted": "You now have access to {name}",
+      "declineTitle": "Decline the invitation",
+      "declineMessage": "{inviter} invited you to {name}. If you decline it, they will have to invite you again.",
+      "declineMessageNoInviter": "You were invited to {name}. If you decline it, you will have to be invited again.",
+      "declined": "Invitation declined",
+      "pageTitle": "You have been invited",
+      "lead": "Someone gave you access to their business. Accept to enter.",
+      "byLine": "{inviter} invites you · {role}",
+      "foot": "You can leave a business whenever you want from the panel.",
+      "loadError": "We could not load your invitations.",
+      "expired": {
+        "title": "This invitation is no longer valid",
+        "lead": "It expired or was already used.",
+        "body": "Ask whoever invited you to send it again, to the email you sign in with: {email}.",
+        "bodyNoEmail": "Ask whoever invited you to send it again, to the email you sign in with.",
+        "createOwn": "Create my own business"
+      }
+    },
+    "business": {
+      "loadError": "We could not load this business",
+      "loadErrorBody": "Maybe you no longer have access to it, or there is a connection problem.",
+      "tabsLabel": "Business sections",
+      "tabs": {
+        "summary": "Summary",
+        "members": "Members",
+        "modules": "Modules",
+        "settings": "Settings"
+      },
+      "deleting": {
+        "heading": "It will be erased for good on {date}",
+        "body": "You deleted it on {date} and it no longer works. Until then you can recover it as it was; we sent you an email with a link to download its data.",
+        "bodyNotOwner": "It was deleted on {date} and no longer works. Only its owner can recover it."
+      },
+      "plan": {
+        "eyebrow": "Plan",
+        "none": "No plan",
+        "trial": "Trying {plan} until {date}",
+        "devices": "Devices",
+        "users": "Users",
+        "usersOf": "{used} of {limit}",
+        "deleted": "It was cancelled when the business was deleted. If you recover it, it comes back on Free."
+      },
+      "usage": {
+        "eyebrow": "Usage",
+        "title": "People on the business",
+        "people": "People",
+        "meter": "Places on the plan",
+        "meterHint": "Members and invitations waiting for an answer, out of what the plan covers.",
+        "covered": "The plan covers",
+        "hint": "Members and invitations waiting for an answer."
+      },
+      "devices": {
+        "eyebrow": "On your devices",
+        "title": "Enter from anywhere",
+        "body": "Open this address in the browser of the till, the tablet or the phone, or use the app.",
+        "bodyApp": "Open this address in the browser of your other devices.",
+        "address": "Web address of the business",
+        "windows": "App for Windows",
+        "android": "App for Android"
+      },
+      "facts": {
+        "eyebrow": "Details",
+        "title": "Business details",
+        "type": "Type",
+        "noType": "Not set",
+        "country": "Country",
+        "members": "Members",
+        "created": "Created"
+      },
+      "modules": {
+        "heading": "Apps are turned on and off inside the business",
+        "body": "Open the business and turn on the apps you need from its home. The free apps are always included.",
+        "action": "Open the business"
+      }
+    },
+    "settings": {
+      "title": "General",
+      "lead": "What you see in ERPlora. The data on the receipts is edited inside the business.",
+      "name": "Business name",
+      "country": "Country",
+      "timezone": "Time zone",
+      "language": "Business language",
+      "address": "Web address (it does not change: your devices use it)",
+      "save": "Save changes",
+      "saveHint": "Enabled when you change something.",
+      "saved": "Changes saved",
+      "languages": {
+        "en": "English",
+        "es": "Español"
+      },
+      "countryLocked": "The country cannot change once the business is ready: its invoices belong to one country."
+    },
+    "danger": {
+      "title": "Danger zone",
+      "deleteTitle": "Delete business",
+      "deleteBody": "It stops working at once. We keep the data for 90 days in case you change your mind, and we send you a link to download it.",
+      "deleteAction": "Delete business",
+      "ownerOnly": "Only the owner can delete the business.",
+      "confirmTitle": "Delete {name}",
+      "confirmMessage": "It stops working right now for everyone. You can recover it for 90 days; after that it is erased for good.",
+      "consequencePlan": "Its plan is cancelled now: if you recover it, it comes back on Free.",
+      "consequenceEmail": "We send you an email with a link to download its data.",
+      "confirmLabel": "Type the name of the business to confirm",
+      "restore": "Recover business"
+    },
+    "members": {
+      "title": "Members",
+      "search": "Search by name or email",
+      "invite": "Invite",
+      "loadError": "We could not load the members",
+      "recordSingular": "member",
+      "recordPlural": "members",
+      "you": "You",
+      "columns": {
+        "name": "Name",
+        "email": "Email",
+        "role": "Role",
+        "status": "Status",
+        "lastAccess": "Last access"
+      },
+      "actions": {
+        "changeRole": "Change role",
+        "remove": "Remove",
+        "resend": "Resend",
+        "cancel": "Cancel invitation",
+        "transfer": "Transfer ownership",
+        "changeRoleOf": "Change the role of {name}",
+        "removeName": "Remove {name}",
+        "resendTo": "Send the invitation again to {name}",
+        "cancelTo": "Cancel the invitation to {name}",
+        "transferTo": "Transfer the ownership to {name}"
+      },
+      "invitedOn": "Invited on {date}",
+      "expiresOn": "Expires on {date}",
+      "seats": "{used} of {limit} places on the plan",
+      "seatsFull": "The plan has no free places left: change the plan or remove someone to invite more people.",
+      "resent": "Invitation sent again to {email}",
+      "rolesHeading": "What can each one do?",
+      "rolesOwner": "Owner: everything, also the plan, transferring and deleting the business.",
+      "rolesAdmin": "Admin: the team, the modules and the settings.",
+      "rolesStaff": "Manager and employee: they work inside the business. Employees who only use a PIN at the till are managed inside the business.",
+      "pendingTransfer": {
+        "heading": "Ownership offered to {email}",
+        "body": "They have until {date} to accept it. Until then you are still the owner.",
+        "cancel": "Withdraw the offer",
+        "cancelled": "Offer withdrawn"
+      },
+      "inviteModal": {
+        "title": "Invite to {name}",
+        "email": "Email",
+        "role": "Role",
+        "message": "Message (optional)",
+        "submit": "Send invitation",
+        "sent": "Invitation sent to {email}",
+        "hint": "We send an email with the link. The invitation lasts 7 days."
+      },
+      "roleModal": {
+        "title": "Change the role of {name}",
+        "role": "Role",
+        "submit": "Change role",
+        "changed": "{name} is now {role}"
+      },
+      "remove": {
+        "title": "Remove {name}",
+        "message": "{name} loses access to {business} at once. Their account and their other businesses stay.",
+        "confirm": "Remove from the business",
+        "done": "{name} was removed from the business"
+      },
+      "cancelInvite": {
+        "title": "Cancel the invitation",
+        "message": "The invitation to {email} stops working and its link no longer lets anyone in.",
+        "confirm": "Cancel invitation",
+        "back": "Back",
+        "done": "Invitation cancelled"
+      },
+      "transfer": {
+        "title": "Transfer {business}",
+        "message": "We offer the ownership to {name}. When they accept it, they become the owner and you become an admin.",
+        "consequenceWindow": "They have 7 days to accept it; until then nothing changes.",
+        "consequenceBilling": "The invoices keep going to the same payer until the new owner changes it.",
+        "confirmLabel": "Type the name of the business to confirm",
+        "confirm": "Offer the ownership",
+        "done": "Offer sent to {email}: they have 7 days to accept it"
+      }
+    },
+    "errors": {
+      "network": "We could not reach ERPlora. Check your connection and try again.",
+      "unexpected": "Something went wrong in ERPlora. Try again in a few minutes."
+    }
+  }
+}

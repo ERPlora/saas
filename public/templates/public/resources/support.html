@@ -30,12 +30,13 @@
       <div class="ep-grid-cards">
         {% url "public:help" as help_url %}
         {% trans "Search the Help Center" as heading %}
-        {% trans "Read current guides for access, trusted devices, modules, settings, users, printing, and hardware." as body %}
+        {% trans "Read current guides for access, trusted devices, apps, settings, users, printing, and hardware." as body %}
         {% include "public/components/feature_card.html" with icon="lucide:book-open" heading=heading body=body href=help_url only %}
 
+        {% url "public:contact" as contact_url %}
         {% trans "Contact support" as heading %}
         {% trans "Use the contact form to describe the problem and give us an email address where we can reply." as body %}
-        {% include "public/components/feature_card.html" with icon="lucide:message-square-warning" heading=heading body=body href="/contact/" only %}
+        {% include "public/components/feature_card.html" with icon="lucide:message-square-warning" heading=heading body=body href=contact_url only %}
 
         {% trans "Email the team" as heading %}
         {% blocktrans with support_email=SUPPORT_EMAIL asvar body %}Email {{ support_email }} when you cannot use the contact form.{% endblocktrans %}
@@ -73,7 +74,7 @@
                 </div>
                 <div>
                   <ion-card-title>{% trans "Describe the exact steps" %}</ion-card-title>
-                  <p class="text-sm text-fg/60 mt-1">{% trans "Tell us which app or module you opened, what you selected, and what you expected to happen." %}</p>
+                  <p class="text-sm text-fg/60 mt-1">{% trans "Tell us which app you opened, what you selected, and what you expected to happen." %}</p>
                 </div>
               </div>
               <div class="flex gap-3 items-start">

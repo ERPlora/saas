@@ -1,22 +1,22 @@
 """Members and invitations of a business: ``hubs.member.{list,invite,change_role,remove,resend,cancel}``
-and ``hubs.invitation.{list_mine,accept,decline}`` (plan 2026-10-13, L1-A as given; round 17 §2.7–2.8).
+and ``hubs.invitation.{list_mine,accept,decline}`` (plan 2026-10-13, L1-A and L1-B; round 17 §2.7–2.8).
 
-Cases ported from ERPlora/saas (origin/develop), from views and DRF to operations, on the four ``hub_*``
-roles of round 11 instead of owner/admin/member: ``hubs/main/tests/`` ``test_member_service``
+Cases ported from ERPlora/saas (origin/develop), from services, views and DRF to operations, on the four
+``hub_*`` roles of round 11 instead of owner/admin/member: ``hubs/main/tests/`` ``test_member_service``
 (per-hub writes, the hierarchy: nobody acts on a peer or a superior, nor on themselves, nor grants
 their own rank), ``test_hub_member_access``, ``test_members_invite_permission`` and
-``test_members_role_escalation`` (a role below admin manages nobody), ``test_invitation_accept`` (only
-the caller's own pending row is stamped; nothing is ever granted by a poked id, a replay or a stale
-invitation; accepting never changes the role), ``test_hub_seat_limit`` (the plan's cap is checked
-where the seat is spent, and moving somebody already inside spends none), ``test_account_roles``;
-``dashboard/users/tests/`` ``test_account_role_choices`` (least privilege by default, owner is never
-grantable), ``test_members_per_hub``, ``test_pending_invitation_status``, ``test_remove_user``,
-``test_users_list_shows_self`` and ``test_users_row_actions`` (the row actions are computed by the
-query). New: the invitation expires after 7 days, «Resend» renews it and «Decline» deletes the row.
-Dropped with their reason: the machine credential and the hub's mirror door (no runtime pushes
-members up any more), retired role keys (the four roles are new), htmx fragments and pages (SPA), and
-``test_invite_unverified_account`` (releasing an unproven account belongs to ``accounts``; see the
-report of the lot).
+``test_members_role_escalation`` (a role below admin manages nobody; a re-invite is no free pass; an
+owner elsewhere is a stranger here), ``test_invitation_accept`` (only the caller's own pending row is
+stamped; nothing is ever granted by a poked id, a replay, a cancelled or a stale invitation; accepting
+never changes the role), ``test_account_roles``; ``dashboard/users/tests/`` ``test_account_role_choices``
+(least privilege by default, owner is never grantable), ``test_members_per_hub``,
+``test_pending_invitation_status`` and ``test_remove_user``. Their HTTP halves and the row actions
+(``test_users_row_actions``, ``test_users_list_shows_self``) are in ``test_members_api.py``; the seats
+(``test_hub_seat_limit``), in ``test_seats.py``. New: the invitation expires after 7 days, «Resend»
+renews it and «Decline» deletes the row. Dropped with their reason: the machine credential and the
+hub's mirror door (no runtime pushes members up any more), retired role keys (the four roles are new),
+htmx fragments and pages (SPA), and ``test_invite_unverified_account`` (releasing an unproven account
+belongs to ``accounts``, L1-A2).
 """
 
 from datetime import timedelta
@@ -29,7 +29,7 @@ from live.errors import Conflict, NotFound, PermissionDenied
 
 from accounts.models import HubMembership
 from hubs import queries, services
-from hubs.models import Hub, HubMember, Subscription
+from hubs.models import Hub, HubMember
 from hubs.schemas import (
     ByIdIn,
     InvitationListIn,
@@ -59,13 +59,6 @@ def members(actor, hub, **params):
 
 def version(hub):
     return Hub.objects.get(pk=hub.pk).state_version
-
-
-def no_trial(hub):
-    """The Free plan's own rights (3 people), as after the 15 days of Starter."""
-    Subscription.objects.filter(hub=hub).update(
-        trial_end=timezone.now() - timedelta(seconds=1)
-    )
 
 
 # --- Inviting -------------------------------------------------------------------------------------
@@ -202,59 +195,26 @@ class TestInvite:
 
         assert refused.value.code == "hubs.business_deleted"
 
-
-class TestTheSeats:
-    def test_the_plan_caps_the_people_and_the_refusal_leaves_nothing(
-        self, business, owner
-    ):
-        no_trial(business)
-        invite(owner, business, "one@example.com")
-        invite(owner, business, "two@example.com")
-
+    @pytest.mark.parametrize("target", ["admin", "owner"])
+    def test_re_inviting_somebody_inside_changes_nothing(self, business, team, target):
+        """test_members_role_escalation (same-role re-provisioning is no free pass) and test_member_service
+        (a re-invite with another role used to move the role in place): an invitation never touches
+        somebody who answered, a peer, a superior or oneself; a role moves only by «Change role»."""
         with pytest.raises(Conflict) as refused:
-            invite(owner, business, "three@example.com")
+            invite(team["admin"], business, f"{target}@example.com", "hub_employee")
 
-        assert refused.value.code == "hubs.user_limit_reached"
-        assert not User.objects.filter(email="three@example.com").exists()
+        assert refused.value.code == "hubs.already_member"
+        assert member_of(business, team[target]).role == f"hub_{target}"
 
-    def test_the_trial_plan_caps_nobody(self, business, owner):
-        for n in range(5):
-            invite(owner, business, f"p{n}@example.com")
-
-        assert HubMember.objects.filter(hub=business).count() == 6
-
-    def test_an_expired_invitation_frees_its_seat(self, business, owner):
-        no_trial(business)
-        invite(owner, business, "one@example.com")
-        invite(owner, business, "two@example.com")
-        HubMember.objects.filter(user__email="two@example.com").update(
-            invitation_expires_at=timezone.now()
-        )
-
-        assert invite(owner, business, "three@example.com").status == "pending"
-
-    def test_moving_somebody_already_inside_needs_no_free_seat(self, business, owner):
-        no_trial(business)
-        invite(owner, business, "one@example.com")
-        invite(owner, business, "two@example.com")
-        two = HubMember.objects.get(user__email="two@example.com")
-
-        assert (
-            services.member_change_role(
-                ctx_for(owner), MemberRoleIn(id=two.id, role="hub_admin")
-            ).role
-            == "hub_admin"
-        )
-
-    def test_a_full_business_does_not_spend_another_ones_seats(self, business, owner, make_user):
-        no_trial(business)
+    def test_the_owner_of_another_business_is_a_stranger_here(self, business, team, make_user):
+        """test_members_role_escalation: authority stops at one's own business (ADR-0201)."""
         lola = make_user("lola@example.com")
-        other = create_business(lola, name="Café Lola")
-        no_trial(other)
-        invite(owner, business, "one@example.com")
-        invite(owner, business, "two@example.com")
+        create_business(lola, name="Café Lola")
 
-        assert invite(lola, other, "one@example.com").status == "pending"
+        with pytest.raises(NotFound):
+            invite(lola, business, "x@example.com")
+
+        assert not User.objects.filter(email="x@example.com").exists()
 
 
 # --- Changing a role ------------------------------------------------------------------------------
@@ -572,6 +532,36 @@ class TestAccept:
                 ByIdIn(id=member_of(business, team["invitee"]).id),
             )
 
+    def test_a_cancelled_invitation_is_not_resurrected(self, business, team):
+        """test_invitation_accept: the inviter changed their mind before the answer."""
+        member_id = member_of(business, team["invitee"]).id
+        services.member_cancel(ctx_for(team["owner"]), ByIdIn(id=member_id))
+
+        with pytest.raises(NotFound):
+            self.accept(team["invitee"], member_id)
+
+        assert not HubMember.objects.filter(hub=business, user=team["invitee"]).exists()
+
+    def test_an_id_that_is_no_invitation_of_mine_grants_nothing(self, business, team):
+        """test_invitation_accept: a business I was never invited to (or any id at all)."""
+        import uuid
+
+        for poked in (business.id, uuid.uuid7()):
+            with pytest.raises(NotFound):
+                self.accept(team["stranger"], poked)
+
+        assert not HubMember.objects.filter(user=team["stranger"]).exists()
+
+    @pytest.mark.parametrize("status", [Hub.Status.PREPARING, Hub.Status.SUSPENDED, Hub.Status.PAST_DUE])
+    def test_a_business_that_cannot_open_now_can_still_be_answered(self, business, team, status):
+        """test_invitation_accept (a sleeping business still works): answering is not entering; «Open»
+        says why it does not open yet."""
+        Hub.objects.filter(pk=business.pk).update(status=status)
+
+        self.accept(team["invitee"], member_of(business, team["invitee"]).id)
+
+        assert not member_of(business, team["invitee"]).is_pending
+
 
 class TestMyInvitations:
     def mine(self, user):
@@ -619,7 +609,7 @@ class TestMemberList:
             ("invitee@example.com", "hub_employee", "pending"),
         ]
         assert page["total"] == 5
-        assert page["seats"] == {"used": 5, "cap": 0}
+        assert page["seats"] == {"used": 5, "limit": None}
 
     def test_an_expired_invitation_says_so(self, business, team):
         HubMember.objects.filter(user=team["invitee"]).update(
@@ -633,8 +623,9 @@ class TestMemberList:
     def test_my_own_row_is_marked_and_offers_nothing(self, business, team):
         rows = {row["email"]: row for row in members(team["owner"], business)["rows"]}
 
-        assert rows["owner@example.com"]["is_self"] is True
-        assert not any(rows["owner@example.com"]["actions"].values())
+        assert rows["owner@example.com"]["is_me"] is True
+        assert rows["owner@example.com"]["actions"] == []
+        assert [email for email, row in rows.items() if row["is_me"]] == ["owner@example.com"]
 
     def test_a_member_without_a_name_is_shown_by_email(self, business, team):
         rows = {row["email"]: row for row in members(team["owner"], business)["rows"]}
@@ -645,20 +636,8 @@ class TestMemberList:
     def test_the_actions_the_owner_has(self, business, team):
         rows = {row["email"]: row for row in members(team["owner"], business)["rows"]}
 
-        assert rows["admin@example.com"]["actions"] == {
-            "change_role": True,
-            "remove": True,
-            "resend": False,
-            "cancel": False,
-            "transfer": True,
-        }
-        assert rows["invitee@example.com"]["actions"] == {
-            "change_role": True,
-            "remove": False,
-            "resend": True,
-            "cancel": True,
-            "transfer": False,
-        }
+        assert rows["admin@example.com"]["actions"] == ["change_role", "remove", "transfer"]
+        assert rows["invitee@example.com"]["actions"] == ["change_role", "resend", "cancel"]
         assert rows["admin@example.com"]["assignable_roles"] == [
             "hub_admin",
             "hub_manager",
@@ -668,8 +647,8 @@ class TestMemberList:
     def test_an_admin_cannot_reach_the_owners_row_nor_transfer(self, business, team):
         rows = {row["email"]: row for row in members(team["admin"], business)["rows"]}
 
-        assert not any(rows["owner@example.com"]["actions"].values())
-        assert rows["employee@example.com"]["actions"]["transfer"] is False
+        assert rows["owner@example.com"]["actions"] == []
+        assert rows["employee@example.com"]["actions"] == ["change_role", "remove"]
         assert rows["employee@example.com"]["assignable_roles"] == [
             "hub_manager",
             "hub_employee",

@@ -44,6 +44,10 @@ ALLOWED_HOSTS = config(
 # redirect: hub-next calls /internal over plain HTTP on the private name (hub →
 # saas.erplora.internal), never through the ALB. Same values as hub-next.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# The visitor's address: the ALB APPENDS it to X-Forwarded-For (what comes before, the client may
+# have typed). public.client_ip puts the entry this many hops from the end in REMOTE_ADDR, which the
+# rate limits read: 1 in production (the ALB), 0 locally (no proxy, the header is not trusted).
+TRUSTED_PROXY_HOPS = config("TRUSTED_PROXY_HOPS", default=0 if DEBUG else 1, cast=int)
 SECURE_SSL_REDIRECT = False
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
@@ -99,6 +103,8 @@ MIDDLEWARE = [
     # First: answers /healthz before the Host is validated (the ALB probes each task by its IP).
     "base.health.HealthCheckMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    # The visitor's address behind the ALB in REMOTE_ADDR, before anything reads it.
+    "public.client_ip.ClientIpMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.middleware.csp.ContentSecurityPolicyMiddleware",
     # After Django's: the public web's own policy, set before Django's builds the header.
@@ -190,13 +196,14 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Cache: the shared Valkey (TLS, rediss://, no AUTH) when VALKEY_URL is set, so allauth's login rate
 # limits and the contact form's hold across tasks; otherwise this process's memory. A prefix per
 # project and a TTL on every key (Valkey Serverless only evicts keys with one: never TIMEOUT=None).
-# A Valkey that hangs fails the call within 2 s instead of holding the request.
+# A Valkey that hangs fails the call within 2 s instead of holding the request, and a Valkey that is
+# down answers as an empty cache instead of a 500 (base/cache.py).
 
 VALKEY_URL = config("VALKEY_URL", default="")
 CACHES = {
     "default": (
         {
-            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "BACKEND": "base.cache.FailSoftRedisCache",
             "LOCATION": VALKEY_URL,
             "KEY_PREFIX": "saas",
             "TIMEOUT": 300,
@@ -503,6 +510,11 @@ COOKIE_CONSENT_SECURE = not DEBUG
 
 # Messages of the contact form per address (django-ratelimit, over the default cache).
 CONTACT_FORM_RATELIMIT = config("CONTACT_FORM_RATELIMIT", default="10/h")
+# With Valkey down the per-IP limits of the app cannot count, and they let requests through instead
+# of refusing everyone. The ALB's WAF keeps limiting sign-in, sign-up, password, Google and the
+# headless API per IP meanwhile (aws-next/README.md, WAF of `stacks/shared`); the contact form has
+# no WAF limit, so for that while it lasts only the app's fail-open applies.
+RATELIMIT_FAIL_OPEN = True
 
 # IndexNow pushes the public URLs to Bing (and so to ChatGPT search) the day they change. The key
 # is public by design (served at `/<key>.txt`, where the search engine checks we own the domain),
@@ -517,7 +529,7 @@ PUBLIC_HOST = config("PUBLIC_HOST", default="erplora.com").strip()
 # to the customer, so it is read here and never quietly lowered.
 HUB_EXIT_PACKAGE_TTL_DAYS = config("HUB_EXIT_PACKAGE_TTL_DAYS", default=90, cast=int)
 
-# The installable app (`/app/`): its installers live in a private S3 bucket on AWS (Spain region,
+# The installable app (`/app/`): its installers live in a private S3 bucket on AWS (Ireland region,
 # PLAN-AWS «s3_downloads.tf»), served by short presigned links; `latest/`, never a version, so a
 # cached link keeps delivering the last build. No keys here: boto3 takes the ECS task's role (or
 # the environment in development); DOWNLOADS_ENDPOINT_URL is only for local development (empty =
@@ -525,7 +537,7 @@ HUB_EXIT_PACKAGE_TTL_DAYS = config("HUB_EXIT_PACKAGE_TTL_DAYS", default=90, cast
 # Microsoft), Google Play by the package (an override of `com.erplora.app`, never a switch to the
 # APK) while its listing is live.
 DOWNLOADS_BUCKET = config("DOWNLOADS_BUCKET", default="erplora-saas")
-DOWNLOADS_REGION = config("DOWNLOADS_REGION", default="eu-south-2")
+DOWNLOADS_REGION = config("DOWNLOADS_REGION", default="eu-west-1")
 DOWNLOADS_ENDPOINT_URL = config("DOWNLOADS_ENDPOINT_URL", default="")
 APP_DOWNLOAD_PREFIX = config("APP_DOWNLOAD_PREFIX", default="downloads/app/latest")
 DOWNLOAD_URL_TTL = config("DOWNLOAD_URL_TTL", default=300, cast=int)  # seconds
@@ -533,9 +545,9 @@ MICROSOFT_STORE_APP_ID = config("MICROSOFT_STORE_APP_ID", default="")
 GOOGLE_PLAY_APP_ID = config("GOOGLE_PLAY_APP_ID", default="")
 GOOGLE_PLAY_LISTING_LIVE = config("GOOGLE_PLAY_LISTING_LIVE", default=True, cast=bool)
 
-# AWS: the region of the platform (ECS sets AWS_REGION in every task), where `report_seal_expiry`
-# publishes to CloudWatch with the task role (no static keys).
-AWS_REGION = config("AWS_REGION", default="eu-south-2")
+# AWS: the region of the platform, Ireland (PLAN-AWS round 2026-10-14; ECS sets AWS_REGION in every
+# task), where `report_seal_expiry` publishes to CloudWatch with the task role (no static keys).
+AWS_REGION = config("AWS_REGION", default="eu-west-1")
 
 # The fiscal seal's two .p12 slots (erplora/prod/fiscal/seal-{current,next}), base64 and password,
 # loaded at startup by `saas` and `saas-cron` (PLAN §16.5); empty = an empty slot (they are born

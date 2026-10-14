@@ -26,12 +26,10 @@ import '../public/static/public/cookie-consent-banner.css';
 import { initialize } from '@ionic/core/components';
 import { defineCustomElement as defineAccordion } from '@ionic/core/components/ion-accordion.js';
 import { defineCustomElement as defineAccordionGroup } from '@ionic/core/components/ion-accordion-group.js';
-import { defineCustomElement as defineBadge } from '@ionic/core/components/ion-badge.js';
 import { defineCustomElement as defineButton } from '@ionic/core/components/ion-button.js';
 import { defineCustomElement as defineCard } from '@ionic/core/components/ion-card.js';
 import { defineCustomElement as defineCardContent } from '@ionic/core/components/ion-card-content.js';
 import { defineCustomElement as defineCardHeader } from '@ionic/core/components/ion-card-header.js';
-import { defineCustomElement as defineCardSubtitle } from '@ionic/core/components/ion-card-subtitle.js';
 import { defineCustomElement as defineCardTitle } from '@ionic/core/components/ion-card-title.js';
 import { defineCustomElement as defineChip } from '@ionic/core/components/ion-chip.js';
 import { defineCustomElement as defineInput } from '@ionic/core/components/ion-input.js';
@@ -40,9 +38,6 @@ import { defineCustomElement as defineLabel } from '@ionic/core/components/ion-l
 import { defineCustomElement as defineList } from '@ionic/core/components/ion-list.js';
 import { defineCustomElement as defineNote } from '@ionic/core/components/ion-note.js';
 import { defineCustomElement as defineSearchbar } from '@ionic/core/components/ion-searchbar.js';
-import { defineCustomElement as defineSegment } from '@ionic/core/components/ion-segment.js';
-import { defineCustomElement as defineSegmentButton } from '@ionic/core/components/ion-segment-button.js';
-import { defineCustomElement as defineSpinner } from '@ionic/core/components/ion-spinner.js';
 import { defineCustomElement as defineTextarea } from '@ionic/core/components/ion-textarea.js';
 import { defineCustomElement as defineToast } from '@ionic/core/components/ion-toast.js';
 import { defineCustomElement as defineToggle } from '@ionic/core/components/ion-toggle.js';
@@ -55,19 +50,18 @@ import.meta.glob('../public/static/public/components/*.css', { eager: true });
 export const IONIC_CONFIG = { mode: 'ios' } as const;
 
 /**
- * The ion-* of the public templates (and ion-toast for the server messages). Each define also
- * registers the components it renders inside (ion-icon for an accordion's chevron, ion-ripple-effect).
- * A template that uses another one must add it here: public.test.ts fails until it does.
+ * The ion-* of the public templates (and ion-toast for the server messages), and nothing else: each
+ * one is bundled. Each define also registers the components it renders inside (ion-icon for an
+ * accordion's chevron, ion-ripple-effect). A template that uses another one must add it here, and
+ * one that stops using it must take it out: public.test.ts fails until it does.
  */
 export const ION_COMPONENTS: Record<string, () => void> = {
   'ion-accordion': defineAccordion,
   'ion-accordion-group': defineAccordionGroup,
-  'ion-badge': defineBadge,
   'ion-button': defineButton,
   'ion-card': defineCard,
   'ion-card-content': defineCardContent,
   'ion-card-header': defineCardHeader,
-  'ion-card-subtitle': defineCardSubtitle,
   'ion-card-title': defineCardTitle,
   'ion-chip': defineChip,
   'ion-input': defineInput,
@@ -76,9 +70,6 @@ export const ION_COMPONENTS: Record<string, () => void> = {
   'ion-list': defineList,
   'ion-note': defineNote,
   'ion-searchbar': defineSearchbar,
-  'ion-segment': defineSegment,
-  'ion-segment-button': defineSegmentButton,
-  'ion-spinner': defineSpinner,
   'ion-textarea': defineTextarea,
   'ion-toast': defineToast,
   'ion-toggle': defineToggle,
@@ -94,13 +85,14 @@ export function registerIonic(): void {
 /** The navbar's side panel at 800 px and below: burger, close button, backdrop, Esc and links. */
 export function setupNavbar(doc: Document): void {
   const navbar = doc.querySelector<HTMLElement>('[data-navbar]');
-  const toggle = navbar?.querySelector<HTMLElement>('[data-navbar-toggle]');
+  const toggle = navbar?.querySelector<HTMLButtonElement>('button[data-navbar-toggle]');
   const panel = navbar?.querySelector<HTMLElement>('[data-navbar-panel]');
   if (!navbar || !toggle || !panel) return;
 
   const isOpen = () => navbar.hasAttribute('data-open');
   const setOpen = (open: boolean) => {
     navbar.toggleAttribute('data-open', open);
+    // A native <button> (L8): an ion-button would keep the aria-expanded it had when it loaded.
     toggle.setAttribute('aria-expanded', String(open));
     doc.documentElement.classList.toggle('ep-navbar-open', open);
   };
@@ -113,7 +105,8 @@ export function setupNavbar(doc: Document): void {
 
   toggle.addEventListener('click', () => {
     setOpen(!isOpen());
-    if (isOpen()) panel.querySelector<HTMLElement>('a, ion-button')?.focus();
+    // The close button comes first in the panel: the focus lands on it, as in a side sheet.
+    if (isOpen()) panel.querySelector<HTMLElement>('button, a, ion-button')?.focus();
   });
   for (const closer of navbar.querySelectorAll<HTMLElement>('[data-navbar-close]')) {
     closer.addEventListener('click', close);

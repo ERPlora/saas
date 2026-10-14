@@ -14,7 +14,8 @@ New here: the cookie policy names the cookies this site really sets (the old pag
 ``llms.txt`` link the pages, no internal link of a legal page is dead (the Terms of Use are only
 linked once their page exists), every message of the legal templates has its Spanish entry in
 ``public``'s compiled catalog (UI in ``en`` + ``es``, plan §3.j), and the privacy policy names AWS
-(Spain region, SES in Ireland) as the host instead of Hetzner (Ioan, 2026-10-13).
+as the host instead of Hetzner (Ioan, 2026-10-13), in its Ireland region, eu-west-1, the one of SES
+too (Ioan, 2026-10-14: the ERP serves all of Europe, not the Spain region it named before).
 """
 
 import ast
@@ -275,29 +276,35 @@ def test_no_legal_page_names_a_provider_we_no_longer_use(client, path, provider)
 
 
 @pytest.mark.django_db
-def test_privacy_names_aws_in_its_spain_region_as_the_hosting_processor(client):
+def test_privacy_names_aws_in_its_ireland_region_as_the_hosting_processor(client):
     """Hosting, database, backups, storage and the network edge (DNS, DDoS protection) are AWS's,
-    Spain region ``eu-south-2`` (Aragón): aws-next/README.md and PLAN-AWS §1. AWS is no longer an
-    inactive fallback."""
-    [hosting] = list_items_naming(
-        client.get("/legal/privacy/").content.decode(), "eu-south-2"
-    )
-    [alojamiento] = list_items_naming(spanish(client, "/legal/privacy/"), "eu-south-2")
+    Ireland region ``eu-west-1`` (Ioan, 2026-10-14: the ERP serves all of Europe; PLAN-AWS), never
+    the Spain region (``eu-south-2``, Aragón) the page named before. AWS is no longer an inactive
+    fallback. «España» stays in the page: it is the company's address, not where the data lives."""
+    english = client.get("/legal/privacy/").content.decode()
+    es = spanish(client, "/legal/privacy/")
+    [hosting] = list_items_naming(english, "Data hosted in")
+    [alojamiento] = list_items_naming(es, "Datos alojados en")
 
-    assert "Amazon Web Services" in hosting
-    assert "Spain" in hosting
+    assert "Amazon Web Services EMEA SARL (Luxembourg) — Ireland region, eu-west-1" in hosting
+    assert "Data hosted in data centers in Ireland, within the European Union." in hosting
     assert "backups" in hosting
     assert "DDoS protection" in hosting
     assert "inactive" not in hosting
-    assert "Amazon Web Services" in alojamiento
-    assert "España" in alojamiento
+    assert "Spain" not in hosting
+    assert "Amazon Web Services EMEA SARL (Luxemburgo) — región de Irlanda, eu-west-1" in alojamiento
+    assert "Datos alojados en centros de datos en Irlanda, dentro de la Unión Europea." in alojamiento
     assert "copias de seguridad" in alojamiento
     assert "protección anti-DDoS" in alojamiento
+    assert "España" not in alojamiento
+    for html in (english, es):
+        assert "eu-south-2" not in html
+        assert "Aragón" not in html
 
 
 @pytest.mark.django_db
 def test_privacy_names_amazon_ses_in_ireland_for_transactional_email(client):
-    """SES is not offered in eu-south-2: the transactional email goes out from eu-west-1."""
+    """The transactional email goes out from Amazon SES in eu-west-1, the platform's region."""
     [email] = list_items_naming(
         client.get("/legal/privacy/").content.decode(), "Amazon SES"
     )

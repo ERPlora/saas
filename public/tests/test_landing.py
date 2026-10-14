@@ -29,7 +29,7 @@ What changed, and why:
 * the contact mail is rendered from ``public/templates/public/email/`` and sent with ``send_mail``
   to ``SUPPORT_EMAIL`` (plan §3.o); the limit per address reads the address the load balancer saw
   (the last hop of ``X-Forwarded-For``), never the balancer's own;
-* no page names Hetzner as the host any more (Ioan, 2026-10-13: AWS, Spain region).
+* no page names Hetzner as the host any more (Ioan, 2026-10-13: AWS; Ireland region, 2026-10-14).
 """
 
 from __future__ import annotations
@@ -54,6 +54,7 @@ from django.utils import translation
 from apps.tests.factories import CUBE_SVG, make_app
 from hubs.models import Plan
 from public import landing
+from public.tests.test_cookies import VALKEY_DOWN
 from public.tests.test_legal import template_messages
 
 pytestmark = [pytest.mark.django_db]
@@ -464,7 +465,7 @@ def test_the_landing_links_the_residency_claim_to_the_privacy_policy(client):
 
 
 def test_no_page_of_this_lot_names_hetzner_as_the_host(client):
-    """Ioan, 2026-10-13: the servers are on AWS (Spain region); the AI stays in Frankfurt."""
+    """Ioan, 2026-10-13: the servers are on AWS (Ireland region); the AI stays in Frankfurt."""
     for path in (HOME, CONTACT):
         for language in ("en", "es"):
             html = html_of(client, path, language)
@@ -553,6 +554,53 @@ def test_the_contact_page_in_spanish(client):
 
     assert "Ponte en contacto" in html or "Contacto" in html
     assert "Nombre" in html
+
+
+def hero(html: str) -> str:
+    start = html.index('class="hero-bg')
+    return html[start : html.index("</section>", start)]
+
+
+@pytest.mark.parametrize(
+    ("language", "availability", "reply"),
+    [
+        ("en", "High availability", "in business hours"),
+        ("es", "Alta disponibilidad", "en horas laborables"),
+    ],
+)
+def test_the_hero_promises_what_we_do_not_an_sla_or_round_the_clock_support(
+    client, language, availability, reply
+):
+    """L8: no «Uptime 99.95%» (there is no SLA) and no «Support 24/7»: the form's 4 business hours."""
+    stats = hero(html_of(client, language=language))
+
+    assert availability in stats
+    assert ">AWS<" in stats
+    assert ">4 h<" in stats
+    assert reply in stats
+
+
+@pytest.mark.parametrize(
+    ("language", "cell"), [("en", "High availability on AWS"), ("es", "Alta disponibilidad en AWS")]
+)
+def test_the_platform_bento_says_high_availability_on_aws(client, language, cell):
+    assert f'<h3 class="ep-bento-item__title">{cell}</h3>' in html_of(client, language=language)
+
+
+@pytest.mark.parametrize(
+    ("language", "heading", "reply"),
+    [
+        ("en", "Response time", "Within 4 business hours"),
+        ("es", "Tiempo de respuesta", "En un plazo de 4 horas laborables"),
+    ],
+)
+def test_the_contact_page_promises_the_reply_time_of_the_form(client, language, heading, reply):
+    """L8: «Available 24/7/365» was not true; the form already promised 4 business hours."""
+    html = html_of(client, CONTACT, language=language)
+    other_ways = html[html.index('<h2 class="font-display') :]
+
+    assert heading in other_ways
+    assert reply in other_ways
 
 
 def test_the_home_carries_the_contact_form_too(client):
@@ -720,29 +768,54 @@ def test_the_form_is_limited_per_address(client):
     assert any("Too many messages" in message for message in messages_of(throttled))
 
 
-@override_settings(RATELIMIT_ENABLE=True, CONTACT_FORM_RATELIMIT="1/h")
+@override_settings(
+    RATELIMIT_ENABLE=True, CONTACT_FORM_RATELIMIT="1/h", TRUSTED_PROXY_HOPS=1
+)
 def test_the_limit_is_per_visitor_not_per_load_balancer(client):
     """Behind the ALB every request comes from the balancer: the visitor is the last hop of
-    ``X-Forwarded-For`` (the address the balancer saw). Keyed on ``REMOTE_ADDR`` alone, the whole
-    internet would share one bucket."""
+    ``X-Forwarded-For`` (the address the balancer saw; ``public.client_ip``). Keyed on the
+    balancer, the whole internet would share one bucket; on the first hop, a forged header would
+    be a fresh one per message."""
     first = client.post(SUBMIT, VALID, HTTP_X_FORWARDED_FOR="203.0.113.7")
     second = client.post(SUBMIT, VALID, HTTP_X_FORWARDED_FOR="198.51.100.9")
-    again = client.post(SUBMIT, VALID, HTTP_X_FORWARDED_FOR="203.0.113.7")
+    forged = client.post(
+        SUBMIT, VALID, HTTP_X_FORWARDED_FOR="192.0.2.50, 203.0.113.7"
+    )
 
     assert (first.status_code, second.status_code) == (302, 302)
     assert len(mail.outbox) == 2
-    assert any("Too many messages" in message for message in messages_of(again))
+    assert any("Too many messages" in message for message in messages_of(forged))
 
 
-def test_the_visitor_address_is_the_last_valid_forwarded_hop(rf):
-    """A client may prepend any ``X-Forwarded-For``; the ALB appends the address it saw."""
-    forged = rf.post(SUBMIT, HTTP_X_FORWARDED_FOR="10.0.0.1, 203.0.113.7")
-    junk = rf.post(SUBMIT, HTTP_X_FORWARDED_FOR="not-an-ip", REMOTE_ADDR="192.0.2.1")
+@override_settings(
+    RATELIMIT_ENABLE=True, CONTACT_FORM_RATELIMIT="1/h", CACHES=VALKEY_DOWN
+)
+def test_with_valkey_down_the_form_still_sends(client):
+    """The limit cannot count without the cache: it lets the message through (fail open) instead
+    of refusing every visitor. Never a 500."""
+    responses = [submit(client), submit(client)]
+
+    assert [response.status_code for response in responses] == [302, 302]
+    assert len(mail.outbox) == 2
+
+
+def test_the_visitor_address_is_remote_addr(rf):
+    """``public.client_ip`` already put the visitor in ``REMOTE_ADDR``: the header is its job."""
+    forwarded = rf.post(
+        SUBMIT, HTTP_X_FORWARDED_FOR="203.0.113.7", REMOTE_ADDR="192.0.2.1"
+    )
     plain = rf.post(SUBMIT, REMOTE_ADDR="192.0.2.1")
 
-    assert landing.visitor_address(None, forged) == "203.0.113.7"
-    assert landing.visitor_address(None, junk) == "192.0.2.1"
+    assert landing.visitor_address(None, forwarded) == "192.0.2.1"
     assert landing.visitor_address(None, plain) == "192.0.2.1"
+
+
+@pytest.mark.parametrize("address", ["", "not-an-ip"])
+def test_without_a_real_address_the_visitor_shares_the_unknown_bucket(rf, address):
+    """The limiter masks the key with ``ipaddress``: junk there would be a 500 on a public door."""
+    request = rf.post(SUBMIT, REMOTE_ADDR=address)
+
+    assert landing.visitor_address(None, request) == landing.UNKNOWN_ADDRESS
 
 
 # --- Smoke of the pages of this lot (tests/unit/test_public_pages.py) -------------------------

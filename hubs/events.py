@@ -9,6 +9,8 @@ BUSINESS_READY = "hubs.business.ready"
 BUSINESS_OPENED = "hubs.business.opened"
 BUSINESS_DELETED = "hubs.business.deleted"
 BUSINESS_RESTORED = "hubs.business.restored"
+#: The Hub refused a call about the business, or a later one succeeded: «Preparing» ↔ «Error».
+BUSINESS_HUB_ERROR_CHANGED = "hubs.business.hub_error_changed"
 
 BUSINESS = [
     BUSINESS_CREATED,
@@ -17,6 +19,7 @@ BUSINESS = [
     BUSINESS_OPENED,
     BUSINESS_DELETED,
     BUSINESS_RESTORED,
+    BUSINESS_HUB_ERROR_CHANGED,
 ]
 
 MEMBER_INVITED = "hubs.member.invited"

@@ -3,10 +3,11 @@
 Keeps the Hub equal to the SaaS (plan 2026-10-13 §3, the push to the Hub): retries what the Hub still owes
 an answer to (registry, deletion, restoration, snapshot), asks the Hub about an sign-up stuck without its
 ``ready`` callback for more than N minutes (``GET /internal/hubs/{id}``; 2 by default, PLAN-SAAS §3.1),
-ends the trials that ran out and marks purged the businesses past their 90 days. Idempotent, under a
-Postgres advisory lock (a second run returns at once). A business that fails never stops the pass: it
-stays owed for the next run, the counts go to the log, and the run ends with an error after its pass
-when anything stayed owed, unreachable or crashed (the ``task_failed`` alarm).
+ends the trials that ran out and marks purged the businesses past their 90 days. Idempotent, under the
+advisory lock ``hashtext('erplora.saas.reconcile_hub_states')`` (``services.run_exclusively``; a second run
+returns at once). A business that fails never stops the pass: it stays owed for the next run, the counts
+go to the log, and the run ends with an error after its pass when anything stayed owed, unreachable or
+crashed (the ``task_failed`` alarm).
 """
 
 import logging

@@ -154,13 +154,32 @@ def test_a_request_the_alb_received_over_https_is_secure():
     assert not RequestFactory().get("/").is_secure()
 
 
+# The visitor's address: the ALB appends it to X-Forwarded-For (public/client_ip.py).
+
+
+def test_production_trusts_the_alb_as_its_one_proxy():
+    assert production("s.TRUSTED_PROXY_HOPS", **AWS_ENV) == 1
+
+
+def test_development_trusts_no_proxy():
+    """runserver has nobody in front: a forged X-Forwarded-For must not choose the address."""
+    assert development("s.TRUSTED_PROXY_HOPS") == 0
+    assert settings.TRUSTED_PROXY_HOPS == 0
+
+
+def test_the_proxy_hops_come_from_the_environment():
+    assert production("s.TRUSTED_PROXY_HOPS", TRUSTED_PROXY_HOPS="2") == 2
+    assert development("s.TRUSTED_PROXY_HOPS", TRUSTED_PROXY_HOPS="1") == 1
+
+
 # Cache: the shared Valkey (TLS, no AUTH) when the infra gives one, local memory otherwise.
 
 
 def test_production_caches_in_valkey_with_a_prefix_and_a_finite_ttl():
     cache = production("s.CACHES['default']", **AWS_ENV)
 
-    assert cache["BACKEND"] == "django.core.cache.backends.redis.RedisCache"
+    # Django's RedisCache, failing soft: Valkey down is a cache that forgets (base/cache.py).
+    assert cache["BACKEND"] == "base.cache.FailSoftRedisCache"
     assert cache["LOCATION"] == AWS_ENV["VALKEY_URL"]
     assert cache["KEY_PREFIX"] == "saas"
     # Valkey Serverless only evicts keys with a TTL: never TIMEOUT=None.
@@ -201,7 +220,14 @@ def test_the_valkey_cache_is_built_from_the_environment():
     )
 
     assert result.returncode == 0, result.stderr
-    assert result.stdout.split() == ["RedisCache", "redis"]
+    assert result.stdout.split() == ["FailSoftRedisCache", "redis"]
+
+
+def test_with_valkey_down_the_rate_limits_let_requests_through():
+    """django-ratelimit blocks a request whose count it cannot read unless told to fail open; the
+    WAF keeps limiting sign-in, sign-up and passwords per IP meanwhile (aws-next README, WAF)."""
+    assert production("s.RATELIMIT_FAIL_OPEN", **AWS_ENV) is True
+    assert development("s.RATELIMIT_FAIL_OPEN") is True
 
 
 # Logging: one console handler (CloudWatch reads stdout), its level from LOG_LEVEL.
@@ -366,14 +392,14 @@ def test_check_deploy_is_clean_in_production():
 # which only `saas` and `saas-cron` receive.
 
 SAAS_TASK_ENV = {
-    "AWS_REGION": "eu-south-2",
+    "AWS_REGION": "eu-west-1",
     "SES_REGION": "eu-west-1",
     "DEBUG": "False",
-    "DB_HOST": "erplora-prod.cluster-c0ffee.eu-south-2.rds.amazonaws.com",
+    "DB_HOST": "erplora-prod.cluster-c0ffee.eu-west-1.rds.amazonaws.com",
     "DB_PORT": "5432",
     "DB_SSLMODE": "verify-full",
     "DB_SSLROOTCERT": "/etc/ssl/certs/rds-global-bundle.pem",
-    "VALKEY_URL": "rediss://erplora-prod-c0ffee.serverless.eus2.cache.amazonaws.com:6379",
+    "VALKEY_URL": "rediss://erplora-prod-c0ffee.serverless.euw1.cache.amazonaws.com:6379",
     "DB_NAME": "saas",
     "AWS_STORAGE_BUCKET_NAME": "erplora-prod-saas",
     "HUB_INTERNAL_URL": "http://hub.erplora.internal:8000",
@@ -451,7 +477,7 @@ def test_every_saas_task_loads_its_settings(task):
     ) == (
         False,
         ["erplora.com", "saas.erplora.internal"],
-        "eu-south-2",
+        "eu-west-1",
         task,
         # An empty slot is an empty slot; saas-migrate gets none at all.
         "",
@@ -500,4 +526,4 @@ def test_the_seal_slots_and_the_region_come_from_the_environment():
 def test_development_has_empty_seal_slots_and_the_platform_region():
     assert development(
         "(s.AWS_REGION, s.FISCAL_SEAL_CURRENT_P12_BASE64, s.FISCAL_SEAL_NEXT_P12_BASE64)"
-    ) == ("eu-south-2", "", "")
+    ) == ("eu-west-1", "", "")

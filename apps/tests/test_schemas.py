@@ -59,3 +59,21 @@ def test_the_search_is_trimmed_and_an_empty_one_is_none():
 def test_an_empty_vertical_is_none():
     assert AppListIn(vertical=" hair_salon ").vertical == "hair_salon"
     assert AppListIn(vertical="").vertical is None
+
+
+@pytest.mark.parametrize("field", ["q", "vertical"])
+@pytest.mark.parametrize("value", ["\x00", "\x00\x01\x1f", " \t\n\r "])
+def test_a_filter_of_only_control_characters_is_none(field, value):
+    """psycopg refuses a NUL in a query parameter (``DataError``): ``?q=%00`` was a 500 on a public
+    door. Control characters never belong in a search or a vertical id, so they are dropped."""
+    assert getattr(AppListIn(**{field: value}), field) is None
+
+
+@pytest.mark.parametrize("field", ["q", "vertical"])
+def test_control_characters_are_dropped_inside_a_filter(field):
+    assert getattr(AppListIn(**{field: " st\x00o\x1bck\x07 "}), field) == "stock"
+
+
+def test_control_characters_are_dropped_before_the_length_is_cut():
+    assert AppListIn(q="\x00" * 10 + "x" * 500).q == "x" * 120
+    assert AppListIn(q="in stock").q == "in stock"

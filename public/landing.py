@@ -163,20 +163,15 @@ def contact(request: HttpRequest) -> HttpResponse:
 
 
 def visitor_address(group, request: HttpRequest) -> str:
-    """The visitor's address: the last hop of ``X-Forwarded-For``, else ``REMOTE_ADDR``.
+    """The visitor's address: ``REMOTE_ADDR``, where ``public.client_ip`` put it behind the ALB.
 
-    Behind the ALB every connection comes from the balancer, which APPENDS the address it saw to
-    ``X-Forwarded-For``: anything before it the client may have typed. Keyed on ``REMOTE_ADDR``
-    alone, the whole internet would share one bucket (saas#2154). Only a real address is returned:
-    the limiter masks it with ``ipaddress`` and junk there would be a 500 on a public door.
+    Only a real address is returned: the limiter masks it with ``ipaddress`` and junk there would
+    be a 500 on a public door.
     """
-    hops = request.headers.get("X-Forwarded-For", "").split(",")
-    for candidate in (hops[-1].strip(), request.META.get("REMOTE_ADDR", "")):
-        try:
-            return str(ipaddress.ip_address(candidate))
-        except ValueError:
-            continue
-    return UNKNOWN_ADDRESS
+    try:
+        return str(ipaddress.ip_address(request.META.get("REMOTE_ADDR", "")))
+    except ValueError:
+        return UNKNOWN_ADDRESS
 
 
 def _contact_rate(group, request: HttpRequest) -> str:

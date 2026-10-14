@@ -3,7 +3,8 @@
   The hero of the landing: port of landing/home/sections/_hero.html (origin/develop). Two doors,
   and they are not interchangeable: signing up commits you, downloading installs software. The
   third one, «Try the demo», waits for /demo (block 7, plan §3.b). The count is of the listed apps
-  (decision 19), shown only when there is one (spec §5.3).
+  (decision 19), shown only when there is one (spec §5.3). No uptime figure (there is no SLA) and
+  no round-the-clock support: the reply time is the contact form's, 4 business hours (L8).
 {% endcomment %}
   <section class="hero-bg hero-bg-animated relative">
     <div class="grid-overlay"></div>
@@ -22,7 +23,7 @@
           <p class="ep-intro mt-6 max-w-xl">
             {% blocktrans trimmed %}
             ERPlora replaces the stack of 12 tools that holds your SMB together with a single platform:
-            invoicing, inventory, CRM, HR, accounting and the modules you need — no technical team,
+            invoicing, inventory, CRM, HR, accounting and the apps you need — no technical team,
             no hidden licenses, no surprises.
             {% endblocktrans %}
           </p>
@@ -39,8 +40,8 @@
 
           <div class="mt-12 grid grid-cols-3 gap-6 max-w-lg">
             {% if total_apps %}{% trans "Apps" as stat_label %}{% include "public/components/stat.html" with label=stat_label value=total_apps only %}{% endif %}
-            {% trans "Uptime" as stat_label %}{% include "public/components/stat.html" with label=stat_label value="99.95%" only %}
-            {% trans "Support" as stat_label %}{% include "public/components/stat.html" with label=stat_label value="24/7" only %}
+            {% trans "High availability" as stat_label %}{% include "public/components/stat.html" with label=stat_label value="AWS" only %}
+            {% trans "Support reply" as stat_label %}{% trans "in business hours" as stat_hint %}{% include "public/components/stat.html" with label=stat_label value="4 h" hint=stat_hint only %}
           </div>
         </div>
 

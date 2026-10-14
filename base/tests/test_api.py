@@ -28,6 +28,7 @@ def test_anonymous(client):
     assert response.status_code == 200
     body = response.json()
     assert (body["user"], body["scope"]) == (None, {"kind": "user", "key": "anonymous"})
+    assert body["menu"] == []
 
 
 def test_signed_in(client, ana):
@@ -35,8 +36,22 @@ def test_signed_in(client, ana):
 
     body = client.get("/api/me", HTTP_HOST=HOST).json()
 
-    assert body["user"] == {"id": str(ana.pk), "label": "Ana García"}
+    assert body["user"] == {"id": str(ana.pk), "label": "Ana García", "email": "ana@example.com"}
     assert body["scope"] == {"kind": "user", "key": str(ana.pk)}
+
+
+def test_signed_in_gets_the_panels_menu_in_its_language(client, ana):
+    client.force_login(ana)
+
+    body = client.get("/api/me", HTTP_HOST=HOST, HTTP_ACCEPT_LANGUAGE="es").json()
+
+    [section] = body["menu"]
+    assert [(i["path"], i["label"], i["icon"], i["webOnly"]) for i in section["items"]] == [
+        ("/businesses", "Negocios", "lucide:store", False),
+        ("/store", "Tienda", "lucide:shopping-bag", True),
+        ("/billing", "Facturación", "lucide:receipt", False),
+        ("/account", "Cuenta", "lucide:circle-user", False),
+    ]
 
 
 def test_language_follows_the_request(client):

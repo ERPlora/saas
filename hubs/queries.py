@@ -76,11 +76,12 @@ def sector_list(ctx: OperationContext, data: SectorListIn) -> dict[str, Any]:
     "hubs.business_type.list", kind="query", permission=None, input=BusinessTypeListIn, output=BusinessTypeListOut
 )
 def business_type_list(ctx: OperationContext, data: BusinessTypeListIn) -> dict[str, Any]:
-    """The active business types, one sector after another (those without a sector last)."""
+    """The active business types by their display order, then code, across sectors (the origin ``catalog``'s
+    ``ordering = ["order", "code"]``: ``/industries/`` interleaves them as the seed orders them)."""
     business_types = BusinessType.objects.filter(is_active=True).select_related("sector")
     if data.sector:
         business_types = business_types.filter(sector__code=data.sector)
-    ordered = business_types.order_by("sector__display_order", "sector__code", "display_order", "code")
+    ordered = business_types.order_by("display_order", "code")
     return {
         "business_types": [
             {
@@ -192,19 +193,38 @@ def open_blocked_reason(hub: Hub) -> str | None:
     return reason
 
 
-def can(member: HubMember) -> dict[str, bool]:
-    """What ``member`` may do on its business (round 17 §2.7): the owner everything, an admin the
-    team and the settings, a manager or an employee only «Open»."""
-    rank = RANK[member.role]
+def is_writable(hub: Hub) -> bool:
+    """Whether the business takes changes: a deleted one answers every write with 409 until recovered."""
+    return hub.status not in (Hub.Status.DELETING, Hub.Status.DELETED)
+
+
+def is_restorable(hub: Hub, now: datetime) -> bool:
+    """Deleted and still within its 90 days (``hubs.business.restore``)."""
+    return hub.status == Hub.Status.DELETING and hub.purge_after is not None and hub.purge_after > now
+
+
+def can(member: HubMember, now: datetime | None = None) -> dict[str, bool]:
+    """What ``member`` may do on its business, by role (round 17 §2.7) and status, computed here so no page
+    deduces it: the owner everything, an admin the team and the settings, a manager or an employee only
+    «Open». «Open» while it serves; a deleted business takes no change, only «Recover» by its owner."""
+    hub = member.hub
+    now = now or timezone.now()
     is_owner = member.role == Role.OWNER
+    manages_it = RANK[member.role] <= RANK[Role.ADMIN] and is_writable(hub)
     return {
-        "open": member.hub.status not in OPEN_BLOCKED,
-        "manage_members": rank <= RANK[Role.ADMIN],
-        "manage_settings": rank <= RANK[Role.ADMIN],
+        "open": hub.status not in OPEN_BLOCKED,
+        "manage": manages_it,
+        "manage_members": manages_it,
+        "manage_settings": manages_it,
         "manage_billing": is_owner,
-        "transfer": is_owner,
-        "delete": is_owner,
+        "transfer": is_owner and is_writable(hub),
+        "restore": is_owner and is_restorable(hub, now),
+        "delete": is_owner and is_writable(hub),
     }
+
+
+#: What a row of the Businesses page says its buttons do (``BusinessRowCanOut``).
+ROW_CAN = ("open", "manage", "restore", "delete")
 
 
 def host_of(slug: str) -> str:
@@ -353,6 +373,7 @@ def business_row(member: HubMember, now: datetime) -> dict[str, Any]:
         "deletion_requested_at": hub.deletion_requested_at,
         "purge_after": hub.purge_after,
         "created_at": hub.created_at,
+        "can": {key: allowed for key, allowed in can(member, now).items() if key in ROW_CAN},
     }
 
 
@@ -438,6 +459,7 @@ def business_detail(member: HubMember) -> dict[str, Any]:
         "name": hub.name,
         "host": host_of(hub.slug),
         "country": hub.country,
+        "country_locked": country_locked(hub),
         "timezone": hub.timezone,
         "language": hub.language,
         "business_type": (
@@ -461,20 +483,40 @@ def business_detail(member: HubMember) -> dict[str, Any]:
         "pending_transfer": (
             {"id": pending.id, "to_email": pending.to_email, "expires_at": pending.expires_at} if pending else None
         ),
-        "can": can(member),
+        "can": can(member, now),
     }
 
 
-def seats_of(hub: Hub, now: datetime) -> dict[str, int]:
-    """People on the business (members and live invitations) and the cap of its plan (0 = none)."""
+def country_locked(hub: Hub) -> bool:
+    """The country no longer changes once the business is ready (mockups README §6.21, W-B7): its fiscal
+    series and records belong to one country. The SaaS does not see the invoices (the Hub keeps them), so
+    the lock starts at ``ready_at``, the first moment the business can invoice."""
+    return hub.ready_at is not None
+
+
+def seats_of(hub: Hub, now: datetime) -> dict[str, int | None]:
+    """The seats of the business (saas#2022): ``used`` = its people, answered or invited (a live
+    invitation holds its seat: it is spent when somebody is added, never when they walk in), and
+    ``limit`` = what its plan covers at ``now``, ``None`` when nothing caps it (``max_users = 0`` on
+    every paid plan and the Starter trial, or no subscription at all)."""
     used = (
         HubMember.objects.filter(hub=hub)
         .filter(Q(accepted_at__isnull=False) | Q(invitation_expires_at__isnull=True) | Q(invitation_expires_at__gt=now))
         .count()
     )
+    return {"used": used, "limit": seat_limit_of(hub, now)}
+
+
+def seat_limit_of(hub: Hub, now: datetime) -> int | None:
+    """The people the plan of ``hub`` covers at ``now``; ``None`` = unlimited."""
     subscription = Subscription.objects.select_related("plan", "trial_plan").filter(hub=hub).first()
-    cap = subscription.effective_plan(now).max_users if subscription else 0
-    return {"used": used, "cap": cap}
+    limit = subscription.effective_plan(now).max_users if subscription else 0
+    return limit or None
+
+
+def people_inside(hub: Hub) -> int:
+    """The people who answered: those an acceptance must find a seat beside."""
+    return HubMember.objects.filter(hub=hub, accepted_at__isnull=False).count()
 
 
 def expired_deletions(cutoff: datetime) -> list[UUID]:
@@ -627,16 +669,41 @@ def member_list(ctx: OperationContext, data: MemberListIn) -> dict[str, Any]:
         "limit": data.limit,
         "offset": data.offset,
         "seats": seats_of(actor.hub, now),
-        "invitable_roles": assignable_roles(actor.role),
+        "invitable_roles": assignable_roles(actor.role) if is_writable(actor.hub) else [],
     }
 
 
+#: The row actions in the order the members page shows them.
+MEMBER_ACTIONS = ("change_role", "remove", "resend", "cancel", "transfer")
+
+
+def member_actions(actor: HubMember, member: HubMember, *, transfer_pending: bool = False) -> list[str]:
+    """What ``actor`` may do on ``member``'s row, in ``MEMBER_ACTIONS`` order (saas#1626, saas#1670): the
+    same rules the writes apply (``services._managed``, ``services.ownership_transfer``), so the page never
+    offers a button its door refuses. Nothing on one's own row, a peer, a superior or a deleted business."""
+    if not is_writable(actor.hub):
+        return []
+    pending = member.accepted_at is None
+    manageable = manages(actor, member)
+    allowed = {
+        "change_role": manageable,
+        "remove": manageable and not pending,
+        "resend": manageable and pending,
+        "cancel": manageable and pending,
+        "transfer": actor.role == Role.OWNER
+        and member.user_id != actor.user_id
+        and not pending
+        and not transfer_pending,
+    }
+    return [action for action in MEMBER_ACTIONS if allowed[action]]
+
+
 def member_row(actor: HubMember, member: HubMember, now: datetime, *, transfer_pending: bool = False) -> dict[str, Any]:
-    """One row of the members page as ``actor`` sees it."""
+    """One row of the members page as ``actor`` sees it: ``is_me`` marks the account's own row, and
+    ``actions`` lists what it may do on this one (``member_actions``)."""
     pending = member.accepted_at is None
     status = "expired" if member.is_expired(now) else "pending" if pending else "active"
-    manageable = manages(actor, member)
-    is_self = member.user_id == actor.user_id
+    actions = member_actions(actor, member, transfer_pending=transfer_pending)
     return {
         "id": member.id,
         "user_id": member.user_id,
@@ -649,18 +716,13 @@ def member_row(actor: HubMember, member: HubMember, now: datetime, *, transfer_p
         "invited_by": _name_of(member.invited_by),
         "invited_at": member.invited_at,
         "invitation_expires_at": member.invitation_expires_at,
-        "joined_at": member.joined_at,
+        # An invitation has not joined anything yet (saas#2251): no date until it is answered.
+        "joined_at": None if pending else member.joined_at,
         "accepted_at": member.accepted_at,
         "last_opened_at": member.last_opened_at,
-        "is_self": is_self,
-        "actions": {
-            "change_role": manageable,
-            "remove": manageable and not pending,
-            "resend": manageable and pending,
-            "cancel": manageable and pending,
-            "transfer": actor.role == Role.OWNER and not is_self and not pending and not transfer_pending,
-        },
-        "assignable_roles": assignable_roles(actor.role) if manageable else [],
+        "is_me": member.user_id == actor.user_id,
+        "actions": actions,
+        "assignable_roles": assignable_roles(actor.role) if "change_role" in actions else [],
     }
 
 

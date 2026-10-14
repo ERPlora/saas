@@ -360,6 +360,7 @@ def detail(request: HttpRequest, slug: str) -> HttpResponse:
             "industry": {
                 "slug": business_type.code,
                 "name": business_type.name,
+                "vertical": business_type.vertical,
                 "subject": subject,
                 "headline": _headline(subject),
                 "lead": lead,

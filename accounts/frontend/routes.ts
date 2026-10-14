@@ -5,12 +5,6 @@ import type { RouteRecordRaw } from 'vue-router';
 
 const routes: RouteRecordRaw[] = [
   {
-    // The entry of erplora.com: the account's hubs. In the auth frame, never the shell's menu.
-    path: '/launch',
-    component: () => import('./pages/LaunchPage.vue'),
-    meta: { auth: true, chrome: false },
-  },
-  {
     // Where the shell's auth gate sends a visitor without a session (`main.ts`).
     path: '/login',
     component: () => import('./pages/LoginPage.vue'),

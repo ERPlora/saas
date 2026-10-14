@@ -82,7 +82,7 @@ def empty_slots(settings):
     """Both slots empty and the platform's region, whatever saas-next/.env says."""
     for name in SLOTS:
         setattr(settings, name, "")
-    settings.AWS_REGION = "eu-south-2"
+    settings.AWS_REGION = "eu-west-1"
     return settings
 
 
@@ -91,7 +91,7 @@ def cloudwatch(monkeypatch):
     """``boto3.client`` hands the command a stubbed CloudWatch client and records each creation."""
     client = boto3.client(
         "cloudwatch",
-        region_name="eu-south-2",
+        region_name="eu-west-1",
         aws_access_key_id="testing",
         aws_secret_access_key="testing",
     )
@@ -122,7 +122,7 @@ def test_the_current_slot_alone_publishes_its_days(empty_slots, cloudwatch):
     output = run()
 
     cloudwatch.stubber.assert_no_pending_responses()
-    assert cloudwatch.created == [("cloudwatch", {"region_name": "eu-south-2"})]
+    assert cloudwatch.created == [("cloudwatch", {"region_name": "eu-west-1"})]
     assert "SealDaysToExpiry=40" in output
 
 

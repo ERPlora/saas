@@ -2,14 +2,16 @@
 
 «Open in the Hub admin» (ronda 13, PLAN §18.1.6), on every membership row and on the «Hubs» page
 (``/admin/accounts/hubs/``, routed in ``config/urls.py``): the staff jump from ``erplora.com/admin``
-to the hub's deep link ``hubs.erplora.com/admin/hub/<slug>/`` with a one-time ``hub-admin`` code,
-auto-posted to ``HUB_ADMIN_CALLBACK_URL``. The staff never type ``hubs.erplora.com``.
+to the hub's deep link ``hubs.erplora.com/admin/hub/<slug>/``. The jump starts at the Hub
+(``<HUB_ADMIN_ORIGIN>/auth/login?hub=<slug>&next=/admin/hub/<slug>/``), which binds it to the browser
+with its ``state`` cookie and sends it to ``/hub-login/?audience=hub-admin`` (``accounts.handoff``):
+there the one-time ``hub-admin`` code is minted and auto-posted to ``HUB_ADMIN_CALLBACK_URL``. The
+staff never type ``hubs.erplora.com``.
 
 With ``ACCOUNTS_MFA_ENABLED`` on, the jump needs the second factor in the session and
 ``/admin/login/`` is allauth's login (``admin_login``, installed by ``config/urls.py``).
 """
 
-import logging
 from urllib.parse import urlencode, urlsplit
 
 from django.conf import settings
@@ -19,23 +21,17 @@ from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.auth.forms import AdminUserCreationForm, UserChangeForm
 from django.core.exceptions import PermissionDenied
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
-from django.shortcuts import redirect, render
 from django.template.response import TemplateResponse
-from django.urls import path, reverse
+from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.cache import never_cache
-from django.views.decorators.http import require_GET
 
-from accounts import mfa, queries, services
+from accounts import queries, services
 from accounts.models import AuthExchangeCode, HubMembership, User
 
-logger = logging.getLogger(__name__)
-
 OPEN_IN_HUB_ADMIN = _("Open in the Hub admin")
-#: Why «Open in the Hub admin» did nothing: with the flag on, ``hub-admin`` needs the second factor.
-REFUSED_WITHOUT_SECOND_FACTOR = _("Turn on two-factor authentication and sign in again before opening the Hub admin.")
 
 #: Why the jump to the Hub admin failed, by the ``?error=`` the Hub sends back to «Hubs» (ERPlora/saas#1):
 #: the codes of ``hub-next/base/auth.py`` and ``auth_views.py``, and the 400s of ``/internal/auth/redeem``
@@ -60,10 +56,15 @@ JUMP_FAILED_UNKNOWN = _("The Hub admin could not be opened. Try again from this 
 
 
 def open_hub_admin_url(slug: str) -> str | None:
-    """The admin's jump to ``slug`` in the Hub admin, or ``None`` if ``slug`` is no hub (rows saved unvalidated)."""
+    """The admin's jump to ``slug`` in the Hub admin, or ``None`` if ``slug`` is no hub (rows saved unvalidated).
+
+    ``http://hubs.localhost:8000/auth/login?hub=a&next=/admin/hub/a/`` locally,
+    ``https://hubs.erplora.com/auth/login?hub=a&next=/admin/hub/a/`` in production (``HUB_ADMIN_ORIGIN``).
+    """
     if not services.is_hub_slug(slug):
         return None
-    return reverse("admin:accounts_hubmembership_open_hub_admin", args=[slug])
+    query = urlencode({"hub": slug, "next": queries.hub_admin_path(slug)}, safe="/")
+    return f"{settings.HUB_ADMIN_ORIGIN}{queries.HUB_START_PATH}?{query}"
 
 
 class UserCreationForm(AdminUserCreationForm):
@@ -113,54 +114,12 @@ class HubMembershipAdmin(admin.ModelAdmin):
     search_fields = ("user__email", "hub_slug")
     autocomplete_fields = ("user",)
 
-    def get_urls(self):
-        # Before the model's own URLs, whose ``<path:object_id>/`` would take it.
-        jump = self.admin_site.admin_view(require_GET(self.open_hub_admin_view))
-        return [
-            path("open-hub-admin/<str:slug>/", jump, name="accounts_hubmembership_open_hub_admin"),
-            *super().get_urls(),
-        ]
-
     @admin.display(description=_("Hub admin"))
     def open_in_hub_admin(self, obj):
         url = open_hub_admin_url(obj.hub_slug)
         if url is None:
             return self.get_empty_value_display()
         return format_html('<a class="button" href="{}">{}</a>', url, OPEN_IN_HUB_ADMIN)
-
-    def open_hub_admin_view(self, request: HttpRequest, slug: str) -> HttpResponse:
-        """Mint a ``hub-admin`` code for the staff member and auto-post it to the Hub admin's callback.
-
-        ``admin_view`` already sends an anonymous visitor or a customer to the admin's login (only
-        active staff enter the admin); ``issue_code`` then wants a platform role and a hub slug that
-        is no reserved name nor the platform host, or answers 403. With ``ACCOUNTS_MFA_ENABLED`` on
-        it also wants the second factor in this session (ronda 12 and 13, PLAN §17, §18): without it
-        no code, an error message and back to the memberships.
-        """
-        try:
-            code = services.issue_code(
-                request.user,
-                slug,
-                audience=AuthExchangeCode.HUB_ADMIN_AUDIENCE,
-                second_factor=mfa.mfa_completed(request),
-            )
-        except services.SecondFactorRequired:
-            logger.info("admin.open_hub_admin.second_factor_required user=%s hub=%s", request.user.pk, slug)
-            messages.error(request, REFUSED_WITHOUT_SECOND_FACTOR)
-            return redirect("admin:accounts_hubmembership_changelist")
-        except services.HubAccessDenied:
-            logger.warning("admin.open_hub_admin.denied user=%s", request.user.pk)
-            raise PermissionDenied from None
-        logger.info("admin.open_hub_admin user=%s hub=%s", request.user.pk, slug)
-        context = {
-            "callback_url": settings.HUB_ADMIN_CALLBACK_URL,
-            "code": code,
-            "next": queries.hub_admin_path(slug),
-            "staff_jump": True,
-        }
-        response = render(request, "accounts/hub_login_form.html", context)
-        response["Referrer-Policy"] = "no-referrer"
-        return response
 
 
 def _admin_next(request: HttpRequest) -> str:

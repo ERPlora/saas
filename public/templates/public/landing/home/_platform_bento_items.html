@@ -6,9 +6,9 @@
 {% trans "Activate only what you need. Switch plans in one click." as body %}
 {% include "public/components/bento_item.html" with cols=2 rows=1 tone="primary" icon="lucide:blocks" heading=apps_heading body=body only %}
 
-{% trans "uptime" as uptime %}
+{% trans "High availability on AWS" as heading %}
 {% trans "Per-tenant Hub, auto-provisioned and backed up." as body %}
-{% with uptime_heading="99.95% "|add:uptime %}{% include "public/components/bento_item.html" with cols=2 rows=1 icon="lucide:gauge" heading=uptime_heading body=body only %}{% endwith %}
+{% include "public/components/bento_item.html" with cols=2 rows=1 icon="lucide:gauge" heading=heading body=body only %}
 
 {% trans "Run it your way" as heading %}
 {% trans "Runs in the browser as an always-online cloud PWA on any device — phone, tablet or till — with the free app driving the printers and cash drawer at your counter." as body %}

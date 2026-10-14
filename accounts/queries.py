@@ -65,9 +65,27 @@ def hub_origin(slug: str) -> str:
     return f"{callback.scheme}://{callback.netloc}"
 
 
-def hub_login_url(slug: str, next_path: str = "/") -> str:
-    """The jump to the hub ``slug`` (``/hub-login/``), landing on ``next_path`` there."""
-    return "/hub-login/?" + urlencode({"hub": slug, "next": next_path}, safe="/")
+#: Where a hub starts every jump into it: it binds the jump to the browser (the ``state`` cookie)
+#: and only then sends it to the SaaS's ``/hub-login/`` (login CSRF; ``accounts.handoff``).
+HUB_START_PATH = "/auth/login"
+
+
+def local_path(value: str) -> str:
+    """``value`` if it is a path on the hub (``/…``, not ``//host`` nor ``/\\host``), else ``/``."""
+    parts = urlsplit(value)
+    if not value.startswith("/") or value.startswith(("//", "/\\")) or parts.scheme or parts.netloc:
+        return "/"
+    return value
+
+
+def hub_start_url(slug: str, next_path: str = "/") -> str:
+    """The jump to the hub ``slug``, landing on ``next_path`` there (a non-local path lands on ``/``).
+
+    It starts at the hub: ``http://a.localhost:8000/auth/login?next=/`` locally,
+    ``https://a.erplora.com/auth/login?next=/`` in production (``hub_origin``). A link straight to
+    ``/hub-login/`` would carry no ``state``, and the Hub refuses it. Also for ``hubs`` (one place).
+    """
+    return f"{hub_origin(slug)}{HUB_START_PATH}?{urlencode({'next': local_path(next_path)}, safe='/')}"
 
 
 @operation("accounts.hub.list", kind="query", permission=None, input=HubListIn, output=HubListOut)
@@ -81,7 +99,7 @@ def hub_list(ctx: OperationContext, data: HubListIn) -> dict[str, Any]:
         raise Unauthorized(gettext("Sign in to see your businesses."))
     return {
         "hubs": [
-            {"slug": slug, "host": urlsplit(hub_origin(slug)).netloc, "url": hub_login_url(slug)}
+            {"slug": slug, "host": urlsplit(hub_origin(slug)).netloc, "url": hub_start_url(slug)}
             for slug in hub_slugs_of(ctx.actor)
         ]
     }

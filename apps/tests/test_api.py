@@ -103,3 +103,14 @@ def test_a_filter_that_is_not_understood_is_not_a_422(client, invoice):
 
     assert response.status_code == 200
     assert [app["id"] for app in response.json()["apps"]] == ["invoice"]
+
+
+@pytest.mark.parametrize(
+    "params", [{"q": "\x00"}, {"vertical": "\x00"}, {"q": "Invo\x00ices"}]
+)
+def test_a_nul_in_a_filter_is_not_a_500(client, invoice, params):
+    """``/api/apps?q=%00``: psycopg refuses a NUL in a parameter (``DataError``); it is dropped."""
+    response = client.get("/api/apps", params, HTTP_HOST=HOST)
+
+    assert response.status_code == 200
+    assert [app["id"] for app in response.json()["apps"]] == ["invoice"]

@@ -1,25 +1,32 @@
 // The SaaS SPA entry (mirror of hub-next's): app routes → shell, live client from spa-config,
 // session from the `session-me` JSON Django embeds (or GET /api/me), mount only once the router is
-// ready. The SaaS has a login of its own: the auth gate sends to the SPA route `/login`.
+// ready. The SaaS has a login of its own: the auth gate sends to the SPA route `/login`. Round 17
+// (PLAN-SAAS §3.6): the user menu (Account, Help, Sign out) and the surface the server keeps.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createMemoryHistory, createRouter, type NavigationFailure, type RouteRecordRaw } from 'vue-router';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const sdk = vi.hoisted(() => ({ client: { api: { call: (() => undefined) as (...args: unknown[]) => unknown } } }));
+const sdk = vi.hoisted(() => ({
+  client: { api: { call: (() => undefined) as (...args: unknown[]) => unknown } },
+  auth: { logout: (() => undefined) as (...args: unknown[]) => unknown },
+}));
 
 vi.mock('@erplora/ui/shell', () => ({ createShell: vi.fn() }));
 vi.mock('@erplora/ui/sdk', async (importOriginal) => ({
   ...((await importOriginal()) as object),
   createLiveClient: vi.fn(() => sdk.client),
+  createAllauthClient: vi.fn(() => sdk.auth),
   provideLiveClient: vi.fn(),
 }));
 
 import { createShell } from '@erplora/ui/shell';
-import { ApiError, createLiveClient, provideLiveClient } from '@erplora/ui/sdk';
+import { ApiError, createAllauthClient, createLiveClient, provideLiveClient } from '@erplora/ui/sdk';
 
 import { OPERATION_ROUTES } from './generated/operation-routes';
+import entryEn from './locale/en.json';
+import entryEs from './locale/es.json';
 
 type Main = typeof import('./main');
 
@@ -58,9 +65,10 @@ function shellOptions() {
   return vi.mocked(createShell).mock.calls.at(-1)![0];
 }
 
-function renderShellHtml(session: object | null = ME) {
+function renderShellHtml(session: object | null = ME, config: object = {}) {
+  const spaConfig = JSON.stringify({ csrfCookieName: 'csrftoken', lang: 'es', googleEnabled: true, ...config });
   document.body.innerHTML = `
-    <script id="spa-config" type="application/json">{"csrfCookieName": "csrftoken", "lang": "es", "googleEnabled": true}</script>
+    <script id="spa-config" type="application/json">${spaConfig}</script>
     ${session ? `<script id="session-me" type="application/json">${JSON.stringify(session)}</script>` : ''}
     <div id="app"></div>`;
 }
@@ -70,19 +78,26 @@ let importBoot: ReturnType<typeof shellOptions>;
 
 beforeAll(async () => {
   sdk.client.api.call = vi.fn();
+  sdk.auth.logout = vi.fn();
   renderShellHtml();
   fakeShell();
   main = await import('./main');
   importBoot = shellOptions();
 });
 
+let assign: ReturnType<typeof vi.fn>;
+
 beforeEach(() => {
   vi.clearAllMocks();
   sdk.client.api.call = vi.fn();
+  sdk.auth.logout = vi.fn();
+  assign = vi.fn();
+  vi.stubGlobal('location', { ...window.location, assign });
   renderShellHtml();
 });
 
 afterEach(() => {
+  vi.unstubAllGlobals();
   document.body.innerHTML = '';
 });
 
@@ -121,9 +136,10 @@ describe('main.ts', () => {
         '../zeta/frontend/locale/en.json': { zeta: { title: 'Zeta' } },
       },
     );
+    // Plus the entry's own catalogue (frontend/locale), under `saas`.
     expect(shellOptions().messages).toEqual({
-      en: { accounts: { title: 'Sign In' }, zeta: { title: 'Zeta' } },
-      es: { accounts: { title: 'Iniciar Sesión' } },
+      en: { ...entryEn, accounts: { title: 'Sign In' }, zeta: { title: 'Zeta' } },
+      es: { ...entryEs, accounts: { title: 'Iniciar Sesión' } },
     });
   });
 
@@ -212,6 +228,89 @@ describe('main.ts', () => {
   });
 });
 
+describe('the panel (round 17, PLAN-SAAS §3.6)', () => {
+  /** The user menu's «Sign out», as the shell's App.vue calls it. */
+  async function signOut(): Promise<void> {
+    await shellOptions().userMenu!.logout!();
+  }
+
+  it('hands the shell the user menu: Account, Help at /help and Sign out', async () => {
+    fakeShell();
+    await main.boot({});
+    const { userMenu } = shellOptions();
+    expect(userMenu?.items).toEqual([
+      { id: 'account', labelKey: 'saas.userMenu.account', icon: 'ion:person-outline', to: '/account' },
+    ]);
+    expect(userMenu?.helpPath).toBe('/help');
+    expect(userMenu?.logout).toBeTypeOf('function');
+  });
+
+  it('signs out through allauth.headless (DELETE of the session), then loads the login', async () => {
+    vi.mocked(sdk.auth.logout).mockResolvedValue({ authenticated: false, flows: [] });
+    fakeShell();
+    await main.boot({});
+    expect(createAllauthClient).toHaveBeenCalledWith(expect.objectContaining({ csrfCookieName: 'csrftoken' }));
+    await signOut();
+    expect(sdk.auth.logout).toHaveBeenCalledOnce();
+    // A full load: the next page embeds an empty session (and the server forgot the surface).
+    expect(assign).toHaveBeenCalledExactlyOnceWith('/login');
+  });
+
+  it('a sign out that fails rejects, so the shell shows its toast, and the page stays', async () => {
+    vi.mocked(sdk.auth.logout).mockRejectedValue(new ApiError(0, 'network_error', 'Network error'));
+    fakeShell();
+    await main.boot({});
+    await expect(signOut()).rejects.toThrow('Network error');
+    expect(assign).not.toHaveBeenCalled();
+  });
+
+  it('a sign out the server did not honour (still signed in) rejects too', async () => {
+    vi.mocked(sdk.auth.logout).mockResolvedValue({ authenticated: true, user: { id: 1, email: 'ana@example.com' } });
+    fakeShell();
+    await main.boot({});
+    await expect(signOut()).rejects.toThrow('still signed in');
+    expect(assign).not.toHaveBeenCalled();
+  });
+
+  it('passes the shell the account surface the server keeps in the session (spa-config.surface)', async () => {
+    renderShellHtml(ME, { surface: 'account' });
+    fakeShell();
+    await main.boot({});
+    expect(shellOptions().surface).toBe('account');
+  });
+
+  it("otherwise leaves the surface to the shell's own detection (the Tauri bridge, the user agent, ?surface=)", async () => {
+    fakeShell();
+    await main.boot({});
+    expect(shellOptions().surface).toBeUndefined();
+    renderShellHtml(ME, { surface: 'nonsense' });
+    await main.boot({});
+    expect(shellOptions().surface).toBeUndefined();
+  });
+
+  it("keeps the package's default contrast and has no Home of the shell (the SaaS's landing is its own)", async () => {
+    fakeShell();
+    await main.boot({});
+    expect(shellOptions()).not.toHaveProperty('contrast');
+    expect(shellOptions().home).toBeUndefined();
+  });
+
+  it("translates the user menu's Account in en and es (the entry's own catalogue, frontend/locale)", () => {
+    const messages = importBoot.messages as Record<string, { saas: { userMenu: { account: string } } }>;
+    expect([messages.en.saas.userMenu.account, messages.es.saas.userMenu.account]).toEqual(['Account', 'Cuenta']);
+  });
+
+  it("keeps the entry's catalogue under `saas`, with the same keys in en and es", () => {
+    const read = (lang: string) => JSON.parse(readFileSync(join(HERE, 'locale', `${lang}.json`), 'utf8')) as object;
+    const keys = (value: unknown, prefix = ''): string[] =>
+      typeof value === 'object' && value !== null
+        ? Object.entries(value).flatMap(([key, child]) => keys(child, `${prefix}${key}.`))
+        : [prefix.slice(0, -1)];
+    expect(Object.keys(read('en'))).toEqual(['saas']);
+    expect(keys(read('es'))).toEqual(keys(read('en')));
+  });
+});
+
 describe('import order guards (hub#1060)', () => {
   it('imports the shell before anything that loads @ionic/vue (the SDK, the generated routes)', () => {
     const source = readFileSync(join(HERE, 'main.ts'), 'utf8');
@@ -246,6 +345,11 @@ describe('root app guards (saas-next has no apps/: its apps live next to base/, 
     expect(globs[1][1]).toEqual(globs[0][1]);
   });
 
+  it('globs the apps with a frontend: accounts, hubs and billing (round 16: no marketplace; apps and public have none)', () => {
+    const [[, globbed]] = globbedApps();
+    expect(globbed).toEqual(['accounts', 'hubs', 'billing']);
+  });
+
   it('globs every root app with a frontend/: one left out would lose its pages and texts silently', () => {
     const apps = rootAppsWithFrontend();
     expect(apps).toContain('accounts');
@@ -258,6 +362,9 @@ describe('root app guards (saas-next has no apps/: its apps live next to base/, 
     const [[, globbed]] = globbedApps();
     expect(tsconfig.include).toEqual(expect.arrayContaining(globbed.map((app) => `${app}/frontend/**/*`)));
     expect(tsconfig.include.filter((glob) => glob.startsWith('apps/'))).toEqual([]);
+    expect(tsconfig.include.filter((glob) => glob.endsWith('/frontend/**/*'))).toEqual(
+      globbed.map((app) => `${app}/frontend/**/*`),
+    );
   });
 });
 

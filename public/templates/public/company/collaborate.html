@@ -13,15 +13,15 @@
 
 {% block title %}{% trans "Collaborator Program" %} · ERPlora{% endblock %}
 
-{% block meta_description %}{% trans "Join the ERPlora Collaborator Program: share your industry expertise, get a free modular ERP for a year with custom modules built for your business." %}{% endblock %}
+{% block meta_description %}{% trans "Join the ERPlora Collaborator Program: share your industry expertise, get a free modular ERP for a year with custom apps built for your business." %}{% endblock %}
 
 {% block og_title %}{% trans "Collaborator Program" %} · ERPlora{% endblock %}
-{% block og_description %}{% trans "We're a startup building a modular ERP. We need your industry expertise to build modules that actually work. In return: a free ERP for a year." %}{% endblock %}
+{% block og_description %}{% trans "We're a startup building a modular ERP. We need your industry expertise to build apps that actually work. In return: a free ERP for a year." %}{% endblock %}
 
 {% block page_content %}
 {% trans "Collaborator Program" as hero_eyebrow %}
 {% trans "We're looking for industry experts" as hero_title %}
-{% trans "We're a startup building a modular, scalable ERP — not a conventional one. We need your real-world industry knowledge to build modules that actually work. In return, you get a free ERP tailored to your needs." as hero_description %}
+{% trans "We're a startup building a modular, scalable ERP — not a conventional one. We need your real-world industry knowledge to build apps that actually work. In return, you get a free ERP tailored to your needs." as hero_description %}
 {% include "public/partials/page_hero.html" with hero_eyebrow=hero_eyebrow hero_title=hero_title hero_description=hero_description hero_compact=True hero_actions_template="public/company/_collaborate_hero_actions.html" %}
 
         <!-- How it works -->
@@ -49,7 +49,7 @@
                             <span class="text-2xl font-bold text-primary">2</span>
                         </div>
                         <h3 class="heading-sm">{% trans "We build for you" %}</h3>
-                        <p class="text-fg/60">{% trans "We develop or adapt modules tailored to your specific needs — completely free." %}</p>
+                        <p class="text-fg/60">{% trans "We develop or adapt apps tailored to your specific needs — completely free." %}</p>
                     </ion-card-content>
                 </ion-card>
 
@@ -74,7 +74,7 @@
             <ion-card class="">
                 <ion-card-content class="p-6">
                     <h2 class="heading-lg mb-4">{% trans "What we've already built" %}</h2>
-                    <p class="text-fg/60 mb-6">{% trans "ERPlora is a modular ERP with a minimalist core that does one thing: load modules. Everything else — invoicing, inventory, appointments, POS, accounting — are independent modules you install based on what you need." %}</p>
+                    <p class="text-fg/60 mb-6">{% trans "ERPlora is a modular ERP with a minimalist core that does one thing: load apps. Everything else — invoicing, inventory, appointments, POS, accounting — are independent apps you install based on what you need." %}</p>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div class="flex gap-3 items-center">
                             <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -86,7 +86,7 @@
                             <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                                 {% icon "checkmark-outline" css_class="text-primary" %}
                             </div>
-                            <span class="text-sm">{% trans "Modules constantly growing" %}</span>
+                            <span class="text-sm">{% trans "Apps constantly growing" %}</span>
                         </div>
                         <div class="flex gap-3 items-center">
                             <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -142,8 +142,8 @@
                                 {% icon "checkmark-outline" css_class="text-success" %}
                             </div>
                             <div>
-                                <h4 class="font-semibold mb-1">{% trans "Custom modules at no cost" %}</h4>
-                                <p class="text-fg/60 text-sm">{% trans "We develop or adapt modules based on your specific business needs." %}</p>
+                                <h4 class="font-semibold mb-1">{% trans "Custom apps at no cost" %}</h4>
+                                <p class="text-fg/60 text-sm">{% trans "We develop or adapt apps based on your specific business needs." %}</p>
                             </div>
                         </div>
 
@@ -347,7 +347,7 @@
                 <ion-card class="">
                     <ion-card-content class="p-6">
                         <h4 class="font-semibold mb-2">{% trans "What happens after the free year?" %}</h4>
-                        <p class="text-fg/60">{% trans "Active collaborators receive a permanent special discount on any ERPlora plan. You keep all your data and modules." %}</p>
+                        <p class="text-fg/60">{% trans "Active collaborators receive a permanent special discount on any ERPlora plan. You keep all your data and apps." %}</p>
                     </ion-card-content>
                 </ion-card>
                 <ion-card class="">

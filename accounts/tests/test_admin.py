@@ -1,7 +1,7 @@
 """The Django admin shows every model of accounts (PLAN-SAAS §6: «el Django admin, lo más completo posible»)."""
 
 import re
-from html import unescape
+from html import escape, unescape
 from io import StringIO
 
 import pytest
@@ -11,6 +11,7 @@ from django.core.management import call_command
 from django.test import override_settings
 
 from accounts import services
+from accounts.admin import open_hub_admin_url
 from accounts.models import AuthExchangeCode, HubMembership
 
 pytestmark = pytest.mark.django_db
@@ -118,11 +119,17 @@ def _hidden(html: str, name: str) -> str:
 
 class TestOpenInTheHubAdmin:
     """«Open in the Hub admin» (ronda 13, PLAN §18.1.6): from ``erplora.com/admin`` the staff jump to
-    ``hubs.erplora.com/admin/hub/<slug>/`` with a one-time ``hub-admin`` code, auto-posted to the
-    platform host's callback. The staff never type ``hubs.erplora.com``."""
+    ``hubs.erplora.com/admin/hub/<slug>/``. The jump STARTS at the Hub (``/auth/login``), which binds it
+    to the browser with its ``state`` cookie and sends it to ``/hub-login/?audience=hub-admin`` (tested
+    in ``test_handoff.py``). The staff never type ``hubs.erplora.com``."""
 
-    JUMP = "/admin/accounts/hubmembership/open-hub-admin/{slug}/"
+    JUMP = "http://hubs.localhost:8000/auth/login?hub={slug}&next=/admin/hub/{slug}/"
+    #: The jump the SaaS admin answered itself before the Hub asked for ``state``.
+    OLD_JUMP = "/admin/accounts/hubmembership/open-hub-admin/{slug}/"
     HUBS = "/admin/accounts/hubs/"
+
+    def _href(self, slug: str) -> str:
+        return f'href="{escape(self.JUMP.format(slug=slug))}"'
 
     @pytest.fixture
     def users(self):
@@ -143,86 +150,22 @@ class TestOpenInTheHubAdmin:
         client.force_login(user)
         return user
 
-    def test_staff_get_a_form_that_posts_the_code_and_the_deep_link_to_the_hub_admin(self, client, platform):
-        response = client.get(self.JUMP.format(slug="a"))
+    def test_the_button_starts_the_jump_at_the_hub_admin_login_with_the_deep_link(self):
+        assert open_hub_admin_url("a") == "http://hubs.localhost:8000/auth/login?hub=a&next=/admin/hub/a/"
 
-        html = response.content.decode()
-        assert response.status_code == 200
-        assert '<form id="hub-login-form" method="post" action="http://hubs.localhost:8000/auth/callback">' in html
-        assert _hidden(html, "next") == "/admin/hub/a/"
-        code = _hidden(html, "code")
-        row = AuthExchangeCode.objects.get()
-        assert (row.user, row.hub_slug, row.audience) == (platform, "a", "hub-admin")
-        assert row.code_hash == AuthExchangeCode.hash_code(code)
+    def test_in_production_it_starts_at_hubs_erplora_com(self, settings):
+        settings.HUB_ADMIN_ORIGIN = "https://hubs.erplora.com"
 
-    def test_the_code_redeems_as_hub_admin_with_the_platform_role(self, client, platform):
-        code = _hidden(client.get(self.JUMP.format(slug="a")).content.decode(), "code")
+        assert open_hub_admin_url("a") == "https://hubs.erplora.com/auth/login?hub=a&next=/admin/hub/a/"
 
-        identity = services.redeem_code(code, "a", audience="hub-admin")
+    @pytest.mark.parametrize("slug", ["hubs", "hub", "www", "admin", "A", "ab", "evil.example/x", ""])
+    def test_no_button_for_the_platform_host_nor_a_reserved_or_invalid_slug(self, slug):
+        assert open_hub_admin_url(slug) is None
 
-        assert (identity.email, identity.role) == ("platform@example.com", "platform_admin")
+    def test_the_old_address_mints_no_code(self, client, platform):
+        # A code posted without the Hub's ``state`` is always refused by the Hub: never minted.
+        client.get(self.OLD_JUMP.format(slug="a"))
 
-    def test_support_jumps_with_the_support_role(self, client, support):
-        code = _hidden(client.get(self.JUMP.format(slug="b")).content.decode(), "code")
-
-        assert services.redeem_code(code, "b", audience="hub-admin").role == "platform_support"
-
-    def test_the_page_submits_itself_and_is_never_cached_nor_leaks_a_referrer(self, client, platform):
-        response = client.get(self.JUMP.format(slug="a"))
-
-        html = response.content.decode()
-        nonce = re.search(r"'nonce-([^']+)'", response["Content-Security-Policy"]).group(1)
-        assert f'<script nonce="{nonce}">' in html
-        assert 'getElementById("hub-login-form").submit()' in html
-        assert "<noscript>" in html
-        assert "Opening the Hub admin…" in html
-        assert "no-store" in response["Cache-Control"]
-        assert response["Referrer-Policy"] == "no-referrer"
-
-    def test_the_csp_lets_the_form_post_to_the_hub_admin(self, client, platform):
-        policy = client.get(self.JUMP.format(slug="a"))["Content-Security-Policy"]
-
-        form_action = next(part for part in policy.split("; ") if part.startswith("form-action "))
-        assert "http://hubs.localhost:8000" in form_action.split()
-
-    def test_the_callback_comes_from_the_setting(self, client, platform, settings):
-        settings.HUB_ADMIN_CALLBACK_URL = "https://hubs.erplora.com/auth/callback"
-
-        response = client.get(self.JUMP.format(slug="a"))
-
-        assert 'action="https://hubs.erplora.com/auth/callback"' in response.content.decode()
-
-    def test_the_owner_of_the_hub_is_sent_to_the_admin_login_and_gets_no_code(self, client, users):
-        client.force_login(users.get(email="owner@example.com"))
-
-        response = client.get(self.JUMP.format(slug="a"))
-
-        assert response.status_code == 302
-        assert response.url.startswith("/admin/login/")
-        assert not AuthExchangeCode.objects.exists()
-
-    def test_without_a_session_it_is_the_admin_login(self, client, db):
-        response = client.get(self.JUMP.format(slug="a"))
-
-        assert response.status_code == 302
-        assert response.url.startswith("/admin/login/")
-        assert not AuthExchangeCode.objects.exists()
-
-    def test_staff_without_a_platform_role_are_forbidden(self, client, ana):
-        ana.is_staff = True
-        ana.save()
-        client.force_login(ana)
-
-        assert client.get(self.JUMP.format(slug="a")).status_code == 403
-        assert not AuthExchangeCode.objects.exists()
-
-    @pytest.mark.parametrize("slug", ["hubs", "hub", "www", "admin", "A", "ab"])
-    def test_the_platform_host_and_reserved_or_invalid_slugs_are_forbidden(self, client, platform, slug):
-        assert client.get(self.JUMP.format(slug=slug)).status_code == 403
-        assert not AuthExchangeCode.objects.exists()
-
-    def test_only_get_is_allowed(self, client, platform):
-        assert client.post(self.JUMP.format(slug="a")).status_code == 405
         assert not AuthExchangeCode.objects.exists()
 
     def test_each_membership_row_has_the_button(self, client, platform):
@@ -230,8 +173,8 @@ class TestOpenInTheHubAdmin:
 
         html = response.content.decode()
         assert response.status_code == 200
-        assert f'href="{self.JUMP.format(slug="a")}"' in html
-        assert f'href="{self.JUMP.format(slug="b")}"' in html
+        assert self._href("a") in html
+        assert self._href("b") in html
         assert "Open in the Hub admin" in html
         assert f'href="{self.HUBS}"' in html
 
@@ -242,8 +185,8 @@ class TestOpenInTheHubAdmin:
 
         html = response.content.decode()
         assert response.status_code == 200
-        assert html.count(f'href="{self.JUMP.format(slug="a")}"') == 1
-        assert html.count(f'href="{self.JUMP.format(slug="b")}"') == 1
+        assert html.count(self._href("a")) == 1
+        assert html.count(self._href("b")) == 1
         # ``demo_seed`` gives each hub two members (owner and employee); ``ana`` is a third in ``a``.
         assert re.search(r"<td>a</td>\s*<td>3</td>", html)
         assert re.search(r"<td>b</td>\s*<td>2</td>", html)
@@ -261,7 +204,7 @@ class TestOpenInTheHubAdmin:
             response = client.get(page)
             html = response.content.decode()
             assert response.status_code == 200
-            assert html.count("/admin/accounts/hubmembership/open-hub-admin/") == buttons
+            assert html.count('href="http://hubs.localhost:8000/auth/login?') == buttons
 
     def test_the_hubs_page_says_when_there_is_no_hub(self, client, password):
         user, _ = services.create_platform_user("boss@erplora.com", "admin", password)
@@ -294,11 +237,6 @@ class TestOpenInTheHubAdmin:
         response = client.get(self.HUBS, headers={"Accept-Language": "es"})
 
         assert "Abrir en el admin del Hub" in response.content.decode()
-
-    def test_the_jump_page_is_translated_to_spanish(self, client, platform):
-        response = client.get(self.JUMP.format(slug="a"), headers={"Accept-Language": "es"})
-
-        assert "Abriendo el admin del Hub…" in response.content.decode()
 
     # A failed jump comes back from the Hub as ``/admin/accounts/hubs/?error=<code>`` (ERPlora/saas#1):
     # the codes of ``hub-next/base/auth.py`` and ``auth_views.py``, and those the SaaS's

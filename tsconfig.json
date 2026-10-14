@@ -5,7 +5,6 @@
     "frontend/**/*",
     "accounts/frontend/**/*",
     "hubs/frontend/**/*",
-    "marketplace/frontend/**/*",
     "billing/frontend/**/*",
     "*.ts",
     "*.js",

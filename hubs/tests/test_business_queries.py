@@ -157,15 +157,18 @@ class TestOneBusiness:
         assert detail["plan"] == {"slug": "free", "name": "Free"}
         assert detail["trial_plan"] == {"slug": "starter", "name": "Starter"}
         assert detail["trial_end"] is not None
-        assert detail["seats"] == {"used": 1, "cap": 0}
+        assert detail["seats"] == {"used": 1, "limit": None}
         assert detail["can"] == {
             "open": False,
+            "manage": True,
             "manage_members": True,
             "manage_settings": True,
             "manage_billing": True,
             "transfer": True,
+            "restore": False,
             "delete": True,
         }
+        assert detail["country_locked"] is False
 
     def test_an_admin_manages_the_team_and_the_settings_only(self, business, team):
         can = queries.business_get(ctx_for(team["admin"]), ByIdIn(id=business.id)).can
@@ -195,7 +198,7 @@ class TestOneBusiness:
 
         detail = queries.business_get(ctx_for(owner), ByIdIn(id=business.id))
 
-        assert (detail.trial_plan, detail.seats.cap) == (None, 3)
+        assert (detail.trial_plan, detail.seats.limit) == (None, 3)
 
     def test_a_purged_business_is_not_found(self, business, owner):
         Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETED)
@@ -243,3 +246,76 @@ def test_a_second_membership_lists_the_business_of_somebody_else(
         ("Bar Manolo", "hub_owner"),
         ("Café Lola", "hub_manager"),
     ]
+
+
+# --- What a business allows, computed by the server (the list stops deducing it from the role) -----
+
+ACTIVE, PREPARING, SUSPENDED, PAST_DUE, DELETING = "active", "preparing", "suspended", "past_due", "deleting"
+#: ``(open, manage, restore, delete)`` by status and role: «Open» for every role while it serves,
+#: «Manage» for the owner and the administrators while it is not deleted, «Recover» and «Delete»
+#: only for the owner, «Recover» only while deleted and within its 90 days.
+ALLOWED = {
+    ACTIVE: {"owner": (1, 1, 0, 1), "admin": (1, 1, 0, 0), "manager": (1, 0, 0, 0), "employee": (1, 0, 0, 0)},
+    PAST_DUE: {"owner": (1, 1, 0, 1), "admin": (1, 1, 0, 0), "manager": (1, 0, 0, 0), "employee": (1, 0, 0, 0)},
+    PREPARING: {"owner": (0, 1, 0, 1), "admin": (0, 1, 0, 0), "manager": (0, 0, 0, 0), "employee": (0, 0, 0, 0)},
+    SUSPENDED: {"owner": (0, 1, 0, 1), "admin": (0, 1, 0, 0), "manager": (0, 0, 0, 0), "employee": (0, 0, 0, 0)},
+    DELETING: {"owner": (0, 0, 1, 0), "admin": (0, 0, 0, 0), "manager": (0, 0, 0, 0), "employee": (0, 0, 0, 0)},
+}
+
+
+def set_status(hub, status):
+    deleted_at = timezone.now() - timedelta(days=1) if status == DELETING else None
+    Hub.objects.filter(pk=hub.pk).update(status=status, deletion_requested_at=deleted_at)
+
+
+def row_of(user, hub):
+    return next(row for row in business_list(user)["rows"] if row["id"] == str(hub.id))
+
+
+class TestWhatABusinessAllows:
+    @pytest.mark.parametrize("status", list(ALLOWED))
+    @pytest.mark.parametrize("who", ["owner", "admin", "manager", "employee"])
+    def test_each_row_says_what_its_buttons_do(self, business, team, status, who):
+        set_status(business, status)
+
+        can = row_of(team[who], business)["can"]
+
+        expected = dict(zip(("open", "manage", "restore", "delete"), map(bool, ALLOWED[status][who])))
+        assert can == expected
+
+    @pytest.mark.parametrize("status", list(ALLOWED))
+    @pytest.mark.parametrize("who", ["owner", "admin"])
+    def test_the_page_says_the_same_as_its_row(self, business, team, status, who):
+        set_status(business, status)
+
+        detail = queries.business_get(ctx_for(team[who]), ByIdIn(id=business.id)).model_dump()["can"]
+
+        assert {key: detail[key] for key in ("open", "manage", "restore", "delete")} == row_of(team[who], business)["can"]
+
+    def test_a_deleted_business_takes_no_change_from_its_page(self, business, team):
+        """Every write on it answers 409 until it is recovered: no button of the page would work."""
+        set_status(business, DELETING)
+
+        can = queries.business_get(ctx_for(team["owner"]), ByIdIn(id=business.id)).can
+
+        assert (can.manage_members, can.manage_settings, can.transfer, can.delete, can.restore) == (
+            False,
+            False,
+            False,
+            False,
+            True,
+        )
+
+    def test_past_its_90_days_it_cannot_be_recovered(self, business, owner):
+        Hub.objects.filter(pk=business.pk).update(
+            status=DELETING, deletion_requested_at=timezone.now() - timedelta(days=91)
+        )
+
+        assert row_of(owner, business)["can"]["restore"] is False
+
+    def test_the_row_over_http(self, client, business, team):
+        client.force_login(team["admin"])
+
+        rows = client.get("/api/hubs/businesses", HTTP_HOST="localhost:8001").json()["rows"]
+
+        assert rows[0]["can"] == {"open": False, "manage": True, "restore": False, "delete": False}

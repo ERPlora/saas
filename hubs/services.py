@@ -11,7 +11,6 @@ Until the jump to a hub moves to ``hubs`` (plan, L1-A step 2), ``accounts.servic
 equal to the answered members of each business, in the same transaction.
 """
 
-import hashlib
 import logging
 import re
 from collections import Counter
@@ -42,8 +41,8 @@ from live.slugs import (
     validate_hub_slug,
 )
 
-from accounts import mfa
 from accounts import services as account_services
+from accounts.queries import hub_start_url
 from accounts.models import HubMembership
 from hubs import emails, events, hub_client, queries
 from hubs.queries import expired_deletions
@@ -67,6 +66,7 @@ from hubs.schemas import (
     BusinessRowOut,
     BusinessUpdateIn,
     ByIdIn,
+    HubErrorIn,
     HubStatusOut,
     MarkReadyIn,
     MemberInviteIn,
@@ -118,6 +118,25 @@ SLUG_ATTEMPTS = 20
 
 def business_deleted() -> Conflict:
     return Conflict(_("This business was deleted."), code="hubs.business_deleted")
+
+
+class SeatLimitReached(Conflict):
+    """409 ``hubs.seat_limit``: the plan has no seat for one more person (saas#2022).
+
+    Its envelope also says how many people the plan covers (``limit``) and how many seats are taken
+    (``used``, as ``hubs.member.list`` counts them), so the panel offers the plan change with the
+    numbers instead of parsing the message.
+    """
+
+    def __init__(self, message: str, *, limit: int, used: int) -> None:
+        super().__init__(message, code="hubs.seat_limit")
+        self.limit = limit
+        self.used = used
+
+    def envelope(self) -> dict:
+        envelope = super().envelope()
+        envelope["error"].update(limit=self.limit, used=self.used)
+        return envelope
 
 
 # --- Creating a business --------------------------------------------------------------------------
@@ -277,7 +296,9 @@ def _subscribe_to_free(hub: Hub, plan, now) -> Subscription:
     output=BusinessDetailOut,
 )
 def business_update(ctx: OperationContext, data: BusinessUpdateIn) -> dict:
-    """Name, country, language and time zone (the Settings tab): the owner and the administrators."""
+    """Name, country, language and time zone (the Settings tab): the owner and the administrators. The
+    country is read-only once the business is ready (``queries.country_locked``): a change is the 409
+    ``hubs.country_locked``; sending the same one again is no change."""
     member = queries.access(queries.account_of(ctx), data.id, Role.ADMIN, lock=True)
     hub = member.hub
     if hub.status in (Hub.Status.DELETING, Hub.Status.DELETED):
@@ -286,6 +307,11 @@ def business_update(ctx: OperationContext, data: BusinessUpdateIn) -> dict:
     changes = {
         field: value for field, value in sent.items() if getattr(hub, field) != value
     }
+    if "country" in changes and queries.country_locked(hub):
+        raise Conflict(
+            _("The country cannot change once the business is ready: its invoices belong to one country."),
+            code="hubs.country_locked",
+        )
     if changes:
         for field, value in changes.items():
             setattr(hub, field, value)
@@ -424,35 +450,21 @@ NOT_OPENING = {
     output=BusinessOpenOut,
 )
 def business_open(ctx: OperationContext, data: BusinessOpenIn) -> dict:
-    """«Open»: the one-time code of the jump into the business (PLAN-SAAS §3.1 step 5), for every role.
+    """«Open» (PLAN-SAAS §3.1 step 5), for every role: the Hub's start of the jump, ``url``.
 
-    Remembers the business as the last opened (the launcher lists it first). The SPA posts ``code``
-    and ``next`` to ``action`` (OIDC ``form_post``): the code never sits in a URL.
+    No code is minted here any more: the Hub binds the jump to the browser with a ``state`` of its own,
+    so it starts at its ``/auth/login?next=``, which bounces to ``/hub-login/``; that door mints the
+    code (and asks for the second factor of an account that has one). This checks the member and the
+    business, and remembers it as the last opened (the launcher lists it first).
     """
-    user = queries.account_of(ctx)
-    member = queries.access(user, data.id)
+    member = queries.access(queries.account_of(ctx), data.id)
     hub = member.hub
     if hub.status in NOT_OPENING:
         code, message = NOT_OPENING[hub.status]
         raise Conflict(str(message), code=code)
-    second_factor = ctx.request is not None and mfa.mfa_completed(ctx.request)
-    try:
-        code = account_services.issue_code(user, hub.slug, second_factor=second_factor)
-    except account_services.SecondFactorRequired:
-        raise OperationError(
-            _("Confirm it is you with your authenticator app to open the business."),
-            code="requires_second_factor",
-            status=403,
-        ) from None
-    except account_services.HubAccessDenied:
-        raise queries.not_found() from None
     HubMember.objects.filter(pk=member.pk).update(last_opened_at=timezone.now())
     record_event(ctx, events.BUSINESS_OPENED, {"id": str(hub.id)})
-    return {
-        "action": settings.HUB_CALLBACK_TEMPLATE.format(slug=hub.slug),
-        "code": code,
-        "next": data.next,
-    }
+    return {"url": hub_start_url(hub.slug, data.next)}
 
 
 # --- The Hub's callback ---------------------------------------------------------------------------
@@ -497,6 +509,35 @@ def business_mark_ready(ctx: OperationContext, data: MarkReadyIn) -> dict:
     return {"id": hub.id, "status": hub.status, "ready_at": hub.ready_at}
 
 
+@operation(
+    "hubs.business.record_hub_error",
+    kind="command",
+    permission="hubs.manage",
+    input=HubErrorIn,
+    output=HubStatusOut,
+)
+def business_record_hub_error(ctx: OperationContext, data: HubErrorIn) -> dict:
+    """The Hub's last refusal of a call about the business (its error code), or ``None`` once a call
+    succeeds; only the push writes it (``sync_outcome``, after a COMMIT or in ``saas-cron``).
+
+    A command, so the change has its event: on the owner's channel (``system_ctx_for``, as the Hub's
+    ``ready``) the list and the page of the business re-run at once, and «Preparing» turns into «Error»
+    (and back) without waiting for the 300 s safety re-run. The same answer again records nothing.
+    """
+    if ctx.actor != "system":
+        raise PermissionDenied(_("Only the platform records the Hub's answers."), code="internal_command")
+    hub = Hub.objects.select_for_update().filter(pk=data.id).first()
+    if hub is None:
+        raise queries.not_found()
+    code = data.hub_error or ""
+    if hub.last_hub_error != code:
+        hub.last_hub_error = code
+        hub.hub_error_at = timezone.now() if code else None
+        hub.save(update_fields=["last_hub_error", "hub_error_at", "updated_at"])
+        record_event(ctx, events.BUSINESS_HUB_ERROR_CHANGED, {"id": str(hub.id), "hub_error": code or None})
+    return {"id": hub.id, "status": hub.status, "ready_at": hub.ready_at}
+
+
 # --- Members and invitations ----------------------------------------------------------------------
 
 
@@ -535,12 +576,27 @@ def _managed(ctx: OperationContext, member_id: UUID, role: str | None = None) ->
 
 
 def _check_seat(hub: Hub, now) -> None:
-    """The plan covers one more person (saas#2022), checked where the seat is spent."""
+    """The plan covers one more person (saas#2022), checked where the seat is spent: inviting (a live
+    invitation holds its seat), and renewing an invitation that had expired."""
     seats = queries.seats_of(hub, now)
-    if seats["cap"] and seats["used"] >= seats["cap"]:
-        raise Conflict(
-            _("This plan covers %(cap)s people and they are all taken.") % {"cap": seats["cap"]},
-            code="hubs.user_limit_reached",
+    if seats["limit"] is not None and seats["used"] >= seats["limit"]:
+        raise SeatLimitReached(
+            _("This plan covers %(cap)s people and they are all taken.") % {"cap": seats["limit"]},
+            limit=seats["limit"],
+            used=seats["used"],
+        )
+
+
+def _check_seat_to_enter(hub: Hub, now) -> None:
+    """The plan still has a seat beside the people already inside: an invitation sent while nothing
+    capped it (the Starter trial) and answered once the plan covers fewer people is first come, first
+    served. Within the cap it always passes, because the invitation already holds its seat."""
+    limit = queries.seat_limit_of(hub, now)
+    if limit is not None and queries.people_inside(hub) >= limit:
+        raise SeatLimitReached(
+            _("This business has no seat left on its plan. Ask whoever invited you to free one or to change the plan."),
+            limit=limit,
+            used=queries.seats_of(hub, now)["used"],
         )
 
 
@@ -703,13 +759,15 @@ def _my_invitation(ctx: OperationContext, member_id: UUID) -> HubMember:
 
 @operation("hubs.invitation.accept", kind="command", permission="hubs.manage", input=ByIdIn, output=BusinessRowOut)
 def invitation_accept(ctx: OperationContext, data: ByIdIn) -> dict:
-    """Accept an invitation within its 7 days: the account enters with the role it says."""
+    """Accept an invitation within its 7 days: the account enters with the role it says, if the plan
+    still has a seat beside the people already inside (``_check_seat_to_enter``)."""
     member = _my_invitation(ctx, data.id)
     now = timezone.now()
     if member.is_expired(now):
         raise Conflict(
             _("This invitation expired. Ask whoever invited you to send it again."), code="hubs.invitation_expired"
         )
+    _check_seat_to_enter(member.hub, now)
     member.accepted_at = now
     member.save(update_fields=["accepted_at"])
     sync_access(member.hub)
@@ -1013,7 +1071,8 @@ def sync_outcome(hub_id: UUID) -> str:
 
     Each acknowledgement is recorded as it comes and clears a refusal recorded before. The first
     failure stops: the Hub being away leaves the rest owed (``unreachable``); the Hub refusing (4xx)
-    also records its code on the business (``last_hub_error``), so the panel shows an error instead of
+    also records its code on the business (``last_hub_error``, through ``hubs.business.record_hub_error``
+    and its event), so the panel shows an error instead of
     waiting for ever (``refused``).
     """
     hub = Hub.objects.filter(pk=hub_id).first()
@@ -1044,10 +1103,16 @@ def sync_outcome(hub_id: UUID) -> str:
         return UNREACHABLE
     except HubRefused as refused:
         logger.error("hubs.sync.refused hub=%s call=%s: %s", hub_id, call or "state", refused)
-        Hub.objects.filter(pk=hub_id).update(last_hub_error=refused.code[:64], hub_error_at=timezone.now())
+        _record_hub_error(hub_id, refused.code[:64])
         return REFUSED
-    Hub.objects.filter(pk=hub_id).exclude(last_hub_error="").update(last_hub_error="", hub_error_at=None)
+    if Hub.objects.filter(pk=hub_id).exclude(last_hub_error="").exists():
+        _record_hub_error(hub_id, None)
     return DELIVERED
+
+
+def _record_hub_error(hub_id: UUID, code: str | None) -> None:
+    """Record (or clear) the Hub's refusal through its command, so the panel hears of it at once."""
+    business_record_hub_error(system_ctx_for(hub_id), HubErrorIn(id=hub_id, hub_error=code))
 
 
 def _delete(hub: Hub) -> None:
@@ -1105,25 +1170,36 @@ LIVE_STATUSES = [Hub.Status.PREPARING, Hub.Status.ACTIVE, Hub.Status.PAST_DUE, H
 FAILING_COUNTS = ("owed", "unreachable", "failed")
 
 
-def lock_key(name: str) -> int:
-    """The advisory lock of the run ``name``: a stable signed 64-bit number."""
-    return int.from_bytes(hashlib.blake2b(f"hubs.{name}".encode(), digest_size=8).digest(), "big", signed=True)
+def lock_name(command: str) -> str:
+    """The advisory lock of ``command``: ``hashtext('erplora.saas.<command>')``, the namespace every lock
+    of the SaaS's database takes (``base``'s ``migrate`` and ``report_seal_expiry``)."""
+    return f"erplora.saas.{command}"
 
 
 @contextmanager
-def run_exclusively(name: str):
-    """Hold the session advisory lock of ``name`` while the block runs; yields ``False`` (and runs
-    nothing of its own) when another run holds it. The SaaS's database is direct, never PgBouncer."""
-    key = lock_key(name)
+def run_exclusively(command: str):
+    """Hold the advisory lock of ``command`` while the block runs; yields ``False`` (and runs nothing of
+    its own) when another run holds it.
+
+    A session lock, not ``pg_try_advisory_xact_lock``: a run spans many transactions and calls to the Hub
+    (one business per transaction, so a failure never undoes another's acknowledgement). One transaction
+    around it all would hold every business row it touched until the end, blocking the panel's writes
+    (the nightly bump touches every live one), and would sit idle in transaction through every call to
+    the Hub, which Aurora ends past 30 s (``idle_in_transaction_session_timeout``,
+    ``aws-next/stacks/prod/aurora.tf``), taking the whole pass with it. ``base``'s ``migrate`` holds a
+    session lock for the same reason. Released at the end, when the run fails, and when the task dies
+    (Postgres ends its session). The SaaS's database is direct, never PgBouncer.
+    """
+    name = lock_name(command)
     with connection.cursor() as cursor:
-        cursor.execute("SELECT pg_try_advisory_lock(%s)", [key])
+        cursor.execute("SELECT pg_try_advisory_lock(hashtext(%s))", [name])
         taken = cursor.fetchone()[0]
     try:
         yield taken
     finally:
         if taken:
             with connection.cursor() as cursor:
-                cursor.execute("SELECT pg_advisory_unlock(%s)", [key])
+                cursor.execute("SELECT pg_advisory_unlock(hashtext(%s))", [name])
 
 
 def run_failed(counts: Counter) -> bool:

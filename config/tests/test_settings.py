@@ -406,8 +406,8 @@ def test_the_app_downloads_and_the_stores_defaults():
     assert settings.GOOGLE_PLAY_APP_ID == ""
     # The Google Play listing is live (2026-10-01): the default that does not lie.
     assert settings.GOOGLE_PLAY_LISTING_LIVE is True
-    # A private S3 bucket on AWS, Spain region; credentials from the task's role, never keys.
-    assert settings.DOWNLOADS_REGION == "eu-south-2"
+    # A private S3 bucket on AWS, Ireland region; credentials from the task's role, never keys.
+    assert settings.DOWNLOADS_REGION == "eu-west-1"
     assert settings.DOWNLOADS_ENDPOINT_URL == ""
     assert not any(name.startswith("HETZNER_") for name in dir(settings))
 
