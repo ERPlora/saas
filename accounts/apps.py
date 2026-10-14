@@ -13,4 +13,10 @@ class AccountsConfig(LiveAppConfig):
     verbose_name = _("Accounts")
 
     def ready(self):
+        from allauth.account.signals import password_reset
+
         from accounts import checks  # noqa: F401  (registers the system checks)
+        from accounts.services import prove_mailbox_by_reset
+
+        # A password set from the key mailed by «Forgot your password?» proves the mailbox (L1-A2).
+        password_reset.connect(prove_mailbox_by_reset, dispatch_uid="accounts.prove_mailbox_by_reset")

@@ -19,7 +19,7 @@ vi.mock('@erplora/ui/shell', async (importOriginal) => ({
 
 import { toastError, toastSuccess } from '@erplora/ui/shell';
 
-import { apiError, describeCall, errorFrame, flush, mountHubs, subId } from '../__tests__/mount-hubs';
+import { accessibleName, apiError, describeCall, errorFrame, flush, mountHubs, subId } from '../__tests__/mount-hubs';
 import { member } from '../__tests__/members';
 import MembersTab from './MembersTab.vue';
 
@@ -91,14 +91,37 @@ describe('MembersTab: the list', () => {
     expect(rows[2].get('[data-testid="member-last"]').text()).toMatch(/^Invited on Oct 11, 2026/);
   });
 
+  it('gives the table the actions to fold: the server’s, in its order, «Transfer ownership» only in «⋮»', async () => {
+    const s = await setup();
+    await s.show(page());
+    expect(s.prop<Array<Record<string, unknown>>>('actions').map((a) => [a.id, !!a.menuOnly])).toEqual([
+      ['change_role', false],
+      ['remove', false],
+      ['resend', false],
+      ['cancel', false],
+      ['transfer', true],
+    ]);
+    expect(s.prop<Array<{ key: string; priority?: string }>>('columns').map((c) => [c.key, c.priority ?? 'normal'])).toEqual([
+      ['name', 'high'],
+      ['email', 'normal'],
+      ['role_label', 'normal'],
+      ['status', 'normal'],
+      ['last_opened_at', 'low'],
+    ]);
+    expect(s.prop('entityLabel')).toEqual({ one: 'member', many: 'members' });
+    expect(s.wrapper.find('.row-action').exists()).toBe(false);
+  });
+
   it('renders only the actions the server computed, in its order', async () => {
     const s = await setup();
     await s.show(page());
     expect(s.actionsOf('laura')).toEqual([]);
-    expect(s.actionsOf('carlos')).toEqual(['change_role', 'remove', 'transfer']);
+    expect(s.actionsOf('carlos')).toEqual(['change_role', 'remove', 'menu']);
     expect(s.actionsOf('jorge')).toEqual(['change_role', 'resend', 'cancel']);
-    expect(s.testid('members-row-carlos-change_role').text()).toContain('Change role');
-    expect(s.testid('members-row-carlos-transfer').text()).toContain('Transfer ownership');
+    await s.testid('members-row-carlos-menu').trigger('click');
+    await flush();
+    expect(s.wrapper.find('[data-testid="members-row-carlos-transfer"]').element.tagName).toBe('ION-ITEM');
+    expect(s.wrapper.find('[data-testid="members-row-carlos-transfer"]').text()).toBe('Transfer the ownership to Carlos Ruiz');
   });
 
   it('without the right to invite (no invitable roles) there is no «Invite»', async () => {
@@ -128,10 +151,9 @@ describe('MembersTab: actions', () => {
   it('every row button is named with its member for a screen reader', async () => {
     const s = await setup();
     await s.show(page());
-    const label = (id: string) => s.testid(id).attributes('aria-label');
+    const label = (id: string) => accessibleName(s.testid(id));
     expect(label('members-row-carlos-change_role')).toBe('Change the role of Carlos Ruiz');
     expect(label('members-row-carlos-remove')).toBe('Remove Carlos Ruiz');
-    expect(label('members-row-carlos-transfer')).toBe('Transfer the ownership to Carlos Ruiz');
     expect(label('members-row-jorge-resend')).toBe('Send the invitation again to jorge@example.com');
     expect(label('members-row-jorge-cancel')).toBe('Cancel the invitation to jorge@example.com');
   });
@@ -164,6 +186,8 @@ describe('MembersTab: actions', () => {
     await s.testid('members-row-jorge-cancel').trigger('click');
     await flush();
     expect(s.q('remove-dialog')?.getAttribute('aria-label')).toBe('Cancel the invitation');
+    await s.testid('members-row-carlos-menu').trigger('click');
+    await flush();
     await s.testid('members-row-carlos-transfer').trigger('click');
     await flush();
     expect(s.q('transfer-dialog')?.getAttribute('aria-label')).toBe('Transfer Panadería López');
@@ -203,7 +227,7 @@ describe('MembersTab: actions', () => {
     const s = await mountHubs(MembersTab, { props: { business: BUSINESS }, locale: 'es' });
     const call = await s.live();
     await s.result(call, 'hubs.member.list', page());
-    expect(s.wrapper.find('[data-testid="members-row-carlos-change_role"]').text()).toContain('Cambiar rol');
+    expect(accessibleName(s.wrapper.get('[data-testid="members-row-carlos-change_role"]'))).toBe('Cambiar el rol de Carlos Ruiz');
     expect(s.wrapper.find('[data-testid="members-seats"]').text()).toBe('3 de 5 plazas del plan');
   });
 });

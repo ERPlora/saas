@@ -1,12 +1,15 @@
 """Reads of accounts: the hubs an account can enter (``accounts.hub.list``, the launcher's), the
-re-read of an account before a live re-run, the hubs the admin's «Open in the Hub admin» lists, and
-the authenticators of the second factor (``mfa.py``)."""
+re-read of an account before a live re-run, the hubs the admin's «Open in the Hub admin» lists, the
+authenticators of the second factor (``mfa.py``), and whether an account proved its email or has any
+way in (the invitation of ``hubs``, saas#2541)."""
 
 from collections.abc import Iterable
 from typing import Any
 from urllib.parse import urlencode, urlsplit
 
+from allauth.account.models import EmailAddress
 from allauth.mfa.models import Authenticator
+from allauth.socialaccount.models import SocialAccount
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db.models import Count
@@ -103,3 +106,25 @@ def hub_list(ctx: OperationContext, data: HubListIn) -> dict[str, Any]:
             for slug in hub_slugs_of(ctx.actor)
         ]
     }
+
+
+def email_is_proven(user, email: str) -> bool:
+    """Whether ``user`` holds ``email`` by proof rather than by having typed it first (saas#2541).
+
+    Proven means a **verified** ``EmailAddress`` for that address (another verified address proves
+    nothing). Two kinds of account have nothing to prove and count as proven: staff, and an account with
+    **no** address on record (made by an invitation, which leaves no password until the mailbox's owner
+    claims it, by the console or by staff). Ported from ERPlora/saas ``apps/auth/users/services.py``.
+    """
+    if user.is_staff or user.is_superuser:
+        return True
+    addresses = EmailAddress.objects.filter(user=user)
+    if not addresses.exists():
+        return True
+    return addresses.filter(email__iexact=email, verified=True).exists()
+
+
+def has_no_way_in(user) -> bool:
+    """Whether ``user`` has no way to sign in yet: no usable password and no linked Google. Whoever opens
+    its mailbox claims it with «Forgot your password?» or with Google (the invitation's mail says so)."""
+    return not user.has_usable_password() and not SocialAccount.objects.filter(user=user).exists()

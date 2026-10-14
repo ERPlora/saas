@@ -94,6 +94,8 @@ INSTALLED_APPS = [
     # The app catalog (round 16, PLAN §21): before hubs and public, which read it.
     "apps",
     "hubs",
+    # The EU VAT engine and, from lot L2-B, Stripe: after hubs, whose payer it reads.
+    "billing",
     "public",
     # After `public`: its templates override the package's (public/templates/cookie_consent/).
     "cookie_consent",
@@ -357,6 +359,9 @@ INTERNAL_SHARED_SECRET = (
     if DEBUG
     else config("INTERNAL_SHARED_SECRET")
 )
+# The secret before a rotation (accounts/signing.py): still accepted, never used to sign. Empty
+# outside a rotation.
+INTERNAL_SHARED_SECRET_PREVIOUS = config("INTERNAL_SHARED_SECRET_PREVIOUS", default="")
 HUB_CALLBACK_TEMPLATE = config(
     "HUB_CALLBACK_TEMPLATE",
     default="http://{slug}.localhost:8000/auth/callback"
@@ -457,10 +462,11 @@ LIVE = {
 # Email (allauth's password reset and the «Google was linked» notice, until block 1 brings the
 # branded mail): the console locally; in production the SES API signed by the task role (no static
 # keys, PLAN-AWS §3), or SMTP from EMAIL_* when SES_REGION is unset. EMAIL_BACKEND overrides the
-# choice. Same variables and order as hub-next.
+# choice; the file backend writes into EMAIL_FILE_PATH. Same variables and order as hub-next.
 
 smtp_email_backend = "django.core.mail.backends.smtp.EmailBackend"
 ses_email_backend = "django_ses.SESBackend"
+file_email_backend = "django.core.mail.backends.filebased.EmailBackend"
 if DEBUG:
     default_email_backend = "django.core.mail.backends.console.EmailBackend"
 else:
@@ -484,6 +490,9 @@ elif email_backend == smtp_email_backend:
         "use_tls": config("EMAIL_USE_TLS", default=True, cast=bool),
         "timeout": 10,
     }
+elif email_backend == file_email_backend:
+    # The panel's e2e reads the mails from this folder (tests/e2e/panel/project.ts).
+    MAILERS["default"]["OPTIONS"] = {"file_path": config("EMAIL_FILE_PATH")}
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@erplora.com")
 
 # The public web of erplora.com (round 16, `public/`): Django templates for SEO, its own CSP
@@ -557,3 +566,19 @@ FISCAL_SEAL_CURRENT_P12_BASE64 = config("FISCAL_SEAL_CURRENT_P12_BASE64", defaul
 FISCAL_SEAL_CURRENT_PASSWORD = config("FISCAL_SEAL_CURRENT_PASSWORD", default="")
 FISCAL_SEAL_NEXT_P12_BASE64 = config("FISCAL_SEAL_NEXT_P12_BASE64", default="")
 FISCAL_SEAL_NEXT_PASSWORD = config("FISCAL_SEAL_NEXT_PASSWORD", default="")
+
+# EU VAT (billing/): VIES, the European Commission's register of VAT numbers, asked through its REST
+# endpoint as an identified requester (ERPlora's own VAT number, billing.CompanyConfig), the only way
+# its answer carries the consultation number that proves it (billing/vies.py). Short timeout: a person
+# waits for it (the forms, the checkout); a slow VIES is `unavailable`, and the sale pays VAT.
+VIES_ENDPOINT = config(
+    "VIES_ENDPOINT",
+    default="https://ec.europa.eu/taxation_customs/vies/rest-api/check-vat-number",
+)
+VIES_CONNECT_TIMEOUT_SECONDS = config("VIES_CONNECT_TIMEOUT_SECONDS", default=3.0, cast=float)
+VIES_TIMEOUT_SECONDS = config("VIES_TIMEOUT_SECONDS", default=5.0, cast=float)
+# One budget per person for every door that spends a VIES query (the panel's check, the admin's
+# «Check now in VIES»), and one for everybody: each one is a request to the Commission under
+# ERPlora's requester number. Only a query really sent spends.
+VAT_CHECK_RATE = config("VAT_CHECK_RATE", default="20/m")
+VAT_CHECK_GLOBAL_RATE = config("VAT_CHECK_GLOBAL_RATE", default="60/m")

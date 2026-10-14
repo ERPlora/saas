@@ -7,11 +7,26 @@
 // :8000, whose answers (a refusal, a database provisioned for a throwaway business) are not the
 // specs'. Here it runs without the autoreloader and with `HUB_INTERNAL_URL` at a port nobody listens
 // on: every call to the Hub stays pending, as when the Hub is away, and the specs play the Hub (its
-// signed `ready` callback). Vite is reused when it is up (it only serves the files). Playwright stops
-// what it started at the end, never what it reused.
+// signed `ready` callback; `startHubDouble` of fixtures.ts listens there while a spec needs to see
+// what the SaaS sends). Every mail it sends lands in a file of `PANEL_MAIL_DIR` (Django's file
+// backend), where the specs read the links (`waitForMail`). Vite is reused when it is up (it only
+// serves the files). Playwright stops what it started at the end, never what it reused.
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import type { PlaywrightTestConfig, Project } from '@playwright/test';
 
 export const PANEL_URL = 'http://localhost:8012';
+
+/** Where the panel's Django writes the mails it sends (`tests/e2e/.artifacts/panel/mail/`, ignored by git). */
+export const PANEL_MAIL_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '.artifacts', 'panel', 'mail');
+
+/**
+ * The Hub's `/internal` as the panel's Django calls it (`HUB_INTERNAL_URL`). Nobody listens there,
+ * so every call fails at once and stays owed, as with the Hub away, except while a spec plays the
+ * Hub on it (`startHubDouble`).
+ */
+export const HUB_DOUBLE_PORT = 8019;
 
 type WebServer = Exclude<NonNullable<PlaywrightTestConfig['webServer']>, unknown[]>;
 
@@ -33,8 +48,12 @@ export function panelServers(saasDir: string): WebServer[] {
       url: 'http://127.0.0.1:8012/healthz',
       reuseExistingServer: false,
       timeout: 120_000,
-      // Port 9 (discard): nothing answers, so every call to the Hub fails fast and stays pending.
-      env: { DEBUG: 'True', HUB_INTERNAL_URL: 'http://127.0.0.1:9' },
+      env: {
+        DEBUG: 'True',
+        HUB_INTERNAL_URL: `http://127.0.0.1:${HUB_DOUBLE_PORT}`,
+        EMAIL_BACKEND: 'django.core.mail.backends.filebased.EmailBackend',
+        EMAIL_FILE_PATH: PANEL_MAIL_DIR,
+      },
     },
     {
       name: 'panel-vite',

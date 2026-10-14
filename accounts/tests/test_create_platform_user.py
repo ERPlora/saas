@@ -47,10 +47,18 @@ def test_support_is_staff_in_the_support_group_and_no_superuser():
 
     user = staff()
     assert (user.is_staff, user.is_superuser, in_support(user)) == (True, False, True)
+    # View only: the accounts (accounts 0003) and, since L1-A2, the account plane of the businesses (hubs 0007).
     assert set(user.get_all_permissions()) == {
         "accounts.view_user",
         "accounts.view_hubmembership",
         "accounts.view_authexchangecode",
+        "hubs.view_hub",
+        "hubs.view_hubmember",
+        "hubs.view_hubownershiptransfer",
+        "hubs.view_billingprofile",
+        "hubs.view_subscription",
+        "hubs.view_subscriptionitem",
+        "hubs.view_sessionrevocation",
     }
 
 

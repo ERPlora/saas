@@ -48,23 +48,35 @@ def test_the_invitation_names_who_where_as_what_and_until_when(hub, make_user):
     assert "¡Bienvenida!" in message.body
     assert f"{BASE}/invitation" in message.body
     with translation.override("es"):
-        assert date_format(timezone.localtime(member.invitation_expires_at), "DATE_FORMAT") in message.body
+        assert (
+            date_format(timezone.localtime(member.invitation_expires_at), "DATE_FORMAT")
+            in message.body
+        )
 
 
 def test_a_new_account_is_told_how_to_get_in(hub, make_user):
     inviter = make_user("olga@example.com")
     invitee = make_user("new@example.com", language="en")
-    member = HubMember.objects.create(hub=hub, user=invitee, invited_by=inviter, invitation_expires_at=timezone.now())
+    member = HubMember.objects.create(
+        hub=hub, user=invitee, invited_by=inviter, invitation_expires_at=timezone.now()
+    )
 
     emails.send_invitation(member, base_url=BASE, new_account=True)
 
     body = mail.outbox[0].body
-    assert f"{BASE}/password/reset" in body
+    # The reset page that exists today (allauth's, as the login's «Forgot your password?»): the SPA
+    # has no /password/reset yet, and its catch-all sends a visitor without a session to the login,
+    # where an account without a password cannot get in (members.spec.ts follows this link).
+    assert f"{BASE}/accounts/password/reset/" in body
+    assert f"{BASE}/password/reset" not in body
     assert "olga@example.com invited you to Bar Manolo" == mail.outbox[0].subject
 
 
 def test_the_ownership_offer_and_its_acceptance(hub, make_user):
-    olga, ana = make_user("olga@example.com", language="es"), make_user("ana@example.com", language="en")
+    olga, ana = (
+        make_user("olga@example.com", language="es"),
+        make_user("ana@example.com", language="en"),
+    )
     transfer = HubOwnershipTransfer.objects.create(
         hub=hub,
         from_user=olga,
@@ -95,11 +107,16 @@ def test_the_deletion_says_until_when_it_can_be_recovered(hub, make_user):
     (message,) = mail.outbox
     assert message.subject == "Bar Manolo was deleted"
     with translation.override("en"):
-        assert date_format(timezone.localtime(hub.purge_after), "DATE_FORMAT") in message.body
+        assert (
+            date_format(timezone.localtime(hub.purge_after), "DATE_FORMAT")
+            in message.body
+        )
     assert f"{BASE}/businesses" in message.body
 
 
-def test_a_mail_that_cannot_leave_is_logged_not_raised(hub, make_user, monkeypatch, caplog):
+def test_a_mail_that_cannot_leave_is_logged_not_raised(
+    hub, make_user, monkeypatch, caplog
+):
     owner = make_user("olga@example.com")
     hub.deletion_requested_at = timezone.now()
 
@@ -115,5 +132,8 @@ def test_a_mail_that_cannot_leave_is_logged_not_raised(hub, make_user, monkeypat
 def test_the_base_url_of_a_request_or_the_public_host(rf, settings):
     settings.PUBLIC_HOST = "erplora.com"
 
-    assert emails.base_url(rf.get("/", HTTP_HOST="localhost:8001")) == "http://localhost:8001"
+    assert (
+        emails.base_url(rf.get("/", HTTP_HOST="localhost:8001"))
+        == "http://localhost:8001"
+    )
     assert emails.base_url(None) == "https://erplora.com"

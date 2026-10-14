@@ -48,6 +48,8 @@ export default defineConfig({
   },
   test: {
     environment: 'happy-dom',
+    // happy-dom with the browser behaviour Ionic relies on (vitest.setup.ts).
+    setupFiles: ['./vitest.setup.ts'],
     include: [
       'frontend/**/*.test.ts',
       ...FRONTEND_APPS.map((app) => `${app}/frontend/**/*.test.ts`),

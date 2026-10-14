@@ -19,3 +19,7 @@ class HubsConfig(LiveAppConfig):
     # which business and what it may do there is checked in each operation by its HubMember role.
     permissions = ["hubs.view", "hubs.manage"]
     role_permissions = {"account": ["hubs.*"]}
+
+    def ready(self):
+        super().ready()
+        from hubs import checks  # noqa: F401  (registers the system checks)

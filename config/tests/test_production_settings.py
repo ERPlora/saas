@@ -95,7 +95,9 @@ def test_without_tls_variables_the_connection_options_are_only_the_pool_and_its_
     }
     assert production("s.DATABASES['default']['OPTIONS']") == only_the_pool
     assert (
-        production("s.DATABASES['default']['OPTIONS']", DB_SSLMODE="", DB_SSLROOTCERT="")
+        production(
+            "s.DATABASES['default']['OPTIONS']", DB_SSLMODE="", DB_SSLROOTCERT=""
+        )
         == only_the_pool
     )
 
@@ -357,6 +359,36 @@ def test_email_backend_names_another_backend():
         "s.MAILERS['default']",
         EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
     ) == {"BACKEND": "django.core.mail.backends.locmem.EmailBackend"}
+
+
+FILE = "django.core.mail.backends.filebased.EmailBackend"
+
+
+def test_a_file_backend_writes_where_email_file_path_says(tmp_path):
+    """The panel's e2e (tests/e2e/panel/project.ts) reads what the SaaS mails from files: Django's
+    MAILERS gives the file backend its folder in OPTIONS, never through EMAIL_FILE_PATH itself."""
+    folder = str(tmp_path / "mail")
+    assert development(
+        "s.MAILERS['default']", EMAIL_BACKEND=FILE, EMAIL_FILE_PATH=folder
+    ) == {
+        "BACKEND": FILE,
+        "OPTIONS": {"file_path": folder},
+    }
+
+    result = _run(
+        "import django\ndjango.setup()\nfrom django.core.mail import send_mail\n"
+        "send_mail('Subject', 'Body', None, ['someone@example.com'])",
+        {
+            "DEBUG": "True",
+            "EMAIL_BACKEND": FILE,
+            "EMAIL_FILE_PATH": folder,
+            "DJANGO_SETTINGS_MODULE": "config.settings",
+        },
+    )
+
+    assert result.returncode == 0, result.stderr
+    (written,) = (tmp_path / "mail").iterdir()
+    assert "To: someone@example.com" in written.read_text()
 
 
 def test_the_production_smtp_mailer_can_be_built():

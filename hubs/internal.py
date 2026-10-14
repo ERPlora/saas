@@ -1,9 +1,10 @@
 """``POST /internal/hubs/{id}/ready``: hub-next reports a business's database ready (PLAN-SAAS §3.1 step 3;
 round 17 §2.14: the provisioning callback takes this route).
 
-Server to server, signed as ``/internal/auth/redeem`` (``accounts.signing``: HMAC-SHA256 + timestamp,
-``INTERNAL_SHARED_SECRET``), so no CSRF token. The body is ``{"id": "<the hub of the path>"}``: the
-signature covers the body only, so an empty body or one naming another hub is refused. It runs
+Server to server, signed as ``/internal/auth/redeem`` (``accounts.signing.verify_request``: HMAC-SHA256 +
+timestamp, current or previous secret), so no CSRF token. The body is ``{"id": "<the hub of the path>"}``:
+v1, which hub-next signs today, covers the body only, so an empty body or one naming another hub is
+refused (v2 also signs the path; the check stays until v1 is dropped). It runs
 ``hubs.business.mark_ready`` as the platform, in the owner's channel. Errors answer the single envelope
 ``{"error": {"code", "message"}}`` (PLAN §14.1). A plain Django view, like the redeem, until the
 ``/internal`` ninja API (``config/internal_api.py``, lot L0-F) takes both.
@@ -11,16 +12,14 @@ signature covers the body only, so an empty body or one naming another hub is re
 
 import json
 import logging
-import time
 from uuid import UUID
 
-from django.conf import settings
 from django.http import HttpRequest, JsonResponse
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 from live.errors import OperationError
 
-from accounts.signing import verify
+from accounts.signing import verify_request
 from hubs import services
 from hubs.schemas import MarkReadyIn
 
@@ -38,15 +37,7 @@ def ready(request: HttpRequest, hub_id: UUID) -> JsonResponse:
         response = _error(405, "method_not_allowed", "Only POST is allowed.")
         response["Allow"] = "POST"
         return response
-    signed = verify(
-        request.body,
-        request.headers.get("X-Erplora-Timestamp"),
-        request.headers.get("X-Erplora-Signature"),
-        secret=settings.INTERNAL_SHARED_SECRET,
-        now=int(time.time()),
-        max_age=settings.INTERNAL_SIGNATURE_MAX_AGE_SECONDS,
-    )
-    if not signed:
+    if not verify_request(request):
         logger.warning("internal.hub_ready.unauthorized hub=%s", hub_id)
         return _error(401, "unauthorized", "Missing, stale or invalid signature.")
     try:

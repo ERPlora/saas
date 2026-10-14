@@ -27,8 +27,10 @@ Solo lo que necesita el salto al Hub (PLAN-SAAS §2.1 y §3.1, pasos 4–6; PLAN
   `hub-session`, 60 s, un uso) y responde un formulario auto-enviado (`POST` a
   `HUB_CALLBACK_TEMPLATE`, campos `code` y `next`).
 - `POST /internal/auth/redeem` (servidor a servidor, firmado): cuerpo `{"code", "hub", "audience"?}`,
-  cabeceras `X-Erplora-Timestamp` y `X-Erplora-Signature` (HMAC-SHA256 hex de `"{timestamp}.{cuerpo}"`
-  con `INTERNAL_SHARED_SECRET`, ±300 s). Sin `audience` es `hub-session` (un miembro entra en su hub);
+  cabeceras `X-Erplora-Timestamp` y `X-Erplora-Signature` (v1: HMAC-SHA256 hex de `"{timestamp}.{cuerpo}"`,
+  la que firma hoy el Hub) o, si viene, `X-Erplora-Signature-V2` (cubre también método y ruta; entonces decide
+  solo ella), con `INTERNAL_SHARED_SECRET` o, durante una rotación, `INTERNAL_SHARED_SECRET_PREVIOUS`, ±300 s
+  (`accounts/signing.py`, L1-A2). Sin `audience` es `hub-session` (un miembro entra en su hub);
   con `"hub-admin"` canjea el salto del personal al admin del Hub (ronda 13, PLAN §18). 200 →
   `{user_id, email, name, locale, role}` (`hub_*` del miembro, o `platform_admin`/`platform_support`
   con `hub-admin`); 401 `unauthorized`; 400 `invalid_code` (también si `hub` no es un slug válido,
@@ -147,7 +149,8 @@ Postgres del `compose.yaml` raíz (BD `saas`). El SaaS lee solo el entorno del p
 `saas-next/.env`, nunca el `.env` raíz (su `DB_NAME` es el del Hub). `DEBUG` está apagado por defecto
 (producción): en local, `cp .env.example .env`, que lo enciende (`DEBUG=True`); `demo_seed` se niega a
 correr sin él. Los tests no lo necesitan: `pytest.ini` usa `config/settings_pytest.py`. Variables propias:
-`INTERNAL_SHARED_SECRET` (por defecto local, la misma que el Hub), `HUB_CALLBACK_TEMPLATE`
+`INTERNAL_SHARED_SECRET` (por defecto local, la misma que el Hub; `INTERNAL_SHARED_SECRET_PREVIOUS`, vacía
+salvo durante una rotación), `HUB_CALLBACK_TEMPLATE`
 (`http://{slug}.localhost:8000/auth/callback`), `HUB_ADMIN_CALLBACK_URL`
 (`http://hubs.localhost:8000/auth/callback`; en producción `https://hubs.erplora.com/auth/callback`) y,
 para ver el botón de Google,
@@ -162,7 +165,7 @@ Todo se corre dentro de este repo (`saas-next/`), que monta `ERPlora/live` y `ER
 git submodule update --init && uv sync && pnpm install   # tras clonar o cambiar de rama
 cp .env.example .env                     # la primera vez: DEBUG=True y los valores locales
 uv run python manage.py migrate
-uv run python manage.py demo_seed        # owner@example.com / owner (hub_owner de a y b, sin admin), employee@example.com / employee (hub_employee de a y b: solo ve Demo, DEMO-F06) y platform@example.com / platform (superusuario, sin hubs)
+uv run python manage.py demo_seed        # (de hubs) negocios a y b adoptados; owner@example.com / owner (hub_owner de a y b, sin admin), employee@example.com / employee (hub_employee de a y b: solo ve Demo, DEMO-F06) y platform@example.com / platform (superusuario, sin hubs)
 uv run python manage.py create_platform_user <email> --role admin|support [--password …]   # staff de plataforma
 uv run python manage.py runserver 127.0.0.1:8001   # también Vite (`pnpm run dev`) en :5174 (`--novite` lo omite)
 # http://localhost:8001/login (Vue) · http://localhost:8001/accounts/login/ (plantilla)
@@ -184,9 +187,10 @@ Cada punto tiene su borrador de issue en `docs/issues/` (pendiente de abrir en `
   defecto). Sin borrador de issue todavía.
 - Recuperación de contraseña con las plantillas del SaaS (el enlace lleva a la de allauth por
   defecto) y el correo de marca (`password-reset-default-template.md`).
-- `POST /internal/sessions/revoke` (cerrar las sesiones del Hub al quitar un miembro o cerrar sesión)
-  (`member-removal-keeps-hub-session.md`).
-- El modelo `Hub`, `HubMember` portado y la foto `PUT /internal/hubs/{id}/state`; hoy la pertenencia
-  es `HubMembership(user, hub_slug, role)` (`membership-by-slug.md`).
+- Cerrar las sesiones del Hub al cerrar sesión o cambiar la contraseña en el SaaS (L3-A). Al quitar un
+  miembro, cambiarle el rol o aceptar un traspaso ya se cierran, con reintentos (`hubs.SessionRevocation`,
+  L1-A2; `member-removal-keeps-hub-session.md`).
+- Que el salto lea `HubMember` y retirar `HubMembership(user, hub_slug, role)`, que desde L1-A2 es solo el
+  espejo de los miembros de cada negocio (`hubs/README.md`, «Pendiente»; `membership-by-slug.md`).
 - Selector con el último hub usado primero (`hub-selector-last-used.md`); throttling de login
   (`login-lockout.md`) y «recordarme» deslizante (`remember-me-not-sliding.md`).

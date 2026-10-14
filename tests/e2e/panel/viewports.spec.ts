@@ -138,6 +138,25 @@ test('the sideways-scroll reader catches a page that overflows (the check of the
   });
 });
 
+/** The widths where a table folds (W-19): phone, tablet both ways, the laptops and the desktop. */
+const TABLE_WIDTHS = [390, 834, 1024, 1180, 1280, 1366, 1440];
+
+for (const name of ['businesses-default', 'business-default-members']) {
+  test(`${name}: the table fits its box at ${TABLE_WIDTHS.join(', ')} px (it folds, it never scrolls sideways)`, async ({ browser }) => {
+    const screen = SCREENS.find((candidate) => candidate.name === name)!;
+    await withContext(browser, screen.account, 'light', async (context) => {
+      const path = typeof screen.path === 'string' ? screen.path : await screen.path(context.request);
+      const page = await context.newPage();
+      const errors: string[] = [];
+      page.on('pageerror', (error) => errors.push(String(error)));
+      for (const width of TABLE_WIDTHS) {
+        await capture(page, screen, path, width, `${name}-fit-${width}-light.png`, errors);
+        await expect(page.locator('.data-table__scroll--overflow')).toHaveCount(0);
+      }
+    });
+  });
+}
+
 for (const theme of ['light', 'dark'] as const) {
   for (const screen of SCREENS) {
     test(`${screen.name} at 390, 834 and 1440 px, ${theme}`, async ({ browser }) => {

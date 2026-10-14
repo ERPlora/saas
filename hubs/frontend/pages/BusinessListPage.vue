@@ -12,6 +12,9 @@
 // `?create=1` (the launcher's «Create another business») is read each time it comes on screen.
 import {
   DataTable,
+  type DataTableAction,
+  type DataTableActionEvent,
+  type DataTableColumn,
   EmptyState,
   formatDateTime,
   FormModal,
@@ -104,9 +107,9 @@ watch(live.data, (now) => {
 });
 
 const columns = computed(() => [
-  { key: 'name', label: t('hubs.list.columns.name'), cell: 'name', width: 'minmax(10rem,1.6fr)' },
-  { key: 'host', label: t('hubs.list.columns.host'), cell: 'host', width: 'minmax(9rem,1.4fr)' },
-  { key: 'status', label: t('hubs.list.columns.status'), cell: 'status', width: 'minmax(8rem,1.2fr)' },
+  { key: 'name', label: t('hubs.list.columns.name'), cell: 'name', width: 'minmax(10rem,1.6fr)', priority: 'high' },
+  { key: 'host', label: t('hubs.list.columns.host'), cell: 'host', width: 'minmax(9rem,1.4fr)', priority: 'low' },
+  { key: 'status', label: t('hubs.list.columns.status'), cell: 'status', width: 'minmax(8rem,1.2fr)', priority: 'high' },
   {
     key: 'plan',
     label: t('hubs.list.columns.plan'),
@@ -118,17 +121,17 @@ const columns = computed(() => [
     key: 'last_opened_at',
     label: t('hubs.list.columns.lastOpened'),
     width: 'minmax(7rem,1fr)',
+    priority: 'low',
     format: (value: unknown) => (value ? formatDateTime(value as string, locale.value) : '—'),
   },
-]);
+] satisfies DataTableColumn<BusinessRowOut>[]);
 
 const labels = computed(() => ({
   add: t('hubs.list.create'),
   loadError: t('hubs.list.loadError'),
   retry: t('hubs.common.retry'),
-  recordSingular: t('hubs.list.recordSingular'),
-  recordPlural: t('hubs.list.recordPlural'),
 }));
+const entityLabel = computed(() => ({ one: t('hubs.list.recordSingular'), many: t('hubs.list.recordPlural') }));
 
 // ── What a row says and allows ────────────────────────────────────────────────────────────────
 // The buttons are the server's `can` (open, manage, restore); the page only says, for whoever does not
@@ -144,6 +147,42 @@ function why(row: BusinessRowOut): string {
 }
 
 const pageOf = (row: { id: string }) => `/businesses/${row.id}/summary`;
+
+/** The row's buttons, as the table folds them when its box narrows (README §3b, W-19): «Open» stays,
+ *  «Manage» and «Recover» go into «⋮» first. Each is named with its business for a screen reader. */
+const actions = computed<DataTableAction<BusinessRowOut>[]>(() => [
+  {
+    id: 'open',
+    label: (row) => t('hubs.common.openName', { name: row.name }),
+    icon: 'ion:log-in-outline',
+    color: 'primary',
+    pinned: true,
+    hidden: (row) => !opensAtAll(row),
+    disabled: (row) => !row.can.open || !!opening.value,
+    loading: (row) => opening.value === row.id,
+  },
+  {
+    id: 'manage',
+    label: (row) => t('hubs.list.actions.manageName', { name: row.name }),
+    icon: 'ion:settings-outline',
+    color: 'primary',
+    hidden: (row) => !row.can.manage,
+  },
+  {
+    id: 'restore',
+    label: (row) => t('hubs.list.actions.restoreName', { name: row.name }),
+    icon: 'ion:refresh-outline',
+    color: 'primary',
+    hidden: (row) => !row.can.restore,
+    loading: () => restore.pending.value,
+  },
+]);
+
+function onAction({ actionId, row }: DataTableActionEvent<BusinessRowOut>): void {
+  if (actionId === 'open') void open(row);
+  else if (actionId === 'manage') void router.push(pageOf(row));
+  else if (actionId === 'restore') void recover(row);
+}
 
 async function recover(row: BusinessRowOut): Promise<void> {
   try {
@@ -382,13 +421,16 @@ onIonViewWillEnter(entered);
         :error="live.status.value === 'error' ? text(live.error.value) : undefined"
         :search-placeholder="$t('hubs.list.search')"
         :labels="labels"
+        :entity-label="entityLabel"
         :columns="columns"
+        :actions="actions"
         :card-title="(row: BusinessRowOut) => row.name"
         :card-icon="() => 'ion:storefront-outline'"
         @page-change="goToPage"
         @load-more="windowPages += 1"
         @page-size-change="setPageSize"
         @add="startCreate"
+        @action="onAction"
         @retry="live.refresh()"
       >
         <template #name="{ row }">
@@ -479,55 +521,6 @@ onIonViewWillEnter(entered);
           </p>
         </template>
 
-        <template #row-actions="{ row }">
-          <ion-button
-            v-if="opensAtAll(row)"
-            size="small"
-            fill="clear"
-            class="row-action"
-            :data-testid="`businesses-row-${row.id}-open`"
-            :aria-label="$t('hubs.common.openName', { name: row.name })"
-            :disabled="!row.can.open || !!opening"
-            @click.stop="open(row)"
-          >
-            <HubIcon
-              slot="start"
-              name="ion:log-in-outline"
-            />
-            {{ $t('hubs.list.actions.open') }}
-          </ion-button>
-          <ion-button
-            v-if="row.can.restore"
-            size="small"
-            fill="clear"
-            class="row-action"
-            :data-testid="`businesses-row-${row.id}-restore`"
-            :aria-label="$t('hubs.list.actions.restoreName', { name: row.name })"
-            :disabled="restore.pending.value"
-            @click.stop="recover(row)"
-          >
-            <HubIcon
-              slot="start"
-              name="ion:refresh-outline"
-            />
-            {{ $t('hubs.list.actions.restore') }}
-          </ion-button>
-          <ion-button
-            v-if="row.can.manage"
-            size="small"
-            fill="clear"
-            class="row-action"
-            :data-testid="`businesses-row-${row.id}-manage`"
-            :aria-label="$t('hubs.list.actions.manageName', { name: row.name })"
-            @click.stop="router.push(pageOf(row))"
-          >
-            <HubIcon
-              slot="start"
-              name="ion:settings-outline"
-            />
-            {{ $t('hubs.list.actions.manage') }}
-          </ion-button>
-        </template>
 
         <template #empty>
           <EmptyState
@@ -723,14 +716,6 @@ a.business-name:hover {
   white-space: normal;
   font-size: 0.75rem;
   color: color-mix(in oklab, var(--ion-text-color) 62%, transparent);
-}
-.row-action {
-  --color: var(--ion-color-primary);
-  white-space: nowrap;
-  text-transform: none;
-}
-.row-action[color='danger'] {
-  --color: var(--ion-color-danger);
 }
 .card-host {
   margin: 0 0 8px;

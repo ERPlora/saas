@@ -10,7 +10,7 @@ vi.mock('@erplora/ui/shell', async (importOriginal) => ({
 
 import { toastError, toastSuccess } from '@erplora/ui/shell';
 
-import { flush, mountHubs } from '../__tests__/mount-hubs';
+import { accessibleName, flush, mountHubs } from '../__tests__/mount-hubs';
 import CopyField from './CopyField.vue';
 
 afterEach(() => {
@@ -31,7 +31,7 @@ describe('CopyField', () => {
     const { wrapper } = await mountHubs(CopyField, { props: { value: 'bakery.erplora.com', label: 'Web address of the business' } });
     expect(wrapper.get('[data-testid="copy-value"]').text()).toBe('bakery.erplora.com');
     const button = wrapper.get('[data-testid="copy-button"]');
-    expect(button.attributes('aria-label')).toBe('Copy address');
+    expect(accessibleName(button)).toBe('Copy address');
     await button.trigger('click');
     await flush();
     expect(writeText).toHaveBeenCalledWith('bakery.erplora.com');

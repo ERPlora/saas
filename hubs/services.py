@@ -7,8 +7,10 @@ pushed after the COMMIT (``sync_hub``, which never runs inside a transaction); w
 stays owed and ``manage.py reconcile_hub_states`` retries it (plan 2026-10-13 §3, the push to the Hub).
 
 Until the jump to a hub moves to ``hubs`` (plan, L1-A step 2), ``accounts.services.issue_code`` and
-``redeem_code`` check an account's access in ``accounts.HubMembership``: ``sync_access`` keeps those rows
-equal to the answered members of each business, in the same transaction.
+``redeem_code`` check an account's access in ``accounts.HubMembership``: ``sync_access``, its only writer,
+keeps those rows equal to the answered members of each business, in the same transaction. Taking access
+away queues a ``SessionRevocation`` (delivered after the COMMIT, retried by ``reconcile_hub_states``), and a
+change of the people of a business is told to its owner and admins (``notify_people``).
 """
 
 import logging
@@ -41,6 +43,7 @@ from live.slugs import (
     validate_hub_slug,
 )
 
+from accounts import queries as account_queries
 from accounts import services as account_services
 from accounts.queries import hub_start_url
 from accounts.models import HubMembership
@@ -52,6 +55,7 @@ from hubs.models import (
     Hub,
     HubMember,
     HubOwnershipTransfer,
+    SessionRevocation,
     Subscription,
     SubscriptionItem,
 )
@@ -72,6 +76,8 @@ from hubs.schemas import (
     MemberInviteIn,
     MemberRoleIn,
     MemberRowOut,
+    NotifyPeopleIn,
+    NotifyPeopleOut,
     OwnershipTransferIn,
     OwnershipTransferOut,
     RemovedOut,
@@ -538,6 +544,32 @@ def business_record_hub_error(ctx: OperationContext, data: HubErrorIn) -> dict:
     return {"id": hub.id, "status": hub.status, "ready_at": hub.ready_at}
 
 
+@operation(
+    "hubs.business.notify_people",
+    kind="command",
+    permission="hubs.manage",
+    input=NotifyPeopleIn,
+    output=NotifyPeopleOut,
+)
+def business_notify_people(ctx: OperationContext, data: NotifyPeopleIn) -> dict:
+    """A change of the people of the business, recorded on this context's channel, so the lists of that
+    account re-run at once (``events.PEOPLE``). Only the platform runs it, from ``notify_people``."""
+    if ctx.actor != "system":
+        raise PermissionDenied(_("Only the platform tells the people of a business."), code="internal_command")
+    record_event(ctx, data.event, {"business_id": str(data.id)})
+    return {"id": data.id}
+
+
+def notify_people(ctx: OperationContext, event: str, hub_id: UUID, *also) -> None:
+    """Tell the owner, the admins and the accounts in ``also`` of a change of the business's people, each on
+    its own channel (``hubs.business.notify_people``), but the actor, whose own event already re-runs its
+    lists. Called inside the command: it leaves after the COMMIT, and nothing leaves if it rolls back."""
+    actor = getattr(ctx.actor, "pk", None)
+    for user_id in queries.people_to_tell(hub_id, also):
+        if user_id != actor:
+            business_notify_people(system_context(Scope("user", str(user_id))), NotifyPeopleIn(id=hub_id, event=event))
+
+
 # --- Members and invitations ----------------------------------------------------------------------
 
 
@@ -608,7 +640,8 @@ def _renew(member: HubMember, inviter, now) -> None:
 
 
 def _mail_invitation(ctx: OperationContext, member: HubMember) -> None:
-    new_account = member.user.last_login is None and not member.user.has_usable_password()
+    # Somebody with no way in yet (a new account, or one released below) is told how to claim it.
+    new_account = account_queries.has_no_way_in(member.user)
     transaction.on_commit(
         partial(emails.send_invitation, member, base_url=emails.base_url(ctx.request), new_account=new_account),
         robust=True,
@@ -620,7 +653,9 @@ def member_invite(ctx: OperationContext, data: MemberInviteIn) -> dict:
     """Invite somebody to the business with a role below one's own (round 17 §2.8).
 
     The invitation is a member without an answer, valid for 7 days; an address without an account gets
-    one to claim (no password: Google or «Forgot your password?»). The plan must have a seat for one
+    one to claim (no password: Google or «Forgot your password?»). An account that never proved the
+    address is released first (saas#2541, ``accounts.services.release_unproven_account``): whoever opens
+    the mailbox claims it, and its sessions in every business end. The plan must have a seat for one
     more person. It reaches the Hub only once answered. An expired invitation is renewed.
     """
     actor = queries.access(queries.account_of(ctx), data.hub_id, Role.ADMIN, lock=True)
@@ -656,6 +691,9 @@ def member_invite(ctx: OperationContext, data: MemberInviteIn) -> dict:
             )
         if user is None:
             user = get_user_model().objects.create_user(email=data.email, password=None, language=hub.language)
+        elif not account_queries.email_is_proven(user, data.email):
+            account_services.release_unproven_account(user, reason="invited_while_unverified")
+            revoke_after_commit(user.pk)
         member = HubMember.objects.create(
             hub=hub,
             user=user,
@@ -667,6 +705,7 @@ def member_invite(ctx: OperationContext, data: MemberInviteIn) -> dict:
             joined_at=now,
         )
     record_event(ctx, events.MEMBER_INVITED, {"id": str(member.id), "hub_id": str(hub.id)})
+    notify_people(ctx, events.MEMBER_CHANGED, hub.id, member.user_id)
     _mail_invitation(ctx, member)
     return queries.member_row(actor, member, now)
 
@@ -682,7 +721,10 @@ def member_change_role(ctx: OperationContext, data: MemberRoleIn) -> dict:
             sync_access(target.hub)
             bump_state(target.hub_id)
             push_after_commit(target.hub_id)
+            # The role travels in the Hub's session (``/internal/auth/redeem``): it signs in again with the new one.
+            revoke_after_commit(target.user_id, target.hub_id)
         record_event(ctx, events.MEMBER_ROLE_CHANGED, {"id": str(target.id), "hub_id": str(target.hub_id)})
+        notify_people(ctx, events.MEMBER_CHANGED, target.hub_id, target.user_id)
     return queries.member_row(actor, target, timezone.now())
 
 
@@ -701,6 +743,7 @@ def member_remove(ctx: OperationContext, data: ByIdIn) -> dict:
     sync_access(hub)
     bump_state(hub.id)
     record_event(ctx, events.MEMBER_REMOVED, {"id": str(data.id), "hub_id": str(hub.id)})
+    notify_people(ctx, events.MEMBER_CHANGED, hub.id, target.user_id)
     push_after_commit(hub.id)
     revoke_after_commit(target.user_id, hub.id)
     return {"id": data.id}
@@ -721,6 +764,7 @@ def member_resend(ctx: OperationContext, data: ByIdIn) -> dict:
         _check_seat(target.hub, now)
     _renew(target, actor.user, now)
     record_event(ctx, events.MEMBER_INVITATION_RESENT, {"id": str(target.id), "hub_id": str(target.hub_id)})
+    notify_people(ctx, events.MEMBER_CHANGED, target.hub_id, target.user_id)
     _mail_invitation(ctx, target)
     return queries.member_row(actor, target, now)
 
@@ -732,6 +776,7 @@ def member_cancel(ctx: OperationContext, data: ByIdIn) -> dict:
     _pending_only(target)
     target.delete()
     record_event(ctx, events.MEMBER_INVITATION_CANCELLED, {"id": str(data.id), "hub_id": str(target.hub_id)})
+    notify_people(ctx, events.MEMBER_CHANGED, target.hub_id, target.user_id)
     return {"id": data.id}
 
 
@@ -760,8 +805,13 @@ def _my_invitation(ctx: OperationContext, member_id: UUID) -> HubMember:
 @operation("hubs.invitation.accept", kind="command", permission="hubs.manage", input=ByIdIn, output=BusinessRowOut)
 def invitation_accept(ctx: OperationContext, data: ByIdIn) -> dict:
     """Accept an invitation within its 7 days: the account enters with the role it says, if the plan
-    still has a seat beside the people already inside (``_check_seat_to_enter``)."""
+    still has a seat beside the people already inside (``_check_seat_to_enter``). An account that never
+    proved its address confirms it first (saas#2541: 403 ``hubs.email_unverified``)."""
     member = _my_invitation(ctx, data.id)
+    if not account_queries.email_is_proven(member.user, member.user.email):
+        raise PermissionDenied(
+            _("Confirm your email address before accepting the invitation."), code="hubs.email_unverified"
+        )
     now = timezone.now()
     if member.is_expired(now):
         raise Conflict(
@@ -773,6 +823,7 @@ def invitation_accept(ctx: OperationContext, data: ByIdIn) -> dict:
     sync_access(member.hub)
     bump_state(member.hub_id)
     record_event(ctx, events.INVITATION_ACCEPTED, {"id": str(member.id), "hub_id": str(member.hub_id)})
+    notify_people(ctx, events.MEMBER_CHANGED, member.hub_id)
     push_after_commit(member.hub_id)
     return queries.business_row(member, now)
 
@@ -783,6 +834,7 @@ def invitation_decline(ctx: OperationContext, data: ByIdIn) -> dict:
     member = _my_invitation(ctx, data.id)
     member.delete()
     record_event(ctx, events.INVITATION_DECLINED, {"id": str(data.id), "hub_id": str(member.hub_id)})
+    notify_people(ctx, events.MEMBER_CHANGED, member.hub_id)
     return {"id": data.id}
 
 
@@ -845,6 +897,7 @@ def ownership_transfer(ctx: OperationContext, data: OwnershipTransferIn) -> dict
         expires_at=now + HubOwnershipTransfer.WINDOW,
     )
     record_event(ctx, events.OWNERSHIP_REQUESTED, {"id": str(transfer.id), "hub_id": str(hub.id)})
+    notify_people(ctx, events.OWNERSHIP_CHANGED, hub.id, target.user_id)
     transaction.on_commit(
         partial(emails.send_ownership_offer, transfer, base_url=emails.base_url(ctx.request)), robust=True
     )
@@ -905,7 +958,11 @@ def ownership_accept(ctx: OperationContext, data: ByIdIn) -> dict:
     transfer.save(update_fields=["status", "resolved_at"])
     sync_access(transfer.hub)
     bump_state(transfer.hub_id)
+    # Both roles changed, and each travels in its Hub session: both sign in again.
+    revoke_after_commit(outgoing.user_id, transfer.hub_id)
+    revoke_after_commit(incoming.user_id, transfer.hub_id)
     record_event(ctx, events.OWNERSHIP_ACCEPTED, {"id": str(transfer.id), "hub_id": str(transfer.hub_id)})
+    notify_people(ctx, events.OWNERSHIP_CHANGED, transfer.hub_id, transfer.from_user_id)
     push_after_commit(transfer.hub_id)
     transaction.on_commit(
         partial(emails.send_ownership_accepted, transfer, base_url=emails.base_url(ctx.request)), robust=True
@@ -925,6 +982,7 @@ def ownership_decline(ctx: OperationContext, data: ByIdIn) -> dict:
     transfer = _answer(ctx, data.id, "to_user")
     _resolve(transfer, Transfer.DECLINED)
     record_event(ctx, events.OWNERSHIP_DECLINED, {"id": str(transfer.id), "hub_id": str(transfer.hub_id)})
+    notify_people(ctx, events.OWNERSHIP_CHANGED, transfer.hub_id, transfer.from_user_id)
     return _transfer_out(transfer)
 
 
@@ -934,6 +992,7 @@ def ownership_cancel(ctx: OperationContext, data: ByIdIn) -> dict:
     transfer = _answer(ctx, data.id, "from_user")
     _resolve(transfer, Transfer.CANCELLED)
     record_event(ctx, events.OWNERSHIP_CANCELLED, {"id": str(transfer.id), "hub_id": str(transfer.hub_id)})
+    notify_people(ctx, events.OWNERSHIP_CHANGED, transfer.hub_id, transfer.to_user_id)
     return _transfer_out(transfer)
 
 
@@ -1000,6 +1059,9 @@ def sync_access(hub: Hub) -> None:
     """Make ``accounts.HubMembership`` (what the jump checks) equal to the business's answered members.
 
     Nobody enters a deleted business. Called in the transaction that changed the members or the status.
+    The only writer of ``HubMembership`` (``hubs/tests/test_access_mirror.py``); ``queries.verify_access_mirror``
+    and the check ``hubs.W001`` say where the two disagree. Retired with the mirror once the jump reads
+    ``HubMember`` (``hubs/README.md``, «Pendiente»).
     """
     deleted = hub.status in (Hub.Status.DELETING, Hub.Status.DELETED)
     wanted = (
@@ -1023,6 +1085,44 @@ def sync_access(hub: Hub) -> None:
             )
 
 
+def seed_demo_business(slug: str, people: dict) -> Hub:
+    """The business of a hub that already runs in the local Hub (``demo_seed``: ``a`` and ``b``), with
+    ``people`` (account → ``hub_*`` role) answered on it; creates what is missing, changes nothing else.
+
+    Adopted, not provisioned: active, ready and owing the Hub nothing (as the data migration ``0006`` adopts
+    the hubs of the phase-1 seed), on the Free plan if it is seeded; named after its address, in Spain.
+    Its access goes through ``sync_access``.
+    """
+    roles = set(people.values())
+    if not roles <= set(Role.values):
+        raise ValueError(f"not customer roles: {sorted(roles - set(Role.values))}")
+    with transaction.atomic():
+        hub = Hub.objects.filter(slug=slug).first()
+        if hub is None:
+            now = timezone.now()
+            owner = next((user for user, role in people.items() if role == Role.OWNER), None)
+            hub = Hub.objects.create(
+                slug=slug,
+                name=slug,
+                country="ES",
+                language=owner.language if owner is not None else settings.LANGUAGE_CODE,
+                status=Hub.Status.ACTIVE,
+                ready_at=now,
+                pushed_state_version=1,
+                state_version=1,
+            )
+            plan = queries.free_plan()
+            if plan is not None:
+                Subscription.objects.create(hub=hub, plan=plan, status=Subscription.Status.ACTIVE, current_period_start=now)
+        for user, role in people.items():
+            joined = timezone.now()
+            HubMember.objects.get_or_create(
+                hub=hub, user=user, defaults={"role": role, "joined_at": joined, "accepted_at": joined}
+            )
+        sync_access(hub)
+    return hub
+
+
 def bump_state(hub_id: UUID) -> None:
     """The snapshot of the business changed: its next push carries a newer version (§2.2)."""
     Hub.objects.filter(pk=hub_id).update(state_version=F("state_version") + 1)
@@ -1033,12 +1133,16 @@ def push_after_commit(hub_id: UUID) -> None:
     transaction.on_commit(partial(_sync_quietly, hub_id), robust=True)
 
 
-def revoke_after_commit(user_id: UUID, hub_id: UUID | None = None) -> None:
-    """End the account's sessions in the business (or in every one) once this transaction commits.
+def revoke_after_commit(user_id: UUID, hub_id: UUID | None = None) -> SessionRevocation:
+    """End the account's sessions in the business (or in every one, ``hub_id`` empty).
 
-    Best effort: if it is lost, the next snapshot no longer lists the member and the Hub drops them.
+    Queued in this transaction (``SessionRevocation``) and delivered once it commits; if the Hub is away
+    or refuses it, ``reconcile_hub_states`` retries it (``deliver_revocation``). A removed member also
+    leaves the next snapshot, the Hub's second way of learning it.
     """
-    transaction.on_commit(partial(_revoke_quietly, user_id, hub_id), robust=True)
+    revocation = SessionRevocation.objects.create(user_id=user_id, hub_id=hub_id)
+    transaction.on_commit(partial(_deliver_quietly, revocation.id), robust=True)
+    return revocation
 
 
 def _sync_quietly(hub_id: UUID) -> None:
@@ -1048,11 +1152,57 @@ def _sync_quietly(hub_id: UUID) -> None:
         logger.exception("hubs.sync.crashed hub=%s", hub_id)
 
 
-def _revoke_quietly(user_id: UUID, hub_id: UUID | None) -> None:
+def _deliver_quietly(revocation_id: UUID) -> None:
     try:
-        hub_client.revoke_sessions(str(user_id), str(hub_id) if hub_id else None)
-    except (HubUnavailable, HubRefused) as failed:
-        logger.warning("hubs.revoke.lost user=%s hub=%s: %s", user_id, hub_id, failed)
+        deliver_revocation(revocation_id)
+    except Exception:  # noqa: BLE001 - after the COMMIT nothing may undo the write; it stays queued
+        logger.exception("hubs.revoke.crashed revocation=%s", revocation_id)
+
+
+#: The wait before retrying a revocation the Hub did not take: 15 minutes (one ``reconcile_hub_states``
+#: run) after the first failure, doubling with each one, never more than 6 hours.
+REVOCATION_FIRST_WAIT = timedelta(minutes=15)
+REVOCATION_LONGEST_WAIT = timedelta(hours=6)
+
+
+def revocation_backoff(attempts: int) -> timedelta:
+    """How long a revocation waits after its ``attempts``-th failed delivery."""
+    return min(REVOCATION_FIRST_WAIT * 2 ** max(attempts - 1, 0), REVOCATION_LONGEST_WAIT)
+
+
+def deliver_revocation(revocation_id: UUID) -> str:
+    """Send a queued revocation to the Hub: ``DELIVERED`` (also when nothing was left to send), or
+    ``UNREACHABLE``/``REFUSED`` with the error and the next wait recorded on the row.
+
+    A purged business has no session left: delivered without a call. Idempotent: a delivered row is
+    never sent again, and the Hub's revoke is idempotent if two deliveries race.
+    """
+    revocation = SessionRevocation.objects.select_related("hub").filter(pk=revocation_id, delivered_at__isnull=True).first()
+    if revocation is None:
+        return DELIVERED
+    if revocation.hub is None or revocation.hub.status != Hub.Status.DELETED:
+        try:
+            hub_client.revoke_sessions(str(revocation.user_id), str(revocation.hub_id) if revocation.hub_id else None)
+        except HubUnavailable as failed:
+            _revocation_failed(revocation, str(failed))
+            return UNREACHABLE
+        except HubRefused as refused:
+            _revocation_failed(revocation, str(refused))
+            return REFUSED
+    SessionRevocation.objects.filter(pk=revocation.pk, delivered_at__isnull=True).update(
+        delivered_at=timezone.now(), attempts=F("attempts") + 1, last_error=""
+    )
+    return DELIVERED
+
+
+def _revocation_failed(revocation: SessionRevocation, error: str) -> None:
+    attempts = revocation.attempts + 1
+    logger.warning("hubs.revoke.owed user=%s hub=%s attempt=%s: %s", revocation.user_id, revocation.hub_id, attempts, error)
+    SessionRevocation.objects.filter(pk=revocation.pk, delivered_at__isnull=True).update(
+        attempts=attempts,
+        last_error=error[:255],
+        next_attempt_at=timezone.now() + revocation_backoff(attempts),
+    )
 
 
 #: What one push of a business came to: everything acknowledged, the Hub away (retried, the run
@@ -1133,7 +1283,7 @@ def _restore(hub: Hub) -> str | None:
         if refused.code == "hub_purged":
             purged = Hub.objects.filter(pk=hub.pk).update(status=Hub.Status.DELETED, pending_hub_call="")
             if purged:
-                HubMembership.objects.filter(hub_slug=hub.slug).delete()
+                sync_access(Hub.objects.get(pk=hub.pk))
             logger.warning("hubs.sync.purged hub=%s", hub.id)
             return None
         if refused.status != 404:
@@ -1167,7 +1317,7 @@ def record_state_pushed(hub_id: UUID, version: int) -> None:
 STUCK_AFTER = timedelta(minutes=2)
 LIVE_STATUSES = [Hub.Status.PREPARING, Hub.Status.ACTIVE, Hub.Status.PAST_DUE, Hub.Status.SUSPENDED]
 #: Counts that make a run end with an error (the ``task_failed`` alarm), after its whole pass.
-FAILING_COUNTS = ("owed", "unreachable", "failed")
+FAILING_COUNTS = ("owed", "unreachable", "failed", "sessions_pending")
 
 
 def lock_name(command: str) -> str:
@@ -1223,7 +1373,20 @@ def _sync_counted(hub_id: UUID, counts: Counter) -> None:
 def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER) -> Counter:
     """One pass of ``reconcile_hub_states``; the counts of what it did (each key is always present)."""
     now = now or timezone.now()
-    keys = ("purged", "trials_ended", "delivered", "owed", "refused", "ready", "re_registered", "preparing", "unreachable", "failed")
+    keys = (
+        "purged",
+        "trials_ended",
+        "delivered",
+        "owed",
+        "refused",
+        "ready",
+        "re_registered",
+        "preparing",
+        "unreachable",
+        "failed",
+        "sessions_ended",
+        "sessions_pending",
+    )
     counts = Counter({key: 0 for key in keys})
     cutoff = now - Hub.RETENTION
     for hub_id in expired_deletions(cutoff):
@@ -1255,6 +1418,14 @@ def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER) -> Counter:
         except Exception:  # noqa: BLE001 - one business never stops the pass
             logger.exception("hubs.reconcile.crashed hub=%s", hub_id)
             counts["failed"] += 1
+    due = SessionRevocation.objects.filter(delivered_at__isnull=True, next_attempt_at__lte=now)
+    for revocation_id in due.order_by("next_attempt_at").values_list("id", flat=True):
+        try:
+            outcome = deliver_revocation(revocation_id)
+        except Exception:  # noqa: BLE001 - one revocation never stops the pass; it stays queued
+            logger.exception("hubs.revoke.crashed revocation=%s", revocation_id)
+            outcome = None
+        counts["sessions_ended" if outcome == DELIVERED else "sessions_pending"] += 1
     return counts
 
 
@@ -1278,6 +1449,40 @@ def _settle_stuck(hub_id: UUID, counts: Counter) -> None:
         counts["ready"] += 1
     else:
         counts["preparing"] += 1
+
+
+# --- The platform's actions in the admin (hubs.admin) ----------------------------------------------
+
+
+def send_latest_state(hub_ids) -> Counter:
+    """«Send the latest state to the Hub»: a newer snapshot of each live business, pushed now (with whatever
+    else it owes). ``{delivered, owed}``; what stays owed, ``reconcile_hub_states`` retries."""
+    for hub_id in Hub.objects.filter(pk__in=hub_ids, status__in=LIVE_STATUSES).values_list("id", flat=True):
+        bump_state(hub_id)
+    return retry_owed(hub_ids)
+
+
+def retry_owed(hub_ids) -> Counter:
+    """«Retry what the Hub still owes»: the pass of ``reconcile_hub_states`` on these businesses only (the
+    registry, a deletion, a restoration, a snapshot behind). ``{delivered, owed}``."""
+    counts = Counter(delivered=0, owed=0)
+    for hub_id in hub_ids:
+        try:
+            outcome = sync_outcome(hub_id)
+        except Exception:  # noqa: BLE001 - one business never stops the others; it stays owed
+            logger.exception("hubs.admin.sync_crashed hub=%s", hub_id)
+            outcome = None
+        counts["delivered" if outcome == DELIVERED else "owed"] += 1
+    return counts
+
+
+def deliver_revocations(revocation_ids) -> Counter:
+    """«End the sessions now»: deliver these revocations without waiting for their next attempt.
+    ``{delivered, pending}``."""
+    counts = Counter(delivered=0, pending=0)
+    for revocation_id in revocation_ids:
+        counts["delivered" if deliver_revocation(revocation_id) == DELIVERED else "pending"] += 1
+    return counts
 
 
 def push_snapshots(*, behind_only: bool = False) -> Counter:

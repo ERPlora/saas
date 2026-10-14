@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from accounts import services
 from accounts.models import AuthExchangeCode, HubMembership
-from accounts.signing import sign
+from accounts.signing import sign, signed_headers
 
 URL = "/internal/auth/redeem"
 SECRET = "test-internal-secret"
@@ -236,3 +236,39 @@ class TestHubAdminAudience:
         assert response.status_code == 400
         assert response.json()["error"]["code"] == "invalid_request"
         assert AuthExchangeCode.objects.get().used_at is None
+
+
+class TestRotationAndTheSignatureV2:
+    """L1-A2 (PLAN-SAAS §2.1): two live secrets, and the signature that covers method and path."""
+
+    PREVIOUS = "the-secret-before-the-rotation"
+
+    def _post(self, client, payload, headers):
+        return client.post(URL, json.dumps(payload).encode(), content_type="application/json", headers=headers)
+
+    def test_a_hub_still_on_the_previous_secret_redeems_during_the_rotation(self, client, code, settings):
+        settings.INTERNAL_SHARED_SECRET_PREVIOUS = self.PREVIOUS
+
+        assert redeem(client, {"code": code, "hub": "a"}, secret=self.PREVIOUS).status_code == 200
+
+    def test_without_the_previous_secret_its_signature_is_unauthorized(self, client, code, settings):
+        settings.INTERNAL_SHARED_SECRET_PREVIOUS = ""
+
+        assert redeem(client, {"code": code, "hub": "a"}, secret=self.PREVIOUS).status_code == 401
+
+    def test_a_call_signed_v2_for_this_route_redeems(self, client, code):
+        body = json.dumps({"code": code, "hub": "a"}).encode()
+        headers = signed_headers("POST", URL, body, int(time.time()), SECRET)
+
+        response = client.post(URL, body, content_type="application/json", headers=headers)
+
+        assert response.status_code == 200
+
+    def test_a_body_signed_v2_for_another_route_is_unauthorized_and_does_not_spend_the_code(self, client, code):
+        body = json.dumps({"code": code, "hub": "a"}).encode()
+        headers = signed_headers("POST", "/internal/hubs/x/ready", body, int(time.time()), SECRET)
+
+        response = client.post(URL, body, content_type="application/json", headers=headers)
+
+        assert response.status_code == 401
+        assert redeem(client, {"code": code, "hub": "a"}).status_code == 200

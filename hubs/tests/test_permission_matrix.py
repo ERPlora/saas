@@ -127,6 +127,7 @@ def test_every_operation_on_a_business_has_its_row():
         "hubs.business.create",
         "hubs.business.mark_ready",
         "hubs.business.record_hub_error",
+        "hubs.business.notify_people",
         "hubs.address.propose",
         "hubs.invitation.list_mine",
         "hubs.invitation.accept",

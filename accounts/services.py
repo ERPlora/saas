@@ -7,6 +7,7 @@ with the code stored as its SHA-256, bound to one hub, and spent by a single con
 admin at ``hubs.erplora.com``, ronda 13, PLAN §18).
 """
 
+import logging
 import secrets
 from dataclasses import dataclass
 from datetime import timedelta
@@ -20,6 +21,8 @@ from live.slugs import validate_hub_slug
 
 from accounts import queries
 from accounts.models import AuthExchangeCode, HubMembership
+
+logger = logging.getLogger(__name__)
 
 
 class HubAccessDenied(Exception):
@@ -189,30 +192,68 @@ def redeem_code(code: str, hub_slug: str, *, audience: str = AuthExchangeCode.HU
     )
 
 
-def seed_demo_owner(email: str, password: str, hub_slugs: list[str]):
-    """Create (or leave as it is) a customer account that owns every hub in ``hub_slugs``.
+def release_unproven_account(user, *, reason: str) -> None:
+    """Strip every credential of an account whose holder never proved its email (saas#2541).
 
-    A customer is never staff: owning a hub gives no access to the platform's admin.
+    The address is then reserved by nobody: only whoever opens that mailbox gets in, through «Forgot your
+    password?» (or Google, which proves the address), like any invited person. allauth's own defence when
+    Google proves an address the account never verified (``socialaccount/internal/flows/
+    email_authentication.py``), taken further: that one only wipes the password, and a second factor or a
+    linked Google of the squatter's would still let them in, or lock the real owner out at the second step.
+
+    Removes the password (which also ends every browser session of the SaaS: Django checks the session
+    against the password hash), every second factor and every linked social account. The account, its
+    addresses and what hangs from it stay. Its sessions in the hubs are the caller's to end (``hubs``
+    queues a ``SessionRevocation`` of every business). Ported from ERPlora/saas
+    ``apps/auth/users/services.py``; without its refresh tokens, which the SaaS no longer has.
     """
-    return seed_demo_member(email, password, hub_slugs, HubMembership.Role.OWNER)
+    from allauth.mfa.models import Authenticator
+    from allauth.socialaccount.models import SocialAccount
 
-
-def seed_demo_member(email: str, password: str, hub_slugs: list[str], role: str):
-    """Create (or leave as it is) a customer account with ``role`` in every hub in ``hub_slugs``.
-
-    ``role`` is a customer role (``hub_*``); a platform role is refused, since it never belongs to a
-    hub's member. A customer is never staff, whatever their role in a hub.
-    """
-    if role not in HubMembership.Role.values:
-        raise ValueError(f"{role!r} is not a customer role")
     with transaction.atomic():
-        user = get_user_model().objects.filter(email=email).first()
-        if user is None:
-            user = get_user_model().objects.create_user(email=email, password=password)
-        for slug in hub_slugs:
-            HubMembership.objects.get_or_create(
-                user=user, hub_slug=slug, defaults={"role": role}
-            )
+        user.set_unusable_password()
+        user.save(update_fields=["password"])
+        Authenticator.objects.filter(user=user).delete()
+        SocialAccount.objects.filter(user=user).delete()
+    logger.warning("accounts.released_unproven_account user=%s reason=%s", user.pk, reason)
+
+
+def prove_mailbox_by_reset(sender, request=None, user=None, **kwargs) -> None:
+    """allauth's ``password_reset`` signal: a password set from the key mailed by «Forgot your password?»
+    proves the mailbox, so the account's address becomes verified and primary (L1-A2).
+
+    How an account made by an invitation is claimed (its mail links to the reset): allauth's reset leaves
+    its address on record unverified, and accepting needs it proved (``queries.email_is_proven``). Only
+    when the login address is the only one on record: the key goes to the address typed, which may be any
+    address of the account, so with another one (a squatter's own, verified) nothing is proven here.
+    """
+    if user is None:
+        return
+    from allauth.account.models import EmailAddress
+
+    with transaction.atomic():
+        addresses = EmailAddress.objects.select_for_update().filter(user=user)
+        if addresses.exclude(email__iexact=user.email).exists():
+            return
+        address = addresses.first()
+        if address is None:
+            EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)
+        elif not (address.verified and address.primary):
+            address.verified = True
+            address.primary = True
+            address.save(update_fields=["verified", "primary"])
+    logger.info("accounts.reset_proved_the_mailbox user=%s", user.pk)
+
+
+def seed_demo_customer(email: str, password: str):
+    """Create (or leave as it is) a customer account of ``demo_seed``: never staff, in no hub yet.
+
+    Its businesses and roles are ``hubs.services.seed_demo_business``'s: the access the jump reads
+    (``HubMembership``) is the mirror of a business's members, written only by ``hubs.services.sync_access``.
+    """
+    user = get_user_model().objects.filter(email=email).first()
+    if user is None:
+        user = get_user_model().objects.create_user(email=email, password=password)
     return user
 
 

@@ -1,8 +1,9 @@
 """Accounts of saas-next: who signs in, which hubs they belong to and the one-time jump code.
 
 ``User`` is ported from ERPlora/saas ``apps/auth/users/models.py`` (email as the identifier),
-with a UUIDv7 primary key (PLAN-SAAS §6) and the account's language. ``HubMembership`` is the
-phase-1 stand-in of ``HubMember`` (the hub is its slug until the ``Hub`` model is ported).
+with a UUIDv7 primary key (PLAN-SAAS §6) and the account's language. ``HubMembership`` is the mirror
+of the answered members of each business (``hubs.HubMember``) that the jump to a hub reads: written
+only by ``hubs.services.sync_access``, retired once the jump reads ``HubMember`` (``hubs/README.md``).
 ``AuthExchangeCode`` is ported from the same file, stored hashed and bound to one hub
 (PLAN-SAAS §2.1, §3.1 step 5). A hub slug follows the rule shared with hub-next
 (``live.slugs``: one DNS label, never a reserved name such as ``hub`` or ``www``) and is never

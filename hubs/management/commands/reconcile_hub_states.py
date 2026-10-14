@@ -3,7 +3,9 @@
 Keeps the Hub equal to the SaaS (plan 2026-10-13 §3, the push to the Hub): retries what the Hub still owes
 an answer to (registry, deletion, restoration, snapshot), asks the Hub about an sign-up stuck without its
 ``ready`` callback for more than N minutes (``GET /internal/hubs/{id}``; 2 by default, PLAN-SAAS §3.1),
-ends the trials that ran out and marks purged the businesses past their 90 days. Idempotent, under the
+ends the trials that ran out, marks purged the businesses past their 90 days and delivers the session
+revocations the Hub has not taken yet once their wait passed (``SessionRevocation``: ``sessions_ended``,
+``sessions_pending``). Idempotent, under the
 advisory lock ``hashtext('erplora.saas.reconcile_hub_states')`` (``services.run_exclusively``; a second run
 returns at once). A business that fails never stops the pass: it stays owed for the next run, the counts
 go to the log, and the run ends with an error after its pass when anything stayed owed, unreachable or
@@ -21,7 +23,10 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = "Retry what the Hub owes, settle stuck sign-ups, end trials and purge expired deletions (idempotent)."
+    help = (
+        "Retry what the Hub owes, settle stuck sign-ups, end trials, purge expired deletions and deliver "
+        "pending session revocations (idempotent)."
+    )
 
     def add_arguments(self, parser):
         parser.add_argument(

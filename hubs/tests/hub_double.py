@@ -1,8 +1,8 @@
 """A stand-in for hub-next's ``/internal`` (PLAN-SAAS §2, §3.1), for the tests of the SaaS side.
 
 A real HTTP server (stdlib, a thread) that verifies the signature exactly as the Hub will
-(``accounts.signing``: HMAC-SHA256 of ``f"{timestamp}.{body}"``), records every call and answers what
-the test asks for, with the Hub's defaults:
+(``accounts.signing.verify_signed``: v2 over method, path and body when the call carries it, else the
+body-only v1), records every call and answers what the test asks for, with the Hub's defaults:
 
 - ``PUT /internal/hubs/{id}`` → 202 (asynchronous sign-up: «requested»), 200 once it is known;
 - ``PUT /internal/hubs/{id}/state`` → 200, ``applied`` false for a version not newer than the last
@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
-from accounts.signing import verify
+from accounts.signing import SIGNATURE_V2_HEADER, verify_signed
 
 HUB_PATH = re.compile(
     r"^/internal/hubs/(?P<id>[0-9a-f-]{36})(?P<rest>/state|/restore)?$"
@@ -37,6 +37,12 @@ class Call:
     body: Any
     signed: bool
     headers: dict[str, str] = field(default_factory=dict)
+    raw: bytes = b""
+
+    @property
+    def signed_v2(self) -> bool:
+        """Signed, and by v2 (method and path included), as every call of the SaaS is."""
+        return self.signed and any(key.lower() == SIGNATURE_V2_HEADER.lower() for key in self.headers)
 
     @property
     def hub_id(self) -> str | None:
@@ -124,19 +130,13 @@ class HubDouble:
     def _dispatch(
         self, method: str, path: str, raw: bytes, headers: dict[str, str]
     ) -> tuple[int, Any]:
-        signed = verify(
-            raw,
-            headers.get("X-Erplora-Timestamp"),
-            headers.get("X-Erplora-Signature"),
-            secret=self.secret,
-            now=int(time.time()),
-        )
+        signed = verify_signed(method, path, raw, headers, secrets=[self.secret], now=int(time.time()))
         try:
             body = json.loads(raw) if raw else None
         except ValueError:
             body = raw.decode(errors="replace")
         with self._lock:
-            self.calls.append(Call(method, path, body, signed, headers))
+            self.calls.append(Call(method, path, body, signed, headers, raw))
             if not signed:
                 return 401, {
                     "error": {"code": "unauthorized", "message": "Bad signature."}

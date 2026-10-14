@@ -375,6 +375,17 @@ class HubStatusOut(Schema):
     ready_at: datetime | None
 
 
+class NotifyPeopleIn(Schema):
+    """A change of the people of the business ``id``, told on the context's channel (a system command)."""
+
+    id: UUID
+    event: Literal["hubs.member.changed", "hubs.ownership.changed"]
+
+
+class NotifyPeopleOut(Schema):
+    id: UUID
+
+
 # --- Members and invitations ----------------------------------------------------------------------
 
 

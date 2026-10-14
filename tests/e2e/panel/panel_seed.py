@@ -16,6 +16,11 @@ play the Hub's part, e.g. its signed ``ready`` callback). Every account's passwo
 - ``e2e-invited``: no business and an invitation to Peluquería Ana from Carlos.
 - ``e2e-carlos``: owner of Peluquería Ana and Bar Norte, admin of Panadería López.
 - ``e2e-creator``: nothing, for the spec that creates a business through the panel.
+- ``e2e-free``: one active business, Frutería Sol, on Free with no trial: its plan caps the people
+  (the seat limit of the members spec).
+
+The accounts a spec creates through the panel (``e2e-newcomer``, ``e2e-seat-<n>``, invited by
+members.spec.ts) match the same pattern, so ``clear`` removes them too.
 """
 
 import os
@@ -38,6 +43,7 @@ ACCOUNTS = {
     "e2e-ana": ("Ana", "Torres"),
     "e2e-jorge": ("", ""),
     "e2e-creator": ("Laura", "Martín"),
+    "e2e-free": ("Laura", "Martín"),
 }
 
 
@@ -212,6 +218,9 @@ def _seed() -> None:
 
     # e2e-invited: nothing of its own, one invitation.
     invite(ana, "e2e-invited", HubMember.Role.MANAGER, "e2e-carlos")
+
+    # e2e-free: Free with no trial, so its plan's seat limit applies.
+    business("fruteria-sol", "Frutería Sol", "e2e-free")
 
 
 if __name__ == "__main__":

@@ -16,7 +16,7 @@ vi.mock('@erplora/ui/shell', async (importOriginal) => ({
   toastError: vi.fn(() => Promise.resolve()),
 }));
 
-import { ANONYMOUS, apiError, BYE, describeCall, enterView, errorFrame, flush, ionProps, type MountOptions, mountHubs, subId } from '../__tests__/mount-hubs';
+import { accessibleName, ANONYMOUS, apiError, BYE, describeCall, enterView, errorFrame, flush, ionProps, type MountOptions, mountHubs, subId } from '../__tests__/mount-hubs';
 import BusinessCreateForm from '../components/BusinessCreateForm.vue';
 import LaunchPage from './LaunchPage.vue';
 import { navigation } from '../open-business';
@@ -321,7 +321,7 @@ describe('LaunchPage: several businesses', () => {
     // With several, nothing opens by itself: the person chooses.
     expect(tiles[2].get('.launch-biz__why').text()).toBe('Ready in a few seconds');
     const opens = s.wrapper.findAll('[data-testid="launch-open"]');
-    expect(opens.map((b) => b.attributes('aria-label'))).toEqual(['Open Panadería López', 'Open Peluquería Ana', 'Open Café Central']);
+    expect(opens.map((b) => accessibleName(b))).toEqual(['Open Panadería López', 'Open Peluquería Ana', 'Open Café Central']);
     expect(ionProps(opens[2], 'disabled')).toEqual({ disabled: true });
     await opens[1].trigger('click');
     await flush();
