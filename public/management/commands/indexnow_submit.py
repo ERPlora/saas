@@ -1,9 +1,12 @@
-"""Push the public sitemap URLs to IndexNow. Safe to run repeatedly (it is a ping)."""
+"""Push the public sitemap URLs to IndexNow. Safe to run repeatedly (it is a ping).
+
+Only from prod: outside it (``pre.erplora.com``, plan 2026-10-14-entorno-pre) nothing is announced to a
+search engine, and asking for it is an error, not a quiet no-op."""
 
 from __future__ import annotations
 
 from django.conf import settings
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
 from public import indexnow
 
@@ -19,6 +22,10 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        if settings.ERPLORA_ENVIRONMENT != "prod":
+            raise CommandError(
+                f"IndexNow only runs in prod, not in {settings.ERPLORA_ENVIRONMENT}: nothing submitted"
+            )
         host = options["host"] or settings.PUBLIC_HOST
         count = indexnow.submit_sitemap_urls(host=host)
         if count:

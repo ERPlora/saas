@@ -6,6 +6,7 @@ machine-facing English files, not interface text: they are not translated.
 
 from __future__ import annotations
 
+from django.conf import settings
 from django.http import HttpRequest, HttpResponse
 from django.urls import reverse
 from django.views.decorators.http import require_safe
@@ -81,7 +82,12 @@ def robots_txt(request: HttpRequest) -> HttpResponse:
     it. ``Disallow:`` goes before ``Allow: /`` on purpose: RFC 9309 picks the most specific rule,
     but ``urllib.robotparser`` (and the crawlers built on it) picks the first that matches, and with
     this order the file means the same under both readings.
+
+    Outside prod (``pre.erplora.com``, plan 2026-10-14-entorno-pre) every agent is kept out of everything
+    and no sitemap is announced: pre is the team's, never a second copy of the public web in an index.
     """
+    if settings.ERPLORA_ENVIRONMENT != "prod":
+        return HttpResponse("User-agent: *\nDisallow: /\n", content_type="text/plain; charset=utf-8")
     lines: list[str] = []
     for agents in (("*",), *((agent,) for agent in ANSWER_ENGINE_AGENTS)):
         lines.extend(f"User-agent: {agent}" for agent in agents)

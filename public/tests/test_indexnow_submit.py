@@ -5,6 +5,7 @@ from io import StringIO
 
 import pytest
 from django.core.management import call_command
+from django.core.management.base import CommandError
 
 from public import indexnow
 from public.sitemaps import StaticPagesSitemap
@@ -54,3 +55,15 @@ def test_it_never_looks_like_success_when_nothing_was_sent(settings):
     call_command("indexnow_submit", "--host", "erplora.com", stdout=out)
 
     assert "nothing submitted" in out.getvalue()
+
+
+def test_indexnow_refuses_to_submit_outside_prod(settings, sent):
+    """pre.erplora.com (plan 2026-10-14-entorno-pre) is never announced to a search engine."""
+    settings.INDEXNOW_KEY = KEY
+    settings.ERPLORA_ENVIRONMENT = "pre"
+    settings.PUBLIC_HOST = "pre.erplora.com"
+
+    with pytest.raises(CommandError, match="pre"):
+        call_command("indexnow_submit", stdout=StringIO())
+
+    assert sent == []

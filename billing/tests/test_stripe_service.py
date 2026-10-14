@@ -68,6 +68,22 @@ def test_a_live_secret_key_is_not_used(settings):
     assert stripe_service.key_mode() is StripeKeyMode.UNKNOWN
 
 
+def test_outside_prod_a_live_key_is_not_usable(settings):
+    """pre (plan 2026-10-14-entorno-pre) charges test money only: even a restricted live key is refused
+    like no key at all, so a payment answers 503 instead of charging a real card."""
+    from billing.stripe_keys import StripeKeyMode
+
+    settings.ERPLORA_ENVIRONMENT = "pre"
+    settings.STRIPE_SECRET_KEY = "rk_live_51abc"
+
+    assert stripe_service.key_mode() is StripeKeyMode.UNKNOWN
+    with pytest.raises(StripeNotConfigured):
+        stripe_service.client()
+
+    settings.STRIPE_SECRET_KEY = "rk_test_51abc"
+    assert stripe_service.key_mode() is StripeKeyMode.TEST
+
+
 def test_the_items_of_a_long_subscription_are_all_read(stripe_double):
     """Stripe embeds 10 items in a subscription; the rest are read page by page (review of L2-B)."""
     from billing.tests.stripe_double import item
