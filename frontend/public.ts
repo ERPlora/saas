@@ -7,6 +7,8 @@
 //     palettes, IBM Plex, and the stylesheets of public/static/public/;
 //   - the behaviour the OutfitKit components carried in their shadow DOM: the navbar's mobile
 //     panel, the scroll reveal, and the server messages as ion-toasts;
+//   - the colour mode: the one the server wrote on <html> (`data-ep-theme`), and in `system` the
+//     operating system's, followed live (the head's inline script already painted the first frame);
 //   - Mermaid, imported only when the page has a `pre.mermaid` (spec §6).
 // No CDN and no runtime icon fetch: icons are SVG painted on the server by `{% icon %}`.
 import '@ionic/core/css/core.css';
@@ -78,6 +80,27 @@ export const ION_COMPONENTS: Record<string, () => void> = {
 export function registerIonic(): void {
   initialize(IONIC_CONFIG);
   for (const define of Object.values(ION_COMPONENTS)) define();
+}
+
+// --- Colour mode (public/public_base.html) ----------------------------------------------------
+
+/** The system's dark preference, as the shell reads it (`packages/ui/src/shell/theme.ts`). */
+export const DARK_QUERY = '(prefers-color-scheme: dark)';
+
+/**
+ * Keeps <html> in the colour mode the server wrote: `data-ep-theme` is the account's mode (Account →
+ * Preferences, the one the panel paints; `base.context_processors.theme`), `system` for a visitor.
+ * `light` and `dark` are fixed; `system` (or no attribute) follows `prefers-color-scheme` and its
+ * changes, live. Dark is Ionic's `ion-palette-dark` class, the shell's contract.
+ */
+export function setupColorScheme(doc: Document): void {
+  const root = doc.documentElement;
+  const mode = root.getAttribute('data-ep-theme');
+  const system = doc.defaultView?.matchMedia?.(DARK_QUERY);
+  const apply = () =>
+    root.classList.toggle('ion-palette-dark', mode === 'dark' || (mode !== 'light' && Boolean(system?.matches)));
+  apply();
+  if (mode !== 'light' && mode !== 'dark') system?.addEventListener?.('change', apply);
 }
 
 // --- Navbar (public/partials/navbar.html) -----------------------------------------------------
@@ -187,8 +210,10 @@ export function presentServerMessages(
 
 export const MERMAID_CONFIG = { startOnLoad: false, securityLevel: 'strict' } as const;
 
+type MermaidConfig = typeof MERMAID_CONFIG & { theme: 'default' | 'dark' };
+
 type MermaidModule = {
-  default: { initialize(config: typeof MERMAID_CONFIG): void; run(options: { nodes: HTMLElement[] }): Promise<void> };
+  default: { initialize(config: MermaidConfig): void; run(options: { nodes: HTMLElement[] }): Promise<void> };
 };
 
 /**
@@ -203,7 +228,9 @@ export async function renderDiagrams(
   if (nodes.length === 0) return false;
   try {
     const { default: mermaid } = await load();
-    mermaid.initialize(MERMAID_CONFIG);
+    // Drawn once, in the page's colour mode at that moment.
+    const dark = doc.documentElement.classList.contains('ion-palette-dark');
+    mermaid.initialize({ ...MERMAID_CONFIG, theme: dark ? 'dark' : 'default' });
     await mermaid.run({ nodes });
     return true;
   } catch (error) {
@@ -215,6 +242,7 @@ export async function renderDiagrams(
 // --- Boot -------------------------------------------------------------------------------------
 
 export function boot(doc: Document): void {
+  setupColorScheme(doc);
   registerIonic();
   setupNavbar(doc);
   setupReveal(doc, doc.defaultView?.IntersectionObserver);

@@ -17,6 +17,8 @@ import pytest
 from django.conf import settings
 from django.urls import reverse
 
+from public.tests.test_stack_copy import copy_of, names_the_stack
+
 pytestmark = pytest.mark.django_db
 
 PAGES = ("/features/", "/security/", "/updates/")
@@ -73,15 +75,56 @@ def test_features_keeps_its_sections(client):
 
     assert "Powerful features for modern businesses." in html
     assert html.count('class="ep-bento-item ') == 5
-    assert "Built with modern technology." in html
-    assert html.count('class="ep-feature-card"') == 2
     assert "Ready to get started?" in html
     assert f'href="{reverse("account_login")}"' in html
 
 
-def test_features_does_not_advertise_the_retired_ui_stack(client):
-    """OutfitKit is gone (PLAN §16.11): the stack card no longer names it."""
-    assert "OutfitKit" not in page(client, "/features/")
+@pytest.mark.parametrize(
+    ("language", "section"),
+    [
+        ("en", "Built with modern technology"),
+        ("es", "Construido con tecnología moderna"),
+    ],
+)
+def test_features_does_not_name_the_stack(client, language, section):
+    """Ioan, 2026-10-14: the page says what ERPlora does, not what it is built with. The «Built with
+    modern technology.» section and its two stack cards are gone, and so are the names the bento and
+    the meta descriptions dropped in passing (OutfitKit had already left, PLAN §16.11)."""
+    html = copy_of(page(client, "/features/", language))
+
+    assert section not in html
+    assert 'class="ep-feature-card"' not in html
+    assert names_the_stack(html) == []
+    assert "OutfitKit" not in html
+
+
+@pytest.mark.parametrize(
+    ("language", "sentences"),
+    [
+        (
+            "en",
+            (
+                "Always available",
+                "Process transactions in milliseconds, with live updates on every device.",
+                "lightning-fast POS, modular architecture, continuous backups,",
+            ),
+        ),
+        (
+            "es",
+            (
+                "Siempre disponible",
+                "Procesa transacciones en milisegundos, con actualizaciones en vivo en todos los "
+                "dispositivos.",
+                "POS ultrarrápido, arquitectura modular, copias de seguridad continuas,",
+            ),
+        ),
+    ],
+)
+def test_features_says_what_the_platform_gives_instead(client, language, sentences):
+    html = page(client, "/features/", language)
+
+    for sentence in sentences:
+        assert sentence in html, sentence
 
 
 def test_features_in_spanish(client):

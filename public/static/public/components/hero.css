@@ -1,4 +1,5 @@
-/* ep-hero (public/partials/page_hero.html): port of <ok-hero>. */
+/* ep-hero (public/partials/page_hero.html): port of <ok-hero>. The soft and gradient bands wash
+ * with --ep-wash (theme.css), which darkens with the page. */
 .ep-hero {
   display: block;
   overflow: hidden;
@@ -10,12 +11,12 @@
   background: var(--ep-surface, var(--ion-background-color, #fff));
 }
 .ep-hero--soft {
-  background: color-mix(in oklab, var(--ion-color-light, #f4f5f8) 54%, var(--ep-surface, var(--ion-background-color, #fff)));
+  background: color-mix(in oklab, var(--ep-wash, #f4f5f8) 54%, var(--ep-surface, var(--ion-background-color, #fff)));
 }
 .ep-hero--gradient {
   background:
     radial-gradient(circle at 20% 0%, color-mix(in oklab, var(--ep-primary, var(--ion-color-primary, #3880ff)) 14%, transparent), transparent 42%),
-    color-mix(in oklab, var(--ion-color-light, #f4f5f8) 42%, var(--ep-surface, var(--ion-background-color, #fff)));
+    color-mix(in oklab, var(--ep-wash, #f4f5f8) 42%, var(--ep-surface, var(--ion-background-color, #fff)));
 }
 .ep-hero__layout {
   max-width: var(--ep-container-max, 1140px);

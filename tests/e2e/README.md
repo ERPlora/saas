@@ -4,7 +4,7 @@ Playwright con **un** `playwright.config.ts` y dos proyectos, cada uno contra su
 
 | Proyecto | Specs | Servidor | Para qué |
 |---|---|---|---|
-| `public` | `*.spec.ts` de esta carpeta (hoy `store-docs.spec.ts`) | `runserver 127.0.0.1:8011` con `DEBUG=False`, `--insecure`, sin Vite | La web pública (plantillas de Django) con la CSP de producción. Pide `pnpm build` antes |
+| `public` | `*.spec.ts` de esta carpeta (hoy `store-docs.spec.ts` y `public-dark.spec.ts`, el modo claro/oscuro del sistema con sus capturas en `.artifacts/public-dark/`) | `runserver 127.0.0.1:8011` con `DEBUG=False`, `--insecure`, sin Vite | La web pública (plantillas de Django) con la CSP de producción. Pide `pnpm build` antes |
 | `panel` | `panel/*.spec.ts` | `runserver 127.0.0.1:8012 --novite --noreload` propio, con `DEBUG=True`, `HUB_INTERNAL_URL` a un puerto sin nadie (`:8019`) y el correo a ficheros, + Vite (`pnpm run dev`) en `:5174` | El panel (la SPA de `erplora.com`) tal como se sirve en desarrollo |
 
 ## Cómo se corre

@@ -46,8 +46,8 @@
         <h2>{% trans "2. Types of cookies we use" %}</h2>
         <p><strong>{% trans "a) Technical" %}</strong> {% trans "(exempt from consent — necessary for operation):" %}</p>
         <ul>
-          <li><strong>{{ session_cookie_name }}</strong> {% trans "(Django): keeps you logged in." %}</li>
-          <li><strong>{{ csrf_cookie_name }}</strong> {% trans "(Django): protects forms against CSRF." %}</li>
+          <li><strong>{{ session_cookie_name }}</strong>: {% trans "keeps you logged in." %}</li>
+          <li><strong>{{ csrf_cookie_name }}</strong>: {% trans "protects forms against CSRF." %}</li>
           <li><strong>{{ consent_cookie_name }}</strong>: {% trans "remembers your cookie preferences." %}</li>
           <li><strong>{{ language_cookie_name }}</strong>: {% trans "your preferred language." %}</li>
         </ul>

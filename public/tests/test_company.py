@@ -15,6 +15,8 @@ import pytest
 from django.conf import settings
 from django.urls import reverse
 
+from public.tests.test_stack_copy import copy_of, names_the_stack
+
 pytestmark = pytest.mark.django_db
 
 PAGES = ("/about/", "/blog/", "/careers/", "/press/")
@@ -85,6 +87,38 @@ def test_about_speaks_of_our_apps_not_of_a_third_party_marketplace(client):
     assert "marketplace" not in html.lower()
     assert "lets developers extend" not in html
     assert "Every app is built by the ERPlora team" in html
+
+
+@pytest.mark.parametrize(
+    ("language", "sentences"),
+    [
+        (
+            "en",
+            (
+                "Your data lives in its own database, isolated from every other business,",
+                "point-in-time recovery for 14 days and high availability in Europe",
+            ),
+        ),
+        (
+            "es",
+            (
+                "Tus datos viven en su propia base de datos, aislada de la de cualquier otro negocio,",
+                "recuperación a cualquier momento de los últimos 14 días y alta disponibilidad en "
+                "Europa",
+            ),
+        ),
+    ],
+)
+def test_about_says_what_the_platform_gives_not_what_it_is_built_with(
+    client, language, sentences
+):
+    """Ioan, 2026-10-14: «Our Technology» no longer reads «Built with Django 6.1 and modern web
+    components. A cloud-native architecture on AWS…», but what that gives the business."""
+    html = page(client, "/about/", language)
+
+    for sentence in sentences:
+        assert sentence in html, sentence
+    assert names_the_stack(copy_of(html)) == []
 
 
 def test_about_in_spanish(client):
@@ -187,8 +221,12 @@ def taxonomy():
     food = Sector.objects.create(code="food", name_en="Food", is_active=True)
     Sector.objects.create(code="old", name_en="Old", is_active=False)
     for code, sector in (("hair_salon", beauty), ("nail_salon", beauty), ("bar", food)):
-        BusinessType.objects.create(code=code, name_en=code.title(), sector=sector, is_active=True)
-    BusinessType.objects.create(code="gone", name_en="Gone", sector=food, is_active=False)
+        BusinessType.objects.create(
+            code=code, name_en=code.title(), sector=sector, is_active=True
+        )
+    BusinessType.objects.create(
+        code="gone", name_en="Gone", sector=food, is_active=False
+    )
 
 
 def test_the_collaborate_route():
@@ -228,8 +266,13 @@ def test_the_free_year_is_valued_at_the_cheapest_paid_plan_on_sale(client):
 
     html = page(client, COLLABORATE)
 
-    assert "Get a full ERPlora Hub on the Starter plan — free for 12 months (valued at €239.88/year)." in html
-    assert "The full Starter plan with all core features, no credit card required." in html
+    assert (
+        "Get a full ERPlora Hub on the Starter plan — free for 12 months (valued at €239.88/year)."
+        in html
+    )
+    assert (
+        "The full Starter plan with all core features, no credit card required." in html
+    )
 
 
 def test_without_a_paid_plan_on_sale_no_value_is_invented(client):
@@ -288,6 +331,12 @@ def test_every_message_of_collaborate_has_its_spanish_entry():
     root = Path(settings.BASE_DIR) / "public"
     with (root / "locale" / "es" / "LC_MESSAGES" / "django.mo").open("rb") as compiled:
         catalog = gettext.GNUTranslations(compiled)._catalog
-    for name in ("collaborate.html", "_collaborate_hero_actions.html", "_collaborate_cta_actions.html"):
+    for name in (
+        "collaborate.html",
+        "_collaborate_hero_actions.html",
+        "_collaborate_cta_actions.html",
+    ):
         template = root / "templates" / "public" / "company" / name
-        assert [m for m in template_messages(template) if not catalog.get(m)] == [], name
+        assert [m for m in template_messages(template) if not catalog.get(m)] == [], (
+            name
+        )

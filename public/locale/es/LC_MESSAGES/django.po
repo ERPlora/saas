@@ -992,12 +992,12 @@ msgid "(exempt from consent — necessary for operation):"
 msgstr "(exentas de consentimiento — necesarias para el funcionamiento):"
 
 #: templates/public/legal/cookies.html
-msgid "(Django): keeps you logged in."
-msgstr "(Django): mantiene tu sesión iniciada."
+msgid "keeps you logged in."
+msgstr "mantiene tu sesión iniciada."
 
 #: templates/public/legal/cookies.html
-msgid "(Django): protects forms against CSRF."
-msgstr "(Django): protege formularios frente a CSRF."
+msgid "protects forms against CSRF."
+msgstr "protege formularios frente a CSRF."
 
 #: templates/public/legal/cookies.html
 msgid "remembers your cookie preferences."
@@ -1897,8 +1897,8 @@ msgstr "Sin tarjeta de crédito"
 msgid "1 device, 3 local users"
 msgstr "1 dispositivo, 3 usuarios locales"
 
-msgid "Managed PostgreSQL, with continuous backups and point-in-time recovery for 14 days"
-msgstr "PostgreSQL gestionado, con copias de seguridad continuas y recuperación a cualquier momento de los últimos 14 días"
+msgid "Managed database, with continuous backups and point-in-time recovery for 14 days"
+msgstr "Base de datos gestionada, con copias de seguridad continuas y recuperación a cualquier momento de los últimos 14 días"
 
 msgid "For counter hardware"
 msgstr "Para el hardware del mostrador"
@@ -1942,8 +1942,8 @@ msgstr "Modular"
 msgid "Install only the apps you need and add more as you grow."
 msgstr "Instala solo las apps que necesitas y añade más a medida que creces."
 
-msgid "Cloud-native"
-msgstr "Cloud-native"
+msgid "Always available"
+msgstr "Siempre disponible"
 
 msgid "Continuous backups with point-in-time recovery for 14 days, TLS and high availability on AWS. Access from anywhere."
 msgstr "Copias de seguridad continuas con recuperación a cualquier momento de los últimos 14 días, TLS y alta disponibilidad en AWS. Accede desde cualquier lugar."
@@ -1962,18 +1962,6 @@ msgstr "Sesiones de servidor en cookies seguras, inicio de sesión con Google y 
 
 msgid "Sign in"
 msgstr "Iniciar sesión"
-
-msgid "Web Components"
-msgstr "Web Components"
-
-msgid "Reactivity & Interactivity"
-msgstr "Reactividad e interactividad"
-
-msgid "Cloud-first PWA"
-msgstr "PWA cloud-first"
-
-msgid "Per-tenant Hub, isolated"
-msgstr "Hub por cliente, aislado"
 
 msgid "Contact Security Team"
 msgstr "Contactar con el Equipo de Seguridad"
@@ -2026,11 +2014,11 @@ msgstr "Políticas de retención de datos"
 msgid "Read section 7"
 msgstr "Leer la cláusula 7"
 
-msgid "Explore ERPlora features: lightning-fast POS, modular architecture, cloud-native design, multi-currency support, real-time analytics, and more."
-msgstr "Explora las características de ERPlora: POS ultrarrápido, arquitectura modular, diseño cloud-native, soporte multi-moneda, analíticas en tiempo real y más."
+msgid "Explore ERPlora features: lightning-fast POS, modular architecture, continuous backups, multi-currency support, real-time analytics, and more."
+msgstr "Explora las características de ERPlora: POS ultrarrápido, arquitectura modular, copias de seguridad continuas, soporte multi-moneda, analíticas en tiempo real y más."
 
-msgid "Lightning-fast POS, modular architecture, cloud-native design, multi-currency support, and real-time analytics."
-msgstr "POS ultrarrápido, arquitectura modular, diseño cloud-native, soporte multi-moneda y analíticas en tiempo real."
+msgid "Lightning-fast POS, modular architecture, continuous backups, multi-currency support, and real-time analytics."
+msgstr "POS ultrarrápido, arquitectura modular, copias de seguridad continuas, soporte multi-moneda y analíticas en tiempo real."
 
 msgid "Platform"
 msgstr "Plataforma"
@@ -2040,18 +2028,6 @@ msgstr "Funciones potentes para negocios modernos."
 
 msgid "ERPlora combines cutting-edge technology with intuitive design to deliver a complete, modular ERP — no technical team required."
 msgstr "ERPlora combina tecnología de vanguardia con un diseño intuitivo para ofrecer un ERP completo y modular — sin necesidad de equipo técnico."
-
-msgid "Under the hood"
-msgstr "Por dentro"
-
-msgid "Built with modern technology."
-msgstr "Construido con tecnología moderna."
-
-msgid "Frontend"
-msgstr "Frontend"
-
-msgid "Backend"
-msgstr "Backend"
 
 msgid "Ready to get started?"
 msgstr "¿Listo para comenzar?"
@@ -2300,8 +2276,8 @@ msgstr "Reportar desde tu hub"
 msgid "When you are signed in, open Help & Support and use Report a Problem. The Hub adds useful account and browser context automatically."
 msgstr "Con la sesión iniciada, abre Ayuda y soporte y usa «Reportar un problema». El hub añade solo el contexto útil de la cuenta y del navegador."
 
-msgid "Built with Django 6.1 and modern web components. A cloud-native architecture on AWS, one database per hub, with continuous backups, point-in-time recovery for 14 days and high availability keeps your business running."
-msgstr "Construido con Django 6.1 y web components modernos. Una arquitectura cloud-native en AWS, con una base de datos por hub, copias de seguridad continuas, recuperación a cualquier momento de los últimos 14 días y alta disponibilidad, mantiene tu negocio en marcha."
+msgid "Your data lives in its own database, isolated from every other business, with continuous backups, point-in-time recovery for 14 days and high availability in Europe to keep your business running."
+msgstr "Tus datos viven en su propia base de datos, aislada de la de cualquier otro negocio, con copias de seguridad continuas, recuperación a cualquier momento de los últimos 14 días y alta disponibilidad en Europa para que tu negocio no se detenga."
 
 msgid "Our Apps"
 msgstr "Nuestras apps"
@@ -2312,8 +2288,8 @@ msgstr "Todas las apps las desarrolla el equipo de ERPlora y comparten una base 
 msgid "All free apps included, VeriFactu ready"
 msgstr "Todas las apps gratuitas incluidas, listo para VeriFactu"
 
-msgid "Process transactions in milliseconds. Built on Django 6.1, with live updates on every device."
-msgstr "Procesa transacciones en milisegundos. Construido sobre Django 6.1, con actualizaciones en vivo en todos los dispositivos."
+msgid "Process transactions in milliseconds, with live updates on every device."
+msgstr "Procesa transacciones en milisegundos, con actualizaciones en vivo en todos los dispositivos."
 
 #: templates/public/legal/privacy.html
 msgid "October 13, 2026"

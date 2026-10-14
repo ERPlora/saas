@@ -10,7 +10,8 @@
  *   3. ionic-theme.css: the semantic palette (secondary, success, warning, danger, light, dark and
  *      ERPlora's own info and accent), which @erplora/ui leaves to Ionic's defaults;
  *   4. outfitkit-theme.css: the public tokens, renamed to --ep-* (PLAN §16.11).
- * Dark mode is Ionic's `.ion-palette-dark` class on <html> (the old [data-theme="erplora-dark"]). */
+ * Dark mode is Ionic's `.ion-palette-dark` class on <html> (the old [data-theme="erplora-dark"]),
+ * set as the panel sets it: the account's mode, or the system's (public_base.html, frontend/public.ts). */
 
 @layer base {
   *, :after, :before, ::backdrop { box-sizing: border-box; border: 0 solid; margin: 0; padding: 0 }
@@ -153,6 +154,12 @@
   --ep-font: var(--ion-font-family, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif);
   --ep-font-display: var(--font-display, var(--ep-font));
   --ep-transition: 160ms ease;
+  /* The wash a soft band (a page hero) mixes over the surface: Ionic's light colour. Not
+     --ion-color-light itself, which this sheet keeps light in dark too (the CTA band's
+     color="light" buttons stay white), so a band washed with it turned grey on a dark page. */
+  --ep-wash: var(--ion-color-light);
+  /* Native scrollbars and controls follow the page's mode, not the system's. */
+  color-scheme: light;
 
   /* The public type scale: one set of semantic levels for every page and component. */
   --ep-type-display-size: clamp(3rem, 2.25rem + 3vw, 4.5rem);
@@ -180,6 +187,10 @@
 }
 
 :root.ion-palette-dark {
+  color-scheme: dark;
+  /* Ionic's dark palette's light colour: an elevated grey, a step above the canvas. */
+  --ep-wash: #222428;
+
   --mod-orange: oklch(68% 0.17 35);
   --mod-blue: oklch(72% 0.16 250);
   --mod-green: oklch(70% 0.14 150);

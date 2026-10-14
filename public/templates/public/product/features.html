@@ -2,17 +2,18 @@
 {% load i18n %}
 {% comment %}
   /features/ — port of apps/public/product/templates/product/features.html (origin/develop): the
-  hero, the bento of the platform, «Built with modern technology» and the closing call to action,
-  with the same texts. The ok-* are the component partials of public/components/; the stack card
-  no longer names OutfitKit, which is gone (PLAN §16.11).
+  hero, the bento of the platform and the closing call to action. The ok-* are the component
+  partials of public/components/. The page says what ERPlora does, not what it is built with (Ioan,
+  2026-10-14): the «Under the hood» section with its two stack cards is gone, and neither the bento
+  nor the meta descriptions name a technology (public/tests/test_stack_copy.py).
 {% endcomment %}
 
 {% block title %}{% trans "Features" %} · ERPlora{% endblock %}
 
-{% block meta_description %}{% trans "Explore ERPlora features: lightning-fast POS, modular architecture, cloud-native design, multi-currency support, real-time analytics, and more." %}{% endblock %}
+{% block meta_description %}{% trans "Explore ERPlora features: lightning-fast POS, modular architecture, continuous backups, multi-currency support, real-time analytics, and more." %}{% endblock %}
 
 {% block og_title %}{% trans "Features" %} · ERPlora{% endblock %}
-{% block og_description %}{% trans "Lightning-fast POS, modular architecture, cloud-native design, multi-currency support, and real-time analytics." %}{% endblock %}
+{% block og_description %}{% trans "Lightning-fast POS, modular architecture, continuous backups, multi-currency support, and real-time analytics." %}{% endblock %}
 
 {% block page_content %}
   {% trans "Platform" as hero_eyebrow %}
@@ -24,23 +25,6 @@
     <div class="ep-container ep-section-content">
       <div class="ep-reveal" data-reveal="up">
         {% include "public/components/bento.html" with items_template="public/product/_features_bento.html" cols=6 only %}
-      </div>
-    </div>
-  </section>
-
-  <section class="ep-section--compact ep-section--soft ep-section--divider">
-    <div class="ep-container ep-section-content ep-section--center">
-      <header class="ep-section-head">
-        <span class="ep-eyebrow">{% trans "Under the hood" %}</span>
-        <h2 class="ep-section-title">{% trans "Built with modern technology." %}</h2>
-      </header>
-      <div class="ep-reveal" data-reveal="up">
-        <div class="grid sm:grid-cols-2 gap-4">
-          {% trans "Frontend" as heading %}
-          {% include "public/components/feature_card.html" with icon="lucide:monitor" heading=heading body_template="public/product/_features_stack.html" stack="frontend" only %}
-          {% trans "Backend" as heading %}
-          {% include "public/components/feature_card.html" with icon="lucide:server" heading=heading body_template="public/product/_features_stack.html" stack="backend" only %}
-        </div>
       </div>
     </div>
   </section>
