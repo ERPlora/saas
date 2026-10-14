@@ -26,7 +26,7 @@ setup() {
   work="$(mktemp -d)"
   mkdir -p "$work/bin" "$work/fixtures"
   export CALLS_LOG="$work/calls.log" REGISTERED_LOG="$work/registered.log" SLEEP_LOG="$work/sleep.log"
-  export FIXTURES="$work/fixtures" POLLS="$work/polls"
+  export FIXTURES="$work/fixtures" POLLS="$work/polls" ROLLOUT_POLLS="$work/rollout-polls"
   : > "$CALLS_LOG"
   : > "$REGISTERED_LOG"
   : > "$SLEEP_LOG"
@@ -91,8 +91,17 @@ case "$1 $2" in
   "ecs describe-services")
     service="$(value --services)"
     if [[ "$(value --query)" == *deployments* ]]; then
-      # PRIMARY deployment after the wait: the new revision, COMPLETED, unless faked.
-      printf '%s\t%s\n' "${FAKE_PRIMARY_TASK_DEFINITION:-arn:td/erplora-prod-$service:2}" "${FAKE_ROLLOUT_STATE:-COMPLETED}"
+      # PRIMARY deployment after the wait: successive reads of a service answer the next of
+      # FAKE_PRIMARY_REVISIONS and FAKE_ROLLOUT_STATES (the last one repeats); by default the new
+      # revision (2), COMPLETED.
+      read -ra revisions <<< "${FAKE_PRIMARY_REVISIONS:-2}"
+      read -ra states <<< "${FAKE_ROLLOUT_STATES:-COMPLETED}"
+      n="$(cat "$ROLLOUT_POLLS.$service" 2> /dev/null || echo 0)"
+      echo "$((n + 1))" > "$ROLLOUT_POLLS.$service"
+      r="$n" s="$n"
+      if [ "$r" -ge "${#revisions[@]}" ]; then r=$((${#revisions[@]} - 1)); fi
+      if [ "$s" -ge "${#states[@]}" ]; then s=$((${#states[@]} - 1)); fi
+      printf '%s\t%s\n' "arn:td/erplora-prod-$service:${revisions[r]}" "${states[s]}"
     else
       # Each service's own security group, so the test sees whose configuration the migration got.
       jq -cn --arg sg "sg-$service" '{awsvpcConfiguration: {subnets: ["s"], securityGroups: [$sg], assignPublicIp: "ENABLED"}}'
@@ -127,7 +136,7 @@ FAKE
 
 # run_deploy [VAR=value...]: deploys abc123 with the fakes; the arguments override the environment.
 run_deploy() {
-  env -u CLUSTER -u PROJECT -u POLL_SECONDS -u MIGRATE_TIMEOUT_SECONDS \
+  env -u CLUSTER -u PROJECT -u POLL_SECONDS -u MIGRATE_TIMEOUT_SECONDS -u ROLLOUT_TIMEOUT_SECONDS \
     PATH="$work/bin:$PATH" AWS_REGION=eu-south-2 REGISTRY=reg.example IMAGE_TAG=abc123 "$@" \
     bash "$here/ecs-deploy.sh" > "$work/out.log" 2>&1
 }
@@ -262,17 +271,65 @@ run_deploy && status=0 || status=$?
 check "a family on the hub image fails before the migration" \
   '[ "$status" -ne 0 ] && ! grep -Eq "run-task|update-service|put-parameter" "$CALLS_LOG" && grep -q "::error::erplora-prod-saas-migrate " "$work/out.log"'
 
-# --- circuit breaker ----------------------------------------------------------
-# rollback = true: ECS puts the old revision back and services-stable still succeeds.
+# --- the rollout after services-stable ----------------------------------------
+# services-stable can return while the PRIMARY deployment is still IN_PROGRESS: ECS marks it
+# COMPLETED once the old tasks have drained from the ALB, seconds to a minute later.
+# FAKE_TASK_STATUSES=STOPPED: the migration needs no pause, so every pause logged is the rollout's.
+# reads_of <service>: how many times its PRIMARY deployment was read.
+reads_of() { count_of "describe-services .*--services $1 .*deployments"; }
+rollback_error() {
+  grep -qF "::error::$1 runs arn:td/erplora-prod-$1:1 (COMPLETED), not arn:td/erplora-prod-$1:2; rolled back by the circuit breaker? See the service events" "$work/out.log"
+}
+
 setup
-run_deploy FAKE_PRIMARY_TASK_DEFINITION=arn:td/erplora-prod-saas:1 && status=0 || status=$?
-check "a service rolled back to the old revision fails the deploy" '[ "$status" -ne 0 ]'
-check "the rollback error names the service" 'grep -q "::error::saas " "$work/out.log"'
+run_deploy FAKE_TASK_STATUSES=STOPPED FAKE_ROLLOUT_STATES="IN_PROGRESS COMPLETED" && status=0 || status=$?
+check "rollout: IN_PROGRESS on the first read and COMPLETED on the second, the deploy succeeds" '[ "$status" -eq 0 ]'
+check "rollout: the saas PRIMARY deployment is read again after one pause of POLL_SECONDS" \
+  '[ "$(reads_of saas)" -eq 2 ] && [ "$(paste -sd " " - < "$SLEEP_LOG")" = "15" ]'
+check "rollout: the tag is recorded once the rollout is COMPLETED" \
+  'grep -q "^ssm put-parameter --name /erplora/prod/saas/image_tag --value abc123 " "$CALLS_LOG" &&
+   [ "$(line_of "ssm put-parameter")" -gt "$(last_line_of "describe-services .*deployments")" ]'
+
+setup
+run_deploy FAKE_TASK_STATUSES=STOPPED FAKE_ROLLOUT_STATES=FAILED && status=0 || status=$?
+check "a FAILED rollout fails the deploy at once, without a pause" \
+  '[ "$status" -ne 0 ] && [ "$(reads_of saas)" -eq 1 ] && [ ! -s "$SLEEP_LOG" ]'
+check "a FAILED rollout records no tag" '! grep -q "put-parameter" "$CALLS_LOG"'
+check "the rollout error names the service and the state" 'grep -q "::error::saas .*FAILED" "$work/out.log"'
+setup
+run_deploy FAKE_TASK_STATUSES=STOPPED FAKE_ROLLOUT_STATES="IN_PROGRESS FAILED" && status=0 || status=$?
+check "a rollout that turns FAILED fails the deploy on that read" \
+  '[ "$status" -ne 0 ] && [ "$(reads_of saas)" -eq 2 ] && [ "$(wc -l < "$SLEEP_LOG")" -eq 1 ] && ! grep -q "put-parameter" "$CALLS_LOG"'
+
+# rollback = true: the circuit breaker puts the old revision back and services-stable still succeeds.
+setup
+run_deploy FAKE_TASK_STATUSES=STOPPED FAKE_PRIMARY_REVISIONS=1 && status=0 || status=$?
+check "a service rolled back to the old revision fails the deploy at once, without a pause" \
+  '[ "$status" -ne 0 ] && [ "$(reads_of saas)" -eq 1 ] && [ ! -s "$SLEEP_LOG" ]'
+check "the rollback error names the service and both revisions" 'rollback_error saas'
 check "a rolled back deploy records no tag" '! grep -q "put-parameter" "$CALLS_LOG"'
 setup
-run_deploy FAKE_ROLLOUT_STATE=FAILED && status=0 || status=$?
-check "a FAILED rollout fails the deploy" '[ "$status" -ne 0 ] && ! grep -q "put-parameter" "$CALLS_LOG"'
-check "the rollout error names the service and the state" 'grep -q "::error::saas .*FAILED" "$work/out.log"'
+run_deploy FAKE_TASK_STATUSES=STOPPED FAKE_PRIMARY_REVISIONS="2 1" FAKE_ROLLOUT_STATES="IN_PROGRESS COMPLETED" &&
+  status=0 || status=$?
+check "a rollout IN_PROGRESS that the circuit breaker rolls back fails the deploy on that read" \
+  '[ "$status" -ne 0 ] && [ "$(reads_of saas)" -eq 2 ] && rollback_error saas && ! grep -q "put-parameter" "$CALLS_LOG"'
+
+setup
+run_deploy FAKE_TASK_STATUSES=STOPPED FAKE_ROLLOUT_STATES=IN_PROGRESS ROLLOUT_TIMEOUT_SECONDS=30 && status=0 || status=$?
+check "rollout timeout 30 s: reads at 0, 15 and 30 seconds, then fails" \
+  '[ "$status" -ne 0 ] && [ "$(reads_of saas)" -eq 3 ] && [ "$(paste -sd " " - < "$SLEEP_LOG")" = "15 15" ]'
+check "rollout timeout: the error names the service and the limit" \
+  'grep -q "::error::rollout of saas did not complete in 30 s" "$work/out.log"'
+check "rollout timeout: no tag is recorded" '! grep -q "put-parameter" "$CALLS_LOG"'
+setup
+run_deploy FAKE_TASK_STATUSES=STOPPED FAKE_ROLLOUT_STATES=IN_PROGRESS && status=0 || status=$?
+check "rollout timeout: 600 seconds by default (41 reads, 40 pauses)" \
+  '[ "$status" -ne 0 ] && [ "$(reads_of saas)" -eq 41 ] && [ "$(wc -l < "$SLEEP_LOG")" -eq 40 ] &&
+   grep -q "::error::rollout of saas did not complete in 600 s" "$work/out.log"'
+setup
+run_deploy ROLLOUT_TIMEOUT_SECONDS=soon && status=0 || status=$?
+check "a ROLLOUT_TIMEOUT_SECONDS that is not a number fails before any aws call" \
+  '[ "$status" -ne 0 ] && [ ! -s "$CALLS_LOG" ] && grep -q ROLLOUT_TIMEOUT_SECONDS "$work/out.log"'
 
 # --- required environment -----------------------------------------------------
 for var in AWS_REGION REGISTRY IMAGE_TAG; do
