@@ -57,15 +57,16 @@ def test_after_the_seed_every_row_has_an_iconify_icon():
 
 
 @pytest.mark.django_db
-def test_seeding_again_updates_the_icon_of_an_existing_row():
-    """Idempotent: a database seeded with the old names is fixed by running the seed again."""
+def test_seeding_again_with_update_fixes_the_icon_of_an_existing_row():
+    """Idempotent: a database seeded with the old names is fixed by running the seed again with
+    ``--update`` (without it, the seed keeps what staff edited in the admin, icons included)."""
     Sector.objects.create(
         code="hospitality", name_en="Hospitality & Food", icon="restaurant-outline"
     )
     BusinessType.objects.create(code="bar", name_en="Bar", icon="material:local_bar")
 
-    call_command("seed_taxonomy", stdout=StringIO())
-    call_command("seed_taxonomy", stdout=StringIO())
+    call_command("seed_taxonomy", "--update", stdout=StringIO())
+    call_command("seed_taxonomy", "--update", stdout=StringIO())
 
     assert Sector.objects.get(code="hospitality").icon == "ion:restaurant-outline"
     assert BusinessType.objects.get(code="bar").icon == "material-symbols:local-bar"

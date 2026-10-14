@@ -58,14 +58,15 @@ def test_the_admin_names_the_app_in_both_languages():
         assert str(billing().verbose_name) == "Facturación"
 
 
-def test_a_signed_in_account_previews_and_checks_but_does_not_manage_billing():
-    """The role ``account`` (base.operations) may preview the tax and check a VAT number; ``billing.manage``
-    is not handed to every account (review of L2-A): the operations of L2-B that act on a business's
-    billing decide who may, by the account's role in that business."""
+def test_a_signed_in_account_previews_checks_and_pays_but_does_not_manage_billing():
+    """The role ``account`` (base.operations) may preview the tax, check a VAT number and reach the
+    operations that pay (``billing.pay``: buy, change, cancel, the portal), each of which checks that the
+    account OWNS the business (round 17 §2.7); ``billing.manage`` is not handed to every account (review of
+    L2-A)."""
     config = billing()
 
-    assert config.permissions == ["billing.view", "billing.vat_check", "billing.manage"]
-    assert config.role_permissions == {"account": ["billing.view", "billing.vat_check"]}
+    assert config.permissions == ["billing.view", "billing.vat_check", "billing.pay", "billing.manage"]
+    assert config.role_permissions == {"account": ["billing.view", "billing.vat_check", "billing.pay"]}
 
 
 def test_every_installed_app_passes_the_live_checks():

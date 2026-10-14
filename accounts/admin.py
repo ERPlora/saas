@@ -1,4 +1,6 @@
-"""Django admin of accounts: users, their hub memberships (the jump's mirror) and the one-time codes (read only).
+"""Django admin of accounts: users (with their preferences and photo), their hub memberships (the jump's
+mirror), the one-time codes and the API keys (read only; a superuser revokes). The sessions are
+``allauth.usersessions``' own page.
 
 «Open in the Hub admin» (ronda 13, PLAN §18.1.6), on every membership row and on the «Hubs» page
 (``/admin/accounts/hubs/``, routed in ``config/urls.py``): the staff jump from ``erplora.com/admin``
@@ -25,11 +27,23 @@ from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.cache import never_cache
 
+from allauth.usersessions.admin import UserSessionAdmin as AllauthUserSessionAdmin
+from allauth.usersessions.models import UserSession
+
 from accounts import queries, services
-from accounts.models import AuthExchangeCode, HubMembership, User
+from accounts.models import (
+    ApiKey,
+    AuthExchangeCode,
+    EmailChangeRequest,
+    HubMembership,
+    ProfilePhoto,
+    User,
+    UserPreferences,
+)
 
 OPEN_IN_HUB_ADMIN = _("Open in the Hub admin")
 
@@ -96,6 +110,38 @@ class HubMembershipInline(admin.TabularInline):
         return False
 
 
+class ReadOnlyInline(admin.StackedInline):
+    """What the account chose in the Account page, seen only: it changes it there."""
+
+    extra = 0
+    can_delete = False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+class UserPreferencesInline(ReadOnlyInline):
+    model = UserPreferences
+    fields = ("theme_mode", "hub_alerts", "marketing_emails", "updated_at")
+    readonly_fields = fields
+
+
+class ProfilePhotoInline(ReadOnlyInline):
+    model = ProfilePhoto
+    fields = ("preview", "content_type", "updated_at")
+    readonly_fields = fields
+
+    @admin.display(description=_("photo"))
+    def preview(self, obj):
+        return format_html('<img src="{}" alt="" width="96" height="96" style="object-fit: cover">', obj.data_url())
+
+
 @admin.register(User)
 class UserAdmin(DjangoUserAdmin):
     form = UserEditForm
@@ -105,7 +151,7 @@ class UserAdmin(DjangoUserAdmin):
     list_filter = ("is_active", "is_staff", "is_superuser", "language")
     search_fields = ("email", "first_name", "last_name")
     readonly_fields = ("id", "last_login", "date_joined")
-    inlines = [HubMembershipInline]
+    inlines = [UserPreferencesInline, ProfilePhotoInline, HubMembershipInline]
     fieldsets = (
         (None, {"fields": ("id", "email", "password")}),
         (_("Personal info"), {"fields": ("first_name", "last_name", "language")}),
@@ -219,3 +265,72 @@ class AuthExchangeCodeAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+
+@admin.register(ApiKey)
+class ApiKeyAdmin(admin.ModelAdmin):
+    """Who has which key, what it may do, when it was last used (ported from ERPlora/saas ``apps/auth/apikeys``).
+
+    Read only: the account issues its keys in the Account page, the only place the secret is ever shown, so the admin adds
+    none; the hash is never shown; deleting is not offered (revoking is the audit trail). A superuser can cut keys
+    on the spot («Revoke»); ``support`` sees them.
+    """
+
+    list_display = ("name", "user", "display_prefix", "scopes", "created_at", "last_used_at", "expires_at", "revoked_at")
+    list_filter = ("revoked_at", "expires_at")
+    search_fields = ("name", "prefix", "user__email")
+    ordering = ("-created_at",)
+    fields = ("name", "user", "display_prefix", "scopes", "created_at", "expires_at", "last_used_at", "revoked_at")
+    readonly_fields = fields
+    actions = ("revoke",)
+
+    @admin.display(description=_("prefix"))
+    def display_prefix(self, obj):
+        return f"{obj.display_prefix}…"
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def has_revoke_permission(self, request):
+        return request.user.is_superuser
+
+    @admin.action(description=_("Revoke the selected keys (they stop working at once)"), permissions=["revoke"])
+    def revoke(self, request, queryset):
+        count = services.revoke_api_keys(queryset, by=request.user)
+        self.message_user(
+            request,
+            gettext("Keys revoked: %(count)s.") % {"count": count},
+            messages.SUCCESS,
+        )
+
+
+@admin.register(EmailChangeRequest)
+class EmailChangeRequestAdmin(admin.ModelAdmin):
+    """Read only: a change of email waiting for its code (``accounts.email.change``); never the code's hash nor the
+    session it is bound to."""
+
+    list_display = ("user", "email", "attempts", "created_at")
+    search_fields = ("user__email", "email")
+    fields = ("user", "email", "attempts", "created_at")
+    readonly_fields = fields
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+# allauth's page of the sessions searches ``user__username``, which this account model has not.
+admin.site.unregister(UserSession)
+
+
+@admin.register(UserSession)
+class UserSessionAdmin(AllauthUserSessionAdmin):
+    search_fields = ["user__email", "ip"]

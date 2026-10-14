@@ -5,7 +5,9 @@
 // elsewhere, V-23; gone while suspended or deleted), and four sections in the footer tabbar, each at
 // its own address: Summary · Members · Modules · Settings. Deleted, a banner says until when it can be
 // recovered (the owner recovers it there); a payment pending or a suspension is said under the header.
-// Modules: turning apps on and off is the Hub's (PLAN §20.4), so the tab opens the business.
+// Modules: turning apps on and off is the Hub's (PLAN §20.4), so the tab says so and the header's «Open»,
+// solid there as on the Summary, is its one action (no second «Open» in the card: Ioan, 2026-10-14).
+// Members fills the page between the topbar and the tabbar (`detail-fill` + `.panel-fill`).
 import { formatDateTime, InlineFeedback, StatusPill } from '@erplora/ui/components';
 import { AppPage, HubIcon, type ShellTab, toastError, toastSuccess, useSurface, WebOnly } from '@erplora/ui/shell';
 import { useCommand, useLive } from '@erplora/ui/sdk';
@@ -18,6 +20,7 @@ import BusinessSettings from '../components/BusinessSettings.vue';
 import BusinessSummary from '../components/BusinessSummary.vue';
 import DangerZone from '../components/DangerZone.vue';
 import MembersTab from '../components/MembersTab.vue';
+import UnpaidNotice from '../components/UnpaidNotice.vue';
 import { useErrorText } from '../error-text';
 import { useOpenBusiness } from '../open-business';
 
@@ -55,6 +58,8 @@ const tabs = computed<ShellTab[]>(() =>
 );
 
 const deleted = computed(() => business.value?.status === 'deleting');
+/** Members is a list: it fills the page between the topbar and the tabbar (Ioan, 2026-10-14). */
+const fills = computed(() => props.tab === 'members');
 const opensAtAll = computed(() => !!business.value && business.value.status !== 'suspended' && !deleted.value);
 const state = computed(() => {
   const now = business.value;
@@ -84,11 +89,14 @@ async function recover(): Promise<void> {
   <AppPage
     :title="business?.name ?? $t('hubs.list.title')"
     back-href="/businesses"
-    content-layout="detail"
+    :content-layout="fills ? 'detail-fill' : 'detail'"
     :tabs="tabs"
     :tabs-label="$t('hubs.business.tabsLabel')"
   >
-    <div class="page-stack">
+    <div
+      class="page-stack"
+      :class="{ 'panel-fill': fills }"
+    >
       <InlineFeedback
         v-if="live.status.value === 'error' && !business"
         tone="danger"
@@ -212,7 +220,7 @@ async function recover(): Promise<void> {
           >
             <ion-button
               data-testid="business-open"
-              :fill="tab === 'summary' ? 'solid' : 'outline'"
+              :fill="tab === 'summary' || tab === 'modules' ? 'solid' : 'outline'"
               :disabled="!business.can.open || !!opening"
               :aria-label="$t('hubs.common.openName', { name: business.name })"
               @click="open(business)"
@@ -233,10 +241,15 @@ async function recover(): Promise<void> {
           </div>
         </div>
 
+        <UnpaidNotice
+          v-if="business.status === 'past_due' || business.status === 'suspended'"
+          :business="business"
+          data-testid="business-unpaid"
+        />
         <p
-          v-if="state"
+          v-else-if="state"
           class="business-state"
-          :class="{ 'is-danger': business.status === 'suspended' || statusPill(business, t, locale).tone === 'danger' }"
+          :class="{ 'is-danger': statusPill(business, t, locale).tone === 'danger' }"
           data-testid="business-state"
         >
           {{ state }}
@@ -270,23 +283,6 @@ async function recover(): Promise<void> {
                   </p>
                 </template>
               </WebOnly>
-              <div
-                v-if="opensAtAll"
-                class="card-actions"
-              >
-                <ion-button
-                  data-testid="business-modules-open"
-                  fill="outline"
-                  :disabled="!business.can.open || !!opening"
-                  @click="open(business)"
-                >
-                  <HubIcon
-                    slot="start"
-                    name="ion:log-in-outline"
-                  />
-                  {{ $t('hubs.business.modules.action') }}
-                </ion-button>
-              </div>
             </div>
           </ion-card-content>
         </ion-card>

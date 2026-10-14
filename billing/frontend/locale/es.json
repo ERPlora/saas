@@ -1,0 +1,352 @@
+{
+  "billing": {
+    "store": {
+      "title": "Tienda",
+      "tabsLabel": "Secciones de la tienda",
+      "tabs": {
+        "plans": "Planes",
+        "modules": "Módulos"
+      },
+      "loadError": "No hemos podido cargar los precios",
+      "loadErrorBody": "No se ha cobrado nada. Inténtalo de nuevo en unos segundos.",
+      "retry": "Reintentar",
+      "inApp": {
+        "title": "La tienda no está en la app",
+        "body": "Para cambiar de plan o añadir módulos, entra en erplora.com desde el navegador.",
+        "action": "Ir a Negocios"
+      },
+      "noBusiness": {
+        "title": "No tienes ningún negocio para el que comprar",
+        "body": "Solo el propietario de un negocio compra su plan y sus módulos. Crea tu propio negocio o pídeselo a su propietario.",
+        "action": "Ir a Negocios"
+      },
+      "unknownBusiness": "No encontramos ese negocio entre los tuyos: te enseñamos {name}. Elige otro arriba si quieres."
+    },
+    "picker": {
+      "heading": "¿Para qué negocio?",
+      "body": "Cada negocio tiene su plan y sus módulos, con una sola factura al mes.",
+      "label": "Negocio",
+      "option": "{name} · {plan}"
+    },
+    "unpaid": {
+      "heading": "{name} tiene una factura sin pagar",
+      "card_declined": "El banco rechazó la última tarjeta. Cambia la tarjeta y paga la factura antes de añadir nada: no volvemos a cobrar a una tarjeta rechazada.",
+      "card_changed": "La tarjeta ya está cambiada: paga la factura antes de añadir nada.",
+      "unpaid": "Paga la factura antes de añadir o cambiar nada.",
+      "pay": "Pagar la factura",
+      "billing": "Ir a Facturación"
+    },
+    "plans": {
+      "heading": "Planes",
+      "intro": "Precios sin IVA. Cancela cuando quieras: el negocio vuelve a Gratis al final del periodo, sin perder nada.",
+      "period": "Periodo de pago",
+      "monthly": "Mensual",
+      "annual": "Anual",
+      "annualSaving": "Anual · −{percent} %",
+      "current": "Tu plan actual",
+      "forever": "para siempre",
+      "perMonth": "/mes + IVA",
+      "perYear": "/año + IVA · {monthly}/mes",
+      "upgrade": "Mejorar a {plan}",
+      "change": "Cambiar a {plan}",
+      "switchAnnual": "Cambiar a anual · {price}/año",
+      "switchMonthly": "Cambiar a mensual · {price}/mes",
+      "downgrade": "Bajar a Gratis",
+      "keep": "Mantener el plan",
+      "cancelled": "Cancelado: {plan} hasta el {date} y después Gratis.",
+      "freeFrom": "El negocio pasa a Gratis el {date}.",
+      "keepFirst": "Mantén antes el plan para cambiarlo.",
+      "payFirst": "Antes, paga la factura pendiente.",
+      "trial": "Lo pruebas hasta el {date}",
+      "trialKeeps": "Si lo compras ahora, conservas los días que te quedan de prueba.",
+      "kept": "{plan} se mantiene: se renovará el {date}",
+      "changed": "{business} ya está en {plan}",
+      "switched": "{business} ya está en {plan}, con pago {period}",
+      "periodName": {
+        "month": "mensual",
+        "year": "anual"
+      }
+    },
+    "promo": {
+      "ask": "¿Tienes un código promocional?",
+      "label": "Código promocional",
+      "apply": "Aplicar",
+      "valid": "Código {code}: {days} días gratis antes del primer cobro.",
+      "invalid": "Este código no es válido o ya se ha usado.",
+      "remove": "Quitar el código"
+    },
+    "modules": {
+      "heading": "Módulos",
+      "intro": "Se suman a la suscripción del negocio elegido. Al comprar uno se enciende solo dentro del negocio.",
+      "empty": "Ahora mismo no hay módulos a la venta.",
+      "perMonth": "{price}/mes + IVA",
+      "perYear": "{price}/año + IVA",
+      "add": "Añadir · {price}/mes",
+      "addYear": "Añadir · {price}/año",
+      "owned": "Ya lo tienes",
+      "included": "Incluido en tu plan",
+      "activating": "Activando…",
+      "activatingIn": "en {business}",
+      "cancelled": "Ya lo tienes hasta el {date} (cancelado). «Mantener» deshace la cancelación; no se cobra nada hasta el {renewal}.",
+      "cancelledNoRenewal": "Ya lo tienes hasta el {date} (cancelado). «Mantener» deshace la cancelación; hoy no se cobra nada.",
+      "keep": "Mantener · sin cobro hoy",
+      "kept": "{module} se mantiene: se renovará el {date}",
+      "keptNoDate": "{module} se mantiene",
+      "added": "{module} añadido a {business}: se enciende en unos segundos",
+      "monthlyOnly": "Solo con pago mensual"
+    },
+    "proration": {
+      "titleModule": "Añadir {module}",
+      "titlePlan": "Cambiar a {plan}",
+      "intoModule": "Se suma a la suscripción de {business}.",
+      "intoPlan": "{business} pasa de {from} a {plan}.",
+      "today": "Hoy (prorrateado)",
+      "netPlusVat": "{amount} + IVA",
+      "vat": "IVA",
+      "total": "Total hoy",
+      "from": "Desde el {date}",
+      "recurring": "Después",
+      "trial": "Hoy no se cobra nada: se cobra desde el {date}, con el plan.",
+      "moduleNote": "Se enciende solo en el negocio en unos segundos. Si lo cancelas, funciona hasta el final del periodo pagado.",
+      "planNote": "Sus módulos siguen igual. Puedes cancelar el plan cuando quieras.",
+      "payAndAdd": "Pagar {amount} y añadir",
+      "payAndChange": "Pagar {amount} y cambiar",
+      "add": "Añadir",
+      "change": "Cambiar de plan",
+      "loading": "Calculando lo que se cobra hoy…",
+      "expired": "El precio estaba desactualizado: aquí lo tienes de nuevo, revísalo antes de confirmar."
+    },
+    "annual": {
+      "title": "Cambiar a {plan} anual",
+      "titleMonthly": "Cambiar a {plan} mensual",
+      "intro": "{business} · {plan} pasa a pago {period} desde ahora.",
+      "price": "{plan} anual",
+      "priceMonthly": "{plan} mensual",
+      "equivalent": "Equivale a",
+      "perMonth": "{price}/mes + IVA",
+      "chargedToday": "Se cobra hoy, con IVA",
+      "modules": "Sus módulos también pasan a pago {period}.",
+      "confirm": "Cambiar a anual",
+      "confirmMonthly": "Cambiar a mensual"
+    },
+    "checkout": {
+      "titlePlan": "Mejorar a {plan}",
+      "titleModule": "Añadir {module}",
+      "forBusiness": "Para {business} · se renueva {period}",
+      "period": {
+        "month": "cada mes",
+        "year": "cada año"
+      },
+      "invoiceTo": "Factura a nombre de",
+      "change": "Cambiar",
+      "secure": "Pago seguro",
+      "declined": "La tarjeta de tu cuenta fue rechazada: paga con otra.",
+      "loading": "Cargando el pago seguro…",
+      "paying": "Pagando…",
+      "terms": "Al pagar aceptas las Condiciones. Puedes cancelar cuando quieras desde Facturación.",
+      "loadError": "No hemos podido abrir el pago seguro",
+      "loadErrorBody": "No se ha cobrado nada. Revisa tu conexión e inténtalo de nuevo.",
+      "retry": "Reintentar",
+      "stale": "Este negocio ya paga: el precio ha cambiado, revísalo de nuevo.",
+      "plan": "{business} ya está en {plan}",
+      "module": "{module} añadido a {business}: se enciende en unos segundos"
+    },
+    "details": {
+      "intro": "¿A nombre de quién facturamos? Lo pedimos una vez, antes del primer pago.",
+      "same": "Usar el nombre y el país del negocio",
+      "name": "Razón social",
+      "taxId": "NIF (opcional)",
+      "taxIdHint": "Con un NIF-IVA de la UE comprobado en VIES, la factura va sin IVA (inversión del sujeto pasivo).",
+      "address": "Dirección",
+      "city": "Ciudad",
+      "postalCode": "Código postal",
+      "country": "País",
+      "email": "Correo para las facturas (opcional)",
+      "continue": "Continuar al pago",
+      "anotherAccount": "Hasta ahora pagaba este negocio otra cuenta: di quién paga a partir de ahora."
+    },
+    "cancelPlan": {
+      "title": "Cancelar el plan",
+      "subject": "{business} · {plan}",
+      "until": "Sigue en {plan} hasta el {date}; después pasa a Gratis y no se vuelve a cobrar.",
+      "untilNoDate": "Sigue en {plan} hasta el final del periodo; después pasa a Gratis y no se vuelve a cobrar.",
+      "limits": "En Gratis caben {users} y {devices} a la vez.",
+      "users": "{count} usuario | {count} usuarios",
+      "devices": "{count} dispositivo | {count} dispositivos",
+      "undo": "Hasta entonces puedes deshacerlo con «Mantener el plan».",
+      "unpaid": "La factura sin pagar sigue pendiente: cancelar no la anula.",
+      "confirm": "Cancelar plan",
+      "back": "Volver",
+      "done": "Plan cancelado: {plan} hasta el {date}",
+      "doneNoDate": "Plan cancelado: {plan} hasta el final del periodo"
+    },
+    "page": {
+      "title": "Facturación",
+      "tabsLabel": "Secciones de facturación",
+      "tabs": {
+        "invoices": "Facturas",
+        "subscriptions": "Suscripciones",
+        "payment": "Datos de pago"
+      },
+      "lead": "Lo que pagas a ERPlora por todos tus negocios. Las facturas de tus ventas están dentro de cada negocio."
+    },
+    "notice": {
+      "pastDueHeading": "No pudimos cobrar {amount} de {name}",
+      "suspendedHeading": "{name} está suspendido: {amount} sin pagar",
+      "cardChangedHeading": "Tarjeta cambiada",
+      "cardChangedBody": "Ya puedes pagar la factura de {name} ({amount}) con ella.",
+      "declined": "El banco rechazó la tarjeta.",
+      "pastDueBody": "La factura {invoice} del {date} no se pudo cobrar. Págala antes del {until} o el negocio se suspende; no se borra nada.",
+      "pastDueBodyNoDate": "La factura {invoice} del {date} no se pudo cobrar. Págala cuanto antes o el negocio se suspende; no se borra nada.",
+      "suspendedBody": "La factura {invoice} del {date} no se pudo cobrar y el negocio se suspendió. Tus datos están a salvo: al pagarla vuelve a funcionar al momento.",
+      "app": "Para pagarla, entra en erplora.com desde el navegador.",
+      "appDeclined": "Para cambiar la tarjeta y pagarla, entra en erplora.com desde el navegador.",
+      "changeCard": "Cambiar tarjeta",
+      "pay": "Pagar la factura · {amount}",
+      "paying": "Pagando…",
+      "changeFirst": "Primero cambia la tarjeta: no volvemos a cobrar a la que el banco rechazó.",
+      "payerRequired": "Solo la cuenta que paga este negocio puede pagar sus facturas.",
+      "lineOne": "{name} tiene una factura sin pagar: {amount}.",
+      "lineMany": "{count} facturas sin pagar: {amount}.",
+      "viewOne": "Ver la factura",
+      "viewMany": "Ver las facturas",
+      "paid": "Factura pagada: {name} vuelve a estar al día"
+    },
+    "invoices": {
+      "title": "Facturas de ERPlora",
+      "search": "Buscar por número",
+      "columns": {
+        "number": "Factura",
+        "date": "Fecha",
+        "business": "Negocio",
+        "amount": "Importe",
+        "status": "Estado"
+      },
+      "entity": "factura | facturas",
+      "filters": {
+        "business": "Negocio",
+        "allBusinesses": "Todos los negocios",
+        "status": "Estado",
+        "paid": "Pagadas",
+        "open": "No cobradas",
+        "year": "Año",
+        "allYears": "Todos los años",
+        "button": "Filtros",
+        "buttonOn": "Filtros: {count} activo | Filtros: {count} activos",
+        "all": "Todas",
+        "clear": "Quitar filtros"
+      },
+      "pay": "Pagar",
+      "pdf": "Descargar PDF",
+      "pdfSelected": "Descargar PDF ({count})",
+      "csv": "Descargar Excel",
+      "csvHint": "La lista de lo que muestran los filtros, para tu gestoría (se abre en Excel)",
+      "pdfNotReady": "Esa factura aún se está emitiendo: su PDF estará en unos minutos. | {count} facturas aún se están emitiendo: su PDF estará en unos minutos.",
+      "loadError": "No hemos podido cargar tus facturas",
+      "retry": "Reintentar",
+      "empty": {
+        "title": "Aún no hay facturas",
+        "body": "Con el plan Gratis no hay cobros, así que no hay facturas. Aparecen aquí cuando pagas un plan o un módulo.",
+        "plans": "Ver planes",
+        "freeBusiness": "{name} está en Gratis: no tiene facturas."
+      },
+      "noMatches": "Ninguna factura coincide con la búsqueda o los filtros",
+      "showAll": "Mostrar todo",
+      "unknownBusiness": "No encontramos ese negocio entre los tuyos: te enseñamos las facturas de todos.",
+      "rectifies": "Rectifica {number}",
+      "rectification": "Rectificativa {type} · {reason}",
+      "rectificationNoReason": "Rectificativa {type}",
+      "csvShort": "Excel"
+    },
+    "subscriptions": {
+      "title": "Suscripciones",
+      "search": "Buscar por negocio",
+      "columns": {
+        "business": "Negocio",
+        "plan": "Plan",
+        "modules": "Módulos",
+        "next": "Próxima factura",
+        "status": "Estado"
+      },
+      "entity": "suscripción | suscripciones",
+      "until": "(hasta el {date})",
+      "next": "{date} · {amount}",
+      "withVat": "con IVA",
+      "freeFrom": "Gratis desde el {date}",
+      "scheduled": "Cambia a {plan} el {date}",
+      "statusUntil": "Hasta el {date}",
+      "actions": {
+        "view_invoice": "Ver la factura",
+        "keep_plan": "Mantener el plan",
+        "change_plan": "Cambiar plan",
+        "cancel_plan": "Cancelar plan",
+        "view_invoices": "Ver facturas"
+      },
+      "appHint": "Para cambiar o cancelar un plan, entra en erplora.com desde el navegador.",
+      "loadError": "No hemos podido cargar tus suscripciones",
+      "retry": "Reintentar",
+      "empty": {
+        "title": "Todos tus negocios están en Gratis",
+        "body": "Sin plan de pago no hay suscripción ni cobros.",
+        "plans": "Ver planes"
+      },
+      "kept": "{business} sigue en {plan}",
+      "cancel": {
+        "modules": "{modules} se desactiva el {date}. No se borra nada: si vuelves a un plan de pago, queda como estaba. | {modules} se desactivan el {date}. No se borra nada: si vuelves a un plan de pago, quedan como estaban.",
+        "modulesNoDate": "{modules} se desactiva al final del periodo. No se borra nada: si vuelves a un plan de pago, queda como estaba. | {modules} se desactivan al final del periodo. No se borra nada: si vuelves a un plan de pago, quedan como estaban.",
+        "seatsOver": "{name} tiene {people}: antes del {date} eliges quién sigue.",
+        "seatsOverNoDate": "{name} tiene {people}: antes del final del periodo eliges quién sigue.",
+        "seatsFit": "{name} tiene {people}, así que no cambia nada para ellas.",
+        "people": "{count} persona | {count} personas",
+        "unpaid": "La factura sin pagar del {date} ({amount}) sigue pendiente: cancelar no la anula.",
+        "done": "Plan cancelado: {business} sigue en {plan} hasta el {date}",
+        "doneNoDate": "Plan cancelado: {business} sigue en {plan} hasta el final del periodo"
+      }
+    },
+    "payment": {
+      "loadError": "No hemos podido cargar tus datos de pago",
+      "loadErrorBody": "Inténtalo de nuevo en unos segundos.",
+      "retry": "Reintentar",
+      "method": {
+        "title": "Método de pago",
+        "card": "{brand} •••• {last4}",
+        "expires": "Caduca {month}/{year} · paga {businesses}",
+        "pays": "Paga {businesses}",
+        "none": "Aún no hay ninguna tarjeta guardada.",
+        "unavailable": "Ahora no podemos enseñarte la tarjeta: inténtalo en unos minutos.",
+        "failed": "El último cobro falló",
+        "failedWhen": "{date} · {business}",
+        "change": "Cambiar tarjeta",
+        "secure": "Se abre la página segura de pago.",
+        "app": "Para cambiar la tarjeta, entra en erplora.com desde el navegador.",
+        "empty": "Aún no hay ninguno: se pide en el primer pago de un plan o un módulo."
+      },
+      "profile": {
+        "title": "Datos de facturación",
+        "taxId": "NIF",
+        "address": "Dirección",
+        "email": "Correo",
+        "pays": "Paga",
+        "edit": "Editar datos",
+        "empty": "Aún no hay: se piden con el primer pago, para que la factura salga a tu nombre o al de tu empresa."
+      },
+      "modal": {
+        "title": "Datos de facturación",
+        "save": "Guardar datos",
+        "copyFrom": "Negocio",
+        "copyFromHint": "Su nombre y su país pasan a las facturas.",
+        "note": "Valen para las próximas facturas de los negocios que pagas; las ya emitidas no cambian. Con un NIF de otro país de la UE lo comprobamos en VIES.",
+        "saved": "Datos de facturación guardados"
+      },
+      "vies": {
+        "checking": "Comprobando en VIES…",
+        "verified": "Comprobado en VIES: {name}. La factura va sin IVA (inversión del sujeto pasivo).",
+        "verifiedNoName": "Comprobado en VIES. La factura va sin IVA (inversión del sujeto pasivo).",
+        "national": "NIF válido.",
+        "invalid": "VIES no reconoce este número: la factura llevará IVA.",
+        "unavailable": "VIES no responde ahora: lo volvemos a comprobar al facturar.",
+        "outside_vies": "Número del Reino Unido: no se comprueba en VIES."
+      }
+    }
+  }
+}

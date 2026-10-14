@@ -101,6 +101,8 @@ def test_the_routes_are_bound_to_their_operations():
         "/hubs/ownership/decline": (["POST"], "hubs.ownership.decline"),
         "/hubs/ownership/cancel": (["POST"], "hubs.ownership.cancel"),
         "/hubs/billing-profile": (["GET", "POST"], "hubs.billing_profile.get|hubs.billing_profile.update"),
+        "/hubs/usage": (["GET"], "hubs.usage.get"),
+        "/hubs/usage/series": (["GET"], "hubs.usage.series"),
     }
     assert resolve(SECTORS).url_name and resolve(BUSINESS_TYPES).url_name
 

@@ -397,11 +397,11 @@ def test_table_does_not_compare_plans_on_the_database_engine(client, seeded):
 
 
 def test_the_engine_guard_reads_the_table_and_not_the_whole_page(client, seeded):
-    """Positive control: the cards outside the table DO name the engine."""
+    """Positive control: the cards outside the table DO carry the database line."""
     html = html_of(client)
 
-    assert "PostgreSQL" in html
-    assert "PostgreSQL" not in plan_table(html)
+    assert "Managed database" in html
+    assert "Managed database" not in plan_table(html)
 
 
 def test_support_column_states_channel_and_priority_but_never_a_clock(client, seeded):
@@ -645,7 +645,7 @@ def test_the_detail_shows_the_plan_its_price_its_features_and_its_trial(client, 
     assert "15 days free trial" in html
     # The trial is the pill, not one more feature line (the card's line belongs to the cards).
     assert "15-day free trial" not in html
-    assert "Managed PostgreSQL database" in html
+    assert "Managed database, with continuous backups" in html
 
 
 def test_the_detail_offers_the_other_plans_with_their_links(client, seeded):

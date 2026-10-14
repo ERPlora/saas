@@ -1,0 +1,352 @@
+{
+  "billing": {
+    "store": {
+      "title": "Store",
+      "tabsLabel": "Store sections",
+      "tabs": {
+        "plans": "Plans",
+        "modules": "Modules"
+      },
+      "loadError": "We could not load the prices",
+      "loadErrorBody": "Nothing was charged. Try again in a few seconds.",
+      "retry": "Retry",
+      "inApp": {
+        "title": "The store is not in the app",
+        "body": "To change your plan or add modules, go to erplora.com in your browser.",
+        "action": "Go to Businesses"
+      },
+      "noBusiness": {
+        "title": "You have no business to buy for",
+        "body": "Only the owner of a business buys its plan and its modules. Create your own business, or ask its owner.",
+        "action": "Go to Businesses"
+      },
+      "unknownBusiness": "We could not find that business among yours: here is {name}. Pick another one above if you like."
+    },
+    "picker": {
+      "heading": "Which business is it for?",
+      "body": "Each business has its plan and its modules, with a single invoice a month.",
+      "label": "Business",
+      "option": "{name} · {plan}"
+    },
+    "unpaid": {
+      "heading": "{name} has an unpaid invoice",
+      "card_declined": "The bank declined the last card. Change the card and pay the invoice before adding anything: we do not charge a declined card again.",
+      "card_changed": "The card was changed: pay the invoice before adding anything.",
+      "unpaid": "Pay the invoice before adding or changing anything.",
+      "pay": "Pay the invoice",
+      "billing": "Go to Billing"
+    },
+    "plans": {
+      "heading": "Plans",
+      "intro": "Prices without VAT. Cancel whenever you want: the business goes back to Free at the end of the period, without losing anything.",
+      "period": "Billing period",
+      "monthly": "Monthly",
+      "annual": "Annual",
+      "annualSaving": "Annual · −{percent} %",
+      "current": "Your current plan",
+      "forever": "forever",
+      "perMonth": "/month + VAT",
+      "perYear": "/year + VAT · {monthly}/month",
+      "upgrade": "Upgrade to {plan}",
+      "change": "Change to {plan}",
+      "switchAnnual": "Switch to annual · {price}/year",
+      "switchMonthly": "Switch to monthly · {price}/month",
+      "downgrade": "Downgrade to Free",
+      "keep": "Keep the plan",
+      "cancelled": "Cancelled: {plan} until {date}, then Free.",
+      "freeFrom": "The business goes to Free on {date}.",
+      "keepFirst": "Keep the plan first to change it.",
+      "payFirst": "Pay the pending invoice first.",
+      "trial": "Trying it until {date}",
+      "trialKeeps": "Buying it now keeps the days left of the trial.",
+      "kept": "{plan} is kept: it renews on {date}",
+      "changed": "{business} is now on {plan}",
+      "switched": "{business} is now on {plan}, billed {period}",
+      "periodName": {
+        "month": "monthly",
+        "year": "annually"
+      }
+    },
+    "promo": {
+      "ask": "Do you have a promo code?",
+      "label": "Promo code",
+      "apply": "Apply",
+      "valid": "Code {code}: {days} days free before the first charge.",
+      "invalid": "This code is not valid, or it was already used.",
+      "remove": "Remove the code"
+    },
+    "modules": {
+      "heading": "Modules",
+      "intro": "They add to the subscription of the chosen business. A module you buy turns on by itself inside the business.",
+      "empty": "There are no modules on sale right now.",
+      "perMonth": "{price}/month + VAT",
+      "perYear": "{price}/year + VAT",
+      "add": "Add · {price}/month",
+      "addYear": "Add · {price}/year",
+      "owned": "You have it",
+      "included": "Included in your plan",
+      "activating": "Activating…",
+      "activatingIn": "in {business}",
+      "cancelled": "You have it until {date} (cancelled). «Keep» undoes the cancellation; nothing is charged until {renewal}.",
+      "cancelledNoRenewal": "You have it until {date} (cancelled). «Keep» undoes the cancellation; nothing is charged today.",
+      "keep": "Keep · no charge today",
+      "kept": "{module} is kept: it renews on {date}",
+      "keptNoDate": "{module} is kept",
+      "added": "{module} added to {business}: it turns on in a few seconds",
+      "monthlyOnly": "Only with monthly billing"
+    },
+    "proration": {
+      "titleModule": "Add {module}",
+      "titlePlan": "Change to {plan}",
+      "intoModule": "It is added to the subscription of {business}.",
+      "intoPlan": "{business} changes from {from} to {plan}.",
+      "today": "Today (prorated)",
+      "netPlusVat": "{amount} + VAT",
+      "vat": "VAT",
+      "total": "Total today",
+      "from": "From {date}",
+      "recurring": "Then",
+      "trial": "Nothing is charged today: it is charged from {date}, with the plan.",
+      "moduleNote": "It turns on by itself in the business in a few seconds. If you cancel it, it works until the end of the paid period.",
+      "planNote": "Its modules stay as they are. You can cancel the plan whenever you want.",
+      "payAndAdd": "Pay {amount} and add",
+      "payAndChange": "Pay {amount} and change",
+      "add": "Add",
+      "change": "Change plan",
+      "loading": "Working out what it charges today…",
+      "expired": "The price was out of date: here it is again, check it before confirming."
+    },
+    "annual": {
+      "title": "Switch to {plan} annual",
+      "titleMonthly": "Switch to {plan} monthly",
+      "intro": "{business} · {plan} is billed {period} from now on.",
+      "price": "{plan} annual",
+      "priceMonthly": "{plan} monthly",
+      "equivalent": "Equivalent to",
+      "perMonth": "{price}/month + VAT",
+      "chargedToday": "Charged today, with VAT",
+      "modules": "Its modules are billed {period} too.",
+      "confirm": "Switch to annual",
+      "confirmMonthly": "Switch to monthly"
+    },
+    "checkout": {
+      "titlePlan": "Upgrade to {plan}",
+      "titleModule": "Add {module}",
+      "forBusiness": "For {business} · renews {period}",
+      "period": {
+        "month": "every month",
+        "year": "every year"
+      },
+      "invoiceTo": "Invoice to",
+      "change": "Change",
+      "secure": "Secure payment",
+      "declined": "The card on your account was declined: pay with another one.",
+      "loading": "Loading the secure payment…",
+      "paying": "Paying…",
+      "terms": "By paying you accept the Terms. You can cancel whenever you want from Billing.",
+      "loadError": "We could not open the secure payment",
+      "loadErrorBody": "Nothing was charged. Check your connection and try again.",
+      "retry": "Retry",
+      "stale": "This business already pays: the price changed, check it again.",
+      "plan": "{business} is now on {plan}",
+      "module": "{module} added to {business}: it turns on in a few seconds"
+    },
+    "details": {
+      "intro": "Who do we invoice? We ask it once, before the first payment.",
+      "same": "Use the business’s name and country",
+      "name": "Legal name",
+      "taxId": "Tax ID (optional)",
+      "taxIdHint": "With an EU VAT number checked in VIES, the invoice goes without VAT (reverse charge).",
+      "address": "Address",
+      "city": "City",
+      "postalCode": "Postal code",
+      "country": "Country",
+      "email": "Invoice email (optional)",
+      "continue": "Continue to payment",
+      "anotherAccount": "Another account paid for this business until now: say who pays from now on."
+    },
+    "cancelPlan": {
+      "title": "Cancel the plan",
+      "subject": "{business} · {plan}",
+      "until": "It stays on {plan} until {date}; then it goes to Free and is not charged again.",
+      "untilNoDate": "It stays on {plan} until the end of the period; then it goes to Free and is not charged again.",
+      "limits": "Free covers {users} and {devices} at a time.",
+      "users": "{count} user | {count} users",
+      "devices": "{count} device | {count} devices",
+      "undo": "Until then you can undo it with «Keep the plan».",
+      "unpaid": "The unpaid invoice stays pending: cancelling does not cancel it.",
+      "confirm": "Cancel plan",
+      "back": "Back",
+      "done": "Plan cancelled: {plan} until {date}",
+      "doneNoDate": "Plan cancelled: {plan} until the end of the period"
+    },
+    "page": {
+      "title": "Billing",
+      "tabsLabel": "Billing sections",
+      "tabs": {
+        "invoices": "Invoices",
+        "subscriptions": "Subscriptions",
+        "payment": "Payment details"
+      },
+      "lead": "What you pay ERPlora for all your businesses. The invoices of your sales are inside each business."
+    },
+    "notice": {
+      "pastDueHeading": "We could not collect {amount} from {name}",
+      "suspendedHeading": "{name} is suspended: {amount} unpaid",
+      "cardChangedHeading": "Card changed",
+      "cardChangedBody": "You can now pay the invoice of {name} ({amount}) with it.",
+      "declined": "The bank declined the card.",
+      "pastDueBody": "Invoice {invoice} of {date} could not be collected. Pay it before {until} or the business is suspended; nothing is deleted.",
+      "pastDueBodyNoDate": "Invoice {invoice} of {date} could not be collected. Pay it soon or the business is suspended; nothing is deleted.",
+      "suspendedBody": "Invoice {invoice} of {date} could not be collected and the business was suspended. Your data is safe: once it is paid, the business works again at once.",
+      "app": "To pay it, go to erplora.com in your browser.",
+      "appDeclined": "To change the card and pay it, go to erplora.com in your browser.",
+      "changeCard": "Change card",
+      "pay": "Pay the invoice · {amount}",
+      "paying": "Paying…",
+      "changeFirst": "Change the card first: we do not charge the card the bank declined again.",
+      "payerRequired": "Only the account that pays this business can pay its invoices.",
+      "lineOne": "{name} has an unpaid invoice: {amount}.",
+      "lineMany": "{count} unpaid invoices: {amount}.",
+      "viewOne": "View the invoice",
+      "viewMany": "View the invoices",
+      "paid": "Invoice paid: {name} is up to date again"
+    },
+    "invoices": {
+      "title": "ERPlora invoices",
+      "search": "Search by number",
+      "columns": {
+        "number": "Invoice",
+        "date": "Date",
+        "business": "Business",
+        "amount": "Amount",
+        "status": "Status"
+      },
+      "entity": "invoice | invoices",
+      "filters": {
+        "business": "Business",
+        "allBusinesses": "All businesses",
+        "status": "Status",
+        "paid": "Paid",
+        "open": "Not collected",
+        "year": "Year",
+        "allYears": "All years",
+        "button": "Filters",
+        "buttonOn": "Filters: {count} on | Filters: {count} on",
+        "all": "All",
+        "clear": "Clear filters"
+      },
+      "pay": "Pay",
+      "pdf": "Download PDF",
+      "pdfSelected": "Download PDF ({count})",
+      "csv": "Download Excel",
+      "csvHint": "The list of what the filters show, for your accountant (it opens in Excel)",
+      "pdfNotReady": "That invoice is still being issued: its PDF is ready in a few minutes. | {count} invoices are still being issued: their PDF is ready in a few minutes.",
+      "loadError": "We could not load your invoices",
+      "retry": "Retry",
+      "empty": {
+        "title": "No invoices yet",
+        "body": "On the Free plan nothing is charged, so there are no invoices. They appear here when you pay for a plan or a module.",
+        "plans": "See plans",
+        "freeBusiness": "{name} is on Free: it has no invoices."
+      },
+      "noMatches": "No invoice matches the search or the filters",
+      "showAll": "Show all",
+      "unknownBusiness": "We could not find that business among yours: here are the invoices of all of them.",
+      "rectifies": "Rectifies {number}",
+      "rectification": "Credit note {type} · {reason}",
+      "rectificationNoReason": "Credit note {type}",
+      "csvShort": "Excel"
+    },
+    "subscriptions": {
+      "title": "Subscriptions",
+      "search": "Search by business",
+      "columns": {
+        "business": "Business",
+        "plan": "Plan",
+        "modules": "Modules",
+        "next": "Next invoice",
+        "status": "Status"
+      },
+      "entity": "subscription | subscriptions",
+      "until": "(until {date})",
+      "next": "{date} · {amount}",
+      "withVat": "with VAT",
+      "freeFrom": "Free from {date}",
+      "scheduled": "Changes to {plan} on {date}",
+      "statusUntil": "Until {date}",
+      "actions": {
+        "view_invoice": "View the invoice",
+        "keep_plan": "Keep the plan",
+        "change_plan": "Change plan",
+        "cancel_plan": "Cancel plan",
+        "view_invoices": "View invoices"
+      },
+      "appHint": "To change or cancel a plan, go to erplora.com in your browser.",
+      "loadError": "We could not load your subscriptions",
+      "retry": "Retry",
+      "empty": {
+        "title": "All your businesses are on Free",
+        "body": "Without a paid plan there is no subscription and nothing is charged.",
+        "plans": "See plans"
+      },
+      "kept": "{business} stays on {plan}",
+      "cancel": {
+        "modules": "{modules} turns off on {date}. Nothing is deleted: back on a paid plan, it is as it was. | {modules} turn off on {date}. Nothing is deleted: back on a paid plan, they are as they were.",
+        "modulesNoDate": "{modules} turns off at the end of the period. Nothing is deleted: back on a paid plan, it is as it was. | {modules} turn off at the end of the period. Nothing is deleted: back on a paid plan, they are as they were.",
+        "seatsOver": "{name} has {people}: before {date} you choose who stays.",
+        "seatsOverNoDate": "{name} has {people}: before the end of the period you choose who stays.",
+        "seatsFit": "{name} has {people}, so nothing changes for them.",
+        "people": "{count} person | {count} people",
+        "unpaid": "The unpaid invoice of {date} ({amount}) stays pending: cancelling does not cancel it.",
+        "done": "Plan cancelled: {business} stays on {plan} until {date}",
+        "doneNoDate": "Plan cancelled: {business} stays on {plan} until the end of the period"
+      }
+    },
+    "payment": {
+      "loadError": "We could not load your payment details",
+      "loadErrorBody": "Try again in a few seconds.",
+      "retry": "Retry",
+      "method": {
+        "title": "Payment method",
+        "card": "{brand} •••• {last4}",
+        "expires": "Expires {month}/{year} · pays {businesses}",
+        "pays": "Pays {businesses}",
+        "none": "No card saved yet.",
+        "unavailable": "We cannot show the card right now: try again in a few minutes.",
+        "failed": "The last charge failed",
+        "failedWhen": "{date} · {business}",
+        "change": "Change card",
+        "secure": "The secure payment page opens.",
+        "app": "To change the card, go to erplora.com in your browser.",
+        "empty": "None yet: it is asked on the first payment of a plan or a module."
+      },
+      "profile": {
+        "title": "Billing details",
+        "taxId": "Tax ID",
+        "address": "Address",
+        "email": "Email",
+        "pays": "Pays",
+        "edit": "Edit details",
+        "empty": "None yet: they are asked on the first payment, so the invoice is in your name or your company’s."
+      },
+      "modal": {
+        "title": "Billing details",
+        "save": "Save details",
+        "copyFrom": "Business",
+        "copyFromHint": "Its name and country are copied into the invoices.",
+        "note": "They apply to the next invoices of the businesses you pay; the ones already issued do not change. With a tax ID of another EU country we check it in VIES.",
+        "saved": "Billing details saved"
+      },
+      "vies": {
+        "checking": "Checking in VIES…",
+        "verified": "Checked in VIES: {name}. The invoice goes without VAT (reverse charge).",
+        "verifiedNoName": "Checked in VIES. The invoice goes without VAT (reverse charge).",
+        "national": "Valid tax ID.",
+        "invalid": "VIES does not know this number: the invoice will carry VAT.",
+        "unavailable": "VIES does not answer right now: we check it again when invoicing.",
+        "outside_vies": "A UK number: it is not checked in VIES."
+      }
+    }
+  }
+}

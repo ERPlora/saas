@@ -11,6 +11,10 @@ BUSINESS_DELETED = "hubs.business.deleted"
 BUSINESS_RESTORED = "hubs.business.restored"
 #: The Hub refused a call about the business, or a later one succeeded: «Preparing» ↔ «Error».
 BUSINESS_HUB_ERROR_CHANGED = "hubs.business.hub_error_changed"
+#: A day of the business's usage was measured, or measured again with other figures (``collect_hub_usage``,
+#: nightly; lot L4-A): recorded on the channel of its owner and of each admin (``notify_people``), who see
+#: its page. Payload ``{"business_id"}``.
+BUSINESS_USAGE_COLLECTED = "hubs.business.usage_collected"
 
 BUSINESS = [
     BUSINESS_CREATED,
@@ -44,6 +48,10 @@ OWNERSHIP = [OWNERSHIP_REQUESTED, OWNERSHIP_ACCEPTED, OWNERSHIP_DECLINED, OWNERS
 
 BILLING_PROFILE_UPDATED = "hubs.billing_profile.updated"
 
+#: What Stripe says of the business's plan was written (``hubs.subscription.apply``, run by billing):
+#: plan, status, modules, period or why it is unpaid. Payload ``{"id"}``.
+SUBSCRIPTION_CHANGED = "hubs.subscription.changed"
+
 #: The people of a business changed (an invitation, its answer, a role, a removal): recorded on the channel
 #: of every owner and admin of the business and of the account it touched, not only the actor's
 #: (``services.notify_people``), so their lists re-run at once. Payload ``{"business_id"}``.
@@ -53,4 +61,14 @@ OWNERSHIP_CHANGED = "hubs.ownership.changed"
 
 PEOPLE = [MEMBER_CHANGED, OWNERSHIP_CHANGED]
 
-ALL = [*BUSINESS, *MEMBER, *INVITATION, *OWNERSHIP, BILLING_PROFILE_UPDATED, *PEOPLE]
+ALL = [
+    *BUSINESS,
+    *MEMBER,
+    *INVITATION,
+    *OWNERSHIP,
+    BILLING_PROFILE_UPDATED,
+    SUBSCRIPTION_CHANGED,
+    *PEOPLE,
+    # Not in ``BUSINESS``: a night's figures change the page and the usage, never the list of businesses.
+    BUSINESS_USAGE_COLLECTED,
+]

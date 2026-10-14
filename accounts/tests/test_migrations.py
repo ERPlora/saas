@@ -43,11 +43,15 @@ class TestSupportGroup:
     def test_exists_after_migrating_with_view_only_permissions_on_accounts(self):
         group = Group.objects.get(name="support")
 
-        # Of accounts' models these; hubs adds the views of the account plane (hubs 0007, L1-A2).
+        # Of accounts' models these (the Account page's, 0006, L3-A); hubs adds the views of the account plane (hubs
+        # 0007, L1-A2).
         assert {perm for perm in _perms(group) if perm.startswith("accounts.")} == {
             "accounts.view_user",
             "accounts.view_hubmembership",
             "accounts.view_authexchangecode",
+            "accounts.view_apikey",
+            "accounts.view_userpreferences",
+            "accounts.view_profilephoto",
         }
         assert not any(p.codename.startswith(("add_", "change_", "delete_")) for p in group.permissions.all())
 
@@ -98,3 +102,25 @@ class TestPrefixedRoles:
             "c": "employee",
             "d": "admin",
         }
+
+
+class TestSupportSeesTheAccountPage:
+    """0006: ``support`` views the account's preferences, photo, API keys and sessions (allauth.usersessions), and
+    changes nothing; reversible."""
+
+    def _migration(self):
+        return _migration("0006_support_views_account_settings")
+
+    def test_after_migrating(self):
+        group = Group.objects.get(name="support")
+
+        assert "usersessions.view_usersession" in _perms(group)
+
+    def test_reverting_takes_them_away_and_applying_again_gives_them_back(self):
+        group = Group.objects.get(name="support")
+
+        self._migration().stop_support_viewing(global_apps, _SchemaEditor())
+        assert not {"accounts.view_apikey", "usersessions.view_usersession"} & _perms(group)
+
+        self._migration().let_support_view(global_apps, _SchemaEditor())
+        assert {"accounts.view_apikey", "usersessions.view_usersession"} <= _perms(group)

@@ -9,7 +9,9 @@
 // preparation, then «ready» or why not, following the new business with its own `hubs.business.get`
 // (the list may not show it: a search, another page); meanwhile the list shows it «Preparing». Empty,
 // the table holds the sign-up form itself. Live data: `hubs.business.list`. Ionic reuses the page:
-// `?create=1` (the launcher's «Create another business») is read each time it comes on screen.
+// `?create=1` (the launcher's «Create another business») is read each time it comes on screen. The list
+// fills the page between the topbar and the footer (`detail-fill` + `.panel-fill`, Ioan 2026-10-14), and
+// asks for rows per page only when there are more businesses than the shortest page (README §3b).
 import {
   DataTable,
   type DataTableAction,
@@ -21,7 +23,7 @@ import {
   InlineFeedback,
   StatusPill,
 } from '@erplora/ui/components';
-import { AppPage, HubIcon, toastError, toastSuccess, useSurface, WebOnly } from '@erplora/ui/shell';
+import { AppPage, HubIcon, toastError, toastSuccess, useSurface } from '@erplora/ui/shell';
 import { useCommand, useLive, useLiveClient } from '@erplora/ui/sdk';
 import { IonButton, onIonViewWillEnter } from '@ionic/vue';
 import {
@@ -44,6 +46,7 @@ import { opensAtAll, preparationFailed, reasonKey, statusPill } from '../busines
 import BusinessCreateForm from '../components/BusinessCreateForm.vue';
 import BusinessPreparing from '../components/BusinessPreparing.vue';
 import DeclineDialog from '../components/DeclineDialog.vue';
+import UnpaidNotice from '../components/UnpaidNotice.vue';
 import { useErrorText } from '../error-text';
 import { useAcceptInvitation } from '../invitations';
 import { useOpenBusiness } from '../open-business';
@@ -284,8 +287,11 @@ onIonViewWillEnter(entered);
 </script>
 
 <template>
-  <AppPage :title="$t('hubs.list.title')">
-    <div class="list-stack">
+  <AppPage
+    :title="$t('hubs.list.title')"
+    content-layout="detail-fill"
+  >
+    <div class="list-stack panel-fill">
       <InlineFeedback
         v-if="live.status.value === 'reconnecting'"
         tone="warning"
@@ -376,25 +382,12 @@ onIonViewWillEnter(entered);
         </template>
       </InlineFeedback>
 
-      <InlineFeedback
+      <UnpaidNotice
         v-for="row in unpaid"
         :key="row.id"
-        tone="danger"
-        icon="ion:card-outline"
+        :business="row"
         :data-testid="`businesses-unpaid-${row.id}`"
-        :heading="
-          row.status === 'suspended'
-            ? $t('hubs.list.unpaid.suspendedHeading', { name: row.name })
-            : $t('hubs.list.unpaid.pastDueHeading', { name: row.name })
-        "
-      >
-        {{ row.status === 'suspended' ? $t('hubs.list.unpaid.suspendedBody') : $t('hubs.list.unpaid.pastDueBody') }}
-        <WebOnly>
-          <template #app>
-            {{ $t('hubs.list.unpaid.app') }}
-          </template>
-        </WebOnly>
-      </InlineFeedback>
+      />
 
       <p
         v-if="rows.length"
@@ -410,11 +403,13 @@ onIonViewWillEnter(entered);
         server-side
         searchable
         addable
+        fill
         :rows="rows"
         :total="live.data.value?.total ?? 0"
         :page="page"
         :page-size="pageSize"
         :page-size-options="PAGE_SIZES"
+        :page-size-chooser="(live.data.value?.total ?? 0) > PAGE_SIZES[0]"
         :views="['table', 'cards']"
         :card-breakpoint="CARD_BREAKPOINT"
         :loading="firstLoad"

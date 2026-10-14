@@ -11,6 +11,7 @@
     "lint": "eslint .",
     "gen:public-icons": "node scripts/gen-public-icons.mjs",
     "e2e": "playwright test -c tests/e2e/playwright.config.ts",
+    "e2e:headed": "E2E_HEADED=1 playwright test -c tests/e2e/playwright.config.ts",
     "e2e:ci": "CI=1 playwright test -c tests/e2e/playwright.config.ts"
   },
   "dependencies": {

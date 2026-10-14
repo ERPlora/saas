@@ -2,15 +2,15 @@
 an account with their members, invitations, ownership and payer (plan 2026-10-13, lot L1-A)."""
 
 import re
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
-from typing import Annotated, Generic, Literal, TypeVar
+from typing import Annotated, Any, Generic, Literal, TypeVar
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.utils.translation import gettext as _
 from ninja import Field, Schema
-from pydantic import AfterValidator, StringConstraints
+from pydantic import AfterValidator, StringConstraints, model_validator
 
 from accounts.queries import local_path
 
@@ -178,6 +178,10 @@ class PlanRefOut(Schema):
     name: str
 
 
+#: Why a renewal is not paid (``hubs.Subscription.UnpaidReason``).
+UnpaidReason = Literal["card_declined", "card_changed", "authentication_required", "payment_failed"]
+
+
 class BusinessListIn(PageIn):
     search: str | None = Field(None, max_length=120)
 
@@ -215,6 +219,15 @@ class BusinessRowOut(Schema):
     purge_after: datetime | None
     created_at: datetime
     can: BusinessRowCanOut
+    #: Why a renewal is not paid (``card_declined``: «Pay» waits for another card; ``card_changed``,
+    #: ``authentication_required``, ``payment_failed``: «Pay» works); None while it is paid.
+    unpaid_reason: UnpaidReason | None
+    #: When the unpaid invoice was issued: the 7 days of grace count from it.
+    unpaid_since: datetime | None
+    #: Stripe's page to pay that invoice: only for the owner (billing is the owner's, round 17 §2.7).
+    pay_url: str | None
+    #: The account owns the business's payer (``billing_profile``): it pays for it, whatever its role.
+    is_payer: bool
 
 
 class InvitationOut(Schema):
@@ -278,6 +291,34 @@ class BusinessCanOut(Schema):
     delete: bool
 
 
+# The usage of a business (lot L4-A, PLAN-SAAS §5): the page carries the last day; ``hubs.usage.*`` below.
+
+
+class StorageUsageOut(Schema):
+    """What the business's files take (``used_bytes``, S3) against the space its plan includes
+    (``limit_bytes``; ``None`` without a plan), and how full it is, rounded (``percent``, over 100 past it)."""
+
+    used_bytes: int
+    limit_bytes: int | None
+    percent: int | None
+
+
+class ActiveUsersOut(Schema):
+    """The people active on the day measured (``on_day``) and in the 30 days up to it."""
+
+    on_day: int
+    last_30_days: int
+
+
+class UsageOut(Schema):
+    """The last day the Hub measured of a business; ``stale`` when it is not yesterday's (UTC)."""
+
+    day: date
+    storage: StorageUsageOut
+    active_users: ActiveUsersOut
+    stale: bool
+
+
 class BusinessDetailOut(Schema):
     id: UUID
     slug: str
@@ -304,6 +345,13 @@ class BusinessDetailOut(Schema):
     seats: SeatsOut
     pending_transfer: TransferRefOut | None
     can: BusinessCanOut
+    #: As in ``BusinessRowOut``.
+    unpaid_reason: UnpaidReason | None
+    unpaid_since: datetime | None
+    pay_url: str | None
+    is_payer: bool
+    #: The last day the Hub measured (``hubs.usage.get``); ``None`` until the first night (lot L4-A).
+    usage: UsageOut | None
 
 
 class AddressProposeIn(Schema):
@@ -375,11 +423,64 @@ class HubStatusOut(Schema):
     ready_at: datetime | None
 
 
+#: The label of a paid app (``modules[].id`` of the snapshot, PLAN §20.2).
+ModuleSlug = Annotated[str, Field(max_length=63, pattern=r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$")]
+SubscriptionStatus = Literal[
+    "active", "trialing", "past_due", "unpaid", "canceled", "incomplete", "incomplete_expired", "paused"
+]
+
+
+class ModuleRightIn(Schema):
+    """A module Stripe bills the business for (``source = purchase``): open-ended, or until ``valid_until``
+    (cancelled at the end of its period, PLAN-SAAS §3.3)."""
+
+    module_slug: ModuleSlug
+    stripe_item_id: str = Field("", max_length=255)
+    valid_until: datetime | None = None
+
+
+class SubscriptionApplyIn(Schema):
+    """What the LIVE Stripe subscription says of a business (billing, lot L2-B), applied as it comes. A field
+    left out is left as it is; one sent as ``None`` is cleared.
+
+    ``modules`` replaces the bought modules (the ones the plan includes are not Stripe's). ``standing``
+    moves the business: ``good`` (paid), ``grace`` (a renewal failed, inside the 7 days: «payment
+    pending») or ``suspended``.
+    """
+
+    hub_id: UUID
+    plan: str | None = Field(None, max_length=50)
+    billing_interval: Literal["month", "year"] | None = None
+    status: SubscriptionStatus | None = None
+    stripe_customer_id: str | None = Field(None, max_length=255)
+    stripe_subscription_id: str | None = Field(None, max_length=255)
+    current_period_start: datetime | None = None
+    current_period_end: datetime | None = None
+    cancel_at_period_end: bool | None = None
+    trial_start: datetime | None = None
+    trial_end: datetime | None = None
+    modules: list[ModuleRightIn] | None = None
+    standing: Literal["good", "grace", "suspended"] | None = None
+    unpaid_reason: UnpaidReason | None = None
+    unpaid_since: datetime | None = None
+    unpaid_invoice_url: str | None = Field(None, max_length=2048)
+    #: Cleared once the subscription a deleted business still had ended in Stripe.
+    cancel_requested_at: datetime | None = None
+
+
+class SubscriptionApplyOut(Schema):
+    hub_id: UUID
+    #: The version of the snapshot after the change (it grows only when what the Hub sees changed).
+    state_version: int
+    #: Something was written.
+    changed: bool
+
+
 class NotifyPeopleIn(Schema):
     """A change of the people of the business ``id``, told on the context's channel (a system command)."""
 
     id: UUID
-    event: Literal["hubs.member.changed", "hubs.ownership.changed"]
+    event: Literal["hubs.member.changed", "hubs.ownership.changed", "hubs.business.usage_collected"]
 
 
 class NotifyPeopleOut(Schema):
@@ -480,16 +581,30 @@ class BillingProfileGetIn(Schema):
     hub_id: UUID
 
 
+#: A Spanish postal code: five digits, the first two its province, which decides the tax (the Canary
+#: Islands, Ceuta and Melilla are outside VAT; «3500» is not Las Palmas, saas#1972).
+SPANISH_POSTAL_CODE = re.compile(r"^\d{5}$")
+
+
+def postal_code_problem(country: str, postal_code: str) -> str | None:
+    """Why ``postal_code`` is not one of ``country`` (only Spain's has a shape the tax depends on), or
+    ``None``. Empty is fine: the payer may wait for the first checkout, which asks for it."""
+    if country == "ES" and postal_code and not SPANISH_POSTAL_CODE.match(postal_code):
+        return _("A Spanish postal code has five digits, e.g. 28001.")
+    return None
+
+
 class BillingProfileIn(Schema):
     """Who ERPlora invoices for this business. With ``same_as_business``, its name and country are
-    copied from the business (PLAN-SAAS §3.1: a copy, not a sync)."""
+    copied from the business (PLAN-SAAS §3.1: a copy, not a sync). The postal code must be one of the
+    payer's country (``postal_code_problem``)."""
 
     hub_id: UUID
     billing_name: str = Field("", max_length=255)
     tax_id: str = Field("", max_length=50)
     billing_address: str = Field("", max_length=500)
     billing_city: str = Field("", max_length=100)
-    billing_postal_code: str = Field("", max_length=20)
+    billing_postal_code: Annotated[str, StringConstraints(strip_whitespace=True)] = Field("", max_length=20)
     billing_country: Country | Literal[""] = ""
     billing_email: Email | Literal[""] = ""
     same_as_business: bool = False
@@ -510,3 +625,75 @@ class BillingProfileOut(Schema):
     billing_country: str
     billing_email: str
     same_as_business: bool
+
+
+# --- Usage (lot L4-A, PLAN-SAAS §5) ----------------------------------------------------------------
+
+#: The largest figures the columns of ``HubUsageDaily`` hold.
+MAX_BYTES = 2**63 - 1
+MAX_PEOPLE = 2**31 - 1
+
+
+class UsageGetIn(Schema):
+    business_id: UUID
+
+
+class UsageSeriesIn(Schema):
+    business_id: UUID
+    #: The window: the days up to yesterday (UTC), from one to a year.
+    days: int = Field(30, ge=1, le=365)
+
+
+class UsagePointOut(Schema):
+    """One day of the window (only the days measured: a chart draws the gaps)."""
+
+    day: date
+    storage: StorageUsageOut
+    active_users: ActiveUsersOut
+
+
+class UsageSeriesOut(Schema):
+    """The days of the window, oldest first, against the space the plan includes today."""
+
+    business_id: UUID
+    limit_bytes: int | None
+    points: list[UsagePointOut]
+
+
+class HubUsageIn(Schema):
+    """One business's usage on a day, as the Hub sends it (``GET /internal/usage``, ``hubs/README.md``)."""
+
+    id: UUID
+    s3_bytes: int = Field(ge=0, le=MAX_BYTES)
+    db_bytes: int = Field(ge=0, le=MAX_BYTES)
+    active_users_1d: int = Field(ge=0, le=MAX_PEOPLE)
+    active_users_30d: int = Field(ge=0, le=MAX_PEOPLE)
+
+    @model_validator(mode="after")
+    def _one_day_within_its_thirty(self):
+        if self.active_users_1d > self.active_users_30d:
+            raise ValueError("active_users_1d is more than active_users_30d, which holds that day")
+        return self
+
+
+class HubUsagePageIn(Schema):
+    """One page of ``GET /internal/usage``: each row is read on its own, so a broken one never drops the page."""
+
+    day: date
+    hubs: list[dict[str, Any]]
+    #: Sent back as it came for the next page; ``None`` on the last.
+    next_cursor: str | None = Field(None, min_length=1, max_length=512)
+
+
+class UsageRecordIn(HubUsageIn):
+    """The usage of the business ``id`` on ``day`` (the system command ``hubs.usage.record``)."""
+
+    day: date
+
+
+class UsageRecordOut(Schema):
+    id: UUID
+    day: date
+    #: The figures were new or different (the owner and the admins were told).
+    changed: bool
+

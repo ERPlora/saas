@@ -992,3 +992,82 @@ msgid ""
 msgstr ""
 "%(count)d cierre(s) de sesiones siguen pendientes: el Hub no responde o lo "
 "rechazó; reconcile_hub_states lo reintenta."
+
+msgid "Only the platform applies what Stripe says."
+msgstr "Solo la plataforma aplica lo que dice Stripe."
+
+msgid "There is no plan with this identifier."
+msgstr "No hay ningún plan con este identificador."
+
+msgid "A Spanish postal code has five digits, e.g. 28001."
+msgstr "Un código postal español tiene cinco dígitos, p. ej. 28001."
+
+msgid "Paid"
+msgstr "Pagado"
+
+msgid "Card declined"
+msgstr "Tarjeta rechazada"
+
+msgid "Card changed"
+msgstr "Tarjeta cambiada"
+
+msgid "Authentication required"
+msgstr "Autenticación pendiente"
+
+msgid "Payment failed"
+msgstr "Pago fallido"
+
+msgid "why it is unpaid"
+msgstr "motivo del impago"
+
+msgid "unpaid since"
+msgstr "sin pagar desde"
+
+msgid "invoice to pay"
+msgstr "factura por pagar"
+
+msgid "end in Stripe asked at"
+msgstr "fin en Stripe pedido el"
+
+#: models.py: HubUsageDaily (L4-A)
+msgid "day"
+msgstr "día"
+
+msgid "files (bytes)"
+msgstr "ficheros (bytes)"
+
+msgid "database (bytes)"
+msgstr "base de datos (bytes)"
+
+msgid "active that day"
+msgstr "activos ese día"
+
+msgid "active in the 30 days"
+msgstr "activos en los 30 días"
+
+msgid "collected at"
+msgstr "recogido el"
+
+msgid "daily usage"
+msgstr "uso diario"
+
+msgid "daily usages"
+msgstr "usos diarios"
+
+#: services.py, queries.py: hubs.usage.* (L4-A)
+msgid "Only the platform records the usage of a business."
+msgstr "Solo la plataforma registra el uso de un negocio."
+
+msgid ""
+"No usage of this business has been measured yet: the first figures arrive "
+"the night after it is created."
+msgstr ""
+"Aún no se ha medido el uso de este negocio: las primeras cifras llegan la "
+"noche después de crearlo."
+
+#: admin.py: HubUsageDailyAdmin (L4-A)
+msgid "Files"
+msgstr "Ficheros"
+
+msgid "Database"
+msgstr "Base de datos"

@@ -14,10 +14,9 @@ change of the people of a business is told to its owner and admins (``notify_peo
 """
 
 import logging
-import re
 from collections import Counter
 from contextlib import contextmanager
-from datetime import timedelta
+from datetime import date, timedelta
 from functools import partial
 from uuid import UUID
 
@@ -42,6 +41,7 @@ from live.slugs import (
     hub_slug_min_length,
     validate_hub_slug,
 )
+from pydantic import ValidationError
 
 from accounts import queries as account_queries
 from accounts import services as account_services
@@ -55,6 +55,8 @@ from hubs.models import (
     Hub,
     HubMember,
     HubOwnershipTransfer,
+    HubUsageDaily,
+    Plan,
     SessionRevocation,
     Subscription,
     SubscriptionItem,
@@ -72,6 +74,8 @@ from hubs.schemas import (
     ByIdIn,
     HubErrorIn,
     HubStatusOut,
+    HubUsageIn,
+    HubUsagePageIn,
     MarkReadyIn,
     MemberInviteIn,
     MemberRoleIn,
@@ -81,6 +85,11 @@ from hubs.schemas import (
     OwnershipTransferIn,
     OwnershipTransferOut,
     RemovedOut,
+    SubscriptionApplyIn,
+    SubscriptionApplyOut,
+    UsageRecordIn,
+    UsageRecordOut,
+    postal_code_problem,
 )
 
 logger = logging.getLogger(__name__)
@@ -274,21 +283,24 @@ def _slug_taken() -> Conflict:
 def _subscribe_to_free(hub: Hub, plan, now) -> Subscription:
     trial = queries.trial_plan()
     if trial is None:
-        return Subscription.objects.create(
+        subscription = Subscription.objects.create(
             hub=hub,
             plan=plan,
             status=Subscription.Status.ACTIVE,
             current_period_start=now,
         )
-    return Subscription.objects.create(
-        hub=hub,
-        plan=plan,
-        trial_plan=trial,
-        status=Subscription.Status.TRIALING,
-        current_period_start=now,
-        trial_start=now,
-        trial_end=now + timedelta(days=trial.trial_period_days),
-    )
+    else:
+        subscription = Subscription.objects.create(
+            hub=hub,
+            plan=plan,
+            trial_plan=trial,
+            status=Subscription.Status.TRIALING,
+            current_period_start=now,
+            trial_start=now,
+            trial_end=now + timedelta(days=trial.trial_period_days),
+        )
+    sync_plan_modules(subscription, now)
+    return subscription
 
 
 # --- Settings, deletion and recovery --------------------------------------------------------------
@@ -359,6 +371,10 @@ def business_delete(ctx: OperationContext, data: BusinessDeleteIn) -> dict:
             "updated_at",
         ]
     )
+    # A subscription Stripe still bills ends: billing's sweep cancels it (hubs never calls Stripe).
+    Subscription.objects.filter(hub=hub, cancel_requested_at__isnull=True).exclude(stripe_subscription_id="").update(
+        cancel_requested_at=timezone.now()
+    )
     _back_to_free(hub)
     SubscriptionItem.objects.filter(subscription__hub=hub, source=SubscriptionItem.Source.PLAN).delete()
     HubOwnershipTransfer.objects.filter(
@@ -391,6 +407,8 @@ def _back_to_free(hub: Hub) -> None:
         cancel_at_period_end=False,
         updated_at=timezone.now(),
     )
+    for subscription in Subscription.objects.filter(hub=hub):
+        sync_plan_modules(subscription)
 
 
 @operation(
@@ -736,17 +754,26 @@ def member_remove(ctx: OperationContext, data: ByIdIn) -> dict:
     if target.is_pending:
         raise Conflict(_("This person has not answered yet: cancel the invitation."), code="hubs.member_pending")
     hub = target.hub
-    HubOwnershipTransfer.objects.filter(hub=hub, to_user=target.user, status=HubOwnershipTransfer.Status.PENDING).update(
-        status=HubOwnershipTransfer.Status.CANCELLED, resolved_at=timezone.now()
-    )
-    target.delete()
-    sync_access(hub)
-    bump_state(hub.id)
+    _take_out(target)
     record_event(ctx, events.MEMBER_REMOVED, {"id": str(data.id), "hub_id": str(hub.id)})
     notify_people(ctx, events.MEMBER_CHANGED, hub.id, target.user_id)
-    push_after_commit(hub.id)
     revoke_after_commit(target.user_id, hub.id)
     return {"id": data.id}
+
+
+def _take_out(member: HubMember) -> None:
+    """Take ``member`` out of its business (removed, or its account deleted): an ownership offer pending to it is
+    cancelled, its access goes with it (``sync_access``) and, once it had answered, the Hub gets a snapshot
+    without it after the COMMIT."""
+    hub = member.hub
+    HubOwnershipTransfer.objects.filter(
+        hub=hub, to_user_id=member.user_id, status=HubOwnershipTransfer.Status.PENDING
+    ).update(status=HubOwnershipTransfer.Status.CANCELLED, resolved_at=timezone.now())
+    member.delete()
+    sync_access(hub)
+    if member.accepted_at is not None:
+        bump_state(hub.id)
+        push_after_commit(hub.id)
 
 
 def _pending_only(target: HubMember) -> None:
@@ -998,43 +1025,33 @@ def ownership_cancel(ctx: OperationContext, data: ByIdIn) -> dict:
 
 # --- The payer ------------------------------------------------------------------------------------
 
-#: A Spanish NIF, NIE or CIF: nine characters, a letter or digit at each end (form only).
-SPANISH_TAX_ID = re.compile(r"^(ES)?[A-Z0-9][0-9]{7}[A-Z0-9]$")
-#: An EU VAT number of another country: its two letters, then 8 to 12 letters or digits (form only).
-EU_TAX_ID = re.compile(r"^([A-Z]{2})?[A-Z0-9]{8,12}$")
-
-
-def validate_tax_id(country: str, tax_id: str) -> str:
-    """``tax_id`` written as ERPlora invoices it (no spaces, dots nor hyphens, uppercase), if its form
-    is one of ``country``'s; else ``ValueError``.
-
-    Only the form: whether the number exists is VIES's answer, which billing asks before charging
-    (lot L2-A replaces this hook with the VIES check at checkout).
-    """
-    normalized = re.sub(r"[\s.\-/]", "", tax_id).upper()
-    if not normalized:
-        return ""
-    pattern = SPANISH_TAX_ID if country == "ES" or normalized.startswith("ES") else EU_TAX_ID
-    if not pattern.match(normalized):
-        raise ValueError(normalized)
-    return normalized
-
 
 @operation(
     "hubs.billing_profile.update", kind="command", permission="hubs.manage", input=BillingProfileIn, output=BillingProfileOut
 )
 def billing_profile_update(ctx: OperationContext, data: BillingProfileIn) -> dict:
     """The owner says who ERPlora invoices for the business. «Use the business's data» copies its name
-    and country into the payer (PLAN-SAAS §3.1: a copy, not a sync)."""
+    and country into the payer (PLAN-SAAS §3.1: a copy, not a sync).
+
+    The tax ID goes through billing's VAT door (``billing.services.validate_vat_for_profile``, lot L2-B):
+    written as ERPlora invoices it and asked to VIES, whose verdict is logged; a malformed one is the
+    field's 422, one VIES does not confirm is kept as identification (it buys no reverse charge)."""
+    from billing.services import MalformedVatNumber, validate_vat_for_profile
+
     member = queries.access(queries.account_of(ctx), data.hub_id, Role.OWNER, lock=True)
     hub = member.hub
     values = data.model_dump(exclude={"hub_id"})
     if data.same_as_business:
         values["billing_name"] = hub.name
         values["billing_country"] = hub.country
+    problem = postal_code_problem(values["billing_country"], values["billing_postal_code"])
+    if problem:
+        raise InvalidPayload(_("Invalid payload"), fields={"billing_postal_code": problem})
     try:
-        values["tax_id"] = validate_tax_id(values["billing_country"], values["tax_id"])
-    except ValueError:
+        # Without the payer's country yet (it may wait for the first checkout), read it in the business's.
+        country = values["billing_country"] or hub.country
+        values["tax_id"] = validate_vat_for_profile(country, values["tax_id"]).vat_number
+    except MalformedVatNumber:
         raise InvalidPayload(
             _("Invalid payload"), fields={"tax_id": _("Enter a valid tax ID for the country of the payer.")}
         ) from None
@@ -1050,6 +1067,213 @@ def billing_profile_update(ctx: OperationContext, data: BillingProfileIn) -> dic
     profile.save()
     record_event(ctx, events.BILLING_PROFILE_UPDATED, {"hub_id": str(hub.id)})
     return queries.payer_of(hub, member.user)
+
+
+# --- What Stripe says of the plan (billing, lot L2-B) ---------------------------------------------
+
+#: The fields of ``Subscription`` that ``hubs.subscription.apply`` writes as they come (``None`` clears the
+#: two texts).
+APPLIED_FIELDS = (
+    "billing_interval",
+    "status",
+    "stripe_customer_id",
+    "stripe_subscription_id",
+    "current_period_start",
+    "current_period_end",
+    "cancel_at_period_end",
+    "trial_start",
+    "trial_end",
+    "unpaid_reason",
+    "unpaid_since",
+    "unpaid_invoice_url",
+    "cancel_requested_at",
+)
+CLEARED_TO_EMPTY = ("unpaid_reason", "unpaid_invoice_url", "stripe_customer_id", "stripe_subscription_id")
+#: How a standing moves a business (a deleted one never moves; a paid one not ready yet is preparing).
+STANDING_MOVES = {
+    "good": {Hub.Status.PAST_DUE: Hub.Status.ACTIVE, Hub.Status.SUSPENDED: Hub.Status.ACTIVE},
+    "grace": {Hub.Status.ACTIVE: Hub.Status.PAST_DUE},
+    "suspended": {
+        Hub.Status.PREPARING: Hub.Status.SUSPENDED,
+        Hub.Status.ACTIVE: Hub.Status.SUSPENDED,
+        Hub.Status.PAST_DUE: Hub.Status.SUSPENDED,
+    },
+}
+
+
+@operation(
+    "hubs.subscription.apply",
+    kind="command",
+    permission="hubs.manage",
+    input=SubscriptionApplyIn,
+    output=SubscriptionApplyOut,
+)
+def subscription_apply(ctx: OperationContext, data: SubscriptionApplyIn) -> dict:
+    """Write what the LIVE Stripe subscription says of a business (billing reads it: webhook, checkout,
+    the sweep of unpaid plans). Only the platform runs it, in the owner's channel (``system_ctx_for``).
+
+    A field left out is left as it is. What the Hub sees (the effective plan, the commercial status and
+    ``modules[]``, PLAN-SAAS §2.2) bumps ``state_version`` and is pushed after the COMMIT; anything written
+    records ``hubs.subscription.changed``. A paid subscription carries its own trial, so it ends the trial
+    plan of the sign-up. A deleted business keeps its status whatever the standing.
+    """
+    if ctx.actor != "system":
+        raise PermissionDenied(_("Only the platform applies what Stripe says."), code="internal_command")
+    hub = Hub.objects.select_for_update().filter(pk=data.hub_id).first()
+    if hub is None:
+        raise queries.not_found()
+    sent = data.model_dump(exclude_unset=True, exclude={"hub_id"})
+    seen_before = _what_the_hub_sees(hub.id)
+    subscription = Subscription.objects.select_for_update().filter(hub=hub).first()
+    # Only a business stopped for not paying comes back with a payment (nothing else suspends one today,
+    # but a payment must never undo a suspension it did not cause).
+    was_unpaid = bool(subscription and subscription.unpaid_reason)
+    changed = False
+    plan = None
+    if "plan" in sent:
+        plan = Plan.objects.filter(slug=sent["plan"]).first()
+        if plan is None:
+            raise InvalidPayload(_("Invalid payload"), fields={"plan": _("There is no plan with this identifier.")})
+    if subscription is None:
+        subscription = Subscription(hub=hub, plan=plan or queries.free_plan())
+        changed = True
+    changes = {}
+    if plan is not None and subscription.plan_id != plan.pk:
+        changes["plan"] = plan
+    for field in APPLIED_FIELDS:
+        if field in sent:
+            value = sent[field]
+            if value is None and field in CLEARED_TO_EMPTY:
+                value = ""
+            if getattr(subscription, field) != value:
+                changes[field] = value
+    paid_plan = plan is not None and plan.price_monthly > 0
+    if sent.get("stripe_subscription_id") and paid_plan and subscription.trial_plan_id is not None:
+        # The paid plan carries its own trial in Stripe; modules alone leave the business on Free.
+        changes["trial_plan"] = None
+    for field, value in changes.items():
+        setattr(subscription, field, value)
+    if changes or changed:
+        subscription.save()
+        changed = True
+    customer = sent.get("stripe_customer_id")
+    profile = hub.billing_profile
+    if customer and profile is not None and not profile.stripe_customer_id:
+        BillingProfile.objects.filter(pk=profile.pk).update(stripe_customer_id=customer, updated_at=timezone.now())
+        changed = True
+    elif customer and profile is not None and profile.stripe_customer_id != customer:
+        logger.warning(
+            "hubs.subscription.customer_differs hub=%s payer=%s subscription=%s",
+            hub.id,
+            profile.stripe_customer_id,
+            customer,
+        )
+    if "modules" in sent:
+        changed |= _apply_modules(subscription, data.modules or [])
+    changed |= sync_plan_modules(subscription)
+    if "standing" in sent:
+        changed |= _apply_standing(hub, sent["standing"], was_unpaid=was_unpaid)
+    if _what_the_hub_sees(hub.id) != seen_before:
+        bump_state(hub.id)
+        push_after_commit(hub.id)
+    if changed:
+        record_event(ctx, events.SUBSCRIPTION_CHANGED, {"id": str(hub.id)})
+    hub.refresh_from_db(fields=["state_version"])
+    return {"hub_id": hub.id, "state_version": hub.state_version, "changed": changed}
+
+
+def _what_the_hub_sees(hub_id: UUID) -> tuple:
+    snapshot = queries.hub_snapshot(hub_id)
+    return snapshot["status"], snapshot["plan"], snapshot["modules"]
+
+
+def _apply_modules(subscription: Subscription, rights) -> bool:
+    """The bought modules become ``rights``; the ones the plan includes are not Stripe's to touch, unless Stripe
+    bills one open-ended: then its row is bought (with the Stripe item that cancelling it needs)."""
+    changed = False
+    wanted = {right.module_slug: right for right in rights}
+    bought = SubscriptionItem.objects.filter(subscription=subscription, source=SubscriptionItem.Source.PURCHASE)
+    gone = bought.exclude(module_slug__in=wanted)
+    if gone.exists():
+        gone.delete()
+        changed = True
+    have = {item.module_slug: item for item in SubscriptionItem.objects.filter(subscription=subscription)}
+    for slug, right in wanted.items():
+        item = have.get(slug)
+        if item is None:
+            SubscriptionItem.objects.create(
+                subscription=subscription,
+                module_slug=slug,
+                source=SubscriptionItem.Source.PURCHASE,
+                stripe_item_id=right.stripe_item_id,
+                valid_until=right.valid_until,
+            )
+            changed = True
+        elif item.source == SubscriptionItem.Source.PLAN and right.valid_until is None:
+            item.source = SubscriptionItem.Source.PURCHASE
+            item.stripe_item_id = right.stripe_item_id
+            item.valid_until = None
+            item.save(update_fields=["source", "stripe_item_id", "valid_until", "updated_at"])
+            changed = True
+        elif item.source == SubscriptionItem.Source.PURCHASE and (
+            item.stripe_item_id != right.stripe_item_id or item.valid_until != right.valid_until
+        ):
+            item.stripe_item_id = right.stripe_item_id
+            item.valid_until = right.valid_until
+            item.save(update_fields=["stripe_item_id", "valid_until", "updated_at"])
+            changed = True
+    return changed
+
+
+def sync_plan_modules(subscription: Subscription, now=None) -> bool:
+    """Make the business's ``source="plan"`` rights the modules its plan includes now; ``True`` if a row changed.
+
+    The plan is the one the business has now (``effective_plan``): what only the sign-up's trial includes lasts
+    until ``trial_end``. A module Stripe bills open-ended keeps its bought row (cancelling it needs its Stripe
+    item); a bought one already cancelled (``valid_until``) yields its row to the plan, so the right never lapses.
+    Called wherever the plan may change: ``hubs.subscription.apply``, the sign-up, the restore, a trial's end.
+    """
+    now = now or timezone.now()
+    wanted = dict.fromkeys(queries.modules_included_in(subscription.plan))
+    effective = subscription.effective_plan(now)
+    if effective.pk != subscription.plan_id:
+        for slug in queries.modules_included_in(effective):
+            wanted.setdefault(slug, subscription.trial_end)
+    items = SubscriptionItem.objects.filter(subscription=subscription)
+    rows = {item.module_slug: item for item in items}
+    changed = False
+    for slug, item in rows.items():
+        if item.source == SubscriptionItem.Source.PURCHASE and item.valid_until is None:
+            wanted.pop(slug, None)
+        elif item.source == SubscriptionItem.Source.PLAN and slug not in wanted:
+            item.delete()
+            changed = True
+    for slug, until in wanted.items():
+        item = rows.get(slug)
+        if item is None:
+            SubscriptionItem.objects.create(
+                subscription=subscription, module_slug=slug, source=SubscriptionItem.Source.PLAN, valid_until=until
+            )
+            changed = True
+        elif (item.source, item.valid_until, item.stripe_item_id) != (SubscriptionItem.Source.PLAN, until, ""):
+            item.source, item.valid_until, item.stripe_item_id = SubscriptionItem.Source.PLAN, until, ""
+            item.save(update_fields=["source", "valid_until", "stripe_item_id", "updated_at"])
+            changed = True
+    return changed
+
+
+def _apply_standing(hub: Hub, standing: str, *, was_unpaid: bool) -> bool:
+    if standing == "good" and not was_unpaid:
+        return False
+    status = STANDING_MOVES[standing].get(hub.status)
+    if status == Hub.Status.ACTIVE and hub.ready_at is None:
+        status = Hub.Status.PREPARING
+    if status is None or status == hub.status:
+        return False
+    Hub.objects.filter(pk=hub.pk).update(status=status, updated_at=timezone.now())
+    hub.status = status
+    logger.info("hubs.subscription.standing hub=%s standing=%s status=%s", hub.id, standing, status)
+    return True
 
 
 # --- Access, state and the push to the Hub (not operations: called inside or after one) ---------
@@ -1113,7 +1337,12 @@ def seed_demo_business(slug: str, people: dict) -> Hub:
             )
             plan = queries.free_plan()
             if plan is not None:
-                Subscription.objects.create(hub=hub, plan=plan, status=Subscription.Status.ACTIVE, current_period_start=now)
+                sync_plan_modules(
+                    Subscription.objects.create(
+                        hub=hub, plan=plan, status=Subscription.Status.ACTIVE, current_period_start=now
+                    ),
+                    now,
+                )
         for user, role in people.items():
             joined = timezone.now()
             HubMember.objects.get_or_create(
@@ -1143,6 +1372,46 @@ def revoke_after_commit(user_id: UUID, hub_id: UUID | None = None) -> SessionRev
     revocation = SessionRevocation.objects.create(user_id=user_id, hub_id=hub_id)
     transaction.on_commit(partial(_deliver_quietly, revocation.id), robust=True)
     return revocation
+
+
+# --- What an account's own changes mean to its businesses (``accounts.signals``, connected in apps.py) --
+
+
+def end_account_sessions(sender, user_id: UUID, **kwargs) -> SessionRevocation:
+    """``accounts.signals.sessions_ended``: the account's sessions end in every business too (PLAN-SAAS §2.1).
+
+    One revocation without a business (the Hub ends them all, its admin's too), queued in the sender's
+    transaction and delivered after its COMMIT; ``reconcile_hub_states`` retries it while the Hub is away.
+    """
+    return revoke_after_commit(user_id)
+
+
+def account_leaving(sender, user_id: UUID, **kwargs) -> None:
+    """``accounts.signals.account_deleting``: the account leaves every business as a removed member does.
+
+    Its pending ownership offers, made or received, are cancelled (one pending offer per business would block
+    the owner for 7 days); each membership and invitation goes through ``_take_out`` (access mirror, a newer
+    snapshot pushed after the COMMIT), and the owner and admins of every business it answered are told. Its
+    sessions end through ``sessions_ended``, which accounts sends next."""
+    HubOwnershipTransfer.objects.filter(
+        Q(from_user_id=user_id) | Q(to_user_id=user_id), status=HubOwnershipTransfer.Status.PENDING
+    ).update(status=HubOwnershipTransfer.Status.CANCELLED, resolved_at=timezone.now())
+    for member in HubMember.objects.select_related("hub").filter(user_id=user_id).order_by("hub_id"):
+        _take_out(member)
+        if member.accepted_at is not None:
+            notify_people(system_ctx_for(member.hub_id), events.MEMBER_CHANGED, member.hub_id)
+
+
+def account_email_changed(sender, user, **kwargs) -> None:
+    """allauth's ``email_changed``: the snapshot's ``members[]`` carries the address (PLAN-SAAS §2.2)."""
+    _people_changed(user.pk)
+
+
+def _people_changed(user_id: UUID) -> None:
+    for hub_id in queries.answered_business_ids(user_id):
+        bump_state(hub_id)
+        push_after_commit(hub_id)
+        notify_people(system_ctx_for(hub_id), events.MEMBER_CHANGED, hub_id)
 
 
 def _sync_quietly(hub_id: UUID) -> None:
@@ -1402,6 +1671,7 @@ def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER) -> Counter:
             status=Subscription.Status.ACTIVE, updated_at=now
         )
         if ended:
+            sync_plan_modules(Subscription.objects.get(pk=subscription.pk), now)
             bump_state(subscription.hub_id)
             counts["trials_ended"] += 1
     owed = Hub.objects.exclude(status=Hub.Status.DELETED).filter(
@@ -1502,3 +1772,113 @@ def push_snapshots(*, behind_only: bool = False) -> Counter:
         counts["pushed" if outcome == DELIVERED else "owed"] += 1
         counts[REFUSED] += outcome == REFUSED
     return counts
+
+
+# --- Usage: the nightly collection (lot L4-A, PLAN-SAAS §5) -----------------------------------------
+
+#: The figures of a day of usage, as ``HubUsageDaily`` keeps them.
+USAGE_FIGURES = ("s3_bytes", "db_bytes", "active_users_1d", "active_users_30d")
+#: Counts that make ``collect_hub_usage`` end with an error, after its whole pass.
+USAGE_FAILING_COUNTS = ("unreachable", "refused", "invalid", "failed")
+
+
+@operation(
+    "hubs.usage.record",
+    kind="command",
+    permission="hubs.manage",
+    input=UsageRecordIn,
+    output=UsageRecordOut,
+)
+def usage_record(ctx: OperationContext, data: UsageRecordIn) -> dict:
+    """One day of a business's usage as the Hub measured it (``collect_hub_usage``); only the platform runs it.
+
+    A day measured again replaces its figures. New or different figures are told to the owner and the admins
+    (``hubs.business.usage_collected``), whose page re-runs; the same figures again write and tell nothing.
+    """
+    if ctx.actor != "system":
+        raise PermissionDenied(_("Only the platform records the usage of a business."), code="internal_command")
+    if not Hub.objects.filter(pk=data.id).exists():
+        raise queries.not_found()
+    figures = {name: getattr(data, name) for name in USAGE_FIGURES}
+    sample, created = HubUsageDaily.objects.select_for_update().get_or_create(
+        hub_id=data.id, day=data.day, defaults=figures
+    )
+    changed = created or any(getattr(sample, name) != value for name, value in figures.items())
+    if changed:
+        if not created:
+            HubUsageDaily.objects.filter(pk=sample.pk).update(**figures, collected_at=timezone.now())
+        notify_people(ctx, events.BUSINESS_USAGE_COLLECTED, data.id)
+    return {"id": data.id, "day": data.day, "changed": changed}
+
+
+def usage_run_failed(counts: Counter) -> bool:
+    """Whether a pass of ``collect_hub_usage`` met the Hub away or refusing, or an answer off the contract."""
+    return any(counts[key] for key in USAGE_FAILING_COUNTS)
+
+
+def collect_usage(day: date) -> Counter:
+    """One pass of ``collect_hub_usage``: every page of ``GET /internal/usage?day=``, each business's day
+    recorded on its own (one bad row, or one that fails, never stops the others).
+
+    Counts: ``pages``; ``recorded`` (new or different) and ``unchanged``; ``unknown`` (a hub the SaaS never
+    sold: the Hub's own, its templates; logged, not an error); ``invalid`` (a row, a page or a cursor off the
+    contract); ``unreachable`` and ``refused`` (the Hub away, or its 4xx: the pass ends there, with what it
+    had); ``failed`` (a row that crashed)."""
+    keys = ("pages", "recorded", "unchanged", "unknown", "invalid", "unreachable", "refused", "failed")
+    counts = Counter({key: 0 for key in keys})
+    cursor, seen = None, set()
+    while True:
+        try:
+            answer = hub_client.get_usage(day, cursor)
+        except HubUnavailable as away:
+            logger.error("hubs.usage.unreachable day=%s: %s", day, away)
+            counts["unreachable"] += 1
+            break
+        except HubRefused as refused:
+            logger.error("hubs.usage.refused day=%s: %s", day, refused)
+            counts["refused"] += 1
+            break
+        try:
+            page = HubUsagePageIn.model_validate(answer.body)
+        except ValidationError as broken:
+            logger.error("hubs.usage.invalid_page day=%s: %s", day, broken)
+            counts["invalid"] += 1
+            break
+        if page.day != day:
+            logger.error("hubs.usage.invalid_page day=%s: the Hub answered for %s", day, page.day)
+            counts["invalid"] += 1
+            break
+        counts["pages"] += 1
+        for row in page.hubs:
+            _record_counted(day, row, counts)
+        cursor = page.next_cursor
+        if cursor is None:
+            break
+        if cursor in seen:
+            logger.error("hubs.usage.invalid_page day=%s: the Hub sent the cursor %r again", day, cursor)
+            counts["invalid"] += 1
+            break
+        seen.add(cursor)
+    return counts
+
+
+def _record_counted(day: date, row: dict, counts: Counter) -> None:
+    try:
+        measured = HubUsageIn.model_validate(row)
+    except ValidationError as broken:
+        logger.error("hubs.usage.invalid_row day=%s: %s", day, broken)
+        counts["invalid"] += 1
+        return
+    try:
+        recorded = usage_record(
+            system_context(Scope("user", "system")), UsageRecordIn(**measured.model_dump(), day=day)
+        )
+    except NotFound:
+        logger.warning("hubs.usage.unknown_hub day=%s hub=%s", day, measured.id)
+        counts["unknown"] += 1
+        return
+    except Exception:  # noqa: BLE001 - one business never stops the pass; the run fails after it
+        logger.exception("hubs.usage.crashed day=%s hub=%s", day, measured.id)
+        counts["failed"] += 1
+        return
+    counts["recorded" if recorded.changed else "unchanged"] += 1

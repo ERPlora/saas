@@ -23,6 +23,8 @@ dependencies = [
     "django-ses>=4.8.2",
     # The fiscal seal's .p12 (report_seal_expiry reads its certificate's expiry).
     "cryptography>=50.0",
+    # Stripe (lot L2-B): Embedded Checkout, the hub's subscription and its items, the webhook.
+    "stripe>=16.0",
 ]
 
 [tool.uv]

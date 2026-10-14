@@ -8,9 +8,13 @@ The rest are an account's (``hubs.view``, held by every signed-in account): its 
 business's page and members, its invitations and a business's payer. Who may read what is decided
 here by the account's ``HubMember`` role (round 17 §2.7): somebody without access to a business gets
 404, never a hint that it exists; a role below the one needed gets 403.
+
+An account's API key with ``hubs.read`` opens the reads declared ``expose_api=True`` (its businesses, a
+business's page and members, the taxonomy and the plans) as that account (``accounts.api_auth``); no
+command is exposed yet.
 """
 
-from datetime import datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from urllib.parse import urlsplit
 import re
@@ -30,7 +34,17 @@ from live.slugs import is_reserved_hub_slug, validate_hub_slug
 
 from accounts.models import HubMembership
 from accounts.queries import hub_origin
-from hubs.models import BusinessType, Hub, HubMember, HubOwnershipTransfer, Plan, Sector, Subscription
+from apps.models import Module
+from hubs.models import (
+    BusinessType,
+    Hub,
+    HubMember,
+    HubOwnershipTransfer,
+    HubUsageDaily,
+    Plan,
+    Sector,
+    Subscription,
+)
 from hubs.retired_codes import current_business_type_code
 from hubs.schemas import (
     AddressProposeIn,
@@ -51,10 +65,15 @@ from hubs.schemas import (
     PlanListOut,
     SectorListIn,
     SectorListOut,
+    UsageGetIn,
+    UsageOut,
+    UsageSeriesIn,
+    UsageSeriesOut,
 )
 
 Role = HubMember.Role
 RANK = HubMember.RANK
+
 
 def _entry(row: Sector | BusinessType, language: str) -> dict[str, Any]:
     return {
@@ -67,7 +86,14 @@ def _entry(row: Sector | BusinessType, language: str) -> dict[str, Any]:
     }
 
 
-@operation("hubs.sector.list", kind="query", permission=None, input=SectorListIn, output=SectorListOut)
+@operation(
+    "hubs.sector.list",
+    kind="query",
+    permission=None,
+    input=SectorListIn,
+    output=SectorListOut,
+    expose_api=True,
+)
 def sector_list(ctx: OperationContext, data: SectorListIn) -> dict[str, Any]:
     """The active sectors, by their display order."""
     sectors = Sector.objects.filter(is_active=True).order_by("display_order", "code")
@@ -75,12 +101,21 @@ def sector_list(ctx: OperationContext, data: SectorListIn) -> dict[str, Any]:
 
 
 @operation(
-    "hubs.business_type.list", kind="query", permission=None, input=BusinessTypeListIn, output=BusinessTypeListOut
+    "hubs.business_type.list",
+    kind="query",
+    permission=None,
+    input=BusinessTypeListIn,
+    output=BusinessTypeListOut,
+    expose_api=True,
 )
-def business_type_list(ctx: OperationContext, data: BusinessTypeListIn) -> dict[str, Any]:
+def business_type_list(
+    ctx: OperationContext, data: BusinessTypeListIn
+) -> dict[str, Any]:
     """The active business types by their display order, then code, across sectors (the origin ``catalog``'s
     ``ordering = ["order", "code"]``: ``/industries/`` interleaves them as the seed orders them)."""
-    business_types = BusinessType.objects.filter(is_active=True).select_related("sector")
+    business_types = BusinessType.objects.filter(is_active=True).select_related(
+        "sector"
+    )
     if data.sector:
         business_types = business_types.filter(sector__code=data.sector)
     ordered = business_types.order_by("display_order", "code")
@@ -97,10 +132,19 @@ def business_type_list(ctx: OperationContext, data: BusinessTypeListIn) -> dict[
 
 
 def _sector_ref(sector: Sector | None, language: str) -> dict[str, str] | None:
-    return None if sector is None else {"code": sector.code, "name": sector.name(language)}
+    return (
+        None if sector is None else {"code": sector.code, "name": sector.name(language)}
+    )
 
 
-@operation("hubs.plan.list", kind="query", permission=None, input=PlanListIn, output=PlanListOut)
+@operation(
+    "hubs.plan.list",
+    kind="query",
+    permission=None,
+    input=PlanListIn,
+    output=PlanListOut,
+    expose_api=True,
+)
 def plan_list(ctx: OperationContext, data: PlanListIn) -> dict[str, Any]:
     """The plans on sale (``Plan.objects.public()``), by display order then price.
 
@@ -109,15 +153,27 @@ def plan_list(ctx: OperationContext, data: PlanListIn) -> dict[str, Any]:
     """
     plans = list(Plan.objects.public().order_by("display_order", "price_monthly"))
     signable = [plan for plan in plans if not plan.upgrade_only]
-    cheapest = min(signable, key=lambda plan: (plan.price_monthly, plan.display_order), default=None)
+    cheapest = min(
+        signable,
+        key=lambda plan: (plan.price_monthly, plan.display_order),
+        default=None,
+    )
     trial_days = Plan.objects.signup_trial_days()["trial_days_max"] or 0
     with translation.override(ctx.language):
         rows = [_plan(plan, ctx.language) for plan in plans]
-    return {"signup_trial_days": trial_days, "cheapest_slug": cheapest.slug if cheapest else None, "plans": rows}
+    return {
+        "signup_trial_days": trial_days,
+        "cheapest_slug": cheapest.slug if cheapest else None,
+        "plans": rows,
+    }
 
 
 def _plan(plan: Plan, language: str) -> dict[str, Any]:
-    features = [feature for feature in plan.translated("features", language) if str(feature).strip().strip("─").strip()]
+    features = [
+        feature
+        for feature in plan.translated("features", language)
+        if str(feature).strip().strip("─").strip()
+    ]
     if not plan.upgrade_only and plan.trial_label:
         features.append(plan.trial_label)
     return {
@@ -163,7 +219,9 @@ def not_found() -> NotFound:
     return NotFound(_("This business does not exist or you have no access to it."))
 
 
-def access(user, hub_id: UUID, minimum: str = Role.EMPLOYEE, *, lock: bool = False) -> HubMember:
+def access(
+    user, hub_id: UUID, minimum: str = Role.EMPLOYEE, *, lock: bool = False
+) -> HubMember:
     """``user``'s answered membership of the business ``hub_id``, with its hub.
 
     No business, no membership or an unanswered invitation: 404 (nobody learns a business exists).
@@ -202,7 +260,11 @@ def is_writable(hub: Hub) -> bool:
 
 def is_restorable(hub: Hub, now: datetime) -> bool:
     """Deleted and still within its 90 days (``hubs.business.restore``)."""
-    return hub.status == Hub.Status.DELETING and hub.purge_after is not None and hub.purge_after > now
+    return (
+        hub.status == Hub.Status.DELETING
+        and hub.purge_after is not None
+        and hub.purge_after > now
+    )
 
 
 def can(member: HubMember, now: datetime | None = None) -> dict[str, bool]:
@@ -248,7 +310,9 @@ SLUG_BASE_MAX_LENGTH = 30
 
 def free_plan() -> Plan | None:
     """The permanent Free plan (0 €) a business is born on, or ``None`` if it is not seeded."""
-    return Plan.objects.public().filter(price_monthly=0).order_by("display_order").first()
+    return (
+        Plan.objects.public().filter(price_monthly=0).order_by("display_order").first()
+    )
 
 
 def trial_plan() -> Plan | None:
@@ -256,11 +320,28 @@ def trial_plan() -> Plan | None:
     return Plan.objects.public().filter(slug="starter", trial_period_days__gt=0).first()
 
 
+#: The module tiers from the lowest (ADR-0474): ``Plan.included_level`` and ``apps.Module.tier`` share the names.
+LEVELS = [Plan.IncludedLevel.FREE, Plan.IncludedLevel.BASIC, Plan.IncludedLevel.PRO, Plan.IncludedLevel.ENTERPRISE]
+
+
+def modules_included_in(plan: Plan | None) -> list[str]:
+    """The paid modules ``plan`` includes, by slug: every ``apps.Module`` whose tier its ``included_level`` reaches.
+
+    A module taken off sale (``is_active`` off) stays included: that switch stops new purchases, not the rights
+    the plans give."""
+    if plan is None or plan.included_level not in LEVELS:
+        return []
+    reached = LEVELS[: LEVELS.index(plan.included_level) + 1]
+    return list(Module.objects.filter(tier__in=reached).order_by("slug").values_list("slug", flat=True))
+
+
 def free_hubs_owned(user, excluding: UUID | None = None) -> int:
     """The Free businesses ``user`` owns (a deleted one no longer counts): ADR-0154's quota."""
-    owned = Hub.objects.filter(members__user=user, members__role=Role.OWNER, subscription__plan__price_monthly=0).exclude(
-        status__in=[Hub.Status.DELETING, Hub.Status.DELETED]
-    )
+    owned = Hub.objects.filter(
+        members__user=user,
+        members__role=Role.OWNER,
+        subscription__plan__price_monthly=0,
+    ).exclude(status__in=[Hub.Status.DELETING, Hub.Status.DELETED])
     if excluding is not None:
         owned = owned.exclude(pk=excluding)
     return owned.count()
@@ -270,12 +351,17 @@ def business_type_for(code: str | None) -> BusinessType | None:
     """The active business type of ``code`` (a retired code resolves to its survivor); else «not said»."""
     if not code:
         return None
-    return BusinessType.objects.filter(code=current_business_type_code(code), is_active=True).first()
+    return BusinessType.objects.filter(
+        code=current_business_type_code(code), is_active=True
+    ).first()
 
 
 def slug_taken(slug: str) -> bool:
     """A business has it, or a hub of the phase-1 seed (only an ``accounts.HubMembership`` row)."""
-    return Hub.objects.filter(slug=slug).exists() or HubMembership.objects.filter(hub_slug=slug).exists()
+    return (
+        Hub.objects.filter(slug=slug).exists()
+        or HubMembership.objects.filter(hub_slug=slug).exists()
+    )
 
 
 def base_slug(name: str) -> str:
@@ -284,7 +370,9 @@ def base_slug(name: str) -> str:
     ``slugify`` keeps ``_``, which no DNS label admits: it becomes ``-``, runs of hyphens collapse and
     none is left at an end (also after the cut). A reserved or too short name gets ``-store``.
     """
-    base = re.sub(r"-+", "-", slugify(name).replace("_", "-"))[:SLUG_BASE_MAX_LENGTH].strip("-")
+    base = re.sub(r"-+", "-", slugify(name).replace("_", "-"))[
+        :SLUG_BASE_MAX_LENGTH
+    ].strip("-")
     if not base:
         return FALLBACK_SLUG
     if is_reserved_hub_slug(base) or len(base) < 3:
@@ -303,8 +391,14 @@ def is_valid_slug(slug: str) -> bool:
 def free_slug(name: str) -> str:
     """The first free address of ``name``: ``bar-manolo``, ``bar-manolo-2``…"""
     base = base_slug(name)
-    taken = set(Hub.objects.filter(slug__startswith=base).values_list("slug", flat=True))
-    taken |= set(HubMembership.objects.filter(hub_slug__startswith=base).values_list("hub_slug", flat=True))
+    taken = set(
+        Hub.objects.filter(slug__startswith=base).values_list("slug", flat=True)
+    )
+    taken |= set(
+        HubMembership.objects.filter(hub_slug__startswith=base).values_list(
+            "hub_slug", flat=True
+        )
+    )
     candidate, counter = base, 1
     while candidate in taken or not is_valid_slug(candidate):
         counter += 1
@@ -312,7 +406,13 @@ def free_slug(name: str) -> str:
     return candidate
 
 
-@operation("hubs.address.propose", kind="query", permission="hubs.view", input=AddressProposeIn, output=AddressProposeOut)
+@operation(
+    "hubs.address.propose",
+    kind="query",
+    permission="hubs.view",
+    input=AddressProposeIn,
+    output=AddressProposeOut,
+)
 def address_propose(ctx: OperationContext, data: AddressProposeIn) -> dict[str, Any]:
     """The address «Create a business» proposes while the name is typed."""
     account_of(ctx)
@@ -323,7 +423,14 @@ def address_propose(ctx: OperationContext, data: AddressProposeIn) -> dict[str, 
 # --- The businesses of an account -----------------------------------------------------------------
 
 
-@operation("hubs.business.list", kind="query", permission="hubs.view", input=BusinessListIn, output=BusinessListOut)
+@operation(
+    "hubs.business.list",
+    kind="query",
+    permission="hubs.view",
+    input=BusinessListIn,
+    output=BusinessListOut,
+    expose_api=True,
+)
 def business_list(ctx: OperationContext, data: BusinessListIn) -> dict[str, Any]:
     """The account's businesses, the last opened first (round 17 §2.2), then by name.
 
@@ -331,12 +438,22 @@ def business_list(ctx: OperationContext, data: BusinessListIn) -> dict[str, Any]
     """
     user = account_of(ctx)
     members = (
-        HubMember.objects.select_related("hub", "hub__subscription__plan", "hub__subscription__trial_plan")
+        HubMember.objects.select_related(
+            "hub", "hub__billing_profile", "hub__subscription__plan", "hub__subscription__trial_plan"
+        )
         .filter(user=user, accepted_at__isnull=False, hub__status__in=LISTED)
-        .annotate(opened=Case(When(last_opened_at__isnull=True, then=Value(1)), default=Value(0), output_field=IntegerField()))
+        .annotate(
+            opened=Case(
+                When(last_opened_at__isnull=True, then=Value(1)),
+                default=Value(0),
+                output_field=IntegerField(),
+            )
+        )
     )
     if data.search:
-        members = members.filter(Q(hub__name__icontains=data.search) | Q(hub__slug__icontains=data.search))
+        members = members.filter(
+            Q(hub__name__icontains=data.search) | Q(hub__slug__icontains=data.search)
+        )
     ordered = members.order_by("opened", "-last_opened_at", "hub__name", "hub__id")
     total = ordered.count()
     page = ordered[data.offset : data.offset + data.limit]
@@ -375,7 +492,33 @@ def business_row(member: HubMember, now: datetime) -> dict[str, Any]:
         "deletion_requested_at": hub.deletion_requested_at,
         "purge_after": hub.purge_after,
         "created_at": hub.created_at,
-        "can": {key: allowed for key, allowed in can(member, now).items() if key in ROW_CAN},
+        "can": {
+            key: allowed for key, allowed in can(member, now).items() if key in ROW_CAN
+        },
+        **unpaid_of(member, getattr(hub, "subscription", None)),
+        "is_payer": is_payer(member),
+    }
+
+
+def is_payer(member: HubMember) -> bool:
+    """Whether ``member``'s account owns its business's payer (``billing_profile``): it pays for the business,
+    whatever its role (the owner before a hand-over keeps it until the new one writes its own)."""
+    profile = member.hub.billing_profile
+    return profile is not None and profile.owner_id == member.user_id
+
+
+def unpaid_of(member: HubMember, subscription: Subscription | None) -> dict[str, Any]:
+    """Why the business's renewal is not paid, and since when (mockups README §6.18), as ``member`` sees
+    it: the invoice to pay only for its PAYER (after a transfer the owner may not be; the invoice's page
+    shows the payer's card), never for a role."""
+    if subscription is None or not subscription.unpaid_reason:
+        return {"unpaid_reason": None, "unpaid_since": None, "pay_url": None}
+    payer = member.hub.billing_profile
+    pays = payer is not None and payer.owner_id == member.user_id
+    return {
+        "unpaid_reason": subscription.unpaid_reason,
+        "unpaid_since": subscription.unpaid_since,
+        "pay_url": (subscription.unpaid_invoice_url or None) if pays else None,
     }
 
 
@@ -391,14 +534,24 @@ def invitations_of(user, now: datetime) -> list[dict[str, Any]]:
     """The invitations waiting for ``user``'s answer: not answered, not expired, business not deleted."""
     pending = (
         HubMember.objects.select_related("hub", "invited_by")
-        .filter(user=user, accepted_at__isnull=True, hub__status__in=[s for s in LISTED if s != Hub.Status.DELETING])
-        .filter(Q(invitation_expires_at__isnull=True) | Q(invitation_expires_at__gt=now))
+        .filter(
+            user=user,
+            accepted_at__isnull=True,
+            hub__status__in=[s for s in LISTED if s != Hub.Status.DELETING],
+        )
+        .filter(
+            Q(invitation_expires_at__isnull=True) | Q(invitation_expires_at__gt=now)
+        )
         .order_by("invited_at", "id")
     )
     return [
         {
             "id": member.id,
-            "hub": {"id": member.hub.id, "slug": member.hub.slug, "name": member.hub.name},
+            "hub": {
+                "id": member.hub.id,
+                "slug": member.hub.slug,
+                "name": member.hub.name,
+            },
             "role": member.role,
             "role_label": str(member.get_role_display()),
             "invited_by": _name_of(member.invited_by),
@@ -414,7 +567,9 @@ def ownership_offers_of(user, now: datetime) -> list[dict[str, Any]]:
     """The businesses offered to ``user``, waiting for its answer (an expired offer is not live)."""
     offers = (
         HubOwnershipTransfer.objects.select_related("hub")
-        .filter(to_user=user, status=HubOwnershipTransfer.Status.PENDING, expires_at__gt=now)
+        .filter(
+            to_user=user, status=HubOwnershipTransfer.Status.PENDING, expires_at__gt=now
+        )
         .order_by("-created_at")
     )
     return [
@@ -434,7 +589,14 @@ def _name_of(user) -> str | None:
     return user.get_full_name() or user.email
 
 
-@operation("hubs.business.get", kind="query", permission="hubs.view", input=ByIdIn, output=BusinessDetailOut)
+@operation(
+    "hubs.business.get",
+    kind="query",
+    permission="hubs.view",
+    input=ByIdIn,
+    output=BusinessDetailOut,
+    expose_api=True,
+)
 def business_get(ctx: OperationContext, data: ByIdIn) -> dict[str, Any]:
     """A business's page (the Summary and Settings tabs): its owner and its administrators."""
     user = account_of(ctx)
@@ -445,13 +607,24 @@ def business_get(ctx: OperationContext, data: ByIdIn) -> dict[str, Any]:
 
 def business_detail(member: HubMember) -> dict[str, Any]:
     """The page of ``member``'s business as ``member`` sees it."""
-    hub = Hub.objects.select_related("business_type").get(pk=member.hub_id)
+    hub = Hub.objects.select_related("business_type", "billing_profile").get(pk=member.hub_id)
     member.hub = hub
     now = timezone.now()
-    subscription = Subscription.objects.select_related("plan", "trial_plan").filter(hub=hub).first()
-    trial_live = subscription is not None and subscription.trial_plan_id is not None and subscription.trial_end and subscription.trial_end > now
+    subscription = (
+        Subscription.objects.select_related("plan", "trial_plan")
+        .filter(hub=hub)
+        .first()
+    )
+    trial_live = (
+        subscription is not None
+        and subscription.trial_plan_id is not None
+        and subscription.trial_end
+        and subscription.trial_end > now
+    )
     pending = (
-        HubOwnershipTransfer.objects.filter(hub=hub, status=HubOwnershipTransfer.Status.PENDING, expires_at__gt=now).first()
+        HubOwnershipTransfer.objects.filter(
+            hub=hub, status=HubOwnershipTransfer.Status.PENDING, expires_at__gt=now
+        ).first()
         if member.role == Role.OWNER
         else None
     )
@@ -465,7 +638,9 @@ def business_detail(member: HubMember) -> dict[str, Any]:
         "timezone": hub.timezone,
         "language": hub.language,
         "business_type": (
-            {"code": hub.business_type.code, "name": hub.business_type.name()} if hub.business_type else None
+            {"code": hub.business_type.code, "name": hub.business_type.name()}
+            if hub.business_type
+            else None
         ),
         "status": hub.status,
         "status_label": status_label(hub.status),
@@ -476,16 +651,35 @@ def business_detail(member: HubMember) -> dict[str, Any]:
         "purge_after": hub.purge_after,
         "role": member.role,
         "role_label": str(member.get_role_display()),
-        "plan": {"slug": subscription.plan.slug, "name": subscription.plan.translated("name")} if subscription else None,
+        "plan": {
+            "slug": subscription.plan.slug,
+            "name": subscription.plan.translated("name"),
+        }
+        if subscription
+        else None,
         "trial_plan": (
-            {"slug": subscription.trial_plan.slug, "name": subscription.trial_plan.translated("name")} if trial_live else None
+            {
+                "slug": subscription.trial_plan.slug,
+                "name": subscription.trial_plan.translated("name"),
+            }
+            if trial_live
+            else None
         ),
         "trial_end": subscription.trial_end if trial_live else None,
         "seats": seats_of(hub, now),
         "pending_transfer": (
-            {"id": pending.id, "to_email": pending.to_email, "expires_at": pending.expires_at} if pending else None
+            {
+                "id": pending.id,
+                "to_email": pending.to_email,
+                "expires_at": pending.expires_at,
+            }
+            if pending
+            else None
         ),
         "can": can(member, now),
+        **unpaid_of(member, subscription),
+        "is_payer": is_payer(member),
+        "usage": usage_of(hub, subscription.effective_plan(now) if subscription else None, now),
     }
 
 
@@ -503,7 +697,11 @@ def seats_of(hub: Hub, now: datetime) -> dict[str, int | None]:
     every paid plan and the Starter trial, or no subscription at all)."""
     used = (
         HubMember.objects.filter(hub=hub)
-        .filter(Q(accepted_at__isnull=False) | Q(invitation_expires_at__isnull=True) | Q(invitation_expires_at__gt=now))
+        .filter(
+            Q(accepted_at__isnull=False)
+            | Q(invitation_expires_at__isnull=True)
+            | Q(invitation_expires_at__gt=now)
+        )
         .count()
     )
     return {"used": used, "limit": seat_limit_of(hub, now)}
@@ -511,7 +709,11 @@ def seats_of(hub: Hub, now: datetime) -> dict[str, int | None]:
 
 def seat_limit_of(hub: Hub, now: datetime) -> int | None:
     """The people the plan of ``hub`` covers at ``now``; ``None`` = unlimited."""
-    subscription = Subscription.objects.select_related("plan", "trial_plan").filter(hub=hub).first()
+    subscription = (
+        Subscription.objects.select_related("plan", "trial_plan")
+        .filter(hub=hub)
+        .first()
+    )
     limit = subscription.effective_plan(now).max_users if subscription else 0
     return limit or None
 
@@ -524,12 +726,18 @@ def people_inside(hub: Hub) -> int:
 def expired_deletions(cutoff: datetime) -> list[UUID]:
     """The deleted businesses whose recovery window closed before ``cutoff``."""
     return list(
-        Hub.objects.filter(status=Hub.Status.DELETING, deletion_requested_at__lte=cutoff).values_list("id", flat=True)
+        Hub.objects.filter(
+            status=Hub.Status.DELETING, deletion_requested_at__lte=cutoff
+        ).values_list("id", flat=True)
     )
 
 
 def owner_id(hub_id: UUID) -> UUID | None:
-    return HubMember.objects.filter(hub_id=hub_id, role=Role.OWNER).values_list("user_id", flat=True).first()
+    return (
+        HubMember.objects.filter(hub_id=hub_id, role=Role.OWNER)
+        .values_list("user_id", flat=True)
+        .first()
+    )
 
 
 def people_to_tell(hub_id: UUID, also=()) -> list[UUID]:
@@ -538,14 +746,29 @@ def people_to_tell(hub_id: UUID, also=()) -> list[UUID]:
     managers = HubMember.objects.filter(
         hub_id=hub_id, accepted_at__isnull=False, role__in=[Role.OWNER, Role.ADMIN]
     ).values_list("user_id", flat=True)
-    return sorted({*managers, *(user_id for user_id in also if user_id is not None)}, key=str)
+    return sorted(
+        {*managers, *(user_id for user_id in also if user_id is not None)}, key=str
+    )
+
+
+def answered_business_ids(user_id: UUID) -> list[UUID]:
+    """The businesses whose snapshot lists the account (its answered memberships), by id."""
+    return list(
+        HubMember.objects.filter(user_id=user_id, accepted_at__isnull=False)
+        .order_by("hub_id")
+        .values_list("hub_id", flat=True)
+    )
 
 
 def mirror_migrated() -> bool:
     """Whether accounts and hubs have no migration left to apply, so the mirror can be compared (the check
     ``hubs.W001`` runs in ``migrate`` too, before the tables or the data migration ``0006`` are there)."""
     executor = MigrationExecutor(connection)
-    targets = [node for node in executor.loader.graph.leaf_nodes() if node[0] in ("accounts", "hubs")]
+    targets = [
+        node
+        for node in executor.loader.graph.leaf_nodes()
+        if node[0] in ("accounts", "hubs")
+    ]
     return not executor.migration_plan(targets)
 
 
@@ -568,7 +791,10 @@ def verify_access_mirror() -> list[MirrorDrift]:
         .values_list("hub__slug", "user_id", "role")
     }
     has = {
-        (slug, str(user_id)): role for slug, user_id, role in HubMembership.objects.values_list("hub_slug", "user_id", "role")
+        (slug, str(user_id)): role
+        for slug, user_id, role in HubMembership.objects.values_list(
+            "hub_slug", "user_id", "role"
+        )
     }
     return [
         (slug, user_id, should.get((slug, user_id)), has.get((slug, user_id)))
@@ -611,13 +837,22 @@ def hub_snapshot(hub_id: UUID) -> dict[str, Any]:
     """
     hub = Hub.objects.get(pk=hub_id)
     now = timezone.now()
-    subscription = Subscription.objects.select_related("plan", "trial_plan").filter(hub=hub).first()
+    subscription = (
+        Subscription.objects.select_related("plan", "trial_plan")
+        .filter(hub=hub)
+        .first()
+    )
     plan = subscription.effective_plan(now) if subscription else free_plan()
     items = subscription.items.order_by("module_slug") if subscription else []
     members = (
         HubMember.objects.select_related("user")
         .filter(hub=hub, accepted_at__isnull=False)
-        .annotate(rank=Case(*[When(role=role, then=Value(rank)) for role, rank in RANK.items()], output_field=IntegerField()))
+        .annotate(
+            rank=Case(
+                *[When(role=role, then=Value(rank)) for role, rank in RANK.items()],
+                output_field=IntegerField(),
+            )
+        )
         .order_by("rank", "joined_at", "id")
     )
     return {
@@ -629,7 +864,9 @@ def hub_snapshot(hub_id: UUID) -> dict[str, Any]:
             {
                 "id": item.module_slug,
                 "source": item.source,
-                "valid_until": item.valid_until.isoformat() if item.valid_until else None,
+                "valid_until": item.valid_until.isoformat()
+                if item.valid_until
+                else None,
             }
             for item in items
             if item.is_live(now)
@@ -690,33 +927,51 @@ def manages(actor: HubMember, target: HubMember) -> bool:
 def ranked(members):
     """``members`` with their ``rank``, the owner first."""
     return members.annotate(
-        rank=Case(*[When(role=role, then=Value(rank)) for role, rank in RANK.items()], output_field=IntegerField())
+        rank=Case(
+            *[When(role=role, then=Value(rank)) for role, rank in RANK.items()],
+            output_field=IntegerField(),
+        )
     )
 
 
-@operation("hubs.member.list", kind="query", permission="hubs.view", input=MemberListIn, output=MemberListOut)
+@operation(
+    "hubs.member.list",
+    kind="query",
+    permission="hubs.view",
+    input=MemberListIn,
+    output=MemberListOut,
+    expose_api=True,
+)
 def member_list(ctx: OperationContext, data: MemberListIn) -> dict[str, Any]:
     """The members page of a business (the Members tab), for its owner and its administrators: every member
     and invitation, the owner first, with the actions the account may take on each row."""
     actor = access(account_of(ctx), data.hub_id, Role.ADMIN)
     now = timezone.now()
-    everyone = ranked(HubMember.objects.select_related("user", "invited_by").filter(hub_id=data.hub_id)).order_by(
-        "rank", "joined_at", "id"
-    )
+    everyone = ranked(
+        HubMember.objects.select_related("user", "invited_by").filter(
+            hub_id=data.hub_id
+        )
+    ).order_by("rank", "joined_at", "id")
     total = everyone.count()
     page = everyone[data.offset : data.offset + data.limit]
     offered = HubOwnershipTransfer.objects.filter(
-        hub_id=data.hub_id, status=HubOwnershipTransfer.Status.PENDING, expires_at__gt=now
+        hub_id=data.hub_id,
+        status=HubOwnershipTransfer.Status.PENDING,
+        expires_at__gt=now,
     ).exists()
     with translation.override(ctx.language):
-        rows = [member_row(actor, member, now, transfer_pending=offered) for member in page]
+        rows = [
+            member_row(actor, member, now, transfer_pending=offered) for member in page
+        ]
     return {
         "rows": rows,
         "total": total,
         "limit": data.limit,
         "offset": data.offset,
         "seats": seats_of(actor.hub, now),
-        "invitable_roles": assignable_roles(actor.role) if is_writable(actor.hub) else [],
+        "invitable_roles": assignable_roles(actor.role)
+        if is_writable(actor.hub)
+        else [],
     }
 
 
@@ -724,7 +979,9 @@ def member_list(ctx: OperationContext, data: MemberListIn) -> dict[str, Any]:
 MEMBER_ACTIONS = ("change_role", "remove", "resend", "cancel", "transfer")
 
 
-def member_actions(actor: HubMember, member: HubMember, *, transfer_pending: bool = False) -> list[str]:
+def member_actions(
+    actor: HubMember, member: HubMember, *, transfer_pending: bool = False
+) -> list[str]:
     """What ``actor`` may do on ``member``'s row, in ``MEMBER_ACTIONS`` order (saas#1626, saas#1670): the
     same rules the writes apply (``services._managed``, ``services.ownership_transfer``), so the page never
     offers a button its door refuses. Nothing on one's own row, a peer, a superior or a deleted business."""
@@ -745,7 +1002,13 @@ def member_actions(actor: HubMember, member: HubMember, *, transfer_pending: boo
     return [action for action in MEMBER_ACTIONS if allowed[action]]
 
 
-def member_row(actor: HubMember, member: HubMember, now: datetime, *, transfer_pending: bool = False) -> dict[str, Any]:
+def member_row(
+    actor: HubMember,
+    member: HubMember,
+    now: datetime,
+    *,
+    transfer_pending: bool = False,
+) -> dict[str, Any]:
     """One row of the members page as ``actor`` sees it: ``is_me`` marks the account's own row, and
     ``actions`` lists what it may do on this one (``member_actions``)."""
     pending = member.accepted_at is None
@@ -769,14 +1032,22 @@ def member_row(actor: HubMember, member: HubMember, now: datetime, *, transfer_p
         "last_opened_at": member.last_opened_at,
         "is_me": member.user_id == actor.user_id,
         "actions": actions,
-        "assignable_roles": assignable_roles(actor.role) if "change_role" in actions else [],
+        "assignable_roles": assignable_roles(actor.role)
+        if "change_role" in actions
+        else [],
     }
 
 
 @operation(
-    "hubs.invitation.list_mine", kind="query", permission="hubs.view", input=InvitationListIn, output=InvitationListOut
+    "hubs.invitation.list_mine",
+    kind="query",
+    permission="hubs.view",
+    input=InvitationListIn,
+    output=InvitationListOut,
 )
-def invitation_list_mine(ctx: OperationContext, data: InvitationListIn) -> dict[str, Any]:
+def invitation_list_mine(
+    ctx: OperationContext, data: InvitationListIn
+) -> dict[str, Any]:
     """The invitations waiting for the account's answer (the invitation page)."""
     user = account_of(ctx)
     with translation.override(ctx.language):
@@ -798,9 +1069,15 @@ PAYER_FIELDS = (
 
 
 @operation(
-    "hubs.billing_profile.get", kind="query", permission="hubs.view", input=BillingProfileGetIn, output=BillingProfileOut
+    "hubs.billing_profile.get",
+    kind="query",
+    permission="hubs.view",
+    input=BillingProfileGetIn,
+    output=BillingProfileOut,
 )
-def billing_profile_get(ctx: OperationContext, data: BillingProfileGetIn) -> dict[str, Any]:
+def billing_profile_get(
+    ctx: OperationContext, data: BillingProfileGetIn
+) -> dict[str, Any]:
     """Who ERPlora invoices for the business (Account → Billing, and the Settings tab): only its owner."""
     member = access(account_of(ctx), data.hub_id, Role.OWNER)
     return payer_of(member.hub, member.user)
@@ -817,4 +1094,117 @@ def payer_of(hub: Hub, owner) -> dict[str, Any]:
             "same_as_business": False,
             "paid_by_another_account": profile is not None,
         }
-    return {"hub_id": hub.id, **{field: getattr(profile, field) for field in PAYER_FIELDS}, "paid_by_another_account": False}
+    return {
+        "hub_id": hub.id,
+        **{field: getattr(profile, field) for field in PAYER_FIELDS},
+        "paid_by_another_account": False,
+    }
+
+
+# --- Usage (lot L4-A, PLAN-SAAS §5) ----------------------------------------------------------------
+
+GIB = 1024**3
+#: The space for files a plan includes, by its module tier (``Plan.included_level``). A decision of L4-A,
+#: flagged for Ioan (``hubs/README.md``, «Uso»): PLAN-SAAS §1 took the size limits off ``Plan``, and §5 shows
+#: the customer a percentage of «the space of the plan», so the space follows the tier instead of a column.
+STORAGE_LIMIT_GIB = {
+    Plan.IncludedLevel.FREE: 1,
+    Plan.IncludedLevel.BASIC: 5,
+    Plan.IncludedLevel.PRO: 20,
+    Plan.IncludedLevel.ENTERPRISE: 50,
+}
+
+
+def storage_limit_bytes(plan: Plan | None) -> int | None:
+    """The space for files ``plan`` includes, in bytes; ``None`` without a plan (or a tier not in the table)."""
+    if plan is None or plan.included_level not in STORAGE_LIMIT_GIB:
+        return None
+    return STORAGE_LIMIT_GIB[plan.included_level] * GIB
+
+
+def usage_percent(used: int, limit: int | None) -> int | None:
+    """How full, rounded to the nearest whole (half up); over 100 past the limit; ``None`` without one."""
+    if not limit:
+        return None
+    return (used * 100 + limit // 2) // limit
+
+
+def last_measured_day(now: datetime) -> date:
+    """The day a nightly collection measures: yesterday, in UTC (``collect_hub_usage``)."""
+    return now.astimezone(UTC).date() - timedelta(days=1)
+
+
+def usage_point(sample: HubUsageDaily, limit: int | None) -> dict[str, Any]:
+    return {
+        "day": sample.day,
+        # The files only (S3): the database is the admin's (PLAN-SAAS §5).
+        "storage": {
+            "used_bytes": sample.s3_bytes,
+            "limit_bytes": limit,
+            "percent": usage_percent(sample.s3_bytes, limit),
+        },
+        "active_users": {"on_day": sample.active_users_1d, "last_30_days": sample.active_users_30d},
+    }
+
+
+def usage_of(hub: Hub, plan: Plan | None, now: datetime) -> dict[str, Any] | None:
+    """The last day measured of ``hub`` against the space of ``plan`` (the one in force); ``None`` before
+    the first night."""
+    sample = HubUsageDaily.objects.filter(hub=hub).order_by("-day").first()
+    if sample is None:
+        return None
+    return {
+        **usage_point(sample, storage_limit_bytes(plan)),
+        "stale": sample.day < last_measured_day(now),
+    }
+
+
+def plan_in_force(hub: Hub, now: datetime) -> Plan | None:
+    subscription = Subscription.objects.select_related("plan", "trial_plan").filter(hub=hub).first()
+    return subscription.effective_plan(now) if subscription else None
+
+
+@operation(
+    "hubs.usage.get",
+    kind="query",
+    permission="hubs.view",
+    input=UsageGetIn,
+    output=UsageOut,
+    expose_api=True,
+)
+def usage_get(ctx: OperationContext, data: UsageGetIn) -> dict[str, Any]:
+    """The last day the Hub measured of a business (the «Usage» card of its Summary): its owner and admins."""
+    user = account_of(ctx)
+    hub = access(user, data.business_id, Role.ADMIN).hub
+    now = timezone.now()
+    usage = usage_of(hub, plan_in_force(hub, now), now)
+    if usage is None:
+        raise NotFound(
+            _("No usage of this business has been measured yet: the first figures arrive the night after it is created."),
+            code="hubs.usage_not_collected",
+        )
+    return usage
+
+
+@operation(
+    "hubs.usage.series",
+    kind="query",
+    permission="hubs.view",
+    input=UsageSeriesIn,
+    output=UsageSeriesOut,
+    expose_api=True,
+)
+def usage_series(ctx: OperationContext, data: UsageSeriesIn) -> dict[str, Any]:
+    """The days measured of a business in the last ``days`` up to yesterday, oldest first, against the space
+    its plan includes today (for a chart): its owner and admins."""
+    user = account_of(ctx)
+    hub = access(user, data.business_id, Role.ADMIN).hub
+    now = timezone.now()
+    limit = storage_limit_bytes(plan_in_force(hub, now))
+    first = last_measured_day(now) - timedelta(days=data.days - 1)
+    samples = HubUsageDaily.objects.filter(hub=hub, day__gte=first).order_by("day")
+    return {
+        "business_id": hub.id,
+        "limit_bytes": limit,
+        "points": [usage_point(sample, limit) for sample in samples],
+    }

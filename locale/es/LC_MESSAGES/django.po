@@ -707,3 +707,216 @@ msgstr "Algo ha ido mal por nuestra parte"
 #: templates/500.html:15
 msgid "Your data is safe. Try this page again or return to ERPlora while we investigate."
 msgstr "Tus datos están a salvo. Vuelve a intentarlo o regresa a ERPlora mientras lo investigamos."
+
+msgid "System"
+msgstr "Sistema"
+
+msgid "Light"
+msgstr "Claro"
+
+msgid "Dark"
+msgstr "Oscuro"
+
+msgid "appearance"
+msgstr "apariencia"
+
+msgid "business notices"
+msgstr "avisos de mis negocios"
+
+msgid "Business ready, payments pending."
+msgstr "Negocio listo, pagos pendientes."
+
+msgid "ERPlora news"
+msgstr "novedades de ERPlora"
+
+msgid "At most once a month."
+msgstr "Una vez al mes como mucho."
+
+msgid "updated at"
+msgstr "actualizado el"
+
+msgid "preferences"
+msgstr "preferencias"
+
+msgid "type"
+msgstr "tipo"
+
+msgid "image"
+msgstr "imagen"
+
+msgid "photo"
+msgstr "foto"
+
+msgid "photos"
+msgstr "fotos"
+
+msgid "Businesses · read"
+msgstr "Negocios · lectura"
+
+msgid "Businesses · write"
+msgstr "Negocios · escritura"
+
+msgid "Invoices · read"
+msgstr "Facturas · lectura"
+
+msgid "name"
+msgstr "nombre"
+
+msgid "prefix"
+msgstr "prefijo"
+
+msgid "permissions"
+msgstr "permisos"
+
+msgid "expires at"
+msgstr "caduca el"
+
+msgid "last used at"
+msgstr "último uso"
+
+msgid "revoked at"
+msgstr "revocada el"
+
+msgid "API key"
+msgstr "clave de API"
+
+msgid "API keys"
+msgstr "claves de API"
+
+msgid "Sign in to manage your account."
+msgstr "Inicia sesión para gestionar tu cuenta."
+
+msgid "Confirm it's you: enter your password again."
+msgstr "Confirma que eres tú: vuelve a escribir tu contraseña."
+
+msgid "You own businesses: transfer or delete them before deleting your account."
+msgstr "Eres propietario de negocios: transfiérelos o elimínalos antes de eliminar tu cuenta."
+
+msgid "Your account has no password yet: set one with «Forgot your password?» before changing your email."
+msgstr "Tu cuenta aún no tiene contraseña: crea una con «¿Has olvidado tu contraseña?» antes de cambiar tu correo."
+
+msgid "Too many attempts. Please try again in a few minutes."
+msgstr "Demasiados intentos. Vuelve a intentarlo en unos minutos."
+
+msgid "That is already your email."
+msgstr "Ese ya es tu correo."
+
+msgid "Enter a valid email address."
+msgstr "Introduce un correo válido."
+
+msgid "This email is already used by another account."
+msgstr "Ese correo ya lo usa otra cuenta."
+
+msgid "We could not send the code. Please try again in a few minutes."
+msgstr "No hemos podido enviar el código. Vuelve a intentarlo en unos minutos."
+
+msgid "Upload a JPEG, PNG or WebP image."
+msgstr "Sube una imagen JPEG, PNG o WebP."
+
+msgid "The photo is too big: at most %(size)s KB. Try a smaller one."
+msgstr "La foto pesa demasiado: como mucho %(size)s KB. Prueba con una más pequeña."
+
+msgid "The photo is too large: at most %(side)s × %(side)s pixels."
+msgstr "La foto es demasiado grande: como mucho %(side)s × %(side)s píxeles."
+
+msgid "Upload a still image, not an animation."
+msgstr "Sube una imagen fija, no una animación."
+
+msgid "The image could not be read. Try another one."
+msgstr "No hemos podido leer la imagen. Prueba con otra."
+
+msgid "That session does not exist or has already ended."
+msgstr "Esa sesión no existe o ya se ha cerrado."
+
+msgid "Give it a name: it is how you will tell your keys apart."
+msgstr "Ponle un nombre: es como distinguirás tus claves."
+
+msgid "Unknown permission: %(scopes)s."
+msgstr "Permiso desconocido: %(scopes)s."
+
+msgid "You already have %(limit)s API keys: revoke one you no longer use."
+msgstr "Ya tienes %(limit)s claves de API: revoca una que ya no uses."
+
+msgid "That API key does not exist."
+msgstr "Esa clave de API no existe."
+
+msgid "Too many requests. Try again in a minute."
+msgstr "Demasiadas peticiones. Vuelve a intentarlo en un minuto."
+
+msgid "Invalid API key."
+msgstr "Clave de API no válida."
+
+msgid "This API key is missing the permission this operation needs: %(scope)s."
+msgstr "A esta clave de API le falta el permiso que pide esta operación: %(scope)s."
+
+msgid "API keys cannot be used here: this operation is only for signed-in people."
+msgstr "Aquí no se pueden usar claves de API: esta operación es solo para personas con la sesión iniciada."
+
+msgid "Your ERPlora code: %(code)s"
+msgstr "Tu código de ERPlora: %(code)s"
+
+msgid "Type this code in ERPlora to use %(email)s as the email of your account:"
+msgstr "Escribe este código en ERPlora para usar %(email)s como correo de tu cuenta:"
+
+msgid "It works for %(minutes)s minutes. If you did not ask for it, ignore this mail: nothing changes."
+msgstr "Sirve durante %(minutes)s minutos. Si no lo has pedido tú, ignora este correo: no cambia nada."
+
+msgid "The email of your ERPlora account changed"
+msgstr "El correo de tu cuenta de ERPlora ha cambiado"
+
+msgid "The email of your ERPlora account is now %(email)s."
+msgstr "El correo de tu cuenta de ERPlora es ahora %(email)s."
+
+msgid "If you did not change it, write to %(support)s at once."
+msgstr "Si no lo has cambiado tú, escribe cuanto antes a %(support)s."
+
+msgid "There is no change of email waiting for a code: ask for a new one."
+msgstr "No hay ningún cambio de correo esperando un código: pide uno nuevo."
+
+msgid "Too many wrong codes: ask for a new one."
+msgstr "Demasiados códigos incorrectos: pide uno nuevo."
+
+msgid "That code is not right."
+msgstr "Ese código no es correcto."
+
+msgid "Invalid payload"
+msgstr "Los datos enviados no son válidos."
+
+msgid "Revoke the selected keys (they stop working at once)"
+msgstr "Revocar las claves seleccionadas (dejan de funcionar al momento)"
+
+msgid "Keys revoked: %(count)s."
+msgstr "Claves revocadas: %(count)s."
+
+msgid "That address already got several codes in the last hour: try again later."
+msgstr "Esa dirección ya ha recibido varios códigos en la última hora: inténtalo más tarde."
+
+msgid "new email"
+msgstr "correo nuevo"
+
+msgid "attempts"
+msgstr "intentos"
+
+msgid "change of email"
+msgstr "cambio de correo"
+
+msgid "changes of email"
+msgstr "cambios de correo"
+
+msgid "Not found."
+msgstr "No encontrado."
+
+msgid "Your account has no password yet: set one with «Forgot your password?»."
+msgstr "Tu cuenta aún no tiene contraseña: crea una con «¿Has olvidado tu contraseña?»."
+
+msgid "New API key in your ERPlora account"
+msgstr "Nueva clave de API en tu cuenta de ERPlora"
+
+msgid "An API key called «%(name)s» was created in your ERPlora account, with these permissions: %(scopes)s."
+msgstr "Se ha creado en tu cuenta de ERPlora una clave de API llamada «%(name)s», con estos permisos: %(scopes)s."
+
+msgid "If you did not create it, revoke it in Account → API keys and write to %(support)s at once."
+msgstr "Si no la has creado tú, revócala en Cuenta → Claves de API y escribe cuanto antes a %(support)s."
+
+msgid "You pay for businesses of other people: ask their owner to enter their own payment details before deleting your account."
+msgstr "Pagas negocios de otras personas: pide a su propietario que ponga sus datos de pago antes de eliminar tu cuenta."

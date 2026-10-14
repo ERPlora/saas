@@ -70,15 +70,17 @@ def test_the_public_policy_still_forbids_the_dangerous_directives(client):
 
 
 # The public web stopped loading anything from a CDN (OutfitKit from jsDelivr, icons from Iconify's
-# API) and stopped charging (Stripe): spec §8.2, decision 16.
-RETIRED_HOSTS = (
+# API) and stopped charging (Stripe): spec §8.2, decision 16. Nothing loads those CDNs anywhere; Stripe
+# is retired from the public web only: the panel's policy (the SPA's Store) carries Stripe's origins for
+# the Embedded Checkout (`base/csp.py`, plan 2026-10-13 L2-D; PLAN-SAAS §3.6 point 17).
+RETIRED_EVERYWHERE = (
     "cdn.jsdelivr.net",
     "api.iconify.design",
-    "stripe.com",
     "recaptcha",
     "gstatic.com",
     "www.google.com",
 )
+RETIRED_FROM_PUBLIC = ("stripe.com",)
 
 
 @pytest.mark.parametrize("debug", [False, True])
@@ -86,17 +88,23 @@ def test_the_public_policy_names_no_retired_host(settings, debug):
     settings.DEBUG = debug
     policy = " ".join(" ".join(sources) for sources in public_policy().values())
 
-    for host in RETIRED_HOSTS:
+    for host in (*RETIRED_EVERYWHERE, *RETIRED_FROM_PUBLIC):
         assert host not in policy
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("path", [*PUBLIC_PATHS, *GLOBAL_PATHS])
+@pytest.mark.parametrize(
+    ("path", "retired"),
+    [
+        *((path, (*RETIRED_EVERYWHERE, *RETIRED_FROM_PUBLIC)) for path in PUBLIC_PATHS),
+        *((path, RETIRED_EVERYWHERE) for path in GLOBAL_PATHS),
+    ],
+)
 @pytest.mark.usefixtures("spa_manifest")
-def test_no_served_page_names_a_retired_host(client, path):
+def test_no_served_page_names_a_retired_host(client, path, retired):
     policy = _policy(client, path)
 
-    for host in RETIRED_HOSTS:
+    for host in retired:
         assert host not in policy
 
 

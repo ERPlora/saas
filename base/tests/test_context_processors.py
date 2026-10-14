@@ -6,15 +6,24 @@ web) read the same mode from the ``theme`` cookie (ERPlora/saas ``apps/core/cont
 ``dark`` adds ``ion-palette-dark`` to ``<html>`` on the server, and ``system`` lets a nonce'd script
 follow ``prefers-color-scheme``. Without the processor ``theme`` was empty, so ``system`` never applied.
 
-The account's own mode (Account → Preferences, ``accounts.UserPreferences.theme_mode``) is tested
-here once that model lands on main (panel batch, 2026-10-14); until then the processor must not touch
-``accounts`` (TEMPLATES loads it on every render).
+A signed-in account's own mode (Account → Preferences, ``accounts.UserPreferences.theme_mode``, what
+the panel paints) wins over the cookie: the public web and the sign-in pages look like the panel.
+TEMPLATES loads the processor on every render, so it reaches ``accounts`` lazily, inside the function,
+and falls back to the cookie if ``accounts.queries.preferences_of`` is missing: a top-level import of a
+symbol that was not on main took the whole site down in CI (2026-10-14, hotfix cfc4adb).
 """
 
-import pytest
-from django.test import RequestFactory
+import ast
+import logging
 
-from base.context_processors import DEFAULT_THEME, THEMES, theme
+import pytest
+from django.apps import apps
+from django.test import RequestFactory
+from django.utils.module_loading import import_string
+
+import base.context_processors as processors_module
+from accounts.models import UserPreferences
+from base.context_processors import DEFAULT_THEME, PREFERENCES_OF, THEMES, theme
 
 PROCESSOR = "base.context_processors.theme"
 
@@ -47,16 +56,62 @@ def test_an_unknown_cookie_follows_the_system(cookie):
     assert _theme(cookie) == "system"
 
 
-def test_the_processor_does_not_import_accounts():
-    """TEMPLATES loads this module on every render: an import that is not on main took the whole
-    site down in CI (2026-10-14). The account's mode comes back only with its model."""
-    import base.context_processors as module
+@pytest.mark.parametrize("mode", ["light", "dark"])
+def test_a_signed_in_account_gets_the_mode_it_chose(ana, mode):
+    UserPreferences.objects.create(user=ana, theme_mode=mode)
 
-    assert not any(
-        name.startswith("accounts") for name in vars(module) if not name.startswith("_")
-    )
-    with open(module.__file__, encoding="utf-8") as source:
-        assert "from accounts" not in source.read()
+    assert _theme(user=ana) == mode
+
+
+def test_the_account_wins_over_the_cookie(ana):
+    """The panel paints the account's mode; a cookie left by another person on the device does not."""
+    UserPreferences.objects.create(user=ana, theme_mode="light")
+
+    assert _theme("dark", user=ana) == "light"
+
+
+def test_an_account_that_never_chose_follows_the_system(ana):
+    """No preferences row: the account's default, ``system``, whatever an old cookie says."""
+    assert _theme("dark", user=ana) == "system"
+
+
+def test_the_account_dependency_is_declared_and_present():
+    """The processor names what it needs from ``accounts`` in one place, and it exists in the tree."""
+    assert PREFERENCES_OF == "accounts.queries.preferences_of"
+    assert apps.is_installed("accounts")
+    assert callable(import_string(PREFERENCES_OF))
+
+
+def test_the_processor_reaches_accounts_only_lazily():
+    """No module-level import of ``accounts``: TEMPLATES loads this module on every render, and a
+    top-level import of a symbol missing on main took the whole site down in CI (2026-10-14)."""
+    with open(processors_module.__file__, encoding="utf-8") as source:
+        tree = ast.parse(source.read())
+
+    top_level = [
+        node
+        for node in tree.body
+        if isinstance(node, (ast.Import, ast.ImportFrom))
+        and any(
+            (getattr(node, "module", None) or alias.name).startswith("accounts")
+            for alias in node.names
+        )
+    ]
+    assert top_level == []
+    assert not any(name.startswith("accounts") for name in vars(processors_module))
+
+
+def test_without_preferences_of_an_account_falls_back_to_the_cookie(ana, monkeypatch, caplog):
+    """If ``accounts`` lacks the function (a partial deploy), the page still renders with the cookie,
+    and the log says why."""
+    import accounts.queries
+
+    UserPreferences.objects.create(user=ana, theme_mode="light")
+    monkeypatch.delattr(accounts.queries, "preferences_of")
+
+    with caplog.at_level(logging.WARNING, logger="base.context_processors"):
+        assert _theme("dark", user=ana) == "dark"
+    assert PREFERENCES_OF in caplog.text
 
 
 @pytest.mark.django_db

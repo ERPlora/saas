@@ -105,5 +105,99 @@ Plan: `docs/plans/2026-10-13-panel-saas-unificado.md` (lotes L1-A, L1-B y L1-A2)
   lista y en el mensaje.
 - Los usuarios solo con PIN del Hub no pasan por el SaaS: el tope de `max_users` de la foto lo aplica el Hub en
   sus propias altas (el SaaS ya no recibe el recuento del latido).
-- VIES del NIF del pagador (L2-A): hoy `validate_tax_id` solo mira la forma.
-- Cancelar la suscripción de Stripe al eliminar un negocio y mover el pagador de Stripe en un traspaso (L2).
+- Mover el pagador de Stripe en un traspaso (L2). Cancelar la suscripción de Stripe al eliminar un negocio lo
+  hace `billing` en su siguiente `sweep_unpaid` (L2-B), no `hubs.business.delete` en el acto.
+
+## Lo que añadió L2-B (2026-10-14)
+
+- `hubs.subscription.apply` (operación de sistema, la llama `billing`): escribe lo que dice la suscripción
+  **viva** de Stripe (plan, periodicidad, estado, ids, periodo, prueba, módulos comprados y su `valid_until`,
+  y el motivo del impago). Un campo que no se envía no se toca. Lo que ve el Hub (plan efectivo, estado
+  comercial y `modules[]`) sube `state_version` y se empuja tras el COMMIT; cualquier cambio anota
+  `hubs.subscription.changed`, que re-ejecuta la lista y la página. `standing` mueve el negocio (`good` →
+  `active`, `grace` → `past_due`, `suspended`); uno eliminado no se mueve. Pagar un plan acaba con la prueba de
+  Starter del alta; comprar solo módulos la conserva.
+- `Subscription.unpaid_reason` / `unpaid_since` / `unpaid_invoice_url` (migración `0008`): la fila de
+  Negocios y la página dan `unpaid_reason`, `unpaid_since` y `pay_url` (este, solo al propietario).
+- `hubs.billing_profile.update` escribe el NIF con la puerta de `billing` (`validate_vat_for_profile`: forma
+  de facturación y veredicto de VIES anotado; uno que VIES no conoce se guarda como identificación) y exige
+  cinco dígitos al código postal español (`schemas.postal_code_problem`). Sin país del pagador, el NIF se lee
+  en el del negocio.
+
+## Lo que añadió L4-A (2026-10-14): uso de cada negocio
+
+- **`HubUsageDaily`** (migración `0010`): una fila por negocio y día, tal como lo midió el Hub esa noche
+  (PLAN-SAAS §5): `s3_bytes` (sus ficheros en S3), `db_bytes` (su BD; solo para el admin), `active_users_1d` y
+  `active_users_30d`, más `collected_at`. Única escritora: la operación de sistema `hubs.usage.record`; volver a
+  recoger un día sustituye sus cifras y, si son las mismas, no escribe ni avisa.
+- **`manage.py collect_hub_usage [--day AAAA-MM-DD]`** (`saas-cron`, cada noche): por defecto, el día de **ayer en
+  UTC**; `--day` recoge otro (relleno), nunca uno que no ha acabado en UTC. Lee todas las páginas de
+  `GET /internal/usage`; una fila rota o que falla no para la pasada. Lock `hashtext('erplora.saas.collect_hub_usage')`
+  (`services.run_exclusively`: una segunda pasada sale al momento). Sale con error **después** de la pasada si el
+  Hub no contestó o se negó (`unreachable`, `refused`), si respondió fuera del contrato (`invalid`: fila, página,
+  otro día o un cursor repetido) o si una fila reventó (`failed`). Un hub que el SaaS no vendió (el de plataforma,
+  las plantillas) cuenta como `unknown`, en el log, sin error.
+- **Evento `hubs.business.usage_collected`** (`{business_id}`), en el canal del propietario y de cada administrador
+  (`notify_people`), solo cuando el día es nuevo o cambia: re-ejecuta `hubs.business.get`, `hubs.usage.get` y
+  `hubs.usage.series` (no la lista de negocios). `hubs.subscription.changed` también re-ejecuta las dos de uso (el
+  espacio depende del plan).
+- **`hubs.usage.get {business_id}`** → `{day, storage: {used_bytes, limit_bytes|null, percent|null},
+  active_users: {on_day, last_30_days}, stale}`: el último día medido. `used_bytes` = `s3_bytes` (el cliente ve
+  ficheros en porcentaje, nunca la BD); `percent` redondeado (mitad hacia arriba) y por encima de 100 si se pasa;
+  `stale` = el día no es el de ayer en UTC (también en el rato entre medianoche UTC y la pasada nocturna). Sin
+  ningún día medido: 404 `hubs.usage_not_collected`. `hubs.business.get` lleva lo mismo en `usage` (`null` hasta
+  la primera noche). **Cambio de nombre frente al encargo**: `active_users.on_day` en vez de `today`, porque la
+  cifra es del día medido (ayer), como dice la maqueta («Activos ayer»).
+- **`hubs.usage.series {business_id, days=30}`** (1–365) → `{business_id, limit_bytes, points: [{day, storage,
+  active_users}]}`: los días medidos de la ventana que acaba ayer (UTC), del más antiguo al más reciente, contra el
+  espacio del plan de hoy; los huecos no se rellenan (para la gráfica que vendrá).
+- Las dos de uso: propietario y administradores (como la página del negocio; matriz de
+  `tests/test_permission_matrix.py`), vivas, en `/api/hubs/usage` y `/api/hubs/usage/series`, y abiertas a una
+  clave de API con `hubs.read`.
+- **Admin**: `HubUsageDaily` de solo lectura (solo superusuarios; `support` no lo ve todavía), con los tamaños
+  legibles, la BD incluida, búsqueda por dirección o nombre y navegación por días.
+- **Panel** (`frontend/components/BusinessSummary.vue`): la tarjeta «Uso» de la maqueta, con
+  `UsageMeter` (almacenamiento en %, con aviso desde el 80 % y al llenarse) y dos `UsageCounter` (activos ayer o
+  ese día, últimos 30 días), y «Datos de ayer: se actualizan cada noche» o «Datos del <día>»; sin datos, «Sin
+  datos todavía». Las personas frente a las plazas siguen siendo una línea de la tarjeta del plan.
+
+### Espacio incluido en cada plan (decisión de L4-A, **a confirmar por Ioan**)
+
+PLAN-SAAS §1 quitó de `Plan` los límites de tamaño (`max_database_size_gb`) y §5 enseña al cliente un
+porcentaje «del espacio de su plan» sin decir de cuánto. Para no reabrir §1 (y su guardarraíl
+`test_a_plan_sizes_no_infrastructure`), el espacio sale del **nivel de módulos del plan** (`Plan.included_level`,
+`queries.STORAGE_LIMIT_GIB`): Gratis 1 GiB, Básico 5 GiB (Starter y Standard), Pro 20 GiB, Enterprise 50 GiB
+(también Max, que en el SaaS antiguo no tenía tope de BD). Solo cuentan los ficheros (S3), no la BD. No se aplica
+ningún tope: es un aviso. Si Ioan quiere un espacio por plan editable en el admin, va una columna
+`Plan.storage_limit_gb` (y una nota que corrija PLAN-SAAS §1).
+
+### Contrato para el Hub (carril Hub): `GET /internal/usage`
+
+```
+GET /internal/usage?day=YYYY-MM-DD[&cursor=<opaco>]
+X-Erplora-Timestamp, X-Erplora-Signature (v1) y X-Erplora-Signature-V2 (cubre método y ruta con la query)
+
+200 {"day": "2026-10-13",
+     "hubs": [{"id": "<UUID del hub>", "s3_bytes": 0, "db_bytes": 0,
+               "active_users_1d": 0, "active_users_30d": 0}],
+     "next_cursor": "<opaco>" | null}
+```
+
+- `day`: el día en **UTC** que se pide; la respuesta lo repite (otro día = fuera de contrato).
+- Una fila por hub y día, como mucho, en todas las páginas: `s3_bytes` (los objetos del prefijo `hub-{id}/`, del
+  inventario de S3 de ese día), `db_bytes` (`pg_database_size` de `hub_<hex>`), `active_users_1d` (personas
+  distintas con sesión o PIN usado ese día) y `active_users_30d` (en los 30 días que acaban ese día; nunca menos
+  que `active_users_1d`). Enteros ≥ 0. Un hub sin medir ese día no sale.
+- Paginación por cursor: `next_cursor` opaco (1–512 caracteres) que el SaaS devuelve tal cual; `null` en la última
+  página. Tamaño de página a elección del Hub (se recomienda ≤ 500). Repetir un cursor es un error.
+- Un día que el Hub aún no ha medido: 409 `usage_not_ready` (el SaaS falla la pasada y avisa; se rellena con
+  `--day`). Sin `day` o con un día mal escrito: 422. Firma mala: 401, como el resto de `/internal`.
+- Doble del Hub en los tests: `tests/hub_double.py` (`usage[day]`, `usage_page_size`).
+
+### Pendiente tras L4-A
+
+- **Carril Hub**: implementar `GET /internal/usage` (medición nocturna del worker y la respuesta de arriba).
+- **`aws-next`**: programar `python manage.py collect_hub_usage` cada noche en `scheduler.tf` (`saas-cron`), después
+  de la medición del Hub (propuesta: 01:15 UTC; `push_hub_snapshots` va a las 00:30).
+- La gráfica del panel con `hubs.usage.series` (bloque 8 de PLAN-SAAS; no está en la maqueta).
+- `support` sin acceso al uso en el admin (si se quiere, migración de datos como `0007`).

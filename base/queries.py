@@ -6,6 +6,7 @@ from django.utils import translation
 from live.context import OperationContext
 from live.operations import operation
 
+from accounts.queries import preferences_of
 from base import navigation
 from base.schemas import SessionMeIn, SessionMeOut
 
@@ -22,7 +23,9 @@ def session_me(ctx: OperationContext, data: SessionMeIn) -> dict[str, Any]:
 
     No permission: an anonymous visitor gets ``user: None`` and no menu, which tells the shell to
     send it to the login. A signed-in account gets the panel's menu (``base/navigation.py``, round
-    17), translated; ``apps`` stays empty: the SaaS has no modules (PLAN §20.3.5).
+    17), translated; ``apps`` stays empty: the SaaS has no modules (PLAN §20.3.5). With it, what the
+    shell paints with before any page asks: its theme mode (Cuenta → Preferencias, ``system`` until it
+    chooses) and its own language (``User.language``, which wins over the cookie: ``base.language``).
     """
     # The labels are lazy translations and a live re-run happens outside the request that
     # activated the language, so it is set here.
@@ -34,7 +37,17 @@ def session_me(ctx: OperationContext, data: SessionMeIn) -> dict[str, Any]:
             "menu": navigation.menu() if ctx.actor is not None else [],
             "apps": [],
             "language": ctx.language,
+            **_account(ctx.actor),
         }
+
+
+def _account(actor: Any) -> dict[str, Any]:
+    if actor is None:
+        return {"preferences": None, "account_language": None}
+    return {
+        "preferences": {"theme_mode": preferences_of(actor)["theme_mode"]},
+        "account_language": actor.language,
+    }
 
 
 def _user(actor: Any) -> dict[str, str] | None:

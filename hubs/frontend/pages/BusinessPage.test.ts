@@ -109,12 +109,25 @@ describe('BusinessPage: the frame', () => {
     expect(s.calls().find((c) => c.path === '/api/hubs/businesses/open')?.body).toEqual({ id: 'h1', next: '/' });
   });
 
-  it('a suspended business has no «Open», and says why', async () => {
-    const s = await setup('summary', { status: 'suspended', can: { ...BUSINESS.can, open: false } });
+  it('a suspended business has no «Open», and says why, with the way to pay', async () => {
+    const s = await setup('summary', {
+      status: 'suspended',
+      can: { ...BUSINESS.can, open: false },
+      unpaid_reason: 'card_declined',
+      unpaid_since: '2026-10-01T10:00:00Z',
+      pay_url: 'https://invoice.stripe.com/i/abc',
+    });
     expect(s.testid('business-open').exists()).toBe(false);
-    expect(s.testid('business-state').text()).toBe(
-      'Suspended because of an unpaid invoice. Your data is safe: pay the invoice and it works again at once.',
-    );
+    expect(s.testid('business-state').exists()).toBe(false);
+    const unpaid = s.testid('business-unpaid');
+    expect(unpaid.text()).toContain('Panadería López is suspended');
+    expect(unpaid.get('[data-testid="unpaid-card"]').text()).toBe('The bank declined the card: change it before paying.');
+  });
+
+  it('a payment pending is said with the way to pay; the business still opens', async () => {
+    const s = await setup('summary', { status: 'past_due', unpaid_reason: 'payment_failed', unpaid_since: '2026-10-10T10:00:00Z', pay_url: 'https://invoice.stripe.com/i/abc' });
+    expect(s.testid('business-unpaid').find('[data-testid="unpaid-pay"]').exists()).toBe(true);
+    expect(s.testid('business-open').exists()).toBe(true);
   });
 
   it('being prepared, it says it will be ready soon (this page opens nothing by itself)', async () => {
@@ -158,12 +171,30 @@ describe('BusinessPage: the sections', () => {
     expect(ionProps(s.testid('business-open'), 'fill')).toEqual({ fill: 'outline' });
   });
 
-  it('Modules: apps are turned on inside the business, which it opens', async () => {
+  it('Modules: apps are turned on inside the business; the header’s «Open», solid, is its one action', async () => {
     const s = await setup('modules');
     expect(s.testid('business-modules').text()).toContain('Apps are turned on and off inside the business');
-    await s.testid('business-modules-open').trigger('click');
+    // One «Open» per screen (Ioan, 2026-10-14): the card no longer repeats the header's.
+    expect(s.wrapper.findAll('[data-testid="business-modules-open"]')).toHaveLength(0);
+    expect(ionProps(s.testid('business-open'), 'fill')).toEqual({ fill: 'solid' });
+    await s.testid('business-open').trigger('click');
     await flush();
     expect(s.calls().find((c) => c.path === '/api/hubs/businesses/open')?.body).toEqual({ id: 'h1', next: '/' });
+  });
+
+  it('Members fills the page between the topbar and the tabbar; the other sections read as a page', async () => {
+    for (const [tab, layout, fill] of [
+      ['members', 'detail-fill', true],
+      ['summary', 'detail', false],
+      ['modules', 'detail', false],
+      ['settings', 'detail', false],
+    ] as const) {
+      const s = await setup(tab);
+      expect(s.page().props('contentLayout'), tab).toBe(layout);
+      expect(s.testid('business-header').element.parentElement?.classList.contains('panel-fill'), tab).toBe(fill);
+      s.wrapper.unmount();
+      document.body.innerHTML = '';
+    }
   });
 
   it('Modules inside the app says where to add modules, without a link', async () => {

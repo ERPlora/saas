@@ -22,4 +22,14 @@ class HubsConfig(LiveAppConfig):
 
     def ready(self):
         super().ready()
+        from allauth.account.signals import email_changed
+
+        from accounts import signals as account_signals
         from hubs import checks  # noqa: F401  (registers the system checks)
+        from hubs import services
+
+        # What an account's own changes mean to its businesses (accounts never imports hubs): its sessions
+        # end there too, and their snapshots drop it or carry its new address (PLAN-SAAS §2.1, §2.2).
+        account_signals.sessions_ended.connect(services.end_account_sessions, dispatch_uid="hubs.sessions_ended")
+        account_signals.account_deleting.connect(services.account_leaving, dispatch_uid="hubs.account_deleting")
+        email_changed.connect(services.account_email_changed, dispatch_uid="hubs.email_changed")

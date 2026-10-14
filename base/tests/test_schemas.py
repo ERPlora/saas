@@ -25,6 +25,8 @@ FULL = {
     ],
     "apps": [],
     "language": "es",
+    "preferences": {"theme_mode": "dark"},
+    "account_language": "es",
 }
 
 
@@ -37,11 +39,20 @@ def test_full_output_round_trips():
 
 
 def test_anonymous_output():
-    assert SessionMeOut.model_validate({**FULL, "user": None}).user is None
+    anonymous = SessionMeOut.model_validate({**FULL, "user": None, "preferences": None, "account_language": None})
+
+    assert (anonymous.user, anonymous.preferences, anonymous.account_language) == (None, None, None)
+
+
+def test_the_theme_mode_is_one_the_shell_knows():
+    """``ThemeMode`` of packages/ui (shell/theme.ts), as ``accounts.UserPreferences.ThemeMode``."""
+    with pytest.raises(pydantic.ValidationError):
+        SessionMeOut.model_validate({**FULL, "preferences": {"theme_mode": "sepia"}})
 
 
 @pytest.mark.parametrize(
-    "missing", ["user", "scope", "permissions", "menu", "apps", "language"]
+    "missing",
+    ["user", "scope", "permissions", "menu", "apps", "language", "preferences", "account_language"],
 )
 def test_every_key_the_shell_reads_is_required(missing):
     with pytest.raises(pydantic.ValidationError):

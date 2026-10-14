@@ -11,7 +11,17 @@ from django.db import IntegrityError
 from django.utils import translation
 from live.slugs import hub_slug_validator
 
-from accounts.models import AuthExchangeCode, HubMembership
+from accounts.models import (
+    API_KEY_PREFIX,
+    API_KEY_SCOPES,
+    ApiKey,
+    AuthExchangeCode,
+    HubMembership,
+    ProfilePhoto,
+    UnknownScope,
+    UserPreferences,
+    validate_scopes,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -172,3 +182,173 @@ def test_every_hub_slug_uses_the_shared_validator(model):
     # Besides the MaxLengthValidator every CharField adds by itself.
     validators = model._meta.get_field("hub_slug").validators
     assert [v for v in validators if not isinstance(v, MaxLengthValidator)] == [hub_slug_validator]
+
+
+class TestUserPreferences:
+    """Account → Preferences (plan 2026-10-13 §3): the theme mode and the mails; the language is the
+    account's own column (``User.language``), which the mails and the jump to a hub already read."""
+
+    def test_defaults_follow_the_system_and_ask_before_marketing(self, ana):
+        preferences = UserPreferences.objects.create(user=ana)
+
+        assert (preferences.theme_mode, preferences.hub_alerts, preferences.marketing_emails) == (
+            "system",
+            True,
+            False,
+        )
+        assert preferences.pk.version == 7
+
+    def test_the_modes_are_the_shells(self):
+        """The vocabulary of ``ThemeMode`` in packages/ui (shell/theme.ts): no mapping on the way."""
+        assert [value for value, _ in UserPreferences.ThemeMode.choices] == ["system", "light", "dark"]
+
+    def test_one_row_per_account(self, ana):
+        UserPreferences.objects.create(user=ana)
+
+        with pytest.raises(IntegrityError):
+            UserPreferences.objects.create(user=ana)
+
+    def test_they_go_with_the_account(self, ana):
+        UserPreferences.objects.create(user=ana)
+
+        ana.delete()
+
+        assert not UserPreferences.objects.exists()
+
+
+class TestApiKey:
+    """An account's API key (ported from ERPlora/saas ``apps/auth/apikeys/models.py``): ``erps_live_`` and
+    48 base62 characters, shown once and kept as its SHA-256 (plan 2026-10-13 §7 point 12: ``erps_live``
+    tells the account's keys apart from a hub's ``erpk_live``)."""
+
+    def test_a_new_secret_carries_the_prefix_and_only_its_hash_is_kept(self):
+        secret, prefix, key_hash = ApiKey.new_secret()
+
+        assert API_KEY_PREFIX == "erps_live_"
+        assert secret.startswith(API_KEY_PREFIX)
+        body = secret.removeprefix(API_KEY_PREFIX)
+        assert len(body) == 48
+        assert set(body) <= set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
+        assert prefix == body[:8]
+        assert key_hash == hashlib.sha256(secret.encode()).hexdigest()
+
+    def test_two_secrets_are_never_the_same(self):
+        assert ApiKey.new_secret()[0] != ApiKey.new_secret()[0]
+
+    def test_a_well_formed_secret_parses_to_its_body(self):
+        secret, prefix, _ = ApiKey.new_secret()
+
+        assert ApiKey.parse(secret) == secret.removeprefix(API_KEY_PREFIX)
+        assert ApiKey.parse(f"  {secret} ") == secret.removeprefix(API_KEY_PREFIX)
+
+    @pytest.mark.parametrize(
+        "raw",
+        [
+            "",
+            "erps_live_",
+            "erpk_live_" + "a" * 48,  # a hub's key (hub-next), not the account's
+            "erps_pre_" + "a" * 48,
+            "erps_live_" + "a" * 47,
+            "erps_live_" + "a" * 49,
+            "erps_live_" + "a" * 47 + "-",
+            "Bearer erps_live_" + "a" * 48,
+        ],
+    )
+    def test_anything_else_is_refused_before_any_query(self, raw):
+        assert ApiKey.parse(raw) is None
+
+    def test_a_key_has_a_uuid7_id_and_belongs_to_its_account(self, ana):
+        _, prefix, key_hash = ApiKey.new_secret()
+        key = ApiKey.objects.create(user=ana, name="Zapier", prefix=prefix, key_hash=key_hash, scopes=["hubs.read"])
+
+        assert key.pk.version == 7
+        assert list(ana.api_keys.all()) == [key]
+        assert str(key) == f"Zapier (erps_live_{prefix}…)"
+
+    def test_usable_until_revoked_or_expired(self, ana):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        now = timezone.now()
+        _, prefix, key_hash = ApiKey.new_secret()
+        key = ApiKey(user=ana, name="k", prefix=prefix, key_hash=key_hash)
+
+        assert key.is_usable(now)
+        key.expires_at = now + timedelta(days=1)
+        assert key.is_usable(now)
+        key.expires_at = now
+        assert not key.is_usable(now)
+        key.expires_at = None
+        key.revoked_at = now
+        assert not key.is_usable(now)
+
+    def test_the_hash_is_unique(self, ana):
+        _, prefix, key_hash = ApiKey.new_secret()
+        ApiKey.objects.create(user=ana, name="a", prefix=prefix, key_hash=key_hash)
+
+        with pytest.raises(IntegrityError):
+            ApiKey.objects.create(user=ana, name="b", prefix=prefix, key_hash=key_hash)
+
+    def test_keys_go_with_the_account(self, ana):
+        _, prefix, key_hash = ApiKey.new_secret()
+        ApiKey.objects.create(user=ana, name="a", prefix=prefix, key_hash=key_hash)
+
+        ana.delete()
+
+        assert not ApiKey.objects.exists()
+
+
+class TestApiKeyScopes:
+    """A scope is ``<app>.read`` (its queries) or ``<app>.write`` (its commands): the hub's app × {read,
+    write}, here for the account's apps (plan 2026-10-13, L3-A)."""
+
+    def test_the_registry_names_what_a_key_may_open(self):
+        assert list(API_KEY_SCOPES) == ["hubs.read", "hubs.write", "billing.read"]
+
+    def test_every_scope_says_what_it_opens_in_english_and_spanish(self):
+        assert [str(label) for label in API_KEY_SCOPES.values()] == [
+            "Businesses · read",
+            "Businesses · write",
+            "Invoices · read",
+        ]
+        with translation.override("es"):
+            assert [str(label) for label in API_KEY_SCOPES.values()] == [
+                "Negocios · lectura",
+                "Negocios · escritura",
+                "Facturas · lectura",
+            ]
+
+    def test_scopes_are_checked_and_deduplicated_in_order(self):
+        assert validate_scopes(["billing.read", "hubs.read", "billing.read"]) == ["billing.read", "hubs.read"]
+
+    def test_a_typo_is_refused_naming_it(self):
+        with pytest.raises(UnknownScope, match="hubs.reed"):
+            validate_scopes(["hubs.read", "hubs.reed"])
+
+
+class TestProfilePhoto:
+    def test_one_photo_per_account_that_goes_with_it(self, ana):
+        photo = ProfilePhoto.objects.create(user=ana, content_type="image/png", data=b"png")
+
+        assert photo.pk.version == 7
+        assert ana.photo == photo
+        with pytest.raises(IntegrityError):
+            ProfilePhoto.objects.create(user=ana, content_type="image/png", data=b"png")
+
+    def test_it_is_a_data_url(self, ana):
+        photo = ProfilePhoto(user=ana, content_type="image/png", data=b"\x89PNG")
+
+        assert photo.data_url() == "data:image/png;base64,iVBORw=="
+
+
+class TestEmailChangeRequest:
+    def test_one_waiting_change_per_account_that_goes_with_it(self, ana):
+        from accounts.models import EmailChangeRequest
+
+        change = EmailChangeRequest.objects.create(user=ana, session_key="s" * 32, email="a@new.example", code_hash="h")
+
+        assert change.pk.version == 7
+        assert change.attempts == 0
+        with pytest.raises(IntegrityError):
+            EmailChangeRequest.objects.create(user=ana, session_key="t" * 32, email="b@new.example", code_hash="h")

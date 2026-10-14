@@ -10,10 +10,18 @@ from live.live_registry import live_registry
 from live.operations import get
 
 from hubs import events
-from hubs.schemas import BusinessListIn, ByIdIn, InvitationListIn, MemberListIn
+from hubs.schemas import BusinessListIn, ByIdIn, InvitationListIn, MemberListIn, UsageGetIn, UsageSeriesIn
 from hubs.tests.conftest import ctx_for
 
-LIVE = {"hubs.business.list", "hubs.business.get", "hubs.member.list", "hubs.invitation.list_mine"}
+LIVE = {
+    "hubs.business.list",
+    "hubs.business.get",
+    "hubs.member.list",
+    "hubs.invitation.list_mine",
+    # The usage of a business (L4-A): re-run by the nightly collection.
+    "hubs.usage.get",
+    "hubs.usage.series",
+}
 
 
 def hubs_queries():
@@ -80,6 +88,8 @@ def inputs(hub_id):
         "hubs.business.get": ByIdIn(id=hub_id),
         "hubs.member.list": MemberListIn(hub_id=hub_id),
         "hubs.invitation.list_mine": InvitationListIn(),
+        "hubs.usage.get": UsageGetIn(business_id=hub_id),
+        "hubs.usage.series": UsageSeriesIn(business_id=hub_id),
     }
 
 

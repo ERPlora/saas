@@ -5,7 +5,9 @@
 // for the account (`actions`, in its fixed order: change role, remove, resend, cancel the invitation,
 // transfer the ownership). «Invite» when the account may invite (`invitable_roles`). Under the table,
 // the places of the plan and what each role may do; above it, a pending ownership offer the owner can
-// withdraw. Each action is a dialog of its own; «Resend» needs none.
+// withdraw. Each action is a dialog of its own; «Resend» needs none. The list fills the section (a nested
+// `.panel-fill` of the business's page, Ioan 2026-10-14); rows per page only when there are more members
+// than the shortest page (README §3b).
 import {
   businessStatusPill,
   DataTable,
@@ -160,7 +162,7 @@ async function withdrawOffer(id: string): Promise<void> {
 </script>
 
 <template>
-  <div class="members-stack">
+  <div class="members-stack panel-fill">
     <InlineFeedback
       v-if="business.pending_transfer"
       tone="warning"
@@ -189,12 +191,14 @@ async function withdrawOffer(id: string): Promise<void> {
     <DataTable
       testid="members"
       server-side
+      fill
       :title="$t('hubs.members.title')"
       :rows="rows"
       :total="live.data.value?.total ?? 0"
       :page="page"
       :page-size="pageSize"
       :page-size-options="PAGE_SIZES"
+      :page-size-chooser="(live.data.value?.total ?? 0) > PAGE_SIZES[0]"
       :views="['table', 'cards']"
       :card-breakpoint="CARD_BREAKPOINT"
       :loading="live.status.value === 'loading' && !live.data.value"

@@ -56,10 +56,12 @@ class UserContextBuilder:
         )
 
     def refresh(self, ctx: OperationContext) -> OperationContext:
-        """Re-read the account before a live re-run; one deleted or deactivated ends its stream."""
+        """Re-read the account before a live re-run; one deleted or deactivated ends its stream. The run
+        speaks the account's language as it is now (a change in Cuenta → Preferencias, ``base.language``)."""
         if ctx.actor is None:
             return ctx
         user = account_queries.active_user(ctx.actor.pk)
         if user is None:
             raise Unauthorized(gettext("The account is no longer active."))
-        return dataclasses.replace(ctx, actor=user)
+        language = user.language if user.language in dict(settings.LANGUAGES) else ctx.language
+        return dataclasses.replace(ctx, actor=user, language=language)

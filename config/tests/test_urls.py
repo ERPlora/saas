@@ -188,16 +188,31 @@ def test_csp_report(client):
     assert response.status_code == 204
 
 
-# /webhooks/ is Django's (Stripe's single webhook, `/webhooks/stripe/`, PLAN-SAAS §4 and block 4): the
-# SPA must never swallow it. Until block 4 mounts the route, Stripe's POST gets a plain 404, not the
-# SPA's 405 (it only answers GET/HEAD) nor its shell.
+# /webhooks/ is Django's (Stripe's single webhook, `/webhooks/stripe/`, PLAN-SAAS §4; lot L2-B): the SPA
+# must never swallow it. Stripe's POST reaches billing's view (an unsigned one is refused, 400), anything
+# else is 405; never the SPA's shell. Any other path under it is a plain 404.
 
 
 @pytest.mark.django_db
 @pytest.mark.usefixtures("spa_manifest")
-@pytest.mark.parametrize("method", ["get", "post"])
-def test_the_webhooks_prefix_is_reserved_for_django(client, method):
+@pytest.mark.parametrize("method, status", [("get", 405), ("post", 400)])
+def test_the_webhooks_prefix_is_reserved_for_django(client, settings, method, status):
+    settings.STRIPE_WEBHOOK_SECRET = "whsec_test"
+
     response = getattr(client, method)("/webhooks/stripe/", HTTP_HOST=HOST)
+
+    assert response.status_code == status
+    assert not is_shell(response)
+
+
+def test_stripes_webhook_is_billings():
+    assert resolve("/webhooks/stripe/").url_name == "stripe_webhook"
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("spa_manifest")
+def test_another_path_under_webhooks_is_not_the_spa(client):
+    response = client.get("/webhooks/other/", HTTP_HOST=HOST)
 
     assert response.status_code == 404
     assert not is_shell(response)

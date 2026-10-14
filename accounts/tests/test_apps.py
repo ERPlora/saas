@@ -27,3 +27,14 @@ def test_its_name_is_translated():
     assert str(config.verbose_name) == "Accounts"
     with translation.override("es"):
         assert str(config.verbose_name) == "Cuentas"
+
+
+def test_every_account_reads_and_manages_its_own_account():
+    """The Account page (plan 2026-10-13, L3-A): the role ``account`` of every signed-in person (``base.operations``)
+    gets ``accounts.view`` (its live queries need a permission, live.E004) and ``accounts.manage``."""
+    from live.meta import permissions_for_role
+
+    config = apps.get_app_config("accounts")
+
+    assert config.permissions == ["accounts.view", "accounts.manage"]
+    assert {"accounts.view", "accounts.manage"} <= permissions_for_role(all_live_app_configs(), "account")

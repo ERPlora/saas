@@ -40,6 +40,8 @@ def test_anonymous():
         "menu": [],
         "apps": [],
         "language": "es",
+        "preferences": None,
+        "account_language": None,
     }
 
 
@@ -91,3 +93,19 @@ def test_without_a_name_the_label_is_the_email(django_user_model):
         session_me(user, Scope("user", str(user.pk)))["user"]["label"]
         == "bo@example.com"
     )
+
+
+def test_a_signed_in_user_carries_its_preferences_and_its_own_language(ana):
+    """What the shell paints with before any page asks (Cuenta → Preferencias): the theme mode, and the
+    account's language (``User.language``), which ``base.language`` makes win over the ``_lang`` cookie."""
+    me = session_me(ana, Scope("user", str(ana.pk)), language="en")
+
+    assert (me["preferences"], me["account_language"], me["language"]) == ({"theme_mode": "system"}, "es", "en")
+
+
+def test_the_theme_mode_is_the_one_the_account_chose(ana):
+    from accounts.models import UserPreferences
+
+    UserPreferences.objects.create(user=ana, theme_mode=UserPreferences.ThemeMode.DARK)
+
+    assert session_me(ana, Scope("user", str(ana.pk)))["preferences"] == {"theme_mode": "dark"}

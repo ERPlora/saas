@@ -1,4 +1,8 @@
-"""Guard tests for ``sync_hub_plans``: the seed is the source of truth of the plan catalogue.
+"""Guard tests for ``sync_hub_plans``: the seed creates the plan catalogue, and the admin owns it after.
+
+It runs in the ``saas-migrate`` task on every deploy, so by default it only creates the plans missing by
+``slug`` and never overwrites what staff edited in the admin; ``--update`` puts every field back to the
+seed (the old behaviour).
 
 Ported from ERPlora/saas ``hubs/subscriptions/tests/test_sync_hub_plans.py`` (origin/develop),
 plus the seed halves of ``test_plan_trial_label.py`` and ``test_payment_test_plan.py``.
@@ -62,8 +66,10 @@ PLAN_FIELDS = {
 PAYMENT_TEST = "payment-test"
 
 
-def _sync():
-    call_command("sync_hub_plans", stdout=StringIO())
+def _sync(*args) -> str:
+    out = StringIO()
+    call_command("sync_hub_plans", *args, stdout=out)
+    return out.getvalue()
 
 
 @pytest.fixture
@@ -216,6 +222,43 @@ def test_recovery_window_is_the_same_on_every_plan(seeded_plans):
     )
 
 
+#: The database line of Free and Starter: one sentence with the backups, the same words as the public
+#: downloads page (``public/templates/public/downloads.html``).
+MANAGED_DATABASE = {
+    "en": "Managed database, with continuous backups and point-in-time recovery for 14 days",
+    "es": "Base de datos gestionada, con copias de seguridad continuas y recuperación a cualquier momento de los últimos 14 días",
+}
+#: Ioan's rule for the public web: the copy sells what the customer gets, never the technology under it.
+TECHNOLOGY_NAMES = ("postgresql", "postgres", "aurora")
+
+
+def _names_a_technology(text: str) -> bool:
+    return any(name in text.lower() for name in TECHNOLOGY_NAMES)
+
+
+def test_no_plan_names_the_technology_under_it(seeded_plans):
+    for slug, plan in seeded_plans.items():
+        for text in _copy(plan):
+            assert not _names_a_technology(text), f"[{slug}] technology name in plan copy: {text!r}"
+
+
+def test_the_technology_guard_catches_the_lines_that_were_actually_published():
+    """Positive control: the database lines the seed carried before the rule."""
+    for published in ("Managed PostgreSQL database", "Base de datos PostgreSQL gestionada"):
+        assert _names_a_technology(published), published
+
+
+def test_the_database_and_its_backups_are_one_line(seeded_plans):
+    """«Managed database» and «continuous backups» are one sentence, not two lines saying backups twice."""
+    for slug in ("free", "starter"):
+        plan = seeded_plans[slug]
+        assert MANAGED_DATABASE["en"] in plan.features_en, slug
+        assert MANAGED_DATABASE["es"] in plan.features_es, slug
+    for plan in seeded_plans.values():
+        assert sum("backup" in line.lower() for line in plan.features_en) <= 1, plan.slug
+        assert sum("copias" in line.lower() for line in plan.features_es) <= 1, plan.slug
+
+
 def test_the_recovery_window_is_the_one_aurora_keeps(seeded_plans):
     """The card promises the 14 days Aurora keeps (``backup_retention_period = 14``,
     ``aws-next/stacks/prod/aurora.tf``), no more: the old «up to 30 days» was the old cluster's
@@ -233,10 +276,8 @@ def test_the_recovery_window_is_the_one_aurora_keeps(seeded_plans):
         if "copias" in line.lower()
     }
 
-    assert english == {"Continuous backups, point-in-time recovery for 14 days"}
-    assert spanish == {
-        "Copias de seguridad continuas, recuperación a cualquier momento de los últimos 14 días"
-    }
+    assert english == {MANAGED_DATABASE["en"]}
+    assert spanish == {MANAGED_DATABASE["es"]}
     assert not any(
         "30" in line
         for plan in seeded_plans.values()
@@ -437,12 +478,48 @@ def test_seed_is_idempotent(seeded_plans):
     assert len(first) == len(PLANS) == 7
 
 
-def test_seed_overwrites_a_plan_edited_since(seeded_plans):
-    """The seed is the source of truth: a later run puts the catalogue back."""
-    Plan.objects.filter(slug="starter").update(
-        price_monthly=Decimal("1"), name_es="Otro"
-    )
-    _sync()
+def _edit_starter_in_the_admin():
+    Plan.objects.filter(slug="starter").update(price_monthly=Decimal("1"), name_es="Otro")
 
+
+def _starter():
     starter = Plan.objects.get(slug="starter")
-    assert (starter.price_monthly, starter.name_es) == (Decimal("29.99"), "Starter")
+    return starter.price_monthly, starter.name_es
+
+
+def test_seed_keeps_a_plan_edited_in_the_admin(seeded_plans):
+    """Every deploy runs the seed: without ``--update`` it never overwrites what staff edited."""
+    _edit_starter_in_the_admin()
+
+    out = _sync()
+
+    assert _starter() == (Decimal("1"), "Otro")
+    assert "0 created, 7 existing" in out
+
+
+def test_seed_with_update_overwrites_a_plan_edited_in_the_admin(seeded_plans):
+    """``--update`` is the old behaviour: the seed puts every field of every plan back."""
+    _edit_starter_in_the_admin()
+
+    out = _sync("--update")
+
+    assert _starter() == (Decimal("29.99"), "Starter")
+    assert "0 created, 7 updated" in out
+
+
+def test_seed_creates_only_the_missing_plans(seeded_plans):
+    Plan.objects.filter(slug="pro").delete()
+    _edit_starter_in_the_admin()
+
+    out = _sync()
+
+    assert Plan.objects.get(slug="pro").price_monthly == Decimal("109.99")
+    assert _starter() == (Decimal("1"), "Otro")
+    assert "1 created, 6 existing" in out
+
+
+def test_seed_on_an_empty_database_creates_the_whole_catalogue():
+    out = _sync()
+
+    assert Plan.objects.count() == len(PLANS) == 7
+    assert "7 created, 0 existing" in out

@@ -26,7 +26,17 @@ describe('accounts routes.ts', () => {
       // The 2FA settings and «Confirm it's you», in the auth card too.
       ['/2fa', { auth: true, chrome: false }],
       ['/reauthenticate', { auth: true, chrome: false }],
+      // Account (round 17, PLAN-SAAS §3.6): one address per section, the footer tabbar follows the route.
+      ['/account', { auth: true }],
+      ['/account/:tab(profile|security|preferences|api-keys)', { auth: true }],
     ]);
+  });
+
+  it('opens Account on its Profile, and hands each section its tab as a prop', () => {
+    const entry = routes.find((r) => r.path === '/account')!;
+    expect(entry.redirect).toBe('/account/profile');
+    const page = routes.find((r) => r.path.startsWith('/account/:tab'))!;
+    expect(page.props).toBe(true);
   });
 
   it('loads each page on demand (one chunk per page), not at boot', async () => {
@@ -36,8 +46,9 @@ describe('accounts routes.ts', () => {
       '/2fa/authenticate': (await import('./pages/TwoFactorAuthenticatePage.vue')).default,
       '/2fa': (await import('./pages/TwoFactorSettingsPage.vue')).default,
       '/reauthenticate': (await import('./pages/ReauthenticatePage.vue')).default,
+      '/account/:tab(profile|security|preferences|api-keys)': (await import('./pages/AccountPage.vue')).default,
     };
-    for (const route of routes) {
+    for (const route of routes.filter((r) => !r.redirect)) {
       expect(typeof route.component, route.path).toBe('function');
       expect(await load(route), route.path).toBe(pages[route.path as keyof typeof pages]);
     }

@@ -125,6 +125,213 @@
       "cantUseAuthenticator": "¿No puedes usar tu autenticador?",
       "usePassword": "Usa tu contraseña",
       "backToSettings": "Volver a configuración"
+    },
+    "account": {
+      "errors": {
+        "network": "No hemos podido conectar con ERPlora. Revisa tu conexión e inténtalo de nuevo.",
+        "unexpected": "Algo ha fallado en ERPlora. Inténtalo de nuevo en unos minutos."
+      },
+      "sessions": {
+        "devices": {
+          "mac": "Mac (macOS)",
+          "windows": "PC con Windows",
+          "iphone": "iPhone",
+          "ipad": "iPad",
+          "android": "Android",
+          "chromeos": "Chromebook",
+          "linux": "PC con Linux",
+          "unknown": "Dispositivo desconocido"
+        },
+        "app": "App ERPlora {version}",
+        "unknownBrowser": "Navegador desconocido",
+        "title": "Sesiones activas",
+        "loadError": "No hemos podido cargar tus sesiones",
+        "entity": "sesión | sesiones",
+        "columns": {
+          "device": "Dispositivo",
+          "browser": "Navegador",
+          "ip": "Dirección IP",
+          "lastUsed": "Último uso"
+        },
+        "now": "Ahora",
+        "this": "Esta sesión",
+        "closed": "Sesión cerrada en {device}",
+        "closeOthers": "Cerrar las demás sesiones",
+        "note": "Al cerrar una sesión también se cierra en tus negocios.",
+        "appTitle": "Cerrar la app en {device}",
+        "appMessage": "La app de ERPlora en {device} ({ip}) cerrará la sesión. Si está cobrando en una caja, tendrá que volver a entrar.",
+        "appConfirm": "Cerrar la sesión",
+        "othersTitle": "Cerrar las demás sesiones",
+        "othersMessage": "Se cerrará 1 sesión, también si es una app. Si está cobrando en una caja, tendrá que volver a entrar. | Se cerrarán {n} sesiones, también las apps. Si alguna está cobrando en una caja, tendrá que volver a entrar.",
+        "othersConfirm": "Cerrar 1 sesión | Cerrar {n} sesiones",
+        "othersClosed": "Sesiones cerradas: {n}",
+        "close": "Cerrar sesión"
+      },
+      "reauth": {
+        "passwordLead": "Para proteger tu cuenta, vuelve a escribir tu contraseña.",
+        "googleLead": "Tu cuenta entra con Google: confirma que eres tú entrando otra vez con Google. Volverás aquí para terminar.",
+        "useGoogle": "Confirmar con Google"
+      },
+      "email": {
+        "changeTitle": "Cambiar tu correo",
+        "codeTitle": "Escribe el código",
+        "send": "Enviar código",
+        "confirm": "Confirmar",
+        "newAddress": "Correo nuevo",
+        "addressHint": "Te enviaremos allí un código de 6 cifras. Tu cuenta mantiene su correo actual hasta que lo escribas.",
+        "codeLead": "Hemos enviado un código de 6 cifras a {email}. Escríbelo aquí: sirve durante 15 minutos.",
+        "resend": "Enviar otro código",
+        "resent": "Te hemos enviado otro código a {email}",
+        "verified": "Tu correo está verificado",
+        "changed": "Tu correo ahora es {email}",
+        "wrongCode": "Ese código no es correcto. Intentos que quedan: {left}.",
+        "codeSpent": "Ese código ya no sirve: pide otro."
+      },
+      "photo": {
+        "change": "Cambiar foto",
+        "remove": "Quitar foto",
+        "updated": "Foto actualizada",
+        "removed": "Foto quitada",
+        "errors": {
+          "unsupported": "Elige una imagen JPEG, PNG o WebP.",
+          "unreadable": "No hemos podido leer esa imagen. Prueba con otra.",
+          "too_large": "Esa imagen es demasiado grande, incluso reducida. Prueba con otra."
+        }
+      },
+      "profile": {
+        "heading": "Tus datos",
+        "firstName": "Nombre",
+        "lastName": "Apellidos",
+        "email": "Correo con el que entras",
+        "unverified": "Sin verificar",
+        "verify": "Verificar",
+        "change": "Cambiar",
+        "changeEmail": "Cambiar tu correo",
+        "pending": "Hemos enviado un código a {email}: escríbelo para empezar a entrar con esa dirección.",
+        "typeCode": "Escribir el código",
+        "save": "Guardar cambios",
+        "saveHint": "Se activa al cambiar algo.",
+        "saved": "Cambios guardados",
+        "loadError": "No hemos podido cargar tu cuenta"
+      },
+      "delete": {
+        "title": "Eliminar tu cuenta",
+        "confirm": "Eliminar cuenta",
+        "typeEmail": "Tu correo",
+        "message": "Se borran tu cuenta, tu foto, tus preferencias y tus claves de API, y se cierran todas tus sesiones, también en las apps y en tus negocios. No se puede deshacer.",
+        "lead": "Tu cuenta y lo que hay en ella se borran para siempre. Antes tienes que transferir o eliminar los negocios de los que eres propietario.",
+        "owns": "Eres propietario de {n} negocio: transfiérelo o elimínalo antes de borrar la cuenta. | Eres propietario de {n} negocios: transfiérelos o elimínalos antes de borrar la cuenta.",
+        "pays": "Pagas {n} negocio de otra persona: pide a su propietario que ponga sus propios datos de pago antes de borrar la cuenta. | Pagas {n} negocios de otras personas: pide a sus propietarios que pongan sus propios datos de pago antes de borrar la cuenta."
+      },
+      "loading": "Cargando…",
+      "retry": "Reintentar",
+      "loadErrorBody": "Revisa tu conexión e inténtalo de nuevo.",
+      "security": {
+        "heading": "Acceso",
+        "twoFactor": "Verificación en dos pasos",
+        "twoFactorOn": "Tras tu contraseña, un código de tu app autenticadora. Guarda tus códigos de recuperación.",
+        "twoFactorOff": "Pide un código de una app autenticadora tras tu contraseña, para que no baste con robarla.",
+        "manage": "Gestionar",
+        "setUp": "Activar"
+      },
+      "preferences": {
+        "loadError": "No hemos podido cargar tus preferencias",
+        "saved": "Preferencias guardadas",
+        "appearance": "Apariencia",
+        "appearanceLead": "«Sistema» sigue el modo claro u oscuro de tu dispositivo. Los cambios de esta pestaña se guardan solos.",
+        "themes": {
+          "system": "Sistema",
+          "light": "Claro",
+          "dark": "Oscuro"
+        },
+        "languageHeading": "Idioma",
+        "language": "Idioma",
+        "languageHint": "También el idioma de los correos que te enviamos.",
+        "mails": "Avisos por correo",
+        "invoices": "Facturas y pagos",
+        "invoicesHint": "Siempre activos: son obligatorios.",
+        "hubAlerts": "Avisos de mis negocios",
+        "hubAlertsHint": "Un negocio está listo, un pago está pendiente.",
+        "marketing": "Novedades de ERPlora",
+        "marketingHint": "Una vez al mes como mucho."
+      },
+      "keys": {
+        "newTitle": "Nueva clave de API",
+        "create": "Crear clave",
+        "name": "Nombre",
+        "nameHint": "Para reconocerla luego, p. ej. la herramienta que la usa.",
+        "permissions": "Permisos",
+        "expiry": "Caduca",
+        "expiries": {
+          "days30": "En 30 días",
+          "days90": "En 90 días",
+          "never": "Nunca"
+        },
+        "once": "Verás la clave completa una sola vez, al crearla. Guárdala en un sitio seguro.",
+        "copyNow": "Cópiala ahora y guárdala en un sitio seguro: no la volverás a ver.",
+        "copy": "Copiar la clave",
+        "copied": "Clave copiada",
+        "copyFailed": "No hemos podido copiarla: selecciona la clave y cópiala a mano.",
+        "saved": "Ya la he guardado",
+        "created": "Clave creada: «{name}»",
+        "title": "Claves de API",
+        "new": "Nueva clave",
+        "loadError": "No hemos podido cargar tus claves de API",
+        "entity": "clave | claves",
+        "never": "Nunca",
+        "expired": "Caducada",
+        "columns": {
+          "name": "Nombre",
+          "prefix": "Prefijo",
+          "permissions": "Permisos",
+          "created": "Creada",
+          "lastUsed": "Último uso",
+          "expires": "Caduca"
+        },
+        "revoke": "Revocar clave",
+        "revokeTitle": "Revocar «{name}»",
+        "revokeMessage": "Lo que use esta clave dejará de funcionar al momento. No se puede deshacer: tendrías que crear otra.",
+        "revoked": "Clave revocada: «{name}»",
+        "empty": "Aún no tienes claves. Crea una para conectar tus herramientas con tu cuenta de ERPlora.",
+        "note": "Estas claves sirven para la API de tu cuenta de ERPlora. Las de cada negocio se crean dentro del negocio.",
+        "revokeShort": "Revocar"
+      },
+      "title": "Cuenta",
+      "tabsLabel": "Secciones de la cuenta",
+      "tabs": {
+        "profile": "Perfil",
+        "security": "Seguridad",
+        "preferences": "Preferencias",
+        "apiKeys": "Claves de API"
+      },
+      "password": {
+        "title": "Cambiar tu contraseña",
+        "submit": "Cambiar contraseña",
+        "current": "Contraseña actual",
+        "new": "Contraseña nueva",
+        "hint": "Al menos 8 caracteres; mejor larga y sin tu correo.",
+        "strength": {
+          "short": "Demasiado corta: al menos 8 caracteres.",
+          "weak": "Débil: evita tu correo y usa varios tipos de caracteres.",
+          "fair": "Aceptable: una más larga es más segura.",
+          "strong": "Fuerte."
+        },
+        "changed": "Contraseña cambiada. Tus negocios te pedirán entrar otra vez.",
+        "row": "Contraseña",
+        "rowLead": "Al cambiarla, tus negocios te pedirán entrar otra vez.",
+        "none": "Tu cuenta entra con Google y aún no tiene contraseña: te enviamos un enlace por correo para crearla.",
+        "create": "Crear contraseña"
+      },
+      "google": {
+        "connected": "Puedes entrar con {account}.",
+        "notConnected": "Entra también con tu cuenta de Google.",
+        "onlyWayIn": "Es tu única forma de entrar: crea antes una contraseña.",
+        "connect": "Conectar",
+        "disconnect": "Desconectar",
+        "disconnectTitle": "Desconectar Google",
+        "disconnectMessage": "Ya no podrás entrar con {account}; seguirás entrando con tu correo y tu contraseña.",
+        "disconnected": "Google desconectado"
+      }
     }
   }
 }

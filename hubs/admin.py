@@ -10,9 +10,13 @@ The account plane (``Hub``, ``HubMember``, ``HubOwnershipTransfer``, ``BillingPr
 ``hubs.services`` (state version, the jump's mirror, the push to the Hub), so the admin adds, changes and
 deletes nothing, not even for a superuser. Superusers get the platform's actions (``services.send_latest_state``,
 ``retry_owed``, ``deliver_revocations``); ``support`` only sees (data migration ``0007``).
+
+``HubUsageDaily`` (L4-A) is what the Hub measured of each business every night (``collect_hub_usage``): read only,
+for superusers, with its sizes readable and the database's, which the customer never sees (PLAN-SAAS §5).
 """
 
 from django.contrib import admin, messages
+from django.template.defaultfilters import filesizeformat
 from django.utils.translation import gettext_lazy as _
 
 from hubs import services
@@ -22,6 +26,7 @@ from hubs.models import (
     Hub,
     HubMember,
     HubOwnershipTransfer,
+    HubUsageDaily,
     Plan,
     Sector,
     SessionRevocation,
@@ -210,3 +215,19 @@ class SessionRevocationAdmin(PlatformActions):
                 % {"count": counts["pending"]},
                 messages.WARNING,
             )
+
+
+@admin.register(HubUsageDaily)
+class HubUsageDailyAdmin(ReadOnly, admin.ModelAdmin):
+    list_display = ["hub", "day", "files", "database", "active_users_1d", "active_users_30d", "collected_at"]
+    list_select_related = ["hub"]
+    search_fields = ["hub__slug", "hub__name"]
+    date_hierarchy = "day"
+
+    @admin.display(description=_("Files"), ordering="s3_bytes")
+    def files(self, obj):
+        return filesizeformat(obj.s3_bytes)
+
+    @admin.display(description=_("Database"), ordering="db_bytes")
+    def database(self, obj):
+        return filesizeformat(obj.db_bytes)

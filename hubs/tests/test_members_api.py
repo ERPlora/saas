@@ -239,7 +239,11 @@ class TestTheListShowsMe:
         )
 
     def test_english_is_the_source_of_the_role_names(self, as_, business, team):
-        """saas#2176: the role reads through the one translated catalogue (Spanish: test_members)."""
+        """saas#2176: the role reads through the one translated catalogue (Spanish: test_members). The panel
+        speaks the account's language (``base.language``): this owner chose English."""
+        team["owner"].language = "en"
+        team["owner"].save(update_fields=["language"])
+
         listed = rows(as_(team["owner"]), business)
 
         assert [
