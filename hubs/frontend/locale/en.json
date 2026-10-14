@@ -33,12 +33,16 @@
     "reason": {
       "preparing": "We are preparing it. It opens by itself when it is ready.",
       "error": "We could not prepare it. We keep retrying; if it keeps failing, contact us.",
-      "pastDue": "There is an unpaid invoice. It keeps working for 7 more days; pay it so it is not suspended.",
-      "pastDueApp": "There is an unpaid invoice: it keeps working for 7 more days. To pay it, go to erplora.com in your browser.",
+      "pastDue": "There is an unpaid invoice: pay it so the business is not suspended.",
+      "pastDueApp": "There is an unpaid invoice. To pay it, go to erplora.com in your browser.",
       "suspended": "Suspended because of an unpaid invoice. Your data is safe: pay the invoice and it works again at once.",
       "suspendedApp": "Suspended because of an unpaid invoice. Your data is safe. To pay it, go to erplora.com in your browser.",
       "deleting": "Deleted. You can recover it until {date}.",
-      "preparingSoon": "Ready in a few seconds"
+      "preparingSoon": "Ready in a few seconds",
+      "pastDueUntil": "There is an unpaid invoice. Pay it before {date} or the business is suspended.",
+      "pastDueUntilApp": "There is an unpaid invoice: it keeps working until {date}. To pay it, go to erplora.com in your browser.",
+      "suspendedSince": "Suspended because of an unpaid invoice since {date}. Your data is safe: pay the invoice and it works again at once.",
+      "suspendedSinceApp": "Suspended because of an unpaid invoice since {date}. Your data is safe. To pay it, go to erplora.com in your browser."
     },
     "open": {
       "opening": "Opening {name}…"
@@ -159,9 +163,16 @@
       },
       "unpaid": {
         "pastDueHeading": "{name} has an unpaid invoice",
-        "pastDueBody": "It keeps working for 7 more days; if it is not paid by then, the business is suspended. Nothing is deleted.",
+        "pastDueBody": "If it is not paid soon, the business is suspended. Nothing is deleted.",
         "suspendedHeading": "{name} is suspended",
-        "suspendedBody": "It was suspended because of an unpaid invoice. Nothing is deleted: once it is paid it works again at once."
+        "suspendedBody": "It was suspended because of an unpaid invoice. Nothing is deleted: once it is paid it works again at once.",
+        "groupHeading": "{count} businesses have unpaid invoices",
+        "lineSuspendedSince": "{name} is suspended since {date}.",
+        "lineSuspended": "{name} is suspended.",
+        "linePastDueUntil": "{name} is suspended on {date} if it is not paid.",
+        "linePastDue": "{name} has an unpaid invoice.",
+        "lineDeclined": "The bank declined the card.",
+        "nothingDeleted": "Nothing is deleted."
       },
       "invitation": {
         "heading": "You have been invited to {name}",
@@ -381,7 +392,10 @@
       "pay": "Pay the invoice",
       "cardDeclined": "The bank declined the card: change it before paying.",
       "app": "Settle it from erplora.com, in your browser.",
-      "payer": "You pay"
+      "payer": "You pay",
+      "changeCard": "Change card",
+      "changeCardName": "Change the card of {name}",
+      "payName": "Pay the invoice of {name}"
     }
   }
 }

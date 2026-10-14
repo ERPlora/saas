@@ -139,6 +139,7 @@ function openEmail(mode: 'change' | 'verify' | 'resume'): void {
             <HubIcon
               slot="start"
               name="ion:checkmark-circle-outline"
+              aria-hidden="true"
             />
             {{ $t('accounts.account.profile.verify') }}
           </ion-button>
@@ -152,6 +153,7 @@ function openEmail(mode: 'change' | 'verify' | 'resume'): void {
             <HubIcon
               slot="start"
               name="lucide:pencil"
+              aria-hidden="true"
             />
             {{ $t('accounts.account.profile.change') }}
           </ion-button>
@@ -193,6 +195,7 @@ function openEmail(mode: 'change' | 'verify' | 'resume'): void {
             v-else
             slot="start"
             name="lucide:save"
+            aria-hidden="true"
           />
           {{ $t('accounts.account.profile.save') }}
         </ion-button>

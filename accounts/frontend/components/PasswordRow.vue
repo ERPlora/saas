@@ -40,6 +40,7 @@ const changing = shallowRef(false);
       <HubIcon
         slot="start"
         name="lucide:key-round"
+        aria-hidden="true"
       />
       {{ $t('accounts.account.password.submit') }}
     </ion-button>
@@ -52,6 +53,7 @@ const changing = shallowRef(false);
       <HubIcon
         slot="start"
         name="lucide:key-round"
+        aria-hidden="true"
       />
       {{ $t('accounts.account.password.create') }}
     </ion-button>

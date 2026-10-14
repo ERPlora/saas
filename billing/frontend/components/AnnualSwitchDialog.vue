@@ -121,6 +121,7 @@ async function confirm(): Promise<void> {
       <HubIcon
         slot="start"
         name="ion:refresh-outline"
+        aria-hidden="true"
       />
       {{ $t('billing.store.retry') }}
     </ion-button>

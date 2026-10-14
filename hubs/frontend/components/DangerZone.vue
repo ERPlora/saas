@@ -67,6 +67,7 @@ async function recover(): Promise<void> {
             v-else
             slot="start"
             name="ion:refresh-outline"
+            aria-hidden="true"
           />
           {{ $t('hubs.danger.restore') }}
         </ion-button>
@@ -79,6 +80,7 @@ async function recover(): Promise<void> {
           <HubIcon
             slot="start"
             name="ion:trash-outline"
+            aria-hidden="true"
           />
           {{ $t('hubs.danger.deleteAction') }}
         </ion-button>

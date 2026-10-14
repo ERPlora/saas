@@ -176,6 +176,8 @@ def seed() -> None:
         status=Subscription.Status.PAST_DUE,
         unpaid_reason=Subscription.UnpaidReason.CARD_DECLINED,
         unpaid_since=declined_since,
+        # What Stripe's `invoice.payment_failed` webhook writes: the page to pay it (the panel's «Pay»).
+        unpaid_invoice_url="https://invoice.stripe.com/i/e2e-billing-plaza",
     )
     invoice(plaza, "plaza", days_ago=4, open_url="https://invoice.stripe.com/i/e2e-billing-plaza")
     PaymentFailure.objects.create(
@@ -199,6 +201,7 @@ def seed() -> None:
         status=Subscription.Status.PAST_DUE,
         unpaid_reason=Subscription.UnpaidReason.PAYMENT_FAILED,
         unpaid_since=soft_since,
+        unpaid_invoice_url="https://invoice.stripe.com/i/e2e-billing-norte",
     )
     invoice(norte, "norte", days_ago=2, open_url="https://invoice.stripe.com/i/e2e-billing-norte")
     PaymentFailure.objects.create(

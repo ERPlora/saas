@@ -150,7 +150,10 @@ defineExpose({ submit, pending: create.pending });
         data-testid="create-address"
       >
         <template v-if="address.state === 'ready'">
-          <HubIcon name="ion:checkmark-circle-outline" />
+          <HubIcon
+            name="ion:checkmark-circle-outline"
+            aria-hidden="true"
+          />
           <i18n-t
             keypath="hubs.create.address"
             tag="span"
@@ -245,6 +248,7 @@ defineExpose({ submit, pending: create.pending });
         v-else
         slot="start"
         name="ion:add-outline"
+        aria-hidden="true"
       />
       {{ $t('hubs.create.submit') }}
     </ion-button>

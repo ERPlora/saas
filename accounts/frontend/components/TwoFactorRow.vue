@@ -58,6 +58,7 @@ onMounted(async () => {
       <HubIcon
         slot="start"
         name="lucide:shield-check"
+        aria-hidden="true"
       />
       {{ state === 'off' ? $t('accounts.account.security.setUp') : $t('accounts.account.security.manage') }}
     </ion-button>

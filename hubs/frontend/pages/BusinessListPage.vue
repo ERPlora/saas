@@ -11,7 +11,9 @@
 // the table holds the sign-up form itself. Live data: `hubs.business.list`. Ionic reuses the page:
 // `?create=1` (the launcher's «Create another business») is read each time it comes on screen. The list
 // fills the page between the topbar and the footer (`detail-fill` + `.panel-fill`, Ioan 2026-10-14), and
-// asks for rows per page only when there are more businesses than the shortest page (README §3b).
+// asks for rows per page only when there are more businesses than the shortest page (README §3b). Its states are
+// truthful (audit 2026-10-14, R-04: `useLiveState`): the stream down or no answer in time is an error with
+// «Retry», never «Create your first business»; unpaid invoices of two or more businesses are one notice (R-15).
 import {
   DataTable,
   type DataTableAction,
@@ -41,11 +43,13 @@ import {
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
+import { useLiveState } from '../../../frontend/live-state';
 import type { BusinessDetailOut, BusinessRowOut, InvitationOut, OwnershipOfferOut } from '../../../frontend/sdk-types';
-import { opensAtAll, preparationFailed, reasonKey, statusPill } from '../business-status';
+import { opensAtAll, preparationFailed, reasonDate, reasonKey, statusPill } from '../business-status';
 import BusinessCreateForm from '../components/BusinessCreateForm.vue';
 import BusinessPreparing from '../components/BusinessPreparing.vue';
 import DeclineDialog from '../components/DeclineDialog.vue';
+import UnpaidGroupNotice from '../components/UnpaidGroupNotice.vue';
 import UnpaidNotice from '../components/UnpaidNotice.vue';
 import { useErrorText } from '../error-text';
 import { useAcceptInvitation } from '../invitations';
@@ -95,12 +99,15 @@ const live = useLive('hubs.business.list', () => ({
   ...(search.value.trim() ? { search: search.value.trim() } : {}),
 }));
 
+const state = useLiveState(live, { isEmpty: (data) => data.rows.length === 0 });
+/** Why the list could not be loaded: the server's sentence, or the connection hint after the time limit. */
+const loadError = computed(() => (state.failed.value ? text(state.error.value) || t('saas.load.body') : undefined));
+
 const rows = computed<BusinessRowOut[]>(() => live.data.value?.rows ?? []);
 const invitations = computed<InvitationOut[]>(() => live.data.value?.invitations ?? []);
 const offers = computed<OwnershipOfferOut[]>(() => live.data.value?.ownership_offers ?? []);
 const unpaid = computed(() => rows.value.filter((row) => row.status === 'past_due' || row.status === 'suspended'));
 const searching = computed(() => search.value.trim() !== '');
-const firstLoad = computed(() => live.status.value === 'loading' && !live.data.value);
 
 // A page emptied elsewhere steps back to the last page that still has rows.
 watch(live.data, (now) => {
@@ -144,9 +151,10 @@ const pill = (row: BusinessRowOut) => statusPill(row, t, locale.value);
 
 function why(row: BusinessRowOut): string {
   const key = reasonKey(row, inApp.value);
-  if (!key || key === 'hubs.reason.pastDue' || key === 'hubs.reason.pastDueApp') return '';
+  // A payment pending is said by the notice above the list, with its way to pay.
+  if (!key || row.status === 'past_due') return '';
   if (key === 'hubs.reason.preparing') return t('hubs.reason.preparingSoon');
-  return t(key, { date: formatDateTime(row.purge_after, locale.value) });
+  return t(key, { date: reasonDate(row, locale.value) });
 }
 
 const pageOf = (row: { id: string }) => `/businesses/${row.id}/summary`;
@@ -293,7 +301,7 @@ onIonViewWillEnter(entered);
   >
     <div class="list-stack panel-fill">
       <InlineFeedback
-        v-if="live.status.value === 'reconnecting'"
+        v-if="state.reconnecting.value"
         tone="warning"
         data-testid="businesses-reconnecting"
       >
@@ -323,6 +331,7 @@ onIonViewWillEnter(entered);
             <HubIcon
               slot="start"
               name="ion:checkmark-outline"
+              aria-hidden="true"
             />
             {{ $t('hubs.invitation.accept') }}
           </ion-button>
@@ -337,6 +346,7 @@ onIonViewWillEnter(entered);
             <HubIcon
               slot="start"
               name="ion:close-outline"
+              aria-hidden="true"
             />
             {{ $t('hubs.invitation.decline') }}
           </ion-button>
@@ -362,6 +372,7 @@ onIonViewWillEnter(entered);
             <HubIcon
               slot="start"
               name="ion:checkmark-outline"
+              aria-hidden="true"
             />
             {{ $t('hubs.list.ownership.accept') }}
           </ion-button>
@@ -376,6 +387,7 @@ onIonViewWillEnter(entered);
             <HubIcon
               slot="start"
               name="ion:close-outline"
+              aria-hidden="true"
             />
             {{ $t('hubs.list.ownership.decline') }}
           </ion-button>
@@ -383,10 +395,14 @@ onIonViewWillEnter(entered);
       </InlineFeedback>
 
       <UnpaidNotice
-        v-for="row in unpaid"
-        :key="row.id"
-        :business="row"
-        :data-testid="`businesses-unpaid-${row.id}`"
+        v-if="unpaid.length === 1"
+        :business="unpaid[0]"
+        :data-testid="`businesses-unpaid-${unpaid[0].id}`"
+      />
+      <UnpaidGroupNotice
+        v-else-if="unpaid.length > 1"
+        :businesses="unpaid"
+        data-testid="businesses-unpaid"
       />
 
       <p
@@ -412,8 +428,8 @@ onIonViewWillEnter(entered);
         :page-size-chooser="(live.data.value?.total ?? 0) > PAGE_SIZES[0]"
         :views="['table', 'cards']"
         :card-breakpoint="CARD_BREAKPOINT"
-        :loading="firstLoad"
-        :error="live.status.value === 'error' ? text(live.error.value) : undefined"
+        :loading="state.loading.value"
+        :error="loadError"
         :search-placeholder="$t('hubs.list.search')"
         :labels="labels"
         :entity-label="entityLabel"
@@ -426,7 +442,7 @@ onIonViewWillEnter(entered);
         @page-size-change="setPageSize"
         @add="startCreate"
         @action="onAction"
-        @retry="live.refresh()"
+        @retry="state.retry()"
       >
         <template #name="{ row }">
           <RouterLink
@@ -494,11 +510,17 @@ onIonViewWillEnter(entered);
             <span
               v-if="row.plan"
               class="card-meta"
-            ><HubIcon name="ion:receipt-outline" />{{ $t('hubs.common.plan', { name: row.plan.name }) }}</span>
+            ><HubIcon
+              name="ion:receipt-outline"
+              aria-hidden="true"
+            />{{ $t('hubs.common.plan', { name: row.plan.name }) }}</span>
             <span
               class="card-meta"
               data-testid="business-role"
-            ><HubIcon name="ion:person-outline" />{{ row.role_label }}</span>
+            ><HubIcon
+              name="ion:person-outline"
+              aria-hidden="true"
+            />{{ row.role_label }}</span>
             <StatusPill
               v-if="row.last_opened_at && row.id === rows[0]?.id"
               class="tag-recent"
@@ -534,6 +556,7 @@ onIonViewWillEnter(entered);
                 <HubIcon
                   slot="start"
                   name="ion:close-outline"
+                  aria-hidden="true"
                 />
                 {{ $t('hubs.list.noResults.showAll') }}
               </ion-button>
@@ -604,7 +627,10 @@ onIonViewWillEnter(entered);
         class="ion-text-center"
       >
         <div class="result-icon is-success">
-          <HubIcon name="ion:checkmark-outline" />
+          <HubIcon
+            name="ion:checkmark-outline"
+            aria-hidden="true"
+          />
         </div>
         <p class="create-lead">
           <i18n-t keypath="hubs.createModal.readyAddress">
@@ -619,7 +645,10 @@ onIonViewWillEnter(entered);
         class="ion-text-center"
       >
         <div class="result-icon is-danger">
-          <HubIcon name="ion:warning-outline" />
+          <HubIcon
+            name="ion:warning-outline"
+            aria-hidden="true"
+          />
         </div>
         <p class="create-lead">
           {{ $t('hubs.createModal.error', { name: created.name }) }}
@@ -639,6 +668,7 @@ onIonViewWillEnter(entered);
           <HubIcon
             slot="start"
             name="ion:storefront-outline"
+            aria-hidden="true"
           />
           {{ $t('hubs.createModal.goToList') }}
         </ion-button>
@@ -652,6 +682,7 @@ onIonViewWillEnter(entered);
           <HubIcon
             slot="start"
             name="ion:log-in-outline"
+            aria-hidden="true"
           />
           {{ $t('hubs.common.openBusiness') }}
         </ion-button>

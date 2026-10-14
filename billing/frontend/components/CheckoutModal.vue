@@ -338,6 +338,7 @@ onBeforeUnmount(() => {
           <HubIcon
             slot="start"
             name="ion:create-outline"
+            aria-hidden="true"
           />
           {{ $t('billing.checkout.change') }}
         </ion-button>
@@ -375,6 +376,7 @@ onBeforeUnmount(() => {
               <HubIcon
                 slot="start"
                 name="ion:refresh-outline"
+                aria-hidden="true"
               />
               {{ $t('billing.checkout.retry') }}
             </ion-button>

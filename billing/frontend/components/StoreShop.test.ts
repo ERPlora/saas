@@ -36,7 +36,9 @@ import {
   storeModule,
   subscription,
 } from '../__tests__/fixtures';
-import { apiError, flush, ionProps, mountBilling, optionValue } from '../__tests__/mount-billing';
+import { LIVE_TIMEOUT_MS } from '../../../frontend/live-state';
+import { errorFrame, HELLO, resultFrame } from '../../../hubs/frontend/__tests__/mount-hubs';
+import { apiError, flush, ionProps, mountBilling, optionValue, type StreamCall } from '../__tests__/mount-billing';
 import AnnualSwitchDialog from './AnnualSwitchDialog.vue';
 import CheckoutModal from './CheckoutModal.vue';
 import ProrationDialog from './ProrationDialog.vue';
@@ -57,7 +59,11 @@ const CATALOGS: Record<string, ReturnType<typeof catalog>> = {
   plaza: catalog('plaza'),
 };
 
-async function setup(options: { tab?: 'plans' | 'modules'; businessId?: string; rows?: unknown[]; answer?: Answer; locale?: 'en' | 'es' } = {}) {
+/** `list`: the account's businesses arrive (`result`, by default), nothing arrives yet (`none`), or the stream
+ *  is refused (`down`: `/api/live` answers 503). */
+async function setup(
+  options: { tab?: 'plans' | 'modules'; businessId?: string; rows?: unknown[]; answer?: Answer; locale?: 'en' | 'es'; list?: 'result' | 'none' | 'down' } = {},
+) {
   const answer = options.answer ?? (() => undefined);
   const m = await mountBilling(StoreShop, {
     locale: options.locale,
@@ -79,8 +85,10 @@ async function setup(options: { tab?: 'plans' | 'modules'; businessId?: string; 
       return Response.json({});
     },
   });
-  const stream = await m.live();
-  await m.result(stream, 'hubs.business.list', businessPage((options.rows ?? [BAKERY, CAFE, PLAZA, SALON]) as never));
+  const list = options.list ?? 'result';
+  if (list === 'down') m.liveDown.value = true;
+  const stream = list === 'down' ? (await m.clock.advance(150), undefined) : await m.live();
+  if (stream && list === 'result') await m.result(stream, 'hubs.business.list', businessPage((options.rows ?? [BAKERY, CAFE, PLAZA, SALON]) as never));
   await flush();
   const el = (id: string) => m.wrapper.find(`[data-testid="${id}"]`);
   const all = (id: string) => m.wrapper.findAll(`[data-testid="${id}"]`);
@@ -88,7 +96,7 @@ async function setup(options: { tab?: 'plans' | 'modules'; businessId?: string; 
     el('store-business').element.dispatchEvent(new CustomEvent('ionChange', { detail: { value: id } }));
     await flush();
   };
-  return { ...m, stream, el, all, pick };
+  return { ...m, stream: stream as StreamCall, el, all, pick };
 }
 
 describe('StoreShop', () => {
@@ -380,5 +388,58 @@ describe('StoreShop', () => {
     const s = await setup({ locale: 'es' });
     expect(s.wrapper.text()).toContain('¿Para qué negocio?');
     expect(s.wrapper.text()).toContain('Precios sin IVA.');
+  });
+});
+
+describe('StoreShop: businesses that do not load are said, never «You have no business to buy for» (audit 2026-10-14, R-04)', () => {
+  const states = (s: Awaited<ReturnType<typeof setup>>) => ({
+    error: s.el('store-error').exists() ? s.el('store-error').find('.heading').text() : null,
+    retry: s.el('store-retry').exists(),
+    noBusiness: s.el('store-no-business').exists(),
+    loading: s.el('store-loading').exists(),
+  });
+  const BUSINESSES_ERROR = 'We could not load your businesses';
+
+  it('their query fails: it says so with «Retry», not that there is no business', async () => {
+    const s = await setup({ list: 'none' });
+    s.stream.push(errorFrame(s.client.stream.subscriptions('hubs.business.list')[0].id, 'internal_error'));
+    await flush();
+    expect(states(s)).toEqual({ error: BUSINESSES_ERROR, retry: true, noBusiness: false, loading: false });
+  });
+
+  it('nothing in time: skeleton cards until the limit, then the error', async () => {
+    const s = await setup({ list: 'none' });
+    // The time limit counts from the mount (opening the stream already took 150 ms of it).
+    await s.clock.advance(LIVE_TIMEOUT_MS - 1 - s.clock.now());
+    expect(states(s)).toEqual({ error: null, retry: false, noBusiness: false, loading: true });
+    await s.clock.advance(1);
+    expect(states(s)).toEqual({ error: BUSINESSES_ERROR, retry: true, noBusiness: false, loading: false });
+  });
+
+  it('the stream refused (/api/live answers 503): it could not load them, it does not say there are none', async () => {
+    const s = await setup({ list: 'down' });
+    expect(states(s)).toEqual({ error: BUSINESSES_ERROR, retry: true, noBusiness: false, loading: false });
+  });
+
+  it('«Retry» opens the stream again and sells to the businesses that come', async () => {
+    const s = await setup({ list: 'none' });
+    await s.clock.advance(LIVE_TIMEOUT_MS);
+    const before = s.net.streams.length;
+    await s.el('store-retry').trigger('click');
+    await flush();
+    await s.clock.advance(150);
+    expect(s.net.streams.length).toBe(before + 1);
+    expect(states(s)).toEqual({ error: null, retry: false, noBusiness: false, loading: true });
+    const again = s.net.lastStream();
+    again.push(HELLO);
+    again.push(resultFrame(s.client.stream.subscriptions('hubs.business.list')[0].id, businessPage([BAKERY, CAFE] as never), 1));
+    await flush();
+    expect(ionProps(s.el('store-business'), 'value')).toEqual({ value: 'bakery' });
+    expect(s.all('plan-name').map((n) => n.text())).toEqual(['Free', 'Starter']);
+  });
+
+  it('says it in Spanish', async () => {
+    const s = await setup({ list: 'down', locale: 'es' });
+    expect(s.el('store-error').text()).toContain('No hemos podido cargar tus negocios');
   });
 });

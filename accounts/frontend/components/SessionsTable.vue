@@ -4,8 +4,9 @@
 // location is the IP: no GeoIP, plan §6) and last use. Each row but this one closes on its own
 // (`accounts.session.close`); an app's session asks first, since it may be charging at a till (W-F5). «Close
 // other sessions» (toolbar) is confirmed with how many go, the apps too (V-33). Closing a session in the SaaS
-// also ends it in the businesses (the server asks the Hub). Every close ends in a toast naming where. The list
-// fills what the «Sign-in» card leaves of the page (`fill`, Ioan 2026-10-14).
+// also ends it in the businesses (the server asks the Hub). Every close ends in a toast naming where. A failed load
+// (an error, or no answer in time) is said with «Retry», never as «no results · 0 sessions» (audit 2026-10-14
+// R-04). The list fills what the «Sign-in» card leaves of the page (`fill`, Ioan 2026-10-14).
 import {
   ConfirmDialog,
   DataTable,
@@ -21,6 +22,7 @@ import { IonButton } from '@ionic/vue';
 import { computed, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import { useLiveState } from '../../../frontend/live-state';
 import type { SessionRowOut } from '../../../frontend/sdk-types';
 import { browserName, deviceIcon, deviceName, isAppSession } from '../devices';
 import { useErrorText } from '../error-text';
@@ -28,6 +30,9 @@ import { useErrorText } from '../error-text';
 const { t, locale } = useI18n();
 const { text, forDialog } = useErrorText();
 const live = useLive('accounts.session.list');
+const state = useLiveState(live, { isEmpty: (data) => data.rows.length === 0 });
+/** Why the sessions could not be loaded: the server's reason, or the connection's after a time-out. */
+const loadError = computed(() => (state.failed.value ? text(state.error.value) || t('accounts.account.errors.network') : undefined));
 const close = useCommand('accounts.session.close');
 const closeOthers = useCommand('accounts.session.close_others');
 
@@ -111,14 +116,14 @@ async function closeTheOthers(): Promise<void> {
     :page-size="25"
     :page-size-options="[25, 50]"
     :page-size-chooser="false"
-    :loading="live.status.value === 'loading' && !live.data.value"
-    :error="live.status.value === 'error' && !live.data.value ? text(live.error.value) || $t('accounts.account.errors.unexpected') : undefined"
+    :loading="state.loading.value"
+    :error="loadError"
     :labels="{ loadError: $t('accounts.account.sessions.loadError'), retry: $t('accounts.account.retry') }"
     :entity-label="(n: number) => $t('accounts.account.sessions.entity', n)"
     :card-title="device"
     :card-icon="(row: SessionRowOut) => deviceIcon(row.device)"
     @action="onAction"
-    @retry="live.refresh()"
+    @retry="state.retry()"
   >
     <template #toolbar>
       <ion-button
@@ -132,6 +137,7 @@ async function closeTheOthers(): Promise<void> {
         <HubIcon
           slot="start"
           name="ion:log-out-outline"
+          aria-hidden="true"
         />
         {{ $t('accounts.account.sessions.closeOthers') }}
       </ion-button>

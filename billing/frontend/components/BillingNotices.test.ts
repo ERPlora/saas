@@ -1,7 +1,7 @@
 // What waits for a payment, on top of every tab of Billing (mockups `billing.html`; README §6.18; UX-AUDIT-4
 // R2, W-F15): the account's invoices not collected (`billing.invoice.list` with `status=open`, live) with
-// the state of their business (`hubs.business.list`, live). On Invoices, one banner each; on the other tabs
-// the same warning in one line with a link to it. When one of them is paid — here, in another tab, or at
+// the state of their business (`hubs.business.list`, live). On Invoices, its banner, or ONE banner for two or
+// more (audit 2026-10-14, R-15); on the other tabs the same warning in one line with a link to it. When one of them is paid — here, in another tab, or at
 // Stripe's page and back — «Invoice paid: … is up to date again».
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -14,10 +14,12 @@ import { toastSuccess } from '@erplora/ui/shell';
 
 import { invoicePage, invoiceRow, unpaidRow } from '../__tests__/billing-fixtures';
 import { businessPage, businessRow, PLAZA } from '../__tests__/fixtures';
-import { resultFrame } from '../../../hubs/frontend/__tests__/mount-hubs';
+import { LIVE_TIMEOUT_MS } from '../../../frontend/live-state';
+import { errorFrame, HELLO, resultFrame } from '../../../hubs/frontend/__tests__/mount-hubs';
 import { describeCall, flush, mountBilling, type StreamCall } from '../__tests__/mount-billing';
 import { PAYING_STORAGE_KEY } from '../pay';
 import BillingNotices from './BillingNotices.vue';
+import UnpaidGroupNotice from './UnpaidGroupNotice.vue';
 import UnpaidInvoiceNotice from './UnpaidInvoiceNotice.vue';
 
 afterEach(() => {
@@ -52,11 +54,23 @@ describe('BillingNotices', () => {
     expect(s.client.stream.subscriptions('hubs.business.list').map((sub) => sub.params)).toEqual([{ limit: 100 }]);
   });
 
-  it('on Invoices, one banner per invoice not collected, with its business', async () => {
+  it('on Invoices, one invoice not collected: its own banner, with its business', async () => {
+    const s = await setup();
+    await s.show([OPEN_PLAZA]);
+    const notices = s.wrapper.findAllComponents(UnpaidInvoiceNotice);
+    expect(notices.map((n) => [n.props('invoice').id, n.props('business')?.id])).toEqual([['i1', 'plaza']]);
+    expect(s.wrapper.findAllComponents(UnpaidGroupNotice)).toHaveLength(0);
+    expect(s.wrapper.find('[data-testid="billing-unpaid-line"]').exists()).toBe(false);
+  });
+
+  it('on Invoices, two or more: ONE banner with every one and its business (R-15)', async () => {
     const s = await setup();
     await s.show([OPEN_PLAZA, OPEN_NORTE]);
-    const notices = s.wrapper.findAllComponents(UnpaidInvoiceNotice);
-    expect(notices.map((n) => [n.props('invoice').id, n.props('business')?.id])).toEqual([
+    expect(s.wrapper.findAllComponents(UnpaidInvoiceNotice)).toHaveLength(0);
+    const groups = s.wrapper.findAllComponents(UnpaidGroupNotice);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].attributes('data-testid')).toBe('billing-unpaid-group');
+    expect(groups[0].props('items').map((item: { invoice: { id: string }; business: { id: string } | null }) => [item.invoice.id, item.business?.id])).toEqual([
       ['i1', 'plaza'],
       ['i2', 'norte'],
     ]);
@@ -143,5 +157,59 @@ describe('BillingNotices', () => {
     await flush();
     expect(s.wrapper.get('[data-testid="billing-unpaid-text"]').text()).toBe('Bar La Plaza tiene una factura sin pagar: 36,29\u00a0€.');
     expect(s.wrapper.get('[data-testid="billing-unpaid-line"] a').text()).toBe('Ver la factura');
+  });
+});
+
+describe('BillingNotices: unpaid invoices that do not load are never read as «nothing owed» (audit 2026-10-14, R-04)', () => {
+  const UNKNOWN = 'We could not check whether you have unpaid invoices.';
+
+  it.each(['subscriptions', 'payment'])('on %s, a failed list says it could not check, with «Retry»', async (tab) => {
+    const s = await setup(tab);
+    s.call.push(errorFrame(s.client.stream.subscriptions('billing.invoice.list')[0].id, 'internal_error'));
+    await flush();
+    const unknown = s.wrapper.get('[data-testid="billing-unpaid-unknown"]');
+    expect(unknown.attributes('role')).toBe('status');
+    expect(unknown.get('[data-testid="billing-unpaid-unknown-text"]').text()).toBe(UNKNOWN);
+    expect(unknown.get('[data-testid="billing-unpaid-retry"]').text()).toBe('Retry');
+    expect(s.wrapper.find('[data-testid="billing-unpaid-line"]').exists()).toBe(false);
+  });
+
+  it('nothing in time: the same, not silence', async () => {
+    const s = await setup('payment');
+    await s.clock.advance(LIVE_TIMEOUT_MS - 1 - s.clock.now());
+    expect(s.wrapper.text()).toBe('');
+    await s.clock.advance(1);
+    expect(s.wrapper.get('[data-testid="billing-unpaid-unknown-text"]').text()).toBe(UNKNOWN);
+  });
+
+  it('«Retry» opens the stream again and says what is owed', async () => {
+    const s = await setup('subscriptions');
+    await s.clock.advance(LIVE_TIMEOUT_MS);
+    const before = s.net.streams.length;
+    await s.wrapper.get('[data-testid="billing-unpaid-retry"]').trigger('click');
+    await flush();
+    await s.clock.advance(150);
+    expect(s.net.streams.length).toBe(before + 1);
+    expect(s.wrapper.find('[data-testid="billing-unpaid-unknown"]').exists()).toBe(false);
+    const again = s.net.lastStream();
+    again.push(HELLO);
+    again.push(resultFrame(s.client.stream.subscriptions('hubs.business.list')[0].id, businessPage([PLAZA, NORTE]), 1));
+    again.push(resultFrame(s.client.stream.subscriptions('billing.invoice.list')[0].id, invoicePage([OPEN_PLAZA]), 1));
+    await flush();
+    expect(s.wrapper.get('[data-testid="billing-unpaid-text"]').text()).toBe('Bar La Plaza has an unpaid invoice: €36.29.');
+  });
+
+  it('on Invoices the list itself shows every invoice not collected and says when it fails: no second notice', async () => {
+    const s = await setup('invoices');
+    await s.clock.advance(LIVE_TIMEOUT_MS);
+    expect(s.wrapper.find('[data-testid="billing-unpaid-unknown"]').exists()).toBe(false);
+  });
+
+  it('says it in Spanish', async () => {
+    const s = await mountBilling(BillingNotices, { props: { tab: 'payment' }, locale: 'es' });
+    await s.live();
+    await s.clock.advance(LIVE_TIMEOUT_MS);
+    expect(s.wrapper.get('[data-testid="billing-unpaid-unknown-text"]').text()).toBe('No hemos podido comprobar si tienes facturas sin pagar.');
+    expect(s.wrapper.get('[data-testid="billing-unpaid-retry"]').text()).toBe('Reintentar');
   });
 });

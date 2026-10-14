@@ -3,6 +3,10 @@
 // with its business as the account's list has it (`hubs.business.list`, live: whether it is suspended,
 // since when, whether the card changed). A credit note is no debt.
 //
+// Its `state` (`live-state.ts`) tells «nothing owed» (a real answer without invoices: `empty`) from «could not
+// check» (`error`: the query or the stream failed, or nothing came in time; audit 2026-10-14, R-04): an empty
+// `items` alone never means there is no debt.
+//
 // «Invoice paid»: when an invoice leaves that list — paid here, in another tab, or at Stripe's page — it is
 // asked again (`billing.invoice.get`) and, paid, a toast says its business is up to date. The invoice the
 // page went to pay at Stripe (`pay.ts`) is watched from the first answer on, so coming back to a page
@@ -12,6 +16,7 @@ import { useLive, useLiveClient } from '@erplora/ui/sdk';
 import { computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import { useLiveState } from '../../frontend/live-state';
 import type { BusinessRowOut, InvoiceRowOut } from '../../frontend/sdk-types';
 import { forgetPayment, rememberedPayment } from './pay';
 
@@ -29,6 +34,7 @@ export function useUnpaidInvoices() {
   const { t } = useI18n();
   const open = useLive('billing.invoice.list', { status: 'open', limit: LIMIT });
   const list = useLive('hubs.business.list', { limit: LIMIT });
+  const state = useLiveState(open, { client, isEmpty: (data) => data.rows.every((row) => row.kind !== 'invoice') });
 
   const businesses = computed(() => new Map((list.data.value?.rows ?? []).map((row) => [row.id, row])));
   const items = computed<UnpaidItem[]>(() =>
@@ -63,5 +69,5 @@ export function useUnpaidInvoices() {
     }
   }
 
-  return { items, status: open.status };
+  return { items, status: open.status, state };
 }

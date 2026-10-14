@@ -1,7 +1,12 @@
 // Account → Preferences (mockups `account.html` «preferences»): appearance (system, light, dark: the shell's theme,
 // painted at once and kept in the account), language (the account's, which the mails and the jump to a business
 // read too) and the two mail switches («Invoices and payments» is always on). Each control saves on its own
-// (`accounts.preferences.update`, only what changed) and says so; a refusal puts the control back.
+// (`accounts.preferences.update`, only what changed) and says so; a refusal puts the control back. A failed load
+// is said with «Retry», never a skeleton for ever (audit 2026-10-14, R-08).
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { setThemeMode, themeMode } from '@erplora/ui/shell';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -13,7 +18,19 @@ vi.mock('@erplora/ui/shell', async (importOriginal) => ({
 
 import { toastError, toastSuccess } from '@erplora/ui/shell';
 
-import { type ApiCall, apiError, choose, errorFrame, flush, ionProps, mountPanel, preferences, subId } from '../__tests__/mount-panel';
+import {
+  type ApiCall,
+  apiError,
+  choose,
+  errorFrame,
+  flush,
+  HELLO,
+  ionProps,
+  LIVE_TIMEOUT_MS,
+  mountPanel,
+  preferences,
+  subId,
+} from '../__tests__/mount-panel';
 import type { PreferencesOut } from '../../../frontend/sdk-types';
 import PreferencesForm from './PreferencesForm.vue';
 
@@ -95,5 +112,42 @@ describe('PreferencesForm', () => {
     await flush();
     expect(s.q('preferences-error')?.textContent).toContain('We could not load your preferences');
     expect(s.q('preferences-retry')).not.toBeNull();
+    expect(s.q('preferences-loading')).toBeNull();
+  });
+
+  it('says a failed load, not a skeleton, when no answer comes in time (stream down, no network)', async () => {
+    const s = await mountPanel(PreferencesForm);
+    await s.live();
+    await s.clock.advance(LIVE_TIMEOUT_MS);
+    expect(s.q('preferences-error')?.textContent).toContain('We could not load your preferences');
+    expect(s.q('preferences-retry')?.textContent).toContain('Retry');
+    expect(s.q('preferences-loading')).toBeNull();
+    expect(s.q('preferences-theme')).toBeNull();
+  });
+
+  it('«Retry» opens the stream again and shows the preferences when they come', async () => {
+    const s = await mountPanel(PreferencesForm);
+    await s.live();
+    await s.clock.advance(LIVE_TIMEOUT_MS);
+    const before = s.net.streams.length;
+    s.q('preferences-retry')?.click();
+    await flush();
+    expect(s.net.streams.length).toBe(before + 1);
+    expect(s.q('preferences-error')).toBeNull();
+    expect(s.q('preferences-loading')).not.toBeNull();
+    const stream = s.net.lastStream();
+    stream.push(HELLO);
+    await s.result(stream, 'accounts.preferences.get', preferences({ theme_mode: 'dark' }));
+    expect(s.q('preferences-loading')).toBeNull();
+    expect(ionProps(s.q('preferences-theme'), 'value')).toEqual({ value: 'dark' });
+  });
+
+  it('makes «System / Light / Dark» a 44px target on touch (audit 2026-10-14, R-13)', () => {
+    // happy-dom lays nothing out: the component's stylesheet is read, with the touch query of `@erplora/ui`.
+    const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'PreferencesForm.vue'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\s+/g, ' ');
+    const touch = /@media \(pointer: coarse\), \(max-width: 834px\) \{ \.theme-segment ion-segment-button \{([^}]*)\}/.exec(css);
+    expect(touch?.[1]).toContain('min-height: 44px');
   });
 });

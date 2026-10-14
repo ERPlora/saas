@@ -1,7 +1,8 @@
 // Account → Security, «Active sessions» (mockups `account.html` «security», README §3b): the live
 // `accounts.session.list` in a DataTable — device (this session first, marked), browser or app, IP address, last
 // use — with «Close session» on every row but this one (an app's asks first: it may be charging at a till, W-F5)
-// and «Close other sessions» in the toolbar, confirmed with how many and that the apps close too.
+// and «Close other sessions» in the toolbar, confirmed with how many and that the apps close too. A failed load (an
+// error, or no answer in time) is said with «Retry», never as «no results · 0 sessions» (audit 2026-10-14, R-04).
 import { DataTable } from '@erplora/ui/components';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Component } from 'vue';
@@ -18,7 +19,17 @@ vi.mock('@erplora/ui/shell', async (importOriginal) => ({
 
 import { toastError, toastSuccess } from '@erplora/ui/shell';
 
-import { accessibleName, type ApiCall, errorFrame, flush, mountPanel, session, subId } from '../__tests__/mount-panel';
+import {
+  accessibleName,
+  type ApiCall,
+  errorFrame,
+  flush,
+  HELLO,
+  LIVE_TIMEOUT_MS,
+  mountPanel,
+  session,
+  subId,
+} from '../__tests__/mount-panel';
 import type { SessionRowOut } from '../../../frontend/sdk-types';
 import SessionsTable from './SessionsTable.vue';
 
@@ -119,5 +130,36 @@ describe('SessionsTable', () => {
     stream.push(errorFrame(subId(s.client, 'accounts.session.list'), 'server_error'));
     await flush();
     expect(s.q('sessions-retry')).not.toBeNull();
+    expect(document.querySelector('.data-table__empty')).toBeNull();
+    expect(s.wrapper.text()).not.toContain('0 sessions');
+  });
+
+  it('says a failed load, not «no results · 0 sessions» nor a spinner, when no answer comes in time', async () => {
+    const s = await mountPanel(SessionsTable);
+    await s.live();
+    await s.clock.advance(LIVE_TIMEOUT_MS);
+    expect(s.q('sessions-retry')).not.toBeNull();
+    expect(s.wrapper.text()).toContain('We could not load your sessions');
+    expect(s.wrapper.text()).toContain('We could not reach ERPlora. Check your connection and try again.');
+    expect(document.querySelector('.data-table__empty')).toBeNull();
+    expect(s.wrapper.text()).not.toContain('0 sessions');
+    expect(s.q('sessions-loading')).toBeNull();
+  });
+
+  it('«Retry» opens the stream again and lists the sessions when they come', async () => {
+    const s = await mountPanel(SessionsTable);
+    await s.live();
+    await s.clock.advance(LIVE_TIMEOUT_MS);
+    const before = s.net.streams.length;
+    s.q('sessions-retry')?.click();
+    await flush();
+    expect(s.net.streams.length).toBe(before + 1);
+    expect(s.q('sessions-retry')).toBeNull();
+    expect(s.q('sessions-loading')).not.toBeNull();
+    const stream = s.net.lastStream();
+    stream.push(HELLO);
+    await s.result(stream, 'accounts.session.list', { rows: [THIS, PHONE], total: 2 });
+    expect(s.q('sessions-loading')).toBeNull();
+    expect(cells('session-device')).toEqual(['Mac (macOS)This session', 'iPhone']);
   });
 });

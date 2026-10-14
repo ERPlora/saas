@@ -21,7 +21,8 @@ vi.mock('@erplora/ui/shell', async (importOriginal) => ({
 
 import { toastError, toastSuccess } from '@erplora/ui/shell';
 
-import { accessibleName, describeCall, enterView, errorFrame, flush, type MountOptions, mountHubs, subId } from '../__tests__/mount-hubs';
+import { LIVE_TIMEOUT_MS } from '../../../frontend/live-state';
+import { accessibleName, BYE, describeCall, enterView, errorFrame, flush, type MountOptions, mountHubs, subId } from '../__tests__/mount-hubs';
 import BusinessCreateForm from '../components/BusinessCreateForm.vue';
 import BusinessListPage from './BusinessListPage.vue';
 import { navigation } from '../open-business';
@@ -184,6 +185,20 @@ describe('BusinessListPage: the list', () => {
     expect(bakery.get('[data-testid="business-host"]').text()).toBe('bakery.localhost:8000');
   });
 
+  it('under the status, why: never a payment the notice above already says, a suspension with its day', async () => {
+    const s = await setup();
+    await s.show(
+      page([
+        row('plaza', 'Bar La Plaza', { status: 'past_due', status_label: 'Payment pending', unpaid_since: '2026-10-10T14:23:00Z' }),
+        row('norte', 'Bar Norte', { status: 'suspended', status_label: 'Suspended', can_open: false, unpaid_since: '2026-10-09T08:00:00Z' }),
+      ]),
+    );
+    expect(s.rows()[0].find('[data-testid="business-status-why"]').exists()).toBe(false);
+    expect(s.rows()[1].get('[data-testid="business-status-why"]').text()).toBe(
+      'Suspended because of an unpaid invoice since Oct 9, 2026. Your data is safe: pay the invoice and it works again at once.',
+    );
+  });
+
   it('a name opens the business’s page for whoever manages it, and the business for anybody else', async () => {
     const s = await setup();
     await s.show(page(ROWS));
@@ -334,6 +349,63 @@ describe('BusinessListPage: what waits above the list', () => {
   });
 });
 
+describe('BusinessListPage: unpaid invoices of several businesses, grouped (audit 2026-10-14, R-15)', () => {
+  const NORTE = row('norte', 'Bar Norte', {
+    status: 'suspended',
+    status_label: 'Suspended',
+    can_open: false,
+    open_blocked_reason: 'suspended',
+    unpaid_reason: 'payment_failed',
+    unpaid_since: '2026-10-09T08:00:00Z',
+    pay_url: 'https://invoice.stripe.com/i/norte',
+  });
+  const PLAZA = row('plaza', 'Bar La Plaza', {
+    status: 'past_due',
+    status_label: 'Payment pending',
+    unpaid_reason: 'card_declined',
+    unpaid_since: '2026-10-10T14:23:00Z',
+    pay_url: 'https://invoice.stripe.com/i/plaza',
+  });
+
+  it('one notice lists every business, the suspended first, each with its own way to pay', async () => {
+    const s = await setup();
+    await s.show(page([ROWS[0], PLAZA, NORTE]));
+    expect(s.testid('businesses-unpaid-plaza').exists()).toBe(false);
+    expect(s.testid('businesses-unpaid-norte').exists()).toBe(false);
+    const group = s.testid('businesses-unpaid');
+    expect(group.text()).toContain('2 businesses have unpaid invoices');
+    const lines = group.findAll('[data-testid="businesses-unpaid-line"]');
+    expect(lines.map((line) => line.text())).toEqual([
+      expect.stringMatching(/^Bar Norte is suspended since Oct 9, 2026\./),
+      expect.stringMatching(/^Bar La Plaza is suspended on Oct 17, 2026 if it is not paid\. The bank declined the card\./),
+    ]);
+    expect(group.text()).toContain('Nothing is deleted.');
+    // Days, never the minute.
+    expect(group.text()).not.toMatch(/\d{1,2}:\d{2}/);
+    expect((lines[0].get('[data-testid="unpaid-pay"]').element as HTMLElement & { href?: string }).href).toBe('https://invoice.stripe.com/i/norte');
+    expect(lines[1].find('[data-testid="unpaid-change-card"]').exists()).toBe(true);
+  });
+
+  it('inside the apps: the same list, how to pay, no button', async () => {
+    applySurface('desktop');
+    const s = await setup();
+    await s.show(page([PLAZA, NORTE]));
+    const group = s.testid('businesses-unpaid');
+    expect(group.find('ion-button').exists()).toBe(false);
+    expect(group.text()).toContain('Settle it from erplora.com, in your browser.');
+  });
+
+  it('speaks Spanish', async () => {
+    const s = await setup({ locale: 'es' });
+    await s.show(page([PLAZA, NORTE]));
+    const group = s.testid('businesses-unpaid');
+    expect(group.text()).toContain('2 negocios tienen facturas sin pagar');
+    expect(group.text()).toContain('Bar Norte está suspendido desde el 9 oct 2026.');
+    expect(group.text()).toContain('Bar La Plaza se suspende el 17 oct 2026 si no se paga.');
+    expect(group.text()).toContain('No se borra nada.');
+  });
+});
+
 describe('BusinessListPage: states', () => {
   it('empty: the sign-up form itself, and where an invitation would show', async () => {
     const s = await setup();
@@ -371,6 +443,40 @@ describe('BusinessListPage: states', () => {
     await s.testid('businesses-row-viejo-restore').trigger('click');
     await flush();
     expect(toastError).toHaveBeenCalledWith('No hemos podido conectar con ERPlora. Revisa tu conexión e inténtalo de nuevo.');
+  });
+
+  it('the stream gone before any answer (no network, /api/live down): loading, then an error with «Retry», never the sign-up form (R-04)', async () => {
+    const s = await setup();
+    s.call.push(BYE);
+    await flush();
+    expect(s.prop('loading')).toBe(true);
+    expect(s.testid('businesses-empty').exists()).toBe(false);
+    await s.clock.advance(LIVE_TIMEOUT_MS);
+    expect(s.prop('loading')).toBe(false);
+    expect(s.prop('error')).toBe('Check your connection and try again.');
+    expect(s.testid('businesses-empty').exists()).toBe(false);
+    expect(s.testid('businesses-reconnecting').exists()).toBe(false);
+    const before = s.net.streams.length;
+    await s.testid('businesses-retry').trigger('click');
+    await s.clock.advance(1);
+    expect(s.net.streams.length).toBeGreaterThan(before);
+    expect(s.prop('loading')).toBe(true);
+    const again = s.net.lastStream();
+    again.push('event: hello\ndata: {"stream":"s-2"}\n\n');
+    await s.result(again, 'hubs.business.list', page(ROWS));
+    expect(s.prop('error')).toBeUndefined();
+    expect(s.rows().length).toBe(ROWS.length);
+  });
+
+  it('with businesses on screen, a dropped stream keeps them and says it is reconnecting', async () => {
+    const s = await setup();
+    await s.show(page(ROWS));
+    s.call.push(BYE);
+    await flush();
+    await s.clock.advance(LIVE_TIMEOUT_MS);
+    expect(s.rows().length).toBe(ROWS.length);
+    expect(s.prop('error')).toBeUndefined();
+    expect(s.testid('businesses-reconnecting').exists()).toBe(true);
   });
 
   it('an error says it and retries', async () => {

@@ -1,0 +1,60 @@
+/* The panel's chrome around every page (audit 2026-10-14), loaded by main.ts after the theme. What the shell of
+   `@erplora/ui` does not do yet (docs/UI-REQUESTS-panel.md), done here for the SaaS's pages. Guards:
+   panel-chrome.test.ts; measured in Chrome by tests/e2e/panel/chrome.spec.ts. */
+
+/* R-11 · «Skip to content» (skip-link.ts): the first stop of the keyboard, out of sight until it has the focus. */
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 100000;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 10px;
+  background: var(--ion-background-color, #fff);
+  color: var(--ion-text-color, #111);
+  font-weight: 600;
+  text-decoration: underline;
+  box-shadow: 0 2px 12px rgb(0 0 0 / 25%);
+  transform: translateY(-200%);
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: none;
+  outline: 3px solid var(--ion-color-primary, #0e78ad);
+  outline-offset: 2px;
+}
+
+/* R-20 · A detail page (Back in the topbar, `AppPage` with `back-href`) has no ☰: Back inside a business, the
+   menu at the top level (mockups: «‹ Negocios» without ☰). Where the menu is pinned the shell hides ☰ anyway. */
+.app-topbar ion-buttons[slot='start']:has(> [data-testid='topbar-back']) > ion-menu-button {
+  display: none;
+}
+
+/* R-13 · On a phone or a touch screen every target is 44 px (W-F6, W-13 of the mockups): buttons of any size,
+   icon-only ones also wide, the menu and back buttons, segments and tabs, chips. Ionic's native button inherits
+   the host's `min-height`. A button in a toolbar (Back, a dialog's ✕) is sized by Ionic's scoped
+   `.sc-ion-buttons-*-s ion-button` rule: the `in-buttons` class Ionic gives it outweighs that one. */
+@media (max-width: 640px), (pointer: coarse) {
+  ion-button,
+  ion-buttons ion-button.in-buttons {
+    min-height: 44px;
+  }
+  ion-button.button-has-icon-only,
+  ion-buttons ion-button.in-buttons.button-has-icon-only {
+    min-width: 44px;
+  }
+  ion-menu-button,
+  ion-back-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  ion-segment-button {
+    min-height: 44px;
+  }
+  ion-chip {
+    min-height: 44px;
+  }
+}

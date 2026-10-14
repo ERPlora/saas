@@ -4,7 +4,7 @@
 //   - it stays on its plan until the end of the period, then goes to Free without another charge;
 //   - its paid modules turn off then, and nothing is deleted;
 //   - what Free covers, against the people it has now (`hubs.business.get` seats: members and invitations);
-//   - an unpaid invoice stays pending: cancelling does not cancel it;
+//   - an unpaid invoice stays pending: cancelling does not cancel it (said even when its details did not load);
 //   - «Keep the plan» undoes it until then.
 // Confirmed, `billing.plan.cancel` (the whole subscription, at the end of the period) and a toast that says
 // until when; a refusal stays in the dialog. Web only: Subscriptions renders it in `<WebOnly>`.
@@ -108,6 +108,9 @@ const consequences = computed<ConfirmConsequence[]>(() => {
         amount: formatAmount(unpaid.total_cents, unpaid.currency, locale.value),
       }),
     });
+  } else if (row.unpaid_invoice_id) {
+    // Its details did not load (the unpaid list failed): the debt is still said, without its date.
+    lines.push({ icon: 'ion:card-outline', text: t('billing.cancelPlan.unpaid') });
   }
   lines.push({ icon: 'ion:refresh-outline', text: t('billing.cancelPlan.undo') });
   return lines;

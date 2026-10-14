@@ -22,7 +22,8 @@ vi.mock('@erplora/ui/shell', async (importOriginal) => ({
 
 import { toastError, toastSuccess } from '@erplora/ui/shell';
 
-import { resultFrame } from '../../../hubs/frontend/__tests__/mount-hubs';
+import { LIVE_TIMEOUT_MS } from '../../../frontend/live-state';
+import { errorFrame, HELLO, resultFrame } from '../../../hubs/frontend/__tests__/mount-hubs';
 import { invoicePage, subscriptionPage, subscriptionRow, unpaidRow } from '../__tests__/billing-fixtures';
 import { APPS, PLANS, plan } from '../__tests__/fixtures';
 import { apiError, describeCall, flush, mountBilling, type StreamCall } from '../__tests__/mount-billing';
@@ -248,5 +249,71 @@ describe('SubscriptionsTab: the list', () => {
       '1 nov 2026 · 47,18\u00a0€con IVA',
       'Activa',
     ]);
+  });
+});
+
+describe('SubscriptionsTab: a list that does not load says so, never «All your businesses are on Free» (audit 2026-10-14, R-04)', () => {
+  const state = (s: Awaited<ReturnType<typeof setup>>) => ({
+    error: s.prop<string | undefined>('error'),
+    loading: s.prop<boolean>('loading'),
+    retry: s.testid('subscriptions-retry').exists(),
+    empty: s.testid('subscriptions-empty').exists(),
+  });
+
+  it('a query that fails: the reason and «Retry», not the empty state', async () => {
+    const s = await setup();
+    s.call.push(errorFrame(s.client.stream.subscriptions('billing.subscription.list')[0].id, 'internal_error'));
+    await flush();
+    expect(state(s)).toEqual({ error: 'msg internal_error', loading: false, retry: true, empty: false });
+  });
+
+  it('nothing in time: an error with «Retry», never a spinner for ever', async () => {
+    const s = await setup();
+    // The time limit counts from the mount (opening the stream already took 150 ms of it).
+    await s.clock.advance(LIVE_TIMEOUT_MS - 1 - s.clock.now());
+    expect(s.prop('loading')).toBe(true);
+    await s.clock.advance(1);
+    expect(state(s)).toEqual({ error: 'Check your connection and try again.', loading: false, retry: true, empty: false });
+  });
+
+  it('the stream refused (/api/live answers 503): it could not load, it does not say every business is on Free', async () => {
+    const s = await mountBilling(SubscriptionsTab, { api: (call) => api(describeCall(call)) });
+    s.liveDown.value = true;
+    await s.clock.advance(150);
+    expect(s.wrapper.find('[data-testid="subscriptions-retry"]').exists()).toBe(true);
+    expect(s.wrapper.find('[data-testid="subscriptions-empty"]').exists()).toBe(false);
+    expect(s.wrapper.text()).not.toContain('All your businesses are on Free');
+  });
+
+  it('«Retry» opens the stream again and shows the subscriptions that come', async () => {
+    const s = await setup();
+    await s.clock.advance(LIVE_TIMEOUT_MS);
+    const before = s.net.streams.length;
+    await s.testid('subscriptions-retry').trigger('click');
+    await flush();
+    await s.clock.advance(150);
+    expect(s.net.streams.length).toBe(before + 1);
+    expect(s.prop('loading')).toBe(true);
+    const again = s.net.lastStream();
+    again.push(HELLO);
+    again.push(resultFrame(s.client.stream.subscriptions('billing.subscription.list')[0].id, subscriptionPage([BAKERY_SUB, PLAZA_SUB]), 1));
+    await flush();
+    expect(s.wrapper.findAll('[data-testid="subscriptions-row"]')).toHaveLength(2);
+    expect(s.prop('error')).toBeUndefined();
+  });
+
+  it('the unpaid invoices failing do not block the subscriptions', async () => {
+    const s = await setup();
+    s.call.push(errorFrame(s.client.stream.subscriptions('billing.invoice.list')[0].id, 'internal_error'));
+    await s.push('billing.subscription.list', subscriptionPage([BAKERY_SUB, PLAZA_SUB]));
+    expect(s.wrapper.findAll('[data-testid="subscriptions-row"]')).toHaveLength(2);
+    expect(s.prop('error')).toBeUndefined();
+  });
+
+  it('says it in Spanish', async () => {
+    const s = await setup('es');
+    await s.clock.advance(LIVE_TIMEOUT_MS);
+    expect(s.prop('error')).toBe('Comprueba tu conexión y vuelve a intentarlo.');
+    expect(s.prop<Record<string, string>>('labels')).toMatchObject({ loadError: 'No hemos podido cargar tus suscripciones', retry: 'Reintentar' });
   });
 });

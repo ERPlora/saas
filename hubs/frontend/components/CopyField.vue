@@ -41,6 +41,7 @@ async function copy(): Promise<void> {
       <HubIcon
         slot="icon-only"
         name="ion:copy-outline"
+        aria-hidden="true"
       />
     </ion-button>
   </div>

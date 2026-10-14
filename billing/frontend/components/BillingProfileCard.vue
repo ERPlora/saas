@@ -77,6 +77,7 @@ const empty = computed(() => !!profile.value && !profile.value.billing_name && !
             <HubIcon
               slot="start"
               name="ion:refresh-outline"
+              aria-hidden="true"
             />
             {{ $t('billing.payment.retry') }}
           </ion-button>
@@ -138,6 +139,7 @@ const empty = computed(() => !!profile.value && !profile.value.billing_name && !
             <HubIcon
               slot="start"
               name="lucide:pencil"
+              aria-hidden="true"
             />
             {{ $t('billing.payment.profile.edit') }}
           </ion-button>

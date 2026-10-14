@@ -114,6 +114,7 @@ async function connect(): Promise<void> {
       <HubIcon
         slot="start"
         name="lucide:unlink"
+        aria-hidden="true"
       />
       {{ $t('accounts.account.google.disconnect') }}
     </ion-button>
@@ -126,6 +127,7 @@ async function connect(): Promise<void> {
       <HubIcon
         slot="start"
         name="ion:logo-google"
+        aria-hidden="true"
       />
       {{ $t('accounts.account.google.connect') }}
     </ion-button>

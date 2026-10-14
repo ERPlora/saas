@@ -33,6 +33,8 @@ import {
 import './fonts.css';
 // The panel's lists fill their page between the topbar and the tabbar (the `.panel-fill` height chain).
 import './panel-fill.css';
+// The panel's chrome: «Skip to content», touch targets of 44 px, Back without ☰ in a detail page (audit 2026-10-14).
+import './panel-chrome.css';
 import { type Ref, ref } from 'vue';
 import { isNavigationFailure, type RouteRecordRaw } from 'vue-router';
 
@@ -40,6 +42,7 @@ import { OPERATION_ROUTES } from './generated/operation-routes';
 import en from './locale/en.json';
 import es from './locale/es.json';
 import type { SessionMeOut } from './sdk-types';
+import { installSkipLink } from './skip-link';
 
 /** Where the auth gate sends a visitor without a session (it appends `next=`). */
 const LOGIN_PATH = '/login';
@@ -178,6 +181,7 @@ export async function boot(
     if (isNavigationFailure(failure)) return;
     throw failure;
   }
+  installSkipLink(doc, { en: en.saas.skipLink, es: es.saas.skipLink });
   app.mount('#app');
 }
 

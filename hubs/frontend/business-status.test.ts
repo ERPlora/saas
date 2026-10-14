@@ -3,7 +3,7 @@
 // not work (or what to do), which inside the apps never points at a payment page.
 import { describe, expect, it } from 'vitest';
 
-import { reasonKey, statusPill } from './business-status';
+import { reasonDate, reasonKey, statusPill, unpaidDeadline } from './business-status';
 
 const t = (key: string) => `t:${key}`;
 
@@ -38,5 +38,36 @@ describe('reasonKey', () => {
     expect(reasonKey({ status: 'suspended', open_blocked_reason: 'suspended' }, false)).toBe('hubs.reason.suspended');
     expect(reasonKey({ status: 'suspended', open_blocked_reason: 'suspended' }, true)).toBe('hubs.reason.suspendedApp');
     expect(reasonKey({ status: 'deleting', open_blocked_reason: 'deleting' }, false)).toBe('hubs.reason.deleting');
+  });
+});
+
+describe('the real deadline of an unpaid invoice (audit 2026-10-14, R-06)', () => {
+  it('is 7 days after the invoice went unpaid, as the server suspends it (billing UNPAID_PLAN_GRACE)', () => {
+    expect(unpaidDeadline('2026-10-10T14:23:00Z')).toBe('2026-10-17T14:23:00.000Z');
+  });
+
+  it('is unknown without a date, or with a broken one', () => {
+    expect(unpaidDeadline(null)).toBe('');
+    expect(unpaidDeadline(undefined)).toBe('');
+    expect(unpaidDeadline('not a date')).toBe('');
+  });
+
+  it('a past-due business with its date says until when, never a fixed «7 more days»', () => {
+    const late = { status: 'past_due', open_blocked_reason: null, unpaid_since: '2026-10-10T14:23:00Z' } as const;
+    expect(reasonKey(late, false)).toBe('hubs.reason.pastDueUntil');
+    expect(reasonKey(late, true)).toBe('hubs.reason.pastDueUntilApp');
+    expect(reasonDate(late, 'es')).toBe('17 oct 2026');
+    expect(reasonDate(late, 'en')).toBe('Oct 17, 2026');
+  });
+
+  it('a suspended business with its date says since when (the day, no time)', () => {
+    const off = { status: 'suspended', open_blocked_reason: 'suspended', unpaid_since: '2026-10-09T08:00:00Z' } as const;
+    expect(reasonKey(off, false)).toBe('hubs.reason.suspendedSince');
+    expect(reasonKey(off, true)).toBe('hubs.reason.suspendedSinceApp');
+    expect(reasonDate(off, 'es')).toBe('9 oct 2026');
+  });
+
+  it('a deleted business dates its recovery limit', () => {
+    expect(reasonDate({ status: 'deleting', open_blocked_reason: 'deleting', purge_after: '2027-01-11T10:00:00Z' }, 'en')).toContain('Jan 11, 2027');
   });
 });

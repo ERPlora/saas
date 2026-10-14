@@ -29,7 +29,10 @@ defineProps<{
       :aria-label="$t('hubs.preparing.status', { name })"
     >
       <li class="done ion-padding-horizontal">
-        <span class="step-icon"><HubIcon name="ion:checkmark-circle-outline" /></span>
+        <span class="step-icon"><HubIcon
+          name="ion:checkmark-circle-outline"
+          aria-hidden="true"
+        /></span>
         <span>{{ $t('hubs.preparing.created') }}</span>
       </li>
       <li
@@ -43,7 +46,10 @@ defineProps<{
         <span>{{ typeName ? $t('hubs.preparing.setupType', { type: typeName }) : $t('hubs.preparing.setup') }}</span>
       </li>
       <li class="pending ion-padding-horizontal">
-        <span class="step-icon"><HubIcon name="ion:log-in-outline" /></span>
+        <span class="step-icon"><HubIcon
+          name="ion:log-in-outline"
+          aria-hidden="true"
+        /></span>
         <span>{{ $t(`hubs.preparing.${last}`) }}</span>
       </li>
     </ol>

@@ -33,12 +33,16 @@
     "reason": {
       "preparing": "Lo estamos preparando. Se abre solo cuando esté listo.",
       "error": "No hemos podido prepararlo. Seguimos reintentándolo; si sigue fallando, avísanos.",
-      "pastDue": "Hay una factura sin pagar. Sigue funcionando 7 días más; págala para que no se suspenda.",
-      "pastDueApp": "Hay una factura sin pagar: sigue funcionando 7 días más. Para pagarla, entra en erplora.com desde el navegador.",
+      "pastDue": "Hay una factura sin pagar: págala para que el negocio no se suspenda.",
+      "pastDueApp": "Hay una factura sin pagar. Para pagarla, entra en erplora.com desde el navegador.",
       "suspended": "Suspendido por una factura sin pagar. Tus datos están a salvo: paga la factura y vuelve a funcionar al momento.",
       "suspendedApp": "Suspendido por una factura sin pagar. Tus datos están a salvo. Para pagarla, entra en erplora.com desde el navegador.",
       "deleting": "Eliminado. Puedes recuperarlo hasta el {date}.",
-      "preparingSoon": "Listo en unos segundos"
+      "preparingSoon": "Listo en unos segundos",
+      "pastDueUntil": "Hay una factura sin pagar. Págala antes del {date} o el negocio se suspende.",
+      "pastDueUntilApp": "Hay una factura sin pagar: sigue funcionando hasta el {date}. Para pagarla, entra en erplora.com desde el navegador.",
+      "suspendedSince": "Suspendido por una factura sin pagar desde el {date}. Tus datos están a salvo: paga la factura y vuelve a funcionar al momento.",
+      "suspendedSinceApp": "Suspendido por una factura sin pagar desde el {date}. Tus datos están a salvo. Para pagarla, entra en erplora.com desde el navegador."
     },
     "open": {
       "opening": "Abriendo {name}…"
@@ -159,9 +163,16 @@
       },
       "unpaid": {
         "pastDueHeading": "{name} tiene una factura sin pagar",
-        "pastDueBody": "Sigue funcionando 7 días más; si no se paga antes, el negocio se suspende. No se borra nada.",
+        "pastDueBody": "Si no se paga pronto, el negocio se suspende. No se borra nada.",
         "suspendedHeading": "{name} está suspendido",
-        "suspendedBody": "Se suspendió por una factura sin pagar. No se borra nada: en cuanto se pague vuelve a funcionar."
+        "suspendedBody": "Se suspendió por una factura sin pagar. No se borra nada: en cuanto se pague vuelve a funcionar.",
+        "groupHeading": "{count} negocios tienen facturas sin pagar",
+        "lineSuspendedSince": "{name} está suspendido desde el {date}.",
+        "lineSuspended": "{name} está suspendido.",
+        "linePastDueUntil": "{name} se suspende el {date} si no se paga.",
+        "linePastDue": "{name} tiene una factura sin pagar.",
+        "lineDeclined": "El banco rechazó la tarjeta.",
+        "nothingDeleted": "No se borra nada."
       },
       "invitation": {
         "heading": "Te han invitado a {name}",
@@ -381,7 +392,10 @@
       "pay": "Pagar la factura",
       "cardDeclined": "El banco rechazó la tarjeta: cámbiala antes de pagar.",
       "app": "Resuélvelo desde erplora.com, en el navegador.",
-      "payer": "Pagas tú"
+      "payer": "Pagas tú",
+      "changeCard": "Cambiar tarjeta",
+      "changeCardName": "Cambiar la tarjeta de {name}",
+      "payName": "Pagar la factura de {name}"
     }
   }
 }

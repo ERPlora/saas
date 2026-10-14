@@ -68,6 +68,7 @@ function pick(key: InvoiceFilterKey, value: unknown): void {
       slot="start"
       class="invoice-filters__icon"
       name="ion:funnel"
+      aria-hidden="true"
     />
     {{ $t('billing.invoices.filters.button') }}
     <span
@@ -171,6 +172,7 @@ function pick(key: InvoiceFilterKey, value: unknown): void {
           <HubIcon
             slot="start"
             name="ion:close-outline"
+            aria-hidden="true"
           />
           {{ $t('billing.invoices.filters.clear') }}
         </ion-button>
@@ -180,12 +182,18 @@ function pick(key: InvoiceFilterKey, value: unknown): void {
 </template>
 
 <style scoped>
-/* As tall as the toolbar's other controls (DataTable's 36–38 px). */
+/* As tall as the toolbar's other controls (DataTable's 36–38 px); 44 px to tap on a phone or a touch screen
+   (audit 2026-10-14, R-13). */
 .invoice-filters {
   min-height: 36px;
   margin: 0;
   text-transform: none;
   --border-radius: 10px;
+}
+@media (max-width: 640px), (pointer: coarse) {
+  .invoice-filters {
+    min-height: 44px;
+  }
 }
 .invoice-filters__icon {
   margin-inline-end: 0.4em;

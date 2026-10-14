@@ -17,6 +17,7 @@ vi.mock('@erplora/ui/shell', async (importOriginal) => ({
 }));
 
 import { accessibleName, ANONYMOUS, apiError, BYE, describeCall, enterView, errorFrame, flush, ionProps, type MountOptions, mountHubs, subId } from '../__tests__/mount-hubs';
+import { LIVE_TIMEOUT_MS } from '../../../frontend/live-state';
 import BusinessCreateForm from '../components/BusinessCreateForm.vue';
 import LaunchPage from './LaunchPage.vue';
 import { navigation } from '../open-business';
@@ -132,6 +133,27 @@ describe('LaunchPage: loading and errors', () => {
     await s.testid('launch-retry').trigger('click');
     await s.clock.advance(150);
     expect(s.net.streams.length).toBeGreaterThan(streams);
+  });
+
+  it('the stream gone before any answer (no network, /api/live down): an error with «Retry» after the time limit, never a spinner for ever (R-08)', async () => {
+    const s = await setup();
+    const call = await s.live();
+    call.push(BYE);
+    await flush();
+    expect(s.testid('launch-loading').exists()).toBe(true);
+    await s.clock.advance(LIVE_TIMEOUT_MS);
+    expect(s.testid('launch-loading').exists()).toBe(false);
+    expect(s.testid('launch-error').text()).toContain('We could not load your businesses.');
+    expect(s.testid('launch-error').text()).toContain('Check your connection and try again.');
+    const streams = s.net.streams.length;
+    await s.testid('launch-retry').trigger('click');
+    await s.clock.advance(1);
+    expect(s.net.streams.length).toBeGreaterThan(streams);
+    expect(s.testid('launch-loading').exists()).toBe(true);
+    const again = s.net.lastStream();
+    again.push('event: hello\ndata: {"stream":"s-2"}\n\n');
+    await s.result(again, 'hubs.business.list', page([row('bakery', 'Panadería López')]));
+    expect(s.testid('launch-business').exists()).toBe(true);
   });
 
   it('shows the notice of the 2FA settings when it sent here', async () => {
@@ -283,10 +305,10 @@ describe('LaunchPage: one business', () => {
     expect(ionProps(s.testid('launch-open'), 'disabled')).toEqual({ disabled: true });
   });
 
-  it('with a payment pending it still opens, and says to pay', async () => {
+  it('with a payment pending it still opens, and says to pay (without its date, no number of days: R-06)', async () => {
     const s = await showing(page([row('bakery', 'Bakery', { status: 'past_due', status_label: 'Payment pending' })]));
     expect(s.testid('launch-business').get('.status-pill').text()).toBe('Payment due');
-    expect(s.testid('launch-reason').text()).toBe('There is an unpaid invoice. It keeps working for 7 more days; pay it so it is not suspended.');
+    expect(s.testid('launch-reason').text()).toBe('There is an unpaid invoice: pay it so the business is not suspended.');
     expect(ionProps(s.testid('launch-open'), 'disabled')).toEqual({ disabled: false });
   });
 
@@ -299,6 +321,63 @@ describe('LaunchPage: one business', () => {
     );
     expect(s.testid('launch-reason').find('a').exists()).toBe(false);
     expect(s.testid('launch-panel').exists()).toBe(true);
+  });
+});
+
+describe('LaunchPage: the way to pay (audit 2026-10-14, R-06 and R-07)', () => {
+  const OWED = {
+    status: 'past_due',
+    status_label: 'Payment pending',
+    unpaid_reason: 'payment_failed',
+    unpaid_since: '2026-10-10T14:23:00Z',
+    pay_url: 'https://invoice.stripe.com/i/bakery',
+  };
+  const SUSPENDED = { ...OWED, status: 'suspended', status_label: 'Suspended', can_open: false, open_blocked_reason: 'suspended', unpaid_since: '2026-10-09T08:00:00Z' };
+
+  it('past due on the web: its real deadline, «Pay the invoice» first and «Open» second', async () => {
+    const s = await showing(page([row('bakery', 'Bakery', OWED)]));
+    expect(s.testid('launch-reason').text()).toBe('There is an unpaid invoice. Pay it before Oct 17, 2026 or the business is suspended.');
+    expect(ionProps(s.testid('unpaid-pay'), 'href', 'fill', 'size')).toEqual({ href: 'https://invoice.stripe.com/i/bakery', fill: 'solid', size: 'large' });
+    expect(ionProps(s.testid('launch-open'), 'fill', 'disabled')).toEqual({ fill: 'outline', disabled: false });
+  });
+
+  it('after a declined card: «Change card» first, «Pay» waits', async () => {
+    const s = await showing(page([row('bakery', 'Bakery', { ...OWED, unpaid_reason: 'card_declined' })]));
+    expect(s.testid('unpaid-change-card').text()).toContain('Change card');
+    expect(ionProps(s.testid('unpaid-pay'), 'disabled')).toEqual({ disabled: true });
+  });
+
+  it('suspended on the web: since when, and «Pay the invoice» instead of «Open»', async () => {
+    const s = await showing(page([row('bakery', 'Bakery', SUSPENDED)]));
+    expect(s.testid('launch-reason').text()).toBe(
+      'Suspended because of an unpaid invoice since Oct 9, 2026. Your data is safe: pay the invoice and it works again at once.',
+    );
+    expect(s.testid('unpaid-pay').exists()).toBe(true);
+    expect(s.testid('launch-open').exists()).toBe(false);
+  });
+
+  it('inside the app: until when and where to pay, no button to pay, «Open» first', async () => {
+    applySurface('desktop');
+    const s = await showing(page([row('bakery', 'Bakery', OWED)]));
+    expect(s.testid('launch-reason').text()).toBe(
+      'There is an unpaid invoice: it keeps working until Oct 17, 2026. To pay it, go to erplora.com in your browser.',
+    );
+    expect(s.testid('unpaid-pay').exists()).toBe(false);
+    expect(ionProps(s.testid('launch-open'), 'fill')).toEqual({ fill: 'solid' });
+  });
+
+  it('whoever may not pay it (no `pay_url`) keeps «Open» first, with the deadline', async () => {
+    const s = await showing(page([row('bakery', 'Bakery', { ...OWED, pay_url: null })]));
+    expect(s.testid('unpaid-pay').exists()).toBe(false);
+    expect(ionProps(s.testid('launch-open'), 'fill')).toEqual({ fill: 'solid' });
+  });
+
+  it('with several businesses, the one that owes says until when and offers to pay it', async () => {
+    const s = await showing(page([row('salon', 'Peluquería Ana'), row('bakery', 'Bakery', OWED)]), { locale: 'es' });
+    const tiles = s.wrapper.findAll('[data-testid="launch-business"]');
+    expect(tiles[1].get('.launch-biz__why').text()).toBe('Hay una factura sin pagar. Págala antes del 17 oct 2026 o el negocio se suspende.');
+    expect(tiles[1].find('[data-testid="unpaid-pay"]').exists()).toBe(true);
+    expect(tiles[0].find('[data-testid="unpaid-pay"]').exists()).toBe(false);
   });
 });
 

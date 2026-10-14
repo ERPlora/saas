@@ -53,3 +53,40 @@ limpia posible… las tablas tienen que ocupar la altura de la página, el espac
   (crece con sus filas desde la altura de la página, un solo scroll).
 - **Propuesta**: que `AppPage` (o `@erplora/ui`) ofrezca esa pila (`<FillStack>` o una clase del tema) para el
   Hub y el SaaS, en vez de que cada proyecto la escriba.
+
+## 5. Estados de una consulta viva: cargando, error, vacío (auditoría 2026-10-14, R-04/R-08)
+
+- **Qué pasa**: `useLive` da `status` del stream (`loading`, `live`, `error`, `reconnecting`), no lo que la
+  página puede afirmar: con `/api/live` en 503 o sin red, `data` queda `undefined`, el estado es `reconnecting`
+  para siempre y las páginas pintaban «vacío» («Crea tu primer negocio») o un spinner eterno.
+- **Rodeo hoy**: `frontend/live-state.ts` (`useLiveState(live)` → `loading | error | empty | ready`, con
+  tiempo máximo de 10 s y `retry()`) y `frontend/LoadFailed.vue` (aviso con «Reintentar»). Guardarraíl:
+  `frontend/panel-controls.test.ts` (todo componente con `useLive` usa `useLiveState`).
+- **Propuesta**: ese estado en el SDK (`useLive(...).view` o un `useLiveState` exportado) para el Hub y el SaaS.
+
+## 6. Descargar un fichero por el SDK (auditoría R-05)
+
+- **Qué pasa**: `api.call` solo lee JSON; un PDF/CSV pedido con un enlace guardaba el JSON de error como
+  `pdf.json`.
+- **Rodeo hoy**: `billing/frontend/browser.ts` hace un `fetch` con `Accept` (única excepción de
+  `no-restricted-globals`, comentada).
+- **Propuesta**: `api.download(op, input, { accept })` en `@erplora/ui/sdk` que devuelva el `Blob` y el nombre,
+  o el `ApiError` del sobre.
+
+## 7. El marco del shell: «Saltar al contenido», objetivos de 44 px y ☰ con ← (auditoría R-11, R-13, R-20)
+
+- **Qué pasa**: el shell no tiene enlace de salto; botones, segmentos, ☰, ← y ✕ miden 28–40 px a 390; en una
+  página de detalle salen ☰ y ← juntos.
+- **Rodeo hoy**: `frontend/skip-link.ts` (enlace al principio de `<body>` que lleva el foco al `ion-content` de
+  la página visible) y `frontend/panel-chrome.css` (44 px en táctil y ≤640 px; sin ☰ cuando la topbar tiene
+  `topbar-back`). Medido en `tests/e2e/panel/chrome.spec.ts`.
+- **Propuesta**: enlace de salto en `App.vue`, `min-height: 44px` táctil en el tema y `AppTopbar` sin ☰ cuando
+  hay `backHref`.
+
+## 8. `DataTable`: la barra en una fila de 834 a 1180 px (auditoría R-14)
+
+- **Qué pasa**: el buscador pide `flex-basis: 22rem` y una fila que se parte decide por la base, así que la
+  barra saltaba a dos filas antes de encoger el buscador.
+- **Rodeo hoy**: `frontend/panel-fill.css`, en escritorio: `.panel-fill .data-table .data-table__search { flex:
+  1 1 11rem; min-width: 9rem; max-width: 22rem }`.
+- **Propuesta**: esa base en `DataTable` (el buscador cede primero).

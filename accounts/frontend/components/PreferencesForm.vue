@@ -7,12 +7,11 @@
 //   - Language: the account's (`User.language`, which the mails and the jump to a business read): the panel
 //     switches to it at once (`<html lang>` too);
 //   - Mails: «Invoices and payments» is always on; business notices and ERPlora news are switches.
-// A refusal puts the control back and says why.
-import { InlineFeedback } from '@erplora/ui/components';
-import { HubIcon, setThemeMode, themeMode, toastError, toastSuccess } from '@erplora/ui/shell';
+// A refusal puts the control back and says why. A failed load is said with «Retry», also when no answer comes in
+// time: never a skeleton for ever (audit 2026-10-14 R-08).
+import { setThemeMode, themeMode, toastError, toastSuccess } from '@erplora/ui/shell';
 import { useCommand, useLive } from '@erplora/ui/sdk';
 import {
-  IonButton,
   IonCard,
   IonCardContent,
   IonItem,
@@ -28,6 +27,8 @@ import {
 import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import LoadFailed from '../../../frontend/LoadFailed.vue';
+import { useLiveState } from '../../../frontend/live-state';
 import type { AccountLanguage, AccountThemeMode, PreferencesOut, PreferencesUpdateIn } from '../../../frontend/sdk-types';
 import { useErrorText } from '../error-text';
 
@@ -41,6 +42,7 @@ const LANGUAGES: Array<{ code: AccountLanguage; name: string }> = [
 const { t, locale } = useI18n();
 const { text } = useErrorText();
 const live = useLive('accounts.preferences.get');
+const state = useLiveState(live);
 const update = useCommand('accounts.preferences.update');
 
 const language = shallowRef<AccountLanguage>('en');
@@ -100,28 +102,13 @@ async function toggle(field: 'hub_alerts' | 'marketing_emails', event: CustomEve
 
 <template>
   <div class="tab-stack">
-    <InlineFeedback
-      v-if="live.status.value === 'error' && !loaded"
-      tone="danger"
-      data-testid="preferences-error"
+    <LoadFailed
+      v-if="state.failed.value"
+      testid="preferences-error"
+      retry-testid="preferences-retry"
       :heading="$t('accounts.account.preferences.loadError')"
-    >
-      {{ $t('accounts.account.loadErrorBody') }}
-      <template #actions>
-        <ion-button
-          data-testid="preferences-retry"
-          size="small"
-          fill="outline"
-          @click="live.refresh()"
-        >
-          <HubIcon
-            slot="start"
-            name="ion:refresh-outline"
-          />
-          {{ $t('accounts.account.retry') }}
-        </ion-button>
-      </template>
-    </InlineFeedback>
+      @retry="state.retry()"
+    />
 
     <ion-card
       v-else-if="!loaded"
@@ -265,6 +252,12 @@ async function toggle(field: 'hub_alerts' | 'marketing_emails', event: CustomEve
 }
 .theme-segment ion-segment-button {
   min-height: 36px;
+}
+/* A 44px target on touch (audit 2026-10-14, R-13), with the touch query of `@erplora/ui`'s DataTable. */
+@media (pointer: coarse), (max-width: 834px) {
+  .theme-segment ion-segment-button {
+    min-height: 44px;
+  }
 }
 .theme-segment ion-segment-button::part(indicator-background) {
   background: var(--ion-card-background, #fff);

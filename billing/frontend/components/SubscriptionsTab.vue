@@ -25,6 +25,7 @@ import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
+import { useLiveState } from '../../../frontend/live-state';
 import { useErrorText } from '../../../hubs/frontend/error-text';
 import type { PlanOut, SubscriptionAction, SubscriptionRowOut } from '../../../frontend/sdk-types';
 import { formatDate } from '../format';
@@ -62,7 +63,10 @@ const unpaidLive = useLive('billing.invoice.list', { status: 'open', limit: 100 
 const rows = computed<Row[]>(() =>
   (live.data.value?.rows ?? []).map((row) => ({ ...row, id: row.business.id ?? row.business.name, name: row.business.name })),
 );
-const firstLoad = computed(() => live.status.value === 'loading' && !live.data.value);
+/** Loading, failed (the query, the stream, or nothing in time) or a real answer: never «All your businesses
+ *  are on Free» on a failure (audit 2026-10-14, R-04). The unpaid invoices only feed «Cancel plan». */
+const state = useLiveState(live, { isEmpty: (data) => data.rows.length === 0 });
+const loadError = computed(() => (state.failed.value ? text(state.error.value) || t('billing.load.reason') : undefined));
 
 // ── Names ───────────────────────────────────────────────────────────────────────────────────────
 const moduleNames = shallowRef<Record<string, string>>({});
@@ -226,14 +230,14 @@ async function keepPlan(row: Row, id: string): Promise<void> {
     :page-size="50"
     :page-size-chooser="false"
     hide-toolbar-when-empty
-    :loading="firstLoad"
-    :error="live.status.value === 'error' ? text(live.error.value) || $t('billing.subscriptions.loadError') : undefined"
+    :loading="state.loading.value"
+    :error="loadError"
     :labels="labels"
     :entity-label="entityLabel"
     :card-title="(row: Row) => row.name"
     :card-icon="() => 'ion:sync-outline'"
     @action="onAction"
-    @retry="live.refresh()"
+    @retry="state.retry()"
   >
     <template #toolbar>
       <WebOnly>
@@ -242,7 +246,10 @@ async function keepPlan(row: Row, id: string): Promise<void> {
             class="subscriptions-hint"
             data-testid="subscriptions-app-hint"
           >
-            <HubIcon name="ion:information-circle-outline" />
+            <HubIcon
+              name="ion:information-circle-outline"
+              aria-hidden="true"
+            />
             {{ $t('billing.subscriptions.appHint') }}
           </span>
         </template>
@@ -309,7 +316,10 @@ async function keepPlan(row: Row, id: string): Promise<void> {
         class="subscriptions-empty"
         data-testid="subscriptions-empty"
       >
-        <span class="subscriptions-empty__icon"><HubIcon name="ion:sync-outline" /></span>
+        <span class="subscriptions-empty__icon"><HubIcon
+          name="ion:sync-outline"
+          aria-hidden="true"
+        /></span>
         <strong>{{ $t('billing.subscriptions.empty.title') }}</strong>
         <span>{{ $t('billing.subscriptions.empty.body') }}</span>
         <WebOnly>
@@ -320,6 +330,7 @@ async function keepPlan(row: Row, id: string): Promise<void> {
             <HubIcon
               slot="start"
               name="lucide:layers"
+              aria-hidden="true"
             />
             {{ $t('billing.subscriptions.empty.plans') }}
           </ion-button>

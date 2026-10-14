@@ -1,7 +1,8 @@
 // Account → API keys (mockups `account.html` «keys», README §3b): the live `accounts.apikey.list` in a DataTable —
 // name, prefix (`erps_live_…`), permissions (the server's labels), created, last used, «Expires» (W-F14; an
 // expired key marked) — with «New key» (NewKeyModal) and «Revoke» on each row, confirmed naming that key
-// (W-F8). Empty, it explains what a key is for and offers to create one.
+// (W-F8). Empty, it explains what a key is for and offers to create one — only with a real answer of the server:
+// a failed load (an error, or no answer in time) is said with «Retry», never as «no keys» (audit 2026-10-14, R-04).
 import { DataTable } from '@erplora/ui/components';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Component } from 'vue';
@@ -18,7 +19,17 @@ vi.mock('@erplora/ui/shell', async (importOriginal) => ({
 
 import { toastSuccess } from '@erplora/ui/shell';
 
-import { accessibleName, type ApiCall, errorFrame, flush, keyList, mountPanel, subId } from '../__tests__/mount-panel';
+import {
+  accessibleName,
+  type ApiCall,
+  errorFrame,
+  flush,
+  HELLO,
+  keyList,
+  LIVE_TIMEOUT_MS,
+  mountPanel,
+  subId,
+} from '../__tests__/mount-panel';
 import type { ApiKeyRowOut } from '../../../frontend/sdk-types';
 import ApiKeysTable from './ApiKeysTable.vue';
 
@@ -121,5 +132,34 @@ describe('ApiKeysTable', () => {
     stream.push(errorFrame(subId(s.client, 'accounts.apikey.list'), 'server_error'));
     await flush();
     expect(s.q('api-keys-retry')).not.toBeNull();
+    expect(s.q('api-keys-empty')).toBeNull();
+  });
+
+  it('says a failed load, not «no keys» nor a spinner, when no answer comes in time (stream down, no network)', async () => {
+    const s = await mountPanel(ApiKeysTable);
+    await s.live();
+    await s.clock.advance(LIVE_TIMEOUT_MS);
+    expect(s.q('api-keys-retry')).not.toBeNull();
+    expect(s.wrapper.text()).toContain('We could not load your API keys');
+    expect(s.wrapper.text()).toContain('We could not reach ERPlora. Check your connection and try again.');
+    expect(s.q('api-keys-empty')).toBeNull();
+    expect(s.q('api-keys-loading')).toBeNull();
+  });
+
+  it('«Retry» opens the stream again and lists the keys when they come', async () => {
+    const s = await mountPanel(ApiKeysTable);
+    await s.live();
+    await s.clock.advance(LIVE_TIMEOUT_MS);
+    const before = s.net.streams.length;
+    s.q('api-keys-retry')?.click();
+    await flush();
+    expect(s.net.streams.length).toBe(before + 1);
+    expect(s.q('api-keys-retry')).toBeNull();
+    expect(s.q('api-keys-loading')).not.toBeNull();
+    const stream = s.net.lastStream();
+    stream.push(HELLO);
+    await s.result(stream, 'accounts.apikey.list', keyList([ACCOUNTING]));
+    expect(s.q('api-keys-loading')).toBeNull();
+    expect(s.wrapper.text()).toContain('erps_live_7Kq2abcd…');
   });
 });

@@ -87,6 +87,7 @@ async function clear(): Promise<void> {
         v-else
         slot="start"
         name="lucide:camera"
+        aria-hidden="true"
       />
       {{ $t('accounts.account.photo.change') }}
     </ion-button>
@@ -102,6 +103,7 @@ async function clear(): Promise<void> {
       <HubIcon
         slot="start"
         name="ion:trash-outline"
+        aria-hidden="true"
       />
       {{ $t('accounts.account.photo.remove') }}
     </ion-button>

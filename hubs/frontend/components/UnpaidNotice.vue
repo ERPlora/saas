@@ -1,24 +1,24 @@
 <script setup lang="ts">
 // The notice of an unpaid invoice of a business (mockups `businesses.html`, `business.html` «past-due»;
 // README §4 and §6.18; PLAN-SAAS §3.3): since when it is unpaid and, while it still works, until when
-// (7 days of grace from the invoice); suspended, that it waits for the payment and nothing is deleted.
-// On the web, «Pay the invoice» goes to Stripe's page (`pay_url`, only for whoever may pay it); after a
-// declined card it waits for another card and says so. Inside the apps, how to settle it, without a
-// button nor a link (README §4).
-import { formatDateTime, InlineFeedback } from '@erplora/ui/components';
-import { HubIcon, WebOnly } from '@erplora/ui/shell';
-import { IonButton } from '@ionic/vue';
+// (7 days of grace from the invoice, `unpaidDeadline`), as days (never the minute, audit R-15); suspended,
+// that it waits for the payment and nothing is deleted. On the web, «Pay the invoice» goes to Stripe's page
+// (`pay_url`, only for whoever may pay it); after a declined card «Change card» (Stripe's Customer Portal) is
+// the way out and «Pay» waits for it (`UnpaidActions`, audit R-09). Inside the apps, how to settle it, without
+// a button nor a link (README §4).
+import { InlineFeedback } from '@erplora/ui/components';
+import { WebOnly } from '@erplora/ui/shell';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import { formatDate } from '../../../billing/frontend/format';
 import type { BusinessRowOut } from '../../../frontend/sdk-types';
+import { unpaidDeadline } from '../business-status';
+import UnpaidActions from './UnpaidActions.vue';
 
 const props = defineProps<{
-  business: Pick<BusinessRowOut, 'name' | 'status' | 'unpaid_reason' | 'unpaid_since' | 'pay_url'>;
+  business: Pick<BusinessRowOut, 'id' | 'name' | 'status' | 'unpaid_reason' | 'unpaid_since' | 'pay_url'>;
 }>();
-
-/** The grace of an unpaid invoice before the business is suspended. */
-const GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 
 const { t, locale } = useI18n();
 
@@ -26,10 +26,9 @@ const suspended = computed(() => props.business.status === 'suspended');
 const body = computed(() => {
   const since = props.business.unpaid_since;
   if (!since) return suspended.value ? t('hubs.list.unpaid.suspendedBody') : t('hubs.list.unpaid.pastDueBody');
-  const date = formatDateTime(since, locale.value);
+  const date = formatDate(since, locale.value);
   if (suspended.value) return t('hubs.unpaid.suspendedSince', { since: date });
-  const until = formatDateTime(new Date(Date.parse(since) + GRACE_MS).toISOString(), locale.value);
-  return t('hubs.unpaid.pastDueSince', { since: date, until });
+  return t('hubs.unpaid.pastDueSince', { since: date, until: formatDate(unpaidDeadline(since), locale.value) });
 });
 const declined = computed(() => props.business.unpaid_reason === 'card_declined');
 </script>
@@ -62,24 +61,11 @@ const declined = computed(() => props.business.unpaid_reason === 'card_declined'
       v-if="business.pay_url"
       #actions
     >
-      <WebOnly>
-        <ion-button
-          data-testid="unpaid-pay"
-          :href="business.pay_url"
-          :disabled="declined"
-        >
-          <HubIcon
-            slot="start"
-            name="ion:card-outline"
-          />
-          {{ $t('hubs.unpaid.pay') }}
-        </ion-button>
-      </WebOnly>
+      <UnpaidActions :business="business" />
     </template>
   </InlineFeedback>
 </template>
 
-<style scoped src="./buttons.css"></style>
 <style scoped>
 .unpaid-card,
 .unpaid-app {

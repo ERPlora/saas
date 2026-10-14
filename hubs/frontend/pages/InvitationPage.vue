@@ -5,8 +5,8 @@
 // invites and as what, «Accept and enter» (into the business at once) and «Decline» (confirmed). None
 // waiting, or not the one asked for (expired after 7 days, already answered, sent to another email):
 // «This invitation is no longer valid», with the panel and «Create my own business».
-// Live data: `hubs.invitation.list_mine`.
-import { InlineFeedback } from '@erplora/ui/components';
+// Live data: `hubs.invitation.list_mine`, its states truthful (`useLiveState`, audit 2026-10-14 R-08): no answer
+// in time is an error with «Retry», never a spinner for ever nor «no longer valid».
 import { HubIcon, useSession } from '@erplora/ui/shell';
 import { useLive } from '@erplora/ui/sdk';
 import { IonButton, IonSpinner, onIonViewWillEnter } from '@ionic/vue';
@@ -14,6 +14,8 @@ import { computed, onMounted, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
+import { useLiveState } from '../../../frontend/live-state';
+import LoadFailed from '../../../frontend/LoadFailed.vue';
 import type { InvitationOut } from '../../../frontend/sdk-types';
 import CardShell from '../components/CardShell.vue';
 import DeclineDialog from '../components/DeclineDialog.vue';
@@ -28,6 +30,7 @@ const { t } = useI18n();
 const router = useRouter();
 const session = useSession();
 const live = useLive('hubs.invitation.list_mine', {});
+const load = useLiveState(live);
 const { accept, accepting } = useAcceptInvitation();
 
 const declining = shallowRef<InvitationOut | null>(null);
@@ -76,27 +79,13 @@ onIonViewWillEnter(entered);
     <!-- One stable element around the states: Ionic moves the dialog below out of the card while it
          is open, so Vue must never insert a state before it. -->
     <div class="card-body">
-      <InlineFeedback
-        v-if="live.status.value === 'error' && !loaded"
-        tone="danger"
-        data-testid="invitation-error"
-      >
-        {{ $t('hubs.invitation.loadError') }}
-        <template #actions>
-          <ion-button
-            data-testid="invitation-retry"
-            size="small"
-            fill="outline"
-            @click="live.refresh()"
-          >
-            <HubIcon
-              slot="start"
-              name="ion:refresh-outline"
-            />
-            {{ $t('hubs.common.retry') }}
-          </ion-button>
-        </template>
-      </InlineFeedback>
+      <LoadFailed
+        v-if="load.failed.value && !loaded"
+        :heading="$t('hubs.invitation.loadError')"
+        testid="invitation-error"
+        retry-testid="invitation-retry"
+        @retry="load.retry()"
+      />
 
       <div
         v-else-if="!loaded"
@@ -123,6 +112,7 @@ onIonViewWillEnter(entered);
           <HubIcon
             slot="start"
             name="ion:storefront-outline"
+            aria-hidden="true"
           />
           {{ $t('hubs.common.goToPanel') }}
         </ion-button>
@@ -136,6 +126,7 @@ onIonViewWillEnter(entered);
           <HubIcon
             slot="start"
             name="ion:add-outline"
+            aria-hidden="true"
           />
           {{ $t('hubs.invitation.expired.createOwn') }}
         </ion-button>
@@ -153,6 +144,7 @@ onIonViewWillEnter(entered);
               <HubIcon
                 class="invite-icon"
                 name="ion:storefront-outline"
+                aria-hidden="true"
               />
               <div class="invite-text">
                 <h2>{{ invitation.hub.name }}</h2>
@@ -177,6 +169,7 @@ onIonViewWillEnter(entered);
                 v-else
                 slot="start"
                 name="ion:log-in-outline"
+                aria-hidden="true"
               />
               {{ $t('hubs.invitation.accept') }}
             </ion-button>
@@ -191,6 +184,7 @@ onIonViewWillEnter(entered);
               <HubIcon
                 slot="start"
                 name="ion:close-outline"
+                aria-hidden="true"
               />
               {{ $t('hubs.invitation.decline') }}
             </ion-button>

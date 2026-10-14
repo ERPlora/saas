@@ -23,6 +23,14 @@
     flex: 1 1 0;
     min-height: var(--panel-list-min, 20rem);
   }
+  /* R-14 (audit 2026-10-14): the toolbar in one row from 834 to 1180 px. A wrapping row breaks by its pieces'
+     basis before anything shrinks, and DataTable's search asks for 22rem: a small basis that grows lets the
+     search give way first. Three classes: stronger than DataTable's scoped rule, loaded after this sheet. */
+  .panel-fill .data-table .data-table__search {
+    flex: 1 1 11rem;
+    min-width: 9rem;
+    max-width: 22rem;
+  }
 }
 
 /* Phone (DataTable's own breakpoint): the list follows DataTable's `fill` there, growing with its rows from the

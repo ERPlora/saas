@@ -20,7 +20,8 @@
         "body": "Solo el propietario de un negocio compra su plan y sus módulos. Crea tu propio negocio o pídeselo a su propietario.",
         "action": "Ir a Negocios"
       },
-      "unknownBusiness": "No encontramos ese negocio entre los tuyos: te enseñamos {name}. Elige otro arriba si quieres."
+      "unknownBusiness": "No encontramos ese negocio entre los tuyos: te enseñamos {name}. Elige otro arriba si quieres.",
+      "businessesError": "No hemos podido cargar tus negocios"
     },
     "picker": {
       "heading": "¿Para qué negocio?",
@@ -210,7 +211,16 @@
       "lineMany": "{count} facturas sin pagar: {amount}.",
       "viewOne": "Ver la factura",
       "viewMany": "Ver las facturas",
-      "paid": "Factura pagada: {name} vuelve a estar al día"
+      "paid": "Factura pagada: {name} vuelve a estar al día",
+      "unknown": "No hemos podido comprobar si tienes facturas sin pagar.",
+      "retry": "Reintentar",
+      "groupHeading": "{count} factura sin pagar: {amount} | {count} facturas sin pagar: {amount}",
+      "groupSuspended": "{name} está suspendido hasta que se pague ({amount}).",
+      "groupPastDue": "{name} se suspende el {date} si no se paga ({amount}).",
+      "groupPastDueNoDate": "{name} se suspende si no se paga pronto ({amount}).",
+      "groupFooter": "No se borra nada: al pagar una factura, su negocio vuelve a funcionar al momento.",
+      "appMany": "Para pagarlas, entra en erplora.com desde el navegador.",
+      "appDeclinedMany": "Para cambiar la tarjeta y pagarlas, entra en erplora.com desde el navegador."
     },
     "invoices": {
       "title": "Facturas de ERPlora",
@@ -256,7 +266,9 @@
       "rectifies": "Rectifica {number}",
       "rectification": "Rectificativa {type} · {reason}",
       "rectificationNoReason": "Rectificativa {type}",
-      "csvShort": "Excel"
+      "csvShort": "Excel",
+      "pdfIssuing": "Esta factura se está emitiendo: su PDF estará listo en cuanto termine.",
+      "pdfUnavailable": "El servicio de facturas no responde. Prueba de nuevo en un momento."
     },
     "subscriptions": {
       "title": "Suscripciones",
@@ -347,6 +359,9 @@
         "unavailable": "VIES no responde ahora: lo volvemos a comprobar al facturar.",
         "outside_vies": "Número del Reino Unido: no se comprueba en VIES."
       }
+    },
+    "load": {
+      "reason": "Comprueba tu conexión y vuelve a intentarlo."
     }
   }
 }
