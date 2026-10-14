@@ -16,6 +16,8 @@ from urllib.parse import urlsplit
 import re
 from uuid import UUID
 
+from django.db import connection
+from django.db.migrations.executor import MigrationExecutor
 from django.db.models import Case, IntegerField, Q, Value, When
 from django.utils import timezone, translation
 from django.utils.text import slugify
@@ -528,6 +530,51 @@ def expired_deletions(cutoff: datetime) -> list[UUID]:
 
 def owner_id(hub_id: UUID) -> UUID | None:
     return HubMember.objects.filter(hub_id=hub_id, role=Role.OWNER).values_list("user_id", flat=True).first()
+
+
+def people_to_tell(hub_id: UUID, also=()) -> list[UUID]:
+    """Who sees the people of the business ``hub_id`` (its answered owner and admins) and the accounts in
+    ``also`` (whom a change touched), each once: the channels ``services.notify_people`` tells."""
+    managers = HubMember.objects.filter(
+        hub_id=hub_id, accepted_at__isnull=False, role__in=[Role.OWNER, Role.ADMIN]
+    ).values_list("user_id", flat=True)
+    return sorted({*managers, *(user_id for user_id in also if user_id is not None)}, key=str)
+
+
+def mirror_migrated() -> bool:
+    """Whether accounts and hubs have no migration left to apply, so the mirror can be compared (the check
+    ``hubs.W001`` runs in ``migrate`` too, before the tables or the data migration ``0006`` are there)."""
+    executor = MigrationExecutor(connection)
+    targets = [node for node in executor.loader.graph.leaf_nodes() if node[0] in ("accounts", "hubs")]
+    return not executor.migration_plan(targets)
+
+
+#: One disagreement of the mirror: ``(slug, user id, the role it should have, the role it has)``; a
+#: ``None`` role is a row that should not be there or is missing.
+MirrorDrift = tuple[str, str, str | None, str | None]
+
+
+def verify_access_mirror() -> list[MirrorDrift]:
+    """Where ``accounts.HubMembership`` (the access the jump reads) disagrees with the answered members of
+    the businesses that still open (``hubs.services.sync_access``'s rule), sorted; empty when they agree.
+
+    A deleted business gives no access, and neither does a slug no business has (the phase-1 seed before
+    the data migration ``0006``). The system check ``hubs.W001`` reports it (``hubs.checks``).
+    """
+    should = {
+        (slug, str(user_id)): role
+        for slug, user_id, role in HubMember.objects.filter(accepted_at__isnull=False)
+        .exclude(hub__status__in=[Hub.Status.DELETING, Hub.Status.DELETED])
+        .values_list("hub__slug", "user_id", "role")
+    }
+    has = {
+        (slug, str(user_id)): role for slug, user_id, role in HubMembership.objects.values_list("hub_slug", "user_id", "role")
+    }
+    return [
+        (slug, user_id, should.get((slug, user_id)), has.get((slug, user_id)))
+        for slug, user_id in sorted(should.keys() | has.keys())
+        if should.get((slug, user_id)) != has.get((slug, user_id))
+    ]
 
 
 # --- What the Hub is told (hubs.services.sync_hub) ------------------------------------------------

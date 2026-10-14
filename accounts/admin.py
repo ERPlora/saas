@@ -1,4 +1,4 @@
-"""Django admin of accounts: users, their hub memberships and the one-time codes (read only).
+"""Django admin of accounts: users, their hub memberships (the jump's mirror) and the one-time codes (read only).
 
 «Open in the Hub admin» (ronda 13, PLAN §18.1.6), on every membership row and on the «Hubs» page
 (``/admin/accounts/hubs/``, routed in ``config/urls.py``): the staff jump from ``erplora.com/admin``
@@ -80,8 +80,20 @@ class UserEditForm(UserChangeForm):
 
 
 class HubMembershipInline(admin.TabularInline):
+    """The account's access to hubs, seen only: it mirrors the members of each business (``hubs`` admin)."""
+
     model = HubMembership
     extra = 0
+    can_delete = False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(User)
@@ -109,10 +121,22 @@ class UserAdmin(DjangoUserAdmin):
 
 @admin.register(HubMembership)
 class HubMembershipAdmin(admin.ModelAdmin):
+    """Read only: the mirror of the businesses' members that the jump reads, written only by
+    ``hubs.services.sync_access`` (L1-A2). People are added, changed and removed on the business
+    (``hubs`` admin, «Members»)."""
+
     list_display = ("user", "hub_slug", "role", "created_at", "open_in_hub_admin")
     list_filter = ("role",)
     search_fields = ("user__email", "hub_slug")
-    autocomplete_fields = ("user",)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
     @admin.display(description=_("Hub admin"))
     def open_in_hub_admin(self, obj):

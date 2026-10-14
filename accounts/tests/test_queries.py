@@ -196,3 +196,69 @@ def test_owns_authenticator_not_without_ids(ana):
 
     assert queries.owns_authenticator(ana, set()) is False
     assert queries.owns_authenticator(ana, {None}) is False
+
+
+# --- Who proved their email, and who has a way in (saas#2541; L1-A2) ----------------------------
+
+
+class TestEmailIsProven:
+    """``email_is_proven``: an account holds an address by proof, not by having typed it first (saas#2541).
+
+    Proven = a **verified** ``EmailAddress`` for that address. Nothing to prove (so proven): staff, and
+    an account with **no** address on record (made by an invitation, by the console or by staff, never
+    signed up by itself).
+    """
+
+    def _address(self, user, email, verified, primary=True):
+        from allauth.account.models import EmailAddress
+
+        return EmailAddress.objects.create(user=user, email=email, verified=verified, primary=primary)
+
+    def test_an_account_with_no_address_on_record_has_nothing_to_prove(self, ana):
+        assert queries.email_is_proven(ana, "ana@example.com") is True
+
+    def test_a_verified_address_is_proof(self, ana):
+        self._address(ana, "ana@example.com", verified=True)
+
+        assert queries.email_is_proven(ana, "ANA@example.com") is True
+
+    def test_an_address_never_verified_is_no_proof(self, ana):
+        self._address(ana, "ana@example.com", verified=False)
+
+        assert queries.email_is_proven(ana, "ana@example.com") is False
+
+    def test_a_verified_address_that_is_another_one_proves_nothing(self, ana):
+        self._address(ana, "squatter@example.com", verified=True)
+        self._address(ana, "ana@example.com", verified=False, primary=False)
+
+        assert queries.email_is_proven(ana, "ana@example.com") is False
+
+    def test_staff_have_nothing_to_prove(self, ana):
+        ana.is_staff = True
+        ana.save(update_fields=["is_staff"])
+        self._address(ana, "ana@example.com", verified=False)
+
+        assert queries.email_is_proven(ana, "ana@example.com") is True
+
+
+class TestHasNoWayIn:
+    """``has_no_way_in``: no usable password and no linked Google: the person must claim the account first
+    (the invitation's mail then says how)."""
+
+    def test_an_account_with_a_password_has_a_way_in(self, ana):
+        assert queries.has_no_way_in(ana) is False
+
+    def test_an_account_without_a_password_nor_google_has_none(self, ana):
+        ana.set_unusable_password()
+        ana.save(update_fields=["password"])
+
+        assert queries.has_no_way_in(ana) is True
+
+    def test_a_linked_google_is_a_way_in(self, ana):
+        from allauth.socialaccount.models import SocialAccount
+
+        ana.set_unusable_password()
+        ana.save(update_fields=["password"])
+        SocialAccount.objects.create(user=ana, provider="google", uid="ana-google")
+
+        assert queries.has_no_way_in(ana) is False

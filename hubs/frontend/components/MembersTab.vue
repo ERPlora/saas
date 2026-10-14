@@ -6,7 +6,17 @@
 // transfer the ownership). «Invite» when the account may invite (`invitable_roles`). Under the table,
 // the places of the plan and what each role may do; above it, a pending ownership offer the owner can
 // withdraw. Each action is a dialog of its own; «Resend» needs none.
-import { businessStatusPill, DataTable, formatDateTime, InlineFeedback, StatusPill, type StatusPillSpec } from '@erplora/ui/components';
+import {
+  businessStatusPill,
+  DataTable,
+  type DataTableAction,
+  type DataTableActionEvent,
+  type DataTableColumn,
+  formatDateTime,
+  InlineFeedback,
+  StatusPill,
+  type StatusPillSpec,
+} from '@erplora/ui/components';
 import { HubIcon, toastError, toastSuccess } from '@erplora/ui/shell';
 import { useCommand, useLive } from '@erplora/ui/sdk';
 import { IonButton } from '@ionic/vue';
@@ -72,19 +82,33 @@ watch(live.data, (now) => {
 });
 
 const columns = computed(() => [
-  { key: 'name', label: t('hubs.members.columns.name'), cell: 'name', width: 'minmax(10rem,1.4fr)' },
+  { key: 'name', label: t('hubs.members.columns.name'), cell: 'name', width: 'minmax(10rem,1.4fr)', priority: 'high' },
   { key: 'email', label: t('hubs.members.columns.email'), cell: 'email', width: 'minmax(10rem,1.4fr)' },
   { key: 'role_label', label: t('hubs.members.columns.role'), width: 'minmax(6rem,0.9fr)' },
   { key: 'status', label: t('hubs.members.columns.status'), cell: 'status', width: 'minmax(6rem,0.8fr)' },
-  { key: 'last_opened_at', label: t('hubs.members.columns.lastAccess'), cell: 'last', width: 'minmax(8rem,1fr)' },
-]);
+  { key: 'last_opened_at', label: t('hubs.members.columns.lastAccess'), cell: 'last', width: 'minmax(8rem,1fr)', priority: 'low' },
+] satisfies DataTableColumn<MemberRowOut>[]);
 const labels = computed(() => ({
   add: t('hubs.members.invite'),
   loadError: t('hubs.members.loadError'),
   retry: t('hubs.common.retry'),
-  recordSingular: t('hubs.members.recordSingular'),
-  recordPlural: t('hubs.members.recordPlural'),
 }));
+const entityLabel = computed(() => ({ one: t('hubs.members.recordSingular'), many: t('hubs.members.recordPlural') }));
+
+/** The server's actions of each row (`row.actions`), in its order, for the table to fold: «Transfer
+ *  ownership» lives only in «⋮» (README §3b: delicate, and confirmed). Named with the member. */
+const ORDER: MemberAction[] = ['change_role', 'remove', 'resend', 'cancel', 'transfer'];
+const actions = computed<DataTableAction<MemberRowOut>[]>(() =>
+  ORDER.map((id) => ({
+    id,
+    label: (row: MemberRowOut) => named(id, row),
+    icon: ACTIONS[id].icon,
+    color: ACTIONS[id].danger ? 'danger' : 'primary',
+    menuOnly: id === 'transfer',
+    hidden: (row: MemberRowOut) => !row.actions.includes(id),
+    loading: id === 'resend' ? (row: MemberRowOut) => resend.pending.value && target.value?.id === row.id : undefined,
+  })),
+);
 
 function pill(row: MemberRowOut): StatusPillSpec {
   if (row.status === 'active') return businessStatusPill('active', locale.value);
@@ -103,6 +127,10 @@ const target = shallowRef<MemberRowOut | null>(null);
 const roleOpen = shallowRef(false);
 const removeOpen = shallowRef(false);
 const transferOpen = shallowRef(false);
+
+function onAction({ actionId, row }: DataTableActionEvent<MemberRowOut>): void {
+  void act(actionId as MemberAction, row);
+}
 
 async function act(action: MemberAction, row: MemberRowOut): Promise<void> {
   target.value = row;
@@ -173,13 +201,16 @@ async function withdrawOffer(id: string): Promise<void> {
       :error="live.status.value === 'error' ? text(live.error.value) : undefined"
       :addable="invitableRoles.length > 0"
       :labels="labels"
+      :entity-label="entityLabel"
       :columns="columns"
+      :actions="actions"
       :card-title="(row: MemberRowOut) => row.name"
       :card-icon="() => 'ion:person-outline'"
       @page-change="goToPage"
       @load-more="windowPages += 1"
       @page-size-change="setPageSize"
       @add="inviting = true"
+      @action="onAction"
       @retry="live.refresh()"
     >
       <template #name="{ row }">
@@ -224,27 +255,6 @@ async function withdrawOffer(id: string): Promise<void> {
         >
           {{ lastAccess(row) }}
         </p>
-      </template>
-
-      <template #row-actions="{ row }">
-        <ion-button
-          v-for="action in row.actions"
-          :key="action"
-          size="small"
-          fill="clear"
-          class="row-action"
-          :class="{ 'is-danger': ACTIONS[action].danger }"
-          :data-testid="`members-row-${row.id}-${action}`"
-          :aria-label="named(action, row)"
-          :disabled="action === 'resend' && resend.pending.value"
-          @click.stop="act(action, row)"
-        >
-          <HubIcon
-            slot="start"
-            :name="ACTIONS[action].icon"
-          />
-          {{ $t(ACTIONS[action].label) }}
-        </ion-button>
       </template>
     </DataTable>
 

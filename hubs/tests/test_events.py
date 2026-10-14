@@ -25,7 +25,10 @@ def test_events_are_listed_once():
 
 
 def test_every_event_is_recorded_by_a_command():
+    """By the command itself (``record_event``) or, for the people of a business, on the channels of its
+    owner and admins (``notify_people``, which runs the system command ``hubs.business.notify_people``)."""
     constants = {value: key for key, value in vars(events).items() if isinstance(value, str) and value in events.ALL}
     recorded = set(re.findall(r"record_event\(ctx, events\.([A-Z_]+)", SERVICES_SOURCE))
+    recorded |= set(re.findall(r"notify_people\(ctx, events\.([A-Z_]+)", SERVICES_SOURCE))
 
     assert {constants[name] for name in events.ALL} == recorded

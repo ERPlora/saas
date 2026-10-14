@@ -44,4 +44,13 @@ OWNERSHIP = [OWNERSHIP_REQUESTED, OWNERSHIP_ACCEPTED, OWNERSHIP_DECLINED, OWNERS
 
 BILLING_PROFILE_UPDATED = "hubs.billing_profile.updated"
 
-ALL = [*BUSINESS, *MEMBER, *INVITATION, *OWNERSHIP, BILLING_PROFILE_UPDATED]
+#: The people of a business changed (an invitation, its answer, a role, a removal): recorded on the channel
+#: of every owner and admin of the business and of the account it touched, not only the actor's
+#: (``services.notify_people``), so their lists re-run at once. Payload ``{"business_id"}``.
+MEMBER_CHANGED = "hubs.member.changed"
+#: An ownership offer was made, accepted, declined or cancelled: same channels as ``MEMBER_CHANGED``.
+OWNERSHIP_CHANGED = "hubs.ownership.changed"
+
+PEOPLE = [MEMBER_CHANGED, OWNERSHIP_CHANGED]
+
+ALL = [*BUSINESS, *MEMBER, *INVITATION, *OWNERSHIP, BILLING_PROFILE_UPDATED, *PEOPLE]

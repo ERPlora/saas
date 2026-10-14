@@ -42,6 +42,10 @@ function tailwindSources(): string[] {
 }
 
 describe('vite.config', () => {
+  it('runs every test file in a happy-dom with the browser behaviour Ionic relies on (vitest.setup.ts)', () => {
+    expect(config.test?.setupFiles).toEqual(['./vitest.setup.ts']);
+  });
+
   it('serves from the saas-next directory under /static/spa/ (dev and build alike)', () => {
     expect(config.root).toBe(SAAS_DIR);
     expect(config.base).toBe('/static/spa/');

@@ -204,79 +204,28 @@ class TestRedeemCode:
         )
 
 
-class TestSeedDemoOwner:
-    def test_creates_a_customer_that_owns_each_hub_and_is_no_staff(self):
-        user = services.seed_demo_owner("owner@example.com", "owner", ["a", "b"])
+class TestSeedDemoCustomer:
+    """A customer account of ``demo_seed``: its businesses and roles are ``hubs.services.seed_demo_business``'s
+    (the mirror the jump reads has one writer, ``hubs.services.sync_access``; L1-A2)."""
+
+    def test_creates_a_customer_that_is_no_staff_and_belongs_to_no_hub_yet(self):
+        user = services.seed_demo_customer("owner@example.com", "owner")
 
         assert user.check_password("owner")
         assert (user.is_staff, user.is_superuser) == (False, False)
         assert not user.groups.exists()
-        assert sorted(user.hub_memberships.values_list("hub_slug", "role")) == [
-            ("a", "hub_owner"),
-            ("b", "hub_owner"),
-        ]
-
-    def test_the_hub_receives_the_owner_role_as_it_is(self):
-        owner = services.seed_demo_owner("owner@example.com", "owner", ["a", "b"])
-
-        assert (
-            services.redeem_code(services.issue_code(owner, "a"), "a").role
-            == "hub_owner"
-        )
+        assert not HubMembership.objects.exists()
 
     def test_running_it_again_changes_nothing(self):
-        first = services.seed_demo_owner("owner@example.com", "owner", ["a", "b"])
-        again = services.seed_demo_owner("owner@example.com", "owner", ["a", "b"])
+        first = services.seed_demo_customer("owner@example.com", "owner")
+        again = services.seed_demo_customer("owner@example.com", "owner")
 
         assert again.pk == first.pk
         assert get_user_model().objects.count() == 1
-        assert HubMembership.objects.count() == 2
 
-
-class TestSeedDemoMember:
-    """A customer of the demo hubs with any customer role (DEMO-F06 needs an employee)."""
-
-    def test_creates_an_employee_of_each_hub_that_is_no_staff(self):
-        user = services.seed_demo_member(
-            "employee@example.com", "employee", ["a", "b"], HubMembership.Role.EMPLOYEE
-        )
-
-        assert user.check_password("employee")
-        assert (user.is_staff, user.is_superuser) == (False, False)
-        assert not user.groups.exists()
-        assert sorted(user.hub_memberships.values_list("hub_slug", "role")) == [
-            ("a", "hub_employee"),
-            ("b", "hub_employee"),
-        ]
-
-    def test_the_hub_receives_the_employee_role_as_it_is(self):
-        employee = services.seed_demo_member(
-            "employee@example.com", "employee", ["a"], HubMembership.Role.EMPLOYEE
-        )
-
-        assert (
-            services.redeem_code(services.issue_code(employee, "a"), "a").role
-            == "hub_employee"
-        )
-
-    @pytest.mark.parametrize("role", ["platform_admin", "employee", ""])
-    def test_refuses_a_role_that_is_not_a_customer_role(self, role):
-        with pytest.raises(ValueError):
-            services.seed_demo_member("employee@example.com", "employee", ["a"], role)
-
-        assert not get_user_model().objects.exists()
-
-    def test_running_it_again_changes_nothing(self):
-        first = services.seed_demo_member(
-            "employee@example.com", "employee", ["a", "b"], HubMembership.Role.EMPLOYEE
-        )
-        again = services.seed_demo_member(
-            "employee@example.com", "employee", ["a", "b"], HubMembership.Role.EMPLOYEE
-        )
-
-        assert again.pk == first.pk
-        assert get_user_model().objects.count() == 1
-        assert HubMembership.objects.count() == 2
+    def test_the_old_seeds_that_wrote_the_mirror_are_gone(self):
+        assert not hasattr(services, "seed_demo_owner")
+        assert not hasattr(services, "seed_demo_member")
 
 
 class TestSeedDemoPlatformAdmin:
@@ -474,3 +423,102 @@ def test_the_platform_host_is_no_customer_hub_either(member):
         services.issue_code(member, "hubs")
 
     assert not AuthExchangeCode.objects.exists()
+
+
+class TestReleaseUnprovenAccount:
+    """``release_unproven_account`` (saas#2541): every credential of an account whose holder never proved its
+    email goes, so only whoever opens that mailbox gets in («Forgot your password?», or Google, which
+    proves the address). The account, its addresses and what hangs from it stay."""
+
+    @pytest.fixture
+    def squatter(self, ana):
+        from allauth.account.models import EmailAddress
+
+        EmailAddress.objects.create(user=ana, email=ana.email, primary=True, verified=False)
+        return ana
+
+    def test_the_password_goes(self, squatter, password):
+        services.release_unproven_account(squatter, reason="invited_while_unverified")
+
+        squatter.refresh_from_db()
+        assert not squatter.check_password(password)
+        assert not squatter.has_usable_password()
+
+    def test_the_browser_session_ends_with_the_password(self, client, squatter):
+        client.force_login(squatter)
+        assert client.get("/api/me").json()["user"] is not None
+
+        services.release_unproven_account(squatter, reason="invited_while_unverified")
+
+        assert client.get("/api/me").json()["user"] is None
+
+    def test_the_second_factor_and_a_linked_google_go(self, squatter):
+        from allauth.mfa.models import Authenticator
+        from allauth.socialaccount.models import SocialAccount
+
+        Authenticator.objects.create(user=squatter, type=Authenticator.Type.TOTP, data={"secret": "x"})
+        SocialAccount.objects.create(user=squatter, provider="google", uid="squatter-google-uid")
+
+        services.release_unproven_account(squatter, reason="invited_while_unverified")
+
+        assert not Authenticator.objects.filter(user=squatter).exists()
+        assert not SocialAccount.objects.filter(user=squatter).exists()
+
+    def test_the_account_and_its_address_stay(self, squatter):
+        from allauth.account.models import EmailAddress
+
+        services.release_unproven_account(squatter, reason="invited_while_unverified")
+
+        assert get_user_model().objects.filter(pk=squatter.pk, is_active=True).exists()
+        assert EmailAddress.objects.filter(user=squatter, email=squatter.email, verified=False).exists()
+
+
+class TestTheResetLinkProvesTheMailbox:
+    """A password set from the key mailed by «Forgot your password?» (allauth's ``password_reset`` signal)
+    proves the mailbox it went to: the account's address becomes verified and primary (L1-A2). Only when
+    that address is the only one on record, since the key may have gone to any address of the account."""
+
+    def _reset(self, client, email, password):
+        from django.core import mail
+
+        mail.outbox.clear()
+        client.post("/accounts/password/reset/", {"email": email})
+        link = next(word for word in mail.outbox[0].body.split() if "/accounts/password/reset/key/" in word)
+        client.post(client.get(link).url, {"password1": password, "password2": password})
+
+    def test_an_account_with_no_address_on_record_gets_it_verified(self, client, ana):
+        from allauth.account.models import EmailAddress
+
+        self._reset(client, ana.email, "N3w-pass-phrase-ok")
+
+        (address,) = EmailAddress.objects.filter(user=ana)
+        assert (address.email, address.verified, address.primary) == (ana.email, True, True)
+
+    def test_its_unverified_address_becomes_verified(self, client, ana):
+        from allauth.account.models import EmailAddress
+
+        EmailAddress.objects.create(user=ana, email=ana.email, primary=True, verified=False)
+
+        self._reset(client, ana.email, "N3w-pass-phrase-ok")
+
+        assert EmailAddress.objects.get(user=ana).verified
+
+    def test_with_another_address_on_record_it_proves_nothing(self, client, ana):
+        """The squatter's own verified address could have received the key: the login address stays unproven."""
+        from allauth.account.models import EmailAddress
+
+        EmailAddress.objects.create(user=ana, email="squatter@example.com", primary=True, verified=True)
+        EmailAddress.objects.create(user=ana, email=ana.email, primary=False, verified=False)
+
+        self._reset(client, "squatter@example.com", "N3w-pass-phrase-ok")
+
+        assert not EmailAddress.objects.get(user=ana, email=ana.email).verified
+
+    def test_changing_the_password_while_signed_in_proves_nothing(self, ana):
+        from allauth.account.models import EmailAddress
+
+        EmailAddress.objects.create(user=ana, email=ana.email, primary=True, verified=False)
+        ana.set_password("N3w-pass-phrase-ok")
+        ana.save()
+
+        assert not EmailAddress.objects.get(user=ana).verified

@@ -62,6 +62,15 @@ def ana(db):
 
 
 @pytest.fixture(autouse=True)
+def _no_real_vies(settings):
+    """No test reaches the European Commission's VIES (billing/vies.py): a call nobody faked goes to a
+    closed port and is ``unavailable`` at once. Tests fake the network with billing/tests/vies_double.py."""
+    settings.VIES_ENDPOINT = "http://127.0.0.1:9/check-vat-number"
+    settings.VIES_CONNECT_TIMEOUT_SECONDS = 1.0
+    settings.VIES_TIMEOUT_SECONDS = 1.0
+
+
+@pytest.fixture(autouse=True)
 def _empty_cache():
     """Every test starts with an empty cache: rate-limit counters must not cross tests."""
     from django.core.cache import cache

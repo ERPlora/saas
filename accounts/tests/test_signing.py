@@ -67,3 +67,151 @@ def test_non_ascii_headers_are_refused_without_raising(timestamp, signature):
     signature = _expected(NOW) if signature == "x" else signature
 
     assert verify(BODY, timestamp, signature, secret=SECRET, now=NOW) is False
+
+
+# --- Two live secrets and the signature that covers method and path (PLAN-SAAS §2.1; L1-A2) ------
+
+from accounts.signing import (  # noqa: E402
+    SIGNATURE_HEADER,
+    SIGNATURE_V2_HEADER,
+    TIMESTAMP_HEADER,
+    live_secrets,
+    sign_v2,
+    signed_headers,
+    verify_request,
+    verify_signed,
+)
+
+PREVIOUS = "the-secret-before-the-rotation"
+PATH = "/internal/hubs/0192c1d4-8b2a-7cde-9f00-000000000001/state"
+
+
+def _expected_v2(timestamp, method="PUT", path=PATH, body=BODY, secret=SECRET):
+    message = f"v2\n{timestamp}\n{method}\n{path}\n".encode() + body
+    return hmac.new(secret.encode(), message, hashlib.sha256).hexdigest()
+
+
+class TestTheSignatureV2:
+    def test_is_the_hex_hmac_of_version_timestamp_method_path_and_body(self):
+        assert sign_v2("put", PATH, BODY, NOW, SECRET) == _expected_v2(NOW)
+
+    def test_the_headers_carry_the_timestamp_and_both_signatures_with_the_current_secret(self):
+        headers = signed_headers("PUT", PATH, BODY, NOW, SECRET)
+
+        assert headers[TIMESTAMP_HEADER] == str(NOW)
+        assert headers[SIGNATURE_HEADER] == _expected(NOW)
+        assert headers[SIGNATURE_V2_HEADER] == _expected_v2(NOW)
+
+    def test_a_signed_call_verifies(self):
+        headers = signed_headers("PUT", PATH, BODY, NOW, SECRET)
+
+        assert verify_signed("PUT", PATH, BODY, headers, secrets=[SECRET], now=NOW) is True
+
+    @pytest.mark.parametrize(
+        ("method", "path", "body"),
+        [
+            ("POST", PATH, BODY),
+            ("PUT", "/internal/hubs/0192c1d4-8b2a-7cde-9f00-000000000002/state", BODY),
+            ("PUT", PATH + "?all=1", BODY),
+            ("PUT", PATH, b'{"code": "abd", "hub": "a"}'),
+        ],
+    )
+    def test_another_method_path_or_body_is_refused_even_with_a_valid_v1(self, method, path, body):
+        """With v2 in the call, v2 decides: the body-only v1 of the same body proves nothing about the route."""
+        headers = signed_headers("PUT", PATH, BODY, NOW, SECRET)
+        headers[SIGNATURE_HEADER] = sign(body, NOW, SECRET)
+
+        assert verify_signed(method, path, body, headers, secrets=[SECRET], now=NOW) is False
+
+    def test_a_call_with_only_v1_is_judged_by_v1_as_hub_next_signs_today(self):
+        headers = {TIMESTAMP_HEADER: str(NOW), SIGNATURE_HEADER: _expected(NOW)}
+
+        assert verify_signed("POST", "/internal/auth/redeem", BODY, headers, secrets=[SECRET], now=NOW) is True
+
+    def test_a_broken_v2_is_refused_even_if_v1_passes(self):
+        """No downgrade: naming v2 and failing it is a forged or a mangled call."""
+        headers = {TIMESTAMP_HEADER: str(NOW), SIGNATURE_HEADER: _expected(NOW), SIGNATURE_V2_HEADER: "0" * 64}
+
+        assert verify_signed("PUT", PATH, BODY, headers, secrets=[SECRET], now=NOW) is False
+
+    @pytest.mark.parametrize("skew", [-301, 301])
+    def test_the_replay_window_is_five_minutes(self, skew):
+        timestamp = NOW + skew
+        headers = signed_headers("PUT", PATH, BODY, timestamp, SECRET)
+
+        assert verify_signed("PUT", PATH, BODY, headers, secrets=[SECRET], now=NOW) is False
+        assert verify_signed("PUT", PATH, BODY, headers, secrets=[SECRET], now=timestamp) is True
+
+    def test_header_names_are_matched_whatever_their_case(self):
+        headers = {key.lower(): value for key, value in signed_headers("PUT", PATH, BODY, NOW, SECRET).items()}
+
+        assert verify_signed("PUT", PATH, BODY, headers, secrets=[SECRET], now=NOW) is True
+
+    @pytest.mark.parametrize("signature", ["", "ñ" * 64, None])
+    def test_a_missing_or_non_ascii_v2_is_refused_without_raising(self, signature):
+        headers = {TIMESTAMP_HEADER: str(NOW), SIGNATURE_V2_HEADER: signature}
+
+        assert verify_signed("PUT", PATH, BODY, headers, secrets=[SECRET], now=NOW) is False
+
+
+class TestTwoLiveSecrets:
+    """Rotation (PLAN-SAAS §2): both projects accept the current and the previous secret, and sign with the current."""
+
+    @pytest.mark.parametrize("version", ["v1", "v2"])
+    def test_a_call_signed_with_the_previous_secret_verifies_during_the_rotation(self, version):
+        headers = signed_headers("PUT", PATH, BODY, NOW, PREVIOUS)
+        if version == "v1":
+            del headers[SIGNATURE_V2_HEADER]
+
+        assert verify_signed("PUT", PATH, BODY, headers, secrets=[SECRET, PREVIOUS], now=NOW) is True
+
+    def test_once_the_previous_secret_is_gone_its_calls_are_refused(self):
+        headers = signed_headers("PUT", PATH, BODY, NOW, PREVIOUS)
+
+        assert verify_signed("PUT", PATH, BODY, headers, secrets=[SECRET], now=NOW) is False
+
+    def test_v1_verify_takes_several_secrets_too(self):
+        assert verify(BODY, str(NOW), _expected(NOW, secret=PREVIOUS), secret=[SECRET, PREVIOUS], now=NOW) is True
+        assert verify(BODY, str(NOW), _expected(NOW, secret=PREVIOUS), secret=[SECRET, ""], now=NOW) is False
+
+    def test_the_live_secrets_are_the_current_and_a_non_empty_previous(self, settings):
+        settings.INTERNAL_SHARED_SECRET = SECRET
+        settings.INTERNAL_SHARED_SECRET_PREVIOUS = ""
+        assert live_secrets() == (SECRET,)
+
+        settings.INTERNAL_SHARED_SECRET_PREVIOUS = PREVIOUS
+        assert live_secrets() == (SECRET, PREVIOUS)
+
+    def test_the_previous_secret_is_a_setting_of_its_own(self):
+        """``INTERNAL_SHARED_SECRET_PREVIOUS`` (env, empty outside a rotation; ``config/settings.py``)."""
+        from django.conf import settings as live_settings
+
+        assert isinstance(live_settings.INTERNAL_SHARED_SECRET_PREVIOUS, str)
+
+    def test_nothing_verifies_without_any_secret(self):
+        headers = signed_headers("PUT", PATH, BODY, NOW, "")
+
+        assert verify_signed("PUT", PATH, BODY, headers, secrets=["", ""], now=NOW) is False
+
+
+class TestVerifyRequest:
+    """``verify_request``: what the ``/internal`` views of the SaaS call, with the live secrets of the settings."""
+
+    def _request(self, rf, headers, *, method="post", path="/internal/auth/redeem", body=BODY):
+        return getattr(rf, method)(path, data=body, content_type="application/json", headers=headers)
+
+    def test_takes_method_full_path_body_and_headers_from_the_request(self, rf, settings):
+        settings.INTERNAL_SHARED_SECRET = SECRET
+        settings.INTERNAL_SHARED_SECRET_PREVIOUS = PREVIOUS
+        now = 1_800_000_000
+        headers = signed_headers("POST", "/internal/auth/redeem?x=1", BODY, now, PREVIOUS)
+
+        assert verify_request(self._request(rf, headers, path="/internal/auth/redeem?x=1"), now=now) is True
+        assert verify_request(self._request(rf, headers, path="/internal/auth/redeem"), now=now) is False
+
+    def test_uses_the_max_age_of_the_settings(self, rf, settings):
+        settings.INTERNAL_SHARED_SECRET = SECRET
+        settings.INTERNAL_SIGNATURE_MAX_AGE_SECONDS = 10
+        headers = signed_headers("POST", "/internal/auth/redeem", BODY, NOW - 11, SECRET)
+
+        assert verify_request(self._request(rf, headers), now=NOW) is False

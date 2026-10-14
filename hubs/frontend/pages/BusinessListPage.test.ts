@@ -21,7 +21,7 @@ vi.mock('@erplora/ui/shell', async (importOriginal) => ({
 
 import { toastError, toastSuccess } from '@erplora/ui/shell';
 
-import { describeCall, enterView, errorFrame, flush, type MountOptions, mountHubs, subId } from '../__tests__/mount-hubs';
+import { accessibleName, describeCall, enterView, errorFrame, flush, type MountOptions, mountHubs, subId } from '../__tests__/mount-hubs';
 import BusinessCreateForm from '../components/BusinessCreateForm.vue';
 import BusinessListPage from './BusinessListPage.vue';
 import { navigation } from '../open-business';
@@ -136,8 +136,30 @@ describe('BusinessListPage: the list', () => {
       testid: 'businesses',
       addable: true,
     });
-    expect(s.prop<Record<string, string>>('labels')).toMatchObject({ add: 'Create business', recordSingular: 'business', recordPlural: 'businesses' });
+    expect(s.prop<Record<string, string>>('labels')).toMatchObject({ add: 'Create business' });
+    expect(s.prop('entityLabel')).toEqual({ one: 'business', many: 'businesses' });
     expect(s.testid('businesses-lead').text()).toBe('Here you manage your businesses. Press «Open» to work in one.');
+  });
+
+  it('gives the table its row actions to fold (README §3b, W-19): «Open» pinned, «Manage» and «Recover» inline', async () => {
+    const s = await setup();
+    await s.show(page(ROWS));
+    expect(s.prop<Array<Record<string, unknown>>>('actions').map((a) => [a.id, a.icon, !!a.pinned, !!a.menuOnly])).toEqual([
+      ['open', 'ion:log-in-outline', true, false],
+      ['manage', 'ion:settings-outline', false, false],
+      ['restore', 'ion:refresh-outline', false, false],
+    ]);
+    // What the box gives up first when it narrows: the web address and the last use; never the status.
+    expect(s.prop<Array<{ key: string; priority?: string }>>('columns').map((c) => [c.key, c.priority ?? 'normal'])).toEqual([
+      ['name', 'high'],
+      ['host', 'low'],
+      ['status', 'high'],
+      ['plan', 'normal'],
+      ['role', 'normal'],
+      ['last_opened_at', 'low'],
+    ]);
+    // No hand-made buttons: the slot never folds.
+    expect(s.wrapper.find('.row-action').exists()).toBe(false);
   });
 
   it('paints business, web address, status, plan, role and last use', async () => {
@@ -186,7 +208,7 @@ describe('BusinessListPage: row actions', () => {
         row('viejo', 'Bar Viejo', { status: 'deleting', can_open: false, open_blocked_reason: 'deleting', purge_after: '2027-01-11T10:00:00Z' }),
       ]),
     );
-    expect(action(s, 'bakery', 'open').text()).toContain('Open');
+    expect(accessibleName(action(s, 'bakery', 'open'))).toBe('Open Panadería López');
     expect((action(s, 'cafe', 'open').element as HTMLElement & { disabled?: boolean }).disabled).toBe(true);
     expect(action(s, 'norte', 'open').exists()).toBe(false);
     expect(action(s, 'viejo', 'open').exists()).toBe(false);
@@ -221,9 +243,9 @@ describe('BusinessListPage: row actions', () => {
   it('every row button is named with its business for a screen reader', async () => {
     const s = await setup();
     await s.show(page([...ROWS, row('viejo', 'Bar Viejo', { status: 'deleting', can_open: false, open_blocked_reason: 'deleting', purge_after: '2027-01-11T10:00:00Z' })]));
-    expect(action(s, 'bakery', 'open').attributes('aria-label')).toBe('Open Panadería López');
-    expect(action(s, 'bakery', 'manage').attributes('aria-label')).toBe('Manage Panadería López');
-    expect(action(s, 'viejo', 'restore').attributes('aria-label')).toBe('Recover Bar Viejo');
+    expect(accessibleName(action(s, 'bakery', 'open'))).toBe('Open Panadería López');
+    expect(accessibleName(action(s, 'bakery', 'manage'))).toBe('Manage Panadería López');
+    expect(accessibleName(action(s, 'viejo', 'restore'))).toBe('Recover Bar Viejo');
   });
 
   it('a deleted business offers «Recover» to its owner, which recovers it and says so', async () => {
@@ -426,7 +448,7 @@ describe('BusinessListPage: Spanish', () => {
     await s.show(page(ROWS));
     expect(s.wrapper.findComponent(AppPage).props('title')).toBe('Negocios');
     expect(s.prop<Array<{ label: string }>>('columns').map((c) => c.label)).toEqual(['Negocio', 'Dirección web', 'Estado', 'Plan', 'Rol', 'Último uso']);
-    expect(s.testid('businesses-row-bakery-open').text()).toContain('Abrir');
-    expect(s.testid('businesses-row-bakery-manage').text()).toContain('Gestionar');
+    expect(accessibleName(s.testid('businesses-row-bakery-open'))).toBe('Abrir Panadería López');
+    expect(accessibleName(s.testid('businesses-row-bakery-manage'))).toBe('Gestionar Panadería López');
   });
 });

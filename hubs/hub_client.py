@@ -1,10 +1,10 @@
 """The SaaS's calls to hub-next's ``/internal`` (PLAN-SAAS §2, §2.2, §3.1, §3.4; round 17 §2.14).
 
 Plain HTTP, no ORM: callers hand in the payloads (``hubs.queries`` builds them) and record the
-answers (``hubs.services``). Every request is signed as ``/internal/auth/redeem`` is
-(``accounts.signing``: HMAC-SHA256 of ``f"{timestamp}.{body}"`` with ``INTERNAL_SHARED_SECRET``, in
-``X-Erplora-Timestamp`` and ``X-Erplora-Signature``). The signature covers the body only, so every
-body names the hub of its path (``id`` or ``hub_id``) and the Hub must compare them.
+answers (``hubs.services``). Every request is signed with the current ``INTERNAL_SHARED_SECRET``
+(``accounts.signing.signed_headers``): ``X-Erplora-Timestamp``, the body-only v1 ``X-Erplora-Signature``
+and ``X-Erplora-Signature-V2``, which also covers the method and the path. While the Hub may still
+verify v1 only, every body names the hub of its path (``id`` or ``hub_id``) and the Hub compares them.
 
 - ``put_hub`` → ``PUT /internal/hubs/{id}``: the registry (slug, name, country, time zone, language,
   vertical); 202 while the Hub provisions it, 200 when it already knew it.
@@ -29,7 +29,7 @@ from typing import Any
 
 from django.conf import settings
 
-from accounts.signing import sign
+from accounts.signing import signed_headers as _signed
 
 #: A slow Hub costs the request that pushed after its COMMIT this much at most; the work stays
 #: pending and ``reconcile_hub_states`` retries it.
@@ -56,12 +56,11 @@ class HubAnswer:
     body: Any
 
 
-def signed_headers(body: bytes, timestamp: int) -> dict[str, str]:
-    """The headers that sign ``body`` sent at ``timestamp``."""
+def signed_headers(method: str, path: str, body: bytes, timestamp: int) -> dict[str, str]:
+    """The headers of ``method`` on ``path`` with ``body`` sent at ``timestamp``: JSON, signed v1 and v2."""
     return {
         "Content-Type": "application/json",
-        "X-Erplora-Timestamp": str(timestamp),
-        "X-Erplora-Signature": sign(body, timestamp, settings.INTERNAL_SHARED_SECRET),
+        **_signed(method, path, body, timestamp, settings.INTERNAL_SHARED_SECRET),
     }
 
 
@@ -102,7 +101,7 @@ def _call(method: str, path: str, payload: Any) -> HubAnswer:
         settings.HUB_INTERNAL_URL.rstrip("/") + path,
         data=body if method != "GET" else None,
         method=method,
-        headers=signed_headers(body, int(time.time())),
+        headers=signed_headers(method, path, body, int(time.time())),
     )
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:

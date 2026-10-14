@@ -12,7 +12,7 @@ import uuid
 
 import pytest
 
-from accounts.signing import verify
+from accounts.signing import verify, verify_signed
 from hubs import hub_client
 from hubs.hub_client import HubRefused, HubUnavailable
 from hubs.tests.conftest import SECRET
@@ -155,14 +155,40 @@ def test_a_slow_hub_is_given_up_on(hub_double, monkeypatch):
 
 
 def test_a_signature_covers_its_own_body_and_no_other(settings):
-    """The scheme the double and the Hub share: the body and the timestamp, keyed by the secret."""
+    """The scheme the double and the Hub share: v1 signs the body and the timestamp, keyed by the secret."""
     settings.INTERNAL_SHARED_SECRET = SECRET
     body, now = b'{"id": "x"}', int(time.time())
-    signed = hub_client.signed_headers(body, now)
+    signed = hub_client.signed_headers("PUT", f"/internal/hubs/{HUB_ID}", body, now)
 
     timestamp, signature = signed["X-Erplora-Timestamp"], signed["X-Erplora-Signature"]
     assert verify(body, timestamp, signature, secret=SECRET, now=now)
     assert not verify(b'{"id": "y"}', timestamp, signature, secret=SECRET, now=now)
+
+
+def test_every_call_also_signs_its_method_and_path(hub_double):
+    """L1-A2 (PLAN-SAAS §2.1): ``X-Erplora-Signature-V2`` covers method, path, timestamp and body; the
+    double, as the Hub will, judges a call that carries it by it alone."""
+    hub_client.put_state(HUB_ID, SNAPSHOT)
+    hub_client.revoke_sessions(str(uuid.uuid7()))
+
+    state, revoke = hub_double.calls
+    assert state.signed_v2 and revoke.signed_v2
+    headers = dict(state.headers)
+    raw = state.raw
+    assert verify_signed("PUT", f"/internal/hubs/{HUB_ID}/state", raw, headers, secrets=[SECRET], now=int(time.time()))
+    assert not verify_signed("PUT", f"/internal/hubs/{HUB_ID}", raw, headers, secrets=[SECRET], now=int(time.time()))
+
+
+def test_the_client_signs_with_the_current_secret_only(hub_double, settings):
+    """During a rotation the previous secret is only accepted, never used to sign."""
+    settings.INTERNAL_SHARED_SECRET_PREVIOUS = "the-secret-before-the-rotation"
+    hub_client.put_hub(REGISTRY)
+
+    (call,) = hub_double.calls
+    assert verify_signed("PUT", call.path, call.raw, call.headers, secrets=[SECRET], now=int(time.time()))
+    assert not verify_signed(
+        "PUT", call.path, call.raw, call.headers, secrets=["the-secret-before-the-rotation"], now=int(time.time())
+    )
 
 
 def test_a_broken_answer_is_the_hub_being_away(monkeypatch, settings):

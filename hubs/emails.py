@@ -57,7 +57,8 @@ def send_invitation(member, *, base_url: str, new_account: bool) -> bool:
                     "You do not have an ERPlora account yet: sign in with Google with this address, or set "
                     "a password here: %(url)s"
                 )
-                % {"url": f"{base_url}/password/reset"},
+                # allauth's page, as the login's «Forgot your password?»: the SPA has no reset page yet.
+                % {"url": f"{base_url}/accounts/password/reset/"},
             ]
         subject = _("%(who)s invited you to %(business)s") % {
             "who": who,

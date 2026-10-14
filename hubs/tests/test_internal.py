@@ -14,7 +14,7 @@ import uuid
 import pytest
 from live.models import OutboxEvent
 
-from accounts.signing import sign
+from accounts.signing import sign, signed_headers
 from hubs.models import Hub
 from hubs.tests.conftest import SECRET
 
@@ -134,3 +134,38 @@ def test_a_deleted_business_stays_deleted(client, business):
     Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETING)
 
     assert ready(client, business.id, {"id": str(business.id)}).json()["status"] == "deleting"
+
+
+# --- Rotation and the signature that covers method and path (L1-A2, PLAN-SAAS §2.1) ---------------
+
+
+def test_a_hub_on_the_previous_secret_is_heard_during_the_rotation(client, business, settings):
+    settings.INTERNAL_SHARED_SECRET_PREVIOUS = "the-secret-before-the-rotation"
+
+    response = ready(client, business.id, {"id": str(business.id)}, secret="the-secret-before-the-rotation")
+
+    assert response.status_code == 200
+    assert Hub.objects.get(pk=business.pk).status == "active"
+
+
+def test_a_v2_signature_for_this_route_is_heard(client, business):
+    path = f"/internal/hubs/{business.id}/ready"
+    body = json.dumps({"id": str(business.id)}).encode()
+
+    response = client.post(
+        path, body, content_type="application/json", headers=signed_headers("POST", path, body, int(time.time()), SECRET)
+    )
+
+    assert response.status_code == 200
+
+
+def test_a_v2_signature_for_another_business_is_unauthorized(client, business, make_user):
+    """With v2 the path is signed: a body replayed on another business's route proves nothing."""
+    other = uuid.uuid7()
+    body = json.dumps({"id": str(business.id)}).encode()
+    headers = signed_headers("POST", f"/internal/hubs/{other}/ready", body, int(time.time()), SECRET)
+
+    response = client.post(f"/internal/hubs/{business.id}/ready", body, content_type="application/json", headers=headers)
+
+    assert (response.status_code, response.json()["error"]["code"]) == (401, "unauthorized")
+    assert Hub.objects.get(pk=business.pk).status == "preparing"

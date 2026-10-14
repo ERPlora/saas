@@ -59,6 +59,8 @@ def test_live_mount_app_routers_mounts_base_and_accounts():
         # The app catalog (round 16, PLAN §21): before hubs, which reads it.
         "apps",
         "hubs",
+        # The EU VAT engine (lot L2-A): POST /api/billing/vat-check, GET /api/billing/tax-preview.
+        "billing",
         # The public web: GET /api/v1/app/release/ (public.app.release).
         "public",
     ]

@@ -908,3 +908,87 @@ msgstr ""
 
 msgid "Only the platform records the Hub's answers."
 msgstr "Solo la plataforma registra las respuestas del Hub."
+
+#: services.py (hubs.invitation.accept, L1-A2)
+msgid "Confirm your email address before accepting the invitation."
+msgstr "Confirma tu correo electrónico antes de aceptar la invitación."
+
+#: services.py (hubs.business.notify_people, L1-A2)
+msgid "Only the platform tells the people of a business."
+msgstr "Solo la plataforma avisa a las personas de un negocio."
+
+#: models.py (SessionRevocation, L1-A2)
+msgid "account"
+msgstr "cuenta"
+
+#: models.py
+msgid "Empty: every business of the account."
+msgstr "Vacío: todos los negocios de la cuenta."
+
+#: models.py
+msgid "requested at"
+msgstr "pedida el"
+
+#: models.py
+msgid "delivered at"
+msgstr "entregada el"
+
+#: models.py
+msgid "attempts"
+msgstr "intentos"
+
+#: models.py
+msgid "next attempt at"
+msgstr "próximo intento"
+
+#: models.py
+msgid "last error"
+msgstr "último error"
+
+#: models.py
+msgid "session revocation"
+msgstr "cierre de sesiones"
+
+#: models.py
+msgid "session revocations"
+msgstr "cierres de sesiones"
+
+#: admin.py (the platform's actions, L1-A2)
+msgid "Send the latest state to the Hub"
+msgstr "Enviar al Hub el estado más reciente"
+
+#: admin.py
+msgid "Retry what the Hub still owes"
+msgstr "Reintentar lo que el Hub tiene pendiente"
+
+#: admin.py
+#, python-format
+msgid "%(count)d business(es) up to date in the Hub."
+msgstr "%(count)d negocio(s) al día en el Hub."
+
+#: admin.py
+#, python-format
+msgid ""
+"%(count)d business(es) still owed: the Hub is away or refused it (see its "
+"last refusal); reconcile_hub_states retries it."
+msgstr ""
+"%(count)d negocio(s) siguen pendientes: el Hub no responde o lo rechazó "
+"(mira su último rechazo); reconcile_hub_states lo reintenta."
+
+#: admin.py
+msgid "End the sessions in the Hub now"
+msgstr "Cerrar ya las sesiones en el Hub"
+
+#: admin.py
+#, python-format
+msgid "%(count)d session end(s) delivered."
+msgstr "%(count)d cierre(s) de sesiones entregado(s)."
+
+#: admin.py
+#, python-format
+msgid ""
+"%(count)d session end(s) still pending: the Hub is away or refused it; "
+"reconcile_hub_states retries it."
+msgstr ""
+"%(count)d cierre(s) de sesiones siguen pendientes: el Hub no responde o lo "
+"rechazó; reconcile_hub_states lo reintenta."

@@ -1,0 +1,579 @@
+# Spanish translations of the billing app of saas-next (English is the source).
+# Copyright (C) 2026 ERPlora
+# This file is distributed under the same license as ERPlora.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: saas-next\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-14 04:27+0200\n"
+"PO-Revision-Date: 2026-10-14 04:00+0200\n"
+"Last-Translator: ERPlora\n"
+"Language-Team: Spanish\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: admin.py:58
+msgid "Legal identity"
+msgstr "Identidad legal"
+
+#: admin.py:62
+msgid "Address"
+msgstr "Dirección"
+
+#: admin.py:65
+msgid "VAT and currency"
+msgstr "IVA y moneda"
+
+#: admin.py:66
+msgid "Contact"
+msgstr "Contacto"
+
+#: admin.py:68
+msgid "History"
+msgstr "Historial"
+
+#: admin.py:84
+msgid "Rules"
+msgstr "Reglas"
+
+#: admin.py:113
+msgid "Rate"
+msgstr "Tipo"
+
+#: admin.py:117
+msgid ""
+"Untick «Subject to VAT» for a territory outside the scope of the tax (Canary "
+"Islands, Ceuta, Melilla, third countries). It is not a 0 % rate: the AEAT "
+"gets it as a sale not subject to VAT."
+msgstr ""
+"Desmarca «Sujeto a IVA» en un territorio fuera del ámbito del impuesto "
+"(Canarias, Ceuta, Melilla, terceros países). No es un tipo del 0 %: a la "
+"AEAT le llega como operación no sujeta."
+
+#: admin.py:123
+msgid "Validity"
+msgstr "Vigencia"
+
+#: admin.py:126
+msgid "Applies"
+msgstr "Se aplica"
+
+#: admin.py:129
+msgid "Not subject"
+msgstr "No sujeta"
+
+#: admin.py:140
+msgid "Issuer"
+msgstr "Emisor"
+
+#: admin.py:142
+msgid "Intra-EU B2B (ROI / VIES)"
+msgstr "B2B intracomunitario (ROI / VIES)"
+
+#: admin.py:146
+msgid ""
+"While unticked, Spanish VAT is charged to EVERY customer, EU businesses "
+"included. Even when ticked, each sale also needs a current VIES verdict on "
+"the customer's VAT number (see «VAT checks»); otherwise VAT is charged "
+"anyway."
+msgstr ""
+"Mientras esté desmarcado, se cobra IVA español a TODOS los clientes, "
+"empresas de la UE incluidas. Aun marcado, cada venta necesita además un "
+"veredicto vigente de VIES sobre el NIF-IVA del cliente (ver «Comprobaciones "
+"de NIF-IVA»); si no, se cobra el IVA igualmente."
+
+#: admin.py:153
+msgid "One-Stop Shop (OSS)"
+msgstr "Ventanilla única (OSS)"
+
+#: admin.py:157
+msgid ""
+"Below the threshold the issuer's country VAT is charged. Above it —or with "
+"the OSS registration ticked, which binds for two years— the customer's "
+"country rate applies."
+msgstr ""
+"Por debajo del umbral se cobra el IVA del país del emisor. Por encima —o con "
+"el alta en la OSS marcada, que vincula dos años— se aplica el tipo del país "
+"del cliente."
+
+#: admin.py:163
+msgid "Carried from the old SaaS"
+msgstr "Traído del SaaS antiguo"
+
+#: admin.py:167
+msgid "Until the invoices live here, the cross-border B2C sales of the year come from the old SaaS: type them for the current year and the year before. Without them the total is unknown and the threshold could be crossed without anybody noticing."
+msgstr "Hasta que las facturas vivan aquí, las ventas B2C transfronterizas del año vienen del SaaS antiguo: escríbelas para el año en curso y el anterior. Sin ellas el total es desconocido y el umbral se podría cruzar sin que nadie lo note."
+
+#: admin.py:175
+msgid "Cross-border B2C this year"
+msgstr "B2C transfronterizo este año"
+
+#: admin.py:179
+#, python-format
+msgid "Unknown: carry this year's amounts from the old SaaS below (threshold %(threshold)s €)"
+msgstr "Desconocido: trae abajo los importes de este año del SaaS antiguo (umbral %(threshold)s €)"
+
+#: admin.py:184
+msgid "destination rate"
+msgstr "tipo de destino"
+
+#: admin.py:186
+msgid "issuer rate"
+msgstr "tipo del emisor"
+
+#: admin.py:222
+msgid "Current"
+msgstr "Vigente"
+
+#: admin.py:250
+msgid "Check now in VIES"
+msgstr "Comprobar ahora en VIES"
+
+#: admin.py:263
+#, python-format
+msgid "%(vat)s: a UK number is HMRC's, not VIES': nothing was asked."
+msgstr ""
+"%(vat)s: un número británico es de HMRC, no de VIES: no se ha consultado "
+"nada."
+
+#: admin.py:273
+#, python-format
+msgid ""
+"Too many VAT checks in the last minute. Not checked, try again shortly: "
+"%(numbers)s"
+msgstr ""
+"Demasiadas comprobaciones de NIF-IVA en el último minuto. Sin comprobar, "
+"inténtalo en un momento: %(numbers)s"
+
+#: admin.py:282
+#, python-format
+msgid ""
+"%(vat)s: the answer could not be saved, so it proves nothing. Try again."
+msgstr ""
+"%(vat)s: la respuesta no se pudo guardar, así que no prueba nada. Inténtalo "
+"de nuevo."
+
+#: admin.py:290
+#, python-format
+msgid "%(vat)s: confirmed in VIES (consultation %(consultation)s)."
+msgstr "%(vat)s: confirmado en VIES (consulta %(consultation)s)."
+
+#: admin.py:299
+#, python-format
+msgid "%(vat)s: not registered in VIES. VAT is charged."
+msgstr "%(vat)s: no está registrado en VIES. Se cobra el IVA."
+
+#: admin.py:306
+#, python-format
+msgid "%(vat)s: VIES could not answer. VAT is still charged; try again later."
+msgstr ""
+"%(vat)s: VIES no ha podido responder. Se sigue cobrando el IVA; inténtalo "
+"más tarde."
+
+#: admin.py:324
+#, python-format
+msgid ""
+"VAT number %(vat)s marked as valid BY HAND. Who did it and why is on the "
+"record: it is the only way to invoice without VAT when VIES does not confirm "
+"the number."
+msgstr ""
+"NIF-IVA %(vat)s marcado como válido A MANO. Queda constancia de quién y por "
+"qué: es la única forma de facturar sin IVA cuando VIES no confirma el número."
+
+#: apps.py:17
+msgid "Billing"
+msgstr "Facturación"
+
+#: models.py:27
+msgid "Two capital letters (ISO 3166-1 alpha-2), e.g. ES."
+msgstr "Dos letras mayúsculas (ISO 3166-1 alfa-2), p. ej. ES."
+
+#: models.py:30
+msgid "Capital letters only, e.g. IC."
+msgstr "Solo letras mayúsculas, p. ej. IC."
+
+#: models.py:77
+msgid "key"
+msgstr "clave"
+
+#: models.py:80
+msgid "Stable canonical key, e.g. service.saas_subscription"
+msgstr "Clave canónica estable, p. ej. service.saas_subscription"
+
+#: models.py:82
+msgid "name"
+msgstr "nombre"
+
+#: models.py:83
+msgid "description"
+msgstr "descripción"
+
+#: models.py:84 models.py:142
+msgid "active"
+msgstr "activa"
+
+#: models.py:90
+msgid "tax category"
+msgstr "categoría fiscal"
+
+#: models.py:91
+msgid "tax categories"
+msgstr "categorías fiscales"
+
+#: models.py:113
+msgid "category"
+msgstr "categoría"
+
+#: models.py:116 models.py:281
+msgid "country"
+msgstr "país"
+
+#: models.py:119
+msgid "ISO 3166-1 alpha-2 (ES, DE, FR…)"
+msgstr "ISO 3166-1 alfa-2 (ES, DE, FR…)"
+
+#: models.py:122
+msgid "region"
+msgstr "región"
+
+#: models.py:127
+msgid ""
+"Empty = the whole country. IC = Canary Islands, CE = Ceuta, ML = Melilla"
+msgstr "Vacío = todo el país. IC = Canarias, CE = Ceuta, ML = Melilla"
+
+#: models.py:131
+msgid "rate %"
+msgstr "tipo %"
+
+#: models.py:134
+msgid "subject to VAT"
+msgstr "sujeto a IVA"
+
+#: models.py:137
+msgid ""
+"Unchecked = territory outside the scope of VAT (not subject), not a 0 % rate"
+msgstr ""
+"Desmarcado = territorio fuera del ámbito del IVA (no sujeto), no un tipo del "
+"0 %"
+
+#: models.py:140
+msgid "valid from"
+msgstr "vigente desde"
+
+#: models.py:141
+msgid "valid to"
+msgstr "vigente hasta"
+
+#: models.py:148
+msgid "tax rule"
+msgstr "regla fiscal"
+
+#: models.py:149
+msgid "tax rules"
+msgstr "reglas fiscales"
+
+#: models.py:173
+msgid "not subject"
+msgstr "no sujeta"
+
+#: models.py:187
+msgid "issuer country"
+msgstr "país del emisor"
+
+#: models.py:193
+msgid "issuer region"
+msgstr "región del emisor"
+
+#: models.py:198
+msgid ""
+"IC = Canary Islands, CE = Ceuta, ML = Melilla. Empty = mainland Spain and "
+"the Balearic Islands"
+msgstr "IC = Canarias, CE = Ceuta, ML = Melilla. Vacío = península y Baleares"
+
+#: models.py:203
+msgid "registered in ROI / VIES"
+msgstr "dado de alta en el ROI / VIES"
+
+#: models.py:206
+msgid ""
+"Registered in the Register of Intra-Community Operators (form 036). "
+"Unchecked, Spanish VAT is charged to EU businesses TOO: invoicing without "
+"VAT while not in the ROI ends in an assessment of the uncharged VAT, with "
+"interest. Checked, the reverse charge applies on its own — but only with the "
+"VAT number validated in VIES."
+msgstr ""
+"Alta en el Registro de Operadores Intracomunitarios (modelo 036). "
+"Desmarcado, se cobra IVA español TAMBIÉN a las empresas de la UE: facturar "
+"sin IVA sin estar en el ROI acaba en una liquidación del IVA no repercutido, "
+"con intereses. Marcado, la inversión del sujeto pasivo se aplica sola, pero "
+"solo con el NIF-IVA validado en VIES."
+
+#: models.py:213
+msgid "registered in OSS"
+msgstr "dado de alta en la OSS"
+
+#: models.py:216
+msgid ""
+"Registered in the One-Stop Shop. Forces the customer's country rate even "
+"below the threshold"
+msgstr ""
+"Alta en la ventanilla única. Aplica el tipo del país del cliente aun por "
+"debajo del umbral"
+
+#: models.py:220
+msgid "OSS threshold"
+msgstr "umbral de la OSS"
+
+#: models.py:225
+msgid ""
+"Yearly cross-border B2C sales (EU) from which the destination rate applies"
+msgstr ""
+"Ventas B2C transfronterizas anuales (UE) a partir de las que se aplica el "
+"tipo de destino"
+
+#: models.py:231
+msgid "year of the carried amounts"
+msgstr "año de los importes traídos"
+
+#: models.py:234
+msgid "The year the «this year» amount belongs to. Empty = nothing carried: the total is unknown"
+msgstr "El año al que pertenece el importe de «este año». Vacío = nada traído: el total es desconocido"
+
+#: models.py:237
+msgid "cross-border B2C carried for that year (cents)"
+msgstr "B2C transfronterizo traído de ese año (céntimos)"
+
+#: models.py:239
+msgid "Tax base of the intra-EU B2C sales without a verified VAT number invoiced by the old SaaS that year, in cents"
+msgstr "Base imponible de las ventas B2C intracomunitarias sin NIF-IVA verificado facturadas por el SaaS antiguo ese año, en céntimos"
+
+#: models.py:242
+msgid "cross-border B2C carried for the year before (cents)"
+msgstr "B2C transfronterizo traído del año anterior (céntimos)"
+
+#: models.py:244
+msgid "The same, for the year before: above the threshold, the whole year is destination VAT"
+msgstr "Lo mismo, del año anterior: por encima del umbral, todo el año es IVA de destino"
+
+#: models.py:249 models.py:250
+msgid "fiscal policy"
+msgstr "política fiscal"
+
+#: models.py:253
+#, python-format
+msgid "Fiscal policy (%(country)s)"
+msgstr "Política fiscal (%(country)s)"
+
+#: models.py:264
+msgid "General regime"
+msgstr "Régimen general"
+
+#: models.py:265
+msgid "Simplified regime"
+msgstr "Régimen simplificado"
+
+#: models.py:266
+msgid "Equivalence surcharge"
+msgstr "Recargo de equivalencia"
+
+#: models.py:267
+msgid "Exempt"
+msgstr "Exento"
+
+#: models.py:270
+msgid "legal name"
+msgstr "razón social"
+
+#: models.py:270
+msgid "e.g. ERPLORA CLOUD SL"
+msgstr "p. ej. ERPLORA CLOUD SL"
+
+#: models.py:272
+msgid "trade name"
+msgstr "nombre comercial"
+
+#: models.py:274
+msgid "tax ID"
+msgstr "NIF"
+
+#: models.py:274
+msgid "CIF/NIF, e.g. B12345678"
+msgstr "CIF/NIF, p. ej. B12345678"
+
+#: models.py:276
+msgid "street"
+msgstr "calle"
+
+#: models.py:277
+msgid "city"
+msgstr "ciudad"
+
+#: models.py:278
+msgid "postal code"
+msgstr "código postal"
+
+#: models.py:279
+msgid "province"
+msgstr "provincia"
+
+#: models.py:284
+msgid "VAT regime"
+msgstr "régimen de IVA"
+
+#: models.py:289
+msgid "email"
+msgstr "correo electrónico"
+
+#: models.py:290
+msgid "phone"
+msgstr "teléfono"
+
+#: models.py:291
+msgid "website"
+msgstr "sitio web"
+
+#: models.py:292
+msgid "currency"
+msgstr "moneda"
+
+#: models.py:297 models.py:298
+msgid "company configuration"
+msgstr "datos de la empresa"
+
+#: models.py:301
+msgid "Company configuration"
+msgstr "Datos de la empresa"
+
+#: models.py:320
+msgid "Verified in VIES"
+msgstr "Verificado en VIES"
+
+#: models.py:321
+msgid "Not registered in VIES"
+msgstr "No registrado en VIES"
+
+#: models.py:322
+msgid "VIES could not answer"
+msgstr "VIES no pudo responder"
+
+#: models.py:323
+msgid "Awaiting an answer"
+msgstr "Esperando respuesta"
+
+#: models.py:331
+msgid "VAT number"
+msgstr "NIF-IVA"
+
+#: models.py:335
+msgid "Normalised: no spaces or dashes, uppercase, with the country prefix"
+msgstr ""
+"Normalizado: sin espacios ni guiones, en mayúsculas, con el prefijo del país"
+
+#: models.py:338
+msgid "asked at"
+msgstr "consultado el"
+
+#: models.py:340
+msgid "status"
+msgstr "estado"
+
+#: models.py:343
+msgid "consultation number"
+msgstr "número de consulta"
+
+#: models.py:346
+msgid "VIES requestIdentifier: the audit proof of this query"
+msgstr "requestIdentifier de VIES: la prueba auditable de esta consulta"
+
+#: models.py:348
+msgid "name in VIES"
+msgstr "nombre en VIES"
+
+#: models.py:349
+msgid "address in VIES"
+msgstr "dirección en VIES"
+
+#: models.py:351
+msgid "overridden by"
+msgstr "forzado por"
+
+#: models.py:352
+msgid "reason of the override"
+msgstr "motivo del forzado"
+
+#: models.py:353
+msgid "overridden at"
+msgstr "forzado el"
+
+#: models.py:357
+msgid "VAT check"
+msgstr "comprobación de NIF-IVA"
+
+#: models.py:358
+msgid "VAT checks"
+msgstr "comprobaciones de NIF-IVA"
+
+#: services.py:367
+msgid "We cannot work out the tax for this billing address, so this sale cannot be made. Contact support."
+msgstr "No podemos calcular el impuesto para esta dirección de facturación, así que esta venta no se puede hacer. Escribe a soporte."
+
+#: services.py:370
+msgid "We cannot work out the tax for this billing address, so this plan cannot be sold to it. Contact support."
+msgstr "No podemos calcular el impuesto para esta dirección de facturación, así que no se puede vender este plan a ella. Escribe a soporte."
+
+#: services.py:373
+msgid "We cannot work out the tax for this billing address, so this module cannot be sold to it. Contact support."
+msgstr "No podemos calcular el impuesto para esta dirección de facturación, así que no se puede vender este módulo a ella. Escribe a soporte."
+
+#: services.py:407
+msgid ""
+"We need the billing country and postal code before the payment, because they "
+"decide the tax on this sale."
+msgstr ""
+"Necesitamos el país y el código postal de facturación antes del pago, porque "
+"deciden el impuesto de esta venta."
+
+#: services.py:434
+msgid "We only sell to businesses in the United Kingdom: add the UK VAT number of the payer."
+msgstr "En el Reino Unido solo vendemos a empresas: añade el número de IVA británico del pagador."
+
+#: services.py:499
+msgid "Sign in to check a VAT number."
+msgstr "Inicia sesión para comprobar un NIF-IVA."
+
+#: services.py:504 services.py:513
+msgid "Invalid payload"
+msgstr "Datos no válidos"
+
+#: services.py:507
+msgid ""
+"Write the VAT number with its two-letter country prefix, e.g. DE123456789."
+msgstr "Escribe el NIF-IVA con el prefijo de su país, p. ej. DE123456789."
+
+#: services.py:513
+msgid "Enter a VAT number."
+msgstr "Escribe un NIF-IVA."
+
+#: services.py:517
+msgid "A check of yours is already running: wait for its answer."
+msgstr "Ya tienes una comprobación en marcha: espera su respuesta."
+
+#: services.py:526
+msgid ""
+"Too many VAT checks in the last minute: nothing was asked. Try again in a "
+"moment."
+msgstr ""
+"Demasiadas comprobaciones de NIF-IVA en el último minuto: no se ha "
+"consultado nada. Inténtalo en un momento."
+
+#: services.py:534
+msgid ""
+"VIES answered but the answer could not be saved, so it proves nothing. Try "
+"again."
+msgstr ""
+"VIES ha respondido pero la respuesta no se pudo guardar, así que no prueba "
+"nada. Inténtalo de nuevo."

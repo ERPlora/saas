@@ -21,6 +21,7 @@ import {
   type StreamCall,
   TEST_CONFIG,
 } from '../../../packages/ui/src/sdk/__tests__/live-harness';
+import { PopoverStub } from '../../../packages/ui/src/components/DataTable/__tests__/harness';
 import { OPERATION_ROUTES } from '../../../frontend/generated/operation-routes';
 import en from '../locale/en.json';
 import es from '../locale/es.json';
@@ -100,7 +101,8 @@ export async function mountHubs(component: Component, options: MountOptions = {}
     global: {
       plugins: [router, createShellI18n({ locale: options.locale ?? 'en', messages: { en, es } })],
       provide: { ...app._context.provides, [LIVE_CLIENT_KEY as symbol]: harness.client },
-      stubs: options.stubs,
+      // An inline `ion-popover` presents itself only in a real browser (the DataTable's row menu «⋮»).
+      stubs: { IonPopover: PopoverStub, ...options.stubs },
     },
   });
   /** Opens the stream; returns the call to push frames into. */
@@ -131,4 +133,13 @@ export function enterView(wrapper: { vm: unknown }): void {
   type Hooks = { onIonViewWillEnter?: Array<() => void> };
   const instance = (wrapper.vm as { $: { exposed: Hooks | null; proxy: Hooks } }).$;
   for (const hook of instance.exposed?.onIonViewWillEnter ?? instance.proxy.onIonViewWillEnter ?? []) hook();
+}
+
+/**
+ * The accessible name of an Ionic control: Ionic moves `aria-label` from its host to the native
+ * control inside (its shadow `button`), as it does in a browser.
+ */
+export function accessibleName(el: { element: Element }): string | null {
+  const host = el.element;
+  return host.getAttribute('aria-label') ?? host.shadowRoot?.querySelector('button, [role]')?.getAttribute('aria-label') ?? null;
 }
