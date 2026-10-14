@@ -11,9 +11,14 @@
   @erplora/ui tokens and the stylesheets of public/static/public/. The ok-* components are HTML + CSS
   partials (public/components/), icons are SVG painted on the server ({% templatetag openblock %} icon {% templatetag closeblock %}).
   No PWA manifest, back bar or app-shell head: the Tauri app does not open these pages in phase 1.
-  Light theme, as before for every visitor without a theme cookie.
+
+  Colour mode, as the panel paints it: `theme` (base.context_processors.theme) is the account's mode
+  (Account → Preferences), `system` for a visitor. The server writes it on <html> as `data-ep-theme`,
+  and `dark` also as Ionic's `ion-palette-dark` class; for `system`, the head's inline script adds the
+  class before the first stylesheet when the system is dark (no light flash), and frontend/public.ts
+  follows the system's changes live.
 {% endcomment %}
-<html lang="{{ LANGUAGE_CODE }}">
+<html lang="{{ LANGUAGE_CODE }}" data-ep-theme="{{ theme|default:'system' }}"{% if theme == 'dark' %} class="ion-palette-dark"{% endif %}>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -48,12 +53,19 @@
     {% block meta_robots %}{% endblock %}
     {% block extra_seo %}{% endblock %}
 
-    {% comment %} Scroll reveal (public/components/reveal.html) hides its blocks only once this class is
-       on <html>, set before the first paint; if frontend/public.ts has not revealed them in 3 s
-       (slow network, blocked script), `ep-reveal-timeout` shows everything. {% endcomment %}
+    {% comment %} Before the first paint, so before any stylesheet: the `system` mode goes dark when
+       the system is (frontend/public.ts keeps following it), and the scroll reveal
+       (public/components/reveal.html) hides its blocks only once `ep-js` is on <html>; if
+       frontend/public.ts has not revealed them in 3 s (slow network, blocked script),
+       `ep-reveal-timeout` shows everything. {% endcomment %}
     <script nonce="{{ csp_nonce }}">
-      document.documentElement.classList.add('ep-js');
-      setTimeout(function () { document.documentElement.classList.add('ep-reveal-timeout'); }, 3000);
+      (function (root) {
+        if (root.getAttribute('data-ep-theme') === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          root.classList.add('ion-palette-dark');
+        }
+        root.classList.add('ep-js');
+        setTimeout(function () { root.classList.add('ep-reveal-timeout'); }, 3000);
+      })(document.documentElement);
     </script>
     {% public_assets %}
     {% block extra_css %}{% endblock %}

@@ -228,6 +228,56 @@ def test_css_and_js_come_from_the_public_vite_entry_with_the_nonce(client):
         assert f'nonce="{nonce}"' in tag, tag
 
 
+# --- The colour mode (light, dark or the system's), as the panel paints it --------------------
+
+
+def _html_tag(html: str) -> str:
+    return re.search(r"<html\b[^>]*>", html).group(0)
+
+
+@pytest.mark.django_db
+def test_a_visitor_gets_the_system_mode_and_no_dark_class_from_the_server(client):
+    """``system`` (no account, no cookie): the head's script follows ``prefers-color-scheme``."""
+    html_tag = _html_tag(get_page(client).content.decode())
+
+    assert 'data-ep-theme="system"' in html_tag
+    assert "ion-palette-dark" not in html_tag
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("mode", ["light", "dark"])
+def test_an_account_gets_the_mode_it_chose_in_the_panel(client, ana, mode):
+    """Account → Preferences is the panel's mode: the public web paints the same one, from the
+    server, so a dark choice needs no script and never flashes light."""
+    from accounts.models import UserPreferences
+
+    UserPreferences.objects.create(user=ana, theme_mode=mode)
+    client.force_login(ana)
+
+    html_tag = _html_tag(get_page(client).content.decode())
+
+    assert f'data-ep-theme="{mode}"' in html_tag
+    assert ("ion-palette-dark" in html_tag) is (mode == "dark")
+
+
+@pytest.mark.django_db
+def test_the_head_resolves_the_system_mode_before_the_first_stylesheet(client):
+    """No flash: an inline script, with the nonce, darkens <html> before any CSS is parsed. It reads
+    the mode from <html> and the system's preference, as frontend/public.ts does afterwards."""
+    html = get_page(client).content.decode()
+    head = region(html, "<head>", "</head>")
+    script = re.search(
+        r"<script nonce=\"[^\"]+\">(?:(?!</script>).)*ion-palette-dark(?:(?!</script>).)*</script>",
+        head,
+        re.S,
+    )
+
+    assert script is not None
+    assert "data-ep-theme" in script.group(0)
+    assert "(prefers-color-scheme: dark)" in script.group(0)
+    assert script.start() < head.index('<link rel="stylesheet"')
+
+
 @pytest.mark.django_db
 def test_no_cdn_no_runtime_icons_no_pwa_and_no_app_shell(client):
     html = get_page(client).content.decode()
@@ -883,6 +933,25 @@ def test_component_stylesheets_only_style_their_own_ep_block():
             ):
                 continue
             assert block in selector, f"{sheet.name}: {selector.strip()}"
+
+
+def test_no_public_stylesheet_washes_a_band_with_ionics_light_colour():
+    """``--ion-color-light`` stays light in dark (theme.css pins it, so the CTA band's
+    ``color="light"`` buttons stay white): a background mixed from it turned every page hero grey on
+    a dark page. A soft band washes with ``--ep-wash``, which theme.css darkens with the page."""
+    offenders = []
+    for sheet in PUBLIC_STATIC.rglob("*.css"):
+        if sheet.name == "theme.css":
+            continue
+        text = re.sub(r"/\*.*?\*/", "", sheet.read_text(encoding="utf-8"), flags=re.S)
+        if "--ion-color-light" in text:
+            offenders.append(sheet.name)
+    theme = (PUBLIC_STATIC / "theme.css").read_text(encoding="utf-8")
+    dark = region(theme, ":root.ion-palette-dark {", "}")
+
+    assert offenders == []
+    assert "--ep-wash:" in region(theme, ":root {", "}")
+    assert "--ep-wash:" in dark
 
 
 def test_feature_card_as_a_link_with_its_icon():

@@ -3,18 +3,22 @@
 // @ionic/core, Ionic in `ios` mode as before), brings Ionic's CSS, the @erplora/ui tokens, the fonts
 // and the public stylesheets, and wires the few behaviours the OutfitKit components had in their
 // shadow DOM: the navbar's mobile panel, the scroll reveal, the server messages as toasts, and
-// Mermaid on demand (spec §6). No CDN, no network for icons.
+// Mermaid on demand (spec §6). No CDN, no network for icons. It also keeps the page in the colour
+// mode the server wrote on <html> (`data-ep-theme`, the account's, as the panel paints it), and in
+// `system` follows the operating system live.
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  DARK_QUERY,
   ION_COMPONENTS,
   IONIC_CONFIG,
   MERMAID_CONFIG,
   presentServerMessages,
   renderDiagrams,
+  setupColorScheme,
   setupNavbar,
   setupReveal,
   type ToastOptions,
@@ -109,6 +113,102 @@ describe('the public entry: components and styles', () => {
 
   it('never reaches a CDN', () => {
     expect(SOURCE).not.toMatch(/https?:\/\//);
+  });
+});
+
+/** A `prefers-color-scheme: dark` query the test flips, as the operating system would. */
+function fakeSystem(dark: boolean) {
+  const listeners: Array<(event: MediaQueryListEvent) => void> = [];
+  const media = {
+    matches: dark,
+    media: DARK_QUERY,
+    addEventListener: (_type: 'change', listener: (event: MediaQueryListEvent) => void) => listeners.push(listener),
+  };
+  const matchMedia = vi.fn((query: string) => {
+    expect(query).toBe(DARK_QUERY);
+    return media as unknown as MediaQueryList;
+  });
+  return {
+    matchMedia,
+    flip(nowDark: boolean) {
+      media.matches = nowDark;
+      for (const listener of listeners) listener({ matches: nowDark } as MediaQueryListEvent);
+    },
+  };
+}
+
+/** The page as the server wrote it: `data-ep-theme` on <html> (absent on a page that forgot it). */
+function themed(mode: string | null, system: ReturnType<typeof fakeSystem>): Document {
+  const doc = page('<main></main>');
+  if (mode === null) doc.documentElement.removeAttribute('data-ep-theme');
+  else doc.documentElement.setAttribute('data-ep-theme', mode);
+  vi.spyOn(doc.defaultView!, 'matchMedia').mockImplementation(system.matchMedia);
+  return doc;
+}
+
+const isDark = (doc: Document) => doc.documentElement.classList.contains('ion-palette-dark');
+
+describe('the colour mode', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    document.documentElement.removeAttribute('data-ep-theme');
+  });
+
+  it('follows a dark system in system mode', () => {
+    const doc = themed('system', fakeSystem(true));
+
+    setupColorScheme(doc);
+
+    expect(isDark(doc)).toBe(true);
+  });
+
+  it('stays light on a light system in system mode, even if the class was left on <html>', () => {
+    const doc = themed('system', fakeSystem(false));
+    doc.documentElement.classList.add('ion-palette-dark');
+
+    setupColorScheme(doc);
+
+    expect(isDark(doc)).toBe(false);
+  });
+
+  it('treats a page without the attribute as system mode', () => {
+    const doc = themed(null, fakeSystem(true));
+
+    setupColorScheme(doc);
+
+    expect(isDark(doc)).toBe(true);
+  });
+
+  it("gives the account's explicit choice priority over the system", () => {
+    const light = themed('light', fakeSystem(true));
+    setupColorScheme(light);
+    expect(isDark(light)).toBe(false);
+
+    const dark = themed('dark', fakeSystem(false));
+    setupColorScheme(dark);
+    expect(isDark(dark)).toBe(true);
+  });
+
+  it('reacts live when the system changes, in system mode', () => {
+    const system = fakeSystem(false);
+    const doc = themed('system', system);
+    setupColorScheme(doc);
+
+    system.flip(true);
+    expect(isDark(doc)).toBe(true);
+
+    system.flip(false);
+    expect(isDark(doc)).toBe(false);
+  });
+
+  it('ignores the system changing when the account chose a mode', () => {
+    const system = fakeSystem(false);
+    const doc = themed('light', system);
+    setupColorScheme(doc);
+
+    system.flip(true);
+
+    expect(isDark(doc)).toBe(false);
   });
 });
 
@@ -259,8 +359,19 @@ describe('Mermaid on demand (spec §6)', () => {
     expect(await renderDiagrams(doc, async () => ({ default: mermaid }))).toBe(true);
 
     expect(MERMAID_CONFIG).toEqual({ startOnLoad: false, securityLevel: 'strict' });
-    expect(mermaid.initialize).toHaveBeenCalledWith(MERMAID_CONFIG);
+    // The theme of the page's colour mode: Mermaid's own on a light page.
+    expect(mermaid.initialize).toHaveBeenCalledWith({ ...MERMAID_CONFIG, theme: 'default' });
     expect(mermaid.run).toHaveBeenCalledWith({ nodes: [doc.querySelector('pre.mermaid')] });
+  });
+
+  it("draws with Mermaid's dark theme on a dark page", async () => {
+    const mermaid = { initialize: vi.fn(), run: vi.fn().mockResolvedValue(undefined) };
+    const doc = page('<pre class="mermaid">graph TD; A --- B</pre>');
+    doc.documentElement.classList.add('ion-palette-dark');
+
+    await renderDiagrams(doc, async () => ({ default: mermaid }));
+
+    expect(mermaid.initialize).toHaveBeenCalledWith({ ...MERMAID_CONFIG, theme: 'dark' });
   });
 
   it('leaves the diagram source readable and logs when Mermaid fails', async () => {
