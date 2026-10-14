@@ -1,22 +1,25 @@
 #!/usr/bin/env bash
-# Puts the saas's service (saas) back on the ACTIVE revision right before the one its PRIMARY
-# deployment runs and records that revision's image tag in /erplora/prod/saas/image_tag (aws-next
-# README, "Imagen"):
-#   1. finds the service's previous revision; nothing changes unless every service has one and
-#      they all run the same tag;
+# Puts the saas's service of one environment (prod: saas, family erplora-prod-saas; pre: saas-pre,
+# family erplora-pre-saas; plan 2026-10-14-entorno-pre) back on the ACTIVE revision right before the
+# one its PRIMARY deployment runs and records that revision's image tag in
+# /erplora/<ENVIRONMENT>/saas/image_tag (aws-next README, "Imagen"):
+#   1. finds the service's previous revision; nothing changes unless every service has one, it is a
+#      revision of this environment (the tag Environment=<ENVIRONMENT> and the roles
+#      erplora-<ENVIRONMENT>-*: another environment's deploy role could have registered it) on this
+#      environment's image (erplora/saas or erplora/saas-pre), and they all run the same tag;
 #   2. moves the service to that revision, waits until it is stable and then polls its PRIMARY
 #      deployment until it is the previous revision, COMPLETED: ECS marks it COMPLETED seconds to
 #      a minute after services-stable returns, once the old tasks drain from the ALB. A FAILED
 #      rollout or another revision as PRIMARY (the circuit breaker puts back the one the service
 #      ran and the wait still succeeds) fails at once; a rollout that outlasts
 #      ROLLOUT_TIMEOUT_SECONDS fails too;
-#   3. records the tag only then, so a failed rollback leaves /erplora/prod/saas/image_tag as it was.
+#   3. records the tag only then, so a failed rollback leaves the parameter as it was.
 # Migrations are NOT undone: the previous code must work on the current schema (expand/contract).
 # Scheduled saas tasks run the latest ACTIVE saas-cron revision (aws-next scheduler.tf), so they
 # keep the newer image until the next deploy; to go back everywhere, deploy the previous release.
 #
-# Env: CONFIRM (exactly ROLLBACK), AWS_REGION; optional CLUSTER (erplora-prod), POLL_SECONDS (15),
-#      ROLLOUT_TIMEOUT_SECONDS (600).
+# Env: CONFIRM (exactly ROLLBACK), AWS_REGION, ENVIRONMENT (prod|pre); optional CLUSTER
+#      (erplora-prod, shared by both environments), POLL_SECONDS (15), ROLLOUT_TIMEOUT_SECONDS (600).
 set -euo pipefail
 
 if [ "${CONFIRM:-}" != ROLLBACK ]; then
@@ -25,6 +28,11 @@ if [ "${CONFIRM:-}" != ROLLBACK ]; then
 fi
 if [ -z "${AWS_REGION:-}" ]; then
   echo "::error::AWS_REGION is required" >&2
+  exit 1
+fi
+ENVIRONMENT="${ENVIRONMENT:-}"
+if [ "$ENVIRONMENT" != prod ] && [ "$ENVIRONMENT" != pre ]; then
+  echo "::error::ENVIRONMENT must be prod or pre, not '$ENVIRONMENT'; nothing was changed" >&2
   exit 1
 fi
 CLUSTER="${CLUSTER:-erplora-prod}"
@@ -39,9 +47,20 @@ done
 
 # This repo deploys the saas; the hub repo keeps its own copy of this script.
 PROJECT=saas
-services=(saas)
+# The families that run as a service; the service of family <name> is <name><suffix>, its container
+# <name>.
+families=(saas)
+suffix=""
+if [ "$ENVIRONMENT" = pre ]; then
+  suffix=-pre
+fi
+repository="erplora/$PROJECT$suffix"
+services=()
+for name in "${families[@]}"; do
+  services+=("$name$suffix")
+done
 
-echo "::warning::rolling back ${services[*]} to their previous revisions; migrations are not undone"
+echo "::warning::rolling back ${services[*]} ($ENVIRONMENT) to their previous revisions; migrations are not undone"
 
 # primary <service>: "<task definition ARN> <rollout state>" of its PRIMARY deployment.
 primary() {
@@ -51,8 +70,10 @@ primary() {
 
 targets=()
 tags=()
-for service in "${services[@]}"; do
-  family="erplora-prod-$service"
+for i in "${!services[@]}"; do
+  service="${services[i]}"
+  name="${families[i]}"
+  family="erplora-$ENVIRONMENT-$name"
   out="$(primary "$service")"
   read -r current _ <<< "$out"
   if ! [[ "$current" =~ :task-definition/$family:[0-9]+$ ]]; then
@@ -77,10 +98,20 @@ for service in "${services[@]}"; do
     exit 1
   fi
 
-  image="$(aws ecs describe-task-definition --task-definition "$previous" --region "$AWS_REGION" \
-    --query "taskDefinition.containerDefinitions[?name=='$service'].image | [0]" --output text)"
-  if [[ "$image" != */erplora/$PROJECT:* ]]; then
-    echo "::error::$previous does not run an erplora/$PROJECT image ($image); nothing was changed" >&2
+  definition="$(aws ecs describe-task-definition --task-definition "$previous" --include TAGS \
+    --region "$AWS_REGION" --output json)"
+  if ! jq -e --arg environment "$ENVIRONMENT" '
+      any(.tags[]?; .key == "Environment" and .value == $environment)
+      and ([.taskDefinition.taskRoleArn, .taskDefinition.executionRoleArn]
+           | all(type == "string" and test("^arn:aws[a-z-]*:iam::[0-9]{12}:role/erplora-\($environment)-")))' \
+    <<< "$definition" > /dev/null; then
+    echo "::error::$previous is not a $ENVIRONMENT revision (it needs the tag Environment=$ENVIRONMENT and the roles erplora-$ENVIRONMENT-*); nothing was changed" >&2
+    exit 1
+  fi
+  image="$(jq -r --arg name "$name" '[.taskDefinition.containerDefinitions[] | select(.name == $name) | .image][0] // ""' \
+    <<< "$definition")"
+  if [[ "$image" != */$repository:* ]]; then
+    echo "::error::$previous does not run an $repository image ($image); nothing was changed" >&2
     exit 1
   fi
   targets+=("$previous")
@@ -137,6 +168,6 @@ while :; do
 done
 echo "services stable on the previous revisions"
 
-aws ssm put-parameter --name "/erplora/prod/$PROJECT/image_tag" --value "${tags[0]}" \
+aws ssm put-parameter --name "/erplora/$ENVIRONMENT/$PROJECT/image_tag" --value "${tags[0]}" \
   --type String --overwrite --region "$AWS_REGION" > /dev/null
-echo "recorded ${tags[0]} in /erplora/prod/$PROJECT/image_tag"
+echo "recorded ${tags[0]} in /erplora/$ENVIRONMENT/$PROJECT/image_tag"

@@ -1,133 +1,107 @@
 name: deploy
 
 # Push to main -> test, then build the saas image (tag = commit SHA), publish the release
-# saas-vYYYY.MM.DD.N and deploy it to ECS (ecs-deploy.sh; aws-next README, "Contrato").
-# Manual run with a release -> redeploy that release's image, without test nor build.
+# saas-vYYYY.MM.DD.N and deploy it to prod (ecs-deploy.sh; aws-next README, "Contrato").
+# Push to pre -> test, then build the image into pre's own ECR repository (erplora/saas-pre) and
+# deploy it to pre (pre.erplora.com; plan 2026-10-14-entorno-pre), waking pre up if its schedule
+# had stopped it; no release.
+# Manual run -> the same for the branch it runs on, whose environment it must name (main -> prod,
+# pre -> pre); with a release (prod only), redeploy that release's image, without test nor build.
 # Back to the previous revisions without a release: rollback.yml.
 # The release is created here on purpose: one made with GITHUB_TOKEN triggers no other workflow.
 
 on:
   push:
-    branches: [main]
+    branches: [main, pre]
     paths-ignore: ["**.md", "docs/**"]
   workflow_dispatch:
     inputs:
+      environment:
+        description: The environment of the branch this run uses (main -> prod, pre -> pre)
+        type: choice
+        options: [prod, pre]
+        default: prod
       release:
-        description: Release to redeploy (e.g. saas-v2026.10.13.1); empty = test, release and deploy main
+        description: Release to redeploy to prod (e.g. saas-v2026.10.13.1); empty = test, build and deploy the branch
         type: string
         required: false
         default: ""
 
 # Each job asks for what it needs: id-token only in deploy, because the OIDC token of any job of
-# a push to main carries the sub that gha-deploy-saas trusts (repo:ERPlora/saas:ref:refs/heads/main),
-# and the test job runs third-party code (pnpm and uv installs). The repo is public: no
-# pull_request trigger, so a fork never runs this workflow.
+# a push to main or pre carries the sub that gha-deploy-saas or gha-deploy-saas-pre trusts
+# (repo:ERPlora/saas:ref:refs/heads/<branch>), and the test job runs third-party code (pnpm and uv
+# installs). The repo is public: no pull_request trigger, so a fork never runs this workflow.
 permissions:
   contents: read
 
-# Deploys and rollbacks (rollback.yml) of this repo never overlap; none is cancelled halfway.
+# Deploys and rollbacks (rollback.yml) of one branch, and so of one environment, never overlap; none
+# is cancelled halfway. prod (main) and pre (pre) do not wait for each other.
 concurrency:
-  group: deploy-${{ github.repository }}
+  group: deploy-${{ github.repository }}-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
-  test:
-    if: inputs.release == ''
+  # First, so a run of another branch, a manual run for the other environment or a release asked of
+  # pre fails before the tests (deploy-env.sh).
+  environment:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    services:
-      postgres:
-        image: postgres:18
-        env:
-          POSTGRES_USER: hub
-          POSTGRES_PASSWORD: hub
-          POSTGRES_DB: saas
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U hub -d saas"
-          --health-interval 2s
-          --health-timeout 3s
-          --health-retries 30
-    env:
-      # The defaults of config/settings.py, spelled out; pytest creates test_saas_next.
-      DB_HOST: 127.0.0.1
-      DB_PORT: "5432"
-      DB_NAME: saas
-      DB_USER: hub
-      DB_PASSWORD: hub
+    timeout-minutes: 5
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+      ecr_repository: ${{ steps.env.outputs.ecr_repository }}
+      readyz_host: ${{ steps.env.outputs.readyz_host }}
+      role_arn: ${{ steps.env.outputs.role_arn }}
     steps:
-      # packages/live and packages/ui are submodules (ERPlora/live, ERPlora/ui) over HTTPS.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          submodules: recursive
+          sparse-checkout: .github/scripts
           persist-credentials: false
-
-      - name: Lint the workflows (actionlint)
+      - name: Pick the environment of the branch
+        id: env
         env:
-          ACTIONLINT_VERSION: 1.7.12
-          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
-        run: |
-          curl --fail --silent --show-error --location --output "$RUNNER_TEMP/actionlint.tar.gz" \
-            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
-          echo "$ACTIONLINT_SHA256  $RUNNER_TEMP/actionlint.tar.gz" | sha256sum --check --strict -
-          tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP" actionlint
-          "$RUNNER_TEMP/actionlint" -color
-      - name: Lint the scripts (shellcheck)
-        run: shellcheck .github/scripts/*.sh
-      - name: Script tests
-        run: for t in .github/scripts/*.test.sh; do bash "$t"; done
+          PROJECT: saas
+          INPUT_ENVIRONMENT: ${{ inputs.environment }}
+          INPUT_RELEASE: ${{ inputs.release }}
+          AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          AWS_DEPLOY_ROLE_ARN_PRE: ${{ vars.AWS_DEPLOY_ROLE_ARN_PRE }}
+        run: bash .github/scripts/deploy-env.sh
 
-      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
-      # --locked: uv.lock must match pyproject.toml (the lock the Dockerfile installs from).
-      - run: uv sync --locked
-      - run: uv run --locked pytest -q
-
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-        with:
-          version: 10.34.7 # = packageManager of package.json and the Dockerfile's PNPM_VERSION
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm build
+  # Its check, `test / test`, is the one main and pre require (ci.yml runs it on every other branch).
+  test:
+    needs: environment
+    if: inputs.release == ''
+    uses: ./.github/workflows/test.yml
 
   deploy:
-    needs: test
+    needs: [environment, test]
     # A redeploy (release given) skips test on purpose.
-    if: ${{ !cancelled() && (needs.test.result == 'success' || (inputs.release != '' && needs.test.result == 'skipped')) }}
+    if: ${{ !cancelled() && needs.environment.result == 'success' && (needs.test.result == 'success' || (inputs.release != '' && needs.test.result == 'skipped')) }}
     # saas is public: native arm64 (ubuntu-24.04-arm, free for public repos) by default; QEMU only
     # when BUILD_RUNNER points at an x86 runner.
     runs-on: ${{ vars.BUILD_RUNNER || 'ubuntu-24.04-arm' }}
     timeout-minutes: 120
     permissions:
       contents: write # the GitHub Release
-      id-token: write # gha-deploy-saas (OIDC)
+      id-token: write # gha-deploy-saas or gha-deploy-saas-pre (OIDC)
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
       RELEASE: ${{ inputs.release }}
+      ENVIRONMENT: ${{ needs.environment.outputs.environment }}
+      ECR_REPOSITORY: ${{ needs.environment.outputs.ecr_repository }}
     steps:
-      - name: Check the repository variables and the branch
+      # The branch and its deploy role were checked by the environment job.
+      - name: Check the repository variables
         env:
-          AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           ALB_DNS_NAME: ${{ vars.ALB_DNS_NAME }}
         run: |
           missing=""
-          for var in AWS_REGION AWS_DEPLOY_ROLE_ARN ALB_DNS_NAME; do
+          for var in AWS_REGION ALB_DNS_NAME; do
             if [ -z "${!var}" ]; then
               missing="$missing $var"
             fi
           done
           if [ -n "$missing" ]; then
             echo "::error::empty repository variables:$missing (aws-next README, step 19)"
-            exit 1
-          fi
-          if [ "$GITHUB_REF" != refs/heads/main ]; then
-            echo "::error::deploys run only from main, not $GITHUB_REF"
             exit 1
           fi
 
@@ -158,7 +132,7 @@ jobs:
       - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         id: aws
         with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-to-assume: ${{ needs.environment.outputs.role_arn }}
           aws-region: ${{ vars.AWS_REGION }}
       - name: Log in to ECR
         id: ecr
@@ -175,27 +149,29 @@ jobs:
           platforms: arm64
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
         if: inputs.release == ''
+      # Into the environment's own repository: erplora/saas (prod) or erplora/saas-pre (pre).
       - name: Build and push the image (linux/arm64)
         if: inputs.release == ''
         env:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
           IMAGE_TAG: ${{ steps.commit.outputs.sha }}
         run: |
-          image="$REGISTRY/erplora/saas:$IMAGE_TAG"
+          image="$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
           # ECR tags are immutable: a re-run of the same commit keeps its image.
-          if found="$(aws ecr describe-images --repository-name erplora/saas --image-ids "imageTag=$IMAGE_TAG" \
+          if found="$(aws ecr describe-images --repository-name "$ECR_REPOSITORY" --image-ids "imageTag=$IMAGE_TAG" \
             --region "$AWS_REGION" 2>&1)"; then
             echo "$image is already in ECR"
             exit 0
           fi
           if [[ "$found" != *ImageNotFoundException* ]]; then
-            echo "::error::cannot check erplora/saas:$IMAGE_TAG in ECR: $found"
+            echo "::error::cannot check $ECR_REPOSITORY:$IMAGE_TAG in ECR: $found"
             exit 1
           fi
           docker buildx build --platform linux/arm64 --provenance=false --sbom=false --push -t "$image" .
 
+      # Releases are prod's: pre deploys the head of its branch.
       - name: Tag and publish the release
-        if: inputs.release == ''
+        if: inputs.release == '' && needs.environment.outputs.environment == 'prod'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -218,24 +194,27 @@ jobs:
         env:
           IMAGE_TAG: ${{ steps.commit.outputs.sha }}
         run: |
-          if ! aws ecr describe-images --repository-name erplora/saas --image-ids "imageTag=$IMAGE_TAG" \
+          if ! aws ecr describe-images --repository-name "$ECR_REPOSITORY" --image-ids "imageTag=$IMAGE_TAG" \
             --region "$AWS_REGION" > /dev/null; then
-            echo "::error::erplora/saas:$IMAGE_TAG is not in ECR (expired by the retention of 10?)"
+            echo "::error::$ECR_REPOSITORY:$IMAGE_TAG is not in ECR (expired by the retention of 10?)"
             exit 1
           fi
 
+      # ENVIRONMENT (job env) picks the families, the service and the parameter of prod or pre.
       - name: Register revisions, migrate, update the service
         env:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
           IMAGE_TAG: ${{ steps.commit.outputs.sha }}
         run: bash .github/scripts/ecs-deploy.sh
 
-      # Through the ALB by name, so it also works before the DNS cutover.
-      - name: Check /readyz on erplora.com
+      # Through the ALB by name, so it also works before the DNS cutover: erplora.com (prod) or
+      # pre.erplora.com (pre), both on the same ALB.
+      - name: Check /readyz on the environment's host
         env:
           ALB_DNS_NAME: ${{ vars.ALB_DNS_NAME }}
+          READYZ_HOST: ${{ needs.environment.outputs.readyz_host }}
         run: |
           curl --fail --silent --show-error --max-time 10 \
             --retry 10 --retry-delay 15 --retry-all-errors \
-            --connect-to "erplora.com:443:${ALB_DNS_NAME}:443" \
-            https://erplora.com/readyz
+            --connect-to "${READYZ_HOST}:443:${ALB_DNS_NAME}:443" \
+            "https://${READYZ_HOST}/readyz"

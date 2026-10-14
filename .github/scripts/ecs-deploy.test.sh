@@ -9,16 +9,22 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 failures=0
 
-# A task definition as `describe-task-definition --include TAGS` returns it.
-# task_definition <family> <containers JSON>
+# A task definition as `describe-task-definition --include TAGS` returns it, with the roles Terraform
+# gives it (aws-next modules/ecs-service: <family>-task and <family>-execution) and the Environment
+# tag of its family's environment (erplora-<environment>-<name>).
+# task_definition <family> <containers JSON> [<Environment tag; empty = none> [<role prefix>]]
 task_definition() {
-  jq -n --arg family "$1" --argjson containers "$2" '{
+  local environment="${1#erplora-}"
+  environment="${environment%%-*}"
+  jq -n --arg family "$1" --argjson containers "$2" --arg environment "${3-$environment}" \
+    --arg role "arn:aws:iam::123456789012:role/${4:-$1}" '{
     taskDefinition: {
       family: $family, taskDefinitionArn: "arn:td/\($family):1", revision: 1, status: "ACTIVE",
       requiresAttributes: [], compatibilities: ["FARGATE"], registeredAt: "t", registeredBy: "u",
-      taskRoleArn: "arn:role/\($family)", containerDefinitions: $containers
+      taskRoleArn: "\($role)-task", executionRoleArn: "\($role)-execution", containerDefinitions: $containers
     },
-    tags: [{key: "Project", value: "erplora"}, {key: "ManagedBy", value: "terraform"}]
+    tags: ([{key: "Project", value: "erplora"}, {key: "ManagedBy", value: "terraform"}]
+      + if $environment == "" then [] else [{key: "Environment", value: $environment}] end)
   }'
 }
 
@@ -47,6 +53,13 @@ setup() {
     task_definition "erplora-prod-$family" "[{\"name\": \"$family\", \"image\": \"reg.example/erplora/hub:bootstrap\"}]" \
       > "$FIXTURES/erplora-prod-$family.json"
   done
+  # pre (plan 2026-10-14-entorno-pre): the same cluster, its own families on its own ECR repository
+  # (erplora/saas-pre) and no saas-cron. The containers keep the short names.
+  task_definition erplora-pre-saas '[
+    {"name": "saas", "image": "reg.example/erplora/saas-pre:bootstrap"},
+    {"name": "prod-image", "image": "reg.example/erplora/saas:bootstrap"}]' > "$FIXTURES/erplora-pre-saas.json"
+  task_definition erplora-pre-saas-migrate '[
+    {"name": "saas-migrate", "image": "reg.example/erplora/saas-pre:bootstrap"}]' > "$FIXTURES/erplora-pre-saas-migrate.json"
 
   # Fails after 500 pauses: a migration loop that never times out fails its test instead of hanging.
   cat > "$work/bin/sleep" <<'FAKE'
@@ -101,7 +114,10 @@ case "$1 $2" in
       r="$n" s="$n"
       if [ "$r" -ge "${#revisions[@]}" ]; then r=$((${#revisions[@]} - 1)); fi
       if [ "$s" -ge "${#states[@]}" ]; then s=$((${#states[@]} - 1)); fi
-      printf '%s\t%s\n' "arn:td/erplora-prod-$service:${revisions[r]}" "${states[s]}"
+      # Service <name> runs family erplora-prod-<name>; service <name>-pre, erplora-pre-<name>.
+      family="erplora-prod-$service"
+      if [[ "$service" == *-pre ]]; then family="erplora-pre-${service%-pre}"; fi
+      printf '%s\t%s\n' "arn:td/$family:${revisions[r]}" "${states[s]}"
     else
       # Each service's own security group, so the test sees whose configuration the migration got.
       jq -cn --arg sg "sg-$service" '{awsvpcConfiguration: {subnets: ["s"], securityGroups: [$sg], assignPublicIp: "ENABLED"}}'
@@ -134,16 +150,17 @@ FAKE
   chmod +x "$work/bin/aws" "$work/bin/sleep"
 }
 
-# run_deploy [VAR=value...]: deploys abc123 with the fakes; the arguments override the environment.
+# run_deploy [VAR=value...]: deploys abc123 to prod with the fakes; the arguments override the
+# environment (ENVIRONMENT=pre deploys to pre).
 run_deploy() {
   env -u CLUSTER -u PROJECT -u POLL_SECONDS -u MIGRATE_TIMEOUT_SECONDS -u ROLLOUT_TIMEOUT_SECONDS \
-    PATH="$work/bin:$PATH" AWS_REGION=eu-south-2 REGISTRY=reg.example IMAGE_TAG=abc123 "$@" \
+    PATH="$work/bin:$PATH" AWS_REGION=eu-south-2 REGISTRY=reg.example IMAGE_TAG=abc123 ENVIRONMENT=prod "$@" \
     bash "$here/ecs-deploy.sh" > "$work/out.log" 2>&1
 }
 
 # run_deploy_without <VAR>: the same with <VAR> unset.
 run_deploy_without() {
-  env PATH="$work/bin:$PATH" AWS_REGION=eu-south-2 REGISTRY=reg.example IMAGE_TAG=abc123 \
+  env PATH="$work/bin:$PATH" AWS_REGION=eu-south-2 REGISTRY=reg.example IMAGE_TAG=abc123 ENVIRONMENT=prod \
     env -u "$1" bash "$here/ecs-deploy.sh" > "$work/out.log" 2>&1
 }
 
@@ -177,11 +194,14 @@ check "every container of the saas image gets the new image: saas, saas-migrate 
    registered erplora-prod-saas-cron "[.containerDefinitions[].image] == [\"reg.example/erplora/saas:abc123\"]"'
 check "containers of another image keep theirs, the hub's included" \
   'registered erplora-prod-saas "[.containerDefinitions[] | select(.name != \"saas\") | .image] == [\"public.ecr.aws/aws-observability/aws-for-fluent-bit:stable\", \"reg.example/erplora/saasx:bootstrap\", \"reg.example/erplora/hub:bootstrap\"]"'
-check "the rest of the definition is kept" 'registered erplora-prod-saas ".taskRoleArn == \"arn:role/erplora-prod-saas\""'
+check "the rest of the definition is kept" \
+  'registered erplora-prod-saas ".taskRoleArn == \"arn:aws:iam::123456789012:role/erplora-prod-saas-task\""'
 check "read-only fields are stripped before registering" \
   '! jq -e "has(\"taskDefinitionArn\") or has(\"revision\") or has(\"status\") or has(\"requiresAttributes\") or has(\"compatibilities\") or has(\"registeredAt\") or has(\"registeredBy\")" "$REGISTERED_LOG" > /dev/null'
-check "the new revision keeps the tags of the one it copies" \
-  'registered erplora-prod-saas-cron ".tags == [{\"key\": \"Project\", \"value\": \"erplora\"}, {\"key\": \"ManagedBy\", \"value\": \"terraform\"}]"'
+check "the new revision keeps the tags of the one it copies, Environment=prod included" \
+  'registered erplora-prod-saas-cron ".tags == [{\"key\": \"Project\", \"value\": \"erplora\"}, {\"key\": \"ManagedBy\", \"value\": \"terraform\"}, {\"key\": \"Environment\", \"value\": \"prod\"}]"'
+check "prod moves its service without touching its desired count (autoscaling owns it)" '! grep -q -- "--desired-count" "$CALLS_LOG"'
+check "nothing of pre is touched" '! grep -Eq -- "erplora-pre-|/erplora/pre/|saas-pre" "$CALLS_LOG" "$REGISTERED_LOG"'
 check "the network configuration of the migration is read from the saas service" \
   'grep -q "describe-services .*--services saas .*--query services\[0\]\.networkConfiguration" "$CALLS_LOG"'
 check "the migration runs the new saas-migrate revision with the saas network configuration" \
@@ -331,8 +351,81 @@ run_deploy ROLLOUT_TIMEOUT_SECONDS=soon && status=0 || status=$?
 check "a ROLLOUT_TIMEOUT_SECONDS that is not a number fails before any aws call" \
   '[ "$status" -ne 0 ] && [ ! -s "$CALLS_LOG" ] && grep -q ROLLOUT_TIMEOUT_SECONDS "$work/out.log"'
 
+# --- pre (plan 2026-10-14-entorno-pre) ---------------------------------------------
+setup
+run_deploy ENVIRONMENT=pre && status=0 || status=$?
+check "pre: the deploy succeeds" '[ "$status" -eq 0 ]'
+check "pre: registers only pre families (saas and saas-migrate; no saas-cron in pre)" \
+  '[ "$(jq -r .family "$REGISTERED_LOG" | sort | paste -sd " " -)" = "erplora-pre-saas erplora-pre-saas-migrate" ]'
+check "pre: the containers of pre's image get the new image from pre's ECR repository" \
+  'registered erplora-pre-saas "[.containerDefinitions[] | select(.name == \"saas\") | .image] == [\"reg.example/erplora/saas-pre:abc123\"]" &&
+   registered erplora-pre-saas-migrate "[.containerDefinitions[].image] == [\"reg.example/erplora/saas-pre:abc123\"]" &&
+   registered erplora-pre-saas "[.containerDefinitions[] | select(.name == \"prod-image\") | .image] == [\"reg.example/erplora/saas:bootstrap\"]"'
+check "pre: the new revisions keep Environment=pre" \
+  'registered erplora-pre-saas "any(.tags[]; .key == \"Environment\" and .value == \"pre\")"'
+check "pre: the migration runs pre's saas-migrate with the network of the saas-pre service" \
+  'grep -q "describe-services .*--services saas-pre .*--query services\[0\]\.networkConfiguration" "$CALLS_LOG" &&
+   grep -q "run-task .*--task-definition arn:td/erplora-pre-saas-migrate:2 .*\"sg-saas-pre\"" "$CALLS_LOG"'
+check "pre: the exit code is read from the saas-migrate container, by its short name" \
+  'grep -q "describe-tasks .*containers\[?name==.saas-migrate.\]\.exitCode" "$CALLS_LOG"'
+check "pre: only the saas-pre service moves, to pre's new revision" \
+  'grep -q "update-service .*--service saas-pre --task-definition arn:td/erplora-pre-saas:2 " "$CALLS_LOG" && [ "$(count_of "update-service")" -eq 1 ]'
+check "pre: a push wakes pre up (desired count 1)" \
+  'grep -q "update-service .*--service saas-pre .*--desired-count 1 " "$CALLS_LOG"'
+check "pre: the deploy waits for saas-pre and checks its PRIMARY deployment" \
+  'grep -Eq "wait services-stable .*--services saas-pre$" "$CALLS_LOG" &&
+   [ "$(last_line_of "describe-services .*--services saas-pre .*deployments")" -gt "$(line_of "wait services-stable")" ]'
+check "pre: records its own image tag" \
+  'grep -q "^ssm put-parameter --name /erplora/pre/saas/image_tag --value abc123 --type String --overwrite" "$CALLS_LOG"'
+check "pre: a pre run never names prod (families, parameters, services, ECR repository)" \
+  '! grep -Eq -- "erplora-prod-|/erplora/prod/|--services? saas( |$)|erplora/saas:abc123" "$CALLS_LOG" "$REGISTERED_LOG"'
+check "pre: every aws call names the region and the shared cluster" \
+  '! grep -qv -- "--region eu-south-2" "$CALLS_LOG" && ! grep -E -- "--cluster" "$CALLS_LOG" | grep -qv -- "--cluster erplora-prod "'
+setup
+run_deploy ENVIRONMENT=pre FAKE_MIGRATE_EXIT=1 && status=0 || status=$?
+check "pre: a failed migration names pre's log group and changes nothing" \
+  '[ "$status" -ne 0 ] && ! grep -Eq "update-service|put-parameter" "$CALLS_LOG" &&
+   grep -q "::error::saas-migrate .*code 1.*/ecs/erplora-pre-saas-migrate" "$work/out.log"'
+
+# --- the guard: only revisions of the deploy's own environment are copied -----------------
+# The pre deploy role can register a revision in any family (ecs:RegisterTaskDefinition takes no
+# resource), so a base revision without the Environment tag of this run, or with another
+# environment's roles, is refused before anything is registered (plan 2026-10-14-entorno-pre, A3).
+setup
+task_definition erplora-prod-saas-cron '[{"name": "saas-cron", "image": "reg.example/erplora/saas:bootstrap"}]' "" \
+  > "$FIXTURES/erplora-prod-saas-cron.json"
+run_deploy && status=0 || status=$?
+check "guard: a prod revision without the Environment tag is refused and nothing is registered" \
+  '[ "$status" -ne 0 ] && [ ! -s "$REGISTERED_LOG" ] && ! grep -Eq "register-task-definition|run-task|update-service|put-parameter" "$CALLS_LOG"'
+check "guard: the error names the family and the environment" \
+  'grep -q "::error::erplora-prod-saas-cron is not a prod revision" "$work/out.log"'
+setup
+task_definition erplora-pre-saas '[{"name": "saas", "image": "reg.example/erplora/saas-pre:bootstrap"}]' prod \
+  > "$FIXTURES/erplora-pre-saas.json"
+run_deploy ENVIRONMENT=pre && status=0 || status=$?
+check "guard: a pre family tagged Environment=prod is refused and nothing is registered" \
+  '[ "$status" -ne 0 ] && [ ! -s "$REGISTERED_LOG" ] && grep -q "::error::erplora-pre-saas is not a pre revision" "$work/out.log"'
+setup
+task_definition erplora-prod-saas-migrate '[{"name": "saas-migrate", "image": "reg.example/erplora/saas:bootstrap"}]' prod \
+  erplora-pre-saas-migrate > "$FIXTURES/erplora-prod-saas-migrate.json"
+run_deploy && status=0 || status=$?
+check "guard: a prod revision with pre's roles is refused and nothing is registered" \
+  '[ "$status" -ne 0 ] && [ ! -s "$REGISTERED_LOG" ] && grep -q "::error::erplora-prod-saas-migrate is not a prod revision" "$work/out.log"'
+setup
+jq 'del(.taskDefinition.taskRoleArn, .taskDefinition.executionRoleArn)' "$FIXTURES/erplora-prod-saas.json" > "$work/no-roles.json"
+mv "$work/no-roles.json" "$FIXTURES/erplora-prod-saas.json"
+run_deploy && status=0 || status=$?
+check "guard: a revision without roles is refused and nothing is registered" \
+  '[ "$status" -ne 0 ] && [ ! -s "$REGISTERED_LOG" ] && grep -q "::error::erplora-prod-saas is not a prod revision" "$work/out.log"'
+
 # --- required environment -----------------------------------------------------
-for var in AWS_REGION REGISTRY IMAGE_TAG; do
+for environment in staging Prod ""; do
+  setup
+  run_deploy ENVIRONMENT="$environment" && status=0 || status=$?
+  check "ENVIRONMENT '$environment' fails before any aws call, naming prod and pre" \
+    '[ "$status" -ne 0 ] && [ ! -s "$CALLS_LOG" ] && grep -q "::error::ENVIRONMENT.*prod.*pre" "$work/out.log"'
+done
+for var in AWS_REGION REGISTRY IMAGE_TAG ENVIRONMENT; do
   setup
   run_deploy_without "$var" && status=0 || status=$?
   check "without $var it fails before any aws call" '[ "$status" -ne 0 ] && [ ! -s "$CALLS_LOG" ]'
