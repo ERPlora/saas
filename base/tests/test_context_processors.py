@@ -1,19 +1,19 @@
 """``theme`` for every template: the colour mode of the shell, as ``@erplora/ui`` resolves it.
 
 The SPA's modes are ``system``, ``light`` and ``dark``, and ``system`` (follow the OS) when nothing
-says otherwise (``packages/ui/src/shell/theme.ts``). The template pages (sign-in, errors) read the
-same mode from the ``theme`` cookie (ERPlora/saas ``apps/core/context_processors.py``): ``dark`` adds
-``ion-palette-dark`` to ``<html>`` on the server, and ``system`` lets a nonce'd script follow
-``prefers-color-scheme``. Without the processor ``theme`` was empty, so ``system`` never applied.
+says otherwise (``packages/ui/src/shell/theme.ts``). The template pages (sign-in, errors, the public
+web) read the same mode from the ``theme`` cookie (ERPlora/saas ``apps/core/context_processors.py``):
+``dark`` adds ``ion-palette-dark`` to ``<html>`` on the server, and ``system`` lets a nonce'd script
+follow ``prefers-color-scheme``. Without the processor ``theme`` was empty, so ``system`` never applied.
 
-A signed-in account's own mode (Account → Preferences, ``accounts.UserPreferences.theme_mode``, what
-the panel paints) wins over the cookie: the public web and the sign-in pages look like the panel.
+The account's own mode (Account → Preferences, ``accounts.UserPreferences.theme_mode``) is tested
+here once that model lands on main (panel batch, 2026-10-14); until then the processor must not touch
+``accounts`` (TEMPLATES loads it on every render).
 """
 
 import pytest
 from django.test import RequestFactory
 
-from accounts.models import UserPreferences
 from base.context_processors import DEFAULT_THEME, THEMES, theme
 
 PROCESSOR = "base.context_processors.theme"
@@ -47,23 +47,16 @@ def test_an_unknown_cookie_follows_the_system(cookie):
     assert _theme(cookie) == "system"
 
 
-@pytest.mark.parametrize("mode", ["light", "dark"])
-def test_a_signed_in_account_gets_the_mode_it_chose(ana, mode):
-    UserPreferences.objects.create(user=ana, theme_mode=mode)
+def test_the_processor_does_not_import_accounts():
+    """TEMPLATES loads this module on every render: an import that is not on main took the whole
+    site down in CI (2026-10-14). The account's mode comes back only with its model."""
+    import base.context_processors as module
 
-    assert _theme(user=ana) == mode
-
-
-def test_the_account_wins_over_the_cookie(ana):
-    """The panel paints the account's mode; a cookie left by another person on the device does not."""
-    UserPreferences.objects.create(user=ana, theme_mode="light")
-
-    assert _theme("dark", user=ana) == "light"
-
-
-def test_an_account_that_never_chose_follows_the_system(ana):
-    """No preferences row: the account's default, ``system``, whatever an old cookie says."""
-    assert _theme("dark", user=ana) == "system"
+    assert not any(
+        name.startswith("accounts") for name in vars(module) if not name.startswith("_")
+    )
+    with open(module.__file__, encoding="utf-8") as source:
+        assert "from accounts" not in source.read()
 
 
 @pytest.mark.django_db
