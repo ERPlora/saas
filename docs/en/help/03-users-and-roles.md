@@ -24,19 +24,19 @@ Administrators manage access from **Employees**:
 
 - Create or update Hub users.
 - Assign roles.
-- Review the permissions supplied by installed modules.
+- Review the permissions supplied by installed apps.
 - Disable access when a person should no longer enter the Hub.
 - Manage API keys where that feature is available.
 
 ## Roles and permissions
 
-Roles are local to the Hub. Their permissions come from the core Hub and the modules currently installed, so the available permission list changes with the Hub's capabilities.
+Roles are local to the Hub. Their permissions come from the core Hub and the apps currently installed, so the available permission list changes with the Hub's capabilities.
 
-Use the least access required for the job. Only owner or administrator roles should change Hub-wide settings, users, module permissions or fiscal credentials.
+Use the least access required for the job. Only owner or administrator roles should change Hub-wide settings, users, app permissions or fiscal credentials.
 
 ## If a user cannot sign in
 
 - **PIN screen is missing:** the device is not trusted or no PIN-enabled Hub user is available.
 - **PIN is rejected:** confirm the selected user; then use email sign-in if the PIN must be reset.
-- **A page is missing:** verify the user's role and the permissions of the relevant module.
+- **A page is missing:** verify the user's role and the permissions of the relevant app.
 - **The user no longer exists:** an administrator must recreate or reactivate the Hub user; cached browser data cannot restore one.

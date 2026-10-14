@@ -1,4 +1,6 @@
-/* ep-pricing-card (public/components/pricing_card.html): port of <ok-pricing-card>. */
+/* ep-pricing-card (public/components/pricing_card.html): port of <ok-pricing-card>. The feature
+ * list is the one the old pages slotted into it: «✓ feature» as text, with no rule above it, and the
+ * button right after the list, not pushed to the bottom of the card. */
 .ep-pricing-card {
   box-sizing: border-box;
   height: 100%;
@@ -60,40 +62,36 @@
   color: var(--ep-muted, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.62));
 }
 .ep-pricing-card__description {
-  margin: 0.6rem 0 0;
+  margin: 0.6rem 0 1em;
   color: var(--ep-muted, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.62));
   font-size: 0.92rem;
   line-height: 1.5;
 }
 .ep-pricing-card__features {
   list-style: none;
-  margin: 1.25rem 0 0;
-  padding: 1.25rem 0 0;
-  border-top: 1px solid color-mix(in oklab, var(--ep-text, #18181b) 9%, transparent);
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
-  flex: 1;
+  gap: 0.55rem;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+/* The /pricing/ cards (public/pricing/_card_features.html), a touch denser, as they were. */
+.ep-pricing-card__features--dense {
+  gap: 0.5rem;
+  font-size: 0.9rem;
 }
 .ep-pricing-card__features li {
-  display: flex;
-  gap: 0.55rem;
-  align-items: flex-start;
-  font-size: 0.92rem;
-  line-height: 1.4;
+  display: block;
 }
+/* The ✓ is text, followed by a space: «✓ 1 device». */
 .ep-pricing-card__check {
-  flex: 0 0 auto;
-  width: 1.15rem;
-  height: 1.15rem;
-  margin-top: 0.05rem;
-  display: grid;
-  place-items: center;
-  border-radius: 999px;
-  color: var(--ion-color-success, #2dd36f);
-  background: color-mix(in oklab, var(--ion-color-success, #2dd36f) 16%, transparent);
-  font-size: 0.7rem;
-  font-weight: 700;
+  display: inline;
+}
+.ep-pricing-card__check::after {
+  content: ' ';
+  white-space: pre;
 }
 .ep-pricing-card__cta { margin-top: 1.4rem; }
 .ep-pricing-card__cta ion-button { width: 100%; }

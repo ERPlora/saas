@@ -1,5 +1,6 @@
 /* ep-footer (public/partials/footer.html): port of <ok-footer class="public-footer">. A grid of
- * columns (the brand one twice as wide) and a bottom bar with the copyright and the legal links. */
+ * columns (the brand one twice as wide) and a bottom bar with the copyright and the legal links.
+ * Both are content-box, as in the old component's shadow root: 1140 px of content plus the padding. */
 .ep-footer {
   display: block;
   background: var(--ep-surface, var(--ion-card-background, #fff));
@@ -8,6 +9,7 @@
   font-family: var(--ep-font, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif);
 }
 .ep-footer__columns {
+  box-sizing: content-box;
   max-width: var(--ep-container-max, 1140px);
   margin-inline: auto;
   padding: 2rem var(--ep-spacing, var(--ion-padding, 16px));
@@ -18,9 +20,10 @@
 .ep-footer__brand-column {
   grid-column: span 2;
 }
+/* On a phone the brand takes a whole row above the link columns, with one column or two. */
 @media (max-width: 400px) {
   .ep-footer__brand-column {
-    grid-column: auto;
+    grid-column: 1 / -1;
   }
 }
 .ep-footer__brand {
@@ -57,6 +60,8 @@
 }
 .ep-footer__social a {
   display: inline-flex;
+  padding: 0.2rem 0;
+  font-size: 0.9rem;
   color: rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.55);
 }
 .ep-footer__heading {
@@ -76,6 +81,7 @@
   overflow-wrap: anywhere;
 }
 .ep-footer__bottom {
+  box-sizing: content-box;
   max-width: var(--ep-container-max, 1140px);
   margin-inline: auto;
   display: flex;

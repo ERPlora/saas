@@ -168,8 +168,12 @@ def test_index_exposes_each_sector_icon(client, baked):
     assert response.status_code == 200
     assert response.context["sectors"][0]["icon"] == "ion:restaurant-outline"
     html = response.content.decode()
-    assert 'data-icon="ion:restaurant-outline"' in html, "the sector chip paints its icon"
-    assert 'data-icon="ion:pizza-outline"' in html, "the business type card paints its icon"
+    assert 'data-icon="ion:restaurant-outline"' in html, (
+        "the sector chip paints its icon"
+    )
+    assert 'data-icon="ion:pizza-outline"' in html, (
+        "the business type card paints its icon"
+    )
 
 
 def test_each_sector_chip_counts_its_active_business_types(client):
@@ -652,6 +656,77 @@ def test_a_vertical_with_no_listed_app_shows_no_apps_block(client, sector):
 
     assert response.context["apps"] == []
     assert "Apps included out of the box" not in response.content.decode()
+
+
+# --- L8: the page looks like today's ------------------------------------------------------------
+
+
+def test_a_vertical_with_no_listed_app_says_its_apps_are_on_the_way(client, sector):
+    """The old page said «In preparation · Recommended modules are coming soon.» when it had
+    nothing to recommend; the port left a gap between the hero and the FAQ (L8). Only with a
+    vertical: without one there is nothing to prepare and no block at all (spec §5.3)."""
+    make_business_type("barber_shop", sector=sector, vertical="hair_salon")
+
+    main = _main(_page(client, "barber_shop").content.decode())
+
+    assert '<span class="ep-eyebrow">In preparation</span>' in main
+    assert "Recommended apps are coming soon." in main
+    assert (
+        "We are preparing the best starting configuration for this business type."
+        in main
+    )
+
+
+def test_the_apps_on_the_way_are_announced_in_spanish(client, sector):
+    make_business_type("barber_shop", sector=sector, vertical="hair_salon")
+
+    response = _page(client, "barber_shop", headers={"accept-language": "es"})
+    main = _main(response.content.decode())
+
+    assert '<span class="ep-eyebrow">En preparación</span>' in main
+    assert "Las apps recomendadas llegarán pronto." in main
+    assert "Estamos preparando la mejor configuración de partida" in main
+
+
+def test_without_a_vertical_nothing_is_said_to_be_on_the_way(client, salon):
+    assert "In preparation" not in _main(_page(client).content.decode())
+
+
+def test_with_apps_nothing_is_said_to_be_on_the_way(client):
+    make_business_type("pizzeria", vertical="restaurant")
+    make_app("kitchen", name_en="Kitchen Display", verticals=["restaurant"])
+
+    assert "In preparation" not in _main(_page(client, "pizzeria").content.decode())
+
+
+@pytest.mark.parametrize(
+    ("headers", "heading"),
+    [
+        ({}, "Start your Hair salon with ERPlora"),
+        ({"accept-language": "es"}, "Arranca tu Peluquería con ERPlora"),
+    ],
+)
+def test_the_closing_band_names_the_business_type_as_the_taxonomy_writes_it(
+    client, salon, headers, heading
+):
+    """L8: the old band said «Start your Hair Salon with ERPlora», the name as it is; the port
+    lower-cased it like the question of the H1 («… for your hair salon»)."""
+    band = _main(_page(client, headers=headers).content.decode())
+    band = band[band.index('class="ep-cta-band') :]
+
+    assert f'<h2 class="ep-cta-band__title">{heading}</h2>' in band
+
+
+def test_the_faq_is_the_bare_accordion_of_the_pricing_page(client, salon, entry_plan):
+    """L8: the old FAQ was a bare ``ion-accordion``, the one /pricing/ still has and that looks as
+    it did; the port gave it the help centre's ``ep-accordion`` (a bold question in a padded card)."""
+    main = _main(_page(client).content.decode())
+    faq = main[main.index('id="faq"') :]
+    faq = faq[: faq.index("</section>")]
+
+    assert '<ion-item slot="header">' in faq
+    assert '<div class="ion-padding" slot="content">' in faq
+    assert "ep-accordion" not in faq
 
 
 def test_the_lead_counts_the_listed_apps_of_the_catalog(client, salon):

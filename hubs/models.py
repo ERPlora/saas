@@ -524,6 +524,12 @@ class HubMember(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["hub", "user"], name="hubs_member_one_per_hub_and_user"),
             models.UniqueConstraint(fields=["hub"], condition=Q(role="hub_owner"), name="hubs_member_one_owner"),
+            # Fail closed: a role outside the four (a retired key from a data migration, a typo in the
+            # admin) would rank nowhere in the access checks; the database never stores one.
+            models.CheckConstraint(
+                condition=Q(role__in=["hub_owner", "hub_admin", "hub_manager", "hub_employee"]),
+                name="hubs_member_role_known",
+            ),
         ]
         indexes = [models.Index(fields=["user", "-last_opened_at"], name="hubs_member_user_opened")]
 

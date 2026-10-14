@@ -135,6 +135,42 @@ def test_the_signed_text_is_rendered_not_just_linked(client):
     assert "<h2" in html, "the markdown body is not being rendered"
 
 
+def test_the_page_has_one_h1_and_the_deed_keeps_its_title(client):
+    """L8: the hero is the page's ``<h1>``; the deed's ``# title`` is published, as an ``<h2>``."""
+    html = client.get(URL).content.decode()
+
+    assert len(re.findall(r"<h1[\s>]", html)) == 1
+    assert re.search(
+        r"<h2\b[^>]*>Declaración responsable del sistema informático", html
+    )
+
+
+def test_the_deed_title_keeps_the_size_of_a_page_title(client):
+    """L8: as a bare ``<h2>`` the title looked like «1. Declarante»; ``ep-deed-title`` (layout.css)
+    gives it back the size it had as the old page's ``<h1>``. Only the title carries it, next to
+    the ``id`` of its anchor."""
+    html = client.get(URL).content.decode()
+
+    assert re.search(
+        r'<h2 class="ep-deed-title"[^>]*>Declaración responsable del sistema informático',
+        html,
+    )
+    assert html.count("ep-deed-title") == 1
+
+
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_the_deed_is_marked_as_spanish_whatever_the_page_language(
+    client, settings, language
+):
+    """The deed is Spanish in every language of the page: a screen reader must read it as such."""
+    client.cookies[settings.LANGUAGE_COOKIE_NAME] = language
+    html = client.get(URL).content.decode()
+    deed = html.index('<div lang="es" class="ep-prose">')
+
+    assert html.index("1. Declarante") > deed
+    assert html.index("</div>", html.index("10. Fecha y lugar de la firma")) > deed
+
+
 def test_every_archived_version_is_reachable(client):
     """Art. 13.3 — all versions are kept, so all versions must be servable."""
     index = client.get(URL).content.decode()
@@ -230,6 +266,17 @@ class TestOpenAndDownload:
         response = client.get(f"{URL}{signed_declaration.version}/pdf/?download=1")
 
         assert response["Content-Disposition"].startswith("attachment")
+
+    @pytest.mark.parametrize("value", ["0", "false", "no", ""])
+    def test_any_download_other_than_1_opens_it(
+        self, client, signed_declaration, value
+    ):
+        """Only ``?download=1`` saves it: ``?download=0`` asking for a download was a surprise."""
+        response = client.get(
+            f"{URL}{signed_declaration.version}/pdf/?download={value}"
+        )
+
+        assert response["Content-Disposition"].startswith("inline")
 
     def test_the_filename_says_what_it_is_and_which_version(
         self, client, signed_declaration

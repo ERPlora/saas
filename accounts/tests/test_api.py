@@ -40,8 +40,8 @@ def test_the_owner_sees_their_hubs_and_only_theirs(client, ana):
     assert response.status_code == 200
     assert response.json() == {
         "hubs": [
-            {"slug": "a", "host": "a.localhost:8000", "url": "/hub-login/?hub=a&next=/"},
-            {"slug": "b", "host": "b.localhost:8000", "url": "/hub-login/?hub=b&next=/"},
+            {"slug": "a", "host": "a.localhost:8000", "url": "http://a.localhost:8000/auth/login?next=/"},
+            {"slug": "b", "host": "b.localhost:8000", "url": "http://b.localhost:8000/auth/login?next=/"},
         ]
     }
 

@@ -16,26 +16,26 @@ El idioma y la apariencia personales pueden variar por usuario. La moneda, el id
 
 ## Tienda
 
-Los ajustes de Tienda describen el tipo de negocio y la presentación regional utilizada por el Hub. Los flujos específicos siguen dentro de los ajustes de cada módulo.
+Los ajustes de Tienda describen el tipo de negocio y la presentación regional utilizada por el Hub. Los flujos específicos siguen dentro de los ajustes de cada app.
 
 ## Negocio
 
-Completa la identidad legal y fiscal usada por las facturas y los módulos de cumplimiento de cada país:
+Completa la identidad legal y fiscal usada por las facturas y las apps de cumplimiento de cada país:
 
 - Identificador fiscal (NIF, VAT u otro equivalente local).
 - Razón social.
 - Dirección fiscal.
-- Certificado de firma cuando lo exija un módulo de cumplimiento instalado.
+- Certificado de firma cuando lo exija una app de cumplimiento instalada.
 
 No subas un certificado personal. El certificado debe pertenecer al negocio representado por el Hub.
 
 ## Tickets
 
-Las opciones de ticket controlan la presentación y los destinos de salida predeterminados. El significado fiscal de una factura o un ticket simplificado lo gestionan los módulos de facturación y cumplimiento instalados.
+Las opciones de ticket controlan la presentación y los destinos de salida predeterminados. El significado fiscal de una factura o un ticket simplificado lo gestionan las apps de facturación y cumplimiento instaladas.
 
 ## Permisos
 
-Los módulos pueden solicitar capacidades explícitas como acceso a internet, impresora, notificaciones o uso de un certificado fiscal. Las capacidades permanecen denegadas hasta que un administrador las concede. Revisa esta área después de instalar un módulo y revoca lo que ya no sea necesario.
+Las apps pueden solicitar capacidades explícitas como acceso a internet, impresora, notificaciones o uso de un certificado fiscal. Las capacidades permanecen denegadas hasta que un administrador las concede. Revisa esta área después de instalar una app y revoca lo que ya no sea necesario.
 
 ## Datos
 

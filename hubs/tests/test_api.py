@@ -137,9 +137,11 @@ class TestSectorList:
 
 
 class TestBusinessTypeList:
-    def test_lists_the_active_business_types_grouped_by_sector(self, client, catalog):
-        """By the sector's order, then the type's own: the dropdown reads one sector at a time."""
-        assert _codes(_get(client, BUSINESS_TYPES)["business_types"]) == ["bar", "restaurant", "grocery"]
+    def test_lists_the_active_business_types_by_their_order_then_code_across_sectors(self, client, catalog):
+        """Like the origin ``catalog`` (``BusinessType.Meta.ordering = ["order", "code"]``): one order for
+        every type, not grouped by sector, so ``/industries/`` interleaves them as the seed orders them.
+        Here grocery (retail, 1) sits between bar (hospitality, 1) and restaurant (hospitality, 2)."""
+        assert _codes(_get(client, BUSINESS_TYPES)["business_types"]) == ["bar", "grocery", "restaurant"]
 
     def test_response_shape_includes_the_nested_sector_and_the_vertical(self, client, catalog):
         rows = {row["code"]: row for row in _get(client, BUSINESS_TYPES)["business_types"]}
@@ -156,12 +158,13 @@ class TestBusinessTypeList:
         }
         assert rows["bar"]["vertical"] == ""
 
-    def test_a_business_type_without_a_sector_comes_last(self, client, catalog):
-        BusinessType.objects.create(code="saas", name_en="SaaS")
+    def test_a_business_type_without_a_sector_takes_its_place_by_its_order(self, client, catalog):
+        BusinessType.objects.create(code="saas", name_en="SaaS", display_order=1)
 
         rows = _get(client, BUSINESS_TYPES)["business_types"]
 
-        assert (rows[-1]["code"], rows[-1]["sector"]) == ("saas", None)
+        assert _codes(rows) == ["bar", "grocery", "saas", "restaurant"]
+        assert rows[2]["sector"] is None
 
     def test_filter_by_sector_code(self, client, catalog):
         assert _codes(_get(client, BUSINESS_TYPES, sector="hospitality")["business_types"]) == ["bar", "restaurant"]

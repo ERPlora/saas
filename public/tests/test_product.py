@@ -7,16 +7,15 @@ names). What changed, and why:
 
 * the URL names live in the ``public`` namespace (``public:features``…), not in ``product:``;
 * the footer is ``<footer class="ep-footer">`` (L2), not ``<ok-footer>``: OutfitKit is gone;
-* ``/updates/`` mirrors §7 of ``/legal/terms/``, which came with the pages that read ``Plan`` (L7);
-  the CTA paints its button only when ``public:terms`` exists (``{% url … as %}``), so nothing ever
-  pointed at a 404;
+* ``/updates/`` mirrors §7 of ``/legal/terms/``, which came with the pages that read ``Plan`` (L7),
+  and its closing band links it;
 * «reachable from the footer» asks another public page, the footer being the same partial on all of
   them (``/`` was the launcher until the landing arrived, L7).
 """
 
 import pytest
 from django.conf import settings
-from django.urls import NoReverseMatch, reverse
+from django.urls import reverse
 
 pytestmark = pytest.mark.django_db
 
@@ -175,21 +174,13 @@ def test_updates_page_links_the_contract_clause(client):
     assert "/legal/terms/" in page(client, "/updates/", "es")
 
 
-def test_updates_page_links_the_contract_clause_once_it_exists_and_never_a_dead_link(
-    client,
-):
-    """The band always says where the binding text is; its button appears with ``public:terms``
-    (L7), never before: until then it would point at a 404."""
+def test_updates_page_closing_band_links_the_contract_clause(client):
+    """The band says where the binding text is and links it (``public:terms``, L7)."""
     html = page(client, "/updates/")
 
     assert "section 7 of the terms of service" in html
-    try:
-        terms = reverse("public:terms")
-    except NoReverseMatch:
-        assert "Read section 7" not in html
-    else:
-        assert "Read section 7" in html
-        assert f'href="{terms}"' in html
+    assert "Read section 7" in html
+    assert f'href="{reverse("public:terms")}"' in html
 
 
 def test_updates_page_is_reachable_from_the_footer(client):
@@ -262,8 +253,17 @@ L3A_PAGES = (
     "/app/",
     "/download/",
 )
-#: The old hosting: Hetzner, in Falkenstein, Germany, behind Cloudflare (out: PLAN-AWS, ADR-0499).
-OLD_HOSTING = ("hetzner", "falkenstein", "germany", "alemania", "cloudflare")
+#: The old hosting: Hetzner, in Falkenstein, Germany, behind Cloudflare (out: PLAN-AWS, ADR-0499),
+#: and the AWS Spain region the pages named until Ireland took its place (Ioan, 2026-10-14).
+OLD_HOSTING = (
+    "hetzner",
+    "falkenstein",
+    "germany",
+    "alemania",
+    "cloudflare",
+    "eu-south-2",
+    "aragón",
+)
 
 
 @pytest.mark.parametrize("language", ["en", "es"])
@@ -277,12 +277,17 @@ def test_no_page_names_the_old_hosting(client, path, language):
 @pytest.mark.parametrize(
     ("language", "region"),
     [
-        ("en", "Amazon Web Services, Spain region (eu-south-2, Aragón)"),
-        ("es", "Amazon Web Services, región de España (eu-south-2, Aragón)"),
+        ("en", "Amazon Web Services, Ireland region (eu-west-1)"),
+        ("es", "Amazon Web Services, región de Irlanda (eu-west-1)"),
     ],
 )
-def test_security_names_the_aws_region_in_spain(client, language, region):
-    assert region in page(client, "/security/", language)
+def test_security_names_the_aws_region_in_ireland(client, language, region):
+    """Ioan, 2026-10-14: Ireland, for all of Europe; never the Spain region named before."""
+    html = page(client, "/security/", language)
+
+    assert region in html
+    assert "Spain region" not in html
+    assert "región de España" not in html
 
 
 @pytest.mark.parametrize(
@@ -305,7 +310,9 @@ def test_security_names_the_perimeter_on_aws(client, language, perimeter):
 # hub), reCAPTCHA (there is none: the old CSP test fixed it), a 99.95 % SLA (the pricing tests
 # fixed «no uptime SLA»), Cloudflare (out, ADR-0499), Argon2 (saas-next keeps Django's PBKDF2),
 # required email verification (`ACCOUNT_EMAIL_VERIFICATION = "none"`), 2FA (off in phase 1) and
-# GitHub sign-in (Google only).
+# GitHub sign-in (Google only). The home and /contact/ promised the same SLA as an «Uptime 99.95%»
+# and support «24/7» (L8): the real promise is high availability on AWS and a reply within 4
+# business hours, the one of the contact form.
 
 STALE_CLAIMS = (
     "Cloudflare",
@@ -320,11 +327,34 @@ STALE_CLAIMS = (
     "extremo a extremo",
     "Email verification required",
     "email verification",
+    "24/7",
+    "Uptime",
+    "uptime",
+    "Tiempo activo",
+    "Tiempo Activo",
+    "tiempo activo",
+    # The catalogue sells apps, not modules (decision 19; L8 found them left on these pages).
+    "modules",
+    "Modules",
+    "módulos",
+    "Módulos",
 )
 
 
 @pytest.mark.parametrize("language", ["en", "es"])
-@pytest.mark.parametrize("path", ["/security/", "/features/", "/about/"])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/security/",
+        "/features/",
+        "/about/",
+        "/",
+        "/contact/",
+        "/collaborate/",
+        "/help/",
+        "/support/",
+    ],
+)
 def test_no_page_promises_what_the_old_stack_did(client, path, language):
     html = page(client, path, language)
 
@@ -343,7 +373,8 @@ def test_no_page_promises_what_the_old_stack_did(client, path, language):
                 "Salted password hashing (PBKDF2)",
                 "Encryption in transit and at rest",
                 "DDoS protection and WAF on AWS",
-                "High availability on AWS, with daily backups",
+                "High availability on AWS",
+                "Continuous backups, point-in-time recovery for 14 days",
                 "Rate limiting per IP and WAF",
             ),
         ),
@@ -356,7 +387,8 @@ def test_no_page_promises_what_the_old_stack_did(client, path, language):
                 "Contraseñas guardadas con hash y sal (PBKDF2)",
                 "Cifrado en tránsito y en reposo",
                 "Protección anti-DDoS y WAF en AWS",
-                "Alta disponibilidad en AWS, con copias de seguridad diarias",
+                "Alta disponibilidad en AWS",
+                "Copias de seguridad continuas, recuperación a cualquier momento de los últimos 14 días",
                 "Límite de peticiones por IP y WAF",
             ),
         ),

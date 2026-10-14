@@ -311,7 +311,7 @@ def test_help_center_page_basics(client):
 
 
 def test_help_docs_do_not_name_the_old_hosting():
-    """The servers are on AWS, Spain region, not on Hetzner in Germany (Ioan, 2026-10-13)."""
+    """The servers are on AWS, Ireland region, not on Hetzner in Germany (Ioan, 2026-10-13)."""
     offenders = [
         f"{path.relative_to(ROOT)}: {name}"
         for path in _help_files()

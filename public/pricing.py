@@ -13,7 +13,7 @@ Port of ERPlora/saas ``apps/public/pricing/views.py`` (origin/develop c5ca8ca). 
   :func:`plan_period`, one definition for every selling screen;
 * a premium app is included in the paid plans (decision 17): the FAQ no longer charges «per
   activated module»;
-* the storage answer names the host: AWS, Spain region (Ioan, 2026-10-13).
+* the storage answer names the host: AWS (Ioan, 2026-10-13), Ireland region (Ioan, 2026-10-14).
 """
 
 from __future__ import annotations
@@ -220,8 +220,8 @@ def faq_items(days: TrialDays | None = None) -> list[dict[str, str]]:
             "key": "storage",
             "question": _("Where is my data stored?"),
             "answer": _(
-                "Entirely within the European Union: on Amazon Web Services, in its Spain region "
-                "(eu-south-2, Aragón), on GDPR-compliant infrastructure. Your data never leaves "
+                "Entirely within the European Union: on Amazon Web Services, in its Ireland "
+                "region (eu-west-1), on GDPR-compliant infrastructure. Your data never leaves "
                 "the EU."
             ),
         },

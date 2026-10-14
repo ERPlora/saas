@@ -17,7 +17,7 @@ of ``tests/unit/billing/test_net_price_display.py`` (7) and the pricing contract
 * the comparison column «Modules included» is «Apps included» (decision 19: the catalogue is «Apps»
   in en and es), and a premium app is included in the paid plans (decision 17): no «premium
   add-ons», no fee per activated app, no «marketplace» in the competitor table;
-* the storage answer names the host, AWS in its Spain region (Ioan, 2026-10-13), never Hetzner;
+* the storage answer names the host, AWS in its Ireland region (Ioan, 2026-10-14), never Hetzner;
 * ``Plan.objects.public()`` is pinned by ``hubs/tests/test_plan_list.py``; here, what the pages
   show of it;
 * the ex-VAT note is ``public/partials/_vat_note.html`` and links ``public:terms``; the panel's
@@ -599,17 +599,24 @@ def test_premium_apps_are_included_in_the_paid_plans_never_an_add_on(client, see
     assert "included in the paid plans" in str(pricing_item["answer"])
 
 
-def test_the_storage_answer_names_aws_in_spain_and_never_hetzner(client):
-    """Ioan, 2026-10-13: the servers are on AWS, Spain region (eu-south-2, Aragón)."""
+def test_the_storage_answer_names_aws_in_ireland_and_never_hetzner(client):
+    """Ioan, 2026-10-14: the servers are on AWS, Ireland region (eu-west-1), for all of Europe;
+    never the Spain region (eu-south-2, Aragón) the answer named before."""
     (storage,) = [item for item in pricing.faq_items() if item["key"] == "storage"]
+    answer = str(storage["answer"])
 
-    assert "Amazon Web Services" in str(storage["answer"])
-    assert "eu-south-2" in str(storage["answer"])
+    assert "Amazon Web Services" in answer
+    assert "Ireland region (eu-west-1)" in answer
+    assert "Spain" not in answer
     for language in ("en", "es"):
         html = html_of(client, language=language)
         assert "Hetzner" not in html
         assert "Falkenstein" not in html
-    assert "región de España" in html_of(client, language="es")
+        assert "eu-south-2" not in html
+        assert "Aragón" not in html
+    spanish = html_of(client, language="es")
+    assert "región de Irlanda (eu-west-1)" in spanish
+    assert "región de España" not in spanish
 
 
 # --- The empty state --------------------------------------------------------------------------

@@ -20,8 +20,10 @@
   backdrop-filter: none;
   background: var(--ep-surface, var(--ion-card-background, #fff));
 }
+/* content-box, as in the old component's shadow root: 1140 px of content plus the padding. */
 .ep-navbar__bar {
   position: relative;
+  box-sizing: content-box;
   max-width: var(--ep-container-max, 1140px);
   margin-inline: auto;
   display: flex;
@@ -34,6 +36,7 @@
   align-items: center;
   gap: 0.5rem;
   margin-inline-end: auto;
+  font-size: 0.95rem;
   font-weight: 700;
   color: var(--ep-text, var(--ion-text-color, #18181b));
   text-decoration: none;
@@ -59,8 +62,9 @@
 .ep-navbar__links:empty {
   display: none;
 }
+/* On the bar the links take the brand colour, as today; in the mobile panel, the text one. */
 .ep-navbar__links a {
-  color: var(--ep-text, var(--ion-text-color, #1c1b17));
+  color: var(--ep-primary, var(--ion-color-primary, #1496d6));
   text-decoration: none;
   font-size: 0.95rem;
   transition: color var(--ep-transition, 150ms ease);
@@ -80,15 +84,75 @@
 .ep-navbar__backdrop {
   display: none;
 }
+/* Native buttons, not ion-button (navbar.html): the look of an ion-button with fill="clear". */
 .ep-navbar__burger,
 .ep-navbar__close {
-  --color: var(--ep-text, var(--ion-text-color, #1c1b17));
-  --padding-start: 0.5rem;
-  --padding-end: 0.5rem;
+  appearance: none;
+  align-items: center;
+  justify-content: center;
   min-width: 2.75rem;
   min-height: 2.75rem;
   margin: 0;
-  font-size: 1.4rem;
+  padding: 0 0.5rem;
+  border: 0;
+  border-radius: var(--ep-radius-sm, 10px);
+  background: transparent;
+  color: var(--ep-text, var(--ion-text-color, #1c1b17));
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--ep-transition, 150ms ease);
+}
+.ep-navbar__close {
+  display: inline-flex;
+}
+/* The three bars and the cross of the old component: 22 × 2 px each, the bars 7 px apart. */
+.ep-navbar__burger-lines,
+.ep-navbar__close-cross {
+  position: relative;
+  display: block;
+  width: 22px;
+  height: 2px;
+}
+.ep-navbar__burger-lines,
+.ep-navbar__burger-lines::before,
+.ep-navbar__burger-lines::after,
+.ep-navbar__close-cross::before,
+.ep-navbar__close-cross::after {
+  border-radius: 2px;
+  background: currentColor;
+}
+.ep-navbar__burger-lines::before,
+.ep-navbar__burger-lines::after,
+.ep-navbar__close-cross::before,
+.ep-navbar__close-cross::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  width: 22px;
+  height: 2px;
+}
+.ep-navbar__burger-lines::before { top: -7px; }
+.ep-navbar__burger-lines::after { top: 7px; }
+.ep-navbar__close-cross::before,
+.ep-navbar__close-cross::after { top: 0; }
+.ep-navbar__close-cross::before { transform: rotate(45deg); }
+.ep-navbar__close-cross::after { transform: rotate(-45deg); }
+.ep-navbar__burger:active,
+.ep-navbar__close:active {
+  background: color-mix(in oklab, currentColor 12%, transparent);
+}
+@media (hover: hover) {
+  .ep-navbar__burger:hover,
+  .ep-navbar__close:hover {
+    background: color-mix(in oklab, currentColor 8%, transparent);
+  }
+}
+.ep-navbar__burger:focus-visible,
+.ep-navbar__close:focus-visible {
+  outline: 2px solid var(--ep-primary, var(--ion-color-primary, #3880ff));
+  outline-offset: 2px;
 }
 
 @media (max-width: 800px) {
@@ -128,6 +192,7 @@
     gap: 0;
   }
   .ep-navbar__links a {
+    color: var(--ep-text, var(--ion-text-color, #1c1b17));
     min-height: 3.25rem;
     display: flex;
     align-items: center;

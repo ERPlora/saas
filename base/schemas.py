@@ -13,6 +13,8 @@ class SessionMeIn(Schema):
 class SessionUser(Schema):
     id: str
     label: str
+    # Shown under the name in the user menu; every SaaS account has one (it signs in with it).
+    email: str
 
 
 class SessionScope(Schema):
@@ -24,6 +26,9 @@ class MenuItem(Schema):
     path: str
     label: str
     icon: str
+    # The shell's own name (``SessionMenuItem.webOnly``): the entry sells, so the app surfaces leave
+    # it out (PLAN-SAAS §3.6 point 6).
+    webOnly: bool
 
 
 class MenuGroup(Schema):

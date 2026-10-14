@@ -20,7 +20,6 @@ from datetime import timedelta
 
 import pytest
 from django.core import mail
-from django.test import RequestFactory
 from django.utils import timezone, translation
 from live.slugs import validate_hub_slug
 from live.errors import (
@@ -211,8 +210,13 @@ class TestTheAddress:
         assert slug == "a" * 29
         assert validate_hub_slug(slug) == slug
 
-    @pytest.mark.parametrize("name", ["__", "a_", "x--y", "Ñandú  café", "xn--bar", "-Bar-", "Bar__Manolo", "_-_-_"])
-    def test_every_proposed_address_is_one_the_hub_accepts(self, owner, plans, name, settings):
+    @pytest.mark.parametrize(
+        "name",
+        ["__", "a_", "x--y", "Ñandú  café", "xn--bar", "-Bar-", "Bar__Manolo", "_-_-_"],
+    )
+    def test_every_proposed_address_is_one_the_hub_accepts(
+        self, owner, plans, name, settings
+    ):
         settings.LIVE = {**settings.LIVE, "hub_slug_min_length": 3}  # production's rule
 
         slug = create(owner, name=name).slug
@@ -227,7 +231,9 @@ class TestTheAddress:
             ("bar_manolo", "lowercase letters, digits and hyphens"),
         ],
     )
-    def test_a_chosen_address_says_what_is_wrong_with_it(self, owner, plans, settings, slug, says):
+    def test_a_chosen_address_says_what_is_wrong_with_it(
+        self, owner, plans, settings, slug, says
+    ):
         settings.LIVE = {**settings.LIVE, "hub_slug_min_length": 3}
 
         with pytest.raises(InvalidPayload) as refused:
@@ -296,9 +302,15 @@ class TestTheCountry:
         assert "country" in str(refused.value)
 
     def test_the_time_zone_follows_the_country(self, owner, plans, make_user):
-        assert Hub.objects.get(pk=create(owner, country="PT").id).timezone == "Europe/Lisbon"
+        assert (
+            Hub.objects.get(pk=create(owner, country="PT").id).timezone
+            == "Europe/Lisbon"
+        )
         spaniard = make_user("spaniard@example.com")
-        assert Hub.objects.get(pk=create(spaniard, name="Bar 2", country="ES").id).timezone == "Europe/Madrid"
+        assert (
+            Hub.objects.get(pk=create(spaniard, name="Bar 2", country="ES").id).timezone
+            == "Europe/Madrid"
+        )
 
 
 class TestTheFreeQuota:
@@ -350,7 +362,9 @@ class TestTheFreeQuota:
     def test_restoring_a_free_business_respects_the_quota(self, owner, plans):
         """Review of L1-A, finding 2: delete a free business, create another, restore the first."""
         first = create_business(owner)
-        services.business_delete(ctx_for(owner), BusinessDeleteIn(id=first.id, confirm_name="Bar Manolo"))
+        services.business_delete(
+            ctx_for(owner), BusinessDeleteIn(id=first.id, confirm_name="Bar Manolo")
+        )
         create(owner, name="Second")
 
         with pytest.raises(Conflict) as refused:
@@ -418,7 +432,9 @@ def test_two_sign_ups_at_once_leave_one_free_business(make_user):
     original = queries.free_hubs_owned
     queries.free_hubs_owned = counted_then_wait
     try:
-        threads = [threading.Thread(target=sign_up, args=(name,)) for name in ("One", "Two")]
+        threads = [
+            threading.Thread(target=sign_up, args=(name,)) for name in ("One", "Two")
+        ]
         for thread in threads:
             thread.start()
         for thread in threads:
@@ -514,6 +530,80 @@ class TestUpdate:
             )
 
         assert refused.value.code == "hubs.business_deleted"
+
+
+class TestTheCountryLocksOnceReady:
+    """The country is not changed once the business is ready (mockups README §6.21, W-B7: its fiscal series
+    and records belong to one country). The SaaS does not see the invoices, which live in the Hub: the lock
+    starts when the Hub reports the business ready (``ready_at``), the earliest moment it can invoice."""
+
+    def ready(self, business):
+        Hub.objects.filter(pk=business.pk).update(
+            ready_at=timezone.now(), status=Hub.Status.ACTIVE
+        )
+
+    def test_while_it_is_prepared_the_country_still_changes(self, business, owner):
+        services.business_update(
+            ctx_for(owner), BusinessUpdateIn(id=business.id, country="PT")
+        )
+
+        assert Hub.objects.get(pk=business.pk).country == "PT"
+
+    def test_once_ready_a_new_country_is_refused_and_nothing_changes(
+        self, business, owner
+    ):
+        self.ready(business)
+
+        with pytest.raises(Conflict) as refused:
+            services.business_update(
+                ctx_for(owner),
+                BusinessUpdateIn(id=business.id, name="Renamed", country="PT"),
+            )
+
+        assert refused.value.code == "hubs.country_locked"
+        assert (
+            Hub.objects.get(pk=business.pk).country,
+            Hub.objects.get(pk=business.pk).name,
+        ) == ("ES", "Bar Manolo")
+
+    def test_once_ready_the_same_country_sent_again_is_no_change(self, business, owner):
+        self.ready(business)
+
+        detail = services.business_update(
+            ctx_for(owner),
+            BusinessUpdateIn(id=business.id, name="Renamed", country="es"),
+        )
+
+        assert (detail.name, detail.country) == ("Renamed", "ES")
+
+    def test_the_page_says_whether_the_country_is_locked(self, business, owner):
+        before = queries.business_get(
+            ctx_for(owner), ByIdIn(id=business.id)
+        ).country_locked
+        self.ready(business)
+
+        assert (
+            before,
+            queries.business_get(ctx_for(owner), ByIdIn(id=business.id)).country_locked,
+        ) == (False, True)
+
+    def test_over_http_it_is_a_409_with_its_code(self, client, business, owner):
+        import json
+
+        self.ready(business)
+        client.force_login(owner)
+
+        response = client.post(
+            "/api/hubs/businesses/update",
+            json.dumps({"id": str(business.id), "country": "FR"}),
+            content_type="application/json",
+            HTTP_HOST="localhost:8001",
+        )
+
+        assert (response.status_code, response.json()["error"]["code"]) == (
+            409,
+            "hubs.country_locked",
+        )
 
 
 # --- Deleting and recovering ----------------------------------------------------------------------
@@ -667,27 +757,33 @@ class TestRestore:
 
 
 class TestOpen:
+    """«Open» (PLAN-SAAS §3.1 step 5): the Hub now binds the jump to the browser with a ``state`` of its
+    own, so the panel no longer mints the code. The operation checks the member and the business and
+    answers the Hub's start (``/auth/login?next=``), which bounces to ``/hub-login/`` with its ``state``:
+    that door mints the code, and asks for the second factor if the account has one."""
+
     def ready(self, hub):
         Hub.objects.filter(pk=hub.pk).update(
             status=Hub.Status.ACTIVE, ready_at=timezone.now()
         )
 
-    def test_it_mints_the_one_time_code_of_the_jump(self, business, owner, settings):
+    def test_it_answers_the_hubs_start_and_mints_no_code(self, business, owner):
         self.ready(business)
 
         opened = services.business_open(
             ctx_for(owner), BusinessOpenIn(id=business.id, next="/sales")
         )
 
-        assert opened.action == settings.HUB_CALLBACK_TEMPLATE.format(slug="bar-manolo")
-        assert opened.next == "/sales"
-        code = AuthExchangeCode.objects.get()
-        assert (code.user, code.hub_slug, code.audience) == (
-            owner,
-            "bar-manolo",
-            "hub-session",
-        )
-        assert code.code_hash == AuthExchangeCode.hash_code(opened.code)
+        assert opened.url == "http://bar-manolo.localhost:8000/auth/login?next=/sales"
+        assert not AuthExchangeCode.objects.exists()
+
+    def test_in_production_it_is_the_businesss_own_host(self, business, owner, settings):
+        settings.HUB_CALLBACK_TEMPLATE = "https://{slug}.erplora.com/auth/callback"
+        self.ready(business)
+
+        opened = services.business_open(ctx_for(owner), BusinessOpenIn(id=business.id))
+
+        assert opened.url == "https://bar-manolo.erplora.com/auth/login?next=/"
 
     def test_it_remembers_the_business_last_opened(self, business, owner):
         self.ready(business)
@@ -704,7 +800,7 @@ class TestOpen:
 
         assert services.business_open(
             ctx_for(team[who]), BusinessOpenIn(id=business.id)
-        ).code
+        ).url.endswith("/auth/login?next=/")
 
     @pytest.mark.parametrize("who", ["stranger", "invitee"])
     def test_without_access_there_is_nothing_to_open(self, business, team, who):
@@ -729,7 +825,7 @@ class TestOpen:
             services.business_open(ctx_for(owner), BusinessOpenIn(id=business.id))
 
         assert refused.value.code == code
-        assert not AuthExchangeCode.objects.exists()
+        assert HubMember.objects.get(hub=business, user=owner).last_opened_at is None
 
     def test_a_payment_pending_business_still_opens(self, business, owner):
         """Round 17 §2.10: 7 days of grace with «Open» enabled and a notice."""
@@ -737,35 +833,21 @@ class TestOpen:
 
         assert services.business_open(
             ctx_for(owner), BusinessOpenIn(id=business.id)
-        ).code
+        ).url
 
-    def test_an_account_with_an_authenticator_app_needs_its_second_factor(
+    def test_the_second_factor_is_asked_where_the_code_is_minted(
         self, business, owner, settings, monkeypatch
     ):
+        """``/hub-login/`` sends an account with an authenticator app to confirm it (``reauthenticate``)
+        before it mints the code; «Open» no longer refuses it on its own."""
         settings.ACCOUNTS_MFA_ENABLED = True
         self.ready(business)
         from accounts import queries as account_queries
 
         monkeypatch.setattr(account_queries, "has_totp", lambda user: True)
-        request = RequestFactory().post("/api/hubs/businesses/open")
-        request.user = owner
-        request.session = {}
-        ctx = ctx_for(owner)
-        ctx = type(ctx)(
-            scope=ctx.scope,
-            actor=owner,
-            permissions=ctx.permissions,
-            language="en",
-            request=request,
-        )
 
-        with pytest.raises(OperationError) as refused:
-            services.business_open(ctx, BusinessOpenIn(id=business.id))
-
-        assert (refused.value.status, refused.value.code) == (
-            403,
-            "requires_second_factor",
-        )
+        assert services.business_open(ctx_for(owner), BusinessOpenIn(id=business.id)).url
+        assert not AuthExchangeCode.objects.exists()
 
     def test_next_is_a_path_of_the_business(self):
         for wrong in ("https://evil.example", "//evil.example", "sales"):

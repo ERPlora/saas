@@ -5,13 +5,14 @@ import re
 from datetime import datetime
 from decimal import Decimal
 from typing import Annotated, Generic, Literal, TypeVar
-from urllib.parse import urlsplit
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.utils.translation import gettext as _
 from ninja import Field, Schema
 from pydantic import AfterValidator, StringConstraints
+
+from accounts.queries import local_path
 
 
 class SectorListIn(Schema):
@@ -129,9 +130,9 @@ def _email(value: str) -> str:
 
 
 def _local_path(value: str) -> str:
-    """A path on the hub (``/…``), never another host (``//host``, ``/\\host``, a scheme)."""
-    parts = urlsplit(value)
-    if not value.startswith("/") or value.startswith(("//", "/\\")) or parts.scheme or parts.netloc:
+    """A path on the hub (``/…``), never another host: the rule of ``accounts.queries.local_path``, which
+    turns anything else into ``/``; an input refuses it instead (422)."""
+    if local_path(value) != value:
         raise ValueError(_("Enter a path of the business, starting with /."))
     return value
 
@@ -181,6 +182,17 @@ class BusinessListIn(PageIn):
     search: str | None = Field(None, max_length=120)
 
 
+class BusinessRowCanOut(Schema):
+    """What the row's buttons do for this account, computed by the server (the page never deduces it from
+    the role): ``open`` (it serves now), ``manage`` (owner and administrators, not deleted), ``restore``
+    (the owner, deleted and within its 90 days) and ``delete`` (the owner, not deleted)."""
+
+    open: bool
+    manage: bool
+    restore: bool
+    delete: bool
+
+
 class BusinessRowOut(Schema):
     """A business the account belongs to, as the Businesses page and the launcher list it."""
 
@@ -202,6 +214,7 @@ class BusinessRowOut(Schema):
     deletion_requested_at: datetime | None
     purge_after: datetime | None
     created_at: datetime
+    can: BusinessRowCanOut
 
 
 class InvitationOut(Schema):
@@ -237,10 +250,11 @@ class BusinessTypeRefOut(Schema):
 
 
 class SeatsOut(Schema):
-    """People on the business (members and live invitations) and the plan's cap (0 = unlimited)."""
+    """People on the business (members and live invitations) and what its plan covers (saas#2022)."""
 
     used: int
-    cap: int
+    #: ``None`` = unlimited (every paid plan, the Starter trial, no subscription).
+    limit: int | None
 
 
 class TransferRefOut(Schema):
@@ -250,13 +264,17 @@ class TransferRefOut(Schema):
 
 
 class BusinessCanOut(Schema):
-    """What the account may do on the business, by its role (round 17 §2.7)."""
+    """What the account may do on the business, by its role and the business's status (round 17 §2.7).
+    ``open``, ``manage``, ``restore`` and ``delete`` mean what they mean on its row (``BusinessRowCanOut``);
+    a deleted business takes no change (every write answers 409) until it is recovered."""
 
     open: bool
+    manage: bool
     manage_members: bool
     manage_settings: bool
     manage_billing: bool
     transfer: bool
+    restore: bool
     delete: bool
 
 
@@ -266,6 +284,8 @@ class BusinessDetailOut(Schema):
     name: str
     host: str
     country: str
+    #: The country no longer changes: the business is ready, and may invoice (``hubs.country_locked``).
+    country_locked: bool
     timezone: str
     language: str
     business_type: BusinessTypeRefOut | None
@@ -312,7 +332,10 @@ class BusinessUpdateIn(Schema):
 
     id: UUID
     name: Name | None = None
-    country: Country | None = None
+    #: Read-only once the business is ready (``country_locked``): a change is the 409 ``hubs.country_locked``.
+    country: Country | None = Field(
+        None, description="ISO 3166-1 alpha-2. Read-only once the business is ready: 409 hubs.country_locked."
+    )
     language: Literal["en", "es"] | None = None
     timezone: TimeZone | None = None
 
@@ -329,15 +352,21 @@ class BusinessOpenIn(Schema):
 
 
 class BusinessOpenOut(Schema):
-    """The jump into the business: POST ``code`` and ``next`` to ``action`` (OIDC form_post)."""
+    """Where «Open» goes: the Hub's start (``/auth/login?next=``), which bounces to ``/hub-login/`` with a
+    ``state`` bound to the browser; that door mints the code. The SPA navigates to ``url``."""
 
-    action: str
-    code: str
-    next: str
+    url: str
 
 
 class MarkReadyIn(Schema):
     id: UUID
+
+
+class HubErrorIn(Schema):
+    """The Hub's refusal of a call about the business (its error code), or ``None`` once a call succeeds."""
+
+    id: UUID
+    hub_error: str | None = Field(None, max_length=64)
 
 
 class HubStatusOut(Schema):
@@ -353,14 +382,8 @@ class MemberListIn(PageIn):
     hub_id: UUID
 
 
-class MemberActionsOut(Schema):
-    """The row actions the account may take on this member (none on its own row)."""
-
-    change_role: bool
-    remove: bool
-    resend: bool
-    cancel: bool
-    transfer: bool
+#: What the account may do on a row of the members page.
+MemberAction = Literal["change_role", "remove", "resend", "cancel", "transfer"]
 
 
 class MemberRowOut(Schema):
@@ -376,12 +399,17 @@ class MemberRowOut(Schema):
     invited_by: str | None
     invited_at: datetime | None
     invitation_expires_at: datetime | None
-    joined_at: datetime
+    #: None while the invitation waits for its answer.
+    joined_at: datetime | None
     accepted_at: datetime | None
     last_opened_at: datetime | None
-    is_self: bool
-    actions: MemberActionsOut
-    #: The roles the account may give this member.
+    #: The account's own row.
+    is_me: bool
+    #: What the account may do on this row, computed by the server, in this order: ``change_role``,
+    #: ``remove`` (answered), ``resend`` and ``cancel`` (invitation), ``transfer`` (owner only, while no
+    #: offer waits). Empty on one's own row, a peer, a superior and a deleted business.
+    actions: list[MemberAction]
+    #: The roles the account may give this member (empty without ``change_role``).
     assignable_roles: list[InvitableRole]
 
 

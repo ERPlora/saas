@@ -89,8 +89,8 @@ class TestHubList:
 
         assert result.model_dump() == {
             "hubs": [
-                {"slug": "a", "host": "a.localhost:8000", "url": "/hub-login/?hub=a&next=/"},
-                {"slug": "b", "host": "b.localhost:8000", "url": "/hub-login/?hub=b&next=/"},
+                {"slug": "a", "host": "a.localhost:8000", "url": "http://a.localhost:8000/auth/login?next=/"},
+                {"slug": "b", "host": "b.localhost:8000", "url": "http://b.localhost:8000/auth/login?next=/"},
             ]
         }
 
@@ -104,6 +104,7 @@ class TestHubList:
         [hub] = queries.hub_list(_ctx(ana), HubListIn()).hubs
 
         assert hub.host == "a.erplora.com"
+        assert hub.url == "https://a.erplora.com/auth/login?next=/"
 
     def test_an_anonymous_caller_is_refused(self):
         with pytest.raises(Unauthorized):
@@ -124,12 +125,35 @@ def test_hub_origin_is_the_scheme_and_host_of_the_hub_callback(settings):
     assert queries.hub_origin("{slug}") == "https://{slug}.erplora.com"
 
 
+# The jump to a hub starts at the hub (``/auth/login``): it sets the ``state`` cookie of that browser
+# and only then sends it to the SaaS's ``/hub-login/`` (login CSRF). A link straight to ``/hub-login/``
+# carries no ``state`` and the Hub refuses it.
+
+
 @pytest.mark.parametrize(
     ("next_path", "url"),
-    [("/", "/hub-login/?hub=a&next=/"), ("/demo/items?x=1", "/hub-login/?hub=a&next=/demo/items%3Fx%3D1")],
+    [
+        ("/", "http://a.localhost:8000/auth/login?next=/"),
+        ("/demo/items?x=1", "http://a.localhost:8000/auth/login?next=/demo/items%3Fx%3D1"),
+    ],
 )
-def test_hub_login_url_is_the_jump_to_a_hub(next_path, url):
-    assert queries.hub_login_url("a", next_path) == url
+def test_hub_start_url_is_the_hubs_own_login_keeping_next(next_path, url):
+    assert queries.hub_start_url("a", next_path) == url
+
+
+def test_hub_start_url_lands_on_the_hub_home_by_default():
+    assert queries.hub_start_url("a") == "http://a.localhost:8000/auth/login?next=/"
+
+
+def test_in_production_the_hub_start_url_is_on_erplora_com(settings):
+    settings.HUB_CALLBACK_TEMPLATE = "https://{slug}.erplora.com/auth/callback"
+
+    assert queries.hub_start_url("a", "/demo/items") == "https://a.erplora.com/auth/login?next=/demo/items"
+
+
+@pytest.mark.parametrize("next_path", ["", "//evil.example/x", "https://evil.example/x", "javascript:alert(1)", "/\\evil"])
+def test_a_next_that_is_not_a_local_path_becomes_the_hub_home(next_path):
+    assert queries.hub_start_url("a", next_path) == "http://a.localhost:8000/auth/login?next=/"
 
 
 # The second factor (accounts/mfa.py): whether an account has an authenticator app, and whether

@@ -6,12 +6,12 @@ sweeps the copy of the public templates (and their Spanish, which lives in the c
 «daily backups» is caught wherever somebody writes it: Aurora backs up continuously, with
 point-in-time recovery inside its retention window (aws-next), never «daily».
 
-What changed: the old guard exempted ``landing/downloads.html``, frozen in ``pm/LOCKED.md``. Here the
-exemptions are the four templates of the L3a port that say «daily backups» (reported to the
-supervisor with this lot, L7: their copy and its Spanish belong to that lot, and the length of the
-window is to be settled, 14 days in aws-next against the seed's «up to 30 days»). The list is
-self-retiring, as the old one was: the day a template is fixed, ``test_the_exemptions_still_earn_their_place``
-fails until it leaves the list.
+What changed: the old guard exempted ``landing/downloads.html``, frozen in ``pm/LOCKED.md``. The four
+templates of the L3a port that said «daily backups» now say what aws-next does (Aurora,
+``backup_retention_period = 14``, continuous with point-in-time recovery), in the same words as the
+plans of the panel (``hubs/management/commands/sync_hub_plans.py``), so ``PENDING`` is empty. The list
+stays self-retiring, as the old one was: an exemption whose template no longer makes the claim makes
+``test_the_exemptions_still_earn_their_place`` fail until it leaves the list.
 """
 
 from pathlib import Path
@@ -32,14 +32,14 @@ DAILY_BACKUP_PATTERNS = (
     "copia de seguridad diaria",
 )
 #: The templates (and their catalog entries) still to be fixed, see the module docstring.
-PENDING = {
-    "public/downloads.html": ("Managed PostgreSQL, daily backups",),
-    "public/company/about.html": (
-        "A cloud-native architecture on AWS, one database per hub, with daily backups",
-    ),
-    "public/product/_features_bento.html": ("Daily backups, TLS and high availability on AWS",),
-    "public/product/_security_lists.html": ("High availability on AWS, with daily backups",),
+PENDING: dict[str, tuple[str, ...]] = {}
+#: The promise, as the plans of the panel word it (hubs/management/commands/sync_hub_plans.py).
+PROMISE = {
+    "en": "point-in-time recovery for 14 days",
+    "es": "recuperación a cualquier momento de los últimos 14 días",
 }
+#: The pages that state it: the ways to try ERPlora, about, features and security.
+PAGES_WITH_THE_PROMISE = ("/download/", "/about/", "/features/", "/security/")
 
 
 def claims(text: str) -> list[str]:
@@ -107,3 +107,15 @@ def test_the_exemptions_still_earn_their_place():
 def test_the_patterns_catch_the_sentences_that_were_actually_written(sentence):
     """Positive control: a sweep nobody has seen fail is a sweep nobody can trust."""
     assert claims(f"<span>{sentence}</span>")
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("language", ["en", "es"])
+@pytest.mark.parametrize("path", PAGES_WITH_THE_PROMISE)
+def test_the_pages_promise_what_aurora_does(client, path, language):
+    """aws-next: Aurora backs up continuously, ``backup_retention_period = 14``."""
+    client.cookies[settings.LANGUAGE_COOKIE_NAME] = language
+    response = client.get(path)
+
+    assert response.status_code == 200
+    assert PROMISE[language] in response.content.decode()

@@ -6,7 +6,8 @@ and redirect to it (nothing world-public). On top of that, ``store_url_for`` is 
 between «store» and «our own binary».
 
 What changed (Ioan, 2026-10-13; PLAN-AWS «s3_downloads.tf»): the installers no longer live in
-Hetzner's object storage but in a private S3 bucket on AWS, region ``eu-south-2``. The client takes
+Hetzner's object storage but in a private S3 bucket on AWS, region ``eu-west-1`` (Ireland, the
+platform's region since 2026-10-14). The client takes
 no static keys: boto3 uses the ECS task's role (or the environment in development); only local
 development may point it at another endpoint (``DOWNLOADS_ENDPOINT_URL``).
 
@@ -85,26 +86,39 @@ class TestPresignedDownloadUrl:
 
         kwargs = client.call_args.kwargs
         assert client.call_args.args == ("s3",)
-        assert kwargs["region_name"] == "eu-south-2"
+        assert kwargs["region_name"] == "eu-west-1"
         assert "aws_access_key_id" not in kwargs
         assert "aws_secret_access_key" not in kwargs
+
+    def test_a_slow_s3_fails_fast_instead_of_holding_the_request(self, settings):
+        """A download waits on S3 inside the request: an S3 (or a local one) that hangs must fail
+        within seconds, once, never with botocore's 60 s reads and its retries."""
+        from public import downloads
+
+        with patch.object(downloads.boto3, "client") as client:
+            downloads._s3_client()
+
+        config = client.call_args.kwargs["config"]
+        assert (config.connect_timeout, config.read_timeout) == (2, 3)
+        assert config.retries == {"max_attempts": 1}
+        assert config.signature_version == "s3v4"
 
     def test_a_presigned_url_is_on_the_regional_host_of_the_bucket(
         self, settings, aws_environment
     ):
-        """S3 does not serve the legacy global host (`<bucket>.s3.amazonaws.com`) for regions
-        launched after 2019, eu-south-2 among them: a presigned URL there answers 400. It must be
-        the regional host, signed (SigV4) for that region."""
+        """Never the legacy global host (`<bucket>.s3.amazonaws.com`): S3 does not serve it for
+        regions launched after 2019 and answers a new bucket of an older one, eu-west-1 included,
+        with a redirect. It must be the regional host, signed (SigV4) for that region."""
         settings.DOWNLOADS_BUCKET = "erplora-downloads"
         settings.DOWNLOADS_ENDPOINT_URL = ""
         from public import downloads
 
         url = urlsplit(downloads.presigned_download_url("downloads/app/latest/x.exe"))
 
-        assert url.netloc == "erplora-downloads.s3.eu-south-2.amazonaws.com"
+        assert url.netloc == "erplora-downloads.s3.eu-west-1.amazonaws.com"
         assert url.path == "/downloads/app/latest/x.exe"
         credential = parse_qs(url.query)["X-Amz-Credential"][0]
-        assert credential.split("/")[2:4] == ["eu-south-2", "s3"]
+        assert credential.split("/")[2:4] == ["eu-west-1", "s3"]
 
     def test_local_development_may_point_the_client_at_a_local_s3(
         self, settings, aws_environment
@@ -208,10 +222,10 @@ class TestStoreSettingsContract:
 
         assert getattr(django_settings, "MICROSOFT_STORE_APP_ID", None) == ""
 
-    def test_the_downloads_bucket_is_on_aws_in_spain_by_default(self):
+    def test_the_downloads_bucket_is_on_aws_in_ireland_by_default(self):
         from django.conf import settings as django_settings
 
-        assert django_settings.DOWNLOADS_REGION == "eu-south-2"
+        assert django_settings.DOWNLOADS_REGION == "eu-west-1"
         assert django_settings.DOWNLOADS_ENDPOINT_URL == ""
 
     def test_the_hetzner_object_storage_settings_are_gone(self):

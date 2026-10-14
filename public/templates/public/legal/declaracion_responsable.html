@@ -1,5 +1,5 @@
 {% extends "public/public_base.html" %}
-{% load i18n %}
+{% load i18n legal %}
 {% comment %}
   The declaración responsable of the Hub (art. 13 RRSIF) and the archive of every version. Port of
   apps/public/legal/templates/legal/declaracion_responsable.html (origin/develop) with the same
@@ -88,10 +88,14 @@
 
         {% comment %}
           The text is a Spanish legal instrument and is published as it is, untranslated: whoever
-          reads it (the AEAT) requires so. The rest of the page goes through i18n.
+          reads it (the AEAT) requires so. The rest of the page goes through i18n, so the deed says
+          it is Spanish (`lang="es"`) on a page in English. Its `# title` comes one level down
+          (`demote_h1`): the hero is the page's only <h1> (L8); `ep-deed-title` keeps its size.
         {% endcomment %}
         <hr>
-        {{ declaration_html|safe }}
+        <div lang="es" class="ep-prose">
+          {{ declaration_html|safe|demote_h1:"ep-deed-title" }}
+        </div>
       </article>
     </div>
   </section>

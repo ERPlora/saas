@@ -2,7 +2,7 @@
 
 Port of ``apps/public/downloads.py`` (origin/develop c5ca8ca). The hub's CI
 (``tauri-release.yml``) uploads the installers of the app to ``downloads/app/latest/`` of a PRIVATE
-S3 bucket on AWS (``DOWNLOADS_BUCKET`` in ``DOWNLOADS_REGION``, Spain; PLAN-AWS «s3_downloads.tf»;
+S3 bucket on AWS (``DOWNLOADS_BUCKET`` in ``DOWNLOADS_REGION``, Ireland; PLAN-AWS «s3_downloads.tf»;
 before, Hetzner's object storage), so the public download asks for a short-lived presigned GET URL
 instead of redirecting to a world-public object. The client takes no static keys: boto3 uses the
 ECS task's role, or the environment in development, where ``DOWNLOADS_ENDPOINT_URL`` may point it
@@ -25,9 +25,12 @@ def _s3_client():
     """S3 in the downloads region; AWS itself unless local development sets another endpoint.
 
     On AWS, the bucket's REGIONAL host (``<bucket>.s3.<region>.amazonaws.com``), signed with
-    SigV4: boto3's default for a presigned URL is the legacy global host, which S3 does not serve
-    for regions launched after 2019 (eu-south-2), so every download would answer 400. A local S3
-    is addressed by path.
+    SigV4: boto3's default for a presigned URL may be the legacy global host, which S3 does not
+    serve for regions launched after 2019 and answers with a redirect for a new bucket of an older
+    one such as eu-west-1. A local S3 is addressed by path.
+
+    The request waits on it: a hanging S3 fails within seconds and once, instead of botocore's
+    60 s reads and its retries.
     """
     endpoint = settings.DOWNLOADS_ENDPOINT_URL or None
     return boto3.client(
@@ -37,6 +40,9 @@ def _s3_client():
         config=Config(
             signature_version="s3v4",
             s3={"addressing_style": "path" if endpoint else "virtual"},
+            connect_timeout=2,
+            read_timeout=3,
+            retries={"max_attempts": 1},
         ),
     )
 

@@ -6,17 +6,43 @@
 // app's `routes.ts` only imports types; its pages load with `() => import(…)`. Guards: main.test.ts.
 // The apps live at the project root, next to `base/` (no `apps/`, PLAN §20.2); a glob takes literal
 // strings only, so every app with a `frontend/` is named in both globs (guard: main.test.ts).
-import { createShell, type CreateShellOptions, type SessionMe, type SessionStatus } from '@erplora/ui/shell';
-import { createLiveClient, type LiveClient, provideLiveClient, readSpaConfig } from '@erplora/ui/sdk';
+// Round 17 (PLAN-SAAS §3.6): the menu comes from the server (`base/navigation.py`); the entry adds
+// the user menu (Account, Help, Sign out) and the surface the server keeps in the session.
+import {
+  createShell,
+  type CreateShellOptions,
+  type SessionMe,
+  type SessionStatus,
+  type ShellUserMenuItem,
+  type Surface,
+} from '@erplora/ui/shell';
+import {
+  type AllauthClient,
+  createAllauthClient,
+  createLiveClient,
+  type LiveClient,
+  provideLiveClient,
+  readSpaConfig,
+} from '@erplora/ui/sdk';
 // After the shell's theme, so the SaaS's typeface (IBM Plex) wins the cascade.
 import './fonts.css';
 import { ref } from 'vue';
 import { isNavigationFailure, type RouteRecordRaw } from 'vue-router';
 
 import { OPERATION_ROUTES } from './generated/operation-routes';
+import en from './locale/en.json';
+import es from './locale/es.json';
 
 /** Where the auth gate sends a visitor without a session (it appends `next=`). */
 const LOGIN_PATH = '/login';
+/** «Help» of the user menu. */
+const HELP_PATH = '/help';
+/** The SaaS's entries of the user menu, before Help and Sign out (mockups README §3). */
+const USER_MENU_ITEMS: ShellUserMenuItem[] = [
+  { id: 'account', labelKey: 'saas.userMenu.account', icon: 'ion:person-outline', to: '/account' },
+];
+/** The entry's own texts (the user menu), merged with the apps' catalogues under `saas`. */
+const ENTRY_CATALOGUES = { 'frontend/locale/en.json': en, 'frontend/locale/es.json': es };
 
 /** An app's `frontend/routes.ts` default-exports its routes → pages, and nothing else. */
 export type AppRoutes = { default: RouteRecordRaw[] };
@@ -62,6 +88,26 @@ function loadSession(client: LiveClient, doc: Document) {
   return { session: me, status };
 }
 
+/**
+ * The surface the server keeps in the session (`spa-config.surface`, `base/surface.py`): only the
+ * account one. `readSpaConfig` keeps the SDK's keys only, so it is read here; without it the shell
+ * detects the surface itself (the Tauri bridge, the app's user agent, `?surface=`).
+ */
+function serverSurface(doc: Document): Surface | undefined {
+  const raw = JSON.parse(doc.getElementById('spa-config')?.textContent ?? '{}') as { surface?: unknown };
+  return raw.surface === 'account' ? 'account' : undefined;
+}
+
+/**
+ * «Sign out»: allauth.headless ends the session (`DELETE …/auth/session`), then the login, as a full
+ * load so the next page embeds an empty session. A failure rejects: the shell shows its toast.
+ */
+async function signOut(auth: AllauthClient): Promise<void> {
+  const state = await auth.logout();
+  if (state.authenticated) throw new Error('saas: still signed in after signing out');
+  location.assign(LOGIN_PATH);
+}
+
 /** Boots the shell and mounts it on `#app`; no mount when the gate sent the page to the login. */
 export async function boot(
   routeFiles: Record<string, AppRoutes>,
@@ -70,12 +116,15 @@ export async function boot(
 ): Promise<void> {
   const config = readSpaConfig(doc);
   const client = createLiveClient(config, { routes: OPERATION_ROUTES });
+  const auth = createAllauthClient(config);
   const session = loadSession(client, doc);
   const { app, router } = await createShell({
     ...session,
     routes: appRoutes(routeFiles),
-    messages: appMessages(catalogues),
+    messages: appMessages({ ...ENTRY_CATALOGUES, ...catalogues }),
     loginPath: LOGIN_PATH,
+    surface: serverSurface(doc),
+    userMenu: { items: USER_MENU_ITEMS, helpPath: HELP_PATH, logout: () => signOut(auth) },
   });
   provideLiveClient(client, app);
   try {
@@ -88,8 +137,8 @@ export async function boot(
 }
 
 void boot(
-  import.meta.glob<AppRoutes>('../{accounts,hubs,marketplace,billing}/frontend/routes.ts', { eager: true }),
-  import.meta.glob<AppCatalogue>('../{accounts,hubs,marketplace,billing}/frontend/locale/*.json', {
+  import.meta.glob<AppRoutes>('../{accounts,hubs,billing}/frontend/routes.ts', { eager: true }),
+  import.meta.glob<AppCatalogue>('../{accounts,hubs,billing}/frontend/locale/*.json', {
     eager: true,
     import: 'default',
   }),

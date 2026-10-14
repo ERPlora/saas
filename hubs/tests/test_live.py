@@ -48,6 +48,11 @@ def test_a_ready_business_re_runs_its_list_and_its_page():
     assert {"hubs.business.list", "hubs.business.get"} <= live_registry.affected([events.BUSINESS_READY])
 
 
+def test_a_refusal_of_the_hub_re_runs_the_list_and_the_page():
+    """Recorded or cleared, the Hub's refusal changes «Preparing» into «Error» (or back) at once."""
+    assert {"hubs.business.list", "hubs.business.get"} <= live_registry.affected([events.BUSINESS_HUB_ERROR_CHANGED])
+
+
 def test_an_invitation_re_runs_the_members_not_the_businesses_of_who_invited():
     affected = live_registry.affected([events.MEMBER_INVITED])
 

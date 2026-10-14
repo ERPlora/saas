@@ -184,7 +184,7 @@ def test_an_invitee_answers_over_http(signed_in, business, team):
     assert member_of(business, team["invitee"]).accepted_at is not None
 
 
-def test_opening_answers_the_form_to_post(signed_in, business, owner):
+def test_opening_answers_the_hubs_start(signed_in, business, owner):
     Hub.objects.filter(pk=business.pk).update(status=Hub.Status.ACTIVE)
 
     opened = post(
@@ -192,8 +192,7 @@ def test_opening_answers_the_form_to_post(signed_in, business, owner):
     )
 
     assert opened.status_code == 200
-    assert set(opened.json()) == {"action", "code", "next"}
-    assert opened.json()["action"] == "http://bar-manolo.localhost:8000/auth/callback"
+    assert opened.json() == {"url": "http://bar-manolo.localhost:8000/auth/login?next=/"}
 
 
 def test_deleting_needs_the_name_and_answers_the_deleted_business(

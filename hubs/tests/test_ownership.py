@@ -188,6 +188,24 @@ class TestAcceptingSwapsTheTwoRolesAndNothingElse:
 
         assert [message.to for message in mail.outbox] == [["owner@example.com"]]
 
+    def test_a_dead_mailer_never_breaks_the_swap(
+        self, business, team, monkeypatch, django_capture_on_commit_callbacks
+    ):
+        """test_ownership_transfer: the mail leaves after the COMMIT and its failure undoes nothing."""
+        from hubs import emails
+
+        def boom(*args, **kwargs):
+            raise RuntimeError("smtp down")
+
+        monkeypatch.setattr(emails, "send_ownership_accepted", boom)
+        transfer = offer(team["owner"], business, team["admin"])
+
+        with django_capture_on_commit_callbacks(execute=True):
+            accept(team["admin"], transfer.id)
+
+        assert roles(business)["admin@example.com"] == "hub_owner"
+        assert HubOwnershipTransfer.objects.get().status == "accepted"
+
     def test_accepting_twice_is_refused(self, business, team):
         transfer = offer(team["owner"], business, team["admin"])
         accept(team["admin"], transfer.id)
@@ -329,7 +347,7 @@ class TestWhatTheScreensRead:
             ctx_for(team["owner"]), MemberListIn(hub_id=business.id)
         ).rows
 
-        assert not any(row.actions.transfer for row in rows)
+        assert not any("transfer" in row.actions for row in rows)
 
     def test_the_owner_sees_the_offer_waiting_on_the_business(self, business, team):
         transfer = offer(team["owner"], business, team["admin"])

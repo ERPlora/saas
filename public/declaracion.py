@@ -229,6 +229,6 @@ def declaracion_responsable_pdf(request: HttpRequest, version: str) -> FileRespo
     return FileResponse(
         path.open("rb"),
         content_type="application/pdf",
-        as_attachment=bool(request.GET.get("download")),
+        as_attachment=request.GET.get("download") == "1",
         filename=f"declaracion-responsable-erplora-hub-{declaration.version}.pdf",
     )

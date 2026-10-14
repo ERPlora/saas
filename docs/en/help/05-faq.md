@@ -8,7 +8,7 @@ PIN access is only shown on a trusted device with at least one PIN-enabled Hub u
 
 ### Is there a setup wizard after login?
 
-No. The dashboard shows targeted notices only for installed modules that still require configuration. Hub-wide information is managed in **Settings**.
+No. The dashboard shows targeted notices only for installed apps that still require configuration. Hub-wide information is managed in **Settings**.
 
 ### What happens if I clear browser data?
 

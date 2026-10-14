@@ -6,8 +6,9 @@
   ep-* classes. The Tauri app does not open the public web in phase 1, so the web-only/app-only
   doubles are gone. The Terms of Use (section 10) are linked once their page exists (/legal/terms/
   reads Plan and comes with L7): until then they are named without a link, never a link to a 404.
-  Section 5 names AWS instead of Hetzner (Ioan, 2026-10-13: the servers are on AWS): hosting in the
-  Spain region (eu-south-2) and transactional email by SES in eu-west-1 (aws-next/README.md).
+  Section 5 names AWS instead of Hetzner (Ioan, 2026-10-13: the servers are on AWS): hosting and
+  transactional email by SES, both in the Ireland region, eu-west-1 (Ioan, 2026-10-14: the ERP
+  serves all of Europe; aws-next/README.md).
   The old CDN is gone too (ADR-0499, infra#253): Route 53, AWS WAF and the ALB are the network edge
   (PLAN-AWS), so sections 5 and 6 no longer name it.
   Contract: public/tests/test_legal.py.
@@ -78,7 +79,7 @@
         <h2>{% trans "5. Recipients — Data processors" %}</h2>
         <p>{% trans "To provide the service, we engage the following PROCESSORS, with whom we have signed Art. 28 GDPR agreements:" %}</p>
         <ul>
-          <li><strong>{% trans "Amazon Web Services EMEA SARL (Luxembourg) — Spain (Aragón) region, eu-south-2:" %}</strong> {% trans "hosting, database, backups, storage, observability, network edge, DNS, and DDoS protection. Data hosted in data centers in Spain, within the European Union." %}</li>
+          <li><strong>{% trans "Amazon Web Services EMEA SARL (Luxembourg) — Ireland region, eu-west-1:" %}</strong> {% trans "hosting, database, backups, storage, observability, network edge, DNS, and DDoS protection. Data hosted in data centers in Ireland, within the European Union." %}</li>
           <li><strong>{% trans "Amazon Web Services EMEA SARL (Luxembourg) — Amazon SES, Ireland region, eu-west-1:" %}</strong> {% trans "delivery of the service's transactional email. Processing takes place in the European Union." %}</li>
           <li><strong>{% trans "Stripe Payments Europe Ltd. (Irish):" %}</strong> {% trans "payment processing. Does NOT receive the customer's ERP data, only billing data." %}</li>
           <li><strong>{% trans "Alibaba (Netherlands) B.V. (Netherlands) — Alibaba Cloud Model Studio, Germany (Frankfurt) region:" %}</strong> {% trans "provider of the language model the AI assistant uses BY DEFAULT. Processing takes place in the European Union. Used ONLY when the customer enables this feature and after explicit consent in the Hub, under a Data Processing Addendum incorporating EU Standard Contractual Clauses." %}</li>

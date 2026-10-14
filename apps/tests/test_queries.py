@@ -378,8 +378,20 @@ def test_the_second_read_comes_from_the_cache(documented):
 
     assert renderer.call_count == 1
     assert second.html == first.html
-    key = f"apps:doc:invoice:es:{source_hash(documented.docs.get(lang='es').markdown)}"
+    key = f"apps:doc:v2:invoice:es:{source_hash(documented.docs.get(lang='es').markdown)}"
     assert cache.get(key) == first.html
+
+
+def test_html_rendered_by_an_older_renderer_is_never_served(documented):
+    """``render_markdown`` tightened what it lets through (live 387d04f: image paths): the key
+    carries the renderer's version, so a day-long entry rendered before the deploy is not reused."""
+    markdown = documented.docs.get(lang="es").markdown
+    cache.set(f"apps:doc:invoice:es:{source_hash(markdown)}", "<p>stale</p>", 60)
+
+    doc = documentation("invoice", "es")
+
+    assert "stale" not in doc.html
+    assert '<h1 id="facturas">Facturas</h1>' in doc.html
 
 
 def test_the_html_is_cached_for_a_day(documented):
@@ -387,7 +399,7 @@ def test_the_html_is_cached_for_a_day(documented):
         documentation("invoice", "es")
 
     ((key, html, timeout), _kwargs) = cache_set.call_args
-    assert key.startswith("apps:doc:invoice:es:")
+    assert key.startswith("apps:doc:v2:invoice:es:")
     assert timeout == 60 * 60 * 24
 
 

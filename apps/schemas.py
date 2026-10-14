@@ -19,10 +19,16 @@ _TRUE = {"1", "true", "yes", "on"}
 _FALSE = {"0", "false", "no", "off"}
 
 
+#: The C0 control characters (below the space): never part of a search or a vertical id, and a NUL
+#: among them is refused by psycopg (``DataError``), a 500 on a public door (``?q=%00``).
+_CONTROL_CHARACTERS = dict.fromkeys(range(0x20))
+
+
 def _trimmed(value: Any, max_length: int) -> str | None:
+    """``value`` without control characters, stripped and cut to ``max_length``; ``None`` if empty."""
     if value is None:
         return None
-    text = str(value).strip()[:max_length]
+    text = str(value).translate(_CONTROL_CHARACTERS).strip()[:max_length]
     return text or None
 
 

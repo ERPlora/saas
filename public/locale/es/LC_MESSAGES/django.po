@@ -1521,6 +1521,18 @@ msgid "FAQ"
 msgstr "Preguntas frecuentes"
 
 #: templates/public/industries/detail.html
+msgid "In preparation"
+msgstr "En preparación"
+
+#: templates/public/industries/detail.html
+msgid "Recommended apps are coming soon."
+msgstr "Las apps recomendadas llegarán pronto."
+
+#: templates/public/industries/detail.html
+msgid "The catalogue is dynamic. We are preparing the best starting configuration for this business type."
+msgstr "El catálogo es dinámico. Estamos preparando la mejor configuración de partida para este tipo de negocio."
+
+#: templates/public/industries/detail.html
 #, python-format
 msgid "Questions we get about %(name)s"
 msgstr "Preguntas que nos hacen sobre %(name)s"
@@ -1885,8 +1897,8 @@ msgstr "Sin tarjeta de crédito"
 msgid "1 device, 3 local users"
 msgstr "1 dispositivo, 3 usuarios locales"
 
-msgid "Managed PostgreSQL, daily backups"
-msgstr "PostgreSQL gestionado, backups diarios"
+msgid "Managed PostgreSQL, with continuous backups and point-in-time recovery for 14 days"
+msgstr "PostgreSQL gestionado, con copias de seguridad continuas y recuperación a cualquier momento de los últimos 14 días"
 
 msgid "For counter hardware"
 msgstr "Para el hardware del mostrador"
@@ -1927,14 +1939,14 @@ msgstr "Ultrarrápido"
 msgid "Modular"
 msgstr "Modular"
 
-msgid "Install only the modules you need and add more as you grow."
-msgstr "Instala solo los módulos que necesitas y añade más a medida que creces."
+msgid "Install only the apps you need and add more as you grow."
+msgstr "Instala solo las apps que necesitas y añade más a medida que creces."
 
 msgid "Cloud-native"
 msgstr "Cloud-native"
 
-msgid "Daily backups, TLS and high availability on AWS. Access from anywhere."
-msgstr "Copias diarias, TLS y alta disponibilidad en AWS. Accede desde cualquier lugar."
+msgid "Continuous backups with point-in-time recovery for 14 days, TLS and high availability on AWS. Access from anywhere."
+msgstr "Copias de seguridad continuas con recuperación a cualquier momento de los últimos 14 días, TLS y alta disponibilidad en AWS. Accede desde cualquier lugar."
 
 msgid "Multi-platform"
 msgstr "Multiplataforma"
@@ -1987,17 +1999,17 @@ msgstr "Auditorías de seguridad regulares"
 msgid "Salted password hashing (PBKDF2)"
 msgstr "Contraseñas guardadas con hash y sal (PBKDF2)"
 
-msgid "Amazon Web Services, Spain region (eu-south-2, Aragón)"
-msgstr "Amazon Web Services, región de España (eu-south-2, Aragón)"
+msgid "Amazon Web Services, Ireland region (eu-west-1)"
+msgstr "Amazon Web Services, región de Irlanda (eu-west-1)"
 
-msgid "Automated backups"
-msgstr "Copias de seguridad automatizadas"
+msgid "Continuous backups, point-in-time recovery for 14 days"
+msgstr "Copias de seguridad continuas, recuperación a cualquier momento de los últimos 14 días"
 
 msgid "DDoS protection and WAF on AWS"
 msgstr "Protección anti-DDoS y WAF en AWS"
 
-msgid "High availability on AWS, with daily backups"
-msgstr "Alta disponibilidad en AWS, con copias de seguridad diarias"
+msgid "High availability on AWS"
+msgstr "Alta disponibilidad en AWS"
 
 msgid "GDPR compliant"
 msgstr "Cumple con GDPR"
@@ -2227,8 +2239,8 @@ msgstr "Empieza por las guías para las dudas habituales. Escríbenos cuando el 
 msgid "Search the Help Center"
 msgstr "Buscar en el Centro de ayuda"
 
-msgid "Read current guides for access, trusted devices, modules, settings, users, printing, and hardware."
-msgstr "Consulta las guías actuales sobre acceso, dispositivos de confianza, módulos, ajustes, usuarios, impresión y hardware."
+msgid "Read current guides for access, trusted devices, apps, settings, users, printing, and hardware."
+msgstr "Consulta las guías actuales sobre acceso, dispositivos de confianza, apps, ajustes, usuarios, impresión y hardware."
 
 msgid "Contact support"
 msgstr "Contactar con soporte"
@@ -2261,8 +2273,8 @@ msgstr "Incluye el nombre del Hub o del negocio para que podamos encontrar tu cu
 msgid "Describe the exact steps"
 msgstr "Describe los pasos exactos"
 
-msgid "Tell us which app or module you opened, what you selected, and what you expected to happen."
-msgstr "Dinos qué app o módulo abriste, qué seleccionaste y qué esperabas que pasara."
+msgid "Tell us which app you opened, what you selected, and what you expected to happen."
+msgstr "Dinos qué app abriste, qué seleccionaste y qué esperabas que pasara."
 
 msgid "Copy the visible message"
 msgstr "Copia el mensaje que ves"
@@ -2288,8 +2300,8 @@ msgstr "Reportar desde tu hub"
 msgid "When you are signed in, open Help & Support and use Report a Problem. The Hub adds useful account and browser context automatically."
 msgstr "Con la sesión iniciada, abre Ayuda y soporte y usa «Reportar un problema». El hub añade solo el contexto útil de la cuenta y del navegador."
 
-msgid "Built with Django 6.1 and modern web components. A cloud-native architecture on AWS, one database per hub, with daily backups and high availability keeps your business running."
-msgstr "Construido con Django 6.1 y web components modernos. Una arquitectura cloud-native en AWS, con una base de datos por hub, copias diarias y alta disponibilidad, mantiene tu negocio en marcha."
+msgid "Built with Django 6.1 and modern web components. A cloud-native architecture on AWS, one database per hub, with continuous backups, point-in-time recovery for 14 days and high availability keeps your business running."
+msgstr "Construido con Django 6.1 y web components modernos. Una arquitectura cloud-native en AWS, con una base de datos por hub, copias de seguridad continuas, recuperación a cualquier momento de los últimos 14 días y alta disponibilidad, mantiene tu negocio en marcha."
 
 msgid "Our Apps"
 msgstr "Nuestras apps"
@@ -2308,12 +2320,12 @@ msgid "October 13, 2026"
 msgstr "13 de octubre de 2026"
 
 #: templates/public/legal/privacy.html
-msgid "Amazon Web Services EMEA SARL (Luxembourg) — Spain (Aragón) region, eu-south-2:"
-msgstr "Amazon Web Services EMEA SARL (Luxemburgo) — región de España (Aragón), eu-south-2:"
+msgid "Amazon Web Services EMEA SARL (Luxembourg) — Ireland region, eu-west-1:"
+msgstr "Amazon Web Services EMEA SARL (Luxemburgo) — región de Irlanda, eu-west-1:"
 
 #: templates/public/legal/privacy.html
-msgid "hosting, database, backups, storage, observability, network edge, DNS, and DDoS protection. Data hosted in data centers in Spain, within the European Union."
-msgstr "alojamiento, base de datos, copias de seguridad, almacenamiento, observabilidad, perímetro de red, DNS y protección anti-DDoS. Datos alojados en centros de datos en España, dentro de la Unión Europea."
+msgid "hosting, database, backups, storage, observability, network edge, DNS, and DDoS protection. Data hosted in data centers in Ireland, within the European Union."
+msgstr "alojamiento, base de datos, copias de seguridad, almacenamiento, observabilidad, perímetro de red, DNS y protección anti-DDoS. Datos alojados en centros de datos en Irlanda, dentro de la Unión Europea."
 
 #: templates/public/legal/privacy.html
 msgid "Amazon Web Services EMEA SARL (Luxembourg) — Amazon SES, Ireland region, eu-west-1:"
@@ -2397,17 +2409,17 @@ msgstr "Únete al Programa"
 msgid "Collaborator Program"
 msgstr "Programa de Colaboradores"
 
-msgid "Join the ERPlora Collaborator Program: share your industry expertise, get a free modular ERP for a year with custom modules built for your business."
-msgstr "Únete al Programa de Colaboradores de ERPlora: comparte tu experiencia en el sector, obtén un ERP modular gratis durante un año con módulos a medida."
+msgid "Join the ERPlora Collaborator Program: share your industry expertise, get a free modular ERP for a year with custom apps built for your business."
+msgstr "Únete al Programa de Colaboradores de ERPlora: comparte tu experiencia en el sector, obtén un ERP modular gratis durante un año con apps a medida."
 
-msgid "We're a startup building a modular ERP. We need your industry expertise to build modules that actually work. In return: a free ERP for a year."
-msgstr "Somos una startup construyendo un ERP modular. Necesitamos tu experiencia en el sector para crear módulos que realmente funcionen. A cambio: un ERP gratis durante un año."
+msgid "We're a startup building a modular ERP. We need your industry expertise to build apps that actually work. In return: a free ERP for a year."
+msgstr "Somos una startup construyendo un ERP modular. Necesitamos tu experiencia en el sector para crear apps que realmente funcionen. A cambio: un ERP gratis durante un año."
 
 msgid "We're looking for industry experts"
 msgstr "Buscamos expertos de todos los sectores"
 
-msgid "We're a startup building a modular, scalable ERP — not a conventional one. We need your real-world industry knowledge to build modules that actually work. In return, you get a free ERP tailored to your needs."
-msgstr "Somos una startup construyendo un ERP modular, escalable y no convencional. Necesitamos tu conocimiento real del sector para crear módulos que realmente funcionen. A cambio, obtienes un ERP gratuito adaptado a tus necesidades."
+msgid "We're a startup building a modular, scalable ERP — not a conventional one. We need your real-world industry knowledge to build apps that actually work. In return, you get a free ERP tailored to your needs."
+msgstr "Somos una startup construyendo un ERP modular, escalable y no convencional. Necesitamos tu conocimiento real del sector para crear apps que realmente funcionen. A cambio, obtienes un ERP gratuito adaptado a tus necesidades."
 
 msgid "Share your daily workflows, tools you use, what's missing, and what you wish you had."
 msgstr "Comparte tus flujos de trabajo diarios, las herramientas que usas, lo que te falta y lo que te gustaría tener."
@@ -2415,8 +2427,8 @@ msgstr "Comparte tus flujos de trabajo diarios, las herramientas que usas, lo qu
 msgid "We build for you"
 msgstr "Desarrollamos para ti"
 
-msgid "We develop or adapt modules tailored to your specific needs — completely free."
-msgstr "Desarrollamos o adaptamos módulos a tu medida — completamente gratis."
+msgid "We develop or adapt apps tailored to your specific needs — completely free."
+msgstr "Desarrollamos o adaptamos apps a tu medida — completamente gratis."
 
 msgid "Use it free for a year"
 msgstr "Úsalo gratis durante un año"
@@ -2424,14 +2436,14 @@ msgstr "Úsalo gratis durante un año"
 msgid "What we've already built"
 msgstr "Lo que ya hemos construido"
 
-msgid "ERPlora is a modular ERP with a minimalist core that does one thing: load modules. Everything else — invoicing, inventory, appointments, POS, accounting — are independent modules you install based on what you need."
-msgstr "ERPlora es un ERP modular con un núcleo minimalista que hace una sola cosa: cargar módulos. Todo lo demás — facturación, inventario, citas, TPV, contabilidad — son módulos independientes que instalas según lo que necesites."
+msgid "ERPlora is a modular ERP with a minimalist core that does one thing: load apps. Everything else — invoicing, inventory, appointments, POS, accounting — are independent apps you install based on what you need."
+msgstr "ERPlora es un ERP modular con un núcleo minimalista que hace una sola cosa: cargar apps. Todo lo demás — facturación, inventario, citas, TPV, contabilidad — son apps independientes que instalas según lo que necesites."
 
 msgid "Complete POS system"
 msgstr "Sistema TPV completo"
 
-msgid "Modules constantly growing"
-msgstr "Módulos en constante crecimiento"
+msgid "Apps constantly growing"
+msgstr "Apps en constante crecimiento"
 
 msgid "Managed cloud infrastructure"
 msgstr "Infraestructura cloud gestionada"
@@ -2449,11 +2461,11 @@ msgstr "Qué obtienes"
 msgid "Free Hub for 1 year"
 msgstr "Hub gratuito durante 1 año"
 
-msgid "Custom modules at no cost"
-msgstr "Módulos a medida sin coste"
+msgid "Custom apps at no cost"
+msgstr "Apps a medida sin coste"
 
-msgid "We develop or adapt modules based on your specific business needs."
-msgstr "Desarrollamos o adaptamos módulos según las necesidades concretas de tu negocio."
+msgid "We develop or adapt apps based on your specific business needs."
+msgstr "Desarrollamos o adaptamos apps según las necesidades concretas de tu negocio."
 
 msgid "Direct access to our development team throughout the collaboration."
 msgstr "Acceso directo a nuestro equipo de desarrollo durante la colaboración."
@@ -2530,8 +2542,8 @@ msgstr "En absoluto. Nosotros nos encargamos de todo el desarrollo. Solo necesit
 msgid "What happens after the free year?"
 msgstr "¿Qué pasa después del año gratis?"
 
-msgid "Active collaborators receive a permanent special discount on any ERPlora plan. You keep all your data and modules."
-msgstr "Los colaboradores activos reciben un descuento especial permanente en cualquier plan de ERPlora. Conservas todos tus datos y módulos."
+msgid "Active collaborators receive a permanent special discount on any ERPlora plan. You keep all your data and apps."
+msgstr "Los colaboradores activos reciben un descuento especial permanente en cualquier plan de ERPlora. Conservas todos tus datos y apps."
 
 msgid "Very little. A few conversations to explain your workflows and occasional feedback when we deliver new features. No daily commitment."
 msgstr "Muy poco. Algunas conversaciones para explicar tus flujos de trabajo y feedback puntual cuando entreguemos nuevas funciones. Sin compromiso diario."
@@ -2801,11 +2813,11 @@ msgstr "Un ERP."
 msgid "Yours."
 msgstr "Tuyo."
 
-msgid "ERPlora replaces the stack of 12 tools that holds your SMB together with a single platform: invoicing, inventory, CRM, HR, accounting and the modules you need — no technical team, no hidden licenses, no surprises."
-msgstr "ERPlora reemplaza el conjunto de 12 herramientas que sostienen tu pyme con una única plataforma: facturación, inventario, CRM, RRHH, contabilidad y los módulos que necesites; sin equipo técnico, sin licencias ocultas, sin sorpresas."
+msgid "ERPlora replaces the stack of 12 tools that holds your SMB together with a single platform: invoicing, inventory, CRM, HR, accounting and the apps you need — no technical team, no hidden licenses, no surprises."
+msgstr "ERPlora reemplaza el conjunto de 12 herramientas que sostienen tu pyme con una única plataforma: facturación, inventario, CRM, RRHH, contabilidad y las apps que necesites; sin equipo técnico, sin licencias ocultas, sin sorpresas."
 
-msgid "Uptime"
-msgstr "Tiempo Activo"
+msgid "High availability"
+msgstr "Alta disponibilidad"
 
 msgid "Sales"
 msgstr "Ventas"
@@ -2837,8 +2849,11 @@ msgstr "Ver todos los planes en detalle"
 msgid "Activate only what you need. Switch plans in one click."
 msgstr "Activa solo lo que necesitas. Cambia de plan en un clic."
 
-msgid "uptime"
-msgstr "tiempo activo"
+msgid "Support reply"
+msgstr "Respuesta del soporte"
+
+msgid "in business hours"
+msgstr "en horas laborables"
 
 msgid "Run it your way"
 msgstr "Funciona a tu manera"
@@ -3360,8 +3375,8 @@ msgstr "Stock multi-almacén real con lote/caducidad"
 msgid "basic"
 msgstr "básico"
 
-msgid "AI assistant that crosses modules"
-msgstr "Asistente de IA que cruza módulos"
+msgid "AI assistant that crosses apps"
+msgstr "Asistente de IA que cruza apps"
 
 msgid "one assistant, all your data"
 msgstr "un asistente, todos tus datos"
@@ -3465,11 +3480,14 @@ msgstr "Información de Contacto"
 msgid "Email"
 msgstr "Correo electrónico"
 
-msgid "Support Hours"
-msgstr "Horario de Soporte"
+msgid "Response time"
+msgstr "Tiempo de respuesta"
 
-msgid "Available"
-msgstr "Disponible"
+msgid "Email and contact form"
+msgstr "Correo y formulario de contacto"
+
+msgid "Within 4 business hours"
+msgstr "En un plazo de 4 horas laborables"
 
 msgid "ERPlora · One ERP. Infinite configurations. Yours."
 msgstr "ERPlora · Un ERP. Infinitas configuraciones. Tuyo."
@@ -3634,8 +3652,8 @@ msgstr[1] "Sí. Empieza gratis sin tarjeta —el plan Free es gratis para siempr
 msgid "Yes. The change is immediate and the difference is prorated. There's no penalty or commitment period. Downgrading is also free — premium apps are turned off but their data is retained for 90 days."
 msgstr "Sí. El cambio es inmediato y la diferencia se prorratea. No hay penalización ni periodo de compromiso. Bajar de plan también es gratis: las apps premium se desactivan, pero sus datos se conservan 90 días."
 
-msgid "Entirely within the European Union: on Amazon Web Services, in its Spain region (eu-south-2, Aragón), on GDPR-compliant infrastructure. Your data never leaves the EU."
-msgstr "Íntegramente dentro de la Unión Europea: en Amazon Web Services, en su región de España (eu-south-2, Aragón), sobre infraestructura conforme al RGPD. Tus datos nunca salen de la UE."
+msgid "Entirely within the European Union: on Amazon Web Services, in its Ireland region (eu-west-1), on GDPR-compliant infrastructure. Your data never leaves the EU."
+msgstr "Íntegramente dentro de la Unión Europea: en Amazon Web Services, en su región de Irlanda (eu-west-1), sobre infraestructura conforme al RGPD. Tus datos nunca salen de la UE."
 
 msgid "Do you charge per app or per usage?"
 msgstr "¿Cobráis por app o por uso?"

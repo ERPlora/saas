@@ -1,0 +1,56 @@
+/* What the cards of a business's page share (mockups `business.html`; the old `erplora-admin.css`
+   and the mockups' `mock.css`), with our tokens. Included scoped by each card (`<style scoped src>`). */
+ion-card {
+  margin: 0;
+  height: 100%;
+}
+.page-eyebrow {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in oklch, var(--ion-text-color) 60%, transparent);
+}
+.card-title {
+  margin: 2px 0 0;
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: var(--ion-text-color);
+}
+.card-text {
+  margin: 0.35rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: color-mix(in oklab, var(--ion-text-color) 70%, transparent);
+}
+.card-text.small {
+  font-size: 0.8rem;
+}
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.kv {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 0;
+}
+.kv > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.9rem;
+}
+.kv dt {
+  color: color-mix(in oklab, var(--ion-text-color) 65%, transparent);
+}
+.kv dd {
+  margin: 0;
+  font-weight: 500;
+  text-align: end;
+  color: var(--ion-text-color);
+}

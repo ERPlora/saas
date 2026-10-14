@@ -52,7 +52,8 @@ HUB_LOGIN = "/hub-login/"
 REAUTHENTICATE_FOR_THE_JUMP = (
     "/reauthenticate?method=totp&flows=mfa_reauthenticate&next=/hub-login/%3Fhub%3Da%26next%3D/demo/items"
 )
-JUMP = "/admin/accounts/hubmembership/open-hub-admin/{slug}/"
+#: «Open in the Hub admin» starts at the Hub, which sends the browser here with its ``state``.
+JUMP = "/hub-login/?hub={slug}&audience=hub-admin&next=/admin/hub/{slug}/&state=a-state"
 CHANGELIST = "/admin/accounts/hubmembership/"
 REFUSED_JUMP = "Turn on two-factor authentication and sign in again before opening the Hub admin."
 
@@ -557,6 +558,7 @@ class TestOpenInTheHubAdminWithTheFlagOn:
 
         assert response.status_code == 200
         assert _hidden(response.content.decode(), "next") == "/admin/hub/a/"
+        assert _hidden(response.content.decode(), "state") == "a-state"
         assert AuthExchangeCode.objects.get().audience == "hub-admin"
 
     def test_the_message_is_translated_to_spanish(self, mfa_on, client, platform):
@@ -568,10 +570,11 @@ class TestOpenInTheHubAdminWithTheFlagOn:
 
         assert "Activa la verificación en dos pasos y vuelve a iniciar sesión antes de abrir el admin del Hub." in html
 
-    def test_a_reserved_slug_is_still_forbidden(self, mfa_on, client, platform):
+    def test_a_reserved_slug_is_still_refused(self, mfa_on, client, platform):
         client.force_login(platform)
 
-        assert client.get(JUMP.format(slug="hubs")).status_code == 403
+        assert client.get(JUMP.format(slug="hubs")).url == "/login/error?code=invalid_hub"
+        assert not AuthExchangeCode.objects.exists()
 
 
 class TestAdminLoginWithTheFlagOn:

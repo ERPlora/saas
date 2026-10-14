@@ -8,7 +8,7 @@
 <p class="text-xs text-fg/70 mb-2">{% blocktrans with price=plan.price_annual|floatformat:"-2" %}≈ €{{ price }}/year · 2 months free{% endblocktrans %}</p>
 {% endif %}
 {% if plan.display_features %}
-<ul class="ep-pricing-card__features">
+<ul class="ep-pricing-card__features ep-pricing-card__features--dense">
     {% for feature in plan.display_features %}<li><span class="ep-pricing-card__check" aria-hidden="true">✓</span><span>{{ feature }}</span></li>{% endfor %}
 </ul>
 {% endif %}

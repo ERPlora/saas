@@ -20,7 +20,8 @@ database limits follow round 9 (PLAN §14.2): Free 1 transaction at a time and 5
 
 What the commercial copy may say (saas#1760; guarded by ``hubs/tests/test_sync_hub_plans.py``):
 the billing unit is the HUB; no infrastructure specs; support is sold as channel and priority,
-never as a clock; one recovery window for the whole cluster; no uptime SLA percentage.
+never as a clock; one recovery window for the whole cluster, the 14 days Aurora keeps
+(``backup_retention_period``, ``aws-next/stacks/prod/aurora.tf``); no uptime SLA percentage.
 """
 
 from decimal import Decimal
@@ -45,9 +46,9 @@ PLANS = [
             "3 local users",
             "Fully managed cloud",
             "No credit card required",
-            "All modules included",
+            "All free apps included",
             "Managed PostgreSQL database",
-            "Continuous backup with point-in-time recovery (up to 30 days)",
+            "Continuous backups, point-in-time recovery for 14 days",
             ".erplora.com subdomain",
             "Community support",
         ],
@@ -56,9 +57,9 @@ PLANS = [
             "3 usuarios locales",
             "Cloud gestionado",
             "Sin tarjeta de crédito",
-            "Todos los módulos incluidos",
+            "Todas las apps gratuitas incluidas",
             "Base de datos PostgreSQL gestionada",
-            "Copia continua con restauración a un punto en el tiempo (hasta 30 días)",
+            "Copias de seguridad continuas, recuperación a cualquier momento de los últimos 14 días",
             "Subdominio .erplora.com",
             "Soporte de la comunidad",
         ],
@@ -91,10 +92,10 @@ PLANS = [
             "Fully managed cloud",
             "No server maintenance",
             "Unlimited users",
-            "All modules included",
+            "All free apps included",
             "Access from any device",
             "Managed PostgreSQL database",
-            "Continuous backup with point-in-time recovery (up to 30 days)",
+            "Continuous backups, point-in-time recovery for 14 days",
             "Data encryption (AES-256)",
             "Automatic SSL certificate",
             ".erplora.com subdomain",
@@ -105,10 +106,10 @@ PLANS = [
             "Cloud gestionado",
             "Sin mantenimiento de servidores",
             "Usuarios ilimitados",
-            "Todos los módulos incluidos",
+            "Todas las apps gratuitas incluidas",
             "Acceso desde cualquier dispositivo",
             "Base de datos PostgreSQL gestionada",
-            "Copia continua con restauración a un punto en el tiempo (hasta 30 días)",
+            "Copias de seguridad continuas, recuperación a cualquier momento de los últimos 14 días",
             "Cifrado de datos (AES-256)",
             "Certificado SSL automático",
             "Subdominio .erplora.com",

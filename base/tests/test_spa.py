@@ -41,12 +41,14 @@ def test_the_anonymous_shell_embeds_an_empty_session_with_the_nonce(client):
     assert (config["liveUrl"], config["apiBase"]) == ("/api/live", "/api")
 
 
-def test_a_signed_in_shell_embeds_its_user(client, ana):
+def test_a_signed_in_shell_embeds_its_user_and_the_panels_menu(client, ana):
     client.force_login(ana)
 
     _, me = json_block(client.get("/login", HTTP_HOST=HOST), "session-me")
 
-    assert me["user"] == {"id": str(ana.pk), "label": "Ana García"}
+    assert me["user"] == {"id": str(ana.pk), "label": "Ana García", "email": "ana@example.com"}
+    [section] = me["menu"]
+    assert [item["path"] for item in section["items"]] == ["/businesses", "/store", "/billing", "/account"]
 
 
 def test_the_embedded_json_cannot_close_the_script(client, django_user_model):

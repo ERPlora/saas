@@ -37,6 +37,7 @@ SPANISH_MARKERS = [
     "Sin mantenimiento",
     "prueba gratis",
     "Todos los módulos",
+    "Todas las apps",
     "Base de datos",
     "Dominio propio",
     "en la nube",
@@ -73,17 +74,25 @@ def seeded_plans():
 
 def test_starter_english_fields_are_english(seeded_plans):
     starter = seeded_plans["starter"]
-    assert starter.description_en == "Your business in the cloud. No servers, no maintenance, always available."
+    assert (
+        starter.description_en
+        == "Your business in the cloud. No servers, no maintenance, always available."
+    )
     assert "Unlimited users" in starter.features_en
     assert "Fully managed cloud" in starter.features_en
     for feature in starter.features_en:
         for marker in SPANISH_MARKERS:
-            assert marker not in feature, f"Spanish marker {marker!r} leaked into EN feature {feature!r}"
+            assert marker not in feature, (
+                f"Spanish marker {marker!r} leaked into EN feature {feature!r}"
+            )
 
 
 def test_spanish_mirror_is_preserved(seeded_plans):
     starter = seeded_plans["starter"]
-    assert starter.description_es == "Tu negocio en la nube. Sin servidores, sin mantenimiento, siempre disponible."
+    assert (
+        starter.description_es
+        == "Tu negocio en la nube. Sin servidores, sin mantenimiento, siempre disponible."
+    )
     assert "Usuarios ilimitados" in starter.features_es
     assert "Cloud gestionado" in starter.features_es
 
@@ -103,7 +112,9 @@ def test_support_copy_never_promises_a_clock_we_do_not_run(seeded_plans):
                 f"[{slug}] unmeasured response-time promise: {text!r}"
             )
         for text in [plan.description_es, *plan.features_es]:
-            assert "24/7" not in text, f"[{slug}] unbacked 24/7 support claim (es): {text!r}"
+            assert "24/7" not in text, (
+                f"[{slug}] unbacked 24/7 support claim (es): {text!r}"
+            )
             assert not re.search(r"respuesta\s+en\s+\d+", text, re.I), (
                 f"[{slug}] unmeasured response-time promise (es): {text!r}"
             )
@@ -113,7 +124,9 @@ def test_support_ladder_still_differentiates_by_channel_and_priority(seeded_plan
     """Removing the fake clock must not flatten the ladder into 'support' everywhere."""
     assert any(f == "Community support" for f in seeded_plans["free"].features_en)
     assert any("Email support" in f for f in seeded_plans["starter"].features_en)
-    assert any("Priority email support" in f for f in seeded_plans["standard"].features_en)
+    assert any(
+        "Priority email support" in f for f in seeded_plans["standard"].features_en
+    )
     assert any(f == "Soporte de la comunidad" for f in seeded_plans["free"].features_es)
     assert any("Soporte por email" in f for f in seeded_plans["starter"].features_es)
     assert any("prioritario" in f for f in seeded_plans["standard"].features_es)
@@ -124,7 +137,9 @@ def test_no_english_field_contains_spanish(seeded_plans):
     for slug, plan in seeded_plans.items():
         for text in [plan.description_en, *plan.features_en]:
             for marker in SPANISH_MARKERS:
-                assert marker not in text, f"[{slug}] Spanish marker {marker!r} in EN field: {text!r}"
+                assert marker not in text, (
+                    f"[{slug}] Spanish marker {marker!r} in EN field: {text!r}"
+                )
 
 
 # saas#1760: infra specs that must never reach commercial copy again.
@@ -141,7 +156,12 @@ INFRA_SPEC_PATTERNS = [
 
 
 def _copy(plan):
-    return [plan.description_en, plan.description_es, *plan.features_en, *plan.features_es]
+    return [
+        plan.description_en,
+        plan.description_es,
+        *plan.features_en,
+        *plan.features_es,
+    ]
 
 
 def test_no_plan_sells_infrastructure_specs(seeded_plans):
@@ -149,14 +169,18 @@ def test_no_plan_sells_infrastructure_specs(seeded_plans):
     for slug, plan in seeded_plans.items():
         for text in _copy(plan):
             for pattern, label in INFRA_SPEC_PATTERNS:
-                assert not re.search(pattern, text, re.I), f"[{slug}] {label} in commercial copy: {text!r}"
+                assert not re.search(pattern, text, re.I), (
+                    f"[{slug}] {label} in commercial copy: {text!r}"
+                )
 
 
 def test_no_plan_publishes_an_uptime_sla_percentage(seeded_plans):
     """saas#1760: the only availability statement is the one in the terms (99.5 %, reasonable efforts)."""
     for slug, plan in seeded_plans.items():
         for text in _copy(plan):
-            assert not re.search(r"\d{2}[.,]\d+\s*%", text), f"[{slug}] uptime SLA claim in plan copy: {text!r}"
+            assert not re.search(r"\d{2}[.,]\d+\s*%", text), (
+                f"[{slug}] uptime SLA claim in plan copy: {text!r}"
+            )
             assert "SLA" not in text, f"[{slug}] SLA claim in plan copy: {text!r}"
 
 
@@ -175,12 +199,61 @@ def test_subscription_unit_is_the_hub(seeded_plans):
 
 def test_recovery_window_is_the_same_on_every_plan(seeded_plans):
     """saas#1760 + infra#136: the backup window is physical and common to the cluster."""
-    backup_lines_en = {line for plan in seeded_plans.values() for line in plan.features_en if "backup" in line.lower()}
+    backup_lines_en = {
+        line
+        for plan in seeded_plans.values()
+        for line in plan.features_en
+        if "backup" in line.lower()
+    }
     assert backup_lines_en, "the backup promise disappeared entirely"
-    assert len(backup_lines_en) == 1, f"backup copy diverges per plan: {backup_lines_en}"
+    assert len(backup_lines_en) == 1, (
+        f"backup copy diverges per plan: {backup_lines_en}"
+    )
     (backup_line,) = backup_lines_en
     assert "7-day" not in backup_line, f"stale 7-day retention claim: {backup_line!r}"
-    assert "point-in-time" in backup_line.lower(), f"copy must describe what infra#136 proved: {backup_line!r}"
+    assert "point-in-time" in backup_line.lower(), (
+        f"copy must describe what infra#136 proved: {backup_line!r}"
+    )
+
+
+def test_the_recovery_window_is_the_one_aurora_keeps(seeded_plans):
+    """The card promises the 14 days Aurora keeps (``backup_retention_period = 14``,
+    ``aws-next/stacks/prod/aurora.tf``), no more: the old «up to 30 days» was the old cluster's
+    (the public web's session, 2026-10-14)."""
+    english = {
+        line
+        for plan in seeded_plans.values()
+        for line in plan.features_en
+        if "backup" in line.lower()
+    }
+    spanish = {
+        line
+        for plan in seeded_plans.values()
+        for line in plan.features_es
+        if "copias" in line.lower()
+    }
+
+    assert english == {"Continuous backups, point-in-time recovery for 14 days"}
+    assert spanish == {
+        "Copias de seguridad continuas, recuperación a cualquier momento de los últimos 14 días"
+    }
+    assert not any(
+        "30" in line
+        for plan in seeded_plans.values()
+        for line in [*plan.features_en, *plan.features_es]
+    )
+
+
+def test_the_plans_promise_the_free_apps_not_every_module(seeded_plans):
+    """Decision 17 of the catalog spec (round 16): premium apps go with the paid plans, so no card says
+    «all modules»; Free and Starter promise the free apps."""
+    for slug in ("free", "starter"):
+        plan = seeded_plans[slug]
+        assert "All free apps included" in plan.features_en, slug
+        assert "Todas las apps gratuitas incluidas" in plan.features_es, slug
+    for plan in seeded_plans.values():
+        lines = [line.lower() for line in [*plan.features_en, *plan.features_es]]
+        assert not any("all modules" in line or "todos los módulos" in line for line in lines), plan.slug
 
 
 def test_db_limits_match_the_round_9_decision(seeded_plans):
@@ -189,7 +262,10 @@ def test_db_limits_match_the_round_9_decision(seeded_plans):
     (PLAN-SAAS §2.2) and the Hub enforces them with a semaphore per hub."""
     expected = {slug: (3, 15) for slug in seeded_plans}
     expected["free"] = (1, 5)
-    actual = {slug: (plan.max_db_connections, plan.statement_timeout_seconds) for slug, plan in seeded_plans.items()}
+    actual = {
+        slug: (plan.max_db_connections, plan.statement_timeout_seconds)
+        for slug, plan in seeded_plans.items()
+    }
     assert actual == expected
 
 
@@ -207,13 +283,17 @@ def test_the_seat_cap_is_the_number_the_free_card_promises(seeded_plans):
     assert free.max_users == 3, f"free plan caps users at {free.max_users}"
     promises = [f for f in free.features_en if "3" in f and "user" in f.lower()]
     promises += [f for f in free.features_es if "3" in f and "usuario" in f.lower()]
-    assert promises, f"free plan no longer promises a user count: {free.features_en} / {free.features_es}"
+    assert promises, (
+        f"free plan no longer promises a user count: {free.features_en} / {free.features_es}"
+    )
 
 
 def test_paid_plans_do_not_cap_people(seeded_plans):
-    """"Every location, device and user included" is the paid promise (saas#1760)."""
+    """ "Every location, device and user included" is the paid promise (saas#1760)."""
     for slug in ("starter", "standard", "pro", "enterprise", "max"):
-        assert seeded_plans[slug].max_users == 0, f"[{slug}] paid plans must not cap users"
+        assert seeded_plans[slug].max_users == 0, (
+            f"[{slug}] paid plans must not cap users"
+        )
 
 
 # saas#1955: the two axes /pricing/ compares on. ADR-0474 fixes the module tier and ADR-0426
@@ -232,8 +312,12 @@ def test_commercial_ladder_matches_adr_0474_and_adr_0426(seeded_plans):
     """The ladder is a contract, not a default: both columns default to the bottom rung."""
     for slug, (included, support, custom_domain) in EXPECTED_COMMERCIAL_LADDER.items():
         plan = seeded_plans[slug]
-        assert plan.included_level == included, f"[{slug}] included tier drifted from ADR-0474: {plan.included_level!r}"
-        assert plan.support_level == support, f"[{slug}] support tier drifted from ADR-0426: {plan.support_level!r}"
+        assert plan.included_level == included, (
+            f"[{slug}] included tier drifted from ADR-0474: {plan.included_level!r}"
+        )
+        assert plan.support_level == support, (
+            f"[{slug}] support tier drifted from ADR-0426: {plan.support_level!r}"
+        )
         assert plan.includes_custom_domain is custom_domain, (
             f"[{slug}] custom-domain gate drifted from the 2026-09-09 decision: {plan.includes_custom_domain!r}"
         )
@@ -244,10 +328,14 @@ def test_every_public_plan_has_a_declared_position_on_both_ladders(seeded_plans)
     public = {slug for slug, plan in seeded_plans.items() if not plan.internal_only}
 
     undeclared = public - set(EXPECTED_COMMERCIAL_LADDER)
-    assert not undeclared, f"public plans with no declared module/support tier: {sorted(undeclared)}"
+    assert not undeclared, (
+        f"public plans with no declared module/support tier: {sorted(undeclared)}"
+    )
 
     vanished = set(EXPECTED_COMMERCIAL_LADDER) - public
-    assert not vanished, f"the ladder pins plans the seed no longer creates: {sorted(vanished)}"
+    assert not vanished, (
+        f"the ladder pins plans the seed no longer creates: {sorted(vanished)}"
+    )
 
 
 # saas#1956, ADR-0426: what we publish is what a customer can reclaim.
@@ -263,15 +351,20 @@ def test_no_plan_promises_an_api_the_limiter_does_not_deliver(seeded_plans):
     for slug, plan in seeded_plans.items():
         for text in _copy(plan):
             for pattern, label in UNLIMITED_API_PATTERNS:
-                assert not re.search(pattern, text, re.I), f"[{slug}] {label} in commercial copy: {text!r}"
+                assert not re.search(pattern, text, re.I), (
+                    f"[{slug}] {label} in commercial copy: {text!r}"
+                )
 
 
 def test_the_api_patterns_catch_the_lines_that_were_actually_published():
     """Positive control: these are the exact strings the seed carried before saas#1956."""
-    for published in ("Full API with no usage limits", "API completa sin límites de uso"):
-        assert any(re.search(pattern, published, re.I) for pattern, _ in UNLIMITED_API_PATTERNS), (
-            f"guard is blind to the claim it exists to stop: {published!r}"
-        )
+    for published in (
+        "Full API with no usage limits",
+        "API completa sin límites de uso",
+    ):
+        assert any(
+            re.search(pattern, published, re.I) for pattern, _ in UNLIMITED_API_PATTERNS
+        ), f"guard is blind to the claim it exists to stop: {published!r}"
 
 
 def test_custom_domain_is_only_promised_by_the_plans_that_gate_it(seeded_plans):
@@ -281,8 +374,12 @@ def test_custom_domain_is_only_promised_by_the_plans_that_gate_it(seeded_plans):
         promises = [f for f in plan.features_en if "custom domain" in f.lower()]
         if promises:
             sellers.append(slug)
-            assert plan.includes_custom_domain, f"[{slug}] sells {promises!r} but the gate refuses it"
-    assert "standard" in sellers, "no card mentions a custom domain any more — this guard went blind"
+            assert plan.includes_custom_domain, (
+                f"[{slug}] sells {promises!r} but the gate refuses it"
+            )
+    assert "standard" in sellers, (
+        "no card mentions a custom domain any more — this guard went blind"
+    )
 
 
 # --- From test_plan_trial_label.py (saas#2424) ------------------------------------------------
@@ -292,8 +389,12 @@ def test_the_seed_does_not_type_the_trial_as_a_feature(seeded_plans):
     """Cards paint the trial from ``trial_period_days`` (``Plan.trial_label``), never from a feature."""
     for plan in seeded_plans.values():
         for feature in [*plan.features_en, *plan.features_es]:
-            assert "trial" not in feature.lower(), f"[{plan.slug}] seeds the trial as a feature: {feature!r}"
-            assert "prueba gratis" not in feature.lower(), f"[{plan.slug}] seeds the trial as a feature: {feature!r}"
+            assert "trial" not in feature.lower(), (
+                f"[{plan.slug}] seeds the trial as a feature: {feature!r}"
+            )
+            assert "prueba gratis" not in feature.lower(), (
+                f"[{plan.slug}] seeds the trial as a feature: {feature!r}"
+            )
 
 
 # --- From test_payment_test_plan.py (saas#1052) -----------------------------------------------
@@ -320,16 +421,27 @@ def test_the_payment_test_plan_is_marked_internal(seeded_plans):
 
 
 def test_seed_is_idempotent(seeded_plans):
-    first = list(Plan.objects.values_list("slug", "is_active", "price_monthly").order_by("slug"))
+    first = list(
+        Plan.objects.values_list("slug", "is_active", "price_monthly").order_by("slug")
+    )
     _sync()
 
-    assert list(Plan.objects.values_list("slug", "is_active", "price_monthly").order_by("slug")) == first
+    assert (
+        list(
+            Plan.objects.values_list("slug", "is_active", "price_monthly").order_by(
+                "slug"
+            )
+        )
+        == first
+    )
     assert len(first) == len(PLANS) == 7
 
 
 def test_seed_overwrites_a_plan_edited_since(seeded_plans):
     """The seed is the source of truth: a later run puts the catalogue back."""
-    Plan.objects.filter(slug="starter").update(price_monthly=Decimal("1"), name_es="Otro")
+    Plan.objects.filter(slug="starter").update(
+        price_monthly=Decimal("1"), name_es="Otro"
+    )
     _sync()
 
     starter = Plan.objects.get(slug="starter")

@@ -28,22 +28,22 @@ El PIN pertenece a un usuario local del Hub. No sustituye al email y la contrase
 
 ERPlora no ejecuta un asistente de varios pasos después del login. La configuración aparece donde corresponde:
 
-- El dashboard muestra un aviso cuando un módulo instalado necesita configuración.
-- Un administrador puede abrir el aviso y completar los ajustes de ese módulo.
+- El dashboard muestra un aviso cuando una app instalada necesita configuración.
+- Un administrador puede abrir el aviso y completar los ajustes de esa app.
 - La identidad del negocio, idioma, moneda, permisos y herramientas de datos se gestionan desde **Ajustes**.
 - Las capacidades adicionales se instalan desde **Apps**.
 
 ## Orientarse dentro del Hub
 
-- **Inicio** — widgets de los módulos instalados, actividad reciente y estado del terminal.
+- **Inicio** — widgets de las apps instaladas, actividad reciente y estado del terminal.
 - **Empleados** — usuarios del Hub, roles y permisos.
-- **Archivos** — ficheros y adjuntos guardados por el Hub y sus módulos.
+- **Archivos** — ficheros y adjuntos guardados por el Hub y sus apps.
 - **Facturación** — información del plan y facturación del Hub.
-- **Apps** — módulos instalados y catálogo de módulos.
+- **Apps** — apps instaladas y catálogo de apps.
 - **Sistema** — información del runtime, almacenamiento, conexión y diagnóstico.
 - **Ajustes** — preferencias personales y configuración global del Hub.
 
-La barra superior también incluye el **lanzador de aplicaciones**, el **Asistente** de ERPlora y las notificaciones. Dentro de un módulo, sus secciones aparecen en la barra de pestañas del propio módulo.
+La barra superior también incluye el **lanzador de aplicaciones**, el **Asistente** de ERPlora y las notificaciones. Dentro de una app, sus secciones aparecen en la barra de pestañas de la propia app.
 
 ## Primeras comprobaciones recomendadas
 
@@ -51,5 +51,5 @@ Si eres administrador:
 
 1. Abre **Ajustes → Hub** y confirma idioma, moneda y apariencia.
 2. Abre **Ajustes → Negocio** y completa la identidad legal y fiscal utilizada en las facturas.
-3. Revisa el dashboard para detectar módulos que todavía necesitan configuración.
-4. Abre **Apps** para confirmar qué módulos están instalados y disponibles en tu plan.
+3. Revisa el dashboard para detectar apps que todavía necesitan configuración.
+4. Abre **Apps** para confirmar qué apps están instaladas y disponibles en tu plan.

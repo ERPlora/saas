@@ -206,6 +206,15 @@ class TestHubMember:
                 hub=hub, user=other_user, role=HubMember.Role.OWNER
             )
 
+    @pytest.mark.parametrize("role", ["member", "owner", "admin", "", "superuser"])
+    def test_a_role_outside_the_four_is_never_stored(self, hub, other_user, role):
+        """Fail closed (old ``test_hub_member``: an unknown role grants nothing; ``test_members_role_escalation``:
+        no seeded role, no write). The old ``Role`` table could be emptied from the admin; these four live
+        in code, and a key outside them, a retired one included, never reaches a membership, whatever
+        writes it (the admin, a data migration, an ``update()``): the access checks rank it nowhere."""
+        with pytest.raises(IntegrityError), transaction.atomic():
+            HubMember.objects.create(hub=hub, user=other_user, role=role)
+
     def test_an_unanswered_invitation_is_pending_and_expires_after_its_window(
         self, hub, other_user
     ):

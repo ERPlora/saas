@@ -807,6 +807,13 @@ msgstr "No puedes dar un rol igual o superior al tuyo."
 msgid "This plan covers %(cap)s people and they are all taken."
 msgstr "Este plan cubre %(cap)s personas y ya están todas."
 
+msgid ""
+"This business has no seat left on its plan. Ask whoever invited you to free "
+"one or to change the plan."
+msgstr ""
+"Este negocio no tiene plazas libres en su plan. Pide a quien te invitó que "
+"libere una o que cambie de plan."
+
 #: services.py:581
 #, python-format
 msgid "%(email)s is already on this business."
@@ -891,3 +898,13 @@ msgid ""
 msgstr ""
 "Esto está en inglés (%(words)s): la columna en español lleva la traducción, "
 "no la copia."
+
+msgid ""
+"The country cannot change once the business is ready: its invoices belong "
+"to one country."
+msgstr ""
+"El país no se puede cambiar cuando el negocio ya está listo: sus facturas "
+"son de un solo país."
+
+msgid "Only the platform records the Hub's answers."
+msgstr "Solo la plataforma registra las respuestas del Hub."

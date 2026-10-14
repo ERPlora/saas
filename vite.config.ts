@@ -13,8 +13,11 @@ import { defineConfig } from 'vitest/config';
 const DEV_HOST = 'localhost';
 const DEV_PORT = 5174;
 
-/** The apps with a `frontend/`: at the project root, next to `base/` (no `apps/`, PLAN §20.2). */
-export const FRONTEND_APPS = ['accounts', 'hubs', 'marketplace', 'billing'];
+/**
+ * The apps with a `frontend/`: at the project root, next to `base/` (no `apps/`, PLAN §20.2). No
+ * `marketplace` (round 16): the app catalogue is `apps`, and neither it nor `public` has a frontend.
+ */
+export const FRONTEND_APPS = ['accounts', 'hubs', 'billing'];
 
 export default defineConfig({
   // From the string: under happy-dom (tests) the global `URL` is not Node's.

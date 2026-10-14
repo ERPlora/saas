@@ -224,7 +224,15 @@ def test_the_filters_combine(client, catalog):
 
 
 @pytest.mark.parametrize(
-    "query", ["?category=kitchen", "?premium=maybe", "?category=&premium=", "?q=%20"]
+    "query",
+    [
+        "?category=kitchen",
+        "?premium=maybe",
+        "?category=&premium=",
+        "?q=%20",
+        "?q=%00",
+        "?q=%00%01%1F",
+    ],
 )
 def test_a_filter_it_does_not_understand_is_ignored(client, catalog, query):
     """Spec §5.1: an old or mistyped link still lists the apps, never a 422 or an empty page."""
@@ -234,6 +242,11 @@ def test_a_filter_it_does_not_understand_is_ignored(client, catalog, query):
         "tables",
         "whatsapp_inbox",
     ]
+
+
+def test_a_nul_inside_the_search_is_dropped_not_a_500(client, catalog):
+    """psycopg refuses a NUL in a query parameter (``DataError``): a 500 on a public door."""
+    assert card_ids(get_html(client, "/apps/?q=st%00ock")) == ["inventory"]
 
 
 def test_the_filter_links_keep_the_other_filters(client, catalog):

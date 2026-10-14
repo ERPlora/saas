@@ -16,26 +16,26 @@ Personal language and appearance can differ by user. Currency, default language 
 
 ## Store
 
-Store settings describe the business type and regional presentation used by the Hub. Module-specific workflows remain inside each module's own settings.
+Store settings describe the business type and regional presentation used by the Hub. App-specific workflows remain inside each app's own settings.
 
 ## Business
 
-Complete the legal and fiscal identity used by invoices and country-specific compliance modules:
+Complete the legal and fiscal identity used by invoices and country-specific compliance apps:
 
 - Tax identifier (NIF, VAT number or local equivalent).
 - Legal business name.
 - Fiscal address.
-- Fiscal signing certificate when required by an installed compliance module.
+- Fiscal signing certificate when required by an installed compliance app.
 
 Do not upload a personal certificate. The certificate belongs to the business represented by the Hub.
 
 ## Receipts
 
-Receipt options control presentation and output defaults. The fiscal meaning of an invoice or simplified receipt is managed by the installed invoicing and compliance modules.
+Receipt options control presentation and output defaults. The fiscal meaning of an invoice or simplified receipt is managed by the installed invoicing and compliance apps.
 
 ## Permissions
 
-Modules can request explicit capabilities such as internet access, printer access, notifications or use of a fiscal certificate. Capabilities are denied until an administrator grants them. Review this area after installing a module and revoke access that is no longer necessary.
+Apps can request explicit capabilities such as internet access, printer access, notifications or use of a fiscal certificate. Capabilities are denied until an administrator grants them. Review this area after installing an app and revoke access that is no longer necessary.
 
 ## Data
 

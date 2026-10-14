@@ -588,6 +588,22 @@ msgstr "Cuentas"
 msgid "Base"
 msgstr "Base"
 
+#: base/navigation.py:21
+msgid "Businesses"
+msgstr "Negocios"
+
+#: base/navigation.py:23
+msgid "Store"
+msgstr "Tienda"
+
+#: base/navigation.py:24
+msgid "Billing"
+msgstr "Facturación"
+
+#: base/navigation.py:25
+msgid "Account"
+msgstr "Cuenta"
+
 #: accounts/queries.py:81
 msgid "Sign in to see your businesses."
 msgstr "Inicia sesión para ver tus negocios."

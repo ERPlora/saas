@@ -194,9 +194,7 @@
           {% trans "Create your free hub" %}
           <span slot="end">{% icon "lucide:arrow-right" size=15 %}</span>
         </ion-button>
-        {% comment %} The pricing page reads Plan and comes with L7: its button appears with the route. {% endcomment %}
-        {% url "public:pricing" as pricing_url %}
-        {% if pricing_url %}<ion-button fill="outline" href="{{ pricing_url }}">{% trans "See plans" %}</ion-button>{% endif %}
+        <ion-button fill="outline" href="{% url 'public:pricing' %}">{% trans "See plans" %}</ion-button>
       </div>
     </div>
   </section>
