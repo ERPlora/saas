@@ -88,6 +88,8 @@ INSTALLED_APPS = [
     "allauth.headless",
     # Always installed, so its table always exists: ACCOUNTS_MFA_ENABLED decides whether it is used.
     "allauth.mfa",
+    # The account's active sessions (Cuenta → Seguridad; PLAN-SAAS §6): one row per signed-in browser.
+    "allauth.usersessions",
     "ninja",
     "base",
     "accounts",
@@ -116,6 +118,8 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # On the panel, a signed-in account speaks its own language (User.language), not the cookie's.
+    "base.language.AccountLanguageMiddleware",
     # With ACCOUNTS_MFA_ENABLED off, the 2FA endpoints answer 404 (accounts/mfa.py).
     "accounts.mfa.MFAFlagMiddleware",
     # API 404/405 that never reach a route (unknown path, wrong method) answer the JSON envelope.
@@ -123,6 +127,9 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "allauth.account.middleware.AccountMiddleware",
+    # Records each signed-in session's address, browser and last use (allauth.usersessions), at most once
+    # every few minutes: Cuenta → Seguridad → Sesiones activas.
+    "accounts.session_tracking.SessionActivityMiddleware",
     # Deletes the cookies of a group that was declined or never accepted (django-cookie-consent),
     # skipping the requests that carry no cookie (public/cookies.py).
     "public.cookies.CleanCookiesMiddleware",
@@ -262,6 +269,9 @@ ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 ACCOUNT_USER_MODEL_EMAIL_FIELD = "email"
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_EMAIL_VERIFICATION = "none"
+# A recent sign-in (allauth's reauthentication) before any change of the account's addresses or of its
+# Google link through allauth.headless, as Cuenta's own «Cambiar correo» asks (accounts.email.change).
+ACCOUNT_REAUTHENTICATION_REQUIRED = True
 # The «Keep me signed in» box of the login decides (same as today's SaaS).
 ACCOUNT_SESSION_REMEMBER = None
 ACCOUNT_LOGOUT_REDIRECT_URL = "/accounts/login/"
@@ -334,6 +344,9 @@ MFA_TOTP_ISSUER = "ERPlora"
 MFA_TOTP_TOLERANCE = 1
 MFA_PASSKEY_LOGIN_ENABLED = False
 MFA_ADAPTER = "accounts.mfa.MFAAdapter"
+# Ending a session (Cuenta → Seguridad, or allauth.headless `auth/sessions`) also asks the account's
+# businesses to end theirs (accounts.signals.sessions_ended, PLAN-SAAS §2.1).
+USERSESSIONS_ADAPTER = "accounts.session_tracking.UserSessionsAdapter"
 
 # allauth.headless (ronda 11): the API of the Ionic Vue account pages, browser client only (same-origin
 # session cookie + Django's CSRF), mounted at /_allauth/. The template pages stay while the Vue ones
@@ -396,7 +409,8 @@ LANGUAGE_CODE = "en"
 LANGUAGES = [("en", "English"), ("es", "Español")]
 LOCALE_PATHS = [BASE_DIR / "locale"]
 # LocaleMiddleware reads this cookie, then Accept-Language, then `en`. The public web's switcher
-# (`POST /set-language/`, public/language.py) writes it; `User.language` is the panel's.
+# (`POST /set-language/`, public/language.py) writes it; `User.language` is the panel's, and wins over
+# the cookie there for a signed-in account (base/language.py).
 LANGUAGE_COOKIE_NAME = "_lang"
 LANGUAGE_COOKIE_AGE = 60 * 60 * 24 * 365  # 1 year
 LANGUAGE_COOKIE_SAMESITE = "Lax"
@@ -582,3 +596,24 @@ VIES_TIMEOUT_SECONDS = config("VIES_TIMEOUT_SECONDS", default=5.0, cast=float)
 # ERPlora's requester number. Only a query really sent spends.
 VAT_CHECK_RATE = config("VAT_CHECK_RATE", default="20/m")
 VAT_CHECK_GLOBAL_RATE = config("VAT_CHECK_GLOBAL_RATE", default="60/m")
+
+# Stripe (billing/, lot L2-B; PLAN-SAAS §4). Production holds a RESTRICTED live key (`rk_live_…`), local
+# development test keys only; never a key in code. Without a secret key no payment starts (503
+# `billing.payments_unavailable`) and the webhook answers 503. STRIPE_WEBHOOK_SECRET is the `whsec_…` of
+# the one endpoint, `/webhooks/stripe/`; the publishable key travels to the SPA with each checkout. A
+# call to Stripe waits STRIPE_TIMEOUT_SECONDS at most and is retried once (a command holds its
+# transaction open meanwhile; Aurora ends one idle for 30 s). Prices: the Stripe ids on each Plan (admin)
+# and apps.Module.
+STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY", default="")
+STRIPE_PUBLISHABLE_KEY = config("STRIPE_PUBLISHABLE_KEY", default="")
+STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET", default="")
+STRIPE_TIMEOUT_SECONDS = config("STRIPE_TIMEOUT_SECONDS", default=10.0, cast=float)
+# The Customer Portal's configuration (`bpc_…`): cards and receipts only; plan changes go through the panel,
+# which puts our TaxRates. Empty = the portal does not open (503 `billing.portal_unavailable`).
+STRIPE_PORTAL_CONFIGURATION = config("STRIPE_PORTAL_CONFIGURATION", default="")
+# ERPlora's invoices are issued by its platform hub (billing, lot L3-C): a live key charges nothing until this
+# says the route is wired AND the Hub answers `GET /internal/platform/invoices/health` (working rules §15).
+PLATFORM_INVOICING_ENABLED = config("PLATFORM_INVOICING_ENABLED", default=False, cast=bool)
+# Promo codes grant trial days (ADR-0107): a person may ask whether one is valid this often, so the codes
+# cannot be guessed by brute force.
+PROMO_CHECK_RATE = config("PROMO_CHECK_RATE", default="20/m")

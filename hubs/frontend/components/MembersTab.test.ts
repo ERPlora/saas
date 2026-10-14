@@ -147,6 +147,24 @@ describe('MembersTab: the list', () => {
   });
 });
 
+describe('MembersTab: a clean page (Ioan, 2026-10-14)', () => {
+  it('the list fills its section: a `.panel-fill` stack that grows in the page, the table with `fill`', async () => {
+    const s = await setup();
+    await s.show(page());
+    expect(s.prop('fill')).toBe(true);
+    expect(s.wrapper.element.classList.contains('panel-fill')).toBe(true);
+    expect(s.table().element.parentElement).toBe(s.wrapper.element);
+  });
+
+  it('asks for rows per page only when there are more members than the shortest page (mockups README §3b)', async () => {
+    const s = await setup();
+    await s.show(page());
+    expect(s.prop('pageSizeChooser')).toBe(false);
+    await s.show(page(ROWS, { total: 11 }), 2);
+    expect(s.prop('pageSizeChooser')).toBe(true);
+  });
+});
+
 describe('MembersTab: actions', () => {
   it('every row button is named with its member for a screen reader', async () => {
     const s = await setup();

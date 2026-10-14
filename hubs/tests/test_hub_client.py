@@ -202,3 +202,44 @@ def test_a_broken_answer_is_the_hub_being_away(monkeypatch, settings):
 
     with pytest.raises(HubUnavailable):
         hub_client.put_hub(REGISTRY)
+
+
+# --- GET /internal/usage: one day's usage of every business (L4-A, PLAN-SAAS §5) --------------------
+
+from datetime import date  # noqa: E402
+
+USAGE_ROW = {"id": HUB_ID, "s3_bytes": 1_000, "db_bytes": 2_000, "active_users_1d": 3, "active_users_30d": 4}
+
+
+def test_get_usage_asks_for_one_day_signed_with_its_query(hub_double):
+    hub_double.usage["2026-10-13"] = [USAGE_ROW]
+
+    answer = hub_client.get_usage(date(2026, 10, 13))
+
+    assert answer.status == 200
+    assert answer.body == {"day": "2026-10-13", "hubs": [USAGE_ROW], "next_cursor": None}
+    (call,) = hub_double.calls_to("GET")
+    assert call.path == "/internal/usage?day=2026-10-13"
+    # v2 covers the query too: the same signature does not open another day.
+    assert call.signed_v2
+    assert not verify_signed(
+        "GET", "/internal/usage?day=2026-10-12", call.raw, call.headers, secrets=[SECRET], now=int(time.time())
+    )
+
+
+def test_get_usage_sends_the_hubs_cursor_back_as_it_came(hub_double):
+    hub_double.answer("GET", r"^/internal/usage", 200, {"day": "2026-10-13", "hubs": [], "next_cursor": None})
+
+    hub_client.get_usage(date(2026, 10, 13), cursor="page/2=")
+
+    (call,) = hub_double.calls_to("GET")
+    assert call.path == "/internal/usage?day=2026-10-13&cursor=page%2F2%3D"
+
+
+def test_get_usage_refused_or_away_as_every_call(hub_double):
+    hub_double.answer("GET", r"^/internal/usage", 409, {"error": {"code": "usage_not_ready", "message": "Not yet."}})
+
+    with pytest.raises(HubRefused) as refused:
+        hub_client.get_usage(date(2026, 10, 13))
+
+    assert (refused.value.status, refused.value.code) == (409, "usage_not_ready")

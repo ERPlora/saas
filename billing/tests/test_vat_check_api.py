@@ -241,9 +241,14 @@ class TestAsking:
         assert (event.scope_kind, event.scope_key) == ("user", str(buyer.pk))
         assert event.payload == {"vat_number": VAT, "status": "verified"}
 
-    def test_the_refusal_speaks_the_language_of_the_request(self, signed_in):
+    def test_the_refusal_speaks_the_language_of_the_account(self, signed_in, buyer):
+        """On the panel a signed-in account speaks its own language (``User.language``), not the browser's
+        (``base.language``)."""
+        buyer.language = "es"
+        buyer.save(update_fields=["language"])
+
         response = signed_in.post(
-            URL, {"vat_number": "812871812"}, content_type="application/json", HTTP_HOST=HOST, HTTP_ACCEPT_LANGUAGE="es"
+            URL, {"vat_number": "812871812"}, content_type="application/json", HTTP_HOST=HOST, HTTP_ACCEPT_LANGUAGE="en"
         )
 
         assert response.status_code == 422

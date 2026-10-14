@@ -125,6 +125,213 @@
       "cantUseAuthenticator": "Can't use your authenticator?",
       "usePassword": "Use your password",
       "backToSettings": "Back to settings"
+    },
+    "account": {
+      "errors": {
+        "network": "We could not reach ERPlora. Check your connection and try again.",
+        "unexpected": "Something went wrong in ERPlora. Try again in a few minutes."
+      },
+      "sessions": {
+        "devices": {
+          "mac": "Mac (macOS)",
+          "windows": "Windows PC",
+          "iphone": "iPhone",
+          "ipad": "iPad",
+          "android": "Android",
+          "chromeos": "Chromebook",
+          "linux": "Linux PC",
+          "unknown": "Unknown device"
+        },
+        "app": "ERPlora app {version}",
+        "unknownBrowser": "Unknown browser",
+        "title": "Active sessions",
+        "loadError": "We could not load your sessions",
+        "entity": "session | sessions",
+        "columns": {
+          "device": "Device",
+          "browser": "Browser",
+          "ip": "IP address",
+          "lastUsed": "Last used"
+        },
+        "now": "Now",
+        "this": "This session",
+        "closed": "Session closed on {device}",
+        "closeOthers": "Close other sessions",
+        "note": "Closing a session also closes it in your businesses.",
+        "appTitle": "Close the app on {device}",
+        "appMessage": "The ERPlora app on {device} ({ip}) will sign out. If it is charging at a till, it will have to sign in again.",
+        "appConfirm": "Close the session",
+        "othersTitle": "Close the other sessions",
+        "othersMessage": "1 session will be closed, also if it is an app. If it is charging at a till, it will have to sign in again. | {n} sessions will be closed, also the apps. If one is charging at a till, it will have to sign in again.",
+        "othersConfirm": "Close 1 session | Close {n} sessions",
+        "othersClosed": "Sessions closed: {n}",
+        "close": "Close session"
+      },
+      "reauth": {
+        "passwordLead": "To keep your account safe, enter your password again.",
+        "googleLead": "Your account signs in with Google: confirm it's you by signing in with Google again. You will come back here to finish.",
+        "useGoogle": "Confirm with Google instead"
+      },
+      "email": {
+        "changeTitle": "Change your email",
+        "codeTitle": "Enter the code",
+        "send": "Send code",
+        "confirm": "Confirm",
+        "newAddress": "New email",
+        "addressHint": "We will send a 6-digit code there. Your account keeps its current email until you type it.",
+        "codeLead": "We sent a 6-digit code to {email}. Type it here: it works for 15 minutes.",
+        "resend": "Send a new code",
+        "resent": "We sent a new code to {email}",
+        "verified": "Your email is verified",
+        "changed": "Your email is now {email}",
+        "wrongCode": "That code is not right. Tries left: {left}.",
+        "codeSpent": "That code no longer works: ask for a new one."
+      },
+      "photo": {
+        "change": "Change photo",
+        "remove": "Remove photo",
+        "updated": "Photo updated",
+        "removed": "Photo removed",
+        "errors": {
+          "unsupported": "Choose a JPEG, PNG or WebP image.",
+          "unreadable": "We could not read that image. Try another one.",
+          "too_large": "That image is too big, even made smaller. Try another one."
+        }
+      },
+      "profile": {
+        "heading": "Your details",
+        "firstName": "First name",
+        "lastName": "Last name",
+        "email": "Email you sign in with",
+        "unverified": "Not verified",
+        "verify": "Verify",
+        "change": "Change",
+        "changeEmail": "Change your email",
+        "pending": "We sent a code to {email}: type it to start signing in with that address.",
+        "typeCode": "Type the code",
+        "save": "Save changes",
+        "saveHint": "It turns on when you change something.",
+        "saved": "Changes saved",
+        "loadError": "We could not load your account"
+      },
+      "delete": {
+        "title": "Delete your account",
+        "confirm": "Delete account",
+        "typeEmail": "Your email",
+        "message": "Your account, your photo, your preferences and your API keys are deleted, and every session ends, also in the apps and in your businesses. This cannot be undone.",
+        "lead": "Your account and what is in it go for good. Businesses you own have to be transferred or deleted first.",
+        "owns": "You own {n} business: transfer or delete it before deleting your account. | You own {n} businesses: transfer or delete them before deleting your account.",
+        "pays": "You pay for {n} business of other people: ask its owner to enter their own payment details before deleting your account. | You pay for {n} businesses of other people: ask their owners to enter their own payment details before deleting your account."
+      },
+      "loading": "Loading…",
+      "retry": "Retry",
+      "loadErrorBody": "Check your connection and try again.",
+      "security": {
+        "heading": "Sign-in",
+        "twoFactor": "Two-step verification",
+        "twoFactorOn": "After your password, a code from your authenticator app. Keep your recovery codes safe.",
+        "twoFactorOff": "Ask for a code from an authenticator app after your password, so a stolen password is not enough.",
+        "manage": "Manage",
+        "setUp": "Set up"
+      },
+      "preferences": {
+        "loadError": "We could not load your preferences",
+        "saved": "Preferences saved",
+        "appearance": "Appearance",
+        "appearanceLead": "«System» follows the light or dark mode of your device. The changes on this tab are saved on their own.",
+        "themes": {
+          "system": "System",
+          "light": "Light",
+          "dark": "Dark"
+        },
+        "languageHeading": "Language",
+        "language": "Language",
+        "languageHint": "Also the language of the mails we send you.",
+        "mails": "Email notices",
+        "invoices": "Invoices and payments",
+        "invoicesHint": "Always on: they are required.",
+        "hubAlerts": "Notices about my businesses",
+        "hubAlertsHint": "A business is ready, a payment is pending.",
+        "marketing": "News from ERPlora",
+        "marketingHint": "Once a month at most."
+      },
+      "keys": {
+        "newTitle": "New API key",
+        "create": "Create key",
+        "name": "Name",
+        "nameHint": "To tell it apart later, e.g. the tool that uses it.",
+        "permissions": "Permissions",
+        "expiry": "Expires",
+        "expiries": {
+          "days30": "In 30 days",
+          "days90": "In 90 days",
+          "never": "Never"
+        },
+        "once": "You will see the whole key only once, when you create it. Keep it somewhere safe.",
+        "copyNow": "Copy it now and keep it somewhere safe: you will not see it again.",
+        "copy": "Copy the key",
+        "copied": "Key copied",
+        "copyFailed": "We could not copy it: select the key and copy it by hand.",
+        "saved": "I have saved it",
+        "created": "Key created: «{name}»",
+        "title": "API keys",
+        "new": "New key",
+        "loadError": "We could not load your API keys",
+        "entity": "key | keys",
+        "never": "Never",
+        "expired": "Expired",
+        "columns": {
+          "name": "Name",
+          "prefix": "Prefix",
+          "permissions": "Permissions",
+          "created": "Created",
+          "lastUsed": "Last used",
+          "expires": "Expires"
+        },
+        "revoke": "Revoke key",
+        "revokeTitle": "Revoke «{name}»",
+        "revokeMessage": "Whatever uses this key stops working at once. It cannot be undone: you would have to create another one.",
+        "revoked": "Key revoked: «{name}»",
+        "empty": "You have no keys yet. Create one to connect your tools with your ERPlora account.",
+        "note": "These keys are for the API of your ERPlora account. The keys of each business are created inside the business.",
+        "revokeShort": "Revoke"
+      },
+      "title": "Account",
+      "tabsLabel": "Account sections",
+      "tabs": {
+        "profile": "Profile",
+        "security": "Security",
+        "preferences": "Preferences",
+        "apiKeys": "API keys"
+      },
+      "password": {
+        "title": "Change your password",
+        "submit": "Change password",
+        "current": "Current password",
+        "new": "New password",
+        "hint": "At least 8 characters; better long, and without your email.",
+        "strength": {
+          "short": "Too short: at least 8 characters.",
+          "weak": "Weak: avoid your email and use several kinds of characters.",
+          "fair": "Fair: a longer one is safer.",
+          "strong": "Strong."
+        },
+        "changed": "Password changed. Your businesses will ask you to sign in again.",
+        "row": "Password",
+        "rowLead": "Changing it asks you to sign in to your businesses again.",
+        "none": "Your account signs in with Google and has no password yet: we email you a link to create one.",
+        "create": "Create a password"
+      },
+      "google": {
+        "connected": "You can sign in with {account}.",
+        "notConnected": "Sign in with your Google account too.",
+        "onlyWayIn": "It is your only way to sign in: create a password first.",
+        "connect": "Connect",
+        "disconnect": "Disconnect",
+        "disconnectTitle": "Disconnect Google",
+        "disconnectMessage": "You will no longer sign in with {account}; you will keep signing in with your email and your password.",
+        "disconnected": "Google disconnected"
+      }
     }
   }
 }

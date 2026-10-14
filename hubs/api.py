@@ -29,6 +29,8 @@ from hubs.schemas import (
     MemberListIn,
     MemberRoleIn,
     OwnershipTransferIn,
+    UsageGetIn,
+    UsageSeriesIn,
 )
 
 router = Router(tags=["hubs"])
@@ -171,3 +173,16 @@ async def billing_profile_get(request, params: Query[BillingProfileGetIn]):
 @bind(router, "hubs.billing_profile.update", "/hubs/billing-profile")
 async def billing_profile_update(request, data: BillingProfileIn):
     return await run_operation(request, services.billing_profile_update, data)
+
+
+# --- Usage (lot L4-A) -----------------------------------------------------------------------------
+
+
+@bind(router, "hubs.usage.get", "/hubs/usage")
+async def usage_get(request, params: Query[UsageGetIn]):
+    return await run_operation(request, queries.usage_get, params)
+
+
+@bind(router, "hubs.usage.series", "/hubs/usage/series")
+async def usage_series(request, params: Query[UsageSeriesIn]):
+    return await run_operation(request, queries.usage_series, params)

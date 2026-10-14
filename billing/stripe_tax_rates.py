@@ -1,19 +1,18 @@
 """What Stripe must charge for a quote OUR engine resolved, in Stripe's vocabulary (saas#1968).
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/services/stripe_tax_rates.py`` (origin/develop) WITHOUT the
-calls to Stripe, which are lot L2-B. The rate of every sale is decided by ``billing.TaxRule``; Stripe only
+Ported from ERPlora/saas ``apps/dashboard/fiscal/services/stripe_tax_rates.py`` (origin/develop) without the
+calls to Stripe, which live in the gateway (``billing.stripe_service``). The rate of every sale is decided by ``billing.TaxRule``; Stripe only
 charges it, and on a net price it needs it as a ``TaxRate`` object (the only thing ``default_tax_rates``
 accepts). This is the opposite of ``automatic_tax``, where Stripe's own registrations pick the rate and get
 it wrong silently (a German consumer paid 0 € of VAT, saas#1478).
 
 Here: ``tax_rate_specs_for`` says WHICH ``TaxRate`` a quote needs, and ``matches`` whether an existing one
-is it. **For lot L2-B**: ``stripe_tax_rate_ids_for(quote)`` maps each spec to a Stripe id — the cached id
-under ``spec.cache_key`` (24 h: a rate never changes its value, only someone archiving it in the dashboard
-can), else the first ``stripe.TaxRate.list(active=True, limit=100)`` entry that ``matches``, else
-``stripe.TaxRate.create(display_name=spec.display_name, description=spec.description,
-percentage=float(spec.percentage), inclusive=False, country=spec.country, tax_type=spec.tax_type)``; a
-failed listing is NOT swallowed (creating blind fills the account with duplicate 21 %), and a
-``stripe.StripeError`` refuses the sale with the 409 ``billing.tax_engine_missing``.
+is it. The Stripe side is ``billing.stripe_service.tax_rate_ids`` (lot L2-B): the id cached under
+``spec.cache_key`` (24 h: a rate never changes its value, only someone archiving it in the dashboard can), else
+the first active ``TaxRate`` of the account that ``matches``, else a new one (``display_name``,
+``description``, ``percentage``, ``inclusive=False``, ``country``, ``tax_type``). A failed listing is NOT
+swallowed (creating blind fills the account with duplicate 21 %): the sale is refused while Stripe does not
+answer (503 ``billing.stripe_unavailable``).
 """
 
 from dataclasses import dataclass

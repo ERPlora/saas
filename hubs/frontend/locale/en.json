@@ -161,8 +161,7 @@
         "pastDueHeading": "{name} has an unpaid invoice",
         "pastDueBody": "It keeps working for 7 more days; if it is not paid by then, the business is suspended. Nothing is deleted.",
         "suspendedHeading": "{name} is suspended",
-        "suspendedBody": "It was suspended because of an unpaid invoice. Nothing is deleted: once it is paid it works again at once.",
-        "app": "To pay it, go to erplora.com in your browser."
+        "suspendedBody": "It was suspended because of an unpaid invoice. Nothing is deleted: once it is paid it works again at once."
       },
       "invitation": {
         "heading": "You have been invited to {name}",
@@ -227,12 +226,17 @@
       },
       "usage": {
         "eyebrow": "Usage",
-        "title": "People on the business",
-        "people": "People",
-        "meter": "Places on the plan",
-        "meterHint": "Members and invitations waiting for an answer, out of what the plan covers.",
-        "covered": "The plan covers",
-        "hint": "Members and invitations waiting for an answer."
+        "title": "How your business is doing in ERPlora",
+        "storage": "Storage",
+        "storageHint": "Of the space included in your plan: photos, documents and copies.",
+        "storageLow": "You are running out of space on the {plan} plan.",
+        "storageFull": "You have used all the space included in the {plan} plan.",
+        "activeYesterday": "Active yesterday",
+        "activeOn": "Active on {date}",
+        "last30": "Last 30 days",
+        "fromYesterday": "Yesterday's data: updated every night.",
+        "fromDay": "Data from {date}: updated every night.",
+        "empty": "No data yet. The figures arrive every night, from the first one after the business is created."
       },
       "devices": {
         "eyebrow": "On your devices",
@@ -254,8 +258,7 @@
       },
       "modules": {
         "heading": "Apps are turned on and off inside the business",
-        "body": "Open the business and turn on the apps you need from its home. The free apps are always included.",
-        "action": "Open the business"
+        "body": "Open the business and turn on the apps you need from its home. The free apps are always included."
       }
     },
     "settings": {
@@ -371,6 +374,14 @@
     "errors": {
       "network": "We could not reach ERPlora. Check your connection and try again.",
       "unexpected": "Something went wrong in ERPlora. Try again in a few minutes."
+    },
+    "unpaid": {
+      "pastDueSince": "Unpaid since {since}. It keeps working until {until}; if it is not paid by then, the business is suspended. Nothing is deleted.",
+      "suspendedSince": "Unpaid since {since}, and suspended until it is paid. Nothing is deleted: once it is paid it works again at once.",
+      "pay": "Pay the invoice",
+      "cardDeclined": "The bank declined the card: change it before paying.",
+      "app": "Settle it from erplora.com, in your browser.",
+      "payer": "You pay"
     }
   }
 }

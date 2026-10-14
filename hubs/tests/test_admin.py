@@ -223,3 +223,45 @@ class TestSupport:
         _act(support_client, "hub", "send_latest_state", [business])
 
         assert hub_double.calls == []
+
+
+# --- The usage of each business, day by day (L4-A): read only, as the Hub measured it ---------------
+
+
+class TestTheUsageAdmin:
+    @pytest.fixture
+    def day(self, business):
+        from datetime import date
+
+        from hubs.models import HubUsageDaily
+
+        return HubUsageDaily.objects.create(
+            hub=business,
+            day=date(2026, 10, 13),
+            s3_bytes=3 * 1024**3,
+            db_bytes=250 * 1024**2,
+            active_users_1d=3,
+            active_users_30d=4,
+        )
+
+    def test_it_is_listed_with_its_sizes_readable_and_shown(self, staff_client, day):
+        listing = staff_client.get("/admin/hubs/hubusagedaily/").content.decode()
+
+        # Django's ``filesizeformat`` (binary units, a non-breaking space before the unit).
+        assert "3.0\xa0GB" in listing and "250.0\xa0MB" in listing
+        assert staff_client.get(f"/admin/hubs/hubusagedaily/{day.pk}/change/").status_code == 200
+
+    def test_it_finds_a_business_by_its_address(self, staff_client, day, business):
+        listing = staff_client.get("/admin/hubs/hubusagedaily/", {"q": business.slug}).content.decode()
+
+        assert business.name in listing
+
+    def test_it_is_read_only_only_the_nightly_collection_writes_it(self, staff_client, day):
+        from django.contrib import admin
+
+        model_admin = admin.site._registry[type(day)]
+        request = staff_client.get("/admin/").wsgi_request
+
+        assert staff_client.get("/admin/hubs/hubusagedaily/add/").status_code == 403
+        assert not model_admin.has_change_permission(request, day)
+        assert not model_admin.has_delete_permission(request, day)

@@ -14,9 +14,11 @@ business's payer, which the L2-B checkout and webhook call. So a refused verdict
 added on top of the net price (121 € charged), and the reconciliation of a sale Stripe already charged
 at 0 € (82.64 + 17.36) is proved on ``resolve_vat`` with the door's clearance, as the webhook will use it.
 
-Moved to lot L3-C (they need ``billing.Invoice`` and its PDF): «7. The issued invoice keeps the
-consultation number» (3), «The document explains the reconciliation» (4) and the invoice, PDF and
-dashboard halves of «The note never lies» (5) and «The note survives OSS» (2).
+Lot L3-C ported the invoice half: «7. The issued invoice keeps the consultation number» is in
+``test_invoice_recording.TestTheVatOfEachSale``, and the decision of «The note never lies» and «The note
+survives OSS» (``Invoice.vat_included_because_unverified``) in ``test_invoice_models.TestTheNoteNeverLies``;
+the sentence of the PDF and «The document explains the reconciliation» are the platform hub's, which prints
+the document (the SaaS sends it the flag, ``test_platform_invoices``).
 """
 
 from datetime import timedelta

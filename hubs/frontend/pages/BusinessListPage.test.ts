@@ -196,6 +196,24 @@ describe('BusinessListPage: the list', () => {
   });
 });
 
+describe('BusinessListPage: a clean page (Ioan, 2026-10-14)', () => {
+  it('the list fills the page between the topbar and the footer: rows scroll inside, toolbar and footer stay', async () => {
+    const s = await setup();
+    await s.show(page(ROWS));
+    expect(s.wrapper.findComponent(AppPage).props('contentLayout')).toBe('detail-fill');
+    expect(s.prop('fill')).toBe(true);
+    expect(s.table().element.parentElement?.classList.contains('panel-fill')).toBe(true);
+  });
+
+  it('asks for rows per page only when there are more businesses than the shortest page (mockups README §3b)', async () => {
+    const s = await setup();
+    await s.show(page(ROWS));
+    expect(s.prop('pageSizeChooser')).toBe(false);
+    await s.show(page(ROWS, { total: 11 }), 2);
+    expect(s.prop('pageSizeChooser')).toBe(true);
+  });
+});
+
 describe('BusinessListPage: row actions', () => {
   const action = (s: Awaited<ReturnType<typeof setup>>, id: string, name: string) => s.testid(`businesses-row-${id}-${name}`);
 
@@ -269,8 +287,19 @@ describe('BusinessListPage: what waits above the list', () => {
     await s.show(page(ROWS));
     const unpaid = s.testid('businesses-unpaid-plaza');
     expect(unpaid.text()).toContain('Bar La Plaza has an unpaid invoice');
-    expect(unpaid.text()).toContain('To pay it, go to erplora.com in your browser.');
+    expect(unpaid.text()).toContain('Settle it from erplora.com, in your browser.');
     expect(unpaid.find('a').exists()).toBe(false);
+    expect(unpaid.find('[data-testid="unpaid-pay"]').exists()).toBe(false);
+  });
+
+  it('on the web, the owner pays the invoice from the notice (Stripe’s page), since when it is unpaid said', async () => {
+    const s = await setup();
+    await s.show(
+      page([row('plaza', 'Bar La Plaza', { status: 'past_due', unpaid_reason: 'payment_failed', unpaid_since: '2026-10-10T10:00:00Z', pay_url: 'https://invoice.stripe.com/i/abc' })]),
+    );
+    const unpaid = s.testid('businesses-unpaid-plaza');
+    expect(unpaid.get('[data-testid="unpaid-body"]').text()).toMatch(/^Unpaid since Oct 10, 2026/);
+    expect((unpaid.get('[data-testid="unpaid-pay"]').element as HTMLElement & { href?: string }).href).toBe('https://invoice.stripe.com/i/abc');
   });
 
   it('a pending invitation: accept and enter, or decline with a confirmation', async () => {

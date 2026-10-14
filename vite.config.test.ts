@@ -1,12 +1,13 @@
 // The Vite config is a contract with Django (`packages/live/live/spa.py` and `LIVE["spa"]` in
 // `config/settings.py`): the dev server URLs and the manifest Django reads come from here.
-import { existsSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build, type Plugin, type PluginOption } from 'vite';
 import { describe, expect, it } from 'vitest';
 
+import e2eConfig, { browserWindow } from './tests/e2e/playwright.config';
 import config, { FRONTEND_APPS } from './vite.config';
 
 const SAAS_DIR = dirname(fileURLToPath(import.meta.url));
@@ -127,5 +128,36 @@ describe('vite.config', () => {
     expect(config.test?.include?.filter((glob) => glob.startsWith('apps/'))).toEqual([]);
     // Vitest's default `exclude` drops every `vite.config.*`, this test included.
     expect(config.test?.exclude).toEqual(['**/node_modules/**', '**/dist/**']);
+  });
+});
+
+// The e2e's browser (tests/e2e/playwright.config.ts): Ioan asked for headless by default (2026-10-14). A visible,
+// slowed-down Chrome only when a run asks for it with E2E_HEADED=1 (`pnpm e2e:headed`); CI never opens one.
+describe('e2e browser window', () => {
+  it('is headless and at full speed by default', () => {
+    expect(browserWindow({})).toEqual({ headless: true, slowMo: 0 });
+  });
+
+  it('is a visible Chrome, slowed down to follow it, only with E2E_HEADED=1', () => {
+    expect(browserWindow({ E2E_HEADED: '1' })).toEqual({ headless: false, slowMo: 150 });
+    expect(browserWindow({ E2E_HEADED: '0' })).toEqual({ headless: true, slowMo: 0 });
+  });
+
+  it('stays headless in CI even when a run asks for a window', () => {
+    expect(browserWindow({ CI: '1', E2E_HEADED: '1' })).toEqual({ headless: true, slowMo: 0 });
+  });
+
+  it('is what the config uses for every project', () => {
+    const window = browserWindow(process.env);
+    expect(e2eConfig.use?.headless).toBe(window.headless);
+    expect(e2eConfig.use?.launchOptions?.slowMo).toBe(window.slowMo);
+    for (const project of e2eConfig.projects ?? []) expect(project.use?.headless).toBeUndefined();
+  });
+
+  it('`pnpm e2e` runs headless, `e2e:headed` opens the window and `e2e:ci` is the CI run', () => {
+    const scripts = (JSON.parse(readFileSync(join(SAAS_DIR, 'package.json'), 'utf8')) as { scripts: Record<string, string> }).scripts;
+    expect(scripts.e2e).toBe('playwright test -c tests/e2e/playwright.config.ts');
+    expect(scripts['e2e:headed']).toBe('E2E_HEADED=1 playwright test -c tests/e2e/playwright.config.ts');
+    expect(scripts['e2e:ci']).toBe('CI=1 playwright test -c tests/e2e/playwright.config.ts');
   });
 });

@@ -597,11 +597,24 @@ class HubOwnershipTransfer(models.Model):
 
 
 class Subscription(models.Model):
-    """The plan a hub is on (one per hub). Stripe fills its ids and dates (lot L2).
+    """The plan a hub is on (one per hub). Stripe fills its ids and dates (lot L2-B, through
+    ``hubs.subscription.apply``, which billing calls with what the LIVE Stripe subscription says).
 
     The Free plan is born with ``trial_plan`` = Starter for its trial days (ADR-0474: Free is born
-    with 15 days of Starter): while ``trial_end`` is ahead, the hub gets the trial plan's rights.
+    with 15 days of Starter): while ``trial_end`` is ahead, the hub gets the trial plan's rights. A paid
+    plan carries its own trial in Stripe, so paying clears ``trial_plan``.
+
+    ``unpaid_*`` say why a renewal is not paid, while it is not (mockups README §6.18): with a declined
+    card «Pay» waits until the card changes; ``unpaid_since`` is when the failed invoice was issued (the
+    7 days of grace count from it); ``unpaid_invoice_url`` is Stripe's page to pay it (its owner's only).
     """
+
+    class UnpaidReason(models.TextChoices):
+        NONE = "", _("Paid")
+        CARD_DECLINED = "card_declined", _("Card declined")
+        CARD_CHANGED = "card_changed", _("Card changed")
+        AUTHENTICATION_REQUIRED = "authentication_required", _("Authentication required")
+        PAYMENT_FAILED = "payment_failed", _("Payment failed")
 
     class Status(models.TextChoices):
         ACTIVE = "active", _("Active")
@@ -632,6 +645,14 @@ class Subscription(models.Model):
     cancel_at_period_end = models.BooleanField(default=False)
     trial_start = models.DateTimeField(null=True, blank=True)
     trial_end = models.DateTimeField(null=True, blank=True)
+    unpaid_reason = models.CharField(
+        _("why it is unpaid"), max_length=24, choices=UnpaidReason.choices, blank=True, default=""
+    )
+    unpaid_since = models.DateTimeField(_("unpaid since"), null=True, blank=True)
+    unpaid_invoice_url = models.URLField(_("invoice to pay"), max_length=2048, blank=True, default="")
+    #: The business was deleted while Stripe billed it: billing's ``sweep_unpaid`` ends that subscription and
+    #: clears this. Durable, so recovering the business meanwhile does not leave it charging.
+    cancel_requested_at = models.DateTimeField(_("end in Stripe asked at"), null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -730,3 +751,35 @@ class SessionRevocation(models.Model):
 
     def __str__(self):
         return f"{self.user_id} @ {self.hub_id or '*'}"
+
+
+class HubUsageDaily(models.Model):
+    """One day of a business's usage, as the Hub measured it that night (PLAN-SAAS §5; lot L4-A).
+
+    ``s3_bytes`` is what its files take in S3 (the storage the customer sees, as a percentage of what the
+    plan includes), ``db_bytes`` what its database takes (the admin's only), ``active_users_1d`` the people
+    active that day and ``active_users_30d`` in the 30 days up to it. One row per business and day, written
+    only by the system command ``hubs.usage.record`` (``manage.py collect_hub_usage``, nightly in
+    ``saas-cron``): collecting a day again replaces its figures.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
+    hub = models.ForeignKey(Hub, on_delete=models.CASCADE, related_name="usage_days", verbose_name=_("business"))
+    day = models.DateField(_("day"))
+    s3_bytes = models.PositiveBigIntegerField(_("files (bytes)"))
+    db_bytes = models.PositiveBigIntegerField(_("database (bytes)"))
+    active_users_1d = models.PositiveIntegerField(_("active that day"))
+    active_users_30d = models.PositiveIntegerField(_("active in the 30 days"))
+    collected_at = models.DateTimeField(_("collected at"), default=timezone.now)
+
+    class Meta:
+        ordering = ["-day", "hub_id"]
+        verbose_name = _("daily usage")
+        verbose_name_plural = _("daily usages")
+        constraints = [
+            # Also the index of a business's days, newest first (``hubs.usage.*``).
+            models.UniqueConstraint(fields=["hub", "day"], name="hubs_usage_one_row_per_day"),
+        ]
+
+    def __str__(self):
+        return f"{self.hub_id} @ {self.day}"

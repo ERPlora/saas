@@ -1,5 +1,6 @@
-// Browser checks of the public web (spec §6 and §9, `tests/e2e/`): Ioan's Chrome, visible and slowed
-// down so it can be followed, as hub-next's suite.
+// Browser checks of the public web (spec §6 and §9, `tests/e2e/`): Ioan's Chrome, headless by default
+// (Ioan, 2026-10-14); a visible, slowed-down window only when a run asks for it (`E2E_HEADED=1`,
+// `pnpm e2e:headed`), never in CI.
 //
 // It drives a production-like SaaS of its own: DEBUG off (the public CSP as production serves it,
 // no Vite dev server), the build of `pnpm build` (run it first: the manifest must hold
@@ -12,7 +13,8 @@
 //
 // Two projects (README.md): `public`, the specs above against that server, and `panel`, the panel's
 // specs (`panel/`) against the dev server on :8001 (panel/project.ts). `pnpm e2e` runs both and
-// `--project=public|panel` one. `pnpm e2e:ci` (CI=1) runs them headless, only in CI.
+// `--project=public|panel` one, headless; `pnpm e2e:headed` the same in a visible Chrome; `pnpm e2e:ci`
+// (CI=1) is the CI run.
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -26,8 +28,20 @@ const PORT = Number(process.env.E2E_PORT ?? 8011);
 export const BASE_URL = `http://127.0.0.1:${PORT}`;
 
 process.env.PW_RUN_ID ??= new Date().toISOString().replace(/[:.]/g, '-');
-/** No window to watch in CI: headless and at full speed. Locally, always Ioan's visible Chrome. */
-const HEADLESS = Boolean(process.env.CI);
+
+/** Milliseconds between the steps of a visible run, so a person can follow it. */
+const SLOW_MO = 150;
+
+/**
+ * The browser's window for a run with `env`: headless and at full speed by default (Ioan, 2026-10-14);
+ * a visible Chrome, slowed down, only with `E2E_HEADED=1`. CI never opens one, whatever it asks.
+ */
+export function browserWindow(env: Record<string, string | undefined>): { headless: boolean; slowMo: number } {
+  const headed = env.E2E_HEADED === '1' && !env.CI;
+  return { headless: !headed, slowMo: headed ? SLOW_MO : 0 };
+}
+
+const WINDOW = browserWindow(process.env);
 
 export default defineConfig({
   testDir: '.',
@@ -43,8 +57,8 @@ export default defineConfig({
   use: {
     baseURL: BASE_URL,
     channel: 'chrome',
-    headless: HEADLESS,
-    launchOptions: { slowMo: HEADLESS ? 0 : 150 },
+    headless: WINDOW.headless,
+    launchOptions: { slowMo: WINDOW.slowMo },
     viewport: { width: 1280, height: 860 },
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',

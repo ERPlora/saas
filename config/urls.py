@@ -4,8 +4,8 @@ Django keeps sign-in (allauth's template pages and its headless API at ``/_allau
 redirect URIs registered with it), the jump to a hub and its redeem, the API, the live stream, the
 admin, the CSP reports and ``/readyz``. ``/healthz`` is answered by
 ``base.health.HealthCheckMiddleware`` before the Host is validated, so it has no route here.
-``/webhooks/`` is reserved for Stripe's single webhook (block 4): until it is mounted, a 404 of
-Django's, never the SPA. Every other path is the Ionic Vue SPA (``base.spa``):
+``/webhooks/stripe/`` is Stripe's single webhook (``billing.webhooks``, lot L2-B); anything else under
+``/webhooks/`` is a 404 of Django's, never the SPA. Every other path is the Ionic Vue SPA (``base.spa``):
 the sign-in (``/login``), its errors (``/login/error``) and the launcher (``/launch``) among them.
 """
 
@@ -17,9 +17,10 @@ from live.live_view import live_stream
 from live.spa import BASE_NON_SPA_PREFIXES, spa_path_pattern
 
 from accounts import admin as accounts_admin
-from accounts import google, handoff, internal
+from accounts import doors, google, handoff, internal
 from base.health import readyz
 from base.spa import spa
+from billing import webhooks as billing_webhooks
 from config.api import api
 from hubs import internal as hubs_internal
 from public import landing
@@ -68,6 +69,17 @@ urlpatterns = [
         ),
         name="socialaccount_login_error",
     ),
+    # The account's addresses change only through Cuenta's code, and an account without a password gets
+    # one only through «Forgot your password?» (accounts/doors.py, plan 2026-10-13 L3-A). Same addresses
+    # and names as allauth's, before its include.
+    path("accounts/email/", RedirectView.as_view(url=doors.PROFILE_PAGE, permanent=False), name="account_email"),
+    path(
+        "accounts/password/set/",
+        RedirectView.as_view(pattern_name="account_reset_password", permanent=False),
+        name="account_set_password",
+    ),
+    path("_allauth/browser/v1/account/email", doors.closed),
+    path("_allauth/browser/v1/account/password/change", doors.password_change),
     path("accounts/", include("allauth.urls")),
     path("_allauth/", include("allauth.headless.urls")),
     # «Continue with Google» at the redirect URIs registered with Google (/auth/google/callback/,
@@ -85,6 +97,8 @@ urlpatterns = [
         hubs_internal.ready,
         name="internal_hub_ready",
     ),
+    # Stripe's single webhook (PLAN-SAAS §4): signed by Stripe, no session nor CSRF.
+    path("webhooks/stripe/", billing_webhooks.stripe_webhook, name="stripe_webhook"),
     # Before the API's prefix, which would otherwise answer it.
     path("api/live", live_stream, name="live-stream"),
     path("api/", api.urls),

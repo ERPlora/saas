@@ -6,8 +6,9 @@
   the migrations and the seed loader (``seed.py`` with the models it is handed, and the command that
   runs it).
 - Nowhere ``using=``, ``.using(`` nor ``connections[``: one database (the SaaS has no tenancy).
-- The network: only ``vies.py`` talks to VIES (``requests``); nothing of billing calls Stripe yet (lot
-  L2-B), so no module imports ``stripe``.
+- The network: only ``vies.py`` talks to VIES (``requests``) and only ``stripe_service.py`` to Stripe (lot
+  L2-B): it is the one door (keys, timeouts, errors, plain dicts), the one place tests replace
+  (``billing/tests/stripe_double.py``).
 
 Each scan is shown to catch its positive (rule 10 of the working rules: the control catches it).
 """
@@ -134,7 +135,7 @@ def test_nothing_names_another_database():
     assert offenders == {}
 
 
-def test_only_the_vies_client_talks_to_the_network_and_nothing_to_stripe_yet():
+def test_only_the_vies_client_and_the_stripe_gateway_talk_to_the_network():
     importers = {
         _relative(path): imported_modules(path.read_text(encoding="utf-8"))
         for path in code_files()
@@ -143,4 +144,6 @@ def test_only_the_vies_client_talks_to_the_network_and_nothing_to_stripe_yet():
     assert [name for name, modules in importers.items() if "requests" in modules] == [
         "vies.py"
     ]
-    assert [name for name, modules in importers.items() if "stripe" in modules] == []
+    assert [name for name, modules in importers.items() if "stripe" in modules] == [
+        "stripe_service.py"
+    ]

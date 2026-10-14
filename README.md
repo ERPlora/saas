@@ -46,8 +46,9 @@ Solo lo que necesita el salto al Hub (PLAN-SAAS §2.1 y §3.1, pasos 4–6; PLAN
 ## SPA Ionic Vue (ronda 11): paso 1, login
 
 El SaaS es también una SPA Ionic Vue, igual que `hub-next` (`base/`, `frontend/main.ts`,
-`vite.config.ts`, `<app>/frontend/`). Sus apps (`accounts/`, y después `hubs/`, `marketplace/` y
-`billing/`) viven en la raíz, junto a `base/`: `saas-next` no tiene `apps/` (PLAN §20.2), y cada app
+`vite.config.ts`, `<app>/frontend/`). Sus apps (`accounts/` Cuenta, `hubs/` Negocios y uso, `billing/`
+Tienda, Facturación y Stripe, más `apps/`, el catálogo de módulos de la ronda 16, y `public/`, la web
+pública) viven en la raíz, junto a `base/`: `saas-next` no tiene carpeta de módulos (PLAN §20.2), y cada app
 con `frontend/` se nombra en los globs de `frontend/main.ts` y en `FRONTEND_APPS` de `vite.config.ts`
 (guardarraíles en `frontend/main.test.ts` y `vite.config.test.ts`). Las páginas de cuenta pasan
 de plantilla a Vue **una a una**, sobre `allauth.headless` (cliente `browser`, `/_allauth/browser/v1/…`); mientras tanto las
@@ -143,6 +144,28 @@ Mismo comportamiento que el SaaS de hoy (ADR-0154; `accounts/{google,adapters,co
   Google vuelve al login Vue (`/login`) conservando `next`, así que `/hub-login/?hub=…&next=…` sigue
   funcionando tras Google.
 
+## Panel único (ronda 17): Stripe, facturas y uso
+
+El panel de `erplora.com` (Negocios · Tienda · Facturación · Cuenta; plan
+`../docs/plans/2026-10-13-panel-saas-unificado.md`, PLAN-SAAS §3.6). Detalle por app en
+`accounts/README.md`, `hubs/README.md` y `billing/README.md`.
+
+- **Variables nuevas** (todas con valor por defecto; en AWS, las claves de Stripe vienen de Secrets
+  Manager): `STRIPE_SECRET_KEY` (en producción, **restringida** `rk_live_…`; con `sk_live_…`
+  `check --deploy` falla con `billing.E001`), `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`,
+  `STRIPE_TIMEOUT_SECONDS`, `STRIPE_PORTAL_CONFIGURATION` (`bpc_…`; vacía, el portal no abre),
+  `PLATFORM_INVOICING_ENABLED` (por defecto `false`: ninguna clave live cobra hasta que el hub de
+  plataforma emite las facturas), `VIES_ENDPOINT`, `VIES_CONNECT_TIMEOUT_SECONDS`, `VIES_TIMEOUT_SECONDS`,
+  `VAT_CHECK_RATE`, `VAT_CHECK_GLOBAL_RATE`, `PROMO_CHECK_RATE` e `INTERNAL_SHARED_SECRET_PREVIOUS`.
+- **Tareas programadas** (`saas-cron`, `aws-next/stacks/prod/scheduler.tf`): `sweep_unpaid` (cada hora),
+  `reconcile_platform_invoices` (cada 15 min) y `collect_hub_usage` (01:15 UTC), además de
+  `reconcile_hub_states`, `push_hub_snapshots` y `report_seal_expiry`. En `saas-migrate`, tras `migrate`:
+  `sync_hub_plans` y `seed_taxonomy`. Todas idempotentes y con advisory lock (una segunda ejecución vuelve
+  al momento).
+- **Local**: con claves de prueba de Stripe en `.env` y `stripe listen --forward-to
+  localhost:8001/webhooks/stripe/` (su `whsec_…` en `STRIPE_WEBHOOK_SECRET`); sin clave, la Tienda dice que
+  los pagos no están disponibles (503 `billing.payments_unavailable`).
+
 ## Arrancar en local
 
 Postgres del `compose.yaml` raíz (BD `saas`). El SaaS lee solo el entorno del proceso y
@@ -174,6 +197,7 @@ uv run python manage.py runserver 127.0.0.1:8001   # también Vite (`pnpm run de
 # la ronda 13 del carril de hub-next)
 uv run pytest -q
 pnpm test     # y typecheck, lint, build
+pnpm e2e --project=panel   # e2e del panel, sin ventana (`pnpm e2e:headed` la abre)
 ```
 
 ## Fuera de la fase 1

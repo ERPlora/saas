@@ -31,6 +31,13 @@ const NEW_IN_THE_VUE_PAGES = new Set([
   'accounts.reauthenticate.usePassword',
 ]);
 
+/**
+ * The Account page (`/account/:tab`, plan 2026-10-13 L3-B) had no template: its texts, under `accounts.account`, are
+ * new. One that happens to be a msgid of django.po («API keys») is translated as django.po translates it, its
+ * first letter capitalised as the page needs (django.po writes «claves de API» for the middle of a sentence).
+ */
+const ACCOUNT_PAGE = 'accounts.account.';
+
 /** vue-i18n's separator of plural forms (`singular | plural`). */
 const PLURAL = ' | ';
 
@@ -115,10 +122,20 @@ describe('accounts catalogues (en source + es)', () => {
   it("keep the template's exact msgids, translated as django.po translates them", () => {
     expect(PO.size).toBeGreaterThan(0);
     for (const [key, message] of EN) {
-      if (NEW_IN_THE_VUE_PAGES.has(key)) continue;
+      if (NEW_IN_THE_VUE_PAGES.has(key) || key.startsWith(ACCOUNT_PAGE)) continue;
       const msgid = asGettext(message);
       expect(PO.has(msgid), `${key}: "${msgid}" is not a msgid of django.po`).toBe(true);
       expect(asGettext(ES.get(key)!), key).toBe(PO.get(msgid));
+    }
+  });
+
+  it('translate an Account page text that django.po already has as django.po does', () => {
+    const page = [...EN].filter(([key]) => key.startsWith(ACCOUNT_PAGE));
+    expect(page.length).toBeGreaterThan(0);
+    for (const [key, message] of page) {
+      const msgid = asGettext(message);
+      const capital = (message: string) => message.charAt(0).toLocaleUpperCase('es') + message.slice(1);
+      if (PO.has(msgid) && PO.get(msgid)) expect(capital(asGettext(ES.get(key)!)), key).toBe(capital(PO.get(msgid)!));
     }
   });
 

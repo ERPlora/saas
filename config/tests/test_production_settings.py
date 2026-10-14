@@ -480,7 +480,8 @@ TASKS = {
 FILLED_BY_HAND = {
     "GOOGLE_OAUTH_CLIENT_ID": "prod-client.apps.googleusercontent.com",
     "GOOGLE_OAUTH_CLIENT_SECRET": "prod-secret",
-    "STRIPE_SECRET_KEY": "sk_live_dummy",
+    # A RESTRICTED live key (PLAN-SAAS §4): the account's secret key fails the deploy check (billing.E001).
+    "STRIPE_SECRET_KEY": "rk_live_dummy",
     "STRIPE_PUBLISHABLE_KEY": "pk_live_dummy",
     "STRIPE_WEBHOOK_SECRET": "whsec_dummy",
 }
@@ -538,6 +539,13 @@ def test_check_deploy_identifies_no_issues_once_the_keys_are_filled(task):
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert "System check identified no issues" in result.stdout
+
+
+def test_check_deploy_refuses_the_stripe_accounts_live_secret_key():
+    result = check_deploy({**TASKS["saas"], **FILLED_BY_HAND, "STRIPE_SECRET_KEY": "sk_live_dummy"})
+
+    assert result.returncode != 0
+    assert "billing.E001" in result.stdout + result.stderr
 
 
 def test_the_seal_slots_and_the_region_come_from_the_environment():

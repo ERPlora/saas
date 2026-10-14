@@ -1,0 +1,213 @@
+"""What the Store sells a business and what that business already has: ``billing.store.catalog`` (lot L2-D).
+
+The Store (``billing/frontend/pages/StorePage.vue``, mockups ``store.html``) paints the plans of
+``hubs.plan.list`` and the modules of ``apps.app.list`` (name, summary, icon) joined by slug with this
+query: every paid module on sale (``apps.Module``: net prices in cents, as Stripe charges them) and, for
+the business chosen above, its plan and billing, whether Stripe already bills it (a change is confirmed
+with its proration; otherwise the Embedded Checkout) and which modules it has, bought or included in its
+plan, cancelled ones with the date they end. Only the owner buys for a business (round 17 §2.7), so only
+the owner reads it. A read: nothing here asks Stripe.
+"""
+
+from datetime import timedelta
+
+import pytest
+from django.utils import timezone
+from live.errors import NotFound, OperationError, PermissionDenied
+
+from billing import queries
+from billing.schemas import StoreCatalogIn
+from billing.tests.conftest import ctx_for, pay
+from hubs.models import HubMember, SubscriptionItem
+from hubs.tests.conftest import add_member
+
+pytestmark = pytest.mark.django_db
+
+HOST = "localhost:8001"
+
+
+def catalog(user, hub) -> dict:
+    return queries.store_catalog(
+        ctx_for(user), StoreCatalogIn(hub_id=hub.id)
+    ).model_dump(mode="json")
+
+
+@pytest.fixture
+def reports(db):
+    """A second paid module on sale, monthly only (no annual price)."""
+    from apps.models import Module
+
+    return Module.objects.create(
+        slug="reports",
+        tier=Module.Tier.BASIC,
+        price_monthly_cents=700,
+        price_annual_cents=0,
+        stripe_price_id_monthly="price_reports_month",
+    )
+
+
+class TestWhatIsOnSale:
+    def test_a_free_business_sees_every_module_on_sale_with_its_net_prices_in_cents(
+        self, shop, owner, inventory, reports
+    ):
+        answer = catalog(owner, shop)
+
+        assert answer["hub_id"] == str(shop.id)
+        assert answer["modules"] == [
+            {
+                "slug": "inventory",
+                "tier": "enterprise",
+                "price_monthly_cents": 1000,
+                "price_annual_cents": 10000,
+                "owned": False,
+                "source": None,
+                "valid_until": None,
+            },
+            {
+                "slug": "reports",
+                "tier": "basic",
+                "price_monthly_cents": 700,
+                "price_annual_cents": 0,
+                "owned": False,
+                "source": None,
+                "valid_until": None,
+            },
+        ]
+
+    def test_a_module_off_sale_is_not_sold(self, shop, owner, inventory, reports):
+        reports.is_active = False
+        reports.save()
+
+        assert [module["slug"] for module in catalog(owner, shop)["modules"]] == [
+            "inventory"
+        ]
+
+    def test_a_free_business_is_not_billed_by_stripe_yet(self, shop, owner, inventory):
+        subscription = catalog(owner, shop)["subscription"]
+
+        assert subscription["plan"] == "free"
+        assert subscription["billing_interval"] == "month"
+        assert subscription["paying"] is False
+        assert subscription["cancel_at_period_end"] is False
+        # The 15 days of Starter of every sign-up: buying Starter keeps the days left.
+        assert subscription["trial_plan"] == "starter"
+        assert subscription["trial_end"] is not None
+
+
+class TestWhatTheBusinessHas:
+    def test_a_paying_business_says_its_plan_its_billing_and_its_renewal(
+        self, shop, owner, inventory
+    ):
+        paid = pay(shop, plan="starter", interval="year")
+
+        subscription = catalog(owner, paid)["subscription"]
+
+        assert subscription["plan"] == "starter"
+        assert subscription["billing_interval"] == "year"
+        assert subscription["paying"] is True
+        assert subscription["status"] == "active"
+        assert subscription["current_period_end"] is not None
+
+    def test_a_bought_module_is_owned(self, shop, owner, inventory):
+        paid = pay(shop, modules=["inventory"])
+
+        [module] = catalog(owner, paid)["modules"]
+
+        assert (module["owned"], module["source"], module["valid_until"]) == (
+            True,
+            "purchase",
+            None,
+        )
+
+    def test_a_cancelled_module_is_still_owned_until_it_ends(
+        self, shop, owner, inventory
+    ):
+        paid = pay(shop, modules=["inventory"])
+        until = timezone.now() + timedelta(days=12)
+        SubscriptionItem.objects.filter(
+            subscription__hub=paid, module_slug="inventory"
+        ).update(valid_until=until)
+
+        [module] = catalog(owner, paid)["modules"]
+
+        assert module["owned"] is True
+        assert module["valid_until"] == until.isoformat().replace("+00:00", "Z")
+
+    def test_a_module_whose_period_ended_is_for_sale_again(
+        self, shop, owner, inventory
+    ):
+        paid = pay(shop, modules=["inventory"])
+        SubscriptionItem.objects.filter(
+            subscription__hub=paid, module_slug="inventory"
+        ).update(valid_until=timezone.now() - timedelta(minutes=1))
+
+        [module] = catalog(owner, paid)["modules"]
+
+        assert (module["owned"], module["source"], module["valid_until"]) == (
+            False,
+            None,
+            None,
+        )
+
+    def test_a_module_the_plan_includes_is_owned_through_the_plan(
+        self, shop, owner, inventory
+    ):
+        paid = pay(shop)
+        SubscriptionItem.objects.create(
+            subscription=paid.subscription,
+            module_slug="inventory",
+            source=SubscriptionItem.Source.PLAN,
+        )
+
+        [module] = catalog(owner, paid)["modules"]
+
+        assert (module["owned"], module["source"]) == (True, "plan")
+
+    def test_a_cancelled_plan_says_so(self, shop, owner, inventory):
+        paid = pay(shop, cancel_at_period_end=True)
+
+        assert catalog(owner, paid)["subscription"]["cancel_at_period_end"] is True
+
+
+class TestOnlyTheOwnerBuys:
+    def test_an_admin_is_refused(self, shop, make_user, inventory):
+        admin = make_user("admin@example.com")
+        add_member(shop, admin, HubMember.Role.ADMIN)
+
+        with pytest.raises(PermissionDenied):
+            catalog(admin, shop)
+
+    def test_a_stranger_learns_nothing(self, shop, make_user, inventory):
+        with pytest.raises(NotFound):
+            catalog(make_user("stranger@example.com"), shop)
+
+    def test_a_visitor_reads_nothing(self, shop, inventory):
+        # Without a session there is no permission: the operation's gate refuses before it reads (the
+        # route answers the 401 envelope, TestTheRoute).
+        with pytest.raises(PermissionDenied):
+            catalog(None, shop)
+
+    def test_a_deleted_business_buys_nothing(self, shop, owner, inventory):
+        shop.status = shop.Status.DELETING
+        shop.save(update_fields=["status"])
+
+        with pytest.raises(OperationError) as error:
+            catalog(owner, shop)
+        assert error.value.code == "hubs.business_deleted"
+
+
+class TestTheRoute:
+    def test_the_owner_reads_it_at_its_route(self, client, shop, owner, inventory):
+        client.force_login(owner)
+
+        response = client.get(f"/api/billing/store?hub_id={shop.id}", HTTP_HOST=HOST)
+
+        assert response.status_code == 200, response.content
+        assert [module["slug"] for module in response.json()["modules"]] == [
+            "inventory"
+        ]
+
+    def test_a_visitor_gets_the_401_envelope(self, client, shop):
+        response = client.get(f"/api/billing/store?hub_id={shop.id}", HTTP_HOST=HOST)
+
+        assert response.status_code == 401

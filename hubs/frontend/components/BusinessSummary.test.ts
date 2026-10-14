@@ -1,9 +1,10 @@
 // The Summary of a business (mockups `business.html` «summary», PLAN-SAAS §3.6): its plan (what it
-// covers, the trial; changing it is the Store's, web only), the people on it against what the plan
-// covers, «On your devices» and its details. Deleted, only the plan (cancelled) and the details.
+// covers, the trial; changing it is the Store's, web only) with its people against the places of the
+// plan, the usage the Hub measured last night (storage against the plan, the people active; PLAN-SAAS §5),
+// «On your devices» and its details. Deleted, only the plan (cancelled) and the details.
 import { UsageCounter, UsageMeter } from '@erplora/ui/components';
 import { applySurface } from '@erplora/ui/shell';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { describeCall, flush, mountHubs } from '../__tests__/mount-hubs';
 import BusinessSummary from './BusinessSummary.vue';
@@ -41,9 +42,24 @@ const BUSINESS = {
   seats: { used: 2, limit: 3 },
   pending_transfer: null,
   can: { open: true, manage_members: true, manage_settings: true, manage_billing: true, transfer: true, delete: true },
+  usage: null,
+};
+/** What the Hub measured yesterday (the clock is 2026-10-14 below). */
+const USAGE = {
+  day: '2026-10-13',
+  storage: { used_bytes: 128_849_019, limit_bytes: 1_073_741_824, percent: 12 },
+  active_users: { on_day: 3, last_30_days: 4 },
+  stale: false,
 };
 
+beforeEach(() => {
+  // Only the date: the timers stay real (the component awaits the plans).
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date(2026, 9, 14, 10, 0));
+});
+
 afterEach(() => {
+  vi.useRealTimers();
   applySurface('web');
   document.body.innerHTML = '';
 });
@@ -68,6 +84,14 @@ describe('BusinessSummary', () => {
     expect(s.kv('summary-plan')).toEqual({ Devices: '1', Users: '2 of 3' });
   });
 
+  it('says when the account pays for the business («You pay»), and nothing otherwise', async () => {
+    const payer = await setup({ is_payer: true });
+    expect(payer.card('summary-plan').get('[data-testid="summary-payer"]').text()).toBe('You pay');
+    document.body.innerHTML = '';
+    const other = await setup({ is_payer: false });
+    expect(other.card('summary-plan').find('[data-testid="summary-payer"]').exists()).toBe(false);
+  });
+
   it('a paid plan or a trial covers everyone: unlimited, and the trial says until when', async () => {
     const s = await setup({ trial_plan: { slug: 'starter', name: 'Starter' }, trial_end: '2026-10-30T10:00:00Z', seats: { used: 2, limit: null } });
     expect(s.kv('summary-plan')).toEqual({ Devices: 'Unlimited', Users: 'Unlimited' });
@@ -81,20 +105,88 @@ describe('BusinessSummary', () => {
     expect(s.card('summary-plan').find('a').exists()).toBe(false);
   });
 
-  it('the people on the business against the places of its plan', async () => {
+  it('before the first night, the usage says there is no data yet', async () => {
     const s = await setup();
-    const meter = s.card('summary-usage').getComponent(UsageMeter);
-    expect(meter.props()).toMatchObject({ label: 'Places on the plan', value: 2, max: 3 });
-    expect(s.card('summary-usage').findAllComponents(UsageCounter).map((c: { props: (k: string) => unknown }) => [c.props('label'), c.props('value')])).toEqual([
-      ['People', 2],
-      ['The plan covers', 3],
-    ]);
+    const usage = s.card('summary-usage');
+    expect(usage.get('.card-title').text()).toBe('How your business is doing in ERPlora');
+    expect(usage.get('[data-testid="summary-usage-empty"]').text()).toBe(
+      'No data yet. The figures arrive every night, from the first one after the business is created.',
+    );
+    expect(usage.findComponent(UsageMeter).exists()).toBe(false);
+    expect(usage.findAllComponents(UsageCounter)).toHaveLength(0);
   });
 
-  it('with unlimited places there is no bar, only the figures', async () => {
-    const s = await setup({ seats: { used: 4, limit: null } });
+  it("the storage against the plan and the people active, from yesterday's measure", async () => {
+    const s = await setup({ usage: USAGE });
+    const usage = s.card('summary-usage');
+    expect(usage.getComponent(UsageMeter).props()).toMatchObject({
+      label: 'Storage',
+      percent: 12,
+      hint: 'Of the space included in your plan: photos, documents and copies.',
+    });
+    // A percentage, never the bytes (PLAN-SAAS §5).
+    expect(usage.getComponent(UsageMeter).props('value')).toBeUndefined();
+    expect(usage.findAllComponents(UsageCounter).map((c: { props: (k: string) => unknown }) => [c.props('label'), c.props('value')])).toEqual([
+      ['Active yesterday', 3],
+      ['Last 30 days', 4],
+    ]);
+    expect(usage.get('[data-testid="summary-usage-day"]').text()).toBe("Yesterday's data: updated every night.");
+    expect(usage.find('[data-testid="summary-usage-empty"]').exists()).toBe(false);
+  });
+
+  it('the people stay a line of the plan: the usage card is not about the places', async () => {
+    const s = await setup({ usage: USAGE });
+    expect(s.kv('summary-plan')).toMatchObject({ Users: '2 of 3' });
+    expect(s.card('summary-usage').text()).not.toContain('Places on the plan');
+  });
+
+  it('close to the space of the plan, says it is running out; past it, that it is used up', async () => {
+    const low = await setup({ usage: { ...USAGE, storage: { ...USAGE.storage, percent: 82 } } });
+    expect(low.card('summary-usage').getComponent(UsageMeter).props('hint')).toBe('You are running out of space on the Free plan.');
+    document.body.innerHTML = '';
+    const full = await setup({
+      trial_plan: { slug: 'starter', name: 'Starter' },
+      trial_end: '2026-10-30T10:00:00Z',
+      usage: { ...USAGE, storage: { ...USAGE.storage, percent: 104 } },
+    });
+    expect(full.card('summary-usage').getComponent(UsageMeter).props()).toMatchObject({
+      percent: 104,
+      hint: 'You have used all the space included in the Starter plan.',
+    });
+  });
+
+  it('an older measure says its day, on the counter and below', async () => {
+    const s = await setup({ usage: { ...USAGE, day: '2026-10-09', stale: true } });
+    const usage = s.card('summary-usage');
+    expect(usage.findAllComponents(UsageCounter).map((c: { props: (k: string) => unknown }) => c.props('label'))).toEqual([
+      'Active on Oct 9',
+      'Last 30 days',
+    ]);
+    expect(usage.get('[data-testid="summary-usage-day"]').text()).toBe('Data from Oct 9: updated every night.');
+  });
+
+  it('without a plan to measure against there is no bar, only the people', async () => {
+    const s = await setup({ plan: null, usage: { ...USAGE, storage: { used_bytes: 10, limit_bytes: null, percent: null } } });
     expect(s.card('summary-usage').findComponent(UsageMeter).exists()).toBe(false);
-    expect(s.card('summary-usage').findAllComponents(UsageCounter).map((c: { props: (k: string) => unknown }) => c.props('value'))).toEqual([4, 'Unlimited']);
+    expect(s.card('summary-usage').findAllComponents(UsageCounter)).toHaveLength(2);
+  });
+
+  it('in Spanish, as the mockup says it', async () => {
+    const s = await setup({ usage: USAGE }, 'es');
+    const usage = s.card('summary-usage');
+    expect(usage.get('.card-title').text()).toBe('Cómo va tu negocio en ERPlora');
+    expect(usage.getComponent(UsageMeter).props('label')).toBe('Almacenamiento');
+    expect(usage.findAllComponents(UsageCounter).map((c: { props: (k: string) => unknown }) => c.props('label'))).toEqual([
+      'Activos ayer',
+      'Últimos 30 días',
+    ]);
+    expect(usage.get('[data-testid="summary-usage-day"]').text()).toBe('Datos de ayer: se actualizan cada noche.');
+    document.body.innerHTML = '';
+    const older = await setup({ usage: { ...USAGE, day: '2026-10-09' } }, 'es');
+    expect(older.card('summary-usage').get('[data-testid="summary-usage-day"]').text()).toBe('Datos del 9 oct: se actualizan cada noche.');
+    document.body.innerHTML = '';
+    const empty = await setup({}, 'es');
+    expect(empty.card('summary-usage').get('[data-testid="summary-usage-empty"]').text()).toMatch(/^Sin datos todavía\./);
   });
 
   it('«On your devices» with the address, and the details', async () => {

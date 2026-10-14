@@ -104,3 +104,46 @@ def test_erploras_identity_is_edited_in_the_admin(staff_client):
 
     assert response.status_code == 302, response.content.decode()[:2000]
     assert CompanyConfig.objects.get().phone == "+34 600 000 000"
+
+
+# --- Stripe (lot L2-B) -------------------------------------------------------------------------------
+
+
+def test_promo_codes_are_written_in_the_admin(staff_client):
+    from billing.models import PromoCode
+
+    assert staff_client.get("/admin/billing/promocode/").status_code == 200
+    response = staff_client.post(
+        "/admin/billing/promocode/add/",
+        {"code": " Feria_2026 ", "trial_days": "30", "is_active": "on", "redemption_count": "0", "note": "Feria"},
+    )
+
+    assert response.status_code == 302, response.content
+    assert PromoCode.objects.get().code == "feria_2026"
+
+
+def test_a_promo_code_with_more_than_a_year_is_refused_in_the_form(staff_client):
+    response = staff_client.post(
+        "/admin/billing/promocode/add/", {"code": "long", "trial_days": "366", "redemption_count": "0"}
+    )
+
+    assert response.status_code == 200
+    assert b"trial_days" in response.content
+
+
+@pytest.mark.parametrize("model_name", ["checkoutattempt", "webhookevent", "paymentfailure"])
+def test_what_stripe_did_is_read_only(staff_client, model_name):
+    assert staff_client.get(f"/admin/billing/{model_name}/").status_code == 200
+    assert staff_client.get(f"/admin/billing/{model_name}/add/").status_code == 403
+
+
+def test_a_stripe_event_opens_read_only(staff_client):
+    from billing.models import WebhookEvent
+
+    row = WebhookEvent.objects.create(event_id="evt_1", event_type="invoice.paid", success=True, outcome="processed")
+
+    page = staff_client.get(f"/admin/billing/webhookevent/{row.pk}/change/")
+
+    assert page.status_code == 200
+    assert b"evt_1" in page.content
+    assert staff_client.post(f"/admin/billing/webhookevent/{row.pk}/delete/", {"post": "yes"}).status_code == 403

@@ -31,6 +31,31 @@ NEW_MESSAGES = [
     "End the sessions in the Hub now",
     "%(count)d session end(s) delivered.",
     "%(count)d session end(s) still pending: the Hub is away or refused it; reconcile_hub_states retries it.",
+    # L2-B: what Stripe says of the plan (hubs.subscription.apply) and the payer's postal code.
+    "Only the platform applies what Stripe says.",
+    "There is no plan with this identifier.",
+    "A Spanish postal code has five digits, e.g. 28001.",
+    "Paid",
+    "Card declined",
+    "Card changed",
+    "Authentication required",
+    "Payment failed",
+    "why it is unpaid",
+    "unpaid since",
+    "invoice to pay",
+    # L4-A: the usage of a business (HubUsageDaily, hubs.usage.*) and its admin.
+    "day",
+    "files (bytes)",
+    "database (bytes)",
+    "active that day",
+    "active in the 30 days",
+    "collected at",
+    "daily usage",
+    "daily usages",
+    "Only the platform records the usage of a business.",
+    "No usage of this business has been measured yet: the first figures arrive the night after it is created.",
+    "Files",
+    "Database",
 ]
 
 

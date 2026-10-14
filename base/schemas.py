@@ -42,10 +42,22 @@ class AppState(Schema):
     state: Literal["on", "activating", "off"]
 
 
+class SessionPreferences(Schema):
+    """What the account chose in Cuenta → Preferencias that the shell paints with (packages/ui
+    ``ThemeMode``, shell/theme.ts; ``accounts.UserPreferences``)."""
+
+    theme_mode: Literal["system", "light", "dark"]
+
+
 class SessionMeOut(Schema):
     user: SessionUser | None
     scope: SessionScope
     permissions: list[str]
     menu: list[MenuGroup]
     apps: list[AppState]
+    #: The language this answer speaks (the request's; on the panel, the account's: ``base.language``).
     language: str
+    #: ``None`` without an account.
+    preferences: SessionPreferences | None
+    #: ``User.language``, the account's own; ``None`` without an account.
+    account_language: str | None

@@ -13,15 +13,20 @@ Desde `saas-next/` (o con `pnpm --filter saas …` desde la raíz):
 
 ```bash
 uv run python manage.py migrate      # la e2e no migra la BD local: la comparten las sesiones
-pnpm e2e                             # los dos proyectos, en Chrome visible
+pnpm e2e                             # los dos proyectos, en Chrome sin ventana (headless)
+pnpm e2e:headed                      # lo mismo en un Chrome visible (E2E_HEADED=1), solo si se pide
 pnpm e2e --project=panel             # solo el panel
 pnpm e2e --project=public            # solo la web pública (antes, `pnpm build`)
 pnpm e2e --project=panel panel/login.spec.ts   # una spec
 ```
 
-- **Siempre en el Chrome de Ioan, visible** (`channel: 'chrome'`, `headless: false`, `slowMo` 150 ms),
-  como la de `hub-next`. Nunca un navegador oculto en local.
-- `pnpm e2e:ci` pone `CI=1`: sin ventana y sin `slowMo`. **Solo para la CI**.
+- **Sin ventana por defecto** (Ioan, 2026-10-14: nunca se abre un Chrome visible si no se pide): Chrome
+  (`channel: 'chrome'`) en modo `headless` y sin `slowMo`. Sustituye a la regla anterior de «siempre
+  visible».
+- **Ventana visible solo con `E2E_HEADED=1`** (`pnpm e2e:headed`): Chrome visible y `slowMo` de 150 ms
+  para poder seguirlo. La decide `browserWindow()` de `playwright.config.ts` (guarda en
+  `vite.config.test.ts`); ningún proyecto ni spec la cambia por su cuenta.
+- `pnpm e2e:ci` pone `CI=1`: sin ventana y sin `slowMo` aunque se pida `E2E_HEADED=1`. Es la de la CI.
 - Un solo worker (`workers: 1`): los proyectos comparten la BD local.
 - Trazas y capturas de los fallos en `.artifacts/test-results/<id de la ejecución>/`
   (`retain-on-failure`; se abren con `pnpm exec playwright show-trace <ruta>/trace.zip`). Las capturas

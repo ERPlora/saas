@@ -13,6 +13,14 @@ verify v1 only, every body names the hub of its path (``id`` or ``hub_id``) and 
   ``ready`` callback.
 - ``delete_hub`` → ``DELETE /internal/hubs/{id}``; ``restore_hub`` → ``POST /internal/hubs/{id}/restore``.
 - ``revoke_sessions`` → ``POST /internal/sessions/revoke`` (``{user_id, hub_id?}``, §2.1).
+- ``post_platform_invoice`` → ``POST /internal/platform/invoices``: an invoice of ERPlora to a customer, to
+  issue in ERPlora's platform hub (PLAN-SAAS §4; billing, lot L3-C), idempotent by its ``id``;
+  ``platform_invoicing_health`` → ``GET /internal/platform/invoices/health`` (the gate of live charging);
+  ``get_platform_invoice`` → ``GET /internal/platform/invoices/{id}`` (its status and QR) and
+  ``get_platform_invoice_pdf`` → ``GET /internal/platform/invoices/{id}/pdf`` (the PDF's bytes, round 17
+  §2.14).
+- ``get_usage`` → ``GET /internal/usage?day=YYYY-MM-DD[&cursor=…]``: one page of what the Hub measured that
+  day of every business (PLAN-SAAS §5; ``collect_hub_usage``, lot L4-A). The cursor goes back as it came.
 
 A 4xx raises ``HubRefused`` (with the Hub's error code); a 5xx, a timeout or no connection raises
 ``HubUnavailable``. Production reaches the Hub by its private name (``HUB_INTERNAL_URL``, aws-next
@@ -25,7 +33,9 @@ import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
+from datetime import date
 from typing import Any
+from urllib.parse import urlencode
 
 from django.conf import settings
 
@@ -93,7 +103,36 @@ def revoke_sessions(user_id: str, hub_id: str | None = None) -> HubAnswer:
     return _call("POST", "/internal/sessions/revoke", body)
 
 
+def post_platform_invoice(invoice: dict[str, Any]) -> HubAnswer:
+    return _call("POST", "/internal/platform/invoices", invoice)
+
+
+def platform_invoicing_health() -> HubAnswer:
+    """Whether the platform hub issues invoices now: 200 ``{"status": "ok"}``."""
+    return _call("GET", "/internal/platform/invoices/health", None)
+
+
+def get_platform_invoice(invoice_id: str) -> HubAnswer:
+    return _call("GET", f"/internal/platform/invoices/{invoice_id}", None)
+
+
+def get_platform_invoice_pdf(invoice_id: str) -> bytes:
+    """The PDF of an invoice the platform hub issued, as it sends it."""
+    return _exchange("GET", f"/internal/platform/invoices/{invoice_id}/pdf", None)[1]
+
+
+def get_usage(day: date, cursor: str | None = None) -> HubAnswer:
+    """One page of the usage of ``day``: ``{day, hubs: [...], next_cursor}`` (``hubs/README.md``)."""
+    query = {"day": day.isoformat()} if cursor is None else {"day": day.isoformat(), "cursor": cursor}
+    return _call("GET", f"/internal/usage?{urlencode(query)}", None)
+
+
 def _call(method: str, path: str, payload: Any) -> HubAnswer:
+    status, raw = _exchange(method, path, payload)
+    return HubAnswer(status, _json(raw))
+
+
+def _exchange(method: str, path: str, payload: Any) -> tuple[int, bytes]:
     body = (
         b"" if payload is None else json.dumps(payload, separators=(",", ":")).encode()
     )
@@ -105,7 +144,7 @@ def _call(method: str, path: str, payload: Any) -> HubAnswer:
     )
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
-            return HubAnswer(response.status, _json(response.read()))
+            return response.status, response.read()
     except urllib.error.HTTPError as failed:
         answer = _json(failed.read())
         if 400 <= failed.code < 500:

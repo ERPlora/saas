@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: saas-next\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-14 04:27+0200\n"
+"POT-Creation-Date: 2026-10-14 07:55+0200\n"
 "PO-Revision-Date: 2026-10-14 04:00+0200\n"
 "Last-Translator: ERPlora\n"
 "Language-Team: Spanish\n"
@@ -16,35 +16,35 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: admin.py:58
+#: admin.py:79
 msgid "Legal identity"
 msgstr "Identidad legal"
 
-#: admin.py:62
+#: admin.py:83
 msgid "Address"
 msgstr "Dirección"
 
-#: admin.py:65
+#: admin.py:86
 msgid "VAT and currency"
 msgstr "IVA y moneda"
 
-#: admin.py:66
+#: admin.py:87
 msgid "Contact"
 msgstr "Contacto"
 
-#: admin.py:68
+#: admin.py:89
 msgid "History"
 msgstr "Historial"
 
-#: admin.py:84
+#: admin.py:105
 msgid "Rules"
 msgstr "Reglas"
 
-#: admin.py:113
+#: admin.py:134
 msgid "Rate"
 msgstr "Tipo"
 
-#: admin.py:117
+#: admin.py:138
 msgid ""
 "Untick «Subject to VAT» for a territory outside the scope of the tax (Canary "
 "Islands, Ceuta, Melilla, third countries). It is not a 0 % rate: the AEAT "
@@ -54,27 +54,27 @@ msgstr ""
 "(Canarias, Ceuta, Melilla, terceros países). No es un tipo del 0 %: a la "
 "AEAT le llega como operación no sujeta."
 
-#: admin.py:123
+#: admin.py:144
 msgid "Validity"
 msgstr "Vigencia"
 
-#: admin.py:126
+#: admin.py:147
 msgid "Applies"
 msgstr "Se aplica"
 
-#: admin.py:129
+#: admin.py:150 models.py:685
 msgid "Not subject"
 msgstr "No sujeta"
 
-#: admin.py:140
+#: admin.py:161
 msgid "Issuer"
 msgstr "Emisor"
 
-#: admin.py:142
+#: admin.py:163
 msgid "Intra-EU B2B (ROI / VIES)"
 msgstr "B2B intracomunitario (ROI / VIES)"
 
-#: admin.py:146
+#: admin.py:167
 msgid ""
 "While unticked, Spanish VAT is charged to EVERY customer, EU businesses "
 "included. Even when ticked, each sale also needs a current VIES verdict on "
@@ -86,11 +86,11 @@ msgstr ""
 "veredicto vigente de VIES sobre el NIF-IVA del cliente (ver «Comprobaciones "
 "de NIF-IVA»); si no, se cobra el IVA igualmente."
 
-#: admin.py:153
+#: admin.py:174
 msgid "One-Stop Shop (OSS)"
 msgstr "Ventanilla única (OSS)"
 
-#: admin.py:157
+#: admin.py:178
 msgid ""
 "Below the threshold the issuer's country VAT is charged. Above it —or with "
 "the OSS registration ticked, which binds for two years— the customer's "
@@ -100,47 +100,59 @@ msgstr ""
 "el alta en la OSS marcada, que vincula dos años— se aplica el tipo del país "
 "del cliente."
 
-#: admin.py:163
+#: admin.py:184
 msgid "Carried from the old SaaS"
 msgstr "Traído del SaaS antiguo"
 
-#: admin.py:167
-msgid "Until the invoices live here, the cross-border B2C sales of the year come from the old SaaS: type them for the current year and the year before. Without them the total is unknown and the threshold could be crossed without anybody noticing."
-msgstr "Hasta que las facturas vivan aquí, las ventas B2C transfronterizas del año vienen del SaaS antiguo: escríbelas para el año en curso y el anterior. Sin ellas el total es desconocido y el umbral se podría cruzar sin que nadie lo note."
+#: admin.py:188
+msgid ""
+"Until the invoices live here, the cross-border B2C sales of the year come "
+"from the old SaaS: type them for the current year and the year before. "
+"Without them the total is unknown and the threshold could be crossed without "
+"anybody noticing."
+msgstr ""
+"Hasta que las facturas vivan aquí, las ventas B2C transfronterizas del año "
+"vienen del SaaS antiguo: escríbelas para el año en curso y el anterior. Sin "
+"ellas el total es desconocido y el umbral se podría cruzar sin que nadie lo "
+"note."
 
-#: admin.py:175
+#: admin.py:196
 msgid "Cross-border B2C this year"
 msgstr "B2C transfronterizo este año"
 
-#: admin.py:179
+#: admin.py:200
 #, python-format
-msgid "Unknown: carry this year's amounts from the old SaaS below (threshold %(threshold)s €)"
-msgstr "Desconocido: trae abajo los importes de este año del SaaS antiguo (umbral %(threshold)s €)"
+msgid ""
+"Unknown: carry this year's amounts from the old SaaS below (threshold "
+"%(threshold)s €)"
+msgstr ""
+"Desconocido: trae abajo los importes de este año del SaaS antiguo (umbral "
+"%(threshold)s €)"
 
-#: admin.py:184
+#: admin.py:205
 msgid "destination rate"
 msgstr "tipo de destino"
 
-#: admin.py:186
+#: admin.py:207
 msgid "issuer rate"
 msgstr "tipo del emisor"
 
-#: admin.py:222
+#: admin.py:243
 msgid "Current"
 msgstr "Vigente"
 
-#: admin.py:250
+#: admin.py:271 tests/test_vat_check_api.py:564
 msgid "Check now in VIES"
 msgstr "Comprobar ahora en VIES"
 
-#: admin.py:263
+#: admin.py:284
 #, python-format
 msgid "%(vat)s: a UK number is HMRC's, not VIES': nothing was asked."
 msgstr ""
 "%(vat)s: un número británico es de HMRC, no de VIES: no se ha consultado "
 "nada."
 
-#: admin.py:273
+#: admin.py:294
 #, python-format
 msgid ""
 "Too many VAT checks in the last minute. Not checked, try again shortly: "
@@ -149,7 +161,7 @@ msgstr ""
 "Demasiadas comprobaciones de NIF-IVA en el último minuto. Sin comprobar, "
 "inténtalo en un momento: %(numbers)s"
 
-#: admin.py:282
+#: admin.py:303
 #, python-format
 msgid ""
 "%(vat)s: the answer could not be saved, so it proves nothing. Try again."
@@ -157,24 +169,24 @@ msgstr ""
 "%(vat)s: la respuesta no se pudo guardar, así que no prueba nada. Inténtalo "
 "de nuevo."
 
-#: admin.py:290
+#: admin.py:311
 #, python-format
 msgid "%(vat)s: confirmed in VIES (consultation %(consultation)s)."
 msgstr "%(vat)s: confirmado en VIES (consulta %(consultation)s)."
 
-#: admin.py:299
+#: admin.py:320
 #, python-format
 msgid "%(vat)s: not registered in VIES. VAT is charged."
 msgstr "%(vat)s: no está registrado en VIES. Se cobra el IVA."
 
-#: admin.py:306
+#: admin.py:327
 #, python-format
 msgid "%(vat)s: VIES could not answer. VAT is still charged; try again later."
 msgstr ""
 "%(vat)s: VIES no ha podido responder. Se sigue cobrando el IVA; inténtalo "
 "más tarde."
 
-#: admin.py:324
+#: admin.py:345
 #, python-format
 msgid ""
 "VAT number %(vat)s marked as valid BY HAND. Who did it and why is on the "
@@ -184,121 +196,225 @@ msgstr ""
 "NIF-IVA %(vat)s marcado como válido A MANO. Queda constancia de quién y por "
 "qué: es la única forma de facturar sin IVA cuando VIES no confirma el número."
 
-#: apps.py:17
+#: admin.py:426 queries.py:779
+msgid "Total"
+msgstr "Total"
+
+#: admin.py:435
+msgid "Send again to the platform hub"
+msgstr "Reenviar al hub de plataforma"
+
+#: admin.py:446
+#, python-format
+msgid "%(invoice)s: the platform hub says «%(status)s»."
+msgstr "%(invoice)s: el hub de plataforma dice «%(status)s»."
+
+#: admin.py:450
+#, python-format
+msgid "%(invoice)s: not paid, so there is nothing to issue."
+msgstr "%(invoice)s: no está pagada, así que no hay nada que emitir."
+
+#: admin.py:454
+#, python-format
+msgid ""
+"%(invoice)s: the platform hub refused it (%(code)s). It stays «issuing»."
+msgstr ""
+"%(invoice)s: el hub de plataforma la rechazó (%(code)s). Sigue «emitiéndose»."
+
+#: admin.py:460
+#, python-format
+msgid ""
+"%(invoice)s: the platform hub did not answer. It stays «issuing» and is "
+"retried."
+msgstr ""
+"%(invoice)s: el hub de plataforma no respondió. Sigue «emitiéndose» y se "
+"reintentará."
+
+#: admin.py:464
+msgid "Send the invoice mail again"
+msgstr "Reenviar el correo de la factura"
+
+#: admin.py:471
+#, python-format
+msgid "%(invoice)s: not issued yet, so it has no mail."
+msgstr "%(invoice)s: aún no está emitida, así que no tiene correo."
+
+#: admin.py:475
+#, python-format
+msgid "%(invoice)s: the mail was sent."
+msgstr "%(invoice)s: el correo se envió."
+
+#: admin.py:477
+#, python-format
+msgid "%(invoice)s: it has nobody to send it to."
+msgstr "%(invoice)s: no tiene a quién enviarlo."
+
+#: admin.py:479
+#, python-format
+msgid "%(invoice)s: the mail could not leave; it is sent again later."
+msgstr "%(invoice)s: el correo no pudo salir; se volverá a enviar más tarde."
+
+#: apps.py:18
 msgid "Billing"
 msgstr "Facturación"
 
-#: models.py:27
+#: emails.py:47
+#, python-format
+msgid "Credit note %(number)s from ERPlora"
+msgstr "Factura rectificativa %(number)s de ERPlora"
+
+#: emails.py:50
+#, python-format
+msgid "ERPlora issued credit note %(number)s for %(business)s."
+msgstr ""
+"ERPlora ha emitido la factura rectificativa %(number)s de %(business)s."
+
+#: emails.py:52
+#, python-format
+msgid "Invoice %(number)s from ERPlora"
+msgstr "Factura %(number)s de ERPlora"
+
+#: emails.py:53
+#, python-format
+msgid "ERPlora issued invoice %(number)s for %(business)s."
+msgstr "ERPlora ha emitido la factura %(number)s de %(business)s."
+
+#: emails.py:57
+#, python-format
+msgid "Date: %(date)s"
+msgstr "Fecha: %(date)s"
+
+#: emails.py:59
+#, python-format
+msgid "Tax base: %(amount)s"
+msgstr "Base imponible: %(amount)s"
+
+#: emails.py:60
+#, python-format
+msgid "VAT (%(rate)s %%): %(amount)s"
+msgstr "IVA (%(rate)s %%): %(amount)s"
+
+#: emails.py:65
+#, python-format
+msgid "Total: %(amount)s"
+msgstr "Total: %(amount)s"
+
+#: emails.py:67
+#, python-format
+msgid "Download it from Billing: %(url)s"
+msgstr "Descárgala en Facturación: %(url)s"
+
+#: models.py:34
 msgid "Two capital letters (ISO 3166-1 alpha-2), e.g. ES."
 msgstr "Dos letras mayúsculas (ISO 3166-1 alfa-2), p. ej. ES."
 
-#: models.py:30
+#: models.py:37
 msgid "Capital letters only, e.g. IC."
 msgstr "Solo letras mayúsculas, p. ej. IC."
 
-#: models.py:77
+#: models.py:84
 msgid "key"
 msgstr "clave"
 
-#: models.py:80
+#: models.py:87
 msgid "Stable canonical key, e.g. service.saas_subscription"
 msgstr "Clave canónica estable, p. ej. service.saas_subscription"
 
-#: models.py:82
+#: models.py:89
 msgid "name"
 msgstr "nombre"
 
-#: models.py:83
+#: models.py:90 models.py:992
 msgid "description"
 msgstr "descripción"
 
-#: models.py:84 models.py:142
+#: models.py:91 models.py:149 models.py:429
 msgid "active"
 msgstr "activa"
 
-#: models.py:90
+#: models.py:97 models.py:1009
 msgid "tax category"
 msgstr "categoría fiscal"
 
-#: models.py:91
+#: models.py:98
 msgid "tax categories"
 msgstr "categorías fiscales"
 
-#: models.py:113
+#: models.py:120
 msgid "category"
 msgstr "categoría"
 
-#: models.py:116 models.py:281
+#: models.py:123 models.py:294
 msgid "country"
 msgstr "país"
 
-#: models.py:119
+#: models.py:126
 msgid "ISO 3166-1 alpha-2 (ES, DE, FR…)"
 msgstr "ISO 3166-1 alfa-2 (ES, DE, FR…)"
 
-#: models.py:122
+#: models.py:129
 msgid "region"
 msgstr "región"
 
-#: models.py:127
+#: models.py:134
 msgid ""
 "Empty = the whole country. IC = Canary Islands, CE = Ceuta, ML = Melilla"
 msgstr "Vacío = todo el país. IC = Canarias, CE = Ceuta, ML = Melilla"
 
-#: models.py:131
+#: models.py:138
 msgid "rate %"
 msgstr "tipo %"
 
-#: models.py:134
+#: models.py:141
 msgid "subject to VAT"
 msgstr "sujeto a IVA"
 
-#: models.py:137
+#: models.py:144
 msgid ""
 "Unchecked = territory outside the scope of VAT (not subject), not a 0 % rate"
 msgstr ""
 "Desmarcado = territorio fuera del ámbito del IVA (no sujeto), no un tipo del "
 "0 %"
 
-#: models.py:140
+#: models.py:147
 msgid "valid from"
 msgstr "vigente desde"
 
-#: models.py:141
+#: models.py:148
 msgid "valid to"
 msgstr "vigente hasta"
 
-#: models.py:148
+#: models.py:155
 msgid "tax rule"
 msgstr "regla fiscal"
 
-#: models.py:149
+#: models.py:156
 msgid "tax rules"
 msgstr "reglas fiscales"
 
-#: models.py:173
+#: models.py:180
 msgid "not subject"
 msgstr "no sujeta"
 
-#: models.py:187
+#: models.py:194
 msgid "issuer country"
 msgstr "país del emisor"
 
-#: models.py:193
+#: models.py:200
 msgid "issuer region"
 msgstr "región del emisor"
 
-#: models.py:198
+#: models.py:205
 msgid ""
 "IC = Canary Islands, CE = Ceuta, ML = Melilla. Empty = mainland Spain and "
 "the Balearic Islands"
 msgstr "IC = Canarias, CE = Ceuta, ML = Melilla. Vacío = península y Baleares"
 
-#: models.py:203
+#: models.py:210
 msgid "registered in ROI / VIES"
 msgstr "dado de alta en el ROI / VIES"
 
-#: models.py:206
+#: models.py:213
 msgid ""
 "Registered in the Register of Intra-Community Operators (form 036). "
 "Unchecked, Spanish VAT is charged to EU businesses TOO: invoicing without "
@@ -312,11 +428,11 @@ msgstr ""
 "con intereses. Marcado, la inversión del sujeto pasivo se aplica sola, pero "
 "solo con el NIF-IVA validado en VIES."
 
-#: models.py:213
+#: models.py:220
 msgid "registered in OSS"
 msgstr "dado de alta en la OSS"
 
-#: models.py:216
+#: models.py:223
 msgid ""
 "Registered in the One-Stop Shop. Forces the customer's country rate even "
 "below the threshold"
@@ -324,212 +440,888 @@ msgstr ""
 "Alta en la ventanilla única. Aplica el tipo del país del cliente aun por "
 "debajo del umbral"
 
-#: models.py:220
+#: models.py:227
 msgid "OSS threshold"
 msgstr "umbral de la OSS"
 
-#: models.py:225
+#: models.py:232
 msgid ""
 "Yearly cross-border B2C sales (EU) from which the destination rate applies"
 msgstr ""
 "Ventas B2C transfronterizas anuales (UE) a partir de las que se aplica el "
 "tipo de destino"
 
-#: models.py:231
+#: models.py:238
 msgid "year of the carried amounts"
 msgstr "año de los importes traídos"
 
-#: models.py:234
-msgid "The year the «this year» amount belongs to. Empty = nothing carried: the total is unknown"
-msgstr "El año al que pertenece el importe de «este año». Vacío = nada traído: el total es desconocido"
+#: models.py:242
+msgid ""
+"The year the «this year» amount belongs to. Empty = nothing carried: the "
+"total is unknown"
+msgstr ""
+"El año al que pertenece el importe de «este año». Vacío = nada traído: el "
+"total es desconocido"
 
-#: models.py:237
+#: models.py:246
 msgid "cross-border B2C carried for that year (cents)"
 msgstr "B2C transfronterizo traído de ese año (céntimos)"
 
-#: models.py:239
-msgid "Tax base of the intra-EU B2C sales without a verified VAT number invoiced by the old SaaS that year, in cents"
-msgstr "Base imponible de las ventas B2C intracomunitarias sin NIF-IVA verificado facturadas por el SaaS antiguo ese año, en céntimos"
+#: models.py:249
+msgid ""
+"Tax base of the intra-EU B2C sales without a verified VAT number invoiced by "
+"the old SaaS that year, in cents"
+msgstr ""
+"Base imponible de las ventas B2C intracomunitarias sin NIF-IVA verificado "
+"facturadas por el SaaS antiguo ese año, en céntimos"
 
-#: models.py:242
+#: models.py:253
 msgid "cross-border B2C carried for the year before (cents)"
 msgstr "B2C transfronterizo traído del año anterior (céntimos)"
 
-#: models.py:244
-msgid "The same, for the year before: above the threshold, the whole year is destination VAT"
-msgstr "Lo mismo, del año anterior: por encima del umbral, todo el año es IVA de destino"
+#: models.py:256
+msgid ""
+"The same, for the year before: above the threshold, the whole year is "
+"destination VAT"
+msgstr ""
+"Lo mismo, del año anterior: por encima del umbral, todo el año es IVA de "
+"destino"
 
-#: models.py:249 models.py:250
+#: models.py:262 models.py:263
 msgid "fiscal policy"
 msgstr "política fiscal"
 
-#: models.py:253
+#: models.py:266
 #, python-format
 msgid "Fiscal policy (%(country)s)"
 msgstr "Política fiscal (%(country)s)"
 
-#: models.py:264
+#: models.py:277
 msgid "General regime"
 msgstr "Régimen general"
 
-#: models.py:265
+#: models.py:278
 msgid "Simplified regime"
 msgstr "Régimen simplificado"
 
-#: models.py:266
+#: models.py:279
 msgid "Equivalence surcharge"
 msgstr "Recargo de equivalencia"
 
-#: models.py:267
+#: models.py:280 models.py:686
 msgid "Exempt"
 msgstr "Exento"
 
-#: models.py:270
+#: models.py:283
 msgid "legal name"
 msgstr "razón social"
 
-#: models.py:270
+#: models.py:283
 msgid "e.g. ERPLORA CLOUD SL"
 msgstr "p. ej. ERPLORA CLOUD SL"
 
-#: models.py:272
+#: models.py:285
 msgid "trade name"
 msgstr "nombre comercial"
 
-#: models.py:274
+#: models.py:287
 msgid "tax ID"
 msgstr "NIF"
 
-#: models.py:274
+#: models.py:287
 msgid "CIF/NIF, e.g. B12345678"
 msgstr "CIF/NIF, p. ej. B12345678"
 
-#: models.py:276
+#: models.py:289
 msgid "street"
 msgstr "calle"
 
-#: models.py:277
+#: models.py:290
 msgid "city"
 msgstr "ciudad"
 
-#: models.py:278
+#: models.py:291
 msgid "postal code"
 msgstr "código postal"
 
-#: models.py:279
+#: models.py:292
 msgid "province"
 msgstr "provincia"
 
-#: models.py:284
+#: models.py:297
 msgid "VAT regime"
 msgstr "régimen de IVA"
 
-#: models.py:289
+#: models.py:302
 msgid "email"
 msgstr "correo electrónico"
 
-#: models.py:290
+#: models.py:303
 msgid "phone"
 msgstr "teléfono"
 
-#: models.py:291
+#: models.py:304
 msgid "website"
 msgstr "sitio web"
 
-#: models.py:292
+#: models.py:305 models.py:826
 msgid "currency"
 msgstr "moneda"
 
-#: models.py:297 models.py:298
+#: models.py:310 models.py:311
 msgid "company configuration"
 msgstr "datos de la empresa"
 
-#: models.py:301
+#: models.py:314
 msgid "Company configuration"
 msgstr "Datos de la empresa"
 
-#: models.py:320
+#: models.py:333
 msgid "Verified in VIES"
 msgstr "Verificado en VIES"
 
-#: models.py:321
+#: models.py:334
 msgid "Not registered in VIES"
 msgstr "No registrado en VIES"
 
-#: models.py:322
+#: models.py:335
 msgid "VIES could not answer"
 msgstr "VIES no pudo responder"
 
-#: models.py:323
+#: models.py:336
 msgid "Awaiting an answer"
 msgstr "Esperando respuesta"
 
-#: models.py:331
+#: models.py:344
 msgid "VAT number"
 msgstr "NIF-IVA"
 
-#: models.py:335
+#: models.py:348
 msgid "Normalised: no spaces or dashes, uppercase, with the country prefix"
 msgstr ""
 "Normalizado: sin espacios ni guiones, en mayúsculas, con el prefijo del país"
 
-#: models.py:338
+#: models.py:351
 msgid "asked at"
 msgstr "consultado el"
 
-#: models.py:340
+#: models.py:353 models.py:570
 msgid "status"
 msgstr "estado"
 
-#: models.py:343
+#: models.py:356
 msgid "consultation number"
 msgstr "número de consulta"
 
-#: models.py:346
+#: models.py:359
 msgid "VIES requestIdentifier: the audit proof of this query"
 msgstr "requestIdentifier de VIES: la prueba auditable de esta consulta"
 
-#: models.py:348
+#: models.py:361
 msgid "name in VIES"
 msgstr "nombre en VIES"
 
-#: models.py:349
+#: models.py:362
 msgid "address in VIES"
 msgstr "dirección en VIES"
 
-#: models.py:351
+#: models.py:364
 msgid "overridden by"
 msgstr "forzado por"
 
-#: models.py:352
+#: models.py:365
 msgid "reason of the override"
 msgstr "motivo del forzado"
 
-#: models.py:353
+#: models.py:366
 msgid "overridden at"
 msgstr "forzado el"
 
-#: models.py:357
+#: models.py:370
 msgid "VAT check"
 msgstr "comprobación de NIF-IVA"
 
-#: models.py:358
+#: models.py:371
 msgid "VAT checks"
 msgstr "comprobaciones de NIF-IVA"
 
-#: services.py:367
-msgid "We cannot work out the tax for this billing address, so this sale cannot be made. Contact support."
-msgstr "No podemos calcular el impuesto para esta dirección de facturación, así que esta venta no se puede hacer. Escribe a soporte."
+#: models.py:415
+msgid "code"
+msgstr "código"
 
-#: services.py:370
-msgid "We cannot work out the tax for this billing address, so this plan cannot be sold to it. Contact support."
-msgstr "No podemos calcular el impuesto para esta dirección de facturación, así que no se puede vender este plan a ella. Escribe a soporte."
+#: models.py:419
+msgid ""
+"What the customer types, case-insensitive (stored in lowercase), e.g. "
+"canary_2026"
+msgstr ""
+"Lo que escribe el cliente, sin distinguir mayúsculas (se guarda en "
+"minúsculas), p. ej. canary_2026"
 
-#: services.py:373
-msgid "We cannot work out the tax for this billing address, so this module cannot be sold to it. Contact support."
-msgstr "No podemos calcular el impuesto para esta dirección de facturación, así que no se puede vender este módulo a ella. Escribe a soporte."
+#: models.py:423
+msgid "trial days"
+msgstr "días de prueba"
 
-#: services.py:407
+#: models.py:426
+msgid "Free trial days granted, replacing the plan's own trial (1 to 365)"
+msgstr ""
+"Días de prueba gratis que da, en lugar de la prueba del propio plan (de 1 a "
+"365)"
+
+#: models.py:431
+msgid "expires at"
+msgstr "caduca el"
+
+#: models.py:431
+msgid "Empty = never expires"
+msgstr "Vacío = no caduca nunca"
+
+#: models.py:434
+msgid "maximum redemptions"
+msgstr "usos máximos"
+
+#: models.py:437
+msgid "Empty = unlimited"
+msgstr "Vacío = sin límite"
+
+#: models.py:440
+msgid "redemptions"
+msgstr "usos"
+
+#: models.py:440
+msgid "Completed checkouts that used it"
+msgstr "Pagos completados que lo usaron"
+
+#: models.py:443
+msgid "note"
+msgstr "nota"
+
+#: models.py:446
+msgid "Campaign or deal this code belongs to"
+msgstr "Campaña o acuerdo al que pertenece el código"
+
+#: models.py:453 models.py:500 models.py:565
+msgid "promo code"
+msgstr "código promocional"
+
+#: models.py:454
+msgid "promo codes"
+msgstr "códigos promocionales"
+
+#: models.py:506 models.py:551 models.py:646 models.py:771 models.py:1063
+msgid "business"
+msgstr "negocio"
+
+#: models.py:510
+msgid "used at"
+msgstr "usado el"
+
+#: models.py:514
+msgid "promo code used"
+msgstr "código promocional usado"
+
+#: models.py:515
+msgid "promo codes used"
+msgstr "códigos promocionales usados"
+
+#: models.py:535 models.py:981
+msgid "Plan"
+msgstr "Plan"
+
+#: models.py:536 models.py:982
+msgid "Module"
+msgstr "Módulo"
+
+#: models.py:539
+msgid "Open"
+msgstr "Abierto"
+
+#: models.py:540
+msgid "Completed"
+msgstr "Completado"
+
+#: models.py:541
+msgid "Expired"
+msgstr "Caducado"
+
+#: models.py:542 models.py:640
+msgid "Payment failed"
+msgstr "Pago fallido"
+
+#: models.py:559
+msgid "opened by"
+msgstr "abierto por"
+
+#: models.py:561
+msgid "sells"
+msgstr "vende"
+
+#: models.py:562 models.py:1066
+msgid "plan"
+msgstr "plan"
+
+#: models.py:563
+msgid "module"
+msgstr "módulo"
+
+#: models.py:564 models.py:1067
+msgid "billing"
+msgstr "facturación"
+
+#: models.py:568
+msgid "selection"
+msgstr "selección"
+
+#: models.py:576
+msgid "opened at"
+msgstr "abierto el"
+
+#: models.py:577
+msgid "completed at"
+msgstr "completado el"
+
+#: models.py:582
+msgid "checkout"
+msgstr "pago"
+
+#: models.py:583
+msgid "checkouts"
+msgstr "pagos"
+
+#: models.py:602 models.py:617
+msgid "Stripe event"
+msgstr "evento de Stripe"
+
+#: models.py:603
+msgid "type"
+msgstr "tipo"
+
+#: models.py:604
+msgid "received at"
+msgstr "recibido el"
+
+#: models.py:606
+msgid "processing since"
+msgstr "procesándose desde"
+
+#: models.py:608
+msgid "processed at"
+msgstr "procesado el"
+
+#: models.py:609
+msgid "processed"
+msgstr "procesado"
+
+#: models.py:611
+msgid "outcome"
+msgstr "resultado"
+
+#: models.py:612
+msgid "error"
+msgstr "error"
+
+#: models.py:613
+msgid "attempts"
+msgstr "intentos"
+
+#: models.py:618
+msgid "Stripe events"
+msgstr "eventos de Stripe"
+
+#: models.py:635
+msgid "Card declined"
+msgstr "Tarjeta rechazada"
+
+#: models.py:638
+msgid "Authentication required"
+msgstr "Autenticación pendiente"
+
+#: models.py:649 models.py:804
+msgid "Stripe invoice"
+msgstr "factura de Stripe"
+
+#: models.py:653
+msgid "reason"
+msgstr "motivo"
+
+#: models.py:654
+msgid "Stripe code"
+msgstr "código de Stripe"
+
+#: models.py:655
+msgid "decline code"
+msgstr "código de rechazo"
+
+#: models.py:657
+msgid "card that failed"
+msgstr "tarjeta que falló"
+
+#: models.py:660
+msgid "invoice to pay"
+msgstr "factura por pagar"
+
+#: models.py:662
+msgid "invoice issued at"
+msgstr "factura emitida el"
+
+#: models.py:663
+msgid "last failure"
+msgstr "último fallo"
+
+#: models.py:664
+msgid "failures"
+msgstr "fallos"
+
+#: models.py:665
+msgid "card changed at"
+msgstr "tarjeta cambiada el"
+
+#: models.py:666
+msgid "resolved at"
+msgstr "resuelto el"
+
+#: models.py:670
+msgid "failed payment"
+msgstr "pago fallido"
+
+#: models.py:671
+msgid "failed payments"
+msgstr "pagos fallidos"
+
+#: models.py:682
+msgid "Domestic"
+msgstr "Nacional"
+
+#: models.py:683
+msgid "OSS (destination country)"
+msgstr "OSS (país de destino)"
+
+#: models.py:684
+msgid "Reverse charge"
+msgstr "Inversión del sujeto pasivo"
+
+#: models.py:706 models.py:799
+msgid "series"
+msgstr "serie"
+
+#: models.py:707
+msgid "year"
+msgstr "año"
+
+#: models.py:708
+msgid "last number"
+msgstr "último número"
+
+#: models.py:711
+msgid "invoice counter"
+msgstr "contador de facturas"
+
+#: models.py:712
+msgid "invoice counters"
+msgstr "contadores de facturas"
+
+#: models.py:734 queries.py:779
+msgid "Invoice"
+msgstr "Factura"
+
+#: models.py:735
+msgid "Credit note"
+msgstr "Factura rectificativa"
+
+#: models.py:739
+msgctxt "invoice"
+msgid "Not collected"
+msgstr "No cobrada"
+
+#: models.py:740
+msgctxt "invoice"
+msgid "Paid"
+msgstr "Pagada"
+
+#: models.py:741
+msgctxt "invoice"
+msgid "Void"
+msgstr "Anulada"
+
+#: models.py:746
+msgid "Not a rectifying invoice"
+msgstr "No es rectificativa"
+
+#: models.py:747
+msgid "R1: error or art. 80.1, 80.2 and 80.6 LIVA (refunds, price changes)"
+msgstr ""
+"R1: error o art. 80.1, 80.2 y 80.6 LIVA (devoluciones, cambios de precio)"
+
+#: models.py:748
+msgid "R2: art. 80.3 LIVA (insolvency)"
+msgstr "R2: art. 80.3 LIVA (concurso)"
+
+#: models.py:749
+msgid "R3: art. 80.4 LIVA (uncollectible)"
+msgstr "R3: art. 80.4 LIVA (créditos incobrables)"
+
+#: models.py:750
+msgid "R4: other"
+msgstr "R4: resto"
+
+#: models.py:753
+msgctxt "invoice"
+msgid "Not issued"
+msgstr "Sin emitir"
+
+#: models.py:754
+msgctxt "invoice"
+msgid "Issuing"
+msgstr "Emitiéndose"
+
+#: models.py:755
+msgctxt "invoice"
+msgid "Issued"
+msgstr "Emitida"
+
+#: models.py:756
+msgctxt "invoice"
+msgid "Accepted"
+msgstr "Aceptada"
+
+#: models.py:757
+msgctxt "invoice"
+msgid "Accepted with errors"
+msgstr "Aceptada con errores"
+
+#: models.py:758
+msgctxt "invoice"
+msgid "Rejected"
+msgstr "Rechazada"
+
+#: models.py:761
+msgid "kind"
+msgstr "tipo"
+
+#: models.py:773
+msgid "business name"
+msgstr "nombre del negocio"
+
+#: models.py:780
+msgid "billing profile"
+msgstr "datos de facturación"
+
+#: models.py:789
+msgid "payer account"
+msgstr "cuenta del pagador"
+
+#: models.py:797
+msgid "rectifies"
+msgstr "rectifica"
+
+#: models.py:800
+msgid "sequence"
+msgstr "secuencia"
+
+#: models.py:801
+msgid "number"
+msgstr "número"
+
+#: models.py:803
+msgid "issued on"
+msgstr "emitida el"
+
+#: models.py:807
+msgid "Stripe source"
+msgstr "origen en Stripe"
+
+#: models.py:809
+msgid "rectification type"
+msgstr "tipo de rectificativa"
+
+#: models.py:812
+msgid "rectification reason"
+msgstr "motivo de la rectificación"
+
+#: models.py:814
+msgid "Stripe number"
+msgstr "número de Stripe"
+
+#: models.py:816
+msgid "Stripe's invoice page"
+msgstr "página de la factura en Stripe"
+
+#: models.py:818
+msgid "billed at"
+msgstr "facturada el"
+
+#: models.py:820
+msgid "payment"
+msgstr "pago"
+
+#: models.py:825
+msgid "paid at"
+msgstr "pagada el"
+
+#: models.py:827 models.py:1018
+msgid "tax base (cents)"
+msgstr "base imponible (céntimos)"
+
+#: models.py:828 models.py:1019
+msgid "VAT (cents)"
+msgstr "IVA (céntimos)"
+
+#: models.py:829 models.py:1020
+msgid "total (cents)"
+msgstr "total (céntimos)"
+
+#: models.py:833 models.py:1013
+msgid "tax treatment"
+msgstr "tratamiento fiscal"
+
+#: models.py:835
+msgid "tax country"
+msgstr "país del impuesto"
+
+#: models.py:837 models.py:1016
+msgid "VAT rate"
+msgstr "tipo de IVA"
+
+#: models.py:841
+msgid "VAT taken out of the amount charged"
+msgstr "IVA sacado de lo cobrado"
+
+#: models.py:844
+msgid "payer"
+msgstr "pagador"
+
+#: models.py:845
+msgid "payer tax ID"
+msgstr "NIF del pagador"
+
+#: models.py:847
+msgid "payer tax ID type"
+msgstr "tipo de NIF del pagador"
+
+#: models.py:850
+msgid "tax ID verified in VIES"
+msgstr "NIF-IVA verificado en VIES"
+
+#: models.py:854
+msgid "VIES consultation number"
+msgstr "número de consulta de VIES"
+
+#: models.py:856
+msgid "payer address"
+msgstr "dirección del pagador"
+
+#: models.py:857
+msgid "payer city"
+msgstr "ciudad del pagador"
+
+#: models.py:859
+msgid "payer postal code"
+msgstr "código postal del pagador"
+
+#: models.py:861
+msgid "payer country"
+msgstr "país del pagador"
+
+#: models.py:862
+msgid "payer email"
+msgstr "correo del pagador"
+
+#: models.py:864
+msgid "language"
+msgstr "idioma"
+
+#: models.py:867
+msgid "fiscal status"
+msgstr "estado fiscal"
+
+#: models.py:874
+msgid "fiscal status at"
+msgstr "estado fiscal desde"
+
+#: models.py:877
+msgid "QR"
+msgstr "QR"
+
+#: models.py:879
+msgid "fiscal error code"
+msgstr "código del error fiscal"
+
+#: models.py:881
+msgid "fiscal error"
+msgstr "error fiscal"
+
+#: models.py:883
+msgid "posts to the platform hub"
+msgstr "envíos al hub de plataforma"
+
+#: models.py:885
+msgid "next post at"
+msgstr "próximo envío"
+
+#: models.py:886
+msgid "last post error"
+msgstr "último error de envío"
+
+#: models.py:887
+msgid "emailed at"
+msgstr "enviada por correo el"
+
+#: models.py:888 models.py:1069
+msgid "created at"
+msgstr "creada el"
+
+#: models.py:893
+msgid "ERPlora invoice"
+msgstr "factura de ERPlora"
+
+#: models.py:894
+msgid "ERPlora invoices"
+msgstr "facturas de ERPlora"
+
+#: models.py:983
+msgid "Other"
+msgstr "Otro"
+
+#: models.py:989
+msgid "invoice"
+msgstr "factura"
+
+#: models.py:991
+msgid "position"
+msgstr "posición"
+
+#: models.py:994
+msgid "item"
+msgstr "concepto"
+
+#: models.py:996
+msgid "plan or module"
+msgstr "plan o módulo"
+
+#: models.py:997
+msgid "quantity"
+msgstr "cantidad"
+
+#: models.py:998
+msgid "proration"
+msgstr "prorrateo"
+
+#: models.py:999
+msgid "from"
+msgstr "desde"
+
+#: models.py:1000
+msgid "until"
+msgstr "hasta"
+
+#: models.py:1021
+msgid "Stripe line"
+msgstr "línea de Stripe"
+
+#: models.py:1025
+msgid "invoice line"
+msgstr "línea de factura"
+
+#: models.py:1026
+msgid "invoice lines"
+msgstr "líneas de factura"
+
+#: models.py:1065
+msgid "Stripe schedule"
+msgstr "programación de Stripe"
+
+#: models.py:1068
+msgid "starts at"
+msgstr "empieza el"
+
+#: models.py:1072
+msgid "scheduled plan change"
+msgstr "cambio de plan programado"
+
+#: models.py:1073
+msgid "scheduled plan changes"
+msgstr "cambios de plan programados"
+
+#: queries.py:400
+msgid "Sign in to use a promo code."
+msgstr "Inicia sesión para usar un código promocional."
+
+#: queries.py:409
+msgid "Too many promo codes tried in the last minute. Try again in a moment."
+msgstr ""
+"Demasiados códigos promocionales probados en el último minuto. Inténtalo en "
+"un momento."
+
+#: queries.py:531
+msgid "Sign in to see your billing."
+msgstr "Inicia sesión para ver tu facturación."
+
+#: queries.py:550
+msgid "This invoice does not exist or you have no access to it."
+msgstr "Esta factura no existe o no tienes acceso a ella."
+
+#: queries.py:728 queries.py:741
+msgid "This invoice is still being issued: its PDF is ready once it is."
+msgstr ""
+"Esta factura aún se está emitiendo: su PDF estará listo cuando se emita."
+
+#: queries.py:734
+msgid "The invoice cannot be downloaded right now. Try again in a moment."
+msgstr ""
+"Ahora no se puede descargar la factura. Inténtalo de nuevo en un momento."
+
+#: queries.py:779
+msgid "Date"
+msgstr "Fecha"
+
+#: queries.py:779
+msgid "Business"
+msgstr "Negocio"
+
+#: queries.py:779
+msgid "Tax base"
+msgstr "Base imponible"
+
+#: queries.py:779
+msgid "VAT"
+msgstr "IVA"
+
+#: queries.py:779
+msgid "Currency"
+msgstr "Moneda"
+
+#: queries.py:780
+msgid "Payment"
+msgstr "Pago"
+
+#: queries.py:780
+msgid "Status"
+msgstr "Estado"
+
+#: services.py:426
+msgid ""
+"We cannot work out the tax for this billing address, so this sale cannot be "
+"made. Contact support."
+msgstr ""
+"No podemos calcular el impuesto para esta dirección de facturación, así que "
+"esta venta no se puede hacer. Escribe a soporte."
+
+#: services.py:429
+msgid ""
+"We cannot work out the tax for this billing address, so this plan cannot be "
+"sold to it. Contact support."
+msgstr ""
+"No podemos calcular el impuesto para esta dirección de facturación, así que "
+"no se puede vender este plan a ella. Escribe a soporte."
+
+#: services.py:432
+msgid ""
+"We cannot work out the tax for this billing address, so this module cannot "
+"be sold to it. Contact support."
+msgstr ""
+"No podemos calcular el impuesto para esta dirección de facturación, así que "
+"no se puede vender este módulo a ella. Escribe a soporte."
+
+#: services.py:466
 msgid ""
 "We need the billing country and postal code before the payment, because they "
 "decide the tax on this sale."
@@ -537,32 +1329,36 @@ msgstr ""
 "Necesitamos el país y el código postal de facturación antes del pago, porque "
 "deciden el impuesto de esta venta."
 
-#: services.py:434
-msgid "We only sell to businesses in the United Kingdom: add the UK VAT number of the payer."
-msgstr "En el Reino Unido solo vendemos a empresas: añade el número de IVA británico del pagador."
+#: services.py:493
+msgid ""
+"We only sell to businesses in the United Kingdom: add the UK VAT number of "
+"the payer."
+msgstr ""
+"En el Reino Unido solo vendemos a empresas: añade el número de IVA británico "
+"del pagador."
 
-#: services.py:499
+#: services.py:558
 msgid "Sign in to check a VAT number."
 msgstr "Inicia sesión para comprobar un NIF-IVA."
 
-#: services.py:504 services.py:513
+#: services.py:563 services.py:572 services.py:913 services.py:944
 msgid "Invalid payload"
 msgstr "Datos no válidos"
 
-#: services.py:507
+#: services.py:566
 msgid ""
 "Write the VAT number with its two-letter country prefix, e.g. DE123456789."
 msgstr "Escribe el NIF-IVA con el prefijo de su país, p. ej. DE123456789."
 
-#: services.py:513
+#: services.py:572
 msgid "Enter a VAT number."
 msgstr "Escribe un NIF-IVA."
 
-#: services.py:517
+#: services.py:576
 msgid "A check of yours is already running: wait for its answer."
 msgstr "Ya tienes una comprobación en marcha: espera su respuesta."
 
-#: services.py:526
+#: services.py:585
 msgid ""
 "Too many VAT checks in the last minute: nothing was asked. Try again in a "
 "moment."
@@ -570,10 +1366,224 @@ msgstr ""
 "Demasiadas comprobaciones de NIF-IVA en el último minuto: no se ha "
 "consultado nada. Inténtalo en un momento."
 
-#: services.py:534
+#: services.py:593
 msgid ""
 "VIES answered but the answer could not be saved, so it proves nothing. Try "
 "again."
 msgstr ""
 "VIES ha respondido pero la respuesta no se pudo guardar, así que no prueba "
 "nada. Inténtalo de nuevo."
+
+#: services.py:718
+msgid ""
+"Payments are not available right now. Nothing was charged; try again later."
+msgstr ""
+"Los pagos no están disponibles ahora mismo. No se ha cobrado nada; inténtalo "
+"más tarde."
+
+#: services.py:737
+msgid ""
+"The payment service did not answer, so the charge is not confirmed. Check "
+"Billing before trying again."
+msgstr ""
+"El servicio de pagos no ha respondido, así que el cobro no está confirmado. "
+"Revisa Facturación antes de volver a intentarlo."
+
+#: services.py:741
+msgid ""
+"The payment service did not answer. Nothing was charged; try again in a "
+"moment."
+msgstr ""
+"El servicio de pagos no ha respondido. No se ha cobrado nada; inténtalo en "
+"un momento."
+
+#: services.py:751
+msgid ""
+"The bank declined the card. Nothing was charged: change the card and try "
+"again."
+msgstr ""
+"El banco ha rechazado la tarjeta. No se ha cobrado nada: cambia la tarjeta e "
+"inténtalo de nuevo."
+
+#: services.py:757
+msgid ""
+"The payment service refused the operation. Nothing was charged; contact "
+"support."
+msgstr ""
+"El servicio de pagos ha rechazado la operación. No se ha cobrado nada; "
+"contacta con soporte."
+
+#: services.py:817
+msgid ""
+"Payments open once ERPlora can invoice them. Nothing was charged; try again "
+"later."
+msgstr ""
+"Los pagos se abrirán cuando ERPlora pueda facturarlos. No se ha cobrado "
+"nada; inténtalo más tarde."
+
+#: services.py:830
+msgid ""
+"Payments are paused while this year's EU sales total is brought up to date. "
+"Nothing was charged; try again later."
+msgstr ""
+"Los pagos están en pausa mientras se actualiza el total de ventas en la UE "
+"de este año. No se ha cobrado nada; inténtalo más tarde."
+
+#: services.py:859
+msgid ""
+"Say who pays for this business first: its billing details are another "
+"account's."
+msgstr ""
+"Indica primero quién paga este negocio: sus datos de facturación son de otra "
+"cuenta."
+
+#: services.py:873
+msgid ""
+"This business's plan is still paid by its previous owner: contact support to "
+"move it to you."
+msgstr ""
+"El plan de este negocio aún lo paga su anterior propietario: contacta con "
+"soporte para pasarlo a tu nombre."
+
+#: services.py:893
+msgid ""
+"This business has an unpaid invoice: pay it before buying or changing "
+"anything."
+msgstr ""
+"Este negocio tiene una factura sin pagar: págala antes de comprar o cambiar "
+"nada."
+
+#: services.py:904
+msgid "This cannot be bought right now. Contact support."
+msgstr "Esto no se puede comprar ahora mismo. Contacta con soporte."
+
+#: services.py:914
+msgid "There is no plan with this identifier."
+msgstr "No hay ningún plan con este identificador."
+
+#: services.py:919
+msgid ""
+"Free is not bought: to go back to it, cancel the plan and it ends with its "
+"period."
+msgstr ""
+"Gratis no se compra: para volver a él, cancela el plan y terminará con su "
+"periodo."
+
+#: services.py:945
+msgid "There is no module with this identifier on sale."
+msgstr "No hay ningún módulo a la venta con este identificador."
+
+#: services.py:980
+msgid "This business already has this module."
+msgstr "Este negocio ya tiene este módulo."
+
+#: services.py:1044
+msgid ""
+"Above 400 € with VAT the invoice must name the buyer: add the payer's tax ID "
+"before paying."
+msgstr ""
+"Por encima de 400 € con IVA la factura debe identificar al comprador: añade "
+"el NIF del pagador antes de pagar."
+
+#: services.py:1334
+msgid ""
+"This business has as many modules as one subscription can bill. Contact "
+"support."
+msgstr ""
+"Este negocio ya tiene tantos módulos como una suscripción puede cobrar. "
+"Contacta con soporte."
+
+#: services.py:1363
+msgid ""
+"The plan changes at the end of this period: keep the current plan first, "
+"then change the modules."
+msgstr ""
+"El plan cambia al final de este periodo: mantén primero el plan actual y "
+"después cambia los módulos."
+
+#: services.py:1478
+msgid "This business is already on this plan."
+msgstr "Este negocio ya tiene este plan."
+
+#: services.py:1482
+msgid "The plan is cancelled: keep it first, then change it."
+msgstr "El plan está cancelado: mantenlo primero y después cámbialo."
+
+#: services.py:1617
+msgid "The price shown is out of date: review it again."
+msgstr "El precio mostrado ya no vale: vuelve a revisarlo."
+
+#: services.py:1624
+msgid "This business does not pay anything yet: buy it with the checkout."
+msgstr "Este negocio aún no paga nada: cómpralo con el pago."
+
+#: services.py:1748
+msgid "This business is on Free: there is nothing to cancel."
+msgstr "Este negocio está en Gratis: no hay nada que cancelar."
+
+#: services.py:1777
+msgid "This business is on Free: there is nothing to keep."
+msgstr "Este negocio está en Gratis: no hay nada que mantener."
+
+#: services.py:1806
+msgid "This business has no such module."
+msgstr "Este negocio no tiene ese módulo."
+
+#: services.py:1809
+msgid "This module comes with the plan: change the plan to drop it."
+msgstr "Este módulo viene con el plan: cambia el plan para quitarlo."
+
+#: services.py:1872
+msgid "This module has ended: buy it again in the store."
+msgstr "Este módulo ha terminado: vuelve a comprarlo en la tienda."
+
+#: services.py:1884
+msgid "The plan is cancelled, and its modules with it: keep the plan first."
+msgstr "El plan está cancelado, y sus módulos con él: mantén el plan primero."
+
+#: services.py:1934
+msgid ""
+"The payment service did not confirm the change. Nothing was charged; try "
+"again."
+msgstr ""
+"El servicio de pagos no ha confirmado el cambio. No se ha cobrado nada; "
+"inténtalo de nuevo."
+
+#: services.py:1963
+msgid "Payment details cannot be managed right now. Try again later."
+msgstr ""
+"Los datos de pago no se pueden gestionar ahora mismo. Inténtalo más tarde."
+
+#: services.py:1970
+msgid "The payment details appear here after the first payment."
+msgstr "Los datos de pago aparecen aquí después del primer pago."
+
+#: services.py:3096 services.py:3117
+msgid "Subscription"
+msgstr "Suscripción"
+
+#: services.py:3219
+msgid "Credit"
+msgstr "Abono"
+
+#: services.py:3491
+msgid "Refund"
+msgstr "Devolución"
+
+#: services.py:3832
+msgid "This invoice is paid already."
+msgstr "Esta factura ya está pagada."
+
+#: services.py:3834
+msgid "This invoice was cancelled: there is nothing to pay."
+msgstr "Esta factura se anuló: no hay nada que pagar."
+
+#: services.py:3837
+msgid "Only the account that pays this business can pay its invoices."
+msgstr "Solo la cuenta que paga este negocio puede pagar sus facturas."
+
+#: services.py:3841
+msgid ""
+"The bank declined the card. Change the card first, then pay the invoice."
+msgstr ""
+"El banco rechazó la tarjeta. Cámbiala primero y después paga la factura."

@@ -161,8 +161,7 @@
         "pastDueHeading": "{name} tiene una factura sin pagar",
         "pastDueBody": "Sigue funcionando 7 días más; si no se paga antes, el negocio se suspende. No se borra nada.",
         "suspendedHeading": "{name} está suspendido",
-        "suspendedBody": "Se suspendió por una factura sin pagar. No se borra nada: en cuanto se pague vuelve a funcionar.",
-        "app": "Para pagarla, entra en erplora.com desde el navegador."
+        "suspendedBody": "Se suspendió por una factura sin pagar. No se borra nada: en cuanto se pague vuelve a funcionar."
       },
       "invitation": {
         "heading": "Te han invitado a {name}",
@@ -227,12 +226,17 @@
       },
       "usage": {
         "eyebrow": "Uso",
-        "title": "Personas en el negocio",
-        "people": "Personas",
-        "meter": "Plazas del plan",
-        "meterHint": "Miembros e invitaciones sin responder, sobre las que cubre el plan.",
-        "covered": "El plan cubre",
-        "hint": "Miembros e invitaciones sin responder."
+        "title": "Cómo va tu negocio en ERPlora",
+        "storage": "Almacenamiento",
+        "storageHint": "Del espacio incluido en tu plan: fotos, documentos y copias.",
+        "storageLow": "Te queda poco espacio del plan {plan}.",
+        "storageFull": "Has usado todo el espacio incluido en el plan {plan}.",
+        "activeYesterday": "Activos ayer",
+        "activeOn": "Activos el {date}",
+        "last30": "Últimos 30 días",
+        "fromYesterday": "Datos de ayer: se actualizan cada noche.",
+        "fromDay": "Datos del {date}: se actualizan cada noche.",
+        "empty": "Sin datos todavía. Las cifras llegan cada noche, desde la primera tras crear el negocio."
       },
       "devices": {
         "eyebrow": "En tus dispositivos",
@@ -254,8 +258,7 @@
       },
       "modules": {
         "heading": "Las apps se activan y desactivan dentro del negocio",
-        "body": "Abre el negocio y activa las apps que necesites desde su inicio. Las apps gratuitas siempre están incluidas.",
-        "action": "Abrir el negocio"
+        "body": "Abre el negocio y activa las apps que necesites desde su inicio. Las apps gratuitas siempre están incluidas."
       }
     },
     "settings": {
@@ -371,6 +374,14 @@
     "errors": {
       "network": "No hemos podido conectar con ERPlora. Revisa tu conexión e inténtalo de nuevo.",
       "unexpected": "Algo ha fallado en ERPlora. Inténtalo de nuevo en unos minutos."
+    },
+    "unpaid": {
+      "pastDueSince": "Sin pagar desde el {since}. Sigue funcionando hasta el {until}; si no se paga antes, el negocio se suspende. No se borra nada.",
+      "suspendedSince": "Sin pagar desde el {since} y suspendido hasta que se pague. No se borra nada: en cuanto se pague vuelve a funcionar.",
+      "pay": "Pagar la factura",
+      "cardDeclined": "El banco rechazó la tarjeta: cámbiala antes de pagar.",
+      "app": "Resuélvelo desde erplora.com, en el navegador.",
+      "payer": "Pagas tú"
     }
   }
 }

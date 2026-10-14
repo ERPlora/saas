@@ -157,6 +157,59 @@ for (const name of ['businesses-default', 'business-default-members']) {
   });
 }
 
+/**
+ * How a list fills its page (Ioan, 2026-10-14): whether the page itself scrolls, and how far the list's bottom
+ * is from where it should end — the bottom of the content box, less what sits under the list inside its
+ * `.panel-fill` stacks (the members' roles, a note) and their gaps.
+ */
+async function listFill(page: Page): Promise<{ pageScrolls: boolean; offBy: number }> {
+  return page.evaluate(() => {
+    const shown = [...document.querySelectorAll('ion-router-outlet > .ion-page:not(.ion-page-hidden)')].at(-1) ?? document;
+    const scroll = shown.querySelector('ion-content')?.shadowRoot?.querySelector<HTMLElement>('.inner-scroll');
+    const table = shown.querySelector<HTMLElement>('.data-table--fill');
+    if (!scroll || !table) throw new Error('no ion-content or no filled DataTable on screen');
+    const end = scroll.getBoundingClientRect().bottom - parseFloat(getComputedStyle(scroll).paddingBottom);
+    let under = 0;
+    for (let node: HTMLElement | null = table; node?.parentElement?.classList.contains('panel-fill'); node = node.parentElement) {
+      const gap = parseFloat(getComputedStyle(node.parentElement).rowGap) || 0;
+      for (let next = node.nextElementSibling as HTMLElement | null; next; next = next.nextElementSibling as HTMLElement | null) {
+        if (getComputedStyle(next).display !== 'none') under += next.getBoundingClientRect().height + gap;
+      }
+    }
+    return {
+      pageScrolls: scroll.scrollHeight > scroll.clientHeight + 1,
+      offBy: Math.round(end - under - table.getBoundingClientRect().bottom),
+    };
+  });
+}
+
+for (const name of ['businesses-default', 'business-default-members']) {
+  test(`${name}: the list fills the page between the topbar and the tabbar at 834 and 1440 px (no page scroll)`, async ({ browser }) => {
+    const screen = SCREENS.find((candidate) => candidate.name === name)!;
+    await withContext(browser, screen.account, 'light', async (context) => {
+      const path = typeof screen.path === 'string' ? screen.path : await screen.path(context.request);
+      const page = await context.newPage();
+      for (const width of [834, 1440]) {
+        await page.setViewportSize({ width, height: VIEWPORTS.find((v) => v.width === width)!.height });
+        await page.goto(path);
+        await expect(screen.ready(page)).toBeVisible();
+        await settled(page);
+        const fill = await listFill(page);
+        expect(fill.pageScrolls, `${name} at ${width}: the page scrolls`).toBe(false);
+        expect(Math.abs(fill.offBy), `${name} at ${width}: the list ends ${fill.offBy}px short of the page`).toBeLessThanOrEqual(2);
+        // Its toolbar and its footer on screen: the rows scroll inside.
+        await expect(page.locator('.data-table--fill .data-table__bar')).toBeInViewport();
+        await expect(page.locator('.data-table--fill .data-table__pager')).toBeInViewport();
+      }
+      // The check of the check: a list that does not fill (no `.panel-fill` chain) is caught.
+      await page.evaluate(() => {
+        for (const stack of document.querySelectorAll('.panel-fill')) stack.classList.remove('panel-fill');
+      });
+      expect(Math.abs((await listFill(page)).offBy)).toBeGreaterThan(2);
+    });
+  });
+}
+
 for (const theme of ['light', 'dark'] as const) {
   for (const screen of SCREENS) {
     test(`${screen.name} at 390, 834 and 1440 px, ${theme}`, async ({ browser }) => {

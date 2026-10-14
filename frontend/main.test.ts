@@ -1,7 +1,8 @@
 // The SaaS SPA entry (mirror of hub-next's): app routes → shell, live client from spa-config,
 // session from the `session-me` JSON Django embeds (or GET /api/me), mount only once the router is
 // ready. The SaaS has a login of its own: the auth gate sends to the SPA route `/login`. Round 17
-// (PLAN-SAAS §3.6): the user menu (Account, Help, Sign out) and the surface the server keeps.
+// (PLAN-SAAS §3.6): the user menu (Account, Help, Sign out) and the surface the server keeps; what the
+// account chose (theme mode, language) painted at boot, and the user menu's theme kept in the account.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,7 +14,12 @@ const sdk = vi.hoisted(() => ({
   auth: { logout: (() => undefined) as (...args: unknown[]) => unknown },
 }));
 
-vi.mock('@erplora/ui/shell', () => ({ createShell: vi.fn() }));
+// The real theme (and i18n helpers) of the shell; only its boot and its toast are stand-ins.
+vi.mock('@erplora/ui/shell', async (importOriginal) => ({
+  ...((await importOriginal()) as object),
+  createShell: vi.fn(),
+  toastError: vi.fn(),
+}));
 vi.mock('@erplora/ui/sdk', async (importOriginal) => ({
   ...((await importOriginal()) as object),
   createLiveClient: vi.fn(() => sdk.client),
@@ -21,7 +27,7 @@ vi.mock('@erplora/ui/sdk', async (importOriginal) => ({
   provideLiveClient: vi.fn(),
 }));
 
-import { createShell } from '@erplora/ui/shell';
+import { chooseThemeMode, createShell, setThemeMode, setThemePersister, themeMode, toastError } from '@erplora/ui/shell';
 import { ApiError, createAllauthClient, createLiveClient, provideLiveClient } from '@erplora/ui/sdk';
 
 import { OPERATION_ROUTES } from './generated/operation-routes';
@@ -51,7 +57,17 @@ function globbedApps(): Array<[string, string[]]> {
     return [match[2], match[1].split(',')];
   });
 }
-const ME = { user: { id: 'u1', label: 'Ana' }, permissions: [], menu: [], apps: [], language: 'es' };
+const ME = {
+  user: { id: 'u1', label: 'Ana' },
+  permissions: [],
+  menu: [],
+  apps: [],
+  language: 'es',
+  preferences: { theme_mode: 'system' },
+  account_language: 'es',
+};
+/** `base.session.me` without an account: no preferences, no language of its own. */
+const ANONYMOUS = { ...ME, user: null, preferences: null, account_language: null };
 const page = { template: '<div />' };
 
 function fakeShell(isReady: () => Promise<void> = () => Promise.resolve()) {
@@ -89,6 +105,9 @@ let assign: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  setThemePersister(undefined);
+  setThemeMode('system');
+  document.documentElement.lang = '';
   sdk.client.api.call = vi.fn();
   sdk.auth.logout = vi.fn();
   assign = vi.fn();
@@ -272,6 +291,14 @@ describe('the panel (round 17, PLAN-SAAS §3.6)', () => {
     expect(assign).not.toHaveBeenCalled();
   });
 
+  it('trusts the script URLs of Stripe.js only (its loader sets its chunks as strings): one origin, exact', async () => {
+    fakeShell();
+    await main.boot({});
+    // The `default` Trusted Types policy admits these origins' script URLs and no other; the CSP's
+    // `script-src` still decides page by page (the account surface's names no Stripe).
+    expect(shellOptions().trustedScriptOrigins).toEqual(['https://js.stripe.com']);
+  });
+
   it('passes the shell the account surface the server keeps in the session (spa-config.surface)', async () => {
     renderShellHtml(ME, { surface: 'account' });
     fakeShell();
@@ -311,6 +338,114 @@ describe('the panel (round 17, PLAN-SAAS §3.6)', () => {
   });
 });
 
+describe("what the account chose, painted at boot (Account → Preferences; base.session.me)", () => {
+  const dark = () => document.documentElement.classList.contains('ion-palette-dark');
+
+  it('paints the theme mode of the embedded session before the shell boots (no flash of the system one)', async () => {
+    renderShellHtml({ ...ME, preferences: { theme_mode: 'dark' } });
+    let modeAtShell: string | undefined;
+    const { app, router } = fakeShell();
+    vi.mocked(createShell).mockImplementation(async () => {
+      modeAtShell = themeMode.value;
+      return { app, router } as never;
+    });
+    await main.boot({});
+    expect(modeAtShell).toBe('dark');
+    expect([themeMode.value, dark()]).toEqual(['dark', true]);
+  });
+
+  it('or the one /api/me answers, before the session goes live (the gate mounts after that)', async () => {
+    renderShellHtml(null);
+    vi.mocked(sdk.client.api.call).mockResolvedValue({ ...ME, preferences: { theme_mode: 'dark' } });
+    fakeShell();
+    await main.boot({});
+    const { status } = shellOptions();
+    let modeWhenLive: string | undefined;
+    await vi.waitFor(() => {
+      expect(status.value).toBe('live');
+      modeWhenLive = themeMode.value;
+    });
+    expect(modeWhenLive).toBe('dark');
+    expect(dark()).toBe(true);
+  });
+
+  it("leaves an anonymous visitor this device's mode (no account to read it from)", async () => {
+    setThemeMode('dark');
+    renderShellHtml(ANONYMOUS);
+    fakeShell();
+    await main.boot({});
+    expect([themeMode.value, dark()]).toEqual(['dark', true]);
+  });
+
+  it("switches the SPA to the account's own language when the session speaks another one", async () => {
+    renderShellHtml({ ...ME, language: 'en', account_language: 'es' });
+    fakeShell();
+    await main.boot({});
+    // createShell follows `session.language` (i18n locale and <html lang>).
+    expect(shellOptions().session.value?.language).toBe('es');
+  });
+
+  it("also when the account's language comes with /api/me", async () => {
+    renderShellHtml(null);
+    vi.mocked(sdk.client.api.call).mockResolvedValue({ ...ME, language: 'es', account_language: 'en' });
+    fakeShell();
+    await main.boot({});
+    const { session, status } = shellOptions();
+    await vi.waitFor(() => expect(status.value).toBe('live'));
+    expect(session.value?.language).toBe('en');
+  });
+
+  it("keeps the session's language without an account language of its own", async () => {
+    renderShellHtml({ ...ANONYMOUS, language: 'es' });
+    fakeShell();
+    await main.boot({});
+    expect(shellOptions().session.value?.language).toBe('es');
+  });
+});
+
+describe("the user menu's theme, kept in the account (accounts.preferences.update)", () => {
+  it('choosing a mode in the user menu saves it through the typed client, and it stays painted', async () => {
+    vi.mocked(sdk.client.api.call).mockResolvedValue({ theme_mode: 'dark' });
+    fakeShell();
+    await main.boot({});
+    chooseThemeMode('dark');
+    expect(sdk.client.api.call).toHaveBeenCalledExactlyOnceWith('accounts.preferences.update', { theme_mode: 'dark' });
+    await Promise.resolve();
+    expect(themeMode.value).toBe('dark');
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it('a save that fails keeps the mode on screen and says so with a toast, in the language of the page', async () => {
+    const failure = new ApiError(0, 'network_error', 'Network error');
+    vi.mocked(sdk.client.api.call).mockRejectedValue(failure);
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    fakeShell();
+    await main.boot({});
+    document.documentElement.lang = 'es';
+    chooseThemeMode('light');
+    await vi.waitFor(() => expect(toastError).toHaveBeenCalledExactlyOnceWith(entryEs.saas.userMenu.themeNotSaved));
+    expect(themeMode.value).toBe('light');
+    expect(logged).toHaveBeenCalledWith('saas: accounts.preferences.update failed', failure);
+    logged.mockRestore();
+  });
+
+  it('without an account there is nothing to save it in: the mode is painted, no call', async () => {
+    renderShellHtml(ANONYMOUS);
+    fakeShell();
+    await main.boot({});
+    chooseThemeMode('dark');
+    expect(themeMode.value).toBe('dark');
+    expect(sdk.client.api.call).not.toHaveBeenCalled();
+  });
+
+  it("says it in en and es (the entry's own catalogue)", () => {
+    expect([entryEn.saas.userMenu.themeNotSaved, entryEs.saas.userMenu.themeNotSaved]).toEqual([
+      "Couldn't save the appearance to your account.",
+      'No se ha podido guardar la apariencia en tu cuenta.',
+    ]);
+  });
+});
+
 describe('import order guards (hub#1060)', () => {
   it('imports the shell before anything that loads @ionic/vue (the SDK, the generated routes)', () => {
     const source = readFileSync(join(HERE, 'main.ts'), 'utf8');
@@ -323,6 +458,13 @@ describe('import order guards (hub#1060)', () => {
     const fonts = source.indexOf("import './fonts.css';");
     expect(fonts).toBeGreaterThan(-1);
     expect(fonts).toBeGreaterThan(source.indexOf("from '@erplora/ui/shell';"));
+  });
+
+  it("loads the panel's fill layout after the shell's theme and the typeface (panel-fill.css)", () => {
+    const source = readFileSync(join(HERE, 'main.ts'), 'utf8');
+    const fill = source.indexOf("import './panel-fill.css';");
+    expect(fill).toBeGreaterThan(-1);
+    expect(fill).toBeGreaterThan(source.indexOf("import './fonts.css';"));
   });
 
   it('keeps every <app>/frontend/routes.ts free of runtime imports: Vite hoists eager globs above the shell', () => {

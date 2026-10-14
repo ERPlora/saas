@@ -17,6 +17,7 @@ live(
         events.INVITATION_ACCEPTED,
         events.INVITATION_DECLINED,
         *events.OWNERSHIP,
+        events.SUBSCRIPTION_CHANGED,
         *events.PEOPLE,
     ],
 )
@@ -32,7 +33,9 @@ live(
         events.INVITATION_ACCEPTED,
         *events.OWNERSHIP,
         events.BILLING_PROFILE_UPDATED,
+        events.SUBSCRIPTION_CHANGED,
         *events.PEOPLE,
+        events.BUSINESS_USAGE_COLLECTED,
     ],
 )
 live(
@@ -50,3 +53,6 @@ live(
     "hubs.invitation.list_mine",
     on=[*events.INVITATION, events.MEMBER_INVITED, events.MEMBER_INVITATION_CANCELLED, *events.PEOPLE],
 )
+# The usage of a business (lot L4-A): a new night's figures, and a change of plan (its space).
+live("hubs.usage.get", on=[events.BUSINESS_USAGE_COLLECTED, events.SUBSCRIPTION_CHANGED])
+live("hubs.usage.series", on=[events.BUSINESS_USAGE_COLLECTED, events.SUBSCRIPTION_CHANGED])

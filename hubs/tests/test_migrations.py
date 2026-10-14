@@ -20,6 +20,8 @@ HUBS_TABLES = {
     "hubs_hubownershiptransfer",
     "hubs_subscription",
     "hubs_subscriptionitem",
+    # The usage of each business, day by day (0010, L4-A).
+    "hubs_hubusagedaily",
 }
 
 

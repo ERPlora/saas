@@ -6,7 +6,7 @@ Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_reverse_charge_switc
 Adapted: ``TestTheWebhookAsksVies`` (2) drove Stripe's ``checkout.session.completed`` webhook, which is
 lot L2-B; what it proved —the sale door asks the VIES verdict and believes it— is proved here through
 that door, ``billing.services.sale_tax_rates``, which the L2-B checkout and webhook call. Its third class,
-``TestTheInvoiceKeepsTheEvidence`` (1), needs ``billing.Invoice``: lot L3-C.
+``TestTheInvoiceKeepsTheEvidence`` (1), is ``test_invoice_recording.TestTheVatOfEachSale`` (lot L3-C).
 """
 
 from decimal import Decimal

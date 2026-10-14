@@ -309,3 +309,126 @@ class TestOpenInTheHubAdmin:
 
         html = unescape(response.content.decode())
         assert '<li class="error">No se pudo abrir el admin del Hub. Vuelve a intentarlo desde esta página.</li>' in html
+
+
+# --- The Account page (plan 2026-10-13, L3-A) ---------------------------------------------------------------
+
+
+def _key(user, **fields):
+    from accounts.models import ApiKey
+
+    _, prefix, key_hash = ApiKey.new_secret()
+    return ApiKey.objects.create(user=user, name="Zapier", prefix=prefix, key_hash=key_hash, scopes=["hubs.read"], **fields)
+
+
+class TestApiKeys:
+    """Read only: an account issues its keys in the Account page, the only place its secret is shown; the admin sees who has
+    which key, its scopes and its last use, and a superuser can cut one («revoke»). Never the hash, never a delete:
+    revoking is the audit trail (ported from ERPlora/saas ``apps/auth/apikeys/admin.py``)."""
+
+    def test_the_list_and_the_key_load_without_its_hash(self, staff_client, ana):
+        client, _ = staff_client
+        key = _key(ana)
+
+        listing = client.get("/admin/accounts/apikey/")
+        page = client.get(f"/admin/accounts/apikey/{key.pk}/change/")
+
+        assert listing.status_code == page.status_code == 200
+        assert "ana@example.com" in listing.text and "erps_live_" in listing.text
+        assert key.key_hash not in listing.text + page.text
+
+    def test_keys_are_not_added_nor_deleted_here(self, staff_client, ana):
+        client, _ = staff_client
+        key = _key(ana)
+
+        assert client.get("/admin/accounts/apikey/add/").status_code == 403
+        assert client.get(f"/admin/accounts/apikey/{key.pk}/delete/").status_code == 403
+
+    def test_a_superuser_revokes_on_the_spot(self, staff_client, ana):
+        from accounts.models import ApiKey
+
+        client, _ = staff_client
+        key = _key(ana)
+
+        response = client.post(
+            "/admin/accounts/apikey/", {"action": "revoke", "_selected_action": [str(key.pk)]}, follow=True
+        )
+
+        assert response.status_code == 200
+        assert ApiKey.objects.get(pk=key.pk).revoked_at is not None
+
+    def test_revoking_here_refreshes_the_owners_live_list(self, staff_client, ana):
+        """Through the operation path: the event goes to the owner's channel, as when the owner revokes it."""
+        from live.models import OutboxEvent
+
+        from accounts import events
+
+        client, _ = staff_client
+        key = _key(ana)
+
+        client.post("/admin/accounts/apikey/", {"action": "revoke", "_selected_action": [str(key.pk)]})
+
+        assert list(OutboxEvent.objects.values_list("name", "scope_key")) == [(events.APIKEY_REVOKED, str(ana.pk))]
+
+    def test_support_sees_the_keys_and_cannot_revoke(self, client, ana):
+        from accounts.models import ApiKey
+
+        supporter, _ = services.create_platform_user("support@example.com", services.PLATFORM_SUPPORT, "x")
+        client.force_login(supporter)
+        key = _key(ana)
+
+        assert client.get("/admin/accounts/apikey/").status_code == 200
+        client.post("/admin/accounts/apikey/", {"action": "revoke", "_selected_action": [str(key.pk)]})
+        assert ApiKey.objects.get(pk=key.pk).revoked_at is None
+
+
+def test_the_user_page_shows_the_preferences_and_the_photo(staff_client, ana):
+    from accounts.models import ProfilePhoto, UserPreferences
+
+    client, _ = staff_client
+    UserPreferences.objects.create(user=ana, theme_mode="dark")
+    ProfilePhoto.objects.create(user=ana, content_type="image/png", data=b"\x89PNG")
+
+    page = client.get(f"/admin/accounts/user/{ana.pk}/change/")
+
+    assert page.status_code == 200
+    assert "Dark" in page.text
+    assert "data:image/png;base64,iVBORw==" in page.text
+
+
+def test_the_sessions_of_allauth_have_their_page(staff_client):
+    client, _ = staff_client
+
+    assert client.get("/admin/usersessions/usersession/").status_code == 200
+
+
+def test_the_sessions_are_searched_by_email(staff_client, ana, password):
+    """allauth's own page searched ``user__username``, which this account model has not (a 500)."""
+    from django.test import Client
+
+    from accounts.tests.conftest import sign_in
+
+    client, _ = staff_client
+    sign_in(Client(), ana.email, password)
+
+    response = client.get("/admin/usersessions/usersession/", {"q": "ana@exa"})
+
+    assert response.status_code == 200
+    assert "ana@example.com" in response.text
+
+
+def test_a_change_of_email_waiting_is_seen_without_its_code_nor_its_session(staff_client, ana):
+    from accounts.models import EmailChangeRequest
+
+    client, _ = staff_client
+    change = EmailChangeRequest.objects.create(
+        user=ana, session_key="secret-session-key-0123456789", email="ana@new.example", code_hash="c0de" * 16
+    )
+
+    listing = client.get("/admin/accounts/emailchangerequest/")
+    page = client.get(f"/admin/accounts/emailchangerequest/{change.pk}/change/")
+
+    assert listing.status_code == page.status_code == 200
+    assert "ana@new.example" in listing.text
+    assert "c0de" not in listing.text + page.text and "secret-session-key" not in listing.text + page.text
+    assert client.get("/admin/accounts/emailchangerequest/add/").status_code == 403

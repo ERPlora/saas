@@ -8,12 +8,12 @@ linkable entity and the % lives in a rule ``(country, region, category, validity
 ``services.py`` and ``queries.py`` touch the ORM) and the policy's threshold to
 ``billing.queries.uses_destination_rate``.
 
-Adapted: the two tests that summed real invoices into the OSS threshold
+The two tests that sum real invoices into the OSS threshold
 (``test_crossing_the_threshold_switches_to_destination_rates``,
-``test_domestic_and_b2b_sales_do_not_count_towards_the_threshold``) need ``billing.Invoice``, which is
-lot L3-C; here a tripwire fails the day that model exists, so the sum cannot stay at zero unnoticed.
-The failing threshold query raises ``DatabaseError`` (the only failure it may swallow) instead of a
-bare ``RuntimeError``.
+``test_domestic_and_b2b_sales_do_not_count_towards_the_threshold``) waited for ``billing.Invoice`` (lot
+L3-C) behind a tripwire; they are ported now, with what this SaaS adds: the amounts carried from the old
+SaaS, unpaid invoices and credit notes. The failing threshold query raises ``DatabaseError`` (the only
+failure it may swallow) instead of a bare ``RuntimeError``.
 """
 
 from datetime import date
@@ -295,7 +295,27 @@ class TestFiscalPolicy:
 
         assert queries.cross_border_b2c_cents(policy, year) == 0
         assert queries.cross_border_b2c_cents(policy, year - 1) == 0
-        assert queries.oss_total_is_known(policy, year) is False
+
+    def test_after_the_carried_year_the_total_is_this_saas_invoices(self):
+        """Year rollover (review of L3-C): from the carried year on, the old SaaS sells nothing more, so the
+        total is known without anybody editing the policy; the carried «this year» becomes «last year»."""
+        year = date.today().year
+        policy = self._carry(year, current=1_200_000, previous=300_000)
+
+        assert queries.oss_total_is_known(policy, year + 1) is True
+        assert queries.oss_total_is_known(policy, year + 5) is True
+        assert queries.oss_total_is_known(policy, year - 1) is False
+        assert queries.cross_border_b2c_cents(policy, year + 1) == 0
+        # Last year (the carried one) closed above the threshold: the whole new year is destination VAT.
+        assert queries.destination_rate_applies(policy, year=year + 1) is True
+
+    def test_the_new_years_invoices_count_on_their_own(self):
+        year = date.today().year
+        policy = self._carry(year - 1, current=0)
+        self._invoice(1, net=500_000)
+
+        assert queries.oss_total_is_known(policy, year) is True
+        assert queries.cross_border_b2c_cents(policy, year) == 500_000
 
     def test_without_invoices_nor_carried_amounts_the_total_is_unknown(self):
         """Zero is not a fact until somebody says it: the admin shows «unknown», not 0."""
@@ -304,16 +324,76 @@ class TestFiscalPolicy:
         assert queries.oss_total_is_known(queries.fiscal_policy(), year) is False
         assert queries.oss_total_is_known(self._carry(year), year) is True
 
-    def test_the_threshold_counts_the_invoices_the_day_they_exist(self):
-        """Tripwire for lot L3-C: ``cross_border_b2c_cents`` sums ERPlora's paid invoices, and until
-        ``billing.Invoice`` exists the new SaaS has issued none (0). The day the model lands this test
-        fails: port ``test_crossing_the_threshold_switches_to_destination_rates`` and
-        ``test_domestic_and_b2b_sales_do_not_count_towards_the_threshold`` (fiscal/tests/test_tax_rules.py)
-        and make the sum read the invoices, or the OSS threshold stays at zero for ever."""
-        from django.apps import apps
+    def _invoice(self, seq, *, country="DE", net=400_000, verified=False, on=None, **fields):
+        from billing.models import Invoice
 
-        assert "invoice" not in apps.get_app_config("billing").models
-        assert (
-            queries.cross_border_b2c_cents(queries.fiscal_policy(), date.today().year)
-            == 0
+        on = on or date.today()
+        values = {
+            "stripe_invoice_id": f"in_{seq}",
+            "payment_status": "paid",
+            "series": "ERP",
+            "number": f"ERP-{on.year}-{seq:05d}",
+            "sequence": seq,
+            "issued_on": on,
+            "net_cents": net,
+            "tax_cents": 0,
+            "total_cents": net,
+            "payer_country": country,
+            "payer_tax_id_verified": verified,
+        }
+        values.update(fields)
+        return Invoice.objects.create(**values)
+
+    def test_crossing_the_threshold_switches_to_destination_rates(self):
+        """Not registered in the OSS, but above the threshold: the obligation is born all the same."""
+        for seq in (1, 2, 3):
+            self._invoice(seq)
+        policy = queries.fiscal_policy()
+
+        assert queries.cross_border_b2c_cents(policy, date.today().year) == 1_200_000
+        assert queries.uses_destination_rate(policy) is True
+
+    def test_domestic_and_b2b_sales_do_not_count_towards_the_threshold(self):
+        """The threshold is of B2C sales to OTHER member states: a Spanish one, a VIES-verified business
+        (reverse charge) and one outside the EU stay out."""
+        self._invoice(1, country="ES", net=2_000_000)
+        self._invoice(2, country="FR", net=2_000_000, verified=True, payer_tax_id="FR12345678901")
+        self._invoice(3, country="US", net=2_000_000)
+
+        assert queries.cross_border_b2c_cents(queries.fiscal_policy(), date.today().year) == 0
+
+    def test_an_unverified_business_was_taxed_as_a_consumer_and_counts(self):
+        self._invoice(1, country="FR", payer_tax_id="FR12345678901", verified=False)
+
+        assert queries.cross_border_b2c_cents(queries.fiscal_policy(), date.today().year) == 400_000
+
+    def test_the_invoices_add_to_what_the_old_saas_carried(self):
+        year = date.today().year
+        policy = self._carry(year, current=700_000)
+        self._invoice(1, net=400_000)
+
+        assert queries.cross_border_b2c_cents(policy, year) == 1_100_000
+        assert queries.uses_destination_rate(policy, year=year) is True
+
+    def test_only_the_invoices_of_that_year_count(self):
+        year = date.today().year
+        self._invoice(1, on=date(year - 1, 6, 1))
+
+        assert queries.cross_border_b2c_cents(queries.fiscal_policy(), year) == 0
+        assert queries.cross_border_b2c_cents(queries.fiscal_policy(), year - 1) == 400_000
+
+    def test_what_was_not_collected_does_not_count_and_a_credit_note_takes_its_base_back(self):
+        from billing.models import Invoice
+
+        original = self._invoice(1)
+        Invoice.objects.create(
+            stripe_invoice_id="in_open", payment_status="open", net_cents=900_000, total_cents=900_000,
+            payer_country="DE",
         )
+        self._invoice(
+            2, kind="credit_note", rectifies=original, stripe_source_id="cn_1", series="ERPR",
+            number=f"ERPR-{date.today().year}-00001", net=-100_000,
+        )
+
+        assert queries.cross_border_b2c_cents(queries.fiscal_policy(), date.today().year) == 300_000
+

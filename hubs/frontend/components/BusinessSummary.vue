@@ -3,10 +3,13 @@
 //   - Plan: its name, the trial while it lasts, the devices it covers (from `hubs.plan.list`: the plans
 //     on sale, public) and the people (`seats`, the server's count against the plan's cap). Changing
 //     or cancelling the plan is the Store's (web only); inside the apps it says where, without a link.
-//   - Usage: the people on the business against the places of the plan (UsageMeter + UsageCounter).
+//   - Usage: what the Hub measured last night (`business.usage`, PLAN-SAAS §5; lot L4-A): the storage of
+//     its files as a percentage of the space of the plan (UsageMeter; never the bytes) and the people
+//     active that day and in the 30 days up to it (UsageCounter); «yesterday» or the day measured. Before
+//     the first night, that there is no data yet. The people against the places stay a line of the plan.
 //   - «On your devices» (DeviceAccessCard) and the business's details.
 // Deleted, only the plan (cancelled with the deletion) and the details are left.
-import { formatDateTime, UsageCounter, UsageMeter } from '@erplora/ui/components';
+import { formatDateTime, StatusPill, UsageCounter, UsageMeter } from '@erplora/ui/components';
 import { WebOnly } from '@erplora/ui/shell';
 import { useLiveClient } from '@erplora/ui/sdk';
 import { IonCard, IonCardContent } from '@ionic/vue';
@@ -15,6 +18,7 @@ import { useI18n } from 'vue-i18n';
 
 import type { BusinessDetailOut, PlanOut } from '../../../frontend/sdk-types';
 import { countryName } from '../regions';
+import { formatUsageDay, isYesterday } from '../usage-day';
 import DeviceAccessCard from './DeviceAccessCard.vue';
 
 const props = defineProps<{
@@ -45,6 +49,25 @@ const seats = computed(() => props.business.seats);
 const users = computed(() =>
   seats.value.limit === null ? t('hubs.common.unlimited') : t('hubs.business.plan.usersOf', { used: seats.value.used, limit: seats.value.limit }),
 );
+
+/** From this full the hint warns that the space runs out (the old quota's warning, 80 %). */
+const STORAGE_WARNING_PERCENT = 80;
+const usage = computed(() => props.business.usage);
+const percent = computed(() => usage.value?.storage.percent ?? null);
+const storageHint = computed(() => {
+  const plan = effective.value?.name ?? '';
+  if (percent.value !== null && percent.value >= 100) return t('hubs.business.usage.storageFull', { plan });
+  if (percent.value !== null && percent.value >= STORAGE_WARNING_PERCENT) return t('hubs.business.usage.storageLow', { plan });
+  return t('hubs.business.usage.storageHint');
+});
+const measuredYesterday = computed(() => (usage.value ? isYesterday(usage.value.day) : false));
+const measuredDay = computed(() => (usage.value ? formatUsageDay(usage.value.day, locale.value) : ''));
+const activeLabel = computed(() =>
+  measuredYesterday.value ? t('hubs.business.usage.activeYesterday') : t('hubs.business.usage.activeOn', { date: measuredDay.value }),
+);
+const dayHint = computed(() =>
+  measuredYesterday.value ? t('hubs.business.usage.fromYesterday') : t('hubs.business.usage.fromDay', { date: measuredDay.value }),
+);
 </script>
 
 <template>
@@ -54,9 +77,18 @@ const users = computed(() =>
         <div class="page-eyebrow">
           {{ $t('hubs.business.plan.eyebrow') }}
         </div>
-        <h2 class="card-title">
-          {{ business.plan?.name ?? $t('hubs.business.plan.none') }}
-        </h2>
+        <div class="plan-title">
+          <h2 class="card-title">
+            {{ business.plan?.name ?? $t('hubs.business.plan.none') }}
+          </h2>
+          <StatusPill
+            v-if="business.is_payer"
+            tone="info"
+            :dot="false"
+            :label="$t('hubs.unpaid.payer')"
+            data-testid="summary-payer"
+          />
+        </div>
         <p
           v-if="deleted"
           class="card-text"
@@ -103,29 +135,37 @@ const users = computed(() =>
         <h2 class="card-title">
           {{ $t('hubs.business.usage.title') }}
         </h2>
-        <UsageMeter
-          v-if="seats.limit !== null"
-          class="ion-margin-top"
-          :label="$t('hubs.business.usage.meter')"
-          :value="seats.used"
-          :max="seats.limit"
-          :hint="$t('hubs.business.usage.meterHint')"
-        />
-        <div class="mini-kpis">
-          <UsageCounter
-            :label="$t('hubs.business.usage.people')"
-            :value="seats.used"
+        <template v-if="usage">
+          <UsageMeter
+            v-if="percent !== null"
+            class="ion-margin-top"
+            :label="$t('hubs.business.usage.storage')"
+            :percent="percent"
+            :hint="storageHint"
           />
-          <UsageCounter
-            :label="$t('hubs.business.usage.covered')"
-            :value="seats.limit ?? $t('hubs.common.unlimited')"
-          />
-        </div>
+          <div class="mini-kpis">
+            <UsageCounter
+              :label="activeLabel"
+              :value="usage.active_users.on_day"
+            />
+            <UsageCounter
+              :label="$t('hubs.business.usage.last30')"
+              :value="usage.active_users.last_30_days"
+            />
+          </div>
+          <p
+            class="card-text small"
+            data-testid="summary-usage-day"
+          >
+            {{ dayHint }}
+          </p>
+        </template>
         <p
-          v-if="seats.limit === null"
-          class="card-text small"
+          v-else
+          class="card-text"
+          data-testid="summary-usage-empty"
         >
-          {{ $t('hubs.business.usage.hint') }}
+          {{ $t('hubs.business.usage.empty') }}
         </p>
       </ion-card-content>
     </ion-card>
@@ -178,6 +218,12 @@ const users = computed(() =>
   .card-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+.plan-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 .mini-kpis {
   display: grid;

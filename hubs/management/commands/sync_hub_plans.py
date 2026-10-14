@@ -1,8 +1,11 @@
-"""Seed of the hub plans: ``python manage.py sync_hub_plans``.
+"""Seed of the hub plans: ``python manage.py sync_hub_plans [--update]``.
 
 Ported from ERPlora/saas ``hubs/subscriptions/management/commands/sync_hub_plans.py``
-(origin/develop, production catalogue of 2026-06-13). Idempotent: creates the plans that are
-missing and puts the existing ones back to these values.
+(origin/develop, production catalogue of 2026-06-13). It runs in the ``saas-migrate`` task on every
+deploy, so by default it only creates the plans missing by ``slug`` and leaves the existing ones as
+staff left them in the admin («N created, M existing»). ``--update`` puts every field of every plan
+back to these values («N created, M updated»). Idempotent; one short transaction per plan, so it is
+safe next to the running web.
 
 Catalogue:
 
@@ -21,13 +24,13 @@ database limits follow round 9 (PLAN §14.2): Free 1 transaction at a time and 5
 What the commercial copy may say (saas#1760; guarded by ``hubs/tests/test_sync_hub_plans.py``):
 the billing unit is the HUB; no infrastructure specs; support is sold as channel and priority,
 never as a clock; one recovery window for the whole cluster, the 14 days Aurora keeps
-(``backup_retention_period``, ``aws-next/stacks/prod/aurora.tf``); no uptime SLA percentage.
+(``backup_retention_period``, ``aws-next/stacks/prod/aurora.tf``), in one sentence with the managed
+database; no uptime SLA percentage; no technology names (PostgreSQL…), only what the customer gets.
 """
 
 from decimal import Decimal
 
 from django.core.management.base import BaseCommand
-from django.db import transaction
 
 from hubs.models import Plan
 
@@ -47,8 +50,7 @@ PLANS = [
             "Fully managed cloud",
             "No credit card required",
             "All free apps included",
-            "Managed PostgreSQL database",
-            "Continuous backups, point-in-time recovery for 14 days",
+            "Managed database, with continuous backups and point-in-time recovery for 14 days",
             ".erplora.com subdomain",
             "Community support",
         ],
@@ -58,8 +60,7 @@ PLANS = [
             "Cloud gestionado",
             "Sin tarjeta de crédito",
             "Todas las apps gratuitas incluidas",
-            "Base de datos PostgreSQL gestionada",
-            "Copias de seguridad continuas, recuperación a cualquier momento de los últimos 14 días",
+            "Base de datos gestionada, con copias de seguridad continuas y recuperación a cualquier momento de los últimos 14 días",
             "Subdominio .erplora.com",
             "Soporte de la comunidad",
         ],
@@ -94,8 +95,7 @@ PLANS = [
             "Unlimited users",
             "All free apps included",
             "Access from any device",
-            "Managed PostgreSQL database",
-            "Continuous backups, point-in-time recovery for 14 days",
+            "Managed database, with continuous backups and point-in-time recovery for 14 days",
             "Data encryption (AES-256)",
             "Automatic SSL certificate",
             ".erplora.com subdomain",
@@ -108,8 +108,7 @@ PLANS = [
             "Usuarios ilimitados",
             "Todas las apps gratuitas incluidas",
             "Acceso desde cualquier dispositivo",
-            "Base de datos PostgreSQL gestionada",
-            "Copias de seguridad continuas, recuperación a cualquier momento de los últimos 14 días",
+            "Base de datos gestionada, con copias de seguridad continuas y recuperación a cualquier momento de los últimos 14 días",
             "Cifrado de datos (AES-256)",
             "Certificado SSL automático",
             "Subdominio .erplora.com",
@@ -306,22 +305,29 @@ PLANS = [
 
 
 class Command(BaseCommand):
-    help = "Create or update the hub plans (the production catalogue)."
+    help = "Create the missing hub plans (the production catalogue); --update also overwrites the existing ones."
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--update",
+            action="store_true",
+            help="Also put every field of the existing plans back to the seed, overwriting admin edits.",
+        )
 
     def handle(self, *args, **options):
-        created_count = updated_count = 0
-        with transaction.atomic():
-            for data in PLANS:
-                plan, created = Plan.objects.update_or_create(slug=data["slug"], defaults=data)
-                if created:
-                    created_count += 1
-                    self.stdout.write(self.style.SUCCESS(f"  + created: {plan.slug} ({plan.price_monthly} EUR/month)"))
-                else:
-                    updated_count += 1
-                    self.stdout.write(f"  ~ updated: {plan.slug} ({plan.price_monthly} EUR/month)")
+        update = options["update"]
+        # get_or_create / update_or_create each run in their own short transaction and are safe
+        # against a concurrent insert of the same slug (unique), so the web keeps serving meanwhile.
+        write = Plan.objects.update_or_create if update else Plan.objects.get_or_create
+        created_count = 0
+        for data in PLANS:
+            plan, created = write(slug=data["slug"], defaults=data)
+            if created:
+                created_count += 1
+                self.stdout.write(self.style.SUCCESS(f"  + created: {plan.slug} ({plan.price_monthly} EUR/month)"))
+            elif update:
+                self.stdout.write(f"  ~ updated: {plan.slug} ({plan.price_monthly} EUR/month)")
+        others = len(PLANS) - created_count
         self.stdout.write(
-            self.style.SUCCESS(
-                f"OK: created {created_count}, updated {updated_count}, "
-                f"active {Plan.objects.filter(is_active=True).count()}"
-            )
+            self.style.SUCCESS(f"Plans: {created_count} created, {others} {'updated' if update else 'existing'}")
         )

@@ -1,7 +1,8 @@
 {
   "saas": {
     "userMenu": {
-      "account": "Account"
+      "account": "Account",
+      "themeNotSaved": "Couldn't save the appearance to your account."
     }
   }
 }

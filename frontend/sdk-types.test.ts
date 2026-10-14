@@ -14,10 +14,10 @@ const TYPES = readFileSync(join(HERE, 'sdk-types.d.ts'), 'utf8');
 const PAGE = ['rows', 'total', 'limit', 'offset'];
 const PAGE_IN = ['limit', 'offset'];
 
-/** The fields of a pydantic schema of hubs/schemas.py, with what its base class adds. */
-function pythonFields(name: string): string[] {
-  const match = new RegExp(`^class ${name}\\(([^)]*)\\):\\n((?:(?:    .*)?\\n)*)`, 'm').exec(PYTHON);
-  if (!match) throw new Error(`hubs/schemas.py has no class ${name}`);
+/** The fields of a pydantic schema of hubs/schemas.py (or `source`), with what its base class adds. */
+function pythonFields(name: string, source = PYTHON): string[] {
+  const match = new RegExp(`^class ${name}\\(([^)]*)\\):\\n((?:(?:    .*)?\\n)*)`, 'm').exec(source);
+  if (!match) throw new Error(`the schemas have no class ${name}`);
   const [, base, body] = match;
   const own = [...body.matchAll(/^ {4}(\w+): /gm)].map((m) => m[1]);
   const inherited = base.startsWith('Page[') ? PAGE : base === 'PageIn' ? PAGE_IN : [];
@@ -35,9 +35,9 @@ function typeFields(name: string): string[] {
 }
 
 /** `name: annotation` of a pydantic schema (a multi-line `Field(...)` default is cut at `=`). */
-function pythonTypes(name: string): Record<string, string> {
-  const match = new RegExp(`^class ${name}\\(([^)]*)\\):\\n((?:(?:    .*)?\\n)*)`, 'm').exec(PYTHON);
-  if (!match) throw new Error(`hubs/schemas.py has no class ${name}`);
+function pythonTypes(name: string, source = PYTHON): Record<string, string> {
+  const match = new RegExp(`^class ${name}\\(([^)]*)\\):\\n((?:(?:    .*)?\\n)*)`, 'm').exec(source);
+  if (!match) throw new Error(`the schemas have no class ${name}`);
   const own = [...match[2].matchAll(/^ {4}(\w+): (.+?)(?: = .*)?$/gm)].map((m) => [m[1], m[2].trim()] as const);
   return Object.fromEntries(own);
 }
@@ -65,6 +65,19 @@ const SCALARS: Record<string, string> = {
   TimeZone: 'string',
   // Same values, the TypeScript name.
   Role: 'HubRole',
+  // billing/schemas.py and apps/schemas.py (the Store, L2-D).
+  Interval: 'BillingInterval',
+  ModuleSlug: 'string',
+  Category: 'string',
+  // hubs/schemas.py `BillingProfileIn.billing_postal_code`: a stripped string.
+  'Annotated[str, StringConstraints(strip_whitespace=True)]': 'string',
+  // billing/schemas.py, the Billing section (L3-C): a day travels as `YYYY-MM-DD`; the literal aliases keep
+  // their name in TypeScript.
+  date: 'string',
+  InvoicePaymentStatus: 'InvoicePaymentStatus',
+  InvoiceFiscalStatus: 'InvoiceFiscalStatus',
+  InvoiceRectificationType: 'InvoiceRectificationType',
+  VatStatus: 'VatStatus',
 };
 
 function toTypeScript(annotation: string): string {
@@ -92,6 +105,14 @@ const NARROWED: Record<string, string> = {
   'BusinessRowOut.status': 'BusinessStatusCode',
   'BusinessRowOut.open_blocked_reason': 'OpenBlockedReason | null',
   'BusinessDetailOut.status': 'BusinessStatusCode',
+  // `Country | Literal[""]`, `Email | Literal[""]`: the empty string is a string.
+  'BillingProfileIn.billing_country': 'string',
+  'BillingProfileIn.billing_email': 'string',
+  // `CountryCode | Literal[""]` (billing/schemas.py `VatCheckIn.country`): a string.
+  'VatCheckIn.country': 'string',
+  // `list[Literal[…]]` of the row's actions: named in TypeScript (checked below against the literal).
+  'InvoiceRowOut.actions': 'InvoiceAction[]',
+  'SubscriptionRowOut.actions': 'SubscriptionAction[]',
 };
 
 /** Every schema of hubs the panel reads or sends, by its name on both sides. */
@@ -146,5 +167,172 @@ describe('sdk-types.d.ts follows hubs/schemas.py', () => {
   it('types the actions of a member row as the server names them, in its order', () => {
     expect(/^MemberAction = Literal\[([^\]]+)\]/m.exec(PYTHON)?.[1]).toBe('"change_role", "remove", "resend", "cancel", "transfer"');
     expect(/^export type MemberAction = (.+);$/m.exec(TYPES)?.[1]).toBe("'change_role' | 'remove' | 'resend' | 'cancel' | 'transfer'");
+  });
+});
+
+/** The Store's schemas (L2-D), by their file: the same guard as hubs'. */
+const STORE_SCHEMAS: Array<[file: string, names: string[]]> = [
+  ['hubs/schemas.py', ['BillingProfileGetIn', 'BillingProfileIn', 'BillingProfileOut']],
+  [
+    'billing/schemas.py',
+    [
+      'PromoCheckIn',
+      'PromoCheckOut',
+      'CheckoutStartIn',
+      'ChargePreviewOut',
+      'CheckoutStartOut',
+      'CheckoutConfirmIn',
+      'PlanChangeIn',
+      'HubIn',
+      'ModuleIn',
+      'SubscriptionModuleOut',
+      'SubscriptionOut',
+      'StoreCatalogIn',
+      'StoreModuleOut',
+      'StoreSubscriptionOut',
+      'StoreCatalogOut',
+    ],
+  ],
+  ['apps/schemas.py', ['AppListIn', 'AppSummaryOut', 'AppListOut', 'AppByIdIn', 'RequiredAppOut', 'AppOut']],
+];
+const STORE_CASES = STORE_SCHEMAS.flatMap(([file, names]) => names.map((name) => [file, name] as const));
+
+describe('sdk-types.d.ts follows billing/schemas.py, apps/schemas.py and the payer of hubs (the Store)', () => {
+  const sources = new Map(STORE_SCHEMAS.map(([file]) => [file, readFileSync(join(HERE, '..', file), 'utf8')]));
+
+  it.each(STORE_CASES)('%s %s has the same fields on both sides', (file, name) => {
+    expect(typeFields(name)).toEqual(pythonFields(name, sources.get(file)));
+  });
+
+  it.each(STORE_CASES)('%s %s types each field as its JSON is', (file, name) => {
+    const python = pythonTypes(name, sources.get(file));
+    const types = typeTypes(name);
+    for (const [field, annotation] of Object.entries(python)) {
+      const optional = `${field}?` in types;
+      const ts = types[optional ? `${field}?` : field];
+      let expected = NARROWED[`${name}.${field}`] ?? toTypeScript(annotation);
+      if (optional && !ts.includes('null')) expected = expected.replace(/ \| null|null \| /g, '');
+      expect(union(ts), `${file} ${name}.${field}: ${annotation}`).toBe(union(expected));
+    }
+  });
+
+  it('types the billing of a subscription as the server names it', () => {
+    expect(/^Interval = Literal\[([^\]]+)\]/m.exec(sources.get('billing/schemas.py') ?? '')?.[1]).toBe('"month", "year"');
+    expect(/^export type BillingInterval = (.+);$/m.exec(TYPES)?.[1]).toBe("'month' | 'year'");
+  });
+});
+
+/** The Billing section's schemas (L3-C front: invoices, subscriptions, payment details), by their file. */
+const BILLING_SCHEMAS: Array<[file: string, names: string[]]> = [
+  [
+    'billing/schemas.py',
+    [
+      'InvoiceFilterIn',
+      'InvoiceListIn',
+      'InvoiceBusinessOut',
+      'InvoiceCanOut',
+      'InvoiceRectificationOut',
+      'InvoiceRowOut',
+      'InvoiceListOut',
+      'InvoiceByIdIn',
+      'InvoiceLineOut',
+      'InvoiceRecipientOut',
+      'InvoiceRefOut',
+      'InvoiceDetailOut',
+      'InvoicePayIn',
+      'InvoicePayOut',
+      'SubscriptionListIn',
+      'SubscriptionPlanOut',
+      'SubscriptionModuleRowOut',
+      'NextInvoiceOut',
+      'SubscriptionCanOut',
+      'SubscriptionRowOut',
+      'SubscriptionListOut',
+      'PaymentMethodIn',
+      'CardOut',
+      'LastFailureOut',
+      'PaymentMethodRowOut',
+      'PaymentMethodOut',
+      'PortalOpenIn',
+      'PortalOpenOut',
+      'VatCheckIn',
+      'VatCheckOut',
+      'ScheduledChangeOut',
+    ],
+  ],
+];
+const BILLING_CASES = BILLING_SCHEMAS.flatMap(([file, names]) => names.map((name) => [file, name] as const));
+
+describe('sdk-types.d.ts follows billing/schemas.py (the Billing section)', () => {
+  const sources = new Map(BILLING_SCHEMAS.map(([file]) => [file, readFileSync(join(HERE, '..', file), 'utf8')]));
+
+  it.each(BILLING_CASES)('%s %s has the same fields on both sides', (file, name) => {
+    expect(typeFields(name)).toEqual(pythonFields(name, sources.get(file)));
+  });
+
+  it.each(BILLING_CASES)('%s %s types each field as its JSON is', (file, name) => {
+    const python = pythonTypes(name, sources.get(file));
+    const types = typeTypes(name);
+    for (const [field, annotation] of Object.entries(python)) {
+      const optional = `${field}?` in types;
+      const ts = types[optional ? `${field}?` : field];
+      let expected = NARROWED[`${name}.${field}`] ?? toTypeScript(annotation);
+      if (optional && !ts.includes('null')) expected = expected.replace(/ \| null|null \| /g, '');
+      expect(union(ts), `${file} ${name}.${field}: ${annotation}`).toBe(union(expected));
+    }
+  });
+
+  it.each([
+    ['InvoicePaymentStatus', '"open", "paid", "void"', "'open' | 'paid' | 'void'"],
+    [
+      'InvoiceFiscalStatus',
+      '"", "issuing", "issued", "accepted", "accepted_with_errors", "rejected"',
+      "'' | 'issuing' | 'issued' | 'accepted' | 'accepted_with_errors' | 'rejected'",
+    ],
+    ['VatStatus', '"verified", "invalid", "unavailable", "national", "outside_vies"', "'verified' | 'invalid' | 'unavailable' | 'national' | 'outside_vies'"],
+    ['InvoiceRectificationType', '"R1", "R2", "R3", "R4"', "'R1' | 'R2' | 'R3' | 'R4'"],
+  ])('types %s as the server names its values', (alias, python, typescript) => {
+    const source = sources.get('billing/schemas.py') ?? '';
+    expect(new RegExp(`^${alias} = Literal\\[([^\\]]+)\\]`, 'm').exec(source)?.[1]).toBe(python);
+    expect(new RegExp(`^export type ${alias} = (.+);$`, 'm').exec(TYPES)?.[1]).toBe(typescript);
+  });
+
+  it.each([
+    ['InvoiceRowOut', 'InvoiceAction', '"pay", "pdf"', "'pay' | 'pdf'"],
+    [
+      'SubscriptionRowOut',
+      'SubscriptionAction',
+      '"change_plan", "keep_plan", "view_invoice", "cancel_plan", "view_invoices"',
+      "'change_plan' | 'keep_plan' | 'view_invoice' | 'cancel_plan' | 'view_invoices'",
+    ],
+  ])('types the actions of a %s row (%s) as the server names them, in its order', (schema, alias, python, typescript) => {
+    const annotation = pythonTypes(schema, sources.get('billing/schemas.py')).actions;
+    expect(annotation).toBe(`list[Literal[${python}]]`);
+    expect(new RegExp(`^export type ${alias} = (.+);$`, 'm').exec(TYPES)?.[1]).toBe(typescript);
+  });
+});
+
+/** The usage of a business (lot L4-A): `hubs.usage.get`, `hubs.usage.series` and `usage` of the business's page. */
+const USAGE_SCHEMAS = ['StorageUsageOut', 'ActiveUsersOut', 'UsageOut', 'UsageGetIn', 'UsageSeriesIn', 'UsagePointOut', 'UsageSeriesOut'];
+
+describe('sdk-types.d.ts follows the usage schemas of hubs/schemas.py', () => {
+  it.each(USAGE_SCHEMAS)('%s has the same fields on both sides', (name) => {
+    expect(typeFields(name)).toEqual(pythonFields(name));
+  });
+
+  it.each(USAGE_SCHEMAS)('%s types each field as its JSON is', (name) => {
+    const python = pythonTypes(name);
+    const types = typeTypes(name);
+    for (const [field, annotation] of Object.entries(python)) {
+      const optional = `${field}?` in types;
+      const ts = types[optional ? `${field}?` : field];
+      let expected = NARROWED[`${name}.${field}`] ?? toTypeScript(annotation);
+      if (optional && !ts.includes('null')) expected = expected.replace(/ \| null|null \| /g, '');
+      expect(union(ts), `${name}.${field}: ${annotation}`).toBe(union(expected));
+    }
+  });
+
+  it('the page of a business carries the last day measured, or null', () => {
+    expect(typeTypes('BusinessDetailOut').usage).toBe('UsageOut | null');
   });
 });

@@ -5,6 +5,15 @@ country raising its VAT or a service with its own rate are solved here, without 
 two singletons open straight on their row; the VIES log is read-only, except the manual override (adding
 a row by hand) and «Check now in VIES», which adds rows through the same door as the panel and spends the
 same per-person budget.
+
+Stripe (lot L2-B): promo codes are written here (sales hands them out); what Stripe did —the checkouts
+opened, the webhook's events and the renewals that failed— is read-only: Stripe is the source, and the
+webhook and the operations are its only writers.
+
+ERPlora's invoices (lot L3-C) are read-only too: recorded from what Stripe charged and issued by the platform
+hub, and a record sent to the AEAT is never modified (a credit note corrects it). Their one action, «Send
+again to the platform hub», posts them through ``billing.services.post_platform_invoice`` (idempotent on the
+Hub) and says what the Hub answered.
 """
 
 from django.contrib import admin, messages
@@ -16,7 +25,19 @@ from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 
 from billing import queries, services
-from billing.models import CompanyConfig, FiscalPolicy, TaxCategory, TaxRule, VatCheck
+from billing.models import (
+    CheckoutAttempt,
+    Invoice,
+    InvoiceLine,
+    CompanyConfig,
+    FiscalPolicy,
+    PaymentFailure,
+    PromoCode,
+    TaxCategory,
+    TaxRule,
+    VatCheck,
+    WebhookEvent,
+)
 from billing.money import from_cents
 from billing.vies import is_uk_vat_number
 
@@ -326,3 +347,135 @@ class VatCheckAdmin(admin.ModelAdmin):
             )
             % {"vat": obj.vat_number},
         )
+
+
+# --- Stripe (lot L2-B) -------------------------------------------------------------------------------
+
+
+@admin.register(PromoCode)
+class PromoCodeAdmin(admin.ModelAdmin):
+    list_display = ("code", "trial_days", "is_active", "expires_at", "redemption_count", "max_redemptions", "note")
+    list_filter = ("is_active",)
+    search_fields = ("code", "note")
+    readonly_fields = ("redemption_count", "created_at", "updated_at")
+
+
+class ReadOnlyAdmin(admin.ModelAdmin):
+    """What Stripe did, as the webhook and the operations wrote it: nobody adds, edits or deletes it here."""
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(CheckoutAttempt)
+class CheckoutAttemptAdmin(ReadOnlyAdmin):
+    list_display = ("created_at", "hub", "kind", "plan_slug", "module_slug", "billing_interval", "promo_code", "status")
+    list_filter = ("status", "kind")
+    search_fields = ("hub__slug", "hub__name", "stripe_session_id")
+    exclude = ("client_secret",)
+
+
+@admin.register(WebhookEvent)
+class WebhookEventAdmin(ReadOnlyAdmin):
+    list_display = ("received_at", "event_type", "event_id", "success", "outcome", "attempts")
+    list_filter = ("success", "event_type")
+    search_fields = ("event_id",)
+
+
+@admin.register(PaymentFailure)
+class PaymentFailureAdmin(ReadOnlyAdmin):
+    list_display = ("failed_at", "hub", "reason", "decline_code", "invoice_created_at", "card_changed_at", "resolved_at")
+    list_filter = ("reason",)
+    search_fields = ("hub__slug", "hub__name", "stripe_invoice_id", "stripe_subscription_id")
+
+
+class InvoiceLineInline(admin.TabularInline):
+    model = InvoiceLine
+    extra = 0
+    can_delete = False
+    fields = ("position", "description", "item_kind", "item_slug", "proration", "tax_category", "tax_treatment",
+              "tax_rate", "net_cents", "tax_cents", "total_cents")
+    readonly_fields = fields
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(Invoice)
+class InvoiceAdmin(ReadOnlyAdmin):
+    list_display = ("number", "stripe_number", "kind", "issued_on", "business_name", "payer_name", "total",
+                    "payment_status", "fiscal_status", "post_attempts")
+    list_filter = ("kind", "payment_status", "fiscal_status", "tax_treatment")
+    list_select_related = ("hub", "payer_account")
+    search_fields = ("number", "stripe_number", "payer_name", "payer_tax_id", "business_name", "stripe_invoice_id",
+                     "stripe_source_id")
+    date_hierarchy = "issued_on"
+    ordering = ("-issued_on", "-created_at")
+    inlines = [InvoiceLineInline]
+    actions = ["send_to_platform", "send_mail_again"]
+
+    @admin.display(description=gettext_lazy("Total"), ordering="total_cents")
+    def total(self, obj):
+        return f"{from_cents(obj.total_cents)} {obj.currency}"
+
+    def has_send_permission(self, request):
+        """Posting or mailing again writes: it needs the change permission (review of L3-C), although nothing
+        of the invoice itself is edited here."""
+        return request.user.has_perm("billing.change_invoice")
+
+    @admin.action(description=gettext_lazy("Send again to the platform hub"), permissions=["send"])
+    def send_to_platform(self, request, queryset):
+        """Post the selected invoices to ERPlora's platform hub now and say what it answered: the lever for one
+        «issuing» for too long or rejected and corrected in the Hub."""
+        for invoice in queryset.order_by("series", "sequence"):
+            outcome = services.post_platform_invoice(invoice.pk)
+            invoice.refresh_from_db()
+            label = invoice.number or invoice.stripe_invoice_id
+            if outcome == services.POSTED:
+                messages.success(
+                    request,
+                    _("%(invoice)s: the platform hub says «%(status)s».")
+                    % {"invoice": label, "status": invoice.get_fiscal_status_display()},
+                )
+            elif outcome == services.NOTHING_TO_POST:
+                messages.warning(request, _("%(invoice)s: not paid, so there is nothing to issue.") % {"invoice": label})
+            elif outcome == services.REFUSED:
+                messages.error(
+                    request,
+                    _("%(invoice)s: the platform hub refused it (%(code)s). It stays «issuing».")
+                    % {"invoice": label, "code": invoice.fiscal_error_code or invoice.last_post_error},
+                )
+            else:
+                messages.error(
+                    request,
+                    _("%(invoice)s: the platform hub did not answer. It stays «issuing» and is retried.")
+                    % {"invoice": label},
+                )
+
+    @admin.action(description=gettext_lazy("Send the invoice mail again"), permissions=["send"])
+    def send_mail_again(self, request, queryset):
+        """Send the payer the mail of the selected invoices again (it says where to download them): only of
+        the ones the platform hub issued."""
+        for invoice in queryset.order_by("series", "sequence"):
+            label = invoice.number or invoice.stripe_invoice_id
+            if invoice.fiscal_status not in services.ISSUED_STATUSES:
+                messages.warning(request, _("%(invoice)s: not issued yet, so it has no mail.") % {"invoice": label})
+                continue
+            outcome = services.send_invoice_mail(invoice.pk)
+            if outcome == services.MAILED:
+                messages.success(request, _("%(invoice)s: the mail was sent.") % {"invoice": label})
+            elif outcome == services.MAIL_SKIPPED:
+                messages.warning(request, _("%(invoice)s: it has nobody to send it to.") % {"invoice": label})
+            else:
+                messages.error(request, _("%(invoice)s: the mail could not leave; it is sent again later.")
+                               % {"invoice": label})
+

@@ -23,6 +23,8 @@ from hubs.schemas import (
     MemberListIn,
     MemberRoleIn,
     OwnershipTransferIn,
+    UsageGetIn,
+    UsageSeriesIn,
 )
 from hubs.tests.conftest import ctx_for, member_of
 
@@ -73,7 +75,23 @@ def call(name, hub, team):
             services.billing_profile_update,
             BillingProfileIn(hub_id=hub.id, billing_name="Me"),
         ),
+        # A night measured, so «nothing yet» (also a 404) never hides what the role decides.
+        "usage.get": (queries.usage_get, UsageGetIn(business_id=measured(hub).id)),
+        "usage.series": (queries.usage_series, UsageSeriesIn(business_id=hub.id)),
     }[name]
+
+
+def measured(hub):
+    from datetime import UTC, datetime, timedelta
+
+    from hubs.models import HubUsageDaily
+
+    HubUsageDaily.objects.get_or_create(
+        hub=hub,
+        day=datetime.now(UTC).date() - timedelta(days=1),
+        defaults={"s3_bytes": 0, "db_bytes": 0, "active_users_1d": 0, "active_users_30d": 0},
+    )
+    return hub
 
 
 MATRIX = {
@@ -92,6 +110,9 @@ MATRIX = {
     "ownership.transfer": (OK, DENIED, DENIED, DENIED, HIDDEN, HIDDEN),
     "billing_profile.get": (OK, DENIED, DENIED, DENIED, HIDDEN, HIDDEN),
     "billing_profile.update": (OK, DENIED, DENIED, DENIED, HIDDEN, HIDDEN),
+    # The usage of the business (L4-A): who sees its page.
+    "usage.get": (OK, OK, DENIED, DENIED, HIDDEN, HIDDEN),
+    "usage.series": (OK, OK, DENIED, DENIED, HIDDEN, HIDDEN),
 }
 
 
@@ -128,6 +149,10 @@ def test_every_operation_on_a_business_has_its_row():
         "hubs.business.mark_ready",
         "hubs.business.record_hub_error",
         "hubs.business.notify_people",
+        # The platform's (billing writes what Stripe says): ``test_subscription_apply.py``.
+        "hubs.subscription.apply",
+        # The platform's (the nightly collection): ``test_collect_hub_usage.py``.
+        "hubs.usage.record",
         "hubs.address.propose",
         "hubs.invitation.list_mine",
         "hubs.invitation.accept",

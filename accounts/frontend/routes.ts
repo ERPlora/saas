@@ -34,6 +34,20 @@ const routes: RouteRecordRaw[] = [
     component: () => import('./pages/ReauthenticatePage.vue'),
     meta: { auth: true, chrome: false },
   },
+  {
+    // Account (round 17, PLAN-SAAS §3.6): the user menu and the side menu land on its Profile.
+    path: '/account',
+    redirect: '/account/profile',
+    meta: { auth: true },
+  },
+  {
+    // One address per section of Account: the footer tabbar follows the route.
+    path: '/account/:tab(profile|security|preferences|api-keys)',
+    component: () => import('./pages/AccountPage.vue'),
+    // Ionic keeps one view per URL and hands it its params once: no reactive route to go stale.
+    props: true,
+    meta: { auth: true },
+  },
 ];
 
 export default routes;

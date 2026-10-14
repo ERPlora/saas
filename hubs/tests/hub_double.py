@@ -9,7 +9,10 @@ body-only v1), records every call and answers what the test asks for, with the H
   one applied (the Hub ignores an older snapshot, §2.2);
 - ``GET /internal/hubs/{id}`` → 200 with the registry's status, 404 for a hub it never got;
 - ``DELETE /internal/hubs/{id}`` → 202; ``POST /internal/hubs/{id}/restore`` → 200;
-- ``POST /internal/sessions/revoke`` → 200.
+- ``POST /internal/sessions/revoke`` → 200;
+- ``GET /internal/usage?day=YYYY-MM-DD[&cursor=…]`` → 200 with the rows of ``usage[day]`` (each business's
+  usage that day, as the test sets it), ``usage_page_size`` per page and ``next_cursor`` until the last;
+  422 without a ``day``.
 
 A bad or missing signature answers 401 and is recorded as refused. Only tests use it; the e2e double
 of the whole ``/internal`` is ``tests/doubles/hub.py`` (lot L0-G).
@@ -19,6 +22,7 @@ import json
 import re
 import threading
 import time
+from urllib.parse import parse_qs, urlsplit
 from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
@@ -59,6 +63,9 @@ class HubDouble:
         self.delay = 0.0
         self.registry: dict[str, dict] = {}
         self.versions: dict[str, int] = {}
+        #: ``GET /internal/usage``: the rows of each day (``"2026-10-13"`` → ``[{id, s3_bytes, …}]``), in pages.
+        self.usage: dict[str, list[dict]] = {}
+        self.usage_page_size = 500
         self._lock = threading.Lock()
         double = self
 
@@ -149,6 +156,8 @@ class HubDouble:
     def _default(self, method: str, path: str, body: Any) -> tuple[int, Any]:
         if method == "POST" and path == "/internal/sessions/revoke":
             return 200, {"revoked": 1}
+        if method == "GET" and urlsplit(path).path == "/internal/usage":
+            return self._usage(parse_qs(urlsplit(path).query))
         match = HUB_PATH.match(path)
         if match is None:
             return 404, {"error": {"code": "not_found", "message": "No such route."}}
@@ -177,3 +186,15 @@ class HubDouble:
             self.registry.setdefault(hub_id, {})["status"] = "ready"
             return 200, {"status": "ready"}
         return 405, {"error": {"code": "method_not_allowed", "message": "Not here."}}
+
+    def _usage(self, query: dict[str, list[str]]) -> tuple[int, Any]:
+        """One page of a day's usage; the cursor is the offset of the next page."""
+        if not query.get("day"):
+            return 422, {"error": {"code": "invalid_payload", "message": "Which day?"}}
+        day, cursor = query["day"][0], query.get("cursor", ["0"])[0]
+        if not cursor.isdigit():
+            return 422, {"error": {"code": "invalid_cursor", "message": "Not a cursor of mine."}}
+        start = int(cursor)
+        rows = self.usage.get(day, [])
+        end = start + self.usage_page_size
+        return 200, {"day": day, "hubs": rows[start:end], "next_cursor": str(end) if end < len(rows) else None}

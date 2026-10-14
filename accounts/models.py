@@ -1,4 +1,5 @@
-"""Accounts of saas-next: who signs in, which hubs they belong to and the one-time jump code.
+"""Accounts of saas-next: who signs in, which hubs they belong to, the one-time jump code and the
+account's own settings (the Account page: preferences, photo and API keys; plan 2026-10-13, L3-A).
 
 ``User`` is ported from ERPlora/saas ``apps/auth/users/models.py`` (email as the identifier),
 with a UUIDv7 primary key (PLAN-SAAS §6) and the account's language. ``HubMembership`` is the mirror
@@ -10,8 +11,12 @@ only by ``hubs.services.sync_access``, retired once the jump reads ``HubMember``
 ``hubs``, the platform host of the Hub's admin (ronda 13, PLAN §18).
 """
 
+import base64
 import hashlib
+import secrets
+import string
 import uuid
+from datetime import datetime
 
 from django.conf import settings
 from django.contrib.auth.models import (
@@ -165,3 +170,184 @@ class AuthExchangeCode(models.Model):
     @staticmethod
     def hash_code(code: str) -> str:
         return hashlib.sha256(code.encode()).hexdigest()
+
+
+class UserPreferences(models.Model):
+    """What the account chose in Account → Preferences: the theme mode and which mails it gets.
+
+    Ported from ERPlora/saas ``apps/dashboard/settings`` without what the single panel dropped (palette,
+    currency, menu order, developer mode; plan 2026-10-13 §3, round 17). The language is ``User.language``,
+    which the mails and the jump to a hub already read. «Invoices and payments» mails are always sent: they
+    have no switch. No row means the defaults.
+    """
+
+    class ThemeMode(models.TextChoices):
+        # The vocabulary of the shell (packages/ui shell/theme.ts, ``ThemeMode``).
+        SYSTEM = "system", _("System")
+        LIGHT = "light", _("Light")
+        DARK = "dark", _("Dark")
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="preferences", verbose_name=_("user")
+    )
+    theme_mode = models.CharField(_("appearance"), max_length=8, choices=ThemeMode.choices, default=ThemeMode.SYSTEM)
+    hub_alerts = models.BooleanField(
+        _("business notices"), default=True, help_text=_("Business ready, payments pending.")
+    )
+    marketing_emails = models.BooleanField(
+        _("ERPlora news"), default=False, help_text=_("At most once a month.")
+    )
+    updated_at = models.DateTimeField(_("updated at"), auto_now=True)
+
+    class Meta:
+        verbose_name = _("preferences")
+        verbose_name_plural = _("preferences")
+
+    def __str__(self):
+        return f"preferences<{self.user_id}>"
+
+
+class ProfilePhoto(models.Model):
+    """The account's photo: a small image kept in the database, already cleaned (``accounts.photos``).
+
+    In the database because the SaaS has no media storage (``STORAGES["default"]`` is the task's own disk,
+    lost on every deploy) and an avatar is small (``photos.MAX_PHOTO_BYTES``); the panel gets it as a data
+    URL. One row per account, gone with it.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="photo", verbose_name=_("user")
+    )
+    content_type = models.CharField(_("type"), max_length=16)
+    data = models.BinaryField(_("image"))
+    updated_at = models.DateTimeField(_("updated at"), auto_now=True)
+
+    class Meta:
+        verbose_name = _("photo")
+        verbose_name_plural = _("photos")
+
+    def __str__(self):
+        return f"photo<{self.user_id}>"
+
+    def data_url(self) -> str:
+        return f"data:{self.content_type};base64,{base64.b64encode(bytes(self.data)).decode()}"
+
+
+#: Every account key starts so: the environment is written in the key (Stripe's ``sk_live_``), and ``erps``
+#: tells it apart from a hub's ``erpk_live_`` (hub-next; plan 2026-10-13 §7 point 12, decided in L3-A).
+API_KEY_PREFIX = "erps_live_"
+API_KEY_SECRET_LENGTH = 48
+#: The first characters of the secret, kept in clear and indexed: how a key is found before its hash is
+#: compared (and how its owner tells it apart in the list).
+API_KEY_PREFIX_LENGTH = 8
+#: base62: a double click selects the whole key.
+API_KEY_ALPHABET = string.ascii_letters + string.digits
+
+#: What a key may open, with what the panel says next to it. ``<app>.read`` opens the app's queries and
+#: ``<app>.write`` its commands, and only those declared with ``expose_api=True`` (``accounts.api_auth``).
+API_KEY_SCOPES = {
+    "hubs.read": _("Businesses · read"),
+    "hubs.write": _("Businesses · write"),
+    "billing.read": _("Invoices · read"),
+}
+
+
+class UnknownScope(ValueError):
+    """A scope nobody registered: a typo, caught before it is written anywhere."""
+
+
+def validate_scopes(scopes) -> list[str]:
+    """``scopes`` without repeats, in order, or ``UnknownScope`` naming the unknown ones."""
+    unknown = [scope for scope in scopes if scope not in API_KEY_SCOPES]
+    if unknown:
+        raise UnknownScope(f"unknown API key scope(s): {', '.join(sorted(unknown))}")
+    return list(dict.fromkeys(scopes))
+
+
+class ApiKey(models.Model):
+    """A key that makes a request act as its account, bounded by its scopes (ported from ERPlora/saas
+    ``apps/auth/apikeys``, ADR-0467: a key of a person; the hub keys are hub-next's, PLAN-SAAS §2.4).
+
+    The table keeps the SHA-256 of the key and nothing else: its owner sees it once, when it is created.
+    SHA-256 suffices for 48 random base62 characters (~285 bits); a slow hash would only slow every call.
+    Revoking keeps the row (the audit trail); deleting the account deletes its keys.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="api_keys", verbose_name=_("user")
+    )
+    name = models.CharField(_("name"), max_length=120)
+    prefix = models.CharField(_("prefix"), max_length=API_KEY_PREFIX_LENGTH, db_index=True)
+    key_hash = models.CharField(max_length=64, unique=True)
+    scopes = models.JSONField(_("permissions"), default=list, blank=True)
+    created_at = models.DateTimeField(_("created at"), default=timezone.now)
+    expires_at = models.DateTimeField(_("expires at"), null=True, blank=True)
+    last_used_at = models.DateTimeField(_("last used at"), null=True, blank=True)
+    revoked_at = models.DateTimeField(_("revoked at"), null=True, blank=True)
+
+    class Meta:
+        verbose_name = _("API key")
+        verbose_name_plural = _("API keys")
+        ordering = ["-created_at", "id"]
+
+    def __str__(self):
+        return f"{self.name} ({self.display_prefix}…)"
+
+    @property
+    def display_prefix(self) -> str:
+        return f"{API_KEY_PREFIX}{self.prefix}"
+
+    @staticmethod
+    def hash_key(raw: str) -> str:
+        return hashlib.sha256(raw.encode()).hexdigest()
+
+    @classmethod
+    def new_secret(cls) -> tuple[str, str, str]:
+        """A fresh key: ``(secret, prefix, hash)``. The secret exists in clear only in this return value."""
+        body = "".join(secrets.choice(API_KEY_ALPHABET) for _ in range(API_KEY_SECRET_LENGTH))
+        raw = f"{API_KEY_PREFIX}{body}"
+        return raw, body[:API_KEY_PREFIX_LENGTH], cls.hash_key(raw)
+
+    @staticmethod
+    def parse(raw: str) -> str | None:
+        """The 48 characters after ``erps_live_`` of a well-formed key, ``None`` for anything else."""
+        raw = (raw or "").strip()
+        if not raw.startswith(API_KEY_PREFIX):
+            return None
+        body = raw.removeprefix(API_KEY_PREFIX)
+        if len(body) != API_KEY_SECRET_LENGTH or any(char not in API_KEY_ALPHABET for char in body):
+            return None
+        return body
+
+    def is_usable(self, now: datetime) -> bool:
+        return self.revoked_at is None and (self.expires_at is None or self.expires_at > now)
+
+
+class EmailChangeRequest(models.Model):
+    """An account's change of email waiting for the code mailed to the new address (``accounts.email.change``).
+
+    Bound to the session that asked (``session_key``): the code is of no use in any other. Only the code's
+    SHA-256 is kept. The tries are counted here, consumed by one conditional ``UPDATE`` each, so requests
+    racing in parallel cannot get more than ``services.EMAIL_CODE_ATTEMPTS`` between them. One per account: a
+    new request replaces the one waiting; gone with the account.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="email_change", verbose_name=_("user")
+    )
+    session_key = models.CharField(max_length=40)
+    email = models.EmailField(_("new email"), max_length=255)
+    code_hash = models.CharField(max_length=64)
+    attempts = models.PositiveSmallIntegerField(_("attempts"), default=0)
+    created_at = models.DateTimeField(_("created at"), default=timezone.now)
+
+    class Meta:
+        verbose_name = _("change of email")
+        verbose_name_plural = _("changes of email")
+
+    def __str__(self):
+        return f"email-change<{self.user_id}>"

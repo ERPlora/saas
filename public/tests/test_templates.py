@@ -247,9 +247,25 @@ def test_a_visitor_gets_the_system_mode_and_no_dark_class_from_the_server(client
 @pytest.mark.django_db
 @pytest.mark.parametrize("mode", ["light", "dark"])
 def test_the_theme_cookie_paints_the_public_web_from_the_server(client, mode):
-    """The ``theme`` cookie is the mode until the account's own choice (``UserPreferences``, panel
-    batch of 2026-10-14) lands on main: a dark choice needs no script and never flashes light."""
+    """A visitor without an account gets the ``theme`` cookie: a dark choice needs no script and never
+    flashes light."""
     client.cookies["theme"] = mode
+
+    html_tag = _html_tag(get_page(client).content.decode())
+
+    assert f'data-ep-theme="{mode}"' in html_tag
+    assert ("ion-palette-dark" in html_tag) is (mode == "dark")
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("mode", ["light", "dark"])
+def test_an_account_gets_the_mode_it_chose_in_the_panel(client, ana, mode):
+    """Account → Preferences is the panel's mode: the public web paints the same one, from the
+    server, so a dark choice needs no script and never flashes light."""
+    from accounts.models import UserPreferences
+
+    UserPreferences.objects.create(user=ana, theme_mode=mode)
+    client.force_login(ana)
 
     html_tag = _html_tag(get_page(client).content.decode())
 
