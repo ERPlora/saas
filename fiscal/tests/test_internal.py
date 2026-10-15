@@ -1,0 +1,351 @@
+"""``POST /internal/hubs/{id}/representation`` and ``GET /internal/representation/model``: the Hub sends a
+business's signed authorisation, and fetches the blank model the customer signs (plan 2026-10-15, «Contrato»).
+
+Server to server, signed as the other ``/internal`` calls (``accounts.signing``: v1 over the body, v2 over the
+method, the path and the body), so no CSRF token. The upload runs ``fiscal.representation.submit`` as the
+platform, in the owner's channel; every refusal answers the single envelope ``{"error": {"code", "message",
+"fields"?}}`` (PLAN §14.1) and nothing is ever cached.
+"""
+
+import base64
+import io
+import json
+import time
+import uuid
+from pathlib import Path
+
+import pytest
+from django.conf import settings
+from django.test import RequestFactory
+from live.models import OutboxEvent
+
+from accounts.signing import sign, signed_headers
+from fiscal import internal
+from fiscal.documents import MAX_DOCUMENT_BYTES
+from fiscal.models import RepresentationGrant
+from fiscal.tests.conftest import PDF, pdf_b64, submission
+from hubs.models import Hub
+from hubs.tests.conftest import SECRET
+
+pytestmark = pytest.mark.django_db
+
+MODEL = Path(__file__).resolve().parent.parent / "static" / "fiscal" / "representation-model.pdf"
+MODEL_PATH = "/internal/representation/model"
+
+
+@pytest.fixture(autouse=True)
+def _secret(settings):
+    settings.INTERNAL_SHARED_SECRET = SECRET
+
+
+def path_of(hub_id) -> str:
+    return f"/internal/hubs/{hub_id}/representation"
+
+
+def post(client, hub_id, payload=None, *, secret=SECRET, timestamp=None, raw=None, headers=None):
+    body = raw if raw is not None else (b"" if payload is None else json.dumps(payload).encode())
+    timestamp = int(time.time()) if timestamp is None else timestamp
+    return client.post(
+        path_of(hub_id),
+        body,
+        content_type="application/json",
+        headers={
+            "X-Erplora-Timestamp": str(timestamp),
+            "X-Erplora-Signature": sign(body, timestamp, secret),
+            **(headers or {}),
+        },
+    )
+
+
+def error_of(response) -> tuple[int, str]:
+    return response.status_code, response.json()["error"]["code"]
+
+
+# --- The upload -----------------------------------------------------------------------------------------
+
+
+def test_a_signed_upload_waits_for_the_staff(client, business):
+    response = post(client, business.id, submission())
+
+    assert response.status_code == 201
+    body = response.json()
+    assert (body["status"], body["version"]) == ("submitted", 1)
+    grant = RepresentationGrant.objects.get(hub=business)
+    assert (grant.status, grant.version, grant.taxpayer_tax_id) == ("submitted", 1, "12345678Z")
+    assert body["submitted_at"].startswith(grant.submitted_at.date().isoformat())
+    assert "no-store" in response["Cache-Control"]
+
+
+def test_a_newer_upload_takes_the_next_version(client, business):
+    post(client, business.id, submission())
+
+    response = post(client, business.id, submission())
+
+    assert (response.status_code, response.json()["version"]) == (201, 2)
+    assert list(
+        RepresentationGrant.objects.filter(hub=business).order_by("version").values_list("status", flat=True)
+    ) == ["returned", "submitted"]
+
+
+def test_its_event_reaches_the_owners_channel_as_the_platform(client, business, owner):
+    post(client, business.id, submission())
+
+    event = OutboxEvent.objects.get(name="fiscal.representation.submitted")
+    assert (event.scope_kind, event.scope_key, event.actor) == ("user", str(owner.pk), "system")
+    assert "documents" not in json.dumps(event.payload)
+
+
+def test_the_body_may_name_the_business_of_the_path(client, business):
+    response = post(client, business.id, submission(hub_id=str(business.id)))
+
+    assert response.status_code == 201
+
+
+def test_a_body_naming_another_business_is_refused(client, business):
+    """v1 signs the body only: a body replayed on another business's route must not file there."""
+    response = post(client, business.id, submission(hub_id=str(uuid.uuid7())))
+
+    assert error_of(response) == (400, "invalid_request")
+    assert not RepresentationGrant.objects.exists()
+
+
+@pytest.mark.parametrize("raw", [b"{not json", b"[]", b"", b"\"text\""], ids=["broken", "list", "empty", "string"])
+def test_a_body_that_is_not_a_json_object_is_400(client, business, raw):
+    response = post(client, business.id, raw=raw)
+
+    assert error_of(response) == (400, "invalid_request")
+
+
+def test_a_broken_rule_answers_its_fiscal_code_and_every_field(client, business):
+    response = post(client, business.id, submission(documents={"id_copy": pdf_b64()}, signer_name=""))
+
+    assert error_of(response) == (422, "fiscal.signer_required")
+    assert set(response.json()["error"]["fields"]) == {"signer_name", "documents.signed_model"}
+    assert not RepresentationGrant.objects.exists()
+
+
+@pytest.mark.parametrize("field", ["signer_tax_id", "taxpayer_tax_id"])
+def test_a_tax_id_longer_than_its_column_is_a_422_not_a_500(client, business, field):
+    response = post(client, business.id, submission(**{field: "1" * 17 + "Z"}))
+
+    assert error_of(response) == (422, "invalid_payload")
+    assert field in response.json()["error"]["fields"]
+    assert not RepresentationGrant.objects.exists()
+
+
+def test_a_signer_tax_id_with_nothing_left_once_normalised_is_required(client, business):
+    response = post(client, business.id, submission(signer_tax_id="--"))
+
+    assert error_of(response) == (422, "fiscal.signer_required")
+    assert "signer_tax_id" in response.json()["error"]["fields"]
+    assert not RepresentationGrant.objects.exists()
+
+
+def test_an_unknown_field_is_an_invalid_payload_naming_it(client, business):
+    response = post(client, business.id, submission(signer_email="x@example.com"))
+
+    assert error_of(response) == (422, "invalid_payload")
+    assert "signer_email" in response.json()["error"]["fields"]
+
+
+def test_documents_that_are_not_an_object_are_an_invalid_payload(client, business):
+    response = post(client, business.id, submission(documents="all of them"))
+
+    assert error_of(response) == (422, "invalid_payload")
+    assert "documents" in response.json()["error"]["fields"]
+
+
+def test_the_messages_speak_the_language_the_hub_asks(client, business):
+    response = post(client, business.id, submission(signer_name=""), headers={"Accept-Language": "es"})
+
+    assert response.json()["error"]["fields"]["signer_name"] == (
+        "Indica quién firma la autorización: su nombre y su NIF."
+    )
+
+
+def full_pdf_b64(marker: str) -> str:
+    """A PDF of exactly ``MAX_DOCUMENT_BYTES``, in base64."""
+    head = PDF + marker.encode()
+    return base64.b64encode(head + b"x" * (MAX_DOCUMENT_BYTES - len(head))).decode()
+
+
+def test_four_documents_of_5_mb_are_heard(client, business):
+    """Beyond Django's 2.5 MB (``DATA_UPLOAD_MAX_MEMORY_SIZE``), within this view's own ceiling."""
+    documents = {name: full_pdf_b64(name) for name in RepresentationGrant.DOCUMENTS}
+    body = json.dumps(submission(documents=documents)).encode()
+    assert settings.DATA_UPLOAD_MAX_MEMORY_SIZE < len(body) <= internal.MAX_BODY_BYTES
+
+    response = post(client, business.id, raw=body)
+
+    assert response.status_code == 201
+    grant = RepresentationGrant.objects.get(hub=business)
+    assert grant.signature_sample is not None and grant.representation_proof is not None
+
+
+def test_a_body_beyond_the_ceiling_is_413_before_anything_else(client, business):
+    """Not even the signature is checked: an unsigned 33 MB body is refused by its size."""
+    body = b"{" + b" " * (internal.MAX_BODY_BYTES + 1024 * 1024) + b"}"
+
+    response = client.post(path_of(business.id), body, content_type="application/json")
+
+    assert error_of(response) == (413, "fiscal.body_too_large")
+    assert not RepresentationGrant.objects.exists()
+
+
+@pytest.mark.parametrize("length", ["lots", "-1"], ids=["not a number", "negative"])
+def test_a_body_with_a_broken_length_is_a_bad_request(business, length):
+    request = RequestFactory().post(
+        path_of(business.id), json.dumps(submission()), content_type="application/json"
+    )
+    request.META["CONTENT_LENGTH"] = length
+
+    response = internal.representation(request, business.id)
+
+    assert response.status_code == 400
+    assert json.loads(response.content)["error"]["code"] == "invalid_request"
+    assert not RepresentationGrant.objects.exists()
+
+
+@pytest.mark.parametrize("length", ["2", None], ids=["understated", "absent"])
+def test_a_body_longer_than_the_ceiling_is_413_whatever_its_length_says(business, length):
+    """Under ASGI the length may be understated, or absent with a chunked body (HTTP reads a request without
+    one as empty, the test client's empty POST among them): what is read is what counts."""
+    request = RequestFactory().post(path_of(business.id), b"{}", content_type="application/json")
+    request._stream = io.BytesIO(b" " * (internal.MAX_BODY_BYTES + 1))
+    if length is None:
+        del request.META["CONTENT_LENGTH"]
+    else:
+        request.META["CONTENT_LENGTH"] = length
+
+    response = internal.representation(request, business.id)
+
+    assert response.status_code == 413
+    assert json.loads(response.content)["error"]["code"] == "fiscal.body_too_large"
+
+
+def test_the_rest_of_the_internal_api_keeps_django_s_ceiling(client, business):
+    """Only this view reads beyond 2.5 MB: a 3 MB body to ``/internal/hubs/{id}/ready`` is still refused, as
+    Django refuses a body beyond ``DATA_UPLOAD_MAX_MEMORY_SIZE`` (``RequestDataTooBig``, a 400)."""
+    body = json.dumps({"id": str(business.id), "padding": "x" * (3 * 1024 * 1024)}).encode()
+    timestamp = int(time.time())
+
+    response = client.post(
+        f"/internal/hubs/{business.id}/ready",
+        body,
+        content_type="application/json",
+        headers={"X-Erplora-Timestamp": str(timestamp), "X-Erplora-Signature": sign(body, timestamp, SECRET)},
+    )
+
+    assert response.status_code == 400
+    assert Hub.objects.get(pk=business.pk).status == business.status
+
+
+def test_an_unknown_business_is_404(client, plans):
+    response = post(client, uuid.uuid7(), submission())
+
+    assert error_of(response) == (404, "not_found")
+
+
+def test_a_deleted_business_is_404(client, business):
+    Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETED)
+
+    response = post(client, business.id, submission())
+
+    assert error_of(response) == (404, "not_found")
+    assert not RepresentationGrant.objects.exists()
+
+
+@pytest.mark.parametrize("kind", ["unsigned", "other secret", "stale"])
+def test_without_a_valid_signature_nothing_is_filed(client, business, kind):
+    if kind == "unsigned":
+        response = client.post(
+            path_of(business.id), json.dumps(submission()), content_type="application/json"
+        )
+    elif kind == "other secret":
+        response = post(client, business.id, submission(), secret="not-the-secret")
+    else:
+        response = post(client, business.id, submission(), timestamp=int(time.time()) - 3600)
+
+    assert error_of(response) == (401, "unauthorized")
+    assert not RepresentationGrant.objects.exists()
+
+
+def test_a_v2_signature_for_this_route_is_heard(client, business):
+    body = json.dumps(submission()).encode()
+    path = path_of(business.id)
+
+    response = client.post(
+        path,
+        body,
+        content_type="application/json",
+        headers=signed_headers("POST", path, body, int(time.time()), SECRET),
+    )
+
+    assert response.status_code == 201
+
+
+def test_a_v2_signature_for_another_business_is_unauthorized(client, business, make_user):
+    body = json.dumps(submission()).encode()
+    headers = signed_headers("POST", path_of(uuid.uuid7()), body, int(time.time()), SECRET)
+
+    response = client.post(path_of(business.id), body, content_type="application/json", headers=headers)
+
+    assert error_of(response) == (401, "unauthorized")
+
+
+def test_only_post(client, business):
+    response = client.get(path_of(business.id))
+
+    assert error_of(response) == (405, "method_not_allowed")
+    assert response["Allow"] == "POST"
+
+
+# --- The blank model ------------------------------------------------------------------------------------
+
+
+def get_model(client, *, secret=SECRET, timestamp=None):
+    timestamp = int(time.time()) if timestamp is None else timestamp
+    return client.get(
+        MODEL_PATH,
+        headers={"X-Erplora-Timestamp": str(timestamp), "X-Erplora-Signature": sign(b"", timestamp, secret)},
+    )
+
+
+def test_the_model_is_the_official_pdf_as_an_attachment(client):
+    response = get_model(client)
+
+    assert response.status_code == 200
+    assert response["Content-Type"] == "application/pdf"
+    assert response["Content-Disposition"] == (
+        'attachment; filename="anexo-i-otorgamiento-representacion-erplora.pdf"'
+    )
+    assert "no-store" in response["Cache-Control"]
+    content = b"".join(response.streaming_content) if response.streaming else response.content
+    assert content == MODEL.read_bytes()
+    assert content.startswith(b"%PDF")
+
+
+def test_a_v2_signed_request_for_the_model_is_heard(client):
+    response = client.get(MODEL_PATH, headers=signed_headers("GET", MODEL_PATH, b"", int(time.time()), SECRET))
+
+    assert response.status_code == 200
+
+
+@pytest.mark.parametrize("kind", ["unsigned", "other secret", "stale"])
+def test_the_model_needs_a_valid_signature(client, kind):
+    if kind == "unsigned":
+        response = client.get(MODEL_PATH)
+    elif kind == "other secret":
+        response = get_model(client, secret="not-the-secret")
+    else:
+        response = get_model(client, timestamp=int(time.time()) - 3600)
+
+    assert error_of(response) == (401, "unauthorized")
+    assert "no-store" in response["Cache-Control"]
+
+
+def test_the_model_is_only_read(client):
+    response = client.post(MODEL_PATH, b"", content_type="application/json")
+
+    assert error_of(response) == (405, "method_not_allowed")
+    assert response["Allow"] == "GET"

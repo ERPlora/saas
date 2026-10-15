@@ -71,17 +71,29 @@ class TestTheSnapshot:
 
         assert set(snapshot) == {
             "hub_id",
+            "slug",
             "version",
             "status",
             "plan",
             "modules",
             "members",
+            # The documentation for VeriFactu and its live sending (plan 2026-10-15, agreed with the Hub).
+            "verifactu",
         }
-        assert (snapshot["hub_id"], snapshot["version"], snapshot["status"]) == (
+        assert (snapshot["hub_id"], snapshot["slug"], snapshot["version"], snapshot["status"]) == (
             str(business.id),
+            "bar-manolo",
             fresh(business).state_version,
             "active",
         )
+
+    def test_it_carries_the_verifactu_block(self, business):
+        """``fiscal.queries.snapshot_block`` (the authorisation) and whether live sending is paid (a new business is
+        on Free, with no trial since 2026-10-15: no). The rest is ``fiscal/tests/test_snapshot.py``."""
+        assert queries.hub_snapshot(business.id)["verifactu"] == {
+            "representation": {"status": "none", "updated_at": None, "reason": ""},
+            "live_paid": False,
+        }
 
     @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
     def test_the_plan_is_the_trials_while_it_lasts(self, business):

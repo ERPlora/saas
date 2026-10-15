@@ -1,6 +1,7 @@
 // Test helper of the businesses panel's pages and components: the SDK's live harness (fake clock, fake
 // network serving the stream and the API) on the SaaS's op → route map, the shell's i18n with the hubs
-// catalogues, a session and a memory router. Pages are mounted as the shell would mount them.
+// catalogues (and fiscal's, on a business's Summary), a session and a memory router. Pages are mounted
+// as the shell would mount them.
 //
 // A test that opens a dialog mocks Ionic's overlay with the ui's stub, in its own file (hoisted):
 //   vi.mock('@ionic/vue', async (importOriginal) => ({
@@ -27,6 +28,8 @@ import entryEn from '../../../frontend/locale/en.json';
 import entryEs from '../../../frontend/locale/es.json';
 import accountsEn from '../../../accounts/frontend/locale/en.json';
 import accountsEs from '../../../accounts/frontend/locale/es.json';
+import fiscalEn from '../../../fiscal/frontend/locale/en.json';
+import fiscalEs from '../../../fiscal/frontend/locale/es.json';
 import en from '../locale/en.json';
 import es from '../locale/es.json';
 
@@ -106,12 +109,16 @@ export async function mountHubs(component: Component, options: MountOptions = {}
     attachTo: document.body,
     global: {
       // The entry's catalogue too (`saas.*`): the shared pieces of `frontend/` (LoadFailed) speak with it;
-      // and the accounts' (`accounts.*`): the launcher holds the sign-in (`SignInForm`), as the shell merges them all.
+      // and the accounts' (`accounts.*`): the launcher holds the sign-in (`SignInForm`), as the shell merges them all;
+      // and fiscal's (`fiscal.*`): a business's Summary shows its authorisation (fiscal/frontend).
       plugins: [
         router,
         createShellI18n({
           locale: options.locale ?? 'en',
-          messages: { en: { ...en, ...entryEn, ...accountsEn }, es: { ...es, ...entryEs, ...accountsEs } },
+          messages: {
+            en: { ...en, ...entryEn, ...accountsEn, ...fiscalEn },
+            es: { ...es, ...entryEs, ...accountsEs, ...fiscalEs },
+          },
         }),
       ],
       provide: { ...app._context.provides, [LIVE_CLIENT_KEY as symbol]: harness.client },

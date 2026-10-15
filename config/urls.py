@@ -24,6 +24,7 @@ from base.health import readyz
 from base.spa import spa
 from billing import webhooks as billing_webhooks
 from config.api import api
+from fiscal import internal as fiscal_internal
 from fiscal_gateway import internal as fiscal_gateway_internal
 from hubs import internal as hubs_internal
 from public import landing
@@ -79,6 +80,16 @@ urlpatterns = [
         "internal/hubs/<uuid:hub_id>/ready",
         hubs_internal.ready,
         name="internal_hub_ready",
+    ),
+    path(
+        "internal/hubs/<uuid:hub_id>/representation",
+        fiscal_internal.representation,
+        name="internal_hub_representation",
+    ),
+    path(
+        "internal/representation/model",
+        fiscal_internal.representation_model,
+        name="internal_representation_model",
     ),
     # The fiscal gateway (PLAN-SAAS §4): the Hub's VeriFactu envelopes, presented to the AEAT.
     path(

@@ -336,3 +336,34 @@ describe('sdk-types.d.ts follows the usage schemas of hubs/schemas.py', () => {
     expect(typeTypes('BusinessDetailOut').usage).toBe('UsageOut | null');
   });
 });
+
+/** The signed authorisation of a business (plan 2026-10-15): `fiscal.representation.status`, its card on the business's page. */
+const FISCAL_SCHEMAS = ['RepresentationStatusIn', 'RepresentationDocumentsOut', 'RepresentationHistoryOut', 'RepresentationStatusOut'];
+
+describe('sdk-types.d.ts follows the schemas of fiscal/schemas.py', () => {
+  const source = readFileSync(join(HERE, '..', 'fiscal', 'schemas.py'), 'utf8');
+
+  it.each(FISCAL_SCHEMAS)('%s has the same fields on both sides', (name) => {
+    expect(typeFields(name)).toEqual(pythonFields(name, source));
+  });
+
+  it.each(FISCAL_SCHEMAS)('%s types each field as its JSON is', (name) => {
+    const python = pythonTypes(name, source);
+    const types = typeTypes(name);
+    for (const [field, annotation] of Object.entries(python)) {
+      expect(union(types[field]), `${name}.${field}: ${annotation}`).toBe(union(toTypeScript(annotation)));
+    }
+  });
+
+  it('names the states of an authorisation as the server does, «none» included', () => {
+    const python = /^RepresentationState = (Literal\[[^\]]+\])/m.exec(source)?.[1] ?? '';
+    expect(python).toBe('Literal["none", "submitted", "approved", "returned", "revoked"]');
+    expect(/^export type RepresentationState = (.+);$/m.exec(TYPES)?.[1]).toBe(toTypeScript(python));
+  });
+
+  it('types the operation of the card with its input and output', () => {
+    expect(TYPES).toContain(
+      "'fiscal.representation.status': { input: RepresentationStatusIn; output: RepresentationStatusOut };",
+    );
+  });
+});

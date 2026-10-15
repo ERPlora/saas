@@ -98,8 +98,8 @@ describe('vite.config', () => {
     });
   });
 
-  it('lists the apps with a frontend: accounts, hubs and billing (round 16: no marketplace; apps and public have none)', () => {
-    expect(FRONTEND_APPS).toEqual(['accounts', 'hubs', 'billing']);
+  it('lists the apps with a frontend: accounts, hubs, billing and fiscal (round 16: no marketplace; apps and public have none)', () => {
+    expect(FRONTEND_APPS).toEqual(['accounts', 'hubs', 'billing', 'fiscal']);
   });
 
   it('knows every root app with a frontend/ (saas-next has no apps/, PLAN §20.2)', () => {
