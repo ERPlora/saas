@@ -13,7 +13,14 @@ Port of ERPlora/saas ``apps/public/pricing/views.py`` (origin/develop c5ca8ca). 
   :func:`plan_period`, one definition for every selling screen;
 * a premium app is included in the paid plans (decision 17): the FAQ no longer charges «per
   activated module»;
-* the storage answer names the host: AWS (Ioan, 2026-10-13), Ireland region (Ioan, 2026-10-14).
+* the storage answer names the host: AWS (Ioan, 2026-10-13), Ireland region (Ioan, 2026-10-14);
+* three plans on sale at sign-up (Ioan, 2026-10-15): the page lists only the plans a visitor can sign up for
+  (an ``upgrade_only`` row — Pro, Enterprise and Max, kept for the Store's upgrades — stays off the page and
+  answers 404 on its detail), and above them it offers **dedicated infrastructure**, from
+  :data:`DEDICATED_FROM` a month, agreed by contact — a band, a row of the table and a FAQ entry, never
+  a checkout;
+* the assistant and WhatsApp messages a month each plan includes (PLAN-SAAS §3.6, 2026-10-15) are a line of
+  every card and a column of the table, in plain words (:func:`messages_a_month`); a quota of 0 is none.
 """
 
 from __future__ import annotations
@@ -39,6 +46,15 @@ from public.structured_data import faq_page, json_ld
 
 #: ``(shortest, longest)`` trial of the plans a visitor can sign up for; both ``None`` without one.
 TrialDays = tuple[int | None, int | None]
+
+#: Dedicated infrastructure starts here, net, a month (Ioan, 2026-10-15). A quote, not a plan: there is no
+#: row, no checkout and no Stripe price behind it, so this is the one place the figure lives.
+DEDICATED_FROM = Decimal("400")
+
+
+def dedicated_price_label() -> str:
+    """``€400``, painted as the plan cards paint their monthly price."""
+    return f"€{floatformat(DEDICATED_FROM, '-2')}"
 
 
 # --- The plans on sale, for every public page ---------------------------------------------------
@@ -103,20 +119,42 @@ def plan_period(plan, interval: str = "month") -> str:
     return _("/ month per hub") if priced else _("/ month")
 
 
-def _own_features(plan) -> list[str]:
-    """The plan's features without the trial line the operation appends to a signable plan."""
-    features = list(plan.features)
-    if not plan.upgrade_only and plan.trial_period_days > 0 and features:
-        features.pop()
-    return features
+def _has_trial_line(plan) -> bool:
+    """Whether the operation ended the plan's features with its trial (a signable plan with one)."""
+    return bool(not plan.upgrade_only and plan.trial_period_days > 0 and plan.features)
+
+
+def messages_a_month(count: int) -> str:
+    """``300 messages a month``; ``""`` for 0, which is «none» (PLAN-SAAS §3.6), never «unlimited»."""
+    if count <= 0:
+        return ""
+    return ngettext("%(count)d message a month", "%(count)d messages a month", count) % {"count": count}
+
+
+def _message_lines(assistant: str, whatsapp: str) -> list[str]:
+    """The card lines of the monthly messages the plan includes; none for a quota of 0."""
+    lines = []
+    if assistant:
+        lines.append(_("AI assistant: %(messages)s") % {"messages": assistant})
+    if whatsapp:
+        lines.append(_("WhatsApp: %(messages)s") % {"messages": whatsapp})
+    return lines
 
 
 def plan_card(plan) -> dict[str, Any]:
-    """A plan as the selling screens paint it."""
+    """A plan as the selling screens paint it: its own features, then the messages a month it includes, then its
+    trial (the operation's last line, saas#2424)."""
+    features = list(plan.features)
+    trial = [features.pop()] if _has_trial_line(plan) else []
+    assistant = messages_a_month(plan.assistant_messages_per_month)
+    whatsapp = messages_a_month(plan.whatsapp_messages_per_month)
+    own_features = [*features, *_message_lines(assistant, whatsapp)]
     return {
         **plan.model_dump(),
-        "display_features": list(plan.features),
-        "own_features": _own_features(plan),
+        "assistant_label": assistant,
+        "whatsapp_label": whatsapp,
+        "display_features": [*own_features, *trial],
+        "own_features": own_features,
         "price_label": f"€{floatformat(plan.price_monthly, '-2')}",
         "period": plan_period(plan),
         "url": reverse("public:pricing_detail", args=[plan.slug]),
@@ -199,8 +237,19 @@ def faq_items(days: TrialDays | None = None) -> list[dict[str, str]]:
                 "There are no overage charges or surprise bills. We notify you as you "
                 "approach your plan's limits, and you can track your usage anytime from "
                 "your Hub control panel. When you reach a limit, just upgrade to the next "
-                "plan in one click — your service is never interrupted."
+                "plan in one click — each plan up doubles your resources, and your service is never "
+                "interrupted."
             ),
+        },
+        {
+            "key": "dedicated",
+            "question": _("What is dedicated infrastructure and who is it for?"),
+            "answer": _(
+                "A private environment reserved for your business alone, for companies with several "
+                "locations, high volume or requirements of their own: its own capacity, a replicated "
+                "database and priority support, from %(price)s a month. Contact us and we will size it "
+                "with you."
+            ) % {"price": dedicated_price_label()},
         },
         {
             "key": "trial",
@@ -255,21 +304,24 @@ def faq_items(days: TrialDays | None = None) -> list[dict[str, str]]:
 # --- The pages ----------------------------------------------------------------------------------
 
 
+def signable_cards(plans) -> list[dict[str, Any]]:
+    """The plans a visitor can sign up for, as cards: an ``upgrade_only`` row is not on the public web."""
+    return [plan_card(plan) for plan in plans.plans if not plan.upgrade_only]
+
+
 @require_safe
 def index(request: HttpRequest) -> HttpResponse:
-    """Every plan on sale: the signable ones as cards, the upgrade-only ones apart (saas#809)."""
+    """The plans a visitor can sign up for, as cards, and the dedicated offer by contact above them."""
     plans = plans_on_sale(request)
     days = trial_days(plans)
     faq = faq_items(days)
-    cards = [plan_card(plan) for plan in plans.plans]
-    plans_main = [card for card in cards if not card["upgrade_only"]]
     entry = cheapest(plans)
     return render(
         request,
         "public/pricing/index.html",
         {
-            "plans_main": plans_main,
-            "plans_pro": [card for card in cards if card["upgrade_only"]],
+            "plans_main": signable_cards(plans),
+            "dedicated_from": dedicated_price_label(),
             "cheapest_plan": plan_card(entry) if entry else None,
             "trial_note": trial_note(days),
             "faq_items": faq,
@@ -280,8 +332,9 @@ def index(request: HttpRequest) -> HttpResponse:
 
 @require_safe
 def detail(request: HttpRequest, slug: str) -> HttpResponse:
-    """One plan on sale; an internal, retired or unknown plan answers 404 (saas#1950)."""
-    cards = [plan_card(plan) for plan in plans_on_sale(request).plans]
+    """One plan a visitor can sign up for; an internal, retired, upgrade-only or unknown plan answers 404
+    (saas#1950)."""
+    cards = signable_cards(plans_on_sale(request))
     plan = next((card for card in cards if card["slug"] == slug), None)
     if plan is None:
         raise Http404

@@ -324,6 +324,7 @@ class TestACompletedCheckout:
         assert attempt.status == "completed" and attempt.completed_at is not None
         assert PromoCode.objects.get().redemption_count == 1
 
+    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
     def test_a_module_bought_on_free_keeps_the_sign_up_trial(
         self, shop, inventory, stripe_double
     ):

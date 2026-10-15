@@ -58,7 +58,7 @@ def other_hub():
 
 
 @pytest.fixture
-def free_plan():
+def free_plan(no_plans):
     return Plan.objects.create(slug="free", name_en="Free", price_monthly=Decimal("0"))
 
 

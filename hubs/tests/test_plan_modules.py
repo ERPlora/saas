@@ -193,6 +193,7 @@ class TestBoughtAndIncluded:
         assert (item.source, item.stripe_item_id) == ("purchase", "si_inv")
 
 
+@pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
 class TestTheSignUpTrial:
     def test_the_sign_up_writes_them(self, catalog, owner, plans):
         business = create_business(owner, name="Bar Nuevo")

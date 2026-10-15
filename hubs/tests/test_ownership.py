@@ -406,6 +406,10 @@ class TestTheNewOwnersPayer:
         assert BillingProfile.objects.get(pk=old).billing_name == "Olga SL"
 
     def test_a_new_owner_at_the_free_limit_cannot_accept(self, business, team):
+        from hubs.models import Plan, Subscription
+
+        # The team is in (``team`` put the business on Starter to fit it); the business goes back to Free.
+        Subscription.objects.filter(hub=business).update(plan=Plan.objects.get(slug="free"))
         create_business(team["admin"], name="Adela's own")
         transfer = offer(team["owner"], business, team["admin"])
 

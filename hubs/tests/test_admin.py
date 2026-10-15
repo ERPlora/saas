@@ -18,7 +18,7 @@ def staff_client(client):
 
 
 @pytest.fixture
-def rows():
+def rows(no_plans):
     sector = Sector.objects.create(code="hospitality", name_en="Hospitality & Food", name_es="Hostelería")
     business_type = BusinessType.objects.create(
         code="restaurant", name_en="Restaurant", name_es="Restaurante", sector=sector, vertical="restaurant"
@@ -32,6 +32,14 @@ def test_changelist_add_and_change_pages_load(staff_client, rows, model):
     assert staff_client.get(f"/admin/hubs/{model}/").status_code == 200
     assert staff_client.get(f"/admin/hubs/{model}/add/").status_code == 200
     assert staff_client.get(f"/admin/hubs/{model}/{rows[model].pk}/change/").status_code == 200
+
+
+def test_staff_edit_the_monthly_messages_of_a_plan(staff_client, rows):
+    """The assistant and WhatsApp messages a plan includes are edited next to its limits (2026-10-15)."""
+    page = staff_client.get(f"/admin/hubs/plan/{rows['plan'].pk}/change/").content.decode()
+
+    assert 'name="assistant_messages_per_month"' in page
+    assert 'name="whatsapp_messages_per_month"' in page
 
 
 def test_the_changelists_search_by_code(staff_client, rows):

@@ -179,6 +179,15 @@ def test_a_body_that_is_not_the_contract_is_invalid_without_echoing_it(
     assert not respx_mock.calls
 
 
+@pytest.mark.parametrize("hub", ["", "Demo", "a" * 65, "x y"])
+def test_a_hub_that_is_neither_a_slug_nor_a_uuid_is_invalid(client, respx_mock, hub):
+    response = call(client, "submit", payload(hub=hub))
+
+    assert error_of(response) == (422, "invalid_payload")
+    assert set(response.json()["error"]["fields"]) == {"hub"}
+    assert not respx_mock.calls
+
+
 def test_a_body_that_is_not_json_is_invalid(client):
     assert error_of(call(client, "submit", raw=b"{nope")) == (422, "invalid_payload")
 
@@ -330,6 +339,20 @@ def test_a_submission_through_erplora_returns_the_aeats_answer_as_it_came(
     assert response.json() == {"aeat_status": 200, "aeat_body": ANSWER}
     assert route.calls.last.request.content == SENT.encode("utf-8")
     assert "no-store" in response["Cache-Control"]
+
+
+@pytest.mark.parametrize("hub", ["demo", "erplora", HUB])
+def test_a_submission_names_its_hub_by_slug_or_uuid(
+    client, respx_mock, erplora_seal, hub
+):
+    # Phase 1: the Hub sends ``ctx.scope.key``, the slug of its host.
+    route = respx_mock.post(PRE_SEAL).respond(200, text=ANSWER)
+
+    response = call(client, "submit", payload(hub=hub))
+
+    assert response.status_code == 200
+    assert response.json() == {"aeat_status": 200, "aeat_body": ANSWER}
+    assert route.called
 
 
 def test_a_submission_with_the_customers_certificate_goes_through_the_holders_door(

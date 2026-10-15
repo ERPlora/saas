@@ -256,7 +256,7 @@ def test_without_a_taxonomy_collaborate_names_no_count(client):
     assert "Don't see yours? We want to hear from you too." in html
 
 
-def test_the_free_year_is_valued_at_the_cheapest_paid_plan_on_sale(client):
+def test_the_free_year_is_valued_at_the_cheapest_paid_plan_on_sale(no_plans, client):
     make_plan("free", "0")
     make_plan("starter", "19.99", display_order=1)
     make_plan("standard", "39.99", display_order=2)
@@ -275,7 +275,7 @@ def test_the_free_year_is_valued_at_the_cheapest_paid_plan_on_sale(client):
     )
 
 
-def test_without_a_paid_plan_on_sale_no_value_is_invented(client):
+def test_without_a_paid_plan_on_sale_no_value_is_invented(no_plans, client):
     make_plan("free", "0")
 
     html = page(client, COLLABORATE)

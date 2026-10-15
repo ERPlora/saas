@@ -50,10 +50,18 @@ class TestTheSystemCheck:
 def test_it_skips_while_hubs_has_migrations_to_apply(owner):
     """``migrate`` runs the database checks before migrating: with migrations of hubs or accounts still to
     apply (the data migration that fills the mirror among them) the check says nothing, so it never
-    stands in the way of the migration that fixes the disagreement."""
+    stands in the way of the migration that fixes the disagreement.
+
+    The plans are in the database (``hubs/0013``), so going forward the adoption gives the business its Free
+    subscription: the foreign key checks run at once, as each migration's own COMMIT does, or one still pending
+    in the test's transaction stops a later migration from altering ``hubs_subscription``."""
+    from django.db import connection
+
     from hubs import checks, queries
 
     HubMembership.objects.create(user=owner, hub_slug="seed-hub", role="hub_owner")
+    with connection.cursor() as cursor:
+        cursor.execute("SET CONSTRAINTS ALL IMMEDIATE")
     call_command("migrate", "hubs", "0005", verbosity=0)
     try:
         assert queries.mirror_migrated() is False

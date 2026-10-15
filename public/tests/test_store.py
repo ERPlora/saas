@@ -556,7 +556,7 @@ def test_a_free_app_is_offered_at_zero_on_its_page(client, catalog):
     }
 
 
-def test_a_premium_app_is_offered_at_the_cheapest_paid_plan(client, catalog):
+def test_a_premium_app_is_offered_at_the_cheapest_paid_plan(no_plans, client, catalog):
     """Decision 17: a premium app is included in the paid plans, so its offer is the monthly price
     of the cheapest paid plan a visitor can sign up for (L7, through hubs.plan.list): never the Free
     plan, an upgrade-only one, an internal one or one off sale."""
@@ -583,7 +583,7 @@ def test_a_premium_app_is_offered_at_the_cheapest_paid_plan(client, catalog):
     }
 
 
-def test_a_premium_app_without_a_paid_plan_on_sale_has_no_offer(client, catalog):
+def test_a_premium_app_without_a_paid_plan_on_sale_has_no_offer(no_plans, client, catalog):
     """Advertising a price we do not charge is worse than advertising none."""
     from decimal import Decimal
 

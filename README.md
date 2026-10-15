@@ -186,8 +186,14 @@ El panel de `erplora.com` (Negocios · Tienda · Facturación · Cuenta; plan
 - **Tareas programadas** (`saas-cron`, `aws-next/stacks/prod/scheduler.tf`): `sweep_unpaid` (cada hora),
   `reconcile_platform_invoices` (cada 15 min) y `collect_hub_usage` (01:15 UTC), además de
   `reconcile_hub_states`, `push_hub_snapshots` y `report_seal_expiry`. En `saas-migrate`, tras `migrate`:
-  `sync_hub_plans` y `seed_taxonomy`. Todas idempotentes y con advisory lock (una segunda ejecución vuelve
-  al momento).
+  `seed_taxonomy` (y, hasta que se aplique el Terraform de ERPlora/aws#4, también `sync_hub_plans`, hoy vacío).
+  Todas idempotentes y con advisory lock (una segunda ejecución vuelve al momento).
+- **Planes**: viven solo en la base de datos y se mantienen en el admin de Django (`/admin/hubs/plan/`). La
+  siembra inicial es la migración `hubs/0013_plans_in_the_database` (siete planes: Free, Starter y Standard
+  en venta, Pro, Enterprise y Max `upgrade_only`, y `payment-test` interno), sin periodo de prueba; ningún
+  despliegue los vuelve a escribir. `sync_hub_plans` es desde el 2026-10-15 un comando vacío (no siembra ni toca la
+  BD; `--update` se acepta y se ignora): sigue solo porque la tarea `saas-migrate` de pre y prod lo llama hasta que
+  se aplique el Terraform de ERPlora/aws#4; después se borra.
 - **Local**: con claves de prueba de Stripe en `.env` y `stripe listen --forward-to
   localhost:8001/webhooks/stripe/` (su `whsec_…` en `STRIPE_WEBHOOK_SECRET`); sin clave, la Tienda dice que
   los pagos no están disponibles (503 `billing.payments_unavailable`).

@@ -18,6 +18,7 @@ make_user = hubs_fixtures.make_user
 offline_hub = hubs_fixtures.offline_hub
 owner = hubs_fixtures.owner
 plans = hubs_fixtures.plans
+signup_trial = hubs_fixtures.signup_trial
 team = hubs_fixtures.team
 
 #: The smallest bytes a reader takes for a PDF (only the magic number is checked).

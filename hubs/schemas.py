@@ -88,6 +88,12 @@ class PlanOut(Schema):
     has_trial: bool
     support_level_label: str
     included_level_label: str
+    #: How much room the plan has, relative to the full tier («Basic, for one device», «Double»…).
+    resources_label: str
+    #: Requests to the AI assistant the plan includes each month (one request = one message); 0 = none.
+    assistant_messages_per_month: int
+    #: WhatsApp messages the plan includes each month; 0 = none.
+    whatsapp_messages_per_month: int
     upgrade_only: bool
     internal_only: bool
 

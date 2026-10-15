@@ -89,15 +89,14 @@ class TestWhatIsOnSale:
         assert subscription["billing_interval"] == "month"
         assert subscription["paying"] is False
         assert subscription["cancel_at_period_end"] is False
-        # The 15 days of Starter of every sign-up: buying Starter keeps the days left.
-        assert subscription["trial_plan"] == "starter"
-        assert subscription["trial_end"] is not None
+        # No trial since 2026-10-15 (the Free plan is the way in).
+        assert (subscription["trial_plan"], subscription["trial_end"]) == (None, None)
 
 
 class TestWhichPlansAreOffered:
     """Audit 2 S-03 (Ioan's decision through the coordinator, 2026-10-14): a business Stripe does not bill
     (Free) is offered the plans sold at sign-up only; the ``upgrade_only`` ones (Pro, Enterprise, Max) are
-    an upgrade of a business that already pays (``sync_hub_plans``)."""
+    an upgrade of a business that already pays (the catalogue, ``hubs/0013``)."""
 
     def test_a_free_business_is_offered_only_the_plans_sold_at_sign_up(self, shop, owner):
         assert catalog(owner, shop)["offered_plans"] == ["starter", "standard"]

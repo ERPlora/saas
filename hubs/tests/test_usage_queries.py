@@ -102,6 +102,7 @@ class TestUsageGet:
             "percent": 10,
         }
 
+    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
     def test_during_the_trial_the_space_is_the_trial_plans(self, business, owner):
         """Born on Free trying Starter: Starter's space while the trial lasts, as its seats."""
         sample(business, s3=GIB)

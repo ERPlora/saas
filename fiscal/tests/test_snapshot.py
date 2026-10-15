@@ -204,7 +204,17 @@ class TestLivePaid:
         assert block(on_free(business))["live_paid"] is False
 
     def test_a_paid_plan_pays(self, business):
-        """Starter (here its sign-up trial, the effective plan while it lasts) is not Free."""
+        """Starter is not Free."""
+        from hubs.models import Plan
+
+        Subscription.objects.filter(hub=business).update(plan=Plan.objects.get(slug="starter"))
+
+        assert hub_queries.hub_snapshot(business.id)["plan"]["slug"] == "starter"
+        assert block(business)["live_paid"] is True
+
+    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
+    def test_a_trial_of_a_paid_plan_pays_while_it_lasts(self, business):
+        """The sign-up trial's plan is the effective one while it lasts, and it is not Free."""
         assert hub_queries.hub_snapshot(business.id)["plan"]["slug"] == "starter"
         assert block(business)["live_paid"] is True
 

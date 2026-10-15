@@ -186,9 +186,9 @@ class TestOneBusiness:
             detail["language"],
         ) == ("Bar Manolo", "ES", "Europe/Madrid", "es")
         assert detail["plan"] == {"slug": "free", "name": "Free"}
-        assert detail["trial_plan"] == {"slug": "starter", "name": "Starter"}
-        assert detail["trial_end"] is not None
-        assert detail["seats"] == {"used": 1, "limit": None}
+        # No trial since 2026-10-15 (the Free plan is the way in): Free's own seats.
+        assert (detail["trial_plan"], detail["trial_end"]) == (None, None)
+        assert detail["seats"] == {"used": 1, "limit": 3}
         assert detail["can"] == {
             "open": False,
             "manage": True,

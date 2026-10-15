@@ -527,6 +527,7 @@ class TestUpgradeOnlyPlans:
 
 
 class TestTheTrial:
+    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
     def test_the_days_left_of_the_sign_up_trial_are_kept(
         self, shop, owner, stripe_double
     ):
@@ -569,6 +570,7 @@ class TestTheTrial:
         assert abs(params["subscription_data"]["trial_end"] - expected.timestamp()) < 60
         assert params["metadata"]["promo_code"] == "canary_2026"
 
+    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
     def test_the_longer_of_the_two_wins(self, shop, owner, stripe_double):
         PromoCode.objects.create(code="short", trial_days=3)
         trial_end = Subscription.objects.get(hub=shop).trial_end
@@ -1163,6 +1165,7 @@ class TestAPlanOnTopOfModules:
         )
         return paid
 
+    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
     def test_the_preview_and_the_change_carry_the_trial_left(self, shop, owner, inventory, stripe_double):
         from billing import services as billing_services
         from billing.schemas import PlanChangeIn

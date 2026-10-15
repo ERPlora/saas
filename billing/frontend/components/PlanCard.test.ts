@@ -164,6 +164,34 @@ describe('PlanCard', () => {
     expect(icon(await card({ plan: FREE }), 'plan-downgrade')).toBe('arrow-down-outline');
   });
 
+  describe('the messages a month it includes (PLAN-SAAS §3.6)', () => {
+    const quotas = (s: Awaited<ReturnType<typeof card>>) =>
+      s.wrapper.findAll('[data-testid="plan-quota"]').map((item) => (item.element as HTMLElement).innerText.trim());
+    const withMessages = (assistant: number, whatsapp: number) =>
+      plan('standard', 'Standard', '54.99', '549.90', { assistant_messages_per_month: assistant, whatsapp_messages_per_month: whatsapp });
+
+    it('says the assistant and WhatsApp messages, after the features', async () => {
+      const s = await card({ plan: withMessages(600, 300), subscription: FREE_SUBSCRIPTION });
+      expect(quotas(s)).toEqual(['AI assistant: 600 messages a month', 'WhatsApp: 300 messages a month']);
+      const items = s.wrapper.findAll('ion-item').map((item) => item.attributes('data-testid'));
+      expect(items).toEqual(['plan-feature', 'plan-quota', 'plan-quota']);
+    });
+
+    it('0 is none: no line rather than «0 messages»', async () => {
+      expect(quotas(await card({ plan: withMessages(0, 0) }))).toEqual([]);
+      expect(quotas(await card({ plan: withMessages(0, 40) }))).toEqual(['WhatsApp: 40 messages a month']);
+    });
+
+    it('one message reads in the singular', async () => {
+      expect(quotas(await card({ plan: withMessages(1, 0) }))).toEqual(['AI assistant: 1 message a month']);
+    });
+
+    it('in Spanish', async () => {
+      const s = await card({ plan: withMessages(300, 150), locale: 'es' });
+      expect(quotas(s)).toEqual(['Asistente de IA: 300 mensajes al mes', 'WhatsApp: 150 mensajes al mes']);
+    });
+  });
+
   it('speaks Spanish', async () => {
     const s = await card({ plan: FREE, locale: 'es' });
     expect(s.text('plan-downgrade').text()).toBe('Bajar a Gratis');

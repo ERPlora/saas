@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // A plan of the Store (mockups `store.html` «Planes»; round 17 §2.11; UX-AUDIT-4 X-03, X-08, X-09, X-14):
-// its name, description, net price (monthly or annual, as the switch above says) and features, and the
+// its name, description, net price (monthly or annual, as the switch above says), features and the messages a
+// month it includes (assistant and WhatsApp, PLAN-SAAS §3.6; 0 = none, no line), and the
 // ONE thing the chosen business can do with it now. What each button does is the page's: the card only
 // says which one applies and emits it.
 //   - On Free: «Upgrade to …» (Embedded Checkout), at the billing of the switch; the plan it is trying
@@ -117,6 +118,16 @@ const price = computed(() => {
   return { amount: formatEuros(props.plan.price_monthly, locale.value), suffix: t('billing.plans.perMonth') };
 });
 
+/** The messages a month the plan includes (PLAN-SAAS §3.6), after its features; a quota of 0 is none: no line. */
+const quotas = computed(() => {
+  const lines: string[] = [];
+  const assistant = props.plan.assistant_messages_per_month;
+  const whatsapp = props.plan.whatsapp_messages_per_month;
+  if (assistant > 0) lines.push(t('billing.plans.assistantMessages', { count: assistant }, assistant));
+  if (whatsapp > 0) lines.push(t('billing.plans.whatsappMessages', { count: whatsapp }, whatsapp));
+  return lines;
+});
+
 /** What the card says under the features: a cancellation, Free's date, a trial's days. */
 const note = computed(() => {
   if (current.value && cancelling.value && !free.value) {
@@ -200,6 +211,20 @@ function run(): void {
           />
           <ion-label class="ion-text-wrap">
             {{ feature }}
+          </ion-label>
+        </ion-item>
+        <ion-item
+          v-for="quota in quotas"
+          :key="quota"
+          data-testid="plan-quota"
+        >
+          <HubIcon
+            slot="start"
+            name="ion:checkmark-outline"
+            aria-hidden="true"
+          />
+          <ion-label class="ion-text-wrap">
+            {{ quota }}
           </ion-label>
         </ion-item>
       </ion-list>

@@ -176,6 +176,7 @@ class TestReconcile:
 
         assert hub_double.calls == []
 
+    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
     def test_a_trial_that_ran_out_reaches_the_hub_as_free(self, business, hub_double):
         services.sync_hub(business.id)
         Subscription.objects.filter(hub=business).update(
