@@ -93,21 +93,39 @@ test('several businesses: the last opened first, why one does not open, and the 
   expect(errors).toEqual([]);
 });
 
-test('signed out, at 390, 834 and 1440 px: the sign-in form itself, without scrolling sideways', async ({ page }) => {
+// flow: FIX-LAUNCH-TABS
+test('signed out, at 390, 834 and 1440 px: the form on «Sign in» with the tab «Create account», without scrolling sideways', async ({
+  page,
+}) => {
   const errors = watchPageErrors(page);
   for (const viewport of VIEWPORTS) {
     await page.setViewportSize(viewport);
     await page.goto('/launch');
     await expect(page.getByTestId('login-form')).toBeVisible();
-    for (const testid of ['login-email', 'login-password', 'login-submit', 'login-forgot']) {
+    for (const testid of ['login-tabs', 'login-email', 'login-password', 'login-submit', 'login-forgot', 'login-switch']) {
       await expect(page.getByTestId(testid)).toBeVisible();
     }
+    await expect(page.getByTestId('login-submit')).toHaveText('Sign in');
     await settled(page);
     expect(await sidewaysScroll(page), `/launch scrolls sideways at ${viewport.width} px`).toEqual([]);
-    // Touch targets: «Continue» is a large button (Ionic's 48 px).
+    // Touch targets: «Sign in» is a large button (Ionic's 48 px), and each tab is 44 px high.
     expect((await page.getByTestId('login-submit').boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
-    await page.screenshot({ path: shot(`launch-signed-out-${viewport.width}`), fullPage: true });
+    for (const tab of ['login-tab-signin', 'login-tab-signup']) {
+      expect((await page.getByTestId(tab).boundingBox())?.height ?? 0, tab).toBeGreaterThanOrEqual(44);
+    }
+    await page.screenshot({ path: shot(`FIX-LAUNCH-TABS-${viewport.width}`), fullPage: true });
   }
+  // «Create account» at 390: its button, no «Forgot your password?», the way back to «Sign in».
+  await page.setViewportSize(VIEWPORTS[0]);
+  await page.getByTestId('login-tab-signup').click();
+  await expect(page).toHaveURL(/\/launch\?tab=signup$/);
+  await expect(page.getByTestId('login-submit')).toHaveText('Create account');
+  await expect(page.getByTestId('login-forgot')).toHaveCount(0);
+  await expect(page.getByTestId('login-switch')).toHaveText('Already have an account? Sign in');
+  await expect(page.getByTestId('login-password').locator('input')).toHaveAttribute('autocomplete', 'new-password');
+  await settled(page);
+  expect(await sidewaysScroll(page), '/launch?tab=signup scrolls sideways at 390 px').toEqual([]);
+  await page.screenshot({ path: shot('FIX-LAUNCH-TABS-signup-390'), fullPage: true });
   expect(errors).toEqual([]);
 });
 

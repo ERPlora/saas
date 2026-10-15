@@ -1,10 +1,14 @@
 <script setup lang="ts">
-// The one form that signs in and signs up, in the launcher (`/launch`, the entrance; Ioan, 2026-10-15),
-// over allauth.headless (browser client, headless only): the form of the old template login (ERPlora/saas
-// `templates/account/login.html`), same structure and texts (its msgids, `../locale`). The frame is the
-// page's (`AuthShell`, as the template's). A rejected login paints each message under its input.
+// The form of the launcher (`/launch`, the entrance; Ioan, 2026-10-15), over allauth.headless (browser client,
+// headless only): the form of the old template login (ERPlora/saas `templates/account/login.html`), same
+// structure and texts (its msgids, `../locale`). The frame is the page's (`AuthShell`, as the template's). A
+// rejected login or sign-up paints each message under its input.
 //
-// It is the sign-up too («New here? We'll create your account»): an unknown address creates the account.
+// Two strict tabs over the same email and password, as the market does (FIX-LAUNCH-TABS): «Sign in», the
+// default, is allauth's login and never creates an account; «Create account» (`?tab=signup`, the address the
+// old sign-up pages lead to) is allauth's sign-up and never signs in. allauth answers an unknown address as a
+// wrong password, and an address already held as a new one: neither tab tells which addresses hold an
+// account. The tab is in the address (`router.replace`, keeping `next`), so a link opens either.
 // Every password sign-in then waits for a code mailed to the account, typed at `/verify-email`, which gets
 // the typed address in the history state (never in the URL): the one that proves a new (or never proven)
 // address (`verify_email`), or the sign-in code of every other account (`login_by_code`, the second factor
@@ -19,8 +23,8 @@
 // comes back to the redirect URI registered with it, `/auth/google/callback/`.
 import { InlineFeedback } from '@erplora/ui/components';
 import { ApiError, createAllauthClient, type FieldErrors, useLiveClient } from '@erplora/ui/sdk';
-import { IonButton, IonIcon, IonInput, IonInputPasswordToggle } from '@ionic/vue';
-import { computed, onMounted, shallowRef } from 'vue';
+import { IonButton, IonIcon, IonInput, IonInputPasswordToggle, IonLabel, IonSegment, IonSegmentButton } from '@ionic/vue';
+import { computed, onMounted, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -43,6 +47,33 @@ const NOTICES: Record<string, { text: string; tone: 'success' | 'warning' }> = {
   code_expired: { text: 'accounts.login.codeExpired', tone: 'warning' },
 };
 const NON_FIELD = '__all__';
+/** allauth's code of a refused login: a wrong password and an unknown address alike. */
+const MISMATCH = 'email_password_mismatch';
+
+type Tab = 'signin' | 'signup';
+/** `?tab=` of «Create account»; «Sign in» has none. */
+const SIGN_UP: Tab = 'signup';
+const SIGN_IN: Tab = 'signin';
+const TABS: readonly Tab[] = [SIGN_IN, SIGN_UP];
+/** What changes with the tab: the words, the browser's password autofill and the request. */
+const TEXTS: Record<Tab, { label: string; intro: string; failed: string; switchLead: string; switchAction: string }> = {
+  signin: {
+    label: 'accounts.login.signIn',
+    intro: 'accounts.login.introSignIn',
+    failed: 'accounts.login.failed',
+    switchLead: 'accounts.login.firstTime',
+    switchAction: 'accounts.login.createYourAccount',
+  },
+  signup: {
+    label: 'accounts.login.signUp',
+    intro: 'accounts.login.introSignUp',
+    failed: 'accounts.login.signUpFailed',
+    switchLead: 'accounts.login.haveAccount',
+    switchAction: 'accounts.login.signInInstead',
+  },
+};
+
+const tabOf = (value: unknown): Tab => (value === SIGN_UP ? SIGN_UP : SIGN_IN);
 
 const { t } = useI18n();
 const route = useRoute();
@@ -57,6 +88,11 @@ const password = shallowRef('');
 const submitting = shallowRef(false);
 const fields = shallowRef<FieldErrors>({});
 const failure = shallowRef('');
+/** The failure is a wrong email or password: «Sign in» then offers «Create account». */
+const mismatch = shallowRef(false);
+const tab = shallowRef<Tab>(tabOf(route.query.tab));
+const texts = computed(() => TEXTS[tab.value]);
+const other = computed<Tab>(() => (tab.value === SIGN_UP ? SIGN_IN : SIGN_UP));
 
 const next = computed(() => localNext(route.query.next));
 const keepNext = computed(() => (next.value ? { next: next.value } : {}));
@@ -64,6 +100,16 @@ const google = computed(() =>
   auth.providerRedirectForm({ provider: GOOGLE, callbackUrl: next.value ?? LAUNCHER, process: 'login' }),
 );
 const notice = computed(() => (typeof route.query.notice === 'string' ? NOTICES[route.query.notice] : undefined));
+
+// The address leads (a link of the page, the way back): the form follows it.
+watch(
+  () => route.query.tab,
+  (value) => {
+    tab.value = tabOf(value);
+  },
+);
+// A tab starts clean: the errors of the other one are not its own.
+watch(tab, clearErrors);
 
 const invalid = (field: string) => ({ 'ion-invalid': !!fields.value[field], 'ion-touched': !!fields.value[field] });
 
@@ -86,12 +132,27 @@ async function resumeWaitingLogin(): Promise<void> {
 
 onMounted(() => void resumeWaitingLogin());
 
-async function submit(): Promise<void> {
-  submitting.value = true;
+function clearErrors(): void {
   fields.value = {};
   failure.value = '';
+  mismatch.value = false;
+}
+
+/** Shows the chosen tab and writes it in the address, keeping the rest of the query (`next`). */
+function chooseTab(value: unknown): void {
+  const chosen = tabOf(value);
+  tab.value = chosen;
+  const query = { ...route.query };
+  delete query.tab;
+  void router.replace({ path: route.path, query: chosen === SIGN_UP ? { ...query, tab: SIGN_UP } : query });
+}
+
+async function submit(): Promise<void> {
+  submitting.value = true;
+  clearErrors();
+  const credentials = { email: email.value, password: password.value };
   try {
-    const state = await auth.login({ email: email.value, password: password.value });
+    const state = tab.value === SIGN_UP ? await auth.signup(credentials) : await auth.login(credentials);
     if (state.authenticated) {
       leave();
     } else if (state.pendingFlow === SECOND_FACTOR_FLOW) {
@@ -100,7 +161,7 @@ async function submit(): Promise<void> {
       await router.push({ path: MAILED_CODE, query: keepNext.value, state: { email: email.value, flow: state.pendingFlow } });
     } else {
       // Any other further step has no page in this SPA.
-      failure.value = t('accounts.login.failed');
+      failure.value = t(texts.value.failed);
     }
   } catch (error) {
     if (error instanceof ApiError && error.status === 409) {
@@ -108,10 +169,11 @@ async function submit(): Promise<void> {
     } else if (error instanceof ApiError && error.fields) {
       fields.value = error.fields;
       failure.value = error.fields[NON_FIELD] ?? '';
+      mismatch.value = tab.value === SIGN_IN && error.code === MISMATCH;
     } else if (error instanceof ApiError && error.status === 429) {
       failure.value = t('accounts.login.tooManyAttempts');
     } else {
-      failure.value = t('accounts.login.failed');
+      failure.value = t(texts.value.failed);
     }
   } finally {
     submitting.value = false;
@@ -120,8 +182,25 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
+  <ion-segment
+    data-testid="login-tabs"
+    class="tabs"
+    :value="tab"
+    :aria-label="$t('accounts.login.tabsLabel')"
+    @ion-change="chooseTab($event.detail.value)"
+  >
+    <ion-segment-button
+      v-for="value in TABS"
+      :key="value"
+      :value="value"
+      :data-testid="`login-tab-${value}`"
+    >
+      <ion-label>{{ $t(TEXTS[value].label) }}</ion-label>
+    </ion-segment-button>
+  </ion-segment>
+
   <p class="intro">
-    {{ $t('accounts.login.intro') }}
+    {{ $t(texts.intro) }}
   </p>
 
   <InlineFeedback
@@ -173,7 +252,7 @@ async function submit(): Promise<void> {
         label-placement="floating"
         fill="outline"
         placeholder="••••••••••"
-        autocomplete="current-password"
+        :autocomplete="tab === SIGN_UP ? 'new-password' : 'current-password'"
         required
         :error-text="fields.password"
         :class="invalid('password')"
@@ -182,7 +261,26 @@ async function submit(): Promise<void> {
       </ion-input>
     </div>
 
-    <div class="row-end">
+    <!-- Under the error of a wrong email or password (an unknown address answers the same). -->
+    <p
+      v-if="mismatch"
+      class="hint"
+      data-testid="login-error-signup"
+    >
+      {{ $t('accounts.login.firstTime') }}
+      <button
+        type="button"
+        class="link"
+        @click="chooseTab(SIGN_UP)"
+      >
+        {{ $t('accounts.login.createYourAccount') }}
+      </button>
+    </p>
+
+    <div
+      v-if="tab === SIGN_IN"
+      class="row-end"
+    >
       <router-link
         data-testid="login-forgot"
         :to="PASSWORD_RESET"
@@ -200,8 +298,23 @@ async function submit(): Promise<void> {
       class="submit"
       :disabled="submitting"
     >
-      {{ $t('accounts.login.continue') }}
+      {{ $t(texts.label) }}
     </ion-button>
+
+    <p
+      class="switch"
+      data-testid="login-switch"
+    >
+      {{ $t(texts.switchLead) }}
+      <button
+        type="button"
+        class="link"
+        data-testid="login-switch-action"
+        @click="chooseTab(other)"
+      >
+        {{ $t(texts.switchAction) }}
+      </button>
+    </p>
   </form>
 
   <template v-if="googleEnabled">
@@ -241,6 +354,21 @@ async function submit(): Promise<void> {
 
 <style scoped>
 /* Ported from `templates/account/_auth_styles.html` (the login's part of it; the frame is AuthShell's). */
+/* The tabs: a grey track with the chosen one on a raised pill, as the Account page's appearance switch. */
+.tabs {
+  --background: color-mix(in oklab, var(--ion-text-color) 7%, transparent);
+  border-radius: 12px;
+  margin: 0 0 1rem;
+}
+/* A 44 px target, also with a mouse: the two ways in are the page's first choice. */
+.tabs ion-segment-button {
+  min-height: 44px;
+  text-transform: none;
+}
+.tabs ion-segment-button::part(indicator-background) {
+  background: var(--ion-card-background, #fff);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
 .intro {
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 13px;
@@ -277,6 +405,31 @@ async function submit(): Promise<void> {
 }
 .submit {
   margin-top: 1.25rem;
+}
+.switch {
+  margin: 1rem 0 0;
+  text-align: center;
+  font-size: 13px;
+  color: color-mix(in oklch, var(--ion-text-color) 60%, transparent);
+}
+.hint {
+  margin: 0.5rem 0 0;
+  font-size: 13px;
+  color: color-mix(in oklch, var(--ion-text-color) 60%, transparent);
+}
+/* A text link that is a button (it changes the tab, it goes nowhere), padded to the 44 px a finger needs. */
+.link {
+  appearance: none;
+  background: none;
+  border: 0;
+  font: inherit;
+  color: var(--ion-color-primary);
+  cursor: pointer;
+  padding: 12px 0;
+  margin: -12px 0;
+}
+.link:hover {
+  text-decoration: underline;
 }
 .non-field-error {
   margin-bottom: 0.85rem;

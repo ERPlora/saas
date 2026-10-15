@@ -1,7 +1,8 @@
-// The sign-up and the password reset of the panel, end to end (ADR-0154: one screen signs in or signs
-// up, the launcher's since 2026-10-15). A new address on the launcher's form creates its account, allauth
-// mails a 6-digit code, /verify-email takes it and the launcher opens signed in: one code, never a second
-// one. «Forgot your password?» mails a link, its key sets a new password on /password/reset/key/<key>, the
+// flow: FIX-LAUNCH-TABS
+// The sign-up and the password reset of the panel, end to end. The launcher's form has two strict tabs
+// (FIX-LAUNCH-TABS): «Create account» creates the account of a new address, allauth mails a 6-digit code,
+// /verify-email takes it and the launcher opens signed in: one code, never a second one (gh:hub#858);
+// «Sign in» never creates one (gh:saas#1018). «Forgot your password?» mails a link, its key sets a new password on /password/reset/key/<key>, the
 // sign-in says so and the account signs in with the new password and the code mailed at every sign-in.
 // The mails are read from the panel's file backend (project.ts). Accounts of this spec: `e2e-signup-<time>`
 // and `e2e-reset` at example.com, removed before and after (panel_seed.py's `clear` removes every
@@ -70,11 +71,50 @@ async function atEveryViewport(page: Page, name: string): Promise<void> {
 test.beforeAll(removeAccounts);
 test.afterAll(removeAccounts);
 
-test('a new address signs up on the launcher: the one code mailed to it opens the launcher, signed in', async ({ page }) => {
+test('«Sign in» with an unknown address creates nothing: the error of a wrong password, and the way to «Create account»', async ({
+  page,
+}) => {
+  const errors = watchPageErrors(page);
+  const email = `e2e-signup-unknown-${Date.now()}@example.com`;
+
+  await page.goto('/launch?next=/account');
+  await submitSignInForm(page, { email, password: 'Signup-e2e-2026!' });
+  await expect(page.getByTestId('login-password')).toContainText('The email address and/or password you specified are not correct.');
+  await expect(page.getByTestId('login-error-signup')).toHaveText('First time here? Create your account');
+  await expect(page).toHaveURL(/\/launch\?next=\/account$/);
+  expect(hasAccount(email)).toBe(false);
+
+  await page.getByTestId('login-error-signup').getByRole('button').click();
+  await expect(page).toHaveURL(/\/launch\?next=(%2F|\/)account&tab=signup$/);
+  await expect(page.getByTestId('login-submit')).toHaveText('Create account');
+  await expect(page.getByTestId('login-error-signup')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+/** Whether an account holds `email` (the SaaS's side: no page shows it to a visitor). */
+function hasAccount(email: string): boolean {
+  return (
+    djangoPrint(
+      ['from django.contrib.auth import get_user_model', `print(get_user_model().objects.filter(email__iexact="${email}").exists())`].join(
+        '\n',
+      ),
+    ) === 'True'
+  );
+}
+
+/** The launcher's «Create account» tab, from its default «Sign in». */
+async function openCreateAccount(page: Page): Promise<void> {
+  await page.getByTestId('login-tab-signup').click();
+  await expect(page).toHaveURL(/\/launch\?tab=signup$/);
+  await expect(page.getByTestId('login-submit')).toHaveText('Create account');
+}
+
+test('a new address signs up on «Create account»: the one code mailed to it opens the launcher, signed in', async ({ page }) => {
   const errors = watchPageErrors(page);
   const email = `e2e-signup-${Date.now()}@example.com`;
 
   await page.goto('/launch');
+  await openCreateAccount(page);
   const since = Date.now();
   await submitSignInForm(page, { email, password: 'Signup-e2e-2026!' });
 
@@ -105,6 +145,7 @@ test('a mistyped address is left with «Use a different email»: the right accou
 
   // The typo is an unknown address: it signs up and waits for the code that proves it.
   await page.goto('/launch');
+  await openCreateAccount(page);
   await submitSignInForm(page, { email: typo, password: 'Signup-e2e-2026!' });
   await expect(page).toHaveURL(/\/verify-email$/);
   await expect(page.getByText(`We emailed a code to ${typo}`)).toBeVisible();

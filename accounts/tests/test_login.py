@@ -2,10 +2,10 @@
 ``accounts/frontend/components/SignInForm.vue``), over allauth.headless.
 
 allauth runs headless only (``HEADLESS_ONLY``, PLAN-SAAS §2): none of its template pages exists. The old
-addresses of the sign-in and of the sign-up (bookmarks, links of the public web cached elsewhere) and
-``/login``, the SPA's sign-in page until the form moved into the launcher (Ioan, 2026-10-15), lead to
-``/launch`` for good, keeping where the person was going, in one hop. ``/login/error`` stays a page of the
-SPA. Logging in through the API is ``test_headless``'s, ``test_unified_login``'s and
+addresses of the sign-in (bookmarks, links of the public web cached elsewhere) and ``/login``, the SPA's
+sign-in page until the form moved into the launcher (Ioan, 2026-10-15), lead to ``/launch`` for good,
+keeping where the person was going, in one hop; the old sign-up's leads to its «Create account» tab
+(``test_unified_login``). ``/login/error`` stays a page of the SPA. Logging in through the API is ``test_headless``'s, ``test_unified_login``'s and
 ``test_sign_in_code``'s; the Google round trip is ``test_google``'s.
 """
 
@@ -42,7 +42,7 @@ def test_django_sends_a_visitor_without_a_session_to_it():
     assert settings.LOGIN_URL == LAUNCHER
 
 
-@pytest.mark.parametrize("old", ["/login", "/accounts/login/", "/accounts/signup/"])
+@pytest.mark.parametrize("old", ["/login", "/accounts/login/"])
 def test_the_old_addresses_lead_to_it_for_good_keeping_next(client, old):
     response = client.get(f"{old}?next=/hub-login/%3Fhub%3Da%26next%3D/sales/", HTTP_HOST=HOST)
 
@@ -50,7 +50,7 @@ def test_the_old_addresses_lead_to_it_for_good_keeping_next(client, old):
     assert response.url == "/launch?next=/hub-login/%3Fhub%3Da%26next%3D/sales/"
 
 
-@pytest.mark.parametrize("old", ["/login", "/accounts/login/", "/accounts/signup/"])
+@pytest.mark.parametrize("old", ["/login", "/accounts/login/"])
 def test_the_old_addresses_without_a_query_lead_to_the_bare_launcher(client, old):
     response = client.get(old, HTTP_HOST=HOST)
 
