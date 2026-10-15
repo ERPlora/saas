@@ -98,6 +98,7 @@ PRODUCTION_ENV = {
     "DEBUG": "False",
     "SECRET_KEY": "a-production-secret-key",
     "INTERNAL_SHARED_SECRET": "a-production-internal-secret",
+    "FISCAL_DOCUMENTS_KEY": "2EBDB2KSnvz5lBG1RHG5ldNq34ZjWvGZ_t5r4wl5Mpw=",
     "GOOGLE_OAUTH_CLIENT_ID": "prod-client.apps.googleusercontent.com",
     "GOOGLE_OAUTH_CLIENT_SECRET": "prod-secret",
 }

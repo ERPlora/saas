@@ -61,6 +61,8 @@ def test_live_mount_app_routers_mounts_base_and_accounts():
         "hubs",
         # The EU VAT engine (lot L2-A): POST /api/billing/vat-check, GET /api/billing/tax-preview.
         "billing",
+        # The signed authorisation of a business (plan 2026-10-15): GET /api/fiscal/representation.
+        "fiscal",
         # The public web: GET /api/v1/app/release/ (public.app.release).
         "public",
     ]

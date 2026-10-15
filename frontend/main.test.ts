@@ -529,9 +529,9 @@ describe('root app guards (saas-next has no apps/: its apps live next to base/, 
     expect(globs[1][1]).toEqual(globs[0][1]);
   });
 
-  it('globs the apps with a frontend: accounts, hubs and billing (round 16: no marketplace; apps and public have none)', () => {
+  it('globs the apps with a frontend: accounts, hubs, billing and fiscal (round 16: no marketplace; apps and public have none)', () => {
     const [[, globbed]] = globbedApps();
-    expect(globbed).toEqual(['accounts', 'hubs', 'billing']);
+    expect(globbed).toEqual(['accounts', 'hubs', 'billing', 'fiscal']);
   });
 
   it('globs every root app with a frontend/: one left out would lose its pages and texts silently', () => {

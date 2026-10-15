@@ -13,7 +13,7 @@ spells a tax id with ``billing.services.vat_number_for`` since lot L2-B).
 
 import pytest
 
-from billing.nif import is_legal_person_nif, normalise_nif
+from billing.nif import is_legal_person_nif, is_spanish_tax_id, normalise_nif
 
 
 class TestNormaliseNif:
@@ -62,3 +62,44 @@ class TestIsLegalPersonNif:
         the upload for a reason the customer cannot act on."""
         assert is_legal_person_nif("") is False
         assert is_legal_person_nif(None) is False
+
+
+class TestIsSpanishTaxId:
+    """The shape of a Spanish tax id (the taxpayer of an Anexo I, plan 2026-10-15): nine characters as the
+    AEAT spells them, never the control digit (the AEAT validates it; refusing one it accepts would be ours)."""
+
+    @pytest.mark.parametrize(
+        "nif",
+        [
+            "12345678Z",  # DNI
+            "X1234567L",  # NIE
+            "Y1234567X",
+            "Z1234567R",
+            "K1234567L",  # the residual natural persons
+            "B12345678",  # a company, control digit
+            "Q2826000H",  # an entity, control letter
+            " b-12.345.678 ",  # typography is not identity
+        ],
+    )
+    def test_the_shapes_the_aeat_gives_are_spanish_tax_ids(self, nif):
+        assert is_spanish_tax_id(nif) is True
+
+    @pytest.mark.parametrize(
+        "nif",
+        [
+            "",
+            None,
+            "1234567Z",  # a digit short
+            "123456789",  # a DNI without its letter
+            "I1234567A",  # no letter of the AEAT
+            "B1234567K",  # an entity's control is a digit or A-J
+            "X12345678",  # a NIE ends in a letter
+            "ESB12345678",  # a VAT number, not a NIF
+        ],
+    )
+    def test_anything_else_is_not(self, nif):
+        assert is_spanish_tax_id(nif) is False
+
+    def test_the_control_digit_is_never_checked(self):
+        """``12345678A`` has the wrong letter (Z is right): the shape is all this reads."""
+        assert is_spanish_tax_id("12345678A") is True

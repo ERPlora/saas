@@ -50,6 +50,8 @@ def test_the_django_launcher_address_leads_to_the_vue_launcher(client):
         ("/hub-login/", "hub_login"),
         ("/launch/", "launch"),
         ("/internal/auth/redeem", "internal_auth_redeem"),
+        ("/internal/hubs/0199c3a0-0000-7000-8000-000000000001/representation", "internal_hub_representation"),
+        ("/internal/representation/model", "internal_representation_model"),
         ("/csp-report/", "csp-report"),
         ("/auth/google/login/", "google_login"),
         ("/auth/google/callback/", "google_callback"),

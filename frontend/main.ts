@@ -194,8 +194,8 @@ export async function boot(
 }
 
 void boot(
-  import.meta.glob<AppRoutes>('../{accounts,hubs,billing}/frontend/routes.ts', { eager: true }),
-  import.meta.glob<AppCatalogue>('../{accounts,hubs,billing}/frontend/locale/*.json', {
+  import.meta.glob<AppRoutes>('../{accounts,hubs,billing,fiscal}/frontend/routes.ts', { eager: true }),
+  import.meta.glob<AppCatalogue>('../{accounts,hubs,billing,fiscal}/frontend/locale/*.json', {
     eager: true,
     import: 'default',
   }),

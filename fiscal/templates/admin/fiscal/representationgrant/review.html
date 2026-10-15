@@ -1,0 +1,110 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+{% comment %}
+  The staff's review of a signed authorisation (plan 2026-10-15; the old product's review page): who owes the
+  tax, who signs, the documents inline (served decrypted by the admin, never cached) and the decisions, which
+  run fiscal's services as the member of the staff who clicks. Other versions of the business, below.
+{% endcomment %}
+{% block extrastyle %}{{ block.super }}
+<style>
+  .fiscal-review dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0 0 16px; }
+  .fiscal-review dt { font-weight: 600; }
+  .fiscal-review dd { margin: 0; }
+  .fiscal-review iframe { width: 100%; height: 640px; border: 1px solid var(--hairline-color); }
+  .fiscal-review textarea { width: 100%; max-width: 640px; }
+  .fiscal-review form { margin: 0 0 16px; }
+</style>
+{% endblock %}
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% translate "Home" %}</a>
+&rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+&rsaquo; <a href="{% url 'admin:fiscal_representationgrant_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+&rsaquo; <a href="{% url 'admin:fiscal_representationgrant_change' grant.pk %}">{{ grant }}</a>
+&rsaquo; {% translate "Review" %}
+</div>
+{% endblock %}
+{% block content %}
+<div id="content-main" class="fiscal-review">
+
+<h2>{% translate "The authorisation" %}</h2>
+<dl>
+  <dt>{% translate "Business" %}</dt><dd>{{ grant.hub }}</dd>
+  <dt>{% translate "Version" %}</dt><dd>{{ grant.version }}</dd>
+  <dt>{% translate "State" %}</dt><dd>{{ grant.get_status_display }}</dd>
+  <dt>{% translate "Submitted" %}</dt><dd>{{ grant.submitted_at }}</dd>
+  {% if grant.reviewed_at %}<dt>{% translate "Reviewed" %}</dt><dd>{{ grant.reviewed_at }} · {{ grant.reviewed_by|default:"-" }}</dd>{% endif %}
+  {% if grant.revoked_at %}<dt>{% translate "Withdrawn" %}</dt><dd>{{ grant.revoked_at }} · {{ grant.revoked_by|default:"-" }}</dd>{% endif %}
+  {% if grant_reason %}<dt>{% translate "Note to the customer" %}</dt><dd>{{ grant_reason }}</dd>{% endif %}
+</dl>
+
+<h2>{% translate "Who owes the tax and who signs" %}</h2>
+<dl>
+  <dt>{% translate "Taxpayer's tax ID" %}</dt><dd>{{ grant.taxpayer_tax_id }}</dd>
+  <dt>{% translate "Taxpayer" %}</dt><dd>{{ grant.taxpayer_name|default:"-" }}</dd>
+  <dt>{% translate "Signer" %}</dt><dd>{{ grant.signer_name }}</dd>
+  <dt>{% translate "Signer's tax ID" %}</dt><dd>{{ grant.signer_tax_id }}</dd>
+  <dt>{% translate "Identity document" %}</dt><dd>{{ grant.get_signer_document_type_display }}</dd>
+</dl>
+
+<h2>{% translate "Decision" %}</h2>
+{% if can_decide %}
+<form method="post">{% csrf_token %}
+  <p>{% translate "Approve only if the signed model, the identity document and the signer match the taxpayer." %}</p>
+  <button type="submit" class="button default" name="action" value="approve">{% translate "Approve" %}</button>
+</form>
+<form method="post">{% csrf_token %}
+  <p><label for="return-reason">{% translate "Reason to return it (the customer reads it)" %}</label></p>
+  <p><textarea id="return-reason" name="reason" rows="3" maxlength="{{ reason_max_length }}" required></textarea></p>
+  <button type="submit" class="button" name="action" value="return">{% translate "Return to the customer" %}</button>
+</form>
+{% elif can_withdraw %}
+<form method="post">{% csrf_token %}
+  <p><label for="withdraw-reason">{% translate "Reason to withdraw the approval (the customer reads it)" %}</label></p>
+  <p><textarea id="withdraw-reason" name="reason" rows="3" maxlength="{{ reason_max_length }}" required></textarea></p>
+  <button type="submit" class="button" name="action" value="withdraw">{% translate "Withdraw the approval" %}</button>
+</form>
+{% else %}
+<p>{% translate "Nothing to decide: this version is no longer under review nor in force." %}</p>
+{% endif %}
+
+<h2>{% translate "Documents" %}</h2>
+{% for document in documents %}
+<h3>{{ document.label }} · <a href="{{ document.url }}" target="_blank" rel="noopener">{% translate "Open in a new tab" %}</a></h3>
+<iframe src="{{ document.url }}" title="{{ document.label }}"></iframe>
+{% empty %}
+<p>{% translate "This version carries no document." %}</p>
+{% endfor %}
+
+<h2>{% translate "Other versions of this business" %}</h2>
+{% if versions %}
+<table>
+<thead>
+<tr>
+<th scope="col">{% translate "Version" %}</th>
+<th scope="col">{% translate "State" %}</th>
+<th scope="col">{% translate "Submitted" %}</th>
+<th scope="col">{% translate "Reviewed" %}</th>
+<th scope="col">{% translate "Note to the customer" %}</th>
+<th scope="col"></th>
+</tr>
+</thead>
+<tbody>
+{% for version in versions %}
+<tr>
+<td>{{ version.version }}</td>
+<td>{{ version.get_status_display }}</td>
+<td>{{ version.submitted_at }}</td>
+<td>{{ version.reviewed_at|default:"-" }}</td>
+<td>{{ version.shown_reason|default:"-" }}</td>
+<td><a href="{% url 'admin:fiscal_representationgrant_review' version.pk %}">{% translate "Review" %}</a></td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<p>{% translate "This business sent no other version." %}</p>
+{% endif %}
+
+</div>
+{% endblock %}

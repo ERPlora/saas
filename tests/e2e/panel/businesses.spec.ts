@@ -51,6 +51,9 @@ test('«Manage» opens the business’s page, whose tabbar walks its four sectio
   await expect(page).toHaveURL(/\/businesses\/[0-9a-f-]+\/summary$/);
   await expect(page.getByTestId('business-header')).toContainText('Panadería López');
   await expect(page.getByTestId('summary-plan')).toContainText('Starter');
+  // A Spanish business that never sent its signed authorisation (fiscal.representation.status): «Not granted».
+  await expect(page.getByTestId('representation')).toContainText('Authorisation for ERPlora to file your invoices');
+  await expect(page.getByTestId('representation-pill')).toHaveText('Not granted');
   await openSection(page, 'members');
   await expect(page.getByTestId('members-row')).toHaveCount(5);
   await expect(page.getByTestId('members-row').filter({ hasText: 'e2e-jorge@example.com' })).toContainText('Pending');

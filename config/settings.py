@@ -111,6 +111,9 @@ INSTALLED_APPS = [
     "hubs",
     # The EU VAT engine and, from lot L2-B, Stripe: after hubs, whose payer it reads.
     "billing",
+    # The documentation a business sends so ERPlora files its VeriFactu records (plan 2026-10-15): after
+    # hubs, whose businesses it reads and whose snapshot carries its outcome.
+    "fiscal",
     "public",
     # After `public`: its templates override the package's (public/templates/cookie_consent/).
     "cookie_consent",
@@ -596,6 +599,18 @@ FISCAL_SEAL_CURRENT_P12_BASE64 = config("FISCAL_SEAL_CURRENT_P12_BASE64", defaul
 FISCAL_SEAL_CURRENT_PASSWORD = config("FISCAL_SEAL_CURRENT_PASSWORD", default="")
 FISCAL_SEAL_NEXT_P12_BASE64 = config("FISCAL_SEAL_NEXT_P12_BASE64", default="")
 FISCAL_SEAL_NEXT_PASSWORD = config("FISCAL_SEAL_NEXT_PASSWORD", default="")
+
+# The documentation a hub sends so ERPlora files its VeriFactu records (fiscal/, plan 2026-10-15): the
+# signed Anexo I, a copy of the signer's identity document and the rest, encrypted at rest with this Fernet
+# key (fiscal/crypto.py; `check` says if it is no Fernet key, fiscal.E001). Required in production, like
+# INTERNAL_SHARED_SECRET: a document stored with a lost key is lost. Local development uses a fixed key.
+FISCAL_DOCUMENTS_KEY = (
+    config("FISCAL_DOCUMENTS_KEY", default="bG9jYWwtZmlzY2FsLWRvY3VtZW50cy1rZXktMzJieXQ=")
+    if DEBUG
+    else config("FISCAL_DOCUMENTS_KEY")
+)
+# DATA_UPLOAD_MAX_MEMORY_SIZE stays Django's 2.5 MB for every view: the four documents of an authorisation
+# (up to about 27 MB) have their own ceiling, read by their view alone (fiscal.internal.MAX_BODY_BYTES).
 
 # EU VAT (billing/): VIES, the European Commission's register of VAT numbers, asked through its REST
 # endpoint as an identified requester (ERPlora's own VAT number, billing.CompanyConfig), the only way

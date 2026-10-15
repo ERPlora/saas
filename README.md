@@ -47,8 +47,8 @@ Solo lo que necesita el salto al Hub (PLAN-SAAS §2.1 y §3.1, pasos 4–6; PLAN
 
 El SaaS es también una SPA Ionic Vue, igual que `hub-next` (`base/`, `frontend/main.ts`,
 `vite.config.ts`, `<app>/frontend/`). Sus apps (`accounts/` Cuenta, `hubs/` Negocios y uso, `billing/`
-Tienda, Facturación y Stripe, más `apps/`, el catálogo de módulos de la ronda 16, y `public/`, la web
-pública) viven en la raíz, junto a `base/`: `saas-next` no tiene carpeta de módulos (PLAN §20.2), y cada app
+Tienda, Facturación y Stripe, `fiscal/` la documentación fiscal de VeriFactu, más `apps/`, el catálogo de
+módulos de la ronda 16, y `public/`, la web pública) viven en la raíz, junto a `base/`: `saas-next` no tiene carpeta de módulos (PLAN §20.2), y cada app
 con `frontend/` se nombra en los globs de `frontend/main.ts` y en `FRONTEND_APPS` de `vite.config.ts`
 (guardarraíles en `frontend/main.test.ts` y `vite.config.test.ts`). Las páginas de cuenta pasan
 de plantilla a Vue **una a una**, sobre `allauth.headless` (cliente `browser`, `/_allauth/browser/v1/…`); mientras tanto las
@@ -166,6 +166,23 @@ El panel de `erplora.com` (Negocios · Tienda · Facturación · Cuenta; plan
   localhost:8001/webhooks/stripe/` (su `whsec_…` en `STRIPE_WEBHOOK_SECRET`); sin clave, la Tienda dice que
   los pagos no están disponibles (503 `billing.payments_unavailable`).
 
+## Documentación fiscal (VeriFactu): `fiscal/`
+
+La autorización que firma un negocio para que ERPlora remita sus registros VeriFactu a la AEAT (Anexo I del
+convenio 017, representación directa; plan `../docs/plans/2026-10-15-saas-revision-documentacion-fiscal.md`).
+El cliente la sube desde el módulo VeriFactu de su Hub, que la envía firmada a
+`POST /internal/hubs/{id}/representation` (hasta cuatro PDF de 5 MB en base64; el cuerpo lo lee la propia
+vista, con su tope de 32 MB, y el resto del sitio conserva el de Django); `GET /internal/representation/model`
+sirve el modelo en blanco. El staff la revisa en `/admin/fiscal/representationgrant/` (aprobar, devolver o
+retirar, siempre con motivo para el cliente, por los servicios de `fiscal/services.py`); el grupo `support`
+solo la ve. El estado viaja al Hub en la foto (`verifactu.representation` de `PUT /internal/hubs/{id}/state`)
+y el panel lo enseña en la ficha del negocio (`fiscal.representation.status`).
+
+- **Variable**: `FISCAL_DOCUMENTS_KEY`, clave Fernet con la que se cifran los documentos en la BD
+  (`fiscal/crypto.py`). Obligatoria en producción (Secrets Manager): un documento guardado con una clave
+  perdida se pierde; `check` avisa si no es una clave Fernet (`fiscal.E001`). Con `DEBUG` hay una clave local
+  fija.
+
 ## Entornos y ramas: `prod` y `pre`
 
 `ERPLORA_ENVIRONMENT` dice qué despliegue es el proceso: `prod` (`erplora.com`; también por defecto en local
@@ -220,8 +237,9 @@ correr sin él. Los tests no lo necesitan: `pytest.ini` usa `config/settings_pyt
 `INTERNAL_SHARED_SECRET` (por defecto local, la misma que el Hub; `INTERNAL_SHARED_SECRET_PREVIOUS`, vacía
 salvo durante una rotación), `HUB_CALLBACK_TEMPLATE`
 (`http://{slug}.localhost:8000/auth/callback`), `HUB_ADMIN_CALLBACK_URL`
-(`http://hubs.localhost:8000/auth/callback`; en producción `https://hubs.erplora.com/auth/callback`) y,
-para ver el botón de Google,
+(`http://hubs.localhost:8000/auth/callback`; en producción `https://hubs.erplora.com/auth/callback`),
+`FISCAL_DOCUMENTS_KEY` (con `DEBUG`, una clave local; ver «Documentación fiscal») y, para ver el botón de
+Google,
 `GOOGLE_OAUTH_CLIENT_ID`/`GOOGLE_OAUTH_CLIENT_SECRET`; ver `.env.example`. El
 segundo factor se enciende con `ACCOUNTS_MFA_ENABLED=true` en `saas-next/.env` (por defecto `false`;
 ver «Segundo factor (2FA)»).
