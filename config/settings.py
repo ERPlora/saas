@@ -114,6 +114,8 @@ INSTALLED_APPS = [
     # The documentation a business sends so ERPlora files its VeriFactu records (plan 2026-10-15): after
     # hubs, whose businesses it reads and whose snapshot carries its outcome.
     "fiscal",
+    # The fiscal gateway (PLAN-SAAS §4): presents the Hub's VeriFactu envelopes to the AEAT.
+    "fiscal_gateway",
     "public",
     # After `public`: its templates override the package's (public/templates/cookie_consent/).
     "cookie_consent",
@@ -599,6 +601,9 @@ FISCAL_SEAL_CURRENT_P12_BASE64 = config("FISCAL_SEAL_CURRENT_P12_BASE64", defaul
 FISCAL_SEAL_CURRENT_PASSWORD = config("FISCAL_SEAL_CURRENT_PASSWORD", default="")
 FISCAL_SEAL_NEXT_P12_BASE64 = config("FISCAL_SEAL_NEXT_P12_BASE64", default="")
 FISCAL_SEAL_NEXT_PASSWORD = config("FISCAL_SEAL_NEXT_PASSWORD", default="")
+# The fiscal gateway (fiscal_gateway/, PLAN-SAAS §4): presentations to the AEAT under way at once in
+# one process; one more answers 503 `gateway_busy` and the Hub retries. 8 until it is measured in pre.
+VERIFACTU_GATEWAY_CONCURRENCY = config("VERIFACTU_GATEWAY_CONCURRENCY", default=8, cast=int)
 
 # The documentation a hub sends so ERPlora files its VeriFactu records (fiscal/, plan 2026-10-15): the
 # signed Anexo I, a copy of the signer's identity document and the rest, encrypted at rest with this Fernet
