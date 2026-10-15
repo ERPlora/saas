@@ -7,6 +7,10 @@ presents with ERPlora's seal, ``route=own`` with the customer's certificate, whi
 and is never kept nor logged. The AEAT's answer goes back as it came; the refusals answer the single
 envelope ``{"error": {"code", "message"}}``. Only the AEAT's preproduction is ever reached, through
 ``respx``.
+
+The gateway presents for a business it knows only (``hub_unknown``), and through ERPlora's seal only
+for the taxpayer of the business's approved authorisation (``fiscal.RepresentationGrant``) or for
+ERPlora itself, in its own name.
 """
 
 import json
@@ -18,8 +22,17 @@ import httpx
 import pytest
 
 from accounts.signing import sign, signed_headers
+from fiscal.tests.conftest import make_grant
 from fiscal_gateway import internal, seal
-from fiscal_gateway.tests.conftest import PASSWORD, b64, fixture, make_p12
+from fiscal_gateway.tests.conftest import (
+    HUB,
+    HUB_SLUG,
+    PASSWORD,
+    b64,
+    fixture,
+    make_p12,
+)
+from hubs.models import Hub
 
 SECRET = "test-internal-secret"
 PATH = "/wlpl/TIKE-CONT/ws/SistemaFacturacion/VerifactuSOAP"
@@ -27,8 +40,10 @@ PRE_SEAL = f"https://prewww10.aeat.es{PATH}"
 PRE_HOLDER = f"https://prewww1.aeat.es{PATH}"
 SENT = fixture("rotation_a_sent_2026-09-22.xml")
 ANSWER = fixture("rotation_a_2026-09-22.xml")
-HUB = "0199e8a0-0000-7000-8000-000000000001"
 ISSUER = "B27593136"
+#: A customer's NIF, and the envelope of the Hub naming it.
+CUSTOMER = "B12345674"
+CUSTOMER_SENT = SENT.replace(ISSUER, CUSTOMER)
 
 
 @pytest.fixture(autouse=True)
@@ -36,6 +51,11 @@ def _secrets(settings):
     settings.INTERNAL_SHARED_SECRET = SECRET
     settings.INTERNAL_SHARED_SECRET_PREVIOUS = ""
     settings.ERPLORA_ENVIRONMENT = "prod"
+
+
+@pytest.fixture(autouse=True)
+def _known_business(business):
+    """Every call names ``HUB``, a business the SaaS knows."""
 
 
 @pytest.fixture
@@ -341,7 +361,7 @@ def test_a_submission_through_erplora_returns_the_aeats_answer_as_it_came(
     assert "no-store" in response["Cache-Control"]
 
 
-@pytest.mark.parametrize("hub", ["demo", "erplora", HUB])
+@pytest.mark.parametrize("hub", [HUB_SLUG, HUB])
 def test_a_submission_names_its_hub_by_slug_or_uuid(
     client, respx_mock, erplora_seal, hub
 ):
@@ -421,6 +441,153 @@ def test_a_refused_connection_is_502_not_sent(client, respx_mock, erplora_seal):
 
     assert response.status_code == 502
     assert response.json()["error"]["sent"] is False
+
+
+# Representation: through ERPlora's seal, only for whom ERPlora may present
+
+
+def customer(**changes):
+    return payload(**{"nif": CUSTOMER, "envelope": CUSTOMER_SENT, **changes})
+
+
+def probe_body(body):
+    return {k: v for k, v in body.items() if k != "envelope"}
+
+
+@pytest.mark.parametrize("hub", ["bar-paco", "0199e8a0-0000-7000-8000-0000000000ff"])
+@pytest.mark.parametrize("route", ["erplora", "own"])
+def test_a_business_the_saas_does_not_know_is_404_before_the_aeat(
+    client, respx_mock, erplora_seal, own_p12, hub, route
+):
+    body = payload(hub=hub) if route == "erplora" else own(own_p12, hub=hub)
+
+    response = call(client, "submit", body)
+
+    assert error_of(response) == (404, "hub_unknown")
+    assert not respx_mock.calls
+
+
+def test_a_purged_business_is_unknown(client, respx_mock, erplora_seal, business):
+    Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETED)
+
+    response = call(client, "submit", payload())
+
+    assert error_of(response) == (404, "hub_unknown")
+    assert not respx_mock.calls
+
+
+@pytest.mark.parametrize("door", ["submit", "query"])
+def test_without_an_authorisation_erplora_does_not_present_for_a_customer(
+    client, respx_mock, erplora_seal, door
+):
+    response = call(client, door, customer())
+
+    assert error_of(response) == (409, "representation_not_approved")
+    assert response.json()["error"]["message"]
+    assert not respx_mock.calls
+
+
+@pytest.mark.parametrize("status", ["submitted", "returned", "revoked"])
+def test_an_authorisation_not_in_force_is_not_enough(
+    client, respx_mock, erplora_seal, business, status
+):
+    make_grant(business, status=status, taxpayer_tax_id=CUSTOMER)
+
+    response = call(client, "submit", customer())
+
+    assert error_of(response) == (409, "representation_not_approved")
+    assert not respx_mock.calls
+
+
+def test_an_approval_of_another_business_is_not_enough(
+    client, respx_mock, erplora_seal
+):
+    other = Hub.objects.create(slug="bar-paco", name="Bar Paco", country="ES")
+    make_grant(other, status="approved", taxpayer_tax_id=CUSTOMER)
+
+    response = call(client, "submit", customer())
+
+    assert error_of(response) == (409, "representation_not_approved")
+    assert not respx_mock.calls
+
+
+def test_an_approval_for_another_taxpayer_is_a_nif_mismatch(
+    client, respx_mock, erplora_seal, business, caplog
+):
+    make_grant(business, status="approved", taxpayer_tax_id="B99999999")
+
+    with caplog.at_level(logging.DEBUG):
+        response = call(client, "submit", customer())
+
+    assert error_of(response) == (409, "nif_mismatch")
+    assert not respx_mock.calls
+    # Nothing of the authorisation reaches the answer nor a log.
+    logged = caplog.text + "".join(str(record.args) for record in caplog.records)
+    assert "B99999999" not in response.content.decode()
+    assert "B99999999" not in logged
+
+
+@pytest.mark.parametrize("hub", [HUB_SLUG, HUB])
+@pytest.mark.parametrize("door", ["submit", "query"])
+def test_an_approved_authorisation_lets_erplora_present_for_its_taxpayer(
+    client, respx_mock, erplora_seal, business, hub, door
+):
+    make_grant(business, status="approved", taxpayer_tax_id=CUSTOMER)
+    route = respx_mock.post(PRE_SEAL).respond(200, text=ANSWER)
+
+    response = call(client, door, customer(hub=hub, nif=CUSTOMER.lower()))
+
+    assert response.status_code == 200
+    assert route.calls.last.request.content == CUSTOMER_SENT.encode("utf-8")
+
+
+def test_erplora_presents_its_own_records_without_an_authorisation(
+    client, respx_mock, erplora_seal
+):
+    """The platform's hub: ERPLORA CLOUD SL files in its own name, with its own seal."""
+    route = respx_mock.post(PRE_SEAL).respond(200, text=ANSWER)
+
+    response = call(client, "submit", payload(nif=ISSUER.lower()))
+
+    assert response.status_code == 200
+    assert route.called
+
+
+def test_the_own_route_needs_no_authorisation(client, respx_mock):
+    p12 = make_p12(org_id=f"VATES-{CUSTOMER}", serial="IDCES-12345678Z")
+    respx_mock.post(PRE_HOLDER).respond(200, text=ANSWER)
+
+    response = call(client, "submit", own(p12, nif=CUSTOMER, envelope=CUSTOMER_SENT))
+
+    assert response.status_code == 200
+
+
+def test_probe_through_erplora_without_an_authorisation_is_not_ready(
+    client, respx_mock, erplora_seal
+):
+    response = call(client, "probe", probe_body(customer()))
+
+    assert response.status_code == 200
+    assert response.json()["ready"] is False
+    assert "authorisation" in response.json()["detail"]
+    assert not respx_mock.calls
+
+
+def test_probe_through_erplora_with_an_approved_authorisation_is_ready(
+    client, erplora_seal, business
+):
+    make_grant(business, status="approved", taxpayer_tax_id=CUSTOMER)
+
+    response = call(client, "probe", probe_body(customer()))
+
+    assert response.json()["ready"] is True
+
+
+def test_probe_of_a_business_the_saas_does_not_know_is_not_ready(client, erplora_seal):
+    response = call(client, "probe", probe_body(payload(hub="bar-paco")))
+
+    assert response.status_code == 200
+    assert response.json()["ready"] is False
 
 
 # Concurrency

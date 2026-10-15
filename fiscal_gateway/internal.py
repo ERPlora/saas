@@ -10,12 +10,17 @@ What each door answers:
 
 - ``200 {"aeat_status", "aeat_body"}``: the AEAT answered, and this is its answer as it came, whatever
   it says (reading it is the Hub's job);
+- ``404 {"error": {"code": "hub_unknown", "message"}}``: ``hub`` names no business the SaaS knows (or a
+  purged one); nothing was sent, whatever the route;
 - ``409 {"error": {"code", "message"}}``: nothing was sent. ``nif_mismatch`` (the envelope names a
-  taxpayer other than ``nif``; decided before anything else touches the AEAT), ``no_seal`` (``erplora``
-  without a usable seal), ``no_certificate`` (``own`` without one), ``certificate_invalid`` (it does not
-  open, cannot authenticate as a client, has expired, or TLS refuses it: its key is not the
-  certificate's or is too weak; ERPlora's seal in that case is ``no_seal``), ``environment_not_allowed``
-  (``production`` from a deployment that is not prod: ``pre`` only presents to the AEAT's tests);
+  taxpayer other than ``nif``, decided before anything else touches the AEAT; or, through ``erplora``,
+  the business's approved authorisation covers another taxpayer), ``representation_not_approved``
+  (``erplora`` for a taxpayer other than ERPlora itself, and the business has no approved authorisation:
+  none, under review, returned or withdrawn), ``no_seal`` (``erplora`` without a usable seal),
+  ``no_certificate`` (``own`` without one), ``certificate_invalid`` (it does not open, cannot
+  authenticate as a client, has expired, or TLS refuses it: its key is not the certificate's or is too
+  weak; ERPlora's seal in that case is ``no_seal``), ``environment_not_allowed`` (``production`` from a
+  deployment that is not prod: ``pre`` only presents to the AEAT's tests);
 - ``502 {"error": {"code": "aeat_unreachable", "message", "sent"}}``: no answer from the AEAT. ``sent``
   says whether the request may have reached it (the Hub then keeps the record as sent and asks again);
 - ``503 gateway_busy``: ``VERIFACTU_GATEWAY_CONCURRENCY`` presentations are already under way in this
@@ -23,8 +28,14 @@ What each door answers:
 - ``401`` unsigned, ``405`` not POST, ``413`` over ``MAX_BODY_BYTES``, ``422`` not the contract.
 
 ``probe`` presents nothing: ``200 {"ready", "detail"}`` says whether a presentation would leave now
-(``detail``: which certificate, or why not). It loads the certificate into TLS as a presentation does,
-so a certificate TLS refuses is ``ready: false`` there too.
+(``detail``: which certificate, or why not; an unknown business or a missing authorisation is
+``ready: false`` too). It loads the certificate into TLS as a presentation does, so a certificate TLS
+refuses is ``ready: false`` there too.
+
+ERPlora's seal presents for the business's taxpayer only with the business's approved authorisation
+(the Anexo I the staff reviewed, ``fiscal.RepresentationGrant``) whose taxpayer is ``nif``; or for
+ERPlora itself (``nif`` is the seal's holder), in its own name, without one. What the authorisation
+says never reaches an answer nor a log. The reads are ``fiscal_gateway.queries``'.
 
 The body is read here, not through ``request.body``: a submission of a thousand records weighs more
 than Django's form limit (``DATA_UPLOAD_MAX_MEMORY_SIZE``, 2.5 MB), and the gateway has its own.
@@ -39,6 +50,7 @@ import logging
 import ssl
 import threading
 import time
+from uuid import UUID
 
 from django.conf import settings
 from django.http import HttpRequest, JsonResponse
@@ -48,7 +60,8 @@ from django.views.decorators.debug import sensitive_variables
 from pydantic import ValidationError
 
 from accounts.signing import live_secrets, verify_signed
-from fiscal_gateway import aeat, seal
+from billing.nif import normalise_nif
+from fiscal_gateway import aeat, queries, seal
 from fiscal_gateway.schemas import AnswerOut, PresentIn, ProbeIn, ProbeOut
 
 logger = logging.getLogger(__name__)
@@ -103,7 +116,7 @@ def probe(request: HttpRequest) -> JsonResponse:
         return refused.response()
     try:
         _allowed(body.environment)
-        identity, _ = _identity(body)
+        identity, _ = _identity(body, _known(body.hub))
     except _Refused as refused:
         out = ProbeOut(ready=False, detail=refused.message)
     else:
@@ -133,7 +146,7 @@ def _present(request: HttpRequest, operation: str) -> JsonResponse:
                 "nif_mismatch",
                 f"The envelope names a taxpayer other than {body.nif}.",
             )
-        identity, context = _identity(body)
+        identity, context = _identity(body, _known(body.hub))
     except _Refused as refused:
         logger.warning(
             "fiscal_gateway.%s.refused code=%s hub=%s nif=%s environment=%s route=%s",
@@ -229,9 +242,42 @@ def _allowed(environment: str) -> None:
         )
 
 
+def _known(hub: str) -> UUID:
+    """The id of the business ``hub`` names, or the refusal if the SaaS knows none."""
+    hub_id = queries.hub_id_for(hub)
+    if hub_id is None:
+        raise _Refused(
+            404, "hub_unknown", "No business the SaaS knows goes by that hub."
+        )
+    return hub_id
+
+
+def _represented(body: ProbeIn, hub_id: UUID, holder_tax_id: str) -> None:
+    """Refuses ERPlora's seal for ``body.nif`` unless it is ERPlora's own (the seal's holder) or the
+    taxpayer of the business's approved authorisation. Never says whom that authorisation covers."""
+    nif = normalise_nif(body.nif)
+    if nif == normalise_nif(holder_tax_id):
+        return
+    approved = queries.approved_taxpayer(hub_id)
+    if approved is None:
+        raise _Refused(
+            409,
+            "representation_not_approved",
+            "ERPlora has no approved authorisation to present for this business: its signed "
+            "authorisation (Anexo I) must be approved first.",
+        )
+    if approved != nif:
+        raise _Refused(
+            409,
+            "nif_mismatch",
+            f"The business's approved authorisation covers a taxpayer other than {body.nif}.",
+        )
+
+
 @sensitive_variables()
-def _identity(body: ProbeIn) -> tuple[seal.Identity, ssl.SSLContext]:
-    """The certificate to present ``body`` with and its TLS context, or the refusal to answer."""
+def _identity(body: ProbeIn, hub_id: UUID) -> tuple[seal.Identity, ssl.SSLContext]:
+    """The certificate to present ``body`` for the business ``hub_id`` with and its TLS context, or the
+    refusal to answer."""
     now = dt.datetime.now(dt.UTC)
     if body.route == "erplora":
         identity = seal.current(now)
@@ -239,6 +285,7 @@ def _identity(body: ProbeIn) -> tuple[seal.Identity, ssl.SSLContext]:
             raise _Refused(
                 409, "no_seal", "ERPlora has no usable seal to present with."
             )
+        _represented(body, hub_id, identity.holder_tax_id)
         return identity, _tls(identity, "no_seal")
     if body.certificate is None:
         raise _Refused(
