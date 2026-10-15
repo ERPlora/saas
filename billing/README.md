@@ -155,6 +155,22 @@ promocional vale una vez por negocio y por pagador (`PromoRedemption`). Los prec
 nunca se llama a Stripe: `billing/tests/stripe_double.py` sustituye a `stripe_service.client()` y los
 eventos se firman como los firma Stripe.
 
+**Stripe en pre** (`ERPLORA_ENVIRONMENT=pre`, `pre.erplora.com`; plan `../docs/plans/2026-10-14-entorno-pre.md`):
+solo modo test. Quien empuja a la rama `pre` ejecuta código con los secretos de pre, así que una clave live
+(`sk_live_`, `rk_live_` o `pk_live_`) falla `check --deploy` con `billing.E002` y `stripe_service.key_mode()` la
+trata como ninguna (`UNKNOWN`: 503 `billing.payments_unavailable`, nunca un cobro real). En el secreto
+`erplora/pre/app` (lo carga `stripe-setup-pre.sh`, fuera del repo, gemelo de `stripe-setup-live.sh` en modo test):
+
+- `STRIPE_SECRET_KEY`: una clave **restringida de test** `rk_test_…` con los mismos permisos que la live;
+  `STRIPE_PUBLISHABLE_KEY`, la `pk_test_…`;
+- `STRIPE_WEBHOOK_SECRET`: el `whsec_…` del endpoint de test `https://pre.erplora.com/webhooks/stripe/`, suscrito
+  a los mismos 14 eventos que prod (los de «Webhook»). Con pre apagado, Stripe reintenta hasta 3 días;
+- `STRIPE_PORTAL_CONFIGURATION`: el `bpc_…` de un Customer Portal de test, solo tarjetas y recibos, como prod;
+- los precios: los ids de Stripe **test** en cada `Plan` y `apps.Module`, desde el admin de pre. Se paga con las
+  tarjetas de prueba de Stripe (`4242 4242 4242 4242`).
+
+`PLATFORM_INVOICING_ENABLED` se queda en `false` en pre.
+
 ## Fuera de L2-A
 
 - **L2-B (hecho)**: `hubs.billing_profile.update` llama a `validate_vat_for_profile` y exige cinco dígitos al

@@ -199,3 +199,24 @@ def test_every_linked_page_exists(client, llms):
         assert (
             client.get(link.removeprefix(ORIGIN), HTTP_HOST=HOST).status_code == 200
         ), link
+
+
+# Outside prod (pre.erplora.com, plan 2026-10-14-entorno-pre) nothing is crawled: pre is the team's, and
+# a copy of the public web in an index would compete with erplora.com.
+
+
+@pytest.mark.django_db
+def test_outside_prod_robots_txt_disallows_everything(client, settings):
+    settings.ERPLORA_ENVIRONMENT = "pre"
+
+    response = client.get("/robots.txt", HTTP_HOST=HOST)
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    assert response["Content-Type"].startswith("text/plain")
+    assert body == "User-agent: *\nDisallow: /\n"
+    robot_parser = RobotFileParser()
+    robot_parser.parse(body.splitlines())
+    for agent in [*ANSWER_ENGINE_AGENTS, "*", "Googlebot"]:
+        assert not robot_parser.can_fetch(agent, f"{ORIGIN}/")
+        assert not robot_parser.can_fetch(agent, f"{ORIGIN}/features/")

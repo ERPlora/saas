@@ -15,6 +15,7 @@ asserts it agent by agent).
 
 from __future__ import annotations
 
+from django.conf import settings
 from django.http import HttpRequest
 
 #: Agents that answer a user's question by citing a page, plus the training crawlers. Allowing
@@ -81,10 +82,11 @@ def is_private(request: HttpRequest) -> bool:
 
 
 class NoIndexPrivatePathsMiddleware:
-    """``X-Robots-Tag: noindex`` on every private response.
+    """``X-Robots-Tag: noindex`` on every private response, and outside prod on every response.
 
     robots.txt is advisory; this is not. It also covers what robots.txt cannot: a redirect to the
-    login is still a URL a crawler can index, and it leaks the shape of the private site.
+    login is still a URL a crawler can index, and it leaks the shape of the private site. Outside prod
+    (``pre.erplora.com``, plan 2026-10-14-entorno-pre) the public web is the team's too.
     """
 
     def __init__(self, get_response):
@@ -92,6 +94,6 @@ class NoIndexPrivatePathsMiddleware:
 
     def __call__(self, request):
         response = self.get_response(request)
-        if is_private(request):
+        if settings.ERPLORA_ENVIRONMENT != "prod" or is_private(request):
             response["X-Robots-Tag"] = NOINDEX_HEADER
         return response

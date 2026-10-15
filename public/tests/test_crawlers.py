@@ -107,3 +107,17 @@ def test_is_private_needs_the_path_or_the_spa_route(rf):
 
     assert is_private(request) is False
     assert is_private(rf.get("/accounts/login/")) is True
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("spa_manifest")
+@pytest.mark.parametrize(
+    "path", ["/", "/features/", "/robots.txt", "/llms.txt", "/sitemap.xml", "/login", "/accounts/login/"]
+)
+def test_outside_prod_every_response_is_noindex(client, settings, path):
+    """pre.erplora.com (plan 2026-10-14-entorno-pre) is the team's: not even its public web is indexed."""
+    settings.ERPLORA_ENVIRONMENT = "pre"
+
+    response = client.get(path, HTTP_HOST=HOST)
+
+    assert response.get("X-Robots-Tag") == NOINDEX_HEADER

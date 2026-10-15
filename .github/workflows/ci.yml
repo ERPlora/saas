@@ -1,0 +1,23 @@
+name: ci
+
+# Every push to a branch other than main and pre runs the tests (test.yml), so the commit carries the
+# check `test / test` before it reaches pre, which requires it (plan 2026-10-14-entorno-pre, §4.2 and
+# §7.5): pre only moves fast-forward to a commit that already passed it. main and pre run the same
+# tests inside deploy.yml. No paths filter: a commit without the check could not reach pre. The repo
+# is public: no pull_request trigger, so a fork never runs this workflow.
+
+on:
+  push:
+    branches-ignore: [main, pre]
+
+permissions:
+  contents: read
+
+# A newer push to the same branch supersedes the run of the older one.
+concurrency:
+  group: ci-${{ github.repository }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    uses: ./.github/workflows/test.yml

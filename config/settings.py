@@ -12,6 +12,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from decouple import Config, Csv, RepositoryEmpty, RepositoryEnv
+from django.core.exceptions import ImproperlyConfigured
 from live.csp import base_policy, debug_policy
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,6 +21,18 @@ _ENV_FILE = BASE_DIR / ".env"
 config = Config(
     RepositoryEnv(str(_ENV_FILE)) if _ENV_FILE.is_file() else RepositoryEmpty()
 )
+
+# Which deployment this process is (plan 2026-10-14-entorno-pre): `prod` (erplora.com, also the
+# default for development and the tests) or `pre`, the team's pre-production at pre.erplora.com in
+# the same cluster, Aurora and Valkey. Outside prod: its own cache prefix, nothing indexed
+# (public/seo.py, public/crawlers.py, indexnow_submit) and Stripe in test mode only (billing.E002).
+# Any other value refuses to start: a typo must never run as prod or as nothing.
+ENVIRONMENTS = ("prod", "pre")
+ERPLORA_ENVIRONMENT = config("ERPLORA_ENVIRONMENT", default="prod").strip()
+if ERPLORA_ENVIRONMENT not in ENVIRONMENTS:
+    raise ImproperlyConfigured(
+        f"ERPLORA_ENVIRONMENT must be one of {', '.join(ENVIRONMENTS)}, not {ERPLORA_ENVIRONMENT!r}"
+    )
 
 # Off unless the environment turns it on: development sets `DEBUG=True` in saas-next/.env
 # (.env.example) and the test run in config/settings_pytest.py.
@@ -204,7 +217,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Cache: the shared Valkey (TLS, rediss://, no AUTH) when VALKEY_URL is set, so allauth's login rate
 # limits and the contact form's hold across tasks; otherwise this process's memory. A prefix per
-# project and a TTL on every key (Valkey Serverless only evicts keys with one: never TIMEOUT=None).
+# project and environment (pre shares prod's Valkey: `pre-saas`) and a TTL on every key (Valkey
+# Serverless only evicts keys with one: never TIMEOUT=None).
 # A Valkey that hangs fails the call within 2 s instead of holding the request, and a Valkey that is
 # down answers as an empty cache instead of a 500 (base/cache.py).
 
@@ -214,7 +228,7 @@ CACHES = {
         {
             "BACKEND": "base.cache.FailSoftRedisCache",
             "LOCATION": VALKEY_URL,
-            "KEY_PREFIX": "saas",
+            "KEY_PREFIX": "saas" if ERPLORA_ENVIRONMENT == "prod" else f"{ERPLORA_ENVIRONMENT}-saas",
             "TIMEOUT": 300,
             "OPTIONS": {"socket_connect_timeout": 2, "socket_timeout": 2},
         }

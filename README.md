@@ -166,6 +166,51 @@ El panel de `erplora.com` (Negocios · Tienda · Facturación · Cuenta; plan
   localhost:8001/webhooks/stripe/` (su `whsec_…` en `STRIPE_WEBHOOK_SECRET`); sin clave, la Tienda dice que
   los pagos no están disponibles (503 `billing.payments_unavailable`).
 
+## Entornos y ramas: `prod` y `pre`
+
+`ERPLORA_ENVIRONMENT` dice qué despliegue es el proceso: `prod` (`erplora.com`; también por defecto en local
+y en los tests) o `pre`, la preproducción del equipo en `pre.erplora.com`, en el mismo cluster, ALB, Aurora y
+Valkey que prod (plan `../docs/plans/2026-10-14-entorno-pre.md`). Cualquier otro valor no arranca. En `pre`:
+
+- la caché de Valkey usa el prefijo `pre-saas` (prod, `saas`): no comparten límites ni claves;
+- nada se indexa: `robots.txt` responde `Disallow: /` sin `Sitemap`, toda respuesta lleva `X-Robots-Tag:
+  noindex, nofollow, noarchive` e `indexnow_submit` falla;
+- Stripe va solo en modo test: una clave live (`sk_live_`, `rk_live_` o `pk_live_`) falla `check --deploy`
+  (`billing.E002`) y la pasarela no la usa (503, como sin clave). Detalle en `billing/README.md`;
+- las direcciones son las de pre, por entorno (las pone `aws-next`, `stacks/prod/pre_apps.tf`): `PUBLIC_HOST`
+  (`pre.erplora.com`), `HUB_CALLBACK_TEMPLATE` (`https://{slug}.pre.erplora.com/auth/callback`),
+  `HUB_ADMIN_CALLBACK_URL` y `HUB_STATIC_BASE_URL` (`hubs.pre.erplora.com`), `HUB_INTERNAL_URL`
+  (`http://hub-pre.erplora.internal:8000`), BD `pre_saas` con los roles `pre_saas_app` y `pre_saas_migrator`,
+  y HSTS de un día.
+
+**Flujo de ramas** (CI/CD):
+
+1. Se trabaja en una rama propia; cada push corre `test / test` (`ci.yml`, que llama a `test.yml`).
+2. Si `pre` avanzó, se integra `origin/pre` en la rama y se empuja otra vez.
+3. Con el check en verde, `git push origin <rama>:pre` (fast-forward). `deploy.yml` prueba, construye la imagen
+   en `erplora/saas-pre` y despliega `saas-pre` (`ecs-deploy.sh` con `ENVIRONMENT=pre`: familias
+   `erplora-pre-saas` y `erplora-pre-saas-migrate`, sin `saas-cron`; `/erplora/pre/saas/image_tag`). Si pre
+   estaba apagado, lo enciende. Sin release.
+4. Probado, PR `pre` → `main` con «Create a merge commit»: despliega prod como siempre, con su release
+   `saas-v…`.
+5. Después, `git push origin main:pre` (fast-forward) para que `pre` no se separe de `main`.
+
+Relanzar pre: `gh workflow run deploy.yml --repo ERPlora/saas --ref pre -f environment=pre`. Volver a la revisión
+anterior: `gh workflow run rollback.yml --repo ERPlora/saas --ref pre -f environment=pre -f confirm=ROLLBACK`
+(en prod, `--ref main -f environment=prod`). Una ejecución manual tiene que nombrar el entorno de su rama, y
+las releases solo se redespliegan en prod (`.github/scripts/deploy-env.sh`). prod y pre no se esperan entre
+sí: el grupo de concurrencia es por rama.
+
+**Guarda de entorno.** `ecs-deploy.sh` y `ecs-rollback.sh` solo copian o restauran revisiones con la etiqueta
+`Environment=<entorno>` y los roles `erplora-<entorno>-*`; si no, fallan sin registrar ni cambiar nada (el rol
+de despliegue de un entorno puede registrar revisiones en cualquier familia: `ecs:RegisterTaskDefinition` no
+admite recurso). Por eso el primer despliegue de prod con esta CI exige antes el `apply` de `aws-next` que
+etiqueta las revisiones de prod (paso H1 del plan).
+
+**Variables del repo:** `AWS_REGION`, `ALB_DNS_NAME` (el mismo ALB para los dos), `AWS_DEPLOY_ROLE_ARN`
+(`gha-deploy-saas`, confía en `main`), `AWS_DEPLOY_ROLE_ARN_PRE` (`gha-deploy-saas-pre`, confía en `pre`) y,
+opcional, `BUILD_RUNNER`. Sin la variable del entorno, el despliegue falla; nunca toma la del otro.
+
 ## Arrancar en local
 
 Postgres del `compose.yaml` raíz (BD `saas`). El SaaS lee solo el entorno del proceso y

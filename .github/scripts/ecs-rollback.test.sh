@@ -30,8 +30,16 @@ setup() {
   echo "$td/erplora-prod-worker:12" > "$STATE/primary-worker"
   printf '%s\t' "$td/erplora-prod-hub:12" "$td/erplora-prod-hub:10" > "$FIXTURES/list-erplora-prod-hub"
   printf '%s\t' "$td/erplora-prod-worker:12" "$td/erplora-prod-worker:10" > "$FIXTURES/list-erplora-prod-worker"
-  # The app image of a revision: reg.example/erplora/<saas|hub>:tag-<revision>, unless listed here.
+  # pre (plan 2026-10-14-entorno-pre): service saas-pre runs erplora-pre-saas:12 in the same cluster.
+  echo "$td/erplora-pre-saas:12" > "$STATE/primary-saas-pre"
+  printf '%s\t' "$td/erplora-pre-saas-migrate:11" "$td/erplora-pre-saas:12" "$td/erplora-pre-saas:10" \
+    > "$FIXTURES/list-erplora-pre-saas"
+  # The app image of a revision: reg.example/erplora/<saas|hub>[-pre]:tag-<revision>, unless listed here.
   : > "$FIXTURES/images"
+  # The Environment tag of a revision is its family's environment unless listed here ("none" = no tag),
+  # and its roles are erplora-<environment>-<name>-{task,execution} unless another prefix is listed.
+  : > "$FIXTURES/environment-tags"
+  : > "$FIXTURES/roles"
 
   # Fails after 500 pauses: a rollout loop that never times out fails its test instead of hanging.
   cat > "$work/bin/sleep" <<'FAKE'
@@ -85,11 +93,30 @@ case "$1 $2" in
     echo
     ;;
   "ecs describe-task-definition")
+    # As `--include TAGS --output json` returns it; another container before the app's.
     arn="$(value --task-definition)"
+    family="${arn##*/}"
+    family="${family%:*}"
+    environment="${family#erplora-}"
+    environment="${environment%%-*}"
+    name="${family#erplora-"$environment"-}"
+    repository=erplora/hub
+    if [[ "$name" == saas* ]]; then repository=erplora/saas; fi
+    if [ "$environment" = pre ]; then repository="$repository-pre"; fi
     image="$(awk -v arn="$arn" '$1 == arn { print $2 }' "$FIXTURES/images")"
-    project=saas
-    if [[ "$arn" != */erplora-prod-saas:* ]]; then project=hub; fi
-    echo "${image:-reg.example/erplora/$project:tag-${arn##*:}}"
+    tag="$(awk -v arn="$arn" '$1 == arn { print $2 }' "$FIXTURES/environment-tags")"
+    role="$(awk -v arn="$arn" '$1 == arn { print $2 }' "$FIXTURES/roles")"
+    jq -n --arg name "$name" --arg image "${image:-reg.example/$repository:tag-${arn##*:}}" \
+      --arg tag "${tag:-$environment}" --arg role "arn:aws:iam::123456789012:role/${role:-$family}" '{
+      taskDefinition: {
+        taskRoleArn: "\($role)-task", executionRoleArn: "\($role)-execution",
+        containerDefinitions: [
+          {name: "log-router", image: "public.ecr.aws/aws-observability/aws-for-fluent-bit:stable"},
+          {name: $name, image: $image}]
+      },
+      tags: ([{key: "Project", value: "erplora"}]
+        + if $tag == "none" then [] else [{key: "Environment", value: $tag}] end)
+    }'
     ;;
   "ecs update-service")
     service="$(value --service)"
@@ -105,16 +132,17 @@ FAKE
   chmod +x "$work/bin/aws" "$work/bin/sleep"
 }
 
-# run_rollback [VAR=value...]: rolls back with the fake and CONFIRM=ROLLBACK; the arguments override.
+# run_rollback [VAR=value...]: rolls back prod with the fake and CONFIRM=ROLLBACK; the arguments
+# override (ENVIRONMENT=pre rolls back pre).
 run_rollback() {
   env -u CLUSTER -u POLL_SECONDS -u ROLLOUT_TIMEOUT_SECONDS \
-    PATH="$work/bin:$PATH" AWS_REGION=eu-south-2 CONFIRM=ROLLBACK "$@" \
+    PATH="$work/bin:$PATH" AWS_REGION=eu-south-2 CONFIRM=ROLLBACK ENVIRONMENT=prod "$@" \
     bash "$here/ecs-rollback.sh" > "$work/out.log" 2>&1
 }
 
 # run_rollback_without <VAR>: the same with <VAR> unset.
 run_rollback_without() {
-  env PATH="$work/bin:$PATH" AWS_REGION=eu-south-2 CONFIRM=ROLLBACK \
+  env PATH="$work/bin:$PATH" AWS_REGION=eu-south-2 CONFIRM=ROLLBACK ENVIRONMENT=prod \
     env -u "$1" bash "$here/ecs-rollback.sh" > "$work/out.log" 2>&1
 }
 
@@ -164,8 +192,10 @@ check "the rollback waits for the saas service only" \
   '[ "$(line_of "wait services-stable .*--services saas$")" -gt "$(last_line_of "update-service")" ]'
 check "after the wait, the saas PRIMARY deployment is checked" \
   '[ "$(last_line_of "describe-services .*--services saas ")" -gt "$(line_of "wait services-stable")" ]'
-check "the image tag is read from the saas container of the restored revision" \
-  'grep -q "describe-task-definition --task-definition $td/erplora-prod-saas:10 .*containerDefinitions\[?name==.saas.\]" "$CALLS_LOG"'
+check "the restored revision is read with its tags" \
+  'grep -q "describe-task-definition --task-definition $td/erplora-prod-saas:10 --include TAGS" "$CALLS_LOG"'
+check "the image tag is read from the saas container of the restored revision, not from another one" \
+  'grep -q "^ssm put-parameter .*--value tag-10 " "$CALLS_LOG" && ! grep -q "put-parameter .*--value stable" "$CALLS_LOG"'
 check "the restored tag is recorded in SSM" \
   'grep -q "^ssm put-parameter --name /erplora/prod/saas/image_tag --value tag-10 --type String --overwrite" "$CALLS_LOG"'
 check "the tag is recorded only after the services are checked" \
@@ -174,6 +204,45 @@ check "every aws call names the region" '[ -s "$CALLS_LOG" ] && ! grep -qv -- "-
 check "the worker service is neither queried nor rolled back" '! grep -Eq -- "--services? worker( |$)|erplora-prod-worker" "$CALLS_LOG"'
 check "nothing of the hub is touched" \
   '! grep -Eq -- "erplora-prod-hub|/erplora/prod/hub/|--services? hub( |$)" "$CALLS_LOG"'
+check "nothing of pre is touched" '! grep -Eq -- "erplora-pre-|/erplora/pre/|saas-pre" "$CALLS_LOG"'
+
+# --- pre (plan 2026-10-14-entorno-pre) --------------------------------------------------
+setup
+run_rollback ENVIRONMENT=pre && status=0 || status=$?
+check "pre: the rollback succeeds" '[ "$status" -eq 0 ]'
+check "pre: lists the ACTIVE revisions of pre's saas family" \
+  'grep -q "list-task-definitions --family-prefix erplora-pre-saas --status ACTIVE --sort DESC" "$CALLS_LOG"'
+check "pre: rolls back only the saas-pre service, to pre's previous revision" \
+  'grep -q "update-service .*--service saas-pre --task-definition $td/erplora-pre-saas:10 " "$CALLS_LOG" &&
+   [ "$(grep -c "update-service" "$CALLS_LOG")" -eq 1 ]'
+check "pre: waits for saas-pre and checks its PRIMARY deployment" \
+  'grep -Eq "wait services-stable .*--services saas-pre$" "$CALLS_LOG" && [ "$(reads_of saas-pre)" -ge 1 ]'
+check "pre: records the restored tag in pre's parameter" \
+  'grep -q "^ssm put-parameter --name /erplora/pre/saas/image_tag --value tag-10 --type String --overwrite" "$CALLS_LOG"'
+check "pre: a pre rollback never names prod" \
+  '! grep -Eq -- "erplora-prod-|/erplora/prod/|--services? saas( |$)" "$CALLS_LOG"'
+setup
+echo "$td/erplora-pre-saas:10 reg.example/erplora/saas:tag-10" > "$FIXTURES/images"
+run_rollback ENVIRONMENT=pre && status=0 || status=$?
+check "pre: a previous revision on prod's image fails without changing anything" \
+  '[ "$status" -ne 0 ] && ! grep -Eq "update-service|put-parameter" "$CALLS_LOG" && grep -q "::error::.*erplora/saas-pre" "$work/out.log"'
+
+# --- the guard: only revisions of the rollback's own environment are restored ---------------
+for case in "prod-tagged-pre:$td/erplora-prod-saas:10 pre:environment-tags:prod" \
+  "prod-untagged:$td/erplora-prod-saas:10 none:environment-tags:prod" \
+  "prod-with-pre-roles:$td/erplora-prod-saas:10 erplora-pre-saas:roles:prod" \
+  "pre-tagged-prod:$td/erplora-pre-saas:10 prod:environment-tags:pre"; do
+  name="${case%%:*}"
+  rest="${case#*:}"
+  environment="${rest##*:}"
+  rest="${rest%:*}"
+  setup
+  echo "${rest%:*}" > "$FIXTURES/${rest##*:}"
+  run_rollback ENVIRONMENT="$environment" && status=0 || status=$?
+  check "guard ($name): a target revision of another environment is refused without changing anything" \
+    '[ "$status" -ne 0 ] && ! grep -Eq "update-service|put-parameter" "$CALLS_LOG" &&
+     grep -q "::error::.*erplora-$environment-saas:10 is not a $environment revision" "$work/out.log"'
+done
 
 # --- nothing to roll back to ----------------------------------------------------------
 setup
@@ -269,6 +338,16 @@ setup
 run_rollback_without AWS_REGION && status=0 || status=$?
 check "without AWS_REGION it fails before any aws call" \
   '[ "$status" -ne 0 ] && [ ! -s "$CALLS_LOG" ] && grep -q AWS_REGION "$work/out.log"'
+setup
+run_rollback_without ENVIRONMENT && status=0 || status=$?
+check "without ENVIRONMENT it fails before any aws call" \
+  '[ "$status" -ne 0 ] && [ ! -s "$CALLS_LOG" ] && grep -q "::error::ENVIRONMENT.*prod.*pre" "$work/out.log"'
+for environment in staging Prod; do
+  setup
+  run_rollback ENVIRONMENT="$environment" && status=0 || status=$?
+  check "ENVIRONMENT '$environment' fails before any aws call" \
+    '[ "$status" -ne 0 ] && [ ! -s "$CALLS_LOG" ] && grep -q "::error::ENVIRONMENT.*prod.*pre" "$work/out.log"'
+done
 
 echo
 if [ "$failures" -ne 0 ]; then
