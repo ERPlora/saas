@@ -85,9 +85,23 @@ def test_the_hub_is_its_slug_or_its_uuid(hub):
 
 @pytest.mark.parametrize(
     "hub",
-    ["", "Demo", "a" * 65, "x y", "-demo", "demo.", HUB.upper(), 7, None],
+    [
+        "",
+        "Demo",
+        "a" * 64,
+        "a" * 65,
+        "x y",
+        "-demo",
+        "demo-",
+        "demo.",
+        "demo\n",
+        HUB.upper(),
+        7,
+        None,
+    ],
 )
 def test_a_hub_that_is_neither_a_slug_nor_a_uuid_is_refused(hub):
+    # A slug is the format of ``live.slugs.HUB_SLUG_RE``: no hyphen at either end, at most 63.
     with pytest.raises(pydantic.ValidationError) as refused:
         ProbeIn.model_validate(
             {
