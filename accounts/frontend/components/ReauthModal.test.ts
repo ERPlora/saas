@@ -1,7 +1,7 @@
 // «Confirm it's you» (ReauthModal): the dialog a command opens when the server wants a recent sign-in. With a
 // password, the password (allauth.headless `auth/reauthenticate`); with the authenticator, its code
 // (`auth/2fa/reauthenticate`); an account that only signs in with Google signs in with Google again (a form POST
-// to `/auth/google/login/` that comes back to this page).
+// to allauth.headless's provider redirect that comes back to this page).
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { h, ref } from 'vue';
 
@@ -101,9 +101,14 @@ describe('ReauthModal', () => {
     s.q('reauth-modal-submit')?.click();
     await flush();
     const form = s.q('reauth-google') as unknown as HTMLFormElement;
-    expect(form.getAttribute('action')).toBe('/auth/google/login/');
+    expect(form.getAttribute('action')).toBe('/_allauth/browser/v1/auth/provider/redirect');
     expect(form.getAttribute('method')).toBe('post');
-    expect(Object.fromEntries(new FormData(form).entries())).toEqual({ csrfmiddlewaretoken: 'tok123', next: '/account/api-keys' });
+    expect(Object.fromEntries(new FormData(form).entries())).toEqual({
+      provider: 'google',
+      process: 'login',
+      callback_url: '/account/api-keys',
+      csrfmiddlewaretoken: 'tok123',
+    });
     expect(submit).toHaveBeenCalledTimes(1);
   });
 

@@ -11,14 +11,14 @@ import { fileURLToPath } from 'node:url';
 
 import type { Page, Request } from '@playwright/test';
 
-import { businessIdOf, djangoPrint, expect, panelAccount, signIn, test, watchPageErrors } from './fixtures';
+import { businessIdOf, djangoPrint, expect, panelAccount, qaAccount, signIn, test, watchPageErrors } from './fixtures';
 import { HUB_DOUBLE_PORT } from './project';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const SHOTS_DIR = process.env.SHOTS_DIR ?? '/tmp/l3b2-shots';
 mkdirSync(SHOTS_DIR, { recursive: true });
 
-const BILLING = panelAccount('billing');
+const BILLING = qaAccount('BILLING', panelAccount('billing'));
 /** The widths of the mockups' screenshots (`billing-default-<width>-<theme>.png`). */
 const WIDTHS = [390, 834, 1024, 1180, 1280, 1440] as const;
 

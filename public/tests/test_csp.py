@@ -26,8 +26,9 @@ HOST = "localhost:8001"
 # have no namespace of their own (`cookie_consent_status` answers JSON, no template involved).
 PUBLIC_PATHS = ("/robots.txt", "/llms.txt", "/sitemap.xml", "/cookies/status/")
 CONTROL_PATH = "/robots.txt"
-# Not the public web: allauth's template login and the SPA keep the global policy.
-GLOBAL_PATHS = ("/accounts/login/", "/login")
+# Not the public web: the admin's login (a Django template) and the SPA's sign-in keep the global
+# policy.
+GLOBAL_PATHS = ("/admin/login/", "/launch")
 # First segments the public web owns but whose pages do not exist (yet or ever): a real 404.
 NONEXISTENT_PATHS = ("/company/contact/", "/pricing/does-not-exist/", "/developers/")
 

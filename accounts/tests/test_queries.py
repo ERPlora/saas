@@ -241,6 +241,32 @@ class TestEmailIsProven:
         assert queries.email_is_proven(ana, "ana@example.com") is True
 
 
+class TestEmailHasAccount:
+    """``email_has_account``: whether the unified login signs in (an account holds the address) or signs up
+    (``accounts.unified_login``). The account's own email and any address on record count, whatever the case."""
+
+    def test_the_accounts_email_has_an_account(self, ana):
+        assert queries.email_has_account("ana@example.com") is True
+
+    def test_whatever_its_case(self, ana):
+        assert queries.email_has_account("Ana@Example.COM") is True
+
+    def test_an_address_on_record_has_an_account(self, ana):
+        from allauth.account.models import EmailAddress
+
+        EmailAddress.objects.create(user=ana, email="ana.old@example.com", verified=False, primary=False)
+
+        assert queries.email_has_account("ANA.OLD@example.com") is True
+
+    def test_an_invited_account_without_a_password_has_an_account(self):
+        get_user_model().objects.create_user(email="invited@example.com", password=None)
+
+        assert queries.email_has_account("invited@example.com") is True
+
+    def test_an_unknown_email_has_none(self, ana):
+        assert queries.email_has_account("new@example.com") is False
+
+
 class TestHasNoWayIn:
     """``has_no_way_in``: no usable password and no linked Google: the person must claim the account first
     (the invitation's mail then says how)."""

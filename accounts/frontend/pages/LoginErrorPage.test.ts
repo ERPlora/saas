@@ -1,9 +1,10 @@
 // `/login/error?code=…`: the one page of every refused sign-in or jump to a hub, ported from the
 // templates `accounts/hub_link_invalid.html` (invalid_hub), `accounts/hub_access_denied.html`
-// (not_a_member), `accounts/google_no_account.html` (google_no_account) and allauth's
-// `socialaccount/authentication_error.html` and `login_cancelled.html`. Same texts, in the auth
-// frame of the sign-in, with the way back: to the sign-in (keeping `next`), or to the launcher
-// when there is a session.
+// (not_a_member) and allauth's `socialaccount/authentication_error.html` and `login_cancelled.html`,
+// and the refused «connect» of Google (google_link_refused: the message the adapter used to leave).
+// Same texts, in the auth frame of the sign-in, with the way back: to the sign-in (keeping `next`),
+// or to the launcher when there is a session. `google_no_account` is gone: an unknown Google
+// address now creates its account, as an unknown address on the sign-in does.
 import { IonButton } from '@ionic/vue';
 import { describe, expect, it } from 'vitest';
 
@@ -34,7 +35,7 @@ describe('LoginErrorPage: the texts of each template', () => {
     expect(page.message()).toBe(
       'The address it wanted to return to is not an ERPlora hub, so we stopped here. Open your hub and start the sign-in from its own screen.',
     );
-    expect(page.primary()).toEqual(['Home', '/login']);
+    expect(page.primary()).toEqual(['Home', '/launch']);
     expect(page.links).toEqual([['Contact Support', 'mailto:info@erplora.com']]);
     expect(document.title).toBe('Invalid sign-in link - ERPlora Cloud');
   });
@@ -72,25 +73,13 @@ describe('LoginErrorPage: the texts of each template', () => {
     expect(page.wrapper.text()).not.toContain('.localhost');
   });
 
-  it('google_no_account: names the Google address and offers another account, keeping next', async () => {
-    const page = await mountError('code=google_no_account&email=stranger%40gmail.com&next=%2Flaunch');
-    expect(page.badge().exists()).toBe(false);
-    expect(page.heading()).toBe('No ERPlora account for this Google account');
-    expect(page.message()).toBe(
-      'stranger@gmail.com has no ERPlora account. Ask whoever manages your business to invite you, or sign in with the account that has access.',
-    );
-    expect(page.primary()).toEqual(['Use another account', '/login?next=%2Flaunch']);
-    expect(page.links).toEqual([]);
-    expect(document.title).toBe('No ERPlora account for this Google account - ERPlora Cloud');
-  });
-
   it('authentication_error: Google failed; back to the sign-in', async () => {
     const page = await mountError('code=authentication_error');
     expect(page.heading()).toBe('We could not sign you in with Google');
     expect(page.message()).toBe(
       'Something went wrong while signing in with Google. Try again, or sign in with your email and password.',
     );
-    expect(page.primary()).toEqual(['Back to sign in', '/login']);
+    expect(page.primary()).toEqual(['Back to sign in', '/launch']);
   });
 
   it('login_cancelled: the Google sign-in was cancelled; back to the sign-in', async () => {
@@ -99,15 +88,26 @@ describe('LoginErrorPage: the texts of each template', () => {
     expect(page.message()).toBe(
       'You cancelled signing in with Google. Try again, or sign in with your email and password.',
     );
-    expect(page.primary()).toEqual(['Back to sign in', '/login']);
+    expect(page.primary()).toEqual(['Back to sign in', '/launch']);
     expect(document.title).toBe('Sign-in cancelled - ERPlora Cloud');
   });
 
-  it.each(['', 'code=', 'code=nope', 'code=google_no_account'])(
-    'a code it does not know (or without what it needs) is a failed Google sign-in (%s)',
+  it('google_link_refused: Google is linked by signing in with it; back home (the launcher, signed in)', async () => {
+    const page = await mountError('code=google_link_refused&next=%2Faccount%2Fsecurity', { session: SIGNED_IN });
+    expect(page.badge().exists()).toBe(false);
+    expect(page.heading()).toBe('Google was not linked');
+    expect(page.message()).toBe('Google can only be linked by signing in with the Google account of your email.');
+    expect(page.primary()).toEqual(['Home', '/launch']);
+    expect(page.links).toEqual([]);
+    expect(document.title).toBe('Google was not linked - ERPlora Cloud');
+  });
+
+  it.each(['', 'code=', 'code=nope', 'code=google_no_account&email=stranger%40gmail.com'])(
+    'a code it does not know (or without what it needs) is a failed Google sign-in, echoing nothing (%s)',
     async (query) => {
       const page = await mountError(query);
       expect(page.heading()).toBe('We could not sign you in with Google');
+      expect(page.wrapper.text()).not.toContain('stranger');
     },
   );
 });
@@ -122,24 +122,25 @@ describe('LoginErrorPage: the way back', () => {
     'never carries a next that leaves the site (%s)',
     async (next) => {
       const page = await mountError(`code=login_cancelled&next=${encodeURIComponent(next)}`);
-      expect(page.primary()).toEqual(['Back to sign in', '/login']);
+      expect(page.primary()).toEqual(['Back to sign in', '/launch']);
     },
   );
 
   it('keeps the jump to a hub as next (the sign-in goes on to it)', async () => {
     const next = '/hub-login/?hub=a&next=/sales/';
     const page = await mountError(`code=authentication_error&next=${encodeURIComponent(next)}`);
-    expect(page.primary()).toEqual(['Back to sign in', `/login?next=${encodeURIComponent(next)}`]);
-  });
-
-  it('prints the address as text, never as markup', async () => {
-    const page = await mountError(`code=google_no_account&email=${encodeURIComponent('<b>x</b>@example.com')}`);
-    expect(page.message()).toContain('<b>x</b>@example.com has no ERPlora account.');
-    expect(page.wrapper.find('p.auth-lead b').exists()).toBe(false);
+    expect(page.primary()).toEqual(['Back to sign in', `/launch?next=${encodeURIComponent(next)}`]);
   });
 });
 
 describe('LoginErrorPage: in Spanish, with the translations of the templates', () => {
+  it('google_link_refused', async () => {
+    const page = await mountError('code=google_link_refused', { session: SIGNED_IN, locale: 'es' });
+    expect(page.heading()).toBe('Google no se ha vinculado');
+    expect(page.message()).toBe('Google solo se vincula entrando con la cuenta de Google de tu correo.');
+    expect(page.primary()).toEqual(['Inicio', '/launch']);
+  });
+
   it('not_a_member', async () => {
     const page = await mountError('code=not_a_member&hub=a', { locale: 'es' });
     expect(page.badge().text()).toBe('403 · Sin acceso');
@@ -147,16 +148,7 @@ describe('LoginErrorPage: in Spanish, with the translations of the templates', (
     expect(page.message()).toBe(
       'Esta cuenta no es miembro de a.localhost:8000. Pide a quien gestiona ese hub que te invite, o entra con la cuenta que sí tiene acceso.',
     );
-    expect(page.primary()).toEqual(['Inicio', '/login']);
+    expect(page.primary()).toEqual(['Inicio', '/launch']);
     expect(page.links.map(([text]) => text)).toEqual(['Volver al hub', 'Contactar Soporte']);
-  });
-
-  it('google_no_account', async () => {
-    const page = await mountError('code=google_no_account&email=ana%40gmail.com', { locale: 'es' });
-    expect(page.heading()).toBe('No hay ninguna cuenta de ERPlora para esta cuenta de Google');
-    expect(page.message()).toBe(
-      'ana@gmail.com no tiene cuenta de ERPlora. Pide a quien gestiona tu negocio que te invite, o entra con la cuenta que sí tiene acceso.',
-    );
-    expect(page.primary()[0]).toBe('Usar otra cuenta');
   });
 });

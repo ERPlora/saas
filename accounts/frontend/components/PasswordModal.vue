@@ -14,6 +14,7 @@ import { useI18n } from 'vue-i18n';
 
 import { useErrorText } from '../error-text';
 import { passwordStrength } from '../password';
+import { LAUNCHER } from '../paths';
 import { reauthRequestOf, useReauthentication } from '../reauth';
 import ReauthModal from './ReauthModal.vue';
 
@@ -29,7 +30,6 @@ const props = withDefaults(
 
 const open = defineModel<boolean>('open', { default: false });
 
-const SIGN_IN = '/login';
 const NON_FIELD = '__all__';
 /** allauth's codes for a current password that is not the account's. */
 const WRONG_CURRENT = new Set(['enter_current_password', 'incorrect_password']);
@@ -66,7 +66,7 @@ async function submit(): Promise<void> {
     const state = await reauth.guard(() => auth.changePassword({ current_password: current.value, new_password: next.value }));
     if (!state) return;
     if (!state.authenticated) {
-      props.leave(SIGN_IN);
+      props.leave(LAUNCHER);
       return;
     }
     void toastSuccess(t('accounts.account.password.changed'));

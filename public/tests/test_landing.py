@@ -175,7 +175,7 @@ def test_the_hero_keeps_two_doors_sign_up_and_downloads(client):
     """Asserted on the HERO alone: downloads also live in the footer."""
     hero = html_of(client).split("</section>")[0]
 
-    assert reverse("account_login") in hero
+    assert 'href="/launch"' in hero
     assert reverse("public:downloads") in hero
 
 
@@ -190,7 +190,17 @@ def test_no_demo_anywhere_on_the_home_or_the_contact_page(client):
 def test_the_closing_band_offers_to_start_free(client):
     closing = html_of(client).split("Start today")[-1]
 
-    assert reverse("account_login") in closing
+    assert 'href="/launch"' in closing
+
+
+def test_a_plan_card_of_the_home_starts_at_the_sign_in(client):
+    """The SPA's sign-in, which also signs up: no door of the home leads to allauth's old pages."""
+    make_plan("starter")
+
+    html = html_of(client)
+
+    assert 'href="/launch"' in section(html, "planes")
+    assert "/accounts/login/" not in html
 
 
 # --- The apps blocks (antes _modules.html, _build_to_fit.html) --------------------------------

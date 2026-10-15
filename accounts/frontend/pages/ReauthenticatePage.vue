@@ -18,12 +18,12 @@ import { useRoute, useRouter } from 'vue-router';
 import AuthShell from '../components/AuthShell.vue';
 import CodeField from '../components/CodeField.vue';
 import { localNext } from '../next';
+import { LAUNCHER } from '../paths';
 
 type Method = 'password' | 'totp';
 
 /** The 2FA settings: where a reauthentication usually comes from, and the foot's way back. */
 const SETTINGS = '/2fa';
-const LOGIN = '/login';
 /** allauth's flows that confirm a recent login: the password, the authenticator (or a recovery code). */
 const PASSWORD_FLOW = 'reauthenticate';
 const CODE_FLOW = 'mfa_reauthenticate';
@@ -87,7 +87,7 @@ async function submit(): Promise<void> {
   } catch (error) {
     if (error instanceof ApiError && error.code === 'not_authenticated') {
       // The session ended meanwhile: sign in again and come back here.
-      await router.replace({ path: LOGIN, query: { next: route.fullPath } });
+      await router.replace({ path: LAUNCHER, query: { next: route.fullPath } });
     } else if (error instanceof ApiError && error.fields) {
       fields.value = error.fields;
       failure.value = error.fields[NON_FIELD] ?? '';

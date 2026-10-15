@@ -51,14 +51,6 @@
       "pageTitle": "Entrar",
       "loadError": "No hemos podido cargar tus negocios.",
       "mfaUnavailable": "La verificación en dos pasos aún no está disponible en esta cuenta.",
-      "signedOut": {
-        "title": "Entra en ERPlora",
-        "lead": "Entra con tu cuenta de ERPlora.",
-        "leadApp": "La app usa tu cuenta de erplora.com.",
-        "body": "Entra con tu correo o con Google. Al terminar vuelves aquí y eliges tu negocio.",
-        "signIn": "Iniciar sesión",
-        "signUp": "Crear una cuenta gratis"
-      },
       "first": {
         "title": "Crea tu negocio",
         "lead": "Gratis y sin tarjeta: solo el nombre y el país.",

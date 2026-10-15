@@ -16,3 +16,6 @@ docs
 !docs/es/help/**
 db.sqlite3
 **/.terraform
+# Local development mail (EMAIL_FILE_PATH) and the e2e runs' traces and screenshots.
+.mail/
+tests/e2e/.artifacts/

@@ -6,9 +6,9 @@ environment alone:
 
 - ``MFAAdapter``: with the flag off no account «has» a second factor, so allauth's login stage never
   asks for a code, not even an account that kept a TOTP row from a time the flag was on.
-- ``MFAFlagMiddleware``: with the flag off the 2FA endpoints do not exist. The headless ones answer
-  ``404`` with allauth's JSON body ``{"status": 404}`` (the Vue pages read it as «2FA is off»), the
-  template pages under ``/accounts/2fa/`` Django's 404.
+- ``MFAFlagMiddleware``: with the flag off the 2FA endpoints do not exist: they answer ``404`` with
+  allauth's JSON body ``{"status": 404}`` (the Vue pages read it as «2FA is off»). allauth runs headless
+  only, so it has no 2FA template page.
 - ``mfa_completed``: whether this session passed the second factor. The jump to a hub asks it
   (``services.issue_code``), only with the flag on.
 """
@@ -19,15 +19,13 @@ from allauth.account.authentication import get_authentication_records
 from allauth.mfa.adapter import DefaultMFAAdapter
 from asgiref.sync import iscoroutinefunction, markcoroutinefunction
 from django.conf import settings
-from django.http import Http404, HttpRequest, JsonResponse
+from django.http import HttpRequest, JsonResponse
 from django.http.response import HttpResponseBase
 
 from accounts import queries
 
 #: allauth's headless 2FA endpoints, of any client: managing the authenticators and giving a code.
 HEADLESS_2FA = re.compile(r"^/_allauth/[^/]+/v1/(account/authenticators|auth/2fa)(/|$)")
-#: allauth's template pages of 2FA (``allauth.urls`` mounts ``allauth.mfa.urls`` at ``2fa/``).
-TEMPLATE_2FA_PREFIX = "/accounts/2fa/"
 
 
 class MFAAdapter(DefaultMFAAdapter):
@@ -40,14 +38,9 @@ class MFAAdapter(DefaultMFAAdapter):
 
 def _refusal(request: HttpRequest) -> HttpResponseBase | None:
     """The 404 of a 2FA endpoint while the flag is off, or ``None`` to let the request through."""
-    if settings.ACCOUNTS_MFA_ENABLED:
+    if settings.ACCOUNTS_MFA_ENABLED or not HEADLESS_2FA.match(request.path_info):
         return None
-    path = request.path_info
-    if HEADLESS_2FA.match(path):
-        return JsonResponse({"status": 404}, status=404)
-    if path.startswith(TEMPLATE_2FA_PREFIX):
-        raise Http404("Two-factor authentication is off.")
-    return None
+    return JsonResponse({"status": 404}, status=404)
 
 
 class MFAFlagMiddleware:
@@ -81,11 +74,11 @@ def mfa_completed(request: HttpRequest) -> bool:
     1. the signed-in account has an authenticator app (``queries.has_totp``), and
     2. this session's authentication records (allauth's ``account_authentication_methods``) hold an
        entry ``method == "mfa"`` for one of that account's authenticators: a code of the app or a
-       recovery code, given at the login stage (``/_allauth/browser/v1/auth/2fa/authenticate``, or
-       the template ``/accounts/2fa/authenticate/``) or afterwards by reauthenticating
-       (``…/auth/2fa/reauthenticate``).
+       recovery code, given at the login stage (``/_allauth/browser/v1/auth/2fa/authenticate``) or
+       afterwards by reauthenticating (``…/auth/2fa/reauthenticate``).
 
-    The password, Google or Django's own ``/admin/login/`` record no ``mfa`` entry. The records live
+    The password, the code mailed at sign-in, Google or Django's own login (``force_login``) record no
+    ``mfa`` entry. The records live
     in the session: signing out, or signing in as another account, flushes them.
     """
     user = request.user

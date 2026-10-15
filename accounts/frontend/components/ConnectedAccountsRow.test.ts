@@ -1,7 +1,8 @@
 // The «Google» row of Account → Security, «Sign-in» (mockups `account.html` «security»; U-63): the Google account the
-// person can sign in with (allauth.headless `account/providers`) and «Disconnect», confirmed; or «Connect», the
-// provider's handshake as a form post (`process=connect`) that comes back here. Google being the only way in (no
-// password) keeps «Disconnect» off and says why. Without Google on the server and nothing linked, no row.
+// person can sign in with (allauth.headless `account/providers`) and «Disconnect», confirmed; unlinked, how it gets
+// linked (signing in with the Google of the account's email: the server refuses allauth's `process=connect`), with no
+// button. Google being the only way in (no password) keeps «Disconnect» off and says why. Without Google on the server
+// and nothing linked, no row.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@ionic/vue', async (importOriginal) => ({
@@ -92,23 +93,21 @@ describe('ConnectedAccountsRow', () => {
     expect(toastSuccess).toHaveBeenCalledWith('Google disconnected');
   });
 
-  it('connects Google with the provider’s handshake, back to Security', async () => {
-    document.cookie = 'csrftoken=tok123';
-    const submit = vi.spyOn(HTMLFormElement.prototype, 'submit').mockImplementation(() => undefined);
+  it('unlinked, says how Google gets linked, with no «Connect» the server would refuse', async () => {
     const s = await setup({ 'GET /account/providers': ok([]) });
-    expect(s.q('google-row')?.textContent).toContain('Sign in with your Google account too.');
-    s.q('google-connect')?.click();
+    const row = s.q('google-row');
+    expect(row?.textContent).toContain('Sign in with your Google account too.');
+    expect(s.q('google-how-to-link')?.textContent).toBe('To link it, sign in once with the Google account of your email.');
+    expect(s.q('google-connect')).toBeNull();
+    expect(s.q('google-disconnect')).toBeNull();
+    expect(row?.querySelector('ion-button, form')).toBeNull();
+  });
+
+  it('says it in Spanish', async () => {
+    fakeAllauth({ 'GET /account/providers': ok([]) });
+    const s = await mountPanel(ConnectedAccountsRow, { props: { hasPassword: true }, locale: 'es' });
     await flush();
-    const form = s.q('google-connect-form') as unknown as HTMLFormElement;
-    expect(form.getAttribute('action')).toBe('/_allauth/browser/v1/auth/provider/redirect');
-    expect(form.getAttribute('method')).toBe('post');
-    expect(Object.fromEntries(new FormData(form).entries())).toEqual({
-      provider: 'google',
-      callback_url: '/account/security',
-      process: 'connect',
-      csrfmiddlewaretoken: 'tok123',
-    });
-    expect(submit).toHaveBeenCalledTimes(1);
+    expect(s.q('google-how-to-link')?.textContent).toBe('Para vincularla, entra una vez con la cuenta de Google de tu correo.');
   });
 
   it('is not painted without Google on the server and nothing linked', async () => {

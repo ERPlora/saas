@@ -10,9 +10,16 @@
 ``a`` and ``b`` already run in the local Hub: they become businesses of the SaaS adopted as they are
 (``hubs.services.seed_demo_business``: active, ready, nothing owed to the Hub), and the jump's access is
 their mirror (``sync_access``). In ``hubs`` since L1-A2: it seeds businesses, which ``accounts`` does not
-know. Development only: known passwords, so it refuses to run without ``DEBUG``. Running it again changes
-nothing.
+know. Their addresses come proven, so they never owe the code a new account is mailed, only the sign-in code
+every password sign-in mails. Development only: known passwords, so it refuses to run without ``DEBUG``.
+Running it again changes nothing (an account seeded before the code existed gets its address proven).
+
+They are the QA users of the root ``.env`` (README «Usuarios QA»): ``QA_OWNER_*``, ``QA_EMPLOYEE_*`` and
+``QA_PLATFORM_*`` name them when exported, read on every run; the values above are their defaults, the same
+the ``.env`` lists, so both agree by construction.
 """
+
+import os
 
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
@@ -30,6 +37,11 @@ PLATFORM_EMAIL = "platform@example.com"
 PLATFORM_PASSWORD = "platform"
 
 
+def qa_user(role: str, email: str, password: str) -> tuple[str, str]:
+    """``QA_<ROLE>_EMAIL`` and ``QA_<ROLE>_PASSWORD`` of the environment, else ``email`` and ``password``."""
+    return os.environ.get(f"QA_{role}_EMAIL", email), os.environ.get(f"QA_{role}_PASSWORD", password)
+
+
 class Command(BaseCommand):
     help = (
         "Create owner@example.com (password owner), owner of the local hubs a and b, "
@@ -40,21 +52,22 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         if not settings.DEBUG:
             raise CommandError("demo_seed only runs with DEBUG=True")
-        owner = account_services.seed_demo_customer(OWNER_EMAIL, OWNER_PASSWORD)
-        employee = account_services.seed_demo_customer(
-            EMPLOYEE_EMAIL, EMPLOYEE_PASSWORD
-        )
+        owner_email, owner_password = qa_user("OWNER", OWNER_EMAIL, OWNER_PASSWORD)
+        employee_email, employee_password = qa_user("EMPLOYEE", EMPLOYEE_EMAIL, EMPLOYEE_PASSWORD)
+        platform_email, platform_password = qa_user("PLATFORM", PLATFORM_EMAIL, PLATFORM_PASSWORD)
+        owner = account_services.seed_demo_customer(owner_email, owner_password)
+        employee = account_services.seed_demo_customer(employee_email, employee_password)
         for slug in HUB_SLUGS:
             services.seed_demo_business(
                 slug, {owner: HubMember.Role.OWNER, employee: HubMember.Role.EMPLOYEE}
             )
-        account_services.seed_demo_platform_admin(PLATFORM_EMAIL, PLATFORM_PASSWORD)
+        account_services.seed_demo_platform_admin(platform_email, platform_password)
         self.stdout.write(
-            f"{OWNER_EMAIL} / {OWNER_PASSWORD}: owner of {', '.join(HUB_SLUGS)} (customer, no admin)"
+            f"{owner_email} / {owner_password}: owner of {', '.join(HUB_SLUGS)} (customer, no admin)"
         )
         self.stdout.write(
-            f"{EMPLOYEE_EMAIL} / {EMPLOYEE_PASSWORD}: employee of {', '.join(HUB_SLUGS)} (customer, no admin)"
+            f"{employee_email} / {employee_password}: employee of {', '.join(HUB_SLUGS)} (customer, no admin)"
         )
         self.stdout.write(
-            f"{PLATFORM_EMAIL} / {PLATFORM_PASSWORD}: platform administrator (admin, no hub)"
+            f"{platform_email} / {platform_password}: platform administrator (admin, no hub)"
         )

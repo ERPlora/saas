@@ -31,6 +31,8 @@ export const CONFIG = {
 
 export interface MountOptions {
   path?: string;
+  /** The history state the page arrives with (`router.push({ state })`), e.g. the address a sign-up typed. */
+  state?: Record<string, string>;
   locale?: 'en' | 'es';
   session?: SessionMe;
   config?: Record<string, unknown>;
@@ -45,7 +47,10 @@ export async function mountAccountPage(component: Component, options: MountOptio
     history: createMemoryHistory(),
     routes: [{ path: '/:path(.*)*', component: { template: '<div />' } }],
   });
-  await router.push(options.path ?? '/');
+  const path = options.path ?? '/';
+  // The string as given (a location object would re-encode its query); the object only to carry a state.
+  const target = router.resolve(path);
+  await router.push(options.state ? { path: target.path, query: target.query, hash: target.hash, state: options.state } : path);
   await router.isReady();
   const app = createApp({});
   provideSession(ref(options.session ?? ANONYMOUS), ref('live'), { app });
@@ -61,4 +66,12 @@ export async function mountAccountPage(component: Component, options: MountOptio
   });
   await flushPromises();
   return { wrapper, call, router };
+}
+
+/** What IonRouterOutlet does each time the page comes on screen (also when Ionic reuses it). */
+export function enterView(wrapper: { vm: unknown }): void {
+  // Ionic keeps the hooks under `onIonViewWillEnter`, on the instance's exposed object (`<script setup>`).
+  type Hooks = { onIonViewWillEnter?: Array<() => void> };
+  const instance = (wrapper.vm as { $: { exposed: Hooks | null; proxy: Hooks } }).$;
+  for (const hook of instance.exposed?.onIonViewWillEnter ?? instance.proxy.onIonViewWillEnter ?? []) hook();
 }

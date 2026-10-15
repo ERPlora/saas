@@ -22,13 +22,17 @@ const DJANGO_PO = join(HERE, '..', '..', '..', 'locale', 'es', 'LC_MESSAGES', 'd
 /** Keys of texts that no template had (a page that talks to the API can fail to reach it). */
 const NEW_IN_THE_VUE_PAGES = new Set([
   'accounts.login.failed',
-  'accounts.launch.loadError',
+  // allauth answers a 429 without a message (the sign-up's limit, «Send a new code», the reset link).
+  'accounts.login.tooManyAttempts',
   'accounts.launch.retry',
-  'accounts.launch.mfaUnavailable',
   'accounts.twoFactor.loadError',
   // allauth's own alternatives («Use your password», «Use authenticator app or code»), worded as ours.
   'accounts.reauthenticate.useAuthenticator',
   'accounts.reauthenticate.usePassword',
+  // The refused «connect» of Google had only a Django message (its msgid is the page's message), no heading.
+  'accounts.loginError.googleLinkRefused.heading',
+  // The code mailed at every password sign-in (2026-10-15) is new: its expiry sends the visitor back here.
+  'accounts.login.codeExpired',
 ]);
 
 /**
@@ -37,6 +41,15 @@ const NEW_IN_THE_VUE_PAGES = new Set([
  * first letter capitalised as the page needs (django.po writes «claves de API» for the middle of a sentence).
  */
 const ACCOUNT_PAGE = 'accounts.account.';
+
+/**
+ * Pages whose templates ERPlora/saas had and saas-next never ported (the sign-up's code,
+ * `account/confirm_email_verification_code.html`; the password reset, `account/password_reset*.html`):
+ * their texts keep those templates' msgids, translated as ERPlora/saas's django.po did, and are new to
+ * saas-next's django.po. One that it does have is translated as it translates it, as on the Account page.
+ */
+const UNPORTED_TEMPLATE_PAGES = ['accounts.verifyEmail.', 'accounts.passwordReset.'];
+const newPage = (key: string) => key.startsWith(ACCOUNT_PAGE) || UNPORTED_TEMPLATE_PAGES.some((page) => key.startsWith(page));
 
 /** vue-i18n's separator of plural forms (`singular | plural`). */
 const PLURAL = ' | ';
@@ -122,16 +135,17 @@ describe('accounts catalogues (en source + es)', () => {
   it("keep the template's exact msgids, translated as django.po translates them", () => {
     expect(PO.size).toBeGreaterThan(0);
     for (const [key, message] of EN) {
-      if (NEW_IN_THE_VUE_PAGES.has(key) || key.startsWith(ACCOUNT_PAGE)) continue;
+      if (NEW_IN_THE_VUE_PAGES.has(key) || newPage(key)) continue;
       const msgid = asGettext(message);
       expect(PO.has(msgid), `${key}: "${msgid}" is not a msgid of django.po`).toBe(true);
       expect(asGettext(ES.get(key)!), key).toBe(PO.get(msgid));
     }
   });
 
-  it('translate an Account page text that django.po already has as django.po does', () => {
-    const page = [...EN].filter(([key]) => key.startsWith(ACCOUNT_PAGE));
+  it('translate a new page text that django.po already has as django.po does', () => {
+    const page = [...EN].filter(([key]) => newPage(key));
     expect(page.length).toBeGreaterThan(0);
+    for (const prefix of UNPORTED_TEMPLATE_PAGES) expect(page.some(([key]) => key.startsWith(prefix)), prefix).toBe(true);
     for (const [key, message] of page) {
       const msgid = asGettext(message);
       const capital = (message: string) => message.charAt(0).toLocaleUpperCase('es') + message.slice(1);

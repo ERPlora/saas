@@ -12,14 +12,18 @@ from django.http import HttpRequest
 
 from public.crawlers import is_private
 
-#: Pages that show passwords or one-time codes: allauth's template pages and headless API, and the
-#: sign-in pages of the SPA (``accounts/frontend/routes.ts`` and the pages allauth's mails link).
-CREDENTIALS_PREFIXES = ("/accounts/", "/_allauth/")
+#: Pages that carry passwords, one-time codes or keys: allauth's headless API and the SPA's sign-in
+#: pages (``accounts/frontend/routes.ts``), each with the pages under it: ``/launch`` (the sign-in of the
+#: entrance), ``/login`` (only a redirect to it now, and ``/login/error``), ``/password/reset`` (and its
+#: mailed key page), ``/2fa`` (the settings, with the secret and recovery codes, and
+#: ``/2fa/authenticate``). ``/accounts/`` only redirects since ``HEADLESS_ONLY`` and the sign-in also
+#: signs up, so neither it nor a ``/signup`` is here.
+CREDENTIALS_PREFIXES = ("/_allauth/",)
 CREDENTIALS_SPA_PAGES = (
+    "/launch",
     "/login",
-    "/signup",
-    "/password",
     "/verify-email",
+    "/password/reset",
     "/2fa",
     "/reauthenticate",
 )

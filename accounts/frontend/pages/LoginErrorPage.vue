@@ -4,11 +4,13 @@
 // says what the template of each case said, with their msgids (`../locale`):
 //   - invalid_hub          → `accounts/hub_link_invalid.html` (nothing that came in is echoed);
 //   - not_a_member + hub   → `accounts/hub_access_denied.html` (the hub's HOST, never its business);
-//   - google_no_account + email → `accounts/google_no_account.html`;
 //   - authentication_error → allauth's `socialaccount/authentication_error.html`;
-//   - login_cancelled      → allauth's `socialaccount/login_cancelled.html`.
+//   - login_cancelled      → allauth's `socialaccount/login_cancelled.html`;
+//   - google_link_refused  → the refused «connect» of Google (`SocialAccountAdapter.pre_social_login`): Google is
+//                            linked by signing in with it, the message the adapter used to leave on the launcher.
 // The way back is the sign-in (keeping `next`), or the launcher when there is a session. A code it
-// does not know, or without what its text needs, is a failed Google sign-in.
+// does not know, or without what its text needs, is a failed Google sign-in (so is the old
+// `google_no_account`: an unknown Google address now creates its account).
 import { useLiveClient } from '@erplora/ui/sdk';
 import { useSession } from '@erplora/ui/shell';
 import { IonButton } from '@ionic/vue';
@@ -18,15 +20,16 @@ import { useRoute } from 'vue-router';
 
 import AuthShell from '../components/AuthShell.vue';
 import { localNext } from '../next';
+import { LAUNCHER } from '../paths';
 
-type Code = 'invalid_hub' | 'not_a_member' | 'google_no_account' | 'authentication_error' | 'login_cancelled';
+type Code = 'invalid_hub' | 'not_a_member' | 'authentication_error' | 'login_cancelled' | 'google_link_refused';
 
 interface Copy {
   /** Catalogue keys under `accounts.loginError.<copy>`; `title` and `badge` only where the template had them. */
   copy: string;
   title?: boolean;
   badge?: boolean;
-  action: 'home' | 'backToSignIn' | 'useAnotherAccount';
+  action: 'home' | 'backToSignIn';
   /** The hub pages' links: support, and back to the hub the person came from (not_a_member). */
   links?: boolean;
 }
@@ -34,10 +37,12 @@ interface Copy {
 const COPY: Record<Code, Copy> = {
   invalid_hub: { copy: 'invalidHub', title: true, badge: true, action: 'home', links: true },
   not_a_member: { copy: 'notAMember', title: true, badge: true, action: 'home', links: true },
-  google_no_account: { copy: 'googleNoAccount', action: 'useAnotherAccount' },
   authentication_error: { copy: 'authenticationError', action: 'backToSignIn' },
   login_cancelled: { copy: 'loginCancelled', action: 'backToSignIn' },
+  google_link_refused: { copy: 'googleLinkRefused', action: 'home' },
 };
+/** The codes that need nothing else in the URL to be told. */
+const PLAIN_CODES: readonly Code[] = ['invalid_hub', 'login_cancelled', 'google_link_refused'];
 
 /**
  * First label of a hub's host: one DNS label, the format of `live.slugs.HUB_SLUG_RE` (shared by
@@ -45,8 +50,6 @@ const COPY: Record<Code, Copy> = {
  * the reserved names are refused by Django, which never sends them here.
  */
 const HUB_SLUG = /^[a-z0-9]([a-z0-9-]{1,61}[a-z0-9])?$/;
-const LAUNCHER = '/launch';
-const LOGIN = '/login';
 const SUPPORT = 'mailto:info@erplora.com';
 
 const { t } = useI18n();
@@ -65,29 +68,22 @@ const hubOrigin = computed(() => {
   const pattern = client.config.hubOrigin;
   return slug && pattern && HUB_SLUG.test(slug) ? pattern.replace('{slug}', slug) : undefined;
 });
-const email = computed(() => param('email'));
 
 const code = computed<Code>(() => {
   const asked = param('code');
   if (asked === 'not_a_member') return hubOrigin.value ? 'not_a_member' : 'invalid_hub';
-  if (asked === 'google_no_account') return email.value ? 'google_no_account' : 'authentication_error';
-  return asked === 'invalid_hub' || asked === 'login_cancelled' ? asked : 'authentication_error';
+  return PLAIN_CODES.find((plain) => plain === asked) ?? 'authentication_error';
 });
 const copy = computed(() => COPY[code.value]);
 const key = (name: string) => `accounts.loginError.${copy.value.copy}.${name}`;
 
-const message = computed(() =>
-  t(key('message'), {
-    hub_host: hubOrigin.value?.replace(/^[a-z][a-z0-9+.-]*:\/\//, ''),
-    account_email: email.value,
-  }),
-);
+const message = computed(() => t(key('message'), { hub_host: hubOrigin.value?.replace(/^[a-z][a-z0-9+.-]*:\/\//, '') }));
 
 /** Back to the sign-in, keeping where the person was going; with a session, the launcher. */
 const back = computed(() => {
   if (session.user.value) return LAUNCHER;
   const next = localNext(param('next'));
-  return next ? `${LOGIN}?next=${encodeURIComponent(next)}` : LOGIN;
+  return next ? `${LAUNCHER}?next=${encodeURIComponent(next)}` : LAUNCHER;
 });
 
 onMounted(() => {

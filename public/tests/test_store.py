@@ -433,9 +433,10 @@ def test_the_app_page_has_no_reviews_changelog_tiers_nor_payment(client, catalog
 def test_a_visitor_is_offered_to_start_free(client, catalog):
     hero = hero_of(get_html(client, "/apps/invoice/"))
 
+    # The sign-in is the launcher's (``/launch``), which also signs up.
     assert "Start free" in hero
-    assert 'href="/accounts/login/"' in hero
-    assert f'href="{LAUNCHER}"' not in hero
+    assert f'href="{LAUNCHER}"' in hero
+    assert "Go to dashboard" not in hero
     assert "Create your free account" in hero
 
 
@@ -448,7 +449,6 @@ def test_a_customer_with_a_session_goes_to_the_dashboard(client, catalog, ana):
     assert "Go to dashboard" in hero
     assert f'href="{LAUNCHER}"' in hero
     assert "Start free" not in hero
-    assert 'href="/accounts/login/"' not in hero
     assert "Cookie" in response.headers.get("Vary", "")
 
 

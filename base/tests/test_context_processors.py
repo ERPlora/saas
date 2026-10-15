@@ -1,13 +1,13 @@
 """``theme`` for every template: the colour mode of the shell, as ``@erplora/ui`` resolves it.
 
 The SPA's modes are ``system``, ``light`` and ``dark``, and ``system`` (follow the OS) when nothing
-says otherwise (``packages/ui/src/shell/theme.ts``). The template pages (sign-in, errors, the public
-web) read the same mode from the ``theme`` cookie (ERPlora/saas ``apps/core/context_processors.py``):
+says otherwise (``packages/ui/src/shell/theme.ts``). The template pages (errors, the public web) read
+the same mode from the ``theme`` cookie (ERPlora/saas ``apps/core/context_processors.py``):
 ``dark`` adds ``ion-palette-dark`` to ``<html>`` on the server, and ``system`` lets a nonce'd script
 follow ``prefers-color-scheme``. Without the processor ``theme`` was empty, so ``system`` never applied.
 
 A signed-in account's own mode (Account → Preferences, ``accounts.UserPreferences.theme_mode``, what
-the panel paints) wins over the cookie: the public web and the sign-in pages look like the panel.
+the panel paints) wins over the cookie: the public web and the error pages look like the panel.
 TEMPLATES loads the processor on every render, so it reaches ``accounts`` lazily, inside the function,
 and falls back to the cookie if ``accounts.queries.preferences_of`` is missing: a top-level import of a
 symbol that was not on main took the whole site down in CI (2026-10-14, hotfix cfc4adb).
@@ -18,6 +18,8 @@ import logging
 
 import pytest
 from django.apps import apps
+from django.contrib.auth.models import AnonymousUser
+from django.template.loader import render_to_string
 from django.test import RequestFactory
 from django.utils.module_loading import import_string
 
@@ -29,7 +31,7 @@ PROCESSOR = "base.context_processors.theme"
 
 
 def _theme(cookie: str | None = None, user=None) -> str:
-    request = RequestFactory().get("/accounts/login/")
+    request = RequestFactory().get("/")
     if cookie is not None:
         request.COOKIES["theme"] = cookie
     if user is not None:
@@ -116,8 +118,6 @@ def test_without_preferences_of_an_account_falls_back_to_the_cookie(ana, monkeyp
 
 @pytest.mark.django_db
 def test_an_anonymous_visitor_costs_no_query(django_assert_num_queries):
-    from django.contrib.auth.models import AnonymousUser
-
     with django_assert_num_queries(0):
         assert _theme("dark", user=AnonymousUser()) == "dark"
 
@@ -140,10 +140,19 @@ def with_processor(settings):
         ]
 
 
+def _error_page(cookie: str | None = None) -> str:
+    """An error page of Django's (``templates/errors/base.html``), rendered as a request renders it."""
+    request = RequestFactory().get("/")
+    request.user = AnonymousUser()
+    if cookie is not None:
+        request.COOKIES["theme"] = cookie
+    return render_to_string("400.html", request=request)
+
+
 @pytest.mark.django_db
 @pytest.mark.usefixtures("with_processor")
-def test_the_sign_in_follows_the_system_without_a_cookie(client):
-    html = client.get("/accounts/login/").content.decode()
+def test_an_error_page_follows_the_system_without_a_cookie():
+    html = _error_page()
 
     assert '<html lang="en">' in html
     assert ': "system";' in html
@@ -151,9 +160,7 @@ def test_the_sign_in_follows_the_system_without_a_cookie(client):
 
 @pytest.mark.django_db
 @pytest.mark.usefixtures("with_processor")
-def test_the_sign_in_is_dark_with_the_dark_cookie(client):
-    client.cookies["theme"] = "dark"
-
-    html = client.get("/accounts/login/").content.decode()
+def test_an_error_page_is_dark_with_the_dark_cookie():
+    html = _error_page("dark")
 
     assert '<html lang="en" class="ion-palette-dark">' in html

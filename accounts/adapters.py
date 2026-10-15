@@ -1,19 +1,23 @@
 """allauth adapters of saas-next.
 
-Accounts are created by staff (Django admin, ``demo_seed``): the unified sign-up of today's SaaS
-(ADR-0154) is not here yet, so a Google email without an account meets a closed door that says so.
-Every way back from Google that does not sign in lands on a Vue page: «Cancel» on the sign-in
-(``/login``), any refusal or failure on ``/login/error?code=…``, both keeping ``next``.
+Sign-up is open, as in today's SaaS (ADR-0154): an email without an account creates one on the sign-in
+form of the launcher (``accounts.unified_login``), and a Google email without one creates it on the way
+back from Google. Every sign-in with a password also asks for the code mailed to the account
+(``ACCOUNT_LOGIN_BY_CODE_REQUIRED``, ``AccountAdapter.is_login_by_code_required``). Every way back from
+Google that does not sign in lands on a Vue page: «Cancel» on the sign-in (``/launch``), any refusal or
+failure on ``/login/error?code=…``, both keeping ``next``.
 Google links to an account only by signing in with a Google that proves the account's own address;
 ``SocialAccountAdapter`` is ported from ERPlora/saas ``ERPloraSocialAccountAdapter``
 (``apps/auth/users/adapters.py``, saas#2552).
 """
 
 import logging
+from types import SimpleNamespace
 from urllib.parse import urlencode
 
 from allauth.account.adapter import DefaultAccountAdapter
 from allauth.account.adapter import get_adapter as get_account_adapter
+from allauth.account.utils import has_verified_email
 from allauth.core import context as allauth_context
 from allauth.core.exceptions import ImmediateHttpResponse
 from allauth.core.internal.httpkit import HTTP_USER_AGENT_MAX_LENGTH
@@ -21,22 +25,23 @@ from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from allauth.socialaccount.providers.base import AuthProcess
 from allauth.socialaccount.providers.base.constants import AuthError
 from django.conf import settings
-from django.contrib import messages
 from django.shortcuts import redirect
 from django.utils import timezone
-from django.utils.translation import gettext as _
 
 from accounts.handoff import login_error_url
 
 logger = logging.getLogger(__name__)
 
-#: The Vue sign-in page (``accounts/frontend/pages/LoginPage.vue``).
-SPA_LOGIN = "/login"
+#: The Vue sign-in: the launcher's (``hubs/frontend/pages/LaunchPage.vue``, ``SignInForm.vue``).
+SPA_LOGIN = "/launch"
 
 
 def _login_url(next_url: str | None) -> str:
-    """The Vue sign-in page, keeping where the person was going (``/hub-login/?hub=…``)."""
-    return f"{SPA_LOGIN}?{urlencode({'next': next_url}, safe='/')}" if next_url else SPA_LOGIN
+    """The Vue sign-in, keeping where the person was going (``/hub-login/?hub=…``); the launcher itself
+    needs no ``next`` to come back to itself."""
+    if not next_url or next_url == SPA_LOGIN:
+        return SPA_LOGIN
+    return f"{SPA_LOGIN}?{urlencode({'next': next_url}, safe='/')}"
 
 
 def _with_next(next_url: str | None) -> dict[str, str]:
@@ -44,12 +49,34 @@ def _with_next(next_url: str | None) -> dict[str, str]:
 
 
 class AccountAdapter(DefaultAccountAdapter):
-    def is_open_for_signup(self, request) -> bool:
-        return False
+    def is_login_by_code_required(self, login) -> bool:
+        """The mailed sign-in code (``ACCOUNT_LOGIN_BY_CODE_REQUIRED``), unless the login already waits for
+        the code that proves its address: one code, never two.
+
+        allauth asks for the sign-in code before it checks the address (its stages: login by code, then
+        email verification), so a sign-up or an address never proven would get the sign-in code, which
+        proves the address too. They get the verification code instead, the mail that says what it is for
+        («… to register an account on erplora.com»): ``EmailVerificationStage`` mails it and the login
+        waits for it (``ACCOUNT_EMAIL_VERIFICATION = "mandatory"``), the same proof of the mailbox.
+        """
+        if login.signup or (login.user is not None and not has_verified_email(login.user, login.email)):
+            return False
+        return super().is_login_by_code_required(login)
 
     def format_email_subject(self, subject):
         """No ``[site.name]`` prefix: allauth takes it from the ``Site`` row (``example.com``)."""
         return subject
+
+    def send_mail(self, template_prefix, email, context):
+        """allauth's mails name ERPlora's public host (``PUBLIC_HOST``), never the ``Site`` row's.
+
+        allauth puts the ``Site`` row in every mail as ``current_site`` («… to register an account on
+        example.com»). The brand is written, not looked up (``templates/account/email/base_message.txt``):
+        a misconfigured row must not make the first mail of an account read like phishing. As ERPlora/saas
+        ``apps/core/emails.py`` (``brand_context``).
+        """
+        brand = SimpleNamespace(name="ERPlora", domain=settings.PUBLIC_HOST)
+        return super().send_mail(template_prefix, email, {**context, "current_site": brand})
 
 
 class SocialAccountAdapter(DefaultSocialAccountAdapter):
@@ -64,25 +91,33 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         ERPlora has no screen that connects a provider. The way Google gets linked is signing in
         with a Google that vouches for the account's own address (SAAS_AUTH-F04). allauth's
         re-authentication is no guard here: it waves through an account that has no password.
+        A connect posted anyway lands on the Vue error page, which says how Google gets linked
+        (``google_link_refused``), keeping ``next``.
         """
         if sociallogin.state.get("process") == AuthProcess.CONNECT:
             logger.warning("google.connect_refused user=%s", request.user.pk)
-            messages.error(request, _("Google can only be linked by signing in with the Google account of your email."))
-            raise ImmediateHttpResponse(redirect(settings.LOGIN_REDIRECT_URL))
+            next_url = sociallogin.state.get("next")
+            raise ImmediateHttpResponse(redirect(login_error_url("google_link_refused", **_with_next(next_url))))
         super().pre_social_login(request, sociallogin)
 
     def is_open_for_signup(self, request, sociallogin) -> bool:
-        """The sign-up is closed: a Google email with no account goes to the page that says so,
-        naming the address (a person with several Google accounts sees which one they picked)."""
-        if super().is_open_for_signup(request, sociallogin):
-            return True
-        logger.info("google.no_account")
-        params = {"email": sociallogin.user.email, **_with_next(sociallogin.state.get("next"))}
-        raise ImmediateHttpResponse(redirect(login_error_url("google_no_account", **params)))
+        """A Google email creates an account only when Google vouches for it (``email_verified``).
+
+        Otherwise whoever holds that Google would get a session for an address they never proved, and keep
+        the Google link once the mailbox's owner claims the account with «Forgot your password?». Refused
+        as any other failure of the round trip: the Vue error page, keeping ``next``.
+        """
+        addresses = sociallogin.email_addresses
+        if addresses and all(address.verified for address in addresses):
+            return super().is_open_for_signup(request, sociallogin)
+        logger.warning("google.unverified_email_signup_refused")
+        next_url = sociallogin.state.get("next")
+        raise ImmediateHttpResponse(redirect(login_error_url("authentication_error", **_with_next(next_url))))
 
     def on_authentication_error(self, request, provider, error=None, exception=None, extra_context=None):
         """«Cancel» on Google's screen goes back to the sign-in; any other failure is logged and goes
-        to the error page. Both keep ``next``, and neither renders allauth's template pages."""
+        to the error page. Both keep ``next``: allauth's own answer (``?error=`` on the page it came from) is never
+        reached."""
         state = (extra_context or {}).get("state") or {}
         next_url = state.get("next")
         if error == AuthError.CANCELLED:

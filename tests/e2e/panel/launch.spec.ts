@@ -1,10 +1,23 @@
 // The entry (`/launch`, round 17 §2.2, README §5) in Ioan's Chrome: the four variants of the mockups
-// (first time, invited, one business, several) and the app surface. Accounts of panel_seed.py.
+// (first time, invited, one business, several), the app surface and, signed out, the sign-in itself (the
+// form of the launcher, at the three viewports). Accounts of panel_seed.py.
 // «Open» goes to the Hub's start of the jump (`http://<slug>.localhost:8000/auth/login?next=/`): the
 // spec answers that address itself and checks where the browser went, so no Hub has to run.
 import { type Page } from '@playwright/test';
 
-import { expect, panelAccount, seedPanel, signIn, test, watchPageErrors } from './fixtures';
+import {
+  expect,
+  panelAccount,
+  seedPanel,
+  settled,
+  shot,
+  sidewaysScroll,
+  signIn,
+  signInThroughPage,
+  test,
+  VIEWPORTS,
+  watchPageErrors,
+} from './fixtures';
 
 test.beforeAll(() => seedPanel());
 test.afterAll(() => seedPanel('clear'));
@@ -80,13 +93,31 @@ test('several businesses: the last opened first, why one does not open, and the 
   expect(errors).toEqual([]);
 });
 
-test('signed out, inside the app: the account of erplora.com, and «Sign in» comes back here', async ({ page }) => {
+test('signed out, at 390, 834 and 1440 px: the sign-in form itself, without scrolling sideways', async ({ page }) => {
+  const errors = watchPageErrors(page);
+  for (const viewport of VIEWPORTS) {
+    await page.setViewportSize(viewport);
+    await page.goto('/launch');
+    await expect(page.getByTestId('login-form')).toBeVisible();
+    for (const testid of ['login-email', 'login-password', 'login-submit', 'login-forgot']) {
+      await expect(page.getByTestId(testid)).toBeVisible();
+    }
+    await settled(page);
+    expect(await sidewaysScroll(page), `/launch scrolls sideways at ${viewport.width} px`).toEqual([]);
+    // Touch targets: «Continue» is a large button (Ionic's 48 px).
+    expect((await page.getByTestId('login-submit').boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+    await page.screenshot({ path: shot(`launch-signed-out-${viewport.width}`), fullPage: true });
+  }
+  expect(errors).toEqual([]);
+});
+
+test('signed out, inside the app: the same sign-in, and it comes back here signed in', async ({ page, owner }) => {
   const errors = watchPageErrors(page);
   await page.goto('/launch?surface=mobile');
   await expect(page.locator('html')).toHaveClass(/in-app-shell/);
-  await expect(page.getByRole('heading', { name: 'Sign in to ERPlora' })).toBeVisible();
-  await expect(page.locator('.shell-lead')).toHaveText('The app uses your erplora.com account.');
-  await page.getByTestId('launch-sign-in').click();
-  await expect(page).toHaveURL(/\/login\?next=(%2F|\/)launch$/);
+  await expect(page.getByTestId('login-form')).toBeVisible();
+  await signInThroughPage(page, owner);
+  await expect(page).toHaveURL(/\/launch$/);
+  await expect(page.getByTestId('shell-account')).toContainText(owner.email);
   expect(errors).toEqual([]);
 });

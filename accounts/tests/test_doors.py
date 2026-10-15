@@ -1,12 +1,13 @@
 """allauth's doors around the account's addresses and password that the SaaS closes (``accounts.doors``,
-``config/urls.py``), as ``accounts/3rdparty/`` closed Google's «connections» (saas#2552).
+``config/urls.py``), as Google's «connections» are closed (saas#2552).
 
-- ``/accounts/email/`` (allauth's page) and ``/_allauth/browser/v1/account/email`` (its API: add an address, make
-  it the primary one): the sign-in email changes only through ``accounts.email.change`` and its code
-  (saas#2536). The page leads to the panel's profile; the API answers 404, whatever the method.
-- ``/accounts/password/set/`` and ``account/password/change`` for an account without a password: the session
-  alone would give it one (and with it every door a password opens). «Forgot your password?» gives it one,
-  proving the mailbox. An account with a password still changes it (``test_password_change``).
+- ``/_allauth/browser/v1/account/email`` (allauth's API: add an address, make it the primary one): the sign-in
+  email changes only through ``accounts.email.change`` and its code (saas#2536). The API answers 404, whatever
+  the method; allauth's page ``/accounts/email/`` no longer exists (headless only).
+- ``account/password/change`` for an account without a password: the session alone would give it one (and
+  with it every door a password opens). «Forgot your password?» gives it one, proving the mailbox; allauth's
+  page ``/accounts/password/set/`` no longer exists. An account with a password still changes it
+  (``test_password_change``).
 
 Each is shown closed with a sign-in of a moment ago: closed, not just behind allauth's reauthentication.
 """
@@ -16,7 +17,6 @@ import time
 import pytest
 from allauth.account.models import EmailAddress
 from django.core import mail
-from django.urls import reverse
 
 from accounts.tests.conftest import AUTHENTICATION_RECORDS, BROWSER, HOST
 
@@ -39,18 +39,13 @@ def google_only(client, ana):
 
 
 class TestTheAddressDoors:
-    def test_allauths_page_leads_to_the_panels_profile(self, signed_in):
-        response = signed_in.get("/accounts/email/", HTTP_HOST=HOST)
-
-        assert (response.status_code, response.url) == (302, "/account/profile")
-        assert reverse("account_email") == "/accounts/email/"
-
-    def test_adding_an_address_on_allauths_page_does_nothing(self, signed_in, ana):
+    @pytest.mark.usefixtures("spa_manifest")
+    def test_allauths_page_is_gone_and_adds_nothing(self, signed_in, ana):
         response = signed_in.post(
             "/accounts/email/", {"action_add": "", "email": "ana@new.example"}, HTTP_HOST=HOST
         )
 
-        assert response.status_code == 302
+        assert response.status_code == 404
         assert not EmailAddress.objects.filter(email="ana@new.example").exists()
         assert mail.outbox == []
 
@@ -77,14 +72,15 @@ class TestThePasswordOfAnAccountWithoutOne:
         ana.refresh_from_db()
         assert not ana.has_usable_password()
 
-    def test_allauths_set_password_page_leads_to_forgot_your_password(self, google_only, ana):
+    @pytest.mark.usefixtures("spa_manifest")
+    def test_allauths_set_password_page_is_gone_and_sets_nothing(self, google_only, ana):
         response = google_only.post(
             "/accounts/password/set/",
             {"password1": "a brand new pass phrase 2026", "password2": "a brand new pass phrase 2026"},
             HTTP_HOST=HOST,
         )
 
-        assert (response.status_code, response.url) == (302, reverse("account_reset_password"))
+        assert response.status_code == 404
         ana.refresh_from_db()
         assert not ana.has_usable_password()
 
@@ -92,6 +88,8 @@ class TestThePasswordOfAnAccountWithoutOne:
         ana.set_unusable_password()
         ana.save()
 
-        client.post("/accounts/password/reset/", {"email": ana.email}, HTTP_HOST=HOST)
+        client.post(
+            f"{BROWSER}/auth/password/request", {"email": ana.email}, content_type="application/json", HTTP_HOST=HOST
+        )
 
-        assert [message for message in mail.outbox if "/password/reset/key/" in message.body]
+        assert [message for message in mail.outbox if f"http://{HOST}/password/reset/key/" in message.body]

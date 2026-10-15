@@ -135,7 +135,7 @@ def test_the_private_half_is_never_submitted(settings, sent, monkeypatch, caplog
     """Submitting is the loudest way to publish a URL: the last gate drops a private one."""
     settings.INDEXNOW_KEY = KEY
     monkeypatch.setattr(
-        StaticPagesSitemap, "pages", (("public:llms_txt", 0.7), ("account_login", 0.1))
+        StaticPagesSitemap, "pages", (("public:llms_txt", 0.7), ("hub_login", 0.1))
     )
 
     indexnow.submit_sitemap_urls(host="erplora.com")
@@ -146,7 +146,7 @@ def test_the_private_half_is_never_submitted(settings, sent, monkeypatch, caplog
         url.removeprefix("https://erplora.com").startswith(private_prefixes())
         for url in urls
     )
-    assert any("/accounts/login/" in record.getMessage() for record in caplog.records)
+    assert any("/hub-login/" in record.getMessage() for record in caplog.records)
 
 
 @pytest.mark.usefixtures("a_public_page")

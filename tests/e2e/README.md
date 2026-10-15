@@ -77,7 +77,10 @@ Va en `panel/` e importa `test` y `expect` de `./fixtures`, no de `@playwright/t
 - `owner`: las credenciales del dueño sembrado.
 - `signedInPage`: una página con la sesión del dueño abierta por la API de `allauth.headless`
   (`POST /_allauth/browser/v1/auth/login`), sin pasar por el formulario.
-- `signInThroughPage(page, credenciales)`: el login de verdad, en la página `/login` ya abierta.
+- `submitSignInForm(page, credenciales)`: rellena y envía el formulario único de entrada y alta del
+  launcher (`/launch`) ya abierto; un correo desconocido abre una cuenta nueva.
+- `signInThroughPage(page, credenciales)`: el login de verdad, en `/launch` ya abierto: el formulario y
+  el código de 6 dígitos que llega por correo (`waitForMailCode`) en `/verify-email`.
 - `sessionOf(page.request)`: lo que responde `GET /api/me` (`user` nulo sin sesión).
 - `VIEWPORTS` (390, 834 y 1440 px), `watchPageErrors(page)` y `shot(nombre)`.
 - `apiPost(request, ruta, datos)`: un POST a la API con el token CSRF de la sesión.

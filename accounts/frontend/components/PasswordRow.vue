@@ -2,7 +2,7 @@
 // The «Password» row of Account → Security, «Sign-in» (mockups `account.html` «security», «Contraseña»): «Change
 // password» opens its dialog (PasswordModal). An account that only signs in with Google has none, and the server
 // never sets one with the session alone (`accounts/doors.py`): it gets one through «Forgot your password?», whose
-// email link proves the mailbox (`/accounts/password/reset/`, a page of Django's: a full load).
+// email link proves the mailbox (the SPA's `/password/reset`).
 import { HubIcon } from '@erplora/ui/shell';
 import { IonButton } from '@ionic/vue';
 import { shallowRef } from 'vue';
@@ -14,7 +14,7 @@ defineProps<{
   email: string;
 }>();
 
-const PASSWORD_RESET = '/accounts/password/reset/';
+const PASSWORD_RESET = '/password/reset';
 const changing = shallowRef(false);
 </script>
 
@@ -48,7 +48,7 @@ const changing = shallowRef(false);
       v-else
       data-testid="password-row-create"
       fill="outline"
-      :href="PASSWORD_RESET"
+      :router-link="PASSWORD_RESET"
     >
       <HubIcon
         slot="start"

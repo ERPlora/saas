@@ -1,13 +1,15 @@
 // What the panel's specs start from: the seeded account (`manage.py demo_seed`), the sign-in
-// (allauth.headless's API, or the real /login page when the sign-in is what a spec checks), the
-// session /api/me reports, the three viewports, uncaught page errors and the evidence folder.
+// (allauth.headless's API, or the real form of the launcher when the sign-in is what a spec checks), both
+// with the code every password sign-in mails (read from the panel's mail folder, as the person reads it),
+// the session /api/me reports, the three viewports, uncaught page errors and the evidence folder.
 // Import `test` and `expect` from here, not from `@playwright/test`.
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readdirSync, readFileSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { readMailCode, readPasswordResetLink, waitForMail as waitForMailIn } from '@erplora/ui/testing/mail';
 import { type APIRequestContext, type APIResponse, type BrowserContext, type Page, test as base, expect } from '@playwright/test';
 
 import { HUB_DOUBLE_PORT, PANEL_MAIL_DIR } from './project';
@@ -18,8 +20,10 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const SAAS_DIR = resolve(HERE, '..', '..', '..');
 const ARTIFACTS = join(HERE, '..', '.artifacts', 'panel');
 
-/** allauth.headless's sign-in for the browser client: what the /login page posts. */
+/** allauth.headless's sign-in for the browser client: what the launcher's form posts. */
 const SIGN_IN_API = '/_allauth/browser/v1/auth/login';
+/** The second step of every password sign-in: the code mailed to the account (what /verify-email posts). */
+const CONFIRM_CODE_API = '/_allauth/browser/v1/auth/code/confirm';
 
 /** A SaaS account: what its sign-in asks for. */
 export interface Credentials {
@@ -27,8 +31,14 @@ export interface Credentials {
   password: string;
 }
 
-/** `demo_seed`'s customer: owner of the local hubs `a` and `b`, no admin and no name of its own. */
-export const OWNER: Credentials = { email: 'owner@example.com', password: 'owner' };
+/**
+ * `demo_seed`'s customer: owner of the local hubs `a` and `b`, no admin and no name of its own. The QA users of
+ * the root `.env` (`QA_OWNER_*`) name it, with these as their defaults (playwright.config.ts loads them).
+ */
+export const OWNER: Credentials = {
+  email: process.env.QA_OWNER_EMAIL ?? 'owner@example.com',
+  password: process.env.QA_OWNER_PASSWORD ?? 'owner',
+};
 
 /** Phone, tablet and desktop (working rules §2.4). */
 export const VIEWPORTS = [
@@ -62,30 +72,59 @@ export async function sessionOf(request: APIRequestContext): Promise<Session> {
   return (await response.json()) as Session;
 }
 
-/**
- * Signs `request`'s browser context in through allauth.headless, as the /login page does: the SPA's
- * HTML sets Django's CSRF cookie (`live.spa`, `ensure_csrf_cookie`) and the API wants it back in
- * `X-CSRFToken`. The session cookie lands in the context, so its pages are signed in.
- */
-export async function signIn(request: APIRequestContext, credentials: Credentials): Promise<void> {
-  const login = await request.get('/login');
-  expect(login.status(), 'GET /login').toBe(200);
+/** The CSRF token of `request`'s cookies (the SPA's HTML sets it; a sign-in rotates it). */
+async function csrfOf(request: APIRequestContext): Promise<string> {
   const { cookies } = await request.storageState();
   const csrf = cookies.find((cookie) => cookie.name === 'csrftoken')?.value;
-  if (!csrf) throw new Error('GET /login set no csrftoken cookie');
-  const response = await request.post(SIGN_IN_API, { headers: { 'X-CSRFToken': csrf }, data: credentials });
-  expect(response.status(), `POST ${SIGN_IN_API}: ${await response.text()}`).toBe(200);
+  if (!csrf) throw new Error('no csrftoken cookie: load a page of the SPA first');
+  return csrf;
 }
 
 /**
- * The real sign-in, on the /login page already open: types `credentials` and submits; the page
- * then leaves for its `next` (or the launcher) with a full load.
+ * Signs `request`'s browser context in through allauth.headless, as the launcher's form and /verify-email
+ * do: the SPA's HTML sets Django's CSRF cookie (`live.spa`, `ensure_csrf_cookie`) and the API wants it back
+ * in `X-CSRFToken`; the password waits for the code mailed to the account (`login_by_code`), read from the
+ * panel's mail folder (the newest to that address since the password was posted) and confirmed. The session
+ * cookie lands in the context, so its pages are signed in.
  */
-export async function signInThroughPage(page: Page, credentials: Credentials): Promise<void> {
+export async function signIn(request: APIRequestContext, credentials: Credentials): Promise<void> {
+  const launcher = await request.get('/launch');
+  expect(launcher.status(), 'GET /launch').toBe(200);
+  const csrf = await csrfOf(request);
+  const since = Date.now();
+  const password = await request.post(SIGN_IN_API, { headers: { 'X-CSRFToken': csrf }, data: credentials });
+  const waiting = (await password.json()) as { data?: { flows?: Array<{ id: string; is_pending?: boolean }> } };
+  const pending = waiting.data?.flows?.filter((flow) => flow.is_pending).map((flow) => flow.id);
+  expect([password.status(), pending], `POST ${SIGN_IN_API}: ${JSON.stringify(waiting)}`).toEqual([401, ['login_by_code']]);
+  const code = await waitForMailCode(credentials.email, since);
+  const confirmed = await request.post(CONFIRM_CODE_API, { headers: { 'X-CSRFToken': csrf }, data: { code } });
+  expect(confirmed.status(), `POST ${CONFIRM_CODE_API}: ${await confirmed.text()}`).toBe(200);
+}
+
+/**
+ * The launcher's form, already on screen: types `credentials` and submits. The page then goes to
+ * /verify-email for the mailed code (or leaves, signed in, when no code is asked).
+ */
+export async function submitSignInForm(page: Page, credentials: Credentials): Promise<void> {
   const form = page.getByTestId('login-form');
   await form.getByTestId('login-email').locator('input').fill(credentials.email);
   await form.getByTestId('login-password').locator('input').fill(credentials.password);
   await form.getByTestId('login-submit').click();
+}
+
+/**
+ * The real sign-in, on the launcher's form already on screen: the password, then the code mailed to the
+ * account, typed on /verify-email as the person does. The page then leaves for its `next` (or the
+ * launcher) with a full load.
+ */
+export async function signInThroughPage(page: Page, credentials: Credentials): Promise<void> {
+  const since = Date.now();
+  await submitSignInForm(page, credentials);
+  await expect(page).toHaveURL(/\/verify-email(\?|$)/);
+  const code = await waitForMailCode(credentials.email, since);
+  await page.getByTestId('code').locator('input').fill(code);
+  await page.getByTestId('verify-email-submit').click();
+  await expect(page).not.toHaveURL(/\/verify-email(\?|$)/);
 }
 
 /** Vite's hot-update socket (`server.hmr` of vite.config.ts; its path is `base`, with a token). */
@@ -101,6 +140,36 @@ export async function freezeFrontend(context: BrowserContext): Promise<void> {
   await context.routeWebSocket(VITE_HMR, () => {});
 }
 
+/**
+ * What scrolls sideways on the page on screen: Ionic pins `body` (its width never grows), so the
+ * scroll is read where it happens — the page's `ion-content` scroll box (in its shadow) and every
+ * DataTable's own scroll box, which also says so with `data-table__scroll--overflow`.
+ */
+export async function sidewaysScroll(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const shown = [...document.querySelectorAll('ion-router-outlet > .ion-page:not(.ion-page-hidden)')].at(-1) ?? document;
+    const found: string[] = [];
+    const content = shown.querySelector('ion-content');
+    const scroll = content?.shadowRoot?.querySelector<HTMLElement>('.inner-scroll');
+    if (scroll && scroll.scrollWidth > scroll.clientWidth + 1) found.push(`ion-content ${scroll.scrollWidth} > ${scroll.clientWidth}`);
+    for (const table of shown.querySelectorAll<HTMLElement>('.data-table__scroll')) {
+      if (table.scrollWidth > table.clientWidth + 1) found.push(`data-table ${table.scrollWidth} > ${table.clientWidth}`);
+      if (table.classList.contains('data-table__scroll--overflow')) found.push('data-table__scroll--overflow');
+    }
+    return found;
+  });
+}
+
+/** Settled: the fonts loaded and no transition of Ionic running (endless spinners aside). */
+export async function settled(page: Page): Promise<void> {
+  await page.evaluate(() => document.fonts.ready);
+  await page.waitForFunction(() =>
+    document
+      .getAnimations()
+      .every((animation) => animation.playState !== 'running' || animation.effect?.getTiming().iterations === Infinity),
+  );
+}
+
 /** Collects the page's uncaught errors from now on (the list fills as they happen). */
 export function watchPageErrors(page: Page): string[] {
   const errors: string[] = [];
@@ -114,8 +183,23 @@ export function shot(name: string): string {
   return join(ARTIFACTS, `${name}.png`);
 }
 
-/** The accounts of `panel_seed.py` (`e2e-<name>@example.com`), all with the same password. */
-export const panelAccount = (name: string): Credentials => ({ email: `e2e-${name}@example.com`, password: 'e2e-panel' });
+/**
+ * The accounts of `panel_seed.py` (`e2e-<name>@example.com`), all with the same password: `QA_PANEL_PASSWORD`
+ * of the root `.env` (playwright.config.ts loads it), the seed's own default otherwise.
+ */
+export const panelAccount = (name: string): Credentials => ({
+  email: `e2e-${name}@example.com`,
+  password: process.env.QA_PANEL_PASSWORD ?? 'e2e-panel',
+});
+
+/**
+ * A QA user of the root `.env` (`QA_<ROLE>_EMAIL`, `QA_<ROLE>_PASSWORD`, README «Usuarios QA») when exported,
+ * else `fallback`: the same values its seed falls back to (`billing_seed.py`, `store_seed.py`).
+ */
+export const qaAccount = (role: string, fallback: Credentials): Credentials => ({
+  email: process.env[`QA_${role}_EMAIL`] ?? fallback.email,
+  password: process.env[`QA_${role}_PASSWORD`] ?? fallback.password,
+});
 
 /**
  * `tests/e2e/panel/panel_seed.py seed|clear`: the businesses panel's accounts and businesses (the
@@ -171,85 +255,30 @@ export async function apiPost(request: APIRequestContext, path: string, data: un
 }
 
 // ── The mails the panel's Django sends (file backend, project.ts) ─────────────────────────────
+// Read with `@erplora/ui/testing/mail`, shared with the Hub's e2e: the newest matching mail to the address
+// written from `since` on (a `Date.now()` taken before the action that sends it), so an earlier run's or an
+// earlier test's code to the same address is never read.
 
-/** One mail as the file backend wrote it: who to, when (whole seconds) and its decoded text. */
-interface Mail {
-  to: string;
-  sentAt: number;
-  body: string;
+/** The first group (or the whole match) of `match` in the newest mail to `to` since `since`. */
+export async function waitForMail(to: string, since: number, match: RegExp): Promise<string> {
+  return waitForMailIn({ dir: PANEL_MAIL_DIR, to, since, match });
 }
 
 /**
- * Every mail in `PANEL_MAIL_DIR`: a file per connection, each message closed by a line of 79 `-`.
- * What follows the last one is empty, or a message still being written: skipped until it closes.
+ * The six digits mailed to `to` from `since` on: the sign-in code of every password sign-in
+ * (`ACCOUNT_LOGIN_BY_CODE_FORMAT`) or the one that proves the address of a sign-up
+ * (`ACCOUNT_EMAIL_VERIFICATION_BY_CODE_FORMAT`), alone on their line.
  */
-function readMails(): Mail[] {
-  let files: string[];
-  try {
-    files = readdirSync(PANEL_MAIL_DIR);
-  } catch {
-    return []; // Nothing sent yet: the backend makes the folder with its first mail.
-  }
-  return files.flatMap((file) => readFileSync(join(PANEL_MAIL_DIR, file), 'utf8').split(/\r?\n-{79}\r?\n/).slice(0, -1).map(parseMail));
-}
-
-/** A single-part text mail (what Django's `send_mail` writes): headers, then the body in its encoding. */
-function parseMail(raw: string): Mail {
-  const split = raw.search(/\r?\n\r?\n/);
-  const head = raw.slice(0, split).replace(/\r?\n[ \t]+/g, ' ');
-  const headers = new Map(
-    head.split(/\r?\n/).map((line) => {
-      const colon = line.indexOf(':');
-      return [line.slice(0, colon).trim().toLowerCase(), line.slice(colon + 1).trim()] as const;
-    }),
-  );
-  if ((headers.get('content-type') ?? '').startsWith('multipart/')) {
-    throw new Error(`a multipart mail to ${headers.get('to')}: teach parseMail its parts`);
-  }
-  const text = raw.slice(split).replace(/^\r?\n\r?\n/, '');
-  return {
-    to: headers.get('to') ?? '',
-    sentAt: Date.parse(headers.get('date') ?? ''),
-    body: decodeBody(text, (headers.get('content-transfer-encoding') ?? '7bit').toLowerCase()),
-  };
-}
-
-function decodeBody(text: string, encoding: string): string {
-  if (encoding === 'base64') return Buffer.from(text.replace(/\s+/g, ''), 'base64').toString('utf8');
-  if (encoding !== 'quoted-printable') return text;
-  const joined = text.replace(/=\r?\n/g, '');
-  const bytes: number[] = [];
-  for (let at = 0; at < joined.length; at += 1) {
-    const hex = joined.slice(at + 1, at + 3);
-    if (joined[at] === '=' && /^[0-9A-F]{2}$/i.test(hex)) {
-      bytes.push(parseInt(hex, 16));
-      at += 2;
-    } else {
-      bytes.push(joined.charCodeAt(at));
-    }
-  }
-  return Buffer.from(bytes).toString('utf8');
+export async function waitForMailCode(to: string, since: number): Promise<string> {
+  return readMailCode({ dir: PANEL_MAIL_DIR, to, since });
 }
 
 /**
- * Waits for a mail to `to` sent from `since` on (a `Date.now()` taken before the action that sends
- * it) whose text matches `link`, and returns the first match: the link the person would click.
- * Earlier runs' mails stay in the folder and are skipped by date.
+ * The password reset link mailed `to` from `since` on: the SPA's `/password/reset/key/<key>` on the panel
+ * the request came to (`HEADLESS_FRONTEND_URLS`), as the person clicks it.
  */
-export async function waitForMail(to: string, since: number, link: RegExp): Promise<string> {
-  const from = Math.floor(since / 1000) * 1000; // The Date header has whole seconds.
-  let found: string | undefined;
-  await expect
-    .poll(
-      () => {
-        const mail = readMails().find((one) => one.to === to && one.sentAt >= from && link.test(one.body));
-        found = mail?.body.match(link)?.[0];
-        return found;
-      },
-      { message: `a mail to ${to} with ${link} in ${PANEL_MAIL_DIR}`, timeout: 15_000 },
-    )
-    .toBeTruthy();
-  return found as string;
+export async function waitForPasswordResetLink(to: string, since: number): Promise<string> {
+  return readPasswordResetLink({ dir: PANEL_MAIL_DIR, to, since });
 }
 
 // ── The Hub, played by a spec ─────────────────────────────────────────────────────────────────
