@@ -501,7 +501,7 @@ PLANS_IN_THE_DATABASE = "0013_plans_in_the_database"
 #: What every paid plan shares on the axes the cards do not compare.
 _UNCAPPED = {"max_hubs_per_org": 0, "max_devices": 0, "max_users": 0}
 #: The catalogue 0013 leaves, field by field: three plans on sale at sign-up, the three upgrade-only tiers (kept,
-#: active, as production has them) and the internal one, none with a trial (the Free plan is the way in). The copy
+#: active, going on up the ladder: each twice the one below, Pro 12, Enterprise 24, Max 48) and the internal one, none with a trial (the Free plan is the way in). The copy
 #: of Free, Starter and Standard is the one 0011 froze (``COPY``), the messages the ones 0012 gave; history of the
 #: same day, so the three migrations must agree.
 CATALOGUE_0013 = {
@@ -533,11 +533,17 @@ CATALOGUE_0013 = {
         "name_en": "Pro", "name_es": "Pro", "featured_label_en": "", "featured_label_es": "",
         "description_en": "High performance on isolated infrastructure, with a full API for your integrations.",
         "description_es": "Alto rendimiento en infraestructura aislada, con API completa para tus integraciones.",
-        "features_en": ["Everything in Standard", "Isolated infrastructure", "Priority email support (business hours)"],
-        "features_es": ["Todo lo del plan Standard", "Infraestructura aislada", "Soporte por email prioritario (horario laboral)"],
+        "features_en": [
+            "Everything in Standard", "Four times the database throughput of Starter", "Isolated infrastructure",
+            "Priority email support (business hours)",
+        ],
+        "features_es": [
+            "Todo lo del plan Standard", "El cuádruple de capacidad de base de datos que Starter", "Infraestructura aislada",
+            "Soporte por email prioritario (horario laboral)",
+        ],
         "price_monthly": Decimal("109.99"), "price_annual": Decimal("1099.90"),
         "is_active": True, "upgrade_only": True, "internal_only": False, "trial_period_days": 0, "display_order": 50,
-        **_UNCAPPED, "max_db_connections": 3, "statement_timeout_seconds": 15,
+        **_UNCAPPED, "max_db_connections": 12, "statement_timeout_seconds": 15,
         "assistant_messages_per_month": 1000, "whatsapp_messages_per_month": 500,
         "included_level": "pro", "support_level": "priority_email", "includes_custom_domain": True,
     },
@@ -546,16 +552,17 @@ CATALOGUE_0013 = {
         "description_en": "Dedicated infrastructure with autoscaling, disaster recovery and contract-backed support.",
         "description_es": "Infraestructura dedicada con autoescalado, recuperación ante desastres y soporte acordado en contrato.",
         "features_en": [
-            "Everything in Pro", "Automatic container autoscaling", "Disaster recovery (PITR)", "Advanced monitoring",
-            "Support channels and escalation agreed in contract",
+            "Everything in Pro", "Eight times the database throughput of Starter", "Automatic container autoscaling",
+            "Disaster recovery (PITR)", "Advanced monitoring", "Support channels and escalation agreed in contract",
         ],
         "features_es": [
-            "Todo lo del plan Pro", "Autoescalado automático de contenedores", "Recuperación ante desastres (PITR)",
-            "Monitoreo avanzado", "Canales de soporte y escalado acordados en contrato",
+            "Todo lo del plan Pro", "Ocho veces la capacidad de base de datos de Starter",
+            "Autoescalado automático de contenedores", "Recuperación ante desastres (PITR)", "Monitoreo avanzado",
+            "Canales de soporte y escalado acordados en contrato",
         ],
         "price_monthly": Decimal("209.99"), "price_annual": Decimal("2099.90"),
         "is_active": True, "upgrade_only": True, "internal_only": False, "trial_period_days": 0, "display_order": 60,
-        **_UNCAPPED, "max_db_connections": 3, "statement_timeout_seconds": 15,
+        **_UNCAPPED, "max_db_connections": 24, "statement_timeout_seconds": 15,
         "assistant_messages_per_month": 3000, "whatsapp_messages_per_month": 800,
         "included_level": "enterprise", "support_level": "contract", "includes_custom_domain": True,
     },
@@ -564,16 +571,16 @@ CATALOGUE_0013 = {
         "description_en": "Maximum single-node performance, for the most demanding businesses.",
         "description_es": "Máximo rendimiento de un solo nodo, para los negocios más exigentes.",
         "features_en": [
-            "Everything in Enterprise", "─────────────────────", "Custom integrations",
-            "Named technical contact agreed in contract",
+            "Everything in Enterprise", "Sixteen times the database throughput of Starter", "─────────────────────",
+            "Custom integrations", "Named technical contact agreed in contract",
         ],
         "features_es": [
-            "Todo lo del plan Enterprise", "─────────────────────", "Integraciones a medida",
-            "Responsable técnico acordado en contrato",
+            "Todo lo del plan Enterprise", "Dieciséis veces la capacidad de base de datos de Starter",
+            "─────────────────────", "Integraciones a medida", "Responsable técnico acordado en contrato",
         ],
         "price_monthly": Decimal("419.99"), "price_annual": Decimal("4199.90"),
         "is_active": True, "upgrade_only": True, "internal_only": False, "trial_period_days": 0, "display_order": 70,
-        **_UNCAPPED, "max_db_connections": 3, "statement_timeout_seconds": 15,
+        **_UNCAPPED, "max_db_connections": 48, "statement_timeout_seconds": 15,
         "assistant_messages_per_month": 3000, "whatsapp_messages_per_month": 800,
         "included_level": "enterprise", "support_level": "contract", "includes_custom_domain": True,
     },

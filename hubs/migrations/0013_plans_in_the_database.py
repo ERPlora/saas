@@ -8,8 +8,8 @@ the rows already in production right, once:
 - the seven plans of the seed that day (``CATALOGUE``) are written with its values, created if missing and updated
   in place if not, so the subscriptions that point at them keep pointing at them: ``free``, ``starter`` and
   ``standard`` (on sale at sign-up; the copy and the resource ladder 0011 froze), ``pro``, ``enterprise`` and
-  ``max`` (kept by Ioan on 2026-10-15: active and ``upgrade_only``, an upgrade of a business that already pays,
-  as production has them) and ``payment-test`` (internal). The messages a month are the ones 0012 gave;
+  ``max`` (kept by Ioan on 2026-10-15: active and ``upgrade_only``, an upgrade of a business that already pays;
+  their prices as production has them) and ``payment-test`` (internal). The messages a month are the ones 0012 gave;
 - no plan has a trial any more: Starter and Standard go from 15 days to 0 (the Free plan is the way in, and no
   law asks for a trial). The mechanism stays dormant (``trial_period_days``, the checkout's ``trial_end``): staff
   may give a plan a trial in the admin;
@@ -19,7 +19,8 @@ the rows already in production right, once:
 
 The «resources» that grow from one plan to the next are the database's input/output capacity, told in plain
 words («database throughput»); ``max_db_connections`` and ``statement_timeout_seconds`` are the technical ladder
-behind it (Free 1 and 5 s, Starter 3 and 15 s, Standard 6 and 15 s) and are never shown.
+behind it, each plan twice the one below from Starter (Free 1 and 5 s, Starter 3, Standard 6, Pro 12, Enterprise
+24 and Max 48, all at 15 s), and are never shown.
 
 Reverse: Starter and Standard get their 15-day trial back, the one thing this migration took away on purpose.
 The rows stay (a subscription may point at them, and the values before this migration are nowhere to be read
@@ -189,8 +190,9 @@ CATALOGUE = {
         "support_level": "priority_email",
         "includes_custom_domain": True,
     },
-    # The upgrade-only tiers, as production has them (Ioan, 2026-10-15: kept, not retired). The Store offers them to
-    # a business Stripe already bills; the public web does not list them.
+    # The upgrade-only tiers (Ioan, 2026-10-15: kept, not retired), going on up the ladder: each twice the one below
+    # (Pro 12, Enterprise 24, Max 48), and a card line that says so. The Store offers them to a business Stripe already
+    # bills; the public web does not list them.
     "pro": {
         "name_en": "Pro",
         "name_es": "Pro",
@@ -198,11 +200,13 @@ CATALOGUE = {
         "description_es": "Alto rendimiento en infraestructura aislada, con API completa para tus integraciones.",
         "features_en": [
             "Everything in Standard",
+            "Four times the database throughput of Starter",
             "Isolated infrastructure",
             "Priority email support (business hours)",
         ],
         "features_es": [
             "Todo lo del plan Standard",
+            "El cuádruple de capacidad de base de datos que Starter",
             "Infraestructura aislada",
             "Soporte por email prioritario (horario laboral)",
         ],
@@ -218,7 +222,7 @@ CATALOGUE = {
         "max_hubs_per_org": 0,
         "max_devices": 0,
         "max_users": 0,
-        "max_db_connections": 3,
+        "max_db_connections": 12,
         "statement_timeout_seconds": 15,
         # The old stack's level pro (ADR-0474); enterprise and max, its level enterprise.
         "assistant_messages_per_month": 1000,
@@ -236,6 +240,7 @@ CATALOGUE = {
         ),
         "features_en": [
             "Everything in Pro",
+            "Eight times the database throughput of Starter",
             "Automatic container autoscaling",
             "Disaster recovery (PITR)",
             "Advanced monitoring",
@@ -243,6 +248,7 @@ CATALOGUE = {
         ],
         "features_es": [
             "Todo lo del plan Pro",
+            "Ocho veces la capacidad de base de datos de Starter",
             "Autoescalado automático de contenedores",
             "Recuperación ante desastres (PITR)",
             "Monitoreo avanzado",
@@ -260,7 +266,7 @@ CATALOGUE = {
         "max_hubs_per_org": 0,
         "max_devices": 0,
         "max_users": 0,
-        "max_db_connections": 3,
+        "max_db_connections": 24,
         "statement_timeout_seconds": 15,
         "assistant_messages_per_month": 3000,
         "whatsapp_messages_per_month": 800,
@@ -275,12 +281,14 @@ CATALOGUE = {
         "description_es": "Máximo rendimiento de un solo nodo, para los negocios más exigentes.",
         "features_en": [
             "Everything in Enterprise",
+            "Sixteen times the database throughput of Starter",
             "─────────────────────",
             "Custom integrations",
             "Named technical contact agreed in contract",
         ],
         "features_es": [
             "Todo lo del plan Enterprise",
+            "Dieciséis veces la capacidad de base de datos de Starter",
             "─────────────────────",
             "Integraciones a medida",
             "Responsable técnico acordado en contrato",
@@ -297,7 +305,7 @@ CATALOGUE = {
         "max_hubs_per_org": 0,
         "max_devices": 0,
         "max_users": 0,
-        "max_db_connections": 3,
+        "max_db_connections": 48,
         "statement_timeout_seconds": 15,
         "assistant_messages_per_month": 3000,
         "whatsapp_messages_per_month": 800,

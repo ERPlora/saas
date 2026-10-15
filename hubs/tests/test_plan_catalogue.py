@@ -342,6 +342,8 @@ def test_db_limits_match_the_round_9_decision(catalogue):
     expected = {slug: (3, 15) for slug in catalogue}
     expected["free"] = (1, 5)
     expected["standard"] = (6, 15)
+    # The upgrade-only tiers go on doubling (Ioan, 2026-10-15): Pro, Enterprise and Max.
+    expected.update({"pro": (12, 15), "enterprise": (24, 15), "max": (48, 15)})
     actual = {
         slug: (plan.max_db_connections, plan.statement_timeout_seconds)
         for slug, plan in catalogue.items()
@@ -373,6 +375,33 @@ def test_each_plan_up_doubles_the_resources_of_the_one_below_and_says_so(catalog
         assert [p.resources_label for p in (free, starter, standard)] == [
             "Basic, for one device", "Full, for several devices", "Double",
         ]
+
+
+#: The ladder from Starter up, each plan twice the one below (Ioan, 2026-10-15), and the line its card says it with.
+LADDER = (
+    ("starter", "Full database throughput", "Capacidad de base de datos completa"),
+    ("standard", "Twice the database throughput of Starter", "El doble de capacidad de base de datos que Starter"),
+    ("pro", "Four times the database throughput of Starter", "El cuádruple de capacidad de base de datos que Starter"),
+    ("enterprise", "Eight times the database throughput of Starter", "Ocho veces la capacidad de base de datos de Starter"),
+    ("max", "Sixteen times the database throughput of Starter", "Dieciséis veces la capacidad de base de datos de Starter"),
+)
+
+
+def test_from_starter_up_each_plan_doubles_the_one_below(catalogue):
+    """Ioan, 2026-10-15: the upgrade-only tiers go on up the same ladder (PLAN §14.2), all at 15 s."""
+    for (lower, *_), (upper, *_) in zip(LADDER, LADDER[1:], strict=False):
+        assert catalogue[upper].max_db_connections == 2 * catalogue[lower].max_db_connections, upper
+        assert catalogue[upper].statement_timeout_seconds == 15, upper
+
+
+def test_every_paid_card_says_its_rung_of_the_ladder_in_words(catalogue):
+    """One line per card, on the same scale, in both languages; the upgrade-only tiers keep «Everything in …»."""
+    for slug, english, spanish in LADDER:
+        plan = catalogue[slug]
+        assert sum(line.startswith(english) for line in plan.features_en) == 1, (slug, plan.features_en)
+        assert sum(line.startswith(spanish) for line in plan.features_es) == 1, (slug, plan.features_es)
+    for slug, below in (("pro", "Standard"), ("enterprise", "Pro"), ("max", "Enterprise")):
+        assert catalogue[slug].features_en[0] == f"Everything in {below}", slug
 
 
 def test_a_plan_sizes_no_infrastructure():
