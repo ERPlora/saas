@@ -33,7 +33,10 @@ Firmado como todo `/internal` (`accounts/signing.py`: v1 o v2, ±300 s, secreto 
 | `409 environment_not_allowed` | `production` desde un despliegue que no es `prod` (`pre` solo presenta a pruebas) |
 | `502 {"error": {"code": "aeat_unreachable", "sent"}}` | Sin respuesta de la AEAT; `sent = true` si la petición pudo llegar |
 | `503 gateway_busy` | Semáforo lleno; el Hub reintenta |
-| `401` · `405` · `413` · `422` | Sin firma · no es POST · cuerpo > 10 MiB · fuera del contrato (`fields`) |
+| `401 unauthorized` | Sin firma, firma caducada (±300 s) o que no casa |
+| `405 method_not_allowed` | No es `POST` |
+| `413 payload_too_large` | Cuerpo de más de 10 MiB |
+| `422 invalid_payload` | No es JSON o no cumple el contrato; los campos fallidos, en `fields` |
 | `probe` → `200 {"ready", "detail"}` | Si se podría presentar ahora y con qué certificado (`seal B…, expires 2027-…`); no toca la AEAT |
 
 Los errores van en el sobre único `{"error": {"code", "message"}}`. El cuerpo se lee en la vista, con su propio
