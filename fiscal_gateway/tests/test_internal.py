@@ -598,11 +598,11 @@ def test_a_business_declaring_erploras_nif_with_an_authorisation_of_its_own_is_a
 def test_the_platform_hub_is_the_configured_one(
     client, settings, respx_mock, erplora_seal
 ):
-    settings.PLATFORM_HUB_SLUG = "erplora-cloud"
+    settings.PLATFORM_HUB_SLUG = "hubs"
     respx_mock.post(PRE_SEAL).respond(200, text=ANSWER)
 
     assert error_of(call(client, "submit", payload())) == (404, "hub_unknown")
-    assert call(client, "submit", payload(hub="erplora-cloud")).status_code == 200
+    assert call(client, "submit", payload(hub="hubs")).status_code == 200
 
 
 def test_the_platform_hub_has_no_exception_with_a_certificate_of_its_own(

@@ -83,7 +83,7 @@ cliente. Antes de tocar la AEAT, con `route = "erplora"`, la pasarela comprueba 
 
 Única excepción: el **hub de plataforma** (las facturas de ERPlora), que el Hub nombra con
 `hub = PLATFORM_HUB_SLUG` (entorno; por defecto `erplora`, slug reservado de `live.slugs` que ningún negocio
-puede tener, y un test lo exige). No es un negocio del SaaS: no se le pide fila `Hub` ni otorgamiento, pero solo
+puede tener; con uno no reservado, `manage.py check` falla con `fiscal_gateway.E001` y el despliegue no arranca). No es un negocio del SaaS: no se le pide fila `Hub` ni otorgamiento, pero solo
 presenta en nombre de ERPLORA CLOUD SL: `nif` tiene que ser el titular del sello; si no, `409 nif_mismatch`.
 Cualquier otro hub que declare el NIF de ERPlora necesita su otorgamiento como los demás. Con `route = "own"` no
 hay excepción ni comprobación de otorgamiento: el certificado es del cliente y el NIF del sobre ya tiene que ser
