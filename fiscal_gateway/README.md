@@ -17,11 +17,13 @@ la pasarela vive en el SaaS y el Hub la llama por `/internal` (PLAN-SAAS §4; co
 Firmado como todo `/internal` (`accounts/signing.py`: v1 o v2, ±300 s, secreto actual y anterior). Cuerpo:
 
 ```json
-{"hub": "<uuid>", "nif": "B12345674", "environment": "testing|production", "route": "erplora|own",
+{"hub": "<slug|uuid>", "nif": "B12345674", "environment": "testing|production", "route": "erplora|own",
  "envelope": "<soapenv:Envelope…>", "certificate": {"p12_base64": "…", "password": "…"}}
 ```
 
-`certificate` solo con `route = "own"`; `probe` no lleva `envelope`.
+`hub`: slug del hub (fase 1, el del host: `ctx.scope.key`) o UUID, en minúsculas (1–64 caracteres,
+`^[a-z0-9][a-z0-9-]*$`); por ahora solo identifica al hub en los logs. `certificate` solo con `route = "own"`;
+`probe` no lleva `envelope`.
 
 | Respuesta | Cuándo |
 |---|---|
