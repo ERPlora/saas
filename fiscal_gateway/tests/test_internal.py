@@ -11,6 +11,7 @@ envelope ``{"error": {"code", "message"}}``. Only the AEAT's preproduction is ev
 
 import json
 import logging
+import ssl
 import time
 
 import httpx
@@ -227,6 +228,24 @@ def test_through_erplora_without_a_seal(client, respx_mock, no_seal):
     assert not respx_mock.calls
 
 
+def test_through_erplora_with_a_seal_tls_refuses_is_no_seal(
+    client, respx_mock, settings
+):
+    """ERPlora's seal that TLS refuses (here, a 1024-bit key) is no usable seal, as an unreadable or
+    expired one: ``seal.current()`` returns it (it opens), and the gateway refuses it before the AEAT."""
+    weak = make_p12(org_id="VATES-B27593136", serial=None, eseal=True, key_size=1024)
+    settings.FISCAL_SEAL_CURRENT_P12_BASE64 = b64(weak)
+    settings.FISCAL_SEAL_CURRENT_PASSWORD = PASSWORD
+    settings.FISCAL_SEAL_NEXT_P12_BASE64 = ""
+    settings.FISCAL_SEAL_NEXT_PASSWORD = ""
+    body = payload()
+    probe_body = {k: v for k, v in body.items() if k != "envelope"}
+
+    assert error_of(call(client, "submit", body)) == (409, "no_seal")
+    assert call(client, "probe", probe_body).json()["ready"] is False
+    assert not respx_mock.calls
+
+
 def test_own_route_without_a_certificate(client, respx_mock, erplora_seal):
     response = call(client, "submit", payload(route="own"))
 
@@ -322,6 +341,24 @@ def test_a_submission_with_the_customers_certificate_goes_through_the_holders_do
 
     assert response.json() == {"aeat_status": 200, "aeat_body": ANSWER}
     assert route.called
+
+
+def test_a_submission_loads_the_certificate_into_tls_once(
+    client, respx_mock, own_p12, monkeypatch
+):
+    respx_mock.post(PRE_HOLDER).respond(200, text=ANSWER)
+    loads = []
+    original = ssl.SSLContext.load_cert_chain
+
+    def count(context, certfile, keyfile=None, password=None):
+        loads.append(certfile)
+        return original(context, certfile, keyfile, password)
+
+    monkeypatch.setattr(ssl.SSLContext, "load_cert_chain", count)
+
+    call(client, "submit", own(own_p12))
+
+    assert len(loads) == 1
 
 
 def test_a_query_returns_the_aeats_answer(client, respx_mock, erplora_seal):
@@ -450,6 +487,32 @@ def test_probe_with_an_unusable_certificate_is_not_ready(client, own_p12):
 
     assert response.json()["ready"] is False
     assert "hunter2" not in response.content.decode()
+
+
+def test_probe_with_a_certificate_tls_refuses_is_not_ready(client, respx_mock, caplog):
+    """Like every other unusable certificate, the probe answers ``ready: false`` with the reason
+    (submit/query answer 409 ``certificate_invalid``), never ``ready: true``."""
+    weak = make_p12(
+        org_id="VATES-B27593136",
+        serial="IDCES-12345678Z",
+        key_size=1024,
+        password="pw-5d1e8b",
+    )
+    body = own(weak, password="pw-5d1e8b")
+    del body["envelope"]
+
+    with caplog.at_level(logging.DEBUG):
+        response = call(client, "probe", body)
+
+    assert response.status_code == 200
+    assert response.json()["ready"] is False
+    assert "TLS" in response.json()["detail"]
+    assert not respx_mock.calls
+    logged = caplog.text + "".join(str(record.args) for record in caplog.records)
+    assert caplog.records
+    for secret in ("pw-5d1e8b", b64(weak)[:60], b64(weak)[-60:], "PRIVATE KEY"):
+        assert secret not in logged
+        assert secret not in response.content.decode()
 
 
 def test_probe_own_route_without_a_certificate_is_not_ready(client):

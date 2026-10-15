@@ -27,7 +27,7 @@ Firmado como todo `/internal` (`accounts/signing.py`: v1 o v2, ±300 s, secreto 
 |---|---|
 | `200 {"aeat_status", "aeat_body"}` | La AEAT contestó; su respuesta tal cual, diga lo que diga (la interpreta el Hub) |
 | `409 nif_mismatch` | El sobre nombra a otro contribuyente; se decide **antes** de tocar la AEAT |
-| `409 no_seal` | `route = "erplora"` sin sello utilizable |
+| `409 no_seal` | `route = "erplora"` sin sello utilizable (también si TLS rechaza el sello configurado) |
 | `409 no_certificate` | `route = "own"` sin certificado |
 | `409 certificate_invalid` | No abre con su contraseña, no permite autenticación de cliente (EKU), ha caducado o TLS lo rechaza (la clave no es la del certificado o es demasiado débil, p. ej. RSA de 1024); no sale nada hacia la AEAT |
 | `409 environment_not_allowed` | `production` desde un despliegue que no es `prod` (`pre` solo presenta a pruebas) |
@@ -37,7 +37,7 @@ Firmado como todo `/internal` (`accounts/signing.py`: v1 o v2, ±300 s, secreto 
 | `405 method_not_allowed` | No es `POST` |
 | `413 payload_too_large` | Cuerpo de más de 10 MiB |
 | `422 invalid_payload` | No es JSON o no cumple el contrato; los campos fallidos, en `fields` |
-| `probe` → `200 {"ready", "detail"}` | Si se podría presentar ahora y con qué certificado (`seal B…, expires 2027-…`); no toca la AEAT |
+| `probe` → `200 {"ready", "detail"}` | Si se podría presentar ahora y con qué certificado (`seal B…, expires 2027-…`); no toca la AEAT. Carga el certificado en TLS como una presentación: si `submit` respondería `409` (`certificate_invalid`, `no_seal`…), `probe` da `ready: false` y el motivo en `detail` |
 
 Los errores van en el sobre único `{"error": {"code", "message"}}`. El cuerpo se lee en la vista, con su propio
 tope de 10 MiB, y no por `request.body`: un envío de 1000 registros supera el límite de formularios de Django

@@ -25,7 +25,8 @@ the Hub's job. Only the transport's own failures are classified (``AeatUnreachab
 httpx cannot take a key from memory, so the certificate and its key go to two files of mode 0600 in a
 private temporary directory, which goes as soon as TLS has read them, whatever happens. A certificate
 TLS refuses (its key is not the certificate's, or is too weak for OpenSSL's security level) raises
-``SealInvalid`` before anything leaves. Headers as the proven client of the gateway this one
+``SealInvalid`` before anything leaves (``tls_context``, which the gateway calls first so that it can
+refuse it, and probe it, without presenting). Headers as the proven client of the gateway this one
 replaces: ``Content-Type: text/xml;charset=UTF-8`` and ``SOAPAction: ""`` (the WSDL's, for both
 operations). 10 s to connect and 60 s to read.
 """
@@ -99,15 +100,19 @@ def present(
     envelope: str,
     *,
     operation: Literal["submit", "query"],
+    context: ssl.SSLContext | None = None,
 ) -> Answer:
     """POST ``envelope`` to the AEAT with ``identity``; the answer as it came, or ``AeatUnreachable``.
 
-    ``SealInvalid`` if TLS refuses ``identity``: nothing was sent."""
+    ``context``: ``identity`` already loaded by ``tls_context``, so it is not loaded twice; without
+    it, ``SealInvalid`` if TLS refuses ``identity`` (nothing was sent)."""
     if operation not in OPERATIONS:
         raise ValueError(f"Unknown operation {operation!r}.")
     url = endpoint(environment, identity.kind)
     try:
-        with httpx.Client(verify=_tls(identity), timeout=TIMEOUT) as client:
+        if context is None:
+            context = tls_context(identity)
+        with httpx.Client(verify=context, timeout=TIMEOUT) as client:
             response = client.post(
                 url, content=envelope.encode("utf-8"), headers=HEADERS
             )
@@ -142,8 +147,10 @@ def present(
     return Answer(status=response.status_code, body=response.text)
 
 
-def _tls(identity: Identity) -> ssl.SSLContext:
-    """httpx's TLS context (certifi's roots) with ``identity`` as the client certificate."""
+def tls_context(identity: Identity) -> ssl.SSLContext:
+    """httpx's TLS context (certifi's roots) with ``identity`` as the client certificate.
+
+    ``SealInvalid`` if TLS refuses it."""
     context = httpx.create_ssl_context()
     with tempfile.TemporaryDirectory(prefix="fiscal-gateway-") as directory:
         cert_file = os.path.join(directory, "cert.pem")

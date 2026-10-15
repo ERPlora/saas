@@ -14,8 +14,8 @@ What each door answers:
   taxpayer other than ``nif``; decided before anything else touches the AEAT), ``no_seal`` (``erplora``
   without a usable seal), ``no_certificate`` (``own`` without one), ``certificate_invalid`` (it does not
   open, cannot authenticate as a client, has expired, or TLS refuses it: its key is not the
-  certificate's or is too weak), ``environment_not_allowed`` (``production`` from a deployment that is
-  not prod: ``pre`` only presents to the AEAT's tests);
+  certificate's or is too weak; ERPlora's seal in that case is ``no_seal``), ``environment_not_allowed``
+  (``production`` from a deployment that is not prod: ``pre`` only presents to the AEAT's tests);
 - ``502 {"error": {"code": "aeat_unreachable", "message", "sent"}}``: no answer from the AEAT. ``sent``
   says whether the request may have reached it (the Hub then keeps the record as sent and asks again);
 - ``503 gateway_busy``: ``VERIFACTU_GATEWAY_CONCURRENCY`` presentations are already under way in this
@@ -23,7 +23,8 @@ What each door answers:
 - ``401`` unsigned, ``405`` not POST, ``413`` over ``MAX_BODY_BYTES``, ``422`` not the contract.
 
 ``probe`` presents nothing: ``200 {"ready", "detail"}`` says whether a presentation would leave now
-(``detail``: which certificate, or why not).
+(``detail``: which certificate, or why not). It loads the certificate into TLS as a presentation does,
+so a certificate TLS refuses is ``ready: false`` there too.
 
 The body is read here, not through ``request.body``: a submission of a thousand records weighs more
 than Django's form limit (``DATA_UPLOAD_MAX_MEMORY_SIZE``, 2.5 MB), and the gateway has its own.
@@ -35,6 +36,7 @@ error reports).
 import datetime as dt
 import json
 import logging
+import ssl
 import threading
 import time
 
@@ -101,7 +103,7 @@ def probe(request: HttpRequest) -> JsonResponse:
         return refused.response()
     try:
         _allowed(body.environment)
-        identity = _identity(body)
+        identity, _ = _identity(body)
     except _Refused as refused:
         out = ProbeOut(ready=False, detail=refused.message)
     else:
@@ -131,9 +133,18 @@ def _present(request: HttpRequest, operation: str) -> JsonResponse:
                 "nif_mismatch",
                 f"The envelope names a taxpayer other than {body.nif}.",
             )
-        identity = _identity(body)
+        identity, context = _identity(body)
     except _Refused as refused:
-        return _refuse(operation, body, refused)
+        logger.warning(
+            "fiscal_gateway.%s.refused code=%s hub=%s nif=%s environment=%s route=%s",
+            operation,
+            refused.code,
+            body.hub,
+            body.nif,
+            body.environment,
+            body.route,
+        )
+        return refused.response()
     if not SLOTS.acquire(blocking=False):
         logger.warning("fiscal_gateway.%s.busy hub=%s", operation, body.hub)
         return _error(
@@ -141,11 +152,11 @@ def _present(request: HttpRequest, operation: str) -> JsonResponse:
         )
     try:
         answer = aeat.present(
-            identity, body.environment, body.envelope, operation=operation
-        )
-    except seal.SealInvalid as invalid:
-        return _refuse(
-            operation, body, _Refused(409, "certificate_invalid", str(invalid))
+            identity,
+            body.environment,
+            body.envelope,
+            operation=operation,
+            context=context,
         )
     except aeat.AeatUnreachable as unreachable:
         return _error(502, "aeat_unreachable", str(unreachable), sent=unreachable.sent)
@@ -164,20 +175,6 @@ def _present(request: HttpRequest, operation: str) -> JsonResponse:
     return JsonResponse(
         AnswerOut(aeat_status=answer.status, aeat_body=answer.body).model_dump()
     )
-
-
-def _refuse(operation: str, body: PresentIn, refused: _Refused) -> JsonResponse:
-    """Log that nothing was presented (which call, never the certificate) and answer so."""
-    logger.warning(
-        "fiscal_gateway.%s.refused code=%s hub=%s nif=%s environment=%s route=%s",
-        operation,
-        refused.code,
-        body.hub,
-        body.nif,
-        body.environment,
-        body.route,
-    )
-    return refused.response()
 
 
 @sensitive_variables()
@@ -233,8 +230,8 @@ def _allowed(environment: str) -> None:
 
 
 @sensitive_variables()
-def _identity(body: ProbeIn) -> seal.Identity:
-    """The certificate to present ``body`` with, or the refusal to answer."""
+def _identity(body: ProbeIn) -> tuple[seal.Identity, ssl.SSLContext]:
+    """The certificate to present ``body`` with and its TLS context, or the refusal to answer."""
     now = dt.datetime.now(dt.UTC)
     if body.route == "erplora":
         identity = seal.current(now)
@@ -242,7 +239,7 @@ def _identity(body: ProbeIn) -> seal.Identity:
             raise _Refused(
                 409, "no_seal", "ERPlora has no usable seal to present with."
             )
-        return identity
+        return identity, _tls(identity, "no_seal")
     if body.certificate is None:
         raise _Refused(
             409, "no_certificate", "The «own» route needs the business's certificate."
@@ -260,4 +257,13 @@ def _identity(body: ProbeIn) -> seal.Identity:
             "certificate_invalid",
             f"The certificate expired on {identity.expires_at.date().isoformat()}.",
         )
-    return identity
+    return identity, _tls(identity, "certificate_invalid")
+
+
+@sensitive_variables()
+def _tls(identity: seal.Identity, code: str) -> ssl.SSLContext:
+    """``identity`` loaded into TLS, or the refusal ``code`` if TLS will not take it."""
+    try:
+        return aeat.tls_context(identity)
+    except seal.SealInvalid as invalid:
+        raise _Refused(409, code, str(invalid)) from None
