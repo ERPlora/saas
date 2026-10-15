@@ -634,6 +634,10 @@ FISCAL_SEAL_NEXT_PASSWORD = config("FISCAL_SEAL_NEXT_PASSWORD", default="")
 # The fiscal gateway (fiscal_gateway/, PLAN-SAAS §4): presentations to the AEAT under way at once in
 # one process; one more answers 503 `gateway_busy` and the Hub retries. 8 until it is measured in pre.
 VERIFACTU_GATEWAY_CONCURRENCY = config("VERIFACTU_GATEWAY_CONCURRENCY", default=8, cast=int)
+# The platform's hub (ERPlora's own invoices; PLAN-SAAS §4), named by the Hub as `hub`: the only one that
+# presents through the seal without an authorisation, and only for the seal's holder. No business of the SaaS
+# bears it: a reserved slug (live.slugs), or `check` fails (fiscal_gateway.E001).
+PLATFORM_HUB_SLUG = config("PLATFORM_HUB_SLUG", default="erplora")
 
 # The documentation a hub sends so ERPlora files its VeriFactu records (fiscal/, plan 2026-10-15): the
 # signed Anexo I, a copy of the signer's identity document and the rest, encrypted at rest with this Fernet

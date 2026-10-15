@@ -6,7 +6,8 @@ are ``SecretStr``: no ``repr``, ``str`` or log line of a body shows them.
 
 ``hub`` names the calling hub: in phase 1 the slug of its host (``ctx.scope.key``), later the registry's
 UUID in lowercase. Both fit ``live.slugs.HUB_SLUG_RE``, the single source of the slug format, checked
-with ``fullmatch`` (its ``$`` would admit a trailing newline). It carries no other meaning yet.
+with ``fullmatch`` (its ``$`` would admit a trailing newline). The gateway presents for a business it
+knows only (``hub_unknown``), and through ``erplora`` only with that business's approved authorisation.
 """
 
 from typing import Annotated, Literal

@@ -7,6 +7,8 @@ the review page, which shows the documents decrypted and never cached. Both page
 ``fiscal.change_representationgrant``; ``support`` only sees the list and the rows.
 """
 
+import logging
+
 import pytest
 from django.contrib.auth.models import Group, Permission
 from django.contrib.messages import get_messages
@@ -236,6 +238,18 @@ def test_a_document_is_served_decrypted_inline_and_never_cached(as_reviewer, gra
     # Shown inside the review page: framed by this origin only.
     assert response["X-Frame-Options"] == "SAMEORIGIN"
     assert "frame-ancestors 'self'" in response["Content-Security-Policy"]
+
+
+def test_serving_a_document_leaves_a_trace_without_its_content(as_reviewer, grant, reviewer, caplog):
+    """Who opened which document of which authorisation: the grant, the kind and the user's id, never a byte
+    of the PDF nor a name."""
+    with caplog.at_level(logging.INFO, logger="fiscal.admin"):
+        as_reviewer.get(document_url(grant, "signed_model"))
+
+    assert [record.getMessage() for record in caplog.records if record.name == "fiscal.admin"] == [
+        f"fiscal.admin.document grant={grant.pk} kind=signed_model user={reviewer.pk}"
+    ]
+    assert "signed" not in caplog.text.replace("signed_model", "")
 
 
 @pytest.mark.parametrize("kind", ["signature_sample", "passport", "hub"])
