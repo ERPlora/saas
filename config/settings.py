@@ -111,6 +111,8 @@ INSTALLED_APPS = [
     "hubs",
     # The EU VAT engine and, from lot L2-B, Stripe: after hubs, whose payer it reads.
     "billing",
+    # The fiscal gateway (PLAN-SAAS §4): presents the Hub's VeriFactu envelopes to the AEAT.
+    "fiscal_gateway",
     "public",
     # After `public`: its templates override the package's (public/templates/cookie_consent/).
     "cookie_consent",
