@@ -10,6 +10,7 @@ export interface Call {
   method: string;
   path: string;
   body: unknown;
+  headers: Record<string, string>;
 }
 
 export function json(status: number, body: unknown): Response {
@@ -29,6 +30,22 @@ export const pendingSecondFactor: Answer = () =>
     data: { flows: [{ id: 'login' }, { id: 'mfa_authenticate', is_pending: true }] },
     meta: { is_authenticated: false },
   });
+/** The anonymous state of a sign-up (or a login of an unverified address) waiting for its mailed code. */
+export const pendingEmailVerification: Answer = () =>
+  json(401, {
+    status: 401,
+    data: { flows: [{ id: 'login' }, { id: 'verify_email', is_pending: true }] },
+    meta: { is_authenticated: false },
+  });
+/** The anonymous state of a password login waiting for the code mailed to the account (every sign-in). */
+export const pendingLoginCode: Answer = () =>
+  json(401, {
+    status: 401,
+    data: { flows: [{ id: 'login' }, { id: 'login_by_code', is_pending: true }] },
+    meta: { is_authenticated: false },
+  });
+/** allauth's answer when nothing is limited any more: too many requests (a 429 carries no errors). */
+export const tooManyRequests: Answer = () => json(429, { status: 429 });
 /** A protected account call while the recent login is too old: the flows that can confirm it. */
 export const reauthenticationRequired =
   (flows: string[] = ['reauthenticate', 'mfa_reauthenticate']): Answer =>
@@ -64,7 +81,12 @@ export function fakeAllauth(answers: Record<string, Answer | Answer[]> = {}) {
   const fetch = vi.fn((url: string, init: RequestInit) => {
     const method = init.method ?? 'GET';
     const path = url.startsWith(ALLAUTH_BROWSER_BASE) ? url.slice(ALLAUTH_BROWSER_BASE.length) : url;
-    calls.push({ method, path, body: typeof init.body === 'string' ? JSON.parse(init.body) : undefined });
+    calls.push({
+      method,
+      path,
+      body: typeof init.body === 'string' ? JSON.parse(init.body) : undefined,
+      headers: { ...(init.headers as Record<string, string> | undefined) },
+    });
     const queue = table.get(`${method} ${path}`);
     if (!queue) return Promise.resolve(json(599, { status: 599, errors: [{ message: `No fake answer for ${method} ${path}` }] }));
     const answer = queue.length > 1 ? queue.shift()! : queue[0];

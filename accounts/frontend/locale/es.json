@@ -15,23 +15,18 @@
       "agree": "Al continuar aceptas nuestros",
       "terms": "Términos",
       "privacy": "Política de Privacidad",
-      "failed": "No hemos podido iniciar tu sesión. Vuelve a intentarlo."
+      "failed": "No hemos podido iniciar tu sesión. Vuelve a intentarlo.",
+      "tooManyAttempts": "Demasiados intentos. Espera unos minutos y vuelve a intentarlo.",
+      "codeExpired": "Tu código ha caducado o se ha escrito mal demasiadas veces. Vuelve a iniciar sesión y te enviaremos uno nuevo."
     },
     "launch": {
-      "title": "Elige un negocio",
-      "noHubs": "Tu cuenta aún no pertenece a ningún negocio. Pide a quien gestione uno que te invite.",
-      "opening": "Abriendo tu negocio…",
-      "signOut": "Cerrar Sesión",
-      "loadError": "No hemos podido cargar tus negocios. Vuelve a intentarlo.",
-      "retry": "Reintentar",
-      "mfaUnavailable": "La autenticación en dos pasos aún no está disponible en esta cuenta."
+      "retry": "Reintentar"
     },
     "loginError": {
       "home": "Inicio",
       "backToHub": "Volver al hub",
       "contactSupport": "Contactar Soporte",
       "backToSignIn": "Volver a iniciar sesión",
-      "useAnotherAccount": "Usar otra cuenta",
       "invalidHub": {
         "title": "Enlace de acceso no válido",
         "badge": "400 · Enlace no válido",
@@ -44,10 +39,6 @@
         "heading": "No tienes acceso a este hub",
         "message": "Esta cuenta no es miembro de {hub_host}. Pide a quien gestiona ese hub que te invite, o entra con la cuenta que sí tiene acceso."
       },
-      "googleNoAccount": {
-        "heading": "No hay ninguna cuenta de ERPlora para esta cuenta de Google",
-        "message": "{account_email} no tiene cuenta de ERPlora. Pide a quien gestiona tu negocio que te invite, o entra con la cuenta que sí tiene acceso."
-      },
       "authenticationError": {
         "heading": "No hemos podido iniciar tu sesión con Google",
         "message": "Algo ha fallado al iniciar sesión con Google. Vuelve a intentarlo o entra con tu email y tu contraseña."
@@ -55,7 +46,44 @@
       "loginCancelled": {
         "heading": "Inicio de sesión cancelado",
         "message": "Has cancelado el inicio de sesión con Google. Vuelve a intentarlo o entra con tu email y tu contraseña."
+      },
+      "googleLinkRefused": {
+        "heading": "Google no se ha vinculado",
+        "message": "Google solo se vincula entrando con la cuenta de Google de tu correo."
       }
+    },
+    "verifyEmail": {
+      "title": "Revisa tu correo electrónico",
+      "sentTo": "Te hemos enviado un código a {recipient}",
+      "sent": "Te hemos enviado un código a tu correo electrónico.",
+      "verify": "Verificar",
+      "resend": "Enviar un código nuevo",
+      "resent": "Te hemos enviado un código nuevo.",
+      "resendFailed": "No hemos podido enviar un código nuevo. Vuelve a intentarlo más tarde.",
+      "useDifferentEmail": "Usar otro correo electrónico",
+      "signInCodeHelp": "El código dura 3 minutos. ¿No te ha llegado? Vuelve a iniciar sesión y te enviaremos uno nuevo."
+    },
+    "passwordReset": {
+      "title": "Restablecer contraseña",
+      "subtitle": "Restablece tu contraseña",
+      "send": "Enviar Enlace",
+      "remember": "¿Recuerdas tu contraseña?",
+      "signIn": "Iniciar sesión",
+      "checkTitle": "Revisa tu Correo Electrónico",
+      "checkSubtitle": "Revisa tu correo electrónico",
+      "sent": "Hemos enviado instrucciones para restablecer la contraseña a tu correo. Revisa tu bandeja de entrada (y la carpeta de spam).",
+      "backToLogin": "Volver al Inicio de Sesión",
+      "noEmail": "¿No recibiste el correo?",
+      "tryAgain": "Inténtalo de nuevo",
+      "failed": "Algo ha ido mal. Inténtalo de nuevo.",
+      "newTitle": "Establecer nueva contraseña",
+      "newSubtitle": "Establece una nueva contraseña",
+      "checking": "Comprobando tu enlace…",
+      "invalidLink": "Este enlace de restablecimiento ha expirado o no es válido.",
+      "requestNewLink": "Solicitar Nuevo Enlace",
+      "newPassword": "Nueva Contraseña",
+      "change": "Cambiar contraseña",
+      "done": "Tu contraseña ha sido cambiada exitosamente."
     },
     "twoFactor": {
       "title": "Verificación en dos pasos",
@@ -329,7 +357,7 @@
         "connected": "Puedes entrar con {account}.",
         "notConnected": "Entra también con tu cuenta de Google.",
         "onlyWayIn": "Es tu única forma de entrar: crea antes una contraseña.",
-        "connect": "Conectar",
+        "howToLink": "Para vincularla, entra una vez con la cuenta de Google de tu correo.",
         "disconnect": "Desconectar",
         "disconnectTitle": "Desconectar Google",
         "disconnectMessage": "Ya no podrás entrar con {account}; seguirás entrando con tu correo y tu contraseña.",

@@ -64,11 +64,9 @@ def test_a_new_account_is_told_how_to_get_in(hub, make_user):
     emails.send_invitation(member, base_url=BASE, new_account=True)
 
     body = mail.outbox[0].body
-    # The reset page that exists today (allauth's, as the login's «Forgot your password?»): the SPA
-    # has no /password/reset yet, and its catch-all sends a visitor without a session to the login,
-    # where an account without a password cannot get in (members.spec.ts follows this link).
-    assert f"{BASE}/accounts/password/reset/" in body
-    assert f"{BASE}/password/reset" not in body
+    # «Forgot your password?» of the sign-in: the SPA's page, which mails the key to the address.
+    assert f"{BASE}/password/reset" in body
+    assert "/accounts/" not in body
     assert "olga@example.com invited you to Bar Manolo" == mail.outbox[0].subject
 
 

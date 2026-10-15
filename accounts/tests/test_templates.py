@@ -1,6 +1,8 @@
-"""The account screens are Vue pages (``accounts/frontend/pages``): the launcher and every error
-of the sign-in. Only the auto-submitted form of the jump to a hub stays a Django template, because
-it is not a screen: it POSTs the one-time code to the hub (``hub_login_form.html``)."""
+"""The account screens are Vue pages (``accounts/frontend/pages``): the sign-in and its every step, the
+launcher and every error of the sign-in. allauth runs headless only, so no sign-in page is a template.
+Templates stay only where nothing is painted for the person to use: the auto-submitted form of the jump
+to a hub, which POSTs the one-time code to the hub (``hub_login_form.html``), and the text of the mails
+allauth sends (``templates/account/email`` and ``templates/socialaccount/email``)."""
 
 import re
 from pathlib import Path
@@ -12,7 +14,7 @@ from django.template import TemplateDoesNotExist
 from django.template.loader import get_template
 
 ACCOUNTS_TEMPLATES = Path(__file__).resolve().parent.parent / "templates" / "accounts"
-SOCIALACCOUNT_TEMPLATES = Path(settings.BASE_DIR) / "templates" / "socialaccount"
+PROJECT_TEMPLATES = Path(settings.BASE_DIR) / "templates"
 
 
 def test_only_the_jump_form_stays_a_template():
@@ -20,13 +22,37 @@ def test_only_the_jump_form_stays_a_template():
     assert get_template("accounts/hub_login_form.html")
 
 
-def test_the_google_error_screens_are_vue_pages_too():
-    """allauth's «Third-Party Login Failure» and «Login Cancelled» now redirect to /login/error."""
-    assert not (SOCIALACCOUNT_TEMPLATES / "authentication_error.html").exists()
-    assert not (SOCIALACCOUNT_TEMPLATES / "login_cancelled.html").exists()
+def test_of_allauths_templates_only_the_mails_are_ours():
+    """Headless only: allauth renders no page, so the project overrides none (the sign-in's, its layout
+    ``base.html`` and Google's interstitial are gone); the mails it sends keep ERPlora's wording."""
+    ours = sorted(
+        str(path.relative_to(PROJECT_TEMPLATES))
+        for folder in ("account", "socialaccount", "mfa", "usersessions")
+        for path in (PROJECT_TEMPLATES / folder).rglob("*")
+        if path.is_file()
+    )
+
+    assert ours == [
+        "account/email/base_message.txt",
+        "socialaccount/email/account_connected_message.txt",
+        "socialaccount/email/account_connected_subject.txt",
+    ]
+    assert not (PROJECT_TEMPLATES / "base.html").exists()
 
 
-# --- What the template pages still paint: Ionic and our own CSS, no OutfitKit (PLAN §16.11) ---
+@pytest.mark.parametrize(
+    "name",
+    [
+        "account/email/base_message.txt",
+        "socialaccount/email/account_connected_message.txt",
+        "socialaccount/email/account_connected_subject.txt",
+    ],
+)
+def test_the_mails_are_rendered_from_ours(name):
+    assert Path(get_template(name).origin.name) == PROJECT_TEMPLATES / name
+
+
+# --- What Django still paints: our own CSS, no OutfitKit (PLAN §16.11) ---
 
 #: An OutfitKit trace in rendered HTML or CSS: an ``ok-*`` tag, class, attribute or ``--ok-*`` token.
 #: Ionic's own ``ok-text`` attribute (``ion-select``) is not one of ours.
@@ -63,11 +89,36 @@ def assert_tokens_defined(html: str) -> None:
 
 
 @pytest.mark.django_db
-def test_the_login_page_paints_without_outfitkit(client):
-    html = client.get("/accounts/login/").content.decode()
+def test_the_error_pages_of_the_sign_in_paint_without_outfitkit():
+    """What Django still paints around the sign-in: its error pages (``templates/errors/base.html``)."""
+    html = get_template("429.html").render({})
 
     assert_no_outfitkit(html)
     assert_tokens_defined(html)
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        # The stylesheets only the template sign-in linked (its `base.html`); the error pages keep theirs.
+        "css/preflight.css",
+        "css/erplora-theme.css",
+        "css/native-controls.css",
+        "css/erplora-logo.css",
+        "css/cloud.css",
+        "css/ionic-utilities.css",
+        "css/ion-card-content-utilities.css",
+        "vendor/ionic/css/padding.css",
+        "vendor/ionic/css/text-alignment.css",
+        "vendor/ionic/css/flex-utils.css",
+        # Iconify and its offline bundle: the SPA bakes its icons (HubIcon), the public web too.
+        "vendor/iconify/iconify.min.js",
+        "vendor/iconify-icon/iconify-icon.min.js",
+        "vendor/iconify-data/icons-offline.js",
+    ],
+)
+def test_the_assets_of_the_template_sign_in_are_gone_from_static(path):
+    assert finders.find(path) is None
 
 
 def test_the_outfitkit_copy_is_gone_from_static():
@@ -77,10 +128,18 @@ def test_the_outfitkit_copy_is_gone_from_static():
 
 
 @pytest.mark.parametrize(
-    "name", ["account/_auth_shell_top.html", "account/_auth_shell_bottom.html", "account/_auth_code_field.html"]
+    "name",
+    [
+        "account/_auth_shell_top.html",
+        "account/_auth_shell_bottom.html",
+        "account/_auth_code_field.html",
+        "account/_auth_header.html",
+        "account/_auth_styles.html",
+        "account/_auth_scripts.html",
+    ],
 )
 def test_the_partials_of_the_retired_template_screens_are_gone(name):
-    """The 2FA and launcher screens are Vue pages (``AuthShell.vue``, ``CodeField.vue``): nothing
+    """The sign-in, 2FA and launcher screens are Vue pages (``AuthShell.vue``, ``CodeField.vue``): nothing
     includes these partials any more."""
     with pytest.raises(TemplateDoesNotExist):
         get_template(name)

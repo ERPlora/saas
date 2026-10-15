@@ -1,142 +1,108 @@
-"""The sign-in page is today's SaaS login (templates ported from ERPlora/saas), served by allauth."""
+"""The sign-in lives in the launcher, the SPA's ``/launch`` (``hubs/frontend/pages/LaunchPage.vue`` with
+``accounts/frontend/components/SignInForm.vue``), over allauth.headless.
 
-import re
+allauth runs headless only (``HEADLESS_ONLY``, PLAN-SAAS §2): none of its template pages exists. The old
+addresses of the sign-in and of the sign-up (bookmarks, links of the public web cached elsewhere) and
+``/login``, the SPA's sign-in page until the form moved into the launcher (Ioan, 2026-10-15), lead to
+``/launch`` for good, keeping where the person was going, in one hop. ``/login/error`` stays a page of the
+SPA. Logging in through the API is ``test_headless``'s, ``test_unified_login``'s and
+``test_sign_in_code``'s; the Google round trip is ``test_google``'s.
+"""
 
 import pytest
+from django.conf import settings
 from django.contrib.auth import get_user_model
+
+from accounts.tests.conftest import prove_address
 
 pytestmark = pytest.mark.django_db
 
-LOGIN = "/accounts/login/"
+HOST = "localhost:8001"
+LAUNCHER = "/launch"
+SHELL_MARK = '<div id="app"></div>'
 
 
-def _nonce(response) -> str:
-    return re.search(r"'nonce-([^']+)'", response["Content-Security-Policy"]).group(1)
-
-
-def test_renders_the_ported_template_with_ionic_markup(client):
-    response = client.get(LOGIN)
-
-    html = response.content.decode()
-    assert response.status_code == 200
-    assert "account/login.html" in [t.name for t in response.templates]
-    assert '<form method="post" action="">' in html
-    assert '<ion-input mode="md" data-bind="login" type="email"' in html
-    assert '<input type="hidden" name="login"' in html
-    assert '<input type="hidden" name="password">' in html
-    assert '<input type="checkbox" name="remember" id="id_remember">' in html
-    assert '<span class="erp-logo lg"' in html
-    assert "<ion-button type=\"submit\"" in html
-
-
-def test_every_script_carries_the_nonce_of_the_response(client):
-    response = client.get(LOGIN)
-
-    html = response.content.decode()
-    scripts = re.findall(r"<script\b[^>]*>", html)
-    assert scripts
-    assert all(f'nonce="{_nonce(response)}"' in tag for tag in scripts)
-
-
-def test_ionic_and_the_fonts_are_served_from_static_not_a_cdn(client):
-    html = client.get(LOGIN).content.decode()
-
-    assert 'src="/static/vendor/ionic/ionic.esm.js"' in html
-    assert "/static/css/erplora-fonts.css" in html
-    assert "cdn.jsdelivr.net" not in html
-    assert "https://" not in re.sub(r'href="https://erplora\.com/legal/[a-z]+/"', "", html)
-
-
-def test_the_page_is_translated_to_spanish(client):
-    html = client.get(LOGIN, headers={"Accept-Language": "es"}).content.decode()
-
-    assert "Continuar" in html
-    assert "Mantener la sesión iniciada" in html
-
-
-def test_the_next_travels_in_a_hidden_input(client):
-    html = client.get(LOGIN, {"next": "/hub-login/?hub=a&next=/"}).content.decode()
-
-    assert '<input type="hidden" name="next" value="/hub-login/?hub=a&amp;next=/">' in html
-
-
-def test_signing_in_follows_next(client, password):
-    get_user_model().objects.create_user(email="ana@example.com", password=password)
-
-    response = client.post(LOGIN + "?next=/launch/", {"login": "ana@example.com", "password": password})
-
-    assert response.status_code == 302
-    assert response.url == "/launch/"
-
-
-def test_a_wrong_password_shows_the_error_in_the_ported_page(client, password):
-    get_user_model().objects.create_user(email="ana@example.com", password=password)
-
-    response = client.post(LOGIN, {"login": "ana@example.com", "password": "nope"})
+@pytest.mark.usefixtures("spa_manifest")
+def test_the_sign_in_is_the_launcher_a_page_of_the_spa(client):
+    response = client.get(LAUNCHER, {"next": "/hub-login/?hub=a"}, HTTP_HOST=HOST)
 
     assert response.status_code == 200
-    assert '<div class="non-field-error">' in response.content.decode()
+    assert SHELL_MARK in response.content.decode()
 
 
-def test_logout_is_allauths_post(client, password):
-    user = get_user_model().objects.create_user(email="ana@example.com", password=password)
-    client.force_login(user)
+@pytest.mark.usefixtures("spa_manifest")
+def test_its_error_page_stays_a_page_of_the_spa(client):
+    response = client.get("/login/error", {"code": "invalid_hub"}, HTTP_HOST=HOST)
 
-    response = client.post("/accounts/logout/")
+    assert response.status_code == 200
+    assert SHELL_MARK in response.content.decode()
 
-    assert response.status_code == 302
-    assert response.url == "/accounts/login/"
+
+def test_django_sends_a_visitor_without_a_session_to_it():
+    assert settings.LOGIN_URL == LAUNCHER
+
+
+@pytest.mark.parametrize("old", ["/login", "/accounts/login/", "/accounts/signup/"])
+def test_the_old_addresses_lead_to_it_for_good_keeping_next(client, old):
+    response = client.get(f"{old}?next=/hub-login/%3Fhub%3Da%26next%3D/sales/", HTTP_HOST=HOST)
+
+    assert response.status_code == 301
+    assert response.url == "/launch?next=/hub-login/%3Fhub%3Da%26next%3D/sales/"
+
+
+@pytest.mark.parametrize("old", ["/login", "/accounts/login/", "/accounts/signup/"])
+def test_the_old_addresses_without_a_query_lead_to_the_bare_launcher(client, old):
+    response = client.get(old, HTTP_HOST=HOST)
+
+    assert (response.status_code, response.url) == (301, LAUNCHER)
+
+
+def test_the_old_addresses_keep_every_parameter(client):
+    """``?notice=password_reset`` of the reset page, ``?surface=account`` of the app."""
+    response = client.get("/login?notice=password_reset&surface=account", HTTP_HOST=HOST)
+
+    assert response.url == "/launch?notice=password_reset&surface=account"
+
+
+@pytest.mark.parametrize("old", ["/login", "/accounts/login/"])
+def test_posting_an_old_sign_in_signs_nobody_in(client, password, old):
+    get_user_model().objects.create_user(email="ana@example.com", password=password)
+    prove_address("ana@example.com")
+
+    response = client.post(
+        old,
+        {"login": "ana@example.com", "email": "ana@example.com", "password": password},
+        HTTP_HOST=HOST,
+    )
+
+    assert response.status_code == 301
     assert "_auth_user_id" not in client.session
 
 
-# «Continue with Google» on the login (ported from ERPlora/saas `templates/account/login.html`,
-# `tests/test_unified_auth.py::TestGoogleConfig` and `tests/test_google_login_next.py`).
-
-GOOGLE_LOGIN = "/auth/google/login/"
-
-
-def _google_form(html: str) -> str:
-    """The `<form>` of the Google button, apart from the rest of the page."""
-    marker = f'action="{GOOGLE_LOGIN}"'
-    assert marker in html, "the login has no form that posts to /auth/google/login/"
-    start = html.rfind("<form", 0, html.index(marker))
-    return html[start : html.index("</form>", start)]
-
-
-def test_without_google_credentials_there_is_no_google_button(client):
-    html = client.get(LOGIN).content.decode()
-
-    assert GOOGLE_LOGIN not in html
-    assert "Continue with Google" not in html
-
-
-def test_with_google_configured_the_button_posts_to_the_registered_path(client, google):
-    form = _google_form(client.get(LOGIN).content.decode())
-
-    assert form.startswith(f'<form method="post" action="{GOOGLE_LOGIN}">')
-    assert 'name="csrfmiddlewaretoken"' in form
-    assert '<ion-button type="submit" fill="outline" size="large" expand="block">' in form
-    assert '<span class="iconify" data-icon="ion:logo-google" aria-hidden="true"></span>' in form
-    assert "Continue with Google" in form
-
-
-def test_the_google_button_carries_the_next_of_the_login_page(client, google):
-    """`/hub-login/?hub=a&next=…` must survive the round trip to Google (saas#945)."""
-    html = client.get(LOGIN, {"next": "/hub-login/?hub=a&next=/sales/"}).content.decode()
-
-    assert '<input type="hidden" name="next" value="/hub-login/?hub=a&amp;next=/sales/">' in _google_form(html)
-
-
-def test_without_next_the_google_button_invents_none(client, google):
-    assert 'name="next"' not in _google_form(client.get(LOGIN).content.decode())
-
-
-@pytest.mark.parametrize("hostile", ["https://evil.com/steal", "//evil.com/steal", "/\\evil.com/steal"])
-def test_a_foreign_next_is_not_carried_to_google(client, google, hostile):
-    assert "evil.com" not in _google_form(client.get(LOGIN, {"next": hostile}).content.decode())
-
-
-def test_the_google_button_is_translated_to_spanish(client, google):
-    html = client.get(LOGIN, headers={"Accept-Language": "es"}).content.decode()
-
-    assert "Continuar con Google" in _google_form(html)
+# A 404 of Django renders the public web's page, which links the Vite build.
+@pytest.mark.usefixtures("spa_manifest")
+@pytest.mark.parametrize(
+    "page",
+    [
+        "/accounts/",
+        "/accounts/logout/",
+        "/accounts/password/reset/",
+        "/accounts/password/reset/done/",
+        "/accounts/password/reset/key/1-set-password/",
+        "/accounts/password/change/",
+        "/accounts/password/set/",
+        "/accounts/email/",
+        "/accounts/confirm-email/",
+        "/accounts/reauthenticate/",
+        "/accounts/2fa/",
+        "/accounts/2fa/authenticate/",
+        "/accounts/sessions/",
+        "/accounts/3rdparty/",
+        "/accounts/3rdparty/login/cancelled/",
+        "/accounts/3rdparty/login/error/",
+        "/accounts/google/login/",
+        "/accounts/google/login/callback/",
+    ],
+)
+def test_allauths_template_pages_are_gone(client, page):
+    assert client.get(page, HTTP_HOST=HOST).status_code == 404

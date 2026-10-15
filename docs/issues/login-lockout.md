@@ -17,7 +17,7 @@ Portar el freno de intentos del ERPlora de hoy: por dirección real antes de com
 - La introdujo una PR: no, ya existía (fuera de la fase 1 por diseño: `saas-next/README.md`, «Fuera de la fase 1»).
 
 ## Cómo se reproduce
-- Pasos: en local, con `owner@example.com` de `demo_seed`: cinco envíos de `http://localhost:8001/accounts/login/` con contraseña `mala`; después, desde otro navegador, `owner@example.com` / `owner`. Se espera entrar; sale «Too many failed login attempts. Try again later.» (comprobado con el cliente de pruebas de Django, dos direcciones distintas).
+- Pasos: en local, con `owner@example.com` de `demo_seed`: cinco envíos de `http://localhost:8001/login` con contraseña `mala`; después, desde otro navegador, `owner@example.com` / `owner`. Se espera entrar; sale «Too many failed login attempts. Try again later.» (comprobado con el cliente de pruebas de Django, dos direcciones distintas).
 
 ## Flujo
 - Flujo: ninguno — la app accounts de saas-next aún no tiene WORKBOOK.md (en el SaaS de hoy es SAAS_AUTH-F14)

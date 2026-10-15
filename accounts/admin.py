@@ -10,15 +10,15 @@ with its ``state`` cookie and sends it to ``/hub-login/?audience=hub-admin`` (``
 there the one-time ``hub-admin`` code is minted and auto-posted to ``HUB_ADMIN_CALLBACK_URL``. The
 staff never type ``hubs.erplora.com``.
 
-With ``ACCOUNTS_MFA_ENABLED`` on, the jump needs the second factor in the session and
-``/admin/login/`` is allauth's login (``admin_login``, installed by ``config/urls.py``).
+``/admin/login/`` hands over to the SaaS's sign-in, ``LOGIN_URL`` (``admin_login``, installed by
+``config/urls.py``), which asks for the mailed code; with ``ACCOUNTS_MFA_ENABLED`` on, the jump also
+needs the authenticator app's code in the session.
 """
 
 from urllib.parse import urlencode, urlsplit
 
 from django.conf import settings
 from django.contrib import admin, messages
-from django.contrib.admin import AdminSite
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.auth.forms import AdminUserCreationForm, UserChangeForm
 from django.core.exceptions import PermissionDenied
@@ -207,17 +207,17 @@ def _admin_next(request: HttpRequest) -> str:
 
 @never_cache
 def admin_login(request: HttpRequest, extra_context=None) -> HttpResponse:
-    """``/admin/login/``: Django's own with the flag off; allauth's login with ``ACCOUNTS_MFA_ENABLED`` on.
+    """``/admin/login/``: the SaaS's sign-in, never Django's own.
 
     Django's admin login signs in through ``django.contrib.auth`` alone, without allauth's stages, so
-    without the second factor. With the flag on it signs nobody in (not even by ``POST``): the visitor
-    goes to ``LOGIN_URL?next=…``, whose code stage records the second factor. Staff already signed
-    in go where they were going; any other signed-in account gets 403, never the login: allauth's
-    login sends a signed-in account straight to ``next`` (the admin), which would send it back here.
-    Ported from ERPlora/saas ``_admin_login`` (``config/urls.py``).
+    without the code mailed at every sign-in (``ACCOUNT_LOGIN_BY_CODE_REQUIRED``) and without the
+    authenticator app (``ACCOUNTS_MFA_ENABLED``). It signs nobody in (not even by ``POST``): the visitor
+    goes to ``LOGIN_URL?next=…`` (the launcher's sign-in, allauth.headless), whose code steps
+    (``/verify-email``, ``/2fa/authenticate``) record both. Staff already signed in go where they were
+    going; any other signed-in account gets 403, never the login: the sign-in sends a signed-in account
+    straight to ``next`` (the admin), which would send it back here.
+    Ported from ERPlora/saas ``_admin_login`` (``config/urls.py``), there only with the second factor on.
     """
-    if not settings.ACCOUNTS_MFA_ENABLED:
-        return AdminSite.login(admin.site, request, extra_context)
     next_url = _admin_next(request)
     if admin.site.has_permission(request):
         return HttpResponseRedirect(next_url)

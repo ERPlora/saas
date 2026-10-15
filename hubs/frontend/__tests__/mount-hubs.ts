@@ -25,10 +25,14 @@ import { PopoverStub } from '../../../packages/ui/src/components/DataTable/__tes
 import { OPERATION_ROUTES } from '../../../frontend/generated/operation-routes';
 import entryEn from '../../../frontend/locale/en.json';
 import entryEs from '../../../frontend/locale/es.json';
+import accountsEn from '../../../accounts/frontend/locale/en.json';
+import accountsEs from '../../../accounts/frontend/locale/es.json';
 import en from '../locale/en.json';
 import es from '../locale/es.json';
 
 export { BYE, errorFrame, flush, HELLO, resultFrame } from '../../../packages/ui/src/sdk/__tests__/live-harness';
+// What IonRouterOutlet does each time a page comes on screen: one helper for the accounts' pages and these.
+export { enterView } from '../../../accounts/frontend/__tests__/mount-account-page';
 export type { ApiCall, StreamCall };
 
 // What `createShell` does at boot (`addIcons(ION_ICONS)`): `ion:` icons paint by name. `ionicons` is
@@ -101,10 +105,14 @@ export async function mountHubs(component: Component, options: MountOptions = {}
     props: options.props,
     attachTo: document.body,
     global: {
-      // The entry's catalogue too (`saas.*`): the shared pieces of `frontend/` (LoadFailed) speak with it.
+      // The entry's catalogue too (`saas.*`): the shared pieces of `frontend/` (LoadFailed) speak with it;
+      // and the accounts' (`accounts.*`): the launcher holds the sign-in (`SignInForm`), as the shell merges them all.
       plugins: [
         router,
-        createShellI18n({ locale: options.locale ?? 'en', messages: { en: { ...en, ...entryEn }, es: { ...es, ...entryEs } } }),
+        createShellI18n({
+          locale: options.locale ?? 'en',
+          messages: { en: { ...en, ...entryEn, ...accountsEn }, es: { ...es, ...entryEs, ...accountsEs } },
+        }),
       ],
       provide: { ...app._context.provides, [LIVE_CLIENT_KEY as symbol]: harness.client },
       // An inline `ion-popover` presents itself only in a real browser (the DataTable's row menu «⋮»).
@@ -133,13 +141,6 @@ export function ionProps(el: { element: Element }, ...names: string[]): Record<s
 /** The value of an `ion-select-option` (a property of the element). */
 export const optionValue = (el: { element: Element }): unknown => (el.element as unknown as { value?: unknown }).value;
 
-/** What IonRouterOutlet does each time the page comes on screen (also when Ionic reuses it). */
-export function enterView(wrapper: { vm: unknown }): void {
-  // Ionic keeps the hooks under `onIonViewWillEnter`, on the instance's exposed object (`<script setup>`).
-  type Hooks = { onIonViewWillEnter?: Array<() => void> };
-  const instance = (wrapper.vm as { $: { exposed: Hooks | null; proxy: Hooks } }).$;
-  for (const hook of instance.exposed?.onIonViewWillEnter ?? instance.proxy.onIonViewWillEnter ?? []) hook();
-}
 
 /**
  * The accessible name of an Ionic control: Ionic moves `aria-label` from its host to the native

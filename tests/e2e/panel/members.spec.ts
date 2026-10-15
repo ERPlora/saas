@@ -23,6 +23,7 @@ import {
   startHubDouble,
   test,
   waitForMail,
+  waitForPasswordResetLink,
   watchPageErrors,
 } from './fixtures';
 import { PANEL_URL } from './project';
@@ -106,8 +107,8 @@ function newcomerInLastSnapshot(hub: HubDouble, hubId: string): { role: string }
 }
 
 /**
- * The newcomer's own browser: from the invitation mail, «set a password here» (allauth's reset: a
- * second mail with the key), then the invitation link, through the login. Returns the page on
+ * The newcomer's own browser: from the invitation mail, «set a password here» (the SPA's
+ * `/password/reset`: a second mail with the link of its key), then the invitation link, through the login. Returns the page on
  * `/invitation`, signed in.
  */
 async function newcomerArrives(browser: Browser, invitationMail: { reset: string; accept: string }) {
@@ -116,22 +117,22 @@ async function newcomerArrives(browser: Browser, invitationMail: { reset: string
   const guest = await context.newPage();
   const errors = watchPageErrors(guest);
 
+  // «Forgot your password?» of the sign-in (the SPA's pages): the key goes to the mailbox.
   await guest.goto(invitationMail.reset);
   const since = Date.now();
-  await guest.locator('input[name="email"]').fill(NEWCOMER);
-  await guest.locator('input[name="email"]').press('Enter');
-  await expect(guest).toHaveURL(/\/accounts\/password\/reset\/done\/$/);
-  const key = await waitForMail(NEWCOMER, since, /http:\/\/localhost:8012\/accounts\/password\/reset\/key\/\S+\//);
+  await guest.getByTestId('password-reset-email').locator('input').fill(NEWCOMER);
+  await guest.getByTestId('password-reset-submit').click();
+  await expect(guest.getByTestId('password-reset-sent')).toBeVisible();
+  const link = await waitForPasswordResetLink(NEWCOMER, since);
 
-  await guest.goto(key);
-  await guest.locator('input[name="password1"]').fill(NEWCOMER_PASSWORD);
-  await guest.locator('input[name="password2"]').fill(NEWCOMER_PASSWORD);
-  await guest.locator('input[name="password2"]').press('Enter');
-  await expect(guest).toHaveURL(/\/accounts\/password\/reset\/key\/done\/$/);
+  await guest.goto(link);
+  await guest.getByTestId('password-reset-key-password').locator('input').fill(NEWCOMER_PASSWORD);
+  await guest.getByTestId('password-reset-key-submit').click();
+  await expect(guest).toHaveURL(/\/launch\?notice=password_reset$/);
 
-  // The invitation's link: without a session the shell sends to the login, which comes back.
+  // The invitation's link: without a session the shell sends to the launcher's sign-in, which comes back.
   await guest.goto(invitationMail.accept);
-  await expect(guest).toHaveURL(/\/login\?next=%2Finvitation$/);
+  await expect(guest).toHaveURL(/\/launch\?next=%2Finvitation$/);
   await signInThroughPage(guest, { email: NEWCOMER, password: NEWCOMER_PASSWORD });
   await expect(guest).toHaveURL(/\/invitation$/);
   return { context, guest, errors };
@@ -186,7 +187,7 @@ test.describe('members', () => {
     expect(snapshots(hub, id)).toEqual([]);
 
     // The mail: who invites where, the invitation's link and, for a new account, how to get in.
-    const reset = await waitForMail(NEWCOMER, invitedAt, /http:\/\/localhost:8012\/accounts\/password\/reset\//);
+    const reset = await waitForMail(NEWCOMER, invitedAt, /http:\/\/localhost:8012\/password\/reset(?=\s|$)/m);
     const accept = await waitForMail(NEWCOMER, invitedAt, /http:\/\/localhost:8012\/invitation\b/);
     await waitForMail(NEWCOMER, invitedAt, /Panadería López/);
 

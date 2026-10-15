@@ -250,21 +250,41 @@ def test_the_log_level_comes_from_the_environment():
     assert logging["loggers"]["django"]["level"] == "WARNING"
 
 
-# Email: the console in development; in production the SES API signed by the task role when ECS
-# passes SES_REGION, SMTP configured by the environment otherwise, or any backend EMAIL_BACKEND
-# names. Same variables and order as hub-next.
+# Email: a file per mail in saas-next/.mail/ in development (the sign-in code is read there, also by
+# the Hub's e2e); in production the SES API signed by the task role when ECS passes SES_REGION, SMTP
+# configured by the environment otherwise, or any backend EMAIL_BACKEND names. Same variables and
+# order as hub-next.
 
 SMTP = "django.core.mail.backends.smtp.EmailBackend"
 SES = "django_ses.SESBackend"
 CONSOLE = "django.core.mail.backends.console.EmailBackend"
+FILE = "django.core.mail.backends.filebased.EmailBackend"
+#: Where development writes every mail: the code of every password sign-in is read there.
+DEV_MAIL_DIR = str(SAAS_NEXT / ".mail")
 
 
-def test_development_prints_mail_to_the_console():
-    assert development("s.MAILERS['default']") == {"BACKEND": CONSOLE}
+def test_development_writes_every_mail_to_a_file_in_saas_next_mail():
+    assert development("s.MAILERS['default']") == {"BACKEND": FILE, "OPTIONS": {"file_path": DEV_MAIL_DIR}}
     # Even with production's SES region in the environment, DEBUG never sends real mail.
     assert development("s.MAILERS['default']", SES_REGION="eu-west-1") == {
-        "BACKEND": CONSOLE
+        "BACKEND": FILE,
+        "OPTIONS": {"file_path": DEV_MAIL_DIR},
     }
+
+
+def test_development_takes_the_backend_and_the_folder_from_the_environment(tmp_path):
+    """The panel's e2e names its own folder; any other backend (the console) is still one variable away."""
+    assert development("s.MAILERS['default']", EMAIL_FILE_PATH=str(tmp_path)) == {
+        "BACKEND": FILE,
+        "OPTIONS": {"file_path": str(tmp_path)},
+    }
+    assert development("s.MAILERS['default']", EMAIL_BACKEND=CONSOLE) == {"BACKEND": CONSOLE}
+
+
+def test_the_development_mail_folder_is_never_versioned():
+    ignored = (SAAS_NEXT / ".gitignore").read_text().splitlines()
+
+    assert ".mail/" in ignored
 
 
 def test_production_mail_goes_through_the_ses_api_with_the_task_role():
@@ -359,9 +379,6 @@ def test_email_backend_names_another_backend():
         "s.MAILERS['default']",
         EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
     ) == {"BACKEND": "django.core.mail.backends.locmem.EmailBackend"}
-
-
-FILE = "django.core.mail.backends.filebased.EmailBackend"
 
 
 def test_a_file_backend_writes_where_email_file_path_says(tmp_path):

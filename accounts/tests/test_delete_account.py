@@ -206,7 +206,8 @@ class TestARecentSignInIsNeeded:
 
     def test_an_account_that_only_signs_in_with_google_signs_in_with_google_again(self, client, ana):
         """allauth lets an account without a password nor a second factor through with nothing to confirm; here it
-        signs in with Google again (``/auth/google/login/``), which allauth records, and then it goes."""
+        signs in with Google again (allauth.headless's provider redirect, ``test_google``), which allauth records,
+        and then it goes."""
         from allauth.socialaccount.models import SocialAccount
 
         from accounts.tests.conftest import AUTHENTICATION_RECORDS

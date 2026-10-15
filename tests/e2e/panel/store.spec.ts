@@ -13,7 +13,7 @@ import { execFileSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { businessIdOf, expect, panelAccount, signIn, test, VIEWPORTS, watchPageErrors } from './fixtures';
+import { businessIdOf, expect, panelAccount, qaAccount, signIn, test, VIEWPORTS, watchPageErrors } from './fixtures';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const SHOTS_DIR = process.env.SHOTS_DIR ?? '/tmp/l2d-shots';
@@ -30,7 +30,7 @@ function seedStore(action: 'seed' | 'clear'): void {
 test.beforeAll(() => seedStore('seed'));
 test.afterAll(() => seedStore('clear'));
 
-const STORE = panelAccount('store');
+const STORE = qaAccount('STORE', panelAccount('store'));
 
 /** Stripe.js as the page would get it from js.stripe.com: records what the page hands it. */
 async function playStripe(page: Page): Promise<void> {

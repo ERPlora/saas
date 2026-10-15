@@ -1,12 +1,13 @@
 """URLconf of saas-next: Django's own prefixes first, then the SPA for every other path.
 
-Django keeps sign-in (allauth's template pages and its headless API at ``/_allauth/``, Google at the
-redirect URIs registered with it), the jump to a hub and its redeem, the API, the live stream, the
-admin, the CSP reports and ``/readyz``. ``/healthz`` is answered by
-``base.health.HealthCheckMiddleware`` before the Host is validated, so it has no route here.
+Django keeps the sign-in's API (allauth.headless at ``/_allauth/``, headless only: allauth serves no
+page; Google comes back to the redirect URI registered with it), the old addresses of the sign-in, the
+jump to a hub and its redeem, the API, the live stream, the admin, the CSP reports and ``/readyz``.
+``/healthz`` is answered by ``base.health.HealthCheckMiddleware`` before the Host is validated, so it has
+no route here.
 ``/webhooks/stripe/`` is Stripe's single webhook (``billing.webhooks``, lot L2-B); anything else under
 ``/webhooks/`` is a 404 of Django's, never the SPA. Every other path is the Ionic Vue SPA (``base.spa``):
-the sign-in (``/login``), its errors (``/login/error``) and the launcher (``/launch``) among them.
+the launcher with its sign-in (``/launch``) and the sign-in's errors (``/login/error``) among them.
 """
 
 from django.contrib import admin
@@ -17,7 +18,8 @@ from live.live_view import live_stream
 from live.spa import BASE_NON_SPA_PREFIXES, spa_path_pattern
 
 from accounts import admin as accounts_admin
-from accounts import doors, google, handoff, internal
+from accounts import doors, google, handoff, internal, unified_login
+from accounts.adapters import SPA_LOGIN
 from base.health import readyz
 from base.spa import spa
 from billing import webhooks as billing_webhooks
@@ -27,10 +29,10 @@ from hubs import internal as hubs_internal
 from public import landing
 from public.urls import PUBLIC_PREFIXES
 
-# Prefixes of saas-next on top of the shared ones: allauth (templates and headless API), Google's
-# redirect URIs, the jump to a hub and Stripe's webhook (`/webhooks/stripe/`, PLAN-SAAS §4). Not
-# `launch`: `/launch` is the SPA's launcher, and only the exact `/launch/` (its old address) is a
-# Django route, matched before the SPA's catch-all.
+# Prefixes of saas-next on top of the shared ones: allauth.headless's API, the old addresses of the
+# sign-in (`/accounts/`), Google's redirect URI, the jump to a hub and Stripe's webhook
+# (`/webhooks/stripe/`, PLAN-SAAS §4). Not `launch`: `/launch` is the SPA's launcher, and only the
+# exact `/launch/` (its old address) is a Django route, matched before the SPA's catch-all.
 NON_SPA_PREFIXES = (
     *BASE_NON_SPA_PREFIXES,
     "_allauth",
@@ -42,53 +44,33 @@ NON_SPA_PREFIXES = (
     *PUBLIC_PREFIXES,
 )
 
-# With ACCOUNTS_MFA_ENABLED on, the admin's login is allauth's (it asks for the second factor).
+# The admin's login is the SaaS's sign-in (it asks for the mailed code and the authenticator app).
 # Assigned before `admin.site.urls` is read below: `AdminSite.get_urls` binds `self.login` then.
 admin.site.login = accounts_admin.admin_login
 
 urlpatterns = [
-    # allauth's «connections» page connected and disconnected Google with the open session alone
-    # (saas#2552): Google links only by signing in with it. Same address and name as allauth's.
-    path(
-        "accounts/3rdparty/",
-        RedirectView.as_view(url=handoff.LAUNCHER, permanent=False),
-        name="socialaccount_connections",
-    ),
-    # allauth's «Login Cancelled» and «Third-Party Login Failure» pages are the Vue error page.
-    # Same addresses and names as allauth's.
-    path(
-        "accounts/3rdparty/login/cancelled/",
-        RedirectView.as_view(
-            url=handoff.login_error_url("login_cancelled"), permanent=False
-        ),
-        name="socialaccount_login_cancelled",
-    ),
-    path(
-        "accounts/3rdparty/login/error/",
-        RedirectView.as_view(
-            url=handoff.login_error_url("authentication_error"), permanent=False
-        ),
-        name="socialaccount_login_error",
-    ),
+    # The old addresses of the sign-in and of the sign-up (allauth's template pages until headless only,
+    # then the SPA's `/login` until the form moved into the launcher): bookmarks and pages of the public
+    # web cached elsewhere land on the launcher's sign-in for good, in one hop, keeping `next` and the
+    # rest of the query. `/login/error` stays a page of the SPA; every other old page of allauth under
+    # /accounts/ is gone (404).
+    path("accounts/login/", RedirectView.as_view(url=SPA_LOGIN, query_string=True, permanent=True)),
+    path("accounts/signup/", RedirectView.as_view(url=SPA_LOGIN, query_string=True, permanent=True)),
+    path("login", RedirectView.as_view(url=SPA_LOGIN, query_string=True, permanent=True)),
     # The account's addresses change only through Cuenta's code, and an account without a password gets
-    # one only through «Forgot your password?» (accounts/doors.py, plan 2026-10-13 L3-A). Same addresses
-    # and names as allauth's, before its include.
-    path("accounts/email/", RedirectView.as_view(url=doors.PROFILE_PAGE, permanent=False), name="account_email"),
-    path(
-        "accounts/password/set/",
-        RedirectView.as_view(pattern_name="account_reset_password", permanent=False),
-        name="account_set_password",
-    ),
+    # one only through «Forgot your password?» (accounts/doors.py, plan 2026-10-13 L3-A).
     path("_allauth/browser/v1/account/email", doors.closed),
     path("_allauth/browser/v1/account/password/change", doors.password_change),
-    path("accounts/", include("allauth.urls")),
+    # One screen signs in or signs up (accounts/unified_login.py, ADR-0154): at allauth's login address,
+    # with allauth's signup closed.
+    path("_allauth/browser/v1/auth/login", unified_login.login_or_signup, name="login"),
+    path("_allauth/browser/v1/auth/signup", doors.closed),
+    # «Continue with Google» on the launcher posts here; without Google's credentials it is not served.
+    path("_allauth/browser/v1/auth/provider/redirect", google.provider_redirect, name="redirect_to_provider"),
     path("_allauth/", include("allauth.headless.urls")),
-    # «Continue with Google» at the redirect URIs registered with Google (/auth/google/callback/,
-    # PLAN-SAAS §6). Registered AFTER allauth's include on purpose: same names as allauth's
-    # provider routes, and `reverse()` returns the LAST pattern defined, so the redirect_uri allauth
-    # builds for the authorization and for the token exchange is this path, not
-    # /accounts/google/login/callback/.
-    path("auth/google/login/", google.login, name="google_login"),
+    # Google comes back to the redirect URI registered with it (/auth/google/callback/, PLAN-SAAS §6),
+    # under allauth's name: allauth builds the redirect_uri of the authorization and of the token
+    # exchange from `reverse("google_callback")`.
     path("auth/google/callback/", google.callback, name="google_callback"),
     path("launch/", handoff.launch, name="launch"),
     path("hub-login/", handoff.hub_login, name="hub_login"),
@@ -132,7 +114,7 @@ urlpatterns = [
     # URL names have no namespace (its templates reverse them so).
     path("cookies/", include("cookie_consent.urls")),
     path("", include("public.urls")),
-    # `home` is the project-wide name of `/` (allauth's templates, the error pages): the landing,
+    # `home` is the project-wide name of `/` (the public web's navbar, footer and error pages): the landing,
     # `public:home`, answers `/` from the include above, so this line only names it (plan §3.c).
     path("", landing.home, name="home"),
     re_path(spa_path_pattern(NON_SPA_PREFIXES), spa, name="spa"),

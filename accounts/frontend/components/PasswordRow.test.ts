@@ -1,6 +1,6 @@
 // The «Password» row of Account → Security, «Sign-in» (mockups `account.html` «security»): «Change password» opens
 // its dialog; an account that only signs in with Google has none, and the server never sets one with the session
-// alone (`accounts/doors.py`), so it gets one through «Forgot your password?», the email link (`/accounts/password/reset/`).
+// alone (`accounts/doors.py`), so it gets one through «Forgot your password?», the email link (the SPA's `/password/reset`).
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@ionic/vue', async (importOriginal) => ({
@@ -30,7 +30,10 @@ describe('PasswordRow', () => {
     await flush();
     expect(s.q('password-row')?.textContent).toContain('no password yet');
     expect(s.q('password-row-change')).toBeNull();
-    expect(ionProps(s.q('password-row-create'), 'href')).toEqual({ href: '/accounts/password/reset/' });
+    // The SPA's page, opened inside the SPA (Ionic Vue's router link also renders its href): no longer
+    // allauth's template page.
+    expect(s.q('password-row-create')?.getAttribute('routerlink')).toBe('/password/reset');
+    expect(ionProps(s.q('password-row-create'), 'href')).toEqual({ href: '/password/reset' });
     expect(s.q('password-row-create')?.textContent).toContain('Create a password');
   });
 });

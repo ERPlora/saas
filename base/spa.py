@@ -2,7 +2,7 @@
 
 Next to ``spa-config`` it embeds the result of ``base.session.me`` (``session-me``), so the shell
 decides on the login without a first round trip. ``spa-config.googleEnabled`` tells the login page
-whether «Continue with Google» is configured (the same switch as the template login's button), and
+whether «Continue with Google» is configured (``GOOGLE_OAUTH_ENABLED``, the switch of its routes), and
 ``spa-config.hubOrigin`` is a hub's origin with ``{slug}`` to fill in: the error page of a refused
 jump names the hub's host and links back to it from the slug alone. ``spa-config.surface`` is
 ``"account"`` on the account surface (``base/surface.py``) and absent otherwise: ``live/spa.html``

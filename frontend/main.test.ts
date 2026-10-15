@@ -1,6 +1,6 @@
 // The SaaS SPA entry (mirror of hub-next's): app routes → shell, live client from spa-config,
 // session from the `session-me` JSON Django embeds (or GET /api/me), mount only once the router is
-// ready. The SaaS has a login of its own: the auth gate sends to the SPA route `/login`. Round 17
+// ready. The SaaS has a login of its own: the auth gate sends to the SPA route `/launch`. Round 17
 // (PLAN-SAAS §3.6): the user menu (Account, Help, Sign out) and the surface the server keeps; what the
 // account chose (theme mode, language) painted at boot, and the user menu's theme kept in the account.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
@@ -121,9 +121,9 @@ afterEach(() => {
 });
 
 describe('main.ts', () => {
-  it('boots on import with the routes Vite globs from <app>/frontend/routes.ts (the login page among them)', () => {
+  it('boots on import with the routes Vite globs from <app>/frontend/routes.ts (the launcher, with the sign-in, among them)', () => {
     const routes = importBoot.routes as RouteRecordRaw[];
-    expect(routes.find((r) => r.path === '/login')?.meta?.auth).toBe(false);
+    expect(routes.find((r) => r.path === '/launch')?.meta?.auth).toBe(false);
   });
 
   it('collects the routes of every app, in path order, behind a session by default', async () => {
@@ -186,10 +186,10 @@ describe('main.ts', () => {
     expect(sdk.client.api.call).not.toHaveBeenCalled();
   });
 
-  it("sends a visitor without a session to the SaaS's own login page, /login of this SPA", async () => {
+  it("sends a visitor without a session to the SaaS's own sign-in, the launcher of this SPA", async () => {
     fakeShell();
     await main.boot({});
-    expect(shellOptions().loginPath).toBe('/login');
+    expect(shellOptions().loginPath).toBe('/launch');
   });
 
   it('without an embedded session, asks GET /api/me (base.session.me) and goes live with its answer', async () => {
@@ -264,7 +264,7 @@ describe('the panel (round 17, PLAN-SAAS §3.6)', () => {
     expect(userMenu?.logout).toBeTypeOf('function');
   });
 
-  it('signs out through allauth.headless (DELETE of the session), then loads the login', async () => {
+  it('signs out through allauth.headless (DELETE of the session), then loads the launcher, the sign-in', async () => {
     vi.mocked(sdk.auth.logout).mockResolvedValue({ authenticated: false, flows: [] });
     fakeShell();
     await main.boot({});
@@ -272,7 +272,7 @@ describe('the panel (round 17, PLAN-SAAS §3.6)', () => {
     await signOut();
     expect(sdk.auth.logout).toHaveBeenCalledOnce();
     // A full load: the next page embeds an empty session (and the server forgot the surface).
-    expect(assign).toHaveBeenCalledExactlyOnceWith('/login');
+    expect(assign).toHaveBeenCalledExactlyOnceWith('/launch');
   });
 
   it('a sign out that fails rejects, so the shell shows its toast, and the page stays', async () => {

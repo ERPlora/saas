@@ -1,4 +1,4 @@
-"""allauth adapters of saas-next: accounts are created by staff, not by signing up, and Google
+"""allauth adapters of saas-next: sign-up is open (the unified login and Google, ADR-0154), and Google
 links to an account only by signing in with it."""
 
 import pytest
@@ -6,7 +6,6 @@ from allauth.core import context as allauth_context
 from allauth.socialaccount.adapter import get_adapter as get_social_adapter
 from allauth.socialaccount.internal.flows.login import complete_login
 from allauth.socialaccount.models import SocialAccount, SocialLogin
-from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.messages import get_messages
@@ -18,16 +17,9 @@ from django.test import RequestFactory
 from accounts.adapters import AccountAdapter, SocialAccountAdapter
 
 
-def test_signup_is_closed():
-    assert AccountAdapter().is_open_for_signup(RequestFactory().get("/accounts/signup/")) is False
-
-
-@pytest.mark.django_db
-def test_posting_a_signup_creates_no_account(client):
-    response = client.post("/accounts/signup/", {"email": "new@example.com", "password1": "a-long-pass-phrase"})
-
-    assert "account/signup_closed.html" in [t.name for t in response.templates]
-    assert not get_user_model().objects.filter(email="new@example.com").exists()
+def test_signup_is_open():
+    """Its one door is the unified login (``test_unified_login``): allauth's own are closed."""
+    assert AccountAdapter().is_open_for_signup(RequestFactory().post("/_allauth/browser/v1/auth/login")) is True
 
 
 def test_allauth_mails_carry_no_site_prefix_in_the_subject():
@@ -116,14 +108,15 @@ class TestConnectingWithAnOpenSession:
 
         assert list(SocialAccount.objects.filter(user=google_only_owner).values_list("uid", flat=True)) == [OWNER_UID]
 
-    def test_it_sends_the_person_back_to_the_launcher_and_tells_why(self, google, owner):
+    def test_it_sends_the_person_to_the_error_page_that_says_why(self, google, owner):
+        """The Vue page says it (``LoginErrorPage.vue``): a Django message would never be shown by the SPA."""
         request = _request(owner)
 
         response = _finish(owner, INTRUDER_UID, INTRUDER_EMAIL, "connect", request=request)
 
         assert response.status_code == 302
-        assert response.url == "/launch"
-        assert [m.level for m in get_messages(request)] == [messages.ERROR]
+        assert response.url == "/login/error?code=google_link_refused"
+        assert list(get_messages(request)) == []
 
 
 @pytest.mark.django_db
@@ -150,23 +143,23 @@ class TestSigningInWithGoogleStillWorks:
 
 
 @pytest.mark.django_db
+@pytest.mark.usefixtures("spa_manifest")
 class TestTheConnectionsPage:
-    """allauth's `/accounts/3rdparty/` connected and disconnected providers with the session alone."""
+    """allauth's `/accounts/3rdparty/` connected and disconnected providers with the session alone: headless
+    only, it does not exist."""
 
     def test_it_is_not_served(self, client, google, owner):
         client.force_login(owner)
 
-        response = client.get("/accounts/3rdparty/")
-
-        assert response.status_code == 302
-        assert response.url == "/launch"
+        assert client.get("/accounts/3rdparty/").status_code == 404
 
     def test_it_does_not_disconnect_the_owners_google(self, client, google, owner):
         linked = SocialAccount.objects.create(user=owner, provider="google", uid=OWNER_UID)
         client.force_login(owner)
 
-        client.post("/accounts/3rdparty/", {"account": linked.pk})
+        response = client.post("/accounts/3rdparty/", {"account": linked.pk})
 
+        assert response.status_code == 404
         assert SocialAccount.objects.filter(pk=linked.pk).exists()
 
 
@@ -198,10 +191,11 @@ class TestTheOwnerIsToldWhenGoogleIsLinked:
 
         assert self._notices() == []
 
-    def test_an_unknown_google_gets_no_account_and_nobody_is_mailed(self, google, owner):
+    def test_an_unknown_google_gets_an_account_of_its_own_and_nobody_is_mailed(self, google, owner):
         _finish(AnonymousUser(), INTRUDER_UID, INTRUDER_EMAIL, "login")
 
-        assert not get_user_model().objects.filter(email__iexact=INTRUDER_EMAIL).exists()
+        assert _account_signed_in_by(INTRUDER_UID).email == INTRUDER_EMAIL
+        assert not SocialAccount.objects.filter(user=owner).exists()
         assert mail.outbox == []
 
     def test_a_refused_connect_tells_nobody_anything_was_linked(self, google, owner):

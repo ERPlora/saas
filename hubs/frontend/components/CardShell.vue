@@ -3,12 +3,16 @@
 // `launch.html` and `invitation.html`, the old SaaS's `_shell_styles.html`. A route with
 // `meta.chrome: false`, so no menu: the ERPlora lockup INSIDE the card above the title of every
 // state (README §5), the state's icon and title (the page's one heading), its lead, the content
-// (default slot) and, under the card, «Signed in as … · Sign out». Signing out posts Django's logout
-// form, as the old launcher did, and lands on the sign-in.
-import { HubIcon, useSession } from '@erplora/ui/shell';
-import { readCookie, useLiveClient } from '@erplora/ui/sdk';
+// (default slot) and, under the card, «Signed in as … · Sign out». Signing out is the user menu's
+// (`frontend/main.ts`): allauth.headless ends the session, then the launcher's sign-in, as a full load; a
+// failure says so and stays.
+import { HubIcon, toastError, useSession } from '@erplora/ui/shell';
+import { createAllauthClient, useLiveClient } from '@erplora/ui/sdk';
 import { IonButton, IonCard, IonCardContent, IonCardHeader, IonCardTitle, IonContent, IonPage } from '@ionic/vue';
-import { computed } from 'vue';
+import { computed, shallowRef } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+import { LAUNCHER } from '../../../accounts/frontend/paths';
 
 defineProps<{
   /** Icon of the state, over the title (`set:name`, registered). */
@@ -21,13 +25,24 @@ defineProps<{
 
 defineSlots<{ default?: () => unknown; lead?: () => unknown }>();
 
-const LOGOUT = '/accounts/logout/';
-const LOGIN = '/login';
-
+const { t } = useI18n();
 const session = useSession();
-const client = useLiveClient();
-const csrfToken = readCookie(document.cookie, client.config.csrfCookieName) ?? '';
+const auth = createAllauthClient(useLiveClient().config);
 const email = computed(() => session.user.value?.email || session.user.value?.label || '');
+const signingOut = shallowRef(false);
+
+async function signOut(): Promise<void> {
+  signingOut.value = true;
+  try {
+    const state = await auth.logout();
+    if (state.authenticated) throw new Error('still signed in after signing out');
+    location.assign(LAUNCHER);
+  } catch (error) {
+    console.error('saas: sign out failed', error);
+    signingOut.value = false;
+    void toastError(t('userMenu.logoutFailed'));
+  }
+}
 </script>
 
 <template>
@@ -84,33 +99,19 @@ const email = computed(() => session.user.value?.email || session.user.value?.la
             data-testid="shell-account"
           >
             <span class="shell-account__who">{{ $t('hubs.common.signedInAs', { email }) }}</span>
-            <form
-              method="post"
-              :action="LOGOUT"
+            <ion-button
+              fill="clear"
+              class="shell-account__logout"
+              :disabled="signingOut"
+              @click="signOut"
             >
-              <input
-                type="hidden"
-                name="csrfmiddlewaretoken"
-                :value="csrfToken"
-              >
-              <input
-                type="hidden"
-                name="next"
-                :value="LOGIN"
-              >
-              <ion-button
-                type="submit"
-                fill="clear"
-                class="shell-account__logout"
-              >
-                <HubIcon
-                  slot="start"
-                  name="ion:log-out-outline"
-                  aria-hidden="true"
-                />
-                {{ $t('hubs.common.signOut') }}
-              </ion-button>
-            </form>
+              <HubIcon
+                slot="start"
+                name="ion:log-out-outline"
+                aria-hidden="true"
+              />
+              {{ $t('hubs.common.signOut') }}
+            </ion-button>
           </div>
         </div>
       </div>
@@ -189,9 +190,6 @@ ion-router-outlet#main.split-pane-main > .ion-page > ion-content.card-shell-cont
 .shell-account__who {
   font-size: 0.82rem;
   color: color-mix(in oklab, var(--ion-text-color) 62%, transparent);
-}
-.shell-account form {
-  margin: 0;
 }
 .shell-account__logout {
   min-height: 44px;

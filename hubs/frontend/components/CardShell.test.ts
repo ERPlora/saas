@@ -1,14 +1,36 @@
 // The centred-card frame of the launcher and the invitation (mockups `launch.html`, `invitation.html`;
 // old SaaS `_shell_styles.html`): no menu, the ERPlora lockup INSIDE the card above the title, the
 // state's icon and title (the page's heading), a lead under it, the content, and under the card
-// «Signed in as … · Sign out» (Django's logout form, as the old launcher posted it).
-import { afterEach, describe, expect, it } from 'vitest';
+// «Signed in as … · Sign out» (allauth.headless ends the session, then the sign-in, as the user menu does).
+import { toastError } from '@erplora/ui/shell';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { h } from 'vue';
 
-import { ANONYMOUS, mountHubs } from '../__tests__/mount-hubs';
+vi.mock('@erplora/ui/shell', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@erplora/ui/shell')>()),
+  toastError: vi.fn(() => Promise.resolve()),
+}));
+
+import { ANONYMOUS, flush, mountHubs } from '../__tests__/mount-hubs';
 import CardShell from './CardShell.vue';
 
+const SESSION = '/_allauth/browser/v1/auth/session';
+const signedOut = () =>
+  Response.json({ status: 401, data: { flows: [{ id: 'login' }] }, meta: { is_authenticated: false } }, { status: 401 });
+
+let fetchMock: ReturnType<typeof vi.fn>;
+let assign: ReturnType<typeof vi.fn>;
+
+beforeEach(() => {
+  fetchMock = vi.fn(() => Promise.resolve(signedOut()));
+  vi.stubGlobal('fetch', fetchMock);
+  assign = vi.fn();
+  vi.stubGlobal('location', { ...window.location, assign });
+});
+
 afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.mocked(toastError).mockClear();
   document.body.innerHTML = '';
   document.cookie = 'csrftoken=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
 });
@@ -46,18 +68,32 @@ describe('CardShell', () => {
     expect(wrapper.find('main').exists()).toBe(false);
   });
 
-  it('says who is signed in and signs out with Django’s logout form, back to the sign-in', async () => {
+  it('says who is signed in and signs out through allauth.headless, back to the sign-in of the launcher', async () => {
     document.cookie = 'csrftoken=tok123';
     const { wrapper } = await mountShell();
     const account = wrapper.get('[data-testid="shell-account"]');
     expect(account.text()).toContain('Signed in as laura@example.com');
-    const form = account.get('form');
-    expect(form.attributes('method')).toBe('post');
-    expect(form.attributes('action')).toBe('/accounts/logout/');
-    const fields = Object.fromEntries(form.findAll('input[type="hidden"]').map((i) => [i.attributes('name'), (i.element as HTMLInputElement).value]));
-    expect(fields).toEqual({ csrfmiddlewaretoken: 'tok123', next: '/login' });
-    expect(form.get('ion-button').text()).toBe('Sign out');
-    expect((form.get('ion-button').element as HTMLElement & { type?: string }).type).toBe('submit');
+    const button = account.get('ion-button');
+    expect(button.text()).toBe('Sign out');
+
+    await button.trigger('click');
+    await flush();
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect([url, init.method]).toEqual([SESSION, 'DELETE']);
+    expect((init.headers as Record<string, string>)['X-CSRFToken']).toBe('tok123');
+    expect(assign).toHaveBeenCalledExactlyOnceWith('/launch');
+  });
+
+  it('says so and stays when the session could not be ended', async () => {
+    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
+    const { wrapper } = await mountShell();
+
+    await wrapper.get('[data-testid="shell-account"] ion-button').trigger('click');
+    await flush();
+
+    expect(assign).not.toHaveBeenCalled();
+    expect(toastError).toHaveBeenCalledExactlyOnceWith('Could not sign out. Try again.');
   });
 
   it('has no account line without a session', async () => {

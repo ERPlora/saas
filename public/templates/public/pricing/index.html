@@ -149,7 +149,7 @@
                 </td>
                 <td data-title="{% trans 'Monthly, per hub' %}" class="num">{{ plan.price_label }}</td>
                 {% include "public/pricing/_plan_compare_cells.html" %}
-                <td data-title="{% trans 'Access' %}"><a href="{% url 'account_login' %}" class="text-primary font-mono text-xs whitespace-nowrap">{% trans "Get started" %} →</a></td>
+                <td data-title="{% trans 'Access' %}"><a href="/launch" class="text-primary font-mono text-xs whitespace-nowrap">{% trans "Get started" %} →</a></td>
               </tr>
             {% endfor %}
             {% endif %}

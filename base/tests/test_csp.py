@@ -128,7 +128,7 @@ class TestTheSpaPage:
     def test_the_public_web_admits_no_stripe_while_the_panel_does(self, client, path):
         """The public web no longer charges (spec §8.2): its own policy never names Stripe."""
         public = client.get(path, HTTP_HOST=HOST)
-        panel = client.get("/login", HTTP_HOST=HOST)
+        panel = client.get("/launch", HTTP_HOST=HOST)
 
         assert public.status_code == 200
         assert "stripe.com" not in public["Content-Security-Policy"]

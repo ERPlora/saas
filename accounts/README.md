@@ -32,19 +32,30 @@ Sin ruta: `accounts.apikey.revoke_any`, la «Revocar» del admin, con contexto d
 
 ## Decisiones
 
+- **Entrada y código por correo en cada inicio de sesión** (Ioan, 2026-10-15): un único formulario entra y da
+  de alta, dentro del lanzador `/launch` (`frontend/components/SignInForm.vue`; `unified_login.py` decide entre
+  el login y el alta de allauth). Tras la contraseña, allauth manda siempre un código de 6 cifras a la cuenta,
+  que se teclea en `/verify-email`: el que prueba el correo (`verify_email`) para un alta o una dirección nunca
+  probada, y el de inicio de sesión (`login_by_code`, `ACCOUNT_LOGIN_BY_CODE_REQUIRED = {"password"}`) para el
+  resto; `AccountAdapter.is_login_by_code_required` evita pedir los dos. Valores de allauth: 3 intentos, 3
+  minutos; sin reenvío del de inicio de sesión (allauth solo lo reenvía con `ACCOUNT_LOGIN_BY_CODE_ENABLED`,
+  que abriría la entrada solo con el código, sin contraseña): se pide otro entrando de nuevo. Google no pide
+  código. Con la app autenticadora encendida, primero el código por correo y luego el de la app (orden de
+  allauth). `/admin/login/` también pasa por este login. En local cada correo queda en `saas-next/.mail/`
+  (`EMAIL_FILE_PATH`): el código se lee de ahí; las e2e, con `readMailCode` de `@erplora/ui/testing/mail`.
 - **Reautenticación** (lo destructivo y lo que da acceso: eliminar la cuenta, crear una clave, cambiar a otro
   correo): un inicio de sesión de hace menos de 5 min (`ACCOUNT_REAUTHENTICATION_TIMEOUT`), según los registros
   de allauth. Más estricta que `did_recently_authenticate`, que deja pasar sin nada a una cuenta sin contraseña
-  ni 2FA: aquí una cuenta solo de Google confirma entrando otra vez con Google (`/auth/google/login/?next=…`, que
-  allauth registra). Si falta, 401 `reauthentication_required` con `flows` (`reauthenticate`,
+  ni 2FA: aquí una cuenta solo de Google confirma entrando otra vez con Google (el redirect de proveedor de
+  headless, `callback_url` = la misma página, que allauth registra). Si falta, 401 `reauthentication_required` con `flows` (`reauthenticate`,
   `mfa_reauthenticate`, `provider_redirect`) y `providers` (`google`); el panel confirma y repite. Una petición
   con clave de API nunca cuenta (403). `ACCOUNT_REAUTHENTICATION_REQUIRED = True` pide lo mismo a las puertas de
   allauth.headless que quedan (desconectar Google).
-- **Puertas de allauth cerradas** (`doors.py`, montadas en `config/urls.py` antes del `include`, como
-  `accounts/3rdparty/`): `/accounts/email/` lleva al perfil del panel y `/_allauth/browser/v1/account/email`
-  responde 404 a todo método (el correo solo cambia con el código de Cuenta); `/accounts/password/set/` lleva a
-  «¿Has olvidado tu contraseña?» y `account/password/change` responde 403 a una cuenta sin contraseña (con la
-  sola sesión no se pone una; con contraseña se cambia como siempre).
+- **Puertas de allauth cerradas** (`doors.py`, montadas en `config/urls.py` antes del `include` de headless; en
+  modo solo headless allauth no tiene páginas): `/_allauth/browser/v1/account/email` responde 404 a todo método
+  (el correo solo cambia con el código de Cuenta), `auth/signup` también (el login da de alta) y
+  `account/password/change` responde 403 a una cuenta sin contraseña (con la sola sesión no se pone una: se pone
+  con «¿Has olvidado tu contraseña?»; con contraseña se cambia como siempre).
 - **Sesiones = `allauth.usersessions`** (encaja con headless: tiene `auth/sessions`). `SessionActivityMiddleware`
   apunta dirección, navegador y último uso como mucho cada 5 min (marca en la caché, releída antes de escribir:
   con Valkey caído no apunta nada en vez de escribir en cada petición; los límites sobre esa caché quedan

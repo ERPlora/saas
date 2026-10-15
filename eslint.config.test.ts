@@ -35,13 +35,13 @@ async function deprecatedSlots(code: string, filePath: string): Promise<string[]
 describe('eslint config', () => {
   it.each(['fetch', 'EventSource', 'WebSocket', 'XMLHttpRequest'])('forbids %s in an app page and in the entry', async (name) => {
     const code = `export const x = ${name};\n`;
-    expect(await restricted(code, 'accounts/frontend/pages/LoginPage.ts')).toHaveLength(1);
+    expect(await restricted(code, 'accounts/frontend/components/SignInForm.ts')).toHaveLength(1);
     expect(await restricted(code, 'frontend/main.ts')).toHaveLength(1);
   });
 
   it('forbids it in the <script setup> of a .vue page too', async () => {
     const code = `<script setup lang="ts">\nconst session = fetch('/_allauth/browser/v1/auth/session');\n</script>\n<template><div>{{ session }}</div></template>\n`;
-    expect(await restricted(code, 'accounts/frontend/pages/LoginPage.vue')).toEqual([
+    expect(await restricted(code, 'accounts/frontend/components/SignInForm.vue')).toEqual([
       "Unexpected use of 'fetch'. Network access goes through the SDK (@erplora/ui/sdk).",
     ]);
   });
