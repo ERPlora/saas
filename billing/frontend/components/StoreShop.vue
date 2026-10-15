@@ -2,8 +2,11 @@
 // The Store on the web (round 17 §2.10–§2.11; mockups `store.html`; README §3, §4 and §6.18; UX-AUDIT-4):
 // the business it sells to, that business's unpaid invoice if any, and then Plans or Modules. Only the
 // owner buys for a business, so the picker lists the businesses the account owns (`hubs.business.list`,
-// live); `?business=` chooses the one it came from, and an unknown one falls back to the first, saying so.
-//   - Plans: `hubs.plan.list`, with a monthly/annual switch and a promo code (`billing.promo.check`).
+// live); `?business=` chooses the one it came from, and an unknown one falls back to the first that can buy (not
+// one an unpaid invoice blocks), saying so.
+//   - Plans: `hubs.plan.list`, with a monthly/annual switch and a promo code (`billing.promo.check`); the ones the
+//     business is not offered yet (upgrades of a paid plan, `billing.store.catalog`'s `offered_plans`) are named in
+//     one line under them (audit 2 S-03).
 //   - Modules: `apps.app.list` (name, summary and icon in the person's language; asked again when the
 //     language changes) joined by slug with `billing.store.catalog` (net prices, what the business has).
 //   - A business Stripe does not bill yet buys in the Embedded Checkout (CheckoutModal); one that pays
@@ -72,7 +75,14 @@ const owned = computed(() => ownedBusinesses(rows.value));
 /** What the owner picked here; until then, `?business=`. */
 const picked = shallowRef<string | null>(null);
 const wanted = computed(() => picked.value ?? props.businessId ?? null);
-const business = computed(() => owned.value.find((row) => row.id === wanted.value) ?? owned.value[0] ?? null);
+/** The one asked for; else the first that can buy (not one an unpaid invoice blocks, audit 2 R-17); else the first. */
+const business = computed(
+  () =>
+    owned.value.find((row) => row.id === wanted.value) ??
+    owned.value.find((row) => !blockOf(row)) ??
+    owned.value[0] ??
+    null,
+);
 const unknownAsked = computed(
   () => !picked.value && !!props.businessId && !!list.data.value && !!business.value && business.value.id !== props.businessId,
 );
@@ -84,7 +94,8 @@ const chosenId = computed({
   },
 });
 const block = computed(() => (business.value ? blockOf(business.value) : null));
-const accountCardDeclined = computed(() => declinedCard(rows.value));
+/** The business whose card, the same payer's as this one, the bank declined: the checkout says so (R-21). */
+const declinedFor = computed(() => (business.value ? declinedCard(rows.value, business.value) : null));
 
 // --- What is on sale, and what the business has ------------------------------------------------------
 
@@ -146,6 +157,21 @@ const modules = computed(() => saleModules(apps.value ?? [], catalog.value?.modu
 const interval = computed(() => moduleInterval(subscription.value));
 const saving = computed(() => annualSaving(plans.value ?? []));
 const freePlan = computed(() => plans.value?.find((plan) => isFree(plan)) ?? null);
+/** What the business may move to (`billing.store.catalog`): no upgrade-only plan while Stripe does not bill it. */
+const offered = computed(() => new Set(catalog.value?.offered_plans ?? []));
+/** Free, the plan it has and the ones it is offered (audit 2 S-03). */
+const shownPlans = computed(() =>
+  (plans.value ?? []).filter((plan) => isFree(plan) || plan.slug === subscription.value?.plan || offered.value.has(plan.slug)),
+);
+/** The upgrades it is not offered yet, and the first plan that opens them: «Pro and Max: available after moving to
+ *  Starter». */
+const later = computed(() => {
+  const waiting = (plans.value ?? []).filter((plan) => !shownPlans.value.includes(plan));
+  const first = shownPlans.value.find((plan) => offered.value.has(plan.slug));
+  if (!waiting.length || !first) return '';
+  const names = new Intl.ListFormat(locale.value, { type: 'conjunction' }).format(waiting.map((plan) => plan.name));
+  return t('billing.plans.later', { plans: names, plan: first.name });
+});
 const currentPlan = computed(() => plans.value?.find((plan) => plan.slug === subscription.value?.plan) ?? null);
 const renewal = computed(() => subscription.value?.current_period_end ?? null);
 /** Bought in this visit: `<business>:<module>`. */
@@ -509,7 +535,7 @@ async function keepTheModule(module: SaleModule): Promise<void> {
         </ion-segment>
         <div class="card-grid">
           <PlanCard
-            v-for="plan in plans"
+            v-for="plan in shownPlans"
             :key="plan.slug"
             :plan="plan"
             :period="period"
@@ -522,6 +548,13 @@ async function keepTheModule(module: SaleModule): Promise<void> {
             @keep="keepThePlan"
           />
         </div>
+        <p
+          v-if="later"
+          class="section-intro"
+          data-testid="store-plans-later"
+        >
+          {{ later }}
+        </p>
         <div
           v-if="offersPromo"
           class="store-promo"
@@ -641,7 +674,7 @@ async function keepTheModule(module: SaleModule): Promise<void> {
       :business="{ id: business.id, name: business.name }"
       :purchase="purchase"
       :promo-code="purchase?.kind === 'plan' ? promoCode : ''"
-      :declined-card="accountCardDeclined"
+      :declined-for="declinedFor"
       @stale="stale"
     />
     <ProrationDialog

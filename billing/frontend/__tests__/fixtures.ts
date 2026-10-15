@@ -33,6 +33,8 @@ export function businessRow(id: string, name: string, extra: Partial<BusinessRow
     unpaid_since: null,
     pay_url: null,
     is_payer: true,
+    // Every business gets its own payer when it is created (hubs.business.create).
+    payer_id: `${id}-payer`,
     ...extra,
   };
 }
@@ -76,6 +78,9 @@ export function plan(slug: string, name: string, monthly: string, annual: string
 export const FREE = plan('free', 'Free', '0.00', '0.00', { max_users: 3, max_devices: 1 });
 export const STARTER = plan('starter', 'Starter', '29.99', '299.90');
 export const PLANS = { signup_trial_days: 15, cheapest_slug: 'free', plans: [FREE, STARTER] };
+/** Two upgrade-only plans (`sync_hub_plans`: Pro, Enterprise and Max are an upgrade of a business that pays). */
+export const PRO = plan('pro', 'Pro', '109.99', '1099.90', { upgrade_only: true });
+export const MAX = plan('max', 'Max', '419.99', '4199.90', { upgrade_only: true });
 
 export function app(id: string, name: string, extra: Partial<AppSummaryOut> = {}): AppSummaryOut {
   return {
@@ -134,10 +139,13 @@ export const FREE_SUBSCRIPTION = subscription({
 });
 
 export function catalog(hubId: string, extra: Partial<StoreCatalogOut> = {}): StoreCatalogOut {
+  const paying = (extra.subscription === undefined ? subscription() : extra.subscription)?.paying ?? false;
   return {
     hub_id: hubId,
     subscription: subscription(),
     modules: [storeModule('booking', 900), storeModule('loyalty', 600)],
+    // As the server offers them (audit 2 S-03): the upgrades only to a business Stripe bills.
+    offered_plans: paying ? ['starter', 'standard', 'pro', 'max'] : ['starter', 'standard'],
     ...extra,
   };
 }

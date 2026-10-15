@@ -15,6 +15,10 @@
         "body": "To change your plan or add modules, go to erplora.com in your browser.",
         "action": "Go to Businesses"
       },
+      "inAccount": {
+        "title": "Nothing is bought from here",
+        "body": "This account was opened from the app, and the app does not sell: plans and modules are not bought from here."
+      },
       "noBusiness": {
         "title": "You have no business to buy for",
         "body": "Only the owner of a business buys its plan and its modules. Create your own business, or ask its owner.",
@@ -58,6 +62,7 @@
       "freeFrom": "The business goes to Free on {date}.",
       "keepFirst": "Keep the plan first to change it.",
       "payFirst": "Pay the pending invoice first.",
+      "later": "{plans}: available after moving to {plan}.",
       "trial": "Trying it until {date}",
       "trialKeeps": "Buying it now keeps the days left of the trial.",
       "kept": "{plan} is kept: it renews on {date}",
@@ -141,7 +146,7 @@
       "invoiceTo": "Invoice to",
       "change": "Change",
       "secure": "Secure payment",
-      "declined": "The card on your account was declined: pay with another one.",
+      "declined": "The card that pays for {name} was declined: pay with another one.",
       "loading": "Loading the secure payment…",
       "paying": "Paying…",
       "terms": "By paying you accept the Terms. You can cancel whenever you want from Billing.",
@@ -202,6 +207,7 @@
       "suspendedBody": "Invoice {invoice} of {date} could not be collected and the business was suspended. Your data is safe: once it is paid, the business works again at once.",
       "app": "To pay it, go to erplora.com in your browser.",
       "appDeclined": "To change the card and pay it, go to erplora.com in your browser.",
+      "account": "This account was opened from the app: invoices are not paid from here.",
       "changeCard": "Change card",
       "pay": "Pay the invoice · {amount}",
       "paying": "Paying…",
@@ -252,6 +258,8 @@
       "csv": "Download Excel",
       "csvHint": "The list of what the filters show, for your accountant (it opens in Excel)",
       "pdfNotReady": "That invoice is still being issued: its PDF is ready in a few minutes. | {count} invoices are still being issued: their PDF is ready in a few minutes.",
+      "selectedUnpaid": "{count} selected invoice is unpaid: an unpaid invoice has no PDF until it is paid. | {count} selected invoices are unpaid: an unpaid invoice has no PDF until it is paid.",
+      "selectedIssuing": "{count} selected invoice is still being issued: its PDF is ready in a few minutes. | {count} selected invoices are still being issued: their PDF is ready in a few minutes.",
       "loadError": "We could not load your invoices",
       "retry": "Retry",
       "empty": {
@@ -295,6 +303,7 @@
         "view_invoices": "View invoices"
       },
       "appHint": "To change or cancel a plan, go to erplora.com in your browser.",
+      "accountHint": "This account was opened from the app: plans are not changed nor cancelled from here.",
       "loadError": "We could not load your subscriptions",
       "retry": "Retry",
       "empty": {
@@ -308,7 +317,7 @@
         "modulesNoDate": "{modules} turns off at the end of the period. Nothing is deleted: back on a paid plan, it is as it was. | {modules} turn off at the end of the period. Nothing is deleted: back on a paid plan, they are as they were.",
         "seatsOver": "{name} has {people}: before {date} you choose who stays.",
         "seatsOverNoDate": "{name} has {people}: before the end of the period you choose who stays.",
-        "seatsFit": "{name} has {people}, so nothing changes for them.",
+        "seatsFit": "{name} has {people}, within that limit: nothing changes for the team.",
         "people": "{count} person | {count} people",
         "unpaid": "The unpaid invoice of {date} ({amount}) stays pending: cancelling does not cancel it.",
         "done": "Plan cancelled: {business} stays on {plan} until {date}",
@@ -331,6 +340,7 @@
         "change": "Change card",
         "secure": "The secure payment page opens.",
         "app": "To change the card, go to erplora.com in your browser.",
+        "account": "This account was opened from the app: the card is not changed from here.",
         "empty": "None yet: it is asked on the first payment of a plan or a module."
       },
       "profile": {

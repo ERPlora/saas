@@ -15,7 +15,7 @@ import { useI18n } from 'vue-i18n';
 
 import type { BusinessDetailOut, BusinessUpdateIn } from '../../../frontend/sdk-types';
 import { useErrorText } from '../error-text';
-import { countryOptions, timeZoneOptions } from '../regions';
+import { countryName, countryOptions, timeZoneOptions } from '../regions';
 import CopyField from './CopyField.vue';
 
 type Editable = Pick<BusinessDetailOut, 'name' | 'country' | 'timezone' | 'language'>;
@@ -107,7 +107,28 @@ const value = (event: CustomEvent<{ value?: unknown }>) => String(event.detail.v
             :class="{ 'ion-invalid': !!errors.name, 'ion-touched': !!errors.name }"
             @ion-input="form.name = value($event)"
           />
+          <!-- Once ready, the country is read-only text with its reason under it, not a disabled select (R-31). -->
+          <div
+            v-if="business.country_locked"
+            class="readonly-country"
+            role="group"
+            aria-labelledby="settings-country-label"
+            data-testid="settings-country"
+          >
+            <span
+              id="settings-country-label"
+              class="readonly-country__label"
+            >{{ $t('hubs.settings.country') }}</span>
+            <span class="readonly-country__value">{{ countryName(form.country, locale) }}</span>
+            <p
+              class="field-hint"
+              data-testid="settings-country-locked"
+            >
+              {{ $t('hubs.settings.countryLocked') }}
+            </p>
+          </div>
           <ion-select
+            v-else
             data-testid="settings-country"
             mode="md"
             fill="outline"
@@ -115,7 +136,7 @@ const value = (event: CustomEvent<{ value?: unknown }>) => String(event.detail.v
             interface="popover"
             :label="$t('hubs.settings.country')"
             :value="form.country"
-            :disabled="locked || business.country_locked"
+            :disabled="locked"
             :error-text="errors.country"
             :class="{ 'ion-invalid': !!errors.country, 'ion-touched': !!errors.country }"
             @ion-change="form.country = value($event)"
@@ -171,13 +192,6 @@ const value = (event: CustomEvent<{ value?: unknown }>) => String(event.detail.v
             </ion-select-option>
           </ion-select>
         </div>
-        <p
-          v-if="business.country_locked"
-          class="field-hint"
-          data-testid="settings-country-locked"
-        >
-          {{ $t('hubs.settings.countryLocked') }}
-        </p>
 
         <p class="field-label">
           {{ $t('hubs.settings.address') }}
@@ -242,6 +256,26 @@ const value = (event: CustomEvent<{ value?: unknown }>) => String(event.detail.v
   .settings-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+/* Read-only once the business is ready (audit 2 R-31): the country as text, its reason under it. */
+.readonly-country {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-height: 56px;
+  padding: 0 2px;
+}
+.readonly-country__label {
+  font-size: 0.78rem;
+  color: color-mix(in oklab, var(--ion-text-color) 70%, transparent);
+}
+.readonly-country__value {
+  font-size: 1rem;
+  color: var(--ion-text-color);
+}
+.readonly-country .field-hint {
+  margin-top: 4px;
 }
 .field-hint {
   margin: 8px 2px 0;

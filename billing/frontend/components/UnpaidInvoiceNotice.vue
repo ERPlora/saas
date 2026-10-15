@@ -28,7 +28,8 @@ const props = defineProps<{
 
 const { t, locale } = useI18n();
 const portal = useCardPortal();
-const { isWeb } = useSurface();
+/** The account the app opens in the browser says why it pays nothing, not where (audit 2 S-09). */
+const { isWeb, surface } = useSurface();
 const whyId = `unpaid-why-${useId()}`;
 
 const name = computed(() => props.invoice.business.name);
@@ -76,7 +77,7 @@ const body = computed(() => {
         <span
           class="unpaid-why"
           data-testid="unpaid-app"
-        >{{ declined ? $t('billing.notice.appDeclined') : $t('billing.notice.app') }}</span>
+        >{{ surface === 'account' ? $t('billing.notice.account') : declined ? $t('billing.notice.appDeclined') : $t('billing.notice.app') }}</span>
       </template>
     </WebOnly>
     <!-- Web only (README §4): inside the apps the actions are not even there. -->

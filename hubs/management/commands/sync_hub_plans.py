@@ -17,9 +17,11 @@ Catalogue:
   business, never at sign-up.
 - ``payment-test``: ``internal_only`` plan to exercise the billing chain end to end (saas#1052).
 
-Visibility: ``Plan.objects.public()`` (active and not ``internal_only``) is what ``/pricing/`` and the
-Store show, upgrade-only plans included (``public/`` paints them in its ``plans_pro`` block, saas#809);
-``upgrade_only`` = offered only as an upgrade of a paying business; ``internal_only`` = never shown.
+Visibility: ``Plan.objects.public()`` (active and not ``internal_only``) is what ``/pricing/`` shows,
+upgrade-only plans included (``public/`` paints them in its ``plans_pro`` block, saas#809);
+``upgrade_only`` = offered only as an upgrade of a paying business: the Store offers them only to a
+business Stripe already bills and the checkout refuses them to a Free one (``billing.queries.offered_plans``,
+409 ``billing.plan_upgrade_only``; audit 2 S-03, 2026-10-14); ``internal_only`` = never shown.
 
 Changed from the original: no container sizing nor suspension price (a plan sizes no container,
 PLAN-SAAS §1); the
@@ -27,7 +29,7 @@ database limits follow round 9 (PLAN §14.2): Free 1 transaction at a time and 5
 15 s; no retired slugs to switch off (saas-next starts from an empty database).
 
 What the commercial copy may say (saas#1760; guarded by ``hubs/tests/test_sync_hub_plans.py``):
-the billing unit is the HUB; no infrastructure specs; support is sold as channel and priority,
+the billing unit is the HUB, called what the panel calls it, a business (audit 2 S-12); no infrastructure specs; support is sold as channel and priority,
 never as a clock; one recovery window for the whole cluster, the 14 days Aurora keeps
 (``backup_retention_period``, ``aws-next/stacks/prod/aurora.tf``), in one sentence with the managed
 database; no uptime SLA percentage; no technology names (PostgreSQL…), only what the customer gets.
@@ -94,7 +96,7 @@ PLANS = [
         "description_en": "Your business in the cloud. No servers, no maintenance, always available.",
         "description_es": "Tu negocio en la nube. Sin servidores, sin mantenimiento, siempre disponible.",
         "features_en": [
-            "Priced per hub — every location, device and user included",
+            "Priced per business — every location, device and user included",
             "Fully managed cloud",
             "No server maintenance",
             "Unlimited users",
@@ -107,7 +109,7 @@ PLANS = [
             "Email support (business hours)",
         ],
         "features_es": [
-            "Precio por hub — con todos sus locales, dispositivos y usuarios",
+            "Precio por negocio — con todos sus locales, dispositivos y usuarios",
             "Cloud gestionado",
             "Sin mantenimiento de servidores",
             "Usuarios ilimitados",
@@ -144,14 +146,14 @@ PLANS = [
         "description_es": "Más potencia para negocios en crecimiento. Dominio propio y escalado automático.",
         "features_en": [
             "Everything in Starter",
-            "Priced per hub — every location, device and user included",
+            "Priced per business — every location, device and user included",
             "Custom domain (erp.yourbusiness.com)",
             "Automatic resource scaling",
             "Priority email support (business hours)",
         ],
         "features_es": [
             "Todo lo del plan Starter",
-            "Precio por hub — con todos sus locales, dispositivos y usuarios",
+            "Precio por negocio — con todos sus locales, dispositivos y usuarios",
             "Dominio propio (erp.tunegocio.com)",
             "Escalado automático de recursos",
             "Soporte por email prioritario (horario laboral)",

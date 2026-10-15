@@ -45,6 +45,7 @@ class TestMyBusinesses:
             "offset": 0,
             "invitations": [],
             "ownership_offers": [],
+            "free_business": None,
         }
 
     def test_one_row_per_business_with_what_the_table_shows(self, business, owner):
@@ -140,6 +141,36 @@ class TestMyBusinesses:
         (row,) = business_list(owner, language="es")["rows"]
 
         assert (row["status_label"], row["role_label"]) == ("Preparando", "Propietario")
+
+
+class TestTheFreeQuotaBeforeTheForm:
+    """Audit 2 S-02: «Create business» says the one-Free-business limit (ADR-0154) before the form, naming the
+    Free business that fills it and offering to change its plan; the list says which one."""
+
+    def test_an_account_whose_free_business_fills_the_quota_is_told_which(self, business, owner):
+        assert business_list(owner)["free_business"] == {
+            "id": str(business.id),
+            "slug": "bar-manolo",
+            "name": "Bar Manolo",
+        }
+
+    def test_a_paying_or_deleted_business_leaves_room_for_a_free_one(self, business, owner, plans):
+        from hubs.models import Plan
+
+        Subscription.objects.filter(hub=business).update(plan=Plan.objects.get(slug="starter"))
+        assert business_list(owner)["free_business"] is None
+
+        Subscription.objects.filter(hub=business).update(plan=Plan.objects.get(slug="free"))
+        Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETING)
+        assert business_list(owner)["free_business"] is None
+
+    def test_a_free_business_of_somebody_else_fills_nothing(self, business, team):
+        assert business_list(team["admin"])["free_business"] is None
+
+    def test_the_quota_comes_from_the_settings(self, business, owner, settings):
+        settings.FREE_HUBS_PER_ACCOUNT = 2
+
+        assert business_list(owner)["free_business"] is None
 
 
 class TestOneBusiness:

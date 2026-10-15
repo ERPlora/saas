@@ -470,7 +470,57 @@ class TestOverTheSimplifiedInvoiceLimit:
     def test_a_monthly_plan_over_the_limit_needs_it_too(
         self, shop, owner, stripe_double
     ):
+        # Max is the one plan over the limit monthly. It is an upgrade (``upgrade_only``: a Free business is
+        # refused it before anything is priced, TestUpgradeOnlyPlans), so here it is sold at sign-up: what this
+        # checks is the tax id, not which plans a Free business is offered.
+        from hubs.models import Plan
+
+        Plan.objects.filter(slug="max").update(upgrade_only=False)
+
         refused("billing.tax_id_required", lambda: start(owner, shop, plan="max"))
+
+
+class TestUpgradeOnlyPlans:
+    """Audit 2 S-03: Pro, Enterprise and Max (``upgrade_only``) are an upgrade of a business that already pays;
+    a Free business is refused them (the Store does not offer them, ``billing.store.catalog``)."""
+
+    def test_a_free_business_is_refused_an_upgrade_only_plan(
+        self, shop, owner, stripe_double
+    ):
+        error = refused(
+            "billing.plan_upgrade_only", lambda: start(owner, shop, plan="pro")
+        )
+
+        assert error.status == 409
+        assert not stripe_double.calls_to("checkout.sessions.create")
+
+    def test_it_is_said_before_anything_about_its_price(self, shop, owner, stripe_double):
+        """An upgrade without its Stripe price is still refused as an upgrade, not as «not on sale» (e2e found it)."""
+        from hubs.models import Plan
+
+        Plan.objects.filter(slug="pro").update(stripe_price_id="", stripe_price_id_annual="")
+
+        refused("billing.plan_upgrade_only", lambda: start(owner, shop, plan="pro"))
+
+    def test_it_says_so_in_spanish(self, shop, owner, stripe_double):
+        from django.utils import translation
+
+        with translation.override("es"), pytest.raises(OperationError) as error:
+            start(owner, shop, plan="pro")
+
+        assert error.value.message == (
+            "Este plan es una mejora de un plan de pago: empieza por uno de los planes que se contratan al darse de alta."
+        )
+
+    def test_a_paying_business_previews_the_upgrade(
+        self, shop, owner, stripe_double
+    ):
+        paid = paying(shop, stripe_double)
+        stripe_double.answer("invoices.create_preview", preview())
+
+        answer = start(owner, paid, plan="pro")
+
+        assert answer["flow"] == "confirm"
 
 
 # --- The trial ---------------------------------------------------------------------------------------

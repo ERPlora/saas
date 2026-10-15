@@ -107,7 +107,12 @@
       "addressChecking": "Finding a free address…",
       "foot": "Free and no card. You can change the name whenever you want.",
       "submit": "Create my business",
-      "created": "Business created: {name}"
+      "created": "Business created: {name}",
+      "freeLimit": {
+        "heading": "You already have a free business",
+        "body": "Each account has one, and yours is {name}. To create another business, move {name} to a paid plan first.",
+        "store": "Change the plan of {name}"
+      }
     },
     "preparing": {
       "progress": "Preparation progress",
@@ -167,6 +172,7 @@
         "suspendedHeading": "{name} is suspended",
         "suspendedBody": "It was suspended because of an unpaid invoice. Nothing is deleted: once it is paid it works again at once.",
         "groupHeading": "{count} businesses have unpaid invoices",
+        "groupHeadingAmount": "{count} businesses have unpaid invoices: {amount}",
         "lineSuspendedSince": "{name} is suspended since {date}.",
         "lineSuspended": "{name} is suspended.",
         "linePastDueUntil": "{name} is suspended on {date} if it is not paid.",
@@ -214,6 +220,7 @@
     "business": {
       "loadError": "We could not load this business",
       "loadErrorBody": "Maybe you no longer have access to it, or there is a connection problem.",
+      "forbidden": "You do not have permission to manage this business",
       "tabsLabel": "Business sections",
       "tabs": {
         "summary": "Summary",
@@ -303,12 +310,12 @@
       "restore": "Recover business"
     },
     "members": {
-      "title": "Members",
+      "title": "Team",
       "search": "Search by name or email",
       "invite": "Invite",
       "loadError": "We could not load the members",
-      "recordSingular": "member",
-      "recordPlural": "members",
+      "recordSingular": "person",
+      "recordPlural": "people",
       "you": "You",
       "columns": {
         "name": "Name",

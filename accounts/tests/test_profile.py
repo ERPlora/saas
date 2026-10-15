@@ -83,11 +83,23 @@ class TestUpdating:
         assert (ana.first_name, ana.last_name) == ("Ana María", "Ruiz")
         assert (result.first_name, result.full_name) == ("Ana María", "Ana María Ruiz")
 
-    def test_names_can_be_cleared(self, ana):
-        services.profile_update(ctx_for(ana), ProfileUpdateIn(first_name="", last_name=""))
+    def test_the_last_name_can_be_cleared(self, ana):
+        services.profile_update(ctx_for(ana), ProfileUpdateIn(first_name="Ana", last_name="  "))
 
         ana.refresh_from_db()
-        assert (ana.first_name, ana.last_name) == ("", "")
+        assert (ana.first_name, ana.last_name) == ("Ana", "")
+
+    def test_the_first_name_is_required(self, ana):
+        """Audit 2 S-10: a blank first name was saved («Changes saved») and the panel lost the «Hello, Laura»; it is
+        refused on its field, blank or only spaces, and nothing changes."""
+        from pydantic import ValidationError
+
+        for blank in ("", "   "):
+            with pytest.raises(ValidationError) as refused:
+                ProfileUpdateIn(first_name=blank, last_name="Ruiz")
+            assert "Write your first name." in str(refused.value)
+        ana.refresh_from_db()
+        assert ana.first_name == "Ana"
 
     def test_a_change_is_recorded_and_re_runs_the_live_profile(self, ana):
         from live.models import OutboxEvent
@@ -123,6 +135,16 @@ class TestOverHttp:
         assert "email" in response.json()["error"]["fields"]
         ana.refresh_from_db()
         assert (ana.email, ana.last_name) == ("ana@example.com", "García")
+
+    def test_a_blank_first_name_is_a_422_on_its_field_in_the_accounts_language(self, client, ana):
+        client.force_login(ana)
+
+        response = api_post(client, PROFILE, {"first_name": "  ", "last_name": "Gil"}, HTTP_ACCEPT_LANGUAGE="es")
+
+        assert response.status_code == 422
+        assert response.json()["error"]["fields"] == {"first_name": "Escribe tu nombre."}
+        ana.refresh_from_db()
+        assert (ana.first_name, ana.last_name) == ("Ana", "García")
 
     def test_a_name_too_long_is_a_422_on_its_field(self, client, ana):
         client.force_login(ana)

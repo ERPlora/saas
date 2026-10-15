@@ -93,11 +93,20 @@ async function setup(locale: 'en' | 'es' = 'en', answer: (call: ReturnType<typeo
 }
 
 describe('SubscriptionsTab: the list', () => {
-  it('follows one row per business Stripe bills, cards up to 1280 px, with the names of the modules', async () => {
+  it('follows one row per business Stripe bills, a list from 1000 px (its modules and next invoice fold first), with the names of the modules', async () => {
     const s = await setup();
     expect(s.client.stream.subscriptions('billing.subscription.list').map((sub) => sub.params)).toEqual([{ limit: 100 }]);
     await s.show();
-    expect(s.table().props()).toMatchObject({ title: 'Subscriptions', views: ['table', 'cards'], cardBreakpoint: 1280, testid: 'subscriptions', searchKeys: ['name'] });
+    // Audit 2 R-33: three rows turned into cards on a 1024–1180 laptop; R-30: a card does not repeat its title.
+    expect(s.table().props()).toMatchObject({
+      title: 'Subscriptions',
+      views: ['table', 'cards'],
+      cardBreakpoint: 1000,
+      cardTitleColumn: 'name',
+      testid: 'subscriptions',
+      searchKeys: ['name'],
+    });
+    expect(s.prop<Array<{ key: string; priority?: string }>>('columns').filter((c) => c.priority === 'low').map((c) => c.key)).toEqual(['modules', 'next_invoice']);
     expect(s.prop<Array<{ label: string }>>('columns').map((c) => c.label)).toEqual(['Business', 'Plan', 'Modules', 'Next invoice', 'Status']);
     expect(s.calls().map((c) => [c.path, c.query])).toEqual([
       ['/api/apps', { premium: 'true' }],
@@ -226,7 +235,11 @@ describe('SubscriptionsTab: the list', () => {
     expect(s.actionsOf('bakery')).toEqual(['view_invoices']);
     expect(s.actionsOf('plaza')).toEqual(['lead', 'view_invoices']);
     expect(s.testid('subscriptions-row-plaza-lead').text()).toBe('View the invoice');
-    expect(s.testid('subscriptions-app-hint').text()).toBe('To change or cancel a plan, go to erplora.com in your browser.');
+    expect(s.testid('subscriptions-app-hint').text()).toBe(
+      surface === 'account'
+        ? 'This account was opened from the app: plans are not changed nor cancelled from here.'
+        : 'To change or cancel a plan, go to erplora.com in your browser.',
+    );
     expect(s.wrapper.findComponent(CancelPlanDialog).exists()).toBe(false);
   });
 

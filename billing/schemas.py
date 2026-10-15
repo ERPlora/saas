@@ -273,6 +273,9 @@ class StoreCatalogOut(Schema):
     #: ``None`` for a business without a plan yet.
     subscription: StoreSubscriptionOut | None
     modules: list[StoreModuleOut]
+    #: The paid plans the business may move to (slugs, in display order): the ones sold at sign-up while Stripe
+    #: does not bill it; the ``upgrade_only`` ones too once it pays (audit 2 S-03, ``billing.queries.offered_plans``).
+    offered_plans: list[str]
 
 
 # --- ERPlora's invoices, subscriptions and payment details: the Billing section (lot L3-C) ------------

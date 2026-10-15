@@ -187,6 +187,8 @@ export interface BusinessRowOut {
   pay_url: string | null;
   /** The account owns the business's payer: it pays for it, whatever its role. */
   is_payer: boolean;
+  /** That payer (its Stripe customer), only to whoever owns it (audit 2 R-21). */
+  payer_id: string | null;
 }
 
 /** `hubs.InvitationOut`: an invitation waiting for this account's answer. */
@@ -213,6 +215,8 @@ export interface OwnershipOfferOut {
 export interface BusinessListOut extends Page<BusinessRowOut> {
   invitations: InvitationOut[];
   ownership_offers: OwnershipOfferOut[];
+  /** The account's Free business when its Free ones fill the quota: «Create business» says so (audit 2 S-02). */
+  free_business: HubRefOut | null;
 }
 
 /** `hubs.BusinessTypeRefOut`. */
@@ -735,6 +739,8 @@ export interface StoreCatalogOut {
   hub_id: string;
   subscription: StoreSubscriptionOut | null;
   modules: StoreModuleOut[];
+  /** The paid plans the business may move to: no upgrade-only plan while Stripe does not bill it (audit 2 S-03). */
+  offered_plans: string[];
 }
 
 /** `apps.AppListIn`: every filter optional and lenient. */

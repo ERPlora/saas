@@ -1477,6 +1477,14 @@ msgstr "No hay ningún módulo a la venta con este identificador."
 msgid "This business already has this module."
 msgstr "Este negocio ya tiene este módulo."
 
+#: services.py:906
+msgid ""
+"This plan is an upgrade of a paid plan: start with one of the plans sold at "
+"sign-up."
+msgstr ""
+"Este plan es una mejora de un plan de pago: empieza por uno de los planes que "
+"se contratan al darse de alta."
+
 #: services.py:1044
 msgid ""
 "Above 400 € with VAT the invoice must name the buyer: add the payer's tax ID "

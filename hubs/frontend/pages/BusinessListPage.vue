@@ -8,7 +8,9 @@
 // the apps without a way to pay, README §4). «Create business» opens a dialog: the form, then the
 // preparation, then «ready» or why not, following the new business with its own `hubs.business.get`
 // (the list may not show it: a search, another page); meanwhile the list shows it «Preparing». Empty,
-// the table holds the sign-up form itself. Live data: `hubs.business.list`. Ionic reuses the page:
+// the table holds the sign-up form itself. With the account's Free business filling its quota (ADR-0154), the
+// dialog says so instead of the form, naming it, and offers to change its plan (audit 2 S-02). Live data:
+// `hubs.business.list`. Ionic reuses the page:
 // `?create=1` (the launcher's «Create another business») is read each time it comes on screen. The list
 // fills the page between the topbar and the footer (`detail-fill` + `.panel-fill`, Ioan 2026-10-14), and
 // asks for rows per page only when there are more businesses than the shortest page (README §3b). Its states are
@@ -25,7 +27,7 @@ import {
   InlineFeedback,
   StatusPill,
 } from '@erplora/ui/components';
-import { AppPage, HubIcon, toastError, toastSuccess, useSurface } from '@erplora/ui/shell';
+import { AppPage, HubIcon, toastError, toastSuccess, useSurface, WebOnly } from '@erplora/ui/shell';
 import { useCommand, useLive, useLiveClient } from '@erplora/ui/sdk';
 import { IonButton, onIonViewWillEnter } from '@ionic/vue';
 import {
@@ -49,6 +51,7 @@ import { opensAtAll, preparationFailed, reasonDate, reasonKey, statusPill } from
 import BusinessCreateForm from '../components/BusinessCreateForm.vue';
 import BusinessPreparing from '../components/BusinessPreparing.vue';
 import DeclineDialog from '../components/DeclineDialog.vue';
+import HostName from '../components/HostName.vue';
 import UnpaidGroupNotice from '../components/UnpaidGroupNotice.vue';
 import UnpaidNotice from '../components/UnpaidNotice.vue';
 import { useErrorText } from '../error-text';
@@ -242,6 +245,16 @@ watch(created, (now) => {
 });
 onScopeDispose(() => following?.stop());
 const createdNow = computed(() => followed.value?.data.value);
+
+/** The account's Free business when its Free ones fill the quota (ADR-0154): a new business would be Free, so
+ *  the dialog says so instead of a form that would be refused (audit 2 S-02). */
+const freeBusiness = computed(() => live.data.value?.free_business ?? null);
+const limited = computed(() => !created.value && !!freeBusiness.value);
+
+function changeFreePlan(id: string): void {
+  createOpen.value = false;
+  void router.push(`/store/plans?business=${id}`);
+}
 
 const phase = computed<'form' | 'preparing' | 'ready' | 'error'>(() => {
   if (!created.value) return 'form';
@@ -470,10 +483,13 @@ onIonViewWillEnter(entered);
           >{{ row.name }}</strong>
         </template>
         <template #host="{ row }">
-          <span
-            class="mono"
+          <!-- A div, not the span DataTable clips with «…»: the address may take a second line, after a dot (R-25). -->
+          <div
+            class="mono cell-wrap"
             data-testid="business-host"
-          >{{ row.host }}</span>
+          >
+            <HostName :host="row.host" />
+          </div>
         </template>
         <template #status="{ row }">
           <span class="cell-stack">
@@ -503,7 +519,7 @@ onIonViewWillEnter(entered);
             class="mono card-host"
             data-testid="business-host"
           >
-            {{ row.host }}
+            <HostName :host="row.host" />
           </p>
           <p class="card-pills">
             <StatusPill v-bind="pill(row)" />
@@ -592,7 +608,23 @@ onIonViewWillEnter(entered);
       :pending="creating"
       @submit="createForm?.submit()"
     >
-      <template v-if="phase === 'form'">
+      <InlineFeedback
+        v-if="limited && freeBusiness"
+        tone="info"
+        icon="ion:storefront-outline"
+        data-testid="create-free-limit"
+        :heading="$t('hubs.create.freeLimit.heading')"
+      >
+        {{ $t('hubs.create.freeLimit.body', { name: freeBusiness.name }) }}
+        <WebOnly>
+          <template #app>
+            <p class="create-foot">
+              {{ $t('hubs.common.storeInBrowser') }}
+            </p>
+          </template>
+        </WebOnly>
+      </InlineFeedback>
+      <template v-else-if="phase === 'form'">
         <h2 class="create-heading">
           {{ $t('hubs.create.heading') }}
         </h2>
@@ -656,7 +688,25 @@ onIonViewWillEnter(entered);
       </div>
 
       <template
-        v-if="phase !== 'form'"
+        v-if="limited && freeBusiness"
+        #footer
+      >
+        <WebOnly>
+          <ion-button
+            data-testid="create-free-limit-store"
+            @click="changeFreePlan(freeBusiness.id)"
+          >
+            <HubIcon
+              slot="start"
+              name="lucide:layers"
+              aria-hidden="true"
+            />
+            {{ $t('hubs.create.freeLimit.store', { name: freeBusiness.name }) }}
+          </ion-button>
+        </WebOnly>
+      </template>
+      <template
+        v-else-if="phase !== 'form'"
         #footer
       >
         <ion-button
@@ -730,6 +780,11 @@ a.business-name:hover {
 }
 .mono {
   font-family: var(--font-mono, ui-monospace, monospace);
+}
+/* A cell that may take a second line instead of «…» (audit 2 R-25). */
+.cell-wrap {
+  min-width: 0;
+  white-space: normal;
 }
 .cell-stack {
   display: inline-flex;

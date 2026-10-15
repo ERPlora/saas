@@ -40,9 +40,10 @@ describe('CardShell', () => {
     expect(html.indexOf('erp-lockup')).toBeLessThan(html.indexOf('ion-card-title'));
   });
 
-  it('is the main landmark of a page outside the menu', async () => {
+  it('has one main landmark, Ionic’s content (`role="main"`): the card’s frame is no second `main` inside it (audit 2 R-22)', async () => {
     const { wrapper } = await mountShell();
-    expect(wrapper.find('.ion-page main.shell-page').exists()).toBe(true);
+    expect(wrapper.find('.ion-page ion-content .shell-page').exists()).toBe(true);
+    expect(wrapper.find('main').exists()).toBe(false);
   });
 
   it('says who is signed in and signs out with Django’s logout form, back to the sign-in', async () => {

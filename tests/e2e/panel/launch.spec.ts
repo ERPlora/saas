@@ -75,7 +75,8 @@ test('several businesses: the last opened first, why one does not open, and the 
   await expect(page.getByTestId('launch-invitation')).toContainText('You have been invited to Bar Norte');
   await page.getByTestId('launch-create-another').click();
   await expect(page).toHaveURL(/\/businesses$/);
-  await expect(page.getByTestId('create-modal-submit')).toBeVisible();
+  // Café Central fills its one Free business: the dialog says so before any form (audit 2 S-02).
+  await expect(page.getByTestId('create-free-limit')).toContainText('yours is Café Central');
   expect(errors).toEqual([]);
 });
 

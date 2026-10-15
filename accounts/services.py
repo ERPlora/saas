@@ -372,7 +372,8 @@ def preferences_update(ctx: OperationContext, data: PreferencesUpdateIn) -> dict
 
 @operation("accounts.profile.update", kind="command", permission="accounts.manage", input=ProfileUpdateIn, output=ProfileOut)
 def profile_update(ctx: OperationContext, data: ProfileUpdateIn) -> dict:
-    """The names, trimmed (empty clears them). The sign-in email has its own door, ``accounts.email.change``."""
+    """The names, trimmed: the first one is required (audit 2 S-10), an empty last one clears it. The sign-in email
+    has its own door, ``accounts.email.change``."""
     user = queries.account_of(ctx)
     user.first_name = data.first_name.strip()
     user.last_name = data.last_name.strip()

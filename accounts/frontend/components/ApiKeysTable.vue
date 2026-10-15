@@ -28,7 +28,8 @@ import { useErrorText } from '../error-text';
 import NewKeyModal from './NewKeyModal.vue';
 
 /** README §3b: the keys' list is wide (six columns); cards up to 1180 px. */
-const CARD_BREAKPOINT = 1180;
+/** A list from here; its dates fold first (audit 2 R-33: three keys were cards at 1024–1180). */
+const CARD_BREAKPOINT = 1000;
 
 const { t, locale } = useI18n();
 const { text, forDialog } = useErrorText();
@@ -47,7 +48,7 @@ const date = (value: string | null) => (value ? formatDateTime(value, locale.val
 const columns = computed(() => [
   { key: 'name', label: t('accounts.account.keys.columns.name'), cell: 'name', width: 'minmax(8rem,1fr)', priority: 'high' },
   { key: 'prefix', label: t('accounts.account.keys.columns.prefix'), cell: 'prefix', width: 'minmax(10rem,1.1fr)', sortable: false },
-  { key: 'scopes', label: t('accounts.account.keys.columns.permissions'), format: (_v, row) => permissions(row), width: 'minmax(11rem,1.4fr)' },
+  { key: 'scopes', label: t('accounts.account.keys.columns.permissions'), cell: 'scopes', width: 'minmax(11rem,1.4fr)' },
   { key: 'created_at', label: t('accounts.account.keys.columns.created'), format: (_v, row) => date(row.created_at), priority: 'low' },
   { key: 'last_used_at', label: t('accounts.account.keys.columns.lastUsed'), format: (_v, row) => date(row.last_used_at), priority: 'low' },
   { key: 'expires_at', label: t('accounts.account.keys.columns.expires'), cell: 'expires' },
@@ -116,6 +117,15 @@ async function confirmRevoke(): Promise<void> {
     <template #name="{ row }">
       <strong>{{ row.name }}</strong>
     </template>
+    <template #scopes="{ row }">
+      <!-- A div, not the span DataTable clips with «…»: the permissions may wrap (audit 2 R-25). -->
+      <div
+        class="cell-wrap"
+        data-testid="api-key-scopes"
+      >
+        {{ permissions(row) }}
+      </div>
+    </template>
     <template #prefix="{ row }">
       <span class="key-prefix">{{ row.prefix }}…</span>
     </template>
@@ -179,6 +189,10 @@ async function confirmRevoke(): Promise<void> {
 </template>
 
 <style scoped>
+.cell-wrap {
+  min-width: 0;
+  white-space: normal;
+}
 .key-prefix {
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 0.85rem;

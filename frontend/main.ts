@@ -48,6 +48,9 @@ import { installSkipLink } from './skip-link';
 const LOGIN_PATH = '/login';
 /** «Help» of the user menu. */
 const HELP_PATH = '/help';
+/** The panel's home (the shell's Home: the menu's brand, «not found», «not in the app»): `/` is the public web,
+ *  a Django page the SPA does not have (audit 2 R-18). */
+const HOME_PATH = '/businesses';
 /** The SaaS's entries of the user menu, before Help and Sign out (mockups README §3). */
 const USER_MENU_ITEMS: ShellUserMenuItem[] = [
   { id: 'account', labelKey: 'saas.userMenu.account', icon: 'ion:person-outline', to: '/account' },
@@ -58,7 +61,8 @@ const USER_MENU_ITEMS: ShellUserMenuItem[] = [
  * The CSP's `script-src` still decides page by page (the account surface names no Stripe, `base/csp.py`).
  */
 const TRUSTED_SCRIPT_ORIGINS = ['https://js.stripe.com'] as const;
-/** The entry's own texts (the user menu), merged with the apps' catalogues under `saas`. */
+/** The entry's own texts (the user menu), merged with the apps' catalogues under `saas`; and, at the top, the shell's
+ *  texts the panel says otherwise (`notFound`: the panel, not a hub; audit 2 R-18). */
 const ENTRY_CATALOGUES = { 'frontend/locale/en.json': en, 'frontend/locale/es.json': es };
 
 /** An app's `frontend/routes.ts` default-exports its routes → pages, and nothing else. */
@@ -170,9 +174,13 @@ export async function boot(
     routes: appRoutes(routeFiles),
     messages: appMessages({ ...ENTRY_CATALOGUES, ...catalogues }),
     loginPath: LOGIN_PATH,
+    homePath: HOME_PATH,
     surface: serverSurface(doc),
     userMenu: { items: USER_MENU_ITEMS, helpPath: HELP_PATH, logout: () => signOut(auth) },
     trustedScriptOrigins: TRUSTED_SCRIPT_ORIGINS,
+    // AA contrast (audit 2 §5.1, option A): the primary solid at 4.87:1 with white, and dark text on the
+    // dark theme's (`data-ep-contrast="aa"`, packages/ui theme/variables.css).
+    contrast: 'aa',
   });
   provideLiveClient(client, app);
   try {
@@ -181,7 +189,7 @@ export async function boot(
     if (isNavigationFailure(failure)) return;
     throw failure;
   }
-  installSkipLink(doc, { en: en.saas.skipLink, es: es.saas.skipLink });
+  installSkipLink(doc, { en: en.saas.skipLink, es: es.saas.skipLink }, { en: en.saas.skipNav, es: es.saas.skipNav });
   app.mount('#app');
 }
 

@@ -460,6 +460,25 @@ def module_for_price(price_id: str):
 _ENDED_STATUSES = frozenset({"canceled", "incomplete_expired"})
 
 
+def is_paying(subscription: Subscription | None) -> bool:
+    """Stripe bills the business already: it has a subscription there that has not ended."""
+    return (
+        subscription is not None
+        and bool(subscription.stripe_subscription_id)
+        and subscription.status not in _ENDED_STATUSES
+    )
+
+
+def offered_plans(paying: bool):
+    """The paid plans on sale a business may move to (audit 2 S-03; ``sync_hub_plans``): the ones sold at sign-up
+    while Stripe does not bill it (Free), the ``upgrade_only`` ones too once it pays. Free is not bought (a paid
+    plan is cancelled to get it) and an ``internal_only`` plan is never offered here."""
+    plans = Plan.objects.public().filter(price_monthly__gt=0)
+    if not paying:
+        plans = plans.filter(upgrade_only=False)
+    return plans.order_by("display_order", "price_monthly")
+
+
 @operation(
     "billing.store.catalog",
     kind="query",
@@ -470,7 +489,8 @@ _ENDED_STATUSES = frozenset({"canceled", "incomplete_expired"})
 def store_catalog(ctx: OperationContext, params: StoreCatalogIn) -> dict:
     """What the Store sells the business and what it already has: every paid module on sale with its net
     prices in cents, whether the business owns it (bought or included in its plan; a cancelled one until it
-    ends) and the plan, its billing and whether Stripe bills it already. Only the owner buys for a business
+    ends), the plan, its billing and whether Stripe bills it already, and the paid plans it may move to
+    (``offered_plans``: no upgrade-only plan for a business Stripe does not bill, audit 2 S-03). Only the owner buys for a business
     (round 17 §2.7), so only the owner reads it; a deleted business buys nothing (409). Never asks Stripe."""
     member = hub_queries.access(hub_queries.account_of(ctx), params.hub_id, HubMember.Role.OWNER)
     if not hub_queries.is_writable(member.hub):
@@ -499,18 +519,24 @@ def store_catalog(ctx: OperationContext, params: StoreCatalogIn) -> dict:
             }
         )
     plan = None
+    paying = is_paying(subscription)
     if subscription is not None:
         plan = {
             "plan": subscription.plan.slug,
             "billing_interval": subscription.billing_interval,
             "status": subscription.status,
-            "paying": bool(subscription.stripe_subscription_id) and subscription.status not in _ENDED_STATUSES,
+            "paying": paying,
             "cancel_at_period_end": subscription.cancel_at_period_end,
             "current_period_end": subscription.current_period_end,
             "trial_plan": subscription.trial_plan.slug if subscription.trial_plan_id else None,
             "trial_end": subscription.trial_end,
         }
-    return {"hub_id": member.hub_id, "subscription": plan, "modules": modules}
+    return {
+        "hub_id": member.hub_id,
+        "subscription": plan,
+        "modules": modules,
+        "offered_plans": [offered.slug for offered in offered_plans(paying)],
+    }
 
 
 # --- The Billing section: ERPlora's invoices, the subscriptions and the payment details (lot L3-C) -----
@@ -999,16 +1025,14 @@ def payment_method_get(ctx: OperationContext, data: PaymentMethodIn) -> dict:
         customers.setdefault(hub.billing_profile.stripe_customer_id, []).append(hub)
     methods = []
     for customer, businesses in customers.items():
-        paying = next(
-            (
-                hub.subscription.stripe_subscription_id
-                for hub in businesses
-                if getattr(hub, "subscription", None) is not None
-                and hub.subscription.stripe_subscription_id
-                and hub.subscription.status not in ENDED_SUBSCRIPTIONS
-            ),
-            "",
-        )
+        billed = [
+            hub
+            for hub in businesses
+            if getattr(hub, "subscription", None) is not None
+            and hub.subscription.stripe_subscription_id
+            and hub.subscription.status not in ENDED_SUBSCRIPTIONS
+        ]
+        paying = billed[0].subscription.stripe_subscription_id if billed else ""
         card, unavailable = _card_of(customer, paying)
         failure = (
             PaymentFailure.objects.select_related("hub")
@@ -1018,7 +1042,9 @@ def payment_method_get(ctx: OperationContext, data: PaymentMethodIn) -> dict:
         )
         methods.append(
             {
-                "businesses": [{"id": hub.id, "name": hub.name} for hub in businesses],
+                # The card pays the businesses Stripe bills; a Free one on the same payer is not paid with it (audit 2
+                # R-26). With none billed, the ones it is kept for.
+                "businesses": [{"id": hub.id, "name": hub.name} for hub in billed or businesses],
                 "card": card,
                 "unavailable": unavailable,
                 "last_failure": {"at": failure.failed_at, "business": failure.hub.name} if failure else None,

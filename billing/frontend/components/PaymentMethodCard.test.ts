@@ -60,7 +60,12 @@ describe('PaymentMethodCard', () => {
     applySurface(surface);
     const s = await card();
     expect(s.q('payment-change').exists()).toBe(false);
-    expect(s.q('payment-app').text()).toBe('To change the card, go to erplora.com in your browser.');
+    // Already in the browser (the account the app opens): its own reason (audit 2 S-09).
+    expect(s.q('payment-app').text()).toBe(
+      surface === 'account'
+        ? 'This account was opened from the app: the card is not changed from here.'
+        : 'To change the card, go to erplora.com in your browser.',
+    );
     expect(s.wrapper.findAll('[href]')).toEqual([]);
   });
 

@@ -56,6 +56,30 @@ describe('UnpaidGroupNotice', () => {
     expect(s.wrapper.get('[data-testid="unpaid-group-footer"]').text()).toBe('Nothing is deleted: once an invoice is paid, its business works again at once.');
   });
 
+  it('the most urgent first, as Businesses orders them: the suspended, then the one suspended soonest (audit 2 S-07)', async () => {
+    const norte = businessRow('norte', 'Bar Norte', { status: 'past_due', unpaid_reason: 'payment_failed', unpaid_since: '2026-10-12T08:00:00Z' });
+    const plaza = { ...PLAZA, unpaid_reason: 'payment_failed' as const, unpaid_since: '2026-10-10T08:00:00Z' };
+    // The invoices come newest first (Bar Norte's), the order of the list.
+    const s = await setup([
+      { invoice: unpaidRow('i2', { business: { id: 'norte', name: 'Bar Norte' }, date: '2026-10-12' }), business: norte },
+      { invoice: OPEN_PLAZA, business: plaza },
+    ]);
+    expect(s.lines().map((line) => line.attributes('data-id'))).toEqual(['i1', 'i2']);
+    // Only the most urgent is filled (audit 2 S-06).
+    expect(s.line('i1').get('[data-testid="pay-invoice"]').attributes('fill')).toBe('solid');
+    expect(s.line('i2').get('[data-testid="pay-invoice"]').attributes('fill')).toBe('outline');
+  });
+
+  it('a second business with a declined card: its «Change card» outlined too', async () => {
+    const plaza = { ...PLAZA, unpaid_reason: 'card_declined' as const, unpaid_since: '2026-10-10T08:00:00Z' };
+    const s = await setup([
+      { invoice: DECLINED_NORTE, business: NORTE },
+      { invoice: unpaidRow('i1', { pay_blocked_reason: 'card_change_required', can: { pay: false, pdf: false } }), business: plaza },
+    ]);
+    expect(s.line('i2').get('[data-testid="unpaid-group-change-card"]').attributes('fill')).toBe('solid');
+    expect(s.line('i1').get('[data-testid="unpaid-group-change-card"]').attributes('fill')).toBe('outline');
+  });
+
   it('dates are days, never the hour', async () => {
     const s = await setup();
     expect(s.wrapper.text()).not.toMatch(/\d{1,2}:\d{2}/);
@@ -66,7 +90,8 @@ describe('UnpaidGroupNotice', () => {
     const s = await setup(ITEMS, 'en', (call) => (call.path === '/api/billing/invoices/pay' ? Response.json({ url: 'https://invoice.stripe.com/i/plaza' }) : Response.json({})));
     const pay = s.line('i1').get('[data-testid="pay-invoice"]');
     expect(pay.text()).toBe('Pay the invoice · €36.29');
-    expect(pay.attributes('fill')).toBe('solid');
+    // Bar La Plaza is not the most urgent (Bar Norte is suspended): its way out is outlined (audit 2 S-06).
+    expect(pay.attributes('fill')).toBe('outline');
     expect(s.line('i1').find('[data-testid="unpaid-group-change-card"]').exists()).toBe(false);
     await pay.trigger('click');
     await flush();
@@ -111,6 +136,11 @@ describe('UnpaidGroupNotice', () => {
     expect(s.wrapper.find('[data-testid="unpaid-group-change-card"]').exists()).toBe(false);
     expect(s.wrapper.find('[data-testid="unpaid-group-why"]').exists()).toBe(false);
     expect(s.wrapper.findAll('[href]')).toEqual([]);
+    if (surface === 'account') {
+      // Already in the browser (the account the app opens): why, not «go to erplora.com in your browser» (audit 2 S-09).
+      expect(s.wrapper.get('[data-testid="unpaid-group-app"]').text()).toBe('This account was opened from the app: invoices are not paid from here.');
+      return;
+    }
     expect(s.wrapper.get('[data-testid="unpaid-group-app"]').text()).toBe('To change the card and pay them, go to erplora.com in your browser.');
     const plain = await setup([ITEMS[0], { invoice: unpaidRow('i4', { business: { id: 'cafe', name: 'Café Central' } }), business: null }]);
     expect(plain.wrapper.get('[data-testid="unpaid-group-app"]').text()).toBe('To pay them, go to erplora.com in your browser.');

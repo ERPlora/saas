@@ -315,10 +315,10 @@ describe('the panel (round 17, PLAN-SAAS §3.6)', () => {
     expect(shellOptions().surface).toBeUndefined();
   });
 
-  it("keeps the package's default contrast and has no Home of the shell (the SaaS's landing is its own)", async () => {
+  it("paints the AA contrast (audit 2 §5.1, option A: primary #0e78ad with white, dark text on the dark one) and has no Home of the shell (the SaaS's landing is its own)", async () => {
     fakeShell();
     await main.boot({});
-    expect(shellOptions()).not.toHaveProperty('contrast');
+    expect(shellOptions().contrast).toBe('aa');
     expect(shellOptions().home).toBeUndefined();
   });
 
@@ -327,14 +327,36 @@ describe('the panel (round 17, PLAN-SAAS §3.6)', () => {
     expect([messages.en.saas.userMenu.account, messages.es.saas.userMenu.account]).toEqual(['Account', 'Cuenta']);
   });
 
-  it("keeps the entry's catalogue under `saas`, with the same keys in en and es", () => {
+  it("keeps the entry's catalogue under `saas`, with the same keys in en and es; anything else only overrides the shell's own texts", () => {
     const read = (lang: string) => JSON.parse(readFileSync(join(HERE, 'locale', `${lang}.json`), 'utf8')) as object;
+    const shell = JSON.parse(readFileSync(join(SAAS_DIR, 'packages', 'ui', 'src', 'shell', 'locales', 'en.json'), 'utf8')) as object;
     const keys = (value: unknown, prefix = ''): string[] =>
       typeof value === 'object' && value !== null
         ? Object.entries(value).flatMap(([key, child]) => keys(child, `${prefix}${key}.`))
         : [prefix.slice(0, -1)];
-    expect(Object.keys(read('en'))).toEqual(['saas']);
+    expect(Object.keys(read('en'))).toEqual(['saas', 'notFound', 'notInApp']);
     expect(keys(read('es'))).toEqual(keys(read('en')));
+    const overrides = keys(read('en')).filter((key) => !key.startsWith('saas.'));
+    expect(overrides.filter((key) => !keys(shell).includes(key))).toEqual([]);
+  });
+
+  it("the panel's home is Businesses: the menu's brand, «not found» and «not in the app» lead there, never to the public `/` the SPA does not have (audit 2 R-18)", async () => {
+    fakeShell();
+    await main.boot({});
+    expect(shellOptions().homePath).toBe('/businesses');
+  });
+
+  it('a page that does not exist speaks of the panel, not of a hub (audit 2 R-18)', () => {
+    const messages = importBoot.messages as Record<string, { notFound: { body: string; action: string }; notInApp: { action: string } }>;
+    expect(messages.en.notFound.body).toBe(
+      'The address you opened is not part of the panel. It may be an old or mistyped link: your businesses, billing and account are in the menu.',
+    );
+    expect(messages.es.notFound.body).toBe(
+      'La dirección que has abierto no forma parte del panel. Puede ser un enlace antiguo o mal copiado: tus negocios, la facturación y tu cuenta están en el menú.',
+    );
+    expect([messages.en.notFound.action, messages.es.notFound.action]).toEqual(['Go to my businesses', 'Ir a mis negocios']);
+    expect([messages.en.notInApp.action, messages.es.notInApp.action]).toEqual(['Go to my businesses', 'Ir a mis negocios']);
+    for (const language of ['en', 'es']) expect(JSON.stringify(messages[language].notFound)).not.toMatch(/\bhub\b/);
   });
 });
 
@@ -457,10 +479,13 @@ describe('import order guards (hub#1060)', () => {
     fakeShell();
     document.documentElement.lang = 'es';
     await main.boot({});
-    const link = document.body.firstElementChild as HTMLAnchorElement;
+    const nav = document.body.firstElementChild as HTMLElement;
+    const link = nav.querySelector('a') as HTMLAnchorElement;
     expect(link.id).toBe('skip-to-content');
     expect(link.textContent).toBe('Saltar al contenido');
+    expect(nav.getAttribute('aria-label')).toBe('Atajos');
     expect(entryEn.saas.skipLink).toBe('Skip to content');
+    expect(entryEn.saas.skipNav).toBe('Shortcuts');
   });
 
   it("loads the panel's chrome (skip link, touch targets, topbar) after the shell's theme (panel-chrome.css)", () => {

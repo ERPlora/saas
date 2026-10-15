@@ -5,7 +5,7 @@
 // «the secure payment page», the main action after a failure (`portal.ts`). Inside the apps, how to change
 // it, without a button nor a link (README §4). Stripe away, or no card yet: it says so.
 import { StatusPill } from '@erplora/ui/components';
-import { HubIcon, WebOnly } from '@erplora/ui/shell';
+import { HubIcon, useSurface, WebOnly } from '@erplora/ui/shell';
 import { IonButton, IonCard, IonCardContent, IonSpinner } from '@ionic/vue';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -44,6 +44,8 @@ const failure = computed(() => {
   const last = props.method.last_failure;
   return last ? t('billing.payment.method.failedWhen', { date: formatDate(last.at, locale.value), business: last.business }) : '';
 });
+/** The account the app opens in the browser says why, not where (audit 2 S-09). */
+const { surface } = useSurface();
 </script>
 
 <template>
@@ -122,7 +124,7 @@ const failure = computed(() => {
             class="card-text small"
             data-testid="payment-app"
           >
-            {{ $t('billing.payment.method.app') }}
+            {{ surface === 'account' ? $t('billing.payment.method.account') : $t('billing.payment.method.app') }}
           </p>
         </template>
       </WebOnly>

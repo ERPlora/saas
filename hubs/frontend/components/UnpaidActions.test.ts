@@ -73,6 +73,14 @@ describe('UnpaidActions', () => {
     expect(ionProps(large.wrapper.get('[data-testid="unpaid-pay"]'), 'size')).toEqual({ size: undefined });
   });
 
+  it('secondary (not the most urgent of a list): every button outlined, so one business leads (audit 2 S-06)', async () => {
+    const declined = await mountActions({ unpaid_reason: 'card_declined' }, { secondary: true });
+    expect(ionProps(declined.wrapper.get('[data-testid="unpaid-change-card"]'), 'fill')).toEqual({ fill: 'outline' });
+    document.body.innerHTML = '';
+    const plain = await mountActions({}, { secondary: true });
+    expect(ionProps(plain.wrapper.get('[data-testid="unpaid-pay"]'), 'fill')).toEqual({ fill: 'outline' });
+  });
+
   it('nothing for whoever may not pay it (no `pay_url`)', async () => {
     const { wrapper } = await mountActions({ pay_url: null, unpaid_reason: 'card_declined' });
     expect(wrapper.find('ion-button').exists()).toBe(false);

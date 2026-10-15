@@ -47,17 +47,18 @@ export function countryOptions(locale: string): Option[] {
   return COUNTRIES.map((code) => ({ value: code, label: countryName(code, locale) })).sort(byLabel(locale));
 }
 
-/** «Madrid (GMT+1)»: the zone's city and its offset at `at` (now by default). */
+/** «Madrid (Central European Time)»: the zone's city and its time's generic name, true all year (audit 2 R-31: an
+ *  offset, «GMT+2», stops being true when the clocks change). `at` only picks the name where it has several. */
 export function timeZoneLabel(zone: string, locale: string, at: Date = new Date()): string {
   const city = zone.slice(zone.lastIndexOf('/') + 1).replace(/_/g, ' ');
-  let offset = '';
+  let name = '';
   try {
-    const parts = new Intl.DateTimeFormat(locale, { timeZone: zone, timeZoneName: 'shortOffset' }).formatToParts(at);
-    offset = parts.find((part) => part.type === 'timeZoneName')?.value ?? '';
+    const parts = new Intl.DateTimeFormat(locale, { timeZone: zone, timeZoneName: 'longGeneric' }).formatToParts(at);
+    name = parts.find((part) => part.type === 'timeZoneName')?.value ?? '';
   } catch {
     // An unknown zone keeps its name alone.
   }
-  return offset ? `${city} (${offset})` : city;
+  return name ? `${city} (${name})` : city;
 }
 
 /** The zones as select options, by label; `current` (the business's own) is kept when not listed. */

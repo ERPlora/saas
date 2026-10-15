@@ -24,6 +24,7 @@ import { reasonKey, statusPill } from '../business-status';
 import BusinessSettings from '../components/BusinessSettings.vue';
 import BusinessSummary from '../components/BusinessSummary.vue';
 import DangerZone from '../components/DangerZone.vue';
+import HostName from '../components/HostName.vue';
 import MembersTab from '../components/MembersTab.vue';
 import UnpaidNotice from '../components/UnpaidNotice.vue';
 import { useErrorText } from '../error-text';
@@ -110,6 +111,8 @@ async function recover(): Promise<void> {
         v-if="load.failed.value && !business"
         :heading="$t('hubs.business.loadError')"
         :message="$t('hubs.business.loadErrorBody')"
+        :error="load.error.value"
+        :forbidden-heading="$t('hubs.business.forbidden')"
         testid="business-error"
         retry-testid="business-retry"
         @retry="load.retry()"
@@ -205,7 +208,7 @@ async function recover(): Promise<void> {
                 {{ business.name }}
               </p>
               <p class="biz-header__url">
-                {{ business.host }}
+                <HostName :host="business.host" />
               </p>
               <div class="biz-header__pills">
                 <StatusPill v-bind="statusPill(business, t, locale)" />

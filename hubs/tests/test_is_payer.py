@@ -47,3 +47,16 @@ def test_without_a_payer_nobody_pays(business, owner):
     BillingProfile.objects.filter(owner=owner).delete()
 
     assert row(owner, business).is_payer is False
+
+
+def test_the_row_names_the_payer_to_whoever_pays_only(business, team, owner):
+    """Audit 2 R-21: the Store warns about a declined card only when the business it sells to has the same payer
+    (its Stripe customer) as the one whose card was declined; the row says which payer, to whoever pays."""
+    assert row(owner, business).payer_id == business.billing_profile_id
+    assert row(team["admin"], business).payer_id is None
+
+
+def test_without_a_payer_the_row_names_none(business, owner):
+    Hub.objects.filter(pk=business.pk).update(billing_profile=None)
+
+    assert row(owner, business).payer_id is None

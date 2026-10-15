@@ -239,10 +239,13 @@ async function withdrawOffer(id: string): Promise<void> {
         <StatusPill v-bind="pill(row)" />
       </template>
       <template #last="{ row }">
-        <span
+        <!-- A div, not the span DataTable clips with «…»: «Invited on Oct 11, 2026, 19:28» may wrap (audit 2 R-25). -->
+        <div
           class="member-last"
           data-testid="member-last"
-        >{{ lastAccess(row) }}</span>
+        >
+          {{ lastAccess(row) }}
+        </div>
       </template>
 
       <template #card="{ row }">
@@ -337,6 +340,7 @@ async function withdrawOffer(id: string): Promise<void> {
   text-transform: none;
 }
 .member-last {
+  min-width: 0;
   white-space: normal;
 }
 .row-action.is-danger {
