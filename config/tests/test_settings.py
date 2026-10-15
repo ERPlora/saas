@@ -351,7 +351,8 @@ def test_the_mails_link_the_pages_of_the_spa():
     assert settings.HEADLESS_FRONTEND_URLS == {
         "account_reset_password": "/password/reset",
         "account_reset_password_from_key": "/password/reset/key/{key}",
-        "account_signup": "/launch",
+        # The launcher's «Create account» tab (FIX-LAUNCH-TABS).
+        "account_signup": "/launch?tab=signup",
     }
 
 
