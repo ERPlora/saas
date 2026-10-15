@@ -6,6 +6,7 @@
     "accounts/frontend/**/*",
     "hubs/frontend/**/*",
     "billing/frontend/**/*",
+    "fiscal/frontend/**/*",
     "*.ts",
     "*.js",
     "packages/ui/src/shell/shims.d.ts"

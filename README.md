@@ -9,21 +9,31 @@ porta en §6).
 
 Solo lo que necesita el salto al Hub (PLAN-SAAS §2.1 y §3.1, pasos 4–6; PLAN §16.12):
 
-- **Login de allauth con las plantillas del SaaS de hoy** (`templates/account/`, portadas de
-  `ERPlora/saas` `origin/develop` `c5ca8cae8`): mismo marcado Ionic, mismos estilos, Ionic e Iconify
-  servidos desde `static/vendor/` (sin CDN). **Nota:** son plantillas Django; la versión de la
-  ronda 9 (páginas Ionic Vue con `allauth.headless`) llega en el **bloque 1a** y sustituye a estas.
+- **Entrada en `/launch`** (Ioan, 2026-10-15; ver «SPA Ionic Vue» abajo): sin sesión, el lanzador es el
+  propio login, un único formulario (`accounts/frontend/components/SignInForm.vue`) sobre `allauth.headless`
+  en modo solo headless (`HEADLESS_ONLY = True`, PLAN-SAAS §2): allauth no sirve ninguna plantilla. El mismo
+  formulario da de alta (ADR-0154): un correo sin cuenta crea la suya.
+- **Código por correo en cada inicio de sesión** (segundo factor por email): tras la contraseña, allauth
+  manda siempre un código de 6 cifras a la cuenta y se teclea en `/verify-email`. Una cuenta nueva (o una
+  dirección nunca probada) recibe el código que prueba el correo (`verify_email`); cualquier otra, el código
+  de inicio de sesión (`login_by_code`, `ACCOUNT_LOGIN_BY_CODE_REQUIRED = {"password"}`). Nunca dos códigos.
+  Valores de allauth: 3 intentos y 3 minutos; el de inicio de sesión no se reenvía (allauth solo lo reenvía
+  con el login solo-con-código encendido, que dejaría entrar sin contraseña): se pide otro iniciando sesión
+  de nuevo. Google no pide código (ya es un inicio de sesión fuerte y prueba el correo).
+- Las direcciones de antes, `/login`, `/accounts/login/` y `/accounts/signup/`, redirigen para siempre (301)
+  a `/launch` en un solo salto, conservando `next` y el resto de la query; el resto de `/accounts/…` da 404.
 - **«Continuar con Google»** (`allauth.socialaccount`, portado del SaaS de hoy; ver «Google» abajo).
-- `/launch` (página Ionic Vue `accounts/frontend/pages/LaunchPage.vue`, lee
-  `accounts.hub.list` = `GET /api/accounts/hubs`): con un hub, salta a él; con varios, selector; con
-  ninguno, lo dice. `GET /launch/` (la dirección de antes) solo redirige a `/launch`.
+- `/launch` (página Ionic Vue `hubs/frontend/pages/LaunchPage.vue`, lee `hubs.business.list`): sin sesión,
+  el formulario de entrada en la tarjeta del login de siempre (`AuthShell`); con sesión, sus negocios (crear
+  el primero, la invitación pendiente, abrir uno o elegir entre varios). Con sesión y un `next` del propio
+  sitio, va directo a `next`, como el login de plantilla. `GET /launch/` (la dirección de antes) solo redirige a `/launch`.
 - `/login/error?code=…` (página Ionic Vue `LoginErrorPage.vue`): todo inicio de sesión o salto
-  rechazado (`invalid_hub`, `not_a_member`, `google_no_account`, `authentication_error`,
-  `login_cancelled`), con los textos de las plantillas que sustituye.
+  rechazado (`invalid_hub`, `not_a_member`, `authentication_error`, `login_cancelled`), con los textos
+  de las plantillas que sustituye.
 - `GET /hub-login/?hub=<slug>&next=<ruta>`: slug no válido → `/login/error?code=invalid_hub` (regla
   compartida con el Hub, `live.slugs`: una etiqueta DNS de 3 a 63 caracteres —1 en local, por los
   hubs `a` y `b`— y nunca un nombre reservado como `hub`, `www` o `admin`); sin sesión →
-  `/accounts/login/?next=…`; sin ser miembro → `/login/error?code=not_a_member&hub=<slug>`; si no, acuña un `AuthExchangeCode` (32 bytes, guardado como SHA-256, audiencia
+  `/launch?next=…` (también mientras el código del login sigue pendiente); sin ser miembro → `/login/error?code=not_a_member&hub=<slug>`; si no, acuña un `AuthExchangeCode` (32 bytes, guardado como SHA-256, audiencia
   `hub-session`, 60 s, un uso) y responde un formulario auto-enviado (`POST` a
   `HUB_CALLBACK_TEMPLATE`, campos `code` y `next`).
 - `POST /internal/auth/redeem` (servidor a servidor, firmado): cuerpo `{"code", "hub", "audience"?}`,
@@ -41,30 +51,44 @@ Solo lo que necesita el salto al Hub (PLAN-SAAS §2.1 y §3.1, pasos 4–6; PLAN
   personal activo con rol de plataforma; sin pertenencia al hub) y responde el mismo formulario
   auto-enviado: `POST` a `HUB_ADMIN_CALLBACK_URL` con `code` y `next=/admin/hub/<slug>/`. Con
   `ACCOUNTS_MFA_ENABLED` activo exige además el segundo factor en la sesión (ver «Segundo factor (2FA)»).
-- Cierre de sesión: `POST /accounts/logout/` (allauth).
+- Cierre de sesión: `DELETE /_allauth/browser/v1/auth/session` (allauth.headless; el menú de usuario y la
+  tarjeta del lanzador), y después `/launch`.
 
-## SPA Ionic Vue (ronda 11): paso 1, login
+## SPA Ionic Vue (ronda 11): login
 
 El SaaS es también una SPA Ionic Vue, igual que `hub-next` (`base/`, `frontend/main.ts`,
 `vite.config.ts`, `<app>/frontend/`). Sus apps (`accounts/` Cuenta, `hubs/` Negocios y uso, `billing/`
-Tienda, Facturación y Stripe, más `apps/`, el catálogo de módulos de la ronda 16, y `public/`, la web
-pública) viven en la raíz, junto a `base/`: `saas-next` no tiene carpeta de módulos (PLAN §20.2), y cada app
+Tienda, Facturación y Stripe, `fiscal/` la documentación fiscal de VeriFactu, más `apps/`, el catálogo de
+módulos de la ronda 16, y `public/`, la web pública) viven en la raíz, junto a `base/`: `saas-next` no tiene carpeta de módulos (PLAN §20.2), y cada app
 con `frontend/` se nombra en los globs de `frontend/main.ts` y en `FRONTEND_APPS` de `vite.config.ts`
-(guardarraíles en `frontend/main.test.ts` y `vite.config.test.ts`). Las páginas de cuenta pasan
-de plantilla a Vue **una a una**, sobre `allauth.headless` (cliente `browser`, `/_allauth/browser/v1/…`); mientras tanto las
-plantillas siguen vivas (`HEADLESS_ONLY = False`) y `LOGIN_URL` sigue siendo `/accounts/login/`.
+(guardarraíles en `frontend/main.test.ts` y `vite.config.test.ts`). Todas las páginas de cuenta son
+Vue, sobre `allauth.headless` (cliente `browser`, `/_allauth/browser/v1/…`), en modo solo headless
+(`HEADLESS_ONLY = True`): el formulario de `/launch`, `/login/error`, `/verify-email`, `/password/reset`,
+`/password/reset/key/<clave>`, `/2fa/authenticate`, `/2fa` y `/reauthenticate`
+(`accounts/frontend/routes.ts`; `/login` solo redirige a `/launch`). `LOGIN_URL` es `/launch`.
 
-- `/login`: `accounts/frontend/pages/LoginPage.vue`, la misma página que
-  `templates/account/login.html` (mismos msgids, `frontend/locale/{en,es}.json`). Sin «Mantener la
-  sesión iniciada»: headless no recibe `remember` y la sesión dura `SESSION_COOKIE_AGE`.
-  «¿Olvidaste tu contraseña?» lleva a `/accounts/password/reset/` hasta que exista su página Vue;
-  «Continuar con Google» es un formulario `POST` normal a `/auth/google/login/` (con el token CSRF de
-  la cookie), visible si `spa-config.googleEnabled`.
+- Formulario de entrada (`accounts/frontend/components/SignInForm.vue`, dentro de `LaunchPage.vue` con el
+  marco `AuthShell`): el de la plantilla de login del SaaS de hoy (mismos msgids,
+  `accounts/frontend/locale/{en,es}.json`). No pregunta si mantener la sesión: headless no recibe
+  `remember` y toda sesión dura `SESSION_COOKIE_AGE`. Tras la contraseña va a `/verify-email` (el código
+  por correo; la dirección viaja en el estado del historial, nunca en la URL) o a `/2fa/authenticate`; con
+  sesión, vuelve a cargar `next` o el lanzador. «¿Olvidaste tu contraseña?» lleva a `/password/reset`, que
+  manda por correo el enlace `/password/reset/key/<clave>` y vuelve con `?notice=password_reset`;
+  «Continuar con Google» es un formulario `POST` normal al redirect de proveedor de headless
+  (`/_allauth/browser/v1/auth/provider/redirect`, con el token CSRF de la cookie y `callback_url` =
+  `next` o `/launch`), visible si `spa-config.googleEnabled`. Si Google vuelve con el login pendiente del
+  segundo factor, el formulario sigue a `/2fa/authenticate` conservando `next`.
+- `/verify-email`: la página de los dos códigos. Lee de la sesión cuál espera el login: `verify_email`
+  (`POST …/auth/email/verify {key}`, con «Enviar un código nuevo») o `login_by_code`
+  (`POST …/auth/code/confirm {code}`, sin reenvío: dice que se pide otro iniciando sesión de nuevo). Un
+  código caducado o fallado tres veces (409) vuelve a `/launch?notice=code_expired`, que lo explica.
 - `base`: `base.session.me` (ámbito = el usuario, `UserContextBuilder`), `GET /api/me`, el HTML de la
   SPA (`base/spa.py`, sobre `live.spa`) para toda ruta sin URL propia de Django y `/healthz` como
   primer middleware.
-- `HEADLESS_FRONTEND_URLS` se rellena **con cada página**: allauth construye con ellas los enlaces de
-  sus correos aunque `HEADLESS_ONLY` sea `False`, y una ruta de la SPA sin página sería un enlace muerto.
+- Los enlaces de los correos de allauth (`HEADLESS_FRONTEND_URLS`) son rutas de la SPA: `/password/reset`,
+  `/password/reset/key/{key}` y `/launch` (el correo «no hay ninguna cuenta» de una recuperación invita a
+  darse de alta, que es el mismo formulario). Sin `account_confirm_email`: el correo se confirma con un
+  código, y allauth no construye ningún enlace.
 - Vite en el puerto **5174** (el 5173 es del Hub): `runserver` lo arranca (`--novite` lo omite).
 
 ## Segundo factor (2FA)
@@ -80,10 +104,10 @@ defecto en la fase 1**.
 - **Apagado** (por defecto): ningún login pide código, ni a una cuenta que ya tenga app
   (`MFAAdapter`). Los endpoints de 2FA responden 404: los de headless
   (`/_allauth/browser/v1/account/authenticators…` y `…/auth/2fa/…`) con el JSON `{"status": 404}`, que
-  es como la SPA sabe que está apagado, y las plantillas `/accounts/2fa/…` con el 404 de Django. El
-  salto a un hub y el admin, como siempre.
+  es como la SPA sabe que está apagado. El salto a un hub y el admin, como siempre.
 - **Encendido**:
-  - Una cuenta con app, tras la contraseña (o Google), queda pendiente del código: headless responde
+  - Una cuenta con app, tras la contraseña y el código por correo (o tras Google), queda pendiente del
+    código de la app, en el orden de etapas de allauth: headless responde
     401 con el flujo `mfa_authenticate` pendiente y el código va a
     `POST /_allauth/browser/v1/auth/2fa/authenticate` (vale también un código de recuperación, de un
     solo uso). Una cuenta sin app entra como siempre.
@@ -98,10 +122,10 @@ defecto en la fase 1**.
   - «Abrir en el admin del Hub» (`hub-admin`) exige siempre el segundo factor completado: si no, no
     hay código, sale el mensaje «Activa la verificación en dos pasos y vuelve a iniciar sesión antes de
     abrir el admin del Hub.» y vuelve a la lista de pertenencias.
-  - `/admin/login/` deja de ser el login de Django (no pide código): redirige a
-    `/accounts/login/?next=…` (allauth, con su paso del código en `/accounts/2fa/authenticate/`, de
-    momento con la plantilla por defecto de allauth). No inicia sesión ni por `POST`; con sesión y sin
-    permiso de admin, 403 (el login de allauth devolvería a `/admin/` en bucle).
+- `/admin/login/` nunca es el login de Django (no pediría ningún código), ni con el flag apagado: redirige a
+  `/launch?next=…` (el formulario, con el código por correo en `/verify-email` y, encendido el flag, el de
+  la app en `/2fa/authenticate`). No inicia sesión ni por `POST`; con sesión y sin permiso de admin, 403
+  (el login devolvería a `/admin/` en bucle).
 - **Activarlo un usuario** (con el flag encendido), en la SPA, `/2fa`: escanear el QR con la app (o
   teclear la clave manual), confirmar con un código y guardar los códigos de recuperación (10, de 8
   cifras, un uso cada uno). Al entrar, el código de la app o, sin el móvil, uno de recuperación. Para
@@ -112,18 +136,19 @@ defecto en la fase 1**.
 
 ## Google
 
-Mismo comportamiento que el SaaS de hoy (ADR-0154; `accounts/{google,adapters,context_processors}.py`,
-`templates/account/login.html`, `templates/socialaccount/`):
+Mismo comportamiento que el SaaS de hoy (ADR-0154; `accounts/{google,adapters}.py`, el botón en
+`SignInForm.vue`), sobre allauth.headless. Google no pide el código por correo (`ACCOUNT_LOGIN_BY_CODE_REQUIRED`
+solo cubre la contraseña):
 
-- **Rutas**: `POST /auth/google/login/` (el botón; un `GET` solo pinta la pasarela que se auto-envía,
-  `SOCIALACCOUNT_LOGIN_ON_GET=False`) y `GET /auth/google/callback/`. Llevan los nombres de allauth
-  (`google_login`, `google_callback`), declarados después de `allauth.urls`, para que el
-  `redirect_uri` de la autorización y el del canje del código sean los dos `/auth/google/callback/`.
-  Ojo: en el SaaS de hoy (allauth 65.18) la autorización salía con `/accounts/google/login/callback/`
-  aunque la vista fijaba otra ruta.
+- **Rutas**: `POST /_allauth/browser/v1/auth/provider/redirect` (el botón: `provider=google`,
+  `process=login`, `callback_url` = la página a la que volver; un `GET` da 405, así que un enlace no
+  inicia sesión a nadie) y `GET /auth/google/callback/`, con el nombre de allauth (`google_callback`)
+  para que el `redirect_uri` de la autorización y el del canje del código sean los dos
+  `/auth/google/callback/`. Ojo: en el SaaS de hoy (allauth 65.18) la autorización salía con
+  `/accounts/google/login/callback/` aunque la vista fijaba otra ruta.
 - **Credenciales**: `GOOGLE_OAUTH_CLIENT_ID` y `GOOGLE_OAUTH_CLIENT_SECRET` (entorno o `saas-next/.env`,
   nunca una fila `SocialApp`). En local son opcionales: sin ellas el botón no aparece, las dos rutas
-  dan 404 y `check` lo avisa (`accounts.I001`). En producción (`DEBUG=False`) son obligatorias: sin
+  dan 404 (el redirect, con el JSON de headless) y `check` lo avisa (`accounts.I001`). En producción (`DEBUG=False`) son obligatorias: sin
   ellas el proceso no arranca.
 - **URI de redirección autorizadas** en Google Cloud Console (cliente OAuth «Aplicación web»):
   `https://erplora.com/auth/google/callback/` (producción) y
@@ -137,12 +162,13 @@ Mismo comportamiento que el SaaS de hoy (ADR-0154; `accounts/{google,adapters,co
   Google cuyo email **verificado por Google** es el de una cuenta entra en ella y queda vinculado
   (se avisa al dueño por correo); si esa cuenta nunca verificó su email, allauth le borra la
   contraseña (defensa de allauth, igual que hoy: desde entonces, Google o «¿Has olvidado tu
-  contraseña?»). Un email sin cuenta **no** crea ninguna (el alta está cerrada): redirige a
-  `/login/error?code=google_no_account&email=…` («No hay ninguna cuenta de ERPlora para esta cuenta
-  de Google»); cualquier otro fallo, a `/login/error?code=authentication_error`. No hay pantalla para
-  «conectar» Google con la sesión abierta (`/accounts/3rdparty/` → `/launch`, saas#2552). Cancelar en
-  Google vuelve al login Vue (`/login`) conservando `next`, así que `/hub-login/?hub=…&next=…` sigue
-  funcionando tras Google.
+  contraseña?»). Un email sin cuenta crea la suya y entra (alta abierta, ADR-0154), solo si Google lo
+  verificó; si no, ninguna cuenta y `/login/error?code=authentication_error`, como cualquier otro fallo.
+  allauth rechaza el proceso «conectar» con la sesión abierta (saas#2552): Google se vincula entrando con
+  él. Cuenta → Seguridad no tiene botón «Conectar» (explica cómo se vincula), y un `process=connect` enviado
+  igualmente acaba en `/login/error?code=google_link_refused`. Cancelar en Google vuelve al formulario de `/launch` conservando `next`, así que
+  `/hub-login/?hub=…&next=…` sigue funcionando tras Google. «Confirma que eres tú» de una cuenta solo de
+  Google es entrar otra vez con Google (el mismo redirect, de vuelta a la página).
 
 ## Panel único (ronda 17): Stripe, facturas y uso
 
@@ -165,6 +191,23 @@ El panel de `erplora.com` (Negocios · Tienda · Facturación · Cuenta; plan
 - **Local**: con claves de prueba de Stripe en `.env` y `stripe listen --forward-to
   localhost:8001/webhooks/stripe/` (su `whsec_…` en `STRIPE_WEBHOOK_SECRET`); sin clave, la Tienda dice que
   los pagos no están disponibles (503 `billing.payments_unavailable`).
+
+## Documentación fiscal (VeriFactu): `fiscal/`
+
+La autorización que firma un negocio para que ERPlora remita sus registros VeriFactu a la AEAT (Anexo I del
+convenio 017, representación directa; plan `../docs/plans/2026-10-15-saas-revision-documentacion-fiscal.md`).
+El cliente la sube desde el módulo VeriFactu de su Hub, que la envía firmada a
+`POST /internal/hubs/{id}/representation` (hasta cuatro PDF de 5 MB en base64; el cuerpo lo lee la propia
+vista, con su tope de 32 MB, y el resto del sitio conserva el de Django); `GET /internal/representation/model`
+sirve el modelo en blanco. El staff la revisa en `/admin/fiscal/representationgrant/` (aprobar, devolver o
+retirar, siempre con motivo para el cliente, por los servicios de `fiscal/services.py`); el grupo `support`
+solo la ve. El estado viaja al Hub en la foto (`verifactu.representation` de `PUT /internal/hubs/{id}/state`)
+y el panel lo enseña en la ficha del negocio (`fiscal.representation.status`).
+
+- **Variable**: `FISCAL_DOCUMENTS_KEY`, clave Fernet con la que se cifran los documentos en la BD
+  (`fiscal/crypto.py`). Obligatoria en producción (Secrets Manager): un documento guardado con una clave
+  perdida se pierde; `check` avisa si no es una clave Fernet (`fiscal.E001`). Con `DEBUG` hay una clave local
+  fija.
 
 ## Entornos y ramas: `prod` y `pre`
 
@@ -220,11 +263,22 @@ correr sin él. Los tests no lo necesitan: `pytest.ini` usa `config/settings_pyt
 `INTERNAL_SHARED_SECRET` (por defecto local, la misma que el Hub; `INTERNAL_SHARED_SECRET_PREVIOUS`, vacía
 salvo durante una rotación), `HUB_CALLBACK_TEMPLATE`
 (`http://{slug}.localhost:8000/auth/callback`), `HUB_ADMIN_CALLBACK_URL`
-(`http://hubs.localhost:8000/auth/callback`; en producción `https://hubs.erplora.com/auth/callback`) y,
-para ver el botón de Google,
+(`http://hubs.localhost:8000/auth/callback`; en producción `https://hubs.erplora.com/auth/callback`),
+`FISCAL_DOCUMENTS_KEY` (con `DEBUG`, una clave local; ver «Documentación fiscal») y, para ver el botón de
+Google,
 `GOOGLE_OAUTH_CLIENT_ID`/`GOOGLE_OAUTH_CLIENT_SECRET`; ver `.env.example`. El
 segundo factor se enciende con `ACCOUNTS_MFA_ENABLED=true` en `saas-next/.env` (por defecto `false`;
 ver «Segundo factor (2FA)»).
+
+**Correo en local**: con `DEBUG`, cada correo del SaaS queda en un fichero de `saas-next/.mail/` (fuera de
+git; `EMAIL_FILE_PATH` cambia la carpeta y `EMAIL_BACKEND` el backend, p. ej. la consola). El código de
+login se lee de ahí: el fichero más reciente para esa dirección, con las 6 cifras solas en su línea. Las
+e2e (también las del Hub) lo leen con `readMailCode({ dir, to, since })` de `@erplora/ui/testing/mail`.
+
+**Usuarios QA**: el `.env` raíz de erplora-next los lista (`QA_OWNER_*`, `QA_EMPLOYEE_*`,
+`QA_PLATFORM_*` de `demo_seed`; `QA_BILLING_*`, `QA_STORE_*` y `QA_PANEL_PASSWORD` de las semillas de
+`tests/e2e/panel/`), con los mismos valores que las semillas usan por defecto. Exportados
+(`set -a; . ../.env; set +a`), las semillas y las e2e los usan; sin exportar, valen esos mismos.
 
 Todo se corre dentro de este repo (`saas-next/`), que monta `ERPlora/live` y `ERPlora/ui` como submódulos en
 `packages/`:
@@ -236,7 +290,7 @@ uv run python manage.py migrate
 uv run python manage.py demo_seed        # (de hubs) negocios a y b adoptados; owner@example.com / owner (hub_owner de a y b, sin admin), employee@example.com / employee (hub_employee de a y b: solo ve Demo, DEMO-F06) y platform@example.com / platform (superusuario, sin hubs)
 uv run python manage.py create_platform_user <email> --role admin|support [--password …]   # staff de plataforma
 uv run python manage.py runserver 127.0.0.1:8001   # también Vite (`pnpm run dev`) en :5174 (`--novite` lo omite)
-# http://localhost:8001/login (Vue) · http://localhost:8001/accounts/login/ (plantilla)
+# http://localhost:8001/launch   (el código de cada login, en saas-next/.mail/)
 # Admin del Hub de un hub: http://localhost:8001/admin/ con platform@example.com / platform → Hubs
 # → «Abrir en el admin del Hub» → http://hubs.localhost:8000/admin/hub/a/ (el lado del Hub llega con
 # la ronda 13 del carril de hub-next)
@@ -249,17 +303,12 @@ pnpm e2e --project=panel   # e2e del panel, sin ventana (`pnpm e2e:headed` la ab
 
 Cada punto tiene su borrador de issue en `docs/issues/` (pendiente de abrir en `ERPlora/saas`):
 
-- Alta (pantalla única de ADR-0154): cerrada por el adapter; las cuentas las crea el staff
-  (`signup-closed.md`).
-- Del segundo factor: «confiar en este navegador» 14 días (`MFA_TRUST`), llaves de acceso
-  (WebAuthn/passkeys) y las plantillas de marca de `/accounts/2fa/…` (hoy, las de allauth por
-  defecto). Sin borrador de issue todavía.
-- Recuperación de contraseña con las plantillas del SaaS (el enlace lleva a la de allauth por
-  defecto) y el correo de marca (`password-reset-default-template.md`).
+- Del segundo factor: «confiar en este navegador» 14 días (`MFA_TRUST`) y llaves de acceso
+  (WebAuthn/passkeys). Sin borrador de issue todavía.
 - Cerrar las sesiones del Hub al cerrar sesión o cambiar la contraseña en el SaaS (L3-A). Al quitar un
   miembro, cambiarle el rol o aceptar un traspaso ya se cierran, con reintentos (`hubs.SessionRevocation`,
   L1-A2; `member-removal-keeps-hub-session.md`).
 - Que el salto lea `HubMember` y retirar `HubMembership(user, hub_slug, role)`, que desde L1-A2 es solo el
   espejo de los miembros de cada negocio (`hubs/README.md`, «Pendiente»; `membership-by-slug.md`).
 - Selector con el último hub usado primero (`hub-selector-last-used.md`); throttling de login
-  (`login-lockout.md`) y «recordarme» deslizante (`remember-me-not-sliding.md`).
+  (`login-lockout.md`) y la sesión que no se renueva con el uso (`remember-me-not-sliding.md`).

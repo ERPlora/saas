@@ -105,6 +105,8 @@ describe('InvoicesTab: the list', () => {
       searchable: true,
       searchPlaceholder: 'Search by number',
       testid: 'invoices',
+      // A card's title is its number: the body does not repeat it («Invoice ERP-2026-00123», audit 2 R-30).
+      cardTitleColumn: 'number',
     });
     expect(s.prop<Array<{ label: string }>>('columns').map((c) => c.label)).toEqual(['Invoice', 'Date', 'Business', 'Amount', 'Status']);
     expect((s.prop<(n: number) => string>('entityLabel'))(1)).toBe('invoice');
@@ -454,7 +456,9 @@ describe('InvoicesTab: the toolbar on one line from 641 px (audit 2026-10-14, R-
 });
 
 describe('InvoicesTab: selection', () => {
-  it('«Download PDF (n)» downloads the selected ones issued, and says which are still being issued', async () => {
+  // Audit 2 S-01: «Download PDF (n)» counts only the issued ones; what has no PDF yet is said above the list,
+  // unpaid apart («still being issued» was false for an invoice that is not paid).
+  it('«Download PDF (n)» counts and downloads the selected ones issued; the others are said above the list', async () => {
     const download = vi.spyOn(browser, 'download').mockResolvedValue();
     const s = await setup();
     await s.show();
@@ -462,11 +466,54 @@ describe('InvoicesTab: selection', () => {
     s.table().vm.$emit('update:selected', ['00123', '00124']);
     await flush();
     const button = s.testid('invoices-pdf-selected');
-    expect(button.text()).toBe('Download PDF (2)');
+    expect(button.text()).toBe('Download PDF (1)');
+    expect(s.testid('invoices-selection-note').text()).toBe('1 selected invoice is still being issued: its PDF is ready in a few minutes.');
     await button.trigger('click');
     await flush();
     expect(download).toHaveBeenCalledExactlyOnceWith('/api/billing/invoices/pdf?id=00123', 'application/pdf');
-    expect(toastInfo).toHaveBeenCalledWith('That invoice is still being issued: its PDF is ready in a few minutes.');
+    expect(toastInfo).not.toHaveBeenCalled();
+  });
+
+  it('unpaid invoices have no PDF: they are not counted, and the note says why (audit 2 S-01)', async () => {
+    const download = vi.spyOn(browser, 'download').mockResolvedValue();
+    const s = await setup();
+    await s.show([OPEN, unpaidRow('i10'), PAID]);
+    s.table().vm.$emit('update:selected', ['i9', 'i10', '00123']);
+    await flush();
+    expect(s.testid('invoices-pdf-selected').text()).toBe('Download PDF (1)');
+    expect(s.testid('invoices-selection-note').text()).toBe('2 selected invoices are unpaid: an unpaid invoice has no PDF until it is paid.');
+    await s.testid('invoices-pdf-selected').trigger('click');
+    await flush();
+    expect(download).toHaveBeenCalledExactlyOnceWith('/api/billing/invoices/pdf?id=00123', 'application/pdf');
+    expect(toastInfo).not.toHaveBeenCalled();
+  });
+
+  it('only unpaid ones selected: «Download PDF (0)» is disabled, described by the reason', async () => {
+    const download = vi.spyOn(browser, 'download').mockResolvedValue();
+    const s = await setup();
+    await s.show([OPEN, PAID]);
+    s.table().vm.$emit('update:selected', ['i9']);
+    await flush();
+    const button = s.testid('invoices-pdf-selected');
+    expect(button.text()).toBe('Download PDF (0)');
+    expect((button.element as HTMLElement & { disabled: boolean }).disabled).toBe(true);
+    const note = s.testid('invoices-selection-note');
+    expect(note.text()).toBe('1 selected invoice is unpaid: an unpaid invoice has no PDF until it is paid.');
+    // Ionic hands the host's aria-* to its native button.
+    const native = button.element.shadowRoot?.querySelector('button');
+    expect(native?.getAttribute('aria-describedby') ?? button.attributes('aria-describedby')).toBe(note.attributes('id'));
+    await button.trigger('click');
+    await flush();
+    expect(download).not.toHaveBeenCalled();
+  });
+
+  it('says it in Spanish', async () => {
+    const s = await setup('/billing/invoices', undefined, 'es');
+    await s.show([OPEN, PAID]);
+    s.table().vm.$emit('update:selected', ['i9', '00123']);
+    await flush();
+    expect(s.testid('invoices-pdf-selected').text()).toBe('Descargar PDF (1)');
+    expect(s.testid('invoices-selection-note').text()).toBe('1 factura seleccionada está sin pagar: una factura sin pagar no tiene PDF hasta que se paga.');
   });
 
   it('keeps the rows selected on another page', async () => {
@@ -587,7 +634,7 @@ describe('InvoicesTab: a file is saved only when it is the file (audit 2026-10-1
     expect(toastError).toHaveBeenCalledExactlyOnceWith('The service is not available right now.');
   });
 
-  it('«Download PDF (n)»: each file on its own; the ones still being issued counted once, and they wait', async () => {
+  it('«Download PDF (n)»: each file on its own; the ones the server says are still being issued counted once, and they wait', async () => {
     const asked = serveFiles((url) =>
       url.endsWith('00123')
         ? new Response('%PDF', { status: 200, headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': 'attachment; filename="ERP-2026-00123.pdf"' } })
@@ -595,11 +642,12 @@ describe('InvoicesTab: a file is saved only when it is the file (audit 2026-10-1
     );
     const saved = watchSaves();
     const s = await setup();
-    await s.show([PAID, ISSUING, invoiceRow('00125')]);
-    s.table().vm.$emit('update:selected', ['00123', '00124', '00125']);
+    await s.show([PAID, ISSUING, invoiceRow('00125'), invoiceRow('00126')]);
+    s.table().vm.$emit('update:selected', ['00123', '00124', '00125', '00126']);
     await flush();
     await press(s, 'invoices-pdf-selected');
-    expect(asked).toEqual(['/api/billing/invoices/pdf?id=00123', '/api/billing/invoices/pdf?id=00125']);
+    // ISSUING (00124) has no PDF yet: the note says so and it is not asked for.
+    expect(asked).toEqual(['/api/billing/invoices/pdf?id=00123', '/api/billing/invoices/pdf?id=00125', '/api/billing/invoices/pdf?id=00126']);
     expect(saved).toEqual(['ERP-2026-00123.pdf']);
     expect(toastInfo).toHaveBeenCalledExactlyOnceWith('2 invoices are still being issued: their PDF is ready in a few minutes.');
     expect(pdfAction(s, '00125').disabled).toBe(true);

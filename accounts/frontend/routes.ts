@@ -5,15 +5,37 @@ import type { RouteRecordRaw } from 'vue-router';
 
 const routes: RouteRecordRaw[] = [
   {
-    // Where the shell's auth gate sends a visitor without a session (`main.ts`).
+    // The sign-in lives in the launcher, `/launch` (Ioan, 2026-10-15), where the shell's auth gate sends a
+    // visitor without a session (`main.ts`): this old address (links, bookmarks) only leads there, keeping
+    // `next` and the notice. Django answers a full load of it the same way (`config/urls.py`).
     path: '/login',
-    component: () => import('./pages/LoginPage.vue'),
+    redirect: (to) => ({ path: '/launch', query: to.query }),
     meta: { auth: false },
   },
   {
     // Every refused sign-in or jump to a hub (`?code=`), from Django's redirects.
     path: '/login/error',
     component: () => import('./pages/LoginErrorPage.vue'),
+    meta: { auth: false },
+  },
+  {
+    // The code mailed at every password sign-in, or to a new account (or a login whose address is not
+    // verified): the login waits in the session, there is none yet.
+    path: '/verify-email',
+    component: () => import('./pages/VerifyEmailPage.vue'),
+    meta: { auth: false },
+  },
+  {
+    // «Forgot your password?»: allauth mails the link of the next route.
+    path: '/password/reset',
+    component: () => import('./pages/PasswordResetPage.vue'),
+    meta: { auth: false },
+  },
+  {
+    // The mailed link (allauth's `HEADLESS_FRONTEND_URLS`); `key` itself is reserved by Vue as a prop.
+    path: '/password/reset/key/:resetKey',
+    component: () => import('./pages/PasswordResetKeyPage.vue'),
+    props: true,
     meta: { auth: false },
   },
   {

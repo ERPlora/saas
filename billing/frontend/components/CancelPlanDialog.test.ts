@@ -82,9 +82,15 @@ describe('CancelPlanDialog', () => {
     expect(s.dialogProp('message')).toBe('Bar La Plaza · Starter');
     expect(s.lines()).toEqual([
       'It stays on Starter until Nov 1, 2026; then it goes to Free and is not charged again.',
-      'Free covers 3 users and 1 device at a time. Bar La Plaza has 2 people, so nothing changes for them.',
+      'Free covers 3 users and 1 device at a time. Bar La Plaza has 2 people, within that limit: nothing changes for the team.',
       'Until then you can undo it with «Keep the plan».',
     ]);
+  });
+
+  it('one person is said without a plural pronoun, in Spanish too (audit 2 R-26: «1 persona… para ellas»)', async () => {
+    const row = subscriptionRow('plaza', 'Bar La Plaza');
+    const s = await setup({ row }, () => seats(1), 'es');
+    expect(s.lines()).toContain('En Gratis caben 3 usuarios y 1 dispositivo a la vez. Bar La Plaza tiene 1 persona, dentro de ese límite: no cambia nada en el equipo.');
   });
 
   it('an unpaid invoice stays pending: cancelling does not cancel it', async () => {

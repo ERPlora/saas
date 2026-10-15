@@ -18,9 +18,8 @@ import { useRoute, useRouter } from 'vue-router';
 import AuthShell from '../components/AuthShell.vue';
 import CodeField from '../components/CodeField.vue';
 import { localNext } from '../next';
+import { LAUNCHER } from '../paths';
 
-const LAUNCHER = '/launch';
-const LOGIN = '/login';
 /** allauth's flow of a login that waits for its second factor. */
 const PENDING_FLOW = 'mfa_authenticate';
 const NON_FIELD = '__all__';
@@ -37,7 +36,7 @@ const fields = shallowRef<FieldErrors>({});
 const failure = shallowRef('');
 
 const next = computed(() => localNext(route.query.next));
-const signIn = computed(() => ({ path: LOGIN, query: next.value ? { next: next.value } : {} }));
+const signIn = computed(() => ({ path: LAUNCHER, query: next.value ? { next: next.value } : {} }));
 
 function leave(): void {
   location.assign(next.value ?? LAUNCHER);

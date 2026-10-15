@@ -3,12 +3,12 @@
 // recent sign-in (`useReauthentication`, `../reauth.ts`). It offers the ways the server sent, the password first:
 //   - `reauthenticate`: the password (allauth.headless `auth/reauthenticate`);
 //   - `mfa_reauthenticate`: a code of the authenticator app or a recovery code (`auth/2fa/reauthenticate`);
-//   - `provider_redirect` with Google: signing in with Google again, a form POST to `/auth/google/login/` (as the
-//     sign-in page does) that comes back to this same page, where the person does it once more.
+//   - `provider_redirect` with Google: signing in with Google again, a form POST to allauth.headless's provider
+//     redirect (as the sign-in page does) that comes back to this same page, where the person does it once more.
 // Confirmed → `confirmed` (the page runs its command again). Closed → `cancel`. A wrong password or code stays
 // in the dialog, said under its field. Reusable by any page: it only needs the request and the two events.
 import { FormModal } from '@erplora/ui/components';
-import { ApiError, createAllauthClient, type FieldErrors, useLiveClient } from '@erplora/ui/sdk';
+import { ApiError, createAllauthClient, type FieldErrors, type ProviderRedirectForm, useLiveClient } from '@erplora/ui/sdk';
 import { IonButton, IonInput, IonInputPasswordToggle } from '@ionic/vue';
 import { computed, shallowRef, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -29,13 +29,13 @@ const emit = defineEmits<{ confirmed: []; cancel: [] }>();
 
 /** allauth's message for the whole form, not one field. */
 const NON_FIELD = '__all__';
-const GOOGLE_LOGIN = '/auth/google/login/';
+const GOOGLE = 'google';
 
 const { t } = useI18n();
 const route = useRoute();
 const { text } = useErrorText();
 const auth = createAllauthClient(useLiveClient().config);
-const csrfToken = shallowRef('');
+const googleRedirect = shallowRef<ProviderRedirectForm | null>(null);
 const googleForm = useTemplateRef<HTMLFormElement>('googleForm');
 
 const offered = computed<Way[]>(() => {
@@ -43,7 +43,7 @@ const offered = computed<Way[]>(() => {
   const ways: Way[] = [];
   if (flows.includes('reauthenticate')) ways.push('password');
   if (flows.includes('mfa_reauthenticate')) ways.push('code');
-  if (flows.includes('provider_redirect') && props.request?.providers.includes('google')) ways.push('google');
+  if (flows.includes('provider_redirect') && props.request?.providers.includes(GOOGLE)) ways.push('google');
   return ways;
 });
 
@@ -63,7 +63,7 @@ watch(
     code.value = '';
     fields.value = {};
     failure.value = '';
-    csrfToken.value = auth.csrfToken() ?? '';
+    googleRedirect.value = auth.providerRedirectForm({ provider: GOOGLE, callbackUrl: route.fullPath, process: 'login' });
   },
   { immediate: true },
 );
@@ -184,22 +184,19 @@ async function submit(): Promise<void> {
     </div>
   </FormModal>
   <form
-    v-if="offered.includes('google')"
+    v-if="googleRedirect && offered.includes('google')"
     ref="googleForm"
     data-testid="reauth-google"
-    method="post"
-    :action="GOOGLE_LOGIN"
+    :method="googleRedirect.method"
+    :action="googleRedirect.action"
     hidden
   >
     <input
+      v-for="(value, name) in googleRedirect.fields"
+      :key="name"
       type="hidden"
-      name="csrfmiddlewaretoken"
-      :value="csrfToken"
-    >
-    <input
-      type="hidden"
-      name="next"
-      :value="route.fullPath"
+      :name="name"
+      :value="value"
     >
   </form>
 </template>

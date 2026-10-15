@@ -60,6 +60,18 @@ describe('EmailChangeFlow', () => {
     expect(s.q('code')).not.toBeNull();
   });
 
+  it('«Send code» waits for an address that looks like one, so nothing (not even «Confirm it’s you») opens on a typo (audit 2 R-32)', async () => {
+    const s = await setup(() => reauthRequired());
+    await typeInto(s.q('email-change-address'), 'no-es-un-correo');
+    expect(ionProps(s.q('email-change-submit'), 'disabled')).toEqual({ disabled: true });
+    s.q('email-change-submit')?.click();
+    await flush();
+    expect(s.calls()).toEqual([]);
+    expect(s.q('reauth-modal')?.querySelector('.ion-delegate-host') ?? null).toBeNull();
+    await typeInto(s.q('email-change-address'), 'laura@new.example');
+    expect(ionProps(s.q('email-change-submit'), 'disabled')).toEqual({ disabled: false });
+  });
+
   it('confirms it’s you first when the server asks, then sends the code', async () => {
     const server = fakeAllauth({ 'POST /auth/reauthenticate': ok({}) });
     let asked = 0;

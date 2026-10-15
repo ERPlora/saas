@@ -283,8 +283,20 @@ def prove_mailbox_by_reset(sender, request=None, user=None, **kwargs) -> None:
     logger.info("accounts.reset_proved_the_mailbox user=%s", user.pk)
 
 
+def _prove_demo_address(user) -> None:
+    """A local account of ``demo_seed`` never owes the code that proves its address, only the sign-in code
+    every password sign-in mails (``ACCOUNT_LOGIN_BY_CODE_REQUIRED``): its address is on record, proven, also
+    on an account seeded before every account had to prove it (``ACCOUNT_EMAIL_VERIFICATION``)."""
+    from allauth.account.models import EmailAddress
+
+    EmailAddress.objects.update_or_create(
+        user=user, email=user.email.lower(), defaults={"verified": True, "primary": True}
+    )
+
+
 def seed_demo_customer(email: str, password: str):
-    """Create (or leave as it is) a customer account of ``demo_seed``: never staff, in no hub yet.
+    """Create (or leave as it is) a customer account of ``demo_seed``: never staff, in no hub yet, its
+    address proven.
 
     Its businesses and roles are ``hubs.services.seed_demo_business``'s: the access the jump reads
     (``HubMembership``) is the mirror of a business's members, written only by ``hubs.services.sync_access``.
@@ -292,6 +304,7 @@ def seed_demo_customer(email: str, password: str):
     user = get_user_model().objects.filter(email=email).first()
     if user is None:
         user = get_user_model().objects.create_user(email=email, password=password)
+    _prove_demo_address(user)
     return user
 
 
@@ -332,10 +345,12 @@ def create_platform_user(email: str, role: str, password: str | None = None):
 
 
 def seed_demo_platform_admin(email: str, password: str):
-    """Create (or leave as it is) a platform administrator: superuser of the admin, member of no hub."""
+    """Create (or leave as it is) a platform administrator: superuser of the admin, member of no hub, its
+    address proven."""
     user = get_user_model().objects.filter(email=email).first()
     if user is None:
         user, _ = create_platform_user(email, PLATFORM_ADMIN, password)
+    _prove_demo_address(user)
     return user
 
 
@@ -372,7 +387,8 @@ def preferences_update(ctx: OperationContext, data: PreferencesUpdateIn) -> dict
 
 @operation("accounts.profile.update", kind="command", permission="accounts.manage", input=ProfileUpdateIn, output=ProfileOut)
 def profile_update(ctx: OperationContext, data: ProfileUpdateIn) -> dict:
-    """The names, trimmed (empty clears them). The sign-in email has its own door, ``accounts.email.change``."""
+    """The names, trimmed: the first one is required (audit 2 S-10), an empty last one clears it. The sign-in email
+    has its own door, ``accounts.email.change``."""
     user = queries.account_of(ctx)
     user.first_name = data.first_name.strip()
     user.last_name = data.last_name.strip()
@@ -389,8 +405,8 @@ class ReauthenticationRequired(OperationError):
 
     Its envelope lists the ``flows`` that confirm it, in allauth.headless's words: ``reauthenticate`` (the password,
     ``POST /_allauth/browser/v1/auth/reauthenticate``), ``mfa_reauthenticate`` (a code of the second factor) and
-    ``provider_redirect`` (signing in again with a linked provider, ``/auth/google/login/``, whose ``providers``
-    it names). The panel confirms and sends the command again."""
+    ``provider_redirect`` (signing in again with a linked provider through allauth.headless's provider redirect,
+    whose ``providers`` it names). The panel confirms and sends the command again."""
 
     status = 401
     code = "reauthentication_required"

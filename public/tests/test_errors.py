@@ -77,7 +77,7 @@ def test_an_unknown_page_outside_the_public_web_answers_djangos_404(client, sett
 
 @pytest.mark.django_db
 @pytest.mark.usefixtures("error_templates")
-@pytest.mark.parametrize("path", ["/launch", "/accounts/login/", "/hub-login/"])
+@pytest.mark.parametrize("path", ["/launch", "/admin/", "/hub-login/"])
 def test_a_server_error_of_the_private_half_answers_djangos_500(rf, path):
     response = errors.server_error(rf.get(path))
 

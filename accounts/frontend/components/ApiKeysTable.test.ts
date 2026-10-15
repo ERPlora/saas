@@ -74,6 +74,15 @@ describe('ApiKeysTable', () => {
     expect(text).toContain('Never');
     expect(s.q('api-key-expired')?.textContent).toContain('Expired');
     expect(text).toContain('3 keys');
+    // Audit 2 R-25: the permissions are not cut with «…» (DataTable clips a cell's span): they may wrap.
+    const scopes = s.wrapper.findAll('[data-testid="api-key-scopes"]').map((cell) => [cell.element.tagName, cell.text()]);
+    expect(scopes).toContainEqual(['DIV', 'Businesses · read, Businesses · write']);
+  });
+
+  it('is a list from 1000 px (its dates fold first), not cards on a 1024–1180 laptop (audit 2 R-33)', async () => {
+    const s = await setup();
+    const props = s.wrapper.findComponent(DataTable as unknown as Component).props() as Record<string, unknown>;
+    expect(props.cardBreakpoint).toBe(1000);
   });
 
   it('fills the page between the topbar and the tabbar: rows scroll inside, toolbar and footer stay', async () => {

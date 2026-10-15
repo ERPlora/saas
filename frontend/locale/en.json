@@ -7,8 +7,18 @@
     "load": {
       "heading": "We couldn't load this page",
       "body": "Check your connection and try again.",
-      "retry": "Retry"
+      "retry": "Retry",
+      "forbiddenHeading": "You do not have permission to see this",
+      "forbiddenBody": "Your role does not allow it. If you need it, ask the owner."
     },
-    "skipLink": "Skip to content"
+    "skipLink": "Skip to content",
+    "skipNav": "Shortcuts"
+  },
+  "notFound": {
+    "body": "The address you opened is not part of the panel. It may be an old or mistyped link: your businesses, billing and account are in the menu.",
+    "action": "Go to my businesses"
+  },
+  "notInApp": {
+    "action": "Go to my businesses"
   }
 }

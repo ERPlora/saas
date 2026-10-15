@@ -330,6 +330,8 @@ function run(): void {
   display: block;
   margin: 6px 0 0;
   font-size: 0.82rem;
+  /* Ionic's note is a faded grey (2.43:1, audit R-10): the panel's secondary text instead. */
+  --color: color-mix(in oklab, var(--ion-text-color) 72%, transparent);
 }
 .btn-neutral {
   --color: var(--ion-text-color);

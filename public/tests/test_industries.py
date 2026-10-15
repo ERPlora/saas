@@ -758,7 +758,7 @@ def test_the_detail_offers_its_sector_siblings(client, sector, salon):
 def test_the_detail_closes_with_sign_up_and_the_store(client, salon):
     main = _main(_page(client).content.decode())
 
-    assert f'href="{reverse("account_login")}"' in main
+    assert 'href="/launch"' in main
     assert "Browse apps" in main
     assert "marketplace" not in main.lower()
 

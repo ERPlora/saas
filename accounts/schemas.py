@@ -92,6 +92,16 @@ class ProfileUpdateIn(StrictIn):
     first_name: str = Field(max_length=150)
     last_name: str = Field(max_length=150)
 
+    @field_validator("first_name")
+    @classmethod
+    def _first_name_given(cls, value: str) -> str:
+        """The first name is required (audit 2 S-10: a blank one was saved and the panel lost its «Hello, Laura»);
+        the last name may be cleared."""
+        value = value.strip()
+        if not value:
+            raise ValueError(gettext("Write your first name."))
+        return value
+
 
 class ProfileDeleteIn(StrictIn):
     pass

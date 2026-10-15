@@ -3,7 +3,8 @@
 // the account may hand out: the server's `invitable_roles`, employee by default) and an optional
 // message. `hubs.member.invite` creates the invitation (and the account if needed) and mails it; the
 // toast names who was invited. With every place of the plan taken (the list's `seats`, or the server's
-// 409 `hubs.seat_limit` when somebody took the last one meanwhile) it says so and sends nothing more; a
+// 409 `hubs.seat_limit` when somebody took the last one meanwhile) it says so and sends nothing more; it waits
+// for an email that looks like one (audit 2 R-28); a
 // 422 puts its message on its field; anything else stays in the dialog, said in the person's language.
 import { FormModal, InlineFeedback } from '@erplora/ui/components';
 import { toastSuccess } from '@erplora/ui/shell';
@@ -12,6 +13,7 @@ import { IonInput, IonSelect, IonSelectOption, IonTextarea } from '@ionic/vue';
 import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import { looksLikeEmail } from '../../../frontend/email';
 import type { InvitableRole, SeatsOut } from '../../../frontend/sdk-types';
 import { useErrorText } from '../error-text';
 
@@ -35,6 +37,8 @@ const message = shallowRef('');
 const full = computed(
   () => (props.seats.limit !== null && props.seats.used >= props.seats.limit) || invite.error.value?.code === 'hubs.seat_limit',
 );
+/** «Send invitation» waits for an address (audit 2 R-28): the server still checks it. */
+const sendable = computed(() => looksLikeEmail(email.value));
 
 watch(open, (isOpen) => {
   if (!isOpen) return;
@@ -66,7 +70,7 @@ const value = (event: CustomEvent<{ value?: unknown }>) => String(event.detail.v
     submit-icon="ion:mail-outline"
     :pending="invite.pending.value"
     :error="forDialog(invite.error.value)"
-    :submit-disabled="full"
+    :submit-disabled="full || !sendable"
     @submit="send"
   >
     <template #default="{ fieldErrors }">

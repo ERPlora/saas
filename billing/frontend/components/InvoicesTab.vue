@@ -11,7 +11,8 @@
 //   - the list fills the page between the topbar and the tabbar (`fill`, a `.panel-fill` stack); rows per page
 //     only past the shortest page (README §3b);
 //   - per row, «Pay» (fixed and labelled; web only; disabled while it waits for another card) and the PDF
-//     once issued; a selection with «Download PDF (n)», which says the ones still being issued;
+//     once issued; a selection with «Download PDF (n)», n the issued ones, and a note above the list for the ones
+//     without a PDF: unpaid (none until it is paid) or still being issued (audit 2 S-01);
 //   - «Download Excel»: the CSV of everything the filters show, for the accountant. The toolbar stays on one
 //     line from 641 px (audit 2026-10-14, R-14): when the button falls to a second line it folds to its icon
 //     (named by its label) and the search narrows (`toolbar-fit.ts`); on a phone it reads «Excel».
@@ -315,8 +316,30 @@ async function downloadPdfs(invoices: InvoiceRowOut[]): Promise<void> {
   void toastInfo(alone ? t('billing.invoices.pdfIssuing') : t('billing.invoices.pdfNotReady', { count: waiting }, waiting));
 }
 
+/** The selected invoices that have their PDF, and how many have none yet: unpaid (an unpaid invoice has no PDF
+ *  until it is paid) or paid and still being issued (audit 2 S-01: «still being issued» was false for an unpaid one). */
+const selection = computed(() => {
+  void rows.value; // `seen` follows the list
+  const hasPdf = (row: InvoiceRowOut) => row.can.pdf && !notIssued.value.has(row.id);
+  const chosen = selected.value.flatMap((id) => seen.get(id) ?? []);
+  return {
+    issued: chosen.filter(hasPdf),
+    unpaid: chosen.filter((row) => row.payment_status === 'open').length,
+    issuing: chosen.filter((row) => row.payment_status === 'paid' && !hasPdf(row)).length,
+  };
+});
+const selectionNote = computed(() => {
+  const { unpaid, issuing } = selection.value;
+  return [
+    unpaid ? t('billing.invoices.selectedUnpaid', { count: unpaid }, unpaid) : '',
+    issuing ? t('billing.invoices.selectedIssuing', { count: issuing }, issuing) : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+});
+
 function downloadSelected(): void {
-  void downloadPdfs(selected.value.flatMap((id) => seen.get(id) ?? []));
+  if (selection.value.issued.length) void downloadPdfs(selection.value.issued);
 }
 
 // ── The toolbar on one line ─────────────────────────────────────────────────────────────────────
@@ -357,6 +380,16 @@ const freeBusiness = computed(() => {
       {{ $t('billing.invoices.unknownBusiness') }}
     </InlineFeedback>
 
+    <InlineFeedback
+      v-if="selectionNote"
+      id="invoices-selection-note"
+      tone="neutral"
+      role="status"
+      data-testid="invoices-selection-note"
+    >
+      {{ selectionNote }}
+    </InlineFeedback>
+
     <DataTable
       v-model:search="query"
       v-model:selected="selected"
@@ -383,6 +416,7 @@ const freeBusiness = computed(() => {
       :columns="columns"
       :actions="actions"
       :card-title="invoiceName"
+      card-title-column="number"
       :card-icon="() => 'ion:receipt-outline'"
       @page-change="goToPage"
       @load-more="windowPages += 1"
@@ -409,6 +443,8 @@ const freeBusiness = computed(() => {
           size="small"
           fill="outline"
           data-testid="invoices-pdf-selected"
+          :disabled="!selection.issued.length"
+          :aria-describedby="selectionNote ? 'invoices-selection-note' : undefined"
           @click="downloadSelected"
         >
           <HubIcon
@@ -416,7 +452,7 @@ const freeBusiness = computed(() => {
             name="ion:download-outline"
             aria-hidden="true"
           />
-          {{ $t('billing.invoices.pdfSelected', { count: selected.length }) }}
+          {{ $t('billing.invoices.pdfSelected', { count: selection.issued.length }) }}
         </ion-button>
         <ion-button
           ref="csvButton"

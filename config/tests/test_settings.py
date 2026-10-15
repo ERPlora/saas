@@ -61,15 +61,17 @@ def test_development_opens_one_letter_hubs():
 
 
 @pytest.mark.django_db
+@pytest.mark.usefixtures("spa_manifest")
 def test_every_page_has_a_csp_with_a_nonce_and_form_action_to_the_hubs(client):
-    response = client.get("/accounts/login/")
+    response = client.get("/launch")
 
     policy = response["Content-Security-Policy"]
     directives = {part.split()[0]: part.split()[1:] for part in policy.split("; ")}
     assert re.search(r"'nonce-[^']+'", " ".join(directives["script-src"]))
     assert "'strict-dynamic'" in directives["script-src"]
-    # Google: `POST /auth/google/login/` answers 302 to accounts.google.com, and `form-action`
-    # filters the whole redirect chain of a form post (ported from ERPlora/saas, saas#945).
+    # Google: «Continue with Google» posts allauth.headless's provider redirect, which answers 302 to
+    # accounts.google.com, and `form-action` filters the whole redirect chain of a form post (ported
+    # from ERPlora/saas, saas#945).
     # The hubs (`/hub-login/`) and the Hub admin of the staff (`hubs.localhost:8000`, ronda 13).
     assert directives["form-action"] == [
         "'self'",
@@ -82,10 +84,10 @@ def test_every_page_has_a_csp_with_a_nonce_and_form_action_to_the_hubs(client):
     assert "cdn.jsdelivr.net" not in policy
 
 
-def test_iconify_may_create_its_trusted_types_policy():
-    """iconify-icon creates a policy named `iconify`; without it the browser blocks it and reports
-    a violation on every page (allowed in today's SaaS too, `config/settings.py`)."""
-    assert "iconify" in settings.SECURE_CSP["trusted-types"]
+def test_no_page_may_create_the_policy_of_iconify():
+    """The Iconify web component (and its `iconify` policy) loaded only on the template sign-in's pages:
+    the SPA and the public web bake their icons, so nothing may create that policy any more."""
+    assert "iconify" not in settings.SECURE_CSP["trusted-types"]
     assert "default" in settings.SECURE_CSP["trusted-types"]
 
 
@@ -98,6 +100,7 @@ PRODUCTION_ENV = {
     "DEBUG": "False",
     "SECRET_KEY": "a-production-secret-key",
     "INTERNAL_SHARED_SECRET": "a-production-internal-secret",
+    "FISCAL_DOCUMENTS_KEY": "2EBDB2KSnvz5lBG1RHG5ldNq34ZjWvGZ_t5r4wl5Mpw=",
     "GOOGLE_OAUTH_CLIENT_ID": "prod-client.apps.googleusercontent.com",
     "GOOGLE_OAUTH_CLIENT_SECRET": "prod-secret",
 }
@@ -221,7 +224,6 @@ def test_google_is_configured_as_in_todays_saas_plus_pkce(settings):
     assert google["OAUTH_PKCE_ENABLED"] is True
     # Google's own `email_verified` claim decides; no blanket «every Google email is verified».
     assert "VERIFIED_EMAIL" not in google
-    assert settings.SOCIALACCOUNT_LOGIN_ON_GET is False
     assert settings.SOCIALACCOUNT_STORE_TOKENS is False
     assert settings.SOCIALACCOUNT_EMAIL_AUTHENTICATION is True
     assert settings.SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT is True
@@ -320,16 +322,16 @@ def test_production_has_the_base_csp_and_no_dev_server():
     )
 
 
-# allauth.headless: the login API of the Vue pages, next to the template login until every page exists.
+# allauth.headless: the login API of the Vue pages, headless only (PLAN-SAAS §2).
 
 
 def test_headless_serves_the_browser_client_only():
     assert settings.HEADLESS_CLIENTS == ("browser",)
 
 
-def test_the_template_pages_stay_during_the_transition():
-    """HEADLESS_ONLY flips to True once every account page is a Vue page."""
-    assert settings.HEADLESS_ONLY is False
+def test_allauth_serves_no_template_page():
+    """Every account page is a Vue page: allauth's template pages are gone (``accounts/tests/test_login.py``)."""
+    assert settings.HEADLESS_ONLY is True
 
 
 def test_the_specification_is_served_in_development_without_a_cdn_page():
@@ -343,10 +345,14 @@ def test_after_signing_in_the_person_lands_on_the_vue_launcher():
     assert settings.LOGIN_REDIRECT_URL == "/launch"
 
 
-def test_no_mail_links_a_vue_page_that_does_not_exist_yet():
-    """allauth builds the links of its mails from HEADLESS_FRONTEND_URLS even with HEADLESS_ONLY off:
-    each key enters with its page, or the template flows would mail dead links."""
-    assert settings.HEADLESS_FRONTEND_URLS == {}
+def test_the_mails_link_the_pages_of_the_spa():
+    """allauth builds the links of its mails from HEADLESS_FRONTEND_URLS; each one is a route of the SPA
+    (``accounts/tests/test_headless.py``). No confirmation link: the address is proven by a code."""
+    assert settings.HEADLESS_FRONTEND_URLS == {
+        "account_reset_password": "/password/reset",
+        "account_reset_password_from_key": "/password/reset/key/{key}",
+        "account_signup": "/launch",
+    }
 
 
 # The public web (round 16, public/): its apps, middlewares and settings.
@@ -374,11 +380,17 @@ def test_every_template_knows_the_public_site():
 
 
 def test_every_template_knows_the_shells_colour_mode():
-    """The template pages (sign-in, errors) paint light or dark from the `theme` cookie
-    (base/context_processors.py), right after the Google switch they also read."""
+    """The template pages (errors, the public web) paint light or dark from the `theme` cookie
+    (base/context_processors.py)."""
     processors = settings.TEMPLATES[0]["OPTIONS"]["context_processors"]
-    google = processors.index("accounts.context_processors.google_login")
-    assert processors[google + 1] == "base.context_processors.theme"
+    assert "base.context_processors.theme" in processors
+
+
+def test_no_template_reads_a_switch_of_the_retired_sign_in_page():
+    """The sign-in is the SPA's: «Continue with Google» reads `googleEnabled` from spa-config
+    (base/spa.py), so no template needs Google's switch nor the `next` its form posted."""
+    processors = settings.TEMPLATES[0]["OPTIONS"]["context_processors"]
+    assert not [processor for processor in processors if processor.startswith("accounts.")]
 
 
 def test_development_takes_the_apps_images_from_the_local_hub():

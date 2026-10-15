@@ -1,0 +1,49 @@
+{
+  "fiscal": {
+    "representation": {
+      "eyebrow": "VeriFactu",
+      "title": "Authorisation for ERPlora to file your invoices",
+      "loadError": "We could not load the authorisation.",
+      "forbidden": "You do not have permission to see the authorisation",
+      "state": {
+        "none": "Not granted",
+        "submitted": "Under review",
+        "approved": "Approved",
+        "returned": "Returned",
+        "revoked": "Withdrawn"
+      },
+      "line": {
+        "none": "You have not signed the authorisation yet. Download the official model, sign it and upload it from your business (VeriFactu → Settings).",
+        "submitted": "We are reviewing your authorisation. It usually takes between 24 and 72 hours.",
+        "approved": "Validated on {date}. ERPlora can file your invoices with the AEAT on your behalf.",
+        "returned": "We could not accept the authorisation you sent. Fix what we tell you and upload it again from your business.",
+        "revoked": "The authorisation was withdrawn on {date}. Sign a new one from your business to keep filing through ERPlora."
+      },
+      "sentOn": "Sent on {date}",
+      "taxpayer": "Taxpayer",
+      "taxpayerValue": "{name} ({taxId})",
+      "signer": "Signed by",
+      "reason": {
+        "returned": "Why it was returned",
+        "revoked": "Why it was withdrawn"
+      },
+      "received": "What you sent",
+      "missing": "What is missing",
+      "newSubmission": "A new submission",
+      "documents": {
+        "signed_model": "Signed model",
+        "id_copy": "Copy of the identity document",
+        "signature_sample": "Signature sample",
+        "representation_proof": "Proof of representation"
+      },
+      "history": {
+        "title": "Submission history",
+        "entry": "#{version} · {date} · {outcome}",
+        "superseded": "Replaced by a newer submission",
+        "returnedWhy": "Returned: {reason}",
+        "revokedWhy": "Withdrawn: {reason}"
+      },
+      "manage": "Manage in your business"
+    }
+  }
+}

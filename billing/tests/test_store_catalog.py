@@ -94,6 +94,44 @@ class TestWhatIsOnSale:
         assert subscription["trial_end"] is not None
 
 
+class TestWhichPlansAreOffered:
+    """Audit 2 S-03 (Ioan's decision through the coordinator, 2026-10-14): a business Stripe does not bill
+    (Free) is offered the plans sold at sign-up only; the ``upgrade_only`` ones (Pro, Enterprise, Max) are
+    an upgrade of a business that already pays (``sync_hub_plans``)."""
+
+    def test_a_free_business_is_offered_only_the_plans_sold_at_sign_up(self, shop, owner):
+        assert catalog(owner, shop)["offered_plans"] == ["starter", "standard"]
+
+    def test_a_paying_business_is_offered_the_upgrades_too(self, shop, owner):
+        paid = pay(shop)
+
+        assert catalog(owner, paid)["offered_plans"] == [
+            "starter",
+            "standard",
+            "pro",
+            "enterprise",
+            "max",
+        ]
+
+    def test_a_business_whose_stripe_subscription_ended_is_back_to_the_sign_up_plans(
+        self, shop, owner
+    ):
+        ended = pay(shop, status="canceled")
+
+        assert catalog(owner, ended)["offered_plans"] == ["starter", "standard"]
+
+    def test_a_plan_off_sale_or_internal_is_never_offered(self, shop, owner):
+        from hubs.models import Plan
+
+        Plan.objects.filter(slug="standard").update(is_active=False)
+        paid = pay(shop)
+
+        offered = catalog(owner, paid)["offered_plans"]
+        assert "standard" not in offered
+        assert "payment-test" not in offered
+        assert "free" not in offered
+
+
 class TestWhatTheBusinessHas:
     def test_a_paying_business_says_its_plan_its_billing_and_its_renewal(
         self, shop, owner, inventory

@@ -93,12 +93,20 @@ describe('PasswordModal', () => {
     expect(s.open.value).toBe(true);
   });
 
+  it('a wrong current password is said in the panel’s words, not allauth’s «Por favor, escriba…» (audit 2 R-26)', async () => {
+    const s = await setup([rejected('Por favor, escriba su contraseña actual.', 'current_password', 'enter_current_password')], 'es');
+    await fill(s);
+    s.q('password-change-submit')?.click();
+    await flush();
+    expect(ionProps(s.q('password-current'), 'errorText')).toEqual({ errorText: 'La contraseña actual no es correcta.' });
+  });
+
   it('leaves for the sign-in when the change ends the session', async () => {
     const s = await setup(anonymous);
     await fill(s);
     s.q('password-change-submit')?.click();
     await flush();
-    expect(leave).toHaveBeenCalledWith('/login');
+    expect(leave).toHaveBeenCalledWith('/launch');
   });
 
   it('speaks Spanish', async () => {

@@ -82,7 +82,7 @@ async function setup(api: Handler = happy, purchase: CheckoutPurchase = PLAN, ex
         business: { id: 'cafe', name: 'Café Central' },
         purchase,
         promoCode: 'SPRING',
-        declinedCard: false,
+        declinedFor: null,
         ...extra,
         open: open.value,
         'onUpdate:open': (v: boolean) => (open.value = v),
@@ -245,9 +245,14 @@ describe('CheckoutModal', () => {
     expect(stripe.checkouts[0].destroyed).toBe(true);
   });
 
-  it('when the account’s card was declined, says to pay with another', async () => {
-    const s = await setup(happy, PLAN, { declinedCard: true });
-    expect(s.q('checkout-declined')?.textContent).toContain('The card on your account was declined: pay with another one.');
+  it('when the card of the same payer was declined, says whose and to pay with another (audit 2 R-21)', async () => {
+    const s = await setup(happy, PLAN, { declinedFor: 'Bar La Plaza' });
+    expect(s.q('checkout-declined')?.textContent).toContain('The card that pays for Bar La Plaza was declined: pay with another one.');
+  });
+
+  it('without a declined card of that payer, it says nothing about cards', async () => {
+    const s = await setup();
+    expect(s.q('checkout-declined')).toBeNull();
   });
 
   it('off the web it starts nothing: the apps sell nothing', async () => {

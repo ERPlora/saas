@@ -906,6 +906,17 @@ def _not_on_sale(what: str) -> Conflict:
     )
 
 
+def _upgrade_only() -> Conflict:
+    """Pro, Enterprise and Max (``upgrade_only``) are an upgrade of a business that already pays (audit 2 S-03);
+    the Store does not offer them to a Free one (``billing.store.catalog``'s ``offered_plans``)."""
+    return Conflict(
+        _(
+            "This plan is an upgrade of a paid plan: start with one of the plans sold at sign-up."
+        ),
+        code="billing.plan_upgrade_only",
+    )
+
+
 def plan_sale(user, slug: str, interval: str) -> Sale:
     plan = queries.plan_on_sale(slug)
     if plan is None or not plan.is_available_to(user):
@@ -1168,6 +1179,10 @@ def checkout_start(ctx: OperationContext, data: CheckoutStartIn) -> dict:
         interval = data.interval if data.plan else subscription.billing_interval
     else:
         interval = data.interval
+    if data.plan and not _paying(subscription):
+        asked = queries.plan_on_sale(data.plan)
+        if asked is not None and asked.upgrade_only:
+            raise _upgrade_only()
     sale = (
         plan_sale(user, data.plan, interval)
         if data.plan

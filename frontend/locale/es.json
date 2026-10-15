@@ -7,8 +7,18 @@
     "load": {
       "heading": "No hemos podido cargar esta página",
       "body": "Comprueba la conexión y vuelve a intentarlo.",
-      "retry": "Reintentar"
+      "retry": "Reintentar",
+      "forbiddenHeading": "No tienes permiso para ver esto",
+      "forbiddenBody": "Tu rol no lo permite. Si lo necesitas, pídeselo al propietario."
     },
-    "skipLink": "Saltar al contenido"
+    "skipLink": "Saltar al contenido",
+    "skipNav": "Atajos"
+  },
+  "notFound": {
+    "body": "La dirección que has abierto no forma parte del panel. Puede ser un enlace antiguo o mal copiado: tus negocios, la facturación y tu cuenta están en el menú.",
+    "action": "Ir a mis negocios"
+  },
+  "notInApp": {
+    "action": "Ir a mis negocios"
   }
 }

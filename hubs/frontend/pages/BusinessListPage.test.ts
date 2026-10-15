@@ -183,6 +183,10 @@ describe('BusinessListPage: the list', () => {
     expect(salon.get('[data-testid="business-role"]').text()).toContain('Manager');
     expect(salon.get('[data-testid="business-role"]').text()).toContain('Managed by the owner');
     expect(bakery.get('[data-testid="business-host"]').text()).toBe('bakery.localhost:8000');
+    // Audit 2 R-25: the address is not cut with «…» (DataTable clips a cell's span): it may take a second line,
+    // breaking only after a dot.
+    expect(bakery.get('[data-testid="business-host"]').element.tagName).toBe('DIV');
+    expect(bakery.find('[data-testid="business-host"] .host-name').exists()).toBe(true);
   });
 
   it('under the status, why: never a payment the notice above already says, a suspension with its day', async () => {
@@ -505,6 +509,53 @@ describe('BusinessListPage: «Create business»', () => {
     expect(s.q('create-modal')?.getAttribute('aria-label')).toBe('Create business');
     expect(s.q('create-modal')?.textContent).toContain('What is your business called?');
     expect(s.q('create-modal-submit')?.textContent).toContain('Create my business');
+  });
+
+  describe('with the account’s Free business filling its quota (audit 2 S-02)', () => {
+    const FULL = { free_business: { id: 'cafe', slug: 'cafe', name: 'Café Central' } };
+
+    it('says so before the form, names the business and offers to change its plan in the Store', async () => {
+      const s = await setup();
+      await s.show(page(ROWS, FULL));
+      await s.testid('businesses-add').trigger('click');
+      await flush();
+      expect(s.q('create-modal')?.getAttribute('aria-label')).toBe('Create business');
+      // (booleans: a failing match on an element prints the whole Ionic DOM)
+      expect(s.q('create-name') === null).toBe(true);
+      expect(s.q('create-modal-submit') === null).toBe(true);
+      expect(s.q('create-free-limit')?.textContent).toContain('You already have a free business');
+      expect(s.q('create-free-limit')?.textContent).toContain(
+        'Each account has one, and yours is Café Central. To create another business, move Café Central to a paid plan first.',
+      );
+      const store = s.q('create-free-limit-store')!;
+      expect(store.textContent).toContain('Change the plan of Café Central');
+      store.click();
+      await flush();
+      expect(s.router.currentRoute.value.fullPath).toBe('/store/plans?business=cafe');
+      expect(s.q('create-modal')?.querySelector('.ion-delegate-host') === null).toBe(true);
+    });
+
+    it('inside the apps it says where the plan is changed, without a link', async () => {
+      applySurface('desktop');
+      const s = await setup();
+      await s.show(page(ROWS, FULL));
+      await s.testid('businesses-add').trigger('click');
+      await flush();
+      expect(s.q('create-free-limit-store') === null).toBe(true);
+      expect(s.q('create-free-limit')?.textContent).toContain('To change your plan or add modules, go to erplora.com in your browser.');
+    });
+
+    it('speaks Spanish', async () => {
+      const s = await setup({ locale: 'es' });
+      await s.show(page(ROWS, FULL));
+      await s.testid('businesses-add').trigger('click');
+      await flush();
+      expect(s.q('create-free-limit')?.textContent).toContain('Ya tienes un negocio gratuito');
+      expect(s.q('create-free-limit')?.textContent).toContain(
+        'Cada cuenta tiene uno, y el tuyo es Café Central. Para crear otro negocio, pasa antes Café Central a un plan de pago.',
+      );
+      expect(s.q('create-free-limit-store')?.textContent).toContain('Cambiar el plan de Café Central');
+    });
   });
 
   it('opens by itself from the launcher’s «Create another business» (?create=1), also when the page is shown again', async () => {

@@ -100,7 +100,7 @@ describe('TwoFactorAuthenticatePage: arriving', () => {
   it('sends one without a waiting login back to the sign-in, keeping next', async () => {
     fakeAllauth({ 'GET /auth/session': anonymous });
     const { router } = await mountPage({ path: '/2fa/authenticate?next=%2Fhub-login%2F%3Fhub%3Da' });
-    expect(router.currentRoute.value.path).toBe('/login');
+    expect(router.currentRoute.value.path).toBe('/launch');
     expect(router.currentRoute.value.query).toEqual({ next: '/hub-login/?hub=a' });
   });
 
@@ -192,7 +192,7 @@ describe('TwoFactorAuthenticatePage: verifying', () => {
     });
     const { verify, router } = await mountPage({ path: '/2fa/authenticate?next=%2Fhub-login%2F%3Fhub%3Da' });
     await verify();
-    expect(router.currentRoute.value.path).toBe('/login');
+    expect(router.currentRoute.value.path).toBe('/launch');
     expect(router.currentRoute.value.query).toEqual({ next: '/hub-login/?hub=a' });
     expect(assign).not.toHaveBeenCalled();
   });
@@ -213,7 +213,7 @@ describe('TwoFactorAuthenticatePage: «Back to sign in»', () => {
     await button('mfa-back').trigger('click');
     await flushPromises();
     expect(server.callsTo('DELETE /auth/session')).toHaveLength(1);
-    expect(router.currentRoute.value.path).toBe('/login');
+    expect(router.currentRoute.value.path).toBe('/launch');
     expect(router.currentRoute.value.query).toEqual({ next: '/hub-login/?hub=a' });
   });
 

@@ -3,9 +3,10 @@
 ``allauth.mfa`` is always installed (its table always exists); the flag decides whether it is in use.
 Off (the phase-1 default): no login asks for a code, not even for an account with a TOTP row, and
 the 2FA endpoints answer 404 (JSON under ``/_allauth/``, which is how the Vue pages know). On: an
-account with an authenticator app is asked for a code after the password (or Google), the jump to
-a hub needs that second factor in the session if the account has one, the staff's jump to the Hub
-admin (``hub-admin``) always needs it, and ``/admin/login/`` hands over to allauth's login.
+account with an authenticator app is asked for the app's code after the password and the code mailed
+at every sign-in (or after Google), the jump to a hub needs that second factor in the session if the
+account has one and the staff's jump to the Hub admin (``hub-admin``) always needs it. Either way
+``/admin/login/`` hands over to allauth's login (the launcher's).
 
 Cases ported from ERPlora/saas ``origin/develop``: ``test_mfa_login_flow.py``,
 ``test_wrong_totp_code.py`` (a «wrong» code is chosen so it cannot be the live one, saas#2271),
@@ -36,6 +37,7 @@ from django.test import Client, RequestFactory, override_settings
 
 from accounts import mfa, services
 from accounts.models import AuthExchangeCode, HubMembership
+from accounts.tests.conftest import prove_address, take_mailed_code
 
 pytestmark = pytest.mark.django_db
 
@@ -43,6 +45,7 @@ HOST = "localhost:8001"
 BROWSER = "/_allauth/browser/v1"
 SESSION = f"{BROWSER}/auth/session"
 LOGIN = f"{BROWSER}/auth/login"
+CONFIRM_CODE = f"{BROWSER}/auth/code/confirm"
 AUTHENTICATE = f"{BROWSER}/auth/2fa/authenticate"
 REAUTHENTICATE = f"{BROWSER}/auth/2fa/reauthenticate"
 AUTHENTICATORS = f"{BROWSER}/account/authenticators"
@@ -107,6 +110,14 @@ def browser():
 
 
 @pytest.fixture
+def ana(ana):
+    """Ana once she proved her address, as every account does before its first session: her sign-ins
+    here stop at the second factor alone."""
+    prove_address(ana.email)
+    return ana
+
+
+@pytest.fixture
 def secret(ana):
     """Ana has turned on an authenticator app."""
     return _activate_totp(ana)
@@ -123,9 +134,17 @@ def _mfa_record(authenticator):
     return {"method": "mfa", "at": time.time(), "id": authenticator.pk, "type": authenticator.type}
 
 
-def _sign_in(client, email, password) -> None:
-    """Email and password on the Vue login (headless); a 2FA account stays at the code step."""
+def _first_factors(client, email, password):
+    """Email and password on the Vue sign-in (headless), then the code mailed to the account
+    (``test_sign_in_code``): the answer of that code, signed in or waiting for the app's code."""
     response = _post(client, LOGIN, {"email": email, "password": password})
+    assert (response.status_code, _pending_flows(response)) == (401, ["login_by_code"]), response.content
+    return _post(client, CONFIRM_CODE, {"code": take_mailed_code(email)})
+
+
+def _sign_in(client, email, password) -> None:
+    """The password and the mailed code; a 2FA account stays at the app's code step."""
+    response = _first_factors(client, email, password)
     assert response.status_code in (200, 401), response.content
 
 
@@ -208,13 +227,6 @@ class TestFlagMiddleware:
         AUTHENTICATE,
         REAUTHENTICATE,
     ]
-    TEMPLATE_PATHS = [
-        "/accounts/2fa/",
-        "/accounts/2fa/authenticate/",
-        "/accounts/2fa/reauthenticate/",
-        "/accounts/2fa/totp/activate/",
-        "/accounts/2fa/recovery-codes/",
-    ]
 
     @pytest.mark.parametrize("path", HEADLESS_PATHS)
     def test_with_the_flag_off_the_headless_endpoints_answer_a_json_404(self, client, ana, path):
@@ -226,15 +238,9 @@ class TestFlagMiddleware:
             assert response["Content-Type"] == "application/json"
             assert response.json() == {"status": 404}
 
-    @pytest.mark.parametrize("path", TEMPLATE_PATHS)
-    def test_with_the_flag_off_the_template_pages_answer_404(self, client, ana, path):
-        client.force_login(ana)
-
-        assert client.get(path, HTTP_HOST=HOST).status_code == 404
-
     def test_with_the_flag_off_the_rest_of_allauth_is_untouched(self, client):
         assert client.get(SESSION, HTTP_HOST=HOST).status_code == 401
-        assert client.get("/accounts/login/", HTTP_HOST=HOST).status_code == 200
+        assert client.get(f"{BROWSER}/config", HTTP_HOST=HOST).status_code == 200
 
     def test_under_asgi_too(self):
         """daphne runs the middleware chain asynchronously."""
@@ -256,7 +262,14 @@ class TestFlagMiddleware:
 
         assert response.status_code == 200
         assert [item["type"] for item in response.json()["data"]] == ["totp"]
-        assert client.get("/accounts/2fa/", HTTP_HOST=HOST).status_code == 200
+
+    @pytest.mark.usefixtures("spa_manifest")
+    @pytest.mark.parametrize("path", ["/accounts/2fa/", "/accounts/2fa/authenticate/", "/accounts/2fa/reauthenticate/"])
+    def test_with_the_flag_on_allauths_template_pages_still_do_not_exist(self, mfa_on, client, ana, secret, path):
+        """Headless only: the Vue pages /2fa, /2fa/authenticate and /reauthenticate are the only ones."""
+        client.force_login(ana)
+
+        assert client.get(path, HTTP_HOST=HOST).status_code == 404
 
     def test_with_the_flag_on_an_account_without_an_authenticator_gets_the_secret_to_set_it_up(
         self, mfa_on, client, ana
@@ -318,12 +331,13 @@ def _pending_flows(response) -> list[str]:
 
 
 class TestLoginWithTheFlagOn:
-    """Ported from ERPlora/saas ``test_mfa_login_flow.py``: the code comes after the first factor."""
+    """Ported from ERPlora/saas ``test_mfa_login_flow.py``: the app's code comes after the password and the
+    code mailed to the account, in allauth's order of stages."""
 
     def test_an_account_with_an_authenticator_app_is_asked_for_its_code_and_not_signed_in_yet(
         self, mfa_on, browser, ana, secret, password
     ):
-        response = _post(browser, LOGIN, {"email": "ana@example.com", "password": password})
+        response = _first_factors(browser, "ana@example.com", password)
 
         assert response.status_code == 401
         assert response.json()["meta"]["is_authenticated"] is False
@@ -339,7 +353,7 @@ class TestLoginWithTheFlagOn:
         assert response.json()["meta"]["is_authenticated"] is True
         session = browser.get(SESSION).json()
         assert session["data"]["user"]["email"] == "ana@example.com"
-        assert [method["method"] for method in session["data"]["methods"]] == ["password", "mfa"]
+        assert [method["method"] for method in session["data"]["methods"]] == ["password", "code", "mfa"]
 
     def test_a_wrong_code_is_400_and_leaves_the_login_at_the_code_step(self, mfa_on, browser, ana, secret, password):
         _sign_in(browser, "ana@example.com", password)
@@ -365,7 +379,7 @@ class TestLoginWithTheFlagOn:
     def test_an_account_without_an_authenticator_app_is_never_asked(self, mfa_on, browser, ana, password):
         RecoveryCodes.activate(ana)
 
-        response = _post(browser, LOGIN, {"email": "ana@example.com", "password": password})
+        response = _first_factors(browser, "ana@example.com", password)
 
         assert response.status_code == 200
         assert response.json()["meta"]["is_authenticated"] is True
@@ -373,25 +387,19 @@ class TestLoginWithTheFlagOn:
     def test_the_staff_get_no_exception_either(self, mfa_on, browser, platform):
         _activate_totp(platform)
 
-        response = _post(browser, LOGIN, {"email": "platform@example.com", "password": "platform"})
+        response = _first_factors(browser, "platform@example.com", "platform")
 
         assert response.status_code == 401
         assert _pending_flows(response) == ["mfa_authenticate"]
 
-    def test_the_template_login_asks_for_the_code_too(self, mfa_on, client, ana, secret, password):
-        response = client.post("/accounts/login/", {"login": "ana@example.com", "password": password})
-
-        assert response.status_code == 302
-        assert response.url == "/accounts/2fa/authenticate/"
-        assert client.get(SESSION, HTTP_HOST=HOST).status_code == 401
-
 
 class TestLoginWithTheFlagOff:
-    def test_an_account_with_an_authenticator_app_signs_in_with_the_password_alone(
+    def test_an_account_with_an_authenticator_app_signs_in_without_the_apps_code(
         self, browser, ana, secret, password
     ):
-        # The phase-1 default: a TOTP row kept from a time the flag was on asks for nothing.
-        response = _post(browser, LOGIN, {"email": "ana@example.com", "password": password})
+        # The phase-1 default: a TOTP row kept from a time the flag was on asks for nothing more than the
+        # password and the mailed code.
+        response = _first_factors(browser, "ana@example.com", password)
 
         assert response.status_code == 200
         assert response.json()["meta"]["is_authenticated"] is True
@@ -452,7 +460,7 @@ class TestHubLoginWithTheFlagOn:
         response = browser.get(f"{HUB_LOGIN}?hub=a&next=/demo/items")
 
         assert response.status_code == 302
-        assert response.url.startswith("/accounts/login/?next=")
+        assert response.url.startswith("/launch?next=")
         assert not AuthExchangeCode.objects.exists()
 
     def test_after_the_code_the_member_jumps(self, mfa_on, browser, member, secret, password):
@@ -579,34 +587,35 @@ class TestOpenInTheHubAdminWithTheFlagOn:
 
 class TestAdminLoginWithTheFlagOn:
     """Ported from ERPlora/saas ``_admin_login``: Django's admin login skips allauth's stages (no code),
-    so with the flag on every way into the admin is allauth's login."""
+    so every way into the admin is the SaaS's sign-in (the launcher's, ``/launch``, allauth.headless)."""
 
-    def test_it_hands_over_to_allauths_login_keeping_where_the_staff_were_going(self, mfa_on, client):
+    def test_it_hands_over_to_the_sign_in_keeping_where_the_staff_were_going(self, mfa_on, client):
         response = client.get("/admin/login/", {"next": "/admin/accounts/user/"})
 
         assert response.status_code == 302
-        assert response.url == "/accounts/login/?next=/admin/accounts/user/"
+        assert response.url == "/launch?next=/admin/accounts/user/"
 
     def test_without_next_it_comes_back_to_the_admin_index(self, mfa_on, client):
-        assert client.get("/admin/login/").url == "/accounts/login/?next=/admin/"
+        assert client.get("/admin/login/").url == "/launch?next=/admin/"
 
+    @pytest.mark.usefixtures("spa_manifest")
     def test_the_admin_sends_a_visitor_through_it(self, mfa_on, client):
         response = client.get("/admin/", follow=True)
 
         assert [url for url, _ in response.redirect_chain] == [
             "/admin/login/?next=/admin/",
-            "/accounts/login/?next=/admin/",
+            "/launch?next=/admin/",
         ]
 
     @pytest.mark.parametrize("next_url", ["https://evil.example/", "//evil.example/x", "/admin/login/"])
     def test_a_next_elsewhere_or_back_to_itself_becomes_the_index(self, mfa_on, client, next_url):
-        assert client.get("/admin/login/", {"next": next_url}).url == "/accounts/login/?next=/admin/"
+        assert client.get("/admin/login/", {"next": next_url}).url == "/launch?next=/admin/"
 
     def test_posting_the_password_to_it_signs_nobody_in(self, mfa_on, client, platform):
         response = client.post("/admin/login/", {"username": "platform@example.com", "password": "platform"})
 
         assert response.status_code == 302
-        assert response.url == "/accounts/login/?next=/admin/"
+        assert response.url == "/launch?next=/admin/"
         assert client.get("/admin/").status_code == 302
 
     def test_signed_in_staff_go_where_they_were_going(self, mfa_on, client, platform):
@@ -617,34 +626,46 @@ class TestAdminLoginWithTheFlagOn:
         assert (response.status_code, response.url) == (302, "/admin/accounts/user/")
 
     def test_a_signed_in_customer_is_forbidden_never_sent_to_the_login(self, mfa_on, client, member):
-        # allauth's login sends a signed-in account straight to `next` (/admin/): it would loop.
+        # The sign-in sends a signed-in account straight to `next` (/admin/): it would loop.
         client.force_login(member)
 
         assert client.get("/admin/login/", {"next": "/admin/"}).status_code == 403
 
-    def test_the_staff_reach_the_admin_with_their_password_and_their_code(self, mfa_on, client, platform):
+    def test_the_staff_reach_the_admin_with_their_password_and_their_code(self, mfa_on, browser, platform):
+        """What /launch, /verify-email and /2fa/authenticate post (allauth.headless); then the page loads
+        ``next``, /admin/."""
         secret = _activate_totp(platform)
-        assert client.get("/admin/", follow=True).request["PATH_INFO"] == "/accounts/login/"
 
-        response = client.post(
-            "/accounts/login/?next=/admin/", {"login": "platform@example.com", "password": "platform", "next": "/admin/"}
-        )
-        assert (response.status_code, response.url) == (302, "/accounts/2fa/authenticate/")
-        assert client.get("/admin/").status_code == 302
-        assert client.get("/accounts/2fa/authenticate/").status_code == 200
+        response = _first_factors(browser, "platform@example.com", "platform")
+        assert (response.status_code, _pending_flows(response)) == (401, ["mfa_authenticate"])
+        assert browser.get("/admin/").status_code == 302
 
-        response = client.post("/accounts/2fa/authenticate/", {"code": _live_code(secret)})
+        response = _post(browser, AUTHENTICATE, {"code": _live_code(secret)})
 
-        assert (response.status_code, response.url) == (302, "/admin/")
-        assert client.get("/admin/").status_code == 200
+        assert response.status_code == 200
+        assert browser.get("/admin/").status_code == 200
 
     def test_it_is_never_cached(self, mfa_on, client):
         assert "no-store" in client.get("/admin/login/")["Cache-Control"]
 
 
 class TestAdminLoginWithTheFlagOff:
-    def test_it_is_djangos_own_login_page(self, client):
-        response = client.get("/admin/login/", {"next": "/admin/"})
+    """Without the authenticator app the admin's own login would still skip the code mailed at every
+    sign-in (``test_sign_in_code``): it hands over to the SaaS's sign-in all the same."""
+
+    def test_it_hands_over_to_the_sign_in_keeping_where_the_staff_were_going(self, client):
+        response = client.get("/admin/login/", {"next": "/admin/accounts/user/"})
+
+        assert (response.status_code, response.url) == (302, "/launch?next=/admin/accounts/user/")
+
+    def test_posting_the_password_to_it_signs_nobody_in(self, client, platform):
+        response = client.post("/admin/login/", {"username": "platform@example.com", "password": "platform"})
+
+        assert (response.status_code, response.url) == (302, "/launch?next=/admin/")
+        assert client.get("/admin/").status_code == 302
+
+    def test_the_staff_reach_the_admin_with_their_password_and_the_mailed_code(self, browser, platform):
+        response = _first_factors(browser, "platform@example.com", "platform")
 
         assert response.status_code == 200
-        assert response.context["form"] is not None
+        assert browser.get("/admin/").status_code == 200

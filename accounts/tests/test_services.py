@@ -223,6 +223,27 @@ class TestSeedDemoCustomer:
         assert again.pk == first.pk
         assert get_user_model().objects.count() == 1
 
+    def test_its_address_is_proven_so_it_signs_in_without_a_code(self):
+        """Every account proves its address before its first session; the local ones come proven."""
+        from allauth.account.models import EmailAddress
+
+        user = services.seed_demo_customer("owner@example.com", "owner")
+
+        assert list(EmailAddress.objects.filter(user=user).values_list("email", "verified", "primary")) == [
+            ("owner@example.com", True, True)
+        ]
+
+    def test_an_existing_customer_without_a_proven_address_gets_it_proven(self):
+        """A local database seeded before the code existed keeps working: running it again proves it."""
+        from allauth.account.models import EmailAddress
+
+        existing = get_user_model().objects.create_user(email="owner@example.com", password="owner")
+        EmailAddress.objects.create(user=existing, email="owner@example.com", verified=False, primary=True)
+
+        services.seed_demo_customer("owner@example.com", "owner")
+
+        assert list(EmailAddress.objects.filter(user=existing).values_list("verified", "primary")) == [(True, True)]
+
     def test_the_old_seeds_that_wrote_the_mirror_are_gone(self):
         assert not hasattr(services, "seed_demo_owner")
         assert not hasattr(services, "seed_demo_member")
@@ -235,6 +256,15 @@ class TestSeedDemoPlatformAdmin:
         assert user.check_password("platform")
         assert (user.is_staff, user.is_superuser) == (True, True)
         assert not user.hub_memberships.exists()
+
+    def test_its_address_is_proven_so_it_signs_in_without_a_code(self):
+        from allauth.account.models import EmailAddress
+
+        user = services.seed_demo_platform_admin("platform@example.com", "platform")
+
+        assert list(EmailAddress.objects.filter(user=user).values_list("email", "verified", "primary")) == [
+            ("platform@example.com", True, True)
+        ]
 
     def test_a_platform_role_never_travels_to_a_hub(self):
         user = services.seed_demo_platform_admin("platform@example.com", "platform")
@@ -479,12 +509,17 @@ class TestTheResetLinkProvesTheMailbox:
     that address is the only one on record, since the key may have gone to any address of the account."""
 
     def _reset(self, client, email, password):
+        """What /password/reset and the mailed /password/reset/key/<key> post (allauth.headless)."""
         from django.core import mail
 
         mail.outbox.clear()
-        client.post("/accounts/password/reset/", {"email": email})
-        link = next(word for word in mail.outbox[0].body.split() if "/accounts/password/reset/key/" in word)
-        client.post(client.get(link).url, {"password1": password, "password2": password})
+        client.post("/_allauth/browser/v1/auth/password/request", {"email": email}, content_type="application/json")
+        link = next(word for word in mail.outbox[0].body.split() if "/password/reset/key/" in word)
+        key = link.rpartition("/password/reset/key/")[2]
+        response = client.post(
+            "/_allauth/browser/v1/auth/password/reset", {"key": key, "password": password}, content_type="application/json"
+        )
+        assert response.status_code in (200, 401), response.content
 
     def test_an_account_with_no_address_on_record_gets_it_verified(self, client, ana):
         from allauth.account.models import EmailAddress

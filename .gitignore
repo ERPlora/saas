@@ -11,6 +11,9 @@ __pycache__/
 .env.*
 !.env.example
 
+# Development mail: every mail of the local SaaS, a file each (EMAIL_FILE_PATH, config/settings.py).
+.mail/
+
 # Node and build output
 node_modules/
 frontend/dist/

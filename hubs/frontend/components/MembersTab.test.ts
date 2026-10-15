@@ -74,11 +74,14 @@ async function setup(business: Record<string, unknown> = {}, api: (c: ReturnType
 }
 
 describe('MembersTab: the list', () => {
-  it('follows hubs.member.list of the business in a server-side table titled «Members», cards up to 900 px', async () => {
+  it('follows hubs.member.list of the business in a server-side table titled «Team», cards up to 900 px', async () => {
     const s = await setup();
     expect(s.client.stream.subscriptions('hubs.member.list').map((sub) => sub.params)).toEqual([{ hub_id: 'h1', limit: 50, offset: 0 }]);
     await s.show(page());
-    expect(s.table().props()).toMatchObject({ serverSide: true, title: 'Members', total: 3, views: ['table', 'cards'], cardBreakpoint: 900, addable: true, testid: 'members' });
+    // The list counts the invited too: its count is of the people of the team, not of members («Members 5» with 4
+    // members and 1 invitation, audit 2 R-26).
+    expect(s.table().props()).toMatchObject({ serverSide: true, title: 'Team', total: 3, views: ['table', 'cards'], cardBreakpoint: 900, addable: true, testid: 'members' });
+    expect(s.prop<(count: number) => string>('entityLabel')).toEqual({ one: 'person', many: 'people' });
     expect(s.prop<Array<{ key: string; label: string }>>('columns').map((c) => c.label)).toEqual(['Name', 'Email', 'Role', 'Status', 'Last access']);
   });
 
@@ -90,6 +93,8 @@ describe('MembersTab: the list', () => {
     expect(rows[1].find('[data-testid="member-you"]').exists()).toBe(false);
     expect(rows.map((r) => r.get('.status-pill').text())).toEqual(['Active', 'Active', 'Pending']);
     expect(rows[2].get('[data-testid="member-last"]').text()).toMatch(/^Invited on Oct 11, 2026/);
+    // Audit 2 R-25: not the span DataTable clips with «…»: the date may take a second line.
+    expect(rows[2].get('[data-testid="member-last"]').element.tagName).toBe('DIV');
   });
 
   it('gives the table the actions to fold: the server’s, in its order, «Transfer ownership» only in «⋮»', async () => {
@@ -109,7 +114,7 @@ describe('MembersTab: the list', () => {
       ['status', 'normal'],
       ['last_opened_at', 'low'],
     ]);
-    expect(s.prop('entityLabel')).toEqual({ one: 'member', many: 'members' });
+    expect(s.prop('entityLabel')).toEqual({ one: 'person', many: 'people' });
     expect(s.wrapper.find('.row-action').exists()).toBe(false);
   });
 

@@ -79,10 +79,15 @@ describe('blockOf', () => {
 });
 
 describe('declinedCard', () => {
-  it('says the account’s card was declined when a business it pays for says so', () => {
-    expect(declinedCard([BAKERY, PLAZA])).toBe(true);
-    expect(declinedCard([BAKERY, { ...PLAZA, is_payer: false }])).toBe(false);
-    expect(declinedCard([BAKERY, CAFE])).toBe(false);
+  it('names the business whose card was declined when it has the same payer as the one being sold to', () => {
+    const shared = { ...CAFE, payer_id: PLAZA.payer_id };
+    expect(declinedCard([BAKERY, PLAZA, shared], shared)).toBe('Bar La Plaza');
+    expect(declinedCard([BAKERY, { ...PLAZA, is_payer: false, payer_id: null }, shared], shared)).toBeNull();
+  });
+
+  it('another payer’s declined card is not this business’s (audit 2 R-21: each business has its own payer)', () => {
+    expect(declinedCard([BAKERY, PLAZA, CAFE], CAFE)).toBeNull();
+    expect(declinedCard([BAKERY, CAFE], CAFE)).toBeNull();
   });
 });
 

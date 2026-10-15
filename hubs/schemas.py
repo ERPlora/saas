@@ -228,6 +228,9 @@ class BusinessRowOut(Schema):
     pay_url: str | None
     #: The account owns the business's payer (``billing_profile``): it pays for it, whatever its role.
     is_payer: bool
+    #: That payer (its Stripe customer), only to whoever owns it: the Store warns about a declined card only for
+    #: the businesses it pays too (audit 2 R-21).
+    payer_id: UUID | None
 
 
 class InvitationOut(Schema):
@@ -255,6 +258,9 @@ class OwnershipOfferOut(Schema):
 class BusinessListOut(Page[BusinessRowOut]):
     invitations: list[InvitationOut]
     ownership_offers: list[OwnershipOfferOut]
+    #: The account's Free business when its Free ones fill the quota (ADR-0154): a new business cannot be Free, so
+    #: «Create business» says so before the form, naming it (audit 2 S-02).
+    free_business: HubRefOut | None
 
 
 class BusinessTypeRefOut(Schema):

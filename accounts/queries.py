@@ -1,7 +1,8 @@
 """Reads of accounts: the hubs an account can enter (``accounts.hub.list``, the launcher's), the
 re-read of an account before a live re-run, the hubs the admin's «Open in the Hub admin» lists, the
-authenticators of the second factor (``mfa.py``), whether an account proved its email or has any
-way in (the invitation of ``hubs``, saas#2541), and the Account page (plan 2026-10-13, L3-A): the profile, the
+authenticators of the second factor (``mfa.py``), whether an email has an account (the unified login),
+whether an account proved its email or has any way in (the invitation of ``hubs``, saas#2541), and the
+Account page (plan 2026-10-13, L3-A): the profile, the
 preferences, the live sessions and the API keys, and the key a request carries (``api_auth``)."""
 
 import time
@@ -129,6 +130,18 @@ def hub_list(ctx: OperationContext, data: HubListIn) -> dict[str, Any]:
             for slug in hub_slugs_of(ctx.actor)
         ]
     }
+
+
+def email_has_account(email: str) -> bool:
+    """Whether an account holds ``email``, as its own or as an address on record, whatever the case.
+
+    The unified login (``accounts.unified_login``) signs in such an email and signs up any other one, as
+    ERPlora/saas ``SubdomainLoginView._email_exists`` (ADR-0154).
+    """
+    return (
+        get_user_model().objects.filter(email__iexact=email).exists()
+        or EmailAddress.objects.filter(email__iexact=email).exists()
+    )
 
 
 def email_is_proven(user, email: str) -> bool:

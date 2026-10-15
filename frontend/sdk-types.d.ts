@@ -187,6 +187,8 @@ export interface BusinessRowOut {
   pay_url: string | null;
   /** The account owns the business's payer: it pays for it, whatever its role. */
   is_payer: boolean;
+  /** That payer (its Stripe customer), only to whoever owns it (audit 2 R-21). */
+  payer_id: string | null;
 }
 
 /** `hubs.InvitationOut`: an invitation waiting for this account's answer. */
@@ -213,6 +215,8 @@ export interface OwnershipOfferOut {
 export interface BusinessListOut extends Page<BusinessRowOut> {
   invitations: InvitationOut[];
   ownership_offers: OwnershipOfferOut[];
+  /** The account's Free business when its Free ones fill the quota: «Create business» says so (audit 2 S-02). */
+  free_business: HubRefOut | null;
 }
 
 /** `hubs.BusinessTypeRefOut`. */
@@ -735,6 +739,8 @@ export interface StoreCatalogOut {
   hub_id: string;
   subscription: StoreSubscriptionOut | null;
   modules: StoreModuleOut[];
+  /** The paid plans the business may move to: no upgrade-only plan while Stripe does not bill it (audit 2 S-03). */
+  offered_plans: string[];
 }
 
 /** `apps.AppListIn`: every filter optional and lenient. */
@@ -1188,5 +1194,59 @@ declare module '@erplora/ui/sdk' {
   interface Operations {
     'hubs.usage.get': { input: UsageGetIn; output: UsageOut };
     'hubs.usage.series': { input: UsageSeriesIn; output: UsageSeriesOut };
+  }
+}
+
+/**
+ * `fiscal.RepresentationState`: the state of a business's signed authorisation (plan 2026-10-15); `none` when it
+ * never sent one.
+ */
+export type RepresentationState = 'none' | 'submitted' | 'approved' | 'returned' | 'revoked';
+
+/** `fiscal.RepresentationStatusIn`: the business. */
+export interface RepresentationStatusIn {
+  id: string;
+}
+
+/** `fiscal.RepresentationDocumentsOut`: which documents the authorisation carries (never the documents). */
+export interface RepresentationDocumentsOut {
+  signed_model: boolean;
+  id_copy: boolean;
+  signature_sample: boolean;
+  representation_proof: boolean;
+}
+
+/** `fiscal.RepresentationHistoryOut`: one version sent; `superseded` when a newer one replaced it before any review. */
+export interface RepresentationHistoryOut {
+  version: number;
+  status: 'submitted' | 'approved' | 'returned' | 'revoked';
+  submitted_at: string;
+  reviewed_at: string | null;
+  reason: string;
+  superseded: boolean;
+}
+
+/**
+ * `fiscal.RepresentationStatusOut`: the authorisation in force if there is one, else the one waiting for review,
+ * else the one that changed last; `changed_at` is when it last changed (sent, reviewed or withdrawn); `reason` is
+ * the staff's note.
+ */
+export interface RepresentationStatusOut {
+  status: RepresentationState;
+  version: number | null;
+  submitted_at: string | null;
+  reviewed_at: string | null;
+  changed_at: string | null;
+  reason: string;
+  taxpayer_tax_id: string;
+  taxpayer_name: string;
+  signer_name: string;
+  documents: RepresentationDocumentsOut;
+  history: RepresentationHistoryOut[];
+}
+
+declare module '@erplora/ui/sdk' {
+  interface Operations {
+    'fiscal.representation.status': { input: RepresentationStatusIn; output: RepresentationStatusOut };
   }
 }

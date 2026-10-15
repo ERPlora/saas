@@ -33,6 +33,21 @@ User = get_user_model()
 
 PASSWORD = "Squatt3r-pass-phrase"
 VICTIM = "ana@example.com"
+#: allauth.headless's «Forgot your password?»: what /password/reset and the mailed page post.
+PASSWORD_REQUEST = "/_allauth/browser/v1/auth/password/request"
+PASSWORD_RESET = "/_allauth/browser/v1/auth/password/reset"
+#: The page of the SPA the reset mail links, with its key.
+RESET_PAGE = "/password/reset/key/"
+
+
+def _mailed_key(message) -> str:
+    link = next(word for word in message.body.split() if RESET_PAGE in word)
+    return link.rpartition(RESET_PAGE)[2]
+
+
+def _reset_password(client, key, password):
+    response = client.post(PASSWORD_RESET, {"key": key, "password": password}, content_type="application/json")
+    assert response.status_code in (200, 401), response.content
 
 
 def invite(owner, hub, email=VICTIM, role="hub_employee"):
@@ -149,21 +164,9 @@ class TestTheInvitationReleasesAnAccountThatNeverProvedItsEmail:
         invite(owner, business)
         mail.outbox.clear()
 
-        client.post("/accounts/password/reset/", {"email": VICTIM})
+        client.post(PASSWORD_REQUEST, {"email": VICTIM}, content_type="application/json")
         assert [m.to for m in mail.outbox] == [[VICTIM]]
-        reset_link = next(
-            word
-            for word in mail.outbox[0].body.split()
-            if "/accounts/password/reset/key/" in word
-        )
-        form_url = client.get(reset_link).url
-        client.post(
-            form_url,
-            {
-                "password1": "Real-0wner-pass-phrase",
-                "password2": "Real-0wner-pass-phrase",
-            },
-        )
+        _reset_password(client, _mailed_key(mail.outbox[0]), "Real-0wner-pass-phrase")
         assert fresh(squatter).check_password("Real-0wner-pass-phrase")
         EmailAddress.objects.filter(user=squatter, email=VICTIM).update(verified=True)
 
@@ -238,13 +241,12 @@ class TestAccountsThatHaveNothingToProveAreLeftAlone:
 
 
 def _set_password_from_the_mailed_link(client, email, password):
-    """«Forgot your password?» (allauth, the link of the invitation's mail): the key goes to the mailbox."""
+    """«Forgot your password?» (the SPA's /password/reset, linked by the invitation's mail): the key goes to the
+    mailbox."""
     mail.outbox.clear()
-    client.post("/accounts/password/reset/", {"email": email})
+    client.post(PASSWORD_REQUEST, {"email": email}, content_type="application/json")
     (reset,) = [message for message in mail.outbox if message.to == [email]]
-    link = next(word for word in reset.body.split() if "/accounts/password/reset/key/" in word)
-    form_url = client.get(link).url
-    client.post(form_url, {"password1": password, "password2": password})
+    _reset_password(client, _mailed_key(reset), password)
 
 
 class TestTheMailedLinkProvesTheMailbox:

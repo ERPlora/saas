@@ -12,6 +12,7 @@ const HUBS_API = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..'
 const ACCOUNTS_API = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'accounts', 'api.py'), 'utf8');
 const BILLING_API = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'billing', 'api.py'), 'utf8');
 const APPS_API = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'apps', 'api.py'), 'utf8');
+const FISCAL_API = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'fiscal', 'api.py'), 'utf8');
 
 /** The operations of the Store (plan 2026-10-13 L2-D): billing/api.py, apps/api.py and the payer of hubs/api.py. */
 const STORE_ROUTES = {
@@ -51,6 +52,11 @@ const BILLING_ROUTES = {
 const USAGE_ROUTES = {
   'hubs.usage.get': { method: 'get', path: '/api/hubs/usage' },
   'hubs.usage.series': { method: 'get', path: '/api/hubs/usage/series' },
+};
+
+/** The signed authorisation of a business (fiscal/api.py, plan 2026-10-15): its state on the business's page. */
+const FISCAL_ROUTES = {
+  'fiscal.representation.status': { method: 'get', path: '/api/fiscal/representation' },
 };
 
 /** The operations of the Account page (accounts/api.py, plan 2026-10-13 L3-A): queries GET, commands POST. */
@@ -169,6 +175,12 @@ describe('OPERATION_ROUTES', () => {
     for (const [op, route] of Object.entries(BILLING_ROUTES)) expect(api[op], op).toEqual(route);
   });
 
+  it('binds the authorisation of a business to its route, as fiscal/api.py does', () => {
+    expect(OPERATION_ROUTES).toMatchObject(FISCAL_ROUTES);
+    const api = hubsRoutes(FISCAL_API);
+    expect(api).toEqual(FISCAL_ROUTES);
+  });
+
   it('holds nothing else: every operation in the map is one of the API (no stale route)', () => {
     expect(Object.keys(OPERATION_ROUTES).sort()).toEqual(
       [
@@ -201,6 +213,7 @@ describe('OPERATION_ROUTES', () => {
         ...Object.keys(STORE_ROUTES),
         ...Object.keys(BILLING_ROUTES),
         ...Object.keys(USAGE_ROUTES),
+        ...Object.keys(FISCAL_ROUTES),
       ].sort(),
     );
   });

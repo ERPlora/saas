@@ -62,5 +62,6 @@
   "billing.portal.open": { "method": "post", "path": "/api/billing/portal" },
   "billing.vat_check.run": { "method": "post", "path": "/api/billing/vat-check" },
   "hubs.usage.get": { "method": "get", "path": "/api/hubs/usage" },
-  "hubs.usage.series": { "method": "get", "path": "/api/hubs/usage/series" }
+  "hubs.usage.series": { "method": "get", "path": "/api/hubs/usage/series" },
+  "fiscal.representation.status": { "method": "get", "path": "/api/fiscal/representation" }
 }

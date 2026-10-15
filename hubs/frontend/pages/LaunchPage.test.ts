@@ -4,7 +4,8 @@
 // business → «Open X» or «Go to the panel», with why it does not open; several → the last opened first.
 // Live: `hubs.business.list` (also the invitations).
 import { applySurface } from '@erplora/ui/shell';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { IonInput } from '@ionic/vue';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@ionic/vue', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@ionic/vue')>()),
@@ -17,6 +18,7 @@ vi.mock('@erplora/ui/shell', async (importOriginal) => ({
 }));
 
 import { accessibleName, ANONYMOUS, apiError, BYE, describeCall, enterView, errorFrame, flush, ionProps, type MountOptions, mountHubs, subId } from '../__tests__/mount-hubs';
+import { anonymous, fakeAllauth, pendingLoginCode, signedIn } from '../../../accounts/frontend/__tests__/allauth-server';
 import { LIVE_TIMEOUT_MS } from '../../../frontend/live-state';
 import BusinessCreateForm from '../components/BusinessCreateForm.vue';
 import LaunchPage from './LaunchPage.vue';
@@ -95,22 +97,93 @@ async function showing(result: unknown, options: MountOptions = {}) {
   return { ...s, call };
 }
 
-describe('LaunchPage: signed out', () => {
-  it('asks to sign in and come back here, and subscribes to nothing', async () => {
-    const s = await setup({ session: ANONYMOUS });
-    expect(s.title()).toBe('Sign in to ERPlora');
-    expect(s.wrapper.get('.shell-lead').text()).toBe('Sign in with your ERPlora account.');
-    expect(s.client.stream.subscriptions('hubs.business.list')).toEqual([]);
-    await s.testid('launch-sign-in').trigger('click');
-    await flush();
-    expect(s.router.currentRoute.value.fullPath).toBe('/login?next=/launch');
-    expect(ionProps(s.testid('launch-sign-up'), 'href')).toEqual({ href: '/accounts/signup/?next=/launch' });
+describe('LaunchPage: signed out, the sign-in itself', () => {
+  // The entrance holds the one form that signs in and signs up (Ioan, 2026-10-15), in the frame of the
+  // old template login (`AuthShell`): logo, «ERPlora Cloud», «Global panel», the card and the terms.
+  let assign: ReturnType<typeof vi.fn>;
+  beforeEach(() => {
+    assign = vi.fn();
+    vi.stubGlobal('location', { ...window.location, assign });
+    document.cookie = 'csrftoken=tok-123';
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
-  it('inside the app, says the app uses the erplora.com account', async () => {
-    applySurface('desktop');
+  it('is the old login card with the form, and subscribes to nothing', async () => {
+    fakeAllauth({ 'GET /auth/session': anonymous });
     const s = await setup({ session: ANONYMOUS });
-    expect(s.wrapper.get('.shell-lead').text()).toBe('The app uses your erplora.com account.');
+    await flush();
+    expect(s.wrapper.get('h1.biz-name').text()).toBe('ERPlora Cloud');
+    expect(s.wrapper.get('.biz-sub').text()).toBe('Global panel');
+    const card = s.wrapper.get('ion-card.glass');
+    expect(card.find('form[data-testid="login-form"]').exists()).toBe(true);
+    expect(card.text()).toContain("Enter your email and password. New here? We'll create your account.");
+    for (const testid of ['login-email', 'login-password', 'login-submit']) expect(card.find(`[data-testid="${testid}"]`).exists()).toBe(true);
+    expect(s.wrapper.find('ion-card-title').exists()).toBe(false);
+    expect(s.client.stream.subscriptions('hubs.business.list')).toEqual([]);
+    expect(document.title).toBe('Sign In - ERPlora Cloud');
+  });
+
+  it('carries the terms under the card, as the template login did', async () => {
+    fakeAllauth({ 'GET /auth/session': anonymous });
+    const s = await setup({ session: ANONYMOUS });
+    const foot = s.wrapper.get('.foot');
+    expect(foot.text()).toContain('By continuing you agree to our');
+    expect(foot.findAll('a').map((a) => [a.text(), a.attributes('href')])).toEqual([
+      ['Terms', 'https://erplora.com/legal/terms/'],
+      ['Privacy Policy', 'https://erplora.com/legal/privacy/'],
+    ]);
+  });
+
+  it('signs in and loads the launcher again with the new session', async () => {
+    const server = fakeAllauth({ 'GET /auth/session': anonymous, 'POST /auth/login': signedIn });
+    const s = await setup({ session: ANONYMOUS });
+    const input = (name: string) => s.wrapper.findAllComponents(IonInput).find((c) => c.attributes('data-testid') === `login-${name}`)!;
+    await input('email').setValue('owner@example.com');
+    await input('password').setValue('owner');
+    await s.wrapper.get('form[data-testid="login-form"]').trigger('submit');
+    await flush();
+    expect(server.callsTo('POST /auth/login').map((call) => call.body)).toEqual([{ email: 'owner@example.com', password: 'owner' }]);
+    expect(assign).toHaveBeenCalledExactlyOnceWith('/launch');
+  });
+
+  it('asks for the mailed code next, carrying where the person was going', async () => {
+    fakeAllauth({ 'GET /auth/session': anonymous, 'POST /auth/login': pendingLoginCode });
+    const s = await setup({ session: ANONYMOUS, path: '/launch?next=%2Faccount' });
+    await s.wrapper.get('form[data-testid="login-form"]').trigger('submit');
+    await flush();
+    expect(s.router.currentRoute.value.fullPath).toBe('/verify-email?next=/account');
+  });
+
+  it('speaks Spanish', async () => {
+    fakeAllauth({ 'GET /auth/session': anonymous });
+    const s = await setup({ session: ANONYMOUS, locale: 'es' });
+    expect(s.wrapper.get('.biz-sub').text()).toBe('Panel global');
+    expect(s.wrapper.get('[data-testid="login-submit"]').text()).toBe('Continuar');
+    expect(document.title).toBe('Iniciar Sesión - ERPlora Cloud');
+  });
+});
+
+describe('LaunchPage: signed in, with somewhere to go (`?next=`)', () => {
+  let assign: ReturnType<typeof vi.fn>;
+  beforeEach(() => {
+    assign = vi.fn();
+    vi.stubGlobal('location', { ...window.location, assign });
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('goes there at once, as the template login sent a signed-in visitor on', async () => {
+    await setup({ path: '/launch?next=%2Fhub-login%2F%3Fhub%3Da' });
+    expect(assign).toHaveBeenCalledExactlyOnceWith('/hub-login/?hub=a');
+  });
+
+  it.each(['https://evil.example.com/', '//evil.example.com', '/launch'])('stays for a next elsewhere or here (%s)', async (next) => {
+    const s = await setup({ path: `/launch?next=${encodeURIComponent(next)}` });
+    expect(assign).not.toHaveBeenCalled();
+    expect(s.client.stream.subscriptions('hubs.business.list')).toHaveLength(1);
   });
 });
 
@@ -272,6 +345,8 @@ describe('LaunchPage: one business', () => {
     const tile = s.testid('launch-business');
     expect(tile.get('h2').text()).toBe('Panadería López');
     expect(tile.get('.launch-biz__url').text()).toBe('bakery.localhost:8000');
+    // Audit 2 R-25: it breaks only after a dot, never at a hyphen.
+    expect(tile.find('.launch-biz__url .host-name').exists()).toBe(true);
     expect(tile.get('.status-pill').text()).toBe('Active');
     expect(tile.get('.launch-biz__meta').text()).toBe('Plan Starter · Owner');
     const open = s.testid('launch-open');
@@ -440,5 +515,56 @@ describe('LaunchPage: the stream', () => {
     s.call.push(BYE);
     await flush();
     expect(s.testid('launch-business').exists()).toBe(true);
+  });
+});
+
+describe('LaunchPage: a deleted business is recovered from the card (audit 2 R-07)', () => {
+  const DELETED = {
+    status: 'deleting',
+    status_label: 'Deleted',
+    can_open: false,
+    open_blocked_reason: 'deleting',
+    deletion_requested_at: '2026-10-10T10:00:00Z',
+    purge_after: '2027-01-08T10:00:00Z',
+    can: { open: false, manage: false, restore: true, delete: false },
+  };
+
+  it('one: its owner recovers it, the main action, and it is said; no «Open»', async () => {
+    const s = await showing(page([row('bakery', 'Bakery', DELETED)]), {
+      api: (call) =>
+        describeCall(call).path === '/api/hubs/businesses/restore' ? Response.json({ id: 'bakery', name: 'Bakery', status: 'active' }) : Response.json({}),
+    });
+    expect(s.testid('launch-reason').text()).toContain('Deleted. You can recover it until Jan 8, 2027');
+    const recover = s.testid('recover-business');
+    expect(recover.text()).toContain('Recover business');
+    expect(ionProps(recover, 'size', 'expand')).toEqual({ size: 'large', expand: 'block' });
+    expect(s.testid('launch-open').exists()).toBe(false);
+    await recover.trigger('click');
+    await flush();
+    expect(s.calls().find((c) => c.path === '/api/hubs/businesses/restore')?.body).toEqual({ id: 'bakery' });
+  });
+
+  it('whoever may not recover it sees why, and no button', async () => {
+    const s = await showing(page([row('bakery', 'Bakery', { ...DELETED, role: 'hub_admin', can: { ...DELETED.can, restore: false } })]));
+    expect(s.testid('recover-business').exists()).toBe(false);
+    expect(s.testid('launch-panel').exists()).toBe(true);
+  });
+
+  it('several: the deleted one offers «Recover», named with its business', async () => {
+    const s = await showing(page([row('salon', 'Peluquería Ana', { can: DELETED.can }), row('bakery', 'Bakery', DELETED)]));
+    const tiles = s.wrapper.findAll('[data-testid="launch-business"]');
+    expect(tiles[0].find('[data-testid="recover-business"]').exists()).toBe(false);
+    expect(accessibleName(tiles[1].get('[data-testid="recover-business"]'))).toBe('Recover Bakery');
+  });
+});
+
+describe('LaunchPage: one filled button per business (audit 2 S-06)', () => {
+  it('several: a business that owes keeps the payment filled and «Open» outlined', async () => {
+    const OWED = { status: 'past_due', status_label: 'Payment pending', unpaid_reason: 'payment_failed', unpaid_since: '2026-10-10T14:23:00Z', pay_url: 'https://invoice.stripe.com/i/bakery' };
+    const s = await showing(page([row('salon', 'Peluquería Ana'), row('bakery', 'Bakery', OWED)]));
+    const tiles = s.wrapper.findAll('[data-testid="launch-business"]');
+    expect(ionProps(tiles[1].get('[data-testid="unpaid-pay"]'), 'fill')).toEqual({ fill: 'solid' });
+    expect(ionProps(tiles[1].get('[data-testid="launch-open"]'), 'fill')).toEqual({ fill: 'outline' });
+    expect(ionProps(tiles[0].get('[data-testid="launch-open"]'), 'fill')).toEqual({ fill: 'solid' });
   });
 });

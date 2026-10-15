@@ -237,9 +237,10 @@ test.describe('R-11/R-13/R-20: the chrome of every page', () => {
       offenders.push(...(await smallTargets(page)).map((target) => `${name}: ${target}`));
       await snap(page, `${name}-390`);
     }
-    // A dialog: its ✕ and its buttons.
+    // A dialog: its ✕ and its buttons (with Café Central on Free, the one-Free-business limit and its way out,
+    // audit 2 S-02).
     await page.goto('/businesses?create=1');
-    await expect(page.getByTestId('create-modal-submit')).toBeVisible();
+    await expect(page.getByTestId('create-free-limit-store')).toBeVisible();
     await settle(page);
     offenders.push(...(await smallTargets(page, true)).map((target) => `create dialog: ${target}`));
     await snap(page, 'businesses-create-390');

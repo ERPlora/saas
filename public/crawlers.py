@@ -48,11 +48,13 @@ SPA_URL_NAME = "spa"
 def private_prefixes() -> tuple[str, ...]:
     """Every path prefix that is not the public web.
 
-    Django's own (admin, API, internal calls, allauth's pages and headless API, Google's redirect
-    URIs, the jump to a hub, Stripe's webhook) and the sign-in pages of the SPA (``accounts/frontend/routes.ts`` and
-    the pages allauth's mails link, ``HEADLESS_FRONTEND_URLS``). Without a trailing slash where the
-    SPA serves the bare path (``/launch``, ``/login``…). Any other page of the SPA is private too:
-    :func:`is_private` recognises its route.
+    Django's own (admin, API, internal calls, allauth's headless API and the old addresses of its
+    pages, now redirects, Google's redirect URIs, the jump to a hub, Stripe's webhook) and the
+    sign-in pages of the SPA (``accounts/frontend/routes.ts``, the pages allauth's mails link
+    included). Without a trailing slash where the SPA serves the bare path (``/launch``, ``/login``…),
+    each covering the pages under it (``/login/error``, ``/password/reset/key/…``,
+    ``/2fa/authenticate``). Any other page of the SPA is private too: :func:`is_private` recognises
+    its route.
     """
     return (
         "/admin/",
@@ -65,8 +67,7 @@ def private_prefixes() -> tuple[str, ...]:
         "/webhooks/",
         "/launch",
         "/login",
-        "/signup",
-        "/password",
+        "/password/reset",
         "/verify-email",
         "/2fa",
         "/reauthenticate",

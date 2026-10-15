@@ -111,6 +111,11 @@ INSTALLED_APPS = [
     "hubs",
     # The EU VAT engine and, from lot L2-B, Stripe: after hubs, whose payer it reads.
     "billing",
+    # The documentation a business sends so ERPlora files its VeriFactu records (plan 2026-10-15): after
+    # hubs, whose businesses it reads and whose snapshot carries its outcome.
+    "fiscal",
+    # The fiscal gateway (PLAN-SAAS §4): presents the Hub's VeriFactu envelopes to the AEAT.
+    "fiscal_gateway",
     "public",
     # After `public`: its templates override the package's (public/templates/cookie_consent/).
     "cookie_consent",
@@ -164,7 +169,6 @@ TEMPLATES = [
                 "django.template.context_processors.csp",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "accounts.context_processors.google_login",
                 # The shell's colour mode (`theme` cookie) for the template pages.
                 "base.context_processors.theme",
                 "public.context_processors.public_site",
@@ -272,8 +276,10 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-# allauth: email + password and Google, the second factor behind ACCOUNTS_MFA_ENABLED (below); no
-# signup yet (see README.md).
+# allauth: email + password with a code mailed at every sign-in, and Google; the authenticator app behind
+# ACCOUNTS_MFA_ENABLED (below). One form, in the launcher (/launch), signs in or signs up (ADR-0154): an
+# email no account holds creates one at allauth's login address (accounts/unified_login.py), and allauth's
+# own signup doors are closed (config/urls.py).
 
 SITE_ID = 1
 ACCOUNT_ADAPTER = "accounts.adapters.AccountAdapter"
@@ -282,15 +288,40 @@ ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*"]
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 ACCOUNT_USER_MODEL_EMAIL_FIELD = "email"
 ACCOUNT_UNIQUE_EMAIL = True
-ACCOUNT_EMAIL_VERIFICATION = "none"
+# Every account proves its mailbox before its first session: a code typed on the same screen, not a
+# link that leaves for the mail app (ADR-0159), which then signs in. An account that never proved it
+# is asked for the code at its next sign-in. Google's verified addresses need no code
+# (SOCIALACCOUNT_EMAIL_VERIFICATION below).
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+ACCOUNT_EMAIL_VERIFICATION_BY_CODE_ENABLED = True
+# Six digits, as the second factor's codes: typed on a phone or a till.
+ACCOUNT_EMAIL_VERIFICATION_BY_CODE_FORMAT = {"length": 6, "numeric": True, "dashed": False}
+# «Send another code» (allauth: two more, 10 s apart): a lost mail must not strand the person there.
+ACCOUNT_EMAIL_VERIFICATION_SUPPORTS_RESEND = True
+ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
+# The second factor by email (Ioan, 2026-10-15): every sign-in with a password also asks for a code
+# mailed to the account (allauth's login-by-code stage, `POST …/auth/code/confirm`), typed in the app.
+# Only the password: Google is a strong sign-in of its own and proves the address itself. One code,
+# never two: a sign-up or an address never proven gets the verification code above, the same proof of
+# the mailbox (AccountAdapter.is_login_by_code_required). allauth's defaults: 3 tries, 3 minutes.
+ACCOUNT_LOGIN_BY_CODE_REQUIRED = {"password"}
+ACCOUNT_LOGIN_BY_CODE_FORMAT = ACCOUNT_EMAIL_VERIFICATION_BY_CODE_FORMAT
+# Not ACCOUNT_LOGIN_BY_CODE_ENABLED: it would serve `auth/code/request`, a sign-in with the mailed code
+# alone (no password), and only with it does allauth resend this code. Signing in again mails a new one.
+# Creating an account mails a code, so one address may start 10 sign-ups an hour (today's SaaS,
+# UNIFIED_SIGNUP_RATELIMIT); allauth's defaults for the rest.
+ACCOUNT_RATE_LIMITS = {"signup": "10/h/ip"}
 # A recent sign-in (allauth's reauthentication) before any change of the account's addresses or of its
 # Google link through allauth.headless, as Cuenta's own «Cambiar correo» asks (accounts.email.change).
 ACCOUNT_REAUTHENTICATION_REQUIRED = True
-# The «Keep me signed in» box of the login decides (same as today's SaaS).
-ACCOUNT_SESSION_REMEMBER = None
-ACCOUNT_LOGOUT_REDIRECT_URL = "/accounts/login/"
-LOGIN_URL = "/accounts/login/"
-# The Vue launcher (accounts/frontend/pages/LaunchPage.vue).
+# Every sign-in lasts SESSION_COOKIE_AGE: allauth.headless takes no `remember`, and without this a session
+# would end when the browser closes.
+ACCOUNT_SESSION_REMEMBER = True
+# The sign-in lives in the Vue launcher, the entrance (hubs/frontend/pages/LaunchPage.vue with
+# accounts/frontend/components/SignInForm.vue), where Django sends a visitor without a session (`?next=`).
+# Signing out is allauth.headless's `DELETE …/auth/session`; the page then loads this one.
+LOGIN_URL = "/launch"
+# The Vue launcher (hubs/frontend/pages/LaunchPage.vue).
 LOGIN_REDIRECT_URL = "/launch"
 # Absolute links allauth builds (Google's redirect_uri): behind the load balancer the request
 # arrives as http, and Google only accepts the https callback registered with it.
@@ -316,7 +347,7 @@ GOOGLE_OAUTH_CLIENT_SECRET = (
 GOOGLE_OAUTH_ENABLED = bool(GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET)
 
 # Refuses allauth's «connect» process and tells the owner when Google gets linked (saas#2552); an
-# unknown Google email meets the closed sign-up.
+# unknown Google email creates its account (SOCIALACCOUNT_AUTO_SIGNUP).
 SOCIALACCOUNT_ADAPTER = "accounts.adapters.SocialAccountAdapter"
 SOCIALACCOUNT_PROVIDERS = {
     "google": {
@@ -333,15 +364,15 @@ SOCIALACCOUNT_PROVIDERS = {
         # NOT verified, the one case in which signing in by email must not happen.
     }
 }
+# Google already proved the address it vouches for (`email_verified`): no code on top. An address it
+# does not vouch for creates no account (SocialAccountAdapter.is_open_for_signup).
 SOCIALACCOUNT_EMAIL_VERIFICATION = "none"
-# Only reached when the sign-up opens: today it is closed and an unknown email gets no account.
+# An unknown Google email creates the account and signs in, with no form in between (ADR-0154).
 SOCIALACCOUNT_AUTO_SIGNUP = True
 # A Google that proves an account's email signs in to it and is linked to it (as today's SaaS):
 # allauth only does it for an address Google verified, the guard against account takeover.
 SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
 SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
-# Only a POST (the button posts) starts the round trip, never a bare GET (login CSRF).
-SOCIALACCOUNT_LOGIN_ON_GET = False
 # Sign-in only: no Google API is called afterwards.
 SOCIALACCOUNT_STORE_TOKENS = False
 
@@ -362,18 +393,21 @@ MFA_ADAPTER = "accounts.mfa.MFAAdapter"
 # businesses to end theirs (accounts.signals.sessions_ended, PLAN-SAAS §2.1).
 USERSESSIONS_ADAPTER = "accounts.session_tracking.UserSessionsAdapter"
 
-# allauth.headless (ronda 11): the API of the Ionic Vue account pages, browser client only (same-origin
-# session cookie + Django's CSRF), mounted at /_allauth/. The template pages stay while the Vue ones
-# are built page by page; HEADLESS_ONLY turns True when the last one exists.
-HEADLESS_ONLY = False
+# allauth.headless (ronda 11, PLAN-SAAS §2): the API of the Ionic Vue account pages, browser client only
+# (same-origin session cookie + Django's CSRF), mounted at /_allauth/. Headless only: allauth serves no
+# template page; every screen of the sign-in is a page of the SPA (accounts/frontend/routes.ts).
+HEADLESS_ONLY = True
 HEADLESS_CLIENTS = ("browser",)
-# The links allauth mails point here even with HEADLESS_ONLY off, so a key enters only with its Vue
-# page: account_signup → /signup, account_reset_password → /password/reset,
-# account_reset_password_from_key → /password/reset/key/{key}, account_confirm_email →
-# /verify-email/{key}. Not socialaccount_login_error: allauth reads it only for a HEADLESS Google
-# flow, and «Continue with Google» is a plain form post (a browser flow), whose errors the
-# SocialAccountAdapter sends to the Vue page /login/error itself.
-HEADLESS_FRONTEND_URLS: dict[str, str] = {}
+# Where the links allauth mails lead, by URL name: pages of the SPA. The «no account here» mail of a
+# password reset invites to sign up, which the launcher's sign-in does (ADR-0154). Not
+# account_confirm_email: the address is proven by a code typed on /verify-email (ADR-0159), and allauth
+# builds no link with codes on. Not socialaccount_login_error: the SocialAccountAdapter sends every
+# failure of Google's round trip to the Vue page /login/error before allauth would read it.
+HEADLESS_FRONTEND_URLS = {
+    "account_reset_password": "/password/reset",
+    "account_reset_password_from_key": "/password/reset/key/{key}",
+    "account_signup": "/launch",
+}
 # openapi.yaml/.json of the headless API in development; not its HTML page (Redoc from a CDN).
 HEADLESS_SERVE_SPECIFICATION = DEBUG
 HEADLESS_SPECIFICATION_TEMPLATE_NAME = None
@@ -435,7 +469,7 @@ USE_TZ = True
 
 # Content Security Policy (Django's native middleware, nonce per response; packages/live).
 # `form-action` filters the whole redirect chain of a form post: «Continue with Google» posts to
-# /auth/google/login/, which answers 302 to accounts.google.com (saas#945), the hub-login page
+# allauth.headless's provider redirect, which answers 302 to accounts.google.com (saas#945), the hub-login page
 # posts its form to the hub's origin and the admin's «Open in the Hub admin» to the platform host
 # (named on its own: `HUB_ADMIN_CALLBACK_URL` may live outside the hubs' pattern). Google adds no
 # script, frame nor connection source.
@@ -447,11 +481,9 @@ SECURE_CSP["form-action"] = [
     HUB_ORIGIN_PATTERN,
     HUB_ADMIN_ORIGIN,
 ]
-# The Iconify web component creates its own Trusted Types policy (as in today's SaaS).
-SECURE_CSP["trusted-types"] = [*SECURE_CSP["trusted-types"], "iconify"]
 
-# Static files: WhiteNoise. The template pages' Ionic, Iconify and fonts are vendored under
-# static/vendor/ (nothing from a CDN). Vite already hashes the SPA build, served under /static/spa/
+# Static files: WhiteNoise. The template pages' Ionic (the public web, the error pages) and fonts are
+# vendored under static/vendor/ (nothing from a CDN). Vite already hashes the SPA build, served under /static/spa/
 # (Vite's `base`), so no Manifest storage and its hashed assets are immutable.
 
 STATIC_URL = "/static/"
@@ -489,16 +521,17 @@ LIVE = {
     "vite": {"command": ["pnpm", "run", "dev"], "cwd": str(BASE_DIR)},
 }
 
-# Email (allauth's password reset and the «Google was linked» notice, until block 1 brings the
-# branded mail): the console locally; in production the SES API signed by the task role (no static
-# keys, PLAN-AWS §3), or SMTP from EMAIL_* when SES_REGION is unset. EMAIL_BACKEND overrides the
-# choice; the file backend writes into EMAIL_FILE_PATH. Same variables and order as hub-next.
+# Email (allauth's codes and password reset, the «Google was linked» notice, until block 1 brings the
+# branded mail): locally a file per mail in saas-next/.mail/ (EMAIL_FILE_PATH), where the code of every
+# password sign-in is read, by a person or by an e2e (also the Hub's); in production the SES API signed
+# by the task role (no static keys, PLAN-AWS §3), or SMTP from EMAIL_* when SES_REGION is unset.
+# EMAIL_BACKEND overrides the choice. Same variables and order as hub-next.
 
 smtp_email_backend = "django.core.mail.backends.smtp.EmailBackend"
 ses_email_backend = "django_ses.SESBackend"
 file_email_backend = "django.core.mail.backends.filebased.EmailBackend"
 if DEBUG:
-    default_email_backend = "django.core.mail.backends.console.EmailBackend"
+    default_email_backend = file_email_backend
 else:
     default_email_backend = (
         ses_email_backend if config("SES_REGION", default="") else smtp_email_backend
@@ -521,8 +554,10 @@ elif email_backend == smtp_email_backend:
         "timeout": 10,
     }
 elif email_backend == file_email_backend:
-    # The panel's e2e reads the mails from this folder (tests/e2e/panel/project.ts).
-    MAILERS["default"]["OPTIONS"] = {"file_path": config("EMAIL_FILE_PATH")}
+    # The panel's e2e names its own folder (tests/e2e/panel/project.ts); development uses .mail/.
+    MAILERS["default"]["OPTIONS"] = {
+        "file_path": config("EMAIL_FILE_PATH", default=str(BASE_DIR / ".mail"))
+    }
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@erplora.com")
 
 # The public web of erplora.com (round 16, `public/`): Django templates for SEO, its own CSP
@@ -596,6 +631,21 @@ FISCAL_SEAL_CURRENT_P12_BASE64 = config("FISCAL_SEAL_CURRENT_P12_BASE64", defaul
 FISCAL_SEAL_CURRENT_PASSWORD = config("FISCAL_SEAL_CURRENT_PASSWORD", default="")
 FISCAL_SEAL_NEXT_P12_BASE64 = config("FISCAL_SEAL_NEXT_P12_BASE64", default="")
 FISCAL_SEAL_NEXT_PASSWORD = config("FISCAL_SEAL_NEXT_PASSWORD", default="")
+# The fiscal gateway (fiscal_gateway/, PLAN-SAAS §4): presentations to the AEAT under way at once in
+# one process; one more answers 503 `gateway_busy` and the Hub retries. 8 until it is measured in pre.
+VERIFACTU_GATEWAY_CONCURRENCY = config("VERIFACTU_GATEWAY_CONCURRENCY", default=8, cast=int)
+
+# The documentation a hub sends so ERPlora files its VeriFactu records (fiscal/, plan 2026-10-15): the
+# signed Anexo I, a copy of the signer's identity document and the rest, encrypted at rest with this Fernet
+# key (fiscal/crypto.py; `check` says if it is no Fernet key, fiscal.E001). Required in production, like
+# INTERNAL_SHARED_SECRET: a document stored with a lost key is lost. Local development uses a fixed key.
+FISCAL_DOCUMENTS_KEY = (
+    config("FISCAL_DOCUMENTS_KEY", default="bG9jYWwtZmlzY2FsLWRvY3VtZW50cy1rZXktMzJieXQ=")
+    if DEBUG
+    else config("FISCAL_DOCUMENTS_KEY")
+)
+# DATA_UPLOAD_MAX_MEMORY_SIZE stays Django's 2.5 MB for every view: the four documents of an authorisation
+# (up to about 27 MB) have their own ceiling, read by their view alone (fiscal.internal.MAX_BODY_BYTES).
 
 # EU VAT (billing/): VIES, the European Commission's register of VAT numbers, asked through its REST
 # endpoint as an identified requester (ERPlora's own VAT number, billing.CompanyConfig), the only way

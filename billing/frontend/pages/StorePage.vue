@@ -4,10 +4,10 @@
 // (`?business=`, which the shop writes back when the owner picks another).
 // It sells, so it is the web's only (PLAN-SAAS §3.6 point 6; README §4): inside the apps and on the
 // account surface — a deep link too — it says «The store is not in the app» and how to buy from a
-// browser, WITHOUT a link out (what Google Play admits of a consumption-only app), and nothing of the
+// browser (on the account surface, already a browser, why nothing is bought there: audit 2 S-09), WITHOUT a link out (what Google Play admits of a consumption-only app), and nothing of the
 // shop loads: no prices, no Stripe. `<WebOnly>` follows the surface live (a late Tauri bridge).
 import { EmptyState } from '@erplora/ui/components';
-import { AppPage, type ShellTab, WebOnly } from '@erplora/ui/shell';
+import { AppPage, type ShellTab, useSurface, WebOnly } from '@erplora/ui/shell';
 import { IonButton } from '@ionic/vue';
 import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -30,6 +30,7 @@ const SECTIONS: Array<{ id: Tab; icon: string }> = [
 const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
+const { surface } = useSurface();
 
 const businessId = computed(() => (typeof route.query.business === 'string' && route.query.business ? route.query.business : undefined));
 const current = shallowRef<string>(props.tab);
@@ -54,6 +55,9 @@ const tabs = computed<ShellTab[]>(() => {
 function choose(id: string): void {
   void router.replace({ path: route.path, query: { ...route.query, business: id } });
 }
+
+/** The account the app opens in the browser: already in a browser, so it says why, not where (audit 2 S-09). */
+const inAccount = computed(() => surface.value === 'account');
 </script>
 
 <template>
@@ -73,8 +77,8 @@ function choose(id: string): void {
       <template #app>
         <EmptyState
           icon="globe-outline"
-          :heading="$t('billing.store.inApp.title')"
-          :message="$t('billing.store.inApp.body')"
+          :heading="inAccount ? $t('billing.store.inAccount.title') : $t('billing.store.inApp.title')"
+          :message="inAccount ? $t('billing.store.inAccount.body') : $t('billing.store.inApp.body')"
           data-testid="store-in-app"
         >
           <template #action>

@@ -99,8 +99,13 @@ describe('UnpaidInvoiceNotice', () => {
     const s = await notice({ invoice: DECLINED, business: PLAZA });
     expect(s.q('pay-invoice').exists()).toBe(false);
     expect(s.q('unpaid-change-card').exists()).toBe(false);
-    expect(s.q('unpaid-app').text()).toBe('To change the card and pay it, go to erplora.com in your browser.');
     expect(s.wrapper.findAll('[href]')).toEqual([]);
+    if (surface === 'account') {
+      // Already in the browser (the account the app opens): why, not where (audit 2 S-09).
+      expect(s.q('unpaid-app').text()).toBe('This account was opened from the app: invoices are not paid from here.');
+      return;
+    }
+    expect(s.q('unpaid-app').text()).toBe('To change the card and pay it, go to erplora.com in your browser.');
     const plain = await notice({ invoice: unpaidRow('i2'), business: { ...PLAZA, unpaid_reason: 'payment_failed' } });
     expect(plain.q('unpaid-app').text()).toBe('To pay it, go to erplora.com in your browser.');
   });

@@ -68,9 +68,17 @@ export function blockOf(row: Pick<BusinessRowOut, 'status' | 'unpaid_reason'>): 
   return null;
 }
 
-/** The bank declined the account's card: a business it pays for says so (the checkout asks for another). */
-export function declinedCard(rows: readonly BusinessRowOut[]): boolean {
-  return rows.some((row) => row.is_payer && row.unpaid_reason === 'card_declined');
+/**
+ * The business whose card the bank declined when it has the same payer (the same Stripe customer) as `business`,
+ * or `null`: the checkout says whose and asks for another card. Every business gets a payer of its own when it
+ * is created, so another business's declined card is not this one's (audit 2 R-21).
+ */
+export function declinedCard(rows: readonly BusinessRowOut[], business: Pick<BusinessRowOut, 'payer_id'>): string | null {
+  if (!business.payer_id) return null;
+  const declined = rows.find(
+    (row) => row.is_payer && row.payer_id === business.payer_id && row.unpaid_reason === 'card_declined',
+  );
+  return declined?.name ?? null;
 }
 
 /** A plan without a monthly price is Free: it is not bought, a paid plan is cancelled to get it. */

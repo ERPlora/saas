@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // Billing → Subscriptions (mockups `billing.html`; README §3b and §4; UX-AUDIT-4 W-F1, W-F7, W-F10, X-15;
 // PLAN-SAAS §3.6 point 11): one row per business Stripe bills, live (`billing.subscription.list`), in a
-// DataTable that turns into cards up to 1280 px — business, plan at its net price (and a downgrade waiting for
-// the end of the period), its paid modules (net; «(until …)» kept on one line when cancelled), the next
+// DataTable that turns into cards below 1000 px (its modules and next invoice fold first; audit 2 R-33) —
+// business, plan at its net price (and a downgrade waiting for the end of the period), its paid modules (net; «(until …)» kept on one line when cancelled), the next
 // invoice with VAT («Free from …» when cancelled) and the status. Per row only what the server computed
 // (`actions`): its leading one fixed — «View the invoice» (an unpaid one), «Keep the plan» or «Change plan»
 // (the Store with that business) —, and «Cancel plan» (CancelPlanDialog) and «View invoices» in «⋮» («View
@@ -36,8 +36,9 @@ import CancelPlanDialog from './CancelPlanDialog.vue';
 /** A row as the table keys and searches it: by its business. */
 type Row = SubscriptionRowOut & { id: string; name: string };
 
-/** README §3b: the subscriptions' list is the widest; cards up to 1280 px. */
-const CARD_BREAKPOINT = 1280;
+/** README §3b: the subscriptions' list is the widest. A list from here; its modules and next invoice fold first
+ *  (audit 2 R-33: three rows were cards at 1024–1180). */
+const CARD_BREAKPOINT = 1000;
 /** What sells or cancels: web only (README §4). */
 const WEB_ONLY: ReadonlySet<SubscriptionAction> = new Set(['keep_plan', 'change_plan', 'cancel_plan']);
 /** What may lead a row: the server puts the one that applies first («View the invoice» with an unpaid one). */
@@ -55,7 +56,7 @@ const { t, locale } = useI18n();
 const router = useRouter();
 const client = useLiveClient();
 const { text } = useErrorText();
-const { isWeb } = useSurface();
+const { isWeb, surface } = useSurface();
 const keep = useCommand('billing.plan.keep');
 
 const live = useLive('billing.subscription.list', { limit: 100 });
@@ -118,8 +119,8 @@ function statusPill(row: Row): { tone: StatusPillTone; label: string } {
 const columns = computed(() => [
   { key: 'name', label: t('billing.subscriptions.columns.business'), cell: 'business', width: 'minmax(8rem,1.1fr)', priority: 'high' },
   { key: 'plan', label: t('billing.subscriptions.columns.plan'), cell: 'plan', width: 'minmax(7.5rem,0.9fr)', sortable: false },
-  { key: 'modules', label: t('billing.subscriptions.columns.modules'), cell: 'modules', width: 'minmax(10rem,1.5fr)', sortable: false },
-  { key: 'next_invoice', label: t('billing.subscriptions.columns.next'), cell: 'next', width: 'minmax(8.5rem,1.1fr)', sortable: false },
+  { key: 'modules', label: t('billing.subscriptions.columns.modules'), cell: 'modules', width: 'minmax(10rem,1.5fr)', sortable: false, priority: 'low' },
+  { key: 'next_invoice', label: t('billing.subscriptions.columns.next'), cell: 'next', width: 'minmax(8.5rem,1.1fr)', sortable: false, priority: 'low' },
   { key: 'status', label: t('billing.subscriptions.columns.status'), cell: 'status', width: 'minmax(8rem,1fr)' },
 ] satisfies DataTableColumn<Row>[]);
 
@@ -140,7 +141,7 @@ const hasMenu = (row: Row) => offers(row, 'cancel_plan');
  * confirmation, lives in «⋮» (mockups at 1440, UX-AUDIT-4 W-F1). «View invoices» goes into that «⋮» when the
  * row has one, so a row shows one button and its menu (Ioan, 2026-10-14: a clean list, as the mockups paint
  * an unpaid row); without a «⋮» (nothing to cancel, or inside the apps) it stays a button. Few and fixed, the
- * list fits without folding wherever it is a list (cards up to 1280 px).
+ * list fits wherever it is a list (from 1000 px; modules and the next invoice fold first).
  */
 const actions = computed<DataTableAction<Row>[]>(() => [
   {
@@ -235,6 +236,7 @@ async function keepPlan(row: Row, id: string): Promise<void> {
     :labels="labels"
     :entity-label="entityLabel"
     :card-title="(row: Row) => row.name"
+    card-title-column="name"
     :card-icon="() => 'ion:sync-outline'"
     @action="onAction"
     @retry="state.retry()"
@@ -250,7 +252,7 @@ async function keepPlan(row: Row, id: string): Promise<void> {
               name="ion:information-circle-outline"
               aria-hidden="true"
             />
-            {{ $t('billing.subscriptions.appHint') }}
+            {{ surface === 'account' ? $t('billing.subscriptions.accountHint') : $t('billing.subscriptions.appHint') }}
           </span>
         </template>
       </WebOnly>

@@ -1,0 +1,285 @@
+# Spanish translations of the fiscal app of saas-next (English is the source).
+# Copyright (C) 2026 ERPlora
+# This file is distributed under the same license as ERPlora.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: saas-next\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-15 13:47+0200\n"
+"PO-Revision-Date: 2026-10-15 12:00+0200\n"
+"Last-Translator: ERPlora\n"
+"Language-Team: Spanish\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Signed model (Anexo I)"
+msgstr "Modelo firmado (Anexo I)"
+
+msgid "Copy of the signer's identity document"
+msgstr "Copia del documento de identidad del firmante"
+
+msgid "Signature sample"
+msgstr "Muestra de la firma"
+
+msgid "Proof of representation"
+msgstr "Acreditación de la representación"
+
+msgid "Review"
+msgstr "Revisar"
+
+msgid "This authorisation does not exist."
+msgstr "Esta autorización no existe."
+
+msgid "Review the signed authorisation"
+msgstr "Revisar la autorización firmada"
+
+msgid "Approved: ERPlora may now file the business's records."
+msgstr "Aprobada: ERPlora ya puede remitir los registros del negocio."
+
+msgid "Returned to the customer with your reason."
+msgstr "Devuelta al cliente con tu motivo."
+
+msgid "Withdrawn: ERPlora no longer files for the business by it."
+msgstr "Retirada: ERPlora ya no remite por el negocio con ella."
+
+msgid "Choose approve, return or withdraw."
+msgstr "Elige aprobar, devolver o retirar."
+
+msgid ""
+"This document cannot be opened with the current key (FISCAL_DOCUMENTS_KEY)."
+msgstr "Este documento no se puede abrir con la clave actual (FISCAL_DOCUMENTS_KEY)."
+
+msgid "Fiscal documentation"
+msgstr "Documentación fiscal"
+
+msgid "Under review"
+msgstr "En revisión"
+
+msgid "Approved"
+msgstr "Aprobada"
+
+msgid "Returned"
+msgstr "Devuelta"
+
+msgid "Withdrawn"
+msgstr "Retirada"
+
+msgid "DNI"
+msgstr "DNI"
+
+msgid "NIE"
+msgstr "NIE"
+
+msgid "business"
+msgstr "negocio"
+
+msgid "version"
+msgstr "versión"
+
+msgid "status"
+msgstr "estado"
+
+msgid "taxpayer's tax ID"
+msgstr "NIF del obligado tributario"
+
+msgid "taxpayer"
+msgstr "obligado tributario"
+
+msgid "signer's tax ID"
+msgstr "NIF del firmante"
+
+msgid "signer"
+msgstr "firmante"
+
+msgid "signer's identity document"
+msgstr "documento de identidad del firmante"
+
+msgid "signed model (encrypted)"
+msgstr "modelo firmado (cifrado)"
+
+msgid "copy of the identity document (encrypted)"
+msgstr "copia del documento de identidad (cifrada)"
+
+msgid "signature sample (encrypted)"
+msgstr "muestra de la firma (cifrada)"
+
+msgid "proof of representation (encrypted)"
+msgstr "acreditación de la representación (cifrada)"
+
+msgid "submitted at"
+msgstr "enviada el"
+
+msgid "reviewed at"
+msgstr "revisada el"
+
+msgid "reviewed by"
+msgstr "revisada por"
+
+msgid "note to the customer"
+msgstr "nota para el cliente"
+
+msgid "withdrawn at"
+msgstr "retirada el"
+
+msgid "withdrawn by"
+msgstr "retirada por"
+
+msgid "created at"
+msgstr "creada el"
+
+msgid "updated at"
+msgstr "actualizada el"
+
+msgid "signed authorisation"
+msgstr "autorización firmada"
+
+msgid "signed authorisations"
+msgstr "autorizaciones firmadas"
+
+msgid "Only the Hub sends a business's authorisation."
+msgstr "Solo el Hub envía la autorización de un negocio."
+
+msgid "Enter the Spanish tax ID (NIF) of whoever owes the tax."
+msgstr "Indica el NIF español del obligado tributario."
+
+msgid "Say who signs the authorisation: their name and tax ID."
+msgstr "Indica quién firma la autorización: su nombre y su NIF."
+
+msgid "The signer's identity document is a DNI or a NIE."
+msgstr "El documento de identidad del firmante es un DNI o un NIE."
+
+msgid "Attach the signed model."
+msgstr "Adjunta el modelo firmado."
+
+msgid "Attach a copy of the signer's identity document."
+msgstr "Adjunta una copia del documento de identidad del firmante."
+
+msgid "With a NIE, attach a sample of the signature."
+msgstr "Con un NIE, adjunta una muestra de la firma."
+
+msgid ""
+"For a company, attach the document that proves the signer represents it."
+msgstr "Para una sociedad, adjunta el documento que acredita que el firmante la representa."
+
+msgid "Invalid payload"
+msgstr "Los datos enviados no son válidos."
+
+msgid "Each document may be 5 MB at most."
+msgstr "Cada documento puede ocupar 5 MB como máximo."
+
+msgid "The signed model must be a PDF."
+msgstr "El modelo firmado debe ser un PDF."
+
+msgid "This document must be a PDF."
+msgstr "Este documento debe ser un PDF."
+
+msgid "Only an approved authorisation can be withdrawn."
+msgstr "Solo se puede retirar una autorización aprobada."
+
+msgid "Only ERPlora's staff decide on an authorisation."
+msgstr "Solo el equipo de ERPlora decide sobre una autorización."
+
+msgid "Write the reason: the customer reads it."
+msgstr "Escribe el motivo: el cliente lo lee."
+
+#, python-format
+msgid "The reason may be %(count)d characters at most."
+msgstr "El motivo puede tener %(count)d caracteres como máximo."
+
+msgid "Only an authorisation under review can be approved or returned."
+msgstr "Solo se puede aprobar o devolver una autorización en revisión."
+
+msgid "Only the platform tells a business of its authorisation."
+msgstr "Solo la plataforma avisa a un negocio de su autorización."
+
+msgid "Home"
+msgstr "Inicio"
+
+msgid "The authorisation"
+msgstr "La autorización"
+
+msgid "Business"
+msgstr "Negocio"
+
+msgid "Version"
+msgstr "Versión"
+
+msgid "State"
+msgstr "Estado"
+
+msgid "Submitted"
+msgstr "Enviada"
+
+msgid "Reviewed"
+msgstr "Revisada"
+
+msgid "Note to the customer"
+msgstr "Nota para el cliente"
+
+msgid "Who owes the tax and who signs"
+msgstr "Obligado tributario y firmante"
+
+msgid "Taxpayer's tax ID"
+msgstr "NIF del obligado tributario"
+
+msgid "Taxpayer"
+msgstr "Obligado tributario"
+
+msgid "Signer"
+msgstr "Firmante"
+
+msgid "Signer's tax ID"
+msgstr "NIF del firmante"
+
+msgid "Identity document"
+msgstr "Documento de identidad"
+
+msgid "Decision"
+msgstr "Decisión"
+
+msgid ""
+"Approve only if the signed model, the identity document and the signer match "
+"the taxpayer."
+msgstr "Aprueba solo si el modelo firmado, el documento de identidad y el firmante corresponden al obligado tributario."
+
+msgid "Approve"
+msgstr "Aprobar"
+
+msgid "Reason to return it (the customer reads it)"
+msgstr "Motivo para devolverla (el cliente lo lee)"
+
+msgid "Return to the customer"
+msgstr "Devolver al cliente"
+
+msgid "Reason to withdraw the approval (the customer reads it)"
+msgstr "Motivo para retirar la aprobación (el cliente lo lee)"
+
+msgid "Withdraw the approval"
+msgstr "Retirar la aprobación"
+
+msgid "Nothing to decide: this version is no longer under review nor in force."
+msgstr "Nada que decidir: esta versión ya no está en revisión ni en vigor."
+
+msgid "Documents"
+msgstr "Documentos"
+
+msgid "Open in a new tab"
+msgstr "Abrir en una pestaña nueva"
+
+msgid "This version carries no document."
+msgstr "Esta versión no lleva ningún documento."
+
+msgid "Other versions of this business"
+msgstr "Otras versiones de este negocio"
+
+msgid "This business sent no other version."
+msgstr "Este negocio no ha enviado ninguna otra versión."
+msgid "Replaced by a newer submission before any review"
+msgstr "Sustituida por un envío más reciente antes de revisarla"
+
+msgid "Replaced by a newer approval"
+msgstr "Sustituida por una aprobación más reciente"

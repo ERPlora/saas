@@ -11,14 +11,14 @@ import { fileURLToPath } from 'node:url';
 
 import type { Page, Request } from '@playwright/test';
 
-import { businessIdOf, djangoPrint, expect, panelAccount, signIn, test, watchPageErrors } from './fixtures';
+import { businessIdOf, djangoPrint, expect, panelAccount, qaAccount, signIn, test, watchPageErrors } from './fixtures';
 import { HUB_DOUBLE_PORT } from './project';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const SHOTS_DIR = process.env.SHOTS_DIR ?? '/tmp/l3b2-shots';
 mkdirSync(SHOTS_DIR, { recursive: true });
 
-const BILLING = panelAccount('billing');
+const BILLING = qaAccount('BILLING', panelAccount('billing'));
 /** The widths of the mockups' screenshots (`billing-default-<width>-<theme>.png`). */
 const WIDTHS = [390, 834, 1024, 1180, 1280, 1440] as const;
 
@@ -189,13 +189,14 @@ test.describe('billing', () => {
       const notYet = await page.request.get(`/api/billing/invoices/pdf?id=${ids['E2EBAKERY_SEP-0001']}`);
       expect(notYet.status()).toBe(404);
       expect(((await notYet.json()) as { error: { code: string } }).error.code).toBe('billing.invoice_not_issued');
-      // Selected with the issued one, it says which is still being issued.
+      // Selected, it counts only the issued ones (audit 2 S-01): this one has no PDF yet, said above the list.
       const selectRow = (id: string) => page.locator(`[data-testid="invoices-row"][data-id="${id}"] ion-checkbox`);
       await selectRow(ids['E2EBAKERY_SEP-0001']).click();
-      await expect(page.getByTestId('invoices-pdf-selected')).toHaveText('Download PDF (1)');
-      await page.getByTestId('invoices-pdf-selected').click();
-      // Alone, it says so in its own words (R-05).
-      await expect(toast(page, 'This invoice is still being issued: its PDF will be ready as soon as it finishes.')).toBeVisible();
+      await expect(page.getByTestId('invoices-pdf-selected')).toHaveText('Download PDF (0)');
+      await expect(page.getByTestId('invoices-pdf-selected')).toHaveAttribute('aria-disabled', 'true');
+      await expect(page.getByTestId('invoices-selection-note')).toHaveText(
+        '1 selected invoice is still being issued: its PDF is ready in a few minutes.',
+      );
       await page.screenshot({ path: join(SHOTS_DIR, 'billing-selected-1280-light.png') });
     } finally {
       await new Promise<void>((closed) => {
@@ -331,7 +332,7 @@ test.describe('billing', () => {
     await expect(dialog).toContainText('Cancel the plan');
     await expect(dialog).toContainText('Panadería López · Starter');
     await expect(dialog).toContainText('E2E Bill Bookings turns off on');
-    await expect(dialog).toContainText('Free covers 3 users and 1 device at a time. Panadería López has 1 person, so nothing changes for them.');
+    await expect(dialog).toContainText('Free covers 3 users and 1 device at a time. Panadería López has 1 person, within that limit: nothing changes for the team.');
     await page.screenshot({ path: join(SHOTS_DIR, 'billing-default-subscriptions-cancel-1280-light.png') });
     await page.getByTestId('cancel-plan-cancel').click();
     await expect(dialog).toBeHidden();
@@ -395,17 +396,18 @@ test.describe('billing', () => {
     await expect(page.getByTestId('pay-invoice')).toHaveCount(0);
     await expect(page.locator('[data-testid$="-pay"]')).toHaveCount(0);
     await expect(page.getByTestId('unpaid-group-change-card')).toHaveCount(0);
-    await expect(page.getByTestId('unpaid-group-app')).toHaveText('To change the card and pay them, go to erplora.com in your browser.');
+    // Already in the browser (the account the app opens): why, not «go to erplora.com in your browser» (audit 2 S-09).
+    await expect(page.getByTestId('unpaid-group-app')).toHaveText('This account was opened from the app: invoices are not paid from here.');
     await page.setViewportSize({ width: 390, height: 844 });
     await page.screenshot({ path: join(SHOTS_DIR, 'billing-default-mobile-390-light.png'), fullPage: true });
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/billing/subscriptions');
-    await expect(page.getByTestId('subscriptions-app-hint')).toHaveText('To change or cancel a plan, go to erplora.com in your browser.');
+    await expect(page.getByTestId('subscriptions-app-hint')).toHaveText('This account was opened from the app: plans are not changed nor cancelled from here.');
     // Only what looks: «View the invoice» and «View invoices»; nothing changes or cancels a plan, no «⋮».
     await expect(page.locator('[data-testid^="subscriptions-row-"][data-testid$="-lead"]')).toHaveText(['View the invoice', 'View the invoice']);
     await expect(page.locator('[data-testid^="subscriptions-row-"][data-testid$="-menu"]')).toHaveCount(0);
     await page.goto('/billing/payment');
-    await expect(page.getByTestId('payment-app')).toHaveText('To change the card, go to erplora.com in your browser.');
+    await expect(page.getByTestId('payment-app')).toHaveText('This account was opened from the app: the card is not changed from here.');
     await expect(page.getByTestId('payment-change')).toHaveCount(0);
     await expect(page.getByTestId('profile-edit')).toBeVisible();
     expect(await page.locator('ion-router-outlet a[href*="stripe"]').count()).toBe(0);

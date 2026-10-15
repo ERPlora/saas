@@ -78,10 +78,10 @@ class TestWhoEntersTheAdmin:
         assert response.url == "/admin/login/?next=/admin/"
 
     def test_the_owner_of_a_hub_cannot_sign_in_to_the_admin(self, client, users):
+        """The admin's login signs nobody in: it hands over to the SaaS's sign-in (``test_mfa``)."""
         response = client.post("/admin/login/", {"username": "owner@example.com", "password": "owner"})
 
-        assert response.status_code == 200
-        assert response.context["form"].errors
+        assert (response.status_code, response.url) == (302, "/launch?next=/admin/")
         assert client.get("/admin/").status_code == 302
 
     @pytest.mark.parametrize("role", HubMembership.Role.values)

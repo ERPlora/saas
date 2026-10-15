@@ -51,11 +51,13 @@ describe('time zones', () => {
     }
   });
 
-  it('name a zone by its city and its offset now', () => {
+  it('name a zone by its city and its time, true all year (audit 2 R-31: «Madrid (GMT+2)» stopped being true on Oct 25)', () => {
     const winter = new Date('2026-01-15T12:00:00Z');
-    expect(timeZoneLabel('Europe/Madrid', 'en', winter)).toBe('Madrid (GMT+1)');
-    expect(timeZoneLabel('Atlantic/Canary', 'en', winter)).toBe('Canary (GMT+0)');
-    expect(timeZoneLabel('Europe/Helsinki', 'es', winter)).toBe('Helsinki (GMT+2)');
+    const summer = new Date('2026-07-15T12:00:00Z');
+    expect(timeZoneLabel('Europe/Madrid', 'en', winter)).toBe('Madrid (Central European Time)');
+    expect(timeZoneLabel('Europe/Madrid', 'en', summer)).toBe('Madrid (Central European Time)');
+    expect(timeZoneLabel('Atlantic/Canary', 'es', summer)).toBe('Canary (hora de Europa occidental)');
+    expect(timeZoneLabel('Europe/Helsinki', 'es', winter)).toBe('Helsinki (hora de Europa oriental)');
   });
 
   it("keep the business's own zone when it is not in the list, so a select never loses its value", () => {

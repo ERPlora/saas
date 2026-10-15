@@ -21,8 +21,9 @@ from decimal import Decimal
 from pathlib import Path
 
 SAAS_DIR = Path(__file__).resolve().parents[3]
-EMAIL = "e2e-billing@example.com"
-PASSWORD = "e2e-panel"
+# The QA user of the root .env (README «Usuarios QA»), with its value there as the default.
+EMAIL = os.environ.get("QA_BILLING_EMAIL", "e2e-billing@example.com")
+PASSWORD = os.environ.get("QA_BILLING_PASSWORD", "e2e-panel")
 SLUG_PREFIX = "e2e-billing-"
 #: Every Stripe id of these rows starts so: the invoices outlive their business (``SET_NULL``).
 STRIPE_PREFIX = "in_e2e_billing_"
@@ -59,6 +60,7 @@ def clear() -> None:
 
 
 def seed() -> None:
+    from allauth.account.models import EmailAddress
     from django.contrib.auth import get_user_model
     from django.utils import timezone
 
@@ -73,6 +75,8 @@ def seed() -> None:
     user = get_user_model().objects.create_user(email=EMAIL, password=PASSWORD)
     user.first_name, user.last_name, user.language = "Laura", "Martín", "en"
     user.save(update_fields=["first_name", "last_name", "language"])
+    # Proven address: every account proves it before its first session (the code a sign-up mails).
+    EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)
     free = Plan.objects.get(slug="free")
     starter = Plan.objects.get(slug="starter")
 

@@ -43,14 +43,9 @@ const device = (row: SessionRowOut) => deviceName(t, row.device);
 // The server's order stays (this session first, then by last use): no column sorts it away.
 const columns = computed(() => [
   { key: 'device', label: t('accounts.account.sessions.columns.device'), cell: 'device', width: 'minmax(10rem,1.5fr)', priority: 'high', sortable: false },
-  { key: 'browser', label: t('accounts.account.sessions.columns.browser'), format: (_v, row) => browserName(t, row), sortable: false },
+  { key: 'browser', label: t('accounts.account.sessions.columns.browser'), cell: 'browser', sortable: false },
   { key: 'ip', label: t('accounts.account.sessions.columns.ip'), priority: 'low', sortable: false },
-  {
-    key: 'last_seen_at',
-    label: t('accounts.account.sessions.columns.lastUsed'),
-    format: (_v, row) => (row.is_current ? t('accounts.account.sessions.now') : formatDateTime(row.last_seen_at, locale.value)),
-    sortable: false,
-  },
+  { key: 'last_seen_at', label: t('accounts.account.sessions.columns.lastUsed'), cell: 'lastUsed', sortable: false },
 ] satisfies DataTableColumn<SessionRowOut>[]);
 
 const target = shallowRef<SessionRowOut | null>(null);
@@ -142,6 +137,23 @@ async function closeTheOthers(): Promise<void> {
         {{ $t('accounts.account.sessions.closeOthers') }}
       </ion-button>
     </template>
+    <!-- Divs, not the span DataTable clips with «…»: the browser and the last use may wrap (audit 2 R-25). -->
+    <template #browser="{ row }">
+      <div
+        class="cell-wrap"
+        data-testid="session-browser"
+      >
+        {{ browserName(t, row) }}
+      </div>
+    </template>
+    <template #lastUsed="{ row }">
+      <div
+        class="cell-wrap"
+        data-testid="session-last-used"
+      >
+        {{ row.is_current ? $t('accounts.account.sessions.now') : formatDateTime(row.last_seen_at, locale) }}
+      </div>
+    </template>
     <template #device="{ row }">
       <span
         class="session-device"
@@ -186,6 +198,10 @@ async function closeTheOthers(): Promise<void> {
 </template>
 
 <style scoped>
+.cell-wrap {
+  min-width: 0;
+  white-space: normal;
+}
 .session-device {
   display: inline-flex;
   flex-wrap: wrap;

@@ -14,12 +14,13 @@ business's page and members, the taxonomy and the plans) as that account (``acco
 command is exposed yet.
 """
 
+import re
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from urllib.parse import urlsplit
-import re
 from uuid import UUID
 
+from django.conf import settings
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 from django.db.models import Case, IntegerField, Q, Value, When
@@ -35,6 +36,7 @@ from live.slugs import is_reserved_hub_slug, validate_hub_slug
 from accounts.models import HubMembership
 from accounts.queries import hub_origin
 from apps.models import Module
+from fiscal.queries import snapshot_block as verifactu_representation
 from hubs.models import (
     BusinessType,
     Hub,
@@ -335,16 +337,30 @@ def modules_included_in(plan: Plan | None) -> list[str]:
     return list(Module.objects.filter(tier__in=reached).order_by("slug").values_list("slug", flat=True))
 
 
-def free_hubs_owned(user, excluding: UUID | None = None) -> int:
-    """The Free businesses ``user`` owns (a deleted one no longer counts): ADR-0154's quota."""
-    owned = Hub.objects.filter(
+def _free_hubs(user):
+    """The Free businesses ``user`` owns (a deleted one no longer counts)."""
+    return Hub.objects.filter(
         members__user=user,
         members__role=Role.OWNER,
         subscription__plan__price_monthly=0,
     ).exclude(status__in=[Hub.Status.DELETING, Hub.Status.DELETED])
+
+
+def free_hubs_owned(user, excluding: UUID | None = None) -> int:
+    """The Free businesses ``user`` owns (a deleted one no longer counts): ADR-0154's quota."""
+    owned = _free_hubs(user)
     if excluding is not None:
         owned = owned.exclude(pk=excluding)
     return owned.count()
+
+
+def free_business_filling_quota(user) -> Hub | None:
+    """The first Free business of ``user`` when its Free ones fill the quota (``FREE_HUBS_PER_ACCOUNT``,
+    ADR-0154), else ``None``: «Create business» says so before the form (audit 2 S-02)."""
+    owned = _free_hubs(user).order_by("created_at", "id")
+    if owned.count() < getattr(settings, "FREE_HUBS_PER_ACCOUNT", 1):
+        return None
+    return owned.first()
 
 
 def business_type_for(code: str | None) -> BusinessType | None:
@@ -462,6 +478,7 @@ def business_list(ctx: OperationContext, data: BusinessListIn) -> dict[str, Any]
         rows = [business_row(member, now) for member in page]
         invitations = invitations_of(user, now)
         offers = ownership_offers_of(user, now)
+    free = free_business_filling_quota(user)
     return {
         "rows": rows,
         "total": total,
@@ -469,6 +486,7 @@ def business_list(ctx: OperationContext, data: BusinessListIn) -> dict[str, Any]
         "offset": data.offset,
         "invitations": invitations,
         "ownership_offers": offers,
+        "free_business": {"id": free.id, "slug": free.slug, "name": free.name} if free else None,
     }
 
 
@@ -497,6 +515,7 @@ def business_row(member: HubMember, now: datetime) -> dict[str, Any]:
         },
         **unpaid_of(member, getattr(hub, "subscription", None)),
         "is_payer": is_payer(member),
+        "payer_id": hub.billing_profile_id if is_payer(member) else None,
     }
 
 
@@ -830,10 +849,18 @@ def hub_registry(hub_id: UUID) -> dict[str, Any]:
     }
 
 
+#: The module whose purchase pays VeriFactu's live sending on the Free plan (the snapshot's ``live_paid``).
+VERIFACTU_MODULE = "verifactu"
+
+
 def hub_snapshot(hub_id: UUID) -> dict[str, Any]:
     """The body of ``PUT /internal/hubs/{id}/state`` (PLAN-SAAS §2.2), at the business's state version.
 
-    ``hub_id`` names the hub of the path, which the signature (body only) does not cover.
+    ``hub_id`` names the hub of the path, which the signature (body only) does not cover; ``slug`` names it
+    too. ``verifactu`` (plan 2026-10-15, agreed with the Hub): the authorisation for ERPlora to file its
+    records as the staff left it (``fiscal.queries.snapshot_block``) and ``live_paid``, whether the business
+    pays for the live sending (a plan that is not Free, or a live ``verifactu`` module). Two independent
+    facts: the Hub's «live» through ERPlora needs both.
     """
     hub = Hub.objects.get(pk=hub_id)
     now = timezone.now()
@@ -843,7 +870,14 @@ def hub_snapshot(hub_id: UUID) -> dict[str, Any]:
         .first()
     )
     plan = subscription.effective_plan(now) if subscription else free_plan()
-    items = subscription.items.order_by("module_slug") if subscription else []
+    items = (
+        [item for item in subscription.items.order_by("module_slug") if item.is_live(now)]
+        if subscription
+        else []
+    )
+    live_paid = (plan is not None and plan.price_monthly > 0) or any(
+        item.module_slug == VERIFACTU_MODULE for item in items
+    )
     members = (
         HubMember.objects.select_related("user")
         .filter(hub=hub, accepted_at__isnull=False)
@@ -857,6 +891,7 @@ def hub_snapshot(hub_id: UUID) -> dict[str, Any]:
     )
     return {
         "hub_id": str(hub.id),
+        "slug": hub.slug,
         "version": hub.state_version,
         "status": SNAPSHOT_STATUS.get(hub.status, "suspended"),
         "plan": _snapshot_plan(plan),
@@ -869,7 +904,6 @@ def hub_snapshot(hub_id: UUID) -> dict[str, Any]:
                 else None,
             }
             for item in items
-            if item.is_live(now)
         ],
         "members": [
             {
@@ -880,6 +914,7 @@ def hub_snapshot(hub_id: UUID) -> dict[str, Any]:
             }
             for member in members
         ],
+        "verifactu": {**verifactu_representation(hub.id), "live_paid": live_paid},
     }
 
 

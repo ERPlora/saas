@@ -1,6 +1,7 @@
 // Test helper of the businesses panel's pages and components: the SDK's live harness (fake clock, fake
 // network serving the stream and the API) on the SaaS's op → route map, the shell's i18n with the hubs
-// catalogues, a session and a memory router. Pages are mounted as the shell would mount them.
+// catalogues (and fiscal's, on a business's Summary), a session and a memory router. Pages are mounted
+// as the shell would mount them.
 //
 // A test that opens a dialog mocks Ionic's overlay with the ui's stub, in its own file (hoisted):
 //   vi.mock('@ionic/vue', async (importOriginal) => ({
@@ -25,10 +26,16 @@ import { PopoverStub } from '../../../packages/ui/src/components/DataTable/__tes
 import { OPERATION_ROUTES } from '../../../frontend/generated/operation-routes';
 import entryEn from '../../../frontend/locale/en.json';
 import entryEs from '../../../frontend/locale/es.json';
+import accountsEn from '../../../accounts/frontend/locale/en.json';
+import accountsEs from '../../../accounts/frontend/locale/es.json';
+import fiscalEn from '../../../fiscal/frontend/locale/en.json';
+import fiscalEs from '../../../fiscal/frontend/locale/es.json';
 import en from '../locale/en.json';
 import es from '../locale/es.json';
 
 export { BYE, errorFrame, flush, HELLO, resultFrame } from '../../../packages/ui/src/sdk/__tests__/live-harness';
+// What IonRouterOutlet does each time a page comes on screen: one helper for the accounts' pages and these.
+export { enterView } from '../../../accounts/frontend/__tests__/mount-account-page';
 export type { ApiCall, StreamCall };
 
 // What `createShell` does at boot (`addIcons(ION_ICONS)`): `ion:` icons paint by name. `ionicons` is
@@ -101,10 +108,18 @@ export async function mountHubs(component: Component, options: MountOptions = {}
     props: options.props,
     attachTo: document.body,
     global: {
-      // The entry's catalogue too (`saas.*`): the shared pieces of `frontend/` (LoadFailed) speak with it.
+      // The entry's catalogue too (`saas.*`): the shared pieces of `frontend/` (LoadFailed) speak with it;
+      // and the accounts' (`accounts.*`): the launcher holds the sign-in (`SignInForm`), as the shell merges them all;
+      // and fiscal's (`fiscal.*`): a business's Summary shows its authorisation (fiscal/frontend).
       plugins: [
         router,
-        createShellI18n({ locale: options.locale ?? 'en', messages: { en: { ...en, ...entryEn }, es: { ...es, ...entryEs } } }),
+        createShellI18n({
+          locale: options.locale ?? 'en',
+          messages: {
+            en: { ...en, ...entryEn, ...accountsEn, ...fiscalEn },
+            es: { ...es, ...entryEs, ...accountsEs, ...fiscalEs },
+          },
+        }),
       ],
       provide: { ...app._context.provides, [LIVE_CLIENT_KEY as symbol]: harness.client },
       // An inline `ion-popover` presents itself only in a real browser (the DataTable's row menu «⋮»).
@@ -133,13 +148,6 @@ export function ionProps(el: { element: Element }, ...names: string[]): Record<s
 /** The value of an `ion-select-option` (a property of the element). */
 export const optionValue = (el: { element: Element }): unknown => (el.element as unknown as { value?: unknown }).value;
 
-/** What IonRouterOutlet does each time the page comes on screen (also when Ionic reuses it). */
-export function enterView(wrapper: { vm: unknown }): void {
-  // Ionic keeps the hooks under `onIonViewWillEnter`, on the instance's exposed object (`<script setup>`).
-  type Hooks = { onIonViewWillEnter?: Array<() => void> };
-  const instance = (wrapper.vm as { $: { exposed: Hooks | null; proxy: Hooks } }).$;
-  for (const hook of instance.exposed?.onIonViewWillEnter ?? instance.proxy.onIonViewWillEnter ?? []) hook();
-}
 
 /**
  * The accessible name of an Ionic control: Ionic moves `aria-label` from its host to the native

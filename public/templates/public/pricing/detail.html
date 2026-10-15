@@ -36,7 +36,7 @@
                     </div>
 
                     <div class="flex flex-col gap-2 md:min-w-[16rem]">
-                        <ion-button size="large" color="primary" href="{% if user.is_authenticated %}{{ launcher }}{% else %}{% url 'account_login' %}{% endif %}">
+                        <ion-button size="large" color="primary" href="{{ launcher }}">
                             <span slot="start">{% icon "rocket-outline" %}</span>
                             {% trans "Get Started" %}
                         </ion-button>

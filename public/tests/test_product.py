@@ -76,7 +76,8 @@ def test_features_keeps_its_sections(client):
     assert "Powerful features for modern businesses." in html
     assert html.count('class="ep-bento-item ') == 5
     assert "Ready to get started?" in html
-    assert f'href="{reverse("account_login")}"' in html
+    assert 'href="/launch"' in html
+    assert "/accounts/login/" not in html
 
 
 @pytest.mark.parametrize(

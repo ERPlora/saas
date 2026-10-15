@@ -13,7 +13,7 @@ import { execFileSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { businessIdOf, expect, panelAccount, signIn, test, VIEWPORTS, watchPageErrors } from './fixtures';
+import { businessIdOf, expect, panelAccount, qaAccount, signIn, test, VIEWPORTS, watchPageErrors } from './fixtures';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const SHOTS_DIR = process.env.SHOTS_DIR ?? '/tmp/l2d-shots';
@@ -30,7 +30,7 @@ function seedStore(action: 'seed' | 'clear'): void {
 test.beforeAll(() => seedStore('seed'));
 test.afterAll(() => seedStore('clear'));
 
-const STORE = panelAccount('store');
+const STORE = qaAccount('STORE', panelAccount('store'));
 
 /** Stripe.js as the page would get it from js.stripe.com: records what the page hands it. */
 async function playStripe(page: Page): Promise<void> {
@@ -198,8 +198,9 @@ test.describe('store', () => {
     const stripe = watchStripeRequests(page);
     await page.goto('/store/plans?surface=account');
     const notice = page.getByTestId('store-in-app');
-    await expect(notice).toContainText('The store is not in the app');
-    await expect(notice).toContainText('To change your plan or add modules, go to erplora.com in your browser.');
+    // Already in the browser: why nothing is bought here, not «go to erplora.com in your browser» (audit 2 S-09).
+    await expect(notice).toContainText('Nothing is bought from here');
+    await expect(notice).toContainText('This account was opened from the app, and the app does not sell');
     await expect(page.getByTestId('plan-starter')).toHaveCount(0);
     expect(await page.locator('ion-router-outlet').innerText()).not.toMatch(/€/);
     await page.setViewportSize({ width: 390, height: 844 });

@@ -1,15 +1,16 @@
 <script setup lang="ts">
 // The «Google» row of Account → Security, «Sign-in» (mockups `account.html` «security»; U-63): the Google account
 // the person can sign in with (allauth.headless `account/providers`) and «Disconnect», confirmed with what changes;
-// or, unlinked, «Connect»: the provider's handshake as a synchronous form post (`process=connect`), which comes back
-// to this tab. Google being the only way in (no password: allauth refuses with `no_password`) keeps «Disconnect»
+// or, unlinked, how it gets linked, with no button: Google is linked by signing in once with the Google of the
+// account's email, and the server refuses allauth's `process=connect` (`SocialAccountAdapter.pre_social_login`).
+// Google being the only way in (no password: allauth refuses with `no_password`) keeps «Disconnect»
 // off and says to create a password first. Without Google on the server (`spa-config.googleEnabled`) and nothing
 // linked, there is no row. allauth may ask «Confirm it's you» before disconnecting (ReauthModal).
 import { ConfirmDialog } from '@erplora/ui/components';
 import { HubIcon, toastSuccess } from '@erplora/ui/shell';
-import { ApiError, createAllauthClient, type ProviderAccount, type ProviderRedirectForm, useLiveClient } from '@erplora/ui/sdk';
+import { ApiError, createAllauthClient, type ProviderAccount, useLiveClient } from '@erplora/ui/sdk';
 import { IonButton } from '@ionic/vue';
-import { computed, nextTick, onMounted, shallowRef, useTemplateRef } from 'vue';
+import { computed, onMounted, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { useErrorText } from '../error-text';
@@ -22,8 +23,6 @@ const props = defineProps<{
 }>();
 
 const GOOGLE = 'google';
-/** Where the handshake comes back: this tab. */
-const BACK_HERE = '/account/security';
 
 const { t } = useI18n();
 const { forDialog } = useErrorText();
@@ -73,15 +72,6 @@ async function disconnect(): Promise<void> {
     pending.value = false;
   }
 }
-
-const redirect = shallowRef<ProviderRedirectForm | null>(null);
-const connectForm = useTemplateRef<HTMLFormElement>('connectForm');
-
-async function connect(): Promise<void> {
-  redirect.value = auth.providerRedirectForm({ provider: GOOGLE, callbackUrl: BACK_HERE, process: 'connect' });
-  await nextTick();
-  connectForm.value?.submit();
-}
 </script>
 
 <template>
@@ -103,6 +93,13 @@ async function connect(): Promise<void> {
       >
         {{ $t('accounts.account.google.onlyWayIn') }}
       </p>
+      <p
+        v-if="!google"
+        class="card-text"
+        data-testid="google-how-to-link"
+      >
+        {{ $t('accounts.account.google.howToLink') }}
+      </p>
     </div>
     <ion-button
       v-if="google"
@@ -118,36 +115,7 @@ async function connect(): Promise<void> {
       />
       {{ $t('accounts.account.google.disconnect') }}
     </ion-button>
-    <ion-button
-      v-else
-      data-testid="google-connect"
-      fill="outline"
-      @click="connect"
-    >
-      <HubIcon
-        slot="start"
-        name="ion:logo-google"
-        aria-hidden="true"
-      />
-      {{ $t('accounts.account.google.connect') }}
-    </ion-button>
   </div>
-  <form
-    v-if="redirect"
-    ref="connectForm"
-    data-testid="google-connect-form"
-    :method="redirect.method"
-    :action="redirect.action"
-    hidden
-  >
-    <input
-      v-for="(value, name) in redirect.fields"
-      :key="name"
-      type="hidden"
-      :name="name"
-      :value="value"
-    >
-  </form>
   <ConfirmDialog
     v-model:open="confirming"
     testid="disconnect-google"

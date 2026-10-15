@@ -148,7 +148,7 @@ def test_ga4_never_loads_on_credentials_page_even_with_consent():
     """`send_page_view` sends the full URL the moment gtag loads: on a password-reset page that is
     the one-time token itself."""
     request = _request_with_consent(
-        "/accounts/password/reset/key/abc-def123-token/", analytical_accepted=True
+        "/password/reset/key/abc-def123-token", analytical_accepted=True
     )
 
     assert GA_SCRIPT_MARKER not in _render(
@@ -211,7 +211,7 @@ def test_partial_never_renders_clarity_for_merely_authenticated_user_without_con
 
 
 def test_partial_never_renders_clarity_on_credentials_page_even_when_consented():
-    request = _request_with_consent("/accounts/login/", analytical_accepted=True)
+    request = _request_with_consent("/launch", analytical_accepted=True)
 
     assert CLARITY_MARKER not in _render(
         request, clarity_id="xhn93kfr5b", is_credentials_page=True
@@ -274,14 +274,16 @@ def test_after_explicit_consent_an_anonymous_visitor_gets_both(trackers):
     assert CLARITY_MARKER in html
 
 
-def test_clarity_absent_on_the_login_page_even_with_full_consent(trackers):
+def test_no_tracker_on_the_login_page_even_with_full_consent(trackers, spa_manifest):
+    """The sign-in is the launcher's (``/launch``): an anonymous visitor's credentials, no analytics."""
     client = Client()
     client.post(reverse("cookie_consent_accept"), {"all_groups": "on"})
 
-    response = client.get(reverse("account_login"), follow=True)
+    response = client.get("/launch")
 
     assert response.status_code == 200
     assert CLARITY_MARKER not in response.content.decode()
+    assert GA_SCRIPT_MARKER not in response.content.decode()
 
 
 def test_the_spa_of_a_signed_in_customer_never_loads_a_tracker(

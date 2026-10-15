@@ -14,6 +14,7 @@ import { computed, onMounted, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
+import { LAUNCHER } from '../../../accounts/frontend/paths';
 import { useLiveState } from '../../../frontend/live-state';
 import LoadFailed from '../../../frontend/LoadFailed.vue';
 import type { InvitationOut } from '../../../frontend/sdk-types';
@@ -121,7 +122,7 @@ onIonViewWillEnter(entered);
           class="link-button"
           expand="block"
           fill="clear"
-          @click="router.push('/launch')"
+          @click="router.push(LAUNCHER)"
         >
           <HubIcon
             slot="start"

@@ -159,7 +159,7 @@ test('the password changes with the current one, and only the new one signs in a
 
   const fresh = await browser.newContext({ baseURL: PANEL_URL });
   try {
-    await fresh.request.get('/login');
+    await fresh.request.get('/launch');
     const { cookies } = await fresh.request.storageState();
     const csrf = cookies.find((cookie) => cookie.name === 'csrftoken')?.value ?? '';
     const old = await fresh.request.post('/_allauth/browser/v1/auth/login', { headers: { 'X-CSRFToken': csrf }, data: account });

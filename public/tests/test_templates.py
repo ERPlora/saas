@@ -30,6 +30,7 @@ from django.core.management import call_command
 from django.template import Context, Template
 from django.urls import reverse
 
+from accounts.adapters import SPA_LOGIN
 from accounts.handoff import LAUNCHER
 from public.tests.conftest import PUBLIC_CSS, PUBLIC_JS
 
@@ -363,9 +364,10 @@ def test_no_messages_no_region(client):
 def test_an_anonymous_visitor_is_offered_to_start_free_and_no_demo(client):
     navbar = navbar_of(get_page(client).content.decode())
 
+    # The sign-in is the launcher's (``/launch``), which also signs up.
     assert "Start free" in navbar
-    assert f'href="{reverse("account_login")}"' in navbar
-    assert f'href="{LAUNCHER}"' not in navbar
+    assert f'href="{LAUNCHER}"' in navbar
+    assert "Dashboard" not in navbar
     # The demo CTA is out of scope (block 7, plan §3.b): it is never painted.
     assert "Try the demo" not in navbar
 
@@ -379,7 +381,6 @@ def test_a_customer_with_a_session_is_sent_to_the_launcher(client, ana):
     assert f'href="{LAUNCHER}"' in navbar
     assert "Dashboard" in navbar
     assert "Start free" not in navbar
-    assert f'href="{reverse("account_login")}"' not in navbar
 
 
 @pytest.mark.django_db
@@ -482,7 +483,8 @@ def test_the_literal_path_sweep_catches_what_was_written():
 
 def test_navbar_and_footer_link_only_to_routes_that_exist():
     """Each later lot adds its links in its turn (plan §3.i); until then nothing points at a page
-    that does not exist. An internal link is a `{% url %}`, or the SPA's launcher."""
+    that does not exist. An internal link is a `{% url %}`, or a page of the SPA: its launcher or its
+    sign-in."""
     for name in ("navbar.html", "nav_links.html", "footer.html", "footer_links.html"):
         source = without_comments(
             (PUBLIC_TEMPLATES / "public" / "partials" / name).read_text(
@@ -492,7 +494,7 @@ def test_navbar_and_footer_link_only_to_routes_that_exist():
         for href in re.findall(r'href="([^"]*)"', source):
             assert (
                 href.startswith(("{% url ", "mailto:", "https://", "{% static "))
-                or href == LAUNCHER
+                or href in (LAUNCHER, SPA_LOGIN)
             ), f"{name}: {href}"
 
 

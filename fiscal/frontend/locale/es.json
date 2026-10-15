@@ -1,0 +1,49 @@
+{
+  "fiscal": {
+    "representation": {
+      "eyebrow": "VeriFactu",
+      "title": "Autorización para que ERPlora remita tus facturas",
+      "loadError": "No hemos podido cargar la autorización.",
+      "forbidden": "No tienes permiso para ver la autorización",
+      "state": {
+        "none": "Sin otorgar",
+        "submitted": "En revisión",
+        "approved": "Validada",
+        "returned": "Devuelta",
+        "revoked": "Retirada"
+      },
+      "line": {
+        "none": "Todavía no has firmado la autorización. Descarga el modelo oficial, fírmalo y súbelo desde tu negocio (VeriFactu → Configuración).",
+        "submitted": "Estamos revisando tu autorización. Suele tardar entre 24 y 72 horas.",
+        "approved": "Validada el {date}. ERPlora puede remitir tus facturas a la AEAT en tu nombre.",
+        "returned": "No hemos podido aceptar la autorización que enviaste. Corrige lo que te indicamos y vuelve a subirla desde tu negocio.",
+        "revoked": "La autorización se retiró el {date}. Firma una nueva desde tu negocio para seguir remitiendo con ERPlora."
+      },
+      "sentOn": "Enviada el {date}",
+      "taxpayer": "Obligado tributario",
+      "taxpayerValue": "{name} ({taxId})",
+      "signer": "Firmada por",
+      "reason": {
+        "returned": "Por qué se devolvió",
+        "revoked": "Por qué se retiró"
+      },
+      "received": "Lo que has enviado",
+      "missing": "Qué falta",
+      "newSubmission": "Un envío nuevo",
+      "documents": {
+        "signed_model": "Modelo firmado",
+        "id_copy": "Copia del documento de identidad",
+        "signature_sample": "Muestra de firma",
+        "representation_proof": "Acreditación de la representación"
+      },
+      "history": {
+        "title": "Historial de envíos",
+        "entry": "#{version} · {date} · {outcome}",
+        "superseded": "Sustituida por un envío más reciente",
+        "returnedWhy": "Devuelta: {reason}",
+        "revokedWhy": "Retirada: {reason}"
+      },
+      "manage": "Gestionar en tu negocio"
+    }
+  }
+}

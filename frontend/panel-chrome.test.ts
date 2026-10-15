@@ -44,6 +44,17 @@ describe('panel-chrome.css', () => {
     expect(rule(".app-topbar ion-buttons[slot='start']:has(> [data-testid='topbar-back']) > ion-menu-button")).toBe('display: none;');
   });
 
+  it('on a phone the topbar title takes the row its buttons leave, not a third of it (audit 2 R-20: «Panadería Ló…»)', () => {
+    const phone = media('(max-width: 640px)');
+    expect(rule("ion-header.app-topbar ion-toolbar.ios > ion-buttons[slot]", phone)).toBe('flex: 0 0 auto;');
+  });
+
+  it('an outlined button on a table’s grey bar uses the accessible primary text (audit 2 R-10: «Download Excel» 4.19:1)', () => {
+    expect(rule('.data-table__bar ion-button.button-outline:not(.ion-color)')).toBe(
+      '--color: var(--ep-primary-text, var(--ion-color-primary)); --border-color: var(--ep-primary-text, var(--ion-color-primary));',
+    );
+  });
+
   it('on a phone or a touch screen every target is 44 px', () => {
     const touch = media(TOUCH);
     expect(rule('ion-button, ion-buttons ion-button.in-buttons', touch)).toContain('min-height: 44px');

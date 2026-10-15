@@ -19,6 +19,7 @@ import { toastError, toastSuccess } from '@erplora/ui/shell';
 
 import { LIVE_TIMEOUT_MS } from '../../../frontend/live-state';
 import { BYE, describeCall, errorFrame, flush, ionProps, mountHubs, subId } from '../__tests__/mount-hubs';
+import RepresentationCard from '../../../fiscal/frontend/components/RepresentationCard.vue';
 import BusinessSettings from '../components/BusinessSettings.vue';
 import BusinessSummary from '../components/BusinessSummary.vue';
 import DangerZone from '../components/DangerZone.vue';
@@ -101,6 +102,7 @@ describe('BusinessPage: the frame', () => {
     const header = s.testid('business-header');
     expect(header.get('.biz-header__title').text()).toBe('Panadería López');
     expect(header.get('.biz-header__url').text()).toBe('bakery.erplora.com');
+    expect(header.find('.biz-header__url .host-name').exists()).toBe(true);
     expect(header.get('.status-pill').text()).toBe('Active');
     expect(header.get('.biz-header__meta').text()).toBe('Plan Starter · Owner');
     const open = s.testid('business-open');
@@ -157,6 +159,16 @@ describe('BusinessPage: the frame', () => {
     expect(s.testid('business-error').text()).toContain('We could not load this business');
     expect(s.testid('business-error').text()).toContain('Maybe you no longer have access to it, or there is a connection problem.');
     expect(s.testid('business-retry').exists()).toBe(true);
+  });
+
+  it('a role that may not manage it (a manager’s deep link): no permission, not a connection problem (audit 2 R-19)', async () => {
+    const s = await setup('members', null);
+    s.call.push(errorFrame(subId(s.client, 'hubs.business.get'), 'permission_denied'));
+    await flush();
+    expect(s.testid('business-error').text()).toContain('You do not have permission to manage this business');
+    expect(s.testid('business-error').text()).toContain('Your role does not allow it. If you need it, ask the owner.');
+    expect(s.testid('business-error').text()).not.toContain('connection');
+    expect(s.testid('business-retry').exists()).toBe(false);
   });
 
   it('the stream gone before any answer: an error with «Retry» after the time limit, never a skeleton for ever (R-08)', async () => {
@@ -231,6 +243,69 @@ describe('BusinessPage: the sections', () => {
     const s = await setup('settings');
     expect(s.wrapper.getComponent(BusinessSettings).props('business')).toMatchObject({ id: 'h1' });
     expect(s.wrapper.getComponent(DangerZone).props('business')).toMatchObject({ id: 'h1' });
+  });
+});
+
+describe('BusinessPage: the authorisation for ERPlora to file its invoices (fiscal)', () => {
+  const OP = 'fiscal.representation.status';
+  const NONE = {
+    status: 'none',
+    version: null,
+    submitted_at: null,
+    reviewed_at: null,
+    changed_at: null,
+    reason: '',
+    taxpayer_tax_id: '',
+    taxpayer_name: '',
+    signer_name: '',
+    documents: { signed_model: false, id_copy: false, signature_sample: false, representation_proof: false },
+    history: [],
+  };
+
+  it('the Summary of a Spanish business shows it under its cards, for that business', async () => {
+    const s = await setup('summary');
+    const card = s.wrapper.getComponent(RepresentationCard);
+    expect(card.props()).toMatchObject({ id: 'h1', canManage: true, managing: false });
+    expect(s.client.stream.subscriptions(OP).map((sub) => sub.params)).toEqual([{ id: 'h1' }]);
+    const summary = s.wrapper.getComponent(BusinessSummary).element;
+    expect(summary.compareDocumentPosition(card.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('only on the Summary', async () => {
+    for (const tab of ['members', 'modules', 'settings']) {
+      const s = await setup(tab);
+      expect(s.wrapper.findComponent(RepresentationCard).exists(), tab).toBe(false);
+      s.wrapper.unmount();
+      document.body.innerHTML = '';
+    }
+  });
+
+  it('only for a business in Spain: the AEAT is Spanish', async () => {
+    const s = await setup('summary', { country: 'PT', timezone: 'Europe/Lisbon' });
+    expect(s.wrapper.findComponent(RepresentationCard).exists()).toBe(false);
+  });
+
+  it('not once the business is deleted: its Summary keeps only the plan and the details', async () => {
+    const s = await setup('summary', { status: 'deleting', deletion_requested_at: '2026-10-13T10:00:00Z', purge_after: '2027-01-11T10:00:00Z', can: { ...BUSINESS.can, open: false } });
+    expect(s.wrapper.findComponent(RepresentationCard).exists()).toBe(false);
+  });
+
+  it('«Manage in your business» opens the business, as «Open» does', async () => {
+    const s = await setup('summary');
+    await s.result(s.call, OP, NONE);
+    await s.testid('representation-manage').trigger('click');
+    await flush();
+    expect(s.calls().find((c) => c.path === '/api/hubs/businesses/open')?.body).toEqual({ id: 'h1', next: '/' });
+    expect(navigation.assign).toHaveBeenCalledWith('http://bakery.localhost:8000/auth/login?next=/');
+  });
+
+  it('suspended or not to be opened: the card stays, without «Manage in your business»', async () => {
+    for (const business of [{ status: 'suspended', status_label: 'Suspended' }, { can: { ...BUSINESS.can, open: false } }]) {
+      const s = await setup('summary', business);
+      expect(s.wrapper.getComponent(RepresentationCard).props('canManage')).toBe(false);
+      s.wrapper.unmount();
+      document.body.innerHTML = '';
+    }
   });
 });
 

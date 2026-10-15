@@ -33,6 +33,24 @@
   display: none;
 }
 
+/* Audit 2 R-20 · On a phone the title of a detail page («Panadería López», Back without ☰) was cut to a third of the
+   row: AppTopbar gives both button groups the same share as the title so it stays centred. There the groups take
+   only what their buttons need and the title the rest; a name too long for it still ends in «…», and the page's
+   header says it whole. */
+@media (max-width: 640px) {
+  ion-header.app-topbar ion-toolbar.ios > ion-buttons[slot] {
+    flex: 0 0 auto;
+  }
+}
+
+/* Audit 2 R-10 · An outlined button on a table's grey bar («Download Excel», «Filters», «Close the other sessions»):
+   the primary is 4.19:1 there, the accessible primary text (`--ep-primary-text`) reads ≥ 4.5:1 on it, light and
+   dark. A button with its own colour keeps it. */
+.data-table__bar ion-button.button-outline:not(.ion-color) {
+  --color: var(--ep-primary-text, var(--ion-color-primary));
+  --border-color: var(--ep-primary-text, var(--ion-color-primary));
+}
+
 /* R-13 · On a phone or a touch screen every target is 44 px (W-F6, W-13 of the mockups): buttons of any size,
    icon-only ones also wide, the menu and back buttons, segments and tabs, chips. Ionic's native button inherits
    the host's `min-height`. A button in a toolbar (Back, a dialog's ✕) is sized by Ionic's scoped

@@ -15,23 +15,18 @@
       "agree": "By continuing you agree to our",
       "terms": "Terms",
       "privacy": "Privacy Policy",
-      "failed": "We could not sign you in. Please try again."
+      "failed": "We could not sign you in. Please try again.",
+      "tooManyAttempts": "Too many attempts. Please wait a few minutes and try again.",
+      "codeExpired": "Your code expired or was typed wrong too many times. Sign in again and we will email you a new one."
     },
     "launch": {
-      "title": "Choose a business",
-      "noHubs": "Your account doesn't belong to any business yet. Ask whoever manages one to invite you.",
-      "opening": "Opening your business…",
-      "signOut": "Sign Out",
-      "loadError": "We could not load your businesses. Please try again.",
-      "retry": "Try again",
-      "mfaUnavailable": "Two-factor authentication is not available on this account yet."
+      "retry": "Try again"
     },
     "loginError": {
       "home": "Home",
       "backToHub": "Back to the hub",
       "contactSupport": "Contact Support",
       "backToSignIn": "Back to sign in",
-      "useAnotherAccount": "Use another account",
       "invalidHub": {
         "title": "Invalid sign-in link",
         "badge": "400 · Invalid link",
@@ -44,10 +39,6 @@
         "heading": "You don't have access to this hub",
         "message": "This account is not a member of {hub_host}. Ask whoever manages that hub to invite you, or sign in with the account that has access."
       },
-      "googleNoAccount": {
-        "heading": "No ERPlora account for this Google account",
-        "message": "{account_email} has no ERPlora account. Ask whoever manages your business to invite you, or sign in with the account that has access."
-      },
       "authenticationError": {
         "heading": "We could not sign you in with Google",
         "message": "Something went wrong while signing in with Google. Try again, or sign in with your email and password."
@@ -55,7 +46,44 @@
       "loginCancelled": {
         "heading": "Sign-in cancelled",
         "message": "You cancelled signing in with Google. Try again, or sign in with your email and password."
+      },
+      "googleLinkRefused": {
+        "heading": "Google was not linked",
+        "message": "Google can only be linked by signing in with the Google account of your email."
       }
+    },
+    "verifyEmail": {
+      "title": "Check your email",
+      "sentTo": "We emailed a code to {recipient}",
+      "sent": "We emailed a code to your email address.",
+      "verify": "Verify",
+      "resend": "Send a new code",
+      "resent": "We sent you a new code.",
+      "resendFailed": "We could not send a new code. Please try again later.",
+      "useDifferentEmail": "Use a different email",
+      "signInCodeHelp": "The code lasts 3 minutes. Didn't get it? Sign in again and we will email you a new one."
+    },
+    "passwordReset": {
+      "title": "Reset Password",
+      "subtitle": "Reset your password",
+      "send": "Send Reset Link",
+      "remember": "Remember your password?",
+      "signIn": "Sign in",
+      "checkTitle": "Check Your Email",
+      "checkSubtitle": "Check your email",
+      "sent": "We've sent password reset instructions to your email address. Check your inbox (and spam folder).",
+      "backToLogin": "Back to Login",
+      "noEmail": "Didn't get the email?",
+      "tryAgain": "Try again",
+      "failed": "Something went wrong. Please try again.",
+      "newTitle": "Set New Password",
+      "newSubtitle": "Set a new password",
+      "checking": "Checking your link…",
+      "invalidLink": "This password reset link has expired or is not valid.",
+      "requestNewLink": "Request New Link",
+      "newPassword": "New Password",
+      "change": "Change Password",
+      "done": "Your password has been changed successfully."
     },
     "twoFactor": {
       "title": "Two-factor authentication",
@@ -201,6 +229,7 @@
       "profile": {
         "heading": "Your details",
         "firstName": "First name",
+        "firstNameRequired": "Write your first name.",
         "lastName": "Last name",
         "email": "Email you sign in with",
         "unverified": "Not verified",
@@ -309,6 +338,7 @@
         "title": "Change your password",
         "submit": "Change password",
         "current": "Current password",
+        "wrongCurrent": "The current password is not right.",
         "new": "New password",
         "hint": "At least 8 characters; better long, and without your email.",
         "strength": {
@@ -327,7 +357,7 @@
         "connected": "You can sign in with {account}.",
         "notConnected": "Sign in with your Google account too.",
         "onlyWayIn": "It is your only way to sign in: create a password first.",
-        "connect": "Connect",
+        "howToLink": "To link it, sign in once with the Google account of your email.",
         "disconnect": "Disconnect",
         "disconnectTitle": "Disconnect Google",
         "disconnectMessage": "You will no longer sign in with {account}; you will keep signing in with your email and your password.",

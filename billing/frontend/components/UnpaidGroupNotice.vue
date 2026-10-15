@@ -3,11 +3,12 @@
 // «past-due-two»; audit 2026-10-14, R-15: one banner per business took half the page at 1024 px). One invoice
 // keeps its own banner (UnpaidInvoiceNotice).
 //   - the heading says how many and how much in all («2 unpaid invoices: €72.58»);
-//   - each business on its own line, the suspended ones first: suspended until it is paid, or the day it is
-//     suspended if not paid (7 days of grace, `graceEnd`), with its amount; days, never the hour;
+//   - each business on its own line, the most urgent first (the suspended, then the one suspended soonest; audit 2
+//     S-07): suspended until it is paid, or the day it is suspended if not paid (7 days of grace, `graceEnd`), with
+//     its amount; days, never the hour;
 //   - on the web each line has its action: «Pay the invoice» (PayInvoiceButton); after a declined card
-//     «Change card» (Stripe's Customer Portal) leads and «Pay» waits, described by why. Another account
-//     paying the business: only why;
+//     «Change card» (Stripe's Customer Portal) leads and «Pay» waits, described by why; only the first line's is
+//     filled (audit 2 S-06). Another account paying the business: only why;
 //   - inside the apps, no button nor link: where to pay them (README §4).
 import { InlineFeedback } from '@erplora/ui/components';
 import { HubIcon, useSurface, WebOnly } from '@erplora/ui/shell';
@@ -28,7 +29,8 @@ const props = defineProps<{
 
 const { t, locale } = useI18n();
 const portal = useCardPortal();
-const { isWeb } = useSurface();
+/** The account the app opens in the browser says why it pays nothing, not where (audit 2 S-09). */
+const { isWeb, surface } = useSurface();
 const uid = useId();
 
 const heading = computed(() => {
@@ -40,10 +42,14 @@ const heading = computed(() => {
 
 const isSuspended = (item: UnpaidItem) => item.business?.status === 'suspended';
 
+/** The day the invoice was left unpaid: its 7 days of grace end first. */
+const since = (item: UnpaidItem) => Date.parse(item.business?.unpaid_since ?? item.invoice.date) || Infinity;
+
+/** The most urgent first (audit 2 S-07, as Businesses orders them): the suspended, then the one suspended soonest. */
 const lines = computed(() =>
   [...props.items]
-    .sort((a, b) => Number(isSuspended(b)) - Number(isSuspended(a)))
-    .map((item) => {
+    .sort((a, b) => Number(isSuspended(b)) - Number(isSuspended(a)) || since(a) - since(b))
+    .map((item, index) => {
       const { invoice, business } = item;
       const date = formatDate(graceEnd(business?.unpaid_since), locale.value);
       let key = 'billing.notice.groupPastDueNoDate';
@@ -60,6 +66,8 @@ const lines = computed(() =>
         payerElsewhere: invoice.pay_blocked_reason === 'payer_required',
         hubId: invoice.business.id ?? business?.id ?? null,
         whyId: `unpaid-group-why-${uid}-${invoice.id}`,
+        /** Only the most urgent line's way out is filled (audit 2 S-06). */
+        first: index === 0,
       };
     }),
 );
@@ -111,6 +119,7 @@ const anyDeclined = computed(() => lines.value.some((line) => line.declined));
           <ion-button
             v-if="line.declined && line.hubId"
             size="small"
+            :fill="line.first ? 'solid' : 'outline'"
             data-testid="unpaid-group-change-card"
             :disabled="!!portal.opening.value"
             @click="line.hubId && portal.open(line.hubId)"
@@ -132,7 +141,7 @@ const anyDeclined = computed(() => lines.value.some((line) => line.declined));
           <PayInvoiceButton
             size="small"
             :invoice="line.invoice"
-            :fill="line.declined ? 'outline' : 'solid'"
+            :fill="line.declined || !line.first ? 'outline' : 'solid'"
             :described-by="line.declined ? line.whyId : undefined"
           />
         </div>
@@ -147,7 +156,13 @@ const anyDeclined = computed(() => lines.value.some((line) => line.declined));
         <span
           class="unpaid-group__why"
           data-testid="unpaid-group-app"
-        >{{ anyDeclined ? $t('billing.notice.appDeclinedMany') : $t('billing.notice.appMany') }}</span>
+        >{{
+          surface === 'account'
+            ? $t('billing.notice.account')
+            : anyDeclined
+              ? $t('billing.notice.appDeclinedMany')
+              : $t('billing.notice.appMany')
+        }}</span>
       </template>
     </WebOnly>
   </InlineFeedback>

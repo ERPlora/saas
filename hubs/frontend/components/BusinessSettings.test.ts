@@ -110,10 +110,16 @@ describe('BusinessSettings', () => {
     expect(ionProps(s.get('settings-name'), 'value')).toEqual({ value: 'Nuevo nombre' });
   });
 
-  it('once ready the country is read-only and says why (its invoices belong to one country)', async () => {
+  it('once ready the country is read-only text with why under it, not a disabled select (audit 2 R-31)', async () => {
     const s = await setup(undefined, { ...BUSINESS, country_locked: true });
-    expect(ionProps(s.get('settings-country'), 'disabled')).toEqual({ disabled: true });
-    expect(s.get('settings-country-locked').text()).toBe('The country cannot change once the business is ready: its invoices belong to one country.');
+    const country = s.get('settings-country');
+    expect(country.element.tagName).not.toBe('ION-SELECT');
+    expect(country.text()).toContain('Country');
+    expect(country.text()).toContain('Spain');
+    // Its reason right under it, not under the next row.
+    expect(country.get('[data-testid="settings-country-locked"]').text()).toBe(
+      'The country cannot change once the business is ready: its invoices belong to one country.',
+    );
     expect(ionProps(s.get('settings-name'), 'disabled')).toEqual({ disabled: false });
   });
 

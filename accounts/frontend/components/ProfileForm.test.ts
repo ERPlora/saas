@@ -62,6 +62,21 @@ describe('ProfileForm', () => {
     expect(toastSuccess).toHaveBeenCalledWith('Changes saved');
   });
 
+  it('the first name is required: blank, it is said under the field and nothing is saved (audit 2 S-10)', async () => {
+    const s = await setup();
+    await typeInto(s.q('profile-first-name'), '   ');
+    expect(ionProps(s.q('profile-save'), 'disabled')).toEqual({ disabled: true });
+    expect(ionProps(s.q('profile-first-name'), 'errorText')).toEqual({ errorText: 'Write your first name.' });
+    expect(s.q('profile-first-name')?.classList.contains('ion-invalid')).toBe(true);
+    s.q('profile-save')?.click();
+    await flush();
+    expect(s.calls()).toEqual([]);
+    // The last name may be cleared.
+    await typeInto(s.q('profile-first-name'), 'Laura');
+    await typeInto(s.q('profile-last-name'), '');
+    expect(ionProps(s.q('profile-save'), 'disabled')).toEqual({ disabled: false });
+  });
+
   it('says a refused name under its field', async () => {
     const s = await setup(profile(), () =>
       apiError(422, 'invalid_payload', 'Invalid payload', { fields: { first_name: 'Ensure this value has at most 150 characters.' } }),

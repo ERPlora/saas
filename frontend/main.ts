@@ -1,6 +1,7 @@
 // Entry of the SaaS SPA (`LIVE["spa"]["entry"]`), the same as hub-next's: app routes and catalogues →
 // shell, live client, session (`base.session.me`, a plain query: embedded by `base/spa.py`, else
-// `GET /api/me`), mount. The SaaS has its own login: the auth gate sends to the SPA route `/login`.
+// `GET /api/me`), mount. The SaaS has its own login: the auth gate sends to the launcher, `/launch`,
+// where the sign-in form is.
 // 🔴 Import order (hub#1060): the shell barrel goes first so its boot hooks wrap `customElements.define`
 // before anything loads `@ionic/vue` (the SDK does). Vite hoists eager globs above everything, so an
 // app's `routes.ts` only imports types; its pages load with `() => import(…)`. Guards: main.test.ts.
@@ -38,16 +39,18 @@ import './panel-chrome.css';
 import { type Ref, ref } from 'vue';
 import { isNavigationFailure, type RouteRecordRaw } from 'vue-router';
 
+import { LAUNCHER } from '../accounts/frontend/paths';
 import { OPERATION_ROUTES } from './generated/operation-routes';
 import en from './locale/en.json';
 import es from './locale/es.json';
 import type { SessionMeOut } from './sdk-types';
 import { installSkipLink } from './skip-link';
 
-/** Where the auth gate sends a visitor without a session (it appends `next=`). */
-const LOGIN_PATH = '/login';
 /** «Help» of the user menu. */
 const HELP_PATH = '/help';
+/** The panel's home (the shell's Home: the menu's brand, «not found», «not in the app»): `/` is the public web,
+ *  a Django page the SPA does not have (audit 2 R-18). */
+const HOME_PATH = '/businesses';
 /** The SaaS's entries of the user menu, before Help and Sign out (mockups README §3). */
 const USER_MENU_ITEMS: ShellUserMenuItem[] = [
   { id: 'account', labelKey: 'saas.userMenu.account', icon: 'ion:person-outline', to: '/account' },
@@ -58,7 +61,8 @@ const USER_MENU_ITEMS: ShellUserMenuItem[] = [
  * The CSP's `script-src` still decides page by page (the account surface names no Stripe, `base/csp.py`).
  */
 const TRUSTED_SCRIPT_ORIGINS = ['https://js.stripe.com'] as const;
-/** The entry's own texts (the user menu), merged with the apps' catalogues under `saas`. */
+/** The entry's own texts (the user menu), merged with the apps' catalogues under `saas`; and, at the top, the shell's
+ *  texts the panel says otherwise (`notFound`: the panel, not a hub; audit 2 R-18). */
 const ENTRY_CATALOGUES = { 'frontend/locale/en.json': en, 'frontend/locale/es.json': es };
 
 /** An app's `frontend/routes.ts` default-exports its routes → pages, and nothing else. */
@@ -151,7 +155,7 @@ function keepThemeInAccount(client: LiveClient, session: Ref<SessionMeOut | unde
 async function signOut(auth: AllauthClient): Promise<void> {
   const state = await auth.logout();
   if (state.authenticated) throw new Error('saas: still signed in after signing out');
-  location.assign(LOGIN_PATH);
+  location.assign(LAUNCHER);
 }
 
 /** Boots the shell and mounts it on `#app`; no mount when the gate sent the page to the login. */
@@ -169,10 +173,14 @@ export async function boot(
     ...session,
     routes: appRoutes(routeFiles),
     messages: appMessages({ ...ENTRY_CATALOGUES, ...catalogues }),
-    loginPath: LOGIN_PATH,
+    loginPath: LAUNCHER,
+    homePath: HOME_PATH,
     surface: serverSurface(doc),
     userMenu: { items: USER_MENU_ITEMS, helpPath: HELP_PATH, logout: () => signOut(auth) },
     trustedScriptOrigins: TRUSTED_SCRIPT_ORIGINS,
+    // AA contrast (audit 2 §5.1, option A): the primary solid at 4.87:1 with white, and dark text on the
+    // dark theme's (`data-ep-contrast="aa"`, packages/ui theme/variables.css).
+    contrast: 'aa',
   });
   provideLiveClient(client, app);
   try {
@@ -181,13 +189,13 @@ export async function boot(
     if (isNavigationFailure(failure)) return;
     throw failure;
   }
-  installSkipLink(doc, { en: en.saas.skipLink, es: es.saas.skipLink });
+  installSkipLink(doc, { en: en.saas.skipLink, es: es.saas.skipLink }, { en: en.saas.skipNav, es: es.saas.skipNav });
   app.mount('#app');
 }
 
 void boot(
-  import.meta.glob<AppRoutes>('../{accounts,hubs,billing}/frontend/routes.ts', { eager: true }),
-  import.meta.glob<AppCatalogue>('../{accounts,hubs,billing}/frontend/locale/*.json', {
+  import.meta.glob<AppRoutes>('../{accounts,hubs,billing,fiscal}/frontend/routes.ts', { eager: true }),
+  import.meta.glob<AppCatalogue>('../{accounts,hubs,billing,fiscal}/frontend/locale/*.json', {
     eager: true,
     import: 'default',
   }),

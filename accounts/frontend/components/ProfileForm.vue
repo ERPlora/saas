@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Account → Profile, «Your details» (mockups `account.html` «profile»): the avatar with «Change photo»
 // (PhotoPicker), first and last name (`accounts.profile.update`, «Save changes» waits for a change and says
-// «Changes saved»), and the email the account signs in with, read here and changed only with its code
+// «Changes saved»; the first name is required, audit 2 S-10), and the email the account signs in with, read here and changed only with its code
 // (EmailChangeFlow): «Change»; «Verify» for an address never proven; and, while a change waits for its code,
 // a notice to type it. The names follow the account when it changes elsewhere, unless the person is typing.
 import { InlineFeedback, StatusPill, UserAvatar } from '@erplora/ui/components';
@@ -27,8 +27,13 @@ const update = useCommand('accounts.profile.update');
 const firstName = shallowRef(props.profile.first_name);
 const lastName = shallowRef(props.profile.last_name);
 const dirty = computed(() => firstName.value !== props.profile.first_name || lastName.value !== props.profile.last_name);
-/** The per-field messages of the last refusal (a 422). */
-const fieldErrors = computed(() => (update.error.value?.status === 422 ? (update.error.value.fields ?? {}) : {}));
+/** The first name is required (audit 2 S-10); the last name may be cleared. */
+const firstMissing = computed(() => !firstName.value.trim());
+/** The per-field messages of the last refusal (a 422), and the first name missing, said at once. */
+const fieldErrors = computed<Readonly<Record<string, string>>>(() => ({
+  ...(update.error.value?.status === 422 ? (update.error.value.fields ?? {}) : {}),
+  ...(firstMissing.value ? { first_name: t('accounts.account.profile.firstNameRequired') } : {}),
+}));
 
 /** What the names were when the page last took them from the account: typing is what differs from it. */
 let shown = { first: props.profile.first_name, last: props.profile.last_name };
@@ -44,6 +49,7 @@ watch(
 );
 
 async function save(): Promise<void> {
+  if (firstMissing.value) return;
   try {
     const saved = await update.run({ first_name: firstName.value.trim(), last_name: lastName.value.trim() });
     shown = { first: saved.first_name, last: saved.last_name };
@@ -182,7 +188,7 @@ function openEmail(mode: 'change' | 'verify' | 'resume'): void {
       <div class="card-actions">
         <ion-button
           data-testid="profile-save"
-          :disabled="!dirty || update.pending.value"
+          :disabled="!dirty || firstMissing || update.pending.value"
           @click="save"
         >
           <ion-spinner

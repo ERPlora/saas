@@ -45,6 +45,29 @@ describe('LoadFailed', () => {
     expect(wrapper.find('[data-testid="launch-retry"]').exists()).toBe(true);
   });
 
+  it('a refusal for the role (403, `permission_denied`) says so, never «check your connection», and offers no «Retry» (audit 2 R-19)', () => {
+    for (const error of [{ code: 'permission_denied', status: 0 }, { code: 'forbidden', status: 403 }]) {
+      const wrapper = mountIt({ error, heading: 'We could not load this business', message: 'Maybe the connection dropped.' });
+      expect(wrapper.text()).toContain('You do not have permission to see this');
+      expect(wrapper.text()).toContain('Your role does not allow it. If you need it, ask the owner.');
+      expect(wrapper.text()).not.toContain('connection');
+      expect(wrapper.find('[data-testid="load-failed-retry"]').exists()).toBe(false);
+    }
+  });
+
+  it('a page names what may not be seen; in Spanish too', () => {
+    const wrapper = mountIt({ error: { code: 'permission_denied', status: 0 }, forbiddenHeading: 'No tienes permiso para gestionar este negocio' }, 'es');
+    expect(wrapper.text()).toContain('No tienes permiso para gestionar este negocio');
+    expect(wrapper.text()).toContain('Tu rol no lo permite. Si lo necesitas, pídeselo al propietario.');
+    expect(mountIt({ error: { code: 'permission_denied', status: 0 } }, 'es').text()).toContain('No tienes permiso para ver esto');
+  });
+
+  it('any other failure keeps the connection hint and «Retry»', () => {
+    const wrapper = mountIt({ error: { code: 'network_error', status: 0 } });
+    expect(wrapper.text()).toContain('Check your connection and try again.');
+    expect(wrapper.find('[data-testid="load-failed-retry"]').exists()).toBe(true);
+  });
+
   it('emits «retry»', async () => {
     const wrapper = mountIt();
     await wrapper.get('[data-testid="load-failed-retry"]').trigger('click');
