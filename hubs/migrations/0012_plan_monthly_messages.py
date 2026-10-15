@@ -6,7 +6,7 @@ message) and ``whatsapp_messages_per_month``. 0 = none, never «unlimited». The
 counts them.
 
 The columns are new, so every row already in production reads 0 after ``AddField``; ``RunPython`` gives the
-plans the seed (``sync_hub_plans``, gone since 0013) carried the figures of that day, frozen here as literals (a migration is
+plans the seed (``sync_hub_plans``, empty since 0013) carried the figures of that day, frozen here as literals (a migration is
 history: a later change of the seed never rewrites what this one did). Standard doubles Starter;
 ``payment-test`` reads as Starter; the upgrade-only tiers (``pro``, ``enterprise``, ``max``) get the figures of
 the old stack (ADR-0474, levels pro and enterprise). Only a row that exists is written.

@@ -17,7 +17,7 @@ valid catalogue. Idempotent; a database without the rows is left as it is.
 
 from django.db import migrations
 
-#: The copy and the resource ladder the seed (``sync_hub_plans``, gone since 0013) carried on 2026-10-15, frozen here: a
+#: The copy and the resource ladder the seed (``sync_hub_plans``, empty since 0013) carried on 2026-10-15, frozen here: a
 #: migration is history, so a later change of the seed never rewrites what this one did.
 COPY = {
     "free": {

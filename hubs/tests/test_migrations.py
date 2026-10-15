@@ -300,7 +300,7 @@ def _three_plans():
 
 @pytest.mark.django_db
 class TestTheCardsReadTheNewCopy:
-    """The seed of the time (``sync_hub_plans``, gone since 0013) never overwrote a row, so the rows seeded before
+    """The seed of the time (``sync_hub_plans``, empty since 0013) never overwrote a row, so the rows seeded before
     2026-10-15 kept naming the engine under the database. The migration puts production right on deploy: the
     copy and the ladder of the three plans as the seed says; the upgrade-only tiers stay as they are."""
 
@@ -395,7 +395,7 @@ def _imported_modules(module) -> set[str]:
 
 def test_0011_is_frozen_and_reads_nothing_of_the_seed():
     """A migration is history: it carries its own values, so no later change of the code rewrites what it did (the
-    seed it was written next to, ``sync_hub_plans``, is gone since 0013)."""
+    seed it was written next to, ``sync_hub_plans``, is empty since 0013)."""
     assert [name for name in _imported_modules(_three_plans()) if name.startswith("hubs")] == []
 
 
@@ -495,7 +495,6 @@ def test_hubs_migrates_back_before_the_monthly_messages_and_forward_again(plans)
 
 from decimal import Decimal  # noqa: E402
 
-from django.core.management.base import CommandError  # noqa: E402
 
 PLANS_IN_THE_DATABASE = "0013_plans_in_the_database"
 #: What every paid plan shares on the axes the cards do not compare.
@@ -776,10 +775,23 @@ class TestThePlansLiveInTheDatabase:
         """A migration is history: its values are literals, so no later change of the code rewrites them."""
         assert [name for name in _imported_modules(_plans_in_the_database()) if name.startswith("hubs")] == []
 
-    def test_the_seed_command_is_gone(self):
-        """The plans are kept in the admin; there is no command that seeds or overwrites them."""
-        with pytest.raises(CommandError, match="Unknown command"):
-            call_command("sync_hub_plans", stdout=StringIO())
+    @pytest.mark.parametrize("args", [(), ("--update",)])
+    def test_the_seed_command_seeds_nothing(self, args):
+        """The plans are kept in the admin. ``sync_hub_plans`` stays only as an empty command, because the deploy's
+        ``saas-migrate`` still calls it until aws#4 is applied: it writes nothing, ``--update`` included."""
+        from hubs.models import Plan
+
+        before = sorted(Plan.objects.values_list("slug", "updated_at"))
+        out, err = StringIO(), StringIO()
+
+        call_command("sync_hub_plans", *args, stdout=out, stderr=err)
+
+        assert sorted(Plan.objects.values_list("slug", "updated_at")) == before
+        assert "Plans live in the database; nothing to seed (hubs/0013)." in out.getvalue()
+        if args:
+            assert "--update is ignored" in err.getvalue()
+        else:
+            assert err.getvalue() == ""
 
 
 @pytest.mark.django_db

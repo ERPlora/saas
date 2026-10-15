@@ -2,7 +2,7 @@
 
 The plans live only in the database (Ioan, 2026-10-15): migration ``hubs/0013`` is the seed of a new database
 and puts production's rows right once; there is no command that seeds or overwrites them (``sync_hub_plans`` is
-gone). pytest builds its database by running every migration, so these tests read the catalogue a new
+an empty command until the deploy stops calling it). pytest builds its database by running every migration, so these tests read the catalogue a new
 database starts with.
 
 Ported from ERPlora/saas ``hubs/subscriptions/tests/test_sync_hub_plans.py`` (origin/develop),
