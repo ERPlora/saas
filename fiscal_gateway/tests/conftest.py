@@ -8,10 +8,14 @@ self-signed and generated in the test: never a real one.
 The XML fixtures are copied byte for byte from ``hub-next/apps/verifactu/tests/fixtures/``: an
 envelope the Hub sent to the AEAT's preproduction and the AEAT's answers to a submission and to a
 query.
+
+``business`` is the business ``HUB`` (slug ``HUB_SLUG``) as the SaaS knows it: the gateway presents
+for businesses it knows only.
 """
 
 import base64
 import datetime as dt
+import uuid
 from pathlib import Path
 
 import pytest
@@ -23,6 +27,9 @@ from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID, ObjectIdentifier
 
 FIXTURES = Path(__file__).parent / "fixtures"
 PASSWORD = "secret"
+#: The business the Hub presents for: its registry UUID (lowercase) and its slug.
+HUB = "0199e8a0-0000-7000-8000-000000000001"
+HUB_SLUG = "bar-manolo"
 
 # qcStatements (RFC 3739, 1.3.6.1.5.5.7.1.3) holding one QCStatement: id-etsi-qcs-QcType
 # (0.4.0.1862.1.6) with id-etsi-qct-eseal (0.4.0.1862.1.6.2), DER-encoded (ETSI EN 319 412-5).
@@ -101,3 +108,13 @@ def no_seal(settings):
     settings.FISCAL_SEAL_NEXT_P12_BASE64 = ""
     settings.FISCAL_SEAL_NEXT_PASSWORD = ""
     return settings
+
+
+@pytest.fixture
+def business(db):
+    """The business ``HUB`` (slug ``HUB_SLUG``), as the SaaS knows it."""
+    from hubs.models import Hub
+
+    return Hub.objects.create(
+        id=uuid.UUID(HUB), slug=HUB_SLUG, name="Bar Manolo", country="ES"
+    )

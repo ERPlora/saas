@@ -210,7 +210,10 @@ def test_a_body_with_a_broken_length_is_a_bad_request(business, length):
 def test_a_body_longer_than_the_ceiling_is_413_whatever_its_length_says(business, length):
     """Under ASGI the length may be understated, or absent with a chunked body (HTTP reads a request without
     one as empty, the test client's empty POST among them): what is read is what counts."""
-    request = RequestFactory().post(path_of(business.id), b"{}", content_type="application/json")
+    # Headers that may be signed (a fresh timestamp and a signature), or it is refused before it is read.
+    request = RequestFactory().post(
+        path_of(business.id), b"{}", content_type="application/json", headers=plausible_headers()
+    )
     request._stream = io.BytesIO(b" " * (internal.MAX_BODY_BYTES + 1))
     if length is None:
         del request.META["CONTENT_LENGTH"]
@@ -221,6 +224,71 @@ def test_a_body_longer_than_the_ceiling_is_413_whatever_its_length_says(business
 
     assert response.status_code == 413
     assert json.loads(response.content)["error"]["code"] == "fiscal.body_too_large"
+
+
+def plausible_headers(**changes) -> dict[str, str]:
+    """A fresh timestamp and a signature that only the body could prove wrong."""
+    return {"X-Erplora-Timestamp": str(int(time.time())), "X-Erplora-Signature": "0" * 64, **changes}
+
+
+class UnreadableBody(io.RawIOBase):
+    """A body the view must never read: reading it fails the test."""
+
+    def readable(self):
+        return True
+
+    def readinto(self, buffer):
+        raise AssertionError("the body was read")
+
+
+@pytest.mark.parametrize(
+    "headers",
+    [
+        {},
+        {"X-Erplora-Timestamp": str(int(time.time()))},
+        {"X-Erplora-Signature": "0" * 64},
+        {"X-Erplora-Signature-V2": "0" * 64},
+        plausible_headers(**{"X-Erplora-Timestamp": str(int(time.time()) - 3600)}),
+        plausible_headers(**{"X-Erplora-Timestamp": str(int(time.time()) + 3600)}),
+        plausible_headers(**{"X-Erplora-Timestamp": "soon"}),
+        plausible_headers(**{"X-Erplora-Timestamp": "9" * 5000}),
+    ],
+    ids=[
+        "no headers",
+        "no signature",
+        "no timestamp",
+        "v2 without a timestamp",
+        "stale",
+        "future",
+        "not a time",
+        "too many digits",
+    ],
+)
+def test_an_unsigned_or_stale_upload_is_401_before_its_body_is_read(business, headers):
+    """Up to 32 MB are read only for a call that may be signed: a missing signature or a timestamp out of the
+    window is refused from its headers."""
+    request = RequestFactory().post(path_of(business.id), b"{}", content_type="application/json", headers=headers)
+    request._stream = UnreadableBody()
+    request.META["CONTENT_LENGTH"] = str(30 * 1024 * 1024)
+
+    response = internal.representation(request, business.id)
+
+    assert response.status_code == 401
+    assert json.loads(response.content)["error"]["code"] == "unauthorized"
+    assert not RepresentationGrant.objects.exists()
+
+
+def test_a_call_that_may_be_signed_is_read_and_then_verified(business):
+    """The early refusal looks at the headers only: a forged signature with a fresh timestamp is read and
+    refused by the signature itself."""
+    request = RequestFactory().post(
+        path_of(business.id), json.dumps(submission()), content_type="application/json", headers=plausible_headers()
+    )
+
+    response = internal.representation(request, business.id)
+
+    assert response.status_code == 401
+    assert not RepresentationGrant.objects.exists()
 
 
 def test_the_rest_of_the_internal_api_keeps_django_s_ceiling(client, business):

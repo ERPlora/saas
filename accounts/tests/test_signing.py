@@ -215,3 +215,58 @@ class TestVerifyRequest:
         headers = signed_headers("POST", "/internal/auth/redeem", BODY, NOW - 11, SECRET)
 
         assert verify_request(self._request(rf, headers), now=NOW) is False
+
+
+# --- A timestamp no clock writes, and the headers alone (T7b) ---------------------------------------
+
+from accounts.signing import may_be_signed  # noqa: E402
+
+
+@pytest.mark.parametrize("timestamp", ["9" * 5000, "1" * 21], ids=["beyond Python's 4300 digits", "21 digits"])
+def test_a_timestamp_of_too_many_digits_is_refused_without_raising(timestamp):
+    """``int()`` raises beyond 4300 digits: such a header would be a 500 on every ``/internal`` door."""
+    assert verify(BODY, timestamp, _expected(NOW), secret=SECRET, now=NOW) is False
+    headers = {TIMESTAMP_HEADER: timestamp, SIGNATURE_V2_HEADER: _expected_v2(NOW)}
+    assert verify_signed("PUT", PATH, BODY, headers, secrets=[SECRET], now=NOW) is False
+
+
+FRESH = str(NOW)
+SIGNATURE = "0" * 64
+
+
+@pytest.mark.parametrize(
+    ("headers", "expected"),
+    [
+        ({TIMESTAMP_HEADER: FRESH, SIGNATURE_HEADER: SIGNATURE}, True),
+        ({TIMESTAMP_HEADER: FRESH, SIGNATURE_V2_HEADER: SIGNATURE}, True),
+        ({"x-erplora-timestamp": FRESH, "x-erplora-signature-v2": SIGNATURE}, True),
+        ({TIMESTAMP_HEADER: str(NOW - 300), SIGNATURE_HEADER: SIGNATURE}, True),
+        ({}, False),
+        ({TIMESTAMP_HEADER: FRESH}, False),
+        ({TIMESTAMP_HEADER: FRESH, SIGNATURE_HEADER: ""}, False),
+        ({SIGNATURE_HEADER: SIGNATURE, SIGNATURE_V2_HEADER: SIGNATURE}, False),
+        ({TIMESTAMP_HEADER: str(NOW - 301), SIGNATURE_HEADER: SIGNATURE}, False),
+        ({TIMESTAMP_HEADER: str(NOW + 301), SIGNATURE_HEADER: SIGNATURE}, False),
+        ({TIMESTAMP_HEADER: "soon", SIGNATURE_HEADER: SIGNATURE}, False),
+        ({TIMESTAMP_HEADER: "١٨٠٠٠٠٠٠٠٠", SIGNATURE_HEADER: SIGNATURE}, False),
+        ({TIMESTAMP_HEADER: "9" * 5000, SIGNATURE_HEADER: SIGNATURE}, False),
+    ],
+    ids=[
+        "v1",
+        "v2",
+        "any case",
+        "at the edge of the window",
+        "nothing",
+        "no signature",
+        "an empty signature",
+        "no timestamp",
+        "stale",
+        "future",
+        "not a time",
+        "non-ascii digits",
+        "too many digits",
+    ],
+)
+def test_may_be_signed_judges_the_headers_alone(headers, expected):
+    """Whether a body is worth reading: only it can prove the signature, but the headers can rule it out."""
+    assert may_be_signed(headers, now=NOW, max_age=300) is expected

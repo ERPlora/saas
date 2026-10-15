@@ -15,3 +15,7 @@ class FiscalGatewayConfig(LiveAppConfig):
     kind = "platform"
     verbose_name = _("Fiscal gateway")
     default_auto_field = "django.db.models.BigAutoField"
+
+    def ready(self):
+        super().ready()
+        from fiscal_gateway import checks  # noqa: F401  (registers the check of PLATFORM_HUB_SLUG)

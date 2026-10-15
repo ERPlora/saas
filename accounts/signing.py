@@ -15,7 +15,9 @@ only. A call is verified (``verify_signed``, ``verify_request``) by v2 when it c
 by v2 alone: naming v2 and failing it is refused even if v1 passes (no downgrade); without v2, by v1.
 Each signature is checked against every live secret (``live_secrets``): ``INTERNAL_SHARED_SECRET``
 and, during a rotation, ``INTERNAL_SHARED_SECRET_PREVIOUS`` (empty otherwise). A timestamp more than
-``INTERNAL_SIGNATURE_MAX_AGE_SECONDS`` (five minutes) away is refused.
+``INTERNAL_SIGNATURE_MAX_AGE_SECONDS`` (five minutes) away is refused, and so is one that is not 1 to 20
+ASCII digits (``int()`` raises beyond 4300: a 500 on every door). ``may_be_signed`` judges the headers
+alone, so a view that reads a large body itself refuses before reading it what can never verify.
 
 Rotation, with hub-next taking the same steps (each one deployed to both projects before the next):
 1. ``INTERNAL_SHARED_SECRET_PREVIOUS`` = the new secret: both accept it, both still sign with the old.
@@ -29,12 +31,15 @@ lane); once both sides sign v2, a call without it is refused (v1 dropped here an
 
 import hashlib
 import hmac
+import re
 import time
 from collections.abc import Iterable, Mapping
 
 from django.conf import settings
 
 DEFAULT_MAX_AGE_SECONDS = 300
+# A unix time in seconds, ASCII digits only (``str.isdigit`` would take other scripts' digits).
+_TIMESTAMP = re.compile(r"[0-9]{1,20}")
 TIMESTAMP_HEADER = "X-Erplora-Timestamp"
 SIGNATURE_HEADER = "X-Erplora-Signature"
 SIGNATURE_V2_HEADER = "X-Erplora-Signature-V2"
@@ -74,7 +79,7 @@ def live_secrets() -> tuple[str, ...]:
 
 def _sent_at(timestamp: str | None, now: int, max_age: int) -> int | None:
     """The timestamp as an int, or ``None`` if it is missing, malformed or outside the window."""
-    if not timestamp or not (timestamp.isascii() and timestamp.isdigit()):
+    if not timestamp or not _TIMESTAMP.fullmatch(timestamp):
         return None
     sent_at = int(timestamp)
     return sent_at if abs(now - sent_at) <= max_age else None
@@ -152,6 +157,14 @@ def verify_signed(
     return _matches(
         lambda key: sign_v2(method, path, body, sent_at, key), signature_v2, secrets
     )
+
+
+def may_be_signed(headers: Mapping[str, str], *, now: int, max_age: int = DEFAULT_MAX_AGE_SECONDS) -> bool:
+    """Whether ``headers`` leave room for a valid signature: a timestamp within ``max_age`` of ``now`` and
+    a signature, v1 or v2. Only the body can prove it; this spares reading the body when they cannot."""
+    if _sent_at(_header(headers, TIMESTAMP_HEADER), now, max_age) is None:
+        return False
+    return bool(_header(headers, SIGNATURE_HEADER) or _header(headers, SIGNATURE_V2_HEADER))
 
 
 def verify_request(request, *, now: int | None = None) -> bool:
