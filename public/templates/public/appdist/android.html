@@ -48,7 +48,7 @@
               <p class="font-mono text-xs uppercase tracking-wider text-fg/55 m-0 mb-2">{% trans "On your Android phone or tablet" %}</p>
               <ion-card-title class="mb-3">{% trans "Open your hub in the browser" %}</ion-card-title>
               <p class="text-sm text-fg/60 m-0 mb-6">{% trans "Your hub has its own web address and it works in Chrome on Android, full size. Add it to your home screen and it opens like an app. Everything works there except printing to a thermal printer, which is the one thing that needs the installed app." %}</p>
-              <ion-button class="mt-auto" href="{% url 'account_login' %}" expand="block">
+              <ion-button class="mt-auto" href="/launch" expand="block">
                 {% trans "Create your free hub" %}
                 <span slot="end">{% icon "lucide:arrow-right" size=15 %}</span>
               </ion-button>
@@ -153,7 +153,7 @@
         <p class="ep-section-sub">{% trans "The app opens your hub, so start there: create it free, then install the app on the device at the counter. No credit card." %}</p>
       </header>
       <div class="flex flex-wrap justify-center gap-3">
-        <ion-button href="{% url 'account_login' %}">
+        <ion-button href="/launch">
           {% trans "Create your free hub" %}
           <span slot="end">{% icon "lucide:arrow-right" size=15 %}</span>
         </ion-button>

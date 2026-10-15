@@ -106,7 +106,7 @@ describe('PasswordModal', () => {
     await fill(s);
     s.q('password-change-submit')?.click();
     await flush();
-    expect(leave).toHaveBeenCalledWith('/login');
+    expect(leave).toHaveBeenCalledWith('/launch');
   });
 
   it('speaks Spanish', async () => {

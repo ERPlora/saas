@@ -1,5 +1,5 @@
-"""URLconf of saas-next: Django's own prefixes first (allauth and its headless API, the jump to a hub,
-the internal redeem, the API, admin, health), then the SPA for every other path."""
+"""URLconf of saas-next: Django's own prefixes first (allauth's headless API, Google's redirect URI, the jump
+to a hub, the internal redeem, the API, admin, health), then the SPA for every other path."""
 
 import json
 
@@ -26,7 +26,7 @@ def test_healthz_answers_without_the_database(client):
 @pytest.mark.usefixtures("spa_manifest")
 def test_the_root_is_the_public_landing_not_the_launcher(client):
     """Plan §3.c: the landing takes `/` (L7); until then it redirected to `/launch`. The name
-    `home` stays the project's way to reverse `/` (allauth's templates, the error pages)."""
+    `home` stays the project's way to reverse `/` (the public web's navbar, footer and error pages)."""
     response = client.get("/", HTTP_HOST=HOST)
 
     assert response.status_code == 200
@@ -45,21 +45,16 @@ def test_the_django_launcher_address_leads_to_the_vue_launcher(client):
 @pytest.mark.parametrize(
     ("path", "name"),
     [
-        ("/accounts/login/", "account_login"),
-        ("/accounts/logout/", "account_logout"),
         ("/hub-login/", "hub_login"),
         ("/launch/", "launch"),
         ("/internal/auth/redeem", "internal_auth_redeem"),
         ("/internal/hubs/0199c3a0-0000-7000-8000-000000000001/representation", "internal_hub_representation"),
         ("/internal/representation/model", "internal_representation_model"),
         ("/csp-report/", "csp-report"),
-        ("/auth/google/login/", "google_login"),
         ("/auth/google/callback/", "google_callback"),
-        ("/accounts/3rdparty/", "socialaccount_connections"),
-        ("/accounts/3rdparty/login/cancelled/", "socialaccount_login_cancelled"),
-        ("/accounts/3rdparty/login/error/", "socialaccount_login_error"),
         ("/_allauth/browser/v1/auth/login", "login"),
         ("/_allauth/browser/v1/auth/session", "current_session"),
+        ("/_allauth/browser/v1/auth/provider/redirect", "redirect_to_provider"),
         # The public web (public/urls.py) and its cookie consent, before the SPA's catch-all.
         ("/robots.txt", "robots_txt"),
         ("/set-language/", "set_language"),
@@ -83,7 +78,6 @@ def test_the_admin_is_mounted(client):
 @pytest.mark.parametrize(
     "path",
     [
-        "/login",
         "/login/error",
         "/launch",
         "/launchpad",
@@ -141,7 +135,7 @@ def test_an_unknown_api_path_is_the_json_error_envelope(client):
 @pytest.mark.django_db
 @pytest.mark.usefixtures("spa_manifest")
 def test_the_built_shell_links_the_vite_build_with_nonces(client):
-    response = client.get("/login", HTTP_HOST=HOST)
+    response = client.get("/launch", HTTP_HOST=HOST)
 
     html = response.content.decode()
     csp = response["Content-Security-Policy"]
@@ -162,7 +156,7 @@ def test_the_debug_shell_loads_from_the_saas_vite_dev_server(client, settings):
     """Port 5174: hub-next's Vite owns 5173 and both run at once in development."""
     settings.DEBUG = True
 
-    html = client.get("/login", HTTP_HOST=HOST).content.decode()
+    html = client.get("/launch", HTTP_HOST=HOST).content.decode()
 
     assert 'src="http://localhost:5174/static/spa/@vite/client"' in html
     assert 'src="http://localhost:5174/static/spa/frontend/main.ts"' in html

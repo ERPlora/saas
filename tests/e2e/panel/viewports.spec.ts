@@ -9,7 +9,7 @@ import { join } from 'node:path';
 
 import { type Browser, type BrowserContext, type Page } from '@playwright/test';
 
-import { businessIdOf, expect, panelAccount, seedPanel, shot, signIn, test, VIEWPORTS } from './fixtures';
+import { businessIdOf, expect, panelAccount, seedPanel, settled, shot, sidewaysScroll, signIn, test, VIEWPORTS } from './fixtures';
 import { PANEL_URL } from './project';
 
 const SHOTS_DIR = process.env.SHOTS_DIR ?? join(shot('viewports-dir'), '..', 'viewports');
@@ -27,7 +27,14 @@ const bakery = (tab: string) => async (request: BrowserContext['request']) =>
   `/businesses/${await businessIdOf(request, 'Panadería López')}/${tab}`;
 
 const SCREENS: Screen[] = [
-  { name: 'launch-signed-out', account: null, path: '/launch', ready: (p) => p.getByTestId('launch-sign-in') },
+  { name: 'launch-signed-out', account: null, path: '/launch', ready: (p) => p.getByTestId('login-form') },
+  { name: 'password-reset', account: null, path: '/password/reset', ready: (p) => p.getByTestId('password-reset-submit') },
+  {
+    name: 'password-reset-key-invalid',
+    account: null,
+    path: '/password/reset/key/0-not-a-key',
+    ready: (p) => p.getByTestId('password-reset-key-request'),
+  },
   { name: 'launch-first', account: 'first', path: '/launch', ready: (p) => p.getByTestId('create-name') },
   { name: 'launch-one', account: 'one', path: '/launch', ready: (p) => p.getByTestId('launch-open') },
   { name: 'launch-several', account: 'several', path: '/launch', ready: (p) => p.getByTestId('launch-business').first() },
@@ -68,36 +75,6 @@ async function contextFor(browser: Browser, account: string | null, theme: 'ligh
     sessions.set(account, state);
   }
   return browser.newContext({ ...options, storageState: state });
-}
-
-/**
- * What scrolls sideways on the page on screen: Ionic pins `body` (its width never grows), so the
- * scroll is read where it happens — the page's `ion-content` scroll box (in its shadow) and every
- * DataTable's own scroll box, which also says so with `data-table__scroll--overflow`.
- */
-async function sidewaysScroll(page: Page): Promise<string[]> {
-  return page.evaluate(() => {
-    const shown = [...document.querySelectorAll('ion-router-outlet > .ion-page:not(.ion-page-hidden)')].at(-1) ?? document;
-    const found: string[] = [];
-    const content = shown.querySelector('ion-content');
-    const scroll = content?.shadowRoot?.querySelector<HTMLElement>('.inner-scroll');
-    if (scroll && scroll.scrollWidth > scroll.clientWidth + 1) found.push(`ion-content ${scroll.scrollWidth} > ${scroll.clientWidth}`);
-    for (const table of shown.querySelectorAll<HTMLElement>('.data-table__scroll')) {
-      if (table.scrollWidth > table.clientWidth + 1) found.push(`data-table ${table.scrollWidth} > ${table.clientWidth}`);
-      if (table.classList.contains('data-table__scroll--overflow')) found.push('data-table__scroll--overflow');
-    }
-    return found;
-  });
-}
-
-/** Settled: the fonts loaded and no transition of Ionic running (endless spinners aside). */
-async function settled(page: Page): Promise<void> {
-  await page.evaluate(() => document.fonts.ready);
-  await page.waitForFunction(() =>
-    document
-      .getAnimations()
-      .every((animation) => animation.playState !== 'running' || animation.effect?.getTiming().iterations === Infinity),
-  );
 }
 
 async function capture(page: Page, screen: Screen, path: string, width: number, file: string, errors: string[]) {

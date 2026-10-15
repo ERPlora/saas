@@ -112,11 +112,6 @@ msgstr "código de acceso"
 msgid "exchange codes"
 msgstr "códigos de acceso"
 
-#: accounts/templates/accounts/google_no_account.html:11
-#: accounts/templates/accounts/google_no_account.html:20
-msgid "No ERPlora account for this Google account"
-msgstr "No hay ninguna cuenta de ERPlora para esta cuenta de Google"
-
 #: accounts/templates/accounts/google_no_account.html:18
 #: templates/account/login.html:24
 #: templates/socialaccount/authentication_error.html:17
@@ -124,15 +119,6 @@ msgstr "No hay ninguna cuenta de ERPlora para esta cuenta de Google"
 #: templates/socialaccount/login_cancelled.html:17
 msgid "Global panel"
 msgstr "Panel global"
-
-#: accounts/templates/accounts/google_no_account.html:21
-#, python-format
-msgid "%(account_email)s has no ERPlora account. Ask whoever manages your business to invite you, or sign in with the account that has access."
-msgstr "%(account_email)s no tiene cuenta de ERPlora. Pide a quien gestiona tu negocio que te invite, o entra con la cuenta que sí tiene acceso."
-
-#: accounts/templates/accounts/google_no_account.html:23
-msgid "Use another account"
-msgstr "Usar otra cuenta"
 
 #: accounts/templates/accounts/hub_access_denied.html:10
 msgid "No access to this hub"
@@ -145,11 +131,6 @@ msgstr "403 · Sin acceso"
 #: accounts/templates/accounts/hub_access_denied.html:14
 msgid "You don't have access to this hub"
 msgstr "No tienes acceso a este hub"
-
-#: accounts/templates/accounts/hub_access_denied.html:16
-#, python-format
-msgid "%(account_email)s is not a member of %(hub_host)s. Ask whoever manages that hub to invite you, or sign in with the account that has access."
-msgstr "%(account_email)s no es miembro de %(hub_host)s. Pide a quien gestiona ese hub que te invite, o entra con la cuenta que sí tiene acceso."
 
 #: accounts/templates/accounts/hub_access_denied.html:18
 #, python-format
@@ -244,10 +225,6 @@ msgstr "Correo electrónico"
 msgid "Password"
 msgstr "Contraseña"
 
-#: templates/account/login.html:74
-msgid "Keep me signed in"
-msgstr "Mantener la sesión iniciada"
-
 #: templates/account/login.html:76
 msgid "Forgot your password?"
 msgstr "¿Olvidaste tu contraseña?"
@@ -312,10 +289,6 @@ msgstr "Si no has sido tú, escríbenos cuanto antes a %(support_email)s: otra p
 #, python-format
 msgid "%(provider)s sign-in was added to your account"
 msgstr "Se ha añadido el acceso con %(provider)s a tu cuenta"
-
-#: templates/socialaccount/login.html:42
-msgid "Redirecting you to Google to finish signing in…"
-msgstr "Te estamos redirigiendo a Google para terminar de iniciar sesión…"
 
 #: templates/socialaccount/login_cancelled.html:10
 #: templates/socialaccount/login_cancelled.html:19
@@ -875,12 +848,6 @@ msgstr "Si no lo has cambiado tú, escribe cuanto antes a %(support)s."
 
 msgid "There is no change of email waiting for a code: ask for a new one."
 msgstr "No hay ningún cambio de correo esperando un código: pide uno nuevo."
-
-msgid "Too many wrong codes: ask for a new one."
-msgstr "Demasiados códigos incorrectos: pide uno nuevo."
-
-msgid "That code is not right."
-msgstr "Ese código no es correcto."
 
 msgid "Invalid payload"
 msgstr "Los datos enviados no son válidos."

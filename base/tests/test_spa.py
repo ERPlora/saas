@@ -1,7 +1,7 @@
 """The SPA's HTML: live.spa with base.session.me embedded next to spa-config, every script with the nonce.
 
 spa-config also tells the login page whether «Continue with Google» is configured
-(``googleEnabled``), the same switch that hides the button of the template login.
+(``googleEnabled``), the same switch that serves Google's routes (``accounts/google.py``).
 """
 
 import json
@@ -30,7 +30,7 @@ def csp_nonce(response) -> str:
 
 
 def test_the_anonymous_shell_embeds_an_empty_session_with_the_nonce(client):
-    response = client.get("/login", HTTP_HOST=HOST)
+    response = client.get("/launch", HTTP_HOST=HOST)
 
     assert response.status_code == 200
     nonce, me = json_block(response, "session-me")
@@ -44,7 +44,7 @@ def test_the_anonymous_shell_embeds_an_empty_session_with_the_nonce(client):
 def test_a_signed_in_shell_embeds_its_user_and_the_panels_menu(client, ana):
     client.force_login(ana)
 
-    _, me = json_block(client.get("/login", HTTP_HOST=HOST), "session-me")
+    _, me = json_block(client.get("/launch", HTTP_HOST=HOST), "session-me")
 
     assert me["user"] == {"id": str(ana.pk), "label": "Ana García", "email": "ana@example.com"}
     [section] = me["menu"]
@@ -57,7 +57,7 @@ def test_the_embedded_json_cannot_close_the_script(client, django_user_model):
     )
     client.force_login(eve)
 
-    response = client.get("/login", HTTP_HOST=HOST)
+    response = client.get("/launch", HTTP_HOST=HOST)
 
     assert "</script><script>alert(1)" not in response.content.decode()
     assert json_block(response, "session-me")[1]["user"]["label"].startswith(
@@ -69,7 +69,7 @@ def test_the_embedded_json_cannot_close_the_script(client, django_user_model):
 def test_spa_config_says_whether_google_is_configured(client, settings, enabled):
     settings.GOOGLE_OAUTH_ENABLED = enabled
 
-    _, config = json_block(client.get("/login", HTTP_HOST=HOST), "spa-config")
+    _, config = json_block(client.get("/launch", HTTP_HOST=HOST), "spa-config")
 
     assert config["googleEnabled"] is enabled
 
@@ -85,27 +85,27 @@ def test_spa_config_carries_the_origin_of_a_hub_with_its_slug_to_fill_in(client,
 
 def test_the_shell_is_never_cached_and_sets_the_csrf_cookie(client, settings):
     """The SDK and allauth.headless's browser client send that cookie back in X-CSRFToken."""
-    response = client.get("/login", HTTP_HOST=HOST)
+    response = client.get("/launch", HTTP_HOST=HOST)
 
     assert "no-store" in response["Cache-Control"]
     assert settings.CSRF_COOKIE_NAME in response.cookies
 
 
 def test_only_get_and_head(client):
-    assert client.post("/login", HTTP_HOST=HOST).status_code == 405
-    assert client.head("/login", HTTP_HOST=HOST).status_code == 200
+    assert client.post("/launch", HTTP_HOST=HOST).status_code == 405
+    assert client.head("/launch", HTTP_HOST=HOST).status_code == 200
 
 
 def test_the_title_is_the_saas_one(client):
     assert (
         "<title>ERPlora Cloud</title>"
-        in client.get("/login", HTTP_HOST=HOST).content.decode()
+        in client.get("/launch", HTTP_HOST=HOST).content.decode()
     )
 
 
 def test_the_web_panel_can_be_zoomed(client):
     """WCAG 1.4.4 (audit R-02): no maximum-scale nor user-scalable=no in the viewport."""
-    html = client.get("/login", HTTP_HOST=HOST).content.decode()
+    html = client.get("/launch", HTTP_HOST=HOST).content.decode()
 
     assert '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">' in html
     assert "user-scalable" not in html

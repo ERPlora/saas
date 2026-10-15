@@ -51,14 +51,6 @@
       "pageTitle": "Enter",
       "loadError": "We could not load your businesses.",
       "mfaUnavailable": "Two-factor authentication is not available on this account yet.",
-      "signedOut": {
-        "title": "Sign in to ERPlora",
-        "lead": "Sign in with your ERPlora account.",
-        "leadApp": "The app uses your erplora.com account.",
-        "body": "Sign in with your email or with Google. When you finish you come back here and choose your business.",
-        "signIn": "Sign in",
-        "signUp": "Create a free account"
-      },
       "first": {
         "title": "Create your business",
         "lead": "Free and no card: just the name and the country.",

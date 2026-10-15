@@ -6,13 +6,14 @@ URL, the history or a log). Ported from ERPlora/saas ``hub_oauth_bridge``
 (``apps/auth/users/views.py``), where the callback was a query parameter checked by
 ``is_allowed_callback_url``; here it is built from the slug, so it can only ever be a hub's.
 
-Every other answer is a Vue page of the SPA: a refused jump goes to ``/login/error?code=…`` and the
-launcher (the entry of ``erplora.com``: one hub → straight to it, several → a selector, none
-→ says so) is ``/launch``, which reads ``accounts.hub.list``. ``/launch/`` only leads there.
+Every other answer is a Vue page of the SPA: a refused jump goes to ``/login/error?code=…``, and a jump
+without a session to the sign-in, the launcher ``/launch?next=…`` (``LOGIN_URL``: the entry of
+``erplora.com``, whose card is the sign-in form while signed out), which comes back here once signed in
+with the code mailed to the account. ``/launch/`` only leads there.
 
 With ``ACCOUNTS_MFA_ENABLED`` on, an account with an authenticator app jumps only from a session
-that passed its second factor (``mfa.mfa_completed``). One signed in without it (Django's
-``/admin/login/`` before the flag, or an app turned on after signing in) goes to the Vue page
+that passed its second factor (``mfa.mfa_completed``). One signed in without it (a session from before
+the flag, or an app turned on after signing in) goes to the Vue page
 ``/reauthenticate?method=totp&flows=mfa_reauthenticate&next=<this path and query>``, which asks for
 a code through allauth's headless ``POST /_allauth/browser/v1/auth/2fa/reauthenticate`` and then loads
 ``next`` again. ``method=totp`` opens it on the code and ``flows`` (comma-separated) lists the only
@@ -55,7 +56,7 @@ from accounts.models import AuthExchangeCode
 
 logger = logging.getLogger(__name__)
 
-#: The Vue launcher (``accounts/frontend/pages/LaunchPage.vue``).
+#: The Vue launcher (``hubs/frontend/pages/LaunchPage.vue``).
 LAUNCHER = "/launch"
 #: The Vue page of every refused sign-in or jump (``LoginErrorPage.vue``), told which by ``code``.
 LOGIN_ERROR = "/login/error"
@@ -137,5 +138,5 @@ def hub_login(request: HttpRequest) -> HttpResponse:
 
 @require_GET
 def launch(request: HttpRequest) -> HttpResponse:
-    """The old address of the launcher: the SPA's route (its auth gate sends a visitor to the login)."""
+    """The old address of the launcher: the SPA's route, where the sign-in form is (round 19)."""
     return HttpResponseRedirect(LAUNCHER)

@@ -17,6 +17,7 @@ from django.core.management.base import CommandError
 from django.test import override_settings
 
 from accounts.models import HubMembership
+from accounts.tests.conftest import take_mailed_code
 from hubs import queries
 from hubs.models import Hub, HubMember
 
@@ -112,6 +113,68 @@ def test_the_demo_hubs_are_valid_hub_slugs_in_local_development():
 
     for membership in HubMembership.objects.all():
         membership.full_clean()
+
+
+@pytest.mark.parametrize(
+    "email, password",
+    [("owner@example.com", "owner"), ("employee@example.com", "employee"), ("platform@example.com", "platform")],
+)
+def test_every_local_account_signs_in_with_its_password_and_the_mailed_code(client, email, password):
+    """The e2e signs in with these accounts: their addresses come proven, so the password asks only for the
+    sign-in code mailed to the account (``ACCOUNT_LOGIN_BY_CODE_REQUIRED``), never for the verification one."""
+    _seed()
+
+    response = client.post(
+        "/_allauth/browser/v1/auth/login",
+        {"email": email, "password": password},
+        content_type="application/json",
+        HTTP_HOST="localhost:8001",
+    )
+
+    assert response.status_code == 401, response.content
+    assert [flow["id"] for flow in response.json()["data"]["flows"] if flow.get("is_pending")] == ["login_by_code"]
+    response = client.post(
+        "/_allauth/browser/v1/auth/code/confirm",
+        {"code": take_mailed_code(email)},
+        content_type="application/json",
+        HTTP_HOST="localhost:8001",
+    )
+    assert response.status_code == 200, response.content
+
+
+def test_the_qa_users_of_the_environment_name_the_accounts(monkeypatch):
+    """The root ``.env`` lists them (``QA_*``, README «Usuarios QA»), with these same values by default: exported,
+    they are the ones seeded."""
+    monkeypatch.setenv("QA_OWNER_EMAIL", "qa-owner@example.com")
+    monkeypatch.setenv("QA_OWNER_PASSWORD", "qa-owner-pass")
+    monkeypatch.setenv("QA_EMPLOYEE_EMAIL", "qa-employee@example.com")
+    monkeypatch.setenv("QA_EMPLOYEE_PASSWORD", "qa-employee-pass")
+    monkeypatch.setenv("QA_PLATFORM_EMAIL", "qa-platform@example.com")
+    monkeypatch.setenv("QA_PLATFORM_PASSWORD", "qa-platform-pass")
+
+    output = _seed()
+
+    users = get_user_model().objects
+    assert users.get(email="qa-owner@example.com").check_password("qa-owner-pass")
+    assert users.get(email="qa-employee@example.com").check_password("qa-employee-pass")
+    assert users.get(email="qa-platform@example.com").check_password("qa-platform-pass")
+    assert _roles("qa-owner@example.com") == [("a", "hub_owner"), ("b", "hub_owner")]
+    assert not users.filter(email="owner@example.com").exists()
+    assert "qa-owner@example.com / qa-owner-pass" in output
+
+
+def test_without_them_the_defaults_are_the_documented_ones(monkeypatch):
+    for name in ("OWNER", "EMPLOYEE", "PLATFORM"):
+        monkeypatch.delenv(f"QA_{name}_EMAIL", raising=False)
+        monkeypatch.delenv(f"QA_{name}_PASSWORD", raising=False)
+
+    _seed()
+
+    assert sorted(get_user_model().objects.values_list("email", flat=True)) == [
+        "employee@example.com",
+        "owner@example.com",
+        "platform@example.com",
+    ]
 
 
 def test_is_idempotent():

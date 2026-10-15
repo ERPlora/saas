@@ -303,6 +303,12 @@ class TestAndroidPageWhileThePlayListingIsNotLive:
         assert download_url("linux") in html
         assert reverse("public:app") in html
 
+    def test_the_page_offers_to_create_a_hub_at_the_sign_in(self, client):
+        html = client.get(download_url("android")).content.decode()
+
+        assert 'href="/launch"' in html
+        assert "/accounts/login/" not in html
+
     def test_the_page_is_indexable(self, client):
         response = client.get(download_url("android"))
         html = response.content.decode()
@@ -418,7 +424,8 @@ class TestInstallableAppPage:
         html = client.get("/app/").content.decode()
 
         assert "You need a hub before you need the app." in html
-        assert f'href="{reverse("account_login")}"' in html
+        assert 'href="/launch"' in html
+        assert "/accounts/login/" not in html
 
 
 class TestTheAppPageIsTranslated:
@@ -446,7 +453,8 @@ class TestWaysToTryPage:
         assert reverse("public:downloads") == "/download/"
         html = response.content.decode()
         # Path A: create a free cloud hub, through the sign-in (which also signs up).
-        assert f'href="{reverse("account_login")}"' in html
+        assert 'href="/launch"' in html
+        assert "/accounts/login/" not in html
         # Path B: the app for the counter hardware, per platform, and its page.
         for platform in ("windows", "linux", "android"):
             assert download_url(platform) in html

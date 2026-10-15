@@ -1,6 +1,6 @@
 {% load i18n icons %}
 {% comment %} The CTA of a plan card on /pricing/: sign up (the sign-in, where an account is also created). {% endcomment %}
-<ion-button href="{% url 'account_login' %}" expand="block"{% if not plan.featured_label %} fill="outline"{% endif %}>
+<ion-button href="/launch" expand="block"{% if not plan.featured_label %} fill="outline"{% endif %}>
   {% trans "Get started" %}
   <span slot="end">{% icon "lucide:arrow-right" %}</span>
 </ion-button>

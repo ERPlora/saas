@@ -9,15 +9,16 @@ SAAS_DASHBOARD-F204). Two locks, as Google, GitHub, Shopify and Stripe do it:
    keeps its address, so «Forgot your password?» cannot be pointed at an address nobody proved, and a code that
    reached the wrong mailbox (a typo) is of no use anywhere else. The tries are counted in the database (three
    per code, consumed atomically) and per account (a budget a minute and an hour), never in the session, which a
-   racing request could save back older. The old SaaS used allauth's verification by code;
-   allauth only allows it with ``ACCOUNT_EMAIL_VERIFICATION = "mandatory"``, which would stop every account
-   without a proven address at the sign-in, so the code is accounts' own (``services.email_change``).
+   racing request could save back older. The old SaaS used allauth's verification by code for the change too;
+   here allauth's mandatory verification by code (``ACCOUNT_EMAIL_VERIFICATION = "mandatory"``) proves the
+   address of a sign-up, while allauth's own email API is closed (``accounts.doors.closed``, 404) and the change's
+   code is accounts' own (``services.email_change``), with the locks above.
 
-Dropped, with their reason: the template pages and their htmx (the SPA's), the account surface's mark on
-the way (``base.surface`` keeps it in the session), «Use a different email» on the sign-up code page (the
-sign-up is closed). Pending: allauth.headless still lets an account without a password set one with the
-session alone (``account/password/change``), the second way around of ``TestAllauthSetPasswordPage…``
-(the pending list of accounts/README.md).
+Dropped, with their reason: the template pages and their htmx (the SPA's) and the account surface's mark on
+the way (``base.surface`` keeps it in the session). «Use a different email» lives on the sign-up's code page
+(``VerifyEmailPage.vue``), not here. The second way around of ``TestAllauthSetPasswordPage…`` is closed: an
+account without a password does not set one with the session alone, allauth.headless's
+``account/password/change`` answers it 403 (``accounts.doors.password_change``, ``test_doors``).
 """
 
 import re
@@ -108,7 +109,9 @@ class TestTheNewAddressCountsOnlyOnceProven:
         api_post(signed_in, CHANGE, {"email": NEW})
         mail.outbox.clear()
 
-        client.post("/accounts/password/reset/", {"email": NEW}, HTTP_HOST=HOST)
+        client.post(
+            "/_allauth/browser/v1/auth/password/request", {"email": NEW}, content_type="application/json", HTTP_HOST=HOST
+        )
 
         assert not [message for message in mail.outbox if "/password/reset/key/" in message.body]
 
@@ -138,7 +141,6 @@ class TestTheNewAddressCountsOnlyOnceProven:
     def test_allauths_signal_tells_who_keeps_a_copy_of_the_address(self, signed_in, ana):
         from allauth.account.signals import email_changed
 
-        EmailAddress.objects.create(user=ana, email=ana.email, verified=True, primary=True)
         seen = []
 
         def changed(sender, user, from_email_address, to_email_address, **kwargs):
@@ -320,12 +322,18 @@ class TestTheNewAddressCountsOnlyOnceProven:
         assert (response.status_code, response.json()["error"]["code"]) == (409, "accounts.no_email_change")
 
 
+def _unprove(user) -> None:
+    """The signed-in account's address is on record but never proven: a session opened before every account
+    had to prove it (``ACCOUNT_EMAIL_VERIFICATION``), or a staff member's through Django's admin login."""
+    EmailAddress.objects.filter(user=user).update(verified=False)
+
+
 class TestProvingTheCurrentAddress:
     """An address the account never proved (``email_verified`` false) is proven the same way: the code goes to
     it. hubs needs it to accept an invitation (403 ``hubs.email_unverified``)."""
 
     def test_its_own_unproven_address_gets_a_code_and_is_proven(self, signed_in, ana):
-        EmailAddress.objects.create(user=ana, email=ana.email, verified=False, primary=True)
+        _unprove(ana)
 
         response = api_post(signed_in, CHANGE, {"email": "ana@example.com"})
 
@@ -340,7 +348,7 @@ class TestProvingTheCurrentAddress:
 
     def test_proving_its_own_address_needs_no_recent_sign_in(self, signed_in_long_ago, ana):
         """A code to the account's own address hands nothing over: no password is asked for it."""
-        EmailAddress.objects.create(user=ana, email=ana.email, verified=False, primary=True)
+        _unprove(ana)
 
         response = api_post(signed_in_long_ago, CHANGE, {"email": "ana@example.com"})
 

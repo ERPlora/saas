@@ -111,7 +111,7 @@ describe('TwoFactorSettingsPage: loading', () => {
   it('sends a session that ended to the sign-in, coming back to /2fa', async () => {
     fakeAllauth({ 'GET /account/authenticators': anonymous });
     const { router } = await mountPage();
-    expect(router.currentRoute.value.path).toBe('/login');
+    expect(router.currentRoute.value.path).toBe('/launch');
     expect(router.currentRoute.value.query).toEqual({ next: '/2fa' });
   });
 });
@@ -438,7 +438,7 @@ describe('TwoFactorSettingsPage: turning the app off (mfa/totp/deactivate_form.h
   it('sends a session that ended to the sign-in', async () => {
     const page = await openDeactivate({ 'DELETE /account/authenticators/totp': anonymous });
     await page.click('deactivate-submit');
-    expect(page.router.currentRoute.value.fullPath).toBe('/login?next=/2fa');
+    expect(page.router.currentRoute.value.fullPath).toBe('/launch?next=/2fa');
   });
 
   it('«Keep it on» goes back to the settings', async () => {

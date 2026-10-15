@@ -659,7 +659,9 @@ def test_the_detail_sends_a_visitor_to_sign_up_and_a_customer_to_the_launcher(
 ):
     from accounts.handoff import LAUNCHER
 
-    assert f'href="{reverse("account_login")}"' in html_of(client, "/pricing/starter/")
+    html = html_of(client, "/pricing/starter/")
+    assert 'href="/launch"' in html
+    assert "/accounts/login/" not in html
 
     client.force_login(django_user_model.objects.create_user(email="ana@example.com"))
     assert f'href="{LAUNCHER}"' in html_of(client, "/pricing/starter/")

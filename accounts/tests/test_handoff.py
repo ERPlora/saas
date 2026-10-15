@@ -48,7 +48,7 @@ class TestHubLogin:
         response = client.get(HUB_LOGIN + "?hub=a&next=/demo/items")
 
         assert response.status_code == 302
-        assert response.url == "/accounts/login/?next=" + quote(
+        assert response.url == "/launch?next=" + quote(
             "/hub-login/?hub=a&next=/demo/items", safe="/"
         )
 
@@ -248,7 +248,7 @@ class TestTheStateOfTheJump:
         response = client.get(HUB_LOGIN, {"hub": "a", "next": "/demo/items", "state": STATE})
 
         assert response.status_code == 302
-        assert response.url == "/accounts/login/?next=" + quote(
+        assert response.url == "/launch?next=" + quote(
             f"/hub-login/?hub=a&next=%2Fdemo%2Fitems&state={STATE}", safe="/"
         )
 
@@ -353,7 +353,7 @@ class TestTheJumpToTheHubAdmin:
         response = client.get(HUB_LOGIN, self.JUMP)
 
         assert response.status_code == 302
-        assert response.url.startswith("/accounts/login/?next=")
+        assert response.url.startswith("/launch?next=")
         assert parse_qs(urlsplit(parse_qs(urlsplit(response.url).query)["next"][0]).query)["state"] == [STATE]
         assert not AuthExchangeCode.objects.exists()
 

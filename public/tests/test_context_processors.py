@@ -55,15 +55,13 @@ def test_the_private_half_is_never_a_public_page(rf, path):
 @pytest.mark.parametrize(
     "path",
     [
-        "/accounts/login/",
-        "/accounts/password/reset/",
         "/_allauth/browser/v1/auth/login",
+        "/launch",
         "/login",
         "/login/error",
-        "/signup",
+        "/verify-email",
         "/password/reset",
         "/password/reset/key/abc",
-        "/verify-email/abc",
         "/2fa/authenticate",
         "/2fa",
         "/reauthenticate",
@@ -74,8 +72,15 @@ def test_the_pages_that_show_credentials_are_flagged(rf, path):
     assert _context(rf, path)["is_credentials_page"] is True
 
 
-@pytest.mark.parametrize("path", ["/", "/pricing/", "/launch", "/loginx"])
+@pytest.mark.parametrize("path", ["/", "/pricing/", "/launchpad", "/loginx"])
 def test_the_other_pages_do_not_show_credentials(rf, path):
+    assert _context(rf, path)["is_credentials_page"] is False
+
+
+@pytest.mark.parametrize("path", ["/accounts/login/", "/accounts/signup/", "/signup", "/password"])
+def test_the_addresses_that_render_no_credentials_page_are_not_flagged(rf, path):
+    """``/accounts/`` only redirects now (HEADLESS_ONLY), and the SPA has no ``/signup`` nor a
+    ``/password`` page of its own: the list names the pages that exist, not every old address."""
     assert _context(rf, path)["is_credentials_page"] is False
 
 

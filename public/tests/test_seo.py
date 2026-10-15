@@ -105,7 +105,10 @@ def test_a_real_parser_lets_every_agent_onto_the_public_web(parser, agent):
         "/hub-login/",
         "/launch",
         "/login",
+        "/password/reset/key/abc",
+        "/verify-email",
         "/2fa",
+        "/reauthenticate",
     ],
 )
 def test_a_real_parser_keeps_every_agent_out_of_the_private_half(parser, agent, path):

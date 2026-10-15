@@ -61,10 +61,11 @@ def test_a_signed_in_persons_account_language_is_not_touched(client, ana):
 
 
 @pytest.mark.django_db
+@pytest.mark.usefixtures("spa_manifest")
 def test_the_next_page_is_served_in_the_chosen_language(client):
     client.post(URL, {"language": "es", "next": "/"}, HTTP_HOST=HOST)
 
-    response = client.get("/accounts/login/", HTTP_HOST=HOST)
+    response = client.get("/launch", HTTP_HOST=HOST)
 
     assert response["Content-Language"] == "es"
 

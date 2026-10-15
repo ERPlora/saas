@@ -9,7 +9,7 @@ const restricted = ['fetch', 'EventSource', 'WebSocket', 'XMLHttpRequest'].map((
 }));
 
 export default [
-  // `static/` holds the template pages' vendored scripts (Ionic, Iconify), not our code; `packages/`
+  // `static/` holds the template pages' vendored scripts (Ionic), not our code; `packages/`
   // the live and ui submodules, linted in their repos; `.venv/` the scripts Django and ninja ship.
   {
     ignores: [

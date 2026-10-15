@@ -147,7 +147,7 @@ describe('ReauthenticatePage: with the password (account/reauthenticate.html)', 
     fakeAllauth({ 'POST /auth/reauthenticate': anonymous });
     const { confirm, router } = await mountPage('?next=%2F2fa');
     await confirm('owner');
-    expect(router.currentRoute.value.path).toBe('/login');
+    expect(router.currentRoute.value.path).toBe('/launch');
     expect(router.currentRoute.value.query).toEqual({ next: '/reauthenticate?next=%2F2fa' });
     expect(assign).not.toHaveBeenCalled();
   });

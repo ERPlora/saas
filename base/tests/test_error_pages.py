@@ -119,12 +119,12 @@ def test_each_error_page_paints_without_outfitkit(name):
 
 
 def test_the_rate_limit_page_leads_back_to_the_sign_in():
-    assert '<a href="/accounts/login/">Back to sign in</a>' in text(render("429.html"))
+    assert '<a href="/launch">Back to sign in</a>' in text(render("429.html"))
 
 
 @pytest.mark.django_db
 def test_a_form_posted_with_an_expired_session_shows_our_csrf_page(production):
-    response = Client(enforce_csrf_checks=True).post("/accounts/login/", {"login": "a@example.com", "password": "x"})
+    response = Client(enforce_csrf_checks=True).post("/set-language/", {"language": "es", "next": "/"})
 
     assert response.status_code == 403
     assert "<h1>Your session expired while you were away</h1>" in text(response)
@@ -206,7 +206,7 @@ def test_the_500_page_renders_with_an_empty_context_and_no_database(language):
     assert f'<html lang="{language}"' in page
 
 
-@pytest.mark.parametrize("failing", ["/accounts/login/", "/hub-login/", "/launch"])
+@pytest.mark.parametrize("failing", ["/admin/", "/hub-login/", "/launch"])
 def test_the_project_500_handler_shows_ours_outside_the_public_web(failing):
     response = errors.server_error(RequestFactory().get(failing))
 

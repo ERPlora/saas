@@ -31,8 +31,7 @@ def test_the_private_prefixes_are_those_of_saas_next():
         "/webhooks/",
         "/launch",
         "/login",
-        "/signup",
-        "/password",
+        "/password/reset",
         "/verify-email",
         "/2fa",
         "/reauthenticate",
@@ -82,7 +81,7 @@ def test_the_private_paths_carry_noindex(client, path):
 @pytest.mark.django_db
 @pytest.mark.usefixtures("spa_manifest")
 @pytest.mark.parametrize(
-    "path", ["/login", "/launch", "/2fa", "/a-panel-page-not-built-yet"]
+    "path", ["/login/error", "/launch", "/2fa", "/a-panel-page-not-built-yet"]
 )
 def test_every_page_of_the_spa_carries_noindex(client, path):
     """The SPA is the account panel: a page it gains later is private without touching this list."""
@@ -106,7 +105,7 @@ def test_is_private_needs_the_path_or_the_spa_route(rf):
     request.resolver_match = None
 
     assert is_private(request) is False
-    assert is_private(rf.get("/accounts/login/")) is True
+    assert is_private(rf.get("/login")) is True
 
 
 @pytest.mark.django_db

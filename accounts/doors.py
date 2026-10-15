@@ -1,12 +1,13 @@
-"""allauth's doors around an account's addresses and password that the SaaS keeps closed (``config/urls.py``
-mounts these before allauth's own routes, as ``accounts/3rdparty/`` for Google's «connections», saas#2552).
+"""allauth.headless's doors around an account's addresses and password that the SaaS keeps closed
+(``config/urls.py`` mounts these before allauth's own routes; headless only, allauth has no page to close).
 
 - The sign-in email changes only through ``accounts.email.change`` and the code mailed to the new address
-  (saas#2536): allauth's page ``/accounts/email/`` leads to the panel's profile and its API
-  ``/_allauth/browser/v1/account/email`` answers 404, whatever the method (add, make primary, remove, resend).
-- An account without a password does not get one with the session alone: allauth's ``/accounts/password/set/``
-  leads to «Forgot your password?» (which proves the mailbox) and ``account/password/change`` answers 403 to it;
-  an account with a password changes it there as before (the current one is asked).
+  (saas#2536): allauth's API ``/_allauth/browser/v1/account/email`` answers 404, whatever the method (add, make
+  primary, remove, resend).
+- An account without a password does not get one with the session alone: ``account/password/change`` answers
+  403 to it, and «Forgot your password?» (which proves the mailbox) gives it one; an account with a password
+  changes it there as before (the current one is asked).
+- allauth's own sign-up (``auth/signup``) answers 404: the sign-in signs up (``accounts.unified_login``).
 """
 
 from allauth.headless.account.views import ChangePasswordView
@@ -14,9 +15,6 @@ from allauth.headless.constants import Client
 from django.http import JsonResponse
 from django.utils.translation import gettext
 from django.views.decorators.csrf import csrf_exempt
-
-#: The panel's profile (accounts/frontend, Account → Profile), where the email changes.
-PROFILE_PAGE = "/account/profile"
 
 _allauth_password_change = ChangePasswordView.as_api_view(client=Client.BROWSER)
 

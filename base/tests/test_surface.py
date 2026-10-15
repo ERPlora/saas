@@ -12,11 +12,19 @@ import re
 
 import pytest
 
+from accounts.tests.conftest import prove_address, sign_in
+
 pytestmark = [pytest.mark.django_db, pytest.mark.usefixtures("spa_manifest")]
 
 HOST = "localhost:8001"
-LOGIN = "/_allauth/browser/v1/auth/login"
 SESSION = "/_allauth/browser/v1/auth/session"
+
+
+@pytest.fixture
+def ana(ana):
+    """Ana once she proved her address, as every account does before its first session."""
+    prove_address(ana.email)
+    return ana
 
 
 def spa_config(response) -> dict:
@@ -53,17 +61,12 @@ def test_the_mark_sticks_to_the_session(client):
 
 
 def test_the_mark_survives_signing_in(client, ana, password):
-    """The app's link lands on the login (the query is lost on the way), then on the panel."""
-    surface_of(client, "/login?next=/account%3Fsurface%3Daccount&surface=account")
+    """The app's link lands on the sign-in of the launcher (the query is lost on the way), then on the panel:
+    the password and the mailed code (``sign_in``) keep the session's mark."""
+    surface_of(client, "/launch?next=/account%3Fsurface%3Daccount&surface=account")
 
-    signed_in = client.post(
-        LOGIN,
-        {"email": ana.email, "password": password},
-        content_type="application/json",
-        HTTP_HOST=HOST,
-    )
+    sign_in(client, ana.email, password)
 
-    assert signed_in.status_code == 200
     assert surface_of(client, "/account") == "account"
 
 
@@ -76,12 +79,7 @@ def test_any_other_surface_leaves_it(client, other):
 
 
 def test_signing_out_ends_it(client, ana, password):
-    client.post(
-        LOGIN,
-        {"email": ana.email, "password": password},
-        content_type="application/json",
-        HTTP_HOST=HOST,
-    )
+    sign_in(client, ana.email, password)
     surface_of(client, "/account?surface=account")
 
     signed_out = client.delete(SESSION, HTTP_HOST=HOST)
