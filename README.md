@@ -311,10 +311,13 @@ Cada punto tiene su borrador de issue en `docs/issues/` (pendiente de abrir en `
 
 - Del segundo factor: «confiar en este navegador» 14 días (`MFA_TRUST`) y llaves de acceso
   (WebAuthn/passkeys). Sin borrador de issue todavía.
-- Cerrar las sesiones del Hub al cerrar sesión o cambiar la contraseña en el SaaS (L3-A). Al quitar un
-  miembro, cambiarle el rol o aceptar un traspaso ya se cierran, con reintentos (`hubs.SessionRevocation`,
-  L1-A2; `member-removal-keeps-hub-session.md`).
 - Que el salto lea `HubMember` y retirar `HubMembership(user, hub_slug, role)`, que desde L1-A2 es solo el
   espejo de los miembros de cada negocio (`hubs/README.md`, «Pendiente»; `membership-by-slug.md`).
-- Selector con el último hub usado primero (`hub-selector-last-used.md`); throttling de login
-  (`login-lockout.md`) y la sesión que no se renueva con el uso (`remember-me-not-sliding.md`).
+- Throttling de login (`login-lockout.md`) y la sesión que no se renueva con el uso
+  (`remember-me-not-sliding.md`).
+
+Ya no están fuera (PLAN-SAAS §1.1, ronda 2026-10-15b): el selector con el último negocio abierto primero
+(`HubMember.last_opened_at`, que sella `hubs.business.open` y ordena `hubs/queries.py`) y el cierre de las sesiones
+del Hub al cerrar sesión, poner o restablecer la contraseña o eliminar la cuenta (`accounts.signals.sessions_ended`
+→ `hubs.services.end_account_sessions`, con los reintentos de `hubs.SessionRevocation`). Lo que la ronda añade al
+SaaS (asistente, WhatsApp, correos HTML, RGPD, operación y admin) son los bloques 11–15 de PLAN-SAAS §7.
