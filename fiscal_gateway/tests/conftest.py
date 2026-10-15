@@ -40,12 +40,14 @@ def make_p12(
     days: int = 365,
     eseal: bool = False,
     password: str = PASSWORD,
+    key_size: int = 2048,
 ) -> bytes:
     """A self-signed .p12 whose subject carries ``org_id`` and ``serial`` (``None`` leaves them out).
 
     ``client_auth``: ``True`` declares an EKU with clientAuth, ``False`` one without it, ``None`` no
-    EKU at all. ``days``: until it expires (negative = already expired)."""
-    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    EKU at all. ``days``: until it expires (negative = already expired). ``key_size``: of its RSA
+    key (below 2048, TLS refuses it)."""
+    key = rsa.generate_private_key(public_exponent=65537, key_size=key_size)
     attributes = [x509.NameAttribute(NameOID.COMMON_NAME, "ACME SL")]
     if org_id:
         attributes.append(x509.NameAttribute(NameOID.ORGANIZATION_IDENTIFIER, org_id))

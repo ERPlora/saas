@@ -5,6 +5,7 @@ production endpoints are checked as strings only. The envelopes are the Hub's (`
 byte for byte from hub-next).
 """
 
+import dataclasses
 import os
 import ssl
 import stat
@@ -222,6 +223,21 @@ def test_the_temporary_files_go_even_when_the_aeat_is_not_reached(
     with pytest.raises(aeat.AeatUnreachable):
         aeat.present(identity, "testing", SENT, operation="submit")
 
+    assert list(private_tmp.iterdir()) == []
+
+
+def test_a_key_that_is_not_the_certificates_is_refused_before_the_aeat(
+    identity, respx_mock, private_tmp
+):
+    stranger = seal.load(b64(make_p12()), PASSWORD)
+    mismatched = dataclasses.replace(identity, key_pem=stranger.key_pem)
+
+    with pytest.raises(seal.SealInvalid) as invalid:
+        aeat.present(mismatched, "testing", SENT, operation="submit")
+
+    assert invalid.value.__suppress_context__
+    assert str(private_tmp) not in str(invalid.value)
+    assert not respx_mock.calls
     assert list(private_tmp.iterdir()) == []
 
 

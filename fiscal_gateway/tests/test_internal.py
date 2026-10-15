@@ -263,6 +263,29 @@ def test_own_route_with_a_certificate_without_client_authentication(client, resp
     assert not respx_mock.calls
 
 
+def test_own_route_with_a_certificate_tls_refuses_is_invalid_not_a_crash(
+    client, respx_mock, caplog
+):
+    weak = make_p12(
+        org_id="VATES-B27593136",
+        serial="IDCES-12345678Z",
+        key_size=1024,
+        password="pw-5d1e8b",
+    )
+
+    with caplog.at_level(logging.DEBUG):
+        response = call(client, "submit", own(weak, password="pw-5d1e8b"))
+
+    assert error_of(response) == (409, "certificate_invalid")
+    assert not respx_mock.calls
+    assert _free_slots() == 8
+    logged = caplog.text + "".join(str(record.args) for record in caplog.records)
+    assert caplog.records
+    for secret in ("pw-5d1e8b", b64(weak)[:60], b64(weak)[-60:], "PRIVATE KEY"):
+        assert secret not in logged
+        assert secret not in response.content.decode()
+
+
 def test_the_pre_deployment_never_presents_to_production(
     client, settings, respx_mock, erplora_seal
 ):

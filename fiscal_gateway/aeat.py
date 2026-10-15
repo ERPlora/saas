@@ -23,9 +23,11 @@ the Hub's job. Only the transport's own failures are classified (``AeatUnreachab
   have registered it, and the Hub resends the same bytes (the AEAT answers «duplicado» if it had them).
 
 httpx cannot take a key from memory, so the certificate and its key go to two files of mode 0600 in a
-private temporary directory, which goes as soon as TLS has read them, whatever happens. Headers as the
-proven client of the gateway this one replaces: ``Content-Type: text/xml;charset=UTF-8`` and
-``SOAPAction: ""`` (the WSDL's, for both operations). 10 s to connect and 60 s to read.
+private temporary directory, which goes as soon as TLS has read them, whatever happens. A certificate
+TLS refuses (its key is not the certificate's, or is too weak for OpenSSL's security level) raises
+``SealInvalid`` before anything leaves. Headers as the proven client of the gateway this one
+replaces: ``Content-Type: text/xml;charset=UTF-8`` and ``SOAPAction: ""`` (the WSDL's, for both
+operations). 10 s to connect and 60 s to read.
 """
 
 import logging
@@ -38,7 +40,7 @@ from xml.parsers import expat
 
 import httpx
 
-from fiscal_gateway.seal import Identity
+from fiscal_gateway.seal import Identity, SealInvalid
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +100,9 @@ def present(
     *,
     operation: Literal["submit", "query"],
 ) -> Answer:
-    """POST ``envelope`` to the AEAT with ``identity``; the answer as it came, or ``AeatUnreachable``."""
+    """POST ``envelope`` to the AEAT with ``identity``; the answer as it came, or ``AeatUnreachable``.
+
+    ``SealInvalid`` if TLS refuses ``identity``: nothing was sent."""
     if operation not in OPERATIONS:
         raise ValueError(f"Unknown operation {operation!r}.")
     url = endpoint(environment, identity.kind)
@@ -146,7 +150,14 @@ def _tls(identity: Identity) -> ssl.SSLContext:
         key_file = os.path.join(directory, "key.pem")
         _write_private(cert_file, identity.cert_pem)
         _write_private(key_file, identity.key_pem)
-        context.load_cert_chain(certfile=cert_file, keyfile=key_file)
+        try:
+            context.load_cert_chain(certfile=cert_file, keyfile=key_file)
+        except ssl.SSLError:
+            # OpenSSL's message may name the temporary files: only the reason leaves.
+            raise SealInvalid(
+                "The certificate and its private key cannot be used for TLS: "
+                "they do not match or the key is too weak."
+            ) from None
     return context
 
 

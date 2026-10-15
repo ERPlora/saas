@@ -29,7 +29,7 @@ Firmado como todo `/internal` (`accounts/signing.py`: v1 o v2, ±300 s, secreto 
 | `409 nif_mismatch` | El sobre nombra a otro contribuyente; se decide **antes** de tocar la AEAT |
 | `409 no_seal` | `route = "erplora"` sin sello utilizable |
 | `409 no_certificate` | `route = "own"` sin certificado |
-| `409 certificate_invalid` | No abre con su contraseña, no permite autenticación de cliente (EKU) o ha caducado |
+| `409 certificate_invalid` | No abre con su contraseña, no permite autenticación de cliente (EKU), ha caducado o TLS lo rechaza (la clave no es la del certificado o es demasiado débil, p. ej. RSA de 1024); no sale nada hacia la AEAT |
 | `409 environment_not_allowed` | `production` desde un despliegue que no es `prod` (`pre` solo presenta a pruebas) |
 | `502 {"error": {"code": "aeat_unreachable", "sent"}}` | Sin respuesta de la AEAT; `sent = true` si la petición pudo llegar |
 | `503 gateway_busy` | Semáforo lleno; el Hub reintenta |

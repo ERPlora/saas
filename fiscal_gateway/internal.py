@@ -13,8 +13,9 @@ What each door answers:
 - ``409 {"error": {"code", "message"}}``: nothing was sent. ``nif_mismatch`` (the envelope names a
   taxpayer other than ``nif``; decided before anything else touches the AEAT), ``no_seal`` (``erplora``
   without a usable seal), ``no_certificate`` (``own`` without one), ``certificate_invalid`` (it does not
-  open, cannot authenticate as a client or has expired), ``environment_not_allowed`` (``production``
-  from a deployment that is not prod: ``pre`` only presents to the AEAT's tests);
+  open, cannot authenticate as a client, has expired, or TLS refuses it: its key is not the
+  certificate's or is too weak), ``environment_not_allowed`` (``production`` from a deployment that is
+  not prod: ``pre`` only presents to the AEAT's tests);
 - ``502 {"error": {"code": "aeat_unreachable", "message", "sent"}}``: no answer from the AEAT. ``sent``
   says whether the request may have reached it (the Hub then keeps the record as sent and asks again);
 - ``503 gateway_busy``: ``VERIFACTU_GATEWAY_CONCURRENCY`` presentations are already under way in this
@@ -132,16 +133,7 @@ def _present(request: HttpRequest, operation: str) -> JsonResponse:
             )
         identity = _identity(body)
     except _Refused as refused:
-        logger.warning(
-            "fiscal_gateway.%s.refused code=%s hub=%s nif=%s environment=%s route=%s",
-            operation,
-            refused.code,
-            body.hub,
-            body.nif,
-            body.environment,
-            body.route,
-        )
-        return refused.response()
+        return _refuse(operation, body, refused)
     if not SLOTS.acquire(blocking=False):
         logger.warning("fiscal_gateway.%s.busy hub=%s", operation, body.hub)
         return _error(
@@ -150,6 +142,10 @@ def _present(request: HttpRequest, operation: str) -> JsonResponse:
     try:
         answer = aeat.present(
             identity, body.environment, body.envelope, operation=operation
+        )
+    except seal.SealInvalid as invalid:
+        return _refuse(
+            operation, body, _Refused(409, "certificate_invalid", str(invalid))
         )
     except aeat.AeatUnreachable as unreachable:
         return _error(502, "aeat_unreachable", str(unreachable), sent=unreachable.sent)
@@ -168,6 +164,20 @@ def _present(request: HttpRequest, operation: str) -> JsonResponse:
     return JsonResponse(
         AnswerOut(aeat_status=answer.status, aeat_body=answer.body).model_dump()
     )
+
+
+def _refuse(operation: str, body: PresentIn, refused: _Refused) -> JsonResponse:
+    """Log that nothing was presented (which call, never the certificate) and answer so."""
+    logger.warning(
+        "fiscal_gateway.%s.refused code=%s hub=%s nif=%s environment=%s route=%s",
+        operation,
+        refused.code,
+        body.hub,
+        body.nif,
+        body.environment,
+        body.route,
+    )
+    return refused.response()
 
 
 @sensitive_variables()
