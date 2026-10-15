@@ -5,6 +5,8 @@
 // elsewhere, V-23; gone while suspended or deleted), and four sections in the footer tabbar, each at
 // its own address: Summary · Members · Modules · Settings. Deleted, a banner says until when it can be
 // recovered (the owner recovers it there); a payment pending or a suspension is said under the header.
+// The Summary of a Spanish business ends with the authorisation for ERPlora to file its invoices (fiscal's
+// RepresentationCard), whose «Manage in your business» opens the business as «Open» does.
 // Modules: turning apps on and off is the Hub's (PLAN §20.4), so the tab says so and the header's «Open»,
 // solid there as on the Summary, is its one action (no second «Open» in the card: Ioan, 2026-10-14).
 // Members fills the page between the topbar and the tabbar (`detail-fill` + `.panel-fill`). Its states are
@@ -18,6 +20,7 @@ import { IonButton, IonCard, IonCardContent, IonSkeletonText, IonSpinner } from 
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import RepresentationCard from '../../../fiscal/frontend/components/RepresentationCard.vue';
 import { useLiveState } from '../../../frontend/live-state';
 import LoadFailed from '../../../frontend/LoadFailed.vue';
 import { reasonKey, statusPill } from '../business-status';
@@ -71,6 +74,8 @@ const section = computed<Tab>(() => (deleted.value ? 'summary' : props.tab));
 /** Members is a list: it fills the page between the topbar and the tabbar (Ioan, 2026-10-14). */
 const fills = computed(() => section.value === 'members');
 const opensAtAll = computed(() => !!business.value && business.value.status !== 'suspended' && !deleted.value);
+/** The authorisation for ERPlora to file its invoices with the AEAT (VeriFactu): a Spanish business's, while it lives. */
+const files = computed(() => business.value?.country === 'ES' && !deleted.value);
 const state = computed(() => {
   const now = business.value;
   if (!now || deleted.value) return '';
@@ -258,10 +263,16 @@ async function recover(): Promise<void> {
           {{ state }}
         </p>
 
-        <BusinessSummary
-          v-if="section === 'summary'"
-          :business="business"
-        />
+        <template v-if="section === 'summary'">
+          <BusinessSummary :business="business" />
+          <RepresentationCard
+            v-if="files"
+            :id="business.id"
+            :can-manage="opensAtAll && business.can.open"
+            :managing="!!opening"
+            @manage="open(business)"
+          />
+        </template>
         <MembersTab
           v-else-if="section === 'members'"
           :business="business"

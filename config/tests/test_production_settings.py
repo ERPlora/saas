@@ -28,6 +28,8 @@ PRODUCTION_ENV = {
     "GOOGLE_OAUTH_CLIENT_ID": "prod-client.apps.googleusercontent.com",
     "GOOGLE_OAUTH_CLIENT_SECRET": "prod-secret",
     "ALLOWED_HOSTS": "erplora.com,saas.erplora.internal",
+    # The key of the hubs' fiscal documents (fiscal/crypto.py): a Fernet key, required without DEBUG.
+    "FISCAL_DOCUMENTS_KEY": "2EBDB2KSnvz5lBG1RHG5ldNq34ZjWvGZ_t5r4wl5Mpw=",
 }
 # The infra's own values for the hardening variables (`base_env` and `saas_env` of apps.tf).
 AWS_ENV = {
@@ -327,6 +329,41 @@ def test_the_ses_backend_builds_from_the_settings_so_its_library_is_installed():
     )
 
 
+# The hubs' fiscal documents (plan 2026-10-15): encrypted with a Fernet key, required in production like
+# INTERNAL_SHARED_SECRET (a deploy without it must not start and store documents it cannot read later).
+
+
+def test_production_refuses_to_start_without_the_fiscal_documents_key():
+    env = {key: value for key, value in PRODUCTION_ENV.items() if key != "FISCAL_DOCUMENTS_KEY"}
+
+    result = _run("import config.settings", env)
+
+    assert result.returncode != 0
+    assert "UndefinedValueError" in result.stderr
+    assert "FISCAL_DOCUMENTS_KEY" in result.stderr
+
+
+def test_production_takes_the_fiscal_documents_key_from_the_environment():
+    assert production("s.FISCAL_DOCUMENTS_KEY") == PRODUCTION_ENV["FISCAL_DOCUMENTS_KEY"]
+
+
+def test_development_has_a_local_fernet_key_for_the_fiscal_documents():
+    from cryptography.fernet import Fernet
+
+    key = development("s.FISCAL_DOCUMENTS_KEY")
+
+    assert Fernet(key.encode()).decrypt(Fernet(key.encode()).encrypt(b"ok")) == b"ok"
+
+
+def test_every_view_keeps_django_s_upload_ceiling():
+    """Django's 2.5 MB for every view (allauth, ``/api``, Stripe's webhook): an anonymous body is never buffered
+    beyond it. The four documents of an authorisation have their own ceiling, in their view only
+    (``fiscal.internal.MAX_BODY_BYTES``)."""
+    expression = "getattr(s, 'DATA_UPLOAD_MAX_MEMORY_SIZE', 'django default')"
+    assert production(expression) == "django default"
+    assert development(expression) == "django default"
+
+
 def test_a_ses_backend_named_by_the_environment_needs_its_region():
     result = _run("import config.settings", {**PRODUCTION_ENV, "EMAIL_BACKEND": SES})
 
@@ -464,6 +501,9 @@ SAAS_TASK_ENV = {
     "GOOGLE_OAUTH_CLIENT_SECRET": "",
     # erplora/prod/internal, the same in both projects.
     "INTERNAL_SHARED_SECRET": "a-generated-internal-shared-secret",
+    # erplora/prod/saas: the Fernet key of the hubs' fiscal documents (fiscal/crypto.py; plan 2026-10-15).
+    # NEW: aws-next must add it to every saas* task before this deploys, or the tasks refuse to start.
+    "FISCAL_DOCUMENTS_KEY": "kX1Hq3xmJ2a6r0pN7yTbV4cZ8uW5sE9dL1fG2hJ3kM4=",
 }
 SEAL_SLOTS_AS_BORN = {
     "FISCAL_SEAL_CURRENT_P12_BASE64": "",
@@ -631,6 +671,8 @@ PRE_TASK_ENV = {
     "SECRET_KEY": "Pq7wM3jKv6St1Yc8Gb2Hn5Rd9Lf0Xa4Ue7Zi3Ko6Vm2Tj8Wq1Nx5Bc9Ch3Dg7Fp0Es",
     "INTERNAL_SHARED_SECRET": "a-generated-pre-internal-shared-secret",
     "INTERNAL_SHARED_SECRET_PREVIOUS": "",
+    # erplora/pre/app: pre's own key of the hubs' fiscal documents (NEW, as prod's).
+    "FISCAL_DOCUMENTS_KEY": "pR3eK9yW2xQ7mN4bV8cZ1aS6dF0gH5jL3kT7uY2iO9E=",
     "STRIPE_PORTAL_CONFIGURATION": "",
 }
 PRE_TASKS = {

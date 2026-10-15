@@ -20,7 +20,7 @@ ACCOUNTS = Path(settings.BASE_DIR) / "accounts"
 DATABASE_FILES = {"services.py", "queries.py", "models.py", "admin.py"}
 DATABASE_NAMES = {"connection", "connections", "transaction"}
 DATABASE_ATTRIBUTES = {"objects", "select_for_update", "cursor", "atomic", "on_commit", "raw"}
-DEPENDENT_APPS = ("hubs", "billing")
+DEPENDENT_APPS = ("hubs", "billing", "fiscal")
 
 
 def code_files() -> list[Path]:
