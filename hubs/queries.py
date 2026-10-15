@@ -192,6 +192,9 @@ def _plan(plan: Plan, language: str) -> dict[str, Any]:
         "has_trial": plan.has_trial(),
         "support_level_label": plan.support_level_label,
         "included_level_label": plan.included_level_label,
+        "resources_label": plan.resources_label,
+        "assistant_messages_per_month": plan.assistant_messages_per_month,
+        "whatsapp_messages_per_month": plan.whatsapp_messages_per_month,
         "upgrade_only": plan.upgrade_only,
         "internal_only": plan.internal_only,
     }
@@ -928,6 +931,9 @@ def _snapshot_plan(plan: Plan | None) -> dict[str, Any] | None:
         "max_users": plan.max_users,
         "max_db_connections": plan.max_db_connections,
         "statement_timeout_seconds": plan.statement_timeout_seconds,
+        # The Hub counts them and blocks at the quota (PLAN-SAAS §3.6): 0 = none.
+        "assistant_messages_per_month": plan.assistant_messages_per_month,
+        "whatsapp_messages_per_month": plan.whatsapp_messages_per_month,
     }
 
 

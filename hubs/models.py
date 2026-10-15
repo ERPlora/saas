@@ -4,8 +4,9 @@ the plans and the taxonomy of businesses.
 ``Plan`` is ported from ERPlora/saas ``hubs/subscriptions/models.py`` (origin/develop) without the
 container sizing PLAN-SAAS §1 drops (vCPU, memory, storage flavour and database size) nor the price
 of a paused container and its Stripe price: there is no container per hub any more. It keeps
-``max_db_connections`` and ``statement_timeout_seconds`` (round 9, PLAN §14.2), which travel in the
-hub's state snapshot (PLAN-SAAS §2.2). No modeltranslation: each translatable field is one column
+``max_db_connections`` and ``statement_timeout_seconds`` (round 9, PLAN §14.2) and, since 2026-10-15, the
+assistant and WhatsApp messages a month (PLAN-SAAS §3.6), which travel in the hub's state snapshot
+(PLAN-SAAS §2.2). No modeltranslation: each translatable field is one column
 per language (``name_en``, ``name_es``…), English being the source.
 
 ``Sector`` and ``BusinessType`` are ported from ERPlora/saas ``public/catalog/models.py``
@@ -88,8 +89,10 @@ class Plan(TranslatedFields):
     """A subscription plan of a hub. Prices are NET, VAT excluded (saas#1098).
 
     One subscription buys one hub and everything inside it: every location, device and user
-    (saas#1760). Free is permanent and needs no card (ADR-0154); Starter and Standard carry a
-    15-day trial; Pro, Enterprise and Max are upgrade-only; ``payment-test`` is internal.
+    (saas#1760). Free is permanent and needs no card (ADR-0154) and is the way in: no plan carries a trial
+    since 2026-10-15 (``trial_period_days`` stays, dormant, for staff to use); Pro, Enterprise and Max are
+    upgrade-only; ``payment-test`` is internal. The plans live only in the database and staff keep them in the
+    admin: migration ``hubs/0013`` seeds them, and no deploy writes them again.
     """
 
     class IncludedLevel(models.TextChoices):
@@ -121,6 +124,15 @@ class Plan(TranslatedFields):
         SupportLevel.EMAIL: _("Email"),
         SupportLevel.PRIORITY_EMAIL: _("Priority email"),
         SupportLevel.CONTRACT: _("Agreed in contract"),
+    }
+    #: The full tier of resources, the one Starter has (``max_db_connections``; PLAN §14.2). Each plan up
+    #: doubles it (Ioan, 2026-10-15): what the customer reads is the multiple, never the number.
+    PAID_BASE_DB_CONNECTIONS = 3
+    RESOURCES_LABELS = {
+        0: _("Basic, for one device"),
+        1: _("Full, for several devices"),
+        2: _("Double"),
+        3: _("Triple"),
     }
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
@@ -162,6 +174,20 @@ class Plan(TranslatedFields):
     statement_timeout_seconds = models.PositiveIntegerField(
         default=5, help_text=_("Longest database statement of a hub, in seconds (PLAN §14.2).")
     )
+    #: What the plan includes of the assistant and of WhatsApp each month (PLAN-SAAS §3.6, 2026-10-15): one request
+    #: of the user to the assistant is one message. They travel in the hub's state snapshot and the Hub counts
+    #: them (warns at 80 %, blocks at 100 %, restarts on the 1st, UTC). 0 = none, never «unlimited»; there is no
+    #: pack nor overage (ADR-0474): more messages, a plan up.
+    assistant_messages_per_month = models.PositiveIntegerField(
+        _("AI assistant messages a month"),
+        default=0,
+        help_text=_("Requests to the AI assistant a business may make each month (0 = none)."),
+    )
+    whatsapp_messages_per_month = models.PositiveIntegerField(
+        _("WhatsApp messages a month"),
+        default=0,
+        help_text=_("WhatsApp messages a business may send each month (0 = none)."),
+    )
     included_level = models.CharField(max_length=16, choices=IncludedLevel.choices, default=IncludedLevel.FREE)
     support_level = models.CharField(max_length=16, choices=SupportLevel.choices, default=SupportLevel.COMMUNITY)
     includes_custom_domain = models.BooleanField(default=False)
@@ -198,6 +224,22 @@ class Plan(TranslatedFields):
     def support_level_label(self) -> str:
         """Translated support channel and priority, or ``""`` if unset."""
         return str(self.SUPPORT_LEVEL_LABELS.get(self.support_level, ""))
+
+    @property
+    def resources_label(self) -> str:
+        """How much database throughput the plan has, in plain words, relative to the full tier (Ioan, 2026-10-15:
+        the «resources» that grow from plan to plan are the database's input/output capacity, never named by engine).
+
+        A single-device plan is «basic»; a paid plan has the full tier; from there the multiple of the
+        full tier (double, triple…). Never a connection count: the page sells what the customer gets.
+        """
+        if self.max_devices == 1:
+            return str(self.RESOURCES_LABELS[0])
+        times = max(1, self.max_db_connections // self.PAID_BASE_DB_CONNECTIONS)
+        label = self.RESOURCES_LABELS.get(times)
+        if label is not None:
+            return str(label)
+        return _("%(times)d times the full tier") % {"times": times}
 
     def is_available_to(self, user) -> bool:
         """Whether ``user`` may subscribe to this plan: an internal one only for staff (saas#1052)."""

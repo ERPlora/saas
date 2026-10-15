@@ -69,6 +69,9 @@ export function plan(slug: string, name: string, monthly: string, annual: string
     has_trial: false,
     support_level_label: 'Email',
     included_level_label: 'Basic',
+    resources_label: 'Full, for several devices',
+    assistant_messages_per_month: 0,
+    whatsapp_messages_per_month: 0,
     upgrade_only: false,
     internal_only: false,
     ...extra,
@@ -78,7 +81,7 @@ export function plan(slug: string, name: string, monthly: string, annual: string
 export const FREE = plan('free', 'Free', '0.00', '0.00', { max_users: 3, max_devices: 1 });
 export const STARTER = plan('starter', 'Starter', '29.99', '299.90');
 export const PLANS = { signup_trial_days: 15, cheapest_slug: 'free', plans: [FREE, STARTER] };
-/** Two upgrade-only plans (`sync_hub_plans`: Pro, Enterprise and Max are an upgrade of a business that pays). */
+/** Two upgrade-only plans (Pro, Enterprise and Max are an upgrade of a business that pays). */
 export const PRO = plan('pro', 'Pro', '109.99', '1099.90', { upgrade_only: true });
 export const MAX = plan('max', 'Max', '419.99', '4199.90', { upgrade_only: true });
 

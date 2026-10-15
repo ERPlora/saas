@@ -88,13 +88,14 @@ class TestTheSnapshot:
         )
 
     def test_it_carries_the_verifactu_block(self, business):
-        """``fiscal.queries.snapshot_block`` (the authorisation) and whether live sending is paid (Starter's
-        trial: yes). The rest is ``fiscal/tests/test_snapshot.py``."""
+        """``fiscal.queries.snapshot_block`` (the authorisation) and whether live sending is paid (a new business is
+        on Free, with no trial since 2026-10-15: no). The rest is ``fiscal/tests/test_snapshot.py``."""
         assert queries.hub_snapshot(business.id)["verifactu"] == {
             "representation": {"status": "none", "updated_at": None, "reason": ""},
-            "live_paid": True,
+            "live_paid": False,
         }
 
+    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
     def test_the_plan_is_the_trials_while_it_lasts(self, business):
         """Free is born with 15 days of Starter: the Hub applies Starter's rights meanwhile."""
         assert queries.hub_snapshot(business.id)["plan"] == {
@@ -104,6 +105,9 @@ class TestTheSnapshot:
             "max_users": 0,
             "max_db_connections": 3,
             "statement_timeout_seconds": 15,
+            # The monthly messages the Hub counts and blocks at (PLAN-SAAS §3.6, 2026-10-15): 0 = none.
+            "assistant_messages_per_month": 300,
+            "whatsapp_messages_per_month": 150,
         }
 
     def test_after_the_trial_it_is_free(self, business):
@@ -119,12 +123,16 @@ class TestTheSnapshot:
             plan["max_users"],
             plan["max_db_connections"],
             plan["statement_timeout_seconds"],
+            plan["assistant_messages_per_month"],
+            plan["whatsapp_messages_per_month"],
         ) == (
             "free",
             1,
             3,
             1,
             5,
+            30,
+            30,
         )
 
     def test_the_members_are_those_who_answered(self, business, team):

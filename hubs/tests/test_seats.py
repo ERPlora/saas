@@ -125,6 +125,7 @@ class TestTheInvitationSpendsTheSeat:
             "hubs.seat_limit",
         )
 
+    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
     def test_the_trial_plan_caps_nobody(self, business, owner):
         for n in range(5):
             invite(owner, business, f"p{n}@example.com")
@@ -182,6 +183,7 @@ class TestAcceptingNeedsASeatForThePeopleInside:
         assert row.slug == business.slug
         assert seats(owner, business) == {"used": 3, "limit": 3}
 
+    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
     def test_invitations_from_the_trial_are_answered_first_come_first_served(
         self, business, owner
     ):
@@ -258,6 +260,7 @@ class TestTheRefusal:
         )
         assert "3" in message, f"the cap stopped being interpolated: {message!r}"
 
+    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
     def test_a_refused_invitee_is_told_who_can_fix_it(self, business, owner):
         for n in range(4):
             invite(owner, business, f"p{n}@example.com")

@@ -1897,9 +1897,6 @@ msgstr "Sin tarjeta de crédito"
 msgid "1 device, 3 local users"
 msgstr "1 dispositivo, 3 usuarios locales"
 
-msgid "Managed database, with continuous backups and point-in-time recovery for 14 days"
-msgstr "Base de datos gestionada, con copias de seguridad continuas y recuperación a cualquier momento de los últimos 14 días"
-
 msgid "For counter hardware"
 msgstr "Para el hardware del mostrador"
 
@@ -2358,8 +2355,8 @@ msgstr "¿Puedo cambiar de plan en cualquier momento?"
 msgid "What happens when I reach my user or invoice limits?"
 msgstr "¿Qué pasa cuando alcanzo los límites de usuarios o facturas?"
 
-msgid "There are no overage charges or surprise bills. We notify you as you approach your plan's limits, and you can track your usage anytime from your Hub control panel. When you reach a limit, just upgrade to the next plan in one click — your service is never interrupted."
-msgstr "No hay cargos por exceso ni facturas sorpresa. Te avisamos a medida que te acercas a los límites de tu plan y puedes consultar tu consumo en cualquier momento desde el panel de control de tu Hub. Cuando alcanzas un límite, basta con actualizar al siguiente plan con un clic: el servicio nunca se interrumpe."
+msgid "There are no overage charges or surprise bills. We notify you as you approach your plan's limits, and you can track your usage anytime from your Hub control panel. When you reach a limit, just upgrade to the next plan in one click — each plan up doubles your resources, and your service is never interrupted."
+msgstr "No hay cargos por exceso ni facturas sorpresa. Te avisamos a medida que te acercas a los límites de tu plan y puedes consultar tu consumo en cualquier momento desde el panel de control de tu Hub. Cuando alcanzas un límite, basta con actualizar al siguiente plan con un clic: cada plan superior dobla tus recursos y el servicio nunca se interrumpe."
 
 msgid "Is there a trial period?"
 msgstr "¿Hay periodo de prueba?"
@@ -3174,47 +3171,17 @@ msgstr "Precios mostrados por mes. Paga el año y llévate 2 meses gratis."
 msgid "Scale when you need it."
 msgstr "Escala cuando lo necesites."
 
-msgid "Scale anytime"
-msgstr "Escala cuando quieras"
-
-msgid "Upgrade-only plans"
-msgstr "Planes solo de mejora"
-
-msgid "You start with one of the plans above and grow inside the dashboard. When your business needs more horsepower, switch to any of these tiers in one click — no migration, no downtime, no data loss."
-msgstr "Empiezas con uno de los planes anteriores y creces dentro del dashboard. Cuando tu negocio necesita más potencia, cambia a cualquiera de estos niveles en un clic, sin migración, sin tiempos de inactividad y sin pérdida de datos."
-
-msgid "Professional tier"
-msgstr "Nivel profesional"
-
-msgid "Upgrade-only plans are activated from your dashboard once you have a hub. They are not part of the public signup flow."
-msgstr "Los planes solo de actualización se activan desde tu dashboard una vez tengas un hub. No forman parte del flujo de registro público."
-
 msgid "Full detail"
 msgstr "Detalle completo"
 
 msgid "Everything in each plan"
 msgstr "Todo lo incluido en cada plan"
 
-msgid "Every plan is priced per hub, and one hub covers all your locations, devices and users. You start on the plan that fits you today and move up a tier in one click when you need a custom domain, the full API or a dedicated setup — no migration and no downtime."
-msgstr "Cada plan se cobra por hub, y un hub cubre todos tus locales, dispositivos y usuarios. Empiezas con el plan que te encaja hoy y subes de nivel en un clic cuando necesites dominio propio, la API completa o una instalación dedicada — sin migraciones ni cortes de servicio."
-
 msgid "Plan"
 msgstr "Plan"
 
 msgid "Monthly, per hub"
 msgstr "Mensual, por hub"
-
-msgid "Public plans · sign up directly"
-msgstr "Planes públicos · regístrate directamente"
-
-msgid "Professional · upgrade from inside the dashboard"
-msgstr "Professional · actualiza desde el dashboard"
-
-msgid "Upgrade-only"
-msgstr "Solo mejora"
-
-msgid "Plan names, prices and limits come straight from the live catalogue. Every plan runs on fully managed infrastructure — there is no server for you to set up or maintain."
-msgstr "Los nombres, precios y límites de los planes salen directamente del catálogo en vivo. Todos los planes funcionan sobre infraestructura totalmente gestionada: no hay ningún servidor que tengas que montar ni mantener."
 
 msgid "why us"
 msgstr "por qué nosotros"
@@ -3777,3 +3744,89 @@ msgstr "Apps incluidas"
 
 msgid "app catalogue, 1 click"
 msgstr "catálogo de apps, 1 clic"
+
+msgid "Managed database, replicated across several European data centres, with continuous backups and point-in-time recovery for 14 days"
+msgstr "Base de datos gestionada, replicada en varios centros de datos europeos, con copias de seguridad continuas y recuperación a cualquier momento de los últimos 14 días"
+
+msgid "Need more?"
+msgstr "¿Necesitas más?"
+
+msgid "Dedicated infrastructure"
+msgstr "Infraestructura dedicada"
+
+msgid "Several locations, high volume or requirements of your own? We set up a private environment reserved for your business alone: its own capacity, a replicated database and priority support. From %(price)s a month, sized to what you need."
+msgstr "¿Varios locales, mucho volumen o requisitos propios? Montamos un entorno privado reservado solo para tu negocio: capacidad propia, base de datos replicada y soporte prioritario. Desde %(price)s al mes, a la medida de lo que necesitas."
+
+msgid "By contact"
+msgstr "Por contacto"
+
+msgid "From %(price)s"
+msgstr "Desde %(price)s"
+
+msgid "/ month per business"
+msgstr "/ mes por negocio"
+
+msgid "A private environment, reserved for your business"
+msgstr "Un entorno privado, reservado para tu negocio"
+
+msgid "Its own capacity and a replicated database"
+msgstr "Capacidad propia y base de datos replicada"
+
+msgid "Priority support and set-up with our team"
+msgstr "Soporte prioritario y puesta en marcha con nuestro equipo"
+
+msgid "Tell us about your business and we will come back with a quote."
+msgstr "Cuéntanos cómo es tu negocio y te respondemos con un presupuesto."
+
+msgid "Every plan is priced per hub, and one hub covers all your locations, devices and users. You start on the plan that fits you today and move up in one click when you need a custom domain or more capacity — no migration and no downtime. Need more than that? We set up dedicated infrastructure for you."
+msgstr "Cada plan se cobra por hub, y un hub cubre todos tus locales, dispositivos y usuarios. Empiezas con el plan que te encaja hoy y subes en un clic cuando necesites dominio propio o más capacidad, sin migración y sin paradas. ¿Necesitas más? Montamos infraestructura dedicada para ti."
+
+msgid "Plans · sign up directly"
+msgstr "Planes · regístrate directamente"
+
+msgid "Dedicated infrastructure · by contact"
+msgstr "Infraestructura dedicada · por contacto"
+
+msgid "Dedicated"
+msgstr "Dedicada"
+
+msgid "All apps, free and premium"
+msgstr "Todas las apps, gratuitas y premium"
+
+msgid "Dedicated, agreed with you"
+msgstr "Dedicado, acordado contigo"
+
+msgid "Every plan runs on fully managed infrastructure on Amazon Web Services, in Europe — there is no server for you to set up or maintain, and your data is backed up continuously."
+msgstr "Todos los planes funcionan sobre infraestructura totalmente gestionada en Amazon Web Services, en Europa: no hay ningún servidor que tengas que montar ni mantener, y tus datos se copian de forma continua."
+
+msgid "What is dedicated infrastructure and who is it for?"
+msgstr "¿Qué es la infraestructura dedicada y para quién es?"
+
+msgid "A private environment reserved for your business alone, for companies with several locations, high volume or requirements of their own: its own capacity, a replicated database and priority support, from %(price)s a month. Contact us and we will size it with you."
+msgstr "Un entorno privado reservado solo para tu negocio, para empresas con varios locales, mucho volumen o requisitos propios: capacidad propia, base de datos replicada y soporte prioritario, desde %(price)s al mes. Contáctanos y lo dimensionamos contigo."
+
+msgid "Your own, sized with you"
+msgstr "Propia, a tu medida"
+
+msgid "Database throughput"
+msgstr "Capacidad de la base de datos"
+
+msgid "%(count)d message a month"
+msgid_plural "%(count)d messages a month"
+msgstr[0] "%(count)d mensaje al mes"
+msgstr[1] "%(count)d mensajes al mes"
+
+msgid "AI assistant: %(messages)s"
+msgstr "Asistente de IA: %(messages)s"
+
+msgid "WhatsApp: %(messages)s"
+msgstr "WhatsApp: %(messages)s"
+
+msgid "AI assistant"
+msgstr "Asistente de IA"
+
+msgid "Not included"
+msgstr "No incluido"
+
+msgid "Agreed with you"
+msgstr "Acordado contigo"

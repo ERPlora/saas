@@ -38,7 +38,6 @@ import gettext
 import json
 import re
 from decimal import Decimal
-from io import StringIO
 from pathlib import Path
 
 import pytest
@@ -46,7 +45,6 @@ from django.conf import settings
 from django.contrib.messages import get_messages
 from django.core import mail
 from django.core.cache import cache
-from django.core.management import call_command
 from django.test import override_settings
 from django.urls import resolve, reverse
 from django.utils import translation
@@ -193,7 +191,7 @@ def test_the_closing_band_offers_to_start_free(client):
     assert 'href="/launch"' in closing
 
 
-def test_a_plan_card_of_the_home_starts_at_the_sign_in(client):
+def test_a_plan_card_of_the_home_starts_at_the_sign_in(no_plans, client):
     """The SPA's sign-in, which also signs up: no door of the home leads to allauth's old pages."""
     make_plan("starter")
 
@@ -308,7 +306,7 @@ def test_without_premium_apps_the_ecosystem_says_so_honestly(client):
 # --- The plans (test_views.py, test_internal_plans_are_never_public.py) -----------------------
 
 
-def test_the_home_shows_the_plans_a_visitor_can_sign_up_for(client):
+def test_the_home_shows_the_plans_a_visitor_can_sign_up_for(no_plans, client):
     make_plan(
         "starter", name_en="Starter", price_monthly=Decimal("9.00"), display_order=1
     )
@@ -321,7 +319,7 @@ def test_the_home_shows_the_plans_a_visitor_can_sign_up_for(client):
 
 
 def test_the_home_does_not_list_internal_plans(client):
-    call_command("sync_hub_plans", stdout=StringIO())
+    """On the catalogue the migrations leave (``hubs/0013``)."""
     make_plan(
         "internal-sentinel",
         name_en="Internal Sentinel Plan",
@@ -341,7 +339,7 @@ def test_the_home_does_not_list_internal_plans(client):
     assert "Internal Sentinel Plan" not in html
 
 
-def test_without_plans_on_sale_the_plans_section_is_omitted(client):
+def test_without_plans_on_sale_the_plans_section_is_omitted(no_plans, client):
     html = html_of(client)
 
     assert 'id="planes"' not in html
@@ -351,7 +349,7 @@ def test_without_plans_on_sale_the_plans_section_is_omitted(client):
 # --- test_home_plan_trial.py ------------------------------------------------------------------
 
 
-def test_the_home_card_ends_with_the_trial_the_plan_grants(client):
+def test_the_home_card_ends_with_the_trial_the_plan_grants(no_plans, client):
     make_plan("starter", trial_days=21)
 
     assert card_items(html_of(client), "Starter") == [
@@ -360,7 +358,7 @@ def test_the_home_card_ends_with_the_trial_the_plan_grants(client):
     ]
 
 
-def test_the_home_card_follows_the_plan_when_its_trial_changes(client):
+def test_the_home_card_follows_the_plan_when_its_trial_changes(no_plans, client):
     starter = make_plan("starter", trial_days=15)
     starter.trial_period_days = 30
     starter.save()
@@ -368,7 +366,7 @@ def test_the_home_card_follows_the_plan_when_its_trial_changes(client):
     assert card_items(html_of(client), "Starter")[-1] == "30-day free trial"
 
 
-def test_the_home_card_trial_is_translated(client):
+def test_the_home_card_trial_is_translated(no_plans, client):
     make_plan("starter", trial_days=21, name_es="Starter")
 
     assert card_items(html_of(client, language="es"), "Starter") == [
@@ -377,13 +375,13 @@ def test_the_home_card_trial_is_translated(client):
     ]
 
 
-def test_a_plan_without_trial_shows_no_trial_line_on_the_home(client):
+def test_a_plan_without_trial_shows_no_trial_line_on_the_home(no_plans, client):
     make_plan("free", trial_days=0, price_monthly=Decimal("0"))
 
     assert card_items(html_of(client), "Free") == ["Unlimited users"]
 
 
-def test_painting_the_trial_never_writes_it_into_the_plan(client):
+def test_painting_the_trial_never_writes_it_into_the_plan(no_plans, client):
     starter = make_plan("starter", trial_days=21)
 
     for language in ("en", "es"):
@@ -394,7 +392,7 @@ def test_painting_the_trial_never_writes_it_into_the_plan(client):
     assert starter.features_es == ["Usuarios ilimitados"]
 
 
-def test_the_contact_section_states_the_real_trial_never_a_typed_one(client):
+def test_the_contact_section_states_the_real_trial_never_a_typed_one(no_plans, client):
     """The old section said «a 15-day free trial» by hand (the saas#2414 class of bug)."""
     make_plan("starter", trial_days=30)
 
@@ -518,7 +516,7 @@ def test_there_is_a_business_software_application_naming_erp_and_pos(client):
     assert "Module marketplace" not in application["featureList"]
 
 
-def test_the_price_comes_from_the_live_plan_table(client, cheapest_plan):
+def test_the_price_comes_from_the_live_plan_table(no_plans, client, cheapest_plan):
     offers = of_type(json_ld_blocks(html_of(client)), "SoftwareApplication")["offers"]
 
     assert offers["priceCurrency"] == "EUR"
@@ -531,7 +529,7 @@ def test_the_application_counts_the_listed_apps(client, catalogue):
     assert "14 of them" in application["description"]
 
 
-def test_without_plans_there_is_no_offer(client):
+def test_without_plans_there_is_no_offer(no_plans, client):
     assert "offers" not in of_type(
         json_ld_blocks(html_of(client)), "SoftwareApplication"
     )

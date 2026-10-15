@@ -132,6 +132,12 @@ export interface PlanOut {
   has_trial: boolean;
   support_level_label: string;
   included_level_label: string;
+  /** How much room the plan has, relative to the full tier («Basic, for one device», «Double»…). */
+  resources_label: string;
+  /** Requests to the AI assistant the plan includes each month (one request = one message); 0 = none. */
+  assistant_messages_per_month: number;
+  /** WhatsApp messages the plan includes each month; 0 = none. */
+  whatsapp_messages_per_month: number;
   upgrade_only: boolean;
   internal_only: boolean;
 }

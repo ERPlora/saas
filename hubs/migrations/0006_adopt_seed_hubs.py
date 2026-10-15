@@ -17,7 +17,8 @@ again:
 - its owner is its ``hub_owner`` membership (the oldest, if several: the others become ``hub_admin``), or
   else the oldest membership, which becomes ``hub_owner`` (a business has one owner);
 - one answered ``HubMember`` per membership, joined and accepted when the membership was created;
-- a ``Subscription`` on the Free plan if it is seeded (``sync_hub_plans``), as ``hubs.business.create``.
+- a ``Subscription`` on the Free plan if it exists (seeded then by ``sync_hub_plans``, by ``0013`` since
+  2026-10-15), as ``hubs.business.create``.
 
 A slug that is no hub's (``live.slugs``: reserved, malformed, the platform host ``hubs``) opened nothing
 at the jump (``is_hub_slug``): its rows are deleted. Then every business's mirror is set as
