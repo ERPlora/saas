@@ -172,22 +172,18 @@ def test_pricing_renders_active_plan_data_from_the_database(client):
     assert [plan["slug"] for plan in response.context["plans_main"]] == [
         "db-public-sentinel"
     ]
-    (upgrade,) = response.context["plans_pro"]
-    assert upgrade["slug"] == "db-upgrade-sentinel"
-    assert upgrade["display_features"] == ["Upgrade feature sentinel"]
+    assert "plans_pro" not in response.context
     html = response.content.decode()
     for text in (
         "DB Public Sentinel",
         "€31.23",
         "Public description loaded from the database",
         "Database feature sentinel",
-        "DB Upgrade Sentinel",
-        "€62.46",
-        "Upgrade description loaded from the database",
-        "Upgrade feature sentinel",
     ):
         assert text in html, text
-    assert "────────────────────" not in html
+    # An upgrade-only row is no plan a visitor can sign up for: off the page (2026-10-15).
+    for text in ("DB Upgrade Sentinel", "€62.46", "Upgrade feature sentinel", "────────────────────"):
+        assert text not in html, text
     assert "DB Inactive Sentinel" not in html
 
 
@@ -329,10 +325,7 @@ def catalog(seeded):
 def test_pricing_page_does_not_list_internal_or_retired_plans(client, catalog):
     response = get(client)
 
-    listed = {
-        plan["slug"]
-        for plan in response.context["plans_main"] + response.context["plans_pro"]
-    }
+    listed = {plan["slug"] for plan in response.context["plans_main"]}
     assert "starter" in listed, "control: the public plans are still listed"
     assert not {"payment-test", "internal-sentinel", "retired-sentinel"} & listed
     html = response.content.decode()
@@ -384,12 +377,40 @@ def test_table_shows_the_devices_and_users_each_plan_buys(client, seeded):
 
 
 def test_table_shows_what_each_plan_includes_and_its_support(client, seeded):
+    """The three plans of 2026-10-15 and, under them, the dedicated row with its own words."""
     table = plan_table(html_of(client))
 
-    for level in ("Free", "Basic", "Pro", "Enterprise"):
+    for level in ("Free", "Basic", "All apps, free and premium"):
         assert level in table, level
-    for support in ("Community forum", "Email", "Priority email", "Agreed in contract"):
+    for support in ("Community forum", "Email", "Priority email", "Dedicated, agreed with you"):
         assert support in table, support
+    assert "Pro" not in table and "Enterprise" not in table and "Agreed in contract" not in table
+
+
+def test_table_shows_the_resources_each_plan_buys_in_plain_words(client, seeded):
+    """Ioan, 2026-10-15: the «resources» that grow from plan to plan are the database's input/output capacity.
+    Free for one device, Starter the full tier, Standard twice it, dedicated its own — a buyer reads the ladder
+    as database throughput, never an engine, a connection count nor a timeout."""
+    table = plan_table(html_of(client))
+
+    assert "Database throughput" in table
+    for label in ("Basic, for one device", "Full, for several devices", "Double", "Your own, sized with you"):
+        assert label in table, label
+    assert not re.search(r"\b(connections?|timeout|aurora)\b", table, re.I)
+
+
+def test_the_table_reads_the_resources_in_spanish(client, seeded):
+    table = plan_table(html_of(client, language="es"))
+
+    assert "Capacidad de la base de datos" in table
+    for label in ("Básica, para un dispositivo", "Completa, para varios dispositivos", "El doble", "Propia, a tu medida"):
+        assert label in table, label
+
+
+def test_the_limits_answer_says_each_plan_up_doubles_the_resources(client):
+    (item,) = [item for item in pricing.faq_items() if item["key"] == "limits"]
+
+    assert "doubles" in str(item["answer"])
 
 
 def test_table_does_not_compare_plans_on_the_database_engine(client, seeded):
@@ -421,6 +442,73 @@ def test_the_columns_survive_translation_to_spanish(client, seeded):
     assert "Dispositivos ilimitados" in table
     assert "Foro de la comunidad" in table
     assert "Correo electrónico prioritario" in table
+
+
+# --- The monthly messages of each plan: assistant and WhatsApp (PLAN-SAAS §3.6, 2026-10-15) -------------
+
+
+def test_each_card_says_the_assistant_and_whatsapp_messages_a_month(client, seeded):
+    """In plain words, before the trial line: what the plan includes, never tokens nor how we count them."""
+    html = html_of(client)
+
+    assert card_items(html, "Free")[-2:] == ["AI assistant: 30 messages a month", "WhatsApp: 30 messages a month"]
+    starter = card_items(html, "Starter")
+    assert starter[-3:] == ["AI assistant: 300 messages a month", "WhatsApp: 150 messages a month", "15-day free trial"]
+    assert "AI assistant: 600 messages a month" in card_items(html, "Standard")
+    assert "WhatsApp: 300 messages a month" in card_items(html, "Standard")
+    assert "token" not in visible_markup(html).lower()
+
+
+def test_a_plan_without_messages_says_nothing_of_them(client):
+    """0 is «none»: the card paints no line rather than «0 messages»."""
+    make_plan("starter", trial_days=15, assistant_messages_per_month=0, whatsapp_messages_per_month=40)
+
+    assert card_items(html_of(client), "Starter") == ["Unlimited users", "WhatsApp: 40 messages a month", "15-day free trial"]
+
+
+def test_one_message_reads_in_the_singular(client):
+    make_plan("starter", assistant_messages_per_month=1)
+
+    assert "AI assistant: 1 message a month" in card_items(html_of(client), "Starter")
+
+
+def test_the_cards_read_the_messages_in_spanish(client, seeded):
+    items = card_items(html_of(client, language="es"), "Starter")
+
+    assert "Asistente de IA: 300 mensajes al mes" in items
+    assert "WhatsApp: 150 mensajes al mes" in items
+
+
+def test_the_table_compares_the_messages_of_each_plan(client, seeded):
+    table = plan_table(html_of(client))
+
+    assert "<th>AI assistant</th>" in table and "<th>WhatsApp</th>" in table
+    for messages in ("30 messages a month", "300 messages a month", "600 messages a month", "150 messages a month"):
+        assert messages in table, messages
+    # Dedicated infrastructure has no fixed quota: it is sized with the customer.
+    assert table.count("Agreed with you") == 2
+
+
+def test_a_plan_without_messages_reads_not_included_in_the_table(client):
+    make_plan("starter", assistant_messages_per_month=0, whatsapp_messages_per_month=0)
+
+    assert plan_table(html_of(client)).count("Not included") == 2
+
+
+def test_the_table_reads_the_messages_in_spanish(client, seeded):
+    table = plan_table(html_of(client, language="es"))
+
+    assert "<th>Asistente de IA</th>" in table
+    assert "300 mensajes al mes" in table
+    assert "Acordado contigo" in table
+
+
+def test_every_row_of_the_table_spans_its_columns(client, seeded):
+    """A new column must reach the group rows too, or the table breaks on a wide screen."""
+    table = plan_table(html_of(client))
+    columns = len(re.findall(r"<th\b", table.split("</thead>", 1)[0]))
+
+    assert set(re.findall(r'colspan="(\d+)"', table)) == {str(columns)}
 
 
 # --- test_pricing_card_trial.py ---------------------------------------------------------------
@@ -456,15 +544,20 @@ def test_the_card_trial_is_translated(client):
     )
 
 
-def test_upgrade_only_plans_never_promise_a_trial(client):
-    # An upgrade checkout grants no trial (#809), whatever the row says.
+def test_an_upgrade_only_plan_is_neither_listed_nor_has_a_detail_page(client):
+    """Ioan, 2026-10-15: /pricing/ sells the plans a visitor can sign up for; anything above them is
+    dedicated infrastructure, agreed by contact, never a plan card. A row staff still mark
+    ``upgrade_only`` stays off the page, off the detail pages and out of «Other plans»."""
     make_plan("starter", trial_days=15)
     make_plan("pro", trial_days=15, upgrade_only=True)
 
-    (rendered_pro,) = get(client).context["plans_pro"]
+    response = get(client)
 
-    assert rendered_pro["slug"] == "pro"
-    assert not any("trial" in line for line in rendered_pro["display_features"])
+    assert [plan["slug"] for plan in response.context["plans_main"]] == ["starter"]
+    assert '<div class="ep-pricing-card__name">Pro</div>' not in response.content.decode()
+    assert client.get("/pricing/pro/").status_code == 404
+    others = get(client, "/pricing/starter/").context["other_plans"]
+    assert [plan["slug"] for plan in others] == []
 
 
 # --- test_pricing_trial_period.py -------------------------------------------------------------
@@ -632,6 +725,65 @@ def test_without_plans_on_sale_the_page_says_so_and_paints_no_table(client):
     assert faq_page_of(html)
 
 
+# --- Dedicated infrastructure, by contact (Ioan, 2026-10-15) ----------------------------------
+
+CONTACT = "/contact/"
+
+
+def test_the_page_offers_dedicated_infrastructure_by_contact(client, seeded):
+    """Above Standard there is no plan to buy: a private setup from 400 € a month, agreed with us."""
+    html = html_of(client)
+    body = visible_markup(html)
+
+    assert 'id="dedicated"' in html
+    assert "Dedicated infrastructure" in body
+    assert "From €400 a month" in body
+    assert f'href="{CONTACT}"' in html
+    for gone in ("Upgrade-only", "Professional tier", "upgrade from inside the dashboard", "live catalogue"):
+        assert gone not in body, gone
+
+
+def test_the_dedicated_offer_reads_in_spanish(client, seeded):
+    body = visible_markup(html_of(client, language="es"))
+
+    assert "Infraestructura dedicada" in body
+    assert "Desde €400 al mes" in body
+    assert "Dedicated infrastructure" not in body
+
+
+def test_the_dedicated_price_is_one_constant_painted_like_the_plans(client, seeded):
+    assert pricing.DEDICATED_FROM == Decimal("400")
+    assert pricing.dedicated_price_label() == "€400"
+    assert get(client).context["dedicated_from"] == "€400"
+
+
+def test_the_comparison_table_ends_with_the_dedicated_row(client, seeded):
+    html = html_of(client)
+    table = html.split('id="plan-compare"', 1)[1].split("</table>", 1)[0]
+    last_row = table.split("<tr")[-1]
+
+    assert "Dedicated" in last_row and "€400" in last_row and f'href="{CONTACT}"' in last_row
+    assert "Upgrade-only" not in table and "Professional" not in table
+
+
+def test_the_dedicated_offer_sells_what_the_customer_gets_not_how_we_run_it(client, seeded):
+    """Plain words for a buyer: no engine, cluster or instance names anywhere on the page."""
+    body = visible_markup(html_of(client)).lower()
+    dedicated = body.split('id="dedicated"', 1)[1].split("</section>", 1)[0]
+
+    for internal in ("postgres", "aurora", "ecs", "fargate", "kubernetes", "docker", "pgbouncer", "replica set"):
+        assert internal not in body, internal
+    assert "replicated" in dedicated
+
+
+def test_the_faq_answers_what_dedicated_infrastructure_is(client):
+    (item,) = [item for item in pricing.faq_items() if item["key"] == "dedicated"]
+
+    assert "€400" in str(item["answer"])
+    assert "contact" in str(item["answer"]).lower()
+    assert str(item["question"]) in visible_markup(html_of(client))
+
+
 # --- The detail page --------------------------------------------------------------------------
 
 
@@ -645,13 +797,21 @@ def test_the_detail_shows_the_plan_its_price_its_features_and_its_trial(client, 
     assert "15 days free trial" in html
     # The trial is the pill, not one more feature line (the card's line belongs to the cards).
     assert "15-day free trial" not in html
-    assert "Managed database, with continuous backups" in html
+    assert "Managed database, replicated across several European data centres" in html
 
 
 def test_the_detail_offers_the_other_plans_with_their_links(client, seeded):
     html = html_of(client, "/pricing/starter/")
 
     assert f'href="{reverse("public:pricing_detail", args=["standard"])}"' in html
+
+
+def test_every_plan_of_the_index_starts_at_the_sign_in(client, seeded):
+    """The cards, the comparison table and the closing band: the SPA's sign-in, which also signs up."""
+    html = html_of(client)
+
+    assert 'href="/launch"' in html
+    assert "/accounts/login/" not in html
 
 
 def test_the_detail_sends_a_visitor_to_sign_up_and_a_customer_to_the_launcher(
@@ -764,7 +924,7 @@ def test_pricing_uses_the_shared_alternating_section_surface():
 
     assert page.count("ep-section--soft") == 2
     assert (
-        'class="ep-section--compact ep-section--soft ep-section--center ep-section--divider" id="upgrade-plans"'
+        'class="ep-section--compact ep-section--soft ep-section--center ep-section--divider" id="dedicated"'
         in page
     )
     assert (
@@ -773,17 +933,16 @@ def test_pricing_uses_the_shared_alternating_section_surface():
     )
 
 
-def test_pricing_upgrade_plans_use_shared_cards_and_an_auto_fitting_grid():
-    upgrade = (
-        source("index.html")
-        .split("<!-- UPGRADE-ONLY PLANS", 1)[1]
-        .split("<!-- FEATURE COMPARISON TABLE", 1)[0]
-    )
+def test_the_dedicated_offer_replaces_the_upgrade_only_plans_in_the_template():
+    page = source("index.html")
+    dedicated = page.split("<!-- DEDICATED INFRASTRUCTURE", 1)[1].split("<!-- FEATURE COMPARISON TABLE", 1)[0]
 
-    assert 'class="ep-grid-cards"' in upgrade
-    assert '<ion-card class="ion-no-margin">' in upgrade
-    assert "{% for plan in plans_pro %}" in upgrade
-    assert "plan.display_features|slice" in upgrade
+    assert "plans_pro" not in page
+    assert "Upgrade-only" not in page
+    assert '<ion-card class="ion-no-margin">' in dedicated
+    assert "{% url 'public:contact' %}" in dedicated
+    # The figure is public/pricing.py's, never typed in the template.
+    assert "price=dedicated_from" in dedicated and "400" not in dedicated
 
 
 def test_pricing_is_a_primary_page_with_the_compact_hero_and_the_shared_rhythm():

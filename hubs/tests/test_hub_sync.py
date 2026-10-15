@@ -92,6 +92,9 @@ class TestTheSnapshot:
             "max_users": 0,
             "max_db_connections": 3,
             "statement_timeout_seconds": 15,
+            # The monthly messages the Hub counts and blocks at (PLAN-SAAS §3.6, 2026-10-15): 0 = none.
+            "assistant_messages_per_month": 300,
+            "whatsapp_messages_per_month": 150,
         }
 
     def test_after_the_trial_it_is_free(self, business):
@@ -107,12 +110,16 @@ class TestTheSnapshot:
             plan["max_users"],
             plan["max_db_connections"],
             plan["statement_timeout_seconds"],
+            plan["assistant_messages_per_month"],
+            plan["whatsapp_messages_per_month"],
         ) == (
             "free",
             1,
             3,
             1,
             5,
+            30,
+            30,
         )
 
     def test_the_members_are_those_who_answered(self, business, team):

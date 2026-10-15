@@ -65,6 +65,8 @@
       "later": "{plans}: disponibles al pasar a {plan}.",
       "trial": "Lo pruebas hasta el {date}",
       "trialKeeps": "Si lo compras ahora, conservas los días que te quedan de prueba.",
+      "assistantMessages": "Asistente de IA: {count} mensaje al mes | Asistente de IA: {count} mensajes al mes",
+      "whatsappMessages": "WhatsApp: {count} mensaje al mes | WhatsApp: {count} mensajes al mes",
       "kept": "{plan} se mantiene: se renovará el {date}",
       "changed": "{business} ya está en {plan}",
       "switched": "{business} ya está en {plan}, con pago {period}",

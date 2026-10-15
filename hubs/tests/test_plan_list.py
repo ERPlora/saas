@@ -81,6 +81,9 @@ def test_the_shape_of_a_plan(seeded):
         "has_trial",
         "support_level_label",
         "included_level_label",
+        "resources_label",
+        "assistant_messages_per_month",
+        "whatsapp_messages_per_month",
         "upgrade_only",
         "internal_only",
     }
@@ -101,6 +104,7 @@ def test_the_shape_of_a_plan(seeded):
         True,
     )
     assert (starter["upgrade_only"], starter["internal_only"]) == (False, False)
+    assert (starter["assistant_messages_per_month"], starter["whatsapp_messages_per_month"]) == (300, 150)
     assert starter["features"][-1] == trial == "15-day free trial"
     assert (starter["included_level_label"], starter["support_level_label"]) == (
         "Basic",

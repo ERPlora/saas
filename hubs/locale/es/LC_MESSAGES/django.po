@@ -1071,3 +1071,33 @@ msgstr "Ficheros"
 
 msgid "Database"
 msgstr "Base de datos"
+
+msgid "Basic, for one device"
+msgstr "Básica, para un dispositivo"
+
+msgid "Full, for several devices"
+msgstr "Completa, para varios dispositivos"
+
+msgid "Double"
+msgstr "El doble"
+
+msgid "Triple"
+msgstr "El triple"
+
+msgid "%(times)d times the full tier"
+msgstr "%(times)d veces el nivel completo"
+
+msgid "AI assistant messages a month"
+msgstr "Mensajes del asistente de IA al mes"
+
+msgid "WhatsApp messages a month"
+msgstr "Mensajes de WhatsApp al mes"
+
+msgid "Requests to the AI assistant a business may make each month (0 = none)."
+msgstr "Peticiones al asistente de IA que un negocio puede hacer cada mes (0 = ninguna)."
+
+msgid "WhatsApp messages a business may send each month (0 = none)."
+msgstr "Mensajes de WhatsApp que un negocio puede enviar cada mes (0 = ninguno)."
+
+msgid "AI assistant and WhatsApp per month"
+msgstr "Asistente de IA y WhatsApp al mes"

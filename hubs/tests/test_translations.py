@@ -56,6 +56,12 @@ NEW_MESSAGES = [
     "No usage of this business has been measured yet: the first figures arrive the night after it is created.",
     "Files",
     "Database",
+    # 2026-10-15: the monthly messages of a plan (Plan and its admin).
+    "AI assistant messages a month",
+    "WhatsApp messages a month",
+    "Requests to the AI assistant a business may make each month (0 = none).",
+    "WhatsApp messages a business may send each month (0 = none).",
+    "AI assistant and WhatsApp per month",
 ]
 
 

@@ -185,6 +185,26 @@ def test_the_level_labels_are_read_in_the_active_language(included, support, eng
         assert (plan.included_level_label, plan.support_level_label) == spanish
 
 
+@pytest.mark.parametrize(
+    ("max_devices", "connections", "english", "spanish"),
+    [
+        (1, 1, "Basic, for one device", "Básica, para un dispositivo"),
+        (0, 3, "Full, for several devices", "Completa, para varios dispositivos"),
+        (0, 6, "Double", "El doble"),
+        (0, 9, "Triple", "El triple"),
+    ],
+)
+def test_the_resources_label_reads_the_database_ladder_in_plain_words(max_devices, connections, english, spanish):
+    """Ioan, 2026-10-15: a buyer reads how much database throughput a plan has relative to the plan below, never a
+    connection count. Free is sized for one device; a paid plan has the full tier; Standard twice it."""
+    plan = _plan(max_devices=max_devices, max_db_connections=connections)
+
+    with translation.override("en"):
+        assert plan.resources_label == english
+    with translation.override("es"):
+        assert plan.resources_label == spanish
+
+
 # --- One column per language ----------------------------------------------------------------------
 
 

@@ -29,6 +29,7 @@ from io import StringIO
 
 import pytest
 from django.core.management import call_command
+from django.utils import translation
 
 from hubs.management.commands.sync_hub_plans import PLANS
 from hubs.models import Plan
@@ -58,12 +59,17 @@ PLAN_FIELDS = {
     "internal_only", "stripe_product_id", "stripe_price_id", "stripe_price_id_annual", "trial_period_days",
     "display_order", "max_hubs_per_org", "max_devices", "max_users", "max_db_connections",
     "statement_timeout_seconds", "included_level", "support_level", "includes_custom_domain",
+    "assistant_messages_per_month", "whatsapp_messages_per_month",
     "created_at", "updated_at",
     # The reverse relation of Subscription.plan (the hubs on the plan), not a column of the plan.
     "subscriptions",
 }  # fmt: skip
 
 PAYMENT_TEST = "payment-test"
+#: The catalogue (Ioan, 2026-10-15): three plans on sale at sign-up, the three upgrade-only tiers above them (kept,
+#: not retired) and the internal one.
+UPGRADE_ONLY = ("pro", "enterprise", "max")
+CATALOGUE = ("free", "starter", "standard", *UPGRADE_ONLY, PAYMENT_TEST)
 
 
 def _sync(*args) -> str:
@@ -82,10 +88,10 @@ def test_starter_english_fields_are_english(seeded_plans):
     starter = seeded_plans["starter"]
     assert (
         starter.description_en
-        == "Your business in the cloud. No servers, no maintenance, always available."
+        == "Your whole business in the cloud: nothing to install, nothing to maintain, always available."
     )
     assert "Unlimited users" in starter.features_en
-    assert "Fully managed cloud" in starter.features_en
+    assert "Fully managed cloud on Amazon Web Services, in Europe, with automatic scaling" in starter.features_en
     for feature in starter.features_en:
         for marker in SPANISH_MARKERS:
             assert marker not in feature, (
@@ -97,10 +103,10 @@ def test_spanish_mirror_is_preserved(seeded_plans):
     starter = seeded_plans["starter"]
     assert (
         starter.description_es
-        == "Tu negocio en la nube. Sin servidores, sin mantenimiento, siempre disponible."
+        == "Todo tu negocio en la nube: nada que instalar, nada que mantener, siempre disponible."
     )
     assert "Usuarios ilimitados" in starter.features_es
-    assert "Cloud gestionado" in starter.features_es
+    assert "Cloud gestionado en Amazon Web Services, en Europa, con autoescalado" in starter.features_es
 
 
 def test_recommended_badge_is_translated(seeded_plans):
@@ -227,10 +233,17 @@ def test_recovery_window_is_the_same_on_every_plan(seeded_plans):
 
 
 #: The database line of Free and Starter: one sentence with the backups, the same words as the public
-#: downloads page (``public/templates/public/downloads.html``).
+#: downloads page (``public/templates/public/downloads.html``). Since 2026-10-15 (Ioan) it tells the customer
+#: what they get in plain words — where it lives (AWS, Europe) and that it is replicated — never how it is run.
 MANAGED_DATABASE = {
-    "en": "Managed database, with continuous backups and point-in-time recovery for 14 days",
-    "es": "Base de datos gestionada, con copias de seguridad continuas y recuperación a cualquier momento de los últimos 14 días",
+    "en": (
+        "Managed database, replicated across several European data centres, with continuous backups and "
+        "point-in-time recovery for 14 days"
+    ),
+    "es": (
+        "Base de datos gestionada, replicada en varios centros de datos europeos, con copias de seguridad "
+        "continuas y recuperación a cualquier momento de los últimos 14 días"
+    ),
 }
 #: Ioan's rule for the public web: the copy sells what the customer gets, never the technology under it.
 TECHNOLOGY_NAMES = ("postgresql", "postgres", "aurora")
@@ -263,6 +276,19 @@ def test_the_database_and_its_backups_are_one_line(seeded_plans):
         assert sum("copias" in line.lower() for line in plan.features_es) <= 1, plan.slug
 
 
+def test_the_cards_say_where_the_data_lives_and_that_the_database_is_replicated(seeded_plans):
+    """Ioan, 2026-10-15: a buyer reads «Amazon Web Services, in Europe» once per card (the cloud line) and
+    «replicated» on the database line, never an engine name."""
+    for slug in ("free", "starter"):
+        plan = seeded_plans[slug]
+        assert sum("Amazon Web Services" in f for f in plan.features_en) == 1, plan.features_en
+        assert sum("Amazon Web Services" in f for f in plan.features_es) == 1, plan.features_es
+        (line,) = [f for f in plan.features_en if "backup" in f.lower()]
+        assert "replicated" in line, (slug, line)
+        (line_es,) = [f for f in plan.features_es if "copias" in f.lower()]
+        assert "replicada" in line_es, (slug, line_es)
+
+
 def test_the_recovery_window_is_the_one_aurora_keeps(seeded_plans):
     """The card promises the 14 days Aurora keeps (``backup_retention_period = 14``,
     ``aws-next/stacks/prod/aurora.tf``), no more: the old «up to 30 days» was the old cluster's
@@ -291,11 +317,14 @@ def test_the_recovery_window_is_the_one_aurora_keeps(seeded_plans):
 
 def test_the_plans_promise_the_free_apps_not_every_module(seeded_plans):
     """Decision 17 of the catalog spec (round 16): premium apps go with the paid plans, so no card says
-    «all modules»; Free and Starter promise the free apps."""
-    for slug in ("free", "starter"):
-        plan = seeded_plans[slug]
-        assert "All free apps included" in plan.features_en, slug
-        assert "Todas las apps gratuitas incluidas" in plan.features_es, slug
+    «all modules»; Free promises the free apps and Starter (the first paid plan) every app, free and premium —
+    what the hero of /pricing/ already promises (2026-10-15)."""
+    free = seeded_plans["free"]
+    assert "All free apps included" in free.features_en
+    assert "Todas las apps gratuitas incluidas" in free.features_es
+    starter = seeded_plans["starter"]
+    assert "All apps included, free and premium" in starter.features_en
+    assert "Todas las apps incluidas, gratuitas y premium" in starter.features_es
     for plan in seeded_plans.values():
         lines = [line.lower() for line in [*plan.features_en, *plan.features_es]]
         assert not any("all modules" in line or "todos los módulos" in line for line in lines), plan.slug
@@ -303,15 +332,43 @@ def test_the_plans_promise_the_free_apps_not_every_module(seeded_plans):
 
 def test_db_limits_match_the_round_9_decision(seeded_plans):
     """PLAN §14.2 (Ioan): Free runs 1 transaction at a time per hub and process with a 5 s
-    ``statement_timeout``; every paid plan, 3 and 15 s. They travel in the hub's state snapshot
+    ``statement_timeout``; a paid plan, 3 and 15 s. Since 2026-10-15 (Ioan) each plan up doubles the
+    resources of the one below: Standard, 6 and 15 s. They travel in the hub's state snapshot
     (PLAN-SAAS §2.2) and the Hub enforces them with a semaphore per hub."""
     expected = {slug: (3, 15) for slug in seeded_plans}
     expected["free"] = (1, 5)
+    expected["standard"] = (6, 15)
     actual = {
         slug: (plan.max_db_connections, plan.statement_timeout_seconds)
         for slug, plan in seeded_plans.items()
     }
     assert actual == expected
+
+
+def test_each_plan_up_doubles_the_resources_of_the_one_below_and_says_so(seeded_plans):
+    """Ioan, 2026-10-15: what grows from one plan to the next is the AI messages and the «resources», which are the
+    database's input/output capacity. Free is sized for one device; Starter has the full tier for several
+    devices; Standard twice Starter. The cards say it as database throughput, in words: no engine name, no
+    connection count, no timeout."""
+    free, starter, standard = (seeded_plans[s] for s in ("free", "starter", "standard"))
+    assert standard.max_db_connections == 2 * starter.max_db_connections
+    assert free.max_db_connections < starter.max_db_connections
+    assert "Basic database throughput, sized for one device" in free.features_en
+    assert "Capacidad de base de datos básica, a la medida de un dispositivo" in free.features_es
+    assert "Full database throughput, for several devices at once" in starter.features_en
+    assert "Capacidad de base de datos completa, para varios dispositivos a la vez" in starter.features_es
+    assert any(f.startswith("Twice the database throughput of Starter") for f in standard.features_en), standard.features_en
+    assert any(f.startswith("El doble de capacidad de base de datos que Starter") for f in standard.features_es), (
+        standard.features_es
+    )
+    for plan in seeded_plans.values():
+        for text in _copy(plan):
+            assert not re.search(r"\b[1-9]\d*\s*(transactions?|connections?|conexiones|transacciones)\b", text, re.I), text
+            assert not re.search(r"\b(connections?|conexiones|timeout|statement)\b", text, re.I), text
+    with translation.override("en"):
+        assert [p.resources_label for p in (free, starter, standard)] == [
+            "Basic, for one device", "Full, for several devices", "Double",
+        ]
 
 
 def test_a_plan_sizes_no_infrastructure():
@@ -343,6 +400,76 @@ def test_paid_plans_do_not_cap_people(seeded_plans):
 
 # saas#1955: the two axes /pricing/ compares on. ADR-0474 fixes the module tier and ADR-0426
 # the support ladder. slug → (included_level, support_level, includes_custom_domain)
+#: Messages a month each plan includes (Ioan, 2026-10-15; ADR-0474 for Free and Starter): one request of the
+#: user to the assistant is one message; WhatsApp has its own count. Standard doubles Starter (each plan up
+#: doubles the one below); ``payment-test`` reads as Starter. 0 would mean none, never «unlimited».
+EXPECTED_MONTHLY_MESSAGES = {
+    "free": (30, 30),
+    "starter": (300, 150),
+    "standard": (600, 300),
+    # The upgrade-only tiers: the old stack's levels pro and enterprise (ADR-0474).
+    "pro": (1000, 500),
+    "enterprise": (3000, 800),
+    "max": (3000, 800),
+    PAYMENT_TEST: (300, 150),
+}
+
+
+def test_each_plan_includes_its_monthly_assistant_and_whatsapp_messages(seeded_plans):
+    actual = {
+        slug: (plan.assistant_messages_per_month, plan.whatsapp_messages_per_month)
+        for slug, plan in seeded_plans.items()
+    }
+
+    assert actual == EXPECTED_MONTHLY_MESSAGES
+
+
+def test_standard_includes_twice_the_messages_of_starter(seeded_plans):
+    starter, standard = seeded_plans["starter"], seeded_plans["standard"]
+
+    assert standard.assistant_messages_per_month == 2 * starter.assistant_messages_per_month
+    assert standard.whatsapp_messages_per_month == 2 * starter.whatsapp_messages_per_month
+
+
+def test_a_plan_without_a_figure_includes_no_messages(db):
+    """0 is «none»: a plan staff adds in the admin includes nothing until they say how many."""
+    plan = Plan.objects.create(slug="bare", name_en="Bare", price_monthly=Decimal("9.99"))
+
+    assert (plan.assistant_messages_per_month, plan.whatsapp_messages_per_month) == (0, 0)
+
+
+def _paid_plans():
+    """The plans a customer pays for: Free is the permanent floor (ADR-0154) and ``payment-test`` is staff-only
+    (saas#1052), so neither has a price the margin can be taken from."""
+    return [plan for plan in PLANS if plan["price_monthly"] > 0 and not plan.get("internal_only")]
+
+
+@pytest.mark.parametrize("plan", _paid_plans(), ids=lambda plan: plan["slug"])
+def test_a_paid_plan_keeps_half_its_price_when_its_messages_are_used_up(plan):
+    """ADR-0474 (saas#1952): the net monthly price pays for a customer that burns the whole quota of both, and
+    still keeps at least half of it. Assistant at its cost per message; WhatsApp at Meta's dearest rate."""
+    from hubs.management.commands.sync_hub_plans import (
+        ASSISTANT_COST_PER_MESSAGE,
+        MIN_MARGIN_PERCENT,
+        WHATSAPP_COST_PER_MESSAGE,
+    )
+
+    worst_case = (
+        plan["assistant_messages_per_month"] * ASSISTANT_COST_PER_MESSAGE
+        + plan["whatsapp_messages_per_month"] * WHATSAPP_COST_PER_MESSAGE
+    )
+
+    assert worst_case * 100 <= plan["price_monthly"] * (100 - MIN_MARGIN_PERCENT), (plan["slug"], worst_case)
+
+
+def test_the_margin_check_reads_every_paid_plan_at_its_real_cost():
+    """A plan slipping out of the check (a price typed as a string…) or a cost rounded to zero must be noticed."""
+    from hubs.management.commands.sync_hub_plans import ASSISTANT_COST_PER_MESSAGE, WHATSAPP_COST_PER_MESSAGE
+
+    assert {plan["slug"] for plan in _paid_plans()} == {"starter", "standard", *UPGRADE_ONLY}
+    assert (ASSISTANT_COST_PER_MESSAGE, WHATSAPP_COST_PER_MESSAGE) == (Decimal("0.02"), Decimal("0.0509"))
+
+
 EXPECTED_COMMERCIAL_LADDER = {
     "free": ("free", "community", False),
     "starter": ("basic", "email", False),
@@ -512,12 +639,12 @@ def test_seed_with_update_overwrites_a_plan_edited_in_the_admin(seeded_plans):
 
 
 def test_seed_creates_only_the_missing_plans(seeded_plans):
-    Plan.objects.filter(slug="pro").delete()
+    Plan.objects.filter(slug="standard").delete()
     _edit_starter_in_the_admin()
 
     out = _sync()
 
-    assert Plan.objects.get(slug="pro").price_monthly == Decimal("109.99")
+    assert Plan.objects.get(slug="standard").price_monthly == Decimal("54.99")
     assert _starter() == (Decimal("1"), "Otro")
     assert "1 created, 6 existing" in out
 
@@ -527,3 +654,16 @@ def test_seed_on_an_empty_database_creates_the_whole_catalogue():
 
     assert Plan.objects.count() == len(PLANS) == 7
     assert "7 created, 0 existing" in out
+    assert set(Plan.objects.values_list("slug", flat=True)) == set(CATALOGUE)
+
+
+# --- The catalogue of 2026-10-15: three plans on sale at sign-up, the upgrade-only tiers kept ---------------------
+
+
+def test_the_upgrade_only_tiers_are_kept_active_above_the_plans_on_sale(seeded_plans):
+    """Ioan, 2026-10-15: Pro, Enterprise and Max are not retired. They stay active and ``upgrade_only``: the Store
+    offers them to a business that already pays, and the public web lists only the plans a visitor signs up for."""
+    for slug in UPGRADE_ONLY:
+        plan = seeded_plans[slug]
+        assert (plan.is_active, plan.upgrade_only, plan.internal_only) == (True, True, False), slug
+        assert plan.price_monthly > seeded_plans["standard"].price_monthly, slug

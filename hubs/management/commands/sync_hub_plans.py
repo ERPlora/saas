@@ -7,32 +7,47 @@ staff left them in the admin («N created, M existing»). ``--update`` puts ever
 back to these values («N created, M updated»). Idempotent; one short transaction per plan, so it is
 safe next to the running web.
 
-Catalogue:
+Catalogue (Ioan, 2026-10-15: three plans on sale at sign-up, dedicated infrastructure by contact, and the
+upgrade-only tiers kept):
 
 - ``free``: permanent Free plan (0 €, no card, ADR-0154): 1 hub, 1 device, 3 users, no trial. Never
   synced to Stripe.
 - ``starter`` / ``standard``: the paid plans sold on the web, with a 15-day trial (ADR-0154). The
   trial is never a ``features`` line: cards paint it from ``trial_period_days`` (saas#2424).
-- ``pro`` / ``enterprise`` / ``max``: ``upgrade_only``, bought from the Store as an upgrade of a paying
-  business, never at sign-up.
 - ``payment-test``: ``internal_only`` plan to exercise the billing chain end to end (saas#1052).
 
-Visibility: ``Plan.objects.public()`` (active and not ``internal_only``) is what ``/pricing/`` shows,
-upgrade-only plans included (``public/`` paints them in its ``plans_pro`` block, saas#809);
-``upgrade_only`` = offered only as an upgrade of a paying business: the Store offers them only to a
-business Stripe already bills and the checkout refuses them to a Free one (``billing.queries.offered_plans``,
-409 ``billing.plan_upgrade_only``; audit 2 S-03, 2026-10-14); ``internal_only`` = never shown.
+- ``pro`` / ``enterprise`` / ``max``: ``upgrade_only``, bought from the Store as an upgrade of a paying
+  business, never at sign-up. Kept as they were (Ioan, 2026-10-15: not retired): the Store offers them
+  only to a business Stripe already bills and the checkout refuses them to a Free one
+  (``billing.queries.offered_plans``, 409 ``billing.plan_upgrade_only``; audit 2 S-03, 2026-10-14). The
+  public web does not list them: ``/pricing/`` sells the three plans a visitor signs up for and, above
+  them, dedicated infrastructure from 400 € a month, agreed by contact (``public/pricing.py``).
+
+Visibility: ``Plan.objects.public()`` (active and not ``internal_only``) is what the panel reads;
+``/pricing/`` lists of it only the plans a visitor can sign up for; ``internal_only`` = never shown.
 
 Changed from the original: no container sizing nor suspension price (a plan sizes no container,
 PLAN-SAAS §1); the
 database limits follow round 9 (PLAN §14.2): Free 1 transaction at a time and 5 s, paid 3 and
-15 s; no retired slugs to switch off (saas-next starts from an empty database).
+15 s; since 2026-10-15 (Ioan) each plan up doubles the resources of the one below, so Standard has
+twice Starter's (``STANDARD_DB_LIMITS``), and the cards say it in words («twice the resources»), never
+as a number.
+
+Messages a month (Ioan, 2026-10-15; PLAN-SAAS §3.6): each plan includes a number of requests to the AI
+assistant (one request of the user = one message) and of WhatsApp messages, Free 30 / 30, Starter 300 / 150
+(ADR-0474) and Standard twice Starter, 600 / 300; ``payment-test`` reads as Starter. 0 = none. No pack nor
+overage: more messages, a plan up. The figures keep at least ``MIN_MARGIN_PERCENT`` of the net monthly price
+of every paid plan when its customer uses up both quotas, at ``ASSISTANT_COST_PER_MESSAGE`` and
+``WHATSAPP_COST_PER_MESSAGE`` (guarded by ``hubs/tests/test_sync_hub_plans.py``); the cards paint them from the
+fields, never as a ``features`` line. Migration ``hubs/0012`` gives them to the rows already in production.
 
 What the commercial copy may say (saas#1760; guarded by ``hubs/tests/test_sync_hub_plans.py``):
 the billing unit is the HUB, called what the panel calls it, a business (audit 2 S-12); no infrastructure specs; support is sold as channel and priority,
 never as a clock; one recovery window for the whole cluster, the 14 days Aurora keeps
 (``backup_retention_period``, ``aws-next/stacks/prod/aurora.tf``), in one sentence with the managed
-database; no uptime SLA percentage; no technology names (PostgreSQL…), only what the customer gets.
+database; no uptime SLA percentage; no technology names (PostgreSQL…), only what the customer gets:
+where their data lives (Amazon Web Services, in Europe, on the cloud line) and that the database is
+replicated, in plain words.
 """
 
 from decimal import Decimal
@@ -42,7 +57,26 @@ from django.core.management.base import BaseCommand
 from hubs.models import Plan
 
 FREE_DB_LIMITS = {"max_db_connections": 1, "statement_timeout_seconds": 5}
-PAID_DB_LIMITS = {"max_db_connections": 3, "statement_timeout_seconds": 15}
+#: The full tier (Starter; PLAN §14.2). Each plan up doubles it (Ioan, 2026-10-15): Standard has twice Starter's.
+PAID_DB_LIMITS = {"max_db_connections": Plan.PAID_BASE_DB_CONNECTIONS, "statement_timeout_seconds": 15}
+STANDARD_DB_LIMITS = {"max_db_connections": 2 * Plan.PAID_BASE_DB_CONNECTIONS, "statement_timeout_seconds": 15}
+
+#: What one message costs us at most, net (ADR-0474, saas#1952): the model's tokens of one assistant request, and
+#: Meta's dearest billable WhatsApp message (marketing, Spain).
+ASSISTANT_COST_PER_MESSAGE = Decimal("0.02")
+WHATSAPP_COST_PER_MESSAGE = Decimal("0.0509")
+#: The share of a paid plan's net monthly price left when its customer uses up both quotas (Ioan's condition:
+#: never pay the model provider or Meta more than half of what the plan charges).
+MIN_MARGIN_PERCENT = 50
+
+MANAGED_DATABASE_EN = (
+    "Managed database, replicated across several European data centres, with continuous backups and "
+    "point-in-time recovery for 14 days"
+)
+MANAGED_DATABASE_ES = (
+    "Base de datos gestionada, replicada en varios centros de datos europeos, con copias de seguridad "
+    "continuas y recuperación a cualquier momento de los últimos 14 días"
+)
 
 PLANS = [
     {
@@ -53,21 +87,25 @@ PLANS = [
         "description_es": "Empieza a vender hoy. Sin tarjeta, sin servidor, sin mantenimiento.",
         "features_en": [
             "1 device",
-            "3 local users",
-            "Fully managed cloud",
+            "3 users",
+            "Basic database throughput, sized for one device",
             "No credit card required",
             "All free apps included",
-            "Managed database, with continuous backups and point-in-time recovery for 14 days",
+            "Fully managed cloud on Amazon Web Services, in Europe, with automatic scaling",
+            MANAGED_DATABASE_EN,
+            "Encrypted data and automatic SSL certificate",
             ".erplora.com subdomain",
             "Community support",
         ],
         "features_es": [
             "1 dispositivo",
-            "3 usuarios locales",
-            "Cloud gestionado",
+            "3 usuarios",
+            "Capacidad de base de datos básica, a la medida de un dispositivo",
             "Sin tarjeta de crédito",
             "Todas las apps gratuitas incluidas",
-            "Base de datos gestionada, con copias de seguridad continuas y recuperación a cualquier momento de los últimos 14 días",
+            "Cloud gestionado en Amazon Web Services, en Europa, con autoescalado",
+            MANAGED_DATABASE_ES,
+            "Datos cifrados y certificado SSL automático",
             "Subdominio .erplora.com",
             "Soporte de la comunidad",
         ],
@@ -85,6 +123,8 @@ PLANS = [
         "max_devices": 1,
         # The number this card has always promised ("3 local users"), held to it (saas#2022).
         "max_users": 3,
+        "assistant_messages_per_month": 30,
+        "whatsapp_messages_per_month": 30,
         "included_level": "free",
         "support_level": "community",
         "includes_custom_domain": False,
@@ -93,31 +133,31 @@ PLANS = [
         "slug": "starter",
         "name_en": "Starter",
         "name_es": "Starter",
-        "description_en": "Your business in the cloud. No servers, no maintenance, always available.",
-        "description_es": "Tu negocio en la nube. Sin servidores, sin mantenimiento, siempre disponible.",
+        "description_en": "Your whole business in the cloud: nothing to install, nothing to maintain, always available.",
+        "description_es": "Todo tu negocio en la nube: nada que instalar, nada que mantener, siempre disponible.",
         "features_en": [
             "Priced per business — every location, device and user included",
-            "Fully managed cloud",
-            "No server maintenance",
+            "Unlimited devices — sell from several at once",
             "Unlimited users",
-            "All free apps included",
-            "Access from any device",
-            "Managed database, with continuous backups and point-in-time recovery for 14 days",
-            "Data encryption (AES-256)",
-            "Automatic SSL certificate",
+            "Full database throughput, for several devices at once",
+            "All apps included, free and premium",
+            "Access from any device, always up to date",
+            "Fully managed cloud on Amazon Web Services, in Europe, with automatic scaling",
+            MANAGED_DATABASE_EN,
+            "Encrypted data and automatic SSL certificate",
             ".erplora.com subdomain",
             "Email support (business hours)",
         ],
         "features_es": [
             "Precio por negocio — con todos sus locales, dispositivos y usuarios",
-            "Cloud gestionado",
-            "Sin mantenimiento de servidores",
+            "Dispositivos ilimitados: vende desde varios a la vez",
             "Usuarios ilimitados",
-            "Todas las apps gratuitas incluidas",
-            "Acceso desde cualquier dispositivo",
-            "Base de datos gestionada, con copias de seguridad continuas y recuperación a cualquier momento de los últimos 14 días",
-            "Cifrado de datos (AES-256)",
-            "Certificado SSL automático",
+            "Capacidad de base de datos completa, para varios dispositivos a la vez",
+            "Todas las apps incluidas, gratuitas y premium",
+            "Acceso desde cualquier dispositivo, siempre actualizado",
+            "Cloud gestionado en Amazon Web Services, en Europa, con autoescalado",
+            MANAGED_DATABASE_ES,
+            "Datos cifrados y certificado SSL automático",
             "Subdominio .erplora.com",
             "Soporte por email (horario laboral)",
         ],
@@ -134,6 +174,8 @@ PLANS = [
         **PAID_DB_LIMITS,
         "max_devices": 0,
         "max_users": 0,
+        "assistant_messages_per_month": 300,
+        "whatsapp_messages_per_month": 150,
         "included_level": "basic",
         "support_level": "email",
         "includes_custom_domain": False,
@@ -142,20 +184,22 @@ PLANS = [
         "slug": "standard",
         "name_en": "Standard",
         "name_es": "Standard",
-        "description_en": "More power for growing businesses. Custom domain and automatic scaling.",
-        "description_es": "Más potencia para negocios en crecimiento. Dominio propio y escalado automático.",
+        "description_en": "For growing businesses: your own domain, twice the resources and priority support.",
+        "description_es": "Para negocios en crecimiento: dominio propio, el doble de recursos y soporte prioritario.",
         "features_en": [
             "Everything in Starter",
             "Priced per business — every location, device and user included",
+            "Twice the database throughput of Starter, for busy counters and several locations",
             "Custom domain (erp.yourbusiness.com)",
-            "Automatic resource scaling",
+            "More capacity as your business grows, automatically",
             "Priority email support (business hours)",
         ],
         "features_es": [
             "Todo lo del plan Starter",
             "Precio por negocio — con todos sus locales, dispositivos y usuarios",
+            "El doble de capacidad de base de datos que Starter, para mostradores con mucho movimiento y varios locales",
             "Dominio propio (erp.tunegocio.com)",
-            "Escalado automático de recursos",
+            "Más capacidad a medida que crece tu negocio, automáticamente",
             "Soporte por email prioritario (horario laboral)",
         ],
         "featured_label_en": "Recommended",
@@ -168,9 +212,12 @@ PLANS = [
         "trial_period_days": 15,
         "display_order": 40,
         "max_hubs_per_org": 0,
-        **PAID_DB_LIMITS,
+        **STANDARD_DB_LIMITS,
         "max_devices": 0,
         "max_users": 0,
+        # Twice Starter, as every resource of the plan (Ioan, 2026-10-15).
+        "assistant_messages_per_month": 600,
+        "whatsapp_messages_per_month": 300,
         "included_level": "basic",
         "support_level": "priority_email",
         "includes_custom_domain": True,
@@ -205,6 +252,9 @@ PLANS = [
         **PAID_DB_LIMITS,
         "max_devices": 0,
         "max_users": 0,
+        # The old stack's level pro (ADR-0474); enterprise and max, its level enterprise.
+        "assistant_messages_per_month": 1000,
+        "whatsapp_messages_per_month": 500,
         "included_level": "pro",
         "support_level": "priority_email",
         "includes_custom_domain": True,
@@ -244,6 +294,8 @@ PLANS = [
         **PAID_DB_LIMITS,
         "max_devices": 0,
         "max_users": 0,
+        "assistant_messages_per_month": 3000,
+        "whatsapp_messages_per_month": 800,
         "included_level": "enterprise",
         "support_level": "contract",
         "includes_custom_domain": True,
@@ -279,6 +331,8 @@ PLANS = [
         **PAID_DB_LIMITS,
         "max_devices": 0,
         "max_users": 0,
+        "assistant_messages_per_month": 3000,
+        "whatsapp_messages_per_month": 800,
         "included_level": "enterprise",
         "support_level": "contract",
         "includes_custom_domain": True,
@@ -307,6 +361,8 @@ PLANS = [
         **PAID_DB_LIMITS,
         "max_devices": 0,
         "max_users": 0,
+        "assistant_messages_per_month": 300,
+        "whatsapp_messages_per_month": 150,
     },
 ]
 
