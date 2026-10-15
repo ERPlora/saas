@@ -1,6 +1,6 @@
 """Data: three plans on sale at sign-up, their copy and their resource ladder (Ioan, 2026-10-15).
 
-``sync_hub_plans`` runs on every deploy but never overwrites a row (``--update`` is a hand run), so the
+``sync_hub_plans`` ran on every deploy (until ``0013`` replaced it) but never overwrote a row, so the
 plans seeded before this date kept what the old seed said, a database line naming the engine under it
 («Managed PostgreSQL database») included. From here Free, Starter and Standard read the copy the seed carried
 that day (``COPY``) — description and features, in both languages — and the resource ladder of 2026-10-15
@@ -17,7 +17,7 @@ valid catalogue. Idempotent; a database without the rows is left as it is.
 
 from django.db import migrations
 
-#: The copy and the resource ladder the seed (``sync_hub_plans``) carried on 2026-10-15, frozen here: a
+#: The copy and the resource ladder the seed (``sync_hub_plans``, gone since 0013) carried on 2026-10-15, frozen here: a
 #: migration is history, so a later change of the seed never rewrites what this one did.
 COPY = {
     "free": {

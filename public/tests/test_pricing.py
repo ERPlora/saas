@@ -29,12 +29,10 @@ from __future__ import annotations
 import json
 import re
 from decimal import Decimal
-from io import StringIO
 from pathlib import Path
 
 import pytest
 from django.conf import settings
-from django.core.management import call_command
 from django.urls import reverse
 from django.utils import translation
 
@@ -64,8 +62,8 @@ def make_plan(slug: str, *, trial_days: int = 0, features=None, **fields) -> Pla
 
 
 @pytest.fixture
-def seeded():
-    call_command("sync_hub_plans", stdout=StringIO())
+def seeded(db):
+    """The catalogue the migrations leave (``hubs/0013``)."""
 
 
 def get(client, path: str = INDEX, language: str | None = None):
@@ -142,7 +140,7 @@ def test_the_pages_only_answer_safe_methods(client, seeded):
 # --- test_index.py ----------------------------------------------------------------------------
 
 
-def test_pricing_renders_active_plan_data_from_the_database(client):
+def test_pricing_renders_active_plan_data_from_the_database(no_plans, client):
     make_plan(
         "db-public-sentinel",
         name_en="DB Public Sentinel",
@@ -448,25 +446,27 @@ def test_the_columns_survive_translation_to_spanish(client, seeded):
 
 
 def test_each_card_says_the_assistant_and_whatsapp_messages_a_month(client, seeded):
-    """In plain words, before the trial line: what the plan includes, never tokens nor how we count them."""
+    """In plain words, after the plan's features (and before a trial line, if staff give one): what the plan
+    includes, never tokens nor how we count them."""
     html = html_of(client)
 
     assert card_items(html, "Free")[-2:] == ["AI assistant: 30 messages a month", "WhatsApp: 30 messages a month"]
     starter = card_items(html, "Starter")
-    assert starter[-3:] == ["AI assistant: 300 messages a month", "WhatsApp: 150 messages a month", "15-day free trial"]
+    assert starter[-2:] == ["AI assistant: 300 messages a month", "WhatsApp: 150 messages a month"]
+    assert not any("trial" in item for item in starter), starter
     assert "AI assistant: 600 messages a month" in card_items(html, "Standard")
     assert "WhatsApp: 300 messages a month" in card_items(html, "Standard")
     assert "token" not in visible_markup(html).lower()
 
 
-def test_a_plan_without_messages_says_nothing_of_them(client):
+def test_a_plan_without_messages_says_nothing_of_them(no_plans, client):
     """0 is «none»: the card paints no line rather than «0 messages»."""
     make_plan("starter", trial_days=15, assistant_messages_per_month=0, whatsapp_messages_per_month=40)
 
     assert card_items(html_of(client), "Starter") == ["Unlimited users", "WhatsApp: 40 messages a month", "15-day free trial"]
 
 
-def test_one_message_reads_in_the_singular(client):
+def test_one_message_reads_in_the_singular(no_plans, client):
     make_plan("starter", assistant_messages_per_month=1)
 
     assert "AI assistant: 1 message a month" in card_items(html_of(client), "Starter")
@@ -489,7 +489,7 @@ def test_the_table_compares_the_messages_of_each_plan(client, seeded):
     assert table.count("Agreed with you") == 2
 
 
-def test_a_plan_without_messages_reads_not_included_in_the_table(client):
+def test_a_plan_without_messages_reads_not_included_in_the_table(no_plans, client):
     make_plan("starter", assistant_messages_per_month=0, whatsapp_messages_per_month=0)
 
     assert plan_table(html_of(client)).count("Not included") == 2
@@ -514,7 +514,7 @@ def test_every_row_of_the_table_spans_its_columns(client, seeded):
 # --- test_pricing_card_trial.py ---------------------------------------------------------------
 
 
-def test_the_card_shows_the_trial_the_plan_grants(client):
+def test_the_card_shows_the_trial_the_plan_grants(no_plans, client):
     make_plan("starter", trial_days=21)
 
     items = card_items(html_of(client), "Starter")
@@ -522,7 +522,7 @@ def test_the_card_shows_the_trial_the_plan_grants(client):
     assert items == ["Unlimited users", "21-day free trial"]
 
 
-def test_the_card_follows_the_plan_when_its_trial_changes(client):
+def test_the_card_follows_the_plan_when_its_trial_changes(no_plans, client):
     starter = make_plan("starter", trial_days=15)
     starter.trial_period_days = 30
     starter.save()
@@ -530,13 +530,13 @@ def test_the_card_follows_the_plan_when_its_trial_changes(client):
     assert re.findall(r"\d+", card_items(html_of(client), "Starter")[-1]) == ["30"]
 
 
-def test_a_plan_without_trial_shows_no_trial_line(client):
+def test_a_plan_without_trial_shows_no_trial_line(no_plans, client):
     make_plan("free", trial_days=0)
 
     assert card_items(html_of(client), "Free") == ["Unlimited users"]
 
 
-def test_the_card_trial_is_translated(client):
+def test_the_card_trial_is_translated(no_plans, client):
     make_plan("starter", trial_days=15, name_es="Starter")
 
     assert card_items(html_of(client, language="es"), "Starter")[-1] == (
@@ -544,7 +544,7 @@ def test_the_card_trial_is_translated(client):
     )
 
 
-def test_an_upgrade_only_plan_is_neither_listed_nor_has_a_detail_page(client):
+def test_an_upgrade_only_plan_is_neither_listed_nor_has_a_detail_page(no_plans, client):
     """Ioan, 2026-10-15: /pricing/ sells the plans a visitor can sign up for; anything above them is
     dedicated infrastructure, agreed by contact, never a plan card. A row staff still mark
     ``upgrade_only`` stays off the page, off the detail pages and out of «Other plans»."""
@@ -579,7 +579,7 @@ def note_and_answer(client, language: str | None = None) -> tuple[str, str]:
     return trial_note(response.content.decode()), trial_answer(response)
 
 
-def test_the_page_states_the_trial_length_the_checkout_grants(client):
+def test_the_page_states_the_trial_length_the_checkout_grants(no_plans, client):
     make_plan("free", trial_days=0)
     make_plan("starter", trial_days=15)
     make_plan("standard", trial_days=15)
@@ -589,14 +589,14 @@ def test_the_page_states_the_trial_length_the_checkout_grants(client):
         assert re.findall(r"\d+", text) == ["15"], text
 
 
-def test_the_page_follows_the_plan_when_its_trial_changes(client):
+def test_the_page_follows_the_plan_when_its_trial_changes(no_plans, client):
     make_plan("starter", trial_days=30)
 
     for text in note_and_answer(client):
         assert re.findall(r"\d+", text) == ["30"], text
 
 
-def test_plans_a_visitor_cannot_buy_do_not_count(client):
+def test_plans_a_visitor_cannot_buy_do_not_count(no_plans, client):
     make_plan("starter", trial_days=15)
     make_plan("internal", trial_days=90, internal_only=True)
     make_plan("retired", trial_days=180, is_active=False)
@@ -605,7 +605,7 @@ def test_plans_a_visitor_cannot_buy_do_not_count(client):
         assert re.findall(r"\d+", text) == ["15"], text
 
 
-def test_a_plan_reached_only_by_upgrading_does_not_count(client):
+def test_a_plan_reached_only_by_upgrading_does_not_count(no_plans, client):
     make_plan("starter", trial_days=15)
     make_plan("pro", trial_days=30, upgrade_only=True)
 
@@ -613,7 +613,7 @@ def test_a_plan_reached_only_by_upgrading_does_not_count(client):
         assert re.findall(r"\d+", text) == ["15"], text
 
 
-def test_plans_with_different_trials_are_stated_as_a_range(client):
+def test_plans_with_different_trials_are_stated_as_a_range(no_plans, client):
     make_plan("starter", trial_days=15)
     make_plan("standard", trial_days=30)
 
@@ -621,7 +621,7 @@ def test_plans_with_different_trials_are_stated_as_a_range(client):
         assert re.findall(r"\d+", text) == ["15", "30"], text
 
 
-def test_no_trial_on_sale_means_no_trial_promised(client):
+def test_no_trial_on_sale_means_no_trial_promised(no_plans, client):
     make_plan("free", trial_days=0)
     make_plan("starter", trial_days=0)
 
@@ -630,7 +630,7 @@ def test_no_trial_on_sale_means_no_trial_promised(client):
         assert not re.findall(r"\d+", text), text
 
 
-def test_the_trial_is_promised_on_hub_creation_and_not_on_an_upgrade(client):
+def test_the_trial_is_promised_on_hub_creation_and_not_on_an_upgrade(no_plans, client):
     make_plan("starter", trial_days=15)
 
     note, answer = note_and_answer(client)
@@ -640,7 +640,7 @@ def test_the_trial_is_promised_on_hub_creation_and_not_on_an_upgrade(client):
     assert "does not start a new trial" in answer
 
 
-def test_a_spanish_visitor_reads_the_trial_in_spanish(client):
+def test_a_spanish_visitor_reads_the_trial_in_spanish(no_plans, client):
     make_plan("starter", trial_days=15)
 
     note, answer = note_and_answer(client, language="es")
@@ -652,7 +652,7 @@ def test_a_spanish_visitor_reads_the_trial_in_spanish(client):
     assert "no inicia un nuevo periodo de prueba" in answer
 
 
-def test_a_one_day_trial_reads_in_the_singular(client):
+def test_a_one_day_trial_reads_in_the_singular(no_plans, client):
     make_plan("starter", trial_days=1)
 
     note, answer = note_and_answer(client, language="es")
@@ -661,7 +661,7 @@ def test_a_one_day_trial_reads_in_the_singular(client):
     assert re.search(r"\b1 día\b", answer)
 
 
-def test_faq_items_called_on_its_own_reads_the_plans_too():
+def test_faq_items_called_on_its_own_reads_the_plans_too(no_plans):
     # A public entry point without the caller's reading: never a hand-typed length.
     make_plan("starter", trial_days=30)
 
@@ -715,7 +715,7 @@ def test_the_storage_answer_names_aws_in_ireland_and_never_hetzner(client):
 # --- The empty state --------------------------------------------------------------------------
 
 
-def test_without_plans_on_sale_the_page_says_so_and_paints_no_table(client):
+def test_without_plans_on_sale_the_page_says_so_and_paints_no_table(no_plans, client):
     html = html_of(client)
 
     assert "There are no plans on sale right now." in html
@@ -787,7 +787,18 @@ def test_the_faq_answers_what_dedicated_infrastructure_is(client):
 # --- The detail page --------------------------------------------------------------------------
 
 
+def test_the_catalogue_promises_no_trial_and_points_to_the_free_plan(client, seeded):
+    """Ioan, 2026-10-15: no plan carries a trial; the Free plan is the way in, and the page says so."""
+    html = html_of(client)
+
+    assert "free trial" not in visible_markup(html).lower()
+    (item,) = [item for item in pricing.faq_items() if item["key"] == "trial"]
+    assert "the Free plan is free forever" in str(item["answer"])
+
+
 def test_the_detail_shows_the_plan_its_price_its_features_and_its_trial(client, seeded):
+    # The dormant trial, on: no plan carries one since 2026-10-15, but staff may give one in the admin.
+    Plan.objects.filter(slug="starter").update(trial_period_days=15)
     response = get(client, "/pricing/starter/")
     html = response.content.decode()
 
@@ -984,7 +995,7 @@ def test_every_message_of_a_pricing_template_has_its_spanish_entry(template):
     assert [m for m in messages if not catalog.get(m)] == []
 
 
-def test_the_python_messages_have_their_spanish_entry():
+def test_the_python_messages_have_their_spanish_entry(no_plans):
     """The FAQ, the trial note and the period labels live in public/pricing.py."""
     make_plan("starter", trial_days=15)
     make_plan("standard", trial_days=30)

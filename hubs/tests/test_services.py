@@ -88,8 +88,16 @@ class TestTheSignUpFromOneQuestion:
             subscription.stripe_customer_id,
         ) == ("", "")
 
+    def test_free_is_born_without_a_trial(self, owner, plans):
+        """Ioan, 2026-10-15: no plan of the catalogue carries a trial; the Free plan is the way in."""
+        subscription = Subscription.objects.get(hub=create_business(owner))
+
+        assert (subscription.plan.slug, subscription.trial_plan, subscription.trial_end) == ("free", None, None)
+        assert subscription.status != "trialing"
+
+    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
     def test_free_is_born_with_the_starter_trial(self, owner, plans):
-        """ADR-0474: Free is born with 15 days of Starter."""
+        """ADR-0474, dormant since 2026-10-15: when staff give Starter a trial, Free is born with its days."""
         before = timezone.now()
         subscription = Subscription.objects.get(hub=create_business(owner))
 
@@ -397,15 +405,13 @@ def test_a_staff_account_creates_no_business(plans, make_user):
 
 
 @pytest.mark.django_db(transaction=True)
-def test_two_sign_ups_at_once_leave_one_free_business(make_user):
+def test_two_sign_ups_at_once_leave_one_free_business(make_user, plans):
     """Review of L1-A, finding 2: two requests of one account, each in its own connection, both
     counting before either wrote. With the account's row locked, the second counts the first."""
     import threading
 
-    from django.core.management import call_command
     from django.db import connections
 
-    call_command("sync_hub_plans", stdout=__import__("io").StringIO())
     ana = make_user("ana@example.com")
     barrier = threading.Barrier(2, timeout=2)
     real = queries.free_hubs_owned

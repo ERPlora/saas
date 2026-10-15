@@ -4,6 +4,7 @@ import json
 
 import pytest
 
+from hubs.tests.conftest import no_plans  # noqa: F401 - an empty plan table, for a test that builds its own
 from public.templatetags.public_assets import PUBLIC_ENTRY
 
 #: The files `{% public_assets %}` links for the public entry in these tests.

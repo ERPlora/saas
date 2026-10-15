@@ -83,6 +83,7 @@ class TestTheSnapshot:
             "active",
         )
 
+    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
     def test_the_plan_is_the_trials_while_it_lasts(self, business):
         """Free is born with 15 days of Starter: the Hub applies Starter's rights meanwhile."""
         assert queries.hub_snapshot(business.id)["plan"] == {

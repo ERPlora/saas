@@ -1,8 +1,9 @@
-"""Guard tests for ``sync_hub_plans``: the seed creates the plan catalogue, and the admin owns it after.
+"""Guard tests of the plan catalogue: the rows the migrations leave, which staff keep in the admin after.
 
-It runs in the ``saas-migrate`` task on every deploy, so by default it only creates the plans missing by
-``slug`` and never overwrites what staff edited in the admin; ``--update`` puts every field back to the
-seed (the old behaviour).
+The plans live only in the database (Ioan, 2026-10-15): migration ``hubs/0013`` is the seed of a new database
+and puts production's rows right once; there is no command that seeds or overwrites them (``sync_hub_plans`` is
+gone). pytest builds its database by running every migration, so these tests read the catalogue a new
+database starts with.
 
 Ported from ERPlora/saas ``hubs/subscriptions/tests/test_sync_hub_plans.py`` (origin/develop),
 plus the seed halves of ``test_plan_trial_label.py`` and ``test_payment_test_plan.py``.
@@ -17,21 +18,16 @@ Changed from the original:
 - ``test_resource_ladder_matches_the_2026_08_15_sizing_decision`` pinned the vCPU and memory of
   each plan: a plan no longer sizes a container (PLAN-SAAS §1). What is left is the DB
   ladder decided in round 9 (PLAN §14.2): Free, 1 transaction at a time and 5 s; paid, 3 and 15 s.
-- ``TestTheCapReachesProductionOnItsOwn`` (3) and
-  ``test_the_deploy_migration_and_the_seed_declare_the_same_ladder`` pinned the data migrations
-  ``0029``/``0031`` that patched the rows already in production. saas-next starts from an empty
-  database, so there is no live row to patch and no migration to pin against the seed.
+- the tests of the seed command (idempotent, ``--update``, «N created, M existing») went with it on
+  2026-10-15; what the migrations write is pinned by ``hubs/tests/test_migrations.py``.
 """
 
 import re
 from decimal import Decimal
-from io import StringIO
 
 import pytest
-from django.core.management import call_command
 from django.utils import translation
 
-from hubs.management.commands.sync_hub_plans import PLANS
 from hubs.models import Plan
 
 pytestmark = pytest.mark.django_db
@@ -72,20 +68,28 @@ UPGRADE_ONLY = ("pro", "enterprise", "max")
 CATALOGUE = ("free", "starter", "standard", *UPGRADE_ONLY, PAYMENT_TEST)
 
 
-def _sync(*args) -> str:
-    out = StringIO()
-    call_command("sync_hub_plans", *args, stdout=out)
-    return out.getvalue()
-
-
 @pytest.fixture
-def seeded_plans():
-    _sync()
+def catalogue():
+    """The plans the migrations leave, by slug."""
     return {p.slug: p for p in Plan.objects.all()}
 
 
-def test_starter_english_fields_are_english(seeded_plans):
-    starter = seeded_plans["starter"]
+def test_the_catalogue_is_the_plans_on_sale_the_upgrade_only_tiers_and_the_internal_one(catalogue):
+    """Ioan, 2026-10-15: Free, Starter and Standard at sign-up; Pro, Enterprise and Max above them, kept as
+    upgrades of a business that pays; ``payment-test`` for staff."""
+    assert set(catalogue) == set(CATALOGUE)
+    assert sorted(slug for slug, plan in catalogue.items() if plan.upgrade_only) == sorted(UPGRADE_ONLY)
+
+
+def test_no_plan_carries_a_trial(catalogue):
+    """Ioan, 2026-10-15: no trial; the Free plan is the way in. The mechanism stays (``trial_period_days``, the
+    checkout's ``trial_end``), dormant: a plan only has a trial if staff give it one in the admin."""
+    assert {slug: plan.trial_period_days for slug, plan in catalogue.items()} == dict.fromkeys(CATALOGUE, 0)
+    assert Plan.objects.signup_trial_days() == {"trial_days_min": None, "trial_days_max": None}
+
+
+def test_starter_english_fields_are_english(catalogue):
+    starter = catalogue["starter"]
     assert (
         starter.description_en
         == "Your whole business in the cloud: nothing to install, nothing to maintain, always available."
@@ -99,8 +103,8 @@ def test_starter_english_fields_are_english(seeded_plans):
             )
 
 
-def test_spanish_mirror_is_preserved(seeded_plans):
-    starter = seeded_plans["starter"]
+def test_spanish_mirror_is_preserved(catalogue):
+    starter = catalogue["starter"]
     assert (
         starter.description_es
         == "Todo tu negocio en la nube: nada que instalar, nada que mantener, siempre disponible."
@@ -109,15 +113,15 @@ def test_spanish_mirror_is_preserved(seeded_plans):
     assert "Cloud gestionado en Amazon Web Services, en Europa, con autoescalado" in starter.features_es
 
 
-def test_recommended_badge_is_translated(seeded_plans):
-    standard = seeded_plans["standard"]
+def test_recommended_badge_is_translated(catalogue):
+    standard = catalogue["standard"]
     assert standard.featured_label_en == "Recommended"
     assert standard.featured_label_es == "Recomendado"
 
 
-def test_support_copy_never_promises_a_clock_we_do_not_run(seeded_plans):
+def test_support_copy_never_promises_a_clock_we_do_not_run(catalogue):
     """saas#1760: support is sold as CHANNEL + PRIORITY, never as an unmeasured clock."""
-    for slug, plan in seeded_plans.items():
+    for slug, plan in catalogue.items():
         for text in [plan.description_en, *plan.features_en]:
             assert "24/7" not in text, f"[{slug}] unbacked 24/7 support claim: {text!r}"
             assert not re.search(r"\b\d+\s*h(ours?)?\s+response\b", text, re.I), (
@@ -132,21 +136,21 @@ def test_support_copy_never_promises_a_clock_we_do_not_run(seeded_plans):
             )
 
 
-def test_support_ladder_still_differentiates_by_channel_and_priority(seeded_plans):
+def test_support_ladder_still_differentiates_by_channel_and_priority(catalogue):
     """Removing the fake clock must not flatten the ladder into 'support' everywhere."""
-    assert any(f == "Community support" for f in seeded_plans["free"].features_en)
-    assert any("Email support" in f for f in seeded_plans["starter"].features_en)
+    assert any(f == "Community support" for f in catalogue["free"].features_en)
+    assert any("Email support" in f for f in catalogue["starter"].features_en)
     assert any(
-        "Priority email support" in f for f in seeded_plans["standard"].features_en
+        "Priority email support" in f for f in catalogue["standard"].features_en
     )
-    assert any(f == "Soporte de la comunidad" for f in seeded_plans["free"].features_es)
-    assert any("Soporte por email" in f for f in seeded_plans["starter"].features_es)
-    assert any("prioritario" in f for f in seeded_plans["standard"].features_es)
+    assert any(f == "Soporte de la comunidad" for f in catalogue["free"].features_es)
+    assert any("Soporte por email" in f for f in catalogue["starter"].features_es)
+    assert any("prioritario" in f for f in catalogue["standard"].features_es)
 
 
-def test_no_english_field_contains_spanish(seeded_plans):
+def test_no_english_field_contains_spanish(catalogue):
     """Sweep every plan: the English description and features are Spanish-free."""
-    for slug, plan in seeded_plans.items():
+    for slug, plan in catalogue.items():
         for text in [plan.description_en, *plan.features_en]:
             for marker in SPANISH_MARKERS:
                 assert marker not in text, (
@@ -176,9 +180,9 @@ def _copy(plan):
     ]
 
 
-def test_no_plan_sells_infrastructure_specs(seeded_plans):
+def test_no_plan_sells_infrastructure_specs(catalogue):
     """saas#1760: commercial copy sells the HUB, never the box it runs on."""
-    for slug, plan in seeded_plans.items():
+    for slug, plan in catalogue.items():
         for text in _copy(plan):
             for pattern, label in INFRA_SPEC_PATTERNS:
                 assert not re.search(pattern, text, re.I), (
@@ -186,9 +190,9 @@ def test_no_plan_sells_infrastructure_specs(seeded_plans):
                 )
 
 
-def test_no_plan_publishes_an_uptime_sla_percentage(seeded_plans):
+def test_no_plan_publishes_an_uptime_sla_percentage(catalogue):
     """saas#1760: the only availability statement is the one in the terms (99.5 %, reasonable efforts)."""
-    for slug, plan in seeded_plans.items():
+    for slug, plan in catalogue.items():
         for text in _copy(plan):
             assert not re.search(r"\d{2}[.,]\d+\s*%", text), (
                 f"[{slug}] uptime SLA claim in plan copy: {text!r}"
@@ -196,11 +200,11 @@ def test_no_plan_publishes_an_uptime_sla_percentage(seeded_plans):
             assert "SLA" not in text, f"[{slug}] SLA claim in plan copy: {text!r}"
 
 
-def test_subscription_unit_is_the_hub(seeded_plans):
+def test_subscription_unit_is_the_hub(catalogue):
     """saas#1760: one subscription buys ONE hub, with every location and device in it. The copy calls it what the
     panel calls it, a business (audit 2 S-12: «Precio por hub» in the Store was the Hub's word)."""
     for slug in ("starter", "standard"):
-        plan = seeded_plans[slug]
+        plan = catalogue[slug]
         assert any("per business" in f.lower() for f in plan.features_en), (
             f"[{slug}] paid plan never states the billing unit: {plan.features_en}"
         )
@@ -213,11 +217,11 @@ def test_subscription_unit_is_the_hub(seeded_plans):
         assert plan.max_devices == 0, f"[{slug}] paid plans must not cap devices"
 
 
-def test_recovery_window_is_the_same_on_every_plan(seeded_plans):
+def test_recovery_window_is_the_same_on_every_plan(catalogue):
     """saas#1760 + infra#136: the backup window is physical and common to the cluster."""
     backup_lines_en = {
         line
-        for plan in seeded_plans.values()
+        for plan in catalogue.values()
         for line in plan.features_en
         if "backup" in line.lower()
     }
@@ -253,8 +257,8 @@ def _names_a_technology(text: str) -> bool:
     return any(name in text.lower() for name in TECHNOLOGY_NAMES)
 
 
-def test_no_plan_names_the_technology_under_it(seeded_plans):
-    for slug, plan in seeded_plans.items():
+def test_no_plan_names_the_technology_under_it(catalogue):
+    for slug, plan in catalogue.items():
         for text in _copy(plan):
             assert not _names_a_technology(text), f"[{slug}] technology name in plan copy: {text!r}"
 
@@ -265,22 +269,22 @@ def test_the_technology_guard_catches_the_lines_that_were_actually_published():
         assert _names_a_technology(published), published
 
 
-def test_the_database_and_its_backups_are_one_line(seeded_plans):
+def test_the_database_and_its_backups_are_one_line(catalogue):
     """«Managed database» and «continuous backups» are one sentence, not two lines saying backups twice."""
     for slug in ("free", "starter"):
-        plan = seeded_plans[slug]
+        plan = catalogue[slug]
         assert MANAGED_DATABASE["en"] in plan.features_en, slug
         assert MANAGED_DATABASE["es"] in plan.features_es, slug
-    for plan in seeded_plans.values():
+    for plan in catalogue.values():
         assert sum("backup" in line.lower() for line in plan.features_en) <= 1, plan.slug
         assert sum("copias" in line.lower() for line in plan.features_es) <= 1, plan.slug
 
 
-def test_the_cards_say_where_the_data_lives_and_that_the_database_is_replicated(seeded_plans):
+def test_the_cards_say_where_the_data_lives_and_that_the_database_is_replicated(catalogue):
     """Ioan, 2026-10-15: a buyer reads «Amazon Web Services, in Europe» once per card (the cloud line) and
     «replicated» on the database line, never an engine name."""
     for slug in ("free", "starter"):
-        plan = seeded_plans[slug]
+        plan = catalogue[slug]
         assert sum("Amazon Web Services" in f for f in plan.features_en) == 1, plan.features_en
         assert sum("Amazon Web Services" in f for f in plan.features_es) == 1, plan.features_es
         (line,) = [f for f in plan.features_en if "backup" in f.lower()]
@@ -289,19 +293,19 @@ def test_the_cards_say_where_the_data_lives_and_that_the_database_is_replicated(
         assert "replicada" in line_es, (slug, line_es)
 
 
-def test_the_recovery_window_is_the_one_aurora_keeps(seeded_plans):
+def test_the_recovery_window_is_the_one_aurora_keeps(catalogue):
     """The card promises the 14 days Aurora keeps (``backup_retention_period = 14``,
     ``aws-next/stacks/prod/aurora.tf``), no more: the old «up to 30 days» was the old cluster's
     (the public web's session, 2026-10-14)."""
     english = {
         line
-        for plan in seeded_plans.values()
+        for plan in catalogue.values()
         for line in plan.features_en
         if "backup" in line.lower()
     }
     spanish = {
         line
-        for plan in seeded_plans.values()
+        for plan in catalogue.values()
         for line in plan.features_es
         if "copias" in line.lower()
     }
@@ -310,47 +314,47 @@ def test_the_recovery_window_is_the_one_aurora_keeps(seeded_plans):
     assert spanish == {MANAGED_DATABASE["es"]}
     assert not any(
         "30" in line
-        for plan in seeded_plans.values()
+        for plan in catalogue.values()
         for line in [*plan.features_en, *plan.features_es]
     )
 
 
-def test_the_plans_promise_the_free_apps_not_every_module(seeded_plans):
+def test_the_plans_promise_the_free_apps_not_every_module(catalogue):
     """Decision 17 of the catalog spec (round 16): premium apps go with the paid plans, so no card says
     «all modules»; Free promises the free apps and Starter (the first paid plan) every app, free and premium —
     what the hero of /pricing/ already promises (2026-10-15)."""
-    free = seeded_plans["free"]
+    free = catalogue["free"]
     assert "All free apps included" in free.features_en
     assert "Todas las apps gratuitas incluidas" in free.features_es
-    starter = seeded_plans["starter"]
+    starter = catalogue["starter"]
     assert "All apps included, free and premium" in starter.features_en
     assert "Todas las apps incluidas, gratuitas y premium" in starter.features_es
-    for plan in seeded_plans.values():
+    for plan in catalogue.values():
         lines = [line.lower() for line in [*plan.features_en, *plan.features_es]]
         assert not any("all modules" in line or "todos los módulos" in line for line in lines), plan.slug
 
 
-def test_db_limits_match_the_round_9_decision(seeded_plans):
+def test_db_limits_match_the_round_9_decision(catalogue):
     """PLAN §14.2 (Ioan): Free runs 1 transaction at a time per hub and process with a 5 s
     ``statement_timeout``; a paid plan, 3 and 15 s. Since 2026-10-15 (Ioan) each plan up doubles the
     resources of the one below: Standard, 6 and 15 s. They travel in the hub's state snapshot
     (PLAN-SAAS §2.2) and the Hub enforces them with a semaphore per hub."""
-    expected = {slug: (3, 15) for slug in seeded_plans}
+    expected = {slug: (3, 15) for slug in catalogue}
     expected["free"] = (1, 5)
     expected["standard"] = (6, 15)
     actual = {
         slug: (plan.max_db_connections, plan.statement_timeout_seconds)
-        for slug, plan in seeded_plans.items()
+        for slug, plan in catalogue.items()
     }
     assert actual == expected
 
 
-def test_each_plan_up_doubles_the_resources_of_the_one_below_and_says_so(seeded_plans):
+def test_each_plan_up_doubles_the_resources_of_the_one_below_and_says_so(catalogue):
     """Ioan, 2026-10-15: what grows from one plan to the next is the AI messages and the «resources», which are the
     database's input/output capacity. Free is sized for one device; Starter has the full tier for several
     devices; Standard twice Starter. The cards say it as database throughput, in words: no engine name, no
     connection count, no timeout."""
-    free, starter, standard = (seeded_plans[s] for s in ("free", "starter", "standard"))
+    free, starter, standard = (catalogue[s] for s in ("free", "starter", "standard"))
     assert standard.max_db_connections == 2 * starter.max_db_connections
     assert free.max_db_connections < starter.max_db_connections
     assert "Basic database throughput, sized for one device" in free.features_en
@@ -361,7 +365,7 @@ def test_each_plan_up_doubles_the_resources_of_the_one_below_and_says_so(seeded_
     assert any(f.startswith("El doble de capacidad de base de datos que Starter") for f in standard.features_es), (
         standard.features_es
     )
-    for plan in seeded_plans.values():
+    for plan in catalogue.values():
         for text in _copy(plan):
             assert not re.search(r"\b[1-9]\d*\s*(transactions?|connections?|conexiones|transacciones)\b", text, re.I), text
             assert not re.search(r"\b(connections?|conexiones|timeout|statement)\b", text, re.I), text
@@ -372,16 +376,13 @@ def test_each_plan_up_doubles_the_resources_of_the_one_below_and_says_so(seeded_
 
 
 def test_a_plan_sizes_no_infrastructure():
-    """PLAN-SAAS §1: without a container per hub, a plan has no CPU, memory, storage nor paused price;
-    and the seed writes only fields the plan has."""
+    """PLAN-SAAS §1: without a container per hub, a plan has no CPU, memory, storage nor paused price."""
     assert {field.name for field in Plan._meta.get_fields()} == PLAN_FIELDS
-    for plan in PLANS:
-        assert set(plan) <= PLAN_FIELDS - {"subscriptions"}, plan["slug"]
 
 
-def test_the_seat_cap_is_the_number_the_free_card_promises(seeded_plans):
+def test_the_seat_cap_is_the_number_the_free_card_promises(catalogue):
     """saas#2022: the cap that is ENFORCED has to be the one that was SOLD."""
-    free = seeded_plans["free"]
+    free = catalogue["free"]
     assert free.max_users == 3, f"free plan caps users at {free.max_users}"
     promises = [f for f in free.features_en if "3" in f and "user" in f.lower()]
     promises += [f for f in free.features_es if "3" in f and "usuario" in f.lower()]
@@ -390,10 +391,10 @@ def test_the_seat_cap_is_the_number_the_free_card_promises(seeded_plans):
     )
 
 
-def test_paid_plans_do_not_cap_people(seeded_plans):
+def test_paid_plans_do_not_cap_people(catalogue):
     """ "Every location, device and user included" is the paid promise (saas#1760)."""
     for slug in ("starter", "standard", "pro", "enterprise", "max"):
-        assert seeded_plans[slug].max_users == 0, (
+        assert catalogue[slug].max_users == 0, (
             f"[{slug}] paid plans must not cap users"
         )
 
@@ -415,17 +416,17 @@ EXPECTED_MONTHLY_MESSAGES = {
 }
 
 
-def test_each_plan_includes_its_monthly_assistant_and_whatsapp_messages(seeded_plans):
+def test_each_plan_includes_its_monthly_assistant_and_whatsapp_messages(catalogue):
     actual = {
         slug: (plan.assistant_messages_per_month, plan.whatsapp_messages_per_month)
-        for slug, plan in seeded_plans.items()
+        for slug, plan in catalogue.items()
     }
 
     assert actual == EXPECTED_MONTHLY_MESSAGES
 
 
-def test_standard_includes_twice_the_messages_of_starter(seeded_plans):
-    starter, standard = seeded_plans["starter"], seeded_plans["standard"]
+def test_standard_includes_twice_the_messages_of_starter(catalogue):
+    starter, standard = catalogue["starter"], catalogue["standard"]
 
     assert standard.assistant_messages_per_month == 2 * starter.assistant_messages_per_month
     assert standard.whatsapp_messages_per_month == 2 * starter.whatsapp_messages_per_month
@@ -438,36 +439,44 @@ def test_a_plan_without_a_figure_includes_no_messages(db):
     assert (plan.assistant_messages_per_month, plan.whatsapp_messages_per_month) == (0, 0)
 
 
-def _paid_plans():
+#: What one message costs us at most, net (ADR-0474, saas#1952): the model's tokens of one assistant request, and
+#: Meta's dearest billable WhatsApp message (marketing, Spain).
+ASSISTANT_COST_PER_MESSAGE = Decimal("0.02")
+WHATSAPP_COST_PER_MESSAGE = Decimal("0.0509")
+#: The share of a paid plan's net monthly price left when its customer uses up both quotas (Ioan's condition:
+#: never pay the model provider or Meta more than half of what the plan charges).
+MIN_MARGIN_PERCENT = 50
+
+
+def _paid_plans(catalogue):
     """The plans a customer pays for: Free is the permanent floor (ADR-0154) and ``payment-test`` is staff-only
     (saas#1052), so neither has a price the margin can be taken from."""
-    return [plan for plan in PLANS if plan["price_monthly"] > 0 and not plan.get("internal_only")]
+    return [plan for plan in catalogue.values() if plan.price_monthly > 0 and not plan.internal_only]
 
 
-@pytest.mark.parametrize("plan", _paid_plans(), ids=lambda plan: plan["slug"])
-def test_a_paid_plan_keeps_half_its_price_when_its_messages_are_used_up(plan):
+def test_a_paid_plan_keeps_half_its_price_when_its_messages_are_used_up(catalogue):
     """ADR-0474 (saas#1952): the net monthly price pays for a customer that burns the whole quota of both, and
     still keeps at least half of it. Assistant at its cost per message; WhatsApp at Meta's dearest rate."""
-    from hubs.management.commands.sync_hub_plans import (
-        ASSISTANT_COST_PER_MESSAGE,
-        MIN_MARGIN_PERCENT,
-        WHATSAPP_COST_PER_MESSAGE,
-    )
+    for plan in _paid_plans(catalogue):
+        worst_case = (
+            plan.assistant_messages_per_month * ASSISTANT_COST_PER_MESSAGE
+            + plan.whatsapp_messages_per_month * WHATSAPP_COST_PER_MESSAGE
+        )
 
-    worst_case = (
-        plan["assistant_messages_per_month"] * ASSISTANT_COST_PER_MESSAGE
-        + plan["whatsapp_messages_per_month"] * WHATSAPP_COST_PER_MESSAGE
-    )
-
-    assert worst_case * 100 <= plan["price_monthly"] * (100 - MIN_MARGIN_PERCENT), (plan["slug"], worst_case)
+        assert worst_case * 100 <= plan.price_monthly * (100 - MIN_MARGIN_PERCENT), (plan.slug, worst_case)
 
 
-def test_the_margin_check_reads_every_paid_plan_at_its_real_cost():
-    """A plan slipping out of the check (a price typed as a string…) or a cost rounded to zero must be noticed."""
-    from hubs.management.commands.sync_hub_plans import ASSISTANT_COST_PER_MESSAGE, WHATSAPP_COST_PER_MESSAGE
-
-    assert {plan["slug"] for plan in _paid_plans()} == {"starter", "standard", *UPGRADE_ONLY}
+def test_the_margin_check_reads_every_paid_plan_at_its_real_cost(catalogue):
+    """A plan slipping out of the check or a cost rounded to zero must be noticed."""
+    assert {plan.slug for plan in _paid_plans(catalogue)} == {"starter", "standard", *UPGRADE_ONLY}
     assert (ASSISTANT_COST_PER_MESSAGE, WHATSAPP_COST_PER_MESSAGE) == (Decimal("0.02"), Decimal("0.0509"))
+
+
+def test_the_margin_check_catches_a_plan_that_gives_away_too_many_messages():
+    """Positive control: Starter's price with ten times its messages would leave less than half."""
+    worst_case = 3000 * ASSISTANT_COST_PER_MESSAGE + 1500 * WHATSAPP_COST_PER_MESSAGE
+
+    assert worst_case * 100 > Decimal("29.99") * (100 - MIN_MARGIN_PERCENT)
 
 
 EXPECTED_COMMERCIAL_LADDER = {
@@ -480,10 +489,10 @@ EXPECTED_COMMERCIAL_LADDER = {
 }
 
 
-def test_commercial_ladder_matches_adr_0474_and_adr_0426(seeded_plans):
+def test_commercial_ladder_matches_adr_0474_and_adr_0426(catalogue):
     """The ladder is a contract, not a default: both columns default to the bottom rung."""
     for slug, (included, support, custom_domain) in EXPECTED_COMMERCIAL_LADDER.items():
-        plan = seeded_plans[slug]
+        plan = catalogue[slug]
         assert plan.included_level == included, (
             f"[{slug}] included tier drifted from ADR-0474: {plan.included_level!r}"
         )
@@ -495,9 +504,9 @@ def test_commercial_ladder_matches_adr_0474_and_adr_0426(seeded_plans):
         )
 
 
-def test_every_public_plan_has_a_declared_position_on_both_ladders(seeded_plans):
+def test_every_public_plan_has_a_declared_position_on_both_ladders(catalogue):
     """A plan added tomorrow cannot reach /pricing/ without a commercial position."""
-    public = {slug for slug, plan in seeded_plans.items() if not plan.internal_only}
+    public = {slug for slug, plan in catalogue.items() if not plan.internal_only}
 
     undeclared = public - set(EXPECTED_COMMERCIAL_LADDER)
     assert not undeclared, (
@@ -506,7 +515,7 @@ def test_every_public_plan_has_a_declared_position_on_both_ladders(seeded_plans)
 
     vanished = set(EXPECTED_COMMERCIAL_LADDER) - public
     assert not vanished, (
-        f"the ladder pins plans the seed no longer creates: {sorted(vanished)}"
+        f"the ladder pins plans the catalogue no longer has: {sorted(vanished)}"
     )
 
 
@@ -519,8 +528,8 @@ UNLIMITED_API_PATTERNS = [
 ]
 
 
-def test_no_plan_promises_an_api_the_limiter_does_not_deliver(seeded_plans):
-    for slug, plan in seeded_plans.items():
+def test_no_plan_promises_an_api_the_limiter_does_not_deliver(catalogue):
+    for slug, plan in catalogue.items():
         for text in _copy(plan):
             for pattern, label in UNLIMITED_API_PATTERNS:
                 assert not re.search(pattern, text, re.I), (
@@ -539,10 +548,10 @@ def test_the_api_patterns_catch_the_lines_that_were_actually_published():
         ), f"guard is blind to the claim it exists to stop: {published!r}"
 
 
-def test_custom_domain_is_only_promised_by_the_plans_that_gate_it(seeded_plans):
+def test_custom_domain_is_only_promised_by_the_plans_that_gate_it(catalogue):
     """The card and the door have to agree (saas#1956)."""
     sellers = []
-    for slug, plan in seeded_plans.items():
+    for slug, plan in catalogue.items():
         promises = [f for f in plan.features_en if "custom domain" in f.lower()]
         if promises:
             sellers.append(slug)
@@ -557,113 +566,48 @@ def test_custom_domain_is_only_promised_by_the_plans_that_gate_it(seeded_plans):
 # --- From test_plan_trial_label.py (saas#2424) ------------------------------------------------
 
 
-def test_the_seed_does_not_type_the_trial_as_a_feature(seeded_plans):
+def test_no_plan_types_the_trial_as_a_feature(catalogue):
     """Cards paint the trial from ``trial_period_days`` (``Plan.trial_label``), never from a feature."""
-    for plan in seeded_plans.values():
+    for plan in catalogue.values():
         for feature in [*plan.features_en, *plan.features_es]:
             assert "trial" not in feature.lower(), (
-                f"[{plan.slug}] seeds the trial as a feature: {feature!r}"
+                f"[{plan.slug}] carries the trial as a feature: {feature!r}"
             )
             assert "prueba gratis" not in feature.lower(), (
-                f"[{plan.slug}] seeds the trial as a feature: {feature!r}"
+                f"[{plan.slug}] carries the trial as a feature: {feature!r}"
             )
 
 
 # --- From test_payment_test_plan.py (saas#1052) -----------------------------------------------
 
 
-def test_seed_creates_the_payment_test_plan(seeded_plans):
-    assert PAYMENT_TEST in seeded_plans
+def test_the_catalogue_has_the_payment_test_plan(catalogue):
+    assert PAYMENT_TEST in catalogue
 
 
-def test_the_payment_test_plan_has_no_trial(seeded_plans):
+def test_the_payment_test_plan_has_no_trial(catalogue):
     """Its reason to exist: with a trial the first charge is 0 € and there is no invoice."""
-    plan = seeded_plans[PAYMENT_TEST]
+    plan = catalogue[PAYMENT_TEST]
     assert plan.trial_period_days == 0
     assert plan.has_trial() is False
 
 
-def test_the_payment_test_price_breaks_down_cleanly_into_base_and_vat(seeded_plans):
+def test_the_payment_test_price_breaks_down_cleanly_into_base_and_vat(catalogue):
     """1.00 € net → 1.21 € charged to a Spanish customer: prices are net (saas#1098)."""
-    assert seeded_plans[PAYMENT_TEST].price_monthly == Decimal("1.00")
+    assert catalogue[PAYMENT_TEST].price_monthly == Decimal("1.00")
 
 
-def test_the_payment_test_plan_is_marked_internal(seeded_plans):
-    assert seeded_plans[PAYMENT_TEST].internal_only is True
-
-
-def test_seed_is_idempotent(seeded_plans):
-    first = list(
-        Plan.objects.values_list("slug", "is_active", "price_monthly").order_by("slug")
-    )
-    _sync()
-
-    assert (
-        list(
-            Plan.objects.values_list("slug", "is_active", "price_monthly").order_by(
-                "slug"
-            )
-        )
-        == first
-    )
-    assert len(first) == len(PLANS) == 7
-
-
-def _edit_starter_in_the_admin():
-    Plan.objects.filter(slug="starter").update(price_monthly=Decimal("1"), name_es="Otro")
-
-
-def _starter():
-    starter = Plan.objects.get(slug="starter")
-    return starter.price_monthly, starter.name_es
-
-
-def test_seed_keeps_a_plan_edited_in_the_admin(seeded_plans):
-    """Every deploy runs the seed: without ``--update`` it never overwrites what staff edited."""
-    _edit_starter_in_the_admin()
-
-    out = _sync()
-
-    assert _starter() == (Decimal("1"), "Otro")
-    assert "0 created, 7 existing" in out
-
-
-def test_seed_with_update_overwrites_a_plan_edited_in_the_admin(seeded_plans):
-    """``--update`` is the old behaviour: the seed puts every field of every plan back."""
-    _edit_starter_in_the_admin()
-
-    out = _sync("--update")
-
-    assert _starter() == (Decimal("29.99"), "Starter")
-    assert "0 created, 7 updated" in out
-
-
-def test_seed_creates_only_the_missing_plans(seeded_plans):
-    Plan.objects.filter(slug="standard").delete()
-    _edit_starter_in_the_admin()
-
-    out = _sync()
-
-    assert Plan.objects.get(slug="standard").price_monthly == Decimal("54.99")
-    assert _starter() == (Decimal("1"), "Otro")
-    assert "1 created, 6 existing" in out
-
-
-def test_seed_on_an_empty_database_creates_the_whole_catalogue():
-    out = _sync()
-
-    assert Plan.objects.count() == len(PLANS) == 7
-    assert "7 created, 0 existing" in out
-    assert set(Plan.objects.values_list("slug", flat=True)) == set(CATALOGUE)
+def test_the_payment_test_plan_is_marked_internal(catalogue):
+    assert catalogue[PAYMENT_TEST].internal_only is True
 
 
 # --- The catalogue of 2026-10-15: three plans on sale at sign-up, the upgrade-only tiers kept ---------------------
 
 
-def test_the_upgrade_only_tiers_are_kept_active_above_the_plans_on_sale(seeded_plans):
+def test_the_upgrade_only_tiers_are_kept_active_above_the_plans_on_sale(catalogue):
     """Ioan, 2026-10-15: Pro, Enterprise and Max are not retired. They stay active and ``upgrade_only``: the Store
     offers them to a business that already pays, and the public web lists only the plans a visitor signs up for."""
     for slug in UPGRADE_ONLY:
-        plan = seeded_plans[slug]
+        plan = catalogue[slug]
         assert (plan.is_active, plan.upgrade_only, plan.internal_only) == (True, True, False), slug
-        assert plan.price_monthly > seeded_plans["standard"].price_monthly, slug
+        assert plan.price_monthly > catalogue["standard"].price_monthly, slug

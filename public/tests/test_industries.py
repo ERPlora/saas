@@ -344,7 +344,7 @@ def test_the_lead_is_also_the_meta_description(client, salon, entry_plan):
     )
 
 
-def test_the_offer_price_comes_from_the_plan_table(client, salon, entry_plan):
+def test_the_offer_price_comes_from_the_plan_table(no_plans, client, salon, entry_plan):
     offer = _of_type(_page(client).content.decode(), "SoftwareApplication")["offers"]
 
     assert offer["price"] == "29.99", (
@@ -353,7 +353,7 @@ def test_the_offer_price_comes_from_the_plan_table(client, salon, entry_plan):
     assert offer["priceCurrency"] == "EUR"
 
 
-def test_a_second_price_in_the_plan_table_moves_the_page(client, salon, entry_plan):
+def test_a_second_price_in_the_plan_table_moves_the_page(no_plans, client, salon, entry_plan):
     """Positive control for the test above: if the page were still hardcoding a number, changing
     the cheapest plan would not move it."""
     Plan.objects.create(
@@ -368,7 +368,7 @@ def test_a_second_price_in_the_plan_table_moves_the_page(client, salon, entry_pl
     assert offer["price"] == "9.99"
 
 
-def test_with_no_listable_plan_the_page_advertises_no_price_at_all(client, salon):
+def test_with_no_listable_plan_the_page_advertises_no_price_at_all(no_plans, client, salon):
     """Advertising a price we do not charge is worse than none: the old template emitted
     ``"price": "0"`` unconditionally."""
     block = _of_type(_page(client).content.decode(), "SoftwareApplication")
@@ -379,7 +379,7 @@ def test_with_no_listable_plan_the_page_advertises_no_price_at_all(client, salon
 
 
 def test_internal_and_upgrade_only_plans_are_not_the_advertised_entry_price(
-    client, salon, entry_plan
+    no_plans, client, salon, entry_plan
 ):
     """The advertised price must be one a visitor can actually buy — the same door `/pricing/`
     lists through."""
@@ -403,7 +403,7 @@ def test_internal_and_upgrade_only_plans_are_not_the_advertised_entry_price(
     assert offer["price"] == "29.99"
 
 
-def test_the_lead_and_the_faq_state_the_entry_price(client, salon, entry_plan):
+def test_the_lead_and_the_faq_state_the_entry_price(no_plans, client, salon, entry_plan):
     response = _page(client)
     lead = response.context["industry"]["lead"]
     price_answers = [
@@ -417,7 +417,7 @@ def test_the_lead_and_the_faq_state_the_entry_price(client, salon, entry_plan):
     assert price_answers[0].startswith("Plans start at €29.99")
 
 
-def test_a_free_entry_plan_is_announced_as_free_and_permanent(client, salon):
+def test_a_free_entry_plan_is_announced_as_free_and_permanent(no_plans, client, salon):
     Plan.objects.create(
         slug="free", name_en="Free", price_monthly=Decimal("0"), display_order=0
     )

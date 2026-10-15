@@ -1,11 +1,9 @@
 """Fixtures of the hubs tests: the Hub double, accounts, contexts and a business with its four roles."""
 
 from decimal import Decimal
-from io import StringIO
 
 import pytest
 from django.contrib.auth import get_user_model
-from django.core.management import call_command
 from live.context import OperationContext, Scope
 from live.meta import all_live_app_configs, permissions_for_role
 
@@ -55,10 +53,40 @@ def make_user(db):
     return make
 
 
+def put_the_catalogue_back():
+    """The plans the migrations leave (``hubs/0013``; pytest builds its database by running them). A transactional
+    test starts from a database the one before flushed: there the data migration that writes them runs again."""
+    from importlib import import_module
+
+    from django.apps import apps
+
+    from hubs.models import Plan
+
+    if not Plan.objects.exists():
+        import_module("hubs.migrations.0013_plans_in_the_database").put_the_catalogue_in(apps, None)
+
+
 @pytest.fixture
 def plans(db):
-    """Free (no trial) and Starter (15 days) as the seed writes them, and the rest of the ladder."""
-    call_command("sync_hub_plans", stdout=StringIO())
+    """The catalogue (``put_the_catalogue_back``), none with a trial since 2026-10-15."""
+    put_the_catalogue_back()
+
+
+@pytest.fixture
+def no_plans(db):
+    """An empty plan table, for a test that builds the plans it reads: the catalogue the migrations leave goes."""
+    from hubs.models import Plan
+
+    Plan.objects.all().delete()
+
+
+@pytest.fixture
+def signup_trial(plans):
+    """Starter with a 15-day trial, as staff would give it in the admin. No plan carries one since 2026-10-15 (the
+    Free plan is the way in), but the mechanism stays, dormant, and these tests exercise it."""
+    from hubs.models import Plan
+
+    Plan.objects.filter(slug="starter").update(trial_period_days=15)
 
 
 @pytest.fixture
@@ -123,8 +151,11 @@ def business(owner, plans):
 
 @pytest.fixture
 def team(business, owner, make_user):
-    """The business with one person per role, a pending invitee and a stranger."""
-    from hubs.models import HubMember
+    """The business with one person per role, a pending invitee and a stranger. Five people do not fit in Free
+    (three), so the business is on Starter, as one that pays (no plan lends a trial since 2026-10-15)."""
+    from hubs.models import HubMember, Plan, Subscription
+
+    Subscription.objects.filter(hub=business).update(plan=Plan.objects.get(slug="starter"))
 
     people = {
         "owner": owner,

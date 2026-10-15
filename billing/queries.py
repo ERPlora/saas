@@ -470,7 +470,7 @@ def is_paying(subscription: Subscription | None) -> bool:
 
 
 def offered_plans(paying: bool):
-    """The paid plans on sale a business may move to (audit 2 S-03; ``sync_hub_plans``): the ones sold at sign-up
+    """The paid plans on sale a business may move to (audit 2 S-03; the catalogue, ``hubs/0013``): the ones sold at sign-up
     while Stripe does not bill it (Free), the ``upgrade_only`` ones too once it pays. Free is not bought (a paid
     plan is cancelled to get it) and an ``internal_only`` plan is never offered here."""
     plans = Plan.objects.public().filter(price_monthly__gt=0)

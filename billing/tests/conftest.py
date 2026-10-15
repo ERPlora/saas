@@ -8,6 +8,7 @@ from live.meta import all_live_app_configs, permissions_for_role
 from base.operations import ACCOUNT_ROLE
 from base.tests.conftest import other_session  # noqa: F401 - a second session, as another saas-cron task
 from hubs.tests.conftest import hub_double, offline_hub  # noqa: F401 - the Hub double, for what billing pushes
+from hubs.tests.conftest import no_plans, signup_trial  # noqa: F401 - an empty plan table; the dormant trial, on
 
 #: ERPlora's own VAT identity, as the Modelo 036 states it (the requester VIES must see).
 ISSUER = {
@@ -122,14 +123,11 @@ PLAN_PRICES = {slug: (f"price_{slug}_month", f"price_{slug}_year") for slug in (
 
 @pytest.fixture
 def plans(db):
-    """The plans as ``sync_hub_plans`` seeds them, with their Stripe prices filled in."""
-    from io import StringIO
-
-    from django.core.management import call_command
-
+    """The catalogue the migrations leave (``hubs/0013``), with the Stripe prices filled in."""
     from hubs.models import Plan
+    from hubs.tests.conftest import put_the_catalogue_back
 
-    call_command("sync_hub_plans", stdout=StringIO())
+    put_the_catalogue_back()
     for slug, (month, year) in PLAN_PRICES.items():
         Plan.objects.filter(slug=slug).update(stripe_price_id=month, stripe_price_id_annual=year)
 

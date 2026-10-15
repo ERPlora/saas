@@ -80,8 +80,10 @@ pago); detalle en «Facturas de ERPlora (L3-C)».
 - `billing.checkout.start` — `POST /api/billing/checkout/start` `{hub_id, plan|module, interval, promo_code}`.
   Negocio sin suscripción de Stripe (Gratis): Embedded Checkout → `{flow: "checkout", client_secret, session_id,
   publishable_key}`. Con suscripción: `{flow: "confirm", preview: {amount_due_cents, tax_cents, currency,
-  proration_date}}` (`invoices.create_preview`). Un plan comprado en la prueba de Starter del alta conserva los
-  días que le quedan (`trial_end`); un código promocional los sustituye si da más; menos de 48 h no se arrastran.
+  proration_date}}` (`invoices.create_preview`). Un plan comprado durante una prueba conserva los días que le
+  quedan (`trial_end`); un código promocional los sustituye si da más; menos de 48 h no se arrastran. Desde el
+  2026-10-15 ningún plan trae prueba (el plan Gratis es la entrada): el mecanismo queda dormido hasta que el staff
+  dé días de prueba a un plan en el admin.
 - `billing.checkout.confirm` — añade un módulo a la suscripción con el prorrateo de la vista previa: se cobra ya
   (`always_invoice`) o no se añade (`error_if_incomplete`; tarjeta rechazada → 409 `billing.card_declined`).
 - `billing.plan.change` — cambia el precio del item del plan (y, si cambia la periodicidad, el de cada módulo),

@@ -9,11 +9,9 @@ sign up for (``cheapest_slug``: never an ``upgrade_only`` one).
 """
 
 from decimal import Decimal
-from io import StringIO
 
 import pytest
 from django.contrib.auth import get_user_model
-from django.core.management import call_command
 from django.utils import translation
 from live.context import OperationContext, Scope
 from live.operations import get
@@ -29,8 +27,8 @@ URL = "/api/plans"
 
 
 @pytest.fixture
-def seeded():
-    call_command("sync_hub_plans", stdout=StringIO())
+def seeded(plans):
+    """The catalogue the migrations leave (``hubs/0013``)."""
 
 
 def anonymous(language="en"):
@@ -65,8 +63,6 @@ def test_an_inactive_plan_is_not_on_sale(seeded):
 def test_the_shape_of_a_plan(seeded):
     starter = next(plan for plan in plan_list()["plans"] if plan["slug"] == "starter")
 
-    with translation.override("en"):
-        trial = Plan.objects.get(slug="starter").trial_label
     assert set(starter) == {
         "slug",
         "name",
@@ -100,12 +96,13 @@ def test_the_shape_of_a_plan(seeded):
     ) == (
         0,
         0,
-        15,
-        True,
+        0,
+        False,
     )
     assert (starter["upgrade_only"], starter["internal_only"]) == (False, False)
     assert (starter["assistant_messages_per_month"], starter["whatsapp_messages_per_month"]) == (300, 150)
-    assert starter["features"][-1] == trial == "15-day free trial"
+    # No trial since 2026-10-15 (the Free plan is the way in): the features end with the plan's own.
+    assert starter["features"] == Plan.objects.get(slug="starter").features_en
     assert (starter["included_level_label"], starter["support_level_label"]) == (
         "Basic",
         "Email",
@@ -119,7 +116,7 @@ def test_the_copy_is_in_the_callers_language(seeded):
     standard = next(plan for plan in spanish["plans"] if plan["slug"] == "standard")
 
     assert standard["featured_label"] == "Recomendado"
-    assert standard["features"][-1] == "15 días de prueba gratis"
+    assert standard["features"] == Plan.objects.get(slug="standard").features_es
     assert standard["description"] == Plan.objects.get(slug="standard").description_es
     with translation.override("es"):
         expected = Plan.objects.get(slug="standard")
@@ -159,7 +156,12 @@ def test_the_visual_separators_of_old_rows_are_dropped(seeded):
     assert free["features"] == ["1 device", "3 users"]
 
 
-def test_the_signup_trial_is_the_longest_a_new_plan_grants(seeded):
+def test_the_catalogue_grants_no_signup_trial(seeded):
+    """Ioan, 2026-10-15: the Free plan is the way in."""
+    assert plan_list()["signup_trial_days"] == 0
+
+
+def test_the_signup_trial_is_the_longest_a_new_plan_grants(signup_trial):
     assert plan_list()["signup_trial_days"] == 15
 
 
@@ -185,7 +187,7 @@ def test_the_cheapest_plan_is_never_an_upgrade_nor_internal(seeded):
     assert plan_list()["cheapest_slug"] == "starter"
 
 
-def test_without_plans_on_sale_there_is_no_cheapest():
+def test_without_plans_on_sale_there_is_no_cheapest(no_plans):
     assert plan_list() == {"signup_trial_days": 0, "cheapest_slug": None, "plans": []}
 
 

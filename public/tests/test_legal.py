@@ -693,7 +693,7 @@ def test_a_spanish_customer_reads_the_exit_package_in_spanish(client, settings):
 
 
 @pytest.mark.django_db
-def test_the_terms_state_the_trial_length_the_checkout_grants(client):
+def test_the_terms_state_the_trial_length_the_checkout_grants(no_plans, client):
     make_plan("free", 0)
     make_plan("starter", 15)
     make_plan("standard", 15)
@@ -706,7 +706,7 @@ def test_the_terms_state_the_trial_length_the_checkout_grants(client):
 
 
 @pytest.mark.django_db
-def test_the_terms_follow_the_plan_when_its_trial_changes(client):
+def test_the_terms_follow_the_plan_when_its_trial_changes(no_plans, client):
     make_plan("starter", 30)
 
     section = trial_section(client)
@@ -716,7 +716,7 @@ def test_the_terms_follow_the_plan_when_its_trial_changes(client):
 
 
 @pytest.mark.django_db
-def test_plans_a_visitor_cannot_buy_do_not_count_in_the_terms(client):
+def test_plans_a_visitor_cannot_buy_do_not_count_in_the_terms(no_plans, client):
     make_plan("starter", 15)
     make_plan("internal", 90, internal_only=True)
     make_plan("retired", 180, is_active=False)
@@ -728,7 +728,7 @@ def test_plans_a_visitor_cannot_buy_do_not_count_in_the_terms(client):
 
 
 @pytest.mark.django_db
-def test_plans_with_different_trials_are_stated_as_a_range_in_the_terms(client):
+def test_plans_with_different_trials_are_stated_as_a_range_in_the_terms(no_plans, client):
     make_plan("starter", 15)
     make_plan("standard", 30)
 
@@ -736,7 +736,7 @@ def test_plans_with_different_trials_are_stated_as_a_range_in_the_terms(client):
 
 
 @pytest.mark.django_db
-def test_no_trial_on_sale_means_no_trial_promised_in_the_terms(client):
+def test_no_trial_on_sale_means_no_trial_promised_in_the_terms(no_plans, client):
     make_plan("free", 0)
     make_plan("starter", 0)
 
@@ -747,7 +747,7 @@ def test_no_trial_on_sale_means_no_trial_promised_in_the_terms(client):
 
 
 @pytest.mark.django_db
-def test_a_spanish_customer_reads_the_trial_in_spanish(client):
+def test_a_spanish_customer_reads_the_trial_in_spanish(no_plans, client):
     make_plan("starter", 15)
 
     section = trial_section(client, "es")
@@ -757,7 +757,7 @@ def test_a_spanish_customer_reads_the_trial_in_spanish(client):
 
 
 @pytest.mark.django_db
-def test_a_plan_reached_only_by_upgrading_does_not_count_in_the_terms(client):
+def test_a_plan_reached_only_by_upgrading_does_not_count_in_the_terms(no_plans, client):
     make_plan("starter", 15)
     make_plan("pro", 30, upgrade_only=True)
 
@@ -768,7 +768,7 @@ def test_a_plan_reached_only_by_upgrading_does_not_count_in_the_terms(client):
 
 
 @pytest.mark.django_db
-def test_the_trial_is_promised_on_hub_creation_and_not_on_an_upgrade(client):
+def test_the_trial_is_promised_on_hub_creation_and_not_on_an_upgrade(no_plans, client):
     make_plan("starter", 15)
 
     english = trial_clause(trial_section(client))

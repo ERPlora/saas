@@ -121,6 +121,7 @@ def test_a_paid_plan_is_written_with_its_stripe_ids_and_period(business):
     )
 
 
+@pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
 def test_paying_ends_the_free_trial_of_the_sign_up(business):
     """Free is born with Starter's trial (ADR-0474); a paid plan carries its own trial in Stripe, so the
     trial plan of the sign-up no longer decides the rights (it would hide a paid Standard behind Starter)."""

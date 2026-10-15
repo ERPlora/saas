@@ -18,7 +18,7 @@ def staff_client(client):
 
 
 @pytest.fixture
-def rows():
+def rows(no_plans):
     sector = Sector.objects.create(code="hospitality", name_en="Hospitality & Food", name_es="Hostelería")
     business_type = BusinessType.objects.create(
         code="restaurant", name_en="Restaurant", name_es="Restaurante", sector=sector, vertical="restaurant"

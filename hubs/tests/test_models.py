@@ -9,12 +9,10 @@ pages, forms and Stripe halves stay with the lots that port those doors.
 
 import uuid
 from decimal import Decimal
-from io import StringIO
 
 import pytest
 from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import ValidationError
-from django.core.management import call_command
 from django.utils import translation
 
 from apps.tests.factories import make_app
@@ -33,7 +31,7 @@ def _create(slug, **extra):
 
 @pytest.fixture
 def plans(db):
-    call_command("sync_hub_plans", stdout=StringIO())
+    """The catalogue the migrations leave (``hubs/0013``)."""
 
 
 @pytest.fixture
@@ -51,7 +49,7 @@ def staff(django_user_model):
 
 @pytest.mark.django_db
 def test_a_plan_has_a_uuid7_primary_key():
-    plan = _create("starter")
+    plan = _create("bakery-special")
 
     assert isinstance(plan.pk, uuid.UUID)
     assert plan.pk.version == 7
@@ -127,10 +125,11 @@ class TestOnlyStaffCanBuyTheInternalPlan:
 class TestSignupTrialDays:
     """``Plan.objects.signup_trial_days()``: every public page that states the trial reads it here."""
 
-    def test_the_seeded_catalogue_offers_fifteen_days(self, plans):
-        assert Plan.objects.signup_trial_days() == {"trial_days_min": 15, "trial_days_max": 15}
+    def test_the_catalogue_offers_no_trial(self, plans):
+        """Ioan, 2026-10-15: the Free plan is the way in; no plan on sale carries a trial."""
+        assert Plan.objects.signup_trial_days() == {"trial_days_min": None, "trial_days_max": None}
 
-    def test_only_public_plans_bought_at_sign_up_count(self, plans):
+    def test_only_public_plans_bought_at_sign_up_count(self, signup_trial):
         """An upgrade grants no trial (#809), an internal plan is no offer, a retired one neither."""
         _create("long-upgrade", trial_period_days=90, upgrade_only=True)
         _create("long-internal", trial_period_days=60, internal_only=True)
@@ -139,8 +138,7 @@ class TestSignupTrialDays:
 
         assert Plan.objects.signup_trial_days() == {"trial_days_min": 7, "trial_days_max": 15}
 
-    @pytest.mark.django_db
-    def test_none_when_no_plan_on_sale_has_a_trial(self):
+    def test_none_when_no_plan_on_sale_has_a_trial(self, no_plans):
         _create("free", trial_period_days=0)
 
         assert Plan.objects.signup_trial_days() == {"trial_days_min": None, "trial_days_max": None}
