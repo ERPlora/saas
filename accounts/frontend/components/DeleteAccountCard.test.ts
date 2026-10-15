@@ -40,6 +40,7 @@ function business(id: string, name: string, overrides: Partial<BusinessRowOut> =
     unpaid_since: null,
     pay_url: null,
     is_payer: true,
+    payer_id: `${id}-payer`,
     ...overrides,
   };
 }

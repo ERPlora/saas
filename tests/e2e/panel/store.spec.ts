@@ -198,8 +198,9 @@ test.describe('store', () => {
     const stripe = watchStripeRequests(page);
     await page.goto('/store/plans?surface=account');
     const notice = page.getByTestId('store-in-app');
-    await expect(notice).toContainText('The store is not in the app');
-    await expect(notice).toContainText('To change your plan or add modules, go to erplora.com in your browser.');
+    // Already in the browser: why nothing is bought here, not «go to erplora.com in your browser» (audit 2 S-09).
+    await expect(notice).toContainText('Nothing is bought from here');
+    await expect(notice).toContainText('This account was opened from the app, and the app does not sell');
     await expect(page.getByTestId('plan-starter')).toHaveCount(0);
     expect(await page.locator('ion-router-outlet').innerText()).not.toMatch(/€/);
     await page.setViewportSize({ width: 390, height: 844 });

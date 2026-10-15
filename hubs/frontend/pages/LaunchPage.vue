@@ -13,7 +13,8 @@
 // Live data: `hubs.business.list` (the account's businesses and its pending invitations), its states truthful
 // (`useLiveState`, audit 2026-10-14 R-08: no answer in time is an error with «Retry», never a spinner for ever).
 // A business that owes an invoice says its real deadline (R-06) and, on the web for whoever may pay it, «Pay the
-// invoice» (or «Change card») is the main action, «Open» the second (R-07; mockups `launch.html` «past-due»).
+// invoice» (or «Change card») is the main action, «Open» the second, outlined (R-07, audit 2 S-06; mockups `launch.html`
+// «past-due»). A deleted business offers its owner «Recover business» there, within its 90 days (audit 2 R-07).
 // Ionic reuses the page when it comes back on screen: its address (`?notice=`) and the tab's title are read then.
 import { InlineFeedback, StatusPill } from '@erplora/ui/components';
 import { HubIcon, useSession, useSurface } from '@erplora/ui/shell';
@@ -31,6 +32,8 @@ import BusinessCreateForm from '../components/BusinessCreateForm.vue';
 import BusinessPreparing from '../components/BusinessPreparing.vue';
 import CardShell from '../components/CardShell.vue';
 import DeclineDialog from '../components/DeclineDialog.vue';
+import HostName from '../components/HostName.vue';
+import RecoverButton from '../components/RecoverButton.vue';
 import UnpaidActions from '../components/UnpaidActions.vue';
 import { useAcceptInvitation } from '../invitations';
 import { useOpenBusiness } from '../open-business';
@@ -455,7 +458,7 @@ onIonViewWillEnter(entered);
               <div class="launch-biz__text">
                 <h2>{{ rows[0].name }}</h2>
                 <p class="mono launch-biz__url">
-                  {{ rows[0].host }}
+                  <HostName :host="rows[0].host" />
                 </p>
                 <p class="launch-biz__pills">
                   <StatusPill v-bind="pill(rows[0])" />
@@ -482,6 +485,13 @@ onIonViewWillEnter(entered);
             />
             <UnpaidActions
               v-if="owes(rows[0])"
+              :business="rows[0]"
+              size="large"
+              expand="block"
+              class="launch-main"
+            />
+            <RecoverButton
+              v-if="rows[0].status === 'deleting'"
               :business="rows[0]"
               size="large"
               expand="block"
@@ -531,7 +541,7 @@ onIonViewWillEnter(entered);
               <div class="launch-biz__text">
                 <h2>{{ business.name }}</h2>
                 <p class="mono launch-biz__url">
-                  {{ business.host }}
+                  <HostName :host="business.host" />
                 </p>
                 <p class="launch-biz__pills">
                   <StatusPill v-bind="pill(business)" />
@@ -557,10 +567,18 @@ onIonViewWillEnter(entered);
                   size="small"
                   class="launch-biz__pay"
                 />
+                <RecoverButton
+                  v-if="business.status === 'deleting'"
+                  :business="business"
+                  named
+                  size="small"
+                  class="launch-biz__pay"
+                />
               </div>
               <ion-button
                 v-if="opensAtAll(business)"
                 data-testid="launch-open"
+                :fill="owes(business) ? 'outline' : 'solid'"
                 :aria-label="$t('hubs.common.openName', { name: business.name })"
                 :disabled="!business.can_open || !!opening"
                 @click="open(business)"

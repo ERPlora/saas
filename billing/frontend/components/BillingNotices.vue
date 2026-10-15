@@ -149,4 +149,12 @@ const line = computed(() => {
   color: inherit;
   white-space: nowrap;
 }
+/* A real tap target on a phone or a touch screen (audit 2 R-13: «View the invoices» measured 104×22). */
+@media (max-width: 640px), (pointer: coarse) {
+  .billing-alert__link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
 </style>

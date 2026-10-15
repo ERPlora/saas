@@ -15,6 +15,7 @@ import { IonButton, IonInput } from '@ionic/vue';
 import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import { looksLikeEmail } from '../../../frontend/email';
 import type { ProfileOut } from '../../../frontend/sdk-types';
 import { useErrorText } from '../error-text';
 import { reauthRequestOf, useReauthentication } from '../reauth';
@@ -129,7 +130,8 @@ const dialogError = computed(() => {
   const error = step.value === 'code' ? (verify.error.value ?? change.error.value) : change.error.value;
   return reauthRequestOf(error) ? null : forDialog(error);
 });
-const incomplete = computed(() => (step.value === 'address' ? !address.value.trim() : !code.value.trim()));
+/** The address step waits for an address that looks like one (audit 2 R-32): a typo never opens «Confirm it's you». */
+const incomplete = computed(() => (step.value === 'address' ? !looksLikeEmail(address.value) : !code.value.trim()));
 </script>
 
 <template>

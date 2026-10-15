@@ -29,8 +29,10 @@ import {
   CAFE,
   catalog,
   FREE_SUBSCRIPTION,
+  MAX,
   PLANS,
   PLAZA,
+  PRO,
   SALON,
   businessPage,
   storeModule,
@@ -121,6 +123,26 @@ describe('StoreShop', () => {
     );
     expect(s.all('plan-name').map((n) => n.text())).toEqual(['Free', 'Starter']);
     expect(s.el('plan-starter').find('[data-testid="plan-current"]').exists()).toBe(true);
+  });
+
+  it('without ?business= it sells to the first business that can buy, not one blocked by an unpaid invoice (audit 2 R-17)', async () => {
+    const s = await setup({ rows: [PLAZA, BAKERY, CAFE] });
+    expect(ionProps(s.el('store-business'), 'value')).toEqual({ value: 'bakery' });
+    expect(s.el('store-unpaid').exists()).toBe(false);
+  });
+
+  it('a Free business is offered the plans sold at sign-up; the upgrades wait for a paid plan (audit 2 S-03)', async () => {
+    const plans = { ...PLANS, plans: [...PLANS.plans, PRO, MAX] };
+    const s = await setup({ businessId: 'cafe', answer: ({ path }) => (path === '/api/plans' ? Response.json(plans) : undefined) });
+    expect(s.all('plan-name').map((n) => n.text())).toEqual(['Free', 'Starter']);
+    expect(s.el('store-plans-later').text()).toBe('Pro and Max: available after moving to Starter.');
+  });
+
+  it('a paying business is offered the upgrades, and nothing waits', async () => {
+    const plans = { ...PLANS, plans: [...PLANS.plans, PRO, MAX] };
+    const s = await setup({ answer: ({ path }) => (path === '/api/plans' ? Response.json(plans) : undefined) });
+    expect(s.all('plan-name').map((n) => n.text())).toEqual(['Free', 'Starter', 'Pro', 'Max']);
+    expect(s.el('store-plans-later').exists()).toBe(false);
   });
 
   it('?business= chooses the business it came from', async () => {
@@ -227,8 +249,16 @@ describe('StoreShop', () => {
       business: { id: 'cafe', name: 'Café Central' },
       purchase: { kind: 'plan', slug: 'starter', name: 'Starter', interval: 'year' },
       promoCode: 'SPRING',
-      declinedCard: true,
+      // Bar La Plaza's card was declined, but Café Central has a payer of its own (audit 2 R-21).
+      declinedFor: null,
     });
+  });
+
+  it('the card of the same payer declined: the checkout says whose (audit 2 R-21)', async () => {
+    const shared = { ...CAFE, payer_id: PLAZA.payer_id };
+    const s = await setup({ businessId: 'cafe', rows: [BAKERY, shared, PLAZA] });
+    await s.el('plan-upgrade').trigger('click');
+    expect(s.wrapper.findComponent(CheckoutModal).props()).toMatchObject({ declinedFor: 'Bar La Plaza' });
   });
 
   it('an invalid promo code is said, and none is sent', async () => {

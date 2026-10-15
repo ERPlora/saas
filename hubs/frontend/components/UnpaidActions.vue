@@ -20,8 +20,10 @@ const props = withDefaults(
     size?: 'small' | 'default' | 'large';
     /** `block` in a card that stacks its actions. */
     expand?: 'block';
+    /** Not the most urgent of a list: every button outlined, so one business leads (audit 2 S-06). */
+    secondary?: boolean;
   }>(),
-  { named: false, size: 'default', expand: undefined },
+  { named: false, size: 'default', expand: undefined, secondary: false },
 );
 
 const portal = useCardPortal();
@@ -38,7 +40,7 @@ const declined = computed(() => props.business.unpaid_reason === 'card_declined'
       <ion-button
         v-if="declined"
         data-testid="unpaid-change-card"
-        fill="solid"
+        :fill="secondary ? 'outline' : 'solid'"
         :size="size === 'default' ? undefined : size"
         :expand="expand"
         :aria-label="named ? $t('hubs.unpaid.changeCardName', { name: business.name }) : undefined"
@@ -61,7 +63,7 @@ const declined = computed(() => props.business.unpaid_reason === 'card_declined'
       </ion-button>
       <ion-button
         data-testid="unpaid-pay"
-        :fill="declined ? 'outline' : 'solid'"
+        :fill="declined || secondary ? 'outline' : 'solid'"
         :size="size === 'default' || (declined && size === 'large') ? undefined : size"
         :expand="expand"
         :href="business.pay_url"

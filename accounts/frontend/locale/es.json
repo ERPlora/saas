@@ -201,6 +201,7 @@
       "profile": {
         "heading": "Tus datos",
         "firstName": "Nombre",
+        "firstNameRequired": "Escribe tu nombre.",
         "lastName": "Apellidos",
         "email": "Correo con el que entras",
         "unverified": "Sin verificar",
@@ -309,6 +310,7 @@
         "title": "Cambiar tu contraseña",
         "submit": "Cambiar contraseña",
         "current": "Contraseña actual",
+        "wrongCurrent": "La contraseña actual no es correcta.",
         "new": "Contraseña nueva",
         "hint": "Al menos 8 caracteres; mejor larga y sin tu correo.",
         "strength": {

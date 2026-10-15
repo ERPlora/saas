@@ -272,6 +272,8 @@ describe('LaunchPage: one business', () => {
     const tile = s.testid('launch-business');
     expect(tile.get('h2').text()).toBe('Panadería López');
     expect(tile.get('.launch-biz__url').text()).toBe('bakery.localhost:8000');
+    // Audit 2 R-25: it breaks only after a dot, never at a hyphen.
+    expect(tile.find('.launch-biz__url .host-name').exists()).toBe(true);
     expect(tile.get('.status-pill').text()).toBe('Active');
     expect(tile.get('.launch-biz__meta').text()).toBe('Plan Starter · Owner');
     const open = s.testid('launch-open');
@@ -440,5 +442,56 @@ describe('LaunchPage: the stream', () => {
     s.call.push(BYE);
     await flush();
     expect(s.testid('launch-business').exists()).toBe(true);
+  });
+});
+
+describe('LaunchPage: a deleted business is recovered from the card (audit 2 R-07)', () => {
+  const DELETED = {
+    status: 'deleting',
+    status_label: 'Deleted',
+    can_open: false,
+    open_blocked_reason: 'deleting',
+    deletion_requested_at: '2026-10-10T10:00:00Z',
+    purge_after: '2027-01-08T10:00:00Z',
+    can: { open: false, manage: false, restore: true, delete: false },
+  };
+
+  it('one: its owner recovers it, the main action, and it is said; no «Open»', async () => {
+    const s = await showing(page([row('bakery', 'Bakery', DELETED)]), {
+      api: (call) =>
+        describeCall(call).path === '/api/hubs/businesses/restore' ? Response.json({ id: 'bakery', name: 'Bakery', status: 'active' }) : Response.json({}),
+    });
+    expect(s.testid('launch-reason').text()).toContain('Deleted. You can recover it until Jan 8, 2027');
+    const recover = s.testid('recover-business');
+    expect(recover.text()).toContain('Recover business');
+    expect(ionProps(recover, 'size', 'expand')).toEqual({ size: 'large', expand: 'block' });
+    expect(s.testid('launch-open').exists()).toBe(false);
+    await recover.trigger('click');
+    await flush();
+    expect(s.calls().find((c) => c.path === '/api/hubs/businesses/restore')?.body).toEqual({ id: 'bakery' });
+  });
+
+  it('whoever may not recover it sees why, and no button', async () => {
+    const s = await showing(page([row('bakery', 'Bakery', { ...DELETED, role: 'hub_admin', can: { ...DELETED.can, restore: false } })]));
+    expect(s.testid('recover-business').exists()).toBe(false);
+    expect(s.testid('launch-panel').exists()).toBe(true);
+  });
+
+  it('several: the deleted one offers «Recover», named with its business', async () => {
+    const s = await showing(page([row('salon', 'Peluquería Ana', { can: DELETED.can }), row('bakery', 'Bakery', DELETED)]));
+    const tiles = s.wrapper.findAll('[data-testid="launch-business"]');
+    expect(tiles[0].find('[data-testid="recover-business"]').exists()).toBe(false);
+    expect(accessibleName(tiles[1].get('[data-testid="recover-business"]'))).toBe('Recover Bakery');
+  });
+});
+
+describe('LaunchPage: one filled button per business (audit 2 S-06)', () => {
+  it('several: a business that owes keeps the payment filled and «Open» outlined', async () => {
+    const OWED = { status: 'past_due', status_label: 'Payment pending', unpaid_reason: 'payment_failed', unpaid_since: '2026-10-10T14:23:00Z', pay_url: 'https://invoice.stripe.com/i/bakery' };
+    const s = await showing(page([row('salon', 'Peluquería Ana'), row('bakery', 'Bakery', OWED)]));
+    const tiles = s.wrapper.findAll('[data-testid="launch-business"]');
+    expect(ionProps(tiles[1].get('[data-testid="unpaid-pay"]'), 'fill')).toEqual({ fill: 'solid' });
+    expect(ionProps(tiles[1].get('[data-testid="launch-open"]'), 'fill')).toEqual({ fill: 'outline' });
+    expect(ionProps(tiles[0].get('[data-testid="launch-open"]'), 'fill')).toEqual({ fill: 'solid' });
   });
 });

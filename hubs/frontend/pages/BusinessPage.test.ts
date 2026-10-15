@@ -101,6 +101,7 @@ describe('BusinessPage: the frame', () => {
     const header = s.testid('business-header');
     expect(header.get('.biz-header__title').text()).toBe('Panadería López');
     expect(header.get('.biz-header__url').text()).toBe('bakery.erplora.com');
+    expect(header.find('.biz-header__url .host-name').exists()).toBe(true);
     expect(header.get('.status-pill').text()).toBe('Active');
     expect(header.get('.biz-header__meta').text()).toBe('Plan Starter · Owner');
     const open = s.testid('business-open');
@@ -157,6 +158,16 @@ describe('BusinessPage: the frame', () => {
     expect(s.testid('business-error').text()).toContain('We could not load this business');
     expect(s.testid('business-error').text()).toContain('Maybe you no longer have access to it, or there is a connection problem.');
     expect(s.testid('business-retry').exists()).toBe(true);
+  });
+
+  it('a role that may not manage it (a manager’s deep link): no permission, not a connection problem (audit 2 R-19)', async () => {
+    const s = await setup('members', null);
+    s.call.push(errorFrame(subId(s.client, 'hubs.business.get'), 'permission_denied'));
+    await flush();
+    expect(s.testid('business-error').text()).toContain('You do not have permission to manage this business');
+    expect(s.testid('business-error').text()).toContain('Your role does not allow it. If you need it, ask the owner.');
+    expect(s.testid('business-error').text()).not.toContain('connection');
+    expect(s.testid('business-retry').exists()).toBe(false);
   });
 
   it('the stream gone before any answer: an error with «Retry» after the time limit, never a skeleton for ever (R-08)', async () => {

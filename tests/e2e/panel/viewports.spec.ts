@@ -34,7 +34,8 @@ const SCREENS: Screen[] = [
   { name: 'launch-first-invited', account: 'invited', path: '/launch', ready: (p) => p.getByTestId('launch-accept') },
   { name: 'businesses-default', account: 'several', path: '/businesses', ready: (p) => p.getByTestId('businesses-row').first() },
   { name: 'businesses-empty', account: 'first', path: '/businesses', ready: (p) => p.getByTestId('businesses-empty') },
-  { name: 'businesses-create', account: 'several', path: '/businesses?create=1', ready: (p) => p.getByTestId('create-modal-submit') },
+  // An account without a Free business: «several» fills its one with Café Central (audit 2 S-02).
+  { name: 'businesses-create', account: 'first', path: '/businesses?create=1', ready: (p) => p.getByTestId('create-modal-submit') },
   { name: 'business-default', account: 'several', path: bakery('summary'), ready: (p) => p.getByTestId('summary-plan') },
   { name: 'business-default-members', account: 'several', path: bakery('members'), ready: (p) => p.getByTestId('members-row').first() },
   { name: 'business-default-modules', account: 'several', path: bakery('modules'), ready: (p) => p.getByTestId('business-modules') },

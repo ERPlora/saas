@@ -4,7 +4,8 @@
 import { applySurface } from '@erplora/ui/shell';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { mountHubs } from '../__tests__/mount-hubs';
+import { invoicePage, unpaidRow } from '../../../billing/frontend/__tests__/billing-fixtures';
+import { ionProps, mountHubs } from '../__tests__/mount-hubs';
 import UnpaidGroupNotice from './UnpaidGroupNotice.vue';
 
 const business = (id: string, name: string, extra: Record<string, unknown>) => ({
@@ -60,5 +61,62 @@ describe('UnpaidGroupNotice', () => {
     expect(lines[1].find('.unpaid-line__text').text()).toBe(
       'Bar La Plaza se suspende el 17 oct 2026 si no se paga. El banco rechazó la tarjeta.',
     );
+  });
+
+  it('the most urgent first: the suspended, then the one suspended soonest, as Billing orders them (audit 2 S-07)', async () => {
+    const { wrapper } = await mountHubs(UnpaidGroupNotice, {
+      props: {
+        businesses: [
+          business('norte', 'Bar Norte', { unpaid_since: '2026-10-12T08:00:00Z' }),
+          business('plaza', 'Bar La Plaza', { unpaid_since: '2026-10-10T08:00:00Z' }),
+          business('cafe', 'Café Central', { status: 'suspended', unpaid_since: '2026-10-08T08:00:00Z' }),
+        ],
+      },
+    });
+    const names = wrapper.findAll('[data-testid="businesses-unpaid-line"]').map((line) => line.find('.unpaid-line__text').text().split(' is ')[0]);
+    expect(names).toEqual(['Café Central', 'Bar La Plaza', 'Bar Norte']);
+  });
+
+  it('only the most urgent business’s way out is filled; the others are outlined (audit 2 S-06)', async () => {
+    const { wrapper } = await mountHubs(UnpaidGroupNotice, {
+      props: {
+        businesses: [
+          business('norte', 'Bar Norte', { unpaid_since: '2026-10-12T08:00:00Z' }),
+          business('plaza', 'Bar La Plaza', { unpaid_since: '2026-10-10T08:00:00Z', unpaid_reason: 'card_declined' }),
+        ],
+      },
+    });
+    const lines = wrapper.findAll('[data-testid="businesses-unpaid-line"]');
+    expect(ionProps(lines[0].get('[data-testid="unpaid-change-card"]'), 'fill')).toEqual({ fill: 'solid' });
+    expect(ionProps(lines[1].get('[data-testid="unpaid-pay"]'), 'fill')).toEqual({ fill: 'outline' });
+  });
+
+  it('says how much each business owes and in all, from the unpaid invoices the account sees (audit 2 S-08)', async () => {
+    const m = await mountHubs(UnpaidGroupNotice, {
+      locale: 'es',
+      props: {
+        businesses: [business('plaza', 'Bar La Plaza', {}), business('norte', 'Bar Norte', { unpaid_since: '2026-10-12T08:00:00Z' })],
+      },
+    });
+    const call = await m.live();
+    await m.result(
+      call,
+      'billing.invoice.list',
+      invoicePage([
+        unpaidRow('i1', { business: { id: 'plaza', name: 'Bar La Plaza' }, total_cents: 3629 }),
+        unpaidRow('i2', { business: { id: 'norte', name: 'Bar Norte' }, total_cents: 3629 }),
+      ]),
+    );
+    expect(m.wrapper.text()).toContain('2 negocios tienen facturas sin pagar: 72,58\u00a0€');
+    const amounts = m.wrapper.findAll('[data-testid="businesses-unpaid-amount"]').map((amount) => amount.text());
+    expect(amounts).toEqual(['36,29\u00a0€', '36,29\u00a0€']);
+  });
+
+  it('without the invoices (not the account’s, or not loaded) it says the businesses without amounts', async () => {
+    const { wrapper } = await mountHubs(UnpaidGroupNotice, {
+      props: { businesses: [business('plaza', 'Bar La Plaza', {}), business('norte', 'Bar Norte', {})] },
+    });
+    expect(wrapper.text()).toContain('2 businesses have unpaid invoices');
+    expect(wrapper.find('[data-testid="businesses-unpaid-amount"]').exists()).toBe(false);
   });
 });

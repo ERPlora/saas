@@ -201,6 +201,7 @@
       "profile": {
         "heading": "Your details",
         "firstName": "First name",
+        "firstNameRequired": "Write your first name.",
         "lastName": "Last name",
         "email": "Email you sign in with",
         "unverified": "Not verified",
@@ -309,6 +310,7 @@
         "title": "Change your password",
         "submit": "Change password",
         "current": "Current password",
+        "wrongCurrent": "The current password is not right.",
         "new": "New password",
         "hint": "At least 8 characters; better long, and without your email.",
         "strength": {

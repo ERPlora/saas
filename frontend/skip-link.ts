@@ -2,8 +2,10 @@
 // six or seven stops of the keyboard (the user, the menu's entries, the brand, Back). The shell (`@erplora/ui`)
 // has no skip link yet (docs/UI-REQUESTS-panel.md), so the entry puts one first in `<body>`: hidden until it has
 // the focus (`panel-chrome.css`), it takes the focus to the page on screen — Ionic keeps the pages it leaves in
-// the outlet, hidden with `ion-page-hidden` — on its `ion-content`. Its text follows `<html lang>`, which the
-// shell keeps in step with the account's language.
+// the outlet, hidden with `ion-page-hidden` — on its `ion-content`. It lives in a `<nav>` of its own («Shortcuts»,
+// as in the mockups) and points at the shell's outlet (`#main`, the menu's `content-id`), so nothing of the page is
+// outside a landmark (audit 2 S-05, axe `region`). Its texts follow `<html lang>`, which the shell keeps in step
+// with the account's language.
 
 export const SKIP_LINK_ID = 'skip-to-content';
 
@@ -17,15 +19,19 @@ function shownContent(doc: Document): HTMLElement | null {
   return (page ?? doc).querySelector<HTMLElement>('ion-content');
 }
 
-export function installSkipLink(doc: Document, texts: SkipLinkTexts): void {
+export function installSkipLink(doc: Document, texts: SkipLinkTexts, navLabels: SkipLinkTexts): void {
   if (doc.getElementById(SKIP_LINK_ID)) return;
+  const nav = doc.createElement('nav');
+  nav.className = 'skip-nav';
   const link = doc.createElement('a');
   link.id = SKIP_LINK_ID;
   link.className = 'skip-link';
   link.href = '#main';
+  nav.append(link);
   const paint = () => {
     const language = (doc.documentElement.lang || 'en').split('-')[0].toLowerCase();
     link.textContent = texts[language] ?? texts.en;
+    nav.setAttribute('aria-label', navLabels[language] ?? navLabels.en);
   };
   paint();
   new MutationObserver(paint).observe(doc.documentElement, { attributes: true, attributeFilter: ['lang'] });
@@ -36,5 +42,5 @@ export function installSkipLink(doc: Document, texts: SkipLinkTexts): void {
     content.setAttribute('tabindex', '-1');
     content.focus();
   });
-  doc.body.prepend(link);
+  doc.body.prepend(nav);
 }

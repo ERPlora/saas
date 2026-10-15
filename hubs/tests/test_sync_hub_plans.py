@@ -191,14 +191,18 @@ def test_no_plan_publishes_an_uptime_sla_percentage(seeded_plans):
 
 
 def test_subscription_unit_is_the_hub(seeded_plans):
-    """saas#1760: one subscription buys ONE hub, with every location and device in it."""
+    """saas#1760: one subscription buys ONE hub, with every location and device in it. The copy calls it what the
+    panel calls it, a business (audit 2 S-12: «Precio por hub» in the Store was the Hub's word)."""
     for slug in ("starter", "standard"):
         plan = seeded_plans[slug]
-        assert any("per hub" in f.lower() for f in plan.features_en), (
+        assert any("per business" in f.lower() for f in plan.features_en), (
             f"[{slug}] paid plan never states the billing unit: {plan.features_en}"
         )
-        assert any("por hub" in f.lower() for f in plan.features_es), (
+        assert any("por negocio" in f.lower() for f in plan.features_es), (
             f"[{slug}] paid plan never states the billing unit (es): {plan.features_es}"
+        )
+        assert not any(re.search(r"\bhub\b", f, re.I) for f in [*plan.features_en, *plan.features_es]), (
+            f"[{slug}] the plan copy speaks of a hub: {plan.features_es}"
         )
         assert plan.max_devices == 0, f"[{slug}] paid plans must not cap devices"
 

@@ -332,6 +332,9 @@ test.describe('members', () => {
     await expect(seats).toHaveText(`${limit - 1} of ${limit} places on the plan`);
     await page.getByTestId('members-add').click();
     await expect(page.getByTestId('invite-full')).toHaveCount(0);
+    // «Send invitation» waits for an address (audit 2 R-28), then works again.
+    await expect(page.getByTestId('invite-modal-submit')).toHaveAttribute('aria-disabled', 'true');
+    await page.getByTestId('invite-email').locator('input').fill('e2e-seat-again@example.com');
     await expect(page.getByTestId('invite-modal-submit')).not.toHaveAttribute('aria-disabled', 'true');
     expect(errors).toEqual([]);
   });

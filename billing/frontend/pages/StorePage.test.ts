@@ -44,17 +44,33 @@ describe('StorePage', () => {
     expect(s.router.currentRoute.value.fullPath).toBe('/store/plans?business=bakery');
   });
 
-  it.each(['desktop', 'mobile', 'account'] as const)('on the %s surface it does not sell: it says how, without a link out, and loads nothing', async (surface) => {
+  it.each(['desktop', 'mobile', 'account'] as const)('on the %s surface it does not sell: it says why, without a link out, and loads nothing', async (surface) => {
     applySurface(surface);
     const s = await page();
     expect(s.wrapper.findComponent(StoreShop).exists()).toBe(false);
     const notice = s.wrapper.find('[data-testid="store-in-app"]');
-    expect(notice.text()).toContain('The store is not in the app');
-    expect(notice.text()).toContain('To change your plan or add modules, go to erplora.com in your browser.');
+    if (surface === 'account') {
+      // Already in the browser (the account the app opens): no «go to erplora.com in your browser» (audit 2 S-09).
+      expect(notice.text()).toContain('Nothing is bought from here');
+      expect(notice.text()).toContain('This account was opened from the app, and the app does not sell: plans and modules are not bought from here.');
+      expect(notice.text()).not.toContain('browser');
+    } else {
+      expect(notice.text()).toContain('The store is not in the app');
+      expect(notice.text()).toContain('To change your plan or add modules, go to erplora.com in your browser.');
+    }
     expect(s.wrapper.find('[data-testid="store-in-app-businesses"]').attributes('routerlink')).toBe('/businesses');
     expect(s.wrapper.findAll('[href]')).toEqual([]);
     expect(s.wrapper.html()).not.toMatch(/https?:|€/);
     expect(s.calls()).toEqual([]);
+  });
+
+  it('the account surface speaks Spanish too', async () => {
+    applySurface('account');
+    const s = await page('/store/plans', 'plans', 'es');
+    expect(s.wrapper.find('[data-testid="store-in-app"]').text()).toContain('Desde aquí no se compra');
+    expect(s.wrapper.find('[data-testid="store-in-app"]').text()).toContain(
+      'Esta cuenta se ha abierto desde la app, y la app no vende: desde aquí no se compran planes ni módulos.',
+    );
   });
 
   it('speaks Spanish', async () => {

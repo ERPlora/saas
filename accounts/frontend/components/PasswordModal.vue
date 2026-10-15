@@ -31,6 +31,8 @@ const open = defineModel<boolean>('open', { default: false });
 
 const SIGN_IN = '/login';
 const NON_FIELD = '__all__';
+/** allauth's codes for a current password that is not the account's. */
+const WRONG_CURRENT = new Set(['enter_current_password', 'incorrect_password']);
 
 const { t } = useI18n();
 const { text } = useErrorText();
@@ -71,7 +73,11 @@ async function submit(): Promise<void> {
     open.value = false;
   } catch (error) {
     if (error instanceof ApiError && error.fields) {
-      fields.value = error.fields;
+      // allauth's «Please type your current password» reads «Por favor, escriba…» in Spanish: the panel says it
+      // in its own words (audit 2 R-26).
+      fields.value = WRONG_CURRENT.has(error.code)
+        ? { ...error.fields, current_password: t('accounts.account.password.wrongCurrent') }
+        : error.fields;
       failure.value = error.fields[NON_FIELD] ?? '';
     } else if (!reauthRequestOf(error)) {
       failure.value = error instanceof ApiError ? text(error) : t('accounts.account.errors.unexpected');

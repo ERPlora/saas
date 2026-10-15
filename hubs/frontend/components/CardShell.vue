@@ -33,7 +33,7 @@ const email = computed(() => session.user.value?.email || session.user.value?.la
 <template>
   <ion-page>
     <ion-content class="card-shell-content">
-      <main class="shell-page ion-padding">
+      <div class="shell-page ion-padding">
         <div class="shell-wrap">
           <ion-card class="shell-card">
             <div class="shell-logo">
@@ -113,7 +113,7 @@ const email = computed(() => session.user.value?.email || session.user.value?.la
             </form>
           </div>
         </div>
-      </main>
+      </div>
     </ion-content>
   </ion-page>
 </template>

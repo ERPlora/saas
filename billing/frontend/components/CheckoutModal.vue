@@ -12,7 +12,7 @@
 //      page goes to the business (the webhook applies the plan; Stripe's `return_url` is that page too).
 // Every failure is said, with «Retry» (saas#1565: a silent spinner is the most expensive failure).
 // Closing the dialog destroys the checkout (Stripe allows one at a time). The declined card is never
-// offered: the checkout always asks for a card, and the dialog says why when the account's was declined.
+// offered: the checkout always asks for a card, and the dialog says why when the same payer's was declined.
 // Off the web nothing starts: the apps sell nothing (round 17 §2.6).
 import { FormModal, type FormModalError, InlineFeedback, StatusPill } from '@erplora/ui/components';
 import { HubIcon, toastSuccess, useSurface } from '@erplora/ui/shell';
@@ -39,8 +39,8 @@ const props = defineProps<{
   purchase: CheckoutPurchase | null;
   /** A promo code the owner typed in the Store (a plan only). */
   promoCode: string;
-  /** The bank declined the account's card: the checkout asks for another. */
-  declinedCard: boolean;
+  /** The business whose card (the same payer's) the bank declined: the checkout asks for another (audit 2 R-21). */
+  declinedFor?: string | null;
 }>();
 
 const open = defineModel<boolean>('open', { default: false });
@@ -344,12 +344,12 @@ onBeforeUnmount(() => {
         </ion-button>
       </ion-item>
       <InlineFeedback
-        v-if="declinedCard"
+        v-if="declinedFor"
         tone="warning"
         icon="ion:card-outline"
         data-testid="checkout-declined"
       >
-        {{ $t('billing.checkout.declined') }}
+        {{ $t('billing.checkout.declined', { name: declinedFor }) }}
       </InlineFeedback>
       <div class="checkout-stripe">
         <span class="checkout-secure">

@@ -258,6 +258,22 @@ class TestThePaymentMethod:
         assert method["businesses"] == [{"id": str(shop.id), "name": "Panadería López"}]
         assert (method["unavailable"], method["last_failure"]) == (False, None)
 
+    def test_a_free_business_on_the_same_payer_is_not_said_to_be_paid_with_it(
+        self, owner, shop, stripe_double
+    ):
+        """Audit 2 R-26: «Pays Bar La Plaza, Bar Norte, Café Central and Panadería López» named a Free business."""
+        from hubs.models import Hub
+
+        pay(shop)
+        cafe = create_business(owner, name="Café Central")
+        BillingProfile.objects.filter(pk=shop.billing_profile_id).update(stripe_customer_id="cus_1")
+        Hub.objects.filter(pk=cafe.pk).update(billing_profile_id=shop.billing_profile_id)
+        self.card(stripe_double)
+
+        [method] = self.methods(owner)
+
+        assert method["businesses"] == [{"id": str(shop.id), "name": "Panadería López"}]
+
     def test_it_is_kept_for_a_while_and_forgotten_when_the_customer_changes(
         self, owner, shop, stripe_double
     ):

@@ -20,6 +20,7 @@ from urllib.parse import urlsplit
 import re
 from uuid import UUID
 
+from django.conf import settings
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 from django.db.models import Case, IntegerField, Q, Value, When
@@ -335,16 +336,30 @@ def modules_included_in(plan: Plan | None) -> list[str]:
     return list(Module.objects.filter(tier__in=reached).order_by("slug").values_list("slug", flat=True))
 
 
-def free_hubs_owned(user, excluding: UUID | None = None) -> int:
-    """The Free businesses ``user`` owns (a deleted one no longer counts): ADR-0154's quota."""
-    owned = Hub.objects.filter(
+def _free_hubs(user):
+    """The Free businesses ``user`` owns (a deleted one no longer counts)."""
+    return Hub.objects.filter(
         members__user=user,
         members__role=Role.OWNER,
         subscription__plan__price_monthly=0,
     ).exclude(status__in=[Hub.Status.DELETING, Hub.Status.DELETED])
+
+
+def free_hubs_owned(user, excluding: UUID | None = None) -> int:
+    """The Free businesses ``user`` owns (a deleted one no longer counts): ADR-0154's quota."""
+    owned = _free_hubs(user)
     if excluding is not None:
         owned = owned.exclude(pk=excluding)
     return owned.count()
+
+
+def free_business_filling_quota(user) -> Hub | None:
+    """The first Free business of ``user`` when its Free ones fill the quota (``FREE_HUBS_PER_ACCOUNT``,
+    ADR-0154), else ``None``: «Create business» says so before the form (audit 2 S-02)."""
+    owned = _free_hubs(user).order_by("created_at", "id")
+    if owned.count() < getattr(settings, "FREE_HUBS_PER_ACCOUNT", 1):
+        return None
+    return owned.first()
 
 
 def business_type_for(code: str | None) -> BusinessType | None:
@@ -462,6 +477,7 @@ def business_list(ctx: OperationContext, data: BusinessListIn) -> dict[str, Any]
         rows = [business_row(member, now) for member in page]
         invitations = invitations_of(user, now)
         offers = ownership_offers_of(user, now)
+    free = free_business_filling_quota(user)
     return {
         "rows": rows,
         "total": total,
@@ -469,6 +485,7 @@ def business_list(ctx: OperationContext, data: BusinessListIn) -> dict[str, Any]
         "offset": data.offset,
         "invitations": invitations,
         "ownership_offers": offers,
+        "free_business": {"id": free.id, "slug": free.slug, "name": free.name} if free else None,
     }
 
 
@@ -497,6 +514,7 @@ def business_row(member: HubMember, now: datetime) -> dict[str, Any]:
         },
         **unpaid_of(member, getattr(hub, "subscription", None)),
         "is_payer": is_payer(member),
+        "payer_id": hub.billing_profile_id if is_payer(member) else None,
     }
 
 

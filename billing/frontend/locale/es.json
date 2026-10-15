@@ -15,6 +15,10 @@
         "body": "Para cambiar de plan o añadir módulos, entra en erplora.com desde el navegador.",
         "action": "Ir a Negocios"
       },
+      "inAccount": {
+        "title": "Desde aquí no se compra",
+        "body": "Esta cuenta se ha abierto desde la app, y la app no vende: desde aquí no se compran planes ni módulos."
+      },
       "noBusiness": {
         "title": "No tienes ningún negocio para el que comprar",
         "body": "Solo el propietario de un negocio compra su plan y sus módulos. Crea tu propio negocio o pídeselo a su propietario.",
@@ -58,6 +62,7 @@
       "freeFrom": "El negocio pasa a Gratis el {date}.",
       "keepFirst": "Mantén antes el plan para cambiarlo.",
       "payFirst": "Antes, paga la factura pendiente.",
+      "later": "{plans}: disponibles al pasar a {plan}.",
       "trial": "Lo pruebas hasta el {date}",
       "trialKeeps": "Si lo compras ahora, conservas los días que te quedan de prueba.",
       "kept": "{plan} se mantiene: se renovará el {date}",
@@ -141,7 +146,7 @@
       "invoiceTo": "Factura a nombre de",
       "change": "Cambiar",
       "secure": "Pago seguro",
-      "declined": "La tarjeta de tu cuenta fue rechazada: paga con otra.",
+      "declined": "La tarjeta con la que se paga {name} fue rechazada: paga con otra.",
       "loading": "Cargando el pago seguro…",
       "paying": "Pagando…",
       "terms": "Al pagar aceptas las Condiciones. Puedes cancelar cuando quieras desde Facturación.",
@@ -202,6 +207,7 @@
       "suspendedBody": "La factura {invoice} del {date} no se pudo cobrar y el negocio se suspendió. Tus datos están a salvo: al pagarla vuelve a funcionar al momento.",
       "app": "Para pagarla, entra en erplora.com desde el navegador.",
       "appDeclined": "Para cambiar la tarjeta y pagarla, entra en erplora.com desde el navegador.",
+      "account": "Esta cuenta se ha abierto desde la app: desde aquí no se pagan facturas.",
       "changeCard": "Cambiar tarjeta",
       "pay": "Pagar la factura · {amount}",
       "paying": "Pagando…",
@@ -252,6 +258,8 @@
       "csv": "Descargar Excel",
       "csvHint": "La lista de lo que muestran los filtros, para tu gestoría (se abre en Excel)",
       "pdfNotReady": "Esa factura aún se está emitiendo: su PDF estará en unos minutos. | {count} facturas aún se están emitiendo: su PDF estará en unos minutos.",
+      "selectedUnpaid": "{count} factura seleccionada está sin pagar: una factura sin pagar no tiene PDF hasta que se paga. | {count} facturas seleccionadas están sin pagar: una factura sin pagar no tiene PDF hasta que se paga.",
+      "selectedIssuing": "{count} factura seleccionada aún se está emitiendo: su PDF estará en unos minutos. | {count} facturas seleccionadas aún se están emitiendo: su PDF estará en unos minutos.",
       "loadError": "No hemos podido cargar tus facturas",
       "retry": "Reintentar",
       "empty": {
@@ -295,6 +303,7 @@
         "view_invoices": "Ver facturas"
       },
       "appHint": "Para cambiar o cancelar un plan, entra en erplora.com desde el navegador.",
+      "accountHint": "Esta cuenta se ha abierto desde la app: desde aquí no se cambian ni se cancelan planes.",
       "loadError": "No hemos podido cargar tus suscripciones",
       "retry": "Reintentar",
       "empty": {
@@ -308,7 +317,7 @@
         "modulesNoDate": "{modules} se desactiva al final del periodo. No se borra nada: si vuelves a un plan de pago, queda como estaba. | {modules} se desactivan al final del periodo. No se borra nada: si vuelves a un plan de pago, quedan como estaban.",
         "seatsOver": "{name} tiene {people}: antes del {date} eliges quién sigue.",
         "seatsOverNoDate": "{name} tiene {people}: antes del final del periodo eliges quién sigue.",
-        "seatsFit": "{name} tiene {people}, así que no cambia nada para ellas.",
+        "seatsFit": "{name} tiene {people}, dentro de ese límite: no cambia nada en el equipo.",
         "people": "{count} persona | {count} personas",
         "unpaid": "La factura sin pagar del {date} ({amount}) sigue pendiente: cancelar no la anula.",
         "done": "Plan cancelado: {business} sigue en {plan} hasta el {date}",
@@ -331,6 +340,7 @@
         "change": "Cambiar tarjeta",
         "secure": "Se abre la página segura de pago.",
         "app": "Para cambiar la tarjeta, entra en erplora.com desde el navegador.",
+        "account": "Esta cuenta se ha abierto desde la app: desde aquí no se cambia la tarjeta.",
         "empty": "Aún no hay ninguno: se pide en el primer pago de un plan o un módulo."
       },
       "profile": {

@@ -828,6 +828,9 @@ msgstr "No hemos podido leer la imagen. Prueba con otra."
 msgid "That session does not exist or has already ended."
 msgstr "Esa sesión no existe o ya se ha cerrado."
 
+msgid "Write your first name."
+msgstr "Escribe tu nombre."
+
 msgid "Give it a name: it is how you will tell your keys apart."
 msgstr "Ponle un nombre: es como distinguirás tus claves."
 
