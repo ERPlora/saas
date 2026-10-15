@@ -14,7 +14,10 @@ import logging
 import pytest
 
 from fiscal_gateway import seal
-from fiscal_gateway.tests.conftest import PASSWORD, b64, make_p12
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.serialization import pkcs12
+
+from fiscal_gateway.tests.conftest import PASSWORD, b64, leaks, make_p12
 
 
 def test_load_reads_the_holder_from_organization_identifier_first():
@@ -71,6 +74,30 @@ def test_a_wrong_password_is_refused_without_echoing_it():
 def test_what_is_not_base64_is_refused():
     with pytest.raises(seal.SealInvalid):
         seal.load("not a p12!", PASSWORD)
+
+
+def _without_key() -> bytes:
+    certificate = pkcs12.load_key_and_certificates(make_p12(), PASSWORD.encode())[1]
+    return pkcs12.serialize_key_and_certificates(
+        b"test", None, certificate, None, serialization.NoEncryption()
+    )
+
+
+@pytest.mark.parametrize(
+    ("p12_base64", "password"),
+    [
+        pytest.param("not a p12!", PASSWORD, id="not-base64"),
+        pytest.param(b64(b"-----BEGIN PRIVATE KEY-----"), PASSWORD, id="not-a-p12"),
+        pytest.param(b64(make_p12()), "nope", id="wrong-password"),
+        pytest.param(b64(_without_key()), "", id="no-key"),
+        pytest.param(b64(make_p12(client_auth=False)), PASSWORD, id="no-client-auth"),
+    ],
+)
+def test_a_refusal_carries_no_file_key_or_openssl_text(p12_base64, password):
+    with pytest.raises(seal.SealInvalid) as refused:
+        seal.load(p12_base64, password)
+
+    assert leaks(str(refused.value)) == []
 
 
 def test_the_identity_never_shows_its_key_material():

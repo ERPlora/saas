@@ -40,8 +40,9 @@ Firmado como todo `/internal` (`accounts/signing.py`: v1 o v2, ±300 s, secreto 
 | `probe` → `200 {"ready", "detail"}` | Si se podría presentar ahora y con qué certificado (`seal B…, expires 2027-…`); no toca la AEAT. Carga el certificado en TLS como una presentación: si `submit` respondería `409` (`certificate_invalid`, `no_seal`…), `probe` da `ready: false` y el motivo en `detail` |
 
 Los errores van en el sobre único `{"error": {"code", "message"}}`. El cuerpo se lee en la vista, con su propio
-tope de 10 MiB, y no por `request.body`: un envío de 1000 registros supera el límite de formularios de Django
-(2,5 MB).
+tope de 10 MiB (`MAX_BODY_BYTES`), y no por `request.body`: un envío de 1000 registros (el máximo de la AEAT por
+envío) ronda los 3 MB y supera el límite de formularios de Django (2,5 MB); el tope deja margen para eso y el
+certificado.
 
 ## A quién presenta y con qué
 
@@ -56,7 +57,9 @@ tope de 10 MiB, y no por `request.body`: un envío de 1000 registros supera el l
   otro → `prewww1.aeat.es` / `www1.agenciatributaria.gob.es`; ruta `/wlpl/TIKE-CONT/ws/SistemaFacturacion/VerifactuSOAP`.
 - **Presentación**: mTLS con `httpx` (raíces de `certifi`); certificado y clave en dos ficheros `0600` de un
   directorio temporal privado que se borra en cuanto TLS los ha leído, pase lo que pase. `Content-Type:
-  text/xml;charset=UTF-8`, `SOAPAction: ""`; 10 s para conectar y 60 s para leer. Conexión rechazada o sin
+  text/xml;charset=UTF-8`, `SOAPAction: ""`; 5 s para conectar y 30 s para leer (los del contrato, WORKBOOK del Hub,
+  «Contrato con el SaaS»). Nada del entorno desvía la presentación (`trust_env=False`: ni `HTTPS_PROXY` ni
+  `SSL_CERT_FILE`) y una redirección es una respuesta, nunca se sigue. Conexión rechazada o sin
   conectar → `sent = false` (nada salió); tiempo de lectura agotado o conexión perdida → `sent = true`.
 
 ## Sello de ERPlora
@@ -80,3 +83,12 @@ del Convenio 17), que el staff valida en el SaaS; con `route = "own"`, con el ce
 
 - `VERIFACTU_GATEWAY_CONCURRENCY = 8` presentaciones a la vez por proceso: el gateway en Rust medía 12,7 MiB
   por envío; aquí el sobre se guarda entero dos veces (texto y bytes). Se fija tras medir en `pre`.
+
+## Concurrencia bajo ASGI
+
+Las vistas son síncronas a propósito. Bajo daphne, el `ASGIHandler` de Django abre un `ThreadSensitiveContext`
+por petición, así que cada petición corre su código síncrono en su propio hilo: ocho presentaciones esperan a la
+AEAT a la vez y una lenta no frena a las demás. `tests/test_concurrency.py` lo comprueba por la `application`
+real de `config.asgi` (no con el `AsyncClient` de Django, que no abre ese contexto y lo serializaría todo): 8
+presentaciones retenidas a la vez en la AEAT simulada, la novena `503 gateway_busy`, y `/healthz` contesta
+mientras una presentación espera.

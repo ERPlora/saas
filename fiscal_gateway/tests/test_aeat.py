@@ -10,11 +10,12 @@ import os
 import ssl
 import stat
 
+import certifi
 import httpx
 import pytest
 
 from fiscal_gateway import aeat, seal
-from fiscal_gateway.tests.conftest import PASSWORD, b64, fixture, make_p12
+from fiscal_gateway.tests.conftest import LEAKS, PASSWORD, b64, fixture, leaks, make_p12
 
 PATH = "/wlpl/TIKE-CONT/ws/SistemaFacturacion/VerifactuSOAP"
 PRE_SEAL = f"https://prewww10.aeat.es{PATH}"
@@ -277,6 +278,86 @@ def test_a_connect_timeout_means_nothing_was_sent(identity, respx_mock):
     assert unreachable.value.sent is False
 
 
-def test_the_timeouts_are_ten_seconds_to_connect_and_sixty_to_read():
-    assert aeat.TIMEOUT.connect == 10
-    assert aeat.TIMEOUT.read == 60
+def test_the_timeouts_are_the_contracts_five_seconds_to_connect_and_thirty_to_read():
+    # The Hub's WORKBOOK, «Contrato con el SaaS».
+    assert aeat.TIMEOUT.connect == 5
+    assert aeat.TIMEOUT.read == 30
+
+
+def test_the_environment_never_reroutes_a_presentation(
+    identity, respx_mock, monkeypatch
+):
+    monkeypatch.setenv("HTTPS_PROXY", "http://127.0.0.1:9")
+    monkeypatch.setenv("ALL_PROXY", "http://127.0.0.1:9")
+    built = []
+    client = httpx.Client
+
+    def spy(*args, **kwargs):
+        built.append(kwargs)
+        return client(*args, **kwargs)
+
+    monkeypatch.setattr(httpx, "Client", spy)
+    route = respx_mock.post(PRE_HOLDER).respond(200, text="<ok/>")
+
+    aeat.present(identity, "testing", SENT, operation="submit")
+
+    assert route.called
+    assert [
+        (kwargs.get("trust_env"), kwargs.get("follow_redirects"), kwargs["timeout"])
+        for kwargs in built
+    ] == [(False, False, aeat.TIMEOUT)]
+
+
+def test_the_aeats_server_is_checked_against_certifis_roots_whatever_the_environment(
+    identity, tmp_path, monkeypatch
+):
+    stranger = tmp_path / "stranger.pem"
+    stranger.write_bytes(seal.load(b64(make_p12()), PASSWORD).cert_pem)
+    monkeypatch.setenv("SSL_CERT_FILE", str(stranger))
+    certifi_roots = ssl.create_default_context(cafile=certifi.where()).get_ca_certs()
+
+    context = aeat.tls_context(identity)
+
+    assert len(context.get_ca_certs()) == len(certifi_roots)
+
+
+#: An httpx failure whose own text names everything a message to the Hub must not carry.
+POISON = (
+    "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed (_ssl.c:1032) "
+    "/tmp/fiscal-gateway-x/key.pem /var/folders/x C:\\keys -----BEGIN PRIVATE KEY-----"
+)
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        httpx.ConnectError,
+        httpx.ConnectTimeout,
+        httpx.PoolTimeout,
+        httpx.ReadTimeout,
+        httpx.ReadError,
+        httpx.WriteTimeout,
+        httpx.RemoteProtocolError,
+    ],
+)
+def test_an_unreachable_aeat_says_so_without_the_transports_text(
+    identity, respx_mock, failure
+):
+    assert leaks(POISON) == list(LEAKS)
+    respx_mock.post(PRE_HOLDER).mock(side_effect=failure(POISON))
+
+    with pytest.raises(aeat.AeatUnreachable) as unreachable:
+        aeat.present(identity, "testing", SENT, operation="submit")
+
+    assert leaks(str(unreachable.value)) == []
+
+
+def test_a_certificate_tls_refuses_says_so_without_files_or_openssl_text(identity):
+    stranger = seal.load(b64(make_p12()), PASSWORD)
+    mismatched = dataclasses.replace(identity, key_pem=stranger.key_pem)
+    weak = seal.load(b64(make_p12(key_size=1024)), PASSWORD)
+
+    for refused_identity in (mismatched, weak):
+        with pytest.raises(seal.SealInvalid) as refused:
+            aeat.tls_context(refused_identity)
+        assert leaks(str(refused.value)) == []

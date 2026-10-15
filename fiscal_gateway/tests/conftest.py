@@ -85,6 +85,15 @@ def make_p12(
     )
 
 
+#: What a message that goes back to the Hub never carries: a file path (the temporary files of the key
+#: included), key material or OpenSSL's own text.
+LEAKS = ("/tmp", "/var", "\\", "fiscal-gateway-", "PRIVATE KEY", "[SSL", "_ssl.c")
+
+
+def leaks(message: str) -> list[str]:
+    return [leak for leak in LEAKS if leak in message]
+
+
 def b64(data: bytes) -> str:
     return base64.b64encode(data).decode()
 

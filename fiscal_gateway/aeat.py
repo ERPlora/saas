@@ -28,7 +28,9 @@ TLS refuses (its key is not the certificate's, or is too weak for OpenSSL's secu
 ``SealInvalid`` before anything leaves (``tls_context``, which the gateway calls first so that it can
 refuse it, and probe it, without presenting). Headers as the proven client of the gateway this one
 replaces: ``Content-Type: text/xml;charset=UTF-8`` and ``SOAPAction: ""`` (the WSDL's, for both
-operations). 10 s to connect and 60 s to read.
+operations). 5 s to connect and 30 s to read, as the contract with the Hub says. Nothing from the
+environment reaches the presentation (``trust_env=False``: no proxy, no other CA file) and a redirect
+is an answer, never followed.
 """
 
 import logging
@@ -52,7 +54,8 @@ HOSTS = {
     ("production", True): "www10.agenciatributaria.gob.es",
     ("production", False): "www1.agenciatributaria.gob.es",
 }
-TIMEOUT = httpx.Timeout(60.0, connect=10.0)
+#: The contract's (the Hub's WORKBOOK, «Contrato con el SaaS»): 5 s to connect, 30 s to read.
+TIMEOUT = httpx.Timeout(30.0, connect=5.0)
 HEADERS = {"Content-Type": "text/xml;charset=UTF-8", "SOAPAction": ""}
 OPERATIONS = ("submit", "query")
 
@@ -112,7 +115,11 @@ def present(
     try:
         if context is None:
             context = tls_context(identity)
-        with httpx.Client(verify=context, timeout=TIMEOUT) as client:
+        # Nothing from the environment (proxies, CA files, .netrc) reroutes a presentation, and a
+        # redirect is an answer, never followed.
+        with httpx.Client(
+            verify=context, timeout=TIMEOUT, trust_env=False, follow_redirects=False
+        ) as client:
             response = client.post(
                 url, content=envelope.encode("utf-8"), headers=HEADERS
             )
@@ -148,10 +155,11 @@ def present(
 
 
 def tls_context(identity: Identity) -> ssl.SSLContext:
-    """httpx's TLS context (certifi's roots) with ``identity`` as the client certificate.
+    """httpx's TLS context (certifi's roots, whatever ``SSL_CERT_FILE`` says) with ``identity`` as
+    the client certificate.
 
     ``SealInvalid`` if TLS refuses it."""
-    context = httpx.create_ssl_context()
+    context = httpx.create_ssl_context(trust_env=False)
     with tempfile.TemporaryDirectory(prefix="fiscal-gateway-") as directory:
         cert_file = os.path.join(directory, "cert.pem")
         key_file = os.path.join(directory, "key.pem")
