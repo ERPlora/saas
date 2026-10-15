@@ -13,8 +13,10 @@ only, so a body that names a business must name the one of the path. The upload 
 Every refusal answers the single envelope ``{"error": {"code", "message", "fields"?}}`` (PLAN §14.1): 400 a
 body that is no JSON object or a ``Content-Length`` that is no length, 401 the signature, 404 a business
 unknown or deleted, 405 another method, 413 (``fiscal.body_too_large``) a body beyond ``MAX_BODY_BYTES``,
-before anything else is checked, 422 a broken rule (its ``fiscal.*`` code) or a malformed field
-(``invalid_payload``). The field messages speak the language the Hub asks (``Accept-Language``). Nothing is
+422 a broken rule (its ``fiscal.*`` code) or a malformed field (``invalid_payload``). Nothing is read before
+the headers allow it: a ``Content-Length`` beyond the ceiling is 413 and a call without a signature or with a
+timestamp out of the window is 401 from its headers alone; only then is the body read, measured and
+verified. The field messages speak the language the Hub asks (``Accept-Language``). Nothing is
 cached: the answers carry ``Cache-Control: no-store``. Plain Django views, like ``hubs.internal``, until the
 ``/internal`` ninja API takes them all.
 """
@@ -34,7 +36,14 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 from live.errors import OperationError
 
-from accounts.signing import live_secrets, verify_request, verify_signed
+from accounts.signing import (
+    SIGNATURE_HEADER,
+    SIGNATURE_V2_HEADER,
+    TIMESTAMP_HEADER,
+    live_secrets,
+    verify_request,
+    verify_signed,
+)
 from fiscal import services
 from fiscal.schemas import RepresentationSubmitIn
 from hubs.services import system_ctx_for
@@ -78,29 +87,52 @@ def _only(request: HttpRequest, method: str) -> JsonResponse | None:
     return refused
 
 
+def _too_large(hub_id: UUID) -> JsonResponse:
+    logger.warning("internal.fiscal.representation.too_large hub=%s", hub_id)
+    return _error(
+        413,
+        "fiscal.body_too_large",
+        f"The body may be {MAX_BODY_BYTES // (1024 * 1024)} MB at most.",
+    )
+
+
+def _stated_length(request: HttpRequest, hub_id: UUID) -> JsonResponse | None:
+    """The refusal of the ``Content-Length`` alone, nothing read: 400 one that is no length, 413 one beyond
+    ``MAX_BODY_BYTES``."""
+    stated = request.META.get("CONTENT_LENGTH")
+    if not stated:
+        return None
+    try:
+        length = int(stated)
+    except ValueError:
+        length = -1
+    if length < 0:
+        return _error(400, "invalid_request", "Content-Length must be a length.")
+    return _too_large(hub_id) if length > MAX_BODY_BYTES else None
+
+
+def _may_be_signed(request: HttpRequest) -> bool:
+    """Whether the headers leave room for a valid signature: a timestamp within the window and a signature
+    (v1 or v2). Only the body can prove the signature; this spares reading it when the headers already fail."""
+    timestamp = request.headers.get(TIMESTAMP_HEADER, "")
+    if not (timestamp.isascii() and timestamp.isdigit()):
+        return False
+    try:
+        sent_at = int(timestamp)
+    except ValueError:  # beyond Python's 4300 digits: no time of this era
+        return False
+    if abs(int(time.time()) - sent_at) > settings.INTERNAL_SIGNATURE_MAX_AGE_SECONDS:
+        return False
+    return bool(request.headers.get(SIGNATURE_HEADER) or request.headers.get(SIGNATURE_V2_HEADER))
+
+
 def _body(request: HttpRequest, hub_id: UUID) -> bytes | JsonResponse:
     """The body, read from the stream (never ``request.body``, bound by ``DATA_UPLOAD_MAX_MEMORY_SIZE``), or
-    its refusal: 400 a ``Content-Length`` that is no length, 413 a body beyond ``MAX_BODY_BYTES``. Read up to
-    one byte past the ceiling, so a length understated or absent (HTTP reads a request without one as empty,
-    or as chunked, which ASGI buffers as it arrives) is caught by what arrives."""
-    stated = request.META.get("CONTENT_LENGTH")
-    length = 0
-    if stated:
-        try:
-            length = int(stated)
-        except ValueError:
-            length = -1
-        if length < 0:
-            return _error(400, "invalid_request", "Content-Length must be a length.")
-    body = b"" if length > MAX_BODY_BYTES else request.read(MAX_BODY_BYTES + 1)
-    if length > MAX_BODY_BYTES or len(body) > MAX_BODY_BYTES:
-        logger.warning("internal.fiscal.representation.too_large hub=%s", hub_id)
-        return _error(
-            413,
-            "fiscal.body_too_large",
-            f"The body may be {MAX_BODY_BYTES // (1024 * 1024)} MB at most.",
-        )
-    return body
+    413 if it goes beyond ``MAX_BODY_BYTES``. Read up to one byte past the ceiling, so a length understated or
+    absent (HTTP reads a request without one as empty, or as chunked, which ASGI buffers as it arrives) is
+    caught by what arrives."""
+    body = request.read(MAX_BODY_BYTES + 1)
+    return _too_large(hub_id) if len(body) > MAX_BODY_BYTES else body
 
 
 def _signed(request: HttpRequest, body: bytes) -> bool:
@@ -130,7 +162,12 @@ def representation(request: HttpRequest, hub_id: UUID) -> JsonResponse:
     refused = _not_allowed(request, "POST")
     if refused is not None:
         return refused
-    # Its size before anything else: nothing beyond the ceiling is read, let alone verified.
+    # The headers before the body: nothing beyond the ceiling, nor from a call that cannot be signed, is read.
+    refused = _stated_length(request, hub_id)
+    if refused is not None:
+        return refused
+    if not _may_be_signed(request):
+        return _unauthorized(request)
     body = _body(request, hub_id)
     if isinstance(body, JsonResponse):
         return body

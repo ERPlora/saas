@@ -263,6 +263,8 @@ class RepresentationGrantAdmin(admin.ModelAdmin):
                 content_type="text/plain; charset=utf-8",
             )
         else:
+            # Who opened which document: never a byte of it nor a name.
+            logger.info("fiscal.admin.document grant=%s kind=%s user=%s", grant.pk, kind, request.user.pk)
             response = HttpResponse(content, content_type="application/pdf")
             response["Content-Disposition"] = f'inline; filename="{kind}-v{grant.version}.pdf"'
             # Shown framed by the review page, from this origin only (XFrameOptionsMiddleware keeps a set value).
