@@ -9,10 +9,12 @@ envelope ``{"error": {"code", "message"}}``. Only the AEAT's preproduction is ev
 ``respx``.
 
 The gateway presents for a business it knows only (``hub_unknown``), and through ERPlora's seal only
-for the taxpayer of the business's approved authorisation (``fiscal.RepresentationGrant``) or for
-ERPlora itself, in its own name.
+for the taxpayer of the business's approved authorisation (``fiscal.RepresentationGrant``). The one
+exception is the platform's hub (``PLATFORM_HUB_SLUG``, no business of the SaaS): ERPlora's own records,
+in its own name, for the seal's holder only.
 """
 
+import io
 import json
 import logging
 import ssl
@@ -20,6 +22,7 @@ import time
 
 import httpx
 import pytest
+from django.test import RequestFactory
 
 from accounts.signing import sign, signed_headers
 from fiscal.tests.conftest import make_grant
@@ -41,6 +44,8 @@ PRE_HOLDER = f"https://prewww1.aeat.es{PATH}"
 SENT = fixture("rotation_a_sent_2026-09-22.xml")
 ANSWER = fixture("rotation_a_2026-09-22.xml")
 ISSUER = "B27593136"
+#: The platform's hub: ERPlora's own records, through its seal. No business of the SaaS bears it.
+PLATFORM = "erplora"
 #: A customer's NIF, and the envelope of the Hub naming it.
 CUSTOMER = "B12345674"
 CUSTOMER_SENT = SENT.replace(ISSUER, CUSTOMER)
@@ -51,11 +56,12 @@ def _secrets(settings):
     settings.INTERNAL_SHARED_SECRET = SECRET
     settings.INTERNAL_SHARED_SECRET_PREVIOUS = ""
     settings.ERPLORA_ENVIRONMENT = "prod"
+    settings.PLATFORM_HUB_SLUG = PLATFORM
 
 
 @pytest.fixture(autouse=True)
 def _known_business(business):
-    """Every call names ``HUB``, a business the SaaS knows."""
+    """``HUB`` is a business the SaaS knows."""
 
 
 @pytest.fixture
@@ -76,8 +82,9 @@ def own_p12():
 
 
 def payload(**changes):
+    """The platform's hub presenting ERPlora's own records through its seal, unless ``changes`` say."""
     body = {
-        "hub": HUB,
+        "hub": PLATFORM,
         "nif": ISSUER,
         "environment": "testing",
         "route": "erplora",
@@ -88,10 +95,14 @@ def payload(**changes):
 
 
 def own(p12, password=PASSWORD, **changes):
+    """The business ``HUB`` presenting with its own certificate."""
     return payload(
-        route="own",
-        certificate={"p12_base64": b64(p12), "password": password},
-        **changes,
+        **{
+            "hub": HUB,
+            "route": "own",
+            "certificate": {"p12_base64": b64(p12), "password": password},
+            **changes,
+        }
     )
 
 
@@ -276,7 +287,7 @@ def test_through_erplora_with_a_seal_tls_refuses_is_no_seal(
 
 
 def test_own_route_without_a_certificate(client, respx_mock, erplora_seal):
-    response = call(client, "submit", payload(route="own"))
+    response = call(client, "submit", payload(route="own", hub=HUB))
 
     assert error_of(response) == (409, "no_certificate")
     assert not respx_mock.calls
@@ -362,13 +373,11 @@ def test_a_submission_through_erplora_returns_the_aeats_answer_as_it_came(
 
 
 @pytest.mark.parametrize("hub", [HUB_SLUG, HUB])
-def test_a_submission_names_its_hub_by_slug_or_uuid(
-    client, respx_mock, erplora_seal, hub
-):
+def test_a_submission_names_its_hub_by_slug_or_uuid(client, respx_mock, own_p12, hub):
     # Phase 1: the Hub sends ``ctx.scope.key``, the slug of its host.
-    route = respx_mock.post(PRE_SEAL).respond(200, text=ANSWER)
+    route = respx_mock.post(PRE_HOLDER).respond(200, text=ANSWER)
 
-    response = call(client, "submit", payload(hub=hub))
+    response = call(client, "submit", own(own_p12, hub=hub))
 
     assert response.status_code == 200
     assert response.json() == {"aeat_status": 200, "aeat_body": ANSWER}
@@ -447,7 +456,10 @@ def test_a_refused_connection_is_502_not_sent(client, respx_mock, erplora_seal):
 
 
 def customer(**changes):
-    return payload(**{"nif": CUSTOMER, "envelope": CUSTOMER_SENT, **changes})
+    """The business ``HUB`` presenting its customer's records through ERPlora's seal."""
+    return payload(
+        **{"hub": HUB, "nif": CUSTOMER, "envelope": CUSTOMER_SENT, **changes}
+    )
 
 
 def probe_body(body):
@@ -470,7 +482,7 @@ def test_a_business_the_saas_does_not_know_is_404_before_the_aeat(
 def test_a_purged_business_is_unknown(client, respx_mock, erplora_seal, business):
     Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETED)
 
-    response = call(client, "submit", payload())
+    response = call(client, "submit", payload(hub=HUB))
 
     assert error_of(response) == (404, "hub_unknown")
     assert not respx_mock.calls
@@ -541,16 +553,65 @@ def test_an_approved_authorisation_lets_erplora_present_for_its_taxpayer(
     assert route.calls.last.request.content == CUSTOMER_SENT.encode("utf-8")
 
 
-def test_erplora_presents_its_own_records_without_an_authorisation(
+def test_the_platform_hub_presents_erploras_own_records_without_an_authorisation(
     client, respx_mock, erplora_seal
 ):
-    """The platform's hub: ERPLORA CLOUD SL files in its own name, with its own seal."""
+    """ERPLORA CLOUD SL files in its own name, with its own seal, from a hub that is no business of the
+    SaaS."""
+    assert not Hub.objects.filter(slug=PLATFORM).exists()
     route = respx_mock.post(PRE_SEAL).respond(200, text=ANSWER)
 
     response = call(client, "submit", payload(nif=ISSUER.lower()))
 
     assert response.status_code == 200
     assert route.called
+
+
+def test_the_platform_hub_presents_for_erplora_only(client, respx_mock, erplora_seal):
+    response = call(client, "submit", customer(hub=PLATFORM))
+
+    assert error_of(response) == (409, "nif_mismatch")
+    assert not respx_mock.calls
+
+
+def test_a_business_declaring_erploras_nif_needs_an_authorisation_too(
+    client, respx_mock, erplora_seal
+):
+    """Only the platform's hub presents in ERPlora's name: a customer's hub never gets the seal for it."""
+    response = call(client, "submit", payload(hub=HUB))
+
+    assert error_of(response) == (409, "representation_not_approved")
+    assert not respx_mock.calls
+
+
+def test_a_business_declaring_erploras_nif_with_an_authorisation_of_its_own_is_a_mismatch(
+    client, respx_mock, erplora_seal, business
+):
+    make_grant(business, status="approved", taxpayer_tax_id=CUSTOMER)
+
+    response = call(client, "submit", payload(hub=HUB_SLUG))
+
+    assert error_of(response) == (409, "nif_mismatch")
+    assert not respx_mock.calls
+
+
+def test_the_platform_hub_is_the_configured_one(
+    client, settings, respx_mock, erplora_seal
+):
+    settings.PLATFORM_HUB_SLUG = "erplora-cloud"
+    respx_mock.post(PRE_SEAL).respond(200, text=ANSWER)
+
+    assert error_of(call(client, "submit", payload())) == (404, "hub_unknown")
+    assert call(client, "submit", payload(hub="erplora-cloud")).status_code == 200
+
+
+def test_the_platform_hub_has_no_exception_with_a_certificate_of_its_own(
+    client, respx_mock, own_p12
+):
+    response = call(client, "submit", own(own_p12, hub=PLATFORM))
+
+    assert error_of(response) == (404, "hub_unknown")
+    assert not respx_mock.calls
 
 
 def test_the_own_route_needs_no_authorisation(client, respx_mock):
@@ -588,6 +649,79 @@ def test_probe_of_a_business_the_saas_does_not_know_is_not_ready(client, erplora
 
     assert response.status_code == 200
     assert response.json()["ready"] is False
+
+
+# The headers before the body
+
+
+def plausible_headers(**changes):
+    """A fresh timestamp and a signature that only the body could prove wrong."""
+    return {
+        "X-Erplora-Timestamp": str(int(time.time())),
+        "X-Erplora-Signature": "0" * 64,
+        **changes,
+    }
+
+
+class UnreadableBody(io.RawIOBase):
+    """A body the view must never read: reading it fails the test."""
+
+    def readable(self):
+        return True
+
+    def readinto(self, buffer):
+        raise AssertionError("the body was read")
+
+
+@pytest.mark.parametrize("door", ["submit", "query", "probe"])
+@pytest.mark.parametrize(
+    "headers",
+    [
+        {},
+        {"X-Erplora-Timestamp": str(int(time.time()))},
+        {"X-Erplora-Signature": "0" * 64, "X-Erplora-Signature-V2": "0" * 64},
+        plausible_headers(**{"X-Erplora-Timestamp": str(int(time.time()) - 3600)}),
+        plausible_headers(**{"X-Erplora-Timestamp": str(int(time.time()) + 3600)}),
+        plausible_headers(**{"X-Erplora-Timestamp": "9" * 5000}),
+    ],
+    ids=[
+        "no headers",
+        "no signature",
+        "no timestamp",
+        "stale",
+        "future",
+        "too many digits",
+    ],
+)
+def test_a_call_that_cannot_be_signed_is_401_before_its_body_is_read(headers, door):
+    """Up to 10 MiB are read only for a call that may be signed."""
+    request = RequestFactory().post(
+        f"/internal/verifactu/{door}",
+        b"{}",
+        content_type="application/json",
+        headers=headers,
+    )
+    request._stream = UnreadableBody()
+    request.META["CONTENT_LENGTH"] = str(internal.MAX_BODY_BYTES)
+
+    response = getattr(internal, door)(request)
+
+    assert response.status_code == 401
+    assert json.loads(response.content)["error"]["code"] == "unauthorized"
+
+
+def test_a_timestamp_of_too_many_digits_is_401_not_a_crash(client, respx_mock):
+    data = json.dumps(payload()).encode()
+
+    response = client.post(
+        "/internal/verifactu/submit",
+        data,
+        content_type="application/json",
+        headers=plausible_headers(**{"X-Erplora-Timestamp": "9" * 5000}),
+    )
+
+    assert error_of(response) == (401, "unauthorized")
+    assert not respx_mock.calls
 
 
 # Concurrency
@@ -706,7 +840,7 @@ def test_probe_with_a_certificate_tls_refuses_is_not_ready(client, respx_mock, c
 
 
 def test_probe_own_route_without_a_certificate_is_not_ready(client):
-    body = payload(route="own")
+    body = payload(route="own", hub=HUB)
     del body["envelope"]
 
     assert call(client, "probe", body).json()["ready"] is False

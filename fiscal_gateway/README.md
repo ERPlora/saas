@@ -25,21 +25,21 @@ Firmado como todo `/internal` (`accounts/signing.py`: v1 o v2, ±300 s, secreto 
 
 `hub`: slug del hub (fase 1, el del host: `ctx.scope.key`) con el formato de slug de `live.slugs` (`HUB_SLUG_RE`),
 o su UUID en minúsculas (con guiones). Tiene que ser un negocio que el SaaS conoce (no purgado); si no,
-`404 hub_unknown`, sea cual sea la vía. `certificate` solo con `route = "own"`; `probe` no lleva `envelope`.
+`404 hub_unknown`. Única excepción: el hub de plataforma (`PLATFORM_HUB_SLUG`) por `route = "erplora"`. `certificate` solo con `route = "own"`; `probe` no lleva `envelope`.
 
 | Respuesta | Cuándo |
 |---|---|
 | `200 {"aeat_status", "aeat_body"}` | La AEAT contestó; su respuesta tal cual, diga lo que diga (la interpreta el Hub) |
-| `404 hub_unknown` | `hub` no es un negocio que el SaaS conozca (o está purgado); no sale nada hacia la AEAT |
-| `409 nif_mismatch` | El sobre nombra a otro contribuyente; se decide **antes** de tocar la AEAT. Con `route = "erplora"`, también si el otorgamiento aprobado del negocio es de otro contribuyente (sin decir de cuál) |
-| `409 representation_not_approved` | `route = "erplora"` para un `nif` que no es el de ERPlora y el negocio no tiene otorgamiento aprobado (ninguno, en revisión, devuelto o retirado) |
+| `404 hub_unknown` | `hub` no es un negocio que el SaaS conozca (o está purgado) ni el hub de plataforma por `erplora`; no sale nada hacia la AEAT |
+| `409 nif_mismatch` | El sobre nombra a otro contribuyente; se decide **antes** de tocar la AEAT. Con `route = "erplora"`, también si el otorgamiento aprobado del negocio es de otro contribuyente (sin decir de cuál) o si el hub de plataforma pide un `nif` que no es el del titular del sello |
+| `409 representation_not_approved` | `route = "erplora"` para un negocio sin otorgamiento aprobado (ninguno, en revisión, devuelto o retirado), declare el `nif` que declare, el de ERPlora incluido |
 | `409 no_seal` | `route = "erplora"` sin sello utilizable (también si TLS rechaza el sello configurado) |
 | `409 no_certificate` | `route = "own"` sin certificado |
 | `409 certificate_invalid` | No abre con su contraseña, no permite autenticación de cliente (EKU), ha caducado o TLS lo rechaza (la clave no es la del certificado o es demasiado débil, p. ej. RSA de 1024); no sale nada hacia la AEAT |
 | `409 environment_not_allowed` | `production` desde un despliegue que no es `prod` (`pre` solo presenta a pruebas) |
 | `502 {"error": {"code": "aeat_unreachable", "sent"}}` | Sin respuesta de la AEAT; `sent = true` si la petición pudo llegar |
 | `503 gateway_busy` | Semáforo lleno; el Hub reintenta |
-| `401 unauthorized` | Sin firma, firma caducada (±300 s) o que no casa |
+| `401 unauthorized` | Sin firma, firma caducada (±300 s) o que no casa. Sin marca de tiempo, sin firma o con la marca fuera de la ventana (o de más de 20 dígitos) se decide por las cabeceras, **sin leer** el cuerpo |
 | `405 method_not_allowed` | No es `POST` |
 | `413 payload_too_large` | Cuerpo de más de 10 MiB |
 | `422 invalid_payload` | No es JSON o no cumple el contrato; los campos fallidos, en `fields` |
@@ -81,9 +81,13 @@ cliente. Antes de tocar la AEAT, con `route = "erplora"`, la pasarela comprueba 
 2. **NIF del otorgamiento**: el `taxpayer_tax_id` de ese otorgamiento, normalizado (`billing.nif.normalise_nif`),
    es el `nif` de la llamada → si no, `409 nif_mismatch`. Ni la respuesta ni los logs dicen qué NIF tiene.
 
-Excepción: si `nif` es el titular del sello (ERPLORA CLOUD SL, el hub de plataforma), presenta en nombre propio
-sin otorgamiento. Con `route = "own"` no se comprueba el otorgamiento: el certificado es del cliente y el NIF del
-sobre ya tiene que ser el suyo.
+Única excepción: el **hub de plataforma** (las facturas de ERPlora), que el Hub nombra con
+`hub = PLATFORM_HUB_SLUG` (entorno; por defecto `erplora`, slug reservado de `live.slugs` que ningún negocio
+puede tener, y un test lo exige). No es un negocio del SaaS: no se le pide fila `Hub` ni otorgamiento, pero solo
+presenta en nombre de ERPLORA CLOUD SL: `nif` tiene que ser el titular del sello; si no, `409 nif_mismatch`.
+Cualquier otro hub que declare el NIF de ERPlora necesita su otorgamiento como los demás. Con `route = "own"` no
+hay excepción ni comprobación de otorgamiento: el certificado es del cliente y el NIF del sobre ya tiene que ser
+el suyo.
 
 ## Seguridad
 
