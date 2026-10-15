@@ -36,14 +36,7 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 from live.errors import OperationError
 
-from accounts.signing import (
-    SIGNATURE_HEADER,
-    SIGNATURE_V2_HEADER,
-    TIMESTAMP_HEADER,
-    live_secrets,
-    verify_request,
-    verify_signed,
-)
+from accounts.signing import live_secrets, may_be_signed, verify_request, verify_signed
 from fiscal import services
 from fiscal.schemas import RepresentationSubmitIn
 from hubs.services import system_ctx_for
@@ -111,21 +104,6 @@ def _stated_length(request: HttpRequest, hub_id: UUID) -> JsonResponse | None:
     return _too_large(hub_id) if length > MAX_BODY_BYTES else None
 
 
-def _may_be_signed(request: HttpRequest) -> bool:
-    """Whether the headers leave room for a valid signature: a timestamp within the window and a signature
-    (v1 or v2). Only the body can prove the signature; this spares reading it when the headers already fail."""
-    timestamp = request.headers.get(TIMESTAMP_HEADER, "")
-    if not (timestamp.isascii() and timestamp.isdigit()):
-        return False
-    try:
-        sent_at = int(timestamp)
-    except ValueError:  # beyond Python's 4300 digits: no time of this era
-        return False
-    if abs(int(time.time()) - sent_at) > settings.INTERNAL_SIGNATURE_MAX_AGE_SECONDS:
-        return False
-    return bool(request.headers.get(SIGNATURE_HEADER) or request.headers.get(SIGNATURE_V2_HEADER))
-
-
 def _body(request: HttpRequest, hub_id: UUID) -> bytes | JsonResponse:
     """The body, read from the stream (never ``request.body``, bound by ``DATA_UPLOAD_MAX_MEMORY_SIZE``), or
     413 if it goes beyond ``MAX_BODY_BYTES``. Read up to one byte past the ceiling, so a length understated or
@@ -166,7 +144,9 @@ def representation(request: HttpRequest, hub_id: UUID) -> JsonResponse:
     refused = _stated_length(request, hub_id)
     if refused is not None:
         return refused
-    if not _may_be_signed(request):
+    if not may_be_signed(
+        request.headers, now=int(time.time()), max_age=settings.INTERNAL_SIGNATURE_MAX_AGE_SECONDS
+    ):
         return _unauthorized(request)
     body = _body(request, hub_id)
     if isinstance(body, JsonResponse):
