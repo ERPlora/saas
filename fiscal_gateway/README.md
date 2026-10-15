@@ -21,8 +21,8 @@ Firmado como todo `/internal` (`accounts/signing.py`: v1 o v2, ±300 s, secreto 
  "envelope": "<soapenv:Envelope…>", "certificate": {"p12_base64": "…", "password": "…"}}
 ```
 
-`hub`: slug del hub (fase 1, el del host: `ctx.scope.key`) o UUID, en minúsculas (1–64 caracteres,
-`^[a-z0-9][a-z0-9-]*$`); por ahora solo identifica al hub en los logs. `certificate` solo con `route = "own"`;
+`hub`: slug del hub (fase 1, el del host: `ctx.scope.key`) con el formato de slug de `live.slugs` (`HUB_SLUG_RE`),
+o su UUID en minúsculas; por ahora solo identifica al hub en los logs. `certificate` solo con `route = "own"`;
 `probe` no lleva `envelope`.
 
 | Respuesta | Cuándo |
