@@ -7,7 +7,8 @@
 - An account without a password does not get one with the session alone: ``account/password/change`` answers
   403 to it, and «Forgot your password?» (which proves the mailbox) gives it one; an account with a password
   changes it there as before (the current one is asked).
-- allauth's own sign-up (``auth/signup``) answers 404: the sign-in signs up (``accounts.unified_login``).
+
+allauth's own sign-up (``auth/signup``) is not one of them: it is the launcher's «Create account» tab.
 """
 
 from allauth.headless.account.views import ChangePasswordView

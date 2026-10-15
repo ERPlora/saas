@@ -36,6 +36,7 @@ pytestmark = pytest.mark.django_db
 HOST = "localhost:8001"
 BROWSER = "/_allauth/browser/v1"
 LOGIN = f"{BROWSER}/auth/login"
+SIGNUP = f"{BROWSER}/auth/signup"
 SESSION = f"{BROWSER}/auth/session"
 CONFIRM_CODE = f"{BROWSER}/auth/code/confirm"
 RESEND_CODE = f"{BROWSER}/auth/code/resend"
@@ -261,7 +262,7 @@ class TestAPasswordSignIn:
 
 class TestOneCodeNeverTwo:
     def test_a_sign_up_gets_only_the_code_that_proves_its_address(self, browser):
-        response = _continue(browser, NEWCOMER)
+        response = _post(browser, SIGNUP, {"email": NEWCOMER, "password": PASSWORD})
 
         assert (response.status_code, _pending(response)) == (401, ["verify_email"])
         [message] = mail.outbox

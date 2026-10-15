@@ -277,9 +277,10 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # allauth: email + password with a code mailed at every sign-in, and Google; the authenticator app behind
-# ACCOUNTS_MFA_ENABLED (below). One form, in the launcher (/launch), signs in or signs up (ADR-0154): an
-# email no account holds creates one at allauth's login address (accounts/unified_login.py), and allauth's
-# own signup doors are closed (config/urls.py).
+# ACCOUNTS_MFA_ENABLED (below). One form in the launcher (/launch) with two tabs (FIX-LAUNCH-TABS, PLAN-SAAS
+# §3.7): «Sign in» is allauth's login, which never creates an account, and «Create account» is allauth's
+# signup, which never signs in (an address it already holds gets a mail, not a session: enumeration
+# prevention, allauth's default).
 
 SITE_ID = 1
 ACCOUNT_ADAPTER = "accounts.adapters.AccountAdapter"
@@ -406,7 +407,8 @@ HEADLESS_CLIENTS = ("browser",)
 HEADLESS_FRONTEND_URLS = {
     "account_reset_password": "/password/reset",
     "account_reset_password_from_key": "/password/reset/key/{key}",
-    "account_signup": "/launch",
+    # The launcher's «Create account» tab: allauth's mail to an address with no account links there.
+    "account_signup": "/launch?tab=signup",
 }
 # openapi.yaml/.json of the headless API in development; not its HTML page (Redoc from a CDN).
 HEADLESS_SERVE_SPECIFICATION = DEBUG

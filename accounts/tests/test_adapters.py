@@ -18,8 +18,8 @@ from accounts.adapters import AccountAdapter, SocialAccountAdapter
 
 
 def test_signup_is_open():
-    """Its one door is the unified login (``test_unified_login``): allauth's own are closed."""
-    assert AccountAdapter().is_open_for_signup(RequestFactory().post("/_allauth/browser/v1/auth/login")) is True
+    """Its one door is allauth's own sign-up, the launcher's «Create account» tab (``test_unified_login``)."""
+    assert AccountAdapter().is_open_for_signup(RequestFactory().post("/_allauth/browser/v1/auth/signup")) is True
 
 
 def test_allauth_mails_carry_no_site_prefix_in_the_subject():

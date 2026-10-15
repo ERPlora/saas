@@ -1,11 +1,12 @@
-// The one form that signs in and signs up, inside the launcher (`/launch`, the entrance; Ioan, 2026-10-15):
-// the form of the old template login (ERPlora/saas `templates/account/login.html`), over allauth.headless.
-// Email and password in outlined md inputs, «Forgot your password?», «Continue» and «Continue with Google»
-// when it is configured. An unknown address creates the account; every password sign-in then waits for
-// the code mailed to the account (`verify_email` for a new or unproven address, `login_by_code` for the
-// rest), typed at `/verify-email`; the 2FA step at `/2fa/authenticate`. Signed in, the launcher loads again
-// with the new session (or `next`, a path of this site).
-import { IonButton, IonIcon, IonInput } from '@ionic/vue';
+// The form of the launcher (`/launch`, the entrance; Ioan, 2026-10-15), over allauth.headless, with two strict
+// tabs (FIX-LAUNCH-TABS): «Sign in» (the default) and «Create account» (`?tab=signup`). «Sign in» is the form
+// of the old template login (ERPlora/saas `templates/account/login.html`): email and password in outlined md
+// inputs, «Forgot your password?», its button and «Continue with Google» when it is configured; it never
+// creates an account (gh:saas#1018). «Create account» is allauth's sign-up and never signs in. Every password
+// sign-in then waits for the code mailed to the account (`verify_email` for a new or unproven address,
+// `login_by_code` for the rest), typed at `/verify-email`; the 2FA step at `/2fa/authenticate`. Signed in, the
+// launcher loads again with the new session (or `next`, a path of this site).
+import { IonButton, IonIcon, IonInput, IonSegment } from '@ionic/vue';
 import { flushPromises } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -24,6 +25,7 @@ import {
   tooManyRequests,
 } from '../__tests__/allauth-server';
 import { mountAccountPage } from '../__tests__/mount-account-page';
+import { choose } from '../__tests__/mount-panel';
 import SignInForm from './SignInForm.vue';
 
 type Control = HTMLElement & { errorText?: string; disabled?: boolean };
@@ -62,14 +64,21 @@ async function mountForm(options: Options = {}) {
     await flushPromises();
   }
   const failure = () => wrapper.find('.non-field-error');
-  return { ...mounted, input, signIn, failure };
+  /** Picks a tab of the segment above the form, as a person taps it. */
+  const chooseTab = (tab: 'signin' | 'signup') => choose(wrapper.get('[data-testid="login-tabs"]').element, { value: tab });
+  const tab = () => wrapper.findComponent(IonSegment).props('value');
+  // In jsdom, Ionic's segment button hides its label from `textContent` (its slot patches): read the markup.
+  const tabLabel = (value: 'signin' | 'signup') =>
+    wrapper.get(`[data-testid="login-tab-${value}"]`).element.innerHTML.replace(/<[^>]*>/g, '').trim();
+  return { ...mounted, input, signIn, failure, chooseTab, tab, tabLabel };
 }
 
 describe('SignInForm: the form of the template', () => {
-  it('says one form signs in and creates the account', async () => {
+  it('opens on «Sign in»: says to enter the email and password', async () => {
     fakeAllauth({ 'GET /auth/session': anonymous });
-    const { wrapper } = await mountForm();
-    expect(wrapper.get('.intro').text()).toBe("Enter your email and password. New here? We'll create your account.");
+    const { wrapper, tab } = await mountForm();
+    expect(tab()).toBe('signin');
+    expect(wrapper.get('.intro').text()).toBe('Enter your email and password.');
   });
 
   it('asks for email and password in outlined md inputs, with the password toggle', async () => {
@@ -97,7 +106,7 @@ describe('SignInForm: the form of the template', () => {
     ]);
     expect(password.props('autocomplete')).toBe('current-password');
     expect(wrapper.find('ion-input-password-toggle[slot="end"]').exists()).toBe(true);
-    expect(wrapper.get('[data-testid="login-submit"]').text()).toBe('Continue');
+    expect(wrapper.get('[data-testid="login-submit"]').text()).toBe('Sign in');
   });
 
   it('opens the reset page from «Forgot your password?» inside the SPA', async () => {
@@ -141,7 +150,7 @@ describe('SignInForm: the form of the template', () => {
     const { wrapper, input } = await mountForm({ locale: 'es' });
     expect(input('email').props('label')).toBe('Correo electrónico');
     expect(input('password').props('label')).toBe('Contraseña');
-    expect(wrapper.get('[data-testid="login-submit"]').text()).toBe('Continuar');
+    expect(wrapper.get('[data-testid="login-submit"]').text()).toBe('Entrar');
     expect(wrapper.get('[data-testid="login-forgot"]').text()).toBe('¿Olvidaste tu contraseña?');
   });
 });
@@ -254,7 +263,7 @@ describe('SignInForm: signing in', () => {
     },
   );
 
-  it('disables «Continue» while the login is on its way', async () => {
+  it('disables «Sign in» while the login is on its way', async () => {
     const answer = held(signedIn);
     fakeAllauth({ 'GET /auth/session': anonymous, 'POST /auth/login': answer.answer });
     const { wrapper, signIn } = await mountForm();
@@ -380,10 +389,194 @@ describe('SignInForm: signing in', () => {
     expect(failure().exists()).toBe(false);
   });
 
-  it('makes «Continue» and «Continue with Google» the large buttons of the template (touch targets over 44 px)', async () => {
+  it('makes «Sign in» and «Continue with Google» the large buttons of the template (touch targets over 44 px)', async () => {
     fakeAllauth({ 'GET /auth/session': anonymous });
     const { wrapper } = await mountForm({ googleEnabled: true });
     const sizes = wrapper.findAllComponents(IonButton).map((button) => button.props('size'));
     expect(sizes).toEqual(['large', 'large']);
+  });
+});
+
+describe('SignInForm: the tabs «Sign in» and «Create account» (FIX-LAUNCH-TABS)', () => {
+  it('names both tabs above the form, «Sign in» chosen', async () => {
+    fakeAllauth({ 'GET /auth/session': anonymous });
+    const { wrapper, tab, tabLabel } = await mountForm();
+    expect(tab()).toBe('signin');
+    expect([tabLabel('signin'), tabLabel('signup')]).toEqual(['Sign in', 'Create account']);
+    expect(wrapper.get('[data-testid="login-switch"]').text()).toBe('First time here? Create your account');
+  });
+
+  it('opens «Create account» from ?tab=signup: its intro, a new password, its button and no «Forgot your password?»', async () => {
+    fakeAllauth({ 'GET /auth/session': anonymous });
+    const { wrapper, input, tab } = await mountForm({ path: '/launch?tab=signup&next=%2Faccount' });
+    expect(tab()).toBe('signup');
+    expect(wrapper.get('.intro').text()).toBe("Enter your email and choose a password. We'll email you a code to confirm it.");
+    expect(input('email').props('autocomplete')).toBe('username');
+    expect(input('password').props('autocomplete')).toBe('new-password');
+    expect(wrapper.get('[data-testid="login-submit"]').text()).toBe('Create account');
+    expect(wrapper.find('[data-testid="login-forgot"]').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="login-switch"]').text()).toBe('Already have an account? Sign in');
+  });
+
+  it('switches the form with the segment and writes the tab in the address, keeping next', async () => {
+    fakeAllauth({ 'GET /auth/session': anonymous });
+    const { wrapper, router, chooseTab, tab } = await mountForm({ path: '/launch?next=%2Faccount' });
+    await chooseTab('signup');
+    expect(tab()).toBe('signup');
+    expect(wrapper.get('[data-testid="login-submit"]').text()).toBe('Create account');
+    expect(router.currentRoute.value.query).toEqual({ next: '/account', tab: 'signup' });
+    await chooseTab('signin');
+    expect(tab()).toBe('signin');
+    expect(wrapper.get('[data-testid="login-submit"]').text()).toBe('Sign in');
+    expect(router.currentRoute.value.query).toEqual({ next: '/account' });
+  });
+
+  it('switches the form with the link under it, both ways', async () => {
+    fakeAllauth({ 'GET /auth/session': anonymous });
+    const { wrapper, router, tab } = await mountForm({ path: '/launch?next=%2Faccount' });
+    await wrapper.get('[data-testid="login-switch-action"]').trigger('click');
+    await flushPromises();
+    expect([tab(), router.currentRoute.value.query.tab]).toEqual(['signup', 'signup']);
+    await wrapper.get('[data-testid="login-switch-action"]').trigger('click');
+    await flushPromises();
+    expect([tab(), router.currentRoute.value.query.tab]).toEqual(['signin', undefined]);
+  });
+
+  it('follows the address when it changes (a link of the page, the way back)', async () => {
+    fakeAllauth({ 'GET /auth/session': anonymous });
+    const { router, tab } = await mountForm();
+    await router.replace('/launch?tab=signup');
+    await flushPromises();
+    expect(tab()).toBe('signup');
+  });
+
+  it('leaves the errors of one tab behind when the other is chosen', async () => {
+    fakeAllauth({
+      'GET /auth/session': anonymous,
+      'POST /auth/login': rejected('The email address and/or password you specified are not correct.', 'password', 'email_password_mismatch'),
+    });
+    const { wrapper, signIn, chooseTab, failure, input } = await mountForm();
+    await signIn();
+    expect(input('password').classes()).toContain('ion-invalid');
+    await chooseTab('signup');
+    expect(failure().exists()).toBe(false);
+    expect(input('password').classes()).not.toContain('ion-invalid');
+    expect(wrapper.find('[data-testid="login-error-signup"]').exists()).toBe(false);
+  });
+
+  it('keeps «Continue with Google» in both tabs', async () => {
+    fakeAllauth({ 'GET /auth/session': anonymous });
+    const { wrapper } = await mountForm({ path: '/launch?tab=signup', googleEnabled: true });
+    expect(wrapper.find('form[data-testid="login-google"]').exists()).toBe(true);
+  });
+
+  it('speaks Spanish in both tabs (gh:saas#1425)', async () => {
+    fakeAllauth({ 'GET /auth/session': anonymous });
+    const { wrapper, chooseTab, tabLabel } = await mountForm({ locale: 'es' });
+    expect([tabLabel('signin'), tabLabel('signup')]).toEqual(['Entrar', 'Crear cuenta']);
+    expect(wrapper.get('.intro').text()).toBe('Introduce tu email y tu contraseña.');
+    expect(wrapper.get('[data-testid="login-switch"]').text()).toBe('¿Es tu primera vez? Crea tu cuenta');
+    await chooseTab('signup');
+    expect(wrapper.get('.intro').text()).toBe('Introduce tu email y elige una contraseña. Te enviaremos un código para confirmarlo.');
+    expect(wrapper.get('[data-testid="login-submit"]').text()).toBe('Crear cuenta');
+    expect(wrapper.get('[data-testid="login-switch"]').text()).toBe('¿Ya tienes cuenta? Entra');
+  });
+});
+
+describe('SignInForm: «Sign in» never creates an account (gh:saas#1018)', () => {
+  it('posts only to the login, never to the sign-up', async () => {
+    const server = fakeAllauth({ 'GET /auth/session': anonymous, 'POST /auth/login': pendingLoginCode, 'POST /auth/signup': signedIn });
+    const { signIn } = await mountForm();
+    await signIn('new@example.com', 'a long password');
+    expect(server.callsTo('POST /auth/login')).toHaveLength(1);
+    expect(server.callsTo('POST /auth/signup')).toEqual([]);
+  });
+
+  // allauth answers an unknown address exactly as a wrong password (`email_password_mismatch`): the hint shows
+  // for both, so it says nothing about which addresses hold an account.
+  it('adds «First time here? Create your account» to the error of a wrong email or password, which opens «Create account»', async () => {
+    fakeAllauth({
+      'GET /auth/session': anonymous,
+      'POST /auth/login': rejected('The email address and/or password you specified are not correct.', 'password', 'email_password_mismatch'),
+    });
+    const { wrapper, signIn, tab, router, input } = await mountForm({ path: '/launch?next=%2Faccount' });
+    await signIn('new@example.com', 'a long password');
+    expect(wrapper.get('[data-testid="login-error-signup"]').text()).toBe('First time here? Create your account');
+    // The same generic error as a wrong password, under the password.
+    expect(input('password').props('errorText')).toBe('The email address and/or password you specified are not correct.');
+    await wrapper.get('[data-testid="login-error-signup"] button').trigger('click');
+    await flushPromises();
+    expect(tab()).toBe('signup');
+    expect(router.currentRoute.value.query).toEqual({ next: '/account', tab: 'signup' });
+  });
+
+  it('adds no hint to any other error', async () => {
+    fakeAllauth({ 'GET /auth/session': anonymous, 'POST /auth/login': rejected('Enter a valid email address.', 'email') });
+    const { wrapper, signIn } = await mountForm();
+    await signIn('not-an-email', 'x');
+    expect(wrapper.find('[data-testid="login-error-signup"]').exists()).toBe(false);
+  });
+});
+
+describe('SignInForm: «Create account» never signs in', () => {
+  it('posts the email and password to the sign-up, never to the login, and goes on to the code that proves the address, keeping next', async () => {
+    const server = fakeAllauth({ 'GET /auth/session': anonymous, 'POST /auth/signup': pendingEmailVerification, 'POST /auth/login': signedIn });
+    const { signIn, router, failure } = await mountForm({ path: '/launch?tab=signup&next=%2Faccount' });
+    await signIn('new@example.com', 'a long pass phrase');
+    const [call] = server.callsTo('POST /auth/signup');
+    expect(call.body).toEqual({ email: 'new@example.com', password: 'a long pass phrase' });
+    expect(server.callsTo('POST /auth/login')).toEqual([]);
+    expect(router.currentRoute.value.path).toBe('/verify-email');
+    expect(router.currentRoute.value.query).toEqual({ next: '/account' });
+    const state = router.options.history.state as Record<string, unknown>;
+    expect([state.email, state.flow]).toEqual(['new@example.com', 'verify_email']);
+    expect(failure().exists()).toBe(false);
+    expect(assign).not.toHaveBeenCalled();
+  });
+
+  it('disables «Create account» while the sign-up is on its way', async () => {
+    const answer = held(pendingEmailVerification);
+    fakeAllauth({ 'GET /auth/session': anonymous, 'POST /auth/signup': answer.answer });
+    const { wrapper, input } = await mountForm({ path: '/launch?tab=signup' });
+    const submit = () => wrapper.findAllComponents(IonButton).find((b) => b.attributes('data-testid') === 'login-submit')!.props();
+    await input('email').setValue('new@example.com');
+    await input('password').setValue('a long pass phrase');
+    await wrapper.get('form[data-testid="login-form"]').trigger('submit');
+    expect(submit().disabled).toBe(true);
+    answer.release();
+    await flushPromises();
+    expect(submit().disabled).toBe(false);
+  });
+
+  it('paints a refused password under its input and stays', async () => {
+    fakeAllauth({ 'GET /auth/session': anonymous, 'POST /auth/signup': rejected('This password is too short.', 'password', 'password_too_short') });
+    const { signIn, input, router } = await mountForm({ path: '/launch?tab=signup' });
+    await signIn('new@example.com', 'short');
+    expect(input('password').props('errorText')).toBe('This password is too short.');
+    expect(router.currentRoute.value.path).toBe('/launch');
+  });
+
+  it('says it could not create the account when the server is out of reach, in the language of the page', async () => {
+    fakeAllauth({ 'GET /auth/session': anonymous, 'POST /auth/signup': offline });
+    const { signIn, failure } = await mountForm({ path: '/launch?tab=signup' });
+    await signIn('new@example.com', 'a long pass phrase');
+    expect(failure().text()).toBe('We could not create your account. Please try again.');
+    const es = await mountForm({ path: '/launch?tab=signup', locale: 'es' });
+    await es.signIn('new@example.com', 'a long pass phrase');
+    expect(es.failure().text()).toBe('No hemos podido crear tu cuenta. Inténtalo de nuevo.');
+  });
+
+  it('says to wait when the sign-ups of an address are limited (429)', async () => {
+    fakeAllauth({ 'GET /auth/session': anonymous, 'POST /auth/signup': tooManyRequests });
+    const { signIn, failure } = await mountForm({ path: '/launch?tab=signup' });
+    await signIn('new@example.com', 'a long pass phrase');
+    expect(failure().text()).toBe('Too many attempts. Please wait a few minutes and try again.');
+  });
+
+  it('goes on when a session was opened meanwhile in another tab (allauth answers 409)', async () => {
+    fakeAllauth({ 'GET /auth/session': anonymous, 'POST /auth/signup': conflict });
+    const { signIn } = await mountForm({ path: '/launch?tab=signup' });
+    await signIn('new@example.com', 'a long pass phrase');
+    expect(assign).toHaveBeenCalledExactlyOnceWith('/launch');
   });
 });

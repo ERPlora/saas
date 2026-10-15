@@ -132,18 +132,6 @@ def hub_list(ctx: OperationContext, data: HubListIn) -> dict[str, Any]:
     }
 
 
-def email_has_account(email: str) -> bool:
-    """Whether an account holds ``email``, as its own or as an address on record, whatever the case.
-
-    The unified login (``accounts.unified_login``) signs in such an email and signs up any other one, as
-    ERPlora/saas ``SubdomainLoginView._email_exists`` (ADR-0154).
-    """
-    return (
-        get_user_model().objects.filter(email__iexact=email).exists()
-        or EmailAddress.objects.filter(email__iexact=email).exists()
-    )
-
-
 def email_is_proven(user, email: str) -> bool:
     """Whether ``user`` holds ``email`` by proof rather than by having typed it first (saas#2541).
 

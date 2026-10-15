@@ -1,3 +1,4 @@
+// flow: FIX-LAUNCH-TABS
 // The panel's smoke (plan 2026-10-13-panel-saas-unificado, L0-G; launcher of L1-C): the pipeline from
 // the browser to the panel's dev server (:8012, project.ts) works end to end. A visitor opens the entry
 // (/launch, open to visitors since round 17 §2.2), whose card is the sign-in itself (Ioan, 2026-10-15): the
@@ -70,6 +71,26 @@ test('the old addresses of the sign-in (/login, /accounts/login/) land on the la
   await page.goto('/login?next=/account');
   await expect(page).toHaveURL(/\/launch\?next=\/account$/);
   await expect(page.getByTestId('login-form')).toBeVisible();
+  // On «Sign in», the tab of the sign-in (FIX-LAUNCH-TABS, gh:saas#2246).
+  await expect(page.getByTestId('login-submit')).toHaveText('Sign in');
+  await expect(page.getByTestId('login-forgot')).toBeVisible();
+  expect(pageErrors).toEqual([]);
+});
+
+test('the old address of the sign-up (/accounts/signup/) lands on «Create account» in one hop, keeping next', async ({ page }) => {
+  const pageErrors = watchPageErrors(page);
+
+  const answer = await page.request.get('/accounts/signup/?next=/account', { maxRedirects: 0 });
+  expect([answer.status(), answer.headers().location]).toEqual([301, '/launch?tab=signup&next=/account']);
+
+  await page.goto('/accounts/signup/?next=/account');
+  await expect(page).toHaveURL(/\/launch\?tab=signup&next=\/account$/);
+  await expect(page.getByTestId('login-submit')).toHaveText('Create account');
+  await expect(page.getByTestId('login-forgot')).toHaveCount(0);
+  // «Already have an account? Sign in» goes back to «Sign in», keeping next.
+  await page.getByTestId('login-switch-action').click();
+  await expect(page).toHaveURL(/\/launch\?next=(%2F|\/)account$/);
+  await expect(page.getByTestId('login-submit')).toHaveText('Sign in');
   expect(pageErrors).toEqual([]);
 });
 

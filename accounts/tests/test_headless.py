@@ -154,19 +154,22 @@ def test_the_password_reset_mail_links_the_spa_page_and_its_key_opens_the_reset(
     assert answer.json()["data"]["user"]["email"] == "owner@example.com"
 
 
-def test_a_reset_asked_for_an_unknown_address_mails_the_sign_in_which_creates_accounts(client):
+def test_a_reset_asked_for_an_unknown_address_mails_the_create_account_tab(client):
     client.post(
         f"{BROWSER}/auth/password/request", {"email": "nobody@example.com"}, content_type="application/json", HTTP_HOST=HOST
     )
 
     [message] = mail.outbox
-    assert "http://localhost:8001/launch\n" in message.body
+    assert "http://localhost:8001/launch?tab=signup\n" in message.body
 
 
 def test_the_code_of_a_new_account_is_mailed_without_a_link(client):
     """Verification is by code (ADR-0159): allauth builds no confirmation link, so none is named."""
     client.post(
-        LOGIN, {"email": "new@example.com", "password": "a long pass phrase 2026"}, content_type="application/json", HTTP_HOST=HOST
+        f"{BROWSER}/auth/signup",
+        {"email": "new@example.com", "password": "a long pass phrase 2026"},
+        content_type="application/json",
+        HTTP_HOST=HOST,
     )
 
     [message] = mail.outbox

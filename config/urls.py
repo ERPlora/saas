@@ -18,7 +18,7 @@ from live.live_view import live_stream
 from live.spa import BASE_NON_SPA_PREFIXES, spa_path_pattern
 
 from accounts import admin as accounts_admin
-from accounts import doors, google, handoff, internal, unified_login
+from accounts import doors, google, handoff, internal
 from accounts.adapters import SPA_LOGIN
 from base.health import readyz
 from base.spa import spa
@@ -45,6 +45,23 @@ NON_SPA_PREFIXES = (
     *PUBLIC_PREFIXES,
 )
 
+#: The launcher's «Create account» tab (`SignInForm.vue`; «Sign in», the default, is `SPA_LOGIN` alone).
+SPA_SIGN_UP = f"{SPA_LOGIN}?tab=signup"
+
+
+class SignUpRedirect(RedirectView):
+    """The old address of the sign-up, for good, to the launcher's «Create account» tab in one hop, keeping
+    `next` and the rest of the query (a `tab` of its own never wins over the sign-up's)."""
+
+    permanent = True
+
+    def get_redirect_url(self, *args, **kwargs) -> str:
+        query = self.request.GET.copy()
+        query.pop("tab", None)
+        rest = query.urlencode(safe="/")
+        return f"{SPA_SIGN_UP}&{rest}" if rest else SPA_SIGN_UP
+
+
 # The admin's login is the SaaS's sign-in (it asks for the mailed code and the authenticator app).
 # Assigned before `admin.site.urls` is read below: `AdminSite.get_urls` binds `self.login` then.
 admin.site.login = accounts_admin.admin_login
@@ -52,20 +69,16 @@ admin.site.login = accounts_admin.admin_login
 urlpatterns = [
     # The old addresses of the sign-in and of the sign-up (allauth's template pages until headless only,
     # then the SPA's `/login` until the form moved into the launcher): bookmarks and pages of the public
-    # web cached elsewhere land on the launcher's sign-in for good, in one hop, keeping `next` and the
-    # rest of the query. `/login/error` stays a page of the SPA; every other old page of allauth under
-    # /accounts/ is gone (404).
+    # web cached elsewhere land on the launcher for good, in one hop, keeping `next` and the rest of the
+    # query: the sign-in's on its «Sign in» tab, the sign-up's on «Create account». `/login/error` stays a
+    # page of the SPA; every other old page of allauth under /accounts/ is gone (404).
     path("accounts/login/", RedirectView.as_view(url=SPA_LOGIN, query_string=True, permanent=True)),
-    path("accounts/signup/", RedirectView.as_view(url=SPA_LOGIN, query_string=True, permanent=True)),
+    path("accounts/signup/", SignUpRedirect.as_view()),
     path("login", RedirectView.as_view(url=SPA_LOGIN, query_string=True, permanent=True)),
     # The account's addresses change only through Cuenta's code, and an account without a password gets
     # one only through «Forgot your password?» (accounts/doors.py, plan 2026-10-13 L3-A).
     path("_allauth/browser/v1/account/email", doors.closed),
     path("_allauth/browser/v1/account/password/change", doors.password_change),
-    # One screen signs in or signs up (accounts/unified_login.py, ADR-0154): at allauth's login address,
-    # with allauth's signup closed.
-    path("_allauth/browser/v1/auth/login", unified_login.login_or_signup, name="login"),
-    path("_allauth/browser/v1/auth/signup", doors.closed),
     # «Continue with Google» on the launcher posts here; without Google's credentials it is not served.
     path("_allauth/browser/v1/auth/provider/redirect", google.provider_redirect, name="redirect_to_provider"),
     path("_allauth/", include("allauth.headless.urls")),

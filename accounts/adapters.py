@@ -1,8 +1,8 @@
 """allauth adapters of saas-next.
 
-Sign-up is open, as in today's SaaS (ADR-0154): an email without an account creates one on the sign-in
-form of the launcher (``accounts.unified_login``), and a Google email without one creates it on the way
-back from Google. Every sign-in with a password also asks for the code mailed to the account
+Sign-up is open, as in today's SaaS (ADR-0154): an email without an account creates one on the «Create
+account» tab of the launcher (allauth's own sign-up; the sign-in tab never creates one), and a Google email
+without one creates it on the way back from Google. Every sign-in with a password also asks for the code mailed to the account
 (``ACCOUNT_LOGIN_BY_CODE_REQUIRED``, ``AccountAdapter.is_login_by_code_required``). Every way back from
 Google that does not sign in lands on a Vue page: «Cancel» on the sign-in (``/launch``), any refusal or
 failure on ``/login/error?code=…``, both keeping ``next``.

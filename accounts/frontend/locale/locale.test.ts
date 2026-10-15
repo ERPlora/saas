@@ -33,6 +33,17 @@ const NEW_IN_THE_VUE_PAGES = new Set([
   'accounts.loginError.googleLinkRefused.heading',
   // The code mailed at every password sign-in (2026-10-15) is new: its expiry sends the visitor back here.
   'accounts.login.codeExpired',
+  // The tabs «Sign in» and «Create account» of the launcher (FIX-LAUNCH-TABS): the template had one form.
+  'accounts.login.tabsLabel',
+  'accounts.login.signIn',
+  'accounts.login.signUp',
+  'accounts.login.introSignIn',
+  'accounts.login.introSignUp',
+  'accounts.login.firstTime',
+  'accounts.login.createYourAccount',
+  'accounts.login.haveAccount',
+  'accounts.login.signInInstead',
+  'accounts.login.signUpFailed',
 ]);
 
 /**

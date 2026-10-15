@@ -18,7 +18,7 @@ vi.mock('@erplora/ui/shell', async (importOriginal) => ({
 }));
 
 import { accessibleName, ANONYMOUS, apiError, BYE, describeCall, enterView, errorFrame, flush, ionProps, type MountOptions, mountHubs, subId } from '../__tests__/mount-hubs';
-import { anonymous, fakeAllauth, pendingLoginCode, signedIn } from '../../../accounts/frontend/__tests__/allauth-server';
+import { anonymous, fakeAllauth, pendingEmailVerification, pendingLoginCode, signedIn } from '../../../accounts/frontend/__tests__/allauth-server';
 import { LIVE_TIMEOUT_MS } from '../../../frontend/live-state';
 import BusinessCreateForm from '../components/BusinessCreateForm.vue';
 import LaunchPage from './LaunchPage.vue';
@@ -98,8 +98,9 @@ async function showing(result: unknown, options: MountOptions = {}) {
 }
 
 describe('LaunchPage: signed out, the sign-in itself', () => {
-  // The entrance holds the one form that signs in and signs up (Ioan, 2026-10-15), in the frame of the
-  // old template login (`AuthShell`): logo, «ERPlora Cloud», «Global panel», the card and the terms.
+  // The entrance holds the form with the tabs «Sign in» and «Create account» (Ioan, 2026-10-15;
+  // FIX-LAUNCH-TABS), in the frame of the old template login (`AuthShell`): logo, «ERPlora Cloud», «Global
+  // panel», the card and the terms.
   let assign: ReturnType<typeof vi.fn>;
   beforeEach(() => {
     assign = vi.fn();
@@ -118,8 +119,10 @@ describe('LaunchPage: signed out, the sign-in itself', () => {
     expect(s.wrapper.get('.biz-sub').text()).toBe('Global panel');
     const card = s.wrapper.get('ion-card.glass');
     expect(card.find('form[data-testid="login-form"]').exists()).toBe(true);
-    expect(card.text()).toContain("Enter your email and password. New here? We'll create your account.");
+    expect(card.find('[data-testid="login-tabs"]').exists()).toBe(true);
+    expect(card.text()).toContain('Enter your email and password.');
     for (const testid of ['login-email', 'login-password', 'login-submit']) expect(card.find(`[data-testid="${testid}"]`).exists()).toBe(true);
+    expect(card.get('[data-testid="login-submit"]').text()).toBe('Sign in');
     expect(s.wrapper.find('ion-card-title').exists()).toBe(false);
     expect(s.client.stream.subscriptions('hubs.business.list')).toEqual([]);
     expect(document.title).toBe('Sign In - ERPlora Cloud');
@@ -160,8 +163,24 @@ describe('LaunchPage: signed out, the sign-in itself', () => {
     fakeAllauth({ 'GET /auth/session': anonymous });
     const s = await setup({ session: ANONYMOUS, locale: 'es' });
     expect(s.wrapper.get('.biz-sub').text()).toBe('Panel global');
-    expect(s.wrapper.get('[data-testid="login-submit"]').text()).toBe('Continuar');
+    expect(s.wrapper.get('[data-testid="login-submit"]').text()).toBe('Entrar');
     expect(document.title).toBe('Iniciar Sesión - ERPlora Cloud');
+  });
+
+  // Where the old sign-up pages lead (gh:saas#894, gh:saas#943): the same card, on «Create account».
+  it('opens «Create account» from /launch?tab=signup, and creates the account there', async () => {
+    const server = fakeAllauth({ 'GET /auth/session': anonymous, 'POST /auth/signup': pendingEmailVerification });
+    const s = await setup({ session: ANONYMOUS, path: '/launch?tab=signup&next=%2Faccount' });
+    const card = s.wrapper.get('ion-card.glass');
+    expect(card.get('[data-testid="login-submit"]').text()).toBe('Create account');
+    const input = (name: string) => s.wrapper.findAllComponents(IonInput).find((c) => c.attributes('data-testid') === `login-${name}`)!;
+    await input('email').setValue('new@example.com');
+    await input('password').setValue('a long pass phrase');
+    await s.wrapper.get('form[data-testid="login-form"]').trigger('submit');
+    await flush();
+    expect(server.callsTo('POST /auth/signup').map((call) => call.body)).toEqual([{ email: 'new@example.com', password: 'a long pass phrase' }]);
+    expect(server.callsTo('POST /auth/login')).toEqual([]);
+    expect(s.router.currentRoute.value.fullPath).toBe('/verify-email?next=/account');
   });
 });
 

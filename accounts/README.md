@@ -32,9 +32,12 @@ Sin ruta: `accounts.apikey.revoke_any`, la «Revocar» del admin, con contexto d
 
 ## Decisiones
 
-- **Entrada y código por correo en cada inicio de sesión** (Ioan, 2026-10-15): un único formulario entra y da
-  de alta, dentro del lanzador `/launch` (`frontend/components/SignInForm.vue`; `unified_login.py` decide entre
-  el login y el alta de allauth). Tras la contraseña, allauth manda siempre un código de 6 cifras a la cuenta,
+- **Entrada y código por correo en cada inicio de sesión** (Ioan, 2026-10-15): el formulario del lanzador
+  `/launch` (`frontend/components/SignInForm.vue`) tiene dos pestañas estrictas (FIX-LAUNCH-TABS, PLAN-SAAS
+  §3.7): «Entrar», por defecto, es el login de allauth y nunca crea cuenta (un correo desconocido recibe el
+  mismo error que una contraseña errónea, con el enlace «¿Es tu primera vez? Crea tu cuenta»); «Crear cuenta»
+  (`/launch?tab=signup`, adonde llevan `/accounts/signup/` y `HEADLESS_FRONTEND_URLS["account_signup"]`) es
+  el alta de allauth y nunca entra (un correo ya registrado no se delata). Tras la contraseña, allauth manda siempre un código de 6 cifras a la cuenta,
   que se teclea en `/verify-email`: el que prueba el correo (`verify_email`) para un alta o una dirección nunca
   probada, y el de inicio de sesión (`login_by_code`, `ACCOUNT_LOGIN_BY_CODE_REQUIRED = {"password"}`) para el
   resto; `AccountAdapter.is_login_by_code_required` evita pedir los dos. Valores de allauth: 3 intentos, 3

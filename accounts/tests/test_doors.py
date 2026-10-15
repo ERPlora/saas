@@ -10,6 +10,9 @@
   (``test_password_change``).
 
 Each is shown closed with a sign-in of a moment ago: closed, not just behind allauth's reauthentication.
+
+allauth's own sign-up (``auth/signup``) is open since the launcher's «Create account» tab (FIX-LAUNCH-TABS;
+its contract is ``test_unified_login``'s): that one door, none of allauth's other ways in.
 """
 
 import time
@@ -93,3 +96,33 @@ class TestThePasswordOfAnAccountWithoutOne:
         )
 
         assert [message for message in mail.outbox if f"http://{HOST}/password/reset/key/" in message.body]
+
+
+class TestOnlyTheSignUpIsOpen:
+    def test_allauths_signup_answers_the_create_account_tab(self, client):
+        response = client.post(
+            f"{BROWSER}/auth/signup",
+            {"email": "new@example.com", "password": "a brand new pass phrase 2026"},
+            content_type="application/json",
+            HTTP_HOST=HOST,
+        )
+
+        assert response.status_code == 401
+        assert [flow["id"] for flow in response.json()["data"]["flows"] if flow.get("is_pending")] == ["verify_email"]
+
+    @pytest.mark.parametrize(
+        "door",
+        [
+            # A sign-in with the mailed code alone, no password (ACCOUNT_LOGIN_BY_CODE_ENABLED is off).
+            "auth/code/request",
+            # A sign-up with a passkey and no password (MFA_PASSKEY_SIGNUP_ENABLED is off).
+            "auth/passkey/signup",
+        ],
+    )
+    def test_allauths_other_ways_in_stay_closed(self, client, door):
+        response = client.post(
+            f"{BROWSER}/{door}", {"email": "new@example.com"}, content_type="application/json", HTTP_HOST=HOST
+        )
+
+        assert response.status_code == 404
+        assert mail.outbox == []
