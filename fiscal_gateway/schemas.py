@@ -3,13 +3,28 @@
 ``route=erplora`` presents with ERPlora's seal; ``route=own`` with the customer's own certificate, which
 travels in ``certificate`` (its .p12 in base64 and its password) on every call and is never kept. Both
 are ``SecretStr``: no ``repr``, ``str`` or log line of a body shows them.
+
+``hub`` names the calling hub: in phase 1 the slug of its host (``ctx.scope.key``), later the registry's
+UUID in lowercase. Both fit ``live.slugs.HUB_SLUG_RE``, the single source of the slug format, checked
+with ``fullmatch`` (its ``$`` would admit a trailing newline). It carries no other meaning yet.
 """
 
 from typing import Annotated, Literal
-from uuid import UUID
 
+from live.slugs import HUB_SLUG_RE
 from ninja import Schema
-from pydantic import SecretStr, StringConstraints
+from pydantic import AfterValidator, SecretStr, StringConstraints
+
+
+def _hub_ref(value: str) -> str:
+    # The message never echoes the value.
+    if not HUB_SLUG_RE.fullmatch(value):
+        raise ValueError("not a hub slug nor a lowercase UUID")
+    return value
+
+
+# A hub's slug or its UUID in lowercase.
+HubRef = Annotated[str, AfterValidator(_hub_ref)]
 
 
 class CertificateIn(Schema):
@@ -18,7 +33,7 @@ class CertificateIn(Schema):
 
 
 class ProbeIn(Schema):
-    hub: UUID
+    hub: HubRef
     nif: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=20)
     ]
