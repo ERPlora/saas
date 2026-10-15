@@ -22,6 +22,7 @@ from base.health import readyz
 from base.spa import spa
 from billing import webhooks as billing_webhooks
 from config.api import api
+from fiscal_gateway import internal as fiscal_gateway_internal
 from hubs import internal as hubs_internal
 from public import landing
 from public.urls import PUBLIC_PREFIXES
@@ -96,6 +97,22 @@ urlpatterns = [
         "internal/hubs/<uuid:hub_id>/ready",
         hubs_internal.ready,
         name="internal_hub_ready",
+    ),
+    # The fiscal gateway (PLAN-SAAS §4): the Hub's VeriFactu envelopes, presented to the AEAT.
+    path(
+        "internal/verifactu/submit",
+        fiscal_gateway_internal.submit,
+        name="internal_verifactu_submit",
+    ),
+    path(
+        "internal/verifactu/query",
+        fiscal_gateway_internal.query,
+        name="internal_verifactu_query",
+    ),
+    path(
+        "internal/verifactu/probe",
+        fiscal_gateway_internal.probe,
+        name="internal_verifactu_probe",
     ),
     # Stripe's single webhook (PLAN-SAAS §4): signed by Stripe, no session nor CSRF.
     path("webhooks/stripe/", billing_webhooks.stripe_webhook, name="stripe_webhook"),

@@ -25,13 +25,20 @@ dependencies = [
     "cryptography>=50.0",
     # Stripe (lot L2-B): Embedded Checkout, the hub's subscription and its items, the webhook.
     "stripe>=16.0",
+    # The VeriFactu gateway (fiscal_gateway/): mTLS to the AEAT with a client certificate.
+    "httpx>=0.28",
 ]
 
 [tool.uv]
 package = false
 
 [dependency-groups]
-dev = ["pytest>=9", "pytest-django>=4.14", "pytest-asyncio>=1.4"]
+dev = [
+    "pytest>=9",
+    "pytest-django>=4.14",
+    "pytest-asyncio>=1.4",
+    "respx>=0.23.1",
+]
 
 # erplora-live is the packages/live submodule (`git submodule update --init`); editable locally,
 # the Dockerfile installs it with --no-editable.
