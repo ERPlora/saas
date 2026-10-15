@@ -3,13 +3,22 @@
 ``route=erplora`` presents with ERPlora's seal; ``route=own`` with the customer's own certificate, which
 travels in ``certificate`` (its .p12 in base64 and its password) on every call and is never kept. Both
 are ``SecretStr``: no ``repr``, ``str`` or log line of a body shows them.
+
+``hub`` names the calling hub: in phase 1 the slug of its host (``ctx.scope.key``), later the registry's
+UUID in lowercase, which the same pattern admits. It carries no other meaning yet.
 """
 
 from typing import Annotated, Literal
-from uuid import UUID
 
 from ninja import Schema
 from pydantic import SecretStr, StringConstraints
+
+
+# A hub's slug (one lowercase DNS-like label) or its UUID in lowercase.
+HubRef = Annotated[
+    str,
+    StringConstraints(min_length=1, max_length=64, pattern=r"^[a-z0-9][a-z0-9-]*$"),
+]
 
 
 class CertificateIn(Schema):
@@ -18,7 +27,7 @@ class CertificateIn(Schema):
 
 
 class ProbeIn(Schema):
-    hub: UUID
+    hub: HubRef
     nif: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=20)
     ]

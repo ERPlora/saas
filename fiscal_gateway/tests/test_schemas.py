@@ -51,7 +51,6 @@ def test_the_certificate_never_shows_in_a_repr():
         {"environment": "staging"},
         {"route": "somebody"},
         {"nif": ""},
-        {"hub": "not-a-uuid"},
         {"envelope": ""},
     ],
 )
@@ -66,6 +65,40 @@ def test_what_is_outside_the_contract_is_refused(change):
 
     with pytest.raises(pydantic.ValidationError):
         PresentIn.model_validate(body)
+
+
+@pytest.mark.parametrize("hub", ["demo", "erplora", "a", "my-hub-2", HUB])
+def test_the_hub_is_its_slug_or_its_uuid(hub):
+    # Phase 1: the Hub sends the slug of its host; the registry's UUID comes in phase 2.
+    body = PresentIn.model_validate(
+        {
+            "hub": hub,
+            "nif": "B27593136",
+            "environment": "testing",
+            "route": "erplora",
+            "envelope": "<x/>",
+        }
+    )
+
+    assert body.hub == hub
+
+
+@pytest.mark.parametrize(
+    "hub",
+    ["", "Demo", "a" * 65, "x y", "-demo", "demo.", HUB.upper(), 7, None],
+)
+def test_a_hub_that_is_neither_a_slug_nor_a_uuid_is_refused(hub):
+    with pytest.raises(pydantic.ValidationError) as refused:
+        ProbeIn.model_validate(
+            {
+                "hub": hub,
+                "nif": "B27593136",
+                "environment": "testing",
+                "route": "erplora",
+            }
+        )
+
+    assert [error["loc"] for error in refused.value.errors()] == [("hub",)]
 
 
 def test_a_probe_has_no_envelope():
