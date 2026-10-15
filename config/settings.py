@@ -596,6 +596,9 @@ FISCAL_SEAL_CURRENT_P12_BASE64 = config("FISCAL_SEAL_CURRENT_P12_BASE64", defaul
 FISCAL_SEAL_CURRENT_PASSWORD = config("FISCAL_SEAL_CURRENT_PASSWORD", default="")
 FISCAL_SEAL_NEXT_P12_BASE64 = config("FISCAL_SEAL_NEXT_P12_BASE64", default="")
 FISCAL_SEAL_NEXT_PASSWORD = config("FISCAL_SEAL_NEXT_PASSWORD", default="")
+# The fiscal gateway (fiscal_gateway/, PLAN-SAAS §4): presentations to the AEAT under way at once in
+# one process; one more answers 503 `gateway_busy` and the Hub retries. 8 until it is measured in pre.
+VERIFACTU_GATEWAY_CONCURRENCY = config("VERIFACTU_GATEWAY_CONCURRENCY", default=8, cast=int)
 
 # EU VAT (billing/): VIES, the European Commission's register of VAT numbers, asked through its REST
 # endpoint as an identified requester (ERPlora's own VAT number, billing.CompanyConfig), the only way
