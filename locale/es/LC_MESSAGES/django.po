@@ -890,3 +890,7 @@ msgstr "Si no la has creado tú, revócala en Cuenta → Claves de API y escribe
 
 msgid "You pay for businesses of other people: ask their owner to enter their own payment details before deleting your account."
 msgstr "Pagas negocios de otras personas: pide a su propietario que ponga sus datos de pago antes de eliminar tu cuenta."
+
+#: fiscal_gateway/apps.py:16
+msgid "Fiscal gateway"
+msgstr "Pasarela fiscal"
