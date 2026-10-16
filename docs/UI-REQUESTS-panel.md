@@ -20,16 +20,21 @@ limpia posible… las tablas tienen que ocupar la altura de la página, el espac
   columna en un popover «Filtros» con su contador y «Limpiar filtros», con `select` de 2–4 opciones como
   `ion-segment`, y un tipo de filtro `year` (o `select` con opciones libres que no sea de una columna). Con eso,
   `InvoiceFilters.vue` desaparece y Facturas declara sus filtros en las columnas.
+- **Estado (2026-10-16)**: `DataTable` ya trae el embudo con contador y su panel dentro de la tabla (un cajón; bajo
+  834 px, una hoja), opt-in con `filterable`, y filtros sin columna propia con `filterFields` (ui#4, 070e74f). El panel
+  **no** lo adopta y se queda con `InvoiceFilters.vue` (PLAN-MIGRATIONS §13, 2026-10-15: las tablas del SaaS no
+  cambian). Guardia: `tests/e2e/panel/fix-datatable.spec.ts` (el popover filtra a 390, 834 y 1440 px y el
+  embudo de `DataTable` no aparece).
 
 ## 2. `DataTable`: en el móvil, sin el título cuando hay buscador
 
 - **Qué pasa**: a ≤640 px el buscador ocupa su línea (`flex-basis: 100%`) y el título va en otra: una lista con
   título y buscador gasta tres líneas de barra (título · buscador · resto). En el panel la topbar y la tabbar ya
   nombran la lista y el pie la cuenta.
-- **Rodeo hoy**: `frontend/panel-fill.css` (global del panel), en `@media (max-width: 640px)`:
-  `.panel-fill .data-table__bar-main:has(> .data-table__search) > .data-table__title-wrap { display: none }`.
-  Depende de las clases internas `data-table__*`.
-- **Propuesta**: una prop (p. ej. `titleOnPhone: false`) o ese comportamiento por defecto cuando hay buscador.
+- **Resuelto en `@erplora/ui`** (ui#4, 070e74f; rodeo `frontend/panel-fill.css` retirado en FIX-DATATABLE-SAAS):
+  `packages/ui/src/shell/theme/polish.css`, en `@media (max-width: 640px)`, solo bajo el `.panel-fill` del SaaS
+  (las listas del Hub conservan su título): `.panel-fill .data-table__bar-main:has(> .data-table__search) >
+  .data-table__title-wrap { display: none }`. Guardia: `AppPage.test.ts` de ui.
 
 ## 3. `DataTable`: «Columnas» y «Filas por página» solo cuando hacen falta
 
@@ -46,13 +51,16 @@ limpia posible… las tablas tienen que ocupar la altura de la página, el espac
 - **Qué pasa**: `detail-fill` da altura a `.hub-detail-shell--fill`, pero lo que la página pone dentro (avisos,
   cabecera del negocio, la tabla y lo que va debajo) necesita su propia cadena flex para que la tabla se quede
   con el resto sin aplastarse ni empujar la página.
-- **Rodeo hoy**: `frontend/panel-fill.css` (`.panel-fill`, cargado por `main.ts`): pila en columna a `height:
-  100%`; lo que no es la lista conserva su alto; la lista (`.data-table--fill` o una `.panel-fill` anidada) se
-  queda el resto, con un suelo de `20rem` en escritorio y tableta (`--panel-list-min`) para que los avisos de
-  arriba empujen la página antes que dejar la lista en nada. En el móvil sigue el `fill` propio de `DataTable`
-  (crece con sus filas desde la altura de la página, un solo scroll).
-- **Propuesta**: que `AppPage` (o `@erplora/ui`) ofrezca esa pila (`<FillStack>` o una clase del tema) para el
-  Hub y el SaaS, en vez de que cada proyecto la escriba.
+- **Resuelto en `@erplora/ui`** (ui#4, 070e74f; rodeo `frontend/panel-fill.css` retirado en FIX-DATATABLE-SAAS):
+  la cadena vive en `packages/ui/src/shell/theme/polish.css` (la carga `createShell`) para `.page-fill` (la pila
+  de `AppPage` `content-layout="fill"`, del Hub) y `.panel-fill` (la del panel, con `detail-fill`): pila en
+  columna a `height: 100%`; lo que no es la lista conserva su alto; la lista (`.data-table--fill` o una pila
+  anidada) se queda el resto, con un suelo de `20rem` en escritorio y tableta (`--panel-list-min`) para que los
+  avisos de arriba empujen la página antes que dejar la lista en nada. En el móvil sigue el `fill` propio de
+  `DataTable` (crece con sus filas desde la altura de la página, un solo scroll). Guardias: `AppPage.test.ts` de
+  ui, `frontend/main.test.ts` (el panel no lleva copia propia), `tests/e2e/panel/viewports.spec.ts` (mide la
+  cadena a 390, 834 y 1440 px) y `tests/e2e/panel/fix-datatable.spec.ts` (Facturas: llena la página sin doble
+  scroll y, sin la cadena, deja de llenar).
 
 ## 5. Estados de una consulta viva: cargando, error, vacío (auditoría 2026-10-14, R-04/R-08)
 
@@ -87,6 +95,7 @@ limpia posible… las tablas tienen que ocupar la altura de la página, el espac
 
 - **Qué pasa**: el buscador pide `flex-basis: 22rem` y una fila que se parte decide por la base, así que la
   barra saltaba a dos filas antes de encoger el buscador.
-- **Rodeo hoy**: `frontend/panel-fill.css`, en escritorio: `.panel-fill .data-table .data-table__search { flex:
-  1 1 11rem; min-width: 9rem; max-width: 22rem }`.
-- **Propuesta**: esa base en `DataTable` (el buscador cede primero).
+- **Resuelto en `@erplora/ui`** (ui#4, 070e74f; rodeo `frontend/panel-fill.css` retirado en FIX-DATATABLE-SAAS):
+  `packages/ui/src/shell/theme/polish.css`, en escritorio y solo bajo el `.panel-fill` del SaaS: `.panel-fill
+  .data-table .data-table__search { flex: 1 1 11rem; min-width: 9rem; max-width: 22rem }`. Guardia:
+  `AppPage.test.ts` de ui.
