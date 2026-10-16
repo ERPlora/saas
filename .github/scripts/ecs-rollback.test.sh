@@ -30,7 +30,8 @@ setup() {
   echo "$td/erplora-prod-worker:12" > "$STATE/primary-worker"
   printf '%s\t' "$td/erplora-prod-hub:12" "$td/erplora-prod-hub:10" > "$FIXTURES/list-erplora-prod-hub"
   printf '%s\t' "$td/erplora-prod-worker:12" "$td/erplora-prod-worker:10" > "$FIXTURES/list-erplora-prod-worker"
-  # pre (plan 2026-10-14-entorno-pre): service saas-pre runs erplora-pre-saas:12 in the same cluster.
+  # pre (plan 2026-10-14-entorno-pre): service saas-pre runs erplora-pre-saas:12 in its own cluster
+  # (erplora-pre).
   echo "$td/erplora-pre-saas:12" > "$STATE/primary-saas-pre"
   printf '%s\t' "$td/erplora-pre-saas-migrate:11" "$td/erplora-pre-saas:12" "$td/erplora-pre-saas:10" \
     > "$FIXTURES/list-erplora-pre-saas"
@@ -158,6 +159,14 @@ check() {
 
 line_of() { grep -n -- "$1" "$CALLS_LOG" | head -1 | cut -d: -f1; }
 last_line_of() { grep -n -- "$1" "$CALLS_LOG" | tail -1 | cut -d: -f1; }
+# cluster_is <name>: there are cluster-scoped ecs calls (services and the wait), every one names
+# cluster <name> and no call names another cluster.
+cluster_scoped="^ecs (describe-services|update-service|wait services-stable) "
+cluster_is() {
+  grep -Eq -- "$cluster_scoped" "$CALLS_LOG" &&
+    ! grep -E -- "$cluster_scoped" "$CALLS_LOG" | grep -qv -- "--cluster $1 " &&
+    ! grep -E -- "--cluster" "$CALLS_LOG" | grep -qv -- "--cluster $1 "
+}
 # reads_of <service>: how many times its PRIMARY deployment was read after the wait.
 reads_of() {
   local from
@@ -201,6 +210,7 @@ check "the restored tag is recorded in SSM" \
 check "the tag is recorded only after the services are checked" \
   '[ "$(line_of "ssm put-parameter")" -gt "$(last_line_of "describe-services")" ]'
 check "every aws call names the region" '[ -s "$CALLS_LOG" ] && ! grep -qv -- "--region eu-south-2" "$CALLS_LOG"'
+check "prod: every cluster-scoped ecs call names prod's cluster erplora-prod" 'cluster_is erplora-prod'
 check "the worker service is neither queried nor rolled back" '! grep -Eq -- "--services? worker( |$)|erplora-prod-worker" "$CALLS_LOG"'
 check "nothing of the hub is touched" \
   '! grep -Eq -- "erplora-prod-hub|/erplora/prod/hub/|--services? hub( |$)" "$CALLS_LOG"'
@@ -221,6 +231,8 @@ check "pre: records the restored tag in pre's parameter" \
   'grep -q "^ssm put-parameter --name /erplora/pre/saas/image_tag --value tag-10 --type String --overwrite" "$CALLS_LOG"'
 check "pre: a pre rollback never names prod" \
   '! grep -Eq -- "erplora-prod-|/erplora/prod/|--services? saas( |$)" "$CALLS_LOG"'
+check "pre: every cluster-scoped ecs call names pre's own cluster erplora-pre, never erplora-prod" \
+  'cluster_is erplora-pre'
 setup
 echo "$td/erplora-pre-saas:10 reg.example/erplora/saas:tag-10" > "$FIXTURES/images"
 run_rollback ENVIRONMENT=pre && status=0 || status=$?
@@ -331,6 +343,16 @@ for var in POLL_SECONDS ROLLOUT_TIMEOUT_SECONDS; do
   run_rollback "$var=soon" && status=0 || status=$?
   check "a $var that is not a number fails before any aws call" \
     '[ "$status" -ne 0 ] && [ ! -s "$CALLS_LOG" ] && grep -q "::error::$var" "$work/out.log"'
+done
+
+# --- an explicit CLUSTER ------------------------------------------------------------
+# Without CLUSTER each environment rolls back in its own cluster (erplora-<ENVIRONMENT>); CLUSTER wins.
+for environment in prod pre; do
+  setup
+  run_rollback ENVIRONMENT="$environment" CLUSTER=custom-cluster && status=0 || status=$?
+  check "$environment with CLUSTER=custom-cluster: the rollback succeeds" '[ "$status" -eq 0 ]'
+  check "$environment with CLUSTER=custom-cluster: every cluster-scoped ecs call names custom-cluster" \
+    'cluster_is custom-cluster'
 done
 
 # --- required environment -----------------------------------------------------------

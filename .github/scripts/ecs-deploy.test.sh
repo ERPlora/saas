@@ -53,8 +53,8 @@ setup() {
     task_definition "erplora-prod-$family" "[{\"name\": \"$family\", \"image\": \"reg.example/erplora/hub:bootstrap\"}]" \
       > "$FIXTURES/erplora-prod-$family.json"
   done
-  # pre (plan 2026-10-14-entorno-pre): the same cluster, its own families on its own ECR repository
-  # (erplora/saas-pre) and no saas-cron. The containers keep the short names.
+  # pre (plan 2026-10-14-entorno-pre): its own cluster (erplora-pre), its own families on its own
+  # ECR repository (erplora/saas-pre) and no saas-cron. The containers keep the short names.
   task_definition erplora-pre-saas '[
     {"name": "saas", "image": "reg.example/erplora/saas-pre:bootstrap"},
     {"name": "prod-image", "image": "reg.example/erplora/saas:bootstrap"}]' > "$FIXTURES/erplora-pre-saas.json"
@@ -127,7 +127,7 @@ case "$1 $2" in
     if [ -n "${FAKE_RUN_TASK_FAILURE:-}" ]; then
       jq -n --arg reason "$FAKE_RUN_TASK_FAILURE" '{tasks: [], failures: [{arn: "arn:capacity", reason: $reason}]}'
     else
-      echo '{"tasks": [{"taskArn": "arn:task/erplora-prod/migrate1"}], "failures": []}'
+      jq -n --arg cluster "$(value --cluster)" '{tasks: [{taskArn: "arn:task/\($cluster)/migrate1"}], failures: []}'
     fi
     ;;
   "ecs describe-tasks")
@@ -177,6 +177,14 @@ check() {
 line_of() { grep -n -- "$1" "$CALLS_LOG" | head -1 | cut -d: -f1; }
 last_line_of() { grep -n -- "$1" "$CALLS_LOG" | tail -1 | cut -d: -f1; }
 count_of() { grep -c -- "$1" "$CALLS_LOG" || true; }
+# cluster_is <name>: there are cluster-scoped ecs calls (services, tasks, the wait), every one names
+# cluster <name> and no call names another cluster.
+cluster_scoped="^ecs (describe-services|update-service|run-task|describe-tasks|wait services-stable) "
+cluster_is() {
+  grep -Eq -- "$cluster_scoped" "$CALLS_LOG" &&
+    ! grep -E -- "$cluster_scoped" "$CALLS_LOG" | grep -qv -- "--cluster $1 " &&
+    ! grep -E -- "--cluster" "$CALLS_LOG" | grep -qv -- "--cluster $1 "
+}
 # registered <family> <jq filter>: evaluates the filter on the revision registered for <family>.
 registered() { jq -e --arg family "$1" "select(.family == \$family) | $2" "$REGISTERED_LOG" > /dev/null; }
 
@@ -224,6 +232,7 @@ check "the deployed tag is recorded in SSM" \
 check "the tag is recorded only after the services are checked" \
   '[ "$(line_of "ssm put-parameter")" -gt "$(last_line_of "describe-services .*deployments")" ]'
 check "every aws call names the region" '[ -s "$CALLS_LOG" ] && ! grep -qv -- "--region eu-south-2" "$CALLS_LOG"'
+check "prod: every cluster-scoped ecs call names prod's cluster erplora-prod" 'cluster_is erplora-prod'
 check "the worker service is neither queried nor updated" '! grep -Eq -- "--services? worker( |$)" "$CALLS_LOG"'
 check "nothing of the hub is touched" \
   '! grep -Eq -- "erplora-prod-(hub|worker|db-bootstrap)|/erplora/prod/hub/|--services? hub( |$)" "$CALLS_LOG"'
@@ -379,8 +388,9 @@ check "pre: records its own image tag" \
   'grep -q "^ssm put-parameter --name /erplora/pre/saas/image_tag --value abc123 --type String --overwrite" "$CALLS_LOG"'
 check "pre: a pre run never names prod (families, parameters, services, ECR repository)" \
   '! grep -Eq -- "erplora-prod-|/erplora/prod/|--services? saas( |$)|erplora/saas:abc123" "$CALLS_LOG" "$REGISTERED_LOG"'
-check "pre: every aws call names the region and the shared cluster" \
-  '! grep -qv -- "--region eu-south-2" "$CALLS_LOG" && ! grep -E -- "--cluster" "$CALLS_LOG" | grep -qv -- "--cluster erplora-prod "'
+check "pre: every aws call names the region" '! grep -qv -- "--region eu-south-2" "$CALLS_LOG"'
+check "pre: every cluster-scoped ecs call names pre's own cluster erplora-pre, never erplora-prod" \
+  'cluster_is erplora-pre'
 setup
 run_deploy ENVIRONMENT=pre FAKE_MIGRATE_EXIT=1 && status=0 || status=$?
 check "pre: a failed migration names pre's log group and changes nothing" \
@@ -417,6 +427,16 @@ mv "$work/no-roles.json" "$FIXTURES/erplora-prod-saas.json"
 run_deploy && status=0 || status=$?
 check "guard: a revision without roles is refused and nothing is registered" \
   '[ "$status" -ne 0 ] && [ ! -s "$REGISTERED_LOG" ] && grep -q "::error::erplora-prod-saas is not a prod revision" "$work/out.log"'
+
+# --- an explicit CLUSTER ----------------------------------------------------------
+# Without CLUSTER each environment deploys to its own cluster (erplora-<ENVIRONMENT>); CLUSTER wins.
+for environment in prod pre; do
+  setup
+  run_deploy ENVIRONMENT="$environment" CLUSTER=custom-cluster && status=0 || status=$?
+  check "$environment with CLUSTER=custom-cluster: the deploy succeeds" '[ "$status" -eq 0 ]'
+  check "$environment with CLUSTER=custom-cluster: every cluster-scoped ecs call names custom-cluster" \
+    'cluster_is custom-cluster'
+done
 
 # --- required environment -----------------------------------------------------
 for environment in staging Prod ""; do

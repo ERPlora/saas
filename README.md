@@ -218,8 +218,9 @@ y el panel lo enseña en la ficha del negocio (`fiscal.representation.status`).
 ## Entornos y ramas: `prod` y `pre`
 
 `ERPLORA_ENVIRONMENT` dice qué despliegue es el proceso: `prod` (`erplora.com`; también por defecto en local
-y en los tests) o `pre`, la preproducción del equipo en `pre.erplora.com`, en el mismo cluster, ALB, Aurora y
-Valkey que prod (plan `../docs/plans/2026-10-14-entorno-pre.md`). Cualquier otro valor no arranca. En `pre`:
+y en los tests) o `pre`, la preproducción del equipo en `pre.erplora.com`, en su propio cluster ECS
+(`erplora-pre`; PLAN-AWS, ronda 2026-10-16) y con el mismo ALB, Aurora y Valkey que prod (plan
+`../docs/plans/2026-10-14-entorno-pre.md`). Cualquier otro valor no arranca. En `pre`:
 
 - la caché de Valkey usa el prefijo `pre-saas` (prod, `saas`): no comparten límites ni claves;
 - nada se indexa: `robots.txt` responde `Disallow: /` sin `Sitemap`, toda respuesta lleva `X-Robots-Tag:
@@ -237,8 +238,8 @@ Valkey que prod (plan `../docs/plans/2026-10-14-entorno-pre.md`). Cualquier otro
 1. Se trabaja en una rama propia; cada push corre `test / test` (`ci.yml`, que llama a `test.yml`).
 2. Si `pre` avanzó, se integra `origin/pre` en la rama y se empuja otra vez.
 3. Con el check en verde, `git push origin <rama>:pre` (fast-forward). `deploy.yml` prueba, construye la imagen
-   en `erplora/saas-pre` y despliega `saas-pre` (`ecs-deploy.sh` con `ENVIRONMENT=pre`: familias
-   `erplora-pre-saas` y `erplora-pre-saas-migrate`, sin `saas-cron`; `/erplora/pre/saas/image_tag`). Si pre
+   en `erplora/saas-pre` y despliega `saas-pre` (`ecs-deploy.sh` con `ENVIRONMENT=pre`: cluster `erplora-pre`,
+   familias `erplora-pre-saas` y `erplora-pre-saas-migrate`, sin `saas-cron`; `/erplora/pre/saas/image_tag`). Si pre
    estaba apagado, lo enciende. Sin release.
 4. Probado, PR `pre` → `main` con «Create a merge commit»: despliega prod como siempre, con su release
    `saas-v…`.
