@@ -162,6 +162,22 @@ def test_the_debug_shell_loads_from_the_saas_vite_dev_server(client, settings):
     assert 'src="http://localhost:5174/static/spa/frontend/main.ts"' in html
 
 
+@pytest.mark.django_db
+def test_the_debug_shell_loads_from_the_vite_of_vite_dev_port(client, settings):
+    """VITE_DEV_PORT=5224 (config/settings.py) moves the dev shell's scripts to that Vite, never 5174."""
+    settings.DEBUG = True
+    settings.LIVE = {
+        **settings.LIVE,
+        "spa": {**settings.LIVE["spa"], "dev_server": "http://localhost:5224"},
+    }
+
+    html = client.get("/launch", HTTP_HOST=HOST).content.decode()
+
+    assert 'src="http://localhost:5224/static/spa/@vite/client"' in html
+    assert 'src="http://localhost:5224/static/spa/frontend/main.ts"' in html
+    assert "localhost:5174" not in html
+
+
 def test_api_live_is_the_live_stream_and_wins_over_the_api():
     assert resolve("/api/live").func is live_stream
 

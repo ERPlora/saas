@@ -3,7 +3,7 @@
 // audit2.spec.ts fail on correct code. The check never applies anything: the database is shared.
 import { describe, expect, it } from 'vitest';
 
-import { assertMigrationsApplied, prepareDatabase, type CommandResult } from './global-setup';
+import { assertMigrationsApplied, prepareDatabase, prepareRun, type CommandResult } from './global-setup';
 
 const APPLIED: CommandResult = {
   status: 0,
@@ -132,5 +132,44 @@ describe('prepareDatabase', () => {
 
     teardown();
     expect(steps).toEqual(['migrate', 'seed', 'clear']);
+  });
+});
+
+// The run first checks that the panel's Vite (started or reused by Playwright before globalSetup) serves this
+// checkout (panel/project.ts, assertViteOfThisTree): another tree's would have the specs test its frontend.
+describe('prepareRun', () => {
+  it("touches nothing in the database when the Vite is another checkout's", async () => {
+    const manage = managePy(APPLIED);
+    const seeded: string[] = [];
+
+    await expect(
+      prepareRun(
+        () => Promise.reject(new Error('The Vite on :5174 serves /elsewhere/saas, not this checkout')),
+        manage.run,
+        (action) => seeded.push(action),
+      ),
+    ).rejects.toThrow('The Vite on :5174 serves /elsewhere/saas, not this checkout');
+    expect(manage.calls).toEqual([]);
+    expect(seeded).toEqual([]);
+  });
+
+  it("checks the Vite, then the migrations, then seeds", async () => {
+    const steps: string[] = [];
+    const manage = managePy(APPLIED);
+
+    const teardown = await prepareRun(
+      async () => {
+        steps.push('vite');
+      },
+      (args) => {
+        steps.push(args[0]);
+        return manage.run(args);
+      },
+      (action) => steps.push(action),
+    );
+    expect(steps).toEqual(['vite', 'migrate', 'seed']);
+
+    teardown();
+    expect(steps).toEqual(['vite', 'migrate', 'seed', 'clear']);
   });
 });
