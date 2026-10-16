@@ -55,6 +55,8 @@ export default defineConfig({
       ...FRONTEND_APPS.map((app) => `${app}/frontend/**/*.test.ts`),
       'vite.config.test.ts',
       'eslint.config.test.ts',
+      // The e2e's helpers; its Playwright specs (`*.spec.ts`) run under Playwright only.
+      'tests/e2e/*.test.ts',
     ],
     // Vitest's default `exclude` drops every `vite.config.*` and `eslint.config.*`.
     exclude: ['**/node_modules/**', '**/dist/**'],

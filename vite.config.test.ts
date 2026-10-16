@@ -123,9 +123,12 @@ describe('vite.config', () => {
         ...FRONTEND_APPS.map((app) => `${app}/frontend/**/*.test.ts`),
         'vite.config.test.ts',
         'eslint.config.test.ts',
+        // The e2e's helpers (global-setup.test.ts); its Playwright specs (`*.spec.ts`) stay out.
+        'tests/e2e/*.test.ts',
       ]),
     );
     expect(config.test?.include?.filter((glob) => glob.startsWith('apps/'))).toEqual([]);
+    expect(config.test?.include?.filter((glob) => glob.includes('spec'))).toEqual([]);
     // Vitest's default `exclude` drops every `vite.config.*`, this test included.
     expect(config.test?.exclude).toEqual(['**/node_modules/**', '**/dist/**']);
   });
