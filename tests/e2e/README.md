@@ -20,6 +20,11 @@ pnpm e2e --project=public            # solo la web pública (antes, `pnpm build`
 pnpm e2e --project=panel panel/login.spec.ts   # una spec
 ```
 
+- **La BD local tiene que estar migrada**: antes de sembrar nada, `globalSetup` (`global-setup.ts`) corre
+  `manage.py migrate --check --plan`, que no aplica nada, y si falta alguna migración aborta la ejecución
+  con la lista y el aviso de correr `uv run python manage.py migrate` desde un checkout de `main`. Las specs
+  leen lo que siembran las migraciones (los planes de `hubs.0013`) y una BD que dejó otra rama hacía fallar
+  `panel/audit2.spec.ts` con el código bien (2026-10-16).
 - **Sin ventana por defecto** (Ioan, 2026-10-14: nunca se abre un Chrome visible si no se pide): Chrome
   (`channel: 'chrome'`) en modo `headless` y sin `slowMo`. Sustituye a la regla anterior de «siempre
   visible».

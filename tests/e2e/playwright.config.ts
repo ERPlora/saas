@@ -5,8 +5,9 @@
 // It drives a production-like SaaS of its own: DEBUG off (the public CSP as production serves it,
 // no Vite dev server), the build of `pnpm build` (run it first: the manifest must hold
 // `frontend/public.ts`), static files served by `runserver --insecure`, on 127.0.0.1:8011 so it never
-// collides with the dev server on :8001. `globalSetup` seeds the app the specs open in the local
-// database of `.env` and removes it at the end (store_docs_seed.py).
+// collides with the dev server on :8001. `globalSetup` first stops the run if the local database of
+// `.env` has unapplied migrations (it never migrates it: sessions share it), then seeds the app the
+// specs open and removes it at the end (store_docs_seed.py).
 //
 // Each run writes its traces and failure screenshots into `.artifacts/test-results/<run id>/`, and the
 // specs their evidence into `.artifacts/` (both ignored by git).
