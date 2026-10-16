@@ -502,11 +502,14 @@ describe('import order guards (hub#1060)', () => {
     expect(fonts).toBeGreaterThan(source.indexOf("from '@erplora/ui/shell';"));
   });
 
-  it("loads the panel's fill layout after the shell's theme and the typeface (panel-fill.css)", () => {
+  it("takes the panel's fill layout from the shell's theme, with no sheet of its own (the `.panel-fill` chain)", () => {
+    // The `.panel-fill` height chain moved to @erplora/ui (polish.css, loaded by createShell; guarded there by
+    // AppPage.test.ts): the SaaS keeps no copy that could drift from it.
     const source = readFileSync(join(HERE, 'main.ts'), 'utf8');
-    const fill = source.indexOf("import './panel-fill.css';");
-    expect(fill).toBeGreaterThan(-1);
-    expect(fill).toBeGreaterThan(source.indexOf("import './fonts.css';"));
+    expect(source).not.toContain('panel-fill.css');
+    expect(existsSync(join(HERE, 'panel-fill.css'))).toBe(false);
+    const polish = readFileSync(join(SAAS_DIR, 'packages', 'ui', 'src', 'shell', 'theme', 'polish.css'), 'utf8');
+    expect(polish).toMatch(/\.panel-fill\s*\{/);
   });
 
   it('keeps every <app>/frontend/routes.ts free of runtime imports: Vite hoists eager globs above the shell', () => {

@@ -32,8 +32,6 @@ import {
 } from '@erplora/ui/sdk';
 // After the shell's theme, so the SaaS's typeface (IBM Plex) wins the cascade.
 import './fonts.css';
-// The panel's lists fill their page between the topbar and the tabbar (the `.panel-fill` height chain).
-import './panel-fill.css';
 // The panel's chrome: «Skip to content», touch targets of 44 px, Back without ☰ in a detail page (audit 2026-10-14).
 import './panel-chrome.css';
 import { type Ref, ref } from 'vue';
