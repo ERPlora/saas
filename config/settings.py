@@ -77,8 +77,17 @@ SECURE_HSTS_PRELOAD = config("SECURE_HSTS_PRELOAD", default=False, cast=bool)
 # preload list stay opt-in (W005, W021).
 SILENCED_SYSTEM_CHECKS = ["security.W005", "security.W008", "security.W021"]
 
-# Its own port: hub-next's Vite owns 5173 and both run at once in development.
-VITE_DEV_SERVER = "http://localhost:5174"
+# Vite's dev server (`vite.config.ts` reads the same VITE_DEV_PORT): 5174, since hub-next's owns 5173 and
+# both run at once in development, unless a second checkout runs beside another one (the e2e of a branch,
+# README «Dos SaaS a la vez»). `runserver` hands the port it read to the Vite it starts (LIVE["vite"]);
+# `pnpm run dev` or the e2e on their own read the process environment only, not this repo's .env.
+_vite_dev_port = config("VITE_DEV_PORT", default="5174")
+VITE_DEV_PORT = int(_vite_dev_port) if _vite_dev_port.isdecimal() else 0
+if not 0 < VITE_DEV_PORT < 65536:
+    raise ImproperlyConfigured(
+        f"VITE_DEV_PORT must be a TCP port, not {_vite_dev_port!r}."
+    )
+VITE_DEV_SERVER = f"http://localhost:{VITE_DEV_PORT}"
 
 # Application definition
 
@@ -520,7 +529,12 @@ LIVE = {
         "user_scalable": True,
     },
     # This repo is its own pnpm workspace (packages/ui is a submodule inside it).
-    "vite": {"command": ["pnpm", "run", "dev"], "cwd": str(BASE_DIR)},
+    # With the port Django read (environment or .env): vite.config.ts reads VITE_DEV_PORT from the process
+    # environment only, and a Vite on another port than the page's leaves a page that never loads.
+    "vite": {
+        "command": ["env", f"VITE_DEV_PORT={VITE_DEV_PORT}", "pnpm", "run", "dev"],
+        "cwd": str(BASE_DIR),
+    },
 }
 
 # Email (allauth's codes and password reset, the «Google was linked» notice, until block 1 brings the

@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { readMailCode, readPasswordResetLink, waitForMail as waitForMailIn } from '@erplora/ui/testing/mail';
 import { type APIRequestContext, type APIResponse, type BrowserContext, type Page, test as base, expect } from '@playwright/test';
 
-import { HUB_DOUBLE_PORT, PANEL_MAIL_DIR } from './project';
+import { HUB_DOUBLE_PORT, PANEL_MAIL_DIR, VITE_PORT, viteHmrSocket } from './project';
 
 export { expect };
 
@@ -127,8 +127,8 @@ export async function signInThroughPage(page: Page, credentials: Credentials): P
   await expect(page).not.toHaveURL(/\/verify-email(\?|$)/);
 }
 
-/** Vite's hot-update socket (`server.hmr` of vite.config.ts; its path is `base`, with a token). */
-const VITE_HMR = /^ws:\/\/localhost:5174\//;
+/** This run's Vite's hot-update socket (`VITE_DEV_PORT`, panel/project.ts). */
+const VITE_HMR = viteHmrSocket(VITE_PORT);
 
 /**
  * Cuts `context`'s pages off from Vite's hot updates: the socket opens, answered by the spec, and

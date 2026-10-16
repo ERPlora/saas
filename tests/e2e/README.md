@@ -5,7 +5,7 @@ Playwright con **un** `playwright.config.ts` y dos proyectos, cada uno contra su
 | Proyecto | Specs | Servidor | Para qué |
 |---|---|---|---|
 | `public` | `*.spec.ts` de esta carpeta (hoy `store-docs.spec.ts` y `public-dark.spec.ts`, el modo claro/oscuro del sistema con sus capturas en `.artifacts/public-dark/`) | `runserver 127.0.0.1:8011` con `DEBUG=False`, `--insecure`, sin Vite | La web pública (plantillas de Django) con la CSP de producción. Pide `pnpm build` antes |
-| `panel` | `panel/*.spec.ts` | `runserver 127.0.0.1:8012 --novite --noreload` propio, con `DEBUG=True`, `HUB_INTERNAL_URL` a un puerto sin nadie (`:8019`) y el correo a ficheros, + Vite (`pnpm run dev`) en `:5174` | El panel (la SPA de `erplora.com`) tal como se sirve en desarrollo |
+| `panel` | `panel/*.spec.ts` | `runserver 127.0.0.1:8012 --novite --noreload` propio, con `DEBUG=True`, `HUB_INTERNAL_URL` a un puerto sin nadie (`:8019`) y el correo a ficheros, + Vite (`pnpm run dev`) en `:5174` (o en `VITE_DEV_PORT`) | El panel (la SPA de `erplora.com`) tal como se sirve en desarrollo |
 
 ## Cómo se corre
 
@@ -53,12 +53,38 @@ pnpm e2e --project=panel panel/login.spec.ts   # una spec
   `.artifacts/panel/mail/`; `waitForMail(destinatario, desde, enlace)` espera el que llega tras una
   acción y devuelve su enlace (invitación, contraseña). Los de ejecuciones anteriores se quedan y se
   saltan por fecha.
-- **`:5174` (Vite)**: si ya hay uno levantado, la e2e **lo reutiliza** y no lo para.
+- **`:5174` (Vite)**, o el puerto de `VITE_DEV_PORT` si se exporta (lo leen igual `config/settings.py`,
+  `vite.config.ts` y `panel/project.ts`; el Django de `:8012` lo recibe también): si ya hay uno levantado,
+  la e2e **lo reutiliza** y no lo para, **pero solo si es de este árbol**. Cada respuesta del Vite de
+  desarrollo lleva la cabecera `x-erplora-vite-root` con el directorio que sirve, y `globalSetup`
+  (`assertViteOfThisTree`) aborta la ejecución antes de tocar la BD si el Vite de ese puerto es de otro
+  checkout o no la manda (un Vite de un commit anterior a `VITE_DEV_PORT`): las specs probarían el
+  frontend de ese árbol y no el de la rama. El mensaje dice qué árbol lo sirve y cómo salir (otro puerto).
+  Se comprueba en toda ejecución, también con `--project=public`.
 - **`:8011`**: el servidor de producción de `public`, siempre propio (`reuseExistingServer: false`):
   si el puerto está ocupado, la ejecución no arranca. Se levanta en toda ejecución, también con
   `--project=panel` (Playwright arranca todos los `webServer`).
 - **La e2e de la PoC del Hub** (`hub-next/tests/e2e/`) usa el SaaS de `:8001`; la del panel ya no lo
   toca.
+
+## Dos SaaS a la vez
+
+El Vite del SaaS escucha en `:5174` salvo que se defina `VITE_DEV_PORT`: `runserver` la lee del entorno o
+del `.env` y se la pasa al Vite que arranca; `pnpm run dev` o la e2e sueltos solo la leen del entorno (Vite
+no lee el `.env`), así que para la e2e hay que **exportarla**. Un segundo SaaS de desarrollo (otro
+worktree, el de una rama) va con su
+propio `runserver` y su propio Vite, nunca con el del primero:
+
+```bash
+VITE_DEV_PORT=5224 uv run python manage.py runserver 127.0.0.1:8051   # su Django y su Vite (5224)
+VITE_DEV_PORT=5225 pnpm e2e:ci tests/e2e/panel/invitation.spec.ts     # su e2e, con su Vite (sin `--`)
+```
+
+- Fuera de rango (`0`, `70000`, `abc`, vacía), Django (`ImproperlyConfigured`) y Vite se niegan a arrancar.
+- Con `VITE_DEV_PORT` exportada o en el `.env`, `uv run pytest` sigue leyendo el `5174` (`config/settings_pytest.py`) y la
+  variable se prueba en un proceso aparte.
+- Los puertos fijos de la e2e (`:8011`, `:8012`, `:8019`) no cambian: dos e2e del SaaS a la vez chocan
+  ahí, y Playwright lo dice al arrancar (`reuseExistingServer: false`).
 
 ## Datos sembrados
 

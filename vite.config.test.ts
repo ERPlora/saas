@@ -5,8 +5,9 @@ import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build, type Plugin, type PluginOption } from 'vite';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { VITE_ROOT_HEADER } from './tests/e2e/panel/project';
 import e2eConfig, { browserWindow } from './tests/e2e/playwright.config';
 import config, { FRONTEND_APPS } from './vite.config';
 
@@ -87,15 +88,47 @@ describe('vite.config', () => {
     expect(files.filter((file) => file.endsWith('.js')).length).toBeGreaterThan(0);
   });
 
-  it("runs the dev server on localhost:5174 only (hub-next's owns 5173), with absolute asset URLs and HMR there", () => {
-    // live/spa.py points DEBUG pages at http://localhost:5174/static/spa/{@vite/client,frontend/main.ts}.
-    expect(config.server).toMatchObject({
-      host: 'localhost',
-      port: 5174,
-      strictPort: true,
-      origin: 'http://localhost:5174',
-      hmr: { host: 'localhost', port: 5174 },
+  describe('VITE_DEV_PORT (a second checkout beside another one whose Vite owns 5174, as the e2e of a branch)', () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+      vi.resetModules();
     });
+
+    /** vite.config.ts as a process with `port` in VITE_DEV_PORT (`undefined`: not exported) loads it. */
+    async function configWith(port: string | undefined) {
+      vi.stubEnv('VITE_DEV_PORT', port);
+      vi.resetModules();
+      return (await import('./vite.config')).default;
+    }
+
+    it("runs the dev server on localhost:5174 only (hub-next's owns 5173), with absolute asset URLs and HMR there", async () => {
+      // live/spa.py points DEBUG pages at http://localhost:5174/static/spa/{@vite/client,frontend/main.ts}.
+      expect((await configWith(undefined)).server).toMatchObject({
+        host: 'localhost',
+        port: 5174,
+        strictPort: true,
+        origin: 'http://localhost:5174',
+        hmr: { host: 'localhost', port: 5174 },
+      });
+    });
+
+    it('moves the dev server, its asset URLs and HMR to that port, the one Django reads too', async () => {
+      expect((await configWith('5224')).server).toMatchObject({
+        host: 'localhost',
+        port: 5224,
+        strictPort: true,
+        origin: 'http://localhost:5224',
+        hmr: { host: 'localhost', port: 5224 },
+      });
+    });
+
+    it.each(['0', '65536', '70000', '-1', '5174x', ''])('refuses %j, which is no TCP port', async (port) => {
+      await expect(configWith(port)).rejects.toThrow(/^VITE_DEV_PORT must be a TCP port/);
+    });
+  });
+
+  it('says on every dev response which checkout it serves, so the e2e never tests another tree (tests/e2e/panel/project.ts)', () => {
+    expect(config.server?.headers).toEqual({ [VITE_ROOT_HEADER]: encodeURIComponent(SAAS_DIR) });
   });
 
   it('lists the apps with a frontend: accounts, hubs, billing and fiscal (round 16: no marketplace; apps and public have none)', () => {

@@ -158,6 +158,21 @@ def test_with_debug_the_vite_dev_server_may_serve_the_public_entry(settings):
     assert "ws://localhost:5174" in policy["connect-src"]
 
 
+def test_with_debug_the_public_policy_follows_the_vite_port(settings):
+    """VITE_DEV_PORT=5224 (config/settings.py): the public pages open that Vite and its HMR socket, not 5174."""
+    settings.DEBUG = True
+    settings.LIVE = {
+        **settings.LIVE,
+        "spa": {**settings.LIVE["spa"], "dev_server": "http://localhost:5224"},
+    }
+    policy = public_policy()
+
+    for directive in ("script-src", "connect-src", "style-src", "font-src", "img-src"):
+        assert "http://localhost:5224" in policy[directive]
+    assert "ws://localhost:5224" in policy["connect-src"]
+    assert "localhost:5174" not in " ".join(" ".join(sources) for sources in policy.values())
+
+
 def test_production_opens_nothing_to_a_dev_server(settings):
     settings.DEBUG = False
     joined = " ".join(" ".join(sources) for sources in public_policy().values())

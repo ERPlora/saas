@@ -107,19 +107,20 @@ PRODUCTION_ENV = {
 
 
 def _settings_in_a_fresh_process(
-    env: dict[str, str], expression: str
+    env: dict[str, str], expression: str, preamble: str = IGNORE_DOTENV
 ) -> subprocess.CompletedProcess:
-    # DEBUG too: the test run turns it on (config/settings_pytest.py), the fresh process must not inherit it.
+    # DEBUG and VITE_DEV_PORT too: the test run sets them (config/settings_pytest.py), the fresh process
+    # must not inherit them.
     base = {
         key: value
         for key, value in os.environ.items()
-        if key != "DEBUG" and not key.startswith(("GOOGLE_", "DJANGO_"))
+        if key not in ("DEBUG", "VITE_DEV_PORT") and not key.startswith(("GOOGLE_", "DJANGO_"))
     }
     return subprocess.run(
         [
             sys.executable,
             "-c",
-            f"{IGNORE_DOTENV}\nimport config.settings as s; print({expression})",
+            f"{preamble}\nimport config.settings as s; print({expression})",
         ],
         cwd=SAAS_NEXT,
         env={**base, **env},
@@ -229,9 +230,11 @@ def test_google_is_configured_as_in_todays_saas_plus_pkce(settings):
     assert settings.SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT is True
 
 
-# The SPA (packages/live): Vite on 5174, the debug CSP open to it, the user as the scope.
+# The SPA (packages/live): Vite on 5174 (VITE_DEV_PORT moves it), the debug CSP open to it, the user as
+# the scope.
 
 VITE_DEV_SERVER = "http://localhost:5174"
+DEVELOPMENT_ENV = {"DEBUG": "True"}
 
 
 def test_live_precedes_daphne_so_its_runserver_starts_vite_too():
@@ -287,6 +290,119 @@ def test_the_debug_csp_lets_the_saas_vite_dev_server_in():
     assert "require-trusted-types-for" not in settings.SECURE_CSP
 
 
+def test_the_vite_port_comes_from_the_environment():
+    """A second checkout runs beside another one whose Vite owns 5174 (the e2e of a branch, a worker's
+    SaaS): VITE_DEV_PORT moves Django's dev server and its debug CSP, script and HMR socket alike, as it
+    moves vite.config.ts."""
+    result = _settings_in_a_fresh_process(
+        {**DEVELOPMENT_ENV, "VITE_DEV_PORT": "5224"},
+        "(s.VITE_DEV_SERVER, s.LIVE['spa']['dev_server'],"
+        " {directive: [str(source) for source in sources] for directive, sources in s.SECURE_CSP.items()})",
+    )
+
+    assert result.returncode == 0, result.stderr
+    vite, dev_server, policy = ast.literal_eval(result.stdout.strip())
+    assert vite == dev_server == "http://localhost:5224"
+    expected = debug_policy("http://localhost:5224")
+    for directive in ("connect-src", "style-src", "font-src", "img-src"):
+        assert policy[directive] == [str(source) for source in expected[directive]]
+    assert "ws://localhost:5224" in policy["connect-src"]
+    assert not [
+        source for sources in policy.values() for source in sources if "5174" in source
+    ]
+
+
+def test_without_vite_dev_port_the_vite_port_stays_5174():
+    """Whoever does not export it keeps today's port."""
+    result = _settings_in_a_fresh_process(DEVELOPMENT_ENV, "s.LIVE['spa']['dev_server']")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == VITE_DEV_SERVER
+
+
+@pytest.mark.parametrize("port", ["0", "65536", "70000", "-1", "5174x", ""])
+def test_a_vite_port_that_is_no_tcp_port_refuses_to_start(port):
+    result = _settings_in_a_fresh_process(
+        {**DEVELOPMENT_ENV, "VITE_DEV_PORT": port}, "s.VITE_DEV_SERVER"
+    )
+
+    assert result.returncode != 0
+    assert "django.core.exceptions.ImproperlyConfigured: VITE_DEV_PORT must be a TCP port" in result.stderr
+
+
+def test_the_test_run_keeps_the_default_vite_port_whatever_the_shell_exports():
+    """A developer running two SaaS at once exports VITE_DEV_PORT in the shell; the suite still reads
+    the default port (config/settings_pytest.py), so the tests above that pin 5174 hold."""
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            f"{IGNORE_DOTENV}\nimport config.settings_pytest as s; print(s.VITE_DEV_SERVER)",
+        ],
+        cwd=SAAS_NEXT,
+        env={**os.environ, "VITE_DEV_PORT": "5224"},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == VITE_DEV_SERVER
+
+
+# A python-decouple repository standing for a `.env` that carries VITE_DEV_PORT=5224: whichever branch
+# config/settings.py takes (the file exists or not), the value comes from "the file", not the environment.
+DOTENV_WITH_VITE_PORT_5224 = (
+    "import decouple\n"
+    "_dotenv = {'VITE_DEV_PORT': '5224'}\n"
+    "decouple.RepositoryEnv = lambda *args, **kwargs: _dotenv\n"
+    "decouple.RepositoryEmpty = lambda *args, **kwargs: _dotenv"
+)
+
+
+@pytest.mark.parametrize(
+    ("env", "preamble"),
+    [
+        pytest.param({**DEVELOPMENT_ENV, "VITE_DEV_PORT": "5224"}, IGNORE_DOTENV, id="environment"),
+        pytest.param(DEVELOPMENT_ENV, DOTENV_WITH_VITE_PORT_5224, id="dotenv-only"),
+    ],
+)
+def test_runserver_starts_vite_on_the_port_django_read(env, preamble):
+    """`manage.py runserver` starts Vite with LIVE["vite"] and the process environment (packages/live),
+    and vite.config.ts reads VITE_DEV_PORT from that environment only, while Django reads it from the
+    environment or from .env. The command carries the port Django chose, whatever its source: with the
+    variable only in .env, Django's page pointed at :5226 while its Vite tried :5174 (and died on the
+    Vite already there, or served a page that never loads)."""
+    result = _settings_in_a_fresh_process(
+        env, "(s.VITE_DEV_SERVER, s.LIVE['vite']['command'])", preamble
+    )
+
+    assert result.returncode == 0, result.stderr
+    vite, command = ast.literal_eval(result.stdout.strip())
+    assert vite == "http://localhost:5224"
+    assert command == ["env", "VITE_DEV_PORT=5224", "pnpm", "run", "dev"]
+
+
+def test_the_test_run_keeps_the_default_vite_port_whatever_the_dotenv_says():
+    """The developer's .env may carry VITE_DEV_PORT too (runserver honours it): the suite still reads the
+    default port (config/settings_pytest.py), so the tests above that pin 5174 hold."""
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            f"{DOTENV_WITH_VITE_PORT_5224}\nimport config.settings_pytest as s; print(s.VITE_DEV_SERVER)",
+        ],
+        cwd=SAAS_NEXT,
+        env={key: value for key, value in os.environ.items() if key != "VITE_DEV_PORT"},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == VITE_DEV_SERVER
+
+
 def test_live_serves_the_spa_of_this_project():
     live = settings.LIVE
     assert live["context_builder"] == "base.operations.UserContextBuilder"
@@ -300,7 +416,8 @@ def test_live_serves_the_spa_of_this_project():
     assert live["spa"]["title"] == "ERPlora Cloud"
     # The repo is its own pnpm workspace (packages/ui is a submodule inside it): Vite starts from here.
     assert live["vite"] == {
-        "command": ["pnpm", "run", "dev"],
+        # The port this run read (config/settings_pytest.py pins 5174), for the Vite it starts.
+        "command": ["env", "VITE_DEV_PORT=5174", "pnpm", "run", "dev"],
         "cwd": str(settings.BASE_DIR),
     }
 

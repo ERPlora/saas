@@ -1,11 +1,15 @@
-// The e2e's start. It first refuses a local database with unapplied migrations: the specs read what the
-// migrations seed (hubs.0013's plans), the run never migrates the database other sessions share, and
-// one left behind by another branch failed specs on correct code (audit2.spec.ts, 2026-10-16). Then it
+// The e2e's start. It first refuses a Vite of another checkout on the panel's Vite port (Playwright starts
+// or reuses its servers before globalSetup; panel/project.ts): the specs would test that tree's frontend.
+// Then it refuses a local database with unapplied migrations: the specs read what the migrations seed
+// (hubs.0013's plans), the run never migrates the database other sessions share, and one left behind
+// by another branch failed specs on correct code (audit2.spec.ts, 2026-10-16). Then it
 // seeds the app the store's specs open (store_docs_seed.py) and returns the teardown that removes it,
 // so the local database is left as it was even when a spec fails.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { assertViteOfThisTree, VITE_PORT } from './panel/project';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SAAS_DIR = resolve(HERE, '..', '..');
@@ -57,6 +61,16 @@ export function prepareDatabase(manage: ManagePy, seed: (action: 'seed' | 'clear
   return () => seed('clear');
 }
 
+/** Checks the panel's Vite (`checkVite`) before touching the database, then `prepareDatabase`. */
+export async function prepareRun(
+  checkVite: () => Promise<void>,
+  manage: ManagePy,
+  seed: (action: 'seed' | 'clear') => void,
+): Promise<() => void> {
+  await checkVite();
+  return prepareDatabase(manage, seed);
+}
+
 /** `manage.py` from saas/, with the environment the e2e's servers inherit (`.env` for the rest). */
 function runManagePy(args: string[]): CommandResult {
   const result = spawnSync('uv', ['run', 'python', 'manage.py', ...args], { cwd: SAAS_DIR, encoding: 'utf8' });
@@ -74,6 +88,6 @@ function seedStoreDocs(action: 'seed' | 'clear'): void {
   });
 }
 
-export default function globalSetup(): () => void {
-  return prepareDatabase(runManagePy, seedStoreDocs);
+export default function globalSetup(): Promise<() => void> {
+  return prepareRun(() => assertViteOfThisTree(SAAS_DIR, VITE_PORT), runManagePy, seedStoreDocs);
 }
