@@ -69,8 +69,10 @@ pnpm e2e --project=panel panel/login.spec.ts   # una spec
 
 ## Dos SaaS a la vez
 
-El Vite del SaaS escucha en `:5174` salvo que se exporte `VITE_DEV_PORT` (hay que **exportarla** en la
-shell: Vite no lee el `.env`). Un segundo SaaS de desarrollo (otro worktree, el de una rama) va con su
+El Vite del SaaS escucha en `:5174` salvo que se defina `VITE_DEV_PORT`: `runserver` la lee del entorno o
+del `.env` y se la pasa al Vite que arranca; `pnpm run dev` o la e2e sueltos solo la leen del entorno (Vite
+no lee el `.env`), así que para la e2e hay que **exportarla**. Un segundo SaaS de desarrollo (otro
+worktree, el de una rama) va con su
 propio `runserver` y su propio Vite, nunca con el del primero:
 
 ```bash
@@ -79,7 +81,7 @@ VITE_DEV_PORT=5225 pnpm e2e:ci tests/e2e/panel/invitation.spec.ts     # su e2e, 
 ```
 
 - Fuera de rango (`0`, `70000`, `abc`, vacía), Django (`ImproperlyConfigured`) y Vite se niegan a arrancar.
-- Con `VITE_DEV_PORT` exportada, `uv run pytest` sigue leyendo el `5174` (`config/settings_pytest.py`) y la
+- Con `VITE_DEV_PORT` exportada o en el `.env`, `uv run pytest` sigue leyendo el `5174` (`config/settings_pytest.py`) y la
   variable se prueba en un proceso aparte.
 - Los puertos fijos de la e2e (`:8011`, `:8012`, `:8019`) no cambian: dos e2e del SaaS a la vez chocan
   ahí, y Playwright lo dice al arrancar (`reuseExistingServer: false`).

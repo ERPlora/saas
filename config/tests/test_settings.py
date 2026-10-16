@@ -107,19 +107,20 @@ PRODUCTION_ENV = {
 
 
 def _settings_in_a_fresh_process(
-    env: dict[str, str], expression: str
+    env: dict[str, str], expression: str, preamble: str = IGNORE_DOTENV
 ) -> subprocess.CompletedProcess:
-    # DEBUG too: the test run turns it on (config/settings_pytest.py), the fresh process must not inherit it.
+    # DEBUG and VITE_DEV_PORT too: the test run sets them (config/settings_pytest.py), the fresh process
+    # must not inherit them.
     base = {
         key: value
         for key, value in os.environ.items()
-        if key != "DEBUG" and not key.startswith(("GOOGLE_", "DJANGO_"))
+        if key not in ("DEBUG", "VITE_DEV_PORT") and not key.startswith(("GOOGLE_", "DJANGO_"))
     }
     return subprocess.run(
         [
             sys.executable,
             "-c",
-            f"{IGNORE_DOTENV}\nimport config.settings as s; print({expression})",
+            f"{preamble}\nimport config.settings as s; print({expression})",
         ],
         cwd=SAAS_NEXT,
         env={**base, **env},
@@ -349,6 +350,59 @@ def test_the_test_run_keeps_the_default_vite_port_whatever_the_shell_exports():
     assert result.stdout.strip() == VITE_DEV_SERVER
 
 
+# A python-decouple repository standing for a `.env` that carries VITE_DEV_PORT=5224: whichever branch
+# config/settings.py takes (the file exists or not), the value comes from "the file", not the environment.
+DOTENV_WITH_VITE_PORT_5224 = (
+    "import decouple\n"
+    "_dotenv = {'VITE_DEV_PORT': '5224'}\n"
+    "decouple.RepositoryEnv = lambda *args, **kwargs: _dotenv\n"
+    "decouple.RepositoryEmpty = lambda *args, **kwargs: _dotenv"
+)
+
+
+@pytest.mark.parametrize(
+    ("env", "preamble"),
+    [
+        pytest.param({**DEVELOPMENT_ENV, "VITE_DEV_PORT": "5224"}, IGNORE_DOTENV, id="environment"),
+        pytest.param(DEVELOPMENT_ENV, DOTENV_WITH_VITE_PORT_5224, id="dotenv-only"),
+    ],
+)
+def test_runserver_starts_vite_on_the_port_django_read(env, preamble):
+    """`manage.py runserver` starts Vite with LIVE["vite"] and the process environment (packages/live),
+    and vite.config.ts reads VITE_DEV_PORT from that environment only, while Django reads it from the
+    environment or from .env. The command carries the port Django chose, whatever its source: with the
+    variable only in .env, Django's page pointed at :5226 while its Vite tried :5174 (and died on the
+    Vite already there, or served a page that never loads)."""
+    result = _settings_in_a_fresh_process(
+        env, "(s.VITE_DEV_SERVER, s.LIVE['vite']['command'])", preamble
+    )
+
+    assert result.returncode == 0, result.stderr
+    vite, command = ast.literal_eval(result.stdout.strip())
+    assert vite == "http://localhost:5224"
+    assert command == ["env", "VITE_DEV_PORT=5224", "pnpm", "run", "dev"]
+
+
+def test_the_test_run_keeps_the_default_vite_port_whatever_the_dotenv_says():
+    """The developer's .env may carry VITE_DEV_PORT too (runserver honours it): the suite still reads the
+    default port (config/settings_pytest.py), so the tests above that pin 5174 hold."""
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            f"{DOTENV_WITH_VITE_PORT_5224}\nimport config.settings_pytest as s; print(s.VITE_DEV_SERVER)",
+        ],
+        cwd=SAAS_NEXT,
+        env={key: value for key, value in os.environ.items() if key != "VITE_DEV_PORT"},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == VITE_DEV_SERVER
+
+
 def test_live_serves_the_spa_of_this_project():
     live = settings.LIVE
     assert live["context_builder"] == "base.operations.UserContextBuilder"
@@ -362,7 +416,8 @@ def test_live_serves_the_spa_of_this_project():
     assert live["spa"]["title"] == "ERPlora Cloud"
     # The repo is its own pnpm workspace (packages/ui is a submodule inside it): Vite starts from here.
     assert live["vite"] == {
-        "command": ["pnpm", "run", "dev"],
+        # The port this run read (config/settings_pytest.py pins 5174), for the Vite it starts.
+        "command": ["env", "VITE_DEV_PORT=5174", "pnpm", "run", "dev"],
         "cwd": str(settings.BASE_DIR),
     }
 

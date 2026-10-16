@@ -298,7 +298,7 @@ uv run python manage.py migrate
 uv run python manage.py demo_seed        # (de hubs) negocios a y b adoptados; owner@example.com / owner (hub_owner de a y b, sin admin), employee@example.com / employee (hub_employee de a y b: solo ve Demo, DEMO-F06) y platform@example.com / platform (superusuario, sin hubs)
 uv run python manage.py create_platform_user <email> --role admin|support [--password …]   # staff de plataforma
 uv run python manage.py runserver 127.0.0.1:8001   # también Vite (`pnpm run dev`) en :5174 (`--novite` lo omite)
-VITE_DEV_PORT=5224 uv run python manage.py runserver 127.0.0.1:8051   # un segundo SaaS (otro worktree): su Vite en :5224, exportada (Vite no lee .env)
+VITE_DEV_PORT=5224 uv run python manage.py runserver 127.0.0.1:8051   # un segundo SaaS (otro worktree): su Vite en :5224 (runserver se lo pasa a su Vite; vale también en .env)
 # http://localhost:8001/launch   (el código de cada login, en saas-next/.mail/)
 # Admin del Hub de un hub: http://localhost:8001/admin/ con platform@example.com / platform → Hubs
 # → «Abrir en el admin del Hub» → http://hubs.localhost:8000/admin/hub/a/ (el lado del Hub llega con
