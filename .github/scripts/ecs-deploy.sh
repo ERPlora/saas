@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# Deploys an image tag of the saas to one environment of the erplora-prod ECS cluster (PLAN-AWS §6;
-# plan 2026-10-14-entorno-pre), touching only that environment's saas task families and service:
-#   prod: families erplora-prod-{saas,saas-migrate,saas-cron}, service saas, image erplora/saas;
-#   pre:  families erplora-pre-{saas,saas-migrate} (no saas-cron), service saas-pre, image
-#         erplora/saas-pre; the containers keep the short names (saas, saas-migrate).
+# Deploys an image tag of the saas to one environment, in that environment's own ECS cluster
+# (erplora-<ENVIRONMENT>; PLAN-AWS §6; plan 2026-10-14-entorno-pre), touching only that
+# environment's saas task families and service:
+#   prod: cluster erplora-prod, families erplora-prod-{saas,saas-migrate,saas-cron}, service saas,
+#         image erplora/saas;
+#   pre:  cluster erplora-pre, families erplora-pre-{saas,saas-migrate} (no saas-cron), service
+#         saas-pre, image erplora/saas-pre; the containers keep the short names (saas, saas-migrate).
 #   0. reads the latest ACTIVE revision of every family and refuses them all, registering nothing,
 #      unless each one carries the tag Environment=<ENVIRONMENT> and the task and execution roles of
 #      its environment (role/erplora-<ENVIRONMENT>-…): ecs:RegisterTaskDefinition takes no resource,
@@ -28,8 +30,8 @@
 #   rollback workflow (ecs-rollback.sh); back to a release, the deploy workflow with that release.
 #
 # Env: AWS_REGION, REGISTRY (ECR registry host), IMAGE_TAG (image tag = commit SHA), ENVIRONMENT
-#      (prod|pre); optional CLUSTER (erplora-prod, shared by both environments), POLL_SECONDS (15),
-#      MIGRATE_TIMEOUT_SECONDS (3600), ROLLOUT_TIMEOUT_SECONDS (600).
+#      (prod|pre); optional CLUSTER (erplora-<ENVIRONMENT>: each environment has its own cluster),
+#      POLL_SECONDS (15), MIGRATE_TIMEOUT_SECONDS (3600), ROLLOUT_TIMEOUT_SECONDS (600).
 set -euo pipefail
 
 for var in AWS_REGION REGISTRY IMAGE_TAG; do
@@ -43,7 +45,7 @@ if [ "$ENVIRONMENT" != prod ] && [ "$ENVIRONMENT" != pre ]; then
   echo "::error::ENVIRONMENT must be prod or pre, not '$ENVIRONMENT'" >&2
   exit 1
 fi
-CLUSTER="${CLUSTER:-erplora-prod}"
+CLUSTER="${CLUSTER:-erplora-$ENVIRONMENT}"
 POLL_SECONDS="${POLL_SECONDS:-15}"
 MIGRATE_TIMEOUT_SECONDS="${MIGRATE_TIMEOUT_SECONDS:-3600}"
 ROLLOUT_TIMEOUT_SECONDS="${ROLLOUT_TIMEOUT_SECONDS:-600}"

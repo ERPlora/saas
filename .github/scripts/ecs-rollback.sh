@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Puts the saas's service of one environment (prod: saas, family erplora-prod-saas; pre: saas-pre,
+# Puts the saas's service of one environment, in that environment's own ECS cluster (prod: cluster
+# erplora-prod, service saas, family erplora-prod-saas; pre: cluster erplora-pre, service saas-pre,
 # family erplora-pre-saas; plan 2026-10-14-entorno-pre) back on the ACTIVE revision right before the
 # one its PRIMARY deployment runs and records that revision's image tag in
 # /erplora/<ENVIRONMENT>/saas/image_tag (aws-next README, "Imagen"):
@@ -19,7 +20,8 @@
 # keep the newer image until the next deploy; to go back everywhere, deploy the previous release.
 #
 # Env: CONFIRM (exactly ROLLBACK), AWS_REGION, ENVIRONMENT (prod|pre); optional CLUSTER
-#      (erplora-prod, shared by both environments), POLL_SECONDS (15), ROLLOUT_TIMEOUT_SECONDS (600).
+#      (erplora-<ENVIRONMENT>: each environment has its own cluster), POLL_SECONDS (15),
+#      ROLLOUT_TIMEOUT_SECONDS (600).
 set -euo pipefail
 
 if [ "${CONFIRM:-}" != ROLLBACK ]; then
@@ -35,7 +37,7 @@ if [ "$ENVIRONMENT" != prod ] && [ "$ENVIRONMENT" != pre ]; then
   echo "::error::ENVIRONMENT must be prod or pre, not '$ENVIRONMENT'; nothing was changed" >&2
   exit 1
 fi
-CLUSTER="${CLUSTER:-erplora-prod}"
+CLUSTER="${CLUSTER:-erplora-$ENVIRONMENT}"
 POLL_SECONDS="${POLL_SECONDS:-15}"
 ROLLOUT_TIMEOUT_SECONDS="${ROLLOUT_TIMEOUT_SECONDS:-600}"
 for var in POLL_SECONDS ROLLOUT_TIMEOUT_SECONDS; do
