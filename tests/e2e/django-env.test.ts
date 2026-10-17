@@ -1,6 +1,8 @@
+// @vitest-environment node
 // The environment of every Django process the e2e starts (django-env.ts): Django reads DEBUG as a
 // boolean (config/settings.py) and Playwright the same variable as the namespaces of its logs, so
-// `DEBUG=pw:webserver` reached `manage.py` and stopped the run before the first spec.
+// `DEBUG=pw:webserver` reached `manage.py` and stopped the run before the first spec. Node's
+// environment: it loads the Playwright config (vite.config.test.ts, «the tests that load Playwright»).
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { djangoEnv } from './django-env';

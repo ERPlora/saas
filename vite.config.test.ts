@@ -1,8 +1,10 @@
+// @vitest-environment node
 // The Vite config is a contract with Django (`packages/live/live/spa.py` and `LIVE["spa"]` in
-// `config/settings.py`): the dev server URLs and the manifest Django reads come from here.
-import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+// `config/settings.py`): the dev server URLs and the manifest Django reads come from here. Node's
+// environment: it loads the e2e's Playwright config (see «the tests that load Playwright» below).
+import { existsSync, globSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, relative } from 'node:path';
+import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build, type Plugin, type PluginOption } from 'vite';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -196,5 +198,33 @@ describe('e2e browser window', () => {
     expect(scripts.e2e).toBe('playwright test -c tests/e2e/playwright.config.ts');
     expect(scripts['e2e:headed']).toBe('E2E_HEADED=1 playwright test -c tests/e2e/playwright.config.ts');
     expect(scripts['e2e:ci']).toBe('CI=1 playwright test -c tests/e2e/playwright.config.ts');
+  });
+});
+
+/** A value import of `@playwright/test` or of an e2e config, which loads Playwright (`import type` loads nothing). */
+const LOADS_PLAYWRIGHT = /^import (?!type )[^;]*?['"](?:@playwright\/test|[^'"]*\/playwright\.config)['"]/m;
+
+/** The environment Vitest gives a test file: its docblock's (read anywhere in the file, as Vitest does), else the config's. */
+function environmentOf(code: string): string | undefined {
+  return code.match(/@(?:vitest|jest)-environment\s+([\w-]+)\b/)?.[1] ?? config.test?.environment;
+}
+
+// Playwright's bundled source-map-support takes a global `window` with an `XMLHttpRequest` for a browser: loaded in
+// happy-dom, it fetched its own files by synchronous XHR from happy-dom's http://localhost:3000, and every request
+// crashed a Node child process (`ECONNREFUSED 127.0.0.1:3000`) behind a green run. So whatever loads Playwright runs
+// in Node's environment, as the other Node-side tests (eslint.config.test.ts, tsconfig.test.ts…) already do.
+describe('the tests that load Playwright', () => {
+  it("run this file in Node's environment, with no browser for Playwright to fetch from", () => {
+    expect(['window', 'XMLHttpRequest'].filter((name) => name in globalThis)).toEqual([]);
+  });
+
+  it("give every test file that loads Playwright Node's environment", () => {
+    const files = globSync(config.test?.include ?? [], { cwd: SAAS_DIR }).filter(
+      (file) => !file.split(sep).includes('node_modules'),
+    );
+    const sources = new Map(files.map((file) => [file, readFileSync(join(SAAS_DIR, file), 'utf8')]));
+    const loading = files.filter((file) => LOADS_PLAYWRIGHT.test(sources.get(file) ?? ''));
+    expect(loading).toEqual(expect.arrayContaining(['vite.config.test.ts', join('tests', 'e2e', 'django-env.test.ts')]));
+    expect(loading.filter((file) => environmentOf(sources.get(file) ?? '') !== 'node')).toEqual([]);
   });
 });
