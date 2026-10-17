@@ -218,6 +218,36 @@ class TestTheAddress:
         assert slug == "a" * 29
         assert validate_hub_slug(slug) == slug
 
+    # Round 2026-10-17: ``demo-…`` names the demo hubs (live.slugs, ``allow_demo`` only in the Hub's registry). A
+    # name like «Demo Bar» proposed ``demo-bar``, which no customer may take: the address fell back to
+    # ``my-business`` and lost the name. Now the prefix loses its hyphen.
+
+    def test_a_name_that_starts_like_a_demo_keeps_its_words(self, owner, plans):
+        assert create(owner, name="Demo Bar").slug == "demobar"
+
+    def test_the_word_demo_alone_gets_room_to_be_an_address(self, owner, plans):
+        assert create(owner, name="Demo").slug == "demostore"
+
+    def test_a_second_demo_bar_is_numbered_as_any_other(self, owner, plans, make_user):
+        create(owner, name="Demo Bar")
+
+        assert create(make_user("other@example.com"), name="Demo Bar").slug == "demobar-2"
+
+    @pytest.mark.parametrize("name", ["Demo Bar", "demo-store", "DEMO--Tienda", "Demo_Bar"])
+    def test_no_proposed_address_is_a_demo_hubs(self, owner, plans, name):
+        slug = queries.free_slug(name)
+
+        assert not slug.startswith("demo-")
+        assert validate_hub_slug(slug) == slug
+
+    @pytest.mark.parametrize("slug", ["demo-bar", "demo-0123abcd"])
+    def test_a_chosen_demo_address_is_reserved(self, owner, plans, slug):
+        with pytest.raises(Conflict) as refused:
+            create(owner, slug=slug)
+
+        assert refused.value.code == "hubs.slug_reserved"
+        assert not Hub.objects.exists()
+
     @pytest.mark.parametrize(
         "name",
         ["__", "a_", "x--y", "Ñandú  café", "xn--bar", "-Bar-", "Bar__Manolo", "_-_-_"],

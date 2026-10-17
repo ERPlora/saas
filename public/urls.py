@@ -16,7 +16,7 @@ from public import store
 from public import industries
 from public import appdist, company, product, resources
 from public import help as help_center
-from public import landing, pricing
+from public import demo, landing, pricing
 
 app_name = "public"
 
@@ -50,6 +50,7 @@ PUBLIC_PREFIXES = (
     "help",
     "contact",
     "download",
+    "demo",
     "marketplace",
     "solutions",
     "modules",
@@ -92,6 +93,11 @@ urlpatterns = [
     path("app/", appdist.index, name="app"),
     path("app/download/<str:platform>/", appdist.download, name="app_download"),
     path("download/", appdist.ways_to_try, name="downloads"),
+    # The demo hubs (round 2026-10-17, PLAN-SAAS §3.5): the door (GET, never creates), the start (POST,
+    # limited per address) and the way back from the demo's /auth/login with its state (never indexed).
+    path("demo/", demo.index, name="demo"),
+    path("demo/start/", demo.start, name="demo_start"),
+    path("demo/enter/", demo.enter, name="demo_enter"),
     # Legal pages (L3b; the terms, which read Plan, L7).
     path("legal/privacy/", legal.privacy, name="privacy"),
     path("legal/terms/", legal.terms, name="terms"),

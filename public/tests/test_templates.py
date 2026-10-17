@@ -9,8 +9,8 @@ why (spec §8.4, plan §3.b):
   (``public/components/``, ``ep-*`` classes) and its ``layout.css`` classes are ``ep-*`` too, so the
   contracts that named ``ok-container``/``ok-table-surface``… name the ``ep-*`` classes now;
 * no CDN and no runtime icon fetch: one Vite entry (``frontend/public.ts``) and ``{% icon %}``;
-* no demo CTA: ``/demo`` is out of scope (block 7). The navbar contract asserted «Try the demo»
-  for a visitor; it now asserts it is absent;
+* the demo CTA is back (round 2026-10-17, PLAN-SAAS §3.5): the navbar offers «Try the demo» (``/demo/``,
+  public/demo.py) to a visitor, as the old one did, and not to a customer with a session;
 * no PWA manifest, back bar or app-shell head: the Tauri app does not open these pages in phase 1;
 * the CTA for a customer with a session goes to the SPA's launcher (``/launch``), the old
   ``overview:index`` dashboard does not exist in saas-next; its language comes from the ``_lang``
@@ -361,15 +361,16 @@ def test_no_messages_no_region(client):
 
 
 @pytest.mark.django_db
-def test_an_anonymous_visitor_is_offered_to_start_free_and_no_demo(client):
+def test_an_anonymous_visitor_is_offered_to_start_free_and_the_demo(client):
     navbar = navbar_of(get_page(client).content.decode())
 
     # The sign-in is the launcher's (``/launch``), which also signs up.
     assert "Start free" in navbar
     assert f'href="{LAUNCHER}"' in navbar
     assert "Dashboard" not in navbar
-    # The demo CTA is out of scope (block 7, plan §3.b): it is never painted.
-    assert "Try the demo" not in navbar
+    # The demo (round 2026-10-17): a look without an account.
+    assert "Try the demo" in navbar
+    assert f'href="{reverse("public:demo")}"' in navbar
 
 
 @pytest.mark.django_db
@@ -381,6 +382,7 @@ def test_a_customer_with_a_session_is_sent_to_the_launcher(client, ana):
     assert f'href="{LAUNCHER}"' in navbar
     assert "Dashboard" in navbar
     assert "Start free" not in navbar
+    assert "Try the demo" not in navbar
 
 
 @pytest.mark.django_db
@@ -793,7 +795,9 @@ def test_public_navigation_has_no_global_floating_back_control():
     assert not (PUBLIC_TEMPLATES / "public" / "partials" / "back_button.html").exists()
 
 
-def test_no_public_template_advertises_the_retired_local_offline_product_or_the_demo():
+def test_no_public_template_advertises_the_retired_local_offline_product_or_the_old_demo_host():
+    """The demo is ``/demo/`` (round 2026-10-17), always by ``{% url 'public:demo' %}``; never the old
+    server-side demo host, nor a typed path that the route could leave behind."""
     offenders = []
     for template in public_templates():
         source = without_comments(template.read_text(encoding="utf-8"))
@@ -802,13 +806,10 @@ def test_no_public_template_advertises_the_retired_local_offline_product_or_the_
             for phrase in RETIRED_LOCAL_OFFLINE_COPY
             if phrase.lower() in source.lower()
         ]
-        if re.search(
-            r"href=[\"']/demo/?[\"']|\{% url ['\"]demo['\"]|demo\.erplora\.com|Try the demo",
-            source,
-        ):
-            offenders.append(
-                f"{template.relative_to(PUBLIC_TEMPLATES)}: links to the demo"
-            )
+        if re.search(r"demo\.erplora\.com", source):
+            offenders.append(f"{template.relative_to(PUBLIC_TEMPLATES)}: links to the old demo host")
+        if re.search(r"(href|action)=[\"']/demo", source):
+            offenders.append(f"{template.relative_to(PUBLIC_TEMPLATES)}: types the demo's path")
 
     assert offenders == []
 

@@ -140,6 +140,7 @@ def ways_to_try(request: HttpRequest) -> HttpResponse:
 
     A: create a free cloud hub (primary). B: install the app on the device at the counter (its
     first launch also walks you through creating the free hub). The per-platform buttons go to
-    ``download``, which picks store or installer; the retired demo is never linked from here.
+    ``download``, which picks store or installer. The demo is ``/demo/`` (``public/demo.py``), offered by
+    the home and the navbar: it is no way to your own hub, so it is not one of these two.
     """
     return render(request, "public/downloads.html")

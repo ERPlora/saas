@@ -12,9 +12,9 @@ What changed, and why:
 
 * ``/`` is the landing (plan §3.c): it no longer redirects to the launcher. The project-wide URL name
   ``home`` still reverses to ``/`` (allauth's templates and the error pages use it);
-* no demo (plan §3.b, block 7): the tests that demanded «Try the demo» in the hero, the navbar, the
-  footer and the closing band now demand that it is NOT there; the hero keeps two doors, sign-up and
-  downloads;
+* the demo is back (round 2026-10-17, PLAN-SAAS §3.5): «Try the demo» in the hero and the closing band,
+  as in the old landing, leads to ``/demo/`` (public/demo.py); the hero has three doors, sign-up, the
+  demo and downloads;
 * the modules are apps (decision 19): the six featured cards and the twelve chips are the first
   ``listed`` apps by section and name (``apps.app.list``, spec §8.1; ``is_featured`` and downloads do
   not exist any more), counted free or ``premium``; without any listed app the apps blocks are
@@ -166,10 +166,10 @@ def test_the_pages_only_answer_safe_methods(client, path):
     assert client.post(path).status_code == 405
 
 
-# --- The hero, the navbar and the closing band: no demo (plan §3.b) ----------------------------
+# --- The hero, the navbar and the closing band: their doors, the demo's included (round 2026-10-17) --
 
 
-def test_the_hero_keeps_two_doors_sign_up_and_downloads(client):
+def test_the_hero_keeps_the_sign_up_and_the_downloads(client):
     """Asserted on the HERO alone: downloads also live in the footer."""
     hero = html_of(client).split("</section>")[0]
 
@@ -177,12 +177,15 @@ def test_the_hero_keeps_two_doors_sign_up_and_downloads(client):
     assert reverse("public:downloads") in hero
 
 
-def test_no_demo_anywhere_on_the_home_or_the_contact_page(client):
-    """/demo is out of scope (block 7): the old hero, navbar, footer and closing band linked it."""
-    for path in (HOME, CONTACT):
-        html = html_of(client, path)
-        assert "/demo" not in html, path
-        assert "Try the demo" not in html, path
+def test_the_home_offers_the_demo_in_the_hero_and_the_closing_band(client):
+    """As the old landing: the hero's third door and the closing band's second, both to ``/demo/``."""
+    html = html_of(client)
+    hero = html.split("</section>")[0]
+    closing = html.split("Start today")[-1]
+
+    for part in (hero, closing):
+        assert f'href="{reverse("public:demo")}"' in part
+        assert "Try the demo" in part
 
 
 def test_the_closing_band_offers_to_start_free(client):

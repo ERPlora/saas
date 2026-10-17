@@ -3830,3 +3830,91 @@ msgstr "No incluido"
 
 msgid "Agreed with you"
 msgstr "Acordado contigo"
+
+#: templates/public/demo/index.html templates/public/landing/home/_hero.html
+#: templates/public/landing/home/_cta_actions.html templates/public/partials/navbar.html
+msgid "Try the demo"
+msgstr "Prueba la demo"
+
+#: templates/public/demo/index.html
+msgid "Open a real ERPlora hub in your browser for 60 minutes: no account, no card, nothing to install."
+msgstr "Abre un hub real de ERPlora en tu navegador durante 60 minutos: sin cuenta, sin tarjeta y sin instalar nada."
+
+#: templates/public/demo/index.html
+msgid "Demo"
+msgstr "Demo"
+
+#: templates/public/demo/index.html
+msgid "Try ERPlora without signing up."
+msgstr "Prueba ERPlora sin registrarte."
+
+#: templates/public/demo/index.html
+msgid "The demo hub is yours for 60 minutes; no account, no card. Everything you type disappears when it ends."
+msgstr "El hub de demostración es tuyo durante 60 minutos; sin cuenta ni tarjeta. Todo lo que escribas desaparece cuando termina."
+
+#: templates/public/demo/index.html
+msgid "Your demo is running"
+msgstr "Tu demo está en marcha"
+
+#: templates/public/demo/index.html
+#, python-format
+msgid "It ends in %(minutes)s minute."
+msgid_plural "It ends in %(minutes)s minutes."
+msgstr[0] "Termina en %(minutes)s minuto."
+msgstr[1] "Termina en %(minutes)s minutos."
+
+#: templates/public/demo/index.html
+msgid "Your own demo hub"
+msgstr "Tu propio hub de demostración"
+
+#: templates/public/demo/index.html
+msgid "No account and no card"
+msgstr "Sin cuenta y sin tarjeta"
+
+#: templates/public/demo/index.html
+msgid "A real hub in your browser, nothing to install"
+msgstr "Un hub real en tu navegador, sin instalar nada"
+
+#: templates/public/demo/index.html
+msgid "It ends by itself after 60 minutes"
+msgstr "Termina solo a los 60 minutos"
+
+#: templates/public/demo/index.html
+msgid "The demo is closed for now. You can start free instead: it takes a minute."
+msgstr "La demo está cerrada por ahora. Puedes empezar gratis: se tarda un minuto."
+
+#: templates/public/demo/index.html
+msgid "This demo has ended. Start another one."
+msgstr "Esta demo ha terminado. Empieza otra."
+
+#: templates/public/demo/index.html
+msgid "The demo is full right now. Try again in a few minutes."
+msgstr "La demo está llena ahora mismo. Vuelve a intentarlo en unos minutos."
+
+#: templates/public/demo/index.html
+msgid "Too many demos from your network. Please try again in a little while."
+msgstr "Demasiadas demos desde tu red. Vuelve a intentarlo dentro de un rato."
+
+#: templates/public/demo/index.html
+msgid "The demo is not available right now."
+msgstr "La demo no está disponible ahora mismo."
+
+#: templates/public/demo/index.html
+msgid "We could not open your demo. Try again."
+msgstr "No hemos podido abrir tu demo. Vuelve a intentarlo."
+
+#: templates/public/demo/index.html
+msgid "Back to my demo"
+msgstr "Volver a mi demo"
+
+#: templates/public/demo/index.html
+msgid "Start another demo"
+msgstr "Empezar otra demo"
+
+#: templates/public/demo/index.html
+msgid "Try again"
+msgstr "Volver a intentarlo"
+
+#: templates/public/demo/index.html
+msgid "Want to keep what you do? Start free: it takes the same minute."
+msgstr "¿Quieres conservar lo que hagas? Empieza gratis: se tarda lo mismo."

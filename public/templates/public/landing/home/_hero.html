@@ -1,8 +1,8 @@
 {% load i18n icons %}
 {% comment %}
-  The hero of the landing: port of landing/home/sections/_hero.html (origin/develop). Two doors,
-  and they are not interchangeable: signing up commits you, downloading installs software. The
-  third one, «Try the demo», waits for /demo (block 7, plan §3.b). The count is of the listed apps
+  The hero of the landing: port of landing/home/sections/_hero.html (origin/develop). Three doors,
+  and they are not interchangeable: signing up commits you, the demo lets you look without giving
+  anything (the demo is /demo/, public/demo.py; round 2026-10-17) and downloading installs software. The count is of the listed apps
   (decision 19), shown only when there is one (spec §5.3). No uptime figure (there is no SLA) and
   no round-the-clock support: the reply time is the contact form's, 4 business hours (L8).
 {% endcomment %}
@@ -31,6 +31,10 @@
             <ion-button href="/launch" size="large">
               {% trans "Start free" %}
               <span slot="end">{% icon "lucide:arrow-right" %}</span>
+            </ion-button>
+            <ion-button fill="outline" size="large" href="{% url 'public:demo' %}">
+              <span slot="start">{% icon "lucide:sparkles" %}</span>
+              {% trans "Try the demo" %}
             </ion-button>
             <ion-button fill="clear" size="large" href="{% url 'public:downloads' %}">
               <span slot="start">{% icon "lucide:download" %}</span>

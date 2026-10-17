@@ -1,6 +1,10 @@
 {% load i18n icons %}
-{% comment %} The action of the landing's closing band. {% endcomment %}
+{% comment %} The actions of the landing's closing band: start free, or look first in a demo (/demo/). {% endcomment %}
 <ion-button size="large" color="light" href="/launch">
   <span slot="start">{% icon "lucide:gift" %}</span>
   {% trans "Start free" %}
+</ion-button>
+<ion-button size="large" fill="outline" href="{% url 'public:demo' %}">
+  <span slot="start">{% icon "lucide:sparkles" %}</span>
+  {% trans "Try the demo" %}
 </ion-button>

@@ -12,7 +12,12 @@ body-only v1), records every call and answers what the test asks for, with the H
 - ``POST /internal/sessions/revoke`` → 200;
 - ``GET /internal/usage?day=YYYY-MM-DD[&cursor=…]`` → 200 with the rows of ``usage[day]`` (each business's
   usage that day, as the test sets it), ``usage_page_size`` per page and ``next_cursor`` until the last;
-  422 without a ``day``.
+  422 without a ``day``;
+- ``POST /internal/demos`` (``{session_key, vertical, language}``) → 201 with a new ``demo-<8 hex>`` that ends
+  ``DEMO_MINUTES`` later, or 200 with the live one of that ``session_key`` (``created`` false): one live demo per
+  browser, as the Hub keeps it (plan ``docs/plans/2026-10-17-demo-hubs-fase-1.md`` §1.5);
+- ``POST /internal/demos/{slug}/codes`` (``{session_key, language}``) → 201 ``{code, expires_at}``; 404 for a demo
+  it never made, 410 ``base.hub_gone`` once it ended, 403 ``base.demo_not_owner`` for another browser's.
 
 A bad or missing signature answers 401 and is recorded as refused. Only tests use it; the e2e double
 of the whole ``/internal`` is ``tests/doubles/hub.py`` (lot L0-G).
@@ -20,8 +25,11 @@ of the whole ``/internal`` is ``tests/doubles/hub.py`` (lot L0-G).
 
 import json
 import re
+import secrets
 import threading
 import time
+import uuid
+from datetime import UTC, datetime, timedelta
 from urllib.parse import parse_qs, urlsplit
 from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -32,6 +40,9 @@ from accounts.signing import SIGNATURE_V2_HEADER, verify_signed
 HUB_PATH = re.compile(
     r"^/internal/hubs/(?P<id>[0-9a-f-]{36})(?P<rest>/state|/restore)?$"
 )
+DEMO_CODES_PATH = re.compile(r"^/internal/demos/(?P<slug>[a-z0-9-]+)/codes$")
+#: How long a demo of the double lives, as the Hub's ``DEMO_TTL_MINUTES``.
+DEMO_MINUTES = 60
 
 
 @dataclass
@@ -66,6 +77,9 @@ class HubDouble:
         #: ``GET /internal/usage``: the rows of each day (``"2026-10-13"`` → ``[{id, s3_bytes, …}]``), in pages.
         self.usage: dict[str, list[dict]] = {}
         self.usage_page_size = 500
+        #: ``POST /internal/demos``: the demos it made, by slug (``{id, slug, session_key, expires_at}``,
+        #: ``expires_at`` a datetime a test may move to the past).
+        self.demos: dict[str, dict] = {}
         self._lock = threading.Lock()
         double = self
 
@@ -158,6 +172,11 @@ class HubDouble:
             return 200, {"revoked": 1}
         if method == "GET" and urlsplit(path).path == "/internal/usage":
             return self._usage(parse_qs(urlsplit(path).query))
+        if method == "POST" and path == "/internal/demos":
+            return self._create_demo(body or {})
+        codes = DEMO_CODES_PATH.match(path)
+        if method == "POST" and codes is not None:
+            return self._create_demo_code(codes["slug"], body or {})
         match = HUB_PATH.match(path)
         if match is None:
             return 404, {"error": {"code": "not_found", "message": "No such route."}}
@@ -198,3 +217,33 @@ class HubDouble:
         rows = self.usage.get(day, [])
         end = start + self.usage_page_size
         return 200, {"day": day, "hubs": rows[start:end], "next_cursor": str(end) if end < len(rows) else None}
+
+    def _create_demo(self, body: dict) -> tuple[int, Any]:
+        """The browser's live demo (200) or a new one (201): one live demo per ``session_key``."""
+        now = datetime.now(UTC)
+        for demo in self.demos.values():
+            if demo["session_key"] == body.get("session_key") and demo["expires_at"] > now:
+                return 200, {**self._demo_out(demo), "created": False}
+        slug = f"demo-{uuid.uuid4().hex[:8]}"
+        self.demos[slug] = {
+            "id": str(uuid.uuid7()),
+            "slug": slug,
+            "session_key": body.get("session_key"),
+            "expires_at": now + timedelta(minutes=DEMO_MINUTES),
+        }
+        return 201, {**self._demo_out(self.demos[slug]), "created": True}
+
+    def _create_demo_code(self, slug: str, body: dict) -> tuple[int, Any]:
+        demo = self.demos.get(slug)
+        if demo is None:
+            return 404, {"error": {"code": "not_found", "message": "Unknown demo."}}
+        if demo["expires_at"] <= datetime.now(UTC):
+            return 410, {"error": {"code": "base.hub_gone", "message": "This demo has ended."}}
+        if demo["session_key"] != body.get("session_key"):
+            return 403, {"error": {"code": "base.demo_not_owner", "message": "Not your demo."}}
+        expires_at = datetime.now(UTC) + timedelta(seconds=60)
+        return 201, {"code": secrets.token_urlsafe(32), "expires_at": expires_at.isoformat()}
+
+    @staticmethod
+    def _demo_out(demo: dict) -> dict:
+        return {"id": demo["id"], "slug": demo["slug"], "expires_at": demo["expires_at"].isoformat()}

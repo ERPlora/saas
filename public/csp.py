@@ -9,7 +9,8 @@ injects with no nonce, saas#1559) and Trusted Types blocks Ionic's ``ion-icon`` 
 
 ``PublicCSPMiddleware`` sets ``response._csp_config``, the override Django's
 ``ContentSecurityPolicyMiddleware`` reads, so it sits after that one in ``MIDDLEWARE``. The policy
-is always enforced: saas-next has no report-only toggle.
+is always enforced: saas-next has no report-only toggle. A public view that set its own override keeps
+it: ``/demo/enter/`` (public/demo.py) widens ``form-action`` to the hubs' origin for its one form.
 """
 
 from __future__ import annotations
@@ -120,6 +121,6 @@ class PublicCSPMiddleware:
 
     def __call__(self, request):
         response = self.get_response(request)
-        if is_public(request, response):
+        if is_public(request, response) and getattr(response, "_csp_config", None) is None:
             response._csp_config = public_policy()
         return response

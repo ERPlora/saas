@@ -1,0 +1,118 @@
+{% extends "public/public_base.html" %}
+{% load i18n icons %}
+{% comment %}
+  /demo/ — the door to a demo hub (public/demo.py; PLAN-SAAS §3.5, round 2026-10-17). One page, one state
+  (`demo_state`), always 200; `data-testid="demo-state-<state>"` is the contract the tests and the e2e read,
+  so the copy can change without breaking them:
+
+    off         the demo is switched off (DEMO_ENABLED): only «Start free»
+    idle        the button that starts one (a POST: the GET never creates a demo)
+    ready       this browser has a live demo: back into it, and how long it has left
+    expired     its demo ended (or the Hub says so): start another one
+    full        the Hub's cap of live demos is reached: try again in a few minutes
+    throttled   this address started too many new demos this hour: «Start free» meanwhile
+    unavailable the Hub did not answer or refused: try again
+    failed      the demo's sign-in did not take the code: back into the live demo, or start one
+
+  The look is the public web's: the page hero and one card, as /download/.
+{% endcomment %}
+
+{% block title %}{% trans "Try the demo" %} · ERPlora{% endblock %}
+{% block meta_description %}{% trans "Open a real ERPlora hub in your browser for 60 minutes: no account, no card, nothing to install." %}{% endblock %}
+
+{% block page_content %}
+  {% trans "Demo" as hero_eyebrow %}
+  {% trans "Try ERPlora without signing up." as hero_title %}
+  {% trans "The demo hub is yours for 60 minutes; no account, no card. Everything you type disappears when it ends." as hero_description %}
+  {% include "public/partials/page_hero.html" with hero_compact=True %}
+
+  <section class="ep-section--compact ep-section--divider">
+    <div class="ep-container ep-section-content">
+      <div class="max-w-2xl mx-auto" data-testid="demo-state-{{ demo_state }}">
+        <ion-card class="ion-no-margin">
+          <ion-card-content class="p-6 flex flex-col gap-5">
+
+            {% if demo_state == "ready" %}
+              <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+                  {% icon "lucide:play" size=26 %}
+                </div>
+                <div>
+                  <ion-card-title class="mb-2">{% trans "Your demo is running" %}</ion-card-title>
+                  <p class="text-fg/65 m-0">
+                    <time datetime="{{ demo.expires_at|date:'c' }}">{% blocktrans trimmed count minutes=demo.minutes_left %}It ends in {{ minutes }} minute.{% plural %}It ends in {{ minutes }} minutes.{% endblocktrans %}</time>
+                  </p>
+                </div>
+              </div>
+
+            {% elif demo_state == "idle" %}
+              <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+                  {% icon "lucide:sparkles" size=26 %}
+                </div>
+                <div>
+                  <ion-card-title class="mb-3">{% trans "Your own demo hub" %}</ion-card-title>
+                  <ul class="space-y-2 text-sm m-0 p-0 list-none">
+                    <li class="flex gap-2 items-start"><span class="text-success mt-1">{% icon "lucide:check" size=14 %}</span><span>{% trans "No account and no card" %}</span></li>
+                    <li class="flex gap-2 items-start"><span class="text-success mt-1">{% icon "lucide:check" size=14 %}</span><span>{% trans "A real hub in your browser, nothing to install" %}</span></li>
+                    <li class="flex gap-2 items-start"><span class="text-success mt-1">{% icon "lucide:check" size=14 %}</span><span>{% trans "It ends by itself after 60 minutes" %}</span></li>
+                  </ul>
+                </div>
+              </div>
+
+            {% else %}
+              {% if demo_state == "off" %}
+                {% trans "The demo is closed for now. You can start free instead: it takes a minute." as message %}
+                {% include "public/components/inline_feedback.html" with tone="neutral" message=message only %}
+              {% elif demo_state == "expired" %}
+                {% trans "This demo has ended. Start another one." as message %}
+                {% include "public/components/inline_feedback.html" with tone="info" message=message only %}
+              {% elif demo_state == "full" %}
+                {% trans "The demo is full right now. Try again in a few minutes." as message %}
+                {% include "public/components/inline_feedback.html" with tone="warning" message=message only %}
+              {% elif demo_state == "throttled" %}
+                {% trans "Too many demos from your network. Please try again in a little while." as message %}
+                {% include "public/components/inline_feedback.html" with tone="warning" message=message only %}
+              {% elif demo_state == "unavailable" %}
+                {% trans "The demo is not available right now." as message %}
+                {% include "public/components/inline_feedback.html" with tone="danger" message=message only %}
+              {% elif demo_state == "failed" %}
+                {% trans "We could not open your demo. Try again." as message %}
+                {% include "public/components/inline_feedback.html" with tone="danger" message=message only %}
+              {% endif %}
+            {% endif %}
+
+            {% comment %} The action: back into the live demo, else start one (or start free when no demo can be had now). {% endcomment %}
+            {% if demo %}
+              <ion-button href="{{ demo.url }}" expand="block" size="large">
+                {% trans "Back to my demo" %}
+                <span slot="end">{% icon "lucide:arrow-right" size=15 %}</span>
+              </ion-button>
+            {% elif demo_state == "off" or demo_state == "throttled" %}
+              <ion-button href="/launch" expand="block" size="large">
+                {% trans "Start free" %}
+                <span slot="end">{% icon "lucide:arrow-right" size=15 %}</span>
+              </ion-button>
+            {% else %}
+              <form method="post" action="{% url 'public:demo_start' %}" class="m-0">
+                {% csrf_token %}
+                <ion-button type="submit" expand="block" size="large" data-testid="demo-start">
+                  {% if demo_state == "idle" %}{% trans "Try the demo" %}{% elif demo_state == "expired" %}{% trans "Start another demo" %}{% else %}{% trans "Try again" %}{% endif %}
+                  <span slot="end">{% icon "lucide:arrow-right" size=15 %}</span>
+                </ion-button>
+              </form>
+            {% endif %}
+
+            {% if demo_state != "off" and demo_state != "throttled" %}
+              <p class="text-sm text-fg/65 m-0 text-center">
+                {% trans "Want to keep what you do? Start free: it takes the same minute." %}
+                <a href="/launch">{% trans "Start free" %}</a>
+              </p>
+            {% endif %}
+
+          </ion-card-content>
+        </ion-card>
+      </div>
+    </div>
+  </section>
+{% endblock %}

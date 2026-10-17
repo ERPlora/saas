@@ -65,6 +65,8 @@ class StaticPagesSitemap(PublicSitemap):
         ("public:contact", 0.6),
         ("public:terms", 0.4),
         ("public:collaborate", 0.5),
+        # The demo's door (round 2026-10-17): its GET never creates a demo, so a crawler only reads it.
+        ("public:demo", 0.6),
     )
 
     def items(self):

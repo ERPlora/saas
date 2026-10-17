@@ -21,9 +21,13 @@ verify v1 only, every body names the hub of its path (``id`` or ``hub_id``) and 
   §2.14).
 - ``get_usage`` → ``GET /internal/usage?day=YYYY-MM-DD[&cursor=…]``: one page of what the Hub measured that
   day of every business (PLAN-SAAS §5; ``collect_hub_usage``, lot L4-A). The cursor goes back as it came.
+- ``create_demo`` → ``POST /internal/demos``: a demo hub for one browser (PLAN-SAAS §3.5, round 2026-10-17;
+  ``public/demo.py``); ``create_demo_code`` → ``POST /internal/demos/{slug}/codes``: the one-time code that
+  browser posts to the demo's ``/auth/callback``.
 
 A 4xx raises ``HubRefused`` (with the Hub's error code); a 5xx, a timeout or no connection raises
-``HubUnavailable``. Production reaches the Hub by its private name (``HUB_INTERNAL_URL``, aws-next
+``HubUnavailable``. One 5xx is a refusal too: ``503 base.demo_full`` of ``create_demo``, the Hub's cap of live
+demos, which the visitor is told about («full») instead of «not available». Production reaches the Hub by its private name (``HUB_INTERNAL_URL``, aws-next
 Cloud Map: ``http://hub.erplora.internal:8000``); the ALB answers 404 to ``/internal`` from outside.
 """
 
@@ -44,6 +48,9 @@ from accounts.signing import signed_headers as _signed
 #: A slow Hub costs the request that pushed after its COMMIT this much at most; the work stays
 #: pending and ``reconcile_hub_states`` retries it.
 TIMEOUT_SECONDS = 5.0
+
+#: The 5xx codes of ``POST /internal/demos`` that are the Hub refusing, not the Hub being away.
+DEMO_REFUSALS = frozenset({"base.demo_full"})
 
 
 class HubUnavailable(Exception):
@@ -127,12 +134,35 @@ def get_usage(day: date, cursor: str | None = None) -> HubAnswer:
     return _call("GET", f"/internal/usage?{urlencode(query)}", None)
 
 
-def _call(method: str, path: str, payload: Any) -> HubAnswer:
-    status, raw = _exchange(method, path, payload)
+def create_demo(session_key: str, vertical: str | None, language: str) -> HubAnswer:
+    """A demo hub for the browser ``session_key`` names (a sha256 hex, never a cookie).
+
+    201 ``{id, slug, expires_at, created: true}`` for a new one; 200 with ``created: false`` when that browser
+    already has a live one, which costs the Hub's cap nothing. ``HubRefused(503, "base.demo_full")`` when the
+    cap of live demos is reached.
+    """
+    body = {"session_key": session_key, "vertical": vertical, "language": language}
+    return _call("POST", "/internal/demos", body, refusals=DEMO_REFUSALS)
+
+
+def create_demo_code(slug: str, session_key: str, language: str) -> HubAnswer:
+    """201 ``{code, expires_at}``: a one-time code into the demo ``slug`` for the browser that owns it.
+
+    The Hub refuses with 404 (no such demo), 410 ``base.hub_gone`` (it ended) or 403 ``base.demo_not_owner``
+    (another browser's).
+    """
+    return _call("POST", f"/internal/demos/{slug}/codes", {"session_key": session_key, "language": language})
+
+
+def _call(method: str, path: str, payload: Any, *, refusals: frozenset[str] = frozenset()) -> HubAnswer:
+    status, raw = _exchange(method, path, payload, refusals=refusals)
     return HubAnswer(status, _json(raw))
 
 
-def _exchange(method: str, path: str, payload: Any) -> tuple[int, bytes]:
+def _exchange(
+    method: str, path: str, payload: Any, *, refusals: frozenset[str] = frozenset()
+) -> tuple[int, bytes]:
+    """The status and body of the call; ``refusals``: the 5xx error codes that are a ``HubRefused`` too."""
     body = (
         b"" if payload is None else json.dumps(payload, separators=(",", ":")).encode()
     )
@@ -147,8 +177,9 @@ def _exchange(method: str, path: str, payload: Any) -> tuple[int, bytes]:
             return response.status, response.read()
     except urllib.error.HTTPError as failed:
         answer = _json(failed.read())
-        if 400 <= failed.code < 500:
-            error = answer.get("error", {}) if isinstance(answer, dict) else {}
+        error = answer.get("error", {}) if isinstance(answer, dict) else {}
+        error = error if isinstance(error, dict) else {}
+        if 400 <= failed.code < 500 or error.get("code") in refusals:
             raise HubRefused(
                 failed.code,
                 str(error.get("code") or "refused"),

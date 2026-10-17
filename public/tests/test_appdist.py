@@ -461,7 +461,7 @@ class TestWaysToTryPage:
         assert reverse("public:app") in html
         assert "/bridge/" not in html
 
-    def test_download_does_not_link_the_retired_server_side_demo(self, client):
+    def test_download_does_not_link_the_old_demo_host(self, client):
         assert "demo.erplora.com" not in client.get("/download/").content.decode()
 
     def test_download_does_not_promise_premium_apps_on_the_free_plan(self, client):

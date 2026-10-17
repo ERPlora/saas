@@ -68,6 +68,7 @@ PUBLIC_SEGMENTS = (
     "help",
     "contact",
     "download",
+    "demo",
     "marketplace",
     "solutions",
     "modules",
