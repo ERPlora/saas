@@ -133,9 +133,10 @@ inglés.
 ## Tipos
 
 Playwright solo quita los tipos de una spec al cargarla: no los comprueba. Los comprueba `pnpm typecheck`
-(y la CI), que tras el `vue-tsc` del frontend corre `tsc --noEmit -p tests/e2e` con `tests/e2e/tsconfig.json`:
+(y la CI), que tras el `vue-tsc --build` de la raíz (la SPA, la configuración y los tests de Vitest; ver
+`tsconfig.test.ts`) corre `tsc --noEmit -p tests/e2e` con `tests/e2e/tsconfig.json`:
 **todo** `.ts` de esta carpeta (specs, `fixtures.ts`, `global-setup.ts`, ayudantes y sus tests de Vitest),
-con `node` en sus `types` (`@types/node`); el `tsconfig.json` del frontend no lo pide (aunque los globales
-de Node ya le llegan por los tipos de Vite, que importan sus `*.ts` de la raíz). Un `.ts` nuevo, en cualquier
+con `node` en sus `types` (`@types/node`); el proyecto de la SPA (`tsconfig.app.json`) no tiene los tipos de
+Node, ni siquiera por un import. Un `.ts` nuevo, en cualquier
 subcarpeta, entra solo; `typecheck.test.ts` falla si alguno se queda fuera, si un error plantado en una spec
 del panel no sale o si `pnpm typecheck` deja de correr este proyecto.

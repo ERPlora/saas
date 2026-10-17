@@ -5,9 +5,9 @@
   "packageManager": "pnpm@10.34.7",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc --noEmit && vite build",
+    "build": "vue-tsc --build && vite build",
     "test": "vitest run",
-    "typecheck": "vue-tsc --noEmit && tsc --noEmit -p tests/e2e",
+    "typecheck": "vue-tsc --build && tsc --noEmit -p tests/e2e",
     "lint": "eslint .",
     "gen:public-icons": "node scripts/gen-public-icons.mjs",
     "e2e": "playwright test -c tests/e2e/playwright.config.ts",

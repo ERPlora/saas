@@ -1,0 +1,25 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.vitest.tsbuildinfo",
+    "types": ["node", "vite/client"],
+    "paths": {}
+  },
+  "include": [
+    "frontend/**/*.test.ts",
+    "frontend/**/__tests__/**/*",
+    "accounts/frontend/**/*.test.ts",
+    "accounts/frontend/**/__tests__/**/*",
+    "hubs/frontend/**/*.test.ts",
+    "hubs/frontend/**/__tests__/**/*",
+    "billing/frontend/**/*.test.ts",
+    "billing/frontend/**/__tests__/**/*",
+    "fiscal/frontend/**/*.test.ts",
+    "fiscal/frontend/**/__tests__/**/*",
+    "*.test.ts",
+    "vitest.setup.ts",
+    "frontend/env.d.ts",
+    "packages/ui/src/shell/shims.d.ts"
+  ],
+  "exclude": ["frontend/dist"]
+}

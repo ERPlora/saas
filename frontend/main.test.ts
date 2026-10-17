@@ -544,8 +544,8 @@ describe('root app guards (saas-next has no apps/: its apps live next to base/, 
     expect(apps.filter((app) => !globbed.includes(app))).toEqual([]);
   });
 
-  it('typechecks the frontend of every app main.ts globs (tsconfig.json)', () => {
-    const tsconfig = JSON.parse(readFileSync(join(SAAS_DIR, 'tsconfig.json'), 'utf8')) as { include: string[] };
+  it("typechecks the frontend of every app main.ts globs (the SPA's project, tsconfig.app.json)", () => {
+    const tsconfig = JSON.parse(readFileSync(join(SAAS_DIR, 'tsconfig.app.json'), 'utf8')) as { include: string[] };
     const [[, globbed]] = globbedApps();
     expect(tsconfig.include).toEqual(expect.arrayContaining(globbed.map((app) => `${app}/frontend/**/*`)));
     expect(tsconfig.include.filter((glob) => glob.startsWith('apps/'))).toEqual([]);

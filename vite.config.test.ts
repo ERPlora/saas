@@ -156,6 +156,7 @@ describe('vite.config', () => {
         ...FRONTEND_APPS.map((app) => `${app}/frontend/**/*.test.ts`),
         'vite.config.test.ts',
         'eslint.config.test.ts',
+        'tsconfig.test.ts',
         // The e2e's helpers (global-setup.test.ts); its Playwright specs (`*.spec.ts`) stay out.
         'tests/e2e/*.test.ts',
       ]),
