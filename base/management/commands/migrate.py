@@ -4,10 +4,13 @@
 The lock, ``pg_advisory_lock(hashtext('erplora.saas.migrate'))``, is a session lock taken on a
 connection of its own (the SaaS goes straight to Aurora, never through PgBouncer) before Django's
 migrate starts and held until it ends. A second run waits for it and then migrates whatever is left
-(usually nothing). Closing that connection releases the lock: at the end of the run, when it fails,
-and when the task dies (Postgres ends its session). Django takes a command from the first app of
-``INSTALLED_APPS`` that defines it and none before ``base`` defines ``migrate``, so this one wins,
-also for pytest-django, which creates the test database through it.
+(usually nothing). The run releases it when it ends, also when it fails, before closing that
+connection: Postgres ends a closed session (and drops its locks) a moment after the close, too late
+for a task asking right then. If the task dies, Postgres ends its session and the lock goes with it;
+if the session ends mid-run, the release fails and so does the run, since another migrate may have
+run alongside. Django takes a command from the first app of ``INSTALLED_APPS`` that defines it and
+none before ``base`` defines ``migrate``, so this one wins, also for pytest-django, which creates
+the test database through it.
 """
 
 from contextlib import contextmanager
@@ -37,4 +40,7 @@ def migration_lock(alias: str, stdout):
         if not taken:
             stdout.write("migrate: another migrate holds the lock, waiting for it.")
             session.execute(f"SELECT pg_advisory_lock({LOCK_KEY})")
-        yield
+        try:
+            yield
+        finally:
+            session.execute(f"SELECT pg_advisory_unlock({LOCK_KEY})")
