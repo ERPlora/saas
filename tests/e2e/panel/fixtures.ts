@@ -161,13 +161,61 @@ export async function sidewaysScroll(page: Page): Promise<string[]> {
   });
 }
 
-/** Settled: the fonts loaded and no transition of Ionic running (endless spinners aside). */
+/**
+ * Settled: the fonts loaded, no transition of Ionic running (endless spinners aside) and the page painted as it
+ * is now. The last one is what a screenshot right after `setViewportSize` needs: taken before the browser paints
+ * a frame at the new size, it repeats the top of the page at its bottom (`repeatedTop`).
+ */
 export async function settled(page: Page): Promise<void> {
   await page.evaluate(() => document.fonts.ready);
   await page.waitForFunction(() =>
     document
       .getAnimations()
       .every((animation) => animation.playState !== 'running' || animation.effect?.getTiming().iterations === Infinity),
+  );
+  // A frame's callbacks run before it is painted; the next frame's, once it has been.
+  await page.evaluate(() => new Promise<void>((painted) => requestAnimationFrame(() => requestAnimationFrame(() => painted()))));
+}
+
+/** The fewest rows `repeatedTop` counts as a stripe. */
+const STRIPE_MIN_ROWS = 8;
+
+/**
+ * How many rows at the bottom of `png`, a screenshot of `page`, repeat the first rows of the image: 0 when
+ * none. It is what a capture taken before the browser painted the page at its new size shows (the area the
+ * resize uncovered, filled with the top of the page): evidence of a screen nobody saw. A stripe of one flat
+ * colour (a background at both ends) does not count. Decoded in `page`'s browser: the e2e has no image library.
+ */
+export async function repeatedTop(page: Page, png: Buffer): Promise<number> {
+  return page.evaluate(
+    async ({ base64, minRows }) => {
+      const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+      const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+      const { width, height } = bitmap;
+      const context = new OffscreenCanvas(width, height).getContext('2d');
+      if (!context) throw new Error('repeatedTop: no 2d context to read the screenshot');
+      context.drawImage(bitmap, 0, 0);
+      const pixels = new Uint32Array(context.getImageData(0, 0, width, height).data.buffer);
+      const sameRow = (a: number, b: number) => {
+        for (let x = 0; x < width; x++) if (pixels[a * width + x] !== pixels[b * width + x]) return false;
+        return true;
+      };
+      const flatRow = (row: number) => {
+        for (let x = 1; x < width; x++) if (pixels[row * width + x] !== pixels[row * width]) return false;
+        return true;
+      };
+      for (let rows = Math.floor(height / 2); rows >= minRows; rows--) {
+        let repeated = true;
+        let flat = true;
+        for (let row = 0; row < rows && repeated; row++) {
+          repeated = sameRow(height - rows + row, row);
+          flat &&= flatRow(row);
+        }
+        if (repeated && !flat) return rows;
+      }
+      return 0;
+    },
+    { base64: png.toString('base64'), minRows: STRIPE_MIN_ROWS },
   );
 }
 
