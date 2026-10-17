@@ -6,7 +6,8 @@
 //     «Change card», and one grouped notice on Businesses with each business's way out;
 //   - R-11/R-13/R-14/R-20: «Skip to content», 44 px targets at 390, Back without ☰ in a business, the
 //     table's toolbar in one row from 834 to 1180 px.
-// Screenshots at 390, 834 and 1440 go to `$SHOTS_DIR` (/tmp/panel-fix2 by default) for the supervisor.
+// Screenshots at 390, 834 and 1440 go to `$SHOTS_DIR` (/tmp/panel-fix2 by default) for the supervisor, each one
+// refused when it repeats the top of the page at its bottom (taken before the page was painted at its size).
 import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -15,7 +16,18 @@ import { fileURLToPath } from 'node:url';
 import type { Page } from '@playwright/test';
 
 import { djangoEnv } from '../django-env';
-import { businessIdOf, expect, panelAccount, seedPanel, signIn, test, watchPageErrors } from './fixtures';
+import {
+  businessIdOf,
+  expect,
+  panelAccount,
+  repeatedTop,
+  seedPanel,
+  settled,
+  shot,
+  signIn,
+  test,
+  watchPageErrors,
+} from './fixtures';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const SHOTS_DIR = process.env.SHOTS_DIR ?? '/tmp/panel-fix2';
@@ -57,22 +69,24 @@ async function liveUnreachable(page: Page): Promise<void> {
   await page.route(/\/api\/live\?/, (route) => route.abort('failed'));
 }
 
-/** The page on screen (Ionic keeps the ones it left in the outlet, hidden). */
 /** An `ion-button`'s link: Ionic Vue sets `href` as a property of the element, not as an attribute. */
 const hrefOf = (button: ReturnType<Page['getByTestId']>) => button.evaluate((el) => (el as HTMLElement & { href?: string }).href ?? null);
 
+/** The page on screen (Ionic keeps the ones it left in the outlet, hidden). */
 const shown = (page: Page) => page.locator('ion-router-outlet > .ion-page:not(.ion-page-hidden)').last();
 
-async function settle(page: Page): Promise<void> {
-  await page.evaluate(() => document.fonts.ready);
-  await page.waitForFunction(() =>
-    document.getAnimations().every((animation) => animation.playState !== 'running' || animation.effect?.getTiming().iterations === Infinity),
-  );
-}
+/** Phone, tablet and desktop, one after another on the same page, as the launcher and Businesses are shot. */
+const SHOT_SIZES = [
+  { width: 390, height: 844 },
+  { width: 834, height: 900 },
+  { width: 1440, height: 900 },
+] as const;
 
+/** A screenshot for the supervisor, refused when it is not the page as painted (`repeatedTop`). */
 async function snap(page: Page, name: string): Promise<void> {
-  await settle(page);
-  await page.screenshot({ path: join(SHOTS_DIR, `${name}.png`) });
+  await settled(page);
+  const png = await page.screenshot({ path: join(SHOTS_DIR, `${name}.png`) });
+  expect(await repeatedTop(page, png), `${name}.png repeats the top of the page at its bottom`).toBe(0);
 }
 
 test.describe('R-04/R-08: a failure is never an empty page nor a spinner for ever', () => {
@@ -154,14 +168,32 @@ test.describe('R-06/R-07/R-09/R-15: the way to pay outside Billing', () => {
     await expect(page.locator('ion-app')).not.toContainText('7 more days');
     await expect(plaza.getByTestId('unpaid-change-card')).toBeVisible();
     expect(await hrefOf(norte.getByTestId('unpaid-pay'))).toBe('https://invoice.stripe.com/i/e2e-billing-norte');
-    for (const width of [390, 834, 1440]) {
-      await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
-      await snap(page, `launch-past-due-${width}`);
+    for (const size of SHOT_SIZES) {
+      await page.setViewportSize(size);
+      await snap(page, `launch-past-due-${size.width}`);
     }
     await page.setViewportSize({ width: 1440, height: 900 });
     await norte.getByTestId('unpaid-pay').click();
     await expect(page).toHaveURL('https://invoice.stripe.com/i/e2e-billing-norte');
     expect(errors).toEqual([]);
+  });
+
+  // flow: ninguno — FIX tests/e2e. A capture right after `setViewportSize` used to be taken before the page was
+  // painted at the new size: an 87 px stripe at its bottom repeated the top of the page (8 in 12 at 834 px).
+  test('a screenshot right after a resize is the page as painted, never its top repeated at the bottom', async ({ page }) => {
+    await page.goto('/launch');
+    await expect(page.getByTestId('launch-business').filter({ hasText: 'Bar Norte' })).toBeVisible();
+    const striped: string[] = [];
+    for (let round = 0; round < 4; round++) {
+      for (const size of SHOT_SIZES) {
+        await page.setViewportSize(size);
+        await settled(page);
+        const png = await page.screenshot({ path: shot(`FIX-SAAS-E2E-CHROME-SHOT-STRIPE-${size.width}`) });
+        const rows = await repeatedTop(page, png);
+        if (rows) striped.push(`round ${round} at ${size.width}: ${rows} rows`);
+      }
+    }
+    expect(striped).toEqual([]);
   });
 
   test('Businesses groups the unpaid invoices in one notice, each business with its way out, days without the time', async ({ page }) => {
@@ -174,9 +206,9 @@ test.describe('R-06/R-07/R-09/R-15: the way to pay outside Billing', () => {
     expect(await hrefOf(lines.filter({ hasText: 'Bar Norte' }).getByTestId('unpaid-pay'))).toBe('https://invoice.stripe.com/i/e2e-billing-norte');
     expect(await group.innerText()).not.toMatch(/\d{1,2}:\d{2}/);
     await expect(page.locator('[data-testid^="businesses-unpaid-e2e"]')).toHaveCount(0);
-    for (const width of [390, 834, 1440]) {
-      await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
-      await snap(page, `businesses-unpaid-grouped-${width}`);
+    for (const size of SHOT_SIZES) {
+      await page.setViewportSize(size);
+      await snap(page, `businesses-unpaid-grouped-${size.width}`);
     }
   });
 });
@@ -234,7 +266,7 @@ test.describe('R-11/R-13/R-20: the chrome of every page', () => {
     for (const [name, path, ready] of screens) {
       await page.goto(path);
       await expect(page.locator(`[data-testid="${ready}"], [data-testid^="${ready}"]`).first()).toBeVisible();
-      await settle(page);
+      await settled(page);
       offenders.push(...(await smallTargets(page)).map((target) => `${name}: ${target}`));
       await snap(page, `${name}-390`);
     }
@@ -242,7 +274,7 @@ test.describe('R-11/R-13/R-20: the chrome of every page', () => {
     // audit 2 S-02).
     await page.goto('/businesses?create=1');
     await expect(page.getByTestId('create-free-limit-store')).toBeVisible();
-    await settle(page);
+    await settled(page);
     offenders.push(...(await smallTargets(page, true)).map((target) => `create dialog: ${target}`));
     await snap(page, 'businesses-create-390');
     expect(offenders).toEqual([]);
@@ -269,7 +301,7 @@ test.describe('R-13: Billing and the Store at 390 px', () => {
     for (const [name, path, ready] of screens) {
       await page.goto(path);
       await expect(page.getByTestId(ready).first()).toBeVisible();
-      await settle(page);
+      await settled(page);
       offenders.push(...(await smallTargets(page)).map((target) => `${name}: ${target}`));
       await snap(page, `${name}-390`);
     }
@@ -304,7 +336,7 @@ test.describe('R-14: the table’s toolbar in one row on a tablet and a laptop',
       await signIn(page.request, panelAccount('several'));
       await page.goto('/businesses');
       await expect(page.getByTestId('businesses-row').first()).toBeVisible();
-      await settle(page);
+      await settled(page);
       expect(await toolbarRows(page)).toBe(1);
       if (width === 834) await snap(page, 'businesses-834');
     });
@@ -314,7 +346,7 @@ test.describe('R-14: the table’s toolbar in one row on a tablet and a laptop',
       await signIn(page.request, panelAccount('billing'));
       await page.goto('/billing/invoices');
       await expect(page.getByTestId('invoices-row').first()).toBeVisible();
-      await settle(page);
+      await settled(page);
       expect(await toolbarRows(page)).toBe(1);
       await snap(page, `invoices-${width}`);
     });
