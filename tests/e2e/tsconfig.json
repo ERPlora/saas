@@ -1,0 +1,6 @@
+{
+  "extends": "../../packages/ui/tsconfig.base.json",
+  "compilerOptions": { "types": ["node"] },
+  "include": ["**/*.ts"],
+  "exclude": [".artifacts"]
+}

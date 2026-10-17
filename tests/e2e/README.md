@@ -129,3 +129,12 @@ Va en `panel/` e importa `test` y `expect` de `./fixtures`, no de `@playwright/t
 
 El idioma del proyecto `panel` es `en-US` sea cual sea el del equipo: las specs leen los textos en
 inglés.
+
+## Tipos
+
+Playwright solo quita los tipos de una spec al cargarla: no los comprueba. Los comprueba `pnpm typecheck`
+(y la CI), que tras el `vue-tsc` del frontend corre `tsc --noEmit -p tests/e2e` con `tests/e2e/tsconfig.json`:
+**todo** `.ts` de esta carpeta (specs, `fixtures.ts`, `global-setup.ts`, ayudantes y sus tests de Vitest),
+con los tipos de Node (`@types/node`) solo aquí, no en los del frontend. Un `.ts` nuevo, en cualquier
+subcarpeta, entra solo; `typecheck.test.ts` falla si alguno se queda fuera, si un error plantado en una spec
+del panel no sale o si `pnpm typecheck` deja de correr este proyecto.
