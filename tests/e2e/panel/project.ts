@@ -18,6 +18,8 @@ import { fileURLToPath } from 'node:url';
 
 import type { PlaywrightTestConfig, Project } from '@playwright/test';
 
+import { djangoEnv } from '../django-env';
+
 export const PANEL_URL = 'http://localhost:8012';
 
 /** Where the panel's Django writes the mails it sends (`tests/e2e/.artifacts/panel/mail/`, ignored by git). */
@@ -114,14 +116,14 @@ export function panelServers(saasDir: string, vitePort = VITE_PORT): WebServer[]
       url: 'http://127.0.0.1:8012/healthz',
       reuseExistingServer: false,
       timeout: 120_000,
-      env: {
-        DEBUG: 'True',
+      // Playwright puts its own environment under these, DEBUG included (django-env.ts).
+      env: djangoEnv(true, {
         HUB_INTERNAL_URL: `http://127.0.0.1:${HUB_DOUBLE_PORT}`,
         EMAIL_BACKEND: 'django.core.mail.backends.filebased.EmailBackend',
         EMAIL_FILE_PATH: PANEL_MAIL_DIR,
         // Its dev shell and CSP point at this run's Vite.
         VITE_DEV_PORT: String(vitePort),
-      },
+      }),
     },
     {
       name: 'panel-vite',

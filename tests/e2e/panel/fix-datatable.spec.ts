@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 
 import type { Page } from '@playwright/test';
 
+import { djangoEnv } from '../django-env';
 import { expect, panelAccount, qaAccount, settled, shot, signIn, test, VIEWPORTS, watchPageErrors } from './fixtures';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -22,7 +23,7 @@ const BILLING = qaAccount('BILLING', panelAccount('billing'));
 function seedBilling(action: 'seed' | 'clear'): void {
   execFileSync('uv', ['run', 'python', 'tests/e2e/panel/billing_seed.py', action], {
     cwd: SAAS_DIR,
-    env: { ...process.env, DEBUG: 'True' },
+    env: djangoEnv(true),
     stdio: 'pipe',
   });
 }

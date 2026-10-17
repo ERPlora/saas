@@ -13,6 +13,7 @@ import { execFileSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { djangoEnv } from '../django-env';
 import { businessIdOf, expect, panelAccount, qaAccount, signIn, test, VIEWPORTS, watchPageErrors } from './fixtures';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -22,7 +23,7 @@ mkdirSync(SHOTS_DIR, { recursive: true });
 function seedStore(action: 'seed' | 'clear'): void {
   execFileSync('uv', ['run', 'python', 'tests/e2e/panel/store_seed.py', action], {
     cwd: SAAS_DIR,
-    env: { ...process.env, DEBUG: 'True' },
+    env: djangoEnv(true),
     stdio: 'pipe',
   });
 }

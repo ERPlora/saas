@@ -32,6 +32,10 @@ pnpm e2e --project=panel panel/login.spec.ts   # una spec
   para poder seguirlo. La decide `browserWindow()` de `playwright.config.ts` (guarda en
   `vite.config.test.ts`); ningún proyecto ni spec la cambia por su cuenta.
 - `pnpm e2e:ci` pone `CI=1`: sin ventana y sin `slowMo` aunque se pida `E2E_HEADED=1`. Es la de la CI.
+- **Depurar**: `DEBUG=pw:webserver pnpm e2e:ci <spec>` enseña el arranque y la salida de cada servidor
+  (`DEBUG=pw:*`, todos los registros de Playwright). Los procesos de Django no heredan ese `DEBUG`, que leen
+  como booleano: cada uno lleva el suyo por `django-env.ts` (`:8011` apagado; `:8012`, `globalSetup` y los
+  seeds, encendido). El Vite sí lo hereda (`vite:*`).
 - Un solo worker (`workers: 1`): los proyectos comparten la BD local.
 - Trazas y capturas de los fallos en `.artifacts/test-results/<id de la ejecución>/`
   (`retain-on-failure`; se abren con `pnpm exec playwright show-trace <ruta>/trace.zip`). Las capturas

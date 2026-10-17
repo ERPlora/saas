@@ -21,6 +21,7 @@ import { fileURLToPath } from 'node:url';
 
 import { defineConfig } from '@playwright/test';
 
+import { djangoEnv } from './django-env';
 import { panelProject, panelServers } from './panel/project';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -72,14 +73,14 @@ export default defineConfig({
       url: `${BASE_URL}/robots.txt`,
       reuseExistingServer: false,
       timeout: 120_000,
-      env: {
-        DEBUG: 'False',
+      // Playwright puts its own environment under these, DEBUG included (django-env.ts).
+      env: djangoEnv(false, {
         // Production refuses to start without a key; this one only signs this local, throwaway server.
         SECRET_KEY: 'e2e-local-only-not-a-secret',
         // Production refuses to start without it either (fiscal/): a valid Fernet key that encrypts nothing here.
         FISCAL_DOCUMENTS_KEY: 'ZTJlLWxvY2FsLW9ubHktbm90LWEtc2VjcmV0LWtleSE=',
         ALLOWED_HOSTS: '127.0.0.1,localhost',
-      },
+      }),
     },
     ...panelServers(SAAS_DIR),
   ],
