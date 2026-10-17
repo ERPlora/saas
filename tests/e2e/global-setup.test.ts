@@ -1,9 +1,32 @@
 // The e2e's start (global-setup.ts) refuses a local database with unapplied migrations: the specs read
 // what the migrations seed (hubs.0013's plans), and a database left behind by another branch made
 // audit2.spec.ts fail on correct code. The check never applies anything: the database is shared.
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { assertMigrationsApplied, prepareDatabase, prepareRun, type CommandResult } from './global-setup';
+import globalSetup, { assertMigrationsApplied, prepareDatabase, prepareRun, type CommandResult } from './global-setup';
+
+/** Every process globalSetup starts: what it runs and the environment it hands over (`undefined`: inherits). */
+const started = vi.hoisted(() => [] as Array<{ args: string[]; env: NodeJS.ProcessEnv | undefined }>);
+
+// Nothing really starts: the default export too, which Vitest's interop reads the named imports from.
+vi.mock('node:child_process', () => {
+  const doubles = {
+    spawnSync: (_file: string, args: string[], options?: { env?: NodeJS.ProcessEnv }) => {
+      started.push({ args, env: options?.env });
+      return { status: 0, stdout: '', stderr: '' };
+    },
+    execFileSync: (_file: string, args: string[], options?: { env?: NodeJS.ProcessEnv }) => {
+      started.push({ args, env: options?.env });
+      return '';
+    },
+  };
+  return { ...doubles, default: doubles };
+});
+
+vi.mock('./panel/project', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./panel/project')>()),
+  assertViteOfThisTree: async () => {},
+}));
 
 const APPLIED: CommandResult = {
   status: 0,
@@ -171,5 +194,41 @@ describe('prepareRun', () => {
 
     teardown();
     expect(steps).toEqual(['vite', 'migrate', 'seed', 'clear']);
+  });
+});
+
+// Django reads DEBUG as a boolean (config/settings.py) and Playwright the same variable as the namespaces of
+// its logs: with `DEBUG=pw:webserver` exported, `manage.py migrate --check` stopped the run before the first
+// spec (`Invalid truth value: pw:webserver`). globalSetup's Django processes run with DEBUG on, like the seeds.
+describe('globalSetup', () => {
+  afterEach(() => {
+    started.length = 0;
+    vi.unstubAllEnvs();
+  });
+
+  it("runs its Django processes with DEBUG on, not with Playwright's DEBUG", async () => {
+    vi.stubEnv('DEBUG', 'pw:webserver');
+
+    const teardown = await globalSetup();
+    teardown();
+
+    expect(started.map(({ args }) => args.slice(2).join(' '))).toEqual([
+      'manage.py migrate --check --plan --no-color',
+      'tests/e2e/store_docs_seed.py seed',
+      'tests/e2e/store_docs_seed.py clear',
+    ]);
+    // What each process sees: the environment it is given, or the runner's when it inherits.
+    expect(started.map(({ env }) => (env ?? process.env).DEBUG)).toEqual(['True', 'True', 'True']);
+  });
+
+  it('hands them the rest of the environment (uv, the database of `.env`)', async () => {
+    vi.stubEnv('DEBUG', 'pw:*');
+    vi.stubEnv('DB_NAME', 'saas_e2e_debug_env');
+
+    (await globalSetup())();
+
+    for (const { env } of started) {
+      expect(env ?? process.env).toMatchObject({ PATH: process.env.PATH, DB_NAME: 'saas_e2e_debug_env' });
+    }
   });
 });

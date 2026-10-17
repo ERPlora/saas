@@ -9,6 +9,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { djangoEnv } from './django-env';
 import { assertViteOfThisTree, VITE_PORT } from './panel/project';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -71,9 +72,13 @@ export async function prepareRun(
   return prepareDatabase(manage, seed);
 }
 
-/** `manage.py` from saas/, with the environment the e2e's servers inherit (`.env` for the rest). */
+/** `manage.py` from saas/, with DEBUG on like the seeds (`djangoEnv`; `.env` for the rest). */
 function runManagePy(args: string[]): CommandResult {
-  const result = spawnSync('uv', ['run', 'python', 'manage.py', ...args], { cwd: SAAS_DIR, encoding: 'utf8' });
+  const result = spawnSync('uv', ['run', 'python', 'manage.py', ...args], {
+    cwd: SAAS_DIR,
+    env: djangoEnv(true),
+    encoding: 'utf8',
+  });
   return {
     status: result.status,
     stdout: result.stdout ?? '',
@@ -84,6 +89,7 @@ function runManagePy(args: string[]): CommandResult {
 function seedStoreDocs(action: 'seed' | 'clear'): void {
   execFileSync('uv', ['run', 'python', 'tests/e2e/store_docs_seed.py', action], {
     cwd: SAAS_DIR,
+    env: djangoEnv(true),
     stdio: 'inherit',
   });
 }

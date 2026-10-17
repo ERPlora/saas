@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { readMailCode, readPasswordResetLink, waitForMail as waitForMailIn } from '@erplora/ui/testing/mail';
 import { type APIRequestContext, type APIResponse, type BrowserContext, type Page, test as base, expect } from '@playwright/test';
 
+import { djangoEnv } from '../django-env';
 import { HUB_DOUBLE_PORT, PANEL_MAIL_DIR, VITE_PORT, viteHmrSocket } from './project';
 
 export { expect };
@@ -60,7 +61,7 @@ export interface Session {
 export function seedAccounts(): void {
   execFileSync('uv', ['run', 'python', 'manage.py', 'demo_seed'], {
     cwd: SAAS_DIR,
-    env: { ...process.env, DEBUG: 'True' },
+    env: djangoEnv(true),
     stdio: 'pipe',
   });
 }
@@ -208,7 +209,7 @@ export const qaAccount = (role: string, fallback: Credentials): Credentials => (
 export function seedPanel(action: 'seed' | 'clear' = 'seed'): void {
   execFileSync('uv', ['run', 'python', 'tests/e2e/panel/panel_seed.py', action], {
     cwd: SAAS_DIR,
-    env: { ...process.env, DEBUG: 'True' },
+    env: djangoEnv(true),
     stdio: 'pipe',
   });
 }
@@ -231,7 +232,7 @@ export function djangoPrint(code: string): string {
   const boot = 'import django,os;os.environ.setdefault("DJANGO_SETTINGS_MODULE","config.settings");django.setup()';
   return execFileSync('uv', ['run', 'python', '-c', `${boot}\n${code}`], {
     cwd: SAAS_DIR,
-    env: { ...process.env, DEBUG: 'True' },
+    env: djangoEnv(true),
     encoding: 'utf8',
     // stderr kept, not shown: uv's warnings; a failing snippet's traceback travels in the thrown error.
     stdio: ['ignore', 'pipe', 'pipe'],

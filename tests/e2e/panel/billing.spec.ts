@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 
 import type { Page, Request } from '@playwright/test';
 
+import { djangoEnv } from '../django-env';
 import { businessIdOf, djangoPrint, expect, panelAccount, qaAccount, signIn, test, watchPageErrors } from './fixtures';
 import { HUB_DOUBLE_PORT } from './project';
 
@@ -25,7 +26,7 @@ const WIDTHS = [390, 834, 1024, 1180, 1280, 1440] as const;
 function seedBilling(action: 'seed' | 'clear'): void {
   execFileSync('uv', ['run', 'python', 'tests/e2e/panel/billing_seed.py', action], {
     cwd: SAAS_DIR,
-    env: { ...process.env, DEBUG: 'True' },
+    env: djangoEnv(true),
     stdio: 'pipe',
   });
 }
