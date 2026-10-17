@@ -108,6 +108,17 @@ def _door(outcome: str | None = None) -> HttpResponseRedirect:
     return HttpResponseRedirect(f"{door}?state={outcome}" if outcome else door)
 
 
+def _to_a_hub(response: HttpResponse) -> HttpResponse:
+    """``response`` under the public policy, save that its form may also go to a hub's origin.
+
+    The door's «Try the demo» posts to ``start``, answered with a 302 to the demo's host, and Chrome holds that
+    redirect to ``form-action`` too (with ``'self'`` alone the button does nothing); the entry's form posts to the
+    demo's ``/auth/callback``. ``PublicCSPMiddleware`` keeps a policy the view set.
+    """
+    response._csp_config = {**public_policy(), "form-action": [CSP.SELF, settings.HUB_ORIGIN_PATTERN]}
+    return response
+
+
 def _spawn_rate(group, request: HttpRequest) -> str | None:
     """New demos per address; ``None`` (nothing counted) for a browser with a live demo, or with it off."""
     if not settings.DEMO_ENABLED or _live_demo(request) is not None:
@@ -117,18 +128,26 @@ def _spawn_rate(group, request: HttpRequest) -> str | None:
 
 @require_safe
 def index(request: HttpRequest) -> HttpResponse:
-    """The door, always 200: ``off``, ``idle``, ``ready``, or an outcome of a try (``OUTCOMES``)."""
-    live = _live_demo(request)
+    """The door, always 200: ``off``, ``idle``, ``ready``, or an outcome of a try (``OUTCOMES``).
+
+    ``?state=expired`` is also where the Hub's 410 page of a demo sends the visitor: a demo can end before its hour
+    (``manage.py demo_expire``, «Expire now» in the Hub admin) and the session, which only knows ``expires_at``,
+    would still offer it as live, so that address forgets it. The Hub is not asked on any visit: the door is a public
+    page (crawlers, reloads) and a demo that ended is found out anyway on «Back to my demo» (``enter`` hears 410). A
+    link that says ``expired`` by mistake costs nothing: the browser keeps its token, and «Try the demo» gets its
+    demo back from the Hub while it lasts.
+    """
+    asked = request.GET.get("state")
+    live = None if asked == "expired" else _live_demo(request)
     ended = live is None and SESSION_DEMO in request.session
     if ended:
         # Said once: the next visit is a fresh door.
         del request.session[SESSION_DEMO]
-    asked = request.GET.get("state")
     if not settings.DEMO_ENABLED:
         state = "off"
     elif ended:
         state = "expired"
-    elif asked in OUTCOMES and not (asked == "expired" and live is not None):
+    elif asked in OUTCOMES:
         state = asked
     else:
         state = "ready" if live is not None else "idle"
@@ -141,7 +160,7 @@ def index(request: HttpRequest) -> HttpResponse:
             "minutes_left": max(1, math.ceil(seconds / 60)),
             "url": hub_start_url(live["slug"]),
         }
-    return render(request, "public/demo/index.html", context)
+    return _to_a_hub(render(request, "public/demo/index.html", context))
 
 
 @require_POST
@@ -222,10 +241,9 @@ def enter(request: HttpRequest) -> HttpResponse:
             "next": next_path,
             "state": state,
             "staff_jump": False,
+            "demo_jump": True,
         },
     )
     response["Referrer-Policy"] = "no-referrer"
     response["X-Robots-Tag"] = "noindex, nofollow"
-    # The public policy, but this one form posts to the demo's origin (``PublicCSPMiddleware`` keeps it).
-    response._csp_config = {**public_policy(), "form-action": [CSP.SELF, settings.HUB_ORIGIN_PATTERN]}
-    return response
+    return _to_a_hub(response)

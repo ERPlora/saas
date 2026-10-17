@@ -213,8 +213,8 @@ Plan: `docs/plans/2026-10-17-demo-hubs-fase-1.md` (§1.6 y §1.8). Una demo es u
   crea**) → botón → `/demo/start/` (POST con CSRF) → `hub_client.create_demo` → 302 a
   `accounts.queries.hub_start_url(slug)` (`/auth/login?next=/` del hub demo) → el Hub pone su cookie de `state` y
   vuelve a `/demo/enter/?hub&next&state` → si la sesión es dueña de esa demo, `hub_client.create_demo_code` →
-  formulario auto-enviado `accounts/hub_login_form.html` al `/auth/callback` de la demo (el código nunca va en
-  una URL). Sin `state` → 302 a `hub_start_url` (empieza el baile); un `state` de más de 128 caracteres →
+  formulario auto-enviado `accounts/hub_login_form.html` («Opening your demo…», variable `demo_jump`) al
+  `/auth/callback` de la demo (el código nunca va en una URL). Sin `state` → 302 a `hub_start_url` (empieza el baile); un `state` de más de 128 caracteres →
   `/demo/?state=failed`; otra demo o ninguna en la sesión → `/demo/`.
 - **Quién es el navegador para el Hub** (`session_key` del contrato): el sha256 hex de un token aleatorio que se
   guarda en la sesión (`session["demo_owner"]`), nunca la cookie. **Cambio frente al plan** (que decía el sha256
@@ -233,17 +233,25 @@ Plan: `docs/plans/2026-10-17-demo-hubs-fase-1.md` (§1.6 y §1.8). Una demo es u
   respuesta que no nombra un hub `demo-…` con su `expires_at` (con zona) no se sigue nunca: estado `unavailable`.
 - **Estados de `/demo/`** (siempre 200, `data-testid="demo-state-<estado>"`): `off` (`DEMO_ENABLED=False`),
   `idle`, `ready` (demo viva: «Back to my demo» y los minutos que le quedan), `expired` (la sesión guardaba una
-  vencida, que se borra al decirlo, o el Hub respondió 410/404), `full`, `throttled`, `unavailable` (Hub caído u
-  otra negativa, que se registra en el log) y `failed` (el callback del Hub no aceptó el código:
-  `/demo/?state=failed`). El `?state=` de la dirección solo elige uno de esos mensajes; nunca hace pasar por
-  `ready` a quien no tiene demo.
+  vencida, que se borra al decirlo, el Hub respondió 410/404, o se llega desde la página 410 de la demo), `full`,
+  `throttled`, `unavailable` (Hub caído u otra negativa, que se registra en el log) y `failed` (el callback del Hub
+  no aceptó el código: `/demo/?state=failed`). El `?state=` de la dirección solo elige uno de esos mensajes; nunca
+  hace pasar por `ready` a quien no tiene demo.
+- **Caducidad antes de su hora** (`demo_expire`, «Expire now» del admin del Hub): la sesión solo sabe
+  `expires_at`, así que la página 410 de la demo enlaza a `/demo/?state=expired`, que **borra** `session["demo"]` y
+  pinta `expired`. `/demo/` no consulta al Hub en ninguna visita: es una página pública (rastreadores, recargas) y
+  una llamada firmada por visita no compensa, porque quien vuelve directo a `/demo/` y pulsa «Back to my demo» ya
+  aterriza en `expired` (`/demo/enter/` oye el 410). Un enlace `?state=expired` engañoso no cuesta nada: el token
+  `demo_owner` se queda y «Try the demo» devuelve la misma demo si seguía viva.
 - **Límites**: `DEMO_ENABLED` (interruptor único) y `DEMO_SPAWN_RATELIMIT` (`3/h` por dirección, django-ratelimit
   sobre la caché como el formulario de contacto, y **solo demos nuevas**: la función de la tasa devuelve `None`
   si el navegador ya tiene una viva). El tope global de demos vivas y «una por navegador» los aplica el Hub. El
   WAF limita además `/demo` por IP.
-- **CSP**: `/demo/enter/` es una página pública cuyo formulario va al origen de los hubs: la vista fija su propia
-  política (la pública con `form-action 'self' <HUB_ORIGIN_PATTERN>`) y `PublicCSPMiddleware` la respeta. El resto
-  de la web pública sigue con `form-action 'self'`.
+- **CSP**: `/demo/` y `/demo/enter/` fijan su propia política (la pública con
+  `form-action 'self' <HUB_ORIGIN_PATTERN>`) y `PublicCSPMiddleware` la respeta: el formulario de `/demo/enter/` va
+  al origen de los hubs, y el de `/demo/` va a `/demo/start/`, que responde con un 302 al host de la demo, y Chrome
+  aplica `form-action` también a esa redirección (con `'self'` solo, el botón no hacía nada; visto en prod el
+  2026-10-17). El resto de la web pública sigue con `form-action 'self'`.
 - **SEO**: `/demo/` está en el sitemap (0.6) y es indexable (su GET no crea nada); `/demo/enter/` lleva `noindex`
   (meta y `X-Robots-Tag`) y `no-store`.
 - **Direcciones `demo-`**: `live.slugs` (≥ `cc36065`) reserva el prefijo para los clientes, así que un slug elegido
@@ -251,9 +259,8 @@ Plan: `docs/plans/2026-10-17-demo-hubs-fase-1.md` (§1.6 y §1.8). Una demo es u
   (`Demo Bar` → `demobar`, `Demo` → `demostore`) en vez de caer en `my-business`.
 - **CTA**: «Try the demo» en el hero, en la banda final de la portada y en la barra para el visitante sin sesión.
 
-### Pendiente tras la demo del SaaS
+### e2e
 
-- **Carril Hub** (W1/W2 del plan): el receptor `/internal/demos` y `/internal/demos/{slug}/codes`, la rama demo de
-  `/auth/login` y `/auth/callback` y el reaper. Hasta entonces `/demo/` responde `unavailable` al pulsar.
-- La e2e de punta a punta (W4, `hub/tests/e2e/demo.spec.ts`); la del SaaS (`tests/e2e/demo-door.spec.ts`) cubre
-  la puerta sin Hub.
+La de punta a punta es la del Hub (`hub/tests/e2e/demo.spec.ts`, cómo correrla en `hub/tests/e2e/README.md`, «La
+demo»): necesita este SaaS con su `HUB_INTERNAL_URL` en el Hub de la pila. La del SaaS
+(`tests/e2e/demo-door.spec.ts`) cubre la puerta sin Hub.
