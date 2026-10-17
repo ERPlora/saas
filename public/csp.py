@@ -10,7 +10,8 @@ injects with no nonce, saas#1559) and Trusted Types blocks Ionic's ``ion-icon`` 
 ``PublicCSPMiddleware`` sets ``response._csp_config``, the override Django's
 ``ContentSecurityPolicyMiddleware`` reads, so it sits after that one in ``MIDDLEWARE``. The policy
 is always enforced: saas-next has no report-only toggle. A public view that set its own override keeps
-it: ``/demo/enter/`` (public/demo.py) widens ``form-action`` to the hubs' origin for its one form.
+it: ``/demo/`` and ``/demo/enter/`` (public/demo.py) widen ``form-action`` to the hubs' origin, where their
+form (or the redirect that answers it) goes.
 """
 
 from __future__ import annotations

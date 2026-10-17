@@ -6,8 +6,9 @@
   a log. Without JavaScript, the button sends it. `state`: the Hub's token of the browser that started
   the jump (login CSRF), handed back as it came; without one, no field (the Hub refuses the jump).
   `staff_jump`: the admin's «Open in the Hub admin», to the platform host's callback (ronda 13, PLAN §18).
+  `demo_jump`: the jump into a demo hub from the public `/demo/` (public/demo.py, round 2026-10-17).
 {% endcomment %}
-{% if staff_jump %}{% trans "Opening the Hub admin…" as opening %}{% else %}{% trans "Opening your business…" as opening %}{% endif %}
+{% if staff_jump %}{% trans "Opening the Hub admin…" as opening %}{% elif demo_jump %}{% trans "Opening your demo…" as opening %}{% else %}{% trans "Opening your business…" as opening %}{% endif %}
 <html lang="{{ LANGUAGE_CODE }}">
 <head>
     <meta charset="UTF-8">

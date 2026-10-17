@@ -17,6 +17,7 @@ from pathlib import Path
 import pytest
 from django.conf import settings
 from django.core.cache import cache
+from django.template.loader import render_to_string
 from django.test import Client
 from django.urls import reverse
 
@@ -176,10 +177,33 @@ def test_a_failed_entry_offers_the_live_demo_again(client, hub_double):
 
 
 @pytest.mark.django_db
-def test_a_live_demo_is_not_said_to_have_ended(client, hub_double):
+def test_the_hubs_ended_page_clears_a_demo_the_browser_still_holds(client, hub_double):
+    # The Hub's 410 page links here when a demo ended before its hour (``demo_expire``, «Expire now»): the session
+    # still holds it as live, and only this address tells the door otherwise. The Hub is not asked.
     start(client)
+    calls = len(hub_double.calls)
 
-    assert state_of(page(client.get(DOOR, {"state": "expired"}))) == "ready"
+    html = page(client.get(DOOR, {"state": "expired"}))
+
+    assert state_of(html) == "expired"
+    assert "This demo has ended. Start another one." in html
+    assert 'data-testid="demo-start"' in html
+    assert "Back to my demo" not in html
+    assert "demo" not in client.session
+    assert len(hub_double.calls) == calls
+    assert state_of(page(client.get(DOOR))) == "idle"
+
+
+@pytest.mark.django_db
+def test_a_demo_said_ended_by_mistake_is_given_back_by_the_hub(client, hub_double):
+    # ``?state=expired`` is only a link: the browser keeps the token that names it to the Hub, so «Try the demo»
+    # gets its demo back if it was still on, and spends no new one.
+    slug = start(client)
+    page(client.get(DOOR, {"state": "expired"}))
+
+    assert start(client) == slug
+    first, again = demo_calls(hub_double)
+    assert first.body["session_key"] == again.body["session_key"]
 
 
 @pytest.mark.django_db
@@ -363,19 +387,40 @@ def test_entering_posts_a_one_time_code_to_the_demos_callback(client, hub_double
     assert "no-store" in response["Cache-Control"]
 
 
+def form_action(response) -> list[str]:
+    return re.search(r"form-action ([^;]+)", response["Content-Security-Policy"]).group(1).split()
+
+
 @pytest.mark.django_db
-def test_the_entry_may_post_to_the_demos_host_and_the_door_may_not(client, hub_double):
-    """The public CSP allows forms to this origin only; the entry's form goes to the hub's origin."""
+def test_the_door_and_the_entry_may_send_their_form_to_a_demos_host(client, hub_double):
+    """The public CSP allows forms to this origin only, and Chrome holds the redirect a form answers to it too: the
+    door's «Try the demo» posts here and is answered with a 302 to the demo's host, the entry posts to that host."""
     slug = start(client)
 
-    entry_policy = enter(client, slug)["Content-Security-Policy"]
-    door_policy = client.get(DOOR)["Content-Security-Policy"]
+    # In this order: ``?state=expired`` forgets the demo, and then there is nothing to enter.
+    for response in (enter(client, slug), client.get(DOOR), client.get(DOOR, {"state": "expired"})):
+        assert form_action(response) == ["'self'", settings.HUB_ORIGIN_PATTERN]
+    assert form_action(client.get("/")) == ["'self'"]
 
-    entry_form = re.search(r"form-action ([^;]+)", entry_policy).group(1).split()
-    door_form = re.search(r"form-action ([^;]+)", door_policy).group(1).split()
-    assert settings.HUB_ORIGIN_PATTERN in entry_form
-    assert "'self'" in entry_form
-    assert door_form == ["'self'"]
+
+@pytest.mark.django_db
+def test_the_jump_into_a_demo_says_it_opens_the_demo(client, hub_double):
+    slug = start(client)
+
+    html = page(enter(client, slug))
+
+    assert "<title>Opening your demo… · ERPlora Cloud</title>" in html
+    assert "<p>Opening your demo…</p>" in html
+    assert "Opening your business…" not in html
+
+
+def test_the_jump_into_a_business_still_says_it_opens_the_business():
+    html = render_to_string(
+        "accounts/hub_login_form.html", {"callback_url": "http://a.localhost:8000/auth/callback", "code": "c"}
+    )
+
+    assert "<p>Opening your business…</p>" in html
+    assert "Opening your demo…" not in html
 
 
 @pytest.mark.django_db
@@ -547,6 +592,17 @@ def test_a_live_demo_is_told_in_spanish(client, hub_double):
 
     assert "Volver a mi demo" in html
     assert "Termina en 60 minutos." in html
+
+
+@pytest.mark.django_db
+def test_the_jump_into_a_demo_speaks_spanish(client, hub_double):
+    spanish(client)
+    slug = start(client)
+
+    html = page(enter(client, slug))
+
+    assert "<p>Abriendo tu demo…</p>" in html
+    assert "Opening your demo…" not in html
 
 
 @pytest.mark.django_db

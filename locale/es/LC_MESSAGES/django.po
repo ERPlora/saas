@@ -170,6 +170,10 @@ msgstr "La dirección a la que quería volver no es un hub de ERPlora, así que 
 msgid "Opening your business…"
 msgstr "Abriendo tu negocio…"
 
+#: accounts/templates/accounts/hub_login_form.html
+msgid "Opening your demo…"
+msgstr "Abriendo tu demo…"
+
 #: accounts/templates/accounts/hub_login_form.html:21
 #: templates/account/login.html:93
 msgid "Continue"
