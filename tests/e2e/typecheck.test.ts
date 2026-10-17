@@ -1,6 +1,6 @@
 // @vitest-environment node
 // `pnpm typecheck` covers the e2e: `tests/e2e/tsconfig.json` is the project of every `.ts` of this
-// folder (specs, fixtures, helpers and their Vitest tests), with Node's types for them alone, and the
+// folder (specs, fixtures, helpers and their Vitest tests), with `node` in its `types`, and the
 // typecheck script runs it after the frontend's. Without it Playwright only strips the types of a spec,
 // so a type error in one ran, and passed `pnpm typecheck`, unnoticed (the frontend's project reached 3
 // of these files through `vite.config.test.ts`).
@@ -62,7 +62,8 @@ describe('the e2e type-check project (tests/e2e/tsconfig.json)', () => {
     expect(program.getSemanticDiagnostics(spec).map((d) => d.code)).toContain(2322);
   }, 60_000);
 
-  it("gives Node's types to the e2e and keeps them out of the frontend's project", () => {
+  // Config only: the frontend's program already gets Node's globals through Vite's types (its root `*.ts`).
+  it("gives Node's types to the e2e and does not add them to the frontend's types", () => {
     expect(project(join(E2E_DIR, 'tsconfig.json')).options.types).toContain('node');
     expect(project(join(SAAS_DIR, 'tsconfig.json')).options.types ?? []).not.toContain('node');
   });
