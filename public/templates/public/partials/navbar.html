@@ -11,8 +11,8 @@
   Their bars and cross are drawn in CSS, the 22 × 2 px of the old component (L8).
 
   The actions follow the session (saas#1608): an anonymous visitor is offered to start free (the
-  sign-in, where an account is also created); a customer with a session gets one link into the
-  product, the SPA's launcher. No demo CTA: /demo is out of scope (block 7, plan §3.b). Reading
+  sign-in, where an account is also created) or to try the demo (/demo/, public/demo.py; round
+  2026-10-17); a customer with a session gets one link into the product, the SPA's launcher. Reading
   `user` makes Django stamp `Vary: Cookie`, so no shared cache serves one customer's navbar to the
   next visitor. Contract: public/tests/test_templates.py.
 {% endcomment %}
@@ -41,6 +41,9 @@
                     <span slot="end">{% icon "arrow-forward-outline" %}</span>
                 </ion-button>
                 {% else %}
+                <ion-button fill="clear" size="small" href="{% url 'public:demo' %}">
+                    {% trans "Try the demo" %}
+                </ion-button>
                 <ion-button href="/launch" size="small">
                     {% trans "Start free" %}
                     <span slot="end">{% icon "arrow-forward-outline" %}</span>

@@ -600,6 +600,11 @@ COOKIE_CONSENT_SECURE = not DEBUG
 
 # Messages of the contact form per address (django-ratelimit, over the default cache).
 CONTACT_FORM_RATELIMIT = config("CONTACT_FORM_RATELIMIT", default="10/h")
+# The demo hubs (PLAN-SAAS §3.5, round 2026-10-17; public/demo.py): one switch, and new demos per address
+# (django-ratelimit, over the default cache; a browser re-entering its live demo does not count). The Hub keeps
+# the cap of live demos (MAX_CONCURRENT_DEMOS) and the WAF limits /demo per IP too.
+DEMO_ENABLED = config("DEMO_ENABLED", default=True, cast=bool)
+DEMO_SPAWN_RATELIMIT = config("DEMO_SPAWN_RATELIMIT", default="3/h")
 # With Valkey down the per-IP limits of the app cannot count, and they let requests through instead
 # of refusing everyone. The ALB's WAF keeps limiting sign-in, sign-up, password, Google and the
 # headless API per IP meanwhile (aws-next/README.md, WAF of `stacks/shared`); the contact form has

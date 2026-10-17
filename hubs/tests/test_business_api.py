@@ -123,6 +123,12 @@ def test_a_reserved_or_taken_address_is_409_with_its_code(
             client, "/hubs/businesses", {"name": "Hub", "country": "ES", "slug": "hubs"}
         )
     ) == (409, "hubs.slug_reserved")
+    # The prefix of the demo hubs (round 2026-10-17): no customer takes ``demo-…``.
+    assert error(
+        post(
+            client, "/hubs/businesses", {"name": "Demo Bar", "country": "ES", "slug": "demo-bar"}
+        )
+    ) == (409, "hubs.slug_reserved")
     post(client, "/hubs/businesses", {"name": "Bar Manolo", "country": "ES"})
     client.force_login(make_user("other@example.com"))
     assert error(

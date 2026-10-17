@@ -31,7 +31,7 @@ from django.utils.translation import gettext_lazy
 from live.context import OperationContext
 from live.errors import NotFound, PermissionDenied, Unauthorized
 from live.operations import operation
-from live.slugs import is_reserved_hub_slug, validate_hub_slug
+from live.slugs import is_demo_slug, is_reserved_hub_slug, validate_hub_slug
 
 from accounts.models import HubMembership
 from accounts.queries import hub_origin
@@ -387,7 +387,9 @@ def base_slug(name: str) -> str:
     """The address a name proposes, always one the Hub accepts (``live.slugs``).
 
     ``slugify`` keeps ``_``, which no DNS label admits: it becomes ``-``, runs of hyphens collapse and
-    none is left at an end (also after the cut). A reserved or too short name gets ``-store``.
+    none is left at an end (also after the cut). A reserved or too short name gets ``-store``. ``demo-…`` is
+    the demo hubs' prefix (round 2026-10-17, ``live.slugs``): its hyphen goes, so «Demo Bar» proposes
+    ``demobar`` and «Demo» ``demostore``, never the fallback that loses the name.
     """
     base = re.sub(r"-+", "-", slugify(name).replace("_", "-"))[
         :SLUG_BASE_MAX_LENGTH
@@ -396,6 +398,8 @@ def base_slug(name: str) -> str:
         return FALLBACK_SLUG
     if is_reserved_hub_slug(base) or len(base) < 3:
         base = f"{base}-store"
+    if is_demo_slug(base):
+        base = base.replace("-", "", 1)
     return base if is_valid_slug(base) else FALLBACK_SLUG
 
 

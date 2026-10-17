@@ -243,3 +243,95 @@ def test_get_usage_refused_or_away_as_every_call(hub_double):
         hub_client.get_usage(date(2026, 10, 13))
 
     assert (refused.value.status, refused.value.code) == (409, "usage_not_ready")
+
+
+# --- POST /internal/demos and /internal/demos/{slug}/codes: the demo hubs (round 2026-10-17) --------
+
+import re  # noqa: E402
+
+#: What the SaaS sends for a browser: the sha256 hex of a token of its session, never the cookie.
+BROWSER = "ab" * 32
+OTHER_BROWSER = "cd" * 32
+
+
+def test_create_demo_asks_the_hub_for_a_demo_of_this_browser(hub_double):
+    answer = hub_client.create_demo(BROWSER, vertical=None, language="es")
+
+    assert answer.status == 201
+    assert re.fullmatch(r"demo-[0-9a-f]{8}", answer.body["slug"])
+    assert answer.body["created"] is True
+    (call,) = hub_double.calls_to("POST", "/internal/demos")
+    assert call.path == "/internal/demos"
+    assert call.body == {"session_key": BROWSER, "vertical": None, "language": "es"}
+    assert call.signed_v2
+
+
+def test_create_demo_again_from_the_same_browser_is_the_same_demo(hub_double):
+    first = hub_client.create_demo(BROWSER, vertical=None, language="en")
+
+    again = hub_client.create_demo(BROWSER, vertical=None, language="en")
+
+    assert (again.status, again.body["created"], again.body["slug"]) == (200, False, first.body["slug"])
+
+
+def test_a_full_demo_is_the_hub_refusing_not_the_hub_being_away(hub_double):
+    """503 ``base.demo_full`` is a deliberate answer (the global cap of live demos): the page says «full»."""
+    hub_double.answer(
+        "POST", r"^/internal/demos$", 503, {"error": {"code": "base.demo_full", "message": "Full."}}
+    )
+
+    with pytest.raises(HubRefused) as refused:
+        hub_client.create_demo(BROWSER, vertical=None, language="en")
+
+    assert (refused.value.status, refused.value.code) == (503, "base.demo_full")
+
+
+def test_any_other_5xx_of_a_demo_is_the_hub_being_away(hub_double):
+    hub_double.answer("POST", r"^/internal/demos$", 503, {"error": {"code": "unavailable"}})
+
+    with pytest.raises(HubUnavailable):
+        hub_client.create_demo(BROWSER, vertical=None, language="en")
+
+
+def test_only_the_demo_reads_a_full_cap_as_a_refusal(hub_double):
+    """The other calls keep «5xx = away», whatever the code: their work stays pending and is retried."""
+    hub_double.answer("PUT", "/state$", 503, {"error": {"code": "base.demo_full"}})
+
+    with pytest.raises(HubUnavailable):
+        hub_client.put_state(HUB_ID, SNAPSHOT)
+
+
+def test_create_demo_code_asks_for_a_one_time_code_of_that_demo(hub_double):
+    slug = hub_client.create_demo(BROWSER, vertical=None, language="en").body["slug"]
+
+    answer = hub_client.create_demo_code(slug, BROWSER, language="es")
+
+    assert answer.status == 201
+    assert answer.body["code"]
+    (call,) = hub_double.calls_to("POST", "/codes")
+    assert call.path == f"/internal/demos/{slug}/codes"
+    assert call.body == {"session_key": BROWSER, "language": "es"}
+    assert call.signed_v2
+
+
+@pytest.mark.parametrize(
+    ("status", "code"),
+    [(410, "base.hub_gone"), (404, "not_found"), (403, "base.demo_not_owner")],
+)
+def test_a_code_the_hub_will_not_mint_is_refused_with_its_code(hub_double, status, code):
+    hub_double.answer("POST", r"/codes$", status, {"error": {"code": code, "message": "No."}})
+
+    with pytest.raises(HubRefused) as refused:
+        hub_client.create_demo_code("demo-0123abcd", OTHER_BROWSER, language="en")
+
+    assert (refused.value.status, refused.value.code) == (status, code)
+
+
+def test_an_error_that_is_not_an_object_is_still_a_refusal(hub_double):
+    """``{"error": "…"}`` (not the envelope) must not turn a 4xx into an ``AttributeError`` of the client."""
+    hub_double.answer("POST", r"/codes$", 403, {"error": "forbidden"})
+
+    with pytest.raises(HubRefused) as refused:
+        hub_client.create_demo_code("demo-0123abcd", BROWSER, language="en")
+
+    assert (refused.value.status, refused.value.code) == (403, "refused")
