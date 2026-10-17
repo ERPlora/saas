@@ -2,9 +2,9 @@
 // The Vite config is a contract with Django (`packages/live/live/spa.py` and `LIVE["spa"]` in
 // `config/settings.py`): the dev server URLs and the manifest Django reads come from here. Node's
 // environment: it loads the e2e's Playwright config (see «the tests that load Playwright» below).
-import { existsSync, globSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, globSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, relative, sep } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build, type Plugin, type PluginOption } from 'vite';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -201,8 +201,27 @@ describe('e2e browser window', () => {
   });
 });
 
-/** A value import of `@playwright/test` or of an e2e config, which loads Playwright (`import type` loads nothing). */
-const LOADS_PLAYWRIGHT = /^import (?!type )[^;]*?['"](?:@playwright\/test|[^'"]*\/playwright\.config)['"]/m;
+/** The modules a file loads: `import … from`, `import '…'`, `export … from` and `import('…')` (types load nothing). */
+const RUNTIME_IMPORTS =
+  /^(?:import|export) (?!type )[^;]*?\bfrom ['"]([^'"]+)['"]|^import ['"]([^'"]+)['"]|(?<!typeof )\bimport\(['"]([^'"]+)['"]\)/gm;
+
+/** The file a relative import names: as written, with `.ts` or its directory's `index.ts`. */
+function resolveRelative(from: string, specifier: string): string | undefined {
+  const base = resolve(dirname(from), specifier);
+  return [base, `${base}.ts`, join(base, 'index.ts')].find((path) => statSync(path, { throwIfNoEntry: false })?.isFile());
+}
+
+/** Whether loading the module at `path` loads Playwright: it imports `@playwright/test` or a module of the project that does. */
+function loadsPlaywright(path: string, seen = new Set<string>()): boolean {
+  if (seen.has(path)) return false;
+  seen.add(path);
+  return [...readFileSync(path, 'utf8').matchAll(RUNTIME_IMPORTS)].some(([, ...specifiers]) => {
+    const specifier = specifiers.find(Boolean) ?? '';
+    if (specifier === '@playwright/test') return true;
+    const module = specifier.startsWith('.') ? resolveRelative(path, specifier) : undefined;
+    return module !== undefined && loadsPlaywright(module, seen);
+  });
+}
 
 /** The environment Vitest gives a test file: its docblock's (read anywhere in the file, as Vitest does), else the config's. */
 function environmentOf(code: string): string | undefined {
@@ -223,8 +242,33 @@ describe('the tests that load Playwright', () => {
       (file) => !file.split(sep).includes('node_modules'),
     );
     const sources = new Map(files.map((file) => [file, readFileSync(join(SAAS_DIR, file), 'utf8')]));
-    const loading = files.filter((file) => LOADS_PLAYWRIGHT.test(sources.get(file) ?? ''));
+    const loading = files.filter((file) => loadsPlaywright(join(SAAS_DIR, file)));
     expect(loading).toEqual(expect.arrayContaining(['vite.config.test.ts', join('tests', 'e2e', 'django-env.test.ts')]));
     expect(loading.filter((file) => environmentOf(sources.get(file) ?? '') !== 'node')).toEqual([]);
+  });
+
+  it('see Playwright loaded through a helper or a dynamic import, and not through types', () => {
+    const work = mkdtempSync(join(tmpdir(), 'saas-loads-playwright-'));
+    // In a template, so that this file's own source does not read as a dynamic import of Playwright.
+    const playwright = '@playwright/test';
+    const modules: Record<string, string> = {
+      'fixtures.ts': "import { test } from '@playwright/test';\nexport const fixture = test;\n",
+      'playwright.config.ts': "import { defineConfig } from '@playwright/test';\nexport default defineConfig({});\n",
+      'screens.ts': "import type { Page } from '@playwright/test';\nexport type Screen = Page;\nexport const kind = 'page';\n",
+      'through-helper.test.ts': "import { fixture } from './fixtures';\n",
+      'through-config.test.ts': "import config from './playwright.config.ts';\n",
+      'dynamic.test.ts': `it('loads', async () => {\n  await import('${playwright}');\n});\n`,
+      'types.test.ts': "import type { Screen } from './screens';\nimport { kind } from './screens';\nlet helper: typeof import('./fixtures');\n",
+      'ping.ts': "import { pong } from './pong';\nexport const ping = 1;\n",
+      'pong.ts': "import { ping } from './ping';\nexport const pong = 2;\n",
+      'cycle.test.ts': "import { ping } from './ping';\n",
+    };
+    for (const [name, code] of Object.entries(modules)) writeFileSync(join(work, name), code);
+    const tests = Object.keys(modules).filter((name) => name.endsWith('.test.ts'));
+    expect(tests.filter((name) => loadsPlaywright(join(work, name)))).toEqual([
+      'through-helper.test.ts',
+      'through-config.test.ts',
+      'dynamic.test.ts',
+    ]);
   });
 });
