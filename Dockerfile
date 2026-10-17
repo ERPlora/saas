@@ -25,10 +25,10 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY patches/ patches/
 COPY packages/ui/package.json packages/ui/package.json
 RUN pnpm install --frozen-lockfile
-# The code, packages/ui included (tsconfig.json extends ./packages/ui).
+# The code, packages/ui included (the tsconfig.*.json extend ./packages/ui).
 COPY . .
 # Type checking and tests are the CI's test job (`pnpm typecheck`, `pnpm test`): the image only
-# bundles (`pnpm build` = `vue-tsc --noEmit && vite build`).
+# bundles (`pnpm build` = `vue-tsc --build && vite build`).
 RUN pnpm exec vite build
 
 # 2. Python environment, compiled catalogues and STATIC_ROOT.
