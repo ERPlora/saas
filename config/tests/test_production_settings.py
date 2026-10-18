@@ -86,13 +86,13 @@ def test_production_verifies_the_database_certificate_against_the_rds_bundle():
     assert options["sslrootcert"] == "/etc/ssl/certs/rds-global-bundle.pem"
     # The task's name in pg_stat_activity (saas, saas-migrate, saas-cron).
     assert options["application_name"] == "saas"
-    assert options["pool"] == {"min_size": 1, "max_size": 8, "timeout": 5}
+    assert options["pool"] == {"min_size": 1, "max_size": 8, "max_idle": 60, "timeout": 5}
 
 
 def test_without_tls_variables_the_connection_options_are_only_the_pool_and_its_timeouts():
     """Local Postgres (compose.yaml) has no TLS: nothing is added unless the variable is set."""
     only_the_pool = {
-        "pool": {"min_size": 1, "max_size": 8, "timeout": 5},
+        "pool": {"min_size": 1, "max_size": 8, "max_idle": 60, "timeout": 5},
         "connect_timeout": 5,
     }
     assert production("s.DATABASES['default']['OPTIONS']") == only_the_pool
@@ -102,6 +102,24 @@ def test_without_tls_variables_the_connection_options_are_only_the_pool_and_its_
         )
         == only_the_pool
     )
+
+
+def test_a_burst_of_pooled_connections_is_given_back_within_minutes():
+    """psycopg_pool closes one connection above min_size per max_idle, 600 s by default: after a
+    burst the idle SaaS kept up to 8 connections for over an hour (4 measured on 2026-10-18). With
+    60 s it is back to one within 7 minutes; that one stays open for the next request (PLAN-DB
+    «Conexiones», round 2026-10-18). As in the Hub."""
+    pool = production("s.DATABASES['default']['OPTIONS']['pool']")
+    assert (pool["min_size"], pool["max_size"], pool["max_idle"]) == (1, 8, 60)
+
+
+@pytest.mark.django_db
+def test_the_running_pool_closes_idle_connections_after_60_seconds():
+    """Django hands OPTIONS["pool"] to psycopg_pool as is: the pool this process opened has it."""
+    from django.db import connection
+
+    connection.ensure_connection()
+    assert (connection.pool.min_size, connection.pool.max_idle) == (1, 60)
 
 
 def test_a_dead_database_fails_within_db_connect_timeout_seconds():
