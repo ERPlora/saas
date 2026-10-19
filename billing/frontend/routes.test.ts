@@ -6,9 +6,15 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { RouteComponent } from 'vue-router';
 import { createMemoryHistory, createRouter } from 'vue-router';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import routes from './routes';
+
+// The pages, stubbed: this file checks which page each route loads and that it loads it on demand, not
+// the page (its own tests mount it). A real page brings its whole graph (Ionic, @erplora/ui): over a
+// second idle and past Vitest's 5 s on a loaded machine. The router's navigations load them too.
+vi.mock('./pages/StorePage.vue', () => ({ default: { name: 'StorePage' } }));
+vi.mock('./pages/BillingPage.vue', () => ({ default: { name: 'BillingPage' } }));
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -37,7 +43,7 @@ describe('billing routes.ts', () => {
     expect(billing?.props).toBe(true);
     expect(billing?.meta?.webOnly).toBeUndefined();
     const loader = billing?.component as () => Promise<{ default: RouteComponent }>;
-    expect((await loader()).default).toBe((await import('./pages/BillingPage.vue')).default);
+    expect((await loader()).default).toEqual({ name: 'BillingPage' });
   });
 
   it('opens the Store on Plans, keeping the business it was opened for', async () => {
@@ -53,7 +59,7 @@ describe('billing routes.ts', () => {
     expect(store?.props).toBe(true);
     expect(typeof store?.component).toBe('function');
     const loader = store?.component as () => Promise<{ default: RouteComponent }>;
-    expect((await loader()).default).toBe((await import('./pages/StorePage.vue')).default);
+    expect((await loader()).default).toEqual({ name: 'StorePage' });
   });
 
   it('imports types only: Vite hoists the eager glob of main.ts above the shell boot hooks', () => {
