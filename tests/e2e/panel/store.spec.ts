@@ -14,7 +14,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { djangoEnv } from '../django-env';
-import { businessIdOf, expect, panelAccount, qaAccount, signIn, test, VIEWPORTS, watchPageErrors } from './fixtures';
+import { businessIdOf, expect, panelAccount, qaAccount, repeatedTop, settled, shot, signIn, test, VIEWPORTS, watchPageErrors } from './fixtures';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const SHOTS_DIR = process.env.SHOTS_DIR ?? '/tmp/l2d-shots';
@@ -88,13 +88,6 @@ async function sidewaysScroll(page: Page): Promise<string[]> {
     const scroll = shown.querySelector('ion-content')?.shadowRoot?.querySelector<HTMLElement>('.inner-scroll');
     return scroll && scroll.scrollWidth > scroll.clientWidth + 1 ? [`ion-content ${scroll.scrollWidth} > ${scroll.clientWidth}`] : [];
   });
-}
-
-async function settled(page: Page): Promise<void> {
-  await page.evaluate(() => document.fonts.ready);
-  await page.waitForFunction(() =>
-    document.getAnimations().every((animation) => animation.playState !== 'running' || animation.effect?.getTiming().iterations === Infinity),
-  );
 }
 
 test.describe('store', () => {
@@ -205,7 +198,10 @@ test.describe('store', () => {
     await expect(page.getByTestId('plan-starter')).toHaveCount(0);
     expect(await page.locator('ion-router-outlet').innerText()).not.toMatch(/€/);
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.screenshot({ path: join(SHOTS_DIR, 'store-app-390.png') });
+    // flow: ninguno — FIX tests/e2e. Taken before a frame at the new size, it repeated the top at its bottom.
+    await settled(page);
+    const png = await page.screenshot({ path: join(SHOTS_DIR, 'store-app-390.png') });
+    expect(await repeatedTop(page, png), 'store-app-390.png repeats the top of the page at its bottom').toBe(0);
     // Back to the web for the rest of the session.
     await page.goto('/store/plans?surface=web');
     await expect(page.getByTestId('store-plans')).toBeVisible();
@@ -217,6 +213,25 @@ test.describe('store', () => {
     await expect(page.getByTestId('store-in-app')).toBeVisible();
     await expect(page.getByTestId('module-e2e_bookings')).toHaveCount(0);
     expect(stripe).toEqual([]);
+  });
+
+  // flow: ninguno — FIX tests/e2e. Resized under the spec, the Store is shot as painted at each size: a capture
+  // taken before a frame at the new size repeated the top of the page at its bottom (87 rows, 3 in 6 at 390 px).
+  test('a screenshot right after a resize is the Store as painted, never its top repeated at the bottom', async ({ page }) => {
+    const bakery = await businessIdOf(page.request, 'Panadería López');
+    await page.goto(`/store/plans?business=${bakery}`);
+    await expect(page.getByTestId('store-plans')).toBeVisible();
+    const striped: string[] = [];
+    for (let round = 0; round < 4; round++) {
+      for (const size of VIEWPORTS) {
+        await page.setViewportSize(size);
+        await settled(page);
+        const png = await page.screenshot({ path: shot(`FIX-SAAS-E2E-STORE-SHOT-STRIPE-${size.width}`) });
+        const rows = await repeatedTop(page, png);
+        if (rows) striped.push(`round ${round} at ${size.width}: ${rows} rows`);
+      }
+    }
+    expect(striped).toEqual([]);
   });
 
   for (const { width, height } of VIEWPORTS) {

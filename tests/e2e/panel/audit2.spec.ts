@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 import type { Locator, Page } from '@playwright/test';
 
 import { djangoEnv } from '../django-env';
-import { apiPost, businessIdOf, expect, panelAccount, seedPanel, signIn, test, watchPageErrors } from './fixtures';
+import { apiPost, businessIdOf, expect, panelAccount, seedPanel, settled, signIn, test, watchPageErrors } from './fixtures';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const SHOTS_DIR = process.env.SHOTS_DIR ?? '/tmp/panel-fix3';
@@ -52,13 +52,6 @@ async function signInAs(page: Page, account: string): Promise<void> {
 
 /** The page on screen (Ionic keeps the ones it left in the outlet, hidden). */
 const shown = (page: Page) => page.locator('ion-router-outlet > .ion-page:not(.ion-page-hidden)').last();
-
-async function settle(page: Page): Promise<void> {
-  await page.evaluate(() => document.fonts.ready);
-  await page.waitForFunction(() =>
-    document.getAnimations().every((animation) => animation.playState !== 'running' || animation.effect?.getTiming().iterations === Infinity),
-  );
-}
 
 /**
  * The contrast of an element's text against what is painted under it: its colour (an Ionic button's: its native
@@ -113,11 +106,11 @@ test.describe('R-01/R-10: the AA theme', () => {
       await page.goto('/businesses');
       await expect(shown(page).getByTestId('businesses-row').first()).toBeVisible();
       await expect(page.locator('html')).toHaveAttribute('data-ep-contrast', 'aa');
-      await settle(page);
+      await settled(page);
       measured['primary «Create business»'] = await contrastOf(shown(page).getByTestId('businesses-add'));
       await page.goto('/launch');
       await expect(page.getByTestId('launch-panel')).toBeVisible();
-      await settle(page);
+      await settled(page);
       measured['outlined «Go to the panel»'] = await contrastOf(page.getByTestId('launch-panel'));
 
       // «Retry» of the panel's error notice, on its pink (`/api/live` refused).
@@ -127,7 +120,7 @@ test.describe('R-01/R-10: the AA theme', () => {
       );
       await page.goto(`/businesses/${bakery}/summary`);
       await expect(shown(page).getByTestId('business-retry')).toBeVisible();
-      await settle(page);
+      await settled(page);
       measured['«Retry» on the error notice'] = await contrastOf(shown(page).getByTestId('business-retry'));
       await page.unroute(/\/api\/live\?/);
 
@@ -135,18 +128,18 @@ test.describe('R-01/R-10: the AA theme', () => {
       await page.goto('/billing/subscriptions');
       const link = shown(page).locator('.billing-alert__link');
       await expect(link).toBeVisible();
-      await settle(page);
+      await settled(page);
       measured['link «View the invoices»'] = await contrastOf(link);
       await page.goto('/billing/invoices');
       await expect(shown(page).getByTestId('invoices-row').first()).toBeVisible();
-      await settle(page);
+      await settled(page);
       measured['outlined «Download Excel»'] = await contrastOf(shown(page).getByTestId('invoices-csv'));
       measured['outlined «Filters»'] = await contrastOf(shown(page).getByTestId('invoices-filters'));
       const plaza = await businessIdOf(page.request, 'Bar La Plaza');
       await page.goto(`/store/plans?business=${plaza}`);
       const hint = shown(page).getByTestId('plan-hint').first();
       await expect(hint).toBeVisible();
-      await settle(page);
+      await settled(page);
       measured['plan hint «Pay the pending invoice first»'] = await contrastOf(hint);
 
       console.log(`contrast (${scheme}):`, JSON.stringify(measured));
@@ -177,7 +170,7 @@ test.describe('the chrome', () => {
     const bakery = await businessIdOf(page.request, 'Panadería López');
     await page.goto(`/businesses/${bakery}/members`);
     await expect(shown(page).getByTestId('business-header')).toBeVisible();
-    await settle(page);
+    await settled(page);
     const title = await shown(page)
       .locator('.app-topbar ion-title')
       .evaluate((el) => {
@@ -219,7 +212,7 @@ test.describe('creating and buying', () => {
     await expect(limit).toContainText('You already have a free business');
     await expect(limit).toContainText('yours is Café Central');
     await expect(page.getByTestId('create-name')).toHaveCount(0);
-    await settle(page);
+    await settled(page);
     await page.screenshot({ path: join(SHOTS_DIR, 'businesses-create-limit-1280-light.png') });
     const cafe = await businessIdOf(page.request, 'Café Central');
     await page.getByTestId('create-free-limit-store').click();
@@ -275,7 +268,7 @@ test.describe('creating and buying', () => {
     const recover = page.getByTestId('recover-business');
     await expect(recover).toContainText('Recover business');
     await expect(page.getByTestId('launch-open')).toHaveCount(0);
-    await settle(page);
+    await settled(page);
     await page.screenshot({ path: join(SHOTS_DIR, 'launch-deleted-1280-light.png') });
     await recover.click();
     await expect(page.getByTestId('launch-open')).toBeVisible();
@@ -317,7 +310,7 @@ test.describe('screenshots for the supervisor', () => {
           await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
           await page.goto(path);
           await expect(shown(page).getByTestId(ready).first()).toBeVisible();
-          await settle(page);
+          await settled(page);
           await page.screenshot({ path: join(SHOTS_DIR, `${name}-${width}-${scheme}.png`) });
         }
       }
