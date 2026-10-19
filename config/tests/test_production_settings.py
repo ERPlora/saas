@@ -790,3 +790,63 @@ def test_check_deploy_refuses_a_live_key_in_pre(key):
 
     assert result.returncode != 0
     assert "billing.E002" in result.stdout + result.stderr
+
+
+# Sign-in attempts (allauth's rate limits): allauth lays ACCOUNT_RATE_LIMITS over its own defaults, so
+# what it enforces is read where allauth reads it (allauth.account.app_settings), never from the dict the
+# settings write. Only the e2e's panel server raises the sign-in limit (E2E_RELAX_LOGIN_RATE_LIMIT): every
+# spec signs in from 127.0.0.1, and one spec repeated (`--repeat-each=6`) went past allauth's 30 a minute.
+
+RATE_LIMITS = (
+    "from django.conf import settings\n"
+    "from allauth.account import app_settings\n"
+    "effective = app_settings.RATE_LIMITS\n"
+    "settings.ACCOUNT_RATE_LIMITS = {}\n"
+    "print(repr((effective, app_settings.RATE_LIMITS)))"
+)
+
+
+def rate_limits(env: dict[str, str]) -> tuple[dict, dict]:
+    """(the rate limits allauth enforces with ``env``, allauth's own defaults with the rest of the settings)."""
+    result = _run(RATE_LIMITS, {**env, "DJANGO_SETTINGS_MODULE": "config.settings"})
+    assert result.returncode == 0, result.stderr
+    return ast.literal_eval(result.stdout.strip())
+
+
+@pytest.mark.parametrize(
+    "env",
+    [PRODUCTION_ENV, TASKS["saas"], {"DEBUG": "True"}],
+    ids=["production", "saas-task", "development"],
+)
+def test_sign_in_keeps_allauth_s_rate_limit(env):
+    """Production and development alike (the dev server with DEBUG=True alone): allauth's limits, with
+    sign-up's own on top (10 an hour per address, as today's SaaS)."""
+    effective, allauth = rate_limits(env)
+
+    assert effective["login"] == allauth["login"]
+    assert effective == {**allauth, "signup": "10/h/ip"}
+
+
+@pytest.mark.parametrize("off", ["0", "False"])
+def test_the_e2e_variable_turned_off_keeps_the_sign_in_limit(off):
+    effective, allauth = rate_limits({"DEBUG": "True", "E2E_RELAX_LOGIN_RATE_LIMIT": off})
+
+    assert effective["login"] == allauth["login"]
+
+
+def test_the_e2e_raises_the_sign_in_limit_and_nothing_else():
+    """Out of the e2e's reach (one sign-in takes over 0.1 s, one at a time), still a limit: sign-up,
+    the mailed codes and the failed attempts keep theirs."""
+    relaxed, allauth = rate_limits({"DEBUG": "True", "E2E_RELAX_LOGIN_RATE_LIMIT": "True"})
+    kept, _ = rate_limits({"DEBUG": "True"})
+
+    assert relaxed["login"] == "1000/m/ip" != allauth["login"]
+    assert {**relaxed, "login": kept["login"]} == kept
+
+
+def test_production_refuses_to_start_with_the_e2e_s_sign_in_limit():
+    result = _run("import config.settings", {**PRODUCTION_ENV, "E2E_RELAX_LOGIN_RATE_LIMIT": "True"})
+
+    assert result.returncode != 0
+    assert "ImproperlyConfigured" in result.stderr
+    assert "E2E_RELAX_LOGIN_RATE_LIMIT" in result.stderr
