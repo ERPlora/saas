@@ -123,6 +123,9 @@ export function panelServers(saasDir: string, vitePort = VITE_PORT): WebServer[]
         EMAIL_FILE_PATH: PANEL_MAIL_DIR,
         // Its dev shell and CSP point at this run's Vite.
         VITE_DEV_PORT: String(vitePort),
+        // Every spec signs in from 127.0.0.1, past allauth's 30 sign-ins a minute when repeated
+        // (config/settings.py): only this server raises that one limit.
+        E2E_RELAX_LOGIN_RATE_LIMIT: 'True',
       }),
     },
     {

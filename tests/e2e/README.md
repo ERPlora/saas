@@ -47,7 +47,12 @@ pnpm e2e --project=panel panel/login.spec.ts   # una spec
   `HUB_INTERNAL_URL=http://127.0.0.1:8019`: las llamadas al Hub se quedan pendientes, como con el Hub
   caído, y las specs hacen de Hub (su callback `ready` firmado). Así ni el `runserver` de `:8001` de otra
   sesión (que se reinicia con cada `.py` guardado) ni un Hub en `:8000` cambian el resultado, y la
-  e2e no deja BD de hub huérfanas. Se arranca y se para en cada ejecución.
+  e2e no deja BD de hub huérfanas. Se arranca y se para en cada ejecución. Además sube el límite de
+  inicios de sesión de allauth (`E2E_RELAX_LOGIN_RATE_LIMIT=True`, `config/settings.py`): cada spec entra
+  desde `127.0.0.1`, y una spec repetida (`--repeat-each=6`) pasaba de los 30 por minuto (429 en el
+  login). Solo ese límite: el alta, los códigos y los intentos fallidos conservan los suyos, el servidor
+  de desarrollo también (no depende de `DEBUG`), y sin `DEBUG` (producción) el Django se niega a arrancar
+  con ella.
 - **`:8019` (el Hub de las specs)**: nadie escucha salvo mientras una spec hace de Hub con
   `startHubDouble()` (hoy `members.spec.ts`): registra cada llamada a `/internal` y responde 200 a la
   foto (`PUT /internal/hubs/{id}/state`) y a la revocación (`POST /internal/sessions/revoke`), y 503 al

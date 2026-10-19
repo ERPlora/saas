@@ -326,8 +326,19 @@ ACCOUNT_LOGIN_BY_CODE_FORMAT = ACCOUNT_EMAIL_VERIFICATION_BY_CODE_FORMAT
 # Not ACCOUNT_LOGIN_BY_CODE_ENABLED: it would serve `auth/code/request`, a sign-in with the mailed code
 # alone (no password), and only with it does allauth resend this code. Signing in again mails a new one.
 # Creating an account mails a code, so one address may start 10 sign-ups an hour (today's SaaS,
-# UNIFIED_SIGNUP_RATELIMIT); allauth's defaults for the rest.
+# UNIFIED_SIGNUP_RATELIMIT); allauth's defaults for the rest (allauth lays this dict over them).
 ACCOUNT_RATE_LIMITS = {"signup": "10/h/ip"}
+# The e2e's panel server alone (tests/e2e/panel/project.ts) raises the sign-in limit, allauth's 30 a
+# minute per address: every spec signs in from 127.0.0.1, and one spec repeated got 429 at the sign-in.
+# Its own variable, never DEBUG (the dev server keeps the limit); sign-up, the mailed codes and the
+# failed attempts keep theirs. Production refuses to start with it.
+E2E_RELAX_LOGIN_RATE_LIMIT = config("E2E_RELAX_LOGIN_RATE_LIMIT", default=False, cast=bool)
+if E2E_RELAX_LOGIN_RATE_LIMIT and not DEBUG:
+    raise ImproperlyConfigured(
+        "E2E_RELAX_LOGIN_RATE_LIMIT is only for the e2e's panel server, which runs with DEBUG on."
+    )
+if E2E_RELAX_LOGIN_RATE_LIMIT:
+    ACCOUNT_RATE_LIMITS["login"] = "1000/m/ip"
 # A recent sign-in (allauth's reauthentication) before any change of the account's addresses or of its
 # Google link through allauth.headless, as Cuenta's own «Cambiar correo» asks (accounts.email.change).
 ACCOUNT_REAUTHENTICATION_REQUIRED = True
