@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 import type { Page, Request } from '@playwright/test';
 
 import { djangoEnv } from '../django-env';
-import { businessIdOf, djangoPrint, expect, panelAccount, qaAccount, signIn, test, watchPageErrors } from './fixtures';
+import { businessIdOf, djangoPrint, expect, panelAccount, qaAccount, repeatedTop, settled, signIn, test, watchPageErrors } from './fixtures';
 import { HUB_DOUBLE_PORT } from './project';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -96,13 +96,6 @@ async function actionsOverflow(page: Page): Promise<string[]> {
       return left < room - 1 ? [`${cell.closest('[data-id]')?.getAttribute('data-id')}: buttons from ${Math.round(left)} < cell ${Math.round(room)}`] : [];
     });
   });
-}
-
-async function settled(page: Page): Promise<void> {
-  await page.evaluate(() => document.fonts.ready);
-  await page.waitForFunction(() =>
-    document.getAnimations().every((animation) => animation.playState !== 'running' || animation.effect?.getTiming().iterations === Infinity),
-  );
 }
 
 test.describe('billing', () => {
@@ -400,7 +393,10 @@ test.describe('billing', () => {
     // Already in the browser (the account the app opens): why, not «go to erplora.com in your browser» (audit 2 S-09).
     await expect(page.getByTestId('unpaid-group-app')).toHaveText('This account was opened from the app: invoices are not paid from here.');
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.screenshot({ path: join(SHOTS_DIR, 'billing-default-mobile-390-light.png'), fullPage: true });
+    // flow: ninguno — FIX tests/e2e. A capture right after a resize must be the page as painted at the new size.
+    await settled(page);
+    const png = await page.screenshot({ path: join(SHOTS_DIR, 'billing-default-mobile-390-light.png'), fullPage: true });
+    expect(await repeatedTop(page, png), 'billing-default-mobile-390-light.png repeats the top of the page at its bottom').toBe(0);
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/billing/subscriptions');
     await expect(page.getByTestId('subscriptions-app-hint')).toHaveText('This account was opened from the app: plans are not changed nor cancelled from here.');
