@@ -4,9 +4,17 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { RouteComponent, RouteRecordRaw } from 'vue-router';
 import { createMemoryHistory, createRouter } from 'vue-router';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import routes from './routes';
+
+// The pages, stubbed: this file checks which page each route loads and that it loads it on demand, not
+// the page (its own tests mount it). A real page brings its whole graph (Ionic, @erplora/ui): over a
+// second idle and past Vitest's 5 s on a loaded machine. The router's navigations load them too.
+vi.mock('./pages/LaunchPage.vue', () => ({ default: { name: 'LaunchPage' } }));
+vi.mock('./pages/BusinessListPage.vue', () => ({ default: { name: 'BusinessListPage' } }));
+vi.mock('./pages/BusinessPage.vue', () => ({ default: { name: 'BusinessPage' } }));
+vi.mock('./pages/InvitationPage.vue', () => ({ default: { name: 'InvitationPage' } }));
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -41,15 +49,16 @@ describe('hubs routes.ts', () => {
 
   it('loads each page on demand (one chunk per page), not at boot', async () => {
     const pages = {
-      '/launch': (await import('./pages/LaunchPage.vue')).default,
-      '/businesses': (await import('./pages/BusinessListPage.vue')).default,
-      '/businesses/:id/:tab(summary|members|modules|settings)': (await import('./pages/BusinessPage.vue')).default,
-      '/invitation': (await import('./pages/InvitationPage.vue')).default,
-      '/invitations/:id': (await import('./pages/InvitationPage.vue')).default,
+      '/launch': 'LaunchPage',
+      '/businesses': 'BusinessListPage',
+      '/businesses/:id/:tab(summary|members|modules|settings)': 'BusinessPage',
+      '/invitation': 'InvitationPage',
+      '/invitations/:id': 'InvitationPage',
     };
     for (const route of routes.filter((r) => !r.redirect)) {
       expect(typeof route.component, route.path).toBe('function');
-      expect(await load(route), route.path).toBe(pages[route.path as keyof typeof pages]);
+      // The stub of that very page: a real one here means a page this file does not stub.
+      expect(await load(route), route.path).toEqual({ name: pages[route.path as keyof typeof pages] });
     }
   });
 

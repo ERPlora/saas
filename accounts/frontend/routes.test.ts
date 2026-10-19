@@ -3,9 +3,21 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { RouteComponent, RouteRecordRaw } from 'vue-router';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import routes from './routes';
+
+// The pages, stubbed: this file checks which page each route loads and that it loads it on demand, not
+// the page (its own tests mount it). A real page brings its whole graph (Ionic, @erplora/ui): over a
+// second idle and past Vitest's 5 s on a loaded machine.
+vi.mock('./pages/LoginErrorPage.vue', () => ({ default: { name: 'LoginErrorPage' } }));
+vi.mock('./pages/VerifyEmailPage.vue', () => ({ default: { name: 'VerifyEmailPage' } }));
+vi.mock('./pages/PasswordResetPage.vue', () => ({ default: { name: 'PasswordResetPage' } }));
+vi.mock('./pages/PasswordResetKeyPage.vue', () => ({ default: { name: 'PasswordResetKeyPage' } }));
+vi.mock('./pages/TwoFactorAuthenticatePage.vue', () => ({ default: { name: 'TwoFactorAuthenticatePage' } }));
+vi.mock('./pages/TwoFactorSettingsPage.vue', () => ({ default: { name: 'TwoFactorSettingsPage' } }));
+vi.mock('./pages/ReauthenticatePage.vue', () => ({ default: { name: 'ReauthenticatePage' } }));
+vi.mock('./pages/AccountPage.vue', () => ({ default: { name: 'AccountPage' } }));
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -61,18 +73,19 @@ describe('accounts routes.ts', () => {
 
   it('loads each page on demand (one chunk per page), not at boot', async () => {
     const pages = {
-      '/login/error': (await import('./pages/LoginErrorPage.vue')).default,
-      '/verify-email': (await import('./pages/VerifyEmailPage.vue')).default,
-      '/password/reset': (await import('./pages/PasswordResetPage.vue')).default,
-      '/password/reset/key/:resetKey': (await import('./pages/PasswordResetKeyPage.vue')).default,
-      '/2fa/authenticate': (await import('./pages/TwoFactorAuthenticatePage.vue')).default,
-      '/2fa': (await import('./pages/TwoFactorSettingsPage.vue')).default,
-      '/reauthenticate': (await import('./pages/ReauthenticatePage.vue')).default,
-      '/account/:tab(profile|security|preferences|api-keys)': (await import('./pages/AccountPage.vue')).default,
+      '/login/error': 'LoginErrorPage',
+      '/verify-email': 'VerifyEmailPage',
+      '/password/reset': 'PasswordResetPage',
+      '/password/reset/key/:resetKey': 'PasswordResetKeyPage',
+      '/2fa/authenticate': 'TwoFactorAuthenticatePage',
+      '/2fa': 'TwoFactorSettingsPage',
+      '/reauthenticate': 'ReauthenticatePage',
+      '/account/:tab(profile|security|preferences|api-keys)': 'AccountPage',
     };
     for (const route of routes.filter((r) => !r.redirect)) {
       expect(typeof route.component, route.path).toBe('function');
-      expect(await load(route), route.path).toBe(pages[route.path as keyof typeof pages]);
+      // The stub of that very page: a real one here means a page this file does not stub.
+      expect(await load(route), route.path).toEqual({ name: pages[route.path as keyof typeof pages] });
     }
   });
 
