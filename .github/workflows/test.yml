@@ -1,9 +1,11 @@
 name: test
 
-# The saas's tests: the workflows (actionlint), the scripts (shellcheck and their tests), pytest and
-# the front (lint, typecheck, Vitest and the build). Called by deploy.yml (pushes to main and pre)
-# and ci.yml (every other branch): its check, `test / test`, is the one main and pre require (plan
-# 2026-10-14-entorno-pre, §7.5).
+# The saas's tests, in three jobs that run side by side: python (pytest over Postgres, spread over
+# the runner's CPUs with pytest-xdist), frontend (the SPA's lint, typecheck, Vitest and build) and
+# scripts (the workflows with actionlint, the scripts with shellcheck, and their tests). Called by
+# deploy.yml (pushes to main and pre) and ci.yml (every other branch) as the job `test`: the job
+# `test` below waits for the three, and its check, `test / test`, is the one main and pre require
+# (plan 2026-10-14-entorno-pre, §7.5).
 
 on:
   workflow_call:
@@ -12,9 +14,11 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  python:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    permissions:
+      contents: read
     services:
       postgres:
         image: postgres:18
@@ -30,7 +34,8 @@ jobs:
           --health-timeout 3s
           --health-retries 30
     env:
-      # The defaults of config/settings.py, spelled out; pytest creates test_saas_next.
+      # The defaults of config/settings.py, spelled out; pytest creates test_saas_next_gw<N>, one per
+      # xdist worker.
       DB_HOST: 127.0.0.1
       DB_PORT: "5432"
       DB_NAME: saas
@@ -42,7 +47,50 @@ jobs:
         with:
           submodules: recursive
           persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      # --locked: uv.lock must match pyproject.toml (the lock the Dockerfile installs from).
+      - run: uv sync --locked
+      # One xdist worker per vCPU of the runner (4), each on its own test database.
+      - run: uv run --locked pytest -q -n 4
 
+  frontend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      # packages/ui is part of the pnpm workspace. No Python: Vitest mocks the commands that call uv
+      # (tests/e2e/global-setup.test.ts).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 10.34.7 # = packageManager of package.json and the Dockerfile's PNPM_VERSION
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  scripts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      # The workflows and .github/scripts only: no submodules.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Lint the workflows (actionlint)
         env:
           ACTIONLINT_VERSION: 1.7.12
@@ -58,20 +106,28 @@ jobs:
       - name: Script tests
         run: for t in .github/scripts/*.test.sh; do bash "$t"; done
 
-      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
-      # --locked: uv.lock must match pyproject.toml (the lock the Dockerfile installs from).
-      - run: uv sync --locked
-      - run: uv run --locked pytest -q
-
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-        with:
-          version: 10.34.7 # = packageManager of package.json and the Dockerfile's PNPM_VERSION
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm build
+  # The check main and pre require ("test / test"): green only when the three jobs are. It runs even
+  # when one fails or the run is cancelled, so the check never ends up skipped (which counts as passed).
+  test:
+    needs: [python, frontend, scripts]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Every test job passed
+        env:
+          RESULTS: python=${{ needs.python.result }} frontend=${{ needs.frontend.result }} scripts=${{ needs.scripts.result }}
+        run: |
+          failed=""
+          for result in $RESULTS; do
+            if [ "${result#*=}" != success ]; then
+              failed="$failed $result"
+            fi
+          done
+          if [ -n "$failed" ]; then
+            echo "::error::not every test job passed:$failed"
+            exit 1
+          fi
+          echo "python, frontend and scripts passed"
