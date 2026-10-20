@@ -31,10 +31,13 @@ const dirty = computed(() => firstName.value !== props.profile.first_name || las
 const firstMissing = computed(() => !firstName.value.trim());
 /** Whether the person has typed in the first name, left it or tried to save: never on opening the page. */
 const firstTouched = shallowRef(false);
-/** The per-field messages of the last refusal (a 422), and the first name missing once the person has been in it. */
+/**
+ * The per-field messages of the last refusal (a 422), and the first name missing once the person has been in it
+ * or changed the form (it says why «Save changes» stays off), never on opening the page unchanged.
+ */
 const fieldErrors = computed<Readonly<Record<string, string>>>(() => ({
   ...(update.error.value?.status === 422 ? (update.error.value.fields ?? {}) : {}),
-  ...(firstMissing.value && firstTouched.value ? { first_name: t('accounts.account.profile.firstNameRequired') } : {}),
+  ...(firstMissing.value && (firstTouched.value || dirty.value) ? { first_name: t('accounts.account.profile.firstNameRequired') } : {}),
 }));
 
 /** What the names were when the page last took them from the account: typing is what differs from it. */

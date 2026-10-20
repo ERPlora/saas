@@ -77,7 +77,7 @@ describe('ProfileForm', () => {
     expect(ionProps(s.q('profile-save'), 'disabled')).toEqual({ disabled: false });
   });
 
-  describe('an account with no first name yet: the field says it once the person has been in it, never on opening', () => {
+  describe('an account with no first name yet: the field says it once the person has been in it or changed the form, never on opening', () => {
     const nameless = () => profile({ first_name: '', full_name: 'Martín Pérez' });
     /** The person leaves the field, as a tab or a click elsewhere does (Ionic's `ionBlur`). */
     async function leave(el: Element | null): Promise<void> {
@@ -127,6 +127,22 @@ describe('ProfileForm', () => {
       expect(said(s.q('profile-first-name'))).toBe('');
       expect(marked(s.q('profile-first-name'))).toEqual([]);
       expect(ionProps(s.q('profile-save'), 'disabled')).toEqual({ disabled: false });
+    });
+
+    it('changing only the last name says why «Save changes» stays off', async () => {
+      const s = await setup(profile({ first_name: '', last_name: '', full_name: '' }));
+      await typeInto(s.q('profile-last-name'), 'Gómez');
+      expect(ionProps(s.q('profile-first-name'), 'errorText')).toEqual({ errorText: 'Write your first name.' });
+      expect(marked(s.q('profile-first-name'))).toEqual(['ion-invalid', 'ion-touched']);
+      expect(ionProps(s.q('profile-save'), 'disabled')).toEqual({ disabled: true });
+    });
+
+    it('in Spanish, changing only the last name: «Escribe tu nombre.»', async () => {
+      const s = await mountPanel(ProfileForm, { props: { profile: profile({ first_name: '', last_name: '', full_name: '' }) }, locale: 'es' });
+      await flush();
+      await typeInto(s.q('profile-last-name'), 'Gómez');
+      expect(ionProps(s.q('profile-first-name'), 'errorText')).toEqual({ errorText: 'Escribe tu nombre.' });
+      expect(marked(s.q('profile-first-name'))).toEqual(['ion-invalid', 'ion-touched']);
     });
 
     it('in Spanish, once left empty: «Escribe tu nombre.»', async () => {

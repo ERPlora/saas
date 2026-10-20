@@ -118,6 +118,26 @@ test('opening the profile with no first name says nothing; leaving the empty fie
   expect(errors).toEqual([]);
 });
 
+// flow: ninguno — FIX accounts
+test('changing only the last name with no first name says why «Save changes» stays off', async ({ page }) => {
+  const errors = watchPageErrors(page);
+  // e2e-jorge: no names yet. Nothing is saved: the account stays as seeded.
+  await signIn(page.request, panelAccount('jorge'));
+  await page.setViewportSize(VIEWPORTS[0]);
+  await page.goto('/account/profile');
+  const first = page.getByTestId('profile-first-name');
+  await expect(first).not.toHaveClass(/ion-invalid/);
+  await fieldValue(page, 'profile-last-name').fill('Gómez');
+  await expect(first).toHaveClass(/ion-invalid/);
+  await expect(first.locator('.error-text')).toHaveText('Write your first name.');
+  await expect(page.getByTestId('profile-save')).toHaveJSProperty('disabled', true);
+  await page.evaluate(() => document.fonts.ready);
+  // The last name's floating label is still rising after the typing.
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: shot(`FIX-SAAS-ACCOUNT-NAME-ERROR-last-name-${VIEWPORTS[0].width}`), fullPage: true });
+  expect(errors).toEqual([]);
+});
+
 test('the theme and the language stay after a reload', async ({ page }) => {
   const errors = watchPageErrors(page);
   // An account of its own: the others' specs read English.
