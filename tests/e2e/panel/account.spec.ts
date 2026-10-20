@@ -235,10 +235,19 @@ test('with more sessions than a page, «Active sessions» loads, this one first,
     await settled(page);
     await page.screenshot({ path: shot(`FIX-SAAS-SESSIONS-RESULT-TOO-BIG-${viewport.width}`) });
     if (viewport.width < 640) {
-      // A phone has no pager: «Load more» grows the list from the first row.
-      await page.getByTestId('sessions-load-more').click();
-      await expect(rows).toHaveCount(50);
-      await expect(rows.first()).toContainText('This session');
+      // More sessions than one page of the server holds (100): the phone pages too, never a «Load more» that
+      // brings nothing, and every session stays reachable — here past the 100th.
+      await expect(page.getByTestId('sessions-load-more')).toHaveCount(0);
+      await expect(pager.locator('.data-table__page-of')).toHaveText('1 / 73');
+      for (let n = 0; n < 4; n += 1) await page.getByTestId('sessions-page-next').click();
+      await expect(pager).toContainText('Showing 101–125 of');
+      await expect(pager.locator('.data-table__page-of')).toHaveText('5 / 73');
+      await expect(rows).toHaveCount(25);
+      await expect(rows.filter({ hasText: 'This session' })).toHaveCount(0);
+      await settled(page);
+      await page.screenshot({ path: shot(`FIX-SAAS-SESSIONS-RESULT-TOO-BIG-${viewport.width}-page-5`) });
+      await page.getByTestId('sessions-page-prev').click();
+      await expect(pager).toContainText('Showing 76–100 of');
     } else {
       await page.getByTestId('sessions-page-next').click();
       await expect(pager).toContainText('Showing 26–50 of');

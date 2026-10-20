@@ -193,7 +193,8 @@ describe('SessionsTable: more sessions than a page', () => {
     const s = await mountPanel(SessionsTable);
     expect(params(s)).toEqual([{ limit: 25, offset: 0 }]);
     await s.result(await s.live(), 'accounts.session.list', sessionPage(FIRST_PAGE, { total: 60, others: 59 }));
-    expect(table(s).props()).toMatchObject({ serverSide: true, total: 60, page: 0, pageSize: 25 });
+    // On a phone, past the 100 rows one page of the server holds, the table pages instead of «Load more».
+    expect(table(s).props()).toMatchObject({ serverSide: true, total: 60, page: 0, pageSize: 25, maxWindow: 100 });
     expect(cells('session-device')).toHaveLength(25);
     expect(cells('session-device')[0]).toBe('Mac (macOS)This session');
   });

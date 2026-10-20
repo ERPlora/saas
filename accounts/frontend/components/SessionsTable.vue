@@ -3,7 +3,8 @@
 // live `accounts.session.list` (this session first) in a server-side DataTable — device, browser or app, IP address
 // (the location is the IP: no GeoIP, plan §6) and last use. The server pages it: an account signed in on more
 // browsers than one live result carries still sees its list; on a phone «Load more» grows one window from the
-// first row, up to the server's longest page. Each row but this one closes on its own
+// first row while every session fits one page of the server, and past it the phone pages too. Each row but this
+// one closes on its own
 // (`accounts.session.close`); an app's session asks first, since it may be charging at a till (W-F5). «Close
 // other sessions» (toolbar) is confirmed with how many go, every page's, the apps too (V-33). Closing a session
 // in the SaaS also ends it in the businesses (the server asks the Hub). Every close ends in a toast naming where. A failed load
@@ -30,7 +31,7 @@ import { browserName, deviceIcon, deviceName, isAppSession } from '../devices';
 import { useErrorText } from '../error-text';
 
 const PAGE_SIZE = 25;
-/** The most rows one page of `accounts.session.list` holds (`SESSION_PAGE_MAX`): a phone's window stops there. */
+/** The most rows one page of `accounts.session.list` holds (`SESSION_PAGE_MAX`): past it a phone pages (`maxWindow`). */
 const PAGE_MAX = 100;
 
 const { t, locale } = useI18n();
@@ -137,6 +138,7 @@ async function closeTheOthers(): Promise<void> {
     :views="['table', 'cards']"
     :column-picker="false"
     :page-size="PAGE_SIZE"
+    :max-window="PAGE_MAX"
     :page-size-options="[25, 50]"
     :page-size-chooser="false"
     :loading="state.loading.value || steppingBack"
