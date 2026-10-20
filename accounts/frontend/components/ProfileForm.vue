@@ -29,10 +29,12 @@ const lastName = shallowRef(props.profile.last_name);
 const dirty = computed(() => firstName.value !== props.profile.first_name || lastName.value !== props.profile.last_name);
 /** The first name is required (audit 2 S-10); the last name may be cleared. */
 const firstMissing = computed(() => !firstName.value.trim());
-/** The per-field messages of the last refusal (a 422), and the first name missing, said at once. */
+/** Whether the person has typed in the first name, left it or tried to save: never on opening the page. */
+const firstTouched = shallowRef(false);
+/** The per-field messages of the last refusal (a 422), and the first name missing once the person has been in it. */
 const fieldErrors = computed<Readonly<Record<string, string>>>(() => ({
   ...(update.error.value?.status === 422 ? (update.error.value.fields ?? {}) : {}),
-  ...(firstMissing.value ? { first_name: t('accounts.account.profile.firstNameRequired') } : {}),
+  ...(firstMissing.value && firstTouched.value ? { first_name: t('accounts.account.profile.firstNameRequired') } : {}),
 }));
 
 /** What the names were when the page last took them from the account: typing is what differs from it. */
@@ -49,6 +51,7 @@ watch(
 );
 
 async function save(): Promise<void> {
+  firstTouched.value = true;
   if (firstMissing.value) return;
   try {
     const saved = await update.run({ first_name: firstName.value.trim(), last_name: lastName.value.trim() });
@@ -97,6 +100,8 @@ function openEmail(mode: 'change' | 'verify' | 'resume'): void {
           :label="$t('accounts.account.profile.firstName')"
           :error-text="fieldErrors.first_name"
           :class="{ 'ion-invalid': !!fieldErrors.first_name, 'ion-touched': !!fieldErrors.first_name }"
+          @ion-input="firstTouched = true"
+          @ion-blur="firstTouched = true"
         />
         <ion-input
           v-model="lastName"

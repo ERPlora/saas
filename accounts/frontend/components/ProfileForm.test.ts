@@ -77,6 +77,67 @@ describe('ProfileForm', () => {
     expect(ionProps(s.q('profile-save'), 'disabled')).toEqual({ disabled: false });
   });
 
+  describe('an account with no first name yet: the field says it once the person has been in it, never on opening', () => {
+    const nameless = () => profile({ first_name: '', full_name: 'Martín Pérez' });
+    /** The person leaves the field, as a tab or a click elsewhere does (Ionic's `ionBlur`). */
+    async function leave(el: Element | null): Promise<void> {
+      if (!el) throw new Error('no field');
+      el.dispatchEvent(new CustomEvent('ionBlur'));
+      await flush();
+    }
+    const marked = (el: Element | null) => ['ion-invalid', 'ion-touched'].filter((c) => el?.classList.contains(c));
+    /** The text under the field; Vue leaves `''` where an error text was. */
+    const said = (el: Element | null) => (ionProps(el, 'errorText').errorText as string | undefined) || '';
+
+    it('opening the profile says nothing yet, and «Save changes» still waits for the name', async () => {
+      const s = await setup(nameless());
+      expect(said(s.q('profile-first-name'))).toBe('');
+      expect(marked(s.q('profile-first-name'))).toEqual([]);
+      expect(ionProps(s.q('profile-save'), 'disabled')).toEqual({ disabled: true });
+    });
+
+    it('leaving the field empty says it under the field', async () => {
+      const s = await setup(nameless());
+      await leave(s.q('profile-first-name'));
+      expect(ionProps(s.q('profile-first-name'), 'errorText')).toEqual({ errorText: 'Write your first name.' });
+      expect(marked(s.q('profile-first-name'))).toEqual(['ion-invalid', 'ion-touched']);
+    });
+
+    it('writing only spaces says it under the field', async () => {
+      const s = await setup(nameless());
+      await typeInto(s.q('profile-first-name'), '  ');
+      expect(ionProps(s.q('profile-first-name'), 'errorText')).toEqual({ errorText: 'Write your first name.' });
+      expect(marked(s.q('profile-first-name'))).toEqual(['ion-invalid', 'ion-touched']);
+    });
+
+    it('trying to save says it under the field and saves nothing', async () => {
+      const s = await setup(nameless());
+      await typeInto(s.q('profile-last-name'), 'Gómez');
+      s.q('profile-save')?.click();
+      await flush();
+      expect(ionProps(s.q('profile-first-name'), 'errorText')).toEqual({ errorText: 'Write your first name.' });
+      expect(marked(s.q('profile-first-name'))).toEqual(['ion-invalid', 'ion-touched']);
+      expect(s.calls()).toEqual([]);
+    });
+
+    it('leaving the field with a name written says nothing', async () => {
+      const s = await setup(nameless());
+      await typeInto(s.q('profile-first-name'), 'Jorge');
+      await leave(s.q('profile-first-name'));
+      expect(said(s.q('profile-first-name'))).toBe('');
+      expect(marked(s.q('profile-first-name'))).toEqual([]);
+      expect(ionProps(s.q('profile-save'), 'disabled')).toEqual({ disabled: false });
+    });
+
+    it('in Spanish, once left empty: «Escribe tu nombre.»', async () => {
+      const s = await mountPanel(ProfileForm, { props: { profile: nameless() }, locale: 'es' });
+      await flush();
+      expect(marked(s.q('profile-first-name'))).toEqual([]);
+      await leave(s.q('profile-first-name'));
+      expect(ionProps(s.q('profile-first-name'), 'errorText')).toEqual({ errorText: 'Escribe tu nombre.' });
+    });
+  });
+
   it('says a refused name under its field', async () => {
     const s = await setup(profile(), () =>
       apiError(422, 'invalid_payload', 'Invalid payload', { fields: { first_name: 'Ensure this value has at most 150 characters.' } }),

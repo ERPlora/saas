@@ -90,6 +90,34 @@ test('editing the profile keeps the names after a reload', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+// flow: ninguno — FIX accounts
+test('opening the profile with no first name says nothing; leaving the empty field says it', async ({ page }) => {
+  const errors = watchPageErrors(page);
+  // e2e-jorge: the seeded account with no names yet. Nothing is saved: the account stays as seeded.
+  await signIn(page.request, panelAccount('jorge'));
+  const first = page.getByTestId('profile-first-name');
+  const said = first.locator('.error-text');
+  for (const { width, height } of VIEWPORTS) {
+    await page.setViewportSize({ width, height });
+    await page.goto('/account/profile');
+    await expect(fieldValue(page, 'profile-first-name')).toHaveValue('');
+    await expect(first).not.toHaveClass(/ion-invalid/);
+    await expect(said).toBeHidden();
+    await expect(page.getByTestId('profile-save')).toHaveJSProperty('disabled', true);
+    await page.evaluate(() => document.fonts.ready);
+    await page.screenshot({ path: shot(`FIX-SAAS-ACCOUNT-NAME-ERROR-${width}`), fullPage: true });
+  }
+  await fieldValue(page, 'profile-first-name').focus();
+  await expect(said).toBeHidden();
+  await fieldValue(page, 'profile-first-name').blur();
+  await expect(first).toHaveClass(/ion-invalid/);
+  await expect(said).toHaveText('Write your first name.');
+  await page.screenshot({ path: shot('FIX-SAAS-ACCOUNT-NAME-ERROR-left-1440'), fullPage: true });
+  await fieldValue(page, 'profile-first-name').fill('Jorge');
+  await expect(said).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
 test('the theme and the language stay after a reload', async ({ page }) => {
   const errors = watchPageErrors(page);
   // An account of its own: the others' specs read English.
