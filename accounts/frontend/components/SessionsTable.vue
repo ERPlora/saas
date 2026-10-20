@@ -1,10 +1,12 @@
 <script setup lang="ts">
 // Account → Security, «Active sessions» (mockups `account.html` «security», README §3b «Sesiones activas»): the
-// live `accounts.session.list` (this session first) in a DataTable — device, browser or app, IP address (the
-// location is the IP: no GeoIP, plan §6) and last use. Each row but this one closes on its own
+// live `accounts.session.list` (this session first) in a server-side DataTable — device, browser or app, IP address
+// (the location is the IP: no GeoIP, plan §6) and last use. The server pages it: an account signed in on more
+// browsers than one live result carries still sees its list; on a phone «Load more» grows one window from the
+// first row, up to the server's longest page. Each row but this one closes on its own
 // (`accounts.session.close`); an app's session asks first, since it may be charging at a till (W-F5). «Close
-// other sessions» (toolbar) is confirmed with how many go, the apps too (V-33). Closing a session in the SaaS
-// also ends it in the businesses (the server asks the Hub). Every close ends in a toast naming where. A failed load
+// other sessions» (toolbar) is confirmed with how many go, every page's, the apps too (V-33). Closing a session
+// in the SaaS also ends it in the businesses (the server asks the Hub). Every close ends in a toast naming where. A failed load
 // (an error, or no answer in time) is said with «Retry», never as «no results · 0 sessions» (audit 2026-10-14
 // R-04). The list fills what the «Sign-in» card leaves of the page (`fill`, Ioan 2026-10-14).
 import {
@@ -19,25 +21,48 @@ import {
 import { HubIcon, toastError, toastSuccess } from '@erplora/ui/shell';
 import { useCommand, useLive } from '@erplora/ui/sdk';
 import { IonButton } from '@ionic/vue';
-import { computed, shallowRef } from 'vue';
+import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { useLiveState } from '../../../frontend/live-state';
-import type { SessionRowOut } from '../../../frontend/sdk-types';
+import type { SessionListOut, SessionRowOut } from '../../../frontend/sdk-types';
 import { browserName, deviceIcon, deviceName, isAppSession } from '../devices';
 import { useErrorText } from '../error-text';
 
+const PAGE_SIZE = 25;
+/** The most rows one page of `accounts.session.list` holds (`SESSION_PAGE_MAX`): a phone's window stops there. */
+const PAGE_MAX = 100;
+
 const { t, locale } = useI18n();
 const { text, forDialog } = useErrorText();
-const live = useLive('accounts.session.list');
-const state = useLiveState(live, { isEmpty: (data) => data.rows.length === 0 });
+const page = shallowRef(0);
+/** Pages the live window holds from `page` on: 1 on a desk; each «Load more» on a phone adds one. */
+const windowPages = shallowRef(1);
+function goToPage(n: number): void {
+  page.value = n;
+  windowPages.value = 1;
+}
+const live = useLive('accounts.session.list', () => ({
+  limit: Math.min(PAGE_SIZE * windowPages.value, PAGE_MAX),
+  offset: page.value * PAGE_SIZE,
+}));
+const state = useLiveState(live, { isEmpty: (data) => data.total === 0 });
 /** Why the sessions could not be loaded: the server's reason, or the connection's after a time-out. */
 const loadError = computed(() => (state.failed.value ? text(state.error.value) || t('accounts.account.errors.network') : undefined));
 const close = useCommand('accounts.session.close');
 const closeOthers = useCommand('accounts.session.close_others');
 
 const rows = computed<SessionRowOut[]>(() => live.data.value?.rows ?? []);
-const others = computed(() => rows.value.filter((row) => !row.is_current).length);
+/** Every session but this one, on any page: what «Close other sessions» ends. */
+const others = computed(() => live.data.value?.others ?? 0);
+
+// A page emptied elsewhere (sessions closed in another tab) steps back to the last page that still has rows,
+// loading meanwhile: never «no sessions» while there are some.
+const pastTheEnd = (now: SessionListOut | undefined) => !!now && now.rows.length === 0 && now.total > 0 && now.offset >= now.total;
+const steppingBack = computed(() => pastTheEnd(live.data.value));
+watch(live.data, (now) => {
+  if (now && pastTheEnd(now)) goToPage(Math.ceil(now.total / PAGE_SIZE) - 1);
+});
 const device = (row: SessionRowOut) => deviceName(t, row.device);
 
 // The server's order stays (this session first, then by last use): no column sorts it away.
@@ -101,22 +126,27 @@ async function closeTheOthers(): Promise<void> {
 <template>
   <DataTable
     testid="sessions"
+    server-side
     fill
     :title="$t('accounts.account.sessions.title')"
     :rows="rows"
+    :total="live.data.value?.total ?? 0"
+    :page="page"
     :columns="columns"
     :actions="actions"
     :views="['table', 'cards']"
     :column-picker="false"
-    :page-size="25"
+    :page-size="PAGE_SIZE"
     :page-size-options="[25, 50]"
     :page-size-chooser="false"
-    :loading="state.loading.value"
+    :loading="state.loading.value || steppingBack"
     :error="loadError"
     :labels="{ loadError: $t('accounts.account.sessions.loadError'), retry: $t('accounts.account.retry') }"
     :entity-label="(n: number) => $t('accounts.account.sessions.entity', n)"
     :card-title="device"
     :card-icon="(row: SessionRowOut) => deviceIcon(row.device)"
+    @page-change="goToPage"
+    @load-more="windowPages += 1"
     @action="onAction"
     @retry="state.retry()"
   >

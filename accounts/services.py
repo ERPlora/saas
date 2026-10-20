@@ -876,7 +876,7 @@ def session_close_others(ctx: OperationContext, data: SessionCloseOthersIn) -> d
     user = queries.account_of(ctx)
     current = queries.current_session_key(ctx.request)
     others = [session for session in UserSession.objects.filter(user=user) if session.session_key != current]
-    closed = sum(1 for session in others if queries.session_is_alive(session, user))
+    closed = sum(1 for _, key in queries.live_sessions(user) if key != current)
     _end_and_sign_out(ctx, others, user=user)
     record_event(ctx, events.SESSION_CLOSED)
     return {"closed": closed}

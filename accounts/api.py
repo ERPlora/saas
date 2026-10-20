@@ -6,7 +6,7 @@ input, never in the path (one parameter per route, the operation's input), as in
 """
 
 from live.ninja import bind, run_operation
-from ninja import Router
+from ninja import Query, Router
 
 from accounts import queries, services
 from accounts.schemas import (
@@ -18,6 +18,7 @@ from accounts.schemas import (
     PreferencesUpdateIn,
     ProfileUpdateIn,
     SessionCloseIn,
+    SessionListIn,
 )
 
 router = Router(tags=["accounts"])
@@ -78,8 +79,8 @@ async def preferences_update(request, data: PreferencesUpdateIn):
 
 
 @bind(router, "accounts.session.list", "/accounts/sessions")
-async def session_list(request):
-    return await run_operation(request, queries.session_list)
+async def session_list(request, params: Query[SessionListIn]):
+    return await run_operation(request, queries.session_list, params)
 
 
 @bind(router, "accounts.session.close", "/accounts/sessions/close")
