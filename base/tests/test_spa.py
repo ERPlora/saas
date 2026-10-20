@@ -74,6 +74,16 @@ def test_spa_config_says_whether_google_is_configured(client, settings, enabled)
     assert config["googleEnabled"] is enabled
 
 
+@pytest.mark.parametrize("enabled", [True, False])
+def test_spa_config_says_whether_two_step_verification_is_switched_on(client, settings, enabled):
+    """Off, its endpoints answer 404 (``accounts/mfa.py``): the Account page does not ask them."""
+    settings.ACCOUNTS_MFA_ENABLED = enabled
+
+    _, config = json_block(client.get("/account/security", HTTP_HOST=HOST), "spa-config")
+
+    assert config["mfaEnabled"] is enabled
+
+
 def test_spa_config_carries_the_origin_of_a_hub_with_its_slug_to_fill_in(client, settings):
     """The error page of the jump names the hub's host and links back to it (/login/error?code=not_a_member)."""
     settings.HUB_CALLBACK_TEMPLATE = "https://{slug}.erplora.com/auth/callback"

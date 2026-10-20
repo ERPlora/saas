@@ -41,6 +41,22 @@ describe('TwoFactorRow', () => {
     expect(s.q('two-factor')).toBeNull();
   });
 
+  it('asks nothing when spa-config already says 2FA is switched off, and paints nothing', async () => {
+    const server = fakeAllauth({ 'GET /account/authenticators': notFound });
+    const s = await mountPanel(TwoFactorRow, { config: { mfaEnabled: false } });
+    await flush();
+    expect(server.callsTo('GET /account/authenticators')).toEqual([]);
+    expect(s.q('two-factor')).toBeNull();
+  });
+
+  it('asks when spa-config says 2FA is switched on', async () => {
+    const server = fakeAllauth({ 'GET /account/authenticators': ok([]) });
+    const s = await mountPanel(TwoFactorRow, { config: { mfaEnabled: true } });
+    await flush();
+    expect(server.callsTo('GET /account/authenticators')).toHaveLength(1);
+    expect(s.q('two-factor-state')?.textContent).toContain('Off');
+  });
+
   it('still leads to the settings when the state cannot be read', async () => {
     fakeAllauth({ 'GET /account/authenticators': () => json(500, { status: 500 }) });
     const s = await mountPanel(TwoFactorRow);
