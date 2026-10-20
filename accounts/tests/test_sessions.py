@@ -263,5 +263,16 @@ class TestClosingTheOthers:
         assert api_post(laptop, CLOSE_OTHERS).json() == {"closed": 0}
         assert received == [ana.pk]
 
+    def test_a_session_that_no_longer_signs_in_is_not_counted_among_the_closed(self, laptop, phone, ana, password):
+        """«Sessions closed: n» counts the sessions that still signed in: one left behind by its expiry is ended too,
+        but not counted (the count comes from ``live_sessions``, FIX-SAAS-SESSIONS-RESULT-TOO-BIG)."""
+        tablet = _browser(ana.email, password, MAC)
+        model = _session_store().get_model_class()
+        model.objects.filter(session_key=phone.session.session_key).update(expire_date=timezone.now() - timedelta(seconds=1))
+
+        assert api_post(laptop, CLOSE_OTHERS).json() == {"closed": 1}
+        assert api_get(tablet, LIST).status_code == 401
+        assert [row["is_current"] for row in api_get(laptop, LIST).json()["rows"]] == [True]
+
     def test_an_anonymous_visitor_gets_the_401_envelope(self, client):
         assert api_post(client, CLOSE_OTHERS).status_code == 401
