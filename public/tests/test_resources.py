@@ -11,6 +11,8 @@ these pages. What changed, and why:
   support page links that address (``landing:contact_page`` does not exist here).
 """
 
+import re
+
 import pytest
 from django.conf import settings
 from django.urls import reverse
@@ -78,6 +80,21 @@ def test_support_uses_shared_layout_and_real_contact_routes(client, settings):
     assert "Email support@erplora.test when you cannot use the contact form." in html
     assert "max-w-3xl" not in html
     assert "Report a Problem" in html
+
+
+def test_the_support_routes_lead_to_the_guides_the_form_and_the_address(client, settings):
+    """PUBLIC-G19: each of the three cards of «Choose the right route» opens its own route."""
+    settings.SUPPORT_EMAIL = "support@erplora.test"
+    html = page(client, "/support/")
+    cards = html[html.index('class="ep-grid-cards"') :]
+    cards = cards[: cards.index("</section>")]
+
+    hrefs = re.findall(r'href="([^"]+)"', cards)
+    assert hrefs == [
+        reverse("public:help"),
+        reverse("public:contact"),
+        "mailto:support@erplora.test?subject=ERPlora%20Support",
+    ]
 
 
 def test_support_tells_what_to_send_and_what_never_to_send(client):
