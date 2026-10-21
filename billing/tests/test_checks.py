@@ -59,3 +59,38 @@ def test_outside_prod_a_test_key_passes(settings, key):
 
 def test_prod_keeps_its_live_keys(settings):
     assert deploy_errors(settings, "rk_live_dummy", publishable="pk_live_dummy") == []
+
+
+@pytest.mark.parametrize("key", ["sk_test_dummy", "rk_test_dummy"])
+def test_a_test_key_in_production_fails_the_deploy_check(settings, key):
+    """BILLING-F30: a test key in production (DEBUG off) would sell paid plans for test cards, so the deploy
+    refuses it; development keeps its test keys (DEBUG on)."""
+    settings.STRIPE_TEST_KEYS_ALLOWED = False
+
+    assert deploy_errors(settings, key, publishable="pk_test_dummy") == ["billing.E003"]
+
+
+def test_a_test_publishable_key_in_production_fails_the_deploy_check(settings):
+    settings.STRIPE_TEST_KEYS_ALLOWED = False
+
+    assert deploy_errors(settings, "rk_live_dummy", publishable="pk_test_dummy") == ["billing.E003"]
+
+
+@pytest.mark.parametrize(
+    ("debug", "environment", "allowed"), [(True, "prod", True), (False, "pre", True), (True, "pre", True), (False, "prod", False)]
+)
+def test_only_production_without_debug_refuses_test_keys(debug, environment, allowed):
+    """``settings.STRIPE_TEST_KEYS_ALLOWED`` comes from here when the settings load: development (prod with DEBUG
+    on) and pre keep their test keys; deployed production does not."""
+    from billing.stripe_keys import test_keys_allowed
+
+    assert test_keys_allowed(debug=debug, environment=environment) is allowed
+
+
+def test_the_settings_work_it_out_from_debug_and_the_environment():
+    from django.conf import settings
+
+    from billing.stripe_keys import test_keys_allowed
+
+    # pytest-django turns DEBUG off after the settings load; they loaded with DEBUG on (config.settings_pytest).
+    assert settings.STRIPE_TEST_KEYS_ALLOWED is test_keys_allowed(debug=True, environment=settings.ERPLORA_ENVIRONMENT)

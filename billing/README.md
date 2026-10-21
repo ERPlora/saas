@@ -102,7 +102,8 @@ en otra solo por sus operaciones), que sube `state_version` y empuja la foto al 
 ### Guardas de dinero (en este orden; ninguna llama a Stripe)
 
 1. Sin clave usable: 503 `billing.payments_unavailable` (en live solo vale una clave **restringida**
-   `rk_live_`; la secreta `sk_live_` se rechaza y `check --deploy` falla con `billing.E001`). Con clave live,
+   `rk_live_`; la secreta `sk_live_` se rechaza y `check --deploy` falla con `billing.E001`; en producción con
+   `DEBUG` apagado una clave de test tampoco vale, `billing.E003`, para no vender planes por tarjetas de prueba). Con clave live,
    **sin ruta que envíe la factura** (reglas de trabajo §15): 409 `billing.invoicing_unavailable` mientras
    `PLATFORM_INVOICING_ENABLED` esté apagado (por defecto) o el hub de plataforma no conteste
    `GET /internal/platform/invoices/health` → 200 `{"status": "ok"}` (la respuesta buena se guarda 5 min; una mala
