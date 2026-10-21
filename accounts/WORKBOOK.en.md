@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:f286390d05e1ce04ef9180aca77bf71a3d321e2ed08e6bd383f637189f3f40c3 -->
+<!-- generated from WORKBOOK.md sha256:707ba4c7767a0239d7aace0bb45bb9952a4fa40d6f3423bb44def3e17182e0e9 -->
 
 ## What it is for and who it is for
 
@@ -118,7 +118,7 @@ Steps:
 2. They type their email and a password (with the eye to check it) and tap "Create account".
 3. erplora.com checks the password: at least 8 characters, not like their email, not a common password and not only numbers. It creates the account and sends them a six-digit code.
 4. The screen moves to **Check your email** (ACCOUNTS-F02); with the right code they are signed in and reach "Create your business".
-In: the email (without spaces, in lower case and with full-width letters turned into the usual ones, so that an address that looks like another does not create a second account), the password and where they were going (only pages of erplora.com).
+In: the email (without spaces, in lower case and with full-width letters turned into the usual ones, so that an address that looks like another does not create a second account; the same when inviting it to a business, which invites that account), the password and where they were going (only pages of erplora.com).
 Out: the account, active, with its email not confirmed yet and the terms accepted (ACCOUNTS-F10). No business is created. The application that draws this screen is the same door as any other program: the same rules apply to all.
 If it fails: a password that does not pass the rules appears under the password and nothing is created; an invalid email (also with full-width letters before the at sign), under the email. An email that already has an account answers just like a new one and its mailbox receives "an account with this address already exists" with the link to set a password, without a code: this is also how the invited person, whose account has no password yet, sets theirs, and nobody takes over someone else's account. More than 10 sign-ups in an hour from the same network address: "Too many attempts. Please wait a few minutes and try again.".
 Involved: hubs (the **Entrance** and "Create your business")
