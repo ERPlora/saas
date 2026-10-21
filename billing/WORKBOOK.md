@@ -135,7 +135,7 @@ caben y, al propietario, el botón para mejorarlo o cambiarlo.
 | BILLING-F26 | Devolver un cobro | hecho |
 | BILLING-F27 | Lo que el personal de ERPlora puede hacer sobre el cobro de un cliente | hecho |
 | BILLING-F28 | Mantener en Stripe los precios de los planes | parcial |
-| BILLING-F29 | Probar el cobro real en PRE con un reloj de prueba de Stripe | parcial |
+| BILLING-F29 | Probar el cobro real en PRE con un reloj de prueba de Stripe | hecho |
 | BILLING-F30 | Usar claves reales de Stripe solo en producción y de prueba fuera de ella | hecho |
 
 ### BILLING-F01 Decir dónde se factura el negocio y con qué identificación fiscal
@@ -543,17 +543,18 @@ Implicados: ninguno
 
 ### BILLING-F29 Probar el cobro real en PRE con un reloj de prueba de Stripe
 <!-- origen: old-saas:SAAS_DASHBOARD-F105 -->
-Estado: parcial — nada permite todavía atar un negocio de pruebas a un reloj de Stripe
+Estado: hecho
 Actor: personal de ERPlora
-Pantalla: Admin
+Pantalla: Admin › Negocios
 Pasos:
-1. En PRE, una persona de ERPlora ata el cliente de Stripe de un negocio de pruebas a un reloj de prueba.
-2. Contrata un plan normal y adelanta el reloj hasta pasada la renovación; espera a que Stripe diga que está listo.
-3. Stripe emite el cobro de prueba y la cadena sigue como en producción (BILLING-F20).
-Entra: la clave de prueba de PRE.
-Sale: un cobro y una factura de prueba sin un plan interno de 1 €.
-Si falla: con una clave real se niega antes de llamar a Stripe; si el reloj no llega a listo, falla en vez de leer el estado anterior al salto.
-Implicados: ninguno
+1. En PRE, una persona de ERPlora crea un negocio de pruebas con una cuenta nueva y rellena sus datos de facturación.
+2. En **Admin › Negocios** selecciona ese negocio y lanza «Atar su pagador a un reloj de prueba de Stripe (solo claves de prueba)»: el admin dice en qué reloj quedó su pagador, que nace en Stripe atado a él.
+3. Desde el panel, contrata un plan normal con la tarjeta de prueba.
+4. Vuelve al admin y lanza «Adelantar un mes su reloj de prueba de Stripe»: el reloj salta un mes desde su propia hora y Stripe renueva y cobra como en producción, con sus avisos (BILLING-F20).
+Entra: el negocio de pruebas y las claves de prueba de PRE.
+Sale: un pagador de Stripe en un reloj de prueba y, al adelantarlo, la renovación con su factura de prueba, sin un plan interno de 1 €.
+Si falla: con claves reales las dos acciones ni se ofrecen y, si se llegan a pedir, se niegan antes de llamar a Stripe; un pagador que ya es cliente de Stripe no se ata a un reloj (Stripe solo lo permite al crearlo); un reloj que aún avanza no se vuelve a adelantar («inténtalo de nuevo en un minuto»); un negocio sin reloj dice que se ate antes. Solo un superusuario las lanza; el grupo de soporte solo mira.
+Implicados: hubs (el admin de los negocios)
 
 ### BILLING-F30 Usar claves reales de Stripe solo en producción y de prueba fuera de ella
 <!-- origen: old-saas:SAAS_DASHBOARD-F106 -->

@@ -16,6 +16,7 @@ for superusers, with its sizes readable and the database's, which the customer n
 """
 
 from django.contrib import admin, messages
+from django.contrib.admin.options import ActionLocation
 from django.template.defaultfilters import filesizeformat
 from django.utils.translation import gettext_lazy as _
 
@@ -129,7 +130,49 @@ class HubAdmin(PlatformActions):
     list_filter = ["status", "pending_hub_call"]
     search_fields = ["slug", "name"]
     inlines = [HubMemberInline]
-    actions = ["send_latest_state", "retry_owed"]
+    actions = ["send_latest_state", "retry_owed", "attach_test_clock", "advance_test_clock"]
+    #: BILLING-F29: offered only with Stripe's test keys (PRE, development); production never sees them.
+    TEST_CLOCK_ACTIONS = ("attach_test_clock", "advance_test_clock")
+
+    def get_actions(self, request, action_location=ActionLocation.CHANGE_LIST):
+        from billing.stripe_keys import StripeKeyMode
+        from billing.stripe_service import key_mode
+
+        actions = super().get_actions(request, action_location=action_location)
+        if key_mode() is not StripeKeyMode.TEST:
+            for name in self.TEST_CLOCK_ACTIONS:
+                actions.pop(name, None)
+        return actions
+
+    @admin.action(description=_("Attach its payer to a Stripe test clock (test keys only)"), permissions=["sync"])
+    def attach_test_clock(self, request, queryset):
+        from billing import services as billing_services
+
+        for hub in queryset:
+            try:
+                clock = billing_services.attach_test_clock(hub.id)
+            except billing_services.TestClockRefused as refused:
+                self.message_user(request, f"{hub.slug}: {refused}", messages.ERROR)
+                continue
+            self.message_user(
+                request, _("%(business)s: its payer is a new Stripe customer on clock %(clock)s.") % {"business": hub.slug, "clock": clock}
+            )
+
+    @admin.action(description=_("Advance its Stripe test clock a month (test keys only)"), permissions=["sync"])
+    def advance_test_clock(self, request, queryset):
+        from billing import services as billing_services
+
+        for hub in queryset:
+            try:
+                reached = billing_services.advance_test_clock_of(hub.id)
+            except billing_services.TestClockRefused as refused:
+                self.message_user(request, f"{hub.slug}: {refused}", messages.ERROR)
+                continue
+            self.message_user(
+                request,
+                _("%(business)s: its clock is advancing to %(date)s; Stripe tells what happens by its events.")
+                % {"business": hub.slug, "date": reached.date().isoformat()},
+            )
 
     @admin.action(description=_("Send the latest state to the Hub"), permissions=["sync"])
     def send_latest_state(self, request, queryset):

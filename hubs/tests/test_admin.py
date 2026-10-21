@@ -213,6 +213,45 @@ class TestTheActions:
         assert "1 session end(s) delivered" in response.content.decode()
 
 
+class TestTheTestClock:
+    """BILLING-F29: the staff try a real charge in PRE with a Stripe test clock, from the business's row."""
+
+    @pytest.fixture
+    def actions(self, staff_client):
+        def offered():
+            page = staff_client.get("/admin/hubs/hub/").content.decode()
+            return {name for name in ("attach_test_clock", "advance_test_clock") if f'value="{name}"' in page}
+
+        return offered
+
+    def test_with_test_keys_both_actions_are_offered(self, actions, business, settings):
+        settings.STRIPE_SECRET_KEY = "rk_test_51abc"
+
+        assert actions() == {"attach_test_clock", "advance_test_clock"}
+
+    @pytest.mark.parametrize("key", ["rk_live_51abc", ""])
+    def test_without_test_keys_they_are_not_offered(self, actions, business, settings, key):
+        settings.STRIPE_SECRET_KEY = key
+
+        assert actions() == set()
+
+    def test_attaching_says_which_clock_or_why_not(self, staff_client, business, settings, monkeypatch):
+        from billing import services
+
+        settings.STRIPE_SECRET_KEY = "rk_test_51abc"
+        monkeypatch.setattr(services, "attach_test_clock", lambda hub_id: "clock_qa")
+
+        assert "clock_qa" in _act(staff_client, "hub", "attach_test_clock", [business]).content.decode()
+
+        def refused(hub_id):
+            raise services.TestClockRefused("Its payer is a Stripe customer already.")
+
+        monkeypatch.setattr(services, "attach_test_clock", refused)
+        assert "Its payer is a Stripe customer already." in _act(
+            staff_client, "hub", "attach_test_clock", [business]
+        ).content.decode()
+
+
 class TestSupport:
     """``support`` (staff, view only, PLAN-SAAS §2.1 round 11) sees the account plane and acts on nothing."""
 

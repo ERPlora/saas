@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: saas-next\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-21 04:15+0200\n"
+"POT-Creation-Date: 2026-10-21 04:33+0200\n"
 "PO-Revision-Date: 2026-10-14 04:00+0200\n"
 "Last-Translator: ERPlora\n"
 "Language-Team: Spanish\n"
@@ -1553,7 +1553,36 @@ msgstr ""
 "Por encima de 400 € con IVA la factura debe identificar al comprador: añade "
 "el NIF del pagador antes de pagar."
 
-#: services.py:1350
+#: services.py:1129
+msgid "Test clocks only exist with Stripe's test keys."
+msgstr ""
+"Los relojes de prueba solo existen con las claves de prueba de Stripe."
+
+#: services.py:1139
+msgid "This business has no payer yet: fill in its billing details first."
+msgstr ""
+"Este negocio aún no tiene quien lo pague: rellena antes sus datos de "
+"facturación."
+
+#: services.py:1143
+msgid "Its payer is a Stripe customer already: a clock only takes a new one."
+msgstr ""
+"Su pagador ya es cliente de Stripe: un reloj solo se ata a un cliente nuevo."
+
+#: services.py:1147 services.py:1172
+#, python-format
+msgid "Stripe did not take it: %(reason)s"
+msgstr "Stripe no lo ha aceptado: %(reason)s"
+
+#: services.py:1159 services.py:1165
+msgid "This business has no test clock: attach one first."
+msgstr "Este negocio no tiene reloj de prueba: átalo antes a uno."
+
+#: services.py:1168
+msgid "Its clock is still advancing: try again in a minute."
+msgstr "Su reloj aún está avanzando: inténtalo de nuevo en un minuto."
+
+#: services.py:1410
 msgid ""
 "This business has as many modules as one subscription can bill. Contact "
 "support."
@@ -1561,7 +1590,7 @@ msgstr ""
 "Este negocio ya tiene tantos módulos como una suscripción puede cobrar. "
 "Contacta con soporte."
 
-#: services.py:1379
+#: services.py:1439
 msgid ""
 "The plan changes at the end of this period: keep the current plan first, "
 "then change the modules."
@@ -1569,47 +1598,47 @@ msgstr ""
 "El plan cambia al final de este periodo: mantén primero el plan actual y "
 "después cambia los módulos."
 
-#: services.py:1494
+#: services.py:1554
 msgid "This business is already on this plan."
 msgstr "Este negocio ya tiene este plan."
 
-#: services.py:1498
+#: services.py:1558
 msgid "The plan is cancelled: keep it first, then change it."
 msgstr "El plan está cancelado: mantenlo primero y después cámbialo."
 
-#: services.py:1633
+#: services.py:1693
 msgid "The price shown is out of date: review it again."
 msgstr "El precio mostrado ya no vale: vuelve a revisarlo."
 
-#: services.py:1640
+#: services.py:1700
 msgid "This business does not pay anything yet: buy it with the checkout."
 msgstr "Este negocio aún no paga nada: cómpralo con el pago."
 
-#: services.py:1764
+#: services.py:1824
 msgid "This business is on Free: there is nothing to cancel."
 msgstr "Este negocio está en Gratis: no hay nada que cancelar."
 
-#: services.py:1793
+#: services.py:1853
 msgid "This business is on Free: there is nothing to keep."
 msgstr "Este negocio está en Gratis: no hay nada que mantener."
 
-#: services.py:1822
+#: services.py:1882
 msgid "This business has no such module."
 msgstr "Este negocio no tiene ese módulo."
 
-#: services.py:1825
+#: services.py:1885
 msgid "This module comes with the plan: change the plan to drop it."
 msgstr "Este módulo viene con el plan: cambia el plan para quitarlo."
 
-#: services.py:1888
+#: services.py:1948
 msgid "This module has ended: buy it again in the store."
 msgstr "Este módulo ha terminado: vuelve a comprarlo en la tienda."
 
-#: services.py:1900
+#: services.py:1960
 msgid "The plan is cancelled, and its modules with it: keep the plan first."
 msgstr "El plan está cancelado, y sus módulos con él: mantén el plan primero."
 
-#: services.py:1950
+#: services.py:2010
 msgid ""
 "The payment service did not confirm the change. Nothing was charged; try "
 "again."
@@ -1617,40 +1646,40 @@ msgstr ""
 "El servicio de pagos no ha confirmado el cambio. No se ha cobrado nada; "
 "inténtalo de nuevo."
 
-#: services.py:1979
+#: services.py:2039
 msgid "Payment details cannot be managed right now. Try again later."
 msgstr ""
 "Los datos de pago no se pueden gestionar ahora mismo. Inténtalo más tarde."
 
-#: services.py:1986
+#: services.py:2046
 msgid "The payment details appear here after the first payment."
 msgstr "Los datos de pago aparecen aquí después del primer pago."
 
-#: services.py:3207 services.py:3228
+#: services.py:3267 services.py:3288
 msgid "Subscription"
 msgstr "Suscripción"
 
-#: services.py:3330
+#: services.py:3390
 msgid "Credit"
 msgstr "Abono"
 
-#: services.py:3602
+#: services.py:3662
 msgid "Refund"
 msgstr "Devolución"
 
-#: services.py:3943
+#: services.py:4003
 msgid "This invoice is paid already."
 msgstr "Esta factura ya está pagada."
 
-#: services.py:3945
+#: services.py:4005
 msgid "This invoice was cancelled: there is nothing to pay."
 msgstr "Esta factura se anuló: no hay nada que pagar."
 
-#: services.py:3948
+#: services.py:4008
 msgid "Only the account that pays this business can pay its invoices."
 msgstr "Solo la cuenta que paga este negocio puede pagar sus facturas."
 
-#: services.py:3952
+#: services.py:4012
 msgid ""
 "The bank declined the card. Change the card first, then pay the invoice."
 msgstr ""

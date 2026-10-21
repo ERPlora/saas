@@ -106,3 +106,88 @@ def test_an_internal_failure_of_the_clock_raises_at_once(stripe_double):
         advance_test_clock("clock_123", 1_700_100_000, max_polls=10)
 
     assert len(stripe_double.calls_to("test_helpers.test_clocks.retrieve")) == 1
+
+
+# --- BILLING-F29: the staff's door in PRE (the Django admin; test keys only) ----------------------------
+
+
+@pytest.mark.django_db
+class TestTheStaffDoor:
+    """A QA business whose payer is born on a clock, then the clock a month ahead: Stripe renews and charges
+    in test mode and the chain runs as in production (BILLING-F20), with no internal 1 € plan."""
+
+    def test_a_new_payer_is_born_on_a_clock(self, shop, stripe_double):
+        from billing import services
+
+        stripe_double.answer("test_helpers.test_clocks.create", {"id": "clock_qa", "status": "ready"})
+        stripe_double.answer("customers.search", {"data": []})
+
+        assert services.attach_test_clock(shop.id) == "clock_qa"
+
+        assert stripe_double.last("test_helpers.test_clocks.create").params["name"] == f"QA {shop.slug}"
+        assert stripe_double.last("customers.create").params["test_clock"] == "clock_qa"
+
+    def test_a_payer_already_in_stripe_takes_no_clock(self, shop, stripe_double):
+        from billing import services
+
+        shop.billing_profile.stripe_customer_id = "cus_old"
+        shop.billing_profile.save()
+
+        with pytest.raises(services.TestClockRefused):
+            services.attach_test_clock(shop.id)
+        assert stripe_double.calls_to("test_helpers.test_clocks.create") == []
+
+    @pytest.mark.parametrize("key", ["rk_live_51abc", ""])
+    def test_without_a_test_key_there_is_no_clock(self, shop, stripe_double, settings, key):
+        from billing import services
+
+        settings.STRIPE_SECRET_KEY = key
+
+        with pytest.raises(services.TestClockRefused):
+            services.attach_test_clock(shop.id)
+        with pytest.raises(services.TestClockRefused):
+            services.advance_test_clock_of(shop.id)
+        assert stripe_double.calls == []
+
+    def test_advancing_moves_its_clock_a_month_from_its_own_time_without_waiting(self, shop, stripe_double):
+        from billing import services
+
+        shop.billing_profile.stripe_customer_id = "cus_qa"
+        shop.billing_profile.save()
+        stripe_double.answer("customers.retrieve", {"id": "cus_qa", "test_clock": "clock_qa"})
+        stripe_double.answer(
+            "test_helpers.test_clocks.retrieve", {"id": "clock_qa", "status": "ready", "frozen_time": 1_700_000_000}
+        )
+        stripe_double.answer("test_helpers.test_clocks.advance", {"id": "clock_qa", "status": "advancing"})
+
+        reached = services.advance_test_clock_of(shop.id)
+
+        assert stripe_double.last("test_helpers.test_clocks.advance").params == {
+            "frozen_time": 1_700_000_000 + 31 * 86_400
+        }
+        assert int(reached.timestamp()) == 1_700_000_000 + 31 * 86_400
+        assert len(stripe_double.calls_to("test_helpers.test_clocks.retrieve")) == 1
+
+    def test_a_clock_still_advancing_is_not_pushed_again(self, shop, stripe_double):
+        from billing import services
+
+        shop.billing_profile.stripe_customer_id = "cus_qa"
+        shop.billing_profile.save()
+        stripe_double.answer("customers.retrieve", {"id": "cus_qa", "test_clock": "clock_qa"})
+        stripe_double.answer(
+            "test_helpers.test_clocks.retrieve", {"id": "clock_qa", "status": "advancing", "frozen_time": 1}
+        )
+
+        with pytest.raises(services.TestClockRefused):
+            services.advance_test_clock_of(shop.id)
+        assert stripe_double.calls_to("test_helpers.test_clocks.advance") == []
+
+    def test_a_payer_without_a_clock_has_nothing_to_advance(self, shop, stripe_double):
+        from billing import services
+
+        shop.billing_profile.stripe_customer_id = "cus_real"
+        shop.billing_profile.save()
+        stripe_double.answer("customers.retrieve", {"id": "cus_real", "test_clock": None})
+
+        with pytest.raises(services.TestClockRefused):
+            services.advance_test_clock_of(shop.id)
