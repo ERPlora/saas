@@ -15,6 +15,7 @@ deletes nothing, not even for a superuser. Superusers get the platform's actions
 for superusers, with its sizes readable and the database's, which the customer never sees (PLAN-SAAS §5).
 """
 
+from django import forms
 from django.contrib import admin, messages
 from django.contrib.admin.options import ActionLocation
 from django.template.defaultfilters import filesizeformat
@@ -64,8 +65,40 @@ class BusinessTypeAdmin(admin.ModelAdmin):
     )
 
 
+class PlanForm(forms.ModelForm):
+    """BILLING-F28: a plan is not saved with a Stripe price that would charge something else; checked in Stripe
+    only when its prices or their ids change. Without Stripe it is saved and the admin says it was not checked."""
+
+    PRICE_FIELDS = ("stripe_price_id", "stripe_price_id_annual", "stripe_product_id", "price_monthly", "price_annual")
+
+    class Meta:
+        model = Plan
+        fields = "__all__"
+
+    def clean(self):
+        from billing import services as billing_services
+
+        cleaned = super().clean()
+        self.unchecked = ""
+        if self.errors or not set(self.PRICE_FIELDS) & set(self.changed_data):
+            return cleaned
+        try:
+            problems = billing_services.plan_price_problems(
+                prices={field: cleaned.get(field) or "" for field in ("stripe_price_id", "stripe_price_id_annual")},
+                amounts={field: cleaned.get(field) for field in ("price_monthly", "price_annual")},
+                product=cleaned.get("stripe_product_id") or "",
+            )
+        except billing_services.PriceCheckUnavailable as unavailable:
+            self.unchecked = str(unavailable)
+            return cleaned
+        for field, problem in problems.items():
+            self.add_error(field, problem)
+        return cleaned
+
+
 @admin.register(Plan)
 class PlanAdmin(admin.ModelAdmin):
+    form = PlanForm
     list_display = ["slug", "name_en", "price_monthly", "trial_period_days", "is_active", "upgrade_only", "internal_only"]
     list_filter = ["is_active", "upgrade_only", "internal_only"]
     search_fields = ["slug", "name_en", "name_es"]
@@ -84,6 +117,11 @@ class PlanAdmin(admin.ModelAdmin):
         (_("Stripe"), {"fields": ("stripe_product_id", "stripe_price_id", "stripe_price_id_annual")}),
         (_("History"), {"fields": ("created_at", "updated_at")}),
     )
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        if getattr(form, "unchecked", ""):
+            self.message_user(request, form.unchecked, messages.WARNING)
 
 
 # --- The account plane of a business (read-mostly) -------------------------------------------------

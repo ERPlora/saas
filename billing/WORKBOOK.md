@@ -134,7 +134,7 @@ caben y, al propietario, el botón para mejorarlo o cambiarlo.
 | BILLING-F25 | Emitir la factura de ERPlora por un cobro | hecho |
 | BILLING-F26 | Devolver un cobro | hecho |
 | BILLING-F27 | Lo que el personal de ERPlora puede hacer sobre el cobro de un cliente | hecho |
-| BILLING-F28 | Mantener en Stripe los precios de los planes | parcial |
+| BILLING-F28 | Mantener en Stripe los precios de los planes | hecho |
 | BILLING-F29 | Probar el cobro real en PRE con un reloj de prueba de Stripe | hecho |
 | BILLING-F30 | Usar claves reales de Stripe solo en producción y de prueba fuera de ella | hecho |
 
@@ -529,17 +529,18 @@ Implicados: hubs (el estado de los negocios)
 
 ### BILLING-F28 Mantener en Stripe los precios de los planes
 <!-- origen: old-saas:SAAS_DASHBOARD-F124 -->
-Estado: parcial — el admin no comprueba en Stripe el precio que se pega
+Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin › Planes
 Pasos:
 1. Una persona de ERPlora crea en Stripe el producto del plan y sus precios mensual y anual, sin IVA incluido.
-2. En el admin, en el plan, pega sus identificadores de Stripe junto al precio mensual y anual.
-3. Desde ese momento el plan se vende a ese precio; sin ellos, no está a la venta.
+2. En **Admin › Planes**, en el plan, pega el producto y sus dos precios de Stripe junto al precio mensual y anual del plan, y guarda.
+3. Al guardar, erplora.com pregunta a Stripe por cada precio y solo lo acepta si existe con las claves de ese entorno, está activo, en euros, se cobra cada mes (o cada año) como dice su campo, cobra lo mismo que el plan, es sin IVA y es de ese producto.
+4. Desde ese momento el plan se vende a ese precio; sin sus precios, no está a la venta.
 Entra: el plan y sus precios de Stripe.
-Sale: el plan a la venta.
-Si falla: un plan sin su precio de Stripe no se vende y la Tienda lo dice.
-Implicados: ninguno
+Sale: el plan a la venta con sus precios comprobados.
+Si falla: un precio que no cuadra no se guarda y dice por qué debajo de su campo («Este precio no está en euros», «Stripe cobra … y el plan dice …», «Este precio incluye el IVA o no lo dice…», un precio de pruebas en producción no se encuentra…). Si Stripe no contesta, no se guarda y se pide repetir; sin claves de Stripe (en desarrollo) se guarda y el admin avisa de que no se comprobó. Un plan sin su precio de Stripe no se vende y la Tienda lo dice.
+Implicados: hubs (el admin de los planes)
 
 ### BILLING-F29 Probar el cobro real en PRE con un reloj de prueba de Stripe
 <!-- origen: old-saas:SAAS_DASHBOARD-F105 -->

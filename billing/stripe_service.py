@@ -162,6 +162,10 @@ def find_customer(billing_profile_id: str) -> dict | None:
     return found[0] if found else None
 
 
+def retrieve_price(price_id: str) -> dict:
+    return _call(client().v1.prices.retrieve, price_id)
+
+
 def retrieve_customer(customer_id: str) -> dict:
     return _call(client().v1.customers.retrieve, customer_id)
 

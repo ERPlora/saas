@@ -213,6 +213,61 @@ class TestTheActions:
         assert "1 session end(s) delivered" in response.content.decode()
 
 
+class TestThePlanPrices:
+    """BILLING-F28: a plan is not saved with a Stripe price that would charge something else."""
+
+    def save(self, staff_client, plan, **changes):
+        from django.forms.models import model_to_dict
+
+        import json
+
+        def posted(value):
+            # As the form sends them: JSON fields as JSON, nothing as an empty field.
+            return json.dumps(value) if isinstance(value, (list, dict)) else "" if value is None else value
+
+        data = {key: posted(value) for key, value in model_to_dict(plan).items()}
+        data.update(changes)
+        return staff_client.post(f"/admin/hubs/plan/{plan.pk}/change/", data, follow=True)
+
+    def test_a_price_stripe_refuses_keeps_the_plan_as_it_was(self, staff_client, plans, settings, monkeypatch):
+        from billing import services
+
+        settings.STRIPE_SECRET_KEY = "rk_test_51abc"
+        monkeypatch.setattr(
+            services, "plan_price_problems", lambda **kwargs: {"stripe_price_id": "This price is not in euros."}
+        )
+        starter = Plan.objects.get(slug="starter")
+
+        page = self.save(staff_client, starter, stripe_price_id="price_usd").content.decode()
+
+        assert "This price is not in euros." in page
+        assert Plan.objects.get(slug="starter").stripe_price_id == starter.stripe_price_id
+
+    def test_without_stripe_it_is_saved_and_says_it_was_not_checked(self, staff_client, plans, monkeypatch):
+        from billing import services
+
+        def unavailable(**kwargs):
+            raise services.PriceCheckUnavailable("Stripe is not configured here: the prices were not checked.")
+
+        monkeypatch.setattr(services, "plan_price_problems", unavailable)
+        starter = Plan.objects.get(slug="starter")
+
+        page = self.save(staff_client, starter, stripe_price_id="price_new").content.decode()
+
+        assert "Stripe is not configured here: the prices were not checked." in page
+        assert Plan.objects.get(slug="starter").stripe_price_id == "price_new"
+
+    def test_other_changes_ask_stripe_nothing(self, staff_client, plans, monkeypatch):
+        from billing import services
+
+        asked = []
+        monkeypatch.setattr(services, "plan_price_problems", lambda **kwargs: asked.append(kwargs) or {})
+
+        self.save(staff_client, Plan.objects.get(slug="starter"), name_es="Inicio")
+
+        assert asked == []
+
+
 class TestTheTestClock:
     """BILLING-F29: the staff try a real charge in PRE with a Stripe test clock, from the business's row."""
 

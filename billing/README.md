@@ -160,7 +160,8 @@ suscripción de Stripe de todo negocio que se eliminó (`Subscription.cancel_req
 `STRIPE_PORTAL_CONFIGURATION` (`bpc_…`, solo tarjetas y recibos; sin ella el Portal no abre: 503
 `billing.portal_unavailable`), `STRIPE_TIMEOUT_SECONDS` (10), `PROMO_CHECK_RATE` (`20/m`) y
 `PLATFORM_INVOICING_ENABLED` (L3-C; apagado: una clave live no cobra). Un código
-promocional vale una vez por negocio y por pagador (`PromoRedemption`). Los precios: `Plan.stripe_price_id` / `stripe_price_id_annual` (admin) y
+promocional vale una vez por negocio y por pagador (`PromoRedemption`). Los precios: `Plan.stripe_price_id` / `stripe_price_id_annual` (admin; al guardarlos, `plan_price_problems` los
+comprueba en Stripe: activo, euros, periodicidad, importe del plan, `exclusive` y producto, BILLING-F28) y
 `apps.Module.stripe_price_id_monthly` / `_annual`, netos (`tax_behavior = exclusive` en Stripe). En los tests
 nunca se llama a Stripe: `billing/tests/stripe_double.py` sustituye a `stripe_service.client()` y los
 eventos se firman como los firma Stripe.
