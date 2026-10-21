@@ -8,7 +8,8 @@
 //   caught at the Hub's door (`page.route`), so the spec reads where the window was sent;
 // - «the real Hub» (`E2E_REAL_HUB=1`): a Hub runserver listening on this stack's Hub port, so the sign-up reaches it,
 //   it reports the business ready and the window really goes in (README «El Hub real de la e2e»). Without the
-//   variable those tests are skipped, and say so.
+//   variable those tests are skipped, and say so; with it, HUBS-G65 and HUBS-G66 are (they need the business to
+//   stay «Preparing», and the real Hub makes it ready at once). So the spec runs twice: once without, once with.
 // Accounts of this spec: `e2e-hubs1-…@example.com` (panel_seed.py's `clear` removes every `e2e-…@example.com`).
 import { execFileSync } from 'node:child_process';
 
@@ -111,6 +112,7 @@ test.afterAll(() => {
 });
 
 test('HUBS-G65: the free business with a single question, then «Preparing»', async ({ page }) => {
+  test.skip(!!process.env.E2E_REAL_HUB, 'the real Hub makes the business ready at once; this needs it «Preparing»');
   const errors = watchPageErrors(page);
   const email = await freshAccount(page, 'first');
   await page.goto('/launch');
@@ -131,6 +133,7 @@ test('HUBS-G65: the free business with a single question, then «Preparing»', a
 });
 
 test('HUBS-G66: from the installed app, its start /shell/ is the same sign-up', async ({ page }) => {
+  test.skip(!!process.env.E2E_REAL_HUB, 'the real Hub makes the business ready at once; this needs it «Preparing»');
   const errors = watchPageErrors(page);
   await freshAccount(page, 'app');
   await page.goto('/shell/?surface=desktop');
