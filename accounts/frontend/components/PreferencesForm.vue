@@ -264,6 +264,12 @@ async function toggleBusinessNotices(event: CustomEvent<{ checked?: boolean }>):
 .mail-list ion-toggle {
   white-space: normal;
 }
+/* Ionic's toggle label is one line with «…»: a title or a hint wraps instead of being cut (the always-on row's hint
+   names every mail that goes, ACCOUNTS-F23). */
+.toggle-title,
+.toggle-hint {
+  white-space: normal;
+}
 .toggle-title {
   display: block;
   color: var(--ion-text-color);
