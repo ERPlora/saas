@@ -470,6 +470,17 @@ class TestRemoveThePayer:
 
         assert not HubMember.objects.filter(hub=handed_over, user=team["owner"]).exists()
 
+    def test_a_plan_without_a_stripe_customer_is_on_nobodys_card(self, handed_over, team):
+        """Neither the old payer nor the plan has a Stripe customer yet: an empty one matches nobody."""
+        Subscription.objects.filter(hub=handed_over).update(stripe_subscription_id="sub_1", status="active")
+        services.billing_profile_update(
+            ctx_for(team["admin"]), BillingProfileIn(hub_id=handed_over.id, billing_name="Adela SL")
+        )
+
+        self.remove(team["admin"], member_of(handed_over, team["owner"]))
+
+        assert not HubMember.objects.filter(hub=handed_over, user=team["owner"]).exists()
+
     def test_an_ended_plan_on_the_old_card_holds_nobody(self, handed_over, team):
         from billing.tests.conftest import pay
 
