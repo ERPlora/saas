@@ -12,7 +12,10 @@
 // Members fills the page between the topbar and the tabbar (`detail-fill` + `.panel-fill`). Its states are
 // truthful (`useLiveState`, audit 2026-10-14 R-08): no answer in time is an error with «Retry», never a skeleton
 // for ever; an error or a deleted business has no tabbar (W-18, W-B3: its sections would only repeat it), and a
-// deleted one shows its Summary whatever the address.
+// deleted one shows its Summary whatever the address. Members only needs the business's id (the address's), so
+// it mounts with the page and its list goes in the page's first `/api/live` stream with `hubs.business.get`; it
+// shows once the business is there. Waiting for the business to mount it made the SDK reopen the stream, and the
+// first request ended aborted (FIX-SAAS-BUSINESSES-LIVE-DOUBLE-OPEN).
 import { formatDateTime, InlineFeedback, StatusPill } from '@erplora/ui/components';
 import { AppPage, HubIcon, type ShellTab, toastError, toastSuccess, useSurface, WebOnly } from '@erplora/ui/shell';
 import { useCommand, useLive } from '@erplora/ui/sdk';
@@ -59,10 +62,12 @@ const { text } = useErrorText();
 const load = useLiveState(live);
 
 const business = computed(() => live.data.value);
+/** The business could not be loaded: the page says why, with nothing else (no tabbar, no section). */
+const loadFailed = computed(() => load.failed.value && !business.value);
 const deleted = computed(() => business.value?.status === 'deleting');
 /** No tabbar on an error or a deleted business: every section would only repeat it. */
 const tabs = computed<ShellTab[]>(() =>
-  deleted.value || (load.failed.value && !business.value) ? [] : SECTIONS.map((section) => ({
+  deleted.value || loadFailed.value ? [] : SECTIONS.map((section) => ({
     id: section.id,
     label: t(`hubs.business.tabs.${section.id}`),
     icon: section.icon,
@@ -113,7 +118,7 @@ async function recover(): Promise<void> {
       :class="{ 'panel-fill': fills }"
     >
       <LoadFailed
-        v-if="load.failed.value && !business"
+        v-if="loadFailed"
         :heading="$t('hubs.business.loadError')"
         :message="$t('hubs.business.loadErrorBody')"
         :error="load.error.value"
@@ -273,10 +278,6 @@ async function recover(): Promise<void> {
             @manage="open(business)"
           />
         </template>
-        <MembersTab
-          v-else-if="section === 'members'"
-          :business="business"
-        />
         <ion-card
           v-else-if="section === 'modules'"
           data-testid="business-modules"
@@ -303,11 +304,17 @@ async function recover(): Promise<void> {
             </div>
           </ion-card-content>
         </ion-card>
-        <template v-else>
+        <template v-else-if="section === 'settings'">
           <BusinessSettings :business="business" />
           <DangerZone :business="business" />
         </template>
       </template>
+
+      <MembersTab
+        v-if="section === 'members' && !loadFailed"
+        :id="id"
+        :business="business"
+      />
     </div>
   </AppPage>
 </template>
