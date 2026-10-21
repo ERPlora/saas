@@ -35,6 +35,17 @@ const SAAS_DIR = resolve(HERE, '..', '..');
 export const BASE_URL = `http://127.0.0.1:${STACK.publicPort}`;
 
 /**
+ * Where the public server of `stack` writes the mails it sends (the contact form, PUBLIC-G39), as files: never SMTP.
+ * `tests/e2e/.artifacts/public/mail/` (ignored by git), `mail-<E2E_SAAS_PORT>/` beside the shared stack.
+ */
+export function publicMailDir(stack: Stack): string {
+  return join(HERE, '.artifacts', 'public', stack.shared ? 'mail' : `mail-${stack.base}`);
+}
+
+/** This run's. */
+export const PUBLIC_MAIL_DIR = publicMailDir(STACK);
+
+/**
  * The folder name of a run of `stack` started `now` (`.artifacts/test-results/<id>/`): its start time and, beside
  * the shared stack, its port. Two runs started in the same millisecond shared one, and the first to finish
  * deleted the other's traces.
@@ -83,6 +94,8 @@ export function publicServer(saasDir: string, stack: Stack = STACK): WebServer {
         // Production refuses to start without it either (fiscal/): a valid Fernet key that encrypts nothing here.
         FISCAL_DOCUMENTS_KEY: 'ZTJlLWxvY2FsLW9ubHktbm90LWEtc2VjcmV0LWtleSE=',
         ALLOWED_HOSTS: '127.0.0.1,localhost',
+        EMAIL_BACKEND: 'django.core.mail.backends.filebased.EmailBackend',
+        EMAIL_FILE_PATH: publicMailDir(stack),
       },
       stack,
     ),
