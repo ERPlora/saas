@@ -1,0 +1,54 @@
+{% load i18n static %}
+<!DOCTYPE html>
+{% comment %}
+  The page Meta's window (WhatsApp Embedded Signup) comes back to (whatsapp/signup_return.py): it hands the one-time
+  code, or Meta's reason, to the Hub's page that opened the window and closes itself. `handed` is what to post
+  (`message`) and where (`target`, that hub's origin), as JSON data read by the one script (nonce of the CSP); without
+  it, or without an opener, the page only says the window can be closed. The look of the error pages
+  (templates/errors/base.html), with no links: a window of Meta's has nowhere else to go.
+{% endcomment %}
+{% get_current_language as LANGUAGE_CODE %}
+<html lang="{{ LANGUAGE_CODE }}" data-theme="{{ theme|default:'system' }}"{% if 'dark' in theme %} class="ion-palette-dark"{% endif %}>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="referrer" content="no-referrer">
+    <meta name="theme-color" content="#1496d6">
+    <title>WhatsApp · ERPlora Cloud</title>
+
+    <link rel="icon" type="image/x-icon" href="{% static 'img/favicon.ico' %}">
+
+    <link rel="stylesheet" href="{% static 'vendor/ionic/css/core.css' %}">
+    <link rel="stylesheet" href="{% static 'vendor/ionic/css/normalize.css' %}">
+    <link rel="stylesheet" href="{% static 'vendor/ionic/css/typography.css' %}">
+    <link rel="stylesheet" href="{% static 'vendor/ionic/css/palettes/dark.class.css' %}">
+    {% include "partials/erplora_fonts.html" %}
+    <link rel="stylesheet" href="{% static 'css/ionic-theme.css' %}">
+    <link rel="stylesheet" href="{% static 'css/error-pages.css' %}">
+</head>
+<body>
+    <main class="error-page">
+        <div class="error-page__content">
+            <p class="error-page__code">WhatsApp</p>
+            <h1 data-testid="whatsapp-return-closable">{% trans "This window can be closed now." %}</h1>
+        </div>
+    </main>
+    {% if handed %}{{ handed|json_script:"whatsapp-signup-return" }}{% endif %}
+    <script nonce="{{ csp_nonce }}">
+      (function () {
+        // The colour mode, as on the error pages: the `theme` cookie, else the server's; `system` follows the device.
+        var cookie = document.cookie.match(/(?:^|;\s*)theme=([^;]*)/);
+        var mode = cookie ? decodeURIComponent(cookie[1]) : document.documentElement.getAttribute("data-theme");
+        if (mode === "system") {
+          document.documentElement.classList.toggle("ion-palette-dark", window.matchMedia("(prefers-color-scheme: dark)").matches);
+        }
+        var handed = document.getElementById("whatsapp-signup-return");
+        if (!handed || !window.opener) return;
+        var data = JSON.parse(handed.textContent);
+        window.opener.postMessage(data.message, data.target);
+        window.close();
+      })();
+    </script>
+</body>
+</html>

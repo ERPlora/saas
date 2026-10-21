@@ -21,7 +21,7 @@ import respx
 
 from hubs.models import Hub
 from whatsapp.models import PhoneNumber
-from whatsapp.tests.conftest import APP_ID, APP_SECRET, CONFIG_ID, GRAPH, VERIFY_TOKEN
+from whatsapp.tests.conftest import APP_ID, APP_SECRET, CONFIG_ID, GRAPH, REDIRECT_URI, VERIFY_TOKEN
 from whatsapp.tests.test_internal import SECRET, door, error_code
 
 pytestmark = pytest.mark.django_db
@@ -100,15 +100,49 @@ class TestDoor10Config:
 
         assert response.status_code == 200
         assert response.json() == {
-            "configured": True, "app_id": APP_ID, "config_id": CONFIG_ID, "graph_version": "v25.0"
+            "configured": True, "app_id": APP_ID, "config_id": CONFIG_ID, "graph_version": "v25.0",
+            "redirect_uri": REDIRECT_URI,
         }
         assert APP_SECRET not in response.content.decode() and VERIFY_TOKEN not in response.content.decode()
+
+    def test_the_page_meta_brings_the_code_back_to_is_erplora_s_own_setting(self, client, internal, business):
+        internal.WHATSAPP_REDIRECT_URI = "https://pre.erplora.com/whatsapp/return"
+
+        assert config(client).json()["redirect_uri"] == "https://pre.erplora.com/whatsapp/return"
 
     @pytest.mark.parametrize("missing", ["WHATSAPP_APP_ID", "WHATSAPP_APP_SECRET", "WHATSAPP_CONFIG_ID"])
     def test_without_metas_app_it_says_not_configured_with_empty_ids(self, client, internal, business, missing):
         setattr(internal, missing, "")
 
-        assert config(client).json() == {"configured": False, "app_id": "", "config_id": "", "graph_version": "v25.0"}
+        assert config(client).json() == {
+            "configured": False, "app_id": "", "config_id": "", "graph_version": "v25.0", "redirect_uri": ""
+        }
+
+    @pytest.mark.parametrize(
+        ("redirect_uri", "debug"),
+        [
+            ("", False),
+            ("http://erplora.com/whatsapp/return", False),  # never plain http outside development
+            ("https://erplora.com/whatsapp/other", False),  # only this site's return page
+            ("https://erplora.com/whatsapp/return?next=x", False),
+            ("https://erplora.com/whatsapp/return#x", False),
+            ("/whatsapp/return", False),
+            ("ftp://erplora.com/whatsapp/return", True),
+        ],
+    )
+    def test_without_a_valid_return_page_whatsapp_is_not_configured(
+        self, client, internal, business, redirect_uri, debug
+    ):
+        internal.WHATSAPP_REDIRECT_URI, internal.DEBUG = redirect_uri, debug
+
+        assert config(client).json() == {
+            "configured": False, "app_id": "", "config_id": "", "graph_version": "v25.0", "redirect_uri": ""
+        }
+
+    def test_development_s_return_page_may_be_plain_http(self, client, internal, business):
+        internal.WHATSAPP_REDIRECT_URI, internal.DEBUG = "http://localhost:8601/whatsapp/return", True
+
+        assert config(client).json()["redirect_uri"] == "http://localhost:8601/whatsapp/return"
 
     def test_a_business_the_saas_does_not_know_is_404(self, client, internal, business):
         response = config(client, hub="nobody")
@@ -137,6 +171,8 @@ class TestDoor11Connect:
         }
         exchange = meta["exchange"].calls.last.request.url.params
         assert (exchange["code"], exchange["client_id"], exchange["client_secret"]) == (CODE, APP_ID, APP_SECRET)
+        # Meta exchanges a code only with the redirect_uri the window was opened with (error 100/36008).
+        assert exchange["redirect_uri"] == REDIRECT_URI == config(client).json()["redirect_uri"]
         assert meta["subscribe"].calls.last.request.headers["Authorization"] == f"Bearer {TOKEN}"
         register = meta["register"].calls.last.request
         assert str(register.url) == f"{GRAPH}/{PHONE_ID}/register"

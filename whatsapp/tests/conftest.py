@@ -26,6 +26,8 @@ CONFIG_ID = "987654321"
 FERNET_KEY = "mbAv33BqhZbROx9FgnZVR3XPEUopApIq3G-xQR4E58w="
 OTHER_FERNET_KEY = "SWDVBWsq5tg7Eo92t5sGAbJr_rvRBe0wPKwAaX5pvI8="
 GRAPH = "https://graph.facebook.com/v25.0"
+#: erplora.com's page Meta's window brings its code back to (door 10 gives it; door 11 exchanges the code with it).
+REDIRECT_URI = "https://erplora.com/whatsapp/return"
 
 
 @pytest.fixture
@@ -36,6 +38,7 @@ def whatsapp_on(settings):
     settings.WHATSAPP_VERIFY_TOKEN = VERIFY_TOKEN
     settings.WHATSAPP_CONFIG_ID = CONFIG_ID
     settings.WHATSAPP_GRAPH_VERSION = "v25.0"
+    settings.WHATSAPP_REDIRECT_URI = REDIRECT_URI
     settings.FERNET_KEY = FERNET_KEY
     settings.FERNET_KEY_PREVIOUS = ""
     return settings

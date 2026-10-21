@@ -25,6 +25,7 @@ from urllib.parse import urlsplit
 
 import httpx
 from django.conf import settings
+from django.urls import reverse
 
 TIMEOUT = httpx.Timeout(15.0, connect=5.0)
 SEND_TIMEOUT = httpx.Timeout(30.0, connect=5.0)
@@ -79,6 +80,18 @@ def app_credentials() -> tuple[str, str]:
     return app_id, secret
 
 
+def redirect_uri() -> str:
+    """erplora.com's page Meta's window brings its one-time code back to (``WHATSAPP_REDIRECT_URI``): an absolute
+    address of this site's ``/whatsapp/return``, https (plain http in development only), with no query nor
+    fragment; ``""`` when the setting is not one. The window opens with it and the code is exchanged with it."""
+    value = str(getattr(settings, "WHATSAPP_REDIRECT_URI", "") or "").strip()
+    page = urlsplit(value)
+    schemes = ("https", "http") if settings.DEBUG else ("https",)
+    if page.scheme not in schemes or not page.netloc or "?" in value or "#" in value:
+        return ""
+    return value if page.path == reverse("whatsapp_signup_return") else ""
+
+
 def get(path: str, *, token: str, params: dict | None = None) -> dict:
     return _request("GET", path, token=token, params=params)
 
@@ -112,9 +125,10 @@ def exchange_token(token: str) -> dict:
 
 
 def exchange_code(code: str) -> dict:
-    """Meta's exchange of Embedded Signup's one-time ``code`` for the business's token (``{"access_token"}``)."""
+    """Meta's exchange of Embedded Signup's one-time ``code`` for the business's token (``{"access_token"}``), with
+    the ``redirect_uri`` the window was opened with (Meta refuses another: error 100, subcode 36008)."""
     app_id, secret = app_credentials()
-    params = {"client_id": app_id, "client_secret": secret, "code": code}
+    params = {"client_id": app_id, "client_secret": secret, "code": code, "redirect_uri": redirect_uri()}
     return _request("GET", "oauth/access_token", token=None, params=params)
 
 
