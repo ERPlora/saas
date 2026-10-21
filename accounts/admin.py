@@ -11,7 +11,8 @@ there the one-time ``hub-admin`` code is minted and auto-posted to ``HUB_ADMIN_C
 staff never type ``hubs.erplora.com``.
 
 ``/admin/login/`` hands over to the SaaS's sign-in, ``LOGIN_URL`` (``admin_login``, installed by
-``config/urls.py``), which asks for the mailed code; with ``ACCOUNTS_MFA_ENABLED`` on, the jump also
+``config/urls.py``), which asks for the mailed code; with ``ACCOUNTS_MFA_ENABLED`` on, the staff enter only with
+an authenticator app (``admin_has_permission``, ACCOUNTS-F20; without one, ``/2fa`` to set it up) and the jump also
 needs the authenticator app's code in the session.
 """
 
@@ -46,6 +47,8 @@ from accounts.models import (
 )
 
 OPEN_IN_HUB_ADMIN = _("Open in the Hub admin")
+#: The Vue page of the second factor's settings, where staff without an authenticator app set it up (ACCOUNTS-F20).
+TWO_FACTOR_SETTINGS = "/2fa"
 
 #: Why the jump to the Hub admin failed, by the ``?error=`` the Hub sends back to «Hubs» (ERPlora/saas#1):
 #: the codes of ``hub-next/base/auth.py`` and ``auth_views.py``, and the 400s of ``/internal/auth/redeem``
@@ -207,6 +210,23 @@ def _admin_next(request: HttpRequest) -> str:
     return next_url
 
 
+def admin_has_permission(request: HttpRequest) -> bool:
+    """Who enters the admin (``admin.site.has_permission``, installed by ``config/urls.py``): an active staff account,
+    as Django's rule, and with ``ACCOUNTS_MFA_ENABLED`` only one with an authenticator app (ACCOUNTS-F20; PLAN-SAAS
+    «2FA obligatorio en el admin»). The account is checked, as in today's SaaS: the sign-in asked the app's code (or
+    a browser the account trusts skipped it). Recovery codes alone are no second factor."""
+    user = request.user
+    if not (user.is_active and user.is_staff):
+        return False
+    return not settings.ACCOUNTS_MFA_ENABLED or queries.has_totp(user)
+
+
+def _owes_the_app(request: HttpRequest) -> bool:
+    """Signed-in staff kept out of the admin only for lack of an authenticator app."""
+    user = request.user
+    return user.is_authenticated and user.is_active and user.is_staff and not admin.site.has_permission(request)
+
+
 @never_cache
 def admin_login(request: HttpRequest, extra_context=None) -> HttpResponse:
     """``/admin/login/``: the SaaS's sign-in, never Django's own.
@@ -216,13 +236,17 @@ def admin_login(request: HttpRequest, extra_context=None) -> HttpResponse:
     authenticator app (``ACCOUNTS_MFA_ENABLED``). It signs nobody in (not even by ``POST``): the visitor
     goes to ``LOGIN_URL?next=…`` (the launcher's sign-in, allauth.headless), whose code steps
     (``/verify-email``, ``/2fa/authenticate``) record both. Staff already signed in go where they were
-    going; any other signed-in account gets 403, never the login: the sign-in sends a signed-in account
-    straight to ``next`` (the admin), which would send it back here.
+    going; staff without the authenticator app the admin needs (``admin_has_permission``) go to set it up on
+    ``/2fa``, which comes back to ``next`` (never a 403: old SAAS_AUTH-F08); any other signed-in account gets 403,
+    never the login: the sign-in sends a signed-in account straight to ``next`` (the admin), which would send it back
+    here.
     Ported from ERPlora/saas ``_admin_login`` (``config/urls.py``), there only with the second factor on.
     """
     next_url = _admin_next(request)
     if admin.site.has_permission(request):
         return HttpResponseRedirect(next_url)
+    if _owes_the_app(request):
+        return HttpResponseRedirect(f"{TWO_FACTOR_SETTINGS}?{urlencode({'next': next_url}, safe='/')}")
     if request.user.is_authenticated:
         raise PermissionDenied
     return HttpResponseRedirect(f"{settings.LOGIN_URL}?{urlencode({'next': next_url}, safe='/')}")

@@ -745,6 +745,9 @@ class TestOpenInTheHubAdminWithTheFlagOn:
         assert response.status_code == 302
         assert response.url == CHANGELIST
         assert not AuthExchangeCode.objects.exists()
+        # The admin itself needs the app (ACCOUNTS-F20): set up on /2fa, the staff come back to the message.
+        assert client.get(CHANGELIST).url == f"/admin/login/?next={CHANGELIST}"
+        _activate_totp(platform)
         assert REFUSED_JUMP in client.get(CHANGELIST).content.decode()
 
     def test_staff_with_an_app_but_no_code_in_this_session_are_sent_back(self, mfa_on, client, platform):
@@ -773,6 +776,7 @@ class TestOpenInTheHubAdminWithTheFlagOn:
 
         # A message is stored as text in the language of the request that adds it.
         client.get(JUMP.format(slug="a"), headers={"Accept-Language": "es"})
+        _activate_totp(platform)
         html = client.get(CHANGELIST, headers={"Accept-Language": "es"}).content.decode()
 
         assert "Activa la verificación en dos pasos y vuelve a iniciar sesión antes de abrir el admin del Hub." in html
@@ -818,6 +822,7 @@ class TestAdminLoginWithTheFlagOn:
         assert client.get("/admin/").status_code == 302
 
     def test_signed_in_staff_go_where_they_were_going(self, mfa_on, client, platform):
+        _activate_totp(platform)
         client.force_login(platform)
 
         response = client.get("/admin/login/", {"next": "/admin/accounts/user/"})
@@ -846,6 +851,60 @@ class TestAdminLoginWithTheFlagOn:
 
     def test_it_is_never_cached(self, mfa_on, client):
         assert "no-store" in client.get("/admin/login/")["Cache-Control"]
+
+
+class TestTheAdminAsksTheStaffForTheApp:
+    """ACCOUNTS-F20 (old SAAS_AUTH-F08; ERPlora/saas ``test_admin_requires_second_factor.py``; PLAN-SAAS «2FA obligatorio
+    en el admin»: SE PORTA): with the second factor on, the staff enter the admin only with an authenticator app (the
+    sign-in then asks its code, or a browser they trust skips it); without one, the admin takes them to set it up,
+    keeping where they were going, never a 403. The account is what is checked, as in today's SaaS: the code was asked
+    at the sign-in."""
+
+    def test_staff_without_the_app_are_taken_to_set_it_up_keeping_where_they_were_going(self, mfa_on, client, platform):
+        client.force_login(platform)
+
+        response = client.get("/admin/accounts/user/")
+        assert (response.status_code, response.url) == (302, "/admin/login/?next=/admin/accounts/user/")
+        response = client.get(response.url)
+
+        assert (response.status_code, response.url) == (302, "/2fa?next=/admin/accounts/user/")
+
+    def test_support_without_the_app_too(self, mfa_on, client, password):
+        support, _ = services.create_platform_user("help@erplora.com", "support", password)
+        client.force_login(support)
+
+        assert client.get("/admin/login/", {"next": "/admin/"}).url == "/2fa?next=/admin/"
+        assert client.get("/admin/").status_code == 302
+
+    def test_the_hubs_page_too(self, mfa_on, client, platform):
+        client.force_login(platform)
+
+        response = client.get("/admin/accounts/hubs/")
+
+        assert (response.status_code, response.url) == (302, "/admin/login/?next=/admin/accounts/hubs/")
+
+    def test_staff_with_the_app_enter(self, mfa_on, client, platform):
+        _activate_totp(platform)
+        client.force_login(platform)
+
+        assert client.get("/admin/").status_code == 200
+        assert client.get("/admin/accounts/hubs/").status_code == 200
+
+    def test_recovery_codes_alone_are_no_second_factor(self, mfa_on, client, platform):
+        RecoveryCodes.activate(platform)
+        client.force_login(platform)
+
+        assert client.get("/admin/").status_code == 302
+
+    def test_with_the_flag_off_staff_without_the_app_enter_as_today(self, client, platform):
+        client.force_login(platform)
+
+        assert client.get("/admin/").status_code == 200
+
+    def test_a_customer_is_still_forbidden_never_sent_to_set_it_up(self, mfa_on, client, member):
+        client.force_login(member)
+
+        assert client.get("/admin/login/", {"next": "/admin/"}).status_code == 403
 
 
 class TestAdminLoginWithTheFlagOff:

@@ -14,6 +14,9 @@
 // - The QR is drawn here from allauth's `otpauth://` URL, as a data-URI image (CSP: `img-src data:`);
 //   the codes download as a text file built here, so there is no server route for it.
 // - Turning the app on makes allauth generate the recovery codes: they are shown right away, once.
+// - `?next=` (a path of this site): the staff the admin keeps out without the app (ACCOUNTS-F20) land here; the page
+//   says the app is needed to go on and, once it is on, «Continue» goes back there with a full load (a page of Django).
+//   «Back to settings» goes to Account › Security, where the «Two-step verification» row is.
 // - «Trusted browsers» (ACCOUNTS-F17), with the app on: whether this browser skips the app's code (ACCOUNTS-F05) and
 //   until when (`accounts.browser_trust.get`; allauth keeps no list, so only this one can be told), and «Stop trusting
 //   all browsers» (`accounts.browser_trust.revoke`). Read apart from the authenticators: it never holds the page.
@@ -33,10 +36,11 @@ import { IonButton, IonIcon, IonInput, IonInputPasswordToggle, IonSpinner } from
 import QRCode from 'qrcode';
 import { computed, onMounted, shallowRef, watchEffect } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 import AuthShell from '../components/AuthShell.vue';
 import CodeField from '../components/CodeField.vue';
+import { localNext } from '../next';
 import { LAUNCHER } from '../paths';
 
 type View = 'index' | 'activate' | 'deactivate' | 'recoveryCodes' | 'regenerate';
@@ -45,6 +49,8 @@ type ConfirmWith = 'password' | 'code';
 
 const HERE = '/2fa';
 const REAUTHENTICATE = '/reauthenticate';
+/** «Back to settings»: Account › Security, the page of the «Two-step verification» row. */
+const SECURITY = '/account/security';
 /** A server with 2FA switched off sends to the launcher with a notice; «Back to settings» goes there too. */
 const UNAVAILABLE = { path: LAUNCHER, query: { notice: 'mfa_unavailable' } };
 /** allauth's flows that confirm a recent login: the password, the authenticator (or a recovery code). */
@@ -73,7 +79,12 @@ const TITLES: Record<View, string> = {
 };
 
 const { t, locale } = useI18n();
+const route = useRoute();
 const router = useRouter();
+/** Where to go on once the app is on (`?next=`, a path of this site only). */
+const next = localNext(route.query.next);
+/** This page as «Confirm it's you» and the sign-in come back to it: with its `next`. */
+const comeBack = next ? `${HERE}?${new URLSearchParams({ next })}` : HERE;
 const client = useLiveClient();
 const config = client.config;
 const auth = createAllauthClient(config);
@@ -123,9 +134,9 @@ watchEffect(() => {
 function fail(error: unknown): void {
   if (isReauthenticationRequired(error)) {
     const method = error.flows.includes(CODE_FLOW) ? 'totp' : 'password';
-    void router.push({ path: REAUTHENTICATE, query: { next: HERE, method, flows: error.flows.join(',') } });
+    void router.push({ path: REAUTHENTICATE, query: { next: comeBack, method, flows: error.flows.join(',') } });
   } else if (error instanceof ApiError && error.code === 'not_authenticated') {
-    void router.replace({ path: LAUNCHER, query: { next: HERE } });
+    void router.replace({ path: LAUNCHER, query: { next: comeBack } });
   } else if (error instanceof ApiError && error.fields) {
     const input = shownInput();
     const { [NON_FIELD]: whole, ...rest } = error.fields;
@@ -296,6 +307,11 @@ const regenerate = () =>
 
 const backToIndex = () => run(refresh);
 
+/** On to `next`, a page of Django (the admin) or of the SPA: a full load brings what the session now has. */
+function goOn(path: string): void {
+  location.assign(path);
+}
+
 /** The unused codes as a text file, one per line: built here, never a server route. */
 function download(): void {
   const codes = recovery.value?.unusedCodes ?? [];
@@ -357,6 +373,23 @@ onMounted(() => {
       </div>
 
       <template v-if="view === 'index'">
+        <div
+          v-if="next && !totpOn"
+          class="non-field-error"
+          role="status"
+          data-testid="mfa-required"
+        >
+          {{ $t('accounts.twoFactor.requiredToContinue') }}
+        </div>
+        <ion-button
+          v-if="next && totpOn"
+          data-testid="mfa-continue"
+          color="primary"
+          expand="block"
+          @click="goOn(next)"
+        >
+          {{ $t('accounts.twoFactor.continue') }}
+        </ion-button>
         <div
           class="auth-section"
           data-testid="totp-section"
@@ -830,7 +863,7 @@ onMounted(() => {
 
     <template #foot>
       <p class="foot">
-        <router-link :to="LAUNCHER">
+        <router-link :to="SECURITY">
           {{ $t('accounts.twoFactor.backToSettings') }}
         </router-link>
       </p>

@@ -49,6 +49,8 @@ const NEW_IN_THE_VUE_PAGES = new Set([
   'accounts.twoFactor.trust',
   'accounts.twoFactor.trustHint',
   'accounts.twoFactor.trustLead',
+  // The staff the admin keeps out without the app land on /2fa to set it up (ACCOUNTS-F20).
+  'accounts.twoFactor.requiredToContinue',
   'accounts.twoFactor.trusted.title',
   'accounts.twoFactor.trusted.lead',
   'accounts.twoFactor.trusted.thisUntil',

@@ -150,7 +150,8 @@ describe('TwoFactorSettingsPage: index (mfa/index.html)', () => {
     expect(has('totp-turn-off')).toBe(false);
     expect(has('recovery-section')).toBe(false);
     const foot = wrapper.get('.foot a');
-    expect([foot.text(), foot.attributes('href')]).toEqual(['Back to settings', '/launch']);
+    // Back where the «Two-step verification» row is: Account › Security (it went to the launcher).
+    expect([foot.text(), foot.attributes('href')]).toEqual(['Back to settings', '/account/security']);
     expect(text('totp-section')).not.toContain('On');
   });
 
@@ -704,5 +705,66 @@ describe('TwoFactorSettingsPage: the trusted browsers', () => {
     expect(text('trust-done')).toBe(
       'Ya no confías en ningún navegador: cada uno te pedirá el código de tu app la próxima vez que entres.',
     );
+  });
+});
+
+// flow: ACCOUNTS-F20 — the staff kept out of the admin for lack of the app land here with `?next=/admin/…`: the page
+// says the app is needed to go on and, once it is on, «Continue» goes back there (a page of Django: a full load).
+describe('TwoFactorSettingsPage: setting the app up to go on (next)', () => {
+  let assign: ReturnType<typeof vi.fn>;
+  beforeEach(() => {
+    assign = vi.fn();
+    vi.stubGlobal('location', { ...window.location, assign });
+  });
+
+  it('says the app is needed to continue while it is off, with no «Continue» yet', async () => {
+    fakeAllauth({ 'GET /account/authenticators': list() });
+    const { text, has } = await mountPage('en', { path: '/2fa?next=%2Fadmin%2Faccounts%2Fuser%2F' });
+    expect(text('mfa-required')).toBe('Turn on the authenticator app to continue.');
+    expect(has('mfa-continue')).toBe(false);
+  });
+
+  it('once the app is on, «Continue» goes back to next', async () => {
+    fakeAllauth({ 'GET /account/authenticators': list(TOTP, recovery(10)) });
+    const { button, click, has } = await mountPage('en', { path: '/2fa?next=%2Fadmin%2Faccounts%2Fuser%2F' });
+    expect(has('mfa-required')).toBe(false);
+    const go = button('mfa-continue')!;
+    expect([go.props('color'), go.props('expand'), go.text()]).toEqual(['primary', 'block', 'Continue']);
+    await click('mfa-continue');
+    expect(assign).toHaveBeenCalledExactlyOnceWith('/admin/accounts/user/');
+  });
+
+  it('speaks Spanish', async () => {
+    fakeAllauth({ 'GET /account/authenticators': list() });
+    const { text } = await mountPage('es', { path: '/2fa?next=%2Fadmin%2F' });
+    expect(text('mfa-required')).toBe('Activa la app autenticadora para continuar.');
+  });
+
+  it('never goes to a next of another site', async () => {
+    fakeAllauth({ 'GET /account/authenticators': list(TOTP, recovery(10)) });
+    const { has } = await mountPage('en', { path: `/2fa?next=${encodeURIComponent('//evil.example.com/')}` });
+    expect(has('mfa-continue')).toBe(false);
+    expect(has('mfa-required')).toBe(false);
+  });
+
+  it("keeps next through «Confirm it's you» and a sign-in, so it still goes back there", async () => {
+    fakeAllauth({ 'GET /account/authenticators': list(TOTP, recovery(9)), 'DELETE /account/authenticators/totp': reauthenticationRequired() });
+    const page = await mountPage('en', { path: '/2fa?next=%2Fadmin%2F' });
+    await page.click('totp-turn-off');
+    await page.click('deactivate-submit');
+    expect(page.router.currentRoute.value.path).toBe('/reauthenticate');
+    expect(page.router.currentRoute.value.query.next).toBe('/2fa?next=%2Fadmin%2F');
+
+    fakeAllauth({ 'GET /account/authenticators': anonymous });
+    const ended = await mountPage('en', { path: '/2fa?next=%2Fadmin%2F' });
+    expect(ended.router.currentRoute.value.path).toBe('/launch');
+    expect(ended.router.currentRoute.value.query).toEqual({ next: '/2fa?next=%2Fadmin%2F' });
+  });
+
+  it('without next, neither the notice nor «Continue»', async () => {
+    fakeAllauth({ 'GET /account/authenticators': list(TOTP, recovery(10)) });
+    const { has } = await mountPage();
+    expect(has('mfa-continue')).toBe(false);
+    expect(has('mfa-required')).toBe(false);
   });
 });
