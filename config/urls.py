@@ -69,6 +69,8 @@ class SignUpRedirect(RedirectView):
 # The admin's login is the SaaS's sign-in (it asks for the mailed code and the authenticator app).
 # Assigned before `admin.site.urls` is read below: `AdminSite.get_urls` binds `self.login` then.
 admin.site.login = accounts_admin.admin_login
+# Who enters: active staff, and with ACCOUNTS_MFA_ENABLED only with an authenticator app (ACCOUNTS-F20).
+admin.site.has_permission = accounts_admin.admin_has_permission
 
 urlpatterns = [
     # The old addresses of the sign-in and of the sign-up (allauth's template pages until headless only,

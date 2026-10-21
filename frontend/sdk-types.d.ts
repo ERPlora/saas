@@ -536,6 +536,11 @@ export interface SessionsClosedOut {
   closed: number;
 }
 
+/** `accounts.BrowserTrustOut`: until when this browser skips the app's code at sign-in, or `null` (ACCOUNTS-F17). */
+export interface BrowserTrustOut {
+  trusted_until: string | null;
+}
+
 /** `accounts.ApiKeyRowOut`: a key of the account, never its secret. */
 export interface ApiKeyRowOut {
   id: string;
@@ -619,6 +624,8 @@ declare module '@erplora/ui/sdk' {
     'accounts.session.list': { input: SessionListIn | undefined; output: SessionListOut };
     'accounts.session.close': { input: SessionCloseIn; output: SessionsClosedOut };
     'accounts.session.close_others': { input: Record<string, never> | undefined; output: SessionsClosedOut };
+    'accounts.browser_trust.get': { input: Record<string, never> | undefined; output: BrowserTrustOut };
+    'accounts.browser_trust.revoke': { input: Record<string, never> | undefined; output: BrowserTrustOut };
     'accounts.apikey.list': { input: Record<string, never> | undefined; output: ApiKeyListOut };
     'accounts.apikey.create': { input: ApiKeyCreateIn; output: ApiKeyCreatedOut };
     'accounts.apikey.revoke': { input: ApiKeyRevokeIn; output: ApiKeyRowOut };

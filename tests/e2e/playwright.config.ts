@@ -17,7 +17,8 @@
 // specs their evidence into `.artifacts/` (both ignored by git).
 //
 // Two projects (README.md): `public`, the specs above against that server, and `panel`, the panel's
-// specs (`panel/`) against a dev server of its own on :8012 (panel/project.ts). `pnpm e2e` runs both and
+// specs (`panel/`) against a dev server of its own on :8012 and its twin with the second factor on, :8013
+// (panel/project.ts). `pnpm e2e` runs both and
 // `--project=public|panel` one, headless; `pnpm e2e:headed` the same in a visible Chrome; `pnpm e2e:ci`
 // (CI=1) is the CI run.
 import { dirname, join, resolve } from 'node:path';

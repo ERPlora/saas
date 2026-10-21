@@ -9,14 +9,15 @@ environment alone:
 - ``MFAFlagMiddleware``: with the flag off the 2FA endpoints do not exist: they answer ``404`` with
   allauth's JSON body ``{"status": 404}`` (the Vue pages read it as «2FA is off»). allauth runs headless
   only, so it has no 2FA template page.
-- ``mfa_completed``: whether this session passed the second factor. The jump to a hub asks it
-  (``services.issue_code``), only with the flag on.
+- ``mfa_completed``: whether this session passed the second factor, or signs in from a browser the account
+  trusts. The jump to a hub asks it (``services.issue_code``), only with the flag on.
 """
 
 import re
 
 from allauth.account.authentication import get_authentication_records
 from allauth.mfa.adapter import DefaultMFAAdapter
+from allauth.mfa.internal.flows.trust import is_trusted_browser
 from asgiref.sync import iscoroutinefunction, markcoroutinefunction
 from django.conf import settings
 from django.http import HttpRequest, JsonResponse
@@ -80,9 +81,13 @@ def mfa_completed(request: HttpRequest) -> bool:
     The password, the code mailed at sign-in, Google or Django's own login (``force_login``) record no
     ``mfa`` entry. The records live
     in the session: signing out, or signing in as another account, flushes them.
+
+    Or, instead of 2., the browser is one the account trusts (allauth's ``mfa_trusted`` cookie, ACCOUNTS-F05): the
+    trust was given right after a good code in it, within 14 days, and is bound to the account's password and
+    authenticators. Its sign-in skipped the app's code, so the jump to a business must not ask for it again.
     """
     user = request.user
     if not queries.has_totp(user):
         return False
     ids = {record.get("id") for record in get_authentication_records(request) if record.get("method") == "mfa"}
-    return queries.owns_authenticator(user, ids)
+    return queries.owns_authenticator(user, ids) or is_trusted_browser(request, user)

@@ -3,6 +3,7 @@
 // `mfa/totp/deactivate_form.html`, `mfa/recovery_codes/index.html` and `generate.html`; the URL
 // stays `/2fa`. A change that needs a recent login goes to `/reauthenticate` and back; 2FA switched
 // off on the server (404) sends to the launcher with a notice.
+import { formatDateTime } from '@erplora/ui/components';
 import { ionIconSrc } from '@erplora/ui/shell';
 import { IonButton, IonIcon, IonInput } from '@ionic/vue';
 import { flushPromises } from '@vue/test-utils';
@@ -59,8 +60,13 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-async function mountPage(locale: 'en' | 'es' = 'en') {
-  const mounted = await mountAccountPage(TwoFactorSettingsPage, { path: '/2fa', session: SIGNED_IN, locale });
+async function mountPage(locale: 'en' | 'es' = 'en', options: { call?: ReturnType<typeof vi.fn>; path?: string } = {}) {
+  const mounted = await mountAccountPage(TwoFactorSettingsPage, {
+    path: options.path ?? '/2fa',
+    session: SIGNED_IN,
+    locale,
+    call: options.call,
+  });
   const { wrapper } = mounted;
   const button = (testid: string) => wrapper.findAllComponents(IonButton).find((b) => b.attributes('data-testid') === testid);
   async function click(testid: string) {
@@ -144,7 +150,8 @@ describe('TwoFactorSettingsPage: index (mfa/index.html)', () => {
     expect(has('totp-turn-off')).toBe(false);
     expect(has('recovery-section')).toBe(false);
     const foot = wrapper.get('.foot a');
-    expect([foot.text(), foot.attributes('href')]).toEqual(['Back to settings', '/launch']);
+    // Back where the «Two-step verification» row is: Account › Security (it went to the launcher).
+    expect([foot.text(), foot.attributes('href')]).toEqual(['Back to settings', '/account/security']);
     expect(text('totp-section')).not.toContain('On');
   });
 
@@ -408,7 +415,8 @@ describe('TwoFactorSettingsPage: turning the app off (mfa/totp/deactivate_form.h
     const { wrapper, text, button } = await openDeactivate();
     expect(wrapper.get('.auth-mark').findComponent(IonIcon).props('icon')).toBe(ionIconSrc('lucide:shield-x'));
     expect(wrapper.get('h2.auth-title').text()).toBe('Turn off the authenticator app?');
-    expect(text('deactivate-lead')).toBe('You will sign in with your password only.');
+    // ACCOUNTS-F16: the code mailed at every sign-in stays (old «re-activa Email OTP»): never «your password only».
+    expect(text('deactivate-lead')).toBe('You will sign in with your password and the code we email you.');
     const submit = button('deactivate-submit')!;
     expect([submit.props('color'), submit.props('size'), submit.text()]).toEqual(['danger', 'large', 'Turn off']);
     expect([button('deactivate-keep')!.props('fill'), button('deactivate-keep')!.text()]).toEqual(['clear', 'Keep it on']);
@@ -615,5 +623,152 @@ describe('TwoFactorSettingsPage: new recovery codes (mfa/recovery_codes/generate
     expect(fromCodes.text('regenerate-lead')).toBe('This replaces your 3 unused codes.');
     await fromCodes.click('regenerate-cancel');
     expect(fromCodes.text('codes-list')).toBe(CODES.join('\n'));
+  });
+});
+
+// flow: ACCOUNTS-F17 — the trusted browsers (old «Dispositivos de confianza»): whether this one is trusted and until when
+// (allauth keeps no list, so only this browser can be told), and «Stop trusting all browsers».
+describe('TwoFactorSettingsPage: the trusted browsers', () => {
+  const UNTIL = '2026-11-04T10:00:00Z';
+  /** `client.api.call` answering the trust of this browser with `trust`, and the revocation with `revoke`. */
+  function api(trust: () => Promise<unknown>, revoke: () => Promise<unknown> = () => Promise.resolve({ trusted_until: null })) {
+    return vi.fn((op: string) => {
+      if (op === 'accounts.browser_trust.get') return trust();
+      if (op === 'accounts.browser_trust.revoke') return revoke();
+      return new Promise(() => undefined);
+    });
+  }
+
+  it('with the app on, says this browser is trusted and until when, with «Stop trusting all browsers»', async () => {
+    fakeAllauth({ 'GET /account/authenticators': list(TOTP, recovery(9)) });
+    const call = api(() => Promise.resolve({ trusted_until: UNTIL }));
+    const { wrapper, button, text } = await mountPage('en', { call });
+    expect(call).toHaveBeenCalledWith('accounts.browser_trust.get');
+    const section = wrapper.get('[data-testid="trust-section"]');
+    expect(section.get('h2').text()).toBe('Trusted browsers');
+    expect(section.findComponent(IonIcon).props('icon')).toBe(ionIconSrc('laptop-outline'));
+    expect(text('trust-lead')).toBe('Browsers you trust skip the code from your app for 14 days.');
+    expect(text('trust-this')).toBe(`This browser is trusted until ${formatDateTime(UNTIL, 'en')}.`);
+    const revoke = button('trust-revoke')!;
+    expect([revoke.props('fill'), revoke.props('expand'), revoke.text()]).toEqual(['outline', 'block', 'Stop trusting all browsers']);
+  });
+
+  it('says when this browser is not trusted', async () => {
+    fakeAllauth({ 'GET /account/authenticators': list(TOTP, recovery(9)) });
+    const { text } = await mountPage('en', { call: api(() => Promise.resolve({ trusted_until: null })) });
+    expect(text('trust-this')).toBe('This browser is not trusted.');
+  });
+
+  it('says it could not check this browser, and still offers to stop trusting them all', async () => {
+    fakeAllauth({ 'GET /account/authenticators': list(TOTP, recovery(9)) });
+    const { text, has } = await mountPage('en', { call: api(() => Promise.reject(new Error('offline'))) });
+    expect(text('trust-this')).toBe('We could not check this browser.');
+    expect(has('trust-revoke')).toBe(true);
+  });
+
+  it('has nothing to say without the app', async () => {
+    fakeAllauth({ 'GET /account/authenticators': list() });
+    const call = api(() => Promise.resolve({ trusted_until: UNTIL }));
+    const { has } = await mountPage('en', { call });
+    expect(has('trust-section')).toBe(false);
+  });
+
+  it('«Stop trusting all browsers» ends the trust of every one, this one too, and says so', async () => {
+    fakeAllauth({ 'GET /account/authenticators': list(TOTP, recovery(9)) });
+    const call = api(() => Promise.resolve({ trusted_until: UNTIL }));
+    const { click, text } = await mountPage('en', { call });
+    await click('trust-revoke');
+    expect(call).toHaveBeenCalledWith('accounts.browser_trust.revoke');
+    expect(text('trust-this')).toBe('This browser is not trusted.');
+    expect(text('trust-done')).toBe('No browser is trusted now: each one will ask for the code from your app at its next sign-in.');
+  });
+
+  it('says something went wrong when it could not stop trusting them, and keeps what it knew', async () => {
+    fakeAllauth({ 'GET /account/authenticators': list(TOTP, recovery(9)) });
+    const call = api(
+      () => Promise.resolve({ trusted_until: UNTIL }),
+      () => Promise.reject(new Error('offline')),
+    );
+    const { click, text, has } = await mountPage('en', { call });
+    await click('trust-revoke');
+    expect(text('failure')).toBe('Something went wrong. Please try again.');
+    expect(text('trust-this')).toBe(`This browser is trusted until ${formatDateTime(UNTIL, 'en')}.`);
+    expect(has('trust-done')).toBe(false);
+  });
+
+  it('speaks Spanish', async () => {
+    fakeAllauth({ 'GET /account/authenticators': list(TOTP, recovery(9)) });
+    const { text, button, click } = await mountPage('es', { call: api(() => Promise.resolve({ trusted_until: UNTIL })) });
+    expect(text('trust-lead')).toBe('Los navegadores en los que confías no piden el código de tu app durante 14 días.');
+    expect(text('trust-this')).toBe(`Este navegador es de confianza hasta el ${formatDateTime(UNTIL, 'es')}.`);
+    expect(button('trust-revoke')!.text()).toBe('Dejar de confiar en todos los navegadores');
+    await click('trust-revoke');
+    expect(text('trust-done')).toBe(
+      'Ya no confías en ningún navegador: cada uno te pedirá el código de tu app la próxima vez que entres.',
+    );
+  });
+});
+
+// flow: ACCOUNTS-F20 — the staff kept out of the admin for lack of the app land here with `?next=/admin/…`: the page
+// says the app is needed to go on and, once it is on, «Continue» goes back there (a page of Django: a full load).
+describe('TwoFactorSettingsPage: setting the app up to go on (next)', () => {
+  let assign: ReturnType<typeof vi.fn>;
+  beforeEach(() => {
+    assign = vi.fn();
+    vi.stubGlobal('location', { ...window.location, assign });
+  });
+
+  it('says the app is needed to continue while it is off, with no «Continue» yet', async () => {
+    fakeAllauth({ 'GET /account/authenticators': list() });
+    const { text, has, wrapper } = await mountPage('en', { path: '/2fa?next=%2Fadmin%2Faccounts%2Fuser%2F' });
+    expect(text('mfa-required')).toBe('Turn on the authenticator app to continue.');
+    // A notice of what is still to do, not an error: the warning banner, never the red error box.
+    const notice = wrapper.get('[data-testid="mfa-required"]');
+    expect([notice.attributes('data-tone'), notice.classes('non-field-error')]).toEqual(['warning', false]);
+    expect(has('mfa-continue')).toBe(false);
+  });
+
+  it('once the app is on, «Continue» goes back to next', async () => {
+    fakeAllauth({ 'GET /account/authenticators': list(TOTP, recovery(10)) });
+    const { button, click, has } = await mountPage('en', { path: '/2fa?next=%2Fadmin%2Faccounts%2Fuser%2F' });
+    expect(has('mfa-required')).toBe(false);
+    const go = button('mfa-continue')!;
+    expect([go.props('color'), go.props('expand'), go.text()]).toEqual(['primary', 'block', 'Continue']);
+    await click('mfa-continue');
+    expect(assign).toHaveBeenCalledExactlyOnceWith('/admin/accounts/user/');
+  });
+
+  it('speaks Spanish', async () => {
+    fakeAllauth({ 'GET /account/authenticators': list() });
+    const { text } = await mountPage('es', { path: '/2fa?next=%2Fadmin%2F' });
+    expect(text('mfa-required')).toBe('Activa la app autenticadora para continuar.');
+  });
+
+  it('never goes to a next of another site', async () => {
+    fakeAllauth({ 'GET /account/authenticators': list(TOTP, recovery(10)) });
+    const { has } = await mountPage('en', { path: `/2fa?next=${encodeURIComponent('//evil.example.com/')}` });
+    expect(has('mfa-continue')).toBe(false);
+    expect(has('mfa-required')).toBe(false);
+  });
+
+  it("keeps next through «Confirm it's you» and a sign-in, so it still goes back there", async () => {
+    fakeAllauth({ 'GET /account/authenticators': list(TOTP, recovery(9)), 'DELETE /account/authenticators/totp': reauthenticationRequired() });
+    const page = await mountPage('en', { path: '/2fa?next=%2Fadmin%2F' });
+    await page.click('totp-turn-off');
+    await page.click('deactivate-submit');
+    expect(page.router.currentRoute.value.path).toBe('/reauthenticate');
+    expect(page.router.currentRoute.value.query.next).toBe('/2fa?next=%2Fadmin%2F');
+
+    fakeAllauth({ 'GET /account/authenticators': anonymous });
+    const ended = await mountPage('en', { path: '/2fa?next=%2Fadmin%2F' });
+    expect(ended.router.currentRoute.value.path).toBe('/launch');
+    expect(ended.router.currentRoute.value.query).toEqual({ next: '/2fa?next=%2Fadmin%2F' });
+  });
+
+  it('without next, neither the notice nor «Continue»', async () => {
+    fakeAllauth({ 'GET /account/authenticators': list(TOTP, recovery(10)) });
+    const { has } = await mountPage();
+    expect(has('mfa-continue')).toBe(false);
+    expect(has('mfa-required')).toBe(false);
   });
 });

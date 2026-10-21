@@ -44,6 +44,22 @@ const NEW_IN_THE_VUE_PAGES = new Set([
   'accounts.login.haveAccount',
   'accounts.login.signInInstead',
   'accounts.login.signUpFailed',
+  // «Trust this browser for 14 days» (ACCOUNTS-F05) and the trusted browsers (ACCOUNTS-F17): allauth's `mfa/trust.html`
+  // asked on a page of its own; here it is a box under the code, and the browsers have their section.
+  'accounts.twoFactor.trust',
+  'accounts.twoFactor.trustHint',
+  'accounts.twoFactor.trustLead',
+  // Turning the app off leaves the code mailed at every sign-in (2026-10-15), not «your password only» (ACCOUNTS-F16).
+  'accounts.twoFactor.deactivate.lead',
+  // The staff the admin keeps out without the app land on /2fa to set it up (ACCOUNTS-F20).
+  'accounts.twoFactor.requiredToContinue',
+  'accounts.twoFactor.trusted.title',
+  'accounts.twoFactor.trusted.lead',
+  'accounts.twoFactor.trusted.thisUntil',
+  'accounts.twoFactor.trusted.thisNot',
+  'accounts.twoFactor.trusted.unknown',
+  'accounts.twoFactor.trusted.revoke',
+  'accounts.twoFactor.trusted.revoked',
 ]);
 
 /**

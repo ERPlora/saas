@@ -46,6 +46,8 @@ from accounts.schemas import (
     ApiKeyCreateIn,
     ApiKeyRevokeIn,
     ApiKeyRowOut,
+    BrowserTrustOut,
+    BrowserTrustRevokeIn,
     EmailChangeIn,
     EmailVerifyIn,
     EmailVerifyOut,
@@ -53,6 +55,7 @@ from accounts.schemas import (
     PhotoUploadIn,
     PreferencesOut,
     PreferencesUpdateIn,
+    SessionCloseAnyIn,
     SessionCloseIn,
     SessionCloseOthersIn,
     SessionsClosedOut,
@@ -896,6 +899,118 @@ def session_close_others(ctx: OperationContext, data: SessionCloseOthersIn) -> d
     _end_and_sign_out(ctx, others, user=user)
     record_event(ctx, events.SESSION_CLOSED)
     return {"closed": closed}
+
+
+#: The admin's «Close sessions» (ACCOUNTS-F19): a system context only (no role grants it), on the owner's channel.
+CLOSE_ANY_SESSIONS = "accounts.close_any_sessions"
+
+
+@operation(
+    "accounts.session.close_any",
+    kind="command",
+    permission=CLOSE_ANY_SESSIONS,
+    input=SessionCloseAnyIn,
+    output=SessionsClosedOut,
+)
+def session_close_any(ctx: OperationContext, data: SessionCloseAnyIn) -> dict:
+    """End sessions of any account from the admin, as its owner would: the picked ones (``ids``) or, without them,
+    every one and the trust of its browsers (an incident: ERPlora/saas ``revoke_user_sessions``, which dropped the
+    trust too). Its businesses are asked to end theirs; the event goes to the owner's channel (the context's scope),
+    so its live list refreshes. Called only by ``close_sessions``; no route."""
+    from allauth.usersessions.models import UserSession
+
+    if ctx.scope.key != str(data.user_id):
+        raise LiveMisuse(f"accounts.session.close_any runs on the account's channel, not {ctx.scope.key!r}.")
+    user = get_user_model().objects.filter(pk=data.user_id).first()
+    if user is None:
+        raise NotFound(gettext("That account does not exist."))
+    sessions = UserSession.objects.filter(user=user)
+    if data.ids is not None:
+        sessions = sessions.filter(pk__in=data.ids)
+    sessions = list(sessions)
+    end_sessions(sessions, user=user)
+    if data.ids is None:
+        forget_trusted_browsers(user)
+    record_event(ctx, events.SESSION_CLOSED)
+    return {"closed": len(sessions)}
+
+
+def close_sessions(*, by, users=(), sessions=()) -> int:
+    """The admin's «Close sessions» (ACCOUNTS-F19): every session of the accounts ``users`` (ids) and the trust of
+    their browsers, or the picked ``sessions`` (``UserSession`` rows), each through its owner's channel; how many
+    ended."""
+    from live.context import Scope, system_context
+
+    picked: dict = {}
+    for session in sessions:
+        picked.setdefault(session.user_id, []).append(session.pk)
+    count = 0
+    for user_id, ids in [*((user_id, None) for user_id in users), *picked.items()]:
+        ctx = system_context(Scope("user", str(user_id)))
+        count += session_close_any(ctx, SessionCloseAnyIn(user_id=user_id, ids=ids)).closed
+    logger.warning("accounts.sessions_closed_by_staff staff=%s count=%s", by.pk, count)
+    return count
+
+
+# --- Account → Security → Two-factor authentication: the trusted browsers (ACCOUNTS-F17) ---------------------
+
+
+def forget_trusted_browsers(user) -> dict[int, int]:
+    """End the trust of every browser of ``user`` (ACCOUNTS-F05): their next sign-in asks for the app's code again.
+
+    allauth keeps no record of the browsers an account trusted: each one carries a signed fingerprint of the
+    account's password and of every authenticator's id, type and seed (``allauth.mfa.internal.flows.trust``), so
+    the only way to end them is to move one of those. The authenticators get new ids with the same type, data and
+    dates: the app keeps its secret and the recovery codes written down keep working, and nobody sets anything up
+    again (ported from ERPlora/saas ``_invalidate_mfa_trust``). Returns the new id of each old one.
+    """
+    from allauth.mfa.models import Authenticator
+
+    rows = list(Authenticator.objects.select_for_update().filter(user=user).order_by("pk"))
+    if not rows:
+        return {}
+    Authenticator.objects.filter(pk__in=[row.pk for row in rows]).delete()
+    fresh = Authenticator.objects.bulk_create(
+        Authenticator(user=user, type=row.type, data=row.data, created_at=row.created_at, last_used_at=row.last_used_at)
+        for row in rows
+    )
+    logger.info("accounts.browser_trust_revoked user=%s authenticators=%s", user.pk, len(rows))
+    return {row.pk: new.pk for row, new in zip(rows, fresh, strict=True)}
+
+
+def _follow_new_authenticator_ids(request, renamed: dict[int, int]) -> None:
+    """The codes this session gave name the authenticators by id (allauth's records, ``mfa.mfa_completed``): they
+    follow the new ids, so this browser keeps what it proved. The other sessions' records name ids that are gone:
+    a browser that signed in on its trust gives the code again to jump to a business."""
+    from allauth.account.internal.flows.login import AUTHENTICATION_METHODS_SESSION_KEY
+
+    session = getattr(request, "session", None)
+    if session is None or not renamed:
+        return
+    records = session.get(AUTHENTICATION_METHODS_SESSION_KEY, [])
+    if any(record.get("method") == "mfa" and record.get("id") in renamed for record in records):
+        session[AUTHENTICATION_METHODS_SESSION_KEY] = [
+            {**record, "id": renamed[record["id"]]}
+            if record.get("method") == "mfa" and record.get("id") in renamed
+            else record
+            for record in records
+        ]
+
+
+@operation(
+    "accounts.browser_trust.revoke",
+    kind="command",
+    permission="accounts.manage",
+    input=BrowserTrustRevokeIn,
+    output=BrowserTrustOut,
+)
+def browser_trust_revoke(ctx: OperationContext, data: BrowserTrustRevokeIn) -> dict:
+    """«Stop trusting all browsers» (Security → Two-factor authentication, ACCOUNTS-F17): as Google's and Microsoft's
+    «Revoke all trusted devices». This browser too: the answer says it is no longer trusted."""
+    user = queries.account_of(ctx)
+    _follow_new_authenticator_ids(ctx.request, forget_trusted_browsers(user))
+    record_event(ctx, events.BROWSER_TRUST_REVOKED)
+    return {"trusted_until": None}
 
 
 # --- Account → API keys -----------------------------------------------------------------------

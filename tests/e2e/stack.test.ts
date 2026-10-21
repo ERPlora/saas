@@ -1,6 +1,6 @@
 // @vitest-environment node
 // The e2e's stack (stack.ts): where its servers listen and which database they open. The shared one is
-// today's (:8011, :8012, :8019 and the `saas` of `.env`); a second run at once moves the three ports
+// today's (:8011, :8012, :8013, :8019 and the `saas` of `.env`); a second run at once moves the four ports
 // together with E2E_SAAS_PORT and gets a database of its own, `saas_e2e_<port>`, created and migrated at
 // the start (database.ts). Two runs on the one `saas`, or on a Hub's database whose `DB_NAME` a shell
 // still exports (`relation "django_site" does not exist`), are refused before the first server starts.
@@ -19,23 +19,25 @@ const SHARED = stackFrom({});
 const OWN = stackFrom({ E2E_SAAS_PORT: '8030' });
 
 describe('stackFrom', () => {
-  it("is today's stack when nothing is exported: :8011, :8012, :8019 and the database of `.env`", () => {
+  it("is today's stack when nothing is exported: :8011, :8012, :8013, :8019 and the database of `.env`", () => {
     expect(SHARED).toEqual({
       base: 8010,
       shared: true,
       publicPort: 8011,
       panelPort: 8012,
+      panelMfaPort: 8013,
       hubDoublePort: 8019,
       database: undefined,
     });
   });
 
-  it('moves the three ports together with E2E_SAAS_PORT, onto a database of its own', () => {
+  it('moves the four ports together with E2E_SAAS_PORT, onto a database of its own', () => {
     expect(OWN).toEqual({
       base: 8030,
       shared: false,
       publicPort: 8031,
       panelPort: 8032,
+      panelMfaPort: 8033,
       hubDoublePort: 8039,
       database: 'saas_e2e_8030',
     });
@@ -148,6 +150,24 @@ describe("the stack's servers", () => {
     expect(runId(SHARED, now)).toBe('2026-10-21T00-48-45-810Z');
     expect(runId(OWN, now)).toBe('2026-10-21T00-48-45-810Z-8030');
     expect(runId(stackFrom({ E2E_SAAS_PORT: '8040' }), now)).not.toBe(runId(OWN, now));
+  });
+
+  // The second factor is off by default (ACCOUNTS_MFA_ENABLED, phase 1): the panel the specs play on is production's.
+  // Its flows (accounts/WORKBOOK.md, APP-ACCOUNTS-2) play on a twin with it on, a port above, on the same database,
+  // Vite, mail folder and Hub double, so a spec signs in on either with the same helpers.
+  it('start a twin of the panel with the second factor on, a port above, sharing the rest', () => {
+    for (const stack of [SHARED, OWN]) {
+      const { 'panel-django': django, 'panel-mfa-django': mfa } = panel(stack);
+      expect(mfa.command).toBe(`uv run python manage.py runserver 127.0.0.1:${stack.panelMfaPort} --novite --noreload`);
+      expect(mfa.url).toBe(`http://127.0.0.1:${stack.panelMfaPort}/healthz`);
+      expect(mfa.reuseExistingServer).toBe(false);
+      expect(mfa.env).toEqual({ ...django.env, ACCOUNTS_MFA_ENABLED: 'True' });
+    }
+  });
+
+  it("leave the panel itself with the second factor as production has it (off)", () => {
+    expect(panel()['panel-django'].env).not.toHaveProperty('ACCOUNTS_MFA_ENABLED');
+    expect(panel(OWN)['panel-django'].env).not.toHaveProperty('ACCOUNTS_MFA_ENABLED');
   });
 
   it('read the mails of each stack where its Django writes them', () => {

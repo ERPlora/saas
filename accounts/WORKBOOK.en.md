@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:707ba4c7767a0239d7aace0bb45bb9952a4fa40d6f3423bb44def3e17182e0e9 -->
+<!-- generated from WORKBOOK.md sha256:c42630d035d37ee342064120bb7e38494b8431d452313352642b3c7f9468790a -->
 
 ## What it is for and who it is for
 
@@ -15,9 +15,11 @@ paid and each business is entered from the entrance screen. One signs in with th
 Who uses it:
 
 - **Anyone** creates their account, signs in and out, and recovers their password.
-- **The person with an account** changes their password from **Account › Security**.
+- **The person with an account** changes their password, turns on the authenticator app and sees and
+  closes their sessions from **Account › Security**.
 - **ERPlora staff** see and manage the accounts from the admin, without being able to change what an
-  account accepted.
+  account accepted; in an incident they close every session of an account and, with two-step verification
+  switched on, they only get into the admin with their authenticator app.
 
 ## Reference adopted
 
@@ -34,6 +36,14 @@ Who uses it:
   accepted, and continuing after a change accepts the new one.
 - **Odoo and Shopify**: signing out only ends that browser's session; changing the password ends the
   others.
+- **Google and GitHub**: the authenticator app is set up by scanning a QR code (or typing its key) and
+  leaves recovery codes that are shown once and downloaded; generating others voids the previous ones.
+- **Google ("Don't ask again on this computer", "Revoke all") and Microsoft**: trusting a browser is offered
+  unticked next to the code, holds only in that browser, and every browser stops being trusted at once.
+- **Google ("Your devices") and GitHub ("Sessions")**: the list of the open sessions with the device, the
+  browser, the address and the last use, this browser's first, and closing one or all the others.
+- **GitHub (organizations that require two-step verification)**: the admin console only lets its people in
+  with the second factor on, and sends them to turn it on.
 
 ## Before you start
 
@@ -41,7 +51,10 @@ Who uses it:
   links) stays in the local mail folder instead of being sent.
 - "Continue with Google" only appears with the Google credentials configured; without them the button is not
   shown.
-- The second step with the authenticator app is off in phase 1: nobody sees it today.
+- Two-step verification (the authenticator app, its recovery codes and the trusted browsers) is off in
+  phase 1: its row in **Account › Security** is not shown, no sign-in asks for the app's code and the staff
+  get into the admin without it. Switching it on is a phase decision of the platform; the open sessions and
+  the code by email always work.
 
 ## Screens
 
@@ -67,13 +80,33 @@ and without your email." (and, while typing, how strong it looks) and "Change Pa
 used link, "This password reset link has expired or is not valid.", "Request New Link" and "Back to Login".
 
 ### Two-step verification
-"Enter the 6-digit code from your authenticator app, or one of your recovery codes.", the code, "Verify" and
-"Back to sign in".
+"Enter the 6-digit code from your authenticator app, or one of your recovery codes.", the code, the "Trust
+this browser for 14 days" box (unticked, with "You will not be asked for a code from your app here again for
+14 days. Not on a shared computer."), "Verify" and "Back to sign in".
+
+### Two-step verification settings
+Opened from **Account › Security**. Three blocks: "Authenticator app" ("On" or "Off", with "Set up
+authenticator app" or "Turn off"), "Recovery codes" (how many are left unused, "View" and "Generate new")
+and, with the app on, "Trusted browsers" (whether this one is, and "Stop trusting all browsers"). Each action
+opens its step in the same card: "Set up your authenticator app" with the QR code and the key, "Recovery
+codes" with "Download", "Generate new recovery codes?" and "Turn off the authenticator app?". At the foot,
+"Back to settings"; when coming from the admin, "Continue".
 
 ### Account › Security › Change your password
 The "Password" row with "Change password" opens the "Change your password" dialog: "Current password", "New
 password" with its hint, "Cancel" and "Change password". An account that only signs in with Google sees
-"Create a password" instead.
+"Create a password" instead. In the same "Sign-in" block, the "Two-step verification" row says whether it is
+on, with "Set up" or "Manage".
+
+### Account › Security › Active sessions
+A full-height table with "Device", "Browser", "IP address" and "Last used"; this browser's goes first,
+marked "This session", and each other one carries "Close session". On top, "Close other sessions"; below,
+"Closing a session also closes it in your businesses.". On a phone, "Load more" instead of pages.
+
+### admin › Accounts › Users and User sessions
+The list of accounts carries the action "Close all their sessions", which also ends the trust of their
+browsers; **User sessions** shows who signed in where, read only, with "Close the selected
+sessions". Only a superuser sees both actions.
 
 ### User menu
 The name and the email at the top of the side menu (on a phone, inside the menu): "Account", "Help", the
@@ -83,13 +116,13 @@ theme and "Sign out".
 
 | State | What the person sees |
 |---|---|
-| Loading | The submit button is off while the request is on its way; the email's link says "Checking your link…". |
-| Empty | Without a session, every page of the panel leads to the **Entrance**, which goes back to it after signing in. |
-| Error | Each error appears under its field, with the words of the rule that fails ("Your new password must be different from the current one."); a network failure, "We could not sign you in. Please try again." or "Something went wrong. Please try again.". |
+| Loading | The submit button is off while the request is on its way; the email's link says "Checking your link…"; the two-step verification settings, "Loading…"; the sessions, the table loading. |
+| Empty | Without a session, every page of the panel leads to the **Entrance**, which goes back to it after signing in. With this session alone, "Close other sessions" is off; without recovery codes, "Without them, losing your authenticator locks you out of your account." with "Generate recovery codes". |
+| Error | Each error appears under its field, with the words of the rule that fails ("Your new password must be different from the current one."); a network failure, "We could not sign you in. Please try again." or "Something went wrong. Please try again.". Settings that do not load, "We could not load your security settings. Please try again." with "Try again"; the sessions, "We could not load your sessions" with "Try again". |
 | Throttle | "Too many failed login attempts. Try again later." or "Too many attempts. Please wait a few minutes and try again.", the same whether the account exists or not. |
 | Expired link | "This password reset link has expired or is not valid." with "Request New Link". |
 | Expired code | The entrance says "Your code expired or was typed wrong too many times. Sign in again and we will email you a new one." |
-| No permission | An account without the staff mark that opens the admin goes back to the **Entrance**; with a session, the admin refuses it. |
+| No permission | An account without the staff mark that opens the admin goes back to the **Entrance**; with a session, the admin refuses it. With two-step verification switched on, staff without the app go to its settings with "Turn on the authenticator app to continue.". |
 
 ## Flows
 
@@ -99,7 +132,7 @@ theme and "Sign out".
 | ACCOUNTS-F02 | Confirm the email with the code | done |
 | ACCOUNTS-F03 | Confirm the email before using the panel | done |
 | ACCOUNTS-F04 | Sign in with the email and the password | done |
-| ACCOUNTS-F05 | Sign in with the authenticator app's code or a recovery one | partial |
+| ACCOUNTS-F05 | Sign in with the authenticator app's code or a recovery one | done |
 | ACCOUNTS-F06 | Sign in or create the account with Google | partial |
 | ACCOUNTS-F07 | Recover a forgotten password | done |
 | ACCOUNTS-F08 | Change the password and end the other sessions with it | done |
@@ -108,6 +141,13 @@ theme and "Sign out".
 | ACCOUNTS-F11 | Stop whoever tries passwords, codes or links | done |
 | ACCOUNTS-F12 | Know who has signed in | done |
 | ACCOUNTS-F13 | Manage the accounts from the admin | done |
+| ACCOUNTS-F14 | Turn on the authenticator app and keep the recovery codes | done |
+| ACCOUNTS-F15 | See whether two-step verification is on | done |
+| ACCOUNTS-F16 | Turn off the authenticator app or generate new codes | done |
+| ACCOUNTS-F17 | See whether this browser is trusted and stop trusting them all | done |
+| ACCOUNTS-F18 | See and close the open sessions | done |
+| ACCOUNTS-F19 | Close an account's sessions from the admin | done |
+| ACCOUNTS-F20 | Require the authenticator app from the staff in the admin | done |
 
 ### ACCOUNTS-F01 Create the account
 Status: done
@@ -160,22 +200,23 @@ Steps:
 3. They type the code and tap "Verify".
 4. Once in, they go where they were going (a page of erplora.com or the jump to a business) or to the **Entrance** with their session, which shows their businesses.
 In: email, password, the code and where they were going (only pages of erplora.com).
-Out: that browser's session, which lasts even if the browser is closed; their name and their email in the user menu.
+Out: that browser's session, which lasts even if the browser is closed; their name and their email in the user menu. Every account gets the code by email at each sign-in with a password, without turning it on and without being able to turn it off; with the authenticator app, the app's code is asked after the email's (ACCOUNTS-F05).
 If it fails: an email or a password that do not match, "The email address and/or password you specified are not correct." under the password, whether the account exists or not, with "First time here? Create your account". A wrong code, under the code. With a session already open, the **Entrance** shows the businesses.
 Involved: hubs (the **Entrance** with the businesses and the jump to a business)
 
 ### ACCOUNTS-F05 Sign in with the authenticator app's code or a recovery one
-Status: partial — the second step is off in phase 1 and nobody sees it yet; its screen and its door are done and tested with it on, and its end-to-end test goes with the second factor
+Status: done
 Actor: any person with an account and an authenticator app
 Screen: Two-step verification
 Steps:
 1. After the password and the email's code, an account with an authenticator app moves to **Two-step verification**.
-2. They type the 6-digit code from their app, or one of their recovery codes, and tap "Verify".
-3. Once in, they go where they were going.
-In: the app's code or a recovery one.
-Out: the session open; a recovery code used stops working.
-If it fails: a wrong code appears under the field; "Back to sign in" abandons the half-done sign-in.
-Involved: none
+2. They type the 6-digit code from their app, or one of their recovery codes; if the browser is theirs and not shared, they tick "Trust this browser for 14 days" (it comes unticked).
+3. They tap "Verify". Once in, they go where they were going.
+4. With the box ticked, the next sign-ins in that browser ask only for the password and the email's code for 14 days; any other browser still asks for the app's code.
+In: the app's code or a recovery one, and the answer to "Trust this browser for 14 days".
+Out: the session open; a recovery code used stops working; with the box, this browser stays trusted for 14 days, only on erplora.com. On the jump to a business, the sign-in counts as done with the app.
+If it fails: a wrong code appears under the field and the sign-in keeps waiting; "Back to sign in" abandons the half-done sign-in. If after a right code the answer to the box gets lost (the page is reloaded), the screen says "Your code is right. Do you want to trust this browser?" with "Continue", without asking for the code again. Changing the password or "Stop trusting all browsers" (ACCOUNTS-F17) ends the trust of every browser.
+Involved: hubs (the jump to a business)
 
 ### ACCOUNTS-F06 Sign in or create the account with Google
 Status: partial — the end-to-end test needs the real Google (the test environment does not have its credentials and the button is not shown); the way there and back is tested with Google's answers simulated
@@ -285,3 +326,96 @@ In: what the staff type.
 Out: the account, identified by its email (in lower case and unique) and with its own identifier.
 If it fails: an email that already has an account is not saved. Support see the accounts without being able to add, change or delete; an account without the staff mark does not get into the admin.
 Involved: hubs (the account's businesses)
+
+### ACCOUNTS-F14 Turn on the authenticator app and keep the recovery codes
+Status: done
+Actor: any person with an account
+Screen: Account › Security, Two-step verification settings
+Steps:
+1. In **Account › Security**, the "Two-step verification" row says "Off"; the person taps "Set up".
+2. In **Two-step verification settings** they tap "Set up authenticator app": "Set up your authenticator app" shows a QR code and, under "Can't scan? Enter this key by hand:", the key.
+3. They scan it with their app (Google Authenticator, 1Password…), type the number it shows and tap "Turn on". If their last sign-in is not recent, they first confirm it is them with their password, and the same number still works.
+4. They see their ten "Recovery codes" once ("10 of 10 unused"), keep them with "Download" and tap "Back": the app is "On".
+In: the app's number and, if needed, the password.
+Out: the account's authenticator app and ten single-use recovery codes; from the next sign-in the app's code is asked (ACCOUNTS-F05). The codes are downloaded as a text file made in the browser itself.
+If it fails: a wrong number appears under the field and the app is not turned on; "Cancel" goes back without turning anything on; a network failure, "Something went wrong. Please try again.".
+Involved: none
+
+### ACCOUNTS-F15 See whether two-step verification is on
+Status: done
+Actor: any person with an account
+Screen: Account › Security, Two-step verification settings
+Steps:
+1. In **Account › Security**, "Sign-in" block, the "Two-step verification" row says "On" ("After your password, a code from your authenticator app. Keep your recovery codes safe.") or "Off".
+2. "Manage" (or "Set up") leads to **Two-step verification settings**, which says the same of the app and how many recovery codes are left unused.
+In: the session.
+Out: nothing kept.
+If it fails: if it cannot be read, the row says neither on nor off and still leads to the settings. With two-step verification switched off on the platform, the row is not shown.
+Involved: none
+
+### ACCOUNTS-F16 Turn off the authenticator app or generate new codes
+Status: done
+Actor: any person with an account and an authenticator app
+Screen: Two-step verification settings
+Steps:
+1. In **Two-step verification settings**, "Recovery codes" says how many are left unused; "View" shows them and "Generate new" asks "Generate new recovery codes?" with "This replaces your 10 unused codes.".
+2. "Generate" shows the new ones, to download them again; the previous ones stop working.
+3. To remove the app, "Turn off" asks "Turn off the authenticator app?" with "You will sign in with your password and the code we email you."; "Turn off" removes it and "Keep it on" goes back without touching anything.
+4. If their last sign-in is not recent, before generating or turning off they confirm it is them with their app's code.
+In: the confirmation and, if needed, the app's code.
+Out: new recovery codes, or the app removed: the sign-in is the password and the email's code again, which is never turned off.
+If it fails: a network failure, "Something went wrong. Please try again." and nothing changes. Without unused codes, "You have used all your recovery codes. Generate a new set now." with "Generate new codes".
+Involved: none
+
+### ACCOUNTS-F17 See whether this browser is trusted and stop trusting them all
+Status: done
+Actor: any person with an account and an authenticator app
+Screen: Two-step verification settings
+Steps:
+1. In **Two-step verification settings**, with the app on, "Trusted browsers" says "Browsers you trust skip the code from your app for 14 days." and whether this one is: "This browser is trusted until …" or "This browser is not trusted.".
+2. If they lost a device or signed in on someone else's computer, the person taps "Stop trusting all browsers".
+3. The screen says "No browser is trusted now: each one will ask for the code from your app at its next sign-in." and "This browser is not trusted.".
+In: the session.
+Out: no browser of the account is trusted; the app and the recovery codes keep working without setting anything up, and this session stays in. Event `accounts.browser_trust.revoked`.
+If it fails: if this browser cannot be checked, "We could not check this browser."; a failure to stop trusting, "Something went wrong. Please try again." and nothing changes. Changing the password also ends the trust of every browser.
+Involved: none
+
+### ACCOUNTS-F18 See and close the open sessions
+Status: done
+Actor: any person with an account
+Screen: Account › Security › Active sessions
+Steps:
+1. In **Account › Security**, "Active sessions" lists each open session with its "Device", "Browser", "IP address" and "Last used"; this browser's goes first, marked "This session".
+2. "Close session" on a row closes it at once and says "Session closed on …"; if it is the ERPlora app, it first asks "Close the app on …", because it may be charging at a till.
+3. "Close other sessions" says how many will be closed, the apps too, and once confirmed closes all but this one: "Sessions closed: 2".
+In: the session picked, or "the others".
+Out: those sessions closed, here and in the account's businesses; this one stays in and the list refreshes by itself. Event `accounts.session.closed`.
+If it fails: a list that does not load says "We could not load your sessions" with "Try again"; a refused close appears in a notice and the session stays on the list. A session of another account is not found. Today the businesses do not act on the notice yet (it comes in phase 2): a session open in a business stays until it expires.
+Involved: hubs (each business ends the account's sessions)
+
+### ACCOUNTS-F19 Close an account's sessions from the admin
+Status: done
+Actor: ERPlora staff
+Screen: admin › Accounts › Users and User sessions
+Steps:
+1. In an incident, a superuser looks for the account in **admin › Accounts › Users**, ticks it and picks "Close all their sessions".
+2. The admin says "Sessions closed: 1.": the account is out of all its browsers and each one will ask for its app's code next time.
+3. In **User sessions** they see who signed in where (account, address, browser and dates); a superuser ticks some and picks "Close the selected sessions".
+In: the accounts or the sessions ticked.
+Out: those sessions closed, also in the account's businesses; with the account's action, besides, no browser of it is trusted (its app and its recovery codes keep working). The account's own list of sessions refreshes by itself, and the log keeps who did it. Event `accounts.session.closed`.
+If it fails: support see the sessions without being able to close them; nobody changes or deletes a session by hand, because deleting the row would not end it. An account that no longer exists is not found. Today the businesses do not act on the notice yet (it comes in phase 2): a session open in a business stays until it expires.
+Involved: hubs (each business ends the account's sessions)
+
+### ACCOUNTS-F20 Require the authenticator app from the staff in the admin
+Status: done
+Actor: ERPlora staff
+Screen: admin, Two-step verification settings
+Steps:
+1. With two-step verification switched on on the platform, a staff person (support too) without an authenticator app opens the admin.
+2. Instead of the admin they reach **Two-step verification settings**, with "Turn on the authenticator app to continue.".
+3. They turn the app on (ACCOUNTS-F14) and tap "Continue": they go back to the admin page they were opening.
+4. From then on each sign-in asks for the app's code (or a trusted browser skips it) and the admin lets them in.
+In: the staff account and where they were going (only pages of erplora.com).
+Out: the staff get into the admin, and jump to the businesses' admin, only with their authenticator app; with two-step verification off, as until now.
+If it fails: recovery codes alone are not enough; an account without the staff mark does not get into the admin even with the app; "Continue" never leads outside erplora.com.
+Involved: hubs (the jump to the businesses' admin)

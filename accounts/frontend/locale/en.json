@@ -99,6 +99,11 @@
       "lead": "Enter the 6-digit code from your authenticator app, or one of your recovery codes.",
       "verify": "Verify",
       "backToSignIn": "Back to sign in",
+      "trust": "Trust this browser for 14 days",
+      "trustHint": "You will not be asked for a code from your app here again for 14 days. Not on a shared computer.",
+      "trustLead": "Your code is right. Do you want to trust this browser?",
+      "continue": "Continue",
+      "requiredToContinue": "Turn on the authenticator app to continue.",
       "backToSettings": "Back to settings",
       "loading": "Loading…",
       "loadError": "We could not load your security settings. Please try again.",
@@ -118,6 +123,15 @@
       "generateNewCodes": "Generate new codes",
       "recoveryNoneLead": "Without them, losing your authenticator locks you out of your account.",
       "generateRecoveryCodes": "Generate recovery codes",
+      "trusted": {
+        "title": "Trusted browsers",
+        "lead": "Browsers you trust skip the code from your app for 14 days.",
+        "thisUntil": "This browser is trusted until {date}.",
+        "thisNot": "This browser is not trusted.",
+        "unknown": "We could not check this browser.",
+        "revoke": "Stop trusting all browsers",
+        "revoked": "No browser is trusted now: each one will ask for the code from your app at its next sign-in."
+      },
       "activate": {
         "title": "Set up your authenticator app",
         "lead": "Scan this code with your authenticator app, then type the number it shows.",
@@ -128,7 +142,7 @@
       },
       "deactivate": {
         "title": "Turn off the authenticator app?",
-        "lead": "You will sign in with your password only.",
+        "lead": "You will sign in with your password and the code we email you.",
         "turnOff": "Turn off",
         "keepOn": "Keep it on"
       },
