@@ -426,7 +426,7 @@ Pasos:
 3. «Cerrar las demás sesiones» dice cuántas se cerrarán, también las apps, y al confirmarlo las cierra todas menos esta: «Sesiones cerradas: 2».
 Entra: la sesión elegida, o «las demás».
 Sale: esas sesiones cerradas, aquí y en los negocios de la cuenta; esta sigue dentro y la lista se actualiza sola. Evento `accounts.session.closed`.
-Si falla: la lista que no carga dice «No hemos podido cargar tus sesiones» con «Reintentar»; un cierre rechazado sale en un aviso y la sesión sigue en la lista. Una sesión de otra cuenta no se encuentra.
+Si falla: la lista que no carga dice «No hemos podido cargar tus sesiones» con «Reintentar»; un cierre rechazado sale en un aviso y la sesión sigue en la lista. Una sesión de otra cuenta no se encuentra. Hoy los negocios aún no atienden el aviso (llega en la fase 2): una sesión abierta en un negocio sigue hasta que caduca.
 Implicados: hubs (cada negocio cierra las sesiones de la cuenta)
 
 ### ACCOUNTS-F19 Cerrar las sesiones de una cuenta desde el admin
@@ -440,7 +440,7 @@ Pasos:
 3. En **Sesiones de usuario** se ve quién ha entrado dónde (cuenta, dirección, navegador y fechas); un superusuario marca unas y elige «Cerrar las sesiones seleccionadas».
 Entra: las cuentas o las sesiones marcadas.
 Sale: esas sesiones cerradas, también en los negocios de la cuenta; con la acción de la cuenta, además, ningún navegador suyo es de confianza (su app y sus códigos de recuperación siguen valiendo). La lista de sesiones de la propia cuenta se actualiza sola, y el registro guarda quién lo hizo. Evento `accounts.session.closed`.
-Si falla: el soporte ve las sesiones sin poder cerrarlas; nadie cambia ni borra una sesión a mano, porque borrar la fila no la cerraría. Una cuenta que ya no existe no se encuentra.
+Si falla: el soporte ve las sesiones sin poder cerrarlas; nadie cambia ni borra una sesión a mano, porque borrar la fila no la cerraría. Una cuenta que ya no existe no se encuentra. Hoy los negocios aún no atienden el aviso (llega en la fase 2): una sesión abierta en un negocio sigue hasta que caduca.
 Implicados: hubs (cada negocio cierra las sesiones de la cuenta)
 
 ### ACCOUNTS-F20 Exigir la app autenticadora al personal en el admin

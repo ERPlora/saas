@@ -390,7 +390,7 @@ Steps:
 3. "Close other sessions" says how many will be closed, the apps too, and once confirmed closes all but this one: "Sessions closed: 2".
 In: the session picked, or "the others".
 Out: those sessions closed, here and in the account's businesses; this one stays in and the list refreshes by itself. Event `accounts.session.closed`.
-If it fails: a list that does not load says "We could not load your sessions" with "Try again"; a refused close appears in a notice and the session stays on the list. A session of another account is not found.
+If it fails: a list that does not load says "We could not load your sessions" with "Try again"; a refused close appears in a notice and the session stays on the list. A session of another account is not found. Today the businesses do not act on the notice yet (it comes in phase 2): a session open in a business stays until it expires.
 Involved: hubs (each business ends the account's sessions)
 
 ### ACCOUNTS-F19 Close an account's sessions from the admin
@@ -403,7 +403,7 @@ Steps:
 3. In **User sessions** they see who signed in where (account, address, browser and dates); a superuser ticks some and picks "Close the selected sessions".
 In: the accounts or the sessions ticked.
 Out: those sessions closed, also in the account's businesses; with the account's action, besides, no browser of it is trusted (its app and its recovery codes keep working). The account's own list of sessions refreshes by itself, and the log keeps who did it. Event `accounts.session.closed`.
-If it fails: support see the sessions without being able to close them; nobody changes or deletes a session by hand, because deleting the row would not end it. An account that no longer exists is not found.
+If it fails: support see the sessions without being able to close them; nobody changes or deletes a session by hand, because deleting the row would not end it. An account that no longer exists is not found. Today the businesses do not act on the notice yet (it comes in phase 2): a session open in a business stays until it expires.
 Involved: hubs (each business ends the account's sessions)
 
 ### ACCOUNTS-F20 Require the authenticator app from the staff in the admin
