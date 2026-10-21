@@ -292,9 +292,10 @@ def faq_items(days: TrialDays | None = None) -> list[dict[str, str]]:
             "key": "storage",
             "question": _("Where is my data stored?"),
             "answer": _(
-                "Entirely within the European Union: on Amazon Web Services, in its Ireland "
-                "region (eu-west-1), on GDPR-compliant infrastructure. Your data never leaves "
-                "the EU."
+                "Within the European Union: on Amazon Web Services, in its Ireland region "
+                "(eu-west-1), on GDPR-compliant infrastructure. The one exception is the AI "
+                "assistant: if its European provider is unavailable, a backup provider may "
+                "answer from outside the EU, under the safeguards our privacy policy describes."
             ),
         },
         {

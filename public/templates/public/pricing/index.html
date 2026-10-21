@@ -206,10 +206,9 @@
               <tr><td>{% trans "Monthly entry cost" %}</td><td data-title="ERPlora" class="primary-col num">{% if cheapest_plan %}{{ cheapest_plan.price_label }}{% else %}—{% endif %}</td><td data-title="SAP Business One" class="num">€108<small class="opacity-60">/{% trans "user" %}</small></td><td data-title="Odoo Enterprise" class="num">€11.90<small class="opacity-60">/{% trans "user" %} × {% trans "every paid app" %}</small></td></tr>
               <tr><td>{% trans "Time to first invoice" %}</td><td data-title="ERPlora" class="primary-col">{% trans "Same day" %}</td><td data-title="SAP Business One">{% trans "3–6 months" %}</td><td data-title="Odoo Enterprise">{% trans "2–3 months" %}</td></tr>
               <tr><td>{% trans "Consultant / integrator required" %}</td><td data-title="ERPlora" class="primary-col yes">{% trans "No" %}</td><td data-title="SAP Business One">{% trans "Mandatory partner" %}</td><td data-title="Odoo Enterprise">{% trans "Strongly recommended" %}</td></tr>
-              <tr><td>{% trans "Stripe + bank reconciliation" %}</td><td data-title="ERPlora" class="primary-col"><span class="yes">{% icon "lucide:check" %}</span> {% trans "built-in" %}</td><td data-title="SAP Business One">{% trans "custom integration" %}</td><td data-title="Odoo Enterprise">{% trans "add-on module" %}</td></tr>
 
               <tr class="cat ep-table-group"><td colspan="4">{% trans "Built for Spanish SMBs" %}</td></tr>
-              <tr><td>{% trans "Verifactu / TicketBAI / 303·390·347" %}</td><td data-title="ERPlora" class="primary-col"><span class="yes">{% icon "lucide:check" %}</span> {% trans "included, no add-on" %}</td><td data-title="SAP Business One">{% trans "paid localization" %}</td><td data-title="Odoo Enterprise">{% trans "paid localization" %}</td></tr>
+              <tr><td>{% trans "VeriFactu" %}</td><td data-title="ERPlora" class="primary-col"><span class="yes">{% icon "lucide:check" %}</span> {% trans "included, no add-on" %}</td><td data-title="SAP Business One">{% trans "paid localization" %}</td><td data-title="Odoo Enterprise">{% trans "paid localization" %}</td></tr>
               <tr><td>{% trans "POS, kitchen display, counter app" %}</td><td data-title="ERPlora" class="primary-col"><span class="yes">{% icon "lucide:check" %}</span> {% trans "native" %}</td><td data-title="SAP Business One">{% trans "third-party" %}</td><td data-title="Odoo Enterprise">{% trans "third-party" %}</td></tr>
               <tr><td>{% trans "Spanish-language support, EU-only data" %}</td><td data-title="ERPlora" class="primary-col"><span class="yes">{% icon "lucide:check" %}</span></td><td data-title="SAP Business One">{% trans "via partner" %}</td><td data-title="Odoo Enterprise">{% trans "EN-first" %}</td></tr>
 
@@ -244,19 +243,18 @@
               </tr>
             </thead>
             <tbody>
-              <tr><td>{% trans "What it really covers" %}</td><td data-title="ERPlora" class="primary-col">{% trans "Accounting + POS + inventory + HR + CRM, in one DB" %}</td><td data-title="Holded">{% trans "Accounting + light CRM" %}</td><td data-title="Factorial">{% trans "HR only" %}</td><td data-title="Zoho One">{% trans "40 apps, loosely connected" %}</td></tr>
+              <tr><td>{% trans "What it really covers" %}</td><td data-title="ERPlora" class="primary-col">{% trans "POS + invoicing + inventory + staff + CRM, in one DB" %}</td><td data-title="Holded">{% trans "Accounting + light CRM" %}</td><td data-title="Factorial">{% trans "HR only" %}</td><td data-title="Zoho One">{% trans "40 apps, loosely connected" %}</td></tr>
 
               <tr class="cat ep-table-group"><td colspan="5">{% trans "Things they can't do" %}</td></tr>
               <tr><td>{% trans "POS / TPV at the counter" %}</td><td data-title="ERPlora" class="primary-col"><span class="yes">{% icon "lucide:check" %}</span> {% trans "native" %}</td><td data-title="Holded"><span class="no">{% icon "lucide:x" %}</span></td><td data-title="Factorial"><span class="no">{% icon "lucide:x" %}</span></td><td data-title="Zoho One">{% trans "separate app" %}</td></tr>
               <tr><td>{% trans "Kitchen display, table map, restaurant flow" %}</td><td data-title="ERPlora" class="primary-col"><span class="yes">{% icon "lucide:check" %}</span></td><td data-title="Holded"><span class="no">{% icon "lucide:x" %}</span></td><td data-title="Factorial"><span class="no">{% icon "lucide:x" %}</span></td><td data-title="Zoho One"><span class="no">{% icon "lucide:x" %}</span></td></tr>
               <tr><td>{% trans "Receipt printers and cash drawer (counter app)" %}</td><td data-title="ERPlora" class="primary-col"><span class="yes">{% icon "lucide:check" %}</span></td><td data-title="Holded"><span class="no">{% icon "lucide:x" %}</span></td><td data-title="Factorial"><span class="no">{% icon "lucide:x" %}</span></td><td data-title="Zoho One"><span class="no">{% icon "lucide:x" %}</span></td></tr>
-              <tr><td>{% trans "Real multi-warehouse stock with lot/expiry" %}</td><td data-title="ERPlora" class="primary-col"><span class="yes">{% icon "lucide:check" %}</span></td><td data-title="Holded">{% trans "basic" %}</td><td data-title="Factorial"><span class="no">{% icon "lucide:x" %}</span></td><td data-title="Zoho One">{% trans "separate app" %}</td></tr>
               <tr><td>{% trans "AI assistant that crosses apps" %}</td><td data-title="ERPlora" class="primary-col"><span class="yes">{% icon "lucide:check" %}</span> {% trans "one assistant, all your data" %}</td><td data-title="Holded"><span class="no">{% icon "lucide:x" %}</span></td><td data-title="Factorial"><span class="no">{% icon "lucide:x" %}</span></td><td data-title="Zoho One">{% trans "per-app, siloed" %}</td></tr>
 
               <tr class="cat ep-table-group"><td colspan="5">{% trans "Architectural difference" %}</td></tr>
               <tr><td>{% trans "Single database, one report covers everything" %}</td><td data-title="ERPlora" class="primary-col"><span class="yes">{% icon "lucide:check" %}</span></td><td data-title="Holded">{% trans "single tool" %}</td><td data-title="Factorial">{% trans "single tool" %}</td><td data-title="Zoho One"><span class="no">{% icon "lucide:x" %}</span> {% trans "40 silos" %}</td></tr>
               <tr><td>{% trans "Add an app without buying a new product" %}</td><td data-title="ERPlora" class="primary-col"><span class="yes">{% icon "lucide:check" %}</span> {% trans "app catalogue, 1 click" %}</td><td data-title="Holded"><span class="no">{% icon "lucide:x" %}</span></td><td data-title="Factorial"><span class="no">{% icon "lucide:x" %}</span></td><td data-title="Zoho One">{% trans "buy another app" %}</td></tr>
-              <tr><td>{% trans "Total cost at year 2 (POS + accounting + HR + stock)" %}</td><td data-title="ERPlora" class="primary-col num">{% trans "1 bill" %}</td><td data-title="Holded" class="num">{% trans "+ 2–3 tools" %}</td><td data-title="Factorial" class="num">{% trans "+ 2–3 tools" %}</td><td data-title="Zoho One" class="num">{% trans "5+ subscriptions" %}</td></tr>
+              <tr><td>{% trans "Total cost at year 2 (POS + invoicing + staff + stock)" %}</td><td data-title="ERPlora" class="primary-col num">{% trans "1 bill" %}</td><td data-title="Holded" class="num">{% trans "+ 2–3 tools" %}</td><td data-title="Factorial" class="num">{% trans "+ 2–3 tools" %}</td><td data-title="Zoho One" class="num">{% trans "5+ subscriptions" %}</td></tr>
             </tbody>
           </table>
         </div>
@@ -277,14 +275,15 @@
       </div>
 
       {% comment %} One source: public.pricing.faq_items(). The same list feeds the FAQPage
-         JSON-LD of extra_seo, so the accordion and the markup cannot drift apart. {% endcomment %}
+         JSON-LD of extra_seo, so the accordion and the markup cannot drift apart. The storage answer adds
+         the link to the privacy policy whose §6 it quotes (PUBLIC-F08). {% endcomment %}
       <ion-accordion-group value="{{ faq_items.0.key }}">
         {% for item in faq_items %}
         <ion-accordion value="{{ item.key }}">
           <ion-item slot="header">
             <ion-label>{{ item.question }}</ion-label>
           </ion-item>
-          <div class="ion-padding" slot="content">{{ item.answer }}</div>
+          <div class="ion-padding" slot="content">{{ item.answer }}{% if item.key == "storage" %} <a href="{% url 'public:privacy' %}" class="text-primary">{% trans "Read the privacy policy" %}</a>{% endif %}</div>
         </ion-accordion>
         {% endfor %}
       </ion-accordion-group>

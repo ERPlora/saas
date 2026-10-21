@@ -13,7 +13,7 @@
         <div class="ep-reveal" data-reveal="up">
           <div class="kbd-pill kbd-pill-glass mb-6">
             <span class="pulse-dot"></span>
-            {% trans "v3.4 · your whole business, in the cloud" %}
+            {% trans "Your whole business, in the cloud" %}
           </div>
           <h1 class="ep-display-title">
             {% trans "One ERP." %}<br/>
@@ -22,9 +22,9 @@
           </h1>
           <p class="ep-intro mt-6 max-w-xl">
             {% blocktrans trimmed %}
-            ERPlora replaces the stack of 12 tools that holds your SMB together with a single platform:
-            invoicing, inventory, CRM, HR, accounting and the apps you need — no technical team,
-            no hidden licenses, no surprises.
+            ERPlora replaces the stack of tools that holds your SMB together with a single platform:
+            point of sale, invoicing with VeriFactu, inventory, customers, appointments and the apps you
+            need — no technical team, no hidden licenses, no surprises.
             {% endblocktrans %}
           </p>
           <div class="mt-8 flex flex-wrap gap-3">
@@ -92,7 +92,7 @@
       {# Trust strip: the sectors (honest social proof, no fake logos) #}
       <div class="ep-reveal" data-reveal="fade" data-reveal-delay="80">
         <div class="pb-12">
-          {% trans "Built for every kind of business" as cloud_label %}
+          {% trans "Made for small businesses" as cloud_label %}
           {% include "public/components/logo_cloud.html" with label=cloud_label logos_template="public/landing/home/_sectors.html" only %}
         </div>
       </div>
