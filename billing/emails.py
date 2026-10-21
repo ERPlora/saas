@@ -17,6 +17,8 @@ from django.utils import translation
 from django.utils.formats import date_format, number_format
 from django.utils.translation import gettext as _
 
+from billing.money import from_cents
+
 logger = logging.getLogger(__name__)
 
 
@@ -145,8 +147,8 @@ def send_oss_notice(notice) -> None:
     values = {
         "year": notice.year,
         "last_year": notice.year - 1,
-        "amount": _money(notice.accumulated_cents / 100),
-        "threshold": _money(notice.threshold_cents / 100),
+        "amount": _money(from_cents(notice.accumulated_cents)),
+        "threshold": _money(from_cents(notice.threshold_cents)),
         "percent": OSS_WARNING_PERCENT,
         "invoice": notice.invoice.number,
     }

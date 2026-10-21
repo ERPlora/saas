@@ -329,3 +329,19 @@ class TestTheAdmin:
         assert client.get(f"/admin/billing/ossnotice/{notice.pk}/change/").status_code == 200
         assert client.get("/admin/billing/ossnotice/add/").status_code == 403
         assert client.post(f"/admin/billing/ossnotice/{notice.pk}/delete/", {"post": "yes"}).status_code == 403
+
+
+class TestTheMailAmounts:
+    def test_the_amounts_are_exact_cents_never_a_float(self, berlin, mailoutbox, django_capture_on_commit_callbacks, settings):
+        """Money is cents or ``Decimal``, never a float: a float of a large amount drifts by a cent."""
+        carried(this_year=5100)
+        sale = charge("in_near", commit=django_capture_on_commit_callbacks)
+        notice = OssNotice.objects.create(
+            year=YEAR + 1, kind=OssNotice.Kind.NEAR, invoice=sale, accumulated_cents=10**16 + 1, threshold_cents=10**16
+        )
+
+        emails.send_oss_notice(notice)
+
+        body = mailoutbox[-1].body
+        assert "100,000,000,000,000.01 €" in body
+        assert "100,000,000,000,000.02" not in body
