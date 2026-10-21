@@ -109,11 +109,6 @@ async function atEverySize(page: Page, key: string, ready: () => Promise<void>):
   await page.setViewportSize({ width: 1440, height: 900 });
 }
 
-/** Django's admin is no Ionic page (`sidewaysScroll` looks inside `ion-content`): whether its document is wider than
- * the screen. */
-const documentScrollsSideways = (page: Page) =>
-  page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
-
 /** Signs `request`'s session out (allauth.headless), with Django's CSRF token from its cookies. */
 async function signOut(request: APIRequestContext): Promise<void> {
   const { cookies } = await request.storageState();
@@ -398,6 +393,24 @@ test.describe('the open sessions (the panel as production has it)', () => {
     expect(errors).toEqual([]);
   });
 
+  test('the sideways-scroll reader also catches a page that is no Ionic page: the admin, wider than the screen (the check of the check, ACCOUNTS-G09)', async ({
+    page,
+  }) => {
+    const staff = createAccount(address('reader'), { staff: true });
+    await signIn(page.request, staff);
+    await page.setViewportSize({ width: 834, height: 1112 });
+    await page.goto('/admin/accounts/user/');
+    await expect(page.locator('#changelist')).toBeVisible();
+    expect(await sidewaysScroll(page)).toEqual([]);
+    // The «Action» select is as wide as its longest option: the label F19 had first pushed the page past 834 px.
+    await page.evaluate(() => {
+      const option = document.createElement('option');
+      option.textContent = 'Close all their sessions and the trust of their browsers (here and in their businesses)';
+      document.querySelector('select[name="action"]')?.append(option);
+    });
+    expect((await sidewaysScroll(page)).join()).toMatch(/^document \d+ > \d+$/);
+  });
+
   test('ACCOUNTS-G09 (F19): a superuser closes every session of an account from the admin', async ({ page, browser }) => {
     const errors = watchPageErrors(page);
     const staff = createAccount(address('root'), { staff: true });
@@ -413,8 +426,6 @@ test.describe('the open sessions (the panel as production has it)', () => {
       await expect(page.locator('.messagelist .success')).toHaveText('Sessions closed: 1.');
       await atEverySize(page, 'G09', async () => {
         await expect(page.locator('.messagelist')).toBeVisible();
-        // The «Action» select is as wide as its longest label: a long one pushed the page past the screen at 834.
-        expect(await documentScrollsSideways(page), 'the admin scrolls sideways').toBe(false);
       });
       expect((await sessionOf(laptop.request)).user).toBeNull();
     } finally {
