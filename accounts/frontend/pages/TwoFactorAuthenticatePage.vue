@@ -8,9 +8,22 @@
 // the sign-in page otherwise (the template posted the logout for the same reason). With no login
 // waiting, allauth answers the code with a 401 and no pending flow (never 409): the session then
 // says whether another tab finished the sign-in (→ on) or the login expired (→ the sign-in).
-import { ApiError, createAllauthClient, type AuthState, type FieldErrors, useLiveClient } from '@erplora/ui/sdk';
+//
+// «Trust this browser for 14 days» (ACCOUNTS-F05, `MFA_TRUST_ENABLED`): opt-in, under the code, and answered with the
+// same «Verify», as Google's and Microsoft's «Don't ask again on this device». A right code leaves the login waiting
+// for that answer (allauth's `mfa_trust` stage); the page gives it at once. Should the answer get lost (or the page be
+// reloaded meanwhile), the page asks only the question, without the code.
+import {
+  ALLAUTH_BROWSER_BASE,
+  ApiError,
+  createAllauthClient,
+  type AuthState,
+  type FieldErrors,
+  readCookie,
+  useLiveClient,
+} from '@erplora/ui/sdk';
 import { ionIconSrc } from '@erplora/ui/shell';
-import { IonButton, IonIcon } from '@ionic/vue';
+import { IonButton, IonCheckbox, IonIcon } from '@ionic/vue';
 import { computed, onMounted, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
@@ -20,17 +33,22 @@ import CodeField from '../components/CodeField.vue';
 import { localNext } from '../next';
 import { LAUNCHER } from '../paths';
 
-/** allauth's flow of a login that waits for its second factor. */
+/** allauth's flows of a login that waits for its second factor, then for «Trust this browser». */
 const PENDING_FLOW = 'mfa_authenticate';
+const TRUST_FLOW = 'mfa_trust';
 const NON_FIELD = '__all__';
 const SHIELD_ICON = ionIconSrc('lucide:shield-check');
 
 const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
-const auth = createAllauthClient(useLiveClient().config);
+const config = useLiveClient().config;
+const auth = createAllauthClient(config);
 
+/** What the login waits for: the code, or the answer to «Trust this browser». */
+const step = shallowRef<'code' | 'trust'>('code');
 const code = shallowRef('');
+const trust = shallowRef(false);
 const submitting = shallowRef(false);
 const fields = shallowRef<FieldErrors>({});
 const failure = shallowRef('');
@@ -42,12 +60,37 @@ function leave(): void {
   location.assign(next.value ?? LAUNCHER);
 }
 
-/** Signed in → on to `next`; no login waiting for its code (none, or expired) → the sign-in. */
+/**
+ * Signed in → on to `next`; a login waiting for its code or for the trust question → that step, here; no login
+ * waiting (none, or expired) → the sign-in.
+ */
 function follow(state: AuthState): boolean {
   if (state.authenticated) leave();
-  else if (state.pendingFlow !== PENDING_FLOW) void router.replace(signIn.value);
-  else return false;
+  else if (state.pendingFlow === PENDING_FLOW || state.pendingFlow === TRUST_FLOW) {
+    step.value = state.pendingFlow === TRUST_FLOW ? 'trust' : 'code';
+    return false;
+  } else void router.replace(signIn.value);
   return true;
+}
+
+/**
+ * The answer to «Trust this browser» (allauth.headless `POST auth/2fa/trust`), sent as the SDK sends its calls: same
+ * origin, JSON and the session's CSRF token. The SDK's allauth client has no call for it yet. Its answer is not read:
+ * the session says what happened next. A failed network rejects.
+ */
+async function answerTrust(answer: boolean): Promise<void> {
+  // eslint-disable-next-line no-restricted-globals -- the SDK's allauth client has no `auth/2fa/trust` call yet (FIX in the PR of APP-ACCOUNTS-2)
+  const response = await fetch(`${ALLAUTH_BROWSER_BASE}/auth/2fa/trust`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      [config.csrfHeader]: readCookie(document.cookie, config.csrfCookieName) ?? '',
+    },
+    body: JSON.stringify({ trust: answer }),
+  });
+  await response.text();
 }
 
 onMounted(async () => {
@@ -64,8 +107,12 @@ async function submit(): Promise<void> {
   fields.value = {};
   failure.value = '';
   try {
-    let state = await auth.mfaAuthenticate(code.value);
-    if (!state.authenticated && state.pendingFlow !== PENDING_FLOW) state = await auth.getSession();
+    let state = step.value === 'code' ? await auth.mfaAuthenticate(code.value) : undefined;
+    if (state === undefined || (!state.authenticated && state.pendingFlow === TRUST_FLOW)) {
+      step.value = 'trust';
+      await answerTrust(trust.value);
+      state = await auth.getSession();
+    } else if (!state.authenticated && state.pendingFlow !== PENDING_FLOW) state = await auth.getSession();
     if (!follow(state)) failure.value = t('accounts.login.failed');
   } catch (error) {
     if (error instanceof ApiError && error.fields) {
@@ -105,8 +152,11 @@ async function backToSignIn(): Promise<void> {
     <h2 class="auth-title">
       {{ $t('accounts.twoFactor.title') }}
     </h2>
-    <p class="auth-lead">
-      {{ $t('accounts.twoFactor.lead') }}
+    <p
+      class="auth-lead"
+      data-testid="mfa-lead"
+    >
+      {{ step === 'trust' ? $t('accounts.twoFactor.trustLead') : $t('accounts.twoFactor.lead') }}
     </p>
 
     <div
@@ -123,9 +173,28 @@ async function backToSignIn(): Promise<void> {
       @submit.prevent="submit"
     >
       <CodeField
+        v-if="step === 'code'"
         v-model="code"
         :error="fields.code"
       />
+      <div class="trust">
+        <ion-checkbox
+          data-testid="mfa-trust"
+          label-placement="end"
+          justify="start"
+          :checked="trust"
+          :disabled="submitting"
+          @ion-change="trust = $event.detail.checked"
+        >
+          {{ $t('accounts.twoFactor.trust') }}
+        </ion-checkbox>
+        <p
+          class="trust-hint"
+          data-testid="mfa-trust-hint"
+        >
+          {{ $t('accounts.twoFactor.trustHint') }}
+        </p>
+      </div>
       <ion-button
         type="submit"
         data-testid="mfa-submit"
@@ -135,7 +204,7 @@ async function backToSignIn(): Promise<void> {
         class="submit"
         :disabled="submitting"
       >
-        {{ $t('accounts.twoFactor.verify') }}
+        {{ step === 'trust' ? $t('accounts.twoFactor.continue') : $t('accounts.twoFactor.verify') }}
       </ion-button>
     </form>
 
@@ -153,3 +222,22 @@ async function backToSignIn(): Promise<void> {
 </template>
 
 <style scoped src="../components/auth-card.css"></style>
+<style scoped>
+.trust {
+  margin-top: 14px;
+}
+.trust ion-checkbox {
+  --size: 20px;
+  width: 100%;
+  font-size: 14px;
+}
+/* The label wraps on a phone instead of being cut. */
+.trust ion-checkbox::part(label) {
+  white-space: normal;
+}
+.trust-hint {
+  margin: 4px 0 0 32px;
+  font-size: 12px;
+  color: var(--ion-color-medium);
+}
+</style>

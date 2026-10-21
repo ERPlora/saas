@@ -2,22 +2,26 @@
 // the template `mfa/authenticate.html` over allauth.headless: the login waits in the session
 // (`mfa_authenticate` pending) until a code from the authenticator app or a recovery code is right.
 // Right → it leaves the SPA for `next` or the launcher, as the login does; «Back to sign in» ends
-// the waiting login (allauth would resume the stage on the login page otherwise).
+// the waiting login (allauth would resume the stage on the login page otherwise). «Trust this browser for 14 days»
+// (ACCOUNTS-F05) answers allauth's `mfa_trust` stage that follows a right code, with the same «Verify».
 import { ionIconSrc } from '@erplora/ui/shell';
-import { IonButton, IonIcon, IonInput } from '@ionic/vue';
+import { IonButton, IonCheckbox, IonIcon, IonInput } from '@ionic/vue';
 import { flushPromises } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  type Answer,
   anonymous,
   fakeAllauth,
   held,
   offline,
   pendingSecondFactor,
+  pendingTrust,
   rejected,
   signedIn,
 } from '../__tests__/allauth-server';
 import { mountAccountPage } from '../__tests__/mount-account-page';
+import { choose } from '../__tests__/mount-panel';
 import TwoFactorAuthenticatePage from './TwoFactorAuthenticatePage.vue';
 
 type Control = HTMLElement & { errorText?: string; disabled?: boolean };
@@ -40,7 +44,8 @@ async function mountPage(options: { path?: string; locale?: 'en' | 'es' } = {}) 
     locale: options.locale,
   });
   const { wrapper } = mounted;
-  async function verify(code = '123456') {
+  async function verify(code = '123456', options: { trust?: boolean } = {}) {
+    if (options.trust) await choose(wrapper.getComponent(IonCheckbox).element, { checked: true });
     await wrapper.getComponent(IonInput).setValue(code);
     await wrapper.get('form[data-testid="mfa-form"]').trigger('submit');
     await flushPromises();
@@ -203,6 +208,91 @@ describe('TwoFactorAuthenticatePage: verifying', () => {
     await verify();
     expect(wrapper.get('.non-field-error').text()).toBe('No hemos podido iniciar tu sesión. Vuelve a intentarlo.');
     expect(assign).not.toHaveBeenCalled();
+  });
+});
+
+// flow: ACCOUNTS-F05 — «Trust this browser for 14 days» (old SAAS_AUTH-F06): opt-in, under the code, answered with
+// the same «Verify» (one screen, as Google's and Microsoft's «Don't ask again on this device»).
+describe('TwoFactorAuthenticatePage: «Trust this browser for 14 days»', () => {
+  const answers = (trust: Answer | Answer[] = signedIn) => ({
+    'GET /auth/session': [pendingSecondFactor, signedIn],
+    'POST /auth/2fa/authenticate': pendingTrust,
+    'POST /auth/2fa/trust': trust,
+  });
+
+  it('offers it unticked under the code, in English and in Spanish', async () => {
+    fakeAllauth({ 'GET /auth/session': pendingSecondFactor });
+    const { wrapper } = await mountPage();
+    const box = wrapper.getComponent(IonCheckbox);
+    expect([box.attributes('data-testid'), box.props('checked'), box.text()]).toEqual([
+      'mfa-trust',
+      false,
+      'Trust this browser for 14 days',
+    ]);
+    expect(wrapper.get('[data-testid="mfa-trust-hint"]').text()).toBe(
+      'You will not be asked for a code from your app here again for 14 days. Not on a shared computer.',
+    );
+    const es = await mountPage({ locale: 'es' });
+    expect(es.wrapper.getComponent(IonCheckbox).text()).toBe('Confiar en este navegador durante 14 días');
+    expect(es.wrapper.get('[data-testid="mfa-trust-hint"]').text()).toBe(
+      'Aquí no se te volverá a pedir el código de tu app durante 14 días. No lo marques en un ordenador compartido.',
+    );
+  });
+
+  it('left unticked, a right code says «not now» and leaves with the new session', async () => {
+    const server = fakeAllauth(answers());
+    const { verify } = await mountPage({ path: '/2fa/authenticate?next=%2Fhub-login%2F%3Fhub%3Da' });
+    await verify('654321');
+    expect(server.callsTo('POST /auth/2fa/authenticate').map((c) => c.body)).toEqual([{ code: '654321' }]);
+    expect(server.callsTo('POST /auth/2fa/trust').map((c) => c.body)).toEqual([{ trust: false }]);
+    expect(assign).toHaveBeenCalledExactlyOnceWith('/hub-login/?hub=a');
+  });
+
+  it('ticked, a right code trusts this browser, with the CSRF token of the session', async () => {
+    const server = fakeAllauth(answers());
+    const { verify } = await mountPage();
+    await verify('654321', { trust: true });
+    const [call] = server.callsTo('POST /auth/2fa/trust');
+    expect(call.body).toEqual({ trust: true });
+    expect(call.headers).toMatchObject({ 'X-CSRFToken': 'tok-123', 'Content-Type': 'application/json' });
+    expect(assign).toHaveBeenCalledExactlyOnceWith('/launch');
+  });
+
+  it('a wrong code asks nothing about the browser', async () => {
+    const server = fakeAllauth({
+      'GET /auth/session': pendingSecondFactor,
+      'POST /auth/2fa/authenticate': rejected('Incorrect code.', 'code'),
+    });
+    const { verify } = await mountPage();
+    await verify('000000', { trust: true });
+    expect(server.callsTo('POST /auth/2fa/trust')).toEqual([]);
+    expect(assign).not.toHaveBeenCalled();
+  });
+
+  it('when the answer is lost, stays on the question without the code and says so; «Verify» answers it again', async () => {
+    const server = fakeAllauth(answers([offline, signedIn]));
+    const { wrapper, verify } = await mountPage();
+    await verify('654321', { trust: true });
+    expect(wrapper.get('.non-field-error').text()).toBe('We could not sign you in. Please try again.');
+    expect(wrapper.find('[data-testid="code"]').exists()).toBe(false);
+    expect(assign).not.toHaveBeenCalled();
+    await wrapper.get('form[data-testid="mfa-form"]').trigger('submit');
+    await flushPromises();
+    expect(server.callsTo('POST /auth/2fa/trust').map((c) => c.body)).toEqual([{ trust: true }, { trust: true }]);
+    expect(server.callsTo('POST /auth/2fa/authenticate')).toHaveLength(1);
+    expect(assign).toHaveBeenCalledExactlyOnceWith('/launch');
+  });
+
+  it('arriving at a login that waits for the question (a reload), asks it without the code', async () => {
+    const server = fakeAllauth({ 'GET /auth/session': [pendingTrust, signedIn], 'POST /auth/2fa/trust': signedIn });
+    const { wrapper, router } = await mountPage();
+    expect(router.currentRoute.value.path).toBe('/2fa/authenticate');
+    expect(wrapper.find('[data-testid="code"]').exists()).toBe(false);
+    expect(wrapper.findComponent(IonCheckbox).exists()).toBe(true);
+    await wrapper.get('form[data-testid="mfa-form"]').trigger('submit');
+    await flushPromises();
+    expect(server.callsTo('POST /auth/2fa/trust').map((c) => c.body)).toEqual([{ trust: false }]);
+    expect(assign).toHaveBeenCalledExactlyOnceWith('/launch');
   });
 });
 
