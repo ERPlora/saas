@@ -94,3 +94,12 @@ Programarlas y dar los secretos (`WHATSAPP_APP_ID`, `WHATSAPP_APP_SECRET`, `WHAT
 `TEST_DB_NAME=test_saas_next_<tema> uv run pytest -q whatsapp`. Meta se sustituye solo en la frontera HTTP (`respx`,
 con cuerpos de su documentación y de los tests viejos); el Hub, con su doble HTTP real de `hubs.tests.hub_double`, que
 comprueba la firma. Cada test cita su clave del registro (`WHATSAPP-Gnn`) en el docstring del fichero.
+
+`tests/test_channel_contract.py` valida la clave `whatsapp` de la foto contra una copia campo a campo de
+`ChannelSyncIn` del Hub: un bloque que no la pase hace que el Hub rechace la foto entera (422), y el empuje lo deja
+en el log como `ERROR hubs.sync.refused … call=state`. Si cambia el esquema del Hub, cambia esa copia.
+
+e2e: `tests/e2e/panel/whatsapp.spec.ts` (el webhook de Meta en el Django real del panel, el Hub con su doble) y
+`tests/e2e/panel/whatsapp-hub.spec.ts`, la cruzada contra un Hub de verdad (Meta → erplora.com → la bandeja del Hub):
+necesita la pila del Hub y un SaaS de este checkout al lado (receta en su cabecera); sin `E2E_CROSS_HUB_PORT` se salta.
+No hay `UI-REQUESTS.md`: la app no tiene pantallas en el panel ni pide nada a `@erplora/ui`.
