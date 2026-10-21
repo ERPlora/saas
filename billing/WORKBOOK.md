@@ -185,13 +185,14 @@ Implicados: ninguno
 
 ### BILLING-F04 Mantener la tabla de tipos de IVA y no vender con ella rota
 <!-- origen: old-saas:SAAS_DASHBOARD-F143 -->
-Estado: parcial — falta la revisión diaria de la tabla con aviso al equipo
+Estado: parcial — la revisión de la tabla ya existe y falla en rojo, pero aún no está programada cada día: hasta entonces la lanza una persona del equipo
 Actor: personal de ERPlora
 Pantalla: Admin › Reglas fiscales
 Pasos:
 1. Una persona de ERPlora edita en el admin las **reglas fiscales** (país, región, categoría, tipo, sujeta o no, desde y hasta) y las **categorías**. Gana la regla más concreta.
 2. La lista enseña lo necesario para operar y se filtra por país y por categoría; dos reglas del mismo territorio que empiezan el mismo día se rechazan al guardar.
 3. Toda venta lee la tabla en el momento: un territorio sin regla vigente no se vende.
+4. La **revisión de la tabla** mira cada venta posible y se pone en rojo, con qué arreglar y dónde, si falta la regla del país que factura, si Canarias, Ceuta o Melilla dejan de salir sin IVA (regla borrada, desactivada, marcada como sujeta o un código postal que ya no las reconoce) o si un país con un pagador dado de alta no tiene tipo. Un país que solo cubre el tipo general de respaldo sale como aviso, no como fallo.
 Entra: la tabla y los datos de facturación de los negocios.
 Sale: la tabla cambiada.
 Si falla: desactivar la regla de un territorio hace que toda venta a él se niegue desde ese momento.
