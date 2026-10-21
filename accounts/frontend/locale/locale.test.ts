@@ -49,6 +49,8 @@ const NEW_IN_THE_VUE_PAGES = new Set([
   'accounts.twoFactor.trust',
   'accounts.twoFactor.trustHint',
   'accounts.twoFactor.trustLead',
+  // Turning the app off leaves the code mailed at every sign-in (2026-10-15), not «your password only» (ACCOUNTS-F16).
+  'accounts.twoFactor.deactivate.lead',
   // The staff the admin keeps out without the app land on /2fa to set it up (ACCOUNTS-F20).
   'accounts.twoFactor.requiredToContinue',
   'accounts.twoFactor.trusted.title',

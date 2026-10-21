@@ -142,7 +142,7 @@
       },
       "deactivate": {
         "title": "Turn off the authenticator app?",
-        "lead": "You will sign in with your password only.",
+        "lead": "You will sign in with your password and the code we email you.",
         "turnOff": "Turn off",
         "keepOn": "Keep it on"
       },

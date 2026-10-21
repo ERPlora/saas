@@ -415,7 +415,8 @@ describe('TwoFactorSettingsPage: turning the app off (mfa/totp/deactivate_form.h
     const { wrapper, text, button } = await openDeactivate();
     expect(wrapper.get('.auth-mark').findComponent(IonIcon).props('icon')).toBe(ionIconSrc('lucide:shield-x'));
     expect(wrapper.get('h2.auth-title').text()).toBe('Turn off the authenticator app?');
-    expect(text('deactivate-lead')).toBe('You will sign in with your password only.');
+    // ACCOUNTS-F16: the code mailed at every sign-in stays (old «re-activa Email OTP»): never «your password only».
+    expect(text('deactivate-lead')).toBe('You will sign in with your password and the code we email you.');
     const submit = button('deactivate-submit')!;
     expect([submit.props('color'), submit.props('size'), submit.text()]).toEqual(['danger', 'large', 'Turn off']);
     expect([button('deactivate-keep')!.props('fill'), button('deactivate-keep')!.text()]).toEqual(['clear', 'Keep it on']);

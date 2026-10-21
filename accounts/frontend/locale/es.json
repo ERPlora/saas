@@ -142,7 +142,7 @@
       },
       "deactivate": {
         "title": "¿Desactivar la app autenticadora?",
-        "lead": "Iniciarás sesión solo con tu contraseña.",
+        "lead": "Entrarás con tu contraseña y el código que te enviamos por correo.",
         "turnOff": "Desactivar",
         "keepOn": "Mantenerla activada"
       },
