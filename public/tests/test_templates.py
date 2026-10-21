@@ -114,7 +114,10 @@ def navbar_of(html: str) -> str:
 
 
 @pytest.fixture
-def cookie_groups(db):
+def cookie_groups(db, settings):
+    """The groups seeded and an optional tracker configured: the banner only asks when there is one
+    (PUBLIC-G24, ``public/tests/test_analytics.py``)."""
+    settings.GA_MEASUREMENT_ID = "G-TEST123"
     call_command("init_cookie_groups")
 
 
