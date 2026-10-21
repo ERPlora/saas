@@ -496,8 +496,8 @@ Implicados: hubs (el salto al admin de los negocios)
   solo en el host de erplora.com (`MFA_TRUST_COOKIE_DOMAIN = None`); allauth no guarda en el servidor qué
   navegadores confían, solo una huella firmada de la contraseña y de los autenticadores, así que
   `forget_trusted_browsers` vuelve a crear los autenticadores con otro id (el mismo secreto: la app y los
-  códigos siguen valiendo) y esta sesión sigue sus ids nuevos (`_follow_new_authenticator_ids`). El SDK de
-  `@erplora/ui` no tiene la llamada `auth/2fa/trust`: la página de la entrada hace la suya.
+  códigos siguen valiendo) y esta sesión sigue sus ids nuevos (`_follow_new_authenticator_ids`). La página de la
+  entrada responde la etapa con `mfaTrust` del cliente de allauth de `@erplora/ui`.
 - Sesiones (F18, F19): las de `allauth.usersessions`, sin `UserSession` propio ni JWT (PLAN-SAAS: nadie
   consume tokens). Cerrar una pide a sus negocios que cierren las suyas (`signals.sessions_ended`). El
   admin cierra por `accounts.session.close_any` (sin ruta: solo el admin, por el canal de la cuenta); sus

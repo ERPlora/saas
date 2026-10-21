@@ -11,17 +11,10 @@
 //
 // «Trust this browser for 14 days» (ACCOUNTS-F05, `MFA_TRUST_ENABLED`): opt-in, under the code, and answered with the
 // same «Verify», as Google's and Microsoft's «Don't ask again on this device». A right code leaves the login waiting
-// for that answer (allauth's `mfa_trust` stage); the page gives it at once. Should the answer get lost (or the page be
-// reloaded meanwhile), the page asks only the question, without the code.
-import {
-  ALLAUTH_BROWSER_BASE,
-  ApiError,
-  createAllauthClient,
-  type AuthState,
-  type FieldErrors,
-  readCookie,
-  useLiveClient,
-} from '@erplora/ui/sdk';
+// for that answer (allauth's `mfa_trust` stage); the page gives it at once (`auth.mfaTrust`) and follows the session it
+// answers. Should the answer get lost (or the page be reloaded meanwhile), the page asks only the question, without
+// the code; with no login waiting for it any more (409: another tab answered), the session says what comes next.
+import { ApiError, createAllauthClient, type AuthState, type FieldErrors, useLiveClient } from '@erplora/ui/sdk';
 import { ionIconSrc } from '@erplora/ui/shell';
 import { IonButton, IonCheckbox, IonIcon } from '@ionic/vue';
 import { computed, onMounted, shallowRef } from 'vue';
@@ -42,8 +35,7 @@ const SHIELD_ICON = ionIconSrc('lucide:shield-check');
 const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
-const config = useLiveClient().config;
-const auth = createAllauthClient(config);
+const auth = createAllauthClient(useLiveClient().config);
 
 /** What the login waits for: the code, or the answer to «Trust this browser». */
 const step = shallowRef<'code' | 'trust'>('code');
@@ -73,24 +65,14 @@ function follow(state: AuthState): boolean {
   return true;
 }
 
-/**
- * The answer to «Trust this browser» (allauth.headless `POST auth/2fa/trust`), sent as the SDK sends its calls: same
- * origin, JSON and the session's CSRF token. The SDK's allauth client has no call for it yet. Its answer is not read:
- * the session says what happened next. A failed network rejects.
- */
-async function answerTrust(answer: boolean): Promise<void> {
-  // eslint-disable-next-line no-restricted-globals -- the SDK's allauth client has no `auth/2fa/trust` call yet (FIX in the PR of APP-ACCOUNTS-2)
-  const response = await fetch(`${ALLAUTH_BROWSER_BASE}/auth/2fa/trust`, {
-    method: 'POST',
-    credentials: 'same-origin',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      [config.csrfHeader]: readCookie(document.cookie, config.csrfCookieName) ?? '',
-    },
-    body: JSON.stringify({ trust: answer }),
-  });
-  await response.text();
+/** The answer to «Trust this browser»: the session it leaves, or the session as it is when no login waits for it. */
+async function answerTrust(answer: boolean): Promise<AuthState> {
+  try {
+    return await auth.mfaTrust(answer);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 409) return auth.getSession();
+    throw error;
+  }
 }
 
 onMounted(async () => {
@@ -110,8 +92,7 @@ async function submit(): Promise<void> {
     let state = step.value === 'code' ? await auth.mfaAuthenticate(code.value) : undefined;
     if (state === undefined || (!state.authenticated && state.pendingFlow === TRUST_FLOW)) {
       step.value = 'trust';
-      await answerTrust(trust.value);
-      state = await auth.getSession();
+      state = await answerTrust(trust.value);
     } else if (!state.authenticated && state.pendingFlow !== PENDING_FLOW) state = await auth.getSession();
     if (!follow(state)) failure.value = t('accounts.login.failed');
   } catch (error) {

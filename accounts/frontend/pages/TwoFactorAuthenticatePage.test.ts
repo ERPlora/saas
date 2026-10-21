@@ -14,6 +14,7 @@ import {
   anonymous,
   fakeAllauth,
   held,
+  json,
   offline,
   pendingSecondFactor,
   pendingTrust,
@@ -280,6 +281,24 @@ describe('TwoFactorAuthenticatePage: «Trust this browser for 14 days»', () => 
     await flushPromises();
     expect(server.callsTo('POST /auth/2fa/trust').map((c) => c.body)).toEqual([{ trust: true }, { trust: true }]);
     expect(server.callsTo('POST /auth/2fa/authenticate')).toHaveLength(1);
+    expect(assign).toHaveBeenCalledExactlyOnceWith('/launch');
+  });
+
+  it('goes on with the session when no login waits for the question any more (409: another tab answered it)', async () => {
+    const server = fakeAllauth(answers(() => json(409, { status: 409 })));
+    const { wrapper, verify } = await mountPage();
+    await verify('654321', { trust: true });
+    expect(server.callsTo('POST /auth/2fa/trust').map((c) => c.body)).toEqual([{ trust: true }]);
+    expect(server.callsTo('GET /auth/session')).toHaveLength(2);
+    expect(wrapper.find('.non-field-error').exists()).toBe(false);
+    expect(assign).toHaveBeenCalledExactlyOnceWith('/launch');
+  });
+
+  it('takes the session the answer gives, without asking for it again', async () => {
+    const server = fakeAllauth(answers());
+    const { verify } = await mountPage();
+    await verify('654321', { trust: true });
+    expect(server.callsTo('GET /auth/session')).toHaveLength(1);
     expect(assign).toHaveBeenCalledExactlyOnceWith('/launch');
   });
 

@@ -99,14 +99,3 @@ limpia posible… las tablas tienen que ocupar la altura de la página, el espac
   `packages/ui/src/shell/theme/polish.css`, en escritorio y solo bajo el `.panel-fill` del SaaS: `.panel-fill
   .data-table .data-table__search { flex: 1 1 11rem; min-width: 9rem; max-width: 22rem }`. Guardia:
   `AppPage.test.ts` de ui.
-
-## 9. El cliente de allauth del SDK: la respuesta a «Confiar en este navegador» (APP-ACCOUNTS-2)
-
-- **Qué pasa**: con `MFA_TRUST_ENABLED`, tras un código bueno de la app el login espera la etapa `mfa_trust` de
-  allauth.headless (`POST /_allauth/browser/v1/auth/2fa/trust`, `{ trust: boolean }`), y `createAllauthClient` de
-  `@erplora/ui/sdk` no tiene esa llamada.
-- **Rodeo hoy**: `accounts/frontend/pages/TwoFactorAuthenticatePage.vue` hace su propio `fetch` con la cabecera
-  CSRF (con `eslint-disable` de `no-restricted-globals`), probado en `TwoFactorAuthenticatePage.test.ts` y en
-  `tests/e2e/panel/accounts-security.spec.ts` (ACCOUNTS-G88).
-- **Propuesta**: `auth.mfaTrust(trust: boolean)` en el cliente de allauth del SDK, que devuelva la misma respuesta
-  de sesión que `mfaAuthenticate`; con eso la página quita su `fetch`.
