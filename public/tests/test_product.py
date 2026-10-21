@@ -225,8 +225,8 @@ def test_updates_page_closing_band_links_the_contract_clause(client):
     html = page(client, "/updates/")
 
     assert "section 7 of the terms of service" in html
-    assert "Read section 7" in html
-    assert f'href="{reverse("public:terms")}"' in html
+    # The button itself, not the footer's «Terms», which links the same page from every page.
+    assert f'href="{reverse("public:terms")}">Read section 7</ion-button>' in html
 
 
 def test_updates_page_is_reachable_from_the_footer(client):
