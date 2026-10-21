@@ -94,6 +94,16 @@ async function openUserMenu(page: Page): Promise<void> {
   await expect(page.getByTestId('user-menu-logout')).toBeVisible();
 }
 
+/** The user menu once Ionic finished presenting it: its enter animation fades the sheet in, so a shot or a
+ *  measure taken before `ionPopoverDidPresent` shows the menu see-through. */
+async function openUserMenuPresented(page: Page): Promise<void> {
+  const presented = page.evaluate(
+    () => new Promise<void>((resolve) => document.addEventListener('ionPopoverDidPresent', () => resolve(), { once: true })),
+  );
+  await openUserMenu(page);
+  await presented;
+}
+
 /** The page is on `path`, not merely naming it in its `next`. */
 const onPath = (path: string) => (url: URL) => url.pathname === path;
 
@@ -294,7 +304,7 @@ test('ACCOUNTS-G93: «Sign out» in the user menu ends the session and leaves th
 
   await atEverySize(page, 'ACCOUNTS-G93', async () => {
     await page.goto('/account/profile');
-    await openUserMenu(page);
+    await openUserMenuPresented(page);
   });
   await page.goto('/account/profile');
   await openUserMenu(page);
@@ -306,6 +316,107 @@ test('ACCOUNTS-G93: «Sign out» in the user menu ends the session and leaves th
   // Back to a page of the panel: the sign-in again, not the account.
   await page.goto('/account/profile');
   await expect(page).toHaveURL(/\/launch\?next=/);
+  expect(errors).toEqual([]);
+});
+
+/** The boxes of the user menu once Ionic finished presenting it (its enter animation fades the sheet in). */
+async function measureUserMenu(page: Page) {
+  return page.evaluate(() => {
+    const box = (el: Element) => {
+      const r = el.getBoundingClientRect();
+      return { left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top), bottom: Math.round(r.bottom) };
+    };
+    /** Line boxes of an element's text: one entry per distinct line top. */
+    const lines = (el: Element) => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      return new Set([...range.getClientRects()].map((r) => Math.round(r.top))).size;
+    };
+    /** From an element up to the popover's host, through its shadow root: opacity product and the first opaque fill. */
+    const sheet = (from: Element, host: Element) => {
+      let opacity = 1;
+      let fill: string | null = null;
+      for (let el: Element | null = from; el; ) {
+        const style = getComputedStyle(el);
+        opacity *= Number(style.opacity);
+        const alpha = style.backgroundColor.match(/rgba?\(([^)]+)\)/)?.[1].split(',')[3];
+        if (fill === null && style.backgroundColor !== 'rgba(0, 0, 0, 0)' && (alpha === undefined || Number(alpha) === 1)) {
+          fill = `${el.tagName.toLowerCase()}.${[...el.classList].join('.')}`;
+        }
+        if (el === host) break;
+        el = el.assignedSlot ?? el.parentElement ?? ((el.getRootNode() as ShadowRoot).host || null);
+      }
+      return { opacity, fill };
+    };
+    const popover = document.querySelector('ion-popover.sidebar-user-popover')!;
+    const theme = document.querySelector('[data-testid="user-menu-theme"]')!;
+    const label = theme.querySelector('ion-label')!;
+    const segment = theme.querySelector('ion-segment')!;
+    const trigger = document.querySelector('[data-testid="user-menu-trigger"]')!;
+    const name = trigger.querySelector('.sidebar-user-name')!;
+    const email = trigger.querySelector('.sidebar-user-email')!;
+    const text = (el: Element) => {
+      const style = getComputedStyle(el);
+      return { ...box(el), display: style.display, ellipsis: style.textOverflow, cut: el.scrollWidth > el.clientWidth };
+    };
+    return {
+      themeLabel: { ...box(label), lines: lines(label) },
+      segment: box(segment),
+      buttons: [...segment.querySelectorAll('ion-segment-button')].map((button) => box(button)),
+      icons: [...segment.querySelectorAll('ion-segment-button ion-icon')].map((icon) => box(icon)),
+      sheet: { ...sheet(theme, popover), ...box(popover.shadowRoot!.querySelector('.popover-content')!) },
+      viewport: { width: innerWidth, height: innerHeight },
+      card: box(trigger),
+      chevron: box(trigger.querySelector('.sidebar-user-chevron')!),
+      name: text(name),
+      email: text(email),
+    };
+  });
+}
+
+test('ACCOUNTS-G93: the user menu reads whole at every size — «Theme» on one line, an opaque sheet, and a long name or email ends in «…» before the chevron', async ({ page }) => {
+  const errors = watchPageErrors(page);
+  const email = address('menu-with-a-rather-long-address-for-its-card');
+  createAccount(email);
+  await signIn(page.request, { email, password: PASSWORD });
+
+  // The spec's three sizes and the two others of the fleet's sweep (a short phone, a portrait tablet).
+  const sizes = [...SIZES, { name: '375', width: 375, height: 667 }, { name: '820', width: 820, height: 1180 }];
+  for (const size of sizes) {
+    await page.setViewportSize({ width: size.width, height: size.height });
+    await page.goto('/account/profile');
+    await openUserMenuPresented(page);
+    const menu = await measureUserMenu(page);
+    const at = `${size.name}: ${JSON.stringify(menu)}`;
+    console.log(`user menu at ${at}`);
+
+    expect.soft(menu.themeLabel.lines, `«Theme» on one line at ${at}`).toBe(1);
+    expect.soft(menu.themeLabel.right, `«Theme» ends before the theme buttons at ${at}`).toBeLessThanOrEqual(menu.segment.left);
+    expect.soft(menu.sheet.opacity, `the menu is not see-through at ${at}`).toBe(1);
+    expect.soft(menu.sheet.fill, `the menu has an opaque fill at ${at}`).not.toBeNull();
+    expect.soft(menu.sheet.top, `the menu opens under the card, never over its email at ${at}`).toBeGreaterThanOrEqual(menu.card.bottom);
+    expect.soft(
+      menu.sheet.left >= 0 && menu.sheet.top >= 0 && menu.sheet.right <= menu.viewport.width && menu.sheet.bottom <= menu.viewport.height,
+      `the menu is inside the window at ${at}`,
+    ).toBe(true);
+    menu.icons.forEach((icon, at_) => {
+      const button = menu.buttons[at_];
+      const off = Math.abs(icon.left + icon.right - button.left - button.right) / 2;
+      expect.soft(icon.left >= button.left && icon.right <= button.right && off <= 2, `a theme icon sits whole in the middle of its button at ${at}`).toBe(true);
+    });
+    for (const button of menu.buttons) {
+      expect.soft(Math.min(button.right - button.left, button.bottom - button.top), `a theme button is ≥ 24px to tap at ${at}`).toBeGreaterThanOrEqual(24);
+      expect.soft(button.left >= menu.segment.left && button.right <= menu.segment.right, `a theme button stays in its row at ${at}`).toBe(true);
+    }
+    for (const line of [menu.name, menu.email]) {
+      expect.soft(line.right, `the card's text stops before the chevron at ${at}`).toBeLessThanOrEqual(menu.chevron.left);
+      expect.soft(line.display, `the card's text is a block, so «…» can show, at ${at}`).not.toBe('inline');
+      expect.soft(line.ellipsis, `the card's text ends in «…» at ${at}`).toBe('ellipsis');
+    }
+    expect.soft(menu.email.cut, `this address is longer than the card at ${at}`).toBe(true);
+    await page.screenshot({ path: shot(`APP-ACCOUNTS-1-ACCOUNTS-G93-menu-${size.width}x${size.height}`), fullPage: true });
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
   expect(errors).toEqual([]);
 });
 
