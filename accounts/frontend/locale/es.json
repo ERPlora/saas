@@ -274,7 +274,7 @@
         "title": "Eliminar tu cuenta",
         "confirm": "Eliminar cuenta",
         "typeEmail": "Tu correo",
-        "message": "Se borran tu cuenta, tu foto, tus preferencias y tus claves de API, y se cierran todas tus sesiones, también en las apps y en tus negocios. No se puede deshacer.",
+        "message": "Se borran tu cuenta, tu foto, tus preferencias y tus claves de API, y se cierran todas tus sesiones, también en las apps y en tus negocios. No se puede deshacer. Tus facturas de ERPlora se conservan el tiempo que exige la ley.",
         "lead": "Tu cuenta y lo que hay en ella se borran para siempre. Antes tienes que transferir o eliminar los negocios de los que eres propietario.",
         "owns": "Eres propietario de {n} negocio: transfiérelo o elimínalo antes de borrar la cuenta. | Eres propietario de {n} negocios: transfiérelos o elimínalos antes de borrar la cuenta.",
         "pays": "Pagas {n} negocio de otra persona: pide a su propietario que ponga sus propios datos de pago antes de borrar la cuenta. | Pagas {n} negocios de otras personas: pide a sus propietarios que pongan sus propios datos de pago antes de borrar la cuenta.",

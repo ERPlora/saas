@@ -198,6 +198,21 @@ class TestARecentSignInIsNeeded:
         assert api_post(signed_in_long_ago, DELETE).status_code == 200
         assert not _exists(ana)
 
+    def test_guessing_the_password_with_an_open_session_is_throttled(self, signed_in_long_ago, ana, password):
+        """saas#2664 (old SAAS_DASHBOARD-F208): a session left open is no way to try passwords without end. «Confirm
+        it's you» is allauth's reauthentication, 10 tries a minute per account; past them, not even the right one."""
+        tries = [
+            signed_in_long_ago.post(REAUTHENTICATE, {"password": f"guess-{n}"}, content_type="application/json", HTTP_HOST=HOST)
+            for n in range(10)
+        ]
+        assert {response.status_code for response in tries} == {400}
+
+        right = signed_in_long_ago.post(REAUTHENTICATE, {"password": password}, content_type="application/json", HTTP_HOST=HOST)
+
+        assert right.status_code == 429
+        assert api_post(signed_in_long_ago, DELETE).status_code == 401
+        assert _exists(ana)
+
     def test_a_session_opened_without_signing_in_is_not_recent(self, client, ana):
         """``force_login`` (or the admin's login) leaves no record of a sign-in: allauth asks again."""
         client.force_login(ana)
@@ -277,6 +292,29 @@ class TestWhatDeletingDoes:
         api_post(signed_in, DELETE)
 
         assert set(OutboxEvent.objects.values_list("actor", flat=True)) == {str(ana.pk)}
+
+    def test_erploras_invoices_stay_with_their_recipient_as_issued(self, signed_in, ana, plans):  # noqa: F811
+        """ACCOUNTS-F27: the law keeps ERPlora's invoices (PLAN-SAAS §4; GDPR art. 17.3.b), so deleting the account
+        deletes the person, not its invoices: each keeps who it was issued to, only its link to the account goes."""
+        from billing.models import Invoice
+        from billing.tests.test_invoice_queries import issue
+        from hubs.models import Hub
+
+        business = create_business(ana, name="Panadería López")
+        invoice = issue(business, 7, payer=ana, payer_tax_id="B12345678", payer_email="ana@example.com")
+        Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETED, deletion_requested_at=timezone.now())
+
+        assert api_post(signed_in, DELETE).status_code == 200
+
+        kept = Invoice.objects.get(pk=invoice.pk)
+        assert (kept.number, kept.payer_tax_id, kept.payer_name, kept.total_cents) == (
+            "ERP-2026-00007",
+            "B12345678",
+            "Panadería López SL",
+            3629,
+        )
+        assert kept.payer_account_id is None
+        assert kept.lines.count() == 1
 
     def test_the_businesses_are_asked_to_end_its_sessions(self, signed_in, ana, received):
         api_post(signed_in, DELETE)

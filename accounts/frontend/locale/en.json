@@ -274,7 +274,7 @@
         "title": "Delete your account",
         "confirm": "Delete account",
         "typeEmail": "Your email",
-        "message": "Your account, your photo, your preferences and your API keys are deleted, and every session ends, also in the apps and in your businesses. This cannot be undone.",
+        "message": "Your account, your photo, your preferences and your API keys are deleted, and every session ends, also in the apps and in your businesses. This cannot be undone. Your ERPlora invoices are kept for as long as the law requires.",
         "lead": "Your account and what is in it go for good. Businesses you own have to be transferred or deleted first.",
         "owns": "You own {n} business: transfer or delete it before deleting your account. | You own {n} businesses: transfer or delete them before deleting your account.",
         "pays": "You pay for {n} business of other people: ask its owner to enter their own payment details before deleting your account. | You pay for {n} businesses of other people: ask their owners to enter their own payment details before deleting your account.",
