@@ -108,7 +108,7 @@ caben y, al propietario, el botón para mejorarlo o cambiarlo.
 | ID | Flujo | Estado |
 |---|---|---|
 | BILLING-F01 | Decir dónde se factura el negocio y con qué identificación fiscal | hecho |
-| BILLING-F02 | Calcular el impuesto de una venta según dónde está el pagador | parcial |
+| BILLING-F02 | Calcular el impuesto de una venta según dónde está el pagador | hecho |
 | BILLING-F03 | Decidir el IVA de cada cobro | hecho |
 | BILLING-F04 | Mantener la tabla de tipos de IVA y no vender con ella rota | parcial |
 | BILLING-F05 | Comprobar en VIES el NIF-IVA de quien paga | hecho |
@@ -156,7 +156,7 @@ Implicados: hubs (los datos del negocio y de quien paga)
 
 ### BILLING-F02 Calcular el impuesto de una venta según dónde está el pagador
 <!-- origen: old-saas:SAAS_DASHBOARD-F91 -->
-Estado: parcial — con un cambio a un plan menor ya programado, la primera factura del plan nuevo sale con el tipo de antes de cambiar los datos de facturación (las siguientes ya llevan el nuevo)
+Estado: hecho
 Actor: sistema
 Pantalla: ninguna
 Pasos:
@@ -164,7 +164,7 @@ Pasos:
 2. Califica la venta con la misma regla que luego usa la factura: península y Baleares, IVA español; Canarias, Ceuta y Melilla, sin IVA (se cobra el precio sin nada encima); otro país de la UE con NIF-IVA comprobado en VIES, inversión del sujeto pasivo, sin IVA; un particular de otro país de la UE, IVA español hasta superar el umbral de ventas a distancia y después el de su país; Reino Unido, solo a empresas y sin IVA.
 3. Si el total con IVA pasa de 400 € y quien paga no tiene NIF, la venta se niega y se pide (una factura simplificada no puede pasar de ahí).
 4. El tipo resultante viaja a Stripe con cada línea de la suscripción; Stripe solo suma lo que se le da.
-5. Al guardar los **datos de facturación**, la suscripción que ya se cobra toma el tipo del lugar nuevo desde la siguiente factura, sin tocar lo ya pagado (por ejemplo, quien se muda de Madrid a Las Palmas deja de pagar IVA). Una revisión diaria repite lo mismo con todas las suscripciones vivas por si un cambio no llegó.
+5. Al guardar los **datos de facturación**, la suscripción que ya se cobra toma el tipo del lugar nuevo desde la siguiente factura, sin tocar lo ya pagado (por ejemplo, quien se muda de Madrid a Las Palmas deja de pagar IVA). Con un cambio a un plan menor ya programado, también cambia el tipo de lo que se cobrará al cambiar, así la primera factura del plan nuevo ya lleva el tipo de hoy. Una revisión diaria repite lo mismo con todas las suscripciones vivas por si un cambio no llegó.
 Entra: país, código postal y NIF de quien paga, la última comprobación de VIES, el precio sin IVA y qué se vende (plan o módulo).
 Sale: el tipo de cada línea en Stripe, o la negativa con su motivo.
 Si falla: «Faltan los datos de facturación» lleva al formulario; un territorio sin regla en la tabla no se vende; un consumidor del Reino Unido no compra; más de 400 € sin NIF pide el NIF. Un precio de 0 € nunca se niega. Si al guardar los datos Stripe no contesta, los datos se guardan igual y la revisión diaria aplica el tipo; si el lugar nuevo no se vende, la suscripción sigue con su tipo y la revisión diaria se pone en rojo para el equipo.

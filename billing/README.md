@@ -13,7 +13,7 @@ pago); detalle en «Facturas de ERPlora (L3-C)».
 
 | Pieza | Qué hace |
 |---|---|
-| `models.py` | `TaxCategory` (qué se vende), `TaxRule` (tipo por país/región/categoría con vigencia; `is_subject=False` = no sujeta), `FiscalPolicy` (emisor, alta en el ROI, OSS y su umbral; una sola fila), `CompanyConfig` (identidad fiscal de ERPlora, la del solicitante de VIES; una sola fila) y `VatCheck` (bitácora de VIES: cada consulta es una fila nueva, nunca se edita) |
+| `models.py` | `TaxCategory` (qué se vende), `TaxRule` (tipo por país/región/categoría con vigencia; `is_subject=False` = no sujeta), `FiscalPolicy` (emisor, alta en el ROI, OSS y su umbral; una sola fila), `CompanyConfig` (identidad fiscal de ERPlora, la del solicitante de VIES; una sola fila), `VatCheck` (bitácora de VIES: cada consulta es una fila nueva, nunca se edita) y `OssNotice` (los avisos al equipo del 80 % y del cruce del umbral OSS, uno por año y tipo) |
 | `vat.py` | Calificación y desglose: `quote_vat` (lo que se SUMA a un neto; `None` = no se vende), `resolve_vat` (reparte lo ya cobrado, concilia el cero de Stripe en una venta sujeta), `add_vat`, `split_gross`, `vat_rate_for`, `BILLING_COUNTRIES`, `tax_id_type_for`. Sin ORM: lee la tabla por `queries.py` |
 | `vies.py` | Cliente REST de VIES como solicitante identificado; nunca lanza: red caída, timeout, HTTP ≥ 400, JSON roto o «válido sin número de consulta» = `unavailable` |
 | `services.py` | Las puertas: `check_vat_number`, `verify_customer_vat`, `clear_tax_id_for_stripe`, `record_manual_override`, `validate_vat_for_profile`, `sale_quote`, `sale_tax_rates`, `require_billing_location`; la operación `billing.vat_check.run` |
@@ -58,8 +58,22 @@ pago); detalle en «Facturas de ERPlora (L3-C)».
   de facturación (`hubs.billing_profile.update`, tras el COMMIT) y cada día (`manage.py retax_subscriptions`),
   cada item de una suscripción `active`/`trialing`/`past_due` recibe los `TaxRate` que el motor da hoy, sin
   prorrateo. Quitar un tipo es `tax_rates: ""` (una lista vacía la descarta el SDK y Stripe deja el tipo viejo;
-  comprobado contra la API de prueba). Se salta una bajada programada (la fase siguiente del calendario lleva
-  sus propios items); un lugar que no se vende queda `refused` y el comando sale con error.
+  comprobado contra la API de prueba). Con una bajada programada (`PlanChangeSchedule`), la primera factura del
+  plan nuevo la cobra la fase siguiente del calendario con los items que se fijaron al programarla:
+  `_retax_schedule` re-declara cada fase que aún no terminó con los tipos de hoy (la actual conserva su
+  `start_date`, su `trial_end` y su `end_date`; `end_behavior: release`; sin prorrateo). En las fases un tipo se
+  quita con `tax_rates: []` y cambiar la fase actual cambia la suscripción en el acto (comprobado contra la API
+  de prueba); un precio que ningún plan ni módulo tiene conserva su tipo. Un lugar que no se vende queda
+  `refused` y el comando sale con error.
+- **Avisos de la OSS** (`services.note_oss_threshold`, BILLING-F06, saas#2297/#2299): cada factura cobrada que
+  cuenta para el umbral (B2C a otro estado de la UE, sin NIF-IVA comprobado) mira el total del año; la que lo
+  lleva por encima del 80 % (`OSS_WARNING_PERCENT`) anota un `OssNotice` `near` y la que lo cruza (o la primera
+  del año si el anterior cerró por encima) uno `crossed`, cada uno una vez al año (único por `(year, kind)`;
+  el cruce primero, así un salto directo solo avisa del cruce). Sin avisos con el alta voluntaria en la OSS.
+  El correo va a `SUPPORT_EMAIL` tras el COMMIT (cabecera `X-ERPlora-Notice: billing.oss_near|crossed`); uno
+  que no salió se reenvía en `retax_subscriptions`, que sale con error mientras quede alguno
+  (`notices_failed`). Anotar el aviso nunca rompe el cobro (`_note_oss_threshold_quietly`). Admin de solo
+  lectura «Avisos de la OSS».
 
 ## VIES
 
@@ -85,7 +99,7 @@ pago); detalle en «Facturas de ERPlora (L3-C)».
 | `models.py` | `PromoCode` (días de prueba, ADR-0107), `CheckoutAttempt` (un Embedded Checkout por intención; la misma selección reutiliza su sesión abierta), `WebhookEvent` (cada evento una vez) y `PaymentFailure` (por qué no se cobró una renovación) |
 | `webhooks.py` | `POST /webhooks/stripe/`: firma de Stripe → reclamo del evento → `services.process_stripe_event` |
 | `management/commands/sweep_unpaid.py` | `saas-cron`: impagos que Stripe dejó de reintentar y suscripciones de negocios eliminados |
-| `management/commands/retax_subscriptions.py` | `saas-cron` (diaria): el tipo de hoy en cada suscripción viva (cambio de dirección no empujado, umbral OSS, tipo programado) |
+| `management/commands/retax_subscriptions.py` | `saas-cron` (diaria): el tipo de hoy en cada suscripción viva y en las fases de su bajada programada (cambio de dirección no empujado, umbral OSS) y el reenvío de los avisos de la OSS que no salieron |
 | `management/commands/audit_tax_rules.py` | `saas-cron` (diaria) o a mano: la tabla de IVA cobra cada venta posible |
 
 ### Operaciones (solo el propietario del negocio; permiso `billing.pay`)

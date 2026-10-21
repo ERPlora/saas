@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:ae7f35c6aed94c81f6a6cd7b38061f1bc8de9d8bf36d0ef7a08ab62763becab0 -->
+<!-- generated from WORKBOOK.md sha256:7d990fcef508e1df4c21b882a756668a51337295d5ad9960b3a1d3284ee475ff -->
 
 ## What it is for and who it is for
 
@@ -96,7 +96,7 @@ the owner, the button to upgrade or change it.
 | ID | Flow | Status |
 |---|---|---|
 | BILLING-F01 | Say where the business is invoiced and with which tax ID | done |
-| BILLING-F02 | Work out the tax of a sale from where the payer is | partial |
+| BILLING-F02 | Work out the tax of a sale from where the payer is | done |
 | BILLING-F03 | Decide the VAT of each charge | done |
 | BILLING-F04 | Keep the VAT rate table and never sell with it broken | partial |
 | BILLING-F05 | Check the payer's EU VAT number in VIES | done |
@@ -144,7 +144,7 @@ Involved: hubs (the business's and the payer's details)
 
 ### BILLING-F02 Work out the tax of a sale from where the payer is
 <!-- origen: old-saas:SAAS_DASHBOARD-F91 -->
-Status: partial — with a downgrade already scheduled, the first invoice of the new plan goes out with the rate from before the billing details changed (the following ones carry the new one)
+Status: done
 Actor: system
 Screen: none
 Steps:
@@ -152,7 +152,7 @@ Steps:
 2. It qualifies the sale with the same rule the invoice uses afterwards: mainland Spain and the Balearic Islands, Spanish VAT; Canary Islands, Ceuta and Melilla, no VAT (the price is charged with nothing on top); another EU country with an EU VAT number checked in VIES, reverse charge, no VAT; a consumer in another EU country, Spanish VAT until the distance-selling threshold is passed and then their country's; United Kingdom, businesses only and no VAT.
 3. If the total with VAT goes over €400 and the payer has no tax ID, the sale is refused and the tax ID is asked for (a simplified invoice cannot go beyond that).
 4. The resulting rate travels to Stripe with each line of the subscription; Stripe only adds what it is given.
-5. When the **billing details** are saved, the subscription already being charged takes the rate of the new place from the next invoice, without touching what is already paid (for example, someone who moves from Madrid to Las Palmas stops paying VAT). A daily review repeats the same with every live subscription in case a change did not get through.
+5. When the **billing details** are saved, the subscription already being charged takes the rate of the new place from the next invoice, without touching what is already paid (for example, someone who moves from Madrid to Las Palmas stops paying VAT). With a downgrade already scheduled, the rate of what will be charged at the change changes too, so the first invoice of the new plan already carries today's rate. A daily review repeats the same with every live subscription in case a change did not get through.
 In: the payer's country, postal code and tax ID, the latest VIES check, the price without VAT and what is sold (plan or module).
 Out: the rate of each line in Stripe, or the refusal with its reason.
 If it fails: "Billing details are missing" leads to the form; a territory without a rule in the table is not sold to; a UK consumer does not buy; over €400 without a tax ID asks for it. A €0 price is never refused. If Stripe does not answer when the details are saved, the details are saved anyway and the daily review applies the rate; if the new place is not sold to, the subscription keeps its rate and the daily review goes red for the team.

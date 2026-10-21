@@ -161,6 +161,28 @@ class TestTheCrossing:
         assert len(oss_mails(mailoutbox)) == 2
         assert crossing.number in oss_mails(mailoutbox)[1].body
 
+    def test_reaching_exactly_the_threshold_is_only_the_80_percent_warning(
+        self, berlin, mailoutbox, django_capture_on_commit_callbacks
+    ):
+        """Destination VAT starts once the threshold is passed (``queries.destination_rate_applies``), so landing
+        on it is not the crossing yet."""
+        carried(this_year=10_000 - SALE)
+
+        charge("in_exact", commit=django_capture_on_commit_callbacks)
+
+        assert [n.kind for n in notices()] == [OssNotice.Kind.NEAR]
+        assert [m.extra_headers["X-ERPlora-Notice"] for m in oss_mails(mailoutbox)] == ["billing.oss_near"]
+
+    def test_a_previous_year_that_closed_exactly_at_the_threshold_is_not_a_crossing(
+        self, berlin, mailoutbox, django_capture_on_commit_callbacks
+    ):
+        carried(last_year=10_000)
+
+        charge("in_first", commit=django_capture_on_commit_callbacks)
+
+        assert notices() == []
+        assert oss_mails(mailoutbox) == []
+
     def test_a_year_that_starts_in_destination_is_told_at_its_first_charged_sale(
         self, berlin, mailoutbox, django_capture_on_commit_callbacks
     ):

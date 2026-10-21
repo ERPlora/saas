@@ -136,15 +136,18 @@ OSS_NOTICE = "billing.oss_{kind}"
 
 
 def send_oss_notice(notice) -> None:
-    """Tell the team's mailbox (``SUPPORT_EMAIL``) that the year passed 80 % of the OSS threshold (register in
-    the OSS now: form 035 takes days) or crossed it (destination VAT already applies: register at once).
+    """Tell the team's mailbox (``SUPPORT_EMAIL``) that the year passed ``OSS_WARNING_PERCENT`` of the OSS
+    threshold (register in the OSS now: form 035 takes days) or crossed it (destination VAT already applies:
+    register at once).
     ``MailNotSent`` when the mail could not leave."""
+    from billing.services import OSS_WARNING_PERCENT
+
     values = {
         "year": notice.year,
         "last_year": notice.year - 1,
         "amount": _money(notice.accumulated_cents / 100),
         "threshold": _money(notice.threshold_cents / 100),
-        "percent": 80,
+        "percent": OSS_WARNING_PERCENT,
         "invoice": notice.invoice.number,
     }
     with translation.override(settings.LANGUAGE_CODE):
