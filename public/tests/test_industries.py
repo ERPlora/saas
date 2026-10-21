@@ -10,7 +10,7 @@ What changed, and why:
   13): ONE list, «apps included out of the box», instead of «essential» (free) and «recommended»
   (paid) modules matched by sector or business type. Without a vertical there is no block (§5.3);
 * the onward links point at ``/pricing/``, ``/apps/`` (the store, which replaces ``/modules/``,
-  decision 19) and ``/features/``. ``/compliance/`` is out of the port (plan §7): its card is gone;
+  decision 19) and ``/features/``. ``/compliance/`` was out of the port (plan §7) and is back with its card (PUBLIC-F09, test_compliance.py);
 * the cards are the ``ep-*`` partials (``ok-feature-card`` is gone, PLAN §16.11), so the «real link,
   not an undeclared slot» check looks for the ``<a class="ep-feature-card">`` itself;
 * the footer control of ``test_the_link_check_ignores_the_footer`` reads ``/industries/``: it is the

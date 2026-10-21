@@ -7,7 +7,10 @@
   that exist: each lot adds its links in its turn (plan §3.i), with {% templatetag openblock %} url {% templatetag closeblock %}.
   In the order of the old footer, the bottom bar's legal links are Legal Notice, Privacy, Terms
   and Cookies, then the declaración responsable (art. 13.2 RRSIF: at hand before buying); Support's
-  are Help Center, Support, Contact and the support address.
+  are Help Center, Support, Contact and the support address. Last, the language switcher (PUBLIC-F13): one POST
+  form per language to /set-language/ back to the same page, its ion-button in the language's own name, as the footers of
+  Stripe, Shopify or Square; the cookie it writes is what LocaleMiddleware reads. Ionic moves aria-current
+  into the button's shadow, so the style hangs on data-current.
 {% endcomment %}
 <footer class="ep-footer">
     <div class="ep-footer__columns">
@@ -47,5 +50,19 @@
             <a href="{% url 'cookie_consent_cookie_group_list' %}">{% trans "Cookies" %}</a>
             <a href="{% url 'public:declaracion_responsable' %}">{% trans "Responsible declaration" %}</a>
         </span>
+        {% get_current_language as current_language %}
+        {% get_available_languages as site_languages %}
+        {% get_language_info_list for site_languages as language_choices %}
+        <div class="ep-footer__language" role="group" aria-label="{% trans 'Language' %}">
+            {% icon "lucide:globe" %}
+            {% for choice in language_choices %}
+            <form method="post" action="{% url 'public:set_language' %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <input type="hidden" name="language" value="{{ choice.code }}">
+                <ion-button type="submit" fill="clear" size="small" lang="{{ choice.code }}"{% if choice.code == current_language %} aria-current="true" data-current{% endif %}>{{ choice.name_local|capfirst }}</ion-button>
+            </form>
+            {% endfor %}
+        </div>
     </div>
 </footer>

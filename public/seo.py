@@ -51,6 +51,11 @@ LLMS_SECTIONS: tuple[tuple[str, tuple[tuple[str, str, str], ...]], ...] = (
                 "Counter app",
                 "the installable app that drives printers and cash drawer.",
             ),
+            (
+                "public:compliance",
+                "Compliance",
+                "the EU countries where a business can be created and the invoicing systems it connects to.",
+            ),
             ("public:about", "About", "who builds ERPlora."),
         ),
     ),

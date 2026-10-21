@@ -110,3 +110,35 @@
     color: var(--ep-primary, var(--ion-color-primary, #1496d6));
   }
 }
+
+/* The language switcher of the bottom bar (PUBLIC-F13): one small form per language, its ion-button as plain
+ * text in the bar's colour, the current one in bold (`data-current`: Ionic moves `aria-current` into the
+ * button's shadow). */
+.ep-footer__language {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.ep-footer__language form {
+  margin: 0;
+}
+.ep-footer__language ion-button {
+  --color: currentColor;
+  --padding-start: 0.35rem;
+  --padding-end: 0.35rem;
+  margin: 0;
+  min-height: 0;
+  height: auto;
+  font-size: 0.85rem;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.ep-footer__language ion-button[data-current] {
+  --color: var(--ep-text, var(--ion-text-color, #18181b));
+  font-weight: 650;
+}
+@media (hover: hover) {
+  .ep-footer__language ion-button:not([data-current]):hover {
+    --color: var(--ep-primary, var(--ion-color-primary, #1496d6));
+  }
+}

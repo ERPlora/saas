@@ -8,7 +8,7 @@ named group repeats every private path, asserted agent by agent and by a real pa
 llms.txt: what ERPlora is, then the pages that answer what buyers ask. Adapted: it links only pages
 that exist (each batch of the port adds its own to ``LLMS_SECTIONS``) and has no apps section until
 the store reads the catalogue (L6; spec §5.3 omits the block with no listed app). The original's
-links to ``/compliance/`` and ``/solutions/`` are gone with those pages (spec §8.3, §11).
+links to ``/solutions/`` are gone with that page (spec §8.3); ``/compliance/`` is back (PUBLIC-F09).
 """
 
 import re

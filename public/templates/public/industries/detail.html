@@ -85,16 +85,20 @@
       {% url 'public:pricing' as pricing_url %}
       {% url 'public:store' as store_url %}
       {% url 'public:features' as features_url %}
+      {% url 'public:compliance' as compliance_url %}
       {% trans "Plans and prices" as pricing_heading %}
       {% trans "What each plan includes, and how we compare with the ERPs and the vertical tools you are probably also looking at." as pricing_body %}
       {% trans "The app catalogue" as store_heading %}
       {% trans "Every app we publish and what it does: you turn on only the ones you use." as store_body %}
       {% trans "How the product works" as features_heading %}
       {% trans "The point of sale, the catalogue, the assistant and the installable app for the counter." as features_body %}
+      {% trans "Compliance" as compliance_heading %}
+      {% trans "The countries where you can create your business and the invoicing systems ERPlora connects to." as compliance_body %}
       <div class="ep-grid-cards">
         {% include "public/components/feature_card.html" with icon="lucide:tag" heading=pricing_heading body=pricing_body href=pricing_url %}
         {% include "public/components/feature_card.html" with icon="lucide:blocks" heading=store_heading body=store_body href=store_url %}
         {% include "public/components/feature_card.html" with icon="lucide:layout-dashboard" heading=features_heading body=features_body href=features_url %}
+        {% include "public/components/feature_card.html" with icon="lucide:shield-check" heading=compliance_heading body=compliance_body href=compliance_url %}
       </div>
     </div>
   </section>

@@ -56,6 +56,16 @@ CONTACT_ANCHOR = "#contacto"
 #: What the limiter gets when no address can be read: never the source of a real connection.
 UNKNOWN_ADDRESS = "0.0.0.0"
 
+#: «One platform, one invoice» of the home: what each function costs in the tool a small business
+#: typically pays for it (public vendor pricing, May 2026), in euros a month. Only functions the apps of
+#: the Hub cover today (PUBLIC-F07: no accounting, payroll or support-ticket row); the total is their sum.
+TYPICAL_STACK = (
+    (gettext_lazy("Electronic invoicing"), "FacturaDirecta / Holded", 39),
+    (gettext_lazy("Inventory"), "Cin7 / TradeGecko", 89),
+    (gettext_lazy("CRM"), "HubSpot / Pipedrive", 95),
+    (gettext_lazy("E-commerce + POS"), "Shopify + Square", 112),
+)
+
 #: The answers of the contact form, by outcome (``messages``, after the redirect).
 FORM_MESSAGES = {
     "limited": gettext_lazy(
@@ -140,6 +150,11 @@ def home(request: HttpRequest) -> HttpResponse:
             "premium_apps": len(premium),
             "premium_app_examples": [app["name"] for app in premium[:PREMIUM_EXAMPLES]],
             "contact_trial_note": contact_trial_note(pricing.trial_days(plans)),
+            "typical_stack": [
+                {"function": function, "tool": tool, "cost": cost}
+                for function, tool, cost in TYPICAL_STACK
+            ],
+            "typical_stack_total": sum(cost for _, _, cost in TYPICAL_STACK),
             # Built here so the price tracks Plan: a price typed into the template is the number
             # an answer engine quotes all year.
             "json_ld_organization": json_ld(

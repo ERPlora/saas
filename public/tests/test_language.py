@@ -9,6 +9,8 @@ The order Django reads (``LocaleMiddleware``): the ``_lang`` cookie, then ``Acce
 ``en``; Django 4+ no longer reads the session for it.
 """
 
+import re
+
 import pytest
 from django.conf import settings
 from django.test import Client
@@ -139,3 +141,56 @@ def test_an_external_referer_is_refused(client):
     )
 
     assert response.url == "/"
+
+
+# --- PUBLIC-F13: a visitor without an account can switch (SAAS_PUBLIC-F68) ----------------------
+# The old menu lost its selector and nothing called /set-language/: a visitor could only change the
+# browser's language. As Stripe, Shopify, Square and Odoo do, the footer of every public page carries
+# the languages of the site, each the button of its own POST form back to the same page.
+
+FOOTER_SWITCHER = re.compile(r'<div class="ep-footer__language".*?</form>\s*</div>', re.S)
+
+
+def footer_switcher(client, path="/", language="en") -> str:
+    client.cookies[settings.LANGUAGE_COOKIE_NAME] = language
+    response = client.get(path)
+    assert response.status_code == 200
+    (switcher,) = FOOTER_SWITCHER.findall(response.content.decode())
+    return switcher
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("path", ["/", "/pricing/", "/compliance/", "/about/"])
+def test_every_public_page_offers_the_languages_in_its_footer(client, path):
+    switcher = footer_switcher(client, path)
+    forms = re.findall(r"<form .*?</form>", switcher, re.S)
+
+    assert re.findall(r'name="language" value="(\w+)"', switcher) == [code for code, _ in settings.LANGUAGES]
+    assert len(forms) == len(settings.LANGUAGES)
+    for form in forms:
+        assert 'method="post"' in form
+        assert f'action="{reverse("public:set_language")}"' in form
+        assert 'name="csrfmiddlewaretoken"' in form
+        assert f'name="next" value="{path}"' in form
+        assert '<ion-button type="submit"' in form
+
+
+@pytest.mark.django_db
+def test_each_language_reads_in_its_own_name_and_the_current_one_is_marked(client):
+    switcher = footer_switcher(client, language="es")
+
+    assert ">English</ion-button>" in switcher
+    assert ">Español</ion-button>" in switcher
+    assert re.findall(r'lang="(\w+)" aria-current="true"', switcher) == ["es"]
+
+
+@pytest.mark.django_db
+def test_the_next_page_keeps_its_query(client):
+    switcher = footer_switcher(client, "/pricing/?ref=footer")
+
+    assert 'name="next" value="/pricing/?ref=footer"' in switcher
+
+
+@pytest.mark.django_db
+def test_the_switcher_is_labelled_in_the_reading_language(client):
+    assert 'aria-label="Idioma"' in footer_switcher(client, language="es")

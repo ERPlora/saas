@@ -119,6 +119,28 @@ def plan_period(plan, interval: str = "month") -> str:
     return _("/ month per hub") if priced else _("/ month")
 
 
+def annual_months_free(plan) -> int:
+    """The months a year paid at once saves against twelve monthly payments, rounded down (0 = none).
+
+    Worked out from the two prices, never typed: edit the annual price and the saving follows
+    (SAAS_PUBLIC-F56). Rounded down so the page never promises more than the checkout gives.
+    """
+    if not plan.price_monthly or not plan.price_annual:
+        return 0
+    return max(int(Decimal(12) - plan.price_annual / plan.price_monthly), 0)
+
+
+def common_months_free(plans) -> int:
+    """The saving every paid plan a visitor can sign up for gives when paid by the year, if they all give the
+    same one; else 0, and the hero promises nothing it would have to qualify."""
+    savings = {
+        annual_months_free(plan)
+        for plan in plans.plans
+        if not plan.upgrade_only and plan.price_monthly > 0
+    }
+    return savings.pop() if len(savings) == 1 else 0
+
+
 def _has_trial_line(plan) -> bool:
     """Whether the operation ended the plan's features with its trial (a signable plan with one)."""
     return bool(not plan.upgrade_only and plan.trial_period_days > 0 and plan.features)
@@ -156,6 +178,7 @@ def plan_card(plan) -> dict[str, Any]:
         "display_features": [*own_features, *trial],
         "own_features": own_features,
         "price_label": f"€{floatformat(plan.price_monthly, '-2')}",
+        "months_free": annual_months_free(plan),
         "period": plan_period(plan),
         "url": reverse("public:pricing_detail", args=[plan.slug]),
     }
@@ -269,9 +292,10 @@ def faq_items(days: TrialDays | None = None) -> list[dict[str, str]]:
             "key": "storage",
             "question": _("Where is my data stored?"),
             "answer": _(
-                "Entirely within the European Union: on Amazon Web Services, in its Ireland "
-                "region (eu-west-1), on GDPR-compliant infrastructure. Your data never leaves "
-                "the EU."
+                "Within the European Union: on Amazon Web Services, in its Ireland region "
+                "(eu-west-1), on GDPR-compliant infrastructure. The one exception is the AI "
+                "assistant: if its European provider is unavailable, a backup provider may "
+                "answer from outside the EU, under the safeguards our privacy policy describes."
             ),
         },
         {
@@ -324,6 +348,7 @@ def index(request: HttpRequest) -> HttpResponse:
             "dedicated_from": dedicated_price_label(),
             "cheapest_plan": plan_card(entry) if entry else None,
             "trial_note": trial_note(days),
+            "months_free": common_months_free(plans),
             "faq_items": faq,
             "json_ld_faq": json_ld(faq_page(faq)),
         },
