@@ -232,7 +232,9 @@
         "devices": "Devices",
         "users": "Users",
         "usersOf": "{used} of {limit}",
-        "deleted": "It was cancelled when the business was deleted. If you recover it, it comes back on Free."
+        "deleted": "It was cancelled when the business was deleted. If you recover it, it comes back on Free.",
+        "upgrade": "Upgrade plan",
+        "change": "Change plan"
       },
       "usage": {
         "eyebrow": "Usage",

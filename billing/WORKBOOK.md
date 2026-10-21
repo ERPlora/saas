@@ -113,7 +113,7 @@ caben y, al propietario, el botón para mejorarlo o cambiarlo.
 | BILLING-F04 | Mantener la tabla de tipos de IVA y no vender con ella rota | parcial |
 | BILLING-F05 | Comprobar en VIES el NIF-IVA de quien paga | hecho |
 | BILLING-F06 | Seguir el umbral de ventas a distancia en la UE (OSS) | parcial |
-| BILLING-F07 | Pagar el plan de un negocio recién creado | parcial |
+| BILLING-F07 | Pagar el plan de un negocio recién creado | hecho |
 | BILLING-F08 | Pasar un negocio gratuito a un plan de pago | hecho |
 | BILLING-F09 | Volver del pago: confirmado, pendiente o cerrado | hecho |
 | BILLING-F10 | Reintentar un pago que no se terminó | hecho |
@@ -121,7 +121,7 @@ caben y, al propietario, el botón para mejorarlo o cambiarlo.
 | BILLING-F12 | Dar días de prueba con un código promocional | hecho |
 | BILLING-F13 | Cancelar el plan al final del periodo | hecho |
 | BILLING-F14 | Deshacer una cancelación pendiente | hecho |
-| BILLING-F15 | Terminar la suscripción: el negocio vuelve a Gratis | parcial |
+| BILLING-F15 | Terminar la suscripción: el negocio vuelve a Gratis | hecho |
 | BILLING-F16 | Impago del plan: reintentos, suspensión y vuelta | hecho |
 | BILLING-F17 | Reactivar un negocio suspendido pagando su factura | hecho |
 | BILLING-F18 | Ver, cancelar o mantener el plan del negocio por la API | hecho |
@@ -228,12 +228,12 @@ Implicados: ninguno
 
 ### BILLING-F07 Pagar el plan de un negocio recién creado
 <!-- origen: old-saas:SAAS_DASHBOARD-F92 gh:saas#2527 -->
-Estado: parcial — la tarjeta Plan del negocio no lleva todavía a la Tienda
+Estado: hecho
 Actor: propietario
 Pantalla: Resumen del negocio, Tienda, Pago seguro
 Pasos:
 1. El negocio nace siempre en Gratis (el alta solo pide nombre, país y tipo de negocio).
-2. En el Resumen del negocio, la tarjeta Plan dice «Gratis» y ofrece «Mejorar plan», que abre la Tienda con ese negocio elegido.
+2. En el Resumen del negocio, la tarjeta Plan dice «Gratis» y ofrece «Mejorar plan» (en un plan de pago, «Cambiar plan»), que abre la Tienda con ese negocio elegido. Solo lo ve quien gestiona la facturación del negocio, y solo en la web: en las apps dice que se entre en erplora.com desde el navegador.
 3. Elige el plan y el periodo y pulsa «Mejorar a …»: el pago sigue como en BILLING-F08.
 Entra: el negocio recién creado y los planes que se ofrecen a esa persona (los internos, solo al personal).
 Sale: lo mismo que BILLING-F08.
@@ -341,7 +341,7 @@ Implicados: ninguno
 
 ### BILLING-F15 Terminar la suscripción: el negocio vuelve a Gratis
 <!-- origen: old-saas:SAAS_DASHBOARD-F103 gh:saas#2575 gh:saas#2527 -->
-Estado: parcial — no se avisa por correo de que el plan terminó
+Estado: hecho
 Actor: sistema
 Pantalla: ninguna
 Pasos:
@@ -349,7 +349,7 @@ Pasos:
 2. erplora.com pasa el negocio a Gratis: sin suscripción en Stripe, sin nada que deber y con los módulos comprados terminados ese día. No se borra ningún dato.
 3. El negocio recibe su plan nuevo y sigue funcionando con los límites de Gratis.
 Entra: el aviso de Stripe de que la suscripción terminó.
-Sale: el negocio en Gratis (`hubs.subscription.changed`) y su plan enviado al negocio.
+Sale: el negocio en Gratis (`hubs.subscription.changed`) y su plan enviado al negocio. No hay correo al terminar: desde que se cancela, el panel ya dice «Gratis desde el …».
 Si falla: un aviso de una suscripción desconocida se da por recibido sin tocar nada; el de un negocio eliminado no crea ni mueve nada.
 Implicados: el negocio (recibe Gratis)
 
