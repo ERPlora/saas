@@ -26,9 +26,9 @@
 
 {% block page_content %}
 
-  {% if cheapest_plan.price_annual %}
-    {% trans "Cloud Hub plans · monthly or annual billing (2 months free)" as hero_eyebrow %}
-    {% trans "Prices shown per month. Pay for the year and get 2 months free." as hero_note %}
+  {% if months_free %}
+    {% blocktrans count months=months_free asvar hero_eyebrow %}Cloud Hub plans · monthly or annual billing ({{ months }} month free){% plural %}Cloud Hub plans · monthly or annual billing ({{ months }} months free){% endblocktrans %}
+    {% blocktrans count months=months_free asvar hero_note %}Prices shown per month. Pay for the year and get {{ months }} month free.{% plural %}Prices shown per month. Pay for the year and get {{ months }} months free.{% endblocktrans %}
   {% else %}
     {% trans "Cloud Hub plans" as hero_eyebrow %}
   {% endif %}

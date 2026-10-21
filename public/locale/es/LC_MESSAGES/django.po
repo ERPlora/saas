@@ -3143,8 +3143,14 @@ msgid "Collaborate"
 msgstr "Colabora"
 
 #, python-format
-msgid "≈ €%(price)s/year · 2 months free"
-msgstr "≈ %(price)s €/año · 2 meses gratis"
+msgid "≈ €%(price)s/year · %(months)s month free"
+msgid_plural "≈ €%(price)s/year · %(months)s months free"
+msgstr[0] "≈ %(price)s €/año · %(months)s mes gratis"
+msgstr[1] "≈ %(price)s €/año · %(months)s meses gratis"
+
+#, python-format
+msgid "≈ €%(price)s/year"
+msgstr "≈ %(price)s €/año"
 
 msgid "Unlimited devices"
 msgstr "Dispositivos ilimitados"
@@ -3162,11 +3168,17 @@ msgstr "Qué incluye"
 msgid "Plans"
 msgstr "Planes"
 
-msgid "Cloud Hub plans · monthly or annual billing (2 months free)"
-msgstr "Planes de Hub Cloud · facturación mensual o anual (2 meses gratis)"
+#, python-format
+msgid "Cloud Hub plans · monthly or annual billing (%(months)s month free)"
+msgid_plural "Cloud Hub plans · monthly or annual billing (%(months)s months free)"
+msgstr[0] "Planes de Hub Cloud · facturación mensual o anual (%(months)s mes gratis)"
+msgstr[1] "Planes de Hub Cloud · facturación mensual o anual (%(months)s meses gratis)"
 
-msgid "Prices shown per month. Pay for the year and get 2 months free."
-msgstr "Precios mostrados por mes. Paga el año y llévate 2 meses gratis."
+#, python-format
+msgid "Prices shown per month. Pay for the year and get %(months)s month free."
+msgid_plural "Prices shown per month. Pay for the year and get %(months)s months free."
+msgstr[0] "Precios mostrados por mes. Paga el año y llévate %(months)s mes gratis."
+msgstr[1] "Precios mostrados por mes. Paga el año y llévate %(months)s meses gratis."
 
 msgid "Scale when you need it."
 msgstr "Escala cuando lo necesites."

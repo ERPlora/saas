@@ -1017,3 +1017,136 @@ def test_the_python_messages_have_their_spanish_entry(no_plans):
         ]
 
     assert [es for es, en in zip(texts, english) if es == en] == []
+
+
+# --- PUBLIC-F02: the annual saving is worked out from the two prices, never typed ------------------
+# The old card said «2 months free» next to any annual price (SAAS_PUBLIC-F56): edit the annual price
+# and the sentence stayed. The months free are 12 minus the months the annual price pays for,
+# rounded down so the page never promises more than the checkout gives.
+
+
+@pytest.mark.parametrize(
+    ("annual", "line"),
+    [
+        ("300", "≈ €300/year · 2 months free"),
+        ("330", "≈ €330/year · 1 month free"),
+        ("345", "≈ €345/year"),
+        ("360", "≈ €360/year"),
+    ],
+)
+def test_the_annual_saving_is_worked_out_from_the_prices(no_plans, client, annual, line):
+    make_plan("starter", price_monthly=Decimal("30"), price_annual=Decimal(annual))
+
+    html = " ".join(html_of(client).split())
+
+    assert line in html
+    if "free" not in line:
+        assert "month free" not in html and "months free" not in html
+
+
+def test_the_annual_saving_reads_in_spanish(no_plans, client):
+    make_plan("starter", price_monthly=Decimal("30"), price_annual=Decimal("300"), name_es="Starter")
+
+    assert "≈ 300 €/año · 2 meses gratis" in " ".join(html_of(client, language="es").split())
+
+
+def test_the_hero_promises_the_saving_the_paid_plans_give(no_plans, client):
+    make_plan("free", price_monthly=Decimal("0"), price_annual=Decimal("0"))
+    make_plan("starter", price_monthly=Decimal("30"), price_annual=Decimal("330"))
+
+    html = " ".join(html_of(client).split())
+
+    assert "Pay for the year and get 1 month free." in html
+    assert "2 months free" not in html
+
+
+def test_without_an_annual_saving_the_hero_promises_none(no_plans, client):
+    make_plan("free", price_monthly=Decimal("0"), price_annual=Decimal("0"))
+    make_plan("starter", price_monthly=Decimal("30"), price_annual=Decimal("0"))
+
+    html = html_of(client)
+
+    assert "Pay for the year" not in html
+    assert "month free" not in html and "months free" not in html
+
+
+# --- PUBLIC-F04: the price painted is the price charged ---------------------------------------------
+# One field, one amount: what /pricing/ and the detail page paint is the net ``Plan`` price, the checkout
+# charges that same amount (``billing.services.plan_sale``) and the Stripe price the plan sells with
+# must charge it to the cent, or the admin refuses it (BILLING-F28). Stripe is the double of billing's
+# tests: no call leaves the machine.
+
+from billing import services as billing_services  # noqa: E402
+from billing.money import to_cents  # noqa: E402
+from billing.tests.conftest import plans, stripe_double, stripe_keys  # noqa: E402,F401
+from billing.tests.test_services import stripe_price  # noqa: E402
+from hubs.tests.conftest import make_user  # noqa: E402,F401
+
+PAINTED_AMOUNT = re.compile(r'<span class="ep-pricing-card__amount">€([\d.,]+)</span>')
+
+
+def painted_prices(html: str) -> dict[str, Decimal]:
+    """Each card's name and the amount it paints."""
+    names = re.findall(r'<div class="ep-pricing-card__name">(.*?)</div>', html)
+    amounts = PAINTED_AMOUNT.findall(html)
+    assert len(names) == len(amounts)
+    return {name: Decimal(amount.replace(",", "")) for name, amount in zip(names, amounts)}
+
+
+def test_every_card_paints_the_price_the_checkout_charges(client, plans, make_user):
+    buyer = make_user("painted@example.com")
+    painted = painted_prices(html_of(client))
+    paid = [plan for plan in Plan.objects.public() if not plan.upgrade_only and plan.price_monthly > 0]
+
+    assert paid, "no paid plan on sale to compare"
+    for plan in paid:
+        charged = billing_services.plan_sale(buyer, plan.slug, "month")
+        assert painted[plan.name_en] == charged.net, plan.slug
+        assert charged.price_id == plan.stripe_price_id
+
+
+def test_the_year_painted_is_the_year_charged(client, plans, make_user):
+    buyer = make_user("yearly@example.com")
+    html = " ".join(html_of(client).split())
+
+    for plan in Plan.objects.public().filter(upgrade_only=False, price_annual__gt=0):
+        charged = billing_services.plan_sale(buyer, plan.slug, "year")
+        assert f"≈ €{charged.net.normalize():f}/year" in html or f"≈ €{charged.net:.2f}/year" in html, plan.slug
+
+
+def test_the_detail_page_paints_the_price_the_checkout_charges(client, plans, make_user):
+    buyer = make_user("detail@example.com")
+    starter = Plan.objects.get(slug="starter")
+
+    html = html_of(client, f"/pricing/{starter.slug}/")
+
+    assert f"{billing_services.plan_sale(buyer, 'starter', 'month').net:.2f} &euro;" in html
+
+
+def test_a_stripe_price_that_charges_the_painted_amount_is_accepted(client, plans, stripe_double):
+    starter = Plan.objects.get(slug="starter")
+    cents = to_cents(painted_prices(html_of(client))[starter.name_en])
+    stripe_double.answer("prices.retrieve", stripe_price(starter.stripe_price_id, unit_amount=cents, product=""))
+
+    problems = billing_services.plan_price_problems(
+        prices={"stripe_price_id": starter.stripe_price_id, "stripe_price_id_annual": ""},
+        amounts={"price_monthly": starter.price_monthly, "price_annual": starter.price_annual},
+        product="",
+    )
+
+    assert problems == {}
+
+
+def test_a_stripe_price_a_cent_off_the_painted_amount_is_refused(client, plans, stripe_double):
+    """The plan cannot sell at one price and paint another: the admin refuses the Stripe price."""
+    starter = Plan.objects.get(slug="starter")
+    cents = to_cents(painted_prices(html_of(client))[starter.name_en]) + 1
+    stripe_double.answer("prices.retrieve", stripe_price(starter.stripe_price_id, unit_amount=cents, product=""))
+
+    problems = billing_services.plan_price_problems(
+        prices={"stripe_price_id": starter.stripe_price_id, "stripe_price_id_annual": ""},
+        amounts={"price_monthly": starter.price_monthly, "price_annual": starter.price_annual},
+        product="",
+    )
+
+    assert list(problems) == ["stripe_price_id"]
