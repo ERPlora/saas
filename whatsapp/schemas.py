@@ -309,3 +309,18 @@ class AlertedIn(Schema):
 
 class AlertedOut(Schema):
     alerted: bool
+
+
+# --- The retention (WHATSAPP-G14) -----------------------------------------------------------------------------
+
+
+class PurgeIn(Schema):
+    #: Days kept; shortened by hand, never lengthened.
+    days: int = Field(30, ge=1, le=30)
+
+
+class PurgeOut(Schema):
+    deliveries: int
+    never_taken: int
+    sends: int
+    registrations: int

@@ -23,6 +23,8 @@ TEMPLATE_FORGOTTEN = "whatsapp.template.forgotten"
 TEMPLATES_SYNCED = "whatsapp.template.synced"
 #: Meta refused the business's permission: only connecting again fixes it: ``{"hub_id"}``.
 NUMBER_RECONNECT_NEEDED = "whatsapp.number.reconnect_needed"
+#: The daily retention forgot what it no longer keeps: ``{"deliveries", "never_taken", "sends", "registrations"}``.
+RETENTION_PURGED = "whatsapp.retention.purged"
 
 ALL = [
     WEBHOOK_INGESTED,
@@ -33,4 +35,5 @@ ALL = [
     TEMPLATE_FORGOTTEN,
     TEMPLATES_SYNCED,
     NUMBER_RECONNECT_NEEDED,
+    RETENTION_PURGED,
 ]
