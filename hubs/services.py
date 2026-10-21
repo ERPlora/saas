@@ -479,7 +479,9 @@ def business_open(ctx: OperationContext, data: BusinessOpenIn) -> dict:
     No code is minted here any more: the Hub binds the jump to the browser with a ``state`` of its own,
     so it starts at its ``/auth/login?next=``, which bounces to ``/hub-login/``; that door mints the
     code (and asks for the second factor of an account that has one). This checks the member and the
-    business, and remembers it as the last opened (the launcher lists it first).
+    business, and remembers it as the last opened (the launcher lists it first). From the installed app
+    (``shell``), the jump carries ``shell=1``: the app links the till to the hub a navigation with that mark
+    reaches when it leaves erplora.com (``ERPlora/app`` ``hub_link.rs``).
     """
     member = queries.access(queries.account_of(ctx), data.id)
     hub = member.hub
@@ -488,7 +490,8 @@ def business_open(ctx: OperationContext, data: BusinessOpenIn) -> dict:
         raise Conflict(str(message), code=code)
     HubMember.objects.filter(pk=member.pk).update(last_opened_at=timezone.now())
     record_event(ctx, events.BUSINESS_OPENED, {"id": str(hub.id)})
-    return {"url": hub_start_url(hub.slug, data.next)}
+    url = hub_start_url(hub.slug, data.next)
+    return {"url": f"{url}&shell=1" if data.shell else url}
 
 
 # --- The Hub's callback ---------------------------------------------------------------------------

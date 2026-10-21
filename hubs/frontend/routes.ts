@@ -7,8 +7,10 @@ import type { RouteRecordRaw } from 'vue-router';
 const routes: RouteRecordRaw[] = [
   {
     // The entry of erplora.com and of the apps (round 17 §2.2): signed out it asks to sign in and
-    // comes back, so it is open to visitors; its own centred card, never the shell's menu.
+    // comes back, so it is open to visitors; its own centred card, never the shell's menu. The installed
+    // app boots on /shell/ and never changes it (`ERPlora/app`, PLAN-SAAS bloque 3): the same page there.
     path: '/launch',
+    alias: '/shell',
     component: () => import('./pages/LaunchPage.vue'),
     meta: { auth: false, chrome: false },
   },

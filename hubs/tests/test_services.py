@@ -885,6 +885,23 @@ class TestOpen:
         assert services.business_open(ctx_for(owner), BusinessOpenIn(id=business.id)).url
         assert not AuthExchangeCode.objects.exists()
 
+    def test_from_the_installed_app_the_jump_carries_the_shell_mark(self, business, owner):
+        """HUBS-F12 (HUBS-G71, old saas SAAS_DASHBOARD-F07; PLAN-SAAS bloque 3, PLAN-HUB round 18): the app
+        links the till to a hub only when a navigation with ``?shell=1`` leaves an entry page of the SaaS
+        (``ERPlora/app`` ``hub_link.rs``), so its «Open» starts the jump with the mark."""
+        self.ready(business)
+
+        opened = services.business_open(
+            ctx_for(owner), BusinessOpenIn(id=business.id, next="/sales", shell=True)
+        )
+
+        assert opened.url == "http://bar-manolo.localhost:8000/auth/login?next=/sales&shell=1"
+
+    def test_the_web_jump_carries_no_shell_mark(self, business, owner):
+        self.ready(business)
+
+        assert "shell" not in services.business_open(ctx_for(owner), BusinessOpenIn(id=business.id)).url
+
     def test_next_is_a_path_of_the_business(self):
         for wrong in ("https://evil.example", "//evil.example", "sales"):
             with pytest.raises(Exception):

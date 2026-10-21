@@ -333,6 +333,8 @@ export interface BusinessDeleteIn {
 export interface BusinessOpenIn {
   id: string;
   next?: string;
+  /** Inside the installed app: the jump carries `shell=1`, with which the app links the till to the business. */
+  shell?: boolean;
 }
 
 /** `hubs.BusinessOpenOut`: where «Open» goes, the Hub's start of the jump (`/auth/login?next=`), which

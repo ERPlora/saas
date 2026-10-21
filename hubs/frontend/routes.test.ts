@@ -38,6 +38,20 @@ describe('hubs routes.ts', () => {
     ]);
   });
 
+  // flow: HUBS-F02 (HUBS-G66) and HUBS-F12 (HUBS-G71): `ERPlora/app` boots on /shell/ and never changes it
+  // (working-rules §12; PLAN-SAAS bloque 3: «/shell/, alias de /launch»).
+  it("serves the launcher at the installed app's start, /shell/", async () => {
+    const router = createRouter({ history: createMemoryHistory(), routes });
+    const launcher = await load(routes.find((r) => r.path === '/launch') as RouteRecordRaw);
+    for (const path of ['/shell/', '/shell', '/shell/?choose=1']) {
+      await router.push(path);
+      const [matched] = router.currentRoute.value.matched;
+      // The router has loaded the page by now: the launcher's.
+      expect(matched?.components?.default, path).toBe(launcher);
+      expect(matched?.meta, path).toEqual({ auth: false, chrome: false });
+    }
+  });
+
   it('opens a business on its Summary', async () => {
     const router = createRouter({ history: createMemoryHistory(), routes });
     await router.push('/businesses/h1');
