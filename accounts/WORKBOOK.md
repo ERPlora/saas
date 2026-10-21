@@ -72,6 +72,23 @@ Quién la usa:
   obliga a guardar (https://support.stripe.com/questions/i-would-like-to-delete-the-information-stripe-has-collected-from-me).
   Notion borra con la cuenta sus espacios (https://supademo.com/tutorials/notion/how-to-delete-your-notion-account):
   aquí no, porque eliminar un negocio cancela su plan y apaga su caja, y eso es su propio flujo.
+- **Los datos de pagador al eliminar la cuenta** (8 referencias): las facturas emitidas se conservan con su
+  propia copia del pagador y lo demás se borra con la cuenta; solo lo que aún se puede cobrar retiene esos datos, y
+  con fecha. Stripe recomienda, ante una petición de borrado, no tocar las facturas emitidas, anular las de
+  suscripción que siguen abiertas y borrar el cliente (https://docs.stripe.com/privacy/deletion-requests);
+  Atlassian borra los datos personales en 30 días y guarda solo lo de las compras que exige la contabilidad
+  (https://support.atlassian.com/atlassian-account/docs/delete-your-atlassian-account/); Odoo borra salvo lo que
+  la ley le obliga a guardar para facturación e impuestos (https://www.odoo.com/privacy); Holded borra o anonimiza
+  al acabar los plazos legales (https://www.holded.com/es/politica-de-privacidad); Shopify y Square no cierran
+  con una factura pendiente
+  (https://community.shopify.com/t/to-close-your-store-all-outstanding-invoices-must-be-paid/244113,
+  https://community.squareup.com/t5/Payments-Troubleshooting/Negative-Balance-Close-Account/m-p/698891); GitHub
+  deja de cobrar al borrar la cuenta (https://docs.github.com/en/articles/deleting-your-user-account); Zoho pide
+  cancelar las suscripciones y borra todo al cerrar
+  (https://help.zoho.com/portal/en/kb/accounts/manage-your-zoho-account/articles/close-your-zoho-account). Aquí no
+  se bloquea por una factura sin pagar de un negocio ya eliminado, que deja de cobrarse al eliminarlo: se espera a
+  que se pague o se anule, 90 días como mucho (los que se guarda un negocio eliminado), porque la factura tiene que
+  identificar a quién se emite (RGPD art. 17.3.b; Código de Comercio art. 30, Ley General Tributaria art. 66).
 - **GitHub («Export account data»)**: descargar los datos de la cuenta está junto a eliminarla, en la misma página.
 
 ## Antes de empezar
@@ -198,7 +215,7 @@ El nombre y el correo arriba del menú lateral (en el móvil, dentro del menú):
 | ACCOUNTS-F24 | Cambiar el tema desde el menú de usuario | hecho |
 | ACCOUNTS-F25 | Abrir el menú de usuario | hecho |
 | ACCOUNTS-F26 | Descargar mis datos | hecho |
-| ACCOUNTS-F27 | Eliminar mi cuenta | parcial |
+| ACCOUNTS-F27 | Eliminar mi cuenta | hecho |
 
 ### ACCOUNTS-F01 Crear la cuenta
 <!-- origen: old-saas:SAAS_AUTH-F01 pc:cloud/auth/signup fi:saas/auth-services#registro-de-usuario-por-api-signup fi:saas/support/auth-services#service-create_user gh:saas#2542 gh:saas#2536 gh:saas#2560 gh:saas#2562 -->
@@ -582,7 +599,7 @@ Implicados: hubs (sus negocios), billing (sus facturas de ERPlora)
 
 ### ACCOUNTS-F27 Eliminar mi cuenta
 <!-- origen: old-saas:SAAS_DASHBOARD-F208 old-saas:SAAS_AUTH-F13 fi:saas/orgs-users#api-borrar-mi-cuenta-gdpr-art-17 fi:saas/orgs-users#confirmar-borrado-de-cuenta-gdpr gh:saas#2567 gh:saas#2583 gh:saas#2584 gh:saas#2587 gh:saas#2664 -->
-Estado: parcial — los datos de pagador de sus negocios (nombre fiscal, NIF y dirección) se quedan guardados sin dueño al eliminar la cuenta; quitarlos espera a que el cobro garantice que ya no llega ninguna factura de esos negocios
+Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Cuenta › Perfil
 Pasos:
@@ -591,9 +608,9 @@ Pasos:
 3. Escribe su correo para confirmar y pulsa «Eliminar cuenta». Si su última entrada no es reciente, antes confirma que es ella: con su contraseña o, si solo entra con Google, entrando otra vez con Google.
 4. La sesión se cierra y llega a la web pública.
 Entra: el correo escrito y, si hace falta, la contraseña o Google.
-Sale: la cuenta borrada, con su foto, sus preferencias, sus claves y todas sus sesiones, aquí y en sus negocios; deja de ser miembro de los negocios de otros. Sus facturas de ERPlora se quedan, con el destinatario de la fecha de emisión y sin enlace a la cuenta. Evento `accounts.profile.deleted`.
+Sale: la cuenta borrada, con su foto, sus preferencias, sus claves y todas sus sesiones, aquí y en sus negocios; deja de ser miembro de los negocios de otros. Sus facturas de ERPlora se quedan, con el destinatario de la fecha de emisión y sin enlace a la cuenta. Sus datos de pagador (nombre fiscal, NIF, dirección y correo de facturación) y su cliente de pago se borran en el momento si ya no queda nada por cobrar; si queda una factura de ERPlora sin pagar, se guardan hasta que se pague o se anule y 90 días como mucho, y ese día la factura pendiente se anula y se borran. Evento `accounts.profile.deleted`.
 Si falla: un negocio propio o pagado la retiene (el diálogo lo dice igual si cambió mientras); un negocio eliminado, en sus 90 días para recuperarlo, ya no la retiene. Más de 10 contraseñas en un minuto al confirmar se frenan, ni la buena entra: una sesión ajena abierta no sirve para adivinarla. Un fallo de red se dice en el diálogo y no se borra nada.
-Implicados: hubs (los negocios que la retienen y los que deja), billing (las facturas que se conservan)
+Implicados: hubs (los negocios que la retienen y los que deja), billing (las facturas que se conservan y los datos de pagador que se borran)
 
 ## Para quien lo mantiene
 

@@ -59,6 +59,22 @@ Who uses it:
   to keep (https://support.stripe.com/questions/i-would-like-to-delete-the-information-stripe-has-collected-from-me).
   Notion deletes its workspaces with the account (https://supademo.com/tutorials/notion/how-to-delete-your-notion-account):
   not here, because deleting a business cancels its plan and switches its till off, and that is its own flow.
+- **The payer details when the account is deleted** (8 references): the issued invoices keep their own copy of
+  the payer and the rest goes with the account; only what can still be charged holds those details, and with a
+  date. Stripe advises, for a deletion request, to leave issued invoices alone, void the subscription invoices
+  still open and delete the customer (https://docs.stripe.com/privacy/deletion-requests); Atlassian deletes the
+  personal data within 30 days and keeps only the purchase records accounting requires
+  (https://support.atlassian.com/atlassian-account/docs/delete-your-atlassian-account/); Odoo deletes except what
+  the law makes it keep for billing and tax (https://www.odoo.com/privacy); Holded deletes or anonymises once the
+  legal periods end (https://www.holded.com/es/politica-de-privacidad); Shopify and Square do not close with an
+  invoice outstanding (https://community.shopify.com/t/to-close-your-store-all-outstanding-invoices-must-be-paid/244113,
+  https://community.squareup.com/t5/Payments-Troubleshooting/Negative-Balance-Close-Account/m-p/698891); GitHub
+  stops billing when the account is deleted (https://docs.github.com/en/articles/deleting-your-user-account); Zoho
+  asks to cancel the subscriptions and deletes everything on closing
+  (https://help.zoho.com/portal/en/kb/accounts/manage-your-zoho-account/articles/close-your-zoho-account). Here an
+  invoice outstanding for a business already deleted, which stops being billed when it is deleted, does not block:
+  it is waited for until paid or cancelled, 90 days at most (the days a deleted business is kept), because the
+  invoice must name whom it is issued to (GDPR art. 17.3.b; Commercial Code art. 30, General Tax Law art. 66).
 - **GitHub ("Export account data")**: downloading the account's data sits next to deleting it, on the same page.
 
 ## Before you start
@@ -179,7 +195,7 @@ theme and "Sign out".
 | ACCOUNTS-F24 | Change the theme from the user menu | done |
 | ACCOUNTS-F25 | Open the user menu | done |
 | ACCOUNTS-F26 | Download my data | done |
-| ACCOUNTS-F27 | Delete my account | partial |
+| ACCOUNTS-F27 | Delete my account | done |
 
 ### ACCOUNTS-F01 Create the account
 Status: done
@@ -536,7 +552,7 @@ If it fails: if it cannot be prepared, a notice says why and the button comes ba
 Involved: hubs (their businesses), billing (their ERPlora invoices)
 
 ### ACCOUNTS-F27 Delete my account
-Status: partial — the payer details of their businesses (legal name, tax ID and address) stay stored without an owner when the account is deleted; removing them waits until billing guarantees that no further invoice of those businesses arrives
+Status: done
 Actor: any person with an account
 Screen: Account › Profile
 Steps:
@@ -545,6 +561,6 @@ Steps:
 3. They type their email to confirm and tap "Delete account". If their last sign-in is not recent, first they confirm it is them: with their password or, if they only sign in with Google, by signing in with Google again.
 4. The session ends and they reach the public website.
 In: the email typed and, if needed, the password or Google.
-Out: the account deleted, with its photo, its preferences, its keys and all its sessions, here and in its businesses; it stops being a member of other people's businesses. Its ERPlora invoices stay, with the recipient of their issue date and no link to the account. Event `accounts.profile.deleted`.
+Out: the account deleted, with its photo, its preferences, its keys and all its sessions, here and in its businesses; it stops being a member of other people's businesses. Its ERPlora invoices stay, with the recipient of their issue date and no link to the account. Its payer details (legal name, tax ID, address and billing email) and its payment customer are erased at once if nothing is left to charge; if an ERPlora invoice is still unpaid, they are kept until it is paid or cancelled and 90 days at most, and on that day the unpaid invoice is cancelled and they are erased. Event `accounts.profile.deleted`.
 If it fails: an owned or paid business holds it (the dialog says so too if it changed meanwhile); a deleted business, in its 90 days to be recovered, no longer holds it. More than 10 passwords in a minute when confirming are stopped, not even the right one gets in: someone else's open session is no way to guess it. A network failure is said in the dialog and nothing is deleted.
-Involved: hubs (the businesses that hold it and the ones it leaves), billing (the invoices that are kept)
+Involved: hubs (the businesses that hold it and the ones it leaves), billing (the invoices that are kept and the payer details that are erased)
