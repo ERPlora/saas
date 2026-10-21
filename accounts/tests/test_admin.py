@@ -396,6 +396,28 @@ def test_the_user_page_shows_the_preferences_and_the_photo(staff_client, ana):
     assert "data:image/png;base64,iVBORw==" in page.text
 
 
+def test_the_user_page_hides_the_preferences_and_the_photo_it_never_saved(staff_client, ana):
+    """ACCOUNTS-G35/G36: an account on the defaults has no row there; an empty read-only box says nothing."""
+    from accounts.models import HubMembership, ProfilePhoto, UserPreferences
+
+    client, _ = staff_client
+
+    page = client.get(f"/admin/accounts/user/{ana.pk}/change/")
+
+    assert page.status_code == 200
+    assert [inline.opts.model for inline in page.context["inline_admin_formsets"]] == [HubMembership]
+
+    UserPreferences.objects.create(user=ana, theme_mode="dark")
+    ProfilePhoto.objects.create(user=ana, content_type="image/png", data=b"\x89PNG")
+    page = client.get(f"/admin/accounts/user/{ana.pk}/change/")
+
+    assert [inline.opts.model for inline in page.context["inline_admin_formsets"]] == [
+        UserPreferences,
+        ProfilePhoto,
+        HubMembership,
+    ]
+
+
 def test_the_user_page_shows_the_terms_it_accepted_read_only(staff_client, ana):
     """ACCOUNTS-G119: what the account accepted and when, as evidence; nobody edits it."""
     from datetime import UTC, date, datetime

@@ -168,7 +168,14 @@ class UserAdmin(DjangoUserAdmin):
 
     def get_inlines(self, request, obj):
         # Adding is email + password only (as Django's UserAdmin); hubs are given once it exists.
-        return self.inlines if obj is not None else []
+        if obj is None:
+            return []
+        # A read-only box with no row (an account still on the defaults) would be an empty heading.
+        return [
+            inline
+            for inline in self.inlines
+            if not issubclass(inline, ReadOnlyInline) or inline.model.objects.filter(user=obj).exists()
+        ]
 
     def has_close_sessions_permission(self, request):
         return request.user.is_superuser
