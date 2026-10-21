@@ -55,6 +55,7 @@ from accounts.schemas import (
     PhotoUploadIn,
     PreferencesOut,
     PreferencesUpdateIn,
+    SessionCloseAnyIn,
     SessionCloseIn,
     SessionCloseOthersIn,
     SessionsClosedOut,
@@ -898,6 +899,57 @@ def session_close_others(ctx: OperationContext, data: SessionCloseOthersIn) -> d
     _end_and_sign_out(ctx, others, user=user)
     record_event(ctx, events.SESSION_CLOSED)
     return {"closed": closed}
+
+
+#: The admin's «Close sessions» (ACCOUNTS-F19): a system context only (no role grants it), on the owner's channel.
+CLOSE_ANY_SESSIONS = "accounts.close_any_sessions"
+
+
+@operation(
+    "accounts.session.close_any",
+    kind="command",
+    permission=CLOSE_ANY_SESSIONS,
+    input=SessionCloseAnyIn,
+    output=SessionsClosedOut,
+)
+def session_close_any(ctx: OperationContext, data: SessionCloseAnyIn) -> dict:
+    """End sessions of any account from the admin, as its owner would: the picked ones (``ids``) or, without them,
+    every one and the trust of its browsers (an incident: ERPlora/saas ``revoke_user_sessions``, which dropped the
+    trust too). Its businesses are asked to end theirs; the event goes to the owner's channel (the context's scope),
+    so its live list refreshes. Called only by ``close_sessions``; no route."""
+    from allauth.usersessions.models import UserSession
+
+    if ctx.scope.key != str(data.user_id):
+        raise LiveMisuse(f"accounts.session.close_any runs on the account's channel, not {ctx.scope.key!r}.")
+    user = get_user_model().objects.filter(pk=data.user_id).first()
+    if user is None:
+        raise NotFound(gettext("That account does not exist."))
+    sessions = UserSession.objects.filter(user=user)
+    if data.ids is not None:
+        sessions = sessions.filter(pk__in=data.ids)
+    sessions = list(sessions)
+    end_sessions(sessions, user=user)
+    if data.ids is None:
+        forget_trusted_browsers(user)
+    record_event(ctx, events.SESSION_CLOSED)
+    return {"closed": len(sessions)}
+
+
+def close_sessions(*, by, users=(), sessions=()) -> int:
+    """The admin's «Close sessions» (ACCOUNTS-F19): every session of the accounts ``users`` (ids) and the trust of
+    their browsers, or the picked ``sessions`` (``UserSession`` rows), each through its owner's channel; how many
+    ended."""
+    from live.context import Scope, system_context
+
+    picked: dict = {}
+    for session in sessions:
+        picked.setdefault(session.user_id, []).append(session.pk)
+    count = 0
+    for user_id, ids in [*((user_id, None) for user_id in users), *picked.items()]:
+        ctx = system_context(Scope("user", str(user_id)))
+        count += session_close_any(ctx, SessionCloseAnyIn(user_id=user_id, ids=ids)).closed
+    logger.warning("accounts.sessions_closed_by_staff staff=%s count=%s", by.pk, count)
+    return count
 
 
 # --- Account → Security → Two-factor authentication: the trusted browsers (ACCOUNTS-F17) ---------------------

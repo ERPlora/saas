@@ -196,6 +196,13 @@ class SessionsClosedOut(Schema):
     closed: int
 
 
+class SessionCloseAnyIn(StrictIn):
+    """The admin's «Close sessions» (ACCOUNTS-F19): the account, and the sessions picked of it (all, without ``ids``)."""
+
+    user_id: UUID
+    ids: list[int] | None = None
+
+
 # --- Account → Security → Two-factor authentication: the trusted browsers (ACCOUNTS-F17) -----------------------
 
 

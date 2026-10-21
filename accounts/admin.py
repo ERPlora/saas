@@ -1,6 +1,6 @@
 """Django admin of accounts: users (with their preferences and photo), their hub memberships (the jump's
 mirror), the one-time codes and the API keys (read only; a superuser revokes). The sessions are
-``allauth.usersessions``' own page.
+``allauth.usersessions``' own page, read only; a superuser closes them («Close sessions», ACCOUNTS-F19).
 
 «Open in the Hub admin» (ronda 13, PLAN §18.1.6), on every membership row and on the «Hubs» page
 (``/admin/accounts/hubs/``, routed in ``config/urls.py``): the staff jump from ``erplora.com/admin``
@@ -164,10 +164,24 @@ class UserAdmin(DjangoUserAdmin):
         (_("Terms and privacy"), {"fields": ("terms_accepted_at", "terms_version", "privacy_version")}),
     )
     add_fieldsets = ((None, {"classes": ("wide",), "fields": ("email", "usable_password", "password1", "password2")}),)
+    actions = ("close_sessions",)
 
     def get_inlines(self, request, obj):
         # Adding is email + password only (as Django's UserAdmin); hubs are given once it exists.
         return self.inlines if obj is not None else []
+
+    def has_close_sessions_permission(self, request):
+        return request.user.is_superuser
+
+    @admin.action(
+        description=_("Close all their sessions and the trust of their browsers (here and in their businesses)"),
+        permissions=["close_sessions"],
+    )
+    def close_sessions(self, request, queryset):
+        """An incident (ACCOUNTS-F19): the accounts picked are signed out everywhere and asked for their app's code
+        again on every browser."""
+        count = services.close_sessions(by=request.user, users=list(queryset.values_list("pk", flat=True)))
+        self.message_user(request, gettext("Sessions closed: %(count)s.") % {"count": count}, messages.SUCCESS)
 
 
 @admin.register(HubMembership)
@@ -359,4 +373,27 @@ admin.site.unregister(UserSession)
 
 @admin.register(UserSession)
 class UserSessionAdmin(AllauthUserSessionAdmin):
+    """Who is signed in where (``allauth.usersessions``): read only. Deleting a row would only hide a session that
+    still signs in; a superuser ends the picked ones with «Close the selected sessions» (ACCOUNTS-F19), which also
+    asks their businesses; ``support`` sees them."""
+
     search_fields = ["user__email", "ip"]
+    readonly_fields = ("user", "created_at", "last_seen_at", "ip", "user_agent", "session_key")
+    actions = ("close_sessions",)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def has_close_sessions_permission(self, request):
+        return request.user.is_superuser
+
+    @admin.action(description=_("Close the selected sessions (here and in their businesses)"), permissions=["close_sessions"])
+    def close_sessions(self, request, queryset):
+        count = services.close_sessions(by=request.user, sessions=list(queryset))
+        self.message_user(request, gettext("Sessions closed: %(count)s.") % {"count": count}, messages.SUCCESS)

@@ -28,6 +28,22 @@ msgstr "La contraseña nueva tiene que ser distinta de la actual."
 msgid "Terms and privacy"
 msgstr "Términos y privacidad"
 
+#: accounts/admin.py
+msgid "Close all their sessions and the trust of their browsers (here and in their businesses)"
+msgstr "Cerrar todas sus sesiones y la confianza de sus navegadores (aquí y en sus negocios)"
+
+#: accounts/admin.py
+msgid "Close the selected sessions (here and in their businesses)"
+msgstr "Cerrar las sesiones seleccionadas (aquí y en sus negocios)"
+
+#: accounts/admin.py
+msgid "Sessions closed: %(count)s."
+msgstr "Sesiones cerradas: %(count)s."
+
+#: accounts/services.py
+msgid "That account does not exist."
+msgstr "Esa cuenta no existe."
+
 #: accounts/models.py
 msgid "terms accepted at"
 msgstr "términos aceptados el"
