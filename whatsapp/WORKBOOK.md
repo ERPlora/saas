@@ -49,12 +49,19 @@ Quién la usa:
 - La app de Meta («ERPlora Inbox») se configura por entorno con su identificador, su secreto, el token de
   verificación del aviso y la configuración del alta embebida. Sin ellos, erplora.com dice que WhatsApp no está
   configurado y Meta no puede entregar sus avisos.
+- La página de erplora.com a la que vuelve la ventana de Meta tiene que estar entre las direcciones de vuelta que
+  admite la app de Meta, y ser segura (https) fuera de desarrollo; si no, WhatsApp tampoco está configurado.
 - Los permisos de Meta se cifran con la clave del entorno; cambiarla deja de abrir los guardados, salvo que la
   anterior se deje como clave previa mientras se vuelve a conectar.
 - No hay entorno de pruebas de Meta en desarrollo: en las pruebas, las respuestas de Meta salen de su
   documentación.
 
 ## Pantallas
+
+### Vuelta de la ventana de Meta
+La página de erplora.com a la que Meta lleva su ventana al terminar. Devuelve al Hub que la abrió lo que dio Meta y
+se cierra sola, sin que nadie la vea. Si la abrió otra cosa, o lo que trae no es de un negocio, se queda abierta
+con «Esta ventana ya se puede cerrar.», en el idioma del navegador.
 
 ### Correo «Vuelve a conectar WhatsApp»
 Lo recibe el propietario del negocio, en su idioma, cuando Meta no deja renovar el permiso. Asunto «Hay que
@@ -85,7 +92,7 @@ estado y su mes; y lo gastado cada mes por negocio.
 | Cargando | En el Hub, la bandeja; en el admin, la carga normal de una lista. |
 | Vacío | En el admin, «0 números de WhatsApp» y la lista vacía. |
 | Error | Un correo que no sale se reintenta en la renovación siguiente; en el admin, cada acción dice qué hizo y qué no («Ahora no se ha podido leer Meta: las plantillas siguen como estaban»). |
-| Sin configurar | WhatsApp sin la app de Meta: el Hub no ofrece conectar y Meta no puede entregar sus avisos. |
+| Sin configurar | WhatsApp sin la app de Meta o sin su página de vuelta: el Hub no ofrece conectar y Meta no puede entregar sus avisos. |
 | Sin permiso | El admin no se abre sin el papel; el grupo de soporte solo mira, sin acciones. Un adjunto de otro negocio dice «no disponible». |
 
 ## Flujos
@@ -93,7 +100,7 @@ estado y su mes; y lo gastado cada mes por negocio.
 | ID | Flujo | Estado |
 |---|---|---|
 | WHATSAPP-F01 | Conectar el número de WhatsApp del negocio | parcial |
-| WHATSAPP-F02 | Desconectar el número | parcial |
+| WHATSAPP-F02 | Desconectar el número | hecho |
 | WHATSAPP-F03 | Decir al Hub qué número tiene el negocio y si hay que reconectarlo | hecho |
 | WHATSAPP-F04 | Guardar el número de cada negocio con su permiso de Meta cifrado | hecho |
 | WHATSAPP-F05 | Llevar la cuenta de los mensajes del mes y parar al llegar al tope del plan | hecho |
@@ -113,27 +120,28 @@ estado y su mes; y lo gastado cada mes por negocio.
 
 ### WHATSAPP-F01 Conectar el número de WhatsApp del negocio
 <!-- origen: fi:saas/auth-services#conectar-numero-whatsapp-embedded-signup-oauth -->
-Estado: parcial — erplora.com ya conecta el número que le llega de la ventana de Meta, pero el Hub todavía no abre esa ventana: su botón lleva a erplora.com, que no tiene pantalla de WhatsApp
+Estado: parcial — erplora.com ya devuelve el código de la ventana de Meta al Hub que la abrió y conecta el número que le llega, pero el alta entera con el Hub de verdad aún no se ha visto: en desarrollo el Hub solo acepta una página de vuelta segura (https) y no ofrece «Conectar WhatsApp», y lo que Meta dice desde su ventana (la cuenta y el número elegidos) no se puede reproducir en una prueba
 Actor: propietario, administrador
-Pantalla: Bandeja de WhatsApp › Ajustes (en el Hub)
+Pantalla: Bandeja de WhatsApp › Ajustes (en el Hub); Vuelta de la ventana de Meta
 Pasos:
 1. En los ajustes de la bandeja, pulsa «Conectar WhatsApp»: se abre la ventana de Meta, se entra con Facebook, se elige o se escribe el número y, si ya se usa la app WhatsApp Business del móvil, se escanea el código con el móvil.
-2. Al cerrar la ventana, el Hub pasa a erplora.com lo que Meta le dio; erplora.com consigue el permiso del negocio, comprueba que el número elegido está en esa cuenta, suscribe la app de ERPlora a la cuenta y registra el número (o, si viene de la app del móvil, pide a Meta los contactos y el historial sin registrarlo).
-3. «Tu número» pasa a «Conectado» con el número y el nombre del negocio en WhatsApp.
+2. Al terminar, la ventana pasa por erplora.com, que devuelve al Hub el código de un solo uso de Meta (o su motivo para no darlo) y se cierra sola.
+3. El Hub pasa a erplora.com lo que Meta le dio; erplora.com consigue el permiso del negocio, comprueba que el número elegido está en esa cuenta, suscribe la app de ERPlora a la cuenta y registra el número (o, si viene de la app del móvil, pide a Meta los contactos y el historial sin registrarlo).
+4. «Tu número» pasa a «Conectado» con el número y el nombre del negocio en WhatsApp.
 Entra: lo que la ventana de Meta da al Hub: un código de un solo uso, la cuenta de WhatsApp Business, el número elegido y el portfolio.
 Sale: el número activo del negocio con su permiso y su PIN cifrados; el Hub lo sabe por su foto de estado (`whatsapp.number.connected`).
-Si falla: si Meta rechaza un paso (el código caducó, el PIN no coincide, la suscripción no se acepta) no se guarda nada y se dice el motivo de Meta; si el número elegido no está en la cuenta, o la cuenta tiene varios y no se eligió ninguno, no se conecta otro: se dice que se elija; si Meta no contesta, «inténtalo de nuevo»; sin la app de Meta configurada, WhatsApp no está disponible. Una demo no puede conectar ningún número. Si Meta no da el historial, el número queda conectado igual.
+Si falla: si Meta no da el código, el Hub recibe su motivo y no se conecta nada; el código solo vuelve al negocio que abrió la ventana: si la ventana llega con otro, o sin ninguno, no se devuelve nada y la ventana dice «Esta ventana ya se puede cerrar.». Si Meta rechaza un paso (el código caducó, el PIN no coincide, la suscripción no se acepta) no se guarda nada y se dice el motivo de Meta; si el número elegido no está en la cuenta, o la cuenta tiene varios y no se eligió ninguno, no se conecta otro: se dice que se elija; si Meta no contesta, «inténtalo de nuevo»; sin la app de Meta configurada, WhatsApp no está disponible. Una demo no puede conectar ningún número. Si Meta no da el historial, el número queda conectado igual.
 Implicados: bandeja de WhatsApp del Hub (ajustes)
 
 ### WHATSAPP-F02 Desconectar el número
 <!-- origen: fi:saas/auth-services#desconectar-numero -->
-Estado: parcial — erplora.com ya desconecta (y el personal puede hacerlo desde el admin), pero el Hub todavía no lo pide desde sus ajustes
+Estado: hecho
 Actor: propietario, administrador
 Pantalla: Bandeja de WhatsApp › Ajustes (en el Hub)
 Pasos:
 1. En los ajustes de la bandeja, pulsa «Desconectar» y confirma.
 2. erplora.com deja de usar el número: olvida el permiso de Meta, quita la app de ERPlora de esa cuenta si ningún otro número conectado la usa y conserva el PIN para volver a registrarlo.
-3. «Tu número» pasa a «Sin conectar»; las conversaciones del Hub no se tocan.
+3. «Tu número» pasa a «Sin conectar» al momento, con «WhatsApp desconectado.»; las conversaciones del Hub no se tocan.
 Entra: el negocio.
 Sale: el número inactivo, sin permiso, con la fecha de desconexión; el Hub lo sabe por su foto de estado (`whatsapp.number.disconnected`).
 Si falla: sin número conectado no cambia nada; si Meta no contesta al quitar la app, el número queda desconectado igual y lo que Meta siga contando de él se descarta.
@@ -254,13 +262,13 @@ Implicados: ninguno
 
 ### WHATSAPP-F11 Dar al Hub lo que necesita para abrir la ventana de Meta
 <!-- origen: old-saas:SAAS_WHATSAPP_INBOX-F01 -->
-Estado: parcial — erplora.com ya lo da, pero el Hub todavía no lo pide ni abre la ventana de Meta
+Estado: parcial — erplora.com ya da todo, también su página de vuelta, y el Hub lo pide al pintar «Tu número», pero aún no se ha visto abrir la ventana de Meta con el Hub de verdad: en desarrollo el Hub solo acepta una página de vuelta segura (https) y dice «Todavía no se puede conectar el número desde aquí.»
 Actor: sistema
 Pantalla: Bandeja de WhatsApp › Ajustes (en el Hub)
 Pasos:
 1. Al pintar «Tu número», el Hub pregunta a erplora.com.
-2. erplora.com contesta si WhatsApp está configurado y, si lo está, el identificador de la app de Meta, el de la configuración del alta embebida y la versión de Meta que usa.
-3. Sin la app configurada contesta «no configurado» con los identificadores vacíos, y el Hub no enseña «Conectar WhatsApp».
+2. erplora.com contesta si WhatsApp está configurado y, si lo está, el identificador de la app de Meta, el de la configuración del alta embebida, la versión de Meta que usa y su página a la que Meta devuelve el código; con esa misma página canjea después el código.
+3. Sin la app configurada, o sin una página de vuelta válida, contesta «no configurado» con los identificadores vacíos, y el Hub no enseña «Conectar WhatsApp».
 Entra: el negocio.
 Sale: los identificadores públicos de la app; el secreto y el token de verificación no salen nunca.
 Si falla: un negocio que erplora.com no conoce, o una demo, no recibe nada.
@@ -371,8 +379,11 @@ Implicados: ninguno
   que mandan y no se renombran. Este porte añade tres puertas, propuestas al Hub, con la misma firma de todo
   `/internal` (`X-Erplora-Timestamp` + `X-Erplora-Signature`, HMAC-SHA256 de `f"{timestamp}.{cuerpo}"` con
   `INTERNAL_SHARED_SECRET`, ±300 s):
-  - **10** `POST /internal/whatsapp/config` `{"hub"}` → 200 `{"configured", "app_id", "config_id", "graph_version"}`
-    (WHATSAPP-F11); 404 `hub_unknown`.
+  - **10** `POST /internal/whatsapp/config` `{"hub"}` → 200 `{"configured", "app_id", "config_id", "graph_version",
+    "redirect_uri"}` (WHATSAPP-F11); 404 `hub_unknown`. `redirect_uri` = `WHATSAPP_REDIRECT_URI` (por defecto
+    `https://<PUBLIC_HOST>/whatsapp/return`; en desarrollo `http://localhost:8001/whatsapp/return`), absoluta, https
+    fuera de `DEBUG` y sin consulta: si no lo es, `configured: false` y `whatsapp.I001` la nombra. La puerta 11 canjea
+    el código con ese mismo valor (Meta rechaza otro: error 100/36008).
   - **11** `POST /internal/whatsapp/connect` `{"hub", "code", "event", "waba_id", "phone_number_id", "business_id"}`
     → 200 `{"connected": true, "phone_number", "display_name", "history_requested"}` (WHATSAPP-F01, F09); 409
     `whatsapp.meta_rejected | number_not_in_account | number_not_chosen`, 429 `whatsapp.meta_rate_limited`, 502
@@ -381,6 +392,15 @@ Implicados: ninguno
   - **12** `POST /internal/whatsapp/disconnect` `{"hub"}` → 200 `{"disconnected": true|false}` (WHATSAPP-F02).
   El canal (puerta 3) no se usa desde el SaaS: la clave `whatsapp` de la foto (puerta 4) es la única fuente, con la
   versión de la foto y el reintento de `reconcile_hub_states`.
+- Vuelta de la ventana de Meta: `GET /whatsapp/return?code=…&state=<slug>.<32 hex>` (o `?error=…&error_description=…`;
+  `whatsapp/signup_return.py`, WHATSAPP-F01), pública, sin sesión, sin caché y sin BD. Hace
+  `window.opener.postMessage({"type": "erplora.whatsapp.signup", "state", "code" | "error", "error_description"},
+  <origen del hub>)` y se cierra; el origen sale del `slug` del `state`, validado con `live.slugs` (ni reservados ni
+  demos), y de `HUB_CALLBACK_TEMPLATE`, nunca `"*"`. Lleva `Cross-Origin-Opener-Policy: unsafe-none` solo en esa
+  vista (el resto del SaaS, `same-origin` de Django, que corta la ventana de su `opener`; el Hub manda
+  `same-origin-allow-popups`, hub#154) y el dato va como `json_script` leído por su único script, con el nonce de la
+  CSP. El Hub abre la ventana sin el SDK de Facebook (su WORKBOOK `whatsapp_inbox`, «La ventana de Meta sin el SDK de
+  Facebook»).
 - Adjuntos: `GET /whatsapp/media/<id de la entrega>` (WHATSAPP-F07), con la sesión de erplora.com y miembro aceptado
   del negocio; lo que no es imagen, audio o vídeo se descarga con `Content-Disposition: attachment` y CSP `sandbox`.
   El Hub debe permitir el origen de erplora.com en `img-src` y `media-src` (su «Contrato con `base`»).
@@ -391,11 +411,6 @@ Implicados: ninguno
   docstring; `promote` en el registro la convierte en `WHATSAPP-Fnn` con el mismo número.
 - Contradicción escrita, sin resolver: `PLAN-SAAS.md` y `PLAN-HUB.md` dicen que WhatsApp «sale del SaaS» y que el Hub
   llama a Meta directamente; el encargo del 2026-10-15 lo dejó en el SaaS, y esta app lo sigue. Falta la ronda.
-- Contradicción escrita, sin resolver: el plan con `whatsapp_messages_per_month = 0` no envía ninguno (el SaaS
-  rechaza con `whatsapp.cap_reached`), pero el Hub lee `monthly_limit = 0` como «Sin límite».
-- El WORKBOOK del Hub (WHATSAPP_INBOX-F01) dice «se conecta en el panel de erplora.com», y `PLAN-SAAS.md` (bloque 12)
-  dice que el panel no tiene pantalla de WhatsApp; este porte sigue al plan: la ventana de Meta la abre el Hub con
-  las puertas 10 y 11.
 
 ## Lo que NO hace, a propósito
 

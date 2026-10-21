@@ -39,11 +39,18 @@ Who uses it:
 - Meta's app ("ERPlora Inbox") is configured per environment with its id, its secret, the notice verification
   token and the Embedded Signup configuration. Without them, erplora.com says WhatsApp is not configured and Meta
   cannot deliver its notices.
+- erplora.com's page Meta's window comes back to has to be among the return addresses Meta's app accepts, and be
+  secure (https) outside development; otherwise WhatsApp is not configured either.
 - Meta's permissions are encrypted with the environment's key; changing it stops opening the stored ones, unless
   the old one is kept as the previous key while numbers are connected again.
 - There is no Meta test environment in development: in the tests, Meta's answers come from its documentation.
 
 ## Screens
+
+### Meta's window coming back
+erplora.com's page Meta takes its window to when it ends. It hands what Meta gave back to the Hub that opened it and
+closes itself, without anyone seeing it. If something else opened it, or what it brings is no business's, it stays
+open with "This window can be closed now.", in the browser's language.
 
 ### "Connect WhatsApp again" email
 The business's owner receives it, in their language, when Meta does not let the permission be renewed. Subject
@@ -73,7 +80,7 @@ and their month; and what each business used each month.
 | Loading | In the Hub, the inbox; in the admin, the normal loading of a list. |
 | Empty | In the admin, "0 WhatsApp numbers" and the empty list. |
 | Error | An email that does not go out is retried in the next renewal; in the admin, each action says what it did and what it did not ("Meta could not be read now: the templates stay as they were"). |
-| Not configured | WhatsApp without Meta's app: the Hub does not offer to connect and Meta cannot deliver its notices. |
+| Not configured | WhatsApp without Meta's app or without its return page: the Hub does not offer to connect and Meta cannot deliver its notices. |
 | No permission | The admin does not open without the role; the support group only looks, without actions. An attachment of another business says "not available". |
 
 ## Flows
@@ -81,7 +88,7 @@ and their month; and what each business used each month.
 | ID | Flow | Status |
 |---|---|---|
 | WHATSAPP-F01 | Connect the business's WhatsApp number | partial |
-| WHATSAPP-F02 | Disconnect the number | partial |
+| WHATSAPP-F02 | Disconnect the number | done |
 | WHATSAPP-F03 | Tell the Hub which number the business has and whether it needs reconnecting | done |
 | WHATSAPP-F04 | Keep each business's number with its Meta permission encrypted | done |
 | WHATSAPP-F05 | Count the month's messages and stop at the plan's cap | done |
@@ -100,26 +107,27 @@ and their month; and what each business used each month.
 | WHATSAPP-F18 | What ERPlora staff can do | done |
 
 ### WHATSAPP-F01 Connect the business's WhatsApp number
-Status: partial — erplora.com already connects the number that comes from Meta's window, but the Hub does not open that window yet: its button goes to erplora.com, which has no WhatsApp screen
+Status: partial — erplora.com already hands the code of Meta's window back to the Hub that opened it and connects the number that comes to it, but the whole sign-up with the real Hub has not been seen yet: in development the Hub only accepts a secure (https) return page and does not offer "Connect WhatsApp", and what Meta says from its window (the account and the number chosen) cannot be played in a test
 Actor: owner, admin
-Screen: WhatsApp inbox › Settings (in the Hub)
+Screen: WhatsApp inbox › Settings (in the Hub); Meta's window coming back
 Steps:
 1. In the inbox settings, tap "Connect WhatsApp": Meta's window opens, you sign in with Facebook, choose or type the number and, if the WhatsApp Business app on the phone is already in use, scan the code with the phone.
-2. When the window closes, the Hub passes erplora.com what Meta gave it; erplora.com gets the business's permission, checks that the chosen number is in that account, subscribes ERPlora's app to the account and registers the number (or, if it comes from the phone app, asks Meta for the contacts and the history without registering it).
-3. "Your number" turns "Connected" with the number and the business's name on WhatsApp.
+2. When it ends, the window goes through erplora.com, which hands Meta's one-time code (or its reason for not giving one) back to the Hub and closes itself.
+3. The Hub passes erplora.com what Meta gave it; erplora.com gets the business's permission, checks that the chosen number is in that account, subscribes ERPlora's app to the account and registers the number (or, if it comes from the phone app, asks Meta for the contacts and the history without registering it).
+4. "Your number" turns "Connected" with the number and the business's name on WhatsApp.
 In: what Meta's window gives the Hub: a one-time code, the WhatsApp Business account, the chosen number and the portfolio.
 Out: the business's active number with its permission and PIN encrypted; the Hub learns it through its state snapshot (`whatsapp.number.connected`).
-If it fails: if Meta refuses a step (the code expired, the PIN does not match, the subscription is not accepted) nothing is saved and Meta's reason is shown; if the chosen number is not in the account, or the account has several and none was chosen, no other one is connected: it asks to choose; if Meta does not answer, "try again"; without Meta's app configured, WhatsApp is not available. A demo cannot connect any number. If Meta does not give the history, the number stays connected anyway.
+If it fails: if Meta gives no code, the Hub receives its reason and nothing is connected; the code only goes back to the business that opened the window: if the window comes with another one, or with none, nothing is handed back and the window says "This window can be closed now.". If Meta refuses a step (the code expired, the PIN does not match, the subscription is not accepted) nothing is saved and Meta's reason is shown; if the chosen number is not in the account, or the account has several and none was chosen, no other one is connected: it asks to choose; if Meta does not answer, "try again"; without Meta's app configured, WhatsApp is not available. A demo cannot connect any number. If Meta does not give the history, the number stays connected anyway.
 Involved: the Hub's WhatsApp inbox (settings)
 
 ### WHATSAPP-F02 Disconnect the number
-Status: partial — erplora.com already disconnects (and staff can do it from the admin), but the Hub does not ask for it from its settings yet
+Status: done
 Actor: owner, admin
 Screen: WhatsApp inbox › Settings (in the Hub)
 Steps:
 1. In the inbox settings, tap "Disconnect" and confirm.
 2. erplora.com stops using the number: it forgets Meta's permission, removes ERPlora's app from that account if no other connected number uses it and keeps the PIN to register it again.
-3. "Your number" turns "Not connected"; the Hub's conversations are not touched.
+3. "Your number" turns "Not connected" at once, with "WhatsApp disconnected."; the Hub's conversations are not touched.
 In: the business.
 Out: the number inactive, without permission, with the disconnection date; the Hub learns it through its state snapshot (`whatsapp.number.disconnected`).
 If it fails: without a connected number nothing changes; if Meta does not answer when removing the app, the number stays disconnected anyway and whatever Meta still reports about it is discarded.
@@ -231,13 +239,13 @@ If it fails: an attachment whose link is not Meta's or is not encrypted is not d
 Involved: none
 
 ### WHATSAPP-F11 Give the Hub what it needs to open Meta's window
-Status: partial — erplora.com already gives it, but the Hub does not ask for it nor open Meta's window yet
+Status: partial — erplora.com already gives everything, its return page included, and the Hub asks for it when painting "Your number", but Meta's window has not been seen opening with the real Hub yet: in development the Hub only accepts a secure (https) return page and says "Connecting the number from here is not available yet."
 Actor: system
 Screen: WhatsApp inbox › Settings (in the Hub)
 Steps:
 1. When painting "Your number", the Hub asks erplora.com.
-2. erplora.com answers whether WhatsApp is configured and, if it is, the id of Meta's app, the id of the Embedded Signup configuration and the Meta version it uses.
-3. Without the app configured it answers "not configured" with the ids empty, and the Hub does not show "Connect WhatsApp".
+2. erplora.com answers whether WhatsApp is configured and, if it is, the id of Meta's app, the id of the Embedded Signup configuration, the Meta version it uses and its page Meta brings the code back to; it later exchanges the code with that very page.
+3. Without the app configured, or without a valid return page, it answers "not configured" with the ids empty, and the Hub does not show "Connect WhatsApp".
 In: the business.
 Out: the app's public ids; the secret and the verification token never go out.
 If it fails: a business erplora.com does not know, or a demo, receives nothing.

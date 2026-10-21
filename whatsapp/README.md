@@ -26,13 +26,14 @@ renombran** (el Hub ya está en producción con ellas). Firma de todo `/internal
 | 7 | — | envío de estados (obligación de la 2) | el webhook los aparca y `deliver` los empuja |
 | 8 `POST /internal/whatsapp/templates` + `Idempotency-Key` | Hub → SaaS | registrar una plantilla | `gateway.submit_template` |
 | 9 `POST /internal/whatsapp/templates/delete` | Hub → SaaS | borrar una plantilla en un idioma | `gateway.delete_template` |
-| 10 `POST /internal/whatsapp/config` | Hub → SaaS | **propuesta**: lo público para abrir la ventana de Meta | `gateway.config` |
+| 10 `POST /internal/whatsapp/config` | Hub → SaaS | **propuesta**: lo público para abrir la ventana de Meta, con `redirect_uri` (la página de vuelta) | `gateway.config` |
 | 11 `POST /internal/whatsapp/connect` | Hub → SaaS | **propuesta**: conectar el número que dio la ventana | `gateway.connect` |
 | 12 `POST /internal/whatsapp/disconnect` | Hub → SaaS | **propuesta**: desconectar | `gateway.disconnect` |
 
 Respuestas y códigos de cada puerta: el docstring de `internal.py` (comunes: 401 `unauthorized`, 405, 413, 422
 `invalid_payload` con `fields`, 404 `hub_unknown`, también para una demo) y el de cada función de `gateway.py`.
-Las puertas 10–12 están escritas en el `WORKBOOK.md`, «Para quien lo mantiene»; el Hub aún no las llama.
+Las puertas 10–12 y la página de vuelta de la ventana de Meta (`GET /whatsapp/return`) están escritas en el
+`WORKBOOK.md`, «Para quien lo mantiene»; el Hub las llama desde sus ajustes de la bandeja (hub#151).
 
 ## Qué hay
 
@@ -40,17 +41,18 @@ Las puertas 10–12 están escritas en el `WORKBOOK.md`, «Para quien lo mantien
 |---|---|
 | `models.py` | `PhoneNumber` (número de un negocio, permiso y PIN cifrados; uno activo por negocio, un dueño por número), `Template` (espejo de las plantillas de Meta), `TemplateSubmission` (clave de cada registro de la puerta 8), `Send` (clave de cada envío de la puerta 5), `Usage` (contador del mes, UTC), `Delivery` (lo que espera al Hub: mensaje o estado) |
 | `crypto.py` + `fields.py` | Fernet (`FERNET_KEY` + `FERNET_KEY_PREVIOUS`, `MultiFernet`) y el campo cifrado: lo que no se descifra se lee vacío y queda en el registro como error |
-| `meta.py` | Cliente de la API Graph (httpx, 5 s/15 s, 30 s al enviar): token en cabecera, sin redirecciones, `MetaRefused` (código, subcódigo, `error_user_msg`) y `MetaUnreachable(sent)`; adjuntos solo de hosts de Meta por https; `exchange_code`, `exchange_token`, `token_expiry` |
+| `meta.py` | Cliente de la API Graph (httpx, 5 s/15 s, 30 s al enviar): token en cabecera, sin redirecciones, `MetaRefused` (código, subcódigo, `error_user_msg`) y `MetaUnreachable(sent)`; adjuntos solo de hosts de Meta por https; `redirect_uri` (la página de vuelta válida, o `""`), `exchange_code` (con esa `redirect_uri`), `exchange_token`, `token_expiry` |
 | `parse.py` | Lectura pura del aviso de Meta: mensajes, ecos, historial y su continuación, estados, veredictos de plantillas |
 | `webhooks.py` | `GET/POST /webhooks/whatsapp/`: verificación (`hub.verify_token`) y firma `X-Hub-Signature-256`; 503 sin configurar, 403, 413, 400 |
 | `hub_client.py` | Las puertas 1 y 2, firmadas |
 | `internal.py` | Las puertas 5, 6, 8, 9 y 10–12 (`_door`: firma, tamaño, esquema, `Idempotency-Key`) |
 | `gateway.py` | Los pasos de cada puerta alrededor de las operaciones: nunca una transacción esperando a Meta o al Hub. Sin ORM |
 | `templates.py` | Las reglas de Meta de una plantilla antes de llamarla (`check`), sus componentes y la lectura de la lista de Meta (`from_meta`) |
+| `signup_return.py` | `GET /whatsapp/return`: la vuelta de la ventana de Meta; devuelve el código (o el motivo de Meta) por `postMessage` solo al origen del hub que nombra el `state` y se cierra; COOP `unsafe-none` solo aquí, el dato en `json_script` y el script con el nonce de la CSP; plantilla `templates/whatsapp/signup_return.html` |
 | `media.py` | `GET /whatsapp/media/<id de la entrega>`: el adjunto de un cliente con la sesión de erplora.com y miembro aceptado del negocio, en streaming desde Meta, sin caché; lo que no es imagen, audio o vídeo se descarga con CSP `sandbox` |
 | `emails.py` | «Vuelve a conectar WhatsApp», en el idioma del propietario |
 | `admin.py` | Números, plantillas, entregas, envíos y consumo: solo lectura; acciones de superusuario (desconectar, volver a leer las plantillas, entregar ahora). `support` solo mira (`0002`) |
-| `checks.py` | `whatsapp.E001` (`FERNET_KEY` no es una clave Fernet) y `whatsapp.I001` (WhatsApp apagado, informativo) |
+| `checks.py` | `whatsapp.E001` (`FERNET_KEY` no es una clave Fernet) y `whatsapp.I001` (WhatsApp apagado, informativo; también con una `WHATSAPP_REDIRECT_URI` no válida) |
 
 ## Operaciones (`@operation`, permiso `whatsapp.manage`, contexto de plataforma)
 
@@ -87,6 +89,8 @@ Programarlas y dar los secretos (`WHATSAPP_APP_ID`, `WHATSAPP_APP_SECRET`, `WHAT
 
 `WHATSAPP_APP_ID`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_CONFIG_ID`, `WHATSAPP_GRAPH_VERSION`
 (`v25.0`), `WHATSAPP_WEBHOOK_MAX_BYTES`, `WHATSAPP_MEDIA_BASE_URL` (el origen de erplora.com: el Hub solo acepta ese),
+`WHATSAPP_REDIRECT_URI` (la página de vuelta de la ventana de Meta: por defecto `WHATSAPP_MEDIA_BASE_URL` +
+`/whatsapp/return`; https fuera de `DEBUG`; tiene que estar entre las «Valid OAuth Redirect URIs» de la app de Meta),
 `FERNET_KEY` (en desarrollo, una fija; en producción nace vacía y el check la exige) y `FERNET_KEY_PREVIOUS`.
 
 ## Tests
