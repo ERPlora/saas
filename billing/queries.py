@@ -24,6 +24,8 @@ from live.context import OperationContext
 from live.errors import OperationError, Unauthorized
 from live.operations import operation
 
+from apps import queries as app_queries
+from apps.icons import FALLBACK_ICON_SVG
 from apps.models import Module
 from billing import vat, vies
 from billing.models import (
@@ -611,6 +613,16 @@ def module_on_sale(slug: str):
     return Module.objects.filter(slug=slug, is_active=True).first()
 
 
+def businesses_having_module(slug: str) -> list[str]:
+    """The names of the businesses that have the bought module ``slug`` now (open-ended, or cancelled and still
+    working): what Stripe bills or billed for this period (BILLING-G66, saas#2568: its row is not deleted)."""
+    now = timezone.now()
+    items = SubscriptionItem.objects.filter(
+        module_slug=slug, source=SubscriptionItem.Source.PURCHASE
+    ).filter(Q(valid_until__isnull=True) | Q(valid_until__gt=now))
+    return sorted(set(items.values_list("subscription__hub__name", flat=True)))
+
+
 def plan_for_price(price_id: str):
     """``(plan, interval)`` of a Stripe price of a plan, or ``None`` when no plan has it."""
     if not price_id:
@@ -683,9 +695,14 @@ def store_catalog(ctx: OperationContext, params: StoreCatalogIn) -> dict:
         for item in SubscriptionItem.objects.filter(subscription=subscription).order_by("module_slug"):
             if item.is_live(now):
                 owned[item.module_slug] = item
+    # On sale, and the ones the business has although they are not any more (saas#2589: taking a module off
+    # sale stops new purchases, never the charge of who has it, so its owner still sees it to cancel it).
+    rows = Module.objects.filter(Q(is_active=True) | Q(slug__in=owned)).order_by("slug")
+    cards = app_queries.cards_of([row.slug for row in rows], ctx.language or "")
     modules = []
-    for module in Module.objects.filter(is_active=True).order_by("slug"):
+    for module in rows:
         item = owned.get(module.slug)
+        card = cards.get(module.slug)
         modules.append(
             {
                 "slug": module.slug,
@@ -695,6 +712,10 @@ def store_catalog(ctx: OperationContext, params: StoreCatalogIn) -> dict:
                 "owned": item is not None,
                 "source": item.source if item is not None else None,
                 "valid_until": item.valid_until if item is not None else None,
+                "on_sale": module.is_active,
+                "name": card["name"] if card else module.slug,
+                "summary": card["summary"] if card else "",
+                "icon_svg": card["icon_svg"] if card else FALLBACK_ICON_SVG,
             }
         )
     plan = None
@@ -934,12 +955,18 @@ def invoice_pdf(ctx: OperationContext, data: InvoiceByIdIn) -> dict:
     asked on demand: round 17 §2.7). 404 ``billing.invoice_not_issued`` until the Hub issued it."""
     user = _billing_account(ctx)
     invoice = invoice_of(user, data.id)
+    return {"filename": f"{invoice.number}.pdf", "content_type": "application/pdf", "content": platform_invoice_pdf(invoice)}
+
+
+def platform_invoice_pdf(invoice: Invoice) -> bytes:
+    """The PDF ERPlora's platform hub issued of ``invoice``, asked now (also the admin's, BILLING-G12): 404
+    ``billing.invoice_not_issued`` until it is issued, 503 ``billing.platform_unavailable`` with the Hub away."""
     if invoice.payment_status != Invoice.PaymentStatus.PAID or invoice.fiscal_status not in ISSUED_STATUSES:
         raise NotFound(
             _("This invoice is still being issued: its PDF is ready once it is."), code="billing.invoice_not_issued"
         )
     try:
-        content = hub_client.get_platform_invoice_pdf(str(invoice.id))
+        return hub_client.get_platform_invoice_pdf(str(invoice.id))
     except HubUnavailable:
         raise OperationError(
             _("The invoice cannot be downloaded right now. Try again in a moment."),
@@ -951,7 +978,6 @@ def invoice_pdf(ctx: OperationContext, data: InvoiceByIdIn) -> dict:
         raise NotFound(
             _("This invoice is still being issued: its PDF is ready once it is."), code="billing.invoice_not_issued"
         ) from None
-    return {"filename": f"{invoice.number}.pdf", "content_type": "application/pdf", "content": content}
 
 
 #: What makes a spreadsheet read a cell as a formula (CSV injection, OWASP).
@@ -1055,7 +1081,11 @@ def _subscription_row(
     plan_cents = to_cents((plan.price_annual if interval == "year" else plan.price_monthly) or 0)
     items = []
     billed = [(plan_cents, vat.SAAS_SUBSCRIPTION_CATEGORY)] if plan_cents else []
+    now = timezone.now()
     for item in subscription.items.all():
+        if not item.is_live(now):
+            # A cancelled module whose period ended is gone, as in the Hub's snapshot and in the store.
+            continue
         price = _module_price(modules.get(item.module_slug), interval)
         items.append(
             {
@@ -1116,10 +1146,12 @@ def _subscription_row(
     permission="billing.view",
     input=SubscriptionListIn,
     output=SubscriptionListOut,
+    expose_api=True,
 )
 def subscription_list(ctx: OperationContext, data: SubscriptionListIn) -> dict:
     """One row per business of the account that Stripe bills (it owns it or pays it): the plan and modules at
-    their net price, the next invoice with VAT and what the row's buttons do (mockups ``billing.html``)."""
+    their net price, the next invoice with VAT and what the row's buttons do (mockups ``billing.html``). Filtered
+    by business and by status for an integration (BILLING-G02), which reads it with a ``billing.read`` key."""
     user = _billing_account(ctx)
     owned = set(_owned_hub_ids(user).values_list("hub_id", flat=True))
     subscriptions = (
@@ -1131,6 +1163,10 @@ def subscription_list(ctx: OperationContext, data: SubscriptionListIn) -> dict:
         .exclude(hub__status=Hub.Status.DELETED)
         .order_by("hub__name", "hub_id")
     )
+    if data.hub_id is not None:
+        subscriptions = subscriptions.filter(hub_id=data.hub_id)
+    if data.status is not None:
+        subscriptions = subscriptions.filter(status=data.status)
     total = subscriptions.count()
     page = list(subscriptions[data.offset : data.offset + data.limit])
     unpaid = {}

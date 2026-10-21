@@ -10,9 +10,9 @@
 //     (InvoiceFilters: a popover; Ioan 2026-10-14, the toolbar on one line at 1440 px); a search by number;
 //   - the list fills the page between the topbar and the tabbar (`fill`, a `.panel-fill` stack); rows per page
 //     only past the shortest page (README §3b);
-//   - per row, «Pay» (fixed and labelled; web only; disabled while it waits for another card) and the PDF
-//     once issued; a selection with «Download PDF (n)», n the issued ones, and a note above the list for the ones
-//     without a PDF: unpaid (none until it is paid) or still being issued (audit 2 S-01);
+//   - per row, «Pay» (fixed and labelled; web only; disabled while it waits for another card), the PDF
+//     once issued and «View invoice», its page (BILLING-G05); a selection with «Download PDF (n)», n the
+//     issued ones, and a note above the list for the ones without a PDF: unpaid (none until it is paid) or still being issued (audit 2 S-01);
 //   - «Download Excel»: the CSV of everything the filters show, for the accountant. The toolbar stays on one
 //     line from 641 px (audit 2026-10-14, R-14): when the button falls to a second line it folds to its icon
 //     (named by its label) and the search narrows (`toolbar-fit.ts`); on a phone it reads «Excel».
@@ -204,11 +204,19 @@ const actions = computed<DataTableAction<InvoiceRowOut>[]>(() => [
     disabled: (row) => notIssued.value.has(row.id),
     loading: (row) => fetching.value.has(row.id),
   },
+  {
+    // Its page: lines, totals and who it is made out to (BILLING-G05, the «View» of BILLING-G92).
+    id: 'view',
+    label: t('billing.invoicePage.view'),
+    icon: 'ion:receipt-outline',
+    color: 'medium',
+  },
 ]);
 
 function onAction({ actionId, row }: DataTableActionEvent<InvoiceRowOut>): void {
   if (actionId === 'pay' && row.can.pay) void pay(row);
   else if (actionId === 'pdf') void downloadPdfs([row]);
+  else if (actionId === 'view') void router.push(`/billing/invoices/${row.id}`);
 }
 
 // ── Credit notes ────────────────────────────────────────────────────────────────────────────────

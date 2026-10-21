@@ -239,6 +239,14 @@ def app_sitemap(ctx: OperationContext, data: AppSitemapIn) -> dict[str, Any]:
     }
 
 
+def cards_of(app_ids: list[str], language: str) -> dict[str, dict[str, Any]]:
+    """The card of each app of ``app_ids`` the catalog knows, listed or retired, by id: for another app of the
+    SaaS that must name an app it still sells or bills (billing's Store names a retired app's module a business
+    still pays, saas#2589). ``language`` as a request's: ``es`` for any Spanish, ``en`` otherwise."""
+    language = "es" if (language or "").split("-")[0].lower() == "es" else "en"
+    return {app.id: _card(app, language) for app in App.objects.filter(pk__in=app_ids)}
+
+
 def known_verticals() -> list[str]:
     """Every vertical an app of the catalog declares, sorted; retired apps too, since their rows
     still exist. ``BusinessType.clean()`` refuses a vertical outside it (spec §5.4)."""

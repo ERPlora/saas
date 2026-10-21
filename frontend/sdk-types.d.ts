@@ -735,6 +735,12 @@ export interface StoreModuleOut {
   owned: boolean;
   source: 'plan' | 'purchase' | null;
   valid_until: string | null;
+  /** Sold to new buyers; off sale it is only listed to the business that still has it (saas#2589). */
+  on_sale: boolean;
+  /** The catalog's name, summary and icon of its app (listed or retired); the slug without its app. */
+  name: string;
+  summary: string;
+  icon_svg: string;
 }
 
 /** `billing.StoreSubscriptionOut`: the business's plan as the Store needs it. */
@@ -1015,6 +1021,9 @@ export interface InvoicePayOut {
 export interface SubscriptionListIn {
   limit?: number;
   offset?: number;
+  /** One business's subscription (BILLING-G02). */
+  hub_id?: string | null;
+  status?: 'active' | 'trialing' | 'past_due' | 'unpaid' | 'incomplete' | 'paused' | null;
 }
 
 /** `billing.SubscriptionPlanOut`: the plan, at its net price. */

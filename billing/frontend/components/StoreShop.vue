@@ -12,7 +12,8 @@
 //   - A business Stripe does not bill yet buys in the Embedded Checkout (CheckoutModal); one that pays
 //     confirms with its proration, one dialog per module (ProrationDialog), and switches its own plan's
 //     billing with the total with VAT (AnnualSwitchDialog). «Downgrade to Free» cancels at the end of
-//     the period (ConfirmDialog with the dates and Free's limits); «Keep» undoes a cancellation.
+//     the period (ConfirmDialog with the dates and Free's limits); «Cancel module» ends a bought module with
+//     its period (ConfirmDialog with the date, BILLING-G66); «Keep» undoes a cancellation.
 //   - After buying a module, «Activating… in <business>»: never on sale twice.
 //   - An unpaid invoice blocks what charges for THAT business, says why and where to pay.
 // Web only: StorePage renders it in `<WebOnly>`, so inside the apps nothing here loads.
@@ -312,6 +313,7 @@ const cancelOpen = shallowRef(false);
 const cancelPlan = useCommand('billing.plan.cancel');
 const keepPlan = useCommand('billing.plan.keep');
 const keepModule = useCommand('billing.module.keep');
+const cancelModule = useCommand('billing.module.cancel');
 const { text } = useErrorText();
 
 const cancelConsequences = computed<ConfirmConsequence[]>(() => {
@@ -362,6 +364,54 @@ async function keepThePlan(): Promise<void> {
     void toastSuccess(t('billing.plans.kept', { plan: currentPlan.value?.name ?? out.plan, date: formatDate(out.current_period_end, locale.value) }));
   } catch {
     void toastInfo(text(keepPlan.error.value));
+  }
+}
+
+// A bought module ends with its period (BILLING-G66): the dialog says until when and that it can be kept.
+const moduleToCancel = shallowRef<SaleModule | null>(null);
+const cancelModuleOpen = computed({
+  get: () => moduleToCancel.value !== null,
+  set: (open: boolean) => {
+    if (!open) moduleToCancel.value = null;
+  },
+});
+
+function askToCancel(module: SaleModule): void {
+  cancelModule.error.value = null;
+  moduleToCancel.value = module;
+}
+
+const cancelModuleConsequences = computed<ConfirmConsequence[]>(() => {
+  const module = moduleToCancel.value?.name ?? '';
+  const name = business.value?.name ?? '';
+  const date = formatDate(renewal.value, locale.value);
+  return [
+    {
+      icon: 'ion:calendar-outline',
+      text: date
+        ? t('billing.cancelModule.until', { module, business: name, date })
+        : t('billing.cancelModule.untilNoDate', { module, business: name }),
+    },
+    { icon: 'ion:folder-outline', text: t('billing.cancelModule.data') },
+    { icon: 'ion:refresh-outline', text: t('billing.cancelModule.undo') },
+  ];
+});
+
+async function confirmCancelModule(): Promise<void> {
+  const hub = business.value;
+  const module = moduleToCancel.value;
+  if (!hub || !module) return;
+  try {
+    const out = await cancelModule.run({ hub_id: hub.id, module: module.slug });
+    apply(out);
+    const until = out.modules.find((item) => item.slug === module.slug)?.valid_until ?? out.current_period_end;
+    const date = formatDate(until, locale.value);
+    void toastSuccess(
+      date ? t('billing.cancelModule.done', { module: module.name, date }) : t('billing.cancelModule.doneNoDate', { module: module.name }),
+    );
+    moduleToCancel.value = null;
+  } catch {
+    // `cancelModule.error`: the dialog says it.
   }
 }
 
@@ -657,6 +707,7 @@ async function keepTheModule(module: SaleModule): Promise<void> {
             :renewal="renewal"
             @add="addModule(module)"
             @keep="keepTheModule(module)"
+            @cancel="askToCancel(module)"
           />
         </div>
         <EmptyState
@@ -708,6 +759,20 @@ async function keepTheModule(module: SaleModule): Promise<void> {
       :pending="cancelPlan.pending.value"
       :error="forDialog(cancelPlan.error.value)"
       @confirm="confirmCancel"
+    />
+    <ConfirmDialog
+      v-if="business"
+      v-model:open="cancelModuleOpen"
+      testid="store-cancel-module"
+      :title="$t('billing.cancelModule.title')"
+      :message="$t('billing.cancelModule.subject', { business: business.name, module: moduleToCancel?.name ?? '' })"
+      :consequences="cancelModuleConsequences"
+      :confirm-label="$t('billing.cancelModule.confirm')"
+      :cancel-label="$t('billing.cancelModule.back')"
+      confirm-icon="ion:close-circle-outline"
+      :pending="cancelModule.pending.value"
+      :error="forDialog(cancelModule.error.value)"
+      @confirm="confirmCancelModule"
     />
   </div>
 </template>

@@ -101,7 +101,10 @@
       "kept": "{module} is kept: it renews on {date}",
       "keptNoDate": "{module} is kept",
       "added": "{module} added to {business}: it turns on in a few seconds",
-      "monthlyOnly": "Only with monthly billing"
+      "monthlyOnly": "Only with monthly billing",
+      "cancel": "Cancel module",
+      "offSale": "No longer sold: you keep it while you pay it, and can cancel it whenever you want.",
+      "cancelledOffSale": "You have it until {date} (cancelled). It is no longer sold, so it cannot be kept."
     },
     "proration": {
       "titleModule": "Add {module}",
@@ -187,6 +190,18 @@
       "back": "Back",
       "done": "Plan cancelled: {plan} until {date}",
       "doneNoDate": "Plan cancelled: {plan} until the end of the period"
+    },
+    "cancelModule": {
+      "title": "Cancel the module",
+      "subject": "{business} · {module}",
+      "until": "{module} keeps working in {business} until {date}; then it turns off and is not charged again.",
+      "untilNoDate": "{module} keeps working in {business} until the end of the period; then it turns off and is not charged again.",
+      "data": "Nothing the business wrote with it is deleted.",
+      "undo": "Until then you can undo it with «Keep».",
+      "confirm": "Cancel module",
+      "back": "Back",
+      "done": "{module} cancelled: it works until {date}",
+      "doneNoDate": "{module} cancelled: it works until the end of the period"
     },
     "page": {
       "title": "Billing",
@@ -279,6 +294,26 @@
       "csvShort": "Excel",
       "pdfIssuing": "This invoice is still being issued: its PDF will be ready as soon as it finishes.",
       "pdfUnavailable": "The invoice service is not answering. Try again in a moment."
+    },
+    "invoicePage": {
+      "title": "Invoice",
+      "invoice": "Invoice {number}",
+      "creditNote": "Credit note {number}",
+      "unnumbered": "Invoice {reference} (not collected)",
+      "date": "Date",
+      "business": "Business",
+      "payment": "Payment",
+      "fiscal": "VeriFactu",
+      "lines": "What it charges",
+      "period": "{start} – {end}",
+      "prorated": "Prorated",
+      "lineAmounts": "Net {net} · VAT {rate} {tax}",
+      "net": "Taxable base",
+      "vat": "VAT",
+      "total": "Total",
+      "recipient": "Made out to",
+      "loadError": "We could not load this invoice",
+      "view": "View invoice"
     },
     "subscriptions": {
       "title": "Subscriptions",
