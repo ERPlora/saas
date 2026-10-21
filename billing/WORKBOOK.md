@@ -585,7 +585,12 @@ Implicados: ninguno
   §3.3: vuelve a Gratis), sin estado «pendiente de pago» en el alta (el negocio nace en Gratis) y sin
   sincronización automática de productos de Stripe (los identificadores se pegan en el admin).
 - Los tests de cada flujo citan su clave en el nombre o en el docstring; los e2e, en el título o en
-  `// flow: BILLING-Fnn`.
+  `// flow: …`. Los e2e de la parte 1 (`tests/e2e/panel/billing-flows.spec.ts` y, en el Hub,
+  `tests/e2e/hub-suspended.spec.ts`) citan la clave del registro (`BILLING-Gnn`) y llevan en su cabecera la
+  equivalencia con la de este WORKBOOK.
+- Tareas programadas (ECS, `saas-cron`): `manage.py audit_tax_rules` (BILLING-F04) y
+  `manage.py retax_subscriptions` (BILLING-F02, BILLING-F06) salen con error si dejan algo por hacer, que es lo
+  que la alarma `task_failed` avisa al equipo; programarlas cada día es del repo de infraestructura.
 
 ## Lo que NO hace, a propósito
 
