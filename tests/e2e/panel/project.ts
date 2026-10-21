@@ -2,6 +2,9 @@
 // `manage.py runserver` serves it in development, its assets from Vite on :5174 (`VITE_DEV_PORT` moves it,
 // for Django and Vite alike). DEBUG on: the SPA's dev shell, and `demo_seed` refuses to run without it.
 //
+// Its ports, its database and its mail folder are the run's stack's (stack.ts): today's (:8012, the Hub at
+// :8019, `.env`'s `saas`, `.artifacts/panel/mail/`) unless E2E_SAAS_PORT moves them, for a second run at once.
+//
 // Django is the panel's own, on :8012, never reused: another session's runserver on :8001 reloads on
 // every `.py` another session saves (a run lost its server mid-spec) and calls whatever Hub runs on
 // :8000, whose answers (a refusal, a database provisioned for a throwaway business) are not the
@@ -12,25 +15,37 @@
 // backend), where the specs read the links (`waitForMail`). Vite is reused when it is up (it only
 // serves the files), but only when it serves this checkout: globalSetup checks it (`assertViteOfThisTree`),
 // since another tree's Vite on the port (a worker's SaaS of main) would have the specs test its frontend.
-// Playwright stops what it started at the end, never what it reused.
+// Playwright stops what it started at the end, never what it reused. A stack beside the shared one never
+// reuses it: a second run of the same checkout on the same port would lose it when the first one ends.
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type { PlaywrightTestConfig, Project } from '@playwright/test';
 
 import { djangoEnv } from '../django-env';
+import { STACK, type Stack } from '../stack';
 
-export const PANEL_URL = 'http://localhost:8012';
+export const PANEL_URL = `http://localhost:${STACK.panelPort}`;
 
-/** Where the panel's Django writes the mails it sends (`tests/e2e/.artifacts/panel/mail/`, ignored by git). */
-export const PANEL_MAIL_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '.artifacts', 'panel', 'mail');
+/**
+ * Where the panel's Django of `stack` writes the mails it sends (`tests/e2e/.artifacts/panel/mail/`, ignored by
+ * git; `mail-<E2E_SAAS_PORT>/` beside the shared stack): two runs reading one folder would take each other's
+ * sign-in codes, sent to the same seeded accounts.
+ */
+export function panelMailDir(stack: Stack): string {
+  const panel = join(dirname(fileURLToPath(import.meta.url)), '..', '.artifacts', 'panel');
+  return join(panel, stack.shared ? 'mail' : `mail-${stack.base}`);
+}
+
+/** This run's. */
+export const PANEL_MAIL_DIR = panelMailDir(STACK);
 
 /**
  * The Hub's `/internal` as the panel's Django calls it (`HUB_INTERNAL_URL`). Nobody listens there,
  * so every call fails at once and stays owed, as with the Hub away, except while a spec plays the
  * Hub on it (`startHubDouble`).
  */
-export const HUB_DOUBLE_PORT = 8019;
+export const HUB_DOUBLE_PORT = STACK.hubDoublePort;
 
 type WebServer = Exclude<NonNullable<PlaywrightTestConfig['webServer']>, unknown[]>;
 
@@ -105,36 +120,40 @@ export const panelProject: Project = {
   use: { baseURL: PANEL_URL, locale: 'en-US' },
 };
 
-/** Django on :8012 and Vite on `vitePort` (:5174 by default), from saas-next/ (`saasDir`). */
-export function panelServers(saasDir: string, vitePort = VITE_PORT): WebServer[] {
+/** Django on `stack`'s panel port (:8012 by default) and Vite on `vitePort` (:5174 by default), from saas/ (`saasDir`). */
+export function panelServers(saasDir: string, vitePort = VITE_PORT, stack: Stack = STACK): WebServer[] {
   return [
     {
       name: 'panel-django',
-      command: 'uv run python manage.py runserver 127.0.0.1:8012 --novite --noreload',
+      command: `uv run python manage.py runserver 127.0.0.1:${stack.panelPort} --novite --noreload`,
       cwd: saasDir,
       // /healthz answers on any Host and never touches the database (base/health.py).
-      url: 'http://127.0.0.1:8012/healthz',
+      url: `http://127.0.0.1:${stack.panelPort}/healthz`,
       reuseExistingServer: false,
       timeout: 120_000,
-      // Playwright puts its own environment under these, DEBUG included (django-env.ts).
-      env: djangoEnv(true, {
-        HUB_INTERNAL_URL: `http://127.0.0.1:${HUB_DOUBLE_PORT}`,
-        EMAIL_BACKEND: 'django.core.mail.backends.filebased.EmailBackend',
-        EMAIL_FILE_PATH: PANEL_MAIL_DIR,
-        // Its dev shell and CSP point at this run's Vite.
-        VITE_DEV_PORT: String(vitePort),
-        // Every spec signs in from 127.0.0.1, past allauth's 30 sign-ins a minute when repeated
-        // (config/settings.py): only this server raises that one limit.
-        E2E_RELAX_LOGIN_RATE_LIMIT: 'True',
-      }),
+      // Playwright puts its own environment under these, DEBUG included, and the stack's database (django-env.ts).
+      env: djangoEnv(
+        true,
+        {
+          HUB_INTERNAL_URL: `http://127.0.0.1:${stack.hubDoublePort}`,
+          EMAIL_BACKEND: 'django.core.mail.backends.filebased.EmailBackend',
+          EMAIL_FILE_PATH: panelMailDir(stack),
+          // Its dev shell and CSP point at this run's Vite.
+          VITE_DEV_PORT: String(vitePort),
+          // Every spec signs in from 127.0.0.1, past allauth's 30 sign-ins a minute when repeated
+          // (config/settings.py): only this server raises that one limit.
+          E2E_RELAX_LOGIN_RATE_LIMIT: 'True',
+        },
+        stack,
+      ),
     },
     {
       name: 'panel-vite',
       command: 'pnpm run dev',
       cwd: saasDir,
       url: viteClientUrl(vitePort),
-      // Only this checkout's (globalSetup, `assertViteOfThisTree`).
-      reuseExistingServer: true,
+      // Only this checkout's (globalSetup, `assertViteOfThisTree`), and only on the shared stack.
+      reuseExistingServer: stack.shared,
       timeout: 60_000,
       env: { VITE_DEV_PORT: String(vitePort) },
     },
