@@ -539,7 +539,7 @@ Si falla: una devolución de una factura que aún no existe espera y Stripe vuel
 Implicados: el negocio de plataforma de ERPlora (emite la rectificativa)
 
 ### BILLING-F27 Lo que el personal de ERPlora puede hacer sobre el cobro de un cliente
-<!-- origen: old-saas:SAAS_DASHBOARD-F123 fi:saas/django-admin#admin-companyconfig-singleton fi:saas/django-admin#admin-invoice fi:saas/django-admin#admin-invoiceitem fi:saas/django-admin#admin-modulepurchase fi:saas/django-admin#admin-subscription fi:saas/django-admin#admin-subscription-2 fi:saas/hubs#admin-django-subscription-hub-subscriptions gh:saas#2529 gh:saas#2575 gh:saas#2568 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F123 fi:saas/django-admin#admin-companyconfig-singleton fi:saas/django-admin#admin-invoice fi:saas/django-admin#admin-invoiceitem fi:saas/django-admin#admin-modulepurchase fi:saas/django-admin#admin-subscription fi:saas/django-admin#admin-subscription-2 fi:saas/hubs#admin-django-subscription-hub-subscriptions gh:saas#2529 gh:saas#2575 -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin
@@ -600,7 +600,7 @@ Si falla: sin clave, ningún pago empieza y se dice que los pagos no están disp
 Implicados: ninguno
 
 ### BILLING-F31 Ver las aplicaciones de pago y su estado en cada negocio
-<!-- origen: old-saas:SAAS_DASHBOARD-F107 gh:saas#2504 gh:saas#2535 gh:saas#2589 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F107 gh:saas#2504 gh:saas#2535 -->
 Estado: hecho
 Actor: propietario
 Pantalla: Tienda

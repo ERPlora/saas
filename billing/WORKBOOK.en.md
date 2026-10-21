@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:c715b26e75a5e72de3a9aaf017aacdf41481a7840325da06ef8ba333fcbc0136 -->
+<!-- generated from WORKBOOK.md sha256:615cfe6b2ad58a65cfe66e6bc46f5d96b26ee5428227bef5203ea042fd996411 -->
 
 ## What it is for and who it is for
 
@@ -526,7 +526,7 @@ If it fails: a refund of an invoice that does not exist yet waits and Stripe sen
 Involved: ERPlora's platform business (issues the corrective invoice)
 
 ### BILLING-F27 What ERPlora staff can do about a customer's billing
-<!-- origen: old-saas:SAAS_DASHBOARD-F123 fi:saas/django-admin#admin-companyconfig-singleton fi:saas/django-admin#admin-invoice fi:saas/django-admin#admin-invoiceitem fi:saas/django-admin#admin-modulepurchase fi:saas/django-admin#admin-subscription fi:saas/django-admin#admin-subscription-2 fi:saas/hubs#admin-django-subscription-hub-subscriptions gh:saas#2529 gh:saas#2575 gh:saas#2568 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F123 fi:saas/django-admin#admin-companyconfig-singleton fi:saas/django-admin#admin-invoice fi:saas/django-admin#admin-invoiceitem fi:saas/django-admin#admin-modulepurchase fi:saas/django-admin#admin-subscription fi:saas/django-admin#admin-subscription-2 fi:saas/hubs#admin-django-subscription-hub-subscriptions gh:saas#2529 gh:saas#2575 -->
 Status: done
 Actor: ERPlora staff
 Screen: Admin
@@ -587,7 +587,7 @@ If it fails: without a key, no payment starts and it says payments are not avail
 Involved: none
 
 ### BILLING-F31 See the paid apps and their state in each business
-<!-- origen: old-saas:SAAS_DASHBOARD-F107 gh:saas#2504 gh:saas#2535 gh:saas#2589 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F107 gh:saas#2504 gh:saas#2535 -->
 Status: done
 Actor: owner
 Screen: Store
