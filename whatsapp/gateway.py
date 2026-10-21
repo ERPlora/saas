@@ -100,7 +100,9 @@ def deliver(hub_ids=None, *, limit: int = 50) -> dict[str, int]:
 
 
 def _push(delivery) -> tuple[str, str]:
-    if delivery.kind == "status" and not delivery.body.get("client_message_id"):
+    if delivery.waits_for == "message":
+        return "retry", "The owner's reply it is about has not reached the Hub yet."
+    if delivery.waits_for == "key":
         if delivery.received_at < timezone.now() - STATUS_KEY_WAIT:
             return "drop", ""
         return "retry", "No message the Hub sent has this id yet."

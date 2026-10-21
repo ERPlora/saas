@@ -185,9 +185,10 @@ Steps:
 1. A customer writes to the business's number (or the owner replies from the phone, or the history arrives on connecting): Meta reports it to erplora.com, which checks the notice is Meta's and keeps it for the business of that number.
 2. erplora.com hands it to the Hub at once; if the Hub is away or does not have the inbox switched on, it tries again with a wait that grows up to one hour, every minute while something is left.
 3. A photo, a voice note or a document arrive as an erplora.com link that only a person of the business opens with their session; the file comes from Meta at that moment and is not kept.
+4. The status of a message of the business ("Delivered", "Read", "Not delivered") reaches the inbox: that of one sent from the Hub, once erplora.com knows which it is; that of a reply of the owner from the phone, after that reply.
 In: Meta's notices: messages, echoes from the phone, history, delivery statuses and template verdicts.
 Out: the message or the status in the Hub's inbox (`whatsapp.webhook.ingested`, `whatsapp.delivery.recorded`).
-If it fails: a notice without Meta's signature is refused and not kept; one of a number nobody has connected is discarded; if the Hub says the message is not valid, it is not retried and stays visible to staff; an attachment of another business, or one Meta no longer has, says "not available".
+If it fails: a notice without Meta's signature is refused and not kept; one of a number nobody has connected is discarded; the status of a message the Hub does not have is waited for ten minutes and discarded; if the Hub says the message is not valid, it is not retried and stays visible to staff; an attachment of another business, or one Meta no longer has, says "not available".
 Involved: the Hub's WhatsApp inbox
 
 ### WHATSAPP-F08 See the WhatsApp numbers in the admin

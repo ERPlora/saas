@@ -281,11 +281,17 @@ def delivery_claim(ctx: OperationContext, data: ClaimIn) -> ClaimOut:
         due = due.filter(hub_id__in=data.hub_ids)
     rows = list(due.order_by("received_at")[: data.limit])
     Delivery.objects.filter(pk__in=[row.pk for row in rows]).update(next_attempt_at=now + LEASE)
-    keys = _client_keys([row for row in rows if row.kind == Delivery.Kind.STATUS])
+    statuses = [row for row in rows if row.kind == Delivery.Kind.STATUS]
+    keys, replies = _client_keys(statuses), _phone_replies(statuses)
     return ClaimOut(
         deliveries=[
             ClaimedDelivery(
-                id=row.id, kind=row.kind, revision=row.revision, received_at=row.received_at, body=_door_body(row, keys)
+                id=row.id,
+                kind=row.kind,
+                revision=row.revision,
+                received_at=row.received_at,
+                body=_door_body(row, keys),
+                waits_for=_waits_for(row, keys, replies),
             )
             for row in rows
         ]
@@ -302,10 +308,38 @@ def _client_keys(statuses: list[Delivery]) -> dict[tuple[UUID, str], str]:
     return {(hub_id, wa_message_id): key for hub_id, wa_message_id, key in sends}
 
 
+def _phone_replies(statuses: list[Delivery]) -> dict[tuple[UUID, str], bool]:
+    """The owner's replies from the phone (Meta's echoes) erplora.com hands the Hub as the business's messages, by
+    WhatsApp id: whether the Hub took each. One the Hub refused (422) is not here: its status has nowhere to go."""
+    if not statuses:
+        return {}
+    replies = Delivery.objects.filter(
+        kind=Delivery.Kind.MESSAGE,
+        body__direction="outbound",
+        hub_id__in={row.hub_id for row in statuses},
+        wa_message_id__in={row.wa_message_id for row in statuses},
+    ).exclude(delivered_at__isnull=True, next_attempt_at__isnull=True)
+    return {
+        (hub_id, wa_message_id): delivered_at is not None
+        for hub_id, wa_message_id, delivered_at in replies.values_list("hub_id", "wa_message_id", "delivered_at")
+    }
+
+
+def _waits_for(row: Delivery, keys: dict[tuple[UUID, str], str], replies: dict[tuple[UUID, str], bool]) -> str:
+    """What a status still needs before door 2: nothing with the Hub's key, or for a reply the Hub took (it keeps
+    those without a key of its own); the reply itself while it is on its way; else the key (a send's answer can be
+    stored a moment after Meta's status arrives)."""
+    if row.kind != Delivery.Kind.STATUS or (row.hub_id, row.wa_message_id) in keys:
+        return ""
+    taken = replies.get((row.hub_id, row.wa_message_id))
+    return "key" if taken is None else "" if taken else "message"
+
+
 def _door_body(row: Delivery, keys: dict[tuple[UUID, str], str]) -> dict:
     body = {"hub": row.hub.slug, **row.body}
     if row.kind == Delivery.Kind.STATUS:
-        body["client_message_id"] = keys.get((row.hub_id, row.wa_message_id), "")
+        if (row.hub_id, row.wa_message_id) in keys:
+            body["client_message_id"] = keys[(row.hub_id, row.wa_message_id)]
     elif body.get("media") is not None:
         body["media"] = {"url": media_url(row.id), **body["media"]} if row.media_id else None
     return body

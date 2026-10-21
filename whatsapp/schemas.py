@@ -45,6 +45,11 @@ class ClaimedDelivery(Schema):
     revision: int
     received_at: datetime
     body: dict = Field(description="The door's body, ``hub`` included.")
+    waits_for: Literal["", "key", "message"] = Field(
+        "",
+        description="A status not ready for door 2: the Hub's key of its message (``key``), or its message, still "
+        "on its way to the Hub (``message``: the owner's reply from the phone).",
+    )
 
 
 class ClaimOut(Schema):
