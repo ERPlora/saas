@@ -102,8 +102,9 @@ lista viva se refresca); ningún rol tiene su permiso y en el admin solo las ve 
   (`forget_trusted_browsers`, portado de `_invalidate_mfa_trust`) los vuelve a crear con otro id y los mismos
   datos y fechas: la app y los códigos siguen valiendo; `_follow_new_authenticator_ids` mueve los registros de
   esta sesión a los ids nuevos para que no pierda lo que probó. No hay lista de navegadores: allauth no guarda
-  nada en el servidor. La página responde la etapa con `auth.mfaTrust` del SDK (ui#16); un 409 (ninguna entrada
-  espera la pregunta) lee la sesión. **Personal**: con el interruptor encendido,
+  nada en el servidor. La página responde la etapa con `auth.mfaTrust` del SDK (ui#16); sin entrada esperando la
+  pregunta allauth responde 401 sin flujo pendiente (nunca 409), y la página lee la sesión: dentro desde otra
+  pestaña → sigue; caducada → la entrada. **Personal**: con el interruptor encendido,
   `admin_has_permission` (`admin.site.has_permission`, en `config/urls.py`) exige un TOTP (los códigos de
   recuperación solos no) y `admin_login` lleva al personal sin él a `/2fa?next=<ruta del admin>`, que ofrece
   «Continue» cuando la app está activa; el salto `hub-admin` lo exige siempre (`_needs_second_factor`).

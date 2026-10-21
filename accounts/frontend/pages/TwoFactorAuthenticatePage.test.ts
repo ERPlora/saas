@@ -284,14 +284,36 @@ describe('TwoFactorAuthenticatePage: «Trust this browser for 14 days»', () => 
     expect(assign).toHaveBeenCalledExactlyOnceWith('/launch');
   });
 
-  it('goes on with the session when no login waits for the question any more (409: another tab answered it)', async () => {
-    const server = fakeAllauth(answers(() => json(409, { status: 409 })));
+  // allauth's answer when no login waits for the question (another tab answered it, or the login expired): a 401
+  // without a pending flow, never a 409 (measured on the SaaS: `is_authenticated` null, signed in or not).
+  const noLoginWaiting: Answer = () =>
+    json(401, { status: 401, data: { flows: [{ id: 'login' }] }, meta: { is_authenticated: null } });
+
+  it('goes on when another tab already answered it (401 without a waiting login, and the session is signed in)', async () => {
+    const server = fakeAllauth({
+      'GET /auth/session': [pendingSecondFactor, signedIn],
+      'POST /auth/2fa/authenticate': pendingTrust,
+      'POST /auth/2fa/trust': noLoginWaiting,
+    });
     const { wrapper, verify } = await mountPage();
     await verify('654321', { trust: true });
     expect(server.callsTo('POST /auth/2fa/trust').map((c) => c.body)).toEqual([{ trust: true }]);
     expect(server.callsTo('GET /auth/session')).toHaveLength(2);
     expect(wrapper.find('.non-field-error').exists()).toBe(false);
     expect(assign).toHaveBeenCalledExactlyOnceWith('/launch');
+  });
+
+  it('goes back to the sign-in, keeping next, when the waiting login is gone (401, and the session is anonymous)', async () => {
+    fakeAllauth({
+      'GET /auth/session': [pendingSecondFactor, anonymous],
+      'POST /auth/2fa/authenticate': pendingTrust,
+      'POST /auth/2fa/trust': noLoginWaiting,
+    });
+    const { router, verify } = await mountPage({ path: '/2fa/authenticate?next=%2Faccount' });
+    await verify('654321');
+    expect(router.currentRoute.value.path).toBe('/launch');
+    expect(router.currentRoute.value.query).toEqual({ next: '/account' });
+    expect(assign).not.toHaveBeenCalled();
   });
 
   it('takes the session the answer gives, without asking for it again', async () => {

@@ -13,7 +13,8 @@
 // same «Verify», as Google's and Microsoft's «Don't ask again on this device». A right code leaves the login waiting
 // for that answer (allauth's `mfa_trust` stage); the page gives it at once (`auth.mfaTrust`) and follows the session it
 // answers. Should the answer get lost (or the page be reloaded meanwhile), the page asks only the question, without
-// the code; with no login waiting for it any more (409: another tab answered), the session says what comes next.
+// the code. With no login waiting for it any more, allauth answers it as the code: a 401 without a pending flow (never a
+// 409), and the session says whether another tab finished the sign-in (→ on) or the login expired (→ the sign-in).
 import { ApiError, createAllauthClient, type AuthState, type FieldErrors, useLiveClient } from '@erplora/ui/sdk';
 import { ionIconSrc } from '@erplora/ui/shell';
 import { IonButton, IonCheckbox, IonIcon } from '@ionic/vue';
@@ -65,16 +66,6 @@ function follow(state: AuthState): boolean {
   return true;
 }
 
-/** The answer to «Trust this browser»: the session it leaves, or the session as it is when no login waits for it. */
-async function answerTrust(answer: boolean): Promise<AuthState> {
-  try {
-    return await auth.mfaTrust(answer);
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 409) return auth.getSession();
-    throw error;
-  }
-}
-
 onMounted(async () => {
   document.title = `${t('accounts.twoFactor.title')} - ERPlora Cloud`;
   try {
@@ -92,7 +83,8 @@ async function submit(): Promise<void> {
     let state = step.value === 'code' ? await auth.mfaAuthenticate(code.value) : undefined;
     if (state === undefined || (!state.authenticated && state.pendingFlow === TRUST_FLOW)) {
       step.value = 'trust';
-      state = await answerTrust(trust.value);
+      state = await auth.mfaTrust(trust.value);
+      if (!state.authenticated && state.pendingFlow !== TRUST_FLOW) state = await auth.getSession();
     } else if (!state.authenticated && state.pendingFlow !== PENDING_FLOW) state = await auth.getSession();
     if (!follow(state)) failure.value = t('accounts.login.failed');
   } catch (error) {
