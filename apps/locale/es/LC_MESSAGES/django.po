@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: saas-next\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-13 22:40+0200\n"
+"POT-Creation-Date: 2026-10-21 09:02+0200\n"
 "PO-Revision-Date: 2026-10-13 22:40+0200\n"
 "Last-Translator: ERPlora\n"
 "Language-Team: Spanish\n"
@@ -15,6 +15,15 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: admin.py:73
+#, python-format
+msgid ""
+"%(business)s has the module %(module)s: take it off sale instead (untick "
+"«active»)."
+msgstr ""
+"%(business)s tiene el módulo %(module)s: quítalo de la venta en su lugar "
+"(desmarca «activo»)."
 
 #: apps.py:18
 msgid "Apps"
@@ -54,7 +63,8 @@ msgstr "Escribe la etiqueta de una app del Hub (inventory, whatsapp_inbox…)."
 
 #: models.py:80
 msgid "The label of the paid app in the Hub, as the catalog lists it."
-msgstr "La etiqueta de la app de pago en el Hub, tal como la lista el catálogo."
+msgstr ""
+"La etiqueta de la app de pago en el Hub, tal como la lista el catálogo."
 
 #: models.py:83
 msgid "tier"
@@ -121,12 +131,12 @@ msgstr ""
 "La app «%(slug)s» es gratuita: solo una app de pago (premium) se vende como "
 "módulo."
 
-#: queries.py:103
+#: queries.py:115
 #, python-format
 msgid "There is no app “%(id)s” in the catalog."
 msgstr "No hay ninguna app «%(id)s» en el catálogo."
 
-#: queries.py:186
+#: queries.py:198
 #, python-format
 msgid "The app “%(id)s” has no documentation yet."
 msgstr "La app «%(id)s» aún no tiene documentación."

@@ -513,3 +513,29 @@ def test_known_verticals_is_the_sorted_union_of_every_app(catalog):
 
 def test_no_app_no_vertical():
     assert queries.known_verticals() == []
+
+
+class TestCardsOf:
+    """``cards_of``: the cards of the apps of some ids, listed or retired, for another app of the SaaS that must
+    name an app it still sells or bills (billing's Store, BILLING-G61, saas#2589); the catalog's own rules
+    (language, cleaned icon), never its model."""
+
+    def test_it_gives_the_card_of_each_known_id_in_the_language_retired_ones_too(self):
+        make_app("inventory", name_es="Inventario", summary_es="El stock al día.", listed=False, premium=True)
+        make_app("loyalty", name_es="Fidelización")
+
+        cards = queries.cards_of(["inventory", "loyalty", "unknown"], "es")
+
+        assert set(cards) == {"inventory", "loyalty"}
+        assert (cards["inventory"]["name"], cards["inventory"]["summary"]) == ("Inventario", "El stock al día.")
+        assert cards["inventory"]["icon_svg"] == CUBE_SVG
+
+    def test_any_other_language_is_english(self):
+        make_app("inventory", name_en="Inventory")
+
+        assert queries.cards_of(["inventory"], "fr-FR")["inventory"]["name"] == "Inventory"
+
+    def test_an_unusable_icon_is_the_fallback(self):
+        make_app("inventory", icon_svg="<script>alert(1)</script>")
+
+        assert queries.cards_of(["inventory"], "en")["inventory"]["icon_svg"] == FALLBACK_ICON_SVG

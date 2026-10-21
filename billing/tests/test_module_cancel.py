@@ -132,6 +132,23 @@ class TestCancellingAModule:
         with pytest.raises(NotFound):
             cancel(owner, paid, "nothing")
 
+    def test_a_module_taken_off_sale_is_still_cancelled(
+        self, shop, owner, inventory, stripe_double
+    ):
+        """BILLING-G66, saas#2589: taking a module off sale stops new purchases, never the charge of the
+        businesses that have it, so they must still be able to stop paying it."""
+        paid = pay(shop, modules=["inventory"])
+        inventory.is_active = False
+        inventory.save()
+        stripe_double.answer(
+            "subscriptions.retrieve", subscription(items=[PLAN, INVENTORY])
+        )
+        stripe_double.answer("subscriptions.update", subscription(items=[PLAN]))
+
+        cancel(owner, paid)
+
+        assert int(bought(shop).valid_until.timestamp()) == MONTH_END
+
 
 class TestKeepingAModule:
     def cancelled(self, shop, days=10):
@@ -170,6 +187,19 @@ class TestKeepingAModule:
         paid = self.cancelled(shop, days=-1)
 
         refused("billing.module_ended", lambda: keep(owner, paid))
+
+        assert stripe_double.calls == []
+
+    def test_a_module_off_sale_is_not_kept(
+        self, shop, owner, inventory, stripe_double
+    ):
+        """BILLING-G66, saas#2589: a module no longer sold works until its cancellation ends, and is not
+        sold again by undoing the cancellation: the Store says so instead of offering «Keep»."""
+        paid = self.cancelled(shop)
+        inventory.is_active = False
+        inventory.save()
+
+        refused("billing.module_off_sale", lambda: keep(owner, paid))
 
         assert stripe_double.calls == []
 

@@ -44,6 +44,74 @@ def subscriptions(user, language="en") -> list[dict]:
     ).model_dump(mode="json")["rows"]
 
 
+class TestTheApiOfSubscriptions:
+    """BILLING-G02 (the old DRF list «filtered by status» and «the detail of one»): the same rows, filtered by
+    business (one business's subscription) and by status, and open to an integration's key with ``billing.read``
+    as the invoices are."""
+
+    def test_one_business_s_subscription(self, owner, shop, plans):
+        pay(shop)
+        other = pay(create_business(owner, name="Café Central"), sub_id="sub_2", customer="cus_2")
+
+        rows = queries.subscription_list(ctx_for(owner), SubscriptionListIn(hub_id=other.id)).model_dump(mode="json")
+
+        assert [row["business"]["name"] for row in rows["rows"]] == ["Café Central"]
+        assert rows["total"] == 1
+
+    def test_by_status(self, owner, shop, plans):
+        pay(shop)
+        pay(create_business(owner, name="Café Central"), sub_id="sub_2", customer="cus_2", status="past_due")
+
+        rows = queries.subscription_list(ctx_for(owner), SubscriptionListIn(status="past_due")).model_dump(mode="json")
+
+        assert [row["business"]["name"] for row in rows["rows"]] == ["Café Central"]
+
+    def test_another_account_s_business_is_never_there(self, shop, make_user):
+        pay(shop)
+        stranger = make_user("stranger@example.com")
+
+        rows = queries.subscription_list(ctx_for(stranger), SubscriptionListIn(hub_id=shop.id)).model_dump(mode="json")
+
+        assert rows["rows"] == []
+
+    def test_an_unknown_status_is_refused_at_the_route(self, client, owner, shop):
+        client.force_login(owner)
+
+        response = client.get("/api/billing/subscriptions?status=nonsense", HTTP_HOST="localhost:8001")
+
+        assert response.status_code == 422
+
+    def key(self, user, *scopes):
+        from accounts.models import ApiKey
+
+        secret, prefix, key_hash = ApiKey.new_secret()
+        ApiKey.objects.create(user=user, name="gestoría", prefix=prefix, key_hash=key_hash, scopes=list(scopes))
+        return secret
+
+    def by_key(self, secret, **params):
+        from django.test import Client
+
+        return Client(enforce_csrf_checks=True).get(
+            "/api/billing/subscriptions", params, HTTP_HOST="localhost:8001", HTTP_AUTHORIZATION=f"Bearer {secret}"
+        )
+
+    def test_an_integration_reads_it_with_its_key(self, owner, shop, plans, make_user):
+        pay(shop)
+        pay(create_business(make_user("stranger@example.com"), name="Ajeno"), sub_id="sub_2", customer="cus_2")
+
+        response = self.by_key(self.key(owner, "billing.read"), hub_id=str(shop.id))
+
+        assert response.status_code == 200
+        assert [row["business"]["name"] for row in response.json()["rows"]] == [shop.name]
+
+    def test_a_key_without_billing_read_reads_nothing(self, owner, shop):
+        pay(shop)
+
+        response = self.by_key(self.key(owner, "hubs.read"))
+
+        assert (response.status_code, response.json()["error"]["code"]) == (403, "api_key_missing_scope")
+
+
 class TestWhichRows:
     def test_a_visitor_sees_nothing(self):
         from django.test import Client
@@ -132,6 +200,21 @@ class TestTheRow:
         [row] = subscriptions(owner)
 
         assert row["modules"][0]["valid_until"] is not None
+        assert row["next_invoice"]["total_cents"] == 3629
+
+    def test_a_module_whose_cancellation_ended_is_not_listed(
+        self, owner, shop, inventory
+    ):
+        # BILLING-G67: once its paid period is over the module is gone from the business, as in the
+        # snapshot the Hub gets and in the store, which sells it again.
+        pay(shop, modules=["inventory"])
+        shop.subscription.items.filter(module_slug="inventory").update(
+            valid_until=timezone.now() - timedelta(days=1)
+        )
+
+        [row] = subscriptions(owner)
+
+        assert row["modules"] == []
         assert row["next_invoice"]["total_cents"] == 3629
 
     def test_an_annual_plan_is_priced_by_the_year(self, owner, shop):

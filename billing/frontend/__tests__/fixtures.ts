@@ -115,6 +115,10 @@ export function storeModule(slug: string, monthly: number, extra: Partial<StoreM
     owned: false,
     source: null,
     valid_until: null,
+    on_sale: true,
+    name: slug,
+    summary: '',
+    icon_svg: '',
     ...extra,
   };
 }
