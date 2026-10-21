@@ -194,15 +194,16 @@ class TestUserPreferences:
     """Account → Preferences (plan 2026-10-13 §3): the theme mode and the mails; the language is the
     account's own column (``User.language``), which the mails and the jump to a hub already read."""
 
-    def test_defaults_follow_the_system_and_ask_before_marketing(self, ana):
+    def test_defaults_follow_the_system_and_send_business_notices(self, ana):
         preferences = UserPreferences.objects.create(user=ana)
 
-        assert (preferences.theme_mode, preferences.hub_alerts, preferences.marketing_emails) == (
-            "system",
-            True,
-            False,
-        )
+        assert (preferences.theme_mode, preferences.hub_alerts) == ("system", True)
         assert preferences.pk.version == 7
+
+    def test_no_switch_for_mails_erplora_never_sends(self):
+        """ACCOUNTS-F23: «ERPlora news» governed no mail. Its column stays until the contract step (accounts 0009
+        gives it a database default, so a new row is written without it), never read again."""
+        assert "marketing_emails" not in {field.name for field in UserPreferences._meta.get_fields()}
 
     def test_the_modes_are_the_shells(self):
         """The vocabulary of ``ThemeMode`` in packages/ui (shell/theme.ts): no mapping on the way."""

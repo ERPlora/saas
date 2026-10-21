@@ -305,12 +305,10 @@
         "language": "Idioma",
         "languageHint": "También el idioma de los correos que te enviamos.",
         "mails": "Avisos por correo",
-        "invoices": "Facturas y pagos",
-        "invoicesHint": "Siempre activos: son obligatorios.",
+        "invoices": "Seguridad, facturas y pagos",
+        "invoicesHint": "Siempre activos: códigos para entrar, avisos de seguridad, facturas, pagos y lo que te pide hacer algo.",
         "hubAlerts": "Avisos de mis negocios",
-        "hubAlertsHint": "Un negocio está listo, un pago está pendiente.",
-        "marketing": "Novedades de ERPlora",
-        "marketingHint": "Una vez al mes como mucho."
+        "hubAlertsHint": "Cuando un negocio tuyo está listo para abrir."
       },
       "keys": {
         "newTitle": "Nueva clave de API",

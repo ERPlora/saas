@@ -184,8 +184,15 @@ def preferences_of(user) -> dict[str, Any]:
         "theme_mode": preferences.theme_mode,
         "language": user.language,
         "hub_alerts": preferences.hub_alerts,
-        "marketing_emails": preferences.marketing_emails,
     }
+
+
+def receives_business_notices(user) -> bool:
+    """Whether ``user`` gets the business notices (Account → Preferences, ``hub_alerts``; on until turned off): the
+    mail that a business is ready (``hubs.emails.send_ready``). The mails that keep the account safe or its businesses
+    running ask nobody (ACCOUNTS-F23)."""
+    preferences = UserPreferences.objects.filter(user=user).values_list("hub_alerts", flat=True).first()
+    return True if preferences is None else preferences
 
 
 @operation(

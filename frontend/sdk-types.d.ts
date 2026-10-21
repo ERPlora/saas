@@ -437,7 +437,6 @@ export interface PreferencesOut {
   theme_mode: AccountThemeMode;
   language: AccountLanguage;
   hub_alerts: boolean;
-  marketing_emails: boolean;
 }
 
 /** `accounts.PreferencesUpdateIn`: only what is sent changes (each control saves on its own). */
@@ -445,7 +444,6 @@ export interface PreferencesUpdateIn {
   theme_mode?: AccountThemeMode;
   language?: AccountLanguage;
   hub_alerts?: boolean;
-  marketing_emails?: boolean;
 }
 
 /** `accounts.ProfileOut`: Account → Profile. `photo` is a data URL or null (the initials). */

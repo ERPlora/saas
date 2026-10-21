@@ -47,12 +47,12 @@ class PreferencesGetIn(StrictIn):
 
 class PreferencesOut(Schema):
     """Account → Preferences: the theme mode (``ThemeMode`` of the shell), the account's language and the
-    two mail switches («Invoices and payments» mails have none: they are always sent)."""
+    «Business notices» switch (the mail that a business is ready; security, invoices and payments have none:
+    they are always sent, ACCOUNTS-F23)."""
 
     theme_mode: ThemeMode
     language: Language
     hub_alerts: bool
-    marketing_emails: bool
 
 
 class PreferencesUpdateIn(StrictIn):
@@ -61,7 +61,6 @@ class PreferencesUpdateIn(StrictIn):
     theme_mode: ThemeMode | None = None
     language: Language | None = None
     hub_alerts: bool | None = None
-    marketing_emails: bool | None = None
 
 
 # --- Profile --------------------------------------------------------------------------------------

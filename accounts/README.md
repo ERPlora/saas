@@ -20,7 +20,8 @@ solo sobre la cuenta que llama. Ninguna está expuesta a claves de API.
 | `accounts.email.change` | `POST /api/accounts/email/change` | Código de 6 cifras al correo nuevo (o al propio, si no está verificado) |
 | `accounts.email.verify` | `POST /api/accounts/email/verify` | El código, en la misma sesión: `verified` y `attempts_left` (un código incorrecto no es error: 200 con `verified: false`); si es bueno, la cuenta pasa al correo nuevo, verificado, y se avisa al antiguo |
 | `accounts.photo.upload` / `.remove` | `POST /api/accounts/photo`, `…/photo/remove` | Foto (JPEG, PNG o WebP) limpia de metadatos |
-| `accounts.preferences.get` (viva) / `.update` | `GET`/`POST /api/accounts/preferences` | `theme_mode` (`system`/`light`/`dark`), `language` (`User.language`), `hub_alerts`, `marketing_emails` |
+| `accounts.preferences.get` (viva) / `.update` | `GET`/`POST /api/accounts/preferences` | `theme_mode` (`system`/`light`/`dark`), `language` (`User.language`), `hub_alerts` (avisos de mis negocios) |
+| `accounts.data.export` | `GET /api/accounts/export` | «Descargar mis datos» (RGPD art. 20, ACCOUNTS-F26): un JSON con la cuenta, preferencias, foto, direcciones, Google enlazado, sesiones, claves (sin secreto), sus negocios (`hubs.business.list`) y las facturas de ERPlora que ve (`billing.invoice.get`); nada de otra cuenta |
 | `accounts.session.list` (viva) | `GET /api/accounts/sessions` | Una página (`limit` ≤ 100, `offset`) de las sesiones vivas: `device` (código), `browser` + versión o `app_version`, `ip`, último uso, `is_current` (primero); `total` y `others` (las demás) cuentan todas |
 | `accounts.session.close` / `.close_others` | `POST /api/accounts/sessions/close`, `…/close_others` | Cierra una (la propia también: cierra la sesión) o todas las demás |
 | `accounts.browser_trust.get` | `GET /api/accounts/browser-trust` | `trusted_until`: hasta cuándo este navegador se salta el código de la app, o `null` (sin app, con `ACCOUNTS_MFA_ENABLED` apagado o con una huella de antes de otra contraseña o de dejar de confiar) |
@@ -136,9 +137,18 @@ lista viva se refresca); ningún rol tiene su permiso y en el admin solo las ve 
   tipo por los bytes, limita a 150 KB y 2048 px por lado, rechaza animaciones y quita EXIF, XMP, IPTC, textos y
   comentarios, también entre los barridos de un JPEG progresivo, y lo que sigue al final del JPEG (un JPEG
   conserva solo la orientación). El panel debe reducir la foto antes de enviarla.
-- **Preferencias**: solo el modo del tema y los dos avisos (la paleta, la moneda, el orden del menú y el modo
-  desarrollador no siguen: una paleta, se cobra en euros, ronda 17). El idioma es `User.language`, el que ya
+- **Preferencias**: solo el modo del tema y «Avisos de mis negocios» (la paleta, la moneda, el orden del menú y el
+  modo desarrollador no siguen: una paleta, se cobra en euros, ronda 17). El idioma es `User.language`, el que ya
   leen los correos y el salto al Hub; siempre tiene valor.
+- **Avisos por correo** (ACCOUNTS-F23): cada interruptor gobierna un correo que el SaaS manda de verdad.
+  `hub_alerts` es el correo «tu negocio está listo» (`hubs.emails.send_ready` pregunta a
+  `queries.receives_business_notices`). Sin interruptor, como GitHub y Stripe: códigos y avisos de seguridad,
+  facturas y pagos fallidos (`billing.emails`), el negocio eliminado con su fecha de recuperación y lo que pide
+  actuar (volver a conectar WhatsApp); las invitaciones y los traspasos van a quien los recibe. «Novedades de
+  ERPlora» (`marketing_emails`) no gobernaba ningún correo y sale (como el SaaS viejo, SAAS_DASHBOARD-F211): la
+  migración 0009 la quita del modelo y deja su columna con valor por defecto en la BD (expand/contract: las
+  tareas de la versión anterior aún la leen durante el despliegue); su `DROP COLUMN` es el paso de contrato, en
+  una versión posterior.
 
 ## Tests portados de ERPlora/saas (`origin/develop`)
 

@@ -73,7 +73,7 @@ export function profile(overrides: Partial<ProfileOut> = {}): ProfileOut {
 
 /** `accounts.preferences.get`. */
 export function preferences(overrides: Partial<PreferencesOut> = {}): PreferencesOut {
-  return { theme_mode: 'system', language: 'en', hub_alerts: true, marketing_emails: false, ...overrides };
+  return { theme_mode: 'system', language: 'en', hub_alerts: true, ...overrides };
 }
 
 /** A row of `accounts.session.list`. */

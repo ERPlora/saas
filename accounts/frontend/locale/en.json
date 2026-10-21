@@ -305,12 +305,10 @@
         "language": "Language",
         "languageHint": "Also the language of the mails we send you.",
         "mails": "Email notices",
-        "invoices": "Invoices and payments",
-        "invoicesHint": "Always on: they are required.",
-        "hubAlerts": "Notices about my businesses",
-        "hubAlertsHint": "A business is ready, a payment is pending.",
-        "marketing": "News from ERPlora",
-        "marketingHint": "Once a month at most."
+        "invoices": "Security, invoices and payments",
+        "invoicesHint": "Always on: sign-in codes, security notices, invoices, payments and anything that needs you to act.",
+        "hubAlerts": "Business notices",
+        "hubAlertsHint": "When a business of yours is ready to open."
       },
       "keys": {
         "newTitle": "New API key",

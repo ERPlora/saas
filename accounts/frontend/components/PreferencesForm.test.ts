@@ -1,6 +1,7 @@
 // Account → Preferences (mockups `account.html` «preferences»): appearance (system, light, dark: the shell's theme,
 // painted at once and kept in the account), language (the account's, which the mails and the jump to a business
-// read too) and the two mail switches («Invoices and payments» is always on). Each control saves on its own
+// read too) and the mail notices: «Security, invoices and payments» always on, «Business notices» a switch (the
+// mail that a business is ready); no «ERPlora news», a mail ERPlora never sends (ACCOUNTS-F23). Each control saves on its own
 // (`accounts.preferences.update`, only what changed) and says so; a refusal puts the control back. A failed load
 // is said with «Retry», never a skeleton for ever (audit 2026-10-14, R-08).
 import { readFileSync } from 'node:fs';
@@ -42,8 +43,12 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-async function setup(now: PreferencesOut = preferences(), api: (call: ApiCall) => Response | Promise<Response> = () => Response.json(now)) {
-  const s = await mountPanel(PreferencesForm, { api });
+async function setup(
+  now: PreferencesOut = preferences(),
+  api: (call: ApiCall) => Response | Promise<Response> = () => Response.json(now),
+  locale: 'en' | 'es' = 'en',
+) {
+  const s = await mountPanel(PreferencesForm, { api, locale });
   const stream = await s.live();
   await s.result(stream, 'accounts.preferences.get', now);
   return { ...s, stream };
@@ -51,7 +56,7 @@ async function setup(now: PreferencesOut = preferences(), api: (call: ApiCall) =
 
 describe('PreferencesForm', () => {
   it('shows the account’s preferences and paints its theme', async () => {
-    const s = await setup(preferences({ theme_mode: 'dark', hub_alerts: true, marketing_emails: false }));
+    const s = await setup(preferences({ theme_mode: 'dark', hub_alerts: true }));
     expect(ionProps(s.q('preferences-theme'), 'value')).toEqual({ value: 'dark' });
     expect(themeMode.value).toBe('dark');
     expect(document.documentElement.classList.contains('ion-palette-dark')).toBe(true);
@@ -63,7 +68,23 @@ describe('PreferencesForm', () => {
     });
     expect(ionProps(s.q('preferences-invoices'), 'checked', 'disabled')).toEqual({ checked: true, disabled: true });
     expect(ionProps(s.q('preferences-hub-alerts'), 'checked')).toEqual({ checked: true });
-    expect(ionProps(s.q('preferences-marketing'), 'checked')).toEqual({ checked: false });
+    expect(s.q('preferences-marketing')).toBeNull();
+  });
+
+  it('says which mails always go and what «Business notices» is (ACCOUNTS-F23)', async () => {
+    const s = await setup(preferences());
+    expect(s.q('preferences-mails')?.textContent).toContain('Security, invoices and payments');
+    expect(s.q('preferences-mails')?.textContent).toContain(
+      'Always on: sign-in codes, security notices, invoices, payments and anything that needs you to act.',
+    );
+    expect(s.q('preferences-mails')?.textContent).toContain('When a business of yours is ready to open.');
+    expect(s.q('preferences-mails')?.textContent).not.toContain('News from ERPlora');
+  });
+
+  it('says them in Spanish', async () => {
+    const s = await setup(preferences(), undefined, 'es');
+    expect(s.q('preferences-mails')?.textContent).toContain('Seguridad, facturas y pagos');
+    expect(s.q('preferences-mails')?.textContent).toContain('Cuando un negocio tuyo está listo para abrir.');
   });
 
   it('paints a theme at once and keeps it in the account', async () => {
@@ -90,11 +111,11 @@ describe('PreferencesForm', () => {
     expect(toastSuccess).toHaveBeenCalledWith('Preferencias guardadas');
   });
 
-  it('saves each mail switch on its own', async () => {
-    const s = await setup(preferences(), () => Response.json(preferences({ marketing_emails: true })));
-    await choose(s.q('preferences-marketing'), { checked: true });
+  it('saves «Business notices» on its own', async () => {
+    const s = await setup(preferences(), () => Response.json(preferences({ hub_alerts: false })));
     await choose(s.q('preferences-hub-alerts'), { checked: false });
-    expect(s.calls().map((c) => c.body)).toEqual([{ marketing_emails: true }, { hub_alerts: false }]);
+    expect(s.calls().map((c) => c.body)).toEqual([{ hub_alerts: false }]);
+    expect(toastSuccess).toHaveBeenCalledWith('Preferences saved');
   });
 
   it('says a refusal of a switch and puts it back', async () => {
