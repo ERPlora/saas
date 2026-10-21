@@ -518,6 +518,10 @@ msgstr "correo de facturación"
 msgid "same as the business"
 msgstr "igual que el negocio"
 
+#: models.py:412
+msgid "erased by"
+msgstr "se borra antes del"
+
 #: models.py:415 models.py:471
 msgid "billing profile"
 msgstr "datos de facturación"

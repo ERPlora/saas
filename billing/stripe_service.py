@@ -174,6 +174,11 @@ def update_customer(customer_id: str, params: dict) -> dict:
     return _call(client().v1.customers.update, customer_id, params=params)
 
 
+def delete_customer(customer_id: str) -> dict:
+    """Delete the customer of a payer whose account is gone: Stripe drops its payment methods; its invoices stay."""
+    return _call(client().v1.customers.delete, customer_id)
+
+
 def customer_tax_ids(customer_id: str) -> list[dict]:
     return _call(
         client().v1.customers.tax_ids.list, customer_id, params={"limit": 100}
@@ -319,6 +324,11 @@ def release_schedule(schedule_id: str) -> dict:
 
 def preview_invoice(params: dict) -> dict:
     return _call(client().v1.invoices.create_preview, params=params)
+
+
+def void_invoice(invoice_id: str) -> dict:
+    """Cancel an unpaid invoice for good: it can no longer be paid (Stripe sends ``invoice.voided``)."""
+    return _call(client().v1.invoices.void_invoice, invoice_id)
 
 
 def open_invoices(subscription_id: str) -> list[dict]:

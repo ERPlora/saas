@@ -325,6 +325,21 @@ def test_the_open_invoices_of_a_subscription(stripe_double):
     }
 
 
+def test_a_customer_is_deleted_by_its_id(stripe_double):
+    """A departed payer (ACCOUNTS-F27): Stripe removes the customer and its payment methods; its invoices stay."""
+    stripe_double.answer("customers.delete", {"id": "cus_1", "object": "customer", "deleted": True})
+
+    assert stripe_service.delete_customer("cus_1")["deleted"] is True
+    assert stripe_double.last("customers.delete").args == ("cus_1",)
+
+
+def test_an_unpaid_invoice_is_voided_by_its_id(stripe_double):
+    stripe_double.answer("invoices.void_invoice", invoice("in_7", status="void"))
+
+    assert stripe_service.void_invoice("in_7")["status"] == "void"
+    assert stripe_double.last("invoices.void_invoice").args == ("in_7",)
+
+
 def test_why_an_invoice_was_not_paid(stripe_double):
     stripe_double.answer(
         "invoice_payments.list", listing([invoice_payment("pi_9", invoice_id="in_1")])

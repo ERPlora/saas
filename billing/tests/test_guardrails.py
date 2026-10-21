@@ -49,10 +49,18 @@ def code_files() -> list[Path]:
     )
 
 
+def _stripe_sdk(node: ast.Attribute) -> bool:
+    """``client().v1.<service>.<method>``: a call to Stripe through ``stripe_service.client()``, not the ORM."""
+    root = node.value
+    while isinstance(root, ast.Attribute):
+        root = root.value
+    return isinstance(root, ast.Call) and isinstance(root.func, ast.Name) and root.func.id == "client"
+
+
 def database_touches(source: str) -> list[str]:
     found = []
     for node in ast.walk(ast.parse(source)):
-        if isinstance(node, ast.Attribute) and node.attr in DATABASE_ATTRIBUTES:
+        if isinstance(node, ast.Attribute) and node.attr in DATABASE_ATTRIBUTES and not _stripe_sdk(node):
             found.append(f"line {node.lineno}: .{node.attr}")
         elif isinstance(node, ast.Name) and node.id in DATABASE_NAMES:
             found.append(f"line {node.lineno}: {node.id}")
@@ -99,6 +107,9 @@ def test_the_scans_catch_their_positive():
     assert database_touches(
         "from django.db import transaction\nVatCheck.objects.all()\nrow.save()"
     )
+    assert database_touches("profile.delete()\nBillingProfile.objects.filter(pk=1).delete()")
+    # Stripe's SDK, reached through ``client()`` (``stripe_service.delete_customer``), is not the ORM.
+    assert database_touches("client().v1.customers.delete('cus_1')") == []
     assert other_databases(
         "Model.objects.using('other')\nconnections['x']\nqs.get(using='y')"
     )

@@ -26,4 +26,9 @@ class BillingConfig(LiveAppConfig):
 
     def ready(self):
         super().ready()
+        from accounts import signals as account_signals
         from billing import checks  # noqa: F401  (registers the deploy check of the Stripe key)
+        from billing import services
+
+        # The payers of a deleted account go once nothing can be charged to them (ACCOUNTS-F27).
+        account_signals.account_deleting.connect(services.payer_leaving, dispatch_uid="billing.account_deleting")
