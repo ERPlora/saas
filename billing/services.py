@@ -99,7 +99,7 @@ from hubs import emails as hub_emails
 from hubs import hub_client
 from hubs import queries as hub_queries
 from hubs import services as hub_services
-from hubs.models import Hub, HubMember, Plan, Subscription, SubscriptionItem
+from hubs.models import BillingProfile, Hub, HubMember, Plan, Subscription, SubscriptionItem
 from hubs.hub_client import HubRefused, HubUnavailable
 from hubs.schemas import ModuleRightIn, SubscriptionApplyIn
 
@@ -1068,24 +1068,7 @@ def ensure_customer(hub: Hub, *, test_clock: str | None = None) -> str:
     proved it, or it is national (Stripe reverse charges by the FORMAT of a number, saas#1479).
     ``test_clock`` attaches a new customer to a Stripe test clock (``billing.stripe_test_clocks``)."""
     profile = hub.billing_profile
-    owner = profile.owner or _owner_of(hub)
-    address = {
-        key: value
-        for key, value in (
-            ("line1", profile.billing_address),
-            ("city", profile.billing_city),
-            ("postal_code", profile.billing_postal_code),
-            ("country", profile.billing_country),
-        )
-        if value
-    }
-    params = {
-        "name": profile.billing_name or hub.name,
-        "email": profile.billing_email or getattr(owner, "email", ""),
-        "address": address,
-        "preferred_locales": [getattr(owner, "language", "") or settings.LANGUAGE_CODE],
-        "metadata": {"billing_profile_id": str(profile.id)},
-    }
+    params = _customer_params(hub, profile)
     with stripe_errors():
         if profile.stripe_customer_id:
             customer = stripe_service.update_customer(
@@ -1113,6 +1096,43 @@ def ensure_customer(hub: Hub, *, test_clock: str | None = None) -> str:
             profile.stripe_customer_id = customer
         _attach_cleared_tax_id(customer, profile)
     return customer
+
+
+def _customer_params(hub: Hub, profile) -> dict:
+    """What the payer's Stripe customer holds: the billing details, the language of its mails and the payer."""
+    owner = profile.owner or _owner_of(hub)
+    address = {
+        key: value
+        for key, value in (
+            ("line1", profile.billing_address),
+            ("city", profile.billing_city),
+            ("postal_code", profile.billing_postal_code),
+            ("country", profile.billing_country),
+        )
+        if value
+    }
+    return {
+        "name": profile.billing_name or hub.name,
+        "email": profile.billing_email or getattr(owner, "email", ""),
+        "address": address,
+        "preferred_locales": [getattr(owner, "language", "") or settings.LANGUAGE_CODE],
+        "metadata": {"billing_profile_id": str(profile.id)},
+    }
+
+
+def push_payer_to_stripe(profile_id) -> str:
+    """The billing details the owner saved, onto the payer's Stripe customer (BILLING-F01): what Stripe sends
+    (the page to authenticate a renewal, its receipts) and the Customer Portal show them, not the old ones.
+    ``updated`` · ``skipped`` (Stripe never saw this payer: the first checkout creates the customer with them,
+    ``ensure_customer``). Stripe failing raises (``stripe_errors``)."""
+    profile = BillingProfile.objects.select_related("owner").get(pk=profile_id)
+    hub = Hub.objects.filter(billing_profile=profile).order_by("pk").first()
+    if not profile.stripe_customer_id or hub is None:
+        return "skipped"
+    with stripe_errors():
+        stripe_service.update_customer(profile.stripe_customer_id, _customer_params(hub, profile))
+        _attach_cleared_tax_id(profile.stripe_customer_id, profile)
+    return "updated"
 
 
 # --- BILLING-F28: the Stripe prices pasted on a plan are the plan's (the staff, in the admin) ------------
@@ -2307,14 +2327,16 @@ def apply_live(hub_id, live: dict) -> None:
     _forget_applied_change(hub_id, live)
 
 
-def apply_state(hub: Hub, state: dict) -> None:
-    hub_services.subscription_apply(
+def apply_state(hub: Hub, state: dict) -> bool:
+    """Write ``state`` through ``hubs.subscription.apply``; whether anything changed."""
+    applied = hub_services.subscription_apply(
         hub_services.system_ctx_for(hub.id), SubscriptionApplyIn(hub_id=hub.id, **state)
     )
     if state.get("standing") in ("grace", "suspended"):
         # Whatever put the business in dunning (a failure, Stripe's ``unpaid``, the sweep), its payer is told
         # once, after the COMMIT (BILLING-F16); a mail that cannot leave is sent by the next ``sweep_unpaid``.
         transaction.on_commit(partial(_notify_quietly, hub.id), robust=True)
+    return applied.changed
 
 
 # --- The webhook: each Stripe event once, the live subscription applied ------------------------------
@@ -2359,6 +2381,18 @@ def finish_event(
         processing_since=None,
         processed_at=timezone.now(),
     )
+
+
+#: How long an event's row is kept (BILLING-F37): Stripe resends an event for 3 days at most and keeps it 30, so
+#: an older row never guards a delivery again.
+WEBHOOK_EVENT_RETENTION = timedelta(days=30)
+
+
+def purge_webhook_events() -> int:
+    """saas-cron, ``manage.py purge_webhook_events``: forget the events received more than
+    ``WEBHOOK_EVENT_RETENTION`` ago, processed or not. How many were deleted."""
+    deleted, _ = WebhookEvent.objects.filter(received_at__lt=timezone.now() - WEBHOOK_EVENT_RETENTION).delete()
+    return deleted
 
 
 def process_stripe_event(event: dict) -> str:
@@ -2783,6 +2817,102 @@ def subscription_deleted(obj: dict) -> str:
     return "processed"
 
 
+# --- saas-cron: manage.py sync_subscriptions (BILLING-F38) ----------------------------------------------
+
+#: The counts of a pass; ``missing`` and ``errors`` make the run fail after it (``task_failed``).
+SYNC_COUNTS = ("checked", "in_sync", "fixed", "drifted", "pending", "missing", "errors")
+#: What the log names when a subscription drifted (``hubs.subscription.apply`` decides what is written).
+DRIFT_FIELDS = (
+    "plan",
+    "billing_interval",
+    "status",
+    "stripe_subscription_id",
+    "current_period_start",
+    "current_period_end",
+    "cancel_at_period_end",
+    "trial_start",
+    "trial_end",
+)
+
+
+def _drift(subscription: Subscription, state: dict) -> list[str]:
+    """The fields where what Stripe says (``state``) and what erplora.com holds differ, bought modules too."""
+    held = {field: getattr(subscription, field) for field in DRIFT_FIELDS if field != "plan"}
+    held["plan"] = subscription.plan.slug
+    fields = [field for field in DRIFT_FIELDS if field in state and state[field] != held[field]]
+    bought = {
+        (item.module_slug, item.valid_until)
+        for item in subscription.items.filter(source=SubscriptionItem.Source.PURCHASE)
+    }
+    if {(right.module_slug, right.valid_until) for right in state["modules"]} != bought:
+        fields.append("modules")
+    return fields
+
+
+def sync_subscription(subscription: Subscription, *, apply: bool = True) -> str:
+    """Read the business's subscription from Stripe and write what it says, as a lost
+    ``customer.subscription.updated`` would have (``live_state``, BILLING-F21), under the business's lock.
+    ``in_sync`` · ``fixed`` · ``drifted`` (``apply=False``: nothing written) · ``pending`` (its first payment is
+    not done) · ``missing`` (Stripe does not know it: left as it is, for the team). Stripe not answering raises
+    (``stripe_service.StripeUnavailable``)."""
+    hub = subscription.hub
+    with holding(hub.id):
+        # Read inside the lock, as the webhook does: nothing changes the business between reading and writing.
+        try:
+            live = stripe_service.retrieve_subscription(subscription.stripe_subscription_id)
+        except stripe_service.StripeRefused as refused:
+            if refused.code != "resource_missing":
+                raise
+            logger.error(
+                "[BILLING] Stripe does not know subscription %s of hub %s",
+                subscription.stripe_subscription_id,
+                hub.id,
+                extra={"event": "billing.subscription_missing", "hub_id": str(hub.id)},
+            )
+            return "missing"
+        if live.get("status") in ("incomplete", ""):
+            return "pending"
+        held = Subscription.objects.select_related("plan").get(pk=subscription.pk)
+        state = live_state(hub, live)
+        fields = _drift(held, state)
+        changed = apply_state(hub, state)
+        if not apply:
+            # Everything the reading wrote (a card noted as changed included) goes back.
+            transaction.set_rollback(True)
+        elif changed:
+            _forget_applied_change(hub.id, live)
+    if not changed:
+        return "in_sync"
+    logger.warning(
+        "[BILLING] Subscription %s of hub %s drifted from Stripe: %s",
+        subscription.stripe_subscription_id,
+        hub.id,
+        ", ".join(fields) or "its standing",
+        extra={"event": "billing.subscription_drift", "hub_id": str(hub.id), "fields": fields},
+    )
+    return "fixed" if apply else "drifted"
+
+
+def sync_subscriptions(*, apply: bool = True) -> Counter:
+    """One pass of ``manage.py sync_subscriptions``: every subscription Stripe still bills (with its id), one at a
+    time; one business never stops the others."""
+    counts = Counter({key: 0 for key in SYNC_COUNTS})
+    for subscription in (
+        Subscription.objects.exclude(stripe_subscription_id="").select_related("hub").order_by("pk")
+    ):
+        counts["checked"] += 1
+        try:
+            counts[sync_subscription(subscription, apply=apply)] += 1
+        except Exception:  # noqa: BLE001 - one business never stops the pass; the next one reads it again
+            logger.exception(
+                "[BILLING] Subscription %s could not be read from Stripe",
+                subscription.stripe_subscription_id,
+                extra={"event": "billing.sync_failed", "hub_id": str(subscription.hub_id)},
+            )
+            counts["errors"] += 1
+    return counts
+
+
 def customer_updated(customer: dict) -> str:
     """The payer's default card changed (the Customer Portal): a declined card's failure becomes
     ``card_changed``, and «Pay» works again (mockups README §6.18). The card Billing shows
@@ -3004,9 +3134,20 @@ def _retax_schedule(hub: Hub, subscription: Subscription, schedule_id: str) -> s
 
 
 def retax_payer(profile_id) -> None:
-    """After the owner saves the billing details (on commit): retax every business this payer pays. A
-    failure is logged; the daily pass (``retax_subscriptions``) tries again."""
-    for hub in Hub.objects.filter(billing_profile_id=profile_id).order_by("pk"):
+    """After the owner saves the billing details (on commit): the payer's Stripe customer takes them
+    (BILLING-F01) and every business this payer pays is retaxed (BILLING-F02). A failure is logged and never
+    stops the other: the next checkout brings the customer up to date (``ensure_customer``), the daily pass
+    (``retax_subscriptions``) retaxes again."""
+    paid = list(Hub.objects.filter(billing_profile_id=profile_id).order_by("pk"))
+    try:
+        push_payer_to_stripe(profile_id)
+    except Exception:  # noqa: BLE001 - the save stands; the next checkout updates the customer
+        logger.exception(
+            "[BILLING] The Stripe customer of payer %s did not take the new billing details",
+            profile_id,
+            extra={"event": "billing.customer_push_failed", "hub_id": str(paid[0].id) if paid else ""},
+        )
+    for hub in paid:
         try:
             retax_subscription(hub)
         except Exception:  # noqa: BLE001 - the save stands; the daily pass retaxes it

@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:615cfe6b2ad58a65cfe66e6bc46f5d96b26ee5428227bef5203ea042fd996411 -->
+<!-- generated from WORKBOOK.md sha256:321e6d7614e82011fc3c8458d71ceb31c8e2d079b8333da64006995eddf3f5fc -->
 
 ## What it is for and who it is for
 
@@ -144,9 +144,11 @@ the owner, the button to upgrade or change it.
 | BILLING-F34 | End a paid app at the end of its period | partial |
 | BILLING-F35 | Take a paid app to another business | partial |
 | BILLING-F36 | See an invoice | done |
+| BILLING-F37 | Forget Stripe's notices older than 30 days | partial |
+| BILLING-F38 | Read the subscriptions again in Stripe every night and put right what drifted | partial |
 
 ### BILLING-F01 Say where the business is invoiced and with which tax ID
-<!-- origen: old-saas:SAAS_DASHBOARD-F90 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F90 fi:saas/orgs-users#informacion-de-facturacion-de-la-organizacion-ver-editar -->
 Status: done
 Actor: owner, paying account
 Screen: Secure payment, Billing › Payment details
@@ -155,10 +157,10 @@ Steps:
 2. Tap "Continue to payment": the details are saved and the payment goes on. The following times the dialog only says "Invoiced to …" with "Change".
 3. At any time, in **Billing › Payment details**, the "Billing details" card shows company name, tax ID, address, email and which businesses it pays, with "Edit details".
 4. When an EU VAT number of another country is typed, the window checks it in VIES and says "Checked in VIES: … The invoice goes without VAT", "VIES does not recognise this number: the invoice will carry VAT" or "VIES is not answering now: we check it again when invoicing".
-5. Tap "Save details": "Billing details saved". They apply to the next invoices; those already issued do not change.
+5. Tap "Save details": "Billing details saved". They apply to the next invoices and to what Stripe sends (the page to confirm a charge the bank wants authenticated, its receipts and its payment portal); the invoices already issued do not change.
 In: what the person types; the business's country and name if they choose to use them.
-Out: the business's billing details (shared by the businesses the same account pays) and the VIES check recorded; the change is announced (`hubs.billing_profile.updated`).
-If it fails: a Spanish postal code without five digits, a missing country or a tax ID that is not valid for its country are shown under their field and nothing is saved. After a transfer, if another account paid the business, the dialog says "Until now another account paid this business: say who pays from now on".
+Out: the business's billing details (shared by the businesses the same account pays), the VIES check recorded and, if the payer has ever paid, its customer record in Stripe up to date; the change is announced (`hubs.billing_profile.updated`).
+If it fails: a Spanish postal code without five digits, a missing country or a tax ID that is not valid for its country are shown under their field and nothing is saved. After a transfer, if another account paid the business, the dialog says "Until now another account paid this business: say who pays from now on". If Stripe does not answer, the details are saved anyway and Stripe gets them with the next payment from the panel.
 Involved: hubs (the business's and the payer's details)
 
 ### BILLING-F02 Work out the tax of a sale from where the payer is
@@ -252,12 +254,12 @@ If it fails: the same refusals as BILLING-F08.
 Involved: hubs (the sign-up and the business's page)
 
 ### BILLING-F08 Move a free business to a paid plan
-<!-- origen: old-saas:SAAS_DASHBOARD-F95 gh:saas#2527 pc:cloud/dashboard/hubs-pricing -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F95 gh:saas#2527 pc:cloud/dashboard/hubs-pricing fi:saas/hubs#pagina-de-planes-precios fi:saas/hubs#stripe-gestion-de-suscripciones-servicio-interno fi:saas/support/hubs#service-stripeservice -->
 Status: done
 Actor: owner
 Screen: Store, Secure payment
 Steps:
-1. In **Store › Plans**, with the business chosen at the top, the owner sees each plan with its price without VAT, its users and its devices, picks "Monthly" or "Annual" and taps "Upgrade to …".
+1. In **Store › Plans**, with the business chosen at the top, the owner sees each plan with its price without VAT, its users and its devices, picks "Monthly" or "Annual" (which says how much is saved) and taps "Upgrade to …".
 2. The secure payment opens: the billing details if they are missing and then Stripe's card form inside the dialog, titled "Upgrade to …" with "For … · renews every month" (or every year).
 3. Enter the card; if the bank asks for authentication, Stripe shows it in the same form.
 4. When done, "Paying…", the notice "… is now on …" and the business's page, whose Plan card changes as soon as Stripe confirms it. The business keeps working all the time.
@@ -267,21 +269,21 @@ If it fails: if the payment cannot be opened, "We could not open the secure paym
 Involved: hubs (the business's subscription), the business (receives its plan)
 
 ### BILLING-F09 Come back from the payment: confirmed, pending or closed
-<!-- origen: old-saas:SAAS_DASHBOARD-F93 old-saas:SAAS_DASHBOARD-F109 gh:saas#2566 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F93 old-saas:SAAS_DASHBOARD-F109 gh:saas#2566 fi:saas/hubs#paginas-de-resultado-de-pago-success-cancel fi:saas/public#paginas-de-resultado-de-pago-success-cancel -->
 Status: done
 Actor: owner
 Screen: Secure payment, Business summary
 Steps:
 1. When the payment is finished in Stripe's form, the dialog says "Paying…", closes the form, says "… is now on …" (or "… added to …: it turns on in a few seconds" for a module) and opens the business's page.
 2. The business's plan (or the app bought) changes when Stripe confirms the charge: if the payment method takes time to confirm, such as a SEPA direct debit, the business stays as it was until then and changes by itself, without reloading.
-3. If the person closes the dialog before paying, nothing is charged and they can open it again.
+3. If the person closes the dialog before paying, nothing is charged and they can open it again (BILLING-F10); the business stays as it was and nothing is deleted.
 In: the payment Stripe considers finished.
 Out: the same new plan that Stripe's notice leaves (BILLING-F19); the return and the notice never apply the same payment twice.
 If it fails: a payment that Stripe later considers failed closes that attempt without changing the plan; a payment for something else (a module) never changes the plan.
 Involved: the business (receives its plan)
 
 ### BILLING-F10 Retry a payment that was not finished
-<!-- origen: old-saas:SAAS_DASHBOARD-F94 gh:saas#2527 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F94 gh:saas#2527 fi:saas/hubs#reintento-de-pago-retry-payment -->
 Status: done
 Actor: owner
 Screen: Store, Secure payment
@@ -396,20 +398,20 @@ If it fails: "Paying…" blocks a second click; only the paying account of the b
 Involved: hubs (the business's status), the business (opens again)
 
 ### BILLING-F18 See, cancel or keep the business's plan through the API
-<!-- origen: old-saas:SAAS_DASHBOARD-F64 fi:saas/billing#api-rest-de-suscripciones-drf gh:saas#2529 gh:saas#2574 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F64 fi:saas/billing#api-rest-de-suscripciones-drf gh:saas#2529 gh:saas#2574 fi:saas/hubs#subscriptions-cancelar-reanudar-estado-stripe fi:saas/hubs#subscriptions-rest-listado-detalle-scoped-por-usuario fi:saas/support/billing-fiscal#serializer-subscriptionlistserializer-subscriptiondetailserializer -->
 Status: done
 Actor: owner, integration
 Screen: none
 Steps:
-1. With their session, the owner (or an integration of their account, with a Billing read key) asks for the list of subscriptions: one row per business Stripe charges, with plan, modules, next invoice and status. They can ask for only one business's or only those with one status.
+1. With their session, the owner (or an integration of their account, with a Billing read key) asks for the list of subscriptions: one row per business Stripe charges, with plan, modules, next invoice and status (the one Stripe gave in its last notice, BILLING-F21, or in the nightly pass, BILLING-F38). They can ask for only one business's or only those with one status.
 2. They ask to cancel the plan at the end of the period or to keep it, with the same rules as the screen.
 In: the account's session.
 Out: the same as BILLING-F13 and BILLING-F14.
-If it fails: a business that is not that account's is not found (filtering by it gives the empty list); keeping a plan with an unpaid invoice is refused; without a session, "You are not signed in".
+If it fails: a business that is not that account's is not found (filtering by it gives the empty list); keeping a plan with an unpaid invoice is refused; without a session, "You are not signed in". Those of every business are seen only by ERPlora staff, in the admin (BILLING-F27).
 Involved: none
 
 ### BILLING-F19 Receive and validate a notice from Stripe
-<!-- origen: old-saas:SAAS_DASHBOARD-F97 gh:saas#2530 gh:saas#2539 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F97 gh:saas#2530 gh:saas#2539 fi:saas/hubs#webhook-de-stripe-pagos-suscripciones fi:saas/support/billing-fiscal#modelo-webhookevent fi:saas/support/public-core-config#service-stripe_webhook-handlers-webhooks-py -->
 Status: done
 Actor: system
 Screen: none
@@ -420,7 +422,7 @@ Steps:
 4. If it is a payment, it looks at what it pays by the tag erplora.com put on it when opening it: one that is not ours is acknowledged without touching anything.
 5. It processes it by its type (sign-up, renewal, unpaid, end, refund) and records it as processed.
 In: the signed notice.
-Out: the notice's row with its type and its result, read-only in the admin.
+Out: the notice's row with its type and its result, read-only in the admin for 30 days (BILLING-F37).
 If it fails: an error while processing it is recorded and answered with an error, so that Stripe sends it again; the claim of a delivery that died halfway expires and the next one takes it over. Without the secret configured, Stripe receives "come back later".
 Involved: none
 
@@ -440,7 +442,7 @@ If it fails: if Stripe does not answer when reading the subscription again, noth
 Involved: the business (receives its status)
 
 ### BILLING-F21 Keep the plan in step with what Stripe says
-<!-- origen: old-saas:SAAS_DASHBOARD-F99 gh:saas#2530 gh:saas#2540 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F99 gh:saas#2530 gh:saas#2540 fi:saas/support/hubs#modelo-subscription-alias-hubsubscription -->
 Status: done
 Actor: system
 Screen: none
@@ -450,11 +452,11 @@ Steps:
 3. It saves plan, billing period, status, period and whether it is cancelled at the end of the period, also when the cancellation was made outside the panel.
 In: the notice of the changed subscription.
 Out: the business's subscription with what Stripe says (`hubs.subscription.changed`) and its plan sent to the business.
-If it fails: a price that sells no plan leaves the plan as it was, but the status, the period and the cancellation are saved anyway and an alarm stays; an unknown subscription is not read from Stripe.
+If it fails: a price that sells no plan leaves the plan as it was, but the status, the period and the cancellation are saved anyway and an alarm stays; an unknown subscription is not read from Stripe. A notice that never arrives is put right by the nightly pass (BILLING-F38).
 Involved: the business (receives its plan)
 
 ### BILLING-F22 See the invoices and download them
-<!-- origen: old-saas:SAAS_DASHBOARD-F117 fi:saas/billing#api-rest-de-facturas-drf fi:saas/billing#descarga-de-pdf-de-factura fi:saas/billing#exportar-facturas-a-csv fi:saas/billing#historial-de-compras-pagos fi:saas/billing#listado-de-facturas-invoices fi:saas/billing#redireccion-raiz-de-billing fi:saas/hubs#facturas-del-hub pc:cloud/dashboard/billing-invoices -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F117 fi:saas/billing#api-rest-de-facturas-drf fi:saas/billing#descarga-de-pdf-de-factura fi:saas/billing#exportar-facturas-a-csv fi:saas/billing#historial-de-compras-pagos fi:saas/billing#listado-de-facturas-invoices fi:saas/billing#redireccion-raiz-de-billing fi:saas/hubs#facturas-del-hub pc:cloud/dashboard/billing-invoices fi:saas/support/billing-fiscal#serializer-hubbasicserializer fi:saas/support/billing-fiscal#serializer-invoiceitemserializer fi:saas/support/billing-fiscal#serializer-invoicelistserializer-invoicedetailserializer fi:saas/support/billing-fiscal#service-invoicepdfgenerator-generate_invoice_pdf -->
 Status: done
 Actor: owner, paying account
 Screen: Billing › Invoices
@@ -464,14 +466,14 @@ Steps:
 3. Tap "Download PDF" on a row (or select several and "Download PDF (n)"), or "Download Excel" for the list of what is filtered, ready for the accountant.
 4. A credit note says "Credit note R1 · reason" and the invoice it corrects.
 5. "View invoice" opens its page (BILLING-F36).
-6. An integration of the account, with a Billing read key, reads the same list with the same filters, each invoice with its lines, its PDF and the spreadsheet.
+6. An integration of the account, with a Billing read key, reads the same list with the same filters, each invoice with its business, its lines, its VAT and who it is made out to, its PDF and the spreadsheet.
 In: the invoices the account paid and those of the businesses it owns.
-Out: the PDF of the issued invoice and the spreadsheet of what is filtered.
+Out: the PDF of the issued invoice, which ERPlora's platform business makes on each download with its VeriFactu QR (BILLING-F25), and the spreadsheet of what is filtered.
 If it fails: an invoice still being issued says "Issuing" and offers no PDF; if the invoice service does not answer, "The invoice service is not answering. Try again in a moment"; without invoices, "No invoices yet". An invoice of another account is not found.
 Involved: none
 
 ### BILLING-F23 See the subscriptions of each business
-<!-- origen: old-saas:SAAS_DASHBOARD-F118 fi:saas/billing#compras-de-modulos-purchases fi:saas/billing#suscripciones pc:cloud/dashboard/billing-purchases pc:cloud/dashboard/billing-subscriptions -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F118 fi:saas/billing#compras-de-modulos-purchases fi:saas/billing#suscripciones pc:cloud/dashboard/billing-purchases pc:cloud/dashboard/billing-subscriptions fi:saas/support/billing-fiscal#serializer-modulebasicserializer -->
 Status: done
 Actor: owner, paying account
 Screen: Billing › Subscriptions
@@ -484,7 +486,7 @@ If it fails: without paid businesses, "All your businesses are on Free" with "Se
 Involved: none
 
 ### BILLING-F24 Open Stripe's payment portal to change the card
-<!-- origen: old-saas:SAAS_DASHBOARD-F120 gh:saas#2554 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F120 gh:saas#2554 fi:saas/orgs-users#portal-de-facturacion-stripe fi:saas/support/orgs-users#service-organizationstripeservice -->
 Status: done
 Actor: paying account
 Screen: Billing › Payment details
@@ -498,7 +500,7 @@ If it fails: before the first payment there is nothing to change; if Stripe does
 Involved: none
 
 ### BILLING-F25 Issue ERPlora's invoice for a charge
-<!-- origen: old-saas:SAAS_DASHBOARD-F130 gh:saas#2527 gh:saas#2528 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F130 gh:saas#2527 gh:saas#2528 fi:saas/support/billing-fiscal#modelo-invoice fi:saas/support/billing-fiscal#modelo-invoiceitem fi:saas/support/billing-fiscal#service-create_hub_invoice fi:saas/support/billing-fiscal#task-generate_invoice_pdf_async-regenerate_all_invoice_pdfs -->
 Status: done
 Actor: system
 Screen: none
@@ -508,7 +510,7 @@ Steps:
 3. It sends it to ERPlora's platform business, which records it with VeriFactu and returns its status and its QR; when it issues it, the payer is told by email.
 In: Stripe's charge with its lines and the payer's details.
 Out: the invoice and its lines (`billing.invoice.recorded`), its tax status and the email.
-If it fails: if the platform business does not answer, the invoice stays "issuing" and is retried (after 15 minutes, then double each time, at most 6 hours); if it refuses it, the reason is saved and it is retried. An uncollected renewal is listed "Not collected", without a number, and is numbered when paid. With live keys, without a way to issue, nothing is charged.
+If it fails: if the platform business does not answer, the invoice stays "issuing" and is retried (after 15 minutes, then double each time, at most 6 hours); if it refuses it, the reason is saved and it is retried. An uncollected renewal is listed "Not collected", without a number, and is numbered when paid. A €0 charge makes no invoice, and the same charge notified several times makes only one. With live keys, without a way to issue, nothing is charged.
 Involved: ERPlora's platform business (issues the invoice)
 
 ### BILLING-F26 Refund a charge
@@ -526,7 +528,7 @@ If it fails: a refund of an invoice that does not exist yet waits and Stripe sen
 Involved: ERPlora's platform business (issues the corrective invoice)
 
 ### BILLING-F27 What ERPlora staff can do about a customer's billing
-<!-- origen: old-saas:SAAS_DASHBOARD-F123 fi:saas/django-admin#admin-companyconfig-singleton fi:saas/django-admin#admin-invoice fi:saas/django-admin#admin-invoiceitem fi:saas/django-admin#admin-modulepurchase fi:saas/django-admin#admin-subscription fi:saas/django-admin#admin-subscription-2 fi:saas/hubs#admin-django-subscription-hub-subscriptions gh:saas#2529 gh:saas#2575 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F123 fi:saas/django-admin#admin-companyconfig-singleton fi:saas/django-admin#admin-invoice fi:saas/django-admin#admin-invoiceitem fi:saas/django-admin#admin-modulepurchase fi:saas/django-admin#admin-subscription fi:saas/django-admin#admin-subscription-2 fi:saas/hubs#admin-django-subscription-hub-subscriptions gh:saas#2529 gh:saas#2575 fi:saas/support/billing-fiscal#command-seed_company_036 fi:saas/support/billing-fiscal#modelo-companyconfig -->
 Status: done
 Actor: ERPlora staff
 Screen: Admin
@@ -534,7 +536,7 @@ Steps:
 1. A person of ERPlora enters the admin with the SaaS account (email code and authenticator app).
 2. They see, read-only, the subscriptions and their lines, Stripe's notices and the payment attempts: what Stripe says is not edited here, it is changed in Stripe and arrives with its notice.
 3. On the businesses they can "Send the latest state to the business" and "Retry what the business still owes"; on the invoices, with their lines, "Send again to the platform business", "Send the invoice email again" and "Download the PDF" of any invoice already issued.
-4. They keep the promo codes, the VAT table, the tax policy and ERPlora's details; refunds and immediate cancellations are made in Stripe's dashboard.
+4. They keep the promo codes, the VAT table, the tax policy and ERPlora's details (born with those of the Modelo 036, and the ones VIES sees of who asks); refunds and immediate cancellations are made in Stripe's dashboard.
 5. A paid app some business has is not deleted from the catalog: the admin says which business has it and to take it off sale.
 In: the staff account with its role.
 Out: what its actions do; nothing that belongs to Stripe changes from the admin.
@@ -601,7 +603,7 @@ If it fails: "We could not load the prices" with "Retry"; without apps on sale, 
 Involved: apps (the name, the summary and the icon of each app)
 
 ### BILLING-F32 Subscribe a business to a paid app
-<!-- origen: old-saas:SAAS_DASHBOARD-F108 gh:saas#2566 gh:saas#2629 gh:saas#2639 gh:saas#2640 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F108 gh:saas#2566 gh:saas#2629 gh:saas#2639 gh:saas#2640 fi:saas/public#compra-de-un-modulo-stripe-embedded-checkout fi:saas/public#webhook-de-stripe-compras-de-modulos fi:saas/support/billing-fiscal#modelo-subscription fi:saas/support/public-core-config#modelo-modulepurchase fi:saas/support/public-core-config#service-send_module_purchase_email-send_vendor_sale_email-emails-py fi:saas/support/public-core-config#task-send_module_purchase_email_task-send_vendor_sale_email_task-tasks-py -->
 Status: done
 Actor: owner
 Screen: Store, Change plan, Secure payment
@@ -611,8 +613,8 @@ Steps:
 3. If the business is on Free, the secure payment opens with the app alone, as in BILLING-F08; an app has no trial days.
 4. Notice "… added to …: it turns on in a few seconds"; the card says "Activating… in …" and then "You have it". The app goes on the same monthly (or annual) invoice as the plan.
 In: the business, the app (only one on sale that the business does not have) and the business's period.
-Out: the app in the business's subscription (`billing.module.added`), its invoice (BILLING-F25) and the app sent to the business.
-If it fails: an app the business already has is not sold twice; a retired or unknown one is not sold; with an unpaid invoice, "Pay the pending invoice first"; if too much time went by, "The price was out of date: here it is again, check it before confirming"; a declined card adds nothing. With a payment method that takes time (SEPA direct debit), the app arrives when Stripe confirms the charge (BILLING-F09).
+Out: the app in the business's subscription (`billing.module.added`), its invoice (BILLING-F25), whose email is the confirmation of the purchase, and the app sent to the business.
+If it fails: an app the business already has is not sold twice; a retired or unknown one is not sold; a free one is not bought, it comes with every business; with an unpaid invoice, "Pay the pending invoice first"; if too much time went by, "The price was out of date: here it is again, check it before confirming"; a declined card adds nothing. With a payment method that takes time (SEPA direct debit), the app arrives when Stripe confirms the charge (BILLING-F09).
 Involved: hubs (the business's subscription), the business (receives the app)
 
 ### BILLING-F33 Cancel a paid app
@@ -672,3 +674,30 @@ In: an invoice of the account.
 Out: nothing.
 If it fails: an invoice of another account is not found; if it does not load, "We could not load this invoice" with "Retry"; one still being issued says its PDF will be there when it ends. In the app it is seen, but not paid.
 Involved: none
+
+### BILLING-F37 Forget Stripe's notices older than 30 days
+<!-- origen: fi:saas/support/billing-fiscal#task-cleanup_old_webhook_events -->
+Status: partial — it still has to be scheduled every night in the infrastructure: until then it does not run by itself
+Actor: system
+Screen: none
+Steps:
+1. Every night, erplora.com deletes the Stripe notices it received more than 30 days ago, processed or not.
+2. Those of the last 30 days stay: they are the ones Stripe can still send again and the ones the staff look at in the admin (BILLING-F27).
+In: the notices kept (BILLING-F19).
+Out: the notices older than 30 days deleted and, in the task's log, how many.
+If it fails: the next night deletes what was left. Stripe only sends a notice again for 3 days, so a deleted one is never processed twice.
+Involved: none
+
+### BILLING-F38 Read the subscriptions again in Stripe every night and put right what drifted
+<!-- origen: fi:saas/support/hubs#command-sync_subscriptions -->
+Status: partial — it still has to be scheduled every night in the infrastructure: until then it does not run by itself
+Actor: system
+Screen: none
+Steps:
+1. Every night, erplora.com reads again in Stripe the subscription of every business that pays, one by one.
+2. If something does not match (the plan, the period, a cancellation, a trial or an app changed in Stripe whose notice never arrived), it puts it right as that notice would have (BILLING-F21) and notes it for the team with what drifted.
+3. A subscription still waiting for its first payment is left for the next night; a business on Free is not read.
+In: the subscriptions Stripe charges.
+Out: each subscription as Stripe says (`hubs.subscription.changed` if anything changed) and its plan sent to the business.
+If it fails: a subscription Stripe does not know, or that could not be read, is not touched and the task ends with an error, which tells the team; a business that fails does not stop the others. It can run as a trial, writing nothing, to only see what drifted.
+Involved: hubs (the business's subscription), the business (gets its plan)

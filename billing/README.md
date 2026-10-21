@@ -55,7 +55,10 @@ pago); detalle en «Facturas de ERPlora (L3-C)».
   territorio con un pagador en `hubs.BillingProfile` tiene tipo. Sale con error en el primer problema (alarma
   `task_failed`); un territorio que solo cubre el respaldo es un aviso.
 - **Tipo de la suscripción viva** (`services.retax_subscription`, BILLING-F02/F06, saas#2293): al guardar los datos
-  de facturación (`hubs.billing_profile.update`, tras el COMMIT) y cada día (`manage.py retax_subscriptions`),
+  de facturación (`hubs.billing_profile.update`, tras el COMMIT, en `services.retax_payer`, que antes pone los
+  datos en el cliente de Stripe con `services.push_payer_to_stripe`, BILLING-F01: los mismos parámetros que
+  `ensure_customer`, nada si el pagador aún no es cliente; un fallo se anota `billing.customer_push_failed` y no
+  impide el recálculo) y cada día (`manage.py retax_subscriptions`),
   cada item de una suscripción `active`/`trialing`/`past_due` recibe los `TaxRate` que el motor da hoy, sin
   prorrateo. Quitar un tipo es `tax_rates: ""` (una lista vacía la descarta el SDK y Stripe deja el tipo viejo;
   comprobado contra la API de prueba). Con una bajada programada (`PlanChangeSchedule`), la primera factura del
@@ -159,7 +162,12 @@ Eventos a suscribir en Stripe: `checkout.session.completed`, `checkout.session.a
 en otra entrega, 409; fallo, 500 (Stripe reintenta). Siempre se lee la suscripción **viva** con el negocio
 bloqueado (el mismo orden de bloqueo que las operaciones: negocio y después `PaymentFailure`); si Stripe no
 contesta, **no se aplica nada**: 500 y Stripe reintenta. Una factura que llega antes que su
-`checkout.session.completed` encuentra el negocio por el `hub_id` de los metadatos de su suscripción. Un segundo
+`checkout.session.completed` encuentra el negocio por el `hub_id` de los metadatos de su suscripción. Las filas de
+`WebhookEvent` se olvidan a los 30 días (`manage.py purge_webhook_events`, BILLING-F37: Stripe solo reenvía 3 días).
+Un aviso que nunca llega lo corrige `manage.py sync_subscriptions [--dry-run]` (BILLING-F38): relee cada suscripción
+con id de Stripe, bajo el cerrojo del negocio, con el mismo `live_state` que el webhook, y escribe por
+`hubs.subscription.apply` solo si algo cambió (y anota `billing.subscription_drift` con los campos); una que Stripe
+no conoce (`resource_missing`) o no se pudo leer no se toca y hace fallar la pasada (`task_failed`). Un segundo
 checkout pagado para un negocio que ya paga no se aplica: esa suscripción se cancela al momento con el tiempo no
 usado como crédito, y queda un ERROR para soporte. `invoice.paid` además registra la factura de ERPlora (L3-C)
 con `vat.resolve_vat` + `clear_tax_id_for_stripe`: una venta sujeta sin impuesto es un ERROR
@@ -238,7 +246,8 @@ trata como ninguna (`UNKNOWN`: 503 `billing.payments_unavailable`, nunca un cobr
   `tax_behavior = exclusive` (no hay sincronización de productos: los ids se copian en el admin).
 - **aws**: `sweep_unpaid` ya corre cada hora (`sweep-unpaid-hourly` en `stacks/prod/scheduler.tf`); falta programar
   `retax_subscriptions` y `audit_tax_rules` una vez al día (APP-BILLING-1; mientras no estén, BILLING-F04 y
-  BILLING-F06 siguen `parcial`).
+  BILLING-F06 siguen `parcial`), y `sync_subscriptions` y `purge_webhook_events` cada noche (APP-BILLING-3;
+  mientras no estén, BILLING-F38 y BILLING-F37 siguen `parcial`).
 
 ## La Tienda (L2-D)
 
