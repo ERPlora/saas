@@ -162,6 +162,9 @@ lista viva se refresca); ningún rol tiene su permiso y en el admin solo las ve 
 - `dashboard/settings/tests`: `test_api` (17) y `test_views` (33) → `test_preferences` (solo modo, idioma y
   avisos); `test_theme_palette` (18) → solo el modo; `test_language_cache` (5) fuera (no hay caché: el idioma va
   en la fila de la cuenta); `test_language_unset_until_chosen` (9) fuera (`User.language` siempre tiene valor).
+- `dashboard/settings` «Descargar mis datos» (`export_data`) → `test_export` (ACCOUNTS-F26; sin lo del vendedor:
+  no hay marketplace); los avisos (SAAS_DASHBOARD-F211, cuyos interruptores no leía nadie) → `test_notices`
+  (ACCOUNTS-F23).
 - `auth/apikeys/tests` (80) → `test_models`, `test_api_keys`, `test_api_auth`, `test_admin`. Fuera: claves de
   hub y su gracia (hub-next), entorno `pre`, scopes de flota/vendedor y el script de emisión.
 

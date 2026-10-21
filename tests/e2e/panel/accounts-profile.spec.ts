@@ -348,7 +348,7 @@ test("ACCOUNTS-G111 (F26): «Download my data» saves a JSON with the account, i
   await page.goto("/account/profile");
   const card = page.getByTestId("profile-export-card");
   await expect(card).toContainText(
-    "A copy of your account, your businesses and your ERPlora invoices, in one JSON file.",
+    "A copy of your account, your businesses and your ERPlora invoices, in a file other apps can read.",
   );
   const download = page.waitForEvent("download");
   await page.getByTestId("profile-export").click();

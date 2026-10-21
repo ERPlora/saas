@@ -43,7 +43,7 @@ describe('DataExportCard', () => {
     const s = await mountPanel(DataExportCard);
     expect(s.q('profile-export-card')?.textContent).toContain('Your data');
     expect(s.q('profile-export-card')?.textContent).toContain(
-      'A copy of your account, your businesses and your ERPlora invoices, in one JSON file.',
+      'A copy of your account, your businesses and your ERPlora invoices, in a file other apps can read.',
     );
     expect(s.q('profile-export')?.textContent?.trim()).toBe('Download my data');
   });
@@ -51,6 +51,9 @@ describe('DataExportCard', () => {
   it('says it in Spanish', async () => {
     const s = await mountPanel(DataExportCard, { locale: 'es' });
     expect(s.q('profile-export-card')?.textContent).toContain('Tus datos');
+    expect(s.q('profile-export-card')?.textContent).toContain(
+      'Una copia de tu cuenta, tus negocios y tus facturas de ERPlora, en un fichero que otras aplicaciones pueden leer.',
+    );
     expect(s.q('profile-export')?.textContent?.trim()).toBe('Descargar mis datos');
   });
 

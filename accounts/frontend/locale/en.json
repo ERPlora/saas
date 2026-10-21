@@ -267,7 +267,7 @@
       },
       "export": {
         "title": "Your data",
-        "lead": "A copy of your account, your businesses and your ERPlora invoices, in one JSON file.",
+        "lead": "A copy of your account, your businesses and your ERPlora invoices, in a file other apps can read.",
         "download": "Download my data"
       },
       "delete": {

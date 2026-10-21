@@ -267,7 +267,7 @@
       },
       "export": {
         "title": "Tus datos",
-        "lead": "Una copia de tu cuenta, tus negocios y tus facturas de ERPlora, en un fichero JSON.",
+        "lead": "Una copia de tu cuenta, tus negocios y tus facturas de ERPlora, en un fichero que otras aplicaciones pueden leer.",
         "download": "Descargar mis datos"
       },
       "delete": {

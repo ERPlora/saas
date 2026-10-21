@@ -1,4 +1,4 @@
-"""Account → Profile: ``accounts.profile.get`` and ``accounts.profile.update`` (plan 2026-10-13, L3-A).
+"""ACCOUNTS-F21 · Account → Profile: ``accounts.profile.get`` and ``accounts.profile.update`` (plan 2026-10-13, L3-A).
 
 Ported from ERPlora/saas ``apps/dashboard/profile/tests``: ``test_api`` (16) and ``test_views`` (27, the
 form → the API) for the names and the read of the profile. Dropped, with their reason: the billing address

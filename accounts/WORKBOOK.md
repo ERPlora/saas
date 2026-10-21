@@ -1,14 +1,15 @@
 # Workbook — Cuentas (accounts)
 Prefijo: ACCOUNTS
 Alcance MVP: fase 1 (la cuenta de erplora.com: crearla, entrar y salir, su contraseña y lo que acepta)
-Estado de la app: en construcción (partes 1 y 2 de 5: crear la cuenta, entrar, la contraseña, salir, los términos y el freno; la verificación en dos pasos, los navegadores de confianza y las sesiones abiertas)
+Estado de la app: en construcción (partes 1 a 3 de 5: crear la cuenta, entrar, la contraseña, salir, los términos y el freno; la verificación en dos pasos, los navegadores de confianza y las sesiones abiertas; el perfil, las preferencias, los avisos, el menú de usuario, descargar los datos y eliminar la cuenta)
 
 > Manual de uso y especificación de la app `accounts` del SaaS (erplora.com). Cuenta cómo se crea una
 > cuenta, cómo se confirma el correo, cómo se entra y se sale, cómo se recupera y se cambia la contraseña,
 > qué se acepta al continuar, cómo se frena a quien prueba contraseñas, cómo se pide la app autenticadora
-> después de la contraseña, en qué navegadores se confía y cómo se ven y se cierran las sesiones abiertas.
-> Esta parte del manual no se publica en la tienda: es la referencia del equipo y de la QA. El perfil y las
-> preferencias, el salto a un negocio y las llaves de API se escriben en las partes 3 a 5.
+> después de la contraseña, en qué navegadores se confía, cómo se ven y se cierran las sesiones abiertas, cómo
+> se cambian el perfil, el idioma, el tema y los avisos por correo, y cómo se descargan los datos y se elimina la
+> cuenta. Esta parte del manual no se publica en la tienda: es la referencia del equipo y de la QA. El salto a un
+> negocio y las llaves de API se escriben en las partes 4 y 5.
 
 ## Para qué sirve y para quién
 
@@ -26,7 +27,9 @@ Quién la usa:
 
 - **Cualquiera** crea su cuenta, entra y sale, y recupera su contraseña.
 - **La persona con cuenta** cambia su contraseña, activa la app autenticadora y ve y cierra sus sesiones
-  desde **Cuenta › Seguridad**.
+  desde **Cuenta › Seguridad**; cambia su perfil, descarga sus datos y elimina su cuenta desde **Cuenta ›
+  Perfil**, y elige su idioma, su tema y sus avisos desde **Cuenta › Preferencias** (el tema, también desde el
+  **Menú de usuario**).
 - El **personal de ERPlora** ve y gestiona las cuentas desde el admin, sin poder cambiar lo que una cuenta
   aceptó; ante un incidente cierra todas las sesiones de una cuenta y, con la verificación en dos pasos
   encendida, solo entra en el admin con su app autenticadora.
@@ -56,6 +59,20 @@ Quién la usa:
   todas las demás.
 - **GitHub (organizaciones que exigen la verificación en dos pasos)**: la consola de administración solo
   deja entrar a su gente con el segundo factor activado, y la manda a activarlo.
+- **Eliminar la cuenta** (8 referencias): quien es dueño de algo que otros usan lo traspasa o lo cierra antes de
+  irse, y la pantalla dice qué lo retiene. GitHub no borra una cuenta propietaria única de una organización
+  (https://docs.github.com/en/enterprise-server@3.11/account-and-profile/setting-up-and-managing-your-personal-account-on-github/managing-your-personal-account/deleting-your-personal-account);
+  Slack pide transferir la propiedad principal (https://slack.com/help/articles/203953146); Shopify, transferir la
+  tienda antes de cerrarla (https://community.shopify.com/t/brand-assets-and-store-closure-concerns/400728); Zoom y
+  Square, cancelar lo que se paga antes de borrar, con la contraseña o un código para confirmar
+  (https://www.ionos.com/digitalguide/online-marketing/social-media/how-to-delete-your-zoom-account,
+  https://community.squareup.com/t5/Your-Square-Account-Information/Re-Negative-Balance-Close-Account/m-p/701366);
+  Odoo borra la cuenta desde su portal y avisa de que no se recupera
+  (https://www.odoo.com/documentation/18.0/administration/odoo_accounts.html); Stripe conserva lo que la ley le
+  obliga a guardar (https://support.stripe.com/questions/i-would-like-to-delete-the-information-stripe-has-collected-from-me).
+  Notion borra con la cuenta sus espacios (https://supademo.com/tutorials/notion/how-to-delete-your-notion-account):
+  aquí no, porque eliminar un negocio cancela su plan y apaga su caja, y eso es su propio flujo.
+- **GitHub («Export account data»)**: descargar los datos de la cuenta está junto a eliminarla, en la misma página.
 
 ## Antes de empezar
 
@@ -126,6 +143,15 @@ La lista de cuentas lleva la acción «Cerrar todas sus sesiones», que también
 navegadores; **Sesiones de usuario** enseña quién ha entrado dónde, solo para leer, con «Cerrar las
 sesiones seleccionadas». Las dos acciones solo las ve un superusuario.
 
+### Cuenta › Perfil
+«Tus datos» (la foto o las iniciales con «Cambiar foto», «Nombre», «Apellidos», el «Correo con el que entras» con
+«Cambiar» y «Guardar cambios»), «Tus datos» para descargar («Descargar mis datos») y la tarjeta roja «Eliminar tu
+cuenta». Abajo, las pestañas de **Cuenta**: «Perfil», «Seguridad», «Preferencias» y «Claves de API».
+
+### Cuenta › Preferencias
+Tres tarjetas que se guardan solas: «Apariencia» («Sistema», «Claro», «Oscuro»), «Idioma» («English»,
+«Español») y «Avisos por correo» («Seguridad, facturas y pagos», siempre encendido, y «Avisos de mis negocios»).
+
 ### Menú de usuario
 El nombre y el correo arriba del menú lateral (en el móvil, dentro del menú): «Cuenta», «Ayuda», el tema y
 «Cerrar sesión».
@@ -134,9 +160,9 @@ El nombre y el correo arriba del menú lateral (en el móvil, dentro del menú):
 
 | Estado | Qué ve la persona |
 |---|---|
-| Cargando | El botón de enviar se apaga mientras va la petición; el enlace del correo dice «Comprobando tu enlace…»; los ajustes de la verificación en dos pasos, «Cargando…»; las sesiones, la tabla cargando. |
+| Cargando | El botón de enviar se apaga mientras va la petición, también «Descargar mis datos» mientras prepara el fichero; el perfil y las preferencias, sus tarjetas cargando; el enlace del correo dice «Comprobando tu enlace…»; los ajustes de la verificación en dos pasos, «Cargando…»; las sesiones, la tabla cargando. |
 | Vacío | Sin sesión, toda página del panel lleva a la **Entrada**, que vuelve a ella tras entrar. Con esta sesión sola, «Cerrar las demás sesiones» está apagado; sin códigos de recuperación, «Sin ellos, perder tu autenticador te bloquea el acceso a tu cuenta.» con «Generar códigos de recuperación». |
-| Error | Cada error sale debajo de su campo, con las palabras de la regla que falla («La contraseña nueva tiene que ser distinta de la actual.»); un fallo de red, «No hemos podido iniciar tu sesión. Vuelve a intentarlo.» o «Algo ha ido mal. Inténtalo de nuevo.». Los ajustes que no cargan, «No hemos podido cargar tu configuración de seguridad. Vuelve a intentarlo.» con «Reintentar»; las sesiones, «No hemos podido cargar tus sesiones» con «Reintentar». |
+| Error | Cada error sale debajo de su campo, con las palabras de la regla que falla («La contraseña nueva tiene que ser distinta de la actual.»); un fallo de red, «No hemos podido iniciar tu sesión. Vuelve a intentarlo.» o «Algo ha ido mal. Inténtalo de nuevo.». Los ajustes que no cargan, «No hemos podido cargar tu configuración de seguridad. Vuelve a intentarlo.» con «Reintentar»; las sesiones, «No hemos podido cargar tus sesiones» con «Reintentar»; el perfil, «No hemos podido cargar tu cuenta», y las preferencias, «No hemos podido cargar tus preferencias», con «Reintentar». Un cambio de preferencias que no se guarda vuelve a como estaba. |
 | Freno | «Demasiados intentos fallidos. Inténtelo más tarde.» o «Demasiados intentos. Espera unos minutos y vuelve a intentarlo.», igual exista o no la cuenta. |
 | Enlace caducado | «Este enlace de restablecimiento ha expirado o no es válido.» con «Solicitar Nuevo Enlace». |
 | Código caducado | La entrada dice «Tu código ha caducado o se ha escrito mal demasiadas veces. Vuelve a iniciar sesión y te enviaremos uno nuevo.» |
@@ -166,6 +192,13 @@ El nombre y el correo arriba del menú lateral (en el móvil, dentro del menú):
 | ACCOUNTS-F18 | Ver y cerrar las sesiones abiertas | hecho |
 | ACCOUNTS-F19 | Cerrar las sesiones de una cuenta desde el admin | hecho |
 | ACCOUNTS-F20 | Exigir la app autenticadora al personal en el admin | hecho |
+| ACCOUNTS-F21 | Ver y cambiar mi perfil | hecho |
+| ACCOUNTS-F22 | Elegir el idioma y la apariencia | hecho |
+| ACCOUNTS-F23 | Elegir qué avisos recibir por correo | hecho |
+| ACCOUNTS-F24 | Cambiar el tema desde el menú de usuario | hecho |
+| ACCOUNTS-F25 | Abrir el menú de usuario | hecho |
+| ACCOUNTS-F26 | Descargar mis datos | hecho |
+| ACCOUNTS-F27 | Eliminar mi cuenta | parcial |
 
 ### ACCOUNTS-F01 Crear la cuenta
 <!-- origen: old-saas:SAAS_AUTH-F01 pc:cloud/auth/signup fi:saas/auth-services#registro-de-usuario-por-api-signup fi:saas/support/auth-services#service-create_user gh:saas#2542 gh:saas#2536 gh:saas#2560 gh:saas#2562 -->
@@ -345,7 +378,7 @@ Si falla: sin sesión, el panel lleva a la **Entrada**.
 Implicados: hubs (el salto a un negocio)
 
 ### ACCOUNTS-F13 Gestionar las cuentas desde el admin
-<!-- origen: fi:saas/auth-services#modelo-de-usuario-user-usermanager-admin fi:saas/support/auth-services#modelo-user -->
+<!-- origen: fi:saas/auth-services#modelo-de-usuario-user-usermanager-admin fi:saas/support/auth-services#modelo-user fi:saas/django-admin#admin-profile fi:saas/django-admin#admin-user fi:saas/django-admin#admin-userpreferences -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: admin › Cuentas › Usuarios
@@ -458,19 +491,126 @@ Sale: el personal entra en el admin, y salta al admin de los negocios, solo con 
 Si falla: los códigos de recuperación solos no bastan; una cuenta sin la marca de personal no entra en el admin aunque tenga la app; «Continuar» nunca lleva fuera de erplora.com.
 Implicados: hubs (el salto al admin de los negocios)
 
+### ACCOUNTS-F21 Ver y cambiar mi perfil
+<!-- origen: old-saas:SAAS_DASHBOARD-F204 fi:saas/orgs-users#mi-perfil-ver-actualizar-datos-billing-avatar fi:saas/orgs-users#api-rest-perfil-retrieveupdate fi:saas/support/orgs-users#modelo-profile fi:saas/support/orgs-users#serializer-profileserializer-billingaddressserializer fi:saas/support/orgs-users#service-signals-create_user_profile-save_user_profile fi:saas/support/orgs-users#service-user_profile-context-processor old-saas:SAAS_DASHBOARD-F222 gh:saas#2553 -->
+Estado: hecho
+Actor: cualquier persona con cuenta
+Pantalla: Cuenta › Perfil
+Pasos:
+1. Desde el **Menú de usuario**, «Cuenta» abre **Cuenta › Perfil**: «Tus datos» con la foto (o las iniciales), «Nombre», «Apellidos» y el «Correo con el que entras».
+2. La persona cambia su nombre o sus apellidos: «Guardar cambios» se activa al tocar algo («Se activa al cambiar algo.»).
+3. Pulsa «Guardar cambios»: «Cambios guardados», y el menú de usuario y los negocios en los que entre la nombran así.
+4. «Cambiar foto» sube una foto (JPEG, PNG o WebP), que se guarda limpia de los datos ocultos de la cámara; «Quitar foto» vuelve a las iniciales.
+5. El correo se cambia con «Cambiar»: le llega un código a la dirección nueva y, al escribirlo, esa pasa a ser la de entrar; a la antigua le llega un aviso del cambio.
+Entra: nombre y apellidos, la foto o el correo nuevo y su código.
+Sale: el perfil cambiado, en el panel y en cada negocio en el que entre después. Toda cuenta tiene su perfil desde que nace, sin rellenar nada. Lo mismo se lee y se guarda desde cualquier programa con la sesión de la persona.
+Si falla: un nombre vacío no se guarda («Escribe tu nombre.»); una foto que no es imagen o es demasiado grande dice por qué y no cambia la que había; un fallo de red, «No hemos podido conectar con ERPlora…» y no cambia nada. Los datos de facturación no están aquí: son de **Facturación**.
+Implicados: hubs (los negocios reciben el nombre al entrar)
+
+### ACCOUNTS-F22 Elegir el idioma y la apariencia
+<!-- origen: old-saas:SAAS_DASHBOARD-F210 fi:saas/orgs-users#ajustes-preferencias-del-usuario fi:saas/orgs-users#actualizar-preferencias-auto-save-htmx fi:saas/orgs-users#api-rest-preferencias-del-usuario-retrieveupdate fi:saas/support/orgs-users#modelo-userpreferences fi:saas/support/orgs-users#serializer-userpreferencesserializer-changepasswordserializer -->
+Estado: hecho
+Actor: cualquier persona con cuenta
+Pantalla: Cuenta › Preferencias
+Pasos:
+1. En **Cuenta › Preferencias**, «Apariencia» ofrece «Sistema», «Claro» y «Oscuro» («Sistema» sigue el modo de su dispositivo).
+2. La persona elige uno: el panel se pinta así al momento y sale «Preferencias guardadas»; no hay botón de guardar.
+3. En «Idioma» elige «English» o «Español»: el panel cambia de idioma al momento, también los correos que le enviamos.
+4. En otro navegador o tras recargar, el panel abre con la apariencia y el idioma de la cuenta.
+Entra: la apariencia y el idioma.
+Sale: la apariencia y el idioma de la cuenta, iguales en todos sus dispositivos; el idioma es también el de sus correos y el que reciben sus negocios al entrar. En el panel manda el idioma de la cuenta; la web pública sigue el que se elige en ella o el del navegador.
+Si falla: si no se puede guardar, el control vuelve a lo que había y un aviso dice por qué; si las preferencias no cargan, «No hemos podido cargar tus preferencias» con «Reintentar». La moneda no se elige: ERPlora cobra en euros.
+Implicados: hubs (el idioma al entrar en un negocio)
+
+### ACCOUNTS-F23 Elegir qué avisos recibir por correo
+<!-- origen: old-saas:SAAS_DASHBOARD-F211 -->
+Estado: hecho
+Actor: cualquier persona con cuenta
+Pantalla: Cuenta › Preferencias
+Pasos:
+1. En **Cuenta › Preferencias**, «Avisos por correo» enseña «Seguridad, facturas y pagos», siempre encendido («Siempre activos: códigos para entrar, avisos de seguridad, facturas, pagos y lo que te pide hacer algo.»).
+2. Debajo, «Avisos de mis negocios» («Cuando un negocio tuyo está listo para abrir.»), encendido de entrada.
+3. La persona lo apaga: «Preferencias guardadas», y el siguiente negocio que cree ya no le manda el correo de que está listo.
+4. Lo vuelve a encender y el correo vuelve.
+Entra: «Avisos de mis negocios».
+Sale: con él apagado, el correo de un negocio listo no se manda; el negocio abre igual y el panel lo dice. Los demás correos se mandan siempre: los códigos y los avisos de seguridad, las facturas y los pagos fallidos, el negocio eliminado con su fecha para recuperarlo y lo que pide hacer algo, como volver a conectar WhatsApp.
+Si falla: si no se puede guardar, el interruptor vuelve a como estaba y un aviso dice por qué.
+Implicados: hubs (el correo de un negocio listo), billing (las facturas y los pagos, siempre)
+
+### ACCOUNTS-F24 Cambiar el tema desde el menú de usuario
+<!-- origen: fi:saas/auth-services#toggle-de-tema-server-side-sin-js fi:saas/auth-services#context-processor-de-tema fi:saas/support/public-core-config#context_processors-py-theme-apps-py-coreconfig pc:cloud/dashboard/theme_picker -->
+Estado: hecho
+Actor: cualquier persona con cuenta
+Pantalla: Menú de usuario
+Pasos:
+1. La persona abre el **Menú de usuario** (en el móvil, dentro del menú) y ve «Tema» con tres botones: claro, oscuro y sistema, con el de ahora marcado.
+2. Pulsa uno: el panel se pinta así al momento.
+3. El tema queda en su cuenta: es el mismo de **Cuenta › Preferencias › Apariencia** y el panel abre con él en cualquier dispositivo, sin pasar antes por el otro.
+4. Las páginas de la web pública se pintan con el tema de la cuenta mientras tiene la sesión abierta; sin sesión, siguen el modo del dispositivo.
+Entra: el tema elegido.
+Sale: el tema de la cuenta.
+Si falla: si no se puede guardar, el panel se queda con el tema elegido y un aviso dice «No se ha podido guardar la apariencia en tu cuenta.».
+Implicados: ninguno
+
+### ACCOUNTS-F25 Abrir el menú de usuario
+<!-- origen: pc:cloud/dashboard/user_dropdown -->
+Estado: hecho
+Actor: cualquier persona con cuenta
+Pantalla: Menú de usuario
+Pasos:
+1. Arriba del menú lateral (en el móvil, dentro del menú) está la tarjeta de la persona: sus iniciales, su nombre y su correo.
+2. Al pulsarla se abre el **Menú de usuario**: «Cuenta», «Ayuda», «Tema» y «Cerrar sesión».
+3. «Cuenta» lleva a **Cuenta › Perfil**, desde donde están **Seguridad**, **Preferencias** y **Claves de API**; «Ayuda», a la ayuda; «Tema», a ACCOUNTS-F24; «Cerrar sesión», a ACCOUNTS-F09.
+Entra: la sesión.
+Sale: nada guardado.
+Si falla: sin sesión no hay menú: el panel lleva a la **Entrada**.
+Implicados: ninguno
+
+### ACCOUNTS-F26 Descargar mis datos
+<!-- origen: old-saas:SAAS_DASHBOARD-F207 fi:saas/orgs-users#api-exportar-mis-datos-gdpr-art-20 -->
+Estado: hecho
+Actor: cualquier persona con cuenta
+Pantalla: Cuenta › Perfil
+Pasos:
+1. En **Cuenta › Perfil**, la tarjeta «Tus datos» dice «Una copia de tu cuenta, tus negocios y tus facturas de ERPlora, en un fichero que otras aplicaciones pueden leer.».
+2. La persona pulsa «Descargar mis datos»: el botón se apaga mientras se prepara.
+3. El navegador guarda el fichero «erplora-data-» con la fecha del día.
+Entra: la sesión.
+Sale: un fichero con sus datos: la cuenta (correo, nombre, idioma, alta, último acceso y los términos aceptados), su apariencia y sus avisos, su foto, sus direcciones de correo, su cuenta de Google enlazada, sus sesiones abiertas, sus claves de API (sin la clave), los negocios a los que pertenece con su papel en cada uno y las facturas de ERPlora que ve, cada una con sus líneas y su destinatario tal como se emitió. Nada de otra cuenta.
+Si falla: si no se puede preparar, un aviso dice por qué y el botón vuelve; sin conexión, «No hemos podido conectar con ERPlora…». No se guarda nada a medias.
+Implicados: hubs (sus negocios), billing (sus facturas de ERPlora)
+
+### ACCOUNTS-F27 Eliminar mi cuenta
+<!-- origen: old-saas:SAAS_DASHBOARD-F208 old-saas:SAAS_AUTH-F13 fi:saas/orgs-users#api-borrar-mi-cuenta-gdpr-art-17 fi:saas/orgs-users#confirmar-borrado-de-cuenta-gdpr gh:saas#2567 gh:saas#2583 gh:saas#2584 gh:saas#2587 gh:saas#2664 -->
+Estado: parcial — los datos de pagador de sus negocios (nombre fiscal, NIF y dirección) se quedan guardados sin dueño al eliminar la cuenta; quitarlos espera a que el cobro garantice que ya no llega ninguna factura de esos negocios
+Actor: cualquier persona con cuenta
+Pantalla: Cuenta › Perfil
+Pasos:
+1. En **Cuenta › Perfil**, la tarjeta «Eliminar tu cuenta» dice de entrada si algo la retiene: si es propietaria de un negocio, «Eres propietario de 1 negocio: transfiérelo o elimínalo antes de borrar la cuenta.» con el nombre del negocio, que lleva a sus ajustes; si paga el negocio de otra persona, que su propietario ponga sus datos de pago. Mientras tanto «Eliminar cuenta» está apagado.
+2. Sin nada que la retenga, pulsa «Eliminar cuenta»: el diálogo dice qué se borra (la cuenta, la foto, las preferencias y las claves de API, y todas las sesiones, también en las apps y en sus negocios), que no se puede deshacer y que «Tus facturas de ERPlora se conservan el tiempo que exige la ley.».
+3. Escribe su correo para confirmar y pulsa «Eliminar cuenta». Si su última entrada no es reciente, antes confirma que es ella: con su contraseña o, si solo entra con Google, entrando otra vez con Google.
+4. La sesión se cierra y llega a la web pública.
+Entra: el correo escrito y, si hace falta, la contraseña o Google.
+Sale: la cuenta borrada, con su foto, sus preferencias, sus claves y todas sus sesiones, aquí y en sus negocios; deja de ser miembro de los negocios de otros. Sus facturas de ERPlora se quedan, con el destinatario de la fecha de emisión y sin enlace a la cuenta. Evento `accounts.profile.deleted`.
+Si falla: un negocio propio o pagado la retiene (el diálogo lo dice igual si cambió mientras); un negocio eliminado, en sus 90 días para recuperarlo, ya no la retiene. Más de 10 contraseñas en un minuto al confirmar se frenan, ni la buena entra: una sesión ajena abierta no sirve para adivinarla. Un fallo de red se dice en el diálogo y no se borra nada.
+Implicados: hubs (los negocios que la retienen y los que deja), billing (las facturas que se conservan)
+
 ## Para quien lo mantiene
 
 - Anatomía, operaciones y decisiones: `accounts/README.md` (allauth headless, puertas cerradas, sesiones,
   reautenticación, correo por código propio, foto, preferencias y llaves de API).
 - Partes del porte (MIGRATION-TASK APP-ACCOUNTS-1…5): este WORKBOOK nace en la parte 1 (F01–F13); la parte 2
-  (segundo factor, navegadores de confianza y sesiones) cierra F05 y añade F14–F20; las partes 3 (perfil,
-  preferencias, exportar y borrar la cuenta), 4 (salto al Hub, llaves de API, retención GDPR y auditlog) y 5
-  (plataforma del SaaS) añaden los suyos a continuación.
+  (segundo factor, navegadores de confianza y sesiones) cierra F05 y añade F14–F20; la parte 3 (perfil,
+  preferencias, avisos, menú de usuario, exportar y borrar la cuenta) añade F21–F27 y amplía F13; las partes 4
+  (salto al Hub, llaves de API, retención GDPR y auditlog) y 5 (plataforma del SaaS) añaden los suyos a
+  continuación.
 - Equivalencia de claves del registro: G83, G124, G22 y G59 = F01; G84 y G21 = F02; G107 = F03; G85 y G17 =
   F04; G125 = F05; G86 = F06; G91, G123, G120, G121 y G122 = F07; G109, G92, G42, G45 y G46 = F08; G93 = F09;
   G119 = F10; G96 = F11; G20 y G58 = F12; G18 y G56 = F13. Parte 2: G60 = F04; G88, G12, G19, G55 y G57 =
   F05; G87, G02 y G126 = F14; G116 y G05 = F15; G89 y G03 = F16; G23, G16 y G48 = F17; G94, G110, G15, G50,
-  G24 y G25 = F18; G09, G54, G37 y G34 = F19; G90 = F20. Descartadas: G04 (activar o apagar el código por
+  G24 y G25 = F18; G09, G54, G37 y G34 = F19; G90 = F20. Parte 3: G108, G49, G43, G63, G66, G69, G70 y G118 =
+  F21; G114, G39, G38, G44, G65 y G67 = F22; G115 = F23; G29, G11, G74 y G127 = F24; G128 = F25; G111 y G41 =
+  F26; G112, G95, G40 y G47 = F27; G32, G35 y G36 = F13. Descartadas: G04 (activar o apagar el código por
   correo: se pide en toda entrada con contraseña y no se apaga, PLAN-SAAS ronda 19, §3.7 punto 3) y G31
   (el Hub verificaba en el SaaS un dispositivo de confianza: el Hub nunca consulta al SaaS por petición y
   sus dispositivos y su PIN son suyos, PLAN-SAAS §2).
@@ -509,8 +649,21 @@ Implicados: hubs (el salto al admin de los negocios)
   segundo factor con el interruptor encendido. Las trampas del viejo (saas#2543, #2618, #2627: puertas del
   personal abiertas con la contraseña sola) quedan cubiertas por esas dos puertas; saas#2659 (marketplace)
   no aplica: no hay marketplace.
+- Parte 3 (F21–F27): el perfil del viejo (`Profile`, su señal y su procesador de contexto) es la propia cuenta,
+  con su foto y unas preferencias que no necesitan fila (`queries.preferences_of`), y el panel la lee de
+  `base.session.me`; sus DRF son las operaciones `accounts.profile.*` y `accounts.preferences.*`; su
+  `ChangePasswordSerializer` es F08. El tema de las plantillas es `base.context_processors.theme` (cuenta, o la
+  cookie `theme` del viejo, o el sistema) y el del panel, el del shell de `@erplora/ui`, que pinta el de la sesión
+  embebida antes de arrancar. Avisos (F23): `hub_alerts` gobierna `hubs.emails.send_ready` por
+  `queries.receives_business_notices`; «Novedades de ERPlora» no gobernaba ningún correo y sale (accounts 0009:
+  fuera del modelo, columna con valor por defecto hasta su `DROP COLUMN`, el paso de contrato). Descargar mis datos
+  (F26): `accounts.data.export`, que lee los negocios y las facturas por sus operaciones (`hubs.business.list`,
+  `billing.invoice.list` y `.get`), sin importar esas apps. Eliminar (F27): ver accounts/README.md; las facturas
+  conservan el destinatario porque su enlace a la cuenta es `SET_NULL` (`test_delete_account`). La moneda del viejo
+  no sigue: ERPlora cobra en euros y ninguna pantalla ni correo la leía (SAAS_DASHBOARD-F210).
 - Pruebas: cada test cita su clave en el nombre o el docstring. Los e2e de la parte 1 están en
-  `tests/e2e/panel/accounts-flows.spec.ts` y los de la parte 2 en `tests/e2e/panel/accounts-security.spec.ts`,
+  `tests/e2e/panel/accounts-flows.spec.ts`, los de la parte 2 en `tests/e2e/panel/accounts-security.spec.ts`
+  y los de la parte 3 en `tests/e2e/panel/accounts-profile.spec.ts`,
   con la clave del registro (`ACCOUNTS-Gnn`) en el título y la equivalencia con este WORKBOOK en su cabecera;
   el segundo factor se juega en el gemelo del panel con el interruptor encendido (`PANEL_MFA_URL`).
   `signup.spec.ts` y `login.spec.ts` siguen cubriendo las pestañas de la entrada.
@@ -527,3 +680,8 @@ Implicados: hubs (el salto al admin de los negocios)
   como «Revocar todos» de Google.
 - No ofrece llaves de acceso (passkeys) ni códigos por SMS: la app autenticadora y sus códigos de
   recuperación.
+- No pide moneda: ERPlora cobra en euros.
+- No manda boletines ni novedades, así que no hay interruptor para ellos; los correos de seguridad, facturas y
+  pagos no se pueden apagar.
+- No deja eliminar la cuenta a quien es propietario de un negocio o paga el de otra persona, ni borra con ella
+  sus facturas de ERPlora.

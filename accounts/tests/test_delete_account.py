@@ -1,4 +1,4 @@
-"""Account → Profile → «Delete account»: ``accounts.profile.delete`` (plan 2026-10-13, L3-A).
+"""ACCOUNTS-F27 · Account → Profile → «Delete account»: ``accounts.profile.delete`` (plan 2026-10-13, L3-A).
 
 Ported from ERPlora/saas ``apps/dashboard/profile/tests/test_delete_account_sole_owner.py`` (15) and the
 deletion cases of ``test_views.py``:
