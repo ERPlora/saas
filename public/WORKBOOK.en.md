@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:096c39638e5228738e8e479e5d8bb44bbeb4b559a89c48b8ddc6efbebe73f095 -->
+<!-- generated from WORKBOOK.md sha256:dcc0a34bdcca65f2b19eab62e7d78b8f7e7f6518f5f2a0c2bc0d2479baa0c2d4 -->
 
 ## What it is for and who it is for
 
@@ -36,6 +36,17 @@ Who uses it:
   https://help.mollie.com/hc/en-us/articles/26810769614226-How-do-fiscalisation-regulations-work-with-Mollie-Point-of-Sale).
 - **llmstxt.org and schema.org**: the summary for assistants and the structured data of organisation, application
   and frequently asked questions (https://llmstxt.org, https://schema.org/SoftwareApplication).
+
+- **AEPD, ICO and CNIL; GitHub**: technical cookies need no consent, so the notice only shows when the web
+  measures visits or advertises (https://www.aepd.es/guias/guia-cookies.pdf,
+  https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/guide-to-pecr/cookies-and-similar-technologies/,
+  https://www.cnil.fr/fr/cookies-et-autres-traceurs/regles/cookies-solutions-pour-les-outils-de-mesure-daudience,
+  https://github.blog/news-insights/company-news/no-cookie-for-you/).
+- **Intercom, HubSpot and Zendesk**: the contact form's message is answered to whoever wrote it, arrives with the
+  topic of the page it comes from and what was typed is not lost if something fails
+  (https://www.hubspot.com/products/marketing/forms, https://www.zendesk.com/service/messaging/).
+- **Shopify App Store and Odoo Apps**: the store by sections with search, and each app's page with what it needs
+  and its documentation (https://apps.shopify.com, https://apps.odoo.com).
 
 ## Before you start
 
@@ -78,6 +89,28 @@ Blog, Careers and Press, which only announce what is coming.
 ### Footer
 The Product, Company and Support columns, the legal links and the language switcher "English · Español".
 
+### Help center and Support
+"Help center." with one folded guide per topic and its search; Support, with the three routes to ask for help and
+what to tell in the message.
+
+### Contact
+"Get in Touch" with the form, "Contact Information" (the support address and "Chat with us") and "Response time";
+the same form closes the home page.
+
+### Cookie notice and Cookie preferences
+The notice, only when the web measures visits, and "Cookie preferences" with one category per block and its switch.
+
+### Legal texts and Responsible declaration
+Legal notice, Privacy, Terms and the cookie policy, each on its own page; the responsible declaration in force with
+its signed copy and the archive of versions.
+
+### App store and App page
+The apps by section with the search and the filters; the app's page with "Overview", "Required apps" and, if it has
+one, "Documentation".
+
+### Downloads and The ERPlora app
+"Two free ways to try ERPlora." with the cloud hub and the counter app per platform, and the installed app's page.
+
 ## States of each screen
 
 | State | What the person sees |
@@ -105,6 +138,18 @@ The Product, Company and Support columns, the legal links and the language switc
 | PUBLIC-F12 | Reach a "coming soon" page or a retired address | done |
 | PUBLIC-F13 | Change the language | done |
 | PUBLIC-F14 | Search engines and assistants read the web | done |
+| PUBLIC-F15 | Read the help and the support page | done |
+| PUBLIC-F16 | Write to the team from the contact form | done |
+| PUBLIC-F17 | Reach the form from other pages | done |
+| PUBLIC-F18 | See the channels and the reply time | done |
+| PUBLIC-F19 | Decide about cookies | done |
+| PUBLIC-F20 | Read the legal texts | done |
+| PUBLIC-F21 | Check the responsible declaration of the invoicing system | done |
+| PUBLIC-F22 | Browse the app store | done |
+| PUBLIC-F23 | See an app's page | done |
+| PUBLIC-F24 | Get the installed app | done |
+| PUBLIC-F25 | Know which version of the app is published | done |
+| PUBLIC-F26 | Open a public page from the installed app | partial |
 
 ### PUBLIC-F01 See the home page
 Status: done
@@ -287,3 +332,158 @@ In: the published catalogue, the plans on sale, the taxonomy and the request's a
 Out: nothing saved.
 If it fails: the private pages never appear in the sitemap or the summary and carry the no-index mark; the "coming soon" pages, the help and the support page are not indexed either. The web's texts are translated with the language catalogues (English as the source and its Spanish).
 Involved: apps (the catalogue), hubs (the plans and the taxonomy)
+
+### PUBLIC-F15 Read the help and the support page
+Status: done
+Actor: visitor
+Screen: Help center and Support
+Steps:
+1. From the footer, "Help Center" opens "Help center." with one guide per topic (getting started, installation, users and roles, settings and frequent questions), each folded; opening one shows it whole.
+2. The page's search keeps only the guides that contain what was typed; if none does, it says "No guides found".
+3. "Support" offers three routes: "Search the Help Center", "Contact support" (the form) and "Email the team" (the support address), and explains what to tell so the team can reproduce the problem and what never to send (passwords, PINs, recovery codes).
+4. The old documentation page leads to the help center for good; each app's documentation is on its page in the store.
+In: the guides published with the web, in English and in Spanish.
+Out: nothing saved.
+If it fails: a guide not yet translated is read in English, and so is a language without guides; nothing that is not a guide is ever shown. The help and the support page are not indexed.
+Involved: none
+
+### PUBLIC-F16 Write to the team from the contact form
+Status: done
+Actor: visitor
+Screen: Contact
+Steps:
+1. On "Get in Touch" (or at the end of the home page) the person writes first name, last name, email, the phone if they want and what they need, and presses "Get in touch".
+2. Before sending, the page marks the empty required fields and a mistyped email, and moves to the first one.
+3. Once sent, the same page comes back with "Thanks! We received your message and will reply within 4 business hours."; the team gets it in the support mailbox and, when answering it, the answer goes to the person.
+In: what was written in the form.
+Out: an email to the support mailbox that is answered to the person; the web does not keep the message.
+If it fails: an empty required field, an invalid email, too many messages in a row from the same network or a failure sending the email come back to the form with their reason ("Enter a valid email address.", "Too many messages from your network. Please try again in a little while.", "Sorry, something went wrong sending your message. Please try again.") and with what was typed in place, once; nothing is sent.
+Involved: none
+
+### PUBLIC-F17 Reach the form from other pages
+Status: done
+Actor: visitor
+Screen: Contact
+Steps:
+1. "Contact" in the menu and the footer, "Contact support" on Support and the contact buttons of Plans and prices and of Industries open the form.
+2. From Collaborate, "Join the Program" and "Apply Now" open it on the collaborator programme's topic; from Security, "Contact Security Team" opens it on the security topic.
+3. The topic travels with the message: the team reads it in the email's subject.
+In: the page the person comes from.
+Out: the topic in the subject of the email to the team.
+If it fails: a topic the web does not know is ignored and the message goes without a topic.
+Involved: none
+
+### PUBLIC-F18 See the channels and the reply time
+Status: done
+Actor: visitor
+Screen: Contact
+Steps:
+1. On "Get in Touch", "Contact Information" shows the support address and "Chat with us" (WhatsApp); "Response time" says "Within 4 business hours".
+2. The footer, Support and the form give the same support address, and the form, the sent notice and the home page ("4 h") give the same reply time.
+In: nothing.
+Out: nothing saved.
+If it fails: no page promises round-the-clock attention or another reply time; the support address, the chat and the reply time are written in one place, so they cannot contradict each other.
+Involved: none
+
+### PUBLIC-F19 Decide about cookies
+Status: done
+Actor: visitor
+Screen: Cookie notice and Cookie preferences
+Steps:
+1. While the web does not measure visits, it only sets the technical cookies (the session, the forms' protection, the language, the theme and the cookie choice) and shows no notice: there is nothing to consent to.
+2. If measuring visits is turned on, every page shows the notice until the person chooses "Accept All", "Decline" or "Customize".
+3. "Cookies" in the footer opens "Cookie preferences": the "Essential cookies", "Always active", and each optional category ("Analytical cookies", "Marketing cookies") with its cookies and its switch; the choice lasts a year.
+4. Without accepting the analytical ones no measurement loads, and on the password and code screens it never does.
+In: the person's choice.
+Out: the choice, kept in the browser; the cookies of a declined category are deleted.
+If it fails: the essential cookies are never deleted (they would sign the person out); if the server's fast memory does not answer, the page goes out anyway and the cleaning happens on the next one.
+Involved: accounts (the sign-in screens)
+
+### PUBLIC-F20 Read the legal texts
+Status: done
+Actor: visitor
+Screen: Legal texts
+Steps:
+1. In the footer, "Legal Notice", "Privacy" and "Terms" open each text on its own page; the cookie policy opens from the privacy policy.
+2. The privacy policy names who the data is entrusted to: Amazon Web Services in the Ireland region for hosting and email, and the assistant in Frankfurt, without training on it.
+3. The terms give the numbers the product keeps: the days of the exit package, the days a suspended business waits before it is deleted and the trial of the plans on sale (none if none has one).
+In: the plans on sale (the terms).
+Out: nothing saved.
+If it fails: no text names a provider no longer used or another hosting, and no link between texts leads to a page that does not exist.
+Involved: hubs (the plans)
+
+### PUBLIC-F21 Check the responsible declaration of the invoicing system
+Status: done
+Actor: visitor
+Screen: Responsible declaration
+Steps:
+1. "Responsible declaration" in the footer (and the updates clause of the terms) opens the version in force, with its version, its mode and whether it is signed.
+2. If it is signed, it offers to open the signed copy and to download it, and explains that the signature is only checked by downloading it and opening it with a validator.
+3. Below, the archive of every version: the current one marked in force and the earlier ones superseded; each opens at its own address.
+In: the versions of the declaration published with the web.
+Out: nothing saved.
+If it fails: a version that does not exist, or the copy of a version not signed yet, gives "Page not found": never a broken file.
+Involved: none
+
+### PUBLIC-F22 Browse the app store
+Status: done
+Actor: visitor
+Screen: App store
+Steps:
+1. "Apps" in the menu opens the store: the published apps grouped by section (sales, catalogue, people, restaurant, organisation), each with its icon, its summary and whether it is "Free" or "Included in the paid plans".
+2. "Search apps" searches the name and the summary; the section filters (with how many apps each has) and the access filters (free or premium) combine with the search.
+3. The old addresses of the marketplace, the solutions and the modules lead to the store for good.
+In: the published catalogue.
+Out: nothing saved.
+If it fails: without published apps it says "No apps published yet." and is not indexed; if nothing matches, "No app matches your search.", with the way to clear the filters. No app has a price of its own: the premium ones come with the paid plans.
+Involved: apps (the catalogue)
+
+### PUBLIC-F23 See an app's page
+Status: done
+Actor: visitor
+Screen: App page
+Steps:
+1. Pressing an app opens its page on "Overview", with its description and, if it needs others, "Required apps", each linked to its page and with its access.
+2. If the app has documentation, the "Documentation" tab shows it with its diagrams; if it only exists in Spanish, it says so with "This documentation is only available in Spanish.".
+3. "Start free" leads to the sign-in; someone who already has an account goes to their dashboard.
+In: the app of the catalogue and its documentation.
+Out: nothing saved.
+If it fails: an app that does not exist or is not published gives "Page not found"; an app without documentation has no such tab.
+Involved: apps (the catalogue), accounts (the sign-in)
+
+### PUBLIC-F24 Get the installed app
+Status: done
+Actor: visitor
+Screen: Downloads and The ERPlora app
+Steps:
+1. "Downloads" in the footer opens "Two free ways to try ERPlora.": "Create your free hub in the cloud", with the devices and users of the Free plan, or "Install the ERPlora app" on the device at the counter.
+2. Each platform button leads to its store when its listing is published (Microsoft Store, Google Play) and, if not, to the latest installer (Windows and Linux); Android is only installed from Google Play.
+3. The app's page tells what it does at the counter and that a hub comes first: "You need a hub before you need the app.".
+In: the Free plan on sale and the stores' listings.
+Out: nothing saved.
+If it fails: without a Free plan on sale, the card states no limit; a platform without a published version (macOS) is not offered, and the old local bridge no longer exists and gives "Page not found".
+Involved: hubs (the Free plan)
+
+### PUBLIC-F25 Know which version of the app is published
+Status: done
+Actor: system
+Screen: none
+Steps:
+1. Each installed app asks erplora.com which version is published.
+2. The answer is the version the last release left next to the installers.
+In: the version note each release writes.
+Out: nothing saved.
+If it fails: if that note cannot be read or carries no version, the answer is that it is not known, never an invented number, and the app treats it as could not check.
+Involved: none
+
+### PUBLIC-F26 Open a public page from the installed app
+Status: partial — inside the installed app, a legal text opened from the sign-in looks as it does in the browser (menu, footer and "Start free") and has no button to go back: the app does not make itself known to the public web
+Actor: visitor
+Screen: Legal texts
+Steps:
+1. In the installed app, the sign-in screen links the terms and the privacy policy.
+2. Pressing one opens the legal text in the same window.
+In: nothing.
+Out: nothing saved.
+If it fails: while the web does not measure visits, no optional cookie is set and the cookie notice does not show.
+Involved: hubs (the app's sign-in)
