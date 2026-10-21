@@ -4055,3 +4055,7 @@ msgstr "Puedes crear tu negocio y vender con ERPlora en cada uno de ellos. Sus p
 
 msgid "The countries where you can create your business and the invoicing systems ERPlora connects to."
 msgstr "Los países donde puedes crear tu negocio y los sistemas de facturación a los que se conecta ERPlora."
+
+# --- The language switcher of the footer (PUBLIC-F13) ---
+msgid "Language"
+msgstr "Idioma"

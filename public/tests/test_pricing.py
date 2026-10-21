@@ -118,7 +118,9 @@ def faq_page_of(html: str) -> dict:
 
 
 def visible_markup(html: str) -> str:
-    """The page with every ``<script>`` removed: what a reader actually sees."""
+    """The page with every ``<script>`` and hidden form field removed: what a reader actually sees (the
+    footer's language forms carry Django's ``csrfmiddlewaretoken``, which no reader sees)."""
+    html = re.sub(r'<input type="hidden"[^>]*>', "", html, flags=re.IGNORECASE)
     return re.sub(
         r"<script\b[^>]*>.*?</script>", "", html, flags=re.DOTALL | re.IGNORECASE
     )
