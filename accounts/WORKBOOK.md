@@ -384,7 +384,7 @@ Actor: personal de ERPlora
 Pantalla: admin › Cuentas › Usuarios
 Pasos:
 1. El personal busca una cuenta por correo o nombre, o filtra por activa, personal e idioma.
-2. Su ficha enseña el correo, la contraseña (solo «Restablecer contraseña»), los datos personales y el idioma, los permisos y grupos, las fechas, «Términos y privacidad» (solo lectura), las preferencias, la foto y sus negocios.
+2. Su ficha enseña el correo, la contraseña (solo «Restablecer contraseña»), los datos personales y el idioma, los permisos y grupos, las fechas, «Términos y privacidad» (solo lectura), las preferencias y la foto si las cambió (solo lectura) y sus negocios.
 3. «Añadir usuario» crea una cuenta con su correo y una contraseña (o sin ella, que se pone con el enlace del correo).
 Entra: lo que escribe el personal.
 Sale: la cuenta, identificada por su correo (en minúsculas y único) y con su identificador propio.

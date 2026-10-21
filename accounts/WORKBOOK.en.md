@@ -352,7 +352,7 @@ Actor: ERPlora staff
 Screen: admin › Accounts › Users
 Steps:
 1. The staff search for an account by email or name, or filter by active, staff and language.
-2. Its page shows the email, the password (only "Reset password"), the personal details and the language, the permissions and groups, the dates, "Terms and privacy" (read only), the preferences, the photo and its businesses.
+2. Its page shows the email, the password (only "Reset password"), the personal details and the language, the permissions and groups, the dates, "Terms and privacy" (read only), the preferences and the photo if it changed them (read only) and its businesses.
 3. "Add user" creates an account with its email and a password (or without one, which is set with the email's link).
 In: what the staff type.
 Out: the account, identified by its email (in lower case and unique) and with its own identifier.
