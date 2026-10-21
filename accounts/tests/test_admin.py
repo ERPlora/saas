@@ -396,6 +396,24 @@ def test_the_user_page_shows_the_preferences_and_the_photo(staff_client, ana):
     assert "data:image/png;base64,iVBORw==" in page.text
 
 
+def test_the_user_page_shows_the_terms_it_accepted_read_only(staff_client, ana):
+    """ACCOUNTS-G119: what the account accepted and when, as evidence; nobody edits it."""
+    from datetime import UTC, date, datetime
+
+    client, _ = staff_client
+    get_user_model().objects.filter(pk=ana.pk).update(
+        terms_accepted_at=datetime(2026, 10, 14, 9, 30, tzinfo=UTC), terms_version=date(2026, 10, 13), privacy_version=date(2026, 10, 13)
+    )
+
+    page = client.get(f"/admin/accounts/user/{ana.pk}/change/")
+
+    assert page.status_code == 200
+    assert "Terms accepted at" in page.text
+    assert "Oct. 14, 2026" in page.text
+    for field in ("terms_accepted_at", "terms_version", "privacy_version"):
+        assert f'name="{field}"' not in page.text
+
+
 def test_the_sessions_of_allauth_have_their_page(staff_client):
     client, _ = staff_client
 

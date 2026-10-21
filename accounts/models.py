@@ -16,7 +16,7 @@ import hashlib
 import secrets
 import string
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from django.conf import settings
 from django.contrib.auth.models import (
@@ -28,6 +28,13 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from live.slugs import hub_slug_validator
+
+
+#: The versions of the terms (``/legal/terms/``) and of the privacy policy (``/legal/privacy/``) an account accepts
+#: today: the «Last updated» date each page shows (``tests/test_terms.py`` keeps them equal). Update the page and
+#: its date here together: every account then accepts the new text at its next sign-in.
+TERMS_VERSION = date(2026, 10, 13)
+PRIVACY_VERSION = date(2026, 10, 13)
 
 
 class UserManager(BaseUserManager):
@@ -70,6 +77,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(_("active"), default=True)
     is_staff = models.BooleanField(_("staff status"), default=False)
     date_joined = models.DateTimeField(_("date joined"), default=timezone.now)
+    # What the account accepted by creating it or signing in under «By continuing you agree to our Terms &
+    # Privacy Policy» (ACCOUNTS-G119): when, and the version of each text. Empty until its first sign-in.
+    terms_accepted_at = models.DateTimeField(_("terms accepted at"), null=True, blank=True)
+    terms_version = models.DateField(_("terms version"), null=True, blank=True)
+    privacy_version = models.DateField(_("privacy policy version"), null=True, blank=True)
 
     objects = UserManager()
 

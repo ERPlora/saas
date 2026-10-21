@@ -150,13 +150,15 @@ class UserAdmin(DjangoUserAdmin):
     list_display = ("email", "first_name", "last_name", "language", "is_active", "is_staff")
     list_filter = ("is_active", "is_staff", "is_superuser", "language")
     search_fields = ("email", "first_name", "last_name")
-    readonly_fields = ("id", "last_login", "date_joined")
+    readonly_fields = ("id", "last_login", "date_joined", "terms_accepted_at", "terms_version", "privacy_version")
     inlines = [UserPreferencesInline, ProfilePhotoInline, HubMembershipInline]
     fieldsets = (
         (None, {"fields": ("id", "email", "password")}),
         (_("Personal info"), {"fields": ("first_name", "last_name", "language")}),
         (_("Permissions"), {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
         (_("Important dates"), {"fields": ("last_login", "date_joined")}),
+        # What the account accepted (ACCOUNTS-G119): evidence, so nobody edits it here.
+        (_("Terms and privacy"), {"fields": ("terms_accepted_at", "terms_version", "privacy_version")}),
     )
     add_fieldsets = ((None, {"classes": ("wide",), "fields": ("email", "usable_password", "password1", "password2")}),)
 
