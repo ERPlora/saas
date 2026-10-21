@@ -30,7 +30,7 @@ from live.errors import Conflict, NotFound, PermissionDenied
 
 from accounts.models import HubMembership
 from hubs import queries, services
-from hubs.models import BillingProfile, Hub, HubMember
+from hubs.models import BillingProfile, Hub, HubMember, Subscription
 from hubs.schemas import (
     BillingProfileIn,
     ByIdIn,
@@ -445,6 +445,8 @@ class TestRemoveThePayer:
         old_payer = HubMember.objects.get(hub=handed_over, user=team["owner"]).hub.billing_profile
         BillingProfile.objects.filter(pk=old_payer.pk).update(stripe_customer_id="cus_olga")
         pay(handed_over, customer="cus_olga")
+        with pytest.raises(Conflict) as by_its_payer:
+            self.remove(team["admin"], member_of(handed_over, team["owner"]))
         services.billing_profile_update(
             ctx_for(team["admin"]), BillingProfileIn(hub_id=handed_over.id, billing_name="Adela SL")
         )
@@ -453,6 +455,20 @@ class TestRemoveThePayer:
             self.remove(team["admin"], member_of(handed_over, team["owner"]))
 
         assert refused.value.code == "hubs.member_pays"
+        # Writing the payer is done: what is left is for support, and the refusal says so.
+        assert refused.value.message != by_its_payer.value.message
+
+    def test_a_stripe_customer_without_a_subscription_holds_nobody(self, handed_over, team):
+        old_payer = HubMember.objects.get(hub=handed_over, user=team["owner"]).hub.billing_profile
+        BillingProfile.objects.filter(pk=old_payer.pk).update(stripe_customer_id="cus_olga")
+        Subscription.objects.filter(hub=handed_over).update(stripe_customer_id="cus_olga", status="active")
+        services.billing_profile_update(
+            ctx_for(team["admin"]), BillingProfileIn(hub_id=handed_over.id, billing_name="Adela SL")
+        )
+
+        self.remove(team["admin"], member_of(handed_over, team["owner"]))
+
+        assert not HubMember.objects.filter(hub=handed_over, user=team["owner"]).exists()
 
     def test_an_ended_plan_on_the_old_card_holds_nobody(self, handed_over, team):
         from billing.tests.conftest import pay
