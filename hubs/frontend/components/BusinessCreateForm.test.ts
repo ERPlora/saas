@@ -76,6 +76,17 @@ async function setup(options: { props?: Record<string, unknown>; api?: Handler; 
 const props = ionProps;
 
 describe('BusinessCreateForm: the fields', () => {
+  // flow: HUBS-F01 (HUBS-G65): the country comes suggested by the browser's languages.
+  it("picks the country the browser's languages suggest", async () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['fr-BE', 'fr']);
+    try {
+      const s = await setup();
+      expect((s.get('create-country').element as HTMLElement & { value?: string }).value).toBe('BE');
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
   it('asks the name, the country (Spain first picked) and an optional type, as outlined md fields', async () => {
     const s = await setup();
     const name = s.get('create-name');
