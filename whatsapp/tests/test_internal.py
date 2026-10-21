@@ -367,13 +367,33 @@ class TestTheMonthsAllowance:
         assert send(client).status_code == 200
 
 
+def waiting_on_a_lock(count: int, *, within: float) -> bool:
+    """Whether ``count`` other sessions of this test database wait on a lock, before ``within`` seconds."""
+    deadline = time.monotonic() + within
+    while time.monotonic() < deadline:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'"
+            )
+            if cursor.fetchone()[0] >= count:
+                return True
+        time.sleep(0.05)
+    return False
+
+
+#: The sends that race for the last message of the month (see the test below for why six).
+SENDERS = 6
+
+
 @pytest.mark.django_db(transaction=True)
 def test_simultaneous_sends_cannot_pass_the_cap_together(make_user, settings, whatsapp_on):
-    """saas#2652: with one message left, eight sends at once: one leaves, seven are refused.
+    """saas#2652: with one message left, six sends at once: one leaves, five are refused.
 
     To make them meet where it matters, as several processes would, another connection holds the month's counter
-    while the eight arrive (each one has already read it, and then waits for it); then it lets go. A reservation
-    that read the counter and wrote it apart would let the eight through; ``UPDATE … WHERE used < limit`` lets one.
+    until the six wait on it (each one has already read it by then); then it lets go. Six, because with the test's
+    own connection and the one holding the counter they fill the pool (``max_size`` 8): a seventh would wait for a
+    connection instead of for the counter. A reservation
+    that read the counter and wrote it apart would let the six through; ``UPDATE … WHERE used < limit`` lets one.
     The place is reserved before Meta is called, so Meta's slowness opens no window either."""
     from django.db import transaction
 
@@ -409,15 +429,17 @@ def test_simultaneous_sends_cannot_pass_the_cap_together(make_user, settings, wh
         holder = threading.Thread(target=hold_the_counter)
         holder.start()
         assert held.wait(5)
-        senders = [threading.Thread(target=one, args=(f"k{n}",)) for n in range(8)]
+        senders = [threading.Thread(target=one, args=(f"k{n}",)) for n in range(SENDERS)]
         for thread in senders:
             thread.start()
-        time.sleep(1.0)
+        # Let go only once the six wait on the counter (each one has read it by then): never on a guess of time,
+        # which a loaded machine outruns (the read-then-write mutant once survived a fixed second).
+        assert waiting_on_a_lock(SENDERS, within=30), "the sends never met at the month's counter"
         release.set()
         for thread in (holder, *senders):
             thread.join(15)
 
-    assert sorted(answers) == [200] + [409] * 7
+    assert sorted(answers) == [200] + [409] * (SENDERS - 1)
     assert meta.call_count == 1
     assert Usage.objects.get(hub=business, month=month).used == 30
 
