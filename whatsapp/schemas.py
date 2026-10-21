@@ -136,3 +136,41 @@ class EraseIn(Schema):
 
 class EraseOut(Schema):
     erased: bool
+
+
+# --- Doors 8 and 9: templates ---------------------------------------------------------------------------------
+
+
+class TemplateIn(Schema):
+    """Door 8's body: a template to register at Meta (new, or an edit of its ``meta_id``). The fields are loose on
+    purpose: Meta's rules (name, lengths, variables, buttons) are checked by ``templates.check``, which says which
+    one failed in the 409 ``whatsapp.template_invalid`` the Hub shows, instead of a bare 422."""
+
+    hub: HubRef
+    name: Annotated[str, StringConstraints(strip_whitespace=True, max_length=600)]
+    language: Annotated[str, StringConstraints(strip_whitespace=True, max_length=32)]
+    category: Annotated[str, StringConstraints(strip_whitespace=True, max_length=32)]
+    header: Annotated[str, StringConstraints(max_length=2000)] = ""
+    body: Annotated[str, StringConstraints(max_length=8192)] = ""
+    body_examples: list[Annotated[str, StringConstraints(max_length=1024)]] = Field(default_factory=list, max_length=100)
+    footer: Annotated[str, StringConstraints(max_length=2000)] = ""
+    buttons: list[dict] = Field(default_factory=list, max_length=20)
+    meta_id: Annotated[str, StringConstraints(strip_whitespace=True, max_length=64)] = ""
+
+
+class TemplateOut(Schema):
+    meta_id: str
+    status: str
+
+
+class TemplateDeleteIn(Schema):
+    """Door 9's body: that one template, in that language, at Meta."""
+
+    hub: HubRef
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=600)]
+    language: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=32)]
+    meta_id: Annotated[str, StringConstraints(strip_whitespace=True, max_length=64)] = ""
+
+
+class TemplateDeleteOut(Schema):
+    deleted: bool

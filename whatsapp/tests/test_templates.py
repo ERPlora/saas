@@ -80,6 +80,7 @@ def test_named_variables_pair_each_name_with_its_example():
         ({"body": "Hola {{1}} y {{3}}", "body_examples": ["a", "b"]}, "{{1}}"),
         ({"body": "Hola {{1}}", "body_examples": []}, "example"),
         ({"body": "Hola {{1}}", "body_examples": ["a", "b"]}, "example"),
+        ({"body": "Hola {{1}}", "body_examples": ["  "]}, "example"),
         ({"body": "Hola {{1}} y {{nombre}}", "body_examples": ["a", "b"]}, "both"),
         ({"body": "Hola {{Nombre}}", "body_examples": ["a"]}, "name"),
         ({"buttons": [{"type": "QUICK_REPLY", "text": "x" * 26}]}, "25"),
@@ -153,6 +154,14 @@ def test_a_media_header_and_named_examples_read_back_too():
 
     assert (mirror["header_format"], mirror["header"], mirror["body_examples"], mirror["variables"]) == ("IMAGE", "", ["Ana"], 1)
     assert (mirror["status"], mirror["rejected_reason"]) == ("REJECTED", "INVALID_FORMAT")
+
+
+def test_metas_none_reason_reads_as_no_reason():
+    """Meta answers ``"rejected_reason": "NONE"`` for a template it did not reject."""
+    item = {"id": "1", "name": "a", "language": "es", "status": "APPROVED", "rejected_reason": "NONE",
+            "components": [{"type": "BODY", "text": "Hola"}]}
+
+    assert templates.from_meta(item)["rejected_reason"] == ""
 
 
 def test_a_template_meta_no_longer_has_reads_as_none():
