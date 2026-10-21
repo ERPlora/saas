@@ -5,7 +5,8 @@ at Meta its templates live in.
 transaction) and by ``hubs.queries`` for the snapshot (the Hub reads the channel only there).
 ``whatsapp.template.account`` is the read ``gateway`` makes before it calls Meta for a business's templates, and
 ``whatsapp.number.renewal_due`` the numbers whose permission is renewed today (WHATSAPP-G12);
-``whatsapp.number.connecting`` the business a connection is for and the PIN its number already has (doors 10, 11).
+``whatsapp.number.connecting`` the business a connection is for and the PIN its number already has (doors 10, 11);
+``whatsapp.media.locate`` the attachment a person of the business opens (WHATSAPP-G07).
 """
 
 from datetime import timedelta
@@ -18,13 +19,15 @@ from live.context import OperationContext
 from live.errors import Conflict, NotFound
 from live.operations import operation
 
-from hubs.models import Hub
+from hubs.models import Hub, HubMember
 from hubs.services import LIVE_STATUSES
-from whatsapp.models import PhoneNumber, Template, Usage
+from whatsapp.models import Delivery, PhoneNumber, Template, Usage
 from whatsapp.schemas import (
     ConnectingIn,
     ConnectingOut,
     DueNumber,
+    MediaIn,
+    MediaOut,
     RenewalDueIn,
     RenewalDueOut,
     TemplateAccountIn,
@@ -182,3 +185,34 @@ def number_connecting(ctx: OperationContext, data: ConnectingIn) -> ConnectingOu
         number = PhoneNumber.objects.filter(phone_number_id=data.phone_number_id).first()
         pin = number.registration_pin if number is not None else ""
     return ConnectingOut(hub_id=hub.id, pin=pin)
+
+
+def media_not_found() -> NotFound:
+    return NotFound("This attachment is not available.", code="whatsapp.media_not_found")
+
+
+@operation("whatsapp.media.locate", kind="query", permission=PERMISSION, input=MediaIn, output=MediaOut)
+def media_locate(ctx: OperationContext, data: MediaIn) -> MediaOut:
+    """The attachment of a message erplora.com keeps for a business, for an accepted member of that business only
+    (anyone else, or an id that is not one, reads «not available»: nothing says it exists), with the permission of
+    the business's connected number to fetch it from Meta."""
+    row = (
+        Delivery.objects.filter(pk=data.delivery_id, kind=Delivery.Kind.MESSAGE, hub__status__in=LIVE_STATUSES)
+        .exclude(media_id="")
+        .first()
+    )
+    if row is None or not HubMember.objects.filter(
+        hub_id=row.hub_id, user_id=data.user_id, accepted_at__isnull=False
+    ).exists():
+        raise media_not_found()
+    number = PhoneNumber.objects.filter(hub_id=row.hub_id, is_active=True).first()
+    if number is None or not number.access_token:
+        raise not_connected()
+    media = row.body.get("media") if isinstance(row.body.get("media"), dict) else {}
+    return MediaOut(
+        hub_id=row.hub_id,
+        media_id=row.media_id,
+        token=number.access_token,
+        mime_type=str(media.get("mime_type") or ""),
+        filename=str(media.get("filename") or ""),
+    )

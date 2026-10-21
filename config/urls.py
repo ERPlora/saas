@@ -29,6 +29,7 @@ from fiscal_gateway import internal as fiscal_gateway_internal
 from hubs import internal as hubs_internal
 from public import landing
 from whatsapp import internal as whatsapp_internal
+from whatsapp import media as whatsapp_media
 from whatsapp import webhooks as whatsapp_webhooks
 from public.urls import PUBLIC_PREFIXES
 
@@ -139,6 +140,8 @@ urlpatterns = [
     path("webhooks/stripe/", billing_webhooks.stripe_webhook, name="stripe_webhook"),
     # Meta's single WhatsApp webhook (whatsapp/webhooks.py): its verification (GET) and its signed notices.
     path("webhooks/whatsapp/", whatsapp_webhooks.whatsapp_webhook, name="whatsapp_webhook"),
+    # A customer's attachment opened from the Hub's inbox, with the person's session (whatsapp/media.py).
+    path("whatsapp/media/<str:delivery_id>", whatsapp_media.media, name="whatsapp_media"),
     # Before the API's prefix, which would otherwise answer it.
     path("api/live", live_stream, name="live-stream"),
     path("api/", api.urls),

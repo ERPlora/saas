@@ -377,6 +377,24 @@ class NumberDisconnectOut(Schema):
     account_in_use: bool = False
 
 
+# --- An attachment opened from the Hub (WHATSAPP-G07) -----------------------------------------------------------
+
+
+class MediaIn(Schema):
+    delivery_id: UUID
+    #: The person opening it (their erplora.com session): only an accepted member of the business gets it.
+    user_id: UUID
+
+
+class MediaOut(Schema):
+    hub_id: UUID
+    media_id: str
+    token: SecretStr
+    #: What the message said of it (Meta's own answer rules the type).
+    mime_type: str = ""
+    filename: str = ""
+
+
 # --- The retention (WHATSAPP-G14) -----------------------------------------------------------------------------
 
 
