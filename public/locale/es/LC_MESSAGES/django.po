@@ -3919,3 +3919,139 @@ msgstr "Peluquería y estética"
 
 msgid "Read the privacy policy"
 msgstr "Lee la política de privacidad"
+
+# --- /compliance/ (PUBLIC-F09): compliance.py, templates/public/compliance/, the footer and the industries ---
+msgid "Austria"
+msgstr "Austria"
+
+msgid "Belgium"
+msgstr "Bélgica"
+
+msgid "Bulgaria"
+msgstr "Bulgaria"
+
+msgid "Croatia"
+msgstr "Croacia"
+
+msgid "Cyprus"
+msgstr "Chipre"
+
+msgid "Czechia"
+msgstr "Chequia"
+
+msgid "Denmark"
+msgstr "Dinamarca"
+
+msgid "Estonia"
+msgstr "Estonia"
+
+msgid "Finland"
+msgstr "Finlandia"
+
+msgid "France"
+msgstr "Francia"
+
+msgid "Germany"
+msgstr "Alemania"
+
+msgid "Greece"
+msgstr "Grecia"
+
+msgid "Hungary"
+msgstr "Hungría"
+
+msgid "Ireland"
+msgstr "Irlanda"
+
+msgid "Italy"
+msgstr "Italia"
+
+msgid "Latvia"
+msgstr "Letonia"
+
+msgid "Lithuania"
+msgstr "Lituania"
+
+msgid "Luxembourg"
+msgstr "Luxemburgo"
+
+msgid "Malta"
+msgstr "Malta"
+
+msgid "Netherlands"
+msgstr "Países Bajos"
+
+msgid "Poland"
+msgstr "Polonia"
+
+msgid "Portugal"
+msgstr "Portugal"
+
+msgid "Romania"
+msgstr "Rumanía"
+
+msgid "Slovakia"
+msgstr "Eslovaquia"
+
+msgid "Slovenia"
+msgstr "Eslovenia"
+
+msgid "Spain"
+msgstr "España"
+
+msgid "Sweden"
+msgstr "Suecia"
+
+msgid "Every invoice and receipt is recorded in an unalterable chain, carries its QR code and is sent to the AEAT (the Spanish Tax Agency) as you sell."
+msgstr "Cada factura y cada tique se registra en una cadena inalterable, lleva su código QR y se envía a la AEAT (la Agencia Tributaria) a medida que vendes."
+
+msgid "The Basque Country (TicketBAI) and Navarre have their own invoicing systems, which ERPlora does not connect to yet."
+msgstr "El País Vasco (TicketBAI) y Navarra tienen sus propios sistemas de facturación, a los que ERPlora todavía no se conecta."
+
+msgid "The EU countries where you can create your business with ERPlora, and the invoicing systems it connects to today: VeriFactu in Spain."
+msgstr "Los países de la UE donde puedes crear tu negocio con ERPlora y los sistemas de facturación a los que se conecta hoy: VeriFactu en España."
+
+msgid "EU compliance."
+msgstr "Cumplimiento en la UE."
+
+msgid "Every EU country where you can create your business, and the invoicing systems ERPlora connects to today."
+msgstr "Cada país de la UE donde puedes crear tu negocio y los sistemas de facturación a los que ERPlora se conecta hoy."
+
+msgid "Coverage overview"
+msgstr "Resumen de cobertura"
+
+msgid "Built market by market."
+msgstr "Construido mercado a mercado."
+
+msgid "A country is ready for real operations only when ERPlora connects to its fiscal system."
+msgstr "Un país está listo para operar de verdad solo cuando ERPlora se conecta a su sistema fiscal."
+
+msgid "EU countries where you can sell"
+msgstr "Países de la UE donde puedes vender"
+
+msgid "Connected to their fiscal system"
+msgstr "Conectados a su sistema fiscal"
+
+msgid "Not connected yet"
+msgstr "Todavía sin conexión"
+
+msgid "Ready for real operations."
+msgstr "Listo para operar de verdad."
+
+msgid "The countries whose fiscal system ERPlora connects to, and what that covers."
+msgstr "Los países a cuyo sistema fiscal se conecta ERPlora, y lo que eso cubre."
+
+msgid "Connected"
+msgstr "Conectado"
+
+msgid "Read our responsible declaration"
+msgstr "Lee nuestra declaración responsable"
+
+msgid "Other EU countries."
+msgstr "Otros países de la UE."
+
+msgid "You can create your business and sell with ERPlora in each of them. Their own invoicing or fiscal systems are not connected yet: check with your adviser what your country requires before you use the point of sale there."
+msgstr "Puedes crear tu negocio y vender con ERPlora en cada uno de ellos. Sus propios sistemas de facturación o fiscales todavía no están conectados: consulta con tu asesor qué exige tu país antes de usar allí el TPV."
+
+msgid "The countries where you can create your business and the invoicing systems ERPlora connects to."
+msgstr "Los países donde puedes crear tu negocio y los sistemas de facturación a los que se conecta ERPlora."

@@ -14,15 +14,15 @@ from public import indexnow, language, seo, sitemaps
 from public import declaracion, legal
 from public import store
 from public import industries
-from public import appdist, company, product, resources
+from public import appdist, company, compliance, product, resources
 from public import help as help_center
 from public import demo, landing, pricing
 
 app_name = "public"
 
 #: First segments of the public web: the ones it serves, those a later batch of the port will
-#: serve, and the retired ones that must answer 404, never the SPA's shell (`developers`, `bridge`,
-#: `compliance`; spec §8.3). `help` is the public help (`/help/`): the panel has no help page of its
+#: serve, and the retired ones that must answer 404, never the SPA's shell (`developers`, `bridge`;
+#: spec §8.3). `compliance` is served again (PUBLIC-F09, APP-PUBLIC-1). `help` is the public help (`/help/`): the panel has no help page of its
 #: own (in-app help is out of scope, spec §12). An unknown path under one of them is a 404 of the
 #: public web (public/errors.py).
 PUBLIC_PREFIXES = (
@@ -86,6 +86,8 @@ urlpatterns = [
     path("press/", company.press, name="press"),
     # It reads Plan and the taxonomy (L7).
     path("collaborate/", company.collaborate, name="collaborate"),
+    # The countries a business can be created in and the fiscal systems the apps connect to (PUBLIC-F09).
+    path("compliance/", compliance.index, name="compliance"),
     path("documentation/", resources.documentation, name="documentation"),
     path("support/", resources.support, name="support"),
     path("help/", help_center.help_center, name="help"),

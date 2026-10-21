@@ -72,8 +72,10 @@ PUBLIC_SEGMENTS = (
     "marketplace",
     "solutions",
     "modules",
+    "compliance",
 )
-RETIRED_SEGMENTS = ("developers", "bridge", "compliance")
+#: `compliance` is served again (PUBLIC-F09): only these two answer 404 (spec §8.3).
+RETIRED_SEGMENTS = ("developers", "bridge")
 
 
 @pytest.mark.parametrize("segment", [*PUBLIC_SEGMENTS, *RETIRED_SEGMENTS])
@@ -90,7 +92,7 @@ def test_the_public_web_declares_exactly_its_segments():
 @pytest.mark.django_db
 @pytest.mark.usefixtures("spa_manifest")
 @pytest.mark.parametrize(
-    "path", ["/developers/", "/bridge/", "/compliance/", "/pricing/nope/"]
+    "path", ["/developers/", "/bridge/", "/pricing/nope/"]
 )
 def test_a_retired_or_unknown_public_page_is_a_404_not_the_shell(client, path):
     response = client.get(path, HTTP_HOST=HOST)
