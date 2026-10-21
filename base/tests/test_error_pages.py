@@ -20,6 +20,7 @@ import html as html_lib
 import json
 
 import pytest
+from django.conf import settings
 from django.core.exceptions import PermissionDenied, SuspiciousOperation
 from django.http import Http404
 from django.template import loader
@@ -94,7 +95,7 @@ def test_each_error_page_is_ours_and_extends_the_error_layout(name):
     assert '<main class="error-page">' in page
     assert f"<h1>{heading}</h1>" in page
     assert '<a href="/">Home</a>' in page
-    assert '<a href="mailto:info@erplora.com">Contact Support</a>' in page
+    assert f'<a href="mailto:{settings.SUPPORT_EMAIL}">Contact Support</a>' in page
     assert "ERPlora Cloud</title>" in page
     assert '<html lang="en"' in page
 
@@ -225,3 +226,14 @@ def test_a_view_of_the_private_half_that_fails_shows_our_500(production):
     assert response.status_code == 500
     assert '<main class="error-page">' in page
     assert "<h1>Something went wrong on our end</h1>" in page
+
+
+@pytest.mark.parametrize("name", PAGES)
+def test_contact_support_writes_to_the_support_address_of_the_settings(name, settings):
+    """PUBLIC-F18: the same mailbox as the public web\'s footer and contact page, never a second one typed here."""
+    settings.SUPPORT_EMAIL = "help@erplora.test"
+
+    page = text(render(name))
+
+    assert '<a href="mailto:help@erplora.test">Contact Support</a>' in page
+    assert "info@erplora.com" not in page

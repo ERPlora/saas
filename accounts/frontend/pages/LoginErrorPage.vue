@@ -19,6 +19,7 @@ import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 
 import AuthShell from '../components/AuthShell.vue';
+import { supportMailto } from '../support';
 import { localNext } from '../next';
 import { LAUNCHER } from '../paths';
 
@@ -50,7 +51,8 @@ const PLAIN_CODES: readonly Code[] = ['invalid_hub', 'login_cancelled', 'google_
  * the reserved names are refused by Django, which never sends them here.
  */
 const HUB_SLUG = /^[a-z0-9]([a-z0-9-]{1,61}[a-z0-9])?$/;
-const SUPPORT = 'mailto:info@erplora.com';
+/** «Contact Support»: the SaaS's one support address (PUBLIC-F18), none if the page carries none. */
+const SUPPORT = supportMailto();
 
 const { t } = useI18n();
 const route = useRoute();
@@ -125,7 +127,7 @@ onMounted(() => {
         v-if="code === 'not_a_member'"
         :href="`${hubOrigin}/`"
       >{{ $t('accounts.loginError.backToHub') }}</a>
-      <a :href="SUPPORT">{{ $t('accounts.loginError.contactSupport') }}</a>
+      <a v-if="SUPPORT" :href="SUPPORT">{{ $t('accounts.loginError.contactSupport') }}</a>
     </div>
   </AuthShell>
 </template>

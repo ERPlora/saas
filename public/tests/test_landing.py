@@ -1185,10 +1185,9 @@ def test_an_unknown_topic_is_ignored(client, subject):
 def test_the_contact_page_email_is_the_support_address(client, settings):
     settings.SUPPORT_EMAIL = "help@erplora.test"
 
-    html = html_of(client, CONTACT)
-
-    assert "mailto:help@erplora.test" in html
-    assert "info@erplora.com" not in html
+    for html in (html_of(client, CONTACT), section(html_of(client), "contacto")):
+        assert "mailto:help@erplora.test" in html
+        assert "info@erplora.com" not in html
 
 
 def test_the_reply_time_is_written_once(client, monkeypatch):
@@ -1215,7 +1214,6 @@ def test_the_reply_time_in_spanish(client):
 def test_the_chat_is_written_once(client, monkeypatch):
     monkeypatch.setattr(context_processors, "SUPPORT_WHATSAPP_URL", "https://wa.me/34600000000")
 
-    html = html_of(client, CONTACT)
-
-    assert 'href="https://wa.me/34600000000"' in html
-    assert "34643759040" not in html
+    for html in (html_of(client, CONTACT), section(html_of(client), "contacto")):
+        assert 'href="https://wa.me/34600000000"' in html
+        assert "34643759040" not in html
