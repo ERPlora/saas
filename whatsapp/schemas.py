@@ -395,6 +395,19 @@ class MediaOut(Schema):
     filename: str = ""
 
 
+# --- The staff's actions (WHATSAPP-G18) -------------------------------------------------------------------------
+
+
+class DueNowIn(Schema):
+    ids: list[UUID] = Field(max_length=1000)
+
+
+class DueNowOut(Schema):
+    #: The businesses whose deliveries are due now (still waiting for their Hub).
+    hub_ids: list[UUID]
+    count: int
+
+
 # --- The retention (WHATSAPP-G14) -----------------------------------------------------------------------------
 
 

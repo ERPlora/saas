@@ -1,0 +1,393 @@
+# Spanish translations of the whatsapp app of saas-next (English is the source).
+# Copyright (C) 2026 ERPlora
+# This file is distributed under the same license as ERPlora.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: saas-next\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-21 10:26+0200\n"
+"PO-Revision-Date: 2026-10-21 10:40+0200\n"
+"Last-Translator: ERPlora\n"
+"Language-Team: Spanish\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: admin.py:82
+msgid "Meta's permission"
+msgstr "Permiso de Meta"
+
+#: admin.py:85
+msgid "Missing: the business has to connect the number again."
+msgstr "Falta: el negocio tiene que volver a conectar el número."
+
+#: admin.py:87
+msgid "Expired: the business has to connect the number again."
+msgstr "Caducado: el negocio tiene que volver a conectar el número."
+
+#: admin.py:88
+msgid "Stored: this number can send and receive."
+msgstr "Guardado: este número puede enviar y recibir."
+
+#: admin.py:90
+msgid "Disconnect the number"
+msgstr "Desconectar el número"
+
+#: admin.py:97
+#, python-format
+msgid "%(count)d number disconnected."
+msgid_plural "%(count)d numbers disconnected."
+msgstr[0] "%(count)d número desconectado."
+msgstr[1] "%(count)d números desconectados."
+
+#: admin.py:100
+msgid "Read Meta's templates again"
+msgstr "Volver a leer las plantillas de Meta"
+
+#: admin.py:104
+msgid "Templates read again from Meta."
+msgstr "Plantillas leídas de nuevo de Meta."
+
+#: admin.py:107
+msgid "Meta could not be read now: the templates stay as they were."
+msgstr "Ahora no se ha podido leer Meta: las plantillas siguen como estaban."
+
+#: admin.py:153
+msgid "Push to the Hub now"
+msgstr "Entregar al Hub ahora"
+
+#: admin.py:157
+msgid "Nothing selected waits for the Hub."
+msgstr "Nada de lo elegido espera al Hub."
+
+#: admin.py:162
+#, python-format
+msgid "%(delivered)d taken by the Hub, %(retried)d still waiting, %(refused)d refused by the Hub."
+msgstr "%(delivered)d recogidos por el Hub, %(retried)d aún esperan y %(refused)d rechazados por el Hub."
+
+#: apps.py:18
+msgid "WhatsApp"
+msgstr "WhatsApp"
+
+#: emails.py:22
+#, python-format
+msgid "Action needed: connect WhatsApp again (%(number)s)"
+msgstr "Hay que actuar: vuelve a conectar WhatsApp (%(number)s)"
+
+#: emails.py:25
+#, python-format
+msgid "The permission that lets ERPlora send and receive WhatsApp messages with %(number)s for «%(business)s» is about to expire, and Meta did not let us renew it."
+msgstr "El permiso que nos deja enviar y recibir mensajes de WhatsApp con %(number)s en «%(business)s» está a punto de caducar, y Meta no nos ha dejado renovarlo."
+
+#: emails.py:30
+msgid "Until you connect it again, your customers' WhatsApp messages will not reach your Hub."
+msgstr "Hasta que lo vuelvas a conectar, los mensajes de WhatsApp de tus clientes no llegarán a tu Hub."
+
+#: emails.py:32
+#, python-format
+msgid "It takes a minute: open your Hub, go to WhatsApp and connect your number again: %(url)s"
+msgstr "Es un minuto: entra en tu Hub, ve a WhatsApp y vuelve a conectar tu número: %(url)s"
+
+#: models.py:28 models.py:91 models.py:132 models.py:166 models.py:193
+#: models.py:220
+msgid "business"
+msgstr "negocio"
+
+#: models.py:30
+msgid "Meta number id"
+msgstr "id del número en Meta"
+
+#: models.py:31
+msgid "number"
+msgstr "número"
+
+#: models.py:32
+msgid "name on WhatsApp"
+msgstr "nombre en WhatsApp"
+
+#: models.py:33
+msgid "WhatsApp Business account"
+msgstr "cuenta de WhatsApp Business"
+
+#: models.py:34
+msgid "Meta business portfolio"
+msgstr "portfolio comercial de Meta"
+
+#: models.py:35
+msgid "business token"
+msgstr "permiso del negocio"
+
+#: models.py:36
+msgid "registration PIN"
+msgstr "PIN de registro"
+
+#: models.py:38
+msgid "from the WhatsApp Business app"
+msgstr "desde la app WhatsApp Business"
+
+#: models.py:40
+msgid "Connected from the WhatsApp Business app (coexistence): never registered again."
+msgstr "Conectado desde la app WhatsApp Business (coexistencia): nunca se vuelve a registrar."
+
+#: models.py:43
+msgid "token expires"
+msgstr "caducidad del permiso"
+
+#: models.py:43
+msgid "Empty: the token never expires."
+msgstr "Vacío: el permiso no caduca nunca."
+
+#: models.py:45
+msgid "active"
+msgstr "activo"
+
+#: models.py:47
+msgid "needs reconnecting"
+msgstr "hay que reconectar"
+
+#: models.py:49
+msgid "Meta's permission could not be renewed: only the business can fix it, by connecting again."
+msgstr "No se ha podido renovar el permiso de Meta: solo el negocio puede arreglarlo, volviendo a conectar."
+
+#: models.py:51
+msgid "owner warned"
+msgstr "dueño avisado"
+
+#: models.py:58
+msgid "connected by"
+msgstr "conectado por"
+
+#: models.py:60
+msgid "connected"
+msgstr "conectado"
+
+#: models.py:61
+msgid "disconnected"
+msgstr "desconectado"
+
+#: models.py:62 models.py:107 models.py:139 models.py:173 models.py:197
+msgid "updated"
+msgstr "actualizado"
+
+#: models.py:65
+msgid "WhatsApp number"
+msgstr "Número de WhatsApp"
+
+#: models.py:66
+msgid "WhatsApp numbers"
+msgstr "Números de WhatsApp"
+
+#: models.py:83
+msgid "Under review"
+msgstr "En revisión"
+
+#: models.py:84
+msgid "Approved"
+msgstr "Aprobada"
+
+#: models.py:85
+msgid "Rejected"
+msgstr "Rechazada"
+
+#: models.py:86
+msgid "Paused by Meta"
+msgstr "Pausada por Meta"
+
+#: models.py:87
+msgid "Disabled by Meta"
+msgstr "Desactivada por Meta"
+
+#: models.py:93
+msgid "name"
+msgstr "nombre"
+
+#: models.py:94
+msgid "language"
+msgstr "idioma"
+
+#: models.py:95
+msgid "category"
+msgstr "categoría"
+
+#: models.py:96 models.py:137
+msgid "Meta's verdict"
+msgstr "veredicto de Meta"
+
+#: models.py:97
+msgid "Meta's reason"
+msgstr "motivo de Meta"
+
+#: models.py:98 models.py:136
+msgid "Meta template id"
+msgstr "id de la plantilla en Meta"
+
+#: models.py:99
+msgid "header"
+msgstr "cabecera"
+
+#: models.py:100
+msgid "header text"
+msgstr "texto de la cabecera"
+
+#: models.py:101
+msgid "text"
+msgstr "texto"
+
+#: models.py:102
+msgid "examples"
+msgstr "ejemplos"
+
+#: models.py:103
+msgid "footer"
+msgstr "pie"
+
+#: models.py:104
+msgid "buttons"
+msgstr "botones"
+
+#: models.py:105
+msgid "variables"
+msgstr "variables"
+
+#: models.py:106
+msgid "created"
+msgstr "creada"
+
+#: models.py:110
+msgid "WhatsApp template"
+msgstr "Plantilla de WhatsApp"
+
+#: models.py:111
+msgid "WhatsApp templates"
+msgstr "Plantillas de WhatsApp"
+
+#: models.py:127
+msgid "Registering"
+msgstr "Registrando"
+
+#: models.py:128
+msgid "Registered"
+msgstr "Registrada"
+
+#: models.py:134 models.py:168
+msgid "key"
+msgstr "clave"
+
+#: models.py:135 models.py:169
+msgid "state"
+msgstr "estado"
+
+#: models.py:138 models.py:172
+msgid "asked"
+msgstr "pedido"
+
+#: models.py:142
+msgid "WhatsApp template registration"
+msgstr "Registro de plantilla de WhatsApp"
+
+#: models.py:143
+msgid "WhatsApp template registrations"
+msgstr "Registros de plantillas de WhatsApp"
+
+#: models.py:160
+msgid "Sending"
+msgstr "Enviando"
+
+#: models.py:161
+msgid "Sent"
+msgstr "Enviado"
+
+#: models.py:162
+msgid "Unknown outcome"
+msgstr "Resultado desconocido"
+
+#: models.py:170 models.py:223
+msgid "WhatsApp message id"
+msgstr "id del mensaje de WhatsApp"
+
+#: models.py:171 models.py:195
+msgid "month"
+msgstr "mes"
+
+#: models.py:171
+msgid "The month of the allowance it took, YYYY-MM."
+msgstr "El mes del cupo que gastó, AAAA-MM."
+
+#: models.py:176
+msgid "WhatsApp send"
+msgstr "Envío de WhatsApp"
+
+#: models.py:177
+msgid "WhatsApp sends"
+msgstr "Envíos de WhatsApp"
+
+#: models.py:196
+msgid "messages sent"
+msgstr "mensajes enviados"
+
+#: models.py:200 models.py:201
+msgid "WhatsApp monthly usage"
+msgstr "Consumo mensual de WhatsApp"
+
+#: models.py:215
+msgid "Message"
+msgstr "Mensaje"
+
+#: models.py:216
+msgid "Delivery status"
+msgstr "Estado de entrega"
+
+#: models.py:222
+msgid "kind"
+msgstr "tipo"
+
+#: models.py:224
+msgid "customer's number"
+msgstr "número del cliente"
+
+#: models.py:225
+msgid "content"
+msgstr "contenido"
+
+#: models.py:226
+msgid "Meta attachment id"
+msgstr "id del adjunto en Meta"
+
+#: models.py:229
+msgid "revision"
+msgstr "revisión"
+
+#: models.py:230
+msgid "received"
+msgstr "recibido"
+
+#: models.py:231
+msgid "taken by the Hub"
+msgstr "recogido por el Hub"
+
+#: models.py:232
+msgid "attempts"
+msgstr "intentos"
+
+#: models.py:234
+msgid "next attempt"
+msgstr "próximo intento"
+
+#: models.py:235
+msgid "Empty: the Hub refused it as it is (422), it is not retried."
+msgstr "Vacío: el Hub lo rechazó tal cual (422) y no se reintenta."
+
+#: models.py:237
+msgid "last error"
+msgstr "último error"
+
+#: models.py:240
+msgid "WhatsApp delivery to the Hub"
+msgstr "Entrega de WhatsApp al Hub"
+
+#: models.py:241
+msgid "WhatsApp deliveries to the Hub"
+msgstr "Entregas de WhatsApp al Hub"

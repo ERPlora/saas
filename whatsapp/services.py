@@ -21,6 +21,7 @@ for a third party.
   the mark «needs reconnecting» and the owner told once per incident;
 - ``whatsapp.number.connect`` / ``whatsapp.number.disconnect``: the number a business connected through Meta's
   window (door 11, WHATSAPP-G01) and its disconnection (door 12, WHATSAPP-G02);
+- ``whatsapp.delivery.due_now``: the staff's «Push to the Hub now» (WHATSAPP-G18);
 - ``whatsapp.retention.purge``: the daily forgetting of what the Hub took, of what it never took and of the keys
   (WHATSAPP-G14).
 
@@ -54,6 +55,8 @@ from whatsapp.schemas import (
     EraseIn,
     EraseOut,
     DisconnectIn,
+    DueNowIn,
+    DueNowOut,
     IngestIn,
     IngestOut,
     NumberConnectIn,
@@ -335,6 +338,16 @@ def delivery_record(ctx: OperationContext, data: RecordIn) -> RecordOut:
 
 
 # --- Door 5: a send by its Idempotency-Key ----------------------------------------------------------------------
+
+
+@operation("whatsapp.delivery.due_now", kind="command", permission=PERMISSION, input=DueNowIn, output=DueNowOut)
+def delivery_due_now(ctx: OperationContext, data: DueNowIn) -> DueNowOut:
+    """What still waits for the Hub among ``ids`` is due now, also one the Hub refused as it was (422), once the
+    Hub is fixed. What the Hub already took is left as it is."""
+    waiting = Delivery.objects.filter(pk__in=data.ids, delivered_at__isnull=True)
+    hub_ids = sorted(set(waiting.values_list("hub_id", flat=True)), key=str)
+    count = waiting.update(next_attempt_at=timezone.now())
+    return DueNowOut(hub_ids=hub_ids, count=count)
 
 
 def in_progress() -> OperationError:
