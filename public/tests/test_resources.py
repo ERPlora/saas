@@ -1,4 +1,4 @@
-"""``/documentation/`` and ``/support/`` (public/resources.py).
+"""``/documentation/`` (a 301 to the help center, PUBLIC-G07) and ``/support/`` (public/resources.py).
 
 Port of ``apps/public/resources`` (origin/develop c5ca8ca): ``resources/test_views.py`` (2; its help
 case lives in test_help.py, with the help) and the cases of ``tests/unit/test_public_pages.py`` for
@@ -17,7 +17,7 @@ from django.urls import reverse
 
 pytestmark = pytest.mark.django_db
 
-PAGES = ("/documentation/", "/support/")
+PAGES = ("/support/",)
 
 
 def page(client, path: str, language: str = "en") -> str:
@@ -52,12 +52,17 @@ def test_the_url_names():
     assert reverse("public:support") == "/support/"
 
 
-def test_documentation_is_a_coming_soon_page(client):
-    html = page(client, "/documentation/")
+@pytest.mark.parametrize("path", ["/documentation/", "/documentation/?q=print"])
+def test_documentation_leads_to_the_help_center_for_good(client, path):
+    """PUBLIC-G07: the documentation that exists is the help center's guides; never a «coming soon»."""
+    response = client.get(path)
 
-    assert "<title>Documentation · ERPlora</title>" in html
-    assert "are coming soon." in html
-    assert "Muy pronto: guías, referencias" in page(client, "/documentation/", "es")
+    assert response.status_code == 301
+    assert response["Location"] == reverse("public:help")
+
+
+def test_documentation_answers_no_other_method(client):
+    assert client.post("/documentation/").status_code == 405
 
 
 def test_support_uses_shared_layout_and_real_contact_routes(client, settings):

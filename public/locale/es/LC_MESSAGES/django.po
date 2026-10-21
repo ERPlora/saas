@@ -2174,12 +2174,6 @@ msgstr "Lo mismo, en lenguaje de contrato."
 msgid "Everything on this page is section 7 of the terms of service. If the two ever disagree, the terms are the ones that bind us."
 msgstr "Todo lo de esta página es la cláusula 7 de las condiciones del servicio. Si alguna vez las dos no coinciden, las que nos obligan son las condiciones."
 
-msgid "Resources"
-msgstr "Recursos"
-
-msgid "Guides, references, and practical resources for using and extending ERPlora are coming soon."
-msgstr "Muy pronto: guías, referencias y recursos prácticos para usar y ampliar ERPlora."
-
 msgid "Help"
 msgstr "Ayuda"
 

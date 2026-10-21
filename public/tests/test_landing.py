@@ -905,7 +905,6 @@ def test_a_page_that_does_not_exist_is_a_404(client, path):
         "/careers/",
         "/blog/",
         "/press/",
-        "/documentation/",
         "/help/",
         "/support/",
         "/legal/privacy/",
