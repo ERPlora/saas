@@ -127,7 +127,10 @@ onMounted(() => {
         v-if="code === 'not_a_member'"
         :href="`${hubOrigin}/`"
       >{{ $t('accounts.loginError.backToHub') }}</a>
-      <a v-if="SUPPORT" :href="SUPPORT">{{ $t('accounts.loginError.contactSupport') }}</a>
+      <a
+        v-if="SUPPORT"
+        :href="SUPPORT"
+      >{{ $t('accounts.loginError.contactSupport') }}</a>
     </div>
   </AuthShell>
 </template>
