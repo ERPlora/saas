@@ -239,29 +239,35 @@ def current_session_key(request) -> str | None:
     return getattr(getattr(request, "session", None), "session_key", None)
 
 
-def session_is_alive(user_session, user) -> bool:
-    """Whether ``user_session`` still signs ``user`` in: its session exists, has not expired and was opened
-    with the account's current password (Django ends the others when it changes). Read only: unlike
+def live_sessions(user) -> list[tuple[int, str]]:
+    """``(id, session key)`` of the account's sessions that still sign it in, the last used first: their session
+    exists, has not expired and was opened with the account's current password (Django ends the others when it
+    changes). One query brings the unexpired ones with their data, checked here: no session load per row (a
+    thousand sessions were a thousand queries on every run of the list). Read only: unlike
     ``django.contrib.auth.get_user``, a dead session is not flushed here."""
     from importlib import import_module
 
-    from django.contrib.auth import HASH_SESSION_KEY, SESSION_KEY
-    from django.utils.crypto import constant_time_compare
-
-    data = import_module(settings.SESSION_ENGINE).SessionStore(user_session.session_key).load()
-    if data.get(SESSION_KEY) != str(user.pk):
-        return False
-    stored = data.get(HASH_SESSION_KEY) or ""
-    hashes = [user.get_session_auth_hash(), *getattr(user, "get_session_auth_fallback_hash", lambda: ())()]
-    return any(constant_time_compare(stored, candidate) for candidate in hashes)
-
-
-def live_sessions(user) -> list:
-    """The account's sessions that still sign it in, the last used first."""
     from allauth.usersessions.models import UserSession
+    from django.contrib.auth import HASH_SESSION_KEY, SESSION_KEY
+    from django.db.models import OuterRef, Subquery
 
-    sessions = UserSession.objects.filter(user=user).order_by("-last_seen_at", "-pk")
-    return [session for session in sessions if session_is_alive(session, user)]
+    store = import_module(settings.SESSION_ENGINE).SessionStore
+    stored = store.get_model_class().objects.filter(session_key=OuterRef("session_key"), expire_date__gt=timezone.now())
+    sessions = (
+        UserSession.objects.filter(user=user)
+        .annotate(session_data=Subquery(stored.values("session_data")[:1]))
+        .filter(session_data__isnull=False)
+        .order_by("-last_seen_at", "-pk")
+        .values_list("pk", "session_key", "session_data")
+    )
+    hashes = [user.get_session_auth_hash(), *getattr(user, "get_session_auth_fallback_hash", lambda: ())()]
+    decode = store().decode
+
+    def signs_in(data: dict) -> bool:
+        stored_hash = data.get(HASH_SESSION_KEY) or ""
+        return data.get(SESSION_KEY) == str(user.pk) and any(constant_time_compare(stored_hash, h) for h in hashes)
+
+    return [(pk, key) for pk, key, data in sessions if signs_in(decode(data))]
 
 
 def session_row(session, current: str | None) -> dict[str, Any]:
@@ -283,11 +289,21 @@ def session_row(session, current: str | None) -> dict[str, Any]:
 
 @operation("accounts.session.list", kind="query", permission="accounts.view", input=SessionListIn, output=SessionListOut)
 def session_list(ctx: OperationContext, data: SessionListIn) -> dict[str, Any]:
-    """Account → Security → Active sessions: this session first, then the rest by last use."""
+    """Account → Security → Active sessions, a page at a time: this session first, then the rest by last use."""
+    from allauth.usersessions.models import UserSession
+
     user = account_of(ctx)
     current = current_session_key(ctx.request)
-    sessions = sorted(live_sessions(user), key=lambda session: session.session_key != current)
-    return {"rows": [session_row(session, current) for session in sessions], "total": len(sessions)}
+    sessions = sorted(live_sessions(user), key=lambda session: session[1] != current)
+    page = [pk for pk, _ in sessions[data.offset : data.offset + data.limit]]
+    found = UserSession.objects.in_bulk(page)
+    return {
+        "rows": [session_row(found[pk], current) for pk in page if pk in found],
+        "total": len(sessions),
+        "limit": data.limit,
+        "offset": data.offset,
+        "others": sum(1 for _, key in sessions if key != current),
+    }
 
 
 # --- API keys -------------------------------------------------------------------------------------

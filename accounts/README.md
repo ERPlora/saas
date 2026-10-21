@@ -19,7 +19,7 @@ solo sobre la cuenta que llama. Ninguna está expuesta a claves de API.
 | `accounts.email.verify` | `POST /api/accounts/email/verify` | El código, en la misma sesión: `verified` y `attempts_left` (un código incorrecto no es error: 200 con `verified: false`); si es bueno, la cuenta pasa al correo nuevo, verificado, y se avisa al antiguo |
 | `accounts.photo.upload` / `.remove` | `POST /api/accounts/photo`, `…/photo/remove` | Foto (JPEG, PNG o WebP) limpia de metadatos |
 | `accounts.preferences.get` (viva) / `.update` | `GET`/`POST /api/accounts/preferences` | `theme_mode` (`system`/`light`/`dark`), `language` (`User.language`), `hub_alerts`, `marketing_emails` |
-| `accounts.session.list` (viva) | `GET /api/accounts/sessions` | Sesiones vivas: `device` (código), `browser` + versión o `app_version`, `ip`, último uso, `is_current` (primero) |
+| `accounts.session.list` (viva) | `GET /api/accounts/sessions` | Una página (`limit` ≤ 100, `offset`) de las sesiones vivas: `device` (código), `browser` + versión o `app_version`, `ip`, último uso, `is_current` (primero); `total` y `others` (las demás) cuentan todas |
 | `accounts.session.close` / `.close_others` | `POST /api/accounts/sessions/close`, `…/close_others` | Cierra una (la propia también: cierra la sesión) o todas las demás |
 | `accounts.apikey.list` (viva) | `GET /api/accounts/api-keys` | Claves no revocadas (las caducadas, marcadas) y el catálogo de `scopes` con su rótulo |
 | `accounts.apikey.create` | `POST /api/accounts/api-keys` (201) | Reautenticación; devuelve la clave entera **una vez** (`secret`) y avisa por correo a la cuenta (sin la clave) |
@@ -65,8 +65,10 @@ Sin ruta: `accounts.apikey.revoke_any`, la «Revocar» del admin, con contexto d
   abiertos, `RATELIMIT_FAIL_OPEN`), solo si la petición ya usó su sesión (cargarla borraría una cookie ilegible
   en la web pública, saas#975), solo la cuenta de esa sesión (nunca la de una clave de API) y recoge las
   sesiones abiertas por otra vía. La lista solo enseña las vivas
-  (sesión existente, sin caducar y con el hash de la contraseña actual), sin escribir. Ubicación = IP (GeoIP
-  fuera, plan §6). `UserSessionsAdapter` hace que cerrar por cualquier puerta avise a los negocios.
+  (sesión existente, sin caducar y con el hash de la contraseña actual), sin escribir: una consulta trae las sin
+  caducar con sus datos y el hash se comprueba en memoria (nada de cargar una sesión por fila), y el servidor la
+  pagina, la actual primero (con más sesiones de las que caben en un resultado vivo no cargaba). Ubicación = IP
+  (GeoIP fuera, plan §6). `UserSessionsAdapter` hace que cerrar por cualquier puerta avise a los negocios.
 - **Señales hacia `hubs`** (`signals.py`; `accounts` nunca importa `hubs`): `sessions_ended(user_id)` al cerrar
   sesiones, eliminar la cuenta o poner contraseña nueva (`password_changed/set/reset` de allauth; PLAN-SAAS
   §2.1) y `account_deleting(user_id)` antes de borrar la cuenta. Al cambiar el correo se envía `email_changed`

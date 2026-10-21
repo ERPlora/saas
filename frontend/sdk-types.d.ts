@@ -508,10 +508,20 @@ export interface SessionRowOut {
   is_current: boolean;
 }
 
-/** `accounts.SessionListOut`: this session first. */
+/** `accounts.SessionListIn`: a page of the sessions, `limit` rows (at most 100) from `offset`. */
+export interface SessionListIn {
+  limit?: number;
+  offset?: number;
+}
+
+/** `accounts.SessionListOut`: a page, this session first; `total` and `others` count every session, not the page. */
 export interface SessionListOut {
   rows: SessionRowOut[];
   total: number;
+  limit: number;
+  offset: number;
+  /** The sessions but this one: what «Close other sessions» ends. */
+  others: number;
 }
 
 /** `accounts.SessionCloseIn`. */
@@ -604,7 +614,7 @@ declare module '@erplora/ui/sdk' {
     'accounts.photo.remove': { input: Record<string, never> | undefined; output: ProfileOut };
     'accounts.preferences.get': { input: Record<string, never> | undefined; output: PreferencesOut };
     'accounts.preferences.update': { input: PreferencesUpdateIn; output: PreferencesOut };
-    'accounts.session.list': { input: Record<string, never> | undefined; output: SessionListOut };
+    'accounts.session.list': { input: SessionListIn | undefined; output: SessionListOut };
     'accounts.session.close': { input: SessionCloseIn; output: SessionsClosedOut };
     'accounts.session.close_others': { input: Record<string, never> | undefined; output: SessionsClosedOut };
     'accounts.apikey.list': { input: Record<string, never> | undefined; output: ApiKeyListOut };

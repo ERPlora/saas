@@ -146,8 +146,15 @@ class PhotoRemoveIn(StrictIn):
 # --- Sessions -------------------------------------------------------------------------------------
 
 
+#: The most sessions one page of ``accounts.session.list`` holds: well within a live result (``MAX_RESULT_BYTES``).
+SESSION_PAGE_MAX = 100
+
+
 class SessionListIn(StrictIn):
-    pass
+    """A page of the account's sessions: ``limit`` rows from ``offset``, this session first."""
+
+    limit: int = Field(25, ge=1, le=SESSION_PAGE_MAX)
+    offset: int = Field(0, ge=0)
 
 
 class SessionRowOut(Schema):
@@ -167,8 +174,14 @@ class SessionRowOut(Schema):
 
 
 class SessionListOut(Schema):
+    """One page of the sessions. ``total`` counts every session that still signs the account in; ``others``, those
+    but this one (what «Close other sessions» ends), whichever page is asked."""
+
     rows: list[SessionRowOut]
     total: int
+    limit: int
+    offset: int
+    others: int
 
 
 class SessionCloseIn(StrictIn):

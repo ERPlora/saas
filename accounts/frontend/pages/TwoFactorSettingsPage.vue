@@ -10,7 +10,7 @@
 //   would show another QR and the scanned one would fail. It confirms right here (password or code,
 //   as allauth lists) and posts the same code again; the secret stays in allauth's session.
 // - 2FA switched off on the server (`ACCOUNTS_MFA_ENABLED`: its endpoints answer 404) sends to the
-//   launcher with `?notice=mfa_unavailable`.
+//   launcher with `?notice=mfa_unavailable`, without asking when `spa-config.mfaEnabled` already says so.
 // - The QR is drawn here from allauth's `otpauth://` URL, as a data-URI image (CSP: `img-src data:`);
 //   the codes download as a text file built here, so there is no server route for it.
 // - Turning the app on makes allauth generate the recovery codes: they are shown right away, once.
@@ -69,7 +69,8 @@ const TITLES: Record<View, string> = {
 
 const { t } = useI18n();
 const router = useRouter();
-const auth = createAllauthClient(useLiveClient().config);
+const config = useLiveClient().config;
+const auth = createAllauthClient(config);
 
 const status = shallowRef<'loading' | 'ready' | 'error' | 'leaving'>('loading');
 const view = shallowRef<View>('index');
@@ -134,6 +135,11 @@ function shownInput(): string | undefined {
 
 /** The settings, read anew. */
 async function load(): Promise<void> {
+  if (config.mfaEnabled === false) {
+    status.value = 'leaving';
+    void router.replace(UNAVAILABLE);
+    return;
+  }
   status.value = 'loading';
   fields.value = {};
   failure.value = '';

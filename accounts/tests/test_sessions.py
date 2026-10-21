@@ -7,14 +7,27 @@ out of scope, plan §6). Closing a session also asks every business to end the a
 (PLAN-SAAS §2.1; ``signals.sessions_ended``, which hubs turns into ``POST /internal/sessions/revoke``).
 """
 
+import json
+import string
+from datetime import timedelta
+from importlib import import_module
+
 import pytest
 from allauth.usersessions.models import UserSession
-from django.contrib.auth import get_user_model
-from django.test import Client
+from django.conf import settings
+from django.contrib.auth import BACKEND_SESSION_KEY, HASH_SESSION_KEY, SESSION_KEY, get_user_model
+from django.db import connection
+from django.test import Client, RequestFactory
+from django.test.utils import CaptureQueriesContext
+from django.utils import timezone
+from django.utils.crypto import get_random_string
+from live.executor import Executor, Stream, Subscription
 from live.live_registry import live_registry
+from live.operations import get
+from live.sse import MAX_RESULT_BYTES
 
 from accounts import events, signals
-from accounts.tests.conftest import HOST, api_get, api_post, sign_in
+from accounts.tests.conftest import HOST, api_get, api_post, ctx_for, sign_in
 
 pytestmark = pytest.mark.django_db
 
@@ -23,6 +36,42 @@ CLOSE = "/api/accounts/sessions/close"
 CLOSE_OTHERS = "/api/accounts/sessions/close_others"
 MAC = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/130.0.6723.92 Safari/537.36"
 APP = "Mozilla/5.0 (Linux; Android 14; wv) Chrome/130.0 Mobile Safari/537.36 ERPloraApp/4.0.2"
+#: Sessions whose rows add up to more than one live result carries (every row is well over 150 bytes).
+PAST_THE_CAP = MAX_RESULT_BYTES // 150
+
+
+def _session_store():
+    return import_module(settings.SESSION_ENGINE).SessionStore
+
+
+def _more_sessions(user, count: int) -> list[str]:
+    """``count`` more sessions that still sign ``user`` in, used one minute apart before now, as as many sign-ins
+    on other browsers leave them. Written in bulk: as many sign-ins through allauth would take minutes."""
+    store = _session_store()
+    model = store.get_model_class()
+    data = store().encode(
+        {
+            SESSION_KEY: str(user.pk),
+            BACKEND_SESSION_KEY: settings.AUTHENTICATION_BACKENDS[0],
+            HASH_SESSION_KEY: user.get_session_auth_hash(),
+        }
+    )
+    now = timezone.now()
+    keys = [get_random_string(32, string.ascii_lowercase + string.digits) for _ in range(count)]
+    model.objects.bulk_create(model(session_key=key, session_data=data, expire_date=now + timedelta(days=1)) for key in keys)
+    UserSession.objects.bulk_create(
+        UserSession(user=user, session_key=key, ip="81.33.10.4", user_agent=MAC, last_seen_at=now - timedelta(minutes=n + 1))
+        for n, key in enumerate(keys)
+    )
+    return keys
+
+
+def _live_frame(client, user, **params) -> bytes:
+    """The frame ``/api/live`` sends ``client``'s browser for ``accounts.session.list``: the executor's own run."""
+    request = RequestFactory().get("/")
+    request.session = _session_store()(client.session.session_key)
+    op = get("accounts.session.list")
+    return Executor()._run_in_language(Stream(ctx_for(user, request=request)), Subscription("sessions", op, op.input(**params)))
 
 
 @pytest.fixture
@@ -71,6 +120,12 @@ class TestTheList:
 
         assert [row["is_current"] for row in api_get(laptop, LIST).json()["rows"]] == [True]
 
+    def test_a_session_that_expired_is_not_listed(self, laptop, phone):
+        model = _session_store().get_model_class()
+        model.objects.filter(session_key=phone.session.session_key).update(expire_date=timezone.now() - timedelta(seconds=1))
+
+        assert [row["is_current"] for row in api_get(laptop, LIST).json()["rows"]] == [True]
+
     def test_a_session_left_behind_by_a_password_change_is_not_listed(self, laptop, phone, ana):
         """Django ends the other sessions when the password changes (their hash no longer matches)."""
         ana.set_password("another long password 42")
@@ -92,6 +147,65 @@ class TestTheList:
 
     def test_closing_re_runs_the_live_list(self):
         assert "accounts.session.list" in live_registry.affected([events.SESSION_CLOSED])
+
+
+class TestALongList:
+    """An account with more sessions than one live result carries (the sign-ins of the end-to-end runs) still
+    sees its list: the server pages it, this session first (FIX-SAAS-SESSIONS-RESULT-TOO-BIG)."""
+
+    def test_the_live_list_loads_with_more_sessions_than_a_result_carries(self, laptop, ana):
+        _more_sessions(ana, PAST_THE_CAP)
+
+        sent = _live_frame(laptop, ana)
+
+        assert sent.startswith(b"event: result\n"), sent[:300]
+        data = json.loads(sent.split(b"\ndata: ", 1)[1])["data"]
+        assert (data["total"], data["rows"][0]["is_current"]) == (PAST_THE_CAP + 1, True)
+
+    def test_a_page_holds_its_limit_this_session_first_and_the_total_counts_them_all(self, laptop, ana):
+        keys = _more_sessions(ana, 30)
+        UserSession.objects.filter(session_key=keys[-1]).update(last_seen_at=timezone.now() + timedelta(minutes=5))
+
+        pages = [api_get(laptop, LIST, limit=10, offset=offset).json() for offset in (0, 10, 20, 30)]
+
+        assert [len(page["rows"]) for page in pages] == [10, 10, 10, 1]
+        assert {page["total"] for page in pages} == {31}
+        assert [(page["limit"], page["offset"]) for page in pages] == [(10, 0), (10, 10), (10, 20), (10, 30)]
+        rows = [row for page in pages for row in page["rows"]]
+        assert [row["is_current"] for row in rows] == [True] + [False] * 30, "this session first, even used before others"
+        assert rows[1]["id"] == UserSession.objects.get(session_key=keys[-1]).pk
+        assert len({row["id"] for row in rows}) == 31
+        others = [row["last_seen_at"] for row in rows[1:]]
+        assert others == sorted(others, reverse=True)
+
+    def test_a_page_past_the_end_is_empty_and_still_counts_them_all(self, laptop, phone):
+        page = api_get(laptop, LIST, limit=10, offset=10).json()
+
+        assert (page["rows"], page["total"]) == ([], 2)
+
+    def test_a_page_never_holds_more_than_the_servers_maximum(self, laptop):
+        response = api_get(laptop, LIST, limit=101)
+
+        assert response.status_code == 422
+        assert "limit" in response.json()["error"]["fields"]
+
+    def test_the_other_sessions_are_counted_on_every_page(self, laptop, ana):
+        _more_sessions(ana, 30)
+
+        assert [api_get(laptop, LIST, limit=10, offset=offset).json()["others"] for offset in (0, 20)] == [30, 30]
+
+    def test_which_sessions_still_sign_in_costs_the_same_queries_however_many(self, laptop, ana):
+        def queries() -> int:
+            with CaptureQueriesContext(connection) as captured:
+                assert api_get(laptop, LIST, limit=10).status_code == 200
+            return len(captured)
+
+        _more_sessions(ana, 5)
+        queries()  # «last used» is recorded at most every few minutes: the first request may record it
+        few = queries()
+        _more_sessions(ana, 50)
+
+        assert queries() == few
 
 
 class TestClosingOne:
@@ -148,6 +262,17 @@ class TestClosingTheOthers:
         session here."""
         assert api_post(laptop, CLOSE_OTHERS).json() == {"closed": 0}
         assert received == [ana.pk]
+
+    def test_a_session_that_no_longer_signs_in_is_not_counted_among_the_closed(self, laptop, phone, ana, password):
+        """«Sessions closed: n» counts the sessions that still signed in: one left behind by its expiry is ended too,
+        but not counted (the count comes from ``live_sessions``, FIX-SAAS-SESSIONS-RESULT-TOO-BIG)."""
+        tablet = _browser(ana.email, password, MAC)
+        model = _session_store().get_model_class()
+        model.objects.filter(session_key=phone.session.session_key).update(expire_date=timezone.now() - timedelta(seconds=1))
+
+        assert api_post(laptop, CLOSE_OTHERS).json() == {"closed": 1}
+        assert api_get(tablet, LIST).status_code == 401
+        assert [row["is_current"] for row in api_get(laptop, LIST).json()["rows"]] == [True]
 
     def test_an_anonymous_visitor_gets_the_401_envelope(self, client):
         assert api_post(client, CLOSE_OTHERS).status_code == 401
