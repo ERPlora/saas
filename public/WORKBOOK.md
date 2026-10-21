@@ -386,7 +386,7 @@ Pasos:
 3. Al enviarlo vuelve a la misma página con «¡Gracias! Recibimos tu mensaje y responderemos en un plazo de 4 horas laborables.»; el equipo lo recibe en el buzón de soporte y, al responderlo, la respuesta va a la persona.
 Entra: lo escrito en el formulario.
 Sale: un correo al buzón de soporte que se responde a la persona; la web no guarda el mensaje.
-Si falla: un campo obligatorio vacío, un correo que no es válido, demasiados mensajes seguidos desde la misma red o un fallo al enviar el correo vuelven al formulario con su motivo («Introduce un correo válido.», «Demasiados mensajes desde tu red. Vuelve a intentarlo dentro de un rato.», «Lo sentimos, algo salió mal al enviar tu mensaje. Inténtalo de nuevo.») y con lo escrito en su sitio, una sola vez; no se envía nada.
+Si falla: un campo obligatorio vacío, un correo que no es válido, demasiados mensajes seguidos desde la misma red o un fallo al enviar el correo vuelven al formulario con su motivo («Introduce una dirección de correo electrónico válida.», «Demasiados mensajes desde tu red. Vuelve a intentarlo dentro de un rato.», «Lo sentimos, algo salió mal al enviar tu mensaje. Inténtalo de nuevo.») y con lo escrito en su sitio, una sola vez; no se envía nada.
 Implicados: ninguno
 
 ### PUBLIC-F17 Llegar al formulario desde otras páginas
