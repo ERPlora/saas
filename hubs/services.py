@@ -1516,6 +1516,9 @@ def sync_outcome(hub_id: UUID) -> str:
             record_registry_answered(hub.id, version)
         hub.refresh_from_db(fields=["state_version", "pushed_state_version"])
         if hub.pushed_state_version < hub.state_version:
+            # The registry is acknowledged by now: a refusal from here on is the snapshot's (a ``whatsapp`` block
+            # out of the Hub's schema refuses it whole, hub#127), and the log has to say which.
+            call = "state"
             snapshot = queries.hub_snapshot(hub.id)
             hub_client.put_state(str(hub.id), snapshot)
             record_state_pushed(hub.id, snapshot["version"])

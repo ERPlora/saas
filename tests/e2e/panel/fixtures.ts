@@ -347,11 +347,16 @@ export interface HubDouble {
 }
 
 /** What the double acknowledges as the Hub does; any other call finds the Hub away (503, stays owed). */
-const PLAYED = [/^PUT \/internal\/hubs\/[0-9a-f-]+\/state$/, /^POST \/internal\/sessions\/revoke$/];
+const PLAYED = [
+  /^PUT \/internal\/hubs\/[0-9a-f-]+\/state$/,
+  /^POST \/internal\/sessions\/revoke$/,
+  // WhatsApp's doors 1 and 2 (whatsapp.spec.ts): a message or a status erplora.com hands the Hub.
+  /^POST \/internal\/whatsapp\/(inbound|status)$/,
+];
 
 /**
  * Plays the Hub on `HUB_DOUBLE_PORT`, where the panel's Django sends its calls (project.ts), until
- * `close()`: it records every call and acknowledges the snapshot push and the session revocation.
+ * `close()`: it records every call and acknowledges the snapshot push, the session revocation and WhatsApp's doors.
  * Outside it nobody listens there and every call stays owed, as with the Hub away.
  */
 export async function startHubDouble(): Promise<HubDouble> {

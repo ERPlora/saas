@@ -47,6 +47,17 @@ export const PANEL_MAIL_DIR = panelMailDir(STACK);
  */
 export const HUB_DOUBLE_PORT = STACK.hubDoublePort;
 
+/**
+ * Meta's app as the panel's Django sees it in the e2e (WHATSAPP-G13, WHATSAPP-G07): made-up ids and secrets, so the
+ * specs can sign Meta's webhook as Meta does. Meta itself is never called: nothing here is a real credential.
+ */
+export const WHATSAPP_E2E = {
+  appId: '1234567890',
+  appSecret: 'e2e-meta-app-secret',
+  verifyToken: 'e2e-meta-verify-token',
+  configId: '987654321',
+} as const;
+
 type WebServer = Exclude<NonNullable<PlaywrightTestConfig['webServer']>, unknown[]>;
 
 /**
@@ -143,6 +154,11 @@ export function panelServers(saasDir: string, vitePort = VITE_PORT, stack: Stack
           // Every spec signs in from 127.0.0.1, past allauth's 30 sign-ins a minute when repeated
           // (config/settings.py): only this server raises that one limit.
           E2E_RELAX_LOGIN_RATE_LIMIT: 'True',
+          // Meta's app of the WhatsApp specs (WHATSAPP_E2E): its webhook answers instead of 503.
+          WHATSAPP_APP_ID: WHATSAPP_E2E.appId,
+          WHATSAPP_APP_SECRET: WHATSAPP_E2E.appSecret,
+          WHATSAPP_VERIFY_TOKEN: WHATSAPP_E2E.verifyToken,
+          WHATSAPP_CONFIG_ID: WHATSAPP_E2E.configId,
         },
         stack,
       ),

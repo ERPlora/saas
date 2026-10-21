@@ -29,6 +29,7 @@ def test_the_private_prefixes_are_those_of_saas_next():
         "/auth/",
         "/hub-login/",
         "/webhooks/",
+        "/whatsapp/",
         "/launch",
         "/login",
         "/password/reset",

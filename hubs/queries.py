@@ -867,8 +867,12 @@ def hub_snapshot(hub_id: UUID) -> dict[str, Any]:
     too. ``verifactu`` (plan 2026-10-15, agreed with the Hub): the authorisation for ERPlora to file its
     records as the staff left it (``fiscal.queries.snapshot_block``) and ``live_paid``, whether the business
     pays for the live sending (a plan that is not Free, or a live ``verifactu`` module). Two independent
-    facts: the Hub's «live» through ERPlora needs both.
+    facts: the Hub's «live» through ERPlora needs both. ``whatsapp``: the business's WhatsApp channel (its
+    number, the month's usage against the plan's allowance and its templates at Meta), door 4 of the Hub's
+    ``whatsapp_inbox`` contract (``whatsapp.queries.channel_block``).
     """
+    from whatsapp.queries import channel_block  # whatsapp reads hubs; hubs reads it only here
+
     hub = Hub.objects.get(pk=hub_id)
     now = timezone.now()
     subscription = (
@@ -876,7 +880,7 @@ def hub_snapshot(hub_id: UUID) -> dict[str, Any]:
         .filter(hub=hub)
         .first()
     )
-    plan = subscription.effective_plan(now) if subscription else free_plan()
+    plan = _effective_plan(subscription, now)
     items = (
         [item for item in subscription.items.order_by("module_slug") if item.is_live(now)]
         if subscription
@@ -922,7 +926,21 @@ def hub_snapshot(hub_id: UUID) -> dict[str, Any]:
             for member in members
         ],
         "verifactu": {**verifactu_representation(hub.id), "live_paid": live_paid},
+        # The business's WhatsApp channel, door 4 of the Hub's whatsapp_inbox contract: the body of its door 3 at the
+        # snapshot's version (whatsapp.queries.channel_block).
+        "whatsapp": channel_block(hub.id, version=hub.state_version),
     }
+
+
+def _effective_plan(subscription: Subscription | None, now: datetime) -> Plan | None:
+    return subscription.effective_plan(now) if subscription else free_plan()
+
+
+def effective_plan(hub_id: UUID, now: datetime) -> Plan | None:
+    """The plan whose rights the business has at ``now`` (its trial's while it lasts; Free without a subscription):
+    the one its snapshot carries, and whose ``whatsapp_messages_per_month`` erplora.com counts its sends against."""
+    subscription = Subscription.objects.select_related("plan", "trial_plan").filter(hub_id=hub_id).first()
+    return _effective_plan(subscription, now)
 
 
 def _snapshot_plan(plan: Plan | None) -> dict[str, Any] | None:

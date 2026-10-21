@@ -49,7 +49,8 @@ def private_prefixes() -> tuple[str, ...]:
     """Every path prefix that is not the public web.
 
     Django's own (admin, API, internal calls, allauth's headless API and the old addresses of its
-    pages, now redirects, Google's redirect URIs, the jump to a hub, Stripe's webhook) and the
+    pages, now redirects, Google's redirect URIs, the jump to a hub, Stripe's and Meta's webhooks, the
+    customers' WhatsApp attachments) and the
     sign-in pages of the SPA (``accounts/frontend/routes.ts``, the pages allauth's mails link
     included). Without a trailing slash where the SPA serves the bare path (``/launch``, ``/login``…),
     each covering the pages under it (``/login/error``, ``/password/reset/key/…``,
@@ -65,6 +66,7 @@ def private_prefixes() -> tuple[str, ...]:
         "/auth/",
         "/hub-login/",
         "/webhooks/",
+        "/whatsapp/",
         "/launch",
         "/login",
         "/password/reset",

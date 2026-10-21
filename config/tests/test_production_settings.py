@@ -30,6 +30,12 @@ PRODUCTION_ENV = {
     "ALLOWED_HOSTS": "erplora.com,saas.erplora.internal",
     # The key of the hubs' fiscal documents (fiscal/crypto.py): a Fernet key, required without DEBUG.
     "FISCAL_DOCUMENTS_KEY": "2EBDB2KSnvz5lBG1RHG5ldNq34ZjWvGZ_t5r4wl5Mpw=",
+    # WhatsApp (whatsapp/): Meta's app, its webhook and the key of the Meta credentials.
+    "WHATSAPP_APP_ID": "1234567890",
+    "WHATSAPP_APP_SECRET": "prod-meta-app-secret",
+    "WHATSAPP_VERIFY_TOKEN": "prod-verify-token",
+    "WHATSAPP_CONFIG_ID": "987654321",
+    "FERNET_KEY": "yh5h4Yur2lIgWp9ZxkyLt1BrQfFVrwLH4WhIHCRwXXA=",
 }
 # The infra's own values for the hardening variables (`base_env` and `saas_env` of apps.tf).
 AWS_ENV = {
@@ -559,6 +565,12 @@ FILLED_BY_HAND = {
     "STRIPE_SECRET_KEY": "rk_live_dummy",
     "STRIPE_PUBLISHABLE_KEY": "pk_live_dummy",
     "STRIPE_WEBHOOK_SECRET": "whsec_dummy",
+    # WhatsApp (whatsapp/): born empty like Google until its secrets reach the infrastructure.
+    "WHATSAPP_APP_ID": "1234567890",
+    "WHATSAPP_APP_SECRET": "prod-meta-app-secret",
+    "WHATSAPP_VERIFY_TOKEN": "prod-verify-token",
+    "WHATSAPP_CONFIG_ID": "987654321",
+    "FERNET_KEY": "yh5h4Yur2lIgWp9ZxkyLt1BrQfFVrwLH4WhIHCRwXXA=",
 }
 
 
@@ -597,15 +609,16 @@ def test_every_saas_task_loads_its_settings(task):
 
 @pytest.mark.parametrize("task", TASKS)
 def test_check_deploy_has_nothing_to_say_about_any_saas_task(task):
-    """Born with Google empty, the only line is accounts.I001 (an Info: «Continue with Google» is
-    hidden until step 16); never a warning, never mail.E001."""
+    """Born with Google and WhatsApp empty, the only lines are accounts.I001 and whatsapp.I001 (Infos: «Continue
+    with Google» is hidden until step 16, and WhatsApp is off until its secrets come); never a warning, never
+    mail.E001."""
     result = check_deploy(TASKS[task])
     output = result.stdout + result.stderr
 
     assert result.returncode == 0, output
     assert "mail.E001" not in output
     assert "WARNINGS:" not in output and "ERRORS:" not in output, output
-    assert set(re.findall(r"\(([a-z_]+\.[A-Z]\d{3})\)", output)) <= {"accounts.I001"}
+    assert set(re.findall(r"\(([a-z_]+\.[A-Z]\d{3})\)", output)) <= {"accounts.I001", "whatsapp.I001"}
 
 
 @pytest.mark.parametrize("task", TASKS)
@@ -774,13 +787,13 @@ def test_pre_prefixes_every_cache_key():
 
 @pytest.mark.parametrize("task", PRE_TASKS)
 def test_check_deploy_passes_in_pre_with_a_restricted_test_key(task):
-    """Born with Google and the seal empty, the only line is accounts.I001 (an Info)."""
+    """Born with Google, WhatsApp and the seal empty, the only lines are accounts.I001 and whatsapp.I001 (Infos)."""
     result = check_deploy({**PRE_TASKS[task], **PRE_STRIPE_TEST_KEYS})
     output = result.stdout + result.stderr
 
     assert result.returncode == 0, output
     assert "WARNINGS:" not in output and "ERRORS:" not in output, output
-    assert set(re.findall(r"\(([a-z_]+\.[A-Z]\d{3})\)", output)) <= {"accounts.I001"}
+    assert set(re.findall(r"\(([a-z_]+\.[A-Z]\d{3})\)", output)) <= {"accounts.I001", "whatsapp.I001"}
 
 
 @pytest.mark.parametrize("key", ["rk_live_dummy", "sk_live_dummy"])

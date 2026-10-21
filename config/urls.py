@@ -28,6 +28,9 @@ from fiscal import internal as fiscal_internal
 from fiscal_gateway import internal as fiscal_gateway_internal
 from hubs import internal as hubs_internal
 from public import landing
+from whatsapp import internal as whatsapp_internal
+from whatsapp import media as whatsapp_media
+from whatsapp import webhooks as whatsapp_webhooks
 from public.urls import PUBLIC_PREFIXES
 
 # Prefixes of saas-next on top of the shared ones: allauth.headless's API, the old addresses of the
@@ -120,8 +123,25 @@ urlpatterns = [
         fiscal_gateway_internal.probe,
         name="internal_verifactu_probe",
     ),
+    # WhatsApp (whatsapp/internal.py): the doors erplora.com serves to the Hub (its WORKBOOK whatsapp_inbox, doors 5–9).
+    path("internal/whatsapp/send", whatsapp_internal.send, name="internal_whatsapp_send"),
+    path("internal/whatsapp/erase", whatsapp_internal.erase, name="internal_whatsapp_erase"),
+    path("internal/whatsapp/templates", whatsapp_internal.templates, name="internal_whatsapp_templates"),
+    path(
+        "internal/whatsapp/templates/delete",
+        whatsapp_internal.templates_delete,
+        name="internal_whatsapp_templates_delete",
+    ),
+    # The proposed doors 10–12 of connecting a number (whatsapp/WORKBOOK.md «Contrato con el Hub»).
+    path("internal/whatsapp/config", whatsapp_internal.config, name="internal_whatsapp_config"),
+    path("internal/whatsapp/connect", whatsapp_internal.connect, name="internal_whatsapp_connect"),
+    path("internal/whatsapp/disconnect", whatsapp_internal.disconnect, name="internal_whatsapp_disconnect"),
     # Stripe's single webhook (PLAN-SAAS §4): signed by Stripe, no session nor CSRF.
     path("webhooks/stripe/", billing_webhooks.stripe_webhook, name="stripe_webhook"),
+    # Meta's single WhatsApp webhook (whatsapp/webhooks.py): its verification (GET) and its signed notices.
+    path("webhooks/whatsapp/", whatsapp_webhooks.whatsapp_webhook, name="whatsapp_webhook"),
+    # A customer's attachment opened from the Hub's inbox, with the person's session (whatsapp/media.py).
+    path("whatsapp/media/<str:delivery_id>", whatsapp_media.media, name="whatsapp_media"),
     # Before the API's prefix, which would otherwise answer it.
     path("api/live", live_stream, name="live-stream"),
     path("api/", api.urls),
