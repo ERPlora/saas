@@ -1,7 +1,9 @@
-"""The reads of whatsapp: which business a door names and, for the Hub's snapshot, its WhatsApp channel.
+"""The reads of whatsapp: which business a door names, for the Hub's snapshot its WhatsApp channel, and the account
+at Meta its templates live in.
 
-Plain functions called inside the commands of ``services`` (in their transaction) and by ``hubs.queries`` for the
-snapshot; none of them is a door of its own (the Hub reads the channel only in its snapshot).
+``known_hub`` and ``channel_block`` are plain functions called inside the commands of ``services`` (in their
+transaction) and by ``hubs.queries`` for the snapshot (the Hub reads the channel only there).
+``whatsapp.template.account`` is the read ``gateway`` makes before it calls Meta for a business's templates.
 """
 
 from typing import Any
@@ -9,10 +11,17 @@ from uuid import UUID
 
 from django.db.models import Q
 from django.utils import timezone
+from live.context import OperationContext
+from live.errors import Conflict, NotFound
+from live.operations import operation
 
 from hubs.models import Hub
 from hubs.services import LIVE_STATUSES
 from whatsapp.models import PhoneNumber, Template, Usage
+from whatsapp.schemas import TemplateAccountIn, TemplateAccountOut
+
+#: Only the platform reads and writes here (``services.platform_context``); no account role holds it.
+PERMISSION = "whatsapp.manage"
 
 #: What the Hub's channel schema takes (``apps/whatsapp_inbox/schemas.py``): anything else would refuse the whole
 #: snapshot, so it travels as the closest it knows.
@@ -91,3 +100,36 @@ def _hub_template(template: Template) -> dict[str, Any]:
         "rejected_reason": template.rejected_reason[:500],
         "meta_id": template.meta_id[:64],
     }
+
+
+def unknown_hub() -> NotFound:
+    return NotFound("No business the SaaS knows goes by that hub.", code="hub_unknown")
+
+
+def not_connected() -> Conflict:
+    return Conflict("The business has no WhatsApp number connected.", code="whatsapp.not_connected")
+
+
+@operation(
+    "whatsapp.template.account", kind="query", permission=PERMISSION, input=TemplateAccountIn, output=TemplateAccountOut
+)
+def template_account(ctx: OperationContext, data: TemplateAccountIn) -> TemplateAccountOut:
+    """The account at Meta a business's templates live in (its active number's WhatsApp Business account and token)
+    and, for ``name`` in ``language``, the template's id at Meta as the mirror knows it."""
+    hub_id = data.hub_id
+    if data.hub is not None:
+        hub = known_hub(data.hub)
+        if hub is None:
+            raise unknown_hub()
+        hub_id = hub.id
+    number = PhoneNumber.objects.filter(hub_id=hub_id, is_active=True).first()
+    if number is None or not number.access_token:
+        raise not_connected()
+    meta_id = ""
+    if data.name:
+        meta_id = (
+            Template.objects.filter(hub_id=hub_id, name=data.name, language=data.language)
+            .values_list("meta_id", flat=True)
+            .first()
+        ) or ""
+    return TemplateAccountOut(hub_id=hub_id, waba_id=number.waba_id, token=number.access_token, meta_id=meta_id)

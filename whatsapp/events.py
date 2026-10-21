@@ -15,4 +15,22 @@ MESSAGE_RECORDED = "whatsapp.message.recorded"
 #: What was kept of a customer's number for a business was forgotten (door 6): ``{"hub_id", "rows"}``.
 MESSAGE_ERASED = "whatsapp.message.erased"
 
-ALL = [WEBHOOK_INGESTED, DELIVERY_RECORDED, MESSAGE_RECORDED, MESSAGE_ERASED]
+#: Meta took a template the Hub asked to register (door 8): ``{"hub_id", "meta_id", "status"}``.
+TEMPLATE_REGISTERED = "whatsapp.template.registered"
+#: A template left the mirror, deleted at Meta (door 9) or no longer there: ``{"hub_id"}``.
+TEMPLATE_FORGOTTEN = "whatsapp.template.forgotten"
+#: The mirror of a business's templates was read again from Meta: ``{"hub_id", "complete"}``.
+TEMPLATES_SYNCED = "whatsapp.template.synced"
+#: Meta refused the business's permission: only connecting again fixes it: ``{"hub_id"}``.
+NUMBER_RECONNECT_NEEDED = "whatsapp.number.reconnect_needed"
+
+ALL = [
+    WEBHOOK_INGESTED,
+    DELIVERY_RECORDED,
+    MESSAGE_RECORDED,
+    MESSAGE_ERASED,
+    TEMPLATE_REGISTERED,
+    TEMPLATE_FORGOTTEN,
+    TEMPLATES_SYNCED,
+    NUMBER_RECONNECT_NEEDED,
+]

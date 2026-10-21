@@ -167,3 +167,21 @@ def test_metas_none_reason_reads_as_no_reason():
 def test_a_template_meta_no_longer_has_reads_as_none():
     assert templates.from_meta({"id": "1", "name": "a", "language": "es", "status": "DELETED"}) is None
     assert templates.from_meta({"id": "1", "language": "es", "status": "APPROVED"}) is None
+
+
+def test_a_template_meta_took_is_mirrored_as_it_was_sent():
+    clean = templates.check(template())
+
+    assert templates.mirror(clean, meta_id="594425479261596", status="PENDING", category="MARKETING") == {
+        "name": "recordatorio", "language": "es", "category": "MARKETING", "status": "PENDING", "rejected_reason": "",
+        "meta_id": "594425479261596", "header_format": "TEXT", "header": "Tu cita",
+        "body": "Hola {{1}}, te esperamos el {{2}}.", "body_examples": ["Ana", "viernes"], "footer": "Peluquería Ana",
+        "buttons": [{"type": "QUICK_REPLY", "text": "Confirmar"}], "variables": 2,
+    }
+
+
+def test_without_a_header_the_mirror_has_no_header_format_and_metas_odd_verdict_reads_as_pending():
+    clean = templates.check(template(header=""))
+
+    mirror = templates.mirror(clean, meta_id="1", status="", category="")
+    assert (mirror["header_format"], mirror["status"], mirror["category"]) == ("", "PENDING", "UTILITY")

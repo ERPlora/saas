@@ -9,7 +9,14 @@ Meta (``meta``) and to the Hub (``hub_client``), so that no transaction waits fo
 - ``send``: door 5. Claim (the month's place, by the key) → Meta, outside any transaction → record how it ended.
   Meta's refusal frees the place and the key; no answer keeps both (``unknown``: the same key sends again only after
   ``services.IN_FLIGHT``); a 2xx without Meta's id is sent for good, never again (saas#2653);
-- ``erase``: door 6.
+- ``erase``: door 6;
+- ``submit_template``: door 8 (WHATSAPP-G15). Meta's rules checked first (``templates.check``), then claim (the key)
+  → Meta → record. Meta saying it already has that name in that language (a first call whose answer was lost) adopts
+  its id and edits it. Every «not taken» is a 409 whose key is free to try again;
+- ``delete_template``: door 9 (WHATSAPP-G17). Only that template in that language, by its id at Meta (the body's,
+  the mirror's or Meta's own list's); Meta not having it is the 404 ``whatsapp.template_not_found`` the Hub reads as
+  deleted;
+- ``sync_templates``: Meta's list read again into the mirror, page by page (a verdict on a template the mirror lacks).
 
 What a door answers is ``(status, body)``: the body of a 2xx, or the single error envelope.
 """
@@ -18,9 +25,27 @@ import logging
 from datetime import timedelta
 
 from django.utils import timezone
+from live.errors import OperationError
 
-from whatsapp import hub_client, meta, services
-from whatsapp.schemas import ClaimIn, EraseIn, IngestIn, IngestOut, RecordIn, SendClaimIn, SendIn, SendRecordIn
+from whatsapp import hub_client, meta, queries, services, templates
+from whatsapp.schemas import (
+    ClaimIn,
+    EraseIn,
+    IngestIn,
+    IngestOut,
+    ReconnectIn,
+    RecordIn,
+    SendClaimIn,
+    SendIn,
+    SendRecordIn,
+    TemplateAccountIn,
+    TemplateClaimIn,
+    TemplateDeleteIn,
+    TemplateForgetIn,
+    TemplateIn,
+    TemplateRecordIn,
+    TemplateSyncIn,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +64,11 @@ def ingest(payload: dict) -> IngestOut:
             deliver(out.hub_ids, limit=WEBHOOK_DELIVERIES)
         except Exception:  # noqa: BLE001 - parked and committed: whatsapp_deliver retries it
             logger.exception("whatsapp.deliver.crashed")
+    for hub_id in out.template_hubs:
+        try:
+            sync_templates(hub_id)
+        except Exception:  # noqa: BLE001 - the verdicts are written: the next one reads the list again
+            logger.exception("whatsapp.template.sync_crashed hub_id=%s", hub_id)
     return out
 
 
@@ -172,3 +202,156 @@ def _refusal(refused: meta.MetaRefused) -> tuple[int, dict]:
 def erase(data: EraseIn) -> tuple[int, dict]:
     out = services.message_erase(services.platform_context(), data)
     return 200, out.model_dump()
+
+
+# --- Doors 8 and 9: templates -----------------------------------------------------------------------------------
+
+#: Meta's subcode for «a template with this name already exists in this language».
+TEMPLATE_EXISTS = 2388024
+#: The fields of Meta's list the mirror keeps; a page and how many pages one read follows at most.
+LIST_FIELDS = "id,name,language,category,status,rejected_reason,components"
+PAGE_SIZE = 100
+MAX_PAGES = 20
+
+
+def submit_template(data: TemplateIn, key: str) -> tuple[int, dict]:
+    try:
+        clean = templates.check(data)
+    except templates.Invalid as invalid:
+        return 409, envelope("whatsapp.template_invalid", str(invalid))
+    ctx = services.platform_context()
+    claim = services.template_claim(ctx, TemplateClaimIn(hub=data.hub, key=key))
+    if claim.outcome == "done":
+        return 200, {"meta_id": claim.meta_id, "status": claim.status}
+    token = claim.token.get_secret_value()
+    try:
+        meta_id, answer = _register(claim.waba_id, token, clean, data.meta_id)
+    except (meta.MetaRefused, meta.MetaUnreachable) as failure:
+        services.template_record(ctx, TemplateRecordIn(submission_id=claim.submission_id, outcome="released"))
+        return _template_failure(failure, claim.hub_id, data.hub, "register")
+    mirror = templates.mirror(
+        clean, meta_id=meta_id, status=str(answer.get("status") or ""), category=str(answer.get("category") or "")
+    )
+    services.template_record(ctx, TemplateRecordIn(submission_id=claim.submission_id, outcome="done", mirror=mirror))
+    return 200, {"meta_id": meta_id, "status": mirror["status"]}
+
+
+def _register(waba_id: str, token: str, clean: templates.Clean, meta_id: str) -> tuple[str, dict]:
+    """Create the template at Meta, or edit the one it has (``meta_id``); its id and Meta's answer."""
+    if meta_id:
+        return meta_id, _edit(meta_id, token, clean)
+    named = {"parameter_format": "NAMED"} if clean.named else {}
+    body = {"name": clean.name, "language": clean.language, "category": clean.category, **named}
+    try:
+        answer = meta.post(
+            f"{waba_id}/message_templates", token=token, json={**body, "components": templates.components(clean)}
+        )
+    except meta.MetaRefused as refused:
+        found = _find(waba_id, token, clean.name, clean.language) if refused.subcode == TEMPLATE_EXISTS else ""
+        if not found:
+            raise
+        return found, _edit(found, token, clean)
+    found = str(answer.get("id") or "")
+    if not found:
+        raise meta.MetaUnreachable("Meta took the template without its id.", sent=True)
+    return found, answer
+
+
+def _edit(meta_id: str, token: str, clean: templates.Clean) -> dict:
+    """An edit goes back through Meta's review: its answer (``{"success": true}``) carries no verdict, so it is
+    pending until Meta says otherwise."""
+    named = {"parameter_format": "NAMED"} if clean.named else {}
+    body = {"category": clean.category, "components": templates.components(clean), **named}
+    meta.post(meta_id, token=token, json=body)
+    return {"status": "PENDING"}
+
+
+def _find(waba_id: str, token: str, name: str, language: str) -> str:
+    """The id at Meta of ``name`` in ``language`` (``""`` when Meta does not list it)."""
+    answer = meta.get(f"{waba_id}/message_templates", token=token, params={"name": name, "fields": "id,name,language"})
+    for item in answer.get("data") or []:
+        if isinstance(item, dict) and item.get("name") == name and item.get("language") == language:
+            return str(item.get("id") or "")
+    return ""
+
+
+def _template_failure(failure: Exception, hub_id, hub: str, what: str) -> tuple[int, dict]:
+    """A template call Meta did not take, as the Hub reads it: always a 409 with Meta's reason (nothing changed)."""
+    if isinstance(failure, meta.MetaUnreachable):
+        logger.warning("whatsapp.template.unreachable hub=%s what=%s sent=%s", hub, what, failure.sent)
+        return 409, envelope("whatsapp.meta_unreachable", "Meta could not be reached: nothing changed. Retry later.")
+    refused = failure
+    reason = refused.user_message or refused.title or refused.message or f"Meta refused it (HTTP {refused.status})."
+    logger.warning(
+        "whatsapp.template.refused hub=%s what=%s meta_status=%s meta_code=%s meta_subcode=%s",
+        hub, what, refused.status, refused.code, refused.subcode,
+    )
+    if refused.rate_limited:
+        return 409, envelope("whatsapp.meta_rate_limited", reason)
+    if refused.code in NOT_CONNECTED:
+        if refused.code == EXPIRED_PERMISSION:
+            services.number_reconnect_needed(services.platform_context(), ReconnectIn(hub_id=hub_id))
+        return 409, envelope("whatsapp.not_connected", reason)
+    if what == "delete":
+        return 409, envelope("whatsapp.meta_rejected", reason)
+    return 409, envelope("whatsapp.template_invalid", reason)
+
+
+def delete_template(data: TemplateDeleteIn) -> tuple[int, dict]:
+    ctx = services.platform_context()
+    account = queries.template_account(ctx, TemplateAccountIn(hub=data.hub, name=data.name, language=data.language))
+    token = account.token.get_secret_value()
+    gone = (404, envelope("whatsapp.template_not_found", "Meta does not have this template."))
+    forget = TemplateForgetIn(hub_id=account.hub_id, name=data.name, language=data.language)
+    try:
+        meta_id = data.meta_id or account.meta_id or _find(account.waba_id, token, data.name, data.language)
+        if not meta_id:
+            services.template_forget(ctx, forget)
+            return gone
+        try:
+            meta.delete(
+                f"{account.waba_id}/message_templates", token=token, params={"hsm_id": meta_id, "name": data.name}
+            )
+        except meta.MetaRefused as refused:
+            if refused.rate_limited or refused.code in NOT_CONNECTED:
+                raise
+            if _find(account.waba_id, token, data.name, data.language):
+                raise
+            services.template_forget(ctx, forget)
+            return gone
+    except (meta.MetaRefused, meta.MetaUnreachable) as failure:
+        return _template_failure(failure, account.hub_id, data.hub, "delete")
+    services.template_forget(ctx, forget)
+    return 200, {"deleted": True}
+
+
+def sync_templates(hub_id) -> bool:
+    """Read the business's templates from Meta into the mirror; whether the list came whole. Meta unreachable or
+    refusing leaves the mirror as it was (and says so in the log)."""
+    ctx = services.platform_context()
+    try:
+        account = queries.template_account(ctx, TemplateAccountIn(hub_id=hub_id))
+    except OperationError:
+        return False
+    token = account.token.get_secret_value()
+    items: list[dict] = []
+    params = {"fields": LIST_FIELDS, "limit": PAGE_SIZE}
+    complete = False
+    try:
+        for _ in range(MAX_PAGES):
+            answer = meta.get(f"{account.waba_id}/message_templates", token=token, params=params)
+            read = (templates.from_meta(item) for item in answer.get("data") or [] if isinstance(item, dict))
+            items.extend(mirror for mirror in read if mirror is not None)
+            paging = answer.get("paging") if isinstance(answer.get("paging"), dict) else {}
+            after = (paging.get("cursors") or {}).get("after") if isinstance(paging.get("cursors"), dict) else None
+            if not paging.get("next") or not after:
+                complete = True
+                break
+            params = {**params, "after": after}
+    except (meta.MetaRefused, meta.MetaUnreachable) as failure:
+        logger.warning("whatsapp.template.sync_failed hub_id=%s reason=%s", hub_id, type(failure).__name__)
+        if isinstance(failure, meta.MetaRefused) and failure.code == EXPIRED_PERMISSION:
+            services.number_reconnect_needed(ctx, ReconnectIn(hub_id=hub_id))
+    if items or complete:
+        services.template_sync(ctx, TemplateSyncIn(hub_id=hub_id, items=items, complete=complete))
+    return complete

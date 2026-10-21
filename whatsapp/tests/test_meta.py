@@ -22,6 +22,7 @@ META_ERROR = {
         "code": 131047,
         "error_subcode": 2494010,
         "error_user_title": "Message failed to send",
+        "error_user_msg": "The customer has not written in the last 24 hours.",
         "error_data": {"details": "More than 24 hours have passed since the recipient last replied."},
         "fbtrace_id": "AbCdEf",
     }
@@ -51,6 +52,7 @@ def test_a_refusal_carries_metas_code_and_reason(whatsapp_on):
     error = refused.value
     assert (error.status, error.code, error.subcode) == (400, 131047, 2494010)
     assert error.title == "Message failed to send"
+    assert error.user_message == "The customer has not written in the last 24 hours."
     assert error.detail.startswith("More than 24 hours")
     assert error.rate_limited is False
 

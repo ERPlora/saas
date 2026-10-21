@@ -152,7 +152,9 @@ class TemplateIn(Schema):
     category: Annotated[str, StringConstraints(strip_whitespace=True, max_length=32)]
     header: Annotated[str, StringConstraints(max_length=2000)] = ""
     body: Annotated[str, StringConstraints(max_length=8192)] = ""
-    body_examples: list[Annotated[str, StringConstraints(max_length=1024)]] = Field(default_factory=list, max_length=100)
+    body_examples: list[Annotated[str, StringConstraints(max_length=1024)]] = Field(
+        default_factory=list, max_length=100
+    )
     footer: Annotated[str, StringConstraints(max_length=2000)] = ""
     buttons: list[dict] = Field(default_factory=list, max_length=20)
     meta_id: Annotated[str, StringConstraints(strip_whitespace=True, max_length=64)] = ""
@@ -174,3 +176,85 @@ class TemplateDeleteIn(Schema):
 
 class TemplateDeleteOut(Schema):
     deleted: bool
+
+
+class TemplateClaimIn(Schema):
+    hub: HubRef
+    key: IdempotencyKey
+
+
+class TemplateClaimOut(Schema):
+    #: ``claimed``: this call registers it now (``waba_id``, ``token``); ``done``: Meta took it before (its
+    #: ``meta_id`` and ``status``).
+    outcome: Literal["claimed", "done"]
+    submission_id: UUID | None = None
+    hub_id: UUID | None = None
+    waba_id: str = ""
+    token: SecretStr | None = None
+    meta_id: str = ""
+    status: str = ""
+
+
+class TemplateRecordIn(Schema):
+    submission_id: UUID
+    #: ``done``: Meta took it (``mirror``: the template as the mirror keeps it); ``released``: it was not taken, and
+    #: the key is free to try again.
+    outcome: Literal["done", "released"]
+    mirror: dict = Field(default_factory=dict)
+
+
+class TemplateRecordOut(Schema):
+    outcome: str
+
+
+class TemplateAccountIn(Schema):
+    """The business (by the Hub's ``hub`` or by its id) whose account at Meta is asked, and the template whose
+    ``meta_id`` the mirror knows (optional)."""
+
+    hub: HubRef | None = None
+    hub_id: UUID | None = None
+    name: str = ""
+    language: str = ""
+
+    @model_validator(mode="after")
+    def _one_business(self):
+        if (self.hub is None) == (self.hub_id is None):
+            raise ValueError("Name the business by hub or by hub_id.")
+        return self
+
+
+class TemplateAccountOut(Schema):
+    hub_id: UUID
+    waba_id: str
+    token: SecretStr
+    meta_id: str = ""
+
+
+class TemplateForgetIn(Schema):
+    hub_id: UUID
+    name: str
+    language: str
+
+
+class TemplateForgetOut(Schema):
+    forgotten: bool
+
+
+class TemplateSyncIn(Schema):
+    hub_id: UUID
+    #: Meta's templates as the mirror keeps them (``templates.from_meta``).
+    items: list[dict]
+    #: Whether Meta's list came whole: only then is what it lacks deleted from the mirror.
+    complete: bool
+
+
+class TemplateSyncOut(Schema):
+    changed: bool
+
+
+class ReconnectIn(Schema):
+    hub_id: UUID
+
+
+class ReconnectOut(Schema):
+    changed: bool

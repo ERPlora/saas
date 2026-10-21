@@ -26,7 +26,7 @@ from pydantic import BaseModel, ValidationError
 
 from accounts.signing import live_secrets, may_be_signed, verify_signed
 from whatsapp import gateway
-from whatsapp.schemas import EraseIn, SendIn
+from whatsapp.schemas import EraseIn, SendIn, TemplateDeleteIn, TemplateIn
 
 logger = logging.getLogger(__name__)
 
@@ -140,3 +140,15 @@ def send(data: SendIn, key: str) -> tuple[int, dict]:
 def erase(data: EraseIn) -> tuple[int, dict]:
     """Door 6: forget what is kept of a customer's number for the business."""
     return gateway.erase(data)
+
+
+@_door(TemplateIn, keyed=True)
+def templates(data: TemplateIn, key: str) -> tuple[int, dict]:
+    """Door 8: register a template at Meta for the business (new, or an edit of its ``meta_id``), once per key."""
+    return gateway.submit_template(data, key)
+
+
+@_door(TemplateDeleteIn)
+def templates_delete(data: TemplateDeleteIn) -> tuple[int, dict]:
+    """Door 9: delete that one template, in that language, at Meta."""
+    return gateway.delete_template(data)

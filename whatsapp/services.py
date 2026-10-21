@@ -12,7 +12,11 @@ for a third party.
 - ``whatsapp.message.claim`` / ``whatsapp.message.record``: door 5, a send by its ``Idempotency-Key``. The claim
   reserves the month's place atomically (``UPDATE … WHERE used < limit``) before Meta is called, so two sends at once
   can never both pass the cap (saas#2652), and a key already sent answers its first id (saas#2633);
-- ``whatsapp.message.erase``: door 6, what is kept of a customer's number for a business is forgotten.
+- ``whatsapp.message.erase``: door 6, what is kept of a customer's number for a business is forgotten;
+- ``whatsapp.template.claim`` / ``whatsapp.template.record``: door 8, a template's registration at Meta by its
+  ``Idempotency-Key``: a key Meta took answers what it said the first time, never registers again;
+- ``whatsapp.template.forget`` / ``whatsapp.template.sync``: the mirror of Meta's templates, after a deletion at
+  Meta (door 9) and when Meta's list is read again; ``whatsapp.number.reconnect_needed``: Meta refused the token.
 
 A refusal raises the envelope's error (``live.errors``): the transaction rolls back, the reservation with it.
 """
@@ -33,7 +37,7 @@ from live.outbox import record_event
 from hubs import queries as hubs_queries
 from hubs import services as hubs_services
 from whatsapp import events, parse, queries
-from whatsapp.models import Delivery, PhoneNumber, Send, Template, Usage
+from whatsapp.models import Delivery, PhoneNumber, Send, Template, TemplateSubmission, Usage
 from whatsapp.schemas import (
     ClaimedDelivery,
     ClaimIn,
@@ -42,17 +46,27 @@ from whatsapp.schemas import (
     EraseOut,
     IngestIn,
     IngestOut,
+    ReconnectIn,
+    ReconnectOut,
     RecordIn,
     RecordOut,
     SendClaimIn,
     SendClaimOut,
     SendRecordIn,
     SendRecordOut,
+    TemplateClaimIn,
+    TemplateClaimOut,
+    TemplateForgetIn,
+    TemplateForgetOut,
+    TemplateRecordIn,
+    TemplateRecordOut,
+    TemplateSyncIn,
+    TemplateSyncOut,
 )
 
 logger = logging.getLogger(__name__)
 
-PERMISSION = "whatsapp.manage"
+PERMISSION = queries.PERMISSION
 #: How long a claimed delivery is held for its push before another run may take it again.
 LEASE = timedelta(minutes=2)
 #: The first wait after the Hub did not take a delivery; each next one doubles, up to ``LONGEST_WAIT``.
@@ -305,10 +319,6 @@ def delivery_record(ctx: OperationContext, data: RecordIn) -> RecordOut:
 # --- Door 5: a send by its Idempotency-Key ----------------------------------------------------------------------
 
 
-def _unknown_hub() -> NotFound:
-    return NotFound("No business the SaaS knows goes by that hub.", code="hub_unknown")
-
-
 def in_progress() -> OperationError:
     return OperationError(
         "This message is already being sent: retry with the same key.", code="whatsapp.send_in_progress", status=503
@@ -320,7 +330,7 @@ def message_claim(ctx: OperationContext, data: SendClaimIn) -> SendClaimOut:
     """Take the place of a send in the month's allowance before Meta is called, or say why it does not leave."""
     hub = queries.known_hub(data.hub)
     if hub is None:
-        raise _unknown_hub()
+        raise queries.unknown_hub()
     now = timezone.now()
     existing = Send.objects.select_for_update().filter(hub=hub, idempotency_key=data.key).first()
     if existing is not None and existing.state == Send.State.SENT:
@@ -329,7 +339,7 @@ def message_claim(ctx: OperationContext, data: SendClaimIn) -> SendClaimOut:
         raise in_progress()
     number = PhoneNumber.objects.filter(hub=hub, is_active=True).first()
     if number is None or not number.access_token:
-        raise Conflict("The business has no WhatsApp number connected.", code="whatsapp.not_connected")
+        raise queries.not_connected()
     if data.template_name:
         template = Template.objects.filter(hub=hub, name=data.template_name, language=data.template_language).first()
         if template is not None and template.status != Template.Status.APPROVED:
@@ -402,9 +412,151 @@ def message_erase(ctx: OperationContext, data: EraseIn) -> EraseOut:
     the statuses of the messages it names. Nothing of another business is touched."""
     hub = queries.known_hub(data.hub, live=False)
     if hub is None:
-        raise _unknown_hub()
+        raise queries.unknown_hub()
     contact = "".join(ch for ch in data.phone if ch.isdigit())
     named = Q(contact=contact) | Q(wa_message_id__in=data.wa_message_ids) if data.wa_message_ids else Q(contact=contact)
     erased, _ = Delivery.objects.filter(named, hub=hub).delete()
     record_event(ctx, events.MESSAGE_ERASED, {"hub_id": str(hub.id), "rows": erased})
     return EraseOut(erased=True)
+
+
+# --- Doors 8 and 9: the business's templates at Meta -----------------------------------------------------------
+
+#: What the mirror takes of a template (``templates.mirror`` / ``templates.from_meta``), besides its name and language.
+MIRRORED = (
+    "category", "status", "rejected_reason", "meta_id", "header_format", "header", "body", "body_examples", "footer",
+    "buttons", "variables",
+)
+
+
+def template_in_progress() -> OperationError:
+    return OperationError(
+        "This template is already being registered: retry with the same key.",
+        code="whatsapp.template_in_progress",
+        status=503,
+    )
+
+
+@operation(
+    "whatsapp.template.claim", kind="command", permission=PERMISSION, input=TemplateClaimIn, output=TemplateClaimOut
+)
+def template_claim(ctx: OperationContext, data: TemplateClaimIn) -> TemplateClaimOut:
+    """Take a template's registration by its key before Meta is called, or answer what Meta said the first time."""
+    hub = queries.known_hub(data.hub)
+    if hub is None:
+        raise queries.unknown_hub()
+    existing = TemplateSubmission.objects.select_for_update().filter(hub=hub, idempotency_key=data.key).first()
+    if existing is not None and existing.state == TemplateSubmission.State.DONE:
+        return TemplateClaimOut(
+            outcome="done", submission_id=existing.id, hub_id=hub.id, meta_id=existing.meta_id, status=existing.status
+        )
+    if existing is not None and existing.updated_at > timezone.now() - IN_FLIGHT:
+        raise template_in_progress()
+    number = PhoneNumber.objects.filter(hub=hub, is_active=True).first()
+    if number is None or not number.access_token:
+        raise queries.not_connected()
+    if existing is not None:
+        # An earlier call with this key died on its way: this one registers it.
+        existing.save(update_fields=["updated_at"])
+        submission = existing
+    else:
+        try:
+            with transaction.atomic():
+                submission = TemplateSubmission.objects.create(hub=hub, idempotency_key=data.key)
+        except IntegrityError:
+            raise template_in_progress() from None
+    return TemplateClaimOut(
+        outcome="claimed", submission_id=submission.id, hub_id=hub.id, waba_id=number.waba_id, token=number.access_token
+    )
+
+
+@operation(
+    "whatsapp.template.record", kind="command", permission=PERMISSION, input=TemplateRecordIn, output=TemplateRecordOut
+)
+def template_record(ctx: OperationContext, data: TemplateRecordIn) -> TemplateRecordOut:
+    """How Meta ended a claimed registration: taken (the mirror keeps it, the Hub learns it) or not (the key is
+    forgotten, free to try again)."""
+    submission = TemplateSubmission.objects.select_for_update().filter(pk=data.submission_id).first()
+    if submission is None:
+        return TemplateRecordOut(outcome="gone")
+    if data.outcome == "released":
+        submission.delete()
+        return TemplateRecordOut(outcome="released")
+    submission.state = TemplateSubmission.State.DONE
+    submission.meta_id = str(data.mirror.get("meta_id") or "")
+    submission.status = str(data.mirror.get("status") or "")
+    submission.save(update_fields=["state", "meta_id", "status", "updated_at"])
+    _mirror(submission.hub_id, data.mirror)
+    announce_channel(submission.hub_id)
+    record_event(
+        ctx,
+        events.TEMPLATE_REGISTERED,
+        {"hub_id": str(submission.hub_id), "meta_id": submission.meta_id, "status": submission.status},
+    )
+    return TemplateRecordOut(outcome="done")
+
+
+@operation(
+    "whatsapp.template.forget", kind="command", permission=PERMISSION, input=TemplateForgetIn, output=TemplateForgetOut
+)
+def template_forget(ctx: OperationContext, data: TemplateForgetIn) -> TemplateForgetOut:
+    """That one template, in that language, leaves the mirror: Meta deleted it or no longer has it."""
+    deleted, _ = Template.objects.filter(hub_id=data.hub_id, name=data.name, language=data.language).delete()
+    if deleted:
+        announce_channel(data.hub_id)
+        record_event(ctx, events.TEMPLATE_FORGOTTEN, {"hub_id": str(data.hub_id)})
+    return TemplateForgetOut(forgotten=bool(deleted))
+
+
+@operation(
+    "whatsapp.template.sync", kind="command", permission=PERMISSION, input=TemplateSyncIn, output=TemplateSyncOut
+)
+def template_sync(ctx: OperationContext, data: TemplateSyncIn) -> TemplateSyncOut:
+    """Write Meta's list of the business's templates on the mirror. What the list lacks is deleted only when it came
+    whole: a list cut short says nothing of what it did not reach."""
+    seen: set[tuple[str, str]] = set()
+    changed = False
+    for item in data.items:
+        seen.add((item["name"], item["language"]))
+        changed = _mirror(data.hub_id, item) or changed
+    if data.complete:
+        rows = Template.objects.filter(hub_id=data.hub_id).values_list("pk", "name", "language")
+        lost = [pk for pk, name, language in rows if (name, language) not in seen]
+        if lost:
+            Template.objects.filter(pk__in=lost).delete()
+            changed = True
+    if changed:
+        announce_channel(data.hub_id)
+    record_event(ctx, events.TEMPLATES_SYNCED, {"hub_id": str(data.hub_id), "complete": data.complete})
+    return TemplateSyncOut(changed=changed)
+
+
+def _mirror(hub_id: UUID, item: dict) -> bool:
+    """Keep ``item`` (a template as the mirror keeps it) for the business; whether anything changed."""
+    values = {name: item[name] for name in MIRRORED if name in item}
+    named = Template.objects.select_for_update().filter(hub_id=hub_id, name=item["name"], language=item["language"])
+    row = named.first()
+    if row is None:
+        Template.objects.create(hub_id=hub_id, name=item["name"], language=item["language"], **values)
+        return True
+    if all(getattr(row, name) == value for name, value in values.items()):
+        return False
+    for name, value in values.items():
+        setattr(row, name, value)
+    row.save()
+    return True
+
+
+@operation(
+    "whatsapp.number.reconnect_needed", kind="command", permission=PERMISSION, input=ReconnectIn, output=ReconnectOut
+)
+def number_reconnect_needed(ctx: OperationContext, data: ReconnectIn) -> ReconnectOut:
+    """Meta refused the business's permission (an expired or withdrawn token): only connecting again fixes it, and
+    the Hub shows it from its snapshot."""
+    changed = PhoneNumber.objects.filter(hub_id=data.hub_id, is_active=True, needs_reconnect=False).update(
+        needs_reconnect=True
+    )
+    if changed:
+        announce_channel(data.hub_id)
+        record_event(ctx, events.NUMBER_RECONNECT_NEEDED, {"hub_id": str(data.hub_id)})
+    return ReconnectOut(changed=bool(changed))

@@ -125,6 +125,12 @@ urlpatterns = [
     # WhatsApp (whatsapp/internal.py): the doors erplora.com serves to the Hub (its WORKBOOK whatsapp_inbox, doors 5–9).
     path("internal/whatsapp/send", whatsapp_internal.send, name="internal_whatsapp_send"),
     path("internal/whatsapp/erase", whatsapp_internal.erase, name="internal_whatsapp_erase"),
+    path("internal/whatsapp/templates", whatsapp_internal.templates, name="internal_whatsapp_templates"),
+    path(
+        "internal/whatsapp/templates/delete",
+        whatsapp_internal.templates_delete,
+        name="internal_whatsapp_templates_delete",
+    ),
     # Stripe's single webhook (PLAN-SAAS §4): signed by Stripe, no session nor CSRF.
     path("webhooks/stripe/", billing_webhooks.stripe_webhook, name="stripe_webhook"),
     # Meta's single WhatsApp webhook (whatsapp/webhooks.py): its verification (GET) and its signed notices.

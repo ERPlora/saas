@@ -9,8 +9,8 @@ a send, the time Meta itself gives a message).
 How a call ends:
 
 - a JSON object: Meta's answer (``{}`` when a 2xx is not one: the caller decides what a missing field means);
-- ``MetaRefused``: Meta answered 4xx; ``code``/``subcode``/``message``/``title``/``detail`` are Meta's error
-  object, ``rate_limited`` whether it asks to slow down (HTTP 429 or its throttling codes);
+- ``MetaRefused``: Meta answered 4xx; ``code``/``subcode``/``message``/``title``/``detail``/``user_message`` are
+  Meta's error object, ``rate_limited`` whether it asks to slow down (HTTP 429 or its throttling codes);
 - ``MetaUnreachable``: no usable answer. ``sent`` is whether the request may have reached Meta (a 5xx, a read
   timeout, a redirect) or certainly did not (no connection).
 
@@ -30,8 +30,9 @@ SEND_TIMEOUT = httpx.Timeout(30.0, connect=5.0)
 GRAPH_HOST = "graph.facebook.com"
 #: The hosts Meta serves attachments from: its media links point there, nowhere else.
 MEDIA_HOST_SUFFIXES = (".fbsbx.com", ".facebook.com", ".fbcdn.net", ".whatsapp.net")
-#: Meta's codes for «slow down» (besides HTTP 429): app and account throttling, and the number's throughput.
-RATE_LIMIT_CODES = frozenset({4, 17, 32, 613, 80007, 130429, 131056})
+#: Meta's codes for «slow down» (besides HTTP 429): app and account throttling (80008: the business-use-case limit of
+#: the WhatsApp Business Management API, the templates'), and the number's throughput.
+RATE_LIMIT_CODES = frozenset({4, 17, 32, 613, 80007, 80008, 130429, 131056})
 
 
 class NotConfigured(Exception):
@@ -53,6 +54,8 @@ class MetaRefused(Exception):
     message: str = ""
     title: str = ""
     detail: str = ""
+    #: Meta's explanation for the person (``error_user_msg``): what a business is shown of a template it refused.
+    user_message: str = ""
 
     def __post_init__(self) -> None:
         super().__init__(f"Meta refused ({self.status}, code {self.code}): {self.message}")
@@ -154,6 +157,7 @@ def _refused(status: int, body) -> MetaRefused:
         subcode=_int(error.get("error_subcode")),
         message=str(error.get("message") or "")[:500],
         title=str(error.get("error_user_title") or "")[:200],
+        user_message=str(error.get("error_user_msg") or "")[:500],
         detail=str(details.get("details") or "")[:500] if isinstance(details, dict) else "",
     )
 

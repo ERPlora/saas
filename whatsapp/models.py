@@ -1,10 +1,10 @@
 """What erplora.com keeps of a business's WhatsApp (README.md «Datos»).
 
 A business's number and its Meta credentials (``PhoneNumber``, WHATSAPP-G04), the mirror of its templates at
-Meta (``Template``), what the Hub asked to send, by its ``Idempotency-Key`` (``Send``), the month's counter
-(``Usage``) and what waits to reach the Hub: a message of Meta's webhook or a delivery status (``Delivery``).
-Neither the text of a sent message nor its recipient is kept; a received message lives here only until the Hub
-took it and the retention passed (WHATSAPP-G14). Keys are UUIDv7.
+Meta (``Template``) and the registrations the Hub asked for (``TemplateSubmission``), what the Hub asked to send,
+by its ``Idempotency-Key`` (``Send``), the month's counter (``Usage``) and what waits to reach the Hub: a message
+of Meta's webhook or a delivery status (``Delivery``). Neither the text of a sent message nor its recipient is kept;
+a received message lives here only until the Hub took it and the retention passed (WHATSAPP-G14). Keys are UUIDv7.
 """
 
 import uuid
@@ -116,6 +116,39 @@ class Template(models.Model):
 
     def __str__(self):
         return f"{self.name} [{self.language}] {self.status}"
+
+
+class TemplateSubmission(models.Model):
+    """One registration of a template the Hub asked for, by its ``Idempotency-Key`` (door 8): written before Meta is
+    called, so a retry of the same key answers what Meta said the first time instead of registering it again.
+    ``pending`` while its call to Meta is on its way; a key Meta refused or did not answer is forgotten."""
+
+    class State(models.TextChoices):
+        PENDING = "pending", _("Registering")
+        DONE = "done", _("Registered")
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
+    hub = models.ForeignKey(
+        "hubs.Hub", on_delete=models.CASCADE, related_name="whatsapp_template_submissions", verbose_name=_("business")
+    )
+    idempotency_key = models.CharField(_("key"), max_length=255)
+    state = models.CharField(_("state"), max_length=8, choices=State.choices, default=State.PENDING)
+    meta_id = models.CharField(_("Meta template id"), max_length=64, blank=True, default="")
+    status = models.CharField(_("Meta's verdict"), max_length=32, blank=True, default="")
+    created_at = models.DateTimeField(_("asked"), default=timezone.now)
+    updated_at = models.DateTimeField(_("updated"), auto_now=True)
+
+    class Meta:
+        verbose_name = _("WhatsApp template registration")
+        verbose_name_plural = _("WhatsApp template registrations")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["hub", "idempotency_key"], name="whatsapp_template_submission_key_unique_per_hub"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.idempotency_key} → {self.meta_id or self.state}"
 
 
 class Send(models.Model):

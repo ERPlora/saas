@@ -7,7 +7,8 @@ travels: a text header without variables, a body numbered ``{{1}}…{{n}}`` or n
 example each, a footer and quick reply, link or call buttons. An authentication template (Meta's one-time
 codes) needs parts this door has no field for, so it is refused by name rather than half-registered.
 
-``from_meta`` reads one template of Meta's list as the mirror (``models.Template``) keeps it.
+``mirror`` and ``from_meta`` give a template as the mirror (``models.Template``) keeps it: the one Meta just took,
+and one of Meta's list.
 """
 
 import re
@@ -180,6 +181,26 @@ def components(clean: Clean) -> list[dict]:
     if clean.buttons:
         result.append({"type": "BUTTONS", "buttons": clean.buttons})
     return result
+
+
+def mirror(clean: Clean, *, meta_id: str, status: str, category: str) -> dict:
+    """A template Meta took (``meta_id``, its verdict and the category it settled on) as the mirror keeps it: what
+    was sent, until Meta's list or its webhook says otherwise. An edit goes back to review, so no old reason stays."""
+    return {
+        "name": clean.name,
+        "language": clean.language,
+        "category": (category or clean.category).upper(),
+        "status": parse.hub_verdict(status) or "PENDING",
+        "rejected_reason": "",
+        "meta_id": meta_id,
+        "header_format": "TEXT" if clean.header else "",
+        "header": clean.header,
+        "body": clean.body,
+        "body_examples": clean.examples,
+        "footer": clean.footer,
+        "buttons": clean.buttons,
+        "variables": clean.variables,
+    }
 
 
 def from_meta(item: dict) -> dict | None:
