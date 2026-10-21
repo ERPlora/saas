@@ -42,6 +42,7 @@ from billing.tests.stripe_double import (
     signed,
     subscription,
 )
+from hubs import queries as hub_queries
 from hubs.models import Hub, Subscription, SubscriptionItem
 
 pytestmark = pytest.mark.django_db
@@ -359,6 +360,37 @@ class TestACompletedCheckout:
             "purchase",
             "si_inventory",
         )
+
+    def test_a_module_paid_by_a_delayed_method_is_had_once_the_payment_settles(
+        self, shop, inventory, stripe_double
+    ):
+        """BILLING-G62/G63, saas#2566: with a delayed method (SEPA Direct Debit) the checkout completes before
+        the money arrives: nothing is had then, and the module is had when Stripe says the payment settled."""
+        metadata = {"kind": "module_purchase", "hub_id": str(shop.id), "module": "inventory"}
+
+        pending = deliver(
+            event(
+                "checkout.session.completed",
+                checkout_session(metadata=metadata, subscription_id="sub_new", payment_status="unpaid"),
+            )
+        )
+
+        assert pending.json()["status"] == "pending"
+        assert not SubscriptionItem.objects.filter(module_slug="inventory").exists()
+
+        stripe_double.answer(
+            "subscriptions.retrieve",
+            subscription("sub_new", items=[item("si_inventory", "price_inventory_month")]),
+        )
+        settled = deliver(
+            event(
+                "checkout.session.async_payment_succeeded",
+                checkout_session(metadata=metadata, subscription_id="sub_new", payment_status="paid"),
+            )
+        )
+
+        assert settled.json()["status"] == "completed"
+        assert [module["id"] for module in hub_queries.hub_snapshot(shop.id)["modules"]] == ["inventory"]
 
     def test_a_second_subscription_for_a_paying_business_is_cancelled_not_applied(self, shop, stripe_double, caplog):
         """Two checkouts paid for one business (review of L2-B): the one the business already has stays; the
@@ -686,6 +718,25 @@ class TestTheLiveSubscriptionDecides:
         )
         assert subscription_row.items.get().valid_until <= timezone.now()
         assert Hub.objects.get(pk=paid.pk).status == Hub.Status.ACTIVE
+
+    def test_a_cancelled_module_whose_period_ended_is_gone_at_the_renewal(
+        self, shop, inventory, stripe_double
+    ):
+        """BILLING-G67: a cancelled module left Stripe at once and worked until the end of its period (the photo
+        carried that date). The renewal Stripe charges without it leaves the business without it: its row
+        goes, the photo no longer names it and the Store sells it again."""
+        paid = pay(shop, modules=["inventory"])
+        SubscriptionItem.objects.filter(module_slug="inventory").update(
+            stripe_item_id="", valid_until=timezone.now() - timedelta(minutes=1)
+        )
+        stripe_double.answer(
+            "subscriptions.retrieve", subscription(items=[item("si_plan", "price_starter_month")])
+        )
+
+        deliver(event("customer.subscription.updated", subscription(items=[item("si_plan", "price_starter_month")])))
+
+        assert not SubscriptionItem.objects.filter(subscription__hub=paid, module_slug="inventory").exists()
+        assert hub_queries.hub_snapshot(paid.id)["modules"] == []
 
     def test_the_end_of_a_deleted_business_creates_nothing_and_moves_nothing(
         self, shop, stripe_double
