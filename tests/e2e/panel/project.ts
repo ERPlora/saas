@@ -28,6 +28,14 @@ import { STACK, type Stack } from '../stack';
 export const PANEL_URL = `http://localhost:${STACK.panelPort}`;
 
 /**
+ * The panel's twin with the second factor on (`ACCOUNTS_MFA_ENABLED`, off by default in phase 1): the same Django on
+ * `stack`'s next port, with the same database, Vite, mail folder and Hub double, for the specs of the authenticator
+ * app, the trusted browsers and the staff's second factor (accounts/WORKBOOK.md, APP-ACCOUNTS-2). Its pages are
+ * `localhost` too: a spec keeps each browser context on one of the two panels, whose cookies would otherwise mix.
+ */
+export const PANEL_MFA_URL = `http://localhost:${STACK.panelMfaPort}`;
+
+/**
  * Where the panel's Django of `stack` writes the mails it sends (`tests/e2e/.artifacts/panel/mail/`, ignored by
  * git; `mail-<E2E_SAAS_PORT>/` beside the shared stack): two runs reading one folder would take each other's
  * sign-in codes, sent to the same seeded accounts.
@@ -131,38 +139,53 @@ export const panelProject: Project = {
   use: { baseURL: PANEL_URL, locale: 'en-US' },
 };
 
-/** Django on `stack`'s panel port (:8012 by default) and Vite on `vitePort` (:5174 by default), from saas/ (`saasDir`). */
-export function panelServers(saasDir: string, vitePort = VITE_PORT, stack: Stack = STACK): WebServer[] {
-  return [
+/** The environment of the panel's Django of `stack` (and of its twin, which adds the second factor on). */
+function panelDjangoEnv(vitePort: number, stack: Stack): Record<string, string> {
+  // Playwright puts its own environment under these, DEBUG included, and the stack's database (django-env.ts).
+  return djangoEnv(
+    true,
     {
-      name: 'panel-django',
-      command: `uv run python manage.py runserver 127.0.0.1:${stack.panelPort} --novite --noreload`,
-      cwd: saasDir,
-      // /healthz answers on any Host and never touches the database (base/health.py).
-      url: `http://127.0.0.1:${stack.panelPort}/healthz`,
-      reuseExistingServer: false,
-      timeout: 120_000,
-      // Playwright puts its own environment under these, DEBUG included, and the stack's database (django-env.ts).
-      env: djangoEnv(
-        true,
-        {
-          HUB_INTERNAL_URL: `http://127.0.0.1:${stack.hubDoublePort}`,
-          EMAIL_BACKEND: 'django.core.mail.backends.filebased.EmailBackend',
-          EMAIL_FILE_PATH: panelMailDir(stack),
-          // Its dev shell and CSP point at this run's Vite.
-          VITE_DEV_PORT: String(vitePort),
-          // Every spec signs in from 127.0.0.1, past allauth's 30 sign-ins a minute when repeated
-          // (config/settings.py): only this server raises that one limit.
-          E2E_RELAX_LOGIN_RATE_LIMIT: 'True',
-          // Meta's app of the WhatsApp specs (WHATSAPP_E2E): its webhook answers instead of 503.
-          WHATSAPP_APP_ID: WHATSAPP_E2E.appId,
-          WHATSAPP_APP_SECRET: WHATSAPP_E2E.appSecret,
-          WHATSAPP_VERIFY_TOKEN: WHATSAPP_E2E.verifyToken,
-          WHATSAPP_CONFIG_ID: WHATSAPP_E2E.configId,
-        },
-        stack,
-      ),
+      HUB_INTERNAL_URL: `http://127.0.0.1:${stack.hubDoublePort}`,
+      EMAIL_BACKEND: 'django.core.mail.backends.filebased.EmailBackend',
+      EMAIL_FILE_PATH: panelMailDir(stack),
+      // Its dev shell and CSP point at this run's Vite.
+      VITE_DEV_PORT: String(vitePort),
+      // Every spec signs in from 127.0.0.1, past allauth's 30 sign-ins a minute when repeated
+      // (config/settings.py): only this server raises that one limit.
+      E2E_RELAX_LOGIN_RATE_LIMIT: 'True',
+      // Meta's app of the WhatsApp specs (WHATSAPP_E2E): its webhook answers instead of 503.
+      WHATSAPP_APP_ID: WHATSAPP_E2E.appId,
+      WHATSAPP_APP_SECRET: WHATSAPP_E2E.appSecret,
+      WHATSAPP_VERIFY_TOKEN: WHATSAPP_E2E.verifyToken,
+      WHATSAPP_CONFIG_ID: WHATSAPP_E2E.configId,
     },
+    stack,
+  );
+}
+
+/** A Django of the panel on `port`, never reused (another session's would reload under the specs). */
+function panelDjango(name: string, saasDir: string, port: number, env: Record<string, string>): WebServer {
+  return {
+    name,
+    command: `uv run python manage.py runserver 127.0.0.1:${port} --novite --noreload`,
+    cwd: saasDir,
+    // /healthz answers on any Host and never touches the database (base/health.py).
+    url: `http://127.0.0.1:${port}/healthz`,
+    reuseExistingServer: false,
+    timeout: 120_000,
+    env,
+  };
+}
+
+/**
+ * Django on `stack`'s panel port (:8012 by default), its twin with the second factor on (:8013) and Vite on
+ * `vitePort` (:5174 by default), from saas/ (`saasDir`).
+ */
+export function panelServers(saasDir: string, vitePort = VITE_PORT, stack: Stack = STACK): WebServer[] {
+  const env = panelDjangoEnv(vitePort, stack);
+  return [
+    panelDjango('panel-django', saasDir, stack.panelPort, env),
+    panelDjango('panel-mfa-django', saasDir, stack.panelMfaPort, { ...env, ACCOUNTS_MFA_ENABLED: 'True' }),
     {
       name: 'panel-vite',
       command: 'pnpm run dev',

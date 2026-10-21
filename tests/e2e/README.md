@@ -5,7 +5,7 @@ Playwright con **un** `playwright.config.ts` y dos proyectos, cada uno contra su
 | Proyecto | Specs | Servidor | Para qué |
 |---|---|---|---|
 | `public` | `*.spec.ts` de esta carpeta (hoy `store-docs.spec.ts`, `public-dark.spec.ts`, el modo claro/oscuro del sistema con sus capturas en `.artifacts/public-dark/`, y `demo-door.spec.ts`, la puerta `/demo/` en `en` y `es` con sus capturas en `.artifacts/demo/`) | `runserver 127.0.0.1:8011` (o el de su pila, «Dos e2e del SaaS a la vez») con `DEBUG=False`, `--insecure`, sin Vite | La web pública (plantillas de Django) con la CSP de producción. Pide `pnpm build` antes |
-| `panel` | `panel/*.spec.ts` | `runserver 127.0.0.1:8012 --novite --noreload` propio (o el de su pila), con `DEBUG=True`, `HUB_INTERNAL_URL` a un puerto sin nadie (`:8019`) y el correo a ficheros, + Vite (`pnpm run dev`) en `:5174` (o en `VITE_DEV_PORT`) | El panel (la SPA de `erplora.com`) tal como se sirve en desarrollo |
+| `panel` | `panel/*.spec.ts` | `runserver 127.0.0.1:8012 --novite --noreload` propio (o el de su pila), con `DEBUG=True`, `HUB_INTERNAL_URL` a un puerto sin nadie (`:8019`) y el correo a ficheros, + su gemelo con el segundo factor encendido en `:8013`, + Vite (`pnpm run dev`) en `:5174` (o en `VITE_DEV_PORT`) | El panel (la SPA de `erplora.com`) tal como se sirve en desarrollo |
 
 ## Cómo se corre
 
@@ -46,8 +46,8 @@ pnpm e2e --project=panel panel/login.spec.ts   # una spec
 ## Puertos y servidores
 
 Son los de la pila compartida, la de toda ejecución que no exporta nada. `E2E_SAAS_PORT` los mueve juntos para una
-segunda ejecución a la vez (`stack.ts`; ver «Dos e2e del SaaS a la vez»): `+1` el público, `+2` el panel y `+9` el
-Hub de las specs (por defecto `8010`: `:8011`, `:8012`, `:8019`).
+segunda ejecución a la vez (`stack.ts`; ver «Dos e2e del SaaS a la vez»): `+1` el público, `+2` el panel, `+3` su
+gemelo con el segundo factor y `+9` el Hub de las specs (por defecto `8010`: `:8011`, `:8012`, `:8013`, `:8019`).
 
 - **`:8012` (Django del panel)**: siempre propio (`reuseExistingServer: false`), sin autorecarga y con
   `HUB_INTERNAL_URL=http://127.0.0.1:8019`: las llamadas al Hub se quedan pendientes, como con el Hub
@@ -59,6 +59,12 @@ Hub de las specs (por defecto `8010`: `:8011`, `:8012`, `:8019`).
   login). Solo ese límite: el alta, los códigos y los intentos fallidos conservan los suyos, el servidor
   de desarrollo también (no depende de `DEBUG`), y sin `DEBUG` (producción) el Django se niega a arrancar
   con ella.
+- **`:8013` (el gemelo del panel con el segundo factor)**: el mismo Django que `:8012` (misma BD, mismo Vite, misma
+  carpeta de correo y mismo Hub de las specs) con `ACCOUNTS_MFA_ENABLED=True`, apagado por defecto en la fase 1: ahí
+  juegan las specs de la app autenticadora, los navegadores de confianza y el segundo factor del personal
+  (`PANEL_MFA_URL` de `panel/project.ts`; APP-ACCOUNTS-2). El panel de `:8012` queda como producción, con el segundo
+  factor apagado. Las dos son `localhost`: cada contexto del navegador va a una sola de las dos, porque las cookies no
+  distinguen el puerto.
 - **`:8019` (el Hub de las specs)**: nadie escucha salvo mientras una spec hace de Hub con
   `startHubDouble()` (hoy `members.spec.ts`): registra cada llamada a `/internal` y responde 200 a la
   foto (`PUT /internal/hubs/{id}/state`) y a la revocación (`POST /internal/sessions/revoke`), y 503 al
@@ -130,10 +136,10 @@ Reglas que la e2e hace cumplir antes de arrancar ningún servidor (`stack.ts`):
 Receta (dos pilas a la vez, desde el worktree del SaaS; cada una en su consola, o las dos en segundo plano):
 
 ```bash
-for p in 8031 8032 8039 5443 8041 8042 8049 5444; do lsof -nP -iTCP:$p -sTCP:LISTEN; done   # nada en sus puertos
-# Pila A (8031, 8032, 8039; Vite 5443; BD saas_e2e_8030)
+for p in 8031 8032 8033 8039 5443 8041 8042 8043 8049 5444; do lsof -nP -iTCP:$p -sTCP:LISTEN; done   # nada en sus puertos
+# Pila A (8031, 8032, 8033, 8039; Vite 5443; BD saas_e2e_8030)
 env -u DB_NAME E2E_SAAS_PORT=8030 VITE_DEV_PORT=5443 pnpm e2e:ci tests/e2e/panel/login.spec.ts
-# Pila B, a la vez (8041, 8042, 8049; Vite 5444; BD saas_e2e_8040)
+# Pila B, a la vez (8041, 8042, 8043, 8049; Vite 5444; BD saas_e2e_8040)
 env -u DB_NAME E2E_SAAS_PORT=8040 VITE_DEV_PORT=5444 pnpm e2e:ci tests/e2e/panel/members.spec.ts
 # Al terminar las dos (Playwright ya paró sus servidores): borrar sus BD
 env -u DB_NAME E2E_SAAS_PORT=8030 node tests/e2e/database.ts --drop
@@ -142,7 +148,7 @@ env -u DB_NAME E2E_SAAS_PORT=8040 node tests/e2e/database.ts --drop
 
 - Sin `--` antes de la spec (con él corren todas). `env -u DB_NAME` sobra si la consola no exporta ninguno, pero no
   estorba.
-- Sin `E2E_SAAS_PORT`, todo es como antes: `:8011`, `:8012`, `:8019`, la BD `saas` de `.env` y `.artifacts/panel/mail/`.
+- Sin `E2E_SAAS_PORT`, todo es como antes: `:8011`, `:8012`, `:8013`, `:8019`, la BD `saas` de `.env` y `.artifacts/panel/mail/`.
 - `--drop` nunca fuerza: con un servidor aún conectado, falla y lo dice. Sin `E2E_SAAS_PORT` (pila compartida), no
   toca nada.
 - Para la web pública (`--project=public`) en una pila propia, igual que en la compartida: antes, `pnpm build`.
