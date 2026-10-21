@@ -10,4 +10,9 @@ WEBHOOK_INGESTED = "whatsapp.webhook.ingested"
 #: A push to the Hub ended (taken, retried, refused or dropped): ``{"delivery_id", "outcome"}``.
 DELIVERY_RECORDED = "whatsapp.delivery.recorded"
 
-ALL = [WEBHOOK_INGESTED, DELIVERY_RECORDED]
+#: A send of the Hub ended at Meta (sent, unknown or released): ``{"send_id", "outcome"}``.
+MESSAGE_RECORDED = "whatsapp.message.recorded"
+#: What was kept of a customer's number for a business was forgotten (door 6): ``{"hub_id", "rows"}``.
+MESSAGE_ERASED = "whatsapp.message.erased"
+
+ALL = [WEBHOOK_INGESTED, DELIVERY_RECORDED, MESSAGE_RECORDED, MESSAGE_ERASED]

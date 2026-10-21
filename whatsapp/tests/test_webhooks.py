@@ -175,6 +175,15 @@ class TestACustomersMessageReachesTheHub:
         assert not Delivery.objects.exists()
         assert hub_takes_it.calls_to("POST", "/internal/whatsapp/inbound") == []
 
+    def test_a_business_that_left_takes_nothing(self, client, number, business, hub_takes_it):
+        """The old product kept parking the messages of a business being deleted until its purge, for nobody."""
+        from hubs.models import Hub
+
+        Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETING)
+
+        assert signed(client, messages(text())).status_code == 200
+        assert not Delivery.objects.exists()
+
     def test_two_businesses_in_one_notice_each_get_their_own(self, client, number, other_business, hub_takes_it):
         PhoneNumber.objects.create(
             hub=other_business, phone_number_id="2", display_phone="+34 2", waba_id="W2", access_token="t"

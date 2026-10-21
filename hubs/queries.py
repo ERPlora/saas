@@ -876,7 +876,7 @@ def hub_snapshot(hub_id: UUID) -> dict[str, Any]:
         .filter(hub=hub)
         .first()
     )
-    plan = subscription.effective_plan(now) if subscription else free_plan()
+    plan = _effective_plan(subscription, now)
     items = (
         [item for item in subscription.items.order_by("module_slug") if item.is_live(now)]
         if subscription
@@ -923,6 +923,17 @@ def hub_snapshot(hub_id: UUID) -> dict[str, Any]:
         ],
         "verifactu": {**verifactu_representation(hub.id), "live_paid": live_paid},
     }
+
+
+def _effective_plan(subscription: Subscription | None, now: datetime) -> Plan | None:
+    return subscription.effective_plan(now) if subscription else free_plan()
+
+
+def effective_plan(hub_id: UUID, now: datetime) -> Plan | None:
+    """The plan whose rights the business has at ``now`` (its trial's while it lasts; Free without a subscription):
+    the one its snapshot carries, and whose ``whatsapp_messages_per_month`` erplora.com counts its sends against."""
+    subscription = Subscription.objects.select_related("plan", "trial_plan").filter(hub_id=hub_id).first()
+    return _effective_plan(subscription, now)
 
 
 def _snapshot_plan(plan: Plan | None) -> dict[str, Any] | None:

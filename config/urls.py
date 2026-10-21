@@ -28,6 +28,7 @@ from fiscal import internal as fiscal_internal
 from fiscal_gateway import internal as fiscal_gateway_internal
 from hubs import internal as hubs_internal
 from public import landing
+from whatsapp import internal as whatsapp_internal
 from whatsapp import webhooks as whatsapp_webhooks
 from public.urls import PUBLIC_PREFIXES
 
@@ -121,6 +122,9 @@ urlpatterns = [
         fiscal_gateway_internal.probe,
         name="internal_verifactu_probe",
     ),
+    # WhatsApp (whatsapp/internal.py): the doors erplora.com serves to the Hub (its WORKBOOK whatsapp_inbox, doors 5–9).
+    path("internal/whatsapp/send", whatsapp_internal.send, name="internal_whatsapp_send"),
+    path("internal/whatsapp/erase", whatsapp_internal.erase, name="internal_whatsapp_erase"),
     # Stripe's single webhook (PLAN-SAAS §4): signed by Stripe, no session nor CSRF.
     path("webhooks/stripe/", billing_webhooks.stripe_webhook, name="stripe_webhook"),
     # Meta's single WhatsApp webhook (whatsapp/webhooks.py): its verification (GET) and its signed notices.

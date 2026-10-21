@@ -8,7 +8,13 @@ for a third party.
 - ``whatsapp.webhook.ingest``: what Meta's webhook reported, parked once per message for each active number
   (``Delivery``), the furthest status of each message, and Meta's verdicts on the templates (WHATSAPP-G07);
 - ``whatsapp.delivery.claim`` / ``whatsapp.delivery.record``: the push of what is parked to the Hub's doors 1 and 2,
-  leased so two processes never push the same thing at once, and retried with a growing wait.
+  leased so two processes never push the same thing at once, and retried with a growing wait;
+- ``whatsapp.message.claim`` / ``whatsapp.message.record``: door 5, a send by its ``Idempotency-Key``. The claim
+  reserves the month's place atomically (``UPDATE … WHERE used < limit``) before Meta is called, so two sends at once
+  can never both pass the cap (saas#2652), and a key already sent answers its first id (saas#2633);
+- ``whatsapp.message.erase``: door 6, what is kept of a customer's number for a business is forgotten.
+
+A refusal raises the envelope's error (``live.errors``): the transaction rolls back, the reservation with it.
 """
 
 import logging
@@ -16,16 +22,33 @@ from datetime import timedelta
 from uuid import UUID
 
 from django.conf import settings
-from django.db.models import Q
+from django.db import IntegrityError, transaction
+from django.db.models import F, Q
 from django.utils import timezone
 from live.context import OperationContext, Scope, system_context
+from live.errors import Conflict, NotFound, OperationError
 from live.operations import operation
 from live.outbox import record_event
 
+from hubs import queries as hubs_queries
 from hubs import services as hubs_services
-from whatsapp import events, parse
-from whatsapp.models import Delivery, PhoneNumber, Send, Template
-from whatsapp.schemas import ClaimedDelivery, ClaimIn, ClaimOut, IngestIn, IngestOut, RecordIn, RecordOut
+from whatsapp import events, parse, queries
+from whatsapp.models import Delivery, PhoneNumber, Send, Template, Usage
+from whatsapp.schemas import (
+    ClaimedDelivery,
+    ClaimIn,
+    ClaimOut,
+    EraseIn,
+    EraseOut,
+    IngestIn,
+    IngestOut,
+    RecordIn,
+    RecordOut,
+    SendClaimIn,
+    SendClaimOut,
+    SendRecordIn,
+    SendRecordOut,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +60,9 @@ FIRST_WAIT = timedelta(seconds=30)
 LONGEST_WAIT = timedelta(hours=1)
 #: How far each delivery status is; ``failed`` replaces anything but ``read``, and nothing replaces it.
 STATUS_RANK = {"sent": 1, "delivered": 2, "read": 3}
+#: How long a send whose call did not end is taken as still on its way (Meta cuts a send at 30 s; the Hub's
+#: retries span minutes). Past it, the same key sends again, in the place it already took.
+IN_FLIGHT = timedelta(minutes=2)
 
 
 def platform_context() -> OperationContext:
@@ -67,8 +93,11 @@ def announce_channel(hub_id: UUID) -> None:
 def webhook_ingest(ctx: OperationContext, data: IngestIn) -> IngestOut:
     parsed = parse.parse(data.payload)
     named = {message.phone_number_id for message in parsed.messages} | {status.phone_number_id for status in parsed.statuses}
+    # A number of a business that left (being deleted or purged) takes nothing any more.
     numbers = dict(
-        PhoneNumber.objects.filter(phone_number_id__in=named, is_active=True).values_list("phone_number_id", "hub_id")
+        PhoneNumber.objects.filter(
+            phone_number_id__in=named, is_active=True, hub__status__in=hubs_services.LIVE_STATUSES
+        ).values_list("phone_number_id", "hub_id")
     )
     touched: set[UUID] = set()
     parked = statuses = 0
@@ -271,3 +300,111 @@ def delivery_record(ctx: OperationContext, data: RecordIn) -> RecordOut:
         row.save(update_fields=["attempts", "last_error", "next_attempt_at"])
     record_event(ctx, events.DELIVERY_RECORDED, {"delivery_id": str(data.id), "outcome": data.outcome})
     return RecordOut(outcome=data.outcome)
+
+
+# --- Door 5: a send by its Idempotency-Key ----------------------------------------------------------------------
+
+
+def _unknown_hub() -> NotFound:
+    return NotFound("No business the SaaS knows goes by that hub.", code="hub_unknown")
+
+
+def in_progress() -> OperationError:
+    return OperationError(
+        "This message is already being sent: retry with the same key.", code="whatsapp.send_in_progress", status=503
+    )
+
+
+@operation("whatsapp.message.claim", kind="command", permission=PERMISSION, input=SendClaimIn, output=SendClaimOut)
+def message_claim(ctx: OperationContext, data: SendClaimIn) -> SendClaimOut:
+    """Take the place of a send in the month's allowance before Meta is called, or say why it does not leave."""
+    hub = queries.known_hub(data.hub)
+    if hub is None:
+        raise _unknown_hub()
+    now = timezone.now()
+    existing = Send.objects.select_for_update().filter(hub=hub, idempotency_key=data.key).first()
+    if existing is not None and existing.state == Send.State.SENT:
+        return SendClaimOut(outcome="sent", send_id=existing.id, hub_id=hub.id, wa_message_id=existing.wa_message_id)
+    if existing is not None and existing.updated_at > now - IN_FLIGHT:
+        raise in_progress()
+    number = PhoneNumber.objects.filter(hub=hub, is_active=True).first()
+    if number is None or not number.access_token:
+        raise Conflict("The business has no WhatsApp number connected.", code="whatsapp.not_connected")
+    if data.template_name:
+        template = Template.objects.filter(hub=hub, name=data.template_name, language=data.template_language).first()
+        if template is not None and template.status != Template.Status.APPROVED:
+            raise Conflict(
+                f"Meta has not approved the template «{template.name}» ({template.status}).",
+                code="whatsapp.template_not_approved",
+            )
+    if existing is not None:
+        # An earlier call with this key died or got no answer from Meta: it sends again in the place it took.
+        existing.state = Send.State.PENDING
+        existing.save(update_fields=["state", "updated_at"])
+        send = existing
+    else:
+        month = now.strftime("%Y-%m")
+        try:
+            with transaction.atomic():
+                send = Send.objects.create(hub=hub, idempotency_key=data.key, month=month)
+        except IntegrityError:
+            # Another call with the same key claimed it a moment ago.
+            raise in_progress() from None
+        if not _reserve(hub.id, month, now):
+            raise Conflict("The plan's WhatsApp messages of this month are spent.", code="whatsapp.cap_reached")
+    return SendClaimOut(
+        outcome="claimed",
+        send_id=send.id,
+        hub_id=hub.id,
+        phone_number_id=number.phone_number_id,
+        token=number.access_token,
+    )
+
+
+def _reserve(hub_id: UUID, month: str, now) -> bool:
+    """One more message of ``month`` if the plan's allowance has room: one ``UPDATE … WHERE used < limit``, which a
+    concurrent send waits on and then evaluates again (0 = the plan includes none)."""
+    plan = hubs_queries.effective_plan(hub_id, now)
+    limit = plan.whatsapp_messages_per_month if plan is not None else 0
+    usage, _ = Usage.objects.get_or_create(hub_id=hub_id, month=month)
+    return Usage.objects.filter(pk=usage.pk, used__lt=limit).update(used=F("used") + 1) == 1
+
+
+@operation("whatsapp.message.record", kind="command", permission=PERMISSION, input=SendRecordIn, output=SendRecordOut)
+def message_record(ctx: OperationContext, data: SendRecordIn) -> SendRecordOut:
+    """How Meta ended a claimed send: sent (its id), unknown (the place stays taken) or released (nothing left)."""
+    send = Send.objects.select_for_update().filter(pk=data.send_id).first()
+    if send is None:
+        return SendRecordOut(outcome="gone")
+    hub_id = send.hub_id
+    if data.outcome == "released":
+        Usage.objects.filter(hub_id=hub_id, month=send.month, used__gt=0).update(used=F("used") - 1)
+        send.delete()
+    else:
+        send.state = Send.State.SENT if data.outcome == "sent" else Send.State.UNKNOWN
+        send.wa_message_id = data.wa_message_id
+        send.save(update_fields=["state", "wa_message_id", "updated_at"])
+    if data.needs_reconnect:
+        PhoneNumber.objects.filter(hub_id=hub_id, is_active=True).update(needs_reconnect=True)
+    if data.outcome != "released" or data.needs_reconnect:
+        # The month's usage (or the number's state) moved: the Hub learns it in its snapshot.
+        announce_channel(hub_id)
+    record_event(ctx, events.MESSAGE_RECORDED, {"send_id": str(data.send_id), "outcome": data.outcome})
+    return SendRecordOut(outcome=data.outcome)
+
+
+# --- Door 6: forgetting a customer's number ---------------------------------------------------------------------
+
+
+@operation("whatsapp.message.erase", kind="command", permission=PERMISSION, input=EraseIn, output=EraseOut)
+def message_erase(ctx: OperationContext, data: EraseIn) -> EraseOut:
+    """Forget what is kept of ``phone`` for the business: its messages waiting for (or already taken by) the Hub and
+    the statuses of the messages it names. Nothing of another business is touched."""
+    hub = queries.known_hub(data.hub, live=False)
+    if hub is None:
+        raise _unknown_hub()
+    contact = "".join(ch for ch in data.phone if ch.isdigit())
+    named = Q(contact=contact) | Q(wa_message_id__in=data.wa_message_ids) if data.wa_message_ids else Q(contact=contact)
+    erased, _ = Delivery.objects.filter(named, hub=hub).delete()
+    record_event(ctx, events.MESSAGE_ERASED, {"hub_id": str(hub.id), "rows": erased})
+    return EraseOut(erased=True)
