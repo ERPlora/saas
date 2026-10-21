@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// «Your data» of Account → Profile (ACCOUNTS-F26; GDPR art. 20), above the danger card as GitHub's «Export account
+// «Export your data» of Account → Profile (ACCOUNTS-F26; GDPR art. 20), above the danger card as GitHub's «Export account
 // data» sits above its «Delete account»: «Download my data» reads `accounts.data.export` (the account, its
 // businesses and ERPlora's invoices it sees) and saves it as a JSON file built here, named with the day. While it runs
 // the button is off; a failure is said in a toast and the button comes back.

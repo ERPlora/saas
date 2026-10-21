@@ -1,4 +1,4 @@
-// «Your data» of Account → Profile (ACCOUNTS-F26; GDPR art. 20; GitHub's «Export account data» sits above its
+// «Export your data» of Account → Profile (ACCOUNTS-F26; GDPR art. 20; GitHub's «Export account data» sits above its
 // «Delete account» the same way): «Download my data» reads `accounts.data.export` and saves it as a JSON file
 // built here, named with the day. While it runs the button is off; a failure is said and the button comes back.
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -11,6 +11,8 @@ vi.mock('@erplora/ui/shell', async (importOriginal) => ({
 import { toastError } from '@erplora/ui/shell';
 
 import { apiError, flush, ionProps, mountPanel } from '../__tests__/mount-panel';
+import accountsEn from '../locale/en.json';
+import accountsEs from '../locale/es.json';
 import DataExportCard from './DataExportCard.vue';
 
 const EXPORTED = { format: 'erplora.account-export', version: 1, account: { email: 'laura@example.com' } };
@@ -41,16 +43,22 @@ function catchDownloads() {
 describe('DataExportCard', () => {
   it('says what the file holds, with «Download my data»', async () => {
     const s = await mountPanel(DataExportCard);
-    expect(s.q('profile-export-card')?.textContent).toContain('Your data');
+    expect(s.q('profile-export-card')?.textContent).toContain('Export your data');
     expect(s.q('profile-export-card')?.textContent).toContain(
       'A copy of your account, your businesses and your ERPlora invoices, in a file other apps can read.',
     );
     expect(s.q('profile-export')?.textContent?.trim()).toBe('Download my data');
   });
 
+  it('never repeats the heading of «Your details» above it, in any language', () => {
+    for (const { accounts } of [accountsEn, accountsEs]) {
+      expect(accounts.account.export.title).not.toBe(accounts.account.profile.heading);
+    }
+  });
+
   it('says it in Spanish', async () => {
     const s = await mountPanel(DataExportCard, { locale: 'es' });
-    expect(s.q('profile-export-card')?.textContent).toContain('Tus datos');
+    expect(s.q('profile-export-card')?.textContent).toContain('Exportar tus datos');
     expect(s.q('profile-export-card')?.textContent).toContain(
       'Una copia de tu cuenta, tus negocios y tus facturas de ERPlora, en un fichero que otras aplicaciones pueden leer.',
     );

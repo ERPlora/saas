@@ -145,7 +145,7 @@ sesiones seleccionadas». Las dos acciones solo las ve un superusuario.
 
 ### Cuenta › Perfil
 «Tus datos» (la foto o las iniciales con «Cambiar foto», «Nombre», «Apellidos», el «Correo con el que entras» con
-«Cambiar» y «Guardar cambios»), «Tus datos» para descargar («Descargar mis datos») y la tarjeta roja «Eliminar tu
+«Cambiar» y «Guardar cambios»), «Exportar tus datos» para descargar («Descargar mis datos») y la tarjeta roja «Eliminar tu
 cuenta». Abajo, las pestañas de **Cuenta**: «Perfil», «Seguridad», «Preferencias» y «Claves de API».
 
 ### Cuenta › Preferencias
@@ -572,7 +572,7 @@ Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Cuenta › Perfil
 Pasos:
-1. En **Cuenta › Perfil**, la tarjeta «Tus datos» dice «Una copia de tu cuenta, tus negocios y tus facturas de ERPlora, en un fichero que otras aplicaciones pueden leer.».
+1. En **Cuenta › Perfil**, la tarjeta «Exportar tus datos» dice «Una copia de tu cuenta, tus negocios y tus facturas de ERPlora, en un fichero que otras aplicaciones pueden leer.».
 2. La persona pulsa «Descargar mis datos»: el botón se apaga mientras se prepara.
 3. El navegador guarda el fichero «erplora-data-» con la fecha del día.
 Entra: la sesión.

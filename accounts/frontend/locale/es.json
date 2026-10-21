@@ -266,7 +266,7 @@
         "loadError": "No hemos podido cargar tu cuenta"
       },
       "export": {
-        "title": "Tus datos",
+        "title": "Exportar tus datos",
         "lead": "Una copia de tu cuenta, tus negocios y tus facturas de ERPlora, en un fichero que otras aplicaciones pueden leer.",
         "download": "Descargar mis datos"
       },

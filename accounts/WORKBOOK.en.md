@@ -126,7 +126,7 @@ sessions". Only a superuser sees both actions.
 
 ### Account › Profile
 "Your details" (the photo or the initials with "Change photo", "First name", "Last name", the "Email you sign in
-with" with "Change" and "Save changes"), "Your data" to download ("Download my data") and the red card "Delete
+with" with "Change" and "Save changes"), "Export your data" to download ("Download my data") and the red card "Delete
 your account". At the bottom, the tabs of **Account**: "Profile", "Security", "Preferences" and "API keys".
 
 ### Account › Preferences
@@ -527,7 +527,7 @@ Status: done
 Actor: any person with an account
 Screen: Account › Profile
 Steps:
-1. In **Account › Profile**, the "Your data" card says "A copy of your account, your businesses and your ERPlora invoices, in a file other apps can read.".
+1. In **Account › Profile**, the "Export your data" card says "A copy of your account, your businesses and your ERPlora invoices, in a file other apps can read.".
 2. The person taps "Download my data": the button is off while it is prepared.
 3. The browser saves the file "erplora-data-" with the day's date.
 In: the session.
