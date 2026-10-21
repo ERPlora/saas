@@ -302,6 +302,15 @@ class TestDoor11Connect:
         assert (response.status_code, error_code(response)) == (404, "hub_unknown")
         assert not router.calls
 
+    def test_a_demo_cannot_connect_a_number(self, client, internal, business):
+        """saas#2604: a demo is no business of the SaaS (it lives in the Hub's registry): it can never take a number,
+        least of all one a real business has."""
+        with respx.mock(assert_all_called=False) as router:
+            response = connect(client, hub="demo-1a2b3c4d")
+
+        assert (response.status_code, error_code(response)) == (404, "hub_unknown")
+        assert not router.calls and not PhoneNumber.objects.exists()
+
     def test_without_the_code_the_body_is_not_the_contract(self, client, internal, business):
         response = connect(client, code="")
 
