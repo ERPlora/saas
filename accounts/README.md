@@ -23,14 +23,19 @@ solo sobre la cuenta que llama. Ninguna está expuesta a claves de API.
 | `accounts.preferences.get` (viva) / `.update` | `GET`/`POST /api/accounts/preferences` | `theme_mode` (`system`/`light`/`dark`), `language` (`User.language`), `hub_alerts`, `marketing_emails` |
 | `accounts.session.list` (viva) | `GET /api/accounts/sessions` | Una página (`limit` ≤ 100, `offset`) de las sesiones vivas: `device` (código), `browser` + versión o `app_version`, `ip`, último uso, `is_current` (primero); `total` y `others` (las demás) cuentan todas |
 | `accounts.session.close` / `.close_others` | `POST /api/accounts/sessions/close`, `…/close_others` | Cierra una (la propia también: cierra la sesión) o todas las demás |
+| `accounts.browser_trust.get` | `GET /api/accounts/browser-trust` | `trusted_until`: hasta cuándo este navegador se salta el código de la app, o `null` (sin app, con `ACCOUNTS_MFA_ENABLED` apagado o con una huella de antes de otra contraseña o de dejar de confiar) |
+| `accounts.browser_trust.revoke` | `POST /api/accounts/browser-trust/revoke` | Deja de confiar en todos los navegadores de la cuenta (ver «Segundo factor»); esta sesión sigue dentro |
 | `accounts.apikey.list` (viva) | `GET /api/accounts/api-keys` | Claves no revocadas (las caducadas, marcadas) y el catálogo de `scopes` con su rótulo |
 | `accounts.apikey.create` | `POST /api/accounts/api-keys` (201) | Reautenticación; devuelve la clave entera **una vez** (`secret`) y avisa por correo a la cuenta (sin la clave) |
 | `accounts.apikey.revoke` | `POST /api/accounts/api-keys/revoke` | La corta al momento; dos veces no cambia nada |
 
 Eventos (`events.py`): `accounts.profile.updated`, `accounts.profile.deleted`, `accounts.email.change_requested`,
-`accounts.preferences.updated`, `accounts.session.closed`, `accounts.apikey.created`, `accounts.apikey.revoked`.
-Sin ruta: `accounts.apikey.revoke_any`, la «Revocar» del admin, con contexto de sistema en el canal del dueño
-(su lista viva se refresca); ningún rol tiene su permiso.
+`accounts.preferences.updated`, `accounts.session.closed`, `accounts.browser_trust.revoked`,
+`accounts.apikey.created`, `accounts.apikey.revoked`.
+Sin ruta: `accounts.apikey.revoke_any`, la «Revocar» del admin, y `accounts.session.close_any`, las dos acciones
+«Cerrar sesiones» del admin (ACCOUNTS-F19: todas las de una cuenta y la confianza de sus navegadores, o las
+elegidas en «Sesiones de usuario»; `services.close_sessions`), con contexto de sistema en el canal del dueño (su
+lista viva se refresca); ningún rol tiene su permiso y en el admin solo las ve el superusuario.
 
 ## Decisiones
 
@@ -85,6 +90,23 @@ Sin ruta: `accounts.apikey.revoke_any`, la «Revocar» del admin, con contexto d
   caducar con sus datos y el hash se comprueba en memoria (nada de cargar una sesión por fila), y el servidor la
   pagina, la actual primero (con más sesiones de las que caben en un resultado vivo no cargaba). Ubicación = IP
   (GeoIP fuera, plan §6). `UserSessionsAdapter` hace que cerrar por cualquier puerta avise a los negocios.
+- **Segundo factor** (PLAN-SAAS, nota 2026-10-13 y ronda 19; ACCOUNTS-F05, F14–F17 y F20): `allauth.mfa` sobre
+  headless, TOTP + códigos de recuperación, sin passkeys, detrás de `ACCOUNTS_MFA_ENABLED` (apagado por defecto en
+  la fase 1: `MFAFlagMiddleware` responde 404 en sus rutas y `mfa.mfa_completed` es falso; nunca se cambia el
+  valor por defecto sin decisión de fase). Las páginas son Vue (`/2fa`, `/2fa/authenticate`, `/reauthenticate`);
+  las plantillas de allauth no existen. **Confiar en este navegador 14 días** = `MFA_TRUST_ENABLED` de allauth
+  (etapa `mfa_trust` tras el código; cookie firmada solo en el host de erplora.com, `MFA_TRUST_COOKIE_DOMAIN =
+  None`), lo que el SaaS viejo hacía con `TrustedDevice` + `MFA_TRUST_ENABLED`: aquí no hay modelo propio.
+  `mfa.mfa_completed` cuenta la sesión que pasó la app **o** un navegador de confianza (lo lee el salto al Hub,
+  `handoff.py`). La huella liga contraseña y autenticadores, así que «Dejar de confiar en todos»
+  (`forget_trusted_browsers`, portado de `_invalidate_mfa_trust`) los vuelve a crear con otro id y los mismos
+  datos y fechas: la app y los códigos siguen valiendo; `_follow_new_authenticator_ids` mueve los registros de
+  esta sesión a los ids nuevos para que no pierda lo que probó. No hay lista de navegadores: allauth no guarda
+  nada en el servidor. El SDK de `@erplora/ui` no tiene `auth/2fa/trust`: `TwoFactorAuthenticatePage.vue` hace su
+  propio `fetch` con el CSRF (FIX abierto en `ui`). **Personal**: con el interruptor encendido,
+  `admin_has_permission` (`admin.site.has_permission`, en `config/urls.py`) exige un TOTP (los códigos de
+  recuperación solos no) y `admin_login` lleva al personal sin él a `/2fa?next=<ruta del admin>`, que ofrece
+  «Continue» cuando la app está activa; el salto `hub-admin` lo exige siempre (`_needs_second_factor`).
 - **Señales hacia `hubs`** (`signals.py`; `accounts` nunca importa `hubs`): `sessions_ended(user_id)` al cerrar
   sesiones, eliminar la cuenta o poner contraseña nueva (`password_changed/set/reset` de allauth; PLAN-SAAS
   §2.1) y `account_deleting(user_id)` antes de borrar la cuenta. Al cambiar el correo se envía `email_changed`

@@ -1,14 +1,14 @@
 # Workbook — Cuentas (accounts)
 Prefijo: ACCOUNTS
 Alcance MVP: fase 1 (la cuenta de erplora.com: crearla, entrar y salir, su contraseña y lo que acepta)
-Estado de la app: en construcción (parte 1 de 5: crear la cuenta, entrar, la contraseña, salir, los términos y el freno)
+Estado de la app: en construcción (partes 1 y 2 de 5: crear la cuenta, entrar, la contraseña, salir, los términos y el freno; la verificación en dos pasos, los navegadores de confianza y las sesiones abiertas)
 
 > Manual de uso y especificación de la app `accounts` del SaaS (erplora.com). Cuenta cómo se crea una
 > cuenta, cómo se confirma el correo, cómo se entra y se sale, cómo se recupera y se cambia la contraseña,
-> qué se acepta al continuar y cómo se frena a quien prueba contraseñas. Esta parte del manual no se
-> publica en la tienda: es la referencia del equipo y de la QA. El segundo factor, los dispositivos y las
-> sesiones, el perfil y las preferencias, el salto a un negocio y las llaves de API se escriben en las
-> partes 2 a 5.
+> qué se acepta al continuar, cómo se frena a quien prueba contraseñas, cómo se pide la app autenticadora
+> después de la contraseña, en qué navegadores se confía y cómo se ven y se cierran las sesiones abiertas.
+> Esta parte del manual no se publica en la tienda: es la referencia del equipo y de la QA. El perfil y las
+> preferencias, el salto a un negocio y las llaves de API se escriben en las partes 3 a 5.
 
 ## Para qué sirve y para quién
 
@@ -25,9 +25,11 @@ ERPlora y se entra en cada negocio desde la pantalla de entrada. Se entra con el
 Quién la usa:
 
 - **Cualquiera** crea su cuenta, entra y sale, y recupera su contraseña.
-- **La persona con cuenta** cambia su contraseña desde **Cuenta › Seguridad**.
+- **La persona con cuenta** cambia su contraseña, activa la app autenticadora y ve y cierra sus sesiones
+  desde **Cuenta › Seguridad**.
 - El **personal de ERPlora** ve y gestiona las cuentas desde el admin, sin poder cambiar lo que una cuenta
-  aceptó.
+  aceptó; ante un incidente cierra todas las sesiones de una cuenta y, con la verificación en dos pasos
+  encendida, solo entra en el admin con su app autenticadora.
 
 ## Referencia adoptada
 
@@ -44,6 +46,16 @@ Quién la usa:
   aceptada, y continuar tras un cambio acepta la nueva.
 - **Odoo y Shopify**: cerrar la sesión solo cierra la de ese navegador; cambiar la contraseña cierra las
   demás.
+- **Google y GitHub**: la app autenticadora se activa escaneando un código QR (o escribiendo su clave) y deja
+  códigos de recuperación que se enseñan una vez y se descargan; generar otros invalida los anteriores.
+- **Google («No volver a preguntar en este ordenador», «Revocar todos») y Microsoft**: confiar en un
+  navegador se ofrece sin marcar junto al código, vale solo en ese navegador y se deja de confiar en todos
+  de una vez.
+- **Google («Tus dispositivos») y GitHub («Sessions»)**: la lista de las sesiones abiertas con el
+  dispositivo, el navegador, la dirección y el último uso, la de este navegador la primera, y cerrar una o
+  todas las demás.
+- **GitHub (organizaciones que exigen la verificación en dos pasos)**: la consola de administración solo
+  deja entrar a su gente con el segundo factor activado, y la manda a activarlo.
 
 ## Antes de empezar
 
@@ -51,7 +63,10 @@ Quién la usa:
   enlaces) queda en la carpeta de correo local en vez de enviarse.
 - «Continuar con Google» solo sale con las credenciales de Google configuradas; sin ellas el botón no se
   pinta.
-- El segundo paso con la app autenticadora está apagado en la fase 1: hoy nadie lo ve.
+- La verificación en dos pasos (la app autenticadora, sus códigos de recuperación y los navegadores de
+  confianza) está apagada en la fase 1: no se pinta su fila en **Cuenta › Seguridad**, ninguna entrada pide
+  el código de la app y el personal entra en el admin sin ella. Encenderla es una decisión de fase de la
+  plataforma; las sesiones abiertas y el código por correo funcionan siempre.
 
 ## Pantallas
 
@@ -81,12 +96,35 @@ Inicio de Sesión».
 
 ### Verificación en dos pasos
 «Introduce el código de 6 dígitos de tu app autenticadora, o uno de tus códigos de recuperación.», el
-código, «Verificar» y «Volver a iniciar sesión».
+código, la casilla «Confiar en este navegador durante 14 días» (sin marcar, con «Aquí no se te volverá a
+pedir el código de tu app durante 14 días. No lo marques en un ordenador compartido.»), «Verificar» y
+«Volver a iniciar sesión».
+
+### Ajustes de la verificación en dos pasos
+Se abre desde **Cuenta › Seguridad**. Tres bloques: «App autenticadora» («Activada» o «Desactivada», con
+«Configurar app autenticadora» o «Desactivar»), «Códigos de recuperación» (cuántos quedan sin usar, «Ver» y
+«Generar nuevos») y, con la app activada, «Navegadores de confianza» (si lo es este y «Dejar de confiar en
+todos los navegadores»). Cada acción abre su paso en la misma tarjeta: «Configura tu app autenticadora» con
+el código QR y la clave, «Códigos de recuperación» con «Descargar», «¿Generar nuevos códigos de
+recuperación?» y «¿Desactivar la app autenticadora?». Al pie, «Volver a configuración»; si se llegó desde el
+admin, «Continuar».
 
 ### Cuenta › Seguridad › Cambiar tu contraseña
 La fila «Contraseña» con «Cambiar contraseña» abre el diálogo «Cambiar tu contraseña»: «Contraseña actual»,
 «Contraseña nueva» con su pista, «Cancelar» y «Cambiar contraseña». Una cuenta que solo entra con Google ve
-en su lugar «Crear contraseña».
+en su lugar «Crear contraseña». En el mismo bloque «Acceso», la fila «Verificación en dos pasos» dice si
+está activada, con «Activar» o «Gestionar».
+
+### Cuenta › Seguridad › Sesiones activas
+Una tabla a toda la altura con «Dispositivo», «Navegador», «Dirección IP» y «Último uso»; la de este
+navegador va la primera, marcada «Esta sesión», y cada otra lleva «Cerrar sesión». Arriba, «Cerrar las
+demás sesiones»; debajo, «Al cerrar una sesión también se cierra en tus negocios.». En el móvil, «Cargar
+más» en vez de páginas.
+
+### admin › Cuentas › Usuarios y Sesiones de usuario
+La lista de cuentas lleva la acción «Cerrar todas sus sesiones y la confianza de sus navegadores (aquí y en
+sus negocios)»; **Sesiones de usuario** enseña quién ha entrado dónde, solo para leer, con «Cerrar las
+sesiones seleccionadas (aquí y en sus negocios)». Las dos acciones solo las ve un superusuario.
 
 ### Menú de usuario
 El nombre y el correo arriba del menú lateral (en el móvil, dentro del menú): «Cuenta», «Ayuda», el tema y
@@ -96,13 +134,13 @@ El nombre y el correo arriba del menú lateral (en el móvil, dentro del menú):
 
 | Estado | Qué ve la persona |
 |---|---|
-| Cargando | El botón de enviar se apaga mientras va la petición; el enlace del correo dice «Comprobando tu enlace…». |
-| Vacío | Sin sesión, toda página del panel lleva a la **Entrada**, que vuelve a ella tras entrar. |
-| Error | Cada error sale debajo de su campo, con las palabras de la regla que falla («La contraseña nueva tiene que ser distinta de la actual.»); un fallo de red, «No hemos podido iniciar tu sesión. Vuelve a intentarlo.» o «Algo ha ido mal. Inténtalo de nuevo.». |
+| Cargando | El botón de enviar se apaga mientras va la petición; el enlace del correo dice «Comprobando tu enlace…»; los ajustes de la verificación en dos pasos, «Cargando…»; las sesiones, la tabla cargando. |
+| Vacío | Sin sesión, toda página del panel lleva a la **Entrada**, que vuelve a ella tras entrar. Con esta sesión sola, «Cerrar las demás sesiones» está apagado; sin códigos de recuperación, «Sin ellos, perder tu autenticador te bloquea el acceso a tu cuenta.» con «Generar códigos de recuperación». |
+| Error | Cada error sale debajo de su campo, con las palabras de la regla que falla («La contraseña nueva tiene que ser distinta de la actual.»); un fallo de red, «No hemos podido iniciar tu sesión. Vuelve a intentarlo.» o «Algo ha ido mal. Inténtalo de nuevo.». Los ajustes que no cargan, «No hemos podido cargar tu configuración de seguridad. Vuelve a intentarlo.» con «Reintentar»; las sesiones, «No hemos podido cargar tus sesiones» con «Reintentar». |
 | Freno | «Demasiados intentos fallidos. Inténtelo más tarde.» o «Demasiados intentos. Espera unos minutos y vuelve a intentarlo.», igual exista o no la cuenta. |
 | Enlace caducado | «Este enlace de restablecimiento ha expirado o no es válido.» con «Solicitar Nuevo Enlace». |
 | Código caducado | La entrada dice «Tu código ha caducado o se ha escrito mal demasiadas veces. Vuelve a iniciar sesión y te enviaremos uno nuevo.» |
-| Sin permiso | Una cuenta sin la marca de personal que abre el admin vuelve a la **Entrada**; con sesión, el admin la rechaza. |
+| Sin permiso | Una cuenta sin la marca de personal que abre el admin vuelve a la **Entrada**; con sesión, el admin la rechaza. Con la verificación en dos pasos encendida, el personal sin app va a sus ajustes con «Activa la app autenticadora para continuar.». |
 
 ## Flujos
 
@@ -112,7 +150,7 @@ El nombre y el correo arriba del menú lateral (en el móvil, dentro del menú):
 | ACCOUNTS-F02 | Confirmar el correo con el código | hecho |
 | ACCOUNTS-F03 | Confirmar el correo antes de usar el panel | hecho |
 | ACCOUNTS-F04 | Entrar con el correo y la contraseña | hecho |
-| ACCOUNTS-F05 | Entrar con el código de la app autenticadora o uno de recuperación | parcial |
+| ACCOUNTS-F05 | Entrar con el código de la app autenticadora o uno de recuperación | hecho |
 | ACCOUNTS-F06 | Entrar o crear la cuenta con Google | parcial |
 | ACCOUNTS-F07 | Recuperar la contraseña olvidada | hecho |
 | ACCOUNTS-F08 | Cambiar la contraseña y cerrar con ella las demás sesiones | hecho |
@@ -121,6 +159,13 @@ El nombre y el correo arriba del menú lateral (en el móvil, dentro del menú):
 | ACCOUNTS-F11 | Frenar a quien prueba contraseñas, códigos o enlaces | hecho |
 | ACCOUNTS-F12 | Saber quién ha entrado | hecho |
 | ACCOUNTS-F13 | Gestionar las cuentas desde el admin | hecho |
+| ACCOUNTS-F14 | Activar la app autenticadora y guardar los códigos de recuperación | hecho |
+| ACCOUNTS-F15 | Ver si la verificación en dos pasos está activa | hecho |
+| ACCOUNTS-F16 | Desactivar la app autenticadora o generar códigos nuevos | hecho |
+| ACCOUNTS-F17 | Ver si este navegador es de confianza y dejar de confiar en todos | hecho |
+| ACCOUNTS-F18 | Ver y cerrar las sesiones abiertas | hecho |
+| ACCOUNTS-F19 | Cerrar las sesiones de una cuenta desde el admin | hecho |
+| ACCOUNTS-F20 | Exigir la app autenticadora al personal en el admin | hecho |
 
 ### ACCOUNTS-F01 Crear la cuenta
 <!-- origen: old-saas:SAAS_AUTH-F01 pc:cloud/auth/signup fi:saas/auth-services#registro-de-usuario-por-api-signup fi:saas/support/auth-services#service-create_user gh:saas#2542 gh:saas#2536 gh:saas#2560 gh:saas#2562 -->
@@ -167,7 +212,7 @@ Si falla: sin el código no hay sesión. Una cuenta creada por una invitación p
 Implicados: hubs (las invitaciones solo valen para correos confirmados)
 
 ### ACCOUNTS-F04 Entrar con el correo y la contraseña
-<!-- origen: old-saas:SAAS_AUTH-F03 fi:saas/auth-services#login-html-con-redireccion-a-subdominios-dispositivo-de-confianza -->
+<!-- origen: old-saas:SAAS_AUTH-F03 fi:saas/auth-services#login-html-con-redireccion-a-subdominios-dispositivo-de-confianza fi:saas/support/auth-services#signal-create_email_otp_device -->
 Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Entrada › «Entrar», Revisa tu correo
@@ -177,23 +222,24 @@ Pasos:
 3. Escribe el código y pulsa «Verificar».
 4. Dentro, va adonde iba (una página de erplora.com o el salto a un negocio) o a la **Entrada** con su sesión, que enseña sus negocios.
 Entra: correo, contraseña, el código y adónde iba (solo páginas de erplora.com).
-Sale: la sesión de ese navegador, que dura aunque se cierre el navegador; su nombre y su correo en el menú de usuario.
+Sale: la sesión de ese navegador, que dura aunque se cierre el navegador; su nombre y su correo en el menú de usuario. Toda cuenta recibe el código por correo en cada entrada con contraseña, sin activarlo ni poder apagarlo; con la app autenticadora, después del código del correo se pide el de la app (ACCOUNTS-F05).
 Si falla: un correo o una contraseña que no casan, «La dirección de correo electrónico y/o la contraseña que ha indicado no son correctas.» debajo de la contraseña, igual exista o no la cuenta, con «¿Es tu primera vez? Crea tu cuenta». Un código equivocado, debajo del código. Con una sesión ya abierta, la **Entrada** enseña los negocios.
 Implicados: hubs (la **Entrada** con los negocios y el salto a un negocio)
 
 ### ACCOUNTS-F05 Entrar con el código de la app autenticadora o uno de recuperación
-<!-- origen: pc:cloud/auth/two_factor_login -->
-Estado: parcial — el segundo paso está apagado en la fase 1 y nadie lo ve todavía; su pantalla y su puerta están hechas y probadas con él encendido, y su prueba de punta a punta va con el segundo factor
+<!-- origen: pc:cloud/auth/two_factor_login old-saas:SAAS_AUTH-F06 fi:saas/auth-services#crear-dispositivo-de-confianza fi:saas/auth-services#modelo-trusteddevice-admin fi:saas/support/auth-services#modelo-trusteddevice fi:saas/support/auth-services#serializer-trusteddeviceserializer-createtrusteddeviceserializer-verifytrusteddeviceserializer -->
+Estado: hecho
 Actor: cualquier persona con cuenta y app autenticadora
 Pantalla: Verificación en dos pasos
 Pasos:
 1. Tras la contraseña y el código del correo, una cuenta con app autenticadora pasa a **Verificación en dos pasos**.
-2. Escribe el código de 6 dígitos de su app, o uno de sus códigos de recuperación, y pulsa «Verificar».
-3. Dentro, va adonde iba.
-Entra: el código de la app o uno de recuperación.
-Sale: la sesión abierta; un código de recuperación usado deja de valer.
-Si falla: un código equivocado sale debajo del campo; «Volver a iniciar sesión» abandona la entrada a medias.
-Implicados: ninguno
+2. Escribe el código de 6 dígitos de su app, o uno de sus códigos de recuperación; si el navegador es suyo y no es compartido, marca «Confiar en este navegador durante 14 días» (viene sin marcar).
+3. Pulsa «Verificar». Dentro, va adonde iba.
+4. Con la casilla marcada, las siguientes entradas en ese navegador piden solo la contraseña y el código del correo durante 14 días; cualquier otro navegador sigue pidiendo el código de la app.
+Entra: el código de la app o uno de recuperación, y la respuesta a «Confiar en este navegador durante 14 días».
+Sale: la sesión abierta; un código de recuperación usado deja de valer; con la casilla, este navegador queda como de confianza durante 14 días, solo en erplora.com. Al saltar a un negocio, la entrada cuenta como hecha con la app.
+Si falla: un código equivocado sale debajo del campo y la entrada sigue esperando; «Volver a iniciar sesión» abandona la entrada a medias. Si tras un código bueno se pierde la respuesta a la casilla (se recarga la página), la pantalla dice «Tu código es correcto. ¿Quieres confiar en este navegador?» con «Continuar», sin volver a pedir el código. Cambiar la contraseña o «Dejar de confiar en todos los navegadores» (ACCOUNTS-F17) acaba la confianza de todos.
+Implicados: hubs (el salto a un negocio)
 
 ### ACCOUNTS-F06 Entrar o crear la cuenta con Google
 <!-- origen: old-saas:SAAS_AUTH-F04 gh:saas#2552 -->
@@ -312,17 +358,122 @@ Sale: la cuenta, identificada por su correo (en minúsculas y único) y con su i
 Si falla: un correo que ya tiene cuenta no se guarda. El soporte ve las cuentas sin poder añadir, cambiar ni borrar; una cuenta sin la marca de personal no entra en el admin.
 Implicados: hubs (los negocios de la cuenta)
 
+### ACCOUNTS-F14 Activar la app autenticadora y guardar los códigos de recuperación
+<!-- origen: old-saas:SAAS_AUTH-F05 fi:saas/auth-services#2fa-alta-de-totp-setup pc:cloud/auth/two_factor_setup -->
+Estado: hecho
+Actor: cualquier persona con cuenta
+Pantalla: Cuenta › Seguridad, Ajustes de la verificación en dos pasos
+Pasos:
+1. En **Cuenta › Seguridad**, la fila «Verificación en dos pasos» dice «Desactivada»; la persona pulsa «Activar».
+2. En **Ajustes de la verificación en dos pasos** pulsa «Configurar app autenticadora»: «Configura tu app autenticadora» enseña un código QR y, bajo «¿No puedes escanear? Introduce esta clave a mano:», la clave.
+3. Lo escanea con su app (Google Authenticator, 1Password…), escribe el número que muestra y pulsa «Activar». Si su última entrada no es reciente, antes confirma que es ella con su contraseña y el mismo número sigue valiendo.
+4. Ve una sola vez sus diez «Códigos de recuperación» («10 de 10 sin usar»), los guarda con «Descargar» y pulsa «Volver»: la app queda «Activada».
+Entra: el número de la app y, si hace falta, la contraseña.
+Sale: la app autenticadora de la cuenta y diez códigos de recuperación de un solo uso; desde la siguiente entrada se pide el código de la app (ACCOUNTS-F05). Los códigos se descargan como un fichero de texto hecho en el propio navegador.
+Si falla: un número equivocado sale debajo del campo y la app no se activa; «Cancelar» vuelve sin activar nada; un fallo de red, «Algo ha ido mal. Inténtalo de nuevo.».
+Implicados: ninguno
+
+### ACCOUNTS-F15 Ver si la verificación en dos pasos está activa
+<!-- origen: old-saas:SAAS_DASHBOARD-F213 fi:saas/auth-services#2fa-perfil-estado -->
+Estado: hecho
+Actor: cualquier persona con cuenta
+Pantalla: Cuenta › Seguridad, Ajustes de la verificación en dos pasos
+Pasos:
+1. En **Cuenta › Seguridad**, bloque «Acceso», la fila «Verificación en dos pasos» dice «Activada» («Tras tu contraseña, un código de tu app autenticadora. Guarda tus códigos de recuperación.») o «Desactivada».
+2. «Gestionar» (o «Activar») lleva a **Ajustes de la verificación en dos pasos**, que dice lo mismo de la app y cuántos códigos de recuperación quedan sin usar.
+Entra: la sesión.
+Sale: nada guardado.
+Si falla: si no se puede leer, la fila no dice ni activada ni desactivada y sigue llevando a los ajustes. Con la verificación en dos pasos apagada en la plataforma, la fila no se pinta.
+Implicados: ninguno
+
+### ACCOUNTS-F16 Desactivar la app autenticadora o generar códigos nuevos
+<!-- origen: old-saas:SAAS_AUTH-F07 fi:saas/auth-services#2fa-desactivar-totp-re-activa-email-otp -->
+Estado: hecho
+Actor: cualquier persona con cuenta y app autenticadora
+Pantalla: Ajustes de la verificación en dos pasos
+Pasos:
+1. En **Ajustes de la verificación en dos pasos**, «Códigos de recuperación» dice cuántos quedan sin usar; «Ver» los enseña y «Generar nuevos» pregunta «¿Generar nuevos códigos de recuperación?» con «Esto reemplaza tus 10 códigos sin usar.».
+2. «Generar» enseña los nuevos, para descargarlos otra vez; los anteriores dejan de valer.
+3. Para quitar la app, «Desactivar» pregunta «¿Desactivar la app autenticadora?» con «Entrarás con tu contraseña y el código que te enviamos por correo.»; «Desactivar» la quita y «Mantenerla activada» vuelve sin tocar nada.
+4. Si su última entrada no es reciente, antes de generar o de desactivar confirma que es ella con el código de su app.
+Entra: la confirmación y, si hace falta, el código de la app.
+Sale: códigos de recuperación nuevos, o la app quitada: la entrada vuelve a ser la contraseña y el código del correo, que nunca se apaga.
+Si falla: un fallo de red, «Algo ha ido mal. Inténtalo de nuevo.» y no cambia nada. Sin códigos sin usar, «Has usado todos tus códigos de recuperación. Genera un nuevo conjunto ahora.» con «Generar nuevos códigos».
+Implicados: ninguno
+
+### ACCOUNTS-F17 Ver si este navegador es de confianza y dejar de confiar en todos
+<!-- origen: fi:saas/auth-services#revocar-dispositivo-de-confianza fi:saas/orgs-users#revocar-dispositivo-de-confianza fi:saas/auth-services#listar-dispositivos-de-confianza fi:saas/orgs-users#dispositivos-de-confianza-listar -->
+Estado: hecho
+Actor: cualquier persona con cuenta y app autenticadora
+Pantalla: Ajustes de la verificación en dos pasos
+Pasos:
+1. En **Ajustes de la verificación en dos pasos**, con la app activada, «Navegadores de confianza» dice «Los navegadores en los que confías no piden el código de tu app durante 14 días.» y si este lo es: «Este navegador es de confianza hasta el …» o «Este navegador no es de confianza.».
+2. Si ha perdido un dispositivo o entró en un ordenador ajeno, la persona pulsa «Dejar de confiar en todos los navegadores».
+3. La pantalla dice «Ya no confías en ningún navegador: cada uno te pedirá el código de tu app la próxima vez que entres.» y «Este navegador no es de confianza.».
+Entra: la sesión.
+Sale: ningún navegador de la cuenta es de confianza; la app y los códigos de recuperación siguen valiendo sin configurar nada, y esta sesión sigue dentro. Evento `accounts.browser_trust.revoked`.
+Si falla: si no se puede comprobar este navegador, «No hemos podido comprobar este navegador.»; un fallo al dejar de confiar, «Algo ha ido mal. Inténtalo de nuevo.» y no cambia nada. Cambiar la contraseña también acaba la confianza de todos.
+Implicados: ninguno
+
+### ACCOUNTS-F18 Ver y cerrar las sesiones abiertas
+<!-- origen: old-saas:SAAS_AUTH-F12 old-saas:SAAS_DASHBOARD-F206 fi:saas/auth-services#listado-de-sesiones-activas fi:saas/orgs-users#sesiones-activas-listar-revocar fi:saas/auth-services#revocar-las-demas-sesiones-logout-del-resto-de-dispositivos fi:saas/auth-services#revocar-una-sesion-concreta -->
+Estado: hecho
+Actor: cualquier persona con cuenta
+Pantalla: Cuenta › Seguridad › Sesiones activas
+Pasos:
+1. En **Cuenta › Seguridad**, «Sesiones activas» lista cada sesión abierta con su «Dispositivo», «Navegador», «Dirección IP» y «Último uso»; la de este navegador va la primera, marcada «Esta sesión».
+2. «Cerrar sesión» en una fila la cierra al momento y avisa «Sesión cerrada en …»; si es la app de ERPlora, antes pregunta «Cerrar la app en …», porque puede estar cobrando en una caja.
+3. «Cerrar las demás sesiones» dice cuántas se cerrarán, también las apps, y al confirmarlo las cierra todas menos esta: «Sesiones cerradas: 2».
+Entra: la sesión elegida, o «las demás».
+Sale: esas sesiones cerradas, aquí y en los negocios de la cuenta; esta sigue dentro y la lista se actualiza sola. Evento `accounts.session.closed`.
+Si falla: la lista que no carga dice «No hemos podido cargar tus sesiones» con «Reintentar»; un cierre rechazado sale en un aviso y la sesión sigue en la lista. Una sesión de otra cuenta no se encuentra.
+Implicados: hubs (cada negocio cierra las sesiones de la cuenta)
+
+### ACCOUNTS-F19 Cerrar las sesiones de una cuenta desde el admin
+<!-- origen: fi:saas/auth-services#comando-revocar-sesiones-de-un-usuario fi:saas/support/auth-services#command-revoke_user_sessions fi:saas/django-admin#admin-usersession fi:saas/django-admin#admin-trusteddevice -->
+Estado: hecho
+Actor: personal de ERPlora
+Pantalla: admin › Cuentas › Usuarios y Sesiones de usuario
+Pasos:
+1. Ante un incidente, un superusuario busca la cuenta en **admin › Cuentas › Usuarios**, la marca y elige «Cerrar todas sus sesiones y la confianza de sus navegadores (aquí y en sus negocios)».
+2. El admin dice «Sesiones cerradas: 1.»: la cuenta sale de todos sus navegadores y cada uno le pedirá el código de su app la próxima vez.
+3. En **Sesiones de usuario** se ve quién ha entrado dónde (cuenta, dirección, navegador y fechas); un superusuario marca unas y elige «Cerrar las sesiones seleccionadas (aquí y en sus negocios)».
+Entra: las cuentas o las sesiones marcadas.
+Sale: esas sesiones cerradas, también en los negocios de la cuenta; con la acción de la cuenta, además, ningún navegador suyo es de confianza (su app y sus códigos de recuperación siguen valiendo). La lista de sesiones de la propia cuenta se actualiza sola, y el registro guarda quién lo hizo. Evento `accounts.session.closed`.
+Si falla: el soporte ve las sesiones sin poder cerrarlas; nadie cambia ni borra una sesión a mano, porque borrar la fila no la cerraría. Una cuenta que ya no existe no se encuentra.
+Implicados: hubs (cada negocio cierra las sesiones de la cuenta)
+
+### ACCOUNTS-F20 Exigir la app autenticadora al personal en el admin
+<!-- origen: old-saas:SAAS_AUTH-F08 gh:saas#2543 gh:saas#2618 gh:saas#2627 gh:saas#2659 -->
+Estado: hecho
+Actor: personal de ERPlora
+Pantalla: admin, Ajustes de la verificación en dos pasos
+Pasos:
+1. Con la verificación en dos pasos encendida en la plataforma, una persona del personal (también del soporte) sin app autenticadora abre el admin.
+2. En vez del admin llega a **Ajustes de la verificación en dos pasos**, con «Activa la app autenticadora para continuar.».
+3. Activa la app (ACCOUNTS-F14) y pulsa «Continuar»: vuelve a la página del admin que abría.
+4. Desde entonces cada entrada le pide el código de la app (o se lo salta un navegador de confianza) y el admin la deja pasar.
+Entra: la cuenta del personal y adónde iba (solo páginas de erplora.com).
+Sale: el personal entra en el admin, y salta al admin de los negocios, solo con su app autenticadora; con la verificación en dos pasos apagada, como hasta ahora.
+Si falla: los códigos de recuperación solos no bastan; una cuenta sin la marca de personal no entra en el admin aunque tenga la app; «Continuar» nunca lleva fuera de erplora.com.
+Implicados: hubs (el salto al admin de los negocios)
+
 ## Para quien lo mantiene
 
 - Anatomía, operaciones y decisiones: `accounts/README.md` (allauth headless, puertas cerradas, sesiones,
   reautenticación, correo por código propio, foto, preferencias y llaves de API).
-- Partes del porte (MIGRATION-TASK APP-ACCOUNTS-1…5): este WORKBOOK nace en la parte 1 con estos flujos; las
-  partes 2 (segundo factor, dispositivos y sesiones), 3 (perfil, preferencias, exportar y borrar la cuenta),
-  4 (salto al Hub, llaves de API, retención GDPR y auditlog) y 5 (plataforma del SaaS) añaden los suyos a
-  continuación. La parte 2 cierra ACCOUNTS-F05 (su e2e con el segundo factor encendido).
+- Partes del porte (MIGRATION-TASK APP-ACCOUNTS-1…5): este WORKBOOK nace en la parte 1 (F01–F13); la parte 2
+  (segundo factor, navegadores de confianza y sesiones) cierra F05 y añade F14–F20; las partes 3 (perfil,
+  preferencias, exportar y borrar la cuenta), 4 (salto al Hub, llaves de API, retención GDPR y auditlog) y 5
+  (plataforma del SaaS) añaden los suyos a continuación.
 - Equivalencia de claves del registro: G83, G124, G22 y G59 = F01; G84 y G21 = F02; G107 = F03; G85 y G17 =
   F04; G125 = F05; G86 = F06; G91, G123, G120, G121 y G122 = F07; G109, G92, G42, G45 y G46 = F08; G93 = F09;
-  G119 = F10; G96 = F11; G20 y G58 = F12; G18 y G56 = F13.
+  G119 = F10; G96 = F11; G20 y G58 = F12; G18 y G56 = F13. Parte 2: G60 = F04; G88, G12, G19, G55 y G57 =
+  F05; G87, G02 y G126 = F14; G116 y G05 = F15; G89 y G03 = F16; G23, G16 y G48 = F17; G94, G110, G15, G50,
+  G24 y G25 = F18; G09, G54, G37 y G34 = F19; G90 = F20. Descartadas: G04 (activar o apagar el código por
+  correo: se pide en toda entrada con contraseña y no se apaga, PLAN-SAAS ronda 19, §3.7 punto 3) y G31
+  (el Hub verificaba en el SaaS un dispositivo de confianza: el Hub nunca consulta al SaaS por petición y
+  sus dispositivos y su PIN son suyos, PLAN-SAAS §2).
 - Puertas propias sobre allauth.headless (`accounts/doors.py`, montadas en `config/urls.py` antes de las de
   allauth): la entrada pliega el correo como el alta (NFKC, `adapters.plain_email`; trampa del SaaS viejo
   #1018) y el alta comprueba la contraseña contra su propio correo (headless la validaba sin cuenta y el
@@ -339,10 +490,30 @@ Implicados: hubs (los negocios de la cuenta)
   `EmailDevice` creado a cada cuenta (lo sustituye el código por correo de cada entrada), el par de
   credenciales que devolvía el alta por la API (hoy la sesión del navegador; el Hub recibe al usuario con el
   canje del código de un solo uso) y la organización personal al crear la cuenta (ADR-0201).
-- Pruebas: cada test cita su clave en el nombre o el docstring; los e2e de esta parte están en
-  `tests/e2e/panel/accounts-flows.spec.ts`, con la clave del registro (`ACCOUNTS-Gnn`) en el título y la
-  equivalencia con este WORKBOOK en su cabecera. `signup.spec.ts` y `login.spec.ts` siguen cubriendo las
-  pestañas de la entrada.
+- Segundo factor (F05, F14–F17, F20): `allauth.mfa` sobre headless (TOTP y códigos de recuperación, sin
+  passkeys), detrás de `ACCOUNTS_MFA_ENABLED` (apagado por defecto en la fase 1: sus rutas responden 404 y
+  `mfa.mfa_completed` es falso). La confianza de 14 días es `MFA_TRUST_ENABLED` de allauth, con la cookie
+  solo en el host de erplora.com (`MFA_TRUST_COOKIE_DOMAIN = None`); allauth no guarda en el servidor qué
+  navegadores confían, solo una huella firmada de la contraseña y de los autenticadores, así que
+  `forget_trusted_browsers` vuelve a crear los autenticadores con otro id (el mismo secreto: la app y los
+  códigos siguen valiendo) y esta sesión sigue sus ids nuevos (`_follow_new_authenticator_ids`). El SDK de
+  `@erplora/ui` no tiene la llamada `auth/2fa/trust`: la página de la entrada hace la suya.
+- Sesiones (F18, F19): las de `allauth.usersessions`, sin `UserSession` propio ni JWT (PLAN-SAAS: nadie
+  consume tokens). Cerrar una pide a sus negocios que cierren las suyas (`signals.sessions_ended`). El
+  admin cierra por `accounts.session.close_any` (sin ruta: solo el admin, por el canal de la cuenta); sus
+  dos acciones solo las ve el superusuario y el soporte solo lee. La «revocación del comando»
+  `revoke_user_sessions` del viejo es esa acción del admin (working-rules §4: todo por la UI o la API).
+- Personal (F20): `admin_has_permission` (instalado en `config/urls.py`) exige, con el interruptor
+  encendido, un autenticador TOTP; `admin_login` lleva al personal sin él a `/2fa?next=…`. En el SaaS nuevo
+  el personal no tiene API propia: sus poderes viven en el admin y en el salto `hub-admin`, que ya exige el
+  segundo factor con el interruptor encendido. Las trampas del viejo (saas#2543, #2618, #2627: puertas del
+  personal abiertas con la contraseña sola) quedan cubiertas por esas dos puertas; saas#2659 (marketplace)
+  no aplica: no hay marketplace.
+- Pruebas: cada test cita su clave en el nombre o el docstring. Los e2e de la parte 1 están en
+  `tests/e2e/panel/accounts-flows.spec.ts` y los de la parte 2 en `tests/e2e/panel/accounts-security.spec.ts`,
+  con la clave del registro (`ACCOUNTS-Gnn`) en el título y la equivalencia con este WORKBOOK en su cabecera;
+  el segundo factor se juega en el gemelo del panel con el interruptor encendido (`PANEL_MFA_URL`).
+  `signup.spec.ts` y `login.spec.ts` siguen cubriendo las pestañas de la entrada.
 
 ## Lo que NO hace, a propósito
 
@@ -351,3 +522,8 @@ Implicados: hubs (los negocios de la cuenta)
 - No dice nunca qué correos tienen cuenta.
 - No enlaza Google desde una sesión abierta ni guarda los tokens de Google.
 - No lleva a otro dominio al entrar: solo a páginas de erplora.com; el salto a un negocio es otro flujo.
+- No deja apagar el código por correo de cada entrada, ni con la app autenticadora activa.
+- No lista los navegadores de confianza uno a uno: dice si lo es este y deja de confiar en todos a la vez,
+  como «Revocar todos» de Google.
+- No ofrece llaves de acceso (passkeys) ni códigos por SMS: la app autenticadora y sus códigos de
+  recuperación.
