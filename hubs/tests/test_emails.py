@@ -112,6 +112,21 @@ def test_the_deletion_says_until_when_it_can_be_recovered(hub, make_user):
     assert f"{BASE}/businesses" in message.body
 
 
+def test_the_ready_mail_opens_the_business(hub, make_user, settings):
+    """HUBS-F04 (HUBS-G68) and HUBS-F07 (HUBS-G91): once the Hub reports it ready, the owner hears it with
+    the way in (the jump, which starts at the business) and the business's page in the panel."""
+    settings.HUB_CALLBACK_TEMPLATE = "https://{slug}.erplora.com/auth/callback"
+    owner = make_user("olga@example.com", language="es")
+
+    emails.send_ready(hub, owner, base_url=BASE)
+
+    (message,) = mail.outbox
+    assert message.to == ["olga@example.com"]
+    assert message.subject == "Bar Manolo ya está listo"
+    assert "https://bar-manolo.erplora.com/auth/login?next=/" in message.body
+    assert f"{BASE}/businesses/{hub.id}" in message.body
+
+
 def test_a_mail_that_cannot_leave_is_logged_not_raised(
     hub, make_user, monkeypatch, caplog
 ):

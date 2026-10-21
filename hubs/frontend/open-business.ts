@@ -5,8 +5,10 @@
 // account that has one). The page only goes there, a top-level navigation: no code ever passes through
 // the SPA. A refusal (being prepared, suspended, deleted) is said in an error toast. Back from the Hub
 // with the browser's back button the page may come from the cache (`pageshow` persisted): nothing is
-// opening any more.
-import { toastError } from '@erplora/ui/shell';
+// opening any more. Inside the installed app (the `desktop` and `mobile` surfaces, never the account it opens
+// in the system browser) the jump carries `shell=1`: the app links the till to the business a navigation with
+// that mark reaches when it leaves erplora.com (`ERPlora/app` hub_link.rs; PLAN-SAAS bloque 3).
+import { toastError, useSurface } from '@erplora/ui/shell';
 import { useCommand } from '@erplora/ui/sdk';
 import { onScopeDispose, shallowRef } from 'vue';
 
@@ -22,6 +24,7 @@ export const navigation = {
 export function useOpenBusiness() {
   const command = useCommand('hubs.business.open');
   const { text } = useErrorText();
+  const { surface } = useSurface();
   /** The business being opened (its id), until the page leaves; `null` otherwise. */
   const opening = shallowRef<string | null>(null);
 
@@ -35,7 +38,8 @@ export function useOpenBusiness() {
   async function open(business: { id: string; name: string }, next = '/'): Promise<boolean> {
     opening.value = business.id;
     try {
-      const { url } = await command.run({ id: business.id, next });
+      const shell = surface.value === 'desktop' || surface.value === 'mobile';
+      const { url } = await command.run(shell ? { id: business.id, next, shell } : { id: business.id, next });
       navigation.assign(url);
       return true;
     } catch {

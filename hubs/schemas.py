@@ -412,6 +412,9 @@ class BusinessDeleteIn(Schema):
 class BusinessOpenIn(Schema):
     id: UUID
     next: LocalPath = "/"
+    #: «Open» inside the installed app: the jump carries ``shell=1``, the mark with which the app links the till
+    #: to this business (``ERPlora/app`` ``hub_link.rs``; PLAN-SAAS bloque 3).
+    shell: bool = False
 
 
 class BusinessOpenOut(Schema):

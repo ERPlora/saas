@@ -42,6 +42,16 @@ def test_staff_edit_the_monthly_messages_of_a_plan(staff_client, rows):
     assert 'name="whatsapp_messages_per_month"' in page
 
 
+def test_staff_write_every_text_of_a_plan_in_english_and_in_spanish(staff_client, rows):
+    """HUBS-F05 (HUBS-G06, HUBS-G44: the old admin's translation tabs, ``PlanTranslationOptions``): the name,
+    the description, the card's features and its badge, one field per language, English the source."""
+    page = staff_client.get(f"/admin/hubs/plan/{rows['plan'].pk}/change/").content.decode()
+
+    for text in ("name", "description", "features", "featured_label"):
+        for language in ("en", "es"):
+            assert f'name="{text}_{language}"' in page, f"{text}_{language}"
+
+
 def test_the_changelists_search_by_code(staff_client, rows):
     response = staff_client.get("/admin/hubs/businesstype/", {"q": "restaurant"})
 

@@ -85,6 +85,26 @@ Plan: `docs/plans/2026-10-13-panel-saas-unificado.md` (lotes L1-A, L1-B y L1-A2)
 
 - Panel (`frontend/`, L1-C): las acciones de fila de Negocios y Miembros son solo icono, con nombre accesible y `title` que incluyen la fila («Abrir Panadería López», «Quitar a Marta Gil»), como pide la regla de la DataTable de SaaS y Hub (2026-10-14); las maquetas, que las pintan con texto, no obligan en esto.
 
+## Lo que añadió APP-HUBS-1 (2026-10-21): crear, esperar, la lista, entrar y el QR
+
+Flujos en `WORKBOOK.md` (`HUBS-F01`…`HUBS-F14`, parte 1 de 4 de la migración; las partes siguientes añaden los suyos).
+
+- **«… ya está listo»** (`emails.send_ready`): el aviso `POST /internal/hubs/{id}/ready` que pasa un negocio de
+  preparándose a activo manda al propietario, una sola vez y tras el COMMIT, el correo con la entrada al negocio
+  (`accounts.queries.hub_start_url`) y su página en el panel.
+- **La app instalada** (`ERPlora/app`) arranca en `/shell/`, que es el lanzador (alias de `/launch` en
+  `frontend/routes.ts`); su «Abrir» pide `hubs.business.open` con `shell: true` y el salto lleva `&shell=1`, la marca
+  con la que la app enlaza el terminal al negocio. `GET /shell/open/<id>/` (`shell.py`) es la misma puerta para un
+  enlace: sin sesión, al inicio de la app; negocio ajeno o desconocido, 404; uno que no abre ahora, vuelta al lanzador.
+- **Direcciones viejas** (`redirects.py`, 301): `/dashboard/`, `/dashboard/hubs/{,active/,inactive/}` → `/businesses`;
+  `/dashboard/hubs/create/` → `/businesses?create=1`; `/dashboard/hubs/<id>/qr/` → el Resumen del negocio («En tus
+  dispositivos»). Los filtros de las viejas se descartan.
+- **El país del alta** sale sugerido por los idiomas del navegador (`frontend/regions.ts`, `suggestedCountry`), entre
+  los países que ERPlora sirve; si ninguno encaja, España.
+- **Planes**: los textos de cada plan (nombre, descripción, características, etiqueta) se escriben en inglés y en
+  español en el admin. No hay API de escritura de planes para el personal: el admin es su única escritura (decisión
+  de APP-HUBS-1, propuesta como ronda de PLAN-SAAS).
+
 ## Pendiente (lotes siguientes)
 
 - **Retirar `accounts.HubMembership`**, en este orden: (1) el salto pasa a `hubs` (`/hub-login/`,

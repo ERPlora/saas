@@ -11,7 +11,7 @@ vi.mock('@erplora/ui/shell', async (importOriginal) => ({
   toastError: vi.fn(() => Promise.resolve()),
 }));
 
-import { toastError } from '@erplora/ui/shell';
+import { applySurface, toastError } from '@erplora/ui/shell';
 
 import { apiError, flush, mountHubs } from './__tests__/mount-hubs';
 import { navigation, useOpenBusiness } from './open-business';
@@ -27,6 +27,7 @@ const Probe = defineComponent({
 });
 
 afterEach(() => {
+  applySurface('web');
   vi.restoreAllMocks();
   vi.mocked(toastError).mockClear();
   document.body.innerHTML = '';
@@ -55,6 +56,24 @@ describe('useOpenBusiness', () => {
     const m = await mountHubs(Probe, { api: () => Response.json({ url: 'http://bakery.localhost:8000/auth/login?next=/apps' }) });
     await api.open({ id: 'h1', name: 'Bakery' }, '/apps');
     expect(m.calls()[0].body).toEqual({ id: 'h1', next: '/apps' });
+  });
+
+  // flow: HUBS-F12 (HUBS-G71): inside the installed app the jump carries the mark with which the app links the
+  // till to the business (`ERPlora/app` hub_link.rs: a `?shell=1` navigation leaving erplora.com).
+  it.each(['desktop', 'mobile'] as const)('inside the app (%s) asks for the jump with the shell mark', async (surface) => {
+    applySurface(surface);
+    vi.spyOn(navigation, 'assign').mockImplementation(() => undefined);
+    const m = await mountHubs(Probe, { api: () => Response.json({ url: `${START}&shell=1` }) });
+    await api.open({ id: 'h1', name: 'Bakery' });
+    expect(m.calls()[0].body).toEqual({ id: 'h1', next: '/', shell: true });
+  });
+
+  it('the account the app opens in the system browser is no till: no shell mark', async () => {
+    applySurface('account');
+    vi.spyOn(navigation, 'assign').mockImplementation(() => undefined);
+    const m = await mountHubs(Probe, { api: () => Response.json({ url: START }) });
+    await api.open({ id: 'h1', name: 'Bakery' });
+    expect(m.calls()[0].body).toEqual({ id: 'h1', next: '/' });
   });
 
   it('a lost connection is said in the person’s language, not the SDK’s', async () => {

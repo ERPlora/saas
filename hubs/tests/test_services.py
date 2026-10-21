@@ -885,6 +885,23 @@ class TestOpen:
         assert services.business_open(ctx_for(owner), BusinessOpenIn(id=business.id)).url
         assert not AuthExchangeCode.objects.exists()
 
+    def test_from_the_installed_app_the_jump_carries_the_shell_mark(self, business, owner):
+        """HUBS-F12 (HUBS-G71, old saas SAAS_DASHBOARD-F07; PLAN-SAAS bloque 3, PLAN-HUB round 18): the app
+        links the till to a hub only when a navigation with ``?shell=1`` leaves an entry page of the SaaS
+        (``ERPlora/app`` ``hub_link.rs``), so its «Open» starts the jump with the mark."""
+        self.ready(business)
+
+        opened = services.business_open(
+            ctx_for(owner), BusinessOpenIn(id=business.id, next="/sales", shell=True)
+        )
+
+        assert opened.url == "http://bar-manolo.localhost:8000/auth/login?next=/sales&shell=1"
+
+    def test_the_web_jump_carries_no_shell_mark(self, business, owner):
+        self.ready(business)
+
+        assert "shell" not in services.business_open(ctx_for(owner), BusinessOpenIn(id=business.id)).url
+
     def test_next_is_a_path_of_the_business(self):
         for wrong in ("https://evil.example", "//evil.example", "sales"):
             with pytest.raises(Exception):
@@ -932,6 +949,31 @@ class TestMarkReady:
     def test_only_the_system_marks_a_business_ready(self, business, owner):
         with pytest.raises(PermissionDenied):
             services.business_mark_ready(ctx_for(owner), MarkReadyIn(id=business.id))
+
+    def test_the_owner_is_mailed_once_after_the_commit(
+        self, business, owner, mailoutbox, django_capture_on_commit_callbacks
+    ):
+        """HUBS-F04/HUBS-F07: «your business is ready», once (old saas SAAS_DASHBOARD-F29: «una sola vez»),
+        and never inside the transaction that marks it ready."""
+        with django_capture_on_commit_callbacks(execute=False) as callbacks:
+            services.business_mark_ready(self.system(business), MarkReadyIn(id=business.id))
+        assert mailoutbox == []
+        for callback in callbacks:
+            callback()
+        with django_capture_on_commit_callbacks(execute=True):
+            services.business_mark_ready(self.system(business), MarkReadyIn(id=business.id))
+
+        assert [message.to for message in mailoutbox] == [[owner.email]]
+
+    def test_a_business_that_does_not_open_is_not_announced(
+        self, business, mailoutbox, django_capture_on_commit_callbacks
+    ):
+        Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETING)
+
+        with django_capture_on_commit_callbacks(execute=True):
+            services.business_mark_ready(self.system(business), MarkReadyIn(id=business.id))
+
+        assert mailoutbox == []
 
     def test_the_system_acts_in_the_owners_channel(self, business, owner):
         """Its event reaches the owner's live lists (scope = the user, plan §3)."""

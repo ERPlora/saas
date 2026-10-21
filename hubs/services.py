@@ -479,7 +479,9 @@ def business_open(ctx: OperationContext, data: BusinessOpenIn) -> dict:
     No code is minted here any more: the Hub binds the jump to the browser with a ``state`` of its own,
     so it starts at its ``/auth/login?next=``, which bounces to ``/hub-login/``; that door mints the
     code (and asks for the second factor of an account that has one). This checks the member and the
-    business, and remembers it as the last opened (the launcher lists it first).
+    business, and remembers it as the last opened (the launcher lists it first). From the installed app
+    (``shell``), the jump carries ``shell=1``: the app links the till to the hub a navigation with that mark
+    reaches when it leaves erplora.com (``ERPlora/app`` ``hub_link.rs``).
     """
     member = queries.access(queries.account_of(ctx), data.id)
     hub = member.hub
@@ -488,7 +490,8 @@ def business_open(ctx: OperationContext, data: BusinessOpenIn) -> dict:
         raise Conflict(str(message), code=code)
     HubMember.objects.filter(pk=member.pk).update(last_opened_at=timezone.now())
     record_event(ctx, events.BUSINESS_OPENED, {"id": str(hub.id)})
-    return {"url": hub_start_url(hub.slug, data.next)}
+    url = hub_start_url(hub.slug, data.next)
+    return {"url": f"{url}&shell=1" if data.shell else url}
 
 
 # --- The Hub's callback ---------------------------------------------------------------------------
@@ -510,8 +513,9 @@ def system_ctx_for(hub_id: UUID) -> OperationContext:
 def business_mark_ready(ctx: OperationContext, data: MarkReadyIn) -> dict:
     """The Hub's ``POST /internal/hubs/{id}/ready``: the business's database is ready (§3.1 step 3).
 
-    Only the platform calls it (``hubs.internal``). A business being prepared becomes active; one that
-    was suspended or deleted meanwhile keeps its status. Idempotent.
+    Only the platform calls it (``hubs.internal``). A business being prepared becomes active, and its owner
+    hears it by mail after the COMMIT (once: the next call finds it active); one that was suspended or
+    deleted meanwhile keeps its status and no mail. Idempotent.
     """
     if ctx.actor != "system":
         raise PermissionDenied(
@@ -524,12 +528,23 @@ def business_mark_ready(ctx: OperationContext, data: MarkReadyIn) -> dict:
     if hub.ready_at is None:
         hub.ready_at = timezone.now()
         changed.append("ready_at")
-    if hub.status == Hub.Status.PREPARING:
+    opens = hub.status == Hub.Status.PREPARING
+    if opens:
         hub.status = Hub.Status.ACTIVE
         changed.append("status")
     if changed:
         hub.save(update_fields=[*changed, "updated_at"])
         record_event(ctx, events.BUSINESS_READY, {"id": str(hub.id)})
+    owner = (
+        HubMember.objects.filter(hub=hub, role=Role.OWNER).select_related("user").first()
+        if opens
+        else None
+    )
+    if owner is not None:
+        transaction.on_commit(
+            partial(emails.send_ready, hub, owner.user, base_url=emails.base_url(ctx.request)),
+            robust=True,
+        )
     return {"id": hub.id, "status": hub.status, "ready_at": hub.ready_at}
 
 

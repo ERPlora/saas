@@ -13,6 +13,22 @@ export const COUNTRIES = [
 /** Where a new business starts: most of ERPlora's customers are in Spain. */
 export const DEFAULT_COUNTRY = 'ES';
 
+/** The country the browser's languages suggest (`fr-BE` → BE, `de` → DE, its main country): the first that
+ *  ERPlora serves, else Spain. Only a suggestion: the person picks another in the form. */
+export function suggestedCountry(languages: readonly string[]): string {
+  const served: readonly string[] = COUNTRIES;
+  for (const tag of languages) {
+    let region: string | undefined;
+    try {
+      region = new Intl.Locale(tag).maximize().region;
+    } catch {
+      continue;
+    }
+    if (region && served.includes(region)) return region;
+  }
+  return DEFAULT_COUNTRY;
+}
+
 /** Each country's starting zone (hubs/services.py `TIME_ZONES`) and the Atlantic islands. */
 const TIME_ZONES = [
   'Europe/Vienna', 'Europe/Brussels', 'Europe/Sofia', 'Europe/Zagreb', 'Asia/Nicosia', 'Europe/Prague',
