@@ -15,6 +15,7 @@ import {
   expect,
   panelAccount,
   seedPanel,
+  settled,
   shot,
   signIn,
   startHubDouble,
@@ -183,6 +184,84 @@ test('«Close other sessions» ends the other browser here and in the businesses
     await hub.close();
     await other.close();
   }
+  expect(errors).toEqual([]);
+});
+
+/** Sessions of the e2e's sign-ins: more than one live result of the whole list carried (256 KiB, ~1,300 rows). */
+const MANY_SESSIONS = 1800;
+
+/** `count` more sessions that still sign `email` in, used a minute apart before now, as as many sign-ins elsewhere. */
+function moreSessions(email: string, count: number): number {
+  const made = djangoPrint(
+    [
+      'from datetime import timedelta',
+      'from importlib import import_module',
+      'from allauth.usersessions.models import UserSession',
+      'from django.conf import settings',
+      'from django.contrib.auth import BACKEND_SESSION_KEY, HASH_SESSION_KEY, SESSION_KEY, get_user_model',
+      'from django.utils import timezone',
+      'from django.utils.crypto import get_random_string',
+      `user = get_user_model().objects.get(email=${JSON.stringify(email)})`,
+      'store = import_module(settings.SESSION_ENGINE).SessionStore',
+      'model = store.get_model_class()',
+      'data = store().encode({SESSION_KEY: str(user.pk), BACKEND_SESSION_KEY: settings.AUTHENTICATION_BACKENDS[0], HASH_SESSION_KEY: user.get_session_auth_hash()})',
+      'now = timezone.now()',
+      `keys = [get_random_string(32, "abcdefghijklmnopqrstuvwxyz0123456789") for _ in range(${count})]`,
+      'model.objects.bulk_create(model(session_key=k, session_data=data, expire_date=now + timedelta(days=1)) for k in keys)',
+      'ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130.0.0.0 Safari/537.36"',
+      'UserSession.objects.bulk_create(UserSession(user=user, session_key=k, ip="81.33.10.4", user_agent=ua, last_seen_at=now - timedelta(minutes=n + 1)) for n, k in enumerate(keys))',
+      'print(len(keys))',
+    ].join('\n'),
+  );
+  return Number(made);
+}
+
+// flow: ninguno — FIX accounts (FIX-SAAS-SESSIONS-RESULT-TOO-BIG): the list said «The result exceeds 262144 bytes».
+test('with more sessions than a page, «Active sessions» loads, this one first, and pages', async ({ page }) => {
+  const errors = watchPageErrors(page);
+  const account = panelAccount('carlos');
+  await signIn(page.request, account);
+  expect(moreSessions(account.email, MANY_SESSIONS)).toBe(MANY_SESSIONS);
+  const rows = page.getByTestId('sessions-row');
+  const pager = page.locator('.data-table__pager');
+  for (const viewport of VIEWPORTS) {
+    await page.setViewportSize(viewport);
+    await page.goto('/account/security');
+    await expect(rows).toHaveCount(25);
+    await expect(rows.first()).toContainText('This session');
+    await expect(pager).toContainText('Showing 1–25 of');
+    await expect(pager).toContainText(/1,?801 sessions/);
+    await expect(page.getByTestId('sessions-retry')).toHaveCount(0);
+    await settled(page);
+    await page.screenshot({ path: shot(`FIX-SAAS-SESSIONS-RESULT-TOO-BIG-${viewport.width}`) });
+    if (viewport.width < 640) {
+      // More sessions than one page of the server holds (100): the phone pages too, never a «Load more» that
+      // brings nothing, and every session stays reachable — here past the 100th.
+      await expect(page.getByTestId('sessions-load-more')).toHaveCount(0);
+      await expect(pager.locator('.data-table__page-of')).toHaveText('1 / 73');
+      for (let n = 0; n < 4; n += 1) await page.getByTestId('sessions-page-next').click();
+      await expect(pager).toContainText('Showing 101–125 of');
+      await expect(pager.locator('.data-table__page-of')).toHaveText('5 / 73');
+      await expect(rows).toHaveCount(25);
+      await expect(rows.filter({ hasText: 'This session' })).toHaveCount(0);
+      await settled(page);
+      await page.screenshot({ path: shot(`FIX-SAAS-SESSIONS-RESULT-TOO-BIG-${viewport.width}-page-5`) });
+      await page.getByTestId('sessions-page-prev').click();
+      await expect(pager).toContainText('Showing 76–100 of');
+    } else {
+      await page.getByTestId('sessions-page-next').click();
+      await expect(pager).toContainText('Showing 26–50 of');
+      await expect(rows).toHaveCount(25);
+      await expect(rows.filter({ hasText: 'This session' })).toHaveCount(0);
+    }
+  }
+  // From the second page, «Close other sessions» counts every page's and ends them; the list steps back to this one.
+  await page.getByTestId('sessions-close-others').click();
+  await expect(page.getByTestId('sessions-close-others-dialog')).toContainText(/1,?800 sessions will be closed/);
+  await page.getByTestId('sessions-close-others-dialog-submit').click();
+  await expect(toast(page, /Sessions closed: 1,?800/)).toBeVisible({ timeout: 30_000 });
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText('This session');
   expect(errors).toEqual([]);
 });
 

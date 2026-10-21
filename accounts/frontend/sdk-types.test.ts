@@ -71,6 +71,7 @@ const SCHEMAS = [
   'EmailVerifyOut',
   'PhotoUploadIn',
   'SessionRowOut',
+  'SessionListIn',
   'SessionListOut',
   'SessionCloseIn',
   'SessionsClosedOut',

@@ -97,6 +97,15 @@ describe('TwoFactorSettingsPage: loading', () => {
     expect(wrapper.find('.non-field-error').exists()).toBe(false);
   });
 
+  it('asks nothing when spa-config already says 2FA is switched off: straight to the launcher with the notice', async () => {
+    const server = fakeAllauth({ 'GET /account/authenticators': notFound });
+    const { router } = await mountAccountPage(TwoFactorSettingsPage, { path: '/2fa', session: SIGNED_IN, config: { mfaEnabled: false } });
+    await flushPromises();
+    expect(server.callsTo('GET /account/authenticators')).toEqual([]);
+    expect(router.currentRoute.value.path).toBe('/launch');
+    expect(router.currentRoute.value.query).toEqual({ notice: 'mfa_unavailable' });
+  });
+
   it('says it could not load the settings and tries again on demand', async () => {
     const server = fakeAllauth({ 'GET /account/authenticators': [offline, list(TOTP)] });
     const { text, click, has } = await mountPage();

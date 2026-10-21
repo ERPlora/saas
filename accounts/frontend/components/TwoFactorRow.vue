@@ -2,7 +2,8 @@
 // Account → Security, the «Two-step verification» row of «Sign-in» (mockups `account.html` «security»): whether the
 // account asks for a code of an authenticator app after its password (allauth.headless `account/authenticators`)
 // and the way to its settings, the `/2fa` page. With 2FA switched off on the server (`ACCOUNTS_MFA_ENABLED`: its
-// endpoints answer 404, as TwoFactorSettingsPage reads it) there is nothing to manage: the row is not painted.
+// endpoints answer 404, as TwoFactorSettingsPage reads it) there is nothing to manage: the row is not painted, and
+// when `spa-config.mfaEnabled` already says so nothing is asked (a 404 on every visit was a failed request).
 // A state that cannot be read still leads to the settings, without saying on or off.
 import { StatusPill } from '@erplora/ui/components';
 import { HubIcon } from '@erplora/ui/shell';
@@ -14,11 +15,13 @@ import { useRouter } from 'vue-router';
 const SETTINGS = '/2fa';
 
 const router = useRouter();
-const auth = createAllauthClient(useLiveClient().config);
+const config = useLiveClient().config;
+const auth = createAllauthClient(config);
 /** `on`/`off` once read; `unknown` when it could not be; `unavailable`: 2FA is off on the server. */
-const state = shallowRef<'loading' | 'on' | 'off' | 'unknown' | 'unavailable'>('loading');
+const state = shallowRef<'loading' | 'on' | 'off' | 'unknown' | 'unavailable'>(config.mfaEnabled === false ? 'unavailable' : 'loading');
 
 onMounted(async () => {
+  if (state.value === 'unavailable') return;
   try {
     const authenticators = await auth.authenticators();
     state.value = authenticators.some((item) => item.type === 'totp') ? 'on' : 'off';

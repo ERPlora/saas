@@ -30,7 +30,7 @@ import {
   session,
   subId,
 } from '../__tests__/mount-panel';
-import type { SessionRowOut } from '../../../frontend/sdk-types';
+import type { SessionListOut, SessionRowOut } from '../../../frontend/sdk-types';
 import SessionsTable from './SessionsTable.vue';
 
 const THIS = session(1, { is_current: true, device: 'mac', browser: 'Chrome', browser_version: '130' });
@@ -43,12 +43,23 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
+/** A page of `accounts.session.list` as the server sends it: `total` and `others` count every session, not the page. */
+function sessionPage(rows: SessionRowOut[], more: Partial<SessionListOut> = {}): SessionListOut {
+  return { rows, total: rows.length, limit: 25, offset: 0, others: rows.filter((row) => !row.is_current).length, ...more };
+}
+
 async function setup(rows: SessionRowOut[] = [THIS, PHONE, TILL], api: (call: ApiCall) => Response | Promise<Response> = () => Response.json({ closed: 1 })) {
   const s = await mountPanel(SessionsTable, { api });
   const stream = await s.live();
-  await s.result(stream, 'accounts.session.list', { rows, total: rows.length });
+  await s.result(stream, 'accounts.session.list', sessionPage(rows));
   return { ...s, stream };
 }
+
+/** The parameters the live list is followed with now. */
+const params = (s: Awaited<ReturnType<typeof mountPanel>>) => s.client.stream.subscriptions('accounts.session.list').map((sub) => sub.params);
+const table = (s: Awaited<ReturnType<typeof mountPanel>>) => s.wrapper.findComponent(DataTable as unknown as Component);
+/** A row that is not this session, numbered from 10. */
+const other = (n: number) => session(10 + n, { last_seen_at: `2026-10-13T08:${String(n % 60).padStart(2, '0')}:00Z` });
 
 const cells = (testid: string) =>
   [...document.querySelectorAll(`[data-testid="${testid}"]`)].map((el) => el.textContent?.replace(/\s+/g, ' ').trim());
@@ -161,8 +172,80 @@ describe('SessionsTable', () => {
     expect(s.q('sessions-loading')).not.toBeNull();
     const stream = s.net.lastStream();
     stream.push(HELLO);
-    await s.result(stream, 'accounts.session.list', { rows: [THIS, PHONE], total: 2 });
+    await s.result(stream, 'accounts.session.list', sessionPage([THIS, PHONE]));
     expect(s.q('sessions-loading')).toBeNull();
     expect(cells('session-device')).toEqual(['Mac (macOS)This session', 'iPhone']);
+  });
+});
+
+// flow: ninguno — FIX accounts (FIX-SAAS-SESSIONS-RESULT-TOO-BIG): with more sessions than one live result carries,
+// the list never loaded («The result exceeds 262144 bytes»). The server pages it now; this session stays first.
+describe('SessionsTable: more sessions than a page', () => {
+  const FIRST_PAGE = [THIS, ...Array.from({ length: 24 }, (_, n) => other(n))];
+
+  async function long(api?: (call: ApiCall) => Response | Promise<Response>) {
+    const s = await mountPanel(SessionsTable, { api });
+    await s.result(await s.live(), 'accounts.session.list', sessionPage(FIRST_PAGE, { total: 60, others: 59 }));
+    return s;
+  }
+
+  it('follows one page of the server, 25 rows from the first, and counts every session', async () => {
+    const s = await mountPanel(SessionsTable);
+    expect(params(s)).toEqual([{ limit: 25, offset: 0 }]);
+    await s.result(await s.live(), 'accounts.session.list', sessionPage(FIRST_PAGE, { total: 60, others: 59 }));
+    // On a phone, past the 100 rows one page of the server holds, the table pages instead of «Load more».
+    expect(table(s).props()).toMatchObject({ serverSide: true, total: 60, page: 0, pageSize: 25, maxWindow: 100 });
+    expect(cells('session-device')).toHaveLength(25);
+    expect(cells('session-device')[0]).toBe('Mac (macOS)This session');
+  });
+
+  it('pages on the server: the next page asks for the next 25 rows', async () => {
+    const s = await long();
+    s.q('sessions-page-next')?.click();
+    await flush();
+    expect(params(s)).toEqual([{ limit: 25, offset: 25 }]);
+    expect(table(s).props()).toMatchObject({ page: 1 });
+  });
+
+  it('«Close other sessions» says how many there are, not only the ones on this page', async () => {
+    const s = await long(() => Response.json({ closed: 59 }));
+    s.q('sessions-close-others')?.click();
+    await flush();
+    expect(s.q('sessions-close-others-dialog')?.textContent).toContain('59 sessions will be closed, also the apps');
+    s.q('sessions-close-others-dialog-submit')?.click();
+    await flush();
+    expect(toastSuccess).toHaveBeenCalledWith('Sessions closed: 59');
+  });
+
+  it('closes the others from a page without this session, still saying how many there are', async () => {
+    const s = await long();
+    s.q('sessions-page-next')?.click();
+    await flush();
+    await s.clock.advance(150);
+    await s.result(s.net.lastStream(), 'accounts.session.list', sessionPage([other(30)], { total: 60, others: 59, offset: 25 }));
+    s.q('sessions-close-others')?.click();
+    await flush();
+    expect(s.q('sessions-close-others-dialog')?.textContent).toContain('59 sessions will be closed, also the apps');
+  });
+
+  it('on a phone «Load more» grows one window from the first row, never past the server’s 100 rows', async () => {
+    const s = await long();
+    table(s).vm.$emit('loadMore');
+    await flush();
+    expect(params(s)).toEqual([{ limit: 50, offset: 0 }]);
+    for (let n = 0; n < 4; n += 1) table(s).vm.$emit('loadMore');
+    await flush();
+    expect(params(s)).toEqual([{ limit: 100, offset: 0 }]);
+  });
+
+  it('a page left empty by sessions closed elsewhere steps back to the last page that has rows', async () => {
+    const s = await long();
+    s.q('sessions-page-next')?.click();
+    await flush();
+    await s.clock.advance(150);
+    await s.result(s.net.lastStream(), 'accounts.session.list', sessionPage([], { total: 20, others: 19, offset: 25 }));
+    expect(params(s)).toEqual([{ limit: 25, offset: 0 }]);
+    expect(document.querySelector('.data-table__empty'), 'never «no sessions» while there are some').toBeNull();
+    expect(s.q('sessions-loading')).not.toBeNull();
   });
 });

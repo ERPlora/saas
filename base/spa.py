@@ -2,7 +2,9 @@
 
 Next to ``spa-config`` it embeds the result of ``base.session.me`` (``session-me``), so the shell
 decides on the login without a first round trip. ``spa-config.googleEnabled`` tells the login page
-whether «Continue with Google» is configured (``GOOGLE_OAUTH_ENABLED``, the switch of its routes), and
+whether «Continue with Google» is configured (``GOOGLE_OAUTH_ENABLED``, the switch of its routes),
+``spa-config.mfaEnabled`` whether two-step verification is switched on (``ACCOUNTS_MFA_ENABLED``: off, its
+endpoints answer 404 and the Account page does not ask them), and
 ``spa-config.hubOrigin`` is a hub's origin with ``{slug}`` to fill in: the error page of a refused
 jump names the hub's host and links back to it from the slug alone. ``spa-config.surface`` is
 ``"account"`` on the account surface (``base/surface.py``) and absent otherwise: ``live/spa.html``
@@ -30,7 +32,11 @@ SESSION_ME_ID = "session-me"
 @require_safe
 def spa(request: HttpRequest) -> HttpResponse:
     me = run_operation_sync(request, queries.session_me)
-    config = {"googleEnabled": settings.GOOGLE_OAUTH_ENABLED, "hubOrigin": hub_origin("{slug}")}
+    config = {
+        "googleEnabled": settings.GOOGLE_OAUTH_ENABLED,
+        "mfaEnabled": settings.ACCOUNTS_MFA_ENABLED,
+        "hubOrigin": hub_origin("{slug}"),
+    }
     surface = account_surface(request)
     if surface is not None:
         config["surface"] = surface
