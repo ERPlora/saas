@@ -33,6 +33,17 @@ def page(client, path: str, language: str = "en") -> str:
     return response.content.decode()
 
 
+#: Where a page writes its per-response tokens: the CSP nonce and the CSRF token.
+RESPONSE_TOKEN = re.compile(
+    r"""(nonce="|name="csrfmiddlewaretoken" value="|var CSRF = "|'X-CSRFToken': ')[^"']+"""
+)
+
+
+def without_tokens(html: str) -> str:
+    """The page without its per-response tokens: random strings, not what the page says."""
+    return RESPONSE_TOKEN.sub(r"\1", html)
+
+
 # --- The three pages (tests/unit/test_public_pages.py) ------------------------------------------
 
 
@@ -343,9 +354,11 @@ def test_security_names_the_aws_region_in_ireland(client, language, region):
         ("es", "Protección anti-DDoS y WAF en AWS"),
     ],
 )
-def test_security_names_the_perimeter_on_aws(client, language, perimeter):
+def test_security_names_the_perimeter_on_aws(
+    client, language, perimeter, tokens_spelling_the_claims
+):
     """Route 53, AWS WAF and the ALB are the perimeter (ADR-0499); no CDN in front."""
-    html = page(client, "/security/", language)
+    html = without_tokens(page(client, "/security/", language))
 
     assert perimeter in html
     assert "CDN" not in html
@@ -359,6 +372,20 @@ def test_security_names_the_perimeter_on_aws(client, language, perimeter):
 # GitHub sign-in (Google only). The home and /contact/ promised the same SLA as an «Uptime 99.95%»
 # and support «24/7» (L8): the real promise is high availability on AWS and a reply within 4
 # business hours, the one of the contact form.
+
+@pytest.fixture
+def tokens_spelling_the_claims(monkeypatch):
+    """The per-response tokens spell stale claims, as a random one does now and then.
+
+    Every public page carries a CSP nonce and, since the language forms of its footer
+    (PUBLIC-F13), a CSRF token: random strings, not copy. A 64-character token holds «2FA» or
+    «JWT» about once in four thousand renders, which made the scans below fail by chance.
+    """
+    monkeypatch.setattr("django.utils.csp.generate_nonce", lambda: "2FA-JWT-CDN-GitHub-x")
+    monkeypatch.setattr(
+        "django.middleware.csrf._get_new_csrf_string", lambda: "2FAJWTCDNGitHub" + "a" * 17
+    )
+
 
 STALE_CLAIMS = (
     "Cloudflare",
@@ -401,8 +428,10 @@ STALE_CLAIMS = (
         "/support/",
     ],
 )
-def test_no_page_promises_what_the_old_stack_did(client, path, language):
-    html = page(client, path, language)
+def test_no_page_promises_what_the_old_stack_did(
+    client, path, language, tokens_spelling_the_claims
+):
+    html = without_tokens(page(client, path, language))
 
     assert [claim for claim in STALE_CLAIMS if claim in html] == []
 
@@ -492,7 +521,7 @@ UNSHIPPED_CLAIMS = (
     "path", ["/", "/pricing/", "/features/", "/security/", "/about/", "/collaborate/"]
 )
 def test_no_page_promises_what_the_product_does_not_do(client, path, language):
-    html = page(client, path, language)
+    html = without_tokens(page(client, path, language))
 
     assert [claim for claim in UNSHIPPED_CLAIMS if claim in html] == []
 
@@ -549,7 +578,7 @@ UNVERIFIED_SECURITY_CLAIMS = (
 @pytest.mark.parametrize("language", ["en", "es"])
 @pytest.mark.parametrize("path", ["/security/", "/features/", "/pricing/", "/", "/about/"])
 def test_no_page_claims_what_nobody_checked(client, path, language):
-    html = page(client, path, language)
+    html = without_tokens(page(client, path, language))
 
     assert [claim for claim in UNVERIFIED_SECURITY_CLAIMS if claim in html] == []
 
