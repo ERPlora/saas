@@ -8,14 +8,19 @@
   403 to it, and «Forgot your password?» (which proves the mailbox) gives it one; an account with a password
   changes it there as before (the current one is asked).
 
-allauth's own sign-up (``auth/signup``) is not one of them: it is the launcher's «Create account» tab. The
-sign-in (``auth/login``) stays open, with its address in the plain form of the sign-up's
-(``adapters.plain_email``): allauth folds the sign-up's in the adapter, and the sign-in's only here.
+allauth's own sign-up (``auth/signup``) and sign-in (``auth/login``) are not closed: they are the launcher's two
+tabs. Each is served here with one rule allauth.headless leaves out: the sign-in's address in the plain form of the
+sign-up's (``adapters.plain_email``; allauth folds the sign-up's in the adapter, the sign-in's only here), and the
+sign-up's password checked against its own address, as allauth's template sign-up did (ERPlora/saas#2542: no
+password like the email; headless checks it without the account, so Django's similarity rule saw nothing).
 """
 
-from allauth.headless.account.inputs import LoginInput
-from allauth.headless.account.views import ChangePasswordView, LoginView
+from allauth.account.adapter import get_adapter
+from allauth.headless.account.inputs import LoginInput, SignupInput
+from allauth.headless.account.views import ChangePasswordView, LoginView, SignupView
 from allauth.headless.constants import Client
+from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.utils.translation import gettext
 from django.views.decorators.csrf import csrf_exempt
@@ -59,3 +64,23 @@ class _LoginView(LoginView):
 
 #: allauth.headless's sign-in, with the address in its plain form (``plain_email``).
 login = _LoginView.as_api_view(client=Client.BROWSER)
+
+
+class _OwnAddressSignupInput(SignupInput):
+    def clean(self):
+        cleaned = super().clean()
+        password, email = cleaned.get("password"), cleaned.get("email")
+        if password and email and "password" not in self.errors:
+            try:
+                get_adapter().clean_password(password, user=get_user_model()(email=email))
+            except ValidationError as error:
+                self.add_error("password", error)
+        return cleaned
+
+
+class _SignupView(SignupView):
+    input_class = {"POST": _OwnAddressSignupInput}
+
+
+#: allauth.headless's sign-up, with the password checked against the address it signs up.
+signup = _SignupView.as_api_view(client=Client.BROWSER)

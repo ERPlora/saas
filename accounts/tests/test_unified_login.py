@@ -474,6 +474,23 @@ class TestAnInvalidSignUpCreatesNothing:
         assert not User.objects.filter(email=NEWCOMER).exists()
         assert mail.outbox == []
 
+    @pytest.mark.parametrize(
+        ("email", "password", "code"),
+        [
+            (NEWCOMER, "12345678", "password_entirely_numeric"),
+            (NEWCOMER, "password", "password_too_common"),
+            ("marisol.navarro@example.com", "marisol.navarro", "password_too_similar"),
+        ],
+    )
+    def test_each_rule_of_the_old_sign_up_refuses_its_password(self, browser, email, password, code):
+        """ACCOUNTS-G22 (ERPlora/saas#2542): the API of the sign-up keeps every rule of the screen: «12345678»,
+        «password» or one like the address create nothing."""
+        response = _create_account(browser, email, password=password)
+
+        assert response.status_code == 400
+        assert code in {error["code"] for error in response.json()["errors"] if error["param"] == "password"}
+        assert not User.objects.filter(email=email).exists()
+
     def test_an_invalid_email_is_400_on_the_email(self, browser):
         response = _create_account(browser, "not-an-email")
 
