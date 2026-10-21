@@ -210,3 +210,73 @@ class TestSendTheMailAgain:
 
         assert mail.outbox == []
 
+
+
+class TestThePdfForTheStaff:
+    """BILLING-G01/G12 (the old ``staff puede descargar cualquier factura``): from the page of any invoice in the
+    admin, the staff downloads its PDF, the platform hub's, asked when it is downloaded (as the account's
+    «Download PDF»). Reading it is enough: it changes nothing."""
+
+    def pdf_url(self, invoice):
+        return f"/admin/billing/invoice/{invoice.pk}/pdf/"
+
+    def issued(self, invoice):
+        Invoice.objects.filter(pk=invoice.pk).update(fiscal_status="accepted")
+        return Invoice.objects.get(pk=invoice.pk)
+
+    def test_an_issued_invoice_links_its_pdf_on_its_page(self, staff_client, invoice):
+        issued = self.issued(invoice)
+
+        body = staff_client.get(f"/admin/billing/invoice/{issued.pk}/change/").content.decode()
+
+        assert self.pdf_url(issued) in body
+
+    def test_the_link_downloads_the_platform_hubs_file(self, staff_client, invoice, hub_double):
+        issued = self.issued(invoice)
+        hub_double.answer("GET", r"/pdf$", 200, {"pdf": "the platform hub's"})
+
+        response = staff_client.get(self.pdf_url(issued))
+
+        assert response.status_code == 200
+        assert response["Content-Type"] == "application/pdf"
+        assert response["Content-Disposition"] == 'attachment; filename="ERP-2026-00001.pdf"'
+        assert b"the platform hub's" in response.content
+        [call] = hub_double.calls_to("GET", "/pdf")
+        assert call.path == f"/internal/platform/invoices/{issued.pk}/pdf"
+
+    def test_one_still_being_issued_has_no_link_and_says_so(self, staff_client, invoice, hub_double):
+        body = staff_client.get(f"/admin/billing/invoice/{invoice.pk}/change/").content.decode()
+        assert self.pdf_url(invoice) not in body
+
+        response = staff_client.get(self.pdf_url(invoice), follow=True)
+
+        assert response.redirect_chain[-1][0] == f"/admin/billing/invoice/{invoice.pk}/change/"
+        assert "still being issued" in response.content.decode()
+        assert hub_double.calls_to("GET", "/pdf") == []
+
+    def test_the_hub_away_is_said_not_hidden(self, staff_client, invoice, hub_double):
+        issued = self.issued(invoice)
+        hub_double.answer("GET", r"/pdf$", 503, {})
+
+        response = staff_client.get(self.pdf_url(issued), follow=True)
+
+        assert response.redirect_chain[-1][0] == f"/admin/billing/invoice/{issued.pk}/change/"
+        assert "cannot be downloaded right now" in response.content.decode()
+
+    def test_a_reader_of_invoices_downloads_it(self, client, invoice, hub_double):
+        from django.contrib.auth.models import Permission
+
+        issued = self.issued(invoice)
+        hub_double.answer("GET", r"/pdf$", 200, {"pdf": "x"})
+        reader = get_user_model().objects.create_user(email="reader@example.com", password="x", is_staff=True)
+        reader.user_permissions.add(Permission.objects.get(codename="view_invoice"))
+        client.force_login(reader)
+
+        assert client.get(self.pdf_url(issued)).status_code == 200
+
+    def test_staff_who_may_not_read_invoices_does_not(self, client, invoice, hub_double):
+        issued = self.issued(invoice)
+        client.force_login(get_user_model().objects.create_user(email="other@example.com", password="x", is_staff=True))
+
+        assert client.get(self.pdf_url(issued)).status_code == 403
+        assert hub_double.calls_to("GET", "/pdf") == []

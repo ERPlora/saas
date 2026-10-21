@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: saas-next\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-21 09:02+0200\n"
+"POT-Creation-Date: 2026-10-21 09:29+0200\n"
 "PO-Revision-Date: 2026-10-14 04:00+0200\n"
 "Last-Translator: ERPlora\n"
 "Language-Team: Spanish\n"
@@ -16,35 +16,35 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: admin.py:80
+#: admin.py:84
 msgid "Legal identity"
 msgstr "Identidad legal"
 
-#: admin.py:84
+#: admin.py:88
 msgid "Address"
 msgstr "Dirección"
 
-#: admin.py:87
+#: admin.py:91
 msgid "VAT and currency"
 msgstr "IVA y moneda"
 
-#: admin.py:88
+#: admin.py:92
 msgid "Contact"
 msgstr "Contacto"
 
-#: admin.py:90
+#: admin.py:94
 msgid "History"
 msgstr "Historial"
 
-#: admin.py:106
+#: admin.py:110
 msgid "Rules"
 msgstr "Reglas"
 
-#: admin.py:135
+#: admin.py:139
 msgid "Rate"
 msgstr "Tipo"
 
-#: admin.py:139
+#: admin.py:143
 msgid ""
 "Untick «Subject to VAT» for a territory outside the scope of the tax (Canary "
 "Islands, Ceuta, Melilla, third countries). It is not a 0 % rate: the AEAT "
@@ -54,27 +54,27 @@ msgstr ""
 "(Canarias, Ceuta, Melilla, terceros países). No es un tipo del 0 %: a la "
 "AEAT le llega como operación no sujeta."
 
-#: admin.py:145
+#: admin.py:149
 msgid "Validity"
 msgstr "Vigencia"
 
-#: admin.py:148
+#: admin.py:152
 msgid "Applies"
 msgstr "Se aplica"
 
-#: admin.py:151 models.py:690
+#: admin.py:155 models.py:690
 msgid "Not subject"
 msgstr "No sujeta"
 
-#: admin.py:162
+#: admin.py:166
 msgid "Issuer"
 msgstr "Emisor"
 
-#: admin.py:164
+#: admin.py:168
 msgid "Intra-EU B2B (ROI / VIES)"
 msgstr "B2B intracomunitario (ROI / VIES)"
 
-#: admin.py:168
+#: admin.py:172
 msgid ""
 "While unticked, Spanish VAT is charged to EVERY customer, EU businesses "
 "included. Even when ticked, each sale also needs a current VIES verdict on "
@@ -86,11 +86,11 @@ msgstr ""
 "veredicto vigente de VIES sobre el NIF-IVA del cliente (ver «Comprobaciones "
 "de NIF-IVA»); si no, se cobra el IVA igualmente."
 
-#: admin.py:175
+#: admin.py:179
 msgid "One-Stop Shop (OSS)"
 msgstr "Ventanilla única (OSS)"
 
-#: admin.py:179
+#: admin.py:183
 msgid ""
 "Below the threshold the issuer's country VAT is charged. Above it —or with "
 "the OSS registration ticked, which binds for two years— the customer's "
@@ -100,11 +100,11 @@ msgstr ""
 "el alta en la OSS marcada, que vincula dos años— se aplica el tipo del país "
 "del cliente."
 
-#: admin.py:185
+#: admin.py:189
 msgid "Carried from the old SaaS"
 msgstr "Traído del SaaS antiguo"
 
-#: admin.py:189
+#: admin.py:193
 msgid ""
 "Until the invoices live here, the cross-border B2C sales of the year come "
 "from the old SaaS: type them for the current year and the year before. "
@@ -116,11 +116,11 @@ msgstr ""
 "ellas el total es desconocido y el umbral se podría cruzar sin que nadie lo "
 "note."
 
-#: admin.py:197
+#: admin.py:201
 msgid "Cross-border B2C this year"
 msgstr "B2C transfronterizo este año"
 
-#: admin.py:201
+#: admin.py:205
 #, python-format
 msgid ""
 "Unknown: carry this year's amounts from the old SaaS below (threshold "
@@ -129,30 +129,30 @@ msgstr ""
 "Desconocido: trae abajo los importes de este año del SaaS antiguo (umbral "
 "%(threshold)s €)"
 
-#: admin.py:206
+#: admin.py:210
 msgid "destination rate"
 msgstr "tipo de destino"
 
-#: admin.py:208
+#: admin.py:212
 msgid "issuer rate"
 msgstr "tipo del emisor"
 
-#: admin.py:244
+#: admin.py:248
 msgid "Current"
 msgstr "Vigente"
 
-#: admin.py:272 tests/test_vat_check_api.py:564
+#: admin.py:276 tests/test_vat_check_api.py:564
 msgid "Check now in VIES"
 msgstr "Comprobar ahora en VIES"
 
-#: admin.py:285
+#: admin.py:289
 #, python-format
 msgid "%(vat)s: a UK number is HMRC's, not VIES': nothing was asked."
 msgstr ""
 "%(vat)s: un número británico es de HMRC, no de VIES: no se ha consultado "
 "nada."
 
-#: admin.py:295
+#: admin.py:299
 #, python-format
 msgid ""
 "Too many VAT checks in the last minute. Not checked, try again shortly: "
@@ -161,7 +161,7 @@ msgstr ""
 "Demasiadas comprobaciones de NIF-IVA en el último minuto. Sin comprobar, "
 "inténtalo en un momento: %(numbers)s"
 
-#: admin.py:304
+#: admin.py:308
 #, python-format
 msgid ""
 "%(vat)s: the answer could not be saved, so it proves nothing. Try again."
@@ -169,24 +169,24 @@ msgstr ""
 "%(vat)s: la respuesta no se pudo guardar, así que no prueba nada. Inténtalo "
 "de nuevo."
 
-#: admin.py:312
+#: admin.py:316
 #, python-format
 msgid "%(vat)s: confirmed in VIES (consultation %(consultation)s)."
 msgstr "%(vat)s: confirmado en VIES (consulta %(consultation)s)."
 
-#: admin.py:321
+#: admin.py:325
 #, python-format
 msgid "%(vat)s: not registered in VIES. VAT is charged."
 msgstr "%(vat)s: no está registrado en VIES. Se cobra el IVA."
 
-#: admin.py:328
+#: admin.py:332
 #, python-format
 msgid "%(vat)s: VIES could not answer. VAT is still charged; try again later."
 msgstr ""
 "%(vat)s: VIES no ha podido responder. Se sigue cobrando el IVA; inténtalo "
 "más tarde."
 
-#: admin.py:346
+#: admin.py:350
 #, python-format
 msgid ""
 "VAT number %(vat)s marked as valid BY HAND. Who did it and why is on the "
@@ -196,40 +196,52 @@ msgstr ""
 "NIF-IVA %(vat)s marcado como válido A MANO. Queda constancia de quién y por "
 "qué: es la única forma de facturar sin IVA cuando VIES no confirma el número."
 
-#: admin.py:408
+#: admin.py:412
 msgid "accumulated"
 msgstr "acumulado"
 
-#: admin.py:412
+#: admin.py:416
 msgid "threshold"
 msgstr "umbral"
 
-#: admin.py:445 queries.py:1011
+#: admin.py:450
+msgid "PDF"
+msgstr "PDF"
+
+#: admin.py:454
+msgid "Not issued yet: its PDF is ready once the platform hub issues it."
+msgstr "Aún no se ha emitido: su PDF estará listo cuando la emita el hub de plataforma."
+
+#: admin.py:456
+msgid "Download the PDF"
+msgstr "Descargar el PDF"
+
+#: admin.py:478 queries.py:1016
 msgid "Total"
 msgstr "Total"
 
-#: admin.py:454
+#: admin.py:487
 msgid "Send again to the platform hub"
 msgstr "Reenviar al hub de plataforma"
 
-#: admin.py:465
+#: admin.py:498
 #, python-format
 msgid "%(invoice)s: the platform hub says «%(status)s»."
 msgstr "%(invoice)s: el hub de plataforma dice «%(status)s»."
 
-#: admin.py:469
+#: admin.py:502
 #, python-format
 msgid "%(invoice)s: not paid, so there is nothing to issue."
 msgstr "%(invoice)s: no está pagada, así que no hay nada que emitir."
 
-#: admin.py:473
+#: admin.py:506
 #, python-format
 msgid ""
 "%(invoice)s: the platform hub refused it (%(code)s). It stays «issuing»."
 msgstr ""
 "%(invoice)s: el hub de plataforma la rechazó (%(code)s). Sigue «emitiéndose»."
 
-#: admin.py:479
+#: admin.py:512
 #, python-format
 msgid ""
 "%(invoice)s: the platform hub did not answer. It stays «issuing» and is "
@@ -238,26 +250,26 @@ msgstr ""
 "%(invoice)s: el hub de plataforma no respondió. Sigue «emitiéndose» y se "
 "reintentará."
 
-#: admin.py:483
+#: admin.py:516
 msgid "Send the invoice mail again"
 msgstr "Reenviar el correo de la factura"
 
-#: admin.py:490
+#: admin.py:523
 #, python-format
 msgid "%(invoice)s: not issued yet, so it has no mail."
 msgstr "%(invoice)s: aún no está emitida, así que no tiene correo."
 
-#: admin.py:494
+#: admin.py:527
 #, python-format
 msgid "%(invoice)s: the mail was sent."
 msgstr "%(invoice)s: el correo se envió."
 
-#: admin.py:496
+#: admin.py:529
 #, python-format
 msgid "%(invoice)s: it has nobody to send it to."
 msgstr "%(invoice)s: no tiene a quién enviarlo."
 
-#: admin.py:498
+#: admin.py:531
 #, python-format
 msgid "%(invoice)s: the mail could not leave; it is sent again later."
 msgstr "%(invoice)s: el correo no pudo salir; se volverá a enviar más tarde."
@@ -1064,7 +1076,7 @@ msgstr "contador de facturas"
 msgid "invoice counters"
 msgstr "contadores de facturas"
 
-#: models.py:739 queries.py:1011
+#: models.py:739 queries.py:1016
 msgid "Invoice"
 msgstr "Factura"
 
@@ -1450,11 +1462,11 @@ msgstr "aviso de la OSS"
 msgid "OSS notices"
 msgstr "avisos de la OSS"
 
-#: queries.py:580
+#: queries.py:581
 msgid "Sign in to use a promo code."
 msgstr "Inicia sesión para usar un código promocional."
 
-#: queries.py:589
+#: queries.py:590
 msgid "Too many promo codes tried in the last minute. Try again in a moment."
 msgstr ""
 "Demasiados códigos promocionales probados en el último minuto. Inténtalo en "
@@ -1468,41 +1480,41 @@ msgstr "Inicia sesión para ver tu facturación."
 msgid "This invoice does not exist or you have no access to it."
 msgstr "Esta factura no existe o no tienes acceso a ella."
 
-#: queries.py:960 queries.py:973
+#: queries.py:966 queries.py:979
 msgid "This invoice is still being issued: its PDF is ready once it is."
 msgstr ""
 "Esta factura aún se está emitiendo: su PDF estará listo cuando se emita."
 
-#: queries.py:966
+#: queries.py:972
 msgid "The invoice cannot be downloaded right now. Try again in a moment."
 msgstr ""
 "Ahora no se puede descargar la factura. Inténtalo de nuevo en un momento."
 
-#: queries.py:1011
+#: queries.py:1016
 msgid "Date"
 msgstr "Fecha"
 
-#: queries.py:1011
+#: queries.py:1016
 msgid "Business"
 msgstr "Negocio"
 
-#: queries.py:1011
+#: queries.py:1016
 msgid "Tax base"
 msgstr "Base imponible"
 
-#: queries.py:1011
+#: queries.py:1016
 msgid "VAT"
 msgstr "IVA"
 
-#: queries.py:1011
+#: queries.py:1016
 msgid "Currency"
 msgstr "Moneda"
 
-#: queries.py:1012
+#: queries.py:1017
 msgid "Payment"
 msgstr "Pago"
 
-#: queries.py:1012
+#: queries.py:1017
 msgid "Status"
 msgstr "Estado"
 
@@ -1835,8 +1847,8 @@ msgid ""
 "This module is no longer sold: it works until its cancellation ends and "
 "cannot be kept."
 msgstr ""
-"Este módulo ya no se vende: funciona hasta que termina su cancelación y no se "
-"puede mantener."
+"Este módulo ya no se vende: funciona hasta que termina su cancelación y no "
+"se puede mantener."
 
 #: services.py:2025
 msgid "The plan is cancelled, and its modules with it: keep the plan first."

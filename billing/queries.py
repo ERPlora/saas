@@ -955,12 +955,18 @@ def invoice_pdf(ctx: OperationContext, data: InvoiceByIdIn) -> dict:
     asked on demand: round 17 §2.7). 404 ``billing.invoice_not_issued`` until the Hub issued it."""
     user = _billing_account(ctx)
     invoice = invoice_of(user, data.id)
+    return {"filename": f"{invoice.number}.pdf", "content_type": "application/pdf", "content": platform_invoice_pdf(invoice)}
+
+
+def platform_invoice_pdf(invoice: Invoice) -> bytes:
+    """The PDF ERPlora's platform hub issued of ``invoice``, asked now (also the admin's, BILLING-G12): 404
+    ``billing.invoice_not_issued`` until it is issued, 503 ``billing.platform_unavailable`` with the Hub away."""
     if invoice.payment_status != Invoice.PaymentStatus.PAID or invoice.fiscal_status not in ISSUED_STATUSES:
         raise NotFound(
             _("This invoice is still being issued: its PDF is ready once it is."), code="billing.invoice_not_issued"
         )
     try:
-        content = hub_client.get_platform_invoice_pdf(str(invoice.id))
+        return hub_client.get_platform_invoice_pdf(str(invoice.id))
     except HubUnavailable:
         raise OperationError(
             _("The invoice cannot be downloaded right now. Try again in a moment."),
@@ -972,7 +978,6 @@ def invoice_pdf(ctx: OperationContext, data: InvoiceByIdIn) -> dict:
         raise NotFound(
             _("This invoice is still being issued: its PDF is ready once it is."), code="billing.invoice_not_issued"
         ) from None
-    return {"filename": f"{invoice.number}.pdf", "content_type": "application/pdf", "content": content}
 
 
 #: What makes a spreadsheet read a cell as a formula (CSV injection, OWASP).
