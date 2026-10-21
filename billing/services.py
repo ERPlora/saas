@@ -1522,7 +1522,8 @@ def _phase_items(live: dict, replaced: dict[str, dict]) -> list[dict]:
             {
                 "price": change.get("price") or line["price"]["id"],
                 "quantity": line.get("quantity") or 1,
-                "tax_rates": change.get("tax_rates", rates),
+                # A phase lists its items whole: no rate is an empty list there (``_rates_param`` is for updates).
+                "tax_rates": change.get("tax_rates", rates) or [],
             }
         )
     return items
@@ -1618,7 +1619,9 @@ def _plan_change(
     if current is None:
         _require_room(live)
     items = [
-        {"id": current["id"], **plan_line} if current else {**plan_line, "quantity": 1}
+        {"id": current["id"], **plan_line, "tax_rates": _rates_param(tax_rates)}
+        if current
+        else {**plan_line, "quantity": 1}
     ]
     if sale.interval != subscription.billing_interval:
         for item in _live_items(live):
@@ -1630,7 +1633,9 @@ def _plan_change(
                 {
                     "id": item["id"],
                     "price": module_line.price_id,
-                    "tax_rates": price_sale(hub, module_line, recurring_net=recurring),
+                    "tax_rates": _rates_param(
+                        price_sale(hub, module_line, recurring_net=recurring)
+                    ),
                 }
             )
     if current is not None:
@@ -2829,6 +2834,150 @@ def mark_card_changed(
             if local is not None and local.status in DUNNING_STATUSES:
                 apply_state(business, unpaid_state(business, local.status, now))
     return noted
+
+
+# --- The rate of a live subscription (BILLING-F02, BILLING-F06) -----------------------------------------
+
+#: Stripe statuses whose next invoice is still going to be charged.
+RETAX_STATUSES = ("active", "trialing", "past_due")
+#: The counts of a daily pass; ``refused`` and ``errors`` make the run fail after its pass (``task_failed``).
+RETAX_COUNTS = ("retaxed", "unchanged", "skipped", "refused", "errors")
+
+
+def _rates_param(rates: list[str]) -> list[str] | str:
+    """``tax_rates`` of an item UPDATE: an empty list is dropped by the SDK (Stripe keeps the old rate), an
+    empty string is what removes it."""
+    return rates or ""
+
+
+def _item_sale(subscription: Subscription, line: dict) -> Sale | None:
+    """What an item of the live subscription sells (its plan or its module, at its interval), or ``None`` for
+    a price no plan nor module has."""
+    price_id = (line.get("price") or {}).get("id", "")
+    found = queries.plan_for_price(price_id)
+    if found is not None:
+        plan, interval = found
+        return Sale(
+            "plan",
+            plan.slug,
+            interval,
+            price_id,
+            Decimal((plan.price_annual if interval == "year" else plan.price_monthly) or 0),
+            vat.SAAS_SUBSCRIPTION_CATEGORY,
+            plan=plan,
+        )
+    found = queries.module_for_price(price_id)
+    if found is not None:
+        module, interval = found
+        cents = module.price_annual_cents if interval == "year" else module.price_monthly_cents
+        return Sale(
+            "module",
+            module.slug,
+            interval,
+            price_id,
+            Decimal(cents) / 100,
+            vat.SOFTWARE_LICENSE_CATEGORY,
+            module=module,
+        )
+    logger.warning(
+        "[BILLING] Item %s of %s bills price %s, which no plan nor module has: its rate is left alone",
+        line.get("id"),
+        subscription.stripe_subscription_id,
+        price_id,
+    )
+    return None
+
+
+def retax_subscription(hub: Hub) -> str:
+    """Hand Stripe the rates the payer's place calls for today on every item of the business's live
+    subscription: the checkout fixes a rate per item and Stripe charges it on every renewal, so a payer who
+    moves (Madrid → Las Palmas), proves a VAT number, or a year that crosses the OSS threshold would keep the
+    old one (saas#2293). The same engine as the sale (``price_sale``); the next invoice takes the new rate,
+    the paid period is not touched (no proration).
+
+    ``retaxed`` · ``unchanged`` (Stripe already holds them: nothing sent) · ``skipped`` (no live Stripe
+    subscription, or a downgrade waiting in a schedule, whose next phase holds its own items) · ``refused``
+    (the place is not sold to now: an ERROR, and the old rates stay until the billing details are fixed).
+    Stripe failing raises (``stripe_errors``)."""
+    subscription = Subscription.objects.filter(hub=hub).select_related("plan").first()
+    if (
+        subscription is None
+        or not subscription.stripe_subscription_id
+        or subscription.status not in RETAX_STATUSES
+        or pending_change(hub) is not None
+    ):
+        return "skipped"
+    require_stripe()
+    hub = Hub.objects.select_related("billing_profile").get(pk=hub.pk)
+    live = _live(subscription)
+    changes = []
+    for line in _live_items(live):
+        sale = _item_sale(subscription, line)
+        if sale is None:
+            continue
+        try:
+            due = price_sale(
+                hub, sale, recurring_net=_recurring_net(subscription, sale.interval)
+            )
+        except Conflict as refused:
+            logger.error(
+                "[BILLING] %s of hub %s cannot be retaxed (%s): Stripe keeps charging its old rate",
+                sale.kind,
+                hub.id,
+                refused.code,
+                extra={"event": "billing.retax_refused", "hub_id": str(hub.id), "code": refused.code},
+            )
+            return "refused"
+        held = [rate["id"] if isinstance(rate, dict) else rate for rate in line.get("tax_rates") or []]
+        if sorted(held) != sorted(due):
+            changes.append({"id": line["id"], "tax_rates": _rates_param(due)})
+    if not changes:
+        return "unchanged"
+    with stripe_errors():
+        stripe_service.update_subscription(
+            subscription.stripe_subscription_id,
+            {"items": changes, "proration_behavior": "none"},
+        )
+    logger.info("[BILLING] Hub %s retaxed: %s", hub.id, changes)
+    return "retaxed"
+
+
+def retax_payer(profile_id) -> None:
+    """After the owner saves the billing details (on commit): retax every business this payer pays. A
+    failure is logged; the daily pass (``retax_subscriptions``) tries again."""
+    for hub in Hub.objects.filter(billing_profile_id=profile_id).order_by("pk"):
+        try:
+            retax_subscription(hub)
+        except Exception:  # noqa: BLE001 - the save stands; the daily pass retaxes it
+            logger.exception(
+                "[BILLING] Hub %s could not be retaxed after its billing details changed",
+                hub.id,
+                extra={"event": "billing.retax_failed", "hub_id": str(hub.id)},
+            )
+
+
+def retax_live_subscriptions() -> Counter:
+    """One daily pass: every live Stripe subscription takes the rates of today (an address change whose push
+    failed, the OSS threshold crossed or a new year back to origin, a rate the table schedules). One business
+    never stops the others."""
+    counts = Counter({key: 0 for key in RETAX_COUNTS})
+    live = (
+        Subscription.objects.filter(status__in=RETAX_STATUSES)
+        .exclude(stripe_subscription_id="")
+        .select_related("hub")
+        .order_by("pk")
+    )
+    for subscription in live:
+        try:
+            counts[retax_subscription(subscription.hub)] += 1
+        except Exception:  # noqa: BLE001 - one business never stops the pass; it is retried on the next one
+            logger.exception(
+                "[BILLING] %s could not be retaxed",
+                subscription.stripe_subscription_id,
+                extra={"event": "billing.retax_failed", "hub_id": str(subscription.hub_id)},
+            )
+            counts["errors"] += 1
+    return counts
 
 
 # --- saas-cron: manage.py sweep_unpaid ----------------------------------------------------------------

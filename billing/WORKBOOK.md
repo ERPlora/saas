@@ -156,7 +156,7 @@ Implicados: hubs (los datos del negocio y de quien paga)
 
 ### BILLING-F02 Calcular el impuesto de una venta según dónde está el pagador
 <!-- origen: old-saas:SAAS_DASHBOARD-F91 -->
-Estado: parcial — cambiar los datos de facturación no cambia el impuesto de una suscripción que ya se cobra hasta el siguiente cambio de plan
+Estado: parcial — con un cambio a un plan menor ya programado, la primera factura del plan nuevo sale con el tipo de antes de cambiar los datos de facturación (las siguientes ya llevan el nuevo)
 Actor: sistema
 Pantalla: ninguna
 Pasos:
@@ -164,9 +164,10 @@ Pasos:
 2. Califica la venta con la misma regla que luego usa la factura: península y Baleares, IVA español; Canarias, Ceuta y Melilla, sin IVA (se cobra el precio sin nada encima); otro país de la UE con NIF-IVA comprobado en VIES, inversión del sujeto pasivo, sin IVA; un particular de otro país de la UE, IVA español hasta superar el umbral de ventas a distancia y después el de su país; Reino Unido, solo a empresas y sin IVA.
 3. Si el total con IVA pasa de 400 € y quien paga no tiene NIF, la venta se niega y se pide (una factura simplificada no puede pasar de ahí).
 4. El tipo resultante viaja a Stripe con cada línea de la suscripción; Stripe solo suma lo que se le da.
+5. Al guardar los **datos de facturación**, la suscripción que ya se cobra toma el tipo del lugar nuevo desde la siguiente factura, sin tocar lo ya pagado (por ejemplo, quien se muda de Madrid a Las Palmas deja de pagar IVA). Una revisión diaria repite lo mismo con todas las suscripciones vivas por si un cambio no llegó.
 Entra: país, código postal y NIF de quien paga, la última comprobación de VIES, el precio sin IVA y qué se vende (plan o módulo).
 Sale: el tipo de cada línea en Stripe, o la negativa con su motivo.
-Si falla: «Faltan los datos de facturación» lleva al formulario; un territorio sin regla en la tabla no se vende; un consumidor del Reino Unido no compra; más de 400 € sin NIF pide el NIF. Un precio de 0 € nunca se niega.
+Si falla: «Faltan los datos de facturación» lleva al formulario; un territorio sin regla en la tabla no se vende; un consumidor del Reino Unido no compra; más de 400 € sin NIF pide el NIF. Un precio de 0 € nunca se niega. Si al guardar los datos Stripe no contesta, los datos se guardan igual y la revisión diaria aplica el tipo; si el lugar nuevo no se vende, la suscripción sigue con su tipo y la revisión diaria se pone en rojo para el equipo.
 Implicados: hubs (los datos de quien paga)
 
 ### BILLING-F03 Decidir el IVA de cada cobro
@@ -215,16 +216,17 @@ Implicados: ninguno
 
 ### BILLING-F06 Seguir el umbral de ventas a distancia en la UE (OSS)
 <!-- origen: old-saas:SAAS_DASHBOARD-F145 -->
-Estado: parcial — no hay aviso al equipo al acercarse al umbral ni cambio de tipo de las suscripciones ya vivas al cruzarlo
+Estado: parcial — no hay aviso al equipo al pasar del 80 % del umbral (el SaaS nuevo no tiene buzón del equipo) y la revisión diaria que cambia el tipo de las suscripciones vivas aún no está programada
 Actor: sistema, personal de ERPlora
 Pantalla: Admin › Política fiscal
 Pasos:
 1. Cada factura a un particular de otro país de la UE suma su base al total del año (las rectificativas restan); el total de lo vendido por el SaaS anterior se carga una vez a mano en **Política fiscal**.
 2. **Política fiscal** enseña el total del año contra el umbral (10.000 € por defecto) y los interruptores del alta en OSS y en el ROI.
 3. Por encima del umbral (o con el alta voluntaria en OSS, o si el año anterior cerró por encima) las ventas nuevas a particulares de la UE llevan el IVA del país del cliente.
+4. La revisión diaria de las suscripciones vivas pasa a esos clientes al tipo de su país desde la siguiente factura (y de vuelta al español cuando el año vuelve a origen); lo que Stripe ya tiene no se le manda otra vez.
 Entra: las facturas y la política.
-Sale: el tipo de cada venta nueva.
-Si falla: mientras el total del año no se ha cargado, el admin dice «desconocido» y con claves reales no se vende nada (es preferible no vender a cruzar el umbral sin verlo).
+Sale: el tipo de cada venta nueva y el de las suscripciones vivas.
+Si falla: un negocio que Stripe no deja cambiar no para la revisión: se reintenta al día siguiente y el equipo lo ve en rojo. Mientras el total del año no se ha cargado, el admin dice «desconocido» y con claves reales no se vende nada (es preferible no vender a cruzar el umbral sin verlo).
 Implicados: ninguno
 
 ### BILLING-F07 Pagar el plan de un negocio recién creado
