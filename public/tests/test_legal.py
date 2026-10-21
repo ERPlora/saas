@@ -170,6 +170,19 @@ def test_privacy_contains_spanish_marker(client):
 
 
 @pytest.mark.django_db
+def test_privacy_says_what_happens_to_the_payer_when_the_account_is_deleted(client):
+    """ACCOUNTS-F27 (GDPR art. 17 and 17(3)(b)): the payer details and the Stripe customer go with the account;
+    an unpaid ERPlora invoice holds them 90 days at most, and the issued invoices keep their own copy."""
+    english = client.get("/legal/privacy/").content.decode()
+    html = spanish(client, "/legal/privacy/")
+
+    assert "Payer details" in english
+    assert "Datos del pagador" in html
+    assert "se borran al eliminar tu cuenta" in html
+    assert "90 días" in html
+
+
+@pytest.mark.django_db
 def test_privacy_sections_are_numbered_consecutively(client):
     html = client.get("/legal/privacy/").content.decode()
     numbers = [int(n) for n in re.findall(r"<h2>(\d+)\.", html)]

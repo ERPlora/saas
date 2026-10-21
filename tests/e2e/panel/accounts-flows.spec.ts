@@ -435,7 +435,7 @@ test('ACCOUNTS-G119: the sign-in says what continuing accepts, and the account k
   await expect(foot.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', /\/legal\/privacy\/$/);
   await signInThroughPage(page, { email, password: PASSWORD });
 
-  expect(acceptedVersions(email)).toBe('2026-10-13 2026-10-13 True');
+  expect(acceptedVersions(email)).toBe('2026-10-13 2026-10-21 True');
   expect(errors).toEqual([]);
 });
 
