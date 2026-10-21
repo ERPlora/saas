@@ -172,6 +172,20 @@ class TestPayersFirstHandThePaymentOver:
             "tu cuenta."
         )
 
+    def test_a_payer_taken_out_of_the_business_is_refused_too(self, signed_in, ana, handed_over):
+        """saas#2587 again: the new owner removed the old one from the business (``hubs.member.remove`` has no payer
+        guard), but its card still pays for it. Not a member, so not in ``hubs.business.list``: the account must still
+        be refused, or Stripe keeps charging a card nobody can stop and ``forget_departed_payer`` holds the payer for ever."""
+        from hubs.models import HubMember
+
+        HubMember.objects.filter(hub=handed_over, user=ana).delete()
+
+        response = api_post(signed_in, DELETE)
+
+        assert response.status_code == 409
+        assert response.json()["error"]["code"] == "accounts.pays_businesses"
+        assert _exists(ana)
+
     def test_a_deleted_business_does_not_hold_its_payer(self, signed_in, ana, handed_over):
         from hubs.models import Hub
 
