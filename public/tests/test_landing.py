@@ -26,7 +26,7 @@ What changed, and why:
   frozen in ``pm/LOCKED.md``, the xfail that waited for it is a plain test now);
 * the plan cards are ``public/components/pricing_card.html`` and the contact page uses the ``ep-*``
   classes (PLAN §16.11);
-* the contact mail is rendered from ``public/templates/public/email/`` and sent with ``send_mail``
+* the contact mail is rendered from ``public/templates/public/email/`` and sent with ``EmailMessage``
   to ``SUPPORT_EMAIL`` (plan §3.o); the limit per address reads the address the load balancer saw
   (the last hop of ``X-Forwarded-For``), never the balancer's own;
 * no page names Hetzner as the host any more (Ioan, 2026-10-13: AWS; Ireland region, 2026-10-14).
@@ -51,7 +51,7 @@ from django.utils import translation
 
 from apps.tests.factories import CUBE_SVG, make_app
 from hubs.models import Plan
-from public import landing
+from public import context_processors, landing
 from public.tests.test_cookies import VALKEY_DOWN
 from public.tests.test_legal import template_messages
 
@@ -569,10 +569,11 @@ def test_the_contact_page_has_the_form_posting_to_the_submit_route(client):
 
 
 def test_the_contact_page_gives_the_other_ways_to_reach_us(client):
+    """PUBLIC-G41: the support address of the footer (no more «info@»), and the support chat."""
     html = html_of(client, CONTACT)
 
-    assert "mailto:info@erplora.com" in html
-    assert "https://wa.me/34643759040" in html
+    assert f"mailto:{settings.SUPPORT_EMAIL}" in html
+    assert 'href="https://wa.me/34643759040"' in html
 
 
 def test_the_contact_page_in_spanish(client):
@@ -761,7 +762,7 @@ def test_a_mail_failure_is_told_to_the_visitor_and_logged(client, monkeypatch, c
     def broken(*args, **kwargs):
         raise OSError("SMTP down")
 
-    monkeypatch.setattr(landing, "send_mail", broken)
+    monkeypatch.setattr(landing.EmailMessage, "send", broken)
 
     response = submit(client)
 
@@ -1012,6 +1013,7 @@ def test_the_python_messages_have_their_spanish_entry(client):
                 str(text)
                 for text in (
                     *landing.FORM_MESSAGES.values(),
+                    landing.sent_message(),
                     landing.contact_trial_note((15, 15)),
                     landing.contact_trial_note((15, 30)),
                 )
@@ -1084,3 +1086,137 @@ def test_the_home_points_to_the_app_page(client):
 
     assert f'href="{reverse("public:app")}"' in app_section
     assert "/bridge/" not in app_section
+
+
+# --- PUBLIC-G39: the message reaches support with the visitor to answer, and nothing typed is lost ---
+
+
+def form_of(html: str) -> str:
+    start = html.index('<form id="contact-form"')
+    return html[start : html.index("</form>", start)]
+
+
+def test_the_mail_to_support_replies_to_the_visitor(client):
+    """Support answers with «Reply»: the mail comes from our sender but replies to the visitor."""
+    submit(client)
+
+    (sent,) = mail.outbox
+    assert sent.reply_to == ["john.doe@example.com"]
+    assert sent.from_email == settings.DEFAULT_FROM_EMAIL
+
+
+@pytest.mark.parametrize(
+    "overrides", [{"last_name": ""}, {"email": "not-an-address"}], ids=["required", "email"]
+)
+def test_a_refused_message_comes_back_with_what_was_typed(client, overrides):
+    response = submit(client, next=CONTACT, **overrides)
+
+    form = form_of(client.get(response["Location"].split("#")[0]).content.decode())
+    assert 'value="John"' in form
+    assert 'value="+34 600 000 000"' in form
+    assert "Hello, I would like more information about ERPlora." in form
+    assert f'value="{overrides.get("email", VALID["email"])}"' in form
+
+
+def test_a_mail_failure_keeps_what_was_typed_on_the_home_too(client, monkeypatch):
+    def broken(*args, **kwargs):
+        raise OSError("SMTP down")
+
+    monkeypatch.setattr(landing.EmailMessage, "send", broken)
+
+    response = submit(client, next=HOME)
+
+    assert 'value="John"' in form_of(html_of(client, response["Location"].split("#")[0]))
+
+
+def test_what_was_typed_is_shown_once_and_never_after_a_sent_message(client):
+    submit(client, next=CONTACT, last_name="")
+    client.get(CONTACT)
+
+    assert 'value="John"' not in form_of(html_of(client, CONTACT))
+    submit(client, next=CONTACT)
+    assert 'value="John"' not in form_of(html_of(client, CONTACT))
+
+
+def test_what_was_typed_is_escaped_when_it_comes_back(client):
+    submit(client, next=CONTACT, last_name="", first_name='"><script>x()</script>')
+
+    form = form_of(html_of(client, CONTACT))
+    assert "<script>x()" not in form
+    assert "&quot;&gt;&lt;script&gt;" in form
+
+
+# --- PUBLIC-G40: arriving from another page keeps what the visitor came for ----------------------------
+
+
+def test_the_collaborate_button_opens_the_form_on_its_topic(client):
+    html = html_of(client, "/collaborate/")
+
+    assert f'href="{CONTACT}?subject=collaborate"' in html
+
+
+def test_a_known_topic_rides_with_the_form_and_names_the_mail(client):
+    form = form_of(html_of(client, f"{CONTACT}?subject=collaborate"))
+
+    assert '<input type="hidden" name="subject" value="collaborate">' in form
+    submit(client, subject="collaborate")
+    assert mail.outbox[0].subject == "Contact Form [Collaborator program]: John Doe"
+
+
+def test_the_security_button_opens_the_form_on_its_topic(client):
+    html = html_of(client, "/security/")
+
+    assert f'href="{CONTACT}?subject=security"' in html
+    submit(client, subject="security")
+    assert mail.outbox[0].subject == "Contact Form [Security]: John Doe"
+
+
+@pytest.mark.parametrize("subject", ["Collaborator Program", "<b>x</b>", "x" * 300, ""])
+def test_an_unknown_topic_is_ignored(client, subject):
+    form = form_of(html_of(client, f"{CONTACT}?subject={subject}"))
+
+    assert 'name="subject"' not in form
+    submit(client, subject=subject)
+    assert mail.outbox[0].subject == "Contact Form: John Doe"
+
+
+# --- PUBLIC-G41: one support address, one chat and one reply time, from one place ------------------------
+
+
+def test_the_contact_page_email_is_the_support_address(client, settings):
+    settings.SUPPORT_EMAIL = "help@erplora.test"
+
+    html = html_of(client, CONTACT)
+
+    assert "mailto:help@erplora.test" in html
+    assert "info@erplora.com" not in html
+
+
+def test_the_reply_time_is_written_once(client, monkeypatch):
+    monkeypatch.setattr(context_processors, "SUPPORT_REPLY_HOURS", 6)
+
+    contact = html_of(client, CONTACT)
+    home = html_of(client)
+    response = submit(client)
+
+    assert "Within 6 business hours" in contact
+    assert "We typically respond within 6 business hours." in form_of(contact)
+    assert ">6 h<" in hero(home)
+    assert any("within 6 business hours" in message for message in messages_of(response))
+    assert "4 business hours" not in contact + home
+
+
+def test_the_reply_time_in_spanish(client):
+    html = html_of(client, CONTACT, language="es")
+
+    assert "En un plazo de 4 horas laborables" in html
+    assert "Normalmente respondemos en un plazo de 4 horas laborables." in html
+
+
+def test_the_chat_is_written_once(client, monkeypatch):
+    monkeypatch.setattr(context_processors, "SUPPORT_WHATSAPP_URL", "https://wa.me/34600000000")
+
+    html = html_of(client, CONTACT)
+
+    assert 'href="https://wa.me/34600000000"' in html
+    assert "34643759040" not in html

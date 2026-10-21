@@ -5,35 +5,37 @@
   (ADR-0154): public/landing.py limits the form per address. The result is a server message
   painted by the base, so this partial no longer paints its own. The required fields are checked
   here before posting, because the ion-input elements are custom elements and show no native
-  tooltip; the server checks them again. The fields are Material (md) outlines: an outline does
-  not paint in ios mode.
+  tooltip; the server checks them again. A refused or failed message comes back with what was typed
+  (`contact_draft`, PUBLIC-G39) and a page that links here may name its topic (`contact_topic`, PUBLIC-G40).
+  The fields are Material (md) outlines: an outline does not paint in ios mode.
 {% endcomment %}
 <form id="contact-form" class="contact-fields" method="post" action="{% url 'public:contact_submit' %}" novalidate>
     {% csrf_token %}
     <input type="hidden" name="next" value="{{ request.path }}">
+    {% if contact_topic %}<input type="hidden" name="subject" value="{{ contact_topic }}">{% endif %}
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
         <ion-input mode="md" label="{% trans 'First name' %}" label-placement="floating" fill="outline"
-                   name="first_name" type="text" required
+                   name="first_name" value="{{ contact_draft.first_name }}" type="text" required
                    error-text="{% trans 'This field is required' %}"
                    placeholder="{% trans 'Anne' %}"></ion-input>
         <ion-input mode="md" label="{% trans 'Last name' %}" label-placement="floating" fill="outline"
-                   name="last_name" type="text" required
+                   name="last_name" value="{{ contact_draft.last_name }}" type="text" required
                    error-text="{% trans 'This field is required' %}"
                    placeholder="{% trans 'Garcia' %}"></ion-input>
     </div>
 
     <ion-input mode="md" class="mt-3" label="{% trans 'Work email' %}" label-placement="floating" fill="outline"
-               name="email" type="email" required
+               name="email" value="{{ contact_draft.email }}" type="email" required
                error-text="{% trans 'Enter a valid email address' %}"
                placeholder="you@company.com"></ion-input>
 
     <ion-input mode="md" class="mt-3" label="{% trans 'Phone (optional)' %}" label-placement="floating" fill="outline"
-               name="phone" type="tel"
+               name="phone" value="{{ contact_draft.phone }}" type="tel"
                placeholder="+34 600 000 000"></ion-input>
 
     <ion-textarea mode="md" class="mt-3" label="{% trans 'What do you need?' %}" label-placement="floating" fill="outline"
-                  name="message" rows="4" required
+                  name="message" value="{{ contact_draft.message }}" rows="4" required
                   error-text="{% trans 'This field is required' %}"
                   placeholder="{% trans 'Migrate from Holded, looking to add payroll and WMS...' %}"></ion-textarea>
 
@@ -41,7 +43,7 @@
         <span slot="start">{% icon "lucide:send" %}</span>
         {% trans "Get in touch" %}
     </ion-button>
-    <p class="text-xs text-fg/70 mt-2">{% trans "We typically respond within 4 business hours." %}</p>
+    <p class="text-xs text-fg/70 mt-2">{% blocktrans trimmed count hours=SUPPORT_REPLY_HOURS %}We typically respond within {{ hours }} business hour.{% plural %}We typically respond within {{ hours }} business hours.{% endblocktrans %}</p>
 </form>
 
 {% trans 'This field is required' as required_error %}{% trans 'Enter a valid email address' as email_error %}

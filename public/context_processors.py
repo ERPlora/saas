@@ -1,8 +1,8 @@
 """What every template of the public web knows.
 
 Ported from ERPlora/saas ``config/context_processors.py`` (``site_settings``, origin/develop
-c5ca8ca), only its public part: the analytics ids, the support address and the two flags the
-analytics partial reads.
+c5ca8ca), only its public part: the analytics ids, the support address, chat and reply time, and the two
+flags the analytics partial reads.
 """
 
 from __future__ import annotations
@@ -29,6 +29,13 @@ CREDENTIALS_SPA_PAGES = (
 )
 
 
+#: How soon support answers, in business hours: the contact form, the contact page and the home state this number
+#: and no other (PUBLIC-G41). The address is ``SUPPORT_EMAIL`` (settings).
+SUPPORT_REPLY_HOURS = 4
+#: The support chat (WhatsApp), the only place the web writes it (PUBLIC-G41).
+SUPPORT_WHATSAPP_URL = "https://wa.me/34643759040"
+
+
 def _is_authenticated(request: HttpRequest) -> bool:
     """An error page may render a request that never reached ``AuthenticationMiddleware`` (a 404
     raised before it): ``request.user`` is not guaranteed (saas#1631)."""
@@ -49,8 +56,10 @@ def public_site(request: HttpRequest) -> dict:
     return {
         "GA_MEASUREMENT_ID": settings.GA_MEASUREMENT_ID,
         "CLARITY_PROJECT_ID": settings.CLARITY_PROJECT_ID,
-        # The visible support contact (footer, help, landing): one source.
+        # The visible support contact (footer, help, landing): one source each (PUBLIC-G41).
         "SUPPORT_EMAIL": settings.SUPPORT_EMAIL,
+        "SUPPORT_REPLY_HOURS": SUPPORT_REPLY_HOURS,
+        "SUPPORT_WHATSAPP_URL": SUPPORT_WHATSAPP_URL,
         # Clarity records the screen: only an anonymous visitor on the public half. The boundary
         # is the session, not the URL, so a private page added later is covered (saas#958).
         "is_public_page": not _is_authenticated(request) and not is_private(request),

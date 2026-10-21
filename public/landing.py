@@ -10,8 +10,10 @@ Port of ERPlora/saas ``apps/public/landing/views.py`` (origin/develop c5ca8ca); 
   order of ``apps.app.list``; ``is_featured`` and the downloads do not exist any more), counted free
   or ``premium`` (decision 17: a premium app is included in the paid plans). Without a listed app
   the apps blocks are omitted (spec §5.3);
-* the contact mail is rendered from ``public/templates/public/email/`` and sent with ``send_mail``
-  to ``SUPPORT_EMAIL`` (plan §3.o); its limit per address reads the address the load balancer saw;
+* the contact mail is rendered from ``public/templates/public/email/`` and sent to ``SUPPORT_EMAIL``
+  (plan §3.o) with the visitor as «Reply-To»; its limit per address reads the address the load balancer saw;
+  a refused or failed message comes back typed (PUBLIC-G39), and a page that links the form may name its
+  topic (``?subject=``, PUBLIC-G40);
 * the contact section states the real trial of the plans on sale, never a typed «15 days».
 """
 
@@ -24,7 +26,7 @@ from typing import Any
 from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.core.mail import send_mail
+from django.core.mail import EmailMessage
 from django.core.validators import validate_email
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
@@ -41,7 +43,7 @@ from django_ratelimit.decorators import ratelimit
 from live.meta import Category
 from live.ninja import run_operation_sync
 
-from public import pricing
+from public import context_processors, pricing
 from public.structured_data import json_ld, organization, software_application
 
 logger = logging.getLogger(__name__)
@@ -66,20 +68,49 @@ TYPICAL_STACK = (
     (gettext_lazy("E-commerce + POS"), "Shopify + Square", 112),
 )
 
-#: The answers of the contact form, by outcome (``messages``, after the redirect).
+#: The topics another page may open the form on (``/contact/?subject=<key>``, PUBLIC-G40), and how the mail
+#: to support names them (internal, in English like the rest of the mail). Any other value is ignored.
+CONTACT_TOPICS = {
+    "collaborate": "Collaborator program",
+    "security": "Security",
+}
+#: What the visitor typed, kept in the session when the message is refused or fails (PUBLIC-G39) and shown once.
+CONTACT_DRAFT_KEY = "public.contact_draft"
+#: The fields of the form, in order.
+CONTACT_FIELDS = ("first_name", "last_name", "email", "phone", "message")
+
+#: The answers of the contact form, by outcome (``messages``, after the redirect); the «sent» one states the
+#: reply time (:func:`sent_message`).
 FORM_MESSAGES = {
     "limited": gettext_lazy(
         "Too many messages from your network. Please try again in a little while."
     ),
     "required": gettext_lazy("All fields are required except the phone number."),
     "email": gettext_lazy("Enter a valid email address."),
-    "sent": gettext_lazy(
-        "Thanks! We received your message and will reply within 4 business hours."
-    ),
     "failed": gettext_lazy(
         "Sorry, something went wrong sending your message. Please try again."
     ),
 }
+
+
+def sent_message() -> str:
+    """The answer to a sent message, with the reply time the web states everywhere (PUBLIC-G41)."""
+    hours = context_processors.SUPPORT_REPLY_HOURS
+    return ngettext(
+        "Thanks! We received your message and will reply within %(hours)d business hour.",
+        "Thanks! We received your message and will reply within %(hours)d business hours.",
+        hours,
+    ) % {"hours": hours}
+
+
+def contact_form_context(request: HttpRequest) -> dict[str, Any]:
+    """What the form shows: the draft of a refused message (once) and the topic it was opened on."""
+    draft = request.session.pop(CONTACT_DRAFT_KEY, None) or {}
+    topic = request.GET.get("subject") or draft.get("subject")
+    return {
+        "contact_draft": draft,
+        "contact_topic": topic if topic in CONTACT_TOPICS else None,
+    }
 
 
 # --- The home -----------------------------------------------------------------------------------
@@ -150,6 +181,7 @@ def home(request: HttpRequest) -> HttpResponse:
             "premium_apps": len(premium),
             "premium_app_examples": [app["name"] for app in premium[:PREMIUM_EXAMPLES]],
             "contact_trial_note": contact_trial_note(pricing.trial_days(plans)),
+            **contact_form_context(request),
             "typical_stack": [
                 {"function": function, "tool": tool, "cost": cost}
                 for function, tool, cost in TYPICAL_STACK
@@ -174,7 +206,7 @@ def home(request: HttpRequest) -> HttpResponse:
 
 @require_safe
 def contact(request: HttpRequest) -> HttpResponse:
-    return render(request, "public/landing/contact.html")
+    return render(request, "public/landing/contact.html", contact_form_context(request))
 
 
 def visitor_address(group, request: HttpRequest) -> str:
@@ -218,45 +250,51 @@ def contact_submit(request: HttpRequest) -> HttpResponse:
     Bot protection: Cloudflare is gone and reCAPTCHA was retired (ADR-0154); the form is limited
     per address (``CONTACT_FORM_RATELIMIT``). A throttled or invalid message is never mailed.
     """
-    fields = {
-        name: request.POST.get(name, "").strip()
-        for name in ("first_name", "last_name", "email", "phone", "message")
-    }
+    fields = {name: request.POST.get(name, "").strip() for name in CONTACT_FIELDS}
+    subject = request.POST.get("subject", "")
+    topic = subject if subject in CONTACT_TOPICS else None
     if getattr(request, "limited", False):
-        messages.error(request, FORM_MESSAGES["limited"])
-        return _back_to(request)
+        return _refused(request, fields, topic, FORM_MESSAGES["limited"])
     if not all(
         fields[name] for name in ("first_name", "last_name", "email", "message")
     ):
-        messages.error(request, FORM_MESSAGES["required"])
-        return _back_to(request)
+        return _refused(request, fields, topic, FORM_MESSAGES["required"])
     try:
         validate_email(fields["email"])
     except ValidationError:
-        messages.error(request, FORM_MESSAGES["email"])
-        return _back_to(request)
+        return _refused(request, fields, topic, FORM_MESSAGES["email"])
 
     context = {
         **fields,
         # A header carries one line: a name with a line break must not add one to the subject.
         "first_name": _one_line(fields["first_name"]),
         "last_name": _one_line(fields["last_name"]),
+        "topic": CONTACT_TOPICS.get(topic or ""),
     }
     try:
-        send_mail(
+        EmailMessage(
             subject=_one_line(
                 render_to_string("public/email/contact_subject.txt", context)
             ),
-            message=render_to_string("public/email/contact_body.txt", context),
+            body=render_to_string("public/email/contact_body.txt", context),
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[settings.SUPPORT_EMAIL],
-            fail_silently=False,
-        )
+            to=[settings.SUPPORT_EMAIL],
+            # Support answers with «Reply»: to the visitor, never to our sender.
+            reply_to=[fields["email"]],
+        ).send(fail_silently=False)
     except Exception:
         # Any backend (SMTP, SES) may fail: the visitor is told, the cause goes to the log.
         logger.exception("Contact form message could not be sent")
-        messages.error(request, FORM_MESSAGES["failed"])
-        return _back_to(request)
+        return _refused(request, fields, topic, FORM_MESSAGES["failed"])
     logger.info("Contact form message sent to support")
-    messages.success(request, FORM_MESSAGES["sent"])
+    messages.success(request, sent_message())
+    return _back_to(request)
+
+
+def _refused(
+    request: HttpRequest, fields: dict[str, str], topic: str | None, message: str
+) -> HttpResponseRedirect:
+    """Back to the form with the reason and what was typed, so nothing has to be written twice."""
+    request.session[CONTACT_DRAFT_KEY] = {**fields, "subject": topic or ""}
+    messages.error(request, message)
     return _back_to(request)

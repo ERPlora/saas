@@ -1,3 +1,3 @@
 {% load i18n %}
-{% comment %} The action of /security/'s closing band: the contact page. {% endcomment %}
-<ion-button color="primary" href="{% url 'public:contact' %}">{% trans "Contact Security Team" %}</ion-button>
+{% comment %} The action of /security/'s closing band: the contact page, on its topic (PUBLIC-G40). {% endcomment %}
+<ion-button color="primary" href="{% url 'public:contact' %}?subject=security">{% trans "Contact Security Team" %}</ion-button>
