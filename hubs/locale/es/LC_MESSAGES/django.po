@@ -1098,6 +1098,24 @@ msgstr "%(email)s ya tiene una invitación pendiente. Reenvíala."
 msgid "This person has not answered yet: cancel the invitation."
 msgstr "Esta persona aún no ha respondido: cancela la invitación."
 
+#: services.py:787
+#, python-format
+msgid ""
+"%(name)s still pays for this business. Say who pays from now on first: your "
+"billing details are asked when you pay a plan or a module here."
+msgstr ""
+"%(name)s sigue pagando este negocio. Antes di quién paga a partir de ahora: "
+"tus datos de facturación se piden al pagar aquí un plan o un módulo."
+
+#: services.py:792
+#, python-format
+msgid ""
+"This business's plan is still paid with %(name)s's card: contact support to "
+"move it to you first."
+msgstr ""
+"El plan de este negocio aún se paga con la tarjeta de %(name)s: antes "
+"contacta con soporte para pasarlo a tu nombre."
+
 #: services.py:781
 msgid "This person already answered the invitation."
 msgstr "Esta persona ya respondió a la invitación."

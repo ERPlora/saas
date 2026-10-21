@@ -243,8 +243,11 @@ trata como ninguna (`UNKNOWN`: 503 `billing.payments_unavailable`, nunca un cobr
 - **Eliminar la cuenta** (ACCOUNTS-F27, RGPD art. 17): `payer_leaving` (señal `account_deleting`) pone a cada
   pagador de la cuenta su fecha de purga (`forget_after`, `PAYER_RETENTION` = los 90 días de `Hub.RETENTION`) y
   tras el COMMIT `forget_departed_payer` borra el cliente de Stripe, desliga sus negocios y borra la ficha, salvo
-  que algo aún se pueda cobrar: una suscripción que Stripe sigue cobrando (la termina la siguiente pasada) o una
-  factura sin pagar, que espera hasta su fecha de purga y entonces se anula en Stripe. Las facturas emitidas
+  que algo aún se pueda cobrar: una suscripción que Stripe sigue cobrando o una factura sin pagar, que espera
+  hasta su fecha de purga y entonces se anula en Stripe. Una suscripción viva solo llega aquí en un negocio
+  **eliminado**, y la termina la siguiente pasada de `sweep_unpaid`; la de un negocio vivo no llega nunca: quien
+  aún lo paga (su pagador, o la tarjeta que paga el plan tras un traspaso, `hubs.queries.still_pays`) ni elimina
+  su cuenta (409 `accounts.pays_businesses`) ni sale del negocio (409 `hubs.member_pays`). Las facturas emitidas
   guardan su copia del pagador. `sweep_unpaid` hace lo que el borrado no pudo (`payers_forgotten`; un fallo de
   Stripe cuenta en `errors`).
 - **Configuración de Stripe** (a mano, una vez): endpoint `https://erplora.com/webhooks/stripe/` con los eventos

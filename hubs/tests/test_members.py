@@ -25,13 +25,14 @@ import pytest
 from allauth.account.models import EmailAddress
 from django.contrib.auth import get_user_model
 from django.core import mail
-from django.utils import timezone
+from django.utils import timezone, translation
 from live.errors import Conflict, NotFound, PermissionDenied
 
 from accounts.models import HubMembership
 from hubs import queries, services
-from hubs.models import Hub, HubMember
+from hubs.models import BillingProfile, Hub, HubMember
 from hubs.schemas import (
+    BillingProfileIn,
     ByIdIn,
     InvitationListIn,
     MemberInviteIn,
@@ -394,6 +395,78 @@ class TestRemove:
             self.remove(team["owner"], member_of(business, team["invitee"]))
 
         assert refused.value.code == "hubs.member_pending"
+
+
+class TestRemoveThePayer:
+    """saas#2587: after a hand-over the old owner stays as an admin and keeps paying (its payer and card) until the
+    new owner says who pays from now on. Taking it out of the business would leave it paying for a business it no
+    longer sees, and free to delete its account with Stripe charging a card nobody can stop."""
+
+    @pytest.fixture
+    def handed_over(self, business, team):
+        from hubs.tests.test_ownership import accept, offer
+
+        accept(team["admin"], offer(team["owner"], business, team["admin"]).id)
+        return business
+
+    def remove(self, actor, member):
+        return services.member_remove(ctx_for(actor), ByIdIn(id=member.id))
+
+    def test_the_new_owner_cannot_take_out_the_one_who_pays(self, handed_over, team):
+        with pytest.raises(Conflict) as refused:
+            self.remove(team["admin"], member_of(handed_over, team["owner"]))
+
+        assert refused.value.code == "hubs.member_pays"
+        assert HubMember.objects.filter(hub=handed_over, user=team["owner"]).exists()
+
+    def test_the_refusal_speaks_spanish(self, handed_over, team):
+        old_owner = member_of(handed_over, team["owner"])
+        with pytest.raises(Conflict) as english:
+            self.remove(team["admin"], old_owner)
+        with translation.override("es"), pytest.raises(Conflict) as spanish:
+            self.remove(team["admin"], old_owner)
+
+        assert spanish.value.message and spanish.value.message != english.value.message
+
+    def test_once_the_new_owner_pays_the_old_one_can_go(self, handed_over, team):
+        services.billing_profile_update(
+            ctx_for(team["admin"]), BillingProfileIn(hub_id=handed_over.id, billing_name="Adela SL")
+        )
+
+        self.remove(team["admin"], member_of(handed_over, team["owner"]))
+
+        assert not HubMember.objects.filter(hub=handed_over, user=team["owner"]).exists()
+
+    def test_a_plan_still_charged_to_the_old_owners_card_keeps_it(self, handed_over, team):
+        """The new owner said who pays, but the plan's Stripe subscription is still charged to the old owner's
+        customer until support moves it (``billing.payer_required``): the old owner still pays."""
+        from billing.tests.conftest import pay
+
+        old_payer = HubMember.objects.get(hub=handed_over, user=team["owner"]).hub.billing_profile
+        BillingProfile.objects.filter(pk=old_payer.pk).update(stripe_customer_id="cus_olga")
+        pay(handed_over, customer="cus_olga")
+        services.billing_profile_update(
+            ctx_for(team["admin"]), BillingProfileIn(hub_id=handed_over.id, billing_name="Adela SL")
+        )
+
+        with pytest.raises(Conflict) as refused:
+            self.remove(team["admin"], member_of(handed_over, team["owner"]))
+
+        assert refused.value.code == "hubs.member_pays"
+
+    def test_an_ended_plan_on_the_old_card_holds_nobody(self, handed_over, team):
+        from billing.tests.conftest import pay
+
+        old_payer = HubMember.objects.get(hub=handed_over, user=team["owner"]).hub.billing_profile
+        BillingProfile.objects.filter(pk=old_payer.pk).update(stripe_customer_id="cus_olga")
+        pay(handed_over, customer="cus_olga", status="canceled")
+        services.billing_profile_update(
+            ctx_for(team["admin"]), BillingProfileIn(hub_id=handed_over.id, billing_name="Adela SL")
+        )
+
+        self.remove(team["admin"], member_of(handed_over, team["owner"]))
+
+        assert not HubMember.objects.filter(hub=handed_over, user=team["owner"]).exists()
 
 
 # --- Resending and cancelling an invitation -------------------------------------------------------

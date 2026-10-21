@@ -172,18 +172,52 @@ class TestPayersFirstHandThePaymentOver:
             "tu cuenta."
         )
 
-    def test_a_payer_taken_out_of_the_business_is_refused_too(self, signed_in, ana, handed_over):
-        """saas#2587 again: the new owner removed the old one from the business (``hubs.member.remove`` has no payer
-        guard), but its card still pays for it. Not a member, so not in ``hubs.business.list``: the account must still
-        be refused, or Stripe keeps charging a card nobody can stop and ``forget_departed_payer`` holds the payer for ever."""
-        from hubs.models import HubMember
+    def test_a_payer_taken_out_of_the_business_is_refused_too(self, signed_in, ana, handed_over, make_owner):
+        """saas#2587 again: the new owner tries to take the old one out of the business while its card still pays
+        for it. ``hubs.member.remove`` refuses it (``hubs.member_pays``), so the payer stays a member and its account
+        is still refused, or Stripe would keep charging a card nobody can stop and ``forget_departed_payer`` would
+        hold the payer for ever. (Deleting the membership through the ORM skips that door: no operation does it.)"""
+        from live.errors import Conflict
 
-        HubMember.objects.filter(hub=handed_over, user=ana).delete()
+        from hubs import services as hub_services
+        from hubs.models import HubMember
+        from hubs.schemas import ByIdIn
+        from hubs.tests.conftest import ctx_for
+
+        with pytest.raises(Conflict) as kept:
+            hub_services.member_remove(
+                ctx_for(make_owner), ByIdIn(id=HubMember.objects.get(hub=handed_over, user=ana).id)
+            )
+        assert kept.value.code == "hubs.member_pays"
 
         response = api_post(signed_in, DELETE)
 
         assert response.status_code == 409
         assert response.json()["error"]["code"] == "accounts.pays_businesses"
+        assert _exists(ana)
+
+    def test_a_card_that_still_pays_the_plan_is_refused_too(self, signed_in, ana, handed_over, make_owner):
+        """The new owner said who pays from now on (``hubs.billing_profile.update``), but the plan's Stripe
+        subscription is still charged to ana's customer until support moves it (``billing.payer_required``):
+        deleting ana's customer would end the business's plan, keeping it would charge a card nobody can stop."""
+        from billing.tests.conftest import pay
+        from hubs import services as hub_services
+        from hubs.models import BillingProfile
+        from hubs.schemas import BillingProfileIn
+        from hubs.tests.conftest import ctx_for
+
+        BillingProfile.objects.filter(pk=handed_over.billing_profile_id).update(stripe_customer_id="cus_ana")
+        pay(handed_over, customer="cus_ana")
+        hub_services.billing_profile_update(
+            ctx_for(make_owner), BillingProfileIn(hub_id=handed_over.id, billing_name="Marta SL")
+        )
+
+        response = api_post(signed_in, DELETE)
+
+        assert response.status_code == 409
+        error = response.json()["error"]
+        assert error["code"] == "accounts.pays_businesses"
+        assert error["businesses"] == [{"id": str(handed_over.pk), "name": "Panadería López"}]
         assert _exists(ana)
 
     def test_a_deleted_business_does_not_hold_its_payer(self, signed_in, ana, handed_over):

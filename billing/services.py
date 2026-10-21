@@ -3397,7 +3397,11 @@ PAYER_HELD = "held"
 
 def payer_leaving(sender, user_id, **kwargs) -> None:
     """``accounts.signals.account_deleting``: each payer of the account gets its purge date and goes after the
-    COMMIT, unless something can still be charged to it (``forget_departed_payer``; ``sweep_unpaid`` finishes)."""
+    COMMIT, unless something can still be charged to it (``forget_departed_payer``; ``sweep_unpaid`` finishes).
+
+    A live subscription only holds it here in a business that was deleted, which ``sweep_unpaid`` cancels on its
+    next pass. A business still alive never does: whoever still pays for it (``hubs.queries.still_pays``) can
+    neither delete its account (409 ``accounts.pays_businesses``) nor be taken out of it (409 ``hubs.member_pays``)."""
     profile_ids = list(BillingProfile.objects.filter(owner_id=user_id).values_list("pk", flat=True))
     if not profile_ids:
         return

@@ -23,7 +23,7 @@ from uuid import UUID
 from django.conf import settings
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
-from django.db.models import Case, IntegerField, Q, Value, When
+from django.db.models import Case, Exists, IntegerField, OuterRef, Q, Value, When
 from django.utils import timezone, translation
 from django.utils.text import slugify
 from django.utils.translation import gettext as _
@@ -38,6 +38,7 @@ from accounts.queries import hub_origin
 from apps.models import Module
 from fiscal.queries import snapshot_block as verifactu_representation
 from hubs.models import (
+    BillingProfile,
     BusinessType,
     Hub,
     HubMember,
@@ -470,7 +471,8 @@ def business_list(ctx: OperationContext, data: BusinessListIn) -> dict[str, Any]
                 When(last_opened_at__isnull=True, then=Value(1)),
                 default=Value(0),
                 output_field=IntegerField(),
-            )
+            ),
+            charged=Exists(plans_charged_to(OuterRef("hub_id"), OuterRef(OuterRef("user_id")))),
         )
     )
     if data.search:
@@ -521,7 +523,7 @@ def business_row(member: HubMember, now: datetime) -> dict[str, Any]:
             key: allowed for key, allowed in can(member, now).items() if key in ROW_CAN
         },
         **unpaid_of(member, getattr(hub, "subscription", None)),
-        "is_payer": is_payer(member),
+        "is_payer": still_pays(member),
         "payer_id": hub.billing_profile_id if is_payer(member) else None,
     }
 
@@ -531,6 +533,36 @@ def is_payer(member: HubMember) -> bool:
     whatever its role (the owner before a hand-over keeps it until the new one writes its own)."""
     profile = member.hub.billing_profile
     return profile is not None and profile.owner_id == member.user_id
+
+
+#: Statuses of a Stripe subscription that bill nothing any more (``billing.services.ENDED_STATUSES``).
+ENDED_STATUSES = frozenset({"canceled", "incomplete_expired"})
+
+
+def plans_charged_to(hub_id, user_id):
+    """The live Stripe subscription of the business ``hub_id`` when it is still billed to a Stripe customer of a
+    payer of the account ``user_id`` (values, or ``OuterRef`` from a subquery)."""
+    customers = (
+        BillingProfile.objects.filter(owner_id=user_id).exclude(stripe_customer_id="").values("stripe_customer_id")
+    )
+    return (
+        Subscription.objects.filter(hub_id=hub_id, stripe_customer_id__in=customers)
+        .exclude(stripe_subscription_id="")
+        .exclude(status__in=ENDED_STATUSES)
+    )
+
+
+def still_pays(member: HubMember) -> bool:
+    """Whether ``member``'s account still pays for its business, whatever its role: it owns its payer
+    (``is_payer``), or the plan is still charged to the card of one of its payers (after a hand-over the new owner
+    says who pays from now on, but a live subscription stays on the old Stripe customer until support moves it:
+    ``billing.payer_required``). ``business_list`` annotates the second as ``charged``."""
+    if is_payer(member):
+        return True
+    charged = getattr(member, "charged", None)
+    if charged is None:
+        charged = plans_charged_to(member.hub_id, member.user_id).exists()
+    return charged
 
 
 def unpaid_of(member: HubMember, subscription: Subscription | None) -> dict[str, Any]:
@@ -704,7 +736,7 @@ def business_detail(member: HubMember) -> dict[str, Any]:
         ),
         "can": can(member, now),
         **unpaid_of(member, subscription),
-        "is_payer": is_payer(member),
+        "is_payer": still_pays(member),
         "usage": usage_of(hub, subscription.effective_plan(now) if subscription else None, now),
     }
 
