@@ -770,3 +770,8 @@ WHATSAPP_WEBHOOK_MAX_BYTES = config("WHATSAPP_WEBHOOK_MAX_BYTES", default=10 * 1
 WHATSAPP_MEDIA_BASE_URL = config(
     "WHATSAPP_MEDIA_BASE_URL", default="http://localhost:8001" if DEBUG else f"https://{PUBLIC_HOST}"
 ).rstrip("/")
+# Where Meta's window (Embedded Signup) brings its one-time code back (`/whatsapp/return`, whatsapp/signup_return.py):
+# erplora.com's own page, from the origin the Hub accepts it (its SAAS_URL), and one of the «Valid OAuth Redirect URIs»
+# of Meta's app. Door 10 hands it to the Hub, which opens the window with it, and door 11 exchanges the code with this
+# very value (Meta refuses another: error 100/36008). Not https outside development = WhatsApp off (whatsapp.I001).
+WHATSAPP_REDIRECT_URI = config("WHATSAPP_REDIRECT_URI", default=f"{WHATSAPP_MEDIA_BASE_URL}/whatsapp/return")

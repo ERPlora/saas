@@ -443,7 +443,7 @@ def configured() -> bool:
         meta.app_credentials()
     except meta.NotConfigured:
         return False
-    return bool(str(getattr(settings, "WHATSAPP_CONFIG_ID", "") or "").strip())
+    return bool(str(getattr(settings, "WHATSAPP_CONFIG_ID", "") or "").strip()) and bool(meta.redirect_uri())
 
 
 def config(data: ConfigIn) -> tuple[int, dict]:
@@ -455,6 +455,8 @@ def config(data: ConfigIn) -> tuple[int, dict]:
         "app_id": str(settings.WHATSAPP_APP_ID).strip() if on else "",
         "config_id": str(settings.WHATSAPP_CONFIG_ID).strip() if on else "",
         "graph_version": settings.WHATSAPP_GRAPH_VERSION,
+        # erplora.com's /whatsapp/return: Meta brings the window's code back there, and door 11 exchanges it with it.
+        "redirect_uri": meta.redirect_uri() if on else "",
     }
 
 
