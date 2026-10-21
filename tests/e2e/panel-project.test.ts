@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { assertViteOfThisTree, panelServers, VITE_ROOT_HEADER, viteHmrSocket, vitePort } from './panel/project';
+import { assertViteOfThisTree, panelServers, VITE_ROOT_HEADER, viteHmrSocket, vitePort, WHATSAPP_E2E } from './panel/project';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -44,6 +44,15 @@ describe('panelServers', () => {
 
   it("points the panel's Django at that same Vite (its dev shell and its CSP)", () => {
     expect(servers(5225)['panel-django'].env).toMatchObject({ DEBUG: 'True', VITE_DEV_PORT: '5225' });
+  });
+
+  it("gives the panel's Django Meta's made-up e2e app, so the WhatsApp specs can sign its webhook", () => {
+    expect(servers(5225)['panel-django'].env).toMatchObject({
+      WHATSAPP_APP_ID: WHATSAPP_E2E.appId,
+      WHATSAPP_APP_SECRET: WHATSAPP_E2E.appSecret,
+      WHATSAPP_VERIFY_TOKEN: WHATSAPP_E2E.verifyToken,
+      WHATSAPP_CONFIG_ID: WHATSAPP_E2E.configId,
+    });
   });
 
   it('keeps 5174 by default', () => {
