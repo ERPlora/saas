@@ -4,17 +4,20 @@
 // `account/password_reset_from_key.html`, same structure and texts. It checks the key first: an
 // expired or used link says so («Request New Link», «Back to Login»), as the template's
 // `token_fail` did. The new password goes in one field with its show toggle (allauth.headless takes
-// one `password`); the rules are allauth's (Django's validators), whose messages paint under the
-// input, so the page lists none of its own. Done → the sign-in with «Your password has been
-// changed» (`?notice=password_reset`), or on at once when the server signs the person in.
+// one `password`), with the hint of Account's «Change password» under it (ACCOUNTS-G121: the rules in
+// sight, and how strong it looks against the account's email, which the key's check returns); the
+// server's validators (allauth's and Django's) decide, and their messages paint under the input. Done →
+// the sign-in with «Your password has been changed» (`?notice=password_reset`), or on at once when the
+// server signs the person in.
 import { InlineFeedback } from '@erplora/ui/components';
 import { ApiError, createAllauthClient, type AuthState, type FieldErrors, useLiveClient } from '@erplora/ui/sdk';
 import { IonButton, IonInput, IonInputPasswordToggle, IonSpinner } from '@ionic/vue';
-import { onMounted, shallowRef } from 'vue';
+import { computed, onMounted, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
 import AuthShell from '../components/AuthShell.vue';
+import { passwordStrength } from '../password';
 import { LAUNCHER } from '../paths';
 
 const props = defineProps<{
@@ -37,6 +40,10 @@ const auth = createAllauthClient(useLiveClient().config);
 /** `checking` the key, the form when it is `ready`, an `invalid` link, or the key could not be checked (`error`). */
 const status = shallowRef<'checking' | 'ready' | 'invalid' | 'error'>('checking');
 const password = shallowRef('');
+/** The account of the link, from the key's check: the hint weighs the password against its email. */
+const email = shallowRef('');
+const strength = computed(() => passwordStrength(password.value, email.value));
+const hint = computed(() => (strength.value === 'empty' ? t('accounts.account.password.hint') : t(`accounts.account.password.strength.${strength.value}`)));
 const submitting = shallowRef(false);
 const fields = shallowRef<FieldErrors>({});
 const failure = shallowRef('');
@@ -49,7 +56,7 @@ const keyRefused = (error: unknown) => error instanceof ApiError && error.status
 async function check(): Promise<void> {
   status.value = 'checking';
   try {
-    await auth.passwordResetKeyInfo(props.resetKey);
+    email.value = (await auth.passwordResetKeyInfo(props.resetKey)).email;
     status.value = 'ready';
   } catch (error) {
     status.value = keyRefused(error) ? 'invalid' : 'error';
@@ -175,8 +182,9 @@ async function submit(): Promise<void> {
           placeholder="••••••••••"
           autocomplete="new-password"
           required
+          :helper-text="hint"
           :error-text="fields.password"
-          :class="invalid('password')"
+          :class="[invalid('password'), `strength-${strength}`]"
         >
           <ion-input-password-toggle slot="end" />
         </ion-input>
