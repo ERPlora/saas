@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: saas-next\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-21 10:26+0200\n"
-"PO-Revision-Date: 2026-10-21 10:40+0200\n"
+"POT-Creation-Date: 2026-10-21 23:35+0200\n"
+"PO-Revision-Date: 2026-10-21 23:36+0200\n"
 "Last-Translator: ERPlora\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -391,3 +391,7 @@ msgstr "Entrega de WhatsApp al Hub"
 #: models.py:241
 msgid "WhatsApp deliveries to the Hub"
 msgstr "Entregas de WhatsApp al Hub"
+
+#: templates/whatsapp/signup_return.html:34
+msgid "This window can be closed now."
+msgstr "Esta ventana ya se puede cerrar."

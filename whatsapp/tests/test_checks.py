@@ -49,6 +49,16 @@ def test_a_missing_setting_is_information_naming_it(whatsapp_on, settings):
     assert "WHATSAPP_APP_ID" not in info.msg
 
 
+def test_a_return_page_that_is_not_this_site_s_is_information_naming_it(whatsapp_on, settings):
+    settings.WHATSAPP_REDIRECT_URI = "http://erplora.com/whatsapp/return"
+    settings.DEBUG = False
+
+    (info,) = check_meta_settings(None)
+
+    assert (info.id, info.level) == ("whatsapp.I001", checks.INFO)
+    assert "WHATSAPP_REDIRECT_URI" in info.msg
+
+
 def test_both_checks_are_registered():
     registered = checks.registry.registry.get_checks()
 

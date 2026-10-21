@@ -31,6 +31,7 @@ from hubs import shell as hubs_shell
 from public import landing
 from whatsapp import internal as whatsapp_internal
 from whatsapp import media as whatsapp_media
+from whatsapp import signup_return as whatsapp_signup_return
 from whatsapp import webhooks as whatsapp_webhooks
 from public.urls import PUBLIC_PREFIXES
 
@@ -153,6 +154,9 @@ urlpatterns = [
     path("webhooks/whatsapp/", whatsapp_webhooks.whatsapp_webhook, name="whatsapp_webhook"),
     # A customer's attachment opened from the Hub's inbox, with the person's session (whatsapp/media.py).
     path("whatsapp/media/<str:delivery_id>", whatsapp_media.media, name="whatsapp_media"),
+    # Where Meta's window (Embedded Signup) brings its code back, handed to the Hub's page that opened it
+    # (whatsapp/signup_return.py): public, its own Cross-Origin-Opener-Policy.
+    path("whatsapp/return", whatsapp_signup_return.signup_return, name="whatsapp_signup_return"),
     # Before the API's prefix, which would otherwise answer it.
     path("api/live", live_stream, name="live-stream"),
     path("api/", api.urls),
