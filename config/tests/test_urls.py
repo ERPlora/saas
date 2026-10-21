@@ -53,6 +53,7 @@ def test_the_django_launcher_address_leads_to_the_vue_launcher(client):
         ("/csp-report/", "csp-report"),
         ("/auth/google/callback/", "google_callback"),
         ("/_allauth/browser/v1/auth/login", "login"),
+        ("/_allauth/browser/v1/auth/signup", "signup"),
         ("/_allauth/browser/v1/auth/session", "current_session"),
         ("/_allauth/browser/v1/auth/provider/redirect", "redirect_to_provider"),
         # The public web (public/urls.py) and its cookie consent, before the SPA's catch-all.
