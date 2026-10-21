@@ -204,17 +204,18 @@ Involved: none
 
 ### BILLING-F06 Follow the EU distance-selling threshold (OSS)
 <!-- origen: old-saas:SAAS_DASHBOARD-F145 -->
-Status: partial — there is no notice to the team past 80 % of the threshold (the new SaaS has no team mailbox) and the daily review that changes the rate of live subscriptions is not scheduled yet
+Status: partial — the daily review (changing the rate of the live subscriptions and sending again the notices that did not leave) is not scheduled yet: until then a person of the team runs it
 Actor: system, ERPlora staff
-Screen: Admin › Tax policy
+Screen: Admin › Tax policy, Admin › OSS notices
 Steps:
 1. Each invoice to a consumer in another EU country adds its base to the year's total (credit notes subtract); the total sold by the previous SaaS is loaded once by hand in **Tax policy**.
 2. **Tax policy** shows the year's total against the threshold (€10,000 by default) and the switches of the OSS and ROI registrations.
 3. Above the threshold (or with the voluntary OSS registration, or if the previous year closed above it) new sales to EU consumers carry the VAT of the customer's country.
-4. The daily review of the live subscriptions moves those customers to their country's rate from the next invoice (and back to the Spanish one when the year returns to origin); what Stripe already has is not sent again.
+4. The charged sale that takes the year's total past 80 % of the threshold sends a notice to the team's mailbox to start the OSS registration now, which takes days; the one that crosses it (or the first one of the year if the previous one closed above) sends another: from it those sales carry the VAT of the customer's country. Each notice goes out only once a year and stays in **Admin › OSS notices**, read-only.
+5. The daily review of the live subscriptions moves those customers to their country's rate from the next invoice (and back to the Spanish one when the year returns to origin); what Stripe already has is not sent again.
 In: the invoices and the policy.
-Out: the rate of each new sale and that of the live subscriptions.
-If it fails: a business Stripe does not let change does not stop the review: it is retried the next day and the team sees it red. While the year's total has not been loaded, the admin says "unknown" and with live keys nothing is sold (better not to sell than to cross the threshold without seeing it).
+Out: the rate of each new sale and that of the live subscriptions, and the notices to the team's mailbox.
+If it fails: a business Stripe does not let change does not stop the review: it is retried the next day and the team sees it red. A notice that could not leave is sent again in the daily review, which stays red while any is left; noting the notice never stops the charge. While the year's total has not been loaded, the admin says "unknown" and with live keys nothing is sold (better not to sell than to cross the threshold without seeing it).
 Involved: none
 
 ### BILLING-F07 Pay the plan of a newly created business

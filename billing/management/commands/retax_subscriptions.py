@@ -3,7 +3,8 @@
 Ported from ERPlora/saas ``fiscal.retax_live_subscriptions`` (``oss_subscription_retax.py``, saas#2293; a daily
 Celery beat task there, a scheduled ECS task here). The owner's save of the billing details retaxes at once;
 this pass catches what that push missed, the year crossing the OSS threshold (or back to origin) and a rate
-the table schedules (``billing.services.retax_live_subscriptions``).
+the table schedules (``billing.services.retax_live_subscriptions``). It also sends again the team's OSS notices
+whose mail could not leave (``send_pending_oss_notices``).
 
 Idempotent (a rate Stripe already holds is not sent again), under the advisory lock
 ``hashtext('erplora.saas.retax_subscriptions')`` (``hubs.services.run_exclusively``). One business never stops
@@ -29,8 +30,10 @@ class Command(BaseCommand):
                 self.stdout.write("retax_subscriptions: already running, nothing done.")
                 return
             counts = services.retax_live_subscriptions()
+            # The team's OSS notices whose mail did not leave (BILLING-F06).
+            counts.update(services.send_pending_oss_notices())
         summary = " ".join(f"{key}={value}" for key, value in counts.items())
         logger.info("billing.retax_subscriptions %s", summary)
         self.stdout.write(f"retax_subscriptions: {summary}")
-        if counts["refused"] or counts["errors"]:
+        if counts["refused"] or counts["errors"] or counts["notices_failed"]:
             raise CommandError(f"retax_subscriptions left work for the next run: {summary}")

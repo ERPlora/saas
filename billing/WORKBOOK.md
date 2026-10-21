@@ -216,17 +216,18 @@ Implicados: ninguno
 
 ### BILLING-F06 Seguir el umbral de ventas a distancia en la UE (OSS)
 <!-- origen: old-saas:SAAS_DASHBOARD-F145 -->
-Estado: parcial — no hay aviso al equipo al pasar del 80 % del umbral (el SaaS nuevo no tiene buzón del equipo) y la revisión diaria que cambia el tipo de las suscripciones vivas aún no está programada
+Estado: parcial — la revisión diaria (cambiar el tipo de las suscripciones vivas y reenviar los avisos que no salieron) aún no está programada: hasta entonces la lanza una persona del equipo
 Actor: sistema, personal de ERPlora
-Pantalla: Admin › Política fiscal
+Pantalla: Admin › Política fiscal, Admin › Avisos de la OSS
 Pasos:
 1. Cada factura a un particular de otro país de la UE suma su base al total del año (las rectificativas restan); el total de lo vendido por el SaaS anterior se carga una vez a mano en **Política fiscal**.
 2. **Política fiscal** enseña el total del año contra el umbral (10.000 € por defecto) y los interruptores del alta en OSS y en el ROI.
 3. Por encima del umbral (o con el alta voluntaria en OSS, o si el año anterior cerró por encima) las ventas nuevas a particulares de la UE llevan el IVA del país del cliente.
-4. La revisión diaria de las suscripciones vivas pasa a esos clientes al tipo de su país desde la siguiente factura (y de vuelta al español cuando el año vuelve a origen); lo que Stripe ya tiene no se le manda otra vez.
+4. La venta cobrada que lleva el total del año por encima del 80 % del umbral manda un aviso al buzón del equipo para empezar ya el alta en la OSS, que tarda días; la que lo cruza (o la primera del año si el anterior cerró por encima) manda otro: desde ella esas ventas llevan el IVA del país del cliente. Cada aviso sale una sola vez al año y queda en **Admin › Avisos de la OSS**, de solo lectura.
+5. La revisión diaria de las suscripciones vivas pasa a esos clientes al tipo de su país desde la siguiente factura (y de vuelta al español cuando el año vuelve a origen); lo que Stripe ya tiene no se le manda otra vez.
 Entra: las facturas y la política.
-Sale: el tipo de cada venta nueva y el de las suscripciones vivas.
-Si falla: un negocio que Stripe no deja cambiar no para la revisión: se reintenta al día siguiente y el equipo lo ve en rojo. Mientras el total del año no se ha cargado, el admin dice «desconocido» y con claves reales no se vende nada (es preferible no vender a cruzar el umbral sin verlo).
+Sale: el tipo de cada venta nueva y el de las suscripciones vivas, y los avisos al buzón del equipo.
+Si falla: un negocio que Stripe no deja cambiar no para la revisión: se reintenta al día siguiente y el equipo lo ve en rojo. Un aviso que no pudo salir se reenvía en la revisión diaria, que sigue en rojo mientras quede alguno; anotar el aviso nunca para el cobro. Mientras el total del año no se ha cargado, el admin dice «desconocido» y con claves reales no se vende nada (es preferible no vender a cruzar el umbral sin verlo).
 Implicados: ninguno
 
 ### BILLING-F07 Pagar el plan de un negocio recién creado

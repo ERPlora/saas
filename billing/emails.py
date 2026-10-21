@@ -129,3 +129,59 @@ def send_business_suspended(hub, *, to: str, language: str, amount) -> None:
             _("Pay it from Billing: %(url)s") % {"url": _billing_url(hub)},
         ]
     _send_notice(BUSINESS_SUSPENDED, subject, lines, to)
+
+
+#: The headers of the team's OSS notices (BILLING-F06).
+OSS_NOTICE = "billing.oss_{kind}"
+
+
+def send_oss_notice(notice) -> None:
+    """Tell the team's mailbox (``SUPPORT_EMAIL``) that the year passed 80 % of the OSS threshold (register in
+    the OSS now: form 035 takes days) or crossed it (destination VAT already applies: register at once).
+    ``MailNotSent`` when the mail could not leave."""
+    values = {
+        "year": notice.year,
+        "last_year": notice.year - 1,
+        "amount": _money(notice.accumulated_cents / 100),
+        "threshold": _money(notice.threshold_cents / 100),
+        "percent": 80,
+        "invoice": notice.invoice.number,
+    }
+    with translation.override(settings.LANGUAGE_CODE):
+        if notice.kind == "near":
+            subject = _("OSS: cross-border B2C sales passed %(percent)s %% of the threshold in %(year)s") % values
+            lines = [
+                _(
+                    "Sales to consumers in other EU member states in %(year)s reached %(amount)s (tax base), past "
+                    "%(percent)s %% of the OSS threshold of %(threshold)s."
+                )
+                % values,
+                _("Sale that passed it: invoice %(invoice)s.") % values,
+                "",
+                _(
+                    "Above the threshold, destination VAT applies on its own from the crossing sale. Registering in "
+                    "the OSS (form 035) takes days: start it now."
+                ),
+            ]
+        else:
+            subject = _("OSS: cross-border B2C sales crossed the threshold in %(year)s") % values
+            if notice.reason == "previous_year":
+                why = _(
+                    "Sales to consumers in other EU member states in %(last_year)s closed at %(amount)s (tax base), "
+                    "above the OSS threshold of %(threshold)s, so the whole of %(year)s goes in destination VAT."
+                )
+            else:
+                why = _(
+                    "Sales to consumers in other EU member states in %(year)s reached %(amount)s (tax base), above "
+                    "the OSS threshold of %(threshold)s."
+                )
+            lines = [
+                why % values,
+                _("First sale in destination VAT: invoice %(invoice)s, from %(date)s.")
+                % {**values, "date": date_format(notice.effective_from, "DATE_FORMAT")},
+                "",
+                _("Destination VAT already applies on its own. Registering in the OSS (form 035) is urgent: do it now."),
+            ]
+        lines.append(_("This notice is sent once per year."))
+    _send_notice(OSS_NOTICE.format(kind=notice.kind), subject, lines, settings.SUPPORT_EMAIL)
+
