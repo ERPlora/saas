@@ -81,10 +81,35 @@ class TestTheApiOfSubscriptions:
 
         assert response.status_code == 422
 
-    def test_an_integration_reads_it_with_its_key(self):
-        from live.operations import get
+    def key(self, user, *scopes):
+        from accounts.models import ApiKey
 
-        assert get("billing.subscription.list").expose_api is True
+        secret, prefix, key_hash = ApiKey.new_secret()
+        ApiKey.objects.create(user=user, name="gestoría", prefix=prefix, key_hash=key_hash, scopes=list(scopes))
+        return secret
+
+    def by_key(self, secret, **params):
+        from django.test import Client
+
+        return Client(enforce_csrf_checks=True).get(
+            "/api/billing/subscriptions", params, HTTP_HOST="localhost:8001", HTTP_AUTHORIZATION=f"Bearer {secret}"
+        )
+
+    def test_an_integration_reads_it_with_its_key(self, owner, shop, plans, make_user):
+        pay(shop)
+        pay(create_business(make_user("stranger@example.com"), name="Ajeno"), sub_id="sub_2", customer="cus_2")
+
+        response = self.by_key(self.key(owner, "billing.read"), hub_id=str(shop.id))
+
+        assert response.status_code == 200
+        assert [row["business"]["name"] for row in response.json()["rows"]] == [shop.name]
+
+    def test_a_key_without_billing_read_reads_nothing(self, owner, shop):
+        pay(shop)
+
+        response = self.by_key(self.key(owner, "hubs.read"))
+
+        assert (response.status_code, response.json()["error"]["code"]) == (403, "api_key_missing_scope")
 
 
 class TestWhichRows:
