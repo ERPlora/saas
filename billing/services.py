@@ -2897,19 +2897,21 @@ def retax_subscription(hub: Hub) -> str:
     the paid period is not touched (no proration).
 
     ``retaxed`` · ``unchanged`` (Stripe already holds them: nothing sent) · ``skipped`` (no live Stripe
-    subscription, or a downgrade waiting in a schedule, whose next phase holds its own items) · ``refused``
-    (the place is not sold to now: an ERROR, and the old rates stay until the billing details are fixed).
-    Stripe failing raises (``stripe_errors``)."""
+    subscription) · ``refused`` (the place is not sold to now: an ERROR, and the old rates stay until the
+    billing details are fixed). With a downgrade waiting in a schedule, its phases are retaxed instead
+    (``_retax_schedule``). Stripe failing raises (``stripe_errors``)."""
     subscription = Subscription.objects.filter(hub=hub).select_related("plan").first()
     if (
         subscription is None
         or not subscription.stripe_subscription_id
         or subscription.status not in RETAX_STATUSES
-        or pending_change(hub) is not None
     ):
         return "skipped"
     require_stripe()
     hub = Hub.objects.select_related("billing_profile").get(pk=hub.pk)
+    pending = pending_change(hub)
+    if pending is not None:
+        return _retax_schedule(hub, subscription, pending.stripe_schedule_id)
     live = _live(subscription)
     changes = []
     for line in _live_items(live):
@@ -2921,14 +2923,7 @@ def retax_subscription(hub: Hub) -> str:
                 hub, sale, recurring_net=_recurring_net(subscription, sale.interval)
             )
         except Conflict as refused:
-            logger.error(
-                "[BILLING] %s of hub %s cannot be retaxed (%s): Stripe keeps charging its old rate",
-                sale.kind,
-                hub.id,
-                refused.code,
-                extra={"event": "billing.retax_refused", "hub_id": str(hub.id), "code": refused.code},
-            )
-            return "refused"
+            return _retax_refused(hub, sale.kind, refused)
         held = [rate["id"] if isinstance(rate, dict) else rate for rate in line.get("tax_rates") or []]
         if sorted(held) != sorted(due):
             changes.append({"id": line["id"], "tax_rates": _rates_param(due)})
@@ -2940,6 +2935,65 @@ def retax_subscription(hub: Hub) -> str:
             {"items": changes, "proration_behavior": "none"},
         )
     logger.info("[BILLING] Hub %s retaxed: %s", hub.id, changes)
+    return "retaxed"
+
+
+def _retax_refused(hub: Hub, kind: str, refused: Conflict) -> str:
+    logger.error(
+        "[BILLING] %s of hub %s cannot be retaxed (%s): Stripe keeps charging its old rate",
+        kind,
+        hub.id,
+        refused.code,
+        extra={"event": "billing.retax_refused", "hub_id": str(hub.id), "code": refused.code},
+    )
+    return "refused"
+
+
+def _retax_schedule(hub: Hub, subscription: Subscription, schedule_id: str) -> str:
+    """A downgrade waiting in a Stripe schedule: the first invoice of the new plan is billed by its next phase,
+    whose items carry the rates fixed when it was scheduled. Every phase still to run is re-stated with
+    today's rates (a phase over is left out; the current one keeps its start). Phases are re-stated whole, so
+    no rate is an empty list there, and changing the current phase changes the subscription at once (checked
+    against Stripe's test API). A price no plan nor module has keeps its rates."""
+    with stripe_errors():
+        schedule = stripe_service.retrieve_schedule(schedule_id)
+    now = int(timezone.now().timestamp())
+    phases = []
+    changed = False
+    for phase in schedule.get("phases") or []:
+        end = phase.get("end_date")
+        if end is not None and end <= now:
+            continue
+        sales = []
+        for item in phase.get("items") or []:
+            price = item["price"] if isinstance(item["price"], str) else item["price"]["id"]
+            held = [rate["id"] if isinstance(rate, dict) else rate for rate in item.get("tax_rates") or []]
+            sales.append((price, item.get("quantity") or 1, held, _item_sale(subscription, {"price": {"id": price}})))
+        # What a renewal of that phase charges, net: the 400 € of the simplified invoice is on the whole of it.
+        recurring = sum((sale.net for _price, _quantity, _held, sale in sales if sale is not None), Decimal("0"))
+        items = []
+        for price, quantity, held, sale in sales:
+            if sale is None:
+                due = held
+            else:
+                try:
+                    due = price_sale(hub, sale, recurring_net=recurring)
+                except Conflict as refused:
+                    return _retax_refused(hub, sale.kind, refused)
+            changed = changed or sorted(held) != sorted(due)
+            items.append({"price": price, "quantity": quantity, "tax_rates": due})
+        restated = {"items": items, "start_date": phase["start_date"]}
+        if end is not None:
+            restated["end_date"] = end
+        if phase.get("trial_end"):
+            restated["trial_end"] = phase["trial_end"]
+        restated["proration_behavior"] = "none"
+        phases.append(restated)
+    if not changed:
+        return "unchanged"
+    with stripe_errors():
+        stripe_service.update_schedule(schedule_id, {"end_behavior": "release", "phases": phases})
+    logger.info("[BILLING] Hub %s retaxed the phases of schedule %s", hub.id, schedule_id)
     return "retaxed"
 
 

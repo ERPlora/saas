@@ -303,6 +303,11 @@ def create_schedule(subscription_id: str) -> dict:
     return _call(client().v1.subscription_schedules.create, params={"from_subscription": subscription_id})
 
 
+def retrieve_schedule(schedule_id: str) -> dict:
+    """A subscription schedule with its phases (each item's price as an id, its rates as objects)."""
+    return _call(client().v1.subscription_schedules.retrieve, schedule_id)
+
+
 def update_schedule(schedule_id: str, params: dict) -> dict:
     return _call(client().v1.subscription_schedules.update, schedule_id, params=params)
 

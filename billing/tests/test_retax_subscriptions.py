@@ -118,21 +118,14 @@ class TestRetaxingOneBusiness:
         assert services.retax_subscription(paid) == "skipped"
         assert stripe_double.calls_to("subscriptions.update") == []
 
-    def test_a_downgrade_waiting_in_a_schedule_is_left_to_the_schedule(self, shop, stripe_double):
-        """The schedule holds the items of the next phase: changing the subscription now would be undone at
-        the phase change. The daily pass retaxes it once the schedule has let it go."""
-        from django.utils import timezone
-
+    def test_a_downgrade_waiting_in_a_schedule_is_left_alone_on_the_subscription(self, shop, stripe_double):
+        """The schedule holds the items of every phase: the subscription is never changed directly under it
+        (the phase change would undo it); its phases are retaxed instead (``TestADowngradeWaiting``)."""
         paid = on_starter(shop, stripe_double)
-        PlanChangeSchedule.objects.create(
-            hub=paid,
-            stripe_schedule_id="sub_sched_1",
-            plan_slug="starter",
-            interval="month",
-            starts_at=timezone.now(),
-        )
+        waiting(paid, stripe_double, current=[], following=[])
 
-        assert services.retax_subscription(paid) == "skipped"
+        services.retax_subscription(paid)
+
         assert stripe_double.calls_to("subscriptions.update") == []
 
     def test_a_place_that_is_not_sold_to_keeps_the_old_rate_and_says_so(self, shop, stripe_double, caplog):
@@ -157,6 +150,162 @@ class TestRetaxingOneBusiness:
         rate_id = stripe_double.last("subscriptions.update").params["items"][0]["tax_rates"][0]
         rate = next(rate for rate in stripe_double.tax_rates if rate["id"] == rate_id)
         assert (rate["country"], rate["percentage"]) == ("DE", 19.0)
+
+
+def waiting(
+    hub,
+    stripe_double,
+    *,
+    current,
+    following,
+    past=None,
+    current_prices=("price_standard_month",),
+    following_prices=("price_starter_month",),
+):
+    """A downgrade (Standard → Starter) waiting in the Stripe schedule ``sub_sched_1``, as Stripe returns it:
+    each phase's items with the price as an id and the rates as objects; ``past`` adds a phase already over."""
+    from django.utils import timezone
+
+    from billing.tests.stripe_double import DAY, MONTH_END, MONTH_START
+
+    PlanChangeSchedule.objects.create(
+        hub=hub, stripe_schedule_id="sub_sched_1", plan_slug="starter", interval="month", starts_at=timezone.now()
+    )
+
+    def phase(prices, rates, start, end):
+        items = [
+            {"price": price, "quantity": 1, "tax_rates": [{"id": rate, "object": "tax_rate"} for rate in rates]}
+            for price in prices
+        ]
+        return {"start_date": start, "end_date": end, "items": items, "trial_end": None, "proration_behavior": "none"}
+
+    phases = [
+        phase(current_prices, current, MONTH_START, MONTH_END),
+        phase(following_prices, following, MONTH_END, MONTH_END + 30 * DAY),
+    ]
+    if past is not None:
+        phases.insert(0, phase(current_prices, past, MONTH_START - 30 * DAY, MONTH_START))
+    schedule = {"id": "sub_sched_1", "object": "subscription_schedule", "status": "active", "subscription": "sub_1",
+                "end_behavior": "release", "phases": phases}
+    stripe_double.answer("subscription_schedules.retrieve", schedule)
+    stripe_double.answer("subscription_schedules.update", schedule)
+    return schedule
+
+
+class TestADowngradeWaiting:
+    """A downgrade held in a Stripe schedule: the first invoice of the new plan is billed by its NEXT phase,
+    whose items carry the rates fixed when it was scheduled. Moving to Las Palmas meanwhile must reach that
+    invoice too, so every phase still to run takes today's rates (checked against Stripe's test API: phases
+    are re-stated whole, so an empty list of rates is none, and the current phase changes the subscription at
+    once)."""
+
+    def test_every_phase_still_to_run_takes_todays_rate(self, shop, stripe_double):
+        from billing.tests.stripe_double import DAY, MONTH_END, MONTH_START
+
+        rate = spanish_rate(stripe_double, shop)
+        paid = on_starter(move(shop, "ES", "35001"), stripe_double, rates=[rate])
+        waiting(paid, stripe_double, current=[rate], following=[rate])
+
+        outcome = services.retax_subscription(paid)
+
+        assert outcome == "retaxed"
+        sent = stripe_double.last("subscription_schedules.update")
+        assert sent.args == ("sub_sched_1",)
+        assert sent.params == {
+            "end_behavior": "release",
+            "phases": [
+                {"items": [{"price": "price_standard_month", "quantity": 1, "tax_rates": []}],
+                 "start_date": MONTH_START, "end_date": MONTH_END, "proration_behavior": "none"},
+                {"items": [{"price": "price_starter_month", "quantity": 1, "tax_rates": []}],
+                 "start_date": MONTH_END, "end_date": MONTH_END + 30 * DAY, "proration_behavior": "none"},
+            ],
+        }
+
+    def test_a_phase_already_over_is_not_restated(self, shop, stripe_double):
+        rate = spanish_rate(stripe_double, shop)
+        paid = on_starter(move(shop, "ES", "35001"), stripe_double, rates=[rate])
+        waiting(paid, stripe_double, current=[rate], following=[rate], past=[rate])
+
+        services.retax_subscription(paid)
+
+        phases = stripe_double.last("subscription_schedules.update").params["phases"]
+        assert [phase["items"][0]["price"] for phase in phases] == ["price_standard_month", "price_starter_month"]
+
+    def test_the_rates_already_held_send_nothing(self, shop, stripe_double):
+        rate = spanish_rate(stripe_double, shop)
+        paid = on_starter(shop, stripe_double, rates=[rate])
+        waiting(paid, stripe_double, current=[rate], following=[rate])
+
+        assert services.retax_subscription(paid) == "unchanged"
+        assert stripe_double.calls_to("subscription_schedules.update") == []
+
+    def test_a_madrid_payer_gets_the_spanish_rate_on_the_phase_that_lacked_it(self, shop, stripe_double):
+        rate = spanish_rate(stripe_double, shop)
+        paid = on_starter(shop, stripe_double, rates=[rate])
+        waiting(paid, stripe_double, current=[rate], following=[])
+
+        services.retax_subscription(paid)
+
+        phases = stripe_double.last("subscription_schedules.update").params["phases"]
+        assert [phase["items"][0]["tax_rates"] for phase in phases] == [[rate], [rate]]
+
+    def test_the_simplified_invoice_limit_is_on_the_whole_renewal_of_a_phase(self, shop, stripe_double, inventory, caplog):
+        """Starter annual (299.90 €) and a module (100 €) are 483.88 € with VAT together, each under 400 € alone:
+        without the payer's tax ID the phase is not retaxed (its invoice must name the buyer)."""
+        paid = on_starter(shop, stripe_double)
+        annual = ("price_starter_year", "price_inventory_year")
+        waiting(paid, stripe_double, current=[], following=[], current_prices=annual, following_prices=annual)
+
+        with caplog.at_level(logging.ERROR, logger="billing.services"):
+            outcome = services.retax_subscription(paid)
+
+        assert outcome == "refused"
+        assert [r.code for r in caplog.records if getattr(r, "event", "") == "billing.retax_refused"] == [
+            "billing.tax_id_required"
+        ]
+        assert stripe_double.calls_to("subscription_schedules.update") == []
+
+    def test_with_the_tax_id_on_file_that_phase_is_retaxed(self, shop, stripe_double, inventory):
+        shop.billing_profile.tax_id = "12345678Z"
+        shop.billing_profile.save()
+        paid = on_starter(shop, stripe_double)
+        annual = ("price_starter_year", "price_inventory_year")
+        waiting(paid, stripe_double, current=[], following=[], current_prices=annual, following_prices=annual)
+
+        assert services.retax_subscription(paid) == "retaxed"
+
+    def test_a_price_no_plan_nor_module_has_keeps_its_rates(self, shop, stripe_double):
+        rate = spanish_rate(stripe_double, shop)
+        paid = on_starter(shop, stripe_double, rates=[rate])
+        waiting(paid, stripe_double, current=[], following=[rate], current_prices=("price_unknown",))
+
+        assert services.retax_subscription(paid) == "unchanged"
+
+    def test_a_trial_and_an_open_end_are_restated_as_they_are(self, shop, stripe_double):
+        """A phase in trial keeps its ``trial_end`` (without it Stripe would end the trial); a last phase
+        without an end keeps none."""
+        from billing.tests.stripe_double import MONTH_END
+
+        rate = spanish_rate(stripe_double, shop)
+        paid = on_starter(move(shop, "ES", "35001"), stripe_double, rates=[rate])
+        schedule = waiting(paid, stripe_double, current=[rate], following=[rate])
+        schedule["phases"][0]["trial_end"] = MONTH_END
+        schedule["phases"][1]["end_date"] = None
+        stripe_double.answer("subscription_schedules.retrieve", schedule)
+
+        services.retax_subscription(paid)
+
+        current, following = stripe_double.last("subscription_schedules.update").params["phases"]
+        assert current["trial_end"] == MONTH_END
+        assert "end_date" not in following and "trial_end" not in following
+
+    def test_a_place_that_is_not_sold_to_keeps_the_schedule_as_it_was(self, shop, stripe_double):
+        rate = spanish_rate(stripe_double, shop)
+        paid = on_starter(move(shop, "US", "10001"), stripe_double, rates=[rate])
+        waiting(paid, stripe_double, current=[rate], following=[rate])
+
+        assert services.retax_subscription(paid) == "refused"
+        assert stripe_double.calls_to("subscription_schedules.update") == []
 
 
 class TestSavingTheBillingDetails:
