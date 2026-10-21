@@ -152,6 +152,15 @@ def test_running_it_again_with_another_usage_pushes_it_to_the_hub(run, ids, hub_
     assert pushed["monthly_usage"] == 9
 
 
+def test_running_it_again_keeps_a_template_the_run_added(run, ids):
+    # Not ``complete``: what a run registered at Meta (a template the seed does not list) is not deleted.
+    run()
+    Template.objects.create(hub_id=ids["a"], name="e2e_run_added", language="es", status="APPROVED")
+    run()
+
+    assert Template.objects.filter(hub_id=ids["a"], name="e2e_run_added", language="es").exists()
+
+
 def test_a_and_b_take_the_hubs_ids_even_after_another_business_was_made(run, ids, make_user):
     create_business(make_user("before@example.com"))
 
