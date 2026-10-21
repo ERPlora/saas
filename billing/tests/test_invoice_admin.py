@@ -280,3 +280,13 @@ class TestThePdfForTheStaff:
 
         assert client.get(self.pdf_url(issued)).status_code == 403
         assert hub_double.calls_to("GET", "/pdf") == []
+
+    def test_an_address_with_no_invoice_behind_it_is_said_not_a_crash(self, staff_client, hub_double):
+        """A hand-typed or stale address: Django's own «does not exist» answer (back to the index with the message),
+        for an id that is no UUID as for one of no invoice; nothing is asked of the platform hub."""
+        for object_id in ("not-an-id", "01a15d6a-c192-72b1-89dc-9ea08695f54d"):
+            response = staff_client.get(f"/admin/billing/invoice/{object_id}/pdf/", follow=True)
+
+            assert response.redirect_chain[-1][0] == "/admin/", object_id
+            assert "Perhaps it was deleted?" in response.content.decode(), object_id
+        assert hub_double.calls_to("GET", "/pdf") == []

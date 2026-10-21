@@ -18,9 +18,10 @@ the staff downloads it, as the account's «Download PDF».
 """
 
 from django.contrib import admin, messages
+from django.contrib.admin.utils import unquote
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import redirect
 from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html
@@ -462,8 +463,11 @@ class InvoiceAdmin(ReadOnlyAdmin):
 
     def pdf_view(self, request, object_id):
         """The PDF of any invoice for whoever may read invoices (``view_invoice``): the platform hub's file, or back to
-        the invoice's page saying why there is none (not issued yet, the Hub away)."""
-        invoice = get_object_or_404(Invoice, pk=object_id)
+        the invoice's page saying why there is none (not issued yet, the Hub away). An address with no invoice behind
+        it (a stale link, an id that is no UUID) gets Django's own «does not exist» answer, never a crash."""
+        invoice = self.get_object(request, unquote(object_id))
+        if invoice is None:
+            return self._get_obj_does_not_exist_redirect(request, self.opts, object_id)
         if not self.has_view_permission(request, invoice):
             raise PermissionDenied
         try:
