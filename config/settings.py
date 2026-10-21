@@ -757,6 +757,8 @@ FERNET_KEY = config("FERNET_KEY", default="yh5h4Yur2lIgWp9ZxkyLt1BrQfFVrwLH4WhIH
 FERNET_KEY_PREVIOUS = config("FERNET_KEY_PREVIOUS", default="")
 # Where the people of a business open a customer's attachment (`/whatsapp/media/<id>`): erplora.com's own origin,
 # the only one the Hub accepts for it (its SAAS_URL).
+# The largest notice of Meta's webhook read (a chunk of the 180 days of history included); a larger one is 413.
+WHATSAPP_WEBHOOK_MAX_BYTES = config("WHATSAPP_WEBHOOK_MAX_BYTES", default=10 * 1024 * 1024, cast=int)
 WHATSAPP_MEDIA_BASE_URL = config(
     "WHATSAPP_MEDIA_BASE_URL", default="http://localhost:8001" if DEBUG else f"https://{PUBLIC_HOST}"
 ).rstrip("/")

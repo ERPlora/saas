@@ -191,10 +191,16 @@ class Delivery(models.Model):
     contact = models.CharField(_("customer's number"), max_length=32, blank=True, default="")
     body = models.JSONField(_("content"), default=dict, blank=True)
     media_id = models.CharField(_("Meta attachment id"), max_length=64, blank=True, default="")
+    #: Grows with every change of ``body`` (a status that moved on, a placeholder completed): a push of an older
+    #: revision never marks a newer one as taken.
+    revision = models.PositiveIntegerField(_("revision"), default=0)
     received_at = models.DateTimeField(_("received"), default=timezone.now)
     delivered_at = models.DateTimeField(_("taken by the Hub"), null=True, blank=True)
     attempts = models.PositiveIntegerField(_("attempts"), default=0)
-    next_attempt_at = models.DateTimeField(_("next attempt"), default=timezone.now)
+    next_attempt_at = models.DateTimeField(
+        _("next attempt"), null=True, blank=True, default=timezone.now,
+        help_text=_("Empty: the Hub refused it as it is (422), it is not retried."),
+    )
     last_error = models.CharField(_("last error"), max_length=300, blank=True, default="")
 
     class Meta:

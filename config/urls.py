@@ -28,6 +28,7 @@ from fiscal import internal as fiscal_internal
 from fiscal_gateway import internal as fiscal_gateway_internal
 from hubs import internal as hubs_internal
 from public import landing
+from whatsapp import webhooks as whatsapp_webhooks
 from public.urls import PUBLIC_PREFIXES
 
 # Prefixes of saas-next on top of the shared ones: allauth.headless's API, the old addresses of the
@@ -122,6 +123,8 @@ urlpatterns = [
     ),
     # Stripe's single webhook (PLAN-SAAS §4): signed by Stripe, no session nor CSRF.
     path("webhooks/stripe/", billing_webhooks.stripe_webhook, name="stripe_webhook"),
+    # Meta's single WhatsApp webhook (whatsapp/webhooks.py): its verification (GET) and its signed notices.
+    path("webhooks/whatsapp/", whatsapp_webhooks.whatsapp_webhook, name="whatsapp_webhook"),
     # Before the API's prefix, which would otherwise answer it.
     path("api/live", live_stream, name="live-stream"),
     path("api/", api.urls),
