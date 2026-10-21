@@ -3,7 +3,8 @@
 Ported from ERPlora/saas ``apps/dashboard/hubs/main/emails.py`` (origin/develop) as plain text, until
 block 1 brings the branded mail: the invitation (``send_invitation``), the ownership offer and its
 acceptance (``send_ownership_offer``, ``send_ownership_accepted``) and the deletion with the date until
-which the business can be recovered (``send_deletion``). Services call them after the COMMIT: a mail
+which the business can be recovered (``send_deletion``), and the business ready to open (``send_ready``, once,
+when the Hub reports it ready). Services call them after the COMMIT: a mail
 never announces a write that rolled back, and one that cannot leave is logged, never raised (the
 write is the source of truth).
 """
@@ -15,6 +16,8 @@ from django.core.mail import send_mail
 from django.utils import timezone, translation
 from django.utils.formats import date_format
 from django.utils.translation import gettext as _
+
+from accounts.queries import hub_start_url
 
 logger = logging.getLogger(__name__)
 
@@ -123,6 +126,19 @@ def send_deletion(hub, owner, *, base_url: str) -> bool:
                 "You can recover it until %(date)s from %(url)s. After that date it is erased for good."
             )
             % {"date": _date(hub.purge_after), "url": f"{base_url}/businesses"},
+        ]
+    return _send(subject, lines, owner.email)
+
+
+def send_ready(hub, owner, *, base_url: str) -> bool:
+    """Tell the owner the business is ready, with the way in and its page in the panel."""
+    with translation.override(owner.language):
+        subject = _("%(business)s is ready") % {"business": hub.name}
+        lines = [
+            _("%(business)s is ready: open it and start selling.") % {"business": hub.name},
+            "",
+            _("Open it: %(url)s") % {"url": hub_start_url(hub.slug)},
+            _("Manage it from the panel: %(url)s") % {"url": f"{base_url}/businesses/{hub.id}"},
         ]
     return _send(subject, lines, owner.email)
 

@@ -62,6 +62,15 @@ NEW_MESSAGES = [
     "Requests to the AI assistant a business may make each month (0 = none).",
     "WhatsApp messages a business may send each month (0 = none).",
     "AI assistant and WhatsApp per month",
+    # HUBS-F01 (HUBS-G65): the refusals of the sign-up of a business, which a Spanish account reads.
+    "Businesses cannot be created right now. Try again in a few minutes.",
+    "You already have a free business. Change its plan to create another one.",
+    "This address belongs to ERPlora's staff and cannot join a business.",
+    # HUBS-F04, HUBS-F07: «your business is ready» (emails.send_ready).
+    "%(business)s is ready",
+    "%(business)s is ready: open it and start selling.",
+    "Open it: %(url)s",
+    "Manage it from the panel: %(url)s",
 ]
 
 

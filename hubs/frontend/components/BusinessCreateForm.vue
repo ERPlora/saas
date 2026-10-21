@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // The sign-up of a business (round 17 §2.3; mockups `launch.html` «first», `businesses.html` «create»):
-// the name, the country and, if the person knows it, the business type; under the name, the address
-// the name proposes (`hubs.address.propose`, 300 ms after it stops changing). «Create my business»
+// the name, the country (the one the browser's languages suggest) and, if the person knows it, the
+// business type; under the name, the address the name proposes (`hubs.address.propose`, 300 ms after it
+// stops changing). «Create my business»
 // runs `hubs.business.create` and hands the new business to the parent (`created`), which shows its
 // preparation. One form for the launcher, the empty Businesses and the «Create business» dialog; in the
 // dialog the dialog's button submits it (`submitButton: false` + `submit()`).
@@ -14,7 +15,7 @@ import { useI18n } from 'vue-i18n';
 
 import type { BusinessDetailOut, BusinessTypeOut } from '../../../frontend/sdk-types';
 import { useErrorText } from '../error-text';
-import { countryOptions, DEFAULT_COUNTRY } from '../regions';
+import { countryOptions, DEFAULT_COUNTRY, suggestedCountry } from '../regions';
 
 const props = withDefaults(
   defineProps<{
@@ -39,7 +40,7 @@ const create = useCommand('hubs.business.create');
 const { text } = useErrorText();
 
 const name = shallowRef('');
-const country = shallowRef<string>(DEFAULT_COUNTRY);
+const country = shallowRef<string>(suggestedCountry(navigator.languages));
 const businessType = shallowRef('');
 const types = shallowRef<BusinessTypeOut[]>([]);
 const typesFailed = shallowRef(false);

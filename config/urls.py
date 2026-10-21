@@ -27,6 +27,7 @@ from config.api import api
 from fiscal import internal as fiscal_internal
 from fiscal_gateway import internal as fiscal_gateway_internal
 from hubs import internal as hubs_internal
+from hubs import shell as hubs_shell
 from public import landing
 from whatsapp import internal as whatsapp_internal
 from whatsapp import media as whatsapp_media
@@ -97,6 +98,10 @@ urlpatterns = [
     path("auth/google/callback/", google.callback, name="google_callback"),
     path("launch/", handoff.launch, name="launch"),
     path("hub-login/", handoff.hub_login, name="hub_login"),
+    # The installed app's «Open» (PLAN-SAAS bloque 3); its start, /shell/, is the SPA's launcher.
+    path("shell/open/<uuid:hub_id>/", hubs_shell.open_business, name="shell_open"),
+    # The old panel's addresses of the businesses, for good, to the new panel (PLAN-SAAS §1).
+    path("", include("hubs.redirects")),
     path("internal/auth/redeem", internal.redeem, name="internal_auth_redeem"),
     path(
         "internal/hubs/<uuid:hub_id>/ready",

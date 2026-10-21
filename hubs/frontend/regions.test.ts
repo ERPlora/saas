@@ -6,7 +6,15 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { COUNTRIES, countryName, countryOptions, DEFAULT_COUNTRY, timeZoneLabel, timeZoneOptions } from './regions';
+import {
+  COUNTRIES,
+  countryName,
+  countryOptions,
+  DEFAULT_COUNTRY,
+  suggestedCountry,
+  timeZoneLabel,
+  timeZoneOptions,
+} from './regions';
 
 const HUBS = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -36,6 +44,25 @@ describe('countries', () => {
 
   it('keep an unknown code as it came, never an empty label', () => {
     expect(countryName('XX', 'en')).toBe('XX');
+  });
+});
+
+// flow: HUBS-F01 (HUBS-G65, old saas SAAS_DASHBOARD-F01): «the country comes suggested by the browser's language».
+describe('the country the browser suggests', () => {
+  it("is the region of the first language whose country ERPlora serves", () => {
+    expect(suggestedCountry(['fr-BE', 'fr'])).toBe('BE');
+    expect(suggestedCountry(['en-US', 'de-AT'])).toBe('AT');
+  });
+
+  it('reads a language without a region as its main country', () => {
+    expect(suggestedCountry(['de'])).toBe('DE');
+    expect(suggestedCountry(['it'])).toBe('IT');
+  });
+
+  it('is Spain when no language names a country ERPlora serves, or the tag is not one', () => {
+    expect(suggestedCountry(['en-US', 'ja'])).toBe(DEFAULT_COUNTRY);
+    expect(suggestedCountry([])).toBe(DEFAULT_COUNTRY);
+    expect(suggestedCountry(['not a tag'])).toBe(DEFAULT_COUNTRY);
   });
 });
 
