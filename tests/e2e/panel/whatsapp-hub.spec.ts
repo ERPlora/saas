@@ -56,7 +56,8 @@ const SEEDED = {
 const TASK = 'FIX-SAAS-WHATSAPP-E2E-SEED-TEMPLATES-AND-USAGE';
 
 test.skip(!HUB_PORT || !MAIL_DIR, 'needs a real Hub stack and its SaaS (E2E_CROSS_HUB_PORT, E2E_MAIL_DIR): see the header');
-test.describe.configure({ mode: 'serial' });
+// Each test may sign in on a stack just started (FIRST_LOAD on both servers).
+test.describe.configure({ mode: 'serial', timeout: 240_000 });
 
 /** One query in the Hub's stack database: its rows, trimmed. */
 function hubSql(query: string): string {
@@ -119,17 +120,20 @@ async function meta(page: Page, body: string): Promise<number> {
   return answer.status();
 }
 
+/** How long the first page of each server may take: a stack just started has its Vite build the SPA on that load. */
+const FIRST_LOAD = 90_000;
+
 /** The owner opens the inbox of `a`: the Hub sends them to erplora.com, which asks the password and the mailed code. */
 async function openInbox(page: Page): Promise<void> {
   await page.goto(INBOX);
-  await page.waitForURL((url) => url.origin === SAAS, { timeout: 30_000 });
-  await expect(page.getByTestId('login-form')).toBeVisible({ timeout: 30_000 });
+  await page.waitForURL((url) => url.origin === SAAS, { timeout: FIRST_LOAD });
+  await expect(page.getByTestId('login-form')).toBeVisible({ timeout: FIRST_LOAD });
   const since = Date.now();
   await submitSignInForm(page, OWNER);
   await expect(page).toHaveURL(/\/verify-email(\?|$)/);
   await page.getByTestId('code').locator('input').fill(await readMailCode({ dir: MAIL_DIR, to: OWNER.email, since }));
   await page.getByTestId('verify-email-submit').click();
-  await page.waitForURL(INBOX, { timeout: 30_000 });
+  await page.waitForURL(INBOX, { timeout: FIRST_LOAD });
 }
 
 const shown = (page: Page) => page.locator('.ion-page:not(.ion-page-hidden)').last();
