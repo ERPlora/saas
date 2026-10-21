@@ -4,7 +4,8 @@ at Meta its templates live in.
 ``known_hub`` and ``channel_block`` are plain functions called inside the commands of ``services`` (in their
 transaction) and by ``hubs.queries`` for the snapshot (the Hub reads the channel only there).
 ``whatsapp.template.account`` is the read ``gateway`` makes before it calls Meta for a business's templates, and
-``whatsapp.number.renewal_due`` the numbers whose permission is renewed today (WHATSAPP-G12).
+``whatsapp.number.renewal_due`` the numbers whose permission is renewed today (WHATSAPP-G12);
+``whatsapp.number.connecting`` the business a connection is for and the PIN its number already has (doors 10, 11).
 """
 
 from datetime import timedelta
@@ -20,7 +21,15 @@ from live.operations import operation
 from hubs.models import Hub
 from hubs.services import LIVE_STATUSES
 from whatsapp.models import PhoneNumber, Template, Usage
-from whatsapp.schemas import DueNumber, RenewalDueIn, RenewalDueOut, TemplateAccountIn, TemplateAccountOut
+from whatsapp.schemas import (
+    ConnectingIn,
+    ConnectingOut,
+    DueNumber,
+    RenewalDueIn,
+    RenewalDueOut,
+    TemplateAccountIn,
+    TemplateAccountOut,
+)
 
 #: Only the platform reads and writes here (``services.platform_context``); no account role holds it.
 PERMISSION = "whatsapp.manage"
@@ -70,7 +79,7 @@ def channel_block(hub_id: UUID, *, version: int | None = None) -> dict[str, Any]
     return {
         "version": version,
         "status": status,
-        "phone_number": _e164(number.display_phone) if number else "",
+        "phone_number": e164(number.display_phone) if number else "",
         "display_name": (number.display_name if number else "")[:200],
         "monthly_limit": plan.whatsapp_messages_per_month if plan is not None else 0,
         "monthly_usage": used,
@@ -79,7 +88,8 @@ def channel_block(hub_id: UUID, *, version: int | None = None) -> dict[str, Any]
     }
 
 
-def _e164(display: str) -> str:
+def e164(display: str) -> str:
+    """A number as Meta shows it (``+34 910 00 00 00``) in E.164 (``+34910000000``); ``""`` when it is not one."""
     digits = "".join(ch for ch in display if ch.isdigit())
     return f"+{digits}" if 7 <= len(digits) <= 15 and digits[0] != "0" else ""
 
@@ -157,3 +167,18 @@ def renewal_due(ctx: OperationContext, data: RenewalDueIn) -> RenewalDueOut:
             for number in numbers
         ]
     )
+
+
+@operation("whatsapp.number.connecting", kind="query", permission=PERMISSION, input=ConnectingIn, output=ConnectingOut)
+def number_connecting(ctx: OperationContext, data: ConnectingIn) -> ConnectingOut:
+    """The business a connection is for (404 ``hub_unknown`` before anything is asked of Meta) and, for
+    ``phone_number_id``, the PIN erplora.com registered it with (``""``: none yet), so registering it again never
+    changes it."""
+    hub = known_hub(data.hub)
+    if hub is None:
+        raise unknown_hub()
+    pin = ""
+    if data.phone_number_id:
+        number = PhoneNumber.objects.filter(phone_number_id=data.phone_number_id).first()
+        pin = number.registration_pin if number is not None else ""
+    return ConnectingOut(hub_id=hub.id, pin=pin)

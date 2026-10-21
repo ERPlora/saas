@@ -19,6 +19,8 @@ for a third party.
   Meta (door 9) and when Meta's list is read again; ``whatsapp.number.reconnect_needed``: Meta refused the token;
 - ``whatsapp.number.renewal`` / ``whatsapp.number.alerted``: the daily renewal of Meta's permission (WHATSAPP-G12),
   the mark «needs reconnecting» and the owner told once per incident;
+- ``whatsapp.number.connect`` / ``whatsapp.number.disconnect``: the number a business connected through Meta's
+  window (door 11, WHATSAPP-G01) and its disconnection (door 12, WHATSAPP-G02);
 - ``whatsapp.retention.purge``: the daily forgetting of what the Hub took, of what it never took and of the keys
   (WHATSAPP-G14).
 
@@ -51,8 +53,12 @@ from whatsapp.schemas import (
     ClaimOut,
     EraseIn,
     EraseOut,
+    DisconnectIn,
     IngestIn,
     IngestOut,
+    NumberConnectIn,
+    NumberConnectOut,
+    NumberDisconnectOut,
     PurgeIn,
     PurgeOut,
     ReconnectIn,
@@ -632,6 +638,92 @@ def number_alerted(ctx: OperationContext, data: AlertedIn) -> AlertedOut:
         reconnect_alerted_at=timezone.now()
     )
     return AlertedOut(alerted=bool(alerted))
+
+
+# --- Connecting a number (WHATSAPP-G01, WHATSAPP-G02) -----------------------------------------------------------
+
+
+@operation(
+    "whatsapp.number.connect", kind="command", permission=PERMISSION, input=NumberConnectIn, output=NumberConnectOut
+)
+def number_connect(ctx: OperationContext, data: NumberConnectIn) -> NumberConnectOut:
+    """Keep the number Meta just let the business use: its permission and PIN encrypted, active, without the mark
+    «needs reconnecting». A number has one owner in the whole platform: one another business had moves here, and
+    that business learns it lost it. The business's previous number stops and forgets its permission."""
+    now = timezone.now()
+    number = PhoneNumber.objects.select_for_update().filter(phone_number_id=data.phone_number_id).first()
+    moved_from = number.hub_id if number is not None and number.hub_id != data.hub_id else None
+    previous = PhoneNumber.objects.select_for_update().filter(hub_id=data.hub_id, is_active=True)
+    for old in previous.exclude(phone_number_id=data.phone_number_id):
+        _stop(old, now)
+    if number is None:
+        number = PhoneNumber(phone_number_id=data.phone_number_id)
+    number.hub_id = data.hub_id
+    number.display_phone = data.display_phone[:32]
+    number.display_name = data.display_name[:200]
+    number.waba_id = data.waba_id
+    number.business_id = data.business_id
+    number.access_token = data.token.get_secret_value()
+    number.registration_pin = data.pin.get_secret_value()
+    number.is_on_biz_app = data.is_on_biz_app
+    number.token_expires_at = data.expires_at
+    number.is_active = True
+    number.needs_reconnect = False
+    number.reconnect_alerted_at = None
+    number.connected_at = now
+    number.disconnected_at = None
+    number.save()
+    announce_channel(data.hub_id)
+    if moved_from is not None:
+        logger.warning("whatsapp.number.moved from_hub_id=%s to_hub_id=%s", moved_from, data.hub_id)
+        announce_channel(moved_from)
+    record_event(
+        ctx,
+        events.NUMBER_CONNECTED,
+        {
+            "hub_id": str(data.hub_id),
+            "moved_from": str(moved_from) if moved_from else None,
+            "is_on_biz_app": data.is_on_biz_app,
+        },
+    )
+    return NumberConnectOut(moved_from=moved_from)
+
+
+def _stop(number: PhoneNumber, now) -> None:
+    """The number takes and sends nothing more and forgets Meta's permission; its PIN stays, to register it again."""
+    number.is_active = False
+    number.access_token = ""
+    number.needs_reconnect = False
+    number.reconnect_alerted_at = None
+    number.disconnected_at = now
+    number.save(
+        update_fields=[
+            "is_active", "access_token", "needs_reconnect", "reconnect_alerted_at", "disconnected_at", "updated_at"
+        ]
+    )
+
+
+@operation(
+    "whatsapp.number.disconnect", kind="command", permission=PERMISSION, input=DisconnectIn, output=NumberDisconnectOut
+)
+def number_disconnect(ctx: OperationContext, data: DisconnectIn) -> NumberDisconnectOut:
+    """Stop the business's number: what Meta reports of it is discarded from now on and nothing is sent with it.
+    Says the account and the permission just forgotten, so the app is unsubscribed at Meta after the COMMIT unless
+    another connected number still uses that account."""
+    hub = queries.known_hub(data.hub, live=False)
+    if hub is None:
+        raise queries.unknown_hub()
+    number = PhoneNumber.objects.select_for_update().filter(hub=hub, is_active=True).first()
+    if number is None:
+        return NumberDisconnectOut(disconnected=False)
+    token = number.access_token
+    _stop(number, timezone.now())
+    in_use = PhoneNumber.objects.filter(waba_id=number.waba_id, is_active=True).exists()
+    announce_channel(hub.id)
+    record_event(ctx, events.NUMBER_DISCONNECTED, {"hub_id": str(hub.id)})
+    return NumberDisconnectOut(
+        disconnected=True, waba_id=number.waba_id, token=token or None, account_in_use=in_use
+    )
 
 
 # --- The retention (WHATSAPP-G14) --------------------------------------------------------------------------------

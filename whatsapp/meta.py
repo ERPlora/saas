@@ -111,6 +111,13 @@ def exchange_token(token: str) -> dict:
     return _request("GET", "oauth/access_token", token=None, params=params)
 
 
+def exchange_code(code: str) -> dict:
+    """Meta's exchange of Embedded Signup's one-time ``code`` for the business's token (``{"access_token"}``)."""
+    app_id, secret = app_credentials()
+    params = {"client_id": app_id, "client_secret": secret, "code": code}
+    return _request("GET", "oauth/access_token", token=None, params=params)
+
+
 def token_expiry(token: str) -> datetime | None:
     """When ``token`` expires, as Meta's ``debug_token`` says it (``None``: it never does, Meta's ``0``)."""
     app_id, secret = app_credentials()

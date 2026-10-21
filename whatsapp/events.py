@@ -23,6 +23,10 @@ TEMPLATE_FORGOTTEN = "whatsapp.template.forgotten"
 TEMPLATES_SYNCED = "whatsapp.template.synced"
 #: Meta refused the business's permission: only connecting again fixes it: ``{"hub_id"}``.
 NUMBER_RECONNECT_NEEDED = "whatsapp.number.reconnect_needed"
+#: A business connected its number (door 11): ``{"hub_id", "moved_from", "is_on_biz_app"}``.
+NUMBER_CONNECTED = "whatsapp.number.connected"
+#: A business disconnected its number (door 12): ``{"hub_id"}``.
+NUMBER_DISCONNECTED = "whatsapp.number.disconnected"
 #: The daily retention forgot what it no longer keeps: ``{"deliveries", "never_taken", "sends", "registrations"}``.
 RETENTION_PURGED = "whatsapp.retention.purged"
 
@@ -35,5 +39,7 @@ ALL = [
     TEMPLATE_FORGOTTEN,
     TEMPLATES_SYNCED,
     NUMBER_RECONNECT_NEEDED,
+    NUMBER_CONNECTED,
+    NUMBER_DISCONNECTED,
     RETENTION_PURGED,
 ]

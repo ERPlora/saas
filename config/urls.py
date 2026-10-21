@@ -131,6 +131,10 @@ urlpatterns = [
         whatsapp_internal.templates_delete,
         name="internal_whatsapp_templates_delete",
     ),
+    # The proposed doors 10–12 of connecting a number (whatsapp/WORKBOOK.md «Contrato con el Hub»).
+    path("internal/whatsapp/config", whatsapp_internal.config, name="internal_whatsapp_config"),
+    path("internal/whatsapp/connect", whatsapp_internal.connect, name="internal_whatsapp_connect"),
+    path("internal/whatsapp/disconnect", whatsapp_internal.disconnect, name="internal_whatsapp_disconnect"),
     # Stripe's single webhook (PLAN-SAAS §4): signed by Stripe, no session nor CSRF.
     path("webhooks/stripe/", billing_webhooks.stripe_webhook, name="stripe_webhook"),
     # Meta's single WhatsApp webhook (whatsapp/webhooks.py): its verification (GET) and its signed notices.

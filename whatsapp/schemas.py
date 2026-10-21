@@ -311,6 +311,72 @@ class AlertedOut(Schema):
     alerted: bool
 
 
+# --- Doors 10–12: connecting a number (WHATSAPP-G11, WHATSAPP-G01, WHATSAPP-G02) ---------------------------------
+
+MetaId = Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^\d{1,50}$")]
+
+
+class ConfigIn(Schema):
+    """Door 10's body: the business whose screen opens Meta's window."""
+
+    hub: HubRef
+
+
+class ConnectIn(Schema):
+    """Door 11's body: what Meta's window (Embedded Signup) handed the Hub's screen, as it came. ``event``
+    ``FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING`` is a number of the WhatsApp Business app (coexistence);
+    ``phone_number_id`` may be missing then, and the account's only number is taken."""
+
+    hub: HubRef
+    code: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2048)]
+    event: str = Field("", max_length=64)
+    waba_id: MetaId
+    phone_number_id: Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^\d{0,50}$")] = ""
+    business_id: Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^\d{0,50}$")] = ""
+
+
+class DisconnectIn(Schema):
+    hub: HubRef
+
+
+class ConnectingIn(Schema):
+    hub: str
+    #: The number about to be registered: its PIN, if erplora.com already keeps one.
+    phone_number_id: str = ""
+
+
+class ConnectingOut(Schema):
+    hub_id: UUID
+    pin: SecretStr
+
+
+class NumberConnectIn(Schema):
+    hub_id: UUID
+    phone_number_id: str
+    display_phone: str
+    display_name: str = ""
+    waba_id: str
+    business_id: str = ""
+    token: SecretStr
+    expires_at: datetime | None = None
+    pin: SecretStr
+    is_on_biz_app: bool = False
+
+
+class NumberConnectOut(Schema):
+    #: The business the number belonged to until now (it moved), if another.
+    moved_from: UUID | None = None
+
+
+class NumberDisconnectOut(Schema):
+    disconnected: bool
+    waba_id: str = ""
+    #: The permission just forgotten, for unsubscribing the app at Meta after the COMMIT (never kept).
+    token: SecretStr | None = None
+    #: Another connected number still uses the same account at Meta: its subscription stays.
+    account_in_use: bool = False
+
+
 # --- The retention (WHATSAPP-G14) -----------------------------------------------------------------------------
 
 

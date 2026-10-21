@@ -1,5 +1,7 @@
 """The WhatsApp doors erplora.com serves to the Hub, ``POST /internal/whatsapp/…`` (the Hub's WORKBOOK
-``whatsapp_inbox``, «Contrato con el SaaS», doors 5–9; the Hub calls them from ``apps/whatsapp_inbox/gateway.py``).
+``whatsapp_inbox``, «Contrato con el SaaS», doors 5–9; the Hub calls them from ``apps/whatsapp_inbox/gateway.py``),
+and the proposed doors 10–12 of connecting a number (``config``, ``connect``, ``disconnect``; the whatsapp
+WORKBOOK, «Contrato con el Hub»).
 
 Server to server, signed as every ``/internal`` call (``accounts.signing``: v1 over the body, which the Hub signs
 today, or v2; ±300 s; the current or the previous secret), so no CSRF token. Plain Django views, as
@@ -26,7 +28,7 @@ from pydantic import BaseModel, ValidationError
 
 from accounts.signing import live_secrets, may_be_signed, verify_signed
 from whatsapp import gateway
-from whatsapp.schemas import EraseIn, SendIn, TemplateDeleteIn, TemplateIn
+from whatsapp.schemas import ConfigIn, ConnectIn, DisconnectIn, EraseIn, SendIn, TemplateDeleteIn, TemplateIn
 
 logger = logging.getLogger(__name__)
 
@@ -152,3 +154,21 @@ def templates(data: TemplateIn, key: str) -> tuple[int, dict]:
 def templates_delete(data: TemplateDeleteIn) -> tuple[int, dict]:
     """Door 9: delete that one template, in that language, at Meta."""
     return gateway.delete_template(data)
+
+
+@_door(ConfigIn)
+def config(data: ConfigIn) -> tuple[int, dict]:
+    """Door 10: what the Hub's screen opens Meta's window (Embedded Signup) with."""
+    return gateway.config(data)
+
+
+@_door(ConnectIn)
+def connect(data: ConnectIn) -> tuple[int, dict]:
+    """Door 11: connect the number Meta's window chose, with its one-time code."""
+    return gateway.connect(data)
+
+
+@_door(DisconnectIn)
+def disconnect(data: DisconnectIn) -> tuple[int, dict]:
+    """Door 12: disconnect the business's number."""
+    return gateway.disconnect(data)
