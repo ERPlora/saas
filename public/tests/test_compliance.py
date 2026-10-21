@@ -150,9 +150,14 @@ def test_the_page_in_spanish(client):
     assert "Todavía sin conexión" in html
 
 
-def test_no_spanish_figure_reads_like_a_price_plan(client):
-    """saas#2650: «En el plan» over the countries to come read as a pricing plan."""
-    assert "En el plan" not in page(client, language="es")
+def test_no_spanish_figure_or_heading_reads_like_a_price_plan(client):
+    """saas#2650 and saas#2645: «En el plan» over the countries to come, and a section titled «Plan», read as a
+    pricing plan; the countries without a connection say so instead."""
+    html = page(client, language="es")
+
+    assert "En el plan" not in html
+    assert ">Plan<" not in html and ">Plan.<" not in html
+    assert 'data-figure="not-connected"' in html
 
 
 def test_every_message_of_the_page_has_its_spanish_entry():
