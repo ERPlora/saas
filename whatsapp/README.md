@@ -105,5 +105,10 @@ en el log como `ERROR hubs.sync.refused … call=state`. Si cambia el esquema de
 
 e2e: `tests/e2e/panel/whatsapp.spec.ts` (el webhook de Meta en el Django real del panel, el Hub con su doble) y
 `tests/e2e/panel/whatsapp-hub.spec.ts`, la cruzada contra un Hub de verdad (Meta → erplora.com → la bandeja del Hub):
-necesita la pila del Hub y un SaaS de este checkout al lado (receta en su cabecera); sin `E2E_CROSS_HUB_PORT` se salta.
+necesita la pila del Hub y un SaaS de este checkout al lado (receta en su cabecera, con `WHATSAPP_MEDIA_BASE_URL` en el
+puerto de ese SaaS: el Hub solo acepta adjuntos de su `SAAS_URL`); sin `E2E_CROSS_HUB_PORT` se salta. Su siembra,
+`tests/e2e/panel/whatsapp_hub_seed.py` (la misma que usan los e2e de `whatsapp_inbox` del Hub), deja a `a` su número,
+las plantillas que erplora.com guarda tras leer la lista de Meta (aprobadas, en revisión, rechazada con su motivo y una
+con foto en la cabecera hecha en WhatsApp Manager, todas `e2e_…`) y el consumo del mes (`--used N`, 0 por defecto),
+sin llamar a Meta; su test es `tests/test_whatsapp_hub_seed.py`.
 No hay `UI-REQUESTS.md`: la app no tiene pantallas en el panel ni pide nada a `@erplora/ui`.

@@ -3,6 +3,10 @@
 // `whatsapp` key (door 4) to the Hub, which takes it; then the spec plays only Meta: a customer's message, the owner's
 // reply from the phone app and Meta's «read», each signed as Meta signs its webhook, posted to erplora.com, which
 // hands them to the Hub (doors 1 and 2); the owner sees them arrive in the open inbox without a reload, in three sizes.
+// flow: ninguno propio — desbloquea WHATSAPP_INBOX-F13 (tope), F27 y F28 del Hub
+// (FIX-SAAS-WHATSAPP-E2E-SEED-TEMPLATES-AND-USAGE): the seed's templates (what erplora.com keeps after reading Meta's
+// list) reach the Hub's Settings with Meta's verdict and reason, and with the month at the plan's allowance
+// (`--used`) the Hub says so and «Send» stops.
 //
 // It needs the Hub's stack and, beside it, a SaaS of this checkout (the CI has no Hub: there it is skipped, and says
 // so). From a Hub checkout (`<port>` = E2E_CROSS_HUB_PORT, e.g. 8440; tests/e2e/README.md of the Hub):
@@ -13,18 +17,20 @@
 //   env -u DB_NAME E2E_SAAS_PORT=<port+1> node tests/e2e/database.ts
 //   DB_NAME=saas_e2e_<port+1> VITE_DEV_PORT=<vite+1> HUB_INTERNAL_URL=http://127.0.0.1:<port> \
 //     HUB_CALLBACK_TEMPLATE='http://{slug}.localhost:<port>/auth/callback' EMAIL_FILE_PATH=<mail dir> \
+//     WHATSAPP_MEDIA_BASE_URL=http://localhost:<port+1> (the only origin of attachments the Hub takes: its SAAS_URL) \
 //     WHATSAPP_APP_ID=… WHATSAPP_APP_SECRET=… WHATSAPP_VERIFY_TOKEN=… WHATSAPP_CONFIG_ID=… (project.ts WHATSAPP_E2E) \
 //     uv run python manage.py runserver 127.0.0.1:<port+1>
 // Then: `env -u DB_NAME E2E_SAAS_PORT=<base> VITE_DEV_PORT=<vite> E2E_CROSS_HUB_PORT=<port> E2E_MAIL_DIR=<mail dir>
 // pnpm e2e:ci tests/e2e/panel/whatsapp-hub.spec.ts`. The spec seeds erplora.com's side itself (whatsapp_hub_seed.py:
-// `a` and `b` with the Hub's ids, `a`'s number) and names what it writes in the Hub `e2e.…`.
+// `a` and `b` with the Hub's ids, `a`'s number, its templates and the month's usage) and names what it writes in the
+// Hub `e2e.…`; it leaves the month's usage at 0.
 import { execFileSync } from 'node:child_process';
 import { createHmac } from 'node:crypto';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { readMailCode } from '@erplora/ui/testing/mail';
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 
 import { OWNER, shot, submitSignInForm, VIEWPORTS } from './fixtures';
 import { WHATSAPP_E2E } from './project';
@@ -40,25 +46,38 @@ const INBOX = `${HUB_A}/whatsapp_inbox/inbox`;
 const NUMBER_ID = '880000000000101';
 const WABA_ID = '880000000000100';
 const BUSINESS_PHONE = '34910000101';
+/** whatsapp_hub_seed.py's templates of `a` (its TEMPLATES, as Meta's list gives them). */
+const SEEDED = {
+  approved: 'e2e_seed_recordatorio_cita',
+  inReview: 'e2e_seed_oferta_color',
+  rejected: 'e2e_seed_cambio_horario',
+  photo: 'e2e_seed_bienvenida_foto',
+} as const;
+const TASK = 'FIX-SAAS-WHATSAPP-E2E-SEED-TEMPLATES-AND-USAGE';
 
 test.skip(!HUB_PORT || !MAIL_DIR, 'needs a real Hub stack and its SaaS (E2E_CROSS_HUB_PORT, E2E_MAIL_DIR): see the header');
 test.describe.configure({ mode: 'serial' });
 
+/** One query in the Hub's stack database: its rows, trimmed. */
+function hubSql(query: string): string {
+  return execFileSync(
+    'docker',
+    ['compose', 'exec', '-T', 'postgres', 'psql', '-U', 'hub', '-d', `hub_e2e_${HUB_PORT}`, '-At', '-c', query],
+    { cwd: REPO_DIR, encoding: 'utf8' },
+  ).trim();
+}
+
 /** The Hub's own ids of its local hubs `a` and `b`, read in its stack's database. */
 function hubIds(): [string, string] {
-  const rows = execFileSync(
-    'docker',
-    ['compose', 'exec', '-T', 'postgres', 'psql', '-U', 'hub', '-d', `hub_e2e_${HUB_PORT}`, '-At', '-c',
-      "select slug || '=' || id from base_hub where slug in ('a', 'b') order by slug"],
-    { cwd: REPO_DIR, encoding: 'utf8' },
-  );
-  const ids = Object.fromEntries(rows.trim().split('\n').map((row) => row.split('=')));
+  const rows = hubSql("select slug || '=' || id from base_hub where slug in ('a', 'b') order by slug");
+  const ids = Object.fromEntries(rows.split('\n').map((row) => row.split('=')));
   return [ids.a, ids.b];
 }
 
-/** erplora.com's side of the run, and the snapshot of `a` pushed to the Hub: what the seed printed. */
-function seedErplora(): { delivered: boolean; hub_error: string } {
-  const out = execFileSync('uv', ['run', 'python', 'tests/e2e/panel/whatsapp_hub_seed.py', ...hubIds()], {
+/** erplora.com's side of the run, and the snapshot of `a` pushed to the Hub: what the seed printed (`--used N`: the
+ *  month's usage of `a`, 0 when not given). */
+function seedErplora(...options: string[]): { delivered: boolean; hub_error: string } {
+  const out = execFileSync('uv', ['run', 'python', 'tests/e2e/panel/whatsapp_hub_seed.py', ...hubIds(), ...options], {
     cwd: SAAS_DIR,
     encoding: 'utf8',
     env: { ...process.env, DEBUG: 'True', DB_NAME: `saas_e2e_${HUB_PORT + 1}`, HUB_INTERNAL_URL: `http://127.0.0.1:${HUB_PORT}` },
@@ -114,6 +133,22 @@ async function openInbox(page: Page): Promise<void> {
 }
 
 const shown = (page: Page) => page.locator('.ion-page:not(.ion-page-hidden)').last();
+
+/** No horizontal scroll in the page at its current size. */
+const fits = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
+
+/** `target` brought into sight at the page's new size, again if the page painted it anew meanwhile. */
+async function inSight(target: Locator): Promise<void> {
+  await expect(async () => {
+    await target.scrollIntoViewIfNeeded({ timeout: 2_000 });
+    await expect(target).toBeInViewport({ timeout: 2_000 });
+  }).toPass({ timeout: 15_000 });
+}
+
+test.afterAll(() => {
+  // The month's usage back to 0: a spec after this one sends again.
+  if (HUB_PORT && MAIL_DIR) expect(seedErplora()).toEqual({ delivered: true, hub_error: '' });
+});
 
 test('WHATSAPP-G03: the snapshot erplora.com pushes carries the connected number, and the real Hub takes it', async ({ page }) => {
   expect(seedErplora()).toEqual({ delivered: true, hub_error: '' });
@@ -174,5 +209,63 @@ test('WHATSAPP-G07: a customer’s message, the owner’s reply from the phone a
     await expect(reply.locator('[data-testid=whatsapp-inbox-message-status]')).toContainText('Read');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: shot(`APP-WHATSAPP-WHATSAPP-G07-${viewport.width}`) });
+  }
+});
+
+// flow: ninguno propio — desbloquea WHATSAPP_INBOX-F13 (tope), F27 y F28 del Hub
+test(`${TASK}: the real Hub lists the templates erplora.com keeps and, with the month spent, «Send» stops`, async ({
+  page,
+}) => {
+  expect(seedErplora()).toEqual({ delivered: true, hub_error: '' });
+  await openInbox(page);
+
+  // F27 and F28: Settings lists what erplora.com read from Meta, each with Meta's verdict, a rejected one with its reason.
+  await page.goto(`${HUB_A}/whatsapp_inbox/settings`);
+  const table = 'whatsapp-inbox-templates';
+  await shown(page).locator(`[data-testid=${table}-search] input`).fill('e2e_seed');
+  const row = (name: string) => shown(page).locator(`[data-testid=${table}-row]`, { hasText: name });
+  await expect(row(SEEDED.approved)).toContainText('Approved', { timeout: 30_000 });
+  await expect(row(SEEDED.inReview)).toContainText('In review');
+  await expect(row(SEEDED.rejected)).toContainText('Rejected');
+  await expect(row(SEEDED.rejected)).toContainText('INVALID_FORMAT');
+  await expect(row(SEEDED.photo)).toContainText('Approved');
+  for (const viewport of VIEWPORTS) {
+    await page.setViewportSize(viewport);
+    await inSight(row(SEEDED.rejected));
+    expect(await fits(page)).toBe(true);
+    await page.screenshot({ path: shot(`${TASK}-${viewport.width}`) });
+  }
+
+  // F13: the month at the plan's allowance (the figure erplora.com's snapshot gave the Hub) is said in Settings.
+  const limit = Number(hubSql("select monthly_limit from whatsapp_inbox_channel where host = 'a'"));
+  expect(limit).toBeGreaterThan(0);
+  expect(seedErplora('--used', String(limit))).toEqual({ delivered: true, hub_error: '' });
+  const month = shown(page).locator('[data-testid=whatsapp-inbox-settings-month]');
+  await expect(month).toContainText(`${limit} of ${limit} messages sent`, { timeout: 30_000 });
+
+  // A customer still writes (the cap only limits what is sent), but «Send» says why instead of sending.
+  await page.goto(INBOX);
+  await expect(shown(page).locator('[data-testid=whatsapp-inbox-cap-reached]')).toContainText(
+    'You have used all the WhatsApp messages of your plan this month.',
+  );
+  const customer = `3469901${String(Math.floor(Math.random() * 1e4)).padStart(4, '0')}`;
+  await shown(page).locator('[data-testid=whatsapp-inbox-search] input').fill(customer.slice(2));
+  const message = notice('messages', {
+    contacts: [{ profile: { name: `e2e.Marta ${Date.now().toString(36)}` }, wa_id: customer }],
+    messages: [{ from: customer, id: `e2e.wamid.${Date.now()}.cap`, timestamp: now(), type: 'text', text: { body: '¿Me dais cita el lunes?' } }],
+  });
+  expect(await meta(page, message)).toBe(200);
+  const conversation = shown(page).locator('[data-testid=whatsapp-inbox-row]', { hasText: customer.slice(2) });
+  await expect(conversation).toBeVisible({ timeout: 30_000 });
+  await conversation.click();
+  const panel = shown(page).locator('[data-testid=whatsapp-inbox-detail]');
+  const blocked = panel.locator('[data-testid=whatsapp-inbox-composer-blocked]');
+  await expect(blocked).toHaveAttribute('data-code', 'cap_reached');
+  await expect(panel.locator('[data-testid=whatsapp-inbox-composer-send]')).toHaveJSProperty('disabled', true);
+  for (const viewport of VIEWPORTS) {
+    await page.setViewportSize(viewport);
+    await inSight(blocked);
+    expect(await fits(page)).toBe(true);
+    await page.screenshot({ path: shot(`${TASK}-cap-${viewport.width}`) });
   }
 });
