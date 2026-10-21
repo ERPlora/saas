@@ -122,6 +122,15 @@
       "generateNewCodes": "Generar nuevos códigos",
       "recoveryNoneLead": "Sin ellos, perder tu autenticador te bloquea el acceso a tu cuenta.",
       "generateRecoveryCodes": "Generar códigos de recuperación",
+      "trusted": {
+        "title": "Navegadores de confianza",
+        "lead": "Los navegadores en los que confías no piden el código de tu app durante 14 días.",
+        "thisUntil": "Este navegador es de confianza hasta el {date}.",
+        "thisNot": "Este navegador no es de confianza.",
+        "unknown": "No hemos podido comprobar este navegador.",
+        "revoke": "Dejar de confiar en todos los navegadores",
+        "revoked": "Ya no confías en ningún navegador: cada uno te pedirá el código de tu app la próxima vez que entres."
+      },
       "activate": {
         "title": "Configura tu app autenticadora",
         "lead": "Escanea este código con tu app autenticadora, luego escribe el número que muestra.",

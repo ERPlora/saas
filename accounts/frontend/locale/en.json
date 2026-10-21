@@ -122,6 +122,15 @@
       "generateNewCodes": "Generate new codes",
       "recoveryNoneLead": "Without them, losing your authenticator locks you out of your account.",
       "generateRecoveryCodes": "Generate recovery codes",
+      "trusted": {
+        "title": "Trusted browsers",
+        "lead": "Browsers you trust skip the code from your app for 14 days.",
+        "thisUntil": "This browser is trusted until {date}.",
+        "thisNot": "This browser is not trusted.",
+        "unknown": "We could not check this browser.",
+        "revoke": "Stop trusting all browsers",
+        "revoked": "No browser is trusted now: each one will ask for the code from your app at its next sign-in."
+      },
       "activate": {
         "title": "Set up your authenticator app",
         "lead": "Scan this code with your authenticator app, then type the number it shows.",

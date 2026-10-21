@@ -196,6 +196,22 @@ class SessionsClosedOut(Schema):
     closed: int
 
 
+# --- Account → Security → Two-factor authentication: the trusted browsers (ACCOUNTS-F17) -----------------------
+
+
+class BrowserTrustGetIn(StrictIn):
+    pass
+
+
+class BrowserTrustRevokeIn(StrictIn):
+    pass
+
+
+class BrowserTrustOut(Schema):
+    #: Until when this browser skips the app's code at sign-in («Trust this browser», ACCOUNTS-F05), or ``None``.
+    trusted_until: datetime | None
+
+
 # --- API keys -------------------------------------------------------------------------------------
 
 

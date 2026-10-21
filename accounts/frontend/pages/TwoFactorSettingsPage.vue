@@ -14,6 +14,10 @@
 // - The QR is drawn here from allauth's `otpauth://` URL, as a data-URI image (CSP: `img-src data:`);
 //   the codes download as a text file built here, so there is no server route for it.
 // - Turning the app on makes allauth generate the recovery codes: they are shown right away, once.
+// - «Trusted browsers» (ACCOUNTS-F17), with the app on: whether this browser skips the app's code (ACCOUNTS-F05) and
+//   until when (`accounts.browser_trust.get`; allauth keeps no list, so only this one can be told), and «Stop trusting
+//   all browsers» (`accounts.browser_trust.revoke`). Read apart from the authenticators: it never holds the page.
+import { formatDateTime } from '@erplora/ui/components';
 import {
   ApiError,
   type Authenticator,
@@ -58,6 +62,7 @@ const ICONS = {
   codes: ionIconSrc('lucide:key-round'),
   off: ionIconSrc('lucide:shield-x'),
   regenerate: ionIconSrc('lucide:refresh-cw'),
+  trust: ionIconSrc('laptop-outline'),
 };
 const TITLES: Record<View, string> = {
   index: 'accounts.twoFactor.title',
@@ -67,9 +72,10 @@ const TITLES: Record<View, string> = {
   regenerate: 'accounts.twoFactor.regenerate.title',
 };
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const router = useRouter();
-const config = useLiveClient().config;
+const client = useLiveClient();
+const config = client.config;
 const auth = createAllauthClient(config);
 
 const status = shallowRef<'loading' | 'ready' | 'error' | 'leaving'>('loading');
@@ -88,6 +94,11 @@ const confirmCode = shallowRef('');
 const busy = shallowRef(false);
 const fields = shallowRef<FieldErrors>({});
 const failure = shallowRef('');
+/** Until when this browser is trusted: a date, `null` (not trusted), `undefined` (not known yet, or not readable). */
+const trustedUntil = shallowRef<string | null | undefined>(undefined);
+const trustUnknown = shallowRef(false);
+/** «Stop trusting all browsers» went through. */
+const trustRevoked = shallowRef(false);
 
 const totpOn = computed(() => authenticators.value.some((a) => a.type === 'totp'));
 const recoveryAuthenticator = computed(() => {
@@ -132,6 +143,24 @@ function shownInput(): string | undefined {
   if (view.value !== 'activate') return undefined;
   return confirmWith.value === 'password' ? 'password' : 'code';
 }
+
+/** Whether this browser is trusted, and until when; read on its own, it never holds the page. */
+async function loadTrust(): Promise<void> {
+  trustUnknown.value = false;
+  try {
+    trustedUntil.value = (await client.api.call('accounts.browser_trust.get')).trusted_until;
+  } catch {
+    trustedUntil.value = undefined;
+    trustUnknown.value = true;
+  }
+}
+
+const revokeTrust = () =>
+  run(async () => {
+    trustedUntil.value = (await client.api.call('accounts.browser_trust.revoke')).trusted_until;
+    trustUnknown.value = false;
+    trustRevoked.value = true;
+  });
 
 /** The settings, read anew. */
 async function load(): Promise<void> {
@@ -282,6 +311,7 @@ function download(): void {
 
 onMounted(() => {
   void load();
+  if (config.mfaEnabled !== false) void loadTrust();
 });
 </script>
 
@@ -449,6 +479,57 @@ onMounted(() => {
               {{ $t('accounts.twoFactor.generateRecoveryCodes') }}
             </ion-button>
           </template>
+        </div>
+
+        <div
+          v-if="totpOn"
+          class="auth-section"
+          data-testid="trust-section"
+        >
+          <div class="auth-section-head">
+            <ion-icon
+              class="auth-section-icon"
+              :icon="ICONS.trust"
+              aria-hidden="true"
+            />
+            <h2>{{ $t('accounts.twoFactor.trusted.title') }}</h2>
+          </div>
+          <p
+            class="auth-lead"
+            data-testid="trust-lead"
+          >
+            {{ $t('accounts.twoFactor.trusted.lead') }}
+          </p>
+          <p
+            v-if="trustedUntil !== undefined || trustUnknown"
+            class="auth-lead"
+            data-testid="trust-this"
+          >
+            {{
+              trustUnknown
+                ? $t('accounts.twoFactor.trusted.unknown')
+                : trustedUntil
+                  ? $t('accounts.twoFactor.trusted.thisUntil', { date: formatDateTime(trustedUntil, locale) })
+                  : $t('accounts.twoFactor.trusted.thisNot')
+            }}
+          </p>
+          <p
+            v-if="trustRevoked"
+            class="auth-lead"
+            role="status"
+            data-testid="trust-done"
+          >
+            {{ $t('accounts.twoFactor.trusted.revoked') }}
+          </p>
+          <ion-button
+            data-testid="trust-revoke"
+            fill="outline"
+            expand="block"
+            :disabled="busy"
+            @click="revokeTrust()"
+          >
+            {{ $t('accounts.twoFactor.trusted.revoke') }}
+          </ion-button>
         </div>
       </template>
 

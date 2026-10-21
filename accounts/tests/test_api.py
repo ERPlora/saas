@@ -66,6 +66,8 @@ CUENTA = {
     ("get", "/api/accounts/sessions"): "accounts.session.list",
     ("post", "/api/accounts/sessions/close"): "accounts.session.close",
     ("post", "/api/accounts/sessions/close_others"): "accounts.session.close_others",
+    ("get", "/api/accounts/browser-trust"): "accounts.browser_trust.get",
+    ("post", "/api/accounts/browser-trust/revoke"): "accounts.browser_trust.revoke",
     ("get", "/api/accounts/api-keys"): "accounts.apikey.list",
     ("post", "/api/accounts/api-keys"): "accounts.apikey.create",
     ("post", "/api/accounts/api-keys/revoke"): "accounts.apikey.revoke",

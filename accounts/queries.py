@@ -3,14 +3,18 @@ re-read of an account before a live re-run, the hubs the admin's «Open in the H
 authenticators of the second factor (``mfa.py``), whether an email has an account (the unified login),
 whether an account proved its email or has any way in (the invitation of ``hubs``, saas#2541), and the
 Account page (plan 2026-10-13, L3-A): the profile, the
-preferences, the live sessions and the API keys, and the key a request carries (``api_auth``)."""
+preferences, the live sessions, whether this browser is trusted (ACCOUNTS-F17) and the API keys, and the key a
+request carries (``api_auth``)."""
 
 import time
 from collections.abc import Iterable
+from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlencode, urlsplit
 
 from allauth.account.models import EmailAddress
+from allauth.mfa import app_settings as mfa_settings
+from allauth.mfa.internal.flows.trust import create_config_fingerprint, decode_trust_cookie
 from allauth.mfa.models import Authenticator
 from allauth.socialaccount.models import SocialAccount
 from django.conf import settings
@@ -35,6 +39,8 @@ from accounts.models import (
 from accounts.schemas import (
     ApiKeyListIn,
     ApiKeyListOut,
+    BrowserTrustGetIn,
+    BrowserTrustOut,
     HubListIn,
     HubListOut,
     PreferencesGetIn,
@@ -304,6 +310,35 @@ def session_list(ctx: OperationContext, data: SessionListIn) -> dict[str, Any]:
         "offset": data.offset,
         "others": sum(1 for _, key in sessions if key != current),
     }
+
+
+# --- Two-factor authentication: the trusted browsers (ACCOUNTS-F05, ACCOUNTS-F17) -------------------------------
+
+
+def browser_trusted_until(user, request) -> datetime | None:
+    """Until when ``request``'s browser skips ``user``'s app code at sign-in, or ``None``.
+
+    The trust is allauth's ``mfa_trusted`` cookie (``MFA_TRUST_ENABLED``): signed entries of a fingerprint of the
+    account's password and authenticators and the moment it was given. One of them for the account as it is now, and
+    younger than ``MFA_TRUST_COOKIE_AGE``, trusts this browser; the newest says until when. Nothing is kept on the
+    server, so no other browser can be told. Only an account with the app, and only with ``ACCOUNTS_MFA_ENABLED``:
+    off, no sign-in asks for the app.
+    """
+    if request is None or not settings.ACCOUNTS_MFA_ENABLED or not has_totp(user):
+        return None
+    fingerprint = create_config_fingerprint(user)
+    given = [trust.at for trust in decode_trust_cookie(request) if trust.fingerprint == fingerprint]
+    if not given:
+        return None
+    return datetime.fromtimestamp(max(given), tz=UTC) + mfa_settings.TRUST_COOKIE_AGE
+
+
+@operation(
+    "accounts.browser_trust.get", kind="query", permission="accounts.view", input=BrowserTrustGetIn, output=BrowserTrustOut
+)
+def browser_trust_get(ctx: OperationContext, data: BrowserTrustGetIn) -> dict[str, Any]:
+    """Security → Two-factor authentication: whether this browser is trusted, and until when."""
+    return {"trusted_until": browser_trusted_until(account_of(ctx), ctx.request)}
 
 
 # --- API keys -------------------------------------------------------------------------------------

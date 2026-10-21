@@ -3,6 +3,7 @@
 // `mfa/totp/deactivate_form.html`, `mfa/recovery_codes/index.html` and `generate.html`; the URL
 // stays `/2fa`. A change that needs a recent login goes to `/reauthenticate` and back; 2FA switched
 // off on the server (404) sends to the launcher with a notice.
+import { formatDateTime } from '@erplora/ui/components';
 import { ionIconSrc } from '@erplora/ui/shell';
 import { IonButton, IonIcon, IonInput } from '@ionic/vue';
 import { flushPromises } from '@vue/test-utils';
@@ -59,8 +60,13 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-async function mountPage(locale: 'en' | 'es' = 'en') {
-  const mounted = await mountAccountPage(TwoFactorSettingsPage, { path: '/2fa', session: SIGNED_IN, locale });
+async function mountPage(locale: 'en' | 'es' = 'en', options: { call?: ReturnType<typeof vi.fn>; path?: string } = {}) {
+  const mounted = await mountAccountPage(TwoFactorSettingsPage, {
+    path: options.path ?? '/2fa',
+    session: SIGNED_IN,
+    locale,
+    call: options.call,
+  });
   const { wrapper } = mounted;
   const button = (testid: string) => wrapper.findAllComponents(IonButton).find((b) => b.attributes('data-testid') === testid);
   async function click(testid: string) {
@@ -615,5 +621,88 @@ describe('TwoFactorSettingsPage: new recovery codes (mfa/recovery_codes/generate
     expect(fromCodes.text('regenerate-lead')).toBe('This replaces your 3 unused codes.');
     await fromCodes.click('regenerate-cancel');
     expect(fromCodes.text('codes-list')).toBe(CODES.join('\n'));
+  });
+});
+
+// flow: ACCOUNTS-F17 — the trusted browsers (old «Dispositivos de confianza»): whether this one is trusted and until when
+// (allauth keeps no list, so only this browser can be told), and «Stop trusting all browsers».
+describe('TwoFactorSettingsPage: the trusted browsers', () => {
+  const UNTIL = '2026-11-04T10:00:00Z';
+  /** `client.api.call` answering the trust of this browser with `trust`, and the revocation with `revoke`. */
+  function api(trust: () => Promise<unknown>, revoke: () => Promise<unknown> = () => Promise.resolve({ trusted_until: null })) {
+    return vi.fn((op: string) => {
+      if (op === 'accounts.browser_trust.get') return trust();
+      if (op === 'accounts.browser_trust.revoke') return revoke();
+      return new Promise(() => undefined);
+    });
+  }
+
+  it('with the app on, says this browser is trusted and until when, with «Stop trusting all browsers»', async () => {
+    fakeAllauth({ 'GET /account/authenticators': list(TOTP, recovery(9)) });
+    const call = api(() => Promise.resolve({ trusted_until: UNTIL }));
+    const { wrapper, button, text } = await mountPage('en', { call });
+    expect(call).toHaveBeenCalledWith('accounts.browser_trust.get');
+    const section = wrapper.get('[data-testid="trust-section"]');
+    expect(section.get('h2').text()).toBe('Trusted browsers');
+    expect(section.findComponent(IonIcon).props('icon')).toBe(ionIconSrc('laptop-outline'));
+    expect(text('trust-lead')).toBe('Browsers you trust skip the code from your app for 14 days.');
+    expect(text('trust-this')).toBe(`This browser is trusted until ${formatDateTime(UNTIL, 'en')}.`);
+    const revoke = button('trust-revoke')!;
+    expect([revoke.props('fill'), revoke.props('expand'), revoke.text()]).toEqual(['outline', 'block', 'Stop trusting all browsers']);
+  });
+
+  it('says when this browser is not trusted', async () => {
+    fakeAllauth({ 'GET /account/authenticators': list(TOTP, recovery(9)) });
+    const { text } = await mountPage('en', { call: api(() => Promise.resolve({ trusted_until: null })) });
+    expect(text('trust-this')).toBe('This browser is not trusted.');
+  });
+
+  it('says it could not check this browser, and still offers to stop trusting them all', async () => {
+    fakeAllauth({ 'GET /account/authenticators': list(TOTP, recovery(9)) });
+    const { text, has } = await mountPage('en', { call: api(() => Promise.reject(new Error('offline'))) });
+    expect(text('trust-this')).toBe('We could not check this browser.');
+    expect(has('trust-revoke')).toBe(true);
+  });
+
+  it('has nothing to say without the app', async () => {
+    fakeAllauth({ 'GET /account/authenticators': list() });
+    const call = api(() => Promise.resolve({ trusted_until: UNTIL }));
+    const { has } = await mountPage('en', { call });
+    expect(has('trust-section')).toBe(false);
+  });
+
+  it('«Stop trusting all browsers» ends the trust of every one, this one too, and says so', async () => {
+    fakeAllauth({ 'GET /account/authenticators': list(TOTP, recovery(9)) });
+    const call = api(() => Promise.resolve({ trusted_until: UNTIL }));
+    const { click, text } = await mountPage('en', { call });
+    await click('trust-revoke');
+    expect(call).toHaveBeenCalledWith('accounts.browser_trust.revoke');
+    expect(text('trust-this')).toBe('This browser is not trusted.');
+    expect(text('trust-done')).toBe('No browser is trusted now: each one will ask for the code from your app at its next sign-in.');
+  });
+
+  it('says something went wrong when it could not stop trusting them, and keeps what it knew', async () => {
+    fakeAllauth({ 'GET /account/authenticators': list(TOTP, recovery(9)) });
+    const call = api(
+      () => Promise.resolve({ trusted_until: UNTIL }),
+      () => Promise.reject(new Error('offline')),
+    );
+    const { click, text, has } = await mountPage('en', { call });
+    await click('trust-revoke');
+    expect(text('failure')).toBe('Something went wrong. Please try again.');
+    expect(text('trust-this')).toBe(`This browser is trusted until ${formatDateTime(UNTIL, 'en')}.`);
+    expect(has('trust-done')).toBe(false);
+  });
+
+  it('speaks Spanish', async () => {
+    fakeAllauth({ 'GET /account/authenticators': list(TOTP, recovery(9)) });
+    const { text, button, click } = await mountPage('es', { call: api(() => Promise.resolve({ trusted_until: UNTIL })) });
+    expect(text('trust-lead')).toBe('Los navegadores en los que confías no piden el código de tu app durante 14 días.');
+    expect(text('trust-this')).toBe(`Este navegador es de confianza hasta el ${formatDateTime(UNTIL, 'es')}.`);
+    expect(button('trust-revoke')!.text()).toBe('Dejar de confiar en todos los navegadores');
+    await click('trust-revoke');
+    expect(text('trust-done')).toBe(
+      'Ya no confías en ningún navegador: cada uno te pedirá el código de tu app la próxima vez que entres.',
+    );
   });
 });

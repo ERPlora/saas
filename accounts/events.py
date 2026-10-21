@@ -12,6 +12,8 @@ EMAIL_CHANGE_REQUESTED = "accounts.email.change_requested"
 PREFERENCES_UPDATED = "accounts.preferences.updated"
 #: One session or all the others were closed from Account → Security.
 SESSION_CLOSED = "accounts.session.closed"
+#: Every browser the account trusted (ACCOUNTS-F05) asks for the app's code again.
+BROWSER_TRUST_REVOKED = "accounts.browser_trust.revoked"
 
 APIKEY_CREATED = "accounts.apikey.created"
 APIKEY_REVOKED = "accounts.apikey.revoked"
@@ -20,7 +22,9 @@ ALL = [
     PROFILE_UPDATED,
     PROFILE_DELETED,
     EMAIL_CHANGE_REQUESTED,
-    PREFERENCES_UPDATED,     SESSION_CLOSED,
+    PREFERENCES_UPDATED,
+    SESSION_CLOSED,
+    BROWSER_TRUST_REVOKED,
     APIKEY_CREATED,
     APIKEY_REVOKED,
 ]
