@@ -3,9 +3,11 @@ at Meta its templates live in.
 
 ``known_hub`` and ``channel_block`` are plain functions called inside the commands of ``services`` (in their
 transaction) and by ``hubs.queries`` for the snapshot (the Hub reads the channel only there).
-``whatsapp.template.account`` is the read ``gateway`` makes before it calls Meta for a business's templates.
+``whatsapp.template.account`` is the read ``gateway`` makes before it calls Meta for a business's templates, and
+``whatsapp.number.renewal_due`` the numbers whose permission is renewed today (WHATSAPP-G12).
 """
 
+from datetime import timedelta
 from typing import Any
 from uuid import UUID
 
@@ -18,7 +20,7 @@ from live.operations import operation
 from hubs.models import Hub
 from hubs.services import LIVE_STATUSES
 from whatsapp.models import PhoneNumber, Template, Usage
-from whatsapp.schemas import TemplateAccountIn, TemplateAccountOut
+from whatsapp.schemas import DueNumber, RenewalDueIn, RenewalDueOut, TemplateAccountIn, TemplateAccountOut
 
 #: Only the platform reads and writes here (``services.platform_context``); no account role holds it.
 PERMISSION = "whatsapp.manage"
@@ -133,3 +135,25 @@ def template_account(ctx: OperationContext, data: TemplateAccountIn) -> Template
             .first()
         ) or ""
     return TemplateAccountOut(hub_id=hub_id, waba_id=number.waba_id, token=number.access_token, meta_id=meta_id)
+
+
+@operation(
+    "whatsapp.number.renewal_due", kind="query", permission=PERMISSION, input=RenewalDueIn, output=RenewalDueOut
+)
+def renewal_due(ctx: OperationContext, data: RenewalDueIn) -> RenewalDueOut:
+    """The connected numbers whose permission expires within ``window_days`` (or already did), of businesses that
+    still work: one that left is not renewed any more. A token that never expires is never due."""
+    deadline = timezone.now() + timedelta(days=data.window_days)
+    numbers = (
+        PhoneNumber.objects.filter(
+            is_active=True, token_expires_at__isnull=False, token_expires_at__lte=deadline, hub__status__in=LIVE_STATUSES
+        )
+        .exclude(access_token="")
+        .order_by("token_expires_at")
+    )
+    return RenewalDueOut(
+        numbers=[
+            DueNumber(id=number.id, hub_id=number.hub_id, token=number.access_token, expires_at=number.token_expires_at)
+            for number in numbers
+        ]
+    )

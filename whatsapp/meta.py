@@ -20,6 +20,7 @@ No credential, no message text and no recipient is ever logged here.
 import contextlib
 from collections.abc import Iterator
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from urllib.parse import urlsplit
 
 import httpx
@@ -98,15 +99,26 @@ def delete(path: str, *, token: str, params: dict | None = None) -> dict:
     return _request("DELETE", path, token=token, params=params)
 
 
-def exchange_code(code: str) -> dict:
-    """Embedded Signup's code for the business token (``{"access_token", "expires_in"?}``)."""
+def exchange_token(token: str) -> dict:
+    """Meta's long-lived exchange of a business token for a fresh one (``{"access_token", "expires_in"?}``)."""
     app_id, secret = app_credentials()
-    return _request(
-        "GET",
-        "oauth/access_token",
-        token=None,
-        params={"client_id": app_id, "client_secret": secret, "code": code},
-    )
+    params = {
+        "grant_type": "fb_exchange_token",
+        "client_id": app_id,
+        "client_secret": secret,
+        "fb_exchange_token": token,
+    }
+    return _request("GET", "oauth/access_token", token=None, params=params)
+
+
+def token_expiry(token: str) -> datetime | None:
+    """When ``token`` expires, as Meta's ``debug_token`` says it (``None``: it never does, Meta's ``0``)."""
+    app_id, secret = app_credentials()
+    params = {"input_token": token, "access_token": f"{app_id}|{secret}"}
+    answer = _request("GET", "debug_token", token=None, params=params)
+    data = answer.get("data") if isinstance(answer.get("data"), dict) else {}
+    seconds = _int(data.get("expires_at"))
+    return datetime.fromtimestamp(seconds, tz=UTC) if seconds and seconds > 0 else None
 
 
 def _request(

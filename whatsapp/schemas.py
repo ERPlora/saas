@@ -258,3 +258,54 @@ class ReconnectIn(Schema):
 
 class ReconnectOut(Schema):
     changed: bool
+
+
+# --- The renewal of Meta's permission (WHATSAPP-G12) ----------------------------------------------------------
+
+
+class RenewalDueIn(Schema):
+    #: How many days before its deadline a token is renewed.
+    window_days: int = Field(14, ge=1, le=59)
+
+
+class DueNumber(Schema):
+    id: UUID
+    hub_id: UUID
+    token: SecretStr
+    expires_at: datetime
+
+
+class RenewalDueOut(Schema):
+    numbers: list[DueNumber]
+
+
+class RenewalIn(Schema):
+    number_id: UUID
+    #: ``renewed``: Meta gave a fresh token (``token``, ``expires_at``: ``None`` never); ``refused``: Meta said no;
+    #: ``unverified``: no verdict (Meta not reached, throttled, an answer without a token).
+    outcome: Literal["renewed", "refused", "unverified"]
+    token: SecretStr | None = None
+    expires_at: datetime | None = None
+
+
+class ReconnectAlert(Schema):
+    """Whom to tell that the number has to be connected again, and in which words."""
+
+    to: str
+    language: str
+    business: str
+    number: str
+    slug: str
+
+
+class RenewalOut(Schema):
+    needs_reconnect: bool
+    alert: ReconnectAlert | None = None
+
+
+class AlertedIn(Schema):
+    number_id: UUID
+
+
+class AlertedOut(Schema):
+    alerted: bool

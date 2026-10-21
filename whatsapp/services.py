@@ -16,7 +16,9 @@ for a third party.
 - ``whatsapp.template.claim`` / ``whatsapp.template.record``: door 8, a template's registration at Meta by its
   ``Idempotency-Key``: a key Meta took answers what it said the first time, never registers again;
 - ``whatsapp.template.forget`` / ``whatsapp.template.sync``: the mirror of Meta's templates, after a deletion at
-  Meta (door 9) and when Meta's list is read again; ``whatsapp.number.reconnect_needed``: Meta refused the token.
+  Meta (door 9) and when Meta's list is read again; ``whatsapp.number.reconnect_needed``: Meta refused the token;
+- ``whatsapp.number.renewal`` / ``whatsapp.number.alerted``: the daily renewal of Meta's permission (WHATSAPP-G12),
+  the mark «needs reconnecting» and the owner told once per incident.
 
 A refusal raises the envelope's error (``live.errors``): the transaction rolls back, the reservation with it.
 """
@@ -36,9 +38,12 @@ from live.outbox import record_event
 
 from hubs import queries as hubs_queries
 from hubs import services as hubs_services
+from hubs.models import HubMember
 from whatsapp import events, parse, queries
 from whatsapp.models import Delivery, PhoneNumber, Send, Template, TemplateSubmission, Usage
 from whatsapp.schemas import (
+    AlertedIn,
+    AlertedOut,
     ClaimedDelivery,
     ClaimIn,
     ClaimOut,
@@ -50,6 +55,9 @@ from whatsapp.schemas import (
     ReconnectOut,
     RecordIn,
     RecordOut,
+    ReconnectAlert,
+    RenewalIn,
+    RenewalOut,
     SendClaimIn,
     SendClaimOut,
     SendRecordIn,
@@ -560,3 +568,63 @@ def number_reconnect_needed(ctx: OperationContext, data: ReconnectIn) -> Reconne
         announce_channel(data.hub_id)
         record_event(ctx, events.NUMBER_RECONNECT_NEEDED, {"hub_id": str(data.hub_id)})
     return ReconnectOut(changed=bool(changed))
+
+
+# --- The renewal of Meta's permission (WHATSAPP-G12) -------------------------------------------------------------
+
+#: Inside this many days (or past the deadline) the owner is told even without Meta's verdict.
+LAST_CALL = timedelta(days=3)
+
+
+@operation("whatsapp.number.renewal", kind="command", permission=PERMISSION, input=RenewalIn, output=RenewalOut)
+def number_renewal(ctx: OperationContext, data: RenewalIn) -> RenewalOut:
+    """Write how a renewal ended: the fresh token and its deadline, or the mark «needs reconnecting» when Meta said
+    no (or gave no verdict and the deadline is too close to wait). The owner is to be told the first time in an
+    incident: the alert says to whom; ``whatsapp.number.alerted`` notes it once the mail left."""
+    number = PhoneNumber.objects.select_for_update().select_related("hub").filter(pk=data.number_id).first()
+    if number is None or not number.is_active:
+        return RenewalOut(needs_reconnect=False)
+    was_marked = number.needs_reconnect
+    if data.outcome == "renewed":
+        number.access_token = data.token.get_secret_value()
+        number.token_expires_at = data.expires_at
+        number.needs_reconnect = False
+        number.reconnect_alerted_at = None
+        number.save(
+            update_fields=["access_token", "token_expires_at", "needs_reconnect", "reconnect_alerted_at", "updated_at"]
+        )
+        if was_marked:
+            announce_channel(number.hub_id)
+        return RenewalOut(needs_reconnect=False)
+    out_of_runway = number.token_expires_at is not None and number.token_expires_at <= timezone.now() + LAST_CALL
+    if data.outcome == "unverified" and not out_of_runway:
+        return RenewalOut(needs_reconnect=was_marked)
+    if not was_marked:
+        number.needs_reconnect = True
+        number.save(update_fields=["needs_reconnect", "updated_at"])
+        announce_channel(number.hub_id)
+        record_event(ctx, events.NUMBER_RECONNECT_NEEDED, {"hub_id": str(number.hub_id)})
+    if number.reconnect_alerted_at is not None:
+        return RenewalOut(needs_reconnect=True)
+    owners = HubMember.objects.select_related("user").filter(hub_id=number.hub_id, role=HubMember.Role.OWNER)
+    owner = owners.first()
+    if owner is None or not owner.user.email:
+        logger.error("whatsapp.token.no_owner_to_tell hub_id=%s", number.hub_id)
+        return RenewalOut(needs_reconnect=True)
+    alert = ReconnectAlert(
+        to=owner.user.email,
+        language=owner.user.language or settings.LANGUAGE_CODE,
+        business=number.hub.name,
+        number=number.display_phone,
+        slug=number.hub.slug,
+    )
+    return RenewalOut(needs_reconnect=True, alert=alert)
+
+
+@operation("whatsapp.number.alerted", kind="command", permission=PERMISSION, input=AlertedIn, output=AlertedOut)
+def number_alerted(ctx: OperationContext, data: AlertedIn) -> AlertedOut:
+    """The owner was told: no other mail in this incident."""
+    alerted = PhoneNumber.objects.filter(pk=data.number_id, reconnect_alerted_at__isnull=True).update(
+        reconnect_alerted_at=timezone.now()
+    )
+    return AlertedOut(alerted=bool(alerted))

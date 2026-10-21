@@ -135,31 +135,51 @@ def test_an_answer_that_is_not_json_reads_empty(whatsapp_on):
 
 @respx.mock
 def test_the_app_secret_never_reaches_a_log(whatsapp_on, caplog):
-    """The exchange carries the app's secret in the address, as Meta documents it: httpx's own request log
+    """The renewal carries the app's secret in the address, as Meta documents it: httpx's own request log
     (INFO, with the full address) is silenced in the settings, and ours never names it."""
     respx.get(f"{GRAPH}/oauth/access_token").mock(return_value=httpx.Response(200, json={"access_token": "EAAG-new"}))
     caplog.set_level(logging.DEBUG)
 
-    assert meta.exchange_code("the-code") == {"access_token": "EAAG-new"}
+    assert meta.exchange_token("EAAG-old") == {"access_token": "EAAG-new"}
 
-    assert APP_SECRET not in caplog.text and "EAAG-new" not in caplog.text
+    assert APP_SECRET not in caplog.text and "EAAG-new" not in caplog.text and "EAAG-old" not in caplog.text
 
 
 @respx.mock
-def test_the_exchange_uses_the_apps_credentials(whatsapp_on):
+def test_the_renewal_is_metas_long_lived_exchange_with_the_apps_credentials(whatsapp_on):
     route = respx.get(f"{GRAPH}/oauth/access_token").mock(return_value=httpx.Response(200, json={"access_token": "a"}))
 
-    meta.exchange_code("the-code")
+    meta.exchange_token("EAAG-old")
 
     params = route.calls.last.request.url.params
-    assert (params["client_id"], params["client_secret"], params["code"]) == (APP_ID, APP_SECRET, "the-code")
+    assert dict(params) == {
+        "grant_type": "fb_exchange_token", "client_id": APP_ID, "client_secret": APP_SECRET,
+        "fb_exchange_token": "EAAG-old",
+    }
+    assert "Authorization" not in route.calls.last.request.headers
+
+
+@pytest.mark.parametrize(("expires_at", "expected"), [(1_900_000_000, 1_900_000_000), (0, None), ("x", None)])
+@respx.mock
+def test_metas_debug_token_says_when_a_token_expires(whatsapp_on, expires_at, expected):
+    route = respx.get(f"{GRAPH}/debug_token").mock(
+        return_value=httpx.Response(200, json={"data": {"is_valid": True, "expires_at": expires_at}})
+    )
+
+    expiry = meta.token_expiry("EAAG-new")
+
+    assert (int(expiry.timestamp()) if expiry else None) == expected
+    params = route.calls.last.request.url.params
+    assert (params["input_token"], params["access_token"]) == ("EAAG-new", f"{APP_ID}|{APP_SECRET}")
 
 
 def test_without_metas_app_nothing_is_called(whatsapp_on, settings):
     settings.WHATSAPP_APP_SECRET = ""
 
     with pytest.raises(meta.NotConfigured):
-        meta.exchange_code("the-code")
+        meta.exchange_token("EAAG-old")
+    with pytest.raises(meta.NotConfigured):
+        meta.token_expiry("EAAG-old")
 
 
 @pytest.mark.parametrize(
