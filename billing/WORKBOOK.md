@@ -99,7 +99,7 @@ Página de una factura, que se abre con «Ver la factura»: su número (o «no c
 el cobro y su estado en VeriFactu; «Lo que se cobra», una línea por concepto con su periodo, su base y su
 IVA; la base imponible, el IVA y el total; y «A nombre de», los datos de quien paga tal como estaban ese
 día. Arriba, «Descargar PDF» cuando ya está emitida y «Pagar» si no se cobró; una rectificativa enlaza la
-factura que rectifica. «Atrás» vuelve a Facturas.
+factura que rectifica. La flecha de arriba vuelve a Facturas.
 
 ### Resumen del negocio
 En la página de cada negocio, la tarjeta **Plan** dice en qué plan está, cuántos usuarios y dispositivos
@@ -680,7 +680,7 @@ Pasos:
 1. En **Facturación › Facturas**, la persona pulsa «Ver la factura» en una fila.
 2. La página dice su número (o «Factura … (no cobrada)»), la fecha, el negocio, el cobro y su estado en VeriFactu; «Lo que se cobra», una línea por concepto con su periodo, «Prorrateado» si lo es, su base y su IVA; la base imponible, el IVA y el total; y «A nombre de», con los datos de quien paga tal como estaban ese día.
 3. Desde ella descarga el PDF de una factura emitida, paga una no cobrada o, en una rectificativa, abre la factura que rectifica. Mientras se emite, la página pasa sola a su número y su QR.
-4. «Atrás» vuelve a Facturas.
+4. La flecha de arriba vuelve a Facturas.
 Entra: una factura de la cuenta.
 Sale: nada.
 Si falla: una factura de otra cuenta no se encuentra; si no carga, «No hemos podido cargar esta factura» con «Reintentar»; una que aún se emite dice que su PDF estará cuando termine. En la app se ve, pero no se paga.

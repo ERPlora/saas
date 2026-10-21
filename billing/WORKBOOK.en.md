@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:93da598c49955ea8f7ca217a00949735fda4202271a88d13cfa65e142c04aecf -->
+<!-- generated from WORKBOOK.md sha256:c715b26e75a5e72de3a9aaf017aacdf41481a7840325da06ef8ba333fcbc0136 -->
 
 ## What it is for and who it is for
 
@@ -83,10 +83,10 @@ the notices of unpaid invoices.
 
 ### Invoice
 Page of one invoice, opened with "View invoice": its number (or "not collected"), the date, the business, the
-charge and its VeriFactu status; "What is charged", one line per item with its period, its base and its VAT;
+charge and its VeriFactu status; "What it charges", one line per item with its period, its base and its VAT;
 the taxable base, the VAT and the total; and "Made out to", the payer's details as they were that day. At the
 top, "Download PDF" once it is issued and "Pay" if it was not collected; a credit note links the invoice it
-corrects. "Back" returns to Invoices.
+corrects. The arrow at the top goes back to Invoices.
 
 ### Business summary
 On each business's page, the **Plan** card says which plan it is on, how many users and devices fit and, to
@@ -594,10 +594,10 @@ Screen: Store
 Steps:
 1. In **Store › Modules**, with the business chosen at the top, the owner sees each paid app with its icon, its name, its summary and its price without VAT at the business's period ("… /month + VAT" or "… /year + VAT"), in their language.
 2. Each card says what the app is in that business: "Add · …" if it does not have it; "You have it" with "Cancel module" if it pays it; "Included in your plan" if it comes with the plan; "You have it until … (cancelled)" with "Keep · no charge today" if it is cancelled; "Activating… in …" right after buying it.
-3. An app ERPlora no longer sells still shows to the business that pays it, with "No longer sold: you keep it while you pay it and can cancel it whenever you want"; it is not offered to the other businesses.
+3. An app ERPlora no longer sells still shows to the business that pays it, with "No longer sold: you keep it while you pay it, and can cancel it whenever you want"; it is not offered to the other businesses.
 In: the chosen business (only those that person owns), the app catalog and the business's subscription.
 Out: nothing.
-If it fails: "We could not load the prices" with "Retry"; without apps on sale, "There are no modules on sale right now"; with an unpaid invoice, what charges is disabled with "First, pay the pending invoice"; with annual billing, an app only sold monthly says "Monthly billing only". The app does not sell: it says to go to erplora.com in the browser.
+If it fails: "We could not load the prices" with "Retry"; without apps on sale, "There are no modules on sale right now"; with an unpaid invoice, what charges is disabled with "Pay the pending invoice first"; with annual billing, an app only sold monthly says "Only with monthly billing". The app does not sell: it says to go to erplora.com in the browser.
 Involved: apps (the name, the summary and the icon of each app)
 
 ### BILLING-F32 Subscribe a business to a paid app
@@ -612,7 +612,7 @@ Steps:
 4. Notice "… added to …: it turns on in a few seconds"; the card says "Activating… in …" and then "You have it". The app goes on the same monthly (or annual) invoice as the plan.
 In: the business, the app (only one on sale that the business does not have) and the business's period.
 Out: the app in the business's subscription (`billing.module.added`), its invoice (BILLING-F25) and the app sent to the business.
-If it fails: an app the business already has is not sold twice; a retired or unknown one is not sold; with an unpaid invoice, "First, pay the pending invoice"; if too much time went by, "The price was out of date: here it is again, check it before confirming"; a declined card adds nothing. With a payment method that takes time (SEPA direct debit), the app arrives when Stripe confirms the charge (BILLING-F09).
+If it fails: an app the business already has is not sold twice; a retired or unknown one is not sold; with an unpaid invoice, "Pay the pending invoice first"; if too much time went by, "The price was out of date: here it is again, check it before confirming"; a declined card adds nothing. With a payment method that takes time (SEPA direct debit), the app arrives when Stripe confirms the charge (BILLING-F09).
 Involved: hubs (the business's subscription), the business (receives the app)
 
 ### BILLING-F33 Cancel a paid app
@@ -665,9 +665,9 @@ Actor: owner, paying account
 Screen: Invoice
 Steps:
 1. In **Billing › Invoices**, the person taps "View invoice" on a row.
-2. The page says its number (or "Invoice … (not collected)"), the date, the business, the charge and its VeriFactu status; "What is charged", one line per item with its period, "Prorated" if it is, its base and its VAT; the taxable base, the VAT and the total; and "Made out to", with the payer's details as they were that day.
+2. The page says its number (or "Invoice … (not collected)"), the date, the business, the charge and its VeriFactu status; "What it charges", one line per item with its period, "Prorated" if it is, its base and its VAT; the taxable base, the VAT and the total; and "Made out to", with the payer's details as they were that day.
 3. From it they download the PDF of an issued invoice, pay an uncollected one or, on a credit note, open the invoice it corrects. While it is being issued, the page turns by itself into its number and its QR.
-4. "Back" returns to Invoices.
+4. The arrow at the top goes back to Invoices.
 In: an invoice of the account.
 Out: nothing.
 If it fails: an invoice of another account is not found; if it does not load, "We could not load this invoice" with "Retry"; one still being issued says its PDF will be there when it ends. In the app it is seen, but not paid.
