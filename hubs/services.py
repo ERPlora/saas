@@ -510,8 +510,9 @@ def system_ctx_for(hub_id: UUID) -> OperationContext:
 def business_mark_ready(ctx: OperationContext, data: MarkReadyIn) -> dict:
     """The Hub's ``POST /internal/hubs/{id}/ready``: the business's database is ready (§3.1 step 3).
 
-    Only the platform calls it (``hubs.internal``). A business being prepared becomes active; one that
-    was suspended or deleted meanwhile keeps its status. Idempotent.
+    Only the platform calls it (``hubs.internal``). A business being prepared becomes active, and its owner
+    hears it by mail after the COMMIT (once: the next call finds it active); one that was suspended or
+    deleted meanwhile keeps its status and no mail. Idempotent.
     """
     if ctx.actor != "system":
         raise PermissionDenied(
@@ -524,12 +525,23 @@ def business_mark_ready(ctx: OperationContext, data: MarkReadyIn) -> dict:
     if hub.ready_at is None:
         hub.ready_at = timezone.now()
         changed.append("ready_at")
-    if hub.status == Hub.Status.PREPARING:
+    opens = hub.status == Hub.Status.PREPARING
+    if opens:
         hub.status = Hub.Status.ACTIVE
         changed.append("status")
     if changed:
         hub.save(update_fields=[*changed, "updated_at"])
         record_event(ctx, events.BUSINESS_READY, {"id": str(hub.id)})
+    owner = (
+        HubMember.objects.filter(hub=hub, role=Role.OWNER).select_related("user").first()
+        if opens
+        else None
+    )
+    if owner is not None:
+        transaction.on_commit(
+            partial(emails.send_ready, hub, owner.user, base_url=emails.base_url(ctx.request)),
+            robust=True,
+        )
     return {"id": hub.id, "status": hub.status, "ready_at": hub.ready_at}
 
 

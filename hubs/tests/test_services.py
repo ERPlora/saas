@@ -933,6 +933,31 @@ class TestMarkReady:
         with pytest.raises(PermissionDenied):
             services.business_mark_ready(ctx_for(owner), MarkReadyIn(id=business.id))
 
+    def test_the_owner_is_mailed_once_after_the_commit(
+        self, business, owner, mailoutbox, django_capture_on_commit_callbacks
+    ):
+        """HUBS-F04/HUBS-F07: «your business is ready», once (old saas SAAS_DASHBOARD-F29: «una sola vez»),
+        and never inside the transaction that marks it ready."""
+        with django_capture_on_commit_callbacks(execute=False) as callbacks:
+            services.business_mark_ready(self.system(business), MarkReadyIn(id=business.id))
+        assert mailoutbox == []
+        for callback in callbacks:
+            callback()
+        with django_capture_on_commit_callbacks(execute=True):
+            services.business_mark_ready(self.system(business), MarkReadyIn(id=business.id))
+
+        assert [message.to for message in mailoutbox] == [[owner.email]]
+
+    def test_a_business_that_does_not_open_is_not_announced(
+        self, business, mailoutbox, django_capture_on_commit_callbacks
+    ):
+        Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETING)
+
+        with django_capture_on_commit_callbacks(execute=True):
+            services.business_mark_ready(self.system(business), MarkReadyIn(id=business.id))
+
+        assert mailoutbox == []
+
     def test_the_system_acts_in_the_owners_channel(self, business, owner):
         """Its event reaches the owner's live lists (scope = the user, plan §3)."""
         assert self.system(business).scope.key == str(owner.pk)

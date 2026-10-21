@@ -228,6 +228,26 @@ msgstr ""
 "Puedes recuperarlo hasta el %(date)s desde %(url)s. Después de esa fecha se "
 "borra para siempre."
 
+#: emails.py:136
+#, python-format
+msgid "%(business)s is ready"
+msgstr "%(business)s ya está listo"
+
+#: emails.py:138
+#, python-format
+msgid "%(business)s is ready: open it and start selling."
+msgstr "%(business)s ya está listo: ábrelo y empieza a vender."
+
+#: emails.py:140
+#, python-format
+msgid "Open it: %(url)s"
+msgstr "Ábrelo: %(url)s"
+
+#: emails.py:141
+#, python-format
+msgid "Manage it from the panel: %(url)s"
+msgstr "Gestiónalo desde el panel: %(url)s"
+
 #: models.py:117
 msgid "Free"
 msgstr "Gratis"
