@@ -52,12 +52,18 @@ def _with_next(next_url: str | None) -> dict[str, str]:
     return {"next": next_url} if next_url else {}
 
 
+def folded_email(email: str) -> str:
+    """An address with the compatibility forms of its letters folded (NFKC), trimmed and in lower case: the form
+    an account keeps, so «Ana@EXAMPLE.com» and «ana@ｅxample.com» are Ana's address (also when inviting it,
+    ``hubs.schemas``; ERPlora/saas#2562)."""
+    return unicodedata.normalize("NFKC", email).strip().lower()
+
+
 def plain_email(email: str) -> str:
-    """An address in its plain form: the compatibility forms of its letters folded (NFKC), trimmed and in lower
-    case, as today's SaaS (ERPlora/saas#1018). «ana@ｅxample.com» is Ana's address, never a second account that
-    looks the same, and a look-alike spends the account's budget of failed sign-ins, never one of its own. What
-    the folding turns into an invalid address is refused as one."""
-    email = unicodedata.normalize("NFKC", email).strip().lower()
+    """An address in its plain form (``folded_email``), as today's SaaS (ERPlora/saas#1018). «ana@ｅxample.com»
+    is Ana's address, never a second account that looks the same, and a look-alike spends the account's budget
+    of failed sign-ins, never one of its own. What the folding turns into an invalid address is refused as one."""
+    email = folded_email(email)
     validate_email(email)
     return email
 
