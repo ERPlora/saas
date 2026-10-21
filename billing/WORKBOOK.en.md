@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:7d990fcef508e1df4c21b882a756668a51337295d5ad9960b3a1d3284ee475ff -->
+<!-- generated from WORKBOOK.md sha256:615cfe6b2ad58a65cfe66e6bc46f5d96b26ee5428227bef5203ea042fd996411 -->
 
 ## What it is for and who it is for
 
@@ -57,6 +57,11 @@ the businesses one owns). Plans shows each plan with its price without VAT, the 
 business has an unpaid invoice, the notice with "Pay the invoice" comes at the top and nothing is sold to that
 business.
 
+**Modules** shows each paid app with its icon, its name, its summary and its price without VAT at the
+business's period, and the one thing the business can do with it: "Add · …", "You have it" (or "Included in
+your plan"), "Cancel module", "Keep · no charge today" on a cancelled one or "Activating… in …" right after
+buying it. One no longer sold is only seen by the business that pays it, with "No longer sold".
+
 ### Secure payment
 Dialog that opens when upgrading a business that does not pay yet: first "Who do we invoice?" (only the first
 time), then Stripe's card form inside the dialog, with "Have a promo code?". When done, "Paying…" and the
@@ -65,15 +70,23 @@ business's page.
 ### Change plan
 Dialog of a business that already pays: what is charged today prorated, the VAT, the total and what will be
 charged afterwards, with "Pay … and change" (or "Change plan" if nothing is charged today, as in a downgrade,
-which waits for the end of the period).
+which waits for the end of the period). Adding an app to a business that already pays opens the same dialog,
+titled "Add …", with "Pay … and add".
 
 ### Billing
 Menu **Billing**, with three tabs: **Invoices** (table with Invoice, Date, Business, Amount and Status;
-filters by business, status and year; search by number; "Download PDF", "Download Excel" and "Pay" on the
-uncollected ones), **Subscriptions** (one row per paying business: plan, modules, next invoice with VAT and
+filters by business, status and year; search by number; "Download PDF", "View invoice", "Download Excel"
+and "Pay" on the uncollected ones), **Subscriptions** (one row per paying business: plan, modules, next invoice with VAT and
 status; "Change plan", "Keep the plan", "View the invoice", "View invoices" and "Cancel plan") and **Payment
 details** (the card with "Change card" and the billing details with "Edit details"). At the top of all three,
 the notices of unpaid invoices.
+
+### Invoice
+Page of one invoice, opened with "View invoice": its number (or "not collected"), the date, the business, the
+charge and its VeriFactu status; "What it charges", one line per item with its period, its base and its VAT;
+the taxable base, the VAT and the total; and "Made out to", the payer's details as they were that day. At the
+top, "Download PDF" once it is issued and "Pay" if it was not collected; a credit note links the invoice it
+corrects. The arrow at the top goes back to Invoices.
 
 ### Business summary
 On each business's page, the **Plan** card says which plan it is on, how many users and devices fit and, to
@@ -125,6 +138,12 @@ the owner, the button to upgrade or change it.
 | BILLING-F28 | Keep the plans' prices in Stripe | done |
 | BILLING-F29 | Test real charging in PRE with a Stripe test clock | done |
 | BILLING-F30 | Use live Stripe keys only in production and test keys elsewhere | done |
+| BILLING-F31 | See the paid apps and their state in each business | done |
+| BILLING-F32 | Subscribe a business to a paid app | done |
+| BILLING-F33 | Cancel a paid app | partial |
+| BILLING-F34 | End a paid app at the end of its period | partial |
+| BILLING-F35 | Take a paid app to another business | partial |
+| BILLING-F36 | See an invoice | done |
 
 ### BILLING-F01 Say where the business is invoiced and with which tax ID
 <!-- origen: old-saas:SAAS_DASHBOARD-F90 -->
@@ -233,12 +252,12 @@ If it fails: the same refusals as BILLING-F08.
 Involved: hubs (the sign-up and the business's page)
 
 ### BILLING-F08 Move a free business to a paid plan
-<!-- origen: old-saas:SAAS_DASHBOARD-F95 gh:saas#2527 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F95 gh:saas#2527 pc:cloud/dashboard/hubs-pricing -->
 Status: done
 Actor: owner
 Screen: Store, Secure payment
 Steps:
-1. In **Store › Plans**, with the business chosen at the top, the owner picks "Monthly" or "Annual" and taps "Upgrade to …".
+1. In **Store › Plans**, with the business chosen at the top, the owner sees each plan with its price without VAT, its users and its devices, picks "Monthly" or "Annual" and taps "Upgrade to …".
 2. The secure payment opens: the billing details if they are missing and then Stripe's card form inside the dialog, titled "Upgrade to …" with "For … · renews every month" (or every year).
 3. Enter the card; if the bank asks for authentication, Stripe shows it in the same form.
 4. When done, "Paying…", the notice "… is now on …" and the business's page, whose Plan card changes as soon as Stripe confirms it. The business keeps working all the time.
@@ -248,13 +267,13 @@ If it fails: if the payment cannot be opened, "We could not open the secure paym
 Involved: hubs (the business's subscription), the business (receives its plan)
 
 ### BILLING-F09 Come back from the payment: confirmed, pending or closed
-<!-- origen: old-saas:SAAS_DASHBOARD-F93 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F93 old-saas:SAAS_DASHBOARD-F109 gh:saas#2566 -->
 Status: done
 Actor: owner
 Screen: Secure payment, Business summary
 Steps:
 1. When the payment is finished in Stripe's form, the dialog says "Paying…", closes the form, says "… is now on …" (or "… added to …: it turns on in a few seconds" for a module) and opens the business's page.
-2. The business's plan changes when Stripe confirms the charge: if the payment method takes time to confirm, the business stays on its previous plan until then and changes by itself, without reloading.
+2. The business's plan (or the app bought) changes when Stripe confirms the charge: if the payment method takes time to confirm, such as a SEPA direct debit, the business stays as it was until then and changes by itself, without reloading.
 3. If the person closes the dialog before paying, nothing is charged and they can open it again.
 In: the payment Stripe considers finished.
 Out: the same new plan that Stripe's notice leaves (BILLING-F19); the return and the notice never apply the same payment twice.
@@ -276,7 +295,7 @@ If it fails: if by mistake two were paid (two tabs at once), the second is not a
 Involved: none
 
 ### BILLING-F11 Change between paid plans
-<!-- origen: old-saas:SAAS_DASHBOARD-F96 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F96 fi:saas/hubs#cambio-de-plan-upgrade -->
 Status: done
 Actor: paying owner
 Screen: Store, Change plan
@@ -346,12 +365,12 @@ If it fails: a notice about an unknown subscription is acknowledged without touc
 Involved: the business (receives Free)
 
 ### BILLING-F16 Unpaid plan: retries, suspension and return
-<!-- origen: old-saas:SAAS_DASHBOARD-F100 gh:saas#2529 gh:saas#2574 gh:saas#2593 gh:saas#2594 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F100 old-saas:SAAS_DASHBOARD-F111 gh:saas#2529 gh:saas#2574 gh:saas#2593 gh:saas#2594 -->
 Status: done
 Actor: system, owner, paying account
 Screen: Billing, Businesses, the business itself
 Steps:
-1. The charge of a renewal fails. Stripe retries it for some days and sends a notice of each failure.
+1. The charge of a renewal fails. Stripe retries it for some days and sends a notice of each failure. The paid apps go on the same invoice as the plan: their non-payment is that of the whole business, and paying brings everything back.
 2. erplora.com reads the subscription again in Stripe: if the retry already charged, it does nothing; if not, it records the invoice as "Not collected", with why it was not collected (card declined, authentication or failure).
 3. **Grace**: for 7 days from the invoice that failed, the business keeps working with all its plan. The paying account receives an email, once per invoice: how much could not be charged, until what day it keeps working and the link to Billing to pay it (if the bank declined the card, to change it first). In **Businesses** and in **Billing** the notice "We could not charge … for …" appears: "Pay it before … or the business is suspended; nothing is deleted", with "Pay the invoice" (or "Change card" first if the bank declined it).
 4. **Suspension**: after the 7 days, or if Stripe runs out of retries, the business is suspended and the paying account receives another email, only once. The business does not open: neither from the panel nor from its own address, not even on the devices that already had the session open, which show "This business is suspended" with the way to ERPlora. The panel's notice says "… is suspended: … unpaid" and that the data is safe.
@@ -377,16 +396,16 @@ If it fails: "Paying…" blocks a second click; only the paying account of the b
 Involved: hubs (the business's status), the business (opens again)
 
 ### BILLING-F18 See, cancel or keep the business's plan through the API
-<!-- origen: old-saas:SAAS_DASHBOARD-F64 gh:saas#2529 gh:saas#2574 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F64 fi:saas/billing#api-rest-de-suscripciones-drf gh:saas#2529 gh:saas#2574 -->
 Status: done
 Actor: owner, integration
 Screen: none
 Steps:
-1. With their session, the owner (or an integration of their account) asks for the list of subscriptions: one row per business Stripe charges, with plan, modules, next invoice and status.
+1. With their session, the owner (or an integration of their account, with a Billing read key) asks for the list of subscriptions: one row per business Stripe charges, with plan, modules, next invoice and status. They can ask for only one business's or only those with one status.
 2. They ask to cancel the plan at the end of the period or to keep it, with the same rules as the screen.
 In: the account's session.
 Out: the same as BILLING-F13 and BILLING-F14.
-If it fails: a business that is not that account's is not found; keeping a plan with an unpaid invoice is refused; without a session, "You are not signed in".
+If it fails: a business that is not that account's is not found (filtering by it gives the empty list); keeping a plan with an unpaid invoice is refused; without a session, "You are not signed in".
 Involved: none
 
 ### BILLING-F19 Receive and validate a notice from Stripe
@@ -406,12 +425,12 @@ If it fails: an error while processing it is recorded and answered with an error
 Involved: none
 
 ### BILLING-F20 Renew the plan every period
-<!-- origen: old-saas:SAAS_DASHBOARD-F98 gh:saas#2527 gh:saas#2529 gh:saas#2530 gh:saas#2540 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F98 old-saas:SAAS_DASHBOARD-F110 gh:saas#2527 gh:saas#2529 gh:saas#2530 gh:saas#2540 -->
 Status: done
 Actor: system
 Screen: none
 Steps:
-1. At the end of each period Stripe charges the saved card and sends a notice of the charge.
+1. At the end of each period Stripe charges the saved card and sends a notice of the charge. The business's paid apps are renewed in the same charge as the plan, one line each; a cancelled one whose period ended is no longer charged (BILLING-F34).
 2. erplora.com reads the live subscription again and saves its new period and its status (a trial is still a trial).
 3. If the business was unpaid, it is up to date again at once.
 4. It records and numbers the invoice of that charge and sends it to be issued (BILLING-F25).
@@ -435,27 +454,29 @@ If it fails: a price that sells no plan leaves the plan as it was, but the statu
 Involved: the business (receives its plan)
 
 ### BILLING-F22 See the invoices and download them
-<!-- origen: old-saas:SAAS_DASHBOARD-F117 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F117 fi:saas/billing#api-rest-de-facturas-drf fi:saas/billing#descarga-de-pdf-de-factura fi:saas/billing#exportar-facturas-a-csv fi:saas/billing#historial-de-compras-pagos fi:saas/billing#listado-de-facturas-invoices fi:saas/billing#redireccion-raiz-de-billing fi:saas/hubs#facturas-del-hub pc:cloud/dashboard/billing-invoices -->
 Status: done
 Actor: owner, paying account
 Screen: Billing › Invoices
 Steps:
-1. In **Billing › Invoices** ERPlora's invoices of all the account's businesses are shown: Invoice, Date, Business, Amount and Status, from newest to oldest.
+1. **Billing** opens on **Invoices**, with ERPlora's invoices of all the account's businesses: Invoice, Date, Business, Amount and Status, from newest to oldest. What was paid for an app is a line of its business's invoice.
 2. Filter by business, status ("Paid", "Not collected") and year, or search by number; the filters are kept in the address.
 3. Tap "Download PDF" on a row (or select several and "Download PDF (n)"), or "Download Excel" for the list of what is filtered, ready for the accountant.
 4. A credit note says "Credit note R1 · reason" and the invoice it corrects.
+5. "View invoice" opens its page (BILLING-F36).
+6. An integration of the account, with a Billing read key, reads the same list with the same filters, each invoice with its lines, its PDF and the spreadsheet.
 In: the invoices the account paid and those of the businesses it owns.
 Out: the PDF of the issued invoice and the spreadsheet of what is filtered.
 If it fails: an invoice still being issued says "Issuing" and offers no PDF; if the invoice service does not answer, "The invoice service is not answering. Try again in a moment"; without invoices, "No invoices yet". An invoice of another account is not found.
 Involved: none
 
 ### BILLING-F23 See the subscriptions of each business
-<!-- origen: old-saas:SAAS_DASHBOARD-F118 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F118 fi:saas/billing#compras-de-modulos-purchases fi:saas/billing#suscripciones pc:cloud/dashboard/billing-purchases pc:cloud/dashboard/billing-subscriptions -->
 Status: done
 Actor: owner, paying account
 Screen: Billing › Subscriptions
 Steps:
-1. In **Billing › Subscriptions** there is one row per paying business: the plan and its modules at their price without VAT (a cancelled module says "(until …)"), the next invoice with VAT and the status.
+1. In **Billing › Subscriptions** there is one row per paying business: the plan and its paid apps at their price without VAT (a cancelled one says "(until …)" and stops showing once it ends), the next invoice with VAT and the status.
 2. Each row has its actions: the main one in view ("View the invoice" if there is an uncollected one; otherwise "Change plan" or "Keep the plan") and in "⋮" "View invoices" and "Cancel plan".
 In: the subscriptions of the businesses the account pays or owns.
 Out: nothing.
@@ -505,18 +526,19 @@ If it fails: a refund of an invoice that does not exist yet waits and Stripe sen
 Involved: ERPlora's platform business (issues the corrective invoice)
 
 ### BILLING-F27 What ERPlora staff can do about a customer's billing
-<!-- origen: old-saas:SAAS_DASHBOARD-F123 gh:saas#2529 gh:saas#2575 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F123 fi:saas/django-admin#admin-companyconfig-singleton fi:saas/django-admin#admin-invoice fi:saas/django-admin#admin-invoiceitem fi:saas/django-admin#admin-modulepurchase fi:saas/django-admin#admin-subscription fi:saas/django-admin#admin-subscription-2 fi:saas/hubs#admin-django-subscription-hub-subscriptions gh:saas#2529 gh:saas#2575 -->
 Status: done
 Actor: ERPlora staff
 Screen: Admin
 Steps:
 1. A person of ERPlora enters the admin with the SaaS account (email code and authenticator app).
 2. They see, read-only, the subscriptions and their lines, Stripe's notices and the payment attempts: what Stripe says is not edited here, it is changed in Stripe and arrives with its notice.
-3. On the businesses they can "Send the latest state to the business" and "Retry what the business still owes"; on the invoices, "Send again to the platform business" and "Send the invoice email again".
+3. On the businesses they can "Send the latest state to the business" and "Retry what the business still owes"; on the invoices, with their lines, "Send again to the platform business", "Send the invoice email again" and "Download the PDF" of any invoice already issued.
 4. They keep the promo codes, the VAT table, the tax policy and ERPlora's details; refunds and immediate cancellations are made in Stripe's dashboard.
+5. A paid app some business has is not deleted from the catalog: the admin says which business has it and to take it off sale.
 In: the staff account with its role.
 Out: what its actions do; nothing that belongs to Stripe changes from the admin.
-If it fails: without the role, the admin does not open; the support group only looks, it does not run actions.
+If it fails: without the role, the admin does not open; the support group only looks, it does not run actions. The PDF of an invoice not issued yet does not exist: the admin says so ("Not issued yet"), and if the platform business does not answer, it goes back to the invoice saying why.
 Involved: hubs (the businesses' status)
 
 ### BILLING-F28 Keep the plans' prices in Stripe
@@ -562,4 +584,91 @@ Steps:
 In: the Stripe keys and the environment.
 Out: nothing saved; the deploy stopped if the key is not the environment's.
 If it fails: without a key, no payment starts and it says payments are not available; in development one always works with test keys.
+Involved: none
+
+### BILLING-F31 See the paid apps and their state in each business
+<!-- origen: old-saas:SAAS_DASHBOARD-F107 gh:saas#2504 gh:saas#2535 -->
+Status: done
+Actor: owner
+Screen: Store
+Steps:
+1. In **Store › Modules**, with the business chosen at the top, the owner sees each paid app with its icon, its name, its summary and its price without VAT at the business's period ("… /month + VAT" or "… /year + VAT"), in their language.
+2. Each card says what the app is in that business: "Add · …" if it does not have it; "You have it" with "Cancel module" if it pays it; "Included in your plan" if it comes with the plan; "You have it until … (cancelled)" with "Keep · no charge today" if it is cancelled; "Activating… in …" right after buying it.
+3. An app ERPlora no longer sells still shows to the business that pays it, with "No longer sold: you keep it while you pay it, and can cancel it whenever you want"; it is not offered to the other businesses.
+In: the chosen business (only those that person owns), the app catalog and the business's subscription.
+Out: nothing.
+If it fails: "We could not load the prices" with "Retry"; without apps on sale, "There are no modules on sale right now"; with an unpaid invoice, what charges is disabled with "Pay the pending invoice first"; with annual billing, an app only sold monthly says "Only with monthly billing". The app does not sell: it says to go to erplora.com in the browser.
+Involved: apps (the name, the summary and the icon of each app)
+
+### BILLING-F32 Subscribe a business to a paid app
+<!-- origen: old-saas:SAAS_DASHBOARD-F108 gh:saas#2566 gh:saas#2629 gh:saas#2639 gh:saas#2640 -->
+Status: done
+Actor: owner
+Screen: Store, Change plan, Secure payment
+Steps:
+1. In **Store › Modules**, with the business chosen at the top, the owner taps "Add · …" on the app.
+2. If the business already pays, the "Add …" dialog says "It is added to the subscription of …" and what is charged: "Today (prorated)", the VAT, the "Total today" and what will be charged "From …"; it is confirmed with "Pay … and add", which charges the saved card.
+3. If the business is on Free, the secure payment opens with the app alone, as in BILLING-F08; an app has no trial days.
+4. Notice "… added to …: it turns on in a few seconds"; the card says "Activating… in …" and then "You have it". The app goes on the same monthly (or annual) invoice as the plan.
+In: the business, the app (only one on sale that the business does not have) and the business's period.
+Out: the app in the business's subscription (`billing.module.added`), its invoice (BILLING-F25) and the app sent to the business.
+If it fails: an app the business already has is not sold twice; a retired or unknown one is not sold; with an unpaid invoice, "Pay the pending invoice first"; if too much time went by, "The price was out of date: here it is again, check it before confirming"; a declined card adds nothing. With a payment method that takes time (SEPA direct debit), the app arrives when Stripe confirms the charge (BILLING-F09).
+Involved: hubs (the business's subscription), the business (receives the app)
+
+### BILLING-F33 Cancel a paid app
+<!-- origen: old-saas:SAAS_DASHBOARD-F112 gh:saas#2535 gh:saas#2568 gh:saas#2589 -->
+Status: partial — the business does not turn off an app that stopped being paid yet: today every app is on in every business
+Actor: owner who pays
+Screen: Store
+Steps:
+1. In **Store › Modules**, with the business chosen at the top, the owner taps "Cancel module" on an app it pays.
+2. The "Cancel the module" dialog says "… keeps working in … until …; then it turns off and is not charged again", that nothing the business wrote with it is deleted and that until then it can be undone with "Keep".
+3. Tap "Cancel module": "… cancelled: it works until …". The card says "You have it until … (cancelled)" with "Keep · no charge today", and **Billing › Subscriptions**, "(until …)".
+4. "Keep · no charge today" undoes the cancellation: "… is kept: it renews on …".
+In: the business's bought app (not one that comes with the plan).
+Out: the app out of the subscription in Stripe without refunding anything, with its end date (`billing.module.cancelled`; when kept, `billing.module.kept`), and that date sent to the business.
+If it fails: an app that comes with the plan is dropped by changing the plan; one the business does not have is not found; with a scheduled plan change, that is undone first; if Stripe refuses it or does not answer, the dialog stays open and says why. An app no longer sold is cancelled all the same, but cannot be kept; one that already ended is bought again. Keeping with an unpaid invoice is refused.
+Involved: hubs (the business's subscription), the business (receives until when it has it)
+
+### BILLING-F34 End a paid app at the end of its period
+<!-- origen: old-saas:SAAS_DASHBOARD-F113 -->
+Status: partial — the business does not turn off the ended app yet: today every app is on in every business
+Actor: system
+Screen: Store, Billing › Subscriptions
+Steps:
+1. The end date of a cancelled app arrives.
+2. It is no longer sent to the business, the renewal no longer charges it, **Billing › Subscriptions** no longer lists it and the Store offers it again with "Add · …".
+3. No data is deleted: if it is subscribed to again, the business has it as it was.
+In: the app's end date.
+Out: the business without the app from that day.
+If it fails: if the plan is cancelled, its apps end with it (BILLING-F15).
+Involved: the business (stops receiving the app)
+
+### BILLING-F35 Take a paid app to another business
+<!-- origen: old-saas:SAAS_DASHBOARD-F114 gh:saas#2589 -->
+Status: partial — it depends on BILLING-F33: the business of origin does not turn the app off yet when it ends
+Actor: owner
+Screen: Store
+Steps:
+1. An app is not transferred: it is cancelled in one business and subscribed to in the other, as Square, Shopify, Toast, Clover and Lightspeed do.
+2. In **Store › Modules**, with the business of origin chosen, the owner taps "Cancel module" (BILLING-F33): it keeps working there until the end of what was paid.
+3. They choose the destination business at the top and tap "Add · …" (BILLING-F32): it is charged prorated on that business's subscription.
+In: the two businesses, which they own.
+Out: the same as BILLING-F33 in the origin and BILLING-F32 in the destination.
+If it fails: the refusals of BILLING-F33 and BILLING-F32.
+Involved: hubs (the subscriptions of the two businesses)
+
+### BILLING-F36 See an invoice
+<!-- origen: fi:saas/billing#detalle-de-factura -->
+Status: done
+Actor: owner, paying account
+Screen: Invoice
+Steps:
+1. In **Billing › Invoices**, the person taps "View invoice" on a row.
+2. The page says its number (or "Invoice … (not collected)"), the date, the business, the charge and its VeriFactu status; "What it charges", one line per item with its period, "Prorated" if it is, its base and its VAT; the taxable base, the VAT and the total; and "Made out to", with the payer's details as they were that day.
+3. From it they download the PDF of an issued invoice, pay an uncollected one or, on a credit note, open the invoice it corrects. While it is being issued, the page turns by itself into its number and its QR.
+4. The arrow at the top goes back to Invoices.
+In: an invoice of the account.
+Out: nothing.
+If it fails: an invoice of another account is not found; if it does not load, "We could not load this invoice" with "Retry"; one still being issued says its PDF will be there when it ends. In the app it is seen, but not paid.
 Involved: none

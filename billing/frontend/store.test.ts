@@ -24,6 +24,7 @@ describe('saleModules', () => {
         owned: true,
         source: 'purchase',
         validUntil: null,
+        onSale: true,
       },
       {
         slug: 'loyalty',
@@ -35,6 +36,7 @@ describe('saleModules', () => {
         owned: false,
         source: null,
         validUntil: null,
+        onSale: true,
       },
     ]);
   });
@@ -46,6 +48,21 @@ describe('saleModules', () => {
 
   it('does not sell a module whose app the catalog no longer lists (nothing to name it with)', () => {
     expect(saleModules(APPS.apps, [storeModule('retired', 500)])).toEqual([]);
+  });
+
+  it('BILLING-G61, saas#2589: keeps, after the catalog’s ones, a module the business still has whose app is no longer listed, with billing’s name for it', () => {
+    const retired = storeModule('retired', 500, { owned: true, source: 'purchase', on_sale: false, name: 'Old reports', summary: 'Gone.', icon_svg: '<svg/>' });
+    const modules = saleModules(APPS.apps, [retired, storeModule('booking', 900)]);
+    expect(modules.map((module) => module.slug)).toEqual(['booking', 'retired']);
+    expect(modules[1]).toMatchObject({ name: 'Old reports', summary: 'Gone.', iconSvg: '<svg/>', owned: true, onSale: false });
+  });
+
+  it('BILLING-G61, saas#2589: says whether each module is still sold; one off sale the business does not have is not shown', () => {
+    const modules = saleModules(APPS.apps, [
+      storeModule('booking', 900, { owned: true, source: 'purchase', on_sale: false }),
+      storeModule('loyalty', 600, { on_sale: false }),
+    ]);
+    expect(modules.map((module) => [module.slug, module.onSale])).toEqual([['booking', false]]);
   });
 
   it('keeps the catalog’s order (by section, then by name in the language)', () => {

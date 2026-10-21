@@ -119,6 +119,10 @@ pago); detalle en «Facturas de ERPlora (L3-C)».
   `keep` con una factura sin pagar → 409 `billing.invoice_unpaid`.
 - `billing.module.cancel` / `billing.module.keep` — el item sale sin prorrateo y el módulo vale hasta fin de
   periodo (`valid_until` en la foto); si es lo último que cobra la suscripción, se cancela al fin de periodo.
+  `keep` de un módulo que ya no se vende (`Module.is_active` apagado) → 409 `billing.module_off_sale` (saas#2589:
+  se cancela, nunca se recompra deshaciendo); uno terminado → 409 `billing.module_ended`. Un módulo terminado
+  (`valid_until` pasado) ya no sale en la foto, en `billing.subscription.list` ni en la Tienda, que lo vuelve a
+  vender; el aviso de Stripe de la renovación que ya no lo cobra borra su fila (BILLING-F34).
 - `billing.portal.open` — sesión del Customer Portal (tarjetas y recibos de Stripe); `{url}`.
 - `billing.promo.check` — `GET /api/billing/promo-check?code=` → `{code, valid, trial_days}`; presupuesto por
   persona `PROMO_CHECK_RATE` (429 `billing.promo_check_throttled`).
@@ -249,6 +253,9 @@ decir ese texto).
   `paying` = Stripe ya lo cobra, `cancel_at_period_end`, `current_period_end`, `trial_plan`, `trial_end`).
   Nombre, resumen e icono los pone la página con `apps.app.list` (`premium=true`), unidos por `slug == app.id`;
   sin app `premium` o sin `Module`, no se vende. Cubre la parte de la Tienda de `billing.module.list` de L2-C.
+  Un módulo retirado que el negocio aún tiene sigue en la lista con `on_sale=false` y su `name`, `summary` e
+  `icon_svg` (de `apps.queries.cards_of`, aunque la app ya no esté `listed`), para poder cancelarlo
+  (BILLING-F31, saas#2589); a los demás negocios no se les ofrece.
 - Compra: negocio sin suscripción de Stripe → `CheckoutModal` (datos de facturación antes del primer pago,
   `hubs.billing_profile.get/update`; Embedded Checkout con `createEmbeddedCheckoutPage({fetchClientSecret})`; al
   terminar, «Pagando…» y la página del negocio con un aviso). Negocio que paga → un diálogo por módulo con su
@@ -256,6 +263,16 @@ decir ese texto).
   `AnnualSwitchDialog` (total con IVA). «Bajar a Gratis» = `billing.plan.cancel` con confirmación; «Mantener»
   (`billing.plan.keep`, `billing.module.keep`, sin cobro hoy). Con una factura sin pagar, nada que cobre en ese
   negocio. Código promocional: `billing.promo.check`.
+- «Cancelar el módulo» (`ModuleCard` lo emite, `StoreShop` lo confirma con un `ConfirmDialog`
+  `store-cancel-module`: hasta cuándo funciona, que no se borra nada y que se deshace con «Mantener») →
+  `billing.module.cancel`; un rechazo se queda en el diálogo con su motivo. Solo para un módulo comprado
+  (`source=purchase`), nunca para uno que trae el plan.
+- **Admin del catálogo** (`apps/admin.py`): un `Module` que algún negocio tiene no se borra (saas#2568; Stripe
+  cobraría un precio que nadie vende): `get_deleted_objects` lo marca protegido con el negocio
+  (`billing.queries.businesses_having_module`) y pide desmarcar «activo».
+- **e2e**: `tests/e2e/panel/billing-apps.spec.ts` con `billing_apps_seed.py` (parte 2: módulos en todos sus estados,
+  contratar, cancelar, terminado, llevar a otro negocio, la página de una factura, Suscripciones, planes y cambio de
+  plan; Stripe en el borde de la API, como `store.spec.ts`).
 - Stripe.js (`stripe-js.ts`): solo web, solo al abrir un pago, con el nonce de la página; su `src` es una cadena,
   como la de los trozos que carga el propio Stripe.js, y la admite la política `default` de Trusted Types (abajo).
 - CSP (`base/csp.py`, aplicada por `base/spa.py` al HTML de la SPA salvo la superficie de cuenta): `script-src`
@@ -361,6 +378,7 @@ Ve una factura la cuenta que la pagó (su pagador ese día) y el propietario act
   rectificativa, `{type: "R1"|"R2"|"R3"|"R4", reason}`) y `stripe_source_id` (`cn_…`/`re_…` de la rectificativa;
   vacío en una factura). Viva. Expuesta a las claves con `billing.read`.
 - `billing.invoice.get` — `GET /api/billing/invoices/detail?id=` → la fila más líneas, destinatario, `rectifies` y QR.
+  Viva (`billing/live.py`): la página de una factura pasa de «Emitiéndose» a su número y su QR sola.
 - `billing.invoice.pdf` — `GET /api/billing/invoices/pdf?id=` → el fichero del Hub; 404
   `billing.invoice_not_issued` hasta que el Hub la emite; Hub caído, 503 `billing.platform_unavailable`.
 - `billing.invoice.csv` — `GET /api/billing/invoices/csv?<filtros>` → «Descargar Excel» de todo lo filtrado:
@@ -375,7 +393,9 @@ Ve una factura la cuenta que la pagó (su pagador ese día) y el propietario act
   (null si se cancela; `total_cents` null sin lugar del pagador), estado, `cancelling`, `ends_at`,
   `cancel_requested`, `unpaid_invoice_id`, `scheduled_change` (la bajada que espera), `actions` (`view_invoice`
   primero si hay una sin cobrar; si no, `change_plan` o `keep_plan`; `cancel_plan`; `view_invoices`) y `can`.
-  Cambiar/cancelar/mantener: el propietario que paga. Viva.
+  Cambiar/cancelar/mantener: el propietario que paga. Viva. Filtros `?hub_id=` (uno ajeno da la lista vacía) y
+  `?status=` (el de la suscripción); expuesta a las claves con `billing.read` (BILLING-F18, la API de
+  suscripciones del SaaS antiguo). Un módulo terminado no sale.
 - `billing.payment_method.get` — `GET /api/billing/payment-method?hub_id=` → por pagador de la cuenta, sus
   negocios, la tarjeta (`brand`, `last4`, `exp_month`, `exp_year`; la de la suscripción o la del cliente),
   `unavailable` si Stripe no contesta y el último cobro fallido. 10 min en caché; `customer.updated` la olvida.
@@ -406,6 +426,14 @@ son solo web, y en su lugar se dice, sin enlace, cómo hacerlo desde el navegado
   tipo, la etiqueta del servidor) y la factura que rectifica (de `billing.invoice.get`: la lista no lo trae), que
   la busca. Selección con «Descargar PDF (n)» (las que aún se emiten se dicen en un aviso) y «Descargar Excel» (el CSV
   de lo filtrado).
+- **Una factura** (`/billing/invoices/:id`, `pages/InvoicePage.vue`, BILLING-F36): `billing.invoice.get` viva;
+  número (o «no cobrada»), fecha, negocio, cobro, estado VeriFactu, líneas con periodo, «Prorrateado», base e IVA,
+  totales y destinatario sellado. «Descargar PDF» con `can.pdf`, «Pagar» (solo web) si no se cobró, enlace a la
+  factura que rectifica (`invoice-rectified-link`) y «Atrás» a Facturas. Se abre con «Ver la factura» (`view`) de
+  cada fila de Facturas. Un error o un 404 se dicen igual: «No hemos podido cargar esta factura» con «Reintentar».
+- **Admin de facturas** (`billing/admin.py`, `InvoiceAdmin`): campo «PDF» con «Descargar el PDF» de cualquier
+  factura emitida (`<id>/pdf/`, `queries.platform_invoice_pdf`, con `view_invoice`); sin emitir, lo dice; Hub
+  caído, vuelve a la factura con el motivo.
 - **Descargas**: las hace el navegador con un enlace del mismo origen (`browser.ts`), con la cookie de sesión; no
   hay `fetch` propio (el SPA solo llega al servidor por el SDK, regla de eslint, y `api.call` lee JSON). El 404 de
   un PDF sin emitir no se ve: la fila solo ofrece el PDF con `can.pdf`.

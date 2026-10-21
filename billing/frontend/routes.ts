@@ -32,6 +32,13 @@ const routes: RouteRecordRaw[] = [
     props: true,
     meta: { auth: true },
   },
+  {
+    // One invoice (BILLING-G05): its lines, totals and recipient; Back returns to Invoices. Not selling either.
+    path: '/billing/invoices/:id',
+    component: () => import('./pages/InvoicePage.vue'),
+    props: true,
+    meta: { auth: true },
+  },
 ];
 
 export default routes;

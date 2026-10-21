@@ -1,13 +1,13 @@
 # Workbook — Facturación (billing)
 Prefijo: BILLING
 Alcance MVP: fase 1 (lo que una cuenta paga a ERPlora: planes, módulos, IVA y facturas)
-Estado de la app: en construcción (parte 1 de 3: el plan y su dinero)
+Estado de la app: en construcción (partes 1 y 2 de 3: el plan, su dinero y las aplicaciones de pago)
 
 > Manual de uso y especificación de la app `billing` del SaaS (erplora.com). Cuenta cómo se paga y se
-> cambia el plan de un negocio, qué pasa si un cobro falla, qué IVA lleva cada cobro y cómo se ven y
-> descargan las facturas de ERPlora. Esta parte del manual no se publica en la tienda: es la referencia
-> del equipo y de la QA. Las aplicaciones de pago, la API y el admin de facturas y suscripciones y el
-> soporte interno de Stripe se escriben en las partes 2 y 3.
+> cambia el plan de un negocio, cómo se contratan y se cancelan sus aplicaciones de pago, qué pasa si un
+> cobro falla, qué IVA lleva cada cobro y cómo se ven y descargan las facturas de ERPlora. Este manual no
+> se publica en la tienda: es la referencia del equipo y de la QA. El soporte interno de Stripe (precios,
+> modelos y tareas) se escribe en la parte 3.
 
 ## Para qué sirve y para quién
 
@@ -69,6 +69,12 @@ periodo («Mensual» o «Anual · −n %»), «Tu plan actual» en el que se tie
 el plan». Si el negocio tiene una factura sin pagar, arriba sale el aviso con «Pagar la factura» y no se
 vende nada a ese negocio.
 
+**Módulos** enseña cada aplicación de pago con su icono, su nombre, su resumen y su precio sin IVA al
+periodo del negocio, y lo único que el negocio puede hacer con ella: «Añadir · …», «Ya lo tienes» (o
+«Incluido en tu plan»), «Cancelar el módulo», «Mantener · sin cobro hoy» en una cancelada o «Activando… en
+…» justo después de comprarla. Una que ya no se vende solo la ve el negocio que la paga, con «Ya no se
+vende».
+
 ### Pago seguro
 Diálogo que se abre al mejorar un negocio que aún no paga: primero «¿A nombre de quién facturamos?» (solo
 la primera vez), después el formulario de tarjeta de Stripe dentro del diálogo, con «¿Tienes un código
@@ -77,15 +83,23 @@ promocional?». Al terminar, «Pagando…» y la página del negocio.
 ### Cambiar de plan
 Diálogo de un negocio que ya paga: lo que se cobra hoy prorrateado, el IVA, el total y lo que se cobrará
 después, con «Pagar … y cambiar» (o «Cambiar de plan» si hoy no se cobra nada, como en una bajada, que
-espera al final del periodo).
+espera al final del periodo). Añadir una aplicación a un negocio que ya paga abre el mismo diálogo, titulado
+«Añadir …», con «Pagar … y añadir».
 
 ### Facturación
 Menú **Facturación**, con tres pestañas: **Facturas** (tabla con Factura, Fecha, Negocio, Importe y
-Estado; filtros por negocio, estado y año; buscador por número; «Descargar PDF», «Descargar Excel» y
-«Pagar» en las no cobradas), **Suscripciones** (una fila por negocio que paga: plan, módulos, próxima
+Estado; filtros por negocio, estado y año; buscador por número; «Descargar PDF», «Ver la factura»,
+«Descargar Excel» y «Pagar» en las no cobradas), **Suscripciones** (una fila por negocio que paga: plan, módulos, próxima
 factura con IVA y estado; «Cambiar plan», «Mantener el plan», «Ver la factura», «Ver facturas» y
 «Cancelar plan») y **Datos de pago** (la tarjeta con «Cambiar tarjeta» y los datos de facturación con
 «Editar datos»). Arriba, en las tres, los avisos de facturas sin pagar.
+
+### Factura
+Página de una factura, que se abre con «Ver la factura»: su número (o «no cobrada»), la fecha, el negocio,
+el cobro y su estado en VeriFactu; «Lo que se cobra», una línea por concepto con su periodo, su base y su
+IVA; la base imponible, el IVA y el total; y «A nombre de», los datos de quien paga tal como estaban ese
+día. Arriba, «Descargar PDF» cuando ya está emitida y «Pagar» si no se cobró; una rectificativa enlaza la
+factura que rectifica. La flecha de arriba vuelve a Facturas.
 
 ### Resumen del negocio
 En la página de cada negocio, la tarjeta **Plan** dice en qué plan está, cuántos usuarios y dispositivos
@@ -137,6 +151,12 @@ caben y, al propietario, el botón para mejorarlo o cambiarlo.
 | BILLING-F28 | Mantener en Stripe los precios de los planes | hecho |
 | BILLING-F29 | Probar el cobro real en PRE con un reloj de prueba de Stripe | hecho |
 | BILLING-F30 | Usar claves reales de Stripe solo en producción y de prueba fuera de ella | hecho |
+| BILLING-F31 | Ver las aplicaciones de pago y su estado en cada negocio | hecho |
+| BILLING-F32 | Contratar una aplicación de pago para un negocio | hecho |
+| BILLING-F33 | Cancelar una aplicación de pago | parcial |
+| BILLING-F34 | Terminar una aplicación de pago al final de su periodo | parcial |
+| BILLING-F35 | Llevar una aplicación de pago a otro negocio | parcial |
+| BILLING-F36 | Ver una factura | hecho |
 
 ### BILLING-F01 Decir dónde se factura el negocio y con qué identificación fiscal
 <!-- origen: old-saas:SAAS_DASHBOARD-F90 -->
@@ -245,12 +265,12 @@ Si falla: los mismos rechazos que BILLING-F08.
 Implicados: hubs (el alta y la página del negocio)
 
 ### BILLING-F08 Pasar un negocio gratuito a un plan de pago
-<!-- origen: old-saas:SAAS_DASHBOARD-F95 gh:saas#2527 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F95 gh:saas#2527 pc:cloud/dashboard/hubs-pricing -->
 Estado: hecho
 Actor: propietario
 Pantalla: Tienda, Pago seguro
 Pasos:
-1. En **Tienda › Planes**, con el negocio elegido arriba, el propietario elige «Mensual» o «Anual» y pulsa «Mejorar a …».
+1. En **Tienda › Planes**, con el negocio elegido arriba, el propietario ve cada plan con su precio sin IVA, sus usuarios y sus dispositivos, elige «Mensual» o «Anual» y pulsa «Mejorar a …».
 2. Se abre el pago seguro: los datos de facturación si faltan y después el formulario de tarjeta de Stripe dentro del diálogo, titulado «Mejorar a …» con «Para … · se renueva cada mes» (o cada año).
 3. Mete la tarjeta; si el banco pide autenticación, la muestra Stripe en el mismo formulario.
 4. Al terminar, «Pagando…», el aviso «… ya está en …» y la página del negocio, cuya tarjeta Plan cambia en cuanto Stripe lo confirma. El negocio sigue funcionando todo el tiempo.
@@ -260,13 +280,13 @@ Si falla: si el pago no se puede abrir, «No hemos podido abrir el pago seguro»
 Implicados: hubs (la suscripción del negocio), el negocio (recibe su plan)
 
 ### BILLING-F09 Volver del pago: confirmado, pendiente o cerrado
-<!-- origen: old-saas:SAAS_DASHBOARD-F93 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F93 old-saas:SAAS_DASHBOARD-F109 gh:saas#2566 -->
 Estado: hecho
 Actor: propietario
 Pantalla: Pago seguro, Resumen del negocio
 Pasos:
 1. Al terminar el pago en el formulario de Stripe, el diálogo dice «Pagando…», cierra el formulario, avisa «… ya está en …» (o «… añadido a …: se enciende en unos segundos» para un módulo) y abre la página del negocio.
-2. El plan del negocio cambia cuando Stripe confirma el cobro: si el medio de pago tarda en confirmarse, el negocio sigue en su plan anterior hasta entonces y cambia solo, sin recargar.
+2. El plan del negocio (o la aplicación comprada) cambia cuando Stripe confirma el cobro: si el medio de pago tarda en confirmarse, como un adeudo SEPA, el negocio sigue como estaba hasta entonces y cambia solo, sin recargar.
 3. Si la persona cierra el diálogo antes de pagar, no se cobra nada y puede volver a abrirlo.
 Entra: el pago que Stripe da por terminado.
 Sale: el mismo plan nuevo que deja el aviso de Stripe (BILLING-F19); la vuelta y el aviso nunca aplican dos veces el mismo pago.
@@ -288,7 +308,7 @@ Si falla: si por un descuido se llegasen a pagar dos (dos pestañas a la vez), e
 Implicados: ninguno
 
 ### BILLING-F11 Cambiar de plan entre planes de pago
-<!-- origen: old-saas:SAAS_DASHBOARD-F96 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F96 fi:saas/hubs#cambio-de-plan-upgrade -->
 Estado: hecho
 Actor: propietario que paga
 Pantalla: Tienda, Cambiar de plan
@@ -358,12 +378,12 @@ Si falla: un aviso de una suscripción desconocida se da por recibido sin tocar 
 Implicados: el negocio (recibe Gratis)
 
 ### BILLING-F16 Impago del plan: reintentos, suspensión y vuelta
-<!-- origen: old-saas:SAAS_DASHBOARD-F100 gh:saas#2529 gh:saas#2574 gh:saas#2593 gh:saas#2594 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F100 old-saas:SAAS_DASHBOARD-F111 gh:saas#2529 gh:saas#2574 gh:saas#2593 gh:saas#2594 -->
 Estado: hecho
 Actor: sistema, propietario, cuenta que paga
 Pantalla: Facturación, Negocios, el propio negocio
 Pasos:
-1. Falla el cobro de una renovación. Stripe lo reintenta durante unos días y avisa de cada fallo.
+1. Falla el cobro de una renovación. Stripe lo reintenta durante unos días y avisa de cada fallo. Las aplicaciones de pago van en la misma factura que el plan: su impago es el del negocio entero, y al pagar vuelve todo.
 2. erplora.com relee la suscripción en Stripe: si el reintento ya cobró, no hace nada; si no, apunta la factura como «No cobrada», con por qué no se cobró (tarjeta rechazada, autenticación o fallo).
 3. **Gracia**: durante 7 días desde la factura que falló, el negocio sigue funcionando con todo su plan. La cuenta que paga recibe un correo, una vez por factura: cuánto no se pudo cobrar, hasta qué día sigue funcionando y el enlace a Facturación para pagarla (si el banco rechazó la tarjeta, que la cambie antes). En **Negocios** y en **Facturación** sale el aviso «No pudimos cobrar … de …»: «Págala antes del … o el negocio se suspende; no se borra nada», con «Pagar la factura» (o «Cambiar tarjeta» primero si el banco la rechazó).
 4. **Suspensión**: pasados los 7 días, o si Stripe agota sus reintentos, el negocio se suspende y la cuenta que paga recibe otro correo, una sola vez. El negocio no se abre: ni desde el panel ni desde su propia dirección, tampoco en los dispositivos que ya tenían la sesión abierta, que enseñan «Este negocio está suspendido» con el camino a ERPlora. El aviso del panel dice «… está suspendido: … sin pagar» y que los datos están a salvo.
@@ -389,16 +409,16 @@ Si falla: «Pagando…» bloquea un segundo clic; solo la cuenta que paga el neg
 Implicados: hubs (el estado del negocio), el negocio (vuelve a abrirse)
 
 ### BILLING-F18 Ver, cancelar o mantener el plan del negocio por la API
-<!-- origen: old-saas:SAAS_DASHBOARD-F64 gh:saas#2529 gh:saas#2574 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F64 fi:saas/billing#api-rest-de-suscripciones-drf gh:saas#2529 gh:saas#2574 -->
 Estado: hecho
 Actor: propietario, integración
 Pantalla: ninguna
 Pasos:
-1. Con su sesión, el propietario (o una integración de su cuenta) pide la lista de suscripciones: una fila por negocio que Stripe cobra, con plan, módulos, próxima factura y estado.
+1. Con su sesión, el propietario (o una integración de su cuenta, con una clave de lectura de Facturación) pide la lista de suscripciones: una fila por negocio que Stripe cobra, con plan, módulos, próxima factura y estado. Puede pedir solo la de un negocio o solo las de un estado.
 2. Pide cancelar el plan al final del periodo o mantenerlo, con las mismas reglas que la pantalla.
 Entra: la sesión de la cuenta.
 Sale: lo mismo que BILLING-F13 y BILLING-F14.
-Si falla: un negocio que no es de esa cuenta no se encuentra; mantener un plan con una factura sin pagar se niega; sin sesión, «No has iniciado sesión».
+Si falla: un negocio que no es de esa cuenta no se encuentra (filtrar por él da la lista vacía); mantener un plan con una factura sin pagar se niega; sin sesión, «No has iniciado sesión».
 Implicados: ninguno
 
 ### BILLING-F19 Recibir y validar un aviso de Stripe
@@ -418,12 +438,12 @@ Si falla: un error al procesarlo se apunta y se contesta con error, para que Str
 Implicados: ninguno
 
 ### BILLING-F20 Renovar el plan cada periodo
-<!-- origen: old-saas:SAAS_DASHBOARD-F98 gh:saas#2527 gh:saas#2529 gh:saas#2530 gh:saas#2540 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F98 old-saas:SAAS_DASHBOARD-F110 gh:saas#2527 gh:saas#2529 gh:saas#2530 gh:saas#2540 -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
 Pasos:
-1. Al final de cada periodo Stripe cobra la tarjeta guardada y avisa del cobro.
+1. Al final de cada periodo Stripe cobra la tarjeta guardada y avisa del cobro. Las aplicaciones de pago del negocio se renuevan en el mismo cobro que el plan, una línea cada una; una cancelada cuyo periodo acabó ya no se cobra (BILLING-F34).
 2. erplora.com relee la suscripción viva y guarda su periodo nuevo y su estado (una prueba sigue siendo prueba).
 3. Si el negocio estaba en impago, vuelve a estar al día en el acto.
 4. Registra y numera la factura de ese cobro y la manda a emitir (BILLING-F25).
@@ -447,27 +467,29 @@ Si falla: un precio que no vende ningún plan deja el plan como estaba, pero el 
 Implicados: el negocio (recibe su plan)
 
 ### BILLING-F22 Ver las facturas y descargarlas
-<!-- origen: old-saas:SAAS_DASHBOARD-F117 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F117 fi:saas/billing#api-rest-de-facturas-drf fi:saas/billing#descarga-de-pdf-de-factura fi:saas/billing#exportar-facturas-a-csv fi:saas/billing#historial-de-compras-pagos fi:saas/billing#listado-de-facturas-invoices fi:saas/billing#redireccion-raiz-de-billing fi:saas/hubs#facturas-del-hub pc:cloud/dashboard/billing-invoices -->
 Estado: hecho
 Actor: propietario, cuenta que paga
 Pantalla: Facturación › Facturas
 Pasos:
-1. En **Facturación › Facturas** se ven las facturas de ERPlora de todos los negocios de la cuenta: Factura, Fecha, Negocio, Importe y Estado, de la más nueva a la más antigua.
+1. **Facturación** se abre en **Facturas**, con las facturas de ERPlora de todos los negocios de la cuenta: Factura, Fecha, Negocio, Importe y Estado, de la más nueva a la más antigua. Lo pagado por una aplicación es una línea de la factura de su negocio.
 2. Filtra por negocio, estado («Pagadas», «No cobradas») y año, o busca por número; los filtros se guardan en la dirección.
 3. Pulsa «Descargar PDF» en una fila (o selecciona varias y «Descargar PDF (n)»), o «Descargar Excel» para la lista de lo filtrado, lista para la gestoría.
 4. Una rectificativa dice «Rectificativa R1 · motivo» y la factura que rectifica.
+5. «Ver la factura» abre su página (BILLING-F36).
+6. Una integración de la cuenta, con una clave de lectura de Facturación, lee la misma lista con los mismos filtros, cada factura con sus líneas, su PDF y la hoja de cálculo.
 Entra: las facturas que pagó la cuenta y las de los negocios de los que es propietaria.
 Sale: el PDF de la factura emitida y la hoja de cálculo de lo filtrado.
 Si falla: una factura que aún se emite dice «Emitiéndose» y no ofrece PDF; si el servicio de facturas no responde, «El servicio de facturas no responde. Prueba de nuevo en un momento»; sin facturas, «Aún no hay facturas». Una factura de otra cuenta no se encuentra.
 Implicados: ninguno
 
 ### BILLING-F23 Ver las suscripciones de cada negocio
-<!-- origen: old-saas:SAAS_DASHBOARD-F118 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F118 fi:saas/billing#compras-de-modulos-purchases fi:saas/billing#suscripciones pc:cloud/dashboard/billing-purchases pc:cloud/dashboard/billing-subscriptions -->
 Estado: hecho
 Actor: propietario, cuenta que paga
 Pantalla: Facturación › Suscripciones
 Pasos:
-1. En **Facturación › Suscripciones** hay una fila por negocio que paga: el plan y sus módulos a precio sin IVA (un módulo cancelado dice «(hasta el …)»), la próxima factura con IVA y el estado.
+1. En **Facturación › Suscripciones** hay una fila por negocio que paga: el plan y sus aplicaciones de pago a precio sin IVA (una cancelada dice «(hasta el …)» y deja de salir cuando termina), la próxima factura con IVA y el estado.
 2. Cada fila lleva sus acciones: la principal a la vista («Ver la factura» si hay una sin cobrar; si no, «Cambiar plan» o «Mantener el plan») y en «⋮» «Ver facturas» y «Cancelar plan».
 Entra: las suscripciones de los negocios que paga la cuenta o de los que es propietaria.
 Sale: nada.
@@ -517,18 +539,19 @@ Si falla: una devolución de una factura que aún no existe espera y Stripe vuel
 Implicados: el negocio de plataforma de ERPlora (emite la rectificativa)
 
 ### BILLING-F27 Lo que el personal de ERPlora puede hacer sobre el cobro de un cliente
-<!-- origen: old-saas:SAAS_DASHBOARD-F123 gh:saas#2529 gh:saas#2575 -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F123 fi:saas/django-admin#admin-companyconfig-singleton fi:saas/django-admin#admin-invoice fi:saas/django-admin#admin-invoiceitem fi:saas/django-admin#admin-modulepurchase fi:saas/django-admin#admin-subscription fi:saas/django-admin#admin-subscription-2 fi:saas/hubs#admin-django-subscription-hub-subscriptions gh:saas#2529 gh:saas#2575 -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin
 Pasos:
 1. Una persona de ERPlora entra en el admin con la cuenta del SaaS (código por correo y app de autenticación).
 2. Ve, solo para leer, las suscripciones y sus líneas, los avisos de Stripe y los intentos de pago: lo que dice Stripe no se edita aquí, se cambia en Stripe y llega por su aviso.
-3. En los negocios puede «Enviar el último estado al negocio» y «Reintentar lo que el negocio aún debe»; en las facturas, «Reenviar al negocio de plataforma» y «Reenviar el correo de la factura».
+3. En los negocios puede «Enviar el último estado al negocio» y «Reintentar lo que el negocio aún debe»; en las facturas, con sus líneas, «Reenviar al negocio de plataforma», «Reenviar el correo de la factura» y «Descargar el PDF» de cualquier factura ya emitida.
 4. Mantiene los códigos promocionales, la tabla de IVA, la política fiscal y los datos de ERPlora; las devoluciones y las cancelaciones al momento se hacen en el panel de Stripe.
+5. Una aplicación de pago que algún negocio tiene no se borra del catálogo: el admin dice qué negocio la tiene y que se quite de la venta.
 Entra: la cuenta del personal con su papel.
 Sale: lo que hacen sus acciones; nada de lo que es de Stripe cambia desde el admin.
-Si falla: sin el papel, el admin no se abre; el grupo de soporte solo mira, no lanza acciones.
+Si falla: sin el papel, el admin no se abre; el grupo de soporte solo mira, no lanza acciones. El PDF de una factura que aún no se ha emitido no existe: el admin lo dice («Aún no se ha emitido»), y si el negocio de plataforma no responde, vuelve a la factura diciendo por qué.
 Implicados: hubs (el estado de los negocios)
 
 ### BILLING-F28 Mantener en Stripe los precios de los planes
@@ -576,19 +599,107 @@ Sale: nada guardado; el despliegue parado si la clave no es la del entorno.
 Si falla: sin clave, ningún pago empieza y se dice que los pagos no están disponibles; en desarrollo se trabaja siempre con claves de prueba.
 Implicados: ninguno
 
+### BILLING-F31 Ver las aplicaciones de pago y su estado en cada negocio
+<!-- origen: old-saas:SAAS_DASHBOARD-F107 gh:saas#2504 gh:saas#2535 -->
+Estado: hecho
+Actor: propietario
+Pantalla: Tienda
+Pasos:
+1. En **Tienda › Módulos**, con el negocio elegido arriba, el propietario ve cada aplicación de pago con su icono, su nombre, su resumen y su precio sin IVA al periodo del negocio («… /mes + IVA» o «… /año + IVA»), en su idioma.
+2. Cada tarjeta dice lo que la aplicación es en ese negocio: «Añadir · …» si no la tiene; «Ya lo tienes» con «Cancelar el módulo» si la paga; «Incluido en tu plan» si viene con el plan; «Ya lo tienes hasta el … (cancelado)» con «Mantener · sin cobro hoy» si está cancelada; «Activando… en …» justo después de comprarla.
+3. Una aplicación que ERPlora ya no vende sigue saliendo al negocio que la paga, con «Ya no se vende: lo conservas mientras lo pagues y puedes cancelarlo cuando quieras»; a los demás negocios no se les ofrece.
+Entra: el negocio elegido (solo los de los que esa persona es propietaria), el catálogo de aplicaciones y la suscripción del negocio.
+Sale: nada.
+Si falla: «No hemos podido cargar los precios» con «Reintentar»; sin aplicaciones a la venta, «Ahora mismo no hay módulos a la venta»; con una factura sin pagar, lo que cobra se desactiva con «Antes, paga la factura pendiente»; con pago anual, una aplicación que solo se vende al mes dice «Solo con pago mensual». En la app no se vende: se dice que se entre en erplora.com desde el navegador.
+Implicados: apps (el nombre, el resumen y el icono de cada aplicación)
+
+### BILLING-F32 Contratar una aplicación de pago para un negocio
+<!-- origen: old-saas:SAAS_DASHBOARD-F108 gh:saas#2566 gh:saas#2629 gh:saas#2639 gh:saas#2640 -->
+Estado: hecho
+Actor: propietario
+Pantalla: Tienda, Cambiar de plan, Pago seguro
+Pasos:
+1. En **Tienda › Módulos**, con el negocio elegido arriba, el propietario pulsa «Añadir · …» en la aplicación.
+2. Si el negocio ya paga, el diálogo «Añadir …» dice «Se suma a la suscripción de …» y lo que se cobra: «Hoy (prorrateado)», el IVA, el «Total hoy» y lo que se cobrará «Desde el …»; confirma con «Pagar … y añadir», que cobra con la tarjeta guardada.
+3. Si el negocio está en Gratis, se abre el pago seguro con la aplicación sola, como en BILLING-F08; una aplicación no tiene días de prueba.
+4. Aviso «… añadido a …: se enciende en unos segundos»; la tarjeta dice «Activando… en …» y después «Ya lo tienes». La aplicación va en la misma factura mensual (o anual) que el plan.
+Entra: el negocio, la aplicación (solo una que está a la venta y que el negocio no tiene) y el periodo del negocio.
+Sale: la aplicación en la suscripción del negocio (`billing.module.added`), su factura (BILLING-F25) y la aplicación enviada al negocio.
+Si falla: una aplicación que el negocio ya tiene no se vende dos veces; una retirada o desconocida no se vende; con una factura sin pagar, «Antes, paga la factura pendiente»; si pasó demasiado tiempo, «El precio estaba desactualizado: aquí lo tienes de nuevo, revísalo antes de confirmar»; la tarjeta rechazada no añade nada. Con un medio de pago que tarda (adeudo SEPA), la aplicación llega cuando Stripe confirma el cobro (BILLING-F09).
+Implicados: hubs (la suscripción del negocio), el negocio (recibe la aplicación)
+
+### BILLING-F33 Cancelar una aplicación de pago
+<!-- origen: old-saas:SAAS_DASHBOARD-F112 gh:saas#2535 gh:saas#2568 gh:saas#2589 -->
+Estado: parcial — el negocio todavía no apaga una aplicación que dejó de pagarse: hoy todas las aplicaciones están encendidas en todos los negocios
+Actor: propietario que paga
+Pantalla: Tienda
+Pasos:
+1. En **Tienda › Módulos**, con el negocio elegido arriba, el propietario pulsa «Cancelar el módulo» en una aplicación que paga.
+2. El diálogo «Cancelar el módulo» dice «… sigue funcionando en … hasta el …; después se apaga y no se vuelve a cobrar», que no se borra nada de lo que el negocio escribió con ella y que hasta entonces se puede deshacer con «Mantener».
+3. Pulsa «Cancelar el módulo»: «… cancelado: funciona hasta el …». La tarjeta dice «Ya lo tienes hasta el … (cancelado)» con «Mantener · sin cobro hoy», y **Facturación › Suscripciones**, «(hasta el …)».
+4. «Mantener · sin cobro hoy» deshace la cancelación: «… se mantiene: se renovará el …».
+Entra: la aplicación comprada del negocio (no una que viene con el plan).
+Sale: la aplicación fuera de la suscripción en Stripe sin devolver nada, con su fecha de fin (`billing.module.cancelled`; al mantenerla, `billing.module.kept`), y esa fecha enviada al negocio.
+Si falla: una aplicación que viene con el plan se quita cambiando de plan; una que el negocio no tiene no se encuentra; con un cambio de plan programado, se deshace antes; si Stripe la rechaza o no contesta, el diálogo sigue abierto y dice por qué. Una aplicación que ya no se vende se cancela igual, pero no se puede mantener; una que ya terminó se vuelve a comprar. Mantener con una factura sin pagar se niega.
+Implicados: hubs (la suscripción del negocio), el negocio (recibe hasta cuándo la tiene)
+
+### BILLING-F34 Terminar una aplicación de pago al final de su periodo
+<!-- origen: old-saas:SAAS_DASHBOARD-F113 -->
+Estado: parcial — el negocio todavía no apaga la aplicación terminada: hoy todas las aplicaciones están encendidas en todos los negocios
+Actor: sistema
+Pantalla: Tienda, Facturación › Suscripciones
+Pasos:
+1. Llega la fecha de fin de una aplicación cancelada.
+2. Deja de enviarse al negocio, la renovación ya no la cobra, **Facturación › Suscripciones** ya no la lista y la Tienda la vuelve a ofrecer con «Añadir · …».
+3. No se borra ningún dato: si se vuelve a contratar, el negocio la tiene como estaba.
+Entra: la fecha de fin de la aplicación.
+Sale: el negocio sin la aplicación desde ese día.
+Si falla: si se cancela el plan, sus aplicaciones terminan con él (BILLING-F15).
+Implicados: el negocio (deja de recibir la aplicación)
+
+### BILLING-F35 Llevar una aplicación de pago a otro negocio
+<!-- origen: old-saas:SAAS_DASHBOARD-F114 gh:saas#2589 -->
+Estado: parcial — depende de BILLING-F33: el negocio de origen todavía no apaga la aplicación cuando termina
+Actor: propietario
+Pantalla: Tienda
+Pasos:
+1. Una aplicación no se traspasa: se cancela en un negocio y se contrata en el otro, como hacen Square, Shopify, Toast, Clover y Lightspeed.
+2. En **Tienda › Módulos**, con el negocio de origen elegido, el propietario pulsa «Cancelar el módulo» (BILLING-F33): sigue funcionando allí hasta el final de lo pagado.
+3. Elige arriba el negocio de destino y pulsa «Añadir · …» (BILLING-F32): se cobra prorrateado en la suscripción de ese negocio.
+Entra: los dos negocios, de los que es propietario.
+Sale: lo mismo que BILLING-F33 en el origen y que BILLING-F32 en el destino.
+Si falla: los rechazos de BILLING-F33 y BILLING-F32.
+Implicados: hubs (las suscripciones de los dos negocios)
+
+### BILLING-F36 Ver una factura
+<!-- origen: fi:saas/billing#detalle-de-factura -->
+Estado: hecho
+Actor: propietario, cuenta que paga
+Pantalla: Factura
+Pasos:
+1. En **Facturación › Facturas**, la persona pulsa «Ver la factura» en una fila.
+2. La página dice su número (o «Factura … (no cobrada)»), la fecha, el negocio, el cobro y su estado en VeriFactu; «Lo que se cobra», una línea por concepto con su periodo, «Prorrateado» si lo es, su base y su IVA; la base imponible, el IVA y el total; y «A nombre de», con los datos de quien paga tal como estaban ese día.
+3. Desde ella descarga el PDF de una factura emitida, paga una no cobrada o, en una rectificativa, abre la factura que rectifica. Mientras se emite, la página pasa sola a su número y su QR.
+4. La flecha de arriba vuelve a Facturas.
+Entra: una factura de la cuenta.
+Sale: nada.
+Si falla: una factura de otra cuenta no se encuentra; si no carga, «No hemos podido cargar esta factura» con «Reintentar»; una que aún se emite dice que su PDF estará cuando termine. En la app se ve, pero no se paga.
+Implicados: ninguno
+
 ## Para quien lo mantiene
 
 - Anatomía y operaciones: `billing/README.md` (IVA, Stripe, facturas, impago y la Tienda).
 - Partes del porte (MIGRATION-TASK APP-BILLING-1/2/3): este WORKBOOK nace en la parte 1 con los flujos del
-  plan y su dinero; las partes 2 (aplicaciones de pago, API y admin de facturas y suscripciones) y 3
-  (precios, Stripe interno, modelos y tareas del soporte) añaden los suyos a continuación.
+  plan y su dinero; la parte 2 añade las aplicaciones de pago (BILLING-F31 a BILLING-F35), la página de una
+  factura (BILLING-F36) y amplía los flujos de la API y del admin; la parte 3 (precios, Stripe interno,
+  modelos y tareas del soporte) añade los suyos a continuación.
 - Fuera del modelo viejo, a propósito: sin cuota de mantenimiento del 25 % al terminar un plan (PLAN-SAAS
   §3.3: vuelve a Gratis), sin estado «pendiente de pago» en el alta (el negocio nace en Gratis) y sin
   sincronización automática de productos de Stripe (los identificadores se pegan en el admin).
 - Los tests de cada flujo citan su clave en el nombre o en el docstring; los e2e, en el título o en
   `// flow: …`. Los e2e de la parte 1 (`tests/e2e/panel/billing-flows.spec.ts` y, en el Hub,
   `tests/e2e/hub-suspended.spec.ts`) citan la clave del registro (`BILLING-Gnn`) y llevan en su cabecera la
-  equivalencia con la de este WORKBOOK.
+  equivalencia con la de este WORKBOOK. Igual los de la parte 2 (`tests/e2e/panel/billing-apps.spec.ts`).
 - Tareas programadas (ECS, `saas-cron`): `manage.py audit_tax_rules` (BILLING-F04) y
   `manage.py retax_subscriptions` (BILLING-F02, BILLING-F06) salen con error si dejan algo por hacer, que es lo
   que la alarma `task_failed` avisa al equipo; programarlas cada día es del repo de infraestructura.
@@ -599,3 +710,8 @@ Implicados: ninguno
 - No usa Stripe Tax ni deja que Stripe recoja el NIF: el IVA y el NIF son de erplora.com.
 - No cobra una cuota por conservar un negocio que ya no paga: vuelve a Gratis.
 - No cambia el plan desde el portal de Stripe: allí solo se cambia la tarjeta y se ven los recibos.
+- No traspasa una aplicación contratada de un negocio a otro: se cancela en uno y se contrata en el otro
+  (BILLING-F35).
+- No vende aplicaciones sueltas fuera de la suscripción del negocio: no hay compras aparte; lo pagado por
+  una aplicación es una línea de la factura de su negocio.
+- No hace facturas a mano desde el admin: cada factura sale de un cobro de Stripe.

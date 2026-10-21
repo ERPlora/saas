@@ -1,7 +1,8 @@
 // The Store's rules, apart from the screen (round 17 §2.9–§2.11; mockups `store.html`, README §6.18):
 //   - a module is sold when the catalog lists its app as premium AND billing has it on sale
 //     (`apps.Module`), joined by `slug == app.id`: name, summary and icon from `apps.app.list`, prices and
-//     what the business has from `billing.store.catalog`;
+//     what the business has from `billing.store.catalog`; one taken off sale (or whose app the catalog
+//     retired) is still shown to the business that has it, to cancel it (saas#2589);
 //   - only the owner buys for a business, and a deleted one buys nothing;
 //   - a business with an unpaid invoice buys nothing more until it pays it (the server refuses it too,
 //     409 `billing.invoice_unpaid`), by business;
@@ -29,31 +30,43 @@ export interface SaleModule {
   source: 'plan' | 'purchase' | null;
   /** Cancelled: it works until then. */
   validUntil: string | null;
+  /** Still sold. Off sale, only the business that has it sees it, to cancel it (saas#2589). */
+  onSale: boolean;
 }
 
 /** What blocks buying for a business: an unpaid invoice, and whether its card was declined or changed. */
 export type Block = 'card_declined' | 'card_changed' | 'unpaid';
 
-/** The modules on sale, in the catalog's order (by section, then by name in the person's language). */
+/**
+ * The modules on sale, in the catalog's order (by section, then by name in the person's language), and then the
+ * ones the business still has whose app the catalog no longer lists, with billing's own name for them
+ * (saas#2589: taken off sale, they are still charged until cancelled). One off sale it does not have is not shown.
+ */
 export function saleModules(apps: readonly AppSummaryOut[], modules: readonly StoreModuleOut[]): SaleModule[] {
-  const bySlug = new Map(modules.map((module) => [module.slug, module]));
-  return apps.flatMap((app) => {
+  const shown = modules.filter((module) => module.on_sale || module.owned);
+  const bySlug = new Map(shown.map((module) => [module.slug, module]));
+  const listed = apps.flatMap((app) => {
     const module = app.premium ? bySlug.get(app.id) : undefined;
-    if (!module) return [];
-    return [
-      {
-        slug: module.slug,
-        name: app.name,
-        summary: app.summary,
-        iconSvg: app.icon_svg,
-        priceMonthlyCents: module.price_monthly_cents,
-        priceAnnualCents: module.price_annual_cents,
-        owned: module.owned,
-        source: module.source,
-        validUntil: module.valid_until,
-      },
-    ];
+    return module ? [toSale(module, app)] : [];
   });
+  const named = new Set(listed.map((module) => module.slug));
+  const unlisted = shown.filter((module) => module.owned && !named.has(module.slug)).map((module) => toSale(module, null));
+  return [...listed, ...unlisted];
+}
+
+function toSale(module: StoreModuleOut, app: AppSummaryOut | null): SaleModule {
+  return {
+    slug: module.slug,
+    name: app?.name ?? module.name,
+    summary: app?.summary ?? module.summary,
+    iconSvg: app?.icon_svg ?? module.icon_svg,
+    priceMonthlyCents: module.price_monthly_cents,
+    priceAnnualCents: module.price_annual_cents,
+    owned: module.owned,
+    source: module.source,
+    validUntil: module.valid_until,
+    onSale: module.on_sale,
+  };
 }
 
 /** The businesses the account may buy for: it owns them and they are not deleted. */

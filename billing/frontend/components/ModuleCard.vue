@@ -5,7 +5,9 @@
 //   - «Add · €9.00/month»: one dialog per module with its own proration (or the checkout on Free).
 //   - Just bought: «Activating… in <business>» (the Hub turns it on by itself) and «You have it».
 //   - Owned: «You have it» (or «Included in your plan»), disabled: never on sale twice.
+//   - Bought: «Cancel module» (BILLING-G66); the page confirms it with its dates.
 //   - Cancelled but still working: until when, and «Keep · no charge today».
+//   - Off sale but still had (saas#2589): it says so; it is cancelled, never kept nor bought again.
 //   - An unpaid invoice disables what charges, with the reason under the button.
 import { StatusPill } from '@erplora/ui/components';
 import { HubIcon } from '@erplora/ui/shell';
@@ -30,7 +32,7 @@ const props = defineProps<{
   renewal: string | null;
 }>();
 
-const emit = defineEmits<{ add: []; keep: [] }>();
+const emit = defineEmits<{ add: []; keep: []; cancel: [] }>();
 
 const { t, locale } = useI18n();
 const hintId = `module-hint-${useId()}`;
@@ -39,6 +41,11 @@ const cents = computed(() => (props.interval === 'year' ? props.module.priceAnnu
 const price = computed(() => formatCents(cents.value, locale.value));
 const cancelled = computed(() => props.module.owned && !!props.module.validUntil && !props.activating);
 const owned = computed(() => props.module.owned || props.activating);
+/** Bought and running: it can be cancelled (one the plan includes goes with the plan). */
+const cancellable = computed(
+  () => props.module.owned && props.module.source === 'purchase' && !props.module.validUntil && !props.activating,
+);
+const offSale = computed(() => props.module.owned && !props.module.onSale && !props.activating);
 
 /** Why «Add» or «Keep» does not work now. */
 const hint = computed(() => {
@@ -49,6 +56,7 @@ const hint = computed(() => {
 
 const cancelledText = computed(() => {
   const date = formatDate(props.module.validUntil, locale.value);
+  if (!props.module.onSale) return t('billing.modules.cancelledOffSale', { date });
   return props.renewal
     ? t('billing.modules.cancelled', { date, renewal: formatDate(props.renewal, locale.value) })
     : t('billing.modules.cancelledNoRenewal', { date });
@@ -60,6 +68,10 @@ function add(): void {
 
 function keep(): void {
   if (!props.block) emit('keep');
+}
+
+function cancel(): void {
+  emit('cancel');
 }
 </script>
 
@@ -113,9 +125,16 @@ function keep(): void {
       >
         {{ $t('billing.modules.included') }}
       </p>
+      <p
+        v-else-if="offSale"
+        class="card-text module-card__note"
+        data-testid="module-off-sale"
+      >
+        {{ $t('billing.modules.offSale') }}
+      </p>
       <div class="module-card__actions">
         <ion-button
-          v-if="cancelled"
+          v-if="cancelled && module.onSale"
           expand="block"
           fill="outline"
           :disabled="!!block"
@@ -159,6 +178,22 @@ function keep(): void {
             aria-hidden="true"
           />
           {{ interval === 'year' ? $t('billing.modules.addYear', { price }) : $t('billing.modules.add', { price }) }}
+        </ion-button>
+        <ion-button
+          v-if="cancellable"
+          expand="block"
+          fill="clear"
+          color="danger"
+          class="module-card__cancel"
+          data-testid="module-cancel"
+          @click="cancel"
+        >
+          <HubIcon
+            slot="start"
+            name="ion:close-circle-outline"
+            aria-hidden="true"
+          />
+          {{ $t('billing.modules.cancel') }}
         </ion-button>
         <ion-note
           v-if="hint && (!owned || cancelled)"
@@ -237,6 +272,9 @@ function keep(): void {
 }
 .module-card__actions ion-button {
   margin: 0;
+}
+.module-card__actions .module-card__cancel {
+  margin-top: 4px;
 }
 .module-card__hint {
   display: block;

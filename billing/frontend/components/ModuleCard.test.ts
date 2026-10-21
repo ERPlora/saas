@@ -3,7 +3,9 @@
 //   - «Add · €9.00/month» (one dialog per module, with its own proration, or the checkout on Free);
 //   - just bought: «Activating… in <business>», never on sale twice;
 //   - owned: «You have it» (or «Included in your plan»), disabled;
+//   - bought: «Cancel» (BILLING-G66), the page confirms it;
 //   - cancelled but still working: until when, and «Keep · no charge today»;
+//   - off sale but still had (saas#2589): it says so, can be cancelled, never kept nor bought again;
 //   - with an unpaid invoice nothing that charges, with the reason.
 import { describe, expect, it } from 'vitest';
 
@@ -21,6 +23,7 @@ const BOOKING: SaleModule = {
   owned: false,
   source: null,
   validUntil: null,
+  onSale: true,
 };
 const nb = (text: string) => text.replace(/ €/g, ' €');
 
@@ -99,8 +102,36 @@ describe('ModuleCard', () => {
     expect(keep.disabled('module-keep')).toBe(true);
   });
 
+  it('BILLING-G66: a bought module is cancelled from its card, never one the plan includes nor one just bought', async () => {
+    const s = await card({ owned: true, source: 'purchase' });
+    expect(s.el('module-cancel').text()).toBe('Cancel module');
+    await s.el('module-cancel').trigger('click');
+    expect(s.wrapper.emitted('cancel')).toHaveLength(1);
+    expect((await card({ owned: true, source: 'plan' })).el('module-cancel').exists()).toBe(false);
+    expect((await card({ owned: true, source: 'purchase' }, { activating: true })).el('module-cancel').exists()).toBe(false);
+    expect((await card({ owned: true, source: 'purchase', validUntil: '2026-10-31T12:00:00Z' })).el('module-cancel').exists()).toBe(false);
+    expect((await card()).el('module-cancel').exists()).toBe(false);
+  });
+
+  it('BILLING-G66: an unpaid invoice does not stop the cancellation (it stops what charges)', async () => {
+    const s = await card({ owned: true, source: 'purchase' }, { block: 'unpaid' });
+    expect(s.disabled('module-cancel')).toBe(false);
+  });
+
+  it('saas#2589: off sale but still had, it says so and is cancelled; cancelled, it is not kept', async () => {
+    const s = await card({ owned: true, source: 'purchase', onSale: false });
+    expect(s.el('module-off-sale').text()).toBe('No longer sold: you keep it while you pay it, and can cancel it whenever you want.');
+    expect(s.el('module-cancel').exists()).toBe(true);
+    const ending = await card({ owned: true, source: 'purchase', onSale: false, validUntil: '2026-10-31T12:00:00Z' });
+    expect(ending.el('module-cancelled').text()).toBe('You have it until Oct 31, 2026 (cancelled). It is no longer sold, so it cannot be kept.');
+    expect(ending.el('module-keep').exists()).toBe(false);
+  });
+
   it('speaks Spanish', async () => {
-    const s = await card({ owned: true }, { locale: 'es' });
+    const s = await card({ owned: true, source: 'purchase' }, { locale: 'es' });
     expect(s.el('module-owned').text()).toBe('Ya lo tienes');
+    expect(s.el('module-cancel').text()).toBe('Cancelar el módulo');
+    const off = await card({ owned: true, source: 'purchase', onSale: false }, { locale: 'es' });
+    expect(off.el('module-off-sale').text()).toBe('Ya no se vende: lo conservas mientras lo pagues y puedes cancelarlo cuando quieras.');
   });
 });

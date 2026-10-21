@@ -13,16 +13,21 @@ webhook and the operations are its only writers.
 ERPlora's invoices (lot L3-C) are read-only too: recorded from what Stripe charged and issued by the platform
 hub, and a record sent to the AEAT is never modified (a credit note corrects it). Their one action, «Send
 again to the platform hub», posts them through ``billing.services.post_platform_invoice`` (idempotent on the
-Hub) and says what the Hub answered.
+Hub) and says what the Hub answered. Its page links the PDF the platform hub issued (BILLING-G12), asked when
+the staff downloads it, as the account's «Download PDF».
 """
 
 from django.contrib import admin, messages
+from django.contrib.admin.utils import unquote
+from django.core.exceptions import PermissionDenied
+from django.http import HttpResponse
 from django.shortcuts import redirect
-from django.urls import reverse
+from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
+from live.errors import OperationError
 
 from billing import queries, services
 from billing.models import (
@@ -441,6 +446,38 @@ class InvoiceAdmin(ReadOnlyAdmin):
     ordering = ("-issued_on", "-created_at")
     inlines = [InvoiceLineInline]
     actions = ["send_to_platform", "send_mail_again"]
+    readonly_fields = ("pdf",)
+
+    @admin.display(description=gettext_lazy("PDF"))
+    def pdf(self, obj):
+        """The platform hub's PDF, once it issued the invoice (BILLING-G12): asked when it is downloaded."""
+        if obj is None or obj.payment_status != Invoice.PaymentStatus.PAID or obj.fiscal_status not in queries.ISSUED_STATUSES:
+            return _("Not issued yet: its PDF is ready once the platform hub issues it.")
+        return format_html(
+            '<a href="{}">{}</a>', reverse("admin:billing_invoice_pdf", args=[obj.pk]), _("Download the PDF")
+        )
+
+    def get_urls(self):
+        own = [path("<path:object_id>/pdf/", self.admin_site.admin_view(self.pdf_view), name="billing_invoice_pdf")]
+        return own + super().get_urls()
+
+    def pdf_view(self, request, object_id):
+        """The PDF of any invoice for whoever may read invoices (``view_invoice``): the platform hub's file, or back to
+        the invoice's page saying why there is none (not issued yet, the Hub away). An address with no invoice behind
+        it (a stale link, an id that is no UUID) gets Django's own «does not exist» answer, never a crash."""
+        invoice = self.get_object(request, unquote(object_id))
+        if invoice is None:
+            return self._get_obj_does_not_exist_redirect(request, self.opts, object_id)
+        if not self.has_view_permission(request, invoice):
+            raise PermissionDenied
+        try:
+            content = queries.platform_invoice_pdf(invoice)
+        except OperationError as refused:
+            messages.error(request, refused.message)
+            return redirect("admin:billing_invoice_change", invoice.pk)
+        response = HttpResponse(content, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{invoice.number}.pdf"'
+        return response
 
     @admin.display(description=gettext_lazy("Total"), ordering="total_cents")
     def total(self, obj):

@@ -1,8 +1,8 @@
 """An account's API key reads its businesses (``expose_api=True``; plan 2026-10-13, L3-A; PLAN-SAAS §2.4).
 
 A key opens only the operations declared with ``expose_api=True``, within its scopes (``accounts.api_auth``):
-hubs exposes its reads to ``hubs.read`` and billing its tax preview and ERPlora's invoices (L3-C) to
-``billing.read``; no write yet. The key
+hubs exposes its reads to ``hubs.read`` and billing its tax preview, ERPlora's invoices (L3-C) and the
+subscriptions of the account's businesses (BILLING-F18) to ``billing.read``; no write yet. The key
 acts as its account, so it sees what the account sees and nothing else (``queries.access``). The taxonomy and
 the plans on sale are public routes: exposed too, a key there is simply ignored.
 """
@@ -37,6 +37,8 @@ EXPOSED = {
     "billing.invoice.get",
     "billing.invoice.pdf",
     "billing.invoice.csv",
+    # The subscriptions of the account's businesses (BILLING-F18, the old SaaS's subscriptions API).
+    "billing.subscription.list",
 }
 
 

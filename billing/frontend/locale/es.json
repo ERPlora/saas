@@ -101,7 +101,10 @@
       "kept": "{module} se mantiene: se renovará el {date}",
       "keptNoDate": "{module} se mantiene",
       "added": "{module} añadido a {business}: se enciende en unos segundos",
-      "monthlyOnly": "Solo con pago mensual"
+      "monthlyOnly": "Solo con pago mensual",
+      "cancel": "Cancelar el módulo",
+      "offSale": "Ya no se vende: lo conservas mientras lo pagues y puedes cancelarlo cuando quieras.",
+      "cancelledOffSale": "Ya lo tienes hasta el {date} (cancelado). Ya no se vende, así que no se puede mantener."
     },
     "proration": {
       "titleModule": "Añadir {module}",
@@ -187,6 +190,18 @@
       "back": "Volver",
       "done": "Plan cancelado: {plan} hasta el {date}",
       "doneNoDate": "Plan cancelado: {plan} hasta el final del periodo"
+    },
+    "cancelModule": {
+      "title": "Cancelar el módulo",
+      "subject": "{business} · {module}",
+      "until": "{module} sigue funcionando en {business} hasta el {date}; después se apaga y no se vuelve a cobrar.",
+      "untilNoDate": "{module} sigue funcionando en {business} hasta el final del periodo; después se apaga y no se vuelve a cobrar.",
+      "data": "No se borra nada de lo que el negocio escribió con él.",
+      "undo": "Hasta entonces puedes deshacerlo con «Mantener».",
+      "confirm": "Cancelar el módulo",
+      "back": "Volver",
+      "done": "{module} cancelado: funciona hasta el {date}",
+      "doneNoDate": "{module} cancelado: funciona hasta el final del periodo"
     },
     "page": {
       "title": "Facturación",
@@ -279,6 +294,26 @@
       "csvShort": "Excel",
       "pdfIssuing": "Esta factura se está emitiendo: su PDF estará listo en cuanto termine.",
       "pdfUnavailable": "El servicio de facturas no responde. Prueba de nuevo en un momento."
+    },
+    "invoicePage": {
+      "title": "Factura",
+      "invoice": "Factura {number}",
+      "creditNote": "Rectificativa {number}",
+      "unnumbered": "Factura {reference} (no cobrada)",
+      "date": "Fecha",
+      "business": "Negocio",
+      "payment": "Cobro",
+      "fiscal": "VeriFactu",
+      "lines": "Lo que se cobra",
+      "period": "{start} – {end}",
+      "prorated": "Prorrateado",
+      "lineAmounts": "Base {net} · IVA {rate} {tax}",
+      "net": "Base imponible",
+      "vat": "IVA",
+      "total": "Total",
+      "recipient": "A nombre de",
+      "loadError": "No hemos podido cargar esta factura",
+      "view": "Ver la factura"
     },
     "subscriptions": {
       "title": "Suscripciones",
