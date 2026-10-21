@@ -77,4 +77,13 @@ describe('ProfileTab', () => {
     await flush();
     expect(s.q('delete-account')?.querySelector('.ion-delegate-host')).not.toBeNull();
   });
+
+  it('offers «Download my data» between the details and the danger card (ACCOUNTS-F26)', async () => {
+    const s = await mountPanel(ProfileTab);
+    const stream = await s.live();
+    await s.result(stream, 'accounts.profile.get', profile());
+    const cards = [...document.querySelectorAll('[data-testid="profile-export-card"], [data-testid="profile-danger"]')];
+    expect(cards.map((card) => card.getAttribute('data-testid'))).toEqual(['profile-export-card', 'profile-danger']);
+    expect(s.q('profile-export')?.textContent?.trim()).toBe('Download my data');
+  });
 });

@@ -57,6 +57,7 @@ CUENTA = {
     ("get", "/api/accounts/profile"): "accounts.profile.get",
     ("post", "/api/accounts/profile"): "accounts.profile.update",
     ("post", "/api/accounts/profile/delete"): "accounts.profile.delete",
+    ("get", "/api/accounts/export"): "accounts.data.export",
     ("post", "/api/accounts/email/change"): "accounts.email.change",
     ("post", "/api/accounts/email/verify"): "accounts.email.verify",
     ("post", "/api/accounts/photo"): "accounts.photo.upload",

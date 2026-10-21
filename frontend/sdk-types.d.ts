@@ -474,6 +474,88 @@ export interface ProfileDeletedOut {
   deleted: boolean;
 }
 
+/** `accounts.ExportTermsOut`: what the account accepted, and when (ACCOUNTS-F10). */
+export interface ExportTermsOut {
+  accepted_at: string | null;
+  terms_version: string | null;
+  privacy_version: string | null;
+}
+
+/** `accounts.ExportAccountOut`: the account as «Download my data» writes it. */
+export interface ExportAccountOut {
+  id: string;
+  email: string;
+  email_verified: boolean;
+  first_name: string;
+  last_name: string;
+  language: string;
+  has_password: boolean;
+  date_joined: string;
+  last_login: string | null;
+  terms: ExportTermsOut;
+}
+
+/** `accounts.ExportPreferencesOut`. */
+export interface ExportPreferencesOut {
+  theme_mode: AccountThemeMode;
+  language: string;
+  hub_alerts: boolean;
+}
+
+/** `accounts.ExportEmailAddressOut`. */
+export interface ExportEmailAddressOut {
+  email: string;
+  verified: boolean;
+  primary: boolean;
+}
+
+/** `accounts.ExportConnectedAccountOut`: a sign-in provider linked to the account (Google). */
+export interface ExportConnectedAccountOut {
+  provider: string;
+  uid: string;
+  date_joined: string;
+  last_login: string | null;
+}
+
+/** `accounts.ExportSessionOut`. */
+export interface ExportSessionOut {
+  device: string;
+  browser: string;
+  browser_version: string;
+  app_version: string | null;
+  ip: string;
+  created_at: string;
+  last_seen_at: string;
+}
+
+/** `accounts.ExportApiKeyOut`: a key as it was made, revoked ones too; never its secret. */
+export interface ExportApiKeyOut {
+  name: string;
+  prefix: string;
+  scopes: string[];
+  created_at: string;
+  expires_at: string | null;
+  last_used_at: string | null;
+  revoked_at: string | null;
+}
+
+/** `accounts.DataExportOut`: the file of «Download my data» (GDPR art. 20, ACCOUNTS-F26); `businesses` and
+ *  `invoices` are the rows of hubs and billing as those apps write them. */
+export interface DataExportOut {
+  format: 'erplora.account-export';
+  version: number;
+  exported_at: string;
+  account: ExportAccountOut;
+  preferences: ExportPreferencesOut;
+  photo: string | null;
+  email_addresses: ExportEmailAddressOut[];
+  connected_accounts: ExportConnectedAccountOut[];
+  sessions: ExportSessionOut[];
+  api_keys: ExportApiKeyOut[];
+  businesses: Record<string, unknown>[];
+  invoices: Record<string, unknown>[];
+}
+
 /** `accounts.EmailChangeIn`. */
 export interface EmailChangeIn {
   email: string;
@@ -615,6 +697,7 @@ declare module '@erplora/ui/sdk' {
     'accounts.profile.get': { input: Record<string, never> | undefined; output: ProfileOut };
     'accounts.profile.update': { input: ProfileUpdateIn; output: ProfileOut };
     'accounts.profile.delete': { input: Record<string, never> | undefined; output: ProfileDeletedOut };
+    'accounts.data.export': { input: Record<string, never> | undefined; output: DataExportOut };
     'accounts.email.change': { input: EmailChangeIn; output: ProfileOut };
     'accounts.email.verify': { input: EmailVerifyIn; output: EmailVerifyOut };
     'accounts.photo.upload': { input: PhotoUploadIn; output: ProfileOut };

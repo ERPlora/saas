@@ -48,6 +48,11 @@ async def profile_delete(request):
     return await run_operation(request, services.profile_delete)
 
 
+@bind(router, "accounts.data.export", "/accounts/export")
+async def data_export(request):
+    return await run_operation(request, queries.data_export)
+
+
 @bind(router, "accounts.email.change", "/accounts/email/change")
 async def email_change(request, data: EmailChangeIn):
     return await run_operation(request, services.email_change, data)

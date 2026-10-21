@@ -4,8 +4,8 @@ The inputs of the Account page refuse a field they do not know (``extra="forbid"
 no-op (a client sending ``currency`` learns the panel has none).
 """
 
-from datetime import datetime
-from typing import Literal
+from datetime import date, datetime
+from typing import Any, Literal
 from uuid import UUID
 
 from django.conf import settings
@@ -105,6 +105,94 @@ class ProfileUpdateIn(StrictIn):
 
 class ProfileDeleteIn(StrictIn):
     pass
+
+
+# --- Profile → «Download my data» (GDPR art. 20) --------------------------------------------------
+
+
+class DataExportIn(StrictIn):
+    pass
+
+
+class ExportTermsOut(Schema):
+    accepted_at: datetime | None
+    terms_version: date | None
+    privacy_version: date | None
+
+
+class ExportAccountOut(Schema):
+    id: UUID
+    email: str
+    email_verified: bool
+    first_name: str
+    last_name: str
+    language: str
+    has_password: bool
+    date_joined: datetime
+    last_login: datetime | None
+    terms: ExportTermsOut
+
+
+class ExportPreferencesOut(Schema):
+    theme_mode: ThemeMode
+    language: str
+    hub_alerts: bool
+
+
+class ExportEmailAddressOut(Schema):
+    email: str
+    verified: bool
+    primary: bool
+
+
+class ExportConnectedAccountOut(Schema):
+    """A sign-in provider linked to the account (Google): its id for the account there and the dates."""
+
+    provider: str
+    uid: str
+    date_joined: datetime
+    last_login: datetime | None
+
+
+class ExportSessionOut(Schema):
+    device: str
+    browser: str
+    browser_version: str
+    app_version: str | None
+    ip: str
+    created_at: datetime
+    last_seen_at: datetime
+
+
+class ExportApiKeyOut(Schema):
+    """A key of the account as it was made, revoked ones too: never its secret nor its hash."""
+
+    name: str
+    prefix: str
+    scopes: list[str]
+    created_at: datetime
+    expires_at: datetime | None
+    last_used_at: datetime | None
+    revoked_at: datetime | None
+
+
+class DataExportOut(Schema):
+    """The file of «Download my data»: what the account is and did here, in one machine-readable document.
+    ``businesses`` are the rows of ``hubs.business.list`` and ``invoices`` those of ``billing.invoice.get``, as
+    their own apps write them (accounts never imports them)."""
+
+    format: Literal["erplora.account-export"]
+    version: int
+    exported_at: datetime
+    account: ExportAccountOut
+    preferences: ExportPreferencesOut
+    photo: str | None
+    email_addresses: list[ExportEmailAddressOut]
+    connected_accounts: list[ExportConnectedAccountOut]
+    sessions: list[ExportSessionOut]
+    api_keys: list[ExportApiKeyOut]
+    businesses: list[dict[str, Any]]
+    invoices: list[dict[str, Any]]
 
 
 class ProfileDeletedOut(Schema):

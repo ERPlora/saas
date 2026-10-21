@@ -265,6 +265,11 @@
         "saved": "Changes saved",
         "loadError": "We could not load your account"
       },
+      "export": {
+        "title": "Your data",
+        "lead": "A copy of your account, your businesses and your ERPlora invoices, in one JSON file.",
+        "download": "Download my data"
+      },
       "delete": {
         "title": "Delete your account",
         "confirm": "Delete account",
