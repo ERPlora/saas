@@ -137,7 +137,7 @@ describe('InvoicePage (BILLING-G05)', () => {
     );
     expect(s.el('invoice-title').text()).toBe('Credit note ERPR-2026-00003');
     expect(s.el('invoice-rectification').text()).toContain('Credit note R1 · Duplicate charge');
-    expect(s.el('invoice-rectifies').attributes('href') ?? s.el('invoice-rectifies').attributes('router-link')).toContain('/billing/invoices/00042');
+    expect(s.el('invoice-rectified-link').attributes('href') ?? s.el('invoice-rectified-link').attributes('router-link')).toContain('/billing/invoices/00042');
   });
 
   it('issued: «Download PDF»; not collected: no number yet, «Pay» and no PDF', async () => {

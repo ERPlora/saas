@@ -177,7 +177,7 @@ async function downloadPdf(): Promise<void> {
               <RouterLink
                 v-if="invoice.rectifies"
                 :to="`/billing/invoices/${invoice.rectifies.id}`"
-                data-testid="invoice-rectifies"
+                data-testid="invoice-rectified-link"
               >
                 {{ $t('billing.invoices.rectifies', { number: invoice.rectifies.number }) }}
               </RouterLink>
