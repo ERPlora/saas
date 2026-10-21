@@ -485,6 +485,10 @@ class InvoicePayOut(Schema):
 class SubscriptionListIn(Schema):
     limit: int = Field(50, ge=1, le=100)
     offset: int = Field(0, ge=0)
+    #: One business's subscription (BILLING-G02: the old API's «detail of one»); only among the account's.
+    hub_id: UUID | None = None
+    #: Stripe's status of the subscription (an ended one is never a row).
+    status: Literal["active", "trialing", "past_due", "unpaid", "incomplete", "paused"] | None = None
 
 
 class SubscriptionPlanOut(Schema):

@@ -1021,6 +1021,9 @@ export interface InvoicePayOut {
 export interface SubscriptionListIn {
   limit?: number;
   offset?: number;
+  /** One business's subscription (BILLING-G02). */
+  hub_id?: string | null;
+  status?: 'active' | 'trialing' | 'past_due' | 'unpaid' | 'incomplete' | 'paused' | null;
 }
 
 /** `billing.SubscriptionPlanOut`: the plan, at its net price. */

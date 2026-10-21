@@ -44,6 +44,49 @@ def subscriptions(user, language="en") -> list[dict]:
     ).model_dump(mode="json")["rows"]
 
 
+class TestTheApiOfSubscriptions:
+    """BILLING-G02 (the old DRF list «filtered by status» and «the detail of one»): the same rows, filtered by
+    business (one business's subscription) and by status, and open to an integration's key with ``billing.read``
+    as the invoices are."""
+
+    def test_one_business_s_subscription(self, owner, shop, plans):
+        pay(shop)
+        other = pay(create_business(owner, name="Café Central"), sub_id="sub_2", customer="cus_2")
+
+        rows = queries.subscription_list(ctx_for(owner), SubscriptionListIn(hub_id=other.id)).model_dump(mode="json")
+
+        assert [row["business"]["name"] for row in rows["rows"]] == ["Café Central"]
+        assert rows["total"] == 1
+
+    def test_by_status(self, owner, shop, plans):
+        pay(shop)
+        pay(create_business(owner, name="Café Central"), sub_id="sub_2", customer="cus_2", status="past_due")
+
+        rows = queries.subscription_list(ctx_for(owner), SubscriptionListIn(status="past_due")).model_dump(mode="json")
+
+        assert [row["business"]["name"] for row in rows["rows"]] == ["Café Central"]
+
+    def test_another_account_s_business_is_never_there(self, shop, make_user):
+        pay(shop)
+        stranger = make_user("stranger@example.com")
+
+        rows = queries.subscription_list(ctx_for(stranger), SubscriptionListIn(hub_id=shop.id)).model_dump(mode="json")
+
+        assert rows["rows"] == []
+
+    def test_an_unknown_status_is_refused_at_the_route(self, client, owner, shop):
+        client.force_login(owner)
+
+        response = client.get("/api/billing/subscriptions?status=nonsense", HTTP_HOST="localhost:8001")
+
+        assert response.status_code == 422
+
+    def test_an_integration_reads_it_with_its_key(self):
+        from live.operations import get
+
+        assert get("billing.subscription.list").expose_api is True
+
+
 class TestWhichRows:
     def test_a_visitor_sees_nothing(self):
         from django.test import Client

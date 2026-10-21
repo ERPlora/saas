@@ -1142,10 +1142,12 @@ def _subscription_row(
     permission="billing.view",
     input=SubscriptionListIn,
     output=SubscriptionListOut,
+    expose_api=True,
 )
 def subscription_list(ctx: OperationContext, data: SubscriptionListIn) -> dict:
     """One row per business of the account that Stripe bills (it owns it or pays it): the plan and modules at
-    their net price, the next invoice with VAT and what the row's buttons do (mockups ``billing.html``)."""
+    their net price, the next invoice with VAT and what the row's buttons do (mockups ``billing.html``). Filtered
+    by business and by status for an integration (BILLING-G02), which reads it with a ``billing.read`` key."""
     user = _billing_account(ctx)
     owned = set(_owned_hub_ids(user).values_list("hub_id", flat=True))
     subscriptions = (
@@ -1157,6 +1159,10 @@ def subscription_list(ctx: OperationContext, data: SubscriptionListIn) -> dict:
         .exclude(hub__status=Hub.Status.DELETED)
         .order_by("hub__name", "hub_id")
     )
+    if data.hub_id is not None:
+        subscriptions = subscriptions.filter(hub_id=data.hub_id)
+    if data.status is not None:
+        subscriptions = subscriptions.filter(status=data.status)
     total = subscriptions.count()
     page = list(subscriptions[data.offset : data.offset + data.limit])
     unpaid = {}
