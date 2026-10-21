@@ -79,7 +79,6 @@ def test_support_uses_shared_layout_and_real_contact_routes(client, settings):
     assert "mailto:support@erplora.test?subject=ERPlora%20Support" in html
     assert "Email support@erplora.test when you cannot use the contact form." in html
     assert "max-w-3xl" not in html
-    assert "Report a Problem" in html
 
 
 def test_the_support_routes_lead_to_the_guides_the_form_and_the_address(client, settings):
@@ -95,6 +94,15 @@ def test_the_support_routes_lead_to_the_guides_the_form_and_the_address(client, 
         reverse("public:contact"),
         "mailto:support@erplora.test?subject=ERPlora%20Support",
     ]
+
+
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_support_does_not_send_people_to_a_hub_screen_that_does_not_exist(client, language):
+    """PUBLIC-G19: the Hub has no «Help & Support › Report a Problem» (only what the product does, PUBLIC-F07)."""
+    html = page(client, "/support/", language)
+
+    for claim in ("Report a Problem", "Reporting from your Hub", "Reportar un problema", "Reportar desde tu hub"):
+        assert claim not in html
 
 
 def test_support_tells_what_to_send_and_what_never_to_send(client):

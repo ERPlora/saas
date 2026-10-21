@@ -2271,12 +2271,6 @@ msgstr "No compartas credenciales"
 msgid "Never send passwords, PINs, recovery codes, signing keys, or complete payment details in a support message."
 msgstr "No mandes nunca contraseñas, PIN, códigos de recuperación, claves de firma ni datos de pago completos en un mensaje de soporte."
 
-msgid "Reporting from your Hub"
-msgstr "Reportar desde tu hub"
-
-msgid "When you are signed in, open Help & Support and use Report a Problem. The Hub adds useful account and browser context automatically."
-msgstr "Con la sesión iniciada, abre Ayuda y soporte y usa «Reportar un problema». El hub añade solo el contexto útil de la cuenta y del navegador."
-
 msgid "Your data lives in its own database, isolated from every other business, with continuous backups, point-in-time recovery for 14 days and high availability in Europe to keep your business running."
 msgstr "Tus datos viven en su propia base de datos, aislada de la de cualquier otro negocio, con copias de seguridad continuas, recuperación a cualquier momento de los últimos 14 días y alta disponibilidad en Europa para que tu negocio no se detenga."
 
