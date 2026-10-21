@@ -3,7 +3,7 @@
 // handed to the Hub through door 1 (`POST /internal/whatsapp/inbound`), signed as every internal call, with the
 // contract's body. The spec plays Meta (it signs with the e2e app's secret, project.ts `WHATSAPP_E2E`) and the Hub
 // (`startHubDouble`); Meta itself is never called. No screen: erplora.com has no WhatsApp page (PLAN-SAAS block 12).
-// The cross e2e with the real Hub's inbox (Meta → erplora.com → the Hub's «WhatsApp inbox») is the Hub's suite.
+// The cross e2e with the real Hub's inbox (Meta → erplora.com → the Hub's «WhatsApp inbox») is whatsapp-hub.spec.ts.
 import { execFileSync } from 'node:child_process';
 import { createHmac } from 'node:crypto';
 import { dirname, resolve } from 'node:path';
