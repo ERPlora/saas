@@ -134,8 +134,18 @@ describe('LaunchPage: signed out, the sign-in itself', () => {
     const foot = s.wrapper.get('.foot');
     expect(foot.text()).toContain('By continuing you agree to our');
     expect(foot.findAll('a').map((a) => [a.text(), a.attributes('href')])).toEqual([
-      ['Terms', 'https://erplora.com/legal/terms/'],
-      ['Privacy Policy', 'https://erplora.com/legal/privacy/'],
+      ['Terms', '/legal/terms/'],
+      ['Privacy Policy', '/legal/privacy/'],
+    ]);
+  });
+
+  it('inside the installed app the terms open in app mode, with a way back (PUBLIC-F26)', async () => {
+    applySurface('desktop');
+    fakeAllauth({ 'GET /auth/session': anonymous });
+    const s = await setup({ session: ANONYMOUS });
+    expect(s.wrapper.get('.foot').findAll('a').map((a) => a.attributes('href'))).toEqual([
+      '/legal/terms/?surface=desktop',
+      '/legal/privacy/?surface=desktop',
     ]);
   });
 

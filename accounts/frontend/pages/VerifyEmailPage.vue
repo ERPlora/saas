@@ -20,7 +20,7 @@
 // session, with nothing of the last visit; «Use a different email» replaces the page, so Ionic drops it.
 import { InlineFeedback } from '@erplora/ui/components';
 import { ApiError, createAllauthClient, type AuthState, type FieldErrors, useLiveClient } from '@erplora/ui/sdk';
-import { ionIconSrc } from '@erplora/ui/shell';
+import { ionIconSrc, useSurface } from '@erplora/ui/shell';
 import { IonButton, IonIcon, onIonViewWillEnter } from '@ionic/vue';
 import { computed, onMounted, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -28,6 +28,7 @@ import { type RouteLocationNormalizedLoaded, useRoute, useRouter } from 'vue-rou
 
 import AuthShell from '../components/AuthShell.vue';
 import CodeField from '../components/CodeField.vue';
+import { legalHref } from '../legal';
 import { localNext } from '../next';
 import { LAUNCHER } from '../paths';
 
@@ -48,6 +49,7 @@ const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const auth = createAllauthClient(useLiveClient().config);
+const { surface } = useSurface();
 
 const code = shallowRef('');
 const busy = shallowRef(false);
@@ -262,9 +264,9 @@ async function useDifferentEmail(): Promise<void> {
     <template #foot>
       <p class="foot">
         {{ $t('accounts.login.agree') }}
-        <a href="https://erplora.com/legal/terms/">{{ $t('accounts.login.terms') }}</a>
+        <a :href="legalHref('terms', surface)">{{ $t('accounts.login.terms') }}</a>
         &amp;
-        <a href="https://erplora.com/legal/privacy/">{{ $t('accounts.login.privacy') }}</a>.
+        <a :href="legalHref('privacy', surface)">{{ $t('accounts.login.privacy') }}</a>.
       </p>
     </template>
   </AuthShell>

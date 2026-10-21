@@ -7,7 +7,7 @@
 // 834×1112 and 1440×900 as `APP-PUBLIC-2-<key>-<width>.png` in `.artifacts/`.
 // flow: PUBLIC-G01 PUBLIC-G02 PUBLIC-G03 PUBLIC-G21 PUBLIC-G25 PUBLIC-G38 PUBLIC-G19 PUBLIC-G39 PUBLIC-G40
 // flow: PUBLIC-G41 PUBLIC-G24 PUBLIC-G43 PUBLIC-G44 PUBLIC-G20 PUBLIC-G45 PUBLIC-G17 PUBLIC-G46 PUBLIC-G07
-// flow: PUBLIC-G26 PUBLIC-G10 PUBLIC-G11 PUBLIC-G27 PUBLIC-G08 PUBLIC-G28 PUBLIC-G29 PUBLIC-G04
+// flow: PUBLIC-G26 PUBLIC-G10 PUBLIC-G11 PUBLIC-G27 PUBLIC-G08 PUBLIC-G28 PUBLIC-G29 PUBLIC-G04 PUBLIC-G47
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -293,4 +293,30 @@ test('PUBLIC-G28 G04 G29 the ways to get the app, the Free plan on /download/ an
   expect(release.status()).toBe(200);
   expect(Object.keys(await release.json())).toEqual(['version']);
   await clean('/download/ and /app/');
+});
+
+test('PUBLIC-G47 from the installed app, the terms open in app mode and «Back» returns to the sign-in', async ({ page }) => {
+  const clean = await watch(page);
+
+  // The app simulated as the panel's specs do (`?surface=desktop`, packages/ui surface.ts): its sign-in links the
+  // texts with the surface, and the public web keeps the app mode while the app reads them.
+  await page.goto('/shell/?surface=desktop');
+  const terms = page.locator('.foot a').first();
+  await expect(terms).toHaveAttribute('href', '/legal/terms/?surface=desktop');
+  await terms.click();
+  await expect(page).toHaveURL(/\/legal\/terms\/\?surface=desktop$/);
+  await expect(page.locator('nav.ep-navbar')).toHaveCount(0);
+  await expect(page.locator('footer.ep-footer')).toHaveCount(0);
+  await expect(page.locator('ion-button[href="/launch"]')).toHaveCount(0);
+
+  await page.locator('[data-app-back]').click();
+  await expect(page).toHaveURL(/\/shell\/\?surface=desktop$/);
+
+  await captureEverywhere(page, '/legal/privacy/', 'PUBLIC-G47', async (p) => {
+    await expect(p.locator('[data-app-back]')).toBeVisible();
+    await expect(p.locator('nav.ep-navbar')).toHaveCount(0);
+  });
+  await page.goto('/legal/privacy/?surface=web');
+  await expect(page.locator('nav.ep-navbar')).toBeVisible();
+  await clean('in-app legal texts');
 });

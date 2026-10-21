@@ -22,6 +22,7 @@
 import { InlineFeedback, StatusPill } from '@erplora/ui/components';
 import AuthShell from '../../../accounts/frontend/components/AuthShell.vue';
 import SignInForm from '../../../accounts/frontend/components/SignInForm.vue';
+import { legalHref } from '../../../accounts/frontend/legal';
 import { localNext } from '../../../accounts/frontend/next';
 import { LAUNCHER } from '../../../accounts/frontend/paths';
 import { HubIcon, useSession, useSurface } from '@erplora/ui/shell';
@@ -50,7 +51,7 @@ const PANEL = '/businesses';
 const { t, locale } = useI18n();
 const router = useRouter();
 const session = useSession();
-const { inApp, isWeb } = useSurface();
+const { inApp, isWeb, surface } = useSurface();
 
 const user = computed(() => session.user.value);
 // Signed in already with somewhere to go (a path of this site other than this page): there at once.
@@ -218,9 +219,9 @@ onIonViewWillEnter(entered);
     <template #foot>
       <p class="foot">
         {{ $t('accounts.login.agree') }}
-        <a href="https://erplora.com/legal/terms/">{{ $t('accounts.login.terms') }}</a>
+        <a :href="legalHref('terms', surface)">{{ $t('accounts.login.terms') }}</a>
         &amp;
-        <a href="https://erplora.com/legal/privacy/">{{ $t('accounts.login.privacy') }}</a>.
+        <a :href="legalHref('privacy', surface)">{{ $t('accounts.login.privacy') }}</a>.
       </p>
     </template>
   </AuthShell>

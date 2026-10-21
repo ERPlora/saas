@@ -4070,3 +4070,7 @@ msgstr "Los países donde puedes crear tu negocio y los sistemas de facturación
 # --- The language switcher of the footer (PUBLIC-F13) ---
 msgid "Language"
 msgstr "Idioma"
+
+#: templates/public/partials/app_bar.html
+msgid "Back"
+msgstr "Volver"

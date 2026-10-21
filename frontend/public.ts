@@ -239,12 +239,31 @@ export async function renderDiagrams(
   }
 }
 
+// --- The app bar (public/partials/app_bar.html, PUBLIC-F26) -----------------------------------------
+
+/** What `setupAppBack` reads of the browser's history. */
+export type BackHistory = Pick<History, 'length' | 'back'>;
+
+/**
+ * «Back» of a public page opened from the installed app: the app screen that opened it is the previous entry of
+ * the history, so it goes back there. Without one (the page opened alone) the link's own address, the app's
+ * start, is followed.
+ */
+export function setupAppBack(doc: Document, history: BackHistory | undefined = doc.defaultView?.history): void {
+  doc.querySelector<HTMLElement>('[data-app-back]')?.addEventListener('click', (event) => {
+    if (!history || history.length <= 1) return;
+    event.preventDefault();
+    history.back();
+  });
+}
+
 // --- Boot -------------------------------------------------------------------------------------
 
 export function boot(doc: Document): void {
   setupColorScheme(doc);
   registerIonic();
   setupNavbar(doc);
+  setupAppBack(doc);
   setupReveal(doc, doc.defaultView?.IntersectionObserver);
   presentServerMessages(doc);
   void renderDiagrams(doc);
