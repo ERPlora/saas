@@ -9,6 +9,7 @@ transaction) and by ``hubs.queries`` for the snapshot (the Hub reads the channel
 ``whatsapp.media.locate`` the attachment a person of the business opens (WHATSAPP-G07).
 """
 
+import logging
 from datetime import timedelta
 from typing import Any
 from uuid import UUID
@@ -42,6 +43,10 @@ PERMISSION = "whatsapp.manage"
 HUB_CATEGORIES = ("UTILITY", "MARKETING", "AUTHENTICATION")
 HUB_HEADER_FORMATS = ("", "TEXT", "IMAGE", "VIDEO", "DOCUMENT", "LOCATION")
 HUB_STATUSES = ("APPROVED", "PENDING", "REJECTED", "PAUSED", "DISABLED")
+#: The most templates the Hub takes in one block (Meta allows a verified account more).
+HUB_TEMPLATE_LIMIT = 1000
+
+logger = logging.getLogger(__name__)
 
 
 def known_hub(ref: str, *, live: bool = True) -> Hub | None:
@@ -87,7 +92,7 @@ def channel_block(hub_id: UUID, *, version: int | None = None) -> dict[str, Any]
         "monthly_limit": plan.whatsapp_messages_per_month if plan is not None else 0,
         "monthly_usage": used,
         "usage_month": month,
-        "templates": None if number is None else [_hub_template(t) for t in Template.objects.filter(hub_id=hub_id)],
+        "templates": None if number is None else _hub_templates(hub_id),
     }
 
 
@@ -95,6 +100,17 @@ def e164(display: str) -> str:
     """A number as Meta shows it (``+34 910 00 00 00``) in E.164 (``+34910000000``); ``""`` when it is not one."""
     digits = "".join(ch for ch in display if ch.isdigit())
     return f"+{digits}" if 7 <= len(digits) <= 15 and digits[0] != "0" else ""
+
+
+def _hub_templates(hub_id: UUID) -> list[dict[str, Any]]:
+    """The mirror in the Hub's shape: only templates with a name and a language (Meta's key; the Hub asks for both),
+    and up to the most the Hub takes, by name, saying so when some stay out."""
+    templates = [t for t in Template.objects.filter(hub_id=hub_id) if t.name.strip() and t.language.strip()]
+    if len(templates) > HUB_TEMPLATE_LIMIT:
+        logger.warning(
+            "whatsapp.channel.templates_capped hub=%s templates=%s sent=%s", hub_id, len(templates), HUB_TEMPLATE_LIMIT
+        )
+    return [_hub_template(t) for t in templates[:HUB_TEMPLATE_LIMIT]]
 
 
 def _hub_template(template: Template) -> dict[str, Any]:

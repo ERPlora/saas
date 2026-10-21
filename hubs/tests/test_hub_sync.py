@@ -445,6 +445,23 @@ class TestRefusals:
         assert (row.hub_error, row.open_blocked_reason) == ("unknown_vertical", "error")
         assert queries.business_get(ctx_for(owner), ByIdIn(id=business.id)).hub_error == "unknown_vertical"
 
+    def test_a_refused_snapshot_is_an_error_in_the_log_with_the_hubs_reason(self, business, hub_double, caplog):
+        """hub#127: a ``whatsapp`` block out of the Hub's schema makes it refuse the whole snapshot (422): the
+        business stops receiving its plan, modules and members, so the push says it as an ERROR, with the Hub's code
+        and reason, and the snapshot stays owed."""
+        reason = "The whatsapp block is out of contract: templates.0.name: String should have at least 1 character"
+        hub_double.answer(
+            "PUT", r"/internal/hubs/[^/]+/state$", 422, {"error": {"code": "internal.payload_invalid", "message": reason}}
+        )
+
+        assert services.sync_hub(business.id) is False
+
+        [refusal] = [record for record in caplog.records if record.name == "hubs.services" and "refused" in record.msg]
+        assert refusal.levelname == "ERROR"
+        assert all(part in refusal.getMessage() for part in (str(business.id), "state", "422", "internal.payload_invalid", reason))
+        hub = fresh(business)
+        assert (hub.last_hub_error, hub.pushed_state_version < hub.state_version) == ("internal.payload_invalid", True)
+
     def test_a_later_acknowledgement_clears_the_error(self, business, hub_double):
         Hub.objects.filter(pk=business.pk).update(last_hub_error="unknown_vertical", hub_error_at=timezone.now())
 
