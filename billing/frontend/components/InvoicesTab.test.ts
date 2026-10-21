@@ -91,6 +91,20 @@ async function setup(path = '/billing/invoices', api: (call: ReturnType<typeof d
 }
 
 describe('InvoicesTab: the list', () => {
+  // BILLING-F22 (the trap of saas#58): one page of `billing.invoice.list` holds 100 rows at most; on a phone
+  // «Load more» never asks for more, and past them the table pages instead (`maxWindow`).
+  it('on a phone «Load more» grows one window from the first row, never past the server’s 100 rows', async () => {
+    const s = await setup();
+    await s.show(ROWS, undefined, 1, { total: 260 });
+    expect(s.prop('maxWindow')).toBe(100);
+    s.table().vm.$emit('loadMore');
+    await flush();
+    expect(s.params()).toEqual([{ limit: 50, offset: 0 }]);
+    for (let n = 0; n < 4; n += 1) s.table().vm.$emit('loadMore');
+    await flush();
+    expect(s.params()).toEqual([{ limit: 100, offset: 0 }]);
+  });
+
   it('follows the account’s invoices, the newest first, a page at a time', async () => {
     const s = await setup();
     expect(s.params()).toEqual([{ limit: 25, offset: 0 }]);

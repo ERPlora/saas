@@ -38,6 +38,8 @@ import { useToolbarFit } from '../toolbar-fit';
 import InvoiceFilters from './InvoiceFilters.vue';
 
 const PAGE_SIZES = [10, 25, 50];
+/** The most rows one page of `billing.invoice.list` holds (its `limit`, 100): past it a phone pages (`maxWindow`). */
+const PAGE_MAX = 100;
 /** README §3b: the invoices' list is wide; cards up to 1100 px. */
 const CARD_BREAKPOINT = 1100;
 const STATUSES: InvoicePaymentStatus[] = ['paid', 'open'];
@@ -137,7 +139,7 @@ watch(
 // ── The list ────────────────────────────────────────────────────────────────────────────────────
 const live = useLive('billing.invoice.list', () => ({
   ...filters.value,
-  limit: pageSize.value * windowPages.value,
+  limit: Math.min(pageSize.value * windowPages.value, PAGE_MAX),
   offset: page.value * pageSize.value,
 }));
 const rows = computed<InvoiceRowOut[]>(() => live.data.value?.rows ?? []);
@@ -404,6 +406,7 @@ const freeBusiness = computed(() => {
       :page="page"
       :page-size="pageSize"
       :page-size-options="PAGE_SIZES"
+      :max-window="PAGE_MAX"
       :page-size-chooser="(live.data.value?.total ?? 0) > PAGE_SIZES[0]"
       :views="['table', 'cards']"
       :card-breakpoint="CARD_BREAKPOINT"
