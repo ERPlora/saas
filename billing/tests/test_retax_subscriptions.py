@@ -277,7 +277,7 @@ class TestADowngradeWaiting:
     def test_a_price_no_plan_nor_module_has_keeps_its_rates(self, shop, stripe_double):
         rate = spanish_rate(stripe_double, shop)
         paid = on_starter(shop, stripe_double, rates=[rate])
-        waiting(paid, stripe_double, current=[], following=[rate], current_prices=("price_unknown",))
+        waiting(paid, stripe_double, current=[rate], following=[rate], current_prices=("price_unknown",))
 
         assert services.retax_subscription(paid) == "unchanged"
 
