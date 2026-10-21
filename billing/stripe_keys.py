@@ -27,3 +27,9 @@ def stripe_key_mode(key: str | None) -> StripeKeyMode:
     if match is None:
         return StripeKeyMode.UNKNOWN
     return StripeKeyMode(match.group(1))
+
+
+def test_keys_allowed(*, debug: bool, environment: str) -> bool:
+    """Whether a test key may be used: everywhere but deployed production (``prod`` with DEBUG off), where it would
+    sell paid plans for test cards (``billing.E003``). Development runs as prod with DEBUG on; pre is test only."""
+    return debug or environment != "prod"

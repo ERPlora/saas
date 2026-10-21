@@ -232,7 +232,9 @@
         "devices": "Dispositivos",
         "users": "Usuarios",
         "usersOf": "{used} de {limit}",
-        "deleted": "Se canceló al eliminar el negocio. Si lo recuperas, vuelve en Gratis."
+        "deleted": "Se canceló al eliminar el negocio. Si lo recuperas, vuelve en Gratis.",
+        "upgrade": "Mejorar plan",
+        "change": "Cambiar plan"
       },
       "usage": {
         "eyebrow": "Uso",

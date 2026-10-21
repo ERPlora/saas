@@ -84,6 +84,23 @@ def test_outside_prod_a_live_key_is_not_usable(settings):
     assert stripe_service.key_mode() is StripeKeyMode.TEST
 
 
+@pytest.mark.parametrize("key", ["sk_test_51abc", "rk_test_51abc"])
+def test_in_production_a_test_key_is_not_usable(settings, key):
+    """BILLING-F30: production (DEBUG off) charges real money only. A test key there would let anybody pay a
+    plan with a test card: it is refused like no key at all (503), and development keeps its test keys."""
+    from billing.stripe_keys import StripeKeyMode
+
+    settings.STRIPE_TEST_KEYS_ALLOWED = False
+    settings.STRIPE_SECRET_KEY = key
+
+    assert stripe_service.key_mode() is StripeKeyMode.UNKNOWN
+    with pytest.raises(StripeNotConfigured):
+        stripe_service.client()
+
+    settings.STRIPE_TEST_KEYS_ALLOWED = True
+    assert stripe_service.key_mode() is StripeKeyMode.TEST
+
+
 def test_the_items_of_a_long_subscription_are_all_read(stripe_double):
     """Stripe embeds 10 items in a subscription; the rest are read page by page (review of L2-B)."""
     from billing.tests.stripe_double import item

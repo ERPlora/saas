@@ -391,6 +391,19 @@ class TestTheRun:
 
         assert stripe_double.calls == []
 
+    def test_a_mail_of_the_unpaid_episode_still_owed_is_an_error(self, monkeypatch, stripe_double):
+        """BILLING-F16: the run fails while a payer is still owed their mail, so the cron alarm says it."""
+        from collections import Counter
+
+        from billing import services
+
+        monkeypatch.setattr(
+            services, "sweep_unpaid", lambda: Counter({key: 0 for key in services.SWEEP_COUNTS}) + Counter(mail_failed=1)
+        )
+
+        with pytest.raises(CommandError):
+            run()
+
     def test_with_nothing_to_do_nothing_is_asked(self, settings, stripe_double):
         settings.STRIPE_SECRET_KEY = ""
 

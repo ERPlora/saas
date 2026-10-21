@@ -14,8 +14,8 @@ const PLANS = {
   signup_trial_days: 14,
   cheapest_slug: 'free',
   plans: [
-    { slug: 'free', name: 'Free', max_users: 3, max_devices: 1 },
-    { slug: 'starter', name: 'Starter', max_users: 0, max_devices: 0 },
+    { slug: 'free', name: 'Free', max_users: 3, max_devices: 1, price_monthly: '0.00', price_annual: '0.00' },
+    { slug: 'starter', name: 'Starter', max_users: 0, max_devices: 0, price_monthly: '19.00', price_annual: '190.00' },
   ],
 };
 const BUSINESS = {
@@ -103,6 +103,31 @@ describe('BusinessSummary', () => {
     const s = await setup();
     expect(s.card('summary-plan').text()).toContain('To change your plan or add modules, go to erplora.com in your browser.');
     expect(s.card('summary-plan').find('a').exists()).toBe(false);
+  });
+
+  // BILLING-F07: a business is born on Free and its plan is paid from the Store, with that business chosen.
+  it('on the web, its owner on Free is led to the Store to upgrade it', async () => {
+    const s = await setup();
+    const store = s.card('summary-plan').find('[data-testid="summary-plan-store"]');
+    expect(store.text()).toBe('Upgrade plan');
+    expect(store.attributes('routerlink')).toBe('/store/plans?business=h1');
+  });
+
+  it('a paid plan is changed in the Store', async () => {
+    const s = await setup({ plan: { slug: 'starter', name: 'Starter' } }, 'es');
+    expect(s.card('summary-plan').find('[data-testid="summary-plan-store"]').text()).toBe('Cambiar plan');
+  });
+
+  it('whoever does not handle the billing, inside the apps or once deleted, has no way to the Store', async () => {
+    const member = await setup({ can: { ...BUSINESS.can, manage_billing: false } });
+    expect(member.card('summary-plan').find('[data-testid="summary-plan-store"]').exists()).toBe(false);
+    member.wrapper.unmount();
+    const removed = await setup({ status: 'deleting', purge_after: '2027-01-11T10:00:00Z' });
+    expect(removed.card('summary-plan').find('[data-testid="summary-plan-store"]').exists()).toBe(false);
+    removed.wrapper.unmount();
+    applySurface('desktop');
+    const app = await setup();
+    expect(app.card('summary-plan').find('[data-testid="summary-plan-store"]').exists()).toBe(false);
   });
 
   it('before the first night, the usage says there is no data yet', async () => {

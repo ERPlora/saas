@@ -7,6 +7,7 @@ number written as ERPlora invoices it, plus its VIES verdict. Both never block: 
 verdict the customer pays the VAT, which is recoverable.
 """
 
+from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
@@ -14,6 +15,7 @@ from django.db import DatabaseError
 
 from billing import queries, services
 from billing.models import VatCheck
+from billing.tests.stripe_double import connection_error, invalid_request
 from billing.tests.vies_double import (
     FAKE_VAT,
     NOT_REGISTERED,
@@ -233,3 +235,83 @@ class TestTheOperationNeedsAnAccount:
             services.vat_check_run(system_context(Scope("user", "system")), VatCheckIn(vat_number=REAL_VAT))
 
         vies.assert_not_called()
+
+
+# --- BILLING-F28: the Stripe prices pasted on a plan are the plan's -----------------------------------
+
+
+def stripe_price(price_id="price_month", **fields):
+    return {
+        "id": price_id,
+        "object": "price",
+        "active": True,
+        "currency": "eur",
+        "unit_amount": 2999,
+        "tax_behavior": "exclusive",
+        "product": "prod_starter",
+        "recurring": {"interval": "month", "interval_count": 1},
+        **fields,
+    }
+
+
+@pytest.mark.django_db
+class TestThePricesOfAPlan:
+    """Pasted in the admin, a price is checked in Stripe before the plan sells with it: it exists in this mode
+    (a test id in production is not found), it is active, in euros, every month or every year as its field says,
+    the plan's amount, and NET (``exclusive``: our VAT goes on top). Nothing pasted, nothing asked."""
+
+    def check(self, stripe_double, **pasted):
+        return services.plan_price_problems(
+            prices={"stripe_price_id": "", "stripe_price_id_annual": "", **pasted},
+            amounts={"price_monthly": Decimal("29.99"), "price_annual": Decimal("299.90")},
+            product="prod_starter",
+        )
+
+    def test_prices_that_are_the_plans_pass(self, stripe_double):
+        stripe_double.answer(
+            "prices.retrieve",
+            stripe_price(),
+            stripe_price("price_year", unit_amount=29990, recurring={"interval": "year", "interval_count": 1}),
+        )
+
+        assert self.check(stripe_double, stripe_price_id="price_month", stripe_price_id_annual="price_year") == {}
+
+    def test_nothing_pasted_asks_nothing(self, stripe_double):
+        assert self.check(stripe_double) == {}
+        assert stripe_double.calls == []
+
+    @pytest.mark.parametrize(
+        "fields",
+        [
+            {"active": False},
+            {"currency": "usd"},
+            {"unit_amount": 2900},
+            {"tax_behavior": "inclusive"},
+            {"tax_behavior": "unspecified"},
+            {"recurring": {"interval": "year", "interval_count": 1}},
+            {"recurring": None},
+            {"product": "prod_other"},
+        ],
+    )
+    def test_a_price_that_would_charge_otherwise_is_refused(self, stripe_double, fields):
+        stripe_double.answer("prices.retrieve", stripe_price(**fields))
+
+        assert list(self.check(stripe_double, stripe_price_id="price_month")) == ["stripe_price_id"]
+
+    def test_a_price_stripe_does_not_have_is_refused(self, stripe_double):
+        stripe_double.answer("prices.retrieve", invalid_request("No such price: 'price_test_x'"))
+
+        assert list(self.check(stripe_double, stripe_price_id="price_test_x")) == ["stripe_price_id"]
+
+    def test_stripe_not_answering_is_said_not_taken_for_a_yes(self, stripe_double):
+        stripe_double.answer("prices.retrieve", connection_error())
+
+        with pytest.raises(services.PriceCheckUnavailable):
+            self.check(stripe_double, stripe_price_id="price_month")
+
+    def test_without_stripe_the_prices_are_not_checked(self, stripe_double, settings):
+        settings.STRIPE_SECRET_KEY = ""
+
+        with pytest.raises(services.PriceCheckUnavailable):
+            self.check(stripe_double, stripe_price_id="price_month")
+        assert stripe_double.calls == []

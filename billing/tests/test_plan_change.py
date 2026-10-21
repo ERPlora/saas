@@ -404,3 +404,25 @@ def test_a_change_of_billing_puts_our_tax_on_every_item(shop, owner, inventory, 
     items = stripe_double.last("subscriptions.update").params["items"]
     rate = stripe_double.tax_rates[0]["id"]
     assert [line["tax_rates"] for line in items] == [[rate], [rate]]
+
+
+def test_a_payer_not_subject_to_vat_loses_the_old_rate_on_the_change(shop, owner, inventory, stripe_double):
+    """BILLING-F11: a payer now in Las Palmas whose items still hold the Spanish 21 % changes plan. An empty
+    list of rates is dropped by the SDK and Stripe keeps the old rate on the item: the update has to say
+    «none» with an empty string, on the plan and on every module it moves."""
+    shop.billing_profile.billing_postal_code = "35001"
+    shop.billing_profile.save()
+    paid = pay(shop, modules=("inventory",))
+    stripe_double.answer("subscriptions.retrieve", subscription(items=[
+        item("si_plan", "price_starter_month", tax_rates=["txr_es_21"]),
+        item("si_inventory", "price_inventory_month", tax_rates=["txr_es_21"]),
+    ]))
+    stripe_double.answer("subscriptions.update", subscription(items=[
+        item("si_plan", "price_starter_year", interval="year"),
+        item("si_inventory", "price_inventory_year", interval="year"),
+    ]))
+
+    change(owner, paid, plan="starter", interval="year")
+
+    items = stripe_double.last("subscriptions.update").params["items"]
+    assert [(line["id"], line["tax_rates"]) for line in items] == [("si_plan", ""), ("si_inventory", "")]

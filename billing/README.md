@@ -13,7 +13,7 @@ pago); detalle en «Facturas de ERPlora (L3-C)».
 
 | Pieza | Qué hace |
 |---|---|
-| `models.py` | `TaxCategory` (qué se vende), `TaxRule` (tipo por país/región/categoría con vigencia; `is_subject=False` = no sujeta), `FiscalPolicy` (emisor, alta en el ROI, OSS y su umbral; una sola fila), `CompanyConfig` (identidad fiscal de ERPlora, la del solicitante de VIES; una sola fila) y `VatCheck` (bitácora de VIES: cada consulta es una fila nueva, nunca se edita) |
+| `models.py` | `TaxCategory` (qué se vende), `TaxRule` (tipo por país/región/categoría con vigencia; `is_subject=False` = no sujeta), `FiscalPolicy` (emisor, alta en el ROI, OSS y su umbral; una sola fila), `CompanyConfig` (identidad fiscal de ERPlora, la del solicitante de VIES; una sola fila), `VatCheck` (bitácora de VIES: cada consulta es una fila nueva, nunca se edita) y `OssNotice` (los avisos al equipo del 80 % y del cruce del umbral OSS, uno por año y tipo) |
 | `vat.py` | Calificación y desglose: `quote_vat` (lo que se SUMA a un neto; `None` = no se vende), `resolve_vat` (reparte lo ya cobrado, concilia el cero de Stripe en una venta sujeta), `add_vat`, `split_gross`, `vat_rate_for`, `BILLING_COUNTRIES`, `tax_id_type_for`. Sin ORM: lee la tabla por `queries.py` |
 | `vies.py` | Cliente REST de VIES como solicitante identificado; nunca lanza: red caída, timeout, HTTP ≥ 400, JSON roto o «válido sin número de consulta» = `unavailable` |
 | `services.py` | Las puertas: `check_vat_number`, `verify_customer_vat`, `clear_tax_id_for_stripe`, `record_manual_override`, `validate_vat_for_profile`, `sale_quote`, `sale_tax_rates`, `require_billing_location`; la operación `billing.vat_check.run` |
@@ -49,6 +49,31 @@ pago); detalle en «Facturas de ERPlora (L3-C)».
   y anterior, en céntimos). Sin esos importes el total es «desconocido» en el admin. Desde el año arrastrado
   (`oss_carried_year`) el total se sabe solo: los años siguientes son las facturas de aquí y el «año en curso»
   arrastrado pasa a ser el «año anterior», sin tocar el admin cada enero.
+- **Revisión de la tabla** (`manage.py audit_tax_rules`, BILLING-F04, saas#1968/#1995): `queries.tax_rule_audit`
+  comprueba que el emisor está en la TABLA (no solo en el respaldo `EU_VAT_RATES`), que IC/CE/ML resuelven «no
+  sujeto» en la tabla y por el código postal (35001/51001/52001, la misma puerta que el cobro) y que cada
+  territorio con un pagador en `hubs.BillingProfile` tiene tipo. Sale con error en el primer problema (alarma
+  `task_failed`); un territorio que solo cubre el respaldo es un aviso.
+- **Tipo de la suscripción viva** (`services.retax_subscription`, BILLING-F02/F06, saas#2293): al guardar los datos
+  de facturación (`hubs.billing_profile.update`, tras el COMMIT) y cada día (`manage.py retax_subscriptions`),
+  cada item de una suscripción `active`/`trialing`/`past_due` recibe los `TaxRate` que el motor da hoy, sin
+  prorrateo. Quitar un tipo es `tax_rates: ""` (una lista vacía la descarta el SDK y Stripe deja el tipo viejo;
+  comprobado contra la API de prueba). Con una bajada programada (`PlanChangeSchedule`), la primera factura del
+  plan nuevo la cobra la fase siguiente del calendario con los items que se fijaron al programarla:
+  `_retax_schedule` re-declara cada fase que aún no terminó con los tipos de hoy (la actual conserva su
+  `start_date`, su `trial_end` y su `end_date`; `end_behavior: release`; sin prorrateo). En las fases un tipo se
+  quita con `tax_rates: []` y cambiar la fase actual cambia la suscripción en el acto (comprobado contra la API
+  de prueba); un precio que ningún plan ni módulo tiene conserva su tipo. Un lugar que no se vende queda
+  `refused` y el comando sale con error.
+- **Avisos de la OSS** (`services.note_oss_threshold`, BILLING-F06, saas#2297/#2299): cada factura cobrada que
+  cuenta para el umbral (B2C a otro estado de la UE, sin NIF-IVA comprobado) mira el total del año; la que lo
+  lleva por encima del 80 % (`OSS_WARNING_PERCENT`) anota un `OssNotice` `near` y la que lo cruza (o la primera
+  del año si el anterior cerró por encima) uno `crossed`, cada uno una vez al año (único por `(year, kind)`;
+  el cruce primero, así un salto directo solo avisa del cruce). Sin avisos con el alta voluntaria en la OSS.
+  El correo va a `SUPPORT_EMAIL` tras el COMMIT (cabecera `X-ERPlora-Notice: billing.oss_near|crossed`); uno
+  que no salió se reenvía en `retax_subscriptions`, que sale con error mientras quede alguno
+  (`notices_failed`). Anotar el aviso nunca rompe el cobro (`_note_oss_threshold_quietly`). Admin de solo
+  lectura «Avisos de la OSS».
 
 ## VIES
 
@@ -74,6 +99,8 @@ pago); detalle en «Facturas de ERPlora (L3-C)».
 | `models.py` | `PromoCode` (días de prueba, ADR-0107), `CheckoutAttempt` (un Embedded Checkout por intención; la misma selección reutiliza su sesión abierta), `WebhookEvent` (cada evento una vez) y `PaymentFailure` (por qué no se cobró una renovación) |
 | `webhooks.py` | `POST /webhooks/stripe/`: firma de Stripe → reclamo del evento → `services.process_stripe_event` |
 | `management/commands/sweep_unpaid.py` | `saas-cron`: impagos que Stripe dejó de reintentar y suscripciones de negocios eliminados |
+| `management/commands/retax_subscriptions.py` | `saas-cron` (diaria): el tipo de hoy en cada suscripción viva y en las fases de su bajada programada (cambio de dirección no empujado, umbral OSS) y el reenvío de los avisos de la OSS que no salieron |
+| `management/commands/audit_tax_rules.py` | `saas-cron` (diaria) o a mano: la tabla de IVA cobra cada venta posible |
 
 ### Operaciones (solo el propietario del negocio; permiso `billing.pay`)
 
@@ -102,7 +129,8 @@ en otra solo por sus operaciones), que sube `state_version` y empuja la foto al 
 ### Guardas de dinero (en este orden; ninguna llama a Stripe)
 
 1. Sin clave usable: 503 `billing.payments_unavailable` (en live solo vale una clave **restringida**
-   `rk_live_`; la secreta `sk_live_` se rechaza y `check --deploy` falla con `billing.E001`). Con clave live,
+   `rk_live_`; la secreta `sk_live_` se rechaza y `check --deploy` falla con `billing.E001`; en producción con
+   `DEBUG` apagado una clave de test tampoco vale, `billing.E003`, para no vender planes por tarjetas de prueba). Con clave live,
    **sin ruta que envíe la factura** (reglas de trabajo §15): 409 `billing.invoicing_unavailable` mientras
    `PLATFORM_INVOICING_ENABLED` esté apagado (por defecto) o el hub de plataforma no conteste
    `GET /internal/platform/invoices/health` → 200 `{"status": "ok"}` (la respuesta buena se guarda 5 min; una mala
@@ -141,7 +169,14 @@ pendiente», abre); pasados, o con `unpaid` de Stripe, `suspended`. Pagar lo dev
 escrita: «Pagar» espera a otra), `card_changed` (tarjeta nueva por el Portal: «Pagar» vuelve),
 `authentication_required` y `payment_failed` (también los rechazos que la misma tarjeta puede pasar luego:
 `insufficient_funds`, `try_again_later`…); `unpaid_since` y `pay_url` (solo para el **pagador**, no para el rol).
-Un `payment_failed` reenviado de una factura ya pagada no la reabre. `sweep_unpaid` repasa cada negocio en impago
+Un `payment_failed` reenviado de una factura ya pagada no la reabre.
+**Avisos por correo** (BILLING-F16, saas#2593): tras el COMMIT de todo lo que deja el negocio en impago
+(`apply_state` con `standing` `grace`/`suspended`), `notify_unpaid` escribe a quien paga (su correo de facturas o
+el de su cuenta, en su idioma) una vez por factura no cobrada mientras dura la gracia (importe, día de la
+suspensión y enlace a Facturación) y una vez al suspender (`PaymentFailure.notified_at` /
+`suspension_notified_at`; cabecera `X-ERPlora-Notice`: `billing.payment_failed`, `billing.business_suspended`).
+Un correo que no sale se reenvía en `sweep_unpaid` (`notified`, `mail_failed`; con `mail_failed` el comando falla).
+El Hub no abre un negocio cuya foto dice `suspended`: 402 `base.hub_suspended`, también con sesión. `sweep_unpaid` repasa cada negocio en impago
 con su factura abierta más antigua (si ya está pagada, aplica la suscripción viva) y cancela al momento la
 suscripción de Stripe de todo negocio que se eliminó (`Subscription.cancel_requested_at`, que pone
 `hubs.business.delete` y no deshace recuperarlo).
@@ -152,7 +187,8 @@ suscripción de Stripe de todo negocio que se eliminó (`Subscription.cancel_req
 `STRIPE_PORTAL_CONFIGURATION` (`bpc_…`, solo tarjetas y recibos; sin ella el Portal no abre: 503
 `billing.portal_unavailable`), `STRIPE_TIMEOUT_SECONDS` (10), `PROMO_CHECK_RATE` (`20/m`) y
 `PLATFORM_INVOICING_ENABLED` (L3-C; apagado: una clave live no cobra). Un código
-promocional vale una vez por negocio y por pagador (`PromoRedemption`). Los precios: `Plan.stripe_price_id` / `stripe_price_id_annual` (admin) y
+promocional vale una vez por negocio y por pagador (`PromoRedemption`). Los precios: `Plan.stripe_price_id` / `stripe_price_id_annual` (admin; al guardarlos, `plan_price_problems` los
+comprueba en Stripe: activo, euros, periodicidad, importe del plan, `exclusive` y producto, BILLING-F28) y
 `apps.Module.stripe_price_id_monthly` / `_annual`, netos (`tax_behavior = exclusive` en Stripe). En los tests
 nunca se llama a Stripe: `billing/tests/stripe_double.py` sustituye a `stripe_service.client()` y los
 eventos se firman como los firma Stripe.
@@ -196,7 +232,9 @@ trata como ninguna (`UNKNOWN`: 503 `billing.payments_unavailable`, nunca un cobr
   de arriba; tras agotar los reintentos, «marcar la suscripción como impagada» (`unpaid`); Customer Portal solo
   con tarjetas y recibos (los cambios de plan van por el panel, que pone nuestros `TaxRate`); precios con
   `tax_behavior = exclusive` (no hay sincronización de productos: los ids se copian en el admin).
-- **aws-next**: programar `sweep_unpaid` cada hora en `scheduler.tf` (`saas-cron`).
+- **aws**: `sweep_unpaid` ya corre cada hora (`sweep-unpaid-hourly` en `stacks/prod/scheduler.tf`); falta programar
+  `retax_subscriptions` y `audit_tax_rules` una vez al día (APP-BILLING-1; mientras no estén, BILLING-F04 y
+  BILLING-F06 siguen `parcial`).
 
 ## La Tienda (L2-D)
 

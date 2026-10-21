@@ -15,6 +15,8 @@ from decouple import Config, Csv, RepositoryEmpty, RepositoryEnv
 from django.core.exceptions import ImproperlyConfigured
 from live.csp import base_policy, debug_policy
 
+from billing.stripe_keys import test_keys_allowed
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 _ENV_FILE = BASE_DIR / ".env"
@@ -715,6 +717,10 @@ VAT_CHECK_GLOBAL_RATE = config("VAT_CHECK_GLOBAL_RATE", default="60/m")
 # and apps.Module.
 STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY", default="")
 STRIPE_PUBLISHABLE_KEY = config("STRIPE_PUBLISHABLE_KEY", default="")
+# Production (DEBUG off) charges real money only: a test key there would sell paid plans for test cards, so it is
+# refused (billing.E003, billing.stripe_service.key_mode). Development runs as prod with DEBUG on and pre is test
+# mode only. Worked out here, once, from DEBUG and the environment: no variable turns it on in production.
+STRIPE_TEST_KEYS_ALLOWED = test_keys_allowed(debug=DEBUG, environment=ERPLORA_ENVIRONMENT)
 STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET", default="")
 STRIPE_TIMEOUT_SECONDS = config("STRIPE_TIMEOUT_SECONDS", default=10.0, cast=float)
 # The Customer Portal's configuration (`bpc_…`): cards and receipts only; plan changes go through the panel,

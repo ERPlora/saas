@@ -2,7 +2,9 @@
 // The Summary of a business (mockups `business.html` «summary», PLAN-SAAS §3.6): four cards.
 //   - Plan: its name, the trial while it lasts, the devices it covers (from `hubs.plan.list`: the plans
 //     on sale, public) and the people (`seats`, the server's count against the plan's cap). Changing
-//     or cancelling the plan is the Store's (web only); inside the apps it says where, without a link.
+//     or cancelling the plan is the Store's (web only): whoever handles the billing gets «Upgrade plan» on
+//     Free and «Change plan» on a paid one, to the Store with this business chosen (BILLING-F07); inside the
+//     apps it says where, without a link.
 //   - Usage: what the Hub measured last night (`business.usage`, PLAN-SAAS §5; lot L4-A): the storage of
 //     its files as a percentage of the space of the plan (UsageMeter; never the bytes) and the people
 //     active that day and in the 30 days up to it (UsageCounter); «yesterday» or the day measured. Before
@@ -12,7 +14,7 @@
 import { formatDateTime, StatusPill, UsageCounter, UsageMeter } from '@erplora/ui/components';
 import { WebOnly } from '@erplora/ui/shell';
 import { useLiveClient } from '@erplora/ui/sdk';
-import { IonCard, IonCardContent } from '@ionic/vue';
+import { IonButton, IonCard, IonCardContent } from '@ionic/vue';
 import { computed, onMounted, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 
@@ -45,6 +47,12 @@ const devices = computed(() => {
   if (!plan) return '—';
   return plan.max_devices ? String(plan.max_devices) : t('hubs.common.unlimited');
 });
+/** Free is the plan without a price: from it the Store upgrades; from a paid one it changes. */
+const onFree = computed(() => {
+  const plan = plans.value.find((candidate) => candidate.slug === props.business.plan?.slug);
+  return !props.business.plan || (!!plan && Number(plan.price_monthly) === 0 && Number(plan.price_annual) === 0);
+});
+const toStore = computed(() => `/store/plans?business=${encodeURIComponent(props.business.id)}`);
 const seats = computed(() => props.business.seats);
 const users = computed(() =>
   seats.value.limit === null ? t('hubs.common.unlimited') : t('hubs.business.plan.usersOf', { used: seats.value.used, limit: seats.value.limit }),
@@ -114,6 +122,16 @@ const dayHint = computed(() =>
             </div>
           </dl>
           <WebOnly>
+            <ion-button
+              v-if="business.can.manage_billing"
+              :router-link="toStore"
+              fill="outline"
+              size="small"
+              class="plan-store"
+              data-testid="summary-plan-store"
+            >
+              {{ onFree ? $t('hubs.business.plan.upgrade') : $t('hubs.business.plan.change') }}
+            </ion-button>
             <template #app>
               <p class="card-text">
                 {{ $t('hubs.common.storeInBrowser') }}
@@ -218,6 +236,10 @@ const dayHint = computed(() =>
   .card-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+/* «Upgrade plan» / «Change plan», under what the plan covers. */
+.plan-store {
+  margin: 12px 0 0;
 }
 .plan-title {
   display: flex;

@@ -1,5 +1,6 @@
 """The mail of billing: an invoice of ERPlora was issued (lot L3-C; ported from ERPlora/saas
-``apps/dashboard/billing/emails.py``, saas#1061).
+``apps/dashboard/billing/emails.py``, saas#1061), and a renewal could not be collected or the business was
+suspended for it (BILLING-F16, saas#2593).
 
 Plain text in the language of the invoice (its payer's), as every mail of the SaaS until block 1 brings the
 branded one (``hubs/emails.py``). It LINKS to the panel's Billing page instead of attaching the PDF: the PDF
@@ -11,10 +12,12 @@ never raised (the invoice is the source of truth). No database here.
 import logging
 
 from django.conf import settings
-from django.core.mail import send_mail
+from django.core.mail import EmailMessage, send_mail
 from django.utils import translation
 from django.utils.formats import date_format, number_format
 from django.utils.translation import gettext as _
+
+from billing.money import from_cents
 
 logger = logging.getLogger(__name__)
 
@@ -74,3 +77,116 @@ def send_invoice_issued(invoice) -> bool:
         raise MailNotSent(str(failed)) from failed
     logger.info("[EMAIL] Invoice %s sent to %s", invoice.number, to)
     return True
+
+
+#: What a mail of the unpaid episode is, in its ``X-ERPlora-Notice`` header (support filters by it).
+PAYMENT_FAILED = "billing.payment_failed"
+BUSINESS_SUSPENDED = "billing.business_suspended"
+
+
+def _billing_url(hub) -> str:
+    return f"https://{settings.PUBLIC_HOST}/billing/invoices?business={hub.id}"
+
+
+def _send_notice(notice: str, subject: str, lines: list[str], to: str) -> None:
+    message = EmailMessage(subject, "\n".join(lines) + "\n", None, [to], headers={"X-ERPlora-Notice": notice})
+    try:
+        message.send()
+    except Exception as failed:  # noqa: BLE001 - reported to the caller, which sends it again later
+        logger.error("[EMAIL] %s not sent to %s: %s", notice, to, failed)
+        raise MailNotSent(str(failed)) from failed
+    logger.info("[EMAIL] %s sent to %s", notice, to)
+
+
+def send_payment_failed(hub, *, to: str, language: str, amount, declined: bool, suspends_on) -> None:
+    """Tell the payer that the renewal of ``hub`` could not be collected: how much, until when it keeps working
+    (``suspends_on``) and where to pay it. ``MailNotSent`` when the mail could not leave."""
+    with translation.override(language or settings.LANGUAGE_CODE):
+        subject = _("We could not charge the plan of %(business)s") % {"business": hub.name}
+        lines = [
+            _("We could not charge %(amount)s for the plan of %(business)s.")
+            % {"amount": _money(amount), "business": hub.name},
+        ]
+        if declined:
+            lines.append(_("The bank declined the card: change it before paying, we will not charge it again."))
+        lines += [
+            _("%(business)s keeps working until %(date)s. If the invoice is not paid by then, it is suspended. Nothing is deleted.")
+            % {"business": hub.name, "date": date_format(suspends_on, "DATE_FORMAT")},
+            "",
+            _("Pay it from Billing: %(url)s") % {"url": _billing_url(hub)},
+        ]
+    _send_notice(PAYMENT_FAILED, subject, lines, to)
+
+
+def send_business_suspended(hub, *, to: str, language: str, amount) -> None:
+    """Tell the payer that ``hub`` is suspended until its unpaid invoice (``amount``) is paid, and where to pay
+    it. ``MailNotSent`` when the mail could not leave."""
+    with translation.override(language or settings.LANGUAGE_CODE):
+        subject = _("%(business)s is suspended") % {"business": hub.name}
+        lines = [
+            _("%(business)s is suspended because an invoice of %(amount)s was not paid.")
+            % {"business": hub.name, "amount": _money(amount)},
+            _("Your data is safe: as soon as the invoice is paid, the business works again."),
+            "",
+            _("Pay it from Billing: %(url)s") % {"url": _billing_url(hub)},
+        ]
+    _send_notice(BUSINESS_SUSPENDED, subject, lines, to)
+
+
+#: The headers of the team's OSS notices (BILLING-F06).
+OSS_NOTICE = "billing.oss_{kind}"
+
+
+def send_oss_notice(notice) -> None:
+    """Tell the team's mailbox (``SUPPORT_EMAIL``) that the year passed ``OSS_WARNING_PERCENT`` of the OSS
+    threshold (register in the OSS now: form 035 takes days) or crossed it (destination VAT already applies:
+    register at once).
+    ``MailNotSent`` when the mail could not leave."""
+    from billing.services import OSS_WARNING_PERCENT
+
+    values = {
+        "year": notice.year,
+        "last_year": notice.year - 1,
+        "amount": _money(from_cents(notice.accumulated_cents)),
+        "threshold": _money(from_cents(notice.threshold_cents)),
+        "percent": OSS_WARNING_PERCENT,
+        "invoice": notice.invoice.number,
+    }
+    with translation.override(settings.LANGUAGE_CODE):
+        if notice.kind == "near":
+            subject = _("OSS: cross-border B2C sales passed %(percent)s %% of the threshold in %(year)s") % values
+            lines = [
+                _(
+                    "Sales to consumers in other EU member states in %(year)s reached %(amount)s (tax base), past "
+                    "%(percent)s %% of the OSS threshold of %(threshold)s."
+                )
+                % values,
+                _("Sale that passed it: invoice %(invoice)s.") % values,
+                "",
+                _(
+                    "Above the threshold, destination VAT applies on its own from the crossing sale. Registering in "
+                    "the OSS (form 035) takes days: start it now."
+                ),
+            ]
+        else:
+            subject = _("OSS: cross-border B2C sales crossed the threshold in %(year)s") % values
+            if notice.reason == "previous_year":
+                why = _(
+                    "Sales to consumers in other EU member states in %(last_year)s closed at %(amount)s (tax base), "
+                    "above the OSS threshold of %(threshold)s, so the whole of %(year)s goes in destination VAT."
+                )
+            else:
+                why = _(
+                    "Sales to consumers in other EU member states in %(year)s reached %(amount)s (tax base), above "
+                    "the OSS threshold of %(threshold)s."
+                )
+            lines = [
+                why % values,
+                _("First sale in destination VAT: invoice %(invoice)s, from %(date)s.")
+                % {**values, "date": date_format(notice.effective_from, "DATE_FORMAT")},
+                "",
+                _("Destination VAT already applies on its own. Registering in the OSS (form 035) is urgent: do it now."),
+            ]
+        lines.append(_("This notice is sent once per year."))
+    _send_notice(OSS_NOTICE.format(kind=notice.kind), subject, lines, settings.SUPPORT_EMAIL)
+

@@ -31,6 +31,7 @@ from billing.models import (
     InvoiceLine,
     CompanyConfig,
     FiscalPolicy,
+    OssNotice,
     PaymentFailure,
     PromoCode,
     TaxCategory,
@@ -393,6 +394,24 @@ class PaymentFailureAdmin(ReadOnlyAdmin):
     list_display = ("failed_at", "hub", "reason", "decline_code", "invoice_created_at", "card_changed_at", "resolved_at")
     list_filter = ("reason",)
     search_fields = ("hub__slug", "hub__name", "stripe_invoice_id", "stripe_subscription_id")
+
+
+@admin.register(OssNotice)
+class OssNoticeAdmin(ReadOnlyAdmin):
+    """The team's notices of the OSS threshold (BILLING-F06): read only, the row is what keeps a notice from
+    being sent twice in a year."""
+
+    list_display = ("year", "kind", "reason", "accumulated", "threshold", "invoice", "effective_from", "mailed_at")
+    list_filter = ("kind",)
+    list_select_related = ("invoice",)
+
+    @admin.display(description=_("accumulated"), ordering="accumulated_cents")
+    def accumulated(self, obj):
+        return f"{from_cents(obj.accumulated_cents)} €"
+
+    @admin.display(description=_("threshold"), ordering="threshold_cents")
+    def threshold(self, obj):
+        return f"{from_cents(obj.threshold_cents)} €"
 
 
 class InvoiceLineInline(admin.TabularInline):

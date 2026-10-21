@@ -37,6 +37,7 @@ from billing.tests.stripe_double import (
     checkout_session,
     connection_error,
     event,
+    invoice,
     item,
     signed,
     subscription,
@@ -627,6 +628,43 @@ class TestTheLiveSubscriptionDecides:
         deliver(event("customer.subscription.updated", subscription()))
 
         assert local(paid).plan.slug == "starter"
+
+    def test_an_old_price_still_brings_the_status_and_the_period(self, shop, stripe_double):
+        """BILLING-F21 (saas#2540): after a plan's price changes, its subscribers keep the old one; their
+        dunning and their period must still reach erplora.com, with the plan left as it was."""
+        paid = pay(shop)
+        stripe_double.answer(
+            "subscriptions.retrieve",
+            subscription(items=[item("si_x", "price_nobody_sells")], status="past_due"),
+        )
+
+        deliver(event("customer.subscription.updated", subscription()))
+
+        row = local(paid)
+        assert (row.plan.slug, row.status) == ("starter", "past_due")
+        assert int(row.current_period_end.timestamp()) == MONTH_END
+
+    def test_a_cancellation_made_in_stripe_is_seen(self, shop, stripe_double):
+        """BILLING-F21 (saas#2540): a plan cancelled outside the panel (Stripe's dashboard) is cancelled here too,
+        so the panel offers «Keep the plan» and stops promising a next invoice."""
+        paid = pay(shop)
+        stripe_double.answer("subscriptions.retrieve", subscription(cancel_at_period_end=True))
+
+        deliver(event("customer.subscription.updated", subscription()))
+
+        assert local(paid).cancel_at_period_end is True
+
+    def test_the_zero_invoice_of_a_trial_leaves_it_on_trial(self, shop, stripe_double):
+        """BILLING-F20 (saas#2540): the 0 € invoice a trial starts with is paid at once; the subscription Stripe
+        holds is still trialing, and that is what erplora.com keeps (never «active» before the first charge)."""
+        paid = pay(shop)
+        stripe_double.answer(
+            "subscriptions.retrieve", subscription(status="trialing", trial=(MONTH_START, MONTH_END))
+        )
+
+        deliver(event("invoice.paid", invoice(status="paid", amount_due=0, amount_paid=0, tax=0, billing_reason="subscription_create")))
+
+        assert local(paid).status == "trialing"
 
     def test_the_end_of_the_subscription_takes_the_business_back_to_free(
         self, shop, inventory, stripe_double

@@ -134,7 +134,8 @@ class TestSendAgain:
             "ERP-2026-00001"
         ]
         assert Invoice.objects.get().fiscal_status == "accepted"
-        assert "ERP-2026-00001" in response.content.decode()
+        # «Says how it went»: the Hub's answer, not the «did not answer» fallback (rv-61 mutant).
+        assert "ERP-2026-00001: the platform hub says" in response.content.decode()
 
     def test_the_hub_away_is_said_not_hidden(self, staff_client, invoice, hub_double):
         hub_double.answer("POST", PLATFORM, 503, {})

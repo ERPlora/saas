@@ -15,7 +15,9 @@ deletes nothing, not even for a superuser. Superusers get the platform's actions
 for superusers, with its sizes readable and the database's, which the customer never sees (PLAN-SAAS §5).
 """
 
+from django import forms
 from django.contrib import admin, messages
+from django.contrib.admin.options import ActionLocation
 from django.template.defaultfilters import filesizeformat
 from django.utils.translation import gettext_lazy as _
 
@@ -63,8 +65,40 @@ class BusinessTypeAdmin(admin.ModelAdmin):
     )
 
 
+class PlanForm(forms.ModelForm):
+    """BILLING-F28: a plan is not saved with a Stripe price that would charge something else; checked in Stripe
+    only when its prices or their ids change. Without Stripe it is saved and the admin says it was not checked."""
+
+    PRICE_FIELDS = ("stripe_price_id", "stripe_price_id_annual", "stripe_product_id", "price_monthly", "price_annual")
+
+    class Meta:
+        model = Plan
+        fields = "__all__"
+
+    def clean(self):
+        from billing import services as billing_services
+
+        cleaned = super().clean()
+        self.unchecked = ""
+        if self.errors or not set(self.PRICE_FIELDS) & set(self.changed_data):
+            return cleaned
+        try:
+            problems = billing_services.plan_price_problems(
+                prices={field: cleaned.get(field) or "" for field in ("stripe_price_id", "stripe_price_id_annual")},
+                amounts={field: cleaned.get(field) for field in ("price_monthly", "price_annual")},
+                product=cleaned.get("stripe_product_id") or "",
+            )
+        except billing_services.PriceCheckUnavailable as unavailable:
+            self.unchecked = str(unavailable)
+            return cleaned
+        for field, problem in problems.items():
+            self.add_error(field, problem)
+        return cleaned
+
+
 @admin.register(Plan)
 class PlanAdmin(admin.ModelAdmin):
+    form = PlanForm
     list_display = ["slug", "name_en", "price_monthly", "trial_period_days", "is_active", "upgrade_only", "internal_only"]
     list_filter = ["is_active", "upgrade_only", "internal_only"]
     search_fields = ["slug", "name_en", "name_es"]
@@ -83,6 +117,11 @@ class PlanAdmin(admin.ModelAdmin):
         (_("Stripe"), {"fields": ("stripe_product_id", "stripe_price_id", "stripe_price_id_annual")}),
         (_("History"), {"fields": ("created_at", "updated_at")}),
     )
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        if getattr(form, "unchecked", ""):
+            self.message_user(request, form.unchecked, messages.WARNING)
 
 
 # --- The account plane of a business (read-mostly) -------------------------------------------------
@@ -129,7 +168,49 @@ class HubAdmin(PlatformActions):
     list_filter = ["status", "pending_hub_call"]
     search_fields = ["slug", "name"]
     inlines = [HubMemberInline]
-    actions = ["send_latest_state", "retry_owed"]
+    actions = ["send_latest_state", "retry_owed", "attach_test_clock", "advance_test_clock"]
+    #: BILLING-F29: offered only with Stripe's test keys (PRE, development); production never sees them.
+    TEST_CLOCK_ACTIONS = ("attach_test_clock", "advance_test_clock")
+
+    def get_actions(self, request, action_location=ActionLocation.CHANGE_LIST):
+        from billing.stripe_keys import StripeKeyMode
+        from billing.stripe_service import key_mode
+
+        actions = super().get_actions(request, action_location=action_location)
+        if key_mode() is not StripeKeyMode.TEST:
+            for name in self.TEST_CLOCK_ACTIONS:
+                actions.pop(name, None)
+        return actions
+
+    @admin.action(description=_("Attach its payer to a Stripe test clock (test keys only)"), permissions=["sync"])
+    def attach_test_clock(self, request, queryset):
+        from billing import services as billing_services
+
+        for hub in queryset:
+            try:
+                clock = billing_services.attach_test_clock(hub.id)
+            except billing_services.TestClockRefused as refused:
+                self.message_user(request, f"{hub.slug}: {refused}", messages.ERROR)
+                continue
+            self.message_user(
+                request, _("%(business)s: its payer is a new Stripe customer on clock %(clock)s.") % {"business": hub.slug, "clock": clock}
+            )
+
+    @admin.action(description=_("Advance its Stripe test clock a month (test keys only)"), permissions=["sync"])
+    def advance_test_clock(self, request, queryset):
+        from billing import services as billing_services
+
+        for hub in queryset:
+            try:
+                reached = billing_services.advance_test_clock_of(hub.id)
+            except billing_services.TestClockRefused as refused:
+                self.message_user(request, f"{hub.slug}: {refused}", messages.ERROR)
+                continue
+            self.message_user(
+                request,
+                _("%(business)s: its clock is advancing to %(date)s; Stripe tells what happens by its events.")
+                % {"business": hub.slug, "date": reached.date().isoformat()},
+            )
 
     @admin.action(description=_("Send the latest state to the Hub"), permissions=["sync"])
     def send_latest_state(self, request, queryset):

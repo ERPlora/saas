@@ -35,8 +35,9 @@ from typing import Literal
 from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db import DatabaseError, connection, transaction
-from django.db.models import F, Q
+from django.db import DatabaseError, IntegrityError, connection, transaction
+from django.db.models import F, Q, Value
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
@@ -48,12 +49,13 @@ from live.operations import operation
 from live.outbox import notify, record_event
 
 from apps.models import Module
-from billing import events, queries, stripe_service, vat, vies
+from billing import events, queries, stripe_service, stripe_test_clocks, vat, vies
 from billing.models import (
     CheckoutAttempt,
     Invoice,
     InvoiceCounter,
     InvoiceLine,
+    OssNotice,
     PaymentFailure,
     PlanChangeSchedule,
     PromoCode,
@@ -1113,6 +1115,119 @@ def ensure_customer(hub: Hub, *, test_clock: str | None = None) -> str:
     return customer
 
 
+# --- BILLING-F28: the Stripe prices pasted on a plan are the plan's (the staff, in the admin) ------------
+
+#: Each Stripe price of a plan: its field, the plan's amount it must charge and how often.
+PLAN_PRICE_FIELDS = (("stripe_price_id", "price_monthly", "month"), ("stripe_price_id_annual", "price_annual", "year"))
+
+
+class PriceCheckUnavailable(Exception):
+    """The prices could not be checked (no Stripe key, or Stripe did not answer): said, never taken for a yes."""
+
+
+def plan_price_problems(*, prices: dict[str, str], amounts: dict[str, Decimal], product: str) -> dict[str, str]:
+    """Why each Stripe price pasted on a plan would not sell it as the plan says, by field (empty = they do).
+
+    A price must exist with this key's mode (a test id in production is not found), be active, in euros, charged
+    every month or every year as its field says, the plan's amount, NET (``tax_behavior = exclusive``: our VAT goes
+    on top, never Stripe's) and, when the plan names its product, of that product. Nothing pasted asks nothing."""
+    pasted = [(field, prices.get(field) or "", amount, interval) for field, amount, interval in PLAN_PRICE_FIELDS]
+    pasted = [row for row in pasted if row[1]]
+    if not pasted:
+        return {}
+    if stripe_service.key_mode() is StripeKeyMode.UNKNOWN:
+        raise PriceCheckUnavailable(_("Stripe is not configured here: the prices were not checked."))
+    problems: dict[str, str] = {}
+    for field, price_id, amount_field, interval in pasted:
+        try:
+            price = stripe_service.retrieve_price(price_id)
+        except stripe_service.StripeRefused:
+            problems[field] = _("Stripe has no price %(id)s with these keys.") % {"id": price_id}
+            continue
+        except stripe_service.StripeUnavailable as failed:
+            raise PriceCheckUnavailable(_("Stripe did not answer: the prices were not checked. Try again.")) from failed
+        expected = to_cents(amounts.get(amount_field) or Decimal(0))
+        recurring = price.get("recurring") or {}
+        if not price.get("active"):
+            problems[field] = _("This price is archived in Stripe.")
+        elif (price.get("currency") or "").lower() != "eur":
+            problems[field] = _("This price is not in euros.")
+        elif recurring.get("interval") != interval or recurring.get("interval_count", 1) != 1:
+            problems[field] = (
+                _("This price is not charged every month.") if interval == "month" else _("This price is not charged every year.")
+            )
+        elif price.get("unit_amount") != expected:
+            problems[field] = _("Stripe charges %(stripe)s and the plan says %(plan)s.") % {
+                "stripe": from_cents(price.get("unit_amount") or 0),
+                "plan": from_cents(expected),
+            }
+        elif price.get("tax_behavior") != "exclusive":
+            problems[field] = _("This price includes the VAT or does not say: it must be net (tax behaviour «exclusive»).")
+        elif product and price.get("product") != product:
+            problems[field] = _("This price is of another Stripe product.")
+    return problems
+
+
+# --- BILLING-F29: a real charge in PRE with a Stripe test clock (the staff, from the admin) ------------
+
+#: How far «Advance the clock» moves it: past a monthly renewal.
+TEST_CLOCK_STEP = timedelta(days=31)
+
+
+class TestClockRefused(Exception):
+    """Why a test clock was not attached or advanced, said to the staff as it is."""
+
+
+def _require_test_mode() -> None:
+    if stripe_service.key_mode() is not StripeKeyMode.TEST:
+        raise TestClockRefused(_("Test clocks only exist with Stripe's test keys."))
+
+
+def attach_test_clock(hub_id) -> str:
+    """Create a Stripe test clock and the payer of ``hub_id`` as a NEW Stripe customer on it (Stripe attaches a
+    clock only when the customer is created); its id. Test keys only."""
+    _require_test_mode()
+    hub = Hub.objects.select_related("billing_profile").get(pk=hub_id)
+    profile = hub.billing_profile
+    if profile is None:
+        raise TestClockRefused(_("This business has no payer yet: fill in its billing details first."))
+    try:
+        known = profile.stripe_customer_id or stripe_service.find_customer(str(profile.id))
+        if known:
+            raise TestClockRefused(_("Its payer is a Stripe customer already: a clock only takes a new one."))
+        clock = stripe_test_clocks.create_test_clock(int(timezone.now().timestamp()), name=f"QA {hub.slug}")
+        ensure_customer(hub, test_clock=clock)
+    except (stripe_service.StripeUnavailable, stripe_service.StripeRefused) as failed:
+        raise TestClockRefused(_("Stripe did not take it: %(reason)s") % {"reason": failed}) from failed
+    return clock
+
+
+def advance_test_clock_of(hub_id) -> datetime:
+    """Move the test clock of the payer of ``hub_id`` one step (``TEST_CLOCK_STEP``) from its own time; when it
+    reaches. It does not wait: Stripe advances it and tells what happens (a renewal, a charge) by its events, as
+    in production. Test keys only; a clock still advancing is not pushed again."""
+    _require_test_mode()
+    hub = Hub.objects.select_related("billing_profile").get(pk=hub_id)
+    customer = hub.billing_profile.stripe_customer_id if hub.billing_profile is not None else ""
+    if not customer:
+        raise TestClockRefused(_("This business has no test clock: attach one first."))
+    try:
+        clock_id = stripe_service.retrieve_customer(customer).get("test_clock") or ""
+        if isinstance(clock_id, dict):
+            clock_id = clock_id.get("id", "")
+        if not clock_id:
+            raise TestClockRefused(_("This business has no test clock: attach one first."))
+        clock = stripe_service.retrieve_test_clock(clock_id)
+        if clock.get("status") != "ready":
+            raise TestClockRefused(_("Its clock is still advancing: try again in a minute."))
+        to = int(clock["frozen_time"] + TEST_CLOCK_STEP.total_seconds())
+        stripe_service.advance_test_clock(clock_id, {"frozen_time": to})
+    except (stripe_service.StripeUnavailable, stripe_service.StripeRefused) as failed:
+        raise TestClockRefused(_("Stripe did not take it: %(reason)s") % {"reason": failed}) from failed
+    logger.info("[TEST CLOCK] %s of hub %s advancing to %s", clock_id, hub.id, to)
+    return datetime.fromtimestamp(to, tz=UTC)
+
+
 def _owner_of(hub: Hub):
     member = (
         HubMember.objects.select_related("user")
@@ -1408,7 +1523,8 @@ def _phase_items(live: dict, replaced: dict[str, dict]) -> list[dict]:
             {
                 "price": change.get("price") or line["price"]["id"],
                 "quantity": line.get("quantity") or 1,
-                "tax_rates": change.get("tax_rates", rates),
+                # A phase lists its items whole: no rate is an empty list there (``_rates_param`` is for updates).
+                "tax_rates": change.get("tax_rates", rates) or [],
             }
         )
     return items
@@ -1504,7 +1620,9 @@ def _plan_change(
     if current is None:
         _require_room(live)
     items = [
-        {"id": current["id"], **plan_line} if current else {**plan_line, "quantity": 1}
+        {"id": current["id"], **plan_line, "tax_rates": _rates_param(tax_rates)}
+        if current
+        else {**plan_line, "quantity": 1}
     ]
     if sale.interval != subscription.billing_interval:
         for item in _live_items(live):
@@ -1516,7 +1634,9 @@ def _plan_change(
                 {
                     "id": item["id"],
                     "price": module_line.price_id,
-                    "tax_rates": price_sale(hub, module_line, recurring_net=recurring),
+                    "tax_rates": _rates_param(
+                        price_sale(hub, module_line, recurring_net=recurring)
+                    ),
                 }
             )
     if current is not None:
@@ -2185,6 +2305,10 @@ def apply_state(hub: Hub, state: dict) -> None:
     hub_services.subscription_apply(
         hub_services.system_ctx_for(hub.id), SubscriptionApplyIn(hub_id=hub.id, **state)
     )
+    if state.get("standing") in ("grace", "suspended"):
+        # Whatever put the business in dunning (a failure, Stripe's ``unpaid``, the sweep), its payer is told
+        # once, after the COMMIT (BILLING-F16); a mail that cannot leave is sent by the next ``sweep_unpaid``.
+        transaction.on_commit(partial(_notify_quietly, hub.id), robust=True)
 
 
 # --- The webhook: each Stripe event once, the live subscription applied ------------------------------
@@ -2713,10 +2837,208 @@ def mark_card_changed(
     return noted
 
 
+# --- The rate of a live subscription (BILLING-F02, BILLING-F06) -----------------------------------------
+
+#: Stripe statuses whose next invoice is still going to be charged.
+RETAX_STATUSES = ("active", "trialing", "past_due")
+#: The counts of a daily pass; ``refused`` and ``errors`` make the run fail after its pass (``task_failed``).
+RETAX_COUNTS = ("retaxed", "unchanged", "skipped", "refused", "errors")
+
+
+def _rates_param(rates: list[str]) -> list[str] | str:
+    """``tax_rates`` of an item UPDATE: an empty list is dropped by the SDK (Stripe keeps the old rate), an
+    empty string is what removes it."""
+    return rates or ""
+
+
+def _item_sale(subscription: Subscription, line: dict) -> Sale | None:
+    """What an item of the live subscription sells (its plan or its module, at its interval), or ``None`` for
+    a price no plan nor module has."""
+    price_id = (line.get("price") or {}).get("id", "")
+    found = queries.plan_for_price(price_id)
+    if found is not None:
+        plan, interval = found
+        return Sale(
+            "plan",
+            plan.slug,
+            interval,
+            price_id,
+            Decimal((plan.price_annual if interval == "year" else plan.price_monthly) or 0),
+            vat.SAAS_SUBSCRIPTION_CATEGORY,
+            plan=plan,
+        )
+    found = queries.module_for_price(price_id)
+    if found is not None:
+        module, interval = found
+        cents = module.price_annual_cents if interval == "year" else module.price_monthly_cents
+        return Sale(
+            "module",
+            module.slug,
+            interval,
+            price_id,
+            Decimal(cents) / 100,
+            vat.SOFTWARE_LICENSE_CATEGORY,
+            module=module,
+        )
+    logger.warning(
+        "[BILLING] Item %s of %s bills price %s, which no plan nor module has: its rate is left alone",
+        line.get("id"),
+        subscription.stripe_subscription_id,
+        price_id,
+    )
+    return None
+
+
+def retax_subscription(hub: Hub) -> str:
+    """Hand Stripe the rates the payer's place calls for today on every item of the business's live
+    subscription: the checkout fixes a rate per item and Stripe charges it on every renewal, so a payer who
+    moves (Madrid → Las Palmas), proves a VAT number, or a year that crosses the OSS threshold would keep the
+    old one (saas#2293). The same engine as the sale (``price_sale``); the next invoice takes the new rate,
+    the paid period is not touched (no proration).
+
+    ``retaxed`` · ``unchanged`` (Stripe already holds them: nothing sent) · ``skipped`` (no live Stripe
+    subscription) · ``refused`` (the place is not sold to now: an ERROR, and the old rates stay until the
+    billing details are fixed). With a downgrade waiting in a schedule, its phases are retaxed instead
+    (``_retax_schedule``). Stripe failing raises (``stripe_errors``)."""
+    subscription = Subscription.objects.filter(hub=hub).select_related("plan").first()
+    if (
+        subscription is None
+        or not subscription.stripe_subscription_id
+        or subscription.status not in RETAX_STATUSES
+    ):
+        return "skipped"
+    require_stripe()
+    hub = Hub.objects.select_related("billing_profile").get(pk=hub.pk)
+    pending = pending_change(hub)
+    if pending is not None:
+        return _retax_schedule(hub, subscription, pending.stripe_schedule_id)
+    live = _live(subscription)
+    changes = []
+    for line in _live_items(live):
+        sale = _item_sale(subscription, line)
+        if sale is None:
+            continue
+        try:
+            due = price_sale(
+                hub, sale, recurring_net=_recurring_net(subscription, sale.interval)
+            )
+        except Conflict as refused:
+            return _retax_refused(hub, sale.kind, refused)
+        held = [rate["id"] if isinstance(rate, dict) else rate for rate in line.get("tax_rates") or []]
+        if sorted(held) != sorted(due):
+            changes.append({"id": line["id"], "tax_rates": _rates_param(due)})
+    if not changes:
+        return "unchanged"
+    with stripe_errors():
+        stripe_service.update_subscription(
+            subscription.stripe_subscription_id,
+            {"items": changes, "proration_behavior": "none"},
+        )
+    logger.info("[BILLING] Hub %s retaxed: %s", hub.id, changes)
+    return "retaxed"
+
+
+def _retax_refused(hub: Hub, kind: str, refused: Conflict) -> str:
+    logger.error(
+        "[BILLING] %s of hub %s cannot be retaxed (%s): Stripe keeps charging its old rate",
+        kind,
+        hub.id,
+        refused.code,
+        extra={"event": "billing.retax_refused", "hub_id": str(hub.id), "code": refused.code},
+    )
+    return "refused"
+
+
+def _retax_schedule(hub: Hub, subscription: Subscription, schedule_id: str) -> str:
+    """A downgrade waiting in a Stripe schedule: the first invoice of the new plan is billed by its next phase,
+    whose items carry the rates fixed when it was scheduled. Every phase still to run is re-stated with
+    today's rates (a phase over is left out; the current one keeps its start). Phases are re-stated whole, so
+    no rate is an empty list there, and changing the current phase changes the subscription at once (checked
+    against Stripe's test API). A price no plan nor module has keeps its rates."""
+    with stripe_errors():
+        schedule = stripe_service.retrieve_schedule(schedule_id)
+    now = int(timezone.now().timestamp())
+    phases = []
+    changed = False
+    for phase in schedule.get("phases") or []:
+        end = phase.get("end_date")
+        if end is not None and end <= now:
+            continue
+        sales = []
+        for item in phase.get("items") or []:
+            price = item["price"] if isinstance(item["price"], str) else item["price"]["id"]
+            held = [rate["id"] if isinstance(rate, dict) else rate for rate in item.get("tax_rates") or []]
+            sales.append((price, item.get("quantity") or 1, held, _item_sale(subscription, {"price": {"id": price}})))
+        # What a renewal of that phase charges, net: the 400 € of the simplified invoice is on the whole of it.
+        recurring = sum((sale.net for _price, _quantity, _held, sale in sales if sale is not None), Decimal("0"))
+        items = []
+        for price, quantity, held, sale in sales:
+            if sale is None:
+                due = held
+            else:
+                try:
+                    due = price_sale(hub, sale, recurring_net=recurring)
+                except Conflict as refused:
+                    return _retax_refused(hub, sale.kind, refused)
+            changed = changed or sorted(held) != sorted(due)
+            items.append({"price": price, "quantity": quantity, "tax_rates": due})
+        restated = {"items": items, "start_date": phase["start_date"]}
+        if end is not None:
+            restated["end_date"] = end
+        if phase.get("trial_end"):
+            restated["trial_end"] = phase["trial_end"]
+        restated["proration_behavior"] = "none"
+        phases.append(restated)
+    if not changed:
+        return "unchanged"
+    with stripe_errors():
+        stripe_service.update_schedule(schedule_id, {"end_behavior": "release", "phases": phases})
+    logger.info("[BILLING] Hub %s retaxed the phases of schedule %s", hub.id, schedule_id)
+    return "retaxed"
+
+
+def retax_payer(profile_id) -> None:
+    """After the owner saves the billing details (on commit): retax every business this payer pays. A
+    failure is logged; the daily pass (``retax_subscriptions``) tries again."""
+    for hub in Hub.objects.filter(billing_profile_id=profile_id).order_by("pk"):
+        try:
+            retax_subscription(hub)
+        except Exception:  # noqa: BLE001 - the save stands; the daily pass retaxes it
+            logger.exception(
+                "[BILLING] Hub %s could not be retaxed after its billing details changed",
+                hub.id,
+                extra={"event": "billing.retax_failed", "hub_id": str(hub.id)},
+            )
+
+
+def retax_live_subscriptions() -> Counter:
+    """One daily pass: every live Stripe subscription takes the rates of today (an address change whose push
+    failed, the OSS threshold crossed or a new year back to origin, a rate the table schedules). One business
+    never stops the others."""
+    counts = Counter({key: 0 for key in RETAX_COUNTS})
+    live = (
+        Subscription.objects.filter(status__in=RETAX_STATUSES)
+        .exclude(stripe_subscription_id="")
+        .select_related("hub")
+        .order_by("pk")
+    )
+    for subscription in live:
+        try:
+            counts[retax_subscription(subscription.hub)] += 1
+        except Exception:  # noqa: BLE001 - one business never stops the pass; it is retried on the next one
+            logger.exception(
+                "[BILLING] %s could not be retaxed",
+                subscription.stripe_subscription_id,
+                extra={"event": "billing.retax_failed", "hub_id": str(subscription.hub_id)},
+            )
+            counts["errors"] += 1
+    return counts
+
+
 # --- saas-cron: manage.py sweep_unpaid ----------------------------------------------------------------
 
 #: The counts a sweep reports; ``errors`` makes the run fail after its whole pass (``task_failed``).
-SWEEP_COUNTS = ("checked", "suspended", "cancelled", "errors")
+SWEEP_COUNTS = ("checked", "suspended", "cancelled", "notified", "mail_failed", "errors")
 #: Businesses whose unpaid plan the sweep looks at: still running (a suspended one already is).
 SWEPT_STATUSES = [Hub.Status.PREPARING, Hub.Status.ACTIVE, Hub.Status.PAST_DUE]
 
@@ -2788,7 +3110,98 @@ def sweep_unpaid() -> Counter:
             counts["errors"] += 1
             continue
         counts["cancelled"] += 1
+    # A mail of the unpaid episode that could not leave is sent again here (BILLING-F16).
+    untold = (
+        PaymentFailure.objects.filter(resolved_at__isnull=True)
+        .filter(
+            Q(hub__status=Hub.Status.PAST_DUE, notified_at__isnull=True)
+            | Q(hub__status=Hub.Status.SUSPENDED, suspension_notified_at__isnull=True)
+        )
+        .values_list("hub_id", flat=True)
+        .distinct()
+    )
+    for hub_id in sorted(set(untold)):
+        try:
+            outcome = notify_unpaid(hub_id)
+        except Exception:  # noqa: BLE001 - one business never stops the pass
+            logger.exception("[UNPAID SWEEP] The payer of hub %s could not be told", hub_id)
+            outcome = MAIL_NOT_SENT
+        if outcome == NOTIFIED:
+            counts["notified"] += 1
+        elif outcome == MAIL_NOT_SENT:
+            counts["mail_failed"] += 1
     return counts
+
+
+NOTIFIED, NOTHING_TO_TELL, MAIL_NOT_SENT = "notified", "nothing", "mail_failed"
+
+
+def notify_unpaid(hub_id) -> str:
+    """Tell the payer of ``hub_id`` what its unpaid episode owes them (BILLING-F16, saas#2593): each unpaid
+    invoice once, while the business still works (how much, until when, where to pay); the suspension once,
+    which also stands for the invoices not told yet. The business is locked, so two deliveries never send the
+    same mail twice. Nobody to tell is done too; a mail that cannot leave stays owed (``MAIL_NOT_SENT``)."""
+    from billing import emails
+
+    with holding(hub_id):
+        hub = Hub.objects.select_related("billing_profile__owner").get(pk=hub_id)
+        owed = list(PaymentFailure.objects.filter(hub=hub, resolved_at__isnull=True).order_by("invoice_created_at"))
+        suspended = hub.status == Hub.Status.SUSPENDED
+        if suspended:
+            to_tell = [] if any(f.suspension_notified_at for f in owed) else owed
+        else:
+            to_tell = [f for f in owed if f.notified_at is None] if hub.status == Hub.Status.PAST_DUE else []
+        if not to_tell:
+            return NOTHING_TO_TELL
+        to, language = _unpaid_recipient(hub)
+        now = timezone.now()
+        try:
+            if to and suspended:
+                emails.send_business_suspended(
+                    hub, to=to, language=language, amount=sum((_owed_amount(f) for f in owed), Decimal(0))
+                )
+            elif to:
+                for failure in to_tell:
+                    emails.send_payment_failed(
+                        hub,
+                        to=to,
+                        language=language,
+                        amount=_owed_amount(failure),
+                        declined=failure.reason == PaymentFailure.Reason.CARD_DECLINED,
+                        suspends_on=failure.invoice_created_at + UNPAID_PLAN_GRACE,
+                    )
+                    PaymentFailure.objects.filter(pk=failure.pk).update(notified_at=now)
+        except emails.MailNotSent:
+            return MAIL_NOT_SENT
+        if not to:
+            logger.warning("[UNPAID] Hub %s owes an invoice and has nobody to tell", hub.id)
+        if suspended:
+            PaymentFailure.objects.filter(pk__in=[f.pk for f in owed]).update(
+                suspension_notified_at=now, notified_at=Coalesce("notified_at", Value(now))
+            )
+        return NOTIFIED
+
+
+def _unpaid_recipient(hub: Hub) -> tuple[str, str]:
+    """Who hears of the unpaid invoice: the payer's address for invoices, else the payer's own (the owner's
+    when the business has no payer yet), in the payer's language."""
+    profile = hub.billing_profile
+    account = (profile.owner if profile is not None else None) or _owner_of(hub)
+    to = (profile.billing_email if profile is not None else "") or (account.email if account else "")
+    return to, getattr(account, "language", "") or hub.language or settings.LANGUAGE_CODE
+
+
+def _owed_amount(failure: PaymentFailure) -> Decimal:
+    """What the unpaid invoice asks for, as Billing lists it («Not collected»)."""
+    listed = Invoice.objects.filter(stripe_invoice_id=failure.stripe_invoice_id).first()
+    return listed.total if listed is not None else Decimal(0)
+
+
+def _notify_quietly(hub_id) -> None:
+    try:
+        notify_unpaid(hub_id)
+    except Exception:  # noqa: BLE001 - a mail never undoes the dunning; sweep_unpaid sends it again
+        logger.exception("[UNPAID] The payer of hub %s could not be told", hub_id)
 
 
 def _end_billing_of_deleted(subscription: Subscription) -> None:
@@ -3181,7 +3594,131 @@ def _record_paid(ctx, hub: Hub, data: InvoiceRecordIn, existing: Invoice | None)
     _record_invoice_event(ctx, invoice, events.INVOICE_RECORDED,
                           {"id": str(invoice.id), "hub_id": str(hub.id), "payment_status": "paid"})
     transaction.on_commit(partial(_post_quietly, invoice.id), robust=True)
+    _note_oss_threshold_quietly(invoice)
     return _record_out(invoice, "numbered")
+
+
+# --- The team's notices of the OSS threshold (BILLING-F06, saas#2297, saas#2299) -------------------------
+
+#: The share of the threshold whose passing tells the team to register in the OSS (it takes days).
+OSS_WARNING_PERCENT = 80
+
+
+def _counts_towards_oss(invoice: Invoice, issuer: str) -> bool:
+    """The rule of ``queries.cross_border_b2c_cents``: a paid invoice to a payer of another member state
+    without a VIES-verified VAT number."""
+    return (
+        invoice.kind == Invoice.Kind.INVOICE
+        and invoice.payment_status == Invoice.PaymentStatus.PAID
+        and invoice.payer_country in vat.EU_VAT_RATES
+        and invoice.payer_country != issuer
+        and not invoice.payer_tax_id_verified
+    )
+
+
+def _oss_noticed(year: int, kinds) -> bool:
+    return OssNotice.objects.filter(year=year, kind__in=kinds).exists()
+
+
+def _write_oss_notice(year: int, kind: str, invoice: Invoice, **values) -> OssNotice | None:
+    """The year's notice of ``kind``, or ``None`` when a concurrent charge wrote it first (it tells)."""
+    try:
+        with transaction.atomic():
+            return OssNotice.objects.create(year=year, kind=kind, invoice=invoice, **values)
+    except IntegrityError:
+        return None
+
+
+def note_oss_threshold(invoice: Invoice) -> list[OssNotice]:
+    """After charging ``invoice``: the year's crossing of the OSS threshold and its 80 % warning, each once per
+    year, mailed to the team after the COMMIT. The crossing first, so a sale that jumps past the threshold is
+    told once (``crossed``), never «80 %» after the fact. Nothing under a voluntary OSS registration (there is
+    nothing to prepare) nor for a sale that does not count towards the threshold."""
+    policy = queries.fiscal_policy()
+    issuer = (policy.issuer_country or vat.DEFAULT_ISSUER_COUNTRY).strip().upper()
+    if policy.oss_registered or not _counts_towards_oss(invoice, issuer):
+        return []
+    year = invoice.issued_on.year
+    threshold = to_cents(policy.oss_threshold)
+    written = []
+    if not _oss_noticed(year, [OssNotice.Kind.CROSSED]):
+        previous = queries.cross_border_b2c_cents(policy, year - 1)
+        if previous > threshold:
+            crossing = {
+                "reason": OssNotice.Reason.PREVIOUS_YEAR,
+                "accumulated_cents": previous,
+                "effective_from": date(year, 1, 1),
+            }
+        else:
+            # The invoice is saved as paid already: the sum includes it.
+            current = queries.cross_border_b2c_cents(policy, year)
+            crossing = (
+                {"reason": OssNotice.Reason.CURRENT_YEAR, "accumulated_cents": current, "effective_from": invoice.issued_on}
+                if current > threshold
+                else None
+            )
+        if crossing is not None:
+            written.append(
+                _write_oss_notice(year, OssNotice.Kind.CROSSED, invoice, threshold_cents=threshold, **crossing)
+            )
+    if not _oss_noticed(year, [OssNotice.Kind.NEAR, OssNotice.Kind.CROSSED]):
+        current = queries.cross_border_b2c_cents(policy, year)
+        if current * 100 > threshold * OSS_WARNING_PERCENT:
+            written.append(
+                _write_oss_notice(
+                    year, OssNotice.Kind.NEAR, invoice, accumulated_cents=current, threshold_cents=threshold
+                )
+            )
+    written = [notice for notice in written if notice is not None]
+    for notice in written:
+        logger.warning(
+            "[FISCAL] OSS %s %s: %s of %s cents (invoice %s)",
+            notice.kind,
+            notice.year,
+            notice.accumulated_cents,
+            notice.threshold_cents,
+            invoice.number,
+            extra={"event": f"billing.oss_{notice.kind}", "year": notice.year, "reason": notice.reason},
+        )
+        transaction.on_commit(partial(send_oss_notice, notice.id), robust=True)
+    return written
+
+
+def _note_oss_threshold_quietly(invoice: Invoice) -> None:
+    """Charging never breaks over the notice: a failure is an ERROR, and the next charged sale tries again."""
+    try:
+        with transaction.atomic():
+            note_oss_threshold(invoice)
+    except Exception:  # noqa: BLE001 - the invoice stands; the next counted charge notes the threshold again
+        logger.exception(
+            "[FISCAL] The OSS threshold could not be noted for invoice %s",
+            invoice.number,
+            extra={"event": "billing.oss_notice_failed", "invoice_id": str(invoice.id)},
+        )
+
+
+def send_oss_notice(notice_id) -> bool:
+    """Mail one notice to the team's mailbox (``SUPPORT_EMAIL``) and mark it sent; ``False`` when it could not
+    leave (it stays owed: the daily ``retax_subscriptions`` sends it again)."""
+    from billing import emails
+
+    notice = OssNotice.objects.select_related("invoice").filter(pk=notice_id, mailed_at__isnull=True).first()
+    if notice is None:
+        return True
+    try:
+        emails.send_oss_notice(notice)
+    except emails.MailNotSent:
+        return False
+    OssNotice.objects.filter(pk=notice.pk, mailed_at__isnull=True).update(mailed_at=timezone.now())
+    return True
+
+
+def send_pending_oss_notices() -> Counter:
+    """Every notice whose mail has not left yet, sent again: ``notices_sent`` and ``notices_failed``."""
+    counts = Counter({"notices_sent": 0, "notices_failed": 0})
+    for notice_id in OssNotice.objects.filter(mailed_at__isnull=True).order_by("recorded_at").values_list("pk", flat=True):
+        counts["notices_sent" if send_oss_notice(notice_id) else "notices_failed"] += 1
+    return counts
 
 
 class InvoiceDoesNotAddUp(Exception):
