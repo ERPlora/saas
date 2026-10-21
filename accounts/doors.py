@@ -8,14 +8,19 @@
   403 to it, and «Forgot your password?» (which proves the mailbox) gives it one; an account with a password
   changes it there as before (the current one is asked).
 
-allauth's own sign-up (``auth/signup``) is not one of them: it is the launcher's «Create account» tab.
+allauth's own sign-up (``auth/signup``) is not one of them: it is the launcher's «Create account» tab. The
+sign-in (``auth/login``) stays open, with its address in the plain form of the sign-up's
+(``adapters.plain_email``): allauth folds the sign-up's in the adapter, and the sign-in's only here.
 """
 
-from allauth.headless.account.views import ChangePasswordView
+from allauth.headless.account.inputs import LoginInput
+from allauth.headless.account.views import ChangePasswordView, LoginView
 from allauth.headless.constants import Client
 from django.http import JsonResponse
 from django.utils.translation import gettext
 from django.views.decorators.csrf import csrf_exempt
+
+from accounts.adapters import plain_email
 
 _allauth_password_change = ChangePasswordView.as_api_view(client=Client.BROWSER)
 
@@ -40,3 +45,17 @@ def password_change(request, *args, **kwargs):
             gettext("Your account has no password yet: set one with «Forgot your password?»."),
         )
     return _allauth_password_change(request, *args, **kwargs)
+
+
+class _PlainEmailLoginInput(LoginInput):
+    def clean_email(self) -> str:
+        email = self.cleaned_data.get("email")
+        return plain_email(email) if email else email
+
+
+class _LoginView(LoginView):
+    input_class = _PlainEmailLoginInput
+
+
+#: allauth.headless's sign-in, with the address in its plain form (``plain_email``).
+login = _LoginView.as_api_view(client=Client.BROWSER)

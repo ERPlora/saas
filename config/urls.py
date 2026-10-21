@@ -79,6 +79,8 @@ urlpatterns = [
     # one only through «Forgot your password?» (accounts/doors.py, plan 2026-10-13 L3-A).
     path("_allauth/browser/v1/account/email", doors.closed),
     path("_allauth/browser/v1/account/password/change", doors.password_change),
+    # The sign-in's address folded as the sign-up's (accounts/doors.py, ERPlora/saas#1018).
+    path("_allauth/browser/v1/auth/login", doors.login),
     # «Continue with Google» on the launcher posts here; without Google's credentials it is not served.
     path("_allauth/browser/v1/auth/provider/redirect", google.provider_redirect, name="redirect_to_provider"),
     path("_allauth/", include("allauth.headless.urls")),

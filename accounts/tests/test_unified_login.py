@@ -259,6 +259,15 @@ class TestAKnownEmailSignsIn:
         assert _confirm(browser).status_code == 200
         assert _signed_in_email(browser) == verified.email
 
+    def test_a_fullwidth_look_alike_of_an_accounts_email_signs_in_to_it(self, browser, verified):
+        """ACCOUNTS-G83 (ERPlora/saas#1018): the compatibility forms of the letters (NFKC) are the account's
+        own address, as in today's SaaS, not an unknown one."""
+        response = _sign_in(browser, "ana@\uff45xample.com")
+
+        assert (response.status_code, _pending(response)) == (401, ["login_by_code"])
+        assert _confirm(browser).status_code == 200
+        assert _signed_in_email(browser) == verified.email
+
     def test_an_address_never_proven_asks_for_the_code_first(self, browser, unverified):
         """gh:saas#2541. Not a dead end: the right password mails a code and the same screen asks for it."""
         response = _sign_in(browser, unverified.email)
@@ -408,6 +417,23 @@ class TestCreateAccountNeverSignsIn:
         assert User.objects.count() == 1
         assert _signed_in_email(browser) is None
 
+    def test_a_fullwidth_look_alike_creates_no_second_account(self, browser, verified):
+        """ACCOUNTS-G83 (ERPlora/saas#1018): «ana@ｅxample.com» reads as Ana's address, so it never becomes a
+        second account that looks the same; her mailbox is told, as for her own address."""
+        response = _create_account(browser, "ana@\uff45xample.com")
+
+        assert response.status_code == 401
+        assert list(User.objects.values_list("email", flat=True)) == [verified.email]
+        [message] = mail.outbox
+        assert message.to == [verified.email]
+        assert _signed_in_email(browser) is None
+
+    def test_a_new_address_is_kept_in_its_plain_form(self, browser):
+        _create_account(browser, " New@\uff25xample.com ")
+
+        assert list(User.objects.values_list("email", flat=True)) == [NEWCOMER]
+        assert list(EmailAddress.objects.values_list("email", flat=True)) == [NEWCOMER]
+
     def test_an_address_never_proven_is_not_taken_over(self, browser, unverified):
         """gh:saas#2541 from the other side: typing a held, unproven address again gives nobody its account."""
         response = _create_account(browser, unverified.email, password="another long password 2026")
@@ -427,6 +453,15 @@ class TestCreateAccountNeverSignsIn:
         assert not invited.has_usable_password()
         assert _signed_in_email(browser) is None
 
+    def test_an_invited_person_is_mailed_the_way_to_set_a_password(self, browser, invited):
+        """ERPlora/saas#2560: the invited person who types their address on «Create account» gets, in their own
+        mailbox, the link that sets the password their account does not have yet."""
+        _create_account(browser, invited.email)
+
+        [message] = mail.outbox
+        assert message.to == [invited.email]
+        assert f"http://{HOST}/password/reset" in message.body
+
 
 class TestAnInvalidSignUpCreatesNothing:
     def test_a_password_the_validators_refuse_is_400_on_the_password(self, browser):
@@ -445,6 +480,15 @@ class TestAnInvalidSignUpCreatesNothing:
         assert response.status_code == 400
         assert [error["param"] for error in response.json()["errors"]] == ["email"]
         assert not User.objects.exists()
+
+    def test_fullwidth_letters_before_the_at_are_400_on_the_email(self, browser, verified):
+        """ACCOUNTS-G83: Django's address rules take only plain letters before the @, so «ａna@example.com» is an
+        invalid address, never a second Ana."""
+        response = _create_account(browser, "ａna@example.com")
+
+        assert response.status_code == 400
+        assert [error["param"] for error in response.json()["errors"]] == ["email"]
+        assert list(User.objects.values_list("email", flat=True)) == [verified.email]
 
     def test_an_email_with_a_nul_character_is_400_on_the_email(self, browser):
         response = _create_account(browser, "a\x00b@example.com")
