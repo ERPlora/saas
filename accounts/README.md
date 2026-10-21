@@ -3,7 +3,9 @@
 App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: quién entra (allauth, headless),
 el salto a un negocio (`handoff.py`, `/internal/auth/redeem`) y **Cuenta** (Perfil · Seguridad · Preferencias ·
 Claves de API; PLAN-SAAS §3.6, ronda 17). Este README recoge el lote **L3-A** (back) del plan
-`docs/plans/2026-10-13-panel-saas-unificado.md`; el front (`frontend/`) es de L3-B.
+`docs/plans/2026-10-13-panel-saas-unificado.md`; el front (`frontend/`) es de L3-B. Los flujos de la app, en
+lenguaje de usuario, están en `WORKBOOK.md` (y `WORKBOOK.en.md`), que crece por partes (MIGRATION-TASK
+APP-ACCOUNTS-1…5).
 
 ## Operaciones de Cuenta (L3-A)
 
@@ -54,11 +56,25 @@ Sin ruta: `accounts.apikey.revoke_any`, la «Revocar» del admin, con contexto d
   `mfa_reauthenticate`, `provider_redirect`) y `providers` (`google`); el panel confirma y repite. Una petición
   con clave de API nunca cuenta (403). `ACCOUNT_REAUTHENTICATION_REQUIRED = True` pide lo mismo a las puertas de
   allauth.headless que quedan (desconectar Google).
-- **Puertas de allauth cerradas** (`doors.py`, montadas en `config/urls.py` antes del `include` de headless; en
+- **Puertas propias sobre allauth** (`doors.py`, montadas en `config/urls.py` antes del `include` de headless; en
   modo solo headless allauth no tiene páginas): `/_allauth/browser/v1/account/email` responde 404 a todo método
-  (el correo solo cambia con el código de Cuenta), `auth/signup` también (el login da de alta) y
-  `account/password/change` responde 403 a una cuenta sin contraseña (con la sola sesión no se pone una: se pone
-  con «¿Has olvidado tu contraseña?»; con contraseña se cambia como siempre).
+  (el correo solo cambia con el código de Cuenta) y `account/password/change` responde 403 a una cuenta sin
+  contraseña (con la sola sesión no se pone una: se pone con «¿Has olvidado tu contraseña?»; con contraseña se
+  cambia como siempre). `auth/login` y `auth/signup` son las dos pestañas de la entrada, servidas con una regla
+  que headless deja fuera (APP-ACCOUNTS-1): la entrada pliega el correo como el alta (`adapters.plain_email`:
+  NFKC, sin espacios y en minúsculas; «ana@ｅxample.com» es Ana, nunca otra cuenta, ERPlora/saas#1018) y el alta
+  comprueba la contraseña contra su propio correo (headless la validaba sin cuenta y el validador de parecido
+  no veía nada; saas#2542).
+- **La contraseña nueva nunca es la actual** (`AccountAdapter.clean_password`, saas#2612): en «Cambiar
+  contraseña» y en el enlace de «¿Has olvidado tu contraseña?», `password_unchanged` debajo del campo. La página
+  del enlace enseña la misma pista y fuerza que Cuenta (`frontend/password.ts`, contra el correo que devuelve
+  la comprobación del enlace).
+- **Términos aceptados** (ACCOUNTS-F10): `User.terms_accepted_at`, `terms_version` y `privacy_version`
+  (solo lectura en el admin). `services.accept_legal_texts` escucha `user_signed_up` (allauth, también el alta
+  con Google) y `user_logged_in` (Django): guarda la fecha y las versiones vigentes (`models.TERMS_VERSION` y
+  `PRIVACY_VERSION`, la fecha de «Last updated» de cada página legal) si la cuenta no las tenía; la primera
+  fecha se queda mientras no cambien. Al actualizar `/legal/terms/` o `/legal/privacy/`, se cambia su fecha en
+  `models.py` en el mismo cambio (`tests/test_terms.py` lo exige) y cada cuenta acepta la nueva al entrar.
 - **Sesiones = `allauth.usersessions`** (encaja con headless: tiene `auth/sessions`). `SessionActivityMiddleware`
   apunta dirección, navegador y último uso como mucho cada 5 min (marca en la caché, releída antes de escribir:
   con Valkey caído no apunta nada en vez de escribir en cada petición; los límites sobre esa caché quedan

@@ -22,6 +22,7 @@ belongs to ``accounts``, L1-A2).
 from datetime import timedelta
 
 import pytest
+from allauth.account.models import EmailAddress
 from django.contrib.auth import get_user_model
 from django.core import mail
 from django.utils import timezone
@@ -215,6 +216,27 @@ class TestInvite:
             invite(lola, business, "x@example.com")
 
         assert not User.objects.filter(email="x@example.com").exists()
+
+    @pytest.mark.parametrize(
+        "written",
+        ["Ana.Lopez@EXAMPLE.com", "ana.lopez@ｅｘａｍｐｌｅ.com", "ａｎａ.lopez@example.com"],
+        ids=["other-capitals", "fullwidth-after-the-at", "fullwidth-before-the-at"],
+    )
+    def test_an_accounts_address_in_another_form_invites_that_account_and_it_accepts(
+        self, business, owner, make_user, written
+    ):
+        """saas#2562 (ACCOUNTS-F01): an address is the account's in its plain form, folded as
+        ``accounts.adapters.plain_email`` folds it (NFKC, trimmed, lower case), so another case or look-alike
+        full-width letters never make a second account that looks the same and never gets the access."""
+        ana = make_user("ana.lopez@example.com")
+        EmailAddress.objects.create(user=ana, email=ana.email, verified=True, primary=True)
+
+        invite(owner, business, written)
+        services.invitation_accept(ctx_for(ana), ByIdIn(id=member_of(business, ana).id))
+
+        assert list(User.objects.exclude(pk=owner.pk).values_list("email", flat=True)) == ["ana.lopez@example.com"]
+        assert member_of(business, ana).accepted_at is not None
+        assert HubMembership.objects.filter(user=ana, hub_slug=business.slug).exists()
 
 
 # --- Changing a role ------------------------------------------------------------------------------

@@ -12,6 +12,7 @@ from django.utils.translation import gettext as _
 from ninja import Field, Schema
 from pydantic import AfterValidator, StringConstraints, model_validator
 
+from accounts.adapters import folded_email
 from accounts.queries import local_path
 
 
@@ -129,7 +130,9 @@ def _country(value: str) -> str:
 
 
 def _email(value: str) -> str:
-    email = value.strip().lower()
+    # The form an account keeps its address in: another case or look-alike full-width letters are the same
+    # address, so an invitation never makes a second account that looks the same (ERPlora/saas#2562).
+    email = folded_email(value)
     if len(email) > 254 or not EMAIL_RE.match(email):
         raise ValueError(_("Enter a valid email address."))
     return email

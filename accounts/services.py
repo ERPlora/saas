@@ -32,6 +32,8 @@ from live.slugs import validate_hub_slug
 
 from accounts import emails, events, photos, queries, signals
 from accounts.models import (
+    PRIVACY_VERSION,
+    TERMS_VERSION,
     ApiKey,
     AuthExchangeCode,
     EmailChangeRequest,
@@ -254,6 +256,20 @@ def release_unproven_account(user, *, reason: str) -> None:
         Authenticator.objects.filter(user=user).delete()
         SocialAccount.objects.filter(user=user).delete()
     logger.warning("accounts.released_unproven_account user=%s reason=%s", user.pk, reason)
+
+
+def accept_legal_texts(sender, request=None, user=None, **kwargs) -> None:
+    """allauth's ``user_signed_up`` and Django's ``user_logged_in``: the account accepts today's terms and privacy
+    policy (ACCOUNTS-G119). Creating the account and signing in happen under «By continuing you agree to our Terms &
+    Privacy Policy» (the launcher, Google's button too), so each records when and which versions
+    (``models.TERMS_VERSION``, ``PRIVACY_VERSION``) unless the account already accepted those: the first date stays."""
+    if user is None or (user.terms_version, user.privacy_version) == (TERMS_VERSION, PRIVACY_VERSION):
+        return
+    accepted = {"terms_accepted_at": timezone.now(), "terms_version": TERMS_VERSION, "privacy_version": PRIVACY_VERSION}
+    get_user_model().objects.filter(pk=user.pk).update(**accepted)
+    for field, value in accepted.items():
+        setattr(user, field, value)
+    logger.info("accounts.legal_texts_accepted user=%s terms=%s privacy=%s", user.pk, TERMS_VERSION, PRIVACY_VERSION)
 
 
 def prove_mailbox_by_reset(sender, request=None, user=None, **kwargs) -> None:

@@ -92,11 +92,25 @@ describe('PasswordResetKeyPage: the page of the template', () => {
     expect(document.title).toBe('Set New Password - ERPlora Cloud');
   });
 
-  it('lists no password rules of its own: the server says which one failed', async () => {
+  // ACCOUNTS-G121: the rules in sight, as the template's page and Account's «Change password» (one hint, the
+  // same words): only a hint, the server's validators decide and say which one failed under the input.
+  it('says the rules under the new password and how strong it looks while it is typed, against its email', async () => {
     fakeAllauth({ 'GET /auth/password/reset': validKey });
-    const { wrapper } = await mountPage();
-    expect(wrapper.find('.password-rules').exists()).toBe(false);
-    expect(wrapper.text()).not.toContain('8 characters');
+    const { input } = await mountPage();
+    expect(input().props('helperText')).toBe('At least 8 characters; better long, and without your email.');
+    await input().setValue('abc');
+    expect(input().props('helperText')).toBe('Too short: at least 8 characters.');
+    await input().setValue('owner-panaderia');
+    expect(input().props('helperText')).toBe('Weak: avoid your email and use several kinds of characters.');
+    await input().setValue('Pan-de-centeno-26');
+    expect(input().props('helperText')).toBe('Strong.');
+    expect(input().classes()).toContain('strength-strong');
+  });
+
+  it('says the rules in Spanish', async () => {
+    fakeAllauth({ 'GET /auth/password/reset': validKey });
+    const { input } = await mountPage({ locale: 'es' });
+    expect(input().props('helperText')).toBe('Al menos 8 caracteres; mejor larga y sin tu correo.');
   });
 
   it('says it is checking the link until the server answers', async () => {

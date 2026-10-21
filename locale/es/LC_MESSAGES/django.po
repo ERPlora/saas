@@ -20,6 +20,26 @@ msgstr ""
 msgid "Google can only be linked by signing in with the Google account of your email."
 msgstr "Google solo se vincula entrando con la cuenta de Google de tu correo."
 
+#: accounts/adapters.py
+msgid "Your new password must be different from the current one."
+msgstr "La contraseña nueva tiene que ser distinta de la actual."
+
+#: accounts/admin.py
+msgid "Terms and privacy"
+msgstr "Términos y privacidad"
+
+#: accounts/models.py
+msgid "terms accepted at"
+msgstr "términos aceptados el"
+
+#: accounts/models.py
+msgid "terms version"
+msgstr "versión de los términos"
+
+#: accounts/models.py
+msgid "privacy policy version"
+msgstr "versión de la política de privacidad"
+
 #: accounts/admin.py:40
 msgid "Personal info"
 msgstr "Información personal"

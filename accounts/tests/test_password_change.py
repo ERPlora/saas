@@ -9,8 +9,10 @@ Dropped: the three doors of the original (profile page, settings page, DRF view)
 """
 
 import pytest
+from allauth.account.adapter import DefaultAccountAdapter
 from django.contrib.auth import get_user_model
 from django.test import Client
+from django.utils import translation
 
 from accounts import signals
 from accounts.tests.conftest import BROWSER, HOST, sign_in
@@ -65,6 +67,45 @@ def test_a_weak_new_password_is_refused_as_everywhere(signed_in, password):
 
     assert response.status_code == 400
     assert {error["param"] for error in response.json()["errors"]} == {"new_password"}
+
+
+def test_the_current_password_is_not_a_new_one(signed_in, ana, password, received):
+    """ERPlora/saas#2612 (ACCOUNTS-G42): «new» means new, as the old profile page said and its API did not."""
+    response = _change(signed_in, password, new=password)
+
+    assert response.status_code == 400
+    [error] = response.json()["errors"]
+    assert (error["param"], error["code"]) == ("new_password", "password_unchanged")
+    assert received == []
+
+
+def test_a_reset_to_the_current_password_is_refused_too(client, ana, password):
+    """The rule is the account's, whatever the door: the reset's key asks for a password that is not today's."""
+    from allauth.account.adapter import get_adapter
+    from django.core.exceptions import ValidationError
+
+    with pytest.raises(ValidationError) as refused:
+        get_adapter().clean_password(password, user=ana)
+
+    assert refused.value.code == "password_unchanged"
+    assert get_adapter().clean_password(NEW_PASSWORD, user=ana) == NEW_PASSWORD
+
+
+def test_the_errors_speak_the_accounts_language(signed_in, ana):
+    """ERPlora/saas#2614 (ACCOUNTS-G46): Ana reads Spanish, and so do the errors of «Change password»."""
+    response = _change(signed_in, "not my password")
+
+    with translation.override("es"):
+        expected = str(DefaultAccountAdapter.error_messages["enter_current_password"])
+    with translation.override("en"):
+        english = str(DefaultAccountAdapter.error_messages["enter_current_password"])
+    assert response.json()["errors"][0]["message"] == expected != english
+
+
+def test_the_unchanged_password_is_said_in_spanish_too(signed_in, password):
+    response = _change(signed_in, password, new=password)
+
+    assert response.json()["errors"][0]["message"] == "La contraseña nueva tiene que ser distinta de la actual."
 
 
 def test_once_the_budget_is_spent_not_even_the_right_password_goes_through(signed_in, ana, password):

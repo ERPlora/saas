@@ -39,6 +39,12 @@ class TestUser:
         assert user.check_password("s3cret-pass")
         assert user.is_active and not user.is_staff
 
+    def test_the_whole_email_is_kept_in_lower_case_also_before_the_at(self):
+        # ACCOUNTS-F13: Django's normalize_email only lowers the domain; one address is one account.
+        user = get_user_model().objects.create_user(email="Ana.Lopez@Example.COM", password="s3cret-pass")
+
+        assert user.email == "ana.lopez@example.com"
+
     def test_speaks_english_unless_told_otherwise(self):
         user = get_user_model().objects.create_user(
             email="ana@example.com", password="x"

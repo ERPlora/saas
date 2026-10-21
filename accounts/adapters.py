@@ -12,6 +12,7 @@ Google links to an account only by signing in with a Google that proves the acco
 """
 
 import logging
+import unicodedata
 from types import SimpleNamespace
 from urllib.parse import urlencode
 
@@ -25,8 +26,11 @@ from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from allauth.socialaccount.providers.base import AuthProcess
 from allauth.socialaccount.providers.base.constants import AuthError
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.shortcuts import redirect
 from django.utils import timezone
+from django.utils.translation import gettext
 
 from accounts.handoff import login_error_url
 
@@ -48,6 +52,22 @@ def _with_next(next_url: str | None) -> dict[str, str]:
     return {"next": next_url} if next_url else {}
 
 
+def folded_email(email: str) -> str:
+    """An address with the compatibility forms of its letters folded (NFKC), trimmed and in lower case: the form
+    an account keeps, so «Ana@EXAMPLE.com» and «ana@ｅxample.com» are Ana's address (also when inviting it,
+    ``hubs.schemas``; ERPlora/saas#2562)."""
+    return unicodedata.normalize("NFKC", email).strip().lower()
+
+
+def plain_email(email: str) -> str:
+    """An address in its plain form (``folded_email``), as today's SaaS (ERPlora/saas#1018). «ana@ｅxample.com»
+    is Ana's address, never a second account that looks the same, and a look-alike spends the account's budget
+    of failed sign-ins, never one of its own. What the folding turns into an invalid address is refused as one."""
+    email = folded_email(email)
+    validate_email(email)
+    return email
+
+
 class AccountAdapter(DefaultAccountAdapter):
     def is_login_by_code_required(self, login) -> bool:
         """The mailed sign-in code (``ACCOUNT_LOGIN_BY_CODE_REQUIRED``), unless the login already waits for
@@ -62,6 +82,18 @@ class AccountAdapter(DefaultAccountAdapter):
         if login.signup or (login.user is not None and not has_verified_email(login.user, login.email)):
             return False
         return super().is_login_by_code_required(login)
+
+    def clean_email(self, email: str) -> str:
+        """The sign-up's and the password reset's address in its plain form (``plain_email``); the sign-in's is
+        folded by its own door (``doors.login``)."""
+        return super().clean_email(plain_email(email))
+
+    def clean_password(self, password, user=None):
+        """A new password is never the account's current one (ERPlora/saas#2612): «Change password» and the key
+        of «Forgot your password?» both ask for a new one. A new account has no password to compare."""
+        if user is not None and user.check_password(password):
+            raise ValidationError(gettext("Your new password must be different from the current one."), code="password_unchanged")
+        return super().clean_password(password, user=user)
 
     def format_email_subject(self, subject):
         """No ``[site.name]`` prefix: allauth takes it from the ``Site`` row (``example.com``)."""
