@@ -15,6 +15,8 @@ import pytest
 from django.utils import timezone
 from live.errors import NotFound, OperationError, PermissionDenied
 
+from apps.icons import FALLBACK_ICON_SVG
+from apps.tests.factories import CUBE_SVG, make_app
 from billing import queries
 from billing.schemas import StoreCatalogIn
 from billing.tests.conftest import ctx_for, pay
@@ -62,6 +64,10 @@ class TestWhatIsOnSale:
                 "owned": False,
                 "source": None,
                 "valid_until": None,
+                "on_sale": True,
+                "name": "inventory",
+                "summary": "",
+                "icon_svg": FALLBACK_ICON_SVG,
             },
             {
                 "slug": "reports",
@@ -71,6 +77,10 @@ class TestWhatIsOnSale:
                 "owned": False,
                 "source": None,
                 "valid_until": None,
+                "on_sale": True,
+                "name": "reports",
+                "summary": "",
+                "icon_svg": FALLBACK_ICON_SVG,
             },
         ]
 
@@ -81,6 +91,35 @@ class TestWhatIsOnSale:
         assert [module["slug"] for module in catalog(owner, shop)["modules"]] == [
             "inventory"
         ]
+
+    def test_a_module_off_sale_the_business_still_pays_is_listed_to_cancel_it(
+        self, shop, owner, inventory, reports
+    ):
+        """BILLING-G61, saas#2589: taking a module off sale stops new purchases, never the charge of the
+        businesses that have it, so the Store still shows it to them (not on sale) to cancel it."""
+        paid = pay(shop, modules=["reports"])
+        reports.is_active = False
+        reports.save()
+
+        modules = {module["slug"]: module for module in catalog(owner, paid)["modules"]}
+
+        assert (modules["reports"]["on_sale"], modules["reports"]["owned"]) == (False, True)
+        assert modules["reports"]["source"] == "purchase"
+        assert modules["inventory"]["on_sale"] is True
+
+    def test_each_module_says_its_apps_name_summary_and_icon_in_the_persons_language(
+        self, shop, owner, inventory
+    ):
+        """BILLING-G61, saas#2589: the catalog's own texts, also for an app the Hub retired from the store
+        (not listed), whose module a business may still have."""
+        make_app("inventory", name_es="Inventario", summary_es="El stock al día.", premium=True, listed=False)
+
+        [module] = queries.store_catalog(
+            ctx_for(owner, language="es"), StoreCatalogIn(hub_id=shop.id)
+        ).model_dump(mode="json")["modules"]
+
+        assert (module["name"], module["summary"]) == ("Inventario", "El stock al día.")
+        assert module["icon_svg"] == CUBE_SVG
 
     def test_a_free_business_is_not_billed_by_stripe_yet(self, shop, owner, inventory):
         subscription = catalog(owner, shop)["subscription"]

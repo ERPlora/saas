@@ -2,10 +2,12 @@
 
 ``App`` and ``AppDoc`` are written by the Hub with each release (``register_apps``): the SaaS's admin
 shows them and never adds, changes nor deletes a row. ``Module`` is written here, by hand, and its
-form runs ``Module.clean()`` (the slug is a paid app of the catalog, spec §5.4).
+form runs ``Module.clean()`` (the slug is a paid app of the catalog, spec §5.4). A module some business still
+has is not deleted (saas#2568): taking it off sale («active» off) is how it stops being sold.
 """
 
 from django.contrib import admin
+from django.utils.translation import gettext as _
 
 from apps.models import App, AppDoc, Module
 
@@ -58,3 +60,17 @@ class ModuleAdmin(admin.ModelAdmin):
     list_filter = ["tier", "is_active"]
     search_fields = ["slug", "stripe_product_id"]
     readonly_fields = ["created_at", "updated_at"]
+
+    def get_deleted_objects(self, objs, request):
+        """Django's own refusal of a protected relation, for the modules some business still has: Stripe would
+        bill a price nobody sells, and the business would lose the module while paying it (saas#2568)."""
+        from billing.queries import businesses_having_module
+
+        deleted, counts, perms_needed, protected = super().get_deleted_objects(objs, request)
+        for module in objs:
+            for name in businesses_having_module(module.slug):
+                protected.append(
+                    _("%(business)s has the module %(module)s: take it off sale instead (untick «active»).")
+                    % {"business": name, "module": module.slug}
+                )
+        return deleted, counts, perms_needed, protected

@@ -101,7 +101,10 @@
       "kept": "{module} is kept: it renews on {date}",
       "keptNoDate": "{module} is kept",
       "added": "{module} added to {business}: it turns on in a few seconds",
-      "monthlyOnly": "Only with monthly billing"
+      "monthlyOnly": "Only with monthly billing",
+      "cancel": "Cancel module",
+      "offSale": "No longer sold: you keep it while you pay it, and can cancel it whenever you want.",
+      "cancelledOffSale": "You have it until {date} (cancelled). It is no longer sold, so it cannot be kept."
     },
     "proration": {
       "titleModule": "Add {module}",
@@ -187,6 +190,18 @@
       "back": "Back",
       "done": "Plan cancelled: {plan} until {date}",
       "doneNoDate": "Plan cancelled: {plan} until the end of the period"
+    },
+    "cancelModule": {
+      "title": "Cancel the module",
+      "subject": "{business} · {module}",
+      "until": "{module} keeps working in {business} until {date}; then it turns off and is not charged again.",
+      "untilNoDate": "{module} keeps working in {business} until the end of the period; then it turns off and is not charged again.",
+      "data": "Nothing the business wrote with it is deleted.",
+      "undo": "Until then you can undo it with «Keep».",
+      "confirm": "Cancel module",
+      "back": "Back",
+      "done": "{module} cancelled: it works until {date}",
+      "doneNoDate": "{module} cancelled: it works until the end of the period"
     },
     "page": {
       "title": "Billing",

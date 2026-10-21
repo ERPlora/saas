@@ -147,3 +147,68 @@ def test_a_stripe_event_opens_read_only(staff_client):
     assert page.status_code == 200
     assert b"evt_1" in page.content
     assert staff_client.post(f"/admin/billing/webhookevent/{row.pk}/delete/", {"post": "yes"}).status_code == 403
+
+
+class TestAModuleSomeBusinessHas:
+    """BILLING-G66, saas#2568: deleting the row of a paid module some business still has would make Stripe bill a
+    price nobody sells (the business loses the module and keeps paying it). Like a protected relation, the
+    admin refuses and names the businesses; taking it off sale («active» off) is how it stops being sold."""
+
+    def delete(self, staff_client, module):
+        return staff_client.post(f"/admin/apps/module/{module.pk}/delete/", {"post": "yes"})
+
+    def test_its_row_is_not_deleted_and_the_page_says_who_has_it(self, staff_client, shop, inventory):
+        from apps.models import Module
+        from billing.tests.conftest import pay
+
+        pay(shop, modules=["inventory"])
+
+        response = self.delete(staff_client, inventory)
+
+        assert Module.objects.filter(pk=inventory.pk).exists()
+        assert "Panadería López" in response.content.decode()
+
+    def test_nor_with_the_bulk_action(self, staff_client, shop, inventory):
+        from apps.models import Module
+        from billing.tests.conftest import pay
+
+        pay(shop, modules=["inventory"])
+
+        staff_client.post(
+            "/admin/apps/module/",
+            {"action": "delete_selected", "_selected_action": [str(inventory.pk)], "post": "yes"},
+        )
+
+        assert Module.objects.filter(pk=inventory.pk).exists()
+
+    def test_one_cancelled_but_still_working_counts(self, staff_client, shop, inventory):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from apps.models import Module
+        from billing.tests.conftest import pay
+        from hubs.models import SubscriptionItem
+
+        pay(shop, modules=["inventory"])
+        SubscriptionItem.objects.filter(module_slug="inventory").update(valid_until=timezone.now() + timedelta(days=3))
+
+        self.delete(staff_client, inventory)
+
+        assert Module.objects.filter(pk=inventory.pk).exists()
+
+    def test_a_module_nobody_has_any_more_is_deleted(self, staff_client, shop, inventory):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from apps.models import Module
+        from billing.tests.conftest import pay
+        from hubs.models import SubscriptionItem
+
+        pay(shop, modules=["inventory"])
+        SubscriptionItem.objects.filter(module_slug="inventory").update(valid_until=timezone.now() - timedelta(days=1))
+
+        self.delete(staff_client, inventory)
+
+        assert not Module.objects.filter(pk=inventory.pk).exists()

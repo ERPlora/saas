@@ -2007,6 +2007,12 @@ def module_keep(ctx: OperationContext, data: ModuleIn) -> dict:
             _("This module has ended: buy it again in the store."),
             code="billing.module_ended",
         )
+    if queries.module_on_sale(item.module_slug) is None:
+        # saas#2589: it works until its cancellation ends, and is not sold again by undoing it.
+        raise Conflict(
+            _("This module is no longer sold: it works until its cancellation ends and cannot be kept."),
+            code="billing.module_off_sale",
+        )
     _require_paid_up(hub, subscription)
     require_stripe()
     live = _live(subscription)

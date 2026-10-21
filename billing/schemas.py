@@ -236,8 +236,9 @@ class StoreCatalogIn(Schema):
 
 
 class StoreModuleOut(Schema):
-    """A paid module on sale (``apps.Module``: only commercial; its name, summary and icon are
-    ``apps.app.list``'s, joined by ``slug``) and what the chosen business has of it."""
+    """A paid module on sale, or one the chosen business still has (``apps.Module``: only commercial; the Store
+    joins it by ``slug`` with ``apps.app.list``, and its own ``name``/``summary``/``icon_svg`` paint a module
+    whose app the catalog no longer lists), and what the chosen business has of it."""
 
     slug: str
     tier: str
@@ -250,6 +251,14 @@ class StoreModuleOut(Schema):
     source: Literal["plan", "purchase"] | None
     #: Cancelled: it works until then (``billing.module.keep`` undoes it, charging nothing now).
     valid_until: datetime | None
+    #: Sold to new buyers. A module off sale is only listed to the business that still has it (saas#2589),
+    #: which may cancel it but neither buy nor keep it again.
+    on_sale: bool
+    #: The catalog's name, summary and icon of its app in the person's language (``apps.App``, listed or
+    #: not: a retired app's module is still had); the slug, nothing and the fallback icon without its app.
+    name: str
+    summary: str
+    icon_svg: str
 
 
 class StoreSubscriptionOut(Schema):

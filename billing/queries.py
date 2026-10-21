@@ -24,6 +24,8 @@ from live.context import OperationContext
 from live.errors import OperationError, Unauthorized
 from live.operations import operation
 
+from apps import queries as app_queries
+from apps.icons import FALLBACK_ICON_SVG
 from apps.models import Module
 from billing import vat, vies
 from billing.models import (
@@ -611,6 +613,16 @@ def module_on_sale(slug: str):
     return Module.objects.filter(slug=slug, is_active=True).first()
 
 
+def businesses_having_module(slug: str) -> list[str]:
+    """The names of the businesses that have the bought module ``slug`` now (open-ended, or cancelled and still
+    working): what Stripe bills or billed for this period (BILLING-G66, saas#2568: its row is not deleted)."""
+    now = timezone.now()
+    items = SubscriptionItem.objects.filter(
+        module_slug=slug, source=SubscriptionItem.Source.PURCHASE
+    ).filter(Q(valid_until__isnull=True) | Q(valid_until__gt=now))
+    return sorted(set(items.values_list("subscription__hub__name", flat=True)))
+
+
 def plan_for_price(price_id: str):
     """``(plan, interval)`` of a Stripe price of a plan, or ``None`` when no plan has it."""
     if not price_id:
@@ -683,9 +695,14 @@ def store_catalog(ctx: OperationContext, params: StoreCatalogIn) -> dict:
         for item in SubscriptionItem.objects.filter(subscription=subscription).order_by("module_slug"):
             if item.is_live(now):
                 owned[item.module_slug] = item
+    # On sale, and the ones the business has although they are not any more (saas#2589: taking a module off
+    # sale stops new purchases, never the charge of who has it, so its owner still sees it to cancel it).
+    rows = Module.objects.filter(Q(is_active=True) | Q(slug__in=owned)).order_by("slug")
+    cards = app_queries.cards_of([row.slug for row in rows], ctx.language or "")
     modules = []
-    for module in Module.objects.filter(is_active=True).order_by("slug"):
+    for module in rows:
         item = owned.get(module.slug)
+        card = cards.get(module.slug)
         modules.append(
             {
                 "slug": module.slug,
@@ -695,6 +712,10 @@ def store_catalog(ctx: OperationContext, params: StoreCatalogIn) -> dict:
                 "owned": item is not None,
                 "source": item.source if item is not None else None,
                 "valid_until": item.valid_until if item is not None else None,
+                "on_sale": module.is_active,
+                "name": card["name"] if card else module.slug,
+                "summary": card["summary"] if card else "",
+                "icon_svg": card["icon_svg"] if card else FALLBACK_ICON_SVG,
             }
         )
     plan = None

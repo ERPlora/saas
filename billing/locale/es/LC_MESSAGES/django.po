@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: saas-next\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-21 05:34+0200\n"
+"POT-Creation-Date: 2026-10-21 09:02+0200\n"
 "PO-Revision-Date: 2026-10-14 04:00+0200\n"
 "Last-Translator: ERPlora\n"
 "Language-Team: Spanish\n"
@@ -204,7 +204,7 @@ msgstr "acumulado"
 msgid "threshold"
 msgstr "umbral"
 
-#: admin.py:445 queries.py:990
+#: admin.py:445 queries.py:1011
 msgid "Total"
 msgstr "Total"
 
@@ -266,63 +266,63 @@ msgstr "%(invoice)s: el correo no pudo salir; se volverá a enviar más tarde."
 msgid "Billing"
 msgstr "Facturación"
 
-#: emails.py:48
+#: emails.py:50
 #, python-format
 msgid "Credit note %(number)s from ERPlora"
 msgstr "Factura rectificativa %(number)s de ERPlora"
 
-#: emails.py:51
+#: emails.py:53
 #, python-format
 msgid "ERPlora issued credit note %(number)s for %(business)s."
 msgstr ""
 "ERPlora ha emitido la factura rectificativa %(number)s de %(business)s."
 
-#: emails.py:53
+#: emails.py:55
 #, python-format
 msgid "Invoice %(number)s from ERPlora"
 msgstr "Factura %(number)s de ERPlora"
 
-#: emails.py:54
+#: emails.py:56
 #, python-format
 msgid "ERPlora issued invoice %(number)s for %(business)s."
 msgstr "ERPlora ha emitido la factura %(number)s de %(business)s."
 
-#: emails.py:58
+#: emails.py:60
 #, python-format
 msgid "Date: %(date)s"
 msgstr "Fecha: %(date)s"
 
-#: emails.py:60
+#: emails.py:62
 #, python-format
 msgid "Tax base: %(amount)s"
 msgstr "Base imponible: %(amount)s"
 
-#: emails.py:61
+#: emails.py:63
 #, python-format
 msgid "VAT (%(rate)s %%): %(amount)s"
 msgstr "IVA (%(rate)s %%): %(amount)s"
 
-#: emails.py:66
+#: emails.py:68
 #, python-format
 msgid "Total: %(amount)s"
 msgstr "Total: %(amount)s"
 
-#: emails.py:68
+#: emails.py:70
 #, python-format
 msgid "Download it from Billing: %(url)s"
 msgstr "Descárgala en Facturación: %(url)s"
 
-#: emails.py:103
+#: emails.py:105
 #, python-format
 msgid "We could not charge the plan of %(business)s"
 msgstr "No hemos podido cobrar el plan de %(business)s"
 
-#: emails.py:105
+#: emails.py:107
 #, python-format
 msgid "We could not charge %(amount)s for the plan of %(business)s."
 msgstr "No hemos podido cobrar %(amount)s del plan de %(business)s."
 
-#: emails.py:109
+#: emails.py:111
 msgid ""
 "The bank declined the card: change it before paying, we will not charge it "
 "again."
@@ -330,7 +330,7 @@ msgstr ""
 "El banco rechazó la tarjeta: cámbiala antes de pagar, no volveremos a "
 "cobrarle."
 
-#: emails.py:111
+#: emails.py:113
 #, python-format
 msgid ""
 "%(business)s keeps working until %(date)s. If the invoice is not paid by "
@@ -339,17 +339,17 @@ msgstr ""
 "%(business)s sigue funcionando hasta el %(date)s. Si la factura no se paga "
 "antes, se suspende. No se borra nada."
 
-#: emails.py:114 emails.py:129
+#: emails.py:116 emails.py:131
 #, python-format
 msgid "Pay it from Billing: %(url)s"
 msgstr "Págala en Facturación: %(url)s"
 
-#: emails.py:123
+#: emails.py:125
 #, python-format
 msgid "%(business)s is suspended"
 msgstr "%(business)s está suspendido"
 
-#: emails.py:125
+#: emails.py:127
 #, python-format
 msgid ""
 "%(business)s is suspended because an invoice of %(amount)s was not paid."
@@ -357,14 +357,14 @@ msgstr ""
 "%(business)s está suspendido porque una factura de %(amount)s no se ha "
 "pagado."
 
-#: emails.py:127
+#: emails.py:129
 msgid ""
 "Your data is safe: as soon as the invoice is paid, the business works again."
 msgstr ""
 "Tus datos están a salvo: en cuanto se pague la factura, el negocio vuelve a "
 "funcionar."
 
-#: emails.py:152
+#: emails.py:157
 #, python-format
 msgid ""
 "OSS: cross-border B2C sales passed %(percent)s %% of the threshold in "
@@ -373,7 +373,7 @@ msgstr ""
 "OSS: las ventas B2C a otros países de la UE pasan del %(percent)s %% del "
 "umbral en %(year)s"
 
-#: emails.py:155
+#: emails.py:160
 #, python-format
 msgid ""
 "Sales to consumers in other EU member states in %(year)s reached %(amount)s "
@@ -383,12 +383,12 @@ msgstr ""
 "%(amount)s (base imponible), más del %(percent)s %% del umbral de la OSS de "
 "%(threshold)s."
 
-#: emails.py:159
+#: emails.py:164
 #, python-format
 msgid "Sale that passed it: invoice %(invoice)s."
 msgstr "Venta que lo pasó: factura %(invoice)s."
 
-#: emails.py:162
+#: emails.py:167
 msgid ""
 "Above the threshold, destination VAT applies on its own from the crossing "
 "sale. Registering in the OSS (form 035) takes days: start it now."
@@ -396,13 +396,13 @@ msgstr ""
 "Por encima del umbral, el IVA de destino se aplica solo desde la venta que "
 "lo cruza. El alta en la OSS (modelo 035) tarda días: empiézala ya."
 
-#: emails.py:167
+#: emails.py:172
 #, python-format
 msgid "OSS: cross-border B2C sales crossed the threshold in %(year)s"
 msgstr ""
 "OSS: las ventas B2C a otros países de la UE cruzan el umbral en %(year)s"
 
-#: emails.py:170
+#: emails.py:175
 #, python-format
 msgid ""
 "Sales to consumers in other EU member states in %(last_year)s closed at "
@@ -413,7 +413,7 @@ msgstr ""
 "cerraron en %(amount)s (base imponible), por encima del umbral de la OSS de "
 "%(threshold)s, así que todo %(year)s va con el IVA de destino."
 
-#: emails.py:175
+#: emails.py:180
 #, python-format
 msgid ""
 "Sales to consumers in other EU member states in %(year)s reached %(amount)s "
@@ -423,13 +423,13 @@ msgstr ""
 "%(amount)s (base imponible), por encima del umbral de la OSS de "
 "%(threshold)s."
 
-#: emails.py:180
+#: emails.py:185
 #, python-format
 msgid "First sale in destination VAT: invoice %(invoice)s, from %(date)s."
 msgstr ""
 "Primera venta con el IVA de destino: factura %(invoice)s, desde el %(date)s."
 
-#: emails.py:183
+#: emails.py:188
 msgid ""
 "Destination VAT already applies on its own. Registering in the OSS (form "
 "035) is urgent: do it now."
@@ -437,7 +437,7 @@ msgstr ""
 "El IVA de destino ya se aplica solo. El alta en la OSS (modelo 035) es "
 "urgente: hazla ya."
 
-#: emails.py:185
+#: emails.py:190
 msgid "This notice is sent once per year."
 msgstr "Este aviso se envía una vez al año."
 
@@ -1064,7 +1064,7 @@ msgstr "contador de facturas"
 msgid "invoice counters"
 msgstr "contadores de facturas"
 
-#: models.py:739 queries.py:990
+#: models.py:739 queries.py:1011
 msgid "Invoice"
 msgstr "Factura"
 
@@ -1450,59 +1450,59 @@ msgstr "aviso de la OSS"
 msgid "OSS notices"
 msgstr "avisos de la OSS"
 
-#: queries.py:579
+#: queries.py:580
 msgid "Sign in to use a promo code."
 msgstr "Inicia sesión para usar un código promocional."
 
-#: queries.py:588
+#: queries.py:589
 msgid "Too many promo codes tried in the last minute. Try again in a moment."
 msgstr ""
 "Demasiados códigos promocionales probados en el último minuto. Inténtalo en "
 "un momento."
 
-#: queries.py:736
+#: queries.py:757
 msgid "Sign in to see your billing."
 msgstr "Inicia sesión para ver tu facturación."
 
-#: queries.py:755
+#: queries.py:776
 msgid "This invoice does not exist or you have no access to it."
 msgstr "Esta factura no existe o no tienes acceso a ella."
 
-#: queries.py:939 queries.py:952
+#: queries.py:960 queries.py:973
 msgid "This invoice is still being issued: its PDF is ready once it is."
 msgstr ""
 "Esta factura aún se está emitiendo: su PDF estará listo cuando se emita."
 
-#: queries.py:945
+#: queries.py:966
 msgid "The invoice cannot be downloaded right now. Try again in a moment."
 msgstr ""
 "Ahora no se puede descargar la factura. Inténtalo de nuevo en un momento."
 
-#: queries.py:990
+#: queries.py:1011
 msgid "Date"
 msgstr "Fecha"
 
-#: queries.py:990
+#: queries.py:1011
 msgid "Business"
 msgstr "Negocio"
 
-#: queries.py:990
+#: queries.py:1011
 msgid "Tax base"
 msgstr "Base imponible"
 
-#: queries.py:990
+#: queries.py:1011
 msgid "VAT"
 msgstr "IVA"
 
-#: queries.py:990
+#: queries.py:1011
 msgid "Currency"
 msgstr "Moneda"
 
-#: queries.py:991
+#: queries.py:1012
 msgid "Payment"
 msgstr "Pago"
 
-#: queries.py:991
+#: queries.py:1012
 msgid "Status"
 msgstr "Estado"
 
@@ -1830,11 +1830,19 @@ msgstr "Este módulo viene con el plan: cambia el plan para quitarlo."
 msgid "This module has ended: buy it again in the store."
 msgstr "Este módulo ha terminado: vuelve a comprarlo en la tienda."
 
-#: services.py:2019
+#: services.py:2013
+msgid ""
+"This module is no longer sold: it works until its cancellation ends and "
+"cannot be kept."
+msgstr ""
+"Este módulo ya no se vende: funciona hasta que termina su cancelación y no se "
+"puede mantener."
+
+#: services.py:2025
 msgid "The plan is cancelled, and its modules with it: keep the plan first."
 msgstr "El plan está cancelado, y sus módulos con él: mantén el plan primero."
 
-#: services.py:2069
+#: services.py:2075
 msgid ""
 "The payment service did not confirm the change. Nothing was charged; try "
 "again."
@@ -1842,40 +1850,40 @@ msgstr ""
 "El servicio de pagos no ha confirmado el cambio. No se ha cobrado nada; "
 "inténtalo de nuevo."
 
-#: services.py:2098
+#: services.py:2104
 msgid "Payment details cannot be managed right now. Try again later."
 msgstr ""
 "Los datos de pago no se pueden gestionar ahora mismo. Inténtalo más tarde."
 
-#: services.py:2105
+#: services.py:2111
 msgid "The payment details appear here after the first payment."
 msgstr "Los datos de pago aparecen aquí después del primer pago."
 
-#: services.py:3470 services.py:3491
+#: services.py:3530 services.py:3551
 msgid "Subscription"
 msgstr "Suscripción"
 
-#: services.py:3717
+#: services.py:3777
 msgid "Credit"
 msgstr "Abono"
 
-#: services.py:3989
+#: services.py:4049
 msgid "Refund"
 msgstr "Devolución"
 
-#: services.py:4330
+#: services.py:4390
 msgid "This invoice is paid already."
 msgstr "Esta factura ya está pagada."
 
-#: services.py:4332
+#: services.py:4392
 msgid "This invoice was cancelled: there is nothing to pay."
 msgstr "Esta factura se anuló: no hay nada que pagar."
 
-#: services.py:4335
+#: services.py:4395
 msgid "Only the account that pays this business can pay its invoices."
 msgstr "Solo la cuenta que paga este negocio puede pagar sus facturas."
 
-#: services.py:4339
+#: services.py:4399
 msgid ""
 "The bank declined the card. Change the card first, then pay the invoice."
 msgstr ""

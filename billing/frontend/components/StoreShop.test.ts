@@ -178,7 +178,13 @@ describe('StoreShop', () => {
   });
 
   it('with nothing on sale, it says so', async () => {
-    const s = await setup({ tab: 'modules', answer: ({ path }) => (path === '/api/apps' ? Response.json({ apps: [] }) : undefined) });
+    // A business with no module: since saas#2589 one it still has is shown although the catalog lists none.
+    const none = catalog('bakery', { modules: [storeModule('booking', 900)] });
+    const s = await setup({
+      tab: 'modules',
+      answer: ({ path, query }) =>
+        path === '/api/apps' ? Response.json({ apps: [] }) : path === '/api/billing/store' && query.hub_id === 'bakery' ? Response.json(none) : undefined,
+    });
     expect(s.el('store-no-modules').text()).toContain('There are no modules on sale right now.');
   });
 
@@ -380,6 +386,59 @@ describe('StoreShop', () => {
     expect(s.calls().at(-1)).toMatchObject({ path: '/api/billing/module/keep', body: { hub_id: 'bakery', module: 'loyalty' } });
     expect(toastSuccess).toHaveBeenCalledWith('Loyalty is kept: it renews on Oct 31, 2026');
     expect(s.el('module-loyalty').find('[data-testid="module-owned"]').exists()).toBe(true);
+  });
+
+  it('BILLING-G66: «Cancel module» confirms with the date it ends, cancels it, and it can be kept until then', async () => {
+    const owned = catalog('bakery', { modules: [storeModule('booking', 900, { owned: true, source: 'purchase' })] });
+    const s = await setup({
+      tab: 'modules',
+      answer: ({ path, query }) => {
+        if (path === '/api/billing/store' && query.hub_id === 'bakery') return Response.json(owned);
+        if (path === '/api/billing/module/cancel')
+          return Response.json({ hub_id: 'bakery', plan: 'starter', billing_interval: 'month', status: 'active', cancel_at_period_end: false, current_period_end: '2026-10-31T12:00:00Z', trial_end: null, modules: [{ slug: 'booking', source: 'purchase', valid_until: '2026-10-31T12:00:00Z' }] });
+        return undefined;
+      },
+    });
+    await s.el('module-booking').find('[data-testid="module-cancel"]').trigger('click');
+    await flush();
+    const dialog = document.querySelector('[data-testid="store-cancel-module"]');
+    expect(dialog?.textContent).toContain('Panadería López · Bookings');
+    expect(dialog?.textContent).toContain('Bookings keeps working in Panadería López until Oct 31, 2026; then it turns off and is not charged again.');
+    expect(dialog?.textContent).toContain('Nothing the business wrote with it is deleted.');
+    expect(dialog?.textContent).toContain('Until then you can undo it with «Keep».');
+    (document.querySelector('[data-testid="store-cancel-module-submit"]') as HTMLElement).click();
+    await flush();
+    expect(s.calls().at(-1)).toMatchObject({ method: 'POST', path: '/api/billing/module/cancel', body: { hub_id: 'bakery', module: 'booking' } });
+    expect(toastSuccess).toHaveBeenCalledWith('Bookings cancelled: it works until Oct 31, 2026');
+    expect(s.el('module-booking').find('[data-testid="module-keep"]').exists()).toBe(true);
+    expect(s.el('module-booking').find('[data-testid="module-cancel"]').exists()).toBe(false);
+  });
+
+  it('BILLING-G66: a refused cancellation stays in its dialog and says why', async () => {
+    const owned = catalog('bakery', { modules: [storeModule('booking', 900, { owned: true, source: 'purchase' })] });
+    const s = await setup({
+      tab: 'modules',
+      answer: ({ path, query }) => {
+        if (path === '/api/billing/store' && query.hub_id === 'bakery') return Response.json(owned);
+        if (path === '/api/billing/module/cancel') return apiError(409, 'billing.plan_change_pending', 'Undo the scheduled plan change first.');
+        return undefined;
+      },
+    });
+    await s.el('module-booking').find('[data-testid="module-cancel"]').trigger('click');
+    await flush();
+    (document.querySelector('[data-testid="store-cancel-module-submit"]') as HTMLElement).click();
+    await flush();
+    expect(document.querySelector('[data-testid="store-cancel-module"]')?.textContent).toContain('Undo the scheduled plan change first.');
+    expect(toastSuccess).not.toHaveBeenCalled();
+    expect(s.el('module-booking').find('[data-testid="module-cancel"]').exists()).toBe(true);
+  });
+
+  it('saas#2589: a module off sale the business still pays is shown to cancel it, named by billing if the catalog retired its app', async () => {
+    const retired = catalog('bakery', { modules: [storeModule('retired', 500, { owned: true, source: 'purchase', on_sale: false, name: 'Old reports' })] });
+    const s = await setup({ tab: 'modules', answer: ({ path, query }) => (path === '/api/billing/store' && query.hub_id === 'bakery' ? Response.json(retired) : undefined) });
+    expect(s.el('module-retired').find('[data-testid="module-name"]').text()).toBe('Old reports');
+    expect(s.el('module-retired').find('[data-testid="module-off-sale"]').exists()).toBe(true);
+    expect(s.el('module-retired').find('[data-testid="module-cancel"]').exists()).toBe(true);
   });
 
   it('a business that turns out to pay already asks the catalog again and says the price changed', async () => {
