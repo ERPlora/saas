@@ -21,6 +21,11 @@ from django.utils.safestring import SafeString, mark_safe
 _SCRIPT_ESCAPES = {ord("<"): "\\u003C", ord(">"): "\\u003E", ord("&"): "\\u0026"}
 
 
+#: What the product runs on: the browser, the app for Windows and Linux (public/appdist.py) and Android
+#: through Google Play. No macOS build nor iOS app is published (PUBLIC-F14, SAAS_PUBLIC-F75).
+OPERATING_SYSTEMS = "Web, Windows, Linux, Android"
+
+
 def json_ld(payload: dict) -> SafeString:
     """Serialise a schema.org block for ``<script type="application/ld+json">``."""
     return mark_safe(
@@ -74,7 +79,7 @@ def software_application(
         "name": "ERPlora",
         "applicationCategory": "BusinessApplication",
         "applicationSubCategory": "ERP, POS",
-        "operatingSystem": "Web, Windows, macOS, Android, iOS",
+        "operatingSystem": OPERATING_SYSTEMS,
         "url": f"{base}/",
         "description": (
             "Modular cloud ERP and POS for small businesses. Turn on only the apps "
@@ -128,7 +133,7 @@ def industry_software_application(
         "name": name,
         "applicationCategory": "BusinessApplication",
         "applicationSubCategory": "ERP, POS",
-        "operatingSystem": "Web, Windows, macOS, Android, iOS",
+        "operatingSystem": OPERATING_SYSTEMS,
         "url": url,
         "description": description,
         "inLanguage": ["es", "en"],
@@ -159,7 +164,7 @@ def app_software_application(
         "name": name,
         "description": description,
         "applicationCategory": "BusinessApplication",
-        "operatingSystem": "Web, Windows, macOS, Android, iOS",
+        "operatingSystem": OPERATING_SYSTEMS,
         "url": url,
         "author": {"@type": "Organization", "name": "ERPlora"},
     }

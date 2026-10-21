@@ -168,3 +168,31 @@ class TestAppSoftwareApplication:
 
     def test_there_is_no_rating(self):
         assert "aggregateRating" not in self._block()
+
+
+class TestOperatingSystems:
+    """PUBLIC-F14: the systems the product runs on are the ones it is distributed for (SAAS_PUBLIC-F75):
+    the browser, the app for Windows and Linux (public/appdist.py) and Android through Google Play.
+    No macOS build and no iOS app are published."""
+
+    BLOCKS = {
+        "home": lambda: software_application(BASE, Decimal("0"), 3),
+        "industry": lambda: industry_software_application(
+            BASE, name="n", url="u", description="d", cheapest_price=None
+        ),
+        "app": lambda: app_software_application(
+            BASE, name="n", description="d", url="u", premium=False, cheapest_paid_price=None
+        ),
+    }
+
+    def test_every_block_names_the_systems_we_distribute(self):
+        for name, build in self.BLOCKS.items():
+            assert build()["operatingSystem"] == "Web, Windows, Linux, Android", name
+
+    def test_the_systems_are_the_platforms_the_app_page_serves(self):
+        from public.appdist import _APP_PLATFORM_FILES
+
+        systems = software_application(BASE, None, 0)["operatingSystem"].lower()
+
+        assert all(platform in systems for platform in _APP_PLATFORM_FILES)
+        assert "macos" not in systems and "ios" not in systems.split(", ")
