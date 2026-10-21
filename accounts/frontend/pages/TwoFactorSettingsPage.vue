@@ -20,7 +20,7 @@
 // - «Trusted browsers» (ACCOUNTS-F17), with the app on: whether this browser skips the app's code (ACCOUNTS-F05) and
 //   until when (`accounts.browser_trust.get`; allauth keeps no list, so only this one can be told), and «Stop trusting
 //   all browsers» (`accounts.browser_trust.revoke`). Read apart from the authenticators: it never holds the page.
-import { formatDateTime } from '@erplora/ui/components';
+import { formatDateTime, InlineFeedback } from '@erplora/ui/components';
 import {
   ApiError,
   type Authenticator,
@@ -373,14 +373,14 @@ onMounted(() => {
       </div>
 
       <template v-if="view === 'index'">
-        <div
+        <InlineFeedback
           v-if="next && !totpOn"
-          class="non-field-error"
-          role="status"
+          tone="warning"
+          class="notice"
           data-testid="mfa-required"
         >
           {{ $t('accounts.twoFactor.requiredToContinue') }}
-        </div>
+        </InlineFeedback>
         <ion-button
           v-if="next && totpOn"
           data-testid="mfa-continue"
@@ -876,5 +876,8 @@ onMounted(() => {
 /* The template's inline `style="margin-top:1rem;"` on «Can't scan?». */
 .secret-lead {
   margin-top: 1rem;
+}
+.notice {
+  margin-bottom: 0.85rem;
 }
 </style>

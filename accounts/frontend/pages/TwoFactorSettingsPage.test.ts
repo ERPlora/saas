@@ -720,8 +720,11 @@ describe('TwoFactorSettingsPage: setting the app up to go on (next)', () => {
 
   it('says the app is needed to continue while it is off, with no «Continue» yet', async () => {
     fakeAllauth({ 'GET /account/authenticators': list() });
-    const { text, has } = await mountPage('en', { path: '/2fa?next=%2Fadmin%2Faccounts%2Fuser%2F' });
+    const { text, has, wrapper } = await mountPage('en', { path: '/2fa?next=%2Fadmin%2Faccounts%2Fuser%2F' });
     expect(text('mfa-required')).toBe('Turn on the authenticator app to continue.');
+    // A notice of what is still to do, not an error: the warning banner, never the red error box.
+    const notice = wrapper.get('[data-testid="mfa-required"]');
+    expect([notice.attributes('data-tone'), notice.classes('non-field-error')]).toEqual(['warning', false]);
     expect(has('mfa-continue')).toBe(false);
   });
 
