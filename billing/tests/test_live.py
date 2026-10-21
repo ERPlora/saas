@@ -29,3 +29,9 @@ def test_the_subscriptions_rerun_when_a_plan_or_an_unpaid_invoice_changes():
 
 def test_the_payment_method_is_not_live():
     assert not live_registry.is_subscribable("billing.payment_method.get")
+
+
+def test_an_invoice_page_reruns_with_every_invoice_event():
+    """BILLING-G05: the page of one invoice is live, so «Issuing» turns into its number and QR on screen."""
+    for name in events.INVOICES:
+        assert "billing.invoice.get" in live_registry.affected([name]), name

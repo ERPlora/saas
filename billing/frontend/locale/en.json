@@ -295,6 +295,26 @@
       "pdfIssuing": "This invoice is still being issued: its PDF will be ready as soon as it finishes.",
       "pdfUnavailable": "The invoice service is not answering. Try again in a moment."
     },
+    "invoicePage": {
+      "title": "Invoice",
+      "invoice": "Invoice {number}",
+      "creditNote": "Credit note {number}",
+      "unnumbered": "Invoice {reference} (not collected)",
+      "date": "Date",
+      "business": "Business",
+      "payment": "Payment",
+      "fiscal": "VeriFactu",
+      "lines": "What it charges",
+      "period": "{start} – {end}",
+      "prorated": "Prorated",
+      "lineAmounts": "Net {net} · VAT {rate} {tax}",
+      "net": "Taxable base",
+      "vat": "VAT",
+      "total": "Total",
+      "recipient": "Made out to",
+      "loadError": "We could not load this invoice",
+      "view": "View invoice"
+    },
     "subscriptions": {
       "title": "Subscriptions",
       "search": "Search by business",

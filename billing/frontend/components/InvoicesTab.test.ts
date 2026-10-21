@@ -195,19 +195,28 @@ describe('InvoicesTab: the list', () => {
     expect(cell(es, 'c1').get('[data-testid="invoice-rectifies"]').text()).toBe('Rectifica ERP-2026-00123');
   });
 
-  it('per row, «Pay» (fixed and labelled) for one not collected and the PDF once issued', async () => {
+  it('per row, «Pay» (fixed and labelled) for one not collected, the PDF once issued and «View invoice» (BILLING-G92)', async () => {
     const s = await setup();
     await s.show();
     const actions = s.prop<Array<Record<string, unknown>>>('actions');
     expect(actions.map((a) => [a.id, !!a.pinned, !!a.showLabel])).toEqual([
       ['pay', true, true],
       ['pdf', false, false],
+      ['view', false, false],
     ]);
     const ids = (row: string) => s.wrapper.findAll(`[data-testid^="invoices-row-${row}-"]`).map((b) => b.attributes('data-testid')!.split('-').pop());
-    expect(ids('i9')).toEqual(['pay']);
-    expect(ids('00124')).toEqual([]);
-    expect(ids('00123')).toEqual(['pdf']);
+    expect(ids('i9')).toEqual(['pay', 'view']);
+    expect(ids('00124')).toEqual(['view']);
+    expect(ids('00123')).toEqual(['pdf', 'view']);
     expect(s.testid('invoices-row-i9-pay').text()).toBe('Pay');
+  });
+
+  it('BILLING-G05: «View invoice» opens the page of that invoice', async () => {
+    const s = await setup();
+    await s.show();
+    await s.testid('invoices-row-00123-view').trigger('click');
+    await flush();
+    expect(s.router.currentRoute.value.path).toBe('/billing/invoices/00123');
   });
 
   it('«Pay» goes to Stripe’s page of that invoice', async () => {

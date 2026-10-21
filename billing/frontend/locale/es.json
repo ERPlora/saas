@@ -295,6 +295,26 @@
       "pdfIssuing": "Esta factura se está emitiendo: su PDF estará listo en cuanto termine.",
       "pdfUnavailable": "El servicio de facturas no responde. Prueba de nuevo en un momento."
     },
+    "invoicePage": {
+      "title": "Factura",
+      "invoice": "Factura {number}",
+      "creditNote": "Rectificativa {number}",
+      "unnumbered": "Factura {reference} (no cobrada)",
+      "date": "Fecha",
+      "business": "Negocio",
+      "payment": "Cobro",
+      "fiscal": "VeriFactu",
+      "lines": "Lo que se cobra",
+      "period": "{start} – {end}",
+      "prorated": "Prorrateado",
+      "lineAmounts": "Base {net} · IVA {rate} {tax}",
+      "net": "Base imponible",
+      "vat": "IVA",
+      "total": "Total",
+      "recipient": "A nombre de",
+      "loadError": "No hemos podido cargar esta factura",
+      "view": "Ver la factura"
+    },
     "subscriptions": {
       "title": "Suscripciones",
       "search": "Buscar por negocio",

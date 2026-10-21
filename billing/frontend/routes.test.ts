@@ -15,6 +15,7 @@ import routes from './routes';
 // second idle and past Vitest's 5 s on a loaded machine. The router's navigations load them too.
 vi.mock('./pages/StorePage.vue', () => ({ default: { name: 'StorePage' } }));
 vi.mock('./pages/BillingPage.vue', () => ({ default: { name: 'BillingPage' } }));
+vi.mock('./pages/InvoicePage.vue', () => ({ default: { name: 'InvoicePage' } }));
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -25,7 +26,19 @@ describe('billing routes.ts', () => {
       ['/store/:tab(plans|modules)', { auth: true }],
       ['/billing', { auth: true }],
       ['/billing/:tab(invoices|subscriptions|payment)', { auth: true }],
+      ['/billing/invoices/:id', { auth: true }],
     ]);
+  });
+
+  it('BILLING-G05: an invoice has its own page, its id as a prop, loaded on demand; not selling: no `webOnly`', async () => {
+    const page = routes.find((r) => r.path === '/billing/invoices/:id');
+    expect(page?.props).toBe(true);
+    expect(page?.meta?.webOnly).toBeUndefined();
+    const router = createRouter({ history: createMemoryHistory(), routes });
+    expect(router.resolve('/billing/invoices/0193f0a0-0000-7000-8000-000000000000').params).toEqual({ id: '0193f0a0-0000-7000-8000-000000000000' });
+    expect(router.resolve('/billing/invoices').params).toEqual({ tab: 'invoices' });
+    const loader = page?.component as () => Promise<{ default: RouteComponent }>;
+    expect((await loader()).default).toEqual({ name: 'InvoicePage' });
   });
 
   it('opens Billing on Invoices, keeping what it was opened for (`?business=`, Stripe’s Portal coming back)', () => {

@@ -12,6 +12,8 @@ from billing import events
 from hubs import events as hub_events
 
 live("billing.invoice.list", on=[*events.INVOICES])
+# The page of one invoice (BILLING-G05): «Issuing» turns into its number and QR while it is on screen.
+live("billing.invoice.get", on=[*events.INVOICES])
 live(
     "billing.subscription.list",
     on=[
