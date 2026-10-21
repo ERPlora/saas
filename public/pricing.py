@@ -94,6 +94,11 @@ def cheapest(plans):
     )
 
 
+def free_plan(plans):
+    """The Free plan on sale (0 €), the one every business is born on (``hubs.queries.free_plan``), or ``None``."""
+    return next((plan for plan in plans.plans if not plan.price_monthly), None)
+
+
 def cheapest_paid_price(plans) -> Decimal | None:
     """The monthly price of the cheapest paid plan a visitor can sign up for, or ``None``.
 

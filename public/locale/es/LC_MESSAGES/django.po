@@ -1910,9 +1910,6 @@ msgstr "Regístrate y tu hub se aprovisiona en minutos: nada que instalar, nada 
 msgid "No credit card required"
 msgstr "Sin tarjeta de crédito"
 
-msgid "1 device, 3 local users"
-msgstr "1 dispositivo, 3 usuarios locales"
-
 msgid "For counter hardware"
 msgstr "Para el hardware del mostrador"
 
