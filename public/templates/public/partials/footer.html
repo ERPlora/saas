@@ -9,7 +9,8 @@
   and Cookies, then the declaración responsable (art. 13.2 RRSIF: at hand before buying); Support's
   are Help Center, Support, Contact and the support address. Last, the language switcher (PUBLIC-F13): one POST
   form per language to /set-language/ back to the same page, its ion-button in the language's own name, as the footers of
-  Stripe, Shopify or Square; the cookie it writes is what LocaleMiddleware reads.
+  Stripe, Shopify or Square; the cookie it writes is what LocaleMiddleware reads. Ionic moves aria-current
+  into the button's shadow, so the style hangs on data-current.
 {% endcomment %}
 <footer class="ep-footer">
     <div class="ep-footer__columns">
@@ -59,7 +60,7 @@
                 {% csrf_token %}
                 <input type="hidden" name="next" value="{{ request.get_full_path }}">
                 <input type="hidden" name="language" value="{{ choice.code }}">
-                <ion-button type="submit" fill="clear" size="small" lang="{{ choice.code }}"{% if choice.code == current_language %} aria-current="true"{% endif %}>{{ choice.name_local|capfirst }}</ion-button>
+                <ion-button type="submit" fill="clear" size="small" lang="{{ choice.code }}"{% if choice.code == current_language %} aria-current="true" data-current{% endif %}>{{ choice.name_local|capfirst }}</ion-button>
             </form>
             {% endfor %}
         </div>
