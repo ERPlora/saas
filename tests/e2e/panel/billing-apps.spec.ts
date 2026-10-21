@@ -9,7 +9,7 @@ import { execFileSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 import { djangoEnv } from '../django-env';
 import { businessIdOf, djangoPrint, expect, panelAccount, qaAccount, settled, shot, sidewaysScroll, signIn, test, watchPageErrors } from './fixtures';
@@ -44,6 +44,46 @@ async function atEverySize(page: Page, key: string, ready: () => Promise<void>, 
     await page.screenshot({ path: shot(`APP-BILLING-2-${key}-${size.name}`), fullPage });
   }
   await page.setViewportSize({ width: 1440, height: 900 });
+}
+
+/**
+ * A dialog that slides in again at a new size (below 640px it is a sheet from the bottom) is in place once its
+ * button `testid` is whole on screen and stays put for a frame: the slide runs in Ionic's shadow DOM, where
+ * `settled` does not see it, and a capture taken before shows the sheet halfway.
+ */
+async function dialogInPlace(page: Page, testid: string): Promise<void> {
+  const button = page.getByTestId(testid);
+  await expect(button).toBeInViewport({ ratio: 1 });
+  await button.evaluate(
+    (element) =>
+      new Promise<void>((still) => {
+        let last = '';
+        const frame = () => {
+          const { top, left, width, height } = element.getBoundingClientRect();
+          const now = `${top},${left},${width},${height}`;
+          if (now === last) still();
+          else {
+            last = now;
+            requestAnimationFrame(frame);
+          }
+        };
+        requestAnimationFrame(frame);
+      }),
+  );
+}
+
+/** The amounts of a charge's summary in `dialog` that do not fit their row: cut off at the edge. */
+async function cutAmounts(dialog: Locator): Promise<string[]> {
+  return dialog.getByTestId('proration-row').evaluateAll((rows) =>
+    rows.flatMap((row) => {
+      const note = row.querySelector('ion-note');
+      if (!note) return [];
+      const box = row.getBoundingClientRect();
+      const amount = note.getBoundingClientRect();
+      const cut = amount.right > box.right + 0.5 || note.scrollWidth > note.clientWidth + 1;
+      return cut ? [note.textContent?.trim() ?? ''] : [];
+    }),
+  );
 }
 
 /** What `billing.module.*` and `billing.checkout.confirm` answer: the business's subscription after the change. */
@@ -122,6 +162,8 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
       'BILLING-G62',
       async () => {
         await expect(dialog.getByTestId('proration-row').first()).toBeVisible();
+        await dialogInPlace(page, 'proration-modal-submit');
+        expect(await cutAmounts(dialog)).toEqual([]);
       },
       false,
     );
@@ -173,6 +215,7 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
       async () => {
         await expect(dialog).toContainText('E2E Apps Bookings keeps working in Panadería López until');
         await expect(dialog).toContainText('Nothing the business wrote with it is deleted.');
+        await dialogInPlace(page, 'store-cancel-module-submit');
       },
       false,
     );
@@ -252,6 +295,8 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
       await expect(page.getByText('Bar Norte').first()).toBeVisible();
       await expect(page.getByText(/E2E Apps Reports/).first()).toBeVisible();
       await expect(page.getByText(/E2E Apps Loyalty/).first()).toBeVisible();
+      // BILLING-G67: Bar Norte's Bookings ended yesterday and is gone; the bakery's is still had.
+      await expect(page.getByText(/E2E Apps Bookings/).filter({ visible: true })).toHaveCount(1);
     });
     expect(errors).toEqual([]);
   });
@@ -282,6 +327,8 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
       'BILLING-G17',
       async () => {
         await expect(dialog.getByTestId('proration-row').first()).toBeVisible();
+        await dialogInPlace(page, 'proration-modal-submit');
+        expect(await cutAmounts(dialog)).toEqual([]);
       },
       false,
     );
