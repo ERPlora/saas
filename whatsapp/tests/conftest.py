@@ -29,7 +29,7 @@ GRAPH = "https://graph.facebook.com/v25.0"
 
 
 @pytest.fixture
-def meta(settings):
+def whatsapp_on(settings):
     """WhatsApp configured as outside the tests: Meta's app, its webhook secret and the key of the tokens."""
     settings.WHATSAPP_APP_ID = APP_ID
     settings.WHATSAPP_APP_SECRET = APP_SECRET

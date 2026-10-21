@@ -33,11 +33,11 @@ def test_a_key_that_is_no_fernet_key_is_an_error(settings):
     assert "FERNET_KEY" in error.msg
 
 
-def test_a_complete_configuration_says_nothing(meta):
+def test_a_complete_configuration_says_nothing(whatsapp_on):
     assert check_meta_settings(None) == []
 
 
-def test_a_missing_setting_is_information_naming_it(meta, settings):
+def test_a_missing_setting_is_information_naming_it(whatsapp_on, settings):
     settings.WHATSAPP_APP_SECRET = ""
     settings.FERNET_KEY = ""
 

@@ -6,7 +6,7 @@ from whatsapp import crypto
 from whatsapp.tests.conftest import FERNET_KEY, OTHER_FERNET_KEY
 
 
-def test_a_secret_comes_back_from_its_token(meta):
+def test_a_secret_comes_back_from_its_token(whatsapp_on):
     token = crypto.encrypt("EAAG-business-token")
 
     assert token != "EAAG-business-token"
@@ -14,7 +14,7 @@ def test_a_secret_comes_back_from_its_token(meta):
     assert crypto.decrypt(token) == "EAAG-business-token"
 
 
-def test_the_previous_key_still_opens_what_it_closed(meta, settings):
+def test_the_previous_key_still_opens_what_it_closed(whatsapp_on, settings):
     settings.FERNET_KEY = OTHER_FERNET_KEY
     old = crypto.encrypt("EAAG-old")
 
@@ -27,7 +27,7 @@ def test_the_previous_key_still_opens_what_it_closed(meta, settings):
     assert crypto.decrypt(crypto.encrypt("EAAG-new")) == "EAAG-new"
 
 
-def test_a_token_of_another_key_is_undecryptable(meta, settings):
+def test_a_token_of_another_key_is_undecryptable(whatsapp_on, settings):
     settings.FERNET_KEY = OTHER_FERNET_KEY
     token = crypto.encrypt("EAAG-x")
     settings.FERNET_KEY = FERNET_KEY
@@ -36,7 +36,7 @@ def test_a_token_of_another_key_is_undecryptable(meta, settings):
         crypto.decrypt(token)
 
 
-def test_without_a_key_nothing_is_encrypted(meta, settings):
+def test_without_a_key_nothing_is_encrypted(whatsapp_on, settings):
     settings.FERNET_KEY = ""
 
     assert crypto.configured() is False

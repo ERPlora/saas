@@ -275,7 +275,11 @@ LOGGING = {
     "root": {"handlers": ["console"], "level": LOG_LEVEL},
     # Django's own logger writes once, through the same handler (not also through its DEBUG-only one).
     "loggers": {
-        "django": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False}
+        "django": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},
+        # httpx logs every request's full address at INFO: Meta's token exchange carries the app's secret in it
+        # (whatsapp/meta.py), so only its warnings get through.
+        "httpx": {"level": "WARNING"},
+        "httpcore": {"level": "WARNING"},
     },
 }
 
