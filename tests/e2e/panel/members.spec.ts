@@ -18,6 +18,8 @@ import {
   type HubDouble,
   panelAccount,
   seedPanel,
+  shot,
+  sidewaysScroll,
   signIn,
   signInThroughPage,
   startHubDouble,
@@ -339,6 +341,65 @@ test.describe('members', () => {
     await expect(page.getByTestId('invite-modal-submit')).toHaveAttribute('aria-disabled', 'true');
     await page.getByTestId('invite-email').locator('input').fill('e2e-seat-again@example.com');
     await expect(page.getByTestId('invite-modal-submit')).not.toHaveAttribute('aria-disabled', 'true');
+    expect(errors).toEqual([]);
+  });
+
+  test('after a hand-over, whoever still pays is not removed: «Remove» says what to do first (saas#2587)', async ({
+    page,
+    browser,
+  }) => {
+    test.setTimeout(120_000);
+    const errors = watchPageErrors(page);
+    // e2e-several hands Panadería López (Starter) over to its admin Carlos, through the API; its payer stays its own.
+    await signIn(page.request, panelAccount('several'));
+    const id = await businessIdOf(page.request, 'Panadería López');
+    const admin = (await membersOf(page, id)).rows.find((one) => one.email === 'e2e-carlos@example.com');
+    if (!admin) throw new Error('Carlos is not in hubs.member.list');
+    const offered = await apiPost(page.request, '/api/hubs/ownership/transfer', { hub_id: id, member_id: admin.id });
+    expect(offered.status(), await offered.text()).toBe(200);
+    const transfer = ((await offered.json()) as { id: string }).id;
+
+    const context = await browser.newContext({ baseURL: PANEL_URL, locale: 'en-US', viewport: { width: 1440, height: 900 } });
+    await freezeFrontend(context);
+    const carlos = await context.newPage();
+    const carlosErrors = watchPageErrors(carlos);
+    await signIn(carlos.request, panelAccount('carlos'));
+    const accepted = await apiPost(carlos.request, '/api/hubs/ownership/accept', { id: transfer });
+    expect(accepted.status(), await accepted.text()).toBe(200);
+
+    // The new owner's «Remove» on the old one, now an admin: refused in the dialog, which stays open.
+    const oldOwner = (await membersOf(carlos, id)).rows.find((one) => one.email === 'e2e-several@example.com');
+    if (!oldOwner) throw new Error('the old owner is not in hubs.member.list');
+    expect(oldOwner.role).toBe('hub_admin');
+    expect(oldOwner.actions).toContain('remove');
+    await carlos.goto(`/businesses/${id}/members`);
+    const dialog = carlos.getByTestId('remove-dialog');
+    const refusal = carlos.getByTestId('remove-dialog-error');
+    for (const size of [
+      { name: '375', width: 375, height: 667 },
+      { name: '820', width: 820, height: 1180 },
+      { name: '1440', width: 1440, height: 900 },
+    ]) {
+      await carlos.setViewportSize({ width: size.width, height: size.height });
+      await carlos.getByTestId(`members-row-${oldOwner.id}-remove`).click();
+      await expect(dialog).toBeVisible();
+      await carlos.getByTestId('remove-dialog-submit').click();
+      await expect(refusal).toContainText('Laura Martín still pays for this business. Say who pays from now on first');
+      await expect(dialog).toBeVisible();
+      expect(await sidewaysScroll(carlos), `the refusal scrolls sideways at ${size.name}`).toEqual([]);
+      await carlos.screenshot({ path: shot(`APP-ACCOUNTS-3-member-pays-${size.name}`) });
+      await carlos.getByTestId('remove-dialog-cancel').click();
+      await expect(dialog).toBeHidden();
+    }
+
+    // Nobody left: the old owner is still in the business, and the server says why with its code.
+    expect((await membersOf(carlos, id)).rows.map((one) => one.email)).toContain('e2e-several@example.com');
+    const refused = await apiPost(carlos.request, '/api/hubs/members/remove', { id: oldOwner.id });
+    expect(refused.status()).toBe(409);
+    expect(((await refused.json()) as { error: { code: string } }).error.code).toBe('hubs.member_pays');
+
+    await context.close();
+    expect(carlosErrors).toEqual([]);
     expect(errors).toEqual([]);
   });
 });
