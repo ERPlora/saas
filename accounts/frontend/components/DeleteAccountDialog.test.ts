@@ -22,13 +22,13 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-async function setup(api: () => Response | Promise<Response>) {
+async function setup(api: () => Response | Promise<Response>, locale: 'en' | 'es' = 'en') {
   const open = ref(true);
   const Host = {
     render: () =>
       h(DeleteAccountDialog, { profile: profile(), leave, open: open.value, 'onUpdate:open': (v: boolean) => (open.value = v) }),
   };
-  const s = await mountPanel(Host, { api });
+  const s = await mountPanel(Host, { api, locale });
   await flush();
   return { ...s, open };
 }
@@ -46,6 +46,16 @@ describe('DeleteAccountDialog', () => {
     expect(s.q('delete-account')?.getAttribute('role')).toBe('alertdialog');
     expect(s.q('delete-account')?.textContent).toContain('This cannot be undone');
     expect(ionProps(s.q('delete-account-submit'), 'disabled')).toEqual({ disabled: true });
+  });
+
+  it('says ERPlora’s invoices are kept as the law asks (ACCOUNTS-F27)', async () => {
+    const s = await setup(() => Response.json({ deleted: true }));
+    expect(s.q('delete-account')?.textContent).toContain('Your ERPlora invoices are kept for as long as the law requires.');
+  });
+
+  it('says it in Spanish', async () => {
+    const s = await setup(() => Response.json({ deleted: true }), 'es');
+    expect(s.q('delete-account')?.textContent).toContain('Tus facturas de ERPlora se conservan el tiempo que exige la ley.');
   });
 
   it('deletes the account and leaves for the public web', async () => {

@@ -56,6 +56,18 @@ describe('RemoveDialog', () => {
     expect(s.q('remove-dialog-error').textContent).toContain('We could not reach ERPlora. Check your connection and try again.');
   });
 
+  it('whoever still pays for the business is not removed: the dialog stays open and says what to do', async () => {
+    const message = 'Olga Owner still pays for this business. Say who pays from now on first: your billing details are asked when you pay a plan or a module here.';
+    const s = await setup(member('olga', { name: 'Olga Owner' }), () =>
+      Response.json({ error: { code: 'hubs.member_pays', message } }, { status: 409 }),
+    );
+    s.q('remove-dialog-submit').click();
+    await flush();
+    expect(s.q('remove-dialog-error').textContent).toContain(message);
+    expect(toastSuccess).not.toHaveBeenCalled();
+    expect(s.open.value).toBe(true);
+  });
+
   it('cancels a pending invitation, with «Back» as the way out', async () => {
     const s = await setup(member('jorge', { email: 'jorge@example.com', status: 'pending', actions: ['change_role', 'resend', 'cancel'] }));
     expect(s.q('remove-dialog').getAttribute('aria-label')).toBe('Cancel the invitation');

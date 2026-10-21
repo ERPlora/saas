@@ -64,6 +64,7 @@ const ACCOUNT_PAGE_ROUTES = {
   'accounts.profile.get': { method: 'get', path: '/api/accounts/profile' },
   'accounts.profile.update': { method: 'post', path: '/api/accounts/profile' },
   'accounts.profile.delete': { method: 'post', path: '/api/accounts/profile/delete' },
+  'accounts.data.export': { method: 'get', path: '/api/accounts/export' },
   'accounts.email.change': { method: 'post', path: '/api/accounts/email/change' },
   'accounts.email.verify': { method: 'post', path: '/api/accounts/email/verify' },
   'accounts.photo.upload': { method: 'post', path: '/api/accounts/photo' },

@@ -1,4 +1,4 @@
-"""Account → Profile → «Change» the email: ``accounts.email.change`` and ``accounts.email.verify`` (plan
+"""ACCOUNTS-F21 · Account → Profile → «Change» the email: ``accounts.email.change`` and ``accounts.email.verify`` (plan
 2026-10-13, L3-A).
 
 Ported from ERPlora/saas ``apps/dashboard/profile/tests/test_change_email.py`` (24; saas#2536,

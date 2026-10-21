@@ -631,6 +631,22 @@ msgstr ""
 "Comercio)."
 
 #: templates/public/legal/privacy.html
+msgid ""
+"Payer details (legal name, tax ID, address and billing email) and the "
+"payment customer at Stripe: erased when you delete your account. If an "
+"ERPlora invoice is still unpaid, they are kept until it is paid or "
+"cancelled, and 90 days at most, because the invoice must name whom it is "
+"issued to (Art. 17.3.b GDPR); on that day the unpaid invoice is cancelled. "
+"The invoices already issued keep their own copy for the period above."
+msgstr ""
+"Datos del pagador (nombre fiscal, NIF, dirección y correo de facturación) y "
+"el cliente de pago en Stripe: se borran al eliminar tu cuenta. Si queda una "
+"factura de ERPlora sin pagar, se conservan hasta que se pague o se anule, y "
+"como mucho 90 días, porque la factura tiene que identificar a quién se emite "
+"(art. 17.3.b RGPD); ese día la factura pendiente se anula. Las facturas ya "
+"emitidas guardan su propia copia durante el plazo anterior."
+
+#: templates/public/legal/privacy.html
 msgid "Marketing data: until consent is withdrawn."
 msgstr "Datos de marketing: hasta retirada del consentimiento."
 
@@ -2285,9 +2301,13 @@ msgstr "Todas las apps gratuitas incluidas, listo para VeriFactu"
 msgid "Process transactions in milliseconds, with live updates on every device."
 msgstr "Procesa transacciones en milisegundos, con actualizaciones en vivo en todos los dispositivos."
 
-#: templates/public/legal/privacy.html
+#: templates/public/legal/terms.html
 msgid "October 13, 2026"
 msgstr "13 de octubre de 2026"
+
+#: templates/public/legal/privacy.html
+msgid "October 21, 2026"
+msgstr "21 de octubre de 2026"
 
 #: templates/public/legal/privacy.html
 msgid "Amazon Web Services EMEA SARL (Luxembourg) — Ireland region, eu-west-1:"

@@ -265,11 +265,16 @@
         "saved": "Cambios guardados",
         "loadError": "No hemos podido cargar tu cuenta"
       },
+      "export": {
+        "title": "Exportar tus datos",
+        "lead": "Una copia de tu cuenta, tus negocios y tus facturas de ERPlora, en un fichero que otras aplicaciones pueden leer.",
+        "download": "Descargar mis datos"
+      },
       "delete": {
         "title": "Eliminar tu cuenta",
         "confirm": "Eliminar cuenta",
         "typeEmail": "Tu correo",
-        "message": "Se borran tu cuenta, tu foto, tus preferencias y tus claves de API, y se cierran todas tus sesiones, también en las apps y en tus negocios. No se puede deshacer.",
+        "message": "Se borran tu cuenta, tu foto, tus preferencias y tus claves de API, y se cierran todas tus sesiones, también en las apps y en tus negocios. No se puede deshacer. Tus facturas de ERPlora se conservan el tiempo que exige la ley.",
         "lead": "Tu cuenta y lo que hay en ella se borran para siempre. Antes tienes que transferir o eliminar los negocios de los que eres propietario.",
         "owns": "Eres propietario de {n} negocio: transfiérelo o elimínalo antes de borrar la cuenta. | Eres propietario de {n} negocios: transfiérelos o elimínalos antes de borrar la cuenta.",
         "pays": "Pagas {n} negocio de otra persona: pide a su propietario que ponga sus propios datos de pago antes de borrar la cuenta. | Pagas {n} negocios de otras personas: pide a sus propietarios que pongan sus propios datos de pago antes de borrar la cuenta.",
@@ -300,12 +305,10 @@
         "language": "Idioma",
         "languageHint": "También el idioma de los correos que te enviamos.",
         "mails": "Avisos por correo",
-        "invoices": "Facturas y pagos",
-        "invoicesHint": "Siempre activos: son obligatorios.",
+        "invoices": "Seguridad, facturas y pagos",
+        "invoicesHint": "Siempre activos: códigos para entrar, avisos de seguridad, facturas, pagos y lo que te pide hacer algo.",
         "hubAlerts": "Avisos de mis negocios",
-        "hubAlertsHint": "Un negocio está listo, un pago está pendiente.",
-        "marketing": "Novedades de ERPlora",
-        "marketingHint": "Una vez al mes como mucho."
+        "hubAlertsHint": "Cuando un negocio tuyo está listo para abrir."
       },
       "keys": {
         "newTitle": "Nueva clave de API",

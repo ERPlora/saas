@@ -338,6 +338,13 @@ Implicados: accounts (las claves de API)
 - Direcciones viejas (F03, F09, F10, F13): `hubs/redirects.py`, 301 de `/dashboard/`, `/dashboard/hubs/`,
   `…/active/`, `…/inactive/`, `…/create/` (`/businesses?create=1`) y `…/<id>/qr/` (el Resumen). El resto de
   `/dashboard/*` es de sus apps.
+- Quitar a quien aún paga (trampa saas#2587; el flujo de miembros lo escribe la parte 3, personas): `hubs.member.remove`
+  no saca del negocio a quien aún lo paga (`queries.still_pays`: es dueño de su pagador, o tras un traspaso el plan
+  se sigue cobrando al cliente de Stripe de uno de sus pagadores). 409 `hubs.member_pays` con qué hacer: que el
+  propietario ponga sus datos de pago (se piden al pagar un plan o un módulo) o, si el plan sigue en la tarjeta
+  anterior, que soporte lo pase a su nombre (`billing.payer_required`). Así nadie paga un negocio que ya no ve, y
+  `accounts` retiene la cuenta de quien paga (`accounts.pays_businesses`, ACCOUNTS-F27). Tests:
+  `hubs/tests/test_members.py::TestRemoveThePayer`.
 - Planes (F05): `Plan` con columnas por idioma (`TranslatedFields`, `<campo>_en` y `<campo>_es`), sembrados por la
   migración `0013`; el admin (`hubs/admin.py`) es la única escritura. La lista pública es `hubs.plan.list`.
 - Pruebas: cada test cita su clave en el nombre o el docstring; los e2e de esta parte están en

@@ -255,7 +255,8 @@ class HubOwnershipTransferAdmin(PlatformActions):
 
 @admin.register(BillingProfile)
 class BillingProfileAdmin(PlatformActions):
-    list_display = ["__str__", "owner", "billing_email", "tax_id", "billing_country", "created_at"]
+    # ``forget_after``: the account deleted itself; the payer goes once nothing can be charged to it (ACCOUNTS-F27).
+    list_display = ["__str__", "owner", "billing_email", "tax_id", "billing_country", "created_at", "forget_after"]
     list_select_related = ["owner"]
     search_fields = ["billing_name", "tax_id", "billing_email", "owner__email"]
 

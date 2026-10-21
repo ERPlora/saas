@@ -736,14 +736,8 @@ msgstr "apariencia"
 msgid "business notices"
 msgstr "avisos de mis negocios"
 
-msgid "Business ready, payments pending."
-msgstr "Negocio listo, pagos pendientes."
-
-msgid "ERPlora news"
-msgstr "novedades de ERPlora"
-
-msgid "At most once a month."
-msgstr "Una vez al mes como mucho."
+msgid "When a business is ready to open."
+msgstr "Cuando un negocio está listo para abrir."
 
 msgid "updated at"
 msgstr "actualizado el"

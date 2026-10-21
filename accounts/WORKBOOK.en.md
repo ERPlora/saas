@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:c42630d035d37ee342064120bb7e38494b8431d452313352642b3c7f9468790a -->
+<!-- generated from WORKBOOK.md sha256:bc8ac353a2bd38e292ce017e9e56e303eb03b2d7a6126427aabd9a9cd5372331 -->
 
 ## What it is for and who it is for
 
@@ -16,7 +16,9 @@ Who uses it:
 
 - **Anyone** creates their account, signs in and out, and recovers their password.
 - **The person with an account** changes their password, turns on the authenticator app and sees and
-  closes their sessions from **Account › Security**.
+  closes their sessions from **Account › Security**; changes their profile, downloads their data and deletes
+  their account from **Account › Profile**, and chooses their language, theme and notices from **Account ›
+  Preferences** (the theme, also from the **User menu**).
 - **ERPlora staff** see and manage the accounts from the admin, without being able to change what an
   account accepted; in an incident they close every session of an account and, with two-step verification
   switched on, they only get into the admin with their authenticator app.
@@ -44,6 +46,36 @@ Who uses it:
   browser, the address and the last use, this browser's first, and closing one or all the others.
 - **GitHub (organizations that require two-step verification)**: the admin console only lets its people in
   with the second factor on, and sends them to turn it on.
+- **Deleting the account** (8 references): whoever owns something others use hands it over or closes it before
+  leaving, and the screen says what holds them. GitHub does not delete the sole owner of an organization
+  (https://docs.github.com/en/enterprise-server@3.11/account-and-profile/setting-up-and-managing-your-personal-account-on-github/managing-your-personal-account/deleting-your-personal-account);
+  Slack asks to transfer the primary ownership (https://slack.com/help/articles/203953146); Shopify, to transfer
+  the store before closing it (https://community.shopify.com/t/brand-assets-and-store-closure-concerns/400728); Zoom
+  and Square, to cancel what is paid before deleting, with the password or a code to confirm
+  (https://www.ionos.com/digitalguide/online-marketing/social-media/how-to-delete-your-zoom-account,
+  https://community.squareup.com/t5/Your-Square-Account-Information/Re-Negative-Balance-Close-Account/m-p/701366);
+  Odoo deletes the account from its portal and warns it cannot be recovered
+  (https://www.odoo.com/documentation/18.0/administration/odoo_accounts.html); Stripe keeps what the law requires it
+  to keep (https://support.stripe.com/questions/i-would-like-to-delete-the-information-stripe-has-collected-from-me).
+  Notion deletes its workspaces with the account (https://supademo.com/tutorials/notion/how-to-delete-your-notion-account):
+  not here, because deleting a business cancels its plan and switches its till off, and that is its own flow.
+- **The payer details when the account is deleted** (8 references): the issued invoices keep their own copy of
+  the payer and the rest goes with the account; only what can still be charged holds those details, and with a
+  date. Stripe advises, for a deletion request, to leave issued invoices alone, void the subscription invoices
+  still open and delete the customer (https://docs.stripe.com/privacy/deletion-requests); Atlassian deletes the
+  personal data within 30 days and keeps only the purchase records accounting requires
+  (https://support.atlassian.com/atlassian-account/docs/delete-your-atlassian-account/); Odoo deletes except what
+  the law makes it keep for billing and tax (https://www.odoo.com/privacy); Holded deletes or anonymises once the
+  legal periods end (https://www.holded.com/es/politica-de-privacidad); Shopify and Square do not close with an
+  invoice outstanding (https://community.shopify.com/t/to-close-your-store-all-outstanding-invoices-must-be-paid/244113,
+  https://community.squareup.com/t5/Payments-Troubleshooting/Negative-Balance-Close-Account/m-p/698891); GitHub
+  stops billing when the account is deleted (https://docs.github.com/en/articles/deleting-your-user-account); Zoho
+  asks to cancel the subscriptions and deletes everything on closing
+  (https://help.zoho.com/portal/en/kb/accounts/manage-your-zoho-account/articles/close-your-zoho-account). Here an
+  invoice outstanding for a business already deleted, which stops being billed when it is deleted, does not block:
+  it is waited for until paid or cancelled, 90 days at most (the days a deleted business is kept), because the
+  invoice must name whom it is issued to (GDPR art. 17.3.b; Commercial Code art. 30, General Tax Law art. 66).
+- **GitHub ("Export account data")**: downloading the account's data sits next to deleting it, on the same page.
 
 ## Before you start
 
@@ -108,6 +140,15 @@ The list of accounts carries the action "Close all their sessions", which also e
 browsers; **User sessions** shows who signed in where, read only, with "Close the selected
 sessions". Only a superuser sees both actions.
 
+### Account › Profile
+"Your details" (the photo or the initials with "Change photo", "First name", "Last name", the "Email you sign in
+with" with "Change" and "Save changes"), "Export your data" to download ("Download my data") and the red card "Delete
+your account". At the bottom, the tabs of **Account**: "Profile", "Security", "Preferences" and "API keys".
+
+### Account › Preferences
+Three cards that save on their own: "Appearance" ("System", "Light", "Dark"), "Language" ("English",
+"Español") and "Email notices" ("Security, invoices and payments", always on, and "Business notices").
+
 ### User menu
 The name and the email at the top of the side menu (on a phone, inside the menu): "Account", "Help", the
 theme and "Sign out".
@@ -116,9 +157,9 @@ theme and "Sign out".
 
 | State | What the person sees |
 |---|---|
-| Loading | The submit button is off while the request is on its way; the email's link says "Checking your link…"; the two-step verification settings, "Loading…"; the sessions, the table loading. |
+| Loading | The submit button is off while the request is on its way, and so is "Download my data" while it prepares the file; the profile and the preferences, their cards loading; the email's link says "Checking your link…"; the two-step verification settings, "Loading…"; the sessions, the table loading. |
 | Empty | Without a session, every page of the panel leads to the **Entrance**, which goes back to it after signing in. With this session alone, "Close other sessions" is off; without recovery codes, "Without them, losing your authenticator locks you out of your account." with "Generate recovery codes". |
-| Error | Each error appears under its field, with the words of the rule that fails ("Your new password must be different from the current one."); a network failure, "We could not sign you in. Please try again." or "Something went wrong. Please try again.". Settings that do not load, "We could not load your security settings. Please try again." with "Try again"; the sessions, "We could not load your sessions" with "Try again". |
+| Error | Each error appears under its field, with the words of the rule that fails ("Your new password must be different from the current one."); a network failure, "We could not sign you in. Please try again." or "Something went wrong. Please try again.". Settings that do not load, "We could not load your security settings. Please try again." with "Try again"; the sessions, "We could not load your sessions" with "Try again"; the profile, "We could not load your account", and the preferences, "We could not load your preferences", with "Try again". A change of preferences that is not saved goes back to how it was. |
 | Throttle | "Too many failed login attempts. Try again later." or "Too many attempts. Please wait a few minutes and try again.", the same whether the account exists or not. |
 | Expired link | "This password reset link has expired or is not valid." with "Request New Link". |
 | Expired code | The entrance says "Your code expired or was typed wrong too many times. Sign in again and we will email you a new one." |
@@ -148,6 +189,13 @@ theme and "Sign out".
 | ACCOUNTS-F18 | See and close the open sessions | done |
 | ACCOUNTS-F19 | Close an account's sessions from the admin | done |
 | ACCOUNTS-F20 | Require the authenticator app from the staff in the admin | done |
+| ACCOUNTS-F21 | See and change my profile | done |
+| ACCOUNTS-F22 | Choose the language and the appearance | done |
+| ACCOUNTS-F23 | Choose which email notices to get | done |
+| ACCOUNTS-F24 | Change the theme from the user menu | done |
+| ACCOUNTS-F25 | Open the user menu | done |
+| ACCOUNTS-F26 | Download my data | done |
+| ACCOUNTS-F27 | Delete my account | done |
 
 ### ACCOUNTS-F01 Create the account
 Status: done
@@ -320,7 +368,7 @@ Actor: ERPlora staff
 Screen: admin › Accounts › Users
 Steps:
 1. The staff search for an account by email or name, or filter by active, staff and language.
-2. Its page shows the email, the password (only "Reset password"), the personal details and the language, the permissions and groups, the dates, "Terms and privacy" (read only), the preferences, the photo and its businesses.
+2. Its page shows the email, the password (only "Reset password"), the personal details and the language, the permissions and groups, the dates, "Terms and privacy" (read only), the preferences and the photo if it changed them (read only) and its businesses.
 3. "Add user" creates an account with its email and a password (or without one, which is set with the email's link).
 In: what the staff type.
 Out: the account, identified by its email (in lower case and unique) and with its own identifier.
@@ -419,3 +467,100 @@ In: the staff account and where they were going (only pages of erplora.com).
 Out: the staff get into the admin, and jump to the businesses' admin, only with their authenticator app; with two-step verification off, as until now.
 If it fails: recovery codes alone are not enough; an account without the staff mark does not get into the admin even with the app; "Continue" never leads outside erplora.com.
 Involved: hubs (the jump to the businesses' admin)
+
+### ACCOUNTS-F21 See and change my profile
+Status: done
+Actor: any person with an account
+Screen: Account › Profile
+Steps:
+1. From the **User menu**, "Account" opens **Account › Profile**: "Your details" with the photo (or the initials), "First name", "Last name" and the "Email you sign in with".
+2. The person changes their first or last name: "Save changes" turns on when something changes ("It turns on when you change something.").
+3. They tap "Save changes": "Changes saved", and the user menu and the businesses they enter call them that.
+4. "Change photo" uploads a photo (JPEG, PNG or WebP), kept clean of the camera's hidden data; "Remove photo" goes back to the initials.
+5. The email changes with "Change": a code arrives at the new address and, once typed, that one becomes the one to sign in with; the old one gets a notice of the change.
+In: first and last name, the photo, or the new email and its code.
+Out: the profile changed, in the panel and in every business entered afterwards. Every account has its profile from the start, with nothing to fill in. The same is read and saved from any program with the person's session.
+If it fails: an empty first name is not saved ("Write your first name."); a photo that is no image or is too big says why and keeps the one there was; a network failure, "We could not reach ERPlora…" and nothing changes. The billing details are not here: they belong to **Billing**.
+Involved: hubs (the businesses get the name at sign-in)
+
+### ACCOUNTS-F22 Choose the language and the appearance
+Status: done
+Actor: any person with an account
+Screen: Account › Preferences
+Steps:
+1. In **Account › Preferences**, "Appearance" offers "System", "Light" and "Dark" ("System" follows the mode of their device).
+2. The person picks one: the panel is painted that way at once and "Preferences saved" appears; there is no save button.
+3. In "Language" they pick "English" or "Español": the panel changes language at once, and so do the mails we send them.
+4. In another browser or after reloading, the panel opens with the account's appearance and language.
+In: the appearance and the language.
+Out: the account's appearance and language, the same on all its devices; the language is also the one of its mails and the one its businesses get at sign-in. In the panel the account's language rules; the public website follows the one chosen on it or the browser's.
+If it fails: if it cannot be saved, the control goes back to what it was and a notice says why; if the preferences do not load, "We could not load your preferences" with "Try again". No currency is chosen: ERPlora charges in euros.
+Involved: hubs (the language when entering a business)
+
+### ACCOUNTS-F23 Choose which email notices to get
+Status: done
+Actor: any person with an account
+Screen: Account › Preferences
+Steps:
+1. In **Account › Preferences**, "Email notices" shows "Security, invoices and payments", always on ("Always on: sign-in codes, security notices, invoices, payments and anything that needs you to act.").
+2. Below, "Business notices" ("When a business of yours is ready to open."), on from the start.
+3. The person turns it off: "Preferences saved", and the next business they create no longer mails them that it is ready.
+4. They turn it on again and the mail comes back.
+In: "Business notices".
+Out: with it off, the mail that a business is ready is not sent; the business opens all the same and the panel says so. The other mails are always sent: the codes and the security notices, the invoices and the failed payments, the deleted business with its date to recover it, and anything that asks them to act, such as connecting WhatsApp again.
+If it fails: if it cannot be saved, the switch goes back to how it was and a notice says why.
+Involved: hubs (the mail of a ready business), billing (the invoices and the payments, always)
+
+### ACCOUNTS-F24 Change the theme from the user menu
+Status: done
+Actor: any person with an account
+Screen: User menu
+Steps:
+1. The person opens the **User menu** (on a phone, inside the menu) and sees "Theme" with three buttons: light, dark and system, with the current one marked.
+2. They tap one: the panel is painted that way at once.
+3. The theme stays in their account: it is the same as **Account › Preferences › Appearance** and the panel opens with it on any device, without showing the other one first.
+4. The pages of the public website are painted with the account's theme while the session is open; without a session, they follow the device's mode.
+In: the theme chosen.
+Out: the account's theme.
+If it fails: if it cannot be saved, the panel keeps the chosen theme and a notice says "Couldn't save the appearance to your account.".
+Involved: none
+
+### ACCOUNTS-F25 Open the user menu
+Status: done
+Actor: any person with an account
+Screen: User menu
+Steps:
+1. At the top of the side menu (on a phone, inside the menu) is the person's card: their initials, their name and their email.
+2. Tapping it opens the **User menu**: "Account", "Help", "Theme" and "Sign out".
+3. "Account" leads to **Account › Profile**, from where **Security**, **Preferences** and **API keys** are reached; "Help", to the help; "Theme", to ACCOUNTS-F24; "Sign out", to ACCOUNTS-F09.
+In: the session.
+Out: nothing saved.
+If it fails: without a session there is no menu: the panel leads to the **Entrance**.
+Involved: none
+
+### ACCOUNTS-F26 Download my data
+Status: done
+Actor: any person with an account
+Screen: Account › Profile
+Steps:
+1. In **Account › Profile**, the "Export your data" card says "A copy of your account, your businesses and your ERPlora invoices, in a file other apps can read.".
+2. The person taps "Download my data": the button is off while it is prepared.
+3. The browser saves the file "erplora-data-" with the day's date.
+In: the session.
+Out: a file with their data: the account (email, name, language, sign-up, last sign-in and the terms accepted), their appearance and notices, their photo, their email addresses, their linked Google account, their open sessions, their API keys (without the key), the businesses they belong to with their role in each one, and the ERPlora invoices they see, each with its lines and its recipient as issued. Nothing of another account.
+If it fails: if it cannot be prepared, a notice says why and the button comes back; without a connection, "We could not reach ERPlora…". Nothing is saved half-done.
+Involved: hubs (their businesses), billing (their ERPlora invoices)
+
+### ACCOUNTS-F27 Delete my account
+Status: done
+Actor: any person with an account
+Screen: Account › Profile
+Steps:
+1. In **Account › Profile**, the "Delete your account" card says up front whether something holds it: if they own a business, "You own 1 business: transfer or delete it before deleting your account." with the business's name, which leads to its settings; if they pay for someone else's business (with their payment details, or because after a hand-over its plan is still charged to their card), that its owner enter their own payment details. Meanwhile "Delete account" is off.
+2. With nothing holding it, they tap "Delete account": the dialog says what goes (the account, the photo, the preferences and the API keys, and every session, also in the apps and in their businesses), that it cannot be undone and that "Your ERPlora invoices are kept for as long as the law requires.".
+3. They type their email to confirm and tap "Delete account". If their last sign-in is not recent, first they confirm it is them: with their password or, if they only sign in with Google, by signing in with Google again.
+4. The session ends and they reach the public website.
+In: the email typed and, if needed, the password or Google.
+Out: the account deleted, with its photo, its preferences, its keys and all its sessions, here and in its businesses; it stops being a member of other people's businesses. Its ERPlora invoices stay, with the recipient of their issue date and no link to the account. Its payer details (legal name, tax ID, address and billing email) and its payment customer are erased at once if nothing is left to charge; if an ERPlora invoice is still unpaid, they are kept until it is paid or cancelled and 90 days at most, and on that day the unpaid invoice is cancelled and they are erased. Event `accounts.profile.deleted`.
+If it fails: an owned or paid business holds it (the dialog says so too if it changed meanwhile); whoever pays for a business cannot be removed from it either, so there is no way to stop seeing it and keep paying for it; a deleted business, in its 90 days to be recovered, no longer holds it. More than 10 passwords in a minute when confirming are stopped, not even the right one gets in: someone else's open session is no way to guess it. A network failure is said in the dialog and nothing is deleted.
+Involved: hubs (the businesses that hold it and the ones it leaves), billing (the invoices that are kept and the payer details that are erased)

@@ -6,7 +6,8 @@
 //     account; the account's mode is painted when the preferences arrive (also when another tab changes it);
 //   - Language: the account's (`User.language`, which the mails and the jump to a business read): the panel
 //     switches to it at once (`<html lang>` too);
-//   - Mails: «Invoices and payments» is always on; business notices and ERPlora news are switches.
+//   - Mails: «Security, invoices and payments» is always on; «Business notices» (the mail that a business is ready)
+//     is a switch. No «ERPlora news»: ERPlora sends no such mail (ACCOUNTS-F23).
 // A refusal puts the control back and says why. A failed load is said with «Retry», also when no answer comes in
 // time: never a skeleton for ever (audit 2026-10-14 R-08).
 import { setThemeMode, themeMode, toastError, toastSuccess } from '@erplora/ui/shell';
@@ -47,14 +48,12 @@ const update = useCommand('accounts.preferences.update');
 
 const language = shallowRef<AccountLanguage>('en');
 const hubAlerts = shallowRef(false);
-const marketing = shallowRef(false);
 const loaded = computed(() => live.data.value);
 
 function take(now: PreferencesOut): void {
   if (themeMode.value !== now.theme_mode) setThemeMode(now.theme_mode);
   language.value = now.language;
   hubAlerts.value = now.hub_alerts;
-  marketing.value = now.marketing_emails;
 }
 
 watch(live.data, (now) => now && take(now), { immediate: true });
@@ -90,13 +89,12 @@ async function chooseLanguage(event: CustomEvent<{ value?: unknown }>): Promise<
   void toastSuccess(t('accounts.account.preferences.saved'));
 }
 
-async function toggle(field: 'hub_alerts' | 'marketing_emails', event: CustomEvent<{ checked?: boolean }>): Promise<void> {
-  const target = field === 'hub_alerts' ? hubAlerts : marketing;
-  const before = target.value;
+async function toggleBusinessNotices(event: CustomEvent<{ checked?: boolean }>): Promise<void> {
+  const before = hubAlerts.value;
   const checked = event.detail.checked === true;
   if (checked === before) return;
-  target.value = checked;
-  if (await save({ [field]: checked }, () => (target.value = before))) void toastSuccess(t('accounts.account.preferences.saved'));
+  hubAlerts.value = checked;
+  if (await save({ hub_alerts: checked }, () => (hubAlerts.value = before))) void toastSuccess(t('accounts.account.preferences.saved'));
 }
 </script>
 
@@ -210,20 +208,10 @@ async function toggle(field: 'hub_alerts' | 'marketing_emails', event: CustomEve
               <ion-toggle
                 data-testid="preferences-hub-alerts"
                 :checked="hubAlerts"
-                @ion-change="toggle('hub_alerts', $event)"
+                @ion-change="toggleBusinessNotices"
               >
                 <span class="toggle-title">{{ $t('accounts.account.preferences.hubAlerts') }}</span>
                 <span class="toggle-hint">{{ $t('accounts.account.preferences.hubAlertsHint') }}</span>
-              </ion-toggle>
-            </ion-item>
-            <ion-item>
-              <ion-toggle
-                data-testid="preferences-marketing"
-                :checked="marketing"
-                @ion-change="toggle('marketing_emails', $event)"
-              >
-                <span class="toggle-title">{{ $t('accounts.account.preferences.marketing') }}</span>
-                <span class="toggle-hint">{{ $t('accounts.account.preferences.marketingHint') }}</span>
               </ion-toggle>
             </ion-item>
           </ion-list>
@@ -274,6 +262,12 @@ async function toggle(field: 'hub_alerts' | 'marketing_emails', event: CustomEve
   --background: transparent;
 }
 .mail-list ion-toggle {
+  white-space: normal;
+}
+/* Ionic's toggle label is one line with «…»: a title or a hint wraps instead of being cut (the always-on row's hint
+   names every mail that goes, ACCOUNTS-F23). */
+.toggle-title,
+.toggle-hint {
   white-space: normal;
 }
 .toggle-title {

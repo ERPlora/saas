@@ -1,4 +1,4 @@
-"""The account's photo: ``accounts.photos`` (what an upload may be, and what is kept of it) and the operations
+"""ACCOUNTS-F21 · The account's photo: ``accounts.photos`` (what an upload may be, and what is kept of it) and the operations
 ``accounts.photo.upload`` and ``accounts.photo.remove`` (plan 2026-10-13, L3-A; Account → Profile, «Change photo»).
 
 Ported from ERPlora/saas ``apps/dashboard/profile`` (``TestAvatarViews`` of ``test_views.py``), with what the old

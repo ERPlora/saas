@@ -101,7 +101,7 @@ pago); detalle en «Facturas de ERPlora (L3-C)».
 | `stripe_keys.py`, `stripe_period.py`, `stripe_checkout.py`, `stripe_test_clocks.py` | Modo de una clave (`sk_`/`rk_`), periodo de la suscripción (en el item desde la API de 2025), `ui_mode = embedded_page` y `metadata.kind`, relojes de prueba (rechaza una clave live) |
 | `models.py` | `PromoCode` (días de prueba, ADR-0107), `CheckoutAttempt` (un Embedded Checkout por intención; la misma selección reutiliza su sesión abierta), `WebhookEvent` (cada evento una vez) y `PaymentFailure` (por qué no se cobró una renovación) |
 | `webhooks.py` | `POST /webhooks/stripe/`: firma de Stripe → reclamo del evento → `services.process_stripe_event` |
-| `management/commands/sweep_unpaid.py` | `saas-cron`: impagos que Stripe dejó de reintentar y suscripciones de negocios eliminados |
+| `management/commands/sweep_unpaid.py` | `saas-cron`: impagos que Stripe dejó de reintentar, suscripciones de negocios eliminados y pagadores de cuentas eliminadas (`payers_forgotten`) |
 | `management/commands/retax_subscriptions.py` | `saas-cron` (diaria): el tipo de hoy en cada suscripción viva y en las fases de su bajada programada (cambio de dirección no empujado, umbral OSS) y el reenvío de los avisos de la OSS que no salieron |
 | `management/commands/audit_tax_rules.py` | `saas-cron` (diaria) o a mano: la tabla de IVA cobra cada venta posible |
 
@@ -240,6 +240,16 @@ trata como ninguna (`UNKNOWN`: 503 `billing.payments_unavailable`, nunca un cobr
 - **Eliminar un negocio** cancela su suscripción de Stripe en la siguiente pasada de `sweep_unpaid` (no en el
   acto: `hubs.business.delete` no llama a `billing`); **mover el pagador** de Stripe en un traspaso sigue
   pendiente.
+- **Eliminar la cuenta** (ACCOUNTS-F27, RGPD art. 17): `payer_leaving` (señal `account_deleting`) pone a cada
+  pagador de la cuenta su fecha de purga (`forget_after`, `PAYER_RETENTION` = los 90 días de `Hub.RETENTION`) y
+  tras el COMMIT `forget_departed_payer` borra el cliente de Stripe, desliga sus negocios y borra la ficha, salvo
+  que algo aún se pueda cobrar: una suscripción que Stripe sigue cobrando o una factura sin pagar, que espera
+  hasta su fecha de purga y entonces se anula en Stripe. Una suscripción viva solo llega aquí en un negocio
+  **eliminado**, y la termina la siguiente pasada de `sweep_unpaid`; la de un negocio vivo no llega nunca: quien
+  aún lo paga (su pagador, o la tarjeta que paga el plan tras un traspaso, `hubs.queries.still_pays`) ni elimina
+  su cuenta (409 `accounts.pays_businesses`) ni sale del negocio (409 `hubs.member_pays`). Las facturas emitidas
+  guardan su copia del pagador. `sweep_unpaid` hace lo que el borrado no pudo (`payers_forgotten`; un fallo de
+  Stripe cuenta en `errors`).
 - **Configuración de Stripe** (a mano, una vez): endpoint `https://erplora.com/webhooks/stripe/` con los eventos
   de arriba; tras agotar los reintentos, «marcar la suscripción como impagada» (`unpaid`); Customer Portal solo
   con tarjetas y recibos (los cambios de plan van por el panel, que pone nuestros `TaxRate`); precios con

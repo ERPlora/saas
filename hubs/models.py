@@ -407,6 +407,9 @@ class BillingProfile(models.Model):
     billing_email = models.EmailField(_("billing email"), blank=True)
     same_as_business = models.BooleanField(_("same as the business"), default=False)
     stripe_customer_id = models.CharField(max_length=255, blank=True, db_index=True)
+    #: The account it belonged to deleted itself (ACCOUNTS-F27): it goes, with its Stripe customer, once nothing
+    #: can still be charged to it, and on this day at the latest (``billing.services.forget_departed_payer``).
+    forget_after = models.DateTimeField(_("erased by"), null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

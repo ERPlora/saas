@@ -265,11 +265,16 @@
         "saved": "Changes saved",
         "loadError": "We could not load your account"
       },
+      "export": {
+        "title": "Export your data",
+        "lead": "A copy of your account, your businesses and your ERPlora invoices, in a file other apps can read.",
+        "download": "Download my data"
+      },
       "delete": {
         "title": "Delete your account",
         "confirm": "Delete account",
         "typeEmail": "Your email",
-        "message": "Your account, your photo, your preferences and your API keys are deleted, and every session ends, also in the apps and in your businesses. This cannot be undone.",
+        "message": "Your account, your photo, your preferences and your API keys are deleted, and every session ends, also in the apps and in your businesses. This cannot be undone. Your ERPlora invoices are kept for as long as the law requires.",
         "lead": "Your account and what is in it go for good. Businesses you own have to be transferred or deleted first.",
         "owns": "You own {n} business: transfer or delete it before deleting your account. | You own {n} businesses: transfer or delete them before deleting your account.",
         "pays": "You pay for {n} business of other people: ask its owner to enter their own payment details before deleting your account. | You pay for {n} businesses of other people: ask their owners to enter their own payment details before deleting your account.",
@@ -300,12 +305,10 @@
         "language": "Language",
         "languageHint": "Also the language of the mails we send you.",
         "mails": "Email notices",
-        "invoices": "Invoices and payments",
-        "invoicesHint": "Always on: they are required.",
-        "hubAlerts": "Notices about my businesses",
-        "hubAlertsHint": "A business is ready, a payment is pending.",
-        "marketing": "News from ERPlora",
-        "marketingHint": "Once a month at most."
+        "invoices": "Security, invoices and payments",
+        "invoicesHint": "Always on: sign-in codes, security notices, invoices, payments and anything that needs you to act.",
+        "hubAlerts": "Business notices",
+        "hubAlertsHint": "When a business of yours is ready to open."
       },
       "keys": {
         "newTitle": "New API key",

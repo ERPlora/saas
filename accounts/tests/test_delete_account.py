@@ -1,4 +1,4 @@
-"""Account → Profile → «Delete account»: ``accounts.profile.delete`` (plan 2026-10-13, L3-A).
+"""ACCOUNTS-F27 · Account → Profile → «Delete account»: ``accounts.profile.delete`` (plan 2026-10-13, L3-A).
 
 Ported from ERPlora/saas ``apps/dashboard/profile/tests/test_delete_account_sole_owner.py`` (15) and the
 deletion cases of ``test_views.py``:
@@ -172,6 +172,54 @@ class TestPayersFirstHandThePaymentOver:
             "tu cuenta."
         )
 
+    def test_a_payer_taken_out_of_the_business_is_refused_too(self, signed_in, ana, handed_over, make_owner):
+        """saas#2587 again: the new owner tries to take the old one out of the business while its card still pays
+        for it. ``hubs.member.remove`` refuses it (``hubs.member_pays``), so the payer stays a member and its account
+        is still refused, or Stripe would keep charging a card nobody can stop and ``forget_departed_payer`` would
+        hold the payer for ever. (Deleting the membership through the ORM skips that door: no operation does it.)"""
+        from live.errors import Conflict
+
+        from hubs import services as hub_services
+        from hubs.models import HubMember
+        from hubs.schemas import ByIdIn
+        from hubs.tests.conftest import ctx_for
+
+        with pytest.raises(Conflict) as kept:
+            hub_services.member_remove(
+                ctx_for(make_owner), ByIdIn(id=HubMember.objects.get(hub=handed_over, user=ana).id)
+            )
+        assert kept.value.code == "hubs.member_pays"
+
+        response = api_post(signed_in, DELETE)
+
+        assert response.status_code == 409
+        assert response.json()["error"]["code"] == "accounts.pays_businesses"
+        assert _exists(ana)
+
+    def test_a_card_that_still_pays_the_plan_is_refused_too(self, signed_in, ana, handed_over, make_owner):
+        """The new owner said who pays from now on (``hubs.billing_profile.update``), but the plan's Stripe
+        subscription is still charged to ana's customer until support moves it (``billing.payer_required``):
+        deleting ana's customer would end the business's plan, keeping it would charge a card nobody can stop."""
+        from billing.tests.conftest import pay
+        from hubs import services as hub_services
+        from hubs.models import BillingProfile
+        from hubs.schemas import BillingProfileIn
+        from hubs.tests.conftest import ctx_for
+
+        BillingProfile.objects.filter(pk=handed_over.billing_profile_id).update(stripe_customer_id="cus_ana")
+        pay(handed_over, customer="cus_ana")
+        hub_services.billing_profile_update(
+            ctx_for(make_owner), BillingProfileIn(hub_id=handed_over.id, billing_name="Marta SL")
+        )
+
+        response = api_post(signed_in, DELETE)
+
+        assert response.status_code == 409
+        error = response.json()["error"]
+        assert error["code"] == "accounts.pays_businesses"
+        assert error["businesses"] == [{"id": str(handed_over.pk), "name": "Panadería López"}]
+        assert _exists(ana)
+
     def test_a_deleted_business_does_not_hold_its_payer(self, signed_in, ana, handed_over):
         from hubs.models import Hub
 
@@ -197,6 +245,21 @@ class TestARecentSignInIsNeeded:
 
         assert api_post(signed_in_long_ago, DELETE).status_code == 200
         assert not _exists(ana)
+
+    def test_guessing_the_password_with_an_open_session_is_throttled(self, signed_in_long_ago, ana, password):
+        """saas#2664 (old SAAS_DASHBOARD-F208): a session left open is no way to try passwords without end. «Confirm
+        it's you» is allauth's reauthentication, 10 tries a minute per account; past them, not even the right one."""
+        tries = [
+            signed_in_long_ago.post(REAUTHENTICATE, {"password": f"guess-{n}"}, content_type="application/json", HTTP_HOST=HOST)
+            for n in range(10)
+        ]
+        assert {response.status_code for response in tries} == {400}
+
+        right = signed_in_long_ago.post(REAUTHENTICATE, {"password": password}, content_type="application/json", HTTP_HOST=HOST)
+
+        assert right.status_code == 429
+        assert api_post(signed_in_long_ago, DELETE).status_code == 401
+        assert _exists(ana)
 
     def test_a_session_opened_without_signing_in_is_not_recent(self, client, ana):
         """``force_login`` (or the admin's login) leaves no record of a sign-in: allauth asks again."""
@@ -277,6 +340,29 @@ class TestWhatDeletingDoes:
         api_post(signed_in, DELETE)
 
         assert set(OutboxEvent.objects.values_list("actor", flat=True)) == {str(ana.pk)}
+
+    def test_erploras_invoices_stay_with_their_recipient_as_issued(self, signed_in, ana, plans):  # noqa: F811
+        """ACCOUNTS-F27: the law keeps ERPlora's invoices (PLAN-SAAS §4; GDPR art. 17.3.b), so deleting the account
+        deletes the person, not its invoices: each keeps who it was issued to, only its link to the account goes."""
+        from billing.models import Invoice
+        from billing.tests.test_invoice_queries import issue
+        from hubs.models import Hub
+
+        business = create_business(ana, name="Panadería López")
+        invoice = issue(business, 7, payer=ana, payer_tax_id="B12345678", payer_email="ana@example.com")
+        Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETED, deletion_requested_at=timezone.now())
+
+        assert api_post(signed_in, DELETE).status_code == 200
+
+        kept = Invoice.objects.get(pk=invoice.pk)
+        assert (kept.number, kept.payer_tax_id, kept.payer_name, kept.total_cents) == (
+            "ERP-2026-00007",
+            "B12345678",
+            "Panadería López SL",
+            3629,
+        )
+        assert kept.payer_account_id is None
+        assert kept.lines.count() == 1
 
     def test_the_businesses_are_asked_to_end_its_sessions(self, signed_in, ana, received):
         api_post(signed_in, DELETE)

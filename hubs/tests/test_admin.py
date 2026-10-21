@@ -148,6 +148,19 @@ def test_the_account_plane_is_listed_and_shown(staff_client, plane, model):
     assert page.status_code == 200
 
 
+def test_the_payers_list_says_when_the_payer_of_a_deleted_account_goes(staff_client, plane):
+    """ACCOUNTS-F27: a payer whose account deleted itself waits only for what can still be charged, and the
+    staff sees its purge date (``forget_after``) in the list."""
+    from django.contrib import admin
+
+    from hubs.models import BillingProfile
+
+    assert "forget_after" in admin.site._registry[BillingProfile].list_display
+    page = staff_client.get("/admin/hubs/billingprofile/")
+    assert page.status_code == 200
+    assert "column-forget_after" in page.text
+
+
 @pytest.mark.parametrize("model", ACCOUNT_PLANE)
 def test_the_account_plane_is_read_only_its_writes_are_the_operations(staff_client, plane, model):
     """A business is created, changed and deleted by its operations (state version, mirror, push to the

@@ -499,8 +499,10 @@ def businesses_holding(ctx: OperationContext) -> tuple[list[dict], list[dict]]:
     owning them, as ``[{id, name}]``, from ``hubs.business.list``.
 
     A business has one owner (PLAN-SAAS §3.6 point 8), and its row says what that owner may do: ``can.delete`` is
-    «the owner, not deleted». ``is_payer`` says the account owns the business's payer. A deleted business in its
-    90 days of recovery holds nobody (``deletion_requested_at``).
+    «the owner, not deleted». ``is_payer`` says the account still pays for it: it owns the business's payer, or the
+    plan is still charged to its card after a hand-over (``hubs.queries.still_pays``); and a payer cannot be taken
+    out of the business (``hubs.member_pays``), so the list sees it. A deleted business in its 90 days of recovery
+    holds nobody (``deletion_requested_at``).
     """
     business_list = operations.get(BUSINESS_LIST)
     owned: list[dict] = []

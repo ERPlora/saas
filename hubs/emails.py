@@ -17,7 +17,7 @@ from django.utils import timezone, translation
 from django.utils.formats import date_format
 from django.utils.translation import gettext as _
 
-from accounts.queries import hub_start_url
+from accounts.queries import hub_start_url, receives_business_notices
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +131,11 @@ def send_deletion(hub, owner, *, base_url: str) -> bool:
 
 
 def send_ready(hub, owner, *, base_url: str) -> bool:
-    """Tell the owner the business is ready, with the way in and its page in the panel."""
+    """Tell the owner the business is ready, with the way in and its page in the panel: a business notice, so not
+    to an owner who turned them off in Account → Preferences (ACCOUNTS-F23; the panel says it is ready anyway)."""
+    if not receives_business_notices(owner):
+        logger.info("hubs.mail.ready_skipped hub=%s: the owner turned business notices off", hub.pk)
+        return False
     with translation.override(owner.language):
         subject = _("%(business)s is ready") % {"business": hub.name}
         lines = [

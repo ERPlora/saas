@@ -34,7 +34,7 @@ from live.slugs import hub_slug_validator
 #: today: the «Last updated» date each page shows (``tests/test_terms.py`` keeps them equal). Update the page and
 #: its date here together: every account then accepts the new text at its next sign-in.
 TERMS_VERSION = date(2026, 10, 13)
-PRIVACY_VERSION = date(2026, 10, 13)
+PRIVACY_VERSION = date(2026, 10, 21)
 
 
 class UserManager(BaseUserManager):
@@ -185,12 +185,14 @@ class AuthExchangeCode(models.Model):
 
 
 class UserPreferences(models.Model):
-    """What the account chose in Account → Preferences: the theme mode and which mails it gets.
+    """What the account chose in Account → Preferences: the theme mode and whether it gets business notices.
 
     Ported from ERPlora/saas ``apps/dashboard/settings`` without what the single panel dropped (palette,
     currency, menu order, developer mode; plan 2026-10-13 §3, round 17). The language is ``User.language``,
-    which the mails and the jump to a hub already read. «Invoices and payments» mails are always sent: they
-    have no switch. No row means the defaults.
+    which the mails and the jump to a hub already read. ``hub_alerts`` governs the mail that a business is
+    ready (``hubs.emails.send_ready``); security, invoices and payments, a deleted business and what asks the
+    person to act have no switch (ACCOUNTS-F23). «ERPlora news» (``marketing_emails``) governed no mail: its
+    column waits for the contract step with a database default (migration 0009). No row means the defaults.
     """
 
     class ThemeMode(models.TextChoices):
@@ -205,10 +207,7 @@ class UserPreferences(models.Model):
     )
     theme_mode = models.CharField(_("appearance"), max_length=8, choices=ThemeMode.choices, default=ThemeMode.SYSTEM)
     hub_alerts = models.BooleanField(
-        _("business notices"), default=True, help_text=_("Business ready, payments pending.")
-    )
-    marketing_emails = models.BooleanField(
-        _("ERPlora news"), default=False, help_text=_("At most once a month.")
+        _("business notices"), default=True, help_text=_("When a business is ready to open.")
     )
     updated_at = models.DateTimeField(_("updated at"), auto_now=True)
 

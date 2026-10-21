@@ -768,12 +768,31 @@ def member_remove(ctx: OperationContext, data: ByIdIn) -> dict:
     _actor, target = _managed(ctx, data.id)
     if target.is_pending:
         raise Conflict(_("This person has not answered yet: cancel the invitation."), code="hubs.member_pending")
+    _refuse_a_payer(target)
     hub = target.hub
     _take_out(target)
     record_event(ctx, events.MEMBER_REMOVED, {"id": str(data.id), "hub_id": str(hub.id)})
     notify_people(ctx, events.MEMBER_CHANGED, hub.id, target.user_id)
     revoke_after_commit(target.user_id, hub.id)
     return {"id": data.id}
+
+
+def _refuse_a_payer(target: HubMember) -> None:
+    """saas#2587: whoever still pays for the business (the owner before a hand-over, ``queries.still_pays``)
+    stays in it until the business is paid otherwise; out of it, it would pay for a business it no longer sees."""
+    if not queries.still_pays(target):
+        return
+    name = target.user.get_full_name() or target.user.email
+    if queries.is_payer(target):
+        message = _(
+            "%(name)s still pays for this business. Say who pays from now on first: your billing details are asked "
+            "when you pay a plan or a module here."
+        ) % {"name": name}
+    else:
+        message = _(
+            "This business's plan is still paid with %(name)s's card: contact support to move it to you first."
+        ) % {"name": name}
+    raise Conflict(message, code="hubs.member_pays")
 
 
 def _take_out(member: HubMember) -> None:
