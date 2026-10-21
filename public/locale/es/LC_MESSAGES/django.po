@@ -1975,11 +1975,8 @@ msgstr "Inicio de sesión con Google"
 msgid "Encryption in transit and at rest"
 msgstr "Cifrado en tránsito y en reposo"
 
-msgid "HTTPS/TLS 1.3 required"
-msgstr "HTTPS/TLS 1.3 requerido"
-
-msgid "Regular security audits"
-msgstr "Auditorías de seguridad regulares"
+msgid "HTTPS only, with TLS 1.2 or 1.3"
+msgstr "Solo HTTPS, con TLS 1.2 o 1.3"
 
 msgid "Salted password hashing (PBKDF2)"
 msgstr "Contraseñas guardadas con hash y sal (PBKDF2)"
@@ -2062,8 +2059,8 @@ msgstr "¿Preguntas?"
 msgid "Talk to our security team."
 msgstr "Habla con nuestro equipo de seguridad."
 
-msgid "Need a DPA, a pentest report or details on our infrastructure? We are happy to help."
-msgstr "¿Necesitas un DPA, un informe de pentest o detalles de nuestra infraestructura? Estaremos encantados de ayudar."
+msgid "Need a DPA or details on our infrastructure? We are happy to help."
+msgstr "¿Necesitas un DPA o detalles de nuestra infraestructura? Estaremos encantados de ayudar."
 
 msgid "ERPlora updates your terminal itself, without asking and without stopping your work. What we commit to in exchange: no interruption, nothing lost, automatic rollback, and a history of what changed."
 msgstr "ERPlora actualiza tu terminal por su cuenta, sin preguntar y sin parar tu trabajo. Lo que nos comprometemos a cumplir a cambio: sin interrupción, sin perder nada, vuelta atrás automática y un historial de lo que cambió."
@@ -2409,8 +2406,8 @@ msgstr "Úsalo gratis durante un año"
 msgid "What we've already built"
 msgstr "Lo que ya hemos construido"
 
-msgid "ERPlora is a modular ERP with a minimalist core that does one thing: load apps. Everything else — invoicing, inventory, appointments, POS, accounting — are independent apps you install based on what you need."
-msgstr "ERPlora es un ERP modular con un núcleo minimalista que hace una sola cosa: cargar apps. Todo lo demás — facturación, inventario, citas, TPV, contabilidad — son apps independientes que instalas según lo que necesites."
+msgid "ERPlora is a modular ERP with a minimalist core that does one thing: load apps. Everything else — invoicing, inventory, appointments, POS, staff — are independent apps you install based on what you need."
+msgstr "ERPlora es un ERP modular con un núcleo minimalista que hace una sola cosa: cargar apps. Todo lo demás — facturación, inventario, citas, TPV, personal — son apps independientes que instalas según lo que necesites."
 
 msgid "Complete POS system"
 msgstr "Sistema TPV completo"
@@ -2647,8 +2644,8 @@ msgstr "40+ (limitado)"
 msgid "Per-user pricing"
 msgstr "Precio por usuario"
 
-msgid "No limit"
-msgstr "Sin límite"
+msgid "Flat per hub"
+msgstr "Fijo por hub"
 
 msgid "per user"
 msgstr "por usuario"
@@ -2719,14 +2716,11 @@ msgstr "Estado"
 msgid "Electronic invoicing"
 msgstr "Facturación electrónica"
 
-msgid "Inventory + warehouse"
-msgstr "Inventario + almacén"
+msgid "Inventory"
+msgstr "Inventario"
 
 msgid "CRM"
 msgstr "CRM"
-
-msgid "HR and payroll"
-msgstr "RRHH y nóminas"
 
 msgid "E-commerce + POS"
 msgstr "E-commerce + TPV"
@@ -2756,8 +2750,8 @@ msgstr "Sin instalación, sin consultores, sin tarjeta para probarlo. Crea un te
 msgid "One ecosystem. Two modes."
 msgstr "Un ecosistema. Dos modos."
 
-msgid "Invoicing + accounting"
-msgstr "Facturación + contabilidad"
+msgid "Invoicing + VeriFactu"
+msgstr "Facturación + VeriFactu"
 
 msgid "Inventory + basic CRM"
 msgstr "Inventario + CRM básico"
@@ -2765,8 +2759,8 @@ msgstr "Inventario + CRM básico"
 msgid "Employees + time tracking"
 msgstr "Empleados + control horario"
 
-msgid "Reports + audit"
-msgstr "Informes + auditoría"
+msgid "Appointments + online booking"
+msgstr "Citas + reservas online"
 
 msgid "Mobile + cloud PWA"
 msgstr "Móvil + PWA en la nube"
@@ -2777,8 +2771,8 @@ msgstr "Core"
 msgid "Free forever"
 msgstr "Gratis para siempre"
 
-msgid "v3.4 · your whole business, in the cloud"
-msgstr "v3.4 · todo tu negocio, en la nube"
+msgid "Your whole business, in the cloud"
+msgstr "Todo tu negocio, en la nube"
 
 msgid "One ERP."
 msgstr "Un ERP."
@@ -2786,8 +2780,8 @@ msgstr "Un ERP."
 msgid "Yours."
 msgstr "Tuyo."
 
-msgid "ERPlora replaces the stack of 12 tools that holds your SMB together with a single platform: invoicing, inventory, CRM, HR, accounting and the apps you need — no technical team, no hidden licenses, no surprises."
-msgstr "ERPlora reemplaza el conjunto de 12 herramientas que sostienen tu pyme con una única plataforma: facturación, inventario, CRM, RRHH, contabilidad y las apps que necesites; sin equipo técnico, sin licencias ocultas, sin sorpresas."
+msgid "ERPlora replaces the stack of tools that holds your SMB together with a single platform: point of sale, invoicing with VeriFactu, inventory, customers, appointments and the apps you need — no technical team, no hidden licenses, no surprises."
+msgstr "ERPlora reemplaza el conjunto de herramientas que sostienen tu pyme con una única plataforma: TPV, facturación con VeriFactu, inventario, clientes, citas y las apps que necesites; sin equipo técnico, sin licencias ocultas, sin sorpresas."
 
 msgid "High availability"
 msgstr "Alta disponibilidad"
@@ -2807,8 +2801,8 @@ msgstr "Listo en 5 minutos"
 msgid "Hub + database auto-provisioned"
 msgstr "Hub + base de datos autoprovisionados"
 
-msgid "Built for every kind of business"
-msgstr "Hecho para todo tipo de negocio"
+msgid "Made for small businesses"
+msgstr "Hecho para pequeños negocios"
 
 msgid "Cloud Hub plans"
 msgstr "Planes de Cloud Hub"
@@ -3143,8 +3137,14 @@ msgid "Collaborate"
 msgstr "Colabora"
 
 #, python-format
-msgid "≈ €%(price)s/year · 2 months free"
-msgstr "≈ %(price)s €/año · 2 meses gratis"
+msgid "≈ €%(price)s/year · %(months)s month free"
+msgid_plural "≈ €%(price)s/year · %(months)s months free"
+msgstr[0] "≈ %(price)s €/año · %(months)s mes gratis"
+msgstr[1] "≈ %(price)s €/año · %(months)s meses gratis"
+
+#, python-format
+msgid "≈ €%(price)s/year"
+msgstr "≈ %(price)s €/año"
 
 msgid "Unlimited devices"
 msgstr "Dispositivos ilimitados"
@@ -3162,11 +3162,17 @@ msgstr "Qué incluye"
 msgid "Plans"
 msgstr "Planes"
 
-msgid "Cloud Hub plans · monthly or annual billing (2 months free)"
-msgstr "Planes de Hub Cloud · facturación mensual o anual (2 meses gratis)"
+#, python-format
+msgid "Cloud Hub plans · monthly or annual billing (%(months)s month free)"
+msgid_plural "Cloud Hub plans · monthly or annual billing (%(months)s months free)"
+msgstr[0] "Planes de Hub Cloud · facturación mensual o anual (%(months)s mes gratis)"
+msgstr[1] "Planes de Hub Cloud · facturación mensual o anual (%(months)s meses gratis)"
 
-msgid "Prices shown per month. Pay for the year and get 2 months free."
-msgstr "Precios mostrados por mes. Paga el año y llévate 2 meses gratis."
+#, python-format
+msgid "Prices shown per month. Pay for the year and get %(months)s month free."
+msgid_plural "Prices shown per month. Pay for the year and get %(months)s months free."
+msgstr[0] "Precios mostrados por mes. Paga el año y llévate %(months)s mes gratis."
+msgstr[1] "Precios mostrados por mes. Paga el año y llévate %(months)s meses gratis."
 
 msgid "Scale when you need it."
 msgstr "Escala cuando lo necesites."
@@ -3222,9 +3228,6 @@ msgstr "Requiere consultor / integrador"
 msgid "Mandatory partner"
 msgstr "Partner obligatorio"
 
-msgid "Stripe + bank reconciliation"
-msgstr "Stripe + conciliación bancaria"
-
 msgid "built-in"
 msgstr "integrado"
 
@@ -3234,8 +3237,8 @@ msgstr "módulo adicional"
 msgid "Built for Spanish SMBs"
 msgstr "Hecho para pymes españolas"
 
-msgid "Verifactu / TicketBAI / 303·390·347"
-msgstr "Verifactu / TicketBAI / 303·390·347"
+msgid "VeriFactu"
+msgstr "VeriFactu"
 
 msgid "included, no add-on"
 msgstr "incluido, sin extra"
@@ -3291,8 +3294,8 @@ msgstr "Estas herramientas están bien hechas para una parte de tu negocio. La t
 msgid "What it really covers"
 msgstr "Lo que cubre de verdad"
 
-msgid "Accounting + POS + inventory + HR + CRM, in one DB"
-msgstr "Contabilidad + TPV + inventario + RRHH + CRM, en una sola BD"
+msgid "POS + invoicing + inventory + staff + CRM, in one DB"
+msgstr "TPV + facturación + inventario + personal + CRM, en una sola BD"
 
 msgid "Accounting + light CRM"
 msgstr "Contabilidad + CRM básico"
@@ -3311,9 +3314,6 @@ msgstr "POS / TPV en el mostrador"
 
 msgid "Kitchen display, table map, restaurant flow"
 msgstr "Pantalla de cocina, mapa de mesas, flujo de restaurante"
-
-msgid "Real multi-warehouse stock with lot/expiry"
-msgstr "Stock multi-almacén real con lote/caducidad"
 
 msgid "basic"
 msgstr "básico"
@@ -3339,8 +3339,8 @@ msgstr "herramienta única"
 msgid "40 silos"
 msgstr "40 silos"
 
-msgid "Total cost at year 2 (POS + accounting + HR + stock)"
-msgstr "Coste total al 2.º año (TPV + contabilidad + RRHH + stock)"
+msgid "Total cost at year 2 (POS + invoicing + staff + stock)"
+msgstr "Coste total al 2.º año (TPV + facturación + personal + stock)"
 
 msgid "1 bill"
 msgstr "1 factura"
@@ -3477,12 +3477,6 @@ msgstr "¿Quieres ver ERPlora"
 msgid "with your own data?"
 msgstr "con tus propios datos?"
 
-msgid "Accounting"
-msgstr "Contabilidad"
-
-msgid "Support tickets"
-msgstr "Tickets de soporte"
-
 msgid "Extensions"
 msgstr "Extensiones"
 
@@ -3595,8 +3589,8 @@ msgstr[1] "Sí. Empieza gratis sin tarjeta —el plan Free es gratis para siempr
 msgid "Yes. The change is immediate and the difference is prorated. There's no penalty or commitment period. Downgrading is also free — premium apps are turned off but their data is retained for 90 days."
 msgstr "Sí. El cambio es inmediato y la diferencia se prorratea. No hay penalización ni periodo de compromiso. Bajar de plan también es gratis: las apps premium se desactivan, pero sus datos se conservan 90 días."
 
-msgid "Entirely within the European Union: on Amazon Web Services, in its Ireland region (eu-west-1), on GDPR-compliant infrastructure. Your data never leaves the EU."
-msgstr "Íntegramente dentro de la Unión Europea: en Amazon Web Services, en su región de Irlanda (eu-west-1), sobre infraestructura conforme al RGPD. Tus datos nunca salen de la UE."
+msgid "Within the European Union: on Amazon Web Services, in its Ireland region (eu-west-1), on GDPR-compliant infrastructure. The one exception is the AI assistant: if its European provider is unavailable, a backup provider may answer from outside the EU, under the safeguards our privacy policy describes."
+msgstr "Dentro de la Unión Europea: en Amazon Web Services, en su región de Irlanda (eu-west-1), sobre infraestructura conforme al RGPD. La única excepción es el asistente de IA: si su proveedor europeo no está disponible, un proveedor de respaldo puede responder desde fuera de la UE, con las garantías que describe nuestra política de privacidad."
 
 msgid "Do you charge per app or per usage?"
 msgstr "¿Cobráis por app o por uso?"
@@ -3649,8 +3643,8 @@ msgstr "ERPlora funciona en el navegador como una PWA en la nube siempre en lín
 msgid "Start free in minutes with your own hub — the Free plan is free forever, no card required."
 msgstr "Empieza gratis en minutos con tu propio hub: el plan Gratis es gratis para siempre y no pide tarjeta."
 
-msgid "All the apps to run an SMB — free forever."
-msgstr "Todas las apps para llevar una pyme, gratis para siempre."
+msgid "The core apps to run an SMB — free forever."
+msgstr "Las apps básicas para llevar una pyme, gratis para siempre."
 
 msgid "Included in the paid plans: turn them on when your business needs them."
 msgstr "Incluidas en los planes de pago: actívalas cuando tu negocio las necesite."
@@ -3918,3 +3912,150 @@ msgstr "Volver a intentarlo"
 #: templates/public/demo/index.html
 msgid "Want to keep what you do? Start free: it takes the same minute."
 msgstr "¿Quieres conservar lo que hagas? Empieza gratis: se tarda lo mismo."
+
+# --- APP-PUBLIC-1: the promises (PUBLIC-F07, PUBLIC-F08), the plans and the language switcher ---
+msgid "Hair and beauty"
+msgstr "Peluquería y estética"
+
+msgid "Read the privacy policy"
+msgstr "Lee la política de privacidad"
+
+# --- /compliance/ (PUBLIC-F09): compliance.py, templates/public/compliance/, the footer and the industries ---
+msgid "Austria"
+msgstr "Austria"
+
+msgid "Belgium"
+msgstr "Bélgica"
+
+msgid "Bulgaria"
+msgstr "Bulgaria"
+
+msgid "Croatia"
+msgstr "Croacia"
+
+msgid "Cyprus"
+msgstr "Chipre"
+
+msgid "Czechia"
+msgstr "Chequia"
+
+msgid "Denmark"
+msgstr "Dinamarca"
+
+msgid "Estonia"
+msgstr "Estonia"
+
+msgid "Finland"
+msgstr "Finlandia"
+
+msgid "France"
+msgstr "Francia"
+
+msgid "Germany"
+msgstr "Alemania"
+
+msgid "Greece"
+msgstr "Grecia"
+
+msgid "Hungary"
+msgstr "Hungría"
+
+msgid "Ireland"
+msgstr "Irlanda"
+
+msgid "Italy"
+msgstr "Italia"
+
+msgid "Latvia"
+msgstr "Letonia"
+
+msgid "Lithuania"
+msgstr "Lituania"
+
+msgid "Luxembourg"
+msgstr "Luxemburgo"
+
+msgid "Malta"
+msgstr "Malta"
+
+msgid "Netherlands"
+msgstr "Países Bajos"
+
+msgid "Poland"
+msgstr "Polonia"
+
+msgid "Portugal"
+msgstr "Portugal"
+
+msgid "Romania"
+msgstr "Rumanía"
+
+msgid "Slovakia"
+msgstr "Eslovaquia"
+
+msgid "Slovenia"
+msgstr "Eslovenia"
+
+msgid "Spain"
+msgstr "España"
+
+msgid "Sweden"
+msgstr "Suecia"
+
+msgid "Every invoice and receipt is recorded in an unalterable chain, carries its QR code and is sent to the AEAT (the Spanish Tax Agency) as you sell."
+msgstr "Cada factura y cada tique se registra en una cadena inalterable, lleva su código QR y se envía a la AEAT (la Agencia Tributaria) a medida que vendes."
+
+msgid "The Basque Country (TicketBAI) and Navarre have their own invoicing systems, which ERPlora does not connect to yet."
+msgstr "El País Vasco (TicketBAI) y Navarra tienen sus propios sistemas de facturación, a los que ERPlora todavía no se conecta."
+
+msgid "The EU countries where you can create your business with ERPlora, and the invoicing systems it connects to today: VeriFactu in Spain."
+msgstr "Los países de la UE donde puedes crear tu negocio con ERPlora y los sistemas de facturación a los que se conecta hoy: VeriFactu en España."
+
+msgid "EU compliance."
+msgstr "Cumplimiento en la UE."
+
+msgid "Every EU country where you can create your business, and the invoicing systems ERPlora connects to today."
+msgstr "Cada país de la UE donde puedes crear tu negocio y los sistemas de facturación a los que ERPlora se conecta hoy."
+
+msgid "Coverage overview"
+msgstr "Resumen de cobertura"
+
+msgid "Built market by market."
+msgstr "Construido mercado a mercado."
+
+msgid "A country is ready for real operations only when ERPlora connects to its fiscal system."
+msgstr "Un país está listo para operar de verdad solo cuando ERPlora se conecta a su sistema fiscal."
+
+msgid "EU countries where you can sell"
+msgstr "Países de la UE donde puedes vender"
+
+msgid "Connected to their fiscal system"
+msgstr "Conectados a su sistema fiscal"
+
+msgid "Not connected yet"
+msgstr "Todavía sin conexión"
+
+msgid "Ready for real operations."
+msgstr "Listo para operar de verdad."
+
+msgid "The countries whose fiscal system ERPlora connects to, and what that covers."
+msgstr "Los países a cuyo sistema fiscal se conecta ERPlora, y lo que eso cubre."
+
+msgid "Connected"
+msgstr "Conectado"
+
+msgid "Read our responsible declaration"
+msgstr "Lee nuestra declaración responsable"
+
+msgid "Other EU countries."
+msgstr "Otros países de la UE."
+
+msgid "You can create your business and sell with ERPlora in each of them. Their own invoicing or fiscal systems are not connected yet: check with your adviser what your country requires before you use the point of sale there."
+msgstr "Puedes crear tu negocio y vender con ERPlora en cada uno de ellos. Sus propios sistemas de facturación o fiscales todavía no están conectados: consulta con tu asesor qué exige tu país antes de usar allí el TPV."
+
+msgid "The countries where you can create your business and the invoicing systems ERPlora connects to."
+msgstr "Los países donde puedes crear tu negocio y los sistemas de facturación a los que se conecta ERPlora."
+
+# --- The language switcher of the footer (PUBLIC-F13) ---
+msgid "Language"
+msgstr "Idioma"

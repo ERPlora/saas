@@ -6,7 +6,8 @@
   Django's PBKDF2, AWS in Ireland (eu-west-1, Ioan, 2026-10-14) with its WAF and the ALB (ADR-0499,
   no Cloudflare, no CDN), Aurora's continuous backups with point-in-time recovery for 14 days
   (aws-next, `backup_retention_period = 14`; the same words as the plans of the panel), no uptime
-  SLA and no reCAPTCHA.
+  SLA and no reCAPTCHA. The load balancer accepts TLS 1.2 and 1.3 (ERPlora/aws, `ssl_policy`), so not «TLS 1.3
+  required», and no «regular security audits» nobody runs (PUBLIC-F08).
 {% endcomment %}
 <ul class="list-none p-0 m-0 flex flex-col gap-2">
 {% if list == "auth" %}
@@ -15,8 +16,7 @@
   <li>✓ {% trans "Sign in with Google" %}</li>
 {% elif list == "data" %}
   <li>✓ {% trans "Encryption in transit and at rest" %}</li>
-  <li>✓ {% trans "HTTPS/TLS 1.3 required" %}</li>
-  <li>✓ {% trans "Regular security audits" %}</li>
+  <li>✓ {% trans "HTTPS only, with TLS 1.2 or 1.3" %}</li>
   <li>✓ {% trans "Salted password hashing (PBKDF2)" %}</li>
 {% elif list == "infrastructure" %}
   <li>✓ {% trans "Amazon Web Services, Ireland region (eu-west-1)" %}</li>

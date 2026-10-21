@@ -58,6 +58,8 @@ class StaticPagesSitemap(PublicSitemap):
         ("public:cookies", 0.3),
         # Industries (L4): the index; each business type's page is in IndustryDetailSitemap.
         ("public:industries_index", 0.7),
+        # Compliance (PUBLIC-F09), at the old level of the industries.
+        ("public:compliance", 0.7),
         # The pages that read Plan (L7), with the old priorities. /collaborate/ was not in the old
         # sitemap although it is indexed and in the footer: it joins at the level of /updates/.
         ("public:home", 1.0),

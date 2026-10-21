@@ -11,6 +11,8 @@ What changed: ``/about/`` no longer says that a module marketplace lets develope
 there are no third-party modules (PLAN-SAAS §6, spec §8.3), every app is ours.
 """
 
+from decimal import Decimal
+
 import pytest
 from django.conf import settings
 from django.urls import reverse
@@ -273,6 +275,18 @@ def test_the_free_year_is_valued_at_the_cheapest_paid_plan_on_sale(no_plans, cli
     assert (
         "The full Starter plan with all core features, no credit card required." in html
     )
+
+
+def test_the_free_year_is_valued_at_what_a_year_of_the_plan_costs(no_plans, client):
+    """PUBLIC-F10: a year of the plan is sold at its annual price, not at twelve monthly ones
+    (SAAS_PUBLIC-F58 counted ``price_monthly × 12`` next to an annual price of less)."""
+    make_plan("free", "0")
+    make_plan("starter", "29.99", price_annual=Decimal("299.90"))
+
+    html = page(client, COLLABORATE)
+
+    assert "free for 12 months (valued at €299.90/year)." in html
+    assert "359.88" not in html
 
 
 def test_without_a_paid_plan_on_sale_no_value_is_invented(no_plans, client):

@@ -204,6 +204,21 @@ def test_a_plan_card_of_the_home_starts_at_the_sign_in(no_plans, client):
     assert "/accounts/login/" not in html
 
 
+def test_a_paid_plan_card_of_the_home_says_get_started_not_start_free(no_plans, client):
+    """PUBLIC-F11: every business starts on Free and is upgraded later, so a paid card does not promise a
+    free start of ITS price (SAAS_PUBLIC-F78): it says «Get started», as on /pricing/; the free one keeps
+    «Start free». Both lead to the sign-in, which also signs up."""
+    make_plan("free", price_monthly=Decimal("0"))
+    make_plan("starter")
+
+    plans = section(html_of(client), "planes")
+    free, starter = plans.split('class="ep-pricing-card__name">')[1:3]
+
+    assert "Start free" in free and "Get started" not in free
+    assert "Get started" in starter and "Start free" not in starter
+    assert free.count('href="/launch"') == starter.count('href="/launch"') == 1
+
+
 # --- The apps blocks (antes _modules.html, _build_to_fit.html) --------------------------------
 
 

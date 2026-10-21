@@ -42,7 +42,8 @@ def collaborate(request: HttpRequest) -> HttpResponse:
     The old view read ``Plan.objects.filter(slug="starter")``: a plan off sale or internal would
     still be offered (WORKFLOW F63). The year is now valued at the cheapest PAID plan a visitor can
     sign up for, from the plans on sale; the cheapest of all is the Free plan, and «valued at €0» says
-    nothing. Without a paid plan on sale, no value is stated.
+    nothing. Without a paid plan on sale, no value is stated. The year is what a year of it costs: its annual
+    price, or twelve monthly payments when it has none (PUBLIC-F10).
     """
     plans = pricing.plans_on_sale(request)
     price = pricing.cheapest_paid_price(plans)
@@ -59,7 +60,8 @@ def collaborate(request: HttpRequest) -> HttpResponse:
         "public/company/collaborate.html",
         {
             "paid_plan": paid,
-            "paid_plan_annual": paid.price_monthly * 12 if paid else None,
+            # A year of the plan costs its annual price; twelve monthly payments only without one.
+            "paid_plan_annual": (paid.price_annual or paid.price_monthly * 12) if paid else None,
             "sector_count": len(run_operation_sync(request, "hubs.sector.list").sectors),
             "business_type_count": len(
                 run_operation_sync(request, "hubs.business_type.list").business_types

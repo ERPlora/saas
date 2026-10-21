@@ -4,7 +4,7 @@
   <h2 class="ep-footer__heading"> and its <a> links. In the order of the old footer:
 
     Product: Features, Pricing, Security, Updates, Downloads, The ERPlora app, Apps (the store).
-    Company: About Us, Collaborate, Industries.
+    Company: About Us, Collaborate, Industries, Compliance.
 
   A column exists only with at least one link to a route that exists: the lot that ports a page
   adds its link (and, for the first link of a column, the column) in its turn (plan §3.i), with
@@ -25,4 +25,5 @@
     <a href="{% url 'public:about' %}">{% trans "About Us" %}</a>
     <a href="{% url 'public:collaborate' %}">{% trans "Collaborate" %}</a>
     <a href="{% url 'public:industries_index' %}">{% trans "Industries" %}</a>
+    <a href="{% url 'public:compliance' %}">{% trans "Compliance" %}</a>
 </div>

@@ -13,6 +13,8 @@ names). What changed, and why:
   them (``/`` was the launcher until the landing arrived, L7).
 """
 
+import re
+
 import pytest
 from django.conf import settings
 from django.urls import reverse
@@ -29,6 +31,17 @@ def page(client, path: str, language: str = "en") -> str:
     response = client.get(path)
     assert response.status_code == 200, path
     return response.content.decode()
+
+
+#: Where a page writes its per-response tokens: the CSP nonce and the CSRF token.
+RESPONSE_TOKEN = re.compile(
+    r"""(nonce="|name="csrfmiddlewaretoken" value="|var CSRF = "|'X-CSRFToken': ')[^"']+"""
+)
+
+
+def without_tokens(html: str) -> str:
+    """The page without its per-response tokens: random strings, not what the page says."""
+    return RESPONSE_TOKEN.sub(r"\1", html)
 
 
 # --- The three pages (tests/unit/test_public_pages.py) ------------------------------------------
@@ -223,8 +236,8 @@ def test_updates_page_closing_band_links_the_contract_clause(client):
     html = page(client, "/updates/")
 
     assert "section 7 of the terms of service" in html
-    assert "Read section 7" in html
-    assert f'href="{reverse("public:terms")}"' in html
+    # The button itself, not the footer's «Terms», which links the same page from every page.
+    assert f'href="{reverse("public:terms")}">Read section 7</ion-button>' in html
 
 
 def test_updates_page_is_reachable_from_the_footer(client):
@@ -341,9 +354,11 @@ def test_security_names_the_aws_region_in_ireland(client, language, region):
         ("es", "Protección anti-DDoS y WAF en AWS"),
     ],
 )
-def test_security_names_the_perimeter_on_aws(client, language, perimeter):
+def test_security_names_the_perimeter_on_aws(
+    client, language, perimeter, tokens_spelling_the_claims
+):
     """Route 53, AWS WAF and the ALB are the perimeter (ADR-0499); no CDN in front."""
-    html = page(client, "/security/", language)
+    html = without_tokens(page(client, "/security/", language))
 
     assert perimeter in html
     assert "CDN" not in html
@@ -357,6 +372,20 @@ def test_security_names_the_perimeter_on_aws(client, language, perimeter):
 # GitHub sign-in (Google only). The home and /contact/ promised the same SLA as an «Uptime 99.95%»
 # and support «24/7» (L8): the real promise is high availability on AWS and a reply within 4
 # business hours, the one of the contact form.
+
+@pytest.fixture
+def tokens_spelling_the_claims(monkeypatch):
+    """The per-response tokens spell stale claims, as a random one does now and then.
+
+    Every public page carries a CSP nonce and, since the language forms of its footer
+    (PUBLIC-F13), a CSRF token: random strings, not copy. A 64-character token holds «2FA» or
+    «JWT» about once in four thousand renders, which made the scans below fail by chance.
+    """
+    monkeypatch.setattr("django.utils.csp.generate_nonce", lambda: "2FA-JWT-CDN-GitHub-x")
+    monkeypatch.setattr(
+        "django.middleware.csrf._get_new_csrf_string", lambda: "2FAJWTCDNGitHub" + "a" * 17
+    )
+
 
 STALE_CLAIMS = (
     "Cloudflare",
@@ -399,8 +428,10 @@ STALE_CLAIMS = (
         "/support/",
     ],
 )
-def test_no_page_promises_what_the_old_stack_did(client, path, language):
-    html = page(client, path, language)
+def test_no_page_promises_what_the_old_stack_did(
+    client, path, language, tokens_spelling_the_claims
+):
+    html = without_tokens(page(client, path, language))
 
     assert [claim for claim in STALE_CLAIMS if claim in html] == []
 
@@ -442,3 +473,135 @@ def test_security_states_what_the_new_stack_does(client, language, claims):
     html = page(client, "/security/", language)
 
     assert [claim for claim in claims if claim not in html] == []
+
+
+# --- PUBLIC-F07: the web promises only what the product does today (SAAS_PUBLIC-F76) --------------
+# Checked against the apps of the Hub (origin/main): there is no accounting, payroll or support-ticket
+# app, no TicketBAI and no tax returns (303, 390, 347), no warehouses, lots or expiry dates in
+# inventory and no bank reconciliation; the release number was typed by hand. The competitors' own
+# columns («Accounting + light CRM» of Holded) may still name what THEY do.
+
+UNSHIPPED_CLAIMS = (
+    "v3.4",
+    "TicketBAI",
+    "303·390·347",
+    "bank reconciliation",
+    "conciliación bancaria",
+    "multi-warehouse",
+    "multi-almacén",
+    "lot/expiry",
+    "lote/caducidad",
+    "HR and payroll",
+    "RRHH y nóminas",
+    "Support tickets",
+    "Tickets de soporte",
+    "QuickBooks",
+    "Zendesk",
+    "Invoicing + accounting",
+    "Facturación + contabilidad",
+    "HR, accounting",
+    "RRHH, contabilidad",
+    "Accounting + POS",
+    "Contabilidad + TPV",
+    "POS + accounting",
+    "TPV + contabilidad",
+    "POS, accounting",
+    "TPV, contabilidad",
+    "Inventory + warehouse",
+    "Inventario + almacén",
+    "No limit",
+    "Sin límite",
+    "Reports + audit",
+    "Informes + auditoría",
+)
+
+
+@pytest.mark.parametrize("language", ["en", "es"])
+@pytest.mark.parametrize(
+    "path", ["/", "/pricing/", "/features/", "/security/", "/about/", "/collaborate/"]
+)
+def test_no_page_promises_what_the_product_does_not_do(client, path, language):
+    html = without_tokens(page(client, path, language))
+
+    assert [claim for claim in UNSHIPPED_CLAIMS if claim in html] == []
+
+
+@pytest.mark.parametrize(
+    ("language", "sectors"),
+    [("en", ("Healthcare", "Automotive", "Logistics")), ("es", ("Salud", "Automoción", "Logística"))],
+)
+def test_the_home_names_the_businesses_it_is_built_for_not_every_sector(client, language, sectors):
+    """The trust strip said «Built for every kind of business» over sectors no vertical serves."""
+    html = page(client, "/", language)
+    strip = html[html.index('class="ep-logo-cloud') : html.index("</section>", html.index('class="ep-logo-cloud'))]
+
+    assert [sector for sector in sectors if sector in strip] == []
+    assert "every kind of business" not in strip
+    assert "todo tipo de negocio" not in strip
+
+
+STACK_ROW = re.compile(
+    r'<tr><td data-title="[^"]+">([^<]+)</td><td data-title="[^"]+">[^<]+</td>'
+    r'<td data-title="[^"]+" class="font-mono">€(\d+)</td>'
+)
+STACK_TOTAL = re.compile(r'<td colspan="2">[^<]+</td>\s*<td data-title="[^"]+" class="font-mono">€(\d+)</td>')
+
+
+def test_the_typical_stack_total_is_the_sum_of_its_rows(client):
+    """«€533» was typed next to rows that changed: the total is worked out from them."""
+    html = page(client, "/")
+
+    rows = STACK_ROW.findall(html)
+    (total,) = STACK_TOTAL.findall(html)
+
+    assert rows, "no row in the stack table"
+    assert int(total) == sum(int(cost) for _, cost in rows)
+
+
+# --- PUBLIC-F08: what the web says of security and data is what runs (SAAS_PUBLIC-F77) -------------
+# The load balancer accepts TLS 1.2 and 1.3 (``ELBSecurityPolicy-TLS13-1-2-2021-06`` in ERPlora/aws):
+# «TLS 1.3 required» was false. Nothing in the platform runs «regular security audits» nor has a
+# pentest report to hand out. The privacy policy (§6) lets the assistant's backup model providers
+# process outside the EEA: «your data never leaves the EU» contradicted it.
+
+UNVERIFIED_SECURITY_CLAIMS = (
+    "TLS 1.3 required",
+    "TLS 1.3 requerido",
+    "security audits",
+    "Auditorías de seguridad",
+    "pentest",
+    "never leaves the EU",
+    "nunca salen de la UE",
+)
+
+
+@pytest.mark.parametrize("language", ["en", "es"])
+@pytest.mark.parametrize("path", ["/security/", "/features/", "/pricing/", "/", "/about/"])
+def test_no_page_claims_what_nobody_checked(client, path, language):
+    html = without_tokens(page(client, path, language))
+
+    assert [claim for claim in UNVERIFIED_SECURITY_CLAIMS if claim in html] == []
+
+
+@pytest.mark.parametrize(
+    ("language", "claim"),
+    [("en", "HTTPS only, with TLS 1.2 or 1.3"), ("es", "Solo HTTPS, con TLS 1.2 o 1.3")],
+)
+def test_security_states_the_tls_versions_the_load_balancer_accepts(client, language, claim):
+    assert claim in page(client, "/security/", language)
+
+
+@pytest.mark.parametrize(
+    ("language", "exception"),
+    [
+        ("en", "if its European provider is unavailable"),
+        ("es", "si su proveedor europeo no está disponible"),
+    ],
+)
+def test_the_storage_answer_names_the_one_exception_of_the_privacy_policy(client, language, exception):
+    html = page(client, "/pricing/", language)
+    answers = re.findall(r'<div class="ion-padding" slot="content">(.*?)</div>', html, re.S)
+    (storage,) = [answer for answer in answers if "eu-west-1" in answer]
+
+    assert exception in storage
+    assert 'href="/legal/privacy/"' in storage

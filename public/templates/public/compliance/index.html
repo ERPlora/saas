@@ -1,0 +1,96 @@
+{% extends "public/public_base.html" %}
+{% load i18n static %}
+{% comment %}
+  /compliance/ (PUBLIC-F09, public/compliance.py): the structure of the old page (apps/public/compliance,
+  origin/develop) — the hero, the three figures, the countries ready for real operations and the grid of the
+  rest — over a fixed list released with the apps: the countries a business can be created in and the
+  fiscal systems the apps connect to today. The old «Covered» for «Verifactu / TicketBAI / Factura-e», the
+  foreign mandates nobody checked and the «On the roadmap» figure (saas#2650) are gone: the rest of the
+  countries read «Not connected yet», which is what they are.
+{% endcomment %}
+
+{% block title %}{% trans "Compliance" %} · ERPlora{% endblock %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'public/compliance.css' %}">{% endblock %}
+
+{% block meta_description %}{% trans "The EU countries where you can create your business with ERPlora, and the invoicing systems it connects to today: VeriFactu in Spain." %}{% endblock %}
+
+{% block og_title %}{% trans "Compliance" %} · ERPlora{% endblock %}
+{% block og_description %}{% trans "The EU countries where you can create your business with ERPlora, and the invoicing systems it connects to today: VeriFactu in Spain." %}{% endblock %}
+
+{% block page_content %}
+  {% trans "Compliance" as hero_eyebrow %}
+  {% trans "EU compliance." as hero_title %}
+  {% trans "Every EU country where you can create your business, and the invoicing systems ERPlora connects to today." as hero_description %}
+  {% include "public/partials/page_hero.html" with hero_eyebrow=hero_eyebrow hero_title=hero_title hero_description=hero_description %}
+
+  <section class="ep-section ep-section--compact ep-section--center ep-section--divider">
+    <header class="ep-section-head">
+      <span class="ep-eyebrow">{% trans "Coverage overview" %}</span>
+      <h2 class="ep-section-title">{% trans "Built market by market." %}</h2>
+      <p class="ep-section-sub">{% trans "A country is ready for real operations only when ERPlora connects to its fiscal system." %}</p>
+    </header>
+    <div class="ep-container">
+      <div class="compliance-figures">
+        <div class="ep-stat">
+          <p class="ep-stat__label">{% trans "EU countries where you can sell" %}</p>
+          <p class="ep-stat__value" data-figure="markets">{{ market_count }}</p>
+        </div>
+        <div class="ep-stat">
+          <p class="ep-stat__label">{% trans "Connected to their fiscal system" %}</p>
+          <p class="ep-stat__value" data-figure="connected">{{ connected_count }}</p>
+        </div>
+        <div class="ep-stat">
+          <p class="ep-stat__label">{% trans "Not connected yet" %}</p>
+          <p class="ep-stat__value" data-figure="not-connected">{{ others_count }}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="ep-section ep-section--compact ep-section--soft ep-section--divider">
+    <div class="ep-container ep-section-content">
+      <header class="ep-section-head">
+        <span class="ep-eyebrow">{% trans "Available now" %}</span>
+        <h2 class="ep-section-title">{% trans "Ready for real operations." %}</h2>
+        <p class="ep-section-sub">{% trans "The countries whose fiscal system ERPlora connects to, and what that covers." %}</p>
+      </header>
+      {% for country in connected %}
+      <article class="compliance-country compliance-country--connected" data-country="{{ country.code }}">
+        <div class="compliance-country__head">
+          <h3 class="compliance-country__name">{{ country.name }}</h3>
+          {% trans "Connected" as connected_label %}
+          {% include "public/components/status_pill.html" with tone="success" size="sm" dot=True label=connected_label only %}
+        </div>
+        {% for system in country.systems %}
+        <p class="compliance-country__system">{{ system.name }}</p>
+        <p class="compliance-country__text">{{ system.does }}</p>
+        <p class="compliance-country__text compliance-country__text--muted">{{ system.out }}</p>
+        {% endfor %}
+        <a class="compliance-country__link" href="{% url 'public:declaracion_responsable' %}">{% trans "Read our responsible declaration" %}</a>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="ep-section ep-section--compact ep-section--divider">
+    <div class="ep-container ep-section-content">
+      <header class="ep-section-head">
+        <span class="ep-eyebrow">{% trans "Not connected yet" %}</span>
+        <h2 class="ep-section-title">{% trans "Other EU countries." %}</h2>
+        <p class="ep-section-sub">{% trans "You can create your business and sell with ERPlora in each of them. Their own invoicing or fiscal systems are not connected yet: check with your adviser what your country requires before you use the point of sale there." %}</p>
+      </header>
+      <ul class="compliance-grid">
+        {% for country in others %}
+        <li class="compliance-country" data-country="{{ country.code }}">
+          <div class="compliance-country__head">
+            <h3 class="compliance-country__name">{{ country.name }}</h3>
+            {% trans "Not connected yet" as pending_label %}
+            {% include "public/components/status_pill.html" with tone="neutral" size="sm" label=pending_label only %}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </section>
+{% endblock %}
