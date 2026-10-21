@@ -109,6 +109,11 @@ async function atEverySize(page: Page, key: string, ready: () => Promise<void>):
   await page.setViewportSize({ width: 1440, height: 900 });
 }
 
+/** Django's admin is no Ionic page (`sidewaysScroll` looks inside `ion-content`): whether its document is wider than
+ * the screen. */
+const documentScrollsSideways = (page: Page) =>
+  page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
+
 /** Signs `request`'s session out (allauth.headless), with Django's CSRF token from its cookies. */
 async function signOut(request: APIRequestContext): Promise<void> {
   const { cookies } = await request.storageState();
@@ -408,6 +413,8 @@ test.describe('the open sessions (the panel as production has it)', () => {
       await expect(page.locator('.messagelist .success')).toHaveText('Sessions closed: 1.');
       await atEverySize(page, 'G09', async () => {
         await expect(page.locator('.messagelist')).toBeVisible();
+        // The «Action» select is as wide as its longest label: a long one pushed the page past the screen at 834.
+        expect(await documentScrollsSideways(page), 'the admin scrolls sideways').toBe(false);
       });
       expect((await sessionOf(laptop.request)).user).toBeNull();
     } finally {

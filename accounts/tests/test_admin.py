@@ -481,6 +481,25 @@ class TestCloseSessions:
     a superuser ends every session of an account (here and in its businesses) and the trust of its browsers, or only
     the sessions they pick. Through the operation, so the owner's live list of sessions refreshes. Support only looks."""
 
+    @pytest.mark.parametrize("language", ["en", "es"])
+    def test_its_actions_are_named_as_briefly_as_djangos_own(self, language):
+        """The «Action» select is as wide as its longest option: a label longer than Django's own «Delete selected
+        users» pushed the changelist past the screen at 834 px (seen in the e2e of ACCOUNTS-G09)."""
+        from django.contrib import admin
+        from django.contrib.admin.actions import delete_selected
+        from django.contrib.auth import get_user_model
+        from django.utils import translation
+        from allauth.usersessions.models import UserSession
+
+        with translation.override(language):
+            for model in (get_user_model(), UserSession):
+                model_admin = admin.site._registry[model]
+                djangos = str(delete_selected.short_description) % {
+                    "verbose_name_plural": model._meta.verbose_name_plural
+                }
+                label = str(model_admin.close_sessions.short_description)
+                assert len(label) <= len(djangos) + 4, (model.__name__, label, djangos)
+
     def test_closing_an_accounts_sessions_ends_them_all_here_and_in_its_businesses(
         self, staff_client, ana, password, ended
     ):
@@ -593,7 +612,7 @@ class TestCloseSessions:
             follow=True,
         )
 
-        assert "Cerrar todas sus sesiones y la confianza de sus navegadores" in listing.text
+        assert '<option value="close_sessions">Cerrar todas sus sesiones</option>' in listing.text
         assert "Sesiones cerradas: 1." in response.text
 
     def test_the_operation_runs_only_on_the_accounts_own_channel(self, ana):

@@ -29,12 +29,12 @@ msgid "Terms and privacy"
 msgstr "Términos y privacidad"
 
 #: accounts/admin.py
-msgid "Close all their sessions and the trust of their browsers (here and in their businesses)"
-msgstr "Cerrar todas sus sesiones y la confianza de sus navegadores (aquí y en sus negocios)"
+msgid "Close all their sessions"
+msgstr "Cerrar todas sus sesiones"
 
 #: accounts/admin.py
-msgid "Close the selected sessions (here and in their businesses)"
-msgstr "Cerrar las sesiones seleccionadas (aquí y en sus negocios)"
+msgid "Close the selected sessions"
+msgstr "Cerrar las sesiones seleccionadas"
 
 #: accounts/admin.py
 msgid "Sessions closed: %(count)s."

@@ -122,9 +122,9 @@ demás sesiones»; debajo, «Al cerrar una sesión también se cierra en tus neg
 más» en vez de páginas.
 
 ### admin › Cuentas › Usuarios y Sesiones de usuario
-La lista de cuentas lleva la acción «Cerrar todas sus sesiones y la confianza de sus navegadores (aquí y en
-sus negocios)»; **Sesiones de usuario** enseña quién ha entrado dónde, solo para leer, con «Cerrar las
-sesiones seleccionadas (aquí y en sus negocios)». Las dos acciones solo las ve un superusuario.
+La lista de cuentas lleva la acción «Cerrar todas sus sesiones», que también acaba la confianza de sus
+navegadores; **Sesiones de usuario** enseña quién ha entrado dónde, solo para leer, con «Cerrar las
+sesiones seleccionadas». Las dos acciones solo las ve un superusuario.
 
 ### Menú de usuario
 El nombre y el correo arriba del menú lateral (en el móvil, dentro del menú): «Cuenta», «Ayuda», el tema y
@@ -435,9 +435,9 @@ Estado: hecho
 Actor: personal de ERPlora
 Pantalla: admin › Cuentas › Usuarios y Sesiones de usuario
 Pasos:
-1. Ante un incidente, un superusuario busca la cuenta en **admin › Cuentas › Usuarios**, la marca y elige «Cerrar todas sus sesiones y la confianza de sus navegadores (aquí y en sus negocios)».
+1. Ante un incidente, un superusuario busca la cuenta en **admin › Cuentas › Usuarios**, la marca y elige «Cerrar todas sus sesiones».
 2. El admin dice «Sesiones cerradas: 1.»: la cuenta sale de todos sus navegadores y cada uno le pedirá el código de su app la próxima vez.
-3. En **Sesiones de usuario** se ve quién ha entrado dónde (cuenta, dirección, navegador y fechas); un superusuario marca unas y elige «Cerrar las sesiones seleccionadas (aquí y en sus negocios)».
+3. En **Sesiones de usuario** se ve quién ha entrado dónde (cuenta, dirección, navegador y fechas); un superusuario marca unas y elige «Cerrar las sesiones seleccionadas».
 Entra: las cuentas o las sesiones marcadas.
 Sale: esas sesiones cerradas, también en los negocios de la cuenta; con la acción de la cuenta, además, ningún navegador suyo es de confianza (su app y sus códigos de recuperación siguen valiendo). La lista de sesiones de la propia cuenta se actualiza sola, y el registro guarda quién lo hizo. Evento `accounts.session.closed`.
 Si falla: el soporte ve las sesiones sin poder cerrarlas; nadie cambia ni borra una sesión a mano, porque borrar la fila no la cerraría. Una cuenta que ya no existe no se encuentra.

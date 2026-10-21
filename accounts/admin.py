@@ -174,7 +174,7 @@ class UserAdmin(DjangoUserAdmin):
         return request.user.is_superuser
 
     @admin.action(
-        description=_("Close all their sessions and the trust of their browsers (here and in their businesses)"),
+        description=_("Close all their sessions"),
         permissions=["close_sessions"],
     )
     def close_sessions(self, request, queryset):
@@ -393,7 +393,7 @@ class UserSessionAdmin(AllauthUserSessionAdmin):
     def has_close_sessions_permission(self, request):
         return request.user.is_superuser
 
-    @admin.action(description=_("Close the selected sessions (here and in their businesses)"), permissions=["close_sessions"])
+    @admin.action(description=_("Close the selected sessions"), permissions=["close_sessions"])
     def close_sessions(self, request, queryset):
         count = services.close_sessions(by=request.user, sessions=list(queryset))
         self.message_user(request, gettext("Sessions closed: %(count)s.") % {"count": count}, messages.SUCCESS)

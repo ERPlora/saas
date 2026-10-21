@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:5830b07f807f2c6fd0e30ffee95554792feba9fa9c87d25e2f0084d85917b6ed -->
+<!-- generated from WORKBOOK.md sha256:f8f260fc9a3d70845dbbffbd84f1a3c630cceb56d032fd5cbb7ab950a3d3098a -->
 
 ## What it is for and who it is for
 
@@ -104,9 +104,9 @@ marked "This session", and each other one carries "Close session". On top, "Clos
 "Closing a session also closes it in your businesses.". On a phone, "Load more" instead of pages.
 
 ### admin › Accounts › Users and User sessions
-The list of accounts carries the action "Close all their sessions and the trust of their browsers (here and
-in their businesses)"; **User sessions** shows who signed in where, read only, with "Close the selected
-sessions (here and in their businesses)". Only a superuser sees both actions.
+The list of accounts carries the action "Close all their sessions", which also ends the trust of their
+browsers; **User sessions** shows who signed in where, read only, with "Close the selected
+sessions". Only a superuser sees both actions.
 
 ### User menu
 The name and the email at the top of the side menu (on a phone, inside the menu): "Account", "Help", the
@@ -398,9 +398,9 @@ Status: done
 Actor: ERPlora staff
 Screen: admin › Accounts › Users and User sessions
 Steps:
-1. In an incident, a superuser looks for the account in **admin › Accounts › Users**, ticks it and picks "Close all their sessions and the trust of their browsers (here and in their businesses)".
+1. In an incident, a superuser looks for the account in **admin › Accounts › Users**, ticks it and picks "Close all their sessions".
 2. The admin says "Sessions closed: 1.": the account is out of all its browsers and each one will ask for its app's code next time.
-3. In **User sessions** they see who signed in where (account, address, browser and dates); a superuser ticks some and picks "Close the selected sessions (here and in their businesses)".
+3. In **User sessions** they see who signed in where (account, address, browser and dates); a superuser ticks some and picks "Close the selected sessions".
 In: the accounts or the sessions ticked.
 Out: those sessions closed, also in the account's businesses; with the account's action, besides, no browser of it is trusted (its app and its recovery codes keep working). The account's own list of sessions refreshes by itself, and the log keeps who did it. Event `accounts.session.closed`.
 If it fails: support see the sessions without being able to close them; nobody changes or deletes a session by hand, because deleting the row would not end it. An account that no longer exists is not found.
