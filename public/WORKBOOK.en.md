@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:dcc0a34bdcca65f2b19eab62e7d78b8f7e7f6518f5f2a0c2bc0d2479baa0c2d4 -->
+<!-- generated from WORKBOOK.md sha256:879c0d6c00b68cd5ac8800f04938f3315a0b037c53b44efd8f41bcfc39d6d49c -->
 
 ## What it is for and who it is for
 
@@ -45,6 +45,10 @@ Who uses it:
 - **Intercom, HubSpot and Zendesk**: the contact form's message is answered to whoever wrote it, arrives with the
   topic of the page it comes from and what was typed is not lost if something fails
   (https://www.hubspot.com/products/marketing/forms, https://www.zendesk.com/service/messaging/).
+- **Shopify POS, Square POS; Safari View Controller and Custom Tabs**: inside an app, a legal text opens in a viewer
+  with only the text and a way back, without the rest of the web
+  (https://developer.apple.com/documentation/safariservices/sfsafariviewcontroller,
+  https://developer.chrome.com/docs/android/custom-tabs).
 - **Shopify App Store and Odoo Apps**: the store by sections with search, and each app's page with what it needs
   and its documentation (https://apps.shopify.com, https://apps.odoo.com).
 
@@ -149,7 +153,7 @@ one, "Documentation".
 | PUBLIC-F23 | See an app's page | done |
 | PUBLIC-F24 | Get the installed app | done |
 | PUBLIC-F25 | Know which version of the app is published | done |
-| PUBLIC-F26 | Open a public page from the installed app | partial |
+| PUBLIC-F26 | Open a public page from the installed app | done |
 
 ### PUBLIC-F01 See the home page
 Status: done
@@ -379,7 +383,7 @@ Actor: visitor
 Screen: Contact
 Steps:
 1. On "Get in Touch", "Contact Information" shows the support address and "Chat with us" (WhatsApp); "Response time" says "Within 4 business hours".
-2. The footer, Support and the form give the same support address, and the form, the sent notice and the home page ("4 h") give the same reply time.
+2. The footer, Support, the home page's contact block, the error pages and the sign-in's error screen give the same support address, and the form, the sent notice and the home page ("4 h") give the same reply time.
 In: nothing.
 Out: nothing saved.
 If it fails: no page promises round-the-clock attention or another reply time; the support address, the chat and the reply time are written in one place, so they cannot contradict each other.
@@ -477,13 +481,14 @@ If it fails: if that note cannot be read or carries no version, the answer is th
 Involved: none
 
 ### PUBLIC-F26 Open a public page from the installed app
-Status: partial — inside the installed app, a legal text opened from the sign-in looks as it does in the browser (menu, footer and "Start free") and has no button to go back: the app does not make itself known to the public web
+Status: done
 Actor: visitor
 Screen: Legal texts
 Steps:
-1. In the installed app, the sign-in screen links the terms and the privacy policy.
-2. Pressing one opens the legal text in the same window.
-In: nothing.
-Out: nothing saved.
-If it fails: while the web does not measure visits, no optional cookie is set and the cookie notice does not show.
-Involved: hubs (the app's sign-in)
+1. In the installed app (and in the account the app opens in the browser), the sign-in screen and the email check screen link the terms and the privacy policy.
+2. Pressing one opens the text as an app's viewer does: only the text and "Back", without the web's menu, footer or sign-up buttons.
+3. The texts that one links open the same way while the app's session lasts; "Back" leads to the app screen that opened it, or to its start if the text was opened alone.
+In: which part of the app opens it.
+Out: the app mark in that window's session.
+If it fails: inside the app the cookie notice does not show and no measurement loads, even if they were accepted on the web; a mark the web does not know is treated as the web.
+Involved: hubs (the app's sign-in), accounts (the email check)

@@ -53,6 +53,10 @@ Quién la usa:
 - **Intercom, HubSpot y Zendesk**: el mensaje del formulario de contacto se responde a quien lo escribió, llega con
   el tema de la página de la que viene y lo escrito no se pierde si algo falla
   (https://www.hubspot.com/products/marketing/forms, https://www.zendesk.com/service/messaging/).
+- **Shopify POS, Square POS; Safari View Controller y Custom Tabs**: dentro de una app, un texto legal se abre en un
+  visor con solo el texto y una forma de volver, sin el resto de la web
+  (https://developer.apple.com/documentation/safariservices/sfsafariviewcontroller,
+  https://developer.chrome.com/docs/android/custom-tabs).
 - **Shopify App Store y Odoo Apps**: la tienda por secciones con búsqueda, y la ficha de cada app con lo que
   necesita y su documentación (https://apps.shopify.com, https://apps.odoo.com).
 
@@ -158,7 +162,7 @@ la app instalada.
 | PUBLIC-F23 | Ver la ficha de una app | hecho |
 | PUBLIC-F24 | Conseguir la aplicación instalada | hecho |
 | PUBLIC-F25 | Saber qué versión de la aplicación está publicada | hecho |
-| PUBLIC-F26 | Abrir una página pública desde la aplicación instalada | parcial |
+| PUBLIC-F26 | Abrir una página pública desde la aplicación instalada | hecho |
 
 ### PUBLIC-F01 Ver la portada
 <!-- origen: old-saas:SAAS_PUBLIC-F55 -->
@@ -406,7 +410,7 @@ Actor: visitante
 Pantalla: Contacto
 Pasos:
 1. En «Contáctanos», «Información de Contacto» enseña el correo de soporte y «Escríbenos» (WhatsApp); «Tiempo de respuesta» dice «En un plazo de 4 horas laborables».
-2. El pie, Soporte y el formulario dan el mismo correo de soporte, y el formulario, el aviso de enviado y la portada («4 h») dan el mismo plazo.
+2. El pie, Soporte, el bloque de contacto de la portada, las páginas de error y la pantalla de error de la entrada dan el mismo correo de soporte, y el formulario, el aviso de enviado y la portada («4 h») dan el mismo plazo.
 Entra: nada.
 Sale: nada guardado.
 Si falla: ninguna página promete atención a todas horas ni otro plazo; el correo de soporte, el chat y el plazo se escriben en un solo sitio, así que no pueden contradecirse.
@@ -512,16 +516,17 @@ Implicados: ninguno
 
 ### PUBLIC-F26 Abrir una página pública desde la aplicación instalada
 <!-- origen: old-saas:SAAS_PUBLIC-F74 -->
-Estado: parcial — dentro de la aplicación instalada, un texto legal abierto desde la entrada se ve como en el navegador (menú, pie y «Empieza gratis») y no tiene botón para volver: la aplicación no se da a conocer a la web pública
+Estado: hecho
 Actor: visitante
 Pantalla: Textos legales
 Pasos:
-1. En la aplicación instalada, la pantalla de entrada enlaza los términos y la privacidad.
-2. Al pulsar uno, el texto legal se abre en la misma ventana.
-Entra: nada.
-Sale: nada guardado.
-Si falla: mientras la web no mida visitas, no se pone ninguna cookie opcional ni sale el aviso de cookies.
-Implicados: hubs (la entrada de la aplicación)
+1. En la aplicación instalada (y en la cuenta que la aplicación abre en el navegador), la pantalla de entrada y la de comprobar el correo enlazan los términos y la privacidad.
+2. Al pulsar uno, el texto se abre como en el visor de una aplicación: solo el texto y «Volver», sin el menú, el pie ni los botones de alta de la web.
+3. Los textos que ese texto enlaza se abren igual mientras dure la sesión de la aplicación; «Volver» lleva a la pantalla de la aplicación que lo abrió, o a su inicio si el texto se abrió suelto.
+Entra: desde qué parte de la aplicación se abre.
+Sale: la marca de aplicación en la sesión de esa ventana.
+Si falla: dentro de la aplicación no sale el aviso de cookies ni se carga ninguna medición, aunque se aceptaran en la web; una marca que la web no conoce se trata como la web.
+Implicados: hubs (la entrada de la aplicación), accounts (comprobar el correo)
 
 ## Para quien lo mantiene
 
@@ -543,6 +548,13 @@ Implicados: hubs (la entrada de la aplicación)
 - Equivalencia de claves de la parte 2: G01, G02, G03, G21, G25, G38, G19 y G07 = F15; G39 = F16; G40 = F17;
   G41 = F18; G24, G43, G44 y G20 = F19; G45 y G17 = F20; G46 = F21; G26, G10 y G11 = F22; G27 y G08 = F23; G28 y
   G04 = F24; G29 = F25; G47 = F26.
+- Modo aplicación (F26): la entrada de la SPA (`hubs/frontend/pages/LaunchPage.vue`, `VerifyEmailPage.vue`) enlaza
+  los textos con `accounts/frontend/legal.ts` (`?surface=<superficie>` fuera de la web); `context_processors.app_surface`
+  lo guarda en la sesión (`public.surface`; `?surface=web` lo quita) y `public_base.html` pinta `partials/app_bar.html`
+  en lugar del menú, sin pie, aviso ni analítica; `frontend/public.ts` (`setupAppBack`) vuelve por el historial.
+- Correo de soporte (F18): `SUPPORT_EMAIL` es la única fuente; las páginas de error lo leen con `{% support_email %}`
+  (`public/templatetags/support.py`: la 500 se pinta sin contexto) y la SPA con el bloque JSON `support-email` de
+  `base/spa.py` (`accounts/frontend/support.ts`).
 - Equivalencia de claves del registro: G30 = F01; G31 y G14 = F02; G32 y G05 = F03; G33 = F04; G34, G06 y G09 = F05;
   G35 y G16 = F06; G49 = F07; G50 = F08; G36 y G13 = F09; G37, G12, G15 y G18 = F10; G51 = F11; G52 = F12; G42 = F13;
   G48, G22 y G23 = F14.

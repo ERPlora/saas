@@ -49,6 +49,10 @@ sin SSR y sin prefijo `/es/`; ronda 16 y spec `docs/superpowers/specs/2026-10-13
   (`GA_MEASUREMENT_ID` o `CLARITY_PROJECT_ID`); sin ninguno (producción hoy) la web solo pone cookies técnicas, que
   no piden consentimiento (AEPD, ICO, CNIL; GitHub retiró su aviso por lo mismo). Los grupos de `init_cookie_groups`
   y `/cookies/` siguen: son la política y la elección el día que se mida.
+- **Desde la app instalada (PUBLIC-F26, APP-PUBLIC-2):** los textos legales que enlaza la entrada de la SPA llevan
+  `?surface=desktop|mobile|account` y se ven en modo aplicación (barra «Volver», sin menú, pie, aviso de cookies ni
+  analítica), guardado en la sesión; como el visor in-app de Shopify POS o Square POS. Sin tocar ERPlora/app.
+- **Correo de soporte (PUBLIC-F18):** también las páginas de error (`{% support_email %}`) y la SPA (`support-email`).
 - **Descargas (PUBLIC-F24):** los dispositivos y usuarios del hub gratis de `/download/` son los del plan Gratis
   (`pricing.free_plan` y el parcial `pricing/_plan_limits.html`, el de la tabla de precios); sin plan Gratis, ninguno.
 
