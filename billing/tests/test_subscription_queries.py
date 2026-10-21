@@ -177,6 +177,21 @@ class TestTheRow:
         assert row["modules"][0]["valid_until"] is not None
         assert row["next_invoice"]["total_cents"] == 3629
 
+    def test_a_module_whose_cancellation_ended_is_not_listed(
+        self, owner, shop, inventory
+    ):
+        # BILLING-G67: once its paid period is over the module is gone from the business, as in the
+        # snapshot the Hub gets and in the store, which sells it again.
+        pay(shop, modules=["inventory"])
+        shop.subscription.items.filter(module_slug="inventory").update(
+            valid_until=timezone.now() - timedelta(days=1)
+        )
+
+        [row] = subscriptions(owner)
+
+        assert row["modules"] == []
+        assert row["next_invoice"]["total_cents"] == 3629
+
     def test_an_annual_plan_is_priced_by_the_year(self, owner, shop):
         pay(shop, interval="year")
 

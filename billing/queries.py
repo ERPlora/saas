@@ -1081,7 +1081,11 @@ def _subscription_row(
     plan_cents = to_cents((plan.price_annual if interval == "year" else plan.price_monthly) or 0)
     items = []
     billed = [(plan_cents, vat.SAAS_SUBSCRIPTION_CATEGORY)] if plan_cents else []
+    now = timezone.now()
     for item in subscription.items.all():
+        if not item.is_live(now):
+            # A cancelled module whose period ended is gone, as in the Hub's snapshot and in the store.
+            continue
         price = _module_price(modules.get(item.module_slug), interval)
         items.append(
             {
