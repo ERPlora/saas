@@ -273,8 +273,8 @@ export async function businessIdOf(request: APIRequestContext, name: string): Pr
 }
 
 /**
- * What `code` prints, run with Django set up against the local database of `.env` (DEBUG on). For
- * what a spec reads from the SaaS's side and no page shows.
+ * What `code` prints, run with Django set up against the run's database (DEBUG on): the local one of `.env`,
+ * or the stack's own (stack.ts). For what a spec reads from the SaaS's side and no page shows.
  */
 export function djangoPrint(code: string): string {
   const boot = 'import django,os;os.environ.setdefault("DJANGO_SETTINGS_MODULE","config.settings");django.setup()';

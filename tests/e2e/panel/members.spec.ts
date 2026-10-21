@@ -32,6 +32,8 @@ import { PANEL_URL } from './project';
 const NEWCOMER = 'e2e-newcomer@example.com';
 /** The password the newcomer chooses (allauth's validators: long, not common, not like the email). */
 const NEWCOMER_PASSWORD = 'Pan-de-centeno-2026';
+/** The panel's origin as a pattern: the mails link to the server that sent them, the run's (stack.ts). */
+const PANEL = PANEL_URL.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
 
 interface MemberRow {
   id: string;
@@ -187,8 +189,8 @@ test.describe('members', () => {
     expect(snapshots(hub, id)).toEqual([]);
 
     // The mail: who invites where, the invitation's link and, for a new account, how to get in.
-    const reset = await waitForMail(NEWCOMER, invitedAt, /http:\/\/localhost:8012\/password\/reset(?=\s|$)/m);
-    const accept = await waitForMail(NEWCOMER, invitedAt, /http:\/\/localhost:8012\/invitation\b/);
+    const reset = await waitForMail(NEWCOMER, invitedAt, new RegExp(`${PANEL}/password/reset(?=\\s|$)`, 'm'));
+    const accept = await waitForMail(NEWCOMER, invitedAt, new RegExp(`${PANEL}/invitation\\b`));
     await waitForMail(NEWCOMER, invitedAt, /Panadería López/);
 
     // The newcomer, in a browser of their own: a password, the login, «Accept and enter».

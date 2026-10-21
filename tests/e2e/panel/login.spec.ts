@@ -1,6 +1,6 @@
 // flow: FIX-LAUNCH-TABS
 // The panel's smoke (plan 2026-10-13-panel-saas-unificado, L0-G; launcher of L1-C): the pipeline from
-// the browser to the panel's dev server (:8012, project.ts) works end to end. A visitor opens the entry
+// the browser to the panel's dev server (:8012 by default, project.ts) works end to end. A visitor opens the entry
 // (/launch, open to visitors since round 17 §2.2), whose card is the sign-in itself (Ioan, 2026-10-15): the
 // password, then the code mailed to the account typed on /verify-email, and the launcher loads again signed
 // in, and /api/me answers with that session; then the signed-in fixture (allauth.headless's API with the

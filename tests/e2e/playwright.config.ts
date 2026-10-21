@@ -9,27 +9,41 @@
 // `.env` has unapplied migrations (it never migrates it: sessions share it), then seeds the app the
 // specs open and removes it at the end (store_docs_seed.py).
 //
+// Ports and database are the run's stack's (stack.ts): today's unless E2E_SAAS_PORT moves the three ports
+// for a second run at once, whose own e2e database the first server creates and migrates before it starts
+// (`node tests/e2e/database.ts`; Playwright starts the servers one after another, before globalSetup).
+//
 // Each run writes its traces and failure screenshots into `.artifacts/test-results/<run id>/`, and the
 // specs their evidence into `.artifacts/` (both ignored by git).
 //
 // Two projects (README.md): `public`, the specs above against that server, and `panel`, the panel's
-// specs (`panel/`) against the dev server on :8001 (panel/project.ts). `pnpm e2e` runs both and
+// specs (`panel/`) against a dev server of its own on :8012 (panel/project.ts). `pnpm e2e` runs both and
 // `--project=public|panel` one, headless; `pnpm e2e:headed` the same in a visible Chrome; `pnpm e2e:ci`
 // (CI=1) is the CI run.
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { defineConfig } from '@playwright/test';
+import { defineConfig, type PlaywrightTestConfig } from '@playwright/test';
 
 import { djangoEnv } from './django-env';
 import { panelProject, panelServers } from './panel/project';
+import { STACK, type Stack } from './stack';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SAAS_DIR = resolve(HERE, '..', '..');
-const PORT = Number(process.env.E2E_PORT ?? 8011);
-export const BASE_URL = `http://127.0.0.1:${PORT}`;
+export const BASE_URL = `http://127.0.0.1:${STACK.publicPort}`;
 
-process.env.PW_RUN_ID ??= new Date().toISOString().replace(/[:.]/g, '-');
+/**
+ * The folder name of a run of `stack` started `now` (`.artifacts/test-results/<id>/`): its start time and, beside
+ * the shared stack, its port. Two runs started in the same millisecond shared one, and the first to finish
+ * deleted the other's traces.
+ */
+export function runId(stack: Stack, now: Date): string {
+  const started = now.toISOString().replace(/[:.]/g, '-');
+  return stack.shared ? started : `${started}-${stack.base}`;
+}
+
+process.env.PW_RUN_ID ??= runId(STACK, new Date());
 
 /** Milliseconds between the steps of a visible run, so a person can follow it. */
 const SLOW_MO = 150;
@@ -44,6 +58,35 @@ export function browserWindow(env: Record<string, string | undefined>): { headle
 }
 
 const WINDOW = browserWindow(process.env);
+
+type WebServer = Exclude<NonNullable<PlaywrightTestConfig['webServer']>, unknown[]>;
+
+/**
+ * The public server of `stack`, the first one Playwright starts: before it, an own stack's database is created
+ * when missing and migrated (database.ts), so the panel's Django and globalSetup find it ready.
+ */
+export function publicServer(saasDir: string, stack: Stack = STACK): WebServer {
+  const runserver = `uv run python manage.py runserver 127.0.0.1:${stack.publicPort} --novite --insecure --noreload`;
+  return {
+    command: stack.database === undefined ? runserver : `node tests/e2e/database.ts && ${runserver}`,
+    cwd: saasDir,
+    url: `http://127.0.0.1:${stack.publicPort}/robots.txt`,
+    reuseExistingServer: false,
+    timeout: 120_000,
+    // Playwright puts its own environment under these, DEBUG included, and the stack's database (django-env.ts).
+    env: djangoEnv(
+      false,
+      {
+        // Production refuses to start without a key; this one only signs this local, throwaway server.
+        SECRET_KEY: 'e2e-local-only-not-a-secret',
+        // Production refuses to start without it either (fiscal/): a valid Fernet key that encrypts nothing here.
+        FISCAL_DOCUMENTS_KEY: 'ZTJlLWxvY2FsLW9ubHktbm90LWEtc2VjcmV0LWtleSE=',
+        ALLOWED_HOSTS: '127.0.0.1,localhost',
+      },
+      stack,
+    ),
+  };
+}
 
 export default defineConfig({
   testDir: '.',
@@ -67,21 +110,7 @@ export default defineConfig({
   },
   projects: [{ name: 'public', testIgnore: 'panel/**' }, panelProject],
   webServer: [
-    {
-      command: `uv run python manage.py runserver 127.0.0.1:${PORT} --novite --insecure --noreload`,
-      cwd: SAAS_DIR,
-      url: `${BASE_URL}/robots.txt`,
-      reuseExistingServer: false,
-      timeout: 120_000,
-      // Playwright puts its own environment under these, DEBUG included (django-env.ts).
-      env: djangoEnv(false, {
-        // Production refuses to start without a key; this one only signs this local, throwaway server.
-        SECRET_KEY: 'e2e-local-only-not-a-secret',
-        // Production refuses to start without it either (fiscal/): a valid Fernet key that encrypts nothing here.
-        FISCAL_DOCUMENTS_KEY: 'ZTJlLWxvY2FsLW9ubHktbm90LWEtc2VjcmV0LWtleSE=',
-        ALLOWED_HOSTS: '127.0.0.1,localhost',
-      }),
-    },
+    publicServer(SAAS_DIR),
     ...panelServers(SAAS_DIR),
   ],
 });

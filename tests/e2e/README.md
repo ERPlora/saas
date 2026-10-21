@@ -4,8 +4,8 @@ Playwright con **un** `playwright.config.ts` y dos proyectos, cada uno contra su
 
 | Proyecto | Specs | Servidor | Para qué |
 |---|---|---|---|
-| `public` | `*.spec.ts` de esta carpeta (hoy `store-docs.spec.ts`, `public-dark.spec.ts`, el modo claro/oscuro del sistema con sus capturas en `.artifacts/public-dark/`, y `demo-door.spec.ts`, la puerta `/demo/` en `en` y `es` con sus capturas en `.artifacts/demo/`) | `runserver 127.0.0.1:8011` con `DEBUG=False`, `--insecure`, sin Vite | La web pública (plantillas de Django) con la CSP de producción. Pide `pnpm build` antes |
-| `panel` | `panel/*.spec.ts` | `runserver 127.0.0.1:8012 --novite --noreload` propio, con `DEBUG=True`, `HUB_INTERNAL_URL` a un puerto sin nadie (`:8019`) y el correo a ficheros, + Vite (`pnpm run dev`) en `:5174` (o en `VITE_DEV_PORT`) | El panel (la SPA de `erplora.com`) tal como se sirve en desarrollo |
+| `public` | `*.spec.ts` de esta carpeta (hoy `store-docs.spec.ts`, `public-dark.spec.ts`, el modo claro/oscuro del sistema con sus capturas en `.artifacts/public-dark/`, y `demo-door.spec.ts`, la puerta `/demo/` en `en` y `es` con sus capturas en `.artifacts/demo/`) | `runserver 127.0.0.1:8011` (o el de su pila, «Dos e2e del SaaS a la vez») con `DEBUG=False`, `--insecure`, sin Vite | La web pública (plantillas de Django) con la CSP de producción. Pide `pnpm build` antes |
+| `panel` | `panel/*.spec.ts` | `runserver 127.0.0.1:8012 --novite --noreload` propio (o el de su pila), con `DEBUG=True`, `HUB_INTERNAL_URL` a un puerto sin nadie (`:8019`) y el correo a ficheros, + Vite (`pnpm run dev`) en `:5174` (o en `VITE_DEV_PORT`) | El panel (la SPA de `erplora.com`) tal como se sirve en desarrollo |
 
 ## Cómo se corre
 
@@ -24,7 +24,8 @@ pnpm e2e --project=panel panel/login.spec.ts   # una spec
   `manage.py migrate --check --plan`, que no aplica nada, y si falta alguna migración aborta la ejecución
   con la lista y el aviso de correr `uv run python manage.py migrate` desde un checkout de `main`. Las specs
   leen lo que siembran las migraciones (los planes de `hubs.0013`) y una BD que dejó otra rama hacía fallar
-  `panel/audit2.spec.ts` con el código bien (2026-10-16).
+  `panel/audit2.spec.ts` con el código bien (2026-10-16). Una pila propia (`E2E_SAAS_PORT`) no usa esa BD: la suya
+  la crea y la migra la propia e2e al arrancar (ver «Dos e2e del SaaS a la vez»).
 - **Sin ventana por defecto** (Ioan, 2026-10-14: nunca se abre un Chrome visible si no se pide): Chrome
   (`channel: 'chrome'`) en modo `headless` y sin `slowMo`. Sustituye a la regla anterior de «siempre
   visible».
@@ -36,12 +37,17 @@ pnpm e2e --project=panel panel/login.spec.ts   # una spec
   (`DEBUG=pw:*`, todos los registros de Playwright). Los procesos de Django no heredan ese `DEBUG`, que leen
   como booleano: cada uno lleva el suyo por `django-env.ts` (`:8011` apagado; `:8012`, `globalSetup` y los
   seeds, encendido). El Vite sí lo hereda (`vite:*`).
-- Un solo worker (`workers: 1`): los proyectos comparten la BD local.
-- Trazas y capturas de los fallos en `.artifacts/test-results/<id de la ejecución>/`
+- Un solo worker (`workers: 1`): los proyectos comparten la BD de la ejecución.
+- Trazas y capturas de los fallos en `.artifacts/test-results/<id de la ejecución>/` (la hora de inicio y, en una
+  pila propia, su puerto: `…-8030`)
   (`retain-on-failure`; se abren con `pnpm exec playwright show-trace <ruta>/trace.zip`). Las capturas
   que dejan las specs, en `.artifacts/` (las del panel, en `.artifacts/panel/`). Todo ignorado por git.
 
 ## Puertos y servidores
+
+Son los de la pila compartida, la de toda ejecución que no exporta nada. `E2E_SAAS_PORT` los mueve juntos para una
+segunda ejecución a la vez (`stack.ts`; ver «Dos e2e del SaaS a la vez»): `+1` el público, `+2` el panel y `+9` el
+Hub de las specs (por defecto `8010`: `:8011`, `:8012`, `:8019`).
 
 - **`:8012` (Django del panel)**: siempre propio (`reuseExistingServer: false`), sin autorecarga y con
   `HUB_INTERNAL_URL=http://127.0.0.1:8019`: las llamadas al Hub se quedan pendientes, como con el Hub
@@ -59,12 +65,13 @@ pnpm e2e --project=panel panel/login.spec.ts   # una spec
   resto (sigue pendiente). Si el puerto está ocupado, esa spec no arranca.
 - **Correo**: el Django del panel usa el backend de ficheros de Django (`EMAIL_BACKEND` +
   `EMAIL_FILE_PATH`, que `config/settings.py` pasa a `MAILERS`) y escribe cada correo en
-  `.artifacts/panel/mail/`; `waitForMail(destinatario, desde, enlace)` espera el que llega tras una
+  `.artifacts/panel/mail/` (en una pila propia, `.artifacts/panel/mail-<E2E_SAAS_PORT>/`); `waitForMail(destinatario, desde, enlace)` espera el que llega tras una
   acción y devuelve su enlace (invitación, contraseña). Los de ejecuciones anteriores se quedan y se
   saltan por fecha.
 - **`:5174` (Vite)**, o el puerto de `VITE_DEV_PORT` si se exporta (lo leen igual `config/settings.py`,
   `vite.config.ts` y `panel/project.ts`; el Django de `:8012` lo recibe también): si ya hay uno levantado,
-  la e2e **lo reutiliza** y no lo para, **pero solo si es de este árbol**. Cada respuesta del Vite de
+  la e2e **lo reutiliza** y no lo para, **pero solo si es de este árbol** (y solo en la pila compartida: una
+  pila propia arranca el suyo). Cada respuesta del Vite de
   desarrollo lleva la cabecera `x-erplora-vite-root` con el directorio que sirve, y `globalSetup`
   (`assertViteOfThisTree`) aborta la ejecución antes de tocar la BD si el Vite de ese puerto es de otro
   checkout o no la manda (un Vite de un commit anterior a `VITE_DEV_PORT`): las specs probarían el
@@ -92,8 +99,53 @@ VITE_DEV_PORT=5225 pnpm e2e:ci tests/e2e/panel/invitation.spec.ts     # su e2e, 
 - Fuera de rango (`0`, `70000`, `abc`, vacía), Django (`ImproperlyConfigured`) y Vite se niegan a arrancar.
 - Con `VITE_DEV_PORT` exportada o en el `.env`, `uv run pytest` sigue leyendo el `5174` (`config/settings_pytest.py`) y la
   variable se prueba en un proceso aparte.
-- Los puertos fijos de la e2e (`:8011`, `:8012`, `:8019`) no cambian: dos e2e del SaaS a la vez chocan
-  ahí, y Playwright lo dice al arrancar (`reuseExistingServer: false`).
+- Dos **e2e** del SaaS a la vez necesitan además sus propios puertos y su BD: el apartado siguiente.
+
+## Dos e2e del SaaS a la vez
+
+Cada ejecución a la vez es **una pila propia**: sus tres puertos, su Vite, su carpeta de correo, su carpeta de
+resultados y **su BD**. Con una BD compartida, las dos siembran y borran las mismas cuentas (`e2e-*`, el dueño de
+`demo_seed`) y una spec lee lo que escribió la otra.
+
+| Variable | Qué aísla | Quién la lee |
+|---|---|---|
+| `E2E_SAAS_PORT` | los tres puertos (`+1` público, `+2` panel, `+9` Hub de las specs) y, con ellos, la BD `saas_e2e_<puerto>`, la carpeta de correo `mail-<puerto>/` y la de resultados `…-<puerto>` | `stack.ts` (y, por él, `playwright.config.ts`, `panel/project.ts`, `django-env.ts`, `database.ts`) |
+| `VITE_DEV_PORT` | el Vite del panel | `panel/project.ts`, `vite.config.ts`, `config/settings.py` (ver arriba) |
+
+Reglas que la e2e hace cumplir antes de arrancar ningún servidor (`stack.ts`):
+
+- Con `E2E_SAAS_PORT` distinto de `8010`, la pila corre sobre **su propia BD e2e**: `saas_e2e_<puerto>`, o la BD e2e
+  que se exporte en `DB_NAME` (un nombre `saas_…` con `e2e` como palabra). Con `DB_NAME=saas` o cualquier otra BD,
+  la rechaza y dice qué hacer.
+- En cualquier pila, una BD que no es del SaaS se rechaza: el caso típico es el `DB_NAME` del Hub
+  (`hub_e2e_8030`) aún exportado en la consola, con el que el SaaS abría la BD del Hub y su login caía con
+  `relation "django_site" does not exist`. La salida: `env -u DB_NAME`.
+- **La BD se crea y se migra sola al arrancar**: el primer servidor que levanta Playwright (el público) corre antes
+  `node tests/e2e/database.ts`, que crea `saas_e2e_<puerto>` si falta y la migra (idempotente: conserva sus filas;
+  unos 10 s la primera vez). Solo toca BD e2e. La pila compartida sigue sin migrar nada: su BD es la `saas` de `.env`.
+- **El Vite no se reutiliza** en una pila propia (`reuseExistingServer: false`): dos ejecuciones del mismo checkout
+  con el mismo `VITE_DEV_PORT` no comparten uno (la primera lo pararía al acabar bajo la segunda). Si el puerto está
+  ocupado, Playwright lo dice al arrancar; cada pila lleva su `VITE_DEV_PORT`.
+
+Receta (dos pilas a la vez, desde el worktree del SaaS; cada una en su consola, o las dos en segundo plano):
+
+```bash
+for p in 8031 8032 8039 5443 8041 8042 8049 5444; do lsof -nP -iTCP:$p -sTCP:LISTEN; done   # nada en sus puertos
+# Pila A (8031, 8032, 8039; Vite 5443; BD saas_e2e_8030)
+env -u DB_NAME E2E_SAAS_PORT=8030 VITE_DEV_PORT=5443 pnpm e2e:ci tests/e2e/panel/login.spec.ts
+# Pila B, a la vez (8041, 8042, 8049; Vite 5444; BD saas_e2e_8040)
+env -u DB_NAME E2E_SAAS_PORT=8040 VITE_DEV_PORT=5444 pnpm e2e:ci tests/e2e/panel/members.spec.ts
+# Al terminar las dos (Playwright ya paró sus servidores): borrar sus BD
+env -u DB_NAME E2E_SAAS_PORT=8030 node tests/e2e/database.ts --drop
+env -u DB_NAME E2E_SAAS_PORT=8040 node tests/e2e/database.ts --drop
+```
+
+- Sin `--` antes de la spec (con él corren todas). `env -u DB_NAME` sobra si la consola no exporta ninguno, pero no
+  estorba.
+- Sin `E2E_SAAS_PORT`, todo es como antes: `:8011`, `:8012`, `:8019`, la BD `saas` de `.env` y `.artifacts/panel/mail/`.
+- `--drop` nunca fuerza: con un servidor aún conectado, falla y lo dice. Sin `E2E_SAAS_PORT` (pila compartida), no
+  toca nada.
+- Para la web pública (`--project=public`) en una pila propia, igual que en la compartida: antes, `pnpm build`.
 
 ## Datos sembrados
 

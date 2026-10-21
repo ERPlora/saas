@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { djangoEnv } from './django-env';
 import e2eConfig from './playwright.config';
+import { stackFrom } from './stack';
 
 describe('djangoEnv', () => {
   afterEach(() => {
@@ -41,6 +42,16 @@ describe('djangoEnv', () => {
     djangoEnv(true, env);
 
     expect(env).toEqual({ DEBUG: 'pw:webserver' });
+  });
+
+  // A stack beside the shared one (stack.ts): every Django process of the run opens its e2e database, also
+  // the public server, whose `env` Playwright lays over its own (where a Hub's DB_NAME may still be exported).
+  it("opens an own stack's database", () => {
+    expect(djangoEnv(true, {}, stackFrom({ E2E_SAAS_PORT: '8030' }))).toEqual({ DEBUG: 'True', DB_NAME: 'saas_e2e_8030' });
+  });
+
+  it("leaves the shared stack's database to `.env`", () => {
+    expect(djangoEnv(false, { PATH: '/usr/bin' }, stackFrom({}))).toEqual({ DEBUG: 'False', PATH: '/usr/bin' });
   });
 
   it("reads this process's environment by default", () => {
