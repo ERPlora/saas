@@ -122,7 +122,7 @@ caben y, al propietario, el botón para mejorarlo o cambiarlo.
 | BILLING-F13 | Cancelar el plan al final del periodo | hecho |
 | BILLING-F14 | Deshacer una cancelación pendiente | hecho |
 | BILLING-F15 | Terminar la suscripción: el negocio vuelve a Gratis | parcial |
-| BILLING-F16 | Impago del plan: reintentos, suspensión y vuelta | parcial |
+| BILLING-F16 | Impago del plan: reintentos, suspensión y vuelta | hecho |
 | BILLING-F17 | Reactivar un negocio suspendido pagando su factura | hecho |
 | BILLING-F18 | Ver, cancelar o mantener el plan del negocio por la API | hecho |
 | BILLING-F19 | Recibir y validar un aviso de Stripe | hecho |
@@ -355,19 +355,19 @@ Implicados: el negocio (recibe Gratis)
 
 ### BILLING-F16 Impago del plan: reintentos, suspensión y vuelta
 <!-- origen: old-saas:SAAS_DASHBOARD-F100 gh:saas#2529 gh:saas#2574 gh:saas#2593 gh:saas#2594 -->
-Estado: parcial — no se avisa por correo del cobro fallido ni de la suspensión, y un negocio suspendido aún se abre desde su propia dirección
-Actor: sistema, propietario
-Pantalla: Facturación, Negocios
+Estado: hecho
+Actor: sistema, propietario, cuenta que paga
+Pantalla: Facturación, Negocios, el propio negocio
 Pasos:
 1. Falla el cobro de una renovación. Stripe lo reintenta durante unos días y avisa de cada fallo.
 2. erplora.com relee la suscripción en Stripe: si el reintento ya cobró, no hace nada; si no, apunta la factura como «No cobrada», con por qué no se cobró (tarjeta rechazada, autenticación o fallo).
-3. **Gracia**: durante 7 días desde la factura que falló, el negocio sigue funcionando con todo su plan. En **Negocios** y en **Facturación** sale el aviso «No pudimos cobrar … de …»: «Págala antes del … o el negocio se suspende; no se borra nada», con «Pagar la factura» (o «Cambiar tarjeta» primero si el banco la rechazó).
-4. **Suspensión**: pasados los 7 días, o si Stripe agota sus reintentos, el negocio se suspende: no se abre, y el aviso dice «… está suspendido: … sin pagar» y que los datos están a salvo.
+3. **Gracia**: durante 7 días desde la factura que falló, el negocio sigue funcionando con todo su plan. La cuenta que paga recibe un correo, una vez por factura: cuánto no se pudo cobrar, hasta qué día sigue funcionando y el enlace a Facturación para pagarla (si el banco rechazó la tarjeta, que la cambie antes). En **Negocios** y en **Facturación** sale el aviso «No pudimos cobrar … de …»: «Págala antes del … o el negocio se suspende; no se borra nada», con «Pagar la factura» (o «Cambiar tarjeta» primero si el banco la rechazó).
+4. **Suspensión**: pasados los 7 días, o si Stripe agota sus reintentos, el negocio se suspende y la cuenta que paga recibe otro correo, una sola vez. El negocio no se abre: ni desde el panel ni desde su propia dirección, tampoco en los dispositivos que ya tenían la sesión abierta, que enseñan «Este negocio está suspendido» con el camino a ERPlora. El aviso del panel dice «… está suspendido: … sin pagar» y que los datos están a salvo.
 5. **Red de seguridad**: cada hora se repasan los negocios con el plan en impago y se mira su factura abierta más antigua, por si Stripe dejó de reintentar sin volver a avisar.
 6. **Vuelta**: al pagar la factura (con «Pagar la factura», o porque un reintento la cobra), el negocio vuelve a estar activo en el acto: «Factura pagada: … vuelve a estar al día».
 Entra: los avisos de Stripe del cobro fallido y de la suscripción, y la suscripción viva.
-Sale: la factura «No cobrada» y el estado del negocio (pago pendiente, suspendido o al día) enviados al negocio (`hubs.subscription.changed`).
-Si falla: si Stripe no contesta al releer la suscripción, no se aplica nada y Stripe vuelve a avisar. Un aviso repetido de una factura ya pagada no la reabre. Un fallo posterior del mismo impago no mueve la fecha de la gracia.
+Sale: la factura «No cobrada», los correos a quien paga y el estado del negocio (pago pendiente, suspendido o al día) enviados al negocio (`hubs.subscription.changed`).
+Si falla: si Stripe no contesta al releer la suscripción, no se aplica nada y Stripe vuelve a avisar. Un aviso repetido de una factura ya pagada no la reabre. Un fallo posterior del mismo impago no mueve la fecha de la gracia ni repite el correo. Un correo que no pudo salir se vuelve a mandar en el repaso de cada hora, que avisa al equipo mientras quede alguno.
 Implicados: hubs (el estado del negocio), el negocio (recibe el estado)
 
 ### BILLING-F17 Reactivar un negocio suspendido pagando su factura

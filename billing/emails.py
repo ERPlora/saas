@@ -1,5 +1,6 @@
 """The mail of billing: an invoice of ERPlora was issued (lot L3-C; ported from ERPlora/saas
-``apps/dashboard/billing/emails.py``, saas#1061).
+``apps/dashboard/billing/emails.py``, saas#1061), and a renewal could not be collected or the business was
+suspended for it (BILLING-F16, saas#2593).
 
 Plain text in the language of the invoice (its payer's), as every mail of the SaaS until block 1 brings the
 branded one (``hubs/emails.py``). It LINKS to the panel's Billing page instead of attaching the PDF: the PDF
@@ -11,7 +12,7 @@ never raised (the invoice is the source of truth). No database here.
 import logging
 
 from django.conf import settings
-from django.core.mail import send_mail
+from django.core.mail import EmailMessage, send_mail
 from django.utils import translation
 from django.utils.formats import date_format, number_format
 from django.utils.translation import gettext as _
@@ -74,3 +75,57 @@ def send_invoice_issued(invoice) -> bool:
         raise MailNotSent(str(failed)) from failed
     logger.info("[EMAIL] Invoice %s sent to %s", invoice.number, to)
     return True
+
+
+#: What a mail of the unpaid episode is, in its ``X-ERPlora-Notice`` header (support filters by it).
+PAYMENT_FAILED = "billing.payment_failed"
+BUSINESS_SUSPENDED = "billing.business_suspended"
+
+
+def _billing_url(hub) -> str:
+    return f"https://{settings.PUBLIC_HOST}/billing/invoices?business={hub.id}"
+
+
+def _send_notice(notice: str, subject: str, lines: list[str], to: str) -> None:
+    message = EmailMessage(subject, "\n".join(lines) + "\n", None, [to], headers={"X-ERPlora-Notice": notice})
+    try:
+        message.send()
+    except Exception as failed:  # noqa: BLE001 - reported to the caller, which sends it again later
+        logger.error("[EMAIL] %s not sent to %s: %s", notice, to, failed)
+        raise MailNotSent(str(failed)) from failed
+    logger.info("[EMAIL] %s sent to %s", notice, to)
+
+
+def send_payment_failed(hub, *, to: str, language: str, amount, declined: bool, suspends_on) -> None:
+    """Tell the payer that the renewal of ``hub`` could not be collected: how much, until when it keeps working
+    (``suspends_on``) and where to pay it. ``MailNotSent`` when the mail could not leave."""
+    with translation.override(language or settings.LANGUAGE_CODE):
+        subject = _("We could not charge the plan of %(business)s") % {"business": hub.name}
+        lines = [
+            _("We could not charge %(amount)s for the plan of %(business)s.")
+            % {"amount": _money(amount), "business": hub.name},
+        ]
+        if declined:
+            lines.append(_("The bank declined the card: change it before paying, we will not charge it again."))
+        lines += [
+            _("%(business)s keeps working until %(date)s. If the invoice is not paid by then, it is suspended. Nothing is deleted.")
+            % {"business": hub.name, "date": date_format(suspends_on, "DATE_FORMAT")},
+            "",
+            _("Pay it from Billing: %(url)s") % {"url": _billing_url(hub)},
+        ]
+    _send_notice(PAYMENT_FAILED, subject, lines, to)
+
+
+def send_business_suspended(hub, *, to: str, language: str, amount) -> None:
+    """Tell the payer that ``hub`` is suspended until its unpaid invoice (``amount``) is paid, and where to pay
+    it. ``MailNotSent`` when the mail could not leave."""
+    with translation.override(language or settings.LANGUAGE_CODE):
+        subject = _("%(business)s is suspended") % {"business": hub.name}
+        lines = [
+            _("%(business)s is suspended because an invoice of %(amount)s was not paid.")
+            % {"business": hub.name, "amount": _money(amount)},
+            _("Your data is safe: as soon as the invoice is paid, the business works again."),
+            "",
+            _("Pay it from Billing: %(url)s") % {"url": _billing_url(hub)},
+        ]
+    _send_notice(BUSINESS_SUSPENDED, subject, lines, to)

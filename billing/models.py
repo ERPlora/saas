@@ -628,7 +628,8 @@ class PaymentFailure(UUIDModel):
     One row per unpaid Stripe invoice. ``reason`` tells a declined card (the bank refused it: paying again
     with it fails, so «Pay» waits until the card changes, ``card_changed_at``) from an authentication the
     customer must complete or any other failure. ``invoice_created_at`` starts the 7 days of grace.
-    ``resolved_at`` is set when the invoice is paid (or the subscription ends).
+    ``resolved_at`` is set when the invoice is paid (or the subscription ends). ``notified_at`` and
+    ``suspension_notified_at`` keep the mails of BILLING-F16 to one each (``services.notify_unpaid``).
     """
 
     class Reason(models.TextChoices):
@@ -664,6 +665,10 @@ class PaymentFailure(UUIDModel):
     attempts = models.PositiveIntegerField(_("failures"), default=1)
     card_changed_at = models.DateTimeField(_("card changed at"), null=True, blank=True)
     resolved_at = models.DateTimeField(_("resolved at"), null=True, blank=True)
+    #: The payer was told this invoice could not be collected (or there was nobody to tell): once per invoice.
+    notified_at = models.DateTimeField(_("payer told"), null=True, blank=True)
+    #: The payer was told the business is suspended for this unpaid episode: once per suspension.
+    suspension_notified_at = models.DateTimeField(_("suspension told"), null=True, blank=True)
 
     class Meta:
         ordering = ["-failed_at"]

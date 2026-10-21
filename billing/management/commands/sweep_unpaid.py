@@ -33,5 +33,5 @@ class Command(BaseCommand):
         summary = " ".join(f"{key}={value}" for key, value in counts.items())
         logger.info("billing.sweep_unpaid %s", summary)
         self.stdout.write(f"sweep_unpaid: {summary}")
-        if counts["errors"]:
+        if counts["errors"] or counts["mail_failed"]:
             raise CommandError(f"sweep_unpaid left work for the next run: {summary}")

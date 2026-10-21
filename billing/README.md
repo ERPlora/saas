@@ -142,7 +142,14 @@ pendiente», abre); pasados, o con `unpaid` de Stripe, `suspended`. Pagar lo dev
 escrita: «Pagar» espera a otra), `card_changed` (tarjeta nueva por el Portal: «Pagar» vuelve),
 `authentication_required` y `payment_failed` (también los rechazos que la misma tarjeta puede pasar luego:
 `insufficient_funds`, `try_again_later`…); `unpaid_since` y `pay_url` (solo para el **pagador**, no para el rol).
-Un `payment_failed` reenviado de una factura ya pagada no la reabre. `sweep_unpaid` repasa cada negocio en impago
+Un `payment_failed` reenviado de una factura ya pagada no la reabre.
+**Avisos por correo** (BILLING-F16, saas#2593): tras el COMMIT de todo lo que deja el negocio en impago
+(`apply_state` con `standing` `grace`/`suspended`), `notify_unpaid` escribe a quien paga (su correo de facturas o
+el de su cuenta, en su idioma) una vez por factura no cobrada mientras dura la gracia (importe, día de la
+suspensión y enlace a Facturación) y una vez al suspender (`PaymentFailure.notified_at` /
+`suspension_notified_at`; cabecera `X-ERPlora-Notice`: `billing.payment_failed`, `billing.business_suspended`).
+Un correo que no sale se reenvía en `sweep_unpaid` (`notified`, `mail_failed`; con `mail_failed` el comando falla).
+El Hub no abre un negocio cuya foto dice `suspended`: 402 `base.hub_suspended`, también con sesión. `sweep_unpaid` repasa cada negocio en impago
 con su factura abierta más antigua (si ya está pagada, aplica la suscripción viva) y cancela al momento la
 suscripción de Stripe de todo negocio que se eliminó (`Subscription.cancel_requested_at`, que pone
 `hubs.business.delete` y no deshace recuperarlo).

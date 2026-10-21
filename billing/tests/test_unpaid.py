@@ -460,6 +460,115 @@ class TestPayingBringsItBack:
         )
 
 
+class TestThePayerIsTold:
+    """BILLING-F16 (saas#2593): the market tells the customer as soon as a renewal fails (Shopify, Square,
+    Lightspeed, WooCommerce), with the way to pay and the day the business stops, and again when it stops. Once
+    per unpaid invoice and once per suspension, after the COMMIT; a mail that could not leave is sent by the
+    next ``sweep_unpaid``. Each mail names what it is in ``X-ERPlora-Notice``."""
+
+    @pytest.fixture
+    def told(self, django_capture_on_commit_callbacks, mailoutbox):
+        def run(stripe_double, **failure):
+            with django_capture_on_commit_callbacks(execute=True):
+                failed(stripe_double, **failure)
+            return [message.extra_headers.get("X-ERPlora-Notice") for message in mailoutbox]
+
+        return run
+
+    def test_a_failed_renewal_tells_the_payer_how_to_pay(self, running, told, stripe_double, mailoutbox):
+        assert told(stripe_double, days=3) == ["billing.payment_failed"]
+
+        message = mailoutbox[0]
+        assert message.to == ["owner@example.com"]
+        assert f"https://erplora.com/billing/invoices?business={running.id}" in message.body
+        assert PaymentFailure.objects.get().notified_at is not None
+
+    def test_another_failed_attempt_of_the_same_invoice_tells_nothing_more(self, running, told, stripe_double):
+        told(stripe_double, days=3)
+
+        assert told(stripe_double, days=3) == ["billing.payment_failed"]
+
+    def test_a_new_unpaid_invoice_is_told_too(self, running, told, stripe_double):
+        told(stripe_double, days=3)
+
+        assert told(stripe_double, days=1, invoice_id="in_2") == ["billing.payment_failed"] * 2
+
+    def test_the_suspension_is_told_once(self, running, told, stripe_double):
+        told(stripe_double, days=3)
+        # An older invoice unpaid too: past the grace, so the business is suspended (a later failure of the
+        # same invoice never moves the clock).
+        assert told(stripe_double, days=9, invoice_id="in_0") == [
+            "billing.payment_failed",
+            "billing.business_suspended",
+        ]
+
+        assert told(stripe_double, days=10, invoice_id="in_00") == [
+            "billing.payment_failed",
+            "billing.business_suspended",
+        ]
+
+    def test_a_first_failure_past_the_grace_tells_only_the_suspension(self, running, told, stripe_double):
+        assert told(stripe_double, days=9) == ["billing.business_suspended"]
+
+        assert PaymentFailure.objects.get().notified_at is not None
+
+    def test_stripes_final_verdict_tells_the_suspension(self, running, told, stripe_double):
+        assert told(stripe_double, days=1, live="unpaid") == ["billing.business_suspended"]
+
+    def test_the_payers_own_address_for_invoices_gets_it(self, running, told, stripe_double, mailoutbox):
+        running.billing_profile.billing_email = "accounts@example.com"
+        running.billing_profile.save()
+
+        told(stripe_double, days=3)
+
+        assert mailoutbox[0].to == ["accounts@example.com"]
+
+    def test_a_mail_that_could_not_leave_is_sent_by_the_sweep(
+        self, running, told, stripe_double, mailoutbox, monkeypatch, django_capture_on_commit_callbacks
+    ):
+        from billing import services
+
+        def down(*args, **kwargs):
+            raise OSError("smtp down")
+
+        with monkeypatch.context() as patched:
+            patched.setattr("django.core.mail.EmailMessage.send", down)
+            assert told(stripe_double, days=3) == []
+        assert PaymentFailure.objects.get().notified_at is None
+
+        stripe_double.answer("invoices.list", listing([]))
+        with django_capture_on_commit_callbacks(execute=True):
+            counts = services.sweep_unpaid()
+
+        assert [message.extra_headers["X-ERPlora-Notice"] for message in mailoutbox] == ["billing.payment_failed"]
+        assert (counts["notified"], counts["mail_failed"]) == (1, 0)
+
+    def test_a_mail_still_down_makes_the_sweep_fail(self, running, told, stripe_double, monkeypatch):
+        from billing import services
+
+        def down(*args, **kwargs):
+            raise OSError("smtp down")
+
+        monkeypatch.setattr("django.core.mail.EmailMessage.send", down)
+        told(stripe_double, days=3)
+        stripe_double.answer("invoices.list", listing([]))
+
+        assert services.sweep_unpaid()["mail_failed"] == 1
+
+    def test_paying_closes_the_episode_and_a_later_one_is_told_again(
+        self, running, told, stripe_double, django_capture_on_commit_callbacks
+    ):
+        told(stripe_double, days=9)
+        stripe_double.answer("subscriptions.retrieve", subscription(status="active"))
+        with django_capture_on_commit_callbacks(execute=True):
+            deliver(event("invoice.paid", invoice("in_1", status="paid", amount_paid=3629)))
+
+        assert told(stripe_double, days=1, invoice_id="in_2") == [
+            "billing.business_suspended",
+            "billing.payment_failed",
+        ]
+
+
 class TestTheMoneyCollectedIsAudited:
     def test_a_subject_sale_charged_without_tax_is_an_alarm(
         self, running, stripe_double, caplog
