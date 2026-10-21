@@ -2,6 +2,7 @@
 // `hubs.business.get`, a header with its name, address, status, plan and role and «Open», and four
 // sections in the footer tabbar — Summary · Members · Modules · Settings — each at its own address.
 // Deleted, a banner says until when it can be recovered; a payment pending or a suspension is said too.
+import { RELEASE_GRACE_MS } from '@erplora/ui/sdk';
 import { AppPage, applySurface } from '@erplora/ui/shell';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -205,6 +206,11 @@ describe('BusinessPage: the sections', () => {
     const s = await setup('members');
     expect(s.wrapper.getComponent(MembersTab).props('business')).toMatchObject({ id: 'h1', name: 'Panadería López' });
     expect(ionProps(s.testid('business-open'), 'fill')).toEqual({ fill: 'outline' });
+    // Only Members: no other section under it.
+    expect(s.wrapper.findComponent(BusinessSummary).exists()).toBe(false);
+    expect(s.wrapper.findComponent(BusinessSettings).exists()).toBe(false);
+    expect(s.wrapper.findComponent(DangerZone).exists()).toBe(false);
+    expect(s.testid('business-modules').exists()).toBe(false);
   });
 
   it('Modules: apps are turned on inside the business; the header’s «Open», solid, is its one action', async () => {
@@ -334,6 +340,58 @@ describe('BusinessPage: deleted', () => {
     const s = await setup('summary', { ...DELETED, role: 'hub_admin', role_label: 'Admin', can: { ...DELETED.can, restore: false } });
     expect(s.testid('business-deleted').text()).toContain('Only its owner can recover it.');
     expect(s.testid('business-restore').exists()).toBe(false);
+  });
+});
+
+// FIX-SAAS-BUSINESSES-LIVE-DOUBLE-OPEN: a section that only needs the business's id (the route has it) asks for
+// its data with the page, so the page's stream opens once; waiting for `hubs.business.get` to mount it made
+// the SDK reopen the stream and the first `GET /api/live` ended aborted.
+describe('BusinessPage: one stream', () => {
+  it('Members asks for its list in the first stream, with the business, and the business’s answer does not reopen it', async () => {
+    const s = await setup('members', null);
+    expect(s.testid('business-loading').exists()).toBe(true);
+    expect(s.net.streams).toHaveLength(1);
+    expect(s.call.subs.map((sub) => [sub.op, sub.params])).toEqual(
+      expect.arrayContaining([
+        ['hubs.business.get', { id: 'h1' }],
+        ['hubs.member.list', { hub_id: 'h1', limit: 50, offset: 0 }],
+      ]),
+    );
+    await s.result(s.call, 'hubs.business.get', BUSINESS);
+    await s.clock.advance(1000);
+    expect(s.net.streams).toHaveLength(1);
+    expect(s.call.aborted()).toBe(false);
+    expect(s.wrapper.getComponent(MembersTab).props()).toMatchObject({ id: 'h1', business: { id: 'h1', name: 'Panadería López' } });
+  });
+
+  it('Members goes with the business’s error: the page says it once, without a list', async () => {
+    const s = await setup('members', null);
+    s.call.push(errorFrame(subId(s.client, 'hubs.business.get'), 'permission_denied'));
+    await flush();
+    expect(s.testid('business-error').exists()).toBe(true);
+    expect(s.wrapper.findComponent(MembersTab).exists()).toBe(false);
+  });
+
+  it('while the business loads, the page’s skeleton is the only thing on screen: Members waits for it to show its list', async () => {
+    const s = await setup('members', null);
+    expect(s.testid('business-loading').exists()).toBe(true);
+    expect(s.wrapper.getComponent(MembersTab).props('business')).toBeUndefined();
+    await s.result(s.call, 'hubs.member.list', { rows: [], total: 0, limit: 50, offset: 0, seats: { used: 1, limit: null }, invitable_roles: [] });
+    expect(s.wrapper.find('.members-stack').exists()).toBe(false);
+    expect(s.wrapper.find('[data-testid^="members"]').exists()).toBe(false);
+  });
+
+  it('a deleted business shows its Summary on the Members address: the list it asked for goes away', async () => {
+    const s = await setup('members', {
+      status: 'deleting',
+      deletion_requested_at: '2026-10-13T10:00:00Z',
+      purge_after: '2027-01-11T10:00:00Z',
+      can: { ...BUSINESS.can, open: false, delete: false, restore: true },
+    });
+    expect(s.wrapper.findComponent(MembersTab).exists()).toBe(false);
+    // Past the SDK's grace before it lets an unmounted query go, and its resubscribe debounce.
+    await s.clock.advance(RELEASE_GRACE_MS + 1000);
+    expect(s.client.stream.subscriptions('hubs.member.list')).toEqual([]);
   });
 });
 

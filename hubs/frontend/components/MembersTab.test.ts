@@ -62,7 +62,7 @@ afterEach(() => {
 });
 
 async function setup(business: Record<string, unknown> = {}, api: (c: ReturnType<typeof describeCall>) => Response = () => Response.json({})) {
-  const m = await mountHubs(MembersTab, { props: { business: { ...BUSINESS, ...business } }, api: (call) => api(describeCall(call)) });
+  const m = await mountHubs(MembersTab, { props: { id: 'h1', business: { ...BUSINESS, ...business } }, api: (call) => api(describeCall(call)) });
   const call = await m.live();
   const table = () => m.wrapper.findComponent(DataTable as unknown as Component);
   const prop = <T = unknown>(name: string) => (table().props() as Record<string, unknown>)[name] as T;
@@ -72,6 +72,24 @@ async function setup(business: Record<string, unknown> = {}, api: (c: ReturnType
     m.wrapper.findAll(`[data-testid^="members-row-${id}-"]`).map((b) => b.attributes('data-testid')!.slice(`members-row-${id}-`.length));
   return { ...m, call, table, prop, testid, q, actionsOf, show: (result: unknown, rev?: number) => m.result(call, 'hubs.member.list', result, rev) };
 }
+
+describe('MembersTab: before the business answers (FIX-SAAS-BUSINESSES-LIVE-DOUBLE-OPEN)', () => {
+  it('asks for the list with the business’s id alone, so it rides the page’s first stream', async () => {
+    const m = await mountHubs(MembersTab, { props: { id: 'h1' } });
+    const call = await m.live();
+    expect(call.subs.map((sub) => [sub.op, sub.params])).toEqual([['hubs.member.list', { hub_id: 'h1', limit: 50, offset: 0 }]]);
+  });
+
+  it('shows nothing until the business is there (its offer and its dialogs need it); then the list as it came', async () => {
+    const m = await mountHubs(MembersTab, { props: { id: 'h1' } });
+    const call = await m.live();
+    await m.result(call, 'hubs.member.list', page());
+    expect(m.wrapper.find('.members-stack').exists()).toBe(false);
+    await m.wrapper.setProps({ business: BUSINESS });
+    expect(m.wrapper.findAll('[data-testid="members-row"]')).toHaveLength(3);
+    expect(m.net.streams).toHaveLength(1);
+  });
+});
 
 describe('MembersTab: the list', () => {
   it('follows hubs.member.list of the business in a server-side table titled «Team», cards up to 900 px', async () => {
@@ -263,7 +281,7 @@ describe('MembersTab: actions', () => {
   });
 
   it('speaks Spanish', async () => {
-    const s = await mountHubs(MembersTab, { props: { business: BUSINESS }, locale: 'es' });
+    const s = await mountHubs(MembersTab, { props: { id: 'h1', business: BUSINESS }, locale: 'es' });
     const call = await s.live();
     await s.result(call, 'hubs.member.list', page());
     expect(accessibleName(s.wrapper.get('[data-testid="members-row-carlos-change_role"]'))).toBe('Cambiar el rol de Carlos Ruiz');

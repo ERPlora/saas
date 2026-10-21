@@ -7,7 +7,9 @@
 // the places of the plan and what each role may do; above it, a pending ownership offer the owner can
 // withdraw. Each action is a dialog of its own; «Resend» needs none. The list fills the section (a nested
 // `.panel-fill` of the business's page, Ioan 2026-10-14); rows per page only when there are more members
-// than the shortest page (README §3b).
+// than the shortest page (README §3b). The list needs only the business's id, so it is asked for when the
+// tab mounts, with the page's own query (one `/api/live` stream); the tab shows once the business is there,
+// since its pending offer and its dialogs need it (FIX-SAAS-BUSINESSES-LIVE-DOUBLE-OPEN).
 import {
   businessStatusPill,
   DataTable,
@@ -34,7 +36,10 @@ import RoleModal from './RoleModal.vue';
 import TransferDialog from './TransferDialog.vue';
 
 const props = defineProps<{
-  business: Pick<BusinessDetailOut, 'id' | 'name' | 'pending_transfer'>;
+  /** The business (`Hub.id`), from the address: all the list needs. */
+  id: string;
+  /** The business once `hubs.business.get` answers; nothing is shown until then. */
+  business?: Pick<BusinessDetailOut, 'id' | 'name' | 'pending_transfer'>;
 }>();
 
 const PAGE_SIZES = [10, 25, 50, 100];
@@ -70,7 +75,7 @@ function setPageSize(size: number): void {
 }
 
 const live = useLive('hubs.member.list', () => ({
-  hub_id: props.business.id,
+  hub_id: props.id,
   limit: pageSize.value * windowPages.value,
   offset: page.value * pageSize.value,
 }));
@@ -166,7 +171,10 @@ async function withdrawOffer(id: string): Promise<void> {
 </script>
 
 <template>
-  <div class="members-stack panel-fill">
+  <div
+    v-if="business"
+    class="members-stack panel-fill"
+  >
     <InlineFeedback
       v-if="business.pending_transfer"
       tone="warning"
