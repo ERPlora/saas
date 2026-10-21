@@ -867,8 +867,12 @@ def hub_snapshot(hub_id: UUID) -> dict[str, Any]:
     too. ``verifactu`` (plan 2026-10-15, agreed with the Hub): the authorisation for ERPlora to file its
     records as the staff left it (``fiscal.queries.snapshot_block``) and ``live_paid``, whether the business
     pays for the live sending (a plan that is not Free, or a live ``verifactu`` module). Two independent
-    facts: the Hub's «live» through ERPlora needs both.
+    facts: the Hub's «live» through ERPlora needs both. ``whatsapp``: the business's WhatsApp channel (its
+    number, the month's usage against the plan's allowance and its templates at Meta), door 4 of the Hub's
+    ``whatsapp_inbox`` contract (``whatsapp.queries.channel_block``).
     """
+    from whatsapp.queries import channel_block  # whatsapp reads hubs; hubs reads it only here
+
     hub = Hub.objects.get(pk=hub_id)
     now = timezone.now()
     subscription = (
@@ -922,6 +926,9 @@ def hub_snapshot(hub_id: UUID) -> dict[str, Any]:
             for member in members
         ],
         "verifactu": {**verifactu_representation(hub.id), "live_paid": live_paid},
+        # The business's WhatsApp channel, door 4 of the Hub's whatsapp_inbox contract: the body of its door 3 at the
+        # snapshot's version (whatsapp.queries.channel_block).
+        "whatsapp": channel_block(hub.id, version=hub.state_version),
     }
 
 

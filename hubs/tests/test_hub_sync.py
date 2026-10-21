@@ -79,6 +79,8 @@ class TestTheSnapshot:
             "members",
             # The documentation for VeriFactu and its live sending (plan 2026-10-15, agreed with the Hub).
             "verifactu",
+            # The business's WhatsApp channel (door 4 of hub/apps/whatsapp_inbox/WORKBOOK.md): whatsapp/tests.
+            "whatsapp",
         }
         assert (snapshot["hub_id"], snapshot["slug"], snapshot["version"], snapshot["status"]) == (
             str(business.id),
