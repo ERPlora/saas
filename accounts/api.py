@@ -93,6 +93,16 @@ async def session_close_others(request):
     return await run_operation(request, services.session_close_others)
 
 
+@bind(router, "accounts.browser_trust.get", "/accounts/browser-trust")
+async def browser_trust_get(request):
+    return await run_operation(request, queries.browser_trust_get)
+
+
+@bind(router, "accounts.browser_trust.revoke", "/accounts/browser-trust/revoke")
+async def browser_trust_revoke(request):
+    return await run_operation(request, services.browser_trust_revoke)
+
+
 @bind(router, "accounts.apikey.list", "/accounts/api-keys")
 async def apikey_list(request):
     return await run_operation(request, queries.apikey_list)

@@ -321,6 +321,9 @@ class TestWithTheAuthenticatorApp:
             totp_auth.hotp_value(secret, int(time.time()) // 30)
         )
         response = _post(browser, AUTHENTICATE, {"code": live})
+        # Then «Trust this browser for 14 days» (ACCOUNTS-F05), answered «not now».
+        assert (response.status_code, _pending(response)) == (401, ["mfa_trust"])
+        response = _post(browser, AUTHENTICATE.replace("/authenticate", "/trust"), {"trust": False})
 
         assert response.status_code == 200
         assert _methods(browser) == ["password", "code", "mfa"]

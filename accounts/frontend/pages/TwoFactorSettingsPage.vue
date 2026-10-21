@@ -14,6 +14,13 @@
 // - The QR is drawn here from allauth's `otpauth://` URL, as a data-URI image (CSP: `img-src data:`);
 //   the codes download as a text file built here, so there is no server route for it.
 // - Turning the app on makes allauth generate the recovery codes: they are shown right away, once.
+// - `?next=` (a path of this site): the staff the admin keeps out without the app (ACCOUNTS-F20) land here; the page
+//   says the app is needed to go on and, once it is on, «Continue» goes back there with a full load (a page of Django).
+//   «Back to settings» goes to Account › Security, where the «Two-step verification» row is.
+// - «Trusted browsers» (ACCOUNTS-F17), with the app on: whether this browser skips the app's code (ACCOUNTS-F05) and
+//   until when (`accounts.browser_trust.get`; allauth keeps no list, so only this one can be told), and «Stop trusting
+//   all browsers» (`accounts.browser_trust.revoke`). Read apart from the authenticators: it never holds the page.
+import { formatDateTime, InlineFeedback } from '@erplora/ui/components';
 import {
   ApiError,
   type Authenticator,
@@ -29,10 +36,11 @@ import { IonButton, IonIcon, IonInput, IonInputPasswordToggle, IonSpinner } from
 import QRCode from 'qrcode';
 import { computed, onMounted, shallowRef, watchEffect } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 import AuthShell from '../components/AuthShell.vue';
 import CodeField from '../components/CodeField.vue';
+import { localNext } from '../next';
 import { LAUNCHER } from '../paths';
 
 type View = 'index' | 'activate' | 'deactivate' | 'recoveryCodes' | 'regenerate';
@@ -41,6 +49,8 @@ type ConfirmWith = 'password' | 'code';
 
 const HERE = '/2fa';
 const REAUTHENTICATE = '/reauthenticate';
+/** «Back to settings»: Account › Security, the page of the «Two-step verification» row. */
+const SECURITY = '/account/security';
 /** A server with 2FA switched off sends to the launcher with a notice; «Back to settings» goes there too. */
 const UNAVAILABLE = { path: LAUNCHER, query: { notice: 'mfa_unavailable' } };
 /** allauth's flows that confirm a recent login: the password, the authenticator (or a recovery code). */
@@ -58,6 +68,7 @@ const ICONS = {
   codes: ionIconSrc('lucide:key-round'),
   off: ionIconSrc('lucide:shield-x'),
   regenerate: ionIconSrc('lucide:refresh-cw'),
+  trust: ionIconSrc('laptop-outline'),
 };
 const TITLES: Record<View, string> = {
   index: 'accounts.twoFactor.title',
@@ -67,9 +78,15 @@ const TITLES: Record<View, string> = {
   regenerate: 'accounts.twoFactor.regenerate.title',
 };
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
+const route = useRoute();
 const router = useRouter();
-const config = useLiveClient().config;
+/** Where to go on once the app is on (`?next=`, a path of this site only). */
+const next = localNext(route.query.next);
+/** This page as «Confirm it's you» and the sign-in come back to it: with its `next`. */
+const comeBack = next ? `${HERE}?${new URLSearchParams({ next })}` : HERE;
+const client = useLiveClient();
+const config = client.config;
 const auth = createAllauthClient(config);
 
 const status = shallowRef<'loading' | 'ready' | 'error' | 'leaving'>('loading');
@@ -88,6 +105,11 @@ const confirmCode = shallowRef('');
 const busy = shallowRef(false);
 const fields = shallowRef<FieldErrors>({});
 const failure = shallowRef('');
+/** Until when this browser is trusted: a date, `null` (not trusted), `undefined` (not known yet, or not readable). */
+const trustedUntil = shallowRef<string | null | undefined>(undefined);
+const trustUnknown = shallowRef(false);
+/** «Stop trusting all browsers» went through. */
+const trustRevoked = shallowRef(false);
 
 const totpOn = computed(() => authenticators.value.some((a) => a.type === 'totp'));
 const recoveryAuthenticator = computed(() => {
@@ -112,9 +134,9 @@ watchEffect(() => {
 function fail(error: unknown): void {
   if (isReauthenticationRequired(error)) {
     const method = error.flows.includes(CODE_FLOW) ? 'totp' : 'password';
-    void router.push({ path: REAUTHENTICATE, query: { next: HERE, method, flows: error.flows.join(',') } });
+    void router.push({ path: REAUTHENTICATE, query: { next: comeBack, method, flows: error.flows.join(',') } });
   } else if (error instanceof ApiError && error.code === 'not_authenticated') {
-    void router.replace({ path: LAUNCHER, query: { next: HERE } });
+    void router.replace({ path: LAUNCHER, query: { next: comeBack } });
   } else if (error instanceof ApiError && error.fields) {
     const input = shownInput();
     const { [NON_FIELD]: whole, ...rest } = error.fields;
@@ -132,6 +154,24 @@ function shownInput(): string | undefined {
   if (view.value !== 'activate') return undefined;
   return confirmWith.value === 'password' ? 'password' : 'code';
 }
+
+/** Whether this browser is trusted, and until when; read on its own, it never holds the page. */
+async function loadTrust(): Promise<void> {
+  trustUnknown.value = false;
+  try {
+    trustedUntil.value = (await client.api.call('accounts.browser_trust.get')).trusted_until;
+  } catch {
+    trustedUntil.value = undefined;
+    trustUnknown.value = true;
+  }
+}
+
+const revokeTrust = () =>
+  run(async () => {
+    trustedUntil.value = (await client.api.call('accounts.browser_trust.revoke')).trusted_until;
+    trustUnknown.value = false;
+    trustRevoked.value = true;
+  });
 
 /** The settings, read anew. */
 async function load(): Promise<void> {
@@ -267,6 +307,11 @@ const regenerate = () =>
 
 const backToIndex = () => run(refresh);
 
+/** On to `next`, a page of Django (the admin) or of the SPA: a full load brings what the session now has. */
+function goOn(path: string): void {
+  location.assign(path);
+}
+
 /** The unused codes as a text file, one per line: built here, never a server route. */
 function download(): void {
   const codes = recovery.value?.unusedCodes ?? [];
@@ -282,6 +327,7 @@ function download(): void {
 
 onMounted(() => {
   void load();
+  if (config.mfaEnabled !== false) void loadTrust();
 });
 </script>
 
@@ -327,6 +373,23 @@ onMounted(() => {
       </div>
 
       <template v-if="view === 'index'">
+        <InlineFeedback
+          v-if="next && !totpOn"
+          tone="warning"
+          class="notice"
+          data-testid="mfa-required"
+        >
+          {{ $t('accounts.twoFactor.requiredToContinue') }}
+        </InlineFeedback>
+        <ion-button
+          v-if="next && totpOn"
+          data-testid="mfa-continue"
+          color="primary"
+          expand="block"
+          @click="goOn(next)"
+        >
+          {{ $t('accounts.twoFactor.continue') }}
+        </ion-button>
         <div
           class="auth-section"
           data-testid="totp-section"
@@ -449,6 +512,57 @@ onMounted(() => {
               {{ $t('accounts.twoFactor.generateRecoveryCodes') }}
             </ion-button>
           </template>
+        </div>
+
+        <div
+          v-if="totpOn"
+          class="auth-section"
+          data-testid="trust-section"
+        >
+          <div class="auth-section-head">
+            <ion-icon
+              class="auth-section-icon"
+              :icon="ICONS.trust"
+              aria-hidden="true"
+            />
+            <h2>{{ $t('accounts.twoFactor.trusted.title') }}</h2>
+          </div>
+          <p
+            class="auth-lead"
+            data-testid="trust-lead"
+          >
+            {{ $t('accounts.twoFactor.trusted.lead') }}
+          </p>
+          <p
+            v-if="trustedUntil !== undefined || trustUnknown"
+            class="auth-lead"
+            data-testid="trust-this"
+          >
+            {{
+              trustUnknown
+                ? $t('accounts.twoFactor.trusted.unknown')
+                : trustedUntil
+                  ? $t('accounts.twoFactor.trusted.thisUntil', { date: formatDateTime(trustedUntil, locale) })
+                  : $t('accounts.twoFactor.trusted.thisNot')
+            }}
+          </p>
+          <p
+            v-if="trustRevoked"
+            class="auth-lead"
+            role="status"
+            data-testid="trust-done"
+          >
+            {{ $t('accounts.twoFactor.trusted.revoked') }}
+          </p>
+          <ion-button
+            data-testid="trust-revoke"
+            fill="outline"
+            expand="block"
+            :disabled="busy"
+            @click="revokeTrust()"
+          >
+            {{ $t('accounts.twoFactor.trusted.revoke') }}
+          </ion-button>
         </div>
       </template>
 
@@ -749,7 +863,7 @@ onMounted(() => {
 
     <template #foot>
       <p class="foot">
-        <router-link :to="LAUNCHER">
+        <router-link :to="SECURITY">
           {{ $t('accounts.twoFactor.backToSettings') }}
         </router-link>
       </p>
@@ -762,5 +876,8 @@ onMounted(() => {
 /* The template's inline `style="margin-top:1rem;"` on «Can't scan?». */
 .secret-lead {
   margin-top: 1rem;
+}
+.notice {
+  margin-bottom: 0.85rem;
 }
 </style>

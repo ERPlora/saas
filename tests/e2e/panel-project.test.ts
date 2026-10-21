@@ -56,7 +56,9 @@ describe('panelServers', () => {
   });
 
   it('keeps 5174 by default', () => {
-    expect(panelServers(SAAS_DIR)[1].url).toBe(`http://localhost:${vitePort(process.env)}/static/spa/@vite/client`);
+    expect(panelServers(SAAS_DIR).find((server) => server.name === 'panel-vite')?.url).toBe(
+      `http://localhost:${vitePort(process.env)}/static/spa/@vite/client`,
+    );
     expect(servers(5174)['panel-vite'].url).toBe('http://localhost:5174/static/spa/@vite/client');
   });
 });

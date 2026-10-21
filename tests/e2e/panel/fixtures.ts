@@ -144,12 +144,16 @@ export async function freezeFrontend(context: BrowserContext): Promise<void> {
 /**
  * What scrolls sideways on the page on screen: Ionic pins `body` (its width never grows), so the
  * scroll is read where it happens — the page's `ion-content` scroll box (in its shadow) and every
- * DataTable's own scroll box, which also says so with `data-table__scroll--overflow`.
+ * DataTable's own scroll box, which also says so with `data-table__scroll--overflow`. A page that is
+ * no Ionic page (Django's admin, a template) scrolls its document: read there (ACCOUNTS-G09).
  */
 export async function sidewaysScroll(page: Page): Promise<string[]> {
   return page.evaluate(() => {
-    const shown = [...document.querySelectorAll('ion-router-outlet > .ion-page:not(.ion-page-hidden)')].at(-1) ?? document;
+    const ionic = [...document.querySelectorAll('ion-router-outlet > .ion-page:not(.ion-page-hidden)')].at(-1);
+    const shown = ionic ?? document;
     const found: string[] = [];
+    const root = document.documentElement;
+    if (!ionic && root.scrollWidth > root.clientWidth + 1) found.push(`document ${root.scrollWidth} > ${root.clientWidth}`);
     const content = shown.querySelector('ion-content');
     const scroll = content?.shadowRoot?.querySelector<HTMLElement>('.inner-scroll');
     if (scroll && scroll.scrollWidth > scroll.clientWidth + 1) found.push(`ion-content ${scroll.scrollWidth} > ${scroll.clientWidth}`);

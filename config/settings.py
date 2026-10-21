@@ -8,6 +8,7 @@ never from a ``.env`` further up the tree: the root one belongs to hub-next (its
 development sets ``DEBUG=True`` (``.env.example``) and gets defaults for the root ``compose.yaml``.
 """
 
+from datetime import timedelta
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -413,11 +414,11 @@ SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
 # Sign-in only: no Google API is called afterwards.
 SOCIALACCOUNT_STORE_TOKENS = False
 
-# Second factor (allauth.mfa): an authenticator app (TOTP) and recovery codes, as today's SaaS; no
-# passkeys and no «trust this browser». Off by default in phase 1: with ACCOUNTS_MFA_ENABLED=False no
-# login asks for a code and the 2FA endpoints answer 404 (accounts/mfa.py); turned on, an
-# account with an authenticator app is asked for its code after the first factor and the staff's
-# jump to the Hub admin (`hub-admin`) needs it (README.md, «Segundo factor (2FA)»).
+# Second factor (allauth.mfa): an authenticator app (TOTP) and recovery codes, as today's SaaS, and «Trust this
+# browser for 14 days»; no passkeys. Off by default in phase 1: with ACCOUNTS_MFA_ENABLED=False no login asks for
+# a code and the 2FA endpoints answer 404 (accounts/mfa.py); turned on, an account with an authenticator app is
+# asked for its code after the first factor and the staff's jump to the Hub admin (`hub-admin`) needs it
+# (accounts/README.md, «Segundo factor»).
 
 ACCOUNTS_MFA_ENABLED = config("ACCOUNTS_MFA_ENABLED", default=False, cast=bool)
 MFA_SUPPORTED_TYPES = ["totp", "recovery_codes"]
@@ -426,6 +427,13 @@ MFA_TOTP_ISSUER = "ERPlora"
 MFA_TOTP_TOLERANCE = 1
 MFA_PASSKEY_LOGIN_ENABLED = False
 MFA_ADAPTER = "accounts.mfa.MFAAdapter"
+# «Trust this browser» (old SAAS_AUTH-F06, ACCOUNTS-F05): after the app's code the login asks once; a trusted browser
+# skips the app's code (never the mailed one) for 14 days. allauth's own signed cookie, bound to the password and the
+# authenticators: a new one of either ends every trust. Only for erplora.com, never the businesses' subdomains, even
+# if the session cookie one day has a domain.
+MFA_TRUST_ENABLED = True
+MFA_TRUST_COOKIE_AGE = timedelta(days=14)
+MFA_TRUST_COOKIE_DOMAIN = None
 # Ending a session (Cuenta → Seguridad, or allauth.headless `auth/sessions`) also asks the account's
 # businesses to end theirs (accounts.signals.sessions_ended, PLAN-SAAS §2.1).
 USERSESSIONS_ADAPTER = "accounts.session_tracking.UserSessionsAdapter"

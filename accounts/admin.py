@@ -1,6 +1,6 @@
 """Django admin of accounts: users (with their preferences and photo), their hub memberships (the jump's
 mirror), the one-time codes and the API keys (read only; a superuser revokes). The sessions are
-``allauth.usersessions``' own page.
+``allauth.usersessions``' own page, read only; a superuser closes them («Close sessions», ACCOUNTS-F19).
 
 «Open in the Hub admin» (ronda 13, PLAN §18.1.6), on every membership row and on the «Hubs» page
 (``/admin/accounts/hubs/``, routed in ``config/urls.py``): the staff jump from ``erplora.com/admin``
@@ -11,7 +11,8 @@ there the one-time ``hub-admin`` code is minted and auto-posted to ``HUB_ADMIN_C
 staff never type ``hubs.erplora.com``.
 
 ``/admin/login/`` hands over to the SaaS's sign-in, ``LOGIN_URL`` (``admin_login``, installed by
-``config/urls.py``), which asks for the mailed code; with ``ACCOUNTS_MFA_ENABLED`` on, the jump also
+``config/urls.py``), which asks for the mailed code; with ``ACCOUNTS_MFA_ENABLED`` on, the staff enter only with
+an authenticator app (``admin_has_permission``, ACCOUNTS-F20; without one, ``/2fa`` to set it up) and the jump also
 needs the authenticator app's code in the session.
 """
 
@@ -46,6 +47,8 @@ from accounts.models import (
 )
 
 OPEN_IN_HUB_ADMIN = _("Open in the Hub admin")
+#: The Vue page of the second factor's settings, where staff without an authenticator app set it up (ACCOUNTS-F20).
+TWO_FACTOR_SETTINGS = "/2fa"
 
 #: Why the jump to the Hub admin failed, by the ``?error=`` the Hub sends back to «Hubs» (ERPlora/saas#1):
 #: the codes of ``hub-next/base/auth.py`` and ``auth_views.py``, and the 400s of ``/internal/auth/redeem``
@@ -161,10 +164,24 @@ class UserAdmin(DjangoUserAdmin):
         (_("Terms and privacy"), {"fields": ("terms_accepted_at", "terms_version", "privacy_version")}),
     )
     add_fieldsets = ((None, {"classes": ("wide",), "fields": ("email", "usable_password", "password1", "password2")}),)
+    actions = ("close_sessions",)
 
     def get_inlines(self, request, obj):
         # Adding is email + password only (as Django's UserAdmin); hubs are given once it exists.
         return self.inlines if obj is not None else []
+
+    def has_close_sessions_permission(self, request):
+        return request.user.is_superuser
+
+    @admin.action(
+        description=_("Close all their sessions"),
+        permissions=["close_sessions"],
+    )
+    def close_sessions(self, request, queryset):
+        """An incident (ACCOUNTS-F19): the accounts picked are signed out everywhere and asked for their app's code
+        again on every browser."""
+        count = services.close_sessions(by=request.user, users=list(queryset.values_list("pk", flat=True)))
+        self.message_user(request, gettext("Sessions closed: %(count)s.") % {"count": count}, messages.SUCCESS)
 
 
 @admin.register(HubMembership)
@@ -207,6 +224,23 @@ def _admin_next(request: HttpRequest) -> str:
     return next_url
 
 
+def admin_has_permission(request: HttpRequest) -> bool:
+    """Who enters the admin (``admin.site.has_permission``, installed by ``config/urls.py``): an active staff account,
+    as Django's rule, and with ``ACCOUNTS_MFA_ENABLED`` only one with an authenticator app (ACCOUNTS-F20; PLAN-SAAS
+    «2FA obligatorio en el admin»). The account is checked, as in today's SaaS: the sign-in asked the app's code (or
+    a browser the account trusts skipped it). Recovery codes alone are no second factor."""
+    user = request.user
+    if not (user.is_active and user.is_staff):
+        return False
+    return not settings.ACCOUNTS_MFA_ENABLED or queries.has_totp(user)
+
+
+def _owes_the_app(request: HttpRequest) -> bool:
+    """Signed-in staff kept out of the admin only for lack of an authenticator app."""
+    user = request.user
+    return user.is_authenticated and user.is_active and user.is_staff and not admin.site.has_permission(request)
+
+
 @never_cache
 def admin_login(request: HttpRequest, extra_context=None) -> HttpResponse:
     """``/admin/login/``: the SaaS's sign-in, never Django's own.
@@ -216,13 +250,17 @@ def admin_login(request: HttpRequest, extra_context=None) -> HttpResponse:
     authenticator app (``ACCOUNTS_MFA_ENABLED``). It signs nobody in (not even by ``POST``): the visitor
     goes to ``LOGIN_URL?next=…`` (the launcher's sign-in, allauth.headless), whose code steps
     (``/verify-email``, ``/2fa/authenticate``) record both. Staff already signed in go where they were
-    going; any other signed-in account gets 403, never the login: the sign-in sends a signed-in account
-    straight to ``next`` (the admin), which would send it back here.
+    going; staff without the authenticator app the admin needs (``admin_has_permission``) go to set it up on
+    ``/2fa``, which comes back to ``next`` (never a 403: old SAAS_AUTH-F08); any other signed-in account gets 403,
+    never the login: the sign-in sends a signed-in account straight to ``next`` (the admin), which would send it back
+    here.
     Ported from ERPlora/saas ``_admin_login`` (``config/urls.py``), there only with the second factor on.
     """
     next_url = _admin_next(request)
     if admin.site.has_permission(request):
         return HttpResponseRedirect(next_url)
+    if _owes_the_app(request):
+        return HttpResponseRedirect(f"{TWO_FACTOR_SETTINGS}?{urlencode({'next': next_url}, safe='/')}")
     if request.user.is_authenticated:
         raise PermissionDenied
     return HttpResponseRedirect(f"{settings.LOGIN_URL}?{urlencode({'next': next_url}, safe='/')}")
@@ -335,4 +373,27 @@ admin.site.unregister(UserSession)
 
 @admin.register(UserSession)
 class UserSessionAdmin(AllauthUserSessionAdmin):
+    """Who is signed in where (``allauth.usersessions``): read only. Deleting a row would only hide a session that
+    still signs in; a superuser ends the picked ones with «Close the selected sessions» (ACCOUNTS-F19), which also
+    asks their businesses; ``support`` sees them."""
+
     search_fields = ["user__email", "ip"]
+    readonly_fields = ("user", "created_at", "last_seen_at", "ip", "user_agent", "session_key")
+    actions = ("close_sessions",)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def has_close_sessions_permission(self, request):
+        return request.user.is_superuser
+
+    @admin.action(description=_("Close the selected sessions"), permissions=["close_sessions"])
+    def close_sessions(self, request, queryset):
+        count = services.close_sessions(by=request.user, sessions=list(queryset))
+        self.message_user(request, gettext("Sessions closed: %(count)s.") % {"count": count}, messages.SUCCESS)

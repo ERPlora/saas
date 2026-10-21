@@ -1,7 +1,7 @@
 // Where the e2e's servers listen and which database they open (README.md, «Dos e2e del SaaS a la vez»).
 // The shared stack is the one of every run that exports nothing: the public server on :8011, the panel's Django on :8012,
-// the Hub the specs play on :8019 and the `saas` of `.env`. A second run at once moves the three ports
-// together with one variable, E2E_SAAS_PORT (8030: :8031, :8032, :8039), so that it can never leave one of
+// its twin with the second factor on at :8013 (panel/project.ts), the Hub the specs play on :8019 and the `saas` of
+// `.env`. A second run at once moves the four ports together with one variable, E2E_SAAS_PORT (8030: :8031, :8032, :8033, :8039), so that it can never leave one of
 // them behind (two panels sending their Hub calls to one double), and runs on a database of its own,
 // `saas_e2e_<port>`, which its first server creates and migrates (database.ts): two runs on the one `saas`
 // write into each other's data. The rest of the e2e reads them here (playwright.config.ts, panel/project.ts,
@@ -22,13 +22,15 @@ export interface Stack {
   publicPort: number;
   /** The panel's Django's port (`base + 2`). */
   panelPort: number;
+  /** The port of the panel's twin with the second factor on (`base + 3`; ACCOUNTS_MFA_ENABLED is off by default). */
+  panelMfaPort: number;
   /** Where the panel's Django calls the Hub (`HUB_INTERNAL_URL`), which a spec plays (`base + 9`). */
   hubDoublePort: number;
   /** The run's own e2e database, which every Django process opens (`DB_NAME`); `undefined`: `.env`'s `saas`. */
   database: string | undefined;
 }
 
-/** The shared stack's block (:8011, :8012, :8019) and its database. */
+/** The shared stack's block (:8011, :8012, :8013, :8019) and its database. */
 export const SHARED_BASE = 8010;
 const SHARED_DATABASE = 'saas';
 /** The highest port of a block, from its base. */
@@ -93,6 +95,7 @@ export function stackFrom(env: Env): Stack {
     shared: base === SHARED_BASE,
     publicPort: base + 1,
     panelPort: base + 2,
+    panelMfaPort: base + 3,
     hubDoublePort: base + LAST_OFFSET,
     database: databaseOf(env, base),
   };

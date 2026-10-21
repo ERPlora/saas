@@ -73,6 +73,8 @@ const ACCOUNT_PAGE_ROUTES = {
   'accounts.session.list': { method: 'get', path: '/api/accounts/sessions' },
   'accounts.session.close': { method: 'post', path: '/api/accounts/sessions/close' },
   'accounts.session.close_others': { method: 'post', path: '/api/accounts/sessions/close_others' },
+  'accounts.browser_trust.get': { method: 'get', path: '/api/accounts/browser-trust' },
+  'accounts.browser_trust.revoke': { method: 'post', path: '/api/accounts/browser-trust/revoke' },
   'accounts.apikey.list': { method: 'get', path: '/api/accounts/api-keys' },
   'accounts.apikey.create': { method: 'post', path: '/api/accounts/api-keys' },
   'accounts.apikey.revoke': { method: 'post', path: '/api/accounts/api-keys/revoke' },

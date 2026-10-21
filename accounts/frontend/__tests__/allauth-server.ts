@@ -30,6 +30,13 @@ export const pendingSecondFactor: Answer = () =>
     data: { flows: [{ id: 'login' }, { id: 'mfa_authenticate', is_pending: true }] },
     meta: { is_authenticated: false },
   });
+/** The anonymous state of a login whose second factor was right, waiting for «Trust this browser» (ACCOUNTS-F05). */
+export const pendingTrust: Answer = () =>
+  json(401, {
+    status: 401,
+    data: { flows: [{ id: 'login' }, { id: 'mfa_trust', is_pending: true }] },
+    meta: { is_authenticated: false },
+  });
 /** The anonymous state of a sign-up (or a login of an unverified address) waiting for its mailed code. */
 export const pendingEmailVerification: Answer = () =>
   json(401, {

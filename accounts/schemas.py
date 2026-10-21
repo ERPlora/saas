@@ -196,6 +196,29 @@ class SessionsClosedOut(Schema):
     closed: int
 
 
+class SessionCloseAnyIn(StrictIn):
+    """The admin's «Close sessions» (ACCOUNTS-F19): the account, and the sessions picked of it (all, without ``ids``)."""
+
+    user_id: UUID
+    ids: list[int] | None = None
+
+
+# --- Account → Security → Two-factor authentication: the trusted browsers (ACCOUNTS-F17) -----------------------
+
+
+class BrowserTrustGetIn(StrictIn):
+    pass
+
+
+class BrowserTrustRevokeIn(StrictIn):
+    pass
+
+
+class BrowserTrustOut(Schema):
+    #: Until when this browser skips the app's code at sign-in («Trust this browser», ACCOUNTS-F05), or ``None``.
+    trusted_until: datetime | None
+
+
 # --- API keys -------------------------------------------------------------------------------------
 
 
