@@ -1,7 +1,7 @@
 # Workbook — Pasarela fiscal (fiscal_gateway)
 Prefijo: FISCAL
 Alcance MVP: fase 1 (presentar a la AEAT los registros VeriFactu de los negocios y de ERPlora, con el sello de ERPlora o con el certificado del negocio, y la revisión de la autorización firmada que permite usar el sello)
-Estado de la app: hecha
+Estado de la app: completa (2026-10-22)
 
 > Manual de uso y especificación de la pasarela fiscal de erplora.com y de lo que la rodea en el SaaS: el sello
 > de ERPlora, la presentación a la AEAT, los documentos de la autorización firmada (Anexo I) y los avisos de su
@@ -212,8 +212,8 @@ Implicados: FISCAL-F05
   repo es público y un secreto de AWS no pasa de 64 KB). `GET /internal/representation/model` acepta en la query
   `taxpayer_tax_id`, `taxpayer_name`, `municipality`, `street` y `number` (opcionales; la firma v2 cubre la query, y
   una query firmada solo con v1 se rechaza con 401 `signature_v2_required`, regla general de `accounts/signing.py`);
-  hoy el Hub la pide sin ellos (línea `FIX:` de la tarea), así que el bloque del negocio sale en blanco hasta que el
-  Hub los mande. Tests: `fiscal/tests/test_anexo.py`, `test_services.py::TestStamp`, `test_internal.py`,
+  hoy el Hub la pide sin ellos (`FIX-HUB-VERIFACTU-REPRESENTATION-MODEL-WITHOUT-BUSINESS-DATA`, en la cola de
+  `TODO.md`), así que el bloque del negocio sale en blanco hasta que el Hub los mande. Tests: `fiscal/tests/test_anexo.py`, `test_services.py::TestStamp`, `test_internal.py`,
   `test_admin.py` y la e2e FISCAL-F06 de `tests/e2e/panel/fiscal-review.spec.ts`.
 - Fiscal: los tests solo tocan la preproducción de la AEAT, y siempre con el transporte simulado (`respx`); nunca una
   transmisión real ni un certificado real (los `.p12` de los tests se generan en `tests/conftest.py`).
@@ -222,6 +222,11 @@ Implicados: FISCAL-F05
   en los tres tamaños: el aviso a la mesa con su enlace, la aprobación y el correo al negocio (FISCAL-F05), y los
   documentos descifrados solo en la página de revisión (FISCAL-F03); y el sello del representante: el aviso de la cola,
   la subida (un fichero que no es PNG se rechaza), la vista previa, el modelo con una imagen más y el quitarlo (FISCAL-F06).
+- Completa el 2026-10-22 (CLOSE-FISCAL_GATEWAY): lo decidido durante su migración y lo que queda fuera están en la
+  ronda CLOSE-FISCAL_GATEWAY de `PLAN-SAAS.md` §4. `fiscal/` no tiene WORKBOOK propio: sus flujos son FISCAL-F03, F05 y
+  F06 de este, y la revisión del staff (aprobar, devolver, retirar) la recoge VERIFACTU-F05 del Hub.
+- `FISCAL_DOCUMENTS_KEY` es una sola clave Fernet, sin la anterior: cambiarla deja ilegibles los documentos y el sello
+  guardados con ella (FISCAL-F03 y FISCAL-F06 lo dicen en pantalla); la rotación queda fuera de esta versión.
 
 ## Lo que NO hace, a propósito
 
@@ -233,3 +238,5 @@ Implicados: FISCAL-F05
 - No interpreta la respuesta de la AEAT: la devuelve tal cual y la interpreta el Hub.
 - No manda documentos por correo ni los adjunta al aviso de la mesa de revisión: solo el enlace a la revisión.
 - No vigila apoderamientos ante la AEAT (procedimiento ZP01): la vía de ERPlora es la colaboración social.
+- No exime al entorno de pruebas: la vía de ERPlora pide la autorización aprobada también en pruebas (el producto
+  actual no la pedía, ADR-0360); sin ella, el negocio prueba con su propio certificado.
