@@ -100,7 +100,7 @@ def test_the_public_policy_names_no_retired_host(settings, debug):
     ("path", "retired"),
     [
         *((path, (*RETIRED_EVERYWHERE, *RETIRED_FROM_PUBLIC)) for path in PUBLIC_PATHS),
-        *((path, RETIRED_EVERYWHERE) for path in GLOBAL_PATHS),
+        *((path, RETIRED_EVERYWHERE) for path in (*GLOBAL_PATHS, *ADMIN_PATHS)),
     ],
 )
 @pytest.mark.usefixtures("spa_manifest")
