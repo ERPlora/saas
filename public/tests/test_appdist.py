@@ -25,6 +25,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from django.conf import settings
 from django.urls import reverse
+from hubs.models import Plan
 
 pytestmark = pytest.mark.django_db
 
@@ -476,6 +477,50 @@ class TestWaysToTryPage:
         html = client.get("/download/").content.decode()
 
         assert "Dos formas gratuitas de probar ERPlora." in html
+
+
+# --- PUBLIC-G28: the free hub's limits are the Free plan's, never typed ----------------------------
+
+
+def free_hub_card(html: str, a: str = "Option A", b: str = "Option B") -> str:
+    """Option A of /download/: the card of the free cloud hub."""
+    start = html.index(a)
+    return html[start : html.index(b, start)]
+
+
+class TestTheFreeHubStatesTheFreePlan:
+    """PUBLIC-G28 (FIX of APP-PUBLIC-1): «1 device, 3 local users» was typed in the template."""
+
+    def test_it_states_the_devices_and_users_of_the_free_plan(self, client):
+        Plan.objects.filter(slug="free").update(max_devices=2, max_users=5)
+
+        card = free_hub_card(client.get("/download/").content.decode())
+
+        assert "2 devices · 5 users" in card
+        assert "3 local users" not in card
+
+    def test_an_unlimited_free_plan_says_so(self, client):
+        Plan.objects.filter(slug="free").update(max_devices=0, max_users=0)
+
+        card = free_hub_card(client.get("/download/").content.decode())
+
+        assert "Unlimited devices · Unlimited users" in card
+
+    def test_in_spanish_it_reads_the_same_plan(self, client):
+        Plan.objects.filter(slug="free").update(max_devices=1, max_users=4)
+        client.cookies[settings.LANGUAGE_COOKIE_NAME] = "es"
+
+        card = free_hub_card(client.get("/download/").content.decode(), "Opción A", "Opción B")
+
+        assert "1 dispositivo · 4 usuarios" in card
+
+    def test_without_a_free_plan_on_sale_no_limit_is_invented(self, client):
+        Plan.objects.filter(price_monthly=0).delete()
+
+        card = free_hub_card(client.get("/download/").content.decode())
+
+        assert "device" not in card
+        assert "users" not in card
 
 
 # --- Everything points at the app, nothing at the Bridge ----------------------------------------

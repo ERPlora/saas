@@ -1,13 +1,12 @@
 # Workbook — Web pública (public)
 Prefijo: PUBLIC
 Alcance MVP: fase 1 (la web pública de erplora.com: lo que lee quien todavía no tiene cuenta y la puerta hacia el alta)
-Estado de la app: en construcción (parte 1 de 3: la portada, los planes y precios, los sectores, el producto y la seguridad, el cumplimiento por país, la empresa, adónde lleva cada «Empieza gratis», las páginas «Muy pronto», el idioma y los buscadores)
+Estado de la app: en construcción (partes 1 y 2 de 3: la portada, los planes y precios, los sectores, el producto y la seguridad, el cumplimiento por país, la empresa, adónde lleva cada «Empieza gratis», las páginas «Muy pronto», el idioma y los buscadores; la ayuda y el soporte, el contacto, las cookies, los textos legales y la declaración responsable, la tienda de apps y las descargas)
 
 > Manual de uso y especificación de la app `public` del SaaS (erplora.com). Cuenta lo que ve una persona que llega a
 > erplora.com sin cuenta: qué es ERPlora, cuánto cuesta, para qué negocios sirve, cómo protege los datos, en qué
 > países cumple con la facturación y cómo se empieza. Esta parte del manual no se publica en la tienda: es la
-> referencia del equipo y de la QA. La ayuda, el contacto, las cookies, los textos legales, la documentación, la
-> tienda de apps y las descargas (parte 2) y la demo (parte 3) se escriben a continuación.
+> referencia del equipo y de la QA. La demo (parte 3) se escribe a continuación.
 
 ## Para qué sirve y para quién
 
@@ -45,6 +44,21 @@ Quién la usa:
   https://help.mollie.com/hc/en-us/articles/26810769614226-How-do-fiscalisation-regulations-work-with-Mollie-Point-of-Sale).
 - **llmstxt.org y schema.org**: el resumen para asistentes y los datos estructurados de organización, aplicación y
   preguntas frecuentes (https://llmstxt.org, https://schema.org/SoftwareApplication).
+
+- **AEPD, ICO y CNIL; GitHub**: las cookies técnicas no piden consentimiento, así que el aviso solo aparece cuando
+  la web mide visitas o hace publicidad (https://www.aepd.es/guias/guia-cookies.pdf,
+  https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/guide-to-pecr/cookies-and-similar-technologies/,
+  https://www.cnil.fr/fr/cookies-et-autres-traceurs/regles/cookies-solutions-pour-les-outils-de-mesure-daudience,
+  https://github.blog/news-insights/company-news/no-cookie-for-you/).
+- **Intercom, HubSpot y Zendesk**: el mensaje del formulario de contacto se responde a quien lo escribió, llega con
+  el tema de la página de la que viene y lo escrito no se pierde si algo falla
+  (https://www.hubspot.com/products/marketing/forms, https://www.zendesk.com/service/messaging/).
+- **Shopify POS, Square POS; Safari View Controller y Custom Tabs**: dentro de una app, un texto legal se abre en un
+  visor con solo el texto y una forma de volver, sin el resto de la web
+  (https://developer.apple.com/documentation/safariservices/sfsafariviewcontroller,
+  https://developer.chrome.com/docs/android/custom-tabs).
+- **Shopify App Store y Odoo Apps**: la tienda por secciones con búsqueda, y la ficha de cada app con lo que
+  necesita y su documentación (https://apps.shopify.com, https://apps.odoo.com).
 
 ## Antes de empezar
 
@@ -87,6 +101,29 @@ Blog, Empleos y Prensa, que solo anuncian lo que viene.
 ### Pie de página
 Las columnas Producto, Empresa y Soporte, los enlaces legales y el selector de idioma «English · Español».
 
+### Centro de ayuda y Soporte
+«Centro de ayuda.» con una guía plegada por tema y su buscador; Soporte, con los tres caminos para pedir ayuda y qué
+contar en el mensaje.
+
+### Contacto
+«Contáctanos» con el formulario, «Información de Contacto» (el correo de soporte y «Escríbenos») y «Tiempo de
+respuesta»; el mismo formulario cierra la portada.
+
+### Aviso de cookies y Preferencias de cookies
+El aviso, solo cuando la web mide visitas, y «Preferencias de cookies» con una categoría por bloque y su interruptor.
+
+### Textos legales y Declaración responsable
+Aviso legal, Privacidad, Términos y la política de cookies, cada uno en su página; la declaración responsable en
+vigor con su copia firmada y el archivo de versiones.
+
+### Tienda de apps y Ficha de una app
+Las apps por sección con la búsqueda y los filtros; la ficha con «Resumen», «Apps necesarias» y, si la tiene,
+«Documentación».
+
+### Descargas y La app de ERPlora
+«Dos formas gratuitas de probar ERPlora.» con el hub en la nube y la app del mostrador por plataforma, y la página de
+la app instalada.
+
 ## Estados de cada pantalla
 
 | Estado | Qué ve la persona |
@@ -114,6 +151,18 @@ Las columnas Producto, Empresa y Soporte, los enlaces legales y el selector de i
 | PUBLIC-F12 | Llegar a una página «Muy pronto» o a una dirección retirada | hecho |
 | PUBLIC-F13 | Cambiar de idioma | hecho |
 | PUBLIC-F14 | Que buscadores y asistentes lean la web | hecho |
+| PUBLIC-F15 | Leer la ayuda y el soporte | hecho |
+| PUBLIC-F16 | Escribir al equipo desde el formulario de contacto | hecho |
+| PUBLIC-F17 | Llegar al formulario desde otras páginas | hecho |
+| PUBLIC-F18 | Ver los canales y el plazo de respuesta | hecho |
+| PUBLIC-F19 | Decidir sobre las cookies | hecho |
+| PUBLIC-F20 | Leer los textos legales | hecho |
+| PUBLIC-F21 | Consultar la declaración responsable del sistema de facturación | hecho |
+| PUBLIC-F22 | Recorrer la tienda de apps | hecho |
+| PUBLIC-F23 | Ver la ficha de una app | hecho |
+| PUBLIC-F24 | Conseguir la aplicación instalada | hecho |
+| PUBLIC-F25 | Saber qué versión de la aplicación está publicada | hecho |
+| PUBLIC-F26 | Abrir una página pública desde la aplicación instalada | hecho |
 
 ### PUBLIC-F01 Ver la portada
 <!-- origen: old-saas:SAAS_PUBLIC-F55 -->
@@ -311,15 +360,201 @@ Sale: nada guardado.
 Si falla: las páginas privadas nunca aparecen en el mapa ni en el resumen y llevan la marca de no indexar; las páginas «Muy pronto», la ayuda y el soporte tampoco se indexan. Los textos de la web se traducen con los catálogos de idioma (inglés como fuente y su español).
 Implicados: apps (el catálogo), hubs (los planes y la taxonomía)
 
+### PUBLIC-F15 Leer la ayuda y el soporte
+<!-- origen: old-saas:SAAS_DASHBOARD-F218 old-saas:SAAS_PUBLIC-F64 fi:saas/assistant-help#centro-de-ayuda-indice-de-guias fi:saas/assistant-help#guia-individual-markdown-html fi:saas/public#centro-de-ayuda-renderiza-guias-del-repo fi:saas/support/orgs-users#service-help_docs-list_docs-get_doc-all_sections-resolve_lang fi:saas/public#soporte-publico fi:saas/public#documentacion-publica-estatica -->
+Estado: hecho
+Actor: visitante
+Pantalla: Centro de ayuda y Soporte
+Pasos:
+1. Desde el pie, «Centro de ayuda» abre «Centro de ayuda.» con una guía por tema (empezar, instalar, usuarios y permisos, ajustes y preguntas frecuentes), cada una plegada; al abrir una se lee entera.
+2. El buscador de la página deja solo las guías que contienen lo escrito; si ninguna lo contiene, dice «No hemos encontrado ninguna guía».
+3. «Soporte» ofrece tres caminos: «Buscar en el Centro de ayuda», «Contactar con soporte» (el formulario) y «Escribir al equipo» (el correo de soporte), y explica qué contar para que el equipo reproduzca el problema y qué no enviar nunca (contraseñas, PIN, códigos de recuperación).
+4. La antigua página de documentación lleva para siempre al centro de ayuda; la documentación de cada app está en su ficha de la tienda.
+Entra: las guías que se publican con la web, en inglés y en español.
+Sale: nada guardado.
+Si falla: una guía todavía sin traducir se lee en inglés, y un idioma sin guías también; nunca se enseña un documento que no sea una guía. La ayuda y el soporte no se indexan.
+Implicados: ninguno
+
+### PUBLIC-F16 Escribir al equipo desde el formulario de contacto
+<!-- origen: old-saas:SAAS_PUBLIC-F65 -->
+Estado: hecho
+Actor: visitante
+Pantalla: Contacto
+Pasos:
+1. En «Contáctanos» (o al final de la portada) la persona escribe nombre, apellidos, correo, el teléfono si quiere y lo que necesita, y pulsa «Ponte en contacto».
+2. Antes de enviar, la página marca los campos obligatorios vacíos y un correo mal escrito, y se coloca en el primero.
+3. Al enviarlo vuelve a la misma página con «¡Gracias! Recibimos tu mensaje y responderemos en un plazo de 4 horas laborables.»; el equipo lo recibe en el buzón de soporte y, al responderlo, la respuesta va a la persona.
+Entra: lo escrito en el formulario.
+Sale: un correo al buzón de soporte que se responde a la persona; la web no guarda el mensaje.
+Si falla: un campo obligatorio vacío, un correo que no es válido, demasiados mensajes seguidos desde la misma red o un fallo al enviar el correo vuelven al formulario con su motivo («Introduce una dirección de correo electrónico válida.», «Demasiados mensajes desde tu red. Vuelve a intentarlo dentro de un rato.», «Lo sentimos, algo salió mal al enviar tu mensaje. Inténtalo de nuevo.») y con lo escrito en su sitio, una sola vez; no se envía nada.
+Implicados: ninguno
+
+### PUBLIC-F17 Llegar al formulario desde otras páginas
+<!-- origen: old-saas:SAAS_PUBLIC-F66 -->
+Estado: hecho
+Actor: visitante
+Pantalla: Contacto
+Pasos:
+1. «Contacto» del menú y del pie, «Contactar con soporte» de Soporte y los botones de contacto de Planes y precios y de Sectores abren el formulario.
+2. Desde Colabora, «Únete al Programa» y «Solicitar Ahora» lo abren con el tema del programa de colaboradores; desde Seguridad, «Contactar con el Equipo de Seguridad» lo abre con el tema de seguridad.
+3. El tema viaja con el mensaje: el equipo lo lee en el asunto del correo.
+Entra: la página de la que se llega.
+Sale: el tema en el asunto del correo al equipo.
+Si falla: un tema que la web no conoce se ignora y el mensaje sale sin tema.
+Implicados: ninguno
+
+### PUBLIC-F18 Ver los canales y el plazo de respuesta
+<!-- origen: old-saas:SAAS_PUBLIC-F67 -->
+Estado: hecho
+Actor: visitante
+Pantalla: Contacto
+Pasos:
+1. En «Contáctanos», «Información de Contacto» enseña el correo de soporte y «Escríbenos» (WhatsApp); «Tiempo de respuesta» dice «En un plazo de 4 horas laborables».
+2. El pie, Soporte, el bloque de contacto de la portada, las páginas de error y la pantalla de error de la entrada dan el mismo correo de soporte, y el formulario, el aviso de enviado y la portada («4 h») dan el mismo plazo.
+Entra: nada.
+Sale: nada guardado.
+Si falla: ninguna página promete atención a todas horas ni otro plazo; el correo de soporte, el chat y el plazo se escriben en un solo sitio, así que no pueden contradecirse.
+Implicados: ninguno
+
+### PUBLIC-F19 Decidir sobre las cookies
+<!-- origen: old-saas:SAAS-F10 old-saas:SAAS_PUBLIC-F69 old-saas:SAAS_PUBLIC-F70 fi:saas/support/orgs-users#command-init_cookie_groups -->
+Estado: hecho
+Actor: visitante
+Pantalla: Aviso de cookies y Preferencias de cookies
+Pasos:
+1. Mientras la web no mida visitas, solo pone las cookies técnicas (la sesión, la protección de los formularios, el idioma, el tema y la elección de cookies) y no enseña ningún aviso: no hay nada que consentir.
+2. Si se activa la medición de visitas, cada página enseña el aviso hasta que la persona elige «Aceptar todas», «Rechazar» o «Personalizar».
+3. «Cookies» del pie abre «Preferencias de cookies»: las «Cookies esenciales», «Siempre activas», y cada categoría opcional («Cookies analíticas», «Cookies de marketing») con sus cookies y su interruptor; la elección dura un año.
+4. Sin aceptar las analíticas no se carga ninguna medición, y en las pantallas de contraseñas y códigos no se carga nunca.
+Entra: la elección de la persona.
+Sale: la elección, guardada en el navegador; las cookies de una categoría rechazada se borran.
+Si falla: las cookies esenciales nunca se borran (cerrarían la sesión); si la memoria rápida del servidor no contesta, la página sale igual y la limpieza se hace en la siguiente.
+Implicados: accounts (las pantallas de entrada)
+
+### PUBLIC-F20 Leer los textos legales
+<!-- origen: old-saas:SAAS_PUBLIC-F71 fi:saas/public#paginas-legales-estaticas-privacy-terms-cookies-aviso-legal -->
+Estado: hecho
+Actor: visitante
+Pantalla: Textos legales
+Pasos:
+1. En el pie, «Aviso legal», «Privacidad» y «Términos» abren cada texto en su página; la política de cookies se abre desde la privacidad.
+2. La privacidad nombra a quién se confían los datos: Amazon Web Services en la región de Irlanda para el alojamiento y el correo, y el asistente en Fráncfort, sin entrenar con ellos.
+3. Los términos dan los números que el producto cumple: los días del paquete de salida, los días que espera un negocio suspendido antes de borrarse y la prueba de los planes a la venta (ninguna si ninguno la tiene).
+Entra: los planes a la venta (los términos).
+Sale: nada guardado.
+Si falla: ningún texto nombra un proveedor que ya no se usa ni otro alojamiento, y ningún enlace entre textos lleva a una página que no existe.
+Implicados: hubs (los planes)
+
+### PUBLIC-F21 Consultar la declaración responsable del sistema de facturación
+<!-- origen: old-saas:SAAS_PUBLIC-F73 -->
+Estado: hecho
+Actor: visitante
+Pantalla: Declaración responsable
+Pasos:
+1. «Declaración responsable» del pie (y la cláusula de actualizaciones de los términos) abre la versión en vigor, con su versión, su modalidad y si está firmada.
+2. Si está firmada, ofrece abrir la copia firmada y descargarla, y explica que la firma solo se comprueba descargándola y abriéndola con un validador.
+3. Abajo, el archivo de todas las versiones: la vigente marcada en vigor y las anteriores sustituidas; cada una se abre en su propia dirección.
+Entra: las versiones de la declaración que se publican con la web.
+Sale: nada guardado.
+Si falla: una versión que no existe, o la copia de una versión todavía sin firmar, da «Página no encontrada»: nunca un archivo roto.
+Implicados: ninguno
+
+### PUBLIC-F22 Recorrer la tienda de apps
+<!-- origen: old-saas:SAAS_PUBLIC-F29 fi:saas/public#marketplace-publico-de-modulos-listado-busqueda-filtro fi:saas/public#overview-publico-de-modulos-agrupados-por-unidad-funcional-modules -->
+Estado: hecho
+Actor: visitante
+Pantalla: Tienda de apps
+Pasos:
+1. «Apps» del menú abre la tienda: las apps publicadas agrupadas por sección (ventas, catálogo, personas, restaurante, organización), cada una con su icono, su resumen y si es «Gratis» o «Incluida en los planes de pago».
+2. «Buscar apps» busca en el nombre y el resumen; los filtros de sección (con cuántas apps tiene cada una) y de acceso (gratis o premium) se combinan con la búsqueda.
+3. Las direcciones antiguas del marketplace, de las soluciones y de los módulos llevan para siempre a la tienda.
+Entra: el catálogo publicado.
+Sale: nada guardado.
+Si falla: sin apps publicadas dice «Todavía no hay apps publicadas.» y no se indexa; si nada coincide, «Ninguna app coincide con tu búsqueda.», con la forma de quitar los filtros. Ninguna app tiene precio propio: las premium vienen con los planes de pago.
+Implicados: apps (el catálogo)
+
+### PUBLIC-F23 Ver la ficha de una app
+<!-- origen: old-saas:SAAS_PUBLIC-F30 fi:saas/public#ficha-publica-de-un-modulo-detalle-ssr -->
+Estado: hecho
+Actor: visitante
+Pantalla: Ficha de una app
+Pasos:
+1. Al pulsar una app se abre su ficha en «Resumen», con su descripción y, si necesita otras, «Apps necesarias», cada una enlazada a su ficha y con su acceso.
+2. Si la app tiene documentación, la pestaña «Documentación» la enseña con sus diagramas; si solo existe en español, lo avisa con «Esta documentación solo está disponible en español.».
+3. «Empieza gratis» lleva a la entrada; quien ya tiene cuenta va a su panel.
+Entra: la app del catálogo y su documentación.
+Sale: nada guardado.
+Si falla: una app que no existe o no está publicada da «Página no encontrada»; una app sin documentación no tiene esa pestaña.
+Implicados: apps (el catálogo), accounts (la entrada)
+
+### PUBLIC-F24 Conseguir la aplicación instalada
+<!-- origen: old-saas:SAAS_PUBLIC-F33 fi:saas/public#descarga-del-instalador-del-bridge-por-plataforma -->
+Estado: hecho
+Actor: visitante
+Pantalla: Descargas y La app de ERPlora
+Pasos:
+1. «Descargas» del pie abre «Dos formas gratuitas de probar ERPlora.»: «Crea tu hub gratis en la nube», con los dispositivos y usuarios del plan Gratis, o «Instala la app de ERPlora» en el dispositivo del mostrador.
+2. Cada botón de plataforma lleva a su tienda cuando su ficha está publicada (Microsoft Store, Google Play) y, si no, al último instalador (Windows y Linux); Android solo se instala desde Google Play.
+3. La página de la app cuenta lo que hace en el mostrador y que primero hace falta un hub: «Antes que la app necesitas un hub.».
+Entra: el plan Gratis a la venta y las fichas de las tiendas.
+Sale: nada guardado.
+Si falla: sin plan Gratis a la venta, la tarjeta no da ningún límite; una plataforma sin versión publicada (macOS) no se ofrece, y el puente local de antes ya no existe y da «Página no encontrada».
+Implicados: hubs (el plan Gratis)
+
+### PUBLIC-F25 Saber qué versión de la aplicación está publicada
+<!-- origen: old-saas:SAAS_PUBLIC-F34 -->
+Estado: hecho
+Actor: sistema
+Pantalla: ninguna
+Pasos:
+1. Cada aplicación instalada pregunta a erplora.com qué versión está publicada.
+2. La respuesta es la versión que dejó la última publicación junto a los instaladores.
+Entra: la nota de versión que escribe cada publicación.
+Sale: nada guardado.
+Si falla: si esa nota no se puede leer o no trae una versión, la respuesta es que no se sabe, nunca un número inventado, y la aplicación lo trata como que no se pudo comprobar.
+Implicados: ninguno
+
+### PUBLIC-F26 Abrir una página pública desde la aplicación instalada
+<!-- origen: old-saas:SAAS_PUBLIC-F74 -->
+Estado: hecho
+Actor: visitante
+Pantalla: Textos legales
+Pasos:
+1. En la aplicación instalada (y en la cuenta que la aplicación abre en el navegador), la pantalla de entrada y la de comprobar el correo enlazan los términos y la privacidad.
+2. Al pulsar uno, el texto se abre como en el visor de una aplicación: solo el texto y «Volver», sin el menú, el pie ni los botones de alta de la web.
+3. Los textos que ese texto enlaza se abren igual mientras dure la sesión de la aplicación; «Volver» lleva a la pantalla de la aplicación que lo abrió, o a su inicio si el texto se abrió suelto.
+Entra: desde qué parte de la aplicación se abre.
+Sale: la marca de aplicación en la sesión de esa ventana.
+Si falla: dentro de la aplicación no sale el aviso de cookies ni se carga ninguna medición, aunque se aceptaran en la web; una marca que la web no conoce se trata como la web.
+Implicados: hubs (la entrada de la aplicación), accounts (comprobar el correo)
+
 ## Para quien lo mantiene
 
 - Rutas y vistas: `public/urls.py` (`PUBLIC_PREFIXES`) y un módulo por área: `landing.py` (F01, F07, F11),
   `pricing.py` (F02–F04), `industries.py` (F05), `product.py` (F06, F08), `compliance.py` (F09), `company.py` (F10),
   `store.py` (redirecciones de F12), `language.py` (F13), `seo.py`, `sitemaps.py` y `structured_data.py` (F14).
   Plantillas en `public/templates/public/`, catálogo en `public/locale/es/`.
-- Partes del porte (MIGRATION-TASK APP-PUBLIC-1…3): este WORKBOOK nace en la parte 1 con estos flujos; la parte 2
-  (ayuda, contacto, cookies, legales, documentación, tienda de apps, descargas) y la 3 (la demo) añaden los suyos a
-  continuación; la revisión flujo a flujo de los `hecho` la hace la parte 3.
+- Partes del porte (MIGRATION-TASK APP-PUBLIC-1…3): este WORKBOOK nace en la parte 1 (F01–F14); la parte 2 añade
+  F15–F26 (ayuda, contacto, cookies, legales, tienda de apps, descargas) y la 3 (la demo) los suyos a continuación;
+  la revisión flujo a flujo de los `hecho` la hace la parte 3.
+- Parte 2, por flujo: `help.py` y `resources.py` (F15; `/documentation/` es un 301 a `/help/`), `landing.py`
+  (F16–F18: `contact_submit` con `reply_to`, el borrador `CONTACT_DRAFT_KEY` en la sesión y los temas
+  `CONTACT_TOPICS`), `context_processors.py` (F18: `SUPPORT_EMAIL` de settings, `SUPPORT_WHATSAPP_URL` y
+  `SUPPORT_REPLY_HOURS`), `partials/cookie_banner.html`, `partials/analytics.html`, `cookies.py` e
+  `init_cookie_groups` (F19), `legal.py` (F20), `declaracion.py` (F21), `store.py` (F22, F23), `appdist.py` y
+  `downloads.py` (F24, F25; la versión es `public.app.release`, que lee `downloads/app/latest/latest.json` del
+  bucket que escribe la publicación de ERPlora/app). Los límites del plan Gratis de `/download/` son
+  `pricing.free_plan` con el parcial `pricing/_plan_limits.html`, el mismo de la tabla de precios.
+- Equivalencia de claves de la parte 2: G01, G02, G03, G21, G25, G38, G19 y G07 = F15; G39 = F16; G40 = F17;
+  G41 = F18; G24, G43, G44 y G20 = F19; G45 y G17 = F20; G46 = F21; G26, G10 y G11 = F22; G27 y G08 = F23; G28 y
+  G04 = F24; G29 = F25; G47 = F26.
+- Modo aplicación (F26): la entrada de la SPA (`hubs/frontend/pages/LaunchPage.vue`, `VerifyEmailPage.vue`) enlaza
+  los textos con `accounts/frontend/legal.ts` (`?surface=<superficie>` fuera de la web); `context_processors.app_surface`
+  lo guarda en la sesión (`public.surface`; `?surface=web` lo quita) y `public_base.html` pinta `partials/app_bar.html`
+  en lugar del menú, sin pie, aviso ni analítica; `frontend/public.ts` (`setupAppBack`) vuelve por el historial.
+- Correo de soporte (F18): `SUPPORT_EMAIL` es la única fuente; las páginas de error lo leen con `{% support_email %}`
+  (`public/templatetags/support.py`: la 500 se pinta sin contexto) y la SPA con el bloque JSON `support-email` de
+  `base/spa.py` (`accounts/frontend/support.ts`).
 - Equivalencia de claves del registro: G30 = F01; G31 y G14 = F02; G32 y G05 = F03; G33 = F04; G34, G06 y G09 = F05;
   G35 y G16 = F06; G49 = F07; G50 = F08; G36 y G13 = F09; G37, G12, G15 y G18 = F10; G51 = F11; G52 = F12; G42 = F13;
   G48, G22 y G23 = F14.
@@ -337,7 +572,9 @@ Implicados: apps (el catálogo), hubs (los planes y la taxonomía)
   sombra del botón, así que el estilo del idioma activo va por `data-current`.
 - Pruebas: cada test cita su flujo en el nombre o en el docstring; el e2e de esta parte es
   `tests/e2e/public-web.spec.ts` (claves `PUBLIC-Gnn` del registro en el título y capturas
-  `APP-PUBLIC-1-<clave>-<ancho>.png` en `tests/e2e/.artifacts/`).
+  `APP-PUBLIC-1-<clave>-<ancho>.png` en `tests/e2e/.artifacts/`); el de la parte 2, `tests/e2e/public-web-2.spec.ts`
+  (capturas `APP-PUBLIC-2-<clave>-<ancho>.png`; el servidor público del e2e escribe los correos en
+  `.artifacts/public/mail*/`, nunca por SMTP).
 
 ## Lo que NO hace, a propósito
 
@@ -346,3 +583,6 @@ Implicados: apps (el catálogo), hubs (los planes y la taxonomía)
 - No tiene página de desarrolladores, marketplace de terceros ni puente local: todas las apps son de ERPlora.
 - No cobra ni vende nada en la web pública: el pago está en el panel.
 - No nombra normativas fiscales de países a cuyo sistema no se conecta.
+- No pide consentimiento de cookies mientras no mide visitas: las cookies técnicas no lo necesitan.
+- No tiene una página de documentación aparte: la documentación es el centro de ayuda y la pestaña de cada app.
+- No guarda los mensajes del formulario de contacto: los envía al buzón de soporte.

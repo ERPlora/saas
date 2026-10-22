@@ -11,7 +11,8 @@ why (spec §8.4, plan §3.b):
 * no CDN and no runtime icon fetch: one Vite entry (``frontend/public.ts``) and ``{% icon %}``;
 * the demo CTA is back (round 2026-10-17, PLAN-SAAS §3.5): the navbar offers «Try the demo» (``/demo/``,
   public/demo.py) to a visitor, as the old one did, and not to a customer with a session;
-* no PWA manifest, back bar or app-shell head: the Tauri app does not open these pages in phase 1;
+* no PWA manifest nor app-shell head; the installed app's sign-in does open the legal texts, which then show in app
+  mode (`?surface=`, PUBLIC-F26: «Back» instead of the navbar, no footer, cookie notice nor analytics);
 * the CTA for a customer with a session goes to the SPA's launcher (``/launch``), the old
   ``overview:index`` dashboard does not exist in saas-next; its language comes from the ``_lang``
   cookie (plan §3.a), not from ``UserPreferences``.
@@ -114,7 +115,10 @@ def navbar_of(html: str) -> str:
 
 
 @pytest.fixture
-def cookie_groups(db):
+def cookie_groups(db, settings):
+    """The groups seeded and an optional tracker configured: the banner only asks when there is one
+    (PUBLIC-G24, ``public/tests/test_analytics.py``)."""
+    settings.GA_MEASUREMENT_ID = "G-TEST123"
     call_command("init_cookie_groups")
 
 
@@ -1263,3 +1267,83 @@ def test_the_cookie_settings_and_the_error_titles_read_like_the_rest(
     html = client.get(reverse(name, args=args)).content.decode()
 
     assert f"<title>{title}</title>" in html
+
+
+# --- PUBLIC-F26 (G47): a public page opened from the installed app ------------------------------------
+#
+# The app's sign-in (`/shell/`, hubs/frontend/pages/LaunchPage.vue) links the terms and the privacy policy with
+# `?surface=<desktop|mobile|account>`; the page then opens like an app's in-app viewer (Shopify POS, Square POS:
+# the text alone and a way back), with nothing of the web around it, and stays so for that session.
+
+TERMS = "/legal/terms/"
+PRIVACY = "/legal/privacy/"
+
+
+def body_of(response) -> str:
+    html = response.content.decode()
+    return html[html.index("<body") :]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("surface", ["desktop", "mobile", "account"])
+def test_a_page_opened_from_the_app_has_a_way_back_and_nothing_of_the_web(client, cookie_groups, surface):
+    """Even with a tracker configured (`cookie_groups`), no notice and no measurement inside the app."""
+    response = client.get(f"{TERMS}?surface={surface}")
+    body = body_of(response)
+
+    assert response.status_code == 200
+    assert '<nav class="ep-navbar"' not in body
+    assert '<footer class="ep-footer"' not in body
+    assert 'id="cookie-consent-banner"' not in body
+    assert 'href="/launch"' not in body
+    assert re.search(r'<ion-button[^>]*data-app-back[^>]*href="/shell/"|<ion-button[^>]*href="/shell/"[^>]*data-app-back', body)
+    assert ">Back<" in body
+    assert f'data-surface="{surface}"' in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_the_same_page_on_the_web_asks_for_cookies(client, cookie_groups):
+    """The control of the test above: with a tracker configured, the web does show the notice."""
+    assert 'id="cookie-consent-banner"' in body_of(client.get(TERMS))
+
+
+@pytest.mark.django_db
+def test_the_app_mode_lasts_while_the_app_navigates_between_texts(client):
+    client.get(f"{TERMS}?surface=mobile")
+
+    assert '<nav class="ep-navbar"' not in body_of(client.get(PRIVACY))
+    assert '<nav class="ep-navbar"' in body_of(client.get(f"{PRIVACY}?surface=web"))
+    assert '<nav class="ep-navbar"' in body_of(client.get(TERMS))
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("surface", ["", "evil", "<script>", "web"])
+def test_any_other_surface_is_the_web(client, surface):
+    body = body_of(client.get(f"{TERMS}?surface={surface}"))
+
+    assert '<nav class="ep-navbar"' in body
+    assert "data-app-back" not in body
+
+
+@pytest.mark.django_db
+def test_the_way_back_in_spanish(client):
+    client.cookies[settings.LANGUAGE_COOKIE_NAME] = "es"
+
+    assert ">Volver<" in body_of(client.get(f"{TERMS}?surface=desktop"))
+
+
+
+@pytest.mark.django_db
+def test_inside_the_app_no_measurement_loads_even_with_every_cookie_accepted(client, settings):
+    """The same visitor, with every group accepted, is measured on the web and never inside the app (PUBLIC-F26)."""
+    settings.GA_MEASUREMENT_ID = "G-TEST123"
+    settings.CLARITY_PROJECT_ID = "xhn93kfr5b"
+    call_command("init_cookie_groups")
+    client.post(reverse("cookie_consent_accept"), {"all_groups": "on"})
+
+    on_the_web = client.get(TERMS).content.decode()
+    in_the_app = client.get(f"{TERMS}?surface=desktop").content.decode()
+
+    assert "googletagmanager.com/gtag/js" in on_the_web and "clarity.ms" in on_the_web
+    assert "googletagmanager.com/gtag/js" not in in_the_app
+    assert "clarity.ms" not in in_the_app

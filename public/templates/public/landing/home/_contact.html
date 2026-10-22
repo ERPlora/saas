@@ -17,8 +17,8 @@
             {% if contact_trial_note %}{{ contact_trial_note }}{% endif %}
           </p>
           <div class="mt-6 space-y-2 text-sm">
-            <div class="flex gap-3 items-center"><span class="font-mono text-xs uppercase text-fg/70 w-20">{% trans "Email" %}</span><a href="mailto:info@erplora.com" class="text-primary">info@erplora.com</a></div>
-            <div class="flex gap-3 items-center"><span class="font-mono text-xs uppercase text-fg/70 w-20">{% trans "WhatsApp" %}</span><a href="https://wa.me/34643759040" target="_blank" rel="noopener" class="text-primary">{% trans "Chat with us" %}</a></div>
+            <div class="flex gap-3 items-center"><span class="font-mono text-xs uppercase text-fg/70 w-20">{% trans "Email" %}</span><a href="mailto:{{ SUPPORT_EMAIL }}" class="text-primary">{{ SUPPORT_EMAIL }}</a></div>
+            <div class="flex gap-3 items-center"><span class="font-mono text-xs uppercase text-fg/70 w-20">{% trans "WhatsApp" %}</span><a href="{{ SUPPORT_WHATSAPP_URL }}" target="_blank" rel="noopener" class="text-primary">{% trans "Chat with us" %}</a></div>
           </div>
         </div>
 

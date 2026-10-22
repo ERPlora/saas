@@ -208,6 +208,59 @@ class TestALongList:
         assert queries() == few
 
 
+class TestSigningIn:
+    """Each sign-in drops the account's sessions that no longer sign it in and records its own. allauth's
+    ``purge_and_list`` did it one session at a time, about three queries for each open one: with 1680 sessions of
+    one account the SaaS answered the mailed code after 30 and 37 s (FIX-HUB-E2E-LOGIN-FLAKY-UNDER-LOAD)."""
+
+    def test_signing_in_costs_the_same_queries_however_many_sessions_the_account_has(self, ana, password):
+        def queries() -> int:
+            client = Client(HTTP_USER_AGENT=MAC, REMOTE_ADDR="81.33.10.4")
+            with CaptureQueriesContext(connection) as captured:
+                sign_in(client, ana.email, password)
+            return len(captured)
+
+        queries()  # the first sign-in also proves the address
+        few = queries()
+        _more_sessions(ana, 50)
+
+        assert queries() == few
+
+    def test_the_sessions_that_no_longer_sign_in_go_and_the_others_stay(self, ana, password):
+        store = _session_store()
+        model = store.get_model_class()
+        live = _more_sessions(ana, 2)
+        expired, stale, gone = _more_sessions(ana, 3)
+        model.objects.filter(session_key=expired).update(expire_date=timezone.now() - timedelta(minutes=1))
+        model.objects.filter(session_key=stale).update(
+            session_data=store().encode({SESSION_KEY: str(ana.pk), BACKEND_SESSION_KEY: settings.AUTHENTICATION_BACKENDS[0], HASH_SESSION_KEY: "stale"})
+        )
+        model.objects.filter(session_key=gone).delete()
+
+        client = sign_in(Client(HTTP_USER_AGENT=MAC, REMOTE_ADDR="81.33.10.4"), ana.email, password)
+
+        assert set(UserSession.objects.filter(user=ana).values_list("session_key", flat=True)) == {*live, client.session.session_key}
+
+    def test_a_session_signed_in_meanwhile_on_another_device_stays(self, ana, password, monkeypatch):
+        """Two sign-ins of one account at once: the one that is recorded while this one is telling the live sessions
+        apart is not among them yet, and still must not go (it is live: its session row came first)."""
+        from accounts import queries
+
+        meanwhile = []
+        live_sessions = queries.live_sessions
+
+        def live_sessions_while_another_device_signs_in(user):
+            live = live_sessions(user)
+            meanwhile.extend(_more_sessions(user, 1))
+            return live
+
+        monkeypatch.setattr(queries, "live_sessions", live_sessions_while_another_device_signs_in)
+
+        sign_in(Client(HTTP_USER_AGENT=MAC, REMOTE_ADDR="81.33.10.4"), ana.email, password)
+
+        assert UserSession.objects.filter(user=ana, session_key__in=meanwhile).count() == 1
+
+
 class TestClosingOne:
     def test_closing_the_phone_signs_it_out_and_asks_the_businesses_too(self, laptop, phone, ana, received):
         [row] = [row for row in api_get(laptop, LIST).json()["rows"] if not row["is_current"]]

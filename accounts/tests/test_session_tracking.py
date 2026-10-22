@@ -37,6 +37,16 @@ class TestTheActivity:
         [session] = UserSession.objects.filter(user=ana)
         assert session.session_key == client.session.session_key
 
+    def test_signing_in_records_the_session_with_the_cache_down_too(self, client, ana, password, settings):
+        """The sign-in records its session itself (``services.record_sign_in``): with the cache down the activity's
+        mark is never kept, so the middleware records nothing."""
+        settings.CACHES = {"default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"}}
+
+        sign_in(client, ana.email, password)
+
+        [session] = UserSession.objects.filter(user=ana)
+        assert session.session_key == client.session.session_key
+
     def test_a_session_opened_some_other_way_is_recorded_at_its_next_request(self, client, ana):
         client.force_login(ana)
 

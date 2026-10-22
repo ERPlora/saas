@@ -5,7 +5,8 @@
   the compact hero, the form and the other ways to reach us, with the same texts and the ep-*
   classes (PLAN §16.11). The form posts to /contact/submit/ (public/landing.py), which answers with
   a message and a redirect back to #contacto; the messages are painted by the base
-  (public/partials/messages.html). Contract: public/tests/test_landing.py.
+  (public/partials/messages.html). The address, the chat and the reply time come from the context processor
+  (PUBLIC-G41), never typed here. Contract: public/tests/test_landing.py.
 {% endcomment %}
 
 {% block title %}{% trans "Contact Us" %} · ERPlora{% endblock %}
@@ -34,17 +35,17 @@
             <h2 class="font-display font-semibold text-2xl mb-6">{% trans "Contact Information" %}</h2>
 
             <div class="flex flex-col gap-6 mb-8">
-                <a href="mailto:info@erplora.com" class="flex items-start gap-4 no-underline text-inherit">
+                <a href="mailto:{{ SUPPORT_EMAIL }}" class="flex items-start gap-4 no-underline text-inherit">
                     <div class="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                         {% icon "mail-outline" css_class="text-2xl text-primary" %}
                     </div>
                     <div class="flex-1">
                         <p class="text-sm mb-1 text-fg/60">{% trans "Email" %}</p>
-                        <p class="font-medium">info@erplora.com</p>
+                        <p class="font-medium">{{ SUPPORT_EMAIL }}</p>
                     </div>
                 </a>
 
-                <a href="https://wa.me/34643759040" target="_blank" rel="noopener" class="flex items-start gap-4 no-underline text-inherit">
+                <a href="{{ SUPPORT_WHATSAPP_URL }}" target="_blank" rel="noopener" class="flex items-start gap-4 no-underline text-inherit">
                     <div class="w-12 h-12 rounded-lg bg-success/10 flex items-center justify-center shrink-0">
                         {% icon "logo-whatsapp" css_class="text-2xl text-success" %}
                     </div>
@@ -61,7 +62,7 @@
                     <div class="flex flex-col gap-2 text-fg/60">
                         <div class="flex justify-between gap-4">
                             <span>{% trans "Email and contact form" %}</span>
-                            <span class="text-right">{% trans "Within 4 business hours" %}</span>
+                            <span class="text-right">{% blocktrans trimmed count hours=SUPPORT_REPLY_HOURS %}Within {{ hours }} business hour{% plural %}Within {{ hours }} business hours{% endblocktrans %}</span>
                         </div>
                     </div>
                 </ion-card-content>

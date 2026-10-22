@@ -6,7 +6,7 @@
 // the visitor leaves the SPA for `next` or the launcher, as the sign-in does. «Send a new code» only where
 // allauth sends one (`verify_email`); a sign-in code is renewed by signing in again. «Use a different
 // email» ends the waiting login (allauth would resume the stage otherwise) and goes back to the sign-in.
-import { ionIconSrc } from '@erplora/ui/shell';
+import { applySurface, ionIconSrc } from '@erplora/ui/shell';
 import { IonButton, IonIcon, IonInput } from '@ionic/vue';
 import { flushPromises } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -40,6 +40,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  applySurface('web');
 });
 
 interface Options {
@@ -75,6 +76,16 @@ async function mountPage(options: Options = {}) {
 }
 
 describe('VerifyEmailPage: the page of the template', () => {
+  it('inside the installed app the terms open in app mode, with a way back (PUBLIC-F26)', async () => {
+    applySurface('mobile');
+    fakeAllauth({ 'GET /auth/session': pendingEmailVerification });
+    const { wrapper } = await mountPage({ email: 'new@example.com' });
+    expect(wrapper.get('.foot').findAll('a').map((a) => a.attributes('href'))).toEqual([
+      '/legal/terms/?surface=mobile',
+      '/legal/privacy/?surface=mobile',
+    ]);
+  });
+
   it('asks for the code mailed to the address that signed up, under «Check your email»', async () => {
     fakeAllauth({ 'GET /auth/session': pendingEmailVerification });
     const { wrapper, button } = await mountPage({ email: 'new@example.com' });
@@ -102,8 +113,8 @@ describe('VerifyEmailPage: the page of the template', () => {
     const other = button('verify-email-other');
     expect([other.props('fill'), other.props('expand'), other.text()]).toEqual(['clear', 'block', 'Use a different email']);
     expect(wrapper.get('.foot').findAll('a').map((a) => [a.text(), a.attributes('href')])).toEqual([
-      ['Terms', 'https://erplora.com/legal/terms/'],
-      ['Privacy Policy', 'https://erplora.com/legal/privacy/'],
+      ['Terms', '/legal/terms/'],
+      ['Privacy Policy', '/legal/privacy/'],
     ]);
     expect(document.title).toBe('Check your email - ERPlora Cloud');
   });

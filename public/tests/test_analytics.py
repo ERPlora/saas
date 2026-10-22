@@ -297,3 +297,49 @@ def test_the_spa_of_a_signed_in_customer_never_loads_a_tracker(
 
     assert GA_SCRIPT_MARKER not in html
     assert CLARITY_MARKER not in html
+
+
+# --- PUBLIC-G24/G43: no tracker configured, nothing to consent to, no banner ---------------------------
+
+
+@pytest.mark.urls("public.tests.urls")
+def test_without_any_optional_tracker_the_page_asks_for_no_consent(settings):
+    """AEPD (and ePrivacy art. 5.3): the technical cookies need no consent. With no analytics configured
+    (production today) the site sets only those, so a banner asking for consent would ask for nothing."""
+    settings.GA_MEASUREMENT_ID = ""
+    settings.CLARITY_PROJECT_ID = ""
+    call_command("init_cookie_groups")
+
+    html = Client().get(reverse("test_public_page")).content.decode()
+
+    assert BANNER_MARKER not in html
+
+
+@pytest.mark.urls("public.tests.urls")
+@pytest.mark.parametrize("tracker", ["GA_MEASUREMENT_ID", "CLARITY_PROJECT_ID"])
+def test_one_optional_tracker_is_enough_to_ask(settings, tracker):
+    settings.GA_MEASUREMENT_ID = ""
+    settings.CLARITY_PROJECT_ID = ""
+    setattr(settings, tracker, "G-TEST123" if tracker == "GA_MEASUREMENT_ID" else "xhn93kfr5b")
+    call_command("init_cookie_groups")
+
+    assert BANNER_MARKER in Client().get(reverse("test_public_page")).content.decode()
+
+
+@pytest.mark.parametrize("path", ["/", "/pricing/", "/legal/cookies/", "/cookies/"])
+def test_without_trackers_a_public_page_sets_only_technical_cookies(client, settings, path):
+    """The cookies a visitor gets with no tracker configured are all in the essential group."""
+    from cookie_consent.models import Cookie
+
+    settings.GA_MEASUREMENT_ID = ""
+    settings.CLARITY_PROJECT_ID = ""
+    call_command("init_cookie_groups")
+    essential = set(
+        Cookie.objects.filter(cookiegroup__varname="essential").values_list("name", flat=True)
+    )
+
+    response = client.get(path)
+
+    assert response.status_code == 200
+    assert set(response.cookies) <= essential
+    assert BANNER_MARKER not in response.content.decode()

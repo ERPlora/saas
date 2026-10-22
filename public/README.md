@@ -37,9 +37,28 @@ sin SSR y sin prefijo `/es/`; ronda 16 y spec `docs/superpowers/specs/2026-10-13
   `/set-language/` (como Stripe, Shopify o Square).
 - **Datos estructurados (PUBLIC-F14):** `OPERATING_SYSTEMS` = los sistemas que se distribuyen (web, Windows, Linux y
   Android).
+- **Ayuda y documentación (PUBLIC-F15, APP-PUBLIC-2):** `/documentation/` deja de ser «Muy pronto» y es un 301 a
+  `/help/`, como `/company/` → `/about/`: la documentación que existe son las guías y la pestaña de cada app. Soporte
+  ya no manda a «Ayuda y soporte › Reportar un problema» del Hub, que no existe.
+- **Contacto (PUBLIC-F16–F18, APP-PUBLIC-2):** el correo al buzón de soporte lleva «Reply-To» la persona; un mensaje
+  rechazado o que falla vuelve con lo escrito (borrador en la sesión, se enseña una vez); `?subject=<tema>` de
+  `CONTACT_TOPICS` (`collaborate`, `security`) viaja al asunto y cualquier otro se ignora. El correo, el chat y el
+  plazo (`SUPPORT_EMAIL`, `SUPPORT_WHATSAPP_URL`, `SUPPORT_REPLY_HOURS`) salen del procesador de contexto: ni
+  «info@» ni «4 horas» escritos a mano. Como Intercom, HubSpot o Zendesk.
+- **Cookies (PUBLIC-F19, APP-PUBLIC-2):** el aviso solo sale si hay un rastreador opcional configurado
+  (`GA_MEASUREMENT_ID` o `CLARITY_PROJECT_ID`); sin ninguno (producción hoy) la web solo pone cookies técnicas, que
+  no piden consentimiento (AEPD, ICO, CNIL; GitHub retiró su aviso por lo mismo). Los grupos de `init_cookie_groups`
+  y `/cookies/` siguen: son la política y la elección el día que se mida.
+- **Desde la app instalada (PUBLIC-F26, APP-PUBLIC-2):** los textos legales que enlaza la entrada de la SPA llevan
+  `?surface=desktop|mobile|account` y se ven en modo aplicación (barra «Volver», sin menú, pie, aviso de cookies ni
+  analítica), guardado en la sesión; como el visor in-app de Shopify POS o Square POS. Sin tocar ERPlora/app.
+- **Correo de soporte (PUBLIC-F18):** también las páginas de error (`{% support_email %}`) y la SPA (`support-email`).
+- **Descargas (PUBLIC-F24):** los dispositivos y usuarios del hub gratis de `/download/` son los del plan Gratis
+  (`pricing.free_plan` y el parcial `pricing/_plan_limits.html`, el de la tabla de precios); sin plan Gratis, ninguno.
 
 ## Pruebas
 
 - `uv run pytest -q public` (y `public/tests/test_<módulo>.py` por módulo).
-- e2e: `tests/e2e/public-web.spec.ts` (flujo a flujo, tres tamaños, CSP sin violaciones), `public-dark.spec.ts`,
+- e2e: `tests/e2e/public-web.spec.ts` (parte 1) y `public-web-2.spec.ts` (parte 2; flujo a flujo, tres tamaños,
+  CSP sin violaciones; los correos del formulario van a `.artifacts/public/mail*/`), `public-dark.spec.ts`,
   `demo-door.spec.ts` y `store-docs.spec.ts`; antes, `pnpm build` (el proyecto `public` sirve el build).

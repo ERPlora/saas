@@ -114,6 +114,16 @@ describe("the stack's servers", () => {
     expect(server.env).toMatchObject({ DEBUG: 'False', DB_NAME: 'saas_e2e_8030' });
   });
 
+  it('send the public mails (the contact form, PUBLIC-G39) to a folder of the stack, never through SMTP', () => {
+    expect(publicServer(SAAS_DIR, SHARED).env).toMatchObject({
+      EMAIL_BACKEND: 'django.core.mail.backends.filebased.EmailBackend',
+      EMAIL_FILE_PATH: join(SAAS_DIR, 'tests', 'e2e', '.artifacts', 'public', 'mail'),
+    });
+    expect(publicServer(SAAS_DIR, OWN).env).toMatchObject({
+      EMAIL_FILE_PATH: join(SAAS_DIR, 'tests', 'e2e', '.artifacts', 'public', 'mail-8030'),
+    });
+  });
+
   it("start today's panel on the shared stack: :8012, the Hub at :8019, its mail folder and a reused Vite", () => {
     const { 'panel-django': django, 'panel-vite': vite } = panel();
     expect(django.command).toBe('uv run python manage.py runserver 127.0.0.1:8012 --novite --noreload');

@@ -835,6 +835,23 @@ def photo_remove(ctx: OperationContext, data: PhotoRemoveIn) -> dict:
 # --- Account → Security → Active sessions --------------------------------------------------------
 
 
+def record_sign_in(sender, request, user, **kwargs) -> None:
+    """allauth's ``user_logged_in``, in place of ``allauth.usersessions``' own receiver: the account's sessions that
+    no longer sign it in go (``queries.live_sessions``: gone, expired, or opened with an old password) and this one
+    is recorded. allauth's ``purge_and_list`` asked about each session on its own, about three queries for every
+    open one on every sign-in: one account with 1680 sessions answered the mailed code after 30 and 37 s
+    (FIX-HUB-E2E-LOGIN-FLAKY-UNDER-LOAD). Here it is two queries and one delete, however many there are.
+
+    Only the sessions recorded before the live ones are told apart may go: one recorded meanwhile by another sign-in
+    of the account is live (its session row comes first) but not among them yet, and it stays."""
+    from allauth.usersessions.models import UserSession
+
+    recorded = list(UserSession.objects.filter(user=user).values_list("pk", flat=True))
+    live = {pk for pk, _ in queries.live_sessions(user)}
+    UserSession.objects.filter(pk__in=[pk for pk in recorded if pk not in live]).delete()
+    UserSession.objects.create_from_request(request)
+
+
 def track_session(request) -> None:
     """Record the session of a signed-in request: its address, browser and last use (allauth.usersessions).
     A request whose address cannot be told (allauth refuses it) is not recorded, and the request goes on."""

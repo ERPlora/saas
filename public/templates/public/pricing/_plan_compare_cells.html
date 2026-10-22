@@ -1,17 +1,14 @@
 {% load i18n %}
 {% comment %}
   saas#1955: the axes that really change from plan to plan, in one partial (two hand-kept copies of
-  these cells is how a table whose rows all say the same thing comes back). `max_devices`/`max_users`
-  read 0 = unlimited (ADR-0154). Port of apps/public/pricing/templates/pricing/_plan_compare_cells.html
+  these cells is how a table whose rows all say the same thing comes back). Devices and users are
+  `_plan_limits.html`, shared with /download/. Port of apps/public/pricing/templates/pricing/_plan_compare_cells.html
   (origin/develop); the column is «Apps included» (decision 19); «Database throughput» is the plan's
   `resources_label` (Ioan, 2026-10-15: the «resources» that grow from plan to plan are the database's input/output
   capacity, in words; never an engine, a connection count nor a number). «AI assistant» and «WhatsApp» are
   the messages a month the plan includes (PLAN-SAAS §3.6, 2026-10-15); 0 = «Not included».
 {% endcomment %}
-<td data-title="{% trans 'Devices and users' %}">
-  {% if plan.max_devices %}{% blocktrans trimmed count devices=plan.max_devices %}{{ devices }} device{% plural %}{{ devices }} devices{% endblocktrans %}{% else %}{% trans "Unlimited devices" %}{% endif %}
-  · {% if plan.max_users %}{% blocktrans trimmed count users=plan.max_users %}{{ users }} user{% plural %}{{ users }} users{% endblocktrans %}{% else %}{% trans "Unlimited users" %}{% endif %}
-</td>
+<td data-title="{% trans 'Devices and users' %}">{% include "public/pricing/_plan_limits.html" %}</td>
 <td data-title="{% trans 'Database throughput' %}">{{ plan.resources_label }}</td>
 {% trans "Not included" as not_included %}
 <td data-title="{% trans 'AI assistant' %}">{{ plan.assistant_label|default:not_included }}</td>

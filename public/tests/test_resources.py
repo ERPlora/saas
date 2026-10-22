@@ -1,4 +1,4 @@
-"""``/documentation/`` and ``/support/`` (public/resources.py).
+"""``/documentation/`` (a 301 to the help center, PUBLIC-G07) and ``/support/`` (public/resources.py).
 
 Port of ``apps/public/resources`` (origin/develop c5ca8ca): ``resources/test_views.py`` (2; its help
 case lives in test_help.py, with the help) and the cases of ``tests/unit/test_public_pages.py`` for
@@ -11,13 +11,15 @@ these pages. What changed, and why:
   support page links that address (``landing:contact_page`` does not exist here).
 """
 
+import re
+
 import pytest
 from django.conf import settings
 from django.urls import reverse
 
 pytestmark = pytest.mark.django_db
 
-PAGES = ("/documentation/", "/support/")
+PAGES = ("/support/",)
 
 
 def page(client, path: str, language: str = "en") -> str:
@@ -52,12 +54,17 @@ def test_the_url_names():
     assert reverse("public:support") == "/support/"
 
 
-def test_documentation_is_a_coming_soon_page(client):
-    html = page(client, "/documentation/")
+@pytest.mark.parametrize("path", ["/documentation/", "/documentation/?q=print"])
+def test_documentation_leads_to_the_help_center_for_good(client, path):
+    """PUBLIC-G07: the documentation that exists is the help center's guides; never a «coming soon»."""
+    response = client.get(path)
 
-    assert "<title>Documentation · ERPlora</title>" in html
-    assert "are coming soon." in html
-    assert "Muy pronto: guías, referencias" in page(client, "/documentation/", "es")
+    assert response.status_code == 301
+    assert response["Location"] == reverse("public:help")
+
+
+def test_documentation_answers_no_other_method(client):
+    assert client.post("/documentation/").status_code == 405
 
 
 def test_support_uses_shared_layout_and_real_contact_routes(client, settings):
@@ -72,7 +79,30 @@ def test_support_uses_shared_layout_and_real_contact_routes(client, settings):
     assert "mailto:support@erplora.test?subject=ERPlora%20Support" in html
     assert "Email support@erplora.test when you cannot use the contact form." in html
     assert "max-w-3xl" not in html
-    assert "Report a Problem" in html
+
+
+def test_the_support_routes_lead_to_the_guides_the_form_and_the_address(client, settings):
+    """PUBLIC-G19: each of the three cards of «Choose the right route» opens its own route."""
+    settings.SUPPORT_EMAIL = "support@erplora.test"
+    html = page(client, "/support/")
+    cards = html[html.index('class="ep-grid-cards"') :]
+    cards = cards[: cards.index("</section>")]
+
+    hrefs = re.findall(r'href="([^"]+)"', cards)
+    assert hrefs == [
+        reverse("public:help"),
+        reverse("public:contact"),
+        "mailto:support@erplora.test?subject=ERPlora%20Support",
+    ]
+
+
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_support_does_not_send_people_to_a_hub_screen_that_does_not_exist(client, language):
+    """PUBLIC-G19: the Hub has no «Help & Support › Report a Problem» (only what the product does, PUBLIC-F07)."""
+    html = page(client, "/support/", language)
+
+    for claim in ("Report a Problem", "Reporting from your Hub", "Reportar un problema", "Reportar desde tu hub"):
+        assert claim not in html
 
 
 def test_support_tells_what_to_send_and_what_never_to_send(client):
