@@ -89,6 +89,20 @@ def test_the_request_language_picks_the_texts(client, invoice):
     assert response.json()["apps"][0]["name"] == "Facturas"
 
 
+@pytest.mark.parametrize(
+    ("path", "accept", "language"),
+    [("/api/apps", "es-ES,es;q=0.9", "es"), ("/api/apps/get?id=invoice", "fr", "en")],
+)
+def test_the_answer_says_its_language_and_varies_with_it(client, invoice, path, accept, language):
+    """APPS-F01: a shared cache never serves one visitor's language to another (the old catalogue's
+    ``Vary: Accept-Language``), and a language the store does not speak falls back to English."""
+    response = client.get(path, HTTP_HOST=HOST, HTTP_ACCEPT_LANGUAGE=accept)
+
+    assert response.status_code == 200
+    assert "Accept-Language" in response.headers["Vary"]
+    assert response.headers["Content-Language"] == language
+
+
 def test_an_unknown_app_is_the_404_envelope(client, invoice):
     response = client.get("/api/apps/get", {"id": "nope"}, HTTP_HOST=HOST)
 
