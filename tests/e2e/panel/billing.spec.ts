@@ -12,7 +12,21 @@ import { fileURLToPath } from 'node:url';
 import type { Page, Request } from '@playwright/test';
 
 import { djangoEnv } from '../django-env';
-import { businessIdOf, djangoPrint, expect, panelAccount, qaAccount, repeatedTop, settled, signIn, test, watchPageErrors } from './fixtures';
+import {
+  apiPost,
+  businessIdOf,
+  djangoPrint,
+  expect,
+  panelAccount,
+  qaAccount,
+  repeatedTop,
+  settled,
+  shot,
+  signIn,
+  test,
+  VIEWPORTS,
+  watchPageErrors,
+} from './fixtures';
 import { HUB_DOUBLE_PORT } from './project';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -39,6 +53,18 @@ test.beforeEach(async ({ page }) => {
 test.afterAll(() => seedBilling('clear'));
 
 const toast = (page: Page, text: string | RegExp) => page.locator('ion-toast').filter({ hasText: text });
+
+/**
+ * How far above the bottom of the window the toast's box ends once it has stopped (Ionic leaves it 10 px up);
+ * `NaN` while it still slides in. Ionic animates it inside its shadow root, which `settled()` does not see
+ * (`document.getAnimations()` leaves shadow roots out): a capture right after `settled()` cut it at the bottom.
+ */
+const toastGap = (page: Page) =>
+  page.locator('ion-toast').evaluate((element) => {
+    const moving = (element.shadowRoot?.getAnimations() ?? []).some((animation) => animation.playState === 'running');
+    const box = element.shadowRoot?.querySelector('.toast-wrapper')?.getBoundingClientRect();
+    return moving || !box ? Number.NaN : Math.round(window.innerHeight - box.bottom);
+  });
 
 /** Stripe's pages, played: whatever the browser opens there is a placeholder page. */
 async function playStripePages(page: Page): Promise<void> {
@@ -231,6 +257,40 @@ test.describe('billing', () => {
     await page.getByTestId('invoices-csv').click();
     await expect(toast(page, 'The service is not answering.')).toBeVisible();
     expect(saved).toEqual([]);
+  });
+
+  // flow: BILLING-F22 (FIX-SAAS-BILLING-INVOICE-DOWNLOAD-NETWORK-ERROR-ENGLISH). The network drops when the file is
+  // asked for (the page is already there): the toast says so in the account's language, never «Network error
+  // (Failed to fetch)», and nothing is saved.
+  test('BILLING-F22 without network: «Descargar PDF» and «Descargar Excel» say so in Spanish and save nothing', async ({ page }) => {
+    const offline = 'No hemos podido conectar con ERPlora. Revisa tu conexión e inténtalo de nuevo.';
+    const saved: string[] = [];
+    page.on('download', (download) => saved.push(download.suggestedFilename()));
+    const errors = watchPageErrors(page);
+    // A Spanish account (the seed's speaks English; the next test's seed sets it back).
+    expect((await apiPost(page.request, '/api/accounts/preferences', { language: 'es' })).status()).toBe(200);
+    await page.goto('/billing/invoices');
+    const ids = await invoiceIds(page);
+    await page.route(/\/api\/billing\/invoices\/(pdf\?|csv)/, (route) => route.abort('internetdisconnected'));
+    for (const viewport of VIEWPORTS) {
+      await page.setViewportSize(viewport);
+      // «Descargar PDF» of the invoice's page.
+      await page.goto(`/billing/invoices/${ids['E2EBAKERY_AUG-0001']}`);
+      await expect(page.getByTestId('invoice-pdf')).toHaveText('Descargar PDF');
+      await page.getByTestId('invoice-pdf').click();
+      await expect(toast(page, offline)).toBeVisible();
+      await expect(page.locator('ion-toast')).not.toContainText('Network error');
+      await settled(page);
+      await expect.poll(() => toastGap(page), { message: `the toast stops whole on screen at ${viewport.width} px` }).toBeGreaterThanOrEqual(8);
+      await page.screenshot({ path: shot(`FIX-SAAS-BILLING-INVOICE-DOWNLOAD-NETWORK-ERROR-ENGLISH-${viewport.width}`) });
+      // «Descargar Excel» of the list, the same way.
+      await page.goto('/billing/invoices');
+      await expect(page.getByTestId('invoices-row')).toHaveCount(4);
+      await page.getByTestId('invoices-csv').click();
+      await expect(toast(page, offline)).toBeVisible();
+    }
+    expect(saved).toEqual([]);
+    expect(errors).toEqual([]);
   });
 
   test('«Download Excel»: the CSV of what the filters show, ready for Excel', async ({ page }) => {

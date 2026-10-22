@@ -1,7 +1,8 @@
 // What a failed call says on screen: the server's own message (it already speaks the person's
 // language), or — when the call never got a server's answer (`network_error`), got one that is not the
 // API's (`unexpected_response`, an HTML error page) or broke in the browser (`client_error`) — a
-// sentence of ours, in English and Spanish, never the SDK's English internals.
+// sentence of ours, in English and Spanish: the same one whoever made the error (the SDK's own sentence,
+// hub#2281, or the browser's English text of a `client_error` the panel makes itself).
 import { ApiError } from '@erplora/ui/sdk';
 import { describe, expect, it } from 'vitest';
 import { defineComponent, h } from 'vue';
