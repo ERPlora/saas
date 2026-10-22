@@ -165,6 +165,8 @@ class TestTheEnd:
         # The owner is told until when it can be recovered.
         assert [message.to for message in mail.outbox] == [[owner.email]]
         assert str(hub.purge_after.year) in mail.outbox[0].body
+        # And why: it stayed suspended for an unpaid invoice (not the owner's own deletion).
+        assert f"Llevaba {SUSPENDED_DELETE_DAYS} días suspendido" in mail.outbox[0].body
 
     def test_not_without_its_last_notice(self, paid):
         hub = suspended_for(paid, SUSPENDED_DELETE_DAYS + 5, suspension_warned_at=timezone.now())
