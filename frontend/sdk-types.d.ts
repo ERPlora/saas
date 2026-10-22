@@ -673,6 +673,19 @@ export interface ApiKeyRevokeIn {
   id: string;
 }
 
+/** `accounts.SupportReportIn`: «Report a problem» (ACCOUNTS-F38). */
+export interface SupportReportIn {
+  subject: string;
+  description: string;
+  /** The panel's page the person came from. */
+  page?: string | null;
+}
+
+/** `accounts.SupportReportOut`: where support answers. */
+export interface SupportReportOut {
+  reply_to: string;
+}
+
 declare module '@erplora/ui/sdk' {
   interface Operations {
     'base.session.me': { input: SessionMeIn; output: SessionMeOut };
@@ -719,6 +732,7 @@ declare module '@erplora/ui/sdk' {
     'accounts.apikey.list': { input: Record<string, never> | undefined; output: ApiKeyListOut };
     'accounts.apikey.create': { input: ApiKeyCreateIn; output: ApiKeyCreatedOut };
     'accounts.apikey.revoke': { input: ApiKeyRevokeIn; output: ApiKeyRowOut };
+    'accounts.support.report': { input: SupportReportIn; output: SupportReportOut };
   }
 }
 

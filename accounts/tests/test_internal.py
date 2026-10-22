@@ -92,6 +92,19 @@ def test_a_code_for_another_hub_is_refused(client, code):
     assert response.json()["error"]["code"] == "invalid_code"
 
 
+def test_a_code_for_one_business_never_opens_another_of_the_same_account_nor_is_spent_there(client, ana):
+    """The code is tied to the business it was issued for (PLAN-SAAS §2): the account's role on another business does
+    not make it valid there, and the refusal leaves it for its own business."""
+    HubMembership.objects.create(user=ana, hub_slug="a", role=HubMembership.Role.OWNER)
+    HubMembership.objects.create(user=ana, hub_slug="b", role=HubMembership.Role.EMPLOYEE)
+    code_a = services.issue_code(ana, "a")
+
+    refused = redeem(client, {"code": code_a, "hub": "b"})
+
+    assert (refused.status_code, refused.json()["error"]["code"]) == (400, "invalid_code")
+    assert redeem(client, {"code": code_a, "hub": "a"}).json()["role"] == "hub_owner"
+
+
 def test_a_reserved_hub_is_an_invalid_code(client, ana):
     # Rows saved without validation: `admin` is reserved, so no hub named so ever gets a session.
     HubMembership.objects.create(

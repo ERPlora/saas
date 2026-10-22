@@ -29,11 +29,14 @@ solo sobre la cuenta que llama. Ninguna está expuesta a claves de API.
 | `accounts.apikey.list` (viva) | `GET /api/accounts/api-keys` | Claves no revocadas (las caducadas, marcadas) y el catálogo de `scopes` con su rótulo |
 | `accounts.apikey.create` | `POST /api/accounts/api-keys` (201) | Reautenticación; devuelve la clave entera **una vez** (`secret`) y avisa por correo a la cuenta (sin la clave) |
 | `accounts.apikey.revoke` | `POST /api/accounts/api-keys/revoke` | La corta al momento; dos veces no cambia nada |
+| `accounts.support.report` | `POST /api/accounts/support/report` | «Reportar un problema» (ACCOUNTS-F38): un correo en inglés a `SUPPORT_EMAIL` con «Reply-To» la cuenta, el texto y debajo la cuenta, sus negocios (`HubMembership`), la página de la que viene y el navegador; 422 por campo, 429 `accounts.too_many_attempts` pasado `SUPPORT_REPORT_RATELIMIT` (5/h por cuenta), 503 `accounts.report_not_sent` si el correo no sale; no guarda nada ni registra el texto |
 
 Eventos (`events.py`): `accounts.profile.updated`, `accounts.profile.deleted`, `accounts.email.change_requested`,
 `accounts.preferences.updated`, `accounts.session.closed`, `accounts.browser_trust.revoked`,
 `accounts.apikey.created`, `accounts.apikey.revoked`.
-Sin ruta: `accounts.apikey.revoke_any`, la «Revocar» del admin, y `accounts.session.close_any`, las dos acciones
+Sin ruta: `accounts.apikey.issue_any`, la «Añadir clave de API» del admin (solo el superusuario y solo para una
+cuenta del equipo, ACCOUNTS-F31: `services.issue_api_key` desde `ApiKeyAdmin`, que enseña la clave una vez),
+`accounts.apikey.revoke_any`, la «Revocar» del admin, y `accounts.session.close_any`, las dos acciones
 «Cerrar sesiones» del admin (ACCOUNTS-F19: todas las de una cuenta y la confianza de sus navegadores, o las
 elegidas en «Sesiones de usuario»; `services.close_sessions`), con contexto de sistema en el canal del dueño (su
 lista viva se refresca); ningún rol tiene su permiso y en el admin solo las ve el superusuario.
@@ -150,6 +153,30 @@ lista viva se refresca); ningún rol tiene su permiso y en el admin solo las ve 
   tareas de la versión anterior aún la leen durante el despliegue); su `DROP COLUMN` es el paso de contrato, en
   una versión posterior.
 
+## Retención, auditoría y documentación de la API (parte 4)
+
+- **`/api/docs`** (ACCOUNTS-F34): ReDoc de ninja servido por `accounts/api_docs.py` con el nonce de la CSP, sin
+  CDN y solo con sesión (sin ella, a la entrada); `/api/openapi.json` sigue abierto (Postman, tests de otras apps).
+- **`manage.py anonymize_old_users`** (F35, semanal) y **`manage.py cleanup_old_logs`** (F37, diaria): sin Celery,
+  con candado de sesión propio (`services.run_exclusively`, gemelo del de `hubs`) y `--dry-run`. Hasta que
+  `saas-cron` (`aws/stacks/prod/scheduler.tf`) los programe, los lanza una persona del equipo.
+- **Registro de auditoría** (F36): `django-auditlog` (`accounts/auditlog.py`, desde `AccountsConfig.ready`) sobre
+  `User` (sin `password` ni `last_login`), `HubMembership`, `ApiKey` (sin `key_hash` ni `last_used_at`) y
+  `allauth.usersessions.UserSession` (sin `session_key`, `data` ni `last_seen_at`), todos con
+  `serialize_auditlog_fields_only` (trampa #957 del viejo). `AuditActorMiddleware` sustituye al de la librería: la
+  dirección es `REMOTE_ADDR` (ya resuelta por `public.client_ip`, nunca el primer `X-Forwarded-For`) y el autor se
+  lee al escribir cada entrada, no al entrar la petición. `services.forget_deleted_actor` (`post_delete` de la
+  cuenta) suelta el autor de las entradas escritas durante su borrado. Las etiquetas del admin del paquete, que no
+  trae español, están en `locale/es` del proyecto.
+- **Auditoría de cobro y fiscal** (F36, PLAN-SAAS §1.1): cada app registra los suyos con `accounts.auditlog.audit`
+  (siempre `serialize_auditlog_fields_only`) desde su `ready()`: `billing/auditlog.py` (reglas y categorías de IVA,
+  política fiscal sin sus acumulados OSS, datos de ERPlora, códigos promocionales sin su contador y sus usos, compras
+  sin `client_secret`, cobros fallidos y facturas sin el enlace de Stripe, facturas sin su cola de envío, sus líneas y
+  los cambios de plan que esperan; fuera, con su motivo en el test: `VatCheck`, `WebhookEvent`, `InvoiceCounter`,
+  `OssNotice`), `fiscal/auditlog.py` (autorización y sello, sin sus documentos cifrados), `hubs/auditlog.py` (planes,
+  pagador, suscripción sin `unpaid_invoice_url` y sus partidas) y `apps/auditlog.py` (`Module`). Sin `updated_at`. El
+  registro solo lee un registro fiscal: escribe su propia tabla, y `cleanup_old_logs` poda también estas entradas.
+
 ## Tests portados de ERPlora/saas (`origin/develop`)
 
 - `dashboard/profile/tests`: `test_api` (16) y `test_views` (27) → `test_profile`, `test_photos`,
@@ -167,13 +194,18 @@ lista viva se refresca); ningún rol tiene su permiso y en el admin solo las ve 
   (ACCOUNTS-F23).
 - `auth/apikeys/tests` (80) → `test_models`, `test_api_keys`, `test_api_auth`, `test_admin`. Fuera: claves de
   hub y su gracia (hub-next), entorno `pre`, scopes de flota/vendedor y el script de emisión.
+- `tests/unit/test_gdpr_retention_policy.py`, `test_gdpr_retention_noinput.py` y
+  `apps/auth/users/tests/test_anonymize_skips_hub_owners.py` → `test_anonymize_old_users` y `test_cleanup_old_logs`
+  (sin `--no-input`: nunca preguntan); `tests/unit/test_auditlog_coverage.py` → `test_auditlog` de `accounts`,
+  `billing`, `fiscal`, `hubs` y `apps` (sin `Payout` ni `StripeConnectAccount`: no hay marketplace); «Reportar un problema» (SAAS_DASHBOARD-F219) →
+  `test_support_report`.
 
 ## Pendiente (de otros carriles)
 
+- **`aws`**: programar `anonymize_old_users` (semanal) y `cleanup_old_logs` (diaria) en `saas-cron`.
+
 - **`hubs`** conecta `signals.sessions_ended` → `revoke_after_commit(user_id)` y `account_deleting` (en curso en
   su carril); también puede escuchar `allauth.account.signals.email_changed` para refrescar la foto del negocio.
-- **`hubs`/`billing`** eligen qué operaciones abren a claves (`expose_api=True`, en curso): hasta entonces una
-  clave no abre nada.
 - **`live`**: `record_event` guarda `actor=str(ctx.actor)`, el correo de la cuenta. El arreglo bueno es guardar
   el id en `live.outbox` (próximo lote de `live`); mientras, eliminar una cuenta pasa sus filas al id
   (`services.forget_in_outbox`).

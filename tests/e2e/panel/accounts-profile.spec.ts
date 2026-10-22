@@ -305,7 +305,7 @@ test("ACCOUNTS-G127 (F24): the theme of the user menu is painted at once and kep
   expect(errors).toEqual([]);
 });
 
-test("ACCOUNTS-G128 (F25): the user menu has «Account», «Help», the theme and «Sign out»; «Account» opens the profile", async ({
+test("ACCOUNTS-G128 (F25): the user menu has «Account», «Report a problem», «Help», the theme and «Sign out»; «Account» opens the profile", async ({
   page,
 }) => {
   const errors = watchPageErrors(page);
@@ -321,6 +321,7 @@ test("ACCOUNTS-G128 (F25): the user menu has «Account», «Help», the theme an
       const menu = page.locator("ion-popover.sidebar-user-popover");
       await expect(menu.locator("ion-item")).toHaveText([
         "Account",
+        "Report a problem",
         "Help",
         "Theme",
         "Sign out",

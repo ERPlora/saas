@@ -58,6 +58,12 @@
       "googleLinkRefused": {
         "heading": "Google no se ha vinculado",
         "message": "Google solo se vincula entrando con la cuenta de Google de tu correo."
+      },
+      "tooMany": {
+        "title": "Demasiados intentos",
+        "badge": "429 · Demasiados intentos",
+        "heading": "Demasiados intentos",
+        "message": "Has abierto tus negocios demasiadas veces en pocos minutos. Espera unos minutos y vuelve a abrir tu negocio."
       }
     },
     "verifyEmail": {
@@ -349,7 +355,8 @@
         "revoked": "Clave revocada: «{name}»",
         "empty": "Aún no tienes claves. Crea una para conectar tus herramientas con tu cuenta de ERPlora.",
         "note": "Estas claves sirven para la API de tu cuenta de ERPlora. Las de cada negocio se crean dentro del negocio.",
-        "revokeShort": "Revocar"
+        "revokeShort": "Revocar",
+        "docs": "Documentación de la API"
       },
       "title": "Cuenta",
       "tabsLabel": "Secciones de la cuenta",
@@ -388,6 +395,18 @@
         "disconnectMessage": "Ya no podrás entrar con {account}; seguirás entrando con tu correo y tu contraseña.",
         "disconnected": "Google desconectado"
       }
+    },
+    "report": {
+      "title": "Reportar un problema",
+      "intro": "Cuéntanos qué ha fallado. Te responderemos por correo electrónico.",
+      "subject": "Asunto",
+      "description": "¿Qué pasó?",
+      "descriptionPlaceholder": "Describe los pasos y lo que esperabas que pasara",
+      "context": "Con tu informe van tu cuenta, tus negocios, la página de la que vienes y tu navegador.",
+      "send": "Enviar informe",
+      "sentTitle": "Informe enviado",
+      "sentBody": "Gracias: hemos recibido tu informe y te responderemos a {email} lo antes posible.",
+      "back": "Volver"
     }
   }
 }

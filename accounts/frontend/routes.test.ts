@@ -18,6 +18,7 @@ vi.mock('./pages/TwoFactorAuthenticatePage.vue', () => ({ default: { name: 'TwoF
 vi.mock('./pages/TwoFactorSettingsPage.vue', () => ({ default: { name: 'TwoFactorSettingsPage' } }));
 vi.mock('./pages/ReauthenticatePage.vue', () => ({ default: { name: 'ReauthenticatePage' } }));
 vi.mock('./pages/AccountPage.vue', () => ({ default: { name: 'AccountPage' } }));
+vi.mock('./pages/ReportProblemPage.vue', () => ({ default: { name: 'ReportProblemPage' } }));
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -46,6 +47,8 @@ describe('accounts routes.ts', () => {
       // Account (round 17, PLAN-SAAS §3.6): one address per section, the footer tabbar follows the route.
       ['/account', { auth: true }],
       ['/account/:tab(profile|security|preferences|api-keys)', { auth: true }],
+      // «Report a problem» of the user menu (ACCOUNTS-F38): the account goes with the report.
+      ['/report-a-problem', { auth: true }],
     ]);
   });
 
@@ -81,6 +84,7 @@ describe('accounts routes.ts', () => {
       '/2fa': 'TwoFactorSettingsPage',
       '/reauthenticate': 'ReauthenticatePage',
       '/account/:tab(profile|security|preferences|api-keys)': 'AccountPage',
+      '/report-a-problem': 'ReportProblemPage',
     };
     for (const route of routes.filter((r) => !r.redirect)) {
       expect(typeof route.component, route.path).toBe('function');

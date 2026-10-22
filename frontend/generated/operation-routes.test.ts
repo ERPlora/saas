@@ -79,6 +79,7 @@ const ACCOUNT_PAGE_ROUTES = {
   'accounts.apikey.list': { method: 'get', path: '/api/accounts/api-keys' },
   'accounts.apikey.create': { method: 'post', path: '/api/accounts/api-keys' },
   'accounts.apikey.revoke': { method: 'post', path: '/api/accounts/api-keys/revoke' },
+  'accounts.support.report': { method: 'post', path: '/api/accounts/support/report' },
 };
 
 /**

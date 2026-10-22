@@ -19,4 +19,8 @@ class AppsConfig(LiveAppConfig):
     default_auto_field = "django.db.models.BigAutoField"
 
     def ready(self):
+        from apps import auditlog
         from apps import checks  # noqa: F401  (registers the system checks)
+
+        # The audit trail of the paid apps' prices (ACCOUNTS-F36, PLAN-SAAS §1.1).
+        auditlog.register()

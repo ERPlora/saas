@@ -11,7 +11,7 @@ import { createShellI18n, ION_ICONS, provideSession, type SessionMe } from '@erp
 import { LIVE_CLIENT_KEY, type LiveClient, type OpName } from '@erplora/ui/sdk';
 import { mount } from '@vue/test-utils';
 import { type Component, createApp, ref } from 'vue';
-import { createMemoryHistory, createRouter } from 'vue-router';
+import { createMemoryHistory, createRouter, type RouterHistory } from 'vue-router';
 
 import { PopoverStub } from '../../../packages/ui/src/components/DataTable/__tests__/harness';
 import {
@@ -114,6 +114,8 @@ export interface MountOptions {
   api?: (call: ApiCall) => Response | Promise<Response>;
   /** Keys of `spa-config` over the SaaS's (`googleEnabled: false`…). */
   config?: Record<string, unknown>;
+  /** The router's history: memory by default; `createWebHistory()` keeps where Back goes, as the panel's does. */
+  history?: RouterHistory;
 }
 
 /** The subscription id the stream holds for `op` (the first one). */
@@ -144,7 +146,7 @@ export async function mountPanel(component: Component, options: MountOptions = {
   const harness = createTestClient({ routes: OPERATION_ROUTES }, { ...SAAS_CONFIG, ...options.config });
   if (options.api) harness.net.onApi(options.api);
   const router = createRouter({
-    history: createMemoryHistory(),
+    history: options.history ?? createMemoryHistory(),
     routes: [{ path: '/:path(.*)*', component: { template: '<div />' } }],
   });
   await router.push(options.path ?? '/');

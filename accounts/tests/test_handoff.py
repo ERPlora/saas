@@ -18,6 +18,7 @@ from urllib.parse import parse_qs, quote, urlsplit
 import pytest
 from allauth.mfa import app_settings as mfa_settings
 from allauth.mfa.totp.internal import auth as totp_auth
+from django.contrib.auth import get_user_model
 
 from accounts import services
 from accounts.models import AuthExchangeCode, HubMembership
@@ -389,6 +390,53 @@ class TestTheJumpToTheHubAdmin:
         response = client.get(HUB_LOGIN, self.JUMP, headers={"Accept-Language": "es"})
 
         assert "Abriendo el admin del Hub…" in response.content.decode()
+
+
+class TestTheBrakeOfTheJump:
+    """ACCOUNTS-G98 (ACCOUNTS-F28; the brake ACCOUNTS-F11 left to this part): an account mints at most
+    ``HUB_LOGIN_RATELIMIT`` (20 in 5 minutes, the old SaaS's passes) jumps; past it, the error page says
+    to wait, and no code is minted. Each account has its own budget."""
+
+    def _jump(self, client):
+        return client.get(HUB_LOGIN, {"hub": "a", "next": "/", "state": STATE})
+
+    def test_twenty_jumps_in_five_minutes_pass_and_the_next_waits_without_a_code(self, client, member):
+        for _ in range(20):
+            assert self._jump(client).status_code == 200
+
+        response = self._jump(client)
+
+        assert (response.status_code, response.url) == (302, "/login/error?code=too_many")
+        assert AuthExchangeCode.objects.count() == 20
+
+    def test_the_limit_comes_from_the_setting(self, client, member, settings):
+        settings.HUB_LOGIN_RATELIMIT = "2/5m"
+        assert [self._jump(client).status_code for _ in range(3)] == [200, 200, 302]
+
+    def test_refused_jumps_of_a_stranger_count_too(self, client, ana, settings):
+        settings.HUB_LOGIN_RATELIMIT = "2/5m"
+        client.force_login(ana)
+        urls = [self._jump(client).url for _ in range(3)]
+
+        assert urls == ["/login/error?code=not_a_member&hub=a"] * 2 + ["/login/error?code=too_many"]
+
+    def test_each_account_has_its_own_budget(self, client, member, password, settings):
+        settings.HUB_LOGIN_RATELIMIT = "1/5m"
+        assert self._jump(client).status_code == 200
+        bea = get_user_model().objects.create_user(email="bea@example.com", password=password)
+        HubMembership.objects.create(user=bea, hub_slug="a", role=HubMembership.Role.ADMIN)
+        client.force_login(bea)
+
+        assert self._jump(client).status_code == 200
+
+    def test_the_staff_jump_waits_the_same(self, client, settings, password):
+        settings.HUB_LOGIN_RATELIMIT = "1/5m"
+        staff, _ = services.create_platform_user("boss@erplora.com", "admin", password)
+        client.force_login(staff)
+        jump = {"hub": "a", "next": "/admin/hub/a/", "state": STATE, "audience": "hub-admin"}
+
+        assert client.get(HUB_LOGIN, jump).status_code == 200
+        assert client.get(HUB_LOGIN, jump).url == "/login/error?code=too_many"
 
 
 class TestLaunch:

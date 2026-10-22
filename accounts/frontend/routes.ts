@@ -70,6 +70,12 @@ const routes: RouteRecordRaw[] = [
     props: true,
     meta: { auth: true },
   },
+  {
+    // «Report a problem» of the user menu (ACCOUNTS-F38): the account, its businesses and the browser go with it.
+    path: '/report-a-problem',
+    component: () => import('./pages/ReportProblemPage.vue'),
+    meta: { auth: true },
+  },
 ];
 
 export default routes;

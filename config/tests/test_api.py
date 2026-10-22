@@ -4,6 +4,8 @@ This module is also the URLconf of its own tests that need a probe API (``ROOT_U
 via the ``probe_urls`` fixture).
 """
 
+import json
+
 import pytest
 from django.apps import apps
 from django.middleware.csrf import _get_new_csrf_string
@@ -100,11 +102,41 @@ def test_openapi_is_served_with_operation_names_as_ids(client):
     assert ids and all(op_id in registry for op_id in ids)
 
 
+class _Pairs(list):
+    """An object of the document as the ordered pairs it was written with (``object_pairs_hook``)."""
+
+
+def _repeated_keys(node, where="$") -> list[str]:
+    if isinstance(node, _Pairs):
+        keys = [key for key, _ in node]
+        found = [f"{where}.{key}" for key in dict.fromkeys(keys) if keys.count(key) > 1]
+        return found + [repeated for key, value in node for repeated in _repeated_keys(value, f"{where}.{key}")]
+    if isinstance(node, list):
+        return [repeated for index, item in enumerate(node) for repeated in _repeated_keys(item, f"{where}[{index}]")]
+    return []
+
+
 @pytest.mark.django_db
-def test_no_swagger_page_until_it_can_carry_the_nonce(client):
-    """ninja's own Swagger page has scripts without the CSP nonce: under 'strict-dynamic' it is blank."""
-    assert api.docs_url is None
-    assert client.get("/api/docs", HTTP_HOST=HOST).status_code == 404
+def test_no_object_of_the_openapi_document_repeats_a_key(client):
+    """ninja keys a response by the int ``200`` and an ``openapi_extra`` written with the text ``"200"`` adds a
+    second one: a valid Python dict, a JSON object with the key twice that a strict reader (Postman, a code
+    generator) refuses or reads as the last one only. The whole document, at every level."""
+    body = client.get("/api/openapi.json", HTTP_HOST=HOST).content
+
+    assert _repeated_keys(json.loads(body, object_pairs_hook=_Pairs)) == []
+
+
+@pytest.mark.django_db
+def test_the_docs_page_carries_the_nonce(client, django_user_model):
+    """ninja's own page has scripts without the CSP nonce (blank under 'strict-dynamic'): ``/api/docs`` is ours
+    (``accounts.api_docs``, ACCOUNTS-F34), every script with the response's nonce."""
+    client.force_login(django_user_model.objects.create_user(email="docs@example.com", password="x"))
+
+    response = client.get("/api/docs", HTTP_HOST=HOST)
+
+    nonce = response.headers["Content-Security-Policy"].split("'nonce-")[1].split("'")[0]
+    assert response.status_code == 200
+    assert response.content.decode().count(f'<script nonce="{nonce}"') == 2
 
 
 @pytest.mark.django_db

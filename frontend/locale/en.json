@@ -2,6 +2,7 @@
   "saas": {
     "userMenu": {
       "account": "Account",
+      "reportProblem": "Report a problem",
       "themeNotSaved": "Couldn't save the appearance to your account."
     },
     "load": {

@@ -118,6 +118,8 @@ INSTALLED_APPS = [
     "ninja",
     "base",
     "accounts",
+    # Who changed an account, its access to a business, its keys and its sessions (ACCOUNTS-F36; PLAN-SAAS §1.1).
+    "auditlog",
     # The app catalog (round 16, PLAN §21): before hubs and public, which read it.
     "apps",
     "hubs",
@@ -163,6 +165,9 @@ MIDDLEWARE = [
     # Records each signed-in session's address, browser and last use (allauth.usersessions), at most once
     # every few minutes: Cuenta → Seguridad → Sesiones activas.
     "accounts.session_tracking.SessionActivityMiddleware",
+    # The actor and the address of each audit log entry (ACCOUNTS-F36; after AuthenticationMiddleware and
+    # public.client_ip).
+    "accounts.auditlog.AuditActorMiddleware",
     # Deletes the cookies of a group that was declined or never accepted (django-cookie-consent),
     # skipping the requests that carry no cookie (public/cookies.py).
     "public.cookies.CleanCookiesMiddleware",
@@ -489,6 +494,9 @@ HUB_ADMIN_CALLBACK_URL = config(
 _hub_admin_callback = urlsplit(HUB_ADMIN_CALLBACK_URL)
 HUB_ADMIN_ORIGIN = f"{_hub_admin_callback.scheme}://{_hub_admin_callback.netloc}"
 EXCHANGE_CODE_TTL_SECONDS = 60
+# Jumps one account may start in a while (accounts/handoff.py, ACCOUNTS-F28; the old SaaS's 20 passes in 5 minutes):
+# past it, the error page asks to wait and no code is minted. django-ratelimit, over the default cache.
+HUB_LOGIN_RATELIMIT = config("HUB_LOGIN_RATELIMIT", default="20/5m")
 INTERNAL_SIGNATURE_MAX_AGE_SECONDS = 300
 # Where the SaaS calls hub-next's /internal/* (hubs.hub_client), signed with the same secret: the ALB
 # answers 404 to it, so production uses the private name aws-next gives the Hub (Cloud Map).
@@ -635,6 +643,8 @@ COOKIE_CONSENT_SECURE = not DEBUG
 
 # Messages of the contact form per address (django-ratelimit, over the default cache).
 CONTACT_FORM_RATELIMIT = config("CONTACT_FORM_RATELIMIT", default="10/h")
+# «Report a problem» of the panel per account (ACCOUNTS-F38; django-ratelimit, over the default cache).
+SUPPORT_REPORT_RATELIMIT = config("SUPPORT_REPORT_RATELIMIT", default="5/h")
 # The demo hubs (PLAN-SAAS §3.5, round 2026-10-17; public/demo.py): one switch, and new demos per address
 # (django-ratelimit, over the default cache; a browser re-entering its live demo does not count). The Hub keeps
 # the cap of live demos (MAX_CONCURRENT_DEMOS) and the WAF limits /demo per IP too.

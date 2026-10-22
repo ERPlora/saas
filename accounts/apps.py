@@ -46,3 +46,7 @@ class AccountsConfig(LiveAppConfig):
         # Creating the account and signing in accept today's terms and privacy policy (ACCOUNTS-G119).
         user_signed_up.connect(accept_legal_texts, dispatch_uid="accounts.accept_legal_texts.signed_up")
         user_logged_in.connect(accept_legal_texts, dispatch_uid="accounts.accept_legal_texts.logged_in")
+        # Who changed an account, its access to a business, its keys and its sessions (ACCOUNTS-F36).
+        from accounts import auditlog
+
+        auditlog.register()
