@@ -541,6 +541,33 @@ class TestUpdate:
 
         assert business.pending_hub_call == ""
 
+    def test_a_new_name_reaches_the_hub(self, business, owner, hub_double, django_capture_on_commit_callbacks):
+        """HUBS-F15, trap of ERPlora/saas SAAS_DASHBOARD-F09: the new name never reached the hub (its screen, its
+        receipts). Here the registry the Hub keeps is pushed again with it after the COMMIT."""
+        with django_capture_on_commit_callbacks(execute=True):
+            services.business_update(ctx_for(owner), BusinessUpdateIn(id=business.id, name="Casa Manolo"))
+
+        assert hub_double.registry[str(business.id)]["name"] == "Casa Manolo"
+
+    @pytest.mark.parametrize("name", ["", "   "])
+    def test_an_empty_name_is_not_saved(self, client, business, owner, name):
+        """HUBS-F15, trap of SAAS_DASHBOARD-F09: the old page saved an empty name."""
+        import json
+
+        client.force_login(owner)
+
+        response = client.post(
+            "/api/hubs/businesses/update",
+            json.dumps({"id": str(business.id), "name": name}),
+            content_type="application/json",
+            HTTP_HOST="localhost:8001",
+        )
+        business.refresh_from_db()
+
+        assert response.status_code == 422
+        assert "name" in response.json()["error"]["fields"]
+        assert business.name == "Bar Manolo"
+
     @pytest.mark.parametrize("who", ["manager", "employee"])
     def test_a_manager_or_an_employee_only_opens(self, business, team, who):
         with pytest.raises(PermissionDenied):
