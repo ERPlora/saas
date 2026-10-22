@@ -150,9 +150,12 @@ function panelDjangoEnv(vitePort: number, stack: Stack): Record<string, string> 
       EMAIL_FILE_PATH: panelMailDir(stack),
       // Its dev shell and CSP point at this run's Vite.
       VITE_DEV_PORT: String(vitePort),
-      // Every spec signs in from 127.0.0.1, past allauth's 30 sign-ins a minute when repeated
-      // (config/settings.py): only this server raises that one limit.
+      // Every spec signs in from 127.0.0.1, password and code, past the limits per address when repeated
+      // (config/settings.py): only this server raises them (sign-ins, failed passwords, typed codes).
       E2E_RELAX_LOGIN_RATE_LIMIT: 'True',
+      // reCAPTCHA off, whatever `.env` holds: the specs sign in through allauth's API, with no browser to ask
+      // Google for a token. The public server checks it (recaptcha.spec.ts, recaptcha.ts).
+      RECAPTCHA_ENABLED: 'False',
       // Meta's app of the WhatsApp specs (WHATSAPP_E2E): its webhook answers instead of 503.
       WHATSAPP_APP_ID: WHATSAPP_E2E.appId,
       WHATSAPP_APP_SECRET: WHATSAPP_E2E.appSecret,

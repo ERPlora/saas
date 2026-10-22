@@ -47,18 +47,21 @@ pnpm e2e --project=panel panel/login.spec.ts   # una spec
 
 Son los de la pila compartida, la de toda ejecución que no exporta nada. `E2E_SAAS_PORT` los mueve juntos para una
 segunda ejecución a la vez (`stack.ts`; ver «Dos e2e del SaaS a la vez»): `+1` el público, `+2` el panel, `+3` su
-gemelo con el segundo factor y `+9` el Hub de las specs (por defecto `8010`: `:8011`, `:8012`, `:8013`, `:8019`).
+gemelo con el segundo factor, `+8` el doble de reCAPTCHA y `+9` el Hub de las specs (por defecto `8010`: `:8011`,
+`:8012`, `:8013`, `:8018`, `:8019`).
 
 - **`:8012` (Django del panel)**: siempre propio (`reuseExistingServer: false`), sin autorecarga y con
   `HUB_INTERNAL_URL=http://127.0.0.1:8019`: las llamadas al Hub se quedan pendientes, como con el Hub
   caído, y las specs hacen de Hub (su callback `ready` firmado). Así ni el `runserver` de `:8001` de otra
   sesión (que se reinicia con cada `.py` guardado) ni un Hub en `:8000` cambian el resultado, y la
-  e2e no deja BD de hub huérfanas. Se arranca y se para en cada ejecución. Además sube el límite de
-  inicios de sesión de allauth (`E2E_RELAX_LOGIN_RATE_LIMIT=True`, `config/settings.py`): cada spec entra
-  desde `127.0.0.1`, y una spec repetida (`--repeat-each=6`) pasaba de los 30 por minuto (429 en el
-  login). Solo ese límite: el alta, los códigos y los intentos fallidos conservan los suyos, el servidor
-  de desarrollo también (no depende de `DEBUG`), y sin `DEBUG` (producción) el Django se niega a arrancar
-  con ella.
+  e2e no deja BD de hub huérfanas. Se arranca y se para en cada ejecución. Además sube los límites por
+  dirección de la entrada (`E2E_RELAX_LOGIN_RATE_LIMIT=True`, `config/settings.py`): cada spec entra desde
+  `127.0.0.1` con contraseña y código, y una spec repetida (`--repeat-each=6`) pasaba de los 30 por minuto (429 en
+  el login); desde 2026-10-22 también las contraseñas falladas (5 en 5 minutos por dirección) y los códigos
+  tecleados (10 en 5 minutos por dirección, `code_attempts`). Cada cuenta conserva su límite (5 contraseñas
+  falladas en 5 minutos), y el alta, los enlaces de restablecer y «Enviar un código nuevo» los suyos; el servidor
+  de desarrollo también (no depende de `DEBUG`), y sin `DEBUG` (producción) el Django se niega a arrancar con
+  ella.
 - **`:8013` (el gemelo del panel con el segundo factor)**: el mismo Django que `:8012` (misma BD, mismo Vite, misma
   carpeta de correo y mismo Hub de las specs) con `ACCOUNTS_MFA_ENABLED=True`, apagado por defecto en la fase 1: ahí
   juegan las specs de la app autenticadora, los navegadores de confianza y el segundo factor del personal
@@ -69,6 +72,21 @@ gemelo con el segundo factor y `+9` el Hub de las specs (por defecto `8010`: `:8
   `startHubDouble()` (hoy `members.spec.ts`): registra cada llamada a `/internal` y responde 200 a la
   foto (`PUT /internal/hubs/{id}/state`) y a la revocación (`POST /internal/sessions/revoke`), y 503 al
   resto (sigue pendiente). Si el puerto está ocupado, esa spec no arranca.
+- **`:8018` (el doble de reCAPTCHA)**: `recaptcha-double.ts`, un servidor de Node que la ejecución arranca y para
+  (`reuseExistingServer: false`). El servidor público, que es de producción y no puede apagar reCAPTCHA, le pide las
+  evaluaciones (`RECAPTCHA_ENDPOINT`) con una clave que no es la de Google; lee los tokens de las specs
+  (`e2e-human:<acción>` 0.9, `e2e-bot:<acción>` 0.1; el resto, mal formado) y guarda lo que le preguntan
+  (`GET /assessments`). En el navegador, todas las specs del proyecto `public` importan `test` de `public-test.ts`,
+  que cambia el `enterprise.js` de Google por uno falso (`recaptcha.ts`) que se carga como el de verdad (su versión
+  desde `www.gstatic.com`, el nonce, la política `goog#html` de Trusted Types y la insignia): una CSP que bloqueara
+  a Google bloquea también al falso. Una spec que necesita un bot o Google bloqueado llama
+  `fakeGoogleRecaptcha(context, 'bot' | 'blocked')`. El panel (`:8012`, `:8013`) corre con reCAPTCHA apagado
+  (`RECAPTCHA_ENABLED=False`): sus specs entran por la API, sin navegador que pida el token. `recaptcha.spec.ts`
+  prueba el contacto, la demo y la entrada con su código; su último test carga el **script real** de Google en
+  `localhost` solo si el `.env` del checkout tiene las dos claves (`RECAPTCHA_SITE_KEY` de `localhost` y
+  `RECAPTCHA_API_KEY`): comprueba que se genera el token bajo la CSP y los Trusted Types de producción y que Google
+  lo da por válido y de su acción (la puntuación de un Chrome sin ventana no se mira). El servidor público sube el
+  límite de demos por dirección (`DEMO_SPAWN_RATELIMIT=30/h`): la ejecución pulsa «Prueba la demo» más de 3 veces.
 - **Correo**: el Django del panel usa el backend de ficheros de Django (`EMAIL_BACKEND` +
   `EMAIL_FILE_PATH`, que `config/settings.py` pasa a `MAILERS`) y escribe cada correo en
   `.artifacts/panel/mail/` (en una pila propia, `.artifacts/panel/mail-<E2E_SAAS_PORT>/`); `waitForMail(destinatario, desde, enlace)` espera el que llega tras una

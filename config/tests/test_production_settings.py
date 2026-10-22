@@ -863,14 +863,18 @@ def test_the_e2e_variable_turned_off_keeps_the_sign_in_limit(off):
     assert effective["login"] == allauth["login"]
 
 
-def test_the_e2e_raises_the_sign_in_limit_and_nothing_else():
-    """Out of the e2e's reach (one sign-in takes over 0.1 s, one at a time), still a limit: sign-up,
-    the mailed codes and the failed attempts keep theirs."""
+def test_the_e2e_raises_the_limits_per_address_of_the_sign_in_and_nothing_else():
+    """Every panel spec signs in from 127.0.0.1, password and mailed code: the address's budgets of the sign-in, of the
+    failed passwords and of the typed codes go out of the e2e's reach (one sign-in takes over 0.1 s, one at a time),
+    still a limit. Each account keeps its own (5 wrong passwords in 5 minutes), and so do sign-up, the reset links and
+    «Send another code»."""
     relaxed, allauth = rate_limits({"DEBUG": "True", "E2E_RELAX_LOGIN_RATE_LIMIT": "True"})
     kept, _ = rate_limits({"DEBUG": "True"})
 
     assert relaxed["login"] == "1000/m/ip" != allauth["login"]
-    assert {**relaxed, "login": kept["login"]} == kept
+    assert relaxed["login_failed"] == "1000/m/ip,5/5m/key"
+    assert relaxed["code_attempts"] == "1000/m/ip"
+    assert {**relaxed, "login": kept["login"], "login_failed": kept["login_failed"], "code_attempts": kept["code_attempts"]} == kept
 
 
 def test_production_refuses_to_start_with_the_e2e_s_sign_in_limit():
