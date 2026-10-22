@@ -400,7 +400,7 @@
       "payName": "Pagar la factura de {name}"
     },
     "addressDialog": {
-      "title": "Cambiar la dirección web de {name}",
+      "title": "Cambiar la dirección web",
       "label": "Nueva dirección",
       "submit": "Cambiar dirección",
       "lead": "Tu negocio se abrirá en:",

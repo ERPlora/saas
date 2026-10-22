@@ -19,7 +19,7 @@ import { toastSuccess } from '@erplora/ui/shell';
 import { apiError, flush, mountHubs } from '../__tests__/mount-hubs';
 import AddressDialog from './AddressDialog.vue';
 
-const BUSINESS = { id: 'h1', name: 'Panadería López', slug: 'bakery', host: 'bakery.erplora.com' };
+const BUSINESS = { id: 'h1', slug: 'bakery', host: 'bakery.erplora.com' };
 const MOVED = { ...BUSINESS, slug: 'panaderia-lopez', host: 'panaderia-lopez.erplora.com' };
 
 afterEach(() => {
@@ -48,7 +48,7 @@ describe('AddressDialog', () => {
   it('starts from the current address, says what follows and waits for a different one', async () => {
     const s = await setup();
     const dialog = s.q('address-dialog');
-    expect(dialog.getAttribute('aria-label')).toBe('Change the web address of Panadería López');
+    expect(dialog.getAttribute('aria-label')).toBe('Change web address');
     expect(s.q('address-dialog-slug').value).toBe('bakery');
     expect(s.q('address-dialog-host').textContent).toBe('bakery.erplora.com');
     expect(dialog.textContent).toContain('Your devices and erplora.com take you to the new address.');

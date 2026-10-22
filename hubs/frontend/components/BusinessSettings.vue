@@ -261,7 +261,7 @@ const value = (event: CustomEvent<{ value?: unknown }>) => String(event.detail.v
     <AddressDialog
       v-if="business.can?.change_address"
       v-model:open="changingAddress"
-      :business="{ id: business.id, name: business.name, slug: business.slug, host: business.host }"
+      :business="{ id: business.id, slug: business.slug, host: business.host }"
     />
   </ion-card>
 </template>

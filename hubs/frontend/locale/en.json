@@ -400,7 +400,7 @@
       "payName": "Pay the invoice of {name}"
     },
     "addressDialog": {
-      "title": "Change the web address of {name}",
+      "title": "Change web address",
       "label": "New address",
       "submit": "Change address",
       "lead": "Your business will open at:",

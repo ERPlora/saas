@@ -15,7 +15,7 @@ import { useI18n } from 'vue-i18n';
 import { useErrorText } from '../error-text';
 
 const props = defineProps<{
-  business: { id: string; name: string; slug: string; host: string };
+  business: { id: string; slug: string; host: string };
 }>();
 
 const open = defineModel<boolean>('open', { default: false });
@@ -64,7 +64,7 @@ const value = (event: CustomEvent<{ value?: unknown }>) => String(event.detail.v
     v-model:open="open"
     testid="address-dialog"
     size="md"
-    :title="$t('hubs.addressDialog.title', { name: business.name })"
+    :title="$t('hubs.addressDialog.title')"
     :submit-label="$t('hubs.addressDialog.submit')"
     submit-icon="ion:globe-outline"
     :pending="change.pending.value"
