@@ -20,10 +20,23 @@ class AccountsConfig(LiveAppConfig):
 
     def ready(self):
         from allauth.account.signals import password_changed, password_reset, password_set, user_signed_up
+        from allauth.account.signals import user_logged_in as signed_in
+        from allauth.usersessions import signals as usersessions
         from django.contrib.auth.signals import user_logged_in
 
         from accounts import checks  # noqa: F401  (registers the system checks)
-        from accounts.services import accept_legal_texts, password_changed_ends_sessions, prove_mailbox_by_reset
+        from accounts.services import (
+            accept_legal_texts,
+            password_changed_ends_sessions,
+            prove_mailbox_by_reset,
+            record_sign_in,
+        )
+
+        # A sign-in drops the account's dead sessions in one go and records its own, in place of allauth's receiver,
+        # which asked about every open session on its own (``record_sign_in``). allauth.usersessions is ready by now:
+        # it comes first in INSTALLED_APPS.
+        signed_in.disconnect(receiver=usersessions.on_user_logged_in)
+        signed_in.connect(record_sign_in, dispatch_uid="accounts.record_sign_in")
 
         # A password set from the key mailed by «Forgot your password?» proves the mailbox (L1-A2).
         password_reset.connect(prove_mailbox_by_reset, dispatch_uid="accounts.prove_mailbox_by_reset")
