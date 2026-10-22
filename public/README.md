@@ -55,10 +55,19 @@ sin SSR y sin prefijo `/es/`; ronda 16 y spec `docs/superpowers/specs/2026-10-13
 - **Correo de soporte (PUBLIC-F18):** también las páginas de error (`{% support_email %}`) y la SPA (`support-email`).
 - **Descargas (PUBLIC-F24):** los dispositivos y usuarios del hub gratis de `/download/` son los del plan Gratis
   (`pricing.free_plan` y el parcial `pricing/_plan_limits.html`, el de la tabla de precios); sin plan Gratis, ninguno.
+- **Demo (PUBLIC-F27–F37, APP-PUBLIC-3, 2026-10-22):** la demo de la fase 1 (ronda 2026-10-17) se queda como está:
+  la puerta pide pulsar (el GET nunca crea) y la demo está lista al momento, sin pantalla de espera. `/try/` vuelve como
+  la misma vista con canónica `/demo/` (la dirección que repartía el stack viejo, saas#1164), fuera del mapa del
+  sitio. La puerta JSON (`/api/demo/spawn/`) queda descartada: nadie la llamaba y la demo solo se abre en el
+  navegador que la pide (PUBLIC-F36). Lo creado dentro de una demo se borra con ella desde la fase 2 (PUBLIC-F34).
+- **Tabla de la portada (PUBLIC-F01):** «Cin7 / TradeGecko» pasa a «Zoho Inventory / Sortly» (TradeGecko lo cerró
+  Intuit; las dos son las que más repiten las comparativas de 2026 para pequeños negocios, con tramos de 49 a 149 $).
 
 ## Pruebas
 
 - `uv run pytest -q public` (y `public/tests/test_<módulo>.py` por módulo).
 - e2e: `tests/e2e/public-web.spec.ts` (parte 1) y `public-web-2.spec.ts` (parte 2; flujo a flujo, tres tamaños,
   CSP sin violaciones; los correos del formulario van a `.artifacts/public/mail*/`), `public-dark.spec.ts`,
-  `demo-door.spec.ts` y `store-docs.spec.ts`; antes, `pnpm build` (el proyecto `public` sirve el build).
+  `demo-door.spec.ts`, `public-demo.spec.ts` (parte 3: la puerta de la demo en todos sus estados, tres tamaños) y
+  `store-docs.spec.ts`; antes, `pnpm build` (el proyecto `public` sirve el build). El recorrido de la demo contra un
+  Hub de verdad es `tests/e2e/demo.spec.ts` del Hub, con este SaaS como su SaaS.

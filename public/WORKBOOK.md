@@ -1,12 +1,12 @@
 # Workbook — Web pública (public)
 Prefijo: PUBLIC
 Alcance MVP: fase 1 (la web pública de erplora.com: lo que lee quien todavía no tiene cuenta y la puerta hacia el alta)
-Estado de la app: en construcción (partes 1 y 2 de 3: la portada, los planes y precios, los sectores, el producto y la seguridad, el cumplimiento por país, la empresa, adónde lleva cada «Empieza gratis», las páginas «Muy pronto», el idioma y los buscadores; la ayuda y el soporte, el contacto, las cookies, los textos legales y la declaración responsable, la tienda de apps y las descargas)
+Estado de la app: hecha (la web, la ayuda, el contacto, las cookies, los textos legales, la tienda de apps, las descargas y la demo); lo que se crea dentro de una demo se borra con ella desde la fase 2 (PUBLIC-F34)
 
 > Manual de uso y especificación de la app `public` del SaaS (erplora.com). Cuenta lo que ve una persona que llega a
 > erplora.com sin cuenta: qué es ERPlora, cuánto cuesta, para qué negocios sirve, cómo protege los datos, en qué
-> países cumple con la facturación y cómo se empieza. Esta parte del manual no se publica en la tienda: es la
-> referencia del equipo y de la QA. La demo (parte 3) se escribe a continuación.
+> países cumple con la facturación, cómo se empieza y cómo se prueba una demo sin cuenta. Esta parte del manual no se
+> publica en la tienda: es la referencia del equipo y de la QA.
 
 ## Para qué sirve y para quién
 
@@ -59,12 +59,16 @@ Quién la usa:
   https://developer.chrome.com/docs/android/custom-tabs).
 - **Shopify App Store y Odoo Apps**: la tienda por secciones con búsqueda, y la ficha de cada app con lo que
   necesita y su documentación (https://apps.shopify.com, https://apps.odoo.com).
+- **Odoo y Dolibarr**: una demo de verdad, sin cuenta ni tarjeta, que se abre en el navegador, dura un tiempo
+  limitado y se borra con todo lo que tenga dentro; quien quiere conservar su trabajo crea su propia cuenta
+  (https://demo.odoo.com, https://www.dolibarr.org/onlinedemo).
 
 ## Antes de empezar
 
 - La web se sirve desde erplora.com; en desarrollo, desde el puerto 8001 del SaaS.
 - Los sectores salen de la taxonomía que se siembra en cada despliegue; sin ella, la lista de sectores dice que
   todavía se están configurando.
+- La demo la crea el hub: sin el hub en marcha, la pantalla de la demo dice que no está disponible.
 
 ## Pantallas
 
@@ -124,13 +128,19 @@ Las apps por sección con la búsqueda y los filtros; la ficha con «Resumen», 
 «Dos formas gratuitas de probar ERPlora.» con el hub en la nube y la app del mostrador por plataforma, y la página de
 la app instalada.
 
+### Demo
+«Prueba ERPlora sin registrarte.» con una tarjeta que cambia según el momento: lo que trae la demo y «Prueba la
+demo»; la demo en marcha, cuánto le queda y «Volver a mi demo»; o el motivo por el que ahora no se puede (apagada,
+llena, demasiadas desde la conexión, no disponible, terminada) con lo que se puede hacer. Siempre hay un camino a
+«Empieza gratis».
+
 ## Estados de cada pantalla
 
 | Estado | Qué ve la persona |
 |---|---|
 | Cargando | Las páginas llegan completas del servidor: no hay esqueleto ni espera. |
 | Vacío | Sin planes a la venta, Planes y precios dice que no hay planes y no pinta tablas, y la portada omite el bloque de planes; sin apps publicadas, la portada omite los bloques de apps; sin sectores, «Todavía no hay tipos de negocio». |
-| Error | Una dirección que no existe enseña «Página no encontrada» con el menú de la web; un fallo del servidor, «Algo ha fallado por nuestra parte», sin depender de la base de datos. |
+| Error | Una dirección que no existe enseña «Página no encontrada» con el menú de la web; un fallo del servidor, «Algo ha fallado por nuestra parte», sin depender de la base de datos. La demo dice en su propia pantalla por qué no se puede dar ahora y qué hacer (PUBLIC-F29 a PUBLIC-F33). |
 | Sin permiso | No aplica: todo es público. Las páginas privadas no aparecen en el mapa del sitio ni se dejan rastrear. |
 
 ## Flujos
@@ -163,6 +173,17 @@ la app instalada.
 | PUBLIC-F24 | Conseguir la aplicación instalada | hecho |
 | PUBLIC-F25 | Saber qué versión de la aplicación está publicada | hecho |
 | PUBLIC-F26 | Abrir una página pública desde la aplicación instalada | hecho |
+| PUBLIC-F27 | Llegar a la demo | hecho |
+| PUBLIC-F28 | Crear la demo y entrar en ella | hecho |
+| PUBLIC-F29 | Una demo que no se ha podido abrir | hecho |
+| PUBLIC-F30 | La demo está apagada | hecho |
+| PUBLIC-F31 | Todas las demos están ocupadas | hecho |
+| PUBLIC-F32 | Límite de demos por conexión | hecho |
+| PUBLIC-F33 | La demo terminó | hecho |
+| PUBLIC-F34 | Retirar las demos que vencen | parcial |
+| PUBLIC-F35 | De la demo a una cuenta de verdad | hecho |
+| PUBLIC-F36 | Pedir una demo desde otra aplicación | descartado |
+| PUBLIC-F37 | La demo no cuenta como un negocio | hecho |
 
 ### PUBLIC-F01 Ver la portada
 <!-- origen: old-saas:SAAS_PUBLIC-F55 -->
@@ -256,7 +277,7 @@ Pantalla: Portada, Planes y precios, Características, Colabora
 Pasos:
 1. La persona lee la portada, Planes y precios, las páginas de producto y Colabora para hacerse una idea de qué hace ERPlora.
 2. Todo lo que se nombra existe hoy en las apps: punto de venta, facturación con VeriFactu, inventario, clientes, citas y reservas, personal y control horario, cocina y mesas.
-3. La tabla «lo que pagarías por separado» solo lista funciones que las apps cubren y su total es la suma de sus filas.
+3. La tabla de lo que se pagaría por separado solo lista funciones que las apps cubren y su total es la suma de sus filas.
 Entra: nada; el texto de las páginas, contrastado con las apps del producto.
 Sale: nada guardado.
 Si falla: no se anuncia contabilidad, nóminas, tickets de soporte, TicketBAI, los modelos 303, 390 y 347, almacenes con lotes y caducidades ni conciliación bancaria, porque ninguna app los hace; la franja de sectores nombra los negocios que se sirven hoy (hostelería, comercio, peluquería y estética, servicios profesionales). Las comparativas con otros productos pueden nombrar lo que hacen ellos.
@@ -270,7 +291,7 @@ Pantalla: Seguridad, Planes y precios, Portada, Sobre nosotros
 Pasos:
 1. La persona lee qué dicen Seguridad, las preguntas frecuentes de precios, la portada y Sobre nosotros sobre el acceso, los datos y la disponibilidad.
 2. Lee lo que funciona hoy: sesiones de servidor en cookies seguras, código de un solo uso para entrar en el negocio, entrar con Google, contraseñas con hash y sal, cifrado en tránsito y en reposo, solo HTTPS con TLS 1.2 o 1.3, AWS en Irlanda con su cortafuegos web, copias continuas recuperables a cualquier momento de los últimos 14 días y alta disponibilidad.
-3. A «¿Dónde se guardan mis datos?» la respuesta es la Unión Europea, con la única excepción del asistente si su proveedor europeo no está disponible, y el enlace «Lee la política de privacidad».
+3. A «¿Dónde se almacenan mis datos?» la respuesta es la Unión Europea, con la única excepción del asistente si su proveedor europeo no está disponible, y el enlace «Lee la política de privacidad».
 Entra: nada; el texto de las páginas, contrastado con la infraestructura y la política de privacidad.
 Sale: nada guardado.
 Si falla: no se promete un acuerdo de disponibilidad con porcentaje, soporte 24/7, auditorías periódicas, informes de pruebas de intrusión, cifrado de extremo a extremo ni entrar con GitHub, y nunca «tus datos nunca salen de la UE», que contradiría la política de privacidad.
@@ -296,9 +317,9 @@ Estado: hecho
 Actor: visitante
 Pantalla: Sobre nosotros, Colabora
 Pasos:
-1. «Sobre nosotros» cuenta la misión, cómo se guardan los datos de cada negocio y que todas las apps son de ERPlora.
+1. «Sobre Nosotros» cuenta la misión, cómo se guardan los datos de cada negocio y que todas las apps son de ERPlora.
 2. «Colabora» explica el programa en cuatro pasos y ofrece un negocio completo gratis durante un año, valorado en lo que cuesta un año del plan de pago más barato (su precio anual), con los sectores y tipos de negocio que hay hoy; «Solicitar Ahora» lleva al contacto con el asunto del programa.
-3. La dirección antigua de la empresa lleva para siempre a «Sobre nosotros»; Blog, Empleos y Prensa son páginas «Muy pronto» (PUBLIC-F12).
+3. La dirección antigua de la empresa lleva para siempre a «Sobre Nosotros»; Blog, Empleos y Prensa son páginas «Muy pronto» (PUBLIC-F12).
 Entra: los planes a la venta y la taxonomía (sectores y tipos de negocio activos).
 Sale: nada guardado; la solicitud llega como mensaje del formulario de contacto.
 Si falla: sin plan de pago a la venta, Colabora no inventa un valor; sin taxonomía, no dice cifras. No hay página de desarrolladores: no hay apps de terceros.
@@ -325,7 +346,7 @@ Actor: visitante
 Pantalla: Muy pronto
 Pasos:
 1. Blog, Empleos y Prensa enseñan su titular y lo que vendrá; no se indexan y ningún menú las enlaza.
-2. Una dirección antigua de la tienda (el marketplace, las soluciones o los módulos) lleva para siempre a la tienda de apps; la de la empresa, a «Sobre nosotros».
+2. Una dirección antigua de la tienda (el marketplace, las soluciones o los módulos) lleva para siempre a la tienda de apps; la de la empresa, a «Sobre Nosotros».
 3. La página de desarrolladores y la del puente local ya no existen: dan «Página no encontrada».
 Entra: nada.
 Sale: nada guardado.
@@ -528,6 +549,159 @@ Sale: la marca de aplicación en la sesión de esa ventana.
 Si falla: dentro de la aplicación no sale el aviso de cookies ni se carga ninguna medición, aunque se aceptaran en la web; una marca que la web no conoce se trata como la web.
 Implicados: hubs (la entrada de la aplicación), accounts (comprobar el correo)
 
+### PUBLIC-F27 Llegar a la demo
+<!-- origen: old-saas:SAAS_PUBLIC-F80 -->
+Estado: hecho
+Actor: visitante
+Pantalla: Demo
+Pasos:
+1. La persona pulsa «Prueba la demo» en la portada (arriba o en la llamada final) o en el menú de quien no ha entrado, o abre el enlace de la demo que le han pasado: la dirección de siempre y la corta abren la misma pantalla.
+2. Ve «Prueba ERPlora sin registrarte.» y la tarjeta «Tu propio hub de demostración», con «Sin cuenta y sin tarjeta», «Un hub real en tu navegador, sin instalar nada» y «Termina solo a los 60 minutos».
+3. Debajo están el botón «Prueba la demo» y «¿Quieres conservar lo que hagas? Empieza gratis: se tarda lo mismo.».
+Entra: nada.
+Sale: nada guardado: abrir la pantalla no crea ninguna demo, la abra una persona, un buscador o una recarga.
+Si falla: si ese navegador ya tiene una demo en marcha, la pantalla no ofrece otra: dice «Tu demo está en marcha», cuánto le queda y «Volver a mi demo» (PUBLIC-F28).
+Implicados: ninguno
+
+### PUBLIC-F28 Crear la demo y entrar en ella
+<!-- origen: old-saas:SAAS_PUBLIC-F81 old-saas:SAAS_PUBLIC-F82 old-saas:SAAS_PUBLIC-F83 -->
+Estado: hecho
+Actor: visitante, sistema
+Pantalla: Demo
+Pasos:
+1. La persona pulsa «Prueba la demo».
+2. Se crea un hub vacío para ese navegador, con una dirección propia al azar que empieza por «demo-», y dura 60 minutos desde ese momento. Está listo al instante: no hay espera.
+3. La pantalla dice «Abriendo tu demo…» y el navegador entra solo en la demo, como el usuario «Demo», sin cuenta, contraseña ni PIN; sin JavaScript, el botón «Continuar» hace lo mismo.
+4. Si vuelve a la pantalla de la demo mientras dura, ve «Tu demo está en marcha», «Termina en 12 minutos.» (lo que le quede) y «Volver a mi demo», que la devuelve a la misma demo.
+5. Pulsar otra vez, recargar o abrir otra pestaña del mismo navegador devuelve la misma demo, y entrar después en su cuenta de erplora.com no la pierde.
+Entra: el idioma del visitante, en el que se abre la demo.
+Sale: un hub de demostración vacío con su usuario «Demo», y en ese navegador cuál es su demo y cuándo termina.
+Si falla: solo entra el navegador que la pidió: el enlace de una demo abierto en otro navegador vuelve a la pantalla de la demo, que le ofrece una suya. Si la demo no se puede crear o abrir: PUBLIC-F29, PUBLIC-F31 y PUBLIC-F32.
+Implicados: el Hub (su registro de hubs crea la demo y le abre la sesión)
+
+### PUBLIC-F29 Una demo que no se ha podido abrir
+<!-- origen: old-saas:SAAS_PUBLIC-F84 -->
+Estado: hecho
+Actor: visitante
+Pantalla: Demo
+Pasos:
+1. Si el hub no contesta o rechaza la petición, la persona vuelve a la pantalla de la demo y ve «La demo no está disponible ahora mismo.» con «Volver a intentarlo».
+2. Si la demo se creó pero la entrada no funcionó, ve «No hemos podido abrir tu demo. Vuelve a intentarlo.» y «Volver a mi demo», que la lleva a la misma demo mientras dure.
+3. En los dos casos tiene también «Empieza gratis».
+Entra: nada.
+Sale: nada: un intento fallido no se queda como la demo de ese navegador, así que «Volver a intentarlo» la pide otra vez.
+Si falla: el fallo queda en el registro del servicio; la persona solo ve el mensaje, nunca un error técnico.
+Implicados: el Hub (su registro de hubs)
+
+### PUBLIC-F30 La demo está apagada
+<!-- origen: old-saas:SAAS_PUBLIC-F85 -->
+Estado: hecho
+Actor: visitante, sistema
+Pantalla: Demo
+Pasos:
+1. Con la demo apagada, quien abre la pantalla de la demo ve «La demo está cerrada por ahora. Puedes empezar gratis: se tarda un minuto.».
+2. Solo hay un botón, «Empieza gratis».
+3. Apagarla cierra todas las puertas a la vez: pulsar el botón de una pantalla abierta antes o volver a entrar en una demo no crea ni abre nada y lleva a esta pantalla.
+Entra: el interruptor de la demo, que el equipo pone en el despliegue.
+Sale: nada.
+Si falla: apagarla no desmonta nada: quien ya está dentro de su demo sigue hasta que termina.
+Implicados: ninguno
+
+### PUBLIC-F31 Todas las demos están ocupadas
+<!-- origen: old-saas:SAAS_PUBLIC-F86 -->
+Estado: hecho
+Actor: visitante
+Pantalla: Demo
+Pasos:
+1. Cuando ya hay en marcha tantas demos como admite la plataforma, la persona ve «La demo está llena ahora mismo. Vuelve a intentarlo en unos minutos.».
+2. Tiene «Volver a intentarlo» y «¿Quieres conservar lo que hagas? Empieza gratis: se tarda lo mismo.».
+Entra: cuántas demos hay en marcha.
+Sale: nada: el intento no gasta ningún hueco.
+Si falla: los huecos se liberan a medida que las demos terminan (PUBLIC-F34).
+Implicados: el Hub (su registro de hubs cuenta las demos en marcha)
+
+### PUBLIC-F32 Límite de demos por conexión
+<!-- origen: old-saas:SAAS_PUBLIC-F87 -->
+Estado: hecho
+Actor: visitante, sistema
+Pantalla: Demo
+Pasos:
+1. Cada demo nueva que se pide desde una misma conexión cuenta: como mucho 3 por hora, muy por debajo del total de la plataforma, para que nadie pueda dejar la demo llena para los demás.
+2. Quien ya tiene una demo en marcha no gasta nada: pulsar otra vez, recargar u otra pestaña le devuelven la suya.
+3. Pasado el límite, la persona ve «Demasiadas demos desde tu red. Vuelve a intentarlo dentro de un rato.» y solo «Empieza gratis», sin botón para reintentar.
+Entra: la conexión desde la que se pide.
+Sale: la cuenta de demos de esa conexión durante la hora.
+Si falla: las demos que ya empezó siguen siendo suyas hasta que terminan.
+Implicados: ninguno
+
+### PUBLIC-F33 La demo terminó
+<!-- origen: old-saas:SAAS_PUBLIC-F88 -->
+Estado: hecho
+Actor: visitante
+Pantalla: Demo
+Pasos:
+1. Quien vuelve a la pantalla de la demo cuando la suya ya terminó ve una vez «Esta demo ha terminado. Empieza otra.».
+2. Quien entra en la dirección de una demo terminada ve «La demo ha terminado» con «Crear otra demo», que le trae a esta misma pantalla.
+3. La pantalla no arranca sola: «Empezar otra demo» pide una nueva (con la demo apagada no crea nada, PUBLIC-F30), y «Empieza gratis» lleva al alta.
+Entra: cuándo termina la demo de ese navegador.
+Sale: el navegador olvida su demo terminada: la siguiente visita ve la pantalla normal.
+Si falla: una demo puede terminar antes de su hora (el equipo la retira); «Volver a mi demo» lo descubre y trae aquí.
+Implicados: el Hub (la página de la demo terminada)
+
+### PUBLIC-F34 Retirar las demos que vencen
+<!-- origen: old-saas:SAAS_PUBLIC-F89 -->
+Estado: parcial — lo que la persona creó dentro de la demo no se borra al retirarla: hasta la fase 2 las demos comparten los datos de las apps con las demás (ronda 2026-10-17, PLAN-SAAS §3.5 y PLAN-DB §6); la base de datos propia de cada demo, que se borra con ella, llega con la tenencia
+Actor: sistema
+Pantalla: ninguna
+Pasos:
+1. En cuanto pasa su hora, la dirección de la demo contesta «La demo ha terminado», aunque nadie la haya retirado todavía.
+2. Cada minuto, el hub retira las demos vencidas: borra sus códigos de entrada, su usuario «Demo» y su acceso, y la marca como retirada; un fallo en una no detiene a las demás.
+3. Pasados unos días, la dirección retirada deja de existir del todo.
+Entra: las demos cuya hora ha pasado.
+Sale: la demo retirada, sin usuario ni forma de entrar.
+Si falla: si retirar una falla, se reintenta en la siguiente vuelta; mientras, su dirección ya dice que ha terminado.
+Implicados: el Hub (su registro de hubs y su proceso de fondo)
+
+### PUBLIC-F35 De la demo a una cuenta de verdad
+<!-- origen: old-saas:SAAS_PUBLIC-F92 -->
+Estado: hecho
+Actor: visitante
+Pantalla: Demo
+Pasos:
+1. En cualquier estado de la pantalla de la demo la persona tiene «Empieza gratis».
+2. Llega a la misma entrada de erplora.com que el resto de botones «Empieza gratis» (PUBLIC-F11), donde se crea la cuenta y su negocio como cualquiera.
+Entra: nada.
+Sale: nada de la demo pasa a la cuenta: el negocio nace vacío, como avisa la pantalla: «El hub de demostración es tuyo durante 60 minutos; sin cuenta ni tarjeta. Todo lo que escribas desaparece cuando termina.».
+Si falla: su demo sigue en marcha hasta que termina, aunque ya tenga cuenta.
+Implicados: accounts (la entrada), hubs (el alta del negocio)
+
+### PUBLIC-F36 Pedir una demo desde otra aplicación
+<!-- origen: old-saas:SAAS_PUBLIC-F93 -->
+Estado: descartado — la demo de ahora se crea y se abre en el mismo navegador que la pide, con un código de un solo uso atado a él, así que una puerta sin pantalla no podría abrirla; ninguna aplicación de ERPlora la llamaba, y la ronda 2026-10-17 (PLAN-SAAS §3.5) dejó la pantalla como única puerta
+Actor: sistema
+Pantalla: ninguna
+Pasos:
+1. Quien quiere una demo la pide desde la pantalla de la demo (PUBLIC-F28).
+2. Los rechazos se ven en esa pantalla (PUBLIC-F29 a PUBLIC-F32).
+Entra: nada.
+Sale: nada.
+Si falla: no aplica.
+Implicados: ninguno
+
+### PUBLIC-F37 La demo no cuenta como un negocio
+<!-- origen: old-saas:SAAS_PUBLIC-F94 -->
+Estado: hecho
+Actor: sistema
+Pantalla: ninguna
+Pasos:
+1. Una demo no es un negocio de nadie: erplora.com no guarda ninguna, así que no aparece en la lista de negocios, ni en los planes, el cobro, las facturas o el uso.
+2. Su principio de dirección, «demo-», está reservado: ningún cliente puede llamar así a su negocio, y un nombre como «Demo Bar» propone «demobar».
+3. Una demo nunca se conecta a Hacienda de verdad.
+Entra: nada.
+Sale: nada.
+Si falla: elegir a mano una dirección que empieza por «demo-» se rechaza con «Esta dirección está reservada. Elige otra.».
+Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre a pruebas)
+
 ## Para quien lo mantiene
 
 - Rutas y vistas: `public/urls.py` (`PUBLIC_PREFIXES`) y un módulo por área: `landing.py` (F01, F07, F11),
@@ -535,8 +709,20 @@ Implicados: hubs (la entrada de la aplicación), accounts (comprobar el correo)
   `store.py` (redirecciones de F12), `language.py` (F13), `seo.py`, `sitemaps.py` y `structured_data.py` (F14).
   Plantillas en `public/templates/public/`, catálogo en `public/locale/es/`.
 - Partes del porte (MIGRATION-TASK APP-PUBLIC-1…3): este WORKBOOK nace en la parte 1 (F01–F14); la parte 2 añade
-  F15–F26 (ayuda, contacto, cookies, legales, tienda de apps, descargas) y la 3 (la demo) los suyos a continuación;
-  la revisión flujo a flujo de los `hecho` la hace la parte 3.
+  F15–F26 (ayuda, contacto, cookies, legales, tienda de apps, descargas) y la 3, F27–F37 (la demo), con la revisión
+  flujo a flujo de los `hecho` de las tres.
+- Demo (F27–F37; ronda 2026-10-17, PLAN-SAAS §3.5, plan `docs/plans/2026-10-17-demo-hubs-fase-1.md`): `demo.py`
+  sirve `/demo/` (y la misma vista en `/try/`, canónica `/demo/`; GET, nunca crea), `/demo/start/` (POST con CSRF,
+  `DEMO_SPAWN_RATELIMIT` por dirección solo si el navegador no tiene demo viva) y `/demo/enter/` (el salto con el
+  `state` del Hub y `accounts/hub_login_form.html`). El SaaS no guarda filas de demo: solo `session["demo"]` y el token
+  `session["demo_owner"]`, cuyo sha256 identifica al navegador ante el Hub (`hubs.hub_client.create_demo`,
+  `create_demo_code`). `DEMO_ENABLED` lo miran las tres vistas. Lo demás es del Hub (`base/`): el registro
+  `base.Hub` con `is_demo`, `POST /internal/demos` con `MAX_CONCURRENT_DEMOS` (503 `base.demo_full`), el 410 de una
+  demo vencida con su enlace a `/demo/?state=expired`, `reap_demos` en el worker cada `REAPER_INTERVAL_SECONDS` y
+  `purge_demo_data`, vacío a propósito en la fase 1 (F34 `parcial`). El prefijo `demo-` lo reserva
+  `live.slugs` (`validate_hub_slug(allow_demo=…)`) y `hubs.queries.base_slug` lo normaliza (F37).
+- Equivalencia de claves de la parte 3: G53 = F27; G54, G55 y G56 = F28; G57 = F29; G58 = F30; G59 = F31; G60 = F32;
+  G61 = F33; G62 = F34; G63 = F35; G64 = F36; G65 = F37.
 - Parte 2, por flujo: `help.py` y `resources.py` (F15; `/documentation/` es un 301 a `/help/`), `landing.py`
   (F16–F18: `contact_submit` con `reply_to`, el borrador `CONTACT_DRAFT_KEY` en la sesión y los temas
   `CONTACT_TOPICS`), `context_processors.py` (F18: `SUPPORT_EMAIL` de settings, `SUPPORT_WHATSAPP_URL` y
@@ -574,7 +760,9 @@ Implicados: hubs (la entrada de la aplicación), accounts (comprobar el correo)
   `tests/e2e/public-web.spec.ts` (claves `PUBLIC-Gnn` del registro en el título y capturas
   `APP-PUBLIC-1-<clave>-<ancho>.png` en `tests/e2e/.artifacts/`); el de la parte 2, `tests/e2e/public-web-2.spec.ts`
   (capturas `APP-PUBLIC-2-<clave>-<ancho>.png`; el servidor público del e2e escribe los correos en
-  `.artifacts/public/mail*/`, nunca por SMTP).
+  `.artifacts/public/mail*/`, nunca por SMTP); el de la parte 3, `tests/e2e/public-demo.spec.ts` (capturas
+  `APP-PUBLIC-3-<clave>-<ancho>.png`), con `demo-door.spec.ts`. El recorrido entero de la demo contra un Hub de verdad
+  es `tests/e2e/demo.spec.ts` del Hub, con este SaaS como su SaaS (README de `tests/e2e/` del Hub, «La demo»).
 
 ## Lo que NO hace, a propósito
 
@@ -586,3 +774,7 @@ Implicados: hubs (la entrada de la aplicación), accounts (comprobar el correo)
 - No pide consentimiento de cookies mientras no mide visitas: las cookies técnicas no lo necesitan.
 - No tiene una página de documentación aparte: la documentación es el centro de ayuda y la pestaña de cada app.
 - No guarda los mensajes del formulario de contacto: los envía al buzón de soporte.
+- La demo no arranca sola al abrir su pantalla: hay que pulsar «Prueba la demo», para que un buscador, una recarga o
+  una vista previa del navegador no gasten huecos.
+- No pasa nada de la demo a la cuenta que se crea después: el negocio nace vacío.
+- No hay forma de pedir una demo sin su pantalla (PUBLIC-F36).
