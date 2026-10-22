@@ -277,7 +277,7 @@ Pantalla: Portada, Planes y precios, Características, Colabora
 Pasos:
 1. La persona lee la portada, Planes y precios, las páginas de producto y Colabora para hacerse una idea de qué hace ERPlora.
 2. Todo lo que se nombra existe hoy en las apps: punto de venta, facturación con VeriFactu, inventario, clientes, citas y reservas, personal y control horario, cocina y mesas.
-3. La tabla «lo que pagarías por separado» solo lista funciones que las apps cubren y su total es la suma de sus filas.
+3. La tabla de lo que se pagaría por separado solo lista funciones que las apps cubren y su total es la suma de sus filas.
 Entra: nada; el texto de las páginas, contrastado con las apps del producto.
 Sale: nada guardado.
 Si falla: no se anuncia contabilidad, nóminas, tickets de soporte, TicketBAI, los modelos 303, 390 y 347, almacenes con lotes y caducidades ni conciliación bancaria, porque ninguna app los hace; la franja de sectores nombra los negocios que se sirven hoy (hostelería, comercio, peluquería y estética, servicios profesionales). Las comparativas con otros productos pueden nombrar lo que hacen ellos.
@@ -291,7 +291,7 @@ Pantalla: Seguridad, Planes y precios, Portada, Sobre nosotros
 Pasos:
 1. La persona lee qué dicen Seguridad, las preguntas frecuentes de precios, la portada y Sobre nosotros sobre el acceso, los datos y la disponibilidad.
 2. Lee lo que funciona hoy: sesiones de servidor en cookies seguras, código de un solo uso para entrar en el negocio, entrar con Google, contraseñas con hash y sal, cifrado en tránsito y en reposo, solo HTTPS con TLS 1.2 o 1.3, AWS en Irlanda con su cortafuegos web, copias continuas recuperables a cualquier momento de los últimos 14 días y alta disponibilidad.
-3. A «¿Dónde se guardan mis datos?» la respuesta es la Unión Europea, con la única excepción del asistente si su proveedor europeo no está disponible, y el enlace «Lee la política de privacidad».
+3. A «¿Dónde se almacenan mis datos?» la respuesta es la Unión Europea, con la única excepción del asistente si su proveedor europeo no está disponible, y el enlace «Lee la política de privacidad».
 Entra: nada; el texto de las páginas, contrastado con la infraestructura y la política de privacidad.
 Sale: nada guardado.
 Si falla: no se promete un acuerdo de disponibilidad con porcentaje, soporte 24/7, auditorías periódicas, informes de pruebas de intrusión, cifrado de extremo a extremo ni entrar con GitHub, y nunca «tus datos nunca salen de la UE», que contradiría la política de privacidad.
@@ -317,9 +317,9 @@ Estado: hecho
 Actor: visitante
 Pantalla: Sobre nosotros, Colabora
 Pasos:
-1. «Sobre nosotros» cuenta la misión, cómo se guardan los datos de cada negocio y que todas las apps son de ERPlora.
+1. «Sobre Nosotros» cuenta la misión, cómo se guardan los datos de cada negocio y que todas las apps son de ERPlora.
 2. «Colabora» explica el programa en cuatro pasos y ofrece un negocio completo gratis durante un año, valorado en lo que cuesta un año del plan de pago más barato (su precio anual), con los sectores y tipos de negocio que hay hoy; «Solicitar Ahora» lleva al contacto con el asunto del programa.
-3. La dirección antigua de la empresa lleva para siempre a «Sobre nosotros»; Blog, Empleos y Prensa son páginas «Muy pronto» (PUBLIC-F12).
+3. La dirección antigua de la empresa lleva para siempre a «Sobre Nosotros»; Blog, Empleos y Prensa son páginas «Muy pronto» (PUBLIC-F12).
 Entra: los planes a la venta y la taxonomía (sectores y tipos de negocio activos).
 Sale: nada guardado; la solicitud llega como mensaje del formulario de contacto.
 Si falla: sin plan de pago a la venta, Colabora no inventa un valor; sin taxonomía, no dice cifras. No hay página de desarrolladores: no hay apps de terceros.
@@ -346,7 +346,7 @@ Actor: visitante
 Pantalla: Muy pronto
 Pasos:
 1. Blog, Empleos y Prensa enseñan su titular y lo que vendrá; no se indexan y ningún menú las enlaza.
-2. Una dirección antigua de la tienda (el marketplace, las soluciones o los módulos) lleva para siempre a la tienda de apps; la de la empresa, a «Sobre nosotros».
+2. Una dirección antigua de la tienda (el marketplace, las soluciones o los módulos) lleva para siempre a la tienda de apps; la de la empresa, a «Sobre Nosotros».
 3. La página de desarrolladores y la del puente local ya no existen: dan «Página no encontrada».
 Entra: nada.
 Sale: nada guardado.

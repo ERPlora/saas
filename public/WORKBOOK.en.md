@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:84f99869a1f4fe717842bc46b285adffdbec6f5ae97b4d51c4d2ec912735332c -->
+<!-- generated from WORKBOOK.md sha256:7d7cbe42762db492eff9ba5f22a47b0989541a970e7dab138266d5ebc6382a90 -->
 
 ## What it is for and who it is for
 
@@ -260,7 +260,7 @@ Screen: Home, Plans and prices, Features, Collaborate
 Steps:
 1. The person reads the home, Plans and prices, the product pages and Collaborate to get an idea of what ERPlora does.
 2. Everything named exists today in the apps: point of sale, invoicing with VeriFactu, inventory, customers, appointments and bookings, staff and time tracking, kitchen and tables.
-3. The table "what you would pay separately" lists only functions the apps cover and its total is the sum of its rows.
+3. The table of what one would pay separately lists only functions the apps cover and its total is the sum of its rows.
 In: nothing; the pages' text, checked against the product's apps.
 Out: nothing saved.
 If it fails: accounting, payroll, support tickets, TicketBAI, the 303, 390 and 347 tax returns, warehouses with lots and expiry dates and bank reconciliation are not advertised, because no app does them; the industries strip names the businesses served today (hospitality, retail, hair and beauty, professional services). The comparisons with other products may name what those do.
