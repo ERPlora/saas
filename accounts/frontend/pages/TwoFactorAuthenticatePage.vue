@@ -15,7 +15,7 @@
 // answers. Should the answer get lost (or the page be reloaded meanwhile), the page asks only the question, without
 // the code. With no login waiting for it any more, allauth answers it as the code: a 401 without a pending flow (never a
 // 409), and the session says whether another tab finished the sign-in (→ on) or the login expired (→ the sign-in).
-import { ApiError, createAllauthClient, type AuthState, type FieldErrors, useLiveClient } from '@erplora/ui/sdk';
+import { ApiError, type AuthState, type FieldErrors, useLiveClient } from '@erplora/ui/sdk';
 import { ionIconSrc } from '@erplora/ui/shell';
 import { IonButton, IonCheckbox, IonIcon } from '@ionic/vue';
 import { computed, onMounted, shallowRef } from 'vue';
@@ -26,6 +26,8 @@ import AuthShell from '../components/AuthShell.vue';
 import CodeField from '../components/CodeField.vue';
 import { localNext } from '../next';
 import { LAUNCHER } from '../paths';
+import { createProtectedAllauthClient } from '../recaptcha';
+import RecaptchaNotice from '../components/RecaptchaNotice.vue';
 
 /** allauth's flows of a login that waits for its second factor, then for «Trust this browser». */
 const PENDING_FLOW = 'mfa_authenticate';
@@ -36,7 +38,7 @@ const SHIELD_ICON = ionIconSrc('lucide:shield-check');
 const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
-const auth = createAllauthClient(useLiveClient().config);
+const auth = createProtectedAllauthClient(useLiveClient().config);
 
 /** What the login waits for: the code, or the answer to «Trust this browser». */
 const step = shallowRef<'code' | 'trust'>('code');
@@ -191,6 +193,7 @@ async function backToSignIn(): Promise<void> {
     >
       {{ $t('accounts.twoFactor.backToSignIn') }}
     </ion-button>
+    <RecaptchaNotice />
   </AuthShell>
 </template>
 

@@ -10,7 +10,7 @@
 // the sign-in with «Your password has been changed» (`?notice=password_reset`), or on at once when the
 // server signs the person in.
 import { InlineFeedback } from '@erplora/ui/components';
-import { ApiError, createAllauthClient, type AuthState, type FieldErrors, useLiveClient } from '@erplora/ui/sdk';
+import { ApiError, type AuthState, type FieldErrors, useLiveClient } from '@erplora/ui/sdk';
 import { IonButton, IonInput, IonInputPasswordToggle, IonSpinner } from '@ionic/vue';
 import { computed, onMounted, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -19,6 +19,8 @@ import { useRouter } from 'vue-router';
 import AuthShell from '../components/AuthShell.vue';
 import { passwordStrength } from '../password';
 import { LAUNCHER } from '../paths';
+import { createProtectedAllauthClient } from '../recaptcha';
+import RecaptchaNotice from '../components/RecaptchaNotice.vue';
 
 const props = defineProps<{
   /** The key of the mailed link (the route's `:resetKey`). */
@@ -35,7 +37,7 @@ const NON_FIELD = '__all__';
 
 const { t } = useI18n();
 const router = useRouter();
-const auth = createAllauthClient(useLiveClient().config);
+const auth = createProtectedAllauthClient(useLiveClient().config);
 
 /** `checking` the key, the form when it is `ready`, an `invalid` link, or the key could not be checked (`error`). */
 const status = shallowRef<'checking' | 'ready' | 'invalid' | 'error'>('checking');
@@ -201,6 +203,7 @@ async function submit(): Promise<void> {
       >
         {{ $t('accounts.passwordReset.change') }}
       </ion-button>
+      <RecaptchaNotice />
     </form>
 
     <template

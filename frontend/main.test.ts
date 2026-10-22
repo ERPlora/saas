@@ -293,12 +293,18 @@ describe('the panel (round 17, PLAN-SAAS §3.6)', () => {
     expect(assign).not.toHaveBeenCalled();
   });
 
-  it('trusts the script URLs of Stripe.js only (its loader sets its chunks as strings): one origin, exact', async () => {
+  it('trusts the script URLs of Stripe.js and of reCAPTCHA only (their loaders set their scripts as strings)', async () => {
     fakeShell();
     await main.boot({});
     // The `default` Trusted Types policy admits these origins' script URLs and no other; the CSP's
-    // `script-src` still decides page by page (the account surface's names no Stripe).
-    expect(shellOptions().trustedScriptOrigins).toEqual(['https://js.stripe.com']);
+    // `script-src` still decides page by page (the account surface's names no Stripe). reCAPTCHA (2026-10-22):
+    // our code inserts `www.google.com/recaptcha/enterprise.js`, which inserts its release from `www.gstatic.com`
+    // (frontend/recaptcha.ts).
+    expect(shellOptions().trustedScriptOrigins).toEqual([
+      'https://js.stripe.com',
+      'https://www.google.com',
+      'https://www.gstatic.com',
+    ]);
   });
 
   it('passes the shell the account surface the server keeps in the session (spa-config.surface)', async () => {

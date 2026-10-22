@@ -9,7 +9,9 @@
 //     panel, the scroll reveal, and the server messages as ion-toasts;
 //   - the colour mode: the one the server wrote on <html> (`data-ep-theme`), and in `system` the
 //     operating system's, followed live (the head's inline script already painted the first frame);
-//   - Mermaid, imported only when the page has a `pre.mermaid` (spec §6).
+//   - Mermaid, imported only when the page has a `pre.mermaid` (spec §6);
+//   - reCAPTCHA Enterprise on the forms that ask it (`data-recaptcha-action`: the contact form, the demo), invisible:
+//     the token of each submit in `recaptcha_token` (frontend/recaptcha.ts).
 // No CDN and no runtime icon fetch: icons are SVG painted on the server by `{% icon %}`.
 import '@ionic/core/css/core.css';
 import '@ionic/core/css/normalize.css';
@@ -43,6 +45,8 @@ import { defineCustomElement as defineSearchbar } from '@ionic/core/components/i
 import { defineCustomElement as defineTextarea } from '@ionic/core/components/ion-textarea.js';
 import { defineCustomElement as defineToast } from '@ionic/core/components/ion-toast.js';
 import { defineCustomElement as defineToggle } from '@ionic/core/components/ion-toggle.js';
+
+import { protectForms } from './recaptcha';
 
 // One stylesheet per component partial of public/templates/public/components/ (and the hero,
 // navbar and footer partials).
@@ -266,6 +270,7 @@ export function boot(doc: Document): void {
   setupAppBack(doc);
   setupReveal(doc, doc.defaultView?.IntersectionObserver);
   presentServerMessages(doc);
+  protectForms(doc);
   void renderDiagrams(doc);
 }
 

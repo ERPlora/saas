@@ -1308,8 +1308,8 @@ def test_the_notice_speaks_spanish(client, recaptcha):
     html = html_of(client, CONTACT, language="es")
 
     assert "Este sitio está protegido por reCAPTCHA" in html
-    assert "Política de privacidad" in html
-    assert "Condiciones del servicio" in html
+    assert "Política de Privacidad" in html
+    assert "Condiciones del Servicio" in html
 
 
 def test_the_context_gives_the_templates_the_site_key(rf, recaptcha, settings):

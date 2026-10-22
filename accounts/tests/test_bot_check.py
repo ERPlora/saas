@@ -169,3 +169,20 @@ def test_switched_off_the_doors_need_no_token(verified):
     response = _post(f"{BROWSER}/auth/login", {"email": verified.email, "password": PASSWORD})
 
     assert (response.status_code, _pending(response)) == (401, ["login_by_code"])
+
+
+def test_the_spa_adds_the_token_at_the_same_doors_with_the_same_actions():
+    """accounts/frontend/recaptcha.ts adds the token; a door or an action named otherwise there would refuse every
+    person at that door."""
+    import re
+    from pathlib import Path
+
+    from django.conf import settings
+
+    source = (Path(settings.BASE_DIR) / "accounts" / "frontend" / "recaptcha.ts").read_text()
+    doors = {
+        f"{BROWSER}{path}": action
+        for path, action in re.findall(r"\[`\$\{BROWSER\}(/auth/[a-z0-9/]+)`\]: '([a-z_]+)'", source)
+    }
+
+    assert doors == RECAPTCHA_DOORS
