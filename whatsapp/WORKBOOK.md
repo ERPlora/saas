@@ -1,7 +1,7 @@
 # Workbook — WhatsApp (whatsapp)
 Prefijo: WHATSAPP
 Alcance MVP: fase 1 (la cuenta de WhatsApp Business de cada negocio en erplora.com: su número, los avisos de Meta, los envíos, el cupo del mes y las plantillas, al servicio de la bandeja del Hub)
-Estado de la app: en uso (conectar y desconectar el número esperan a que el Hub lo pida)
+Estado de la app: en uso
 
 > Manual de uso y especificación de la app `whatsapp` del SaaS (erplora.com). Cuenta qué hace erplora.com con el
 > WhatsApp de cada negocio: guarda su número y el permiso que Meta le da, recibe los avisos de Meta y los entrega
@@ -99,7 +99,7 @@ estado y su mes; y lo gastado cada mes por negocio.
 
 | ID | Flujo | Estado |
 |---|---|---|
-| WHATSAPP-F01 | Conectar el número de WhatsApp del negocio | parcial |
+| WHATSAPP-F01 | Conectar el número de WhatsApp del negocio | hecho |
 | WHATSAPP-F02 | Desconectar el número | hecho |
 | WHATSAPP-F03 | Decir al Hub qué número tiene el negocio y si hay que reconectarlo | hecho |
 | WHATSAPP-F04 | Guardar el número de cada negocio con su permiso de Meta cifrado | hecho |
@@ -109,7 +109,7 @@ estado y su mes; y lo gastado cada mes por negocio.
 | WHATSAPP-F08 | Ver los números de WhatsApp en el admin | hecho |
 | WHATSAPP-F09 | Mover un número al negocio que lo conecta | hecho |
 | WHATSAPP-F10 | Hablar con Meta sin dejar ver el permiso del negocio | hecho |
-| WHATSAPP-F11 | Dar al Hub lo que necesita para abrir la ventana de Meta | parcial |
+| WHATSAPP-F11 | Dar al Hub lo que necesita para abrir la ventana de Meta | hecho |
 | WHATSAPP-F12 | Renovar el permiso de Meta antes de que caduque y avisar si no se puede | hecho |
 | WHATSAPP-F13 | Confirmar a Meta que la dirección de los avisos es nuestra | hecho |
 | WHATSAPP-F14 | Olvidar los mensajes que el Hub ya recogió | hecho |
@@ -120,7 +120,7 @@ estado y su mes; y lo gastado cada mes por negocio.
 
 ### WHATSAPP-F01 Conectar el número de WhatsApp del negocio
 <!-- origen: fi:saas/auth-services#conectar-numero-whatsapp-embedded-signup-oauth -->
-Estado: parcial — erplora.com ya devuelve el código de la ventana de Meta al Hub que la abrió y conecta el número que le llega, pero el alta entera con el Hub de verdad aún no se ha visto: en desarrollo el Hub solo acepta una página de vuelta segura (https) y no ofrece «Conectar WhatsApp», y lo que Meta dice desde su ventana (la cuenta y el número elegidos) no se puede reproducir en una prueba
+Estado: hecho
 Actor: propietario, administrador
 Pantalla: Bandeja de WhatsApp › Ajustes (en el Hub); Vuelta de la ventana de Meta
 Pasos:
@@ -262,7 +262,7 @@ Implicados: ninguno
 
 ### WHATSAPP-F11 Dar al Hub lo que necesita para abrir la ventana de Meta
 <!-- origen: old-saas:SAAS_WHATSAPP_INBOX-F01 -->
-Estado: parcial — erplora.com ya da todo, también su página de vuelta, y el Hub lo pide al pintar «Tu número», pero aún no se ha visto abrir la ventana de Meta con el Hub de verdad: en desarrollo el Hub solo acepta una página de vuelta segura (https) y dice «Todavía no se puede conectar el número desde aquí.»
+Estado: hecho
 Actor: sistema
 Pantalla: Bandeja de WhatsApp › Ajustes (en el Hub)
 Pasos:
