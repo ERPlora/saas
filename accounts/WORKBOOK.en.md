@@ -206,6 +206,7 @@ theme and "Sign out".
 | ACCOUNTS-F35 | Erase the accounts unused for two years | partial |
 | ACCOUNTS-F36 | See who changed an account | done |
 | ACCOUNTS-F37 | Erase the audit log older than 90 days | partial |
+| ACCOUNTS-F38 | Report a problem to support | done |
 
 ### ACCOUNTS-F01 Create the account
 Status: done
@@ -541,8 +542,8 @@ Actor: any person with an account
 Screen: User menu
 Steps:
 1. At the top of the side menu (on a phone, inside the menu) is the person's card: their initials, their name and their email.
-2. Tapping it opens the **User menu**: "Account", "Help", "Theme" and "Sign out".
-3. "Account" leads to **Account › Profile**, from where **Security**, **Preferences** and **API keys** are reached; "Help", to the help; "Theme", to ACCOUNTS-F24; "Sign out", to ACCOUNTS-F09.
+2. Tapping it opens the **User menu**: "Account", "Report a problem", "Help", "Theme" and "Sign out".
+3. "Account" leads to **Account › Profile**, from where **Security**, **Preferences** and **API keys** are reached; "Report a problem", to ACCOUNTS-F38; "Help", to the help; "Theme", to ACCOUNTS-F24; "Sign out", to ACCOUNTS-F09.
 In: the session.
 Out: nothing saved.
 If it fails: without a session there is no menu: the panel leads to the **Entrance**.
@@ -707,4 +708,17 @@ Steps:
 In: the date of each log entry.
 Out: the log with only the last 90 days; nothing else changes.
 If it fails: if a batch cannot be erased, the task ends with an error so the team sees it; what was erased before stays erased and the next pass goes on from there. If a pass is already running, the second does nothing. The team can count what would be erased without erasing anything, and change how many days are kept.
+Involved: none
+
+### ACCOUNTS-F38 Report a problem to support
+Status: done
+Actor: any person with an account
+Screen: Report a problem
+Steps:
+1. In the **User menu**, «Report a problem» (also in the account opened from the app). The screen says «Tell us what went wrong. We will reply by email.».
+2. They write «Subject» and «What happened?» («Describe the steps and what you expected to happen») and press «Send report», which waits until both are written. Below, the screen warns: «Your account, your businesses, the page you came from and your browser go with your report.».
+3. They see «Report sent», with the email support will answer to, and «Back», which leads to the screen they came from.
+In: the subject and what happened.
+Out: a mail to the support mailbox with the subject, the text and, below, the account, its businesses, the screen they came from and their browser; when answering, support writes straight to the person. Nothing is kept on erplora.com and no ticket is opened.
+If it fails: «Add a subject.» or «Describe the problem, please.» under its field; after five reports in an hour, «Too many attempts. Please try again in a few minutes.»; if the mail cannot leave, a notice with the support address to write to directly. In every case what was written stays and can be sent again.
 Involved: none

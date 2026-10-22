@@ -643,6 +643,8 @@ COOKIE_CONSENT_SECURE = not DEBUG
 
 # Messages of the contact form per address (django-ratelimit, over the default cache).
 CONTACT_FORM_RATELIMIT = config("CONTACT_FORM_RATELIMIT", default="10/h")
+# «Report a problem» of the panel per account (ACCOUNTS-F38; django-ratelimit, over the default cache).
+SUPPORT_REPORT_RATELIMIT = config("SUPPORT_REPORT_RATELIMIT", default="5/h")
 # The demo hubs (PLAN-SAAS §3.5, round 2026-10-17; public/demo.py): one switch, and new demos per address
 # (django-ratelimit, over the default cache; a browser re-entering its live demo does not count). The Hub keeps
 # the cap of live demos (MAX_CONCURRENT_DEMOS) and the WAF limits /demo per IP too.

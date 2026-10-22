@@ -43,6 +43,7 @@
   "accounts.apikey.list": { "method": "get", "path": "/api/accounts/api-keys" },
   "accounts.apikey.create": { "method": "post", "path": "/api/accounts/api-keys" },
   "accounts.apikey.revoke": { "method": "post", "path": "/api/accounts/api-keys/revoke" },
+  "accounts.support.report": { "method": "post", "path": "/api/accounts/support/report" },
   "apps.app.list": { "method": "get", "path": "/api/apps" },
   "apps.app.get": { "method": "get", "path": "/api/apps/get" },
   "hubs.billing_profile.get": { "method": "get", "path": "/api/hubs/billing-profile" },

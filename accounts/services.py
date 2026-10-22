@@ -67,6 +67,8 @@ from accounts.schemas import (
     ProfileDeleteIn,
     ProfileOut,
     ProfileUpdateIn,
+    SupportReportIn,
+    SupportReportOut,
 )
 
 logger = logging.getLogger(__name__)
@@ -1346,3 +1348,56 @@ def password_changed_ends_sessions(sender, request=None, user=None, **kwargs) ->
     if user is None:
         return
     signals.sessions_ended.send(sender=get_user_model(), user_id=user.pk)
+
+
+# --- «Report a problem» (ACCOUNTS-F38) ------------------------------------------------------------
+
+#: Characters of the browser a report keeps: a user agent is one line, rarely over 300.
+REPORT_BROWSER_MAX = 300
+
+
+def _one_line(value: str) -> str:
+    """``value`` on one line: a mail header carries one, and a break typed in it would add another (``Bcc:``)."""
+    return " ".join(value.split())
+
+
+@operation(
+    "accounts.support.report",
+    kind="command",
+    permission="accounts.manage",
+    input=SupportReportIn,
+    output=SupportReportOut,
+)
+def support_report(ctx: OperationContext, data: SupportReportIn) -> dict:
+    """«Report a problem» (ACCOUNTS-F38; PLAN-SAAS §1.1): mail the support mailbox what the person wrote, with the
+    account, its businesses, the page it came from and its browser, «Reply-To» the account. Limited per account
+    (``SUPPORT_REPORT_RATELIMIT``, as the contact form per address); nothing is kept and no issue is opened."""
+    from django_ratelimit.core import is_ratelimited
+
+    user = queries.account_of(ctx)
+    if is_ratelimited(
+        None,
+        group="accounts.support.report",
+        key=lambda group, request: f"user:{user.pk}",
+        rate=settings.SUPPORT_REPORT_RATELIMIT,
+        increment=True,
+    ):
+        raise too_many_attempts()
+    memberships = HubMembership.objects.filter(user=user).order_by("hub_slug")
+    browser = ctx.request.headers.get("User-Agent", "") if ctx.request is not None else ""
+    context = [
+        ("Account", f"{user.email} ({user.pk})"),
+        ("Language", user.language),
+        ("Businesses", ", ".join(f"{row.hub_slug} ({row.role})" for row in memberships) or "none"),
+        ("Page", _one_line(data.page or "") or "unknown"),
+        ("Browser", _one_line(browser)[:REPORT_BROWSER_MAX] or "unknown"),
+        ("Sent", timezone.now().isoformat(timespec="seconds")),
+    ]
+    if not emails.send_support_report(user, subject=_one_line(data.subject), description=data.description, context=context):
+        raise OperationError(
+            gettext("We could not send your report. Write to us directly at %(email)s.") % {"email": settings.SUPPORT_EMAIL},
+            code="accounts.report_not_sent",
+            status=503,
+        )
+    logger.info("accounts.support_report_sent user=%s", user.pk)
+    return {"reply_to": user.email}

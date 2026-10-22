@@ -226,6 +226,7 @@ El nombre y el correo arriba del menú lateral (en el móvil, dentro del menú):
 | ACCOUNTS-F35 | Borrar las cuentas sin uso en dos años | parcial |
 | ACCOUNTS-F36 | Ver quién cambió una cuenta | hecho |
 | ACCOUNTS-F37 | Borrar el registro de auditoría de más de 90 días | parcial |
+| ACCOUNTS-F38 | Reportar un problema a soporte | hecho |
 
 ### ACCOUNTS-F01 Crear la cuenta
 <!-- origen: old-saas:SAAS_AUTH-F01 pc:cloud/auth/signup fi:saas/auth-services#registro-de-usuario-por-api-signup fi:saas/support/auth-services#service-create_user gh:saas#2542 gh:saas#2536 gh:saas#2560 gh:saas#2562 -->
@@ -586,8 +587,8 @@ Actor: cualquier persona con cuenta
 Pantalla: Menú de usuario
 Pasos:
 1. Arriba del menú lateral (en el móvil, dentro del menú) está la tarjeta de la persona: sus iniciales, su nombre y su correo.
-2. Al pulsarla se abre el **Menú de usuario**: «Cuenta», «Ayuda», «Tema» y «Cerrar sesión».
-3. «Cuenta» lleva a **Cuenta › Perfil**, desde donde están **Seguridad**, **Preferencias** y **Claves de API**; «Ayuda», a la ayuda; «Tema», a ACCOUNTS-F24; «Cerrar sesión», a ACCOUNTS-F09.
+2. Al pulsarla se abre el **Menú de usuario**: «Cuenta», «Reportar un problema», «Ayuda», «Tema» y «Cerrar sesión».
+3. «Cuenta» lleva a **Cuenta › Perfil**, desde donde están **Seguridad**, **Preferencias** y **Claves de API**; «Reportar un problema», a ACCOUNTS-F38; «Ayuda», a la ayuda; «Tema», a ACCOUNTS-F24; «Cerrar sesión», a ACCOUNTS-F09.
 Entra: la sesión.
 Sale: nada guardado.
 Si falla: sin sesión no hay menú: el panel lleva a la **Entrada**.
@@ -764,6 +765,20 @@ Pasos:
 Entra: la fecha de cada entrada del registro.
 Sale: el registro con solo los últimos 90 días; nada más cambia.
 Si falla: si una tanda no se puede borrar, la tarea termina con error para que el equipo lo vea; lo borrado antes se queda borrado y la pasada siguiente sigue desde ahí. Si ya hay una pasada en marcha, la segunda no hace nada. El equipo puede contar lo que se borraría sin borrar nada, y cambiar los días que se guardan.
+Implicados: ninguno
+
+### ACCOUNTS-F38 Reportar un problema a soporte
+<!-- origen: old-saas:SAAS_DASHBOARD-F219 fi:saas/assistant-help#reportar-un-problema-contacto-de-soporte -->
+Estado: hecho
+Actor: cualquier persona con cuenta
+Pantalla: Reportar un problema
+Pasos:
+1. En el **Menú de usuario**, «Reportar un problema» (también en la cuenta abierta desde la aplicación). La pantalla dice «Cuéntanos qué ha fallado. Te responderemos por correo electrónico.».
+2. Escribe «Asunto» y «¿Qué pasó?» («Describe los pasos y lo que esperabas que pasara») y pulsa «Enviar informe», que espera a que los dos estén escritos. Debajo, la pantalla avisa: «Con tu informe van tu cuenta, tus negocios, la página de la que vienes y tu navegador.».
+3. Ve «Informe enviado», con el correo al que soporte le responderá, y «Volver», que lleva a la pantalla de la que venía.
+Entra: el asunto y lo que pasó.
+Sale: un correo al buzón de soporte con el asunto, el texto y, debajo, la cuenta, sus negocios, la pantalla de la que venía y su navegador; al contestar, soporte escribe directamente a la persona. No se guarda nada en erplora.com ni se abre ninguna incidencia.
+Si falla: «Añade un asunto.» o «Describe el problema, por favor.» bajo su campo; tras cinco informes en una hora, «Demasiados intentos. Vuelve a intentarlo en unos minutos.»; si el correo no sale, un aviso con la dirección de soporte para escribir directamente. En todos los casos lo escrito se queda y se puede volver a enviar.
 Implicados: ninguno
 
 ## Para quien lo mantiene

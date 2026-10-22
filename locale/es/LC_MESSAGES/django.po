@@ -989,7 +989,7 @@ msgstr "Pulsa para ver los registros con este ID de correlación"
 
 #. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
 msgid "Created"
-msgstr "Creado"
+msgstr "Creada"
 
 #. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
 msgid "create"
@@ -1086,6 +1086,16 @@ msgstr "Sin cambios en los campos"
 #. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
 msgid "No log entries found."
 msgstr "No hay entradas de registro."
+
+msgid "Add a subject."
+msgstr "Añade un asunto."
+
+msgid "Describe the problem, please."
+msgstr "Describe el problema, por favor."
+
+#, python-format
+msgid "We could not send your report. Write to us directly at %(email)s."
+msgstr "No hemos podido enviar tu informe. Escríbenos directamente a %(email)s."
 
 #: fiscal_gateway/apps.py:16
 msgid "Fiscal gateway"

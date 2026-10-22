@@ -396,3 +396,36 @@ class InactiveAccountOut(Schema):
     #: ``erased`` (or, in a dry run, would be), ``member`` (it belongs to a business: kept) or ``active`` (it signed in
     #: since it was picked, or is no longer a candidate).
     outcome: Literal["erased", "member", "active"]
+
+
+# --- «Report a problem» (ACCOUNTS-F38) -----------------------------------------------------------
+
+
+class SupportReportIn(StrictIn):
+    """What the person writes to support; the account, its businesses and its browser go with it on their own."""
+
+    subject: str = Field(max_length=150)
+    description: str = Field(max_length=5000)
+    #: The panel's page the person came from, as the SPA's router knew it.
+    page: str | None = Field(default=None, max_length=500)
+
+    @field_validator("subject")
+    @classmethod
+    def _subject_given(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError(gettext("Add a subject."))
+        return value
+
+    @field_validator("description")
+    @classmethod
+    def _description_given(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError(gettext("Describe the problem, please."))
+        return value
+
+
+class SupportReportOut(Schema):
+    #: Where support answers: the account's email.
+    reply_to: str

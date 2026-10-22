@@ -395,6 +395,18 @@
         "disconnectMessage": "You will no longer sign in with {account}; you will keep signing in with your email and your password.",
         "disconnected": "Google disconnected"
       }
+    },
+    "report": {
+      "title": "Report a problem",
+      "intro": "Tell us what went wrong. We will reply by email.",
+      "subject": "Subject",
+      "description": "What happened?",
+      "descriptionPlaceholder": "Describe the steps and what you expected to happen",
+      "context": "Your account, your businesses, the page you came from and your browser go with your report.",
+      "send": "Send report",
+      "sentTitle": "Report sent",
+      "sentBody": "Thank you: we have received your report and will reply to {email} as soon as possible.",
+      "back": "Back"
     }
   }
 }

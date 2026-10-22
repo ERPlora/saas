@@ -19,6 +19,7 @@ from accounts.schemas import (
     ProfileUpdateIn,
     SessionCloseIn,
     SessionListIn,
+    SupportReportIn,
 )
 
 router = Router(tags=["accounts"])
@@ -121,3 +122,8 @@ async def apikey_create(request, data: ApiKeyCreateIn):
 @bind(router, "accounts.apikey.revoke", "/accounts/api-keys/revoke")
 async def apikey_revoke(request, data: ApiKeyRevokeIn):
     return await run_operation(request, services.apikey_revoke, data)
+
+
+@bind(router, "accounts.support.report", "/accounts/support/report")
+async def support_report(request, data: SupportReportIn):
+    return await run_operation(request, services.support_report, data)

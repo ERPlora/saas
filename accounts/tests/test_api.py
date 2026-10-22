@@ -72,6 +72,7 @@ CUENTA = {
     ("get", "/api/accounts/api-keys"): "accounts.apikey.list",
     ("post", "/api/accounts/api-keys"): "accounts.apikey.create",
     ("post", "/api/accounts/api-keys/revoke"): "accounts.apikey.revoke",
+    ("post", "/api/accounts/support/report"): "accounts.support.report",
 }
 
 

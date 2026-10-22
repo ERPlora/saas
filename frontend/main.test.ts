@@ -253,12 +253,14 @@ describe('the panel (round 17, PLAN-SAAS §3.6)', () => {
     await shellOptions().userMenu!.logout!();
   }
 
-  it('hands the shell the user menu: Account, Help at /help and Sign out', async () => {
+  it('hands the shell the user menu: Account, Report a problem, Help at /help and Sign out', async () => {
     fakeShell();
     await main.boot({});
     const { userMenu } = shellOptions();
     expect(userMenu?.items).toEqual([
       { id: 'account', labelKey: 'saas.userMenu.account', icon: 'ion:person-outline', to: '/account' },
+      // ACCOUNTS-F38: nothing is sold there, so it shows on the app surfaces too.
+      { id: 'report', labelKey: 'saas.userMenu.reportProblem', icon: 'ion:chatbubbles-outline', to: '/report-a-problem' },
     ]);
     expect(userMenu?.helpPath).toBe('/help');
     expect(userMenu?.logout).toBeTypeOf('function');
@@ -325,6 +327,11 @@ describe('the panel (round 17, PLAN-SAAS §3.6)', () => {
   it("translates the user menu's Account in en and es (the entry's own catalogue, frontend/locale)", () => {
     const messages = importBoot.messages as Record<string, { saas: { userMenu: { account: string } } }>;
     expect([messages.en.saas.userMenu.account, messages.es.saas.userMenu.account]).toEqual(['Account', 'Cuenta']);
+    const report = importBoot.messages as Record<string, { saas: { userMenu: { reportProblem: string } } }>;
+    expect([report.en.saas.userMenu.reportProblem, report.es.saas.userMenu.reportProblem]).toEqual([
+      'Report a problem',
+      'Reportar un problema',
+    ]);
   });
 
   it("keeps the entry's catalogue under `saas`, with the same keys in en and es; anything else only overrides the shell's own texts", () => {
