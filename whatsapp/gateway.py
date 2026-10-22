@@ -8,7 +8,8 @@ Meta (``meta``) and to the Hub (``hub_client``), so that no transaction waits fo
   else (404 ``app_inactive``, a Hub without the door, 5xx, no answer) kept and retried with a growing wait;
 - ``send``: door 5. Claim (the month's place, by the key) → Meta, outside any transaction → record how it ended.
   Meta's refusal frees the place and the key; no answer keeps both (``unknown``: the same key sends again only after
-  ``services.IN_FLIGHT``); a 2xx without Meta's id is sent for good, never again (saas#2653);
+  ``services.IN_FLIGHT``); a 2xx without Meta's id is sent for good, never again (saas#2653). Meta's 190 (the
+  permission expired or withdrawn) is ``whatsapp.reconnect_needed`` and marks the number «needs reconnecting»;
 - ``erase``: door 6;
 - ``submit_template``: door 8 (WHATSAPP-G15). Meta's rules checked first (``templates.check``), then claim (the key)
   → Meta → record. Meta saying it already has that name in that language (a first call whose answer was lost) adopts
@@ -125,6 +126,8 @@ def _push(delivery) -> tuple[str, str]:
 WINDOW_CLOSED = frozenset({131047, 470})
 RECIPIENT_BLOCKED = frozenset({131021, 131026, 131030, 131049, 131050})
 NOT_CONNECTED = frozenset({10, 190, 200, 131031, 133010})
+#: The business's permission expired or was withdrawn in Meta: only connecting the number again fixes it. Door 5
+#: says ``whatsapp.reconnect_needed`` (the number is marked so); the template doors still say ``not_connected``.
 EXPIRED_PERMISSION = 190
 
 
@@ -206,6 +209,8 @@ def _refusal(refused: meta.MetaRefused) -> tuple[int, dict]:
         name = "whatsapp.recipient_blocked"
     elif code is not None and 132000 <= code < 133000:
         name = "whatsapp.template_not_approved"
+    elif code == EXPIRED_PERMISSION:
+        name = "whatsapp.reconnect_needed"
     elif code in NOT_CONNECTED:
         name = "whatsapp.not_connected"
     else:
