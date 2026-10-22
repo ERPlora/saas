@@ -1,15 +1,17 @@
 # Workbook — Cuentas (accounts)
 Prefijo: ACCOUNTS
 Alcance MVP: fase 1 (la cuenta de erplora.com: crearla, entrar y salir, su contraseña y lo que acepta)
-Estado de la app: en construcción (partes 1 a 3 de 5: crear la cuenta, entrar, la contraseña, salir, los términos y el freno; la verificación en dos pasos, los navegadores de confianza y las sesiones abiertas; el perfil, las preferencias, los avisos, el menú de usuario, descargar los datos y eliminar la cuenta)
+Estado de la app: en construcción (partes 1 a 4 de 5: crear la cuenta, entrar, la contraseña, salir, los términos y el freno; la verificación en dos pasos, los navegadores de confianza y las sesiones abiertas; el perfil, las preferencias, los avisos, el menú de usuario, descargar los datos y eliminar la cuenta; el salto a un negocio y la vuelta, las claves de API y su documentación, la retención de datos, el registro de auditoría y reportar un problema)
 
 > Manual de uso y especificación de la app `accounts` del SaaS (erplora.com). Cuenta cómo se crea una
 > cuenta, cómo se confirma el correo, cómo se entra y se sale, cómo se recupera y se cambia la contraseña,
 > qué se acepta al continuar, cómo se frena a quien prueba contraseñas, cómo se pide la app autenticadora
 > después de la contraseña, en qué navegadores se confía, cómo se ven y se cierran las sesiones abiertas, cómo
-> se cambian el perfil, el idioma, el tema y los avisos por correo, y cómo se descargan los datos y se elimina la
-> cuenta. Esta parte del manual no se publica en la tienda: es la referencia del equipo y de la QA. El salto a un
-> negocio y las llaves de API se escriben en las partes 4 y 5.
+> se cambian el perfil, el idioma, el tema y los avisos por correo, cómo se descargan los datos y se elimina la
+> cuenta, cómo se salta a un negocio y se vuelve, cómo se crean, se usan y se revocan las claves de API y se consulta
+> su documentación, cuánto se guardan las cuentas sin uso y el registro de auditoría, y cómo se reporta un problema
+> a soporte. Esta parte del manual no se publica en la tienda: es la referencia del equipo y de la QA. La plataforma
+> del SaaS (la parte 5) se escribe a continuación.
 
 ## Para qué sirve y para quién
 
@@ -787,16 +789,18 @@ Implicados: ninguno
   reautenticación, correo por código propio, foto, preferencias y llaves de API).
 - Partes del porte (MIGRATION-TASK APP-ACCOUNTS-1…5): este WORKBOOK nace en la parte 1 (F01–F13); la parte 2
   (segundo factor, navegadores de confianza y sesiones) cierra F05 y añade F14–F20; la parte 3 (perfil,
-  preferencias, avisos, menú de usuario, exportar y borrar la cuenta) añade F21–F27 y amplía F13; las partes 4
-  (salto al Hub, llaves de API, retención GDPR y auditlog) y 5 (plataforma del SaaS) añaden los suyos a
-  continuación.
+  preferencias, avisos, menú de usuario, exportar y borrar la cuenta) añade F21–F27 y amplía F13; la parte 4
+  (salto al Hub, llaves de API y su documentación, retención GDPR, auditlog y reportar un problema) añade F28–F38
+  y amplía F12 y F25; la 5 (plataforma del SaaS) añade los suyos a continuación.
 - Equivalencia de claves del registro: G83, G124, G22 y G59 = F01; G84 y G21 = F02; G107 = F03; G85 y G17 =
   F04; G125 = F05; G86 = F06; G91, G123, G120, G121 y G122 = F07; G109, G92, G42, G45 y G46 = F08; G93 = F09;
   G119 = F10; G96 = F11; G20 y G58 = F12; G18 y G56 = F13. Parte 2: G60 = F04; G88, G12, G19, G55 y G57 =
   F05; G87, G02 y G126 = F14; G116 y G05 = F15; G89 y G03 = F16; G23, G16 y G48 = F17; G94, G110, G15, G50,
   G24 y G25 = F18; G09, G54, G37 y G34 = F19; G90 = F20. Parte 3: G108, G49, G43, G63, G66, G69, G70 y G118 =
   F21; G114, G39, G38, G44, G65 y G67 = F22; G115 = F23; G29, G11, G74 y G127 = F24; G128 = F25; G111 y G41 =
-  F26; G112, G95, G40 y G47 = F27; G32, G35 y G36 = F13. Descartadas: G04 (activar o apagar el código por
+  F26; G112, G95, G40 y G47 = F27; G32, G35 y G36 = F13. Parte 4: G98 y G99 = F28; G104 = F12; G100 = F29;
+  G113 = F30; G101 = F31; G102 = F32; G103 = F33; G105 y G13 = F34; G97, G07, G52 y G61 = F35; G51 y G68 = F36;
+  G08, G53, G62 y G28 = F37; G117 y G01 = F38. Descartadas: G04 (activar o apagar el código por
   correo: se pide en toda entrada con contraseña y no se apaga, PLAN-SAAS ronda 19, §3.7 punto 3) y G31
   (el Hub verificaba en el SaaS un dispositivo de confianza: el Hub nunca consulta al SaaS por petición y
   sus dispositivos y su PIN son suyos, PLAN-SAAS §2).
@@ -811,7 +815,7 @@ Implicados: ninguno
   `user_logged_in` de Django.
 - Freno (ACCOUNTS-F11): los límites son los de allauth (`ACCOUNT_RATE_LIMITS` solo sube el de altas a
   10/h) sobre la caché de Django (Valkey en AWS, `base.cache.FailSoftRedisCache`); `tests/test_throttle.py`.
-  Los pases del salto a un negocio se frenan en la parte 4.
+  Los pases del salto a un negocio tienen su propio freno: 20 en 5 minutos por cuenta (`HUB_LOGIN_RATELIMIT`, F28).
 - Lo que no sigue del viejo, a propósito: el asistente de `two_factor` (retirado en el viejo, ADR-0417), el
   `EmailDevice` creado a cada cuenta (lo sustituye el código por correo de cada entrada), el par de
   credenciales que devolvía el alta por la API (hoy la sesión del navegador; el Hub recibe al usuario con el
@@ -847,9 +851,26 @@ Implicados: ninguno
   `billing.invoice.list` y `.get`), sin importar esas apps. Eliminar (F27): ver accounts/README.md; las facturas
   conservan el destinatario porque su enlace a la cuenta es `SET_NULL` (`test_delete_account`). La moneda del viejo
   no sigue: ERPlora cobra en euros y ninguna pantalla ni correo la leía (SAAS_DASHBOARD-F210).
+- Parte 4 (F28–F38): el salto es el contrato de PLAN-SAAS §2 (`accounts/handoff.py`, `internal.py` con
+  `/internal/auth/redeem`, `signing.py`): código de un solo uso atado al negocio y al `state` del navegador, enviado
+  por `form_post` sin `Referer`. Las direcciones viejas de la cuenta (`/dashboard/profile/…`) son 301 de
+  `accounts/redirects.py`, que conservan `?surface=account` (la app nativa no cambia). Las claves de API del SaaS
+  (`erps_live_…`, `accounts/api_auth.py`) solo abren las operaciones con `expose_api=True` de su permiso; el
+  superusuario emite las de una cuenta del equipo desde el admin (`ApiKeyAdmin`, `services.issue_api_key`).
+  `/api/docs` es ReDoc con nonce y solo con sesión (`accounts/api_docs.py`); `/api/openapi.json` sigue abierto (lo
+  leen Postman y los tests de otras apps). `anonymize_old_users` (F35, semanal) y `cleanup_old_logs` (F37, diaria)
+  son comandos con candado propio (`services.run_exclusively`): quedan `parcial` hasta que `saas-cron`
+  (`aws/stacks/prod/scheduler.tf`) los programe. El registro de auditoría (F36) es `django-auditlog`
+  (`accounts/auditlog.py`): la cuenta, su acceso a negocios, sus claves y sus sesiones, sin secretos ni lo que se
+  mueve en cada visita; `AuditActorMiddleware` toma la dirección que ya resolvió `public.client_ip` y lee quién
+  actúa al escribir cada entrada (una clave de API pone su cuenta después del middleware), y
+  `services.forget_deleted_actor` suelta el autor cuando su cuenta se elimina. Los modelos de cobro y de VeriFactu
+  los registran sus apps. «Reportar un problema» (F38) es `accounts.support.report`: un correo en inglés a
+  `SUPPORT_EMAIL` con «Reply-To» la cuenta, limitado por cuenta (`SUPPORT_REPORT_RATELIMIT`, 5 por hora).
 - Pruebas: cada test cita su clave en el nombre o el docstring. Los e2e de la parte 1 están en
   `tests/e2e/panel/accounts-flows.spec.ts`, los de la parte 2 en `tests/e2e/panel/accounts-security.spec.ts`
-  y los de la parte 3 en `tests/e2e/panel/accounts-profile.spec.ts`,
+  los de la parte 3 en `tests/e2e/panel/accounts-profile.spec.ts` y los de la parte 4 en
+  `tests/e2e/panel/accounts-jump.spec.ts`, `accounts-keys.spec.ts` y `accounts-report.spec.ts`,
   con la clave del registro (`ACCOUNTS-Gnn`) en el título y la equivalencia con este WORKBOOK en su cabecera;
   el segundo factor se juega en el gemelo del panel con el interruptor encendido (`PANEL_MFA_URL`).
   `signup.spec.ts` y `login.spec.ts` siguen cubriendo las pestañas de la entrada.
@@ -871,3 +892,8 @@ Implicados: ninguno
   pagos no se pueden apagar.
 - No deja eliminar la cuenta a quien es propietario de un negocio o paga el de otra persona, ni borra con ella
   sus facturas de ERPlora.
+- No avisa antes de borrar una cuenta sin uso en dos años (el SaaS viejo tampoco avisaba), ni borra nunca una
+  cuenta que pertenece a un negocio vivo.
+- No borra el registro de auditoría de una cuenta al eliminarla: ese registro se borra entero a los 90 días.
+- No abre una incidencia con cada informe de «Reportar un problema» ni lo guarda: llega por correo a soporte, que
+  contesta a la persona.
