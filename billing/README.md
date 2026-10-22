@@ -453,9 +453,11 @@ son solo web, y en su lugar se dice, sin enlace, cómo hacerlo desde el navegado
 - **Admin de facturas** (`billing/admin.py`, `InvoiceAdmin`): campo «PDF» con «Descargar el PDF» de cualquier
   factura emitida (`<id>/pdf/`, `queries.platform_invoice_pdf`, con `view_invoice`); sin emitir, lo dice; Hub
   caído, vuelve a la factura con el motivo.
-- **Descargas**: las hace el navegador con un enlace del mismo origen (`browser.ts`), con la cookie de sesión; no
-  hay `fetch` propio (el SPA solo llega al servidor por el SDK, regla de eslint, y `api.call` lee JSON). El 404 de
-  un PDF sin emitir no se ve: la fila solo ofrece el PDF con `can.pdf`.
+- **Descargas**: el fichero lo pide el SDK (`fetchFile` de `@erplora/ui/sdk`, con su `Accept` y la cookie de
+  sesión) y `browser.ts` lo guarda con un enlace del mismo origen solo si la respuesta es ese fichero; no hay
+  `fetch` propio (el SPA solo llega al servidor por el SDK, regla de eslint, y `api.call` lee JSON). Sin red, el
+  aviso es el de `network_error` del panel, en el idioma de la persona. El 404 de un PDF sin emitir no se ve: la
+  fila solo ofrece el PDF con `can.pdf`.
 - **Suscripciones** (`SubscriptionsTab`, `CancelPlanDialog`): una fila por negocio, tarjetas hasta 1280 px; plan y
   módulos a precio neto (nombres de `apps.app.list`), «(hasta el …)» en una línea, bajada programada
   (`scheduled_change`: «Cambia a … el …»), próxima factura con IVA y estado. Acciones del servidor: su primera fija

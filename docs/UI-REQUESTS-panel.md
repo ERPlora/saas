@@ -80,6 +80,12 @@ limpia posible… las tablas tienen que ocupar la altura de la página, el espac
   `no-restricted-globals`, comentada).
 - **Propuesta**: `api.download(op, input, { accept })` en `@erplora/ui/sdk` que devuelva el `Blob` y el nombre,
   o el `ApiError` del sobre.
+- **Resuelto en `@erplora/ui`** (ui#18; rodeo de `billing/frontend/browser.ts` retirado en
+  FIX-SAAS-BILLING-INVOICE-DOWNLOAD-NETWORK-ERROR-ENGLISH): `fetchFile(url, accept)` de `@erplora/ui/sdk` pide el
+  fichero con su `Accept` y la cookie de sesión y devuelve `{ blob, name }` solo si la respuesta es ese fichero;
+  otra respuesta es el `ApiError` del sobre y, sin red (o si se corta a medias), `network_error` con la frase del
+  SDK en el idioma de la persona. `browser.download` solo guarda lo que devuelve: el SaaS ya no tiene ninguna
+  excepción de `no-restricted-globals`. Guardias: `src/sdk/download.test.ts` de ui y `billing/frontend/browser.test.ts`.
 
 ## 7. El marco del shell: «Saltar al contenido», objetivos de 44 px y ☰ con ← (auditoría R-11, R-13, R-20)
 
