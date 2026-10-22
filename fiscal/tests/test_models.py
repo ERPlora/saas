@@ -137,3 +137,23 @@ def test_a_reviewer_who_leaves_leaves_the_trail_without_a_name(business, make_us
         None,
         True,
     )
+
+
+# --- ERPlora's stamp as representative (FISCAL-F06) ----------------------------------------------------
+
+
+def test_there_is_at_most_one_representative_stamp():
+    from fiscal.models import RepresentativeStamp
+
+    RepresentativeStamp.objects.create(image=b"token", size=5, uploaded_at=timezone.now())
+
+    with pytest.raises(IntegrityError), transaction.atomic():
+        RepresentativeStamp.objects.create(image=b"other", size=5, uploaded_at=timezone.now())
+
+
+def test_the_stamp_is_keyed_by_a_uuid7():
+    from fiscal.models import RepresentativeStamp
+
+    stamp = RepresentativeStamp.objects.create(image=b"token", size=5, uploaded_at=timezone.now())
+
+    assert stamp.id.version == 7

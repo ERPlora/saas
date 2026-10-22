@@ -22,4 +22,8 @@ REPRESENTATION = [
 #: The authorisation of a business changed: payload ``{"hub_id"}``, on an owner's or admin's channel.
 REPRESENTATION_CHANGED = "fiscal.representation.changed"
 
-ALL = [*REPRESENTATION, REPRESENTATION_CHANGED]
+#: ERPlora's stamp as representative was uploaded, replaced or removed (FISCAL-F06): payload ``{"size"}``, never
+#: the image.
+STAMP_CHANGED = "fiscal.stamp.changed"
+
+ALL = [*REPRESENTATION, REPRESENTATION_CHANGED, STAMP_CHANGED]

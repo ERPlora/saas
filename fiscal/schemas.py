@@ -155,3 +155,56 @@ class NotifyIn(Schema):
 
 class NotifyOut(Schema):
     id: UUID
+
+
+# --- The Anexo I model and ERPlora's stamp (FISCAL-F06) ---------------------------------------------
+
+
+class ModelQueryIn(StrictIn):
+    """What the Hub may send to have the model filled in with the business (``GET /internal/representation/model``):
+    every field is optional, and a blank stays dotted. Only what the model's font can write (``anexo.writable``)."""
+
+    taxpayer_tax_id: str = Field("", max_length=TAX_ID_MAX_LENGTH)
+    taxpayer_name: str = Field("", max_length=200)
+    municipality: str = Field("", max_length=100)
+    street: str = Field("", max_length=200)
+    number: str = Field("", max_length=10)
+
+    @field_validator("*")
+    @classmethod
+    def _writable(cls, value: str) -> str:
+        from fiscal.anexo import writable
+
+        value = value.strip()
+        if not writable(value):
+            raise ValueError("The model cannot write some of these characters.")
+        return value
+
+    @field_validator("taxpayer_tax_id")
+    @classmethod
+    def _spanish(cls, value: str) -> str:
+        from billing.nif import is_spanish_tax_id, normalise_nif
+
+        value = normalise_nif(value)
+        if value and not is_spanish_tax_id(value):
+            raise ValueError("Not a Spanish tax ID (NIF).")
+        return value
+
+
+class StampUploadIn(StrictIn):
+    """ERPlora's stamp and signature: a PNG in base64, of ``fiscal.services.MAX_STAMP_BYTES`` at most."""
+
+    png_base64: str = ""
+
+
+class StampDeleteIn(StrictIn):
+    pass
+
+
+class StampOut(Schema):
+    uploaded_at: datetime
+    size: int
+
+
+class StampDeleteOut(Schema):
+    deleted: bool

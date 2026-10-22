@@ -18,6 +18,8 @@ from fiscal.schemas import (
     RepresentationSubmitIn,
     ReturnIn,
     ReviewIn,
+    StampDeleteIn,
+    StampUploadIn,
     WithdrawIn,
 )
 from fiscal.tests.conftest import make_grant, submission
@@ -41,6 +43,8 @@ def call(name, hub):
         "representation.return": (services.representation_return, ReturnIn(id=grant.id, reason="Blurry.")),
         "representation.withdraw": (services.representation_withdraw, WithdrawIn(id=grant.id, reason="Gone.")),
         "representation.notify": (services.representation_notify, NotifyIn(id=hub.id)),
+        "stamp.upload": (services.stamp_upload, StampUploadIn(png_base64="")),
+        "stamp.delete": (services.stamp_delete, StampDeleteIn()),
     }[name]
 
 
@@ -53,6 +57,9 @@ MATRIX = {
     "representation.return": (DENIED, DENIED, DENIED, DENIED, DENIED, DENIED),
     "representation.withdraw": (DENIED, DENIED, DENIED, DENIED, DENIED, DENIED),
     "representation.notify": (DENIED, DENIED, DENIED, DENIED, DENIED, DENIED),
+    # ERPlora's stamp (FISCAL-F06): the staff's alone.
+    "stamp.upload": (DENIED, DENIED, DENIED, DENIED, DENIED, DENIED),
+    "stamp.delete": (DENIED, DENIED, DENIED, DENIED, DENIED, DENIED),
 }
 
 

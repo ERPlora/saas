@@ -819,3 +819,103 @@ class TestMails:
                 submit(business, taxpayer_tax_id="nope")
 
         assert mailoutbox == []
+
+
+# --- ERPlora's stamp as representative (FISCAL-F06) ----------------------------------------------------
+
+
+class TestStamp:
+    """The staff upload, replace and remove the stamp and signature that go on every model (``fiscal.stamp.*``)."""
+
+    @staticmethod
+    def upload(user, png: bytes):
+        from fiscal.schemas import StampUploadIn
+
+        return services.stamp_upload(
+            staff_ctx(user), StampUploadIn(png_base64=base64.b64encode(png).decode())
+        )
+
+    def test_the_stamp_is_kept_encrypted_with_who_and_when(self, stamp_keeper):
+        from fiscal.models import RepresentativeStamp
+        from fiscal.tests.conftest import stamp_png
+
+        png = stamp_png()
+        result = self.upload(stamp_keeper, png)
+
+        stamp = RepresentativeStamp.objects.get()
+        assert bytes(stamp.image) != png
+        assert crypto.decrypt(stamp.image) == png
+        assert (stamp.size, stamp.uploaded_by) == (len(png), stamp_keeper)
+        assert (result.size, result.uploaded_at) == (len(png), stamp.uploaded_at)
+        assert OutboxEvent.objects.filter(name="fiscal.stamp.changed").count() == 1
+
+    def test_a_new_stamp_replaces_the_one_there_was(self, stamp_keeper):
+        from fiscal.models import RepresentativeStamp
+        from fiscal.tests.conftest import stamp_png
+
+        self.upload(stamp_keeper, stamp_png(200, 80))
+        self.upload(stamp_keeper, stamp_png(300, 120))
+
+        assert crypto.decrypt(RepresentativeStamp.objects.get().image) == stamp_png(300, 120)
+
+    @pytest.mark.parametrize(
+        ("png", "code"),
+        [
+            (b"", "fiscal.stamp_required"),
+            (b"\xff\xd8\xff\xe0 a photo", "fiscal.stamp_not_png"),
+            (b"\x89PNG\r\n\x1a\n but broken", "fiscal.stamp_not_png"),
+            (b"\x89PNG\r\n\x1a\n" + b"0" * (2 * 1024 * 1024), "fiscal.stamp_too_large"),
+        ],
+    )
+    def test_only_a_png_of_two_megabytes_at_most_is_kept(self, stamp_keeper, png, code):
+        from fiscal.models import RepresentativeStamp
+
+        with pytest.raises(InvalidPayload) as refused:
+            self.upload(stamp_keeper, png)
+
+        assert refused.value.code == code
+        assert "png_base64" in refused.value.fields
+        assert not RepresentativeStamp.objects.exists()
+
+    def test_what_is_not_base64_is_refused(self, stamp_keeper):
+        from fiscal.schemas import StampUploadIn
+
+        with pytest.raises(InvalidPayload) as refused:
+            services.stamp_upload(staff_ctx(stamp_keeper), StampUploadIn(png_base64="not base64!"))
+
+        assert refused.value.code == "fiscal.stamp_not_png"
+
+    def test_a_reviewer_without_the_stamp_permission_may_not_change_it(self, reviewer):
+        from fiscal.tests.conftest import stamp_png
+
+        with pytest.raises(PermissionDenied) as refused:
+            self.upload(reviewer, stamp_png())
+
+        assert refused.value.code == "fiscal.staff_only"
+
+    def test_removing_the_stamp_leaves_none(self, stamp_keeper):
+        from fiscal.models import RepresentativeStamp
+        from fiscal.schemas import StampDeleteIn
+        from fiscal.tests.conftest import stamp_png
+
+        self.upload(stamp_keeper, stamp_png())
+
+        services.stamp_delete(staff_ctx(stamp_keeper), StampDeleteIn())
+
+        assert not RepresentativeStamp.objects.exists()
+        assert OutboxEvent.objects.filter(name="fiscal.stamp.changed").count() == 2
+
+    def test_removing_a_stamp_that_is_not_there_is_not_found(self, stamp_keeper):
+        from fiscal.schemas import StampDeleteIn
+
+        with pytest.raises(NotFound):
+            services.stamp_delete(staff_ctx(stamp_keeper), StampDeleteIn())
+
+    def test_only_the_staff_with_the_permission_remove_it(self, stamp_keeper, reviewer):
+        from fiscal.schemas import StampDeleteIn
+        from fiscal.tests.conftest import stamp_png
+
+        self.upload(stamp_keeper, stamp_png())
+
+        with pytest.raises(PermissionDenied):
+            services.stamp_delete(staff_ctx(reviewer), StampDeleteIn())

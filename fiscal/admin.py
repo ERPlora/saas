@@ -7,8 +7,15 @@ every field read-only (never the encrypted documents) and saving it changes noth
 services' (``fiscal.representation.approve|return|withdraw``), taken on the review page as the member of the
 staff who clicks, which shows the documents decrypted inline, never cached. Both pages need
 ``fiscal.change_representationgrant``; ``support`` only sees the list and the rows (data migration ``0002``).
+
+ERPlora's stamp as representative (FISCAL-F06) has its own page beside the queue, «Representative's stamp»
+(``stamp/``): whether there is one, its preview, the model a business receives with it, and the upload and the
+removal (``fiscal.stamp.upload|delete``). It needs ``fiscal.view_representativestamp`` to be seen and the
+services ask ``fiscal.change_representativestamp`` to change it. While there is none (or it cannot be read), the
+queue says so on top: the models customers download go without it.
 """
 
+import base64
 import logging
 
 from django.conf import settings
@@ -24,9 +31,9 @@ from django.utils.translation import gettext_lazy
 from live.context import OperationContext, Scope
 from live.errors import OperationError
 
-from fiscal import crypto, services
+from fiscal import anexo, crypto, queries, services
 from fiscal.models import RepresentationGrant
-from fiscal.schemas import ReturnIn, ReviewIn, WithdrawIn
+from fiscal.schemas import ReturnIn, ReviewIn, StampDeleteIn, StampUploadIn, WithdrawIn
 
 logger = logging.getLogger(__name__)
 
@@ -129,6 +136,20 @@ class RepresentationGrantAdmin(admin.ModelAdmin):
     def log_change(self, request, obj, message):
         """Nothing changed by the form, so nothing to log (the decisions are the outbox's trail)."""
 
+    def changelist_view(self, request, extra_context=None):
+        state = queries.stamp_status()
+        if state is None or not state["readable"]:
+            # Every model customers download goes without it: whoever sees the queue hears it.
+            messages.warning(
+                request,
+                _(
+                    "ERPlora's stamp and signature are not uploaded: the model customers download goes "
+                    "without them. Upload them in «Representative's stamp»."
+                ),
+            )
+        stamp_url = reverse("admin:fiscal_representationgrant_stamp") if self._stamp_viewer(request) else ""
+        return super().changelist_view(request, {**(extra_context or {}), "stamp_url": stamp_url})
+
     def change_view(self, request, object_id, form_url="", extra_context=None):
         extra_context = {
             **(extra_context or {}),
@@ -153,6 +174,9 @@ class RepresentationGrantAdmin(admin.ModelAdmin):
         # ``admin_view``: active staff only (else the login page), and ``never_cache`` (``no-store``).
         wrap = self.admin_site.admin_view
         return [
+            path("stamp/", wrap(self.stamp_view), name="fiscal_representationgrant_stamp"),
+            path("stamp/image/", wrap(self.stamp_image_view), name="fiscal_representationgrant_stamp_image"),
+            path("stamp/model/", wrap(self.stamp_model_view), name="fiscal_representationgrant_stamp_model"),
             path(
                 "<path:object_id>/review/",
                 wrap(self.review_view),
@@ -271,4 +295,82 @@ class RepresentationGrantAdmin(admin.ModelAdmin):
             response["X-Frame-Options"] = "SAMEORIGIN"
             response._csp_config = {**settings.SECURE_CSP, "frame-ancestors": [CSP.SELF]}
         response["X-Content-Type-Options"] = "nosniff"
+        return response
+
+
+    # --- ERPlora's stamp as representative (FISCAL-F06) -------------------------------------------------
+
+    @staticmethod
+    def _stamp_viewer(request) -> bool:
+        return request.user.has_perm("fiscal.view_representativestamp") or request.user.has_perm(
+            services.STAMP_PERMISSION
+        )
+
+    def _stamp_page(self, request) -> None:
+        """403 unless the user may see the stamp page."""
+        if not self._stamp_viewer(request):
+            raise PermissionDenied
+
+    def stamp_view(self, request):
+        self._stamp_page(request)
+        if request.method == "POST":
+            if not request.user.has_perm(services.STAMP_PERMISSION):
+                raise PermissionDenied
+            self._change_stamp(request)
+            return HttpResponseRedirect(request.path)
+        state = queries.stamp_status()
+        context = {
+            **self.admin_site.each_context(request),
+            "opts": self.model._meta,
+            "title": _("Representative's stamp"),
+            "stamp": state,
+            "can_change": request.user.has_perm(services.STAMP_PERMISSION),
+            "max_megabytes": services.MAX_STAMP_BYTES // (1024 * 1024),
+            "image_url": reverse("admin:fiscal_representationgrant_stamp_image"),
+            "model_url": reverse("admin:fiscal_representationgrant_stamp_model"),
+        }
+        return TemplateResponse(request, "admin/fiscal/representationgrant/stamp.html", context)
+
+    def _change_stamp(self, request) -> None:
+        """Upload or remove the stamp through its service; every refusal becomes a message."""
+        action = request.POST.get("action", "")
+        ctx = staff_context(request)
+        try:
+            if action == "upload":
+                upload = request.FILES.get("stamp")
+                # One byte past the ceiling is enough for the service to refuse it as too large.
+                content = upload.read(services.MAX_STAMP_BYTES + 1) if upload is not None else b""
+                services.stamp_upload(ctx, StampUploadIn(png_base64=base64.b64encode(content).decode()))
+                messages.success(
+                    request, _("Stamp uploaded: every model downloaded from now on carries it.")
+                )
+            elif action == "remove":
+                if request.POST.get("confirm") != "yes":
+                    messages.error(request, _("Tick the box to confirm that the stamp goes."))
+                    return
+                services.stamp_delete(ctx, StampDeleteIn())
+                messages.success(request, _("Stamp removed: the models go without it until another is uploaded."))
+            else:
+                messages.error(request, _("Choose upload or remove."))
+        except OperationError as refused:
+            for message in list((refused.fields or {}).values()) or [refused.message]:
+                messages.error(request, message)
+
+    def stamp_image_view(self, request):
+        self._stamp_page(request)
+        png = queries.representative_stamp()
+        if png is None:
+            raise Http404
+        response = HttpResponse(png, content_type="image/png")
+        response["X-Content-Type-Options"] = "nosniff"
+        return response
+
+    def stamp_model_view(self, request):
+        """The model as a business receives it before it says who it is: what the Hub serves without details."""
+        self._stamp_page(request)
+        pdf = anexo.render(
+            taxpayer=None, representative=queries.representative(), stamp=queries.representative_stamp()
+        )
+        response = HttpResponse(pdf, content_type="application/pdf")
+        response["Content-Disposition"] = 'attachment; filename="anexo-i-modelo-erplora.pdf"'
         return response

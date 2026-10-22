@@ -347,3 +347,56 @@ def test_the_documents_are_never_read_to_answer(business, owner):
     selected = " ".join(query["sql"] for query in captured.captured_queries)
     assert '"fiscal_representationgrant"."signed_model"' not in selected
     assert '"fiscal_representationgrant"."id_copy"' not in selected
+
+
+# --- What goes on the model (FISCAL-F06) ----------------------------------------------------------------
+
+
+def test_the_representative_is_erploras_company_configuration(synthetic_company):
+    representative = queries.representative()
+
+    assert (representative.name, representative.tax_id) == ("ACME FISCAL SL", "B00000000")
+    assert representative.address == "Calle Falsa 1, 28000 Villaprueba (Madrid)"
+
+
+def test_without_a_company_configuration_there_is_no_representative(caplog):
+    from billing.models import CompanyConfig
+
+    CompanyConfig.objects.all().delete()
+
+    with caplog.at_level("ERROR", logger="fiscal.queries"):
+        assert queries.representative() is None
+    assert "fiscal.model.no_company" in caplog.text
+
+
+def test_the_stamp_is_read_decrypted_and_none_without_one(stamp_keeper):
+    import base64
+
+    from fiscal import services
+    from fiscal.schemas import StampUploadIn
+    from fiscal.tests.conftest import staff_ctx, stamp_png
+
+    assert queries.representative_stamp() is None
+    assert queries.stamp_status() is None
+
+    png = stamp_png()
+    services.stamp_upload(staff_ctx(stamp_keeper), StampUploadIn(png_base64=base64.b64encode(png).decode()))
+
+    assert queries.representative_stamp() == png
+    state = queries.stamp_status()
+    assert (state["size"], state["uploaded_by"], state["readable"]) == (len(png), stamp_keeper, True)
+
+
+def test_a_stamp_kept_with_another_key_is_no_stamp_and_says_so(stamp_keeper, caplog):
+    from cryptography.fernet import Fernet
+
+    from fiscal.models import RepresentativeStamp
+
+    RepresentativeStamp.objects.create(
+        image=Fernet(Fernet.generate_key()).encrypt(b"\x89PNG"), size=4, uploaded_at=timezone.now()
+    )
+
+    with caplog.at_level("ERROR", logger="fiscal.queries"):
+        assert queries.representative_stamp() is None
+    assert "fiscal.model.stamp_unreadable" in caplog.text
+    assert queries.stamp_status()["readable"] is False

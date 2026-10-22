@@ -15,6 +15,9 @@ the business (``tell_the_business``), and once it commits mails them and, for on
 review desk (``fiscal.emails``, FISCAL-F05). No document ever leaves in an event, a snapshot or a mail.
 """
 
+import base64
+import binascii
+import io
 from functools import partial
 from typing import Any
 from uuid import UUID
@@ -27,11 +30,12 @@ from live.context import OperationContext, Scope, system_context
 from live.errors import Conflict, InvalidPayload, NotFound, PermissionDenied
 from live.operations import operation
 from live.outbox import record_event
+from PIL import Image, UnidentifiedImageError
 
 from billing.nif import is_legal_person_nif, is_spanish_tax_id, normalise_nif
 from fiscal import crypto, emails, events
 from fiscal.documents import DocumentRejected, decode_pdf
-from fiscal.models import RepresentationGrant
+from fiscal.models import RepresentationGrant, RepresentativeStamp
 from fiscal.schemas import (
     TAX_ID_MAX_LENGTH,
     NotifyIn,
@@ -41,6 +45,10 @@ from fiscal.schemas import (
     ReturnIn,
     ReviewIn,
     ReviewOut,
+    StampDeleteIn,
+    StampDeleteOut,
+    StampOut,
+    StampUploadIn,
     WithdrawIn,
 )
 from hubs import queries as hub_queries
@@ -52,6 +60,11 @@ Status = RepresentationGrant.Status
 REASON_MAX_LENGTH = 500
 #: The Django permission that lets a member of the staff decide (``fiscal.admin``'s review page asks it too).
 REVIEW_PERMISSION = "fiscal.change_representationgrant"
+#: The one that lets a member of the staff change ERPlora's stamp (``fiscal.admin``'s stamp page asks it too).
+STAMP_PERMISSION = "fiscal.change_representativestamp"
+#: The largest stamp kept: it is a stamp and a signature, not a photograph, and it goes in every model.
+MAX_STAMP_BYTES = 2 * 1024 * 1024
+PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 
 
 # --- The Hub sends an authorisation ---------------------------------------------------------------------
@@ -296,12 +309,17 @@ def representation_withdraw(ctx: OperationContext, data: WithdrawIn) -> dict:
 
 def _reviewer(ctx: OperationContext):
     """The member of the staff running ``ctx``, who may decide (``REVIEW_PERMISSION``); anybody else, 403."""
+    return _staff_with(ctx, REVIEW_PERMISSION)
+
+
+def _staff_with(ctx: OperationContext, permission: str):
+    """The active member of the staff running ``ctx`` who holds ``permission``; anybody else, 403."""
     user = ctx.actor
     if not (
         getattr(user, "is_authenticated", False)
         and user.is_active
         and user.is_staff
-        and user.has_perm(REVIEW_PERMISSION)
+        and user.has_perm(permission)
     ):
         raise PermissionDenied(
             _("Only ERPlora's staff decide on an authorisation."),
@@ -398,3 +416,95 @@ def tell_the_business(ctx: OperationContext, hub_id: UUID) -> None:
         scope = Scope("user", str(user_id))
         if scope != ctx.scope:
             representation_notify(system_context(scope), NotifyIn(id=hub_id))
+
+
+# --- ERPlora's stamp as representative (FISCAL-F06) ----------------------------------------------------
+
+
+@operation(
+    "fiscal.stamp.upload",
+    kind="command",
+    permission="fiscal.manage",
+    input=StampUploadIn,
+    output=StampOut,
+)
+def stamp_upload(ctx: OperationContext, data: StampUploadIn) -> dict:
+    """A member of the staff with ``STAMP_PERMISSION`` uploads ERPlora's stamp and signature: every model a
+    business downloads from now on carries it (``fiscal.anexo``). It replaces the one there was; kept encrypted."""
+    user = _staff_with(ctx, STAMP_PERMISSION)
+    with translation.override(ctx.language):
+        png = _checked_stamp(data.png_base64)
+    now = timezone.now()
+    RepresentativeStamp.objects.update_or_create(
+        slot=RepresentativeStamp.SLOT,
+        defaults={
+            "image": crypto.encrypt(png),
+            "size": len(png),
+            "uploaded_at": now,
+            "uploaded_by": user,
+        },
+    )
+    record_event(ctx, events.STAMP_CHANGED, {"size": len(png)})
+    return {"uploaded_at": now, "size": len(png)}
+
+
+@operation(
+    "fiscal.stamp.delete",
+    kind="command",
+    permission="fiscal.manage",
+    input=StampDeleteIn,
+    output=StampDeleteOut,
+)
+def stamp_delete(ctx: OperationContext, data: StampDeleteIn) -> dict:
+    """A member of the staff with ``STAMP_PERMISSION`` removes ERPlora's stamp: the models go without it until
+    another is uploaded (the admin says so). 404 when there is none."""
+    _staff_with(ctx, STAMP_PERMISSION)
+    deleted, _rows = RepresentativeStamp.objects.filter(
+        slot=RepresentativeStamp.SLOT
+    ).delete()
+    if not deleted:
+        raise NotFound(_("There is no stamp to remove."), code="fiscal.no_stamp")
+    record_event(ctx, events.STAMP_CHANGED, {"size": 0})
+    return {"deleted": True}
+
+
+def _checked_stamp(value: str) -> bytes:
+    """The PNG ``value`` holds in base64, or ``InvalidPayload`` saying why it is not one the model can carry."""
+
+    def refused(code: str, message: str) -> InvalidPayload:
+        return InvalidPayload(
+            _("Invalid payload"), code=code, fields={"png_base64": message}
+        )
+
+    not_png = refused(
+        "fiscal.stamp_not_png", _("The stamp must be a PNG image.")
+    )
+    value = "".join(value.split())
+    if not value:
+        raise refused("fiscal.stamp_required", _("Choose the PNG file of the stamp."))
+    if len(value) > 4 * -(-MAX_STAMP_BYTES // 3):
+        raise _stamp_too_large(refused)
+    try:
+        png = base64.b64decode(value, validate=True)
+    except binascii.Error, ValueError:
+        raise not_png from None
+    if not png:
+        raise refused("fiscal.stamp_required", _("Choose the PNG file of the stamp."))
+    if len(png) > MAX_STAMP_BYTES:
+        raise _stamp_too_large(refused)
+    if not png.startswith(PNG_MAGIC):
+        raise not_png
+    try:
+        with Image.open(io.BytesIO(png)) as image:
+            image.verify()
+    except (UnidentifiedImageError, OSError, SyntaxError, ValueError):
+        raise not_png from None
+    return png
+
+
+def _stamp_too_large(refused) -> InvalidPayload:
+    return refused(
+        "fiscal.stamp_too_large",
+        _("The stamp may be %(megabytes)d MB at most.")
+        % {"megabytes": MAX_STAMP_BYTES // (1024 * 1024)},
+    )

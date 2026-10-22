@@ -339,3 +339,107 @@ msgstr ""
 
 msgid "See it in the panel: %(url)s"
 msgstr "Míralo en el panel: %(url)s"
+
+msgid "Representative's stamp"
+msgstr "Sello del representante"
+
+msgid ""
+"ERPlora's stamp and signature are not uploaded: the model customers download "
+"goes without them. Upload them in «Representative's stamp»."
+msgstr ""
+"El sello y la firma de ERPlora no están subidos: el modelo que descargan los "
+"clientes sale sin ellos. Súbelos en «Sello del representante»."
+
+msgid "Stamp uploaded: every model downloaded from now on carries it."
+msgstr "Sello subido: todos los modelos que se descarguen desde ahora lo llevan."
+
+msgid "Stamp removed: the models go without it until another is uploaded."
+msgstr "Sello quitado: los modelos salen sin él hasta que se suba otro."
+
+msgid "Choose upload or remove."
+msgstr "Elige subir o quitar."
+
+msgid "Tick the box to confirm that the stamp goes."
+msgstr "Marca la casilla para confirmar que quitas el sello."
+
+msgid "stamp and signature (encrypted PNG)"
+msgstr "sello y firma (PNG cifrado)"
+
+msgid "size in bytes"
+msgstr "tamaño en bytes"
+
+msgid "uploaded at"
+msgstr "subido el"
+
+msgid "representative's stamp"
+msgstr "sello del representante"
+
+msgid "uploaded by"
+msgstr "subido por"
+
+msgid "The stamp must be a PNG image."
+msgstr "El sello tiene que ser una imagen PNG."
+
+msgid "There is no stamp to remove."
+msgstr "No hay ningún sello que quitar."
+
+msgid "Choose the PNG file of the stamp."
+msgstr "Elige el fichero PNG del sello."
+
+msgid "The stamp may be %(megabytes)d MB at most."
+msgstr "El sello puede ocupar como mucho %(megabytes)d MB."
+
+msgid ""
+"ERPlora's stamp and signature go in the representative's box of every Anexo "
+"I model a business downloads to sign."
+msgstr ""
+"El sello y la firma de ERPlora van en la casilla del representante de cada "
+"modelo del Anexo I que un negocio descarga para firmarlo."
+
+msgid "Current stamp"
+msgstr "Sello actual"
+
+msgid "Uploaded"
+msgstr "Subido"
+
+msgid "Size"
+msgstr "Tamaño"
+
+msgid "ERPlora's stamp and signature"
+msgstr "Sello y firma de ERPlora"
+
+msgid ""
+"The stamp cannot be read with the current key (FISCAL_DOCUMENTS_KEY): the "
+"models go without it. Upload it again."
+msgstr ""
+"El sello no se puede leer con la clave actual (FISCAL_DOCUMENTS_KEY): los "
+"modelos salen sin él. Vuelve a subirlo."
+
+msgid ""
+"No stamp uploaded: the model customers download goes without ERPlora's stamp "
+"and signature."
+msgstr ""
+"No hay ningún sello subido: el modelo que descargan los clientes sale sin el "
+"sello y la firma de ERPlora."
+
+msgid "Download the model a business receives"
+msgstr "Descargar el modelo que recibe un negocio"
+
+msgid "Replace the stamp"
+msgstr "Sustituir el sello"
+
+msgid "Upload the stamp"
+msgstr "Subir el sello"
+
+#, python-format
+msgid "A PNG of %(max_megabytes)s MB at most, with a transparent background."
+msgstr "Un PNG de %(max_megabytes)s MB como mucho, con el fondo transparente."
+
+msgid "Upload"
+msgstr "Subir"
+
+msgid "Remove the stamp"
+msgstr "Quitar el sello"
+
+msgid "Yes, remove it: the models go without it until another is uploaded."
+msgstr "Sí, quítalo: los modelos salen sin él hasta que se suba otro."

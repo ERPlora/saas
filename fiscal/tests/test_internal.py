@@ -12,7 +12,6 @@ import io
 import json
 import time
 import uuid
-from pathlib import Path
 
 import pytest
 from django.conf import settings
@@ -29,7 +28,6 @@ from hubs.tests.conftest import SECRET
 
 pytestmark = pytest.mark.django_db
 
-MODEL = Path(__file__).resolve().parent.parent / "static" / "fiscal" / "representation-model.pdf"
 MODEL_PATH = "/internal/representation/model"
 
 
@@ -371,15 +369,25 @@ def test_only_post(client, business):
 # --- The blank model ------------------------------------------------------------------------------------
 
 
-def get_model(client, *, secret=SECRET, timestamp=None):
+def get_model(client, *, secret=SECRET, timestamp=None, query=None):
     timestamp = int(time.time()) if timestamp is None else timestamp
     return client.get(
         MODEL_PATH,
+        query,
         headers={"X-Erplora-Timestamp": str(timestamp), "X-Erplora-Signature": sign(b"", timestamp, secret)},
     )
 
 
-def test_the_model_is_the_official_pdf_as_an_attachment(client):
+def model_pages(response):
+    from pypdf import PdfReader
+
+    content = b"".join(response.streaming_content) if response.streaming else response.content
+    assert content.startswith(b"%PDF")
+    return PdfReader(io.BytesIO(content)).pages
+
+
+def test_the_model_is_the_official_page_filled_in_with_erplora_and_the_rgpd_page(client, synthetic_company):
+    """FISCAL-F06 (PLAN-SAAS §4: «el PDF oficial pre-rellenado (Anexo I, p. 11, + hoja RGPD)»)."""
     response = get_model(client)
 
     assert response.status_code == 200
@@ -388,9 +396,70 @@ def test_the_model_is_the_official_pdf_as_an_attachment(client):
         'attachment; filename="anexo-i-otorgamiento-representacion-erplora.pdf"'
     )
     assert "no-store" in response["Cache-Control"]
-    content = b"".join(response.streaming_content) if response.streaming else response.content
-    assert content == MODEL.read_bytes()
-    assert content.startswith(b"%PDF")
+    model, privacy = model_pages(response)
+    assert "OTORGA SU REPRESENTACIÓN a" in model.extract_text()
+    assert "ACME FISCAL SL" in model.extract_text()
+    assert "Responsable: ACME FISCAL SL" in " ".join(privacy.extract_text().split())
+
+
+def test_the_business_the_hub_names_fills_its_block(client, synthetic_company):
+    response = get_model(
+        client,
+        query={
+            "taxpayer_tax_id": "b12345674",
+            "taxpayer_name": "Bar Prueba SL",
+            "municipality": "Leganés",
+            "street": "Avenida Sur",
+            "number": "12",
+        },
+    )
+
+    assert response.status_code == 200
+    text = model_pages(response)[0].extract_text()
+    assert all(value in text for value in ("Bar Prueba SL", "B12345674", "Leganés", "Avenida Sur"))
+
+
+def test_a_v2_signature_covers_the_business_the_hub_names(client, synthetic_company):
+    """v2 signs the method and the full path, query included: a query changed on the way is a 401."""
+    path = f"{MODEL_PATH}?taxpayer_tax_id=B12345674"
+    headers = signed_headers("GET", path, b"", int(time.time()), SECRET)
+
+    assert client.get(path, headers=headers).status_code == 200
+    assert error_of(client.get(f"{MODEL_PATH}?taxpayer_tax_id=12345678Z", headers=headers)) == (401, "unauthorized")
+
+
+@pytest.mark.parametrize(
+    ("query", "field"),
+    [
+        ({"taxpayer_tax_id": "not-a-nif"}, "taxpayer_tax_id"),
+        ({"taxpayer_name": "名前"}, "taxpayer_name"),
+        ({"street": "x" * 201}, "street"),
+        ({"surprise": "1"}, "surprise"),
+    ],
+)
+def test_what_the_model_cannot_carry_is_refused_naming_the_field(client, query, field):
+    response = get_model(client, query=query)
+
+    assert error_of(response) == (422, "invalid_payload")
+    assert field in response.json()["error"]["fields"]
+
+
+def test_the_stamp_goes_on_the_model_when_there_is_one(client, synthetic_company, stamp_keeper):
+    from fiscal import services
+    from fiscal.schemas import StampUploadIn
+    from fiscal.tests.conftest import staff_ctx, stamp_png
+
+    services.stamp_upload(staff_ctx(stamp_keeper), StampUploadIn(png_base64=base64.b64encode(stamp_png()).decode()))
+
+    assert len(model_pages(get_model(client))[0].images) == 1
+
+
+def test_without_a_stamp_the_model_goes_without_it_and_the_log_says_so(client, synthetic_company, caplog):
+    with caplog.at_level("WARNING", logger="fiscal.internal"):
+        response = get_model(client)
+
+    assert len(model_pages(response)[0].images) == 0
+    assert "fiscal.model.without_stamp" in caplog.text
 
 
 def test_a_v2_signed_request_for_the_model_is_heard(client):

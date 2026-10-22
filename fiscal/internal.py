@@ -3,8 +3,11 @@
 - ``POST /internal/hubs/{id}/representation``: the customer's documents, uploaded in the Hub's module, filed
   for the staff's review (``fiscal.representation.submit``, run as the platform in the owner's channel) →
   201 ``{status: "submitted", version, submitted_at}``.
-- ``GET /internal/representation/model``: the blank model the customer signs (Anexo I, p. 11, of the AEAT's
-  agreement 017 for the direct representation of a client), a static PDF without anybody's data.
+- ``GET /internal/representation/model``: the model the customer signs (Anexo I, p. 11, of the AEAT's agreement
+  017 for the direct representation of a client) with its blanks filled in and the RGPD page (``fiscal.anexo``,
+  FISCAL-F06): ERPlora as representative, its stamp if the staff uploaded one, and the business when the Hub
+  sends its details in the query (``ModelQueryIn``: tax ID, name and address, all optional; a v2 signature
+  covers the query too). 422 ``invalid_payload`` with ``fields`` for a value the model cannot carry.
 
 Server to server, signed as ``/internal/auth/redeem`` (``accounts.signing.verify_signed``: HMAC-SHA256 +
 timestamp, v1 over the body, v2 also over the method and the path), so no CSRF token. v1 covers the body
@@ -25,26 +28,23 @@ import json
 import logging
 import time
 from dataclasses import replace
-from pathlib import Path
 from uuid import UUID
 
 import pydantic
 from django.conf import settings
-from django.http import FileResponse, HttpRequest, HttpResponse, JsonResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.utils import translation
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 from live.errors import OperationError
 
 from accounts.signing import live_secrets, may_be_signed, verify_request, verify_signed
-from fiscal import services
-from fiscal.schemas import RepresentationSubmitIn
+from fiscal import anexo, queries, services
+from fiscal.schemas import ModelQueryIn, RepresentationSubmitIn
 from hubs.services import system_ctx_for
 
 logger = logging.getLogger(__name__)
 
-#: The blank Anexo I the customer signs (copied from ``knowledge/company/aeat-agreement-017``).
-MODEL = Path(__file__).resolve().parent / "static" / "fiscal" / "representation-model.pdf"
 MODEL_FILENAME = "anexo-i-otorgamiento-representacion-erplora.pdf"
 #: The largest upload body: four PDFs of 5 MB (``fiscal.documents.MAX_DOCUMENT_BYTES``) in base64 are about
 #: 26.7 MB, plus the names and the JSON around them.
@@ -183,9 +183,26 @@ def representation_model(request: HttpRequest) -> HttpResponse:
     refused = _only(request, "GET")
     if refused is not None:
         return refused
-    return FileResponse(
-        MODEL.open("rb"),
-        as_attachment=True,
-        filename=MODEL_FILENAME,
-        content_type="application/pdf",
+    try:
+        business = ModelQueryIn.model_validate(request.GET.dict())
+    except pydantic.ValidationError as invalid:
+        return _error(422, "invalid_payload", "Invalid payload", fields=_fields(invalid))
+    stamp = queries.representative_stamp()
+    if stamp is None:
+        logger.warning("fiscal.model.without_stamp: ERPlora's stamp is not uploaded (or cannot be read)")
+    known = business.model_dump()
+    taxpayer = (
+        anexo.Party(
+            name=known["taxpayer_name"],
+            tax_id=known["taxpayer_tax_id"],
+            municipality=known["municipality"],
+            street=known["street"],
+            number=known["number"],
+        )
+        if any(known.values())
+        else None
     )
+    pdf = anexo.render(taxpayer=taxpayer, representative=queries.representative(), stamp=stamp)
+    response = HttpResponse(pdf, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{MODEL_FILENAME}"'
+    return response

@@ -35,5 +35,10 @@ def test_every_event_cited_is_one_of_fiscal():
 
 
 def test_every_step_and_the_tell_re_run_it():
-    for event in events.ALL:
+    for event in [*events.REPRESENTATION, events.REPRESENTATION_CHANGED]:
         assert "fiscal.representation.status" in live_registry.affected([event]), event
+
+
+def test_erploras_stamp_re_runs_nothing_of_the_panel():
+    """The stamp (FISCAL-F06) goes on the model the Hub downloads; no page of the panel shows it."""
+    assert not {name for name in live_registry.affected([events.STAMP_CHANGED]) if name.startswith("fiscal.")}

@@ -95,3 +95,51 @@ def make_grant(hub, *, version=1, status="submitted", **fields):
     return RepresentationGrant.objects.create(
         hub=hub, version=version, status=status, **values
     )
+
+
+def stamp_png(width: int = 300, height: int = 120) -> bytes:
+    """A synthetic stamp: a transparent PNG with a stroke drawn by the test (never ERPlora's real one)."""
+    import io
+
+    from PIL import Image, ImageDraw
+
+    image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    ImageDraw.Draw(image).rectangle(
+        (10, height // 2 - 3, width - 10, height // 2 + 3), fill=(20, 40, 160, 255)
+    )
+    out = io.BytesIO()
+    image.save(out, format="PNG")
+    return out.getvalue()
+
+
+@pytest.fixture
+def synthetic_company(db):
+    """ERPlora's company configuration with made-up data, in place of the real one the migrations seed."""
+    from billing.models import CompanyConfig
+
+    company = CompanyConfig.objects.first() or CompanyConfig()
+    for field, value in {
+        "legal_name": "ACME FISCAL SL",
+        "tax_id": "B00000000",
+        "street": "Calle Falsa 1",
+        "city": "Villaprueba",
+        "postal_code": "28000",
+        "province": "Madrid",
+        "country": "ES",
+    }.items():
+        setattr(company, field, value)
+    company.save()
+    return company
+
+
+@pytest.fixture
+def stamp_keeper(make_user):
+    """A member of the staff who may change ERPlora's stamp: ``fiscal.change_representativestamp``."""
+    user = make_user("stamps@erplora.com", first_name="Sara", is_staff=True)
+    user.user_permissions.add(
+        *Permission.objects.filter(
+            content_type__app_label="fiscal",
+            codename__in=["view_representativestamp", "change_representativestamp"],
+        )
+    )
+    return user

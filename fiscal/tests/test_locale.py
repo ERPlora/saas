@@ -52,8 +52,8 @@ def test_every_message_of_fiscal_has_its_spanish_translation():
     assert missing == []
 
 
-def test_the_review_page_is_scanned():
-    assert [path.name for path in TEMPLATES] == ["review.html"]
+def test_the_review_and_the_stamp_pages_are_scanned():
+    assert sorted(path.name for path in TEMPLATES) == ["change_list.html", "review.html", "stamp.html"]
 
 
 @pytest.mark.parametrize("template", TEMPLATES, ids=lambda path: path.name)
