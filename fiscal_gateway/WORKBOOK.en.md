@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:e394e6813309c708651d760b72ddac899ab732b8fef2d59371e0205457a86ede -->
+<!-- generated from WORKBOOK.md sha256:b80b68f827c1058fad584d8a4ae8b022b61d5d0518c9b9c1bc62f933b6ee3697 -->
 
 ## What it is for and who it is for
 
@@ -109,7 +109,7 @@ Steps:
 4. With the same door, the Hub queries what the AEAT already has, or tests whether it could present now and with which certificate, without sending anything.
 In: the Hub's envelope, the business, the tax ID, the environment, the way and, through its own way, the business's certificate with its password.
 Out: the AEAT's answer as it came (the Hub interprets it); in the connection test, whether it is ready and with which certificate.
-If it fails: every refusal says why and comes before touching the AEAT: unknown business, tax ID that does not match, authorisation not approved, no seal, no certificate, invalid or expired certificate, or production from a deployment that is not. The gateway waits at most 5 s to connect to the AEAT and 30 s for its answer, less than the Hub waits for it, so the Hub always hears from the gateway before giving up; without an answer from the AEAT, the Hub knows whether the submission may have arrived or not so as not to repeat it blindly; with too many submissions at once, it asks it to retry. The business's certificate is never kept nor appears in a log or in an error.
+If it fails: every refusal says why and comes before touching the AEAT: unknown business, tax ID that does not match, authorisation not approved, no seal, no certificate, invalid or expired certificate, or production from a deployment that is not. The gateway waits at most 5 s to connect to the AEAT and 30 s for its answer, and never more than 41 s in all, less than the Hub waits for it, so the Hub always hears from the gateway before giving up; without an answer from the AEAT, the Hub knows whether the submission may have arrived or not so as not to repeat it blindly; with too many submissions at once, it asks it to retry. The business's certificate is never kept nor appears in a log or in an error.
 Involved: the Hub (VERIFACTU-F15 sends, VERIFACTU-F27 queries, VERIFACTU-F10 tests the connection), FISCAL-F01 (the seal), FISCAL-F05 (the approved authorisation)
 
 ### FISCAL-F03 Keep the authorisation's documents encrypted

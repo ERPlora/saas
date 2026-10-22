@@ -117,7 +117,7 @@ Pasos:
 4. Con la misma puerta, el Hub consulta lo que la AEAT ya tiene, o prueba si podría presentar ahora y con qué certificado, sin enviar nada.
 Entra: el sobre del Hub, el negocio, el NIF, el entorno, la vía y, por la vía propia, el certificado del negocio con su contraseña.
 Sale: la respuesta de la AEAT tal cual (la interpreta el Hub); en la prueba de conexión, si está lista y con qué certificado.
-Si falla: cada rechazo dice por qué y sale antes de tocar la AEAT: negocio desconocido, NIF que no casa, autorización no aprobada, sin sello, sin certificado, certificado no válido o caducado, o producción desde un despliegue que no lo es. La pasarela espera como mucho 5 s a conectar con la AEAT y 30 s a su respuesta, menos de lo que el Hub la espera a ella, así que el Hub siempre oye a la pasarela antes de rendirse; sin respuesta de la AEAT, el Hub sabe si el envío pudo llegar o no para no repetirlo a ciegas; con demasiados envíos a la vez, le pide que lo reintente. El certificado del negocio nunca se guarda ni aparece en un registro o en un error.
+Si falla: cada rechazo dice por qué y sale antes de tocar la AEAT: negocio desconocido, NIF que no casa, autorización no aprobada, sin sello, sin certificado, certificado no válido o caducado, o producción desde un despliegue que no lo es. La pasarela espera como mucho 5 s a conectar con la AEAT y 30 s a su respuesta, y nunca más de 41 s en total, menos de lo que el Hub la espera a ella, así que el Hub siempre oye a la pasarela antes de rendirse; sin respuesta de la AEAT, el Hub sabe si el envío pudo llegar o no para no repetirlo a ciegas; con demasiados envíos a la vez, le pide que lo reintente. El certificado del negocio nunca se guarda ni aparece en un registro o en un error.
 Implicados: el Hub (VERIFACTU-F15 envía, VERIFACTU-F27 consulta, VERIFACTU-F10 prueba la conexión), FISCAL-F01 (el sello), FISCAL-F05 (la autorización aprobada)
 
 ### FISCAL-F03 Guardar cifrados los documentos de la autorización
@@ -210,7 +210,8 @@ Implicados: FISCAL-F05
   `FISCAL_DOCUMENTS_KEY` en `RepresentativeStamp` (una sola fila, `fiscal.stamp.upload|delete`, permiso
   `fiscal.change_representativestamp`; verla, `fiscal.view_representativestamp`), no en un bucket ni en los secretos (el
   repo es público y un secreto de AWS no pasa de 64 KB). `GET /internal/representation/model` acepta en la query
-  `taxpayer_tax_id`, `taxpayer_name`, `municipality`, `street` y `number` (opcionales; la firma v2 cubre la query);
+  `taxpayer_tax_id`, `taxpayer_name`, `municipality`, `street` y `number` (opcionales; la firma v2 cubre la query, y
+  una query firmada solo con v1 se rechaza con 401 `signature_v2_required`, regla general de `accounts/signing.py`);
   hoy el Hub la pide sin ellos (línea `FIX:` de la tarea), así que el bloque del negocio sale en blanco hasta que el
   Hub los mande. Tests: `fiscal/tests/test_anexo.py`, `test_services.py::TestStamp`, `test_internal.py`,
   `test_admin.py` y la e2e FISCAL-F06 de `tests/e2e/panel/fiscal-review.spec.ts`.
