@@ -1,8 +1,10 @@
 // What a failed call says on screen. The server's message already speaks the person's language
-// (`ctx.language`); the SDK's own codes do not: a call that never got the server's answer
-// (`network_error`), got one that is not the API's envelope (`unexpected_response`: a proxy's HTML
-// page, a 502) or broke in the browser (`client_error`) carries an English internal message, so the
-// panel says a sentence of its catalogue instead. Every toast, dialog and notice of hubs goes through it.
+// (`ctx.language`). A failure that is not the server's answer — a call that never got one (`network_error`),
+// one that is not the API's envelope (`unexpected_response`: a proxy's HTML page, a 502) or a failure in the
+// browser (`client_error`) — is said with a sentence of the panel's catalogue, in its voice and naming ERPlora,
+// the same whoever made the error: the SDK words these in the person's language too (hub#2281), with its own
+// generic sentences, and the panel's own `client_error`s (`new ApiError(0, 'client_error', String(error))`)
+// carry the browser's English text. Every toast, dialog and notice of hubs goes through it.
 import type { FormModalError } from '@erplora/ui/components';
 import type { ApiError } from '@erplora/ui/sdk';
 import { useI18n } from 'vue-i18n';

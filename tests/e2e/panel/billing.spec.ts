@@ -54,6 +54,18 @@ test.afterAll(() => seedBilling('clear'));
 
 const toast = (page: Page, text: string | RegExp) => page.locator('ion-toast').filter({ hasText: text });
 
+/**
+ * How far above the bottom of the window the toast's box ends once it has stopped (Ionic leaves it 10 px up);
+ * `NaN` while it still slides in. Ionic animates it inside its shadow root, which `settled()` does not see
+ * (`document.getAnimations()` leaves shadow roots out): a capture right after `settled()` cut it at the bottom.
+ */
+const toastGap = (page: Page) =>
+  page.locator('ion-toast').evaluate((element) => {
+    const moving = (element.shadowRoot?.getAnimations() ?? []).some((animation) => animation.playState === 'running');
+    const box = element.shadowRoot?.querySelector('.toast-wrapper')?.getBoundingClientRect();
+    return moving || !box ? Number.NaN : Math.round(window.innerHeight - box.bottom);
+  });
+
 /** Stripe's pages, played: whatever the browser opens there is a placeholder page. */
 async function playStripePages(page: Page): Promise<void> {
   await page.route(/^https:\/\/(invoice|billing)\.stripe\.com\//, (route) =>
@@ -269,6 +281,7 @@ test.describe('billing', () => {
       await expect(toast(page, offline)).toBeVisible();
       await expect(page.locator('ion-toast')).not.toContainText('Network error');
       await settled(page);
+      await expect.poll(() => toastGap(page), { message: `the toast stops whole on screen at ${viewport.width} px` }).toBeGreaterThanOrEqual(8);
       await page.screenshot({ path: shot(`FIX-SAAS-BILLING-INVOICE-DOWNLOAD-NETWORK-ERROR-ENGLISH-${viewport.width}`) });
       // «Descargar Excel» of the list, the same way.
       await page.goto('/billing/invoices');
