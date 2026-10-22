@@ -456,7 +456,7 @@ Estado: hecho
 Actor: personal de ERPlora
 Pantalla: admin › Negocios
 Pasos:
-1. El personal entra en el admin de erplora.com y busca el negocio por su dirección o su nombre; ve su ficha con sus miembros, su plan, quién paga, su uso y lo que el negocio tiene pendiente de recibir.
+1. El personal entra en el admin de erplora.com y busca el negocio por su dirección o su nombre; ve su ficha con sus miembros, su plan, quién paga, su uso y lo que el negocio aún no ha recibido.
 2. Elige el negocio y una acción: «Enviar al Hub el estado más reciente», «Reintentar lo que el Hub tiene pendiente» o, en la ficha de los cierres de sesión, «Cerrar ya las sesiones en el Hub»; el admin dice cuántos quedaron al día y cuántos siguen pendientes.
 3. Cada acción queda en el historial de ese negocio: quién la hizo, cuándo y cuál.
 Entra: la cuenta del personal con su segundo factor.
