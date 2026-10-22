@@ -128,9 +128,9 @@ describe('ApiKeysTable', () => {
 
   it('links to the documentation of the API, which opens beside the panel (ACCOUNTS-G105, ACCOUNTS-F34)', async () => {
     const s = await setup();
-    const docs = s.q('api-keys-docs') as HTMLAnchorElement;
-    expect(docs.textContent?.trim()).toBe('API documentation');
-    expect([docs.getAttribute('href'), docs.getAttribute('target'), docs.getAttribute('rel')]).toEqual([
+    const docs = s.q('api-keys-docs');
+    expect(docs?.textContent?.trim()).toBe('API documentation');
+    expect([docs?.getAttribute('href'), docs?.getAttribute('target'), docs?.getAttribute('rel')]).toEqual([
       '/api/docs',
       '_blank',
       'noopener',
