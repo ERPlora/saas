@@ -27,6 +27,10 @@ dependencies = [
     "stripe>=16.0",
     # The VeriFactu gateway (fiscal_gateway/): mTLS to the AEAT with a client certificate.
     "httpx>=0.28",
+    # The Anexo I model (fiscal/model.py): the official PDF filled in and stamped (pypdf), the text and the
+    # stamp drawn on a layer and the data protection page (reportlab).
+    "pypdf>=6.0",
+    "reportlab>=4.4",
 ]
 
 [tool.uv]
