@@ -196,6 +196,9 @@ theme and "Sign out".
 | ACCOUNTS-F25 | Open the user menu | done |
 | ACCOUNTS-F26 | Download my data | done |
 | ACCOUNTS-F27 | Delete my account | done |
+| ACCOUNTS-F28 | Enter my business from erplora.com | done |
+| ACCOUNTS-F29 | Go back to erplora.com from my business | done |
+| ACCOUNTS-F30 | Open my account on its own from the app | done |
 
 ### ACCOUNTS-F01 Create the account
 Status: done
@@ -564,3 +567,44 @@ In: the email typed and, if needed, the password or Google.
 Out: the account deleted, with its photo, its preferences, its keys and all its sessions, here and in its businesses; it stops being a member of other people's businesses. Its ERPlora invoices stay, with the recipient of their issue date and no link to the account. Its payer details (legal name, tax ID, address and billing email) and its payment customer are erased at once if nothing is left to charge; if an ERPlora invoice is still unpaid, they are kept until it is paid or cancelled and 90 days at most, and on that day the unpaid invoice is cancelled and they are erased. Event `accounts.profile.deleted`.
 If it fails: an owned or paid business holds it (the dialog says so too if it changed meanwhile); whoever pays for a business cannot be removed from it either, so there is no way to stop seeing it and keep paying for it; a deleted business, in its 90 days to be recovered, no longer holds it. More than 10 passwords in a minute when confirming are stopped, not even the right one gets in: someone else's open session is no way to guess it. A network failure is said in the dialog and nothing is deleted.
 Involved: hubs (the businesses that hold it and the ones it leaves), billing (the invoices that are kept and the payer details that are erased)
+
+### ACCOUNTS-F28 Enter my business from erplora.com
+Status: done
+Actor: any person with an account who is a member of a business
+Screen: Entrance, the business, Entrance › sign-in error
+Steps:
+1. The person opens their business: with "Open" on the **Entrance** or in **Businesses**, or by typing their business's address. The business sends them to erplora.com with a mark of that browser.
+2. If they already have a session on erplora.com, erplora.com checks they are a member of that business and sends them back to it with a one-time pass, without showing them anything.
+3. If they do not, the **Entrance** asks them to sign in (with their email, their password and the mailed code, or with Google; ACCOUNTS-F04 and ACCOUNTS-F06) and, once in, goes on to the business by itself.
+4. The business redeems the pass with erplora.com, opens its own session and the person appears inside, on the page they were going to.
+In: the business they are going to, the page they were going to in it and the mark of the browser that started the jump.
+Out: a pass valid for one minute, usable once and only for that business; it travels hidden in a form, never in the address, and the page that carries it is neither stored nor told to other websites. The business receives who is entering (ACCOUNTS-F12) and opens its own session, which shares nothing with erplora.com's.
+If it fails: if they are not a member of that business, "You don't have access to this hub", naming only the business's address, never its name, with "Back to the hub" and "Contact Support"; a link that leads to no business, "This sign-in link doesn't lead to a hub". More than 20 jumps in 5 minutes, "Too many attempts" with "You have opened your businesses too many times in a few minutes. Wait a few minutes and open your business again.", without a pass. A pass that expired, was used, is for another business or is not redeemed by the business itself opens nothing, and the business does not let in a browser that did not start the jump. With two-step verification on and the authenticator app active, it first asks for the app's code.
+Involved: hubs (the person's businesses and "Open")
+
+### ACCOUNTS-F29 Go back to erplora.com from my business
+Status: done
+Actor: any person with an account
+Screen: Entrance, Account, Businesses
+Steps:
+1. Inside their business, the person taps a link to erplora.com: manage their account, their business or their plan.
+2. If that browser has their erplora.com session (the one they used to enter the business), the page opens without asking for anything.
+3. If it does not (another browser, the app's, or the session ended), the **Entrance** asks them to sign in and, once in, takes them to that same page.
+In: the erplora.com page they are going to (only erplora.com pages).
+Out: the page open with their erplora.com session. The business hands no credential to erplora.com: each keeps its own session.
+If it fails: an address that is not erplora.com's is not followed after signing in: it leads to the **Entrance** with their session. Signing out of erplora.com does not sign out of the business (ACCOUNTS-F09).
+Involved: hubs (the business's links to erplora.com)
+
+### ACCOUNTS-F30 Open my account on its own from the app
+Status: done
+Actor: any person with an account
+Screen: Account › Profile
+Steps:
+1. In the installed app, the person taps manage their account on erplora.com: the app opens the account's address it already knew, with the mark of the account on its own.
+2. erplora.com takes them to **Account › Profile** keeping the mark; the old addresses of the sessions and the preferences lead to **Account › Security** and **Account › Preferences**.
+3. Without a session in that browser, the **Entrance** asks them to sign in and then goes back to the account with the mark.
+4. The account is drawn without anything that sells: the menu has no "Store". From there they change their profile, their password, their sessions, their preferences and their API keys, and can delete the account.
+In: the mark of the account on its own.
+Out: the account open without what sells; the mark stays in that browser's session until it ends.
+If it fails: without the mark, the same address opens the account of the usual panel, with "Store".
+Involved: none

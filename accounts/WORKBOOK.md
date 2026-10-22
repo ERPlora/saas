@@ -216,6 +216,9 @@ El nombre y el correo arriba del menú lateral (en el móvil, dentro del menú):
 | ACCOUNTS-F25 | Abrir el menú de usuario | hecho |
 | ACCOUNTS-F26 | Descargar mis datos | hecho |
 | ACCOUNTS-F27 | Eliminar mi cuenta | hecho |
+| ACCOUNTS-F28 | Entrar en mi negocio desde erplora.com | hecho |
+| ACCOUNTS-F29 | Volver a erplora.com desde mi negocio | hecho |
+| ACCOUNTS-F30 | Abrir mi cuenta sola desde la aplicación | hecho |
 
 ### ACCOUNTS-F01 Crear la cuenta
 <!-- origen: old-saas:SAAS_AUTH-F01 pc:cloud/auth/signup fi:saas/auth-services#registro-de-usuario-por-api-signup fi:saas/support/auth-services#service-create_user gh:saas#2542 gh:saas#2536 gh:saas#2560 gh:saas#2562 -->
@@ -381,7 +384,7 @@ Si falla: si la memoria compartida de los contadores no responde, el freno se ab
 Implicados: ninguno
 
 ### ACCOUNTS-F12 Saber quién ha entrado
-<!-- origen: fi:saas/auth-services#perfil-del-usuario-actual-me fi:saas/support/auth-services#serializer-userserializer -->
+<!-- origen: fi:saas/auth-services#perfil-del-usuario-actual-me fi:saas/support/auth-services#serializer-userserializer old-saas:SAAS_AUTH-F29 -->
 Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Menú de usuario, Cuenta › Perfil
@@ -611,6 +614,50 @@ Entra: el correo escrito y, si hace falta, la contraseña o Google.
 Sale: la cuenta borrada, con su foto, sus preferencias, sus claves y todas sus sesiones, aquí y en sus negocios; deja de ser miembro de los negocios de otros. Sus facturas de ERPlora se quedan, con el destinatario de la fecha de emisión y sin enlace a la cuenta. Sus datos de pagador (nombre fiscal, NIF, dirección y correo de facturación) y su cliente de pago se borran en el momento si ya no queda nada por cobrar; si queda una factura de ERPlora sin pagar, se guardan hasta que se pague o se anule y 90 días como mucho, y ese día la factura pendiente se anula y se borran. Evento `accounts.profile.deleted`.
 Si falla: un negocio propio o pagado la retiene (el diálogo lo dice igual si cambió mientras); quien paga un negocio tampoco puede ser quitado de él, así que no hay forma de dejar de verlo y seguir pagándolo; un negocio eliminado, en sus 90 días para recuperarlo, ya no la retiene. Más de 10 contraseñas en un minuto al confirmar se frenan, ni la buena entra: una sesión ajena abierta no sirve para adivinarla. Un fallo de red se dice en el diálogo y no se borra nada.
 Implicados: hubs (los negocios que la retienen y los que deja), billing (las facturas que se conservan y los datos de pagador que se borran)
+
+### ACCOUNTS-F28 Entrar en mi negocio desde erplora.com
+<!-- origen: old-saas:SAAS_AUTH-F19 old-saas:SAAS_AUTH-F20 gh:saas#2544 -->
+Estado: hecho
+Actor: cualquier persona con cuenta y miembro de un negocio
+Pantalla: Entrada, el negocio, Entrada › error de entrada
+Pasos:
+1. La persona abre su negocio: con «Abrir» en la **Entrada** o en **Negocios**, o escribiendo la dirección de su negocio. El negocio la manda a erplora.com con una marca de ese navegador.
+2. Si ya tiene sesión en erplora.com, erplora.com comprueba que es miembro de ese negocio y la devuelve a él con un pase de un solo uso, sin enseñarle nada.
+3. Si no la tiene, la **Entrada** le pide entrar (con su correo, su contraseña y el código del correo, o con Google; ACCOUNTS-F04 y ACCOUNTS-F06) y, ya dentro, sigue sola hacia el negocio.
+4. El negocio canjea el pase con erplora.com, abre su propia sesión y la persona aparece dentro, en la página a la que iba.
+Entra: el negocio al que va, la página a la que iba dentro de él y la marca del navegador que empezó el salto.
+Sale: un pase que vale un minuto, sirve una sola vez y solo para ese negocio; viaja escondido en un formulario, nunca en la dirección, y la página que lo lleva no se guarda ni se cuenta a otras webs. El negocio recibe quién entra (ACCOUNTS-F12) y abre su propia sesión, que no comparte nada con la de erplora.com.
+Si falla: si no es miembro de ese negocio, «No tienes acceso a este hub», que nombra solo la dirección del negocio, nunca su nombre, con «Volver al hub» y «Contactar Soporte»; un enlace que no lleva a ningún negocio, «Este enlace de acceso no lleva a ningún hub». Más de 20 saltos en 5 minutos, «Demasiados intentos» con «Has abierto tus negocios demasiadas veces en pocos minutos. Espera unos minutos y vuelve a abrir tu negocio.», sin pase. Un pase caducado, ya usado, de otro negocio o que no canjea el propio negocio no abre nada, y el negocio no deja entrar a un navegador que no empezó el salto. Con la verificación en dos pasos encendida y la app autenticadora activa, antes pide el código de la app.
+Implicados: hubs (los negocios de la persona y «Abrir»)
+
+### ACCOUNTS-F29 Volver a erplora.com desde mi negocio
+<!-- origen: old-saas:SAAS_AUTH-F21 -->
+Estado: hecho
+Actor: cualquier persona con cuenta
+Pantalla: Entrada, Cuenta, Negocios
+Pasos:
+1. Dentro de su negocio, la persona pulsa un enlace a erplora.com: gestionar su cuenta, su negocio o su plan.
+2. Si ese navegador tiene su sesión de erplora.com (la que usó para entrar en el negocio), la página se abre sin pedirle nada.
+3. Si no la tiene (otro navegador, el de la aplicación, o la sesión se cerró), la **Entrada** le pide entrar y, ya dentro, la lleva a esa misma página.
+Entra: la página de erplora.com a la que va (solo páginas de erplora.com).
+Sale: la página abierta con su sesión de erplora.com. El negocio no le pasa ninguna credencial a erplora.com: cada uno guarda su propia sesión.
+Si falla: una dirección que no es de erplora.com no se sigue después de entrar: lleva a la **Entrada** con su sesión. Cerrar la sesión de erplora.com no cierra la del negocio (ACCOUNTS-F09).
+Implicados: hubs (los enlaces del negocio a erplora.com)
+
+### ACCOUNTS-F30 Abrir mi cuenta sola desde la aplicación
+<!-- origen: old-saas:SAAS_DASHBOARD-F209 -->
+Estado: hecho
+Actor: cualquier persona con cuenta
+Pantalla: Cuenta › Perfil
+Pasos:
+1. En la aplicación instalada, la persona pulsa gestionar su cuenta en erplora.com: la aplicación abre la dirección de la cuenta que ya conocía, con la marca de la cuenta sola.
+2. erplora.com la lleva a **Cuenta › Perfil** sin perder la marca; las direcciones antiguas de las sesiones y de las preferencias llevan a **Cuenta › Seguridad** y a **Cuenta › Preferencias**.
+3. Sin sesión en ese navegador, la **Entrada** le pide entrar y después vuelve a la cuenta con la marca.
+4. La cuenta se pinta sin nada que venda: el menú no tiene «Tienda». Desde ahí cambia su perfil, su contraseña, sus sesiones, sus preferencias y sus claves de API, y puede eliminar la cuenta.
+Entra: la marca de la cuenta sola.
+Sale: la cuenta abierta sin lo que vende; la marca se queda en la sesión de ese navegador hasta que se cierra.
+Si falla: sin la marca, la misma dirección abre la cuenta del panel de siempre, con «Tienda».
+Implicados: ninguno
 
 ## Para quien lo mantiene
 
