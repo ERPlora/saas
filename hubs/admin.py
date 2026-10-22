@@ -67,7 +67,8 @@ class BusinessTypeAdmin(admin.ModelAdmin):
 
 class PlanForm(forms.ModelForm):
     """BILLING-F28: a plan is not saved with a Stripe price that would charge something else; checked in Stripe
-    only when its prices or their ids change. Without Stripe it is saved and the admin says it was not checked."""
+    only when its prices or their ids change. Without Stripe it is saved and the admin says it was not checked; with
+    Stripe not answering nothing is saved and the admin asks to try again."""
 
     PRICE_FIELDS = ("stripe_price_id", "stripe_price_id_annual", "stripe_product_id", "price_monthly", "price_annual")
 
@@ -88,9 +89,11 @@ class PlanForm(forms.ModelForm):
                 amounts={field: cleaned.get(field) for field in ("price_monthly", "price_annual")},
                 product=cleaned.get("stripe_product_id") or "",
             )
-        except billing_services.PriceCheckUnavailable as unavailable:
-            self.unchecked = str(unavailable)
+        except billing_services.PriceCheckSkipped as skipped:
+            self.unchecked = str(skipped)
             return cleaned
+        except billing_services.PriceCheckFailed as failed:
+            raise forms.ValidationError(str(failed), code="price_check_failed") from failed
         for field, problem in problems.items():
             self.add_error(field, problem)
         return cleaned

@@ -315,3 +315,75 @@ class TestThePricesOfAPlan:
         with pytest.raises(services.PriceCheckUnavailable):
             self.check(stripe_double, stripe_price_id="price_month")
         assert stripe_double.calls == []
+
+    def test_stripe_not_answering_and_stripe_not_configured_are_told_apart(self, stripe_double, settings):
+        """Not configured (development) is saved with a warning; not answering is not saved (BILLING-F28)."""
+        stripe_double.answer("prices.retrieve", connection_error())
+        with pytest.raises(services.PriceCheckFailed):
+            self.check(stripe_double, stripe_price_id="price_month")
+
+        settings.STRIPE_SECRET_KEY = ""
+        with pytest.raises(services.PriceCheckSkipped):
+            self.check(stripe_double, stripe_price_id="price_month")
+
+
+@pytest.mark.django_db
+class TestThePricesOfAModule:
+    """APPS-F04: the Stripe prices pasted on a paid module pass the same checks as a plan's (BILLING-F28), against
+    the module's own fields and its amounts in cents, so the Store never paints one price while Stripe charges
+    another."""
+
+    def check(self, stripe_double, **pasted):
+        return services.module_price_problems(
+            prices={"stripe_price_id_monthly": "", "stripe_price_id_annual": "", **pasted},
+            amounts={"price_monthly_cents": 2999, "price_annual_cents": 29990},
+            product="prod_starter",
+        )
+
+    def test_prices_that_are_the_modules_pass(self, stripe_double):
+        stripe_double.answer(
+            "prices.retrieve",
+            stripe_price(),
+            stripe_price("price_year", unit_amount=29990, recurring={"interval": "year", "interval_count": 1}),
+        )
+
+        assert self.check(stripe_double, stripe_price_id_monthly="price_month", stripe_price_id_annual="price_year") == {}
+
+    def test_nothing_pasted_asks_nothing(self, stripe_double):
+        assert self.check(stripe_double) == {}
+        assert stripe_double.calls == []
+
+    @pytest.mark.parametrize(
+        ("fields", "pasted", "field"),
+        [
+            ({"currency": "usd"}, "stripe_price_id_monthly", "stripe_price_id_monthly"),
+            ({"tax_behavior": "inclusive"}, "stripe_price_id_monthly", "stripe_price_id_monthly"),
+            ({"product": "prod_other"}, "stripe_price_id_monthly", "stripe_price_id_monthly"),
+            ({"unit_amount": 29990}, "stripe_price_id_annual", "stripe_price_id_annual"),
+        ],
+    )
+    def test_a_price_that_would_charge_otherwise_is_refused_under_its_field(self, stripe_double, fields, pasted, field):
+        stripe_double.answer("prices.retrieve", stripe_price(**fields))
+
+        assert list(self.check(stripe_double, **{pasted: "price_x"})) == [field]
+
+    def test_another_amount_names_the_module_and_both_amounts(self, stripe_double):
+        stripe_double.answer("prices.retrieve", stripe_price(unit_amount=900))
+
+        (problem,) = self.check(stripe_double, stripe_price_id_monthly="price_month").values()
+
+        assert "module" in problem and "plan" not in problem
+        assert "9.00" in problem and "29.99" in problem
+
+    def test_stripe_not_answering_is_said_not_taken_for_a_yes(self, stripe_double):
+        stripe_double.answer("prices.retrieve", connection_error())
+
+        with pytest.raises(services.PriceCheckFailed):
+            self.check(stripe_double, stripe_price_id_monthly="price_month")
+
+    def test_without_stripe_the_prices_are_not_checked(self, stripe_double, settings):
+        settings.STRIPE_SECRET_KEY = ""
+
+        with pytest.raises(services.PriceCheckSkipped):
+            self.check(stripe_double, stripe_price_id_monthly="price_month")
+        assert stripe_double.calls == []
