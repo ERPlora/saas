@@ -1,4 +1,5 @@
-"""``fiscal_gateway.seal``: open a .p12 (ERPlora's seal or a customer's own certificate) and pick the seal.
+"""``fiscal_gateway.seal``: open a .p12 (ERPlora's seal or a customer's own certificate) and pick the seal
+(FISCAL-F01).
 
 The holder is read from ``organizationIdentifier`` first and ``serialNumber`` after, without its ETSI
 prefix (``VATES-``, ``IDCES-``). The kind decides the AEAT's door: only the eIDAS QcType eSeal makes a

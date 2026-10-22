@@ -14,6 +14,11 @@ lee el negocio y su otorgamiento (`queries.py`, el único fichero que toca la BD
 | `queries.py` | Negocio que nombra `hub` (`hub_id_for`) y contribuyente de su otorgamiento aprobado (`approved_taxpayer`) |
 | `internal.py` | Vistas `POST /internal/verifactu/submit\|query\|probe` |
 
+Los flujos (prefijo `FISCAL`, también los de la autorización firmada que viven en `fiscal/`) están en
+[`WORKBOOK.md`](WORKBOOK.md): el sello (FISCAL-F01), la presentación (F02), el cifrado de los documentos (F03), la
+caducidad del sello (F04), los avisos de cada paso de la autorización (F05, `fiscal/emails.py`), el modelo del
+Anexo I (F06, parcial) y lo descartado (F07, los apoderamientos ZP01).
+
 ## Contrato con el Hub
 
 Firmado como todo `/internal` (`accounts/signing.py`: v1 o v2, ±300 s, secreto actual y anterior). Cuerpo:

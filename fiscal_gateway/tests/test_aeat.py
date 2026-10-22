@@ -1,4 +1,4 @@
-"""``fiscal_gateway.aeat``: which AEAT door, whose envelope, and the presentation itself.
+"""``fiscal_gateway.aeat``: which AEAT door, whose envelope, and the presentation itself (FISCAL-F02).
 
 Only the AEAT's preproduction is ever reached, through ``respx``: no test opens a connection, and the
 production endpoints are checked as strings only. The envelopes are the Hub's (``fixtures/``, copied
