@@ -611,6 +611,11 @@ if email_backend == ses_email_backend:
     # The throttle first calls ses:GetSendQuota, which the task role may not (only
     # SendEmail/SendRawEmail).
     AWS_SES_AUTO_THROTTLE = None
+    # A sign-in mails its code inside the request: an SES that does not answer fails within seconds, as the SMTP mailer
+    # (10 s), never boto3's minutes (60 s to connect, 60 s to read, retried). One try more (ACCOUNTS-G79).
+    from botocore.config import Config as _BotoConfig
+
+    AWS_SES_CONFIG = _BotoConfig(connect_timeout=3, read_timeout=10, retries={"total_max_attempts": 2, "mode": "standard"})
 elif email_backend == smtp_email_backend:
     MAILERS["default"]["OPTIONS"] = {
         "host": config("EMAIL_HOST", default="localhost"),
