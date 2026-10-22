@@ -1176,5 +1176,5 @@ msgid "We are improving ERPlora. Come back in a few minutes; your data is safe."
 msgstr "Estamos mejorando ERPlora. Vuelve en unos minutos; tus datos están a salvo."
 
 #: templates/503.html
-msgid "Try again"
-msgstr "Volver a intentarlo"
+msgid "Retry"
+msgstr "Reintentar"

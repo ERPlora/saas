@@ -11,4 +11,4 @@
 {% block code %}{% trans "503 · Maintenance" %}{% endblock %}
 {% block heading %}{% trans "We will be back soon" %}{% endblock %}
 {% block message %}{% if maintenance_message %}{{ maintenance_message|linebreaksbr }}{% else %}{% trans "We are improving ERPlora. Come back in a few minutes; your data is safe." %}{% endif %}{% endblock %}
-{% block actions %}<a href="{{ request.get_full_path }}">{% trans "Try again" %}</a>{% endblock %}
+{% block actions %}<a href="{{ request.get_full_path }}">{% trans "Retry" %}</a>{% endblock %}

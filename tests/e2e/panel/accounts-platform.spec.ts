@@ -177,7 +177,7 @@ test('ACCOUNTS-G82 · G33 · G64 · the staff turns maintenance on in the admin:
     // Django's own «… was changed successfully.» comes first; the switch's consequence follows it.
     expect(await setMaintenance(page, true)).toContain('Maintenance mode is on: only the ERPlora staff with a session uses erplora.com.');
 
-    // A visitor in English and one in Spanish: the page, 503, with its «Try again».
+    // A visitor in English and one in Spanish: the page, 503, with its «Retry».
     const english = await visitor(browser, baseURL!, 'en-US');
     const answer = await english.goto('/launch');
     expect(answer?.status()).toBe(503);
@@ -185,13 +185,15 @@ test('ACCOUNTS-G82 · G33 · G64 · the staff turns maintenance on in the admin:
     await atEverySize(english, 'ACCOUNTS-G82-en', async () => {
       await expect(english.locator('h1')).toHaveText('We will be back soon');
       await expect(english.locator('.error-page__code')).toHaveText('503 · Maintenance');
-      await expect(english.getByRole('link', { name: 'Try again' })).toBeVisible();
+      await expect(english.getByRole('link', { name: 'Retry' })).toBeVisible();
+      await expect(english.getByRole('link', { name: 'Contact Support' })).toBeVisible();
     });
     const spanish = await visitor(browser, baseURL!, 'es-ES');
     expect((await spanish.goto('/'))?.status()).toBe(503);
     await atEverySize(spanish, 'ACCOUNTS-G82-es', async () => {
       await expect(spanish.locator('h1')).toHaveText('Volvemos enseguida');
       await expect(spanish.locator('main')).toContainText('Estamos mejorando ERPlora. Vuelve en unos minutos; tus datos están a salvo.');
+      await expect(spanish.getByRole('link', { name: 'Reintentar' })).toBeVisible();
       await expect(spanish.getByRole('link', { name: 'Contactar Soporte' })).toBeVisible();
     });
 

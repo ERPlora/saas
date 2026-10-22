@@ -190,8 +190,7 @@ o «Algo ha ido mal por nuestra parte», con «Inicio» y «Contactar Soporte».
 
 ### Página de mantenimiento
 «503 · Mantenimiento», «Volvemos enseguida», «Estamos mejorando ERPlora. Vuelve en unos minutos; tus datos están a
-salvo.» (o el mensaje que escribió el personal, en el idioma de quien visita), «Volver a intentarlo» y «Contactar
-Soporte».
+salvo.» (o el mensaje que escribió el personal, en el idioma de quien visita), «Reintentar» y «Contactar Soporte».
 
 ### admin › Ajustes del sitio
 Una sola ficha, «Ajustes del sitio», sin «Añadir» ni «Eliminar»: la casilla «modo mantenimiento», el «mensaje en
@@ -883,7 +882,7 @@ Pantalla: admin › Ajustes del sitio, Página de mantenimiento
 Pasos:
 1. Un superusuario abre «Ajustes del sitio» en el admin (siempre la misma ficha: no hay otra que crear ni que borrar), marca el «modo mantenimiento» y, si quiere, escribe el «mensaje en inglés» y el «mensaje en español».
 2. Al guardar, el admin dice «El modo mantenimiento está encendido: solo el personal de ERPlora con su sesión abierta usa erplora.com.».
-3. Desde ese momento, quien visita erplora.com ve «Volvemos enseguida» con «Estamos mejorando ERPlora. Vuelve en unos minutos; tus datos están a salvo.» (o el mensaje del personal, en su idioma), «Volver a intentarlo» y «Contactar Soporte»; los buscadores entienden que la web vuelve pronto.
+3. Desde ese momento, quien visita erplora.com ve «Volvemos enseguida» con «Estamos mejorando ERPlora. Vuelve en unos minutos; tus datos están a salvo.» (o el mensaje del personal, en su idioma), «Reintentar» y «Contactar Soporte»; los buscadores entienden que la web vuelve pronto.
 4. El personal con su sesión abierta sigue usándolo todo, y quien es del personal y no la tiene entra por la **Entrada** camino del admin, también con el código de su app autenticadora.
 5. Al desmarcarlo, el admin dice «El modo mantenimiento está apagado: erplora.com está abierto a todo el mundo.» y todos vuelven a entrar.
 Entra: el interruptor y los dos mensajes.

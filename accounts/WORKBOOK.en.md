@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:99bedb35e00f176d42032fb8b4ef911a8a2880c622740ecb410e9473b2b33942 -->
+<!-- generated from WORKBOOK.md sha256:578ad1f6ca9f677c824fab654aa16dfac95a752a695e75036d81291fd073ff83 -->
 
 ## What it is for and who it is for
 
@@ -166,7 +166,7 @@ has moved.", or "Something went wrong" and "Something went wrong on our side. Pl
 
 ### Maintenance page
 "503 · Maintenance", "We will be back soon", "We are improving ERPlora. Come back in a few minutes; your data is
-safe." (or the message the staff wrote, in the visitor's language), "Try again" and "Contact Support".
+safe." (or the message the staff wrote, in the visitor's language), "Retry" and "Contact Support".
 
 ### admin › Site settings
 A single record, "Site settings", without "Add" or "Delete": the "maintenance mode" box, the "message in English" and
@@ -815,7 +815,7 @@ Screen: admin › Site settings, Maintenance page
 Steps:
 1. A superuser opens «Site settings» in the admin (always the same record: there is no other to create or delete), ticks «maintenance mode» and, if they want, writes the «message in English» and the «message in Spanish».
 2. On saving, the admin says «Maintenance mode is on: only the ERPlora staff with a session uses erplora.com.».
-3. From then on, whoever visits erplora.com sees «We will be back soon» with «We are improving ERPlora. Come back in a few minutes; your data is safe.» (or the staff's message, in their language), «Try again» and «Contact Support»; search engines understand the web is back soon.
+3. From then on, whoever visits erplora.com sees «We will be back soon» with «We are improving ERPlora. Come back in a few minutes; your data is safe.» (or the staff's message, in their language), «Retry» and «Contact Support»; search engines understand the web is back soon.
 4. The staff with its session open keeps using everything, and a staff member without one signs in through the **Entrance** on the way to the admin, also with the code of their authenticator app.
 5. On unticking it, the admin says «Maintenance mode is off: erplora.com is open to everyone.» and everyone gets in again.
 In: the switch and the two messages.
