@@ -6,10 +6,25 @@
 // or to the launcher when there is a session. `google_no_account` is gone: an unknown Google
 // address now creates its account, as an unknown address on the sign-in does.
 import { IonButton } from '@ionic/vue';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { mountAccountPage, SIGNED_IN } from '../__tests__/mount-account-page';
+import { SUPPORT_EMAIL_ID } from '../support';
 import LoginErrorPage from './LoginErrorPage.vue';
+
+/** The support address the SaaS embeds beside spa-config (base/spa.py, `SUPPORT_EMAIL`; PUBLIC-F18). */
+function embedSupport(email: string | null): void {
+  document.getElementById(SUPPORT_EMAIL_ID)?.remove();
+  if (email === null) return;
+  const script = document.createElement('script');
+  script.type = 'application/json';
+  script.id = SUPPORT_EMAIL_ID;
+  script.textContent = JSON.stringify(email);
+  document.body.append(script);
+}
+
+beforeEach(() => embedSupport('help@erplora.test'));
+afterEach(() => embedSupport(null));
 
 type Options = Parameters<typeof mountAccountPage>[1];
 
@@ -36,7 +51,7 @@ describe('LoginErrorPage: the texts of each template', () => {
       'The address it wanted to return to is not an ERPlora hub, so we stopped here. Open your hub and start the sign-in from its own screen.',
     );
     expect(page.primary()).toEqual(['Home', '/launch']);
-    expect(page.links).toEqual([['Contact Support', 'mailto:info@erplora.com']]);
+    expect(page.links).toEqual([['Contact Support', 'mailto:help@erplora.test']]);
     expect(document.title).toBe('Invalid sign-in link - ERPlora Cloud');
   });
 
@@ -50,7 +65,7 @@ describe('LoginErrorPage: the texts of each template', () => {
     expect(page.primary()).toEqual(['Home', '/launch']);
     expect(page.links).toEqual([
       ['Back to the hub', 'http://a.localhost:8000/'],
-      ['Contact Support', 'mailto:info@erplora.com'],
+      ['Contact Support', 'mailto:help@erplora.test'],
     ]);
     expect(document.title).toBe('No access to this hub - ERPlora Cloud');
   });
@@ -113,6 +128,12 @@ describe('LoginErrorPage: the texts of each template', () => {
 });
 
 describe('LoginErrorPage: the way back', () => {
+  it('«Contact Support» writes to the support address of the SaaS, and without one offers no address (PUBLIC-F18)', async () => {
+    embedSupport(null);
+    const page = await mountError('code=invalid_hub');
+    expect(page.links).toEqual([]);
+  });
+
   it('goes to the launcher when there is a session', async () => {
     const page = await mountError('code=authentication_error&next=%2Flaunch', { session: SIGNED_IN });
     expect(page.primary()).toEqual(['Back to sign in', '/launch']);

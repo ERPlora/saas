@@ -11,6 +11,7 @@ jump names the hub's host and links back to it from the slug alone. ``spa-config
 takes no attributes for ``<html>``, so ``frontend/main.ts`` reads it here and hands it to
 ``createShell({ surface })``.
 
+Beside them, ``support-email`` is ``SUPPORT_EMAIL``, the address of the SPA's «Contact Support» (PUBLIC-F18).
 Its Content Security Policy admits Stripe for the Store's Embedded Checkout (``base/csp.py``), except on
 the account surface, which sells nothing.
 """
@@ -27,6 +28,7 @@ from base.csp import spa_policy
 from base.surface import account_surface
 
 SESSION_ME_ID = "session-me"
+SUPPORT_EMAIL_ID = "support-email"
 
 
 @require_safe
@@ -42,7 +44,11 @@ def spa(request: HttpRequest) -> HttpResponse:
         config["surface"] = surface
     response = render_spa(
         request,
-        extra_json={SESSION_ME_ID: me.model_dump(mode="json")},
+        extra_json={
+            SESSION_ME_ID: me.model_dump(mode="json"),
+            # «Contact Support» of the SPA writes here: the public web's one support address (PUBLIC-F18).
+            SUPPORT_EMAIL_ID: settings.SUPPORT_EMAIL,
+        },
         extra_config=config,
     )
     # What Django's `csp_override` sets: the middleware builds the header from it, with the nonce.

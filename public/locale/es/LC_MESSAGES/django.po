@@ -1910,9 +1910,6 @@ msgstr "Regístrate y tu hub se aprovisiona en minutos: nada que instalar, nada 
 msgid "No credit card required"
 msgstr "Sin tarjeta de crédito"
 
-msgid "1 device, 3 local users"
-msgstr "1 dispositivo, 3 usuarios locales"
-
 msgid "For counter hardware"
 msgstr "Para el hardware del mostrador"
 
@@ -2177,12 +2174,6 @@ msgstr "Lo mismo, en lenguaje de contrato."
 msgid "Everything on this page is section 7 of the terms of service. If the two ever disagree, the terms are the ones that bind us."
 msgstr "Todo lo de esta página es la cláusula 7 de las condiciones del servicio. Si alguna vez las dos no coinciden, las que nos obligan son las condiciones."
 
-msgid "Resources"
-msgstr "Recursos"
-
-msgid "Guides, references, and practical resources for using and extending ERPlora are coming soon."
-msgstr "Muy pronto: guías, referencias y recursos prácticos para usar y ampliar ERPlora."
-
 msgid "Help"
 msgstr "Ayuda"
 
@@ -2280,12 +2271,6 @@ msgstr "No compartas credenciales"
 msgid "Never send passwords, PINs, recovery codes, signing keys, or complete payment details in a support message."
 msgstr "No mandes nunca contraseñas, PIN, códigos de recuperación, claves de firma ni datos de pago completos en un mensaje de soporte."
 
-msgid "Reporting from your Hub"
-msgstr "Reportar desde tu hub"
-
-msgid "When you are signed in, open Help & Support and use Report a Problem. The Hub adds useful account and browser context automatically."
-msgstr "Con la sesión iniciada, abre Ayuda y soporte y usa «Reportar un problema». El hub añade solo el contexto útil de la cuenta y del navegador."
-
 msgid "Your data lives in its own database, isolated from every other business, with continuous backups, point-in-time recovery for 14 days and high availability in Europe to keep your business running."
 msgstr "Tus datos viven en su propia base de datos, aislada de la de cualquier otro negocio, con copias de seguridad continuas, recuperación a cualquier momento de los últimos 14 días y alta disponibilidad en Europa para que tu negocio no se detenga."
 
@@ -2337,8 +2322,10 @@ msgstr "Todos los campos son obligatorios excepto el teléfono."
 msgid "Enter a valid email address."
 msgstr "Introduce una dirección de correo electrónico válida."
 
-msgid "Thanks! We received your message and will reply within 4 business hours."
-msgstr "¡Gracias! Recibimos tu mensaje y responderemos en un plazo de 4 horas laborables."
+msgid "Thanks! We received your message and will reply within %(hours)d business hour."
+msgid_plural "Thanks! We received your message and will reply within %(hours)d business hours."
+msgstr[0] "¡Gracias! Recibimos tu mensaje y responderemos en un plazo de %(hours)d hora laborable."
+msgstr[1] "¡Gracias! Recibimos tu mensaje y responderemos en un plazo de %(hours)d horas laborables."
 
 msgid "/ year per hub"
 msgstr "/ año por hub"
@@ -2580,8 +2567,10 @@ msgstr "Migrar desde Holded, buscando añadir nóminas y WMS..."
 msgid "Get in touch"
 msgstr "Ponte en contacto"
 
-msgid "We typically respond within 4 business hours."
-msgstr "Normalmente respondemos en un plazo de 4 horas laborables."
+msgid "We typically respond within %(hours)s business hour."
+msgid_plural "We typically respond within %(hours)s business hours."
+msgstr[0] "Normalmente respondemos en un plazo de %(hours)s hora laborable."
+msgstr[1] "Normalmente respondemos en un plazo de %(hours)s horas laborables."
 
 msgid "Contact ERPlora. Have questions about our ERP system? Get in touch and we'll respond as soon as possible."
 msgstr "Contacta con ERPlora. ¿Tienes preguntas sobre nuestro sistema ERP? Escríbenos y te responderemos lo antes posible."
@@ -3449,8 +3438,10 @@ msgstr "Tiempo de respuesta"
 msgid "Email and contact form"
 msgstr "Correo y formulario de contacto"
 
-msgid "Within 4 business hours"
-msgstr "En un plazo de 4 horas laborables"
+msgid "Within %(hours)s business hour"
+msgid_plural "Within %(hours)s business hours"
+msgstr[0] "En un plazo de %(hours)s hora laborable"
+msgstr[1] "En un plazo de %(hours)s horas laborables"
 
 msgid "ERPlora · One ERP. Infinite configurations. Yours."
 msgstr "ERPlora · Un ERP. Infinitas configuraciones. Tuyo."
@@ -4079,3 +4070,7 @@ msgstr "Los países donde puedes crear tu negocio y los sistemas de facturación
 # --- The language switcher of the footer (PUBLIC-F13) ---
 msgid "Language"
 msgstr "Idioma"
+
+#: templates/public/partials/app_bar.html
+msgid "Back"
+msgstr "Volver"
