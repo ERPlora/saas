@@ -222,7 +222,7 @@
       },
       "deleting": {
         "heading": "Se eliminará para siempre el {date}",
-        "body": "Lo eliminaste el {date} y ya no funciona. Hasta entonces puedes recuperarlo tal como estaba; te enviamos por correo el enlace para descargar sus datos.",
+        "body": "Lo eliminaste el {date} y ya no funciona. Hasta entonces puedes recuperarlo tal como estaba.",
         "bodyNotOwner": "Se eliminó el {date} y ya no funciona. Solo su propietario puede recuperarlo."
       },
       "plan": {
@@ -280,7 +280,7 @@
       "country": "País",
       "timezone": "Zona horaria",
       "language": "Idioma del negocio",
-      "address": "Dirección web (no cambia: la usan tus dispositivos)",
+      "address": "Dirección web",
       "save": "Guardar cambios",
       "saveHint": "Se activa al cambiar algo.",
       "saved": "Cambios guardados",
@@ -288,18 +288,19 @@
         "en": "English",
         "es": "Español"
       },
-      "countryLocked": "El país no cambia una vez listo el negocio: sus facturas son de un país."
+      "countryLocked": "El país no cambia una vez listo el negocio: sus facturas son de un país.",
+      "changeAddress": "Cambiar dirección"
     },
     "danger": {
       "title": "Zona de peligro",
       "deleteTitle": "Eliminar negocio",
-      "deleteBody": "Deja de funcionar al momento. Guardamos los datos 90 días por si cambias de idea y te enviamos un enlace para descargarlos.",
+      "deleteBody": "Deja de funcionar al momento. Guardamos los datos 90 días por si cambias de idea.",
       "deleteAction": "Eliminar negocio",
       "ownerOnly": "Solo el propietario puede eliminar el negocio.",
       "confirmTitle": "Eliminar {name}",
       "confirmMessage": "Deja de funcionar ahora mismo para todos. Puedes recuperarlo durante 90 días; después se borra para siempre.",
       "consequencePlan": "Su plan se cancela ahora: si lo recuperas, vuelve en Gratis.",
-      "consequenceEmail": "Te enviamos un correo con el enlace para descargar sus datos.",
+      "consequenceEmail": "Te enviamos un correo con la fecha hasta la que puedes recuperarlo.",
       "confirmLabel": "Escribe el nombre del negocio para confirmar",
       "restore": "Recuperar negocio"
     },
@@ -397,6 +398,16 @@
       "changeCard": "Cambiar tarjeta",
       "changeCardName": "Cambiar la tarjeta de {name}",
       "payName": "Pagar la factura de {name}"
+    },
+    "addressDialog": {
+      "title": "Cambiar la dirección web",
+      "label": "Nueva dirección",
+      "submit": "Cambiar dirección",
+      "lead": "Tu negocio se abrirá en:",
+      "consequenceDevices": "Tus dispositivos y erplora.com te llevan a la nueva dirección.",
+      "consequenceOld": "La dirección antigua deja de abrir el negocio: los enlaces y códigos QR con ella dejan de funcionar.",
+      "consequenceKept": "Nadie más puede quedarse con la dirección antigua mientras sea la última que tuviste.",
+      "changed": "El negocio se abre ahora en {host}"
     }
   }
 }

@@ -3220,7 +3220,20 @@ def retax_live_subscriptions() -> Counter:
 # --- saas-cron: manage.py sweep_unpaid ----------------------------------------------------------------
 
 #: The counts a sweep reports; ``errors`` makes the run fail after its whole pass (``task_failed``).
-SWEEP_COUNTS = ("checked", "suspended", "cancelled", "payers_forgotten", "notified", "mail_failed", "errors")
+SWEEP_COUNTS = (
+    "checked",
+    "suspended",
+    "cancelled",
+    "payers_forgotten",
+    "notified",
+    "mail_failed",
+    "errors",
+    # The clock of the suspended businesses (HUBS-F20, ``hubs.services.age_suspended``).
+    "warned",
+    "final_notice",
+    "expired",
+    "undated",
+)
 #: Businesses whose unpaid plan the sweep looks at: still running (a suspended one already is).
 SWEPT_STATUSES = [Hub.Status.PREPARING, Hub.Status.ACTIVE, Hub.Status.PAST_DUE]
 
@@ -3267,6 +3280,9 @@ def sweep_unpaid() -> Counter:
             pk=subscription.hub_id, status=Hub.Status.SUSPENDED
         ).exists():
             counts["suspended"] += 1
+    # The businesses suspended too long (HUBS-F20; PLAN-SAAS §1.1): the notices of day 30 and 150 and the deletion
+    # on day 180, which the loop below ends in Stripe in this same pass.
+    counts.update(hub_services.age_suspended())
     # Asked at deletion (``hubs.business.delete``), whatever the business is now: recovered on Free, too.
     deleted = (
         Subscription.objects.filter(cancel_requested_at__isnull=False)

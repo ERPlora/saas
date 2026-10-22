@@ -15,7 +15,9 @@
 // deleted one shows its Summary whatever the address. Members only needs the business's id (the address's), so
 // it mounts with the page and its list goes in the page's first `/api/live` stream with `hubs.business.get`; it
 // shows once the business is there. Waiting for the business to mount it made the SDK reopen the stream, and the
-// first request ended aborted (FIX-SAAS-BUSINESSES-LIVE-DOUBLE-OPEN).
+// first request ended aborted (FIX-SAAS-BUSINESSES-LIVE-DOUBLE-OPEN). The Summary's authorisation card goes the same
+// way: it asks with the page and shows only for a Spanish business that lives (`files`); hidden otherwise, so the
+// business's answer never takes a subscription out of the stream.
 import { formatDateTime, InlineFeedback, StatusPill } from '@erplora/ui/components';
 import { AppPage, HubIcon, type ShellTab, toastError, toastSuccess, useSurface, WebOnly } from '@erplora/ui/shell';
 import { useCommand, useLive } from '@erplora/ui/sdk';
@@ -270,13 +272,6 @@ async function recover(): Promise<void> {
 
         <template v-if="section === 'summary'">
           <BusinessSummary :business="business" />
-          <RepresentationCard
-            v-if="files"
-            :id="business.id"
-            :can-manage="opensAtAll && business.can.open"
-            :managing="!!opening"
-            @manage="open(business)"
-          />
         </template>
         <ion-card
           v-else-if="section === 'modules'"
@@ -310,6 +305,14 @@ async function recover(): Promise<void> {
         </template>
       </template>
 
+      <RepresentationCard
+        v-if="section === 'summary' && !loadFailed"
+        v-show="files"
+        :id="id"
+        :can-manage="opensAtAll && !!business?.can.open"
+        :managing="!!opening"
+        @manage="business && open(business)"
+      />
       <MembersTab
         v-if="section === 'members' && !loadFailed"
         :id="id"

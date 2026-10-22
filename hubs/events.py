@@ -5,6 +5,7 @@ hubs reacts to no event of another app, so this module only names its own.
 
 BUSINESS_CREATED = "hubs.business.created"
 BUSINESS_UPDATED = "hubs.business.updated"
+BUSINESS_ADDRESS_CHANGED = "hubs.business.address_changed"
 BUSINESS_READY = "hubs.business.ready"
 BUSINESS_OPENED = "hubs.business.opened"
 BUSINESS_DELETED = "hubs.business.deleted"
@@ -19,6 +20,7 @@ BUSINESS_USAGE_COLLECTED = "hubs.business.usage_collected"
 BUSINESS = [
     BUSINESS_CREATED,
     BUSINESS_UPDATED,
+    BUSINESS_ADDRESS_CHANGED,
     BUSINESS_READY,
     BUSINESS_OPENED,
     BUSINESS_DELETED,

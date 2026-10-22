@@ -305,6 +305,8 @@ class BusinessCanOut(Schema):
     transfer: bool
     restore: bool
     delete: bool
+    #: Only the owner moves the business to another web address (HUBS-F16).
+    change_address: bool
 
 
 # The usage of a business (lot L4-A, PLAN-SAAS §5): the page carries the last day; ``hubs.usage.*`` below.
@@ -404,6 +406,13 @@ class BusinessUpdateIn(Schema):
     timezone: TimeZone | None = None
 
 
+class BusinessAddressIn(Schema):
+    """The new web address of the business, ``<slug>.erplora.com`` (only its owner changes it)."""
+
+    id: UUID
+    slug: str = Field(max_length=63, description="Lowercase letters, digits and hyphens; checked as the Hub checks it.")
+
+
 class BusinessDeleteIn(Schema):
     id: UUID
     #: The business's name, typed again: deleting is not one click away.
@@ -440,6 +449,14 @@ class HubStatusOut(Schema):
     id: UUID
     status: str
     ready_at: datetime | None
+
+
+class SuspensionStepOut(Schema):
+    """What one step of the clock of a suspended business did (HUBS-F20): ``warned``, ``final_notice``,
+    ``expired``, ``undated``, ``mail_failed`` or ``""`` (nothing due)."""
+
+    id: UUID
+    outcome: str
 
 
 #: The label of a paid app (``modules[].id`` of the snapshot, PLAN §20.2).

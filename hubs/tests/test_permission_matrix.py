@@ -14,6 +14,7 @@ from live.errors import NotFound, OperationError, PermissionDenied
 from hubs import queries, services
 from hubs.schemas import (
     BillingProfileGetIn,
+    BusinessAddressIn,
     BillingProfileIn,
     BusinessDeleteIn,
     BusinessOpenIn,
@@ -44,6 +45,10 @@ def call(name, hub, team):
         "business.update": (
             services.business_update,
             BusinessUpdateIn(id=hub.id, name="Renamed"),
+        ),
+        "business.change_address": (
+            services.business_change_address,
+            BusinessAddressIn(id=hub.id, slug="casa-manolo"),
         ),
         "business.delete": (
             services.business_delete,
@@ -98,6 +103,7 @@ MATRIX = {
     #                          owner admin   manager employee invitee stranger
     "business.get": (OK, OK, DENIED, DENIED, HIDDEN, HIDDEN),
     "business.update": (OK, OK, DENIED, DENIED, HIDDEN, HIDDEN),
+    "business.change_address": (OK, DENIED, DENIED, DENIED, HIDDEN, HIDDEN),
     "business.delete": (OK, DENIED, DENIED, DENIED, HIDDEN, HIDDEN),
     "business.restore": (OK, DENIED, DENIED, DENIED, HIDDEN, HIDDEN),
     "business.open": (OK, OK, OK, OK, HIDDEN, HIDDEN),
@@ -153,6 +159,8 @@ def test_every_operation_on_a_business_has_its_row():
         "hubs.subscription.apply",
         # The platform's (the nightly collection): ``test_collect_hub_usage.py``.
         "hubs.usage.record",
+        # The platform's (the clock of a suspended business): ``test_suspended_lifecycle.py``.
+        "hubs.business.age_suspension",
         "hubs.address.propose",
         "hubs.invitation.list_mine",
         "hubs.invitation.accept",

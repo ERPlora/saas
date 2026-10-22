@@ -452,6 +452,9 @@ class Hub(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     slug = models.CharField(_("address"), max_length=63, unique=True, validators=[hub_slug_validator])
+    #: The address the business had before its owner changed it (HUBS-F16): still its own, so no other business
+    #: takes it and receives the old links and QR codes; released when the address changes again.
+    previous_slug = models.CharField(_("previous address"), max_length=63, blank=True, default="", db_index=True)
     name = models.CharField(_("name"), max_length=120)
     country = models.CharField(_("country"), max_length=2, help_text=_("ISO 3166-1 alpha-2, e.g. ES."))
     timezone = models.CharField(_("time zone"), max_length=64, default="Europe/Madrid")
@@ -477,6 +480,11 @@ class Hub(models.Model):
     ready_at = models.DateTimeField(_("ready at"), null=True, blank=True)
     provision_requested_at = models.DateTimeField(_("provisioning asked at"), null=True, blank=True)
     deletion_requested_at = models.DateTimeField(_("deletion asked at"), null=True, blank=True)
+    #: The clock of a business suspended for an unpaid plan (HUBS-F20): set when it is suspended, cleared when it
+    #: pays; the notices of day 30 and 150 go out once each, and on day 180 it is deleted (``services.age_suspended``).
+    suspended_at = models.DateTimeField(_("suspended at"), null=True, blank=True)
+    suspension_warned_at = models.DateTimeField(_("first suspension notice"), null=True, blank=True)
+    suspension_final_notice_at = models.DateTimeField(_("last suspension notice"), null=True, blank=True)
     state_version = models.PositiveBigIntegerField(_("state version"), default=1)
     pushed_state_version = models.PositiveBigIntegerField(_("state version the Hub has"), default=0)
     #: Grows with every change of the registry (``PUT /internal/hubs/{id}``): an acknowledgement of an

@@ -7,6 +7,7 @@
   "hubs.business.create": { "method": "post", "path": "/api/hubs/businesses" },
   "hubs.business.get": { "method": "get", "path": "/api/hubs/businesses/detail" },
   "hubs.business.update": { "method": "post", "path": "/api/hubs/businesses/update" },
+  "hubs.business.change_address": { "method": "post", "path": "/api/hubs/businesses/address" },
   "hubs.business.delete": { "method": "post", "path": "/api/hubs/businesses/delete" },
   "hubs.business.restore": { "method": "post", "path": "/api/hubs/businesses/restore" },
   "hubs.business.open": { "method": "post", "path": "/api/hubs/businesses/open" },

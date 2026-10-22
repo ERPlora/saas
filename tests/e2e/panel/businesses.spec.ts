@@ -3,7 +3,20 @@
 // cards on a phone, «Manage» into a business's page and its four sections, and «Delete» → «Recover».
 import { type Page } from '@playwright/test';
 
-import { businessIdOf, expect, panelAccount, seedPanel, settled, shot, signIn, test, VIEWPORTS, watchPageErrors } from './fixtures';
+import {
+  businessIdOf,
+  expect,
+  panelAccount,
+  QUIET_MS,
+  seedPanel,
+  settled,
+  shot,
+  signIn,
+  test,
+  VIEWPORTS,
+  watchLiveStreams,
+  watchPageErrors,
+} from './fixtures';
 
 /** A section of the business: each has its address, so Ionic slides the next page in over the last
  *  one, which it then drops; the tabbar is clicked once only one page is left. */
@@ -91,26 +104,7 @@ test('«Delete» lives in the business’s Settings and asks for the name; delet
 
 // flow: ninguno — FIX hubs (FIX-SAAS-BUSINESSES-LIVE-DOUBLE-OPEN). A page declares its live data when it
 // mounts, so its stream (`GET /api/live?s=…`) opens once; a second subscription arriving after the first
-// open makes the SDK reopen it, and the first request ends `ERR_ABORTED`.
-/** The `/api/live` streams a page opens (the operations of each, from `s=`) and the ones that failed. */
-function watchLiveStreams(page: Page): { opened: string[][]; failed: string[] } {
-  const opened: string[][] = [];
-  const failed: string[] = [];
-  const isStream = (url: string) => new URL(url).pathname === '/api/live';
-  page.on('request', (request) => {
-    if (!isStream(request.url())) return;
-    const s = new URL(request.url()).searchParams.get('s') ?? '';
-    const list = JSON.parse(Buffer.from(s, 'base64url').toString('utf8')) as { op: string; params: unknown }[];
-    opened.push(list.map((sub) => `${sub.op} ${JSON.stringify(sub.params)}`));
-  });
-  page.on('requestfailed', (request) => {
-    if (isStream(request.url())) failed.push(request.failure()?.errorText ?? 'failed');
-  });
-  return { opened, failed };
-}
-
-/** Longer than the SDK's resubscribe debounce (150 ms) and a round trip: a late subscription would reopen by then. */
-const QUIET_MS = 1500;
+// open makes the SDK reopen it, and the first request ends `ERR_ABORTED` (`watchLiveStreams`, fixtures.ts).
 
 test('Businesses opens its live stream once, with everything the page shows', async ({ page }) => {
   const streams = watchLiveStreams(page);

@@ -18,6 +18,7 @@ from hubs.schemas import (
     BillingProfileGetIn,
     BillingProfileIn,
     BusinessCreateIn,
+    BusinessAddressIn,
     BusinessDeleteIn,
     BusinessListIn,
     BusinessOpenIn,
@@ -72,6 +73,11 @@ async def business_get(request, params: Query[ByIdIn]):
 @bind(router, "hubs.business.update", "/hubs/businesses/update")
 async def business_update(request, data: BusinessUpdateIn):
     return await run_operation(request, services.business_update, data)
+
+
+@bind(router, "hubs.business.change_address", "/hubs/businesses/address")
+async def business_change_address(request, data: BusinessAddressIn):
+    return await run_operation(request, services.business_change_address, data)
 
 
 @bind(router, "hubs.business.delete", "/hubs/businesses/delete")

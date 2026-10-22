@@ -25,6 +25,7 @@ live(
     "hubs.business.get",
     on=[
         events.BUSINESS_UPDATED,
+        events.BUSINESS_ADDRESS_CHANGED,
         events.BUSINESS_READY,
         events.BUSINESS_DELETED,
         events.BUSINESS_RESTORED,

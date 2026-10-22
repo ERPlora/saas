@@ -83,6 +83,7 @@ def test_the_routes_are_bound_to_their_operations():
         "/hubs/businesses": (["GET", "POST"], "hubs.business.list|hubs.business.create"),
         "/hubs/businesses/detail": (["GET"], "hubs.business.get"),
         "/hubs/businesses/update": (["POST"], "hubs.business.update"),
+        "/hubs/businesses/address": (["POST"], "hubs.business.change_address"),
         "/hubs/businesses/delete": (["POST"], "hubs.business.delete"),
         "/hubs/businesses/restore": (["POST"], "hubs.business.restore"),
         "/hubs/businesses/open": (["POST"], "hubs.business.open"),
