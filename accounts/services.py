@@ -725,6 +725,34 @@ def erase_inactive_account(user_id, *, inactive_days: int = INACTIVE_DAYS, dry_r
     ).outcome
 
 
+# --- GDPR: the audit log keeps 90 days (ACCOUNTS-F37) ---------------------------------------------------------
+
+#: Days an audit entry is kept (the old SaaS's 90; GDPR art. 5.1.e). ``cleanup_old_logs --retention-days`` changes it.
+AUDIT_LOG_RETENTION_DAYS = 90
+#: Audit entries deleted per transaction: a long run never holds one big transaction.
+AUDIT_LOG_BATCH = 1000
+
+
+def audit_entries_before(cutoff) -> int:
+    """How many audit entries were written before ``cutoff`` (``cleanup_old_logs --dry-run``)."""
+    from auditlog.models import LogEntry
+
+    return LogEntry.objects.filter(timestamp__lt=cutoff).count()
+
+
+def prune_audit_log_batch(cutoff) -> int:
+    """Delete up to ``AUDIT_LOG_BATCH`` of the audit entries written before ``cutoff``, in their own transaction; how
+    many went, as the database counts them (0: none is left, or none could go, and the run ends)."""
+    from auditlog.models import LogEntry
+
+    with transaction.atomic():
+        ids = list(
+            LogEntry.objects.filter(timestamp__lt=cutoff).order_by("pk").values_list("pk", flat=True)[:AUDIT_LOG_BATCH]
+        )
+        deleted, _ = LogEntry.objects.filter(pk__in=ids).delete()
+    return deleted
+
+
 # --- Account → Profile → «Change» the email --------------------------------------------------------
 
 

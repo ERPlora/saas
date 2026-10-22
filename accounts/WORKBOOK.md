@@ -223,8 +223,9 @@ El nombre y el correo arriba del menú lateral (en el móvil, dentro del menú):
 | ACCOUNTS-F32 | Usar una clave de API: qué abre y qué no | hecho |
 | ACCOUNTS-F33 | Revocar una clave de API | hecho |
 | ACCOUNTS-F34 | Consultar la documentación de la API | hecho |
-| ACCOUNTS-F35 | Borrar las cuentas sin uso en dos años | hecho |
+| ACCOUNTS-F35 | Borrar las cuentas sin uso en dos años | parcial |
 | ACCOUNTS-F36 | Ver quién cambió una cuenta | hecho |
+| ACCOUNTS-F37 | Borrar el registro de auditoría de más de 90 días | parcial |
 
 ### ACCOUNTS-F01 Crear la cuenta
 <!-- origen: old-saas:SAAS_AUTH-F01 pc:cloud/auth/signup fi:saas/auth-services#registro-de-usuario-por-api-signup fi:saas/support/auth-services#service-create_user gh:saas#2542 gh:saas#2536 gh:saas#2560 gh:saas#2562 -->
@@ -725,7 +726,7 @@ Implicados: ninguno
 
 ### ACCOUNTS-F35 Borrar las cuentas sin uso en dos años
 <!-- origen: old-saas:SAAS_AUTH-F15 fi:saas/auth-services#comando-anonimizar-usuarios-inactivos-gdpr fi:saas/support/auth-services#command-anonymize_old_users fi:saas/support/auth-services#task-anonymize_old_users_task -->
-Estado: hecho
+Estado: parcial — el borrado ya existe, pero aún no está programado cada semana: hasta entonces lo lanza una persona del equipo
 Actor: sistema
 Pantalla: ninguna (una tarea semanal de erplora.com)
 Pasos:
@@ -750,6 +751,19 @@ Pasos:
 Entra: los cambios de las cuentas, hechos desde el panel, con una clave de API, desde el admin o por las tareas de erplora.com.
 Sale: una entrada por cambio, que nombra a quien actuaba en ese momento (la cuenta con la sesión abierta o la dueña de la clave de API; nadie en una tarea de erplora.com o tras cerrar la sesión) y la dirección real del visitante, nunca la que diga su navegador.
 Si falla: nunca se anota un secreto (ni la contraseña, ni la clave de API, ni la de una sesión) ni lo que se mueve en cada visita (la última entrada, el último uso de una clave, la última vez que se vio una sesión). Si la cuenta se elimina, sus entradas se quedan con su correo y sin enlace a ella hasta que se borran a los 90 días (ACCOUNTS-F37). Alguien del equipo sin el permiso no puede abrirlo.
+Implicados: ninguno
+
+### ACCOUNTS-F37 Borrar el registro de auditoría de más de 90 días
+<!-- origen: fi:saas/auth-services#comando-limpiar-logs-antiguos-gdpr fi:saas/support/auth-services#command-cleanup_old_logs fi:saas/support/auth-services#task-cleanup_old_logs_task fi:saas/auth-services#tareas-gdpr-retencion-de-datos -->
+Estado: parcial — la limpieza ya existe, pero aún no está programada cada día: hasta entonces la lanza una persona del equipo
+Actor: sistema
+Pantalla: ninguna (una tarea diaria de erplora.com)
+Pasos:
+1. Una vez al día, erplora.com borra por tandas las entradas del registro de auditoría (ACCOUNTS-F36) de hace más de 90 días.
+2. Las de los últimos 90 días se quedan, también las de una cuenta ya eliminada.
+Entra: la fecha de cada entrada del registro.
+Sale: el registro con solo los últimos 90 días; nada más cambia.
+Si falla: si una tanda no se puede borrar, la tarea termina con error para que el equipo lo vea; lo borrado antes se queda borrado y la pasada siguiente sigue desde ahí. Si ya hay una pasada en marcha, la segunda no hace nada. El equipo puede contar lo que se borraría sin borrar nada, y cambiar los días que se guardan.
 Implicados: ninguno
 
 ## Para quien lo mantiene

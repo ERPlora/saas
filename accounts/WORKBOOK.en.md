@@ -203,8 +203,9 @@ theme and "Sign out".
 | ACCOUNTS-F32 | Use an API key: what it opens and what it does not | done |
 | ACCOUNTS-F33 | Revoke an API key | done |
 | ACCOUNTS-F34 | Read the API documentation | done |
-| ACCOUNTS-F35 | Erase the accounts unused for two years | done |
+| ACCOUNTS-F35 | Erase the accounts unused for two years | partial |
 | ACCOUNTS-F36 | See who changed an account | done |
+| ACCOUNTS-F37 | Erase the audit log older than 90 days | partial |
 
 ### ACCOUNTS-F01 Create the account
 Status: done
@@ -670,7 +671,7 @@ If it fails: without a session, the **Entrance** asks them to sign in and then g
 Involved: none
 
 ### ACCOUNTS-F35 Erase the accounts unused for two years
-Status: done
+Status: partial — the erasure exists, but it is not scheduled every week yet: until then a team member runs it
 Actor: system
 Screen: none (a weekly task of erplora.com)
 Steps:
@@ -694,4 +695,16 @@ Steps:
 In: the changes to the accounts, made from the panel, with an API key, from the admin or by erplora.com's tasks.
 Out: one entry per change, naming whoever acted at that moment (the account with the open session or the owner of the API key; nobody in an erplora.com task or after signing out) and the visitor's real address, never the one its browser claims.
 If it fails: a secret is never written down (neither the password, nor the API key, nor a session's) nor what moves on every visit (the last sign-in, a key's last use, the last time a session was seen). If the account is deleted, its entries keep its email and no link to it until they are erased after 90 days (ACCOUNTS-F37). A team member without the permission cannot open it.
+Involved: none
+
+### ACCOUNTS-F37 Erase the audit log older than 90 days
+Status: partial — the cleanup exists, but it is not scheduled every day yet: until then a team member runs it
+Actor: system
+Screen: none (a daily task of erplora.com)
+Steps:
+1. Once a day, erplora.com erases, in batches, the audit log entries (ACCOUNTS-F36) older than 90 days.
+2. Those of the last 90 days stay, also those of an account already deleted.
+In: the date of each log entry.
+Out: the log with only the last 90 days; nothing else changes.
+If it fails: if a batch cannot be erased, the task ends with an error so the team sees it; what was erased before stays erased and the next pass goes on from there. If a pass is already running, the second does nothing. The team can count what would be erased without erasing anything, and change how many days are kept.
 Involved: none
