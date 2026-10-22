@@ -57,7 +57,33 @@ def test_every_script_carries_the_nonce_and_comes_from_here(client, ana):
     for tag in scripts:
         assert f'nonce="{nonce}"' in tag or 'type="application/json"' in tag, tag
     assert "https://" not in html and "http://" not in html.replace("http://www.w3.org", "")
-    assert re.search(r'<script nonce="[^"]+" src="/static/ninja/redoc\.standalone\.js', html)
+    assert re.search(r'<script nonce="[^"]+" src="/api/docs/redoc\.js"', html)
+
+
+def test_its_redoc_loads_nothing_from_redoclys_cdn(client):
+    """ReDoc's side menu loads Redocly's logo from its CDN on every page, with no option to turn it off: the policy
+    refused it, but the browser said so in the console and reported it to ``/csp-report/`` on every visit. The copy
+    served here has no address of it, and the logo hides itself as when it cannot load."""
+    response = client.get("/api/docs/redoc.js", HTTP_HOST=HOST)
+
+    script = b"".join(response.streaming_content) if response.streaming else response.content
+    assert response.status_code == 200
+    assert response["Content-Type"].startswith("text/javascript")
+    assert b"cdn.redoc.ly" not in script
+    assert b"Redoc" in script and len(script) > 500_000
+
+
+def test_ninjas_redoc_still_has_exactly_the_one_logo_address_the_copy_blanks():
+    """An upgrade of django-ninja that moves or adds an outside address to ReDoc fails here, not in a browser."""
+    from pathlib import Path
+
+    from django.contrib.staticfiles import finders
+
+    from accounts.api_docs import REDOCLY_LOGO
+
+    bundle = Path(finders.find("ninja/redoc.standalone.js")).read_text(encoding="utf-8")
+    assert bundle.count(REDOCLY_LOGO) == 1
+    assert re.findall(r"https://cdn\.[\w.]+", bundle) == [REDOCLY_LOGO.rsplit("/redoc/", 1)[0]]
 
 
 def test_only_this_page_goes_without_trusted_types_and_its_search_runs_in_a_worker(client, ana, settings, spa_manifest):

@@ -138,7 +138,8 @@ test('ACCOUNTS-G105 · G13 · the API documentation: for signed-in accounts, fro
   context,
 }) => {
   const errors = watchPageErrors(page);
-  // Nothing from outside is loaded: ReDoc's own logo (cdn.redoc.ly) is refused by the policy before it leaves.
+  // Nothing from outside is loaded, nor even tried: ReDoc's own logo (cdn.redoc.ly) is not in the copy served here, so
+  // the documentation's console has no refusal of the policy either.
   const outside: string[] = [];
   context.on('requestfinished', (request) => {
     const url = new URL(request.url());
@@ -158,11 +159,18 @@ test('ACCOUNTS-G105 · G13 · the API documentation: for signed-in accounts, fro
   await page.goto('/account/api-keys');
   const [docs] = await Promise.all([context.waitForEvent('page'), page.getByTestId('api-keys-docs').click()]);
   const docsErrors = watchPageErrors(docs);
+  const consoleErrors: string[] = [];
+  docs.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(message.text());
+  });
   await expect(docs).toHaveURL(/\/api\/docs$/);
+  // Again with the console watched from its first line.
+  await docs.reload();
   await atEverySize(docs, 'ACCOUNTS-G105', async () => {
     await expect(docs.getByRole('heading', { name: /ERPlora Cloud API/ }).first()).toBeVisible();
     await expect(docs.locator('#redoc-ui')).toContainText('/api/accounts/api-keys');
   }, false);
   expect(outside).toEqual([]);
+  expect(consoleErrors).toEqual([]);
   expect([...errors, ...docsErrors]).toEqual([]);
 });
