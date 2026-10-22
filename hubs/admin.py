@@ -15,6 +15,8 @@ deletes nothing, not even for a superuser. Superusers get the platform's actions
 for superusers, with its sizes readable and the database's, which the customer never sees (PLAN-SAAS §5).
 """
 
+import functools
+
 from django import forms
 from django.contrib import admin, messages
 from django.contrib.admin.options import ActionLocation
@@ -143,6 +145,24 @@ class ReadOnly:
         return False
 
 
+def traced(action):
+    """An action of the platform leaves, on each row it ran on, who ran it and which in the admin's history
+    (HUBS-F23; ERPlora/saas SAAS_DASHBOARD-F41 lost that trace). Under ``@admin.action``, whose description it
+    names: the line is written whatever the action reported, since the attempt is what the staff did."""
+
+    @functools.wraps(action)
+    def run(model_admin, request, queryset):
+        rows = list(queryset)
+        try:
+            return action(model_admin, request, queryset)
+        finally:
+            message = _("Ran «%(action)s»") % {"action": run.short_description}
+            for row in rows:
+                model_admin.log_change(request, row, message)
+
+    return run
+
+
 class PlatformActions(ReadOnly, admin.ModelAdmin):
     def has_sync_permission(self, request):
         """The platform's actions on the Hub: superusers only (``support`` only sees)."""
@@ -186,6 +206,7 @@ class HubAdmin(PlatformActions):
         return actions
 
     @admin.action(description=_("Attach its payer to a Stripe test clock (test keys only)"), permissions=["sync"])
+    @traced
     def attach_test_clock(self, request, queryset):
         from billing import services as billing_services
 
@@ -200,6 +221,7 @@ class HubAdmin(PlatformActions):
             )
 
     @admin.action(description=_("Advance its Stripe test clock a month (test keys only)"), permissions=["sync"])
+    @traced
     def advance_test_clock(self, request, queryset):
         from billing import services as billing_services
 
@@ -216,10 +238,12 @@ class HubAdmin(PlatformActions):
             )
 
     @admin.action(description=_("Send the latest state to the Hub"), permissions=["sync"])
+    @traced
     def send_latest_state(self, request, queryset):
         self._tell(request, services.send_latest_state(list(queryset.values_list("id", flat=True))))
 
     @admin.action(description=_("Retry what the Hub still owes"), permissions=["sync"])
+    @traced
     def retry_owed(self, request, queryset):
         self._tell(request, services.retry_owed(list(queryset.values_list("id", flat=True))))
 
@@ -290,6 +314,7 @@ class SessionRevocationAdmin(PlatformActions):
     actions = ["deliver_now"]
 
     @admin.action(description=_("End the sessions in the Hub now"), permissions=["sync"])
+    @traced
     def deliver_now(self, request, queryset):
         counts = services.deliver_revocations(list(queryset.values_list("id", flat=True)))
         if counts["delivered"]:

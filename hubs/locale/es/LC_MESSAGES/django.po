@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: saas-next\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-22 09:27+0200\n"
+"POT-Creation-Date: 2026-10-22 09:32+0200\n"
 "PO-Revision-Date: 2026-10-13 22:14+0200\n"
 "Last-Translator: ERPlora\n"
 "Language-Team: Spanish\n"
@@ -16,57 +16,62 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: admin.py:50 admin.py:64
+#: admin.py:52 admin.py:66
 msgid "Display"
 msgstr "Presentación"
 
-#: admin.py:111
+#: admin.py:113
 msgid "Card"
 msgstr "Tarjeta"
 
-#: admin.py:112
+#: admin.py:114
 msgid "Price"
 msgstr "Precio"
 
-#: admin.py:113
+#: admin.py:115
 msgid "Availability"
 msgstr "Disponibilidad"
 
-#: admin.py:115
+#: admin.py:117
 msgid "What the plan includes"
 msgstr "Qué incluye el plan"
 
-#: admin.py:118
+#: admin.py:120
 msgid "Database limits per hub"
 msgstr "Límites de base de datos por hub"
 
-#: admin.py:119
+#: admin.py:121
 msgid "AI assistant and WhatsApp per month"
 msgstr "Asistente de IA y WhatsApp al mes"
 
-#: admin.py:120
+#: admin.py:122
 msgid "Stripe"
 msgstr "Stripe"
 
-#: admin.py:121
+#: admin.py:123
 msgid "History"
 msgstr "Historial"
 
-#: admin.py:188
+#: admin.py:159
+#, python-format
+msgid "Ran «%(action)s»"
+msgstr "Ejecutó «%(action)s»"
+
+#: admin.py:208
 msgid "Attach its payer to a Stripe test clock (test keys only)"
 msgstr "Atar su pagador a un reloj de prueba de Stripe (solo claves de prueba)"
 
-#: admin.py:199
+#: admin.py:220
 #, python-format
 msgid "%(business)s: its payer is a new Stripe customer on clock %(clock)s."
 msgstr ""
 "%(business)s: su pagador es un cliente nuevo de Stripe en el reloj %(clock)s."
 
-#: admin.py:202
+#: admin.py:223
 msgid "Advance its Stripe test clock a month (test keys only)"
 msgstr "Adelantar un mes su reloj de prueba de Stripe (solo claves de prueba)"
 
-#: admin.py:214
+#: admin.py:236
 #, python-format
 msgid ""
 "%(business)s: its clock is advancing to %(date)s; Stripe tells what happens "
@@ -75,20 +80,20 @@ msgstr ""
 "%(business)s: su reloj avanza hasta el %(date)s; Stripe avisa de lo que pase "
 "con sus eventos."
 
-#: admin.py:218
+#: admin.py:240
 msgid "Send the latest state to the Hub"
 msgstr "Enviar al Hub el estado más reciente"
 
-#: admin.py:222
+#: admin.py:245
 msgid "Retry what the Hub still owes"
 msgstr "Reintentar lo que el Hub tiene pendiente"
 
-#: admin.py:229
+#: admin.py:253
 #, python-format
 msgid "%(count)d business(es) up to date in the Hub."
 msgstr "%(count)d negocio(s) al día en el Hub."
 
-#: admin.py:235
+#: admin.py:259
 #, python-format
 msgid ""
 "%(count)d business(es) still owed: the Hub is away or refused it (see its "
@@ -97,16 +102,16 @@ msgstr ""
 "%(count)d negocio(s) siguen pendientes: el Hub no responde o lo rechazó "
 "(mira su último rechazo); reconcile_hub_states lo reintenta."
 
-#: admin.py:292
+#: admin.py:316
 msgid "End the sessions in the Hub now"
 msgstr "Cerrar ya las sesiones en el Hub"
 
-#: admin.py:296
+#: admin.py:321
 #, python-format
 msgid "%(count)d session end(s) delivered."
 msgstr "%(count)d cierre(s) de sesiones entregado(s)."
 
-#: admin.py:300
+#: admin.py:325
 #, python-format
 msgid ""
 "%(count)d session end(s) still pending: the Hub is away or refused it; "
@@ -115,11 +120,11 @@ msgstr ""
 "%(count)d cierre(s) de sesiones siguen pendientes: el Hub no responde o lo "
 "rechazó; reconcile_hub_states lo reintenta."
 
-#: admin.py:313
+#: admin.py:338
 msgid "Files"
 msgstr "Ficheros"
 
-#: admin.py:317
+#: admin.py:342
 msgid "Database"
 msgstr "Base de datos"
 

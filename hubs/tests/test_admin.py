@@ -236,6 +236,44 @@ class TestTheActions:
         assert "1 session end(s) delivered" in response.content.decode()
 
 
+class TestTheTrail:
+    """HUBS-F23 (trap of ERPlora/saas SAAS_DASHBOARD-F41: «las acciones del admin no dejan rastro»): every action of
+    the platform on a business leaves, on each row, who ran it and which, in the admin's history."""
+
+    def test_an_action_on_a_business_is_in_its_history(self, staff_client, business, hub_double):
+        from django.contrib.admin.models import CHANGE, LogEntry
+
+        _act(staff_client, "hub", "send_latest_state", [business])
+
+        (entry,) = LogEntry.objects.filter(object_id=str(business.pk))
+        assert entry.action_flag == CHANGE
+        assert entry.user.email == "root@example.com"
+        assert "Send the latest state to the Hub" in entry.get_change_message()
+        history = staff_client.get(f"/admin/hubs/hub/{business.pk}/history/").content.decode()
+        assert "Send the latest state to the Hub" in history
+
+    def test_every_row_it_touched_gets_its_line(self, staff_client, business, make_user, hub_double):
+        from django.contrib.admin.models import LogEntry
+
+        from hubs.tests.conftest import create_business
+
+        other = create_business(make_user("other@example.com"), name="Otro Bar")
+
+        _act(staff_client, "hub", "retry_owed", [business, other])
+
+        assert set(LogEntry.objects.values_list("object_id", flat=True)) == {str(business.pk), str(other.pk)}
+
+    def test_ending_the_sessions_is_in_the_history_too(self, staff_client, plane, hub_double):
+        from django.contrib.admin.models import LogEntry
+
+        revocation = plane["sessionrevocation"]
+
+        _act(staff_client, "sessionrevocation", "deliver_now", [revocation])
+
+        (entry,) = LogEntry.objects.filter(object_id=str(revocation.pk))
+        assert "End the sessions in the Hub now" in entry.get_change_message()
+
+
 class TestThePlanPrices:
     """BILLING-F28: a plan is not saved with a Stripe price that would charge something else."""
 
