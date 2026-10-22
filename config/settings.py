@@ -578,8 +578,8 @@ USE_TZ = True
 # `form-action` filters the whole redirect chain of a form post: «Continue with Google» posts to
 # allauth.headless's provider redirect, which answers 302 to accounts.google.com (saas#945), the hub-login page
 # posts its form to the hub's origin and the admin's «Open in the Hub admin» to the platform host
-# (named on its own: `HUB_ADMIN_CALLBACK_URL` may live outside the hubs' pattern). Google adds no
-# script, frame nor connection source.
+# (named on its own: `HUB_ADMIN_CALLBACK_URL` may live outside the hubs' pattern). «Continue with Google» adds no
+# script, frame nor connection source; reCAPTCHA does (below).
 
 # reCAPTCHA's scripts, frames and connection, and its Trusted Types policy (`goog#html`), on the sign-in's pages.
 SECURE_CSP = with_recaptcha(debug_policy(VITE_DEV_SERVER) if DEBUG else base_policy())
