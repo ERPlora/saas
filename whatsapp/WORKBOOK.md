@@ -184,6 +184,7 @@ Pasos:
 1. Cada envío que el Hub pide ocupa una plaza del cupo del mes del plan del negocio antes de salir hacia Meta.
 2. Si Meta lo rechaza o no llega a salir, la plaza se libera; si salió, cuenta.
 3. Al llegar al tope, el envío se para y el Hub dice que se llegó al tope del mes, hasta el mes siguiente o hasta mejorar el plan. El plan Gratis trae 30, Starter 150 y Standard 300; un plan sin WhatsApp no envía ninguno.
+4. Si el Hub tenía lo gastado del mes atrasado y aún dejaba enviar, el envío parado en el tope lo pone al día al momento: la bandeja deja de dejar enviar, sin recargar. Otro envío parado con lo mismo gastado no lo vuelve a avisar.
 Entra: el plan del negocio y lo gastado este mes.
 Sale: lo gastado del mes, que el Hub enseña en sus ajustes (`whatsapp.message.recorded`).
 Si falla: dos envíos a la vez con una sola plaza libre: sale uno y el otro se para; el mismo envío repetido (el Hub reintenta) no gasta otra plaza.
@@ -401,6 +402,12 @@ Implicados: ninguno
   motivo de Meta, igual que `not_connected`. Las plantillas (puertas 8 y 9) y los adjuntos siguen contestando
   `not_connected` a un 190 (y marcan el número) hasta que el Hub conozca el código nuevo: allí su `not_connected`
   tiene texto propio.
+- **Puerta 5 y el tope** (FIX-SAAS-WHATSAPP-CAP-REFUSAL-DOES-NOT-PUSH-USAGE, WHATSAPP-F05): el 409
+  `whatsapp.cap_reached` no cambia para el Hub, pero ya no deshace la transacción: `whatsapp.message.claim` lo
+  devuelve (`refused`, sin la clave: queda libre) y, si el consumo del mes no se había avisado con esa cifra
+  (`Usage.cap_announced_usage`), sube la versión de la foto y la empuja tras el COMMIT, con `monthly_usage` al día
+  (`reconcile_hub_states` la reintenta si el Hub no la toma). La misma cifra rechazada otra vez no sube nada: un
+  empuje por cifra, no por envío rechazado.
 - Vuelta de la ventana de Meta: `GET /whatsapp/return?code=…&state=<slug>.<32 hex>` (o `?error=…&error_description=…`;
   `whatsapp/signup_return.py`, WHATSAPP-F01), pública, sin sesión, sin caché y sin BD. Hace
   `window.opener.postMessage({"type": "erplora.whatsapp.signup", "state", "code" | "error", "error_description"},

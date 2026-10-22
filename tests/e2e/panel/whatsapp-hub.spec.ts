@@ -273,3 +273,60 @@ test(`${TASK}: the real Hub lists the templates erplora.com keeps and, with the 
     await page.screenshot({ path: shot(`${TASK}-cap-${viewport.width}`) });
   }
 });
+
+// flow: WHATSAPP-F05 (rechazo por tope del mes)
+const CAP_TASK = 'FIX-SAAS-WHATSAPP-CAP-REFUSAL-DOES-NOT-PUSH-USAGE';
+test(`${CAP_TASK}: WHATSAPP-F05 — a send erplora.com refuses at the cap tells the real Hub the month's usage`, async ({
+  page,
+}) => {
+  expect(seedErplora()).toEqual({ delivered: true, hub_error: '' });
+  const usage = () => hubSql("select monthly_usage from whatsapp_inbox_channel where host = 'a'");
+  const limit = Number(hubSql("select monthly_limit from whatsapp_inbox_channel where host = 'a'"));
+  expect(limit).toBeGreaterThan(0);
+  // erplora.com's month at the allowance while the Hub was told 0 (its snapshot behind): the Hub still offers «Send».
+  expect(seedErplora('--used', String(limit), '--behind')).toEqual({ delivered: true, hub_error: '' });
+  expect(usage()).toBe('0');
+
+  await openInbox(page);
+  await expect(shown(page).locator('[data-testid=whatsapp-inbox-cap-reached]')).toBeHidden();
+  const customer = `3469901${String(Math.floor(Math.random() * 1e4)).padStart(4, '0')}`;
+  await shown(page).locator('[data-testid=whatsapp-inbox-search] input').fill(customer.slice(2));
+  const message = notice('messages', {
+    contacts: [{ profile: { name: `e2e.Olga ${Date.now().toString(36)}` }, wa_id: customer }],
+    messages: [{ from: customer, id: `e2e.wamid.${Date.now()}.f05`, timestamp: now(), type: 'text', text: { body: '¿Abrís el domingo?' } }],
+  });
+  expect(await meta(page, message)).toBe(200);
+  const conversation = shown(page).locator('[data-testid=whatsapp-inbox-row]', { hasText: customer.slice(2) });
+  await expect(conversation).toBeVisible({ timeout: 30_000 });
+  await conversation.click();
+  await page.evaluate(() => {
+    (window as unknown as { e2eNoReload: boolean }).e2eNoReload = true;
+  });
+
+  // The Hub hands the reply to erplora.com (door 5), which refuses it at the cap (the same 409 as ever)…
+  const panel = shown(page).locator('[data-testid=whatsapp-inbox-detail]');
+  await panel.locator('[data-testid=whatsapp-inbox-composer-text] textarea').fill('No, el domingo cerramos.');
+  await panel.locator('[data-testid=whatsapp-inbox-composer-send]').click();
+  const reply = panel.locator('[data-testid=whatsapp-inbox-message][data-side=outbound]', { hasText: 'el domingo cerramos' });
+  await expect(reply.locator('[data-testid=whatsapp-inbox-message-error]')).toHaveAttribute(
+    'data-code',
+    'whatsapp_inbox.cap_reached',
+    { timeout: 30_000 },
+  );
+  // …and, after its COMMIT, pushes the snapshot with the month's real usage: the open inbox stops offering «Send».
+  await expect(shown(page).locator('[data-testid=whatsapp-inbox-cap-reached]')).toContainText(
+    'You have used all the WhatsApp messages of your plan this month.',
+    { timeout: 30_000 },
+  );
+  const blocked = panel.locator('[data-testid=whatsapp-inbox-composer-blocked]');
+  await expect(blocked).toHaveAttribute('data-code', 'cap_reached');
+  await expect(panel.locator('[data-testid=whatsapp-inbox-composer-send]')).toHaveJSProperty('disabled', true);
+  expect(usage()).toBe(String(limit));
+  expect(await page.evaluate(() => (window as unknown as { e2eNoReload?: boolean }).e2eNoReload === true)).toBe(true);
+  for (const viewport of VIEWPORTS) {
+    await page.setViewportSize(viewport);
+    await inSight(blocked);
+    expect(await fits(page)).toBe(true);
+    await page.screenshot({ path: shot(`${CAP_TASK}-${viewport.width}`) });
+  }
+});

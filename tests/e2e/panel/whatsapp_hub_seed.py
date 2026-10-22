@@ -1,6 +1,6 @@
 """The erplora.com side of WhatsApp's cross e2e with a real Hub (whatsapp-hub.spec.ts): ``a`` with its number.
 
-``uv run python tests/e2e/panel/whatsapp_hub_seed.py <id of a> <id of b> [--used N]`` from the SaaS checkout that runs
+``uv run python tests/e2e/panel/whatsapp_hub_seed.py <id of a> <id of b> [--used N [--behind]]`` from the SaaS checkout that runs
 beside the Hub's stack (its ``DB_NAME``; development only: refused without ``DEBUG``). The ids are the Hub's own for its
 local hubs (``seed_local_hubs`` gives them theirs), so that the snapshot erplora.com pushes (``PUT
 /internal/hubs/{id}/state``) names the business the Hub knows. It then:
@@ -13,9 +13,12 @@ local hubs (``seed_local_hubs`` gives them theirs), so that the snapshot erplora
   made in WhatsApp Manager with a photo header and a named variable. Their names start with ``e2e_``, as what the
   Hub's e2e delete after a run (its ``whatsapp-helpers.ts``, ``cleanUp``);
 - sets ``a``'s usage of this calendar month (UTC) to ``--used`` (0 by default: no send of the e2e is stopped; the
-  plan's allowance makes the send that reaches it refused, ``whatsapp.cap_reached``, before Meta is called);
+  plan's allowance makes the send that reaches it refused, ``whatsapp.cap_reached``, before Meta is called), and
+  forgets what a refusal at the cap told the Hub before (the month is seeded afresh);
 - announces the channel as connecting it does (a newer snapshot) and pushes it to the Hub, printing one JSON line:
-  ``{"delivered": true|false, "hub_error": "<the Hub's refusal code>"}`` (the Hub's e2e compare it whole).
+  ``{"delivered": true|false, "hub_error": "<the Hub's refusal code>"}`` (the Hub's e2e compare it whole). With
+  ``--behind`` the usage is not announced: after a run that pushed, the Hub keeps the figure it had (a snapshot behind,
+  as after a send whose record never ran) until a send erplora.com refuses at the cap tells it (WHATSAPP-F05).
 
 Running it again keeps what exists (one of each template), sets the month's usage again and pushes once more.
 """
@@ -111,7 +114,7 @@ def setup_django() -> None:
     django.setup()
 
 
-def seed(ids: dict[str, UUID], used: int = 0) -> dict:
+def seed(ids: dict[str, UUID], used: int = 0, behind: bool = False) -> dict:
     from django.core.management import call_command
     from django.db import transaction
     from django.utils import timezone
@@ -164,9 +167,11 @@ def seed(ids: dict[str, UUID], used: int = 0) -> dict:
     with transaction.atomic():
         usage, _ = Usage.objects.get_or_create(hub=hub, month=timezone.now().strftime("%Y-%m"))
         usage.used = used
+        usage.cap_announced_usage = None
         usage.full_clean()
-        usage.save(update_fields=["used", "updated_at"])
-        services.bump_state(hub.id)
+        usage.save(update_fields=["used", "cap_announced_usage", "updated_at"])
+        if not behind:
+            services.bump_state(hub.id)
     delivered = services.sync_hub(hub.id)
     return {"delivered": delivered, "hub_error": Hub.objects.get(pk=hub.id).last_hub_error}
 
@@ -183,13 +188,14 @@ def main(arguments: list[str]) -> None:
     parser.add_argument("a", type=UUID, help="the id of a in the Hub")
     parser.add_argument("b", type=UUID, help="the id of b in the Hub")
     parser.add_argument("--used", type=whole_number, default=0, help="a's WhatsApp messages sent this month (0)")
+    parser.add_argument("--behind", action="store_true", help="set the usage without telling the Hub (WHATSAPP-F05)")
     options = parser.parse_args(arguments)
     setup_django()
     from django.conf import settings
 
     if not settings.DEBUG:
         raise SystemExit("whatsapp_hub_seed.py: development only (DEBUG=True).")
-    print(json.dumps(seed({"a": options.a, "b": options.b}, used=options.used)))
+    print(json.dumps(seed({"a": options.a, "b": options.b}, used=options.used, behind=options.behind)))
 
 
 if __name__ == "__main__":

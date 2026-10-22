@@ -74,6 +74,29 @@ def used(hub) -> int:
     return row.used if row else 0
 
 
+def refused_at_the_cap(business, hub_double) -> Hub:
+    """The Free plan's 30 spent while the Hub was told 0: the business pushed and acknowledged (the Hub has its
+    latest version), then the month's usage reached the cap without a newer snapshot (a send whose record never ran)."""
+    from hubs import services as hubs_services
+
+    assert hubs_services.sync_hub(business.pk)
+    told = hub_double.calls_to("PUT", f"/internal/hubs/{business.pk}/state")[-1].body["whatsapp"]
+    assert told["monthly_usage"] == 0
+    Usage.objects.create(hub=business, month=timezone.now().strftime("%Y-%m"), used=30)
+    hub_double.calls.clear()
+    return Hub.objects.get(pk=business.pk)
+
+
+def send_refused_at_the_cap(client, hub_double, capture):
+    """One send through door 5, with what runs after its COMMIT run; Meta never called (the cap stops it before)."""
+    with respx.mock:
+        respx.route(url__startswith=hub_double.url).pass_through()
+        meta = respx.post(SEND)
+        with capture(execute=True):
+            response = send(client)
+    return response, meta
+
+
 @pytest.mark.django_db
 class TestTheDoorsShape:
     def test_an_unsigned_call_is_refused_and_meta_never_called(self, client, number):
@@ -375,6 +398,61 @@ class TestTheMonthsAllowance:
 
         assert (response.status_code, error_code(response)) == (409, "whatsapp.cap_reached")
         assert not meta.called
+
+    def test_the_cap_refusal_tells_the_hub_the_months_real_usage(
+        self, client, number, business, hub_double, django_capture_on_commit_callbacks
+    ):
+        """FIX-SAAS-WHATSAPP-CAP-REFUSAL-DOES-NOT-PUSH-USAGE (WHATSAPP-F05): a Hub whose snapshot is behind (it was told
+        less than the month's real usage) still offers «Send»; the send erplora.com refuses at the cap answers the same
+        409 and, after the COMMIT, pushes the snapshot with a newer version and the real usage, so the Hub stops
+        offering it. The refusal must not undo its own announcement (a rolled-back ``on_commit`` never runs)."""
+        hub = refused_at_the_cap(business, hub_double)
+        before = hub.state_version
+
+        response, meta = send_refused_at_the_cap(client, hub_double, django_capture_on_commit_callbacks)
+
+        assert (response.status_code, error_code(response)) == (409, "whatsapp.cap_reached")
+        assert response.json()["error"]["message"] == "The plan's WhatsApp messages of this month are spent."
+        assert not meta.called and used(business) == 30 and not Send.objects.exists()
+        version = Hub.objects.get(pk=business.pk).state_version
+        assert version > before
+        pushed = hub_double.calls_to("PUT", f"/internal/hubs/{business.pk}/state")
+        assert len(pushed) == 1
+        block = pushed[0].body["whatsapp"]
+        assert (pushed[0].body["version"], block["monthly_limit"], block["monthly_usage"]) == (version, 30, 30)
+        assert Hub.objects.get(pk=business.pk).pushed_state_version == version
+
+    def test_the_same_usage_refused_again_is_not_pushed_again(
+        self, client, number, business, hub_double, django_capture_on_commit_callbacks
+    ):
+        """A Hub that sends again with the snapshot already saying the cap (or before it arrives) gets the same 409,
+        without a newer version nor another push for the same figure: no push per refused send."""
+        refused_at_the_cap(business, hub_double)
+        send_refused_at_the_cap(client, hub_double, django_capture_on_commit_callbacks)
+        version = Hub.objects.get(pk=business.pk).state_version
+
+        response, _ = send_refused_at_the_cap(client, hub_double, django_capture_on_commit_callbacks)
+
+        assert (response.status_code, error_code(response)) == (409, "whatsapp.cap_reached")
+        assert Hub.objects.get(pk=business.pk).state_version == version
+        assert len(hub_double.calls_to("PUT", f"/internal/hubs/{business.pk}/state")) == 1
+
+    def test_a_new_figure_at_the_cap_is_told_again(
+        self, client, number, business, hub_double, django_capture_on_commit_callbacks
+    ):
+        """The plan grew and its new allowance was spent too: the refusal at the new cap tells the new figure."""
+        refused_at_the_cap(business, hub_double)
+        send_refused_at_the_cap(client, hub_double, django_capture_on_commit_callbacks)
+        Subscription.objects.filter(hub=business).update(plan=Plan.objects.get(slug="starter"))
+        Usage.objects.filter(hub=business).update(used=150)
+        version = Hub.objects.get(pk=business.pk).state_version
+
+        response, _ = send_refused_at_the_cap(client, hub_double, django_capture_on_commit_callbacks)
+
+        assert error_code(response) == "whatsapp.cap_reached"
+        assert Hub.objects.get(pk=business.pk).state_version > version
+        block = hub_double.calls_to("PUT", f"/internal/hubs/{business.pk}/state")[-1].body["whatsapp"]
+        assert (block["monthly_limit"], block["monthly_usage"]) == (150, 150)
 
     @respx.mock
     def test_a_plan_of_zero_includes_none(self, client, number, business):

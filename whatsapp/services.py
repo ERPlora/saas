@@ -25,7 +25,9 @@ for a third party.
 - ``whatsapp.retention.purge``: the daily forgetting of what the Hub took, of what it never took and of the keys
   (WHATSAPP-G14).
 
-A refusal raises the envelope's error (``live.errors``): the transaction rolls back, the reservation with it.
+A refusal raises the envelope's error (``live.errors``): the transaction rolls back, the reservation with it. The
+cap's is the exception: ``whatsapp.message.claim`` returns it (``refused``) so the snapshot it announces leaves after
+the COMMIT (a rolled-back transaction drops its ``on_commit``), and door 5 answers the same 409.
 """
 
 import logging
@@ -392,7 +394,8 @@ def in_progress() -> OperationError:
 
 @operation("whatsapp.message.claim", kind="command", permission=PERMISSION, input=SendClaimIn, output=SendClaimOut)
 def message_claim(ctx: OperationContext, data: SendClaimIn) -> SendClaimOut:
-    """Take the place of a send in the month's allowance before Meta is called, or say why it does not leave."""
+    """Take the place of a send in the month's allowance before Meta is called, or say why it does not leave: the
+    cap is returned, not raised, so the Hub's snapshot with the month's real usage survives the refusal."""
     hub = queries.known_hub(data.hub)
     if hub is None:
         raise queries.unknown_hub()
@@ -426,7 +429,16 @@ def message_claim(ctx: OperationContext, data: SendClaimIn) -> SendClaimOut:
             # Another call with the same key claimed it a moment ago.
             raise in_progress() from None
         if not _reserve(hub.id, month, now):
-            raise Conflict("The plan's WhatsApp messages of this month are spent.", code="whatsapp.cap_reached")
+            # Nothing leaves and the key stays free (a later month, or a bigger plan, sends it).
+            send.delete()
+            _announce_cap(hub.id, month)
+            return SendClaimOut(
+                outcome="refused",
+                status=409,
+                code="whatsapp.cap_reached",
+                message="The plan's WhatsApp messages of this month are spent.",
+                hub_id=hub.id,
+            )
     return SendClaimOut(
         outcome="claimed",
         send_id=send.id,
@@ -443,6 +455,16 @@ def _reserve(hub_id: UUID, month: str, now) -> bool:
     limit = plan.whatsapp_messages_per_month if plan is not None else 0
     usage, _ = Usage.objects.get_or_create(hub_id=hub_id, month=month)
     return Usage.objects.filter(pk=usage.pk, used__lt=limit).update(used=F("used") + 1) == 1
+
+
+def _announce_cap(hub_id: UUID, month: str) -> None:
+    """A send refused at the cap tells the Hub the month's real usage: it offered «Send», so its snapshot said less
+    (one behind, or a send whose record never ran). Once per figure: refused again at the same usage (the snapshot
+    already says it, or is on its way and ``reconcile_hub_states`` retries it), nothing is bumped nor pushed. One
+    ``UPDATE``, which a concurrent refusal waits on and then finds told."""
+    told = Usage.objects.filter(hub_id=hub_id, month=month).exclude(cap_announced_usage=F("used"))
+    if told.update(cap_announced_usage=F("used")):
+        announce_channel(hub_id)
 
 
 @operation("whatsapp.message.record", kind="command", permission=PERMISSION, input=SendRecordIn, output=SendRecordOut)
