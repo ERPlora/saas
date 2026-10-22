@@ -480,6 +480,11 @@ class Hub(models.Model):
     ready_at = models.DateTimeField(_("ready at"), null=True, blank=True)
     provision_requested_at = models.DateTimeField(_("provisioning asked at"), null=True, blank=True)
     deletion_requested_at = models.DateTimeField(_("deletion asked at"), null=True, blank=True)
+    #: The clock of a business suspended for an unpaid plan (HUBS-F20): set when it is suspended, cleared when it
+    #: pays; the notices of day 30 and 150 go out once each, and on day 180 it is deleted (``services.age_suspended``).
+    suspended_at = models.DateTimeField(_("suspended at"), null=True, blank=True)
+    suspension_warned_at = models.DateTimeField(_("first suspension notice"), null=True, blank=True)
+    suspension_final_notice_at = models.DateTimeField(_("last suspension notice"), null=True, blank=True)
     state_version = models.PositiveBigIntegerField(_("state version"), default=1)
     pushed_state_version = models.PositiveBigIntegerField(_("state version the Hub has"), default=0)
     #: Grows with every change of the registry (``PUT /internal/hubs/{id}``): an acknowledgement of an

@@ -115,12 +115,21 @@ def send_ownership_accepted(transfer, *, base_url: str) -> bool:
     return _send(subject, lines, transfer.from_email)
 
 
-def send_deletion(hub, owner, *, base_url: str) -> bool:
-    """Tell the owner the business was deleted and until when it can still be recovered."""
+def send_deletion(hub, owner, *, base_url: str, unpaid: bool = False) -> bool:
+    """Tell the owner the business was deleted and until when it can still be recovered; ``unpaid``: it was
+    deleted because it stayed suspended for an unpaid plan (HUBS-F20)."""
+    if owner is None:
+        logger.error("hubs.mail.deletion_unsent hub=%s: the business has no owner to tell", hub.pk)
+        return False
     with translation.override(owner.language):
         subject = _("%(business)s was deleted") % {"business": hub.name}
         lines = [
             _("%(business)s was deleted and no longer opens.") % {"business": hub.name},
+            *(
+                [_("It had been suspended for %(days)d days because an invoice was not paid.") % {"days": 180}]
+                if unpaid
+                else []
+            ),
             "",
             _(
                 "You can recover it until %(date)s from %(url)s. After that date it is erased for good."
@@ -143,6 +152,26 @@ def send_ready(hub, owner, *, base_url: str) -> bool:
             "",
             _("Open it: %(url)s") % {"url": hub_start_url(hub.slug)},
             _("Manage it from the panel: %(url)s") % {"url": f"{base_url}/businesses/{hub.id}"},
+        ]
+    return _send(subject, lines, owner.email)
+
+
+def send_suspension_notice(hub, owner, *, base_url: str, delete_on, final: bool) -> bool:
+    """Tell the owner that ``hub``, suspended for an unpaid plan, will be deleted on ``delete_on`` unless it is paid
+    (HUBS-F20): the first notice (day 30) or the last one (``final``, day 150). Always sent: it warns of a deletion."""
+    with translation.override(owner.language):
+        values = {"business": hub.name, "date": _date(delete_on)}
+        subject = (
+            _("Last notice: %(business)s will be deleted on %(date)s") % values
+            if final
+            else _("%(business)s is still suspended") % values
+        )
+        lines = [
+            _("%(business)s is still suspended because an invoice was not paid.") % values,
+            _("If it is not paid, the business will be deleted on %(date)s.") % values,
+            _("After that you can still recover it for 90 days, on the Free plan.") % values,
+            "",
+            _("Pay it from Billing and it works again at once: %(url)s") % {"url": f"{base_url}/billing/invoices?business={hub.id}"},
         ]
     return _send(subject, lines, owner.email)
 

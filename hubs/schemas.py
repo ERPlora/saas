@@ -451,6 +451,14 @@ class HubStatusOut(Schema):
     ready_at: datetime | None
 
 
+class SuspensionStepOut(Schema):
+    """What one step of the clock of a suspended business did (HUBS-F20): ``warned``, ``final_notice``,
+    ``expired``, ``undated``, ``mail_failed`` or ``""`` (nothing due)."""
+
+    id: UUID
+    outcome: str
+
+
 #: The label of a paid app (``modules[].id`` of the snapshot, PLAN §20.2).
 ModuleSlug = Annotated[str, Field(max_length=63, pattern=r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$")]
 SubscriptionStatus = Literal[
