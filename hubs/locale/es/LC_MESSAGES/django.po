@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: saas-next\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-22 09:32+0200\n"
+"POT-Creation-Date: 2026-10-22 23:58+0200\n"
 "PO-Revision-Date: 2026-10-13 22:14+0200\n"
 "Last-Translator: ERPlora\n"
 "Language-Team: Spanish\n"
@@ -181,7 +181,7 @@ msgstr "%(who)s te ofrece la propiedad de %(business)s en ERPlora."
 msgid "Accept or decline it before %(date)s: %(url)s"
 msgstr "Acéptala o recházala antes del %(date)s: %(url)s"
 
-#: emails.py:91
+#: emails.py:92
 msgid ""
 "The billing does not move with the business: whoever pays for it today keeps "
 "paying until they change it."
@@ -189,12 +189,12 @@ msgstr ""
 "La facturación no cambia con el negocio: quien lo paga hoy lo sigue pagando "
 "hasta que lo cambie."
 
-#: emails.py:100
+#: emails.py:101
 #, python-format
 msgid "%(who)s now owns %(business)s"
 msgstr "%(who)s ya es propietario de %(business)s"
 
-#: emails.py:106
+#: emails.py:107
 #, python-format
 msgid ""
 "%(who)s accepted the ownership of %(business)s. You stay on it as an "
@@ -203,32 +203,34 @@ msgstr ""
 "%(who)s ha aceptado la propiedad de %(business)s. Tú sigues en él como "
 "administrador."
 
-#: emails.py:111
+#: emails.py:112
 #, python-format
 msgid ""
-"The billing did not move: the invoices still go to the same payer until it "
-"is changed in %(url)s."
+"The billing did not move: the invoices still go to the same payer until the "
+"new owner gives the business their own billing details. What each of your "
+"payers pays is in %(url)s."
 msgstr ""
 "La facturación no ha cambiado: las facturas siguen yendo al mismo pagador "
-"hasta que se cambie en %(url)s."
+"hasta que el nuevo propietario ponga sus propios datos de facturación en el "
+"negocio. Lo que paga cada uno de tus pagadores está en %(url)s."
 
-#: emails.py:125
+#: emails.py:127
 #, python-format
 msgid "%(business)s was deleted"
 msgstr "%(business)s se ha eliminado"
 
-#: emails.py:127
+#: emails.py:129
 #, python-format
 msgid "%(business)s was deleted and no longer opens."
 msgstr "%(business)s se ha eliminado y ya no se abre."
 
-#: emails.py:129
+#: emails.py:131
 #, python-format
 msgid ""
 "It had been suspended for %(days)d days because an invoice was not paid."
 msgstr "Llevaba %(days)d días suspendido porque una factura no se pagó."
 
-#: emails.py:135
+#: emails.py:137
 #, python-format
 msgid ""
 "You can recover it until %(date)s from %(url)s. After that date it is erased "
@@ -237,51 +239,51 @@ msgstr ""
 "Puedes recuperarlo hasta el %(date)s desde %(url)s. Después de esa fecha se "
 "borra para siempre."
 
-#: emails.py:149
+#: emails.py:151
 #, python-format
 msgid "%(business)s is ready"
 msgstr "%(business)s ya está listo"
 
-#: emails.py:151
+#: emails.py:153
 #, python-format
 msgid "%(business)s is ready: open it and start selling."
 msgstr "%(business)s ya está listo: ábrelo y empieza a vender."
 
-#: emails.py:153
+#: emails.py:155
 #, python-format
 msgid "Open it: %(url)s"
 msgstr "Ábrelo: %(url)s"
 
-#: emails.py:154
+#: emails.py:156
 #, python-format
 msgid "Manage it from the panel: %(url)s"
 msgstr "Gestiónalo desde el panel: %(url)s"
 
-#: emails.py:165
+#: emails.py:167
 #, python-format
 msgid "Last notice: %(business)s will be deleted on %(date)s"
 msgstr "Último aviso: %(business)s se eliminará el %(date)s"
 
-#: emails.py:167
+#: emails.py:169
 #, python-format
 msgid "%(business)s is still suspended"
 msgstr "%(business)s sigue suspendido"
 
-#: emails.py:170
+#: emails.py:172
 #, python-format
 msgid "%(business)s is still suspended because an invoice was not paid."
 msgstr "%(business)s sigue suspendido porque una factura no se pagó."
 
-#: emails.py:171
+#: emails.py:173
 #, python-format
 msgid "If it is not paid, the business will be deleted on %(date)s."
 msgstr "Si no se paga, el negocio se eliminará el %(date)s."
 
-#: emails.py:172
+#: emails.py:174
 msgid "After that you can still recover it for 90 days, on the Free plan."
 msgstr "Después aún podrás recuperarlo durante 90 días, en el plan Gratis."
 
-#: emails.py:174
+#: emails.py:176
 #, python-format
 msgid "Pay it from Billing and it works again at once: %(url)s"
 msgstr "Págala desde Facturación y vuelve a funcionar al momento: %(url)s"

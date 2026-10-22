@@ -96,6 +96,30 @@ def test_the_ownership_offer_and_its_acceptance(hub, make_user):
     assert "factura" in accepted.body.lower()
 
 
+def test_the_ownership_mails_link_to_pages_the_panel_has(hub, make_user):
+    """HUBS-G82: the offer is answered on Businesses, whose card says «Accept the ownership» (the panel has no
+    ``/ownership/<id>`` page), and the outgoing owner sees what they still pay in Billing › Payment details,
+    not in the business's settings, where nothing about the payer changes."""
+    olga, ana = make_user("olga@example.com", language="en"), make_user("ana@example.com", language="en")
+    transfer = HubOwnershipTransfer.objects.create(
+        hub=hub,
+        from_user=olga,
+        to_user=ana,
+        from_email=olga.email,
+        to_email=ana.email,
+        expires_at=timezone.now() + timedelta(days=7),
+    )
+
+    emails.send_ownership_offer(transfer, base_url=BASE)
+    emails.send_ownership_accepted(transfer, base_url=BASE)
+
+    offer, accepted = mail.outbox
+    assert f"{BASE}/businesses\n" in f"{offer.body}\n"
+    assert "/ownership/" not in offer.body
+    assert f"{BASE}/billing/payment" in accepted.body
+    assert "/settings" not in accepted.body
+
+
 def test_the_deletion_says_until_when_it_can_be_recovered(hub, make_user):
     owner = make_user("olga@example.com", language="en")
     hub.deletion_requested_at = timezone.now()

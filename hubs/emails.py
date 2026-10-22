@@ -84,7 +84,8 @@ def send_ownership_offer(transfer, *, base_url: str) -> bool:
             _("Accept or decline it before %(date)s: %(url)s")
             % {
                 "date": _date(transfer.expires_at),
-                "url": f"{base_url}/ownership/{transfer.id}",
+                # Answered on Businesses, whose card offers «Accept the ownership» (HUBS-G82).
+                "url": f"{base_url}/businesses",
             },
             "",
             _(
@@ -108,9 +109,10 @@ def send_ownership_accepted(transfer, *, base_url: str) -> bool:
             % {"who": transfer.to_email, "business": transfer.hub.name},
             "",
             _(
-                "The billing did not move: the invoices still go to the same payer until it is changed in %(url)s."
+                "The billing did not move: the invoices still go to the same payer until the new owner gives the "
+                "business their own billing details. What each of your payers pays is in %(url)s."
             )
-            % {"url": f"{base_url}/businesses/{transfer.hub_id}/settings"},
+            % {"url": f"{base_url}/billing/payment"},
         ]
     return _send(subject, lines, transfer.from_email)
 
