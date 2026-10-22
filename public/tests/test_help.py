@@ -116,6 +116,14 @@ def test_get_doc_unknown_id_returns_none():
     assert help_docs.get_doc("does-not-exist", "es") is None
 
 
+@pytest.mark.parametrize("crafted", ["../../UI-REQUESTS-panel", "../../../README"])
+def test_get_doc_never_reads_a_markdown_file_outside_the_guides(crafted):
+    """PUBLIC-G21: the id is checked against the guides, so an existing file next to them never leaks."""
+    assert (Path(settings.BASE_DIR) / "docs" / "en" / "help" / f"{crafted}.md").resolve().is_file()
+
+    assert help_docs.get_doc(crafted, "en") is None
+
+
 def test_pending_translation_falls_back_to_english_source(docs_root):
     """A placeholder locale file must not produce an empty help article."""
     write_doc(docs_root, "en", "01-start.md", "# First access\n\nOn a new device.\n")

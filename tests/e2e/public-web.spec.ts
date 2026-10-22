@@ -183,7 +183,8 @@ test('PUBLIC-G35 PUBLIC-G50 features, security and updates say what runs', async
     await expect(page.getByText(claim, { exact: false })).toHaveCount(0);
   }
   await page.locator('ion-button', { hasText: 'Contact Security Team' }).click();
-  await expect(page).toHaveURL(/\/contact\/$/);
+  // The form opens on the security topic (PUBLIC-G40, APP-PUBLIC-2).
+  await expect(page).toHaveURL(/\/contact\/\?subject=security$/);
   await expect(page.locator('form[action="/contact/submit/"]')).toBeVisible();
   await clean('/security/ → /contact/');
 });

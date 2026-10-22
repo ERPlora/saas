@@ -10,7 +10,10 @@
   response's CSP nonce): it registers the ion-* the templates use and brings Ionic's CSS, the
   @erplora/ui tokens and the stylesheets of public/static/public/. The ok-* components are HTML + CSS
   partials (public/components/), icons are SVG painted on the server ({% templatetag openblock %} icon {% templatetag closeblock %}).
-  No PWA manifest, back bar or app-shell head: the Tauri app does not open these pages in phase 1.
+  No PWA manifest nor app-shell head. The installed app's sign-in opens the legal texts here: with `app_surface`
+  (`?surface=desktop|mobile|account`, kept in the session; public/context_processors.py) the page is in app mode,
+  PUBLIC-F26: `data-surface` on <html>, the app bar with «Back» instead of the navbar, and no footer, cookie notice
+  nor analytics.
 
   Colour mode, as the panel paints it: `theme` (base.context_processors.theme) is the account's mode
   (Account → Preferences), `system` for a visitor. The server writes it on <html> as `data-ep-theme`,
@@ -18,7 +21,7 @@
   class before the first stylesheet when the system is dark (no light flash), and frontend/public.ts
   follows the system's changes live.
 {% endcomment %}
-<html lang="{{ LANGUAGE_CODE }}" data-ep-theme="{{ theme|default:'system' }}"{% if theme == 'dark' %} class="ion-palette-dark"{% endif %}>
+<html lang="{{ LANGUAGE_CODE }}" data-ep-theme="{{ theme|default:'system' }}"{% if app_surface %} data-surface="{{ app_surface }}"{% endif %}{% if theme == 'dark' %} class="ion-palette-dark"{% endif %}>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -70,22 +73,22 @@
     {% public_assets %}
     {% block extra_css %}{% endblock %}
 
-    {% block analytics %}{% include 'public/partials/analytics.html' %}{% endblock %}
+    {% block analytics %}{% if not app_surface %}{% include 'public/partials/analytics.html' %}{% endif %}{% endblock %}
     {% block extra_head_scripts %}{% endblock %}
 </head>
 <body>
     {% include 'public/partials/dev_banner.html' %}
     {% block content %}
-    {% include 'public/partials/navbar.html' %}
+    {% if app_surface %}{% include 'public/partials/app_bar.html' %}{% else %}{% include 'public/partials/navbar.html' %}{% endif %}
 
     <main>
         {% block page_content %}{% endblock %}
     </main>
 
-    {% include 'public/partials/footer.html' %}
+    {% if not app_surface %}{% include 'public/partials/footer.html' %}{% endif %}
 
     {% block cookie_banner %}
-        {% include 'public/partials/cookie_banner.html' %}
+        {% if not app_surface %}{% include 'public/partials/cookie_banner.html' %}{% endif %}
     {% endblock %}
     {% endblock %}
 

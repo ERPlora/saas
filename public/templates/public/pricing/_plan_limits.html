@@ -1,0 +1,4 @@
+{% load i18n %}{% comment %}
+  A plan's devices and users in one line («1 device · 3 users»), `0` = unlimited (ADR-0154): the comparison
+  table of /pricing/ and the free hub of /download/ (PUBLIC-G28) read the same plan, never a typed number.
+{% endcomment %}{% if plan.max_devices %}{% blocktrans trimmed count devices=plan.max_devices %}{{ devices }} device{% plural %}{{ devices }} devices{% endblocktrans %}{% else %}{% trans "Unlimited devices" %}{% endif %} · {% if plan.max_users %}{% blocktrans trimmed count users=plan.max_users %}{{ users }} user{% plural %}{{ users }} users{% endblocktrans %}{% else %}{% trans "Unlimited users" %}{% endif %}

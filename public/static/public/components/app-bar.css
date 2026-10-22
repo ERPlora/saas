@@ -1,0 +1,13 @@
+/* ep-app-bar (public/partials/app_bar.html): the navbar's place on a page opened from the installed app
+ * (PUBLIC-F26): the same sticky glass bar with only «Back». */
+.ep-app-bar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: block;
+  padding-block: 0.25rem;
+  background: color-mix(in oklab, var(--ep-surface, var(--ion-card-background, #fff)) 72%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  backdrop-filter: blur(14px) saturate(1.4);
+  border-bottom: 1px solid color-mix(in oklab, var(--ep-text, var(--ion-text-color, #1c1b17)) 9%, transparent);
+}

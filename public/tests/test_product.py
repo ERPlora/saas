@@ -304,7 +304,6 @@ L3A_PAGES = (
     "/blog/",
     "/careers/",
     "/press/",
-    "/documentation/",
     "/support/",
     "/help/",
     "/app/",

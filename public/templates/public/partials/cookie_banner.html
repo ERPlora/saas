@@ -2,6 +2,10 @@
 {% comment %}
   The cookie banner while the visitor has not chosen for every cookie group (django-cookie-consent).
   Included by public_base.html in {% templatetag openblock %} block cookie_banner {% templatetag closeblock %}; /cookies/ empties that block.
+  Only when an optional tracker is configured (PUBLIC-G24): without Google Analytics or Clarity the site sets only
+  technical cookies, which need no consent (AEPD, ePrivacy art. 5.3), so there is nothing to ask.
 {% endcomment %}
+{% if GA_MEASUREMENT_ID or CLARITY_PROJECT_ID %}
 {% not_accepted_or_declined_cookie_groups request as cookie_groups %}
 {% if cookie_groups %}{% include 'cookie_consent/cookielaw_banner.html' %}{% endif %}
+{% endif %}

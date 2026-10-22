@@ -18,6 +18,7 @@ import {
   MERMAID_CONFIG,
   presentServerMessages,
   renderDiagrams,
+  setupAppBack,
   setupColorScheme,
   setupNavbar,
   setupReveal,
@@ -108,7 +109,7 @@ describe('the public entry: components and styles', () => {
 
   it('imports every component stylesheet', () => {
     expect(SOURCE).toContain("import.meta.glob('../public/static/public/components/*.css', { eager: true })");
-    expect(readdirSync(join(PUBLIC_STATIC, 'components')).filter((name) => name.endsWith('.css')).length).toBe(15);
+    expect(readdirSync(join(PUBLIC_STATIC, 'components')).filter((name) => name.endsWith('.css')).length).toBe(16);
   });
 
   it('never reaches a CDN', () => {
@@ -384,5 +385,45 @@ describe('Mermaid on demand (spec §6)', () => {
     expect(doc.querySelector('pre.mermaid')!.textContent).toBe('graph TD; A --- B');
     expect(error).toHaveBeenCalled();
     error.mockRestore();
+  });
+});
+
+describe('setupAppBack: «Back» of a page opened from the installed app (PUBLIC-F26)', () => {
+  const BAR = '<header class="ep-app-bar"><ion-button href="/shell/" data-app-back>Back</ion-button></header>';
+
+  function click(doc: Document): MouseEvent {
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+    doc.querySelector('[data-app-back]')!.dispatchEvent(event);
+    return event;
+  }
+
+  it('goes back to the app screen that opened the page', () => {
+    const back = vi.fn();
+    const doc = page(BAR);
+    setupAppBack(doc, { length: 3, back });
+
+    const event = click(doc);
+
+    expect(back).toHaveBeenCalledOnce();
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('without a history (the page opened alone) it follows its link to the app start', () => {
+    const back = vi.fn();
+    const doc = page(BAR);
+    setupAppBack(doc, { length: 1, back });
+
+    const event = click(doc);
+
+    expect(back).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it('does nothing on a page of the web, which has no such bar', () => {
+    expect(() => setupAppBack(page('<nav class="ep-navbar"></nav>'), { length: 3, back: vi.fn() })).not.toThrow();
+  });
+
+  it('runs at boot', () => {
+    expect(SOURCE).toMatch(/export function boot\(doc: Document\): void \{[^}]*setupAppBack\(doc\)/);
   });
 });

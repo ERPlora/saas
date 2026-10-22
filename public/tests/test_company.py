@@ -316,10 +316,11 @@ def test_collaborate_names_no_old_host_and_no_past_launch_date(client):
 
 
 def test_collaborate_sends_to_the_contact_page_with_its_subject(client, settings):
+    """The form keeps the topic it is opened on (PUBLIC-G40): before, «Collaborator+Program» was ignored."""
     settings.SUPPORT_EMAIL = "support@erplora.test"
     html = page(client, COLLABORATE)
 
-    assert f'href="{reverse("public:contact")}?subject=Collaborator+Program"' in html
+    assert f'href="{reverse("public:contact")}?subject=collaborate"' in html
     assert 'href="mailto:support@erplora.test?subject=Collaborator%20Program"' in html
 
 

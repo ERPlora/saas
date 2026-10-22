@@ -120,3 +120,13 @@ def test_the_web_panel_can_be_zoomed(client):
     assert '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">' in html
     assert "user-scalable" not in html
     assert "maximum-scale" not in html
+
+
+def test_the_shell_embeds_the_support_address_of_the_settings(client, settings):
+    """The SPA's «Contact Support» writes to ``SUPPORT_EMAIL``, the public web's one source (PUBLIC-F18)."""
+    settings.SUPPORT_EMAIL = "help@erplora.test"
+    response = client.get("/launch", HTTP_HOST=HOST)
+
+    nonce, email = json_block(response, "support-email")
+    assert nonce == csp_nonce(response)
+    assert email == "help@erplora.test"

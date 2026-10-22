@@ -1,4 +1,4 @@
-{% load static %}
+{% load support static %}
 {% load i18n %}
 <!DOCTYPE html>
 {% comment %}
@@ -54,7 +54,7 @@
             <p>{% block message %}{% endblock %}</p>
             <nav class="error-page__actions">
                 {% block actions %}<a href="/">{% trans "Home" %}</a>{% endblock %}
-                <a href="mailto:info@erplora.com">{% trans "Contact Support" %}</a>
+                <a href="mailto:{% support_email %}">{% trans "Contact Support" %}</a>
             </nav>
         </div>
     </main>
