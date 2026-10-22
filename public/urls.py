@@ -51,6 +51,7 @@ PUBLIC_PREFIXES = (
     "contact",
     "download",
     "demo",
+    "try",
     "marketplace",
     "solutions",
     "modules",
@@ -100,6 +101,9 @@ urlpatterns = [
     path("demo/", demo.index, name="demo"),
     path("demo/start/", demo.start, name="demo_start"),
     path("demo/enter/", demo.enter, name="demo_enter"),
+    # The same door at the address the old stack handed out (PUBLIC-F27): /demo/ was once a permanent redirect
+    # that browsers keep. It serves the page itself (never a redirect) and names /demo/ as canonical.
+    path("try/", demo.index, name="demo_try"),
     # Legal pages (L3b; the terms, which read Plan, L7).
     path("legal/privacy/", legal.privacy, name="privacy"),
     path("legal/terms/", legal.terms, name="terms"),

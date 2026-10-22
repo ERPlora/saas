@@ -185,6 +185,32 @@ env -u DB_NAME E2E_SAAS_PORT=8080 VITE_DEV_PORT=5480 E2E_REAL_HUB=1 HUB_DIR=<wor
   que `stack.ts` rechaza.
 - La pasada sin la variable no necesita Hub: el puerto `+9` tiene que estar libre.
 
+## La demo contra un Hub de verdad
+
+`public-demo-hub.spec.ts` recorre la entrada en la demo (PUBLIC-F28): «Try the demo» → «Opening your demo…» → la
+shell de la demo como «Demo» → la puerta «Your demo is running» → «Back to my demo», en los tres tamaños. Necesita un
+Hub cuyo `SAAS_URL` sea el servidor **público** de la pila (el Hub manda ahí la vuelta de `/auth/login` de una demo),
+y el servidor público con las variables del Hub exportadas (Playwright pone el entorno de la ejecución debajo del
+suyo). Sin `E2E_DEMO_HUB` sale saltada y lo dice. No convive con `E2E_REAL_HUB` en la misma pasada: ese Hub apunta al
+panel. Receta para la pila `8180` (`:8181` público) con el Hub en `:8710`:
+
+```bash
+for p in 8181 8182 8183 8710 5580 5910; do lsof -nP -iTCP:$p -sTCP:LISTEN; done   # nada en sus puertos
+# En el worktree del Hub: su BD e2e y el Hub en :8710
+DB_NAME=hub_e2e_8710 COMPOSE_FILE=<raíz>/compose.yaml node tests/e2e/database.ts
+DB_NAME=hub_e2e_8710 VITE_DEV_PORT=5910 SAAS_URL=http://127.0.0.1:8181 uv run python manage.py runserver 127.0.0.1:8710 &
+# En el worktree del SaaS
+env -u DB_NAME E2E_SAAS_PORT=8180 VITE_DEV_PORT=5580 E2E_DEMO_HUB=http://localhost:8710 HUB_INTERNAL_URL=http://localhost:8710 \
+  HUB_CALLBACK_TEMPLATE='http://{slug}.localhost:8710/auth/callback' HUB_ADMIN_CALLBACK_URL='http://hubs.localhost:8710/auth/callback' \
+  pnpm e2e:ci tests/e2e/public-demo-hub.spec.ts
+# Al terminar: parar el Hub por puerto (`lsof -tiTCP:8710 -sTCP:LISTEN | xargs kill`) y borrar las dos BD e2e
+```
+
+- El mismo `INTERNAL_SHARED_SECRET` en los dos (en local, el valor por defecto del Hub es el del `.env` del SaaS).
+- Cada pasada deja una demo viva en la BD del Hub hasta su hora; se va con `node tests/e2e/database.ts --drop`.
+- El recorrido hasta la demo terminada (410 → la puerta) es `tests/e2e/demo.spec.ts` del Hub, con un SaaS en
+  `runserver` (su README, «La demo»).
+
 ## Datos sembrados
 
 - **Panel**: `manage.py demo_seed` (una vez por worker, fixture `owner`; necesita `DEBUG=True`, que la

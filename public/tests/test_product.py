@@ -19,6 +19,7 @@ import pytest
 from django.conf import settings
 from django.urls import reverse
 
+from public.landing import TYPICAL_STACK
 from public.tests.test_stack_copy import copy_of, names_the_stack
 
 pytestmark = pytest.mark.django_db
@@ -555,6 +556,20 @@ def test_the_typical_stack_total_is_the_sum_of_its_rows(client):
 
     assert rows, "no row in the stack table"
     assert int(total) == sum(int(cost) for _, cost in rows)
+
+
+#: Tools the stack table named that no longer sell: TradeGecko became QuickBooks Commerce, which Intuit
+#: retired in 2022 and ended in August 2023. A visitor compares against what they could buy today.
+RETIRED_TOOLS = ("TradeGecko", "QuickBooks Commerce")
+
+
+def test_the_typical_stack_names_only_tools_on_sale_today(client):
+    """PUBLIC-F01: the home's «what you would pay» table compares ERPlora with tools a business can buy."""
+    html = page(client, "/")
+
+    named = " ".join(tool for _, tool, _ in TYPICAL_STACK)
+    assert not [tool for tool in RETIRED_TOOLS if tool in named]
+    assert not [tool for tool in RETIRED_TOOLS if tool in html]
 
 
 # --- PUBLIC-F08: what the web says of security and data is what runs (SAAS_PUBLIC-F77) -------------

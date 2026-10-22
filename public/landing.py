@@ -63,7 +63,7 @@ UNKNOWN_ADDRESS = "0.0.0.0"
 #: the Hub cover today (PUBLIC-F07: no accounting, payroll or support-ticket row); the total is their sum.
 TYPICAL_STACK = (
     (gettext_lazy("Electronic invoicing"), "FacturaDirecta / Holded", 39),
-    (gettext_lazy("Inventory"), "Cin7 / TradeGecko", 89),
+    (gettext_lazy("Inventory"), "Zoho Inventory / Sortly", 89),
     (gettext_lazy("CRM"), "HubSpot / Pipedrive", 95),
     (gettext_lazy("E-commerce + POS"), "Shopify + Square", 112),
 )
