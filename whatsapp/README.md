@@ -21,7 +21,7 @@ renombran** (el Hub ya está en producción con ellas). Firma de todo `/internal
 | 2 `POST /internal/whatsapp/status` | SaaS → Hub | un estado con su `client_message_id`; sin ella, el de una respuesta del dueño desde el móvil ya entregada por la puerta 1 | `hub_client.post_status` |
 | 3 `PUT /internal/whatsapp/channel` | SaaS → Hub | el canal | **no se usa**: va en la foto (puerta 4) |
 | 4 clave `whatsapp` de `PUT /internal/hubs/{id}/state` | SaaS → Hub | el canal con la versión de la foto | `queries.channel_block` en `hubs.queries.hub_snapshot`; `services.announce_channel` sube la versión y empuja tras el COMMIT |
-| 5 `POST /internal/whatsapp/send` + `Idempotency-Key` | Hub → SaaS | enviar | `internal.send` → `gateway.send` |
+| 5 `POST /internal/whatsapp/send` + `Idempotency-Key` | Hub → SaaS | enviar; **propone** el 409 `whatsapp.reconnect_needed` (Meta dijo 190: el permiso caducó o se retiró; el número queda «Hay que reconectar»), distinto de `not_connected` (`WORKBOOK.md`, «Para quien lo mantiene») | `internal.send` → `gateway.send` |
 | 6 `POST /internal/whatsapp/erase` | Hub → SaaS | olvidar un número de cliente | `gateway.erase` |
 | 7 | — | envío de estados (obligación de la 2) | el webhook los aparca y `deliver` los empuja |
 | 8 `POST /internal/whatsapp/templates` + `Idempotency-Key` | Hub → SaaS | registrar una plantilla | `gateway.submit_template` |
