@@ -164,3 +164,29 @@ def snapshot_block(hub_id: UUID) -> dict[str, Any]:
             "reason": _reason(current),
         }
     }
+
+
+def step_to_announce(grant_id: UUID) -> tuple[RepresentationGrant, list] | None:
+    """What ``fiscal.emails`` announces of the step that left ``grant_id`` as it is: the grant with its business,
+    without its documents, and the active owner and admins of the business who answered their invitation, by
+    email. ``None`` for a grant that no longer exists and for a step a newer one replaced (a mark of the
+    platform in ``reason``): the newer step's own mail says all there is to say."""
+    grant = (
+        RepresentationGrant.objects.select_related("hub")
+        .defer(*RepresentationGrant.DOCUMENTS)
+        .filter(pk=grant_id)
+        .first()
+    )
+    if grant is None or grant.reason in REPLACED_MARKS:
+        return None
+    members = (
+        HubMember.objects.filter(
+            hub_id=grant.hub_id,
+            accepted_at__isnull=False,
+            role__in=[HubMember.Role.OWNER, HubMember.Role.ADMIN],
+            user__is_active=True,
+        )
+        .select_related("user")
+        .order_by("user__email")
+    )
+    return grant, [member.user for member in members]

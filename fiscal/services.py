@@ -11,12 +11,15 @@ whose snapshot carries the outcome to the Hub (``hubs.queries.hub_snapshot``, bl
 Every step bumps the business's ``state_version`` in its transaction (``hubs.services.bump_state``) and pushes
 the snapshot once it commits (``push_after_commit``; ``reconcile_hub_states`` retries it while the Hub is
 away), records its event (the trail: who, which business, which version) and tells the owner and the admins of
-the business (``tell_the_business``). No document ever leaves in an event or a snapshot.
+the business (``tell_the_business``), and once it commits mails them and, for one that waits for a review, the
+review desk (``fiscal.emails``, FISCAL-F05). No document ever leaves in an event, a snapshot or a mail.
 """
 
+from functools import partial
 from typing import Any
 from uuid import UUID
 
+from django.db import transaction
 from django.db.models import Max
 from django.utils import timezone, translation
 from django.utils.translation import gettext as _
@@ -26,7 +29,7 @@ from live.operations import operation
 from live.outbox import record_event
 
 from billing.nif import is_legal_person_nif, is_spanish_tax_id, normalise_nif
-from fiscal import crypto, events
+from fiscal import crypto, emails, events
 from fiscal.documents import DocumentRejected, decode_pdf
 from fiscal.models import RepresentationGrant
 from fiscal.schemas import (
@@ -352,14 +355,16 @@ def _decided(grant: RepresentationGrant) -> dict:
 
 
 def _stepped(ctx: OperationContext, event: str, grant: RepresentationGrant) -> None:
-    """The trail of a step and what follows it: its event, the business told, a newer snapshot for the Hub
-    (bumped in this transaction, pushed after the COMMIT)."""
+    """The trail of a step and what follows it: its event, the business told (its page at once, its mails and the
+    review desk's after the COMMIT, FISCAL-F05), a newer snapshot for the Hub (bumped in this transaction, pushed
+    after the COMMIT)."""
     record_event(
         ctx,
         event,
         {"hub_id": str(grant.hub_id), "id": str(grant.id), "version": grant.version},
     )
     tell_the_business(ctx, grant.hub_id)
+    transaction.on_commit(partial(emails.grant_stepped, grant.id), robust=True)
     hub_services.bump_state(grant.hub_id)
     hub_services.push_after_commit(grant.hub_id)
 

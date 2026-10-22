@@ -735,3 +735,87 @@ def test_the_reviewer_needs_the_change_permission_not_only_the_view_one(
 
     with pytest.raises(PermissionDenied):
         services.representation_approve(staff_ctx(helper), ReviewIn(id=waiting.id))
+
+
+# --- The mails of each step (FISCAL-F05) ----------------------------------------------------------------
+
+
+class TestMails:
+    """Every step mails whom it concerns once it commits (``fiscal.emails``), and never before."""
+
+    @pytest.fixture(autouse=True)
+    def desk(self, settings):
+        settings.FISCAL_REVIEW_EMAIL = "review@erplora.example"
+
+    def test_a_submission_tells_the_desk_and_the_owner_after_the_commit(
+        self, business, owner, mailoutbox, django_capture_on_commit_callbacks
+    ):
+        with django_capture_on_commit_callbacks(execute=False) as callbacks:
+            submit(business)
+        assert mailoutbox == []
+
+        for callback in callbacks:
+            callback()
+
+        assert sorted(address for message in mailoutbox for address in message.to) == [
+            owner.email,
+            "review@erplora.example",
+        ]
+
+    @pytest.mark.parametrize(
+        ("decide", "subject"),
+        [
+            (
+                lambda ctx, grant: services.representation_approve(ctx, ReviewIn(id=grant.id)),
+                "La autorización firmada de Bar Manolo ya está en vigor",
+            ),
+            (
+                lambda ctx, grant: services.representation_return(
+                    ctx, ReturnIn(id=grant.id, reason="Falta la firma.")
+                ),
+                "Te hemos devuelto la autorización firmada de Bar Manolo",
+            ),
+        ],
+    )
+    def test_a_decision_tells_the_owner_after_the_commit(
+        self,
+        waiting,
+        reviewer,
+        owner,
+        mailoutbox,
+        django_capture_on_commit_callbacks,
+        decide,
+        subject,
+    ):
+        with django_capture_on_commit_callbacks(execute=True):
+            decide(staff_ctx(reviewer), waiting)
+
+        assert [(m.to, m.subject) for m in mailoutbox] == [([owner.email], subject)]
+
+    def test_a_withdrawal_tells_the_owner_after_the_commit(
+        self, business, reviewer, owner, mailoutbox, django_capture_on_commit_callbacks
+    ):
+        approved = make_grant(
+            business, status="approved", reviewed_at=timezone.now()
+        )
+
+        with django_capture_on_commit_callbacks(execute=True):
+            services.representation_withdraw(
+                staff_ctx(reviewer), WithdrawIn(id=approved.id, reason="Caducado.")
+            )
+
+        assert [(m.to, m.subject) for m in mailoutbox] == [
+            (
+                [owner.email],
+                "ERPlora ha retirado la autorización firmada de Bar Manolo",
+            )
+        ]
+
+    def test_a_refused_submission_mails_nobody(
+        self, business, mailoutbox, django_capture_on_commit_callbacks
+    ):
+        with django_capture_on_commit_callbacks(execute=True):
+            with pytest.raises(InvalidPayload):
+                submit(business, taxpayer_tax_id="nope")
+
+        assert mailoutbox == []

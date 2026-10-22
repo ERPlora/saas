@@ -283,3 +283,59 @@ msgstr "Sustituida por un envío más reciente antes de revisarla"
 
 msgid "Replaced by a newer approval"
 msgstr "Sustituida por una aprobación más reciente"
+
+msgid "Signed authorisation to review: %(business)s (version %(version)d)"
+msgstr "Autorización firmada por revisar: %(business)s (versión %(version)d)"
+
+msgid ""
+"%(business)s sent its signed authorisation (version %(version)d): it waits "
+"for a person of ERPlora to review it."
+msgstr ""
+"%(business)s ha enviado su autorización firmada (versión %(version)d): "
+"espera a que una persona de ERPlora la revise."
+
+msgid "Review it: %(url)s"
+msgstr "Revísala: %(url)s"
+
+msgid "We received the signed authorisation of %(business)s"
+msgstr "Hemos recibido la autorización firmada de %(business)s"
+
+msgid ""
+"A person of ERPlora reviews it and you will get a mail with the answer. "
+"Until then, ERPlora does not send the invoices of %(business)s to the tax "
+"agency with its seal."
+msgstr ""
+"Una persona de ERPlora la revisa y te llegará un correo con la respuesta. "
+"Hasta entonces, ERPlora no envía a Hacienda las facturas de %(business)s con "
+"su sello."
+
+msgid "The signed authorisation of %(business)s is now in force"
+msgstr "La autorización firmada de %(business)s ya está en vigor"
+
+msgid ""
+"ERPlora may now send the invoices of %(business)s to the tax agency with its "
+"seal."
+msgstr ""
+"ERPlora ya puede enviar a Hacienda las facturas de %(business)s con su sello."
+
+msgid "We returned the signed authorisation of %(business)s"
+msgstr "Te hemos devuelto la autorización firmada de %(business)s"
+
+msgid "Why: %(reason)s"
+msgstr "Motivo: %(reason)s"
+
+msgid "Fix it and send it again from the VeriFactu app of the business."
+msgstr "Corrígela y vuelve a enviarla desde la app VeriFactu del negocio."
+
+msgid "ERPlora withdrew the signed authorisation of %(business)s"
+msgstr "ERPlora ha retirado la autorización firmada de %(business)s"
+
+msgid ""
+"ERPlora no longer sends the invoices of %(business)s to the tax agency with "
+"its seal. Send a new one from the VeriFactu app of the business."
+msgstr ""
+"ERPlora ya no envía a Hacienda las facturas de %(business)s con su sello. "
+"Envía una nueva desde la app VeriFactu del negocio."
+
+msgid "See it in the panel: %(url)s"
+msgstr "Míralo en el panel: %(url)s"
