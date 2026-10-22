@@ -199,7 +199,7 @@
       "pageTitle": "You have been invited",
       "lead": "Someone gave you access to their business. Accept to enter.",
       "byLine": "{inviter} invites you · {role}",
-      "foot": "You can leave a business whenever you want from the panel.",
+      "foot": "The owner or an admin of the business can take this access away.",
       "loadError": "We could not load your invitations.",
       "expired": {
         "title": "This invitation is no longer valid",

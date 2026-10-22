@@ -199,7 +199,7 @@
       "pageTitle": "Te han invitado",
       "lead": "Alguien te ha dado acceso a su negocio. Acepta para entrar.",
       "byLine": "Te invita {inviter} · {role}",
-      "foot": "Podrás salir de un negocio cuando quieras desde el panel.",
+      "foot": "El propietario o un administrador del negocio pueden quitarte este acceso.",
       "loadError": "No hemos podido cargar tus invitaciones.",
       "expired": {
         "title": "Esta invitación ya no vale",
