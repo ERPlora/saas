@@ -131,6 +131,9 @@ for (const { code, locale } of LANGUAGES) {
           // Its own styles load from this origin: the page is laid out, not raw HTML.
           const styled = await page.evaluate(() => getComputedStyle(document.body).fontFamily);
           expect(styled).not.toBe('');
+          // The public web's pre-launch strip, once, on top; the private layout has none.
+          await expect(page.locator('.dev-banner')).toHaveCount(side === 'public' ? 1 : 0);
+          if (side === 'public') expect((await page.locator('.dev-banner').boundingBox())?.y).toBe(0);
         });
       });
     }

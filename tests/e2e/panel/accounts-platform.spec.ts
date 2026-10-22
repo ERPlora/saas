@@ -64,6 +64,11 @@ async function openMenu(page: Page): Promise<void> {
   if (!(await entries.first().isVisible())) {
     await page.locator('ion-router-outlet > .ion-page:not(.ion-page-hidden) ion-menu-button').last().click();
     await expect(entries.first()).toBeVisible();
+    // The drawer slides in: it counts as open once its animation ends and its entries sit inside the screen.
+    await expect
+      .poll(() => page.evaluate(() => (document.querySelector('ion-menu') as (HTMLElement & { isOpen: () => Promise<boolean> }) | null)?.isOpen() ?? false))
+      .toBe(true);
+    await expect.poll(async () => (await entries.first().boundingBox())?.x ?? -1).toBeGreaterThanOrEqual(0);
   }
 }
 
@@ -169,7 +174,8 @@ test('ACCOUNTS-G82 · G33 · G64 · the staff turns maintenance on in the admin:
   await signIn(page.request, staff);
 
   try {
-    expect(await setMaintenance(page, true)).toBe('Maintenance mode is on: only the ERPlora staff with a session uses erplora.com.');
+    // Django's own «… was changed successfully.» comes first; the switch's consequence follows it.
+    expect(await setMaintenance(page, true)).toContain('Maintenance mode is on: only the ERPlora staff with a session uses erplora.com.');
 
     // A visitor in English and one in Spanish: the page, 503, with its «Try again».
     const english = await visitor(browser, baseURL!, 'en-US');
@@ -210,7 +216,7 @@ test('ACCOUNTS-G82 · G33 · G64 · the staff turns maintenance on in the admin:
     await again.context().close();
 
     // Turned off, everyone enters.
-    expect(await setMaintenance(page, false)).toBe('Maintenance mode is off: erplora.com is open to everyone.');
+    expect(await setMaintenance(page, false)).toContain('Maintenance mode is off: erplora.com is open to everyone.');
     expect((await english.goto('/launch'))?.status()).toBe(200);
     await english.context().close();
     await spanish.context().close();
