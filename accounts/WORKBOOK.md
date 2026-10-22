@@ -219,6 +219,9 @@ El nombre y el correo arriba del menú lateral (en el móvil, dentro del menú):
 | ACCOUNTS-F28 | Entrar en mi negocio desde erplora.com | hecho |
 | ACCOUNTS-F29 | Volver a erplora.com desde mi negocio | hecho |
 | ACCOUNTS-F30 | Abrir mi cuenta sola desde la aplicación | hecho |
+| ACCOUNTS-F31 | Crear una clave de API | hecho |
+| ACCOUNTS-F32 | Usar una clave de API: qué abre y qué no | hecho |
+| ACCOUNTS-F33 | Revocar una clave de API | hecho |
 
 ### ACCOUNTS-F01 Crear la cuenta
 <!-- origen: old-saas:SAAS_AUTH-F01 pc:cloud/auth/signup fi:saas/auth-services#registro-de-usuario-por-api-signup fi:saas/support/auth-services#service-create_user gh:saas#2542 gh:saas#2536 gh:saas#2560 gh:saas#2562 -->
@@ -657,6 +660,50 @@ Pasos:
 Entra: la marca de la cuenta sola.
 Sale: la cuenta abierta sin lo que vende; la marca se queda en la sesión de ese navegador hasta que se cierra.
 Si falla: sin la marca, la misma dirección abre la cuenta del panel de siempre, con «Tienda».
+Implicados: ninguno
+
+### ACCOUNTS-F31 Crear una clave de API
+<!-- origen: old-saas:SAAS_AUTH-F23 -->
+Estado: hecho
+Actor: cualquier persona con cuenta; un superusuario del personal, para una cuenta del equipo
+Pantalla: Cuenta › Claves de API, admin › Cuentas › Claves de API
+Pasos:
+1. En **Cuenta › Claves de API**, la persona pulsa «Nueva clave»: «Nueva clave de API» pide el «Nombre», sus «Permisos» («Negocios · lectura», «Negocios · escritura», «Facturas · lectura») y cuándo «Caduca» («En 90 días», «En 30 días» o «Nunca»).
+2. Si su última entrada no es reciente, antes confirma que es ella con su contraseña (o entrando otra vez con Google).
+3. Pulsa «Crear clave»: ve la clave entera una sola vez, con «Copiar la clave» y «Cópiala ahora y guárdala en un sitio seguro: no la volverás a ver.»; con «Ya la he guardado», la clave queda en la lista solo con su principio.
+4. Un superusuario del personal crea una clave para una cuenta del equipo desde el admin, con «Añadir clave de API»: elige la cuenta, el nombre, los permisos y la caducidad, y la página le enseña la clave una sola vez, «Cópiala ahora: no se volverá a mostrar.».
+Entra: el nombre, los permisos, la caducidad y, si hace falta, la contraseña.
+Sale: la clave, que actúa como su cuenta y solo con sus permisos; erplora.com guarda solo su huella y su principio. A la cuenta le llega el correo «Nueva clave de API en tu cuenta de ERPlora», sin la clave. Evento `accounts.apikey.created`.
+Si falla: sin nombre, «Ponle un nombre: es como distinguirás tus claves.»; un permiso que no existe, «Permiso desconocido: …»; con 50 claves que aún valen, «Ya tienes 50 claves de API: revoca una que ya no uses.». Una clave no se vuelve a enseñar, ni en la lista ni en el admin. Desde el admin no se crea para la cuenta de un cliente, que crea las suyas, y el soporte no crea ninguna. Una clave no sirve para crear claves ni para gestionar la cuenta.
+Implicados: ninguno
+
+### ACCOUNTS-F32 Usar una clave de API: qué abre y qué no
+<!-- origen: old-saas:SAAS_AUTH-F24 -->
+Estado: hecho
+Actor: un programa con la clave de una cuenta
+Pantalla: ninguna (la API de erplora.com)
+Pasos:
+1. Un programa (Postman, una integración, un guion) llama a la API de erplora.com con la clave en su cabecera.
+2. erplora.com busca la clave por su principio, compara su huella y comprueba que no está revocada ni caducada y que su cuenta sigue activa.
+3. La llamada pasa a ser de esa cuenta: ve lo que ve su cuenta, nada de otras, y solo lo que abren sus permisos: «Negocios · lectura» lee sus negocios y «Facturas · lectura», sus facturas de ERPlora.
+4. Lo demás de la API (la cuenta, sus sesiones y sus claves, y lo que no se ofrece a las claves) se niega a cualquier clave.
+Entra: la clave.
+Sale: la respuesta, como si llamara su cuenta; el último uso de la clave se apunta como mucho cada 10 minutos.
+Si falla: una clave que no existe, revocada, caducada o de una cuenta desactivada, «Clave de API no válida.»; sin el permiso, «A esta clave de API le falta el permiso que pide esta operación: …»; en lo que no se ofrece a las claves, «Aquí no se pueden usar claves de API: esta operación es solo para personas con la sesión iniciada.». Más de 600 llamadas por minuto con una clave, o más de 30 claves equivocadas por minuto desde la misma dirección, «Demasiadas peticiones. Vuelve a intentarlo en un minuto.». Una cabecera vacía es como no llevar clave.
+Implicados: hubs (sus negocios), billing (sus facturas)
+
+### ACCOUNTS-F33 Revocar una clave de API
+<!-- origen: old-saas:SAAS_AUTH-F25 -->
+Estado: hecho
+Actor: cualquier persona con cuenta; un superusuario del personal
+Pantalla: Cuenta › Claves de API, admin › Cuentas › Claves de API
+Pasos:
+1. En **Cuenta › Claves de API**, la persona pulsa «Revocar» en la fila de la clave: «Revocar «…»» dice «Lo que use esta clave dejará de funcionar al momento. No se puede deshacer: tendrías que crear otra.».
+2. Confirma con «Revocar clave»: «Clave revocada: «…»» y la clave sale de la lista.
+3. Ante un incidente, un superusuario del personal busca la clave en el admin (por su nombre, su principio o su cuenta), la marca y elige «Revocar las claves seleccionadas (dejan de funcionar al momento)»: «Claves revocadas: 1.».
+Entra: la clave elegida.
+Sale: la clave no abre nada desde la siguiente llamada; su fila se queda como rastro, con la fecha en que se revocó, y la lista de su cuenta se actualiza sola. No hay «rotar»: se crea otra y se revoca la vieja. Evento `accounts.apikey.revoked`.
+Si falla: revocarla dos veces no cambia nada; la clave de otra cuenta no se encuentra («Esa clave de API no existe.»). Revocar no pide la contraseña. El soporte ve las claves sin poder revocarlas.
 Implicados: ninguno
 
 ## Para quien lo mantiene

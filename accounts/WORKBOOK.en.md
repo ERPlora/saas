@@ -199,6 +199,9 @@ theme and "Sign out".
 | ACCOUNTS-F28 | Enter my business from erplora.com | done |
 | ACCOUNTS-F29 | Go back to erplora.com from my business | done |
 | ACCOUNTS-F30 | Open my account on its own from the app | done |
+| ACCOUNTS-F31 | Create an API key | done |
+| ACCOUNTS-F32 | Use an API key: what it opens and what it does not | done |
+| ACCOUNTS-F33 | Revoke an API key | done |
 
 ### ACCOUNTS-F01 Create the account
 Status: done
@@ -607,4 +610,45 @@ Steps:
 In: the mark of the account on its own.
 Out: the account open without what sells; the mark stays in that browser's session until it ends.
 If it fails: without the mark, the same address opens the account of the usual panel, with "Store".
+Involved: none
+
+### ACCOUNTS-F31 Create an API key
+Status: done
+Actor: any person with an account; a superuser of the staff, for a team account
+Screen: Account › API keys, admin › Accounts › API keys
+Steps:
+1. In **Account › API keys**, the person taps "New key": "New API key" asks for the "Name", its "Permissions" ("Businesses · read", "Businesses · write", "Invoices · read") and when it "Expires" ("In 90 days", "In 30 days" or "Never").
+2. If their last sign-in is not recent, first they confirm it is them with their password (or by signing in with Google again).
+3. They tap "Create key": they see the whole key once, with "Copy the key" and "Copy it now and keep it somewhere safe: you will not see it again."; with "I have saved it", the key stays on the list with its beginning only.
+4. A superuser of the staff creates a key for a team account from the admin, with "Add API key": they choose the account, the name, the permissions and the expiry, and the page shows them the key once, "Copy it now: it will not be shown again.".
+In: the name, the permissions, the expiry and, if needed, the password.
+Out: the key, which acts as its account and only with its permissions; erplora.com keeps only its fingerprint and its beginning. The account gets the email "New API key in your ERPlora account", without the key. Event `accounts.apikey.created`.
+If it fails: without a name, "Give it a name: it is how you will tell your keys apart."; a permission that does not exist, "Unknown permission: …"; with 50 keys that still work, "You already have 50 API keys: revoke one you no longer use.". A key is never shown again, neither on the list nor in the admin. The admin creates none for a customer's account, which creates its own, and support creates none. A key cannot create keys nor manage the account.
+Involved: none
+
+### ACCOUNTS-F32 Use an API key: what it opens and what it does not
+Status: done
+Actor: a program with an account's key
+Screen: none (the erplora.com API)
+Steps:
+1. A program (Postman, an integration, a script) calls the erplora.com API with the key in its header.
+2. erplora.com finds the key by its beginning, compares its fingerprint and checks it is neither revoked nor expired and that its account is still active.
+3. The call becomes that account's: it sees what its account sees, nothing of others, and only what its permissions open: "Businesses · read" reads its businesses and "Invoices · read", its ERPlora invoices.
+4. The rest of the API (the account, its sessions and its keys, and what is not offered to keys) is refused to any key.
+In: the key.
+Out: the answer, as if its account called; the key's last use is noted at most every 10 minutes.
+If it fails: a key that does not exist, revoked, expired or of a deactivated account, "Invalid API key."; without the permission, "This API key is missing the permission this operation needs: …"; on what is not offered to keys, "API keys cannot be used here: this operation is only for signed-in people.". More than 600 calls a minute with one key, or more than 30 wrong keys a minute from the same address, "Too many requests. Try again in a minute.". An empty header is as no key.
+Involved: hubs (its businesses), billing (its invoices)
+
+### ACCOUNTS-F33 Revoke an API key
+Status: done
+Actor: any person with an account; a superuser of the staff
+Screen: Account › API keys, admin › Accounts › API keys
+Steps:
+1. In **Account › API keys**, the person taps "Revoke" on the key's row: "Revoke "…"" says "Whatever uses this key stops working at once. It cannot be undone: you would have to create another one.".
+2. They confirm with "Revoke key": "Key revoked: "…"" and the key leaves the list.
+3. Facing an incident, a superuser of the staff finds the key in the admin (by its name, its beginning or its account), marks it and chooses "Revoke the selected keys (they stop working at once)": "Keys revoked: 1.".
+In: the chosen key.
+Out: the key opens nothing from the next call on; its row stays as the trail, with the date it was revoked, and its account's list refreshes by itself. There is no "rotate": another one is created and the old one revoked. Event `accounts.apikey.revoked`.
+If it fails: revoking it twice changes nothing; another account's key is not found ("That API key does not exist."). Revoking does not ask for the password. Support sees the keys without being able to revoke them.
 Involved: none

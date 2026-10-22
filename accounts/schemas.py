@@ -375,3 +375,9 @@ class ApiKeyCreatedOut(Schema):
 
 class ApiKeyRevokeIn(StrictIn):
     id: UUID
+
+
+class ApiKeyIssueIn(ApiKeyCreateIn):
+    """The admin's «Add API key» (ACCOUNTS-F31): the same key, for a team account chosen by a superuser."""
+
+    user_id: UUID

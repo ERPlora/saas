@@ -925,6 +925,36 @@ msgstr "Si no la has creado tú, revócala en Cuenta → Claves de API y escribe
 msgid "You pay for businesses of other people: ask their owner to enter their own payment details before deleting your account."
 msgstr "Pagas negocios de otras personas: pide a su propietario que ponga sus datos de pago antes de eliminar tu cuenta."
 
+msgid "expires"
+msgstr "caduca"
+
+msgid "In 90 days"
+msgstr "En 90 días"
+
+msgid "In 30 days"
+msgstr "En 30 días"
+
+msgid "Never"
+msgstr "Nunca"
+
+msgid "Team accounts only: a customer creates its own keys in Account › API keys."
+msgstr "Solo cuentas del equipo: un cliente crea sus propias claves en Cuenta › Claves de API."
+
+msgid "API key issued"
+msgstr "Clave de API emitida"
+
+msgid "API keys are issued here for team accounts only."
+msgstr "Aquí solo se emiten claves de API para cuentas del equipo."
+
+msgid "The key «%(name)s» of %(email)s is ready. Copy it now: it will not be shown again."
+msgstr "La clave «%(name)s» de %(email)s está lista. Cópiala ahora: no se volverá a mostrar."
+
+msgid "Its owner was told by email. If it gets lost, revoke it and issue another one."
+msgstr "Se ha avisado a su titular por correo. Si se pierde, revócala y emite otra."
+
+msgid "Back to the API keys"
+msgstr "Volver a las claves de API"
+
 #: fiscal_gateway/apps.py:16
 msgid "Fiscal gateway"
 msgstr "Pasarela fiscal"

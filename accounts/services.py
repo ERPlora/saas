@@ -44,6 +44,7 @@ from accounts.models import (
 from accounts.schemas import (
     ApiKeyCreatedOut,
     ApiKeyCreateIn,
+    ApiKeyIssueIn,
     ApiKeyRevokeIn,
     ApiKeyRowOut,
     BrowserTrustOut,
@@ -1046,10 +1047,16 @@ API_KEY_LAST_USED_RESOLUTION = timedelta(minutes=10)
 def apikey_create(ctx: OperationContext, data: ApiKeyCreateIn) -> dict:
     """A new key of the account, bounded by its scopes: the answer carries the whole key, the only time it exists
     in clear (only its hash is kept). Creating access asks for a recent sign-in, as GitHub and Stripe do."""
-    from django.db.models import Q
-
     user = queries.account_of(ctx)
     require_recent_authentication(ctx)
+    return _new_api_key(ctx, user, data)
+
+
+def _new_api_key(ctx: OperationContext, user, data: ApiKeyCreateIn) -> dict:
+    """A key of ``user`` within the ceiling: the row (its hash only), the event on the context's channel and the
+    mail that tells the account. Returns the row and the whole key, the only time it exists in clear."""
+    from django.db.models import Q
+
     now = timezone.now()
     # One creation at a time per account, so the ceiling holds.
     get_user_model().objects.select_for_update().filter(pk=user.pk).exists()
@@ -1106,6 +1113,35 @@ def record_api_key_use(key: ApiKey, now) -> None:
 
 #: The admin's revocation: a system context only (no role grants it), on the owner's channel.
 REVOKE_ANY_KEY = "accounts.revoke_any_key"
+#: The admin's «Add API key» for a team account (ACCOUNTS-F31): a system context only, on the owner's channel.
+ISSUE_ANY_KEY = "accounts.issue_any_key"
+
+
+@operation("accounts.apikey.issue_any", kind="command", permission=ISSUE_ANY_KEY, input=ApiKeyIssueIn, output=ApiKeyCreatedOut)
+def apikey_issue_any(ctx: OperationContext, data: ApiKeyIssueIn) -> dict:
+    """A key for a team account, issued by a superuser from the admin (PLAN-SAAS §1.1, ronda 2026-10-15b; the old
+    SaaS's ``POST /api/v1/admin/api-keys/``). Only an active staff account: a customer's keys are the customer's own
+    (the old ``user_not_staff``). The event goes to the owner's channel, so its live list refreshes, and the owner is
+    told by mail. Called only by ``issue_api_key``; no route."""
+    if ctx.scope.key != str(data.user_id):
+        raise LiveMisuse(f"accounts.apikey.issue_any runs on the key owner's channel, not {ctx.scope.key!r}.")
+    user = get_user_model().objects.filter(pk=data.user_id, is_active=True, is_staff=True).first()
+    if user is None:
+        raise NotFound(gettext("API keys are issued here for team accounts only."))
+    return _new_api_key(ctx, user, data)
+
+
+def issue_api_key(user, *, name: str, scopes: list[str], expires_in_days: int | None, by) -> ApiKeyCreatedOut:
+    """The admin's «Add API key»: a key of the team account ``user``, issued by the superuser ``by``; the answer carries
+    the whole key (``secret``), the only time it exists in clear."""
+    from live.context import Scope, system_context
+
+    issued = apikey_issue_any(
+        system_context(Scope("user", str(user.pk))),
+        ApiKeyIssueIn(user_id=user.pk, name=name, scopes=scopes, expires_in_days=expires_in_days),
+    )
+    logger.warning("accounts.api_key_issued_by_staff staff=%s user=%s key=%s", by.pk, user.pk, issued.key.id)
+    return issued
 
 
 @operation("accounts.apikey.revoke_any", kind="command", permission=REVOKE_ANY_KEY, input=ApiKeyRevokeIn, output=ApiKeyRowOut)
