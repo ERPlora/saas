@@ -1,7 +1,9 @@
-"""Read operations of base."""
+"""Read operations of base, and the maintenance switch every request reads (``maintenance_state``)."""
 
+import logging
 from typing import Any
 
+from django.db import DatabaseError
 from django.utils import translation
 from live.context import OperationContext
 from live.operations import operation
@@ -9,6 +11,8 @@ from live.operations import operation
 from accounts.queries import preferences_of
 from base import navigation
 from base.schemas import SessionMeIn, SessionMeOut
+
+logger = logging.getLogger(__name__)
 
 
 @operation(
@@ -58,3 +62,47 @@ def _user(actor: Any) -> dict[str, str] | None:
         "label": actor.get_full_name() or actor.get_username(),
         "email": actor.email,
     }
+
+
+# --- The maintenance mode (ACCOUNTS-G82; base.maintenance) ----------------------------------------------------------
+
+#: Seconds a task keeps the switch before reading it again; a change in the admin drops it from the shared cache at
+#: once (``SiteSettings.save``), so this only bounds a cache that missed that.
+MAINTENANCE_KEEP_SECONDS = 60
+
+
+def _read_maintenance() -> dict[str, str] | None:
+    """The switch as the database has it: ``None`` when off (or never set), its two messages when on."""
+    from base.models import SiteSettings
+
+    row = (
+        SiteSettings.objects.filter(maintenance_mode=True)
+        .values("maintenance_message_en", "maintenance_message_es")
+        .first()
+    )
+    if row is None:
+        return None
+    return {"en": row["maintenance_message_en"], "es": row["maintenance_message_es"]}
+
+
+def maintenance_state() -> dict[str, str] | None:
+    """Whether erplora.com is in maintenance: ``None`` when it is not, its messages by language when it is.
+
+    Read through the default cache (Valkey in AWS, shared by every task) and kept ``MAINTENANCE_KEEP_SECONDS``. When the
+    switch cannot be read (the database is down), the site stays open, as the old SaaS did, and the log says why: a
+    switch nobody can read must never close erplora.com.
+    """
+    from django.core.cache import cache
+
+    from base.models import MAINTENANCE_CACHE_KEY
+
+    kept = cache.get(MAINTENANCE_CACHE_KEY)
+    if kept is not None:
+        return kept["state"]
+    try:
+        state = _read_maintenance()
+    except DatabaseError as exc:
+        logger.warning("base.maintenance_unreadable error=%s", type(exc).__name__)
+        return None
+    cache.set(MAINTENANCE_CACHE_KEY, {"state": state}, MAINTENANCE_KEEP_SECONDS)
+    return state

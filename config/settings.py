@@ -155,6 +155,9 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     # On the panel, a signed-in account speaks its own language (User.language), not the cookie's.
     "base.language.AccountLanguageMiddleware",
+    # The maintenance mode of «Site settings» in the admin: every visitor gets the 503 page but the staff, the health
+    # checks, the admin and its sign-in, /internal and the webhooks (ACCOUNTS-G82).
+    "base.maintenance.MaintenanceModeMiddleware",
     # With ACCOUNTS_MFA_ENABLED off, the 2FA endpoints answer 404 (accounts/mfa.py).
     "accounts.mfa.MFAFlagMiddleware",
     # API 404/405 that never reach a route (unknown path, wrong method) answer the JSON envelope.
