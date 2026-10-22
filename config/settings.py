@@ -653,6 +653,8 @@ COOKIE_CONSENT_SECURE = not DEBUG
 CONTACT_FORM_RATELIMIT = config("CONTACT_FORM_RATELIMIT", default="10/h")
 # «Report a problem» of the panel per account (ACCOUNTS-F38; django-ratelimit, over the default cache).
 SUPPORT_REPORT_RATELIMIT = config("SUPPORT_REPORT_RATELIMIT", default="5/h")
+# The browsers' CSP reports per address (/csp-report/, base/csp_report.py; the old SaaS's 60 an hour, ACCOUNTS-G78).
+CSP_REPORT_RATELIMIT = config("CSP_REPORT_RATELIMIT", default="60/h")
 # The demo hubs (PLAN-SAAS §3.5, round 2026-10-17; public/demo.py): one switch, and new demos per address
 # (django-ratelimit, over the default cache; a browser re-entering its live demo does not count). The Hub keeps
 # the cap of live demos (MAX_CONCURRENT_DEMOS) and the WAF limits /demo per IP too.

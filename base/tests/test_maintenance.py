@@ -217,11 +217,12 @@ class TestTheSwitch:
 
         assert queries.MAINTENANCE_KEEP_SECONDS == 60
 
+    @pytest.mark.parametrize("error", [DatabaseError("connection refused"), RuntimeError("a bug")])
     def test_when_the_switch_cannot_be_read_the_site_stays_open_and_the_log_says_why(
-        self, client, monkeypatch, caplog
+        self, client, monkeypatch, caplog, error
     ):
         def unreadable():
-            raise DatabaseError("connection refused")
+            raise error
 
         monkeypatch.setattr(queries, "_read_maintenance", unreadable)
 

@@ -3,7 +3,6 @@
 import logging
 from typing import Any
 
-from django.db import DatabaseError
 from django.utils import translation
 from live.context import OperationContext
 from live.operations import operation
@@ -89,19 +88,20 @@ def maintenance_state() -> dict[str, str] | None:
     """Whether erplora.com is in maintenance: ``None`` when it is not, its messages by language when it is.
 
     Read through the default cache (Valkey in AWS, shared by every task) and kept ``MAINTENANCE_KEEP_SECONDS``. When the
-    switch cannot be read (the database is down), the site stays open, as the old SaaS did, and the log says why: a
-    switch nobody can read must never close erplora.com.
+    switch cannot be read, whatever the reason (the database down, or a failure nobody foresaw), the site stays open,
+    as the old SaaS did, and the log says why: a switch nobody can read must never close erplora.com, nor answer 500
+    on every page.
     """
     from django.core.cache import cache
 
     from base.models import MAINTENANCE_CACHE_KEY
 
-    kept = cache.get(MAINTENANCE_CACHE_KEY)
-    if kept is not None:
-        return kept["state"]
     try:
+        kept = cache.get(MAINTENANCE_CACHE_KEY)
+        if kept is not None:
+            return kept["state"]
         state = _read_maintenance()
-    except DatabaseError as exc:
+    except Exception as exc:  # noqa: BLE001 - logged and left open, never a 500 on every page
         logger.warning("base.maintenance_unreadable error=%s", type(exc).__name__)
         return None
     cache.set(MAINTENANCE_CACHE_KEY, {"state": state}, MAINTENANCE_KEEP_SECONDS)

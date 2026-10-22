@@ -14,13 +14,13 @@ from django.contrib import admin
 from django.urls import include, path, re_path
 from django.utils.translation import gettext_lazy
 from django.views.generic import RedirectView
-from live.csp import csp_report
 from live.live_view import live_stream
 from live.spa import BASE_NON_SPA_PREFIXES, spa_path_pattern
 
 from accounts import admin as accounts_admin
 from accounts import doors, google, handoff, internal
 from accounts.adapters import SPA_LOGIN
+from base.csp_report import csp_report
 from base.health import readyz
 from base.spa import spa
 from billing import webhooks as billing_webhooks

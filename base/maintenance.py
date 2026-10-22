@@ -82,8 +82,7 @@ class MaintenanceModeMiddleware:
         self.get_response = get_response
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
-        if not _exempt(request) and not _is_staff(request):
-            state = queries.maintenance_state()
-            if state is not None:
-                return maintenance_response(request, state)
+        # The switch first: with it off (the usual case) the request's session is never touched.
+        if not _exempt(request) and (state := queries.maintenance_state()) is not None and not _is_staff(request):
+            return maintenance_response(request, state)
         return self.get_response(request)
