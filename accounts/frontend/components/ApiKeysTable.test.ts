@@ -126,6 +126,17 @@ describe('ApiKeysTable', () => {
     expect(s.q('revoke-key-error')?.textContent).toContain('That API key does not exist.');
   });
 
+  it('links to the documentation of the API, which opens beside the panel (ACCOUNTS-G105, ACCOUNTS-F34)', async () => {
+    const s = await setup();
+    const docs = s.q('api-keys-docs');
+    expect(docs?.textContent?.trim()).toBe('API documentation');
+    expect([docs?.getAttribute('href'), docs?.getAttribute('target'), docs?.getAttribute('rel')]).toEqual([
+      '/api/docs',
+      '_blank',
+      'noopener',
+    ]);
+  });
+
   it('explains an empty list and offers the first key, without the toolbar (mockups «keys-empty»)', async () => {
     const s = await setup([]);
     expect(s.q('api-keys-empty')?.textContent).toContain('You have no keys yet');

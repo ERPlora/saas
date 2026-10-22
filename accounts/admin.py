@@ -1,5 +1,5 @@
 """Django admin of accounts: users (with their preferences and photo), their hub memberships (the jump's
-mirror), the one-time codes and the API keys (read only; a superuser revokes). The sessions are
+mirror), the one-time codes and the API keys (a superuser revokes them, and issues one for a team account). The sessions are
 ``allauth.usersessions``' own page, read only; a superuser closes them («Close sessions», ACCOUNTS-F19).
 
 «Open in the Hub admin» (ronda 13, PLAN §18.1.6), on every membership row and on the «Hubs» page
@@ -18,8 +18,10 @@ needs the authenticator app's code in the session.
 
 from urllib.parse import urlencode, urlsplit
 
+from django import forms
 from django.conf import settings
 from django.contrib import admin, messages
+from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.auth.forms import AdminUserCreationForm, UserChangeForm
 from django.core.exceptions import PermissionDenied
@@ -29,6 +31,7 @@ from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.translation import gettext
+from django.utils.cache import add_never_cache_headers
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.cache import never_cache
 
@@ -37,6 +40,7 @@ from allauth.usersessions.models import UserSession
 
 from accounts import queries, services
 from accounts.models import (
+    API_KEY_SCOPES,
     ApiKey,
     AuthExchangeCode,
     EmailChangeRequest,
@@ -314,14 +318,44 @@ class AuthExchangeCodeAdmin(admin.ModelAdmin):
         return False
 
 
+class ApiKeyIssueForm(forms.ModelForm):
+    """«Add API key» (ACCOUNTS-F31): a team account, a name, its permissions and when it expires."""
+
+    scopes = forms.MultipleChoiceField(
+        label=_("permissions"), choices=list(API_KEY_SCOPES.items()), widget=forms.CheckboxSelectMultiple
+    )
+    expires_in_days = forms.TypedChoiceField(
+        label=_("expires"),
+        choices=[("90", _("In 90 days")), ("30", _("In 30 days")), ("", _("Never"))],
+        coerce=int,
+        empty_value=None,
+        required=False,
+        initial="90",
+    )
+
+    class Meta:
+        model = ApiKey
+        fields = ("user", "name", "scopes")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["user"].queryset = get_user_model().objects.filter(is_staff=True, is_active=True).order_by("email")
+        self.fields["user"].help_text = _("Team accounts only: a customer creates its own keys in Account › API keys.")
+
+
 @admin.register(ApiKey)
 class ApiKeyAdmin(admin.ModelAdmin):
     """Who has which key, what it may do, when it was last used (ported from ERPlora/saas ``apps/auth/apikeys``).
 
-    Read only: the account issues its keys in the Account page, the only place the secret is ever shown, so the admin adds
-    none; the hash is never shown; deleting is not offered (revoking is the audit trail). A superuser can cut keys
-    on the spot («Revoke»); ``support`` sees them.
+    An account issues its keys in the Account page. A superuser issues one here for a team account («Add API key»,
+    PLAN-SAAS §1.1, ronda 2026-10-15b), through ``services.issue_api_key``: the answer shows the key once
+    (``response_add``, never cached) and nothing keeps it in clear. A key is never changed and the hash is never shown;
+    deleting is not offered (revoking is the audit trail). A superuser can cut keys on the spot («Revoke»);
+    ``support`` sees them.
     """
+
+    add_form = ApiKeyIssueForm
+    add_fieldsets = ((None, {"fields": ("user", "name", "scopes", "expires_in_days")}),)
 
     list_display = ("name", "user", "display_prefix", "scopes", "created_at", "last_used_at", "expires_at", "revoked_at")
     list_filter = ("revoked_at", "expires_at")
@@ -336,7 +370,7 @@ class ApiKeyAdmin(admin.ModelAdmin):
         return f"{obj.display_prefix}…"
 
     def has_add_permission(self, request):
-        return False
+        return request.user.is_superuser
 
     def has_change_permission(self, request, obj=None):
         return False
@@ -346,6 +380,46 @@ class ApiKeyAdmin(admin.ModelAdmin):
 
     def has_revoke_permission(self, request):
         return request.user.is_superuser
+
+    def get_fieldsets(self, request, obj=None):
+        return self.add_fieldsets if obj is None else super().get_fieldsets(request, obj)
+
+    def get_readonly_fields(self, request, obj=None):
+        return () if obj is None else self.readonly_fields
+
+    def get_form(self, request, obj=None, **kwargs):
+        if obj is None:
+            kwargs["form"] = self.add_form
+        return super().get_form(request, obj, **kwargs)
+
+    def save_model(self, request, obj, form, change):
+        """Issue the key through its operation (never ``obj.save()``) and keep the answer for ``response_add`` only."""
+        data = form.cleaned_data
+        issued = services.issue_api_key(
+            data["user"],
+            name=data["name"],
+            scopes=data["scopes"],
+            expires_in_days=data["expires_in_days"],
+            by=request.user,
+        )
+        obj.pk = issued.key.id
+        obj.refresh_from_db()
+        request.issued_api_key_secret = issued.secret
+
+    def response_add(self, request, obj, post_url_continue=None):
+        response = TemplateResponse(
+            request,
+            "admin/accounts/apikey/issued.html",
+            {
+                **self.admin_site.each_context(request),
+                "opts": self.opts,
+                "title": gettext("API key issued"),
+                "key": obj,
+                "secret": request.issued_api_key_secret,
+            },
+        )
+        add_never_cache_headers(response)
+        return response
 
     @admin.action(description=_("Revoke the selected keys (they stop working at once)"), permissions=["revoke"])
     def revoke(self, request, queryset):

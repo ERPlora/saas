@@ -30,6 +30,9 @@ Hub's: the link is refused as broken (``/login/error?code=invalid_hub``: «open 
 sign-in from its own screen»), before the login and without a code. The login and the 2FA detour
 come back to this same path and query (``next``), so the state survives both.
 
+Each account starts at most ``HUB_LOGIN_RATELIMIT`` jumps (20 in 5 minutes, counted per account and refused
+ones included): past it, ``/login/error?code=too_many`` asks to wait, and no code is minted.
+
 ``audience=hub-admin`` is the staff's «Open in the Hub admin» (ronda 13, PLAN §18): the SaaS admin's
 button opens ``hubs.erplora.com/auth/login?hub=<slug>&next=/admin/hub/<slug>/`` (``accounts.admin``),
 whose ``state`` brings the browser back here. It mints a ``hub-admin`` code (a platform role, no
@@ -50,6 +53,7 @@ from django.shortcuts import redirect, render
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET
+from django_ratelimit.core import is_ratelimited
 
 from accounts import mfa, queries, services
 from accounts.models import AuthExchangeCode
@@ -68,6 +72,17 @@ STATE_MAX_LENGTH = 128
 AUDIENCES = (AuthExchangeCode.HUB_SESSION_AUDIENCE, AuthExchangeCode.HUB_ADMIN_AUDIENCE)
 #: Why «Open in the Hub admin» did nothing: with the flag on, ``hub-admin`` needs the second factor.
 REFUSED_WITHOUT_SECOND_FACTOR = _("Turn on two-factor authentication and sign in again before opening the Hub admin.")
+
+
+def too_many_jumps(request: HttpRequest) -> bool:
+    """Count this jump of the signed-in account; whether it went past ``HUB_LOGIN_RATELIMIT``."""
+    return is_ratelimited(
+        request,
+        group="accounts.hub_login",
+        key=lambda group, request: f"user:{request.user.pk}",
+        rate=settings.HUB_LOGIN_RATELIMIT,
+        increment=True,
+    )
 
 
 def login_error_url(code: str, **params: str) -> str:
@@ -102,6 +117,9 @@ def hub_login(request: HttpRequest) -> HttpResponse:
         return HttpResponseRedirect(login_error_url("invalid_hub"))
     if not request.user.is_authenticated:
         return redirect_to_login(request.get_full_path())
+    if too_many_jumps(request):
+        logger.warning("hub_login.too_many user=%s", request.user.pk)
+        return HttpResponseRedirect(login_error_url("too_many"))
     staff_jump = audience == AuthExchangeCode.HUB_ADMIN_AUDIENCE
     try:
         code = services.issue_code(request.user, slug, audience=audience, second_factor=mfa.mfa_completed(request))

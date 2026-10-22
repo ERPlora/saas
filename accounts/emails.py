@@ -69,3 +69,24 @@ def send_api_key_created(email: str, name: str, scopes: list[str], *, language: 
             % {"support": settings.SUPPORT_EMAIL},
         ]
     return _send(subject, lines, email, "api_key_created")
+
+
+def send_support_report(user, *, subject: str, description: str, context: list[tuple[str, str]]) -> bool:
+    """A report of «Report a problem» to the support mailbox (ACCOUNTS-F38), «Reply-To» the account so support answers
+    with «Reply». In English, as the contact form's: it is the team's mail, not the account's. ``context`` is what goes
+    under the text (the account, its businesses, the page, the browser). The text itself is never logged."""
+    from django.core.mail import EmailMessage
+
+    lines = [description, "", "---", *(f"{label}: {value}" for label, value in context)]
+    try:
+        EmailMessage(
+            subject=f"[Support] {subject}",
+            body="\n".join(lines) + "\n",
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[settings.SUPPORT_EMAIL],
+            reply_to=[user.email],
+        ).send(fail_silently=False)
+    except Exception:  # noqa: BLE001 - any failure of the mail backend is reported, not raised
+        logger.exception("accounts.mail_failed kind=support_report")
+        return False
+    return True

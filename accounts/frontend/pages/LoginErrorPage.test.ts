@@ -127,6 +127,30 @@ describe('LoginErrorPage: the texts of each template', () => {
   );
 });
 
+describe('LoginErrorPage: too many jumps (ACCOUNTS-G98, ACCOUNTS-F28)', () => {
+  it('too_many: the account opened its businesses too often; it waits, with the way home and support', async () => {
+    const page = await mountError('code=too_many', { session: SIGNED_IN });
+    expect(page.badge().text()).toBe('429 · Too many attempts');
+    expect(page.heading()).toBe('Too many attempts');
+    expect(page.message()).toBe(
+      'You have opened your businesses too many times in a few minutes. Wait a few minutes and open your business again.',
+    );
+    expect(page.primary()).toEqual(['Home', '/launch']);
+    expect(page.links).toEqual([['Contact Support', 'mailto:help@erplora.test']]);
+    expect(document.title).toBe('Too many attempts - ERPlora Cloud');
+  });
+
+  it('too_many, in Spanish', async () => {
+    const page = await mountError('code=too_many', { session: SIGNED_IN, locale: 'es' });
+    expect(page.badge().text()).toBe('429 · Demasiados intentos');
+    expect(page.heading()).toBe('Demasiados intentos');
+    expect(page.message()).toBe(
+      'Has abierto tus negocios demasiadas veces en pocos minutos. Espera unos minutos y vuelve a abrir tu negocio.',
+    );
+    expect(page.primary()).toEqual(['Inicio', '/launch']);
+  });
+});
+
 describe('LoginErrorPage: the way back', () => {
   it('«Contact Support» writes to the support address of the SaaS, and without one offers no address (PUBLIC-F18)', async () => {
     embedSupport(null);

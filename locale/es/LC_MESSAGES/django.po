@@ -925,6 +925,178 @@ msgstr "Si no la has creado tú, revócala en Cuenta → Claves de API y escribe
 msgid "You pay for businesses of other people: ask their owner to enter their own payment details before deleting your account."
 msgstr "Pagas negocios de otras personas: pide a su propietario que ponga sus datos de pago antes de eliminar tu cuenta."
 
+msgid "expires"
+msgstr "caduca"
+
+msgid "In 90 days"
+msgstr "En 90 días"
+
+msgid "In 30 days"
+msgstr "En 30 días"
+
+msgid "Never"
+msgstr "Nunca"
+
+msgid "Team accounts only: a customer creates its own keys in Account › API keys."
+msgstr "Solo cuentas del equipo: un cliente crea sus propias claves en Cuenta › Claves de API."
+
+msgid "API key issued"
+msgstr "Clave de API emitida"
+
+msgid "API keys are issued here for team accounts only."
+msgstr "Aquí solo se emiten claves de API para cuentas del equipo."
+
+msgid "The key «%(name)s» of %(email)s is ready. Copy it now: it will not be shown again."
+msgstr "La clave «%(name)s» de %(email)s está lista. Cópiala ahora: no se volverá a mostrar."
+
+msgid "Its owner was told by email. If it gets lost, revoke it and issue another one."
+msgstr "Se ha avisado a su titular por correo. Si se pierde, revócala y emite otra."
+
+msgid "Back to the API keys"
+msgstr "Volver a las claves de API"
+
+msgid "We could not load the API documentation. Reload the page to try again."
+msgstr "No hemos podido cargar la documentación de la API. Recarga la página para volver a intentarlo."
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "Audit log"
+msgstr "Registro de auditoría"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+#, python-format
+msgid "Audit log: %s"
+msgstr "Registro de auditoría: %s"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "Changes"
+msgstr "Cambios"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "Resource Type"
+msgstr "Tipo de recurso"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "Resource"
+msgstr "Recurso"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "Correlation ID"
+msgstr "ID de correlación"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "Click to filter by records with this correlation id"
+msgstr "Pulsa para ver los registros con este ID de correlación"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "Created"
+msgstr "Creada"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "create"
+msgstr "creación"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "update"
+msgstr "modificación"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "delete"
+msgstr "eliminación"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "access"
+msgstr "acceso"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "object pk"
+msgstr "clave del objeto"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "object representation"
+msgstr "representación del objeto"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "action"
+msgstr "acción"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "actor"
+msgstr "autor"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "remote address"
+msgstr "dirección remota"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "remote port"
+msgstr "puerto remoto"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "timestamp"
+msgstr "fecha y hora"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "additional data"
+msgstr "datos adicionales"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "actor email"
+msgstr "correo del autor"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "Created {repr:s}"
+msgstr "Creado {repr:s}"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "Updated {repr:s}"
+msgstr "Modificado {repr:s}"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "Deleted {repr:s}"
+msgstr "Eliminado {repr:s}"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "Logged {repr:s}"
+msgstr "Registrado {repr:s}"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "Field"
+msgstr "Campo"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "From"
+msgstr "Antes"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "To"
+msgstr "Después"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "Relationship"
+msgstr "Relación"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "system"
+msgstr "sistema"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "No field changes"
+msgstr "Sin cambios en los campos"
+
+#. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
+msgid "No log entries found."
+msgstr "No hay entradas de registro."
+
+msgid "Add a subject."
+msgstr "Añade un asunto."
+
+msgid "Describe the problem, please."
+msgstr "Describe el problema, por favor."
+
+#, python-format
+msgid "We could not send your report. Write to us directly at %(email)s."
+msgstr "No hemos podido enviar tu informe. Escríbenos directamente a %(email)s."
+
 #: fiscal_gateway/apps.py:16
 msgid "Fiscal gateway"
 msgstr "Pasarela fiscal"

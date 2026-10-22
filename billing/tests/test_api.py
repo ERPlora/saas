@@ -149,8 +149,11 @@ def test_openapi_lists_the_billing_section(client):
     assert {path: (method, paths[path][method]["operationId"]) for path, (method, _) in BILLING_SECTION_ROUTES.items()} == (
         BILLING_SECTION_ROUTES
     )
-    assert "application/pdf" in paths["/api/billing/invoices/pdf"]["get"]["responses"]["200"]["content"]
-    assert "text/csv" in paths["/api/billing/invoices/csv"]["get"]["responses"]["200"]["content"]
+    binary = {"schema": {"type": "string", "format": "binary"}}
+    for path, media_type in (("/api/billing/invoices/pdf", "application/pdf"), ("/api/billing/invoices/csv", "text/csv")):
+        ok = paths[path]["get"]["responses"]["200"]
+        # One 200 (no repeated key: config/tests/test_api.py), with its description and the file it answers.
+        assert (ok["description"], ok["content"][media_type]) == ("OK", binary)
 
 
 @pytest.mark.django_db

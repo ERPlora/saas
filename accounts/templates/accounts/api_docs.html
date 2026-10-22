@@ -1,0 +1,42 @@
+{% load i18n %}
+<!DOCTYPE html>
+{% comment %}
+  `/api/docs` (accounts/api_docs.py): ninja's ReDoc, served without its CDN logo (`redoc_script`), every script with the
+  response's nonce.
+  `redoc_settings` and `openapi_json_url` come from ninja (`ninja.openapi.docs.Redoc.render_page`). The schema is read
+  with JSON.parse and handed to ReDoc as an object: ReDoc's own reader (YAML) refuses a JSON that repeats a key, and
+  then the whole page says nothing but «Something went wrong». If the schema does not load, the page says so.
+{% endcomment %}
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    {% include "ninja/favicons.html" %}
+    <title>{{ api.title }}</title>
+    <style>body { margin: 0; } #redoc-failed { margin: 2rem; font-family: system-ui, sans-serif; }</style>
+</head>
+<body>
+    <div id="redoc-ui"></div>
+    <p id="redoc-failed" hidden>{% translate "We could not load the API documentation. Reload the page to try again." %}</p>
+    <script type="application/json" id="redoc-settings">{{ redoc_settings|safe }}</script>
+    {{ openapi_json_url|json_script:"redoc-schema-url" }}
+    <script nonce="{{ csp_nonce }}" src="{% url 'api_docs_redoc' %}"></script>
+    <script nonce="{{ csp_nonce }}">
+        fetch(JSON.parse(document.getElementById("redoc-schema-url").textContent), { credentials: "same-origin" })
+            .then((response) => {
+                if (!response.ok) throw new Error(`schema answered ${response.status}`);
+                return response.json();
+            })
+            .then((schema) => Redoc.init(
+                schema,
+                JSON.parse(document.getElementById("redoc-settings").textContent),
+                document.getElementById("redoc-ui"),
+            ))
+            .catch((error) => {
+                console.warn("api docs:", error);
+                document.getElementById("redoc-failed").hidden = false;
+            });
+    </script>
+</body>
+</html>

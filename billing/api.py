@@ -108,7 +108,9 @@ def _file(document) -> HttpResponse:
 
 
 def _binary(content_type: str) -> dict:
-    return {"responses": {"200": {"content": {content_type: {"schema": {"type": "string", "format": "binary"}}}}}}
+    """The file in the route's 200: keyed by the int ``200``, as ninja keys its own, so the two merge into one
+    response (the text ``"200"`` wrote the key twice in /api/openapi.json)."""
+    return {"responses": {200: {"content": {content_type: {"schema": {"type": "string", "format": "binary"}}}}}}
 
 
 @bind(router, "billing.invoice.list", "/billing/invoices")

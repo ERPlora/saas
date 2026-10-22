@@ -52,6 +52,8 @@ const HOME_PATH = '/businesses';
 /** The SaaS's entries of the user menu, before Help and Sign out (mockups README §3). */
 const USER_MENU_ITEMS: ShellUserMenuItem[] = [
   { id: 'account', labelKey: 'saas.userMenu.account', icon: 'ion:person-outline', to: '/account' },
+  // «Report a problem» (ACCOUNTS-F38): sells nothing, so the app surfaces keep it.
+  { id: 'report', labelKey: 'saas.userMenu.reportProblem', icon: 'ion:chatbubbles-outline', to: '/report-a-problem' },
 ];
 /**
  * The only origin whose script URLs the page's `default` Trusted Types policy admits: Stripe.js's loader

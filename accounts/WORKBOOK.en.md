@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:f4dc044dbcb41dccb8a082250f4eda1134d7652a04cd5d2620c0fde05b809349 -->
+<!-- generated from WORKBOOK.md sha256:c9348fba461bcd123fe4a5cb2e20b5ca7e15662d8bb70a785648d92b25a1336a -->
 
 ## What it is for and who it is for
 
@@ -196,6 +196,17 @@ theme and "Sign out".
 | ACCOUNTS-F25 | Open the user menu | done |
 | ACCOUNTS-F26 | Download my data | done |
 | ACCOUNTS-F27 | Delete my account | done |
+| ACCOUNTS-F28 | Enter my business from erplora.com | done |
+| ACCOUNTS-F29 | Go back to erplora.com from my business | done |
+| ACCOUNTS-F30 | Open my account on its own from the app | done |
+| ACCOUNTS-F31 | Create an API key | done |
+| ACCOUNTS-F32 | Use an API key: what it opens and what it does not | done |
+| ACCOUNTS-F33 | Revoke an API key | done |
+| ACCOUNTS-F34 | Read the API documentation | done |
+| ACCOUNTS-F35 | Erase the accounts unused for two years | partial |
+| ACCOUNTS-F36 | See who changed an account | done |
+| ACCOUNTS-F37 | Erase the audit log older than 90 days | partial |
+| ACCOUNTS-F38 | Report a problem to support | done |
 
 ### ACCOUNTS-F01 Create the account
 Status: done
@@ -531,8 +542,8 @@ Actor: any person with an account
 Screen: User menu
 Steps:
 1. At the top of the side menu (on a phone, inside the menu) is the person's card: their initials, their name and their email.
-2. Tapping it opens the **User menu**: "Account", "Help", "Theme" and "Sign out".
-3. "Account" leads to **Account › Profile**, from where **Security**, **Preferences** and **API keys** are reached; "Help", to the help; "Theme", to ACCOUNTS-F24; "Sign out", to ACCOUNTS-F09.
+2. Tapping it opens the **User menu**: "Account", "Report a problem", "Help", "Theme" and "Sign out".
+3. "Account" leads to **Account › Profile**, from where **Security**, **Preferences** and **API keys** are reached; "Report a problem", to ACCOUNTS-F38; "Help", to the help; "Theme", to ACCOUNTS-F24; "Sign out", to ACCOUNTS-F09.
 In: the session.
 Out: nothing saved.
 If it fails: without a session there is no menu: the panel leads to the **Entrance**.
@@ -564,3 +575,150 @@ In: the email typed and, if needed, the password or Google.
 Out: the account deleted, with its photo, its preferences, its keys and all its sessions, here and in its businesses; it stops being a member of other people's businesses. Its ERPlora invoices stay, with the recipient of their issue date and no link to the account. Its payer details (legal name, tax ID, address and billing email) and its payment customer are erased at once if nothing is left to charge; if an ERPlora invoice is still unpaid, they are kept until it is paid or cancelled and 90 days at most, and on that day the unpaid invoice is cancelled and they are erased. Event `accounts.profile.deleted`.
 If it fails: an owned or paid business holds it (the dialog says so too if it changed meanwhile); whoever pays for a business cannot be removed from it either, so there is no way to stop seeing it and keep paying for it; a deleted business, in its 90 days to be recovered, no longer holds it. More than 10 passwords in a minute when confirming are stopped, not even the right one gets in: someone else's open session is no way to guess it. A network failure is said in the dialog and nothing is deleted.
 Involved: hubs (the businesses that hold it and the ones it leaves), billing (the invoices that are kept and the payer details that are erased)
+
+### ACCOUNTS-F28 Enter my business from erplora.com
+Status: done
+Actor: any person with an account who is a member of a business
+Screen: Entrance, the business, Entrance › sign-in error
+Steps:
+1. The person opens their business: with "Open" on the **Entrance** or in **Businesses**, or by typing their business's address. The business sends them to erplora.com with a mark of that browser.
+2. If they already have a session on erplora.com, erplora.com checks they are a member of that business and sends them back to it with a one-time pass, without showing them anything.
+3. If they do not, the **Entrance** asks them to sign in (with their email, their password and the mailed code, or with Google; ACCOUNTS-F04 and ACCOUNTS-F06) and, once in, goes on to the business by itself.
+4. The business redeems the pass with erplora.com, opens its own session and the person appears inside, on the page they were going to.
+In: the business they are going to, the page they were going to in it and the mark of the browser that started the jump.
+Out: a pass valid for one minute, usable once and only for that business; it travels hidden in a form, never in the address, and the page that carries it is neither stored nor told to other websites. The business receives who is entering (ACCOUNTS-F12) and opens its own session, which shares nothing with erplora.com's.
+If it fails: if they are not a member of that business, "You don't have access to this hub", naming only the business's address, never its name, with "Back to the hub" and "Contact Support"; a link that leads to no business, "This sign-in link doesn't lead to a hub". More than 20 jumps in 5 minutes, "Too many attempts" with "You have opened your businesses too many times in a few minutes. Wait a few minutes and open your business again.", without a pass. A pass that expired, was used, is for another business or is not redeemed by the business itself opens nothing, and the business does not let in a browser that did not start the jump. With two-step verification on and the authenticator app active, it first asks for the app's code.
+Involved: hubs (the person's businesses and "Open")
+
+### ACCOUNTS-F29 Go back to erplora.com from my business
+Status: done
+Actor: any person with an account
+Screen: Entrance, Account, Businesses
+Steps:
+1. Inside their business, the person taps a link to erplora.com: manage their account, their business or their plan.
+2. If that browser has their erplora.com session (the one they used to enter the business), the page opens without asking for anything.
+3. If it does not (another browser, the app's, or the session ended), the **Entrance** asks them to sign in and, once in, takes them to that same page.
+In: the erplora.com page they are going to (only erplora.com pages).
+Out: the page open with their erplora.com session. The business hands no credential to erplora.com: each keeps its own session.
+If it fails: an address that is not erplora.com's is not followed after signing in: it leads to the **Entrance** with their session. Signing out of erplora.com does not sign out of the business (ACCOUNTS-F09).
+Involved: hubs (the business's links to erplora.com)
+
+### ACCOUNTS-F30 Open my account on its own from the app
+Status: done
+Actor: any person with an account
+Screen: Account › Profile
+Steps:
+1. In the installed app, the person taps manage their account on erplora.com: the app opens the account's address it already knew, with the mark of the account on its own.
+2. erplora.com takes them to **Account › Profile** keeping the mark; the old addresses of the sessions and the preferences lead to **Account › Security** and **Account › Preferences**.
+3. Without a session in that browser, the **Entrance** asks them to sign in and then goes back to the account with the mark.
+4. The account is drawn without anything that sells: the menu has no "Store". From there they change their profile, their password, their sessions, their preferences and their API keys, and can delete the account.
+In: the mark of the account on its own.
+Out: the account open without what sells; the mark stays in that browser's session until it ends.
+If it fails: without the mark, the same address opens the account of the usual panel, with "Store".
+Involved: none
+
+### ACCOUNTS-F31 Create an API key
+Status: done
+Actor: any person with an account; a superuser of the staff, for a team account
+Screen: Account › API keys, admin › Accounts › API keys
+Steps:
+1. In **Account › API keys**, the person taps "New key": "New API key" asks for the "Name", its "Permissions" ("Businesses · read", "Businesses · write", "Invoices · read") and when it "Expires" ("In 90 days", "In 30 days" or "Never").
+2. If their last sign-in is not recent, first they confirm it is them with their password (or by signing in with Google again).
+3. They tap "Create key": they see the whole key once, with "Copy the key" and "Copy it now and keep it somewhere safe: you will not see it again."; with "I have saved it", the key stays on the list with its beginning only.
+4. A superuser of the staff creates a key for a team account from the admin, with "Add API key": they choose the account, the name, the permissions and the expiry, and the page shows them the key once, "Copy it now: it will not be shown again.".
+In: the name, the permissions, the expiry and, if needed, the password.
+Out: the key, which acts as its account and only with its permissions; erplora.com keeps only its fingerprint and its beginning. The account gets the email "New API key in your ERPlora account", without the key. Event `accounts.apikey.created`.
+If it fails: without a name, "Give it a name: it is how you will tell your keys apart."; a permission that does not exist, "Unknown permission: …"; with 50 keys that still work, "You already have 50 API keys: revoke one you no longer use.". A key is never shown again, neither on the list nor in the admin. The admin creates none for a customer's account, which creates its own, and support creates none. A key cannot create keys nor manage the account.
+Involved: none
+
+### ACCOUNTS-F32 Use an API key: what it opens and what it does not
+Status: done
+Actor: a program with an account's key
+Screen: none (the erplora.com API)
+Steps:
+1. A program (Postman, an integration, a script) calls the erplora.com API with the key in its header.
+2. erplora.com finds the key by its beginning, compares its fingerprint and checks it is neither revoked nor expired and that its account is still active.
+3. The call becomes that account's: it sees what its account sees, nothing of others, and only what its permissions open: "Businesses · read" reads its businesses and "Invoices · read", its ERPlora invoices.
+4. The rest of the API (the account, its sessions and its keys, and what is not offered to keys) is refused to any key.
+In: the key.
+Out: the answer, as if its account called; the key's last use is noted at most every 10 minutes.
+If it fails: a key that does not exist, revoked, expired or of a deactivated account, "Invalid API key."; without the permission, "This API key is missing the permission this operation needs: …"; on what is not offered to keys, "API keys cannot be used here: this operation is only for signed-in people.". More than 600 calls a minute with one key, or more than 30 wrong keys a minute from the same address, "Too many requests. Try again in a minute.". An empty header is as no key.
+Involved: hubs (its businesses), billing (its invoices)
+
+### ACCOUNTS-F33 Revoke an API key
+Status: done
+Actor: any person with an account; a superuser of the staff
+Screen: Account › API keys, admin › Accounts › API keys
+Steps:
+1. In **Account › API keys**, the person taps "Revoke" on the key's row: "Revoke "…"" says "Whatever uses this key stops working at once. It cannot be undone: you would have to create another one.".
+2. They confirm with "Revoke key": "Key revoked: "…"" and the key leaves the list.
+3. Facing an incident, a superuser of the staff finds the key in the admin (by its name, its beginning or its account), marks it and chooses "Revoke the selected keys (they stop working at once)": "Keys revoked: 1.".
+In: the chosen key.
+Out: the key opens nothing from the next call on; its row stays as the trail, with the date it was revoked, and its account's list refreshes by itself. There is no "rotate": another one is created and the old one revoked. Event `accounts.apikey.revoked`.
+If it fails: revoking it twice changes nothing; another account's key is not found ("That API key does not exist."). Revoking does not ask for the password. Support sees the keys without being able to revoke them.
+Involved: none
+
+### ACCOUNTS-F34 Read the API documentation
+Status: done
+Actor: any person with an account
+Screen: Account › API keys, API documentation
+Steps:
+1. In **Account › API keys**, under the list, the person taps "API documentation": it opens in another tab.
+2. The documentation shows each part of the API (the account, the businesses, the invoices…), with its calls, what they ask for and what they answer, and a search box.
+3. To try the API from a program, they download the schema from the documentation itself and open it in Postman with an API key (ACCOUNTS-F31).
+In: the session.
+Out: nothing saved. The documentation is read only: it makes no calls with the account's data.
+If it fails: without a session, the **Entrance** asks them to sign in and then goes back to the documentation; an API key alone does not open it. If the schema does not load, "We could not load the API documentation. Reload the page to try again.". The schema itself is public, as Stripe's and GitHub's are, so that Postman can import it.
+Involved: none
+
+### ACCOUNTS-F35 Erase the accounts unused for two years
+Status: partial — the erasure exists, but it is not scheduled every week yet: until then a team member runs it
+Actor: system
+Screen: none (a weekly task of erplora.com)
+Steps:
+1. Once a week, erplora.com looks for the active accounts that are not staff and have not signed in on erplora.com for two years (or never signed in and were created more than two years ago).
+2. It skips those that belong to a business that is not deleted, as owners, payers or members: whoever works in their business every day does not go through erplora.com and would look unused.
+3. Each of the others is erased as when its owner deletes the account (ACCOUNTS-F27): with its photo, its preferences, its API keys, its email addresses, its linked Google account and all its sessions, here and in the businesses.
+4. ERPlora's invoices stay, with the recipient of their issue date and without a link to the account.
+In: the date of each account's last sign-in on erplora.com (or of its creation).
+Out: the unused accounts erased, each with its event `accounts.profile.deleted` on its own channel; no other account changes. Just before erasing it, the account is read again: if it signed in meanwhile, it stays.
+If it fails: an account that cannot be erased stays in the log (by its identifier, never its email) and the task goes on with the others; at the end, the task ends in error for the team to see, and that account is tried again the next week. If a pass is already running, the second one does nothing. The team can count what would be erased without erasing anything.
+Involved: hubs (the businesses that hold the account), billing (the invoices that stay)
+
+### ACCOUNTS-F36 See who changed an account
+Status: done
+Actor: ERPlora superuser (or a team member allowed to see the log)
+Screen: erplora.com's admin › «Audit log»
+Steps:
+1. Every change to an account (name, email, language, whether it is active, whether it is staff), to its access to a business and to its API keys (creating one, revoking it), every session that opens and every change to what is charged and to the fiscal documentation (a business's subscription and its paid apps, its payer, its invoices and their VeriFactu state, a failed charge, a purchase in progress, a plan change waiting, the prices of the plans and of the apps, the VAT rules, ERPlora's details on the invoices, the promo codes, a business's signed authorisation and its review, and ERPlora's stamp) is written down: what changed, from which value to which, when, who did it and from which address.
+2. The superuser opens «Audit log» in the admin, filters by resource type or searches by email, and opens an entry to see its changes.
+3. Nobody can create, change or delete an entry by hand: they are only read.
+In: the changes to the accounts, to what is charged and to the fiscal documentation, made from the panel, with an API key, from the admin, by erplora.com's tasks or by Stripe when it charges.
+Out: one entry per change, naming whoever acted at that moment (the account with the open session or the owner of the API key; nobody in an erplora.com task or after signing out) and the visitor's real address, never the one its browser claims.
+If it fails: a secret is never written down (neither the password, nor the API key, nor a session's, nor a Stripe purchase's, nor the link that opens a Stripe invoice, nor an authorisation's documents or the stamp) nor what moves by itself (the last sign-in, a key's last use, the last time a session was seen, the counters, the retries sending an invoice to the AEAT). Writing a change down never changes an invoice or its VeriFactu record. If the account is deleted, its entries keep its email and no link to it until they are erased after 90 days (ACCOUNTS-F37). A team member without the permission cannot open it.
+Involved: none
+
+### ACCOUNTS-F37 Erase the audit log older than 90 days
+Status: partial — the cleanup exists, but it is not scheduled every day yet: until then a team member runs it
+Actor: system
+Screen: none (a daily task of erplora.com)
+Steps:
+1. Once a day, erplora.com erases, in batches, the audit log entries (ACCOUNTS-F36) older than 90 days.
+2. Those of the last 90 days stay, also those of an account already deleted.
+In: the date of each log entry.
+Out: the log with only the last 90 days; nothing else changes.
+If it fails: if a batch cannot be erased, the task ends with an error so the team sees it; what was erased before stays erased and the next pass goes on from there. If a pass is already running, the second does nothing. The team can count what would be erased without erasing anything, and change how many days are kept.
+Involved: none
+
+### ACCOUNTS-F38 Report a problem to support
+Status: done
+Actor: any person with an account
+Screen: Report a problem
+Steps:
+1. In the **User menu**, «Report a problem» (also in the account opened from the app). The screen says «Tell us what went wrong. We will reply by email.».
+2. They write «Subject» and «What happened?» («Describe the steps and what you expected to happen») and press «Send report», which waits until both are written. Below, the screen warns: «Your account, your businesses, the page you came from and your browser go with your report.».
+3. They see «Report sent», with the email support will answer to, and «Back», which leads to the screen they came from.
+In: the subject and what happened.
+Out: a mail to the support mailbox with the subject, the text and, below, the account, its businesses, the screen they came from and their browser; when answering, support writes straight to the person. Nothing is kept on erplora.com and no ticket is opened.
+If it fails: «Add a subject.» or «Describe the problem, please.» under its field; after five reports in an hour, «Too many attempts. Please try again in a few minutes.»; if the mail cannot leave, a notice with the support address to write to directly. In every case what was written stays and can be sent again.
+Involved: none

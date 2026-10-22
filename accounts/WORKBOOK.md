@@ -1,15 +1,17 @@
 # Workbook — Cuentas (accounts)
 Prefijo: ACCOUNTS
 Alcance MVP: fase 1 (la cuenta de erplora.com: crearla, entrar y salir, su contraseña y lo que acepta)
-Estado de la app: en construcción (partes 1 a 3 de 5: crear la cuenta, entrar, la contraseña, salir, los términos y el freno; la verificación en dos pasos, los navegadores de confianza y las sesiones abiertas; el perfil, las preferencias, los avisos, el menú de usuario, descargar los datos y eliminar la cuenta)
+Estado de la app: en construcción (partes 1 a 4 de 5: crear la cuenta, entrar, la contraseña, salir, los términos y el freno; la verificación en dos pasos, los navegadores de confianza y las sesiones abiertas; el perfil, las preferencias, los avisos, el menú de usuario, descargar los datos y eliminar la cuenta; el salto a un negocio y la vuelta, las claves de API y su documentación, la retención de datos, el registro de auditoría y reportar un problema)
 
 > Manual de uso y especificación de la app `accounts` del SaaS (erplora.com). Cuenta cómo se crea una
 > cuenta, cómo se confirma el correo, cómo se entra y se sale, cómo se recupera y se cambia la contraseña,
 > qué se acepta al continuar, cómo se frena a quien prueba contraseñas, cómo se pide la app autenticadora
 > después de la contraseña, en qué navegadores se confía, cómo se ven y se cierran las sesiones abiertas, cómo
-> se cambian el perfil, el idioma, el tema y los avisos por correo, y cómo se descargan los datos y se elimina la
-> cuenta. Esta parte del manual no se publica en la tienda: es la referencia del equipo y de la QA. El salto a un
-> negocio y las llaves de API se escriben en las partes 4 y 5.
+> se cambian el perfil, el idioma, el tema y los avisos por correo, cómo se descargan los datos y se elimina la
+> cuenta, cómo se salta a un negocio y se vuelve, cómo se crean, se usan y se revocan las claves de API y se consulta
+> su documentación, cuánto se guardan las cuentas sin uso y el registro de auditoría, y cómo se reporta un problema
+> a soporte. Esta parte del manual no se publica en la tienda: es la referencia del equipo y de la QA. La plataforma
+> del SaaS (la parte 5) se escribe a continuación.
 
 ## Para qué sirve y para quién
 
@@ -216,6 +218,17 @@ El nombre y el correo arriba del menú lateral (en el móvil, dentro del menú):
 | ACCOUNTS-F25 | Abrir el menú de usuario | hecho |
 | ACCOUNTS-F26 | Descargar mis datos | hecho |
 | ACCOUNTS-F27 | Eliminar mi cuenta | hecho |
+| ACCOUNTS-F28 | Entrar en mi negocio desde erplora.com | hecho |
+| ACCOUNTS-F29 | Volver a erplora.com desde mi negocio | hecho |
+| ACCOUNTS-F30 | Abrir mi cuenta sola desde la aplicación | hecho |
+| ACCOUNTS-F31 | Crear una clave de API | hecho |
+| ACCOUNTS-F32 | Usar una clave de API: qué abre y qué no | hecho |
+| ACCOUNTS-F33 | Revocar una clave de API | hecho |
+| ACCOUNTS-F34 | Consultar la documentación de la API | hecho |
+| ACCOUNTS-F35 | Borrar las cuentas sin uso en dos años | parcial |
+| ACCOUNTS-F36 | Ver quién cambió una cuenta | hecho |
+| ACCOUNTS-F37 | Borrar el registro de auditoría de más de 90 días | parcial |
+| ACCOUNTS-F38 | Reportar un problema a soporte | hecho |
 
 ### ACCOUNTS-F01 Crear la cuenta
 <!-- origen: old-saas:SAAS_AUTH-F01 pc:cloud/auth/signup fi:saas/auth-services#registro-de-usuario-por-api-signup fi:saas/support/auth-services#service-create_user gh:saas#2542 gh:saas#2536 gh:saas#2560 gh:saas#2562 -->
@@ -381,7 +394,7 @@ Si falla: si la memoria compartida de los contadores no responde, el freno se ab
 Implicados: ninguno
 
 ### ACCOUNTS-F12 Saber quién ha entrado
-<!-- origen: fi:saas/auth-services#perfil-del-usuario-actual-me fi:saas/support/auth-services#serializer-userserializer -->
+<!-- origen: fi:saas/auth-services#perfil-del-usuario-actual-me fi:saas/support/auth-services#serializer-userserializer old-saas:SAAS_AUTH-F29 -->
 Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Menú de usuario, Cuenta › Perfil
@@ -576,8 +589,8 @@ Actor: cualquier persona con cuenta
 Pantalla: Menú de usuario
 Pasos:
 1. Arriba del menú lateral (en el móvil, dentro del menú) está la tarjeta de la persona: sus iniciales, su nombre y su correo.
-2. Al pulsarla se abre el **Menú de usuario**: «Cuenta», «Ayuda», «Tema» y «Cerrar sesión».
-3. «Cuenta» lleva a **Cuenta › Perfil**, desde donde están **Seguridad**, **Preferencias** y **Claves de API**; «Ayuda», a la ayuda; «Tema», a ACCOUNTS-F24; «Cerrar sesión», a ACCOUNTS-F09.
+2. Al pulsarla se abre el **Menú de usuario**: «Cuenta», «Reportar un problema», «Ayuda», «Tema» y «Cerrar sesión».
+3. «Cuenta» lleva a **Cuenta › Perfil**, desde donde están **Seguridad**, **Preferencias** y **Claves de API**; «Reportar un problema», a ACCOUNTS-F38; «Ayuda», a la ayuda; «Tema», a ACCOUNTS-F24; «Cerrar sesión», a ACCOUNTS-F09.
 Entra: la sesión.
 Sale: nada guardado.
 Si falla: sin sesión no hay menú: el panel lleva a la **Entrada**.
@@ -612,22 +625,182 @@ Sale: la cuenta borrada, con su foto, sus preferencias, sus claves y todas sus s
 Si falla: un negocio propio o pagado la retiene (el diálogo lo dice igual si cambió mientras); quien paga un negocio tampoco puede ser quitado de él, así que no hay forma de dejar de verlo y seguir pagándolo; un negocio eliminado, en sus 90 días para recuperarlo, ya no la retiene. Más de 10 contraseñas en un minuto al confirmar se frenan, ni la buena entra: una sesión ajena abierta no sirve para adivinarla. Un fallo de red se dice en el diálogo y no se borra nada.
 Implicados: hubs (los negocios que la retienen y los que deja), billing (las facturas que se conservan y los datos de pagador que se borran)
 
+### ACCOUNTS-F28 Entrar en mi negocio desde erplora.com
+<!-- origen: old-saas:SAAS_AUTH-F19 old-saas:SAAS_AUTH-F20 gh:saas#2544 -->
+Estado: hecho
+Actor: cualquier persona con cuenta y miembro de un negocio
+Pantalla: Entrada, el negocio, Entrada › error de entrada
+Pasos:
+1. La persona abre su negocio: con «Abrir» en la **Entrada** o en **Negocios**, o escribiendo la dirección de su negocio. El negocio la manda a erplora.com con una marca de ese navegador.
+2. Si ya tiene sesión en erplora.com, erplora.com comprueba que es miembro de ese negocio y la devuelve a él con un pase de un solo uso, sin enseñarle nada.
+3. Si no la tiene, la **Entrada** le pide entrar (con su correo, su contraseña y el código del correo, o con Google; ACCOUNTS-F04 y ACCOUNTS-F06) y, ya dentro, sigue sola hacia el negocio.
+4. El negocio canjea el pase con erplora.com, abre su propia sesión y la persona aparece dentro, en la página a la que iba.
+Entra: el negocio al que va, la página a la que iba dentro de él y la marca del navegador que empezó el salto.
+Sale: un pase que vale un minuto, sirve una sola vez y solo para ese negocio; viaja escondido en un formulario, nunca en la dirección, y la página que lo lleva no se guarda ni se cuenta a otras webs. El negocio recibe quién entra (ACCOUNTS-F12) y abre su propia sesión, que no comparte nada con la de erplora.com.
+Si falla: si no es miembro de ese negocio, «No tienes acceso a este hub», que nombra solo la dirección del negocio, nunca su nombre, con «Volver al hub» y «Contactar Soporte»; un enlace que no lleva a ningún negocio, «Este enlace de acceso no lleva a ningún hub». Más de 20 saltos en 5 minutos, «Demasiados intentos» con «Has abierto tus negocios demasiadas veces en pocos minutos. Espera unos minutos y vuelve a abrir tu negocio.», sin pase. Un pase caducado, ya usado, de otro negocio o que no canjea el propio negocio no abre nada, y el negocio no deja entrar a un navegador que no empezó el salto. Con la verificación en dos pasos encendida y la app autenticadora activa, antes pide el código de la app.
+Implicados: hubs (los negocios de la persona y «Abrir»)
+
+### ACCOUNTS-F29 Volver a erplora.com desde mi negocio
+<!-- origen: old-saas:SAAS_AUTH-F21 -->
+Estado: hecho
+Actor: cualquier persona con cuenta
+Pantalla: Entrada, Cuenta, Negocios
+Pasos:
+1. Dentro de su negocio, la persona pulsa un enlace a erplora.com: gestionar su cuenta, su negocio o su plan.
+2. Si ese navegador tiene su sesión de erplora.com (la que usó para entrar en el negocio), la página se abre sin pedirle nada.
+3. Si no la tiene (otro navegador, el de la aplicación, o la sesión se cerró), la **Entrada** le pide entrar y, ya dentro, la lleva a esa misma página.
+Entra: la página de erplora.com a la que va (solo páginas de erplora.com).
+Sale: la página abierta con su sesión de erplora.com. El negocio no le pasa ninguna credencial a erplora.com: cada uno guarda su propia sesión.
+Si falla: una dirección que no es de erplora.com no se sigue después de entrar: lleva a la **Entrada** con su sesión. Cerrar la sesión de erplora.com no cierra la del negocio (ACCOUNTS-F09).
+Implicados: hubs (los enlaces del negocio a erplora.com)
+
+### ACCOUNTS-F30 Abrir mi cuenta sola desde la aplicación
+<!-- origen: old-saas:SAAS_DASHBOARD-F209 -->
+Estado: hecho
+Actor: cualquier persona con cuenta
+Pantalla: Cuenta › Perfil
+Pasos:
+1. En la aplicación instalada, la persona pulsa gestionar su cuenta en erplora.com: la aplicación abre la dirección de la cuenta que ya conocía, con la marca de la cuenta sola.
+2. erplora.com la lleva a **Cuenta › Perfil** sin perder la marca; las direcciones antiguas de las sesiones y de las preferencias llevan a **Cuenta › Seguridad** y a **Cuenta › Preferencias**.
+3. Sin sesión en ese navegador, la **Entrada** le pide entrar y después vuelve a la cuenta con la marca.
+4. La cuenta se pinta sin nada que venda: el menú no tiene «Tienda». Desde ahí cambia su perfil, su contraseña, sus sesiones, sus preferencias y sus claves de API, y puede eliminar la cuenta.
+Entra: la marca de la cuenta sola.
+Sale: la cuenta abierta sin lo que vende; la marca se queda en la sesión de ese navegador hasta que se cierra.
+Si falla: sin la marca, la misma dirección abre la cuenta del panel de siempre, con «Tienda».
+Implicados: ninguno
+
+### ACCOUNTS-F31 Crear una clave de API
+<!-- origen: old-saas:SAAS_AUTH-F23 -->
+Estado: hecho
+Actor: cualquier persona con cuenta; un superusuario del personal, para una cuenta del equipo
+Pantalla: Cuenta › Claves de API, admin › Cuentas › Claves de API
+Pasos:
+1. En **Cuenta › Claves de API**, la persona pulsa «Nueva clave»: «Nueva clave de API» pide el «Nombre», sus «Permisos» («Negocios · lectura», «Negocios · escritura», «Facturas · lectura») y cuándo «Caduca» («En 90 días», «En 30 días» o «Nunca»).
+2. Si su última entrada no es reciente, antes confirma que es ella con su contraseña (o entrando otra vez con Google).
+3. Pulsa «Crear clave»: ve la clave entera una sola vez, con «Copiar la clave» y «Cópiala ahora y guárdala en un sitio seguro: no la volverás a ver.»; con «Ya la he guardado», la clave queda en la lista solo con su principio.
+4. Un superusuario del personal crea una clave para una cuenta del equipo desde el admin, con «Añadir clave de API»: elige la cuenta, el nombre, los permisos y la caducidad, y la página le enseña la clave una sola vez, «Cópiala ahora: no se volverá a mostrar.».
+Entra: el nombre, los permisos, la caducidad y, si hace falta, la contraseña.
+Sale: la clave, que actúa como su cuenta y solo con sus permisos; erplora.com guarda solo su huella y su principio. A la cuenta le llega el correo «Nueva clave de API en tu cuenta de ERPlora», sin la clave. Evento `accounts.apikey.created`.
+Si falla: sin nombre, «Ponle un nombre: es como distinguirás tus claves.»; un permiso que no existe, «Permiso desconocido: …»; con 50 claves que aún valen, «Ya tienes 50 claves de API: revoca una que ya no uses.». Una clave no se vuelve a enseñar, ni en la lista ni en el admin. Desde el admin no se crea para la cuenta de un cliente, que crea las suyas, y el soporte no crea ninguna. Una clave no sirve para crear claves ni para gestionar la cuenta.
+Implicados: ninguno
+
+### ACCOUNTS-F32 Usar una clave de API: qué abre y qué no
+<!-- origen: old-saas:SAAS_AUTH-F24 -->
+Estado: hecho
+Actor: un programa con la clave de una cuenta
+Pantalla: ninguna (la API de erplora.com)
+Pasos:
+1. Un programa (Postman, una integración, un guion) llama a la API de erplora.com con la clave en su cabecera.
+2. erplora.com busca la clave por su principio, compara su huella y comprueba que no está revocada ni caducada y que su cuenta sigue activa.
+3. La llamada pasa a ser de esa cuenta: ve lo que ve su cuenta, nada de otras, y solo lo que abren sus permisos: «Negocios · lectura» lee sus negocios y «Facturas · lectura», sus facturas de ERPlora.
+4. Lo demás de la API (la cuenta, sus sesiones y sus claves, y lo que no se ofrece a las claves) se niega a cualquier clave.
+Entra: la clave.
+Sale: la respuesta, como si llamara su cuenta; el último uso de la clave se apunta como mucho cada 10 minutos.
+Si falla: una clave que no existe, revocada, caducada o de una cuenta desactivada, «Clave de API no válida.»; sin el permiso, «A esta clave de API le falta el permiso que pide esta operación: …»; en lo que no se ofrece a las claves, «Aquí no se pueden usar claves de API: esta operación es solo para personas con la sesión iniciada.». Más de 600 llamadas por minuto con una clave, o más de 30 claves equivocadas por minuto desde la misma dirección, «Demasiadas peticiones. Vuelve a intentarlo en un minuto.». Una cabecera vacía es como no llevar clave.
+Implicados: hubs (sus negocios), billing (sus facturas)
+
+### ACCOUNTS-F33 Revocar una clave de API
+<!-- origen: old-saas:SAAS_AUTH-F25 -->
+Estado: hecho
+Actor: cualquier persona con cuenta; un superusuario del personal
+Pantalla: Cuenta › Claves de API, admin › Cuentas › Claves de API
+Pasos:
+1. En **Cuenta › Claves de API**, la persona pulsa «Revocar» en la fila de la clave: «Revocar «…»» dice «Lo que use esta clave dejará de funcionar al momento. No se puede deshacer: tendrías que crear otra.».
+2. Confirma con «Revocar clave»: «Clave revocada: «…»» y la clave sale de la lista.
+3. Ante un incidente, un superusuario del personal busca la clave en el admin (por su nombre, su principio o su cuenta), la marca y elige «Revocar las claves seleccionadas (dejan de funcionar al momento)»: «Claves revocadas: 1.».
+Entra: la clave elegida.
+Sale: la clave no abre nada desde la siguiente llamada; su fila se queda como rastro, con la fecha en que se revocó, y la lista de su cuenta se actualiza sola. No hay «rotar»: se crea otra y se revoca la vieja. Evento `accounts.apikey.revoked`.
+Si falla: revocarla dos veces no cambia nada; la clave de otra cuenta no se encuentra («Esa clave de API no existe.»). Revocar no pide la contraseña. El soporte ve las claves sin poder revocarlas.
+Implicados: ninguno
+
+### ACCOUNTS-F34 Consultar la documentación de la API
+<!-- origen: old-saas:SAAS_DASHBOARD-F197 fi:saas/auth-services#docs-de-api-swagger-openapi-redoc-gated -->
+Estado: hecho
+Actor: cualquier persona con cuenta
+Pantalla: Cuenta › Claves de API, Documentación de la API
+Pasos:
+1. En **Cuenta › Claves de API**, bajo la lista, la persona pulsa «Documentación de la API»: se abre en otra pestaña.
+2. La documentación enseña cada parte de la API (la cuenta, los negocios, las facturas…), con sus llamadas, lo que piden y lo que contestan, y un buscador.
+3. Para probar la API desde un programa, descarga el esquema desde la propia documentación y lo abre en Postman con una clave de API (ACCOUNTS-F31).
+Entra: la sesión.
+Sale: nada guardado. La documentación es solo para leer: no hace llamadas con los datos de la cuenta.
+Si falla: sin sesión, la **Entrada** le pide entrar y después vuelve a la documentación; una clave de API sola no la abre. Si el esquema no carga, «No hemos podido cargar la documentación de la API. Recarga la página para volver a intentarlo.». El esquema en sí es público, como los de Stripe y GitHub, para que Postman lo importe.
+Implicados: ninguno
+
+### ACCOUNTS-F35 Borrar las cuentas sin uso en dos años
+<!-- origen: old-saas:SAAS_AUTH-F15 fi:saas/auth-services#comando-anonimizar-usuarios-inactivos-gdpr fi:saas/support/auth-services#command-anonymize_old_users fi:saas/support/auth-services#task-anonymize_old_users_task -->
+Estado: parcial — el borrado ya existe, pero aún no está programado cada semana: hasta entonces lo lanza una persona del equipo
+Actor: sistema
+Pantalla: ninguna (una tarea semanal de erplora.com)
+Pasos:
+1. Una vez por semana, erplora.com busca las cuentas activas que no son del personal y que no han entrado en erplora.com en dos años (o que nunca entraron y se crearon hace más de dos años).
+2. Se salta las que pertenecen a un negocio que no está eliminado, como propietarias, pagadoras o miembros: quien trabaja a diario en su negocio no pasa por erplora.com y parecería sin uso.
+3. Cada una de las demás se borra como cuando su dueña elimina la cuenta (ACCOUNTS-F27): con su foto, sus preferencias, sus claves de API, sus direcciones de correo, su cuenta de Google enlazada y todas sus sesiones, aquí y en los negocios.
+4. Las facturas de ERPlora se quedan, con el destinatario de la fecha de emisión y sin enlace a la cuenta.
+Entra: la fecha de la última entrada en erplora.com (o la del alta) de cada cuenta.
+Sale: las cuentas sin uso borradas, cada una con su evento `accounts.profile.deleted` en su propio canal; ninguna otra cuenta cambia. Justo antes de borrarla, la cuenta se vuelve a leer: si ha entrado entre medias, se queda.
+Si falla: una cuenta que no se puede borrar queda en el registro (por su identificador, nunca por su correo) y la tarea sigue con las demás; al acabar, la tarea termina con error para que el equipo lo vea, y esa cuenta se vuelve a intentar a la semana siguiente. Si ya hay una pasada en marcha, la segunda no hace nada. El equipo puede contar lo que se borraría sin borrar nada.
+Implicados: hubs (los negocios que retienen la cuenta), billing (las facturas que se quedan)
+
+### ACCOUNTS-F36 Ver quién cambió una cuenta
+<!-- origen: fi:saas/support/auth-services#auditlog-registro-user fi:saas/support/orgs-users#service-auditlog-registro-gdpr -->
+Estado: hecho
+Actor: superusuario de ERPlora (o alguien del equipo con permiso para ver el registro)
+Pantalla: el admin de erplora.com › «Registro de auditoría»
+Pasos:
+1. Cada cambio de una cuenta (nombre, correo, idioma, si está activa, si es del equipo), de su acceso a un negocio y de sus claves de API (crearla, revocarla), cada sesión que se abre y cada cambio de lo que se cobra y de la documentación fiscal (la suscripción de un negocio y sus apps de pago, su pagador, sus facturas y su estado en VeriFactu, un cobro que falla, una compra en curso, un cambio de plan que espera, los precios de los planes y de las apps, las reglas de IVA, los datos de ERPlora en las facturas, los códigos promocionales, la autorización firmada de un negocio y su revisión, y el sello de ERPlora) queda anotado: qué cambió, de qué valor a cuál, cuándo, quién lo hizo y desde qué dirección.
+2. El superusuario abre «Registro de auditoría» en el admin, filtra por tipo de recurso o busca por correo, y abre una entrada para ver sus cambios.
+3. Nadie puede crear, cambiar ni borrar una entrada a mano: solo se leen.
+Entra: los cambios de las cuentas, de lo que se cobra y de la documentación fiscal, hechos desde el panel, con una clave de API, desde el admin, por las tareas de erplora.com o por Stripe al cobrar.
+Sale: una entrada por cambio, que nombra a quien actuaba en ese momento (la cuenta con la sesión abierta o la dueña de la clave de API; nadie en una tarea de erplora.com o tras cerrar la sesión) y la dirección real del visitante, nunca la que diga su navegador.
+Si falla: nunca se anota un secreto (ni la contraseña, ni la clave de API, ni la de una sesión, ni la de una compra con Stripe, ni el enlace que abre una factura de Stripe, ni los documentos de una autorización ni el sello) ni lo que se mueve solo (la última entrada, el último uso de una clave, la última vez que se vio una sesión, los contadores, los reintentos de envío de una factura a la AEAT). Anotar un cambio nunca cambia una factura ni su registro en VeriFactu. Si la cuenta se elimina, sus entradas se quedan con su correo y sin enlace a ella hasta que se borran a los 90 días (ACCOUNTS-F37). Alguien del equipo sin el permiso no puede abrirlo.
+Implicados: ninguno
+
+### ACCOUNTS-F37 Borrar el registro de auditoría de más de 90 días
+<!-- origen: fi:saas/auth-services#comando-limpiar-logs-antiguos-gdpr fi:saas/support/auth-services#command-cleanup_old_logs fi:saas/support/auth-services#task-cleanup_old_logs_task fi:saas/auth-services#tareas-gdpr-retencion-de-datos -->
+Estado: parcial — la limpieza ya existe, pero aún no está programada cada día: hasta entonces la lanza una persona del equipo
+Actor: sistema
+Pantalla: ninguna (una tarea diaria de erplora.com)
+Pasos:
+1. Una vez al día, erplora.com borra por tandas las entradas del registro de auditoría (ACCOUNTS-F36) de hace más de 90 días.
+2. Las de los últimos 90 días se quedan, también las de una cuenta ya eliminada.
+Entra: la fecha de cada entrada del registro.
+Sale: el registro con solo los últimos 90 días; nada más cambia.
+Si falla: si una tanda no se puede borrar, la tarea termina con error para que el equipo lo vea; lo borrado antes se queda borrado y la pasada siguiente sigue desde ahí. Si ya hay una pasada en marcha, la segunda no hace nada. El equipo puede contar lo que se borraría sin borrar nada, y cambiar los días que se guardan.
+Implicados: ninguno
+
+### ACCOUNTS-F38 Reportar un problema a soporte
+<!-- origen: old-saas:SAAS_DASHBOARD-F219 fi:saas/assistant-help#reportar-un-problema-contacto-de-soporte -->
+Estado: hecho
+Actor: cualquier persona con cuenta
+Pantalla: Reportar un problema
+Pasos:
+1. En el **Menú de usuario**, «Reportar un problema» (también en la cuenta abierta desde la aplicación). La pantalla dice «Cuéntanos qué ha fallado. Te responderemos por correo electrónico.».
+2. Escribe «Asunto» y «¿Qué pasó?» («Describe los pasos y lo que esperabas que pasara») y pulsa «Enviar informe», que espera a que los dos estén escritos. Debajo, la pantalla avisa: «Con tu informe van tu cuenta, tus negocios, la página de la que vienes y tu navegador.».
+3. Ve «Informe enviado», con el correo al que soporte le responderá, y «Volver», que lleva a la pantalla de la que venía.
+Entra: el asunto y lo que pasó.
+Sale: un correo al buzón de soporte con el asunto, el texto y, debajo, la cuenta, sus negocios, la pantalla de la que venía y su navegador; al contestar, soporte escribe directamente a la persona. No se guarda nada en erplora.com ni se abre ninguna incidencia.
+Si falla: «Añade un asunto.» o «Describe el problema, por favor.» bajo su campo; tras cinco informes en una hora, «Demasiados intentos. Vuelve a intentarlo en unos minutos.»; si el correo no sale, un aviso con la dirección de soporte para escribir directamente. En todos los casos lo escrito se queda y se puede volver a enviar.
+Implicados: ninguno
+
 ## Para quien lo mantiene
 
 - Anatomía, operaciones y decisiones: `accounts/README.md` (allauth headless, puertas cerradas, sesiones,
   reautenticación, correo por código propio, foto, preferencias y llaves de API).
 - Partes del porte (MIGRATION-TASK APP-ACCOUNTS-1…5): este WORKBOOK nace en la parte 1 (F01–F13); la parte 2
   (segundo factor, navegadores de confianza y sesiones) cierra F05 y añade F14–F20; la parte 3 (perfil,
-  preferencias, avisos, menú de usuario, exportar y borrar la cuenta) añade F21–F27 y amplía F13; las partes 4
-  (salto al Hub, llaves de API, retención GDPR y auditlog) y 5 (plataforma del SaaS) añaden los suyos a
-  continuación.
+  preferencias, avisos, menú de usuario, exportar y borrar la cuenta) añade F21–F27 y amplía F13; la parte 4
+  (salto al Hub, llaves de API y su documentación, retención GDPR, auditlog y reportar un problema) añade F28–F38
+  y amplía F12 y F25; la 5 (plataforma del SaaS) añade los suyos a continuación.
 - Equivalencia de claves del registro: G83, G124, G22 y G59 = F01; G84 y G21 = F02; G107 = F03; G85 y G17 =
   F04; G125 = F05; G86 = F06; G91, G123, G120, G121 y G122 = F07; G109, G92, G42, G45 y G46 = F08; G93 = F09;
   G119 = F10; G96 = F11; G20 y G58 = F12; G18 y G56 = F13. Parte 2: G60 = F04; G88, G12, G19, G55 y G57 =
   F05; G87, G02 y G126 = F14; G116 y G05 = F15; G89 y G03 = F16; G23, G16 y G48 = F17; G94, G110, G15, G50,
   G24 y G25 = F18; G09, G54, G37 y G34 = F19; G90 = F20. Parte 3: G108, G49, G43, G63, G66, G69, G70 y G118 =
   F21; G114, G39, G38, G44, G65 y G67 = F22; G115 = F23; G29, G11, G74 y G127 = F24; G128 = F25; G111 y G41 =
-  F26; G112, G95, G40 y G47 = F27; G32, G35 y G36 = F13. Descartadas: G04 (activar o apagar el código por
+  F26; G112, G95, G40 y G47 = F27; G32, G35 y G36 = F13. Parte 4: G98 y G99 = F28; G104 = F12; G100 = F29;
+  G113 = F30; G101 = F31; G102 = F32; G103 = F33; G105 y G13 = F34; G97, G07, G52 y G61 = F35; G51 y G68 = F36;
+  G08, G53, G62 y G28 = F37; G117 y G01 = F38. Descartadas: G04 (activar o apagar el código por
   correo: se pide en toda entrada con contraseña y no se apaga, PLAN-SAAS ronda 19, §3.7 punto 3) y G31
   (el Hub verificaba en el SaaS un dispositivo de confianza: el Hub nunca consulta al SaaS por petición y
   sus dispositivos y su PIN son suyos, PLAN-SAAS §2).
@@ -642,7 +815,7 @@ Implicados: hubs (los negocios que la retienen y los que deja), billing (las fac
   `user_logged_in` de Django.
 - Freno (ACCOUNTS-F11): los límites son los de allauth (`ACCOUNT_RATE_LIMITS` solo sube el de altas a
   10/h) sobre la caché de Django (Valkey en AWS, `base.cache.FailSoftRedisCache`); `tests/test_throttle.py`.
-  Los pases del salto a un negocio se frenan en la parte 4.
+  Los pases del salto a un negocio tienen su propio freno: 20 en 5 minutos por cuenta (`HUB_LOGIN_RATELIMIT`, F28).
 - Lo que no sigue del viejo, a propósito: el asistente de `two_factor` (retirado en el viejo, ADR-0417), el
   `EmailDevice` creado a cada cuenta (lo sustituye el código por correo de cada entrada), el par de
   credenciales que devolvía el alta por la API (hoy la sesión del navegador; el Hub recibe al usuario con el
@@ -678,9 +851,26 @@ Implicados: hubs (los negocios que la retienen y los que deja), billing (las fac
   `billing.invoice.list` y `.get`), sin importar esas apps. Eliminar (F27): ver accounts/README.md; las facturas
   conservan el destinatario porque su enlace a la cuenta es `SET_NULL` (`test_delete_account`). La moneda del viejo
   no sigue: ERPlora cobra en euros y ninguna pantalla ni correo la leía (SAAS_DASHBOARD-F210).
+- Parte 4 (F28–F38): el salto es el contrato de PLAN-SAAS §2 (`accounts/handoff.py`, `internal.py` con
+  `/internal/auth/redeem`, `signing.py`): código de un solo uso atado al negocio y al `state` del navegador, enviado
+  por `form_post` sin `Referer`. Las direcciones viejas de la cuenta (`/dashboard/profile/…`) son 301 de
+  `accounts/redirects.py`, que conservan `?surface=account` (la app nativa no cambia). Las claves de API del SaaS
+  (`erps_live_…`, `accounts/api_auth.py`) solo abren las operaciones con `expose_api=True` de su permiso; el
+  superusuario emite las de una cuenta del equipo desde el admin (`ApiKeyAdmin`, `services.issue_api_key`).
+  `/api/docs` es ReDoc con nonce y solo con sesión (`accounts/api_docs.py`); `/api/openapi.json` sigue abierto (lo
+  leen Postman y los tests de otras apps). `anonymize_old_users` (F35, semanal) y `cleanup_old_logs` (F37, diaria)
+  son comandos con candado propio (`services.run_exclusively`): quedan `parcial` hasta que `saas-cron`
+  (`aws/stacks/prod/scheduler.tf`) los programe. El registro de auditoría (F36) es `django-auditlog`
+  (`accounts/auditlog.py`): la cuenta, su acceso a negocios, sus claves y sus sesiones, sin secretos ni lo que se
+  mueve en cada visita; `AuditActorMiddleware` toma la dirección que ya resolvió `public.client_ip` y lee quién
+  actúa al escribir cada entrada (una clave de API pone su cuenta después del middleware), y
+  `services.forget_deleted_actor` suelta el autor cuando su cuenta se elimina. Los modelos de cobro y de VeriFactu
+  los registran sus apps. «Reportar un problema» (F38) es `accounts.support.report`: un correo en inglés a
+  `SUPPORT_EMAIL` con «Reply-To» la cuenta, limitado por cuenta (`SUPPORT_REPORT_RATELIMIT`, 5 por hora).
 - Pruebas: cada test cita su clave en el nombre o el docstring. Los e2e de la parte 1 están en
   `tests/e2e/panel/accounts-flows.spec.ts`, los de la parte 2 en `tests/e2e/panel/accounts-security.spec.ts`
-  y los de la parte 3 en `tests/e2e/panel/accounts-profile.spec.ts`,
+  los de la parte 3 en `tests/e2e/panel/accounts-profile.spec.ts` y los de la parte 4 en
+  `tests/e2e/panel/accounts-jump.spec.ts`, `accounts-keys.spec.ts` y `accounts-report.spec.ts`,
   con la clave del registro (`ACCOUNTS-Gnn`) en el título y la equivalencia con este WORKBOOK en su cabecera;
   el segundo factor se juega en el gemelo del panel con el interruptor encendido (`PANEL_MFA_URL`).
   `signup.spec.ts` y `login.spec.ts` siguen cubriendo las pestañas de la entrada.
@@ -702,3 +892,8 @@ Implicados: hubs (los negocios que la retienen y los que deja), billing (las fac
   pagos no se pueden apagar.
 - No deja eliminar la cuenta a quien es propietario de un negocio o paga el de otra persona, ni borra con ella
   sus facturas de ERPlora.
+- No avisa antes de borrar una cuenta sin uso en dos años (el SaaS viejo tampoco avisaba), ni borra nunca una
+  cuenta que pertenece a un negocio vivo.
+- No borra el registro de auditoría de una cuenta al eliminarla: ese registro se borra entero a los 90 días.
+- No abre una incidencia con cada informe de «Reportar un problema» ni lo guarda: llega por correo a soporte, que
+  contesta a la persona.

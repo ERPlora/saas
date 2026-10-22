@@ -103,6 +103,9 @@ urlpatterns = [
     path("shell/open/<uuid:hub_id>/", hubs_shell.open_business, name="shell_open"),
     # The old panel's addresses of the businesses, for good, to the new panel (PLAN-SAAS §1).
     path("", include("hubs.redirects")),
+    path("", include("accounts.redirects")),
+    # ReDoc for /api/docs without its one outside address (ACCOUNTS-F34), before ninja's /api/.
+    path("", include("accounts.api_docs")),
     path("internal/auth/redeem", internal.redeem, name="internal_auth_redeem"),
     path(
         "internal/hubs/<uuid:hub_id>/ready",

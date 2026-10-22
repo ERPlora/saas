@@ -1,8 +1,9 @@
 """The account screens are Vue pages (``accounts/frontend/pages``): the sign-in and its every step, the
 launcher and every error of the sign-in. allauth runs headless only, so no sign-in page is a template.
-Templates stay only where nothing is painted for the person to use: the auto-submitted form of the jump
-to a hub, which POSTs the one-time code to the hub (``hub_login_form.html``), and the text of the mails
-allauth sends (``templates/account/email`` and ``templates/socialaccount/email``)."""
+Templates stay only where no screen of the panel is painted: the auto-submitted form of the jump to a hub,
+which POSTs the one-time code to the hub (``hub_login_form.html``), the API reference, ReDoc's own page over the
+OpenAPI schema in place of ninja's (``api_docs.html``, ACCOUNTS-F34), and the text of the mails allauth sends
+(``templates/account/email`` and ``templates/socialaccount/email``)."""
 
 import re
 from pathlib import Path
@@ -17,9 +18,10 @@ ACCOUNTS_TEMPLATES = Path(__file__).resolve().parent.parent / "templates" / "acc
 PROJECT_TEMPLATES = Path(settings.BASE_DIR) / "templates"
 
 
-def test_only_the_jump_form_stays_a_template():
-    assert sorted(path.name for path in ACCOUNTS_TEMPLATES.iterdir()) == ["hub_login_form.html"]
+def test_only_the_jump_form_and_the_api_reference_stay_templates():
+    assert sorted(path.name for path in ACCOUNTS_TEMPLATES.iterdir()) == ["api_docs.html", "hub_login_form.html"]
     assert get_template("accounts/hub_login_form.html")
+    assert get_template("accounts/api_docs.html")
 
 
 def test_of_allauths_templates_only_the_mails_are_ours():

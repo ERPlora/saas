@@ -60,6 +60,11 @@ const NEW_IN_THE_VUE_PAGES = new Set([
   'accounts.twoFactor.trusted.unknown',
   'accounts.twoFactor.trusted.revoke',
   'accounts.twoFactor.trusted.revoked',
+  // The brake of the jumps to a hub (ACCOUNTS-F28, handoff.hub_login past HUB_LOGIN_RATELIMIT) had no template.
+  'accounts.loginError.tooMany.title',
+  'accounts.loginError.tooMany.badge',
+  'accounts.loginError.tooMany.heading',
+  'accounts.loginError.tooMany.message',
 ]);
 
 /**
@@ -69,6 +74,9 @@ const NEW_IN_THE_VUE_PAGES = new Set([
  */
 const ACCOUNT_PAGE = 'accounts.account.';
 
+/** «Report a problem» (`/report-a-problem`, ACCOUNTS-F38) had no template in saas-next either: its texts are new. */
+const REPORT_PAGE = 'accounts.report.';
+
 /**
  * Pages whose templates ERPlora/saas had and saas-next never ported (the sign-up's code,
  * `account/confirm_email_verification_code.html`; the password reset, `account/password_reset*.html`):
@@ -76,7 +84,8 @@ const ACCOUNT_PAGE = 'accounts.account.';
  * saas-next's django.po. One that it does have is translated as it translates it, as on the Account page.
  */
 const UNPORTED_TEMPLATE_PAGES = ['accounts.verifyEmail.', 'accounts.passwordReset.'];
-const newPage = (key: string) => key.startsWith(ACCOUNT_PAGE) || UNPORTED_TEMPLATE_PAGES.some((page) => key.startsWith(page));
+const newPage = (key: string) =>
+  key.startsWith(ACCOUNT_PAGE) || key.startsWith(REPORT_PAGE) || UNPORTED_TEMPLATE_PAGES.some((page) => key.startsWith(page));
 
 /** vue-i18n's separator of plural forms (`singular | plural`). */
 const PLURAL = ' | ';

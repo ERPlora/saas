@@ -7,8 +7,8 @@ to anonymous visitors says ``auth=None``. Sign-in itself is not here: it is alla
 at ``/_allauth/``. An account's API key (``Authorization: Bearer erps_live_…`` or ``X-Api-Key``) opens
 only the operations declared with ``expose_api=True``, within its scopes (``accounts/api_auth.py``).
 
-No Swagger page yet: ninja's own has scripts without the CSP nonce, a blank page under
-'strict-dynamic'. ``/api/openapi.json`` is served.
+``/api/docs`` is the API's reference for signed-in accounts (``accounts/api_docs.py``: ninja's ReDoc with the
+nonce); ``/api/openapi.json`` is served to anybody (Postman imports it).
 """
 
 from live.ninja import install_error_handlers, mount_app_routers
@@ -16,6 +16,7 @@ from ninja import NinjaAPI
 from ninja.security import django_auth
 
 from accounts.api_auth import install_api_key_auth
+from accounts.api_docs import ApiReference
 
 
 def build_api(*, urls_namespace: str = "api") -> NinjaAPI:
@@ -24,7 +25,8 @@ def build_api(*, urls_namespace: str = "api") -> NinjaAPI:
         title="ERPlora Cloud API",
         version="1",
         openapi_url="/openapi.json",
-        docs_url=None,
+        docs_url="/docs",
+        docs=ApiReference(),
         auth=django_auth,
         urls_namespace=urls_namespace,
     )

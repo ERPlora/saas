@@ -13,6 +13,7 @@ import hmac
 import logging
 import secrets
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from functools import partial
@@ -20,7 +21,7 @@ from functools import partial
 from django.conf import settings
 from django.contrib.auth import get_user_model, logout
 from django.contrib.auth.models import Group
-from django.db import transaction
+from django.db import connection, transaction
 from django.utils import timezone
 from django.utils.translation import gettext
 from live import operations
@@ -44,9 +45,12 @@ from accounts.models import (
 from accounts.schemas import (
     ApiKeyCreatedOut,
     ApiKeyCreateIn,
+    ApiKeyIssueIn,
     ApiKeyRevokeIn,
     ApiKeyRowOut,
     BrowserTrustOut,
+    InactiveAccountIn,
+    InactiveAccountOut,
     BrowserTrustRevokeIn,
     EmailChangeIn,
     EmailVerifyIn,
@@ -63,6 +67,8 @@ from accounts.schemas import (
     ProfileDeleteIn,
     ProfileOut,
     ProfileUpdateIn,
+    SupportReportIn,
+    SupportReportOut,
 )
 
 logger = logging.getLogger(__name__)
@@ -534,6 +540,20 @@ def forget_in_outbox(user) -> int:
     return OutboxEvent.objects.filter(actor=actor).update(actor=str(user.pk))
 
 
+def forget_deleted_actor(sender, instance, **kwargs) -> None:
+    """``post_delete`` of an account (ACCOUNTS-F36): the audit entries it authored stop pointing at it and keep its
+    email (``actor_email``) until ``cleanup_old_logs`` prunes them.
+
+    An entry's author is ``SET_NULL``, but only for the entries there when the deletion was collected: what goes with
+    the account, and the account itself, is logged afterwards while the request may still act as it (the admin's
+    «Delete» of one's own account), and its commit would fail. Connected after auditlog's own receiver, so the
+    account's own entry is covered too. The audit trail is a security record kept 90 days, not erased with the
+    account (the old SaaS's policy; the outbox, kept for good, keeps the id instead, ``forget_in_outbox``)."""
+    from auditlog.models import LogEntry
+
+    LogEntry.objects.filter(actor_id=instance.pk).update(actor=None)
+
+
 def end_every_session(user) -> int:
     """End every session of ``user`` in the SaaS (``allauth.usersessions``); how many there were."""
     from allauth.usersessions.models import UserSession
@@ -573,16 +593,166 @@ def profile_delete(ctx: OperationContext, data: ProfileDeleteIn) -> dict:
             businesses=paid,
         )
     require_recent_authentication(ctx)
-    user_id = user.pk
-    signals.account_deleting.send(sender=get_user_model(), user_id=user_id)
-    signals.sessions_ended.send(sender=get_user_model(), user_id=user_id)
+    _erase_account(ctx, user, request=ctx.request)
+    logger.info("accounts.account_deleted user=%s", user.pk)
+    return {"deleted": True}
+
+
+def _erase_account(ctx: OperationContext, user, *, request=None) -> None:
+    """What deleting an account does, whoever deletes it (ACCOUNTS-F27, F35): every business is asked to forget it and
+    to end its sessions (``signals``), its event goes to its channel, the outbox keeps its id instead of its email, every
+    session of the SaaS ends (``request``'s too, signed out) and the account goes with what hangs from it. ERPlora's
+    invoices stay: their link to the account is ``SET_NULL`` and they keep their recipient as issued."""
+    signals.account_deleting.send(sender=get_user_model(), user_id=user.pk)
+    signals.sessions_ended.send(sender=get_user_model(), user_id=user.pk)
     record_event(ctx, events.PROFILE_DELETED)
     forget_in_outbox(user)
-    logout(ctx.request)
+    if request is not None:
+        logout(request)
     end_every_session(user)
     user.delete()
-    logger.info("accounts.account_deleted user=%s", user_id)
-    return {"deleted": True}
+
+
+# --- GDPR: the accounts unused for two years go (ACCOUNTS-F35) ---------------------------------------------------
+
+#: Days without signing in on erplora.com that make an account unused (the old SaaS's two years).
+INACTIVE_DAYS = 730
+#: ``accounts.profile.erase_inactive``: a system context only (no role grants it), on the account's channel.
+ERASE_INACTIVE = "accounts.erase_inactive"
+
+
+def lock_name(command: str) -> str:
+    """The advisory lock of ``command``: ``hubs.services.lock_name``'s namespace (accounts never imports hubs)."""
+    return f"erplora.saas.{command}"
+
+
+@contextmanager
+def run_exclusively(command: str):
+    """Hold the session advisory lock of ``command`` while the block runs; yields ``False`` when another run holds it.
+
+    ``hubs.services.run_exclusively``'s twin (accounts never imports hubs): a session lock, because a run spans one
+    transaction per account, so one that fails undoes no other. Released at the end, when the run fails and when the
+    task dies (Postgres ends its session). The SaaS's database is direct, never PgBouncer.
+    """
+    name = lock_name(command)
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT pg_try_advisory_lock(hashtext(%s))", [name])
+        taken = cursor.fetchone()[0]
+    try:
+        yield taken
+    finally:
+        if taken:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT pg_advisory_unlock(hashtext(%s))", [name])
+
+
+def _unused_since(inactive_days: int):
+    """The accounts that may go: active, not staff, and without signing in (or, never signed in, created) since
+    ``inactive_days`` ago."""
+    from django.db.models import Q
+
+    cutoff = timezone.now() - timedelta(days=inactive_days)
+    return get_user_model().objects.filter(is_active=True, is_staff=False, is_superuser=False).filter(
+        Q(last_login__lt=cutoff) | Q(last_login__isnull=True, date_joined__lt=cutoff)
+    )
+
+
+def inactive_account_ids(*, inactive_days: int = INACTIVE_DAYS) -> list:
+    """The ids of the accounts unused for ``inactive_days``, the oldest first: the candidates of a run."""
+    return list(_unused_since(inactive_days).order_by("date_joined", "pk").values_list("pk", flat=True))
+
+
+def _as_account(user) -> OperationContext:
+    """The context ``user`` gets from a request, outside one: to read what it sees through other apps' operations."""
+    from live.context import Scope
+    from live.meta import all_live_app_configs, permissions_for_role
+
+    from base.operations import ACCOUNT_ROLE
+
+    return OperationContext(
+        scope=Scope("user", str(user.pk)),
+        actor=user,
+        permissions=permissions_for_role(all_live_app_configs(), ACCOUNT_ROLE),
+        language=user.language,
+    )
+
+
+def belongs_to_a_business(user) -> bool:
+    """Whether ``user`` is in a business that is not deleted (owner, payer or member), from ``hubs.business.list``
+    (called by its name: accounts never imports hubs). A business in its 90 days of recovery holds nobody (F27)."""
+    business_list = operations.get(BUSINESS_LIST)
+    as_account = _as_account(user)
+    offset = 0
+    while True:
+        page = business_list(as_account, business_list.input(limit=100, offset=offset))
+        if any(row.deletion_requested_at is None for row in page.rows):
+            return True
+        offset += page.limit
+        if offset >= page.total:
+            return False
+
+
+@operation(
+    "accounts.profile.erase_inactive",
+    kind="command",
+    permission=ERASE_INACTIVE,
+    input=InactiveAccountIn,
+    output=InactiveAccountOut,
+)
+def profile_erase_inactive(ctx: OperationContext, data: InactiveAccountIn) -> dict:
+    """Erase an account unused for ``inactive_days`` as its owner would delete it (``_erase_account``), on its own
+    channel. Read again under its row's lock, so a sign-in since it was picked keeps it (``active``); one that belongs to
+    a business stays (``member``): its last sign-in on erplora.com says nothing of its days in the business. Called
+    only by ``erase_inactive_account``; no route."""
+    if ctx.scope.key != str(data.user_id):
+        raise LiveMisuse(f"accounts.profile.erase_inactive runs on the account's channel, not {ctx.scope.key!r}.")
+    user = _unused_since(data.inactive_days).select_for_update().filter(pk=data.user_id).first()
+    if user is None:
+        return {"outcome": "active"}
+    if belongs_to_a_business(user):
+        return {"outcome": "member"}
+    if not data.dry_run:
+        _erase_account(ctx, user)
+        logger.info("accounts.inactive_account_erased user=%s", data.user_id)
+    return {"outcome": "erased"}
+
+
+def erase_inactive_account(user_id, *, inactive_days: int = INACTIVE_DAYS, dry_run: bool = False) -> str:
+    """``manage.py anonymize_old_users``'s step for one account: ``erased``, ``member`` or ``active``."""
+    from live.context import Scope, system_context
+
+    return profile_erase_inactive(
+        system_context(Scope("user", str(user_id))),
+        InactiveAccountIn(user_id=user_id, inactive_days=inactive_days, dry_run=dry_run),
+    ).outcome
+
+
+# --- GDPR: the audit log keeps 90 days (ACCOUNTS-F37) ---------------------------------------------------------
+
+#: Days an audit entry is kept (the old SaaS's 90; GDPR art. 5.1.e). ``cleanup_old_logs --retention-days`` changes it.
+AUDIT_LOG_RETENTION_DAYS = 90
+#: Audit entries deleted per transaction: a long run never holds one big transaction.
+AUDIT_LOG_BATCH = 1000
+
+
+def audit_entries_before(cutoff) -> int:
+    """How many audit entries were written before ``cutoff`` (``cleanup_old_logs --dry-run``)."""
+    from auditlog.models import LogEntry
+
+    return LogEntry.objects.filter(timestamp__lt=cutoff).count()
+
+
+def prune_audit_log_batch(cutoff) -> int:
+    """Delete up to ``AUDIT_LOG_BATCH`` of the audit entries written before ``cutoff``, in their own transaction; how
+    many went, as the database counts them (0: none is left, or none could go, and the run ends)."""
+    from auditlog.models import LogEntry
+
+    with transaction.atomic():
+        ids = list(
+            LogEntry.objects.filter(timestamp__lt=cutoff).order_by("pk").values_list("pk", flat=True)[:AUDIT_LOG_BATCH]
+        )
+        deleted, _ = LogEntry.objects.filter(pk__in=ids).delete()
+    return deleted
 
 
 # --- Account → Profile → «Change» the email --------------------------------------------------------
@@ -1046,10 +1216,16 @@ API_KEY_LAST_USED_RESOLUTION = timedelta(minutes=10)
 def apikey_create(ctx: OperationContext, data: ApiKeyCreateIn) -> dict:
     """A new key of the account, bounded by its scopes: the answer carries the whole key, the only time it exists
     in clear (only its hash is kept). Creating access asks for a recent sign-in, as GitHub and Stripe do."""
-    from django.db.models import Q
-
     user = queries.account_of(ctx)
     require_recent_authentication(ctx)
+    return _new_api_key(ctx, user, data)
+
+
+def _new_api_key(ctx: OperationContext, user, data: ApiKeyCreateIn) -> dict:
+    """A key of ``user`` within the ceiling: the row (its hash only), the event on the context's channel and the
+    mail that tells the account. Returns the row and the whole key, the only time it exists in clear."""
+    from django.db.models import Q
+
     now = timezone.now()
     # One creation at a time per account, so the ceiling holds.
     get_user_model().objects.select_for_update().filter(pk=user.pk).exists()
@@ -1106,6 +1282,35 @@ def record_api_key_use(key: ApiKey, now) -> None:
 
 #: The admin's revocation: a system context only (no role grants it), on the owner's channel.
 REVOKE_ANY_KEY = "accounts.revoke_any_key"
+#: The admin's «Add API key» for a team account (ACCOUNTS-F31): a system context only, on the owner's channel.
+ISSUE_ANY_KEY = "accounts.issue_any_key"
+
+
+@operation("accounts.apikey.issue_any", kind="command", permission=ISSUE_ANY_KEY, input=ApiKeyIssueIn, output=ApiKeyCreatedOut)
+def apikey_issue_any(ctx: OperationContext, data: ApiKeyIssueIn) -> dict:
+    """A key for a team account, issued by a superuser from the admin (PLAN-SAAS §1.1, ronda 2026-10-15b; the old
+    SaaS's ``POST /api/v1/admin/api-keys/``). Only an active staff account: a customer's keys are the customer's own
+    (the old ``user_not_staff``). The event goes to the owner's channel, so its live list refreshes, and the owner is
+    told by mail. Called only by ``issue_api_key``; no route."""
+    if ctx.scope.key != str(data.user_id):
+        raise LiveMisuse(f"accounts.apikey.issue_any runs on the key owner's channel, not {ctx.scope.key!r}.")
+    user = get_user_model().objects.filter(pk=data.user_id, is_active=True, is_staff=True).first()
+    if user is None:
+        raise NotFound(gettext("API keys are issued here for team accounts only."))
+    return _new_api_key(ctx, user, data)
+
+
+def issue_api_key(user, *, name: str, scopes: list[str], expires_in_days: int | None, by) -> ApiKeyCreatedOut:
+    """The admin's «Add API key»: a key of the team account ``user``, issued by the superuser ``by``; the answer carries
+    the whole key (``secret``), the only time it exists in clear."""
+    from live.context import Scope, system_context
+
+    issued = apikey_issue_any(
+        system_context(Scope("user", str(user.pk))),
+        ApiKeyIssueIn(user_id=user.pk, name=name, scopes=scopes, expires_in_days=expires_in_days),
+    )
+    logger.warning("accounts.api_key_issued_by_staff staff=%s user=%s key=%s", by.pk, user.pk, issued.key.id)
+    return issued
 
 
 @operation("accounts.apikey.revoke_any", kind="command", permission=REVOKE_ANY_KEY, input=ApiKeyRevokeIn, output=ApiKeyRowOut)
@@ -1143,3 +1348,56 @@ def password_changed_ends_sessions(sender, request=None, user=None, **kwargs) ->
     if user is None:
         return
     signals.sessions_ended.send(sender=get_user_model(), user_id=user.pk)
+
+
+# --- «Report a problem» (ACCOUNTS-F38) ------------------------------------------------------------
+
+#: Characters of the browser a report keeps: a user agent is one line, rarely over 300.
+REPORT_BROWSER_MAX = 300
+
+
+def _one_line(value: str) -> str:
+    """``value`` on one line: a mail header carries one, and a break typed in it would add another (``Bcc:``)."""
+    return " ".join(value.split())
+
+
+@operation(
+    "accounts.support.report",
+    kind="command",
+    permission="accounts.manage",
+    input=SupportReportIn,
+    output=SupportReportOut,
+)
+def support_report(ctx: OperationContext, data: SupportReportIn) -> dict:
+    """«Report a problem» (ACCOUNTS-F38; PLAN-SAAS §1.1): mail the support mailbox what the person wrote, with the
+    account, its businesses, the page it came from and its browser, «Reply-To» the account. Limited per account
+    (``SUPPORT_REPORT_RATELIMIT``, as the contact form per address); nothing is kept and no issue is opened."""
+    from django_ratelimit.core import is_ratelimited
+
+    user = queries.account_of(ctx)
+    if is_ratelimited(
+        None,
+        group="accounts.support.report",
+        key=lambda group, request: f"user:{user.pk}",
+        rate=settings.SUPPORT_REPORT_RATELIMIT,
+        increment=True,
+    ):
+        raise too_many_attempts()
+    memberships = HubMembership.objects.filter(user=user).order_by("hub_slug")
+    browser = ctx.request.headers.get("User-Agent", "") if ctx.request is not None else ""
+    context = [
+        ("Account", f"{user.email} ({user.pk})"),
+        ("Language", user.language),
+        ("Businesses", ", ".join(f"{row.hub_slug} ({row.role})" for row in memberships) or "none"),
+        ("Page", _one_line(data.page or "") or "unknown"),
+        ("Browser", _one_line(browser)[:REPORT_BROWSER_MAX] or "unknown"),
+        ("Sent", timezone.now().isoformat(timespec="seconds")),
+    ]
+    if not emails.send_support_report(user, subject=_one_line(data.subject), description=data.description, context=context):
+        raise OperationError(
+            gettext("We could not send your report. Write to us directly at %(email)s.") % {"email": settings.SUPPORT_EMAIL},
+            code="accounts.report_not_sent",
+            status=503,
+        )
+    logger.info("accounts.support_report_sent user=%s", user.pk)
+    return {"reply_to": user.email}

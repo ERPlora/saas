@@ -58,6 +58,12 @@
       "googleLinkRefused": {
         "heading": "Google was not linked",
         "message": "Google can only be linked by signing in with the Google account of your email."
+      },
+      "tooMany": {
+        "title": "Too many attempts",
+        "badge": "429 · Too many attempts",
+        "heading": "Too many attempts",
+        "message": "You have opened your businesses too many times in a few minutes. Wait a few minutes and open your business again."
       }
     },
     "verifyEmail": {
@@ -349,7 +355,8 @@
         "revoked": "Key revoked: «{name}»",
         "empty": "You have no keys yet. Create one to connect your tools with your ERPlora account.",
         "note": "These keys are for the API of your ERPlora account. The keys of each business are created inside the business.",
-        "revokeShort": "Revoke"
+        "revokeShort": "Revoke",
+        "docs": "API documentation"
       },
       "title": "Account",
       "tabsLabel": "Account sections",
@@ -388,6 +395,18 @@
         "disconnectMessage": "You will no longer sign in with {account}; you will keep signing in with your email and your password.",
         "disconnected": "Google disconnected"
       }
+    },
+    "report": {
+      "title": "Report a problem",
+      "intro": "Tell us what went wrong. We will reply by email.",
+      "subject": "Subject",
+      "description": "What happened?",
+      "descriptionPlaceholder": "Describe the steps and what you expected to happen",
+      "context": "Your account, your businesses, the page you came from and your browser go with your report.",
+      "send": "Send report",
+      "sentTitle": "Report sent",
+      "sentBody": "Thank you: we have received your report and will reply to {email} as soon as possible.",
+      "back": "Back"
     }
   }
 }
