@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:d5c5ef793052bd0e6a03d609da50ab2f8fb42222f1b0fbc85c8f89909bfa6160 -->
+<!-- generated from WORKBOOK.md sha256:9b8b70b9a3493d1ac8437e67b82d6e5afd93f740bbed47496ab2681116e23a59 -->
 
 ## What it is for and who it is for
 
@@ -394,7 +394,7 @@ If it fails: a notice that could not leave is sent again on the next pass, and w
 Involved: billing (suspends, tells of the suspension and runs the pass), the business (stops opening)
 
 ### HUBS-F21 See the status and the usage of a business
-Status: partial — the business does not measure its usage every night yet (HUBS-F22), so on a real business the "Usage" card says "No data yet. The figures arrive every night, from the first one after the business is created."; the status, the plan and the seats are already the real ones.
+Status: partial — the business does not measure its usage every night yet (HUBS-F22): its space is that of its own database, which comes in phase 2; so on a real business the "Usage" card says "No data yet. The figures arrive every night, from the first one after the business is created."; the status, the plan and the seats are already the real ones.
 Actor: owner, administrator
 Screen: Business summary
 Steps:
@@ -406,7 +406,7 @@ If it fails: without any night measured, "No data yet. The figures arrive every 
 Involved: the business (measures its usage)
 
 ### HUBS-F22 Collect every night the usage of each business
-Status: partial — erplora.com already asks for it every night, but the businesses' service does not serve its measurement yet; until it does, the pass ends with an error and nothing is saved.
+Status: partial — erplora.com already asks for it every night, but the businesses' service does not serve its measurement yet: a business's space is that of its own database, which comes in phase 2; until it does, the pass ends with an error and nothing is saved.
 Actor: system
 Screen: none
 Steps:

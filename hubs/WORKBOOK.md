@@ -425,7 +425,7 @@ Implicados: billing (suspende, avisa de la suspensión y hace la pasada), el neg
 
 ### HUBS-F21 Ver el estado y el uso de un negocio
 <!-- origen: old-saas:SAAS_DASHBOARD-F26 -->
-Estado: parcial — el negocio todavía no mide su uso cada noche (HUBS-F22), así que en un negocio real la tarjeta «Uso» dice «Sin datos todavía. Las cifras llegan cada noche, desde la primera tras crear el negocio.»; el estado, el plan y las plazas ya son los de verdad.
+Estado: parcial — el negocio todavía no mide su uso cada noche (HUBS-F22): su espacio es el de su propia base de datos, que llega en la fase 2; así que en un negocio real la tarjeta «Uso» dice «Sin datos todavía. Las cifras llegan cada noche, desde la primera tras crear el negocio.»; el estado, el plan y las plazas ya son los de verdad.
 Actor: propietario, administrador
 Pantalla: Resumen del negocio
 Pasos:
@@ -438,7 +438,7 @@ Implicados: el negocio (mide su uso)
 
 ### HUBS-F22 Recoger cada noche el uso de cada negocio
 <!-- origen: old-saas:SAAS_DASHBOARD-F57 -->
-Estado: parcial — erplora.com ya lo pide cada noche, pero el servicio de los negocios todavía no sirve su medición; hasta que la sirva, la pasada termina con error y no se guarda nada.
+Estado: parcial — erplora.com ya lo pide cada noche, pero el servicio de los negocios todavía no sirve su medición: el espacio de un negocio es el de su propia base de datos, que llega en la fase 2; hasta que la sirva, la pasada termina con error y no se guarda nada.
 Actor: sistema
 Pantalla: ninguna
 Pasos:
@@ -520,8 +520,9 @@ Implicados: el negocio (recibe lo que se le reenvía), accounts (la cuenta del p
   `hubs/tests/test_suspended_lifecycle.py` y `hubs/tests/test_migrations.py`.
 - Admin (F23): las acciones de plataforma llevan `@traced` (`hubs/admin.py`), que escribe en el historial del admin
   («Ejecutó «…»») cada fila sobre la que corrieron. Tests: `hubs/tests/test_admin.py::TestTheTrail`.
-- Uso (F21, F22): el Hub aún no sirve `GET /internal/usage` (contrato en `hubs/README.md`); `collect_hub_usage`
-  ya está programado (`hub-usage-daily`). Sin él, la pasada falla y la tarjeta dice «Sin datos todavía…».
+- Uso (F21, F22): el Hub aún no sirve `GET /internal/usage` (contrato en `hubs/README.md`): `db_bytes` es
+  `pg_database_size(hub_<hex>)`, que necesita la BD por hub (fase 2, `docs/plans/2026-10-22-fase-2-tenencia.md`).
+  `collect_hub_usage` ya está programado (`hub-usage-daily`). Sin él, la pasada falla y la tarjeta dice «Sin datos todavía…».
 - Dominio propio (F17): decisión de mercado de APP-HUBS-2, propuesta como ronda de PLAN-SAAS (ADR-0502): se mantiene
   solo para la web pública (`website`) y en planes con `includes_custom_domain`, y llega con sus tres piezas
   (erplora.com, borde de `aws` y el host en `base` del Hub); hasta entonces no hay modelo ni pantalla.

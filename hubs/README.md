@@ -242,7 +242,8 @@ X-Erplora-Timestamp, X-Erplora-Signature (v1) y X-Erplora-Signature-V2 (cubre m�
 
 ### Pendiente tras L4-A
 
-- **Carril Hub**: implementar `GET /internal/usage` (medición nocturna del worker y la respuesta de arriba).
+- **Carril Hub**: implementar `GET /internal/usage` (medición nocturna del worker y la respuesta de arriba). Necesita la
+  BD por hub: `db_bytes` es `pg_database_size(hub_<hex>)` (fase 2, `docs/plans/2026-10-22-fase-2-tenencia.md`).
 - **`aws-next`**: programar `python manage.py collect_hub_usage` cada noche en `scheduler.tf` (`saas-cron`), después
   de la medición del Hub (propuesta: 01:15 UTC; `push_hub_snapshots` va a las 00:30).
 - La gráfica del panel con `hubs.usage.series` (bloque 8 de PLAN-SAAS; no está en la maqueta).
