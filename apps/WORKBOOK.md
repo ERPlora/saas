@@ -1,7 +1,7 @@
 # Workbook — Apps (apps)
 Prefijo: APPS
 Alcance MVP: fase 1 (el catálogo de apps que lee la tienda y lo que erplora.com vende de cada app de pago)
-Estado de la app: en uso (dos flujos parciales: APPS-F04 y APPS-F07)
+Estado de la app: en uso (un flujo parcial: APPS-F07, la parte del Hub)
 
 > Manual de uso y especificación de la app `apps` del SaaS (erplora.com). Cuenta cómo llega a erplora.com
 > el catálogo de las apps del Hub, cómo se lee desde fuera (la lista, la ficha y la documentación de cada
@@ -82,7 +82,7 @@ modificación, con filtros por nivel y activo y un buscador. La ficha de cada m�
 | APPS-F01 | Consultar el catálogo de apps | hecho |
 | APPS-F02 | Leer la documentación de una app | hecho |
 | APPS-F03 | Poner a la venta una app de pago | hecho |
-| APPS-F04 | Enlazar una app de pago con su producto y sus precios de Stripe | parcial |
+| APPS-F04 | Enlazar una app de pago con su producto y sus precios de Stripe | hecho |
 | APPS-F05 | Sacar una app de la tienda o dejar de venderla | hecho |
 | APPS-F06 | Clasificar una app por sección y tipo de negocio | hecho |
 | APPS-F07 | Comprar una app de pago siempre en erplora.com, nunca dentro del negocio | parcial |
@@ -135,17 +135,18 @@ Implicados: billing (la Tienda y el cobro), hubs (qué apps incluye cada plan)
 
 ### APPS-F04 Enlazar una app de pago con su producto y sus precios de Stripe
 <!-- origen: fi:saas/support/public-core-config#service-modulestripeservice-services-stripe-py -->
-Estado: parcial — los precios de Stripe que se pegan en un módulo no se comprueban al guardar: uno que cobra otra cantidad, en otra moneda o con el IVA dentro se guarda igual
+Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin › Módulos
 Pasos:
 1. Una persona de ERPlora crea en Stripe el producto de la app y sus precios mensual y anual, sin IVA incluido.
 2. En **Admin › Módulos**, en el módulo de la app, pega «Producto de Stripe», «Precio mensual de Stripe» y «Precio anual de Stripe», y guarda.
-3. Desde ese momento la app se cobra con esos precios dentro de la suscripción de cada negocio que la compra.
+3. Al guardar, erplora.com pregunta a Stripe por cada precio y solo lo acepta si existe con las claves de ese entorno, está activo, en euros, se cobra cada mes (o cada año) como dice su campo, cobra lo mismo que el módulo, es sin IVA y es de ese producto. Solo pregunta cuando cambia un precio o su identificador.
+4. Desde ese momento la app se cobra con esos precios dentro de la suscripción de cada negocio que la compra, al mismo precio que enseña la Tienda.
 Entra: el producto y los precios de Stripe de la app.
-Sale: el módulo con sus precios de Stripe.
-Si falla: sin el precio del periodo del negocio, la Tienda no la cobra y dice que ahora no se puede comprar y que se contacte con soporte.
-Implicados: billing (el cobro en la Tienda)
+Sale: el módulo con sus precios de Stripe comprobados.
+Si falla: un precio que no cuadra no se guarda y dice por qué debajo de su campo («Este precio no está en euros.», «Este precio está archivado en Stripe.», «Este precio es de otro producto de Stripe.», que Stripe cobra otra cantidad que el módulo, que incluye el IVA…); un precio de pruebas en producción no se encuentra. Si Stripe no contesta, no se guarda nada y se pide repetir; sin claves de Stripe (en desarrollo) se guarda y el admin avisa de que no se comprobó. Sin el precio del periodo del negocio, la Tienda no la cobra y dice que ahora no se puede comprar y que se contacte con soporte.
+Implicados: billing (la comprobación en Stripe y el cobro en la Tienda)
 
 ### APPS-F05 Sacar una app de la tienda o dejar de venderla
 <!-- origen: old-saas:SAAS_PUBLIC-F22 -->
@@ -203,7 +204,8 @@ Implicados: el Hub (su página de apps), billing (la Tienda)
 - Tests por flujo (los citan en el nombre o en el docstring): F01 `apps/tests/test_queries.py` (lista, ficha,
   iconos, consultas planas) y `apps/tests/test_api.py` (rutas, idioma y `Vary`); F02 `test_queries.py`
   (documentación, caché, imágenes) y `packages/live/tests/test_markdown.py`; F03 `apps/tests/test_models.py`
-  (`clean()`, `apps.E001`, admin); F05 `test_queries.py` (no listadas), `billing/tests/test_store_catalog.py`,
+  (`clean()`, `apps.E001`, admin); F04 `apps/tests/test_admin.py` (el formulario del admin con el doble de Stripe)
+  y `billing/tests/test_services.py::TestThePricesOfAModule` (`module_price_problems`); F05 `test_queries.py` (no listadas), `billing/tests/test_store_catalog.py`,
   `billing/tests/test_module_cancel.py` y `billing/tests/test_admin.py` (borrado protegido); F06
   `test_queries.py` (secciones, filtros, `known_verticals`) y `hubs/tests/test_models.py`; F07 el e2e
   `tests/e2e/panel/billing-support.spec.ts` (`/store/modules?business=`).
@@ -214,8 +216,10 @@ Implicados: el Hub (su página de apps), billing (la Tienda)
   `can_install`, descarga), `?lang=` (el idioma va por `Accept-Language` o la cookie `_lang`), CORS de la
   documentación, los planes por app (`ModuleTier`), las pruebas gratuitas, el cobro por uso, la aprobación y
   la clasificación por unidad funcional y por país.
-- Huecos abiertos: APPS-F04 (la comprobación de precios de Stripe de un módulo, como la de los planes de
-  BILLING-F28, vive en `billing/services.py`) y APPS-F07 (la página de apps del Hub, BASE-G74).
+- APPS-F04 comparte con BILLING-F28 la comprobación de `billing/services.py` (`_price_problems`, con
+  `plan_price_problems` y `module_price_problems` encima): `PriceCheckSkipped` (sin claves: se guarda con aviso) y
+  `PriceCheckFailed` (Stripe no contesta: no se guarda y se pide repetir), en `ModuleForm` y en `PlanForm`.
+- Hueco abierto: APPS-F07 (la página de apps del Hub, BASE-G74, de la tarea de `base`).
 
 ## Lo que NO hace, a propósito
 
@@ -226,6 +230,6 @@ Implicados: el Hub (su página de apps), billing (la Tienda)
   un precio mensual y otro anual.
 - No clasifica las apps por país ni por región: todas van en cada versión del Hub.
 - No sirve el historial de cambios de una app.
-- No crea solo el producto ni los precios en Stripe: se crean en Stripe y se pegan en el admin.
+- No crea solo el producto ni los precios en Stripe: se crean en Stripe y se pegan en el admin, que los comprueba.
 - No publica ni aprueba apps de terceros: todas son de ERPlora.
 - No borra una app ni un módulo que algún negocio tiene.

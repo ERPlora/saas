@@ -15,7 +15,7 @@ flujos están en `WORKBOOK.md` (APPS-F01 a APPS-F07); el contrato, en PLAN §21 
 | `api.py` | `GET /api/apps`, `/api/apps/get`, `/api/apps/doc` y `/api/apps/sitemap`, cada una ligada a su operación |
 | `icons.py` | Limpieza del `icon_svg` que manda el Hub (nh3, solo formas) y el icono de respaldo |
 | `checks.py` | `apps.E001`: un `Module.slug` sin app en `shared.app`; corre con `manage.py check --database default` |
-| `admin.py` | `App` y `AppDoc` de solo lectura para todos; `Module` editable, con el borrado de un módulo que algún negocio tiene rechazado (saas#2568) |
+| `admin.py` | `App` y `AppDoc` de solo lectura para todos; `Module` editable con `ModuleForm`, que comprueba en Stripe los precios pegados (APPS-F04, `billing.services.module_price_problems`), y con el borrado de un módulo que algún negocio tiene rechazado (saas#2568) |
 
 ## Reglas
 
@@ -23,7 +23,7 @@ flujos están en `WORKBOOK.md` (APPS-F01 a APPS-F07); el contrato, en PLAN §21 
 - Sin `live.py`: el catálogo cambia con un despliegue del Hub, que no avisa a nadie.
 - La documentación se pinta con `live.markdown` y se guarda en caché un día por `app:idioma:hash`
   (`DOC_RENDER_VERSION` se sube cuando cambia lo que deja pasar el renderizador).
-- Sin `services.py`: esta app no tiene escrituras propias; el admin de `Module` es la única.
+- Sin `services.py`: esta app no tiene escrituras propias; el admin de `Module` es la única, y su comprobación de Stripe es de `billing`.
 
 ## Tests
 
@@ -32,6 +32,4 @@ Cada test cita su flujo `APPS-Fnn` en el nombre o en el docstring cuando lo aña
 
 ## Huecos conocidos
 
-- APPS-F04: los precios de Stripe pegados en un `Module` no se comprueban al guardar (los de un plan sí,
-  BILLING-F28, `billing/services.py` `plan_price_problems`).
 - APPS-F07: la página de apps del Hub aún no manda a comprar a la Tienda (BASE-G74 del Hub).

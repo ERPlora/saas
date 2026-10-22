@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:9e6662c20feeff4e9b7f0b534bbcfe647cf6e9b83884b3c45194af50d2d82285 -->
+<!-- generated from WORKBOOK.md sha256:80e0b7d1c5cf016859fda405bdf5def79e095e4a113e4511e8d4412209315baa -->
 
 ## What it is for and who it is for
 
@@ -72,7 +72,7 @@ change, with filters by tier and active and a search box. Each module's page: "A
 | APPS-F01 | Browse the app catalog | done |
 | APPS-F02 | Read an app's documentation | done |
 | APPS-F03 | Put a paid app on sale | done |
-| APPS-F04 | Link a paid app to its Stripe product and prices | partial |
+| APPS-F04 | Link a paid app to its Stripe product and prices | done |
 | APPS-F05 | Take an app out of the store or off sale | done |
 | APPS-F06 | Classify an app by section and business type | done |
 | APPS-F07 | Buy a paid app always on erplora.com, never inside the business | partial |
@@ -125,17 +125,18 @@ Involved: billing (the Store and the charge), hubs (which apps each plan include
 
 ### APPS-F04 Link a paid app to its Stripe product and prices
 <!-- origen: fi:saas/support/public-core-config#service-modulestripeservice-services-stripe-py -->
-Status: partial — the Stripe prices pasted on a module are not checked on saving: one that charges another amount, in another currency or with the VAT inside is saved all the same
+Status: done
 Actor: ERPlora staff
 Screen: Admin › Modules
 Steps:
 1. Someone at ERPlora creates in Stripe the app's product and its monthly and annual prices, without VAT included.
 2. In **Admin › Modules**, on the app's module, they paste "Stripe product", "Stripe monthly price" and "Stripe annual price", and save.
-3. From then on the app is charged at those prices inside the subscription of each business that buys it.
+3. On saving, erplora.com asks Stripe about each price and only accepts it if it exists with that environment's keys, is active, in euros, charged every month (or every year) as its field says, charges the same as the module, is net of VAT and belongs to that product. It only asks when a price or its id changes.
+4. From then on the app is charged at those prices inside the subscription of each business that buys it, at the same price the Store shows.
 In: the app's Stripe product and prices.
-Out: the module with its Stripe prices.
-If it fails: without the price for the business's billing period, the Store does not charge it and says it cannot be bought right now and to contact support.
-Involved: billing (the charge in the Store)
+Out: the module with its Stripe prices checked.
+If it fails: a price that does not match is not saved and says why under its field ("This price is not in euros.", "This price is archived in Stripe.", "This price is of another Stripe product.", that Stripe charges another amount than the module, that it includes the VAT…); a test price in production is not found. If Stripe does not answer, nothing is saved and it asks to try again; without Stripe keys (in development) it is saved and the admin warns it was not checked. Without the price for the business's billing period, the Store does not charge it and says it cannot be bought right now and to contact support.
+Involved: billing (the check in Stripe and the charge in the Store)
 
 ### APPS-F05 Take an app out of the store or off sale
 <!-- origen: old-saas:SAAS_PUBLIC-F22 -->
