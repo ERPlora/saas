@@ -286,14 +286,17 @@ describe('BusinessPage: the authorisation for ERPlora to file its invoices (fisc
     }
   });
 
+  /** The card is on screen (it is asked for with the page, so it may be there and hidden). */
+  const cardShown = (s: Awaited<ReturnType<typeof setup>>) => s.testid('representation').exists() && s.testid('representation').isVisible();
+
   it('only for a business in Spain: the AEAT is Spanish', async () => {
     const s = await setup('summary', { country: 'PT', timezone: 'Europe/Lisbon' });
-    expect(s.wrapper.findComponent(RepresentationCard).exists()).toBe(false);
+    expect(cardShown(s)).toBe(false);
   });
 
   it('not once the business is deleted: its Summary keeps only the plan and the details', async () => {
     const s = await setup('summary', { status: 'deleting', deletion_requested_at: '2026-10-13T10:00:00Z', purge_after: '2027-01-11T10:00:00Z', can: { ...BUSINESS.can, open: false } });
-    expect(s.wrapper.findComponent(RepresentationCard).exists()).toBe(false);
+    expect(cardShown(s)).toBe(false);
   });
 
   it('«Manage in your business» opens the business, as «Open» does', async () => {
@@ -362,6 +365,32 @@ describe('BusinessPage: one stream', () => {
     expect(s.net.streams).toHaveLength(1);
     expect(s.call.aborted()).toBe(false);
     expect(s.wrapper.getComponent(MembersTab).props()).toMatchObject({ id: 'h1', business: { id: 'h1', name: 'Panadería López' } });
+  });
+
+  it('the Summary asks for the authorisation in the first stream, with the business, and the business’s answer does not reopen it', async () => {
+    const s = await setup('summary', null);
+    expect(s.testid('business-loading').exists()).toBe(true);
+    expect(s.net.streams).toHaveLength(1);
+    expect(s.call.subs.map((sub) => [sub.op, sub.params])).toEqual(
+      expect.arrayContaining([
+        ['hubs.business.get', { id: 'h1' }],
+        ['fiscal.representation.status', { id: 'h1' }],
+      ]),
+    );
+    await s.result(s.call, 'hubs.business.get', BUSINESS);
+    await s.clock.advance(1000);
+    expect(s.net.streams).toHaveLength(1);
+    expect(s.call.aborted()).toBe(false);
+    expect(s.testid('representation').isVisible()).toBe(true);
+  });
+
+  it('a business outside Spain keeps the stream it opened: the authorisation it asked for stays hidden, without a reopen', async () => {
+    const s = await setup('summary', null);
+    await s.result(s.call, 'hubs.business.get', { ...BUSINESS, country: 'PT', timezone: 'Europe/Lisbon' });
+    await s.clock.advance(RELEASE_GRACE_MS + 1000);
+    expect(s.net.streams).toHaveLength(1);
+    expect(s.call.aborted()).toBe(false);
+    expect(s.testid('representation').isVisible()).toBe(false);
   });
 
   it('Members goes with the business’s error: the page says it once, without a list', async () => {

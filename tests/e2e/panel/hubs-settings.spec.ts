@@ -16,7 +16,19 @@ import { execFileSync } from 'node:child_process';
 
 import { type Page } from '@playwright/test';
 
-import { apiPost, djangoPrint, expect, settled, shot, sidewaysScroll, signIn, test, watchPageErrors } from './fixtures';
+import {
+  apiPost,
+  djangoPrint,
+  expect,
+  QUIET_MS,
+  settled,
+  shot,
+  sidewaysScroll,
+  signIn,
+  test,
+  watchLiveStreams,
+  watchPageErrors,
+} from './fixtures';
 import { HUB_DOUBLE_PORT } from './project';
 
 const PREFIX = 'e2e-hubs2-';
@@ -176,6 +188,7 @@ test('HUBS-G88 + HUBS-G22: the owner deletes the business typing its name, then 
 
 test('HUBS-G90: the Summary says the business’s status, its plan and the usage the Hub measured last night', async ({ page }) => {
   const errors = watchPageErrors(page);
+  const streams = watchLiveStreams(page);
   const { id } = await ownerOf(page, 'usage', 'Bar Manolo');
   djangoPrint(
     [
@@ -187,6 +200,15 @@ test('HUBS-G90: the Summary says the business’s status, its plan and the usage
   );
   await page.goto(`/businesses/${id}/summary`);
   const usage = shown(page).getByTestId('summary-usage');
+  await expect(shown(page).getByTestId('representation')).toBeVisible();
+  // One stream with all the page shows: the business and its authorisation to file invoices (a Spanish business).
+  await page.waitForTimeout(QUIET_MS);
+  expect({ opened: streams.opened, failed: [...streams.failed] }).toEqual({
+    opened: [
+      expect.arrayContaining([expect.stringMatching(/^hubs\.business\.get /), expect.stringMatching(/^fiscal\.representation\.status /)]),
+    ],
+    failed: [],
+  });
   await atEverySize(page, 'HUBS-G90', async () => {
     await expect(usage).toBeVisible();
   });
