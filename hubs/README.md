@@ -105,6 +105,31 @@ Flujos en `WORKBOOK.md` (`HUBS-F01`…`HUBS-F14`, parte 1 de 4 de la migración;
   español en el admin. No hay API de escritura de planes para el personal: el admin es su única escritura (decisión
   de APP-HUBS-1, propuesta como ronda de PLAN-SAAS).
 
+## Lo que añadió APP-HUBS-2 (2026-10-22): ajustes, dirección, baja, suspendidos, uso y admin
+
+Flujos `HUBS-F15`…`HUBS-F23` del `WORKBOOK.md` (parte 2 de 4).
+
+- **Cambiar la dirección web** (F16; PLAN-SAAS §1.1, ronda 2026-10-15b): `hubs.business.change_address`
+  (`POST /api/hubs/businesses/address`, solo el propietario, `can.change_address`), validada como la valida el Hub
+  (`live.slugs`). Sube `registry_version` (el Hub la registra con `PUT /internal/hubs/{id}`) y `state_version` (la
+  foto lleva el `slug`), y `sync_access(hub, previous_slug=…)` mueve el espejo del salto. La dirección que deja queda
+  en `Hub.previous_slug` (migración `0015`): `queries.slug_taken`/`free_slug` la dan por cogida para los demás, así
+  que nadie recibe los enlaces y QR viejos; se libera cuando la dirección vuelve a cambiar. Evento
+  `hubs.business.address_changed`. Panel: «Cambiar dirección» en Ajustes (`AddressDialog.vue`).
+- **Suspendidos por impago** (F20; PLAN-SAAS §1.1, «dentro de `sweep_unpaid`»): `Hub.suspended_at`,
+  `suspension_warned_at`, `suspension_final_notice_at` (migración `0016`). `_apply_standing` fecha la suspensión y la
+  olvida al pagar. `services.age_suspended()` (lo llama `billing.services.sweep_unpaid`, cada hora; sus cuentas
+  `warned`, `final_notice`, `expired`, `undated` se suman a las de la pasada) corre por negocio la operación de
+  sistema `hubs.business.age_suspension`: aviso a los 30 días, último a los 150 (`emails.send_suspension_notice`, al
+  propietario, solo marcado si el correo salió) y, con el último enviado, la baja a los 180 por `_delete_business`,
+  el mismo camino que `hubs.business.delete` (90 días para recuperarlo). Una suspensión sin fecha no se borra: log
+  `hubs.suspension.undated`.
+- **Admin** (F23): las acciones de plataforma llevan `@traced`, que deja en el historial del admin de cada fila
+  quién ejecutó qué («Ran «…»» / «Ejecutó «…»»).
+- **Eliminar** (F18): el texto ya no promete el enlace de descarga de los datos, que el correo no lleva: llega con
+  el export por negocio de la fase 2 (PLAN-DB «Exports»).
+- **Dominio propio** (F17): no se porta en la fase 1; decisión de mercado y ronda propuesta en la PR de APP-HUBS-2.
+
 ## Pendiente (lotes siguientes)
 
 - **Retirar `accounts.HubMembership`**, en este orden: (1) el salto pasa a `hubs` (`/hub-login/`,

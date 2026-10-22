@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:899c55989f4e4c68dfa287c876e89b0d83f6429728cbd0bb8f274195b0f4911d -->
+<!-- generated from WORKBOOK.md sha256:a3b267ae646b66120f0e9581f3d9da9092570498149e44b928443449e19c1f88 -->
 
 ## What it is for and who it is for
 
@@ -16,8 +16,10 @@ afterwards.
 Who uses it:
 
 - **Anyone with an account** creates their business and enters the businesses they are a member of.
-- **The owner** sees the list of their businesses, recovers a deleted one and changes its plan.
-- **ERPlora's staff** keep the plans from the admin.
+- **The owner** sees the list of their businesses, changes its web address, deletes it, recovers a deleted one and
+  changes its plan; with the **administrators**, they change its name, its language and its time zone.
+- **ERPlora's staff** keep the plans from the admin and, from there, send a business again what it did not
+  receive.
 
 ## Reference adopted
 
@@ -30,6 +32,12 @@ Who uses it:
   where to work (https://www.odoo.com/documentation/18.0/applications/general/users.html).
 - **Stripe**: the plans and their prices are kept by the staff in a panel of their own, with the name and the
   description in each language of sale (https://docs.stripe.com/products-prices/manage-prices).
+- **Slack, Squarespace and Odoo**: the owner changes the space's own address in its settings; the old one stops
+  serving (https://slack.com/help/articles/201719807).
+- **Shopify, Square Online, Toast, Lightspeed, Odoo, Fresha and Vagaro**: the own domain is connected to the shop's
+  public website, not to the point of sale, on paid plans and with the certificate set up by itself
+  (https://squareup.com/help/article/6916, https://support.toasttab.com/en/article/Toast-Online-Ordering-Pro-Domains,
+  https://www.fresha.com/help-center/knowledge-base/online-presence/109902-manage-your-domains).
 
 ## Before you start
 
@@ -68,6 +76,15 @@ your devices" card with the business's web address, "Copy address" and the apps 
 The page the address of a business still being prepared shows: "Your business is being prepared" and "It takes a
 few seconds. This page refreshes by itself.".
 
+### Business settings
+Each business's "Settings" tab. "General": "Business name", "Country" (only text once ready), "Time zone",
+"Business language" and "Web address" with its copy button and, for the owner, "Change address"; "Save changes"
+is enabled when something changes. Below, the "Danger zone" with "Delete business".
+
+### Change the web address
+The dialog of "Change address": "New address", under it "Your business will open at:" with the address it will
+give and what happens next; "Change address" is enabled when it differs from the current one.
+
 ### admin › Businesses › Plans
 Each plan's form for the staff: the texts in English and in Spanish, the price, what it includes, its limits and
 its Stripe prices.
@@ -101,6 +118,15 @@ its Stripe prices.
 | HUBS-F12 | Choose the business in the installed app | done |
 | HUBS-F13 | Open the business on another device | done |
 | HUBS-F14 | See the businesses through the API | done |
+| HUBS-F15 | Change the name, the language and the time zone of the business | done |
+| HUBS-F16 | Change the web address of the business | done |
+| HUBS-F17 | Connect an own domain to the business's website | partial |
+| HUBS-F18 | Delete a business | partial |
+| HUBS-F19 | Recover a deleted business | done |
+| HUBS-F20 | Warn and close a business suspended for an unpaid plan | partial |
+| HUBS-F21 | See the status and the usage of a business | partial |
+| HUBS-F22 | Collect every night the usage of each business | partial |
+| HUBS-F23 | ERPlora's staff acting on a business from the admin | done |
 
 ### HUBS-F01 Create the free business with a single question
 Status: done
@@ -286,3 +312,121 @@ In: the account's session or API key.
 Out: the same data the panel shows; nothing is saved.
 If it fails: without a session or a key, the request is refused; a key without permission to read Businesses too; a business of another account is not found. Keys only read: creating or changing a business needs the session.
 Involved: accounts (the API keys)
+
+### HUBS-F15 Change the name, the language and the time zone of the business
+Status: done
+Actor: owner, administrator
+Screen: Business settings
+Steps:
+1. On the business's page, open "Settings": "General" shows the business as it is.
+2. Change the "Business name", the "Time zone" or the "Business language" (the "Country" only changes while the business is being prepared) and press "Save changes": "Changes saved" appears.
+3. The business receives the new name for its screen and its receipts, without anybody doing anything else.
+In: the name, the language and the time zone; the account's session.
+Out: the business with what changed, only what changed, and the business told after saving. Records `hubs.business.updated`.
+If it fails: an empty name is not saved and the field says so; another country on a business already ready, "The country cannot change once the business is ready: its invoices belong to one country.". A manager or an employee do not change it, and a deleted business neither. Without a connection to the business, the change stays saved and is sent to it again (HUBS-F08). The postal address and the receipts' data are changed inside the business.
+Involved: the business (receives the name, the language and the time zone)
+
+### HUBS-F16 Change the web address of the business
+Status: done
+Actor: owner
+Screen: Business settings › Change the web address
+Steps:
+1. In "Settings", next to the "Web address", the owner presses "Change address".
+2. They type the "New address"; under it, "Your business will open at:" with the address it will give, and the dialog says what happens: "Your devices and erplora.com take you to the new address.", "The old address stops opening the business: links and QR codes with it stop working." and "Nobody else can take the old address while it is the last one you had.".
+3. They press "Change address": "The business now opens at …" appears and the page shows the new one.
+In: the new address; the owner's session.
+Out: the business at its new address, which the business receives as soon as it is saved, and the way in from erplora.com and from the installed app towards it; the old one stays reserved for it. Records `hubs.business.address_changed`.
+If it fails: a reserved address, "This address is reserved. Choose another one."; one another business has, "This address is taken. Choose another one."; one with capitals, spaces or hyphens at the start or the end, the error on the field. The same address changes nothing. Only the owner changes it; a deleted business does not.
+Involved: the business (receives its new address), accounts (the way in at the new address)
+
+### HUBS-F17 Connect an own domain to the business's website
+Status: partial — not in phase 1: the own domain stays (as in the market's shops) only for the business's public website and on the plans that include it, and comes with its three pieces at once; today there is none: the check of the domain in erplora.com, its certificate at ERPlora's entrance and the business serving its website on that domain. Until then the panel does not show it.
+Actor: owner
+Screen: Business settings
+Steps:
+1. In "Settings", the owner of a business on a plan that includes an own domain types theirs (for example, the business's website on its domain) and erplora.com shows the record to create at their domain provider.
+2. When the record points right, erplora.com checks it, asks for the certificate and, once set, the domain is active: the business's public website opens on it.
+3. Every hour it looks again; if it stops pointing right three times in a row, it tells the owner and stops serving it until it comes back.
+4. To remove it, they remove it from the settings and confirm it.
+In: the owner's domain and their provider's record.
+Out: the business's public website on its domain, with its certificate.
+If it fails: a domain that does not point to ERPlora stays inactive and the missing record is said; a plan that does not include it does not offer it. The app and the way into the business stay at its erplora.com address.
+Involved: website (the business's public website), the business (serves the website on its domain)
+
+### HUBS-F18 Delete a business
+Status: partial — the deletion email does not carry the link to download the business's data yet: that copy comes with each business's own database (phase 2); until then the email and the panel say until when it can be recovered.
+Actor: owner, integration
+Screen: Business settings › Danger zone
+Steps:
+1. In "Settings", in the "Danger zone", the owner presses "Delete business"; the dialog "Delete …" says "It stops working right now for everyone. You can recover it for 90 days; after that it is erased for good." and "Its plan is cancelled now: if you recover it, it comes back on Free.".
+2. They type the business's name in "Type the name of the business to confirm" and press "Delete business": "Business deleted: …. You can recover it until ….".
+3. The page says "It will be erased for good on …" with "Recover business", and the owner gets the email with that date.
+4. An integration with the account's session does the same, with the name typed; an API key does not delete.
+In: the name typed again; the owner's session.
+Out: the business deleted, which stops opening at once for everyone and is erased for good after 90 days; its plan goes back to Free and what Stripe was charging is cancelled in the next pass; the business receives the deletion after saving. Records `hubs.business.deleted`.
+If it fails: a name that does not match deletes nothing (case and spaces around do not matter); deleting it twice, "This business was deleted.". Only the owner deletes it. To stop paying without deleting it, the plan is cancelled from Billing (BILLING-F13).
+Involved: billing (cancels what was being charged), the business (stops opening and keeps it 90 days)
+
+### HUBS-F19 Recover a deleted business
+Status: done
+Actor: owner
+Screen: Businesses, Business summary
+Steps:
+1. In **Businesses** (the row says until when it can be recovered) or on the deleted business's page, the owner presses "Recover business".
+2. "Business recovered: …" appears and the business opens again as it was, on the Free plan; to go back to a paid plan, it is changed in the Store (BILLING-F08).
+In: the business deleted less than 90 days ago; the owner's session.
+Out: the business active again (or being prepared, if it never got ready), on Free, and the business told after saving. Records `hubs.business.restored`.
+If it fails: after the 90 days, "This business was erased for good and cannot be recovered."; a business that is not deleted, "This business is not deleted.". If the account already has its free business, it does not come back: first the other one moves to a paid plan. Only the owner recovers it.
+Involved: the business (opens it again)
+
+### HUBS-F20 Warn and close a business suspended for an unpaid plan
+Status: partial — the deletion of day 180 is HUBS-F18's and does not carry the link to download the data yet either (it comes with each business's own database, phase 2).
+Actor: system
+Screen: none
+Steps:
+1. A business whose plan could not be charged is suspended after its days of grace, and whoever pays gets the suspension email (BILLING-F16): from that moment its countdown runs.
+2. Every hour, erplora.com looks at the suspended businesses. At 30 days, the owner gets "… is still suspended" with the date it will be deleted if it is not paid and the way to pay it; at 150, "Last notice: … will be deleted on …". Each notice goes out only once.
+3. At 180 days, already warned for the last time, the business is deleted as its owner deletes it (HUBS-F18): 90 more days to recover it, on Free, and the deletion email, which says why.
+4. If the invoice is paid meanwhile, the business works again at once and the countdown is forgotten with its notices.
+In: the businesses suspended for an unpaid plan and the date they were suspended.
+Out: the two notices to the owner and, at the end, the business deleted. Records `hubs.business.deleted`.
+If it fails: a notice that could not leave is sent again on the next pass, and without it nothing is deleted; a business that fails does not stop the others and the pass ends with an error; a suspended business without a date is never deleted and is noted for a person to look at.
+Involved: billing (suspends, tells of the suspension and runs the pass), the business (stops opening)
+
+### HUBS-F21 See the status and the usage of a business
+Status: partial — the business does not measure its usage every night yet (HUBS-F22), so on a real business the "Usage" card says "No data yet. The figures arrive every night, from the first one after the business is created."; the status, the plan and the seats are already the real ones.
+Actor: owner, administrator
+Screen: Business summary
+Steps:
+1. On the business's page, the header says its status ("Active", "Preparing", "Payment due", "Suspended" or deleted) and the Summary, its plan with the devices and the people against the seats.
+2. The "Usage" card ("How your business is doing in ERPlora") shows the "Storage" used of its plan's space, with a warning when it nears the limit, and the people "Active yesterday" and over the "Last 30 days", with "Yesterday's data: updated every night.".
+In: the business and what it measured last night.
+Out: nothing is saved; the page changes by itself when a new night arrives.
+If it fails: without any night measured, "No data yet. The figures arrive every night, from the first one after the business is created."; with data of a day before yesterday, "Data from …: updated every night.". A manager or an employee do not see the business's page, only "Open".
+Involved: the business (measures its usage)
+
+### HUBS-F22 Collect every night the usage of each business
+Status: partial — erplora.com already asks for it every night, but the businesses' service does not serve its measurement yet; until it does, the pass ends with an error and nothing is saved.
+Actor: system
+Screen: none
+Steps:
+1. Every night, erplora.com asks the businesses' service what it measured of each one the day before: the space of its files, that of its database and the people who came in that day and over the last 30.
+2. It keeps one day per business; if it collects a day already kept again, it replaces the figures only if they changed, and tells that business's page.
+3. A day that was missed is collected later, asking for it by its date.
+In: the night's measurement, page by page.
+Out: the usage of each business and day. Records `hubs.business.usage_collected`.
+If it fails: if the service does not answer or refuses, the pass ends with an error and alerts; a broken row does not stop the others; a business erplora.com did not sell is noted without an error. Two passes at once do not step on each other.
+Involved: the business (measures its usage)
+
+### HUBS-F23 ERPlora's staff acting on a business from the admin
+Status: done
+Actor: ERPlora's staff
+Screen: admin › Businesses
+Steps:
+1. The staff enter erplora.com's admin and look for the business by its address or its name; they see its record with its members, its plan, who pays, its usage and what the business still has to receive.
+2. They choose the business and an action: "Send the latest state to the Hub", "Retry what the Hub still owes" or, in the record of the session ends, "End the sessions in the Hub now"; the admin says how many are up to date and how many are still owed.
+3. Each action stays in that business's history: who did it, when and which.
+In: the staff account with its second factor.
+Out: what the action sends to the business and the line of the history.
+If it fails: the admin does not create, change or delete businesses, members or paid plans: only their own screens do, so nobody of the staff makes themselves owner of a business or deletes it without its deletion. Support staff see everything and run no action. For the data inside the business there is the businesses' admin (in the businesses' service).
+Involved: the business (receives what is sent again), accounts (the staff account)
