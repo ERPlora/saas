@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:7f489209861355bf0621734c77ba595237a3fb9f4130530fa869faf9c22dd560 -->
+<!-- generated from WORKBOOK.md sha256:84f99869a1f4fe717842bc46b285adffdbec6f5ae97b4d51c4d2ec912735332c -->
 
 ## What it is for and who it is for
 
@@ -51,12 +51,16 @@ Who uses it:
   https://developer.chrome.com/docs/android/custom-tabs).
 - **Shopify App Store and Odoo Apps**: the store by sections with search, and each app's page with what it needs
   and its documentation (https://apps.shopify.com, https://apps.odoo.com).
+- **Odoo and Dolibarr**: a real demo, with no account and no card, that opens in the browser, lasts a limited time and
+  is deleted with everything inside it; whoever wants to keep their work creates their own account
+  (https://demo.odoo.com, https://www.dolibarr.org/onlinedemo).
 
 ## Before you start
 
 - The web is served from erplora.com; in development, from the SaaS's port 8001.
 - The industries come from the taxonomy seeded on every deploy; without it, the list of industries says they are
   still being configured.
+- The hub creates the demo: without the hub running, the demo screen says it is not available.
 
 ## Screens
 
@@ -115,13 +119,18 @@ one, "Documentation".
 ### Downloads and The ERPlora app
 "Two free ways to try ERPlora." with the cloud hub and the counter app per platform, and the installed app's page.
 
+### Demo
+"Try ERPlora without signing up." with a card that changes with the moment: what the demo brings and "Try the demo";
+the running demo, how long it has left and "Back to my demo"; or why it cannot be had now (switched off, full, too
+many from the connection, not available, ended) with what can be done. There is always a way to "Start free".
+
 ## States of each screen
 
 | State | What the person sees |
 |---|---|
 | Loading | The pages arrive whole from the server: no skeleton and no wait. |
 | Empty | Without plans on sale, Plans and prices says there are none and paints no tables, and the home leaves out the plans block; without published apps, the home leaves out the apps blocks; without industries, "No business types yet". |
-| Error | An address that does not exist shows "Page not found" with the web's menu; a server failure, "Something went wrong on our side", without depending on the database. |
+| Error | An address that does not exist shows "Page not found" with the web's menu; a server failure, "Something went wrong on our side", without depending on the database. The demo says on its own screen why it cannot be had now and what to do (PUBLIC-F29 to PUBLIC-F33). |
 | No permission | Does not apply: everything is public. The private pages are not in the sitemap and cannot be crawled. |
 
 ## Flows
@@ -154,6 +163,17 @@ one, "Documentation".
 | PUBLIC-F24 | Get the installed app | done |
 | PUBLIC-F25 | Know which version of the app is published | done |
 | PUBLIC-F26 | Open a public page from the installed app | done |
+| PUBLIC-F27 | Reach the demo | done |
+| PUBLIC-F28 | Create the demo and go into it | done |
+| PUBLIC-F29 | A demo that could not be opened | done |
+| PUBLIC-F30 | The demo is switched off | done |
+| PUBLIC-F31 | Every demo is taken | done |
+| PUBLIC-F32 | Limit of demos per connection | done |
+| PUBLIC-F33 | The demo ended | done |
+| PUBLIC-F34 | Retire the demos that run out | partial |
+| PUBLIC-F35 | From the demo to a real account | done |
+| PUBLIC-F36 | Ask for a demo from another application | discarded |
+| PUBLIC-F37 | The demo does not count as a business | done |
 
 ### PUBLIC-F01 See the home page
 Status: done
@@ -492,3 +512,145 @@ In: which part of the app opens it.
 Out: the app mark in that window's session.
 If it fails: inside the app the cookie notice does not show and no measurement loads, even if they were accepted on the web; a mark the web does not know is treated as the web.
 Involved: hubs (the app's sign-in), accounts (the email check)
+
+### PUBLIC-F27 Reach the demo
+Status: done
+Actor: visitor
+Screen: Demo
+Steps:
+1. The person presses "Try the demo" on the home page (at the top or in the final call) or in the menu of someone who has not signed in, or opens the demo link they were given: the usual address and the short one open the same screen.
+2. They see "Try ERPlora without signing up." and the card "Your own demo hub", with "No account and no card", "A real hub in your browser, nothing to install" and "It ends by itself after 60 minutes".
+3. Below are the "Try the demo" button and "Want to keep what you do? Start free: it takes the same minute.".
+In: nothing.
+Out: nothing saved: opening the screen creates no demo, whether a person, a search engine or a reload opens it.
+If it fails: if that browser already has a running demo, the screen offers no other: it says "Your demo is running", how long it has left and "Back to my demo" (PUBLIC-F28).
+Involved: none
+
+### PUBLIC-F28 Create the demo and go into it
+Status: done
+Actor: visitor, system
+Screen: Demo
+Steps:
+1. The person presses "Try the demo".
+2. An empty hub is created for that browser, with its own random address starting with "demo-", and it lasts 60 minutes from that moment. It is ready at once: there is no wait.
+3. The screen says "Opening your demo…" and the browser goes into the demo by itself, as the user "Demo", with no account, password or PIN; without JavaScript, the "Continue" button does the same.
+4. If they come back to the demo screen while it lasts, they see "Your demo is running", "It ends in 12 minutes." (whatever is left) and "Back to my demo", which takes them back to the same demo.
+5. Pressing again, reloading or opening another tab of the same browser gives back the same demo, and signing in to their erplora.com account afterwards does not lose it.
+In: the visitor's language, which the demo opens in.
+Out: an empty demo hub with its user "Demo", and in that browser which demo is its own and when it ends.
+If it fails: only the browser that asked for it gets in: a demo's link opened in another browser goes back to the demo screen, which offers it one of its own. If the demo cannot be created or opened: PUBLIC-F29, PUBLIC-F31 and PUBLIC-F32.
+Involved: the Hub (its registry of hubs creates the demo and opens its session)
+
+### PUBLIC-F29 A demo that could not be opened
+Status: done
+Actor: visitor
+Screen: Demo
+Steps:
+1. If the hub does not answer or refuses the request, the person comes back to the demo screen and sees "The demo is not available right now." with "Try again".
+2. If the demo was created but going in did not work, they see "We could not open your demo. Try again." and "Back to my demo", which takes them to the same demo while it lasts.
+3. In both cases they also have "Start free".
+In: nothing.
+Out: nothing: a failed try does not stay as that browser's demo, so "Try again" asks for it again.
+If it fails: the failure stays in the service's log; the person only sees the message, never a technical error.
+Involved: the Hub (its registry of hubs)
+
+### PUBLIC-F30 The demo is switched off
+Status: done
+Actor: visitor, system
+Screen: Demo
+Steps:
+1. With the demo switched off, whoever opens the demo screen sees "The demo is closed for now. You can start free instead: it takes a minute.".
+2. There is only one button, "Start free".
+3. Switching it off closes every door at once: pressing the button of a screen opened before, or going back into a demo, creates or opens nothing and leads to this screen.
+In: the demo's switch, which the team sets in the deployment.
+Out: nothing.
+If it fails: switching it off tears nothing down: whoever is already inside their demo carries on until it ends.
+Involved: none
+
+### PUBLIC-F31 Every demo is taken
+Status: done
+Actor: visitor
+Screen: Demo
+Steps:
+1. When as many demos are running as the platform admits, the person sees "The demo is full right now. Try again in a few minutes.".
+2. They have "Try again" and "Want to keep what you do? Start free: it takes the same minute.".
+In: how many demos are running.
+Out: nothing: the try spends no place.
+If it fails: places free up as the demos end (PUBLIC-F34).
+Involved: the Hub (its registry of hubs counts the running demos)
+
+### PUBLIC-F32 Limit of demos per connection
+Status: done
+Actor: visitor, system
+Screen: Demo
+Steps:
+1. Every new demo asked for from one connection counts: at most 3 an hour, far below the platform's total, so that nobody can leave the demo full for everyone else.
+2. Whoever already has a running demo spends nothing: pressing again, reloading or another tab give them back theirs.
+3. Past the limit, the person sees "Too many demos from your network. Please try again in a little while." and only "Start free", with no button to try again.
+In: the connection it is asked from.
+Out: the count of demos of that connection during the hour.
+If it fails: the demos they already started stay theirs until they end.
+Involved: none
+
+### PUBLIC-F33 The demo ended
+Status: done
+Actor: visitor
+Screen: Demo
+Steps:
+1. Whoever comes back to the demo screen when theirs has ended sees, once, "This demo has ended. Start another one.".
+2. Whoever goes to the address of an ended demo sees "This demo has ended" with "Create another demo", which brings them to this same screen.
+3. The screen does not start by itself: "Start another demo" asks for a new one (with the demo switched off it creates nothing, PUBLIC-F30), and "Start free" leads to sign-up.
+In: when that browser's demo ends.
+Out: the browser forgets its ended demo: the next visit sees the usual screen.
+If it fails: a demo may end before its hour (the team retires it); "Back to my demo" finds it out and brings them here.
+Involved: the Hub (the page of the ended demo)
+
+### PUBLIC-F34 Retire the demos that run out
+Status: partial — what the person created inside the demo is not deleted when it is retired: until phase 2 the demos share the apps' data with the others (round 2026-10-17, PLAN-SAAS §3.5 and PLAN-DB §6); each demo's own database, deleted with it, comes with the tenancy
+Actor: system
+Screen: none
+Steps:
+1. As soon as its hour has passed, the demo's address answers "This demo has ended", even if nobody has retired it yet.
+2. Every minute, the hub retires the demos that ran out: it deletes their entry codes, their user "Demo" and their access, and marks them retired; a failure in one does not stop the others.
+3. After a few days, the retired address stops existing altogether.
+In: the demos whose hour has passed.
+Out: the retired demo, with no user and no way in.
+If it fails: if retiring one fails, it is tried again on the next round; meanwhile its address already says it has ended.
+Involved: the Hub (its registry of hubs and its background process)
+
+### PUBLIC-F35 From the demo to a real account
+Status: done
+Actor: visitor
+Screen: Demo
+Steps:
+1. In any state of the demo screen the person has "Start free".
+2. They reach the same erplora.com entrance as the other "Start free" buttons (PUBLIC-F11), where the account and its business are created like anybody's.
+In: nothing.
+Out: nothing of the demo goes to the account: the business is born empty, as the screen warns: "The demo hub is yours for 60 minutes; no account, no card. Everything you type disappears when it ends.".
+If it fails: their demo keeps running until it ends, even once they have an account.
+Involved: accounts (the entrance), hubs (the business sign-up)
+
+### PUBLIC-F36 Ask for a demo from another application
+Status: discarded — today's demo is created and opened in the same browser that asks for it, with a one-time code tied to it, so a door without a screen could not open it; no ERPlora application called it, and round 2026-10-17 (PLAN-SAAS §3.5) left the screen as the only door
+Actor: system
+Screen: none
+Steps:
+1. Whoever wants a demo asks for it from the demo screen (PUBLIC-F28).
+2. The refusals show on that screen (PUBLIC-F29 to PUBLIC-F32).
+In: nothing.
+Out: nothing.
+If it fails: does not apply.
+Involved: none
+
+### PUBLIC-F37 The demo does not count as a business
+Status: done
+Actor: system
+Screen: none
+Steps:
+1. A demo is nobody's business: erplora.com keeps none, so it does not show in the list of businesses, nor in the plans, billing, invoices or usage.
+2. Its address prefix, "demo-", is reserved: no customer may call their business that, and a name such as "Demo Bar" proposes "demobar".
+3. A demo never connects to the real tax agency.
+In: nothing.
+Out: nothing.
+If it fails: choosing by hand an address that starts with "demo-" is refused with "This address is reserved. Choose another one.".
+Involved: hubs (the business's address), the Hub (VERIFACTU, the demo always in testing)
