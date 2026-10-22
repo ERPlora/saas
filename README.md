@@ -189,10 +189,25 @@ los registros de login para que no intenten sin parar». Vuelve reCAPTCHA, que A
   `accounts/frontend/recaptcha.ts`) y lo manda en `recaptcha_token`. El servidor pregunta a Google con
   `live.recaptcha.verify_or_raise` antes de hacer nada: las puertas de allauth.headless en
   `accounts/bot_check.py` (400 `recaptcha_failed` en el sobre de allauth), contacto en `public/landing.py` y la demo
-  en `public/demo.py` (`?state=unverified`). Se rechaza sin token, con un token no válido o de otro formulario, con
-  puntuación por debajo de `RECAPTCHA_MIN_SCORE` y con Google caído (falla cerrado; queda en el registro). Quien
-  bloquea Google con una extensión no puede enviar estos formularios: ve «No hemos podido comprobar que eres una
-  persona. Vuelve a intentarlo.».
+  en `public/demo.py` (`?state=unverified`). Se rechaza sin token, con un token no válido o de otro formulario y con
+  puntuación por debajo de `RECAPTCHA_MIN_SCORE`. Quien bloquea Google con una extensión no puede enviar estos
+  formularios: ve «No hemos podido comprobar que eres una persona. Vuelve a intentarlo.».
+- **Si no se puede preguntar a Google** (tiempo agotado, red, 5xx o respuesta ilegible; un 4xx también): falla
+  cerrado en todos los formularios **salvo** la entrada (`login`) y sus segundos factores (`login_code`,
+  `mfa_authenticate`), que ya protegen la contraseña o el código y sus límites: pasan, con un ERROR
+  `recaptcha.unavailable` (o CRITICAL `recaptcha.misconfigured` si Google contestó 4xx) y una cuenta por acción, para
+  que una caída de Google no deje fuera a nadie, tampoco al personal (`fail_open_on_unavailable` de
+  `live.recaptcha`). Un veredicto de Google (token no válido, de otra acción o puntuación baja) sigue rechazando ahí,
+  y sin token tampoco se entra: si el navegador no puede cargar el script de Google, no hay token que mandar.
+- **Runbook: salta `recaptcha.unavailable` o `recaptcha.misconfigured`** (CloudWatch, el registro de las tareas
+  `saas*`; mientras dure, el alta, la contraseña olvidada, los códigos del correo, el contacto y la demo rechazan a
+  todos). 1) `misconfigured` (4xx): la clave de la API (que exista, que esté restringida a «reCAPTCHA Enterprise API»
+  y no a otra cosa), la facturación y la cuota del proyecto `erplora` en Google Cloud; con la clave mala o borrada,
+  rotarla (abajo). 2) `unavailable` (tiempo, red, 5xx): el estado de Google Cloud (status.cloud.google.com,
+  «reCAPTCHA Enterprise») y la salida a Internet de las tareas (NAT, grupos de seguridad); si es Google, esperar:
+  la entrada sigue abierta. 3) Si el registro dice `let_through=True` durante mucho rato, la entrada funciona solo
+  con contraseña, código y límites: vigilar `too_many_login_attempts` en el mismo registro. Nada de esto pide
+  desplegar código.
 - **Aviso**: la insignia de Google va oculta (`.grecaptcha-badge`), y por eso cada formulario lleva debajo «Este
   sitio está protegido por reCAPTCHA y se aplican la Política de Privacidad y las Condiciones del Servicio de
   Google.» (en + es), como pide Google.
@@ -222,8 +237,8 @@ los registros de login para que no intenten sin parar». Vuelve reCAPTCHA, que A
   `public.client_ip`, y por cuenta, en la caché compartida): 30 entradas por minuto por dirección; 5 contraseñas
   equivocadas en 5 minutos por dirección y por cuenta (la buena devuelve su intento); 10 altas por hora por
   dirección; 10 enlaces de restablecer por hora por dirección y 5 por cuenta; 20 envíos por minuto del formulario
-  del enlace; un código nuevo cada 10 s; y 10 códigos tecleados en 5 minutos por dirección
-  (`code_attempts`, `accounts/bot_check.py`; además de los 3 intentos de cada código). El contacto (10 por hora) y
+  del enlace; un código nuevo cada 10 s; y 10 códigos rechazados en 5 minutos por dirección (uno bueno no gasta:
+  `code_attempts`, `accounts/bot_check.py`; además de los 3 intentos de cada código). El contacto (10 por hora) y
   la demo (3 demos nuevas por hora) siguen con su límite por dirección, que va antes que reCAPTCHA: lo frenado no
   gasta evaluaciones. Solo el Django del panel de la e2e sube los límites por dirección de la entrada
   (`E2E_RELAX_LOGIN_RATE_LIMIT`: todas sus specs entran desde `127.0.0.1`); producción no arranca con él.

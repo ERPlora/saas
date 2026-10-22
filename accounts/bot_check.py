@@ -9,10 +9,11 @@ envelope, 400 ``recaptcha_failed`` with one message for the whole form (no ``par
 paints it as any refusal of allauth's. Reads (GET) and every other door (the session, the account's own pages behind
 a session) go through untouched.
 
-The doors that take a code (the mailed ones and the authenticator app's) also count the tries of each address:
-``code_attempts`` of ``ACCOUNT_RATE_LIMITS`` (allauth's limiter, on the shared cache), 429 past it, before Google is
-asked. allauth already gives each mailed code 3 tries; this stops one address from starting sign-in after sign-in to
-try codes without end.
+The doors that take a code (the mailed ones and the authenticator app's) also count the refused codes of each
+address: ``code_attempts`` of ``ACCOUNT_RATE_LIMITS`` (allauth's limiter, on the shared cache). Past it, 429 before
+Google is asked; a code is counted once allauth refuses it (400, or 409 when no code waits), never a right one, so
+the people of one office signing in again and again never use up a guesser's budget. allauth already gives each
+mailed code 3 tries; this stops one address from starting sign-in after sign-in to try codes without end.
 
 A ``process_view`` after ``CsrfViewMiddleware``: a request that fails the CSRF check never costs an assessment. The
 2FA door answers 404 while ``ACCOUNTS_MFA_ENABLED`` is off (``accounts.mfa``) before this runs. «Continue with Google»
@@ -50,6 +51,10 @@ CODE_DOORS = frozenset(
 )
 #: The action of ``ACCOUNT_RATE_LIMITS`` that counts them.
 CODE_ATTEMPTS = "code_attempts"
+#: allauth's answers to a refused code: a wrong one (400) or none waiting (409).
+REFUSED_CODE_STATUSES = frozenset({400, 409})
+#: Set on a request to a code door, so its answer is counted (``process_response``).
+_COUNT_CODE = "_bot_check_count_code"
 
 #: Where the token travels in the JSON body.
 TOKEN_FIELD = "recaptcha_token"
@@ -70,17 +75,26 @@ def allauth_error(status: int, code: str, message: str) -> JsonResponse:
 
 
 class BotCheckMiddleware(MiddlewareMixin):
-    """After ``CsrfViewMiddleware``: the code tries per address, then reCAPTCHA's verdict, before allauth.headless's
+    """After ``CsrfViewMiddleware``: the refused codes per address, then reCAPTCHA's verdict, before allauth.headless's
     public doors (POST)."""
 
     def process_view(self, request: HttpRequest, view_func, view_args, view_kwargs):
         action = RECAPTCHA_DOORS.get(request.path_info)
         if action is None or request.method != "POST":
             return None
-        if request.path_info in CODE_DOORS and not ratelimit.consume(request, action=CODE_ATTEMPTS):
-            return allauth_error(429, "too_many_requests", gettext("Too many attempts. Please try again in a few minutes."))
+        if request.path_info in CODE_DOORS:
+            if not ratelimit.consume(request, action=CODE_ATTEMPTS, dry_run=True):
+                return allauth_error(
+                    429, "too_many_requests", gettext("Too many attempts. Please try again in a few minutes.")
+                )
+            setattr(request, _COUNT_CODE, True)
         try:
             verify_or_raise(request, _token(request), action)
         except RecaptchaFailed as refused:
             return allauth_error(refused.status, refused.code, refused.message)
         return None
+
+    def process_response(self, request: HttpRequest, response):
+        if getattr(request, _COUNT_CODE, False) and response.status_code in REFUSED_CODE_STATUSES:
+            ratelimit.consume(request, action=CODE_ATTEMPTS)
+        return response

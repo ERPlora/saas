@@ -116,13 +116,14 @@ class FakeGoogleRecaptcha:
     """Google's reCAPTCHA assessments, played in the tests (``live.recaptcha.urlopen``).
 
     A token reads ``human:<action>`` (valid, made for ``<action>``, score 0.9) or ``bot:<action>`` (valid, score
-    0.1); anything else is malformed. ``down = True`` makes Google unreachable. ``asked`` keeps each
-    ``(token, expectedAction)`` it was asked about.
+    0.1); anything else is malformed. ``down = True`` makes Google unreachable, ``refusing = <4xx>`` makes it refuse
+    the key (a bad key, the quota, the billing). ``asked`` keeps each ``(token, expectedAction)`` it was asked about.
     """
 
     def __init__(self):
         self.asked: list[tuple[str, str]] = []
         self.down = False
+        self.refusing: int | None = None
 
     def __call__(self, request, timeout=None):
         import io
@@ -132,6 +133,8 @@ class FakeGoogleRecaptcha:
         self.asked.append((event["token"], event["expectedAction"]))
         if self.down:
             raise urllib.error.URLError("unreachable")
+        if self.refusing:
+            raise urllib.error.HTTPError(request.full_url, self.refusing, "Client Error", {}, io.BytesIO(b"{}"))
         kind, _, action = event["token"].partition(":")
         if kind not in ("human", "bot"):
             answer = {"tokenProperties": {"valid": False, "invalidReason": "MALFORMED"}, "riskAnalysis": {"score": 0.0}}

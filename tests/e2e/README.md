@@ -58,7 +58,7 @@ gemelo con el segundo factor, `+8` el doble de reCAPTCHA y `+9` el Hub de las sp
   dirección de la entrada (`E2E_RELAX_LOGIN_RATE_LIMIT=True`, `config/settings.py`): cada spec entra desde
   `127.0.0.1` con contraseña y código, y una spec repetida (`--repeat-each=6`) pasaba de los 30 por minuto (429 en
   el login); desde 2026-10-22 también las contraseñas falladas (5 en 5 minutos por dirección) y los códigos
-  tecleados (10 en 5 minutos por dirección, `code_attempts`). Cada cuenta conserva su límite (5 contraseñas
+  rechazados (10 en 5 minutos por dirección, `code_attempts`). Cada cuenta conserva su límite (5 contraseñas
   falladas en 5 minutos), y el alta, los enlaces de restablecer y «Enviar un código nuevo» los suyos; el servidor
   de desarrollo también (no depende de `DEBUG`), y sin `DEBUG` (producción) el Django se niega a arrancar con
   ella.

@@ -97,13 +97,49 @@ def test_a_malformed_token_is_refused(recaptcha, path, action, body):
     assert _refused(_post(path, body, token="forged"))
 
 
-def test_google_down_refuses_the_form(recaptcha, verified):
-    recaptcha.down = True
+# Google unavailable (live.recaptcha, `fail_open_on_unavailable`): the sign-in and its second factors go on to allauth,
+# whose password, code and attempt limits stand (break-glass: a Google outage never locks everyone out, the staff
+# included); every other door stays closed.
+
+
+@pytest.mark.parametrize("failure", ["down", 403], ids=["unreachable", "misconfigured-403"])
+def test_google_unavailable_lets_the_sign_in_go_on_to_the_password(recaptcha, verified, failure):
+    if failure == "down":
+        recaptcha.down = True
+    else:
+        recaptcha.refusing = failure
 
     response = _post(f"{BROWSER}/auth/login", {"email": verified.email, "password": PASSWORD}, token="human:login")
 
-    assert _refused(response)
+    assert (response.status_code, _pending(response)) == (401, ["login_by_code"])
+    assert len(mail.outbox) == 1
+
+
+def test_google_unavailable_still_checks_the_password(recaptcha, verified):
+    recaptcha.down = True
+
+    response = _post(f"{BROWSER}/auth/login", {"email": verified.email, "password": "a guess"}, token="human:login")
+
+    assert [error["code"] for error in response.json()["errors"]] == ["email_password_mismatch"]
+
+
+@pytest.mark.parametrize(
+    ("path", "action", "body"),
+    [door for door in DOORS if door[1] not in {"login", "login_code", "mfa_authenticate"}],
+    ids=[action for _, action, _ in DOORS if action not in {"login", "login_code", "mfa_authenticate"}],
+)
+def test_google_unavailable_keeps_every_other_door_closed(recaptcha, path, action, body):
+    recaptcha.down = True
+
+    assert _refused(_post(path, body, token=f"human:{action}"))
     assert mail.outbox == []
+
+
+def test_google_unavailable_without_a_token_still_refuses_the_sign_in(recaptcha, verified):
+    """A bot that leaves the token out is told apart from Google being down: no token, no sign-in."""
+    recaptcha.down = True
+
+    assert _refused(_post(f"{BROWSER}/auth/login", {"email": verified.email, "password": PASSWORD}))
 
 
 def test_a_person_signs_in_as_before(recaptcha, verified):

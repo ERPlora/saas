@@ -4,8 +4,9 @@ allauth's own limits (``ACCOUNT_RATE_LIMITS``, every one written out) on the sha
 only): failed passwords spend the account's budget and the address's, 5 in 5 minutes each (Ioan, 2026-10-22: «que no
 intenten sin parar»; before, the address had 10 a minute), the right one gives its attempt back, so failures alone
 never lock the owner out within the budget; the sign-in itself, 30 a minute per address; a reset link, 5 an hour per
-account and 10 per address; the mailed codes, 3 tries each (``test_sign_in_code``) and, whatever the code, 10 tries in
-5 minutes per address (``code_attempts``, accounts/bot_check.py), the authenticator app's included. The
+account and 10 per address; the mailed codes, 3 tries each (``test_sign_in_code``) and, whatever the code, 10 refused
+codes in 5 minutes per address (``code_attempts``, accounts/bot_check.py; a right one spends nothing), the authenticator
+app's included. The
 answers never tell which addresses hold an account (``test_unified_login``: the throttle reaches a known and an unknown
 address at the same attempt).
 """
@@ -21,6 +22,7 @@ from accounts.tests.test_unified_login import (  # noqa: F401  (`verified` and `
     BROWSER,
     HOST,
     LOGIN,
+    _code,
     _confirm,
     _pending,
     _post_without_csrf,
@@ -124,12 +126,10 @@ def test_one_address_asks_for_ten_reset_links_an_hour_at_most():
     [
         (f"{BROWSER}/auth/code/confirm", {"code": "000000"}),
         (f"{BROWSER}/auth/email/verify", {"key": "000000"}),
-        (f"{BROWSER}/auth/2fa/authenticate", {"code": "000000"}),
     ],
-    ids=["sign-in-code", "address-code", "authenticator-app"],
+    ids=["sign-in-code", "address-code"],
 )
-def test_one_address_types_ten_codes_in_five_minutes_at_most(settings, wait, path, body):
-    settings.ACCOUNTS_MFA_ENABLED = True
+def test_one_address_types_ten_codes_in_five_minutes_at_most(wait, path, body):
     client = Client(HTTP_HOST=HOST, REMOTE_ADDR="10.8.2.1")
     answers = [_post_without_csrf(client, path, body) for _ in range(11)]
 
@@ -140,6 +140,51 @@ def test_one_address_types_ten_codes_in_five_minutes_at_most(settings, wait, pat
     }
     wait(5 * 60 + 1)
     assert _post_without_csrf(client, path, body).status_code != 429
+
+
+def test_the_authenticator_apps_refused_codes_count_too(settings, ana):
+    """A sign-in waiting for the app's code: each wrong code is refused (400) and counted; the 11th is held."""
+    from accounts.tests.test_mfa import _activate_totp, _first_factors
+    from accounts.tests.conftest import prove_address
+
+    settings.ACCOUNTS_MFA_ENABLED = True
+    prove_address(ana.email)
+    _activate_totp(ana)
+    client = Client(HTTP_HOST=HOST, REMOTE_ADDR="10.8.2.2")
+    client.get(f"{BROWSER}/auth/session")
+    assert _first_factors(client, ana.email, PASSWORD).status_code == 401
+
+    answers = [_post_without_csrf(client, f"{BROWSER}/auth/2fa/authenticate", {"code": "000000"}).status_code for _ in range(11)]
+
+    assert answers == [400] * 10 + [429]
+
+
+def test_a_sign_in_that_waits_for_no_app_code_counts_nothing(settings):
+    """No sign-in waits for the app's code (allauth answers 401): no code was refused, nothing is spent."""
+    settings.ACCOUNTS_MFA_ENABLED = True
+    client = Client(HTTP_HOST=HOST, REMOTE_ADDR="10.8.2.3")
+
+    answers = [_post_without_csrf(client, f"{BROWSER}/auth/2fa/authenticate", {"code": "000000"}).status_code for _ in range(12)]
+
+    assert answers == [401] * 12
+
+
+def test_a_right_code_spends_nothing_of_the_address_budget(verified):
+    """Only refused codes count (a 400 or a 409): the owner signing in again and again from the office's address never
+    uses up what a guesser at the same address would have."""
+    client = Client(HTTP_HOST=HOST, REMOTE_ADDR="10.8.4.1")
+    confirm = f"{BROWSER}/auth/code/confirm"
+    for _ in range(9):
+        assert _post_without_csrf(client, confirm, {"code": "000000"}).status_code in {400, 409}
+
+    for _ in range(3):
+        _post_without_csrf(client, LOGIN, {"email": verified.email, "password": PASSWORD})
+        right = _post_without_csrf(client, confirm, {"code": _code(mail.outbox[-1])})
+        assert right.status_code == 200, right.content
+        client.delete(f"{BROWSER}/auth/session")
+
+    assert _post_without_csrf(client, confirm, {"code": "000000"}).status_code != 429
+    assert _post_without_csrf(client, confirm, {"code": "000000"}).status_code == 429
 
 
 def test_the_code_limit_is_per_address():

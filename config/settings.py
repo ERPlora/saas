@@ -354,8 +354,8 @@ ACCOUNT_LOGIN_BY_CODE_FORMAT = ACCOUNT_EMAIL_VERIFICATION_BY_CODE_FORMAT
 # - `reset_password`: «Forgot your password?» mails a link, 10 an hour per address and 5 per account;
 # - `reset_password_from_key`: the link's form, 20 a minute per address (allauth's);
 # - `confirm_email`: «Send another code», one every 10 s per account (allauth's, with codes);
-# - `code_attempts` (ours, accounts/bot_check.py): 10 codes typed in 5 minutes per address, mailed or of the
-#   authenticator app, on top of allauth's 3 tries per mailed code.
+# - `code_attempts` (ours, accounts/bot_check.py): 10 refused codes in 5 minutes per address, mailed or of the
+#   authenticator app (a right one spends nothing), on top of allauth's 3 tries per mailed code.
 ACCOUNT_RATE_LIMITS = {
     "login": "30/m/ip",
     "login_failed": "5/5m/ip,5/5m/key",
