@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:c9348fba461bcd123fe4a5cb2e20b5ca7e15662d8bb70a785648d92b25a1336a -->
+<!-- generated from WORKBOOK.md sha256:99bedb35e00f176d42032fb8b4ef911a8a2880c622740ecb410e9473b2b33942 -->
 
 ## What it is for and who it is for
 
@@ -153,6 +153,25 @@ Three cards that save on their own: "Appearance" ("System", "Light", "Dark"), "L
 The name and the email at the top of the side menu (on a phone, inside the menu): "Account", "Help", the
 theme and "Sign out".
 
+### Panel menu
+"Businesses", "Store", "Billing" and "Account", with the one of the open page marked; at the top, the person's card
+(the **User menu**) and at the bottom, ERPlora's logo. On a wide screen it is always in sight; on a tablet or a phone
+it opens with the menu button of the top bar.
+
+### Error page
+On the public web, with its menu and its footer: "Page not found" and "The page you are looking for does not exist or
+has moved.", or "Something went wrong" and "Something went wrong on our side. Please try again in a few minutes.", with
+"Back to the home page". In the private part (the account and the entrance): "We couldn't find this page" or
+"Something went wrong on our end", with "Home" and "Contact Support".
+
+### Maintenance page
+"503 · Maintenance", "We will be back soon", "We are improving ERPlora. Come back in a few minutes; your data is
+safe." (or the message the staff wrote, in the visitor's language), "Try again" and "Contact Support".
+
+### admin › Site settings
+A single record, "Site settings", without "Add" or "Delete": the "maintenance mode" box, the "message in English" and
+the "message in Spanish" (empty, Spanish visitors read the English one), and the date of the last change.
+
 ## States of each screen
 
 | State | What the person sees |
@@ -163,6 +182,7 @@ theme and "Sign out".
 | Throttle | "Too many failed login attempts. Try again later." or "Too many attempts. Please wait a few minutes and try again.", the same whether the account exists or not. |
 | Expired link | "This password reset link has expired or is not valid." with "Request New Link". |
 | Expired code | The entrance says "Your code expired or was typed wrong too many times. Sign in again and we will email you a new one." |
+| Maintenance | Whoever is not staff sees the **Maintenance page** on any page of erplora.com; the staff with its session open keeps using everything. |
 | No permission | An account without the staff mark that opens the admin goes back to the **Entrance**; with a session, the admin refuses it. With two-step verification switched on, staff without the app go to its settings with "Turn on the authenticator app to continue.". |
 
 ## Flows
@@ -207,6 +227,16 @@ theme and "Sign out".
 | ACCOUNTS-F36 | See who changed an account | done |
 | ACCOUNTS-F37 | Erase the audit log older than 90 days | partial |
 | ACCOUNTS-F38 | Report a problem to support | done |
+| ACCOUNTS-F39 | Let each page load only what is erplora.com's | done |
+| ACCOUNTS-F40 | Keep in the log what happens, without personal data or secrets | done |
+| ACCOUNTS-F41 | Start erplora.com and serve each request | done |
+| ACCOUNTS-F42 | Show an error page | done |
+| ACCOUNTS-F43 | Put erplora.com in maintenance | done |
+| ACCOUNTS-F44 | Clean the expired sessions and codes every day | partial |
+| ACCOUNTS-F45 | Brake too many requests | done |
+| ACCOUNTS-F46 | Send erplora.com's emails | partial |
+| ACCOUNTS-F47 | Move around the panel | done |
+| ACCOUNTS-F48 | Pass erplora.com's master QA | partial |
 
 ### ACCOUNTS-F01 Create the account
 Status: done
@@ -722,3 +752,140 @@ In: the subject and what happened.
 Out: a mail to the support mailbox with the subject, the text and, below, the account, its businesses, the screen they came from and their browser; when answering, support writes straight to the person. Nothing is kept on erplora.com and no ticket is opened.
 If it fails: «Add a subject.» or «Describe the problem, please.» under its field; after five reports in an hour, «Too many attempts. Please try again in a few minutes.»; if the mail cannot leave, a notice with the support address to write to directly. In every case what was written stays and can be sent again.
 Involved: none
+
+### ACCOUNTS-F39 Let each page load only what is erplora.com's
+Status: done
+Actor: system
+Screen: none (every page of the panel and of the public web)
+Steps:
+1. Each page of erplora.com tells the browser what it may load and run on it: the programs, styles, fonts and images of erplora.com itself, and only the programs the page marks as its own when it is served. No libraries from other servers.
+2. The panel also allows what its payments with Stripe and the sign-in with Google need, and its forms only post to erplora.com, to Google and to the businesses. No page of the panel can be put inside another website; the public web, only inside erplora.com.
+3. The installed app keeps talking to its printer and its drawer from any page.
+4. If the browser blocks something, it tells erplora.com.
+In: the page being served.
+Out: nothing kept: the list travels with each page. What the browser blocks stays in erplora.com's log.
+If it fails: what is not on the list is neither loaded nor run, even if someone slips it into the page; the reports of one browser are braked at 60 an hour (ACCOUNTS-F45).
+Involved: public (the public web)
+
+### ACCOUNTS-F40 Keep in the log what happens, without personal data or secrets
+Status: done
+Actor: system
+Screen: none (erplora.com's log, which the team reads)
+Steps:
+1. Every line erplora.com writes to its log goes through a filter first.
+2. The filter covers emails, phone numbers, the NIF, the NIE and the CIF, the IBAN, card numbers, passwords (also the one inside a connection address) and the API, Stripe, session and access keys, each with a mark that says what was there.
+3. The rest stays as it is: the names of erplora.com's events, the identifiers and the figures, so the team can follow what happened.
+In: each line of the log.
+Out: the line with what is personal and secret covered; nothing else changes. A failed sign-in is logged whole, except the password.
+If it fails: no line is dropped for carrying a secret: it is covered and written. A huge line, or one made to choke the filter, is cleaned without stalling the log.
+Involved: none
+
+### ACCOUNTS-F41 Start erplora.com and serve each request
+Status: done
+Actor: system
+Screen: none
+Steps:
+1. erplora.com starts with the settings of its environment (production, pre or the developer's computer): the secrets, the database, the cache and the mail come from the environment, never from the code.
+2. It serves each request behind AWS's load balancer, which tells it whether it arrived encrypted; in production the cookies only travel encrypted and the browser stays on the encrypted version.
+3. A real-time connection nobody asked for (a WebSocket) is closed cleanly, without leaving an error in the log.
+4. It charges in euros: the plans and Stripe use that currency and there is no other to choose.
+In: the settings of the deployment's environment.
+Out: the service running; nothing kept.
+If it fails: without a mandatory key (the fiscal documents' one in production) it does not start and says which one is missing. With the cache down, the brakes let requests through and everything keeps working. With the database down, the liveness check keeps answering and the «ready» one warns.
+Involved: none
+
+### ACCOUNTS-F42 Show an error page
+Status: done
+Actor: anyone
+Screen: Error page, erplora.com's admin
+Steps:
+1. Whoever reaches an address of the public web that does not exist sees «Page not found» and «The page you are looking for does not exist or has moved.», with the web's menu and footer and «Back to the home page».
+2. In the private part (the account, the entrance) they see «We couldn't find this page», with «Home» and «Contact Support».
+3. If erplora.com fails, the public web shows «Something went wrong» and «Something went wrong on our side. Please try again in a few minutes.»; the private part, «Something went wrong on our end». Both in the visitor's language.
+4. The staff sees the admin with ERPlora's name: «ERPlora Cloud» at the top and «Administration» on its front page.
+In: the address asked for and the visitor's language.
+Out: the error page; nothing kept. A program connected through the API gets the error in its format, never the page.
+If it fails: the failure page is painted even with the database down: it reads nothing from it.
+Involved: public (its error pages)
+
+### ACCOUNTS-F43 Put erplora.com in maintenance
+Status: done
+Actor: ERPlora superuser; any visitor
+Screen: admin › Site settings, Maintenance page
+Steps:
+1. A superuser opens «Site settings» in the admin (always the same record: there is no other to create or delete), ticks «maintenance mode» and, if they want, writes the «message in English» and the «message in Spanish».
+2. On saving, the admin says «Maintenance mode is on: only the ERPlora staff with a session uses erplora.com.».
+3. From then on, whoever visits erplora.com sees «We will be back soon» with «We are improving ERPlora. Come back in a few minutes; your data is safe.» (or the staff's message, in their language), «Try again» and «Contact Support»; search engines understand the web is back soon.
+4. The staff with its session open keeps using everything, and a staff member without one signs in through the **Entrance** on the way to the admin, also with the code of their authenticator app.
+5. On unticking it, the admin says «Maintenance mode is off: erplora.com is open to everyone.» and everyone gets in again.
+In: the switch and the two messages.
+Out: the switch saved, which every server of erplora.com applies at once (and, if the notice were lost, within a minute at most). The liveness checks, the admin, the businesses' calls and Stripe's and Meta's notices keep working. A program connected through the API gets «ERPlora is under maintenance. Try again in a few minutes.».
+If it fails: if the switch cannot be read (the database down), erplora.com stays open and the log says why. The staff's message is shown as text, never as code. An API key does not count as a staff session, nor does a deactivated staff account.
+Involved: hubs (their calls keep working), billing (Stripe's notices keep working), whatsapp (Meta's notices keep working)
+
+### ACCOUNTS-F44 Clean the expired sessions and codes every day
+Status: partial — the cleaning already exists, but it is not scheduled every day yet: until then a person of the team runs it
+Actor: system
+Screen: none (a daily task of erplora.com)
+Steps:
+1. Once a day, erplora.com deletes the expired sessions, the «Active sessions» rows whose session no longer exists (with their address and their browser), the one-time codes of the jump to a business past their 60 seconds and the email changes whose code is past its 15 minutes.
+2. What is still valid stays: no open session and no code still valid changes.
+3. Like erplora.com's other tasks, the infrastructure's clock runs it at its time; a task that fails leaves its error in sight of the team and runs again on its next turn.
+In: the expiry date of each session and of each code.
+Out: what expired, deleted; nothing is written to the audit log.
+If it fails: if a run is already going, the second does nothing; a failure ends the task with an error and what was deleted before stays deleted. The team can count what would be deleted without deleting anything.
+Involved: none
+
+### ACCOUNTS-F45 Brake too many requests
+Status: done
+Actor: system
+Screen: none
+Steps:
+1. Each door that can be abused carries its own brake, counted per address or per account: the sign-in, the codes and the links (ACCOUNTS-F11), the jump to a business (ACCOUNTS-F28), the API keys (ACCOUNTS-F32), reporting a problem (ACCOUNTS-F38), the web's contact form and the browser's security reports (60 an hour per address).
+2. Past the brake, the request is refused without doing anything and the screen says so.
+3. The address that counts is the caller's real one, the one the load balancer gives: an address typed by hand into the request does not start a new counter, and one account's or key's brake is not spent by another.
+In: the caller's address or account.
+Out: the counters, in the cache the servers share; nothing in the database.
+If it fails: with the cache down, the brakes let requests through and erplora.com keeps working. A braked security report is not written to the log.
+Involved: public (the contact form)
+
+### ACCOUNTS-F46 Send erplora.com's emails
+Status: partial — the emails go out as text, without the common template with the brand (logo and footer) they carried in the previous SaaS: it comes with the port of each app's emails
+Actor: system
+Screen: none
+Steps:
+1. Something in erplora.com has to tell a person: a code, a link, an invitation, an invoice, a change in their business.
+2. The email leaves from ERPlora's address through AWS's mail service.
+3. If the service does not answer, erplora.com waits a few seconds, never minutes, and tries once more.
+In: the notice, its data and the recipient.
+Out: the email sent. On the developer's computer and in the tests, the email is written to a folder and never leaves.
+If it fails: an email that does not leave is handled by whoever asks for it (for example, reporting a problem shows the support address to write to directly) and the screen never hangs waiting.
+Involved: hubs, billing, fiscal and whatsapp (their emails)
+
+### ACCOUNTS-F47 Move around the panel
+Status: done
+Actor: any person with an account
+Screen: Panel menu
+Steps:
+1. The panel's menu has «Businesses», «Store», «Billing» and «Account»; at the top, the person's card opens the **User menu** (ACCOUNTS-F25), and at the bottom is ERPlora's logo.
+2. On a wide screen the menu is always in sight; on a tablet or a phone it opens with the menu button of the top bar.
+3. Each entry opens its page without reloading the panel and is marked as the current one.
+4. The pages outside the panel (the entrance, the error pages, the maintenance page) use the person's theme, or their browser's if they have not signed in.
+In: the session.
+Out: nothing kept.
+If it fails: without a session, the **Entrance**, which goes back to the page after signing in.
+Involved: hubs («Businesses»), billing («Store» and «Billing»)
+
+### ACCOUNTS-F48 Pass erplora.com's master QA
+Status: partial — what the QA asks for and is still missing is already a partial flow of its app: the exit package when a business is deleted and the measure of its use (hubs), the distance-selling threshold in the EU (billing), deleting what was created inside a demo (public) and opening the drawer on payment (printing, in the Hub); a business's people, invitations and roles come with their port in hubs
+Actor: ERPlora's QA team
+Screen: all of erplora.com's
+Steps:
+1. The team goes through erplora.com as a new customer: the public web with its plans (Free as the way in, without a card) and the demo; creating the account and confirming the email; creating the free business with a single question and entering it; moving it to a paid plan with a Stripe test card.
+2. It checks in the panel what the customer does with their businesses: seeing them with their status and use, changing plan, retrying a payment, cancelling, deleting a business and restoring it.
+3. It checks the billing: the invoices with their VAT (also the reverse charge within the EU), the promo codes that give trial days and the return to Free when the subscription ends.
+4. On a real business, it sells and checks that the receipt comes with its QR, signed for the AEAT in its test environment, and that it prints.
+In: the pre environment and test accounts.
+Out: each point of the QA, with the flow that covers it and its automated test in the browser; what makes no sense on today's platform stays out with its reason (see «For whoever maintains it»).
+If it fails: a point no flow covers is a QA failure and is noted in the app that owns it.
+Involved: hubs, billing, public, apps and fiscal; in the Hub, verifactu, invoice and printing
