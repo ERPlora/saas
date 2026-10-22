@@ -489,6 +489,9 @@ HUB_ADMIN_CALLBACK_URL = config(
 _hub_admin_callback = urlsplit(HUB_ADMIN_CALLBACK_URL)
 HUB_ADMIN_ORIGIN = f"{_hub_admin_callback.scheme}://{_hub_admin_callback.netloc}"
 EXCHANGE_CODE_TTL_SECONDS = 60
+# Jumps one account may start in a while (accounts/handoff.py, ACCOUNTS-F28; the old SaaS's 20 passes in 5 minutes):
+# past it, the error page asks to wait and no code is minted. django-ratelimit, over the default cache.
+HUB_LOGIN_RATELIMIT = config("HUB_LOGIN_RATELIMIT", default="20/5m")
 INTERNAL_SIGNATURE_MAX_AGE_SECONDS = 300
 # Where the SaaS calls hub-next's /internal/* (hubs.hub_client), signed with the same secret: the ALB
 # answers 404 to it, so production uses the private name aws-next gives the Hub (Cloud Map).

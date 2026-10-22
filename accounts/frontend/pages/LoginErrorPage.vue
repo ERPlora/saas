@@ -7,7 +7,8 @@
 //   - authentication_error → allauth's `socialaccount/authentication_error.html`;
 //   - login_cancelled      → allauth's `socialaccount/login_cancelled.html`;
 //   - google_link_refused  → the refused «connect» of Google (`SocialAccountAdapter.pre_social_login`): Google is
-//                            linked by signing in with it, the message the adapter used to leave on the launcher.
+//                            linked by signing in with it, the message the adapter used to leave on the launcher;
+//   - too_many             → `handoff.hub_login` past `HUB_LOGIN_RATELIMIT`: too many jumps in a few minutes.
 // The way back is the sign-in (keeping `next`), or the launcher when there is a session. A code it
 // does not know, or without what its text needs, is a failed Google sign-in (so is the old
 // `google_no_account`: an unknown Google address now creates its account).
@@ -23,7 +24,13 @@ import { supportMailto } from '../support';
 import { localNext } from '../next';
 import { LAUNCHER } from '../paths';
 
-type Code = 'invalid_hub' | 'not_a_member' | 'authentication_error' | 'login_cancelled' | 'google_link_refused';
+type Code =
+  | 'invalid_hub'
+  | 'not_a_member'
+  | 'authentication_error'
+  | 'login_cancelled'
+  | 'google_link_refused'
+  | 'too_many';
 
 interface Copy {
   /** Catalogue keys under `accounts.loginError.<copy>`; `title` and `badge` only where the template had them. */
@@ -41,9 +48,10 @@ const COPY: Record<Code, Copy> = {
   authentication_error: { copy: 'authenticationError', action: 'backToSignIn' },
   login_cancelled: { copy: 'loginCancelled', action: 'backToSignIn' },
   google_link_refused: { copy: 'googleLinkRefused', action: 'home' },
+  too_many: { copy: 'tooMany', title: true, badge: true, action: 'home', links: true },
 };
 /** The codes that need nothing else in the URL to be told. */
-const PLAIN_CODES: readonly Code[] = ['invalid_hub', 'login_cancelled', 'google_link_refused'];
+const PLAIN_CODES: readonly Code[] = ['invalid_hub', 'login_cancelled', 'google_link_refused', 'too_many'];
 
 /**
  * First label of a hub's host: one DNS label, the format of `live.slugs.HUB_SLUG_RE` (shared by

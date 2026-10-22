@@ -58,6 +58,12 @@
       "googleLinkRefused": {
         "heading": "Google was not linked",
         "message": "Google can only be linked by signing in with the Google account of your email."
+      },
+      "tooMany": {
+        "title": "Too many attempts",
+        "badge": "429 · Too many attempts",
+        "heading": "Too many attempts",
+        "message": "You have opened your businesses too many times in a few minutes. Wait a few minutes and open your business again."
       }
     },
     "verifyEmail": {

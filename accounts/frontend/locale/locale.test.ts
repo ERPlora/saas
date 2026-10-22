@@ -60,6 +60,11 @@ const NEW_IN_THE_VUE_PAGES = new Set([
   'accounts.twoFactor.trusted.unknown',
   'accounts.twoFactor.trusted.revoke',
   'accounts.twoFactor.trusted.revoked',
+  // The brake of the jumps to a hub (ACCOUNTS-F28, handoff.hub_login past HUB_LOGIN_RATELIMIT) had no template.
+  'accounts.loginError.tooMany.title',
+  'accounts.loginError.tooMany.badge',
+  'accounts.loginError.tooMany.heading',
+  'accounts.loginError.tooMany.message',
 ]);
 
 /**
