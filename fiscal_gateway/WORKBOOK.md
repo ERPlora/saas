@@ -200,7 +200,9 @@ Implicados: FISCAL-F05
 - Fiscal: los tests solo tocan la preproducción de la AEAT, y siempre con el transporte simulado (`respx`); nunca una
   transmisión real ni un certificado real (los `.p12` de los tests se generan en `tests/conftest.py`).
 - Los tests de cada flujo citan su clave en el nombre o en el docstring (`fiscal/tests/test_emails.py` para
-  FISCAL-F05).
+  FISCAL-F05); la e2e `tests/e2e/panel/fiscal-review.spec.ts` (con `fiscal_seed.py`) recorre la revisión en el admin
+  en los tres tamaños: el aviso a la mesa con su enlace, la aprobación y el correo al negocio (FISCAL-F05), y los
+  documentos descifrados solo en la página de revisión (FISCAL-F03).
 
 ## Lo que NO hace, a propósito
 
