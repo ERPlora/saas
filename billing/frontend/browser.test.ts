@@ -3,16 +3,19 @@
 // the list). A download asks for the file (`Accept`, the session cookie) and saves it only when the answer
 // IS that file: an error (a 503 of the invoice service, a 404 of one still being issued, a proxy's page) is
 // never saved as `pdf.json` (audit 2026-10-14, R-05); it is thrown as the API's error, for the page to say.
+// The request is the SDK's (`fetchFile`, whose own tests read `Content-Disposition`): no answer at all is its
+// `network_error`, in the person's language.
 import { ApiError } from '@erplora/ui/sdk';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { attachmentName, browser, operationUrl, REVOKE_AFTER_MS } from './browser';
+import { browser, operationUrl, REVOKE_AFTER_MS } from './browser';
 
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   document.body.innerHTML = '';
+  document.documentElement.lang = '';
 });
 
 describe('operationUrl', () => {
@@ -29,16 +32,6 @@ describe('operationUrl', () => {
 
   it('refuses a command: a download is a GET', () => {
     expect(() => operationUrl('billing.invoice.pay' as never, { id: 'i-1' })).toThrow(/not a query/);
-  });
-});
-
-describe('attachmentName', () => {
-  it('is the file name the server gives (`Content-Disposition`), plain or encoded (RFC 6266)', () => {
-    expect(attachmentName('attachment; filename="ERP-2026-00123.pdf"')).toBe('ERP-2026-00123.pdf');
-    expect(attachmentName('attachment; filename=erplora-invoices-2026-10-14.csv')).toBe('erplora-invoices-2026-10-14.csv');
-    expect(attachmentName(`attachment; filename="facturas.csv"; filename*=UTF-8''facturas%20de%20octubre.csv`)).toBe('facturas de octubre.csv');
-    expect(attachmentName(null)).toBe('');
-    expect(attachmentName('attachment')).toBe('');
   });
 });
 
@@ -131,12 +124,19 @@ describe('browser.download', () => {
     expect(saves.clicked).toEqual([]);
   });
 
-  it('without network, the SDK’s network error', async () => {
+  // The SDK's sentence in the person's language (ui hub#2281), never «Network error (Failed to fetch)».
+  it.each([
+    ['es', /^No se pudo conectar con el servidor\./],
+    ['en', /^Could not connect to the server\./],
+  ])('without network, the SDK’s network error, said in the language of the page (%s)', async (language, sentence) => {
+    document.documentElement.lang = language;
     vi.stubGlobal('fetch', () => Promise.reject(new TypeError('Failed to fetch')));
     const saves = watchSaves();
     const failure = await browser.download('/api/billing/invoices/csv', 'text/csv').catch((error: unknown) => error);
     expect(failure).toBeInstanceOf(ApiError);
     expect(failure).toMatchObject({ code: 'network_error', status: 0 });
+    expect((failure as ApiError).message).toMatch(sentence);
+    expect((failure as ApiError).message).not.toMatch(/Network error/);
     expect(saves.clicked).toEqual([]);
   });
 });
