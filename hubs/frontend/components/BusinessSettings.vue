@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // The Settings of a business, «General» (mockups `business.html` «settings»): what the panel shows of
 // it — name, country, time zone and language (`hubs.business.update` sends only what changed; the
-// receipts' data is edited inside the business) — and its web address, which never changes because
-// the devices use it. «Save changes» waits for a change; a change made elsewhere arrives live and
+// receipts' data is edited inside the business) — and its web address, with «Copy» and, for the owner,
+// «Change address» (HUBS-F16, AddressDialog). «Save changes» waits for a change; a change made elsewhere arrives live and
 // refreshes the fields unless the person is editing them. Once the business is ready its country is
 // read-only (`country_locked`: its invoices belong to one country; the server refuses it with 409
 // `hubs.country_locked`, said above the button).
@@ -10,19 +10,23 @@ import { InlineFeedback } from '@erplora/ui/components';
 import { HubIcon, toastSuccess } from '@erplora/ui/shell';
 import { fieldErrors, useCommand } from '@erplora/ui/sdk';
 import { IonButton, IonCard, IonCardContent, IonInput, IonSelect, IonSelectOption, IonSpinner } from '@ionic/vue';
-import { computed, reactive, watch } from 'vue';
+import { computed, reactive, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { BusinessDetailOut, BusinessUpdateIn } from '../../../frontend/sdk-types';
 import { useErrorText } from '../error-text';
 import { countryName, countryOptions, timeZoneOptions } from '../regions';
+import AddressDialog from './AddressDialog.vue';
 import CopyField from './CopyField.vue';
 
 type Editable = Pick<BusinessDetailOut, 'name' | 'country' | 'timezone' | 'language'>;
 
 const props = defineProps<{
-  business: Pick<BusinessDetailOut, 'id' | 'host' | 'status' | 'country_locked'> & Editable;
+  business: Pick<BusinessDetailOut, 'id' | 'slug' | 'host' | 'status' | 'country_locked'> &
+    Editable & { can?: Pick<BusinessDetailOut['can'], 'change_address'> };
 }>();
+
+const changingAddress = shallowRef(false);
 
 const LANGUAGES = ['en', 'es'] as const;
 
@@ -196,10 +200,26 @@ const value = (event: CustomEvent<{ value?: unknown }>) => String(event.detail.v
         <p class="field-label">
           {{ $t('hubs.settings.address') }}
         </p>
-        <CopyField
-          :value="business.host"
-          :label="$t('hubs.settings.address')"
-        />
+        <div class="address-row">
+          <CopyField
+            class="address-row__field"
+            :value="business.host"
+            :label="$t('hubs.settings.address')"
+          />
+          <ion-button
+            v-if="business.can?.change_address"
+            data-testid="settings-change-address"
+            fill="outline"
+            @click="changingAddress = true"
+          >
+            <HubIcon
+              slot="start"
+              name="ion:create-outline"
+              aria-hidden="true"
+            />
+            {{ $t('hubs.settings.changeAddress') }}
+          </ion-button>
+        </div>
 
         <InlineFeedback
           v-if="formError"
@@ -238,6 +258,11 @@ const value = (event: CustomEvent<{ value?: unknown }>) => String(event.detail.v
         </div>
       </form>
     </ion-card-content>
+    <AddressDialog
+      v-if="business.can?.change_address"
+      v-model:open="changingAddress"
+      :business="{ id: business.id, name: business.name, slug: business.slug, host: business.host }"
+    />
   </ion-card>
 </template>
 
@@ -289,6 +314,16 @@ const value = (event: CustomEvent<{ value?: unknown }>) => String(event.detail.v
 }
 .settings-actions {
   align-items: center;
+}
+.address-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.address-row__field {
+  flex: 1 1 260px;
+  min-width: 0;
 }
 .settings-hint {
   font-size: 0.82rem;

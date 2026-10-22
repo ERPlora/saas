@@ -452,6 +452,9 @@ class Hub(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     slug = models.CharField(_("address"), max_length=63, unique=True, validators=[hub_slug_validator])
+    #: The address the business had before its owner changed it (HUBS-F16): still its own, so no other business
+    #: takes it and receives the old links and QR codes; released when the address changes again.
+    previous_slug = models.CharField(_("previous address"), max_length=63, blank=True, default="", db_index=True)
     name = models.CharField(_("name"), max_length=120)
     country = models.CharField(_("country"), max_length=2, help_text=_("ISO 3166-1 alpha-2, e.g. ES."))
     timezone = models.CharField(_("time zone"), max_length=64, default="Europe/Madrid")

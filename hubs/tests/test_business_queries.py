@@ -198,6 +198,7 @@ class TestOneBusiness:
             "transfer": True,
             "restore": False,
             "delete": True,
+            "change_address": True,
         }
         assert detail["country_locked"] is False
 

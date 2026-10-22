@@ -254,6 +254,8 @@ export interface BusinessCanOut {
   transfer: boolean;
   restore: boolean;
   delete: boolean;
+  /** Only the owner moves the business to another web address (HUBS-F16). */
+  change_address: boolean;
 }
 
 /** `hubs.BusinessDetailOut`: a business's page (Summary and Settings). */
@@ -321,6 +323,12 @@ export interface BusinessUpdateIn {
   country?: string;
   language?: 'en' | 'es';
   timezone?: string;
+}
+
+/** `hubs.BusinessAddressIn`: the new web address of the business (HUBS-F16). */
+export interface BusinessAddressIn {
+  id: string;
+  slug: string;
 }
 
 /** `hubs.BusinessDeleteIn`. */
@@ -675,6 +683,7 @@ declare module '@erplora/ui/sdk' {
     'hubs.business.create': { input: BusinessCreateIn; output: BusinessDetailOut };
     'hubs.business.get': { input: ByIdIn; output: BusinessDetailOut };
     'hubs.business.update': { input: BusinessUpdateIn; output: BusinessDetailOut };
+    'hubs.business.change_address': { input: BusinessAddressIn; output: BusinessDetailOut };
     'hubs.business.delete': { input: BusinessDeleteIn; output: BusinessDetailOut };
     'hubs.business.restore': { input: ByIdIn; output: BusinessDetailOut };
     'hubs.business.open': { input: BusinessOpenIn; output: BusinessOpenOut };

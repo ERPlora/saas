@@ -280,7 +280,7 @@
       "country": "Country",
       "timezone": "Time zone",
       "language": "Business language",
-      "address": "Web address (it does not change: your devices use it)",
+      "address": "Web address",
       "save": "Save changes",
       "saveHint": "Enabled when you change something.",
       "saved": "Changes saved",
@@ -288,7 +288,8 @@
         "en": "English",
         "es": "Español"
       },
-      "countryLocked": "The country cannot change once the business is ready: its invoices belong to one country."
+      "countryLocked": "The country cannot change once the business is ready: its invoices belong to one country.",
+      "changeAddress": "Change address"
     },
     "danger": {
       "title": "Danger zone",
@@ -397,6 +398,16 @@
       "changeCard": "Change card",
       "changeCardName": "Change the card of {name}",
       "payName": "Pay the invoice of {name}"
+    },
+    "addressDialog": {
+      "title": "Change the web address of {name}",
+      "label": "New address",
+      "submit": "Change address",
+      "lead": "Your business will open at:",
+      "consequenceDevices": "Your devices and erplora.com take you to the new address.",
+      "consequenceOld": "The old address stops opening the business: links and QR codes with it stop working.",
+      "consequenceKept": "Nobody else can take the old address while it is the last one you had.",
+      "changed": "The business now opens at {host}"
     }
   }
 }

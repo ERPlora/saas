@@ -65,6 +65,7 @@ from hubs.schemas import (
     BillingProfileIn,
     BillingProfileOut,
     BusinessCreateIn,
+    BusinessAddressIn,
     BusinessDeleteIn,
     BusinessDetailOut,
     BusinessOpenIn,
@@ -255,7 +256,7 @@ SLUG_PROBLEMS = {
 }
 
 
-def _chosen_slug(slug: str) -> str:
+def _chosen_slug(slug: str, excluding: UUID | None = None) -> str:
     try:
         validate_hub_slug(slug)
     except ValueError as refused:
@@ -269,7 +270,7 @@ def _chosen_slug(slug: str) -> str:
         raise InvalidPayload(_("Invalid payload"), fields={"slug": message}) from None
     if slug == account_services.PLATFORM_HOST_SLUG:
         raise Conflict(_("This address is reserved. Choose another one."), code="hubs.slug_reserved")
-    if queries.slug_taken(slug):
+    if queries.slug_taken(slug, excluding=excluding):
         raise _slug_taken()
     return slug
 
@@ -338,6 +339,52 @@ def business_update(ctx: OperationContext, data: BusinessUpdateIn) -> dict:
         hub.save(update_fields=[*changes, "pending_hub_call", "registry_version", "updated_at"])
         record_event(ctx, events.BUSINESS_UPDATED, {"id": str(hub.id)})
         push_after_commit(hub.id)
+    return queries.business_detail(member)
+
+
+@operation(
+    "hubs.business.change_address",
+    kind="command",
+    permission="hubs.manage",
+    input=BusinessAddressIn,
+    output=BusinessDetailOut,
+)
+def business_change_address(ctx: OperationContext, data: BusinessAddressIn) -> dict:
+    """The owner moves the business to another web address (HUBS-F16; PLAN-SAAS §1.1, round 2026-10-15b), checked
+    as the Hub checks it (``live.slugs``). The Hub registers it and the photo carries it, both pushed after the
+    COMMIT; the jump follows it. The address it leaves stays the business's own (``previous_slug``), so no other
+    business takes it and receives the old links and QR codes. The same address again changes nothing."""
+    member = queries.access(queries.account_of(ctx), data.id, Role.OWNER, lock=True)
+    hub = member.hub
+    if hub.status in (Hub.Status.DELETING, Hub.Status.DELETED):
+        raise business_deleted()
+    if data.slug == hub.slug:
+        return queries.business_detail(member)
+    slug = _chosen_slug(data.slug, excluding=hub.id)
+    previous = hub.slug
+    hub.slug = slug
+    hub.previous_slug = previous
+    hub.pending_hub_call = hub.pending_hub_call or Call.PUT
+    hub.registry_version = F("registry_version") + 1
+    hub.state_version = F("state_version") + 1
+    try:
+        with transaction.atomic():
+            hub.save(
+                update_fields=[
+                    "slug",
+                    "previous_slug",
+                    "pending_hub_call",
+                    "registry_version",
+                    "state_version",
+                    "updated_at",
+                ]
+            )
+    except IntegrityError:
+        raise _slug_taken() from None  # another business took it between the check and the write
+    hub.refresh_from_db()
+    sync_access(hub, previous_slug=previous)
+    record_event(ctx, events.BUSINESS_ADDRESS_CHANGED, {"id": str(hub.id), "slug": slug, "previous_slug": previous})
+    push_after_commit(hub.id)
     return queries.business_detail(member)
 
 
@@ -1315,7 +1362,7 @@ def _apply_standing(hub: Hub, standing: str, *, was_unpaid: bool) -> bool:
 # --- Access, state and the push to the Hub (not operations: called inside or after one) ---------
 
 
-def sync_access(hub: Hub) -> None:
+def sync_access(hub: Hub, previous_slug: str = "") -> None:
     """Make ``accounts.HubMembership`` (what the jump checks) equal to the business's answered members.
 
     Nobody enters a deleted business. Called in the transaction that changed the members or the status.
@@ -1323,6 +1370,9 @@ def sync_access(hub: Hub) -> None:
     and the check ``hubs.W001`` say where the two disagree. Retired with the mirror once the jump reads
     ``HubMember`` (``hubs/README.md``, «Pendiente»).
     """
+    if previous_slug and previous_slug != hub.slug:
+        # The business moved to another address (HUBS-F16): the jump follows it.
+        HubMembership.objects.filter(hub_slug=previous_slug).delete()
     deleted = hub.status in (Hub.Status.DELETING, Hub.Status.DELETED)
     wanted = (
         {}

@@ -290,6 +290,7 @@ def can(member: HubMember, now: datetime | None = None) -> dict[str, bool]:
         "transfer": is_owner and is_writable(hub),
         "restore": is_owner and is_restorable(hub, now),
         "delete": is_owner and is_writable(hub),
+        "change_address": is_owner and is_writable(hub),
     }
 
 
@@ -376,12 +377,13 @@ def business_type_for(code: str | None) -> BusinessType | None:
     ).first()
 
 
-def slug_taken(slug: str) -> bool:
-    """A business has it, or a hub of the phase-1 seed (only an ``accounts.HubMembership`` row)."""
-    return (
-        Hub.objects.filter(slug=slug).exists()
-        or HubMembership.objects.filter(hub_slug=slug).exists()
-    )
+def slug_taken(slug: str, excluding: UUID | None = None) -> bool:
+    """A business has it (now or as the address it had before, HUBS-F16), or a hub of the phase-1 seed (only an
+    ``accounts.HubMembership`` row). ``excluding``: the business that asks, whose own addresses are free to it."""
+    businesses = Hub.objects.filter(Q(slug=slug) | Q(previous_slug=slug))
+    if excluding is not None:
+        businesses = businesses.exclude(pk=excluding)
+    return businesses.exists() or HubMembership.objects.filter(hub_slug=slug).exists()
 
 
 def base_slug(name: str) -> str:
@@ -418,6 +420,7 @@ def free_slug(name: str) -> str:
     taken = set(
         Hub.objects.filter(slug__startswith=base).values_list("slug", flat=True)
     )
+    taken |= set(Hub.objects.filter(previous_slug__startswith=base).values_list("previous_slug", flat=True))
     taken |= set(
         HubMembership.objects.filter(hub_slug__startswith=base).values_list(
             "hub_slug", flat=True

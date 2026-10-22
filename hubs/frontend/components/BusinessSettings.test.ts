@@ -1,6 +1,6 @@
 // The Settings of a business, «General» (mockups `business.html` «settings»): name, country, time
-// zone and language (`hubs.business.update`, only what changed), and the web address, which does not
-// change (the devices use it), with «Copy». «Save changes» waits for a change.
+// zone and language (`hubs.business.update`, only what changed), and the web address with «Copy» and, for the
+// owner, «Change address» (HUBS-F16, AddressDialog). «Save changes» waits for a change.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { h, ref } from 'vue';
 
@@ -62,7 +62,7 @@ describe('BusinessSettings', () => {
       ['en', 'English'],
       ['es', 'Español'],
     ]);
-    expect(s.wrapper.getComponent(CopyField).props()).toEqual({ value: 'bakery.erplora.com', label: 'Web address (it does not change: your devices use it)' });
+    expect(s.wrapper.getComponent(CopyField).props()).toEqual({ value: 'bakery.erplora.com', label: 'Web address' });
   });
 
   it('«Save changes» waits for a change', async () => {
@@ -137,6 +137,14 @@ describe('BusinessSettings', () => {
     await s.get('settings-save').trigger('click');
     await flush();
     expect(s.get('settings-error').text()).toContain('We could not reach ERPlora. Check your connection and try again.');
+  });
+
+  it('offers «Change address» to the owner only (HUBS-F16)', async () => {
+    const owner = await setup(undefined, { ...BUSINESS, slug: 'bakery', can: { change_address: true } } as never);
+    expect(owner.get('settings-change-address').text()).toBe('Change address');
+    owner.wrapper.unmount();
+    const admin = await setup(undefined, { ...BUSINESS, slug: 'bakery', can: { change_address: false } } as never);
+    expect(admin.wrapper.find('[data-testid="settings-change-address"]').exists()).toBe(false);
   });
 
   it('a deleted business cannot be edited', async () => {

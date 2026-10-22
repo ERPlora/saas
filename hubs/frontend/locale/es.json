@@ -280,7 +280,7 @@
       "country": "País",
       "timezone": "Zona horaria",
       "language": "Idioma del negocio",
-      "address": "Dirección web (no cambia: la usan tus dispositivos)",
+      "address": "Dirección web",
       "save": "Guardar cambios",
       "saveHint": "Se activa al cambiar algo.",
       "saved": "Cambios guardados",
@@ -288,7 +288,8 @@
         "en": "English",
         "es": "Español"
       },
-      "countryLocked": "El país no cambia una vez listo el negocio: sus facturas son de un país."
+      "countryLocked": "El país no cambia una vez listo el negocio: sus facturas son de un país.",
+      "changeAddress": "Cambiar dirección"
     },
     "danger": {
       "title": "Zona de peligro",
@@ -397,6 +398,16 @@
       "changeCard": "Cambiar tarjeta",
       "changeCardName": "Cambiar la tarjeta de {name}",
       "payName": "Pagar la factura de {name}"
+    },
+    "addressDialog": {
+      "title": "Cambiar la dirección web de {name}",
+      "label": "Nueva dirección",
+      "submit": "Cambiar dirección",
+      "lead": "Tu negocio se abrirá en:",
+      "consequenceDevices": "Tus dispositivos y erplora.com te llevan a la nueva dirección.",
+      "consequenceOld": "La dirección antigua deja de abrir el negocio: los enlaces y códigos QR con ella dejan de funcionar.",
+      "consequenceKept": "Nadie más puede quedarse con la dirección antigua mientras sea la última que tuviste.",
+      "changed": "El negocio se abre ahora en {host}"
     }
   }
 }
