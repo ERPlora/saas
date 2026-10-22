@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:34bf0ddbe10d658c0a7e62a2a6f363749270f4a288dff892365b8f951980cc47 -->
+<!-- generated from WORKBOOK.md sha256:7a4dfc3640e2a88e9d72a367a935217176fa753462a702740b0db2672f657a28 -->
 
 ## What it is for and who it is for
 
@@ -138,8 +138,8 @@ Status: done
 Actor: system
 Screen: WhatsApp inbox › Settings (in the Hub)
 Steps:
-1. Every time something of the business's WhatsApp changes (the number, the month's usage, a template or Meta's verdict on it), erplora.com raises the version of the business's state snapshot and sends it to the Hub.
-2. The snapshot says whether the number is "Connected", "Not connected" or "Needs reconnecting", the number and the name on WhatsApp, the allowance and what was used this month, and the templates with what Meta says of each one.
+1. Every time something of the business's WhatsApp changes (the number, its Meta permission, the month's usage, a template or Meta's verdict on it), erplora.com raises the version of the business's state snapshot and sends it to the Hub.
+2. The snapshot says whether the number is "Connected", "Not connected" or "Needs reconnecting", the number and the name on WhatsApp, the allowance and what was used this month, and the templates with what Meta says of each one. "Needs reconnecting" shows as soon as Meta refuses the business's permission: when renewing it, sending a message, registering or deleting a template or opening an attachment.
 3. The Hub applies it and the settings and the inbox show it without reloading.
 In: the business's active number, its plan, what was used this month and its templates.
 Out: the WhatsApp part of the business's state snapshot, with a version that only grows.
@@ -182,7 +182,7 @@ Steps:
 3. What Meta says afterwards (delivered, read, failed) reaches the inbox as its status.
 In: to whom, the text or the template with its variables, and the key of the send.
 Out: the message sent through WhatsApp; the key noted so it is never sent twice (`whatsapp.message.recorded`).
-If it fails: outside the 24 hours since the customer's last message, "only a template can be sent"; a customer who blocked the business, a template not approved or a number not connected say their reason and use no allowance; if Meta does not answer, it is unknown whether it went out: the Hub retries with the same key and erplora.com never sends it twice.
+If it fails: outside the 24 hours since the customer's last message, "only a template can be sent"; a customer who blocked the business, a template not approved or a number not connected say their reason and use no allowance; if Meta's permission expired or the business withdrew it in Meta, nothing goes out nor uses allowance, it says the number has to be connected again (not that it is not connected) and the number shows "Needs reconnecting" in the Hub; if Meta does not answer, it is unknown whether it went out: the Hub retries with the same key and erplora.com never sends it twice.
 Involved: the Hub's WhatsApp inbox
 
 ### WHATSAPP-F07 Receive Meta's notices and hand them to the Hub
