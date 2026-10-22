@@ -194,6 +194,9 @@ class Usage(models.Model):
     )
     month = models.CharField(_("month"), max_length=7)
     used = models.PositiveIntegerField(_("messages sent"), default=0)
+    #: The month's usage a send refused at the cap last told the Hub (empty: none told it yet this month): the same
+    #: figure refused again announces nothing (``services._announce_cap``).
+    cap_announced_usage = models.PositiveIntegerField(_("usage told at the cap"), null=True, blank=True)
     updated_at = models.DateTimeField(_("updated"), auto_now=True)
 
     class Meta:

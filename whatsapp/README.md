@@ -20,8 +20,8 @@ renombran** (el Hub ya está en producción con ellas). Firma de todo `/internal
 | 1 `POST /internal/whatsapp/inbound` | SaaS → Hub | un mensaje, eco o historial | `hub_client.post_inbound`, desde `gateway.deliver` |
 | 2 `POST /internal/whatsapp/status` | SaaS → Hub | un estado con su `client_message_id`; sin ella, el de una respuesta del dueño desde el móvil ya entregada por la puerta 1 | `hub_client.post_status` |
 | 3 `PUT /internal/whatsapp/channel` | SaaS → Hub | el canal | **no se usa**: va en la foto (puerta 4) |
-| 4 clave `whatsapp` de `PUT /internal/hubs/{id}/state` | SaaS → Hub | el canal con la versión de la foto | `queries.channel_block` en `hubs.queries.hub_snapshot`; `services.announce_channel` sube la versión y empuja tras el COMMIT |
-| 5 `POST /internal/whatsapp/send` + `Idempotency-Key` | Hub → SaaS | enviar; **propone** el 409 `whatsapp.reconnect_needed` (Meta dijo 190: el permiso caducó o se retiró; el número queda «Hay que reconectar»), distinto de `not_connected` (`WORKBOOK.md`, «Para quien lo mantiene») | `internal.send` → `gateway.send` |
+| 4 clave `whatsapp` de `PUT /internal/hubs/{id}/state` | SaaS → Hub | el canal con la versión de la foto | `queries.channel_block` en `hubs.queries.hub_snapshot`; `services.announce_channel` sube la versión y empuja tras el COMMIT (también el rechazo por tope, una vez por cifra) |
+| 5 `POST /internal/whatsapp/send` + `Idempotency-Key` | Hub → SaaS | enviar; **propone** el 409 `whatsapp.reconnect_needed` (Meta dijo 190: el permiso caducó o se retiró; el número queda «Hay que reconectar»), distinto de `not_connected`; el 409 `whatsapp.cap_reached` no cambia, pero empuja la foto con el consumo real del mes si no se había avisado esa cifra (WHATSAPP-F05; `WORKBOOK.md`, «Para quien lo mantiene») | `internal.send` → `gateway.send` |
 | 6 `POST /internal/whatsapp/erase` | Hub → SaaS | olvidar un número de cliente | `gateway.erase` |
 | 7 | — | envío de estados (obligación de la 2) | el webhook los aparca y `deliver` los empuja |
 | 8 `POST /internal/whatsapp/templates` + `Idempotency-Key` | Hub → SaaS | registrar una plantilla | `gateway.submit_template` |
@@ -39,7 +39,7 @@ Las puertas 10–12 y la página de vuelta de la ventana de Meta (`GET /whatsapp
 
 | Pieza | Qué hace |
 |---|---|
-| `models.py` | `PhoneNumber` (número de un negocio, permiso y PIN cifrados; uno activo por negocio, un dueño por número), `Template` (espejo de las plantillas de Meta), `TemplateSubmission` (clave de cada registro de la puerta 8), `Send` (clave de cada envío de la puerta 5), `Usage` (contador del mes, UTC), `Delivery` (lo que espera al Hub: mensaje o estado) |
+| `models.py` | `PhoneNumber` (número de un negocio, permiso y PIN cifrados; uno activo por negocio, un dueño por número), `Template` (espejo de las plantillas de Meta), `TemplateSubmission` (clave de cada registro de la puerta 8), `Send` (clave de cada envío de la puerta 5), `Usage` (contador del mes, UTC, y la cifra que el rechazo por tope ya avisó al Hub), `Delivery` (lo que espera al Hub: mensaje o estado) |
 | `crypto.py` + `fields.py` | Fernet (`FERNET_KEY` + `FERNET_KEY_PREVIOUS`, `MultiFernet`) y el campo cifrado: lo que no se descifra se lee vacío y queda en el registro como error |
 | `meta.py` | Cliente de la API Graph (httpx, 5 s/15 s, 30 s al enviar): token en cabecera, sin redirecciones, `MetaRefused` (código, subcódigo, `error_user_msg`) y `MetaUnreachable(sent)`; adjuntos solo de hosts de Meta por https; `redirect_uri` (la página de vuelta válida, o `""`), `exchange_code` (con esa `redirect_uri`), `exchange_token`, `token_expiry` |
 | `parse.py` | Lectura pura del aviso de Meta: mensajes, ecos, historial y su continuación, estados, veredictos de plantillas |

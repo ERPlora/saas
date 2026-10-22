@@ -134,6 +134,44 @@ def test_by_default_the_usage_is_zero_and_a_send_still_leaves(run, ids, client):
     assert meta.called
 
 
+def test_behind_sets_the_usage_without_telling_the_hub_until_a_send_is_refused(
+    run, ids, client, hub_double, django_capture_on_commit_callbacks
+):
+    """FIX-SAAS-WHATSAPP-CAP-REFUSAL-DOES-NOT-PUSH-USAGE (WHATSAPP-F05): ``--behind`` leaves the Hub with the figure it
+    had (no newer snapshot), as after a send whose record never ran; the send erplora.com refuses at the cap tells it."""
+    run()
+    limit = hubs_queries.effective_plan(ids["a"], timezone.now()).whatsapp_messages_per_month
+    pushes = len(hub_double.calls_to("PUT", f"/internal/hubs/{ids['a']}/state"))
+
+    printed = run("--used", str(limit), "--behind")
+
+    assert printed == {"delivered": True, "hub_error": ""}
+    assert Usage.objects.get(hub_id=ids["a"], month=_month()).used == limit
+    states = hub_double.calls_to("PUT", f"/internal/hubs/{ids['a']}/state")
+    assert len(states) == pushes and states[-1].body["whatsapp"]["monthly_usage"] == 0
+    with respx.mock:
+        respx.route(url__startswith=hub_double.url).pass_through()
+        meta = respx.route(host="graph.facebook.com")
+        with django_capture_on_commit_callbacks(execute=True):
+            response = door(client, SEND_PATH, {"hub": "a", "to": "+34699000001", "type": "text", "text": "Hola"})
+
+    assert (response.status_code, error_code(response)) == (409, "whatsapp.cap_reached")
+    assert not meta.called
+    told = hub_double.calls_to("PUT", f"/internal/hubs/{ids['a']}/state")[-1].body["whatsapp"]
+    assert (told["monthly_limit"], told["monthly_usage"]) == (limit, limit)
+
+
+def test_seeding_the_usage_again_forgets_what_the_cap_told(run, ids):
+    """A run seeds its month afresh: what a refusal at the cap told the Hub before is forgotten, so the next refusal
+    at the same figure tells the Hub again (the Hub's e2e set the usage back to 0 after each run)."""
+    run("--used", "5")
+    Usage.objects.filter(hub_id=ids["a"]).update(cap_announced_usage=5)
+
+    run("--used", "5", "--behind")
+
+    assert Usage.objects.get(hub_id=ids["a"], month=_month()).cap_announced_usage is None
+
+
 def test_running_it_again_keeps_one_of_each(run, ids, seed_module):
     run("--used", "5")
     first = [(row.pk, row.name, row.language) for row in _templates(ids["a"])]

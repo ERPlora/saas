@@ -6,7 +6,9 @@ Meta (``meta``) and to the Hub (``hub_client``), so that no transaction waits fo
 - ``deliver``: what waits for the Hub, pushed to its doors 1 and 2 and recorded as the Hub answered
   (FIX-SAAS-WHATSAPP-GATEWAY-DOORS). Contract: 200 taken; 422 the body does not hold (never retried); anything
   else (404 ``app_inactive``, a Hub without the door, 5xx, no answer) kept and retried with a growing wait;
-- ``send``: door 5. Claim (the month's place, by the key) → Meta, outside any transaction → record how it ended.
+- ``send``: door 5. Claim (the month's place, by the key) → Meta, outside any transaction → record how it ended. The
+  cap refuses before Meta (409 ``whatsapp.cap_reached``), the claim committed so the Hub gets the month's real usage
+  in its snapshot (once per figure, WHATSAPP-F05).
   Meta's refusal frees the place and the key; no answer keeps both (``unknown``: the same key sends again only after
   ``services.IN_FLIGHT``); a 2xx without Meta's id is sent for good, never again (saas#2653). Meta's 190 (the
   permission expired or withdrawn) is ``whatsapp.reconnect_needed`` and marks the number «needs reconnecting»;
@@ -149,6 +151,8 @@ def send(data: SendIn, key: str) -> tuple[int, dict]:
     )
     if claim.outcome == "sent":
         return _sent(claim.wa_message_id)
+    if claim.outcome == "refused":
+        return claim.status, envelope(claim.code, claim.message)
     try:
         answer = meta.post(
             f"{claim.phone_number_id}/messages",
