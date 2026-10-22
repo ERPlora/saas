@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from django.conf import settings
 from django.http import HttpRequest
+from live import recaptcha
 
 from public.crawlers import is_private
 
@@ -89,4 +90,7 @@ def public_site(request: HttpRequest) -> dict:
         "is_public_page": not _is_authenticated(request) and not is_private(request),
         # Passwords and one-time codes: no analytics there, whatever the consent (saas#958).
         "is_credentials_page": _is_credentials_page(path),
+        # reCAPTCHA Enterprise's public key: a form with it asks Google for a token (frontend/recaptcha.ts) and says
+        # so (public/partials/recaptcha_notice.html); empty when reCAPTCHA is off.
+        "RECAPTCHA_SITE_KEY": recaptcha.site_key(),
     }

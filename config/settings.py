@@ -15,6 +15,7 @@ from urllib.parse import urlsplit
 from decouple import Config, Csv, RepositoryEmpty, RepositoryEnv
 from django.core.exceptions import ImproperlyConfigured
 from live.csp import base_policy, debug_policy
+from live.recaptcha import with_recaptcha
 
 from billing.stripe_keys import test_keys_allowed
 
@@ -157,6 +158,9 @@ MIDDLEWARE = [
     "base.language.AccountLanguageMiddleware",
     # With ACCOUNTS_MFA_ENABLED off, the 2FA endpoints answer 404 (accounts/mfa.py).
     "accounts.mfa.MFAFlagMiddleware",
+    # The code tries per address and reCAPTCHA before allauth.headless's public doors, after the CSRF check
+    # (accounts/bot_check.py).
+    "accounts.bot_check.BotCheckMiddleware",
     # API 404/405 that never reach a route (unknown path, wrong method) answer the JSON envelope.
     "live.api_errors.ApiErrorEnvelopeMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -340,9 +344,27 @@ ACCOUNT_LOGIN_BY_CODE_REQUIRED = {"password"}
 ACCOUNT_LOGIN_BY_CODE_FORMAT = ACCOUNT_EMAIL_VERIFICATION_BY_CODE_FORMAT
 # Not ACCOUNT_LOGIN_BY_CODE_ENABLED: it would serve `auth/code/request`, a sign-in with the mailed code
 # alone (no password), and only with it does allauth resend this code. Signing in again mails a new one.
-# Creating an account mails a code, so one address may start 10 sign-ups an hour (today's SaaS,
-# UNIFIED_SIGNUP_RATELIMIT); allauth's defaults for the rest (allauth lays this dict over them).
-ACCOUNT_RATE_LIMITS = {"signup": "10/h/ip"}
+# Every limit written out (allauth lays this dict over its defaults; Ioan, 2026-10-22: «que no intenten sin parar»),
+# per address (`ip`: REMOTE_ADDR, the visitor public.client_ip found behind the ALB) and per account (`key`: the
+# address typed), on the shared cache (Valkey):
+# - `login`: 30 sign-ins a minute per address, right or wrong (allauth's);
+# - `login_failed`: 5 wrong passwords in 5 minutes per address and per account; the right one gives its attempt
+#   back, so the owner is never locked out by their own sign-ins (before: 10 a minute per address);
+# - `signup`: creating an account mails a code, 10 an hour per address (today's SaaS, UNIFIED_SIGNUP_RATELIMIT);
+# - `reset_password`: «Forgot your password?» mails a link, 10 an hour per address and 5 per account;
+# - `reset_password_from_key`: the link's form, 20 a minute per address (allauth's);
+# - `confirm_email`: «Send another code», one every 10 s per account (allauth's, with codes);
+# - `code_attempts` (ours, accounts/bot_check.py): 10 codes typed in 5 minutes per address, mailed or of the
+#   authenticator app, on top of allauth's 3 tries per mailed code.
+ACCOUNT_RATE_LIMITS = {
+    "login": "30/m/ip",
+    "login_failed": "5/5m/ip,5/5m/key",
+    "signup": "10/h/ip",
+    "reset_password": "10/h/ip,5/h/key",
+    "reset_password_from_key": "20/m/ip",
+    "confirm_email": "1/10s/key",
+    "code_attempts": "10/5m/ip",
+}
 # The e2e's panel server alone (tests/e2e/panel/project.ts) raises the sign-in limit, allauth's 30 a
 # minute per address: every spec signs in from 127.0.0.1, and one spec repeated got 429 at the sign-in.
 # Its own variable, never DEBUG (the dev server keeps the limit); sign-up, the mailed codes and the
@@ -388,6 +410,34 @@ GOOGLE_OAUTH_CLIENT_SECRET = (
     else config("GOOGLE_OAUTH_CLIENT_SECRET")
 )
 GOOGLE_OAUTH_ENABLED = bool(GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET)
+
+# reCAPTCHA Enterprise, score-based and invisible (no checkbox, no puzzle), on every public form: the sign-in,
+# the sign-up, «Forgot your password?» and its link, the mailed codes, the authenticator app's code, the contact
+# form and the demo (Ioan, 2026-10-22; live.recaptcha, accounts/bot_check.py, public/). The site key is public
+# (the page loads Google's enterprise.js with it); the API key asks Google for each token's assessment. Production
+# refuses to start without both and cannot switch it off; development checks only with both keys (`.env`), unless
+# RECAPTCHA_ENABLED=False. Below RECAPTCHA_MIN_SCORE (Google's 0.5 by default) a form is refused, as is a token of
+# another form, an invalid one and Google unreachable (fail closed). RECAPTCHA_ENDPOINT moves the assessments
+# elsewhere (the e2e's double, tests/e2e/recaptcha-double.ts).
+RECAPTCHA_SITE_KEY = config("RECAPTCHA_SITE_KEY", default="")
+RECAPTCHA_API_KEY = config("RECAPTCHA_API_KEY", default="")
+RECAPTCHA_PROJECT = config("RECAPTCHA_PROJECT", default="erplora")
+RECAPTCHA_ENABLED = config(
+    "RECAPTCHA_ENABLED", default=not DEBUG or bool(RECAPTCHA_SITE_KEY and RECAPTCHA_API_KEY), cast=bool
+)
+if not DEBUG and not RECAPTCHA_ENABLED:
+    raise ImproperlyConfigured("RECAPTCHA_ENABLED=False is for local development only: production checks every form.")
+if RECAPTCHA_ENABLED:
+    for _name, _value in (("RECAPTCHA_SITE_KEY", RECAPTCHA_SITE_KEY), ("RECAPTCHA_API_KEY", RECAPTCHA_API_KEY)):
+        if not _value:
+            raise ImproperlyConfigured(f"{_name} is required: reCAPTCHA checks every public form.")
+try:
+    RECAPTCHA_MIN_SCORE = float(config("RECAPTCHA_MIN_SCORE", default="0.5"))
+except ValueError:
+    RECAPTCHA_MIN_SCORE = -1.0
+if not 0 <= RECAPTCHA_MIN_SCORE <= 1:
+    raise ImproperlyConfigured("RECAPTCHA_MIN_SCORE must be a number from 0 to 1.")
+RECAPTCHA_ENDPOINT = config("RECAPTCHA_ENDPOINT", default="") or None
 
 # Refuses allauth's «connect» process and tells the owner when Google gets linked (saas#2552); an
 # unknown Google email creates its account (SOCIALACCOUNT_AUTO_SIGNUP).
@@ -528,7 +578,8 @@ USE_TZ = True
 # (named on its own: `HUB_ADMIN_CALLBACK_URL` may live outside the hubs' pattern). Google adds no
 # script, frame nor connection source.
 
-SECURE_CSP = debug_policy(VITE_DEV_SERVER) if DEBUG else base_policy()
+# reCAPTCHA's scripts, frames and connection, and its Trusted Types policy (`goog#html`), on the sign-in's pages.
+SECURE_CSP = with_recaptcha(debug_policy(VITE_DEV_SERVER) if DEBUG else base_policy())
 SECURE_CSP["form-action"] = [
     *SECURE_CSP["form-action"],
     "https://accounts.google.com",
@@ -577,6 +628,15 @@ LIVE = {
     "vite": {
         "command": ["env", f"VITE_DEV_PORT={VITE_DEV_PORT}", "pnpm", "run", "dev"],
         "cwd": str(BASE_DIR),
+    },
+    # Every public form asks Google whether a person sent it (RECAPTCHA_* above).
+    "recaptcha": {
+        "enabled": RECAPTCHA_ENABLED,
+        "project": RECAPTCHA_PROJECT,
+        "site_key": RECAPTCHA_SITE_KEY,
+        "api_key": RECAPTCHA_API_KEY,
+        "min_score": RECAPTCHA_MIN_SCORE,
+        "endpoint": RECAPTCHA_ENDPOINT,
     },
 }
 

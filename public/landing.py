@@ -40,6 +40,7 @@ from django.utils.translation import gettext_lazy
 from django.utils.translation import ngettext
 from django.views.decorators.http import require_POST, require_safe
 from django_ratelimit.decorators import ratelimit
+from live import recaptcha
 from live.meta import Category
 from live.ninja import run_operation_sync
 
@@ -76,6 +77,9 @@ CONTACT_TOPICS = {
 }
 #: What the visitor typed, kept in the session when the message is refused or fails (PUBLIC-G39) and shown once.
 CONTACT_DRAFT_KEY = "public.contact_draft"
+#: The field of reCAPTCHA's token and the action it is made for (frontend/recaptcha.ts, ``data-recaptcha-action``).
+RECAPTCHA_FIELD = "recaptcha_token"
+RECAPTCHA_ACTION = "contact"
 #: The fields of the form, in order.
 CONTACT_FIELDS = ("first_name", "last_name", "email", "phone", "message")
 
@@ -222,7 +226,7 @@ def visitor_address(group, request: HttpRequest) -> str:
 
 
 def _contact_rate(group, request: HttpRequest) -> str:
-    """The limit per address of the contact form (reCAPTCHA was retired, ADR-0154)."""
+    """The limit per address of the contact form, before reCAPTCHA (``contact_submit``)."""
     return settings.CONTACT_FORM_RATELIMIT
 
 
@@ -247,8 +251,10 @@ def _one_line(value: str) -> str:
 def contact_submit(request: HttpRequest) -> HttpResponse:
     """The contact form: a plain POST and a redirect back with a message (PRG).
 
-    Bot protection: Cloudflare is gone and reCAPTCHA was retired (ADR-0154); the form is limited
-    per address (``CONTACT_FORM_RATELIMIT``). A throttled or invalid message is never mailed.
+    Bot protection: the form is limited per address (``CONTACT_FORM_RATELIMIT``), and a complete message is
+    mailed only when reCAPTCHA Enterprise says a person sent it (``recaptcha_token``, action ``contact``;
+    ``live.recaptcha``; Ioan, 2026-10-22, over ADR-0154, which had retired it). A throttled, invalid or
+    unverified message is never mailed; a throttled or incomplete one never asks Google.
     """
     fields = {name: request.POST.get(name, "").strip() for name in CONTACT_FIELDS}
     subject = request.POST.get("subject", "")
@@ -263,6 +269,10 @@ def contact_submit(request: HttpRequest) -> HttpResponse:
         validate_email(fields["email"])
     except ValidationError:
         return _refused(request, fields, topic, FORM_MESSAGES["email"])
+    try:
+        recaptcha.verify_or_raise(request, request.POST.get(RECAPTCHA_FIELD), RECAPTCHA_ACTION)
+    except recaptcha.RecaptchaFailed as refused:
+        return _refused(request, fields, topic, refused.message)
 
     context = {
         **fields,

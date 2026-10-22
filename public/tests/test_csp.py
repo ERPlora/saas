@@ -73,13 +73,12 @@ def test_the_public_policy_still_forbids_the_dangerous_directives(client):
 # The public web stopped loading anything from a CDN (OutfitKit from jsDelivr, icons from Iconify's
 # API) and stopped charging (Stripe): spec §8.2, decision 16. Nothing loads those CDNs anywhere; Stripe
 # is retired from the public web only: the panel's policy (the SPA's Store) carries Stripe's origins for
-# the Embedded Checkout (`base/csp.py`, plan 2026-10-13 L2-D; PLAN-SAAS §3.6 point 17).
+# the Embedded Checkout (`base/csp.py`, plan 2026-10-13 L2-D; PLAN-SAAS §3.6 point 17). reCAPTCHA, retired with
+# them (ADR-0154), is back on every public form (Ioan, 2026-10-22): Google's `/recaptcha/` paths only
+# (`test_the_public_policy_admits_googles_recaptcha`).
 RETIRED_EVERYWHERE = (
     "cdn.jsdelivr.net",
     "api.iconify.design",
-    "recaptcha",
-    "gstatic.com",
-    "www.google.com",
 )
 RETIRED_FROM_PUBLIC = ("stripe.com",)
 
@@ -253,3 +252,28 @@ def test_the_public_middleware_runs_before_djangos_builds_the_header():
     assert middleware.index("public.csp.PublicCSPMiddleware") > middleware.index(
         "django.middleware.csp.ContentSecurityPolicyMiddleware"
     )
+
+
+def test_the_public_policy_admits_googles_recaptcha():
+    """reCAPTCHA Enterprise on the contact form and the demo (live.recaptcha): Google's two script origins, its
+    frames and its connection (the public pages enforce no Trusted Types)."""
+    policy = public_policy()
+
+    assert {"https://www.google.com/recaptcha/", "https://www.gstatic.com/recaptcha/"} <= set(policy["script-src"])
+    assert policy["frame-src"] == ["'self'", "https://www.google.com/recaptcha/", "https://recaptcha.google.com/recaptcha/"]
+    assert "https://www.google.com/recaptcha/" in policy["connect-src"]
+    assert "trusted-types" not in policy
+
+
+@pytest.mark.parametrize("debug", [False, True])
+def test_google_is_admitted_only_under_its_recaptcha_paths(settings, debug):
+    settings.DEBUG = debug
+    google = [
+        source
+        for sources in public_policy().values()
+        for source in map(str, sources)
+        if "google.com" in source or "gstatic.com" in source
+    ]
+
+    assert google
+    assert all(source.endswith("/recaptcha/") for source in google if "analytics" not in source)
