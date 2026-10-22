@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:f337afe52f843cb720fb644c4681e51ab6066bd7194c61ae15c38cbf4a6e1a94 -->
+<!-- generated from WORKBOOK.md sha256:34bf0ddbe10d658c0a7e62a2a6f363749270f4a288dff892365b8f951980cc47 -->
 
 ## What it is for and who it is for
 
@@ -87,7 +87,7 @@ and their month; and what each business used each month.
 
 | ID | Flow | Status |
 |---|---|---|
-| WHATSAPP-F01 | Connect the business's WhatsApp number | partial |
+| WHATSAPP-F01 | Connect the business's WhatsApp number | done |
 | WHATSAPP-F02 | Disconnect the number | done |
 | WHATSAPP-F03 | Tell the Hub which number the business has and whether it needs reconnecting | done |
 | WHATSAPP-F04 | Keep each business's number with its Meta permission encrypted | done |
@@ -97,7 +97,7 @@ and their month; and what each business used each month.
 | WHATSAPP-F08 | See the WhatsApp numbers in the admin | done |
 | WHATSAPP-F09 | Move a number to the business that connects it | done |
 | WHATSAPP-F10 | Talk to Meta without exposing the business's permission | done |
-| WHATSAPP-F11 | Give the Hub what it needs to open Meta's window | partial |
+| WHATSAPP-F11 | Give the Hub what it needs to open Meta's window | done |
 | WHATSAPP-F12 | Renew Meta's permission before it expires and warn if it cannot | done |
 | WHATSAPP-F13 | Confirm to Meta that the notices address is ours | done |
 | WHATSAPP-F14 | Forget the messages the Hub already took | done |
@@ -107,7 +107,7 @@ and their month; and what each business used each month.
 | WHATSAPP-F18 | What ERPlora staff can do | done |
 
 ### WHATSAPP-F01 Connect the business's WhatsApp number
-Status: partial — erplora.com already hands the code of Meta's window back to the Hub that opened it and connects the number that comes to it, but the whole sign-up with the real Hub has not been seen yet: in development the Hub only accepts a secure (https) return page and does not offer "Connect WhatsApp", and what Meta says from its window (the account and the number chosen) cannot be played in a test
+Status: done
 Actor: owner, admin
 Screen: WhatsApp inbox › Settings (in the Hub); Meta's window coming back
 Steps:
@@ -239,7 +239,7 @@ If it fails: an attachment whose link is not Meta's or is not encrypted is not d
 Involved: none
 
 ### WHATSAPP-F11 Give the Hub what it needs to open Meta's window
-Status: partial — erplora.com already gives everything, its return page included, and the Hub asks for it when painting "Your number", but Meta's window has not been seen opening with the real Hub yet: in development the Hub only accepts a secure (https) return page and says "Connecting the number from here is not available yet."
+Status: done
 Actor: system
 Screen: WhatsApp inbox › Settings (in the Hub)
 Steps:
