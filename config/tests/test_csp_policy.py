@@ -150,6 +150,28 @@ class TestTheServedPages:
         assert "'strict-dynamic'" in script
         assert "require-trusted-types-for" in response.headers[ENFORCE_HEADER]
 
+    def test_the_admin_runs_djangos_own_scripts_without_trusted_types(self, admin_client, settings, panel_policy):
+        """saas#1828 of the old SaaS: Django's admin creates no Trusted Types policy, and its jQuery assigns
+        ``innerHTML`` while it loads, so with ``require-trusted-types-for`` it dies and every admin widget with it.
+        The admin keeps the panel's policy (nonce, ``'strict-dynamic'``, no framing) without Trusted Types."""
+        settings.DEBUG = False
+        settings.SECURE_CSP = panel_policy
+
+        response = admin_client.get("/admin/base/sitesettings/", follow=True)  # the one row's change form
+
+        assert response.status_code == 200
+
+        directives = _header_directives(response.headers[ENFORCE_HEADER])
+        assert "require-trusted-types-for" not in directives
+        assert "trusted-types" not in directives
+        assert any(source.startswith("'nonce-") for source in directives["script-src"])
+        assert "'strict-dynamic'" in directives["script-src"]
+        assert directives["frame-ancestors"] == ["'none'"]
+        expected = {name: sources for name, sources in panel_policy.items() if "trusted-types" not in name}
+        assert {name: sources for name, sources in directives.items() if name != "script-src"} == {
+            name: sources for name, sources in expected.items() if name != "script-src"
+        }
+
     @pytest.mark.usefixtures("spa_manifest")
     def test_the_public_web_enforces_its_policy_with_a_nonce(self, client, settings):
         settings.DEBUG = False

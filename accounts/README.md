@@ -183,7 +183,8 @@ La plataforma no vive en `accounts/` sino en `base/` y `config/`; su manual es `
 (ACCOUNTS-F39–F48, con el detalle en «Para quien lo mantiene»).
 
 - **Política de contenido** (F39): la del panel, `settings.SECURE_CSP` sobre `live.csp.base_policy` (y
-  `base/csp.py`); la de la web pública, `public/csp.py`. `config/tests/test_csp_policy.py` las lee directiva a
+  `base/csp.py`); la de la web pública, `public/csp.py`; la del admin, `base.csp.admin_policy` (la del panel sin
+  Trusted Types, que el jQuery del admin de Django no soporta; trampa saas#1828 del viejo). `config/tests/test_csp_policy.py` las lee directiva a
   directiva con los ajustes de producción. Informes del navegador: `base/csp_report.py`, con
   `CSP_REPORT_RATELIMIT` (60/h por dirección).
 - **Registro sin datos personales** (F40): `base/logging.py` (`GDPRSafeFormatter`), en `LOGGING`.

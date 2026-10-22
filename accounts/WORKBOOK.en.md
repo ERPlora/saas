@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:578ad1f6ca9f677c824fab654aa16dfac95a752a695e75036d81291fd073ff83 -->
+<!-- generated from WORKBOOK.md sha256:774081a9a81b12256d190de2694312f3a7358217da9287415f022b3ee31daed4 -->
 
 ## What it is for and who it is for
 
@@ -760,8 +760,9 @@ Screen: none (every page of the panel and of the public web)
 Steps:
 1. Each page of erplora.com tells the browser what it may load and run on it: the programs, styles, fonts and images of erplora.com itself, and only the programs the page marks as its own when it is served. No libraries from other servers.
 2. The panel also allows what its payments with Stripe and the sign-in with Google need, and its forms only post to erplora.com, to Google and to the businesses. No page of the panel can be put inside another website; the public web, only inside erplora.com.
-3. The installed app keeps talking to its printer and its drawer from any page.
-4. If the browser blocks something, it tells erplora.com.
+3. erplora.com's admin follows the panel's list, except the rule its own code does not meet, so all its controls work.
+4. The installed app keeps talking to its printer and its drawer from any page.
+5. If the browser blocks something, it tells erplora.com.
 In: the page being served.
 Out: nothing kept: the list travels with each page. What the browser blocks stays in erplora.com's log.
 If it fails: what is not on the list is neither loaded nor run, even if someone slips it into the page; the reports of one browser are braked at 60 an hour (ACCOUNTS-F45).

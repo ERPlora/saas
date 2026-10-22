@@ -148,6 +148,8 @@ MIDDLEWARE = [
     "django.middleware.csp.ContentSecurityPolicyMiddleware",
     # After Django's: the public web's own policy, set before Django's builds the header.
     "public.csp.PublicCSPMiddleware",
+    # And the admin's: the panel's policy without Trusted Types, which Django's admin cannot run under (ACCOUNTS-G10).
+    "base.csp.AdminCSPMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",

@@ -823,8 +823,9 @@ Pantalla: ninguna (cada página del panel y de la web pública)
 Pasos:
 1. Cada página de erplora.com le dice al navegador qué puede cargar y ejecutar en ella: los programas, los estilos, las letras y las imágenes del propio erplora.com, y solo los programas que la página marca como suyos al servirla. Nada de bibliotecas de otros servidores.
 2. El panel admite además lo que necesitan sus pagos con Stripe y la entrada con Google, y sus formularios solo envían a erplora.com, a Google y a los negocios. Ninguna página del panel se puede meter dentro de otra web; la web pública, solo dentro de erplora.com.
-3. La aplicación instalada sigue hablando con su impresora y su cajón desde cualquier página.
-4. Si el navegador bloquea algo, se lo cuenta a erplora.com.
+3. El admin de erplora.com sigue la lista del panel, salvo la regla que su propio código no cumple, para que todos sus controles funcionen.
+4. La aplicación instalada sigue hablando con su impresora y su cajón desde cualquier página.
+5. Si el navegador bloquea algo, se lo cuenta a erplora.com.
 Entra: la página que se sirve.
 Sale: nada guardado: la lista viaja con cada página. Lo que el navegador bloquea queda en el registro de erplora.com.
 Si falla: lo que no está en la lista no se carga ni se ejecuta, aunque alguien lo cuele en la página; los avisos de un mismo navegador se frenan a 60 por hora (ACCOUNTS-F45).
@@ -1060,7 +1061,10 @@ Implicados: hubs, billing, public, apps y fiscal; del Hub, verifactu, invoice y 
   `SUPPORT_EMAIL` con «Reply-To» la cuenta, limitado por cuenta (`SUPPORT_REPORT_RATELIMIT`, 5 por hora).
 - Parte 5 (F39–F48): la política de contenido del panel es `settings.SECURE_CSP` sobre `live.csp.base_policy` (más
   lo que añade `base/csp.py` en una página que cobra), con nonce, `strict-dynamic` y Trusted Types en producción; la
-  de la web pública es `public/csp.py`, sin `strict-dynamic` ni Trusted Types a propósito. Las dos llevan `connect-src`
+  de la web pública es `public/csp.py`, sin `strict-dynamic` ni Trusted Types a propósito, y la del admin,
+  `base.csp.admin_policy` (la del panel sin Trusted Types, por `AdminCSPMiddleware`): su jQuery escribe `innerHTML` al
+  cargar y moría con ellos, y con él todos los controles del admin (trampa saas#1828 del viejo, vista de nuevo con
+  `ui-clip-sweep.sh` en la parte 5). Las tres llevan `connect-src`
   con `ipc:` y `http://ipc.localhost` (la app Tauri), y `config/tests/test_csp_policy.py` las lee directiva a
   directiva en un proceso con los ajustes de producción. Los
   informes del navegador van a `base/csp_report.py`, frenados por `CSP_REPORT_RATELIMIT` (60/h por dirección,
