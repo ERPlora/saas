@@ -124,6 +124,20 @@ class TestOnForAVisitor:
 
         assert is_maintenance(get(client, "/account/profile"))
 
+    def test_an_api_key_of_the_staff_is_no_session(self, client, django_user_model, maintenance):
+        from accounts.models import ApiKey
+
+        staff = django_user_model.objects.create_superuser(email="staff@example.com", password="x")
+        secret, prefix, key_hash = ApiKey.new_secret()
+        ApiKey.objects.create(user=staff, name="ops", prefix=prefix, key_hash=key_hash, scopes=["hubs.read"])
+        bearer = {"HTTP_AUTHORIZATION": f"Bearer {secret}"}
+
+        assert is_maintenance(get(client, "/api/hubs/businesses", **bearer))
+        maintenance.maintenance_mode = False
+        maintenance.save()
+        cache.clear()
+        assert get(client, "/api/hubs/businesses", **bearer).status_code == 200  # the same key opens it once the switch is off
+
 
 @pytest.mark.usefixtures("maintenance")
 class TestWhatKeepsWorking:
