@@ -1100,3 +1100,7 @@ msgstr "No hemos podido enviar tu informe. Escríbenos directamente a %(email)s.
 #: fiscal_gateway/apps.py:16
 msgid "Fiscal gateway"
 msgstr "Pasarela fiscal"
+
+#: config/urls.py
+msgid "Administration"
+msgstr "Administración"

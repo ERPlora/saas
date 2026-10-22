@@ -12,6 +12,7 @@ the launcher with its sign-in (``/launch``) and the sign-in's errors (``/login/e
 
 from django.contrib import admin
 from django.urls import include, path, re_path
+from django.utils.translation import gettext_lazy
 from django.views.generic import RedirectView
 from live.csp import csp_report
 from live.live_view import live_stream
@@ -72,6 +73,10 @@ class SignUpRedirect(RedirectView):
 admin.site.login = accounts_admin.admin_login
 # Who enters: active staff, and with ACCOUNTS_MFA_ENABLED only with an authenticator app (ACCOUNTS-F20).
 admin.site.has_permission = accounts_admin.admin_has_permission
+# ERPlora's name on every page of the admin, never «Django administration» (the old SaaS's ADMIN_SITE_*; ACCOUNTS-G30).
+admin.site.site_header = "ERPlora Cloud"
+admin.site.site_title = "ERPlora Admin"
+admin.site.index_title = gettext_lazy("Administration")
 
 urlpatterns = [
     # The old addresses of the sign-in and of the sign-up (allauth's template pages until headless only,
