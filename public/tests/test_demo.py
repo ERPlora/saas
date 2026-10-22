@@ -204,6 +204,16 @@ def test_each_outcome_of_a_try_is_said_on_the_door(client, state, says):
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("state", ["idle", "expired", "full", "throttled", "unavailable", "failed"])
+def test_every_state_of_the_door_has_a_way_to_start_free(client, state):
+    """PUBLIC-F35: from any state, «Start free» leads to the same entrance as every other one (/launch)."""
+    html = page(client.get(DOOR if state == "idle" else f"{DOOR}?state={state}"))
+
+    card = html.split(f'data-testid="demo-state-{state}"', 1)[1].split("</ion-card>", 1)[0]
+    assert card.count('href="/launch"') == 1
+
+
+@pytest.mark.django_db
 def test_a_failed_entry_offers_the_live_demo_again(client, hub_double):
     slug = start(client)
 
