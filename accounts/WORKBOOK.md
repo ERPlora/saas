@@ -224,6 +224,7 @@ El nombre y el correo arriba del menú lateral (en el móvil, dentro del menú):
 | ACCOUNTS-F33 | Revocar una clave de API | hecho |
 | ACCOUNTS-F34 | Consultar la documentación de la API | hecho |
 | ACCOUNTS-F35 | Borrar las cuentas sin uso en dos años | hecho |
+| ACCOUNTS-F36 | Ver quién cambió una cuenta | hecho |
 
 ### ACCOUNTS-F01 Crear la cuenta
 <!-- origen: old-saas:SAAS_AUTH-F01 pc:cloud/auth/signup fi:saas/auth-services#registro-de-usuario-por-api-signup fi:saas/support/auth-services#service-create_user gh:saas#2542 gh:saas#2536 gh:saas#2560 gh:saas#2562 -->
@@ -736,6 +737,20 @@ Entra: la fecha de la última entrada en erplora.com (o la del alta) de cada cue
 Sale: las cuentas sin uso borradas, cada una con su evento `accounts.profile.deleted` en su propio canal; ninguna otra cuenta cambia. Justo antes de borrarla, la cuenta se vuelve a leer: si ha entrado entre medias, se queda.
 Si falla: una cuenta que no se puede borrar queda en el registro (por su identificador, nunca por su correo) y la tarea sigue con las demás; al acabar, la tarea termina con error para que el equipo lo vea, y esa cuenta se vuelve a intentar a la semana siguiente. Si ya hay una pasada en marcha, la segunda no hace nada. El equipo puede contar lo que se borraría sin borrar nada.
 Implicados: hubs (los negocios que retienen la cuenta), billing (las facturas que se quedan)
+
+### ACCOUNTS-F36 Ver quién cambió una cuenta
+<!-- origen: fi:saas/support/auth-services#auditlog-registro-user fi:saas/support/orgs-users#service-auditlog-registro-gdpr -->
+Estado: hecho
+Actor: superusuario de ERPlora (o alguien del equipo con permiso para ver el registro)
+Pantalla: el admin de erplora.com › «Registro de auditoría»
+Pasos:
+1. Cada cambio de una cuenta (nombre, correo, idioma, si está activa, si es del equipo), de su acceso a un negocio y de sus claves de API (crearla, revocarla), y cada sesión que se abre, queda anotado: qué cambió, de qué valor a cuál, cuándo, quién lo hizo y desde qué dirección.
+2. El superusuario abre «Registro de auditoría» en el admin, filtra por tipo de recurso o busca por correo, y abre una entrada para ver sus cambios.
+3. Nadie puede crear, cambiar ni borrar una entrada a mano: solo se leen.
+Entra: los cambios de las cuentas, hechos desde el panel, con una clave de API, desde el admin o por las tareas de erplora.com.
+Sale: una entrada por cambio, que nombra a quien actuaba en ese momento (la cuenta con la sesión abierta o la dueña de la clave de API; nadie en una tarea de erplora.com o tras cerrar la sesión) y la dirección real del visitante, nunca la que diga su navegador.
+Si falla: nunca se anota un secreto (ni la contraseña, ni la clave de API, ni la de una sesión) ni lo que se mueve en cada visita (la última entrada, el último uso de una clave, la última vez que se vio una sesión). Si la cuenta se elimina, sus entradas se quedan con su correo y sin enlace a ella hasta que se borran a los 90 días (ACCOUNTS-F37). Alguien del equipo sin el permiso no puede abrirlo.
+Implicados: ninguno
 
 ## Para quien lo mantiene
 

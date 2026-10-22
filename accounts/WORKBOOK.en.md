@@ -204,6 +204,7 @@ theme and "Sign out".
 | ACCOUNTS-F33 | Revoke an API key | done |
 | ACCOUNTS-F34 | Read the API documentation | done |
 | ACCOUNTS-F35 | Erase the accounts unused for two years | done |
+| ACCOUNTS-F36 | See who changed an account | done |
 
 ### ACCOUNTS-F01 Create the account
 Status: done
@@ -681,3 +682,16 @@ In: the date of each account's last sign-in on erplora.com (or of its creation).
 Out: the unused accounts erased, each with its event `accounts.profile.deleted` on its own channel; no other account changes. Just before erasing it, the account is read again: if it signed in meanwhile, it stays.
 If it fails: an account that cannot be erased stays in the log (by its identifier, never its email) and the task goes on with the others; at the end, the task ends in error for the team to see, and that account is tried again the next week. If a pass is already running, the second one does nothing. The team can count what would be erased without erasing anything.
 Involved: hubs (the businesses that hold the account), billing (the invoices that stay)
+
+### ACCOUNTS-F36 See who changed an account
+Status: done
+Actor: ERPlora superuser (or a team member allowed to see the log)
+Screen: erplora.com's admin › «Audit log»
+Steps:
+1. Every change to an account (name, email, language, whether it is active, whether it is staff), to its access to a business and to its API keys (creating one, revoking it), and every session that opens, is written down: what changed, from which value to which, when, who did it and from which address.
+2. The superuser opens «Audit log» in the admin, filters by resource type or searches by email, and opens an entry to see its changes.
+3. Nobody can create, change or delete an entry by hand: they are only read.
+In: the changes to the accounts, made from the panel, with an API key, from the admin or by erplora.com's tasks.
+Out: one entry per change, naming whoever acted at that moment (the account with the open session or the owner of the API key; nobody in an erplora.com task or after signing out) and the visitor's real address, never the one its browser claims.
+If it fails: a secret is never written down (neither the password, nor the API key, nor a session's) nor what moves on every visit (the last sign-in, a key's last use, the last time a session was seen). If the account is deleted, its entries keep its email and no link to it until they are erased after 90 days (ACCOUNTS-F37). A team member without the permission cannot open it.
+Involved: none

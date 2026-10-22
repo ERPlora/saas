@@ -538,6 +538,20 @@ def forget_in_outbox(user) -> int:
     return OutboxEvent.objects.filter(actor=actor).update(actor=str(user.pk))
 
 
+def forget_deleted_actor(sender, instance, **kwargs) -> None:
+    """``post_delete`` of an account (ACCOUNTS-F36): the audit entries it authored stop pointing at it and keep its
+    email (``actor_email``) until ``cleanup_old_logs`` prunes them.
+
+    An entry's author is ``SET_NULL``, but only for the entries there when the deletion was collected: what goes with
+    the account, and the account itself, is logged afterwards while the request may still act as it (the admin's
+    «Delete» of one's own account), and its commit would fail. Connected after auditlog's own receiver, so the
+    account's own entry is covered too. The audit trail is a security record kept 90 days, not erased with the
+    account (the old SaaS's policy; the outbox, kept for good, keeps the id instead, ``forget_in_outbox``)."""
+    from auditlog.models import LogEntry
+
+    LogEntry.objects.filter(actor_id=instance.pk).update(actor=None)
+
+
 def end_every_session(user) -> int:
     """End every session of ``user`` in the SaaS (``allauth.usersessions``); how many there were."""
     from allauth.usersessions.models import UserSession

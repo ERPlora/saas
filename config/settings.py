@@ -118,6 +118,8 @@ INSTALLED_APPS = [
     "ninja",
     "base",
     "accounts",
+    # Who changed an account, its access to a business, its keys and its sessions (ACCOUNTS-F36; PLAN-SAAS §1.1).
+    "auditlog",
     # The app catalog (round 16, PLAN §21): before hubs and public, which read it.
     "apps",
     "hubs",
@@ -163,6 +165,9 @@ MIDDLEWARE = [
     # Records each signed-in session's address, browser and last use (allauth.usersessions), at most once
     # every few minutes: Cuenta → Seguridad → Sesiones activas.
     "accounts.session_tracking.SessionActivityMiddleware",
+    # The actor and the address of each audit log entry (ACCOUNTS-F36; after AuthenticationMiddleware and
+    # public.client_ip).
+    "accounts.auditlog.AuditActorMiddleware",
     # Deletes the cookies of a group that was declined or never accepted (django-cookie-consent),
     # skipping the requests that carry no cookie (public/cookies.py).
     "public.cookies.CleanCookiesMiddleware",
