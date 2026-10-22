@@ -268,14 +268,19 @@ CACHES = {
     )
 }
 
-# Logging: everything to the console (CloudWatch Logs in production), at LOG_LEVEL. As in hub-next.
+# Logging: everything to the console (CloudWatch Logs in production), at LOG_LEVEL. As in hub-next. Every line goes
+# through base.logging.GDPRSafeFormatter: an address, a phone, an id number, a card, a key or a password logged by
+# mistake reaches the log as a label, never as written (ACCOUNTS-G14); no filter drops a record.
 
 LOG_LEVEL = config("LOG_LEVEL", default="INFO").upper()
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
-        "plain": {"format": "%(asctime)s %(levelname)s %(name)s %(message)s"}
+        "plain": {
+            "()": "base.logging.GDPRSafeFormatter",
+            "format": "%(asctime)s %(levelname)s %(name)s %(message)s",
+        }
     },
     "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "plain"}},
     "root": {"handlers": ["console"], "level": LOG_LEVEL},
