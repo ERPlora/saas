@@ -266,11 +266,26 @@ class TestThePlanPrices:
         assert "This price is not in euros." in page
         assert Plan.objects.get(slug="starter").stripe_price_id == starter.stripe_price_id
 
+    def test_stripe_not_answering_keeps_the_plan_as_it_was_and_asks_to_try_again(self, staff_client, plans, monkeypatch):
+        """BILLING-F28 «Si Stripe no contesta, no se guarda y se pide repetir»: an unchecked price is never saved."""
+        from billing import services
+
+        def failed(**kwargs):
+            raise services.PriceCheckFailed("Stripe did not answer: the prices were not checked. Try again.")
+
+        monkeypatch.setattr(services, "plan_price_problems", failed)
+        starter = Plan.objects.get(slug="starter")
+
+        page = self.save(staff_client, starter, stripe_price_id="price_new").content.decode()
+
+        assert "Stripe did not answer: the prices were not checked. Try again." in page
+        assert Plan.objects.get(slug="starter").stripe_price_id == starter.stripe_price_id
+
     def test_without_stripe_it_is_saved_and_says_it_was_not_checked(self, staff_client, plans, monkeypatch):
         from billing import services
 
         def unavailable(**kwargs):
-            raise services.PriceCheckUnavailable("Stripe is not configured here: the prices were not checked.")
+            raise services.PriceCheckSkipped("Stripe is not configured here: the prices were not checked.")
 
         monkeypatch.setattr(services, "plan_price_problems", unavailable)
         starter = Plan.objects.get(slug="starter")
