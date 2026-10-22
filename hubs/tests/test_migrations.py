@@ -806,3 +806,64 @@ def test_hubs_migrates_back_before_the_plans_in_the_database_and_forward_again()
     call_command("migrate", "hubs", verbosity=0)
 
     _assert_the_catalogue_of_0013(Plan)
+
+
+# --- 0016: the clock of a suspended business (HUBS-F20) ----------------------------------------------------------
+
+from hubs.tests.conftest import create_business  # noqa: E402
+
+CLOCK = "0016_hub_suspension_clock"
+
+
+def _clock():
+    return import_module(f"hubs.migrations.{CLOCK}")
+
+
+@pytest.mark.django_db
+class TestTheBusinessesAlreadySuspendedGetTheirClock:
+    """A business suspended before the clock arrived has no date: without one the hourly pass would only log it,
+    forever. Its clock starts on the day of the deploy, so it is never deleted sooner than a new suspension."""
+
+    def test_a_business_already_suspended_counts_from_the_deploy(self, business):
+        from hubs.models import Hub
+
+        Hub.objects.filter(pk=business.pk).update(status=Hub.Status.SUSPENDED, suspended_at=None)
+        before = timezone.now()
+
+        _clock().date_the_suspended(global_apps, _SchemaEditor())
+
+        business.refresh_from_db()
+        assert business.suspended_at is not None
+        assert business.suspended_at >= before
+
+    def test_a_dated_suspension_and_a_running_business_are_left_as_they_are(self, business, make_user):
+        from hubs.models import Hub
+
+        dated = create_business(make_user("dora@example.com"), name="Dora's")
+        since = timezone.now() - timedelta(days=40)
+        Hub.objects.filter(pk=dated.pk).update(status=Hub.Status.SUSPENDED, suspended_at=since)
+
+        _clock().date_the_suspended(global_apps, _SchemaEditor())
+
+        assert Hub.objects.get(pk=dated.pk).suspended_at == since
+        assert Hub.objects.get(pk=business.pk).suspended_at is None
+
+    def test_it_is_frozen_and_reads_nothing_of_the_code(self):
+        assert [name for name in _imported_modules(_clock()) if name.startswith("hubs")] == []
+
+
+@pytest.mark.django_db
+def test_hubs_migrates_back_before_the_clock_and_forward_again_dating_the_suspended(owner, plans):
+    """``migrate hubs 0015`` and back: the deploy itself dates a business that was already suspended (the deferred
+    foreign key checks run at once, as in the round trip of 0006)."""
+    from hubs.models import Hub
+
+    business = create_business(owner)
+    Hub.objects.filter(pk=business.pk).update(status=Hub.Status.SUSPENDED)
+    with connection.cursor() as cursor:
+        cursor.execute("SET CONSTRAINTS ALL IMMEDIATE")
+
+    call_command("migrate", "hubs", "0015", verbosity=0)
+    call_command("migrate", "hubs", verbosity=0)
+
+    assert Hub.objects.get(pk=business.pk).suspended_at is not None

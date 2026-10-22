@@ -117,7 +117,8 @@ Flujos `HUBS-F15`…`HUBS-F23` del `WORKBOOK.md` (parte 2 de 4).
   que nadie recibe los enlaces y QR viejos; se libera cuando la dirección vuelve a cambiar. Evento
   `hubs.business.address_changed`. Panel: «Cambiar dirección» en Ajustes (`AddressDialog.vue`).
 - **Suspendidos por impago** (F20; PLAN-SAAS §1.1, «dentro de `sweep_unpaid`»): `Hub.suspended_at`,
-  `suspension_warned_at`, `suspension_final_notice_at` (migración `0016`). `_apply_standing` fecha la suspensión y la
+  `suspension_warned_at`, `suspension_final_notice_at` (migración `0016`, que pone en marcha el reloj de los que
+  ya estaban suspendidos el día del despliegue). `_apply_standing` fecha la suspensión y la
   olvida al pagar. `services.age_suspended()` (lo llama `billing.services.sweep_unpaid`, cada hora; sus cuentas
   `warned`, `final_notice`, `expired`, `undated` se suman a las de la pasada) corre por negocio la operación de
   sistema `hubs.business.age_suspension`: aviso a los 30 días, último a los 150 (`emails.send_suspension_notice`, al
