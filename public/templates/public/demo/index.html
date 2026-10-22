@@ -18,6 +18,8 @@
 {% endcomment %}
 
 {% block title %}{% trans "Try the demo" %} · ERPlora{% endblock %}
+{% comment %} /try/ serves this same page (PUBLIC-F27): both name /demo/ as the one to index. {% endcomment %}
+{% block canonical_url %}https://{{ request.get_host }}{% url 'public:demo' %}{% endblock %}
 {% block meta_description %}{% trans "Open a real ERPlora hub in your browser for 60 minutes: no account, no card, nothing to install." %}{% endblock %}
 
 {% block page_content %}

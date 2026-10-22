@@ -28,6 +28,7 @@ from public.sitemaps import StaticPagesSitemap
 DOOR = "/demo/"
 START = "/demo/start/"
 ENTER = "/demo/enter/"
+TRY = "/try/"
 DEMO_SLUG = re.compile(r"demo-[0-9a-f]{8}")
 
 
@@ -92,7 +93,43 @@ def test_the_door_is_in_the_sitemap_and_the_entry_is_not():
     listed = {name for name, _ in StaticPagesSitemap.pages}
 
     assert "public:demo" in listed
-    assert not {"public:demo_start", "public:demo_enter"} & listed
+    assert not {"public:demo_start", "public:demo_enter", "public:demo_try"} & listed
+
+
+# --- /try/: the same door at the address handed out (PUBLIC-F27) ------------------------------------------
+# erplora.com/demo/ answered a permanent redirect to the sign-up for a month in the old stack, which browsers keep;
+# /try/ was the door at an address that never redirected, and the link handed out (saas#1164).
+
+
+def test_the_door_has_a_second_address_to_hand_out():
+    assert reverse("public:demo_try") == TRY
+
+
+@pytest.mark.django_db
+def test_the_second_address_is_the_same_door_and_names_the_first_as_canonical(client, hub_double):
+    html = page(client.get(TRY))
+
+    assert state_of(html) == "idle"
+    assert 'data-testid="demo-start"' in html
+    assert '<link rel="canonical" href="https://testserver/demo/">' in html
+    assert hub_double.calls == []
+
+
+@pytest.mark.django_db
+def test_the_second_address_takes_a_live_demo_back_too(client, hub_double):
+    slug = start(client)
+
+    html = page(client.get(TRY))
+
+    assert state_of(html) == "ready"
+    assert f'href="{hub_start_url(slug)}"' in html
+
+
+@pytest.mark.django_db
+def test_the_second_address_never_redirects(client):
+    response = client.get(TRY)
+
+    assert response.status_code == 200
 
 
 # --- /demo/: never creates ----------------------------------------------------------------------------
