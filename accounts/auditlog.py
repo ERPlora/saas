@@ -2,13 +2,16 @@
 
 Who changed an account, its access to a business, its API keys and its signed-in sessions, when and from where; the
 staff read it in the admin («Entradas del registro»), and ``cleanup_old_logs`` keeps 90 days of it. Registered from
-``AccountsConfig.ready``. The billing and fiscal models are registered by their own apps.
+``AccountsConfig.ready``. The money and fiscal models are registered by their own apps with ``audit`` (``billing``,
+``fiscal``, the subscription and the plans of ``hubs``, the paid apps of ``apps``).
 
 Every registration serializes only the logged fields (``serialize_auditlog_fields_only``, #957 of the old SaaS:
 without it the serialized copy carried the excluded password hash). Never logged: the secrets (the password hash, a
 key's hash, a session's key and data) and the fields that move on every request (``last_login``, a key's
 ``last_used_at``, a session's ``last_seen_at``: the sign-in is the session's own row).
 """
+
+from collections.abc import Iterable
 
 from allauth.usersessions.models import UserSession
 from auditlog.middleware import AuditlogMiddleware
@@ -20,17 +23,19 @@ from django.utils.functional import LazyObject
 from accounts import services
 from accounts.models import ApiKey, HubMembership
 
-_ONLY_LOGGED_FIELDS = {"serialize_data": True, "serialize_auditlog_fields_only": True}
+def audit(model, *, exclude: Iterable[str] = ()) -> None:
+    """Register ``model`` in the audit trail: its serialized copy keeps only the logged fields, never ``exclude``."""
+    auditlog.register(model, exclude_fields=list(exclude), serialize_data=True, serialize_auditlog_fields_only=True)
 
 
 def register() -> None:
     user = get_user_model()
-    auditlog.register(user, exclude_fields=["password", "last_login"], **_ONLY_LOGGED_FIELDS)
+    audit(user, exclude=["password", "last_login"])
     # After auditlog's own receiver: the account's last entry is written before its author is let go.
     post_delete.connect(services.forget_deleted_actor, sender=user, dispatch_uid="accounts.forget_deleted_actor")
-    auditlog.register(HubMembership, **_ONLY_LOGGED_FIELDS)
-    auditlog.register(ApiKey, exclude_fields=["key_hash", "last_used_at"], **_ONLY_LOGGED_FIELDS)
-    auditlog.register(UserSession, exclude_fields=["session_key", "data", "last_seen_at"], **_ONLY_LOGGED_FIELDS)
+    audit(HubMembership)
+    audit(ApiKey, exclude=["key_hash", "last_used_at"])
+    audit(UserSession, exclude=["session_key", "data", "last_seen_at"])
 
 
 class AuditActorMiddleware(AuditlogMiddleware):

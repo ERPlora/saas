@@ -748,12 +748,12 @@ Estado: hecho
 Actor: superusuario de ERPlora (o alguien del equipo con permiso para ver el registro)
 Pantalla: el admin de erplora.com › «Registro de auditoría»
 Pasos:
-1. Cada cambio de una cuenta (nombre, correo, idioma, si está activa, si es del equipo), de su acceso a un negocio y de sus claves de API (crearla, revocarla), y cada sesión que se abre, queda anotado: qué cambió, de qué valor a cuál, cuándo, quién lo hizo y desde qué dirección.
+1. Cada cambio de una cuenta (nombre, correo, idioma, si está activa, si es del equipo), de su acceso a un negocio y de sus claves de API (crearla, revocarla), cada sesión que se abre y cada cambio de lo que se cobra y de la documentación fiscal (la suscripción de un negocio y sus apps de pago, su pagador, sus facturas y su estado en VeriFactu, un cobro que falla, una compra en curso, un cambio de plan que espera, los precios de los planes y de las apps, las reglas de IVA, los datos de ERPlora en las facturas, los códigos promocionales, la autorización firmada de un negocio y su revisión, y el sello de ERPlora) queda anotado: qué cambió, de qué valor a cuál, cuándo, quién lo hizo y desde qué dirección.
 2. El superusuario abre «Registro de auditoría» en el admin, filtra por tipo de recurso o busca por correo, y abre una entrada para ver sus cambios.
 3. Nadie puede crear, cambiar ni borrar una entrada a mano: solo se leen.
-Entra: los cambios de las cuentas, hechos desde el panel, con una clave de API, desde el admin o por las tareas de erplora.com.
+Entra: los cambios de las cuentas, de lo que se cobra y de la documentación fiscal, hechos desde el panel, con una clave de API, desde el admin, por las tareas de erplora.com o por Stripe al cobrar.
 Sale: una entrada por cambio, que nombra a quien actuaba en ese momento (la cuenta con la sesión abierta o la dueña de la clave de API; nadie en una tarea de erplora.com o tras cerrar la sesión) y la dirección real del visitante, nunca la que diga su navegador.
-Si falla: nunca se anota un secreto (ni la contraseña, ni la clave de API, ni la de una sesión) ni lo que se mueve en cada visita (la última entrada, el último uso de una clave, la última vez que se vio una sesión). Si la cuenta se elimina, sus entradas se quedan con su correo y sin enlace a ella hasta que se borran a los 90 días (ACCOUNTS-F37). Alguien del equipo sin el permiso no puede abrirlo.
+Si falla: nunca se anota un secreto (ni la contraseña, ni la clave de API, ni la de una sesión, ni la de una compra con Stripe, ni el enlace que abre una factura de Stripe, ni los documentos de una autorización ni el sello) ni lo que se mueve solo (la última entrada, el último uso de una clave, la última vez que se vio una sesión, los contadores, los reintentos de envío de una factura a la AEAT). Anotar un cambio nunca cambia una factura ni su registro en VeriFactu. Si la cuenta se elimina, sus entradas se quedan con su correo y sin enlace a ella hasta que se borran a los 90 días (ACCOUNTS-F37). Alguien del equipo sin el permiso no puede abrirlo.
 Implicados: ninguno
 
 ### ACCOUNTS-F37 Borrar el registro de auditoría de más de 90 días

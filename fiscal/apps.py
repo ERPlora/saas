@@ -25,4 +25,8 @@ class FiscalConfig(LiveAppConfig):
 
     def ready(self):
         super().ready()
+        from fiscal import auditlog
         from fiscal import checks  # noqa: F401  (registers the check of FISCAL_DOCUMENTS_KEY)
+
+        # The audit trail of the authorisations and the stamp (ACCOUNTS-F36, PLAN-SAAS §1.1).
+        auditlog.register()

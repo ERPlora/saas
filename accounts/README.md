@@ -168,6 +168,14 @@ lista viva se refresca); ningún rol tiene su permiso y en el admin solo las ve 
   lee al escribir cada entrada, no al entrar la petición. `services.forget_deleted_actor` (`post_delete` de la
   cuenta) suelta el autor de las entradas escritas durante su borrado. Las etiquetas del admin del paquete, que no
   trae español, están en `locale/es` del proyecto.
+- **Auditoría de cobro y fiscal** (F36, PLAN-SAAS §1.1): cada app registra los suyos con `accounts.auditlog.audit`
+  (siempre `serialize_auditlog_fields_only`) desde su `ready()`: `billing/auditlog.py` (reglas y categorías de IVA,
+  política fiscal sin sus acumulados OSS, datos de ERPlora, códigos promocionales sin su contador y sus usos, compras
+  sin `client_secret`, cobros fallidos y facturas sin el enlace de Stripe, facturas sin su cola de envío, sus líneas y
+  los cambios de plan que esperan; fuera, con su motivo en el test: `VatCheck`, `WebhookEvent`, `InvoiceCounter`,
+  `OssNotice`), `fiscal/auditlog.py` (autorización y sello, sin sus documentos cifrados), `hubs/auditlog.py` (planes,
+  pagador, suscripción sin `unpaid_invoice_url` y sus partidas) y `apps/auditlog.py` (`Module`). Sin `updated_at`. El
+  registro solo lee un registro fiscal: escribe su propia tabla, y `cleanup_old_logs` poda también estas entradas.
 
 ## Tests portados de ERPlora/saas (`origin/develop`)
 
@@ -188,15 +196,13 @@ lista viva se refresca); ningún rol tiene su permiso y en el admin solo las ve 
   hub y su gracia (hub-next), entorno `pre`, scopes de flota/vendedor y el script de emisión.
 - `tests/unit/test_gdpr_retention_policy.py`, `test_gdpr_retention_noinput.py` y
   `apps/auth/users/tests/test_anonymize_skips_hub_owners.py` → `test_anonymize_old_users` y `test_cleanup_old_logs`
-  (sin `--no-input`: nunca preguntan); `tests/unit/test_auditlog_coverage.py` → `test_auditlog` (solo los modelos
-  de cuenta: los de cobro y VeriFactu, en su carril); «Reportar un problema» (SAAS_DASHBOARD-F219) →
+  (sin `--no-input`: nunca preguntan); `tests/unit/test_auditlog_coverage.py` → `test_auditlog` de `accounts`,
+  `billing`, `fiscal`, `hubs` y `apps` (sin `Payout` ni `StripeConnectAccount`: no hay marketplace); «Reportar un problema» (SAAS_DASHBOARD-F219) →
   `test_support_report`.
 
 ## Pendiente (de otros carriles)
 
 - **`aws`**: programar `anonymize_old_users` (semanal) y `cleanup_old_logs` (diaria) en `saas-cron`.
-- **`billing`/`fiscal`**: registrar en `django-auditlog` sus modelos (suscripción, factura, pagador, configuración y
-  registros de VeriFactu), como pide PLAN-SAAS §1.1.
 
 - **`hubs`** conecta `signals.sessions_ended` → `revoke_after_commit(user_id)` y `account_deleting` (en curso en
   su carril); también puede escuchar `allauth.account.signals.email_changed` para refrescar la foto del negocio.

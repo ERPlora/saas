@@ -25,8 +25,11 @@ class HubsConfig(LiveAppConfig):
         from allauth.account.signals import email_changed
 
         from accounts import signals as account_signals
+        from hubs import auditlog, services
         from hubs import checks  # noqa: F401  (registers the system checks)
-        from hubs import services
+
+        # The audit trail of what a business pays and who pays it (ACCOUNTS-F36, PLAN-SAAS §1.1).
+        auditlog.register()
 
         # What an account's own changes mean to its businesses (accounts never imports hubs): its sessions
         # end there too, and their snapshots drop it or carry its new address (PLAN-SAAS §2.1, §2.2).

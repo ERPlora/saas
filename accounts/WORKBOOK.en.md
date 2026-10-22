@@ -690,12 +690,12 @@ Status: done
 Actor: ERPlora superuser (or a team member allowed to see the log)
 Screen: erplora.com's admin › «Audit log»
 Steps:
-1. Every change to an account (name, email, language, whether it is active, whether it is staff), to its access to a business and to its API keys (creating one, revoking it), and every session that opens, is written down: what changed, from which value to which, when, who did it and from which address.
+1. Every change to an account (name, email, language, whether it is active, whether it is staff), to its access to a business and to its API keys (creating one, revoking it), every session that opens and every change to what is charged and to the fiscal documentation (a business's subscription and its paid apps, its payer, its invoices and their VeriFactu state, a failed charge, a purchase in progress, a plan change waiting, the prices of the plans and of the apps, the VAT rules, ERPlora's details on the invoices, the promo codes, a business's signed authorisation and its review, and ERPlora's stamp) is written down: what changed, from which value to which, when, who did it and from which address.
 2. The superuser opens «Audit log» in the admin, filters by resource type or searches by email, and opens an entry to see its changes.
 3. Nobody can create, change or delete an entry by hand: they are only read.
-In: the changes to the accounts, made from the panel, with an API key, from the admin or by erplora.com's tasks.
+In: the changes to the accounts, to what is charged and to the fiscal documentation, made from the panel, with an API key, from the admin, by erplora.com's tasks or by Stripe when it charges.
 Out: one entry per change, naming whoever acted at that moment (the account with the open session or the owner of the API key; nobody in an erplora.com task or after signing out) and the visitor's real address, never the one its browser claims.
-If it fails: a secret is never written down (neither the password, nor the API key, nor a session's) nor what moves on every visit (the last sign-in, a key's last use, the last time a session was seen). If the account is deleted, its entries keep its email and no link to it until they are erased after 90 days (ACCOUNTS-F37). A team member without the permission cannot open it.
+If it fails: a secret is never written down (neither the password, nor the API key, nor a session's, nor a Stripe purchase's, nor the link that opens a Stripe invoice, nor an authorisation's documents or the stamp) nor what moves by itself (the last sign-in, a key's last use, the last time a session was seen, the counters, the retries sending an invoice to the AEAT). Writing a change down never changes an invoice or its VeriFactu record. If the account is deleted, its entries keep its email and no link to it until they are erased after 90 days (ACCOUNTS-F37). A team member without the permission cannot open it.
 Involved: none
 
 ### ACCOUNTS-F37 Erase the audit log older than 90 days

@@ -27,8 +27,11 @@ class BillingConfig(LiveAppConfig):
     def ready(self):
         super().ready()
         from accounts import signals as account_signals
+        from billing import auditlog, services
         from billing import checks  # noqa: F401  (registers the deploy check of the Stripe key)
-        from billing import services
+
+        # The audit trail of what ERPlora charges and what Stripe did (ACCOUNTS-F36, PLAN-SAAS §1.1).
+        auditlog.register()
 
         # The payers of a deleted account go once nothing can be charged to them (ACCOUNTS-F27).
         account_signals.account_deleting.connect(services.payer_leaving, dispatch_uid="billing.account_deleting")
