@@ -241,6 +241,25 @@ class TestSigningIn:
 
         assert set(UserSession.objects.filter(user=ana).values_list("session_key", flat=True)) == {*live, client.session.session_key}
 
+    def test_a_session_signed_in_meanwhile_on_another_device_stays(self, ana, password, monkeypatch):
+        """Two sign-ins of one account at once: the one that is recorded while this one is telling the live sessions
+        apart is not among them yet, and still must not go (it is live: its session row came first)."""
+        from accounts import queries
+
+        meanwhile = []
+        live_sessions = queries.live_sessions
+
+        def live_sessions_while_another_device_signs_in(user):
+            live = live_sessions(user)
+            meanwhile.extend(_more_sessions(user, 1))
+            return live
+
+        monkeypatch.setattr(queries, "live_sessions", live_sessions_while_another_device_signs_in)
+
+        sign_in(Client(HTTP_USER_AGENT=MAC, REMOTE_ADDR="81.33.10.4"), ana.email, password)
+
+        assert UserSession.objects.filter(user=ana, session_key__in=meanwhile).count() == 1
+
 
 class TestClosingOne:
     def test_closing_the_phone_signs_it_out_and_asks_the_businesses_too(self, laptop, phone, ana, received):
