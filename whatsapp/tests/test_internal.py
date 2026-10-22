@@ -3,8 +3,8 @@
 
 The Hub calls them signed (v1 over the body, as ``apps/whatsapp_inbox/gateway.py`` does), with an
 ``Idempotency-Key`` on the send. Answers of door 5: 200 ``{"wa_message_id"}`` (Meta accepted it); 409
-``whatsapp.cap_reached | not_connected | window_closed | template_not_approved | recipient_blocked`` (it did not
-leave); another 4xx (also 429) did not leave; a 5xx: nobody knows, and the Hub retries with the same key. erplora.com
+``whatsapp.cap_reached | not_connected | reconnect_needed | window_closed | template_not_approved |
+recipient_blocked | meta_rejected`` (it did not leave); another 4xx (also 429) did not leave; a 5xx: nobody knows, and the Hub retries with the same key. erplora.com
 never sends the same key twice and reserves the month's allowance atomically when it accepts.
 
 Meta is replaced at the HTTP border only (``respx``). Cases of the old product's ``test_notify.py``,
@@ -311,14 +311,46 @@ class TestMetasRefusals:
         assert (response.status_code, error_code(response)) == (429, "whatsapp.meta_rate_limited")
         assert used(business) == 0
 
+    def test_an_expired_or_withdrawn_permission_asks_to_reconnect_and_tells_the_hub(
+        self, client, number, business, hub_double, django_capture_on_commit_callbacks
+    ):
+        """FIX-SAAS-WHATSAPP-EXPIRED-TOKEN-SAYS-NOT-CONNECTED (WHATSAPP-F06, F03): Meta's 190 (the business's
+        permission expired, or the business withdrew it in Meta) is not «not connected»: only connecting the number
+        again fixes it. The answer says so with its own code, the number is marked «needs reconnecting» and the Hub
+        gets the snapshot that says it, with a newer version."""
+        before = Hub.objects.get(pk=business.pk).state_version
+        with respx.mock:
+            respx.route(url__startswith=hub_double.url).pass_through()
+            respx.post(SEND).mock(
+                return_value=httpx.Response(
+                    401, json={"error": {"message": "Session has expired", "type": "OAuthException", "code": 190}}
+                )
+            )
+            with django_capture_on_commit_callbacks(execute=True):
+                response = send(client)
+
+        assert (response.status_code, error_code(response)) == (409, "whatsapp.reconnect_needed")
+        assert "Session has expired" in response.json()["error"]["message"]
+        assert PhoneNumber.objects.get(pk=number.pk).needs_reconnect is True
+        assert used(business) == 0 and not Send.objects.exists()
+        version = Hub.objects.get(pk=business.pk).state_version
+        assert version > before
+        pushed = hub_double.calls_to("PUT", f"/internal/hubs/{business.pk}/state")[-1].body
+        assert (pushed["version"], pushed["whatsapp"]["status"]) == (version, "reconnect_needed")
+
+    @pytest.mark.parametrize("meta_code", [10, 200, 131031, 133010])
     @respx.mock
-    def test_an_expired_permission_is_not_connected_and_marks_the_number(self, client, number):
-        respx.post(SEND).mock(return_value=httpx.Response(401, json={"error": {"message": "Session has expired", "code": 190}}))
+    def test_metas_other_connection_refusals_stay_not_connected_and_mark_nothing(self, client, number, meta_code):
+        """Only 190 is the permission to reconnect: the other codes of a number Meta will not send from keep
+        ``whatsapp.not_connected`` and leave the number as it was."""
+        respx.post(SEND).mock(
+            return_value=httpx.Response(400, json={"error": {"message": f"(#{meta_code}) Meta says no", "code": meta_code}})
+        )
 
         response = send(client)
 
-        assert error_code(response) == "whatsapp.not_connected"
-        assert PhoneNumber.objects.get(pk=number.pk).needs_reconnect is True
+        assert (response.status_code, error_code(response)) == (409, "whatsapp.not_connected")
+        assert PhoneNumber.objects.get(pk=number.pk).needs_reconnect is False
 
     @respx.mock
     def test_meta_unreachable_left_nothing_and_the_hub_retries(self, client, number, business):

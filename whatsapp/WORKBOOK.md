@@ -153,8 +153,8 @@ Estado: hecho
 Actor: sistema
 Pantalla: Bandeja de WhatsApp › Ajustes (en el Hub)
 Pasos:
-1. Cada vez que cambia algo del WhatsApp del negocio (el número, el consumo del mes, una plantilla o el veredicto de Meta sobre ella), erplora.com sube la versión de la foto de estado del negocio y se la manda al Hub.
-2. La foto dice si el número está «Conectado», «Sin conectar» o «Hay que reconectar», el número y el nombre en WhatsApp, el cupo y lo gastado este mes, y las plantillas con lo que dice Meta de cada una.
+1. Cada vez que cambia algo del WhatsApp del negocio (el número, su permiso de Meta, el consumo del mes, una plantilla o el veredicto de Meta sobre ella), erplora.com sube la versión de la foto de estado del negocio y se la manda al Hub.
+2. La foto dice si el número está «Conectado», «Sin conectar» o «Hay que reconectar», el número y el nombre en WhatsApp, el cupo y lo gastado este mes, y las plantillas con lo que dice Meta de cada una. «Hay que reconectar» sale en cuanto Meta rechaza el permiso del negocio: al renovarlo, al enviar un mensaje, al registrar o borrar una plantilla o al abrir un adjunto.
 3. El Hub la aplica y los ajustes y la bandeja lo enseñan sin recargar.
 Entra: el número activo del negocio, su plan, lo gastado este mes y sus plantillas.
 Sale: la parte de WhatsApp de la foto de estado del negocio, con una versión que solo crece.
@@ -200,7 +200,7 @@ Pasos:
 3. Lo que Meta diga después (entregado, leído, fallido) llega a la bandeja como su estado.
 Entra: a quién, el texto o la plantilla con sus variables, y la clave del envío.
 Sale: el mensaje enviado por WhatsApp; la clave anotada para no enviarlo dos veces (`whatsapp.message.recorded`).
-Si falla: fuera de las 24 horas desde el último mensaje del cliente, «solo se puede enviar una plantilla»; un cliente que bloqueó al negocio, una plantilla no aprobada o un número sin conectar dicen su motivo y no gastan cupo; si Meta no contesta, no se sabe si salió: el Hub reintenta con la misma clave y erplora.com nunca lo envía dos veces.
+Si falla: fuera de las 24 horas desde el último mensaje del cliente, «solo se puede enviar una plantilla»; un cliente que bloqueó al negocio, una plantilla no aprobada o un número sin conectar dicen su motivo y no gastan cupo; si el permiso de Meta caducó o el negocio lo retiró en Meta, no sale ni gasta cupo, se dice que hay que volver a conectar el número (no que está sin conectar) y el número queda «Hay que reconectar» en el Hub; si Meta no contesta, no se sabe si salió: el Hub reintenta con la misma clave y erplora.com nunca lo envía dos veces.
 Implicados: bandeja de WhatsApp del Hub
 
 ### WHATSAPP-F07 Recibir los avisos de Meta y entregarlos al Hub
@@ -392,6 +392,15 @@ Implicados: ninguno
   - **12** `POST /internal/whatsapp/disconnect` `{"hub"}` → 200 `{"disconnected": true|false}` (WHATSAPP-F02).
   El canal (puerta 3) no se usa desde el SaaS: la clave `whatsapp` de la foto (puerta 4) es la única fuente, con la
   versión de la foto y el reintento de `reconcile_hub_states`.
+- **Puerta 5 y el permiso caducado** (FIX-SAAS-WHATSAPP-EXPIRED-TOKEN-SAYS-NOT-CONNECTED, **propuesta** al Hub): a los
+  409 del contrato (`whatsapp.cap_reached`, `not_connected`, `window_closed`, `template_not_approved`,
+  `recipient_blocked` y `meta_rejected`) se suma `whatsapp.reconnect_needed`: Meta contestó 190 (el permiso caducó o
+  el negocio lo retiró en Meta), el número queda «Hay que reconectar» y la foto lo lleva con una versión nueva
+  (WHATSAPP-F06, F03). Los otros códigos de Meta de un número que no envía (10, 200, 131031, 133010) siguen siendo
+  `not_connected`, sin marca. El Hub de hoy lo lee como todo 409 que no conoce: `whatsapp_inbox.send_refused` con el
+  motivo de Meta, igual que `not_connected`. Las plantillas (puertas 8 y 9) y los adjuntos siguen contestando
+  `not_connected` a un 190 (y marcan el número) hasta que el Hub conozca el código nuevo: allí su `not_connected`
+  tiene texto propio.
 - Vuelta de la ventana de Meta: `GET /whatsapp/return?code=…&state=<slug>.<32 hex>` (o `?error=…&error_description=…`;
   `whatsapp/signup_return.py`, WHATSAPP-F01), pública, sin sesión, sin caché y sin BD. Hace
   `window.opener.postMessage({"type": "erplora.whatsapp.signup", "state", "code" | "error", "error_description"},
