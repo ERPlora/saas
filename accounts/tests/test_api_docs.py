@@ -60,11 +60,17 @@ def test_every_script_carries_the_nonce_and_comes_from_here(client, ana):
     assert re.search(r'<script nonce="[^"]+" src="/static/ninja/redoc\.standalone\.js', html)
 
 
-def test_only_this_page_goes_without_trusted_types_and_its_search_runs_in_a_worker(client, ana):
+def test_only_this_page_goes_without_trusted_types_and_its_search_runs_in_a_worker(client, ana, settings, spa_manifest):
+    """Production's policy (the tests run with the debug one, which has no Trusted Types): the panel keeps it."""
+    from live.csp import base_policy
+
+    settings.SECURE_CSP = base_policy()
     client.force_login(ana)
 
     policy = _csp(client.get(DOCS, HTTP_HOST=HOST))
+    panel = _csp(client.get("/account/profile", HTTP_HOST=HOST))
 
+    assert panel["require-trusted-types-for"] == ["'script'"]
     assert "require-trusted-types-for" not in policy
     assert "'strict-dynamic'" in policy["script-src"] and any(value.startswith("'nonce-") for value in policy["script-src"])
     assert policy["worker-src"] == ["'self'", "blob:"]

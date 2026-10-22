@@ -400,6 +400,15 @@ class TestTheSuperuserIssuesAKey:
             self.ADD, {"user": str(user.pk), "name": "QA monitor", "scopes": ["hubs.read"], "expires_in_days": "30", **fields}
         )
 
+    def test_the_service_refuses_a_customer_whatever_the_form_offers(self, staff_client, ana):
+        """The form offers team accounts only; the service holds the line on its own (the old ``user_not_staff``)."""
+        from live.errors import NotFound
+
+        _, root = staff_client
+        with pytest.raises(NotFound):
+            services.issue_api_key(ana, name="Monitor", scopes=["hubs.read"], expires_in_days=30, by=root)
+        assert not ana.api_keys.exists()
+
     def test_the_form_offers_only_team_accounts(self, staff_client, teammate, ana):
         client, _ = staff_client
 
