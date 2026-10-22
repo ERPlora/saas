@@ -203,6 +203,7 @@ theme and "Sign out".
 | ACCOUNTS-F32 | Use an API key: what it opens and what it does not | done |
 | ACCOUNTS-F33 | Revoke an API key | done |
 | ACCOUNTS-F34 | Read the API documentation | done |
+| ACCOUNTS-F35 | Erase the accounts unused for two years | done |
 
 ### ACCOUNTS-F01 Create the account
 Status: done
@@ -666,3 +667,17 @@ In: the session.
 Out: nothing saved. The documentation is read only: it makes no calls with the account's data.
 If it fails: without a session, the **Entrance** asks them to sign in and then goes back to the documentation; an API key alone does not open it. If the schema does not load, "We could not load the API documentation. Reload the page to try again.". The schema itself is public, as Stripe's and GitHub's are, so that Postman can import it.
 Involved: none
+
+### ACCOUNTS-F35 Erase the accounts unused for two years
+Status: done
+Actor: system
+Screen: none (a weekly task of erplora.com)
+Steps:
+1. Once a week, erplora.com looks for the active accounts that are not staff and have not signed in on erplora.com for two years (or never signed in and were created more than two years ago).
+2. It skips those that belong to a business that is not deleted, as owners, payers or members: whoever works in their business every day does not go through erplora.com and would look unused.
+3. Each of the others is erased as when its owner deletes the account (ACCOUNTS-F27): with its photo, its preferences, its API keys, its email addresses, its linked Google account and all its sessions, here and in the businesses.
+4. ERPlora's invoices stay, with the recipient of their issue date and without a link to the account.
+In: the date of each account's last sign-in on erplora.com (or of its creation).
+Out: the unused accounts erased, each with its event `accounts.profile.deleted` on its own channel; no other account changes. Just before erasing it, the account is read again: if it signed in meanwhile, it stays.
+If it fails: an account that cannot be erased stays in the log (by its identifier, never its email) and the task goes on with the others; at the end, the task ends in error for the team to see, and that account is tried again the next week. If a pass is already running, the second one does nothing. The team can count what would be erased without erasing anything.
+Involved: hubs (the businesses that hold the account), billing (the invoices that stay)

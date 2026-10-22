@@ -223,6 +223,7 @@ El nombre y el correo arriba del menú lateral (en el móvil, dentro del menú):
 | ACCOUNTS-F32 | Usar una clave de API: qué abre y qué no | hecho |
 | ACCOUNTS-F33 | Revocar una clave de API | hecho |
 | ACCOUNTS-F34 | Consultar la documentación de la API | hecho |
+| ACCOUNTS-F35 | Borrar las cuentas sin uso en dos años | hecho |
 
 ### ACCOUNTS-F01 Crear la cuenta
 <!-- origen: old-saas:SAAS_AUTH-F01 pc:cloud/auth/signup fi:saas/auth-services#registro-de-usuario-por-api-signup fi:saas/support/auth-services#service-create_user gh:saas#2542 gh:saas#2536 gh:saas#2560 gh:saas#2562 -->
@@ -720,6 +721,21 @@ Entra: la sesión.
 Sale: nada guardado. La documentación es solo para leer: no hace llamadas con los datos de la cuenta.
 Si falla: sin sesión, la **Entrada** le pide entrar y después vuelve a la documentación; una clave de API sola no la abre. Si el esquema no carga, «No hemos podido cargar la documentación de la API. Recarga la página para volver a intentarlo.». El esquema en sí es público, como los de Stripe y GitHub, para que Postman lo importe.
 Implicados: ninguno
+
+### ACCOUNTS-F35 Borrar las cuentas sin uso en dos años
+<!-- origen: old-saas:SAAS_AUTH-F15 fi:saas/auth-services#comando-anonimizar-usuarios-inactivos-gdpr fi:saas/support/auth-services#command-anonymize_old_users fi:saas/support/auth-services#task-anonymize_old_users_task -->
+Estado: hecho
+Actor: sistema
+Pantalla: ninguna (una tarea semanal de erplora.com)
+Pasos:
+1. Una vez por semana, erplora.com busca las cuentas activas que no son del personal y que no han entrado en erplora.com en dos años (o que nunca entraron y se crearon hace más de dos años).
+2. Se salta las que pertenecen a un negocio que no está eliminado, como propietarias, pagadoras o miembros: quien trabaja a diario en su negocio no pasa por erplora.com y parecería sin uso.
+3. Cada una de las demás se borra como cuando su dueña elimina la cuenta (ACCOUNTS-F27): con su foto, sus preferencias, sus claves de API, sus direcciones de correo, su cuenta de Google enlazada y todas sus sesiones, aquí y en los negocios.
+4. Las facturas de ERPlora se quedan, con el destinatario de la fecha de emisión y sin enlace a la cuenta.
+Entra: la fecha de la última entrada en erplora.com (o la del alta) de cada cuenta.
+Sale: las cuentas sin uso borradas, cada una con su evento `accounts.profile.deleted` en su propio canal; ninguna otra cuenta cambia. Justo antes de borrarla, la cuenta se vuelve a leer: si ha entrado entre medias, se queda.
+Si falla: una cuenta que no se puede borrar queda en el registro (por su identificador, nunca por su correo) y la tarea sigue con las demás; al acabar, la tarea termina con error para que el equipo lo vea, y esa cuenta se vuelve a intentar a la semana siguiente. Si ya hay una pasada en marcha, la segunda no hace nada. El equipo puede contar lo que se borraría sin borrar nada.
+Implicados: hubs (los negocios que retienen la cuenta), billing (las facturas que se quedan)
 
 ## Para quien lo mantiene
 

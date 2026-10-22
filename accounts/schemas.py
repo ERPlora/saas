@@ -381,3 +381,18 @@ class ApiKeyIssueIn(ApiKeyCreateIn):
     """The admin's «Add API key» (ACCOUNTS-F31): the same key, for a team account chosen by a superuser."""
 
     user_id: UUID
+
+
+class InactiveAccountIn(StrictIn):
+    """``accounts.profile.erase_inactive`` (ACCOUNTS-F35): the account, the days without signing in that make it unused,
+    and whether only to say what would happen."""
+
+    user_id: UUID
+    inactive_days: int = Field(ge=1)
+    dry_run: bool = False
+
+
+class InactiveAccountOut(Schema):
+    #: ``erased`` (or, in a dry run, would be), ``member`` (it belongs to a business: kept) or ``active`` (it signed in
+    #: since it was picked, or is no longer a candidate).
+    outcome: Literal["erased", "member", "active"]

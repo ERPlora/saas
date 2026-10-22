@@ -13,6 +13,7 @@ import hmac
 import logging
 import secrets
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from functools import partial
@@ -20,7 +21,7 @@ from functools import partial
 from django.conf import settings
 from django.contrib.auth import get_user_model, logout
 from django.contrib.auth.models import Group
-from django.db import transaction
+from django.db import connection, transaction
 from django.utils import timezone
 from django.utils.translation import gettext
 from live import operations
@@ -48,6 +49,8 @@ from accounts.schemas import (
     ApiKeyRevokeIn,
     ApiKeyRowOut,
     BrowserTrustOut,
+    InactiveAccountIn,
+    InactiveAccountOut,
     BrowserTrustRevokeIn,
     EmailChangeIn,
     EmailVerifyIn,
@@ -574,16 +577,138 @@ def profile_delete(ctx: OperationContext, data: ProfileDeleteIn) -> dict:
             businesses=paid,
         )
     require_recent_authentication(ctx)
-    user_id = user.pk
-    signals.account_deleting.send(sender=get_user_model(), user_id=user_id)
-    signals.sessions_ended.send(sender=get_user_model(), user_id=user_id)
+    _erase_account(ctx, user, request=ctx.request)
+    logger.info("accounts.account_deleted user=%s", user.pk)
+    return {"deleted": True}
+
+
+def _erase_account(ctx: OperationContext, user, *, request=None) -> None:
+    """What deleting an account does, whoever deletes it (ACCOUNTS-F27, F35): every business is asked to forget it and
+    to end its sessions (``signals``), its event goes to its channel, the outbox keeps its id instead of its email, every
+    session of the SaaS ends (``request``'s too, signed out) and the account goes with what hangs from it. ERPlora's
+    invoices stay: their link to the account is ``SET_NULL`` and they keep their recipient as issued."""
+    signals.account_deleting.send(sender=get_user_model(), user_id=user.pk)
+    signals.sessions_ended.send(sender=get_user_model(), user_id=user.pk)
     record_event(ctx, events.PROFILE_DELETED)
     forget_in_outbox(user)
-    logout(ctx.request)
+    if request is not None:
+        logout(request)
     end_every_session(user)
     user.delete()
-    logger.info("accounts.account_deleted user=%s", user_id)
-    return {"deleted": True}
+
+
+# --- GDPR: the accounts unused for two years go (ACCOUNTS-F35) ---------------------------------------------------
+
+#: Days without signing in on erplora.com that make an account unused (the old SaaS's two years).
+INACTIVE_DAYS = 730
+#: ``accounts.profile.erase_inactive``: a system context only (no role grants it), on the account's channel.
+ERASE_INACTIVE = "accounts.erase_inactive"
+
+
+def lock_name(command: str) -> str:
+    """The advisory lock of ``command``: ``hubs.services.lock_name``'s namespace (accounts never imports hubs)."""
+    return f"erplora.saas.{command}"
+
+
+@contextmanager
+def run_exclusively(command: str):
+    """Hold the session advisory lock of ``command`` while the block runs; yields ``False`` when another run holds it.
+
+    ``hubs.services.run_exclusively``'s twin (accounts never imports hubs): a session lock, because a run spans one
+    transaction per account, so one that fails undoes no other. Released at the end, when the run fails and when the
+    task dies (Postgres ends its session). The SaaS's database is direct, never PgBouncer.
+    """
+    name = lock_name(command)
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT pg_try_advisory_lock(hashtext(%s))", [name])
+        taken = cursor.fetchone()[0]
+    try:
+        yield taken
+    finally:
+        if taken:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT pg_advisory_unlock(hashtext(%s))", [name])
+
+
+def _unused_since(inactive_days: int):
+    """The accounts that may go: active, not staff, and without signing in (or, never signed in, created) since
+    ``inactive_days`` ago."""
+    from django.db.models import Q
+
+    cutoff = timezone.now() - timedelta(days=inactive_days)
+    return get_user_model().objects.filter(is_active=True, is_staff=False, is_superuser=False).filter(
+        Q(last_login__lt=cutoff) | Q(last_login__isnull=True, date_joined__lt=cutoff)
+    )
+
+
+def inactive_account_ids(*, inactive_days: int = INACTIVE_DAYS) -> list:
+    """The ids of the accounts unused for ``inactive_days``, the oldest first: the candidates of a run."""
+    return list(_unused_since(inactive_days).order_by("date_joined", "pk").values_list("pk", flat=True))
+
+
+def _as_account(user) -> OperationContext:
+    """The context ``user`` gets from a request, outside one: to read what it sees through other apps' operations."""
+    from live.context import Scope
+    from live.meta import all_live_app_configs, permissions_for_role
+
+    from base.operations import ACCOUNT_ROLE
+
+    return OperationContext(
+        scope=Scope("user", str(user.pk)),
+        actor=user,
+        permissions=permissions_for_role(all_live_app_configs(), ACCOUNT_ROLE),
+        language=user.language,
+    )
+
+
+def belongs_to_a_business(user) -> bool:
+    """Whether ``user`` is in a business that is not deleted (owner, payer or member), from ``hubs.business.list``
+    (called by its name: accounts never imports hubs). A business in its 90 days of recovery holds nobody (F27)."""
+    business_list = operations.get(BUSINESS_LIST)
+    as_account = _as_account(user)
+    offset = 0
+    while True:
+        page = business_list(as_account, business_list.input(limit=100, offset=offset))
+        if any(row.deletion_requested_at is None for row in page.rows):
+            return True
+        offset += page.limit
+        if offset >= page.total:
+            return False
+
+
+@operation(
+    "accounts.profile.erase_inactive",
+    kind="command",
+    permission=ERASE_INACTIVE,
+    input=InactiveAccountIn,
+    output=InactiveAccountOut,
+)
+def profile_erase_inactive(ctx: OperationContext, data: InactiveAccountIn) -> dict:
+    """Erase an account unused for ``inactive_days`` as its owner would delete it (``_erase_account``), on its own
+    channel. Read again under its row's lock, so a sign-in since it was picked keeps it (``active``); one that belongs to
+    a business stays (``member``): its last sign-in on erplora.com says nothing of its days in the business. Called
+    only by ``erase_inactive_account``; no route."""
+    if ctx.scope.key != str(data.user_id):
+        raise LiveMisuse(f"accounts.profile.erase_inactive runs on the account's channel, not {ctx.scope.key!r}.")
+    user = _unused_since(data.inactive_days).select_for_update().filter(pk=data.user_id).first()
+    if user is None:
+        return {"outcome": "active"}
+    if belongs_to_a_business(user):
+        return {"outcome": "member"}
+    if not data.dry_run:
+        _erase_account(ctx, user)
+        logger.info("accounts.inactive_account_erased user=%s", data.user_id)
+    return {"outcome": "erased"}
+
+
+def erase_inactive_account(user_id, *, inactive_days: int = INACTIVE_DAYS, dry_run: bool = False) -> str:
+    """``manage.py anonymize_old_users``'s step for one account: ``erased``, ``member`` or ``active``."""
+    from live.context import Scope, system_context
+
+    return profile_erase_inactive(
+        system_context(Scope("user", str(user_id))),
+        InactiveAccountIn(user_id=user_id, inactive_days=inactive_days, dry_run=dry_run),
+    ).outcome
 
 
 # --- Account → Profile → «Change» the email --------------------------------------------------------
