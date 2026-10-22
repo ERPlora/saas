@@ -1750,6 +1750,11 @@ msgstr "Este precio no se cobra cada año."
 msgid "Stripe charges %(stripe)s and the plan says %(plan)s."
 msgstr "Stripe cobra %(stripe)s y el plan dice %(plan)s."
 
+#: services.py:1185
+#, python-format
+msgid "Stripe charges %(stripe)s and the module says %(module)s."
+msgstr "Stripe cobra %(stripe)s y el módulo dice %(module)s."
+
 #: services.py:1165
 msgid ""
 "This price includes the VAT or does not say: it must be net (tax behaviour "

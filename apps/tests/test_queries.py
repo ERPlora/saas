@@ -218,6 +218,20 @@ def test_an_unusable_icon_is_replaced_by_the_fallback_and_logged(caplog, icon_sv
     )
 
 
+def test_the_list_reads_every_app_at_once(catalog):
+    """APPS-F01: no read per app (the old catalogue's flat query count): listing costs the same with three
+    apps or thirty."""
+    with CaptureQueriesContext(connection) as three_apps:
+        assert len(listed()) == 3
+    for number in range(5):
+        make_app(f"extra_{number}", requires=["invoice"], verticals=["retail"])
+
+    with CaptureQueriesContext(connection) as eight_apps:
+        assert len(listed()) == 8
+
+    assert len(eight_apps.captured_queries) == len(three_apps.captured_queries)
+
+
 def test_an_empty_catalog_is_an_empty_list():
     """A new database, before any release of the Hub registered its apps (spec §5.3)."""
     assert listed() == []
@@ -257,6 +271,19 @@ def test_the_detail_adds_the_description_the_requires_and_the_docs(catalog):
         {"id": "loyalty", "name": "Loyalty (es)", "listed": False},
         {"id": "gone", "name": "gone", "listed": False},
     ]
+
+
+def test_the_detail_does_not_read_once_per_required_app(catalog):
+    """APPS-F01: the names of the required apps come in one read, however many the app requires."""
+    make_app("one", requires=["invoice"])
+    make_app("three", requires=["invoice", "inventory", "whatsapp_inbox"])
+
+    with CaptureQueriesContext(connection) as one_required:
+        detail("one")
+    with CaptureQueriesContext(connection) as three_required:
+        detail("three")
+
+    assert len(three_required.captured_queries) == len(one_required.captured_queries)
 
 
 def test_the_detail_carries_the_card_too(catalog):
