@@ -169,6 +169,13 @@ async function confirmRevoke(): Promise<void> {
   </DataTable>
   <p class="keys-note">
     {{ $t('accounts.account.keys.note') }}
+    <a
+      class="keys-docs"
+      data-testid="api-keys-docs"
+      href="/api/docs"
+      target="_blank"
+      rel="noopener"
+    >{{ $t('accounts.account.keys.docs') }}</a>
   </p>
 
   <NewKeyModal
@@ -232,5 +239,9 @@ async function confirmRevoke(): Promise<void> {
   margin: -4px 2px 0;
   font-size: 0.82rem;
   color: var(--ep-text-secondary, color-mix(in oklab, var(--ion-text-color) 68%, transparent));
+}
+.keys-docs {
+  color: var(--ion-color-primary);
+  white-space: nowrap;
 }
 </style>

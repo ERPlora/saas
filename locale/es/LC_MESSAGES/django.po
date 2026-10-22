@@ -955,6 +955,9 @@ msgstr "Se ha avisado a su titular por correo. Si se pierde, revócala y emite o
 msgid "Back to the API keys"
 msgstr "Volver a las claves de API"
 
+msgid "We could not load the API documentation. Reload the page to try again."
+msgstr "No hemos podido cargar la documentación de la API. Recarga la página para volver a intentarlo."
+
 #: fiscal_gateway/apps.py:16
 msgid "Fiscal gateway"
 msgstr "Pasarela fiscal"

@@ -222,6 +222,7 @@ El nombre y el correo arriba del menú lateral (en el móvil, dentro del menú):
 | ACCOUNTS-F31 | Crear una clave de API | hecho |
 | ACCOUNTS-F32 | Usar una clave de API: qué abre y qué no | hecho |
 | ACCOUNTS-F33 | Revocar una clave de API | hecho |
+| ACCOUNTS-F34 | Consultar la documentación de la API | hecho |
 
 ### ACCOUNTS-F01 Crear la cuenta
 <!-- origen: old-saas:SAAS_AUTH-F01 pc:cloud/auth/signup fi:saas/auth-services#registro-de-usuario-por-api-signup fi:saas/support/auth-services#service-create_user gh:saas#2542 gh:saas#2536 gh:saas#2560 gh:saas#2562 -->
@@ -704,6 +705,20 @@ Pasos:
 Entra: la clave elegida.
 Sale: la clave no abre nada desde la siguiente llamada; su fila se queda como rastro, con la fecha en que se revocó, y la lista de su cuenta se actualiza sola. No hay «rotar»: se crea otra y se revoca la vieja. Evento `accounts.apikey.revoked`.
 Si falla: revocarla dos veces no cambia nada; la clave de otra cuenta no se encuentra («Esa clave de API no existe.»). Revocar no pide la contraseña. El soporte ve las claves sin poder revocarlas.
+Implicados: ninguno
+
+### ACCOUNTS-F34 Consultar la documentación de la API
+<!-- origen: old-saas:SAAS_DASHBOARD-F197 fi:saas/auth-services#docs-de-api-swagger-openapi-redoc-gated -->
+Estado: hecho
+Actor: cualquier persona con cuenta
+Pantalla: Cuenta › Claves de API, Documentación de la API
+Pasos:
+1. En **Cuenta › Claves de API**, bajo la lista, la persona pulsa «Documentación de la API»: se abre en otra pestaña.
+2. La documentación enseña cada parte de la API (la cuenta, los negocios, las facturas…), con sus llamadas, lo que piden y lo que contestan, y un buscador.
+3. Para probar la API desde un programa, descarga el esquema desde la propia documentación y lo abre en Postman con una clave de API (ACCOUNTS-F31).
+Entra: la sesión.
+Sale: nada guardado. La documentación es solo para leer: no hace llamadas con los datos de la cuenta.
+Si falla: sin sesión, la **Entrada** le pide entrar y después vuelve a la documentación; una clave de API sola no la abre. Si el esquema no carga, «No hemos podido cargar la documentación de la API. Recarga la página para volver a intentarlo.». El esquema en sí es público, como los de Stripe y GitHub, para que Postman lo importe.
 Implicados: ninguno
 
 ## Para quien lo mantiene

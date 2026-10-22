@@ -355,7 +355,8 @@
         "revoked": "Clave revocada: «{name}»",
         "empty": "Aún no tienes claves. Crea una para conectar tus herramientas con tu cuenta de ERPlora.",
         "note": "Estas claves sirven para la API de tu cuenta de ERPlora. Las de cada negocio se crean dentro del negocio.",
-        "revokeShort": "Revocar"
+        "revokeShort": "Revocar",
+        "docs": "Documentación de la API"
       },
       "title": "Cuenta",
       "tabsLabel": "Secciones de la cuenta",

@@ -5,7 +5,17 @@
 // «Confirm it's you», use, revoke) are account.spec.ts's. Accounts of this spec: `e2e-acc4k-…@example.com`.
 import { type Page } from '@playwright/test';
 
-import { djangoPrint, expect, settled, shot, sidewaysScroll, signIn, test, watchPageErrors } from './fixtures';
+import {
+  djangoPrint,
+  expect,
+  settled,
+  shot,
+  sidewaysScroll,
+  signIn,
+  signInThroughPage,
+  test,
+  watchPageErrors,
+} from './fixtures';
 
 const PREFIX = 'e2e-acc4k-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
@@ -47,13 +57,15 @@ function createAccount(email: string, role: 'superuser' | 'support' | 'customer'
   return { email, password: PASSWORD };
 }
 
-async function atEverySize(page: Page, key: string, ready: () => Promise<void>): Promise<void> {
+/** Each size: the page as `ready` leaves it, no sideways scroll, and its shot (`fullPage` off for a page as long as the
+ *  API's reference, whose full shot is tens of thousands of pixels tall). */
+async function atEverySize(page: Page, key: string, ready: () => Promise<void>, fullPage = true): Promise<void> {
   for (const size of SIZES) {
     await page.setViewportSize({ width: size.width, height: size.height });
     await ready();
     await settled(page);
     expect(await sidewaysScroll(page), `${key} scrolls sideways at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`APP-ACCOUNTS-4-${key}-${size.name}`), fullPage: true });
+    await page.screenshot({ path: shot(`APP-ACCOUNTS-4-${key}-${size.name}`), fullPage });
   }
   await page.setViewportSize({ width: 1440, height: 900 });
 }
@@ -119,4 +131,38 @@ test('ACCOUNTS-G101 · G102 · G103 · a superuser issues a key for a team accou
   expect([after.status(), ((await after.json()) as { error: { code: string } }).error.code]).toEqual([401, 'api_key_invalid']);
   await program.dispose();
   expect(errors).toEqual([]);
+});
+
+test('ACCOUNTS-G105 · G13 · the API documentation: for signed-in accounts, from Account › API keys, nothing from outside', async ({
+  page,
+  context,
+}) => {
+  const errors = watchPageErrors(page);
+  // Nothing from outside is loaded: ReDoc's own logo (cdn.redoc.ly) is refused by the policy before it leaves.
+  const outside: string[] = [];
+  context.on('requestfinished', (request) => {
+    const url = new URL(request.url());
+    if (url.protocol !== 'blob:' && !['localhost', '127.0.0.1'].includes(url.hostname)) outside.push(request.url());
+  });
+  const ana = createAccount(address('docs'), 'customer');
+
+  // Signed out: the sign-in, then back to the documentation.
+  await page.goto('/api/docs');
+  await expect(page).toHaveURL(/\/launch\?next=/);
+  expect(new URL(page.url()).searchParams.get('next')).toBe('/api/docs');
+  await signInThroughPage(page, ana);
+  await expect(page).toHaveURL(/\/api\/docs$/);
+  await expect(page.locator('#redoc-ui')).toContainText('/api/accounts/api-keys');
+
+  // From Account › API keys: the link opens it beside the panel.
+  await page.goto('/account/api-keys');
+  const [docs] = await Promise.all([context.waitForEvent('page'), page.getByTestId('api-keys-docs').click()]);
+  const docsErrors = watchPageErrors(docs);
+  await expect(docs).toHaveURL(/\/api\/docs$/);
+  await atEverySize(docs, 'ACCOUNTS-G105', async () => {
+    await expect(docs.getByRole('heading', { name: /ERPlora Cloud API/ }).first()).toBeVisible();
+    await expect(docs.locator('#redoc-ui')).toContainText('/api/accounts/api-keys');
+  }, false);
+  expect(outside).toEqual([]);
+  expect([...errors, ...docsErrors]).toEqual([]);
 });

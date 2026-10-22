@@ -355,7 +355,8 @@
         "revoked": "Key revoked: «{name}»",
         "empty": "You have no keys yet. Create one to connect your tools with your ERPlora account.",
         "note": "These keys are for the API of your ERPlora account. The keys of each business are created inside the business.",
-        "revokeShort": "Revoke"
+        "revokeShort": "Revoke",
+        "docs": "API documentation"
       },
       "title": "Account",
       "tabsLabel": "Account sections",

@@ -202,6 +202,7 @@ theme and "Sign out".
 | ACCOUNTS-F31 | Create an API key | done |
 | ACCOUNTS-F32 | Use an API key: what it opens and what it does not | done |
 | ACCOUNTS-F33 | Revoke an API key | done |
+| ACCOUNTS-F34 | Read the API documentation | done |
 
 ### ACCOUNTS-F01 Create the account
 Status: done
@@ -651,4 +652,17 @@ Steps:
 In: the chosen key.
 Out: the key opens nothing from the next call on; its row stays as the trail, with the date it was revoked, and its account's list refreshes by itself. There is no "rotate": another one is created and the old one revoked. Event `accounts.apikey.revoked`.
 If it fails: revoking it twice changes nothing; another account's key is not found ("That API key does not exist."). Revoking does not ask for the password. Support sees the keys without being able to revoke them.
+Involved: none
+
+### ACCOUNTS-F34 Read the API documentation
+Status: done
+Actor: any person with an account
+Screen: Account › API keys, API documentation
+Steps:
+1. In **Account › API keys**, under the list, the person taps "API documentation": it opens in another tab.
+2. The documentation shows each part of the API (the account, the businesses, the invoices…), with its calls, what they ask for and what they answer, and a search box.
+3. To try the API from a program, they download the schema from the documentation itself and open it in Postman with an API key (ACCOUNTS-F31).
+In: the session.
+Out: nothing saved. The documentation is read only: it makes no calls with the account's data.
+If it fails: without a session, the **Entrance** asks them to sign in and then goes back to the documentation; an API key alone does not open it. If the schema does not load, "We could not load the API documentation. Reload the page to try again.". The schema itself is public, as Stripe's and GitHub's are, so that Postman can import it.
 Involved: none
