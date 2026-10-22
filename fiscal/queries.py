@@ -12,6 +12,7 @@ admin's alone).
 would be a cycle): it reads ``hubs.models`` only, and ``access``/``account_of`` inside the operation.
 """
 
+import logging
 from typing import Any
 from uuid import UUID
 
@@ -20,9 +21,14 @@ from django.db.models.functions import Coalesce, Greatest
 from live.context import OperationContext
 from live.operations import operation
 
-from fiscal.models import RepresentationGrant
+from billing.models import CompanyConfig
+from fiscal import crypto
+from fiscal.anexo import Representative
+from fiscal.models import RepresentationGrant, RepresentativeStamp
 from fiscal.schemas import RepresentationStatusIn, RepresentationStatusOut
 from hubs.models import HubMember
+
+logger = logging.getLogger(__name__)
 
 Status = RepresentationGrant.Status
 #: How many versions the page lists, newest first.
@@ -163,4 +169,87 @@ def snapshot_block(hub_id: UUID) -> dict[str, Any]:
             "updated_at": current.changed_at.isoformat(),
             "reason": _reason(current),
         }
+    }
+
+
+def step_to_announce(grant_id: UUID) -> tuple[RepresentationGrant, list] | None:
+    """What ``fiscal.emails`` announces of the step that left ``grant_id`` as it is: the grant with its business,
+    without its documents, and the active owner and admins of the business who answered their invitation, by
+    email. ``None`` for a grant that no longer exists and for a step a newer one replaced (a mark of the
+    platform in ``reason``): the newer step's own mail says all there is to say."""
+    grant = (
+        RepresentationGrant.objects.select_related("hub")
+        .defer(*RepresentationGrant.DOCUMENTS)
+        .filter(pk=grant_id)
+        .first()
+    )
+    if grant is None or grant.reason in REPLACED_MARKS:
+        return None
+    members = (
+        HubMember.objects.filter(
+            hub_id=grant.hub_id,
+            accepted_at__isnull=False,
+            role__in=[HubMember.Role.OWNER, HubMember.Role.ADMIN],
+            user__is_active=True,
+        )
+        .select_related("user")
+        .order_by("user__email")
+    )
+    return grant, [member.user for member in members]
+
+
+# --- What goes on the Anexo I model (FISCAL-F06) --------------------------------------------------------
+
+
+def representative() -> Representative | None:
+    """ERPlora as the model names it: its company configuration (``billing.CompanyConfig``, from its Modelo 036),
+    the same identity its invoices and its privacy policy give. ``None`` (and an error in the log) without one:
+    the model then keeps ERPlora's blanks dotted."""
+    company = CompanyConfig.objects.first()
+    if company is None:
+        logger.error("fiscal.model.no_company: the model goes without ERPlora's details")
+        return None
+    town = " ".join(part for part in (company.postal_code, company.city) if part)
+    if company.province:
+        town = f"{town} ({company.province})"
+    return Representative(
+        name=company.legal_name,
+        tax_id=company.tax_id,
+        address=", ".join(part for part in (company.street, town) if part),
+    )
+
+
+def representative_stamp() -> bytes | None:
+    """ERPlora's stamp and signature, decrypted, or ``None`` without one. One kept with another key cannot be
+    read: ``None`` too, with an error in the log, and the admin's stamp page says it (``stamp_status``)."""
+    stamp = RepresentativeStamp.objects.filter(slot=RepresentativeStamp.SLOT).first()
+    if stamp is None:
+        return None
+    try:
+        return crypto.decrypt(stamp.image)
+    except crypto.Undecryptable:
+        logger.error("fiscal.model.stamp_unreadable id=%s", stamp.pk)
+        return None
+
+
+def stamp_status() -> dict[str, Any] | None:
+    """What the admin's stamp page says of the stamp: when and by whom it was uploaded, its size and whether it
+    can be read; ``None`` without one. Never the image."""
+    stamp = (
+        RepresentativeStamp.objects.filter(slot=RepresentativeStamp.SLOT)
+        .select_related("uploaded_by")
+        .first()
+    )
+    if stamp is None:
+        return None
+    try:
+        crypto.decrypt(stamp.image)
+        readable = True
+    except crypto.Undecryptable:
+        readable = False
+    return {
+        "uploaded_at": stamp.uploaded_at,
+        "uploaded_by": stamp.uploaded_by,
+        "size": stamp.size,
+        "readable": readable,
     }

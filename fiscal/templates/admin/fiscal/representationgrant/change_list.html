@@ -1,0 +1,7 @@
+{% extends "admin/change_list.html" %}
+{% load i18n %}
+{% comment %}The queue of authorisations, with the way to ERPlora's stamp as representative (FISCAL-F06).{% endcomment %}
+{% block object-tools-items %}
+{% if stamp_url %}<li><a href="{{ stamp_url }}">{% translate "Representative's stamp" %}</a></li>{% endif %}
+{{ block.super }}
+{% endblock %}

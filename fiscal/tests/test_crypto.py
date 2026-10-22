@@ -1,5 +1,5 @@
 """The documents of an authorisation are encrypted at rest (Fernet, ``FISCAL_DOCUMENTS_KEY``): a scan of an
-identity card never sits in the database in the clear (RGPD), as in the old product."""
+identity card never sits in the database in the clear (RGPD), as in the old product (FISCAL-F03)."""
 
 import pytest
 from cryptography.fernet import Fernet

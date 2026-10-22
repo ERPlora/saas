@@ -1,14 +1,16 @@
-"""``fiscal_gateway.aeat``: which AEAT door, whose envelope, and the presentation itself.
+"""``fiscal_gateway.aeat``: which AEAT door, whose envelope, and the presentation itself (FISCAL-F02).
 
 Only the AEAT's preproduction is ever reached, through ``respx``: no test opens a connection, and the
 production endpoints are checked as strings only. The envelopes are the Hub's (``fixtures/``, copied
 byte for byte from hub-next).
 """
 
+import asyncio
 import dataclasses
 import os
 import ssl
 import stat
+import time
 
 import httpx
 import pytest
@@ -277,6 +279,42 @@ def test_a_connect_timeout_means_nothing_was_sent(identity, respx_mock):
     assert unreachable.value.sent is False
 
 
-def test_the_timeouts_are_ten_seconds_to_connect_and_sixty_to_read():
-    assert aeat.TIMEOUT.connect == 10
-    assert aeat.TIMEOUT.read == 60
+def test_the_four_timeouts_are_set_five_to_connect_thirty_to_read_and_short_to_write_and_wait():
+    """PLAN-SAAS §4 (round 2026-10-15c) and PLAN §28: gateway → AEAT, 5 s to connect and 30 s to read. httpx
+    takes one figure for every phase it is not told otherwise, so writing the envelope and waiting for a
+    connection are set too, short: the envelope is a few kilobytes and each submission opens its own client."""
+    assert aeat.TIMEOUT.connect == 5
+    assert aeat.TIMEOUT.read == 30
+    assert aeat.TIMEOUT.write == 5
+    assert aeat.TIMEOUT.pool == 1
+
+
+def test_the_gateway_gives_up_on_the_aeat_before_the_hub_gives_up_on_the_gateway():
+    """The Hub reads the gateway for 45 s (``HUB_READ_SECONDS``, its ``apps/verifactu/gateway.py``, which the
+    SaaS cannot import: another repository). Waiting longer for the AEAT, the Hub would give up first and treat
+    as unknown a record the gateway did present. httpx's timeouts are per operation (the read one, per chunk
+    received), so no sum of them bounds a submission: the deadline does, and an exchange that takes every
+    phase's whole time still fits in it, with room before the Hub's for the checks around it."""
+    phases = aeat.TIMEOUT.connect + aeat.TIMEOUT.write + aeat.TIMEOUT.read + aeat.TIMEOUT.pool
+
+    assert phases <= aeat.DEADLINE_SECONDS
+    assert aeat.HUB_READ_SECONDS - aeat.DEADLINE_SECONDS >= 4
+
+
+def test_an_answer_slower_than_the_deadline_is_cut_and_may_have_arrived(identity, respx_mock, monkeypatch):
+    """However the AEAT dribbles its answer, the submission ends at the deadline: as a read timeout, the
+    request left, so the Hub resends the same bytes (the AEAT answers «duplicado» if it had them)."""
+
+    async def dribbles(request):
+        await asyncio.sleep(2)
+        return httpx.Response(200, text="<late/>")
+
+    monkeypatch.setattr(aeat, "DEADLINE_SECONDS", 0.2)
+    respx_mock.post(PRE_HOLDER).mock(side_effect=dribbles)
+    started = time.monotonic()
+
+    with pytest.raises(aeat.AeatUnreachable) as unreachable:
+        aeat.present(identity, "testing", SENT, operation="submit")
+
+    assert unreachable.value.sent is True
+    assert time.monotonic() - started < 1.5

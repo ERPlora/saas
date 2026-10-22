@@ -1,0 +1,64 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+{% comment %}
+  ERPlora's stamp and signature as representative (FISCAL-F06): whether there is one, its preview, the model a
+  business receives with it, and the upload and the removal, which run fiscal's services as the member of the
+  staff who clicks. The image is served by its own admin view, never cached.
+{% endcomment %}
+{% block extrastyle %}{{ block.super }}
+<style>
+  .fiscal-stamp dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0 0 16px; }
+  .fiscal-stamp dt { font-weight: 600; }
+  .fiscal-stamp dd { margin: 0; }
+  .fiscal-stamp img { display: block; max-width: 100%; height: auto; max-height: 160px; border: 1px solid var(--hairline-color); background: #fff; margin: 0 0 16px; }
+  .fiscal-stamp form { margin: 0 0 16px; }
+  .fiscal-stamp input[type="file"] { max-width: 100%; }
+</style>
+{% endblock %}
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% translate "Home" %}</a>
+&rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+&rsaquo; <a href="{% url 'admin:fiscal_representationgrant_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+&rsaquo; {% translate "Representative's stamp" %}
+</div>
+{% endblock %}
+{% block content %}
+<div id="content-main" class="fiscal-stamp">
+
+<p>{% translate "ERPlora's stamp and signature go in the representative's box of every Anexo I model a business downloads to sign." %}</p>
+
+<h2>{% translate "Current stamp" %}</h2>
+{% if stamp %}
+<dl>
+  <dt>{% translate "Uploaded" %}</dt><dd>{{ stamp.uploaded_at }} · {{ stamp.uploaded_by|default:"-" }}</dd>
+  <dt>{% translate "Size" %}</dt><dd>{{ stamp.size|filesizeformat }}</dd>
+</dl>
+{% if stamp.readable %}
+<img src="{{ image_url }}" alt="{% translate "ERPlora's stamp and signature" %}">
+{% else %}
+<p class="errornote">{% translate "The stamp cannot be read with the current key (FISCAL_DOCUMENTS_KEY): the models go without it. Upload it again." %}</p>
+{% endif %}
+{% else %}
+<p class="errornote">{% translate "No stamp uploaded: the model customers download goes without ERPlora's stamp and signature." %}</p>
+{% endif %}
+<p><a href="{{ model_url }}">{% translate "Download the model a business receives" %}</a></p>
+
+{% if can_change %}
+<h2>{% if stamp %}{% translate "Replace the stamp" %}{% else %}{% translate "Upload the stamp" %}{% endif %}</h2>
+<form method="post" enctype="multipart/form-data">{% csrf_token %}
+  <p><label for="stamp-file">{% blocktranslate %}A PNG of {{ max_megabytes }} MB at most, with a transparent background.{% endblocktranslate %}</label></p>
+  <p><input type="file" id="stamp-file" name="stamp" accept="image/png" required></p>
+  <button type="submit" class="button default" name="action" value="upload">{% translate "Upload" %}</button>
+</form>
+{% if stamp %}
+<h2>{% translate "Remove the stamp" %}</h2>
+<form method="post">{% csrf_token %}
+  <p><label><input type="checkbox" name="confirm" value="yes" required> {% translate "Yes, remove it: the models go without it until another is uploaded." %}</label></p>
+  <button type="submit" class="button" name="action" value="remove">{% translate "Remove the stamp" %}</button>
+</form>
+{% endif %}
+{% endif %}
+
+</div>
+{% endblock %}

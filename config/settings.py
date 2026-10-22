@@ -704,6 +704,8 @@ FISCAL_DOCUMENTS_KEY = (
     if DEBUG
     else config("FISCAL_DOCUMENTS_KEY")
 )
+# The review desk's mailbox (fiscal/emails.py, FISCAL-F05): it hears of every authorisation that waits for a review.
+FISCAL_REVIEW_EMAIL = config("FISCAL_REVIEW_EMAIL", default=SUPPORT_EMAIL)
 # DATA_UPLOAD_MAX_MEMORY_SIZE stays Django's 2.5 MB for every view: the four documents of an authorisation
 # (up to about 27 MB) have their own ceiling, read by their view alone (fiscal.internal.MAX_BODY_BYTES).
 

@@ -19,8 +19,9 @@ the Hub's job. Only the transport's own failures are classified (``AeatUnreachab
 
 - nothing left this process (connection refused, connection timeout, TLS refused): ``sent=False``,
   the Hub may retry freely;
-- the request left and no answer came back (read timeout, connection lost): ``sent=True``, the AEAT may
-  have registered it, and the Hub resends the same bytes (the AEAT answers «duplicado» if it had them).
+- the request left and no answer came back (read timeout, connection lost, the deadline): ``sent=True``,
+  the AEAT may have registered it, and the Hub resends the same bytes (the AEAT answers «duplicado» if it
+  had them).
 
 httpx cannot take a key from memory, so the certificate and its key go to two files of mode 0600 in a
 private temporary directory, which goes as soon as TLS has read them, whatever happens. A certificate
@@ -28,9 +29,20 @@ TLS refuses (its key is not the certificate's, or is too weak for OpenSSL's secu
 ``SealInvalid`` before anything leaves (``tls_context``, which the gateway calls first so that it can
 refuse it, and probe it, without presenting). Headers as the proven client of the gateway this one
 replaces: ``Content-Type: text/xml;charset=UTF-8`` and ``SOAPAction: ""`` (the WSDL's, for both
-operations). 10 s to connect and 60 s to read.
+operations).
+
+Time: 5 s to connect and 30 s to read (PLAN-SAAS §4, round 2026-10-15c; PLAN §28), 5 s to write the envelope
+and 1 s to wait for a connection (each submission opens its own client): httpx would give every phase it is
+not told otherwise the same figure. Those are per operation (the read one, per chunk received), so no sum of
+them bounds a submission: ``DEADLINE_SECONDS`` (41 s) does, cancelling the exchange wherever it is
+(``asyncio.timeout`` around httpx's async client, the way httpx bounds a whole request). An exchange that
+takes every phase's whole time still fits in it, and connecting can never reach it, so a submission the
+deadline cuts had left (``sent=True``). The Hub reads the gateway for 45 s (``HUB_READ_SECONDS``): the
+gateway always answers before the Hub gives up, so a record it did present is never one the Hub takes for
+unknown.
 """
 
+import asyncio
 import logging
 import os
 import ssl
@@ -52,7 +64,13 @@ HOSTS = {
     ("production", True): "www10.agenciatributaria.gob.es",
     ("production", False): "www1.agenciatributaria.gob.es",
 }
-TIMEOUT = httpx.Timeout(60.0, connect=10.0)
+TIMEOUT = httpx.Timeout(connect=5.0, read=30.0, write=5.0, pool=1.0)
+#: The whole submission at most, whatever each operation takes: what bounds it below the Hub's wait.
+DEADLINE_SECONDS = 41.0
+#: How long the Hub reads the gateway (``hub`` ``apps/verifactu/gateway.py``, ``TIMEOUT``): a contract between
+#: the two repositories, which the SaaS cannot import, so it is named here and ``DEADLINE_SECONDS`` is tested
+#: against it.
+HUB_READ_SECONDS = 45.0
 HEADERS = {"Content-Type": "text/xml;charset=UTF-8", "SOAPAction": ""}
 OPERATIONS = ("submit", "query")
 
@@ -112,10 +130,7 @@ def present(
     try:
         if context is None:
             context = tls_context(identity)
-        with httpx.Client(verify=context, timeout=TIMEOUT) as client:
-            response = client.post(
-                url, content=envelope.encode("utf-8"), headers=HEADERS
-            )
+        response = asyncio.run(_post(url, envelope.encode("utf-8"), context))
     except (httpx.ConnectError, httpx.ConnectTimeout, httpx.PoolTimeout) as error:
         logger.warning(
             "fiscal_gateway.aeat.unreachable operation=%s url=%s sent=false error=%s",
@@ -127,7 +142,7 @@ def present(
             f"The AEAT could not be reached; nothing was sent ({type(error).__name__}).",
             sent=False,
         ) from None
-    except httpx.HTTPError as error:
+    except (httpx.HTTPError, TimeoutError) as error:
         logger.warning(
             "fiscal_gateway.aeat.unreachable operation=%s url=%s sent=true error=%s",
             operation,
@@ -145,6 +160,13 @@ def present(
         response.status_code,
     )
     return Answer(status=response.status_code, body=response.text)
+
+
+async def _post(url: str, body: bytes, context: ssl.SSLContext) -> httpx.Response:
+    """The POST, read whole, within ``DEADLINE_SECONDS``: ``TimeoutError`` past it, the exchange cancelled."""
+    async with asyncio.timeout(DEADLINE_SECONDS):
+        async with httpx.AsyncClient(verify=context, timeout=TIMEOUT) as client:
+            return await client.post(url, content=body, headers=HEADERS)
 
 
 def tls_context(identity: Identity) -> ssl.SSLContext:

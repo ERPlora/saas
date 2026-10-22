@@ -1,4 +1,4 @@
-"""``POST /internal/verifactu/submit|query|probe``: the Hub hands the gateway an envelope to present.
+"""``POST /internal/verifactu/submit|query|probe``: the Hub hands the gateway an envelope to present (FISCAL-F02).
 
 Server to server, signed as every ``/internal`` call (``accounts.signing``: v1 or v2, five minutes, the
 current or the previous secret), so no CSRF token. The body is ``{"hub", "nif", "environment", "route",

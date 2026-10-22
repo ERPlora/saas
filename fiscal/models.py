@@ -139,3 +139,33 @@ class RepresentationGrant(models.Model):
             for moment in (self.submitted_at, self.reviewed_at, self.revoked_at)
             if moment
         )
+
+
+class RepresentativeStamp(models.Model):
+    """ERPlora's stamp and signature as representative, drawn on every Anexo I model a business downloads
+    (FISCAL-F06; ``fiscal.anexo``): a PNG the staff upload in the admin, kept encrypted with ``fiscal.crypto``
+    like the documents of an authorisation (a signature is never left in the clear). At most one (``slot`` is
+    unique): uploading another replaces it. Only ``fiscal.services`` writes it."""
+
+    SLOT = "representative"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
+    slot = models.CharField(max_length=20, default=SLOT, unique=True, editable=False)
+    image = models.BinaryField(_("stamp and signature (encrypted PNG)"))
+    size = models.PositiveIntegerField(_("size in bytes"))
+    uploaded_at = models.DateTimeField(_("uploaded at"))
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name=_("uploaded by"),
+    )
+
+    class Meta:
+        verbose_name = _("representative's stamp")
+        verbose_name_plural = _("representative's stamp")
+
+    def __str__(self):
+        return str(self._meta.verbose_name)

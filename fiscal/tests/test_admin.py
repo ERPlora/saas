@@ -319,3 +319,154 @@ def test_an_unknown_action_is_a_message(as_reviewer, grant):
 
     assert response.status_code == 200
     assert texts(response) and RepresentationGrant.objects.get(pk=grant.pk).status == "submitted"
+
+
+# --- ERPlora's stamp as representative (FISCAL-F06) ----------------------------------------------------
+
+STAMP = f"{CHANGELIST}stamp/"
+
+
+@pytest.fixture
+def as_stamp_keeper(client, stamp_keeper):
+    client.force_login(stamp_keeper)
+    return client
+
+
+def upload(client, png: bytes, name: str = "stamp.png"):
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    return client.post(
+        STAMP, {"action": "upload", "stamp": SimpleUploadedFile(name, png, content_type="image/png")}
+    )
+
+
+def test_the_queue_warns_while_there_is_no_stamp(as_reviewer):
+    """Every model customers download goes without it: whoever reviews hears it, even without the stamp's page."""
+    response = as_reviewer.get(CHANGELIST)
+
+    assert response.status_code == 200
+    assert any("not uploaded" in text for text in texts(response))
+    assert STAMP.encode() not in response.content
+
+
+def test_the_queue_links_the_stamp_page_to_whoever_may_see_it(as_reviewer, reviewer):
+    reviewer.user_permissions.add(
+        Permission.objects.get(content_type__app_label="fiscal", codename="view_representativestamp")
+    )
+
+    assert STAMP.encode() in as_reviewer.get(CHANGELIST).content
+
+
+def test_the_queue_stops_warning_once_there_is_a_stamp(as_stamp_keeper):
+    from fiscal.tests.conftest import stamp_png
+
+    upload(as_stamp_keeper, stamp_png())
+
+    assert not any("not uploaded" in text for text in texts(as_stamp_keeper.get(CHANGELIST)))
+
+
+def test_the_stamp_page_says_there_is_none_and_offers_the_upload(as_stamp_keeper):
+    response = as_stamp_keeper.get(STAMP)
+
+    assert response.status_code == 200
+    assert b"No stamp uploaded" in response.content
+    assert b'name="stamp"' in response.content
+    assert b'accept="image/png"' in response.content
+
+
+def test_uploading_a_png_keeps_it_and_shows_it(as_stamp_keeper, stamp_keeper):
+    from fiscal import queries
+    from fiscal.tests.conftest import stamp_png
+
+    response = upload(as_stamp_keeper, stamp_png())
+
+    assert response.status_code == 302
+    assert queries.representative_stamp() == stamp_png()
+    page = as_stamp_keeper.get(STAMP)
+    assert f'src="{STAMP}image/"'.encode() in page.content
+    assert b"Remove the stamp" in page.content
+    image = as_stamp_keeper.get(f"{STAMP}image/")
+    assert (image.status_code, image["Content-Type"]) == (200, "image/png")
+    assert image.content == stamp_png()
+    assert "no-store" in image["Cache-Control"]
+
+
+def test_a_file_that_is_not_a_png_is_refused_with_its_reason(as_stamp_keeper):
+    from fiscal.models import RepresentativeStamp
+
+    response = upload(as_stamp_keeper, b"\xff\xd8\xff\xe0 a photo", name="stamp.jpg")
+
+    assert "The stamp must be a PNG image." in texts(response)
+    assert not RepresentativeStamp.objects.exists()
+
+
+def test_sending_no_file_says_to_choose_one(as_stamp_keeper):
+    response = as_stamp_keeper.post(STAMP, {"action": "upload"})
+
+    assert "Choose the PNG file of the stamp." in texts(response)
+
+
+def test_the_model_a_business_receives_is_downloaded_from_the_stamp_page(as_stamp_keeper, synthetic_company):
+    import io
+
+    from pypdf import PdfReader
+
+    from fiscal.tests.conftest import stamp_png
+
+    upload(as_stamp_keeper, stamp_png())
+
+    response = as_stamp_keeper.get(f"{STAMP}model/")
+
+    assert (response.status_code, response["Content-Type"]) == (200, "application/pdf")
+    model, privacy = PdfReader(io.BytesIO(response.content)).pages
+    assert len(model.images) == 1
+    assert "ACME FISCAL SL" in model.extract_text()
+
+
+def test_removing_needs_the_confirmation(as_stamp_keeper):
+    from fiscal import queries
+    from fiscal.tests.conftest import stamp_png
+
+    upload(as_stamp_keeper, stamp_png())
+
+    refused = as_stamp_keeper.post(STAMP, {"action": "remove"})
+    assert "Tick the box to confirm that the stamp goes." in texts(refused)
+    assert queries.representative_stamp() is not None
+
+    as_stamp_keeper.post(STAMP, {"action": "remove", "confirm": "yes"})
+    assert queries.representative_stamp() is None
+
+
+def test_a_stamp_the_key_cannot_open_is_said_on_its_page(as_stamp_keeper):
+    from cryptography.fernet import Fernet
+
+    from fiscal.models import RepresentativeStamp
+
+    RepresentativeStamp.objects.create(
+        image=Fernet(Fernet.generate_key()).encrypt(b"\x89PNG"), size=4, uploaded_at=timezone.now()
+    )
+
+    response = as_stamp_keeper.get(STAMP)
+
+    assert b"cannot be read with the current key" in response.content
+    assert as_stamp_keeper.get(f"{STAMP}image/").status_code == 404
+    # The models go without it as if there were none, so the queue warns too.
+    assert any("not uploaded" in text for text in texts(as_stamp_keeper.get(CHANGELIST)))
+
+
+def test_a_reviewer_without_the_stamp_permissions_neither_sees_nor_changes_it(as_reviewer):
+    from fiscal.models import RepresentativeStamp
+    from fiscal.tests.conftest import stamp_png
+
+    assert as_reviewer.get(STAMP).status_code == 403
+    assert upload(as_reviewer, stamp_png()).status_code == 403
+    assert not RepresentativeStamp.objects.exists()
+
+
+def test_the_stamp_page_needs_the_staff(client, make_user):
+    user = make_user("someone@example.com")
+    client.force_login(user)
+
+    response = client.get(STAMP)
+
+    assert response.status_code == 302 and "/admin/login/" in response["Location"]

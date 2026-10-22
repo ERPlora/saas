@@ -14,9 +14,16 @@ lee el negocio y su otorgamiento (`queries.py`, el único fichero que toca la BD
 | `queries.py` | Negocio que nombra `hub` (`hub_id_for`) y contribuyente de su otorgamiento aprobado (`approved_taxpayer`) |
 | `internal.py` | Vistas `POST /internal/verifactu/submit\|query\|probe` |
 
+Los flujos (prefijo `FISCAL`, también los de la autorización firmada que viven en `fiscal/`) están en
+[`WORKBOOK.md`](WORKBOOK.md): el sello (FISCAL-F01), la presentación (F02), el cifrado de los documentos (F03), la
+caducidad del sello (F04), los avisos de cada paso de la autorización (F05, `fiscal/emails.py`), el modelo del
+Anexo I con ERPlora, su sello y la hoja RGPD (F06, `fiscal/anexo.py` y la página «Sello del representante» del
+admin) y lo descartado (F07, los apoderamientos ZP01).
+
 ## Contrato con el Hub
 
-Firmado como todo `/internal` (`accounts/signing.py`: v1 o v2, ±300 s, secreto actual y anterior). Cuerpo:
+Firmado como todo `/internal` (`accounts/signing.py`: v1 o v2, ±300 s, secreto actual y anterior; una ruta con query
+solo con v2, porque v1 firma el cuerpo y nunca la query). Cuerpo:
 
 ```json
 {"hub": "<slug|uuid>", "nif": "B12345674", "environment": "testing|production", "route": "erplora|own",
@@ -62,8 +69,14 @@ tope de 10 MiB, y no por `request.body`: un envío de 1000 registros supera el l
   otro → `prewww1.aeat.es` / `www1.agenciatributaria.gob.es`; ruta `/wlpl/TIKE-CONT/ws/SistemaFacturacion/VerifactuSOAP`.
 - **Presentación**: mTLS con `httpx` (raíces de `certifi`); certificado y clave en dos ficheros `0600` de un
   directorio temporal privado que se borra en cuanto TLS los ha leído, pase lo que pase. `Content-Type:
-  text/xml;charset=UTF-8`, `SOAPAction: ""`; 10 s para conectar y 60 s para leer. Conexión rechazada o sin
-  conectar → `sent = false` (nada salió); tiempo de lectura agotado o conexión perdida → `sent = true`.
+  text/xml;charset=UTF-8`, `SOAPAction: ""`. Tiempos (`aeat.TIMEOUT`): 5 s para conectar y 30 s para leer (PLAN-SAAS §4,
+  ronda 2026-10-15c; PLAN §28), 5 s para escribir el sobre y 1 s de espera de conexión (httpx daría a cada fase sin
+  cifra propia la misma). Son por operación (la lectura, por trozo recibido), así que ninguna suma acota un envío: lo
+  acota `aeat.DEADLINE_SECONDS` (41 s), un plazo total que cancela el intercambio esté donde esté (`asyncio.timeout`
+  sobre el cliente asíncrono de httpx). Un intercambio que agota cada fase cabe en él, y el Hub lee la pasarela durante
+  45 s (`aeat.HUB_READ_SECONDS`, contrato con `hub` `apps/verifactu/gateway.py`), así que la pasarela siempre contesta
+  antes de que el Hub se rinda. Conexión rechazada o sin conectar → `sent = false` (nada salió); tiempo de lectura
+  agotado, conexión perdida o plazo cumplido → `sent = true`.
 
 ## Sello de ERPlora
 

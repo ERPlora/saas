@@ -12,7 +12,9 @@ keyed with the shared secret (the scheme of Stripe's webhook signatures):
 
 The SaaS signs every call it makes with both (``signed_headers``), keyed with the current secret
 only. A call is verified (``verify_signed``, ``verify_request``) by v2 when it carries it, and then
-by v2 alone: naming v2 and failing it is refused even if v1 passes (no downgrade); without v2, by v1.
+by v2 alone: naming v2 and failing it is refused even if v1 passes (no downgrade); without v2, by v1,
+and only for a path without a query string (``query_needs_v2``): v1 never signs the query, so a captured v1
+signature would let anybody ask, within its window, for any query on that door.
 Each signature is checked against every live secret (``live_secrets``): ``INTERNAL_SHARED_SECRET``
 and, during a rotation, ``INTERNAL_SHARED_SECRET_PREVIOUS`` (empty otherwise). A timestamp more than
 ``INTERNAL_SIGNATURE_MAX_AGE_SECONDS`` (five minutes) away is refused, and so is one that is not 1 to 20
@@ -127,6 +129,12 @@ def _header(headers: Mapping[str, str], name: str) -> str | None:
     return None
 
 
+def query_needs_v2(path: str, headers: Mapping[str, str]) -> bool:
+    """Whether a call to ``path`` (with its query string) is refused because it carries a query and no v2: v1
+    signs the body only, never the query. A view may say so in its answer."""
+    return "?" in path and _header(headers, SIGNATURE_V2_HEADER) is None
+
+
 def verify_signed(
     method: str,
     path: str,
@@ -138,10 +146,13 @@ def verify_signed(
     max_age: int = DEFAULT_MAX_AGE_SECONDS,
 ) -> bool:
     """Whether a call of ``method`` on ``path`` with ``body`` and ``headers`` is signed with one of
-    ``secrets`` within ``max_age`` of ``now``: by v2 if it carries it (v2 alone decides), else by v1."""
+    ``secrets`` within ``max_age`` of ``now``: by v2 if it carries it (v2 alone decides), else by v1, which
+    is refused on a path with a query (``query_needs_v2``)."""
     secrets = list(secrets)
     timestamp = _header(headers, TIMESTAMP_HEADER)
     signature_v2 = _header(headers, SIGNATURE_V2_HEADER)
+    if query_needs_v2(path, headers):
+        return False
     if signature_v2 is None:
         return verify(
             body,
