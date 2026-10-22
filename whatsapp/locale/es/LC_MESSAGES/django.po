@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: saas-next\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-21 23:35+0200\n"
+"POT-Creation-Date: 2026-10-22 08:47+0200\n"
 "PO-Revision-Date: 2026-10-21 23:36+0200\n"
 "Last-Translator: ERPlora\n"
 "Language-Team: Spanish\n"
@@ -92,7 +92,7 @@ msgid "It takes a minute: open your Hub, go to WhatsApp and connect your number 
 msgstr "Es un minuto: entra en tu Hub, ve a WhatsApp y vuelve a conectar tu número: %(url)s"
 
 #: models.py:28 models.py:91 models.py:132 models.py:166 models.py:193
-#: models.py:220
+#: models.py:223
 msgid "business"
 msgstr "negocio"
 
@@ -168,7 +168,7 @@ msgstr "conectado"
 msgid "disconnected"
 msgstr "desconectado"
 
-#: models.py:62 models.py:107 models.py:139 models.py:173 models.py:197
+#: models.py:62 models.py:107 models.py:139 models.py:173 models.py:200
 msgid "updated"
 msgstr "actualizado"
 
@@ -304,7 +304,7 @@ msgstr "Enviado"
 msgid "Unknown outcome"
 msgstr "Resultado desconocido"
 
-#: models.py:170 models.py:223
+#: models.py:170 models.py:226
 msgid "WhatsApp message id"
 msgstr "id del mensaje de WhatsApp"
 
@@ -328,67 +328,71 @@ msgstr "Envíos de WhatsApp"
 msgid "messages sent"
 msgstr "mensajes enviados"
 
-#: models.py:200 models.py:201
+#: models.py:199
+msgid "usage told at the cap"
+msgstr "consumo avisado al llegar al tope"
+
+#: models.py:203 models.py:204
 msgid "WhatsApp monthly usage"
 msgstr "Consumo mensual de WhatsApp"
 
-#: models.py:215
+#: models.py:218
 msgid "Message"
 msgstr "Mensaje"
 
-#: models.py:216
+#: models.py:219
 msgid "Delivery status"
 msgstr "Estado de entrega"
 
-#: models.py:222
+#: models.py:225
 msgid "kind"
 msgstr "tipo"
 
-#: models.py:224
+#: models.py:227
 msgid "customer's number"
 msgstr "número del cliente"
 
-#: models.py:225
+#: models.py:228
 msgid "content"
 msgstr "contenido"
 
-#: models.py:226
+#: models.py:229
 msgid "Meta attachment id"
 msgstr "id del adjunto en Meta"
 
-#: models.py:229
+#: models.py:232
 msgid "revision"
 msgstr "revisión"
 
-#: models.py:230
+#: models.py:233
 msgid "received"
 msgstr "recibido"
 
-#: models.py:231
+#: models.py:234
 msgid "taken by the Hub"
 msgstr "recogido por el Hub"
 
-#: models.py:232
+#: models.py:235
 msgid "attempts"
 msgstr "intentos"
 
-#: models.py:234
+#: models.py:237
 msgid "next attempt"
 msgstr "próximo intento"
 
-#: models.py:235
+#: models.py:238
 msgid "Empty: the Hub refused it as it is (422), it is not retried."
 msgstr "Vacío: el Hub lo rechazó tal cual (422) y no se reintenta."
 
-#: models.py:237
+#: models.py:240
 msgid "last error"
 msgstr "último error"
 
-#: models.py:240
+#: models.py:243
 msgid "WhatsApp delivery to the Hub"
 msgstr "Entrega de WhatsApp al Hub"
 
-#: models.py:241
+#: models.py:244
 msgid "WhatsApp deliveries to the Hub"
 msgstr "Entregas de WhatsApp al Hub"
 

@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:7a4dfc3640e2a88e9d72a367a935217176fa753462a702740b0db2672f657a28 -->
+<!-- generated from WORKBOOK.md sha256:882688b585c97d3e78f9d2629bebccff52cc0cfb7482f6a2a3fbef8fbfbd539e -->
 
 ## What it is for and who it is for
 
@@ -167,6 +167,7 @@ Steps:
 1. Each send the Hub asks for takes a place in the monthly allowance of the business's plan before going out to Meta.
 2. If Meta refuses it or it does not get to go out, the place is freed; if it went out, it counts.
 3. At the cap, sending stops and the Hub says the month's cap was reached, until the next month or until the plan is upgraded. The Free plan brings 30, Starter 150 and Standard 300; a plan without WhatsApp sends none.
+4. If the Hub had the month's usage behind and still let messages be sent, the send stopped at the cap brings it up to date at once: the inbox stops letting anyone send, without a reload. Another send stopped with the same usage does not tell it again.
 In: the business's plan and what was used this month.
 Out: the month's usage, which the Hub shows in its settings (`whatsapp.message.recorded`).
 If it fails: two sends at once with a single free place: one goes out and the other stops; the same send repeated (the Hub retries) does not use another place.
