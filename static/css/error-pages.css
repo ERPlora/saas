@@ -71,6 +71,8 @@ body {
 }
 
 .error-page__actions a {
+  /* Its padding inside its width: at 100% wide on a phone it must not run off the page (ACCOUNTS-G81). */
+  box-sizing: border-box;
   min-height: 2.75rem;
   display: inline-flex;
   align-items: center;
