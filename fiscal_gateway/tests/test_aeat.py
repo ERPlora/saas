@@ -277,6 +277,18 @@ def test_a_connect_timeout_means_nothing_was_sent(identity, respx_mock):
     assert unreachable.value.sent is False
 
 
-def test_the_timeouts_are_ten_seconds_to_connect_and_sixty_to_read():
-    assert aeat.TIMEOUT.connect == 10
-    assert aeat.TIMEOUT.read == 60
+def test_the_timeouts_are_five_seconds_to_connect_and_thirty_to_read():
+    """PLAN-SAAS §4 (round 2026-10-15c) and PLAN §28: gateway → AEAT, 5 s to connect and 30 s to read."""
+    assert aeat.TIMEOUT.connect == 5
+    assert aeat.TIMEOUT.read == 30
+
+
+def test_the_gateway_gives_up_on_the_aeat_before_the_hub_gives_up_on_the_gateway():
+    """The Hub reads the gateway for 45 s (``HUB_READ_SECONDS``, its ``apps/verifactu/gateway.py``, which the
+    SaaS cannot import: another repository). Waiting longer for the AEAT, the Hub would give up first and treat
+    as unknown a record the gateway did present; so even a connection that takes all its time and an answer
+    that takes all its own come back before the Hub stops reading, with room for the checks around them."""
+    worst = aeat.TIMEOUT.connect + aeat.TIMEOUT.read
+
+    assert worst < aeat.HUB_READ_SECONDS
+    assert aeat.HUB_READ_SECONDS - worst >= 5

@@ -28,7 +28,9 @@ TLS refuses (its key is not the certificate's, or is too weak for OpenSSL's secu
 ``SealInvalid`` before anything leaves (``tls_context``, which the gateway calls first so that it can
 refuse it, and probe it, without presenting). Headers as the proven client of the gateway this one
 replaces: ``Content-Type: text/xml;charset=UTF-8`` and ``SOAPAction: ""`` (the WSDL's, for both
-operations). 10 s to connect and 60 s to read.
+operations). 5 s to connect and 30 s to read (PLAN-SAAS §4, round 2026-10-15c; PLAN §28): the Hub reads
+the gateway for 45 s (``HUB_READ_SECONDS``), so the gateway always answers before the Hub gives up, and a
+record it did present is never one the Hub takes for unknown.
 """
 
 import logging
@@ -52,7 +54,10 @@ HOSTS = {
     ("production", True): "www10.agenciatributaria.gob.es",
     ("production", False): "www1.agenciatributaria.gob.es",
 }
-TIMEOUT = httpx.Timeout(60.0, connect=10.0)
+TIMEOUT = httpx.Timeout(30.0, connect=5.0)
+#: How long the Hub reads the gateway (``hub`` ``apps/verifactu/gateway.py``, ``TIMEOUT``): a contract between
+#: the two repositories, which the SaaS cannot import, so it is named here and ``TIMEOUT`` is tested against it.
+HUB_READ_SECONDS = 45.0
 HEADERS = {"Content-Type": "text/xml;charset=UTF-8", "SOAPAction": ""}
 OPERATIONS = ("submit", "query")
 

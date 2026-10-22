@@ -67,7 +67,8 @@ tope de 10 MiB, y no por `request.body`: un envío de 1000 registros supera el l
   otro → `prewww1.aeat.es` / `www1.agenciatributaria.gob.es`; ruta `/wlpl/TIKE-CONT/ws/SistemaFacturacion/VerifactuSOAP`.
 - **Presentación**: mTLS con `httpx` (raíces de `certifi`); certificado y clave en dos ficheros `0600` de un
   directorio temporal privado que se borra en cuanto TLS los ha leído, pase lo que pase. `Content-Type:
-  text/xml;charset=UTF-8`, `SOAPAction: ""`; 10 s para conectar y 60 s para leer. Conexión rechazada o sin
+  text/xml;charset=UTF-8`, `SOAPAction: ""`; 5 s para conectar y 30 s para leer (PLAN-SAAS §4, ronda 2026-10-15c): el Hub lee la pasarela
+  durante 45 s, así que la pasarela siempre contesta antes de que el Hub se rinda. Conexión rechazada o sin
   conectar → `sent = false` (nada salió); tiempo de lectura agotado o conexión perdida → `sent = true`.
 
 ## Sello de ERPlora
