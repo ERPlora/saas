@@ -300,10 +300,11 @@ describe('the panel (round 17, PLAN-SAAS §3.6)', () => {
     // `script-src` still decides page by page (the account surface's names no Stripe). reCAPTCHA (2026-10-22):
     // our code inserts `www.google.com/recaptcha/enterprise.js`, which inserts its release from `www.gstatic.com`
     // (frontend/recaptcha.ts).
+    // reCAPTCHA by path only: nothing else of www.google.com or www.gstatic.com.
     expect(shellOptions().trustedScriptOrigins).toEqual([
       'https://js.stripe.com',
-      'https://www.google.com',
-      'https://www.gstatic.com',
+      'https://www.google.com/recaptcha/',
+      'https://www.gstatic.com/recaptcha/',
     ]);
   });
 
