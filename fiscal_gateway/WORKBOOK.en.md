@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:2e01e0428755844569faafaaac18b16e60ccadb6909c39db4ef83f3da673886d -->
+<!-- generated from WORKBOOK.md sha256:e394e6813309c708651d760b72ddac899ab732b8fef2d59371e0205457a86ede -->
 
 ## What it is for and who it is for
 
@@ -35,7 +35,9 @@ Who uses it:
 
 - In development and in the test environment, the gateway only presents to the AEAT's test environment; the real
   environment is only reached from the production deployment.
-- ERPlora's seal is not uploaded on any screen: the team puts it in the deployment's secrets.
+- ERPlora's seal certificate, which it presents with, is not uploaded on any screen: the team puts it in the
+  deployment's secrets. The image of the stamp and signature the authorisation model carries is uploaded, in
+  "Representative's stamp".
 - Without an address of its own for the review desk, its notices go to the support mailbox.
 
 ## Screens
@@ -44,7 +46,14 @@ Who uses it:
 
 The queue of authorisations with their business, version, status and date; each one opens in "Review the signed
 authorisation", with its documents and the buttons "Approve", "Return to the customer" and "Withdraw the
-approval". It is the page the notice to the review desk leads to.
+approval". It is the page the notice to the review desk leads to. While no representative's stamp is uploaded,
+the queue says so on top and links to "Representative's stamp".
+
+### Admin › Signed authorisations › Representative's stamp
+
+ERPlora's stamp and signature that every authorisation model carries: when and by whom it was uploaded, its size
+and its preview, the link "Download the model a business receives", the button "Upload" (or "Replace the stamp" if
+there is one already) and "Remove the stamp", which asks to tick the confirmation box.
 
 ### Mails
 
@@ -58,7 +67,8 @@ business, each in its language.
 | Loading | The admin loads the queue like any list of the admin. |
 | Empty | The queue without authorisations says there is none. |
 | Error | A step that cannot be taken (approving one that no longer waits, returning without a reason) is explained at the top of the page and changes nothing. |
-| No permission | Whoever is not on the team with the permission to review does not see the queue nor can decide. |
+| No permission | Whoever is not on the team with the permission to review does not see the queue nor can decide; whoever has no permission over the stamp does not see "Representative's stamp", and whoever may only see it cannot upload nor remove it. |
+| No stamp | The queue and "Representative's stamp" warn that the model customers download goes without ERPlora's stamp and signature; also if the stamp kept cannot be read with the current key. |
 
 ## Flows
 
@@ -69,7 +79,7 @@ business, each in its language.
 | FISCAL-F03 | Keep the authorisation's documents encrypted | done |
 | FISCAL-F04 | Tell the team before the seal expires | done |
 | FISCAL-F05 | Tell the review desk and the business of every step of the authorisation | done |
-| FISCAL-F06 | Put ERPlora's seal and signature on the authorisation model | partial |
+| FISCAL-F06 | Put ERPlora's seal and signature on the authorisation model | done |
 | FISCAL-F07 | Watch the customers' powers of attorney (ZP01) | discarded |
 
 ### FISCAL-F01 Change the ERPlora seal it presents with
@@ -99,7 +109,7 @@ Steps:
 4. With the same door, the Hub queries what the AEAT already has, or tests whether it could present now and with which certificate, without sending anything.
 In: the Hub's envelope, the business, the tax ID, the environment, the way and, through its own way, the business's certificate with its password.
 Out: the AEAT's answer as it came (the Hub interprets it); in the connection test, whether it is ready and with which certificate.
-If it fails: every refusal says why and comes before touching the AEAT: unknown business, tax ID that does not match, authorisation not approved, no seal, no certificate, invalid or expired certificate, or production from a deployment that is not. Without an answer from the AEAT, the Hub knows whether the submission may have arrived or not so as not to repeat it blindly; with too many submissions at once, it asks it to retry. The business's certificate is never kept nor appears in a log or in an error.
+If it fails: every refusal says why and comes before touching the AEAT: unknown business, tax ID that does not match, authorisation not approved, no seal, no certificate, invalid or expired certificate, or production from a deployment that is not. The gateway waits at most 5 s to connect to the AEAT and 30 s for its answer, less than the Hub waits for it, so the Hub always hears from the gateway before giving up; without an answer from the AEAT, the Hub knows whether the submission may have arrived or not so as not to repeat it blindly; with too many submissions at once, it asks it to retry. The business's certificate is never kept nor appears in a log or in an error.
 Involved: the Hub (VERIFACTU-F15 sends, VERIFACTU-F27 queries, VERIFACTU-F10 tests the connection), FISCAL-F01 (the seal), FISCAL-F05 (the approved authorisation)
 
 ### FISCAL-F03 Keep the authorisation's documents encrypted
@@ -146,16 +156,18 @@ Involved: the Hub (VERIFACTU-F05 and VERIFACTU-F06 send the authorisation), FISC
 
 ### FISCAL-F06 Put ERPlora's seal and signature on the authorisation model
 <!-- origen: old-saas:SAAS_DASHBOARD-F160 -->
-Status: partial — the model the business downloads is the AEAT's official one, blank: it does not carry yet ERPlora's name, tax ID nor seal and signature as representative, which the team adds by hand
+Status: done
 Actor: ERPlora's staff
-Screen: none
+Screen: Admin › Signed authorisations › Representative's stamp
 Steps:
-1. The business downloads from the VeriFactu app of its Hub the official model of the Anexo I to sign it.
-2. The model arrives blank, also in the representative's box, and ERPlora signs it as representative when the AEAT asks for it.
-In: the official model of the Anexo I.
-Out: the blank model the business signs.
-If it fails: if the model cannot be served, the Hub says it could not download it and the business asks for it again.
-Involved: the Hub (VERIFACTU-F05 downloads the model), FISCAL-F05
+1. In "Representative's stamp", a person of the team with the permission over the stamp chooses a PNG of ERPlora's stamp and signature, of 2 MB at most and with a transparent background, and presses "Upload": "Stamp uploaded: every model downloaded from now on carries it." shows on top and the page shows its preview. A new one replaces the one there was.
+2. With "Download the model a business receives" they check how it comes out: the official model of the Anexo I with ERPlora written as representative (name and tax ID), the stamp and signature in the representative's box and a second page with the data protection information (article 13 of the GDPR) the model obliges to give.
+3. When the business downloads the model from the VeriFactu app of its Hub to sign it, it gets it like this; if the Hub sends the business's details (tax ID, name and address), they come written in the block of the natural person or in that of the entity according to its tax ID, and if not, those blanks are left to fill in by hand.
+4. To remove it, they tick "Yes, remove it: the models go without it until another is uploaded." and press "Remove the stamp".
+In: the PNG of ERPlora's stamp and signature, kept encrypted; ERPlora's details as a company; the business's details, if the Hub sends them.
+Out: the authorisation model with ERPlora, its stamp and its signature and the data protection sheet; the change is recorded (`fiscal.stamp.changed`).
+If it fails: a file that is not a PNG, that is damaged or that is over 2 MB is refused with its reason ("The stamp must be a PNG image.") and nothing changes. Without a stamp uploaded, or with one the current key cannot read, the model goes without it and the queue and "Representative's stamp" warn so that someone uploads it. A business detail the model cannot write or a tax ID that is not Spanish is refused and the Hub says it could not download it.
+Involved: the Hub (VERIFACTU-F05 downloads the model), FISCAL-F05 (the review of the signed authorisation)
 
 ### FISCAL-F07 Watch the customers' powers of attorney (ZP01)
 <!-- origen: old-saas:SAAS_DASHBOARD-F162 -->

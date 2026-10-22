@@ -4,7 +4,10 @@
 // flow: FISCAL-F05 — the review desk hears of the authorisation that waits, with the link to its review page and
 // no document, and the owner hears of the decision in their language.
 // flow: FISCAL-F03 — the documents are only decrypted on the review page, for the staff who decide.
+// flow: FISCAL-F06 — ERPlora's stamp and signature as representative: the queue warns while there is none, the
+// staff upload a PNG, see it, download the model a business receives with it, and remove it.
 import { execFileSync } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -108,5 +111,96 @@ test('FISCAL-F03: the documents of an authorisation are decrypted on its review 
   // The queue lists the authorisation without any document.
   await page.goto('/admin/fiscal/representationgrant/');
   await expect(page.getByRole('link', { name: 'Open in a new tab' })).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+/** A synthetic stamp (a ring and a text on a transparent background), as base64 PNG; never ERPlora's real one. */
+function syntheticStamp(): Buffer {
+  const encoded = djangoPrint(
+    [
+      'import base64, io',
+      'from PIL import Image, ImageDraw',
+      "image = Image.new('RGBA', (320, 120), (0, 0, 0, 0))",
+      'draw = ImageDraw.Draw(image)',
+      'draw.ellipse((10, 10, 110, 110), outline=(30, 60, 160, 255), width=6)',
+      "draw.text((130, 52), 'E2E STAMP', fill=(30, 60, 160, 255))",
+      'buffer = io.BytesIO()',
+      "image.save(buffer, 'PNG')",
+      'print(base64.b64encode(buffer.getvalue()).decode())',
+    ].join('\n'),
+  );
+  return Buffer.from(encoded, 'base64');
+}
+
+/** Pages of the model and images on its first page, read by pypdf from the bytes the admin served. */
+async function modelShape(page: Page, href: string, name: string): Promise<{ pages: number; images: number; text: string }> {
+  const served = await page.request.get(href);
+  expect(served.status()).toBe(200);
+  expect(served.headers()['content-type']).toBe('application/pdf');
+  const file = shot(name).replace(/\.png$/, '.pdf');
+  writeFileSync(file, await served.body());
+  const read = djangoPrint(
+    [
+      'import json',
+      'from pypdf import PdfReader',
+      `reader = PdfReader(${JSON.stringify(file)})`,
+      "print(json.dumps({'pages': len(reader.pages), 'images': len(reader.pages[0].images), 'text': reader.pages[1].extract_text()}))",
+    ].join('\n'),
+  );
+  return JSON.parse(read.split('\n').at(-1) as string);
+}
+
+test('FISCAL-F06: the staff upload ERPlora\'s stamp, see it on the model a business receives, and remove it', async ({ page }) => {
+  const errors = watchPageErrors(page);
+  seed('seed');
+  await signIn(page.request, REVIEWER);
+
+  // While there is none, the queue says so and leads to the stamp's page.
+  await page.goto('/admin/fiscal/representationgrant/');
+  await expect(page.locator('.messagelist')).toContainText("ERPlora's stamp and signature are not uploaded");
+  await page.getByRole('link', { name: "Representative's stamp" }).click();
+  await expect(page.getByRole('heading', { name: "Representative's stamp" })).toBeVisible();
+  const missing = page.locator('.errornote', { hasText: 'No stamp uploaded' });
+  await atEverySize(page, 'FISCAL-F06-empty', async () => {
+    await expect(missing).toBeVisible();
+  });
+  const model = page.getByRole('link', { name: 'Download the model a business receives' });
+  const modelHref = (await model.getAttribute('href')) as string;
+  const without = await modelShape(page, modelHref, 'APP-FISCAL_GATEWAY-FISCAL-F06-without');
+  expect(without.pages).toBe(2);
+  // The second page is the RGPD sheet (art. 13) the model's «TRATAMIENTO DE DATOS» promises.
+  expect(without.text).toContain('art. 13 RGPD');
+
+  // A file that is not a PNG is refused on the page, and nothing is kept.
+  const file = page.locator('#stamp-file');
+  await file.setInputFiles({ name: 'stamp.png', mimeType: 'image/png', buffer: Buffer.from('not an image') });
+  await page.getByRole('button', { name: 'Upload', exact: true }).click();
+  await expect(page.locator('.messagelist')).toContainText('The stamp must be a PNG image.');
+  await expect(missing).toBeVisible();
+
+  await file.setInputFiles({ name: 'stamp.png', mimeType: 'image/png', buffer: syntheticStamp() });
+  await page.getByRole('button', { name: 'Upload', exact: true }).click();
+  await expect(page.locator('.messagelist')).toContainText('Stamp uploaded: every model downloaded from now on carries it.');
+  const preview = page.getByRole('img', { name: "ERPlora's stamp and signature" });
+  await atEverySize(page, 'FISCAL-F06', async () => {
+    await expect(preview).toBeVisible();
+    expect(await preview.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth)).toBe(320);
+    await expect(page.getByRole('heading', { name: 'Replace the stamp' })).toBeVisible();
+  });
+  // The model now carries one image more on its first page: the stamp, in the representative's box.
+  const stamped = await modelShape(page, modelHref, 'APP-FISCAL_GATEWAY-FISCAL-F06-with');
+  expect(stamped.pages).toBe(2);
+  expect(stamped.images).toBe(without.images + 1);
+  // The queue no longer warns.
+  await page.goto('/admin/fiscal/representationgrant/');
+  await expect(page.locator('.messagelist')).toHaveCount(0);
+
+  // Removing asks for the box to be ticked, then the models go without it again.
+  await page.getByRole('link', { name: "Representative's stamp" }).click();
+  await page.getByRole('checkbox', { name: /Yes, remove it/ }).check();
+  await page.getByRole('button', { name: 'Remove the stamp' }).click();
+  await expect(page.locator('.messagelist')).toContainText('Stamp removed: the models go without it until another is uploaded.');
+  await expect(missing).toBeVisible();
+  expect((await modelShape(page, modelHref, 'APP-FISCAL_GATEWAY-FISCAL-F06-removed')).images).toBe(without.images);
   expect(errors).toEqual([]);
 });

@@ -43,7 +43,9 @@ Quién la usa:
 
 - En desarrollo y en el entorno de pruebas, la pasarela solo presenta en el entorno de pruebas de la AEAT; el
   entorno real solo se alcanza desde el despliegue de producción.
-- El sello de ERPlora no se sube en ninguna pantalla: lo pone el equipo en los secretos del despliegue.
+- El certificado de sello de ERPlora, con el que se presenta, no se sube en ninguna pantalla: lo pone el equipo en
+  los secretos del despliegue. La imagen del sello y la firma que lleva el modelo de la autorización sí se sube, en
+  «Sello del representante».
 - Sin una dirección propia para la mesa de revisión, sus avisos van al buzón de soporte.
 
 ## Pantallas
@@ -52,7 +54,14 @@ Quién la usa:
 
 La cola de autorizaciones con su negocio, versión, estado y fecha; cada una se abre en «Revisar la autorización
 firmada», con sus documentos y los botones «Aprobar», «Devolver al cliente» y «Retirar la aprobación». Es la
-pantalla a la que lleva el aviso a la mesa de revisión.
+pantalla a la que lleva el aviso a la mesa de revisión. Mientras no hay sello del representante subido, la cola lo
+avisa arriba y enlaza a «Sello del representante».
+
+### Admin › Autorizaciones firmadas › Sello del representante
+
+El sello y la firma de ERPlora que lleva cada modelo de la autorización: cuándo y quién lo subió, su tamaño y su
+vista previa, el enlace «Descargar el modelo que recibe un negocio», el botón «Subir» (o «Sustituir el sello» si ya
+hay uno) y «Quitar el sello», que pide marcar la casilla de confirmación.
 
 ### Correos
 
@@ -66,7 +75,8 @@ negocio, cada uno en su idioma.
 | Cargando | El admin carga la cola como cualquier lista del admin. |
 | Vacío | La cola sin autorizaciones dice que no hay ninguna. |
 | Error | Un paso que no se puede dar (aprobar una que ya no espera, devolver sin motivo) lo explica arriba de la página y no cambia nada. |
-| Sin permiso | Quien no es del equipo con permiso de revisar no ve la cola ni puede decidir. |
+| Sin permiso | Quien no es del equipo con permiso de revisar no ve la cola ni puede decidir; quien no tiene permiso sobre el sello no ve «Sello del representante», y quien solo puede verlo no puede subirlo ni quitarlo. |
+| Sin sello | La cola y «Sello del representante» avisan de que el modelo que descargan los clientes sale sin el sello y la firma de ERPlora; también si el sello guardado no se puede leer con la clave actual. |
 
 ## Flujos
 
@@ -77,7 +87,7 @@ negocio, cada uno en su idioma.
 | FISCAL-F03 | Guardar cifrados los documentos de la autorización | hecho |
 | FISCAL-F04 | Avisar al equipo antes de que caduque el sello | hecho |
 | FISCAL-F05 | Avisar a la mesa de revisión y al negocio de cada paso de la autorización | hecho |
-| FISCAL-F06 | Poner el sello y la firma de ERPlora en el modelo de la autorización | parcial |
+| FISCAL-F06 | Poner el sello y la firma de ERPlora en el modelo de la autorización | hecho |
 | FISCAL-F07 | Vigilar los apoderamientos (ZP01) de los clientes | descartado |
 
 ### FISCAL-F01 Cambiar el sello de ERPlora con el que se presenta
@@ -107,7 +117,7 @@ Pasos:
 4. Con la misma puerta, el Hub consulta lo que la AEAT ya tiene, o prueba si podría presentar ahora y con qué certificado, sin enviar nada.
 Entra: el sobre del Hub, el negocio, el NIF, el entorno, la vía y, por la vía propia, el certificado del negocio con su contraseña.
 Sale: la respuesta de la AEAT tal cual (la interpreta el Hub); en la prueba de conexión, si está lista y con qué certificado.
-Si falla: cada rechazo dice por qué y sale antes de tocar la AEAT: negocio desconocido, NIF que no casa, autorización no aprobada, sin sello, sin certificado, certificado no válido o caducado, o producción desde un despliegue que no lo es. Sin respuesta de la AEAT, el Hub sabe si el envío pudo llegar o no para no repetirlo a ciegas; con demasiados envíos a la vez, le pide que lo reintente. El certificado del negocio nunca se guarda ni aparece en un registro o en un error.
+Si falla: cada rechazo dice por qué y sale antes de tocar la AEAT: negocio desconocido, NIF que no casa, autorización no aprobada, sin sello, sin certificado, certificado no válido o caducado, o producción desde un despliegue que no lo es. La pasarela espera como mucho 5 s a conectar con la AEAT y 30 s a su respuesta, menos de lo que el Hub la espera a ella, así que el Hub siempre oye a la pasarela antes de rendirse; sin respuesta de la AEAT, el Hub sabe si el envío pudo llegar o no para no repetirlo a ciegas; con demasiados envíos a la vez, le pide que lo reintente. El certificado del negocio nunca se guarda ni aparece en un registro o en un error.
 Implicados: el Hub (VERIFACTU-F15 envía, VERIFACTU-F27 consulta, VERIFACTU-F10 prueba la conexión), FISCAL-F01 (el sello), FISCAL-F05 (la autorización aprobada)
 
 ### FISCAL-F03 Guardar cifrados los documentos de la autorización
@@ -154,16 +164,18 @@ Implicados: el Hub (VERIFACTU-F05 y VERIFACTU-F06 envían la autorización), FIS
 
 ### FISCAL-F06 Poner el sello y la firma de ERPlora en el modelo de la autorización
 <!-- origen: old-saas:SAAS_DASHBOARD-F160 -->
-Estado: parcial — el modelo que descarga el negocio es el oficial de la AEAT en blanco: aún no lleva el nombre, el NIF ni el sello y la firma de ERPlora como representante, que el equipo añade a mano
+Estado: hecho
 Actor: personal de ERPlora
-Pantalla: ninguna
+Pantalla: Admin › Autorizaciones firmadas › Sello del representante
 Pasos:
-1. El negocio descarga desde la app VeriFactu de su Hub el modelo oficial del Anexo I para firmarlo.
-2. El modelo llega en blanco, también en la casilla del representante, y ERPlora lo firma como representante cuando la AEAT se lo pide.
-Entra: el modelo oficial del Anexo I.
-Sale: el modelo en blanco que firma el negocio.
-Si falla: si el modelo no se puede servir, el Hub dice que no lo ha podido descargar y el negocio lo vuelve a pedir.
-Implicados: el Hub (VERIFACTU-F05 descarga el modelo), FISCAL-F05
+1. En «Sello del representante», una persona del equipo con permiso sobre el sello elige un PNG del sello y la firma de ERPlora, de 2 MB como mucho y con el fondo transparente, y pulsa «Subir»: arriba sale «Sello subido: todos los modelos que se descarguen desde ahora lo llevan.» y la página enseña su vista previa. Uno nuevo sustituye al que había.
+2. Con «Descargar el modelo que recibe un negocio» comprueba cómo sale: el modelo oficial del Anexo I con ERPlora escrita como representante (nombre y NIF), el sello y la firma en la casilla del representante y una segunda página con la información de protección de datos (artículo 13 del RGPD) que el modelo obliga a dar.
+3. Cuando el negocio descarga el modelo desde la app VeriFactu de su Hub para firmarlo, le llega así; si el Hub manda los datos del negocio (NIF, nombre y domicilio), salen escritos en el bloque de persona física o en el de entidad según su NIF, y si no, esos huecos quedan para rellenarlos a mano.
+4. Para quitarlo, marca «Sí, quítalo: los modelos salen sin él hasta que se suba otro.» y pulsa «Quitar el sello».
+Entra: el PNG del sello y la firma de ERPlora, que se guarda cifrado; los datos de ERPlora como empresa; los datos del negocio, si el Hub los manda.
+Sale: el modelo de la autorización con ERPlora, su sello y su firma y la hoja de protección de datos; el cambio queda anotado (`fiscal.stamp.changed`).
+Si falla: un fichero que no es un PNG, que está dañado o que pasa de 2 MB se rechaza con su motivo («El sello tiene que ser una imagen PNG.») y no cambia nada. Sin sello subido, o con uno que la clave actual no puede leer, el modelo sale sin él y la cola y «Sello del representante» lo avisan para que alguien lo suba. Un dato del negocio que el modelo no puede escribir o un NIF que no es español se rechazan y el Hub dice que no ha podido descargarlo.
+Implicados: el Hub (VERIFACTU-F05 descarga el modelo), FISCAL-F05 (la revisión de la autorización firmada)
 
 ### FISCAL-F07 Vigilar los apoderamientos (ZP01) de los clientes
 <!-- origen: old-saas:SAAS_DASHBOARD-F162 -->
@@ -192,22 +204,29 @@ Implicados: FISCAL-F05
   (`fiscal/crypto.py`, Fernet con `FISCAL_DOCUMENTS_KEY`, saas#1057); G06 (`check_certificate_expiry`) es
   FISCAL-F04 (`manage.py report_seal_expiry`, programada a diario en `saas-cron` con la alarma `seal_expiry` de
   `aws`); G07 es FISCAL-F05 (`fiscal/emails.py`, `FISCAL_REVIEW_EMAIL`); G08 es FISCAL-F06; G09 es FISCAL-F07.
-- FISCAL-F06 queda parcial: el viejo generaba el Anexo I con WeasyPrint, prerrellenado con los datos del cliente y de
-  ERPlora y con el PNG del sello y la firma del representante (subido en el admin a un bucket privado). El nuevo sirve
-  el PDF oficial estático (`GET /internal/representation/model`). Falta decidir dónde vive la imagen del sello con la
-  firma (el repo es público, un secreto de AWS no pasa de 64 KB y aún no hay bucket privado de documentos fiscales) y
-  superponer nombre, NIF y sello en el PDF oficial.
+- FISCAL-F06: `fiscal/anexo.py` escribe sobre el PDF oficial (`fiscal/static/fiscal/representation-model.pdf`,
+  atado por `OFFICIAL_SHA256`; huecos medidos con `pdftotext -bbox`) con `pypdf` + `reportlab`, y añade la hoja RGPD
+  (art. 13, responsable y contacto de `public/` y de `billing.CompanyConfig`). La imagen del sello vive cifrada con
+  `FISCAL_DOCUMENTS_KEY` en `RepresentativeStamp` (una sola fila, `fiscal.stamp.upload|delete`, permiso
+  `fiscal.change_representativestamp`; verla, `fiscal.view_representativestamp`), no en un bucket ni en los secretos (el
+  repo es público y un secreto de AWS no pasa de 64 KB). `GET /internal/representation/model` acepta en la query
+  `taxpayer_tax_id`, `taxpayer_name`, `municipality`, `street` y `number` (opcionales; la firma v2 cubre la query);
+  hoy el Hub la pide sin ellos (línea `FIX:` de la tarea), así que el bloque del negocio sale en blanco hasta que el
+  Hub los mande. Tests: `fiscal/tests/test_anexo.py`, `test_services.py::TestStamp`, `test_internal.py`,
+  `test_admin.py` y la e2e FISCAL-F06 de `tests/e2e/panel/fiscal-review.spec.ts`.
 - Fiscal: los tests solo tocan la preproducción de la AEAT, y siempre con el transporte simulado (`respx`); nunca una
   transmisión real ni un certificado real (los `.p12` de los tests se generan en `tests/conftest.py`).
 - Los tests de cada flujo citan su clave en el nombre o en el docstring (`fiscal/tests/test_emails.py` para
   FISCAL-F05); la e2e `tests/e2e/panel/fiscal-review.spec.ts` (con `fiscal_seed.py`) recorre la revisión en el admin
   en los tres tamaños: el aviso a la mesa con su enlace, la aprobación y el correo al negocio (FISCAL-F05), y los
-  documentos descifrados solo en la página de revisión (FISCAL-F03).
+  documentos descifrados solo en la página de revisión (FISCAL-F03); y el sello del representante: el aviso de la cola,
+  la subida (un fichero que no es PNG se rechaza), la vista previa, el modelo con una imagen más y el quitarlo (FISCAL-F06).
 
 ## Lo que NO hace, a propósito
 
-- No tiene pantalla para el sello de ERPlora ni guarda el sello en la base de datos: va en los secretos del
-  despliegue, y el entorno (pruebas o producción) lo fija el despliegue, no un ajuste.
+- No tiene pantalla para el certificado de sello de ERPlora ni lo guarda en la base de datos: va en los secretos del
+  despliegue, y el entorno (pruebas o producción) lo fija el despliegue, no un ajuste. Lo que sí se sube en el admin es
+  la imagen del sello y la firma que lleva el modelo (FISCAL-F06), cifrada.
 - No guarda nada de lo que presenta: ni sobres, ni respuestas, ni el certificado del negocio; la cola fiscal y las
   respuestas viven en el Hub de cada negocio.
 - No interpreta la respuesta de la AEAT: la devuelve tal cual y la interpreta el Hub.

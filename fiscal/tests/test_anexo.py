@@ -13,10 +13,10 @@ import hashlib
 import io
 
 import pytest
-from PIL import Image
 from pypdf import PdfReader
 
 from fiscal import anexo
+from fiscal.tests.conftest import stamp_png
 
 ACME = anexo.Representative(
     name="ACME FISCAL SL", tax_id="B00000000", address="Calle Falsa 1, 28000 Madrid"
@@ -27,16 +27,6 @@ PERSON = anexo.Party(
 COMPANY = anexo.Party(
     name="Bar Prueba SL", tax_id="B12345674", municipality="Leganés", street="Avenida Sur", number="12"
 )
-
-
-def stamp_png(width=300, height=120) -> bytes:
-    image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    for x in range(10, width - 10):
-        for y in range(height // 2 - 3, height // 2 + 3):
-            image.putpixel((x, y), (20, 40, 160, 255))
-    out = io.BytesIO()
-    image.save(out, format="PNG")
-    return out.getvalue()
 
 
 def pages(pdf: bytes):

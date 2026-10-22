@@ -450,6 +450,8 @@ def test_a_stamp_the_key_cannot_open_is_said_on_its_page(as_stamp_keeper):
 
     assert b"cannot be read with the current key" in response.content
     assert as_stamp_keeper.get(f"{STAMP}image/").status_code == 404
+    # The models go without it as if there were none, so the queue warns too.
+    assert any("not uploaded" in text for text in texts(as_stamp_keeper.get(CHANGELIST)))
 
 
 def test_a_reviewer_without_the_stamp_permissions_neither_sees_nor_changes_it(as_reviewer):

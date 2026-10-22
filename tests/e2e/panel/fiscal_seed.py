@@ -5,7 +5,9 @@ only: known passwords, refused without ``DEBUG``). ``seed`` starts from ``clear`
 rows; ``clear`` removes every account ``e2e-fiscal-*@example.com`` and every business one of them owns.
 
 - ``e2e-fiscal-reviewer``: a member of ERPlora's staff who may decide on authorisations
-  (``fiscal.change_representationgrant``, which the review page and the services ask).
+  (``fiscal.change_representationgrant``, which the review page and the services ask) and change ERPlora's stamp
+  as representative (``fiscal.change_representativestamp``, FISCAL-F06). ``clear`` removes the stamp one of these
+  accounts uploaded.
 - ``e2e-fiscal-owner``: owner of Bar Fiscal, reading Spanish. The business and its people are written with the ORM
   (nothing is pushed to the Hub); its signed authorisation goes through ``fiscal.representation.submit``, the
   operation the Hub's upload runs, so it mails the review desk and the owner after its COMMIT, as in production.
@@ -61,11 +63,14 @@ def clear() -> None:
     from django.db.models import Q
 
     from accounts.models import HubMembership
+    from fiscal.models import RepresentativeStamp
     from hubs.models import BillingProfile, Hub, HubMember
 
     users = get_user_model().objects.filter(
         email__startswith=PREFIX, email__endswith=DOMAIN
     )
+    # Before the accounts: their deletion would leave the stamp without its uploader (SET_NULL).
+    RepresentativeStamp.objects.filter(uploaded_by__in=users).delete()
     owned = HubMember.objects.filter(
         user__in=users, role=HubMember.Role.OWNER
     ).values_list("hub_id", flat=True)
@@ -119,7 +124,12 @@ def _business():
     reviewer.user_permissions.add(
         *Permission.objects.filter(
             content_type__app_label="fiscal",
-            codename__in=["view_representationgrant", "change_representationgrant"],
+            codename__in=[
+                "view_representationgrant",
+                "change_representationgrant",
+                "view_representativestamp",
+                "change_representativestamp",
+            ],
         )
     )
     owner = _account("owner", "es", first_name="Olga")

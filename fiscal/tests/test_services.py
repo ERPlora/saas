@@ -877,6 +877,20 @@ class TestStamp:
         assert "png_base64" in refused.value.fields
         assert not RepresentativeStamp.objects.exists()
 
+    def test_a_png_whose_data_is_damaged_is_refused(self, stamp_keeper):
+        """Its header opens, but its chunks do not add up: the model could not draw it."""
+        from fiscal.models import RepresentativeStamp
+        from fiscal.tests.conftest import stamp_png
+
+        damaged = bytearray(stamp_png())
+        damaged[-20] ^= 0xFF  # inside the image data, before the closing chunk: its checksum no longer matches
+
+        with pytest.raises(InvalidPayload) as refused:
+            self.upload(stamp_keeper, bytes(damaged))
+
+        assert refused.value.code == "fiscal.stamp_not_png"
+        assert not RepresentativeStamp.objects.exists()
+
     def test_what_is_not_base64_is_refused(self, stamp_keeper):
         from fiscal.schemas import StampUploadIn
 
