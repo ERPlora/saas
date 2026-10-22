@@ -222,7 +222,7 @@
       },
       "deleting": {
         "heading": "Se eliminará para siempre el {date}",
-        "body": "Lo eliminaste el {date} y ya no funciona. Hasta entonces puedes recuperarlo tal como estaba; te enviamos por correo el enlace para descargar sus datos.",
+        "body": "Lo eliminaste el {date} y ya no funciona. Hasta entonces puedes recuperarlo tal como estaba.",
         "bodyNotOwner": "Se eliminó el {date} y ya no funciona. Solo su propietario puede recuperarlo."
       },
       "plan": {
@@ -294,13 +294,13 @@
     "danger": {
       "title": "Zona de peligro",
       "deleteTitle": "Eliminar negocio",
-      "deleteBody": "Deja de funcionar al momento. Guardamos los datos 90 días por si cambias de idea y te enviamos un enlace para descargarlos.",
+      "deleteBody": "Deja de funcionar al momento. Guardamos los datos 90 días por si cambias de idea.",
       "deleteAction": "Eliminar negocio",
       "ownerOnly": "Solo el propietario puede eliminar el negocio.",
       "confirmTitle": "Eliminar {name}",
       "confirmMessage": "Deja de funcionar ahora mismo para todos. Puedes recuperarlo durante 90 días; después se borra para siempre.",
       "consequencePlan": "Su plan se cancela ahora: si lo recuperas, vuelve en Gratis.",
-      "consequenceEmail": "Te enviamos un correo con el enlace para descargar sus datos.",
+      "consequenceEmail": "Te enviamos un correo con la fecha hasta la que puedes recuperarlo.",
       "confirmLabel": "Escribe el nombre del negocio para confirmar",
       "restore": "Recuperar negocio"
     },

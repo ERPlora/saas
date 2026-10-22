@@ -222,7 +222,7 @@
       },
       "deleting": {
         "heading": "It will be erased for good on {date}",
-        "body": "You deleted it on {date} and it no longer works. Until then you can recover it as it was; we sent you an email with a link to download its data.",
+        "body": "You deleted it on {date} and it no longer works. Until then you can recover it as it was.",
         "bodyNotOwner": "It was deleted on {date} and no longer works. Only its owner can recover it."
       },
       "plan": {
@@ -294,13 +294,13 @@
     "danger": {
       "title": "Danger zone",
       "deleteTitle": "Delete business",
-      "deleteBody": "It stops working at once. We keep the data for 90 days in case you change your mind, and we send you a link to download it.",
+      "deleteBody": "It stops working at once. We keep the data for 90 days in case you change your mind.",
       "deleteAction": "Delete business",
       "ownerOnly": "Only the owner can delete the business.",
       "confirmTitle": "Delete {name}",
       "confirmMessage": "It stops working right now for everyone. You can recover it for 90 days; after that it is erased for good.",
       "consequencePlan": "Its plan is cancelled now: if you recover it, it comes back on Free.",
-      "consequenceEmail": "We send you an email with a link to download its data.",
+      "consequenceEmail": "We send you an email with the date until which you can recover it.",
       "confirmLabel": "Type the name of the business to confirm",
       "restore": "Recover business"
     },

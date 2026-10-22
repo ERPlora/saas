@@ -34,7 +34,7 @@ describe('DangerZone', () => {
     const { wrapper } = await mountZone({});
     expect(wrapper.get('h2').text()).toBe('Danger zone');
     expect(wrapper.text()).toContain(
-      'It stops working at once. We keep the data for 90 days in case you change your mind, and we send you a link to download it.',
+      'It stops working at once. We keep the data for 90 days in case you change your mind.',
     );
     const button = wrapper.get('[data-testid="danger-delete"]');
     expect(button.text()).toContain('Delete business');
