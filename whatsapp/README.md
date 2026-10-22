@@ -111,4 +111,9 @@ puerto de ese SaaS: el Hub solo acepta adjuntos de su `SAAS_URL`); sin `E2E_CROS
 las plantillas que erplora.com guarda tras leer la lista de Meta (aprobadas, en revisión, rechazada con su motivo y una
 con foto en la cabecera hecha en WhatsApp Manager, todas `e2e_…`) y el consumo del mes (`--used N`, 0 por defecto),
 sin llamar a Meta; su test es `tests/test_whatsapp_hub_seed.py`.
+El alta del número, también contra un Hub de verdad: `tests/e2e/panel/fix-saas-whatsapp-embedded-signup-return.spec.ts`
+(la página de vuelta y las puertas 10–12) y, del lado del Hub, `tests/e2e/whatsapp-inbox-connect-return.spec.ts` de
+su repo (WHATSAPP-F01 y WHATSAPP-F11 de punta a punta: «Conectar WhatsApp», la ventana, la vuelta y la puerta 11 hasta
+«Conectado»), con este SaaS al lado y solo Meta simulada: su ventana, y su Graph, al que este SaaS llega con
+`HTTPS_PROXY` y en el que confía con `SSL_CERT_FILE` (receta en la cabecera de la spec).
 No hay `UI-REQUESTS.md`: la app no tiene pantallas en el panel ni pide nada a `@erplora/ui`.
