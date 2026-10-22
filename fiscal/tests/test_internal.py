@@ -12,6 +12,7 @@ import io
 import json
 import time
 import uuid
+from urllib.parse import urlencode
 
 import pytest
 from django.conf import settings
@@ -369,13 +370,17 @@ def test_only_post(client, business):
 # --- The blank model ------------------------------------------------------------------------------------
 
 
-def get_model(client, *, secret=SECRET, timestamp=None, query=None):
+def get_model(client, *, secret=SECRET, timestamp=None, query=None, v2=True):
+    """The model as the Hub asks for it: v1 and v2 (``signed_headers``) over the path with ``query``; ``v2=False``
+    sends v1 alone, the body-only signature that never covers a query."""
     timestamp = int(time.time()) if timestamp is None else timestamp
-    return client.get(
-        MODEL_PATH,
-        query,
-        headers={"X-Erplora-Timestamp": str(timestamp), "X-Erplora-Signature": sign(b"", timestamp, secret)},
+    path = f"{MODEL_PATH}?{urlencode(query)}" if query else MODEL_PATH
+    headers = (
+        signed_headers("GET", path, b"", timestamp, secret)
+        if v2
+        else {"X-Erplora-Timestamp": str(timestamp), "X-Erplora-Signature": sign(b"", timestamp, secret)}
     )
+    return client.get(path, headers=headers)
 
 
 def model_pages(response):
@@ -426,6 +431,20 @@ def test_a_v2_signature_covers_the_business_the_hub_names(client, synthetic_comp
 
     assert client.get(path, headers=headers).status_code == 200
     assert error_of(client.get(f"{MODEL_PATH}?taxpayer_tax_id=12345678Z", headers=headers)) == (401, "unauthorized")
+
+
+def test_a_query_signed_with_v1_alone_is_refused_saying_v2_is_needed(client, synthetic_company):
+    """v1 signs the body only: with it, anybody holding one captured signature could ask, within its window, for
+    the model filled in with another business's details. The Hub signs v2 too; the answer says so."""
+    response = get_model(client, query={"taxpayer_tax_id": "B12345674"}, v2=False)
+
+    assert error_of(response) == (401, "signature_v2_required")
+    assert "X-Erplora-Signature-V2" in response.json()["error"]["message"]
+    assert "no-store" in response["Cache-Control"]
+
+
+def test_the_model_without_a_query_is_still_heard_with_v1_alone(client, synthetic_company):
+    assert get_model(client, v2=False).status_code == 200
 
 
 @pytest.mark.parametrize(

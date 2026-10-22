@@ -128,6 +128,22 @@ class TestTheSignatureV2:
 
         assert verify_signed("POST", "/internal/auth/redeem", BODY, headers, secrets=[SECRET], now=NOW) is True
 
+    def test_a_call_with_only_v1_and_a_query_is_refused(self):
+        """v1 signs the body only: the query would travel unsigned, so a captured v1 signature could ask, within its
+        window, for whatever query it liked (another business's details in the Anexo I model)."""
+        model = "/internal/representation/model"
+        headers = {TIMESTAMP_HEADER: str(NOW), SIGNATURE_HEADER: _expected(NOW, body=b"")}
+
+        assert verify_signed("GET", f"{model}?taxpayer_tax_id=B12345674", b"", headers, secrets=[SECRET], now=NOW) is False
+        assert verify_signed("GET", f"{model}?", b"", headers, secrets=[SECRET], now=NOW) is False
+        assert verify_signed("GET", model, b"", headers, secrets=[SECRET], now=NOW) is True
+
+    def test_a_query_signed_by_v2_alone_verifies(self):
+        path = "/internal/representation/model?taxpayer_tax_id=B12345674"
+        headers = {TIMESTAMP_HEADER: str(NOW), SIGNATURE_V2_HEADER: _expected_v2(NOW, method="GET", path=path, body=b"")}
+
+        assert verify_signed("GET", path, b"", headers, secrets=[SECRET], now=NOW) is True
+
     def test_a_broken_v2_is_refused_even_if_v1_passes(self):
         """No downgrade: naming v2 and failing it is a forged or a mangled call."""
         headers = {TIMESTAMP_HEADER: str(NOW), SIGNATURE_HEADER: _expected(NOW), SIGNATURE_V2_HEADER: "0" * 64}
@@ -208,6 +224,14 @@ class TestVerifyRequest:
 
         assert verify_request(self._request(rf, headers, path="/internal/auth/redeem?x=1"), now=now) is True
         assert verify_request(self._request(rf, headers, path="/internal/auth/redeem"), now=now) is False
+
+    def test_a_request_with_a_query_and_only_v1_is_refused(self, rf, settings):
+        settings.INTERNAL_SHARED_SECRET = SECRET
+        now = 1_800_000_000
+        headers = {TIMESTAMP_HEADER: str(now), SIGNATURE_HEADER: sign(BODY, now, SECRET)}
+
+        assert verify_request(self._request(rf, headers, path="/internal/auth/redeem?x=1"), now=now) is False
+        assert verify_request(self._request(rf, headers), now=now) is True
 
     def test_uses_the_max_age_of_the_settings(self, rf, settings):
         settings.INTERNAL_SHARED_SECRET = SECRET

@@ -6,8 +6,9 @@
 - ``GET /internal/representation/model``: the model the customer signs (Anexo I, p. 11, of the AEAT's agreement
   017 for the direct representation of a client) with its blanks filled in and the RGPD page (``fiscal.anexo``,
   FISCAL-F06): ERPlora as representative, its stamp if the staff uploaded one, and the business when the Hub
-  sends its details in the query (``ModelQueryIn``: tax ID, name and address, all optional; a v2 signature
-  covers the query too). 422 ``invalid_payload`` with ``fields`` for a value the model cannot carry.
+  sends its details in the query (``ModelQueryIn``: tax ID, name and address, all optional; only a v2 signature
+  covers the query, so a query signed with v1 alone is 401 ``signature_v2_required``). 422 ``invalid_payload``
+  with ``fields`` for a value the model cannot carry.
 
 Server to server, signed as ``/internal/auth/redeem`` (``accounts.signing.verify_signed``: HMAC-SHA256 +
 timestamp, v1 over the body, v2 also over the method and the path), so no CSRF token. v1 covers the body
@@ -38,7 +39,7 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 from live.errors import OperationError
 
-from accounts.signing import live_secrets, may_be_signed, verify_request, verify_signed
+from accounts.signing import live_secrets, may_be_signed, query_needs_v2, verify_request, verify_signed
 from fiscal import anexo, queries, services
 from fiscal.schemas import ModelQueryIn, RepresentationSubmitIn
 from hubs.services import system_ctx_for
@@ -73,9 +74,17 @@ def _unauthorized(request: HttpRequest) -> JsonResponse:
 
 
 def _only(request: HttpRequest, method: str) -> JsonResponse | None:
-    """405 with ``Allow`` unless ``request`` is ``method``; then 401 unless it is signed."""
+    """405 with ``Allow`` unless ``request`` is ``method``; then 401 unless it is signed, saying so when a query
+    came signed with v1 alone (``signature_v2_required``: v1 signs the body only, never the query)."""
     refused = _not_allowed(request, method)
     if refused is None and not verify_request(request):
+        if query_needs_v2(request.get_full_path(), request.headers):
+            logger.warning("internal.fiscal.query_without_v2 path=%s", request.path)
+            return _error(
+                401,
+                "signature_v2_required",
+                "A call with a query string must be signed with X-Erplora-Signature-V2: v1 signs the body only.",
+            )
         refused = _unauthorized(request)
     return refused
 
