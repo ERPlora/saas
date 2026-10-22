@@ -227,7 +227,25 @@ class TestTheRun:
                 cursor.execute("SELECT pg_advisory_lock(hashtext(%s))", [services.lock_name("anonymize_old_users")])
             output = _run()
         finally:
+            # Unlocked by hand: closing a pooled connection keeps its session, and its lock with it.
+            with other.cursor() as cursor:
+                cursor.execute("SELECT pg_advisory_unlock(hashtext(%s))", [services.lock_name("anonymize_old_users")])
             other.close()
 
         assert "already running" in output
         assert _exists(user)
+        # Given back: the pool keeps the other session open, and a lock left in it stopped every later run of
+        # the process ("already running"; the billing prune test after the cleanup's twin, 2026-10-22).
+        assert _lock_is_free(services.lock_name("anonymize_old_users"))
+
+
+def _lock_is_free(name: str) -> bool:
+    """Whether another session may take ``name`` now (taken and given back at once)."""
+    from django.db import connection
+
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT pg_try_advisory_lock(hashtext(%s))", [name])
+        taken = cursor.fetchone()[0]
+        if taken:
+            cursor.execute("SELECT pg_advisory_unlock(hashtext(%s))", [name])
+    return taken
