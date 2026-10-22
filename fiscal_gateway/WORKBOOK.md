@@ -227,6 +227,11 @@ Implicados: FISCAL-F05
   F06 de este, y la revisión del staff (aprobar, devolver, retirar) la recoge VERIFACTU-F05 del Hub.
 - `FISCAL_DOCUMENTS_KEY` es una sola clave Fernet, sin la anterior: cambiarla deja ilegibles los documentos y el sello
   guardados con ella (FISCAL-F03 y FISCAL-F06 lo dicen en pantalla); la rotación queda fuera de esta versión.
+- La vía de ERPlora pide la autorización aprobada en los dos entornos de la AEAT (`internal._identity` no mira el
+  entorno; `test_without_an_authorisation_erplora_does_not_present_for_a_customer` corre en pruebas), y la vía por
+  defecto del Hub es la de ERPlora: un negocio nuevo no llega a la AEAT de pruebas hasta que se aprueba su
+  autorización o sube su certificado. El producto actual no la pedía en pruebas (ADR-0360) y el Hub solo la exige para
+  pasar a producción: contradicción señalada en la ronda CLOSE-FISCAL_GATEWAY de `PLAN-SAAS.md` §4.
 
 ## Lo que NO hace, a propósito
 
@@ -238,5 +243,3 @@ Implicados: FISCAL-F05
 - No interpreta la respuesta de la AEAT: la devuelve tal cual y la interpreta el Hub.
 - No manda documentos por correo ni los adjunta al aviso de la mesa de revisión: solo el enlace a la revisión.
 - No vigila apoderamientos ante la AEAT (procedimiento ZP01): la vía de ERPlora es la colaboración social.
-- No exime al entorno de pruebas: la vía de ERPlora pide la autorización aprobada también en pruebas (el producto
-  actual no la pedía, ADR-0360); sin ella, el negocio prueba con su propio certificado.
