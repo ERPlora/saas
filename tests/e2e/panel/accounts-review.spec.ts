@@ -1,4 +1,7 @@
-// flow: ACCOUNTS-F01 … ACCOUNTS-F24 (F06 aside: Google has no credentials here)
+// flow: ACCOUNTS-F01 ACCOUNTS-F02 ACCOUNTS-F03 ACCOUNTS-F04 ACCOUNTS-F05 ACCOUNTS-F07 ACCOUNTS-F08 ACCOUNTS-F09
+// flow: ACCOUNTS-F10 ACCOUNTS-F11 ACCOUNTS-F12 ACCOUNTS-F13 ACCOUNTS-F14 ACCOUNTS-F15 ACCOUNTS-F16 ACCOUNTS-F17
+// flow: ACCOUNTS-F18 ACCOUNTS-F19 ACCOUNTS-F20 ACCOUNTS-F21 ACCOUNTS-F22 ACCOUNTS-F23 ACCOUNTS-F24
+// (ACCOUNTS-F06 aside: the panel's server has no Google credentials.)
 // The review of the `hecho` flows of «create the account, sign in, the second factor, the sessions, the profile and the
 // preferences» (accounts/WORKBOOK.md, MIGRATION-TASK APP-ACCOUNTS-6): every screen of those flows in English AND in
 // Spanish, at the three sizes of the migration (390×844, 834×1112, 1440×900). The flows themselves are played by
@@ -259,6 +262,22 @@ for (const { lang, locale } of LANGUAGES) {
       await review(page, lang, 'ACCOUNTS-F02', async () => {
         await expect(page.getByRole('heading', { name: t(lang, 'accounts.verifyEmail.title') })).toBeVisible();
         await expect(page.getByTestId('verify-email-resend')).toBeVisible();
+      });
+      expect(errors).toEqual([]);
+    });
+
+    test(`ACCOUNTS-F03 (${lang}): an address never proven asks for its code on the way to the panel`, async ({ page }) => {
+      const errors = watchPageErrors(page);
+      const email = address('unproven', lang);
+      createAccount(email, lang);
+      djangoPrint(`from allauth.account.models import EmailAddress\nEmailAddress.objects.filter(email="${email}").update(verified=False)`);
+
+      await page.goto('/account/profile');
+      await expect(page).toHaveURL(/\/launch\?next=/);
+      await submitSignInForm(page, { email, password: PASSWORD });
+      await expect(page).toHaveURL(/\/verify-email\?next=/);
+      await review(page, lang, 'ACCOUNTS-F03', async () => {
+        await expect(page.getByRole('heading', { name: t(lang, 'accounts.verifyEmail.title') })).toBeVisible();
       });
       expect(errors).toEqual([]);
     });
