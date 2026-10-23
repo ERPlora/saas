@@ -280,6 +280,10 @@ for (const { lang, locale } of LANGUAGES) {
       await page.locator('button[name="index"]').click();
       await review(page, lang, 'ACCOUNTS-F33-admin', async () => {
         await expect(page.locator('.messagelist')).toContainText(ADMIN[lang].revoked);
+        // What the key may open, in words: never the raw `["hubs.read"]`.
+        await expect(
+          page.locator('#result_list tbody tr', { hasText: `QA monitor ${lang}` }).locator('td.field-permissions'),
+        ).toHaveText(lang === 'es' ? 'Negocios · lectura' : 'Businesses · read');
       });
 
       // The key just issued and revoked is in the audit log, in the staff's language.
@@ -357,6 +361,8 @@ for (const { lang, locale } of LANGUAGES) {
         await signInThroughPage(fresh, stranger);
         await expect(fresh).toHaveURL(`${new URL(baseURL!).origin}/launch`);
         await review(fresh, lang, 'ACCOUNTS-F29-foreign-address', async () => {
+          // The Entrada of an account with no business: «Create your business» and «Go to the panel», never the spinner.
+          await expect(fresh.getByTestId('launch-panel')).toBeVisible();
           await expect(fresh.getByTestId('launch-loading')).toHaveCount(0);
           await expect(fresh.getByText(t(lang, 'hubs.common.signedInAs').replace('{email}', stranger.email))).toBeVisible();
         });
