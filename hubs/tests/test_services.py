@@ -549,6 +549,16 @@ class TestUpdate:
 
         assert business.pending_hub_call == ""
 
+    def test_a_change_records_its_event_and_no_change_records_none(self, business, owner):
+        """HUBS-F15 «Sale»: ``hubs.business.updated``, only when something changed."""
+        services.business_update(ctx_for(owner), BusinessUpdateIn(id=business.id, name="Bar Manolo"))
+        assert not OutboxEvent.objects.filter(name=events.BUSINESS_UPDATED).exists()
+
+        services.business_update(ctx_for(owner), BusinessUpdateIn(id=business.id, name="New name"))
+
+        (event,) = OutboxEvent.objects.filter(name=events.BUSINESS_UPDATED)
+        assert event.payload == {"id": str(business.id)}
+
     def test_a_new_name_reaches_the_hub(self, business, owner, hub_double, django_capture_on_commit_callbacks):
         """HUBS-F15, trap of ERPlora/saas SAAS_DASHBOARD-F09: the new name never reached the hub (its screen, its
         receipts). Here the registry the Hub keeps is pushed again with it after the COMMIT."""
