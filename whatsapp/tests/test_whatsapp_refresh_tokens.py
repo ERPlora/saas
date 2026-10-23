@@ -309,6 +309,17 @@ class TestTheCommand:
 
         assert "whatsapp.token.not_configured" in caplog.text
 
+    def test_a_round_where_the_number_due_crashed_fails_visibly(self, whatsapp_on, business, monkeypatch):
+        make_number(business)
+
+        def renew(token):
+            raise RuntimeError("surprise")
+
+        monkeypatch.setattr(gateway, "_renew", renew)
+
+        with pytest.raises(CommandError, match="some numbers crashed"):
+            call_command("whatsapp_refresh_tokens", stdout=StringIO())
+
     @pytest.mark.parametrize("number", NOTHING_DUE)
     def test_without_metas_app_and_nothing_due_it_ends_well_and_says_so(self, whatsapp_on, business, caplog, number):
         without_metas_app(whatsapp_on)
