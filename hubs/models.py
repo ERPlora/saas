@@ -264,12 +264,12 @@ class TaxonomyEntry(TranslatedFields):
     name_es = models.CharField(_("name (Spanish)"), max_length=200, blank=True)
     description_en = models.TextField(_("description (English)"), blank=True)
     description_es = models.TextField(_("description (Spanish)"), blank=True)
-    icon = models.CharField(max_length=100, blank=True)
-    color = models.CharField(max_length=20, blank=True, help_text=_("Hex colour, e.g. #ff6b35."))
-    display_order = models.IntegerField(default=0)
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    icon = models.CharField(_("icon"), max_length=100, blank=True)
+    color = models.CharField(_("colour"), max_length=20, blank=True, help_text=_("Hex colour, e.g. #ff6b35."))
+    display_order = models.IntegerField(_("order"), default=0)
+    is_active = models.BooleanField(_("active"), default=True)
+    created_at = models.DateTimeField(_("created at"), auto_now_add=True)
+    updated_at = models.DateTimeField(_("updated at"), auto_now=True)
 
     class Meta:
         abstract = True
@@ -298,7 +298,9 @@ class TaxonomyEntry(TranslatedFields):
 class Sector(TaxonomyEntry):
     """A business sector (hospitality, retail, healthcare…); groups the business types."""
 
-    code = models.SlugField(max_length=50, unique=True, help_text=_("Stable code used by the API. Never change it."))
+    code = models.SlugField(
+        _("code"), max_length=50, unique=True, help_text=_("Stable code used by the API. Never change it.")
+    )
 
     class Meta(TaxonomyEntry.Meta):
         verbose_name = _("sector")
@@ -312,11 +314,19 @@ class BusinessType(TaxonomyEntry):
     PLAN §15.2); blank, the hub starts from ``hub_template``, only ``base``.
     """
 
-    code = models.SlugField(max_length=80, unique=True, help_text=_("Stable code used by the API. Never change it."))
+    code = models.SlugField(
+        _("code"), max_length=80, unique=True, help_text=_("Stable code used by the API. Never change it.")
+    )
     sector = models.ForeignKey(
-        Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name="business_types"
+        Sector,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="business_types",
+        verbose_name=_("sector"),
     )
     vertical = models.CharField(
+        _("vertical"),
         max_length=40,
         blank=True,
         default="",

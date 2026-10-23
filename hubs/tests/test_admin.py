@@ -443,3 +443,43 @@ class TestTheUsageAdmin:
         assert staff_client.get("/admin/hubs/hubusagedaily/add/").status_code == 403
         assert not model_admin.has_change_permission(request, day)
         assert not model_admin.has_delete_permission(request, day)
+
+
+# --- HUBS-F36: the taxonomy's admin speaks the staff's language --------------------------------------------------
+
+import re  # noqa: E402
+
+SPANISH_COLUMNS = {
+    "sector": ["Código", "Nombre (inglés)", "Nombre (español)", "Activo", "Orden"],
+    "businesstype": ["Código", "Nombre (inglés)", "Nombre (español)", "Sector", "Vertical", "Activo", "Orden"],
+}
+#: The filters' titles («Por activo»), as Django's ``admin/filter.html`` writes them in ``data-filter-title``.
+SPANISH_FILTERS = {"sector": ["activo"], "businesstype": ["sector", "vertical", "activo"]}
+SPANISH_FIELDS = ["Código", "Icono", "Color", "Orden", "Activo"]
+
+
+def _headings(page: str) -> list[str]:
+    """The column headings of the changelist's table (``#result_list``), its checkbox column left out."""
+    table = re.search(r'<table id="result_list">(.*?)</thead>', page, re.S).group(1)
+    cells = re.findall(r'<div class="text">(.*?)</div>', table, re.S)
+    return [text for cell in cells if (text := re.sub(r"<[^>]+>", "", cell).strip())]
+
+
+@pytest.mark.parametrize("model", ["sector", "businesstype"])
+def test_the_taxonomy_lists_speak_spanish(staff_client, rows, model):
+    """HUBS-F36 (HUBS-G05, HUBS-G01): every column and filter of the list, in the staff's language: the old admin's
+    translation tabs became a column per language, and the rest of the row's fields had no Spanish («Code», «By is
+    active»)."""
+    page = staff_client.get(f"/admin/hubs/{model}/", HTTP_ACCEPT_LANGUAGE="es").content.decode()
+
+    assert _headings(page) == SPANISH_COLUMNS[model]
+    assert re.findall(r'data-filter-title="([^"]*)"', page) == SPANISH_FILTERS[model]
+
+
+@pytest.mark.parametrize("model", ["sector", "businesstype"])
+def test_the_taxonomy_forms_speak_spanish(staff_client, rows, model):
+    page = staff_client.get(f"/admin/hubs/{model}/{rows[model].pk}/change/", HTTP_ACCEPT_LANGUAGE="es").content.decode()
+    labels = [label.strip().rstrip(":") for label in re.findall(r"<label[^>]*>([^<]+)</label>", page)]
+
+    for label in SPANISH_FIELDS:
+        assert label in labels, (label, labels)

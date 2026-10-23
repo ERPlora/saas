@@ -16,6 +16,34 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+#: models.py
+msgid "code"
+msgstr "código"
+
+#: models.py
+msgid "icon"
+msgstr "icono"
+
+#: models.py
+msgid "colour"
+msgstr "color"
+
+#: models.py
+msgid "order"
+msgstr "orden"
+
+#: models.py
+msgid "active"
+msgstr "activo"
+
+#: models.py
+msgid "updated at"
+msgstr "actualizado el"
+
+#: models.py
+msgid "vertical"
+msgstr "vertical"
+
 #: admin.py
 #, python-format
 msgid "%(count)d business on this plan gets the change within 15 minutes."
