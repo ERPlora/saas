@@ -340,9 +340,12 @@ def test_the_sign_in_codes_box_is_the_code_alone(language, allauth_context):
     assert re.search(r"<p[^>]*monospace[^>]*>042317</p>", html_of(message))
 
 
-@pytest.mark.parametrize(
-    "path", sorted(p.relative_to(OUR_TEMPLATES) for f in MAIL_FOLDERS for p in (OUR_TEMPLATES / f).glob("*_message.txt"))
+OUR_MAIL_TEXTS = sorted(
+    path.relative_to(OUR_TEMPLATES) for folder in MAIL_FOLDERS for path in (OUR_TEMPLATES / folder).glob("*_message.txt")
 )
+
+
+@pytest.mark.parametrize("path", OUR_MAIL_TEXTS)
 def test_each_mail_template_of_ours_has_its_html(path):
     """A text template of ours (the wrapper and the notices it wrote) goes with its HTML, saying the same."""
     assert (OUR_TEMPLATES / str(path).replace("_message.txt", "_message.html")).is_file()

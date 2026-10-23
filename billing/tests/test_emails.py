@@ -12,6 +12,7 @@ invoice page; the recipient is the payer's billing e-mail (the invoice's address
 
 from datetime import date
 from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 from django.core import mail
@@ -119,3 +120,32 @@ def test_a_mail_that_cannot_leave_raises_so_it_is_sent_again_later(invoice, monk
 
     with pytest.raises(emails.MailNotSent):
         emails.send_invoice_issued(invoice)
+
+
+@pytest.mark.parametrize("notice", ["invoice", "payment_failed", "business_suspended"])
+def test_a_mail_whose_html_cannot_be_drawn_is_not_sent_either(notice, invoice, monkeypatch):
+    """ACCOUNTS-F46: drawing the branded HTML is part of sending it, so a failure there is ``MailNotSent`` too and
+    the mail is sent again later, never an error that stops whoever asked for it."""
+    def broken(*args, **kwargs):
+        raise OSError("the templates cannot be read")
+
+    monkeypatch.setattr("base.emails.render_to_string", broken)
+    hub = SimpleNamespace(id="0199a0c4-7f3e-7000-8000-000000000001", name="Mi Hub")
+    send = {
+        "invoice": lambda: emails.send_invoice_issued(invoice),
+        "payment_failed": lambda: emails.send_payment_failed(
+            hub,
+            to="a@example.com",
+            language="en",
+            amount=Decimal("29.99"),
+            declined=False,
+            suspends_on=date(2026, 11, 1),
+        ),
+        "business_suspended": lambda: emails.send_business_suspended(
+            hub, to="a@example.com", language="en", amount=Decimal("29.99")
+        ),
+    }[notice]
+
+    with pytest.raises(emails.MailNotSent):
+        send()
+    assert mail.outbox == []

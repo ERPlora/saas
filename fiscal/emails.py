@@ -12,9 +12,9 @@ Whether ERPlora may file a business's invoices keeps the business running, so th
 (ACCOUNTS-F23). A step a newer one replaced (a submission replaced before any review, an approval replaced by a
 newer approval) tells nobody: the newer step's own mail says all there is to say.
 
-Branded, as text and as HTML (``base.emails``, ACCOUNTS-F46). ``fiscal.services`` calls ``grant_stepped`` after the COMMIT, so a mail never
-announces a step that rolled back; one that cannot leave is logged with the grant's id, never raised (the step
-stands, and the admin's queue still lists what waits).
+Branded, as text and as HTML (``base.emails``, ACCOUNTS-F46). ``fiscal.services`` calls ``grant_stepped`` after
+the COMMIT, so a mail never announces a step that rolled back; one that cannot leave is logged with the grant's id,
+never raised (the step stands, and the admin's queue still lists what waits).
 """
 
 import logging

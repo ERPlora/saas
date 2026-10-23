@@ -2,10 +2,11 @@
 ``apps/dashboard/billing/emails.py``, saas#1061), and a renewal could not be collected or the business was
 suspended for it (BILLING-F16, saas#2593).
 
-Branded, as text and as HTML (``base.emails``, ACCOUNTS-F46), in the language of the invoice (its payer's). It LINKS to the panel's Billing page instead of attaching the PDF: the PDF
-is the platform hub's, asked on demand, and it carries the QR. Sent after the COMMIT by
-``billing.services`` the first time the platform hub issues the invoice; one that cannot leave is logged,
-never raised (the invoice is the source of truth). No database here.
+Branded, as text and as HTML (``base.emails``, ACCOUNTS-F46), in the language of the invoice (its payer's). It
+LINKS to the panel's Billing page instead of attaching the PDF: the PDF is the platform hub's, asked on demand,
+and it carries the QR. Sent after the COMMIT by ``billing.services`` the first time the platform hub issues the
+invoice; one that cannot leave (also when its HTML cannot be drawn) is logged and reported as ``MailNotSent``, so
+it is sent again later (the invoice is the source of truth). No database here.
 """
 
 import logging
@@ -89,9 +90,8 @@ def _billing_url(hub) -> str:
 
 
 def _send_notice(notice: str, subject: str, lines: list[str], to: str, *, language: str) -> None:
-    message = branded_message(subject, lines, [to], language=language, headers={"X-ERPlora-Notice": notice})
     try:
-        message.send()
+        branded_message(subject, lines, [to], language=language, headers={"X-ERPlora-Notice": notice}).send()
     except Exception as failed:  # noqa: BLE001 - reported to the caller, which sends it again later
         logger.error("[EMAIL] %s not sent to %s: %s", notice, to, failed)
         raise MailNotSent(str(failed)) from failed
