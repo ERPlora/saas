@@ -334,13 +334,13 @@ msgstr "No hemos podido cobrar el plan de %(business)s"
 msgid "We could not charge %(amount)s for the plan of %(business)s."
 msgstr "No hemos podido cobrar %(amount)s del plan de %(business)s."
 
-#: emails.py:111
+#: emails.py:114
 msgid ""
-"The bank declined the card: change it before paying, we will not charge it "
-"again."
+"The bank declined your card, so we will not try it again: change the card, "
+"then pay the invoice yourself."
 msgstr ""
-"El banco rechazó la tarjeta: cámbiala antes de pagar, no volveremos a "
-"cobrarle."
+"El banco rechazó tu tarjeta, así que no volveremos a intentar el cobro con "
+"ella: cámbiala y paga tú la factura."
 
 #: emails.py:113
 #, python-format

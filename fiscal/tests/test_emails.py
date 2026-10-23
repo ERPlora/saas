@@ -198,14 +198,16 @@ def test_an_approval_a_newer_one_replaced_tells_nobody(business, desk):
 def test_a_mail_that_cannot_leave_is_logged_and_the_rest_still_go(
     business, owner, desk, monkeypatch, caplog
 ):
-    from django.core.mail import send_mail as real_send_mail
+    from django.core.mail import EmailMessage
 
-    def refuse_the_desk(subject, body, sender, recipients, **kwargs):
-        if recipients == [desk]:
+    real_send = EmailMessage.send
+
+    def refuse_the_desk(message, *args, **kwargs):
+        if message.to == [desk]:
             raise OSError("the mail server is away")
-        return real_send_mail(subject, body, sender, recipients, **kwargs)
+        return real_send(message, *args, **kwargs)
 
-    monkeypatch.setattr(emails, "send_mail", refuse_the_desk)
+    monkeypatch.setattr("django.core.mail.EmailMessage.send", refuse_the_desk)
     grant = make_grant(business, status="submitted")
 
     with caplog.at_level(logging.ERROR, logger="fiscal.emails"):

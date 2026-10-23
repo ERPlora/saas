@@ -1,18 +1,18 @@
 """The mails of whatsapp, each in its recipient's language (``User.language``).
 
 «Connect WhatsApp again» (WHATSAPP-G12): Meta did not renew the business's permission, so its customers' messages
-stop reaching the Hub until the number is connected again. Plain text, like the mails of hubs, until the branded
-mail. Sent after the COMMIT of what it announces; one that cannot leave is logged, never raised (the next renewal
-round tries again).
+stop reaching the Hub until the number is connected again. Branded, as text and as HTML (``base.emails``,
+ACCOUNTS-F46). Sent after the COMMIT of what it announces; one that cannot leave is logged, never raised (the next
+renewal round tries again).
 """
 
 import logging
 
-from django.core.mail import send_mail
 from django.utils import translation
 from django.utils.translation import gettext as _
 
 from accounts.queries import hub_origin
+from base.emails import branded_message
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ def send_reconnect(*, to: str, language: str, business: str, number: str, slug: 
             % {"url": hub_origin(slug)},
         ]
     try:
-        send_mail(subject, "\n".join(lines) + "\n", None, [to])
+        branded_message(subject, lines, [to], language=language).send()
     except Exception as failed:  # noqa: BLE001 - the mark is written; the next round tries the mail again
         logger.error("whatsapp.mail.not_sent kind=reconnect error=%s", type(failed).__name__)
         return False

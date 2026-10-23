@@ -1,0 +1,9 @@
+{% extends "emails/base.html" %}{% load i18n %}
+{% block content %}<p style="margin:0 0 16px;">{% blocktrans %}Hello from ERPlora!{% endblocktrans %}</p>
+{% block message %}{% endblock message %}
+<p style="margin:0;">{% blocktrans %}Thank you for using ERPlora.{% endblocktrans %}<br><a href="https://erplora.com" style="color:#1496d6;">https://erplora.com</a></p>{% endblock content %}
+{% comment %}
+  The HTML of base_message.txt (ACCOUNTS-F46): the wrapper of a notice ERPlora wrote for allauth, saying the same
+  as its text on the common template. The brand is written here, as in the text, never taken from the `Site` row.
+  The mails allauth ships come only as text: AccountAdapter.render_mail shows their text on the common template.
+{% endcomment %}

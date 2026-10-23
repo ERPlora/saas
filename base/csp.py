@@ -13,6 +13,8 @@ Only a page that may sell gets it: the account surface (``?surface=account``) se
 ``base/spa.py`` sets it on the SPA's HTML as Django's ``csp_override`` does (``response._csp_config``).
 """
 
+from django.conf import settings
+
 #: Stripe's origins by directive (https://docs.stripe.com/security/guide, «Content Security Policy»:
 #: Checkout and Stripe.js; without ``maps.googleapis.com``, which only Elements' address autocomplete in
 #: OUR page uses).
@@ -45,3 +47,36 @@ def spa_policy(policy: dict[str, list[str]], *, sells: bool) -> dict[str, list[s
         current = result.get(name, list(result.get("default-src", [])))
         result[name] = [*current, *(source for source in sources if source not in current)]
     return result
+
+
+# --- The admin (ACCOUNTS-G10; the old SaaS's saas#1828) -------------------------------------------------------------
+
+#: Trusted Types' directives: Django's admin creates no policy, and its jQuery assigns ``innerHTML`` while it loads.
+TRUSTED_TYPES_DIRECTIVES = ("require-trusted-types-for", "trusted-types")
+
+
+def admin_policy(policy: dict[str, list[str]]) -> dict[str, list[str]]:
+    """``policy`` (a fresh copy) without Trusted Types: the nonce, ``'strict-dynamic'`` and the rest stay.
+
+    Django 6.1's admin puts the request's nonce on its scripts, so ``'strict-dynamic'`` lets them in; Trusted Types
+    would still stop jQuery at load (``div.innerHTML = "<textarea>…"``), and with it every widget of the admin.
+    """
+    return {name: list(sources) for name, sources in policy.items() if name not in TRUSTED_TYPES_DIRECTIVES}
+
+
+class AdminCSPMiddleware:
+    """Serve :func:`admin_policy` on the admin's responses (``/admin/``, the ``admin`` namespace).
+
+    After ``django.middleware.csp.ContentSecurityPolicyMiddleware`` in ``MIDDLEWARE``, as ``public.csp``'s: its
+    response hook runs first and leaves the override ready when Django's builds the header.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        match = getattr(request, "resolver_match", None)
+        if match is not None and match.namespace == "admin" and getattr(response, "_csp_config", None) is None:
+            response._csp_config = admin_policy(settings.SECURE_CSP)
+        return response

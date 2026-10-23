@@ -704,7 +704,13 @@ def test_the_404_page_is_a_public_page_with_a_way_home(client):
 @pytest.mark.django_db
 def test_the_500_page_stays_up_without_the_database(client, django_assert_num_queries):
     """No navbar (session), no cookie banner and no analytics (cookie groups): an error page that
-    needs the database cannot report that the database is down."""
+    needs the database cannot report that the database is down.
+
+    The maintenance switch every request reads (``base.maintenance``, ACCOUNTS-G82) is kept in the cache and, when it
+    cannot be read, leaves the site open (the next test): read once here, so only the page itself is counted."""
+    from base.queries import maintenance_state
+
+    maintenance_state()
     with django_assert_num_queries(0):
         response = client.get(reverse("test_error_page", args=[500]))
     html = response.content.decode()
@@ -715,6 +721,26 @@ def test_the_500_page_stays_up_without_the_database(client, django_assert_num_qu
     assert "ep-navbar" not in html
     assert "cookie-consent-banner" not in html
     assert f"/static/spa/{PUBLIC_JS}" in html
+
+
+@pytest.mark.django_db
+def test_the_500_page_stays_up_when_the_maintenance_switch_cannot_be_read(client, monkeypatch):
+    """The database down for the maintenance switch too (ACCOUNTS-G82): the site stays open and the 500 page answers."""
+    from django.core.cache import cache
+    from django.db import DatabaseError
+
+    from base import queries
+
+    def unreadable():
+        raise DatabaseError("connection refused")
+
+    cache.clear()
+    monkeypatch.setattr(queries, "_read_maintenance", unreadable)
+
+    response = client.get(reverse("test_error_page", args=[500]))
+
+    assert response.status_code == 500
+    assert "Something went wrong" in response.content.decode()
 
 
 # --- Guardrails over every public template (base half of test_ui_stack_contract.py) -----------

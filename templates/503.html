@@ -1,0 +1,14 @@
+{% extends "errors/base.html" %}
+{% load i18n %}
+{% comment %}
+  The maintenance page (ACCOUNTS-G82, `base.maintenance`): every visitor gets it, 503 with `Retry-After`, while the
+  staff has the maintenance mode on in the admin («Site settings»). The staff's message, when written, replaces the
+  page's own text, as plain text. Ported from ERPlora/saas `core/maintenance.html` (origin/develop c5ca8cae8) on the
+  layout of the other error pages, without OutfitKit.
+{% endcomment %}
+
+{% block title %}503 — {% trans "Maintenance" %} · ERPlora Cloud{% endblock %}
+{% block code %}{% trans "503 · Maintenance" %}{% endblock %}
+{% block heading %}{% trans "We will be back soon" %}{% endblock %}
+{% block message %}{% if maintenance_message %}{{ maintenance_message|linebreaksbr }}{% else %}{% trans "We are improving ERPlora. Come back in a few minutes; your data is safe." %}{% endif %}{% endblock %}
+{% block actions %}<a href="{{ request.get_full_path }}">{% trans "Retry" %}</a>{% endblock %}

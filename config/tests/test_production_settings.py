@@ -353,6 +353,21 @@ def test_the_ses_backend_builds_from_the_settings_so_its_library_is_installed():
     )
 
 
+def test_a_mail_to_ses_waits_seconds_never_minutes():
+    """ACCOUNTS-G79: a sign-in mails its code inside the request; with boto3's defaults (60 s to connect, 60 s to read,
+    retried) an SES that does not answer held the person there for minutes. As the SMTP mailer (10 s): 3 s to connect,
+    10 s to read and one try more, so a failure reaches the page (and the log) within half a minute."""
+    result = _run(
+        "import django\ndjango.setup()\nfrom django.core.mail import mailers\n"
+        "c = mailers.default._config\n"
+        "print(repr((c.connect_timeout, c.read_timeout, c.retries)))",
+        {**PRODUCTION_ENV, **AWS_ENV, "DJANGO_SETTINGS_MODULE": "config.settings"},
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert ast.literal_eval(result.stdout.strip()) == (3, 10, {"total_max_attempts": 2, "mode": "standard"})
+
+
 # The hubs' fiscal documents (plan 2026-10-15): encrypted with a Fernet key, required in production like
 # INTERNAL_SHARED_SECRET (a deploy without it must not start and store documents it cannot read later).
 
