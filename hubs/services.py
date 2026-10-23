@@ -1373,6 +1373,27 @@ def sync_plan_modules(subscription: Subscription, now=None) -> bool:
     return changed
 
 
+def owe_plan_rights(plan: Plan, now=None) -> int:
+    """The staff changed in the admin what ``plan`` gives (``queries.SNAPSHOT_PLAN_FIELDS``; HUBS-F31): each live
+    business on it, as its plan or as the trial's, gets the modules of its level written (``sync_plan_modules``) and,
+    when its snapshot changes, owes the Hub a newer one, which the next pass of ``reconcile_hub_states`` (every 15
+    minutes) delivers instead of the night's. How many businesses owe it.
+
+    Never pushed here: a plan may have thousands of businesses, and the admin's save is one transaction.
+    """
+    now = now or timezone.now()
+    owed = 0
+    subscriptions = Subscription.objects.select_related("plan", "trial_plan").filter(
+        Q(plan=plan) | Q(trial_plan=plan), hub__status__in=LIVE_STATUSES
+    )
+    for subscription in subscriptions.order_by("pk"):
+        changed = sync_plan_modules(subscription, now)
+        if changed or subscription.effective_plan(now).pk == plan.pk:
+            bump_state(subscription.hub_id)
+            owed += 1
+    return owed
+
+
 def _apply_standing(hub: Hub, standing: str, *, was_unpaid: bool) -> bool:
     if standing == "good" and not was_unpaid:
         return False

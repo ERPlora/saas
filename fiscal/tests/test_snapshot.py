@@ -3,9 +3,9 @@
 
     "verifactu": {"representation": {"status", "updated_at", "reason"}, "live_paid": bool}
 
-``representation`` is the authorisation as the staff left it (``none`` without rows); ``live_paid`` whether the
-business pays for VeriFactu's live sending (a plan that is not Free, or a live ``verifactu`` module). The two
-facts are independent: the Hub opens «live» through ERPlora only with both. It travels with the snapshot's
+``representation`` is the authorisation as the staff left it (``none`` without rows); ``live_paid``, true for every
+business since VeriFactu goes in every plan (PLAN §30, round 2026-10-22b), stays until the Hub retires its
+condition: the Hub opens «live» through ERPlora with both, so today the validated authorisation alone decides. It travels with the snapshot's
 ``version``; never a document nor a name.
 """
 
@@ -196,46 +196,31 @@ class TestTheRepresentation:
         assert queries.snapshot_block(business.id)["representation"]["reason"] == ""
 
 
-# --- Who pays for live sending -------------------------------------------------------------------------
+# --- VeriFactu in every plan (PLAN §30, round 2026-10-22b) ----------------------------------------------
 
 
-class TestLivePaid:
-    def test_free_does_not_pay(self, business):
-        assert block(on_free(business))["live_paid"] is False
+class TestVerifactuInEveryPlan:
+    """HUBS-F31: VeriFactu goes in every plan, Free included, so the validated authorisation alone opens the live
+    sending through ERPlora. ``live_paid`` stays in the block, always true, until the Hub retires its condition
+    (its ``apps/verifactu`` still reads it); then it goes."""
 
-    def test_a_paid_plan_pays(self, business):
-        """Starter is not Free."""
-        from hubs.models import Plan
+    def test_free_carries_it(self, business):
+        assert block(on_free(business))["live_paid"] is True
 
-        Subscription.objects.filter(hub=business).update(plan=Plan.objects.get(slug="starter"))
-
-        assert hub_queries.hub_snapshot(business.id)["plan"]["slug"] == "starter"
-        assert block(business)["live_paid"] is True
-
-    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
-    def test_a_trial_of_a_paid_plan_pays_while_it_lasts(self, business):
-        """The sign-up trial's plan is the effective one while it lasts, and it is not Free."""
-        assert hub_queries.hub_snapshot(business.id)["plan"]["slug"] == "starter"
-        assert block(business)["live_paid"] is True
-
-    def test_standard_pays(self, business):
+    @pytest.mark.parametrize("slug", ["starter", "standard"])
+    def test_a_paid_plan_carries_it(self, business, slug):
         from hubs.models import Plan
 
         Subscription.objects.filter(hub=business).update(
-            plan=Plan.objects.get(slug="standard"), trial_plan=None, trial_end=None
+            plan=Plan.objects.get(slug=slug), trial_plan=None, trial_end=None
         )
 
+        assert hub_queries.hub_snapshot(business.id)["plan"]["slug"] == slug
         assert block(business)["live_paid"] is True
 
-    def test_free_with_the_verifactu_module_pays(self, business):
-        on_free(business)
-        SubscriptionItem.objects.create(
-            subscription=business.subscription, module_slug="verifactu"
-        )
-
-        assert block(business)["live_paid"] is True
-
-    def test_a_verifactu_module_that_ended_does_not(self, business):
+    def test_no_module_is_needed_for_it(self, business):
+        """The old ``verifactu`` module paid the live sending on Free: neither a live one nor one that ended
+        changes anything now."""
         on_free(business)
         SubscriptionItem.objects.create(
             subscription=business.subscription,
@@ -243,25 +228,17 @@ class TestLivePaid:
             valid_until=timezone.now() - timedelta(minutes=1),
         )
 
-        assert block(business)["live_paid"] is False
+        assert block(business)["live_paid"] is True
 
-    def test_another_module_does_not(self, business):
-        on_free(business)
-        SubscriptionItem.objects.create(
-            subscription=business.subscription, module_slug="inventory"
-        )
-
-        assert block(business)["live_paid"] is False
-
-    def test_approved_on_free_is_approved_and_unpaid(self, business):
-        """Two independent facts: the documentation is validated, the live sending is not paid."""
+    def test_approved_on_free_can_go_live(self, business):
+        """The two facts the Hub reads: the documentation validated and, on Free too, the sending in the plan."""
         on_free(business)
         make_grant(business, status="approved", reviewed_at=timezone.now())
 
         assert (
             block(business)["representation"]["status"],
             block(business)["live_paid"],
-        ) == ("approved", False)
+        ) == ("approved", True)
 
 
 # --- (a) Two businesses, each its own ----------------------------------------------------------------------
@@ -320,7 +297,7 @@ def test_a_withdrawal_reaches_the_hub_after_the_commit(
     assert Hub.objects.get(pk=business.pk).pushed_state_version == before + 1
 
 
-# --- (c) Losing the payment and keeping the validation ----------------------------------------------------
+# --- (c) A module that ends, a plan that drops: the validation and the sending stay -----------------------
 
 
 def test_a_module_that_stops_being_live_leaves_modules_and_keeps_the_approval(business):
@@ -344,15 +321,15 @@ def test_a_module_that_stops_being_live_leaves_modules_and_keeps_the_approval(bu
         snapshot["verifactu"]["live_paid"],
     ) == (
         "approved",
-        False,
+        True,
     )
 
 
-def test_dropping_to_free_loses_live_paid_with_a_newer_version_and_keeps_the_approval(
+def test_dropping_to_free_keeps_live_paid_and_the_approval_with_a_newer_version(
     business, hub_double, django_capture_on_commit_callbacks
 ):
     """What Stripe says (``hubs.subscription.apply``) changes the plan the Hub sees, so the snapshot is bumped
-    and pushed: ``live_paid`` turns false; the approval stays."""
+    and pushed: the plan is Free, and VeriFactu and its approval stay (PLAN §30)."""
     Subscription.objects.filter(hub=business).update(trial_plan=None, trial_end=None)
     hub_services.subscription_apply(
         hub_services.system_ctx_for(business.id),
@@ -373,7 +350,7 @@ def test_dropping_to_free_loses_live_paid_with_a_newer_version_and_keeps_the_app
     assert (state["version"], state["plan"]["slug"]) == (before + 1, "free")
     assert state["verifactu"] == {
         "representation": state["verifactu"]["representation"],
-        "live_paid": False,
+        "live_paid": True,
     }
     assert state["verifactu"]["representation"]["status"] == "approved"
 
