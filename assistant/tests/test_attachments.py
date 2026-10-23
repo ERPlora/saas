@@ -13,8 +13,10 @@ the model, never a failed turn: the old product's ``internal_error`` with a corr
 import base64
 import io
 import logging
-import tempfile
+import os
+import sys
 import zipfile
+from contextlib import contextmanager
 
 import pytest
 from django.test import Client
@@ -26,6 +28,35 @@ from assistant.turn import TurnRefused, prepare
 
 PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
 COMPLETIONS = "/v1/chat/completions"
+
+
+_WRITE_FLAGS = os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_APPEND | os.O_TRUNC
+_watches: list[list[str]] = []
+
+
+def _record_writes(event: str, args: tuple) -> None:
+    """Audit hook: while a watch is open, note every file this process opens to write (Python's own bytecode cache
+    aside). It sees ``open()``, ``os.open`` and ``tempfile`` alike, whoever imported them and whenever."""
+    if not _watches or event != "open":
+        return
+    path, mode, flags = args
+    if "__pycache__" in str(path):
+        return
+    if (isinstance(mode, str) and any(c in mode for c in "wax+")) or (isinstance(flags, int) and flags & _WRITE_FLAGS):
+        _watches[-1].append(str(path))
+
+
+sys.addaudithook(_record_writes)
+
+
+@contextmanager
+def files_written():
+    written: list[str] = []
+    _watches.append(written)
+    try:
+        yield written
+    finally:
+        _watches.remove(written)
 
 
 def b64(raw: bytes) -> str:
@@ -137,22 +168,26 @@ class TestDocumentsBecomeText:
 
         assert "hola" in expanded_parts(part)[1]["text"]
 
-    def test_nothing_is_written_to_disk(self, monkeypatch):
-        def forbidden(*args, **kwargs):
-            raise AssertionError("an attachment was written to disk")
-
-        for name in ("NamedTemporaryFile", "TemporaryFile", "SpooledTemporaryFile", "mkstemp", "mkdtemp"):
-            monkeypatch.setattr(tempfile, name, forbidden)
-        data = xlsx_with({"S": [["a"]]})
+    def test_nothing_is_written_to_disk(self):
+        pdf, docx, xlsx = pdf_with("pdf"), docx_with("doc"), xlsx_with({"S": [["a"]]})
         mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
-        parts = expanded_parts(
-            document(pdf_with("pdf"), "application/pdf", "a.pdf"),
-            document(docx_with("doc"), "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "b.docx"),
-            document(data, mime, "c.xlsx"),
-        )
+        with files_written() as written:
+            parts = expanded_parts(
+                document(pdf, "application/pdf", "a.pdf"),
+                document(docx, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "b.docx"),
+                document(xlsx, mime, "c.xlsx"),
+            )
 
+        assert written == []
         assert [("pdf" in parts[1]["text"]), ("doc" in parts[2]["text"]), ("a" in parts[3]["text"])] == [True, True, True]
+
+    def test_the_watch_sees_a_file_written_by_a_library(self):
+        """The control catches the positive: building a workbook makes openpyxl write a temporary file."""
+        with files_written() as written:
+            xlsx_with({"S": [["a"]]})
+
+        assert written
 
 
 class TestWhatCannotBeReadIsANote:

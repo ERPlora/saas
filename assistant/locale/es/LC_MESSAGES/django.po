@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: saas-next\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 14:09+0200\n"
+"POT-Creation-Date: 2026-10-23 14:12+0200\n"
 "PO-Revision-Date: 2026-10-23 03:00+0200\n"
 "Last-Translator: ERPlora\n"
 "Language-Team: Spanish\n"
@@ -110,6 +110,30 @@ msgstr "Probar un modelo"
 #: admin.py:507
 msgid "Too many tries in a minute: wait a moment and try again."
 msgstr "Demasiadas pruebas en un minuto: espera un momento y vuelve a intentarlo."
+
+#: admin.py:521
+msgid "kind"
+msgstr "tipo"
+
+#: admin.py:525
+msgid "Businesses"
+msgstr "Negocios"
+
+#: admin.py:525
+msgid "Demos"
+msgstr "Demos"
+
+#: admin.py:571
+msgid "business or demo"
+msgstr "negocio o demo"
+
+#: admin.py:575 models.py:285
+msgid "month"
+msgstr "mes"
+
+#: admin.py:579 models.py:292
+msgid "cost (USD)"
+msgstr "coste (USD)"
 
 #: apps.py:19
 msgid "AI assistant"
@@ -284,10 +308,6 @@ msgid "demo"
 msgstr "demo"
 
 #: models.py:285
-msgid "month"
-msgstr "mes"
-
-#: models.py:285
 msgid "The first day of the month (UTC)."
 msgstr "El primer día del mes (UTC)."
 
@@ -314,10 +334,6 @@ msgstr "dictados"
 #: models.py:291
 msgid "characters read aloud"
 msgstr "caracteres leídos en voz alta"
-
-#: models.py:292
-msgid "cost (USD)"
-msgstr "coste (USD)"
 
 #: models.py:297 models.py:298
 msgid "assistant usage"

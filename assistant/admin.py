@@ -14,6 +14,9 @@
 - «Choose models from the provider» (G24, G14): an asynchronous page (the call to the provider never holds a thread
   other requests need) that lists the provider's chat models with ``assistant.provider.connection`` and its client,
   and keeps the ticked ones with ``assistant.model.select``. «AI models» lists them all, to correct their prices.
+- «Assistant usage» (G52, G19, G29, G11): what each business (or demo) spent by month, its messages of the plan's
+  allowance, tokens, dictations, characters read aloud and cost. Read only for everybody: rows are written by the
+  gateway alone (``assistant.message.claim|release``, ``assistant.usage.record``).
 
 Only active staff enter the admin (``accounts.admin.admin_has_permission``) and each page asks the model permission
 of Django that backs it; ``support`` gets none of the assistant's (its keys are ERPlora's spend).
@@ -576,7 +579,7 @@ class AssistantUsageAdmin(admin.ModelAdmin):
     def period(self, row: AssistantUsage) -> str:
         return row.month.strftime("%Y-%m")
 
-    @admin.display(description=gettext_lazy("Cost (USD)"), ordering="cost_usd")
+    @admin.display(description=gettext_lazy("cost (USD)"), ordering="cost_usd")
     def cost(self, row: AssistantUsage) -> str:
         return format(row.cost_usd.normalize(), "f")
 
