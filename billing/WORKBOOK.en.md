@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:71ddde4a8164e0601495a95bf8735b73e6633f5ba82b1bcf0843858f314a2364 -->
+<!-- generated from WORKBOOK.md sha256:811b5ba8688767301f79cfa21fccf23789a604a46f009574d4e82db0bcefaf39 -->
 
 ## What it is for and who it is for
 
@@ -111,9 +111,9 @@ the owner, the button to upgrade or change it.
 | BILLING-F01 | Say where the business is invoiced and with which tax ID | done |
 | BILLING-F02 | Work out the tax of a sale from where the payer is | done |
 | BILLING-F03 | Decide the VAT of each charge | done |
-| BILLING-F04 | Keep the VAT rate table and never sell with it broken | partial |
+| BILLING-F04 | Keep the VAT rate table and never sell with it broken | done |
 | BILLING-F05 | Check the payer's EU VAT number in VIES | done |
-| BILLING-F06 | Follow the EU distance-selling threshold (OSS) | partial |
+| BILLING-F06 | Follow the EU distance-selling threshold (OSS) | done |
 | BILLING-F07 | Pay the plan of a newly created business | done |
 | BILLING-F08 | Move a free business to a paid plan | done |
 | BILLING-F09 | Come back from the payment: confirmed, pending or closed | done |
@@ -144,8 +144,8 @@ the owner, the button to upgrade or change it.
 | BILLING-F34 | End a paid app at the end of its period | partial |
 | BILLING-F35 | Take a paid app to another business | partial |
 | BILLING-F36 | See an invoice | done |
-| BILLING-F37 | Forget Stripe's notices older than 30 days | partial |
-| BILLING-F38 | Read the subscriptions again in Stripe every night and put right what drifted | partial |
+| BILLING-F37 | Forget Stripe's notices older than 30 days | done |
+| BILLING-F38 | Read the subscriptions again in Stripe every night and put right what drifted | done |
 
 ### BILLING-F01 Say where the business is invoiced and with which tax ID
 <!-- origen: old-saas:SAAS_DASHBOARD-F90 fi:saas/orgs-users#informacion-de-facturacion-de-la-organizacion-ver-editar -->
@@ -195,14 +195,14 @@ Involved: none
 
 ### BILLING-F04 Keep the VAT rate table and never sell with it broken
 <!-- origen: old-saas:SAAS_DASHBOARD-F143 -->
-Status: partial — the review of the table exists and goes red, but it is not scheduled every day yet: until then a person of the team runs it
+Status: done
 Actor: ERPlora staff
 Screen: Admin › Tax rules
 Steps:
 1. A person of ERPlora edits in the admin the **tax rules** (country, region, category, rate, subject or not, from and until) and the **categories**. The most specific rule wins.
 2. The list shows what is needed to operate and is filtered by country and category; two rules of the same territory starting on the same day are refused when saving.
 3. Every sale reads the table at that moment: a territory without a rule in force is not sold to.
-4. The **review of the table** looks at every possible sale and goes red, saying what to fix and where, if the rule of the invoicing country is missing, if the Canary Islands, Ceuta or Melilla stop going out without VAT (rule deleted, deactivated, marked as subject or a postal code that no longer recognises them) or if a country with a registered payer has no rate. A country only covered by the general backstop rate is a warning, not a failure.
+4. Every day, the **review of the table** looks at every possible sale and goes red for the team, saying what to fix and where, if the rule of the invoicing country is missing, if the Canary Islands, Ceuta or Melilla stop going out without VAT (rule deleted, deactivated, marked as subject or a postal code that no longer recognises them) or if a country with a registered payer has no rate. A country only covered by the general backstop rate is a warning, not a failure.
 In: the table and the businesses' billing details.
 Out: the table changed.
 If it fails: deactivating a territory's rule makes every sale to it be refused from that moment.
@@ -225,7 +225,7 @@ Involved: none
 
 ### BILLING-F06 Follow the EU distance-selling threshold (OSS)
 <!-- origen: old-saas:SAAS_DASHBOARD-F145 -->
-Status: partial — the daily review (changing the rate of the live subscriptions and sending again the notices that did not leave) is not scheduled yet: until then a person of the team runs it
+Status: done
 Actor: system, ERPlora staff
 Screen: Admin › Tax policy, Admin › OSS notices
 Steps:
@@ -677,7 +677,7 @@ Involved: none
 
 ### BILLING-F37 Forget Stripe's notices older than 30 days
 <!-- origen: fi:saas/support/billing-fiscal#task-cleanup_old_webhook_events -->
-Status: partial — it still has to be scheduled every night in the infrastructure: until then it does not run by itself
+Status: done
 Actor: system
 Screen: none
 Steps:
@@ -690,7 +690,7 @@ Involved: none
 
 ### BILLING-F38 Read the subscriptions again in Stripe every night and put right what drifted
 <!-- origen: fi:saas/support/hubs#command-sync_subscriptions -->
-Status: partial — it still has to be scheduled every night in the infrastructure: until then it does not run by itself
+Status: done
 Actor: system
 Screen: none
 Steps:
