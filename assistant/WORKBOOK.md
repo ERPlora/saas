@@ -93,6 +93,7 @@ entrada», «Tokens de salida», «Tiempo» y «Coste» (en dólares).
 | ASSISTANT-F07 | Probar un modelo antes de ponerlo a contestar | hecho |
 | ASSISTANT-F08 | Ver quién cambió la configuración de la IA | hecho |
 | ASSISTANT-F09 | Cargar las claves de los proveedores desde el entorno | hecho |
+| ASSISTANT-F10 | Cambiar la clave de cifrado sin perder ninguna credencial | hecho |
 
 ### ASSISTANT-F01 Dar de alta un proveedor de IA
 <!-- origen: fi:saas/support/auth-services#modelo-aiprovider, fi:saas/django-admin#admin-aiprovider, old-saas:SAAS_ASSISTANT-F22 -->
@@ -226,6 +227,21 @@ Sale: las claves cifradas en sus proveedores (`assistant.credential.saved`) y, p
 Si falla: una variable vacía se salta; un proveedor desconocido detiene la carga antes de guardar nada; sin la clave de cifrado de las credenciales no se guarda ninguna. Nunca escribe una clave entera en pantalla, y el cambio queda en el registro de auditoría.
 Implicados: ASSISTANT-F01, ASSISTANT-F02, ASSISTANT-F08
 
+### ASSISTANT-F10 Cambiar la clave de cifrado sin perder ninguna credencial
+<!-- origen: fi:saas/auth-services#comando-rotacion-de-claves-de-cifrado-gdpr, fi:saas/support/public-core-config#command-rotate_encryption_keys -->
+Estado: hecho
+Actor: personal de ERPlora, en la línea de órdenes de erplora.com
+Pantalla: ninguna
+Pasos:
+1. Pone la clave de cifrado nueva como la actual y deja la anterior como la previa (que solo lee), y despliega erplora.com.
+2. Ensaya el cambio: dice cuántos valores se volverían a cifrar en cada sitio, sin escribir nada.
+3. Ejecuta el cambio: cada valor guardado con la clave de las credenciales (las claves de los proveedores de IA y los tokens y PIN de WhatsApp) se vuelve a cifrar con la clave nueva; los que ya lo están se dejan como están.
+4. Si acaba sin errores, quita la clave previa: todas las credenciales se siguen leyendo.
+Entra: la clave nueva y la anterior.
+Sale: todas las credenciales cifradas con la clave nueva (`assistant.encryption.rotated`, con cuántas se cambiaron, cuántas ya estaban y cuántas no se pudieron leer).
+Si falla: un valor que no abre ninguna de las dos claves no se escribe nunca: se nombra su fila y el cambio termina con error, para que no se quite la clave previa mientras algo la necesite (se recupera la clave que lo cifró o se vuelve a escribir el valor, y se repite). Sin la clave de cifrado no cambia nada. Nunca enseña un valor ni su cifrado, y ninguna fecha de las filas se mueve.
+Implicados: ASSISTANT-F02, ASSISTANT-F09
+
 ## Para quien lo mantiene
 
 - Anatomía, datos y operaciones: `assistant/README.md`.
@@ -253,6 +269,11 @@ Implicados: ASSISTANT-F01, ASSISTANT-F02, ASSISTANT-F08
 - `import_ai_keys_from_env` (`--providers`, `--label`, `--force`, `--dry-run`) lee `OPENAI_API_KEY`,
   `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` y `DEEPSEEK_API_KEY` de `config/settings.py` y guarda con
   `assistant.credential.import` (solo la plataforma). El turno nunca lee esas variables: solo la base de datos.
+- `rotate_encryption_keys [--dry-run]` corre `assistant.encryption.rotate` (solo la plataforma) sobre toda columna de
+  `ROTATED_FIELD_CLASSES` (`services.encrypted_columns`, derivada de los modelos: hoy la clave del proveedor y el
+  token y el PIN de WhatsApp): rota cada token tal cual (`crypto.rotate`, por `UPDATE` sin pasar por `save`) y nunca
+  escribe uno ilegible. Un test falla si aparece un campo cifrado que la rotación no conoce (#1016 del producto
+  viejo). Los documentos fiscales usan su propia clave (`FISCAL_DOCUMENTS_KEY`) y no entran aquí.
 - Clientes (`assistant/providers/`): `httpx` contra cada API (sin SDK ni LiteLLM), sin caché, uno por llamada;
   todos terminan con un solo `finish` y un fallo es un `error` con `retriable`, nunca una excepción. Se prueban contra
   `assistant/tests/fake_provider.py` (servidor HTTP en `127.0.0.1` que habla el formato de cada proveedor).
@@ -263,3 +284,6 @@ Implicados: ASSISTANT-F01, ASSISTANT-F02, ASSISTANT-F08
 
 - No enseña nunca una clave guardada, ni a un superusuario: se vuelve a escribir.
 - No tiene pantalla en el panel de erplora.com ni en el Hub.
+- No guarda aparte una copia de la clave de cifrado (el producto viejo la copiaba a un almacén externo): la guarda el
+  gestor de secretos de la nube, con sus versiones y su plazo de recuperación, y una credencial perdida se vuelve a
+  escribir.

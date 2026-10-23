@@ -89,6 +89,7 @@ and «Cost» (in dollars).
 | ASSISTANT-F07 | Try a model before it answers | hecho |
 | ASSISTANT-F08 | See who changed the configuration of the AI | hecho |
 | ASSISTANT-F09 | Load the providers' keys from the environment | hecho |
+| ASSISTANT-F10 | Change the encryption key without losing any credential | hecho |
 
 ### ASSISTANT-F01 Add an AI provider
 <!-- origen: fi:saas/support/auth-services#modelo-aiprovider, fi:saas/django-admin#admin-aiprovider, old-saas:SAAS_ASSISTANT-F22 -->
@@ -222,6 +223,21 @@ Sale: the keys encrypted in their providers (`assistant.credential.saved`) and, 
 Si falla: an empty variable is skipped; an unknown provider stops the loading before keeping anything; without the key of the credentials none is kept. It never writes a whole key on screen, and the change stays in the audit log.
 Implicados: ASSISTANT-F01, ASSISTANT-F02, ASSISTANT-F08
 
+### ASSISTANT-F10 Change the encryption key without losing any credential
+<!-- origen: fi:saas/auth-services#comando-rotacion-de-claves-de-cifrado-gdpr, fi:saas/support/public-core-config#command-rotate_encryption_keys -->
+Estado: hecho
+Actor: ERPlora's staff, on erplora.com's command line
+Pantalla: none
+Pasos:
+1. Put the new encryption key as the current one and leave the old one as the previous one (which only reads), and deploy erplora.com.
+2. Rehearse the change: it says how many values would be encrypted again in each place, writing nothing.
+3. Run the change: every value kept with the key of the credentials (the AI providers' keys and WhatsApp's tokens and PINs) is encrypted again with the new key; those already are stay as they are.
+4. If it ends without errors, remove the previous key: every credential still reads.
+Entra: the new key and the old one.
+Sale: every credential encrypted with the new key (`assistant.encryption.rotated`, with how many changed, how many already were and how many could not be read).
+Si falla: a value neither key opens is never written: its row is named and the change ends with an error, so the previous key is not removed while something needs it (bring back the key that encrypted it or type the value again, and repeat). Without the encryption key nothing changes. It never shows a value nor its encryption, and no date of the rows moves.
+Implicados: ASSISTANT-F02, ASSISTANT-F09
+
 ## For whoever maintains it
 
 - Anatomy, data and operations: `assistant/README.md`.
@@ -249,6 +265,11 @@ Implicados: ASSISTANT-F01, ASSISTANT-F02, ASSISTANT-F08
 - `import_ai_keys_from_env` (`--providers`, `--label`, `--force`, `--dry-run`) reads `OPENAI_API_KEY`,
   `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` and `DEEPSEEK_API_KEY` from `config/settings.py` and keeps them with
   `assistant.credential.import` (the platform only). The turn never reads those variables: only the database.
+- `rotate_encryption_keys [--dry-run]` runs `assistant.encryption.rotate` (the platform only) over every column of
+  `ROTATED_FIELD_CLASSES` (`services.encrypted_columns`, derived from the models: today the provider's key and
+  WhatsApp's token and PIN): it rotates each token as it is (`crypto.rotate`, by `UPDATE` without `save`) and never
+  writes an unreadable one. A test fails if an encrypted field appears that the rotation does not know (#1016 of the
+  old product). The fiscal documents use their own key (`FISCAL_DOCUMENTS_KEY`) and stay out.
 - Clients (`assistant/providers/`): `httpx` against each API (no SDK nor LiteLLM), no cache, one per call; all end
   with a single `finish` and a failure is an `error` with `retriable`, never an exception. Tested against
   `assistant/tests/fake_provider.py` (an HTTP server on `127.0.0.1` speaking each provider's format).
@@ -259,3 +280,5 @@ Implicados: ASSISTANT-F01, ASSISTANT-F02, ASSISTANT-F08
 
 - It never shows a stored key, not even to a superuser: it is typed again.
 - It has no screen in erplora.com's panel nor in the Hub.
+- It keeps no separate copy of the encryption key (the old product copied it to an outside store): the cloud's secret
+  manager keeps it, with its versions and its recovery window, and a lost credential is typed again.

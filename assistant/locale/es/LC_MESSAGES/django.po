@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: saas-next\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 03:26+0200\n"
+"POT-Creation-Date: 2026-10-23 03:30+0200\n"
 "PO-Revision-Date: 2026-10-23 03:00+0200\n"
 "Last-Translator: ERPlora\n"
 "Language-Team: Spanish\n"
@@ -248,6 +248,9 @@ msgstr "Este modelo no existe."
 
 msgid "Only the platform loads the keys of the environment."
 msgstr "Solo la plataforma carga las claves del entorno."
+
+msgid "Only the platform rotates the key of the credentials."
+msgstr "Solo la plataforma cambia la clave de cifrado de las credenciales."
 
 msgid "Home"
 msgstr "Inicio"

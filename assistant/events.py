@@ -15,6 +15,9 @@ MODEL_SELECTED = "assistant.model.selected"
 POLICY_UPDATED = "assistant.policy.updated"
 #: A member of the staff tried a model from the admin: ``{"model", "prompt_chars", "tools"}`` (never the message).
 MODEL_TRIED = "assistant.model.tried"
+#: Every value kept with the key of the credentials was written again with the current one:
+#: ``{"rotated", "current", "unreadable"}`` (counts).
+ENCRYPTION_ROTATED = "assistant.encryption.rotated"
 
 ALL = [
     CREDENTIAL_SAVED,
@@ -22,4 +25,5 @@ ALL = [
     MODEL_SELECTED,
     POLICY_UPDATED,
     MODEL_TRIED,
+    ENCRYPTION_ROTATED,
 ]

@@ -176,3 +176,24 @@ class CredentialImportOut(Schema):
     action: Literal["created", "rotated", "kept"]
     label: str
     masked_key: str
+
+
+class EncryptionRotateIn(Schema):
+    #: Count what would be written again, writing nothing.
+    dry_run: bool = False
+
+
+class RotatedColumn(Schema):
+    #: ``<app>.<Model>.<field>``.
+    column: str
+    rotated: int
+    current: int
+    #: The primary keys of the rows whose value no live key opens (never written).
+    unreadable: list[str]
+
+
+class EncryptionRotateOut(Schema):
+    columns: list[RotatedColumn]
+    rotated: int
+    current: int
+    unreadable: int
