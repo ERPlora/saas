@@ -73,8 +73,9 @@ gemelo con el segundo factor, `+8` el doble de reCAPTCHA y `+9` el Hub de las sp
   foto (`PUT /internal/hubs/{id}/state`) y a la revocación (`POST /internal/sessions/revoke`), y 503 al
   resto (sigue pendiente). Si el puerto está ocupado, esa spec no arranca.
 - **`:8018` (el doble de reCAPTCHA)**: `recaptcha-double.ts`, un servidor de Node que la ejecución arranca y para
-  (`reuseExistingServer: false`). El servidor público, que es de producción y no puede apagar reCAPTCHA, le pide las
-  evaluaciones (`RECAPTCHA_ENDPOINT`) con una clave que no es la de Google; lee los tokens de las specs
+  (`reuseExistingServer: false`). El servidor público, que es de producción, corre con reCAPTCHA **apagado**, como
+  producción desde el 2026-10-23; con `E2E_RECAPTCHA=1` lo enciende (`recaptchaServerEnv`, `recaptcha.ts`) y le pide
+  las evaluaciones (`RECAPTCHA_ENDPOINT`) con una clave que no es la de Google; lee los tokens de las specs
   (`e2e-human:<acción>` 0.9, `e2e-bot:<acción>` 0.1; el resto, mal formado) y guarda lo que le preguntan
   (`GET /assessments`). En el navegador, todas las specs del proyecto `public` importan `test` de `public-test.ts`,
   que cambia el `enterprise.js` de Google por uno falso (`recaptcha.ts`) que se carga como el de verdad (su versión
@@ -82,7 +83,10 @@ gemelo con el segundo factor, `+8` el doble de reCAPTCHA y `+9` el Hub de las sp
   a Google bloquea también al falso. Una spec que necesita un bot o Google bloqueado llama
   `fakeGoogleRecaptcha(context, 'bot' | 'blocked')`. El panel (`:8012`, `:8013`) corre con reCAPTCHA apagado
   (`RECAPTCHA_ENABLED=False`): sus specs entran por la API, sin navegador que pida el token. `recaptcha.spec.ts`
-  prueba el contacto, la demo y la entrada con su código; su último test carga el **script real** de Google en
+  tiene las dos variantes: por defecto, apagado, comprueba que el contacto y la entrada con su código funcionan sin
+  cargar nada de Google (ni script, ni aviso, ni estilo de la insignia, ni fuentes en la CSP); con
+  `E2E_RECAPTCHA=1 pnpm e2e:ci recaptcha.spec.ts`, encendido, prueba el contacto, la demo y la entrada con su código
+  contra el doble; su último test carga el **script real** de Google en
   `localhost` solo si el `.env` del checkout tiene las dos claves (`RECAPTCHA_SITE_KEY` de `localhost` y
   `RECAPTCHA_API_KEY`): comprueba que se genera el token bajo la CSP y los Trusted Types de producción y que Google
   lo da por válido y de su acción (la puntuación de un Chrome sin ventana no se mira). El servidor público sube el

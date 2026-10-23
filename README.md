@@ -171,11 +171,26 @@ solo cubre la contraseña):
   `/hub-login/?hub=…&next=…` sigue funcionando tras Google. «Confirma que eres tú» de una cuenta solo de
   Google es entrar otra vez con Google (el mismo redirect, de vuelta a la página).
 
-## Protección contra bots: reCAPTCHA invisible y límites de intentos
+## Protección contra bots: límites de intentos y reCAPTCHA (apagado por defecto)
 
 Ioan, 2026-10-22: «siempre que hay un form hay que meter recaptcha», «que no se vea en la pantalla» y «límites en
 los registros de login para que no intenten sin parar». Vuelve reCAPTCHA, que ADR-0154 había retirado: ahora
 **reCAPTCHA Enterprise por puntuación**, sin casilla ni puzle.
+
+**Desde el 2026-10-23 reCAPTCHA está APAGADO por defecto** (Ioan: «quitamos el reCAPTCHA y aplicamos el WAF»). El
+WAF del ALB (`ERPlora/aws`) frena el tráfico sospechoso en el borde y los **límites de intentos** (abajo, sin
+cambios) frenan la fuerza bruta. El código se queda entero, detrás de un interruptor, para encenderlo sin
+reconstruir nada si aparece spam:
+
+- **Apagado** (`RECAPTCHA_ENABLED` ausente o `False`, lo normal en `prod`, `pre` y local): ningún formulario pide
+  token ni se pregunta a Google; las páginas no cargan `enterprise.js`, no pintan el aviso, no llevan el estilo que
+  oculta la insignia ni nombran a Google en la CSP ni en Trusted Types; `spa-config` no lleva `recaptchaSiteKey`. El
+  registro avisa una vez por proceso (`recaptcha.disabled`).
+- **Encenderlo**: `RECAPTCHA_ENABLED=true` en el entorno de las tareas `saas*` (la definición de tarea o el secreto
+  `erplora/<env>/saas` de Secrets Manager, `ERPlora/aws`) más las dos claves (`RECAPTCHA_SITE_KEY` y
+  `RECAPTCHA_API_KEY`, que siguen en el secreto) y un despliegue nuevo de las tareas para que lo lean al arrancar.
+  Encendido, sin alguna de las dos claves el proceso **no arranca**. En local, lo mismo en `.env`. Todo lo que sigue
+  describe cómo funciona encendido.
 
 - **Formularios cubiertos y su acción** (el token se pide para esa acción y el servidor la exige): entrar
   (`login`), crear cuenta (`signup`), «¿Has olvidado tu contraseña?» (`password_reset`), la nueva contraseña del
@@ -208,19 +223,19 @@ los registros de login para que no intenten sin parar». Vuelve reCAPTCHA, que A
   la entrada sigue abierta. 3) Si el registro dice `let_through=True` durante mucho rato, la entrada funciona solo
   con contraseña, código y límites: vigilar `too_many_login_attempts` en el mismo registro. Nada de esto pide
   desplegar código.
-- **Aviso**: la insignia de Google va oculta (`.grecaptcha-badge`), y por eso cada formulario lleva debajo «Este
-  sitio está protegido por reCAPTCHA y se aplican la Política de Privacidad y las Condiciones del Servicio de
-  Google.» (en + es), como pide Google.
+- **Aviso**: la insignia de Google va oculta (`.grecaptcha-badge`, con un estilo que `frontend/recaptcha.ts` mete
+  junto al script de Google, nunca sin él), y por eso cada formulario lleva debajo «Este sitio está protegido por
+  reCAPTCHA y se aplican la Política de Privacidad y las Condiciones del Servicio de Google.» (en + es), como pide
+  Google.
 - **Claves** (proyecto de Google Cloud `erplora`, tipo «puntuación»): `RECAPTCHA_SITE_KEY` (pública; la de
   producción vale para `erplora.com`, `erplora.es` y sus subdominios, y hay otra para `localhost`) y
   `RECAPTCHA_API_KEY` (secreta, la de la API de evaluaciones). En `prod` y `pre` viven en Secrets Manager y la
-  definición de tarea las pasa a **todas** las tareas `saas*`: sin ellas, producción no arranca y no se puede
-  apagar (`RECAPTCHA_ENABLED=False` solo vale en local). En local, en `.env` (ver `.env.example`); sin las dos
-  claves, reCAPTCHA queda apagado y el registro lo avisa una vez. Con las dos, el login local también pasa por
-  Google: un `runserver` que automatiza un navegador (la e2e del Hub contra `:8001`) lo apaga con
-  `RECAPTCHA_ENABLED=False`, porque Google puntúa bajo a un Chrome sin ventana. Los tests lo apagan siempre
-  (`config/settings_pytest.py`) y el fixture `recaptcha` hace de Google; la e2e usa su doble
-  (`tests/e2e/README.md`, `:8018`).
+  definición de tarea las pasa a **todas** las tareas `saas*`; solo se leen con `RECAPTCHA_ENABLED=true`. En local,
+  en `.env` (ver `.env.example`): tener las claves ya no lo enciende, hace falta `RECAPTCHA_ENABLED=true`; encendido,
+  el login local también pasa por Google, y un `runserver` que automatiza un navegador (la e2e del Hub contra
+  `:8001`) lo deja apagado, porque Google puntúa bajo a un Chrome sin ventana. Los tests lo apagan siempre
+  (`config/settings_pytest.py`) y el fixture `recaptcha` hace de Google; la e2e corre apagada, como producción, y
+  con `E2E_RECAPTCHA=1` lo enciende contra su doble (`tests/e2e/README.md`, `:8018`).
 - **`RECAPTCHA_MIN_SCORE`**: 0.5 por defecto (el umbral de Google: 1.0 casi seguro una persona, 0.0 casi seguro un
   bot); se sube o se baja por entorno sin desplegar código. Una clave nueva da 0.9 las primeras 48 horas.
   `RECAPTCHA_PROJECT` (`erplora`) y `RECAPTCHA_ENDPOINT` (la e2e lo apunta a su doble) completan los ajustes.
@@ -228,7 +243,8 @@ los registros de login para que no intenten sin parar». Vuelve reCAPTCHA, que A
   Enterprise API»), ponerla en Secrets Manager (`RECAPTCHA_API_KEY`), forzar un despliegue nuevo de las tareas
   `saas*` y, cuando estén sanas, borrar la vieja en Google Cloud. La clave del sitio no se rota: si hiciera falta,
   se crea otra, se cambia `RECAPTCHA_SITE_KEY` igual y se borra la vieja tras el despliegue.
-- **CSP**: la del panel y la de la web pública admiten `script-src` `https://www.google.com/recaptcha/` y
+- **CSP** (solo encendido; apagado, ninguna nombra a Google): la del panel y la de la web pública admiten
+  `script-src` `https://www.google.com/recaptcha/` y
   `https://www.gstatic.com/recaptcha/`, `frame-src` `https://www.google.com/recaptcha/` y
   `https://recaptcha.google.com/recaptcha/` y `connect-src` `https://www.google.com/recaptcha/`
   (`live.recaptcha.with_recaptcha`); el panel mantiene nonce, `'strict-dynamic'` y Trusted Types, con la política
@@ -391,7 +407,7 @@ Cada punto tiene su borrador de issue en `docs/issues/` (pendiente de abrir en `
 - Que el salto lea `HubMember` y retirar `HubMembership(user, hub_slug, role)`, que desde L1-A2 es solo el
   espejo de los miembros de cada negocio (`hubs/README.md`, «Pendiente»; `membership-by-slug.md`).
 - Que cinco contraseñas falsas de otra persona no dejen fuera al dueño de la cuenta durante 5 minutos
-  (`login-lockout.md`; los límites ya están escritos y reCAPTCHA frena a los bots, «Protección contra bots») y la
+  (`login-lockout.md`; los límites ya están escritos y el WAF del ALB frena a los bots, «Protección contra bots») y la
   sesión que no se renueva con el uso (`remember-me-not-sliding.md`).
 
 Ya no están fuera (PLAN-SAAS §1.1, ronda 2026-10-15b): el selector con el último negocio abierto primero

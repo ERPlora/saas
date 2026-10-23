@@ -83,14 +83,11 @@ def test_every_page_has_a_csp_with_a_nonce_and_form_action_to_the_hubs(client):
     # The Tauri bridge; with DEBUG (the default of the tests) also the Vite dev server and its HMR socket.
     assert directives["connect-src"][:3] == ["'self'", "ipc:", "http://ipc.localhost"]
     assert "cdn.jsdelivr.net" not in policy
-    # reCAPTCHA Enterprise on the sign-in (live.recaptcha): Google's scripts, frames and connection, and the
-    # Trusted Types policy its script creates.
-    assert {"https://www.google.com/recaptcha/", "https://www.gstatic.com/recaptcha/"} <= set(directives["script-src"])
-    assert {"https://www.google.com/recaptcha/", "https://recaptcha.google.com/recaptcha/"} <= set(
-        directives["frame-src"]
-    )
-    assert "https://www.google.com/recaptcha/" in directives["connect-src"]
-    assert "goog#html" in directives["trusted-types"]
+    # reCAPTCHA Enterprise is off (the default since 2026-10-23, and the test run's): nothing of Google's reCAPTCHA,
+    # neither its sources nor the Trusted Types policy its script creates (production switched on, its own test).
+    assert "recaptcha" not in policy
+    assert "gstatic.com" not in policy
+    assert "goog#html" not in policy
 
 
 def test_no_page_may_create_the_policy_of_iconify():
@@ -292,8 +289,8 @@ def test_a_subfolder_with_its_own_apps_py_is_a_folder_of_modules(tmp_path):
 
 
 def test_the_debug_csp_lets_the_saas_vite_dev_server_in():
-    """Port 5174, not hub-next's 5173: both dev servers run at once (and reCAPTCHA's sources, live.recaptcha)."""
-    expected = with_recaptcha(debug_policy(VITE_DEV_SERVER))
+    """Port 5174, not hub-next's 5173: both dev servers run at once (reCAPTCHA off: none of its sources)."""
+    expected = debug_policy(VITE_DEV_SERVER)
     for directive in ("connect-src", "style-src", "font-src", "img-src"):
         assert VITE_DEV_SERVER in settings.SECURE_CSP[directive]
     assert "ws://localhost:5174" in settings.SECURE_CSP["connect-src"]
@@ -314,7 +311,7 @@ def test_the_vite_port_comes_from_the_environment():
     assert result.returncode == 0, result.stderr
     vite, dev_server, policy = ast.literal_eval(result.stdout.strip())
     assert vite == dev_server == "http://localhost:5224"
-    expected = with_recaptcha(debug_policy("http://localhost:5224"))
+    expected = debug_policy("http://localhost:5224")
     for directive in ("connect-src", "style-src", "font-src", "img-src"):
         assert policy[directive] == [str(source) for source in expected[directive]]
     assert "ws://localhost:5224" in policy["connect-src"]
@@ -445,9 +442,22 @@ def test_production_has_the_base_csp_and_no_dev_server():
     result = _settings_in_a_fresh_process(PRODUCTION_ENV, expression)
 
     assert result.returncode == 0, result.stderr
-    assert result.stdout.strip() == str(
-        (with_recaptcha(base_policy())["connect-src"], None, True, False)
+    assert result.stdout.strip() == str((base_policy()["connect-src"], None, True, False))
+
+
+def test_production_with_recaptcha_switched_on_admits_its_sources():
+    """RECAPTCHA_ENABLED=True: Google's scripts, frames and connection, and its `goog#html` Trusted Types policy."""
+    result = _settings_in_a_fresh_process(
+        {**PRODUCTION_ENV, "RECAPTCHA_ENABLED": "True"},
+        "{directive: [str(source) for source in sources] for directive, sources in s.SECURE_CSP.items()}",
     )
+
+    assert result.returncode == 0, result.stderr
+    policy = ast.literal_eval(result.stdout.strip())
+    expected = with_recaptcha(base_policy())
+    for directive in ("script-src", "frame-src", "connect-src", "trusted-types"):
+        assert policy[directive] == [str(source) for source in expected[directive]]
+    assert "goog#html" in policy["trusted-types"]
 
 
 # allauth.headless: the login API of the Vue pages, headless only (PLAN-SAAS §2).

@@ -38,6 +38,7 @@ import { type Ref, ref } from 'vue';
 import { isNavigationFailure, type RouteRecordRaw } from 'vue-router';
 
 import { LAUNCHER } from '../accounts/frontend/paths';
+import { recaptchaSiteKey } from '../accounts/frontend/recaptcha';
 import { OPERATION_ROUTES } from './generated/operation-routes';
 import en from './locale/en.json';
 import es from './locale/es.json';
@@ -56,18 +57,18 @@ const USER_MENU_ITEMS: ShellUserMenuItem[] = [
   { id: 'report', labelKey: 'saas.userMenu.reportProblem', icon: 'ion:chatbubbles-outline', to: '/report-a-problem' },
 ];
 /**
- * The only places whose script URLs the page's `default` Trusted Types policy admits. Stripe.js's loader
+ * The places whose script URLs the page's `default` Trusted Types policy admits. Stripe.js's loader
  * sets its chunks' `src` as plain strings (the Store's Embedded Checkout, `billing/frontend/stripe-js.ts`).
  * The CSP's `script-src` still decides page by page (the account surface names no Stripe, `base/csp.py`).
- * reCAPTCHA Enterprise on the sign-in's pages (2026-10-22): our code sets `www.google.com/recaptcha/enterprise.js`
- * as a string and that loader sets its release from `www.gstatic.com/recaptcha/` the same way (frontend/recaptcha.ts):
- * those two paths only, nothing else of Google's origins.
  */
-const TRUSTED_SCRIPT_ORIGINS = [
-  'https://js.stripe.com',
-  'https://www.google.com/recaptcha/',
-  'https://www.gstatic.com/recaptcha/',
-] as const;
+const TRUSTED_SCRIPT_ORIGINS = ['https://js.stripe.com'] as const;
+/**
+ * reCAPTCHA Enterprise on the sign-in's pages, only while it is switched on (`spa-config.recaptchaSiteKey`; off by
+ * default since 2026-10-23): our code sets `www.google.com/recaptcha/enterprise.js` as a string and that loader sets
+ * its release from `www.gstatic.com/recaptcha/` the same way (frontend/recaptcha.ts): those two paths only, nothing
+ * else of Google's origins.
+ */
+const RECAPTCHA_SCRIPT_ORIGINS = ['https://www.google.com/recaptcha/', 'https://www.gstatic.com/recaptcha/'] as const;
 /** The entry's own texts (the user menu), merged with the apps' catalogues under `saas`; and, at the top, the shell's
  *  texts the panel says otherwise (`notFound`: the panel, not a hub; audit 2 R-18). */
 const ENTRY_CATALOGUES = { 'frontend/locale/en.json': en, 'frontend/locale/es.json': es };
@@ -184,7 +185,9 @@ export async function boot(
     homePath: HOME_PATH,
     surface: serverSurface(doc),
     userMenu: { items: USER_MENU_ITEMS, helpPath: HELP_PATH, logout: () => signOut(auth) },
-    trustedScriptOrigins: TRUSTED_SCRIPT_ORIGINS,
+    trustedScriptOrigins: recaptchaSiteKey(doc)
+      ? [...TRUSTED_SCRIPT_ORIGINS, ...RECAPTCHA_SCRIPT_ORIGINS]
+      : [...TRUSTED_SCRIPT_ORIGINS],
     // AA contrast (audit 2 §5.1, option A): the primary solid at 4.87:1 with white, and dark text on the
     // dark theme's (`data-ep-contrast="aa"`, packages/ui theme/variables.css).
     contrast: 'aa',

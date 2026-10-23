@@ -429,24 +429,25 @@ GOOGLE_OAUTH_ENABLED = bool(GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRE
 
 # reCAPTCHA Enterprise, score-based and invisible (no checkbox, no puzzle), on every public form: the sign-in,
 # the sign-up, «Forgot your password?» and its link, the mailed codes, the authenticator app's code, the contact
-# form and the demo (Ioan, 2026-10-22; live.recaptcha, accounts/bot_check.py, public/). The site key is public
-# (the page loads Google's enterprise.js with it); the API key asks Google for each token's assessment. Production
-# refuses to start without both and cannot switch it off; development checks only with both keys (`.env`), unless
-# RECAPTCHA_ENABLED=False. Below RECAPTCHA_MIN_SCORE (Google's 0.5 by default) a form is refused, as is a token of
-# another form, an invalid one and Google unreachable (fail closed). RECAPTCHA_ENDPOINT moves the assessments
-# elsewhere (the e2e's double, tests/e2e/recaptcha-double.ts).
+# form and the demo (Ioan, 2026-10-22; live.recaptcha, accounts/bot_check.py, public/). OFF by default since
+# 2026-10-23 (Ioan: «quitamos el reCAPTCHA y aplicamos el WAF»): the WAF on the ALB filters the suspicious traffic
+# and the attempt limits (ACCOUNT_RATE_LIMITS, `code_attempts`, the contact form's and the demo's) stop the brute
+# force. Off, no form is checked, the pages load nothing of Google and the CSP names none of its sources.
+# RECAPTCHA_ENABLED=True switches it back on (production and development alike) and then requires both keys: the
+# site key is public (the page loads Google's enterprise.js with it), the API key asks Google for each token's
+# assessment. Below RECAPTCHA_MIN_SCORE (Google's 0.5 by default) a form is refused, as is a token of another form,
+# an invalid one and Google unreachable (fail closed). RECAPTCHA_ENDPOINT moves the assessments elsewhere (the e2e's
+# double, tests/e2e/recaptcha-double.ts).
 RECAPTCHA_SITE_KEY = config("RECAPTCHA_SITE_KEY", default="")
 RECAPTCHA_API_KEY = config("RECAPTCHA_API_KEY", default="")
 RECAPTCHA_PROJECT = config("RECAPTCHA_PROJECT", default="erplora")
-RECAPTCHA_ENABLED = config(
-    "RECAPTCHA_ENABLED", default=not DEBUG or bool(RECAPTCHA_SITE_KEY and RECAPTCHA_API_KEY), cast=bool
-)
-if not DEBUG and not RECAPTCHA_ENABLED:
-    raise ImproperlyConfigured("RECAPTCHA_ENABLED=False is for local development only: production checks every form.")
+RECAPTCHA_ENABLED = config("RECAPTCHA_ENABLED", default=False, cast=bool)
 if RECAPTCHA_ENABLED:
     for _name, _value in (("RECAPTCHA_SITE_KEY", RECAPTCHA_SITE_KEY), ("RECAPTCHA_API_KEY", RECAPTCHA_API_KEY)):
         if not _value:
-            raise ImproperlyConfigured(f"{_name} is required: reCAPTCHA checks every public form.")
+            raise ImproperlyConfigured(
+                f"{_name} is required with RECAPTCHA_ENABLED=True: reCAPTCHA checks every public form."
+            )
 try:
     RECAPTCHA_MIN_SCORE = float(config("RECAPTCHA_MIN_SCORE", default="0.5"))
 except ValueError:
@@ -597,8 +598,11 @@ URLIZE_ASSUME_HTTPS = True
 # (named on its own: `HUB_ADMIN_CALLBACK_URL` may live outside the hubs' pattern). «Continue with Google» adds no
 # script, frame nor connection source; reCAPTCHA does (below).
 
-# reCAPTCHA's scripts, frames and connection, and its Trusted Types policy (`goog#html`), on the sign-in's pages.
-SECURE_CSP = with_recaptcha(debug_policy(VITE_DEV_SERVER) if DEBUG else base_policy())
+# Switched on, reCAPTCHA's scripts, frames and connection, and its Trusted Types policy (`goog#html`), on the
+# sign-in's pages; off (the default), nothing of Google's reCAPTCHA.
+SECURE_CSP = debug_policy(VITE_DEV_SERVER) if DEBUG else base_policy()
+if RECAPTCHA_ENABLED:
+    SECURE_CSP = with_recaptcha(SECURE_CSP)
 SECURE_CSP["form-action"] = [
     *SECURE_CSP["form-action"],
     "https://accounts.google.com",
@@ -648,7 +652,8 @@ LIVE = {
         "command": ["env", f"VITE_DEV_PORT={VITE_DEV_PORT}", "pnpm", "run", "dev"],
         "cwd": str(BASE_DIR),
     },
-    # Every public form asks Google whether a person sent it (RECAPTCHA_* above).
+    # Switched on (RECAPTCHA_ENABLED, off by default), every public form asks Google whether a person sent it
+    # (RECAPTCHA_* above).
     "recaptcha": {
         "enabled": RECAPTCHA_ENABLED,
         "project": RECAPTCHA_PROJECT,

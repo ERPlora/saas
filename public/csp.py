@@ -21,6 +21,7 @@ from urllib.parse import urlsplit
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse
 from django.utils.csp import CSP
+from live import recaptcha
 from live.recaptcha import with_recaptcha
 
 #: Namespace of the public web's URLconf (``public/urls.py``).
@@ -61,8 +62,9 @@ def public_policy() -> dict[str, list[str]]:
     Google Analytics and Clarity, which the templates load only after the analytical consent. The
     Hub's static origin (``HUB_STATIC_BASE_URL``) serves the apps' documentation images; locally it
     is ``http://``, which ``https:`` does not cover. ``ipc:`` keeps the Tauri app's hardware bridge.
-    reCAPTCHA Enterprise's scripts, frames and connection (``live.recaptcha.with_recaptcha``): the contact
-    form and the demo ask Google whether a person sent them.
+    Switched on (``RECAPTCHA_ENABLED``; off by default since 2026-10-23), reCAPTCHA Enterprise's scripts, frames and
+    connection (``live.recaptcha.with_recaptcha``): the contact form and the demo ask Google whether a person sent
+    them. Off, nothing of it.
     """
     policy = {
         "default-src": [CSP.SELF],
@@ -90,7 +92,7 @@ def public_policy() -> dict[str, list[str]]:
         for directive in _DEV_SERVER_DIRECTIVES:
             policy[directive].append(dev_server)
         policy["connect-src"].append("ws" + dev_server.removeprefix("http"))
-    return with_recaptcha(policy)
+    return with_recaptcha(policy) if recaptcha.is_enabled() else policy
 
 
 def is_public(request: HttpRequest, response: HttpResponse | None = None) -> bool:
