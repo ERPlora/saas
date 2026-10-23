@@ -58,6 +58,8 @@ No se guarda ninguna conversación: el turno pasa y se olvida (parte 2).
 - `rotate_encryption_keys [--dry-run]`: vuelve a cifrar con `FERNET_KEY` toda columna de `ROTATED_FIELD_CLASSES` (la
   clave del proveedor y el token y el PIN de WhatsApp); termina con error si alguna no se abre.
 - `ASSISTANT_TRY_RATELIMIT` (por defecto `10/m`): pruebas de un modelo por persona del personal.
+- `FERNET_KEY` (y `FERNET_KEY_PREVIOUS` durante una rotación), para quien despliega: sin ella, el admin lo dice al
+  guardar una clave y no guarda ninguna (503 `assistant.encryption_not_configured` en las operaciones).
 
 ## Pruebas
 
