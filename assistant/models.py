@@ -7,8 +7,11 @@ model answers. Keys are UUIDv7.
 - ``AIModel`` (G24): a model of a provider the staff chose, with its prices (USD per million tokens, typed by hand:
   the APIs do not give them) and what it supports.
 - ``AIRoutingPolicy`` (G27): one row, the model that answers and the fallback one; a model it uses is never deleted.
+- ``AssistantUsage`` (G29, G51, G52): what a business (or a demo) spent through the gateway, a row per calendar month
+  (UTC; a demo, one row for its whole life): its messages, the tokens of its turns and of its embeddings, its voice
+  and what it cost. Numbers only: never a conversation, a person nor a text.
 
-Nothing here holds a conversation: the turn passes through and is forgotten (part 2, ADR-0149 of the old product).
+Nothing here holds a conversation: the turn passes through and is forgotten (ADR-0149 of the old product).
 """
 
 import ipaddress
@@ -19,6 +22,7 @@ from urllib.parse import urlsplit
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 
 from assistant.fields import EncryptedTextField
@@ -257,3 +261,53 @@ class AIRoutingPolicy(models.Model):
     @classmethod
     def solo(cls) -> "AIRoutingPolicy":
         return cls.objects.get_or_create(slot=cls.SLOT)[0]
+
+
+class AssistantUsage(models.Model):
+    """What a business spent through the gateway in a calendar month (UTC), or a demo in its whole life.
+
+    ``messages`` is what the plan's monthly allowance (``Plan.assistant_messages_per_month``) is counted against, one
+    per request of a person, reserved before the model is called (``assistant.message.claim``); the tokens and the
+    cost (USD, with the prices of the model that answered) are added when the turn ends. A demo has no row in the
+    SaaS (its Hub keeps it): it is named by its ``demo-…`` address and has one row.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
+    hub = models.ForeignKey(
+        "hubs.Hub",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="assistant_usage",
+        verbose_name=_("business"),
+    )
+    demo = models.CharField(_("demo"), max_length=63, blank=True, default="")
+    month = models.DateField(_("month"), help_text=_("The first day of the month (UTC)."))
+    messages = models.PositiveIntegerField(_("messages"), default=0)
+    tokens_input = models.PositiveBigIntegerField(_("input tokens"), default=0)
+    tokens_output = models.PositiveBigIntegerField(_("output tokens"), default=0)
+    tokens_embedding = models.PositiveBigIntegerField(_("embedding tokens"), default=0)
+    transcriptions = models.PositiveIntegerField(_("dictations"), default=0)
+    speech_characters = models.PositiveBigIntegerField(_("characters read aloud"), default=0)
+    cost_usd = models.DecimalField(_("cost (USD)"), max_digits=14, decimal_places=6, default=Decimal("0"))
+    created_at = models.DateTimeField(_("created"), auto_now_add=True)
+    updated_at = models.DateTimeField(_("updated"), auto_now=True)
+
+    class Meta:
+        verbose_name = _("assistant usage record")
+        verbose_name_plural = _("assistant usage records")
+        ordering = ["-month", "hub__name", "demo"]
+        constraints = [
+            models.CheckConstraint(
+                condition=(Q(hub__isnull=False) & Q(demo="")) | (Q(hub__isnull=True) & ~Q(demo="")),
+                name="assistant_usage_business_or_demo",
+            ),
+            models.UniqueConstraint(
+                fields=["hub", "month"], condition=Q(hub__isnull=False), name="assistant_usage_one_per_month"
+            ),
+            models.UniqueConstraint(fields=["demo"], condition=~Q(demo=""), name="assistant_usage_one_per_demo"),
+        ]
+
+    def __str__(self):
+        who = self.demo or (self.hub.name if self.hub_id else "—")
+        return f"{who} · {self.month:%Y-%m}"

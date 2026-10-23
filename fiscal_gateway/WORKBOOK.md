@@ -130,7 +130,7 @@ Pasos:
 2. Solo la página «Revisar la autorización firmada» los descifra, para la persona del equipo que decide; ni la cola, ni el panel del negocio, ni los avisos ni lo que se manda al Hub llevan un documento.
 3. La clave de cifrado es propia y obligatoria en producción: sin ella el despliegue no arranca, y nunca se toma la clave general de la aplicación en su lugar.
 Entra: los documentos que sube el negocio desde su Hub.
-Sale: los documentos guardados cifrados; la base de datos y sus copias nunca los tienen en claro.
+Sale: los documentos guardados cifrados; la base de datos y sus copias nunca los tienen en claro, y tampoco el disco del servidor mientras llegan: se reciben en memoria.
 Si falla: una clave que no sirve para cifrar se dice al arrancar y el despliegue se para; un documento guardado con otra clave no se abre y la página de revisión lo dice en lugar de enseñarlo.
 Implicados: FISCAL-F05 (la revisión), el Hub (VERIFACTU-F05 sube la autorización)
 

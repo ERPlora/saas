@@ -191,7 +191,7 @@ con buscador por negocio o por correo y filtro por rol; solo se consulta.
 | HUBS-F30 | Consultar los accesos de las personas en el admin | hecho |
 | HUBS-F31 | Mandar a cada negocio su plan, sus aplicaciones y sus personas | hecho |
 | HUBS-F32 | Aplicar los topes de personas y de dispositivos del plan | parcial |
-| HUBS-F33 | Dar al negocio los mensajes del asistente de su plan | parcial |
+| HUBS-F33 | Dar al negocio los mensajes del asistente de su plan | hecho |
 | HUBS-F34 | Decir al negocio qué aplicaciones de pago puede usar y por qué | parcial |
 | HUBS-F35 | Reconocer al servicio de los negocios cuando llama a erplora.com | hecho |
 | HUBS-F36 | Mantener los sectores y los tipos de negocio en el admin | hecho |
@@ -656,17 +656,17 @@ Implicados: billing (el plan), el negocio (aplica los topes a sus dispositivos y
 
 ### HUBS-F33 Dar al negocio los mensajes del asistente de su plan
 <!-- origen: old-saas:SAAS_ASSISTANT-F12 -->
-Estado: parcial — el negocio ya recibe los mensajes al mes que incluye su plan, pero todavía no se cuentan ni frenan: cada mensaje pasa por el turno del asistente, que llega con la segunda parte de la app del asistente.
+Estado: hecho
 Actor: sistema
 Pantalla: ninguna
 Pasos:
 1. Cada plan incluye un número de mensajes del asistente al mes (Gratis 30, Starter 300, Standard 600; 0 es sin asistente); el personal lo cambia en la ficha del plan (HUBS-F05).
 2. erplora.com lo manda al negocio en su foto (HUBS-F31), junto al de WhatsApp, y otra vez en cuanto cambian el plan o la cifra.
-3. Cada mensaje cuenta para el mes del negocio: al 80 % se avisa y al 100 % no se puede preguntar más hasta el día 1 del mes siguiente; para tener más, se sube de plan.
+3. Cada mensaje cuenta para el mes del negocio: erplora.com lo cuenta en cada turno del asistente (ASSISTANT-F18) y le dice al negocio cuántos lleva, de cuántos y cuándo vuelven, para que avise al 80 %; al 100 % no deja preguntar más hasta el día 1 del mes siguiente (00:00 UTC); para tener más, se sube de plan.
 Entra: el plan del negocio.
-Sale: los mensajes al mes del plan, en la foto del negocio.
+Sale: los mensajes al mes del plan, en la foto del negocio, y los gastados de cada mes (ASSISTANT-F18).
 Si falla: un plan con 0 mensajes deja el asistente sin uso. No se venden paquetes de mensajes sueltos.
-Implicados: assistant (el turno de cada mensaje y su cuenta), el negocio (enseña lo que queda)
+Implicados: assistant (el turno de cada mensaje y su cuenta, ASSISTANT-F18), el negocio (enseña lo que queda y avisa al 80 %)
 
 ### HUBS-F34 Decir al negocio qué aplicaciones de pago puede usar y por qué
 <!-- origen: old-saas:SAAS_DASHBOARD-F62 old-saas:SAAS_PUBLIC-F20 fi:saas/hubs#estado-de-suscripcion-de-modulo-bouncer fi:saas/hubs#modulos-del-terminal -->
@@ -823,11 +823,12 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   2026-10-22b): el bloque `verifactu` lleva solo `representation`; `live_paid` se quitó de la foto cuando el Hub retiró
   esa condición (FIX-HUB-VERIFACTU-RETIRE-LIVE-PAID). Tests: `hubs/tests/test_hub_sync.py`, `test_plan_rights_reach_businesses.py`,
   `test_contract_hub.py`, `fiscal/tests/test_snapshot.py`; e2e `tests/e2e/panel/hubs-rights.spec.ts` («HUBS-G101»).
-- Lo que el Hub aplica de la foto (F32–F34): hoy guarda `plan` y `modules` sin aplicarlos (`base.services.hub_state_apply`
+- Lo que el Hub aplica de la foto (F32 y F34): hoy guarda `plan` y `modules` sin aplicarlos (`base.services.hub_state_apply`
   del Hub: «kept until phase 2 applies them»); los topes de dispositivos y de usuarios con PIN llegan con `DeviceSession`
-  (fase 2, PLAN-HUB «Sesión, dispositivo y PIN»), el freno de una app `premium` sin derecho (402
-  `app_entitlement_blocked`) con su activación, y la cuenta de los mensajes del asistente con el turno de `assistant`
-  (parte 2). El SaaS ya aplica `max_users` al invitar (`hubs/tests/test_seats.py`). Tests de la parte 4:
+  (fase 2, PLAN-HUB «Sesión, dispositivo y PIN») y el freno de una app `premium` sin derecho (402
+  `app_entitlement_blocked`), con su activación. Los mensajes del asistente (F33) no los cuenta el Hub: los cuenta y los
+  frena en cada turno la pasarela de `assistant` (ASSISTANT-F18, `assistant.message.claim`), con el cupo del plan
+  (`Plan.assistant_messages_per_month`), y el Hub enseña las cifras de su puerta `usage` y del frame `usage`. El SaaS ya aplica `max_users` al invitar (`hubs/tests/test_seats.py`). Tests de la parte 4:
   `test_snapshot_rights.py` (una compra o el plan de otro negocio nunca llegan a este; bajar a Gratis no saca a nadie).
   Un `Module` nuevo, o con otro `tier`, en el admin de `apps` (`ModuleAdmin.save_model` → `services.owe_module_rights`)
   reescribe los módulos del plan de cada negocio vivo cuyo plan (o prueba) alcanza el nivel nuevo o el anterior, y sube

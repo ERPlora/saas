@@ -20,6 +20,7 @@ from live.spa import BASE_NON_SPA_PREFIXES, spa_path_pattern
 from accounts import admin as accounts_admin
 from accounts import doors, google, handoff, internal
 from accounts.adapters import SPA_LOGIN
+from assistant import internal as assistant_internal
 from base.csp_report import csp_report
 from base.health import readyz
 from base.spa import spa
@@ -156,6 +157,14 @@ urlpatterns = [
     path("internal/whatsapp/config", whatsapp_internal.config, name="internal_whatsapp_config"),
     path("internal/whatsapp/connect", whatsapp_internal.connect, name="internal_whatsapp_connect"),
     path("internal/whatsapp/disconnect", whatsapp_internal.disconnect, name="internal_whatsapp_disconnect"),
+    # The AI gateway (assistant/internal.py, PLAN-SAAS §1.1): the Hub's turn, its allowance, embeddings and voice.
+    path("internal/assistant/chat/stream", assistant_internal.chat_stream, name="internal_assistant_chat_stream"),
+    path("internal/assistant/chat", assistant_internal.chat, name="internal_assistant_chat"),
+    path("internal/assistant/usage", assistant_internal.usage, name="internal_assistant_usage"),
+    path("internal/assistant/embeddings", assistant_internal.embeddings, name="internal_assistant_embeddings"),
+    path("internal/assistant/report", assistant_internal.report, name="internal_assistant_report"),
+    path("internal/speech/transcribe", assistant_internal.transcribe, name="internal_speech_transcribe"),
+    path("internal/speech/synthesize", assistant_internal.synthesize, name="internal_speech_synthesize"),
     # Stripe's single webhook (PLAN-SAAS §4): signed by Stripe, no session nor CSRF.
     path("webhooks/stripe/", billing_webhooks.stripe_webhook, name="stripe_webhook"),
     # Meta's single WhatsApp webhook (whatsapp/webhooks.py): its verification (GET) and its signed notices.

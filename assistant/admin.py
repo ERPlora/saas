@@ -14,6 +14,9 @@
 - «Choose models from the provider» (G24, G14): an asynchronous page (the call to the provider never holds a thread
   other requests need) that lists the provider's chat models with ``assistant.provider.connection`` and its client,
   and keeps the ticked ones with ``assistant.model.select``. «AI models» lists them all, to correct their prices.
+- «Assistant usage records» (G52, G19, G11): what each business (or demo) spent by month, its messages of the plan's
+  allowance, tokens, dictations, characters read aloud and cost. Read only for everybody: rows are written by the
+  gateway alone (``assistant.message.claim|release``, ``assistant.usage.record``).
 
 Only active staff enter the admin (``accounts.admin.admin_has_permission``) and each page asks the model permission
 of Django that backs it; ``support`` gets none of the assistant's (its keys are ERPlora's spend).
@@ -40,7 +43,7 @@ from live.context import OperationContext, Scope
 from live.errors import NotFound, OperationError
 
 from assistant import crypto, queries, routing, services
-from assistant.models import AIModel, AIProvider, AIProviderCredential, AIRoutingPolicy, estimate_cost
+from assistant.models import AIModel, AIProvider, AIProviderCredential, AIRoutingPolicy, AssistantUsage, estimate_cost
 from assistant.providers.base import ProviderError, ToolSpec, TurnRequest
 from assistant.providers.factory import get_provider
 from assistant.schemas import (
@@ -513,3 +516,80 @@ class AIRoutingPolicyAdmin(admin.ModelAdmin):
         if isinstance(prepared, str):
             return event_stream(refused_try(prepared))
         return event_stream(try_events(*prepared))
+
+
+class UsageKindFilter(admin.SimpleListFilter):
+    """Businesses or demos."""
+
+    title = gettext_lazy("kind")
+    parameter_name = "kind"
+
+    def lookups(self, request, model_admin):
+        return [("business", gettext_lazy("Businesses")), ("demo", gettext_lazy("Demos"))]
+
+    def queryset(self, request, queryset):
+        if self.value() == "business":
+            return queryset.filter(hub__isnull=False)
+        if self.value() == "demo":
+            return queryset.filter(hub__isnull=True)
+        return queryset
+
+
+@admin.register(AssistantUsage)
+class AssistantUsageAdmin(admin.ModelAdmin):
+    """What each business (or demo) spent through the gateway, by month (ASSISTANT-F24): read only for everybody,
+    so no member of the staff gives a business its allowance back by editing or deleting its row."""
+
+    # What the staff look for first (the allowance spent and what it cost) before the measures, so a desk's width shows
+    # them without scrolling the table.
+    list_display = (
+        "spender",
+        "period",
+        "messages",
+        "cost",
+        "tokens_input",
+        "tokens_output",
+        "tokens_embedding",
+        "transcriptions",
+        "speech_characters",
+    )
+    list_filter = (UsageKindFilter, "month")
+    search_fields = ("hub__name", "hub__slug", "demo")
+    list_select_related = ("hub",)
+    date_hierarchy = "month"
+    fields = (
+        "hub",
+        "demo",
+        "month",
+        "messages",
+        "tokens_input",
+        "tokens_output",
+        "tokens_embedding",
+        "transcriptions",
+        "speech_characters",
+        "cost_usd",
+        "created_at",
+        "updated_at",
+    )
+    readonly_fields = fields
+
+    @admin.display(description=gettext_lazy("business or demo"), ordering="hub__name")
+    def spender(self, row: AssistantUsage) -> str:
+        return row.demo or f"{row.hub.name} ({row.hub.slug})"
+
+    @admin.display(description=gettext_lazy("month"), ordering="month")
+    def period(self, row: AssistantUsage) -> str:
+        return row.month.strftime("%Y-%m")
+
+    @admin.display(description=gettext_lazy("cost (USD)"), ordering="cost_usd")
+    def cost(self, row: AssistantUsage) -> str:
+        return format(row.cost_usd.normalize(), "f")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

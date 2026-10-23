@@ -739,6 +739,18 @@ CSP_REPORT_RATELIMIT = config("CSP_REPORT_RATELIMIT", default="60/h")
 # «Try a model» of the admin per member of the staff (ASSISTANT-F07; the old SaaS's 10 a minute): each try spends
 # ERPlora's key with the provider (django-ratelimit, over the default cache).
 ASSISTANT_TRY_RATELIMIT = config("ASSISTANT_TRY_RATELIMIT", default="10/m")
+# The Hub's doors of the assistant (/internal/assistant/*, /internal/speech/*; ASSISTANT-F16), per business or demo,
+# counted after the signature and the business pass (django-ratelimit, over the default cache): the turn's doors
+# (live, JSON and the allowance), the embeddings, each voice door on its own and the reports of an answer.
+ASSISTANT_TURN_RATELIMIT = config("ASSISTANT_TURN_RATELIMIT", default="600/h")
+ASSISTANT_EMBED_RATELIMIT = config("ASSISTANT_EMBED_RATELIMIT", default="600/h")
+ASSISTANT_TRANSCRIBE_RATELIMIT = config("ASSISTANT_TRANSCRIBE_RATELIMIT", default="120/h")
+ASSISTANT_SYNTHESIZE_RATELIMIT = config("ASSISTANT_SYNTHESIZE_RATELIMIT", default="120/h")
+ASSISTANT_REPORT_RATELIMIT = config("ASSISTANT_REPORT_RATELIMIT", default="60/h")
+# A demo's messages for its whole life (SAAS_ASSISTANT-F11, saas#2599: each browser gets a new demo).
+ASSISTANT_DEMO_MESSAGES = config("ASSISTANT_DEMO_MESSAGES", default=10, cast=int)
+# The provider (its identifier in the admin, of OpenAI's API) whose key computes the embeddings and the voice.
+ASSISTANT_SERVICE_PROVIDER = config("ASSISTANT_SERVICE_PROVIDER", default="openai")
 # The demo hubs (PLAN-SAAS §3.5, round 2026-10-17; public/demo.py): one switch, and new demos per address
 # (django-ratelimit, over the default cache; a browser re-entering its live demo does not count). The Hub keeps
 # the cap of live demos (MAX_CONCURRENT_DEMOS) and the WAF limits /demo per IP too.
