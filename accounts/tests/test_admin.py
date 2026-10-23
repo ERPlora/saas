@@ -53,6 +53,37 @@ def test_a_user_can_be_added_with_email_and_password(staff_client):
     assert get_user_model().objects.get(email="bo@example.com").check_password("a-long-pass-phrase")
 
 
+@pytest.mark.parametrize("query", ["lp@example", "Lucía", "Pérez"])
+def test_the_staff_find_an_account_by_its_email_or_its_names(staff_client, query):
+    """ACCOUNTS-F13: «El personal busca una cuenta por correo o nombre»; the names are not in the address."""
+    client, _ = staff_client
+    get_user_model().objects.create_user(email="lp@example.com", password="x", first_name="Lucía", last_name="Pérez")
+
+    response = client.get("/admin/accounts/user/", {"q": query})
+
+    assert [user.email for user in response.context["cl"].result_list] == ["lp@example.com"]
+
+
+@pytest.mark.parametrize(
+    ("filters", "found"),
+    [
+        ({"language__exact": "es"}, ["ana@example.com"]),
+        ({"is_staff__exact": "1"}, ["root@example.com"]),
+        ({"is_active__exact": "0"}, []),
+    ],
+)
+def test_the_staff_filter_the_accounts_by_active_staff_and_language(staff_client, ana, filters, found):
+    """ACCOUNTS-F13: «… o filtra por activa, personal e idioma»."""
+    client, _ = staff_client
+
+    response = client.get("/admin/accounts/user/", filters)
+
+    assert sorted(user.email for user in response.context["cl"].result_list) == found
+    # The admin answers any lookup on a field of its own: the filters must be offered on the page too.
+    offered = {spec.field_path for spec in response.context["cl"].filter_specs}
+    assert {"is_active", "is_staff", "language"} <= offered
+
+
 def test_exchange_codes_are_read_only(staff_client):
     client, _ = staff_client
 
@@ -589,6 +620,61 @@ def _signed_in_browser(email: str, password: str):
     from accounts.tests.conftest import sign_in
 
     return sign_in(Client(), email, password)
+
+
+class TestTheSessionsSpeakTheStaffsLanguage:
+    """ACCOUNTS-F19: «Sesiones de usuario» in the staff's language. allauth.usersessions gives its model and its columns
+    no names of their own (Django's «user session», «created at», «user agent»…, English in every language), so the
+    admin names them; only the live names: allauth's migrations stay as they are."""
+
+    @pytest.fixture
+    def spanish_staff(self, client):
+        """The admin speaks the browser's language (``Accept-Language``), not the account's: that is the panel's."""
+        staff = get_user_model().objects.create_superuser(email="raiz@example.com", password="x", language="es")
+        client.force_login(staff)
+        client.defaults["HTTP_ACCEPT_LANGUAGE"] = "es"
+        return client
+
+    def test_the_list_is_named_and_headed_in_spanish(self, spanish_staff, ana, password):
+        _signed_in_browser(ana.email, password)
+
+        page = spanish_staff.get("/admin/usersessions/usersession/").text
+        headers = re.findall(r'<th scope="col"[^>]*>.*?<div class="text">(?:<(?:a|span)[^>]*>)?([^<]+)<', page, re.S)
+
+        assert "Seleccione sesión de usuario para ver" in page
+        assert "1 sesión de usuario" in " ".join(page.split())
+        assert [unescape(header).strip() for header in headers] == [
+            "Cuenta",
+            "Inicio de sesión",
+            "Último uso",
+            "Dirección IP",
+            "Navegador",
+        ]
+        assert ana.email in page
+
+    def test_the_page_of_a_session_is_labelled_in_spanish(self, spanish_staff, ana, password):
+        from allauth.usersessions.models import UserSession
+
+        _signed_in_browser(ana.email, password)
+        session = UserSession.objects.get(user=ana)
+
+        page = spanish_staff.get(f"/admin/usersessions/usersession/{session.pk}/change/").text
+        labels = [unescape(label).strip() for label in re.findall(r"<label>([^<]+):</label>", page)]
+
+        assert labels == [
+            "Cuenta",
+            "Inicio de sesión",
+            "Último uso",
+            "Dirección IP",
+            "Navegador",
+            "Clave de sesión",
+            "Datos de la sesión",
+        ]
+        assert ana.email in page
+
+    def test_the_names_are_not_a_change_of_allauths_models(self):
+        """Only the live names change (``_meta``): ``makemigrations`` sees nothing to write in allauth's package."""
+        call_command("makemigrations", "usersessions", "--check", "--dry-run", stdout=StringIO())
 
 
 @pytest.fixture
