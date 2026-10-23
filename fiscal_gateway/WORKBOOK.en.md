@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:b80b68f827c1058fad584d8a4ae8b022b61d5d0518c9b9c1bc62f933b6ee3697 -->
+<!-- generated from WORKBOOK.md sha256:427a42803d20b13ad76f24cafb4dcfedf981345e7c60152454cf2cf6238c00ac -->
 
 ## What it is for and who it is for
 
@@ -122,7 +122,7 @@ Steps:
 2. Only the page "Review the signed authorisation" decrypts them, for the person of the team who decides; neither the queue, nor the business's panel, nor the notices nor what is sent to the Hub carry a document.
 3. The encryption key is its own and mandatory in production: without it the deployment does not start, and the application's general key is never taken in its place.
 In: the documents the business uploads from its Hub.
-Out: the documents kept encrypted; the database and its backups never hold them in the clear.
+Out: the documents kept encrypted; the database and its backups never hold them in the clear, nor does the server's disk while they arrive: they are received in memory.
 If it fails: a key that cannot encrypt is said on start and the deployment stops; a document kept with another key does not open and the review page says so instead of showing it.
 Involved: FISCAL-F05 (the review), the Hub (VERIFACTU-F05 uploads the authorisation)
 

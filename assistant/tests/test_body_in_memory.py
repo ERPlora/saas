@@ -5,22 +5,20 @@ Behind Daphne, Django's handler reads every request's body into a file that move
 ``assistant.internal.TURN_BODY_BYTES``) or a dictation is larger, and its documents and audio must never touch the
 disk: ``config.asgi`` keeps the body of ``/internal/assistant/*`` and ``/internal/speech/*`` in memory, up to that
 ceiling, and drops what passes it (the door then answers 413). The doors are not published on the ALB, so only the
-Hub reaches them. Every other path is read as Django reads it.
+Hub reaches them. Every other path is read as Django reads it, but for the fiscal documents' door
+(``fiscal/tests/test_internal.py``).
 """
 
-import asyncio
 import json
-import time
 
 import pytest
 from asgiref.sync import async_to_sync
 from django.core.signals import request_finished, request_started
 from django.db import close_old_connections
 
-from accounts.signing import signed_headers
 from assistant.internal import TURN_BODY_BYTES
-from assistant.tests.doors import SECRET, files_written
-from config.asgi import application
+from assistant.tests.doors import SECRET
+from config.tests.asgi_bodies import asgi_post, files_written
 
 pytestmark = [pytest.mark.django_db, pytest.mark.usefixtures("internal", "keep_the_test_connection")]
 
@@ -39,49 +37,8 @@ def keep_the_test_connection():
     request_finished.connect(close_old_connections)
 
 
-def scope(path: str, headers: list[tuple[bytes, bytes]]) -> dict:
-    return {
-        "type": "http",
-        "asgi": {"version": "3.0", "spec_version": "2.3"},
-        "http_version": "1.1",
-        "method": "POST",
-        "scheme": "http",
-        "path": path,
-        "raw_path": path.encode(),
-        "query_string": b"",
-        "root_path": "",
-        "headers": [(b"host", b"localhost"), (b"content-type", b"application/json"), *headers],
-        "client": ("127.0.0.1", 50000),
-        "server": ("127.0.0.1", 8001),
-    }
-
-
-def post(path: str, body: bytes, *, chunks: int = 1, declared: int | None = None) -> tuple[int, dict, int]:
-    """``POST path`` through the ASGI application as Daphne sends it (``chunks`` pieces, its ``Content-Length`` or
-    ``declared``), signed as the Hub signs it: its status, its JSON (``{}`` for another answer) and how many pieces it
-    left unread."""
-    signature = signed_headers("POST", path, body, int(time.time()), SECRET)
-    length = len(body) if declared is None else declared
-    headers = [(b"content-length", str(length).encode())] + [(k.lower().encode(), v.encode()) for k, v in signature.items()]
-    size = -(-len(body) // chunks)
-    pieces = [body[i : i + size] for i in range(0, len(body), size)] or [b""]
-
-    async def run():
-        inbox = asyncio.Queue()
-        for index, piece in enumerate(pieces):
-            inbox.put_nowait({"type": "http.request", "body": piece, "more_body": index < len(pieces) - 1})
-        sent = []
-
-        async def send(message):
-            sent.append(message)
-
-        await asyncio.wait_for(application(scope(path, headers), inbox.get, send), timeout=20)
-        start, *rest = sent
-        payload = b"".join(message.get("body", b"") for message in rest)
-        is_json = {k.lower(): v for k, v in start["headers"]}.get(b"content-type", b"").startswith(b"application/json")
-        return start["status"], json.loads(payload) if is_json else {}, inbox.qsize()
-
-    return async_to_sync(run)()
+def post(path: str, body: bytes, **sent) -> tuple[int, dict, int]:
+    return asgi_post(path, body, secret=SECRET, **sent)
 
 
 def turn_of(size: int) -> bytes:
@@ -116,20 +73,35 @@ def test_a_body_over_the_ceiling_is_dropped_not_kept_and_refused():
     body = b"x" * (TURN_BODY_BYTES + 5)
 
     with files_written() as written:
-        status, answer, unread = post("/internal/assistant/chat", body, chunks=4, declared=None)
+        status, answer, unread = post("/internal/assistant/chat", body, chunks=4)
 
     assert (status, answer["error"]["code"]) == (413, "payload_too_large")
     assert written == [] and unread == 0
 
 
 class TestTheCeiling:
-    def test_the_doors_keep_up_to_the_turns_ceiling_and_other_paths_are_djangos(self):
+    def test_each_door_keeps_up_to_its_own_ceiling_and_other_paths_are_djangos(self):
+        """The fiscal documents' door (``/internal/hubs/<id>/representation``, the customer's signed authorisation and
+        identity documents) keeps its body in memory too, up to its own ceiling; any other path, Django's reading."""
         from config.asgi import body_ceiling
+        from fiscal.internal import MAX_BODY_BYTES as REPRESENTATION_BYTES
 
+        representation = "/internal/hubs/01a168c1-11ea-73b4-8be3-bbdd5ac322fc/representation"
         assert body_ceiling({"path": "/internal/assistant/chat", "headers": [(b"content-length", b"10")]}) == TURN_BODY_BYTES
         assert body_ceiling({"path": "/internal/speech/transcribe", "headers": []}) == TURN_BODY_BYTES
-        assert body_ceiling({"path": "/internal/fiscal/documents", "headers": []}) is None
+        assert body_ceiling({"path": representation, "headers": []}) == REPRESENTATION_BYTES
+        assert body_ceiling({"path": f"{representation}/x", "headers": []}) is None
+        assert body_ceiling({"path": "/internal/whatsapp/send", "headers": []}) is None
         assert body_ceiling({"path": "/api/assistant/", "headers": []}) is None
+
+    def test_the_fiscal_door_follows_its_own_ceiling_not_the_turns(self, monkeypatch):
+        from config.asgi import body_ceiling
+
+        monkeypatch.setattr("fiscal.internal.MAX_BODY_BYTES", 1234)
+        representation = "/internal/hubs/01a168c1-11ea-73b4-8be3-bbdd5ac322fc/representation"
+
+        assert body_ceiling({"path": representation, "headers": []}) == 1234
+        assert body_ceiling({"path": representation, "headers": [(b"content-length", b"1235")]}) == 0
 
     def test_a_declared_length_over_the_ceiling_keeps_nothing(self):
         from config.asgi import body_ceiling

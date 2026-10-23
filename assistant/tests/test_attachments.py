@@ -20,7 +20,8 @@ from django.test import Client
 
 from assistant import attachments
 from assistant.tests.conftest import openai_answer
-from assistant.tests.doors import door, error_code, files_written, frames
+from assistant.tests.doors import door, error_code, frames
+from config.tests.asgi_bodies import files_written
 from assistant.turn import TurnRefused, prepare
 
 PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="

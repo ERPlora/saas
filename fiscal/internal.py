@@ -20,7 +20,8 @@ unknown or deleted, 405 another method, 413 (``fiscal.body_too_large``) a body b
 422 a broken rule (its ``fiscal.*`` code) or a malformed field (``invalid_payload``). Nothing is read before
 the headers allow it: a ``Content-Length`` beyond the ceiling is 413 and a call without a signature or with a
 timestamp out of the window is 401 from its headers alone; only then is the body read, measured and
-verified. The field messages speak the language the Hub asks (``Accept-Language``). Nothing is
+verified. Behind Daphne the body arrives in memory, never in a temporary file on disk, up to ``MAX_BODY_BYTES``
+(``config.asgi.BodiesInMemory``): the customer's identity documents are in it, in the clear (FISCAL-F03). The field messages speak the language the Hub asks (``Accept-Language``). Nothing is
 cached: the answers carry ``Cache-Control: no-store``. Plain Django views, like ``hubs.internal``, until the
 ``/internal`` ninja API takes them all.
 """

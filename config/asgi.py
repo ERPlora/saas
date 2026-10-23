@@ -10,12 +10,13 @@ host, so that prefix is always empty and a request is answered for its real path
 handshake is refused instead (``websocket.close``, which Daphne answers with 403), as the old SaaS's catch-all
 ``DenyConsumer`` did (ACCOUNTS-G72).
 
-``BodiesInMemory`` is Django's handler with one change: the body of the assistant's doors of the Hub
-(``/internal/assistant/*``, ``/internal/speech/*``) stays in memory. Django reads every body into a file that moves
-to disk past ``FILE_UPLOAD_MAX_MEMORY_SIZE`` (2.5 MB), before any view; a turn with its attachments or a dictation is
-larger, and those documents and that audio never touch the disk (ASSISTANT-F19, F21). Up to
-``assistant.internal.TURN_BODY_BYTES``; what passes it, or a declared length over it, is received and dropped, never
-kept, and the door answers 413. Those doors are not published on the ALB: only the Hub reaches them.
+``BodiesInMemory`` is Django's handler with one change: the body of the Hub's doors that carry documents or audio
+(``IN_MEMORY_PATHS``) stays in memory. Django reads every body into a file that moves to disk past
+``FILE_UPLOAD_MAX_MEMORY_SIZE`` (2.5 MB), before any view; a turn with its attachments, a dictation (ASSISTANT-F19,
+F21) or the customer's signed authorisation with its identity documents (FISCAL-F03) is larger, and none of them
+touches the disk. Each door up to its own ceiling; what passes it, or a declared length over it, is received and
+dropped, never kept, and the door answers 413. Those doors are under ``/internal``, not published on the ALB: only
+the Hub reaches them.
 
 https://docs.djangoproject.com/en/6.1/howto/deployment/asgi/
 """
@@ -23,29 +24,34 @@ https://docs.djangoproject.com/en/6.1/howto/deployment/asgi/
 import contextvars
 import io
 import os
+import re
 
 import django
 from django.core.exceptions import RequestAborted
 from django.core.handlers.asgi import ASGIHandler
+from django.utils.module_loading import import_string
 from live.asgi import ignore_root_path
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
-#: The paths whose body stays in memory (assistant.internal).
-IN_MEMORY_PATHS = ("/internal/assistant/", "/internal/speech/")
+#: The paths whose body stays in memory, each with the setting of its door's ceiling (``module.NAME``).
+IN_MEMORY_PATHS = (
+    (re.compile(r"/internal/(?:assistant|speech)/"), "assistant.internal.TURN_BODY_BYTES"),
+    (re.compile(r"/internal/hubs/[^/]+/representation\Z"), "fiscal.internal.MAX_BODY_BYTES"),
+)
 #: The ceiling of the request in hand when its body stays in memory (``None``: Django's own reading).
 _in_memory_ceiling: contextvars.ContextVar[int | None] = contextvars.ContextVar("in_memory_ceiling", default=None)
 
 
 def body_ceiling(scope: dict) -> int | None:
-    """How much of the body of ``scope`` stays in memory: ``None`` for Django's own reading (every other path), the
-    turn's ceiling for the assistant's doors, and nothing when their declared length is already over it."""
-    if not scope["path"].startswith(IN_MEMORY_PATHS):
+    """How much of the body of ``scope`` stays in memory: ``None`` for Django's own reading (every other path), its
+    door's ceiling for ``IN_MEMORY_PATHS``, and nothing when the declared length is already over it."""
+    limit = next((limit for pattern, limit in IN_MEMORY_PATHS if pattern.match(scope["path"])), None)
+    if limit is None:
         return None
-    from assistant.internal import TURN_BODY_BYTES
-
+    ceiling = import_string(limit)
     declared = dict(scope.get("headers") or []).get(b"content-length", b"")
-    return 0 if declared.isdigit() and int(declared) > TURN_BODY_BYTES else TURN_BODY_BYTES
+    return 0 if declared.isdigit() and int(declared) > ceiling else ceiling
 
 
 class BodiesInMemory(ASGIHandler):
