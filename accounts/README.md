@@ -196,7 +196,10 @@ La plataforma no vive en `accounts/` sino en `base/` y `config/`; su manual es `
 - **`manage.py purge_expired_sessions`** (F44, diaria): sesiones caducadas, filas de «Sesiones activas» sin sesión,
   códigos de salto y cambios de correo caducados (`services.purge_expired_sign_in_leftovers`), con candado y
   `--dry-run`. Sustituye a `clearsessions_task` y `flush_expired_tokens_task` del viejo (aquí no hay JWT).
-- **Correos** (F46): `AWS_SES_CONFIG` en `config/settings.py` (3 s + 10 s, dos intentos).
+- **Correos** (F46): `AWS_SES_CONFIG` en `config/settings.py` (3 s + 10 s, dos intentos); cada correo, en texto y en
+  HTML sobre `templates/emails/base.html` con `base/emails.py` (`branded_message`); los de allauth, por
+  `AccountAdapter.render_mail`, y sus avisos propios con su `_message.html` (`templates/account/email/`,
+  `templates/socialaccount/email/`).
 - No se portan `apps/core/circuit_breaker.py` (G06/G75) ni `templatetags/cards.py` (G27): motivo en el WORKBOOK.
 
 ## Tests portados de ERPlora/saas (`origin/develop`)
@@ -224,13 +227,16 @@ La plataforma no vive en `accounts/` sino en `base/` y `config/`; su manual es `
 - Parte 5: `apps/core/tests/test_logging.py` → `base/tests/test_logging.py`; la CSP, con tests nuevos
   (`config/tests/test_csp_policy.py`, una directiva por test, panel y web pública); el `MaintenanceModeMiddleware` y el `SiteSettingsAdmin` →
   `base/tests/test_maintenance.py`, `test_models.py` y `test_admin.py`, con sus dos huecos cerrados (la salud en 503
-  y el segundo factor del personal cortado). Fuera: los tests del breaker y de la etiqueta `card`, que no se portan.
+  y el segundo factor del personal cortado); `apps/core/tests/test_branded_emails.py` → `base/tests/test_emails.py`
+  (cada familia por su remitente, en `en` y `es`, y cada correo de allauth hallado en disco). Fuera: los tests del
+  breaker y de la etiqueta `card`, que no se portan.
 
 ## Pendiente (de otros carriles)
 
 - **`aws`**: programar `anonymize_old_users` (semanal), `cleanup_old_logs` (diaria) y `purge_expired_sessions`
   (diaria) en `saas-cron`.
-- **Correos HTML con plantilla común** (ACCOUNTS-F46): PLAN-SAAS §7, bloque 13; hoy salen en texto.
+- **`hubs`**: sus correos (`hubs/emails.py`: personas, invitaciones, roles y traspaso) pasan a la plantilla común
+  (`base/emails.py`, ACCOUNTS-F46) con su porte; hoy salen en texto.
 
 - **`hubs`** conecta `signals.sessions_ended` → `revoke_after_commit(user_id)` y `account_deleting` (en curso en
   su carril); también puede escuchar `allauth.account.signals.email_changed` para refrescar la foto del negocio.

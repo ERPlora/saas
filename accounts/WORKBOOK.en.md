@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:774081a9a81b12256d190de2694312f3a7358217da9287415f022b3ee31daed4 -->
+<!-- generated from WORKBOOK.md sha256:a52b5ef513a913ce72a3eb038e13e9d5c460285f1a3efed2c4efc1c4f01eb103 -->
 
 ## What it is for and who it is for
 
@@ -234,7 +234,7 @@ the "message in Spanish" (empty, Spanish visitors read the English one), and the
 | ACCOUNTS-F43 | Put erplora.com in maintenance | done |
 | ACCOUNTS-F44 | Clean the expired sessions and codes every day | partial |
 | ACCOUNTS-F45 | Brake too many requests | done |
-| ACCOUNTS-F46 | Send erplora.com's emails | partial |
+| ACCOUNTS-F46 | Send erplora.com's emails | done |
 | ACCOUNTS-F47 | Move around the panel | done |
 | ACCOUNTS-F48 | Pass erplora.com's master QA | partial |
 
@@ -851,17 +851,20 @@ If it fails: with the cache down, the brakes let requests through and erplora.co
 Involved: public (the contact form)
 
 ### ACCOUNTS-F46 Send erplora.com's emails
-Status: partial — the emails go out as text, without the common template with the brand (logo and footer) they carried in the previous SaaS: it comes with the port of each app's emails
+Status: done
 Actor: system
 Screen: none
 Steps:
 1. Something in erplora.com has to tell a person: a code, a link, an invitation, an invoice, a change in their business.
-2. The email leaves from ERPlora's address through AWS's mail service.
-3. If the service does not answer, erplora.com waits a few seconds, never minutes, and tries once more.
-In: the notice, its data and the recipient.
-Out: the email sent. On the developer's computer and in the tests, the email is written to a folder and never leaves.
+2. The email carries ERPlora's brand, the same in all of them: the coloured stripe on top, the logo, the text and the footer «Sent by ERPlora» with the link to erplora.com. A code stands alone, in its box, and the links can be clicked.
+3. Each email comes in two versions that say the same, formatted and as text, so it reads in any mail program, and in the language of whoever gets it; the ERPlora team's (reported problems, the contact form, authorisations to review), in the team's.
+4. Only the logo is downloaded from the email, from erplora.com: nothing else is asked of another website.
+5. The email leaves from ERPlora's address through AWS's mail service.
+6. If the service does not answer, erplora.com waits a few seconds, never minutes, and tries once more.
+In: the notice, its data, the recipient and their language.
+Out: the email sent, formatted and as text. On the developer's computer and in the tests, the email is written to a folder and never leaves.
 If it fails: an email that does not leave is handled by whoever asks for it (for example, reporting a problem shows the support address to write to directly) and the screen never hangs waiting.
-Involved: hubs, billing, fiscal and whatsapp (their emails)
+Involved: billing, fiscal and whatsapp (their emails already carry the brand); hubs (those of a business's people, invitations and roles move to it with their port)
 
 ### ACCOUNTS-F47 Move around the panel
 Status: done

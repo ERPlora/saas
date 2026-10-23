@@ -258,7 +258,7 @@ inglés» y el «mensaje en español» (vacío, quien visita en español lee el 
 | ACCOUNTS-F43 | Poner erplora.com en mantenimiento | hecho |
 | ACCOUNTS-F44 | Limpiar cada día las sesiones caducadas y los códigos vencidos | parcial |
 | ACCOUNTS-F45 | Frenar el exceso de peticiones | hecho |
-| ACCOUNTS-F46 | Mandar los correos de erplora.com | parcial |
+| ACCOUNTS-F46 | Mandar los correos de erplora.com | hecho |
 | ACCOUNTS-F47 | Moverse por el panel | hecho |
 | ACCOUNTS-F48 | Pasar la QA maestra de erplora.com | parcial |
 
@@ -921,17 +921,20 @@ Implicados: public (el formulario de contacto)
 
 ### ACCOUNTS-F46 Mandar los correos de erplora.com
 <!-- origen: old-saas:SAAS-F07 -->
-Estado: parcial — los correos salen en texto, sin la plantilla común con la marca (logo y pie) que llevaban en el SaaS anterior: llega con el porte de los correos de cada app
+Estado: hecho
 Actor: sistema
 Pantalla: ninguna
 Pasos:
 1. Algo en erplora.com tiene que avisar a una persona: un código, un enlace, una invitación, una factura, un cambio en su negocio.
-2. El correo sale desde la dirección de ERPlora por el servicio de correo de AWS.
-3. Si el servicio no contesta, erplora.com espera unos segundos, nunca minutos, y lo vuelve a intentar una vez.
-Entra: el aviso, sus datos y el destinatario.
-Sale: el correo enviado. En el ordenador de quien programa y en las pruebas, el correo se escribe en una carpeta y nunca sale.
+2. El correo lleva la marca de ERPlora, igual en todos: la franja de color arriba, el logo, el texto y el pie «Enviado por ERPlora» con el enlace a erplora.com. Un código va solo, en su recuadro, y los enlaces se pueden pulsar.
+3. Cada correo va en dos versiones que dicen lo mismo, con formato y en texto, para que se lea en cualquier programa de correo, y en el idioma de quien lo recibe; los del equipo de ERPlora (los problemas reportados, el formulario de contacto, las autorizaciones por revisar), en el del equipo.
+4. Del correo solo se descarga el logo, desde erplora.com: nada más se pide a otra web.
+5. El correo sale desde la dirección de ERPlora por el servicio de correo de AWS.
+6. Si el servicio no contesta, erplora.com espera unos segundos, nunca minutos, y lo vuelve a intentar una vez.
+Entra: el aviso, sus datos, el destinatario y su idioma.
+Sale: el correo enviado, con formato y en texto. En el ordenador de quien programa y en las pruebas, el correo se escribe en una carpeta y nunca sale.
 Si falla: un correo que no sale lo trata quien lo pide (por ejemplo, reportar un problema enseña la dirección de soporte para escribir directamente) y la pantalla nunca se queda esperando.
-Implicados: hubs, billing, fiscal y whatsapp (sus correos)
+Implicados: billing, fiscal y whatsapp (sus correos ya salen con la marca); hubs (los de las personas, las invitaciones y los roles de un negocio pasan a ella con su porte)
 
 ### ACCOUNTS-F47 Moverse por el panel
 <!-- origen: old-saas:SAAS_DASHBOARD-F201 fi:saas/support/public-core-config#context_processors-py-config -->
@@ -1080,8 +1083,13 @@ Implicados: hubs, billing, public, apps y fiscal; del Hub, verifactu, invoice y 
   solo desde el admin (working-rules §4). `purge_expired_sessions` (F44) es diaria, con candado propio
   (`services.run_exclusively`), y queda `parcial` hasta que `saas-cron` (`aws/stacks/prod/scheduler.tf`) la programe;
   suelta a mano el candado de su conexión copiada del pool. Los correos (F46) salen por `django-ses` con
-  `AWS_SES_CONFIG` (3 s para conectar, 10 s para leer, dos intentos); la plantilla HTML común es PLAN-SAAS §7, bloque
-  13. La navegación (F47) es `base/navigation.py` y el shell de `@erplora/ui`; el procesador de contexto que queda es
+  `AWS_SES_CONFIG` (3 s para conectar, 10 s para leer, dos intentos), cada uno en texto y en HTML sobre la plantilla
+  común `templates/emails/base.html` (PLAN-SAAS §7, bloque 13; la vieja saas#1044): `base/emails.py`
+  (`branded_message`, con el idioma del destinatario explícito, porque cada remitente envía fuera de su
+  `translation.override`) en `accounts`, `billing`, `fiscal`, `whatsapp` y el contacto de `public`; los de allauth, por
+  `AccountAdapter.render_mail`, que pone su texto en la plantilla (allauth solo trae `.txt`) salvo los avisos propios,
+  que tienen su `_message.html` junto al `.txt`. `URLIZE_ASSUME_HTTPS` abre por HTTPS un enlace sin esquema. Los de
+  `hubs/emails.py` siguen en texto hasta que los pase su porte. La navegación (F47) es `base/navigation.py` y el shell de `@erplora/ui`; el procesador de contexto que queda es
   `base.context_processors.theme`. La QA maestra (F48) es `flows/shared/qa-saas.md` del repo `qa` viejo: §3 →
   PUBLIC-F01–F37; §4.1 → HUBS-F04, F06, F09, F21 y F22; §4.2 → HUBS-F03, BILLING-F07, F08, F10 y F11; §4.4 →
   HUBS-F18 y F19; §5 → APPS-F01–F07 y BILLING-F31–F35; §6 → BILLING-F02–F06, F12, F13, F15–F17 y F25,
@@ -1095,7 +1103,8 @@ Implicados: hubs, billing, public, apps y fiscal; del Hub, verifactu, invoice y 
   `tests/e2e/panel/accounts-flows.spec.ts`, los de la parte 2 en `tests/e2e/panel/accounts-security.spec.ts`
   los de la parte 3 en `tests/e2e/panel/accounts-profile.spec.ts` y los de la parte 4 en
   `tests/e2e/panel/accounts-jump.spec.ts`, `accounts-keys.spec.ts` y `accounts-report.spec.ts`, los de la parte 5 en
-  `tests/e2e/panel/accounts-platform.spec.ts` (menú y mantenimiento) y `tests/e2e/public-errors.spec.ts` (404 y 500),
+  `tests/e2e/panel/accounts-platform.spec.ts` (menú y mantenimiento), `tests/e2e/public-errors.spec.ts` (404 y 500) y
+  `tests/e2e/panel/accounts-mails.spec.ts` (F46: tres correos leídos de la carpeta de correo y pintados a tres tamaños),
   con la clave del registro (`ACCOUNTS-Gnn`) en el título y la equivalencia con este WORKBOOK en su cabecera;
   el segundo factor se juega en el gemelo del panel con el interruptor encendido (`PANEL_MFA_URL`).
   `signup.spec.ts` y `login.spec.ts` siguen cubriendo las pestañas de la entrada.
