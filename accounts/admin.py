@@ -24,19 +24,27 @@ from django.contrib import admin, messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.auth.forms import AdminUserCreationForm, UserChangeForm
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.http import url_has_allowed_host_and_scheme
-from django.utils.translation import gettext
+from django.utils.text import capfirst
+from django.utils.translation import gettext, ngettext
 from django.utils.cache import add_never_cache_headers
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.cache import never_cache
 
 from allauth.usersessions.admin import UserSessionAdmin as AllauthUserSessionAdmin
 from allauth.usersessions.models import UserSession
+from auditlog.admin import LogEntryAdmin as AuditlogLogEntryAdmin
+from auditlog.filters import CIDFilter
+from auditlog.filters import ResourceTypeFilter as AuditlogResourceTypeFilter
+from auditlog.mixins import MAX as SUMMARY_MAX
+from auditlog.models import LogEntry
+from auditlog.render import get_field_verbose_name
 
 from accounts import queries, services
 from accounts.models import (
@@ -504,3 +512,44 @@ class UserSessionAdmin(AllauthUserSessionAdmin):
     def close_sessions(self, request, queryset):
         count = services.close_sessions(by=request.user, sessions=list(queryset))
         self.message_user(request, gettext("Sessions closed: %(count)s.") % {"count": count}, messages.SUCCESS)
+
+
+# auditlog's page writes its summary («1 change: first_name») and its «Correlation ID» header in English whatever the
+# language, and lists the resources by their models' code names (``usersession``).
+admin.site.unregister(LogEntry)
+
+
+class ResourceTypeFilter(AuditlogResourceTypeFilter):
+    """«Resource Type» by each model's name in the staff's language («Clave de API»), not its code name («apikey»)."""
+
+    def lookups(self, request, model_admin):
+        named = []
+        for type_id, code_name in super().lookups(request, model_admin):
+            model = ContentType.objects.get_for_id(type_id).model_class()
+            named.append((type_id, capfirst(model._meta.verbose_name) if model is not None else code_name))
+        return sorted(named, key=lambda choice: str(choice[1]))
+
+
+@admin.register(LogEntry)
+class LogEntryAdmin(AuditlogLogEntryAdmin):
+    """The audit trail (ACCOUNTS-F36), read only as auditlog's own page, with what it says in English said in the
+    staff's language: the summary counts the changes and names each field, as Django's own history does."""
+
+    list_filter = ["action", ResourceTypeFilter, CIDFilter]
+
+    @admin.display(description=_("Changes"))
+    def msg_short(self, obj):
+        if obj.action in (LogEntry.Action.DELETE, LogEntry.Action.ACCESS):
+            return ""
+        changes = obj.changes_dict
+        fields = ", ".join(str(get_field_verbose_name(obj, name)) for name in changes)
+        if len(fields) > SUMMARY_MAX:
+            fields = fields[: fields.rfind(" ", 0, SUMMARY_MAX)] + " .."
+        return ngettext("%(count)d change: %(fields)s", "%(count)d changes: %(fields)s", len(changes)) % {
+            "count": len(changes),
+            "fields": fields,
+        }
+
+    @admin.display(description=_("Correlation ID"))
+    def cid_url(self, obj):
+        return super().cid_url(obj)

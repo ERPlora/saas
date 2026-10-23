@@ -10,6 +10,7 @@ the fields that move on every request (``last_login``, a key's ``last_used_at``,
 not logged, the sign-in itself is (the session row). The billing and fiscal models are their apps'.
 """
 
+import re
 from datetime import timedelta
 
 import pytest
@@ -287,6 +288,34 @@ class TestTheAdmin:
         client.force_login(staff)
 
         assert client.get("/admin/auditlog/logentry/").status_code == 403
+
+    def test_its_list_says_what_changed_in_the_staffs_language(self, client, ana):
+        """The package writes its summary («1 change: first_name») and the header «Correlation ID» in English whatever
+        the language, and its «Resource Type» filter by the models' code names (``usersession``): the list in Spanish (the admin speaks the
+        browser's language) says them in Spanish, each field and model by its name, as Django's own history does."""
+        ana.first_name = "Anabel"
+        ana.save()
+        root = get_user_model().objects.create_superuser(email="root@example.com", password="x", language="es")
+        client.force_login(root)
+        user_type = LogEntry.objects.filter(object_pk=str(ana.pk)).values_list("content_type_id", flat=True).first()
+
+        listing = client.get("/admin/auditlog/logentry/", HTTP_ACCEPT_LANGUAGE="es").content.decode()
+
+        assert "1 cambio: Nombre" in listing
+        assert "ID de correlación" in listing
+        assert "1 change" not in listing and "Correlation ID" not in listing
+        assert re.search(rf'href="\?resource_type={user_type}"[^>]*>\s*Usuario\s*<', listing)
+
+    def test_its_list_in_english_counts_the_changes(self, client, ana):
+        ana.first_name, ana.last_name = "Anabel", "Ruiz"
+        ana.save()
+        root = get_user_model().objects.create_superuser(email="root@example.com", password="x", language="en")
+        client.force_login(root)
+
+        listing = client.get("/admin/auditlog/logentry/", HTTP_ACCEPT_LANGUAGE="en").content.decode()
+
+        assert re.search(r"2 changes: (First name, Last name|Last name, First name)", listing)
+        assert "Correlation ID" in listing
 
     def test_its_labels_speak_spanish(self):
         """The package ships no Spanish: the project's catalog carries it («log entries» is Django's own)."""
