@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:7d7cbe42762db492eff9ba5f22a47b0989541a970e7dab138266d5ebc6382a90 -->
+<!-- generated from WORKBOOK.md sha256:54b237e4406c7a841ced83bf5a5734c75e73a1e812e17c8e0543edd458bb307f -->
 
 ## What it is for and who it is for
 
@@ -352,9 +352,10 @@ Steps:
 1. The crawling rules give each known search engine and assistant its own group, which keeps the private parts out and lets them into the public web; outside production, nothing may be crawled.
 2. The sitemap lists the public pages (Compliance and Collaborate included), each active business type and the page of each published app; the summary for assistants tells what ERPlora is, links the pages that answer what a buyer asks and lists the apps of the live catalogue.
 3. The home, pricing, the industries and each app carry their structured data, with the entry plan's price and the systems it runs on: web, Windows, Linux and Android.
-In: the published catalogue, the plans on sale, the taxonomy and the request's address.
-Out: nothing saved.
-If it fails: the private pages never appear in the sitemap or the summary and carry the no-index mark; the "coming soon" pages, the help and the support page are not indexed either. The web's texts are translated with the language catalogues (English as the source and its Spanish).
+4. Every day, in production, the search engines that take notices (Bing, which ChatGPT search leans on) are told about the sitemap's pages, so they read them that same day; outside production, none is told.
+In: the published catalogue, the plans on sale, the taxonomy and the request's address; for the daily notice, the web's public address.
+Out: nothing saved; the daily notice to the search engines.
+If it fails: the private pages never appear in the sitemap, the summary or the notice, and carry the no-index mark; the "coming soon" pages, the help and the support page are not indexed either. If the search engine rejects the day's notice or does not answer, the submission ends in an error and the ERPlora team's alarm goes off; with no notice key configured (the normal case in development) nobody is told and it is not an error. The web's texts are translated with the language catalogues (English as the source and its Spanish).
 Involved: apps (the catalogue), hubs (the plans and the taxonomy)
 
 ### PUBLIC-F15 Read the help and the support page

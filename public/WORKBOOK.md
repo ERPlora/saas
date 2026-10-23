@@ -376,9 +376,10 @@ Pasos:
 1. Las reglas de rastreo dan a cada buscador y asistente conocido su grupo, que deja fuera las partes privadas y deja entrar en la web pública; fuera de producción, no se deja rastrear nada.
 2. El mapa del sitio lista las páginas públicas (también Cumplimiento y Colabora), cada tipo de negocio activo y la ficha de cada app publicada; el resumen para asistentes cuenta qué es ERPlora, enlaza las páginas que contestan lo que pregunta un comprador y lista las apps del catálogo vivo.
 3. La portada, los precios, los sectores y cada app llevan sus datos estructurados, con el precio del plan de entrada y los sistemas en los que funciona: web, Windows, Linux y Android.
-Entra: el catálogo publicado, los planes a la venta, la taxonomía y la dirección de la petición.
-Sale: nada guardado.
-Si falla: las páginas privadas nunca aparecen en el mapa ni en el resumen y llevan la marca de no indexar; las páginas «Muy pronto», la ayuda y el soporte tampoco se indexan. Los textos de la web se traducen con los catálogos de idioma (inglés como fuente y su español).
+4. Cada día, en producción, se avisa a los buscadores que aceptan avisos (Bing, en el que se apoya la búsqueda de ChatGPT) de las páginas del mapa del sitio, para que las lean ese mismo día; fuera de producción no se avisa a ninguno.
+Entra: el catálogo publicado, los planes a la venta, la taxonomía y la dirección de la petición; para el aviso diario, la dirección pública de la web.
+Sale: nada guardado; el aviso diario a los buscadores.
+Si falla: las páginas privadas nunca aparecen en el mapa ni en el resumen ni en el aviso, y llevan la marca de no indexar; las páginas «Muy pronto», la ayuda y el soporte tampoco se indexan. Si el buscador rechaza el aviso del día o no contesta, el envío acaba en error y salta la alarma del equipo de ERPlora; sin la clave de aviso configurada (lo normal en desarrollo) no se avisa a nadie y no es un error. Los textos de la web se traducen con los catálogos de idioma (inglés como fuente y su español).
 Implicados: apps (el catálogo), hubs (los planes y la taxonomía)
 
 ### PUBLIC-F15 Leer la ayuda y el soporte

@@ -52,8 +52,23 @@ def public_urls(host: str) -> list[str]:
     return urls
 
 
+class SubmissionFailed(Exception):
+    """IndexNow did not take the batch: it answered with a rejection, or never answered.
+
+    Its message carries the HTTP status or the kind of network error, never the key."""
+
+
+def _redacted(text: str, api_key: str) -> str:
+    """``text`` without the key: an answer or a library error may echo the payload back."""
+    return text.replace(api_key, "[INDEXNOW_KEY]")
+
+
 def submit_sitemap_urls(host: str) -> int:
-    """Submit the public URLs; how many were accepted, 0 on any failure (logged, never silent)."""
+    """Submit the public URLs and return how many were accepted.
+
+    0 when there is nothing to do (no key, the legitimate state in development, or no URLs),
+    logged. A rejected or unanswered submission raises ``SubmissionFailed`` after logging it: the
+    daily command turns it into a failed exit, the only thing its alarm sees (PUBLIC-F14)."""
     api_key = key()
     if not api_key:
         logger.info("indexnow: INDEXNOW_KEY is not set, nothing submitted")
@@ -76,15 +91,23 @@ def submit_sitemap_urls(host: str) -> int:
             headers={"Content-Type": "application/json; charset=utf-8"},
         )
     except requests.RequestException as error:
-        logger.error("indexnow: the submission did not reach %s (%s)", ENDPOINT, error)
-        return 0
+        logger.error(
+            "indexnow: the submission did not reach %s (%s)",
+            ENDPOINT,
+            _redacted(str(error), api_key),
+        )
+        raise SubmissionFailed(
+            f"the submission did not reach {ENDPOINT} ({type(error).__name__})"
+        ) from None
     if response.status_code not in (200, 202):
         logger.error(
             "indexnow: submission rejected with %s (%s)",
             response.status_code,
-            (response.text or "")[:200],
+            _redacted(response.text or "", api_key)[:200],
         )
-        return 0
+        raise SubmissionFailed(
+            f"the submission was rejected with HTTP {response.status_code}"
+        )
     logger.info("indexnow: submitted %s URLs for %s", len(urls), host)
     return len(urls)
 
