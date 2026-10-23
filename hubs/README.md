@@ -191,9 +191,9 @@ Flujos `HUBS-F31`…`HUBS-F37` del `WORKBOOK.md` (parte 4 de 5; la revisión flu
 - **Descartado** (G23, G105, G106): el Hub no da de alta, comprueba ni quita personas en el SaaS. El SaaS es la fuente
   de quién tiene cuenta y acceso (PLAN-SAAS §2, «Quién sabe qué»), lo empuja en `members` de la foto y el Hub lo aplica
   (BASE-F13); los empleados con PIN viven en la BD del hub; «Invitar desde el Hub» sigue en PLAN-SAAS §8.
-- **Lo que falta en el Hub** (F32–F34, `parcial`): aplicar `max_devices`/`max_users` (llega con `DeviceSession`, fase 2),
-  frenar una app `premium` sin derecho en `modules[]` (402 `app_entitlement_blocked`) y contar los mensajes del
-  asistente (con el turno de `assistant`, parte 2). El SaaS ya los manda en la foto.
+- **Lo que falta en el Hub** (F32 y F34, `parcial`): aplicar `max_devices`/`max_users` (llega con `DeviceSession`, fase 2)
+  y frenar una app `premium` sin derecho en `modules[]` (402 `app_entitlement_blocked`). El SaaS ya los manda en la foto.
+  Los mensajes del asistente (F33, `hecho`) los cuenta y los frena el turno de `assistant` (ASSISTANT-F18).
 - e2e: `tests/e2e/panel/hubs-rights.spec.ts` (la ficha del plan y su aviso, la entrega al Hub doble tras la pasada, y
   las listas y fichas de la taxonomía; en `en` y `es`, a 390, 834 y 1440).
 
