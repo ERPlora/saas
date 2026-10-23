@@ -16,7 +16,6 @@ import {
   apiPost,
   djangoPrint,
   expect,
-  freezeFrontend,
   seedPanel,
   settled,
   shot,
