@@ -1,7 +1,7 @@
 # Workbook — Asistente de IA (assistant)
 Prefijo: ASSISTANT
 Alcance MVP: fase 1 (la pasarela de IA de erplora.com: los proveedores que paga ERPlora, sus claves cifradas, sus modelos, qué modelo contesta y la prueba de un modelo antes de que conteste; el turno del Hub y la voz llegan con la parte 2 del porte)
-Estado de la app: en construcción
+Estado de la app: en construcción (parte 1 de 2: los proveedores, sus claves, sus modelos, qué modelo contesta y su reserva, probar un modelo, la auditoría, cargar las claves del entorno y cambiar la clave de cifrado; el turno del Hub, el cupo por plan, los adjuntos y la voz llegan con la parte 2)
 
 > Manual de uso y especificación de la app `assistant` del SaaS (erplora.com). Cuenta lo que hace el personal de
 > ERPlora para que el asistente de IA conteste: dar de alta un proveedor de modelos y su clave, elegir sus modelos,
@@ -279,6 +279,13 @@ Implicados: ASSISTANT-F02, ASSISTANT-F09
   `assistant/tests/fake_provider.py` (servidor HTTP en `127.0.0.1` que habla el formato de cada proveedor).
 - Trampas del producto viejo cubiertas: saas#528 (clave en claro en la base de datos: `test_fields.py`), saas#2489
   (nombre de la app sin traducir en el admin: `test_apps.py`).
+
+- Para la parte 2 (el turno del Hub, el cupo, los adjuntos y la voz): el turno pide su ruta con
+  `assistant.route.resolve` como la plataforma (`services.platform_context()`) y la recorre con
+  `assistant.routing.stream(candidates, build)`, que ya emite `model`, `fallback` y el `finish` único; el coste sale
+  de `models.estimate_cost` con los precios de la ruta. `seed_ai_providers` del producto viejo no se porta (sembraba
+  dos proveedores apagados de API que no hablamos): los proveedores los da el admin o `import_ai_keys_from_env`;
+  `seed_assistant_tiers` es del cupo por plan (parte 2).
 
 ## Lo que NO hace, a propósito
 
