@@ -1988,18 +1988,21 @@ def plan_keep(ctx: OperationContext, data: HubIn) -> dict:
 # --- A business handed over with a paid plan (HUBS-F28) -------------------------------------------------
 
 
-def end_renewal_after_hand_over(hub: Hub, new_owner) -> None:
+def end_renewal_after_hand_over(hub: Hub, new_owner) -> datetime | None:
     """The business ``hub`` was just handed over to ``new_owner`` (``hubs.ownership.accept``, in its transaction):
     a plan still charged to the card of another account's payer stops renewing there (Stripe
     ``cancel_at_period_end``). The business keeps it until the end of the period already paid, the previous payer
     is never charged again, and the new owner keeps it with their own card (``billing.plan.take_over``) or it
-    goes back to Free on that date. A plan the new owner already pays, or one already ending, is left alone.
-    Stripe not answering refuses the hand-over (503): nothing changes hands."""
+    goes back to Free on that date. A plan the new owner already pays is left alone, and so is one already ending.
+    Stripe not answering refuses the hand-over (503): nothing changes hands.
+
+    The end of that paid period, which the mail of the hand-over tells the previous payer; ``None`` on Free or when
+    the new owner already pays it."""
     subscription = Subscription.objects.filter(hub=hub).first()
-    if not _paying(subscription) or subscription.cancel_at_period_end:
-        return
-    if hub_queries.plans_charged_to(hub.id, new_owner.pk).exists():
-        return
+    if not _paying(subscription) or hub_queries.plans_charged_to(hub.id, new_owner.pk).exists():
+        return None
+    if subscription.cancel_at_period_end:
+        return subscription.current_period_end
     require_stripe()
     # Free wins over a downgrade that waits (Stripe refuses to cancel a scheduled subscription).
     _release_pending(hub)
@@ -2009,6 +2012,7 @@ def end_renewal_after_hand_over(hub: Hub, new_owner) -> None:
         )
     apply_live(hub.id, updated)
     logger.info("[BILLING] Hub %s handed over: its plan stops renewing on its previous payer's card", hub.id)
+    return Subscription.objects.get(hub=hub).current_period_end
 
 
 def billed_to_another_account(subscription: Subscription | None, profile) -> bool:

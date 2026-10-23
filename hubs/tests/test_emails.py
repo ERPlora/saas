@@ -1,9 +1,9 @@
 """The mails of hubs, in the recipient's language: the invitation, the ownership offer and its answer,
 and the deletion with the date until which the business can be recovered.
 
-Ported from ERPlora/saas ``hubs/main/emails.py`` and ``test_deletion_email`` (origin/develop): plain
-text until block 1 brings the branded mail. Each mail names the business and the way in; none is
-sent inside the transaction that wrote what it announces (services send them after the COMMIT).
+Ported from ERPlora/saas ``hubs/main/emails.py`` and ``test_deletion_email`` (origin/develop). Every mail is
+branded, as text and as HTML (``base.emails.branded_message``, ACCOUNTS-F46). Each mail names the business and the
+way in; none is sent inside the transaction that wrote what it announces (services send them after the COMMIT).
 """
 
 from datetime import timedelta
@@ -13,12 +13,27 @@ from django.core import mail
 from django.utils import timezone, translation
 from django.utils.formats import date_format
 
+from base.tests.test_emails import assert_branded
 from hubs import emails
 from hubs.models import Hub, HubMember, HubOwnershipTransfer
 
 pytestmark = pytest.mark.django_db
 
 BASE = "https://erplora.com"
+#: The day the period paid with the previous owner's card ends (HUBS-F28).
+PAID_UNTIL = timezone.now() + timedelta(days=20)
+
+
+@pytest.fixture(autouse=True)
+def production_hosts(settings):
+    """The hosts of production: a mail never points to a development host because of its template."""
+    settings.PUBLIC_HOST = "erplora.com"
+    settings.HUB_CALLBACK_TEMPLATE = "https://{slug}.erplora.com/auth/callback"
+
+
+def day(moment, language):
+    with translation.override(language):
+        return date_format(timezone.localtime(moment), "DATE_FORMAT")
 
 
 @pytest.fixture
@@ -90,16 +105,12 @@ def test_the_ownership_offer_and_its_acceptance(hub, make_user):
     offer, accepted = mail.outbox
     assert (offer.to, accepted.to) == (["ana@example.com"], ["olga@example.com"])
     assert offer.subject == "olga@example.com wants to hand Bar Manolo over to you"
-    # Billing does not move with the business: both mails say who keeps paying.
-    assert "billing" in offer.body.lower()
     assert accepted.subject == "ana@example.com ya es propietario de Bar Manolo"
-    assert "factura" in accepted.body.lower()
 
 
 def test_the_ownership_mails_link_to_pages_the_panel_has(hub, make_user):
     """HUBS-G82: the offer is answered on Businesses, whose card says «Accept the ownership» (the panel has no
-    ``/ownership/<id>`` page), and the outgoing owner sees what they still pay in Billing › Payment details,
-    not in the business's settings, where nothing about the payer changes."""
+    ``/ownership/<id>`` page), and the outgoing owner, who stays as an administrator, finds the business there."""
     olga, ana = make_user("olga@example.com", language="en"), make_user("ana@example.com", language="en")
     transfer = HubOwnershipTransfer.objects.create(
         hub=hub,
@@ -116,8 +127,52 @@ def test_the_ownership_mails_link_to_pages_the_panel_has(hub, make_user):
     offer, accepted = mail.outbox
     assert f"{BASE}/businesses\n" in f"{offer.body}\n"
     assert "/ownership/" not in offer.body
-    assert f"{BASE}/billing/payment" in accepted.body
+    assert f"{BASE}/businesses/{hub.id}" in accepted.body
     assert "/settings" not in accepted.body
+
+
+def transfer_of(hub, olga, ana):
+    return HubOwnershipTransfer.objects.create(
+        hub=hub,
+        from_user=olga,
+        to_user=ana,
+        from_email=olga.email,
+        to_email=ana.email,
+        expires_at=timezone.now() + timedelta(days=7),
+    )
+
+
+def test_the_offer_of_a_paid_business_says_until_when_it_is_paid_and_where_it_is_kept(hub, make_user):
+    """HUBS-F28: the plan goes with the business until the end of its paid period; the new owner keeps it with
+    their card in Billing › Subscriptions."""
+    olga, ana = make_user("olga@example.com", language="en"), make_user("ana@example.com", language="es")
+
+    emails.send_ownership_offer(transfer_of(hub, olga, ana), base_url=BASE, paid_until=PAID_UNTIL)
+
+    (offer,) = mail.outbox
+    assert day(PAID_UNTIL, "es") in offer.body
+    assert f"{BASE}/billing/subscriptions" in offer.body
+
+
+def test_the_acceptance_tells_the_previous_owner_until_when_their_card_paid(hub, make_user):
+    olga, ana = make_user("olga@example.com", language="es"), make_user("ana@example.com", language="en")
+
+    emails.send_ownership_accepted(transfer_of(hub, olga, ana), base_url=BASE, paid_until=PAID_UNTIL)
+
+    (accepted,) = mail.outbox
+    assert day(PAID_UNTIL, "es") in accepted.body
+
+
+def test_the_mails_of_a_business_on_free_say_nothing_of_a_plan(hub, make_user):
+    olga, ana = make_user("olga@example.com", language="en"), make_user("ana@example.com", language="en")
+    transfer = transfer_of(hub, olga, ana)
+
+    emails.send_ownership_offer(transfer, base_url=BASE)
+    emails.send_ownership_accepted(transfer, base_url=BASE)
+
+    offer, accepted = mail.outbox
+    assert "/billing" not in offer.body
+    assert "/billing" not in accepted.body
 
 
 def test_the_deletion_says_until_when_it_can_be_recovered(hub, make_user):
@@ -152,18 +207,16 @@ def test_the_ready_mail_opens_the_business(hub, make_user, settings):
 
 
 def test_a_mail_that_cannot_leave_is_logged_not_raised(
-    hub, make_user, monkeypatch, caplog
+    hub, make_user, settings, caplog
 ):
     owner = make_user("olga@example.com")
     hub.deletion_requested_at = timezone.now()
-
-    def broken(*args, **kwargs):
-        raise OSError("smtp down")
-
-    monkeypatch.setattr(emails, "send_mail", broken)
+    # A mailer that cannot connect (nothing listens there).
+    settings.MAILERS = {"default": {"BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+                                    "OPTIONS": {"host": "127.0.0.1", "port": 9, "timeout": 1}}}
 
     assert emails.send_deletion(hub, owner, base_url=BASE) is False
-    assert "smtp down" in caplog.text
+    assert "hubs.mail.not_sent" in caplog.text
 
 
 def test_the_base_url_of_a_request_or_the_public_host(rf, settings):
@@ -174,3 +227,38 @@ def test_the_base_url_of_a_request_or_the_public_host(rf, settings):
         == "http://localhost:8001"
     )
     assert emails.base_url(None) == "https://erplora.com"
+
+
+# --- Branded, as text and as HTML (ACCOUNTS-F46) -------------------------------------------------------------
+
+
+def senders(hub, make_user, language):
+    olga = make_user("olga@example.com", first_name="Olga", language=language)
+    ana = make_user("ana@example.com", language=language)
+    member = HubMember.objects.create(
+        hub=hub, user=ana, invited_by=olga, invitation_message="¡Bienvenida!",
+        invitation_expires_at=timezone.now() + timedelta(days=7),
+    )
+    transfer = transfer_of(hub, olga, ana)
+    hub.deletion_requested_at = timezone.now()
+    return {
+        "invitation": lambda: emails.send_invitation(member, base_url=BASE, new_account=True),
+        "ownership_offer": lambda: emails.send_ownership_offer(transfer, base_url=BASE, paid_until=PAID_UNTIL),
+        "ownership_accepted": lambda: emails.send_ownership_accepted(transfer, base_url=BASE, paid_until=PAID_UNTIL),
+        "deletion": lambda: emails.send_deletion(hub, olga, base_url=BASE, unpaid=True),
+        "ready": lambda: emails.send_ready(hub, olga, base_url=BASE),
+        "suspension": lambda: emails.send_suspension_notice(
+            hub, olga, base_url=BASE, delete_on=PAID_UNTIL, final=True
+        ),
+    }
+
+
+@pytest.mark.parametrize("language", ["en", "es"])
+@pytest.mark.parametrize(
+    "family", ["invitation", "ownership_offer", "ownership_accepted", "deletion", "ready", "suspension"]
+)
+def test_every_mail_of_hubs_is_branded_in_its_recipients_language(hub, make_user, family, language):
+    assert senders(hub, make_user, language)[family]() is True
+
+    (message,) = mail.outbox
+    assert_branded(message, language)

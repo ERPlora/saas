@@ -11,6 +11,9 @@
 // (`playStripe`), as panel/store.spec.ts. Each test has
 // its own accounts (`e2e-hubs3-…@example.com`, their address proven) and its own business, created through the API as
 // the panel creates it; the people join it through the operations (invite, then accept), never written by hand.
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { type Browser, type Page } from '@playwright/test';
 
 import {
@@ -29,7 +32,7 @@ import {
   waitForMail,
   watchPageErrors,
 } from './fixtures';
-import { PANEL_URL } from './project';
+import { PANEL_MAIL_DIR, PANEL_URL } from './project';
 
 const PREFIX = 'e2e-hubs3-';
 const PASSWORD = 'Masa-madre-y-centeno-26';
@@ -38,6 +41,9 @@ const SIZES = [
   { name: '834', width: 834, height: 1112 },
   { name: '1440', width: 1440, height: 900 },
 ] as const;
+/** The logo of the branded mails and the file it is (as panel/accounts-mails.spec.ts): nothing else is fetched. */
+const LOGO_URL = 'https://erplora.com/static/public/img/logo.png';
+const LOGO_FILE = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'public', 'static', 'public', 'img', 'logo.png');
 /** The panel's origin as a pattern: the mails link to the server that sent them, the run's (stack.ts). */
 const PANEL = PANEL_URL.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
 
@@ -134,6 +140,56 @@ async function atEverySize(page: Page, key: string, ready: () => Promise<void>):
   await page.setViewportSize({ width: 1440, height: 900 });
 }
 
+/**
+ * The HTML part of the newest mail to `to` since `since` whose subject has `subject`, read from the panel's mail folder
+ * as a mail client reads it (as panel/accounts-mails.spec.ts), painted at every size: text and HTML, the logo, every
+ * line of the text, nothing fetched but the logo, no sideways scroll, and its capture `APP-HUBS-3-<key>-<size>`.
+ */
+async function paintMail(browser: Browser, key: string, to: string, since: number, subject: string, language: string): Promise<void> {
+  const read = [
+    'import email, json, pathlib',
+    'from email import policy',
+    `folder, to, since, subject = pathlib.Path(${JSON.stringify(PANEL_MAIL_DIR)}), ${JSON.stringify(to)}, ${since / 1000 - 0.05}, ${JSON.stringify(subject)}`,
+    'found = None',
+    'for path in sorted((p for p in folder.iterdir() if p.is_file() and p.stat().st_mtime >= since), key=lambda p: p.stat().st_mtime):',
+    '    for raw in path.read_text().split("\\n" + "-" * 79 + "\\n")[:-1]:',
+    '        message = email.message_from_string(raw, policy=policy.default)',
+    '        if to in str(message["To"]) and subject.lower() in str(message["Subject"]).lower():',
+    '            found = message',
+    'assert found is not None, f"no mail to {to} with {subject!r} in {folder}"',
+    'print(json.dumps({"parts": [part.get_content_type() for part in found.iter_parts()],',
+    '    "html": found.get_body(preferencelist=("html",)).get_content(), "text": found.get_body(preferencelist=("plain",)).get_content()}))',
+  ].join('\n');
+  const mail = JSON.parse(djangoPrint(read)) as { parts: string[]; html: string; text: string };
+  expect(mail.parts, `${key} is text and HTML`).toEqual(['text/plain', 'text/html']);
+  const page = await browser.newPage();
+  const fetched: string[] = [];
+  await page.route('**/*', (route) => {
+    fetched.push(route.request().url());
+    return route.abort();
+  });
+  await page.route(LOGO_URL, (route) => {
+    fetched.push(route.request().url());
+    return route.fulfill({ path: LOGO_FILE, contentType: 'image/png' });
+  });
+  for (const size of SIZES) {
+    await page.setViewportSize({ width: size.width, height: size.height });
+    await page.setContent(mail.html, { waitUntil: 'load' });
+    await settled(page);
+    await expect(page.locator('html')).toHaveAttribute('lang', language);
+    await expect(page.locator('img[alt="ERPlora"]')).toBeVisible();
+    const shownText = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+    for (const line of mail.text.split('\n')) {
+      const words = line.replace(/\s+/g, ' ').trim();
+      if (words) expect(shownText, `${key} at ${size.name} shows «${words}»`).toContain(words);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1), `${key} scrolls sideways at ${size.name}`).toBe(false);
+    await page.screenshot({ path: shot(`APP-HUBS-3-${key}-${size.name}`), fullPage: true });
+  }
+  expect([...new Set(fetched)], `${key} fetches only the logo`).toEqual([LOGO_URL]);
+  await page.close();
+}
+
 /** The page Ionic shows (it keeps the pages it left in the DOM, hidden). */
 const shown = (page: Page) => page.locator('ion-router-outlet > .ion-page:not(.ion-page-hidden)').last();
 
@@ -219,7 +275,7 @@ test.afterAll(async () => {
   removeOwnRows();
 });
 
-test('HUBS-G78: the owner invites a person from «Team»; the invitation waits with «Resend» and «Cancel invitation»', async ({ page }) => {
+test('HUBS-G78: the owner invites a person from «Team»; the invitation waits with «Resend» and «Cancel invitation»', async ({ page, browser }) => {
   const errors = watchPageErrors(page);
   const owner = account('invite-owner', 'Olga', 'Ruiz');
   const id = await businessOf(page, owner, 'Bar Manolo');
@@ -248,6 +304,8 @@ test('HUBS-G78: the owner invites a person from «Team»; the invitation waits w
   // Who invites where, the invitation's link and, for an address without an account, how to get in.
   await waitForMail(invitee, since, new RegExp(`${PANEL}/invitation\\b`));
   await waitForMail(invitee, since, new RegExp(`${PANEL}/password/reset(?=\\s|$)`, 'm'));
+  // The invitation as the person gets it: branded, text and HTML (ACCOUNTS-F46).
+  await paintMail(browser, 'HUBS-G78-mail', invitee, since, 'invited you to Bar Manolo', 'en');
   // An invitation reaches the Hub only once answered.
   expect(roleInLastSnapshot(hub, id, invitee)).toBeUndefined();
 
@@ -424,7 +482,7 @@ test('HUBS-G82: the owner offers the business to a member, who accepts it on Bus
   const roles = Object.fromEntries((await membersOf(theirs, id)).map((one) => [one.email, one.role]));
   expect(roles).toEqual({ [owner.email]: 'hub_admin', [carlos.email]: 'hub_owner' });
   await expect.poll(() => roleInLastSnapshot(hub, id, carlos.email)).toBe('hub_owner');
-  await waitForMail(owner.email, acceptedAt, new RegExp(`${PANEL}/billing/payment\\b`));
+  await waitForMail(owner.email, acceptedAt, new RegExp(`${PANEL}/businesses/${id}(?=\\s|$)`, 'm'));
   await context.close();
   expect(theirErrors).toEqual([]);
   expect(errors).toEqual([]);
@@ -543,8 +601,12 @@ test('HUBS-G82 (F28), in Spanish: «Mantenerlo con mi tarjeta» and the secure p
       `get_user_model().objects.filter(email="${lucia.email}").update(language="es")`,
     ].join('\n'),
   );
+  const offeredAt = Date.now();
   const offered = await apiPost(page.request, '/api/hubs/ownership/transfer', { hub_id: id, member_id: member.id });
   expect(offered.status(), await offered.text()).toBe(200);
+  // The offer of a paid business says until when it is paid and where she keeps it: her mail, in Spanish.
+  await waitForMail(lucia.email, offeredAt, new RegExp(`${PANEL}/billing/subscriptions(?=\\s|$)`, 'm'));
+  await paintMail(browser, 'HUBS-G82-offer-mail-es', lucia.email, offeredAt, 'quiere traspasarte Bar Manolo', 'es');
   withStripe([
     'from django.contrib.auth import get_user_model',
     'from hubs import services',

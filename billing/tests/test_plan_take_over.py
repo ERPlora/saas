@@ -17,6 +17,9 @@ real ones.
 """
 
 import pytest
+from django.core import mail
+from django.utils import timezone, translation
+from django.utils.formats import date_format
 from live.errors import NotFound, OperationError, PermissionDenied
 
 from billing import queries, services
@@ -64,6 +67,11 @@ def says_who_pays(heir, hub, name="Hugo SL"):
         BillingProfileIn(hub_id=hub.id, billing_name=name, billing_country="ES", billing_postal_code="28002"),
     )
     return Hub.objects.select_related("billing_profile").get(pk=hub.pk)
+
+
+def day(moment, language):
+    with translation.override(language):
+        return date_format(timezone.localtime(moment), "DATE_FORMAT")
 
 
 def take_over(user, hub):
@@ -168,6 +176,36 @@ class TestTheHandOverStopsThePreviousPayersRenewal:
         assert services.retax_subscription(paid) == "skipped"
 
         assert len(stripe_double.calls) == asked
+
+
+class TestTheMailsOfTheHandOver:
+    """The offer says until when the plan is paid and where the new owner keeps it; the acceptance tells the
+    previous payer that their card no longer renews it (``hubs.emails``, after the COMMIT)."""
+
+    def mails(self, captured, shop, owner, heir):
+        with captured(execute=True):
+            hand_over(shop, owner, heir)
+        offer = next(message for message in mail.outbox if message.to == [heir.email])
+        accepted = next(message for message in mail.outbox if message.to == [owner.email])
+        return offer, accepted
+
+    def test_a_paid_business_says_until_when_it_is_paid(self, shop, owner, heir, stripe_double,
+                                                        django_capture_on_commit_callbacks):
+        paid = on_starter(shop, stripe_double)
+        until = local(paid).current_period_end
+
+        offer, accepted = self.mails(django_capture_on_commit_callbacks, paid, owner, heir)
+
+        assert day(until, heir.language) in offer.body
+        assert "/billing/subscriptions" in offer.body
+        assert day(local(paid).current_period_end, owner.language) in accepted.body
+
+    def test_a_business_on_free_says_nothing_of_a_plan(self, shop, owner, heir, stripe_double,
+                                                       django_capture_on_commit_callbacks):
+        offer, accepted = self.mails(django_capture_on_commit_callbacks, shop, owner, heir)
+
+        assert "/billing" not in offer.body
+        assert "/billing" not in accepted.body
 
 
 # --- «Keep it with my card» ---------------------------------------------------------------------------

@@ -1015,7 +1015,13 @@ def ownership_transfer(ctx: OperationContext, data: OwnershipTransferIn) -> dict
     record_event(ctx, events.OWNERSHIP_REQUESTED, {"id": str(transfer.id), "hub_id": str(hub.id)})
     notify_people(ctx, events.OWNERSHIP_CHANGED, hub.id, target.user_id)
     transaction.on_commit(
-        partial(emails.send_ownership_offer, transfer, base_url=emails.base_url(ctx.request)), robust=True
+        partial(
+            emails.send_ownership_offer,
+            transfer,
+            base_url=emails.base_url(ctx.request),
+            paid_until=queries.paid_until(hub.id),
+        ),
+        robust=True,
     )
     return _transfer_out(transfer)
 
@@ -1075,7 +1081,7 @@ def ownership_accept(ctx: OperationContext, data: ByIdIn) -> dict:
     # A paid plan stops renewing on the previous payer's card; the new owner keeps it with theirs (HUBS-F28).
     from billing.services import end_renewal_after_hand_over
 
-    end_renewal_after_hand_over(transfer.hub, transfer.to_user)
+    paid_until = end_renewal_after_hand_over(transfer.hub, transfer.to_user)
     sync_access(transfer.hub)
     bump_state(transfer.hub_id)
     # Both roles changed, and each travels in its Hub session: both sign in again.
@@ -1085,7 +1091,10 @@ def ownership_accept(ctx: OperationContext, data: ByIdIn) -> dict:
     notify_people(ctx, events.OWNERSHIP_CHANGED, transfer.hub_id, transfer.from_user_id)
     push_after_commit(transfer.hub_id)
     transaction.on_commit(
-        partial(emails.send_ownership_accepted, transfer, base_url=emails.base_url(ctx.request)), robust=True
+        partial(
+            emails.send_ownership_accepted, transfer, base_url=emails.base_url(ctx.request), paid_until=paid_until
+        ),
+        robust=True,
     )
     return _transfer_out(transfer)
 

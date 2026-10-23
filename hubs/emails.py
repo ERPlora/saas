@@ -1,23 +1,24 @@
-"""The mails of hubs, each in its recipient's language (``User.language``).
+"""The mails of hubs, each in its recipient's language (``User.language``), branded as text and as HTML
+(``base.emails.branded_message``, ACCOUNTS-F46).
 
-Ported from ERPlora/saas ``apps/dashboard/hubs/main/emails.py`` (origin/develop) as plain text, until
-block 1 brings the branded mail: the invitation (``send_invitation``), the ownership offer and its
-acceptance (``send_ownership_offer``, ``send_ownership_accepted``) and the deletion with the date until
-which the business can be recovered (``send_deletion``), and the business ready to open (``send_ready``, once,
-when the Hub reports it ready). Services call them after the COMMIT: a mail
-never announces a write that rolled back, and one that cannot leave is logged, never raised (the
-write is the source of truth).
+Ported from ERPlora/saas ``apps/dashboard/hubs/main/emails.py`` (origin/develop): the invitation
+(``send_invitation``), the ownership offer and its acceptance (``send_ownership_offer``,
+``send_ownership_accepted``, which say until when a paid plan is paid, HUBS-F28), the deletion with the date
+until which the business can be recovered (``send_deletion``), the business ready to open (``send_ready``, once,
+when the Hub reports it ready) and the notices of a business suspended for an unpaid plan
+(``send_suspension_notice``). Services call them after the COMMIT: a mail never announces a write that rolled
+back, and one that cannot leave is logged, never raised (the write is the source of truth).
 """
 
 import logging
 
 from django.conf import settings
-from django.core.mail import send_mail
 from django.utils import timezone, translation
 from django.utils.formats import date_format
 from django.utils.translation import gettext as _
 
 from accounts.queries import hub_start_url, receives_business_notices
+from base.emails import branded_message
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,8 @@ def base_url(request) -> str:
 def send_invitation(member, *, base_url: str, new_account: bool) -> bool:
     """Tell the invited person who invited them, to which business, as what and until when."""
     inviter = member.invited_by
-    with translation.override(member.user.language):
+    language = _language_of(member.user)
+    with translation.override(language):
         who = (inviter.get_full_name() or inviter.email) if inviter else _("Somebody")
         lines = [
             _("%(who)s invited you to join %(business)s on ERPlora as %(role)s.")
@@ -67,12 +69,15 @@ def send_invitation(member, *, base_url: str, new_account: bool) -> bool:
             "who": who,
             "business": member.hub.name,
         }
-    return _send(subject, lines, member.user.email)
+    return _send(subject, lines, member.user.email, language)
 
 
-def send_ownership_offer(transfer, *, base_url: str) -> bool:
-    """Tell the named recipient that a business is offered to them, and that the payer stays."""
-    with translation.override(_language_of(transfer.to_user)):
+def send_ownership_offer(transfer, *, base_url: str, paid_until=None) -> bool:
+    """Tell the named recipient that a business is offered to them; with a paid plan (``paid_until``, the end of the
+    period already paid), that it goes with the business until then and that they keep it with their card
+    (HUBS-F28)."""
+    language = _language_of(transfer.to_user)
+    with translation.override(language):
         subject = _("%(who)s wants to hand %(business)s over to you") % {
             "who": transfer.from_email,
             "business": transfer.hub.name,
@@ -87,17 +92,24 @@ def send_ownership_offer(transfer, *, base_url: str) -> bool:
                 # Answered on Businesses, whose card offers «Accept the ownership» (HUBS-G82).
                 "url": f"{base_url}/businesses",
             },
-            "",
-            _(
-                "The billing does not move with the business: whoever pays for it today keeps paying until they change it."
-            ),
         ]
-    return _send(subject, lines, transfer.to_email)
+        if paid_until is not None:
+            lines += [
+                "",
+                _(
+                    "Its paid plan is paid until %(date)s. From then on you pay it with your card: once you accept, "
+                    "keep it in Billing › Subscriptions: %(url)s"
+                )
+                % {"date": _date(paid_until), "url": f"{base_url}/billing/subscriptions"},
+            ]
+    return _send(subject, lines, transfer.to_email, language)
 
 
-def send_ownership_accepted(transfer, *, base_url: str) -> bool:
-    """Tell the outgoing owner the hand-over went through, that they stay as admin, and who pays."""
-    with translation.override(_language_of(transfer.from_user)):
+def send_ownership_accepted(transfer, *, base_url: str, paid_until=None) -> bool:
+    """Tell the outgoing owner the hand-over went through and that they stay as admin; with a paid plan
+    (``paid_until``), that their card no longer renews it (HUBS-F28)."""
+    language = _language_of(transfer.from_user)
+    with translation.override(language):
         subject = _("%(who)s now owns %(business)s") % {
             "who": transfer.to_email,
             "business": transfer.hub.name,
@@ -107,14 +119,18 @@ def send_ownership_accepted(transfer, *, base_url: str) -> bool:
                 "%(who)s accepted the ownership of %(business)s. You stay on it as an administrator."
             )
             % {"who": transfer.to_email, "business": transfer.hub.name},
-            "",
-            _(
-                "The billing did not move: the invoices still go to the same payer until the new owner gives the "
-                "business their own billing details. What each of your payers pays is in %(url)s."
-            )
-            % {"url": f"{base_url}/billing/payment"},
+            _("See it in your businesses: %(url)s") % {"url": f"{base_url}/businesses/{transfer.hub_id}"},
         ]
-    return _send(subject, lines, transfer.from_email)
+        if paid_until is not None:
+            lines += [
+                "",
+                _(
+                    "Its paid plan no longer renews with your card: it stays until %(date)s, and from then on the new "
+                    "owner pays it with theirs."
+                )
+                % {"date": _date(paid_until)},
+            ]
+    return _send(subject, lines, transfer.from_email, language)
 
 
 def send_deletion(hub, owner, *, base_url: str, unpaid: bool = False) -> bool:
@@ -123,7 +139,8 @@ def send_deletion(hub, owner, *, base_url: str, unpaid: bool = False) -> bool:
     if owner is None:
         logger.error("hubs.mail.deletion_unsent hub=%s: the business has no owner to tell", hub.pk)
         return False
-    with translation.override(owner.language):
+    language = _language_of(owner)
+    with translation.override(language):
         subject = _("%(business)s was deleted") % {"business": hub.name}
         lines = [
             _("%(business)s was deleted and no longer opens.") % {"business": hub.name},
@@ -138,7 +155,7 @@ def send_deletion(hub, owner, *, base_url: str, unpaid: bool = False) -> bool:
             )
             % {"date": _date(hub.purge_after), "url": f"{base_url}/businesses"},
         ]
-    return _send(subject, lines, owner.email)
+    return _send(subject, lines, owner.email, language)
 
 
 def send_ready(hub, owner, *, base_url: str) -> bool:
@@ -147,7 +164,8 @@ def send_ready(hub, owner, *, base_url: str) -> bool:
     if not receives_business_notices(owner):
         logger.info("hubs.mail.ready_skipped hub=%s: the owner turned business notices off", hub.pk)
         return False
-    with translation.override(owner.language):
+    language = _language_of(owner)
+    with translation.override(language):
         subject = _("%(business)s is ready") % {"business": hub.name}
         lines = [
             _("%(business)s is ready: open it and start selling.") % {"business": hub.name},
@@ -155,13 +173,14 @@ def send_ready(hub, owner, *, base_url: str) -> bool:
             _("Open it: %(url)s") % {"url": hub_start_url(hub.slug)},
             _("Manage it from the panel: %(url)s") % {"url": f"{base_url}/businesses/{hub.id}"},
         ]
-    return _send(subject, lines, owner.email)
+    return _send(subject, lines, owner.email, language)
 
 
 def send_suspension_notice(hub, owner, *, base_url: str, delete_on, final: bool) -> bool:
     """Tell the owner that ``hub``, suspended for an unpaid plan, will be deleted on ``delete_on`` unless it is paid
     (HUBS-F20): the first notice (day 30) or the last one (``final``, day 150). Always sent: it warns of a deletion."""
-    with translation.override(owner.language):
+    language = _language_of(owner)
+    with translation.override(language):
         values = {"business": hub.name, "date": _date(delete_on)}
         subject = (
             _("Last notice: %(business)s will be deleted on %(date)s") % values
@@ -175,7 +194,7 @@ def send_suspension_notice(hub, owner, *, base_url: str, delete_on, final: bool)
             "",
             _("Pay it from Billing and it works again at once: %(url)s") % {"url": f"{base_url}/billing/invoices?business={hub.id}"},
         ]
-    return _send(subject, lines, owner.email)
+    return _send(subject, lines, owner.email, language)
 
 
 def _language_of(user) -> str:
@@ -186,9 +205,9 @@ def _date(moment) -> str:
     return date_format(timezone.localtime(moment), "DATE_FORMAT")
 
 
-def _send(subject: str, lines: list[str], to: str) -> bool:
+def _send(subject: str, lines: list[str], to: str, language: str) -> bool:
     try:
-        send_mail(subject, "\n".join(lines) + "\n", None, [to])
+        branded_message(subject, lines, [to], language=language).send()
     except Exception as failed:  # noqa: BLE001 - a mail never undoes the write it announces
         logger.error("hubs.mail.not_sent to=%s subject=%r: %s", to, subject, failed)
         return False
