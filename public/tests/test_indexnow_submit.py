@@ -1,10 +1,16 @@
 """``manage.py indexnow_submit``: the daily push to IndexNow (ported from ERPlora/saas
-``landing/management/commands/indexnow_submit.py`` and its test, origin/develop c5ca8ca)."""
+``landing/management/commands/indexnow_submit.py`` and its test, origin/develop c5ca8ca).
 
+It runs every day in a scheduled ECS task whose only alarm is a non-zero exit (aws ``task_failed``),
+so its three endings are part of the contract (PUBLIC-F14): submitted (0), no key configured (0, a
+legitimate state in development, with a warning) and rejected or unanswered (``CommandError``)."""
+
+import logging
 from io import StringIO
 
 import pytest
-from django.core.management import call_command
+import requests
+from django.core.management import ManagementUtility, call_command
 from django.core.management.base import CommandError
 
 from public import indexnow
@@ -67,3 +73,116 @@ def test_indexnow_refuses_to_submit_outside_prod(settings, sent):
         call_command("indexnow_submit", stdout=StringIO())
 
     assert sent == []
+
+
+@pytest.fixture
+def a_public_page(monkeypatch):
+    monkeypatch.setattr(StaticPagesSitemap, "pages", (("public:llms_txt", 0.7),))
+
+
+def _answered(status_code, text=""):
+    def fake_post(url, json, timeout, headers):
+        return type("Answer", (), {"status_code": status_code, "text": text})()
+
+    return fake_post
+
+
+def _unanswered(error):
+    def fake_post(url, json, timeout, headers):
+        raise error
+
+    return fake_post
+
+
+@pytest.mark.usefixtures("a_public_page")
+@pytest.mark.parametrize("status_code", [400, 403, 422, 429, 500, 503])
+def test_a_rejected_submission_fails_the_command(settings, monkeypatch, status_code):
+    """Only a failed exit reaches the alarm: a rejected batch must not end like a quiet day."""
+    settings.ERPLORA_ENVIRONMENT = "prod"
+    settings.INDEXNOW_KEY = KEY
+    monkeypatch.setattr(indexnow.requests, "post", _answered(status_code))
+
+    with pytest.raises(CommandError, match=rf"\b{status_code}\b"):
+        call_command("indexnow_submit", "--host", "erplora.com", stdout=StringIO())
+
+
+@pytest.mark.usefixtures("a_public_page")
+@pytest.mark.parametrize(
+    "error",
+    [
+        requests.Timeout("read timed out"),
+        requests.ConnectionError("no route to host"),
+    ],
+    ids=["timeout", "network"],
+)
+def test_an_unanswered_submission_fails_the_command(settings, monkeypatch, error):
+    settings.ERPLORA_ENVIRONMENT = "prod"
+    settings.INDEXNOW_KEY = KEY
+    monkeypatch.setattr(indexnow.requests, "post", _unanswered(error))
+
+    with pytest.raises(CommandError, match="did not reach"):
+        call_command("indexnow_submit", "--host", "erplora.com", stdout=StringIO())
+
+
+@pytest.mark.usefixtures("a_public_page")
+@pytest.mark.parametrize(
+    "fake_post",
+    [
+        _answered(403, f"Key {KEY} is not valid for this host"),
+        _unanswered(requests.ConnectionError(f"payload with {KEY} never left")),
+    ],
+    ids=["rejected", "unanswered"],
+)
+def test_the_key_is_never_in_the_error_nor_in_the_log(
+    settings, monkeypatch, caplog, fake_post
+):
+    """Even when the answer (or the library) echoes it back, the key stays out of what we write."""
+    settings.ERPLORA_ENVIRONMENT = "prod"
+    settings.INDEXNOW_KEY = KEY
+    monkeypatch.setattr(indexnow.requests, "post", fake_post)
+    out, err = StringIO(), StringIO()
+
+    with (
+        caplog.at_level(logging.DEBUG),
+        pytest.raises(CommandError) as failure,
+    ):
+        call_command("indexnow_submit", "--host", "erplora.com", stdout=out, stderr=err)
+
+    assert KEY not in str(failure.value)
+    assert KEY not in caplog.text
+    assert KEY not in out.getvalue() + err.getvalue()
+    assert caplog.records, "the failure must still be logged"
+
+
+@pytest.mark.usefixtures("a_public_page")
+def test_a_rejected_submission_exits_non_zero_from_manage_py(
+    settings, monkeypatch, capsys
+):
+    """What the scheduled task sees: ``python manage.py indexnow_submit`` and its exit code."""
+    settings.ERPLORA_ENVIRONMENT = "prod"
+    settings.INDEXNOW_KEY = KEY
+    settings.PUBLIC_HOST = "erplora.com"
+    monkeypatch.setattr(indexnow.requests, "post", _answered(422, "Unprocessable"))
+
+    with pytest.raises(SystemExit) as exit_:
+        ManagementUtility(["manage.py", "indexnow_submit"]).execute()
+
+    assert exit_.value.code != 0
+    assert "422" in capsys.readouterr().err
+
+
+@pytest.mark.usefixtures("a_public_page")
+def test_without_a_key_it_warns_and_exits_cleanly(settings, monkeypatch):
+    """No key is development's normal state: a warning, never an alarm, and nothing posted."""
+    settings.ERPLORA_ENVIRONMENT = "prod"
+    settings.INDEXNOW_KEY = ""
+
+    def explode(*args, **kwargs):
+        raise AssertionError("posted to IndexNow with no key configured")
+
+    monkeypatch.setattr(indexnow.requests, "post", explode)
+    out = StringIO()
+
+    call_command("indexnow_submit", "--host", "erplora.com", stdout=out)
+
+    assert "nothing submitted" in out.getvalue()

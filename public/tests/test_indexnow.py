@@ -176,6 +176,7 @@ def test_without_pages_nothing_is_posted_and_it_says_so(settings, monkeypatch, c
 
 @pytest.mark.usefixtures("a_public_page")
 def test_a_rejected_submission_is_reported_not_swallowed(settings, monkeypatch, caplog):
+    """A failure, not a zero: the daily command turns it into a failed exit (PUBLIC-F14)."""
     settings.INDEXNOW_KEY = KEY
     monkeypatch.setattr(
         indexnow.requests,
@@ -183,7 +184,8 @@ def test_a_rejected_submission_is_reported_not_swallowed(settings, monkeypatch, 
         lambda url, json, timeout, headers: _Answer(422, "Unprocessable"),
     )
 
-    assert indexnow.submit_sitemap_urls(host="erplora.com") == 0
+    with pytest.raises(indexnow.SubmissionFailed, match="422"):
+        indexnow.submit_sitemap_urls(host="erplora.com")
     assert any(
         "422" in record.getMessage() and record.levelname == "ERROR"
         for record in caplog.records
@@ -199,8 +201,30 @@ def test_an_unreachable_api_is_reported_not_swallowed(settings, monkeypatch, cap
 
     monkeypatch.setattr(indexnow.requests, "post", unreachable)
 
-    assert indexnow.submit_sitemap_urls(host="erplora.com") == 0
+    with pytest.raises(indexnow.SubmissionFailed, match="did not reach"):
+        indexnow.submit_sitemap_urls(host="erplora.com")
     assert any(
         "no route to host" in record.getMessage() and record.levelname == "ERROR"
         for record in caplog.records
     )
+
+
+@pytest.mark.usefixtures("a_public_page")
+def test_a_key_echoed_across_the_log_cut_is_not_half_logged(
+    settings, monkeypatch, caplog
+):
+    """The answer is cut at 200 characters for the log: redacting after the cut would leave the
+    head of a key that straddles it."""
+    settings.INDEXNOW_KEY = KEY
+    echoed = "x" * 190 + KEY
+    monkeypatch.setattr(
+        indexnow.requests,
+        "post",
+        lambda url, json, timeout, headers: _Answer(403, echoed),
+    )
+
+    with pytest.raises(indexnow.SubmissionFailed) as failure:
+        indexnow.submit_sitemap_urls(host="erplora.com")
+
+    assert KEY[:10] not in caplog.text
+    assert KEY[:10] not in str(failure.value)
