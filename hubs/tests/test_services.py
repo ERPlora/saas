@@ -21,6 +21,7 @@ from datetime import timedelta
 import pytest
 from django.core import mail
 from django.utils import timezone, translation
+from live.models import OutboxEvent
 from live.slugs import validate_hub_slug
 from live.errors import (
     Conflict,
@@ -32,7 +33,7 @@ from live.errors import (
 )
 
 from accounts.models import AuthExchangeCode, HubMembership
-from hubs import queries, services
+from hubs import events, queries, services
 from hubs.models import BillingProfile, BusinessType, Hub, HubMember, Plan, Subscription
 from hubs.schemas import (
     BusinessCreateIn,
@@ -70,6 +71,13 @@ class TestTheSignUpFromOneQuestion:
         )
         assert hub.id.version == 7
         assert (created.status, created.role) == ("preparing", "hub_owner")
+
+    def test_the_sign_up_records_its_event_for_the_creators_list(self, owner, plans):
+        """HUBS-F01 «Sale»: ``hubs.business.created``, in the transaction, on the channel of who created it."""
+        hub = create_business(owner)
+
+        (event,) = OutboxEvent.objects.filter(name=events.BUSINESS_CREATED)
+        assert (event.payload, event.scope_key) == ({"id": str(hub.id)}, str(owner.id))
 
     def test_the_creator_is_the_owner_born_answered(self, owner, plans):
         hub = create_business(owner)
