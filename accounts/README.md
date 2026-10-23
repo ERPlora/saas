@@ -177,6 +177,31 @@ lista viva se refresca); ningún rol tiene su permiso y en el admin solo las ve 
   pagador, suscripción sin `unpaid_invoice_url` y sus partidas) y `apps/auditlog.py` (`Module`). Sin `updated_at`. El
   registro solo lee un registro fiscal: escribe su propia tabla, y `cleanup_old_logs` poda también estas entradas.
 
+## Plataforma del SaaS (parte 5)
+
+La plataforma no vive en `accounts/` sino en `base/` y `config/`; su manual es `accounts/WORKBOOK.md`
+(ACCOUNTS-F39–F48, con el detalle en «Para quien lo mantiene»).
+
+- **Política de contenido** (F39): la del panel, `settings.SECURE_CSP` sobre `live.csp.base_policy` (y
+  `base/csp.py`); la de la web pública, `public/csp.py`; la del admin, `base.csp.admin_policy` (la del panel sin
+  Trusted Types, que el jQuery del admin de Django no soporta; trampa saas#1828 del viejo). `config/tests/test_csp_policy.py` las lee directiva a
+  directiva con los ajustes de producción. Informes del navegador: `base/csp_report.py`, con
+  `CSP_REPORT_RATELIMIT` (60/h por dirección).
+- **Registro sin datos personales** (F40): `base/logging.py` (`GDPRSafeFormatter`), en `LOGGING`.
+- **Arranque** (F41): `config/asgi.py` cierra el saludo de un WebSocket (`refuse_websockets`); `config/wsgi.py`.
+- **Páginas de error y admin** (F42): `public.errors` y `templates/{404,500}.html`; la marca del admin, en
+  `config/urls.py`.
+- **Mantenimiento** (F43): `base.models.SiteSettings` (fila única, migración `base/0001`), su admin en
+  `base/admin.py`, `base.queries.maintenance_state` y `base/maintenance.py`, con `templates/503.html`.
+- **`manage.py purge_expired_sessions`** (F44, diaria): sesiones caducadas, filas de «Sesiones activas» sin sesión,
+  códigos de salto y cambios de correo caducados (`services.purge_expired_sign_in_leftovers`), con candado y
+  `--dry-run`. Sustituye a `clearsessions_task` y `flush_expired_tokens_task` del viejo (aquí no hay JWT).
+- **Correos** (F46): `AWS_SES_CONFIG` en `config/settings.py` (3 s + 10 s, dos intentos); cada correo, en texto y en
+  HTML sobre `templates/emails/base.html` con `base/emails.py` (`branded_message`); los de allauth, por
+  `AccountAdapter.render_mail`, y sus avisos propios con su `_message.html` (`templates/account/email/`,
+  `templates/socialaccount/email/`).
+- No se portan `apps/core/circuit_breaker.py` (G06/G75) ni `templatetags/cards.py` (G27): motivo en el WORKBOOK.
+
 ## Tests portados de ERPlora/saas (`origin/develop`)
 
 - `dashboard/profile/tests`: `test_api` (16) y `test_views` (27) → `test_profile`, `test_photos`,
@@ -199,10 +224,19 @@ lista viva se refresca); ningún rol tiene su permiso y en el admin solo las ve 
   (sin `--no-input`: nunca preguntan); `tests/unit/test_auditlog_coverage.py` → `test_auditlog` de `accounts`,
   `billing`, `fiscal`, `hubs` y `apps` (sin `Payout` ni `StripeConnectAccount`: no hay marketplace); «Reportar un problema» (SAAS_DASHBOARD-F219) →
   `test_support_report`.
+- Parte 5: `apps/core/tests/test_logging.py` → `base/tests/test_logging.py`; la CSP, con tests nuevos
+  (`config/tests/test_csp_policy.py`, una directiva por test, panel y web pública); el `MaintenanceModeMiddleware` y el `SiteSettingsAdmin` →
+  `base/tests/test_maintenance.py`, `test_models.py` y `test_admin.py`, con sus dos huecos cerrados (la salud en 503
+  y el segundo factor del personal cortado); `apps/core/tests/test_branded_emails.py` → `base/tests/test_emails.py`
+  (cada familia por su remitente, en `en` y `es`, y cada correo de allauth hallado en disco). Fuera: los tests del
+  breaker y de la etiqueta `card`, que no se portan.
 
 ## Pendiente (de otros carriles)
 
-- **`aws`**: programar `anonymize_old_users` (semanal) y `cleanup_old_logs` (diaria) en `saas-cron`.
+- **`aws`**: programar `anonymize_old_users` (semanal), `cleanup_old_logs` (diaria) y `purge_expired_sessions`
+  (diaria) en `saas-cron`.
+- **`hubs`**: sus correos (`hubs/emails.py`: personas, invitaciones, roles y traspaso) pasan a la plantilla común
+  (`base/emails.py`, ACCOUNTS-F46) con su porte; hoy salen en texto.
 
 - **`hubs`** conecta `signals.sessions_ended` → `revoke_after_commit(user_id)` y `account_deleting` (en curso en
   su carril); también puede escuchar `allauth.account.signals.email_changed` para refrescar la foto del negocio.

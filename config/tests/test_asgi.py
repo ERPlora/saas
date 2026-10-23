@@ -198,3 +198,38 @@ def test_plain_http_without_the_header_is_not_secure(as_seen_by_django):
     seen = as_seen_by_django(daphne_scope([], proxy_headers=True))
 
     assert (seen["secure"], seen["scheme"]) == (False, "http")
+
+
+# ACCOUNTS-G72: erplora.com serves no WebSocket (no channels, PLAN-SAAS §1.1 point 2; the Hub's /ws/print is the
+# Hub's). The old SaaS closed any unknown socket (`DenyConsumer`); Django's handler raises on a non-HTTP scope, which
+# Daphne logs as an error on every attempt. The handshake is refused, nothing raises.
+
+
+def websocket_scope(path: str) -> dict:
+    return {
+        "type": "websocket",
+        "asgi": {"version": "3.0", "spec_version": "2.3"},
+        "scheme": "ws",
+        "path": path,
+        "raw_path": path.encode(),
+        "query_string": b"",
+        "root_path": "",
+        "headers": [(b"host", HOST.encode())],
+        "client": ("127.0.0.1", 50000),
+        "server": ("127.0.0.1", 8001),
+        "subprotocols": [],
+    }
+
+
+@pytest.mark.parametrize("path", ["/ws/", "/ws/assistant/", "/api/live", "/"])
+def test_a_websocket_handshake_is_refused_without_an_error(path):
+    inbox = asyncio.Queue()
+    inbox.put_nowait({"type": "websocket.connect"})
+    sent = []
+
+    async def send(message: dict) -> None:
+        sent.append(message)
+
+    async_to_sync(asyncio.wait_for)(application(websocket_scope(path), inbox.get, send), timeout=5)
+
+    assert sent == [{"type": "websocket.close", "code": 1008}]

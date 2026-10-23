@@ -249,6 +249,10 @@ msgstr "¡Hola de parte de ERPlora!"
 msgid "Thank you for using ERPlora."
 msgstr "Gracias por usar ERPlora."
 
+#: templates/emails/base.html:24
+msgid "Sent by ERPlora"
+msgstr "Enviado por ERPlora"
+
 #: templates/account/login.html:5
 msgid "Sign In"
 msgstr "Iniciar Sesión"
@@ -1100,3 +1104,81 @@ msgstr "No hemos podido enviar tu informe. Escríbenos directamente a %(email)s.
 #: fiscal_gateway/apps.py:16
 msgid "Fiscal gateway"
 msgstr "Pasarela fiscal"
+
+#: config/urls.py
+msgid "Administration"
+msgstr "Administración"
+
+#: base/models.py
+msgid "maintenance mode"
+msgstr "modo mantenimiento"
+
+#: base/models.py
+msgid ""
+"Every visitor gets the maintenance page; only the ERPlora staff with a "
+"session uses erplora.com. The health checks, the admin, the Hub's calls and "
+"the webhooks keep working."
+msgstr ""
+"Cada visitante ve la página de mantenimiento; solo el personal de ERPlora con "
+"su sesión abierta usa erplora.com. Las comprobaciones de salud, el admin, las "
+"llamadas de los negocios y los avisos de Stripe y Meta siguen funcionando."
+
+#: base/models.py
+msgid "message in English"
+msgstr "mensaje en inglés"
+
+#: base/models.py
+msgid ""
+"What the page says instead of its own text, for example when you will be "
+"back. Plain text."
+msgstr ""
+"Lo que dice la página en lugar de su propio texto, por ejemplo cuándo volvéis. "
+"Texto sin formato."
+
+#: base/models.py
+msgid "message in Spanish"
+msgstr "mensaje en español"
+
+#: base/models.py
+msgid "For Spanish visitors; empty, they read the English one."
+msgstr "Para quien visita en español; vacío, lee el de inglés."
+
+#: base/models.py
+msgid "site settings"
+msgstr "ajustes del sitio"
+
+#: base/models.py
+msgid "Site settings"
+msgstr "Ajustes del sitio"
+
+#: base/admin.py
+msgid "Maintenance mode is on: only the ERPlora staff with a session uses erplora.com."
+msgstr "El modo mantenimiento está encendido: solo el personal de ERPlora con su sesión abierta usa erplora.com."
+
+#: base/admin.py
+msgid "Maintenance mode is off: erplora.com is open to everyone."
+msgstr "El modo mantenimiento está apagado: erplora.com está abierto a todo el mundo."
+
+#: base/maintenance.py
+msgid "ERPlora is under maintenance. Try again in a few minutes."
+msgstr "ERPlora está en mantenimiento. Vuelve a intentarlo en unos minutos."
+
+#: templates/503.html
+msgid "Maintenance"
+msgstr "Mantenimiento"
+
+#: templates/503.html
+msgid "503 · Maintenance"
+msgstr "503 · Mantenimiento"
+
+#: templates/503.html
+msgid "We will be back soon"
+msgstr "Volvemos enseguida"
+
+#: templates/503.html
+msgid "We are improving ERPlora. Come back in a few minutes; your data is safe."
+msgstr "Estamos mejorando ERPlora. Vuelve en unos minutos; tus datos están a salvo."
+
+#: templates/503.html
+msgid "Retry"
+msgstr "Reintentar"

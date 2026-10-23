@@ -40,7 +40,7 @@ def test_a_mail_that_cannot_leave_is_logged_never_raised(monkeypatch, caplog):
     def refuse(*args, **kwargs):
         raise OSError("the mail server is down")
 
-    monkeypatch.setattr(emails, "send_mail", refuse)
+    monkeypatch.setattr("django.core.mail.EmailMessage.send", refuse)
 
     assert send() is False
     assert "whatsapp.mail.not_sent" in caplog.text

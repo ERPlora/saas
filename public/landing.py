@@ -26,7 +26,6 @@ from typing import Any
 from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.core.mail import EmailMessage
 from django.core.validators import validate_email
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
@@ -43,6 +42,7 @@ from django_ratelimit.decorators import ratelimit
 from live.meta import Category
 from live.ninja import run_operation_sync
 
+from base.emails import branded_message
 from public import context_processors, pricing
 from public.structured_data import json_ld, organization, software_application
 
@@ -272,16 +272,15 @@ def contact_submit(request: HttpRequest) -> HttpResponse:
         "topic": CONTACT_TOPICS.get(topic or ""),
     }
     try:
-        EmailMessage(
-            subject=_one_line(
-                render_to_string("public/email/contact_subject.txt", context)
-            ),
-            body=render_to_string("public/email/contact_body.txt", context),
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            to=[settings.SUPPORT_EMAIL],
+        branded_message(
+            _one_line(render_to_string("public/email/contact_subject.txt", context)),
+            render_to_string("public/email/contact_body.txt", context).splitlines(),
+            [settings.SUPPORT_EMAIL],
+            # The team's mail, in the team's language, as its text.
+            language="en",
             # Support answers with «Reply»: to the visitor, never to our sender.
             reply_to=[fields["email"]],
-        ).send(fail_silently=False)
+        ).send()
     except Exception:
         # Any backend (SMTP, SES) may fail: the visitor is told, the cause goes to the log.
         logger.exception("Contact form message could not be sent")

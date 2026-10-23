@@ -2,8 +2,8 @@
 launcher and every error of the sign-in. allauth runs headless only, so no sign-in page is a template.
 Templates stay only where no screen of the panel is painted: the auto-submitted form of the jump to a hub,
 which POSTs the one-time code to the hub (``hub_login_form.html``), the API reference, ReDoc's own page over the
-OpenAPI schema in place of ninja's (``api_docs.html``, ACCOUNTS-F34), and the text of the mails allauth sends
-(``templates/account/email`` and ``templates/socialaccount/email``)."""
+OpenAPI schema in place of ninja's (``api_docs.html``, ACCOUNTS-F34), and the mails allauth sends with ERPlora's
+wording (``templates/account/email`` and ``templates/socialaccount/email``), as text and as HTML (ACCOUNTS-F46)."""
 
 import re
 from pathlib import Path
@@ -35,7 +35,9 @@ def test_of_allauths_templates_only_the_mails_are_ours():
     )
 
     assert ours == [
+        "account/email/base_message.html",
         "account/email/base_message.txt",
+        "socialaccount/email/account_connected_message.html",
         "socialaccount/email/account_connected_message.txt",
         "socialaccount/email/account_connected_subject.txt",
     ]
@@ -45,7 +47,9 @@ def test_of_allauths_templates_only_the_mails_are_ours():
 @pytest.mark.parametrize(
     "name",
     [
+        "account/email/base_message.html",
         "account/email/base_message.txt",
+        "socialaccount/email/account_connected_message.html",
         "socialaccount/email/account_connected_message.txt",
         "socialaccount/email/account_connected_subject.txt",
     ],
