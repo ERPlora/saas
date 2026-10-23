@@ -1388,7 +1388,7 @@ def owe_plan_rights(plan: Plan, now=None) -> int:
     )
     for subscription in subscriptions.order_by("pk"):
         changed = sync_plan_modules(subscription, now)
-        if changed or subscription.effective_plan(now).pk == plan.pk:
+        if changed or subscription.effective_plan(now) == plan:
             bump_state(subscription.hub_id)
             owed += 1
     return owed
