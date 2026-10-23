@@ -178,11 +178,16 @@ class TestGivingBackAndRecording:
         assert used(caller_of(business)) == 0
 
     def test_giving_back_never_goes_below_zero(self, business):
+        """Before any use (no row) and with its row at zero: nothing to give back, no error, still zero."""
         month = queries.month_of(timezone.now())
+        release = MessageReleaseIn(caller=caller_of(business), month=month)
 
-        services.message_release(platform_context(), MessageReleaseIn(caller=caller_of(business), month=month))
-
+        services.message_release(platform_context(), release)
         assert used(caller_of(business)) == 0
+
+        AssistantUsage.objects.create(hub=business, month=month, messages=0)
+        services.message_release(platform_context(), release)
+        assert AssistantUsage.objects.get(hub=business, month=month).messages == 0
 
     def test_a_message_given_back_after_the_month_turned_goes_back_to_its_month(self, business):
         last_month = queries.month_of(timezone.now() - timedelta(days=40))
