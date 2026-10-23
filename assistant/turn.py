@@ -73,8 +73,10 @@ class TurnRefused(Exception):
 
 
 def text_bytes(messages: list[dict]) -> int:
-    """The size of the conversation's text."""
-    return len(json.dumps(messages, ensure_ascii=False, default=str).encode())
+    """The size of the conversation's text, its attachments' data left out (they have their own limit)."""
+    from assistant import attachments
+
+    return len(json.dumps(attachments.without_data(messages), ensure_ascii=False, default=str).encode())
 
 
 def check_roles(messages: list[dict]) -> None:
@@ -111,15 +113,19 @@ def sanitized(messages: list[dict]) -> list[dict]:
 
 def prepare(messages: list[dict], instructions: str) -> list[dict]:
     """The conversation the model sees, or ``TurnRefused``: 422 for a message of an unknown role, 413 for a text
-    over ``MAX_TEXT_BYTES``."""
+    over ``MAX_TEXT_BYTES`` or an attachment over its limit (``attachments.check``). Its documents are turned into
+    their text (``attachments.expand``): CPU work, which the door runs off its event loop."""
+    from assistant import attachments
+
     check_roles(messages)
+    attachments.check(messages)
     if text_bytes(messages) > MAX_TEXT_BYTES:
         raise TurnRefused(413, "payload_too_large", f"The conversation's text exceeds {MAX_TEXT_BYTES} bytes.")
     client = [message for message in messages if message["role"] != "system"]
     conversation = sanitized(client)[-(MAX_MESSAGES - 1) :]
     while conversation and conversation[0]["role"] == "tool":
         conversation = conversation[1:]
-    return [{"role": "system", "content": instructions or ""}, *conversation]
+    return [{"role": "system", "content": instructions or ""}, *attachments.expand(conversation)]
 
 
 def hub_tools(tools: Sequence[dict]) -> list[ToolSpec]:
@@ -238,7 +244,7 @@ async def run(
     runs itself (``server_tools``) are run here and the model is asked again, at most ``server_tools.MAX_ROUNDS``
     times; on the last round they are not offered, so the model answers. A tool of the Hub named as one of ours is
     ours."""
-    from assistant import server_tools
+    from assistant import attachments, server_tools
 
     conversation = with_search_rule(list(messages)) if server_tools.search_offered() else list(messages)
     theirs_offered = [tool for tool in tools if not server_tools.is_server_tool(tool.name)]
@@ -251,7 +257,7 @@ async def run(
         def build(candidate: RouteCandidate) -> TurnRequest:
             return TurnRequest(
                 model_id=candidate.model_id,
-                messages=conversation,
+                messages=attachments.for_model(conversation, vision=candidate.supports_vision),
                 tools=offered,
                 max_tokens=MAX_OUTPUT_TOKENS,
             )

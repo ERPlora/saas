@@ -203,7 +203,7 @@ async def start(call: Call) -> Turn:
     Hub was asked for, a message of the allowance (429 ``assistant.quota_exceeded``)."""
     data: TurnIn = call.data
     try:
-        messages = turn.prepare(data.messages, data.instructions)
+        messages = await sync_to_async(turn.prepare, thread_sensitive=False)(data.messages, data.instructions)
     except turn.TurnRefused as refused:
         raise Refused(refused.status, refused.code, refused.message, fields=refused.fields, retriable=False) from None
     try:
