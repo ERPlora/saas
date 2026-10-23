@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:6b9424eee9f993787025b7f2b67fce239cc2e1d50bf72c17048cf2b55b00382e -->
+<!-- generated from WORKBOOK.md sha256:0fc40602f466cc65211adbf8c6196045ee9cdbe132da3b99b18a56b003711cf7 -->
 
 ## What it is for and who it is for
 
@@ -180,7 +180,7 @@ the "message in Spanish" (empty, Spanish visitors read the English one), and the
 | Loading | The submit button is off while the request is on its way, and so is "Download my data" while it prepares the file; the profile and the preferences, their cards loading; the email's link says "Checking your link…"; the two-step verification settings, "Loading…"; the sessions, the table loading. |
 | Empty | Without a session, every page of the panel leads to the **Entrance**, which goes back to it after signing in. With this session alone, "Close other sessions" is off; without recovery codes, "Without them, losing your authenticator locks you out of your account." with "Generate recovery codes". |
 | Error | Each error appears under its field, with the words of the rule that fails ("Your new password must be different from the current one."); a network failure, "We could not sign you in. Please try again." or "Something went wrong. Please try again.". Settings that do not load, "We could not load your security settings. Please try again." with "Try again"; the sessions, "We could not load your sessions" with "Try again"; the profile, "We could not load your account", and the preferences, "We could not load your preferences", with "Try again". A change of preferences that is not saved goes back to how it was. |
-| Throttle | "Too many failed login attempts. Try again later." or "Too many attempts. Please wait a few minutes and try again.", the same whether the account exists or not. |
+| Throttle | "Too many failed login attempts. Try again later." or "Too many attempts. Please wait a few minutes and try again.", the same whether the account exists or not; if Google does not see a person, "We could not check that you are a person. Try again.". |
 | Expired link | "This password reset link has expired or is not valid." with "Request New Link". |
 | Expired code | The entrance says "Your code expired or was typed wrong too many times. Sign in again and we will email you a new one." |
 | Maintenance | Whoever is not staff sees the **Maintenance page** on any page of erplora.com; the staff with its session open keeps using everything. |
@@ -380,15 +380,16 @@ Involved: public (the pages of the terms and of the privacy policy)
 ### ACCOUNTS-F11 Stop whoever tries passwords, codes or links
 Status: done
 Actor: system
-Screen: Entrance, Check your email, Reset your password
+Screen: Entrance, Check your email, Reset your password, Set a new password, Two-step verification
 Steps:
-1. Each wrong password spends from its account's budget (5 in 5 minutes) and from the network address's (10 a minute); once spent, not even the right one gets in until the time is up. A right sign-in gives its attempt back: the owner spends no budget.
-2. Before looking at the password, each network address has 30 sign-ins a minute.
-3. The email's codes allow 3 attempts; the sign-in one lasts 3 minutes.
-4. Reset links, 5 a minute per email and 20 per network address; sign-ups, 10 an hour per address; the password change, 5 a minute per account.
-In: the email being tried and the network address of the caller.
-Out: the throttle's answer, the same whether the account exists or not and after the same number of attempts: "Too many failed login attempts. Try again later." on the **Entrance** or "Too many attempts. Please wait a few minutes and try again.".
-If it fails: if the shared memory of the counters does not answer, the throttle opens (the door stays usable) and a warning is left in the log.
+1. Before anything else, Google checks without being seen (no checkbox, no puzzle) that whoever sends the form is a person: signing in, creating the account, asking for the reset link, the link's new password, the email's code and "Send a new code", each sign-in's code and the authenticator app's. Under each one, "This site is protected by reCAPTCHA and the Google Privacy Policy and Terms of Service apply.". "Continue with Google" does not go through here: Google checks it.
+2. Each wrong password spends from its account's budget and from the network address's (5 in 5 minutes each); once spent, not even the right one gets in until the time is up. A right sign-in gives its attempt back: the owner spends no budget.
+3. Before looking at the password, each network address has 30 sign-ins a minute.
+4. The email's codes allow 3 attempts; the sign-in one lasts 3 minutes. On top of that, each network address has 10 refused codes in 5 minutes, from the email or from the authenticator app; a right one spends nothing.
+5. Reset links, 10 an hour per network address and 5 an hour per account; the link's form, 20 submissions a minute per address; a new code, one every 10 seconds per account; sign-ups, 10 an hour per address; the password change, 5 a minute per account.
+In: the email being tried, the network address of the caller and Google's approval.
+Out: the throttle's answer, the same whether the account exists or not and after the same number of attempts: "Too many failed login attempts. Try again later." on the **Entrance** or "Too many attempts. Please wait a few minutes and try again."; if Google does not see a person, "We could not check that you are a person. Try again." and nothing is done.
+If it fails: if the shared memory of the counters does not answer, the throttle opens (the door stays usable) and a warning is left in the log. If Google does not answer, signing in, the sign-in's code and the authenticator app's go on (the password, the code and the throttles already guard them) and an error is left in the log; the other forms are refused with the message above.
 Involved: none
 
 ### ACCOUNTS-F12 Know who has signed in
