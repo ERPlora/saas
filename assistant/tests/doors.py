@@ -9,6 +9,8 @@ import json
 import time
 from typing import Any
 
+from asgiref.sync import async_to_sync
+
 from accounts.signing import sign, signed_headers
 
 SECRET = "test-internal-secret"
@@ -40,14 +42,20 @@ def door(client, path: str, payload: Any, *, signed: bool = True, method: str = 
 
 
 def frames(response) -> list[Any]:
-    """The frames of a streamed answer, in order: each ``data:`` line's JSON, or ``"[DONE]"``."""
-    raw = b"".join(response.streaming_content).decode()
-    return parse_frames(raw)
+    """The frames of a streamed answer, in order: each ``data:`` line's JSON, or ``"[DONE]"``.
 
+    An async stream (the door's) is read through ``async_to_sync`` from the test's thread, so what the stream does
+    with the database after the answer (counting, recording) runs in the test's transaction, as the door's thread
+    would under daphne.
+    """
+    if response.is_async:
 
-async def aframes(response) -> list[Any]:
-    """``frames`` of an answer streamed through the ASGI path (an async iterator)."""
-    chunks = [chunk async for chunk in response.streaming_content]
+        async def collect():
+            return [chunk async for chunk in response.streaming_content]
+
+        chunks = async_to_sync(collect)()
+    else:
+        chunks = list(response.streaming_content)
     return parse_frames(b"".join(chunks).decode())
 
 

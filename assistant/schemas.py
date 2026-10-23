@@ -3,7 +3,7 @@ JSON of a schema shows it (only ``get_secret_value`` does, where the key is used
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from ninja import Schema
@@ -251,3 +251,13 @@ class UsageRecordIn(Schema):
     transcriptions: int = Field(default=0, ge=0)
     speech_characters: int = Field(default=0, ge=0)
     cost_usd: Decimal = Field(default=Decimal("0"), ge=0)
+
+
+class TurnIn(CallerIn):
+    """A turn of the Hub: the whole conversation (its browser owns it), the ``instructions`` that are its only system
+    message, the tools it offers and, answering the tools it was asked for, the ``continuation`` it got with them."""
+
+    messages: list[dict[str, Any]] = Field(min_length=1, max_length=1000)
+    instructions: str = Field(default="", max_length=200_000)
+    tools: list[dict[str, Any]] = Field(default_factory=list, max_length=256)
+    continuation: str | None = Field(default=None, max_length=4096)

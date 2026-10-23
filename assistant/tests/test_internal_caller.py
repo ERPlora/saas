@@ -18,6 +18,8 @@ from hubs.models import Hub
 
 USAGE = "/internal/assistant/usage"
 DOORS = [
+    "/internal/assistant/chat/stream",
+    "/internal/assistant/chat",
     "/internal/assistant/usage",
 ]
 

@@ -158,6 +158,8 @@ urlpatterns = [
     path("internal/whatsapp/connect", whatsapp_internal.connect, name="internal_whatsapp_connect"),
     path("internal/whatsapp/disconnect", whatsapp_internal.disconnect, name="internal_whatsapp_disconnect"),
     # The AI gateway (assistant/internal.py, PLAN-SAAS §1.1): the Hub's turn, its allowance, embeddings and voice.
+    path("internal/assistant/chat/stream", assistant_internal.chat_stream, name="internal_assistant_chat_stream"),
+    path("internal/assistant/chat", assistant_internal.chat, name="internal_assistant_chat"),
     path("internal/assistant/usage", assistant_internal.usage, name="internal_assistant_usage"),
     # Stripe's single webhook (PLAN-SAAS §4): signed by Stripe, no session nor CSRF.
     path("webhooks/stripe/", billing_webhooks.stripe_webhook, name="stripe_webhook"),
