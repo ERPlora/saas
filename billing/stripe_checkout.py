@@ -56,6 +56,8 @@ class CheckoutKind(StrEnum):
 
     HUB_PLAN = "hub_plan"
     MODULE_PURCHASE = "module_purchase"
+    #: The new owner of a handed-over business keeps its plan with their own card (HUBS-F28).
+    PLAN_TAKEOVER = "plan_takeover"
     #: Not ERPlora's billing of a business: ignored by the webhook.
     UNKNOWN = "unknown"
 

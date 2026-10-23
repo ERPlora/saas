@@ -1,14 +1,15 @@
 # Workbook — Negocios (hubs)
 Prefijo: HUBS
 Alcance MVP: fase 1 (los negocios de cada cuenta de erplora.com: crearlos, esperar a que estén listos, verlos en la lista y entrar en ellos)
-Estado de la app: en construcción (partes 1 y 2 de 4: crear el negocio, los planes, esperar a que esté listo, la lista, la portada del panel, entrar y abrirlo en otro dispositivo; los ajustes, la dirección web, eliminar y recuperar, los suspendidos, el estado y el uso, y el personal en el admin)
+Estado de la app: en construcción (partes 1 a 3 de 4: crear el negocio, los planes, esperar a que esté listo, la lista, la portada del panel, entrar y abrirlo en otro dispositivo; los ajustes, la dirección web, eliminar y recuperar, los suspendidos, el estado y el uso, y el personal en el admin; las personas de cada negocio: invitar, aceptar, cambiar el rol, quitar, traspasar la propiedad y consultarlas)
 
 > Manual de uso y especificación de la app `hubs` del SaaS (erplora.com). Cuenta cómo se crea un negocio, qué
 > pasa mientras se prepara, cómo se ve la lista de negocios y cómo se entra en cada uno desde el navegador o desde
 > la aplicación instalada, y cómo se cambian sus ajustes y su dirección web, cómo se elimina y se recupera, qué
-> pasa con uno suspendido por impago y qué hace el personal de ERPlora con él. Esta parte del manual no se publica
-> en la tienda: es la referencia del equipo y de la QA. Las personas de cada negocio (parte 3) y el plan, los
-> derechos y lo que el negocio recibe de erplora.com (parte 4) se escriben a continuación.
+> pasa con uno suspendido por impago y qué hace el personal de ERPlora con él, y quién trabaja en cada negocio:
+> cómo se invita a una persona, cómo acepta, cómo se le cambia el rol o se la quita y cómo se traspasa la propiedad.
+> Esta parte del manual no se publica en la tienda: es la referencia del equipo y de la QA. El plan, los derechos y
+> lo que el negocio recibe de erplora.com (parte 4) se escriben a continuación.
 
 ## Para qué sirve y para quién
 
@@ -27,8 +28,11 @@ Quién la usa:
 - **Cualquier persona con cuenta** crea su negocio y entra en los negocios de los que es miembro.
 - **El propietario** ve la lista de sus negocios, cambia su dirección web, lo elimina, recupera uno eliminado y
   cambia su plan; con los **administradores**, cambia su nombre, su idioma y su zona horaria.
+- El **propietario** y los **administradores** invitan a las personas del negocio, les cambian el rol y las quitan;
+  solo el propietario da el rol de administrador y traspasa la propiedad. Un **encargado** o un **empleado** solo
+  abre el negocio.
 - El **personal de ERPlora** mantiene los planes desde el admin y, desde ahí, vuelve a mandar a un negocio lo que
-  no recibió.
+  no recibió y consulta quién tiene acceso a cada negocio.
 
 ## Referencia adoptada
 
@@ -47,6 +51,9 @@ Quién la usa:
   pública de la tienda, no al punto de venta, en planes de pago y con el certificado puesto solo
   (https://squareup.com/help/article/6916, https://support.toasttab.com/en/article/Toast-Online-Ordering-Pro-Domains,
   https://www.fresha.com/help-center/knowledge-base/online-presence/109902-manage-your-domains).
+- **Shopify, Square y Toast**: el propietario da acceso a su personal con un rol, y cada rol trae sus permisos; el
+  acceso se cambia y se quita desde el mismo sitio, y quien trabaja solo con un PIN en la caja se gestiona dentro
+  del punto de venta (https://help.shopify.com/en/manual/your-account/staff-accounts).
 
 ## Antes de empezar
 
@@ -99,6 +106,33 @@ y lo que pasa después; «Cambiar dirección» se activa cuando es distinta de l
 La ficha de cada plan para el personal: los textos en inglés y en español, el precio, qué incluye, sus límites y
 sus precios de Stripe.
 
+### Miembros
+La pestaña «Miembros» de cada negocio, para el propietario y los administradores: la tabla «Equipo» con «Nombre»
+(la fila propia marcada «Tú»), «Correo», «Rol», «Estado» y «Último acceso», el propietario primero; por fila, solo
+lo que la persona puede hacer con ella («Cambiar rol», «Quitar», «Reenviar», «Cancelar invitación» y, en el menú
+de la fila, «Transferir propiedad»). Debajo, las plazas del plan y «¿Qué puede hacer cada uno?»; encima, la
+propiedad ofrecida que espera respuesta, con «Retirar la oferta». En el móvil son tarjetas.
+
+### Invitar
+El diálogo «Invitar a …»: «Correo», «Rol» y «Mensaje (opcional)», con «Enviamos un correo con el enlace. La
+invitación dura 7 días.» y las plazas que quedan; «Enviar invitación» se activa con una dirección.
+
+### Te han invitado
+La tarjeta centrada de las invitaciones que esperan respuesta: «Alguien te ha dado acceso a su negocio. Acepta
+para entrar.», una tarjeta por negocio con «Te invita … · …», «Aceptar y entrar» y «Rechazar», y al pie «El
+propietario o un administrador del negocio pueden quitarte este acceso.». En **Negocios** y en la Entrada sale la
+misma invitación encima de la lista.
+
+### Transferir la propiedad
+El diálogo «Transferir …»: a quién se ofrece, que tiene 7 días para aceptarla, que un plan de pago sigue hasta el
+final del periodo ya pagado y después lo paga el nuevo propietario con su tarjeta, y el nombre del negocio escrito
+para confirmar. Quien la recibe ve en **Negocios** «… te ofrece …»
+con «Aceptar la propiedad» y «Rechazar».
+
+### admin › Negocios › Miembros
+La lista de accesos para el personal: negocio, persona, rol, cuándo se invitó, cuándo aceptó y su último acceso,
+con buscador por negocio o por correo y filtro por rol; solo se consulta.
+
 ## Estados de cada pantalla
 
 | Estado | Qué ve la persona |
@@ -108,7 +142,7 @@ sus precios de Stripe.
 | Error | «No hemos podido cargar tus negocios» con «Reintentar»; un negocio que no se pudo preparar: «Sin preparar» y «No hemos podido prepararlo. Seguimos reintentándolo; si sigue fallando, avísanos.». |
 | Preparando | La fila dice «Preparando» y «Lo estamos preparando. Se abre solo cuando esté listo.»; «Abrir» espera. |
 | Sin conexión | «Reconectando… lo que ves puede tener unos segundos de retraso.» mientras vuelve la conexión en vivo. |
-| Sin permiso | Un negocio de otra cuenta no existe para esa persona: no se lista ni se abre. |
+| Sin permiso | Un negocio de otra cuenta no existe para esa persona: no se lista ni se abre. Un encargado o un empleado que llega a la página de su negocio ve «No tienes permiso para gestionar este negocio». |
 
 ## Flujos
 
@@ -137,6 +171,13 @@ sus precios de Stripe.
 | HUBS-F21 | Ver el estado y el uso de un negocio | parcial |
 | HUBS-F22 | Recoger cada noche el uso de cada negocio | parcial |
 | HUBS-F23 | Actuar el personal de ERPlora sobre un negocio desde el admin | hecho |
+| HUBS-F24 | Invitar a una persona a un negocio | hecho |
+| HUBS-F25 | Aceptar o rechazar una invitación a un negocio | hecho |
+| HUBS-F26 | Cambiar el rol de una persona en un negocio | hecho |
+| HUBS-F27 | Quitar a una persona de un negocio | hecho |
+| HUBS-F28 | Traspasar la propiedad de un negocio | hecho |
+| HUBS-F29 | Ver las personas de un negocio | hecho |
+| HUBS-F30 | Consultar los accesos de las personas en el admin | hecho |
 
 ### HUBS-F01 Crear el negocio gratuito con una sola pregunta
 <!-- origen: old-saas:SAAS_DASHBOARD-F01 fi:saas/support/hubs#modelo-hub -->
@@ -464,20 +505,125 @@ Sale: lo que la acción manda al negocio y la línea del historial.
 Si falla: el admin no crea, no cambia ni borra negocios, miembros ni planes de pago: eso solo lo hacen sus propias pantallas, así nadie del personal se hace propietario de un negocio ni lo borra sin su baja. El personal de soporte lo ve todo y no ejecuta acciones. Para los datos de dentro del negocio está el admin de los negocios (en el servicio de los negocios).
 Implicados: el negocio (recibe lo que se le reenvía), accounts (la cuenta del personal)
 
+### HUBS-F24 Invitar a una persona a un negocio
+<!-- origen: old-saas:SAAS_DASHBOARD-F13 fi:saas/orgs-users#invitar-miembro-a-la-organizacion fi:saas/orgs-users#invitar-usuario-formulario fi:saas/orgs-users#invitar-usuario-submit-a-hub-u-organizacion fi:saas/orgs-users#api-invitar-a-organizacion-o-a-hub-concreto-rest fi:saas/orgs-users#api-miembros-listar-invitar-rest -->
+<!-- origen: fi:saas/support/orgs-users#service-invite_user_to_organization-invite_user_to_hub-invitations fi:saas/support/orgs-users#serializer-organizationmemberserializer-invitememberserializer-updatememberroleserializer-userserializer fi:saas/support/orgs-users#service-send_org_invitation_email-emails fi:saas/support/hubs#task-send_invitation_email_task gh:saas#2565 -->
+Estado: hecho
+Actor: propietario, administrador, integración
+Pantalla: Miembros › Invitar
+Pasos:
+1. En la pestaña «Miembros» del negocio, «Invitar» abre «Invitar a …» con «Correo», «Rol» (Empleado de entrada; solo los roles por debajo del propio: el propietario da también Administrador) y «Mensaje (opcional)»; debajo, cuántas plazas del plan quedan.
+2. Pulsa «Enviar invitación»: sale «Invitación enviada a …» y la persona aparece en la lista como invitación pendiente, con «Reenviar» y «Cancelar invitación».
+3. La persona recibe un correo con quién la invita, a qué negocio, con qué rol, hasta cuándo vale y el enlace para aceptarla; si aún no tiene cuenta, también cómo entrar (con Google o poniendo su contraseña).
+4. «Reenviar» manda el correo otra vez y le da 7 días más; «Cancelar invitación» la retira y su enlace ya no deja entrar a nadie. Una integración hace lo mismo con la sesión de la cuenta.
+Entra: el correo, el rol, el mensaje y el negocio; la sesión de quien invita.
+Sale: la invitación, que vale 7 días y ocupa una plaza del plan; la cuenta de esa dirección si no existía, sin contraseña. El negocio no recibe a la persona hasta que acepta. Anota `hubs.member.invited` (al reenviar, `hubs.member.invitation_resent`; al cancelar, `hubs.member.invitation_cancelled`).
+Si falla: alguien que ya está en el negocio, «… ya está en este negocio.»; con una invitación que aún vale, «… ya tiene una invitación pendiente. Reenvíala.» (una caducada se renueva al invitar otra vez). Un rol igual o superior al propio, «No puedes dar un rol igual o superior al tuyo.». Sin plazas, el diálogo dice «El plan no tiene plazas libres: cambia de plan o quita a alguien para invitar a más personas.» y no manda nada. Una dirección del equipo de ERPlora, «Esta dirección es del equipo de ERPlora y no puede unirse a un negocio.». Una cuenta que nunca confirmó esa dirección se libera antes de invitarla: pierde su contraseña, su segundo factor, su Google y sus sesiones, y solo entra quien abre ese buzón. Un encargado o un empleado no invita; un negocio eliminado no admite invitaciones; un negocio ajeno no existe para quien invita. Si el correo no sale, la invitación queda igual.
+Implicados: accounts (la cuenta de la persona invitada y, si nunca confirmó su dirección, su liberación), el negocio (recibe a la persona cuando acepta)
+
+### HUBS-F25 Aceptar o rechazar una invitación a un negocio
+<!-- origen: old-saas:SAAS_DASHBOARD-F14 -->
+Estado: hecho
+Actor: administrador, encargado, empleado
+Pantalla: Te han invitado, Negocios
+Pasos:
+1. La persona invitada entra en erplora.com con el correo de la invitación (o sigue su enlace): «Te han invitado» enseña una tarjeta por negocio con «Te invita … · …»; en **Negocios** y en la Entrada la misma invitación sale encima de la lista.
+2. Pulsa «Aceptar y entrar»: entra en el negocio sin volver a escribir la contraseña, con el rol que dice la invitación, y el negocio ya sale en su lista.
+3. O pulsa «Rechazar» y lo confirma en «Rechazar la invitación»: sale «Invitación rechazada» y quien la invitó tendría que invitarla otra vez.
+Entra: las invitaciones de la cuenta que esperan respuesta y siguen dentro de sus 7 días.
+Sale: al aceptar, la persona dentro del negocio y el negocio avisado con la lista de personas al día; al rechazar, la invitación borrada. Anota `hubs.invitation.accepted` o `hubs.invitation.declined`. El propietario y los administradores ven el cambio en «Miembros» al momento.
+Si falla: una invitación caducada, «Esta invitación ha caducado. Pide a quien te invitó que te la vuelva a enviar.»; una ya respondida, retirada o ajena no se puede contestar («Esta invitación ya no vale»). Sin el correo confirmado, «Confirma tu correo electrónico antes de aceptar la invitación.». Si el plan ya no tiene sitio, «Este negocio no tiene plazas libres en su plan. Pide a quien te invitó que libere una o que cambie de plan.». Aceptar dos veces no da nada más, y nunca toca los otros negocios de la persona.
+Implicados: accounts (la sesión y el salto al negocio), el negocio (recibe a la persona)
+
+### HUBS-F26 Cambiar el rol de una persona en un negocio
+<!-- origen: old-saas:SAAS_DASHBOARD-F15 fi:saas/orgs-users#cambiar-rol-de-un-miembro fi:saas/orgs-users#api-miembro-detalle-cambiar-rol-eliminar-rest fi:saas/support/orgs-users#service-user_can_access_hub-get_user_hub_role-funciones-modulo-nivel -->
+Estado: hecho
+Actor: propietario, administrador, integración
+Pantalla: Miembros › Cambiar rol
+Pasos:
+1. En «Miembros», en la fila de la persona, «Cambiar rol» abre «Cambiar el rol de …» con los roles que se le pueden dar.
+2. Elige el nuevo y pulsa «Cambiar rol»: sale «… ahora es …» y la fila enseña el rol nuevo.
+3. El negocio recibe la lista de personas con el rol nuevo y cierra en ese momento la sesión de esa persona allí: lo siguiente que haga le pide volver a entrar, y vuelve con el rol nuevo.
+Entra: la persona y el rol nuevo; la sesión de quien lo cambia, que tiene que tener más rango que la persona y que el rol que da.
+Sale: el rol nuevo y el aviso al negocio, con el cierre de la sesión de esa persona allí; el de una invitación sin responder cambia sin avisar al negocio. Anota `hubs.member.role_changed`.
+Si falla: el propio rol, «No puedes cambiar tu propia pertenencia.»; alguien de igual o más rango, «No puedes gestionar a un miembro con un rol igual o superior al tuyo.»; un rol igual o superior al propio, «No puedes dar un rol igual o superior al tuyo.». La propiedad no se da desde aquí (HUBS-F28). Un encargado o un empleado no cambia roles; una persona de un negocio ajeno no existe para quien lo pide.
+Implicados: el negocio (BASE-F13: recibe el rol nuevo y cierra la sesión), accounts (la sesión)
+
+### HUBS-F27 Quitar a una persona de un negocio
+<!-- origen: old-saas:SAAS_DASHBOARD-F16 old-saas:SAAS_AUTH-F22 fi:saas/orgs-users#eliminar-un-miembro fi:saas/orgs-users#quitar-acceso-de-un-usuario-a-un-hub gh:saas#2569 -->
+Estado: hecho
+Actor: propietario, administrador, integración
+Pantalla: Miembros › Quitar
+Pasos:
+1. En «Miembros», en la fila de la persona, «Quitar» abre «Quitar a …» («… deja de tener acceso a … al momento. Su cuenta y sus otros negocios se quedan.»).
+2. Pulsa «Quitar del negocio»: sale «… ya no está en el negocio» y la fila desaparece.
+3. El negocio recibe la lista de personas sin ella y cierra en ese momento sus sesiones en ese negocio, solo en ese: si vuelve, erplora.com le dice «No tienes acceso a este hub».
+Entra: la persona; la sesión de quien la quita, que tiene que tener más rango que ella.
+Sale: la persona fuera de ese negocio (su cuenta y sus otros negocios siguen), una oferta de propiedad que tuviera pendiente retirada, el aviso al negocio y el cierre de sus sesiones allí, que se reintenta si el negocio no contesta. Anota `hubs.member.removed`.
+Si falla: a uno mismo, «No puedes cambiar tu propia pertenencia.»; a alguien de igual o más rango (el propietario nunca), «No puedes gestionar a un miembro con un rol igual o superior al tuyo.». Una invitación sin responder se cancela, no se quita: «Esta persona aún no ha respondido: cancela la invitación.». A quien aún paga el negocio (el propietario anterior tras un traspaso) no se le quita: «… sigue pagando este negocio. Antes di quién paga a partir de ahora: tus datos de facturación se piden al pagar aquí un plan o un módulo.» o, si el plan sigue en su tarjeta, «El plan de este negocio aún se paga con la tarjeta de …: antes mantenlo con la tuya en Facturación.».
+Implicados: el negocio (BASE-F13: recibe la lista sin ella y cierra sus sesiones), billing (quién paga el negocio)
+
+### HUBS-F28 Traspasar la propiedad de un negocio
+<!-- origen: old-saas:SAAS_DASHBOARD-F17 -->
+Estado: hecho
+Actor: propietario
+Pantalla: Miembros › Transferir la propiedad, Negocios, Facturación › Suscripciones
+Pasos:
+1. El propietario, en «Miembros», abre el menú de la fila de una persona que ya está en el negocio y elige «Transferir propiedad».
+2. En «Transferir …» lee que tiene 7 días para aceptarla y que «Un plan de pago sigue hasta el final del periodo ya pagado; después lo paga el nuevo propietario con su tarjeta y la actual no se vuelve a cobrar.», escribe el nombre del negocio y pulsa «Ofrecer la propiedad»: sale «Oferta enviada a …: tiene 7 días para aceptarla» y, encima de la lista, «Propiedad ofrecida a …» con «Retirar la oferta».
+3. La persona recibe un correo con el enlace a **Negocios**, donde ve «… te ofrece …» con «Aceptar la propiedad» y «Rechazar».
+4. Al aceptar, sale «Ahora eres el propietario de …»: pasa a propietaria y el anterior queda como administrador; el anterior recibe un correo que le dice que su tarjeta ya no vuelve a pagar el plan.
+5. Si el negocio tiene un plan de pago, el nuevo propietario lo ve en **Facturación › Suscripciones** con «Gratis desde el …» y «Se paga con la tarjeta de otra cuenta», y pulsa «Mantenerlo con mi tarjeta».
+6. En «Mantén … con tu tarjeta» pone sus datos de facturación (los del anterior no son suyos), lee «Para … · hoy no se cobra nada: tu tarjeta lo paga desde el …» y añade su tarjeta en el pago seguro: sale «… mantiene …: tu tarjeta lo paga desde el …».
+Entra: la persona elegida, que ya tiene que estar en el negocio; la sesión del propietario y, al responder, la de esa persona; para mantener el plan, los datos de facturación y la tarjeta del nuevo propietario.
+Sale: la oferta, que vale 7 días; al aceptar, los dos roles cambiados a la vez (siempre un solo propietario), el negocio avisado y las sesiones de los dos cerradas allí. El plan de pago es del negocio y la tarjeta no: al aceptar deja de renovarse con la tarjeta del pagador anterior, que no se vuelve a cobrar, y el negocio lo conserva hasta el final del periodo ya pagado. Con «Mantenerlo con mi tarjeta», el plan y sus módulos pasan a la tarjeta del nuevo propietario desde ese día, sin cobrar nada hoy ni dos veces, y la suscripción anterior termina sin reembolso; si no lo hace, ese día el negocio vuelve a Gratis, como cualquier plan cancelado. El pago seguro que el propietario anterior dejó abierto se cierra al aceptar (ya no se puede pagar); si aun así se completa, no se aplica: se cancela, se le devuelve entero (con su rectificativa) y le llega «Te hemos devuelto el pago de …» (BILLING-F09). Anota `hubs.ownership.requested` y, al responder, `hubs.ownership.accepted`, `hubs.ownership.declined` o `hubs.ownership.cancelled`; al abrir el pago, `billing.checkout.started`; al devolver un pago de quien ya no es propietario, `billing.checkout.refunded`.
+Si falla: a quien aún no está en el negocio, «Invita antes a esta persona al negocio: solo se puede traspasar a alguien que ya esté en él.»; a uno mismo, «Ya eres el propietario de este negocio.»; con otra oferta esperando, «Ya hay un traspaso de este negocio esperando respuesta.». Al responder: «Este traspaso ya se respondió.», «Este traspaso ha caducado. Pide al propietario que lo vuelva a enviar.», «Ya no estás en este negocio.» o «Este negocio ya cambió de manos: pide a su propietario actual que lo traspase.»; si el servicio de pagos no responde al aceptar un negocio con un plan de pago, no cambia de manos: «El servicio de pagos no ha respondido. No se ha cobrado nada; inténtalo en un momento.». Si no responde al cerrar el pago que dejó abierto el anterior, el traspaso queda hecho igual y el equipo lo ve en el registro (`billing.checkout_not_expired`); un pago de ese intento que llegue después se devuelve. Un negocio gratuito no se acepta si la persona ya tiene el suyo: «Ya tienes un negocio gratuito. Cambia su plan para crear otro.». Al mantener el plan: sin sus datos, el diálogo los pide primero («Indica primero quién paga este negocio: sus datos de facturación son de otra cuenta.»); con una factura sin pagar, «Este negocio tiene una factura sin pagar: págala antes de comprar o cambiar nada.»; si ya se paga con su tarjeta o está en Gratis, «El plan de este negocio ya se paga con tu tarjeta, o está en Gratis: no hay nada que mantener.». Solo el propietario ofrece, y solo el propietario mantiene el plan con su tarjeta; solo la persona elegida acepta o rechaza, y solo el propietario retira la oferta.
+Implicados: billing (quién paga el negocio: el plan deja de renovarse en la tarjeta anterior y pasa a la del nuevo propietario), el negocio (BASE-F13: recibe los roles nuevos y cierra las sesiones de los dos)
+
+### HUBS-F29 Ver las personas de un negocio
+<!-- origen: old-saas:SAAS_DASHBOARD-F18 old-saas:SAAS_DASHBOARD-F214 fi:saas/hubs#usuarios-del-terminal fi:saas/orgs-users#api-miembros-de-un-hub-concreto-rest fi:saas/orgs-users#listar-usuarios-global-por-organizaciones-gestionadas pc:cloud/dashboard/users-list fi:saas/support/orgs-users#serializer-hubaccessserializer -->
+Estado: hecho
+Actor: propietario, administrador, integración
+Pantalla: Miembros
+Pasos:
+1. En la página del negocio, la pestaña «Miembros» enseña la tabla «Equipo»: el propietario primero y cada persona con su correo, su rol, su estado (dentro, invitación pendiente o caducada) y su último acceso; la fila propia lleva «Tú».
+2. Cada fila ofrece solo lo que la persona puede hacer con ella (HUBS-F24 a HUBS-F28); en el móvil son tarjetas y, con muchas personas, se pasa de página.
+3. Debajo dice cuántas plazas del plan se usan y «¿Qué puede hacer cada uno?»; la lista cambia sola cuando alguien acepta, cambia de rol o sale.
+Entra: la sesión de la cuenta y el negocio.
+Sale: nada guardado.
+Si falla: «No hemos podido cargar los miembros» con «Reintentar». Un encargado o un empleado ve «No tienes permiso para gestionar este negocio»; un negocio ajeno no existe para quien lo pide. Una invitación sin responder no tiene fecha de alta.
+Implicados: accounts (la sesión), billing (las plazas del plan)
+
+### HUBS-F30 Consultar los accesos de las personas en el admin
+<!-- origen: fi:saas/django-admin#admin-hubaccess fi:saas/support/orgs-users#modelo-hubaccess -->
+Estado: hecho
+Actor: personal de ERPlora
+Pantalla: admin › Negocios › Miembros
+Pasos:
+1. El personal entra en el admin de erplora.com y abre la lista de miembros; busca por el negocio o por el correo de la persona y filtra por rol.
+2. Ve, por acceso, el negocio, la persona, su rol, cuándo se la invitó, cuándo aceptó y su último acceso; la ficha de cada negocio enseña también sus miembros.
+Entra: la cuenta del personal con su segundo factor.
+Sale: nada guardado.
+Si falla: el admin no invita, no cambia ni quita a nadie: eso solo lo hacen el propietario y los administradores en «Miembros», así nadie del personal se da acceso a un negocio. El personal de soporte también lo consulta.
+Implicados: accounts (la cuenta del personal)
+
 ## Para quien lo mantiene
 
 - Anatomía, operaciones y decisiones: `hubs/README.md` (negocios, salto al Hub, foto y registro empujados al Hub,
   `reconcile_hub_states`, miembros, uso y demo).
 - Partes del porte (MIGRATION-TASK APP-HUBS-1…4): este WORKBOOK nace en la parte 1 (F01–F14); la parte 2 añade
   F15–F23 (ajustes, dirección web y dominio propio, eliminar y recuperar, los suspendidos, estado y uso, admin del
-  negocio); las partes 3 (personas) y 4 (plan, derechos, contrato con el Hub y taxonomía) añaden los suyos a
-  continuación. La revisión flujo a flujo de los `hecho` la hace la parte 4.
+  negocio); la parte 3, F24–F30 (las personas de cada negocio); la parte 4 (plan, derechos, contrato con el Hub y
+  taxonomía) añade los suyos a continuación. La revisión flujo a flujo de los `hecho` la hace la parte 4.
 - Equivalencia de claves del registro: G65 y G41 = F01; G66 = F02; G67, G09, G10 y G45 = F03; G68 = F04; G43,
   G04, G06, G21 y G44 = F05; G98 = F06; G91 = F07; G92 = F08; G69, G17, G18, G111 y G113 = F09; G14, G84 y
   G114 = F10; G70 = F11; G71 = F12; G72 y G12 = F13; G19 = F14. Parte 2: G08 y G73 = F15; G74 = F16; G75, G77,
   G13, G42, G112, G47 y G95 = F17; G11, G87, G88 y G89 = F18; G22 = F19; G94, G48 y G49 = F20; G90 = F21;
   G102 = F22; G02, G07 y G97 = F23; G46 y G51 = F07; G108 = F08. G93 y G85 (pausar y despertar el gratuito que
-  nadie usa) se descartan: «Lo que NO hace».
+  nadie usa) se descartan: «Lo que NO hace». Parte 3: G78, G31, G32, G33, G55, G25, G28, G54, G56 y G50 = F24;
+  G79 = F25; G80, G29, G26 y G57 = F26; G81, G30, G35 y G64 = F27; G82 = F28; G83, G27, G115, G86, G34, G24 y
+  G53 = F29; G03 y G52 = F30. G24 («Usuarios del Terminal») era la página del SaaS viejo con los accesos, la
+  actividad y los activos de un negocio (la misma que G83), no los empleados con PIN, que viven en el negocio.
 - Alta (F01–F03): `hubs.business.create` (una transacción: `BillingProfile`, `Hub`, `HubMember` propietario y
   `Subscription` Gratis) y el empuje tras el COMMIT (`services.sync_hub`). El pago es de `billing`
   (`billing.checkout.start`). El país sugerido sale de `navigator.languages` (`regions.suggestedCountry`, con
@@ -495,11 +641,12 @@ Implicados: el negocio (recibe lo que se le reenvía), accounts (la cuenta del p
 - Direcciones viejas (F03, F09, F10, F13): `hubs/redirects.py`, 301 de `/dashboard/`, `/dashboard/hubs/`,
   `…/active/`, `…/inactive/`, `…/create/` (`/businesses?create=1`) y `…/<id>/qr/` (el Resumen). El resto de
   `/dashboard/*` es de sus apps.
-- Quitar a quien aún paga (trampa saas#2587; el flujo de miembros lo escribe la parte 3, personas): `hubs.member.remove`
+- Quitar a quien aún paga (trampa saas#2587 y saas#2569; HUBS-F27): `hubs.member.remove`
   no saca del negocio a quien aún lo paga (`queries.still_pays`: es dueño de su pagador, o tras un traspaso el plan
   se sigue cobrando al cliente de Stripe de uno de sus pagadores). 409 `hubs.member_pays` con qué hacer: que el
   propietario ponga sus datos de pago (se piden al pagar un plan o un módulo) o, si el plan sigue en la tarjeta
-  anterior, que soporte lo pase a su nombre (`billing.payer_required`). Así nadie paga un negocio que ya no ve, y
+  anterior, que lo mantenga con la suya en Facturación (`billing.plan.take_over`, HUBS-F28; hasta entonces
+  `billing.payer_required`). Así nadie paga un negocio que ya no ve, y
   `accounts` retiene la cuenta de quien paga (`accounts.pays_businesses`, ACCOUNTS-F27). Tests:
   `hubs/tests/test_members.py::TestRemoveThePayer`.
 - Planes (F05): `Plan` con columnas por idioma (`TranslatedFields`, `<campo>_en` y `<campo>_es`), sembrados por la
@@ -527,6 +674,22 @@ Implicados: el negocio (recibe lo que se le reenvía), accounts (la cuenta del p
   solo para la web pública (`website`) y en planes con `includes_custom_domain`, y llega con sus tres piezas
   (erplora.com, borde de `aws` y el host en `base` del Hub); hasta entonces no hay modelo ni pantalla.
 - Pruebas de la parte 2: e2e en `tests/e2e/panel/hubs-settings.spec.ts` (clave `HUBS-Gnn` en el título).
+- Personas (F24–F30): `hubs.member.{list,invite,change_role,remove,resend,cancel}`,
+  `hubs.invitation.{list_mine,accept,decline}` y `hubs.ownership.{transfer,accept,decline,cancel}` (`api.py`, bajo
+  `/api/hubs/members`, `/api/hubs/invitations` y `/api/hubs/ownership`). Cada fila de `hubs.member.list` trae sus
+  `actions`, calculadas con las mismas reglas que las escrituras (`queries.member_actions`, `services._managed`).
+  Quitar, cambiar el rol de alguien que ya respondió y aceptar un traspaso encolan `SessionRevocation`
+  (`POST /internal/sessions/revoke`, `{user_id, hub_id}`), que el Hub sirve desde BASE-F13 (`base/internal.py`) y
+  que se reintenta con espera creciente y en `reconcile_hub_states` si el negocio no contesta. Correos (`emails.py`,
+  con la plantilla común `base.emails.branded_message`, texto y HTML en el idioma de quien recibe): `send_invitation`
+  (enlaza a `/invitation` y, a una cuenta sin forma de entrar, a `/password/reset`), `send_ownership_offer` (enlaza a
+  `/businesses`, donde está la tarjeta de la oferta; el panel no tiene página `/ownership/<id>`; con un plan de pago
+  dice hasta cuándo está pagado y enlaza a `/billing/subscriptions`) y `send_ownership_accepted` (enlaza a
+  `/businesses/<id>` y, con un plan de pago, dice que la tarjeta del saliente ya no lo renueva). Tests:
+  `hubs/tests/test_members.py`, `test_members_api.py`,
+  `test_ownership.py`, `test_session_revocations.py`, `test_invite_unverified_account.py`, `test_emails.py`,
+  `test_permission_matrix.py` y `test_admin.py`; e2e en `tests/e2e/panel/hubs-people.spec.ts` (clave `HUBS-Gnn` en el
+  título), con `members.spec.ts` e `invitation.spec.ts`.
 - Pruebas: cada test cita su clave en el nombre o el docstring; los e2e de esta parte están en
   `tests/e2e/panel/hubs-flows.spec.ts` (con la clave del registro, `HUBS-Gnn`, en el título).
 
@@ -544,3 +707,9 @@ Implicados: el negocio (recibe lo que se le reenvía), accounts (la cuenta del p
 - No conecta todavía un dominio propio (HUBS-F17): la web y la entrada de cada negocio están en su dirección de
   erplora.com.
 - No entra sola en un negocio ya existente al abrir la Entrada, tampoco con uno solo: elige la persona.
+- No tiene una página con las personas de todos los negocios: cada negocio enseña las suyas en «Miembros» (ronda 17:
+  el panel es Negocios, Tienda, Facturación y Cuenta).
+- No enseña la actividad reciente de las personas ni cuántas están conectadas: la actividad vive dentro del negocio.
+- Nadie se sale solo de un negocio: lo quitan el propietario o un administrador, como en Square, Toast o Shopify.
+- No da de alta a los empleados que solo usan un PIN en la caja: se gestionan dentro del negocio.
+- La propiedad no se da cambiando el rol: solo con un traspaso que la otra persona acepta.

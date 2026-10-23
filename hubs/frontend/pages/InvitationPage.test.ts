@@ -67,7 +67,9 @@ describe('InvitationPage', () => {
     const card = s.testid('invitation-m1');
     expect(card.get('h2').text()).toBe('Peluquería Ana');
     expect(card.get('.invite-by').text()).toBe('Carlos Ruiz invites you · Manager');
-    expect(s.testid('invitation-foot').text()).toBe('You can leave a business whenever you want from the panel.');
+    // HUBS-G79: nobody leaves a business by themselves (no such action, as in Square or Toast): the foot says who
+    // can take the access away, not a «leave» the panel does not have.
+    expect(s.testid('invitation-foot').text()).toBe('The owner or an admin of the business can take this access away.');
     expect(document.title).toBe('You have been invited - ERPlora');
   });
 

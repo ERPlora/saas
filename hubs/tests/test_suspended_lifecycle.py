@@ -17,6 +17,7 @@ from unittest import mock
 
 import pytest
 from django.core import mail
+from django.test import override_settings
 from django.utils import timezone
 
 from hubs import services
@@ -140,7 +141,9 @@ class TestTheNotices:
     def test_a_notice_that_cannot_leave_is_sent_again_on_the_next_pass(self, paid):
         hub = suspended_for(paid, SUSPENDED_WARN_DAYS)
 
-        with mock.patch("hubs.emails.send_mail", side_effect=OSError("smtp down")):
+        # A mailer that cannot connect (nothing listens there).
+        with override_settings(MAILERS={"default": {"BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+                                                    "OPTIONS": {"host": "127.0.0.1", "port": 9, "timeout": 1}}}):
             counts = services.age_suspended()
         hub.refresh_from_db()
 

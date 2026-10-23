@@ -140,6 +140,41 @@ def send_business_suspended(hub, *, to: str, language: str, amount) -> None:
     _send_notice(BUSINESS_SUSPENDED, subject, lines, to, language=language)
 
 
+CHECKOUT_REFUNDED = "billing.checkout_refunded"
+
+
+def send_checkout_refunded(hub, *, to: str, language: str, amount) -> None:
+    """Tell the payer that what they paid for ``hub`` after it was handed over to another account was not applied:
+    ended and refunded in full (``amount``; nothing charged when it is 0), and where its rectifying invoice is
+    (review of saas#89). ``MailNotSent`` when the mail could not leave."""
+    language = language or settings.LANGUAGE_CODE
+    with translation.override(language):
+        if amount:
+            subject = _("Your payment for %(business)s was refunded") % {"business": hub.name}
+            lines = [
+                _(
+                    "You paid for %(business)s after it was handed over to another account. As you no longer own "
+                    "it, the payment was not applied: we cancelled that plan and refunded the %(amount)s in full."
+                )
+                % {"business": hub.name, "amount": _money(amount)},
+                _("The refund reaches your card within 5 to 10 days."),
+                "",
+                _("Its rectifying invoice is in Billing: %(url)s") % {"url": _billing_url(hub)},
+            ]
+        else:
+            subject = _("Your plan for %(business)s was cancelled") % {"business": hub.name}
+            lines = [
+                _(
+                    "You confirmed a plan for %(business)s after it was handed over to another account. As you no "
+                    "longer own it, it was not applied: we cancelled it and nothing was charged."
+                )
+                % {"business": hub.name},
+                "",
+                _("See it in Billing: %(url)s") % {"url": _billing_url(hub)},
+            ]
+    _send_notice(CHECKOUT_REFUNDED, subject, lines, to, language=language)
+
+
 #: The headers of the team's OSS notices (BILLING-F06).
 OSS_NOTICE = "billing.oss_{kind}"
 

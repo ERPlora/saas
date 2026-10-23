@@ -534,12 +534,16 @@ class CheckoutAttempt(UUIDModel):
     class Kind(models.TextChoices):
         PLAN = "plan", _("Plan")
         MODULE = "module", _("Module")
+        #: The new owner of a handed-over business keeps its plan with their own card (HUBS-F28).
+        TAKEOVER = "takeover", _("Plan kept by the new owner")
 
     class Status(models.TextChoices):
         OPEN = "open", _("Open")
         COMPLETED = "completed", _("Completed")
         EXPIRED = "expired", _("Expired")
         FAILED = "failed", _("Payment failed")
+        #: Paid by somebody who no longer owned the business (a hand-over meanwhile): ended and refunded.
+        REFUNDED = "refunded", _("Refunded: no longer the owner")
 
     #: Stripe keeps a Checkout Session open 24 hours; reuse it a bit less, so it never expires in hand.
     REUSE_FOR = timedelta(hours=23)

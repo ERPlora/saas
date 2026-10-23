@@ -252,6 +252,7 @@ class TestTheActions:
 
         assert actions == ["change_plan", "cancel_plan", "view_invoices"]
         assert can == {
+            "take_over": False,
             "change_plan": True,
             "cancel_plan": True,
             "keep_plan": False,
@@ -286,7 +287,9 @@ class TestTheActions:
         assert row["unpaid_invoice_id"] == str(unpaid.id)
         assert row["status_label"] == "Payment pending"
 
-    def test_an_owner_who_does_not_pay_only_consults(self, owner, shop, make_user):
+    def test_an_owner_who_does_not_pay_only_consults_or_keeps_it_with_their_card(self, owner, shop, make_user):
+        """The plan on another account's card is neither changed nor cancelled by the owner: the owner keeps it
+        with their own card first (HUBS-F28, ``billing.plan.take_over``)."""
         pay(shop)
         BillingProfile.objects.filter(pk=shop.billing_profile_id).update(
             owner=make_user("payer@example.com")
@@ -294,7 +297,7 @@ class TestTheActions:
 
         actions, can = self.actions(owner)
 
-        assert actions == ["view_invoices"]
+        assert actions == ["take_over", "view_invoices"]
         assert not (can["change_plan"] or can["cancel_plan"] or can["keep_plan"])
 
 

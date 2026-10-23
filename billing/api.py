@@ -77,6 +77,11 @@ async def plan_keep(request, data: HubIn):
     return await run_operation(request, services.plan_keep, data)
 
 
+@bind(router, "billing.plan.take_over", "/billing/plan/take-over")
+async def plan_take_over(request, data: HubIn):
+    return await run_operation(request, services.plan_take_over, data)
+
+
 @bind(router, "billing.module.cancel", "/billing/module/cancel")
 async def module_cancel(request, data: ModuleIn):
     return await run_operation(request, services.module_cancel, data)
