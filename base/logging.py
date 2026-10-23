@@ -87,6 +87,10 @@ class GDPRSafeFormatter(logging.Formatter):
     #: it fails the way saas#2140 did: a new key nobody registers is silently eaten and its
     #: alert never fires.
     _EVENT_KEY = re.compile(r"^[a-z]{1,20}(?:_[a-z]{1,20})*$")
+    #: An id as Python prints a UUID: every key of this project is a ``uuid.uuid7()`` and no credential is UUID-shaped
+    #: (no ``UUIDField`` but primary keys), so ``user=<id>`` stays for the team to follow (ACCOUNTS-F40). Only this
+    #: exact form: with underscores, capitals or anything more it is a blob like any other.
+    _ID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 
     def format(self, record):
         return self._sanitize(super().format(record))
@@ -124,6 +128,6 @@ class GDPRSafeFormatter(logging.Formatter):
 
     def _redact_token(self, match: re.Match) -> str:
         value = match.group(0)
-        if self._SEPARATOR.match(value) or self._EVENT_KEY.match(value):
+        if self._SEPARATOR.match(value) or self._EVENT_KEY.match(value) or self._ID.match(value):
             return value
         return "[TOKEN_REDACTED]"
