@@ -820,8 +820,8 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   `Plan` (`PlanAdmin.save_model` → `services.owe_plan_rights`) reescribe los módulos de su nivel (`sync_plan_modules`) y
   sube la versión de cada negocio vivo con ese plan o con su prueba; la entrega la siguiente pasada (trampa de
   SAAS_DASHBOARD-F53/F54: el cambio del admin no llegaba al Hub). VeriFactu en todos los planes (PLAN §30, ronda
-  2026-10-22b): `verifactu.live_paid` va siempre `true` hasta que el Hub retire esa condición (`apps/verifactu` aún la
-  lee); entonces se quita de la foto. Tests: `hubs/tests/test_hub_sync.py`, `test_plan_rights_reach_businesses.py`,
+  2026-10-22b): el bloque `verifactu` lleva solo `representation`; `live_paid` se quitó de la foto cuando el Hub retiró
+  esa condición (FIX-HUB-VERIFACTU-RETIRE-LIVE-PAID). Tests: `hubs/tests/test_hub_sync.py`, `test_plan_rights_reach_businesses.py`,
   `test_contract_hub.py`, `fiscal/tests/test_snapshot.py`; e2e `tests/e2e/panel/hubs-rights.spec.ts` («HUBS-G101»).
 - Lo que el Hub aplica de la foto (F32 y F34): hoy guarda `plan` y `modules` sin aplicarlos (`base.services.hub_state_apply`
   del Hub: «kept until phase 2 applies them»); los topes de dispositivos y de usuarios con PIN llegan con `DeviceSession`

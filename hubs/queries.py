@@ -909,10 +909,10 @@ def hub_snapshot(hub_id: UUID) -> dict[str, Any]:
 
     ``hub_id`` names the hub of the path, which the signature (body only) does not cover; ``slug`` names it
     too. ``verifactu`` (plan 2026-10-15, agreed with the Hub): the authorisation for ERPlora to file its
-    records as the staff left it (``fiscal.queries.snapshot_block``) and ``live_paid``, true for every business:
-    VeriFactu goes in every plan, Free included (PLAN §30, round 2026-10-22b). The Hub's «live» through ERPlora
-    still reads both, so the validated authorisation alone decides; ``live_paid`` goes once the Hub drops that
-    condition. ``whatsapp``: the business's WhatsApp channel (its
+    records as the staff left it (``fiscal.queries.snapshot_block``), and nothing of the plan: VeriFactu goes in
+    every plan, Free included (PLAN §30, round 2026-10-22b), so the validated authorisation alone opens the Hub's
+    «live» through ERPlora (``live_paid`` left with the Hub's condition, FIX-HUB-VERIFACTU-RETIRE-LIVE-PAID).
+    ``whatsapp``: the business's WhatsApp channel (its
     number, the month's usage against the plan's allowance and its templates at Meta), door 4 of the Hub's
     ``whatsapp_inbox`` contract (``whatsapp.queries.channel_block``).
     """
@@ -967,7 +967,7 @@ def hub_snapshot(hub_id: UUID) -> dict[str, Any]:
             }
             for member in members
         ],
-        "verifactu": {**verifactu_representation(hub.id), "live_paid": True},
+        "verifactu": verifactu_representation(hub.id),
         # The business's WhatsApp channel, door 4 of the Hub's whatsapp_inbox contract: the body of its door 3 at the
         # snapshot's version (whatsapp.queries.channel_block).
         "whatsapp": channel_block(hub.id, version=hub.state_version),
