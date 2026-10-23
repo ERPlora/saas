@@ -619,6 +619,61 @@ def _signed_in_browser(email: str, password: str):
     return sign_in(Client(), email, password)
 
 
+class TestTheSessionsSpeakTheStaffsLanguage:
+    """ACCOUNTS-F19: «Sesiones de usuario» in the staff's language. allauth.usersessions gives its model and its columns
+    no names of their own (Django's «user session», «created at», «user agent»…, English in every language), so the
+    admin names them; only the live names: allauth's migrations stay as they are."""
+
+    @pytest.fixture
+    def spanish_staff(self, client):
+        """The admin speaks the browser's language (``Accept-Language``), not the account's: that is the panel's."""
+        staff = get_user_model().objects.create_superuser(email="raiz@example.com", password="x", language="es")
+        client.force_login(staff)
+        client.defaults["HTTP_ACCEPT_LANGUAGE"] = "es"
+        return client
+
+    def test_the_list_is_named_and_headed_in_spanish(self, spanish_staff, ana, password):
+        _signed_in_browser(ana.email, password)
+
+        page = spanish_staff.get("/admin/usersessions/usersession/").text
+        headers = re.findall(r'<th scope="col"[^>]*>.*?<div class="text">(?:<(?:a|span)[^>]*>)?([^<]+)<', page, re.S)
+
+        assert "Seleccione sesión de usuario para ver" in page
+        assert "1 sesión de usuario" in " ".join(page.split())
+        assert [unescape(header).strip() for header in headers] == [
+            "Cuenta",
+            "Inicio de sesión",
+            "Último uso",
+            "Dirección IP",
+            "Navegador",
+        ]
+        assert ana.email in page
+
+    def test_the_page_of_a_session_is_labelled_in_spanish(self, spanish_staff, ana, password):
+        from allauth.usersessions.models import UserSession
+
+        _signed_in_browser(ana.email, password)
+        session = UserSession.objects.get(user=ana)
+
+        page = spanish_staff.get(f"/admin/usersessions/usersession/{session.pk}/change/").text
+        labels = [unescape(label).strip() for label in re.findall(r"<label>([^<]+):</label>", page)]
+
+        assert labels == [
+            "Cuenta",
+            "Inicio de sesión",
+            "Último uso",
+            "Dirección IP",
+            "Navegador",
+            "Clave de sesión",
+            "Datos de la sesión",
+        ]
+        assert ana.email in page
+
+    def test_the_names_are_not_a_change_of_allauths_models(self):
+        """Only the live names change (``_meta``): ``makemigrations`` sees nothing to write in allauth's package."""
+        call_command("makemigrations", "usersessions", "--check", "--dry-run", stdout=StringIO())
+
+
 @pytest.fixture
 def ended():
     """The accounts whose businesses were asked to end their sessions (``signals.sessions_ended``)."""

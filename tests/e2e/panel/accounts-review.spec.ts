@@ -354,6 +354,9 @@ for (const { lang, locale } of LANGUAGES) {
           if (!(await page.getByTestId('password-current').isVisible())) await page.getByTestId('password-row-change').click();
           await expect(page.getByText(t(lang, 'accounts.account.password.title'))).toBeVisible();
           await expect(page.getByTestId('password-new')).toBeVisible();
+          // The sheet has risen whole (its slide plays in Ionic's shadow DOM, which `settled` does not see): on a
+          // phone too, «Change password» is on screen, not under its edge.
+          await expect(page.getByTestId('password-change-submit')).toBeInViewport({ ratio: 1 });
         });
         await closeOverlays(page);
         await review(page, lang, 'ACCOUNTS-F09-F12-F24', async () => {
@@ -389,6 +392,11 @@ for (const { lang, locale } of LANGUAGES) {
       await page.goto('/admin/usersessions/usersession/');
       await review(page, lang, 'ACCOUNTS-F19', async () => {
         await expect(page.locator('#changelist')).toContainText(staff.email);
+        // allauth names neither its model nor its columns: the admin does, in the staff's language.
+        await expect(page.locator('#content h1')).toHaveText(
+          lang === 'es' ? 'Seleccione sesión de usuario para ver' : 'Select user session to view',
+        );
+        await expect(page.locator('#result_list thead')).toContainText(lang === 'es' ? 'Último uso' : 'Last used');
       });
       expect(errors).toEqual([]);
     });

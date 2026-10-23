@@ -37,6 +37,26 @@ msgid "Close the selected sessions"
 msgstr "Cerrar las sesiones seleccionadas"
 
 #: accounts/admin.py
+msgid "user session"
+msgstr "sesión de usuario"
+
+#: accounts/admin.py
+msgid "user sessions"
+msgstr "sesiones de usuario"
+
+#: accounts/admin.py
+msgid "Signed in"
+msgstr "Inicio de sesión"
+
+#: accounts/admin.py
+msgid "Last used"
+msgstr "Último uso"
+
+#: accounts/admin.py
+msgid "Session data"
+msgstr "Datos de la sesión"
+
+#: accounts/admin.py
 msgid "Sessions closed: %(count)s."
 msgstr "Sesiones cerradas: %(count)s."
 
