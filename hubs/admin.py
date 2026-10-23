@@ -22,8 +22,9 @@ from django.contrib import admin, messages
 from django.contrib.admin.options import ActionLocation
 from django.template.defaultfilters import filesizeformat
 from django.utils.translation import gettext_lazy as _
+from django.utils.translation import ngettext
 
-from hubs import services
+from hubs import queries, services
 from hubs.models import (
     BillingProfile,
     BusinessType,
@@ -78,6 +79,16 @@ class PlanForm(forms.ModelForm):
         model = Plan
         fields = "__all__"
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # The choices' own labels are the untranslated English source (kept out of the migrations); the staff pick
+        # from the names the customer reads, in their language (HUBS-F05). The stored values do not change.
+        for field, labels in (
+            ("included_level", Plan.INCLUDED_LEVEL_LABELS),
+            ("support_level", Plan.SUPPORT_LEVEL_LABELS),
+        ):
+            self.fields[field].choices = [(value, labels.get(value, label)) for value, label in self.fields[field].choices]
+
     def clean(self):
         from billing import services as billing_services
 
@@ -127,6 +138,19 @@ class PlanAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
         if getattr(form, "unchecked", ""):
             self.message_user(request, form.unchecked, messages.WARNING)
+        # HUBS-F31: what the plan gives reaches its businesses within 15 minutes, not at night.
+        if change and set(queries.SNAPSHOT_PLAN_FIELDS) & set(form.changed_data):
+            owed = services.owe_plan_rights(obj)
+            if owed:
+                self.message_user(
+                    request,
+                    ngettext(
+                        "%(count)d business on this plan gets the change within 15 minutes.",
+                        "%(count)d businesses on this plan get the change within 15 minutes.",
+                        owed,
+                    )
+                    % {"count": owed},
+                )
 
 
 # --- The account plane of a business (read-mostly) -------------------------------------------------

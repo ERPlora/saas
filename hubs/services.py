@@ -1373,6 +1373,48 @@ def sync_plan_modules(subscription: Subscription, now=None) -> bool:
     return changed
 
 
+def owe_plan_rights(plan: Plan, now=None) -> int:
+    """The staff changed in the admin what ``plan`` gives (``queries.SNAPSHOT_PLAN_FIELDS``; HUBS-F31): each live
+    business on it, as its plan or as the trial's, gets the modules of its level written (``sync_plan_modules``) and,
+    when its snapshot changes, owes the Hub a newer one, which the next pass of ``reconcile_hub_states`` (every 15
+    minutes) delivers instead of the night's. How many businesses owe it.
+
+    Never pushed here: a plan may have thousands of businesses, and the admin's save is one transaction.
+    """
+    now = now or timezone.now()
+    owed = 0
+    subscriptions = Subscription.objects.select_related("plan", "trial_plan").filter(
+        Q(plan=plan) | Q(trial_plan=plan), hub__status__in=LIVE_STATUSES
+    )
+    for subscription in subscriptions.order_by("pk"):
+        changed = sync_plan_modules(subscription, now)
+        if changed or subscription.effective_plan(now) == plan:
+            bump_state(subscription.hub_id)
+            owed += 1
+    return owed
+
+
+def owe_module_rights(tier: str, previous_tier: str | None = None, now=None) -> int:
+    """A paid module of ``tier`` was added in the admin, or moved there from ``previous_tier`` (HUBS-F34): every live
+    business whose plan (or trial) reaches either level gets its plan's modules written again (``sync_plan_modules``)
+    and, where they changed, owes the Hub a newer snapshot, which the next pass of ``reconcile_hub_states`` delivers.
+    How many businesses owe it. Never pushed here, as ``owe_plan_rights``."""
+    now = now or timezone.now()
+    reached = [queries.LEVELS.index(level) for level in (tier, previous_tier) if level in queries.LEVELS]
+    if not reached:
+        return 0
+    plans = Plan.objects.filter(included_level__in=queries.LEVELS[min(reached) :])
+    owed = 0
+    subscriptions = Subscription.objects.select_related("plan", "trial_plan").filter(
+        Q(plan__in=plans) | Q(trial_plan__in=plans), hub__status__in=LIVE_STATUSES
+    )
+    for subscription in subscriptions.order_by("pk"):
+        if sync_plan_modules(subscription, now):
+            bump_state(subscription.hub_id)
+            owed += 1
+    return owed
+
+
 def _apply_standing(hub: Hub, standing: str, *, was_unpaid: bool) -> bool:
     if standing == "good" and not was_unpaid:
         return False
