@@ -159,6 +159,17 @@ class TestTheHandOverStopsThePreviousPayersRenewal:
         assert local(paid).cancel_at_period_end is False
 
 
+    def test_the_new_owners_details_do_not_retax_the_plan_on_the_previous_payers_card(self, shop, owner, heir,
+                                                                                       stripe_double):
+        """The tax of a plan is its payer's: the details the new owner saves are not charged on another's card."""
+        paid = handed_over(shop, owner, heir, stripe_double)
+        asked = len(stripe_double.calls)
+
+        assert services.retax_subscription(paid) == "skipped"
+
+        assert len(stripe_double.calls) == asked
+
+
 # --- «Keep it with my card» ---------------------------------------------------------------------------
 
 

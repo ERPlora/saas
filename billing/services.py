@@ -3255,9 +3255,10 @@ def retax_subscription(hub: Hub) -> str:
     the paid period is not touched (no proration).
 
     ``retaxed`` · ``unchanged`` (Stripe already holds them: nothing sent) · ``skipped`` (no live Stripe
-    subscription) · ``refused`` (the place is not sold to now: an ERROR, and the old rates stay until the
-    billing details are fixed). With a downgrade waiting in a schedule, its phases are retaxed instead
-    (``_retax_schedule``). Stripe failing raises (``stripe_errors``)."""
+    subscription, or one still charged to another account's card: its tax is that payer's, HUBS-F28) ·
+    ``refused`` (the place is not sold to now: an ERROR, and the old rates stay until the billing details are
+    fixed). With a downgrade waiting in a schedule, its phases are retaxed instead (``_retax_schedule``). Stripe
+    failing raises (``stripe_errors``)."""
     subscription = Subscription.objects.filter(hub=hub).select_related("plan").first()
     if (
         subscription is None
@@ -3265,8 +3266,10 @@ def retax_subscription(hub: Hub) -> str:
         or subscription.status not in RETAX_STATUSES
     ):
         return "skipped"
-    require_stripe()
     hub = Hub.objects.select_related("billing_profile").get(pk=hub.pk)
+    if billed_to_another_account(subscription, hub.billing_profile):
+        return "skipped"
+    require_stripe()
     pending = pending_change(hub)
     if pending is not None:
         return _retax_schedule(hub, subscription, pending.stripe_schedule_id)

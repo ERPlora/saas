@@ -5,7 +5,10 @@
 // (the accesses in the admin).
 //
 // The spec plays the Hub (`startHubDouble`, as panel/members.spec.ts): it sees the snapshot of each change and the
-// end of a person's sessions in the business; the jump into a business is answered here (no Hub runs). Each test has
+// end of a person's sessions in the business; the jump into a business is answered here (no Hub runs). Stripe does not
+// run either (no keys in the e2e stack): what calls it runs in the server's own code with Stripe at its boundary
+// (`withStripe`, the double of the Python tests), and the page plays Stripe.js and the one call that opens a payment
+// (`playStripe`), as panel/store.spec.ts. Each test has
 // its own accounts (`e2e-hubs3-…@example.com`, their address proven) and its own business, created through the API as
 // the panel creates it; the people join it through the operations (invite, then accept), never written by hand.
 import { type Browser, type Page } from '@playwright/test';
@@ -147,6 +150,50 @@ function roleInLastSnapshot(hub: HubDouble, id: string, email: string): string |
 /** The ends of sessions the Hub received for `id`. */
 const revocations = (hub: HubDouble, id: string): HubCall[] =>
   hub.calls.filter((call) => call.method === 'POST' && call.path === '/internal/sessions/revoke' && call.body.hub_id === id);
+
+/**
+ * `code` run in the server's own code with Stripe at its boundary: `double` (billing/tests/stripe_double.py, as the Python
+ * tests) answers what Stripe would; the operations of hubs and billing are the real ones, on this run's database.
+ */
+function withStripe(code: string[]): string {
+  return djangoPrint(
+    [
+      'from django.conf import settings',
+      'from billing import stripe_service',
+      'from billing.tests.stripe_double import StripeDouble, item, subscription',
+      'settings.STRIPE_SECRET_KEY = "rk_test_double"',
+      'settings.STRIPE_PUBLISHABLE_KEY = "pk_test_double"',
+      'double = StripeDouble()',
+      'stripe_service.client = lambda: double',
+      ...code,
+    ].join('\n'),
+  );
+}
+
+/** Stripe.js as the page would get it from js.stripe.com (as panel/store.spec.ts): a placeholder, and `onComplete` kept. */
+async function playStripe(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    type Options = { fetchClientSecret: () => Promise<string>; onComplete?: () => void };
+    const w = window as unknown as Record<string, unknown> & { __stripe: { secrets: string[]; complete?: () => void } };
+    w.__stripe = { secrets: [] };
+    w.Stripe = () => ({
+      async createEmbeddedCheckoutPage(options: Options) {
+        w.__stripe.secrets.push(await options.fetchClientSecret());
+        w.__stripe.complete = options.onComplete;
+        return {
+          mount(target: Element) {
+            const form = document.createElement('div');
+            form.setAttribute('data-testid', 'stripe-double');
+            form.textContent = 'Stripe Embedded Checkout (test double)';
+            form.style.cssText = 'padding:48px 16px;border:1px dashed #999;border-radius:8px;text-align:center';
+            target.append(form);
+          },
+          destroy() {},
+        };
+      },
+    });
+  });
+}
 
 function removeOwnRows(): void {
   djangoPrint(
@@ -378,6 +425,161 @@ test('HUBS-G82: the owner offers the business to a member, who accepts it on Bus
   expect(roles).toEqual({ [owner.email]: 'hub_admin', [carlos.email]: 'hub_owner' });
   await expect.poll(() => roleInLastSnapshot(hub, id, carlos.email)).toBe('hub_owner');
   await waitForMail(owner.email, acceptedAt, new RegExp(`${PANEL}/billing/payment\\b`));
+  await context.close();
+  expect(theirErrors).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test('HUBS-G82 (F28): a business handed over on a paid plan: the new owner keeps it with their card, nothing charged today', async ({
+  page,
+  browser,
+}) => {
+  const errors = watchPageErrors(page);
+  const owner = account('paid-owner', 'Olga', 'Ruiz');
+  const carlos = account('paid-carlos', 'Carlos', 'Mora');
+  const id = await businessOf(page, owner, 'Bar Manolo');
+  await joins(page, browser, id, carlos, 'hub_admin');
+  const member = await rowOf(page, id, carlos.email);
+  const stamp = Date.now();
+  const [oldSub, oldCustomer, newSub, newCustomer] = [`sub_e2e_old_${stamp}`, `cus_e2e_olga_${stamp}`, `sub_e2e_new_${stamp}`, `cus_e2e_carlos_${stamp}`];
+  // Olga pays Starter with her card, as the webhook of her checkout leaves it.
+  djangoPrint(
+    [
+      'from datetime import timedelta',
+      'from django.utils import timezone',
+      'from hubs import services',
+      'from hubs.schemas import SubscriptionApplyIn',
+      'now = timezone.now()',
+      `services.subscription_apply(services.system_ctx_for("${id}"), SubscriptionApplyIn(hub_id="${id}", plan="starter", billing_interval="month", status="active", stripe_customer_id="${oldCustomer}", stripe_subscription_id="${oldSub}", current_period_start=now - timedelta(days=10), current_period_end=now + timedelta(days=20), cancel_at_period_end=False))`,
+    ].join('\n'),
+  );
+  // She offers it to Carlos; he accepts (`hubs.ownership.accept`, which stops her renewal in Stripe).
+  const offered = await apiPost(page.request, '/api/hubs/ownership/transfer', { hub_id: id, member_id: member.id });
+  expect(offered.status(), await offered.text()).toBe(200);
+  const transfer = ((await offered.json()) as { id: string }).id;
+  withStripe([
+    'from django.contrib.auth import get_user_model',
+    'from hubs import services',
+    'from hubs.schemas import ByIdIn',
+    'from hubs.tests.conftest import ctx_for',
+    `double.answer("subscriptions.update", subscription("${oldSub}", customer="${oldCustomer}", items=[item("si_e2e_plan", "price_e2e_starter_month")], cancel_at_period_end=True))`,
+    `services.ownership_accept(ctx_for(get_user_model().objects.get(email="${carlos.email}")), ByIdIn(id="${transfer}"))`,
+    'assert [call.params for call in double.calls_to("subscriptions.update")] == [{"cancel_at_period_end": True}], double.paths()',
+  ]);
+
+  // Carlos, now its owner, sees in Billing that the plan is on another account's card until its period ends.
+  const { context, page: theirs, errors: theirErrors } = await browserOf(browser, carlos);
+  await playStripe(theirs);
+  const opened: unknown[] = [];
+  await theirs.route('**/api/billing/plan/take-over', async (route) => {
+    opened.push(route.request().postDataJSON());
+    await route.fulfill({ json: { flow: 'checkout', session_id: 'cs_test_e2e_keep', client_secret: 'cs_test_e2e_keep_secret', publishable_key: 'pk_test_e2e', preview: null } });
+  });
+  await theirs.goto('/billing/subscriptions');
+  const lead = shown(theirs).getByTestId(`subscriptions-row-${id}-lead`);
+  await atEverySize(theirs, 'HUBS-G82-keep-plan', async () => {
+    await expect(lead).toHaveText('Keep it with my card');
+    await expect(shown(theirs).getByTestId('subscription-paid-by-another')).toHaveText('Paid with another account’s card');
+  });
+
+  // «Keep it with my card»: his details first (the payer is still Olga's), then the secure payment, nothing charged today.
+  await lead.click();
+  const modal = theirs.getByTestId('checkout-modal');
+  await expect(modal).toContainText('Keep Starter with your card');
+  await expect(modal.getByTestId('checkout-another-account')).toBeVisible();
+  // «Use the business's data»: its name and country; the postal code is his.
+  await theirs.getByTestId('details-same').click();
+  await theirs.getByTestId('details-postal-code').locator('input').fill('28002');
+  await modal.getByTestId('checkout-modal-submit').click();
+  await expect(modal.getByTestId('stripe-double')).toBeVisible();
+  await atEverySize(theirs, 'HUBS-G82-keep-plan-pay', async () => {
+    await expect(modal.getByTestId('checkout-for')).toContainText('Bar Manolo · nothing is charged today: your card pays it from');
+    await expect(modal.getByTestId('stripe-double')).toBeVisible();
+  });
+  expect(opened).toEqual([{ hub_id: id }]);
+  await theirs.evaluate(() => (window as unknown as { __stripe: { complete?: () => void } }).__stripe.complete?.());
+  await expect(theirs.locator('ion-toast').filter({ hasText: /^Bar Manolo keeps Starter: your card pays it from / })).toBeVisible();
+  await expect(theirs).toHaveURL(new RegExp(`/businesses/${id}/summary`));
+
+  // Stripe tells the checkout completed (the webhook): the business moves to his card, Olga's subscription ends now.
+  withStripe([
+    'from billing import services',
+    `held = {"${newSub}": subscription("${newSub}", customer="${newCustomer}", items=[item("si_e2e_new", "price_e2e_starter_month")]), "${oldSub}": subscription("${oldSub}", customer="${oldCustomer}", items=[item("si_e2e_plan", "price_e2e_starter_month")], cancel_at_period_end=True)}`,
+    'double.answer("subscriptions.retrieve", lambda call: held[call.args[0]])',
+    'double.answer("subscriptions.cancel", lambda call: {**held[call.args[0]], "status": "canceled"})',
+    `assert services.checkout_completed({"id": "cs_test_e2e_keep", "mode": "subscription", "payment_status": "no_payment_required", "status": "complete", "subscription": "${newSub}", "customer": "${newCustomer}", "metadata": {"kind": "plan_takeover", "hub_id": "${id}", "replaces": "${oldSub}"}}) == "completed"`,
+    `assert [call.args for call in double.calls_to("subscriptions.cancel")] == [("${oldSub}",)], double.paths()`,
+  ]);
+  await theirs.goto('/billing/subscriptions');
+  await expect(lead).toHaveText('Change plan');
+  await expect(shown(theirs).getByTestId('subscription-paid-by-another')).toHaveCount(0);
+  await atEverySize(theirs, 'HUBS-G82-kept', async () => {
+    await expect(lead).toHaveText('Change plan');
+  });
+
+  expect(theirErrors).toEqual([]);
+  await context.close();
+  expect(errors).toEqual([]);
+});
+
+test('HUBS-G82 (F28), in Spanish: «Mantenerlo con mi tarjeta» and the secure payment that charges nothing today', async ({ browser, page }) => {
+  const errors = watchPageErrors(page);
+  const owner = account('paid-es-owner', 'Olga', 'Ruiz');
+  const lucia = account('paid-es-lucia', 'Lucía', 'Gil');
+  const id = await businessOf(page, owner, 'Bar Manolo');
+  await joins(page, browser, id, lucia, 'hub_admin');
+  const member = await rowOf(page, id, lucia.email);
+  const stamp = Date.now();
+  const [oldSub, oldCustomer] = [`sub_e2e_es_${stamp}`, `cus_e2e_es_${stamp}`];
+  djangoPrint(
+    [
+      'from datetime import timedelta',
+      'from django.contrib.auth import get_user_model',
+      'from django.utils import timezone',
+      'from hubs import services',
+      'from hubs.schemas import SubscriptionApplyIn',
+      'now = timezone.now()',
+      `services.subscription_apply(services.system_ctx_for("${id}"), SubscriptionApplyIn(hub_id="${id}", plan="starter", billing_interval="month", status="active", stripe_customer_id="${oldCustomer}", stripe_subscription_id="${oldSub}", current_period_start=now - timedelta(days=10), current_period_end=now + timedelta(days=20), cancel_at_period_end=False))`,
+      `get_user_model().objects.filter(email="${lucia.email}").update(language="es")`,
+    ].join('\n'),
+  );
+  const offered = await apiPost(page.request, '/api/hubs/ownership/transfer', { hub_id: id, member_id: member.id });
+  expect(offered.status(), await offered.text()).toBe(200);
+  withStripe([
+    'from django.contrib.auth import get_user_model',
+    'from hubs import services',
+    'from hubs.schemas import ByIdIn',
+    'from hubs.tests.conftest import ctx_for',
+    `double.answer("subscriptions.update", subscription("${oldSub}", customer="${oldCustomer}", items=[item("si_e2e_plan", "price_e2e_starter_month")], cancel_at_period_end=True))`,
+    `services.ownership_accept(ctx_for(get_user_model().objects.get(email="${lucia.email}")), ByIdIn(id="${((await offered.json()) as { id: string }).id}"))`,
+  ]);
+
+  const context = await browser.newContext({ baseURL: PANEL_URL, locale: 'es-ES', viewport: { width: 1440, height: 900 } });
+  await freezeFrontend(context);
+  const theirs = await context.newPage();
+  const theirErrors = watchPageErrors(theirs);
+  await signIn(theirs.request, { email: lucia.email, password: PASSWORD });
+  await playStripe(theirs);
+  await theirs.route('**/api/billing/plan/take-over', (route) =>
+    route.fulfill({ json: { flow: 'checkout', session_id: 'cs_test_e2e_es', client_secret: 'cs_test_e2e_es_secret', publishable_key: 'pk_test_e2e', preview: null } }),
+  );
+  await theirs.goto('/billing/subscriptions');
+  const lead = shown(theirs).getByTestId(`subscriptions-row-${id}-lead`);
+  await atEverySize(theirs, 'HUBS-G82-keep-plan-es', async () => {
+    await expect(lead).toHaveText('Mantenerlo con mi tarjeta');
+    await expect(shown(theirs).getByTestId('subscription-paid-by-another')).toHaveText('Se paga con la tarjeta de otra cuenta');
+  });
+  await lead.click();
+  const modal = theirs.getByTestId('checkout-modal');
+  await expect(modal).toContainText('Mantén Starter con tu tarjeta');
+  // «Use the business's data»: its name and country; the postal code is his.
+  await theirs.getByTestId('details-same').click();
+  await theirs.getByTestId('details-postal-code').locator('input').fill('28002');
+  await modal.getByTestId('checkout-modal-submit').click();
+  await atEverySize(theirs, 'HUBS-G82-keep-plan-pay-es', async () => {
+    await expect(modal.getByTestId('checkout-for')).toContainText('Bar Manolo · hoy no se cobra nada: tu tarjeta lo paga desde el');
+    await expect(modal.getByTestId('stripe-double')).toBeVisible();
+  });
   await context.close();
   expect(theirErrors).toEqual([]);
   expect(errors).toEqual([]);
