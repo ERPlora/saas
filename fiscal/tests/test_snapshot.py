@@ -1,11 +1,11 @@
 """The block ``verifactu`` of a business's snapshot (``PUT /internal/hubs/{id}/state``, PLAN-SAAS §2.2; plan
 2026-10-15 «Contrato», agreed with the Hub's session):
 
-    "verifactu": {"representation": {"status", "updated_at", "reason"}, "live_paid": bool}
+    "verifactu": {"representation": {"status", "updated_at", "reason"}}
 
-``representation`` is the authorisation as the staff left it (``none`` without rows); ``live_paid``, true for every
-business since VeriFactu goes in every plan (PLAN §30, round 2026-10-22b), stays until the Hub retires its
-condition: the Hub opens «live» through ERPlora with both, so today the validated authorisation alone decides. It travels with the snapshot's
+``representation`` is the authorisation as the staff left it (``none`` without rows): VeriFactu goes in every plan
+(PLAN §30, round 2026-10-22b), so the validated authorisation alone opens «live» through ERPlora. ``live_paid``
+left the block once the Hub stopped reading it (FIX-HUB-VERIFACTU-RETIRE-LIVE-PAID). It travels with the snapshot's
 ``version``; never a document nor a name.
 """
 
@@ -201,14 +201,14 @@ class TestTheRepresentation:
 
 class TestVerifactuInEveryPlan:
     """HUBS-F31: VeriFactu goes in every plan, Free included, so the validated authorisation alone opens the live
-    sending through ERPlora. ``live_paid`` stays in the block, always true, until the Hub retires its condition
-    (its ``apps/verifactu`` still reads it); then it goes."""
+    sending through ERPlora: the block carries no plan fact (``live_paid`` left it with the Hub's condition,
+    FIX-HUB-VERIFACTU-RETIRE-LIVE-PAID)."""
 
-    def test_free_carries_it(self, business):
-        assert block(on_free(business))["live_paid"] is True
+    def test_free_carries_only_the_authorisation(self, business):
+        assert set(block(on_free(business))) == {"representation"}
 
     @pytest.mark.parametrize("slug", ["starter", "standard"])
-    def test_a_paid_plan_carries_it(self, business, slug):
+    def test_a_paid_plan_carries_only_the_authorisation(self, business, slug):
         from hubs.models import Plan
 
         Subscription.objects.filter(hub=business).update(
@@ -216,7 +216,7 @@ class TestVerifactuInEveryPlan:
         )
 
         assert hub_queries.hub_snapshot(business.id)["plan"]["slug"] == slug
-        assert block(business)["live_paid"] is True
+        assert set(block(business)) == {"representation"}
 
     def test_no_module_is_needed_for_it(self, business):
         """The old ``verifactu`` module paid the live sending on Free: neither a live one nor one that ended
@@ -228,17 +228,15 @@ class TestVerifactuInEveryPlan:
             valid_until=timezone.now() - timedelta(minutes=1),
         )
 
-        assert block(business)["live_paid"] is True
+        assert set(block(business)) == {"representation"}
 
     def test_approved_on_free_can_go_live(self, business):
-        """The two facts the Hub reads: the documentation validated and, on Free too, the sending in the plan."""
+        """The one fact the Hub reads to open «live» through ERPlora, on Free too: the documentation validated."""
         on_free(business)
         make_grant(business, status="approved", reviewed_at=timezone.now())
 
-        assert (
-            block(business)["representation"]["status"],
-            block(business)["live_paid"],
-        ) == ("approved", True)
+        assert block(business) == {"representation": block(business)["representation"]}
+        assert block(business)["representation"]["status"] == "approved"
 
 
 # --- (a) Two businesses, each its own ----------------------------------------------------------------------
@@ -316,16 +314,11 @@ def test_a_module_that_stops_being_live_leaves_modules_and_keeps_the_approval(bu
 
     snapshot = hub_queries.hub_snapshot(business.id)
     assert "verifactu" not in [module["id"] for module in snapshot["modules"]]
-    assert (
-        snapshot["verifactu"]["representation"]["status"],
-        snapshot["verifactu"]["live_paid"],
-    ) == (
-        "approved",
-        True,
-    )
+    assert snapshot["verifactu"]["representation"]["status"] == "approved"
+    assert set(snapshot["verifactu"]) == {"representation"}
 
 
-def test_dropping_to_free_keeps_live_paid_and_the_approval_with_a_newer_version(
+def test_dropping_to_free_keeps_the_approval_with_a_newer_version(
     business, hub_double, django_capture_on_commit_callbacks
 ):
     """What Stripe says (``hubs.subscription.apply``) changes the plan the Hub sees, so the snapshot is bumped
@@ -336,7 +329,6 @@ def test_dropping_to_free_keeps_live_paid_and_the_approval_with_a_newer_version(
         SubscriptionApplyIn(hub_id=business.id, plan="starter"),
     )
     make_grant(business, status="approved", reviewed_at=timezone.now())
-    assert block(business)["live_paid"] is True
     before = version_of(business)
 
     with django_capture_on_commit_callbacks(execute=True):
@@ -348,10 +340,7 @@ def test_dropping_to_free_keeps_live_paid_and_the_approval_with_a_newer_version(
     assert version_of(business) == before + 1
     state = hub_double.calls_to("PUT", f"/internal/hubs/{business.id}/state")[-1].body
     assert (state["version"], state["plan"]["slug"]) == (before + 1, "free")
-    assert state["verifactu"] == {
-        "representation": state["verifactu"]["representation"],
-        "live_paid": True,
-    }
+    assert state["verifactu"] == {"representation": state["verifactu"]["representation"]}
     assert state["verifactu"]["representation"]["status"] == "approved"
 
 
@@ -428,4 +417,4 @@ def test_the_snapshot_names_the_business_by_its_address(business):
     snapshot = hub_queries.hub_snapshot(business.id)
 
     assert (snapshot["hub_id"], snapshot["slug"]) == (str(business.id), "bar-manolo")
-    assert set(snapshot["verifactu"]) == {"representation", "live_paid"}
+    assert set(snapshot["verifactu"]) == {"representation"}
