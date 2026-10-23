@@ -440,6 +440,19 @@ class TestTheSuperuserIssuesAKey:
             services.issue_api_key(ana, name="Monitor", scopes=["hubs.read"], expires_in_days=30, by=root)
         assert not ana.api_keys.exists()
 
+    @pytest.mark.parametrize(
+        ("language", "labels"),
+        [("en", ["User:", "Name:", "Permissions:", "Expires:"]), ("es", ["Usuario:", "Nombre:", "Permisos:", "Caduca:"])],
+    )
+    def test_the_form_names_each_field_alike(self, staff_client, language, labels):
+        """Django capitalises the labels it takes from the model («User:», «Name:»), not the form's own: «permissions:»
+        and «expires:» stood out in lower case."""
+        client, _ = staff_client
+
+        page = client.get(self.ADD, HTTP_ACCEPT_LANGUAGE=language).text
+
+        assert [unescape(label).strip() for label in re.findall(r"<(?:label|legend)[^>]*>([^<]+:)</(?:label|legend)>", page)][:4] == labels
+
     def test_the_form_offers_only_team_accounts(self, staff_client, teammate, ana):
         client, _ = staff_client
 

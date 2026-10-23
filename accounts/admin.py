@@ -331,10 +331,10 @@ class ApiKeyIssueForm(forms.ModelForm):
     """«Add API key» (ACCOUNTS-F31): a team account, a name, its permissions and when it expires."""
 
     scopes = forms.MultipleChoiceField(
-        label=_("permissions"), choices=list(API_KEY_SCOPES.items()), widget=forms.CheckboxSelectMultiple
+        label=capfirst(_("permissions")), choices=list(API_KEY_SCOPES.items()), widget=forms.CheckboxSelectMultiple
     )
     expires_in_days = forms.TypedChoiceField(
-        label=_("expires"),
+        label=capfirst(_("expires")),
         choices=[("90", _("In 90 days")), ("30", _("In 30 days")), ("", _("Never"))],
         coerce=int,
         empty_value=None,
