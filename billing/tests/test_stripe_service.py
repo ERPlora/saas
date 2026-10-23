@@ -368,6 +368,40 @@ def test_an_invoice_without_a_payment_attempt_has_no_reason(stripe_double):
     assert stripe_service.payment_failure_of("in_1") is None
 
 
+def paid(pi_id, cents, *, status="paid"):
+    return {**invoice_payment(pi_id, invoice_id="in_1"), "status": status, "amount_paid": cents}
+
+
+def test_what_an_invoice_collected_is_refunded_once_per_payment(stripe_double):
+    """Each paid PaymentIntent of the invoice, in full; a payment that never collected is not refunded."""
+    stripe_double.answer("invoice_payments.list", listing([paid("pi_1", 3629), paid("pi_2", 0, status="canceled")]))
+    stripe_double.answer("refunds.create", {"id": "re_1", "object": "refund", "status": "succeeded"})
+
+    assert stripe_service.refund_invoice("in_1", key="refund-cs_1", metadata={"hub_id": "h"}) == 3629
+
+    (call,) = stripe_double.calls_to("refunds.create")
+    assert call.params == {"payment_intent": "pi_1", "reason": "requested_by_customer", "metadata": {"hub_id": "h"}}
+    assert call.options == {"idempotency_key": "refund-cs_1-pi_1"}
+
+
+def test_a_charge_stripe_already_refunded_counts_as_refunded(stripe_double):
+    """A redelivery after Stripe forgot the idempotency key (24 hours): the second refund is refused, not lost."""
+    stripe_double.answer("invoice_payments.list", listing([paid("pi_1", 3629)]))
+    stripe_double.answer(
+        "refunds.create", invalid_request(code="charge_already_refunded", message="Charge has already been refunded.")
+    )
+
+    assert stripe_service.refund_invoice("in_1", key="refund-cs_1", metadata={}) == 3629
+
+
+def test_any_other_refusal_of_a_refund_is_raised(stripe_double):
+    stripe_double.answer("invoice_payments.list", listing([paid("pi_1", 3629)]))
+    stripe_double.answer("refunds.create", invalid_request(code="resource_missing", message="No such payment_intent"))
+
+    with pytest.raises(StripeRefused):
+        stripe_service.refund_invoice("in_1", key="refund-cs_1", metadata={})
+
+
 # --- The webhook's signature -------------------------------------------------------------------------
 
 

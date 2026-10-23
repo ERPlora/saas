@@ -542,6 +542,8 @@ class CheckoutAttempt(UUIDModel):
         COMPLETED = "completed", _("Completed")
         EXPIRED = "expired", _("Expired")
         FAILED = "failed", _("Payment failed")
+        #: Paid by somebody who no longer owned the business (a hand-over meanwhile): ended and refunded.
+        REFUNDED = "refunded", _("Refunded: no longer the owner")
 
     #: Stripe keeps a Checkout Session open 24 hours; reuse it a bit less, so it never expires in hand.
     REUSE_FOR = timedelta(hours=23)

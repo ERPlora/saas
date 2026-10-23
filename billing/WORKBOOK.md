@@ -292,7 +292,7 @@ Pasos:
 3. Si la persona cierra el diálogo antes de pagar, no se cobra nada y puede volver a abrirlo (BILLING-F10); el negocio sigue como estaba y no se borra nada.
 Entra: el pago que Stripe da por terminado.
 Sale: el mismo plan nuevo que deja el aviso de Stripe (BILLING-F19); la vuelta y el aviso nunca aplican dos veces el mismo pago.
-Si falla: un pago que Stripe da por fallido después cierra ese intento sin cambiar el plan; un pago de otra cosa (un módulo) nunca cambia el plan.
+Si falla: un pago que Stripe da por fallido después cierra ese intento sin cambiar el plan; un pago de otra cosa (un módulo) nunca cambia el plan. Un pago terminado por quien ya no es el propietario (el negocio se traspasó con el pago abierto, HUBS-F28) no se aplica: su suscripción se cancela, el cobro se devuelve entero (BILLING-F26 hace su rectificativa), el intento queda «Devuelto: ya no era el propietario» (`billing.checkout.refunded`) y le llega «Te hemos devuelto el pago de …» con el enlace a Facturación; si no se cobró nada, «Hemos cancelado tu plan de …». Una vez, aunque Stripe repita el aviso; si Stripe no responde, no se marca nada y Stripe lo vuelve a enviar.
 Implicados: el negocio (recibe su plan)
 
 ### BILLING-F10 Reintentar un pago que no se terminó

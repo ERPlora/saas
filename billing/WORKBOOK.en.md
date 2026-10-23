@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:5f00728fbd5e4907adce02cadd7b8d30636a2c10f7223058c78c023039c64223 -->
+<!-- generated from WORKBOOK.md sha256:eb5030943c894f46900f03a9c4c85656b5e05f98129a46267816d5790fb8cf17 -->
 
 ## What it is for and who it is for
 
@@ -279,7 +279,7 @@ Steps:
 3. If the person closes the dialog before paying, nothing is charged and they can open it again (BILLING-F10); the business stays as it was and nothing is deleted.
 In: the payment Stripe considers finished.
 Out: the same new plan that Stripe's notice leaves (BILLING-F19); the return and the notice never apply the same payment twice.
-If it fails: a payment that Stripe later considers failed closes that attempt without changing the plan; a payment for something else (a module) never changes the plan.
+If it fails: a payment that Stripe later considers failed closes that attempt without changing the plan; a payment for something else (a module) never changes the plan. A payment completed by somebody who no longer owns the business (handed over with the payment open, HUBS-F28) is not applied: its subscription is cancelled, the charge is refunded in full (BILLING-F26 makes its corrective invoice), the attempt says "Refunded: no longer the owner" (`billing.checkout.refunded`) and they get "Your payment for … was refunded" with the link to Billing; if nothing was charged, "Your plan for … was cancelled". Once, even if Stripe repeats the notice; if Stripe does not answer, nothing is marked and Stripe sends it again.
 Involved: the business (receives its plan)
 
 ### BILLING-F10 Retry a payment that was not finished

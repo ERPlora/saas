@@ -67,6 +67,8 @@ from billing.models import (
 from billing.money import from_cents, to_cents
 from billing.schemas import (
     CheckoutConfirmIn,
+    CheckoutRefundRecordIn,
+    CheckoutRefundRecordOut,
     CreditNoteRecordIn,
     FiscalAnswerIn,
     FiscalAnswerOut,
@@ -2687,9 +2689,12 @@ def checkout_completed(session: dict) -> str:
     subscription_id = session["subscription"]
     if isinstance(subscription_id, dict):
         subscription_id = subscription_id["id"]
-    if checkout_session_kind(metadata) is CheckoutKind.PLAN_TAKEOVER:
-        return _takeover_completed(hub, session, subscription_id, metadata.get("replaces") or "")
     with holding(hub.id):
+        attempt = CheckoutAttempt.objects.select_related("owner").filter(stripe_session_id=session.get("id")).first()
+        if attempt is not None and attempt.owner_id is not None and attempt.owner_id != hub_queries.owner_id(hub.id):
+            return _end_not_owner(hub, attempt, session, subscription_id)
+        if checkout_session_kind(metadata) is CheckoutKind.PLAN_TAKEOVER:
+            return _takeover_completed(hub, session, subscription_id, metadata.get("replaces") or "")
         local = Subscription.objects.filter(hub=hub).first()
         if (
             local is not None
@@ -2752,6 +2757,125 @@ def _end_duplicate(
         updated_at=timezone.now(),
     )
     return "duplicate_subscription"
+
+
+#: The webhook's outcome of a checkout paid by somebody who no longer owns the business.
+NOT_OWNER = "not_owner"
+
+
+def _end_not_owner(hub: Hub, attempt: CheckoutAttempt, session: dict, subscription_id: str) -> str:
+    """A checkout paid by somebody who no longer owns the business (handed over while it was open, review of
+    saas#89): it is not applied. Its subscription ends now and what it charged is refunded in full (Stripe's
+    «Cancel + refund»; ``charge.refunded`` makes the rectifying invoice), the attempt says ``refunded`` (its audit
+    trail keeps when) and its payer is told after the COMMIT. Once: a redelivery finds it refunded. Stripe not
+    answering raises, so nothing is marked and Stripe delivers it again (the refund is idempotent)."""
+    if attempt.status == CheckoutAttempt.Status.REFUNDED:
+        return NOT_OWNER
+    live = stripe_service.retrieve_subscription(subscription_id)
+    if (live.get("status") or "") not in ENDED_STATUSES:
+        stripe_service.cancel_subscription(subscription_id)
+    invoice = live.get("latest_invoice") or ""
+    if isinstance(invoice, dict):
+        invoice = invoice.get("id") or ""
+    refunded = (
+        stripe_service.refund_invoice(
+            invoice,
+            key=f"refund-{session.get('id')}",
+            metadata={"hub_id": str(hub.id), "checkout_session": session.get("id") or "", "reason": NOT_OWNER},
+        )
+        if invoice
+        else 0
+    )
+    checkout_refund_record(
+        system_context(Scope("user", str(attempt.owner_id))),
+        CheckoutRefundRecordIn(attempt_id=attempt.id, refunded=refunded),
+    )
+    logger.error(
+        "[BILLING] Hub %s: checkout %s was paid by account %s, which no longer owns it. Subscription %s ended and "
+        "%s cents refunded",
+        hub.id,
+        session.get("id"),
+        attempt.owner_id,
+        subscription_id,
+        refunded,
+        extra={"event": "billing.checkout_not_owner", "hub_id": str(hub.id)},
+    )
+    return NOT_OWNER
+
+
+@operation(
+    "billing.checkout.refund_record",
+    kind="command",
+    permission="billing.manage",
+    input=CheckoutRefundRecordIn,
+    output=CheckoutRefundRecordOut,
+)
+def checkout_refund_record(ctx: OperationContext, data: CheckoutRefundRecordIn) -> dict:
+    """A checkout already ended and refunded in Stripe because its payer no longer owned the business (the platform
+    only, from the webhook; no route): the attempt says ``refunded`` (its audit trail keeps when), the event goes
+    to the payer's channel and the payer is told by mail after the COMMIT."""
+    attempt = CheckoutAttempt.objects.select_for_update().get(pk=data.attempt_id)
+    attempt.status = CheckoutAttempt.Status.REFUNDED
+    attempt.completed_at = timezone.now()
+    attempt.save(update_fields=["status", "completed_at", "updated_at"])
+    record_event(
+        ctx,
+        events.CHECKOUT_REFUNDED,
+        {"hub_id": str(attempt.hub_id), "attempt": str(attempt.id), "refunded": data.refunded},
+    )
+    transaction.on_commit(partial(_tell_refunded, attempt.owner_id, attempt.hub_id, data.refunded), robust=True)
+    return {"attempt_id": attempt.id, "status": attempt.status}
+
+
+def _tell_refunded(account_id, hub_id, cents: int) -> None:
+    """The mail to the payer of a checkout ended because they no longer owned the business (after the COMMIT).
+    One that cannot leave is logged (``billing.emails``): the refund and its rectifying invoice in Billing are
+    the record."""
+    from django.contrib.auth import get_user_model
+
+    from billing import emails
+
+    account = get_user_model().objects.filter(pk=account_id).first()
+    hub = Hub.objects.filter(pk=hub_id).first()
+    if account is None or hub is None:
+        logger.error("[BILLING] Nobody to tell of the refund of hub %s to account %s", hub_id, account_id)
+        return
+    try:
+        emails.send_checkout_refunded(hub, to=account.email, language=account.language, amount=from_cents(cents))
+    except emails.MailNotSent:
+        return
+
+
+def expire_open_checkouts(hub_id) -> None:
+    """After a hand-over's COMMIT (``hubs.ownership.accept``): the Checkout Sessions the business had open (its
+    previous owner's) can no longer be paid (Stripe's ``expire``). One Stripe no longer lets expire (paid meanwhile)
+    is left to the webhook, which refunds a payment of somebody who no longer owns it (``_end_not_owner``); Stripe
+    away is logged as an error and changes nothing else: the hand-over is done either way."""
+    for attempt in CheckoutAttempt.objects.filter(hub_id=hub_id, status=CheckoutAttempt.Status.OPEN).exclude(
+        stripe_session_id=None
+    ):
+        try:
+            stripe_service.expire_checkout_session(attempt.stripe_session_id)
+        except stripe_service.StripeRefused as refused:
+            logger.info(
+                "[BILLING] Checkout %s of hub %s is not open any more (%s): the webhook decides",
+                attempt.stripe_session_id,
+                hub_id,
+                refused.code,
+            )
+            continue
+        except (stripe_service.StripeUnavailable, stripe_service.StripeNotConfigured) as failed:
+            logger.error(
+                "[BILLING] Checkout %s of hub %s stays open after its hand-over: %s. A payment of it is refunded by "
+                "the webhook",
+                attempt.stripe_session_id,
+                hub_id,
+                failed,
+                extra={"event": "billing.checkout_not_expired", "hub_id": str(hub_id)},
+            )
+            continue
+        attempt.status = CheckoutAttempt.Status.EXPIRED
+        attempt.save(update_fields=["status", "updated_at"])
 
 
 def checkout_closed(session: dict, status: str) -> str:

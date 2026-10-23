@@ -1079,9 +1079,11 @@ def ownership_accept(ctx: OperationContext, data: ByIdIn) -> dict:
     transfer.resolved_at = now
     transfer.save(update_fields=["status", "resolved_at"])
     # A paid plan stops renewing on the previous payer's card; the new owner keeps it with theirs (HUBS-F28).
-    from billing.services import end_renewal_after_hand_over
+    from billing.services import end_renewal_after_hand_over, expire_open_checkouts
 
     paid_until = end_renewal_after_hand_over(transfer.hub, transfer.to_user)
+    # What the previous owner left open in Stripe Checkout can no longer be paid (review of saas#89).
+    transaction.on_commit(partial(expire_open_checkouts, transfer.hub_id), robust=True)
     sync_access(transfer.hub)
     bump_state(transfer.hub_id)
     # Both roles changed, and each travels in its Hub session: both sign in again.

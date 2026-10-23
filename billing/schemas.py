@@ -328,6 +328,19 @@ class RefundRecordIn(Schema):
     refund: dict[str, Any]
 
 
+class CheckoutRefundRecordIn(Schema):
+    """Internal (the webhook): a checkout paid by somebody who no longer owned the business, already ended and
+    refunded in Stripe (``refunded`` in cents)."""
+
+    attempt_id: UUID
+    refunded: int
+
+
+class CheckoutRefundRecordOut(Schema):
+    attempt_id: UUID
+    status: str
+
+
 class FiscalAnswerIn(Schema):
     """Internal: what ERPlora's platform hub answered about an invoice."""
 
