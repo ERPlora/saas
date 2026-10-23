@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:a52b5ef513a913ce72a3eb038e13e9d5c460285f1a3efed2c4efc1c4f01eb103 -->
+<!-- generated from WORKBOOK.md sha256:504aaef927067536a1410d3f747316df607ee1abd17a1301e6009efc21831117 -->
 
 ## What it is for and who it is for
 
@@ -232,7 +232,7 @@ the "message in Spanish" (empty, Spanish visitors read the English one), and the
 | ACCOUNTS-F41 | Start erplora.com and serve each request | done |
 | ACCOUNTS-F42 | Show an error page | done |
 | ACCOUNTS-F43 | Put erplora.com in maintenance | done |
-| ACCOUNTS-F44 | Clean the expired sessions and codes every day | partial |
+| ACCOUNTS-F44 | Clean the expired sessions and codes every day | done |
 | ACCOUNTS-F45 | Brake too many requests | done |
 | ACCOUNTS-F46 | Send erplora.com's emails | done |
 | ACCOUNTS-F47 | Move around the panel | done |
@@ -825,7 +825,7 @@ If it fails: if the switch cannot be read (the database down), erplora.com stays
 Involved: hubs (their calls keep working), billing (Stripe's notices keep working), whatsapp (Meta's notices keep working)
 
 ### ACCOUNTS-F44 Clean the expired sessions and codes every day
-Status: partial — the cleaning already exists, but it is not scheduled every day yet: until then a person of the team runs it
+Status: done
 Actor: system
 Screen: none (a daily task of erplora.com)
 Steps:
