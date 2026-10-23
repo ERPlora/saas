@@ -417,14 +417,14 @@ Estado: hecho
 Actor: sistema
 Pantalla: Entrada, Revisa tu correo, Restablece tu contraseña, Establece una nueva contraseña, Verificación en dos pasos
 Pasos:
-1. Antes de nada, Google comprueba sin que se vea (sin casilla ni puzle) que quien envía el formulario es una persona: entrar, crear la cuenta, pedir el enlace de restablecer, la contraseña nueva del enlace, el código del correo y «Enviar un código nuevo», el código de cada entrada y el de la app autenticadora. Debajo de cada uno, «Este sitio está protegido por reCAPTCHA y se aplican la Política de Privacidad y las Condiciones del Servicio de Google.». «Continuar con Google» no pasa por aquí: lo comprueba Google.
+1. Antes de nada, si la comprobación de Google está encendida, Google comprueba sin que se vea (sin casilla ni puzle) que quien envía el formulario es una persona: entrar, crear la cuenta, pedir el enlace de restablecer, la contraseña nueva del enlace, el código del correo y «Enviar un código nuevo», el código de cada entrada y el de la app autenticadora. Debajo de cada uno, «Este sitio está protegido por reCAPTCHA y se aplican la Política de Privacidad y las Condiciones del Servicio de Google.». Desde el 2026-10-23 está apagada por defecto (el cortafuegos de la red frena el tráfico sospechoso antes de llegar): los formularios no cargan nada de Google ni muestran ese aviso, y los frenos de abajo siguen igual. «Continuar con Google» no pasa por aquí: lo comprueba Google.
 2. Cada contraseña equivocada gasta del presupuesto de su cuenta y del de la dirección de red (5 en 5 minutos cada uno); agotado, ni la buena entra hasta que pasa el plazo. Una entrada buena devuelve su intento: el dueño no gasta presupuesto.
 3. Antes de mirar la contraseña, cada dirección de red tiene 30 entradas por minuto.
 4. Los códigos del correo admiten 3 intentos; el de la entrada dura 3 minutos. Además, cada dirección de red tiene 10 códigos rechazados en 5 minutos, del correo o de la app autenticadora; uno bueno no gasta.
 5. Los enlaces de restablecer, 10 por hora por dirección de red y 5 por hora por cuenta; el formulario del enlace, 20 envíos por minuto por dirección; un código nuevo, uno cada 10 segundos por cuenta; las altas, 10 por hora por dirección; el cambio de contraseña, 5 por minuto por cuenta.
-Entra: el correo que se prueba, la dirección de red de quien llama y el visto bueno de Google.
-Sale: la respuesta de freno, la misma exista o no la cuenta y con el mismo número de intentos: «Demasiados intentos fallidos. Inténtelo más tarde.» en la **Entrada** o «Demasiados intentos. Espera unos minutos y vuelve a intentarlo.»; si Google no ve una persona, «No hemos podido comprobar que eres una persona. Vuelve a intentarlo.» y no se hace nada.
-Si falla: si la memoria compartida de los contadores no responde, el freno se abre (la puerta sigue usable) y queda un aviso en el registro. Si Google no contesta, entrar, el código de la entrada y el de la app autenticadora siguen (ya los guardan la contraseña, el código y los frenos) y queda un error en el registro; el resto de formularios se rechaza con el mensaje de arriba.
+Entra: el correo que se prueba, la dirección de red de quien llama y, con la comprobación encendida, el visto bueno de Google.
+Sale: la respuesta de freno, la misma exista o no la cuenta y con el mismo número de intentos: «Demasiados intentos fallidos. Inténtelo más tarde.» en la **Entrada** o «Demasiados intentos. Espera unos minutos y vuelve a intentarlo.»; con la comprobación encendida, si Google no ve una persona, «No hemos podido comprobar que eres una persona. Vuelve a intentarlo.» y no se hace nada.
+Si falla: si la memoria compartida de los contadores no responde, el freno se abre (la puerta sigue usable) y queda un aviso en el registro. Con la comprobación encendida, si Google no contesta, entrar, el código de la entrada y el de la app autenticadora siguen (ya los guardan la contraseña, el código y los frenos) y queda un error en el registro; el resto de formularios se rechaza con el mensaje de arriba.
 Implicados: ninguno
 
 ### ACCOUNTS-F12 Saber quién ha entrado
@@ -1013,7 +1013,9 @@ Implicados: hubs, billing, public, apps y fiscal; del Hub, verifactu, invoice y 
 - Freno (ACCOUNTS-F11): todos los límites escritos en `ACCOUNT_RATE_LIMITS` de `config/settings.py` (saas#88:
   `login_failed` 5/5m por dirección y por cuenta, `reset_password` 10/h por dirección y 5/h por cuenta y
   `code_attempts`, nuestro, 10 códigos rechazados en 5 minutos por dirección) sobre la caché de Django (Valkey en
-  AWS, `base.cache.FailSoftRedisCache`); `tests/test_throttle.py`. reCAPTCHA Enterprise por puntuación
+  AWS, `base.cache.FailSoftRedisCache`); `tests/test_throttle.py`. reCAPTCHA Enterprise por puntuación, **apagado
+  por defecto desde el 2026-10-23** (Ioan: el WAF del ALB y estos límites; `RECAPTCHA_ENABLED=true` más las dos
+  claves lo encienden sin tocar código; apagado, ni token, ni script, ni aviso, ni Google en la CSP)
   (`live.recaptcha`, mínimo `RECAPTCHA_MIN_SCORE` 0.5) delante de las puertas de allauth.headless en
   `accounts/bot_check.py` (400 `recaptcha_failed`; abre sin Google solo en `login`, `login_code` y
   `mfa_authenticate`), aviso en `components/RecaptchaNotice.vue`; `tests/test_bot_check.py`. Detalle y runbook,

@@ -76,8 +76,9 @@ def test_the_public_policy_still_forbids_the_dangerous_directives(client):
 # API) and stopped charging (Stripe): spec §8.2, decision 16. Nothing loads those CDNs anywhere; Stripe
 # is retired from the public web only: the panel's policy (the SPA's Store) carries Stripe's origins for
 # the Embedded Checkout (`base/csp.py`, plan 2026-10-13 L2-D; PLAN-SAAS §3.6 point 17). reCAPTCHA, retired with
-# them (ADR-0154), is back on every public form (Ioan, 2026-10-22): Google's `/recaptcha/` paths only
-# (`test_the_public_policy_admits_googles_recaptcha`).
+# them (ADR-0154), came back on every public form (Ioan, 2026-10-22) and is switched off by default since
+# 2026-10-23 (Ioan: the WAF on the ALB, the attempt limits): switched on, Google's `/recaptcha/` paths only
+# (`test_the_public_policy_admits_googles_recaptcha`); off, nothing of it.
 RETIRED_EVERYWHERE = (
     "cdn.jsdelivr.net",
     "api.iconify.design",
@@ -268,9 +269,29 @@ def test_the_public_middleware_runs_before_djangos_builds_the_header():
     )
 
 
-def test_the_public_policy_admits_googles_recaptcha():
-    """reCAPTCHA Enterprise on the contact form and the demo (live.recaptcha): Google's two script origins, its
-    frames and its connection (the public pages enforce no Trusted Types)."""
+@pytest.mark.parametrize("debug", [False, True])
+def test_the_public_policy_without_recaptcha_names_nothing_of_it(settings, debug):
+    """Off (the default since 2026-10-23): no script, frame nor connection of Google's reCAPTCHA."""
+    settings.DEBUG = debug
+    policy = public_policy()
+    sources = " ".join(" ".join(map(str, values)) for values in policy.values())
+
+    assert "recaptcha" not in sources
+    assert "gstatic.com" not in sources
+    assert "frame-src" not in policy
+
+
+@pytest.mark.django_db
+def test_a_public_page_without_recaptcha_names_nothing_of_it(client):
+    policy = client.get("/contact/")["Content-Security-Policy"]
+
+    assert "recaptcha" not in policy
+    assert "gstatic.com" not in policy
+
+
+def test_the_public_policy_admits_googles_recaptcha(recaptcha):
+    """reCAPTCHA Enterprise switched on, on the contact form and the demo (live.recaptcha): Google's two script
+    origins, its frames and its connection (the public pages enforce no Trusted Types)."""
     policy = public_policy()
 
     assert {"https://www.google.com/recaptcha/", "https://www.gstatic.com/recaptcha/"} <= set(policy["script-src"])
@@ -280,7 +301,7 @@ def test_the_public_policy_admits_googles_recaptcha():
 
 
 @pytest.mark.parametrize("debug", [False, True])
-def test_google_is_admitted_only_under_its_recaptcha_paths(settings, debug):
+def test_google_is_admitted_only_under_its_recaptcha_paths(settings, recaptcha, debug):
     settings.DEBUG = debug
     google = [
         source

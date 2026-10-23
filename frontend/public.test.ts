@@ -433,8 +433,11 @@ describe('reCAPTCHA on the public forms (frontend/recaptcha.ts; Ioan, 2026-10-22
     expect(SOURCE).toMatch(/export function boot\(doc: Document\): void \{[^}]*protectForms\(doc\)/);
   });
 
-  it('hides Google’s badge: its notice is under each protected form (public/partials/recaptcha_notice.html)', () => {
-    const css = readFileSync(join(SAAS_DIR, 'public', 'static', 'public', 'landing.css'), 'utf8');
-    expect(css).toMatch(/\.grecaptcha-badge\s*\{\s*visibility:\s*hidden;?\s*\}/);
+  it('carries no CSS of Google’s badge: frontend/recaptcha.ts hides it only with Google’s script (off by default)', () => {
+    // Its notice is under each protected form (public/partials/recaptcha_notice.html), only while reCAPTCHA is on.
+    for (const sheet of ['landing.css', 'public-landing.css']) {
+      const css = readFileSync(join(SAAS_DIR, 'public', 'static', 'public', sheet), 'utf8');
+      expect(css, sheet).not.toContain('grecaptcha-badge');
+    }
   });
 });

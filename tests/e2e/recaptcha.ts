@@ -1,7 +1,8 @@
-// reCAPTCHA Enterprise in the e2e. The public server is production-like (DEBUG off), so reCAPTCHA is on there and
-// cannot be switched off: it asks the double of recaptcha-double.ts for its assessments (`RECAPTCHA_ENDPOINT`), with
-// an API key that is not Google's, and its pages get a fake enterprise.js (`fakeGoogleRecaptcha`) whose tokens the
-// double reads (`e2e-human:<action>`, `e2e-bot:<action>`). The fake works as Google's does where the page's
+// reCAPTCHA Enterprise in the e2e. The public server is production-like (DEBUG off), so reCAPTCHA is off there, as
+// in production since 2026-10-23 (Ioan: the WAF on the ALB, the attempt limits), unless the run asks for it with
+// `E2E_RECAPTCHA=1` (`recaptchaOn`): then it asks the double of recaptcha-double.ts for its assessments
+// (`RECAPTCHA_ENDPOINT`), with an API key that is not Google's, and its pages get a fake enterprise.js
+// (`fakeGoogleRecaptcha`) whose tokens the double reads (`e2e-human:<action>`, `e2e-bot:<action>`). The fake works as Google's does where the page's
 // policies are concerned: our code inserts www.google.com/recaptcha/enterprise.js, which inserts its release from
 // www.gstatic.com by a plain string with the page's nonce, and the release creates the `goog#html` Trusted Types
 // policy and paints the badge. So a CSP or a Trusted Types policy that would block Google blocks the fake too.
@@ -82,9 +83,17 @@ export async function assessWithGoogle({
   };
 }
 
-/** The public server's reCAPTCHA: the double of `stack` for the assessments, the local site key when there is one. */
+/** Whether the run switches reCAPTCHA on in the public server (`E2E_RECAPTCHA=1`); off by default, as production. */
+export function recaptchaOn(env: Env = process.env): boolean {
+  return env.E2E_RECAPTCHA === '1';
+}
+
+/** The public server's reCAPTCHA: off by default (whatever `.env` says), as production; with `E2E_RECAPTCHA=1`, on,
+ *  with the double of `stack` for the assessments and the local site key when there is one. */
 export function recaptchaServerEnv(stack: Pick<Stack, 'recaptchaDoublePort'>, saasDir: string, env: Env = process.env): Record<string, string> {
+  if (!recaptchaOn(env)) return { RECAPTCHA_ENABLED: 'False' };
   return {
+    RECAPTCHA_ENABLED: 'True',
     RECAPTCHA_SITE_KEY: localRecaptchaSiteKey(saasDir, env) || E2E_RECAPTCHA_SITE_KEY,
     RECAPTCHA_API_KEY: E2E_RECAPTCHA_API_KEY,
     RECAPTCHA_ENDPOINT: `http://127.0.0.1:${stack.recaptchaDoublePort}/v1/projects/erplora/assessments`,

@@ -117,12 +117,20 @@ describe("the stack's servers", () => {
     expect(server.env).toMatchObject({ DEBUG: 'False', DB_NAME: 'saas_e2e_8030' });
   });
 
-  it('send the public server’s reCAPTCHA assessments to the double of the stack, never to Google', () => {
-    expect(publicServer(SAAS_DIR, SHARED).env).toMatchObject({
+  it('run the public server with reCAPTCHA off by default, as production since 2026-10-23', () => {
+    const env = publicServer(SAAS_DIR, SHARED, {}).env;
+    expect(env).toMatchObject({ RECAPTCHA_ENABLED: 'False' });
+    expect(env).not.toHaveProperty('RECAPTCHA_ENDPOINT');
+  });
+
+  it('with E2E_RECAPTCHA=1, send the public server’s reCAPTCHA assessments to the double of the stack, never to Google', () => {
+    const on = { E2E_RECAPTCHA: '1' };
+    expect(publicServer(SAAS_DIR, SHARED, on).env).toMatchObject({
+      RECAPTCHA_ENABLED: 'True',
       RECAPTCHA_API_KEY: E2E_RECAPTCHA_API_KEY,
       RECAPTCHA_ENDPOINT: 'http://127.0.0.1:8018/v1/projects/erplora/assessments',
     });
-    expect(publicServer(SAAS_DIR, OWN).env?.RECAPTCHA_ENDPOINT).toBe('http://127.0.0.1:8038/v1/projects/erplora/assessments');
+    expect(publicServer(SAAS_DIR, OWN, on).env?.RECAPTCHA_ENDPOINT).toBe('http://127.0.0.1:8038/v1/projects/erplora/assessments');
   });
 
   it('let the run press «Try the demo» more than 3 times an hour from 127.0.0.1 (the throttled door is its own spec)', () => {
