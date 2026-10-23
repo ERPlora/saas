@@ -5,13 +5,14 @@ delivery status of a message the Hub sent).
 Plain HTTP, no ORM: ``gateway.deliver`` hands in the bodies and records the answers. Signed as every call of the
 SaaS to the Hub (``hubs.hub_client.signed_headers``: v1 over the body, v2 over method, path and body), to
 ``HUB_INTERNAL_URL``. Any answer is returned (``Answer``): the caller decides that a 200 is delivered, a 422 is not
-worth retrying and anything else is retried; no answer at all raises ``Unreachable``. 5 s at most: it runs after the
-COMMIT of Meta's webhook, which waits for it.
+worth retrying and anything else is retried; no answer at all raises ``Unreachable``. 5 s to connect and 5 s more to
+answer at most (``LONGEST_CALL``): it runs after the COMMIT of Meta's webhook, which waits for it.
 """
 
 import json
 import time
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import Any
 
 import httpx
@@ -22,6 +23,9 @@ from hubs.hub_client import signed_headers
 INBOUND_PATH = "/internal/whatsapp/inbound"
 STATUS_PATH = "/internal/whatsapp/status"
 TIMEOUT = httpx.Timeout(5.0)
+#: The longest one call takes: httpx's timeout is per phase, so 5 s to connect and 5 s more to answer (the body is
+#: small: it is written at once). What claims deliveries counts on it to push them inside their lease.
+LONGEST_CALL = timedelta(seconds=TIMEOUT.connect + TIMEOUT.read)
 
 
 class Unreachable(Exception):

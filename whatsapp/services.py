@@ -90,8 +90,10 @@ from whatsapp.schemas import (
 logger = logging.getLogger(__name__)
 
 PERMISSION = queries.PERMISSION
-#: How long a claimed delivery is held for its push before another run may take it again.
-LEASE = timedelta(minutes=2)
+#: How long a claimed delivery is held for its push before another run may take it again: longer than the slowest
+#: claim takes to push (``hub_client.LONGEST_CALL``, 10 s a call): Meta's webhook, 20 calls (200 s); a pass of
+#: ``whatsapp_deliver``, 50 s. A claim whose run died is retried once it ends.
+LEASE = timedelta(minutes=5)
 #: The first wait after the Hub did not take a delivery; each next one doubles, up to ``LONGEST_WAIT``.
 FIRST_WAIT = timedelta(seconds=30)
 LONGEST_WAIT = timedelta(hours=1)
