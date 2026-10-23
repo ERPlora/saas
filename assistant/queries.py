@@ -222,6 +222,16 @@ def unknown_hub() -> NotFound:
     return NotFound("No business the SaaS knows goes by that hub.", code="hub_unknown")
 
 
+def working(hub: Hub | None) -> Hub:
+    """``hub`` if its people can use the assistant now: 404 ``hub_unknown`` (unknown or purged), 403 ``hub_inactive``
+    (preparing, suspended or being deleted)."""
+    if hub is None or hub.status == Hub.Status.DELETED:
+        raise unknown_hub()
+    if hub.status not in WORKING:
+        raise PermissionDenied("The business does not work now: its people cannot use the assistant.", code="hub_inactive")
+    return hub
+
+
 @operation(
     "assistant.caller.resolve",
     kind="query",
@@ -246,11 +256,7 @@ def caller_resolve(ctx: OperationContext, data: CallerIn) -> dict:
     except ValueError:
         key = None
     named = Q(id=key) if key is not None and str(key) == ref else Q(slug=ref)
-    hub = Hub.objects.filter(named).exclude(status=Hub.Status.DELETED).first()
-    if hub is None:
-        raise unknown_hub()
-    if hub.status not in WORKING:
-        raise PermissionDenied("The business does not work now: its people cannot use the assistant.", code="hub_inactive")
+    hub = working(Hub.objects.filter(named).exclude(status=Hub.Status.DELETED).first())
     return {"hub_id": hub.id, "demo": "", "slug": hub.slug}
 
 

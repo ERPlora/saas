@@ -545,22 +545,36 @@ REPORT_ONCE_SECONDS = 24 * 60 * 60
 def report_send(ctx: OperationContext, data: ReportSendIn) -> dict:
     """Mail the report of an answer to the support mailbox (the platform only), in English (the team's mail), with
     the business, the reason, the comment, the question and the answer, each cut to ``REPORT_TEXT_MAX``; nothing is
-    kept nor logged. The same answer (``message_id``) of the same business within a day is a ``duplicate``. 503
-    ``assistant.report_not_sent`` if the mail cannot leave (it can be sent again)."""
+    kept nor logged. The same answer (``message_id``) of the same business within a day is a ``duplicate``. A business
+    that stopped working since the door resolved it gets the door's answer (404 ``hub_unknown``, 403 ``hub_inactive``)
+    and nothing is mailed. 503 ``assistant.report_not_sent`` if the mail cannot leave. The event is written before the
+    mail, so nothing that can undo the transaction comes after it: a mail that cannot leave undoes the event, and an
+    event that cannot be written sends nothing. Whatever fails, the report can be sent again."""
     from django.core.cache import cache
-
-    from base.emails import branded_message
 
     queries.platform_only(ctx)
     caller = data.caller
-    once = f"assistant:report:{'demo:' + caller.demo if caller.demo else caller.hub_id}:{data.message_id}"
-    if not cache.add(once, 1, REPORT_ONCE_SECONDS):
-        return {"sent": False, "duplicate": True}
     if caller.demo:
         who, details = caller.demo, [("Demo", caller.demo)]
     else:
-        hub = Hub.objects.get(pk=caller.hub_id)
+        hub = queries.working(Hub.objects.filter(pk=caller.hub_id).first())
         who, details = hub.name, [("Business", f"{hub.name} ({hub.slug}, {hub.id})")]
+    once = f"assistant:report:{'demo:' + caller.demo if caller.demo else caller.hub_id}:{data.message_id}"
+    if not cache.add(once, 1, REPORT_ONCE_SECONDS):
+        return {"sent": False, "duplicate": True}
+    try:
+        record_event(ctx, events.REPORT_SENT, {**_caller_payload(caller), "reason": data.reason})
+        _mail_report(ctx, who, details, data)
+    except BaseException:
+        cache.delete(once)
+        raise
+    return {"sent": True, "duplicate": False}
+
+
+def _mail_report(ctx: OperationContext, who: str, details: list[tuple[str, str]], data: ReportSendIn) -> None:
+    """The report's mail to the support mailbox; 503 ``assistant.report_not_sent`` if it cannot leave."""
+    from base.emails import branded_message
+
     lines = [
         *(f"{label}: {value}" for label, value in details),
         f"Reason: {data.reason}",
@@ -578,11 +592,8 @@ def report_send(ctx: OperationContext, data: ReportSendIn) -> dict:
     try:
         branded_message(f"[Assistant report] {who} · {data.reason}", lines, [settings.SUPPORT_EMAIL], language="en").send()
     except Exception:  # noqa: BLE001 - any failure of the mail backend is answered, not raised
-        cache.delete(once)
         logger.exception("assistant.report_mail_failed")
         with translation.override(ctx.language):
             raise OperationError(
                 _("The report could not be sent: try again in a moment."), code="assistant.report_not_sent", status=503
             ) from None
-    record_event(ctx, events.REPORT_SENT, {**_caller_payload(caller), "reason": data.reason})
-    return {"sent": True, "duplicate": False}

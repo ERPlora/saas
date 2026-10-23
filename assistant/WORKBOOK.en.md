@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:d1ea76e9ca3eb0de70592f5c2ced6a2c912f9378789fcb7041e5fd4929f93d45 -->
+<!-- generated from WORKBOOK.md sha256:4051049680a7856e5ef17eea460dac53a1af985a0b4c90caa057e6339a9fdd23 -->
 
 ## What it is for and who uses it
 
@@ -431,7 +431,7 @@ Steps:
 4. If the same answer of the same business is reported again within 24 hours (a double tap, a retry), no other mail is sent.
 In: the business, the reported answer, the reason, the comment and the question.
 Out: the mail in the support mailbox, or the notice that it had already been sent (`assistant.report.sent`).
-If it fails: if the mail cannot leave, it says it could not be sent and to try again in a moment, and it can be sent again; a reason that is not one of the four is refused.
+If it fails: if the mail cannot leave, it says it could not be sent and to try again in a moment, and it can be sent again; a reason that is not one of the four is refused; a business that stops working (deleted or suspended) while its report arrives sends nothing and gets the same answer as in any other call (ASSISTANT-F11).
 Involved: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F17
 
 ### ASSISTANT-F24 See what a business spent of the assistant

@@ -465,7 +465,7 @@ Pasos:
 4. Si la misma respuesta del mismo negocio se denuncia otra vez en 24 horas (un doble toque, un reintento), no se manda otro correo.
 Entra: el negocio, la respuesta denunciada, el motivo, el comentario y la pregunta.
 Sale: el correo en el buzón de soporte, o el aviso de que ya se había mandado (`assistant.report.sent`).
-Si falla: si el correo no puede salir, se dice que no se ha podido enviar y que se vuelva a intentar en un momento, y se puede volver a enviar; un motivo que no es uno de los cuatro se rechaza.
+Si falla: si el correo no puede salir, se dice que no se ha podido enviar y que se vuelva a intentar en un momento, y se puede volver a enviar; un motivo que no es uno de los cuatro se rechaza; un negocio que deja de trabajar (eliminado o suspendido) mientras llega su denuncia no manda nada y recibe la misma respuesta que en cualquier otra llamada (ASSISTANT-F11).
 Implicados: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F17
 
 ### ASSISTANT-F24 Ver lo que ha gastado un negocio del asistente

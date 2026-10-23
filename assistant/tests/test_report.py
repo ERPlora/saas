@@ -108,6 +108,90 @@ def test_a_mail_that_cannot_leave_says_so_and_can_be_sent_again(client, internal
     assert door(client, REPORT, report(business)).json() == {"sent": True, "duplicate": False}
 
 
+def gone_after_the_signature(monkeypatch, business, change):
+    """The door resolves the business, and ``change`` happens to it before the report is sent."""
+    from assistant import internal as doors
+
+    resolve = doors.resolve
+
+    def resolve_then_change(hub):
+        caller = resolve(hub)
+        change(business)
+        return caller
+
+    monkeypatch.setattr(doors, "resolve", resolve_then_change)
+
+
+def purge(business):
+    business.__class__.objects.filter(pk=business.pk).delete()
+
+
+def mark(status):
+    return lambda business: business.__class__.objects.filter(pk=business.pk).update(status=status)
+
+
+@pytest.mark.parametrize(
+    ("change", "answer"),
+    [
+        (purge, (404, "hub_unknown")),
+        (mark("deleted"), (404, "hub_unknown")),
+        (mark("suspended"), (403, "hub_inactive")),
+    ],
+    ids=["its row purged", "purged", "suspended"],
+)
+def test_a_business_that_stops_working_after_the_signature_gets_the_doors_answer_and_mails_nothing(
+    client, internal, business, monkeypatch, change, answer
+):
+    gone_after_the_signature(monkeypatch, business, change)
+
+    response = door(client, REPORT, report(business))
+
+    assert (response.status_code, error_code(response)) == answer
+    assert mail.outbox == []
+
+
+def test_a_report_refused_because_the_business_stopped_working_can_be_sent_once_it_works_again(
+    client, internal, business, monkeypatch
+):
+    with monkeypatch.context() as stopped:
+        gone_after_the_signature(stopped, business, mark("suspended"))
+        assert door(client, REPORT, report(business)).status_code == 403
+    mark("active")(business)
+
+    assert door(client, REPORT, report(business)).json() == {"sent": True, "duplicate": False}
+
+
+def test_a_report_whose_event_cannot_be_written_mails_nothing_and_can_be_sent_again(
+    client, internal, business, monkeypatch
+):
+    def outbox_down(*args, **kwargs):
+        raise RuntimeError("the outbox is down")
+
+    with monkeypatch.context() as broken:
+        broken.setattr("assistant.services.record_event", outbox_down)
+        with pytest.raises(RuntimeError):
+            door(client, REPORT, report(business))
+
+    assert mail.outbox == []
+    assert door(client, REPORT, report(business)).json() == {"sent": True, "duplicate": False}
+
+
+def test_a_report_sent_is_one_event_and_a_mail_that_cannot_leave_leaves_none(client, internal, business, monkeypatch):
+    from live.models import OutboxEvent
+
+    def fail(self, *args, **kwargs):
+        raise OSError("the mail server is down")
+
+    with monkeypatch.context() as broken:
+        broken.setattr("django.core.mail.message.EmailMessage.send", fail)
+        assert door(client, REPORT, report(business)).status_code == 503
+    assert not OutboxEvent.objects.filter(name="assistant.report.sent").exists()
+
+    door(client, REPORT, report(business))
+
+    assert OutboxEvent.objects.filter(name="assistant.report.sent").count() == 1
+
+
 def test_nothing_of_the_report_is_kept_nor_logged(client, internal, business, caplog):
     caplog.set_level(logging.DEBUG)
 
