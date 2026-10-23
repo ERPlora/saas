@@ -108,9 +108,9 @@ El diálogo de «Cambiar dirección»: «Nueva dirección», debajo «Tu negocio
 y lo que pasa después; «Cambiar dirección» se activa cuando es distinta de la actual.
 
 ### admin › Negocios › Planes
-La ficha de cada plan para el personal: los textos en inglés y en español, el precio, qué incluye, sus límites y
-sus precios de Stripe. Al guardar un cambio en lo que da el plan, el aviso «… negocios con este plan reciben el cambio
-en los próximos 15 minutos.».
+La ficha de cada plan para el personal, en su idioma: los textos en inglés y en español, el precio, qué incluye, sus
+límites y sus precios de Stripe. Al guardar un cambio en lo que da el plan, el aviso «… negocios con este plan reciben
+el cambio en los próximos 15 minutos.».
 
 ### admin › Negocios › Sectores y Tipos de negocio
 Las dos listas de la taxonomía del alta para el personal, con buscador y filtros, y la ficha de cada una: el código,
@@ -680,7 +680,7 @@ Pasos:
 4. En **Tienda › Módulos**, con el negocio elegido, el propietario ve cada aplicación en ese negocio: «Incluido en tu plan» o «Ya lo tienes» (BILLING-F31).
 Entra: el plan del negocio y sus compras.
 Sale: las aplicaciones de pago del negocio en su foto; nada se guarda.
-Si falla: una compra es de un solo negocio: nunca da la aplicación a otro, tampoco a otro de la misma cuenta. Una cancelada sigue hasta el final de lo pagado. Al bajar de plan se van las que daba el plan anterior; al subir, llegan las del nivel nuevo.
+Si falla: una compra es de un solo negocio: nunca da la aplicación a otro, tampoco a otro de la misma cuenta. Una cancelada sigue hasta el final de lo pagado. Al bajar de plan se van las que daba el plan anterior; al subir, llegan las del nivel nuevo. Una aplicación de pago que el personal pone a la venta, o a la que cambia de nivel, llega a los negocios cuyo plan la incluye en la pasada siguiente (como mucho 15 minutos); el admin dice «… negocios cuyo plan lo incluye reciben el cambio en los próximos 15 minutos.».
 Implicados: billing (las compras), apps (qué aplicación es de pago y su nivel), el negocio (enciende o frena cada aplicación)
 
 ### HUBS-F35 Reconocer al servicio de los negocios cuando llama a erplora.com
@@ -829,6 +829,12 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   `app_entitlement_blocked`) con su activación, y la cuenta de los mensajes del asistente con el turno de `assistant`
   (parte 2). El SaaS ya aplica `max_users` al invitar (`hubs/tests/test_seats.py`). Tests de la parte 4:
   `test_snapshot_rights.py` (una compra o el plan de otro negocio nunca llegan a este; bajar a Gratis no saca a nadie).
+  Un `Module` nuevo, o con otro `tier`, en el admin de `apps` (`ModuleAdmin.save_model` → `services.owe_module_rights`)
+  reescribe los módulos del plan de cada negocio vivo cuyo plan (o prueba) alcanza el nivel nuevo o el anterior, y sube
+  su versión si cambian; lo entrega `reconcile_hub_states`. Tests: `test_plan_rights_reach_businesses.py` (HUBS-F34).
+- Admin de Planes (pantalla de F05, vista en F31): nombres traducibles en los campos de `Plan` (migración `0018`, solo
+  de estado), su `__str__` en el idioma activo («Starter · 29,99 €/mes») y el nivel y el soporte elegidos por sus
+  nombres traducidos (`PlanForm`, sin cambiar los valores guardados). Tests: `test_admin.py` («plan … speaks Spanish»).
 - Quién llama (F35): `/internal/*` se firma con HMAC (`accounts/signing.py`: v1 + v2, dos secretos vivos, 5 minutos). El
   guardarraíl `hubs/tests/test_internal_doors.py` recorre el resolver de URLs: toda puerta `internal/…` contesta 401 (o
   405) sin firma, con otra firma, con una hora vieja o con la sesión del personal; una puerta nueva sin la comprobación

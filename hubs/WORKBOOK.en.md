@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:8685739c5581dcdfbd1713b91b88db9bbfa97f1480bb3e9e8f8d2d5011e6c8c9 -->
+<!-- generated from WORKBOOK.md sha256:5d3c32cb9d0aca3c72ac7be142ad23262725f3085b525bfd6a2ef320c92a01b3 -->
 
 ## What it is for and who it is for
 
@@ -96,9 +96,9 @@ The dialog of "Change address": "New address", under it "Your business will open
 give and what happens next; "Change address" is enabled when it differs from the current one.
 
 ### admin › Businesses › Plans
-Each plan's form for the staff: the texts in English and in Spanish, the price, what it includes, its limits and
-its Stripe prices. On saving a change to what the plan gives, the notice "… businesses on this plan get the change
-within 15 minutes.".
+Each plan's form for the staff, in their language: the texts in English and in Spanish, the price, what it includes,
+its limits and its Stripe prices. On saving a change to what the plan gives, the notice "… businesses on this plan get
+the change within 15 minutes.".
 
 ### admin › Businesses › Sectors and Business types
 The two lists of the sign-up's taxonomy for the staff, with search and filters, and the form of each one: the code,
@@ -633,7 +633,7 @@ Steps:
 4. In **Store › Modules**, with the business chosen, the owner sees each app in that business: "Included in your plan" or "You have it" (BILLING-F31).
 In: the business's plan and its purchases.
 Out: the business's paid apps in its snapshot; nothing is stored.
-If it fails: a purchase belongs to a single business: it never gives the app to another, not even to another of the same account. A cancelled one lasts until the end of what was paid. Moving down a plan takes away the ones the previous plan gave; moving up brings the ones of the new level.
+If it fails: a purchase belongs to a single business: it never gives the app to another, not even to another of the same account. A cancelled one lasts until the end of what was paid. Moving down a plan takes away the ones the previous plan gave; moving up brings the ones of the new level. A paid app the staff put on sale, or move to another level, reaches the businesses whose plan includes it on the next pass (15 minutes at most); the admin says "… businesses whose plan includes it get the change within 15 minutes.".
 Involved: billing (the purchases), apps (which app is paid and its level), the business (turns each app on or stops it)
 
 ### HUBS-F35 Recognise the businesses' service when it calls erplora.com

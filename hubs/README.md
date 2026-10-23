@@ -181,6 +181,13 @@ Flujos `HUBS-F31`…`HUBS-F37` del `WORKBOOK.md` (parte 4 de 5; la revisión flu
 - **Taxonomía en el admin, en el idioma del personal** (F36): los campos de `Sector` y `BusinessType` (`code`, `icon`,
   `color`, `display_order`, `is_active`, `created_at`, `updated_at`, `sector`, `vertical`) tienen nombre traducible
   (migración `0017`, solo de estado, sin SQL); antes la lista decía «Code» y «Por is active».
+- **Un módulo nuevo, o que cambia de nivel, en el admin** (F34; era una línea FIX de esta parte): `apps.admin.ModuleAdmin.
+  save_model` llama a `services.owe_module_rights(tier, previous_tier)`: `sync_plan_modules` de cada negocio vivo cuyo plan
+  o prueba alcanza el nivel nuevo o el anterior y `bump_state` si cambian; el admin dice cuántos lo reciben. Antes no
+  llegaba a nadie hasta el siguiente aviso de Stripe de cada negocio.
+- **El admin de Planes en el idioma del personal** (F31, pantalla de F05; era una línea FIX de esta parte): nombres
+  traducibles en los campos de `Plan` (migración `0018`, solo de estado), `__str__` en el idioma activo («Starter · 29,99
+  €/mes») y el nivel y el soporte por sus nombres traducidos en `PlanForm`. Antes, «PRICE MONTHLY» y «Por is active».
 - **Descartado** (G23, G105, G106): el Hub no da de alta, comprueba ni quita personas en el SaaS. El SaaS es la fuente
   de quién tiene cuenta y acceso (PLAN-SAAS §2, «Quién sabe qué»), lo empuja en `members` de la foto y el Hub lo aplica
   (BASE-F13); los empleados con PIN viven en la BD del hub; «Invitar desde el Hub» sigue en PLAN-SAAS §8.
