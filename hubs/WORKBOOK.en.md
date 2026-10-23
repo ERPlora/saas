@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:8a8bd43dba184ba02816381d1220bc8567580c8b952c2492b30a6a685d2e0d51 -->
+<!-- generated from WORKBOOK.md sha256:eadd4e0cbda162e4c252bb0cc109d585fd2494ccfc685748509b0a710323b9a7 -->
 
 ## What it is for and who it is for
 
@@ -113,8 +113,9 @@ owner or an admin of the business can take this access away.". In **Businesses**
 invitation shows above the list.
 
 ### Transfer the ownership
-The "Transfer …" dialog: to whom it is offered, that they have 7 days to accept it, that the invoices keep going to
-the same payer, and the business's name typed to confirm. Whoever receives it sees "… offers you …" in
+The "Transfer …" dialog: to whom it is offered, that they have 7 days to accept it, that a paid plan stays until the
+end of the period already paid and then the new owner pays it with their card, and the business's name typed to
+confirm. Whoever receives it sees "… offers you …" in
 **Businesses**, with "Accept the ownership" and "Decline".
 
 ### admin › Businesses › Members
@@ -163,7 +164,7 @@ last access, with a search by business or by email and a filter by role; it is o
 | HUBS-F25 | Accept or decline an invitation to a business | done |
 | HUBS-F26 | Change the role of a person in a business | done |
 | HUBS-F27 | Remove a person from a business | done |
-| HUBS-F28 | Transfer the ownership of a business | partial |
+| HUBS-F28 | Transfer the ownership of a business | done |
 | HUBS-F29 | See the people of a business | done |
 | HUBS-F30 | Look up the accesses of the people in the admin | done |
 
@@ -520,22 +521,24 @@ Steps:
 3. The business receives the list of people without them and ends their sessions in that business at that moment, only in that one: if they come back, erplora.com tells them "You don't have access to this hub".
 In: the person; the session of whoever removes them, who has to rank above them.
 Out: the person out of that business (their account and their other businesses stay), an ownership offer pending to them withdrawn, the notice to the business and the end of their sessions there, retried if the business does not answer. Records `hubs.member.removed`.
-If it fails: oneself, "You cannot change your own membership."; somebody of an equal or higher rank (never the owner), "You cannot manage a member whose role is equal to or above yours.". An unanswered invitation is cancelled, not removed: "This person has not answered yet: cancel the invitation.". Whoever still pays for the business (the previous owner after a transfer) is not removed: "… still pays for this business. Say who pays from now on first: your billing details are asked when you pay a plan or a module here." or, if the plan is still on their card, "This business's plan is still paid with …'s card: contact support to move it to you first.".
+If it fails: oneself, "You cannot change your own membership."; somebody of an equal or higher rank (never the owner), "You cannot manage a member whose role is equal to or above yours.". An unanswered invitation is cancelled, not removed: "This person has not answered yet: cancel the invitation.". Whoever still pays for the business (the previous owner after a transfer) is not removed: "… still pays for this business. Say who pays from now on first: your billing details are asked when you pay a plan or a module here." or, if the plan is still on their card, "This business's plan is still paid with …'s card: keep it with yours in Billing first.".
 Involved: the business (BASE-F13: receives the list without them and ends their sessions), billing (who pays for the business)
 
 ### HUBS-F28 Transfer the ownership of a business
-Status: partial — a paid plan keeps being charged to the previous owner's card until support moves it to the new owner's name, and there is no way to do it yet.
+Status: done
 Actor: owner
-Screen: Members › Transfer the ownership, Businesses
+Screen: Members › Transfer the ownership, Businesses, Billing › Subscriptions
 Steps:
 1. The owner, in "Members", opens the row menu of a person already in the business and chooses "Transfer ownership".
-2. In "Transfer …" they read that the person has 7 days to accept it and that the invoices keep going to the same payer, type the business's name and press "Offer the ownership": "Offer sent to …: they have 7 days to accept it" shows and, above the list, "Ownership offered to …" with "Withdraw the offer".
+2. In "Transfer …" they read that the person has 7 days to accept it and that "A paid plan stays until the end of the period already paid; then the new owner pays it with their card, and the current one is not charged again.", type the business's name and press "Offer the ownership": "Offer sent to …: they have 7 days to accept it" shows and, above the list, "Ownership offered to …" with "Withdraw the offer".
 3. The person receives an email with the link to **Businesses**, where they see "… offers you …" with "Accept the ownership" and "Decline".
-4. On accepting, "You are now the owner of …" shows: they become the owner and the previous one stays as administrator; the previous one receives an email that tells them where to see what they still pay.
-In: the chosen person, who has to be in the business already; the owner's session and, when answering, that person's.
-Out: the offer, valid for 7 days; on accepting, both roles changed at once (always a single owner), the business told and both people's sessions there ended. Who pays does not change: the new owner gives their own billing details when paying a plan or a module. Records `hubs.ownership.requested` and, on the answer, `hubs.ownership.accepted`, `hubs.ownership.declined` or `hubs.ownership.cancelled`.
-If it fails: to somebody not in the business yet, "Invite this person to the business first: it can only go to somebody already on it."; to oneself, "You already own this business."; with another offer waiting, "There is already a transfer of this business waiting for an answer.". When answering: "This transfer was already answered.", "This transfer expired. Ask the owner to send it again.", "You are no longer on this business." or "This business already changed hands: ask its current owner to transfer it.". A free business is not accepted if the person already has theirs: "You already have a free business. Change its plan to create another one.". Only the owner offers; only the chosen person accepts or declines, and only the owner withdraws the offer.
-Involved: billing (who pays for the business), the business (BASE-F13: receives the new roles and ends both people's sessions)
+4. On accepting, "You are now the owner of …" shows: they become the owner and the previous one stays as administrator; the previous one receives an email that tells them their card no longer pays the plan.
+5. If the business has a paid plan, the new owner sees it in **Billing › Subscriptions** with "Free from …" and "Paid with another account’s card", and presses "Keep it with my card".
+6. In "Keep … with your card" they give their billing details (the previous ones are not theirs), read "For … · nothing is charged today: your card pays it from …" and add their card in the secure payment: "… keeps …: your card pays it from …" shows.
+In: the chosen person, who has to be in the business already; the owner's session and, when answering, that person's; to keep the plan, the new owner's billing details and card.
+Out: the offer, valid for 7 days; on accepting, both roles changed at once (always a single owner), the business told and both people's sessions there ended. The paid plan belongs to the business and the card does not: on accepting it stops renewing on the previous payer's card, which is not charged again, and the business keeps it until the end of the period already paid. With "Keep it with my card", the plan and its modules move to the new owner's card from that day, nothing charged today nor twice, and the previous subscription ends without a refund; otherwise, that day the business goes back to Free, as any cancelled plan. Records `hubs.ownership.requested` and, on the answer, `hubs.ownership.accepted`, `hubs.ownership.declined` or `hubs.ownership.cancelled`; on opening the payment, `billing.checkout.started`.
+If it fails: to somebody not in the business yet, "Invite this person to the business first: it can only go to somebody already on it."; to oneself, "You already own this business."; with another offer waiting, "There is already a transfer of this business waiting for an answer.". When answering: "This transfer was already answered.", "This transfer expired. Ask the owner to send it again.", "You are no longer on this business." or "This business already changed hands: ask its current owner to transfer it."; if the payment service does not answer when a business with a paid plan is accepted, it does not change hands: "The payment service did not answer. Nothing was charged; try again in a moment.". A free business is not accepted if the person already has theirs: "You already have a free business. Change its plan to create another one.". When keeping the plan: without their details, the dialog asks for them first ("Say who pays for this business first: its billing details are another account's."); with an unpaid invoice, "This business has an unpaid invoice: pay it before buying or changing anything."; if it is already paid with their card or on Free, "This business's plan is already paid with your card, or it is on Free: there is nothing to keep.". Only the owner offers, and only the owner keeps the plan with their card; only the chosen person accepts or declines, and only the owner withdraws the offer.
+Involved: billing (who pays for the business: the plan stops renewing on the previous card and moves to the new owner's), the business (BASE-F13: receives the new roles and ends both people's sessions)
 
 ### HUBS-F29 See the people of a business
 Status: done

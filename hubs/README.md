@@ -148,8 +148,15 @@ lo revisa flujo a flujo con su e2e en 3 tamaños (`tests/e2e/panel/hubs-people.s
   traspaso encolan `POST /internal/sessions/revoke` tras el COMMIT y lo reintentan (`SessionRevocation`); el Hub borra
   esas sesiones por su índice (`base.SessionOwner`), su pestaña abierta deja de recibir y la foto aplica `members`
   (rol al día, baja fuera). e2e de los dos juntos: `tests/e2e/base-session-revoke.spec.ts` del Hub.
-- **Lo que sigue `parcial`**: un plan de pago traspasado sigue en la tarjeta del propietario anterior hasta que soporte
-  lo mueva, sin herramienta todavía (F28; PLAN-SAAS «mover el pagador»).
+- **Mover el pagador** (F28, decisión de mercado: Wix, Shopify, Lightspeed, Squarespace, Fresha): el plan es del negocio
+  y la tarjeta no. `hubs.ownership.accept` llama a `billing.end_renewal_after_hand_over` en su transacción: el plan que
+  aún cobra la tarjeta de otra cuenta deja de renovarse (Stripe `cancel_at_period_end`; Stripe caído = 503 y el
+  negocio no cambia de manos). El nuevo propietario lo mantiene con su tarjeta en Facturación › Suscripciones
+  (`billing.plan.take_over`: Embedded Checkout con los mismos precios, `billing_cycle_anchor` = fin del periodo pagado
+  y sin prorrateo); el webhook pasa el negocio a la suscripción nueva y termina la anterior sin reembolso. Un cliente de
+  Stripe enviado sin su suscripción ya no pisa el de una suscripción viva (`hubs.subscription.apply`), y
+  `retax_subscription` no recalcula el impuesto de un plan que cobra otra cuenta. Tests:
+  `billing/tests/test_plan_take_over.py`; e2e: `tests/e2e/panel/hubs-people.spec.ts` («HUBS-G82 (F28)»).
 - **Sin página global de personas** (G86, G34, G115 del SaaS viejo): ronda 17, cada negocio enseña las suyas en
   «Miembros». «Usuarios del Terminal» (G24) era esa misma página del SaaS viejo, no los empleados con PIN del Hub.
 

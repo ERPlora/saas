@@ -124,8 +124,9 @@ propietario o un administrador del negocio pueden quitarte este acceso.». En **
 misma invitación encima de la lista.
 
 ### Transferir la propiedad
-El diálogo «Transferir …»: a quién se ofrece, que tiene 7 días para aceptarla, que las facturas siguen yendo al
-mismo pagador y el nombre del negocio escrito para confirmar. Quien la recibe ve en **Negocios** «… te ofrece …»
+El diálogo «Transferir …»: a quién se ofrece, que tiene 7 días para aceptarla, que un plan de pago sigue hasta el
+final del periodo ya pagado y después lo paga el nuevo propietario con su tarjeta, y el nombre del negocio escrito
+para confirmar. Quien la recibe ve en **Negocios** «… te ofrece …»
 con «Aceptar la propiedad» y «Rechazar».
 
 ### admin › Negocios › Miembros
@@ -174,7 +175,7 @@ con buscador por negocio o por correo y filtro por rol; solo se consulta.
 | HUBS-F25 | Aceptar o rechazar una invitación a un negocio | hecho |
 | HUBS-F26 | Cambiar el rol de una persona en un negocio | hecho |
 | HUBS-F27 | Quitar a una persona de un negocio | hecho |
-| HUBS-F28 | Traspasar la propiedad de un negocio | parcial |
+| HUBS-F28 | Traspasar la propiedad de un negocio | hecho |
 | HUBS-F29 | Ver las personas de un negocio | hecho |
 | HUBS-F30 | Consultar los accesos de las personas en el admin | hecho |
 
@@ -559,23 +560,25 @@ Pasos:
 3. El negocio recibe la lista de personas sin ella y cierra en ese momento sus sesiones en ese negocio, solo en ese: si vuelve, erplora.com le dice «No tienes acceso a este hub».
 Entra: la persona; la sesión de quien la quita, que tiene que tener más rango que ella.
 Sale: la persona fuera de ese negocio (su cuenta y sus otros negocios siguen), una oferta de propiedad que tuviera pendiente retirada, el aviso al negocio y el cierre de sus sesiones allí, que se reintenta si el negocio no contesta. Anota `hubs.member.removed`.
-Si falla: a uno mismo, «No puedes cambiar tu propia pertenencia.»; a alguien de igual o más rango (el propietario nunca), «No puedes gestionar a un miembro con un rol igual o superior al tuyo.». Una invitación sin responder se cancela, no se quita: «Esta persona aún no ha respondido: cancela la invitación.». A quien aún paga el negocio (el propietario anterior tras un traspaso) no se le quita: «… sigue pagando este negocio. Antes di quién paga a partir de ahora: tus datos de facturación se piden al pagar aquí un plan o un módulo.» o, si el plan sigue en su tarjeta, «El plan de este negocio aún se paga con la tarjeta de …: antes contacta con soporte para pasarlo a tu nombre.».
+Si falla: a uno mismo, «No puedes cambiar tu propia pertenencia.»; a alguien de igual o más rango (el propietario nunca), «No puedes gestionar a un miembro con un rol igual o superior al tuyo.». Una invitación sin responder se cancela, no se quita: «Esta persona aún no ha respondido: cancela la invitación.». A quien aún paga el negocio (el propietario anterior tras un traspaso) no se le quita: «… sigue pagando este negocio. Antes di quién paga a partir de ahora: tus datos de facturación se piden al pagar aquí un plan o un módulo.» o, si el plan sigue en su tarjeta, «El plan de este negocio aún se paga con la tarjeta de …: antes mantenlo con la tuya en Facturación.».
 Implicados: el negocio (BASE-F13: recibe la lista sin ella y cierra sus sesiones), billing (quién paga el negocio)
 
 ### HUBS-F28 Traspasar la propiedad de un negocio
 <!-- origen: old-saas:SAAS_DASHBOARD-F17 -->
-Estado: parcial — un plan de pago sigue cobrándose en la tarjeta del propietario anterior hasta que soporte lo pasa a nombre del nuevo, y aún no hay una manera de hacerlo.
+Estado: hecho
 Actor: propietario
-Pantalla: Miembros › Transferir la propiedad, Negocios
+Pantalla: Miembros › Transferir la propiedad, Negocios, Facturación › Suscripciones
 Pasos:
 1. El propietario, en «Miembros», abre el menú de la fila de una persona que ya está en el negocio y elige «Transferir propiedad».
-2. En «Transferir …» lee que tiene 7 días para aceptarla y que las facturas siguen yendo al mismo pagador, escribe el nombre del negocio y pulsa «Ofrecer la propiedad»: sale «Oferta enviada a …: tiene 7 días para aceptarla» y, encima de la lista, «Propiedad ofrecida a …» con «Retirar la oferta».
+2. En «Transferir …» lee que tiene 7 días para aceptarla y que «Un plan de pago sigue hasta el final del periodo ya pagado; después lo paga el nuevo propietario con su tarjeta y la actual no se vuelve a cobrar.», escribe el nombre del negocio y pulsa «Ofrecer la propiedad»: sale «Oferta enviada a …: tiene 7 días para aceptarla» y, encima de la lista, «Propiedad ofrecida a …» con «Retirar la oferta».
 3. La persona recibe un correo con el enlace a **Negocios**, donde ve «… te ofrece …» con «Aceptar la propiedad» y «Rechazar».
-4. Al aceptar, sale «Ahora eres el propietario de …»: pasa a propietaria y el anterior queda como administrador; el anterior recibe un correo que le dice dónde ver lo que sigue pagando.
-Entra: la persona elegida, que ya tiene que estar en el negocio; la sesión del propietario y, al responder, la de esa persona.
-Sale: la oferta, que vale 7 días; al aceptar, los dos roles cambiados a la vez (siempre un solo propietario), el negocio avisado y las sesiones de los dos cerradas allí. Quién paga no cambia: el nuevo propietario pone sus propios datos de facturación al pagar un plan o un módulo. Anota `hubs.ownership.requested` y, al responder, `hubs.ownership.accepted`, `hubs.ownership.declined` o `hubs.ownership.cancelled`.
-Si falla: a quien aún no está en el negocio, «Invita antes a esta persona al negocio: solo se puede traspasar a alguien que ya esté en él.»; a uno mismo, «Ya eres el propietario de este negocio.»; con otra oferta esperando, «Ya hay un traspaso de este negocio esperando respuesta.». Al responder: «Este traspaso ya se respondió.», «Este traspaso ha caducado. Pide al propietario que lo vuelva a enviar.», «Ya no estás en este negocio.» o «Este negocio ya cambió de manos: pide a su propietario actual que lo traspase.». Un negocio gratuito no se acepta si la persona ya tiene el suyo: «Ya tienes un negocio gratuito. Cambia su plan para crear otro.». Solo el propietario ofrece; solo la persona elegida acepta o rechaza, y solo el propietario retira la oferta.
-Implicados: billing (quién paga el negocio), el negocio (BASE-F13: recibe los roles nuevos y cierra las sesiones de los dos)
+4. Al aceptar, sale «Ahora eres el propietario de …»: pasa a propietaria y el anterior queda como administrador; el anterior recibe un correo que le dice que su tarjeta ya no vuelve a pagar el plan.
+5. Si el negocio tiene un plan de pago, el nuevo propietario lo ve en **Facturación › Suscripciones** con «Gratis desde el …» y «Se paga con la tarjeta de otra cuenta», y pulsa «Mantenerlo con mi tarjeta».
+6. En «Mantén … con tu tarjeta» pone sus datos de facturación (los del anterior no son suyos), lee «Para … · hoy no se cobra nada: tu tarjeta lo paga desde el …» y añade su tarjeta en el pago seguro: sale «… mantiene …: tu tarjeta lo paga desde el …».
+Entra: la persona elegida, que ya tiene que estar en el negocio; la sesión del propietario y, al responder, la de esa persona; para mantener el plan, los datos de facturación y la tarjeta del nuevo propietario.
+Sale: la oferta, que vale 7 días; al aceptar, los dos roles cambiados a la vez (siempre un solo propietario), el negocio avisado y las sesiones de los dos cerradas allí. El plan de pago es del negocio y la tarjeta no: al aceptar deja de renovarse con la tarjeta del pagador anterior, que no se vuelve a cobrar, y el negocio lo conserva hasta el final del periodo ya pagado. Con «Mantenerlo con mi tarjeta», el plan y sus módulos pasan a la tarjeta del nuevo propietario desde ese día, sin cobrar nada hoy ni dos veces, y la suscripción anterior termina sin reembolso; si no lo hace, ese día el negocio vuelve a Gratis, como cualquier plan cancelado. Anota `hubs.ownership.requested` y, al responder, `hubs.ownership.accepted`, `hubs.ownership.declined` o `hubs.ownership.cancelled`; al abrir el pago, `billing.checkout.started`.
+Si falla: a quien aún no está en el negocio, «Invita antes a esta persona al negocio: solo se puede traspasar a alguien que ya esté en él.»; a uno mismo, «Ya eres el propietario de este negocio.»; con otra oferta esperando, «Ya hay un traspaso de este negocio esperando respuesta.». Al responder: «Este traspaso ya se respondió.», «Este traspaso ha caducado. Pide al propietario que lo vuelva a enviar.», «Ya no estás en este negocio.» o «Este negocio ya cambió de manos: pide a su propietario actual que lo traspase.»; si el servicio de pagos no responde al aceptar un negocio con un plan de pago, no cambia de manos: «El servicio de pagos no ha respondido. No se ha cobrado nada; inténtalo en un momento.». Un negocio gratuito no se acepta si la persona ya tiene el suyo: «Ya tienes un negocio gratuito. Cambia su plan para crear otro.». Al mantener el plan: sin sus datos, el diálogo los pide primero («Indica primero quién paga este negocio: sus datos de facturación son de otra cuenta.»); con una factura sin pagar, «Este negocio tiene una factura sin pagar: págala antes de comprar o cambiar nada.»; si ya se paga con su tarjeta o está en Gratis, «El plan de este negocio ya se paga con tu tarjeta, o está en Gratis: no hay nada que mantener.». Solo el propietario ofrece, y solo el propietario mantiene el plan con su tarjeta; solo la persona elegida acepta o rechaza, y solo el propietario retira la oferta.
+Implicados: billing (quién paga el negocio: el plan deja de renovarse en la tarjeta anterior y pasa a la del nuevo propietario), el negocio (BASE-F13: recibe los roles nuevos y cierra las sesiones de los dos)
 
 ### HUBS-F29 Ver las personas de un negocio
 <!-- origen: old-saas:SAAS_DASHBOARD-F18 old-saas:SAAS_DASHBOARD-F214 fi:saas/hubs#usuarios-del-terminal fi:saas/orgs-users#api-miembros-de-un-hub-concreto-rest fi:saas/orgs-users#listar-usuarios-global-por-organizaciones-gestionadas pc:cloud/dashboard/users-list fi:saas/support/orgs-users#serializer-hubaccessserializer -->
@@ -642,7 +645,8 @@ Implicados: accounts (la cuenta del personal)
   no saca del negocio a quien aún lo paga (`queries.still_pays`: es dueño de su pagador, o tras un traspaso el plan
   se sigue cobrando al cliente de Stripe de uno de sus pagadores). 409 `hubs.member_pays` con qué hacer: que el
   propietario ponga sus datos de pago (se piden al pagar un plan o un módulo) o, si el plan sigue en la tarjeta
-  anterior, que soporte lo pase a su nombre (`billing.payer_required`). Así nadie paga un negocio que ya no ve, y
+  anterior, que lo mantenga con la suya en Facturación (`billing.plan.take_over`, HUBS-F28; hasta entonces
+  `billing.payer_required`). Así nadie paga un negocio que ya no ve, y
   `accounts` retiene la cuenta de quien paga (`accounts.pays_businesses`, ACCOUNTS-F27). Tests:
   `hubs/tests/test_members.py::TestRemoveThePayer`.
 - Planes (F05): `Plan` con columnas por idioma (`TranslatedFields`, `<campo>_en` y `<campo>_es`), sembrados por la

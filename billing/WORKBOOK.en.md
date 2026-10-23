@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:811b5ba8688767301f79cfa21fccf23789a604a46f009574d4e82db0bcefaf39 -->
+<!-- generated from WORKBOOK.md sha256:5f00728fbd5e4907adce02cadd7b8d30636a2c10f7223058c78c023039c64223 -->
 
 ## What it is for and who it is for
 
@@ -479,11 +479,11 @@ Actor: owner, paying account
 Screen: Billing › Subscriptions
 Steps:
 1. In **Billing › Subscriptions** there is one row per paying business: the plan and its paid apps at their price without VAT (a cancelled one says "(until …)" and stops showing once it ends), the next invoice with VAT and the status.
-2. Each row has its actions: the main one in view ("View the invoice" if there is an uncollected one; otherwise "Change plan" or "Keep the plan") and in "⋮" "View invoices" and "Cancel plan".
+2. Each row has its actions: the main one in view ("View the invoice" if there is an uncollected one; otherwise "Keep it with my card", "Change plan" or "Keep the plan") and in "⋮" "View invoices" and "Cancel plan".
 In: the subscriptions of the businesses the account pays or owns.
 Out: nothing.
-If it fails: without paid businesses, "All your businesses are on Free" with "See plans"; without the payer's details, the next invoice cannot work out its VAT and it is said. An owner who does not pay only looks.
-Involved: none
+If it fails: without paid businesses, "All your businesses are on Free" with "See plans"; without the payer's details, the next invoice cannot work out its VAT and it is said. An owner whose plan is charged to another account's card (the previous owner's after a transfer) sees "Paid with another account’s card": they neither change nor cancel it, they keep it with their card (HUBS-F28).
+Involved: hubs (HUBS-F28: the plan of a business handed over)
 
 ### BILLING-F24 Open Stripe's payment portal to change the card
 <!-- origen: old-saas:SAAS_DASHBOARD-F120 gh:saas#2554 fi:saas/orgs-users#portal-de-facturacion-stripe fi:saas/support/orgs-users#service-organizationstripeservice -->

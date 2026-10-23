@@ -238,8 +238,9 @@ trata como ninguna (`UNKNOWN`: 503 `billing.payments_unavailable`, nunca un cobr
 - **L2-C**: `billing.module.list` y `hubs.module.list`; nadie escribe aún los items `source = plan` (módulos
   incluidos en un plan).
 - **Eliminar un negocio** cancela su suscripción de Stripe en la siguiente pasada de `sweep_unpaid` (no en el
-  acto: `hubs.business.delete` no llama a `billing`); **mover el pagador** de Stripe en un traspaso sigue
-  pendiente.
+  acto: `hubs.business.delete` no llama a `billing`). **Mover el pagador** en un traspaso: hecho en HUBS-F28
+  (`end_renewal_after_hand_over` al aceptar y «Mantenerlo con mi tarjeta», `billing.plan.take_over`; ver el README de
+  `hubs`).
 - **Eliminar la cuenta** (ACCOUNTS-F27, RGPD art. 17): `payer_leaving` (señal `account_deleting`) pone a cada
   pagador de la cuenta su fecha de purga (`forget_after`, `PAYER_RETENTION` = los 90 días de `Hub.RETENTION`) y
   tras el COMMIT `forget_departed_payer` borra el cliente de Stripe, desliga sus negocios y borra la ficha, salvo
