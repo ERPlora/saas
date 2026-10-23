@@ -1,9 +1,9 @@
 """Inputs and outputs of the assistant's operations. A provider's key is a ``SecretStr``: no ``repr``, dump nor
 JSON of a schema shows it (only ``get_secret_value`` does, where the key is used)."""
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from ninja import Schema
@@ -197,3 +197,149 @@ class EncryptionRotateOut(Schema):
     rotated: int
     current: int
     unreadable: int
+
+
+# --- The Hub's turn (part 2): who calls, the allowance and what it spent ------------------------------------------
+
+
+class CallerIn(Schema):
+    """A door's ``hub``: a business by its address or its id, or a demo by its ``demo-…`` address."""
+
+    hub: str = Field(min_length=1, max_length=63)
+
+
+class Caller(Schema):
+    """Who a call of the Hub is for: a business (``hub_id``) or a demo (``demo``, its address); never both."""
+
+    hub_id: UUID | None = None
+    demo: str = ""
+    slug: str
+
+
+class UsageOut(Schema):
+    """What the caller spent of its allowance: ``used`` of ``limit`` messages, back on ``resets_at`` (UTC; ``None``
+    for a demo, whose messages never come back)."""
+
+    used: int
+    limit: int
+    resets_at: datetime | None
+    demo: bool
+
+
+class ClaimOut(UsageOut):
+    """A message taken from the allowance (``claimed``), or not because none is left; ``month`` is the window it was
+    taken from (where a release gives it back)."""
+
+    claimed: bool
+    month: date
+
+
+class MessageReleaseIn(Schema):
+    """Give back a message taken in ``month``: the turn failed before answering anything."""
+
+    caller: Caller
+    month: date
+
+
+class UsageRecordIn(Schema):
+    """What a turn (or an embedding, a dictation, a reading aloud) spent, added to this month's row of the caller."""
+
+    caller: Caller
+    tokens_input: int = Field(default=0, ge=0)
+    tokens_output: int = Field(default=0, ge=0)
+    tokens_embedding: int = Field(default=0, ge=0)
+    transcriptions: int = Field(default=0, ge=0)
+    speech_characters: int = Field(default=0, ge=0)
+    cost_usd: Decimal = Field(default=Decimal("0"), ge=0)
+
+
+class TurnIn(CallerIn):
+    """A turn of the Hub: the whole conversation (its browser owns it), the ``instructions`` that are its only system
+    message, the tools it offers and, answering the tools it was asked for, the ``continuation`` it got with them."""
+
+    messages: list[dict[str, Any]] = Field(min_length=1, max_length=1000)
+    instructions: str = Field(default="", max_length=200_000)
+    tools: list[dict[str, Any]] = Field(default_factory=list, max_length=256)
+    continuation: str | None = Field(default=None, max_length=4096)
+
+
+class ServiceConnectionOut(Schema):
+    """What the embeddings and the voice need of the services' provider (of OpenAI's API): its address and its key."""
+
+    provider: str
+    base_url: str
+    api_key: SecretStr
+
+
+class EmbeddingsIn(CallerIn):
+    """The texts whose fingerprints (vectors) the Hub's index keeps, 1 to 256."""
+
+    texts: list[str] = Field(min_length=1, max_length=256)
+
+    @field_validator("texts")
+    @classmethod
+    def _no_empty_text(cls, texts):
+        if any(not text.strip() for text in texts):
+            raise ValueError("every text must have something written")
+        return texts
+
+
+class TranscribeIn(CallerIn):
+    """A dictation: its audio in base64, its type (``audio/webm``, ``audio/ogg``, ``audio/wav``, ``audio/mp4``,
+    ``audio/mpeg`` or ``audio/flac``) and, if the Hub knows it, its language (``es`` or ``es-ES``)."""
+
+    audio: str = Field(min_length=1)
+    mime_type: str
+    language: str = Field(default="", max_length=16)
+
+    @field_validator("mime_type")
+    @classmethod
+    def _an_audio_type(cls, value):
+        from assistant.media import AUDIO_TYPES
+
+        kind = value.split(";")[0].strip().lower()
+        if kind not in AUDIO_TYPES:
+            raise ValueError(f"one of {', '.join(sorted(AUDIO_TYPES))}")
+        return kind
+
+
+class SynthesizeIn(CallerIn):
+    """A text to read aloud and, optionally, its voice (``alloy``, ``echo``, ``fable``, ``onyx``, ``nova`` or
+    ``shimmer``; another one is ``alloy``)."""
+
+    text: str = Field(max_length=100_000)
+    voice: str = Field(default="", max_length=32)
+
+    @field_validator("text")
+    @classmethod
+    def _something_to_read(cls, value):
+        if not value.strip():
+            raise ValueError("write the text to read aloud")
+        return value.strip()
+
+
+class ReportFields(Schema):
+    """The report of an answer: its id in the Hub's conversation, why (wrong, harmful, not what was asked, other),
+    what the person added, the question and the answer."""
+
+    message_id: str = Field(min_length=1, max_length=128)
+    reason: Literal["incorrect", "harmful", "instructions", "other"]
+    comment: str = Field(default="", max_length=20_000)
+    question: str = Field(default="", max_length=200_000)
+    answer: str = Field(min_length=1, max_length=200_000)
+
+
+class ReportIn(CallerIn, ReportFields):
+    """The ``report`` door's body: the report and the business (or demo) it is of."""
+
+
+class ReportSendIn(ReportFields):
+    """The report of ``caller``, as ``assistant.report.send`` mails it."""
+
+    caller: Caller
+
+
+class ReportOut(Schema):
+    #: Whether a mail left now; a report of the same answer within a day is a ``duplicate`` and mails nothing.
+    sent: bool
+    duplicate: bool

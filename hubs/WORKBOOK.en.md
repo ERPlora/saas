@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:5d3c32cb9d0aca3c72ac7be142ad23262725f3085b525bfd6a2ef320c92a01b3 -->
+<!-- generated from WORKBOOK.md sha256:9d5971288487a12ab934dffea54494f46a9921bba3d6f825c6ff73615fed8211 -->
 
 ## What it is for and who it is for
 
@@ -179,7 +179,7 @@ last access, with a search by business or by email and a filter by role; it is o
 | HUBS-F30 | Look up the accesses of the people in the admin | done |
 | HUBS-F31 | Send each business its plan, its apps and its people | done |
 | HUBS-F32 | Apply the plan's caps on people and devices | partial |
-| HUBS-F33 | Give the business the assistant messages of its plan | partial |
+| HUBS-F33 | Give the business the assistant messages of its plan | done |
 | HUBS-F34 | Tell the business which paid apps it may use and why | partial |
 | HUBS-F35 | Recognise the businesses' service when it calls erplora.com | done |
 | HUBS-F36 | Keep the sectors and the business types in the admin | done |
@@ -610,17 +610,17 @@ If it fails: accepting an invitation when the plan has no room any more is stopp
 Involved: billing (the plan), the business (applies the caps to its devices and its PIN employees)
 
 ### HUBS-F33 Give the business the assistant messages of its plan
-Status: partial — the business already gets the messages a month its plan includes, but they are not counted or stopped yet: each message goes through the assistant's turn, which comes with the second part of the assistant app.
+Status: done
 Actor: system
 Screen: none
 Steps:
 1. Each plan includes a number of assistant messages a month (Free 30, Starter 300, Standard 600; 0 is no assistant); the staff change it in the plan's form (HUBS-F05).
 2. erplora.com sends it to the business in its snapshot (HUBS-F31), next to WhatsApp's, and again as soon as the plan or the figure changes.
-3. Each message counts for the business's month: at 80 % it warns and at 100 % no more questions can be asked until the 1st of the next month; to get more, the plan is moved up.
+3. Each message counts for the business's month: erplora.com counts it in each turn of the assistant (ASSISTANT-F18) and tells the business how many it has used, out of how many and when they come back, so that it warns at 80 %; at 100 % it lets no more questions be asked until the 1st of the next month (00:00 UTC); to get more, the plan is moved up.
 In: the business's plan.
-Out: the plan's messages a month, in the business's snapshot.
+Out: the plan's messages a month, in the business's snapshot, and those spent each month (ASSISTANT-F18).
 If it fails: a plan with 0 messages leaves the assistant unused. Loose message packs are not sold.
-Involved: assistant (the turn of each message and its count), the business (shows what is left)
+Involved: assistant (the turn of each message and its count, ASSISTANT-F18), the business (shows what is left and warns at 80 %)
 
 ### HUBS-F34 Tell the business which paid apps it may use and why
 Status: partial — erplora.com already sends each paid app with its origin and its date, but the business does not stop a paid app without the right yet, nor say on its apps page where it comes from; today no app of the business is paid, so all of them are used without buying them.

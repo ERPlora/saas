@@ -181,6 +181,38 @@ def test_four_documents_of_5_mb_are_heard(client, business):
     assert grant.signature_sample is not None and grant.representation_proof is not None
 
 
+@pytest.fixture
+def keep_the_test_connection():
+    """Django's real handler closes old connections when a request starts and ends, which would drop the test's own
+    transaction; its test client unhooks them the same way."""
+    from django.core.signals import request_finished, request_started
+    from django.db import close_old_connections
+
+    request_started.disconnect(close_old_connections)
+    request_finished.disconnect(close_old_connections)
+    yield
+    request_started.connect(close_old_connections)
+    request_finished.connect(close_old_connections)
+
+
+@pytest.mark.usefixtures("keep_the_test_connection")
+def test_the_documents_never_touch_the_disk_on_their_way_in(business):
+    """FISCAL-F03 · Behind Daphne, Django's handler moves a body past ``FILE_UPLOAD_MAX_MEMORY_SIZE`` (2.5 MB) to a
+    temporary file on disk before this view runs, the customer's identity documents in it; ``config.asgi`` keeps this
+    door's body in memory, up to ``MAX_BODY_BYTES``, and the documents reach the database encrypted and nowhere else."""
+    from config.tests.asgi_bodies import asgi_post, files_written
+
+    big = base64.b64encode(PDF + b"x" * 2_400_000).decode()
+    body = json.dumps(submission(documents={"signed_model": big, "id_copy": pdf_b64("id")})).encode()
+    assert settings.FILE_UPLOAD_MAX_MEMORY_SIZE < len(body) <= internal.MAX_BODY_BYTES
+
+    with files_written() as written:
+        status, answer, unread = asgi_post(path_of(business.id), body, secret=SECRET, chunks=5)
+
+    assert (status, answer["status"], unread) == (201, "submitted", 0)
+    assert written == []
+
+
 def test_a_body_beyond_the_ceiling_is_413_before_anything_else(client, business):
     """Not even the signature is checked: an unsigned 33 MB body is refused by its size."""
     body = b"{" + b" " * (internal.MAX_BODY_BYTES + 1024 * 1024) + b"}"

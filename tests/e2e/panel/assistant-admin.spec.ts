@@ -22,8 +22,8 @@ const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '.
 const PASSWORD = process.env.QA_PANEL_PASSWORD ?? 'e2e-panel';
 const ADMIN = { email: 'e2e-assistant-admin@example.com', password: PASSWORD };
 const VIEWER = { email: 'e2e-assistant-viewer@example.com', password: PASSWORD };
-// Inside the run's block of ports (stack.ts): +1, +2, +3 and +9 are the stack's; +8 is free for the provider.
-const PROVIDER_PORT = STACK.base + 8;
+// The provider's own port in the run's block (stack.ts): +8 is reCAPTCHA's double since saas#88.
+const PROVIDER_PORT = STACK.aiProviderPort;
 const PROVIDER_URL = `http://127.0.0.1:${PROVIDER_PORT}/v1`;
 const API_KEY = 'sk-e2e-0000000000000000000000000000e2e1';
 const SIZES = [

@@ -55,6 +55,10 @@ describe('panelServers', () => {
     });
   });
 
+  it("names the e2e's own provider as the assistant's services provider, never a real one of the database", () => {
+    expect(servers(5225)['panel-django'].env).toMatchObject({ ASSISTANT_SERVICE_PROVIDER: 'e2e-local' });
+  });
+
   it('keeps 5174 by default', () => {
     expect(panelServers(SAAS_DIR).find((server) => server.name === 'panel-vite')?.url).toBe(
       `http://localhost:${vitePort(process.env)}/static/spa/@vite/client`,

@@ -161,6 +161,9 @@ function panelDjangoEnv(vitePort: number, stack: Stack): Record<string, string> 
       WHATSAPP_APP_SECRET: WHATSAPP_E2E.appSecret,
       WHATSAPP_VERIFY_TOKEN: WHATSAPP_E2E.verifyToken,
       WHATSAPP_CONFIG_ID: WHATSAPP_E2E.configId,
+      // The assistant's embeddings and voice go to the e2e's own provider (assistant_seed.py, the local fake on
+      // `aiProviderPort`), never to a provider «openai» the shared database may hold with a real key.
+      ASSISTANT_SERVICE_PROVIDER: 'e2e-local',
     },
     stack,
   );

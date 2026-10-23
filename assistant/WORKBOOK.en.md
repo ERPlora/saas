@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:53749f42191ebcc53bd0f97f21f0fc4af268d43ccebf2d5515a14755b4f8d692 -->
+<!-- generated from WORKBOOK.md sha256:4051049680a7856e5ef17eea460dac53a1af985a0b4c90caa057e6339a9fdd23 -->
 
 ## What it is for and who uses it
 
@@ -9,12 +9,18 @@ which model answers and calls it. So the key never leaves erplora.com and the AI
   recognise it.
 - One model answers and, if its provider fails, a fallback one.
 - Before a model answers it can be tried from the admin, with how long it takes, what it consumes and what it costs.
+- Each message a person writes to the assistant spends one of the monthly allowance of their business's plan (a demo
+  has 10 in its whole life); the rest (the tools, the attachments, the fingerprints, the voice) spends no messages,
+  but is measured.
+- erplora.com uses the conversation to call the model and forgets it: it keeps it nowhere.
 
 Who uses it:
 
 - **ERPlora's staff**, in erplora.com's admin, with the AI gateway's permissions. The support group does not have
   them: the keys are ERPlora's spend.
-- The **system**: the Hub's assistant turn picks the answering model with this configuration.
+- The **Hub's assistant** of each business (and of each demo): it sends erplora.com each turn, its attachments, the
+  texts of its index, the dictations and what is to be read aloud, and shows the person what is left of the allowance.
+- **ERPlora's staff**, in "Assistant usage records", see what each business spends and what it costs.
 
 ## Adopted reference
 
@@ -24,7 +30,14 @@ Who uses it:
   and then only its end; the list of models comes from the provider's own API
   (https://platform.openai.com/docs/models, https://docs.anthropic.com/en/docs/about-claude/models).
 - **ERPlora's old product** (the SaaS's `apps/assistant`): providers with their key and models on one page, the
-  policy of which model answers and the tester with cost and latency.
+  policy of which model answers and the tester with cost and latency; the Hub's turn through the gateway, with the
+  allowance per business, the attachments, the fingerprints and the voice.
+- **Assistants with an allowance** (ChatGPT, Claude, Gemini, Microsoft 365 Copilot, Shopify Magic): a number of
+  messages per period by plan, which comes back when the next one starts; when it is spent the person is told and a
+  plan up is offered; a message that fails before answering is not charged. The tools that are not the business's
+  are run by the server, never by the device; the voice is dictation to text and reading
+  aloud by the same provider (https://platform.openai.com/docs/guides/speech-to-text,
+  https://platform.openai.com/docs/guides/text-to-speech).
 
 ## Before you start
 
@@ -33,6 +46,9 @@ Who uses it:
 - Each provider needs an active readable key for its models to answer or be tried.
 - The prices per million tokens of each model are typed by the staff: the providers' APIs do not give them. Without
   a price, the trial says the consumption and a cost of zero.
+- The index's fingerprints, the dictation and the reading aloud are done by the services' provider (OpenAI): it must
+  be added, enabled and with its key.
+- The message allowance of each plan ("AI assistant messages a month") is typed in the admin of "Plans".
 
 ## Screens
 
@@ -59,14 +75,21 @@ being able to change it. On top, "Try a model" (only for whoever may change it).
 that answers, the text as it arrives, the tools it asks for and a table with "Input tokens", "Output tokens", "Time"
 and "Cost" (in dollars).
 
+### Admin: Assistant usage records
+One row per business and month (a demo, a single one in its whole life) with "Business or demo", "Month",
+"Messages", "Input tokens", "Output tokens", "Embedding tokens", "Dictations", "Characters read aloud" and "Cost
+(USD)". On top, the search box (by the business's name or address, or by the demo's address) and the months; on the
+right, the "By kind" filter ("Businesses" or "Demos") and the month's. Each row opens to see it whole, without being
+able to change it.
+
 ## States of each screen
 
 | State | What the person sees |
 |---|---|
 | Loading | The normal loading of an admin page; when trying a model, "Sending…" and the "Send" button off until it ends ("Done."). |
-| Empty | "0 AI providers" and the empty list; a provider without a key says "No key"; without models that can answer, "No model can answer yet: add a provider with its key and choose its models." |
+| Empty | "0 AI providers" and the empty list; in "Assistant usage records", "0 assistant usage records" until a business's first message; a provider without a key says "No key"; without models that can answer, "No model can answer yet: add a provider with its key and choose its models." |
 | Error | In "Choose models from the provider", the reason in red: "This provider has no active key: add one on its page and try again.", "The provider did not give its models: …" or "The provider listed no chat models."; on the pages, the error in red next to the field: "Use an https address: the provider's key travels to it.", "Type the provider's key.", "The key of the credentials is not configured: no provider key can be kept."; when trying a model, in red: "The model did not answer: …", "Too many tries in a minute: wait a moment and try again." or "The try could not be sent: check the connection and try again.". |
-| No permission | Without the gateway's permissions, the admin answers there is no permission; whoever may only look sees the pages without the "Key" field. |
+| No permission | Without the gateway's permissions, the admin answers there is no permission; whoever may only look sees the pages without the "Key" field. "Assistant usage records" cannot be changed nor deleted, not even by a superuser. |
 
 ## Flows
 
@@ -82,6 +105,20 @@ and "Cost" (in dollars).
 | ASSISTANT-F08 | See who changed the configuration of the AI | done |
 | ASSISTANT-F09 | Load the providers' keys from the environment | done |
 | ASSISTANT-F10 | Change the encryption key without losing any credential | done |
+| ASSISTANT-F11 | Know who calls and for which business | done |
+| ASSISTANT-F12 | Answer an assistant turn live | done |
+| ASSISTANT-F13 | Answer the same turn at once | done |
+| ASSISTANT-F14 | Use erplora.com's tools and the business's | partial |
+| ASSISTANT-F15 | Refuse a turn with its reason | done |
+| ASSISTANT-F16 | Stop a business that asks too much | done |
+| ASSISTANT-F17 | Do not keep the conversation | done |
+| ASSISTANT-F18 | Count the messages of each business's plan | done |
+| ASSISTANT-F19 | Read the attachments of a question | done |
+| ASSISTANT-F20 | Compute the fingerprint of some texts for the business's index | done |
+| ASSISTANT-F21 | Transcribe a voice dictation | done |
+| ASSISTANT-F22 | Read an answer aloud | done |
+| ASSISTANT-F23 | Receive the report of an answer of the assistant | done |
+| ASSISTANT-F24 | See what a business spent of the assistant | done |
 
 ### ASSISTANT-F01 Add an AI provider
 Status: done
@@ -219,3 +256,194 @@ In: the new key and the old one.
 Out: every credential encrypted with the new key (`assistant.encryption.rotated`, with how many changed, how many already were and how many could not be read).
 If it fails: a value neither key opens is never written: its row is named and the change ends with an error, so the previous key is not removed while something needs it (bring back the key that encrypted it or type the value again, and repeat). Without the encryption key nothing changes. It never shows a value nor its encryption, and no date of the rows moves.
 Involved: ASSISTANT-F02, ASSISTANT-F09
+
+### ASSISTANT-F11 Know who calls and for which business
+Status: done
+Actor: the Hub's assistant of a business (or of a demo)
+Screen: none
+Steps:
+1. Every time a business's assistant asks erplora.com for something (a turn, the allowance left, some fingerprints, a dictation, a reading aloud or a report), the request is signed with the secret the Hub and erplora.com share, with its time, and says which business it is for: its address, its identifier or, for a demo, the demo's address.
+2. erplora.com checks the signature and that it is not older than five minutes before reading anything else.
+3. It looks for the business: it must exist and be working (active, or with a payment pending in its grace days); a demo is recognised by its address.
+4. With the business recognised, the request goes on: the rate limit, the allowance and what it asked for apply to that business and to no other.
+In: the signature and its time, the business (or the demo) and what it asks for.
+Out: the business or the demo the answer is for; no business sees nor spends another's allowance.
+If it fails: without a signature, with a bad one, a stale one or one of another secret, it is refused as unauthorised; a business that does not exist or was already deleted, as unknown; one being prepared, suspended or being deleted, as inactive; a request that is not what each door expects is refused saying which fields fail; anything other than a submission is refused; a body over its door's size is refused without keeping it. None of that spends messages nor the rate limit.
+Involved: ASSISTANT-F16, ASSISTANT-F18
+
+### ASSISTANT-F12 Answer an assistant turn live
+Status: done
+Actor: the Hub's assistant of a business
+Screen: none
+Steps:
+1. The person writes to the Hub's assistant; the Hub sends erplora.com the whole conversation (it is its own: it lives in the person's browser), its instructions and the tools the business offers.
+2. erplora.com prepares the conversation: its instructions are the only system ones, the last 100 messages stay, the answer of a tool nobody asked for goes and the attachments become what the model can read.
+3. It takes a message from the business's allowance and sends the turn to the model that answers (or to its fallback, if its provider fails before answering anything).
+4. It sends the answer back live, piece by piece, and each tool of the business the model asks for; at the end, the whole answer with its consumption, what the business has left of its allowance and the close.
+5. If the model asked for tools of the business, the turn ends there with a continuation pass: the Hub runs them and sends the conversation back with their results and that pass, and that return spends no other message.
+In: the business, the conversation, the instructions, the business's tools and, when answering some tools, its continuation pass.
+Out: the text as it arrives, the tools the business has to run, the turn's consumption and the allowance left (`assistant.message.claimed`; what it spent, `assistant.usage.recorded`).
+If it fails: what is known before calling the model is a refusal and spends no message (see ASSISTANT-F15); if the provider fails after starting, the turn ends with a failure notice that says whether it is worth repeating; if the turn did not answer anything, its message goes back to the allowance, also if the Hub cuts the connection halfway. A continuation pass already used, expired (15 minutes), of another business or of other tools is not valid: that return spends a message.
+Involved: ASSISTANT-F06, ASSISTANT-F13, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F17, ASSISTANT-F18, ASSISTANT-F19
+
+### ASSISTANT-F13 Answer the same turn at once
+Status: done
+Actor: the Hub's assistant of a business
+Screen: none
+Steps:
+1. When the Hub does not need to see the answer as it arrives (a task of the Hub itself, a message that is not painted), it sends the same turn as in ASSISTANT-F12 to the door that answers at once.
+2. erplora.com does the same as live: it prepares the conversation, takes the message from the allowance, calls the model (or its fallback) and runs its own tools.
+3. It sends back at once the whole answer, the tools the business has to run with their continuation pass, the consumption and the allowance left.
+In: the same as the live turn.
+Out: the whole answer with its consumption, its continuation pass and the allowance left (`assistant.message.claimed`; what it spent, `assistant.usage.recorded`).
+If it fails: the refusals before the model, the same as live; if the provider fails, a gateway error with its reason, whether it is worth repeating and the allowance left, and the message goes back to the allowance if nothing was answered.
+Involved: ASSISTANT-F12, ASSISTANT-F15, ASSISTANT-F18
+
+### ASSISTANT-F14 Use erplora.com's tools and the business's
+Status: partial — the old product's web search and exchange rate between currencies come with the ERP stage; today erplora.com gives the date and the time
+Actor: the Hub's assistant of a business
+Screen: none
+Steps:
+1. In each turn, the model can use the business's tools (those the Hub sends: find a customer, create an appointment…) and erplora.com's: today's date, time and weekday.
+2. If the model asks for a tool of erplora.com, erplora.com runs it and gives it the result without the Hub seeing anything.
+3. If it asks for one of the business, the turn passes it to the Hub to run it (see ASSISTANT-F12).
+4. The model is asked again at most five times in a turn; in the last one erplora.com's tools are no longer offered and it has to answer.
+In: the business's tools and the model's questions.
+Out: the result of each tool of erplora.com for the model; its consumption adds up to the turn's and spends no other message.
+If it fails: a tool of erplora.com that fails gives the model the reason to answer with, never a failed turn; a tool of the business named as one of erplora.com's is run by erplora.com; the web search and the exchange rate are not offered, even if erplora.com's environment has a search engine's key.
+Involved: ASSISTANT-F12, ASSISTANT-F13
+
+### ASSISTANT-F15 Refuse a turn with its reason
+Status: done
+Actor: the Hub's assistant of a business
+Screen: none
+Steps:
+1. Before calling the model, erplora.com checks the turn: its form, its size, that there is a model that can answer and that the business has allowance left.
+2. If something does not fit, it refuses the turn without calling the model and without spending any message, with a code the Hub translates to its text and whether it is worth repeating.
+3. If the allowance is spent, the refusal says how many messages were used out of how many, when they come back and that a plan up is needed for more.
+In: the turn.
+Out: a refusal with its code: allowance spent, no model to answer, provider not configured, conversation or attachment too big, or a form that is not the expected one.
+If it fails: an unexpected failure is sent back as an internal error worth repeating, without details; neither the provider's key nor its words ever go out.
+Involved: ASSISTANT-F12, ASSISTANT-F13, ASSISTANT-F18, ASSISTANT-F19
+
+### ASSISTANT-F16 Stop a business that asks too much
+Status: done
+Actor: the Hub's assistant of a business
+Screen: none
+Steps:
+1. Each door of the assistant has a maximum of requests per hour for each business (and for each demo): 600 turns and allowance queries, 600 batches of fingerprints, 120 dictations, 120 readings aloud and 60 reports.
+2. Only a request with a good signature and of a working business counts: a fake request spends nobody's limit.
+3. Over the maximum, the request is refused and it says how many seconds are left before asking again.
+In: each business's requests.
+Out: the request served or stopped; one business's limit does not stop another.
+If it fails: a stopped business waits what it is told and tries again; the maximums change in erplora.com's environment without touching the code.
+Involved: ASSISTANT-F11
+
+### ASSISTANT-F17 Do not keep the conversation
+Status: done
+Actor: system
+Screen: none
+Steps:
+1. Each turn's conversation arrives with the request, is used to call the model and is forgotten at the end.
+2. erplora.com only notes what was spent: the business's messages, tokens and cost in the month.
+3. If the provider fails, erplora.com's log only notes the status of the provider's answer, never its words (they may quote the conversation).
+In: the turn's conversation.
+Out: the answer for the Hub and what was spent; neither the database, nor the logs, nor the audit log keep a word of the conversation, its attachments, its dictations nor what is read aloud.
+If it fails: if something of the conversation reached a log, a test catches it before it ships.
+Involved: ASSISTANT-F12, ASSISTANT-F19, ASSISTANT-F21, ASSISTANT-F22, ASSISTANT-F23
+
+### ASSISTANT-F18 Count the messages of each business's plan
+Status: done
+Actor: the Hub's assistant of a business
+Screen: none
+Steps:
+1. A business's allowance is that of the plan it has now ("AI assistant messages a month"); 0 is none, never unlimited. A demo has 10 messages in its whole life.
+2. Each message the person writes spends one when the turn starts, before calling the model; if two turns arrive at once with a single message free, only one passes.
+3. If the turn does not answer anything (the provider fails, the Hub cuts), the message goes back to the month it was taken from.
+4. Each turn adds its tokens and its cost to the business's month; the tools, the fingerprints, the dictations and the voice are measured but spend no messages.
+5. The Hub asks how much is left (how many were used, out of how many and when they come back) and shows it; the close of each turn brings the same figures. The allowance comes back on day 1 of each month at 00:00 UTC; a demo's does not come back.
+In: the business (or the demo) and its plan.
+Out: the message taken or given back and what was spent in the month (`assistant.message.claimed`, `assistant.message.released`, `assistant.usage.recorded`).
+If it fails: with no free messages, the turn is refused with the allowance spent and the offer of a plan up (see ASSISTANT-F15); there are no packs of loose messages: more messages is a plan up.
+Involved: ASSISTANT-F12, ASSISTANT-F15, ASSISTANT-F24, HUBS-F05
+
+### ASSISTANT-F19 Read the attachments of a question
+Status: done
+Actor: the Hub's assistant of a business
+Screen: none
+Steps:
+1. The person attaches images or documents to their question; the Hub sends them inside the turn.
+2. An image (PNG, JPEG, WebP or GIF) goes to the model as it is if it sees images; if it does not, the model gets a note in its place.
+3. A document (PDF, Word, Excel, text, CSV, Markdown or a .json file) becomes its text (a spreadsheet, sheet by sheet) and the model reads it with its name.
+4. Everything happens in memory: nothing is downloaded from any address nor written to disk.
+In: the question's images and documents.
+Out: what the model can read of each attachment, or a note if it cannot be read.
+If it fails: an attachment of more than about 9 MB or more than 20 attachments in a conversation refuse the turn as too big, cutting nothing and spending no message; a broken document, a protected one, one of a type that is not read or that would grow too much when opened is a note for the model, never a failed turn; an image or a document given by an address is not downloaded; the file's name reaches no log.
+Involved: ASSISTANT-F12, ASSISTANT-F15, ASSISTANT-F17
+
+### ASSISTANT-F20 Compute the fingerprint of some texts for the business's index
+Status: done
+Actor: the Hub's assistant of a business
+Screen: none
+Steps:
+1. So the assistant finds what it looks for (which app does what, which screen to open), the Hub keeps an index with the fingerprint of each text and sends erplora.com the texts it needs the fingerprint of, 1 to 256 at a time.
+2. erplora.com asks the services' provider for the fingerprints, always with the same fingerprint model, and gives them back in the order of the texts.
+3. The tokens and their cost add up to the business's month.
+In: the business and the texts.
+Out: one fingerprint per text, in their order, with the name of the model that computed them (`assistant.usage.recorded`).
+If it fails: without the services' provider configured (or without its key), it is refused saying the provider is not configured; if the provider refuses the request or does not answer, a gateway error that says whether it is worth repeating; an empty text or more than 256 are refused; it spends no messages of the allowance.
+Involved: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F24
+
+### ASSISTANT-F21 Transcribe a voice dictation
+Status: done
+Actor: the Hub's assistant of a business
+Screen: none
+Steps:
+1. The person dictates their question in the Hub; the Hub sends erplora.com the audio, its type (WebM, Ogg, WAV, MP4, MP3 or FLAC) and, if it knows it, the language.
+2. erplora.com passes it to the services' provider from memory, without writing it to disk, and gives back the text and the language.
+3. The dictation is counted in the business's month; it spends no messages (the message is spent by the turn sent with that text).
+In: the business, the audio, its type and its language.
+Out: the dictated text and its language (`assistant.usage.recorded`).
+If it fails: an audio over 2 MB is refused as too big; empty, badly encoded or of another type, it is refused saying what fails; without the services' provider configured, that it is not configured; if the provider fails, a gateway error that says whether it is worth repeating. Neither the audio nor the text stay kept nor in a log.
+Involved: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F24
+
+### ASSISTANT-F22 Read an answer aloud
+Status: done
+Actor: the Hub's assistant of a business
+Screen: none
+Steps:
+1. The person asks the assistant to read its answer; the Hub sends erplora.com the text and, if it wants, the voice (alloy, echo, fable, onyx, nova or shimmer).
+2. erplora.com asks the services' provider for the audio (at most the first 4,096 characters) and gives it back in MP3.
+3. The characters read are counted in the business's month; it spends no messages.
+In: the business, the text and the voice.
+Out: the audio of the answer (`assistant.usage.recorded`).
+If it fails: an empty text is refused; a voice that does not exist is changed to the default one; without the services' provider configured, that it is not configured; if the provider fails, a gateway error that says whether it is worth repeating. The text stays neither kept nor in a log.
+Involved: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F24
+
+### ASSISTANT-F23 Receive the report of an answer of the assistant
+Status: done
+Actor: the Hub's assistant of a business
+Screen: none
+Steps:
+1. The person marks an answer of the assistant as incorrect, harmful, not doing what was asked or something else, and adds, if they want, a comment.
+2. The Hub sends erplora.com the report with the question and the answer.
+3. erplora.com mails it to ERPlora's support mailbox with the business, the reason, the comment, the question and the answer (each text, at most 4,000 characters), and keeps nothing.
+4. If the same answer of the same business is reported again within 24 hours (a double tap, a retry), no other mail is sent.
+In: the business, the reported answer, the reason, the comment and the question.
+Out: the mail in the support mailbox, or the notice that it had already been sent (`assistant.report.sent`).
+If it fails: if the mail cannot leave, it says it could not be sent and to try again in a moment, and it can be sent again; a reason that is not one of the four is refused; a business that stops working (deleted or suspended) while its report arrives sends nothing and gets the same answer as in any other call (ASSISTANT-F11).
+Involved: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F17
+
+### ASSISTANT-F24 See what a business spent of the assistant
+Status: done
+Actor: ERPlora's staff
+Screen: Admin: Assistant usage records
+Steps:
+1. In erplora.com's admin, open "Assistant usage records".
+2. Search the business by its name or its address (or the demo by its address), or filter "By kind" ("Businesses" or "Demos") and by month.
+3. Read its row of the month: "Messages" of the allowance, "Input tokens", "Output tokens", "Embedding tokens", "Dictations", "Characters read aloud" and "Cost (USD)" (with the prices of the model that answered each turn).
+4. Open the row to see it whole, with when it was created and when it changed.
+In: the business or the demo and the month.
+Out: what the business spent in the month, without being able to change it.
+If it fails: nobody can add, change nor delete a row, not even a superuser (deleting the month's row gave the business its whole allowance back); a team member without the permission to see it does not enter.
+Involved: ASSISTANT-F18, ASSISTANT-F20, ASSISTANT-F21, ASSISTANT-F22

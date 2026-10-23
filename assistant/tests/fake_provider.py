@@ -125,7 +125,8 @@ class FakeProvider:
                             time.sleep(reply.delay)
                     return
                 payload = reply.body if reply.body is not None else json.dumps(reply.json).encode()
-                self.send_header("Content-Type", "application/json")
+                if "Content-Type" not in reply.headers:
+                    self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(payload)))
                 self.end_headers()
                 self.wfile.write(payload)
@@ -147,6 +148,10 @@ def openai_chunk(content: str | None = None, *, finish: str | None = None, tool_
     if usage is not None:
         chunk = {"object": "chat.completion.chunk", "choices": [], "usage": usage}
     return chunk
+
+
+#: The e2e's reading aloud: an MP3 frame header and a few bytes (no real audio is needed to prove the door).
+E2E_SPEECH = b"ID3\x03\x00\x00\x00\x00\x00\x00e2e-speech"
 
 
 def serve_e2e(port: int) -> None:
@@ -179,6 +184,20 @@ def serve_e2e(port: int) -> None:
             "[DONE]",
         ],
     )
+    # The services' provider (assistant.media): two fingerprints, given in reverse so the order is the gateway's, a
+    # dictation and a reading aloud.
+    fake.reply(
+        "POST",
+        "/v1/embeddings",
+        always=True,
+        json={
+            "object": "list",
+            "data": [{"index": 1, "embedding": [0.4, 0.5, 0.6]}, {"index": 0, "embedding": [0.1, 0.2, 0.3]}],
+            "usage": {"prompt_tokens": 9, "total_tokens": 9},
+        },
+    )
+    fake.reply("POST", "/v1/audio/transcriptions", always=True, json={"text": "How many appointments do I have today?"})
+    fake.reply("POST", "/v1/audio/speech", always=True, body=E2E_SPEECH, headers={"Content-Type": "audio/mpeg"})
     fake._server.serve_forever()
 
 

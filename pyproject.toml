@@ -32,6 +32,9 @@ dependencies = [
     "pypdf>=6.0",
     "reportlab>=4.4",
     "django-auditlog>=3.4.1",
+    # The assistant's attachments (assistant/attachments.py): the text of a Word document and of a spreadsheet.
+    "python-docx>=1.2",
+    "openpyxl>=3.1",
 ]
 
 [tool.uv]
