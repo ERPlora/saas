@@ -3,9 +3,10 @@
 
 import json
 
+import httpx
 import pytest
 
-from assistant.providers.base import ProviderError, ToolSpec, TurnRequest
+from assistant.providers.base import ProviderError, ProviderEvent, ToolSpec, TurnRequest
 from assistant.providers.openai import OpenAIProvider
 from assistant.tests.fake_provider import openai_chunk
 
@@ -185,3 +186,19 @@ async def test_the_request_body_is_json(fake_provider):
 
     assert json.dumps(fake_provider.requests[0].body["messages"], ensure_ascii=False) == '[{"role": "user", "content": "ñ"}]'
     assert events[-1].payload == {"reason": "stop"}
+
+
+async def test_a_provider_that_stops_answering_mid_stream_is_a_retriable_timeout(fake_provider, monkeypatch):
+    """Every call carries a timeout (``base.TIMEOUT``): a stream that goes quiet ends as a retriable error, never a hang."""
+    from assistant.providers import base
+
+    monkeypatch.setattr(base, "TIMEOUT", httpx.Timeout(connect=5.0, read=0.2, write=5.0, pool=5.0))
+    fake_provider.reply("POST", "/v1/chat/completions", sse=[openai_chunk("Hel"), openai_chunk("lo", finish="stop"), "[DONE]"], delay=1.0)
+
+    events = await collect(client(fake_provider), TurnRequest(model_id="gpt-4o", messages=[{"role": "user", "content": "Hi"}]))
+
+    assert events[0] == ProviderEvent("text_delta", {"text": "Hel"})
+    assert [(e.type, e.payload) for e in events[-2:]] == [
+        ("error", {"message": "openai: the provider took too long to answer", "retriable": True, "status": None}),
+        ("finish", {"reason": "error"}),
+    ]

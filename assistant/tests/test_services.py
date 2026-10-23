@@ -150,3 +150,26 @@ def test_deleting_needs_the_delete_permission(make_user, provider, ai_admin):
         services.credential_delete(staff_ctx(viewer), CredentialDeleteIn(id=first.id))
 
     assert AIProviderCredential.objects.filter(pk=first.id).exists()
+
+
+def test_a_change_that_types_no_key_leaves_an_unreadable_token_as_it_was(ai_admin, provider, settings):
+    """The WORKBOOK's promise (F02): a key no live key opens reads as «Unreadable», and saving the row without typing
+    another one never writes the stored token again (it waits for its key to come back or to be typed again)."""
+    from django.db import connection
+
+    from assistant.tests.conftest import OTHER_FERNET_KEY
+
+    first = save(ai_admin, provider=provider.pk, label="default", api_key=API_KEY)
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT api_key FROM assistant_aiprovidercredential WHERE id = %s", [first.id])
+        [(token,)] = cursor.fetchall()
+    settings.FERNET_KEY = OTHER_FERNET_KEY  # the key that wrote the token is gone: it reads as empty
+
+    save(ai_admin, provider=provider.pk, id=first.id, label="main", is_active=False)
+
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT api_key, label, is_active FROM assistant_aiprovidercredential WHERE id = %s", [first.id])
+        [(kept, label, is_active)] = cursor.fetchall()
+    assert (kept, label, is_active) == (token, "main", False)
+    settings.FERNET_KEY = "mbAv33BqhZbROx9FgnZVR3XPEUopApIq3G-xQR4E58w="  # its key comes back: the key still reads
+    assert AIProviderCredential.objects.get(pk=first.id).api_key == API_KEY
