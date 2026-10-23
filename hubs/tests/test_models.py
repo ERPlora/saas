@@ -56,7 +56,12 @@ def test_a_plan_has_a_uuid7_primary_key():
 
 
 def test_a_plan_reads_as_its_name_and_monthly_price():
-    assert str(_plan()) == "Starter - EUR 29.99/month"
+    """In the active language since APP-HUBS-4 (it read «Starter - EUR 29.99/month» in a Spanish admin too):
+    ``test_admin.py::test_a_plan_is_named_in_the_staff_language`` has the Spanish."""
+    from django.utils import translation
+
+    with translation.override("en"):
+        assert str(_plan()) == "Starter · 29.99 €/month"
 
 
 def test_plans_are_listed_by_display_order_then_price():

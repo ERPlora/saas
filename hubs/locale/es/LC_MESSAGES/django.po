@@ -17,6 +17,79 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: models.py
+msgid "identifier"
+msgstr "identificador"
+
+#: models.py
+msgid "monthly price"
+msgstr "precio al mes"
+
+#: models.py
+msgid "annual price"
+msgstr "precio al año"
+
+#: models.py
+msgid "only as an upgrade"
+msgstr "solo como mejora"
+
+#: models.py
+msgid "internal"
+msgstr "interno"
+
+#: models.py
+msgid "Stripe product"
+msgstr "producto de Stripe"
+
+#: models.py
+msgid "Stripe monthly price"
+msgstr "precio mensual de Stripe"
+
+#: models.py
+msgid "Stripe annual price"
+msgstr "precio anual de Stripe"
+
+#: models.py
+msgid "trial days"
+msgstr "días de prueba"
+
+#: models.py
+msgid "businesses per customer"
+msgstr "negocios por cliente"
+
+#: models.py
+msgid "devices"
+msgstr "dispositivos"
+
+#: models.py
+msgid "people"
+msgstr "personas"
+
+#: models.py
+msgid "database transactions at a time"
+msgstr "transacciones de base de datos a la vez"
+
+#: models.py
+msgid "longest database statement (seconds)"
+msgstr "consulta más larga (segundos)"
+
+#: models.py
+msgid "level of modules"
+msgstr "nivel de módulos"
+
+#: models.py
+msgid "support"
+msgstr "soporte"
+
+#: models.py
+msgid "own domain"
+msgstr "dominio propio"
+
+#: models.py
+#, python-format
+msgid "%(name)s · %(price)s €/month"
+msgstr "%(name)s · %(price)s €/mes"
+
+#: models.py
 msgid "code"
 msgstr "código"
 

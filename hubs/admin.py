@@ -79,6 +79,16 @@ class PlanForm(forms.ModelForm):
         model = Plan
         fields = "__all__"
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # The choices' own labels are the untranslated English source (kept out of the migrations); the staff pick
+        # from the names the customer reads, in their language (HUBS-F05). The stored values do not change.
+        for field, labels in (
+            ("included_level", Plan.INCLUDED_LEVEL_LABELS),
+            ("support_level", Plan.SUPPORT_LEVEL_LABELS),
+        ):
+            self.fields[field].choices = [(value, labels.get(value, label)) for value, label in self.fields[field].choices]
+
     def clean(self):
         from billing import services as billing_services
 

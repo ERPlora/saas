@@ -497,3 +497,61 @@ def test_a_taxonomy_row_is_named_in_the_staff_language(staff_client, rows, model
         type(row).objects.filter(pk=row.pk).update(name_es="")
         row.refresh_from_db()
         assert str(row) == row.name_en
+
+
+# --- HUBS-F31 (and HUBS-F05's screen): the plans' admin speaks the staff's language ----------------------------------
+
+PLAN_COLUMNS = ["Identificador", "Nombre (inglés)", "Precio al mes", "Días de prueba", "Activo", "Solo como mejora", "Interno"]
+PLAN_FILTERS = ["activo", "solo como mejora", "interno"]
+PLAN_FIELDS = [
+    "Identificador",
+    "Precio al mes",
+    "Precio al año",
+    "Días de prueba",
+    "Orden",
+    "Activo",
+    "Solo como mejora",
+    "Interno",
+    "Nivel de módulos",
+    "Soporte",
+    "Dominio propio",
+    "Negocios por cliente",
+    "Dispositivos",
+    "Personas",
+    "Transacciones de base de datos a la vez",
+    "Consulta más larga (segundos)",
+    "Producto de Stripe",
+    "Precio mensual de Stripe",
+    "Precio anual de Stripe",
+]
+
+
+def test_the_plan_list_speaks_spanish(staff_client, rows):
+    """Its columns and filters said «PRICE MONTHLY», «TRIAL PERIOD DAYS» and «Por is active» in a Spanish admin (the
+    capture of HUBS-F31's notice, APP-HUBS-4)."""
+    page = staff_client.get("/admin/hubs/plan/", HTTP_ACCEPT_LANGUAGE="es").content.decode()
+
+    assert _headings(page) == PLAN_COLUMNS
+    assert re.findall(r'data-filter-title="([^"]*)"', page) == PLAN_FILTERS
+
+
+def test_the_plan_form_speaks_spanish(staff_client, rows):
+    page = staff_client.get(f"/admin/hubs/plan/{rows['plan'].pk}/change/", HTTP_ACCEPT_LANGUAGE="es").content.decode()
+    labels = [label.strip().rstrip(":") for label in re.findall(r"<label[^>]*>([^<]+)</label>", page)]
+
+    for label in PLAN_FIELDS:
+        assert label in labels, (label, labels)
+    # The level and the support are picked from their Spanish names; their stored values do not change.
+    # (Basic, Pro and Enterprise are the levels' brand names in both languages: the catalog keeps them.)
+    for value, name in (("free", "Gratis"), ("community", "Foro de la comunidad")):
+        assert re.search(rf'value="{value}"( selected)?>{name}<', page), (value, name)
+
+
+def test_a_plan_is_named_in_the_staff_language(rows):
+    from django.utils import translation
+
+    plan = rows["plan"]
+    with translation.override("es"):
+        assert str(plan) == "Starter · 29,99 €/mes"
+    with translation.override("en"):
+        assert str(plan) == "Starter · 29.99 €/month"
