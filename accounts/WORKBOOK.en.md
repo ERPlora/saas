@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:5a663b5a6674e9fc91018e35671e5c30ea9479dda9ac7778c6646cc9d17eee7e -->
+<!-- generated from WORKBOOK.md sha256:1278c59125b7fe4d05e7a434722625863495105a191d061e3deaa6978236238e -->
 
 ## What it is for and who it is for
 
@@ -137,8 +137,9 @@ marked "This session", and each other one carries "Close session". On top, "Clos
 
 ### admin › Accounts › Users and User sessions
 The list of accounts carries the action "Close all their sessions", which also ends the trust of their
-browsers; **User sessions** shows who signed in where, read only, with "Close the selected
-sessions". Only a superuser sees both actions.
+browsers; **User sessions** shows who signed in where ("Account", "Signed in", "Last used", "IP address" and
+"Browser", in the staff's language), read only, with "Close the selected sessions". Only a superuser sees both
+actions.
 
 ### Account › Profile
 "Your details" (the photo or the initials with "Change photo", "First name", "Last name", the "Email you sign in
@@ -249,7 +250,7 @@ Steps:
 4. The screen moves to **Check your email** (ACCOUNTS-F02); with the right code they are signed in and reach "Create your business".
 In: the email (without spaces, in lower case and with full-width letters turned into the usual ones, so that an address that looks like another does not create a second account; the same when inviting it to a business, which invites that account), the password and where they were going (only pages of erplora.com).
 Out: the account, active, with its email not confirmed yet and the terms accepted (ACCOUNTS-F10). No business is created. The application that draws this screen is the same door as any other program: the same rules apply to all.
-If it fails: a password that does not pass the rules appears under the password and nothing is created; an invalid email (also with full-width letters before the at sign), under the email. An email that already has an account answers just like a new one and its mailbox receives "an account with this address already exists" with the link to set a password, without a code: this is also how the invited person, whose account has no password yet, sets theirs, and nobody takes over someone else's account. More than 10 sign-ups in an hour from the same network address: "Too many attempts. Please wait a few minutes and try again.".
+If it fails: a password that does not pass the rules appears under the password and nothing is created; an invalid email (also with full-width letters before the at sign), under the email. An email that already has an account answers just like a new one and its mailbox receives "an account using that email address already exists" with the link to set a password, without a code: this is also how the invited person, whose account has no password yet, sets theirs, and nobody takes over someone else's account. More than 10 sign-ups in an hour from the same network address: "Too many attempts. Please wait a few minutes and try again.".
 Involved: hubs (the **Entrance** and "Create your business")
 
 ### ACCOUNTS-F02 Confirm the email with the code
@@ -346,7 +347,7 @@ Steps:
 4. The other browsers with their account are signed out, and erplora.com asks each of their businesses to end the sessions open with it.
 In: the current password and the new one.
 Out: the new password; the other erplora.com sessions ended, this browser signed in; the notice to their businesses. The same happens when resetting it (ACCOUNTS-F07).
-If it fails: a wrong current password, under its field, and the new one is not saved; the new one equal to the current one, "Your new password must be different from the current one."; one that does not pass the rules, its warnings. The warnings appear in the account's language. More than 5 attempts a minute, "Too many attempts…" without looking at the password, not even the right one: someone else's open session is no way to guess it. An account without a password (it signed in with Google) sees "Create a password", which sends it the link of ACCOUNTS-F07.
+If it fails: a wrong current password, under its field, and the new one is not saved; the new one equal to the current one, "Your new password must be different from the current one."; one that does not pass the rules, its warnings. The warnings appear in the account's language. More than 5 attempts a minute, "Too many attempts…" without looking at the password, not even the right one: someone else's open session is no way to guess it. An account without a password (it signed in with Google) sees "Create a password", which sends it the link of ACCOUNTS-F07. Today the businesses do not act on the notice yet (it comes in phase 2): a session open in a business goes on until it expires.
 Involved: hubs (each business ends the account's sessions)
 
 ### ACCOUNTS-F09 Sign out

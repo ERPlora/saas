@@ -93,7 +93,9 @@ lista viva se refresca); ningún rol tiene su permiso y en el admin solo las ve 
   (sesión existente, sin caducar y con el hash de la contraseña actual), sin escribir: una consulta trae las sin
   caducar con sus datos y el hash se comprueba en memoria (nada de cargar una sesión por fila), y el servidor la
   pagina, la actual primero (con más sesiones de las que caben en un resultado vivo no cargaba). Ubicación = IP
-  (GeoIP fuera, plan §6). `UserSessionsAdapter` hace que cerrar por cualquier puerta avise a los negocios.
+  (GeoIP fuera, plan §6). `UserSessionsAdapter` hace que cerrar por cualquier puerta avise a los negocios. En el
+  admin, «Sesiones de usuario» nombra su modelo y sus columnas en el idioma del personal (`UserSessionAdmin`:
+  allauth no les da nombre; solo el `_meta` en vivo, sin migración en allauth).
 - **Segundo factor** (PLAN-SAAS, nota 2026-10-13 y ronda 19; ACCOUNTS-F05, F14–F17 y F20): `allauth.mfa` sobre
   headless, TOTP + códigos de recuperación, sin passkeys, detrás de `ACCOUNTS_MFA_ENABLED` (apagado por defecto en
   la fase 1: `MFAFlagMiddleware` responde 404 en sus rutas y `mfa.mfa_completed` es falso; nunca se cambia el

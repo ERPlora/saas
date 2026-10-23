@@ -1,7 +1,7 @@
 # Workbook — Cuentas (accounts)
 Prefijo: ACCOUNTS
 Alcance MVP: fase 1 (la cuenta de erplora.com: crearla, entrar y salir, su contraseña y lo que acepta)
-Estado de la app: en construcción (partes 1 a 5 de 6: crear la cuenta, entrar, la contraseña, salir, los términos y el freno; la verificación en dos pasos, los navegadores de confianza y las sesiones abiertas; el perfil, las preferencias, los avisos, el menú de usuario, descargar los datos y eliminar la cuenta; el salto a un negocio y la vuelta, las claves de API y su documentación, la retención de datos, el registro de auditoría y reportar un problema; la plataforma de erplora.com: lo que cada página deja cargar, el registro sin datos personales, el arranque, las páginas de error, el modo mantenimiento, la limpieza diaria, los frenos, los correos, moverse por el panel y la QA maestra)
+Estado de la app: en construcción (partes 1 a 6 de 7: crear la cuenta, entrar, la contraseña, salir, los términos y el freno; la verificación en dos pasos, los navegadores de confianza y las sesiones abiertas; el perfil, las preferencias, los avisos, el menú de usuario, descargar los datos y eliminar la cuenta; el salto a un negocio y la vuelta, las claves de API y su documentación, la retención de datos, el registro de auditoría y reportar un problema; la plataforma de erplora.com: lo que cada página deja cargar, el registro sin datos personales, el arranque, las páginas de error, el modo mantenimiento, la limpieza diaria, los frenos, los correos, moverse por el panel y la QA maestra; la revisión, uno a uno, de los flujos hechos de crear la cuenta a cambiar el tema, en inglés y en español)
 
 > Manual de uso y especificación de la app `accounts` del SaaS (erplora.com). Cuenta cómo se crea una
 > cuenta, cómo se confirma el correo, cómo se entra y se sale, cómo se recupera y se cambia la contraseña,
@@ -161,8 +161,9 @@ más» en vez de páginas.
 
 ### admin › Cuentas › Usuarios y Sesiones de usuario
 La lista de cuentas lleva la acción «Cerrar todas sus sesiones», que también acaba la confianza de sus
-navegadores; **Sesiones de usuario** enseña quién ha entrado dónde, solo para leer, con «Cerrar las
-sesiones seleccionadas». Las dos acciones solo las ve un superusuario.
+navegadores; **Sesiones de usuario** enseña quién ha entrado dónde («Cuenta», «Inicio de sesión», «Último uso»,
+«Dirección IP» y «Navegador», en el idioma del personal), solo para leer, con «Cerrar las sesiones seleccionadas».
+Las dos acciones solo las ve un superusuario.
 
 ### Cuenta › Perfil
 «Tus datos» (la foto o las iniciales con «Cambiar foto», «Nombre», «Apellidos», el «Correo con el que entras» con
@@ -274,7 +275,7 @@ Pasos:
 4. La pantalla pasa a **Revisa tu correo** (ACCOUNTS-F02); con el código bueno entra sola y llega a «Crea tu negocio».
 Entra: el correo (sin espacios, en minúsculas y con las letras de ancho completo pasadas a las normales, para que una dirección que se parece a otra no cree una segunda cuenta; igual al invitarla a un negocio, que invita a esa cuenta), la contraseña y adónde iba (solo páginas de erplora.com).
 Sale: la cuenta, activa, con su correo aún sin confirmar y los términos aceptados (ACCOUNTS-F10). No se crea ningún negocio. La aplicación que pinta esta pantalla es la misma puerta que cualquier otro programa: las mismas reglas valen para todos.
-Si falla: una contraseña que no pasa las reglas sale debajo de la contraseña y no se crea nada; un correo no válido (también con letras de ancho completo antes de la arroba), debajo del correo. Un correo que ya tiene cuenta responde igual que uno nuevo y a su buzón le llega «ya existe una cuenta con esta dirección» con el enlace para poner contraseña, sin código: así pone la suya también la persona invitada, cuya cuenta aún no tiene contraseña, y nadie se queda con una cuenta ajena. Más de 10 altas en una hora desde la misma dirección de red: «Demasiados intentos. Espera unos minutos y vuelve a intentarlo.».
+Si falla: una contraseña que no pasa las reglas sale debajo de la contraseña y no se crea nada; un correo no válido (también con letras de ancho completo antes de la arroba), debajo del correo. Un correo que ya tiene cuenta responde igual que uno nuevo y a su buzón le llega «ya existe una cuenta con esa dirección de correo electrónico» con el enlace para poner contraseña, sin código: así pone la suya también la persona invitada, cuya cuenta aún no tiene contraseña, y nadie se queda con una cuenta ajena. Más de 10 altas en una hora desde la misma dirección de red: «Demasiados intentos. Espera unos minutos y vuelve a intentarlo.».
 Implicados: hubs (la **Entrada** y «Crea tu negocio»)
 
 ### ACCOUNTS-F02 Confirmar el correo con el código
@@ -378,7 +379,7 @@ Pasos:
 4. Los demás navegadores con su cuenta salen, y erplora.com pide a cada uno de sus negocios que cierre las sesiones abiertas con ella.
 Entra: la contraseña actual y la nueva.
 Sale: la contraseña nueva; las otras sesiones de erplora.com cerradas, este navegador dentro; el aviso a sus negocios. Lo mismo pasa al restablecerla (ACCOUNTS-F07).
-Si falla: una contraseña actual equivocada, debajo de su campo, y la nueva no se guarda; la nueva igual a la actual, «La contraseña nueva tiene que ser distinta de la actual.»; una que no pasa las reglas, sus avisos. Los avisos salen en el idioma de la cuenta. Más de 5 intentos por minuto, «Demasiados intentos…» sin mirar la contraseña, ni la buena: una sesión ajena abierta no sirve para adivinarla. Una cuenta sin contraseña (entró con Google) ve «Crear contraseña», que le manda el enlace de ACCOUNTS-F07.
+Si falla: una contraseña actual equivocada, debajo de su campo, y la nueva no se guarda; la nueva igual a la actual, «La contraseña nueva tiene que ser distinta de la actual.»; una que no pasa las reglas, sus avisos. Los avisos salen en el idioma de la cuenta. Más de 5 intentos por minuto, «Demasiados intentos…» sin mirar la contraseña, ni la buena: una sesión ajena abierta no sirve para adivinarla. Una cuenta sin contraseña (entró con Google) ve «Crear contraseña», que le manda el enlace de ACCOUNTS-F07. Hoy los negocios aún no atienden el aviso (llega en la fase 2): una sesión abierta en un negocio sigue hasta que caduca.
 Implicados: hubs (cada negocio cierra las sesiones de la cuenta)
 
 ### ACCOUNTS-F09 Cerrar la sesión
@@ -1028,6 +1029,10 @@ Implicados: hubs, billing, public, apps y fiscal; del Hub, verifactu, invoice y 
   admin cierra por `accounts.session.close_any` (sin ruta: solo el admin, por el canal de la cuenta); sus
   dos acciones solo las ve el superusuario y el soporte solo lee. La «revocación del comando»
   `revoke_user_sessions` del viejo es esa acción del admin (working-rules §4: todo por la UI o la API).
+  allauth no nombra su modelo ni sus campos (salían en inglés en todo idioma): `UserSessionAdmin` nombra columnas
+  y etiquetas con `admin.display`, y el modelo con su `_meta` en vivo; las migraciones leen las opciones propias
+  del modelo (`_meta.original_attrs`), así que allauth no gana ninguna (`makemigrations --check` en
+  `tests/test_admin.py` lo vigila).
 - Personal (F20): `admin_has_permission` (instalado en `config/urls.py`) exige, con el interruptor
   encendido, un autenticador TOTP; `admin_login` lleva al personal sin él a `/2fa?next=…`. En el SaaS nuevo
   el personal no tiene API propia: sus poderes viven en el admin y en el salto `hub-admin`, que ya exige el
