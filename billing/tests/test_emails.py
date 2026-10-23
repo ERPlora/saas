@@ -149,3 +149,23 @@ def test_a_mail_whose_html_cannot_be_drawn_is_not_sent_either(notice, invoice, m
     with pytest.raises(emails.MailNotSent):
         send()
     assert mail.outbox == []
+
+
+@pytest.mark.parametrize("declined", [False, True])
+def test_every_line_of_the_unpaid_mail_reaches_a_spanish_payer_in_spanish(declined):
+    """BILLING-F16: the mail of a renewal that could not be charged says each of its lines in the payer's language,
+    also why the card was declined: none is left in the English source (a sentence rewritten without its
+    translation). The links and the amounts aside, no line of the Spanish mail is a line of the English one."""
+    hub = SimpleNamespace(id="0199a0c4-7f3e-7000-8000-000000000001", name="Mi Hub")
+    for language in ("en", "es"):
+        emails.send_payment_failed(
+            hub,
+            to="a@example.com",
+            language=language,
+            amount=Decimal("29.99"),
+            declined=declined,
+            suspends_on=date(2026, 11, 1),
+        )
+    english, spanish = (set(message.body.splitlines()) - {""} for message in mail.outbox)
+
+    assert spanish.isdisjoint(english)

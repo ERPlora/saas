@@ -109,7 +109,12 @@ def send_payment_failed(hub, *, to: str, language: str, amount, declined: bool, 
             % {"amount": _money(amount), "business": hub.name},
         ]
         if declined:
-            lines.append(_("The bank declined the card: change it before paying, we will not charge it again."))
+            lines.append(
+                _(
+                    "The bank declined your card, so we will not try it again: change the card, then pay the "
+                    "invoice yourself."
+                )
+            )
         lines += [
             _("%(business)s keeps working until %(date)s. If the invoice is not paid by then, it is suspended. Nothing is deleted.")
             % {"business": hub.name, "date": date_format(suspends_on, "DATE_FORMAT")},
