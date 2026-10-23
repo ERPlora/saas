@@ -1,7 +1,7 @@
 # Workbook — Cuentas (accounts)
 Prefijo: ACCOUNTS
 Alcance MVP: fase 1 (la cuenta de erplora.com: crearla, entrar y salir, su contraseña y lo que acepta)
-Estado de la app: en construcción (partes 1 a 6 de 7: crear la cuenta, entrar, la contraseña, salir, los términos y el freno; la verificación en dos pasos, los navegadores de confianza y las sesiones abiertas; el perfil, las preferencias, los avisos, el menú de usuario, descargar los datos y eliminar la cuenta; el salto a un negocio y la vuelta, las claves de API y su documentación, la retención de datos, el registro de auditoría y reportar un problema; la plataforma de erplora.com: lo que cada página deja cargar, el registro sin datos personales, el arranque, las páginas de error, el modo mantenimiento, la limpieza diaria, los frenos, los correos, moverse por el panel y la QA maestra; la revisión, uno a uno, de los flujos hechos de crear la cuenta a cambiar el tema, en inglés y en español)
+Estado de la app: en uso (dos flujos parciales: ACCOUNTS-F06, que espera a Google de verdad en el entorno de pruebas, y ACCOUNTS-F48, la QA maestra, que espera flujos de otras apps)
 
 > Manual de uso y especificación de la app `accounts` del SaaS (erplora.com). Cuenta cómo se crea una
 > cuenta, cómo se confirma el correo, cómo se entra y se sale, cómo se recupera y se cambia la contraseña,
@@ -710,7 +710,7 @@ Pantalla: Cuenta › Claves de API, admin › Cuentas › Claves de API
 Pasos:
 1. En **Cuenta › Claves de API**, la persona pulsa «Nueva clave»: «Nueva clave de API» pide el «Nombre», sus «Permisos» («Negocios · lectura», «Negocios · escritura», «Facturas · lectura») y cuándo «Caduca» («En 90 días», «En 30 días» o «Nunca»).
 2. Si su última entrada no es reciente, antes confirma que es ella con su contraseña (o entrando otra vez con Google).
-3. Pulsa «Crear clave»: ve la clave entera una sola vez, con «Copiar la clave» y «Cópiala ahora y guárdala en un sitio seguro: no la volverás a ver.»; con «Ya la he guardado», la clave queda en la lista solo con su principio.
+3. Pulsa «Crear clave»: ve la clave entera una sola vez, con «Copiar la clave» y «Cópiala ahora y guárdala en un sitio seguro: no la volverás a ver.»; con «Ya la he guardado», la ventana se cierra, avisa «Clave creada: «…»» y la clave queda en la lista solo con su principio.
 4. Un superusuario del personal crea una clave para una cuenta del equipo desde el admin, con «Añadir clave de API»: elige la cuenta, el nombre, los permisos y la caducidad, y la página le enseña la clave una sola vez, «Cópiala ahora: no se volverá a mostrar.».
 Entra: el nombre, los permisos, la caducidad y, si hace falta, la contraseña.
 Sale: la clave, que actúa como su cuenta y solo con sus permisos; erplora.com guarda solo su huella y su principio. A la cuenta le llega el correo «Nueva clave de API en tu cuenta de ERPlora», sin la clave. Evento `accounts.apikey.created`.
@@ -740,7 +740,7 @@ Pantalla: Cuenta › Claves de API, admin › Cuentas › Claves de API
 Pasos:
 1. En **Cuenta › Claves de API**, la persona pulsa «Revocar» en la fila de la clave: «Revocar «…»» dice «Lo que use esta clave dejará de funcionar al momento. No se puede deshacer: tendrías que crear otra.».
 2. Confirma con «Revocar clave»: «Clave revocada: «…»» y la clave sale de la lista.
-3. Ante un incidente, un superusuario del personal busca la clave en el admin (por su nombre, su principio o su cuenta), la marca y elige «Revocar las claves seleccionadas (dejan de funcionar al momento)»: «Claves revocadas: 1.».
+3. Ante un incidente, un superusuario del personal busca la clave en el admin (por su nombre, su principio o su cuenta; cada fila dice sus «Permisos» con las palabras de la cuenta, como «Negocios · lectura»), la marca y elige «Revocar las claves seleccionadas (dejan de funcionar al momento)»: «Claves revocadas: 1.».
 Entra: la clave elegida.
 Sale: la clave no abre nada desde la siguiente llamada; su fila se queda como rastro, con la fecha en que se revocó, y la lista de su cuenta se actualiza sola. No hay «rotar»: se crea otra y se revoca la vieja. Evento `accounts.apikey.revoked`.
 Si falla: revocarla dos veces no cambia nada; la clave de otra cuenta no se encuentra («Esa clave de API no existe.»). Revocar no pide la contraseña. El soporte ve las claves sin poder revocarlas.
@@ -753,7 +753,7 @@ Actor: cualquier persona con cuenta
 Pantalla: Cuenta › Claves de API, Documentación de la API
 Pasos:
 1. En **Cuenta › Claves de API**, bajo la lista, la persona pulsa «Documentación de la API»: se abre en otra pestaña.
-2. La documentación enseña cada parte de la API (la cuenta, los negocios, las facturas…), con sus llamadas, lo que piden y lo que contestan, y un buscador.
+2. La documentación enseña cada parte de la API (la cuenta, los negocios, las facturas…), con sus llamadas, lo que piden y lo que contestan, y un buscador. Está en inglés, como la propia API.
 3. Para probar la API desde un programa, descarga el esquema desde la propia documentación y lo abre en Postman con una clave de API (ACCOUNTS-F31).
 Entra: la sesión.
 Sale: nada guardado. La documentación es solo para leer: no hace llamadas con los datos de la cuenta.
