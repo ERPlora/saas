@@ -91,10 +91,13 @@ def test_spa_config_hands_the_sign_in_pages_recaptchas_site_key(client, recaptch
     assert config["recaptchaSiteKey"] == "test-site-key"
 
 
-def test_spa_config_without_recaptcha_has_an_empty_site_key(client):
-    _, config = json_block(client.get("/launch", HTTP_HOST=HOST), "spa-config")
+def test_spa_config_without_recaptcha_names_no_site_key(client):
+    """Off (the default since 2026-10-23): the page says nothing of reCAPTCHA, so its pages load no Google script."""
+    response = client.get("/launch", HTTP_HOST=HOST)
+    _, config = json_block(response, "spa-config")
 
-    assert config["recaptchaSiteKey"] == ""
+    assert "recaptchaSiteKey" not in config
+    assert "recaptcha" not in response.content.decode().lower()
 
 
 def test_spa_config_carries_the_origin_of_a_hub_with_its_slug_to_fill_in(client, settings):

@@ -293,14 +293,21 @@ describe('the panel (round 17, PLAN-SAAS §3.6)', () => {
     expect(assign).not.toHaveBeenCalled();
   });
 
-  it('trusts the script URLs of Stripe.js and of reCAPTCHA only (their loaders set their scripts as strings)', async () => {
+  it('trusts the script URLs of Stripe.js only while reCAPTCHA is off (spa-config names no site key)', async () => {
     fakeShell();
     await main.boot({});
     // The `default` Trusted Types policy admits these origins' script URLs and no other; the CSP's
-    // `script-src` still decides page by page (the account surface's names no Stripe). reCAPTCHA (2026-10-22):
-    // our code inserts `www.google.com/recaptcha/enterprise.js`, which inserts its release from `www.gstatic.com`
-    // (frontend/recaptcha.ts).
-    // reCAPTCHA by path only: nothing else of www.google.com or www.gstatic.com.
+    // `script-src` still decides page by page (the account surface's names no Stripe). reCAPTCHA is off by
+    // default since 2026-10-23 (Ioan: the WAF on the ALB, the attempt limits): nothing of Google's.
+    expect(shellOptions().trustedScriptOrigins).toEqual(['https://js.stripe.com']);
+  });
+
+  it('trusts reCAPTCHA’s two script paths too while it is on (spa-config.recaptchaSiteKey)', async () => {
+    renderShellHtml(ME, { recaptchaSiteKey: 'site-key' });
+    fakeShell();
+    await main.boot({});
+    // Our code inserts `www.google.com/recaptcha/enterprise.js`, which inserts its release from `www.gstatic.com`
+    // (frontend/recaptcha.ts). reCAPTCHA by path only: nothing else of www.google.com or www.gstatic.com.
     expect(shellOptions().trustedScriptOrigins).toEqual([
       'https://js.stripe.com',
       'https://www.google.com/recaptcha/',

@@ -12,11 +12,12 @@ import pytest
 from django.core import mail
 from django.test import Client
 from django.utils import translation
+from live import recaptcha as live_recaptcha
 
 from accounts.bot_check import RECAPTCHA_DOORS
 from accounts.tests.conftest import BROWSER, HOST
 from accounts.tests.test_unified_login import _pending, verified  # noqa: F401  (`verified` is a fixture)
-from conftest import PASSWORD
+from conftest import PASSWORD, FakeGoogleRecaptcha
 
 pytestmark = pytest.mark.django_db
 
@@ -201,10 +202,41 @@ def test_the_csrf_check_comes_first_and_google_is_not_asked(recaptcha):
     assert recaptcha.asked == []
 
 
-def test_switched_off_the_doors_need_no_token(verified):
+# Switched off (RECAPTCHA_ENABLED, the default since 2026-10-23; Ioan: the WAF on the ALB, the attempt limits): every
+# door goes on to allauth's own answer without a token and Google is never asked. The limits per address stay
+# (accounts/tests/test_throttle.py runs with reCAPTCHA off).
+
+
+@pytest.fixture
+def google_off(monkeypatch):
+    """reCAPTCHA as the test run keeps it (off), Google played anyway: a call would show in ``asked``."""
+    google = FakeGoogleRecaptcha()
+    monkeypatch.setattr(live_recaptcha, "urlopen", google)
+    return google
+
+
+def test_switched_off_the_doors_need_no_token(verified, google_off):
     response = _post(f"{BROWSER}/auth/login", {"email": verified.email, "password": PASSWORD})
 
     assert (response.status_code, _pending(response)) == (401, ["login_by_code"])
+    assert google_off.asked == []
+
+
+@pytest.mark.parametrize(("path", "action", "body"), DOORS, ids=DOOR_IDS)
+def test_switched_off_no_door_refuses_a_post_without_a_token_nor_asks_google(google_off, path, action, body):
+    response = _post(path, body)
+
+    assert not _refused(response)
+    assert "recaptcha_failed" not in response.content.decode()
+    assert google_off.asked == []
+
+
+def test_switched_off_a_wrong_password_gets_allauths_own_answer(verified, google_off):
+    response = _post(f"{BROWSER}/auth/login", {"email": verified.email, "password": "not the password"})
+
+    assert response.status_code == 400
+    assert [error["code"] for error in response.json()["errors"]] == ["email_password_mismatch"]
+    assert google_off.asked == []
 
 
 def test_the_spa_adds_the_token_at_the_same_doors_with_the_same_actions():

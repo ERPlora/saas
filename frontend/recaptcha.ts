@@ -8,7 +8,9 @@
 //     (`createShell({ trustedScriptOrigins })`, frontend/main.ts); Google's script then makes its own `goog#html`
 //     policy (CSP `trusted-types`, live.recaptcha.with_recaptcha).
 //   - The badge Google paints is hidden, which Google allows only with its notice near the form (the public web's
-//     public/partials/recaptcha_notice.html, the SPA's accounts/frontend/components/RecaptchaNotice.vue).
+//     public/partials/recaptcha_notice.html, the SPA's accounts/frontend/components/RecaptchaNotice.vue). The rule
+//     that hides it goes in with Google's script (`hideBadge`): reCAPTCHA off (the default since 2026-10-23) emits
+//     no CSS of it. Both CSPs admit inline styles (`style-src 'unsafe-inline'`, live.csp and public/csp.py).
 //   - A token that cannot be had (Google blocked by an extension, down, slower than `TOKEN_TIMEOUT_MS`) is no token:
 //     the form still goes, the server refuses it and says why («We could not check that you are a person»).
 // Used by the public web (`protectForms`, frontend/public.ts) and by the SPA's sign-in pages
@@ -36,10 +38,23 @@ export interface RecaptchaEnv {
 
 let loading: { siteKey: string; promise: Promise<RecaptchaEnterprise> } | null = null;
 
+/** The rule that hides Google's badge; its notice is under each protected form. */
+export const BADGE_STYLE = '.grecaptcha-badge { visibility: hidden; }';
+
+/** Hides Google's badge on `doc`, once: the style goes in with Google's script, never without it. */
+function hideBadge(doc: Document): void {
+  if (doc.querySelector('style[data-recaptcha-badge]')) return;
+  const style = doc.createElement('style');
+  style.dataset.recaptchaBadge = '';
+  style.textContent = BADGE_STYLE;
+  doc.head.append(style);
+}
+
 /** `grecaptcha.enterprise` once ready, loading Google's script the first time. A failure rejects (and the next call
  *  tries again). */
 export function loadRecaptcha(siteKey: string, { doc = document, win = window }: RecaptchaEnv = {}): Promise<RecaptchaEnterprise> {
   if (loading?.siteKey === siteKey) return loading.promise;
+  hideBadge(doc);
   const present = (win as RecaptchaWindow).grecaptcha?.enterprise;
   const attempt = new Promise<RecaptchaEnterprise>((resolve, reject) => {
     if (present) {

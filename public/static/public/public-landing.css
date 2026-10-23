@@ -279,12 +279,6 @@ ion-card-content.justify-center { justify-content: center; }
   }
 }
 
-/* reCAPTCHA v3's floating badge leaves the viewport on a phone and covers the CTAs; the legal
-   notice Google's terms require goes inline next to the contact form instead. */
-.grecaptcha-badge {
-  visibility: hidden;
-}
-
 /* The error pages (404.html, 500.html): the section fills the space between navbar and footer. */
 .ep-error-page {
   display: flex;
