@@ -121,3 +121,13 @@ def test_a_deleted_business_is_left_alone(staff_client, on_starter, owner):
     edit(staff_client, "starter", max_users=10)
 
     assert versions(on_starter) == before
+
+
+@pytest.mark.usefixtures("signup_trial")  # the dormant sign-up trial of Starter, on (no plan lends one since 2026-10-15)
+def test_a_business_trying_the_plan_owes_it_too(staff_client, business):
+    """Free with Starter's trial in force: Starter's rights are the ones its snapshot carries."""
+    before = versions(business)
+
+    edit(staff_client, "starter", max_users=10)
+
+    assert versions(business) == [before[0] + 1]
