@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:0fc40602f466cc65211adbf8c6196045ee9cdbe132da3b99b18a56b003711cf7 -->
+<!-- generated from WORKBOOK.md sha256:5cd01f95d3e78507814f146d7d97a38dc0839b8fa1191fda71f0d0aef8036d5b -->
 
 ## What it is for and who it is for
 
@@ -382,14 +382,14 @@ Status: done
 Actor: system
 Screen: Entrance, Check your email, Reset your password, Set a new password, Two-step verification
 Steps:
-1. Before anything else, Google checks without being seen (no checkbox, no puzzle) that whoever sends the form is a person: signing in, creating the account, asking for the reset link, the link's new password, the email's code and "Send a new code", each sign-in's code and the authenticator app's. Under each one, "This site is protected by reCAPTCHA and the Google Privacy Policy and Terms of Service apply.". "Continue with Google" does not go through here: Google checks it.
+1. Before anything else, if Google's check is switched on, Google checks without being seen (no checkbox, no puzzle) that whoever sends the form is a person: signing in, creating the account, asking for the reset link, the link's new password, the email's code and "Send a new code", each sign-in's code and the authenticator app's. Under each one, "This site is protected by reCAPTCHA and the Google Privacy Policy and Terms of Service apply.". Since 2026-10-23 it is switched off by default (the network's firewall stops suspicious traffic before it arrives): the forms load nothing of Google and do not show that notice, and the throttles below stay the same. "Continue with Google" does not go through here: Google checks it.
 2. Each wrong password spends from its account's budget and from the network address's (5 in 5 minutes each); once spent, not even the right one gets in until the time is up. A right sign-in gives its attempt back: the owner spends no budget.
 3. Before looking at the password, each network address has 30 sign-ins a minute.
 4. The email's codes allow 3 attempts; the sign-in one lasts 3 minutes. On top of that, each network address has 10 refused codes in 5 minutes, from the email or from the authenticator app; a right one spends nothing.
 5. Reset links, 10 an hour per network address and 5 an hour per account; the link's form, 20 submissions a minute per address; a new code, one every 10 seconds per account; sign-ups, 10 an hour per address; the password change, 5 a minute per account.
-In: the email being tried, the network address of the caller and Google's approval.
-Out: the throttle's answer, the same whether the account exists or not and after the same number of attempts: "Too many failed login attempts. Try again later." on the **Entrance** or "Too many attempts. Please wait a few minutes and try again."; if Google does not see a person, "We could not check that you are a person. Try again." and nothing is done.
-If it fails: if the shared memory of the counters does not answer, the throttle opens (the door stays usable) and a warning is left in the log. If Google does not answer, signing in, the sign-in's code and the authenticator app's go on (the password, the code and the throttles already guard them) and an error is left in the log; the other forms are refused with the message above.
+In: the email being tried, the network address of the caller and, with the check switched on, Google's approval.
+Out: the throttle's answer, the same whether the account exists or not and after the same number of attempts: "Too many failed login attempts. Try again later." on the **Entrance** or "Too many attempts. Please wait a few minutes and try again."; with the check switched on, if Google does not see a person, "We could not check that you are a person. Try again." and nothing is done.
+If it fails: if the shared memory of the counters does not answer, the throttle opens (the door stays usable) and a warning is left in the log. With the check switched on, if Google does not answer, signing in, the sign-in's code and the authenticator app's go on (the password, the code and the throttles already guard them) and an error is left in the log; the other forms are refused with the message above.
 Involved: none
 
 ### ACCOUNTS-F12 Know who has signed in

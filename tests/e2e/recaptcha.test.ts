@@ -15,6 +15,7 @@ import {
   fakeRelease,
   localRecaptchaApiKey,
   localRecaptchaSiteKey,
+  recaptchaOn,
   recaptchaServerEnv,
 } from './recaptcha';
 import { stackFrom } from './stack';
@@ -70,17 +71,29 @@ describe('assessWithGoogle', () => {
 });
 
 describe('recaptchaServerEnv', () => {
-  it('sends the assessments to the double of the stack, with an API key that is not Google’s', () => {
-    expect(recaptchaServerEnv(SHARED, saasDir(), {})).toEqual({
+  it('leaves reCAPTCHA off by default, as production since 2026-10-23 (RECAPTCHA_ENABLED, whatever `.env` says)', () => {
+    expect(recaptchaOn({})).toBe(false);
+    expect(recaptchaServerEnv(SHARED, saasDir('RECAPTCHA_ENABLED=True\nRECAPTCHA_SITE_KEY=6Le-local\n'), {})).toEqual({
+      RECAPTCHA_ENABLED: 'False',
+    });
+  });
+
+  it('with E2E_RECAPTCHA=1 switches it on and sends the assessments to the double, with an API key not Google’s', () => {
+    const on = { E2E_RECAPTCHA: '1' };
+    expect(recaptchaOn(on)).toBe(true);
+    expect(recaptchaServerEnv(SHARED, saasDir(), on)).toEqual({
+      RECAPTCHA_ENABLED: 'True',
       RECAPTCHA_SITE_KEY: E2E_RECAPTCHA_SITE_KEY,
       RECAPTCHA_API_KEY: E2E_RECAPTCHA_API_KEY,
       RECAPTCHA_ENDPOINT: 'http://127.0.0.1:8018/v1/projects/erplora/assessments',
     });
-    expect(recaptchaServerEnv(OWN, saasDir(), {}).RECAPTCHA_ENDPOINT).toBe('http://127.0.0.1:8038/v1/projects/erplora/assessments');
+    expect(recaptchaServerEnv(OWN, saasDir(), on).RECAPTCHA_ENDPOINT).toBe('http://127.0.0.1:8038/v1/projects/erplora/assessments');
   });
 
   it('keeps the local site key when the checkout has one, for the spec with Google’s real script', () => {
-    const env = recaptchaServerEnv(SHARED, saasDir('RECAPTCHA_SITE_KEY=6Le-local\nRECAPTCHA_API_KEY=the-real-secret\n'), {});
+    const env = recaptchaServerEnv(SHARED, saasDir('RECAPTCHA_SITE_KEY=6Le-local\nRECAPTCHA_API_KEY=the-real-secret\n'), {
+      E2E_RECAPTCHA: '1',
+    });
     expect(env.RECAPTCHA_SITE_KEY).toBe('6Le-local');
     expect(env.RECAPTCHA_API_KEY).toBe(E2E_RECAPTCHA_API_KEY);
   });

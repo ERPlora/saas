@@ -78,7 +78,7 @@ type WebServer = Exclude<NonNullable<PlaywrightTestConfig['webServer']>, unknown
  * The public server of `stack`, the first one Playwright starts: before it, an own stack's database is created
  * when missing and migrated (database.ts), so the panel's Django and globalSetup find it ready.
  */
-export function publicServer(saasDir: string, stack: Stack = STACK): WebServer {
+export function publicServer(saasDir: string, stack: Stack = STACK, env: Record<string, string | undefined> = process.env): WebServer {
   const runserver = `uv run python manage.py runserver 127.0.0.1:${stack.publicPort} --novite --insecure --noreload`;
   return {
     command: stack.database === undefined ? runserver : `node tests/e2e/database.ts && ${runserver}`,
@@ -97,9 +97,9 @@ export function publicServer(saasDir: string, stack: Stack = STACK): WebServer {
         ALLOWED_HOSTS: '127.0.0.1,localhost',
         EMAIL_BACKEND: 'django.core.mail.backends.filebased.EmailBackend',
         EMAIL_FILE_PATH: publicMailDir(stack),
-        // Production refuses to start without reCAPTCHA: its assessments go to the run's double, never to Google,
-        // and its pages get a fake enterprise.js (recaptcha.ts).
-        ...recaptchaServerEnv(stack, saasDir),
+        // reCAPTCHA off, as production since 2026-10-23; with `E2E_RECAPTCHA=1`, on: its assessments go to the
+        // run's double, never to Google, and its pages get a fake enterprise.js (recaptcha.ts).
+        ...recaptchaServerEnv(stack, saasDir, env),
         // The run presses «Try the demo» from 127.0.0.1 more than production's 3 an hour (demo-door, public-demo,
         // recaptcha); the throttled door is a spec of its own (`?state=throttled`, public-demo.spec.ts).
         DEMO_SPAWN_RATELIMIT: '30/h',
