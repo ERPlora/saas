@@ -197,3 +197,30 @@ class EncryptionRotateOut(Schema):
     rotated: int
     current: int
     unreadable: int
+
+
+# --- The Hub's turn (part 2): who calls, the allowance and what it spent ------------------------------------------
+
+
+class CallerIn(Schema):
+    """A door's ``hub``: a business by its address or its id, or a demo by its ``demo-…`` address."""
+
+    hub: str = Field(min_length=1, max_length=63)
+
+
+class Caller(Schema):
+    """Who a call of the Hub is for: a business (``hub_id``) or a demo (``demo``, its address); never both."""
+
+    hub_id: UUID | None = None
+    demo: str = ""
+    slug: str
+
+
+class UsageOut(Schema):
+    """What the caller spent of its allowance: ``used`` of ``limit`` messages, back on ``resets_at`` (UTC; ``None``
+    for a demo, whose messages never come back)."""
+
+    used: int
+    limit: int
+    resets_at: datetime | None
+    demo: bool
