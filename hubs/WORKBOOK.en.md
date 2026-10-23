@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:9d5971288487a12ab934dffea54494f46a9921bba3d6f825c6ff73615fed8211 -->
+<!-- generated from WORKBOOK.md sha256:17a704905e291d938dc016d9a7db0783bf32fef9cc6ac3288be6568fe6e685df -->
 
 ## What it is for and who it is for
 
@@ -65,9 +65,9 @@ with one business, "Hello, …" with "Open …" and "Go to the panel"; with seve
 with the last opened on top. A pending invitation shows above.
 
 ### Create business
-The sign-up form: "What is your business called?", "Business name", "Country" (suggested by the browser's
-language), "Business type (optional)" with "I don't know yet" and, under the name, "Your address will be …". On the
-Entrance it is in the card; in **Businesses**, in the "Create business" dialog.
+The sign-up form: "Business name", "Country" (suggested by the browser's language), "Business type (optional)" with
+"I don't know yet" and, under the name, "Your address will be …". On the Entrance it is in the "Create your business"
+card; in **Businesses**, in the "Create business" dialog, under "What is your business called?".
 
 ### Preparing
 The running bar and three steps: "Business created", "Setting up your business" (or "Installing the modules for …")
