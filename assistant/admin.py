@@ -540,16 +540,18 @@ class AssistantUsageAdmin(admin.ModelAdmin):
     """What each business (or demo) spent through the gateway, by month (ASSISTANT-F24): read only for everybody,
     so no member of the staff gives a business its allowance back by editing or deleting its row."""
 
+    # What the staff look for first (the allowance spent and what it cost) before the measures, so a desk's width shows
+    # them without scrolling the table.
     list_display = (
         "spender",
         "period",
         "messages",
+        "cost",
         "tokens_input",
         "tokens_output",
         "tokens_embedding",
         "transcriptions",
         "speech_characters",
-        "cost",
     )
     list_filter = (UsageKindFilter, "month")
     search_fields = ("hub__name", "hub__slug", "demo")
