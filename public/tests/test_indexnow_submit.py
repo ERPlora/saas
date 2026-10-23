@@ -163,12 +163,19 @@ def test_a_rejected_submission_exits_non_zero_from_manage_py(
     settings.INDEXNOW_KEY = KEY
     settings.PUBLIC_HOST = "erplora.com"
     monkeypatch.setattr(indexnow.requests, "post", _answered(422, "Unprocessable"))
+    root_handlers = list(logging.getLogger().handlers)
+    argv = ["manage.py", "indexnow_submit"]
 
+    # ``execute()`` minus its ``django.setup()``: the same command lookup and the same
+    # ``run_from_argv`` that turns a ``CommandError`` into the process's exit code.
     with pytest.raises(SystemExit) as exit_:
-        ManagementUtility(["manage.py", "indexnow_submit"]).execute()
+        ManagementUtility(argv).fetch_command("indexnow_submit").run_from_argv(argv)
 
     assert exit_.value.code != 0
     assert "422" in capsys.readouterr().err
+    # The process is set up once: logging rebuilt on this test's captured stderr would leave every
+    # later test writing its log lines to a closed stream.
+    assert logging.getLogger().handlers == root_handlers
 
 
 @pytest.mark.usefixtures("a_public_page")
