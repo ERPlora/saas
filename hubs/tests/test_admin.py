@@ -182,6 +182,30 @@ def test_the_business_page_shows_its_members(staff_client, plane):
     assert "owner@example.com" in page
 
 
+def test_the_accesses_list_says_who_how_and_when_and_finds_by_email_and_role(staff_client, plane):
+    """HUBS-F30: per access the business, the person, the role, when invited, when answered and the last access;
+    searched by the person's email, filtered by role."""
+    page = staff_client.get("/admin/hubs/hubmember/").content.decode()
+    for column in ("hub", "user", "role", "invited_at", "accepted_at", "last_opened_at"):
+        assert f"column-{column}" in page, column
+
+    found = staff_client.get("/admin/hubs/hubmember/", {"q": "ana@example.com"}).context["cl"]
+    assert [member.user.email for member in found.result_list] == ["ana@example.com"]
+
+    listed = staff_client.get("/admin/hubs/hubmember/").context["cl"]
+    assert [spec.lookup_kwarg for spec in listed.filter_specs] == ["role__exact"]
+    admins = staff_client.get("/admin/hubs/hubmember/", {"role__exact": "hub_admin"}).context["cl"]
+    assert [member.user.email for member in admins.result_list] == ["ana@example.com"]
+
+
+@pytest.mark.parametrize("model", ["sector", "businesstype"])
+def test_the_taxonomy_order_and_switch_are_changed_from_the_list(staff_client, rows, model):
+    """HUBS-F36 step 2: the order and whether it is active, right in the list."""
+    page = staff_client.get(f"/admin/hubs/{model}/").content.decode()
+
+    assert 'name="form-0-display_order"' in page and 'name="form-0-is_active"' in page
+
+
 def test_the_changelist_finds_a_business_by_its_address(staff_client, plane):
     page = staff_client.get("/admin/hubs/hub/", {"q": plane["hub"].slug}).content.decode()
 
