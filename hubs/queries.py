@@ -570,8 +570,9 @@ def paid_until(hub_id):
 def still_pays(member: HubMember) -> bool:
     """Whether ``member``'s account still pays for its business, whatever its role: it owns its payer
     (``is_payer``), or the plan is still charged to the card of one of its payers (after a hand-over the new owner
-    says who pays from now on, but a live subscription stays on the old Stripe customer until support moves it:
-    ``billing.payer_required``). ``business_list`` annotates the second as ``charged``."""
+    says who pays from now on, but a live subscription stays on the old Stripe customer until they keep it with
+    their card, ``billing.plan.take_over``, HUBS-F28: until then ``billing.payer_required``). ``business_list``
+    annotates the second as ``charged``."""
     if is_payer(member):
         return True
     charged = getattr(member, "charged", None)

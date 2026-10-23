@@ -139,8 +139,8 @@ lo revisa flujo a flujo con su e2e en 3 tamaños (`tests/e2e/panel/hubs-people.s
 
 - **El correo de la oferta de propiedad** enlazaba a `/ownership/<id>`, una página que el panel no tiene: ahora lleva a
   `/businesses`, donde está la tarjeta «… te ofrece …» con «Aceptar la propiedad». El de la aceptación, que mandaba a
-  los Ajustes del negocio (donde el pagador no se cambia), lleva a `/billing/payment` y dice que las facturas siguen
-  yendo al mismo pagador hasta que el nuevo propietario ponga sus datos (`hubs/tests/test_emails.py`).
+  los Ajustes del negocio (donde el pagador no se cambia), lleva a `/businesses/<id>` y, con un plan de pago, dice
+  que la tarjeta del saliente ya no lo renueva y hasta cuándo está pagado (F28; `hubs/tests/test_emails.py`).
 - **El pie de «Te han invitado»** prometía «Podrás salir de un negocio cuando quieras desde el panel.» y no hay forma de
   salir uno mismo (como en Square, Toast o Shopify: quita el propietario o un administrador); ahora dice quién puede
   quitar el acceso (`InvitationPage.test.ts`).

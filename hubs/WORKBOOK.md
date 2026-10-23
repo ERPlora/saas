@@ -679,11 +679,14 @@ Implicados: accounts (la cuenta del personal)
   `/api/hubs/members`, `/api/hubs/invitations` y `/api/hubs/ownership`). Cada fila de `hubs.member.list` trae sus
   `actions`, calculadas con las mismas reglas que las escrituras (`queries.member_actions`, `services._managed`).
   Quitar, cambiar el rol de alguien que ya respondió y aceptar un traspaso encolan `SessionRevocation`
-  (`POST /internal/sessions/revoke`, `{user_id, hub_id}`), que el Hub aún no sirve (`base/internal.py`, fase 2):
-  por eso F26, F27 y F28 son `parcial`. Correos (`emails.py`): `send_invitation` (enlaza a `/invitation` y, a una
-  cuenta sin forma de entrar, a `/password/reset`), `send_ownership_offer` (enlaza a `/businesses`, donde está la
-  tarjeta de la oferta; el panel no tiene página `/ownership/<id>`) y `send_ownership_accepted` (enlaza a
-  `/billing/payment`, donde cada pagador ve lo que paga). Tests: `hubs/tests/test_members.py`, `test_members_api.py`,
+  (`POST /internal/sessions/revoke`, `{user_id, hub_id}`), que el Hub sirve desde BASE-F13 (`base/internal.py`) y
+  que se reintenta con espera creciente y en `reconcile_hub_states` si el negocio no contesta. Correos (`emails.py`,
+  con la plantilla común `base.emails.branded_message`, texto y HTML en el idioma de quien recibe): `send_invitation`
+  (enlaza a `/invitation` y, a una cuenta sin forma de entrar, a `/password/reset`), `send_ownership_offer` (enlaza a
+  `/businesses`, donde está la tarjeta de la oferta; el panel no tiene página `/ownership/<id>`; con un plan de pago
+  dice hasta cuándo está pagado y enlaza a `/billing/subscriptions`) y `send_ownership_accepted` (enlaza a
+  `/businesses/<id>` y, con un plan de pago, dice que la tarjeta del saliente ya no lo renueva). Tests:
+  `hubs/tests/test_members.py`, `test_members_api.py`,
   `test_ownership.py`, `test_session_revocations.py`, `test_invite_unverified_account.py`, `test_emails.py`,
   `test_permission_matrix.py` y `test_admin.py`; e2e en `tests/e2e/panel/hubs-people.spec.ts` (clave `HUBS-Gnn` en el
   título), con `members.spec.ts` e `invitation.spec.ts`.
