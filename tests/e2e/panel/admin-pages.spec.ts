@@ -6,8 +6,8 @@
 // the four on screen. Rows: fiscal_seed.py (a business with its member and a signed authorisation) and the accounts
 // of this spec, `e2e-admpages-…@example.com`.
 // The admin's index too: each section with a name of its own (allauth's `account` and our `accounts` were both
-// «Accounts»/«Cuentas») and every one of them in Spanish (Cookie consent, the authenticators and the sessions kept
-// their English); config/tests/test_admin_index.py walks them all.
+// «Accounts»/«Cuentas») and every one of them in Spanish (Cookie consent, the authenticators, the sessions and live's
+// outbox kept their English); config/tests/test_admin_index.py walks them all.
 // flow: ACCOUNTS-F31 — the key just issued, shown once.
 // flow: FISCAL-F03 — the review page of a signed authorisation.
 // flow: FISCAL-F06 — ERPlora's stamp as representative.
@@ -109,7 +109,10 @@ async function crumbsAtEverySize(page: Page, key: string, home: string, current:
   await page.setViewportSize({ width: 1440, height: 900 });
 }
 
-type IndexNames = Record<'emails' | 'accounts' | 'consent' | 'groups' | 'records' | 'authenticators' | 'sessions', string>;
+type IndexNames = Record<
+  'emails' | 'accounts' | 'consent' | 'groups' | 'records' | 'authenticators' | 'sessions' | 'live' | 'outbox',
+  string
+>;
 
 /**
  * The admin's index at each size: no two sections share a name, the four that did or spoke English say `names`, no
@@ -132,6 +135,8 @@ async function indexAtEverySize(page: Page, names: IndexNames, suffix: string): 
     await expect(main.locator('.app-cookie_consent .model-logitem th')).toHaveText(names.records);
     await expect(main.locator('.app-mfa .model-authenticator th')).toHaveText(names.authenticators);
     await expect(main.locator('.app-usersessions .model-usersession th')).toHaveText(names.sessions);
+    await expect(main.locator('.app-live caption')).toHaveText(names.live);
+    await expect(main.locator('.app-live .model-outboxevent th')).toHaveText(names.outbox);
     await settled(page);
     expect(await sidewaysScroll(page), `admin-index${suffix} at ${size.name}`).toEqual([]);
     await page.screenshot({ path: shot(`APP-ASSISTANT-1-admin-index${suffix}-${size.name}`), fullPage: true });
@@ -187,6 +192,8 @@ test('the admin\'s index names each section once', async ({ page }) => {
       records: 'Log items',
       authenticators: 'Authenticators',
       sessions: 'User sessions',
+      live: 'Live',
+      outbox: 'Outbox events',
     },
     '',
   );
@@ -206,6 +213,8 @@ test.describe('in Spanish', () => {
         records: 'Registros de consentimiento',
         authenticators: 'Autenticadores',
         sessions: 'Sesiones de usuario',
+        live: 'Tiempo real',
+        outbox: 'Eventos de la bandeja de salida',
       },
       '-es',
     );
