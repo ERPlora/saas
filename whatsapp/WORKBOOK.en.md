@@ -192,7 +192,7 @@ Actor: system
 Screen: WhatsApp inbox (in the Hub)
 Steps:
 1. A customer writes to the business's number (or the owner replies from the phone, or the history arrives on connecting): Meta reports it to erplora.com, which checks the notice is Meta's and keeps it for the business of that number.
-2. erplora.com hands it to the Hub at once; if the Hub is away or does not have the inbox switched on, it tries again with a wait that grows up to one hour, every minute while something is left.
+2. erplora.com hands it to the Hub at once; if the Hub is away or does not have the inbox switched on, it tries again with a wait that grows up to one hour, every minute while something is left. If the Hub is slow, each minute hands over what fits in that minute, without repeating what is still on its way.
 3. A photo, a voice note or a document arrive as an erplora.com link that only a person of the business opens with their session; the file comes from Meta at that moment and is not kept.
 4. The status of a message of the business ("Delivered", "Read", "Not delivered") reaches the inbox: that of one sent from the Hub, once erplora.com knows which it is; that of a reply of the owner from the phone, after that reply.
 In: Meta's notices: messages, echoes from the phone, history, delivery statuses and template verdicts.

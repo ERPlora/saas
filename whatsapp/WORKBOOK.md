@@ -211,7 +211,7 @@ Actor: sistema
 Pantalla: Bandeja de WhatsApp (en el Hub)
 Pasos:
 1. Un cliente escribe al número del negocio (o el dueño contesta desde el móvil, o llega el historial al conectar): Meta lo cuenta a erplora.com, que comprueba que el aviso es de Meta y lo guarda para el negocio de ese número.
-2. erplora.com lo entrega al Hub en el momento; si el Hub no está o no tiene la bandeja encendida, lo vuelve a intentar con una espera que crece hasta una hora, cada minuto mientras le quede algo.
+2. erplora.com lo entrega al Hub en el momento; si el Hub no está o no tiene la bandeja encendida, lo vuelve a intentar con una espera que crece hasta una hora, cada minuto mientras le quede algo. Si el Hub va lento, cada minuto entrega lo que cabe en ese minuto, sin repetir lo que aún está entregando.
 3. Una foto, una nota de voz o un documento llegan como un enlace de erplora.com que solo abre una persona del negocio con su sesión; el archivo viene de Meta en ese momento y no se guarda.
 4. El estado de un mensaje del negocio («Entregado», «Leído», «No entregado») llega a la bandeja: el de uno enviado desde el Hub, cuando erplora.com sabe cuál es; el de una respuesta del dueño desde el móvil, después de esa respuesta.
 Entra: los avisos de Meta: mensajes, ecos del móvil, historial, estados de entrega y veredictos de plantillas.

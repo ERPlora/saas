@@ -77,7 +77,10 @@ Las puertas 10–12 y la página de vuelta de la ventana de Meta (`GET /whatsapp
 
 ## Tareas (ECS, `saas-cron`)
 
-- `manage.py whatsapp_deliver`: cada minuto, lo que espera al Hub, por lotes de 50 (hasta 20 lotes).
+- `manage.py whatsapp_deliver`: cada minuto, lo que espera al Hub. Una pasada a la vez (bajo un lock de nombre: la que
+  lo encuentra cogido lo dice y sale sin error) y de 50 s como mucho: cada lote reserva solo las entregas cuyas
+  llamadas al Hub caben en lo que le queda (10 s cada una en el peor caso: 5 s para conectar y 5 s para responder).
+  Así nada reservado (5 min; el webhook, 20 llamadas = 200 s) se vuelve a reservar mientras aún se empuja.
 - `manage.py whatsapp_refresh_tokens`: cada día, renueva los permisos a 14 días de caducar (bajo un lock de nombre),
   marca «Hay que reconectar» y avisa al propietario; sale con error sin la app de Meta o si un número revienta.
 - `manage.py whatsapp_purge [--days N]`: cada día; N de 1 a 30.
