@@ -5,6 +5,9 @@
 // above the title. config/tests/test_admin_templates.py keeps the markup of every page of our own; this spec looks at
 // the four on screen. Rows: fiscal_seed.py (a business with its member and a signed authorisation) and the accounts
 // of this spec, `e2e-admpages-…@example.com`.
+// The admin's index too: each section with a name of its own (allauth's `account` and our `accounts` were both
+// «Accounts»/«Cuentas») and every one of them in Spanish (Cookie consent, the authenticators and the sessions kept
+// their English); config/tests/test_admin_index.py walks them all.
 // flow: ACCOUNTS-F31 — the key just issued, shown once.
 // flow: FISCAL-F03 — the review page of a signed authorisation.
 // flow: FISCAL-F06 — ERPlora's stamp as representative.
@@ -106,6 +109,37 @@ async function crumbsAtEverySize(page: Page, key: string, home: string, current:
   await page.setViewportSize({ width: 1440, height: 900 });
 }
 
+type IndexNames = Record<'emails' | 'accounts' | 'consent' | 'groups' | 'records' | 'authenticators' | 'sessions', string>;
+
+/**
+ * The admin's index at each size: no two sections share a name, the four that did or spoke English say `names`, no
+ * sideways scroll, a capture `APP-ASSISTANT-1-admin-index<suffix>-<size>`. Back at 1440 after.
+ */
+async function indexAtEverySize(page: Page, names: IndexNames, suffix: string): Promise<void> {
+  const errors = watchPageErrors(page);
+  await signIn(page.request, ROOT);
+  await page.goto('/admin/');
+  const main = page.locator('#content-main');
+  for (const size of SIZES) {
+    await page.setViewportSize({ width: size.width, height: size.height });
+    const sections = (await main.locator('caption a.section').allTextContents()).map((name) => name.trim());
+    expect(sections.length).toBeGreaterThan(10);
+    expect(sections.filter((name, at) => sections.indexOf(name) !== at), 'sections sharing a name').toEqual([]);
+    await expect(main.locator('.app-account caption')).toHaveText(names.emails);
+    await expect(main.locator('.app-accounts caption')).toHaveText(names.accounts);
+    await expect(main.locator('.app-cookie_consent caption')).toHaveText(names.consent);
+    await expect(main.locator('.app-cookie_consent .model-cookiegroup th')).toHaveText(names.groups);
+    await expect(main.locator('.app-cookie_consent .model-logitem th')).toHaveText(names.records);
+    await expect(main.locator('.app-mfa .model-authenticator th')).toHaveText(names.authenticators);
+    await expect(main.locator('.app-usersessions .model-usersession th')).toHaveText(names.sessions);
+    await settled(page);
+    expect(await sidewaysScroll(page), `admin-index${suffix} at ${size.name}`).toEqual([]);
+    await page.screenshot({ path: shot(`APP-ASSISTANT-1-admin-index${suffix}-${size.name}`), fullPage: true });
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
+  expect(errors).toEqual([]);
+}
+
 /** The four pages, each with its own crumbs, in the language the browser asks for. */
 async function visitTheFourPages(page: Page, words: Record<'home' | 'hubs' | 'issued' | 'review' | 'stamp', string>, suffix: string) {
   const errors = watchPageErrors(page);
@@ -141,8 +175,41 @@ test('ACCOUNTS-F31 · FISCAL-F03 · FISCAL-F06: the admin pages of our own wear 
   );
 });
 
+test('the admin\'s index names each section once', async ({ page }) => {
+  await indexAtEverySize(
+    page,
+    {
+      emails: 'Email addresses',
+      accounts: 'Accounts',
+      // The package's own English, untouched; its Spanish is ours (public's catalog).
+      consent: 'cookie consent',
+      groups: 'Cookie Groups',
+      records: 'Log items',
+      authenticators: 'Authenticators',
+      sessions: 'User sessions',
+    },
+    '',
+  );
+});
+
 test.describe('in Spanish', () => {
   test.use({ locale: 'es-ES' });
+
+  test('the admin\'s index names each section once, in Spanish', async ({ page }) => {
+    await indexAtEverySize(
+      page,
+      {
+        emails: 'Direcciones de correo electrónico',
+        accounts: 'Cuentas',
+        consent: 'Consentimiento de cookies',
+        groups: 'Grupos de cookies',
+        records: 'Registros de consentimiento',
+        authenticators: 'Autenticadores',
+        sessions: 'Sesiones de usuario',
+      },
+      '-es',
+    );
+  });
 
   test('ACCOUNTS-F31 · FISCAL-F03 · FISCAL-F06: the admin pages of our own wear the admin\'s breadcrumbs in Spanish', async ({
     page,

@@ -112,6 +112,10 @@ lista viva se refresca); ningún rol tiene su permiso y en el admin solo las ve 
   `admin_has_permission` (`admin.site.has_permission`, en `config/urls.py`) exige un TOTP (los códigos de
   recuperación solos no) y `admin_login` lleva al personal sin él a `/2fa?next=<ruta del admin>`, que ofrece
   «Continue» cuando la app está activa; el salto `hub-admin` lo exige siempre (`_needs_second_factor`).
+- **Nombres en el índice del admin** (`AccountsConfig.ready`): la sección de la app `account` de allauth se llama
+  «Email addresses» (solo guarda los correos; se llamaba «Accounts», como esta) y los autenticadores y las sesiones
+  de allauth llevan nombre traducible (salía el de su clase, sin `es`). Solo lo que se ve: ni etiqueta, ni tabla,
+  ni migración. Lo vigila `config/tests/test_admin_index.py` para toda app.
 - **Señales hacia `hubs`** (`signals.py`; `accounts` nunca importa `hubs`): `sessions_ended(user_id)` al cerrar
   sesiones, eliminar la cuenta o poner contraseña nueva (`password_changed/set/reset` de allauth; PLAN-SAAS
   §2.1) y `account_deleting(user_id)` antes de borrar la cuenta. Al cambiar el correo se envía `email_changed`

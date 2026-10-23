@@ -16,6 +16,9 @@ sin SSR y sin prefijo `/es/`; ronda 16 y spec `docs/superpowers/specs/2026-10-13
 - Idioma: catálogo propio en `public/locale/es/` (inglés fuente). El `.po` se mantiene a mano por secciones:
   `makemessages` lo reordena entero, así que se usa para descubrir los `msgid` nuevos y se añaden a mano antes de
   compilar (`msgfmt --check`).
+  Los nombres de Cookie consent en el admin (la sección, sus grupos y su registro; el paquete no trae español) se
+  traducen aquí con los `msgid` del propio paquete (`cookie consent`, `Cookie Group(s)`, `Log item(s)`):
+  `makemessages` no los ve, así que se conservan a mano.
 - Estilos: CSS propio en `public/static/public/` (con tokens `--ep-*`) y las utilidades que generan las plantillas
   (`scripts/build_ionic_utilities.py`, cuyo test falla si una plantilla gana una clase sin regenerar).
 
