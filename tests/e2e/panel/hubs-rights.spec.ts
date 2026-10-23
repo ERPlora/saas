@@ -140,28 +140,63 @@ test.afterAll(async () => {
   removeOwnRows();
 });
 
-/** The staff raise Starter's places by three in its admin page; the notice says who gets it. */
-async function raiseStarterPlaces(page: Page, notice: RegExp, key: string): Promise<number> {
+/** What a plan's admin says in each language: its list's columns, its form's labels and the saved plan's name. */
+interface PlanWords {
+  notice: RegExp;
+  columns: string[];
+  labels: string[];
+  saved: RegExp;
+}
+
+/**
+ * The staff raise Starter's places by three in its admin page, in the page's language: the form's labels (HUBS-F05's
+ * screen, which read «PRICE MONTHLY» and «Por is active» in Spanish), then the list with the notice saying who gets it.
+ */
+async function raiseStarterPlaces(page: Page, words: PlanWords, key: string): Promise<number> {
   const places = starterPlaces() + 3;
   await signIn(page.request, STAFF);
   await page.goto('/admin/hubs/plan/?q=starter');
   await page.locator('#result_list tbody th a', { hasText: /^starter$/ }).click();
+  await atEverySize(page, `${key}-form`, async () => {
+    for (const label of words.labels) {
+      await expect(page.locator('#plan_form label', { hasText: new RegExp(`^${label}:?$`) })).toBeVisible();
+    }
+  });
   await page.locator('input[name="max_users"]').fill(String(places));
   await page.locator('input[name="_save"]').click();
-  const told = page.locator('ul.messagelist li', { hasText: notice });
+  const told = page.locator('ul.messagelist li', { hasText: words.notice });
   await atEverySize(page, key, async () => {
     await expect(told).toBeVisible();
+    await expect(page.locator('ul.messagelist li', { hasText: words.saved })).toBeVisible();
+    for (const column of words.columns) {
+      await expect(page.locator('#result_list thead')).toContainText(column);
+    }
   });
   return places;
 }
 
 for (const run of [
-  { language: 'en', locale: 'en-US', suffix: '', notice: /^\d+ business(es)? on this plan gets? the change within 15 minutes\.$/ },
+  {
+    language: 'en',
+    locale: 'en-US',
+    suffix: '',
+    plan: {
+      notice: /^\d+ business(es)? on this plan gets? the change within 15 minutes\.$/,
+      columns: ['Identifier', 'Monthly price', 'Trial days', 'Only as an upgrade'],
+      labels: ['Monthly price', 'Level of modules', 'Support', 'People', 'Devices'],
+      saved: /Starter · \d+\.\d{2} €\/month/,
+    },
+  },
   {
     language: 'es',
     locale: 'es-ES',
     suffix: '-es',
-    notice: /^\d+ negocios? con este plan recibe(n)? el cambio en los próximos 15 minutos\.$/,
+    plan: {
+      notice: /^\d+ negocios? con este plan recibe(n)? el cambio en los próximos 15 minutos\.$/,
+      columns: ['Identificador', 'Precio al mes', 'Días de prueba', 'Solo como mejora'],
+      labels: ['Precio al mes', 'Nivel de módulos', 'Soporte', 'Personas', 'Dispositivos'],
+      saved: /Starter · \d+,\d{2} €\/mes/,
+    },
   },
 ]) {
   test.describe(`in ${run.language}`, () => {
@@ -174,7 +209,7 @@ for (const run of [
       const before = starterPlaces();
       const id = businessOnStarter();
       try {
-        const places = await raiseStarterPlaces(page, run.notice, `HUBS-G101${run.suffix}`);
+        const places = await raiseStarterPlaces(page, run.plan, `HUBS-G101${run.suffix}`);
         expect(placesInLastSnapshot(hub, id), 'nothing leaves before the pass').toBeUndefined();
 
         nextPass();
