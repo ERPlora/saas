@@ -11,10 +11,13 @@
     expired     its demo ended (or the Hub says so): start another one
     full        the Hub's cap of live demos is reached: try again in a few minutes
     throttled   this address started too many new demos this hour: «Start free» meanwhile
+    unverified  reCAPTCHA could not tell a person pressed the button (or Google did not answer): try again
     unavailable the Hub did not answer or refused: try again
     failed      the demo's sign-in did not take the code: back into the live demo, or start one
 
-  The look is the public web's: the page hero and one card, as /download/.
+  The look is the public web's: the page hero and one card, as /download/. «Try the demo» is a form: with a site
+  key, frontend/recaptcha.ts fills its `recaptcha_token` with Google's token for `demo_request` on submit, and the
+  notice under it says reCAPTCHA protects it (its badge is hidden).
 {% endcomment %}
 
 {% block title %}{% trans "Try the demo" %} · ERPlora{% endblock %}
@@ -75,6 +78,9 @@
               {% elif demo_state == "throttled" %}
                 {% trans "Too many demos from your network. Please try again in a little while." as message %}
                 {% include "public/components/inline_feedback.html" with tone="warning" message=message only %}
+              {% elif demo_state == "unverified" %}
+                {% trans "We could not check that you are a person. Try again." as message %}
+                {% include "public/components/inline_feedback.html" with tone="warning" message=message only %}
               {% elif demo_state == "unavailable" %}
                 {% trans "The demo is not available right now." as message %}
                 {% include "public/components/inline_feedback.html" with tone="danger" message=message only %}
@@ -96,12 +102,14 @@
                 <span slot="end">{% icon "lucide:arrow-right" size=15 %}</span>
               </ion-button>
             {% else %}
-              <form method="post" action="{% url 'public:demo_start' %}" class="m-0">
+              <form method="post" action="{% url 'public:demo_start' %}" class="m-0"{% if RECAPTCHA_SITE_KEY %} data-recaptcha-action="demo_request" data-recaptcha-site-key="{{ RECAPTCHA_SITE_KEY }}"{% endif %}>
                 {% csrf_token %}
+                {% if RECAPTCHA_SITE_KEY %}<input type="hidden" name="recaptcha_token" value="">{% endif %}
                 <ion-button type="submit" expand="block" size="large" data-testid="demo-start">
                   {% if demo_state == "idle" %}{% trans "Try the demo" %}{% elif demo_state == "expired" %}{% trans "Start another demo" %}{% else %}{% trans "Try again" %}{% endif %}
                   <span slot="end">{% icon "lucide:arrow-right" size=15 %}</span>
                 </ion-button>
+                {% include "public/partials/recaptcha_notice.html" %}
               </form>
             {% endif %}
 

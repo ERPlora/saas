@@ -13,6 +13,7 @@ from django.conf import settings
 from django.http.request import validate_host
 from live.csp import base_policy, debug_policy
 from live.meta import LiveAppConfig
+from live.recaptcha import with_recaptcha
 
 from config.tests.test_production_settings import IGNORE_DOTENV
 
@@ -82,6 +83,14 @@ def test_every_page_has_a_csp_with_a_nonce_and_form_action_to_the_hubs(client):
     # The Tauri bridge; with DEBUG (the default of the tests) also the Vite dev server and its HMR socket.
     assert directives["connect-src"][:3] == ["'self'", "ipc:", "http://ipc.localhost"]
     assert "cdn.jsdelivr.net" not in policy
+    # reCAPTCHA Enterprise on the sign-in (live.recaptcha): Google's scripts, frames and connection, and the
+    # Trusted Types policy its script creates.
+    assert {"https://www.google.com/recaptcha/", "https://www.gstatic.com/recaptcha/"} <= set(directives["script-src"])
+    assert {"https://www.google.com/recaptcha/", "https://recaptcha.google.com/recaptcha/"} <= set(
+        directives["frame-src"]
+    )
+    assert "https://www.google.com/recaptcha/" in directives["connect-src"]
+    assert "goog#html" in directives["trusted-types"]
 
 
 def test_no_page_may_create_the_policy_of_iconify():
@@ -103,6 +112,8 @@ PRODUCTION_ENV = {
     "FISCAL_DOCUMENTS_KEY": "2EBDB2KSnvz5lBG1RHG5ldNq34ZjWvGZ_t5r4wl5Mpw=",
     "GOOGLE_OAUTH_CLIENT_ID": "prod-client.apps.googleusercontent.com",
     "GOOGLE_OAUTH_CLIENT_SECRET": "prod-secret",
+    "RECAPTCHA_SITE_KEY": "prod-recaptcha-site-key",
+    "RECAPTCHA_API_KEY": "prod-recaptcha-api-key",
 }
 
 
@@ -114,7 +125,7 @@ def _settings_in_a_fresh_process(
     base = {
         key: value
         for key, value in os.environ.items()
-        if key not in ("DEBUG", "VITE_DEV_PORT") and not key.startswith(("GOOGLE_", "DJANGO_"))
+        if key not in ("DEBUG", "VITE_DEV_PORT") and not key.startswith(("GOOGLE_", "DJANGO_", "RECAPTCHA_"))
     }
     return subprocess.run(
         [
@@ -281,8 +292,8 @@ def test_a_subfolder_with_its_own_apps_py_is_a_folder_of_modules(tmp_path):
 
 
 def test_the_debug_csp_lets_the_saas_vite_dev_server_in():
-    """Port 5174, not hub-next's 5173: both dev servers run at once."""
-    expected = debug_policy(VITE_DEV_SERVER)
+    """Port 5174, not hub-next's 5173: both dev servers run at once (and reCAPTCHA's sources, live.recaptcha)."""
+    expected = with_recaptcha(debug_policy(VITE_DEV_SERVER))
     for directive in ("connect-src", "style-src", "font-src", "img-src"):
         assert VITE_DEV_SERVER in settings.SECURE_CSP[directive]
     assert "ws://localhost:5174" in settings.SECURE_CSP["connect-src"]
@@ -303,7 +314,7 @@ def test_the_vite_port_comes_from_the_environment():
     assert result.returncode == 0, result.stderr
     vite, dev_server, policy = ast.literal_eval(result.stdout.strip())
     assert vite == dev_server == "http://localhost:5224"
-    expected = debug_policy("http://localhost:5224")
+    expected = with_recaptcha(debug_policy("http://localhost:5224"))
     for directive in ("connect-src", "style-src", "font-src", "img-src"):
         assert policy[directive] == [str(source) for source in expected[directive]]
     assert "ws://localhost:5224" in policy["connect-src"]
@@ -435,7 +446,7 @@ def test_production_has_the_base_csp_and_no_dev_server():
 
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == str(
-        (base_policy()["connect-src"], None, True, False)
+        (with_recaptcha(base_policy())["connect-src"], None, True, False)
     )
 
 

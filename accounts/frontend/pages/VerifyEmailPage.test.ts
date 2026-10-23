@@ -26,6 +26,7 @@ import {
   tooManyRequests,
 } from '../__tests__/allauth-server';
 import { enterView, mountAccountPage } from '../__tests__/mount-account-page';
+import { forgetRecaptcha, withRecaptcha } from '../__tests__/recaptcha-page';
 import VerifyEmailPage from './VerifyEmailPage.vue';
 
 type Control = HTMLElement & { errorText?: string; disabled?: boolean };
@@ -538,5 +539,46 @@ describe('VerifyEmailPage: coming back to it (Ionic keeps the page and shows it 
     await flushPromises();
 
     expect(server.callsTo('GET /auth/session')).toHaveLength(1);
+  });
+});
+
+describe('VerifyEmailPage: reCAPTCHA, invisible (accounts/frontend/recaptcha.ts; Ioan, 2026-10-22)', () => {
+  afterEach(forgetRecaptcha);
+
+  it('posts the address’s code with the token of `verify_email` and says reCAPTCHA protects the form', async () => {
+    withRecaptcha();
+    const server = fakeAllauth({ 'GET /auth/session': pendingEmailVerification, 'POST /auth/email/verify': signedIn });
+    const { verify, wrapper } = await mountPage();
+
+    await verify('654321');
+
+    expect(server.callsTo('POST /auth/email/verify').map((c) => c.body)).toEqual([
+      { key: '654321', recaptcha_token: 'token-for-verify_email' },
+    ]);
+    expect(wrapper.find('[data-testid="recaptcha-notice"]').exists()).toBe(true);
+  });
+
+  it('posts the sign-in’s code with the token of `login_code`', async () => {
+    withRecaptcha();
+    const server = fakeAllauth({ 'GET /auth/session': pendingLoginCode, 'POST /auth/code/confirm': signedIn });
+    const { verify } = await mountPage({ flow: 'login_by_code' });
+
+    await verify('482913');
+
+    expect(server.callsTo('POST /auth/code/confirm').map((c) => c.body)).toEqual([
+      { code: '482913', recaptcha_token: 'token-for-login_code' },
+    ]);
+  });
+
+  it('asks another code with the token of `verify_email_resend`', async () => {
+    withRecaptcha();
+    const server = fakeAllauth({ 'GET /auth/session': pendingEmailVerification, 'POST /auth/email/verify/resend': ok() });
+    const { click } = await mountPage();
+
+    await click('verify-email-resend');
+
+    expect(server.callsTo('POST /auth/email/verify/resend').map((c) => c.body)).toEqual([
+      { recaptcha_token: 'token-for-verify_email_resend' },
+    ]);
   });
 });

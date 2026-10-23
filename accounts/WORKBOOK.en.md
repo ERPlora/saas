@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:a4c28f672bd37fd91e09fa46696daacb86412c67ce93cc7527345990cb7cf4ce -->
+<!-- generated from WORKBOOK.md sha256:6b9424eee9f993787025b7f2b67fce239cc2e1d50bf72c17048cf2b55b00382e -->
 
 ## What it is for and who it is for
 
@@ -655,7 +655,7 @@ Screen: Account › API keys, admin › Accounts › API keys
 Steps:
 1. In **Account › API keys**, the person taps "New key": "New API key" asks for the "Name", its "Permissions" ("Businesses · read", "Businesses · write", "Invoices · read") and when it "Expires" ("In 90 days", "In 30 days" or "Never").
 2. If their last sign-in is not recent, first they confirm it is them with their password (or by signing in with Google again).
-3. They tap "Create key": they see the whole key once, with "Copy the key" and "Copy it now and keep it somewhere safe: you will not see it again."; with "I have saved it", the key stays on the list with its beginning only.
+3. They tap "Create key": they see the whole key once, with "Copy the key" and "Copy it now and keep it somewhere safe: you will not see it again."; with "I have saved it", the window closes, says "Key created: «…»" and the key stays on the list with its beginning only.
 4. A superuser of the staff creates a key for a team account from the admin, with "Add API key": they choose the account, the name, the permissions and the expiry, and the page shows them the key once, "Copy it now: it will not be shown again.".
 In: the name, the permissions, the expiry and, if needed, the password.
 Out: the key, which acts as its account and only with its permissions; erplora.com keeps only its fingerprint and its beginning. The account gets the email "New API key in your ERPlora account", without the key. Event `accounts.apikey.created`.
@@ -683,7 +683,7 @@ Screen: Account › API keys, admin › Accounts › API keys
 Steps:
 1. In **Account › API keys**, the person taps "Revoke" on the key's row: "Revoke "…"" says "Whatever uses this key stops working at once. It cannot be undone: you would have to create another one.".
 2. They confirm with "Revoke key": "Key revoked: "…"" and the key leaves the list.
-3. Facing an incident, a superuser of the staff finds the key in the admin (by its name, its beginning or its account), marks it and chooses "Revoke the selected keys (they stop working at once)": "Keys revoked: 1.".
+3. Facing an incident, a superuser of the staff finds the key in the admin (by its name, its beginning or its account; each row says its "Permissions" in the words of the account, such as "Businesses · read"), marks it and chooses "Revoke the selected keys (they stop working at once)": "Keys revoked: 1.".
 In: the chosen key.
 Out: the key opens nothing from the next call on; its row stays as the trail, with the date it was revoked, and its account's list refreshes by itself. There is no "rotate": another one is created and the old one revoked. Event `accounts.apikey.revoked`.
 If it fails: revoking it twice changes nothing; another account's key is not found ("That API key does not exist."). Revoking does not ask for the password. Support sees the keys without being able to revoke them.
@@ -695,7 +695,7 @@ Actor: any person with an account
 Screen: Account › API keys, API documentation
 Steps:
 1. In **Account › API keys**, under the list, the person taps "API documentation": it opens in another tab.
-2. The documentation shows each part of the API (the account, the businesses, the invoices…), with its calls, what they ask for and what they answer, and a search box.
+2. The documentation shows each part of the API (the account, the businesses, the invoices…), with its calls, what they ask for and what they answer, and a search box. It is in English, like the API itself.
 3. To try the API from a program, they download the schema from the documentation itself and open it in Postman with an API key (ACCOUNTS-F31).
 In: the session.
 Out: nothing saved. The documentation is read only: it makes no calls with the account's data.

@@ -19,7 +19,7 @@
 // (another address, maybe the other code): every arrival starts anew from the sign-in's hand-over and the
 // session, with nothing of the last visit; «Use a different email» replaces the page, so Ionic drops it.
 import { InlineFeedback } from '@erplora/ui/components';
-import { ApiError, createAllauthClient, type AuthState, type FieldErrors, useLiveClient } from '@erplora/ui/sdk';
+import { ApiError, type AuthState, type FieldErrors, useLiveClient } from '@erplora/ui/sdk';
 import { ionIconSrc, useSurface } from '@erplora/ui/shell';
 import { IonButton, IonIcon, onIonViewWillEnter } from '@ionic/vue';
 import { computed, onMounted, shallowRef } from 'vue';
@@ -31,6 +31,8 @@ import CodeField from '../components/CodeField.vue';
 import { legalHref } from '../legal';
 import { localNext } from '../next';
 import { LAUNCHER } from '../paths';
+import { createProtectedAllauthClient } from '../recaptcha';
+import RecaptchaNotice from '../components/RecaptchaNotice.vue';
 
 const TWO_FACTOR = '/2fa/authenticate';
 /** allauth's flow of a sign-up or login that waits for the code that proves its address. */
@@ -48,7 +50,7 @@ const MAIL_ICON = ionIconSrc('lucide:mail-check');
 const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
-const auth = createAllauthClient(useLiveClient().config);
+const auth = createProtectedAllauthClient(useLiveClient().config);
 const { surface } = useSurface();
 
 const code = shallowRef('');
@@ -260,6 +262,7 @@ async function useDifferentEmail(): Promise<void> {
     >
       {{ $t('accounts.verifyEmail.useDifferentEmail') }}
     </ion-button>
+    <RecaptchaNotice />
 
     <template #foot>
       <p class="foot">

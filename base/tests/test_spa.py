@@ -84,6 +84,19 @@ def test_spa_config_says_whether_two_step_verification_is_switched_on(client, se
     assert config["mfaEnabled"] is enabled
 
 
+def test_spa_config_hands_the_sign_in_pages_recaptchas_site_key(client, recaptcha):
+    """The sign-in's pages ask Google's enterprise.js for a token with it (accounts/frontend/recaptcha.ts)."""
+    _, config = json_block(client.get("/launch", HTTP_HOST=HOST), "spa-config")
+
+    assert config["recaptchaSiteKey"] == "test-site-key"
+
+
+def test_spa_config_without_recaptcha_has_an_empty_site_key(client):
+    _, config = json_block(client.get("/launch", HTTP_HOST=HOST), "spa-config")
+
+    assert config["recaptchaSiteKey"] == ""
+
+
 def test_spa_config_carries_the_origin_of_a_hub_with_its_slug_to_fill_in(client, settings):
     """The error page of the jump names the hub's host and links back to it (/login/error?code=not_a_member)."""
     settings.HUB_CALLBACK_TEMPLATE = "https://{slug}.erplora.com/auth/callback"

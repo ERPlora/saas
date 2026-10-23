@@ -407,6 +407,11 @@
       "sentTitle": "Report sent",
       "sentBody": "Thank you: we have received your report and will reply to {email} as soon as possible.",
       "back": "Back"
+    },
+    "recaptcha": {
+      "notice": "This site is protected by reCAPTCHA and the Google {privacy} and {terms} apply.",
+      "privacy": "Privacy Policy",
+      "terms": "Terms of Service"
     }
   }
 }

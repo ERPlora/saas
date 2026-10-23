@@ -6,6 +6,8 @@
   `redoc_settings` and `openapi_json_url` come from ninja (`ninja.openapi.docs.Redoc.render_page`). The schema is read
   with JSON.parse and handed to ReDoc as an object: ReDoc's own reader (YAML) refuses a JSON that repeats a key, and
   then the whole page says nothing but «Something went wrong». If the schema does not load, the page says so.
+  The reference is the API's own words, in English as Stripe's and GitHub's are (`lang="en"`); the page around it
+  speaks the visitor's language.
 {% endcomment %}
 <html lang="{{ LANGUAGE_CODE }}">
 <head>
@@ -17,7 +19,7 @@
     <style>body { margin: 0; } #redoc-failed { margin: 2rem; font-family: system-ui, sans-serif; }</style>
 </head>
 <body>
-    <div id="redoc-ui"></div>
+    <div id="redoc-ui" lang="en"></div>
     <p id="redoc-failed" hidden>{% translate "We could not load the API documentation. Reload the page to try again." %}</p>
     <script type="application/json" id="redoc-settings">{{ redoc_settings|safe }}</script>
     {{ openapi_json_url|json_script:"redoc-schema-url" }}

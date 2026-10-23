@@ -8,7 +8,9 @@ import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { type Page, expect, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
+
+import { expect, test } from './public-test';
 
 const ARTIFACTS = join(dirname(fileURLToPath(import.meta.url)), '.artifacts', 'demo');
 const WIDTHS = [390, 768, 1440];

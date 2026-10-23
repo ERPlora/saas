@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { fakeAllauth, held, offline, ok, rejected, tooManyRequests } from '../__tests__/allauth-server';
 import { mountAccountPage } from '../__tests__/mount-account-page';
+import { forgetRecaptcha, withRecaptcha } from '../__tests__/recaptcha-page';
 import PasswordResetPage from './PasswordResetPage.vue';
 
 type Control = HTMLElement & { errorText?: string; disabled?: boolean };
@@ -148,5 +149,22 @@ describe('PasswordResetPage: sending the link', () => {
     answer.release();
     await flushPromises();
     expect(wrapper.find('[data-testid="password-reset-sent"]').exists()).toBe(true);
+  });
+});
+
+describe('PasswordResetPage: reCAPTCHA, invisible (accounts/frontend/recaptcha.ts; Ioan, 2026-10-22)', () => {
+  afterEach(forgetRecaptcha);
+
+  it('asks the link with the token of `password_reset` and says reCAPTCHA protects the form', async () => {
+    withRecaptcha();
+    const server = fakeAllauth({ 'POST /auth/password/request': ok() });
+    const { send, wrapper } = await mountPage();
+    expect(wrapper.find('[data-testid="recaptcha-notice"]').exists()).toBe(true);
+
+    await send('someone@example.com');
+
+    expect(server.callsTo('POST /auth/password/request').map((c) => c.body)).toEqual([
+      { email: 'someone@example.com', recaptcha_token: 'token-for-password_reset' },
+    ]);
   });
 });

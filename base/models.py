@@ -11,6 +11,7 @@ import uuid
 from django.core.cache import cache
 from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
+from django.utils.translation import pgettext_lazy
 
 #: The cache key of the maintenance state (``base.queries.maintenance_state``).
 MAINTENANCE_CACHE_KEY = "base.maintenance"
@@ -41,7 +42,9 @@ class SiteSettings(models.Model):
     updated_at = models.DateTimeField(_("updated at"), auto_now=True)
 
     class Meta:
-        verbose_name = _("site settings")
+        # The one row, apart from the plural: Spanish says «el ajuste del sitio» where Django names one («El {name}
+        # “{obj}” se cambió correctamente») and «Ajustes del sitio» in the index.
+        verbose_name = pgettext_lazy("one", "site settings")
         verbose_name_plural = _("site settings")
         constraints = [models.CheckConstraint(condition=models.Q(singleton=True), name="base_sitesettings_singleton")]
 

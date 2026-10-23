@@ -171,6 +171,80 @@ solo cubre la contraseña):
   `/hub-login/?hub=…&next=…` sigue funcionando tras Google. «Confirma que eres tú» de una cuenta solo de
   Google es entrar otra vez con Google (el mismo redirect, de vuelta a la página).
 
+## Protección contra bots: reCAPTCHA invisible y límites de intentos
+
+Ioan, 2026-10-22: «siempre que hay un form hay que meter recaptcha», «que no se vea en la pantalla» y «límites en
+los registros de login para que no intenten sin parar». Vuelve reCAPTCHA, que ADR-0154 había retirado: ahora
+**reCAPTCHA Enterprise por puntuación**, sin casilla ni puzle.
+
+- **Formularios cubiertos y su acción** (el token se pide para esa acción y el servidor la exige): entrar
+  (`login`), crear cuenta (`signup`), «¿Has olvidado tu contraseña?» (`password_reset`), la nueva contraseña del
+  enlace (`password_reset_confirm`), el código que confirma el correo (`verify_email`) y «Enviar un código nuevo»
+  (`verify_email_resend`), el código de cada entrada (`login_code`), el de la app autenticadora
+  (`mfa_authenticate`), el formulario de contacto (`contact`) y «Prueba la demo» (`demo_request`). Fuera, a
+  propósito: «Continuar con Google» (lo comprueba Google), el selector de idioma y la búsqueda de la tienda (no
+  crean nada) y los formularios del panel, que ya piden una sesión.
+- **Cómo funciona**: la página carga `enterprise.js` de Google con la clave pública; al enviar, pide un token de
+  la acción (`frontend/recaptcha.ts`; en el panel lo añade el `fetch` del cliente de allauth,
+  `accounts/frontend/recaptcha.ts`) y lo manda en `recaptcha_token`. El servidor pregunta a Google con
+  `live.recaptcha.verify_or_raise` antes de hacer nada: las puertas de allauth.headless en
+  `accounts/bot_check.py` (400 `recaptcha_failed` en el sobre de allauth), contacto en `public/landing.py` y la demo
+  en `public/demo.py` (`?state=unverified`). Se rechaza sin token, con un token no válido o de otro formulario y con
+  puntuación por debajo de `RECAPTCHA_MIN_SCORE`. Quien bloquea Google con una extensión no puede enviar estos
+  formularios: ve «No hemos podido comprobar que eres una persona. Vuelve a intentarlo.».
+- **Si no se puede preguntar a Google** (tiempo agotado, red, 5xx o respuesta ilegible; un 4xx también): falla
+  cerrado en todos los formularios **salvo** la entrada (`login`) y sus segundos factores (`login_code`,
+  `mfa_authenticate`), que ya protegen la contraseña o el código y sus límites: pasan, con un ERROR
+  `recaptcha.unavailable` (o CRITICAL `recaptcha.misconfigured` si Google contestó 4xx) y una cuenta por acción, para
+  que una caída de Google no deje fuera a nadie, tampoco al personal (`fail_open_on_unavailable` de
+  `live.recaptcha`). Un veredicto de Google (token no válido, de otra acción o puntuación baja) sigue rechazando ahí,
+  y sin token tampoco se entra: si el navegador no puede cargar el script de Google, no hay token que mandar.
+- **Runbook: salta `recaptcha.unavailable` o `recaptcha.misconfigured`** (CloudWatch, el registro de las tareas
+  `saas*`; mientras dure, el alta, la contraseña olvidada, los códigos del correo, el contacto y la demo rechazan a
+  todos). 1) `misconfigured` (4xx): la clave de la API (que exista, que esté restringida a «reCAPTCHA Enterprise API»
+  y no a otra cosa), la facturación y la cuota del proyecto `erplora` en Google Cloud; con la clave mala o borrada,
+  rotarla (abajo). 2) `unavailable` (tiempo, red, 5xx): el estado de Google Cloud (status.cloud.google.com,
+  «reCAPTCHA Enterprise») y la salida a Internet de las tareas (NAT, grupos de seguridad); si es Google, esperar:
+  la entrada sigue abierta. 3) Si el registro dice `let_through=True` durante mucho rato, la entrada funciona solo
+  con contraseña, código y límites: vigilar `too_many_login_attempts` en el mismo registro. Nada de esto pide
+  desplegar código.
+- **Aviso**: la insignia de Google va oculta (`.grecaptcha-badge`), y por eso cada formulario lleva debajo «Este
+  sitio está protegido por reCAPTCHA y se aplican la Política de Privacidad y las Condiciones del Servicio de
+  Google.» (en + es), como pide Google.
+- **Claves** (proyecto de Google Cloud `erplora`, tipo «puntuación»): `RECAPTCHA_SITE_KEY` (pública; la de
+  producción vale para `erplora.com`, `erplora.es` y sus subdominios, y hay otra para `localhost`) y
+  `RECAPTCHA_API_KEY` (secreta, la de la API de evaluaciones). En `prod` y `pre` viven en Secrets Manager y la
+  definición de tarea las pasa a **todas** las tareas `saas*`: sin ellas, producción no arranca y no se puede
+  apagar (`RECAPTCHA_ENABLED=False` solo vale en local). En local, en `.env` (ver `.env.example`); sin las dos
+  claves, reCAPTCHA queda apagado y el registro lo avisa una vez. Con las dos, el login local también pasa por
+  Google: un `runserver` que automatiza un navegador (la e2e del Hub contra `:8001`) lo apaga con
+  `RECAPTCHA_ENABLED=False`, porque Google puntúa bajo a un Chrome sin ventana. Los tests lo apagan siempre
+  (`config/settings_pytest.py`) y el fixture `recaptcha` hace de Google; la e2e usa su doble
+  (`tests/e2e/README.md`, `:8018`).
+- **`RECAPTCHA_MIN_SCORE`**: 0.5 por defecto (el umbral de Google: 1.0 casi seguro una persona, 0.0 casi seguro un
+  bot); se sube o se baja por entorno sin desplegar código. Una clave nueva da 0.9 las primeras 48 horas.
+  `RECAPTCHA_PROJECT` (`erplora`) y `RECAPTCHA_ENDPOINT` (la e2e lo apunta a su doble) completan los ajustes.
+- **Rotar la clave de la API**: crear una clave nueva en Google Cloud (API keys, restringida a «reCAPTCHA
+  Enterprise API»), ponerla en Secrets Manager (`RECAPTCHA_API_KEY`), forzar un despliegue nuevo de las tareas
+  `saas*` y, cuando estén sanas, borrar la vieja en Google Cloud. La clave del sitio no se rota: si hiciera falta,
+  se crea otra, se cambia `RECAPTCHA_SITE_KEY` igual y se borra la vieja tras el despliegue.
+- **CSP**: la del panel y la de la web pública admiten `script-src` `https://www.google.com/recaptcha/` y
+  `https://www.gstatic.com/recaptcha/`, `frame-src` `https://www.google.com/recaptcha/` y
+  `https://recaptcha.google.com/recaptcha/` y `connect-src` `https://www.google.com/recaptcha/`
+  (`live.recaptcha.with_recaptcha`); el panel mantiene nonce, `'strict-dynamic'` y Trusted Types, con la política
+  `goog#html` que crea el script de Google y, en la política `default`, solo sus dos rutas
+  `https://www.google.com/recaptcha/` y `https://www.gstatic.com/recaptcha/` (`frontend/main.ts`; el resto de esos
+  orígenes, no).
+- **Límites de intentos** (`ACCOUNT_RATE_LIMITS`, `config/settings.py`; por dirección de red, la que el ALB vio,
+  `public.client_ip`, y por cuenta, en la caché compartida): 30 entradas por minuto por dirección; 5 contraseñas
+  equivocadas en 5 minutos por dirección y por cuenta (la buena devuelve su intento); 10 altas por hora por
+  dirección; 10 enlaces de restablecer por hora por dirección y 5 por cuenta; 20 envíos por minuto del formulario
+  del enlace; un código nuevo cada 10 s; y 10 códigos rechazados en 5 minutos por dirección (uno bueno no gasta:
+  `code_attempts`, `accounts/bot_check.py`; además de los 3 intentos de cada código). El contacto (10 por hora) y
+  la demo (3 demos nuevas por hora) siguen con su límite por dirección, que va antes que reCAPTCHA: lo frenado no
+  gasta evaluaciones. Solo el Django del panel de la e2e sube los límites por dirección de la entrada
+  (`E2E_RELAX_LOGIN_RATE_LIMIT`: todas sus specs entran desde `127.0.0.1`); producción no arranca con él.
+
 ## Panel único (ronda 17): Stripe, facturas y uso
 
 El panel de `erplora.com` (Negocios · Tienda · Facturación · Cuenta; plan
@@ -316,8 +390,9 @@ Cada punto tiene su borrador de issue en `docs/issues/` (pendiente de abrir en `
   (WebAuthn/passkeys). Sin borrador de issue todavía.
 - Que el salto lea `HubMember` y retirar `HubMembership(user, hub_slug, role)`, que desde L1-A2 es solo el
   espejo de los miembros de cada negocio (`hubs/README.md`, «Pendiente»; `membership-by-slug.md`).
-- Throttling de login (`login-lockout.md`) y la sesión que no se renueva con el uso
-  (`remember-me-not-sliding.md`).
+- Que cinco contraseñas falsas de otra persona no dejen fuera al dueño de la cuenta durante 5 minutos
+  (`login-lockout.md`; los límites ya están escritos y reCAPTCHA frena a los bots, «Protección contra bots») y la
+  sesión que no se renueva con el uso (`remember-me-not-sliding.md`).
 
 Ya no están fuera (PLAN-SAAS §1.1, ronda 2026-10-15b): el selector con el último negocio abierto primero
 (`HubMember.last_opened_at`, que sella `hubs.business.open` y ordena `hubs/queries.py`) y el cierre de las sesiones

@@ -11,9 +11,10 @@ import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { type Page, expect, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
 
 import { djangoEnv } from './django-env';
+import { expect, test } from './public-test';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SAAS_DIR = join(HERE, '..', '..');

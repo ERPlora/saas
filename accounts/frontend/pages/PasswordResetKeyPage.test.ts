@@ -20,6 +20,7 @@ import {
   tooManyRequests,
 } from '../__tests__/allauth-server';
 import { mountAccountPage } from '../__tests__/mount-account-page';
+import { forgetRecaptcha, withRecaptcha } from '../__tests__/recaptcha-page';
 import PasswordResetKeyPage from './PasswordResetKeyPage.vue';
 
 type Control = HTMLElement & { errorText?: string; disabled?: boolean };
@@ -253,5 +254,23 @@ describe('PasswordResetKeyPage: changing the password', () => {
     answer.release();
     await flushPromises();
     expect(router.currentRoute.value.path).toBe('/launch');
+  });
+});
+
+describe('PasswordResetKeyPage: reCAPTCHA, invisible (accounts/frontend/recaptcha.ts; Ioan, 2026-10-22)', () => {
+  afterEach(forgetRecaptcha);
+
+  it('sets the password with the token of `password_reset_confirm` and says reCAPTCHA protects the form', async () => {
+    withRecaptcha();
+    const server = fakeAllauth({ 'GET /auth/password/reset': validKey, 'POST /auth/password/reset': anonymous });
+    const { change, wrapper } = await mountPage();
+    expect(wrapper.find('[data-testid="recaptcha-notice"]').exists()).toBe(true);
+
+    await change('a new long password');
+
+    expect(server.callsTo('POST /auth/password/reset').map((c) => c.body)).toEqual([
+      { key: KEY, password: 'a new long password', recaptcha_token: 'token-for-password_reset_confirm' },
+    ]);
+    expect(server.callsTo('GET /auth/password/reset')[0].body).toBeUndefined();
   });
 });

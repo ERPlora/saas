@@ -1,16 +1,19 @@
 {% load i18n icons %}
 {% comment %}
   The contact form, on the home and on /contact/: a plain Django POST answered with a redirect
-  (PRG), port of landing/partials/contact_form.html (origin/develop). reCAPTCHA was retired
-  (ADR-0154): public/landing.py limits the form per address. The result is a server message
+  (PRG), port of landing/partials/contact_form.html (origin/develop). public/landing.py limits the form per
+  address and asks reCAPTCHA Enterprise (Ioan, 2026-10-22, over ADR-0154): with a site key, frontend/recaptcha.ts
+  fills `recaptcha_token` with Google's token for `contact` on submit, before the checks below, and the notice
+  under the button says reCAPTCHA protects it (its badge is hidden). The result is a server message
   painted by the base, so this partial no longer paints its own. The required fields are checked
   here before posting, because the ion-input elements are custom elements and show no native
   tooltip; the server checks them again. A refused or failed message comes back with what was typed
   (`contact_draft`, PUBLIC-G39) and a page that links here may name its topic (`contact_topic`, PUBLIC-G40).
   The fields are Material (md) outlines: an outline does not paint in ios mode.
 {% endcomment %}
-<form id="contact-form" class="contact-fields" method="post" action="{% url 'public:contact_submit' %}" novalidate>
+<form id="contact-form" class="contact-fields" method="post" action="{% url 'public:contact_submit' %}" novalidate{% if RECAPTCHA_SITE_KEY %} data-recaptcha-action="contact" data-recaptcha-site-key="{{ RECAPTCHA_SITE_KEY }}"{% endif %}>
     {% csrf_token %}
+    {% if RECAPTCHA_SITE_KEY %}<input type="hidden" name="recaptcha_token" value="">{% endif %}
     <input type="hidden" name="next" value="{{ request.path }}">
     {% if contact_topic %}<input type="hidden" name="subject" value="{{ contact_topic }}">{% endif %}
 
@@ -44,6 +47,7 @@
         {% trans "Get in touch" %}
     </ion-button>
     <p class="text-xs text-fg/70 mt-2">{% blocktrans trimmed count hours=SUPPORT_REPLY_HOURS %}We typically respond within {{ hours }} business hour.{% plural %}We typically respond within {{ hours }} business hours.{% endblocktrans %}</p>
+    {% include "public/partials/recaptcha_notice.html" %}
 </form>
 
 {% trans 'This field is required' as required_error %}{% trans 'Enter a valid email address' as email_error %}

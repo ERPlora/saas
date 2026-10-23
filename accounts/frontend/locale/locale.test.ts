@@ -33,6 +33,9 @@ const NEW_IN_THE_VUE_PAGES = new Set([
   'accounts.loginError.googleLinkRefused.heading',
   // The code mailed at every password sign-in (2026-10-15) is new: its expiry sends the visitor back here.
   'accounts.login.codeExpired',
+  // reCAPTCHA's notice under the sign-in's forms (2026-10-22), new with the bots' check; «Privacy Policy» is django.po's.
+  'accounts.recaptcha.notice',
+  'accounts.recaptcha.terms',
   // The tabs «Sign in» and «Create account» of the launcher (FIX-LAUNCH-TABS): the template had one form.
   'accounts.login.tabsLabel',
   'accounts.login.signIn',

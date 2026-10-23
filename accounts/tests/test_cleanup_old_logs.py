@@ -60,6 +60,16 @@ def test_older_than_90_days_goes_and_younger_stays(entry):
     assert "deleted=2" in output
 
 
+def test_the_edge_is_90_days_to_the_hour(entry):
+    # Whole days around the edge leave it loose (a 91-day period still deletes an entry of 91 days): an hour each side
+    # of the 90th day pins it.
+    inside, past = entry(90 - 1 / 24), entry(90 + 1 / 24)
+
+    _run()
+
+    assert _left(inside, past) == [True, False]
+
+
 def test_the_period_comes_from_the_option(entry):
     recent, old = entry(30), entry(60)
 
@@ -128,4 +138,19 @@ def test_a_second_run_while_one_holds_the_lock_does_nothing(entry):
         other.close()
 
     assert "already running" in output
+    # Given back: the pool keeps the other session open, and a lock left in it stopped every later run of the
+    # process ("already running"; the billing prune test after this one, 2026-10-22).
+    assert _lock_is_free(services.lock_name("cleanup_old_logs"))
     assert _left(old) == [True]
+
+
+def _lock_is_free(name: str) -> bool:
+    """Whether another session may take ``name`` now (taken and given back at once)."""
+    from django.db import connection
+
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT pg_try_advisory_lock(hashtext(%s))", [name])
+        taken = cursor.fetchone()[0]
+        if taken:
+            cursor.execute("SELECT pg_advisory_unlock(hashtext(%s))", [name])
+    return taken

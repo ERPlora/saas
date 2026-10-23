@@ -22,7 +22,7 @@
 // plain form POST (Django's CSRF token from the cookie) that comes back to the same place; Google itself
 // comes back to the redirect URI registered with it, `/auth/google/callback/`.
 import { InlineFeedback } from '@erplora/ui/components';
-import { ApiError, createAllauthClient, type FieldErrors, useLiveClient } from '@erplora/ui/sdk';
+import { ApiError, type FieldErrors, useLiveClient } from '@erplora/ui/sdk';
 import { IonButton, IonIcon, IonInput, IonInputPasswordToggle, IonLabel, IonSegment, IonSegmentButton } from '@ionic/vue';
 import { computed, onMounted, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -30,6 +30,8 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { localNext } from '../next';
 import { LAUNCHER } from '../paths';
+import { createProtectedAllauthClient } from '../recaptcha';
+import RecaptchaNotice from './RecaptchaNotice.vue';
 
 const PASSWORD_RESET = '/password/reset';
 const GOOGLE = 'google';
@@ -79,7 +81,7 @@ const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const client = useLiveClient();
-const auth = createAllauthClient(client.config);
+const auth = createProtectedAllauthClient(client.config);
 
 const googleEnabled = client.config.googleEnabled === true;
 
@@ -350,6 +352,8 @@ async function submit(): Promise<void> {
       </ion-button>
     </form>
   </template>
+
+  <RecaptchaNotice />
 </template>
 
 <style scoped>
