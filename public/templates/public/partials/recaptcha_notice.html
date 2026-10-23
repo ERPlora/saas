@@ -1,8 +1,9 @@
 {% load i18n %}
 {% comment %}
   Google's attribution of reCAPTCHA Enterprise, under every form that asks it for a token (`data-recaptcha-action`,
-  frontend/recaptcha.ts). The badge Google paints is hidden (`.grecaptcha-badge`, public/static/public/landing.css),
-  which its terms allow only with this text in the visitor's flow (reCAPTCHA FAQ). Nothing when reCAPTCHA is off.
+  frontend/recaptcha.ts). The badge Google paints is hidden (`.grecaptcha-badge`, the style frontend/recaptcha.ts puts
+  in with Google's script), which its terms allow only with this text in the visitor's flow (reCAPTCHA FAQ). Nothing
+  when reCAPTCHA is off (RECAPTCHA_ENABLED, the default since 2026-10-23).
 {% endcomment %}
 {% if RECAPTCHA_SITE_KEY %}
 <p class="ep-recaptcha-notice text-xs text-fg/60 mt-2 mb-0" data-testid="recaptcha-notice">{% blocktrans trimmed with privacy="https://policies.google.com/privacy" terms="https://policies.google.com/terms" %}This site is protected by reCAPTCHA and the Google <a href="{{ privacy }}" target="_blank" rel="noopener">Privacy Policy</a> and <a href="{{ terms }}" target="_blank" rel="noopener">Terms of Service</a> apply.{% endblocktrans %}</p>

@@ -9,18 +9,28 @@ import { loadRecaptcha, protectForms, RECAPTCHA_SCRIPT, recaptchaToken, resetRec
 
 type Enterprise = { ready: (callback: () => void) => void; execute: ReturnType<typeof vi.fn> };
 
-/** A page as the loader sees it: its nonced script, its head, and Google's `grecaptcha` once its script loads. */
+/** A page as the loader sees it: its nonced script, its head (the scripts and the styles put in it), and Google's
+ *  `grecaptcha` once its script loads. */
 function page(options: { nonce?: string; loads?: boolean; execute?: Enterprise['execute'] } = {}) {
   const appended: HTMLScriptElement[] = [];
+  const styles: HTMLStyleElement[] = [];
   const nonced = document.createElement('script');
   if (options.nonce) nonced.nonce = options.nonce;
   const win: { grecaptcha?: { enterprise?: Enterprise } } = {};
   const execute = options.execute ?? vi.fn(async (_key: string, { action }: { action: string }) => `token-for-${action}`);
   const doc = {
     createElement: (tag: string) => document.createElement(tag),
-    querySelector: (selector: string) => (selector === 'script[nonce]' && options.nonce ? nonced : null),
+    querySelector: (selector: string) => {
+      if (selector === 'script[nonce]') return options.nonce ? nonced : null;
+      if (selector === 'style[data-recaptcha-badge]') return styles[0] ?? null;
+      return null;
+    },
     head: {
-      append: (el: HTMLScriptElement) => {
+      append: (el: HTMLScriptElement | HTMLStyleElement) => {
+        if (el instanceof HTMLStyleElement) {
+          styles.push(el);
+          return;
+        }
         appended.push(el);
         if (options.loads === false) return;
         queueMicrotask(() => {
@@ -30,7 +40,7 @@ function page(options: { nonce?: string; loads?: boolean; execute?: Enterprise['
       },
     },
   } as unknown as Document;
-  return { doc, win: win as unknown as Window, appended, execute, raw: win };
+  return { doc, win: win as unknown as Window, appended, styles, execute, raw: win };
 }
 
 beforeEach(() => {
@@ -76,6 +86,21 @@ describe('loadRecaptcha', () => {
     expect(ready).toHaveBeenCalledOnce();
   });
 
+  it('hides Google’s badge as its script goes in, with one style and never a second one', async () => {
+    // Google's terms allow the badge hidden only with its notice near the form (RecaptchaNotice.vue,
+    // public/partials/recaptcha_notice.html). No style without the script: reCAPTCHA off emits no CSS of it.
+    const p = page({ loads: false });
+
+    void loadRecaptcha('site-key', { doc: p.doc, win: p.win }).catch(() => undefined);
+    resetRecaptcha();
+    void loadRecaptcha('site-key', { doc: p.doc, win: p.win }).catch(() => undefined);
+
+    expect(p.appended).toHaveLength(2);
+    expect(p.styles.map((style) => [style.dataset.recaptchaBadge, style.textContent])).toEqual([
+      ['', '.grecaptcha-badge { visibility: hidden; }'],
+    ]);
+  });
+
   it('rejects when the script fails, and tries again next time', async () => {
     const p = page({ loads: false });
 
@@ -101,6 +126,7 @@ describe('recaptchaToken', () => {
 
     await expect(recaptchaToken('', 'login', { doc: p.doc, win: p.win })).resolves.toBeUndefined();
     expect(p.appended).toEqual([]);
+    expect(p.styles).toEqual([]);
   });
 
   it('gives nothing when Google fails, and says so in the console', async () => {
@@ -227,5 +253,6 @@ describe('protectForms: the public web’s forms', () => {
 
     expect(event.defaultPrevented).toBe(false);
     expect(p.appended).toEqual([]);
+    expect(p.styles).toEqual([]);
   });
 });
