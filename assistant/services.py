@@ -18,11 +18,17 @@ on the page. The commands call them as the platform (``platform_context``).
   WhatsApp's tokens and PINs, ``encrypted_columns``) written again with the current key, so the previous one can go.
 - ``assistant.model.try`` (G61): a member of the staff tried a model from the admin; it stays in the audit trail (an
   access to the model) with how long the message was and how many tools it offered, never the message.
+- ``assistant.message.claim`` / ``.release`` (G51): a message of the plan's monthly allowance (a demo's own few),
+  taken before the model is called and given back if the turn failed before answering.
+- ``assistant.usage.record`` (G29, G52): what a turn, an embedding or the voice spent (tokens, dictations, characters
+  read aloud) and its cost in USD.
 """
+
+from datetime import timedelta
 
 from auditlog.models import LogEntry
 from django.apps import apps
-from django.db.models import TextField, Value
+from django.db.models import F, TextField, Value
 from django.db.models.functions import Cast
 from django.utils import timezone, translation
 from django.utils.translation import gettext as _
@@ -32,10 +38,15 @@ from live.operations import operation
 from live.outbox import record_event
 
 import whatsapp.fields
-from assistant import crypto, events, fields
-from assistant.models import AIModel, AIProvider, AIProviderCredential, AIRoutingPolicy
+from assistant import crypto, events, fields, queries
+from assistant.models import AIModel, AIProvider, AIProviderCredential, AIRoutingPolicy, AssistantUsage
 from assistant.queries import choosable_models, staff_with
 from assistant.schemas import (
+    Caller,
+    ClaimOut,
+    MessageReleaseIn,
+    UsageOut,
+    UsageRecordIn,
     CredentialDeleteIn,
     CredentialDeleteOut,
     CredentialImportIn,
@@ -408,3 +419,101 @@ def encryption_rotate(ctx: OperationContext, data: EncryptionRotateIn) -> dict:
     if not data.dry_run:
         record_event(ctx, events.ENCRYPTION_ROTATED, totals)
     return {"columns": columns, **totals}
+
+
+# --- The Hub's turn (part 2): the plan's messages and what each turn spent (ASSISTANT-G51, G29) -------------------
+
+#: How long the row of a demo is kept after it started: a demo lives an hour, and its row is forgotten when a later
+#: demo starts (no task needed).
+DEMO_USAGE_KEPT = timedelta(days=1)
+
+
+def _caller_payload(caller: Caller) -> dict:
+    return {"hub": str(caller.hub_id) if caller.hub_id else None, "demo": caller.demo}
+
+
+def _row_of(caller: Caller, now) -> AssistantUsage:
+    """The caller's row of usage now (made the first time): a business's of this month, a demo's only one. A demo's
+    first row forgets the rows of the demos that started more than a day ago."""
+    if caller.demo:
+        row, created = AssistantUsage.objects.get_or_create(demo=caller.demo, defaults={"month": queries.month_of(now)})
+        if created:
+            AssistantUsage.objects.filter(hub__isnull=True, created_at__lt=now - DEMO_USAGE_KEPT).delete()
+        return row
+    return AssistantUsage.objects.get_or_create(hub_id=caller.hub_id, month=queries.month_of(now))[0]
+
+
+@operation(
+    "assistant.message.claim",
+    kind="command",
+    permission="assistant.manage",
+    input=Caller,
+    output=ClaimOut,
+)
+def message_claim(ctx: OperationContext, data: Caller) -> dict:
+    """Take a message of the caller's allowance for a turn, before the model is called (the platform only): one
+    ``UPDATE … WHERE messages < limit``, which a concurrent claim waits on and then evaluates again, so two turns
+    never pass the last message together. Without one left nothing is taken and ``claimed`` is false."""
+    queries.platform_only(ctx)
+    now = timezone.now()
+    limit = queries.monthly_limit(data, now)
+    row = _row_of(data, now)
+    claimed = AssistantUsage.objects.filter(pk=row.pk, messages__lt=limit).update(
+        messages=F("messages") + 1, updated_at=now
+    )
+    row.refresh_from_db(fields=["messages", "month"])
+    if claimed:
+        record_event(ctx, events.MESSAGE_CLAIMED, {**_caller_payload(data), "used": row.messages, "limit": limit})
+    return {
+        "claimed": bool(claimed),
+        "month": row.month,
+        "used": row.messages,
+        "limit": limit,
+        "resets_at": None if data.demo else queries.resets_at(row.month),
+        "demo": bool(data.demo),
+    }
+
+
+@operation(
+    "assistant.message.release",
+    kind="command",
+    permission="assistant.manage",
+    input=MessageReleaseIn,
+    output=UsageOut,
+)
+def message_release(ctx: OperationContext, data: MessageReleaseIn) -> dict:
+    """Give back the message a turn took in ``month``, when it failed before answering anything (the platform only):
+    the person saw no answer, so it is not spent. Never below zero."""
+    queries.platform_only(ctx)
+    caller = data.caller
+    rows = AssistantUsage.objects.filter(demo=caller.demo) if caller.demo else AssistantUsage.objects.filter(
+        hub_id=caller.hub_id, month=data.month
+    )
+    if rows.filter(messages__gt=0).update(messages=F("messages") - 1, updated_at=timezone.now()):
+        record_event(
+            ctx,
+            events.MESSAGE_RELEASED,
+            {**_caller_payload(caller), "used": rows.values_list("messages", flat=True).first() or 0},
+        )
+    return queries.usage_of(caller, timezone.now())
+
+
+@operation(
+    "assistant.usage.record",
+    kind="command",
+    permission="assistant.manage",
+    input=UsageRecordIn,
+    output=UsageOut,
+)
+def usage_record(ctx: OperationContext, data: UsageRecordIn) -> dict:
+    """Add what a turn, an embedding or the voice spent to the caller's row of now (the platform only): tokens,
+    dictations, characters read aloud and their cost in USD. Never a message: those are claimed."""
+    queries.platform_only(ctx)
+    now = timezone.now()
+    row = _row_of(data.caller, now)
+    spent = data.model_dump(exclude={"caller"})
+    AssistantUsage.objects.filter(pk=row.pk).update(
+        **{field: F(field) + value for field, value in spent.items()}, updated_at=now
+    )
+    record_event(ctx, events.USAGE_RECORDED, {**_caller_payload(data.caller), **{k: str(v) for k, v in spent.items()}})
+    return queries.usage_of(data.caller, now)

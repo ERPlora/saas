@@ -1,7 +1,7 @@
 """Inputs and outputs of the assistant's operations. A provider's key is a ``SecretStr``: no ``repr``, dump nor
 JSON of a schema shows it (only ``get_secret_value`` does, where the key is used)."""
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 from uuid import UUID
@@ -224,3 +224,30 @@ class UsageOut(Schema):
     limit: int
     resets_at: datetime | None
     demo: bool
+
+
+class ClaimOut(UsageOut):
+    """A message taken from the allowance (``claimed``), or not because none is left; ``month`` is the window it was
+    taken from (where a release gives it back)."""
+
+    claimed: bool
+    month: date
+
+
+class MessageReleaseIn(Schema):
+    """Give back a message taken in ``month``: the turn failed before answering anything."""
+
+    caller: Caller
+    month: date
+
+
+class UsageRecordIn(Schema):
+    """What a turn (or an embedding, a dictation, a reading aloud) spent, added to this month's row of the caller."""
+
+    caller: Caller
+    tokens_input: int = Field(default=0, ge=0)
+    tokens_output: int = Field(default=0, ge=0)
+    tokens_embedding: int = Field(default=0, ge=0)
+    transcriptions: int = Field(default=0, ge=0)
+    speech_characters: int = Field(default=0, ge=0)
+    cost_usd: Decimal = Field(default=Decimal("0"), ge=0)
