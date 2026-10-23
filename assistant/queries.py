@@ -2,6 +2,8 @@
 
 - ``assistant.provider.connection`` (ASSISTANT-G24): what the client of a provider needs to list its models: its
   API, its address and its usable key, the most recent active one that opens (a ``SecretStr``).
+- ``assistant.policy.show`` (G27, G60): which model answers and which one is the fallback, with the models that
+  can be chosen (available, of an enabled provider).
 
 ``staff_with`` is the gate every operation of the staff passes: an active member of the staff holding the model
 permission of Django that backs it.
@@ -13,8 +15,8 @@ from live.context import OperationContext
 from live.errors import Conflict, NotFound, PermissionDenied
 from live.operations import operation
 
-from assistant.models import AIProvider, AIProviderCredential
-from assistant.schemas import ConnectionOut, ProviderRef
+from assistant.models import AIModel, AIProvider, AIProviderCredential, AIRoutingPolicy
+from assistant.schemas import ConnectionOut, NoInput, PolicyShowOut, ProviderRef
 
 
 def staff_with(ctx: OperationContext, *permissions: str):
@@ -68,4 +70,37 @@ def provider_connection(ctx: OperationContext, data: ProviderRef) -> dict:
         "base_url": provider.api_base,
         "api_key": api_key,
         "existing": sorted(provider.models.values_list("model_id", flat=True)),
+    }
+
+
+def choosable_models():
+    """The models that may answer: available, of an enabled provider."""
+    return (
+        AIModel.objects.filter(is_available=True, provider__is_enabled=True)
+        .select_related("provider")
+        .order_by("provider__name", "display_name", "model_id")
+    )
+
+
+def model_label(model: AIModel) -> str:
+    return f"{model.provider.name} · {model.display_name} ({model.model_id})"
+
+
+@operation(
+    "assistant.policy.show",
+    kind="query",
+    permission="assistant.manage",
+    input=NoInput,
+    output=PolicyShowOut,
+)
+def policy_show(ctx: OperationContext, data: NoInput) -> dict:
+    """The policy and the models that can be chosen (``view_airoutingpolicy``)."""
+    staff_with(ctx, "assistant.view_airoutingpolicy")
+    policy = AIRoutingPolicy.objects.filter(slot=AIRoutingPolicy.SLOT).select_related("updated_by").first()
+    return {
+        "active_model": policy.active_model_id if policy else None,
+        "fallback_model": policy.fallback_model_id if policy else None,
+        "updated_at": policy.updated_at if policy else None,
+        "updated_by": policy.updated_by.email if policy and policy.updated_by else "",
+        "choices": [{"id": model.pk, "label": model_label(model)} for model in choosable_models()],
     }

@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: saas-next\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 03:02+0200\n"
+"POT-Creation-Date: 2026-10-23 03:06+0200\n"
 "PO-Revision-Date: 2026-10-23 03:00+0200\n"
 "Last-Translator: ERPlora\n"
 "Language-Team: Spanish\n"
@@ -62,6 +62,15 @@ msgstr "Elegir modelos del proveedor"
 #, python-format
 msgid "%(provider)s: %(created)d new, %(kept)d kept, %(deleted)d removed, %(protected)d in use by the policy."
 msgstr "%(provider)s: %(created)d nuevos, %(kept)d se quedan, %(deleted)d quitados, %(protected)d en uso por el modelo que contesta."
+
+msgid "Choose the models from the list."
+msgstr "Elige los modelos de la lista."
+
+msgid "The model that answers was saved."
+msgstr "Se ha guardado el modelo que contesta."
+
+msgid "Model that answers"
+msgstr "Modelo que contesta"
 
 msgid "AI assistant"
 msgstr "Asistente de IA"
@@ -138,9 +147,8 @@ msgstr "claves de proveedor"
 msgid "model"
 msgstr "modelo"
 
-#| msgid "Type the provider's key."
 msgid "The name the provider's API gives it."
-msgstr "Escribe la clave del proveedor."
+msgstr "El nombre que le da la API del proveedor."
 
 msgid "context"
 msgstr "contexto"
@@ -202,6 +210,15 @@ msgstr "Este proveedor ya tiene una clave con esa etiqueta."
 msgid "This key does not exist."
 msgstr "Esta clave no existe."
 
+msgid "This model cannot answer: it is off, its provider is off or it does not exist."
+msgstr "Este modelo no puede contestar: está apagado, su proveedor está apagado o no existe."
+
+msgid "Choose the model that answers before its fallback."
+msgstr "Elige el modelo que contesta antes que su reserva."
+
+msgid "The fallback model must be another model."
+msgstr "El modelo de reserva tiene que ser otro modelo."
+
 msgid "Home"
 msgstr "Inicio"
 
@@ -225,3 +242,25 @@ msgstr "Contexto"
 
 msgid "Save the choice"
 msgstr "Guardar la elección"
+
+msgid "The model that answers every turn of the assistant, and the one that answers when its provider fails or cannot be used."
+msgstr "El modelo que contesta cada turno del asistente, y el que contesta cuando su proveedor falla o no se puede usar."
+
+msgid "The model that answers is off or its provider is: choose another one."
+msgstr "El modelo que contesta está apagado o lo está su proveedor: elige otro."
+
+msgid "The fallback model is off or its provider is: choose another one."
+msgstr "El modelo de reserva está apagado o lo está su proveedor: elige otro."
+
+msgid "No model can answer yet: add a provider with its key and choose its models."
+msgstr "Todavía no puede contestar ningún modelo: añade un proveedor con su clave y elige sus modelos."
+
+msgid "Fallback model"
+msgstr "Modelo de reserva"
+
+#, python-format
+msgid "Last changed by %(who)s on %(when)s."
+msgstr "Último cambio de %(who)s el %(when)s."
+
+msgid "Save"
+msgstr "Guardar"

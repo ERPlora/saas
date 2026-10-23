@@ -61,12 +61,17 @@ tiene), su nombre y su contexto, y los botones «Guardar la elección» y «Volv
 ### Admin: Modelos de IA
 Todos los modelos de todos los proveedores, con su precio, su contexto y si están disponibles, para corregirlos.
 
+### Admin: Modelo que contesta
+Una sola página (su lista la abre): «Modelo que contesta» y «Modelo de reserva», cada uno con los modelos que pueden
+contestar (disponibles y de un proveedor activado), quién hizo el último cambio y «Guardar». Quien solo puede mirar la
+ve sin poder cambiarla.
+
 ## Estados de cada pantalla
 
 | Estado | Qué ve la persona |
 |---|---|
 | Cargando | La carga normal de una página del admin. |
-| Vacío | «0 proveedores de IA» y la lista vacía; un proveedor sin clave dice «Sin clave». |
+| Vacío | «0 proveedores de IA» y la lista vacía; un proveedor sin clave dice «Sin clave»; sin modelos que puedan contestar, «Todavía no puede contestar ningún modelo: añade un proveedor con su clave y elige sus modelos.» |
 | Error | En «Elegir modelos del proveedor», el motivo en rojo: «Este proveedor no tiene ninguna clave activa: añade una en su ficha y vuelve a intentarlo.», «El proveedor no ha dado sus modelos: …» o «El proveedor no tiene modelos de conversación en su lista.»; en las fichas, el error en rojo junto al campo: «Usa una dirección https: la clave del proveedor viaja a ella.», «Escribe la clave del proveedor.», «La clave de cifrado de las credenciales no está configurada: no se puede guardar ninguna clave de proveedor.». |
 | Sin permiso | Sin los permisos de la pasarela, el admin contesta que no tiene permiso; quien solo puede mirar ve las fichas sin el campo «Clave». |
 
@@ -78,6 +83,7 @@ Todos los modelos de todos los proveedores, con su precio, su contexto y si est�
 | ASSISTANT-F02 | Guardar la clave de un proveedor sin que se vea | hecho |
 | ASSISTANT-F03 | Hablar con cada proveedor en su propia API | hecho |
 | ASSISTANT-F04 | Elegir los modelos de un proveedor | hecho |
+| ASSISTANT-F05 | Elegir qué modelo contesta | hecho |
 
 ### ASSISTANT-F01 Dar de alta un proveedor de IA
 <!-- origen: fi:saas/support/auth-services#modelo-aiprovider, fi:saas/django-admin#admin-aiprovider, old-saas:SAAS_ASSISTANT-F22 -->
@@ -138,6 +144,20 @@ Sale: los modelos del proveedor, exactamente los elegidos más los que están en
 Si falla: sin clave activa que se pueda leer, «Este proveedor no tiene ninguna clave activa: añade una en su ficha y vuelve a intentarlo.» y no se pregunta nada al proveedor; si el proveedor rechaza la clave o no contesta, «El proveedor no ha dado sus modelos:» con su motivo; si no tiene modelos de conversación, «El proveedor no tiene modelos de conversación en su lista.»; sin permiso para ver proveedores y para añadir y quitar modelos, el admin no deja entrar; un modelo en uso por el modelo que contesta no se puede borrar.
 Implicados: ASSISTANT-F03, ASSISTANT-F05
 
+### ASSISTANT-F05 Elegir qué modelo contesta
+<!-- origen: fi:saas/support/auth-services#modelo-airoutingpolicy, fi:saas/django-admin#admin-airoutingpolicy-singleton-tester, fi:saas/auth-services#routing-ai-configuracion-de-proveedores-modelos-admin, old-saas:SAAS_ASSISTANT-F23 -->
+Estado: hecho
+Actor: personal de ERPlora
+Pantalla: Admin: Modelo que contesta
+Pasos:
+1. Abre «Modelo que contesta» (desde la portada del asistente o su lista, que lleva directamente a la página).
+2. Elige el «Modelo que contesta» y, si quiere, un «Modelo de reserva» distinto, entre los modelos disponibles de los proveedores activados.
+3. Pulsa «Guardar»: «Se ha guardado el modelo que contesta.»; el turno siguiente del asistente ya usa esta elección y queda quién la cambió.
+Entra: el modelo que contesta y el de reserva.
+Sale: la elección de toda la plataforma (`assistant.policy.updated`, con los dos modelos).
+Si falla: un modelo apagado, de un proveedor apagado o que ya no existe se rechaza con «Este modelo no puede contestar: está apagado, su proveedor está apagado o no existe.»; la reserva igual al primero, con «El modelo de reserva tiene que ser otro modelo.»; una reserva sin modelo que contesta, con «Elige el modelo que contesta antes que su reserva.»; si el modelo elegido se apaga después, la página avisa «El modelo que contesta está apagado o lo está su proveedor: elige otro.»; quien solo puede mirar no ve «Guardar» y, si lo intenta, no se guarda; sin permiso, el admin no deja entrar. Nadie añade ni borra esta elección, y un modelo en uso no se puede borrar.
+Implicados: ASSISTANT-F04, ASSISTANT-F06
+
 ## Para quien lo mantiene
 
 - Anatomía, datos y operaciones: `assistant/README.md`.
@@ -149,6 +169,10 @@ Implicados: ASSISTANT-F03, ASSISTANT-F05
 - «Elegir modelos del proveedor» es una vista asíncrona del admin (`AIProviderAdmin.models_view`): la llamada al
   proveedor no ocupa el hilo que usan las demás peticiones; lee la conexión con `assistant.provider.connection`
   (`view_aiprovider`) y guarda con `assistant.model.select` (`add_aimodel` y `delete_aimodel`).
+- La política es una sola fila (`AIRoutingPolicy.solo`), leída con `assistant.policy.show` (`view_airoutingpolicy`)
+  y cambiada con `assistant.policy.update` (`change_airoutingpolicy`). Sin el paso doble del producto viejo
+  (razonamiento y ejecución con dos modelos, apagado en producción): un modelo y su reserva, como las pasarelas del
+  mercado.
 - Clientes (`assistant/providers/`): `httpx` contra cada API (sin SDK ni LiteLLM), sin caché, uno por llamada;
   todos terminan con un solo `finish` y un fallo es un `error` con `retriable`, nunca una excepción. Se prueban contra
   `assistant/tests/fake_provider.py` (servidor HTTP en `127.0.0.1` que habla el formato de cada proveedor).

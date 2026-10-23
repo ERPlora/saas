@@ -57,12 +57,17 @@ their name and context, and the «Save the choice» and «Back to the provider»
 ### Admin: AI models
 Every model of every provider, with its price, its context and whether it is available, to correct them.
 
+### Admin: Model that answers
+One page (its list opens it): «Model that answers» and «Fallback model», each with the models that can answer
+(available and of an enabled provider), who made the last change and «Save». Whoever may only look sees it without
+being able to change it.
+
 ## States of each screen
 
 | State | What the person sees |
 |---|---|
 | Loading | The normal loading of an admin page. |
-| Empty | «0 AI providers» and the empty list; a provider without a key says «No key». |
+| Empty | «0 AI providers» and the empty list; a provider without a key says «No key»; without models that can answer, «No model can answer yet: add a provider with its key and choose its models.» |
 | Error | In «Choose models from the provider», the reason in red: «This provider has no active key: add one on its page and try again.», «The provider did not give its models: …» or «The provider listed no chat models.»; on the pages, the error in red next to the field: «Use an https address: the provider's key travels to it.», «Type the provider's key.», «The key of the credentials is not configured: no provider key can be kept.». |
 | No permission | Without the gateway's permissions, the admin answers there is no permission; whoever may only look sees the pages without the «Key» field. |
 
@@ -74,6 +79,7 @@ Every model of every provider, with its price, its context and whether it is ava
 | ASSISTANT-F02 | Keep a provider's key without it being seen | hecho |
 | ASSISTANT-F03 | Talk to each provider in its own API | hecho |
 | ASSISTANT-F04 | Choose a provider's models | hecho |
+| ASSISTANT-F05 | Choose which model answers | hecho |
 
 ### ASSISTANT-F01 Add an AI provider
 <!-- origen: fi:saas/support/auth-services#modelo-aiprovider, fi:saas/django-admin#admin-aiprovider, old-saas:SAAS_ASSISTANT-F22 -->
@@ -134,6 +140,20 @@ Sale: the provider's models, exactly the chosen ones plus those in use (`assista
 Si falla: without an active readable key, «This provider has no active key: add one on its page and try again.» and nothing is asked of the provider; if the provider refuses the key or does not answer, «The provider did not give its models:» with its reason; if it has no conversation models, «The provider listed no chat models.»; without permission to see providers and to add and remove models, the admin does not let in; a model in use by the answering model cannot be deleted.
 Implicados: ASSISTANT-F03, ASSISTANT-F05
 
+### ASSISTANT-F05 Choose which model answers
+<!-- origen: fi:saas/support/auth-services#modelo-airoutingpolicy, fi:saas/django-admin#admin-airoutingpolicy-singleton-tester, fi:saas/auth-services#routing-ai-configuracion-de-proveedores-modelos-admin, old-saas:SAAS_ASSISTANT-F23 -->
+Estado: hecho
+Actor: ERPlora's staff
+Pantalla: Admin: Model that answers
+Pasos:
+1. Open «Model that answers» (from the assistant's front page or its list, which leads straight to the page).
+2. Choose the «Model that answers» and, if wanted, a different «Fallback model», among the available models of the enabled providers.
+3. Click «Save»: «The model that answers was saved.»; the next assistant turn already uses this choice and who changed it stays.
+Entra: the model that answers and the fallback one.
+Sale: the choice of the whole platform (`assistant.policy.updated`, with both models).
+Si falla: a model that is off, of a provider that is off or that no longer exists is refused with «This model cannot answer: it is off, its provider is off or it does not exist.»; the fallback equal to the first, with «The fallback model must be another model.»; a fallback without a model that answers, with «Choose the model that answers before its fallback.»; if the chosen model is turned off later, the page warns «The model that answers is off or its provider is: choose another one.»; whoever may only look does not see «Save» and, if they try, nothing is saved; without permission, the admin does not let in. Nobody adds nor deletes this choice, and a model in use cannot be deleted.
+Implicados: ASSISTANT-F04, ASSISTANT-F06
+
 ## For whoever maintains it
 
 - Anatomy, data and operations: `assistant/README.md`.
@@ -146,6 +166,9 @@ Implicados: ASSISTANT-F03, ASSISTANT-F05
   provider does not hold the thread the other requests use; it reads the connection with
   `assistant.provider.connection` (`view_aiprovider`) and saves with `assistant.model.select` (`add_aimodel` and
   `delete_aimodel`).
+- The policy is one row (`AIRoutingPolicy.solo`), read with `assistant.policy.show` (`view_airoutingpolicy`) and
+  changed with `assistant.policy.update` (`change_airoutingpolicy`). Without the old product's two-step pipeline
+  (reasoning and execution with two models, off in production): one model and its fallback, as the market's gateways.
 - Clients (`assistant/providers/`): `httpx` against each API (no SDK nor LiteLLM), no cache, one per call; all end
   with a single `finish` and a failure is an `error` with `retriable`, never an exception. Tested against
   `assistant/tests/fake_provider.py` (an HTTP server on `127.0.0.1` speaking each provider's format).

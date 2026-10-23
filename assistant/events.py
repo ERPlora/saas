@@ -11,9 +11,12 @@ CREDENTIAL_SAVED = "assistant.credential.saved"
 CREDENTIAL_DELETED = "assistant.credential.deleted"
 #: A provider's models were chosen: ``{"provider", "created", "kept", "deleted", "protected"}``.
 MODEL_SELECTED = "assistant.model.selected"
+#: The model that answers or its fallback changed: ``{"active_model", "fallback_model"}`` (ids or ``None``).
+POLICY_UPDATED = "assistant.policy.updated"
 
 ALL = [
     CREDENTIAL_SAVED,
     CREDENTIAL_DELETED,
     MODEL_SELECTED,
+    POLICY_UPDATED,
 ]

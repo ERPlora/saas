@@ -86,3 +86,32 @@ class ModelSelectOut(Schema):
     kept: int
     deleted: int
     protected: int
+
+
+class NoInput(Schema):
+    """An operation that takes nothing."""
+
+
+class PolicyIn(Schema):
+    active_model: UUID | None = None
+    fallback_model: UUID | None = None
+
+
+class PolicyOut(Schema):
+    active_model: UUID | None
+    fallback_model: UUID | None
+    updated_at: datetime | None
+
+
+class ModelChoice(Schema):
+    id: UUID
+    label: str
+
+
+class PolicyShowOut(Schema):
+    active_model: UUID | None
+    fallback_model: UUID | None
+    updated_at: datetime | None
+    updated_by: str
+    #: The models that can be chosen: available, of an enabled provider.
+    choices: list[ModelChoice]

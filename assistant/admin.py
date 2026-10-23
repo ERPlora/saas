@@ -5,6 +5,8 @@
   no usable key (old SAAS_ASSISTANT-F22 painted it whole). Keys are saved and deleted through
   ``assistant.credential.save|delete`` as the member of the staff who clicks (``staff_context``), which also checks
   the model permission.
+- «Model that answers» (G27, G17, G10, G60): the one policy on one page (its list opens it), saved with
+  ``assistant.policy.update``; nobody adds nor deletes it.
 - «Choose models from the provider» (G24, G14): an asynchronous page (the call to the provider never holds a thread
   other requests need) that lists the provider's chat models with ``assistant.provider.connection`` and its client,
   and keeps the ticked ones with ``assistant.model.select``. «AI models» lists them all, to correct their prices.
@@ -31,10 +33,18 @@ from live.context import OperationContext, Scope
 from live.errors import NotFound, OperationError
 
 from assistant import crypto, queries, services
-from assistant.models import AIModel, AIProvider, AIProviderCredential
+from assistant.models import AIModel, AIProvider, AIProviderCredential, AIRoutingPolicy
 from assistant.providers.base import ProviderError
 from assistant.providers.factory import get_provider
-from assistant.schemas import CredentialDeleteIn, CredentialIn, ListedModel, ModelSelectIn, ProviderRef
+from assistant.schemas import (
+    CredentialDeleteIn,
+    CredentialIn,
+    ListedModel,
+    ModelSelectIn,
+    NoInput,
+    PolicyIn,
+    ProviderRef,
+)
 
 #: What choosing a provider's models needs: seeing the provider, adding models and deleting them.
 CHOOSE_PERMISSIONS = ("assistant.view_aiprovider", "assistant.add_aimodel", "assistant.delete_aimodel")
@@ -303,3 +313,62 @@ class AIProviderAdmin(admin.ModelAdmin):
             % {"provider": name, **out.model_dump()},
         )
         return HttpResponseRedirect(change_url)
+
+
+@admin.register(AIRoutingPolicy)
+class AIRoutingPolicyAdmin(admin.ModelAdmin):
+    """The one policy: its list and its row open «Model that answers»; nobody adds nor deletes it."""
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def get_urls(self):
+        wrap = self.admin_site.admin_view
+        return [
+            path("policy/", wrap(self.policy_view), name="assistant_airoutingpolicy_policy"),
+            *super().get_urls(),
+        ]
+
+    def changelist_view(self, request, extra_context=None):
+        return HttpResponseRedirect(reverse("admin:assistant_airoutingpolicy_policy"))
+
+    def change_view(self, request, object_id, form_url="", extra_context=None):
+        return HttpResponseRedirect(reverse("admin:assistant_airoutingpolicy_policy"))
+
+    def policy_view(self, request):
+        if not self.has_view_or_change_permission(request):
+            raise PermissionDenied
+        ctx = staff_context(request)
+        here = reverse("admin:assistant_airoutingpolicy_policy")
+        if request.method == "POST":
+            try:
+                services.policy_update(
+                    ctx,
+                    PolicyIn(
+                        active_model=request.POST.get("active_model") or None,
+                        fallback_model=request.POST.get("fallback_model") or None,
+                    ),
+                )
+            except OperationError as refused:
+                for message in refusals(refused):
+                    messages.error(request, message)
+            except ValueError:
+                messages.error(request, _("Choose the models from the list."))
+            else:
+                messages.success(request, _("The model that answers was saved."))
+            return HttpResponseRedirect(here)
+        shown = queries.policy_show(ctx, NoInput())
+        choices = {choice.id for choice in shown.choices}
+        context = {
+            **self.admin_site.each_context(request),
+            "opts": self.model._meta,
+            "title": _("Model that answers"),
+            "shown": shown,
+            "can_change": self.has_change_permission(request),
+            "active_missing": shown.active_model is not None and shown.active_model not in choices,
+            "fallback_missing": shown.fallback_model is not None and shown.fallback_model not in choices,
+        }
+        return TemplateResponse(request, "admin/assistant/airoutingpolicy/policy.html", context)
