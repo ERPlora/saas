@@ -764,6 +764,16 @@ class TestMemberList:
         assert page["total"] == 5
         assert page["seats"] == {"used": 5, "limit": None}
 
+    def test_the_owner_comes_first_then_by_rank_whoever_joined_earlier(self, business, team):
+        """HUBS-F29: the owner first and each role above the next, even after a hand-over left the new owner the
+        most recent to join."""
+        HubMember.objects.filter(hub=business, user=team["owner"]).update(role="hub_employee")
+        HubMember.objects.filter(hub=business, user=team["employee"]).update(role="hub_owner")
+
+        rows = members(team["employee"], business)["rows"]
+
+        assert [row["email"] for row in rows[:3]] == ["employee@example.com", "admin@example.com", "manager@example.com"]
+
     def test_an_expired_invitation_says_so(self, business, team):
         HubMember.objects.filter(user=team["invitee"]).update(
             invitation_expires_at=timezone.now()
