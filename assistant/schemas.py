@@ -3,6 +3,7 @@ JSON of a schema shows it (only ``get_secret_value`` does, where the key is used
 
 from datetime import datetime
 from decimal import Decimal
+from typing import Literal
 from uuid import UUID
 
 from ninja import Schema
@@ -155,3 +156,23 @@ class ModelTryIn(Schema):
 
 class ModelTryOut(Schema):
     recorded: bool
+
+
+class CredentialImportIn(Schema):
+    """A provider's key the platform loads (from the environment): the provider is the one of its API (``kind``)."""
+
+    kind: Literal["openai", "anthropic", "gemini", "deepseek"]
+    api_key: SecretStr
+    label: str = Field(default="default", min_length=1, max_length=64)
+    #: Replace a key already kept with that label.
+    force: bool = False
+    #: Say what would happen, writing nothing.
+    dry_run: bool = False
+
+
+class CredentialImportOut(Schema):
+    provider: str
+    #: ``created``, ``rotated`` or ``kept`` (a key with that label was there and ``force`` was not given).
+    action: Literal["created", "rotated", "kept"]
+    label: str
+    masked_key: str

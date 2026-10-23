@@ -766,6 +766,14 @@ PLATFORM_INVOICING_ENABLED = config("PLATFORM_INVOICING_ENABLED", default=False,
 # cannot be guessed by brute force.
 PROMO_CHECK_RATE = config("PROMO_CHECK_RATE", default="20/m")
 
+# The AI gateway (assistant/, PLAN-SAAS §1.1): the providers' keys `import_ai_keys_from_env` keeps encrypted in the
+# database (ASSISTANT-F09); the staff may type them in the admin instead. Empty = nothing to load. The gateway reads
+# the keys from the database, never from here.
+OPENAI_API_KEY = config("OPENAI_API_KEY", default="")
+ANTHROPIC_API_KEY = config("ANTHROPIC_API_KEY", default="")
+GEMINI_API_KEY = config("GEMINI_API_KEY", default="")
+DEEPSEEK_API_KEY = config("DEEPSEEK_API_KEY", default="")
+
 # WhatsApp, erplora.com's side (whatsapp/, PLAN-SAAS §1.1, round 2026-10-15b): Meta's app («ERPlora Inbox»), its
 # Embedded Signup configuration and its webhook. Empty = WhatsApp is off, visibly: the webhook answers 503 and the
 # Hub's doors whatsapp.not_configured (`check --deploy` warns, whatsapp.W001). The secrets come from the
@@ -776,8 +784,8 @@ WHATSAPP_VERIFY_TOKEN = config("WHATSAPP_VERIFY_TOKEN", default="")
 WHATSAPP_CONFIG_ID = config("WHATSAPP_CONFIG_ID", default="")
 # The version of Meta's Graph API every call names.
 WHATSAPP_GRAPH_VERSION = config("WHATSAPP_GRAPH_VERSION", default="v25.0")
-# The key of the Meta credentials kept at rest (whatsapp/crypto.py, Fernet); during a rotation the previous one
-# still opens what it closed. Local development uses a fixed key; elsewhere it comes from the environment, and
+# The key of the credentials kept at rest (Meta's, whatsapp/crypto.py; the AI providers', assistant/crypto.py; Fernet);
+# during a rotation the previous one still opens what it closed. Local development uses a fixed key; elsewhere it comes from the environment, and
 # without it no number can be connected.
 FERNET_KEY = config("FERNET_KEY", default="yh5h4Yur2lIgWp9ZxkyLt1BrQfFVrwLH4WhIHCRwXXA=" if DEBUG else "")
 FERNET_KEY_PREVIOUS = config("FERNET_KEY_PREVIOUS", default="")

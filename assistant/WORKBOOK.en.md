@@ -88,6 +88,7 @@ and «Cost» (in dollars).
 | ASSISTANT-F06 | Choose the provider and model of each turn | hecho |
 | ASSISTANT-F07 | Try a model before it answers | hecho |
 | ASSISTANT-F08 | See who changed the configuration of the AI | hecho |
+| ASSISTANT-F09 | Load the providers' keys from the environment | hecho |
 
 ### ASSISTANT-F01 Add an AI provider
 <!-- origen: fi:saas/support/auth-services#modelo-aiprovider, fi:saas/django-admin#admin-aiprovider, old-saas:SAAS_ASSISTANT-F22 -->
@@ -206,6 +207,21 @@ Sale: one entry per change in the same audit log as the accounts, the charges an
 Si falla: a provider's key is never written down, neither in clear nor encrypted: its change shows in its last four characters and in when it changed; nor is the message of a try. Nobody can create, change or delete an entry by hand, and a team member without the permission cannot open the log.
 Implicados: ACCOUNTS-F36, ASSISTANT-F02, ASSISTANT-F07
 
+### ASSISTANT-F09 Load the providers' keys from the environment
+<!-- origen: fi:saas/auth-services#comando-importar-claves-ai-desde-el-entorno, fi:saas/support/auth-services#command-import_ai_keys_from_env -->
+Estado: hecho
+Actor: ERPlora's staff, on erplora.com's command line
+Pantalla: none
+Pasos:
+1. With the keys of OpenAI, Anthropic, Google Gemini and DeepSeek in erplora.com's environment, run the loading of the environment's keys.
+2. Each key is kept encrypted in its provider with the default label (or another one chosen); if the provider is missing, it is added with its name and its API.
+3. If the provider already had a key with that label, it stays as it is, unless replacing it is asked for: then it changes, it is turned on and when it changed stays.
+4. The providers to load can be chosen, and the loading can be rehearsed without keeping anything.
+Entra: the keys of the environment, the chosen providers, the label and whether the ones already there are replaced.
+Sale: the keys encrypted in their providers (`assistant.credential.saved`) and, for each one, whether it was created, changed, kept or skipped, with its last four characters.
+Si falla: an empty variable is skipped; an unknown provider stops the loading before keeping anything; without the key of the credentials none is kept. It never writes a whole key on screen, and the change stays in the audit log.
+Implicados: ASSISTANT-F01, ASSISTANT-F02, ASSISTANT-F08
+
 ## For whoever maintains it
 
 - Anatomy, data and operations: `assistant/README.md`.
@@ -230,6 +246,9 @@ Implicados: ACCOUNTS-F36, ASSISTANT-F02, ASSISTANT-F07
   (without `api_key` nor `updated_at`); without the old product's own `AIConfigAuditLog`: one trail for the whole of
   erplora.com (PLAN-SAAS §1.1). The try of a model is an `ACCESS` entry of the model, written by
   `assistant.model.try`.
+- `import_ai_keys_from_env` (`--providers`, `--label`, `--force`, `--dry-run`) reads `OPENAI_API_KEY`,
+  `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` and `DEEPSEEK_API_KEY` from `config/settings.py` and keeps them with
+  `assistant.credential.import` (the platform only). The turn never reads those variables: only the database.
 - Clients (`assistant/providers/`): `httpx` against each API (no SDK nor LiteLLM), no cache, one per call; all end
   with a single `finish` and a failure is an `error` with `retriable`, never an exception. Tested against
   `assistant/tests/fake_provider.py` (an HTTP server on `127.0.0.1` speaking each provider's format).

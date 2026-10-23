@@ -12,6 +12,8 @@ on the page. The commands call them as the platform (``platform_context``).
   except the ones the policy uses.
 - ``assistant.policy.update`` (G27, G17, G10, G60): the model that answers and the fallback one, each available and
   of an enabled provider, and different.
+- ``assistant.credential.import`` (G02, G21): the platform keeps a provider's key from the environment
+  (``import_ai_keys_from_env``), adding the provider of its API if missing; a key already kept stays unless forced.
 - ``assistant.model.try`` (G61): a member of the staff tried a model from the admin; it stays in the audit trail (an
   access to the model) with how long the message was and how many tools it offered, never the message.
 """
@@ -20,7 +22,7 @@ from auditlog.models import LogEntry
 from django.utils import timezone, translation
 from django.utils.translation import gettext as _
 from live.context import OperationContext, Scope, system_context
-from live.errors import Conflict, NotFound, OperationError
+from live.errors import Conflict, NotFound, OperationError, PermissionDenied
 from live.operations import operation
 from live.outbox import record_event
 
@@ -30,6 +32,8 @@ from assistant.queries import choosable_models, staff_with
 from assistant.schemas import (
     CredentialDeleteIn,
     CredentialDeleteOut,
+    CredentialImportIn,
+    CredentialImportOut,
     CredentialIn,
     CredentialOut,
     ModelSelectIn,
@@ -285,3 +289,51 @@ def model_try(ctx: OperationContext, data: ModelTryIn) -> dict:
     )
     record_event(ctx, events.MODEL_TRIED, {"model": str(model.pk), **tried})
     return {"recorded": True}
+
+
+@operation(
+    "assistant.credential.import",
+    kind="command",
+    permission="assistant.manage",
+    input=CredentialImportIn,
+    output=CredentialImportOut,
+)
+def credential_import(ctx: OperationContext, data: CredentialImportIn) -> dict:
+    """Keep a provider's key as the platform (``import_ai_keys_from_env``): the provider whose identifier is its API,
+    added if missing; the key with ``label`` is created, or replaced and turned on with ``force``, or kept as it is.
+    ``dry_run`` says the same and writes nothing. 403 to anyone but the platform (the staff use the admin), 503
+    ``assistant.encryption_not_configured``."""
+    if ctx.actor != "system":
+        with translation.override(ctx.language):
+            raise PermissionDenied(_("Only the platform loads the keys of the environment."), code="assistant.platform_only")
+    plaintext = data.api_key.get_secret_value().strip()
+    provider = AIProvider.objects.filter(slug=data.kind).first()
+    credential = (
+        AIProviderCredential.objects.select_for_update().filter(provider=provider, label=data.label).first()
+        if provider is not None
+        else None
+    )
+    if credential is not None and not data.force:
+        return {"provider": data.kind, "action": "kept", "label": data.label, "masked_key": credential.masked_key}
+    action = "created" if credential is None else "rotated"
+    result = {"provider": data.kind, "action": action, "label": data.label, "masked_key": f"…{plaintext[-4:]}"}
+    if data.dry_run:
+        return result
+    if not crypto.configured():
+        raise _encryption_missing(ctx)
+    if provider is None:
+        provider = AIProvider.objects.create(slug=data.kind, name=AIProvider.Kind(data.kind).label, kind=data.kind)
+    if credential is None:
+        credential = AIProviderCredential(provider=provider, label=data.label)
+    else:
+        credential.rotated_at = timezone.now()
+    credential.api_key = plaintext
+    credential.key_hint = plaintext[-4:]
+    credential.is_active = True
+    credential.save()
+    record_event(
+        ctx,
+        events.CREDENTIAL_SAVED,
+        {"provider": str(provider.pk), "credential": str(credential.pk), "rotated": action == "rotated"},
+    )
+    return result

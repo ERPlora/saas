@@ -92,6 +92,7 @@ entrada», «Tokens de salida», «Tiempo» y «Coste» (en dólares).
 | ASSISTANT-F06 | Elegir proveedor y modelo de cada turno | hecho |
 | ASSISTANT-F07 | Probar un modelo antes de ponerlo a contestar | hecho |
 | ASSISTANT-F08 | Ver quién cambió la configuración de la IA | hecho |
+| ASSISTANT-F09 | Cargar las claves de los proveedores desde el entorno | hecho |
 
 ### ASSISTANT-F01 Dar de alta un proveedor de IA
 <!-- origen: fi:saas/support/auth-services#modelo-aiprovider, fi:saas/django-admin#admin-aiprovider, old-saas:SAAS_ASSISTANT-F22 -->
@@ -210,6 +211,21 @@ Sale: una entrada por cambio en el mismo registro de auditoría que las cuentas,
 Si falla: nunca se anota una clave de proveedor, ni en claro ni cifrada: su cambio se ve en sus cuatro últimos caracteres y en cuándo se cambió; tampoco el mensaje de una prueba. Nadie puede crear, cambiar ni borrar una entrada a mano, y alguien del equipo sin el permiso no puede abrir el registro.
 Implicados: ACCOUNTS-F36, ASSISTANT-F02, ASSISTANT-F07
 
+### ASSISTANT-F09 Cargar las claves de los proveedores desde el entorno
+<!-- origen: fi:saas/auth-services#comando-importar-claves-ai-desde-el-entorno, fi:saas/support/auth-services#command-import_ai_keys_from_env -->
+Estado: hecho
+Actor: personal de ERPlora, en la línea de órdenes de erplora.com
+Pantalla: ninguna
+Pasos:
+1. Con las claves de OpenAI, Anthropic, Google Gemini y DeepSeek en el entorno de erplora.com, ejecuta la carga de las claves del entorno.
+2. Cada clave se guarda cifrada en su proveedor con la etiqueta por defecto (u otra que se elija); si falta el proveedor, se da de alta con su nombre y su API.
+3. Si el proveedor ya tenía una clave con esa etiqueta, se deja como está, salvo que se pida reemplazarla: entonces se cambia, se enciende y queda cuándo se cambió.
+4. Se puede elegir qué proveedores cargar y ensayar la carga sin guardar nada.
+Entra: las claves del entorno, los proveedores elegidos, la etiqueta y si se reemplazan las que ya hay.
+Sale: las claves cifradas en sus proveedores (`assistant.credential.saved`) y, por cada una, si se creó, se cambió, se dejó o se saltó, con sus cuatro últimos caracteres.
+Si falla: una variable vacía se salta; un proveedor desconocido detiene la carga antes de guardar nada; sin la clave de cifrado de las credenciales no se guarda ninguna. Nunca escribe una clave entera en pantalla, y el cambio queda en el registro de auditoría.
+Implicados: ASSISTANT-F01, ASSISTANT-F02, ASSISTANT-F08
+
 ## Para quien lo mantiene
 
 - Anatomía, datos y operaciones: `assistant/README.md`.
@@ -234,6 +250,9 @@ Implicados: ACCOUNTS-F36, ASSISTANT-F02, ASSISTANT-F07
   (sin `api_key` ni `updated_at`); sin el `AIConfigAuditLog` propio del producto viejo: un solo registro para todo
   erplora.com (PLAN-SAAS §1.1). La prueba de un modelo es una entrada `ACCESS` del modelo, escrita por
   `assistant.model.try`.
+- `import_ai_keys_from_env` (`--providers`, `--label`, `--force`, `--dry-run`) lee `OPENAI_API_KEY`,
+  `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` y `DEEPSEEK_API_KEY` de `config/settings.py` y guarda con
+  `assistant.credential.import` (solo la plataforma). El turno nunca lee esas variables: solo la base de datos.
 - Clientes (`assistant/providers/`): `httpx` contra cada API (sin SDK ni LiteLLM), sin caché, uno por llamada;
   todos terminan con un solo `finish` y un fallo es un `error` con `retriable`, nunca una excepción. Se prueban contra
   `assistant/tests/fake_provider.py` (servidor HTTP en `127.0.0.1` que habla el formato de cada proveedor).
