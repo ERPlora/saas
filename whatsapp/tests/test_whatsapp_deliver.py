@@ -182,3 +182,21 @@ def test_the_webhook_pushes_inside_the_lease_even_at_the_hubs_slowest(number, hu
 
     assert len(hub.pushes) == gateway.WEBHOOK_DELIVERIES
     assert hub.late == []
+
+
+@pytest.mark.django_db(transaction=True)
+def test_a_pass_ends_before_the_minute_even_at_the_hubs_slowest(number, hub_double, monkeypatch):
+    """The figure the pass counts on: a call takes 10 s at the Hub's slowest (5 s to connect, 5 s more to answer,
+    ``httpx``'s timeout being per phase). Sized by it, a pass against such a Hub still ends before saas-cron's next
+    one, with every push inside its lease; sized by the connect alone it would run 100 s."""
+    hub_double.answer("POST", INBOUND, 200, {"created": True})
+    ingest(messages(*(text(f"wamid.{n}") for n in range(100))))
+    clock = Clock(monkeypatch)
+    start = clock.now
+    hub = SlowHub(monkeypatch, clock, timedelta(seconds=10))
+
+    run()
+
+    assert clock.now <= start + MINUTE
+    assert hub.late == []
+    assert len(hub.pushes) == 5
