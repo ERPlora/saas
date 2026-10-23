@@ -276,7 +276,8 @@ class TaxonomyEntry(TranslatedFields):
         ordering = ["display_order", "code"]
 
     def __str__(self):
-        return self.name_en or self.code
+        """In the active language (the staff's in the admin), English when its column is blank."""
+        return self.name() or self.code
 
     def name(self, language: str | None = None) -> str:
         return self.translated("name", language)

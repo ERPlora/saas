@@ -483,3 +483,17 @@ def test_the_taxonomy_forms_speak_spanish(staff_client, rows, model):
 
     for label in SPANISH_FIELDS:
         assert label in labels, (label, labels)
+
+
+@pytest.mark.parametrize(("model", "spanish"), [("sector", "Hostelería"), ("businesstype", "Restaurante")])
+def test_a_taxonomy_row_is_named_in_the_staff_language(staff_client, rows, model, spanish):
+    """HUBS-F36: the title of its form, its crumbs and the sector's dropdown name the row in Spanish too (they said
+    «Hair Salon» and «Personal Services & Wellness» in a Spanish admin); English when the Spanish is blank."""
+    from django.utils import translation
+
+    row = rows[model]
+    with translation.override("es"):
+        assert str(row) == spanish
+        type(row).objects.filter(pk=row.pk).update(name_es="")
+        row.refresh_from_db()
+        assert str(row) == row.name_en
