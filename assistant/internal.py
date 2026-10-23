@@ -46,6 +46,8 @@ from assistant.schemas import (
     EmbeddingsIn,
     MessageReleaseIn,
     NoInput,
+    ReportIn,
+    ReportSendIn,
     RouteIn,
     SynthesizeIn,
     TranscribeIn,
@@ -410,3 +412,15 @@ async def synthesize(call: Call) -> HttpResponse:
         return media_failed(problem)
     await record(call.caller, speech_characters=len(text))
     return HttpResponse(audio, content_type="audio/mpeg")
+
+
+# --- The report of an answer (ASSISTANT-G58) ----------------------------------------------------------------------
+
+
+@door(ReportIn, bucket="report", rate="ASSISTANT_REPORT_RATELIMIT")
+async def report(call: Call) -> HttpResponse:
+    """The report of an answer, mailed to support: 202 ``{sent, duplicate}`` (the same answer within a day mails
+    nothing again); 503 ``assistant.report_not_sent`` if the mail cannot leave."""
+    fields = call.data.model_dump(exclude={"hub"})
+    sent = await sync_to_async(services.report_send)(platform_context(), ReportSendIn(caller=call.caller, **fields))
+    return JsonResponse(sent.model_dump(), status=202)

@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: saas-next\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 14:05+0200\n"
+"POT-Creation-Date: 2026-10-23 14:09+0200\n"
 "PO-Revision-Date: 2026-10-23 03:00+0200\n"
 "Last-Translator: ERPlora\n"
 "Language-Team: Spanish\n"
@@ -32,11 +32,11 @@ msgstr "Clave"
 msgid "Typed once, never shown again. Empty: keep the key it has."
 msgstr "Se escribe una vez y no se vuelve a ver. Vacía: se queda la que tiene."
 
-#: admin.py:112 services.py:113 services.py:116
+#: admin.py:112 services.py:121 services.py:124
 msgid "Type the provider's key."
 msgstr "Escribe la clave del proveedor."
 
-#: admin.py:114 services.py:75
+#: admin.py:114 services.py:83
 msgid "The key of the credentials is not configured: no provider key can be kept."
 msgstr "La clave de cifrado de las credenciales no está configurada: no se puede guardar ninguna clave de proveedor."
 
@@ -327,7 +327,7 @@ msgstr "uso del asistente"
 msgid "Only ERPlora's staff with this permission configure the AI."
 msgstr "Solo el personal de ERPlora con este permiso configura la IA."
 
-#: queries.py:86 services.py:110 services.py:207
+#: queries.py:86 services.py:118 services.py:215
 msgid "This provider does not exist."
 msgstr "Este proveedor no existe."
 
@@ -355,37 +355,41 @@ msgstr "Solo la plataforma pide esto."
 msgid "The provider of the embeddings and the voice is not configured: add OpenAI with its key."
 msgstr "El proveedor de las huellas y de la voz no está configurado: añade OpenAI con su clave."
 
-#: services.py:123 services.py:125
+#: services.py:131 services.py:133
 msgid "This provider already has a key with that label."
 msgstr "Este proveedor ya tiene una clave con esa etiqueta."
 
-#: services.py:135 services.py:177
+#: services.py:143 services.py:185
 msgid "This key does not exist."
 msgstr "Esta clave no existe."
 
-#: services.py:256
+#: services.py:264
 msgid "This model cannot answer: it is off, its provider is off or it does not exist."
 msgstr "Este modelo no puede contestar: está apagado, su proveedor está apagado o no existe."
 
-#: services.py:259
+#: services.py:267
 msgid "Choose the model that answers before its fallback."
 msgstr "Elige el modelo que contesta antes que su reserva."
 
-#: services.py:264
+#: services.py:272
 msgid "The fallback model must be another model."
 msgstr "El modelo de reserva tiene que ser otro modelo."
 
-#: services.py:299
+#: services.py:307
 msgid "This model does not exist."
 msgstr "Este modelo no existe."
 
-#: services.py:327
+#: services.py:335
 msgid "Only the platform loads the keys of the environment."
 msgstr "Solo la plataforma carga las claves del entorno."
 
-#: services.py:392
+#: services.py:400
 msgid "Only the platform rotates the key of the credentials."
 msgstr "Solo la plataforma cambia la clave de cifrado de las credenciales."
+
+#: services.py:585
+msgid "The report could not be sent: try again in a moment."
+msgstr "No se ha podido enviar la denuncia: vuelve a intentarlo en un momento."
 
 #: templates/admin/assistant/aiprovider/models.html:6
 #: templates/admin/assistant/airoutingpolicy/policy.html:6

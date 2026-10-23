@@ -22,12 +22,15 @@ on the page. The commands call them as the platform (``platform_context``).
   taken before the model is called and given back if the turn failed before answering.
 - ``assistant.usage.record`` (G29, G52): what a turn, an embedding or the voice spent (tokens, dictations, characters
   read aloud) and its cost in USD.
+- ``assistant.report.send`` (G58): the report of an answer, mailed to the support mailbox; nothing kept.
 """
 
+import logging
 from datetime import timedelta
 
 from auditlog.models import LogEntry
 from django.apps import apps
+from django.conf import settings
 from django.db.models import F, TextField, Value
 from django.db.models.functions import Cast
 from django.utils import timezone, translation
@@ -41,10 +44,13 @@ import whatsapp.fields
 from assistant import crypto, events, fields, queries
 from assistant.models import AIModel, AIProvider, AIProviderCredential, AIRoutingPolicy, AssistantUsage
 from assistant.queries import choosable_models, staff_with
+from hubs.models import Hub
 from assistant.schemas import (
     Caller,
     ClaimOut,
     MessageReleaseIn,
+    ReportOut,
+    ReportSendIn,
     UsageOut,
     UsageRecordIn,
     CredentialDeleteIn,
@@ -62,6 +68,8 @@ from assistant.schemas import (
     PolicyIn,
     PolicyOut,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def platform_context() -> OperationContext:
@@ -517,3 +525,64 @@ def usage_record(ctx: OperationContext, data: UsageRecordIn) -> dict:
     )
     record_event(ctx, events.USAGE_RECORDED, {**_caller_payload(data.caller), **{k: str(v) for k, v in spent.items()}})
     return queries.usage_of(data.caller, now)
+
+
+# --- The report of an answer (ASSISTANT-G58) ----------------------------------------------------------------------
+
+#: The characters of each text a report mails (the question, the answer, the comment).
+REPORT_TEXT_MAX = 4000
+#: A report of the same answer within this time mails nothing again (a double tap, a retry of the Hub).
+REPORT_ONCE_SECONDS = 24 * 60 * 60
+
+
+@operation(
+    "assistant.report.send",
+    kind="command",
+    permission="assistant.manage",
+    input=ReportSendIn,
+    output=ReportOut,
+)
+def report_send(ctx: OperationContext, data: ReportSendIn) -> dict:
+    """Mail the report of an answer to the support mailbox (the platform only), in English (the team's mail), with
+    the business, the reason, the comment, the question and the answer, each cut to ``REPORT_TEXT_MAX``; nothing is
+    kept nor logged. The same answer (``message_id``) of the same business within a day is a ``duplicate``. 503
+    ``assistant.report_not_sent`` if the mail cannot leave (it can be sent again)."""
+    from django.core.cache import cache
+
+    from base.emails import branded_message
+
+    queries.platform_only(ctx)
+    caller = data.caller
+    once = f"assistant:report:{'demo:' + caller.demo if caller.demo else caller.hub_id}:{data.message_id}"
+    if not cache.add(once, 1, REPORT_ONCE_SECONDS):
+        return {"sent": False, "duplicate": True}
+    if caller.demo:
+        who, details = caller.demo, [("Demo", caller.demo)]
+    else:
+        hub = Hub.objects.get(pk=caller.hub_id)
+        who, details = hub.name, [("Business", f"{hub.name} ({hub.slug}, {hub.id})")]
+    lines = [
+        *(f"{label}: {value}" for label, value in details),
+        f"Reason: {data.reason}",
+        f"Message: {data.message_id}",
+        "",
+        "Comment:",
+        data.comment[:REPORT_TEXT_MAX] or "—",
+        "",
+        "Question:",
+        data.question[:REPORT_TEXT_MAX] or "—",
+        "",
+        "Answer:",
+        data.answer[:REPORT_TEXT_MAX],
+    ]
+    try:
+        branded_message(f"[Assistant report] {who} · {data.reason}", lines, [settings.SUPPORT_EMAIL], language="en").send()
+    except Exception:  # noqa: BLE001 - any failure of the mail backend is answered, not raised
+        cache.delete(once)
+        logger.exception("assistant.report_mail_failed")
+        with translation.override(ctx.language):
+            raise OperationError(
+                _("The report could not be sent: try again in a moment."), code="assistant.report_not_sent", status=503
+            ) from None
+    record_event(ctx, events.REPORT_SENT, {**_caller_payload(caller), "reason": data.reason})
+    return {"sent": True, "duplicate": False}

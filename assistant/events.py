@@ -28,6 +28,10 @@ MESSAGE_RELEASED = "assistant.message.released"
 #: "tokens_embedding", "transcriptions", "speech_characters", "cost_usd"}``.
 USAGE_RECORDED = "assistant.usage.recorded"
 
+#: The report of an answer was mailed to support: ``{"hub", "demo", "reason"}`` (never the question, the answer nor
+#: the comment).
+REPORT_SENT = "assistant.report.sent"
+
 ALL = [
     CREDENTIAL_SAVED,
     CREDENTIAL_DELETED,
@@ -38,4 +42,5 @@ ALL = [
     MESSAGE_CLAIMED,
     MESSAGE_RELEASED,
     USAGE_RECORDED,
+    REPORT_SENT,
 ]

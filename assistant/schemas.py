@@ -316,3 +316,30 @@ class SynthesizeIn(CallerIn):
         if not value.strip():
             raise ValueError("write the text to read aloud")
         return value.strip()
+
+
+class ReportFields(Schema):
+    """The report of an answer: its id in the Hub's conversation, why (wrong, harmful, not what was asked, other),
+    what the person added, the question and the answer."""
+
+    message_id: str = Field(min_length=1, max_length=128)
+    reason: Literal["incorrect", "harmful", "instructions", "other"]
+    comment: str = Field(default="", max_length=20_000)
+    question: str = Field(default="", max_length=200_000)
+    answer: str = Field(min_length=1, max_length=200_000)
+
+
+class ReportIn(CallerIn, ReportFields):
+    """The ``report`` door's body: the report and the business (or demo) it is of."""
+
+
+class ReportSendIn(ReportFields):
+    """The report of ``caller``, as ``assistant.report.send`` mails it."""
+
+    caller: Caller
+
+
+class ReportOut(Schema):
+    #: Whether a mail left now; a report of the same answer within a day is a ``duplicate`` and mails nothing.
+    sent: bool
+    duplicate: bool

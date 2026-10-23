@@ -22,6 +22,7 @@ DOORS = [
     "/internal/assistant/chat",
     "/internal/assistant/usage",
     "/internal/assistant/embeddings",
+    "/internal/assistant/report",
     "/internal/speech/transcribe",
     "/internal/speech/synthesize",
 ]
