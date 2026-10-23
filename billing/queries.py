@@ -1107,22 +1107,21 @@ def _subscription_row(
             "currency": "EUR",
         }
     profile = hub.billing_profile
-    manages = (
-        hub.id in owned
-        and profile is not None
-        and profile.owner_id == user.pk
-        and hub_queries.is_writable(hub)
-    )
+    # Charged to the card of another account: the payer before a hand-over (HUBS-F28).
+    elsewhere = profile is None or profile.owner_id != user.pk or subscription.stripe_customer_id != profile.stripe_customer_id
+    writable = hub.id in owned and hub_queries.is_writable(hub)
+    manages = writable and not elsewhere
     unpaid_id = unpaid.get(hub.id)
     can = {
+        "take_over": writable and elsewhere,
         "change_plan": manages and unpaid_id is None,
         "cancel_plan": manages and not cancelling,
         "keep_plan": manages and cancelling,
         "view_invoice": unpaid_id is not None,
         "view_invoices": True,
     }
-    order = ["view_invoice", *(["keep_plan", "change_plan"] if cancelling else ["change_plan", "cancel_plan"]),
-             "view_invoices"]
+    order = ["view_invoice", "take_over",
+             *(["keep_plan", "change_plan"] if cancelling else ["change_plan", "cancel_plan"]), "view_invoices"]
     return {
         "business": {"id": hub.id, "name": hub.name},
         "plan": {"slug": plan.slug, "name": plan.translated("name"), "interval": interval, "price_cents": plan_cents},
@@ -1135,6 +1134,7 @@ def _subscription_row(
         "cancel_requested": subscription.cancel_requested_at is not None,
         "unpaid_invoice_id": unpaid_id,
         "scheduled_change": scheduled.get(hub.id),
+        "paid_by_another_account": elsewhere and hub.id in owned,
         "actions": [action for action in order if can[action]],
         "can": can,
     }

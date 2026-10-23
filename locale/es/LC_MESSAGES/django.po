@@ -37,14 +37,6 @@ msgid "Close the selected sessions"
 msgstr "Cerrar las sesiones seleccionadas"
 
 #: accounts/admin.py
-msgid "user session"
-msgstr "sesión de usuario"
-
-#: accounts/admin.py
-msgid "user sessions"
-msgstr "sesiones de usuario"
-
-#: accounts/admin.py
 msgid "Signed in"
 msgstr "Inicio de sesión"
 
@@ -620,6 +612,26 @@ msgstr "¿No puedes usar tu autenticador?"
 #: accounts/apps.py:13
 msgid "Accounts"
 msgstr "Cuentas"
+
+#: accounts/apps.py
+msgid "Email addresses"
+msgstr "Direcciones de correo electrónico"
+
+#: accounts/apps.py
+msgid "authenticator"
+msgstr "autenticador"
+
+#: accounts/apps.py
+msgid "authenticators"
+msgstr "autenticadores"
+
+#: accounts/apps.py
+msgid "user session"
+msgstr "sesión de usuario"
+
+#: accounts/apps.py
+msgid "user sessions"
+msgstr "sesiones de usuario"
 
 #: base/apps.py:17
 msgid "Base"

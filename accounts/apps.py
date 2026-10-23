@@ -50,3 +50,17 @@ class AccountsConfig(LiveAppConfig):
         from accounts import auditlog
 
         auditlog.register()
+
+        # The admin's index names each section once, in the staff's language (config/tests/test_admin_index.py):
+        # allauth's ``account`` only holds the email addresses (it read «Accounts», as this app does), and its
+        # authenticators and sessions are named after their classes, which no catalog translates. Display only:
+        # migrations read ``Meta`` (``_meta.original_attrs``), so no label, table or migration changes.
+        from allauth.mfa.models import Authenticator
+        from allauth.usersessions.models import UserSession
+        from django.apps import apps
+
+        apps.get_app_config("account").verbose_name = _("Email addresses")
+        Authenticator._meta.verbose_name = _("authenticator")
+        Authenticator._meta.verbose_name_plural = _("authenticators")
+        UserSession._meta.verbose_name = _("user session")
+        UserSession._meta.verbose_name_plural = _("user sessions")

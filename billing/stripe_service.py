@@ -378,6 +378,31 @@ def invoice_paid_by(payment_intent_id: str) -> str | None:
     return None
 
 
+def refund_invoice(invoice_id: str, *, key: str, metadata: dict) -> int:
+    """Give back in full what ``invoice_id`` collected (each paid PaymentIntent of it), as a refund ``charge.refunded``
+    turns into a rectifying invoice; the cents refunded (0: nothing was charged). ``key`` makes each refund
+    idempotent (``<key>-<payment intent>``); a charge Stripe says is already refunded counts as refunded."""
+    payments = _call(client().v1.invoice_payments.list, params={"invoice": invoice_id, "limit": 10})["data"]
+    refunded = 0
+    for payment in payments:
+        intent = (payment.get("payment") or {}).get("payment_intent")
+        if payment.get("status") != "paid" or not intent or not payment.get("amount_paid"):
+            continue
+        if isinstance(intent, dict):
+            intent = intent["id"]
+        try:
+            _call(
+                client().v1.refunds.create,
+                params={"payment_intent": intent, "reason": "requested_by_customer", "metadata": metadata},
+                idempotency_key=f"{key}-{intent}",
+            )
+        except StripeRefused as refused:
+            if refused.code != "charge_already_refunded":
+                raise
+        refunded += int(payment["amount_paid"])
+    return refunded
+
+
 def charge_refunds(charge_id: str) -> list[dict]:
     """Every refund of a charge."""
     params: dict = {"charge": charge_id, "limit": 100}

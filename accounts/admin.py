@@ -451,12 +451,6 @@ class EmailChangeRequestAdmin(admin.ModelAdmin):
 # allauth's page of the sessions searches ``user__username``, which this account model has not.
 admin.site.unregister(UserSession)
 
-# allauth names neither its model nor its fields (Django's «user session», «created at»…, English in every language):
-# the admin names them in the staff's language (ACCOUNTS-F19). Only the live names: Django's migrations read the
-# model's own options (``_meta.original_attrs``), so allauth's migrations stay as they are.
-UserSession._meta.verbose_name = _("user session")
-UserSession._meta.verbose_name_plural = _("user sessions")
-
 
 @admin.register(UserSession)
 class UserSessionAdmin(AllauthUserSessionAdmin):

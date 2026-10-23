@@ -28,6 +28,7 @@ import { invoicePage, subscriptionPage, subscriptionRow, unpaidRow } from '../__
 import { APPS, PLANS, plan } from '../__tests__/fixtures';
 import { apiError, describeCall, flush, mountBilling, type StreamCall } from '../__tests__/mount-billing';
 import CancelPlanDialog from './CancelPlanDialog.vue';
+import CheckoutModal from './CheckoutModal.vue';
 import SubscriptionsTab from './SubscriptionsTab.vue';
 
 const viewport = (size: { width: number; height: number }) =>
@@ -56,20 +57,34 @@ const PLAZA_SUB = subscriptionRow('plaza', 'Bar La Plaza', {
   unpaid_invoice_id: 'i9',
   next_invoice: { date: '2026-11-10T10:00:00Z', total_cents: 3629, currency: 'EUR' },
   actions: ['view_invoice', 'cancel_plan', 'view_invoices'],
-  can: { change_plan: false, cancel_plan: true, keep_plan: false, view_invoice: true, view_invoices: true },
+  can: { take_over: false, change_plan: false, cancel_plan: true, keep_plan: false, view_invoice: true, view_invoices: true },
 });
 const CANCELLING = subscriptionRow('bakery', 'Panadería López', {
   cancelling: true,
   ends_at: '2026-11-01T10:00:00Z',
   next_invoice: null,
   actions: ['keep_plan', 'view_invoices'],
-  can: { change_plan: true, cancel_plan: false, keep_plan: true, view_invoice: false, view_invoices: true },
+  can: { take_over: false, change_plan: true, cancel_plan: false, keep_plan: true, view_invoice: false, view_invoices: true },
+});
+/** A business handed over with its plan still on the previous owner's card (HUBS-F28): it ends with its period. */
+const HANDED_OVER = subscriptionRow('bakery', 'Panadería López', {
+  cancelling: true,
+  ends_at: '2026-11-01T10:00:00Z',
+  next_invoice: null,
+  paid_by_another_account: true,
+  actions: ['take_over', 'view_invoices'],
+  can: { take_over: true, change_plan: false, cancel_plan: false, keep_plan: false, view_invoice: false, view_invoices: true },
 });
 
 function api(call: ReturnType<typeof describeCall>): Response {
   if (call.path === '/api/apps') return Response.json(APPS);
   if (call.path === '/api/plans') return Response.json({ ...PLANS, plans: [...PLANS.plans, plan('basic', 'Basic', '14.99', '149.90')] });
   if (call.path === '/api/hubs/businesses/detail') return Response.json({ id: call.query.id, seats: { used: 2, limit: null } });
+  if (call.path === '/api/hubs/billing-profile') {
+    // A business handed over: its payer is still the previous owner's, so the new owner says who pays first.
+    const empty = { billing_name: '', tax_id: '', billing_address: '', billing_city: '', billing_postal_code: '', billing_country: '', billing_email: '' };
+    return Response.json({ hub_id: call.query.hub_id, ...empty, same_as_business: false, paid_by_another_account: true });
+  }
   return Response.json({});
 }
 
@@ -209,6 +224,34 @@ describe('SubscriptionsTab: the list', () => {
     expect(dialog.props('unpaid')).toMatchObject({ id: 'i9' });
   });
 
+  it('a business handed over with its plan on the previous owner’s card: «Keep it with my card» leads and the row says whose card pays it (HUBS-F28)', async () => {
+    const s = await setup();
+    await s.show([HANDED_OVER]);
+    expect(s.actionsOf('bakery')).toEqual(['lead', 'view_invoices']);
+    expect(s.testid('subscriptions-row-bakery-lead').text()).toBe('Keep it with my card');
+    expect(s.cells(0)[3]).toBe('Free from Nov 1, 2026Paid with another account’s card');
+    expect(s.testid('subscription-paid-by-another').exists()).toBe(true);
+  });
+
+  it('«Keep it with my card» opens the secure payment of that plan, billed from the end of the paid period', async () => {
+    const s = await setup();
+    await s.show([HANDED_OVER]);
+    await s.testid('subscriptions-row-bakery-lead').trigger('click');
+    await flush();
+    const modal = s.wrapper.findComponent(CheckoutModal);
+    expect(modal.props('business')).toEqual({ id: 'bakery', name: 'Panadería López' });
+    expect(modal.props('purchase')).toEqual({ kind: 'takeover', slug: 'starter', name: 'Starter', interval: 'month', from: '2026-11-01T10:00:00Z' });
+    expect(modal.props('open')).toBe(true);
+    expect(s.calls().filter((c) => c.method === 'POST')).toEqual([]);
+  });
+
+  it('inside the apps it is not offered: keeping a plan is paying, web only', async () => {
+    applySurface('mobile');
+    const s = await setup();
+    await s.show([HANDED_OVER]);
+    expect(s.actionsOf('bakery')).toEqual(['view_invoices']);
+  });
+
   it('«Keep the plan» undoes the cancellation and says so', async () => {
     const s = await setup('en', (call) => (call.path === '/api/billing/plan/keep' ? Response.json({}) : api(call)));
     await s.show([CANCELLING]);
@@ -262,6 +305,15 @@ describe('SubscriptionsTab: the list', () => {
       '1 nov 2026 · 47,18\u00a0€con IVA',
       'Activa',
     ]);
+  });
+});
+
+describe('SubscriptionsTab: a handed-over business, in Spanish', () => {
+  it('«Mantenerlo con mi tarjeta» and whose card pays it', async () => {
+    const s = await setup('es');
+    await s.show([HANDED_OVER]);
+    expect(s.testid('subscriptions-row-bakery-lead').text()).toBe('Mantenerlo con mi tarjeta');
+    expect(s.testid('subscription-paid-by-another').text()).toBe('Se paga con la tarjeta de otra cuenta');
   });
 });
 

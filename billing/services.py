@@ -67,6 +67,8 @@ from billing.models import (
 from billing.money import from_cents, to_cents
 from billing.schemas import (
     CheckoutConfirmIn,
+    CheckoutRefundRecordIn,
+    CheckoutRefundRecordOut,
     CreditNoteRecordIn,
     FiscalAnswerIn,
     FiscalAnswerOut,
@@ -843,7 +845,8 @@ def _owned(ctx: OperationContext, hub_id) -> tuple[Hub, Subscription | None]:
     And the account is its PAYER (review of L2-B): an accepted transfer leaves the previous owner's payer, card
     and Stripe customer on the business, and a new owner must not charge, read or cancel them (409
     ``billing.payer_required``): they say who pays first (``hubs.billing_profile.update`` gives the business
-    a payer of theirs). A subscription still billed to the previous payer's customer waits for support."""
+    a payer of theirs). A subscription still billed to the previous payer's customer is kept with the new owner's
+    card first («Keep it with my card», ``billing.plan.take_over``, HUBS-F28)."""
     user = hub_queries.account_of(ctx)
     member = hub_queries.access(user, hub_id, HubMember.Role.OWNER, lock=True)
     if not hub_queries.is_writable(member.hub):
@@ -872,7 +875,7 @@ def _owned(ctx: OperationContext, hub_id) -> tuple[Hub, Subscription | None]:
         )
         raise Conflict(
             _(
-                "This business's plan is still paid by its previous owner: contact support to move it to you."
+                "This business's plan is still paid with its previous owner's card: keep it with yours in Billing first."
             ),
             code="billing.payer_required",
         )
@@ -1984,6 +1987,194 @@ def plan_keep(ctx: OperationContext, data: HubIn) -> dict:
     return subscription_out(hub.id)
 
 
+# --- A business handed over with a paid plan (HUBS-F28) -------------------------------------------------
+
+
+def end_renewal_after_hand_over(hub: Hub, new_owner) -> datetime | None:
+    """The business ``hub`` was just handed over to ``new_owner`` (``hubs.ownership.accept``, in its transaction):
+    a plan still charged to the card of another account's payer stops renewing there (Stripe
+    ``cancel_at_period_end``). The business keeps it until the end of the period already paid, the previous payer
+    is never charged again, and the new owner keeps it with their own card (``billing.plan.take_over``) or it
+    goes back to Free on that date. A plan the new owner already pays is left alone, and so is one already ending.
+    Stripe not answering refuses the hand-over (503): nothing changes hands.
+
+    The end of that paid period, which the mail of the hand-over tells the previous payer; ``None`` on Free or when
+    the new owner already pays it."""
+    subscription = Subscription.objects.filter(hub=hub).first()
+    if not _paying(subscription) or hub_queries.plans_charged_to(hub.id, new_owner.pk).exists():
+        return None
+    if subscription.cancel_at_period_end:
+        return subscription.current_period_end
+    require_stripe()
+    # Free wins over a downgrade that waits (Stripe refuses to cancel a scheduled subscription).
+    _release_pending(hub)
+    with stripe_errors():
+        updated = stripe_service.update_subscription(
+            subscription.stripe_subscription_id, {"cancel_at_period_end": True}
+        )
+    apply_live(hub.id, updated)
+    logger.info("[BILLING] Hub %s handed over: its plan stops renewing on its previous payer's card", hub.id)
+    return Subscription.objects.get(hub=hub).current_period_end
+
+
+def billed_to_another_account(subscription: Subscription | None, profile) -> bool:
+    """Whether the live plan of a business is charged to a Stripe customer that is not its payer's (``profile``):
+    the card of the payer before a hand-over (HUBS-F28)."""
+    if not _paying(subscription):
+        return False
+    return profile is None or subscription.stripe_customer_id != profile.stripe_customer_id
+
+
+def _nothing_to_take_over() -> Conflict:
+    return Conflict(
+        _("This business's plan is already paid with your card, or it is on Free: there is nothing to keep."),
+        code="billing.nothing_to_take_over",
+    )
+
+
+@operation(
+    "billing.plan.take_over",
+    kind="command",
+    permission="billing.pay",
+    input=HubIn,
+    output=CheckoutStartOut,
+)
+def plan_take_over(ctx: OperationContext, data: HubIn) -> dict:
+    """«Keep it with my card» (HUBS-F28): the new owner of a handed-over business keeps its plan and modules with
+    their own payer. An Embedded Checkout of the same prices whose billing starts on the day the paid period ends
+    (``billing_cycle_anchor``, no proration): nothing is charged today and nobody pays twice. Its completion
+    (``checkout_completed``) moves the business to the new subscription and ends the previous one.
+
+    Only its owner (404 without access, 403 for another role); their own payer first (409
+    ``billing.payer_required``, the form of the dialog); a business on Free or already paid with this owner's
+    card has nothing to keep (409 ``billing.nothing_to_take_over``); an unpaid invoice is paid first."""
+    user = hub_queries.account_of(ctx)
+    member = hub_queries.access(user, data.hub_id, HubMember.Role.OWNER, lock=True)
+    if not hub_queries.is_writable(member.hub):
+        raise hub_services.business_deleted()
+    hub = Hub.objects.select_related("billing_profile").get(pk=member.hub_id)
+    subscription = Subscription.objects.select_related("plan").filter(hub=hub).first()
+    if not _paying(subscription) or hub_queries.plans_charged_to(hub.id, user.pk).exists():
+        raise _nothing_to_take_over()
+    profile = hub.billing_profile
+    if profile is None or profile.owner_id != user.pk:
+        raise Conflict(
+            _("Say who pays for this business first: its billing details are another account's."),
+            code="billing.payer_required",
+        )
+    _require_paid_up(hub, subscription)
+    require_payments()
+    live = _live(subscription)
+    if (live.get("status") or "") in ENDED_STATUSES:
+        raise _nothing_to_take_over()
+    _start, period_end = subscription_period(live)
+    line_items = []
+    for line in _live_items(live):
+        sale = _item_sale(subscription, line)
+        if sale is None:
+            raise Conflict(
+                _("This business pays something we no longer sell: contact support to keep it."),
+                code="billing.unknown_price",
+            )
+        tax_rates = price_sale(hub, sale, recurring_net=_recurring_net(subscription, sale.interval))
+        line_items.append({"price": sale.price_id, "quantity": line.get("quantity") or 1, "tax_rates": tax_rates})
+    selection = f"takeover:{subscription.stripe_subscription_id}:" + ";".join(
+        f"{line['price']}={','.join(line['tax_rates'])}" for line in line_items
+    )
+    selection = selection[:255]
+    attempt = (
+        CheckoutAttempt.objects.filter(
+            hub=hub,
+            selection=selection,
+            status=CheckoutAttempt.Status.OPEN,
+            created_at__gt=timezone.now() - CheckoutAttempt.REUSE_FOR,
+        )
+        .exclude(client_secret="")
+        .order_by("-created_at")
+        .first()
+    )
+    if attempt is None:
+        attempt = _open_takeover(ctx, hub, subscription, line_items, period_end, selection)
+    return {
+        "flow": "checkout",
+        "session_id": attempt.stripe_session_id,
+        "client_secret": attempt.client_secret,
+        "publishable_key": settings.STRIPE_PUBLISHABLE_KEY,
+        "preview": None,
+    }
+
+
+def _open_takeover(ctx, hub: Hub, subscription: Subscription, line_items: list[dict], period_end, selection: str):
+    _expire_other_sessions(hub, selection)
+    customer = ensure_customer(hub)
+    attempt = CheckoutAttempt.objects.create(
+        hub=hub,
+        owner=hub_queries.account_of(ctx),
+        kind=CheckoutAttempt.Kind.TAKEOVER,
+        plan_slug=subscription.plan.slug if subscription.plan else "",
+        billing_interval=subscription.billing_interval,
+        selection=selection,
+    )
+    base = hub_emails.base_url(ctx.request)
+    params = {
+        "ui_mode": EMBEDDED_UI_MODE,
+        "mode": "subscription",
+        "customer": customer,
+        "customer_update": {"name": "auto", "address": "auto"},
+        "line_items": line_items,
+        "metadata": {
+            KIND_METADATA_KEY: CheckoutKind.PLAN_TAKEOVER.value,
+            "hub_id": str(hub.id),
+            "replaces": subscription.stripe_subscription_id,
+            "attempt": str(attempt.id),
+        },
+        "subscription_data": {
+            "description": f"ERPlora — {hub.name}",
+            "metadata": {"hub_id": str(hub.id)},
+            # Billed from the day the paid period ends, nothing before it: the business uses what was paid.
+            "billing_cycle_anchor": period_end,
+            "proration_behavior": "none",
+        },
+        "redirect_on_completion": "if_required",
+        "return_url": f"{base}/businesses/{hub.id}/summary?checkout={{CHECKOUT_SESSION_ID}}",
+        "locale": "auto",
+        "billing_address_collection": "required",
+        "tax_id_collection": {"enabled": False},
+        "integration_identifier": INTEGRATION_IDENTIFIER,
+    }
+    with stripe_errors():
+        session = stripe_service.create_checkout_session(params, idempotency_key=f"checkout-{attempt.id}")
+    attempt.stripe_session_id = session["id"]
+    attempt.client_secret = session.get("client_secret") or ""
+    attempt.save(update_fields=["stripe_session_id", "client_secret", "updated_at"])
+    record_event(
+        ctx,
+        events.CHECKOUT_STARTED,
+        {"hub_id": str(hub.id), "kind": "takeover", "attempt": str(attempt.id)},
+    )
+    return attempt
+
+
+def _takeover_completed(hub: Hub, session: dict, subscription_id: str, replaced: str) -> str:
+    """The new owner kept the plan with their card (HUBS-F28): the business moves to the new subscription and the
+    previous one, on the previous payer's card, ends now without a refund (the business is using the period it
+    paid; the new one bills from its end). Stripe not answering raises: nothing moves and Stripe delivers it
+    again. A redelivery finds the business moved and ends nothing twice."""
+    with holding(hub.id):
+        local = Subscription.objects.filter(hub=hub).first()
+        if local is None or local.stripe_subscription_id != subscription_id:
+            apply_live(hub.id, stripe_service.retrieve_subscription(subscription_id))
+            if replaced and replaced != subscription_id:
+                previous = stripe_service.retrieve_subscription(replaced)
+                if (previous.get("status") or "") not in ENDED_STATUSES:
+                    stripe_service.cancel_subscription(replaced)
+            logger.info("[BILLING] Hub %s kept its plan with its new owner's card: %s ends", hub.id, replaced)
+        CheckoutAttempt.objects.filter(stripe_session_id=session.get("id")).exclude(
+            status=CheckoutAttempt.Status.COMPLETED
+        ).update(status=CheckoutAttempt.Status.COMPLETED, completed_at=timezone.now(), updated_at=timezone.now())
+    return "completed"
+
+
 def _bought_item(subscription: Subscription | None, slug: str) -> SubscriptionItem:
     item = (
         SubscriptionItem.objects.filter(
@@ -2499,6 +2690,17 @@ def checkout_completed(session: dict) -> str:
     if isinstance(subscription_id, dict):
         subscription_id = subscription_id["id"]
     with holding(hub.id):
+        attempt = CheckoutAttempt.objects.select_related("owner").filter(stripe_session_id=session.get("id")).first()
+        # One already applied is a redelivery, whoever owns the business now: it is left to the paths below.
+        if (
+            attempt is not None
+            and attempt.owner_id is not None
+            and attempt.status != CheckoutAttempt.Status.COMPLETED
+            and attempt.owner_id != hub_queries.owner_id(hub.id)
+        ):
+            return _end_not_owner(hub, attempt, session, subscription_id)
+        if checkout_session_kind(metadata) is CheckoutKind.PLAN_TAKEOVER:
+            return _takeover_completed(hub, session, subscription_id, metadata.get("replaces") or "")
         local = Subscription.objects.filter(hub=hub).first()
         if (
             local is not None
@@ -2561,6 +2763,125 @@ def _end_duplicate(
         updated_at=timezone.now(),
     )
     return "duplicate_subscription"
+
+
+#: The webhook's outcome of a checkout paid by somebody who no longer owns the business.
+NOT_OWNER = "not_owner"
+
+
+def _end_not_owner(hub: Hub, attempt: CheckoutAttempt, session: dict, subscription_id: str) -> str:
+    """A checkout paid by somebody who no longer owns the business (handed over while it was open, review of
+    saas#89): it is not applied. Its subscription ends now and what it charged is refunded in full (Stripe's
+    «Cancel + refund»; ``charge.refunded`` makes the rectifying invoice), the attempt says ``refunded`` (its audit
+    trail keeps when) and its payer is told after the COMMIT. Once: a redelivery finds it refunded. Stripe not
+    answering raises, so nothing is marked and Stripe delivers it again (the refund is idempotent)."""
+    if attempt.status == CheckoutAttempt.Status.REFUNDED:
+        return NOT_OWNER
+    live = stripe_service.retrieve_subscription(subscription_id)
+    if (live.get("status") or "") not in ENDED_STATUSES:
+        stripe_service.cancel_subscription(subscription_id)
+    invoice = live.get("latest_invoice") or ""
+    if isinstance(invoice, dict):
+        invoice = invoice.get("id") or ""
+    refunded = (
+        stripe_service.refund_invoice(
+            invoice,
+            key=f"refund-{session.get('id')}",
+            metadata={"hub_id": str(hub.id), "checkout_session": session.get("id") or "", "reason": NOT_OWNER},
+        )
+        if invoice
+        else 0
+    )
+    checkout_refund_record(
+        system_context(Scope("user", str(attempt.owner_id))),
+        CheckoutRefundRecordIn(attempt_id=attempt.id, refunded=refunded),
+    )
+    logger.error(
+        "[BILLING] Hub %s: checkout %s was paid by account %s, which no longer owns it. Subscription %s ended and "
+        "%s cents refunded",
+        hub.id,
+        session.get("id"),
+        attempt.owner_id,
+        subscription_id,
+        refunded,
+        extra={"event": "billing.checkout_not_owner", "hub_id": str(hub.id)},
+    )
+    return NOT_OWNER
+
+
+@operation(
+    "billing.checkout.refund_record",
+    kind="command",
+    permission="billing.manage",
+    input=CheckoutRefundRecordIn,
+    output=CheckoutRefundRecordOut,
+)
+def checkout_refund_record(ctx: OperationContext, data: CheckoutRefundRecordIn) -> dict:
+    """A checkout already ended and refunded in Stripe because its payer no longer owned the business (the platform
+    only, from the webhook; no route): the attempt says ``refunded`` (its audit trail keeps when), the event goes
+    to the payer's channel and the payer is told by mail after the COMMIT."""
+    attempt = CheckoutAttempt.objects.select_for_update().get(pk=data.attempt_id)
+    attempt.status = CheckoutAttempt.Status.REFUNDED
+    attempt.completed_at = timezone.now()
+    attempt.save(update_fields=["status", "completed_at", "updated_at"])
+    record_event(
+        ctx,
+        events.CHECKOUT_REFUNDED,
+        {"hub_id": str(attempt.hub_id), "attempt": str(attempt.id), "refunded": data.refunded},
+    )
+    transaction.on_commit(partial(_tell_refunded, attempt.owner_id, attempt.hub_id, data.refunded), robust=True)
+    return {"attempt_id": attempt.id, "status": attempt.status}
+
+
+def _tell_refunded(account_id, hub_id, cents: int) -> None:
+    """The mail to the payer of a checkout ended because they no longer owned the business (after the COMMIT).
+    One that cannot leave is logged (``billing.emails``): the refund and its rectifying invoice in Billing are
+    the record."""
+    from django.contrib.auth import get_user_model
+
+    from billing import emails
+
+    account = get_user_model().objects.filter(pk=account_id).first()
+    hub = Hub.objects.filter(pk=hub_id).first()
+    if account is None or hub is None:
+        logger.error("[BILLING] Nobody to tell of the refund of hub %s to account %s", hub_id, account_id)
+        return
+    try:
+        emails.send_checkout_refunded(hub, to=account.email, language=account.language, amount=from_cents(cents))
+    except emails.MailNotSent:
+        return
+
+
+def expire_open_checkouts(hub_id) -> None:
+    """After a hand-over's COMMIT (``hubs.ownership.accept``): the Checkout Sessions the business had open (its
+    previous owner's) can no longer be paid (Stripe's ``expire``). One Stripe no longer lets expire (paid meanwhile)
+    is left to the webhook, which refunds a payment of somebody who no longer owns it (``_end_not_owner``); Stripe
+    away is logged as an error and changes nothing else: the hand-over is done either way."""
+    for attempt in CheckoutAttempt.objects.filter(hub_id=hub_id, status=CheckoutAttempt.Status.OPEN).exclude(
+        stripe_session_id=None
+    ):
+        try:
+            stripe_service.expire_checkout_session(attempt.stripe_session_id)
+        except stripe_service.StripeRefused as refused:
+            logger.info(
+                "[BILLING] Checkout %s of hub %s is not open any more (%s): the webhook decides",
+                attempt.stripe_session_id,
+                hub_id,
+                refused.code,
+            )
+            continue
+        except (stripe_service.StripeUnavailable, stripe_service.StripeNotConfigured) as failed:
+            logger.error(
+                "[BILLING] Checkout %s of hub %s stays open after its hand-over: %s. A payment of it is refunded by "
+                "the webhook",
+                attempt.stripe_session_id,
+                hub_id,
+                failed,
+                extra={"event": "billing.checkout_not_expired", "hub_id": str(hub_id)},
+            )
+            continue
+        attempt.status = CheckoutAttempt.Status.EXPIRED
+        attempt.save(update_fields=["status", "updated_at"])
 
 
 def checkout_closed(session: dict, status: str) -> str:
@@ -3068,9 +3389,10 @@ def retax_subscription(hub: Hub) -> str:
     the paid period is not touched (no proration).
 
     ``retaxed`` · ``unchanged`` (Stripe already holds them: nothing sent) · ``skipped`` (no live Stripe
-    subscription) · ``refused`` (the place is not sold to now: an ERROR, and the old rates stay until the
-    billing details are fixed). With a downgrade waiting in a schedule, its phases are retaxed instead
-    (``_retax_schedule``). Stripe failing raises (``stripe_errors``)."""
+    subscription, or one still charged to another account's card: its tax is that payer's, HUBS-F28) ·
+    ``refused`` (the place is not sold to now: an ERROR, and the old rates stay until the billing details are
+    fixed). With a downgrade waiting in a schedule, its phases are retaxed instead (``_retax_schedule``). Stripe
+    failing raises (``stripe_errors``)."""
     subscription = Subscription.objects.filter(hub=hub).select_related("plan").first()
     if (
         subscription is None
@@ -3078,8 +3400,10 @@ def retax_subscription(hub: Hub) -> str:
         or subscription.status not in RETAX_STATUSES
     ):
         return "skipped"
-    require_stripe()
     hub = Hub.objects.select_related("billing_profile").get(pk=hub.pk)
+    if billed_to_another_account(subscription, hub.billing_profile):
+        return "skipped"
+    require_stripe()
     pending = pending_change(hub)
     if pending is not None:
         return _retax_schedule(hub, subscription, pending.stripe_schedule_id)

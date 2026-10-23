@@ -133,6 +133,9 @@ INSTALLED_APPS = [
     # WhatsApp, erplora.com's side (PLAN-SAAS §1.1, round 2026-10-15b): after hubs, whose businesses it serves
     # and whose snapshot carries its channel.
     "whatsapp",
+    # The AI gateway (PLAN-SAAS §1.1, round 2026-10-15b; PLAN §30): the providers ERPlora pays, their keys and
+    # models, which model answers and the clients of each provider's API (assistant/README.md).
+    "assistant",
     "public",
     # After `public`: its templates override the package's (public/templates/cookie_consent/).
     "cookie_consent",
@@ -665,6 +668,9 @@ CONTACT_FORM_RATELIMIT = config("CONTACT_FORM_RATELIMIT", default="10/h")
 SUPPORT_REPORT_RATELIMIT = config("SUPPORT_REPORT_RATELIMIT", default="5/h")
 # The browsers' CSP reports per address (/csp-report/, base/csp_report.py; the old SaaS's 60 an hour, ACCOUNTS-G78).
 CSP_REPORT_RATELIMIT = config("CSP_REPORT_RATELIMIT", default="60/h")
+# «Try a model» of the admin per member of the staff (ASSISTANT-F07; the old SaaS's 10 a minute): each try spends
+# ERPlora's key with the provider (django-ratelimit, over the default cache).
+ASSISTANT_TRY_RATELIMIT = config("ASSISTANT_TRY_RATELIMIT", default="10/m")
 # The demo hubs (PLAN-SAAS §3.5, round 2026-10-17; public/demo.py): one switch, and new demos per address
 # (django-ratelimit, over the default cache; a browser re-entering its live demo does not count). The Hub keeps
 # the cap of live demos (MAX_CONCURRENT_DEMOS) and the WAF limits /demo per IP too.
@@ -780,6 +786,14 @@ PLATFORM_INVOICING_ENABLED = config("PLATFORM_INVOICING_ENABLED", default=False,
 # cannot be guessed by brute force.
 PROMO_CHECK_RATE = config("PROMO_CHECK_RATE", default="20/m")
 
+# The AI gateway (assistant/, PLAN-SAAS §1.1): the providers' keys `import_ai_keys_from_env` keeps encrypted in the
+# database (ASSISTANT-F09); the staff may type them in the admin instead. Empty = nothing to load. The gateway reads
+# the keys from the database, never from here.
+OPENAI_API_KEY = config("OPENAI_API_KEY", default="")
+ANTHROPIC_API_KEY = config("ANTHROPIC_API_KEY", default="")
+GEMINI_API_KEY = config("GEMINI_API_KEY", default="")
+DEEPSEEK_API_KEY = config("DEEPSEEK_API_KEY", default="")
+
 # WhatsApp, erplora.com's side (whatsapp/, PLAN-SAAS §1.1, round 2026-10-15b): Meta's app («ERPlora Inbox»), its
 # Embedded Signup configuration and its webhook. Empty = WhatsApp is off, visibly: the webhook answers 503 and the
 # Hub's doors whatsapp.not_configured (`check --deploy` warns, whatsapp.W001). The secrets come from the
@@ -790,8 +804,8 @@ WHATSAPP_VERIFY_TOKEN = config("WHATSAPP_VERIFY_TOKEN", default="")
 WHATSAPP_CONFIG_ID = config("WHATSAPP_CONFIG_ID", default="")
 # The version of Meta's Graph API every call names.
 WHATSAPP_GRAPH_VERSION = config("WHATSAPP_GRAPH_VERSION", default="v25.0")
-# The key of the Meta credentials kept at rest (whatsapp/crypto.py, Fernet); during a rotation the previous one
-# still opens what it closed. Local development uses a fixed key; elsewhere it comes from the environment, and
+# The key of the credentials kept at rest (Meta's, whatsapp/crypto.py; the AI providers', assistant/crypto.py; Fernet);
+# during a rotation the previous one still opens what it closed. Local development uses a fixed key; elsewhere it comes from the environment, and
 # without it no number can be connected.
 FERNET_KEY = config("FERNET_KEY", default="yh5h4Yur2lIgWp9ZxkyLt1BrQfFVrwLH4WhIHCRwXXA=" if DEBUG else "")
 FERNET_KEY_PREVIOUS = config("FERNET_KEY_PREVIOUS", default="")

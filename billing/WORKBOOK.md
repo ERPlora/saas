@@ -292,7 +292,7 @@ Pasos:
 3. Si la persona cierra el diálogo antes de pagar, no se cobra nada y puede volver a abrirlo (BILLING-F10); el negocio sigue como estaba y no se borra nada.
 Entra: el pago que Stripe da por terminado.
 Sale: el mismo plan nuevo que deja el aviso de Stripe (BILLING-F19); la vuelta y el aviso nunca aplican dos veces el mismo pago.
-Si falla: un pago que Stripe da por fallido después cierra ese intento sin cambiar el plan; un pago de otra cosa (un módulo) nunca cambia el plan.
+Si falla: un pago que Stripe da por fallido después cierra ese intento sin cambiar el plan; un pago de otra cosa (un módulo) nunca cambia el plan. Un pago terminado por quien ya no es el propietario (el negocio se traspasó con el pago abierto, HUBS-F28) no se aplica: su suscripción se cancela, el cobro se devuelve entero (BILLING-F26 hace su rectificativa), el intento queda «Devuelto: ya no era el propietario» (`billing.checkout.refunded`) y le llega «Te hemos devuelto el pago de …» con el enlace a Facturación; si no se cobró nada, «Hemos cancelado tu plan de …». Una vez, aunque Stripe repita el aviso; si Stripe no responde, no se marca nada y Stripe lo vuelve a enviar.
 Implicados: el negocio (recibe su plan)
 
 ### BILLING-F10 Reintentar un pago que no se terminó
@@ -492,11 +492,11 @@ Actor: propietario, cuenta que paga
 Pantalla: Facturación › Suscripciones
 Pasos:
 1. En **Facturación › Suscripciones** hay una fila por negocio que paga: el plan y sus aplicaciones de pago a precio sin IVA (una cancelada dice «(hasta el …)» y deja de salir cuando termina), la próxima factura con IVA y el estado.
-2. Cada fila lleva sus acciones: la principal a la vista («Ver la factura» si hay una sin cobrar; si no, «Cambiar plan» o «Mantener el plan») y en «⋮» «Ver facturas» y «Cancelar plan».
+2. Cada fila lleva sus acciones: la principal a la vista («Ver la factura» si hay una sin cobrar; si no, «Mantenerlo con mi tarjeta», «Cambiar plan» o «Mantener el plan») y en «⋮» «Ver facturas» y «Cancelar plan».
 Entra: las suscripciones de los negocios que paga la cuenta o de los que es propietaria.
 Sale: nada.
-Si falla: sin negocios de pago, «Todos tus negocios están en Gratis» con «Ver planes»; sin los datos de quien paga, la próxima factura no puede calcular su IVA y se dice. Un propietario que no paga solo consulta.
-Implicados: ninguno
+Si falla: sin negocios de pago, «Todos tus negocios están en Gratis» con «Ver planes»; sin los datos de quien paga, la próxima factura no puede calcular su IVA y se dice. Un propietario cuyo plan cobra la tarjeta de otra cuenta (la del propietario anterior tras un traspaso) ve «Se paga con la tarjeta de otra cuenta»: no lo cambia ni lo cancela, lo mantiene con su tarjeta (HUBS-F28).
+Implicados: hubs (HUBS-F28: el plan de un negocio traspasado)
 
 ### BILLING-F24 Abrir el portal de pagos de Stripe para cambiar la tarjeta
 <!-- origen: old-saas:SAAS_DASHBOARD-F120 gh:saas#2554 fi:saas/orgs-users#portal-de-facturacion-stripe fi:saas/support/orgs-users#service-organizationstripeservice -->

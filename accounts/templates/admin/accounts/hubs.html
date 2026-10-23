@@ -5,11 +5,11 @@
   its deep link in the Hub admin (`hubs.erplora.com/admin/hub/<slug>/`).
 {% endcomment %}
 {% block breadcrumbs %}
-<div class="breadcrumbs">
-<a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
-&rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
-&rsaquo; {{ title }}
-</div>
+<ol class="breadcrumbs">
+<li><a href="{% url 'admin:index' %}">{% translate 'Home' %}</a></li>
+<li><a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a></li>
+<li aria-current="page">{{ title }}</li>
+</ol>
 {% endblock %}
 {% block content %}
 <div id="content-main">

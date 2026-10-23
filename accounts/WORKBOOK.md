@@ -1030,9 +1030,9 @@ Implicados: hubs, billing, public, apps y fiscal; del Hub, verifactu, invoice y 
   dos acciones solo las ve el superusuario y el soporte solo lee. La «revocación del comando»
   `revoke_user_sessions` del viejo es esa acción del admin (working-rules §4: todo por la UI o la API).
   allauth no nombra su modelo ni sus campos (salían en inglés en todo idioma): `UserSessionAdmin` nombra columnas
-  y etiquetas con `admin.display`, y el modelo con su `_meta` en vivo; las migraciones leen las opciones propias
-  del modelo (`_meta.original_attrs`), así que allauth no gana ninguna (`makemigrations --check` en
-  `tests/test_admin.py` lo vigila).
+  y etiquetas con `admin.display`, y `AccountsConfig.ready()` el modelo con su `_meta` en vivo; las migraciones
+  leen las opciones propias del modelo (`_meta.original_attrs`), así que allauth no gana ninguna
+  (`makemigrations --check` en `tests/test_admin.py` lo vigila).
 - Personal (F20): `admin_has_permission` (instalado en `config/urls.py`) exige, con el interruptor
   encendido, un autenticador TOTP; `admin_login` lleva al personal sin él a `/2fa?next=…`. En el SaaS nuevo
   el personal no tiene API propia: sus poderes viven en el admin y en el salto `hub-admin`, que ya exige el

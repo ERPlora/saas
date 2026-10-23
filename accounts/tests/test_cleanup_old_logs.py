@@ -115,11 +115,16 @@ def test_it_never_asks(entry, monkeypatch):
 def test_a_second_run_while_one_holds_the_lock_does_nothing(entry):
     old = entry(120)
     other = connections["default"].copy()
+    lock = [services.lock_name("cleanup_old_logs")]
     try:
         with other.cursor() as cursor:
-            cursor.execute("SELECT pg_advisory_lock(hashtext(%s))", [services.lock_name("cleanup_old_logs")])
+            cursor.execute("SELECT pg_advisory_lock(hashtext(%s))", lock)
         output = _run()
     finally:
+        # Released by hand: closing a pooled connection gives its session back to the pool with the lock held, and
+        # a later run (fiscal's test of this command too) would find it «already running» (conftest.py guards it).
+        with other.cursor() as cursor:
+            cursor.execute("SELECT pg_advisory_unlock(hashtext(%s))", lock)
         other.close()
 
     assert "already running" in output

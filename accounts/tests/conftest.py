@@ -7,6 +7,7 @@ import pytest
 from allauth.account.models import EmailAddress
 from django.contrib.auth import get_user_model
 from django.core import mail
+from django.db import connections
 from live.context import OperationContext, Scope
 from live.meta import all_live_app_configs, permissions_for_role
 
@@ -93,6 +94,30 @@ def age_sign_in(client, seconds: int = 3600) -> None:
         {**record, "at": record["at"] - seconds} for record in session.get(AUTHENTICATION_RECORDS, [])
     ]
     session.save()
+
+
+@pytest.fixture(autouse=True)
+def no_advisory_lock_left(request, django_db_blocker):
+    """No test leaves a command's advisory lock behind. A test that takes it from a copy of the connection releases it
+    by hand: closing a pooled connection gives its session back with the lock held, and a later run of that command,
+    another app's test too (fiscal's ``cleanup_old_logs``), finds it «already running» and does nothing."""
+    yield
+    if not (request.node.get_closest_marker("django_db") or {"db", "transactional_db"} & set(request.fixturenames)):
+        return
+    # Asked from a session of its own: the test's may sit in a transaction it aborted on purpose (rolled back after
+    # this teardown), and the pool may hand back the very session that kept the lock (no session is left out).
+    with django_db_blocker.unblock():
+        other = connections["default"].copy()
+        try:
+            with other.cursor() as cursor:
+                cursor.execute(
+                    "SELECT objid FROM pg_locks WHERE locktype = 'advisory' AND granted"
+                    " AND database = (SELECT oid FROM pg_database WHERE datname = current_database())"
+                )
+                left = cursor.fetchall()
+        finally:
+            other.close()
+    assert left == [], "an advisory lock is still held: release it before closing the copy of the connection"
 
 
 @pytest.fixture

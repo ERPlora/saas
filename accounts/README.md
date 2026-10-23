@@ -94,8 +94,9 @@ lista viva se refresca); ningún rol tiene su permiso y en el admin solo las ve 
   caducar con sus datos y el hash se comprueba en memoria (nada de cargar una sesión por fila), y el servidor la
   pagina, la actual primero (con más sesiones de las que caben en un resultado vivo no cargaba). Ubicación = IP
   (GeoIP fuera, plan §6). `UserSessionsAdapter` hace que cerrar por cualquier puerta avise a los negocios. En el
-  admin, «Sesiones de usuario» nombra su modelo y sus columnas en el idioma del personal (`UserSessionAdmin`:
-  allauth no les da nombre; solo el `_meta` en vivo, sin migración en allauth).
+  admin, «Sesiones de usuario» nombra su modelo y sus columnas en el idioma del personal (`UserSessionAdmin` las
+  columnas y `AccountsConfig.ready()` el modelo: allauth no les da nombre; solo el `_meta` en vivo, sin migración en
+  allauth).
 - **Segundo factor** (PLAN-SAAS, nota 2026-10-13 y ronda 19; ACCOUNTS-F05, F14–F17 y F20): `allauth.mfa` sobre
   headless, TOTP + códigos de recuperación, sin passkeys, detrás de `ACCOUNTS_MFA_ENABLED` (apagado por defecto en
   la fase 1: `MFAFlagMiddleware` responde 404 en sus rutas y `mfa.mfa_completed` es falso; nunca se cambia el
@@ -114,6 +115,10 @@ lista viva se refresca); ningún rol tiene su permiso y en el admin solo las ve 
   `admin_has_permission` (`admin.site.has_permission`, en `config/urls.py`) exige un TOTP (los códigos de
   recuperación solos no) y `admin_login` lleva al personal sin él a `/2fa?next=<ruta del admin>`, que ofrece
   «Continue» cuando la app está activa; el salto `hub-admin` lo exige siempre (`_needs_second_factor`).
+- **Nombres en el índice del admin** (`AccountsConfig.ready`): la sección de la app `account` de allauth se llama
+  «Email addresses» (solo guarda los correos; se llamaba «Accounts», como esta) y los autenticadores y las sesiones
+  de allauth llevan nombre traducible (salía el de su clase, sin `es`). Solo lo que se ve: ni etiqueta, ni tabla,
+  ni migración. Lo vigila `config/tests/test_admin_index.py` para toda app.
 - **Señales hacia `hubs`** (`signals.py`; `accounts` nunca importa `hubs`): `sessions_ended(user_id)` al cerrar
   sesiones, eliminar la cuenta o poner contraseña nueva (`password_changed/set/reset` de allauth; PLAN-SAAS
   §2.1) y `account_deleting(user_id)` antes de borrar la cuenta. Al cambiar el correo se envía `email_changed`

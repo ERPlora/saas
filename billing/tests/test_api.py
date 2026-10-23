@@ -29,6 +29,7 @@ def test_the_routes_are_bound_to_their_operations():
         "/billing/plan/change": [("POST", "billing.plan.change")],
         "/billing/plan/cancel": [("POST", "billing.plan.cancel")],
         "/billing/plan/keep": [("POST", "billing.plan.keep")],
+        "/billing/plan/take-over": [("POST", "billing.plan.take_over")],
         "/billing/module/cancel": [("POST", "billing.module.cancel")],
         "/billing/module/keep": [("POST", "billing.module.keep")],
         "/billing/portal": [("POST", "billing.portal.open")],

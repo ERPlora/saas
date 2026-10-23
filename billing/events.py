@@ -10,6 +10,9 @@ VAT_CHECK_COMPLETED = "billing.vat_check.completed"
 
 #: An Embedded Checkout was opened for a business (payload: ``hub_id``, ``kind``, ``attempt``).
 CHECKOUT_STARTED = "billing.checkout.started"
+#: A checkout paid by somebody who no longer owned the business was ended and refunded (payload: ``hub_id``,
+#: ``attempt``, ``refunded`` in cents; review of saas#89).
+CHECKOUT_REFUNDED = "billing.checkout.refunded"
 #: A module was added to a paying business's subscription (payload: ``hub_id``, ``module``).
 MODULE_ADDED = "billing.module.added"
 #: A module was cancelled (it works until the end of the period) or kept after all.
@@ -39,6 +42,7 @@ INVOICES = [INVOICE_RECORDED, INVOICE_VOIDED, INVOICE_FISCAL_STATUS_CHANGED, CRE
 ALL = [
     VAT_CHECK_COMPLETED,
     CHECKOUT_STARTED,
+    CHECKOUT_REFUNDED,
     MODULE_ADDED,
     MODULE_CANCELLED,
     MODULE_KEPT,

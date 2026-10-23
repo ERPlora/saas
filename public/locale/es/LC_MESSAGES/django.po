@@ -16,6 +16,28 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+#. django-cookie-consent's own names in the admin: the package has no Spanish (config/tests/test_admin_index.py).
+#. makemessages does not see them (they live in the package): keep them by hand.
+#: cookie_consent/apps.py
+msgid "cookie consent"
+msgstr "Consentimiento de cookies"
+
+#: cookie_consent/models.py
+msgid "Cookie Group"
+msgstr "Grupo de cookies"
+
+#: cookie_consent/models.py
+msgid "Cookie Groups"
+msgstr "Grupos de cookies"
+
+#: cookie_consent/models.py
+msgid "Log item"
+msgstr "Registro de consentimiento"
+
+#: cookie_consent/models.py
+msgid "Log items"
+msgstr "Registros de consentimiento"
+
 #: errors.py:102
 msgid "Internal error"
 msgstr "Error interno"

@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:811b5ba8688767301f79cfa21fccf23789a604a46f009574d4e82db0bcefaf39 -->
+<!-- generated from WORKBOOK.md sha256:eb5030943c894f46900f03a9c4c85656b5e05f98129a46267816d5790fb8cf17 -->
 
 ## What it is for and who it is for
 
@@ -279,7 +279,7 @@ Steps:
 3. If the person closes the dialog before paying, nothing is charged and they can open it again (BILLING-F10); the business stays as it was and nothing is deleted.
 In: the payment Stripe considers finished.
 Out: the same new plan that Stripe's notice leaves (BILLING-F19); the return and the notice never apply the same payment twice.
-If it fails: a payment that Stripe later considers failed closes that attempt without changing the plan; a payment for something else (a module) never changes the plan.
+If it fails: a payment that Stripe later considers failed closes that attempt without changing the plan; a payment for something else (a module) never changes the plan. A payment completed by somebody who no longer owns the business (handed over with the payment open, HUBS-F28) is not applied: its subscription is cancelled, the charge is refunded in full (BILLING-F26 makes its corrective invoice), the attempt says "Refunded: no longer the owner" (`billing.checkout.refunded`) and they get "Your payment for … was refunded" with the link to Billing; if nothing was charged, "Your plan for … was cancelled". Once, even if Stripe repeats the notice; if Stripe does not answer, nothing is marked and Stripe sends it again.
 Involved: the business (receives its plan)
 
 ### BILLING-F10 Retry a payment that was not finished
@@ -479,11 +479,11 @@ Actor: owner, paying account
 Screen: Billing › Subscriptions
 Steps:
 1. In **Billing › Subscriptions** there is one row per paying business: the plan and its paid apps at their price without VAT (a cancelled one says "(until …)" and stops showing once it ends), the next invoice with VAT and the status.
-2. Each row has its actions: the main one in view ("View the invoice" if there is an uncollected one; otherwise "Change plan" or "Keep the plan") and in "⋮" "View invoices" and "Cancel plan".
+2. Each row has its actions: the main one in view ("View the invoice" if there is an uncollected one; otherwise "Keep it with my card", "Change plan" or "Keep the plan") and in "⋮" "View invoices" and "Cancel plan".
 In: the subscriptions of the businesses the account pays or owns.
 Out: nothing.
-If it fails: without paid businesses, "All your businesses are on Free" with "See plans"; without the payer's details, the next invoice cannot work out its VAT and it is said. An owner who does not pay only looks.
-Involved: none
+If it fails: without paid businesses, "All your businesses are on Free" with "See plans"; without the payer's details, the next invoice cannot work out its VAT and it is said. An owner whose plan is charged to another account's card (the previous owner's after a transfer) sees "Paid with another account’s card": they neither change nor cancel it, they keep it with their card (HUBS-F28).
+Involved: hubs (HUBS-F28: the plan of a business handed over)
 
 ### BILLING-F24 Open Stripe's payment portal to change the card
 <!-- origen: old-saas:SAAS_DASHBOARD-F120 gh:saas#2554 fi:saas/orgs-users#portal-de-facturacion-stripe fi:saas/support/orgs-users#service-organizationstripeservice -->

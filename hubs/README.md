@@ -131,6 +131,35 @@ Flujos `HUBS-F15`…`HUBS-F23` del `WORKBOOK.md` (parte 2 de 4).
   el export por negocio de la fase 2 (PLAN-DB «Exports»).
 - **Dominio propio** (F17): no se porta en la fase 1; decisión de mercado y ronda propuesta en la PR de APP-HUBS-2.
 
+## Lo que añadió APP-HUBS-3 (2026-10-23): las personas de cada negocio
+
+Flujos `HUBS-F24`…`HUBS-F30` del `WORKBOOK.md` (parte 3 de 4): invitar, aceptar o rechazar, cambiar el rol, quitar,
+traspasar la propiedad, la pestaña «Miembros» y los accesos en el admin. El código ya estaba (L1-B, L1-A2); esta parte
+lo revisa flujo a flujo con su e2e en 3 tamaños (`tests/e2e/panel/hubs-people.spec.ts`) y arregla lo que no cuadraba:
+
+- **El correo de la oferta de propiedad** enlazaba a `/ownership/<id>`, una página que el panel no tiene: ahora lleva a
+  `/businesses`, donde está la tarjeta «… te ofrece …» con «Aceptar la propiedad». El de la aceptación, que mandaba a
+  los Ajustes del negocio (donde el pagador no se cambia), lleva a `/businesses/<id>` y, con un plan de pago, dice
+  que la tarjeta del saliente ya no lo renueva y hasta cuándo está pagado (F28; `hubs/tests/test_emails.py`).
+- **El pie de «Te han invitado»** prometía «Podrás salir de un negocio cuando quieras desde el panel.» y no hay forma de
+  salir uno mismo (como en Square, Toast o Shopify: quita el propietario o un administrador); ahora dice quién puede
+  quitar el acceso (`InvitationPage.test.ts`).
+- **El Hub cierra las sesiones** (hub, `MIGRATION-TASK: APP-HUBS-3`, BASE-F13): quitar, cambiar el rol y aceptar un
+  traspaso encolan `POST /internal/sessions/revoke` tras el COMMIT y lo reintentan (`SessionRevocation`); el Hub borra
+  esas sesiones por su índice (`base.SessionOwner`), su pestaña abierta deja de recibir y la foto aplica `members`
+  (rol al día, baja fuera). e2e de los dos juntos: `tests/e2e/base-session-revoke.spec.ts` del Hub.
+- **Mover el pagador** (F28, decisión de mercado: Wix, Shopify, Lightspeed, Squarespace, Fresha): el plan es del negocio
+  y la tarjeta no. `hubs.ownership.accept` llama a `billing.end_renewal_after_hand_over` en su transacción: el plan que
+  aún cobra la tarjeta de otra cuenta deja de renovarse (Stripe `cancel_at_period_end`; Stripe caído = 503 y el
+  negocio no cambia de manos). El nuevo propietario lo mantiene con su tarjeta en Facturación › Suscripciones
+  (`billing.plan.take_over`: Embedded Checkout con los mismos precios, `billing_cycle_anchor` = fin del periodo pagado
+  y sin prorrateo); el webhook pasa el negocio a la suscripción nueva y termina la anterior sin reembolso. Un cliente de
+  Stripe enviado sin su suscripción ya no pisa el de una suscripción viva (`hubs.subscription.apply`), y
+  `retax_subscription` no recalcula el impuesto de un plan que cobra otra cuenta. Tests:
+  `billing/tests/test_plan_take_over.py`; e2e: `tests/e2e/panel/hubs-people.spec.ts` («HUBS-G82 (F28)»).
+- **Sin página global de personas** (G86, G34, G115 del SaaS viejo): ronda 17, cada negocio enseña las suyas en
+  «Miembros». «Usuarios del Terminal» (G24) era esa misma página del SaaS viejo, no los empleados con PIN del Hub.
+
 ## Pendiente (lotes siguientes)
 
 - **Retirar `accounts.HubMembership`**, en este orden: (1) el salto pasa a `hubs` (`/hub-login/`,
@@ -144,8 +173,6 @@ Flujos `HUBS-F15`…`HUBS-F23` del `WORKBOOK.md` (parte 2 de 4).
   `id` los negocios que le llegan en la foto (los `a`/`b` adoptados aquí traen un UUID nuevo). Cuando los dos lados
   firmen v2, dejar de aceptar llamadas solo v1. `aws-next`: añadir `INTERNAL_SHARED_SECRET_PREVIOUS` (vacío) al
   secreto `erplora/prod/internal` y a las tres tareas para poder rotar sin despliegue de código.
-- Las páginas de Cuenta (L3-B) deben ofrecer verificar el correo: hoy una cuenta con su dirección sin verificar no
-  puede aceptar una invitación (403 `hubs.email_unverified`) y el SaaS no tiene aún la página que lo pida.
 - El SDK (`@erplora/ui`, `ApiError`) solo conserva `code`, `message` y `fields` del sobre de error: para pintar
   `limit` y `used` de `hubs.seat_limit` el panel (L1-D) necesita que los conserve; hoy los tiene en `seats` de la
   lista y en el mensaje.
