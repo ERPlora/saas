@@ -13,50 +13,18 @@ the model, never a failed turn: the old product's ``internal_error`` with a corr
 import base64
 import io
 import logging
-import os
-import sys
 import zipfile
-from contextlib import contextmanager
 
 import pytest
 from django.test import Client
 
 from assistant import attachments
 from assistant.tests.conftest import openai_answer
-from assistant.tests.doors import door, error_code, frames
+from assistant.tests.doors import door, error_code, files_written, frames
 from assistant.turn import TurnRefused, prepare
 
 PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
 COMPLETIONS = "/v1/chat/completions"
-
-
-_WRITE_FLAGS = os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_APPEND | os.O_TRUNC
-_watches: list[list[str]] = []
-
-
-def _record_writes(event: str, args: tuple) -> None:
-    """Audit hook: while a watch is open, note every file this process opens to write (Python's own bytecode cache
-    aside). It sees ``open()``, ``os.open`` and ``tempfile`` alike, whoever imported them and whenever."""
-    if not _watches or event != "open":
-        return
-    path, mode, flags = args
-    if "__pycache__" in str(path):
-        return
-    if (isinstance(mode, str) and any(c in mode for c in "wax+")) or (isinstance(flags, int) and flags & _WRITE_FLAGS):
-        _watches[-1].append(str(path))
-
-
-sys.addaudithook(_record_writes)
-
-
-@contextmanager
-def files_written():
-    written: list[str] = []
-    _watches.append(written)
-    try:
-        yield written
-    finally:
-        _watches.remove(written)
 
 
 def b64(raw: bytes) -> str:

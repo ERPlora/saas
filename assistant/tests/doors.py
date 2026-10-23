@@ -8,6 +8,8 @@ signed with the shared secret (``accounts.signing``: v1 over the body, or v2 ove
 import asyncio
 import contextlib
 import json
+import os
+import sys
 import time
 from typing import Any
 
@@ -91,3 +93,34 @@ def hang_up(response, *, after: float) -> None:
             await reading
 
     async_to_sync(read_then_cancel)()
+
+
+# --- Files written to disk (an audit hook: nothing escapes it) --------------------------------------------------
+
+_WRITE_FLAGS = os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_APPEND | os.O_TRUNC
+_watches: list[list[str]] = []
+
+
+def _record_writes(event: str, args: tuple) -> None:
+    """Audit hook: while a watch is open, note every file this process opens to write (Python's own bytecode cache
+    aside). It sees ``open()``, ``os.open`` and ``tempfile`` alike, whoever imported them and whenever."""
+    if not _watches or event != "open":
+        return
+    path, mode, flags = args
+    if "__pycache__" in str(path):
+        return
+    if (isinstance(mode, str) and any(c in mode for c in "wax+")) or (isinstance(flags, int) and flags & _WRITE_FLAGS):
+        _watches[-1].append(str(path))
+
+
+sys.addaudithook(_record_writes)
+
+
+@contextlib.contextmanager
+def files_written():
+    written: list[str] = []
+    _watches.append(written)
+    try:
+        yield written
+    finally:
+        _watches.remove(written)

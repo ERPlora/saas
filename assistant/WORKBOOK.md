@@ -291,7 +291,7 @@ Pasos:
 4. Con el negocio reconocido, la petición sigue: el freno de tasa, el cupo y lo que haya pedido se aplican a ese negocio y a ningún otro.
 Entra: la firma y su hora, el negocio (o la demo) y lo que pide.
 Sale: el negocio o la demo para el que se contesta; ningún negocio ve ni gasta el cupo de otro.
-Si falla: sin firma, con una firma mala, caducada o de otro secreto, se rechaza como no autorizada; un negocio que no existe o ya se borró, como desconocido; uno que se está preparando, suspendido o borrándose, como inactivo; una petición que no es la que espera cada puerta se rechaza diciendo qué campos fallan; otra cosa que no sea un envío se rechaza; un cuerpo que pasa del tamaño de su puerta se rechaza antes de leerlo. Nada de eso gasta mensajes ni freno.
+Si falla: sin firma, con una firma mala, caducada o de otro secreto, se rechaza como no autorizada; un negocio que no existe o ya se borró, como desconocido; uno que se está preparando, suspendido o borrándose, como inactivo; una petición que no es la que espera cada puerta se rechaza diciendo qué campos fallan; otra cosa que no sea un envío se rechaza; un cuerpo que pasa del tamaño de su puerta se rechaza sin guardarlo. Nada de eso gasta mensajes ni freno.
 Implicados: ASSISTANT-F16, ASSISTANT-F18
 
 ### ASSISTANT-F12 Contestar un turno del asistente en directo
@@ -571,7 +571,10 @@ propio texto por `code`.
 - **Adjuntos** (`assistant/attachments.py`): `image_url` con `data:` de imagen, `input_file` con `filename`,
   `mime_type` y `data`; `MAX_ATTACHMENT_BYTES` (12 MB de base64) por adjunto, `MAX_ATTACHMENTS` (20) por
   conversación, `MAX_EXTRACTED_CHARS` por documento, zip comprobado antes de abrirlo; nada a disco (un test lo vigila
-  con un audit hook de Python, `test_attachments.py`).
+  con un audit hook de Python, `test_attachments.py`). Tampoco el cuerpo de la petición: Django lo pasaría a un
+  temporal en disco por encima de `FILE_UPLOAD_MAX_MEMORY_SIZE` (2,5 MB) antes de la vista; `config/asgi.py`
+  (`BodiesInMemory`) guarda en memoria el de `/internal/assistant/*` y `/internal/speech/*` hasta `TURN_BODY_BYTES` y
+  descarta lo que pase (la puerta contesta 413), `test_body_in_memory.py`.
 - **Huellas y voz** (`assistant/media.py`): el proveedor de servicios es el `AIProvider` de slug
   `ASSISTANT_SERVICE_PROVIDER` («openai»), de API OpenAI, activado y con clave (`assistant.service.connection`);
   modelos fijos `text-embedding-3-small`, `whisper-1` y `tts-1`.

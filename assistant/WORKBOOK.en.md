@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:c5cf4e2c831001bd79fc4a5edda9951b323123a57995eca2a8f4e4b8e8fccbf9 -->
+<!-- generated from WORKBOOK.md sha256:fc307f465505e38ebaaed3d3e7474da9133fe9cd6ed74f51c5e5709bee3815fb -->
 
 ## What it is for and who uses it
 
@@ -269,7 +269,7 @@ Steps:
 4. With the business recognised, the request goes on: the rate limit, the allowance and what it asked for apply to that business and to no other.
 In: the signature and its time, the business (or the demo) and what it asks for.
 Out: the business or the demo the answer is for; no business sees nor spends another's allowance.
-If it fails: without a signature, with a bad one, a stale one or one of another secret, it is refused as unauthorised; a business that does not exist or was already deleted, as unknown; one being prepared, suspended or being deleted, as inactive; a request that is not what each door expects is refused saying which fields fail; anything other than a submission is refused; a body over its door's size is refused before reading it. None of that spends messages nor the rate limit.
+If it fails: without a signature, with a bad one, a stale one or one of another secret, it is refused as unauthorised; a business that does not exist or was already deleted, as unknown; one being prepared, suspended or being deleted, as inactive; a request that is not what each door expects is refused saying which fields fail; anything other than a submission is refused; a body over its door's size is refused without keeping it. None of that spends messages nor the rate limit.
 Involved: ASSISTANT-F16, ASSISTANT-F18
 
 ### ASSISTANT-F12 Answer an assistant turn live

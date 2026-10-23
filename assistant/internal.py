@@ -10,7 +10,7 @@ for its model holds no thread. Each one names the business in ``hub`` (its addre
 address).
 
 Every door, before its own answer: 405 ``method_not_allowed``, 413 ``payload_too_large`` (a declared body over its
-limit, before it is read), 401 ``unauthorized`` (unsigned, stale or another secret), 422 ``invalid_payload`` (not JSON
+limit, before it is parsed; the server keeps none of it, ``config.asgi.BodiesInMemory``), 401 ``unauthorized`` (unsigned, stale or another secret), 422 ``invalid_payload`` (not JSON
 or not the contract, with the failing ``fields``), 404 ``hub_unknown``, 403 ``hub_inactive`` and 429 ``rate_limited``
 (with ``Retry-After``; the business's budget of the door, spent only once the signature and the business passed,
 saas#2531). An operation's refusal is its envelope ``{"error": {"code", "message"}}``.

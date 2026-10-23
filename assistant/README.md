@@ -22,7 +22,7 @@ la voz y las denuncias. El contrato de esas puertas, en «Para quien lo mantiene
 | `internal.py` | Las puertas del Hub, vistas asíncronas firmadas (`door`: método, tamaño, firma, contrato, quién llama y freno por negocio): el turno en directo y de una vez, el cupo, las huellas, el dictado, la lectura en voz alta y la denuncia. |
 | `turn.py` | El turno: prepara la conversación, ofrece las herramientas, emite los frames, el token de continuación de un solo uso y lo gastado (`Outcome`). |
 | `server_tools.py` | Las herramientas que ejecuta erplora.com: fecha y hora, tipo de cambio del BCE (Frankfurter) y búsqueda web (Tavily, con clave). |
-| `attachments.py` | Los adjuntos: imágenes al modelo que ve, PDF/Word/Excel/texto a texto en memoria, con topes y el zip comprobado. |
+| `attachments.py` | Los adjuntos: imágenes al modelo que ve, PDF/Word/Excel/texto a texto en memoria, con topes y el zip comprobado. El cuerpo de las puertas lo guarda en memoria el servidor (`config/asgi.py`, `BodiesInMemory`), nunca en el temporal en disco de Django. |
 | `media.py` | Huellas (`text-embedding-3-small`), dictado (`whisper-1`) y lectura en voz alta (`tts-1`) por la API de OpenAI del proveedor de servicios. |
 | `providers/` | Clientes `httpx` de OpenAI, Anthropic, Gemini y DeepSeek (`base.py`, `factory.py`): eventos normalizados, sin SDK ni caché. |
 | `auditlog.py` | Registro de auditoría (django-auditlog) de los cuatro modelos, sin la clave ni `updated_at`. |
