@@ -79,6 +79,9 @@ def test_the_staff_filter_the_accounts_by_active_staff_and_language(staff_client
     response = client.get("/admin/accounts/user/", filters)
 
     assert sorted(user.email for user in response.context["cl"].result_list) == found
+    # The admin answers any lookup on a field of its own: the filters must be offered on the page too.
+    offered = {spec.field_path for spec in response.context["cl"].filter_specs}
+    assert {"is_active", "is_staff", "language"} <= offered
 
 
 def test_exchange_codes_are_read_only(staff_client):
