@@ -295,6 +295,23 @@ class TestTheAdmin:
         assert detail.status_code == 200
         assert client.get("/admin/auditlog/logentry/add/").status_code == 403
 
+    def test_nobody_deletes_an_entry_here_not_even_the_superuser(self, client, ana):
+        """The trail is read only for the whole staff (our ``LogEntryAdmin`` keeps auditlog's own permissions): the
+        delete page is refused and the list offers no «Delete selected» action; 90 days of it go by ``cleanup_old_logs``
+        (ACCOUNTS-F37), never by hand."""
+        ana.first_name = "Anabel"
+        ana.save()
+        root = get_user_model().objects.create_superuser(email="root@example.com", password="x")
+        client.force_login(root)
+        entry = _entries_for(ana).filter(action=LogEntry.Action.UPDATE).get()
+
+        refused = client.post(f"/admin/auditlog/logentry/{entry.pk}/delete/", {"post": "yes"})
+        listing = client.get("/admin/auditlog/logentry/").content.decode()
+
+        assert refused.status_code == 403
+        assert LogEntry.objects.filter(pk=entry.pk).exists()
+        assert 'value="delete_selected"' not in listing
+
     def test_staff_without_the_permission_does_not_see_it(self, client):
         staff = get_user_model().objects.create_user(email="support@example.com", password="x", is_staff=True)
         client.force_login(staff)
