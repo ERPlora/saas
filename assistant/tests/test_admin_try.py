@@ -74,7 +74,8 @@ def run(client, model, prompt=PROMPT, **extra):
 def test_the_page_of_the_model_that_answers_leads_to_trying_a_model(as_ai_admin):
     page = as_ai_admin.get(POLICY).content.decode()
 
-    assert f'href="{TRY}"' in page and "Try a model" in page
+    # Once: the admin paints the block of the page's tools in its own place (a second copy inside the page doubled it).
+    assert page.count(f'href="{TRY}"') == 1 and "Try a model" in page
 
 
 def test_who_may_only_look_at_the_policy_is_not_led_to_try_a_model(client, make_user):
@@ -259,3 +260,31 @@ def test_a_run_stays_in_the_audit_trail_without_the_message(as_ai_admin, ai_admi
     assert PROMPT not in json.dumps([entry.additional_data, entry.changes, entry.serialized_data], default=str)
     [event] = OutboxEvent.objects.filter(name="assistant.model.tried")
     assert event.payload == {"model": str(tried.pk), "prompt_chars": len(PROMPT), "tools": 1}
+
+
+# --- The gateway's own pages look like the rest of the admin -----------------------------------------------------
+
+
+@pytest.mark.parametrize("page_of", ["policy", "try", "models"])
+def test_the_gateways_own_pages_carry_the_admins_breadcrumbs_and_form_styles(as_ai_admin, provider, page_of):
+    """Django 6.1 styles its breadcrumbs as a list and its aligned forms with ``forms.css``: a page of our own that
+    kept the older ``<div>`` showed a bare line of links, and its fields out of line."""
+    path = {"policy": POLICY, "try": TRY, "models": f"/admin/assistant/aiprovider/{provider.pk}/models/"}[page_of]
+
+    page = as_ai_admin.get(path).content.decode()
+
+    assert '<ol class="breadcrumbs">' in page and '<div class="breadcrumbs">' not in page
+    assert "/static/admin/css/forms.css" in page
+
+
+def test_the_last_change_of_the_model_that_answers_reads_as_one_sentence(as_ai_admin, ai_admin, provider):
+    from assistant import services
+    from assistant.schemas import PolicyIn
+    from assistant.tests.conftest import staff_ctx
+
+    model = AIModel.objects.create(provider=provider, model_id="gpt-5.5", display_name="GPT-5.5")
+    services.policy_update(staff_ctx(ai_admin), PolicyIn(active_model=model.pk))
+
+    page = as_ai_admin.get(POLICY).content.decode()
+
+    assert "Last changed by ai-admin@erplora.com on " in page and ".." not in page

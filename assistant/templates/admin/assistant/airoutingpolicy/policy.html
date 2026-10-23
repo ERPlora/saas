@@ -1,17 +1,18 @@
 {% extends "admin/base_site.html" %}
-{% load i18n %}
+{% load i18n static %}
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static "admin/css/forms.css" %}">{% endblock %}
 {% block breadcrumbs %}
-<div class="breadcrumbs">
-  <a href="{% url 'admin:index' %}">{% translate "Home" %}</a>
-  &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
-  &rsaquo; {{ title }}
-</div>
+<ol class="breadcrumbs">
+<li><a href="{% url 'admin:index' %}">{% translate "Home" %}</a></li>
+<li><a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a></li>
+<li aria-current="page">{{ title }}</li>
+</ol>
 {% endblock %}
+{% block object-tools %}{% if can_change %}
+<ul class="object-tools"><li><a href="{{ try_url }}">{% translate "Try a model" %}</a></li></ul>
+{% endif %}{% endblock %}
 {% block content %}
 <div id="content-main">
-  {% block object-tools %}{% if can_change %}
-    <ul class="object-tools"><li><a href="{{ try_url }}">{% translate "Try a model" %}</a></li></ul>
-  {% endif %}{% endblock %}
   <p>{% translate "The model that answers every turn of the assistant, and the one that answers when its provider fails or cannot be used." %}</p>
   {% if active_missing %}<p class="errornote">{% translate "The model that answers is off or its provider is: choose another one." %}</p>{% endif %}
   {% if fallback_missing %}<p class="errornote">{% translate "The fallback model is off or its provider is: choose another one." %}</p>{% endif %}
@@ -39,7 +40,7 @@
         <div class="help">{% translate "Answers when the provider of the first one fails or cannot be used." %}</div>
       </div>
       {% if shown.updated_by %}
-        <div class="form-row"><p>{% blocktranslate with who=shown.updated_by when=shown.updated_at %}Last changed by {{ who }} on {{ when }}.{% endblocktranslate %}</p></div>
+        <div class="form-row"><p>{% blocktranslate with who=shown.updated_by when=shown.updated_at|date:"j M Y, H:i" %}Last changed by {{ who }} on {{ when }}.{% endblocktranslate %}</p></div>
       {% endif %}
     </fieldset>
     {% if can_change %}

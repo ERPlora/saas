@@ -1,7 +1,10 @@
 {% extends "admin/base_site.html" %}
-{% load i18n %}
+{% load i18n static %}
 {% block extrastyle %}{{ block.super }}
+<link rel="stylesheet" href="{% static "admin/css/forms.css" %}">
 <style>
+  /* The admin's own display (.errornote, .module, tables) would beat the attribute: what is hidden stays hidden. */
+  #content-main [hidden] { display: none !important; }
   #try-model textarea { box-sizing: border-box; width: 100%; max-width: 48rem; font-family: inherit; }
   #try-model select { max-width: 100%; }
   #try-answer { white-space: pre-wrap; overflow-wrap: anywhere; padding: 1rem; min-height: 4rem; max-width: 48rem;
@@ -11,12 +14,12 @@
 </style>
 {% endblock %}
 {% block breadcrumbs %}
-<div class="breadcrumbs">
-  <a href="{% url 'admin:index' %}">{% translate "Home" %}</a>
-  &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
-  &rsaquo; <a href="{{ policy_url }}">{% translate "Model that answers" %}</a>
-  &rsaquo; {{ title }}
-</div>
+<ol class="breadcrumbs">
+<li><a href="{% url 'admin:index' %}">{% translate "Home" %}</a></li>
+<li><a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a></li>
+<li><a href="{{ policy_url }}">{% translate "Model that answers" %}</a></li>
+<li aria-current="page">{{ title }}</li>
+</ol>
 {% endblock %}
 {% block content %}
 <div id="content-main">
