@@ -28,7 +28,8 @@ METHODS = ("GET", "POST", "PUT", "DELETE")
 #: An unsigned call is refused (401) or not on that method (405); nothing else, ever.
 REFUSED = {401, 405}
 _CONVERTER = re.compile(r"<(?:(?P<kind>[a-z]+):)?(?P<name>\w+)>")
-_SAMPLES = {"uuid": str(uuid.uuid7()), "int": "1", "path": "x", "slug": "x", "str": "x", None: "x"}
+#: Fixed values for the path converters: the test ids must be the same in every pytest-xdist worker.
+_SAMPLES = {"uuid": "0199f2a4-0000-7000-8000-000000000001", "int": "1", "path": "x", "slug": "x", "str": "x", None: "x"}
 
 
 def _routes(patterns, prefix=""):
