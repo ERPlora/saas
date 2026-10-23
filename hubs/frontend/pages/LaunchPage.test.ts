@@ -511,6 +511,14 @@ describe('LaunchPage: several businesses', () => {
     expect(s.opened()).toEqual([{ id: 'salon', next: '/' }]);
   });
 
+  // flow: HUBS-F04 «Si falla»: with several businesses it enters none by itself; the person chooses.
+  it('one of them getting ready opens nothing by itself', async () => {
+    const s = await showing(page(ROWS));
+    await s.result(s.call, 'hubs.business.list', page([ROWS[0], ROWS[1], row('cafe', 'Café Central')]), 2);
+    expect(s.opened()).toEqual([]);
+    expect(s.navigate).not.toHaveBeenCalled();
+  });
+
   it('offers to create another business in the panel', async () => {
     const s = await showing(page(ROWS));
     await s.testid('launch-create-another').trigger('click');
