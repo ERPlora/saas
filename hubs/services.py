@@ -1394,6 +1394,27 @@ def owe_plan_rights(plan: Plan, now=None) -> int:
     return owed
 
 
+def owe_module_rights(tier: str, previous_tier: str | None = None, now=None) -> int:
+    """A paid module of ``tier`` was added in the admin, or moved there from ``previous_tier`` (HUBS-F34): every live
+    business whose plan (or trial) reaches either level gets its plan's modules written again (``sync_plan_modules``)
+    and, where they changed, owes the Hub a newer snapshot, which the next pass of ``reconcile_hub_states`` delivers.
+    How many businesses owe it. Never pushed here, as ``owe_plan_rights``."""
+    now = now or timezone.now()
+    reached = [queries.LEVELS.index(level) for level in (tier, previous_tier) if level in queries.LEVELS]
+    if not reached:
+        return 0
+    plans = Plan.objects.filter(included_level__in=queries.LEVELS[min(reached) :])
+    owed = 0
+    subscriptions = Subscription.objects.select_related("plan", "trial_plan").filter(
+        Q(plan__in=plans) | Q(trial_plan__in=plans), hub__status__in=LIVE_STATUSES
+    )
+    for subscription in subscriptions.order_by("pk"):
+        if sync_plan_modules(subscription, now):
+            bump_state(subscription.hub_id)
+            owed += 1
+    return owed
+
+
 def _apply_standing(hub: Hub, standing: str, *, was_unpaid: bool) -> bool:
     if standing == "good" and not was_unpaid:
         return False

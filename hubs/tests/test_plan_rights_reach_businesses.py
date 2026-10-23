@@ -131,3 +131,82 @@ def test_a_business_trying_the_plan_owes_it_too(staff_client, business):
     edit(staff_client, "starter", max_users=10)
 
     assert versions(business) == [before[0] + 1]
+
+
+# --- HUBS-F34: a paid module added in the admin, or moved to another level -------------------------------------------
+# What the plans include is every module their level reaches (``queries.modules_included_in``), written per business by
+# ``sync_plan_modules``: a module saved in the admin reached nobody until Stripe next spoke of each business.
+
+
+@pytest.fixture
+def whatsapp(settings):
+    from apps.tests.factories import make_app
+
+    settings.STRIPE_SECRET_KEY = ""  # no Stripe here: the admin saves and says the prices were not checked
+    return make_app("whatsapp_inbox", premium=True)
+
+
+def module_form(**changes) -> dict[str, str]:
+    return {
+        "slug": "whatsapp_inbox",
+        "tier": "basic",
+        "price_monthly_cents": "999",
+        "price_annual_cents": "0",
+        "stripe_product_id": "",
+        "stripe_price_id_monthly": "",
+        "stripe_price_id_annual": "",
+        "is_active": "on",
+        **changes,
+    }
+
+
+def plan_modules(business) -> list[str]:
+    return sorted(
+        SubscriptionItem.objects.filter(subscription__hub=business, source=SubscriptionItem.Source.PLAN).values_list(
+            "module_slug", flat=True
+        )
+    )
+
+
+def test_a_new_module_of_a_plans_level_reaches_its_businesses(staff_client, business, on_starter, whatsapp):
+    before = versions(business, on_starter)
+
+    response = staff_client.post("/admin/apps/module/add/", module_form(), follow=True)
+
+    assert response.status_code == 200
+    assert (plan_modules(on_starter), plan_modules(business)) == (["whatsapp_inbox"], [])
+    assert versions(business, on_starter) == [before[0], before[1] + 1]
+    told = [str(message) for message in get_messages(response.wsgi_request)]
+    assert "1 business whose plan includes it gets the change within 15 minutes." in told
+
+
+def test_the_next_pass_takes_the_module_to_the_hub(staff_client, on_starter, whatsapp, hub_double):
+    services.reconcile()
+    staff_client.post("/admin/apps/module/add/", module_form())
+
+    services.reconcile()
+
+    state = hub_double.calls_to("PUT", f"/internal/hubs/{on_starter.id}/state")[-1].body
+    assert {"id": "whatsapp_inbox", "source": "plan", "valid_until": None} in state["modules"]
+
+
+def test_a_module_moved_up_a_level_leaves_the_plans_below(staff_client, on_starter, whatsapp):
+    staff_client.post("/admin/apps/module/add/", module_form())
+    module = Module.objects.get(slug="whatsapp_inbox")
+    before = versions(on_starter)
+
+    staff_client.post(f"/admin/apps/module/{module.pk}/change/", module_form(tier="pro"))
+
+    assert plan_modules(on_starter) == []
+    assert versions(on_starter) == [before[0] + 1]
+
+
+def test_a_change_of_its_prices_owes_nothing(staff_client, on_starter, whatsapp):
+    staff_client.post("/admin/apps/module/add/", module_form())
+    module = Module.objects.get(slug="whatsapp_inbox")
+    before = versions(on_starter)
+
+    response = staff_client.post(f"/admin/apps/module/{module.pk}/change/", module_form(price_monthly_cents="1299"))
+
+    assert response.status_code == 302
+    assert versions(on_starter) == before
