@@ -195,7 +195,8 @@ La plataforma no vive en `accounts/` sino en `base/` y `config/`; su manual es `
   `base/admin.py`, `base.queries.maintenance_state` y `base/maintenance.py`, con `templates/503.html`.
 - **`manage.py purge_expired_sessions`** (F44, diaria): sesiones caducadas, filas de «Sesiones activas» sin sesión,
   códigos de salto y cambios de correo caducados (`services.purge_expired_sign_in_leftovers`), con candado y
-  `--dry-run`. Sustituye a `clearsessions_task` y `flush_expired_tokens_task` del viejo (aquí no hay JWT).
+  `--dry-run`. Sustituye a `clearsessions_task` y `flush_expired_tokens_task` del viejo (aquí no hay JWT). La lanza
+  `saas-cron` cada noche a las 00:20 UTC (`purge-expired-sessions-nightly` de `aws/stacks/prod/scheduler.tf`).
 - **Correos** (F46): `AWS_SES_CONFIG` en `config/settings.py` (3 s + 10 s, dos intentos); cada correo, en texto y en
   HTML sobre `templates/emails/base.html` con `base/emails.py` (`branded_message`); los de allauth, por
   `AccountAdapter.render_mail`, y sus avisos propios con su `_message.html` (`templates/account/email/`,
@@ -233,8 +234,7 @@ La plataforma no vive en `accounts/` sino en `base/` y `config/`; su manual es `
 
 ## Pendiente (de otros carriles)
 
-- **`aws`**: programar `anonymize_old_users` (semanal), `cleanup_old_logs` (diaria) y `purge_expired_sessions`
-  (diaria) en `saas-cron`.
+- **`aws`**: programar `anonymize_old_users` (semanal) y `cleanup_old_logs` (diaria) en `saas-cron`.
 - **`hubs`**: sus correos (`hubs/emails.py`: personas, invitaciones, roles y traspaso) pasan a la plantilla común
   (`base/emails.py`, ACCOUNTS-F46) con su porte; hoy salen en texto.
 
