@@ -192,7 +192,7 @@ Actor: system
 Screen: WhatsApp inbox (in the Hub)
 Steps:
 1. A customer writes to the business's number (or the owner replies from the phone, or the history arrives on connecting): Meta reports it to erplora.com, which checks the notice is Meta's and keeps it for the business of that number.
-2. erplora.com hands it to the Hub at once; if the Hub is away or does not have the inbox switched on, it tries again with a wait that grows up to one hour, every minute while something is left.
+2. erplora.com hands it to the Hub at once; if the Hub is away or does not have the inbox switched on, it tries again with a wait that grows up to one hour, every minute while something is left. If the Hub is slow, each minute hands over what fits in that minute, without repeating what is still on its way.
 3. A photo, a voice note or a document arrive as an erplora.com link that only a person of the business opens with their session; the file comes from Meta at that moment and is not kept.
 4. The status of a message of the business ("Delivered", "Read", "Not delivered") reaches the inbox: that of one sent from the Hub, once erplora.com knows which it is; that of a reply of the owner from the phone, after that reply.
 In: Meta's notices: messages, echoes from the phone, history, delivery statuses and template verdicts.
@@ -262,7 +262,7 @@ Steps:
 3. If Meta refuses it, or does not answer and 3 days or less are left, it marks the number "Needs reconnecting" (the Hub shows it) and sends an email, in their language, to the business's owner, one per incident.
 In: the connected numbers and their permissions.
 Out: the permission renewed or the "Needs reconnecting" mark with the email (`whatsapp.number.reconnect_needed`).
-If it fails: if Meta does not answer and there is time left, it is retried the next day; an email that does not go out is retried in the next round; a number that fails does not stop the others; without Meta's app configured, the task ends with an error for the team.
+If it fails: if Meta does not answer and there is time left, it is retried the next day; an email that does not go out is retried in the next round; a number that fails does not stop the others; with no number to renew, the task ends well even without Meta's app; with numbers to renew and Meta's app not configured, it ends with an error for the team.
 Involved: businesses (the owner), the Hub's WhatsApp inbox
 
 ### WHATSAPP-F13 Confirm to Meta that the notices address is ours

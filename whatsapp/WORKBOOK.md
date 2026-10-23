@@ -211,7 +211,7 @@ Actor: sistema
 Pantalla: Bandeja de WhatsApp (en el Hub)
 Pasos:
 1. Un cliente escribe al número del negocio (o el dueño contesta desde el móvil, o llega el historial al conectar): Meta lo cuenta a erplora.com, que comprueba que el aviso es de Meta y lo guarda para el negocio de ese número.
-2. erplora.com lo entrega al Hub en el momento; si el Hub no está o no tiene la bandeja encendida, lo vuelve a intentar con una espera que crece hasta una hora, cada minuto mientras le quede algo.
+2. erplora.com lo entrega al Hub en el momento; si el Hub no está o no tiene la bandeja encendida, lo vuelve a intentar con una espera que crece hasta una hora, cada minuto mientras le quede algo. Si el Hub va lento, cada minuto entrega lo que cabe en ese minuto, sin repetir lo que aún está entregando.
 3. Una foto, una nota de voz o un documento llegan como un enlace de erplora.com que solo abre una persona del negocio con su sesión; el archivo viene de Meta en ese momento y no se guarda.
 4. El estado de un mensaje del negocio («Entregado», «Leído», «No entregado») llega a la bandeja: el de uno enviado desde el Hub, cuando erplora.com sabe cuál es; el de una respuesta del dueño desde el móvil, después de esa respuesta.
 Entra: los avisos de Meta: mensajes, ecos del móvil, historial, estados de entrega y veredictos de plantillas.
@@ -286,7 +286,7 @@ Pasos:
 3. Si Meta lo rechaza, o no contesta y quedan 3 días o menos, marca el número «Hay que reconectar» (el Hub lo enseña) y manda un correo, en su idioma, al propietario del negocio, uno por incidente.
 Entra: los números conectados y sus permisos.
 Sale: el permiso renovado o la marca «Hay que reconectar» con el correo (`whatsapp.number.reconnect_needed`).
-Si falla: si Meta no contesta y queda margen, se reintenta al día siguiente; un correo que no sale se reintenta en la vuelta siguiente; un número que falla no para a los demás; sin la app de Meta configurada, la tarea termina con error para el equipo.
+Si falla: si Meta no contesta y queda margen, se reintenta al día siguiente; un correo que no sale se reintenta en la vuelta siguiente; un número que falla no para a los demás; sin ningún número que renovar, la tarea termina bien aunque falte la app de Meta; con números que renovar y sin la app de Meta configurada, termina con error para el equipo.
 Implicados: negocios (el propietario), bandeja de WhatsApp del Hub
 
 ### WHATSAPP-F13 Confirmar a Meta que la dirección de los avisos es nuestra

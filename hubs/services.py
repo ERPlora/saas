@@ -845,7 +845,7 @@ def _refuse_a_payer(target: HubMember) -> None:
         ) % {"name": name}
     else:
         message = _(
-            "This business's plan is still paid with %(name)s's card: contact support to move it to you first."
+            "This business's plan is still paid with %(name)s's card: keep it with yours in Billing first."
         ) % {"name": name}
     raise Conflict(message, code="hubs.member_pays")
 
@@ -1015,7 +1015,13 @@ def ownership_transfer(ctx: OperationContext, data: OwnershipTransferIn) -> dict
     record_event(ctx, events.OWNERSHIP_REQUESTED, {"id": str(transfer.id), "hub_id": str(hub.id)})
     notify_people(ctx, events.OWNERSHIP_CHANGED, hub.id, target.user_id)
     transaction.on_commit(
-        partial(emails.send_ownership_offer, transfer, base_url=emails.base_url(ctx.request)), robust=True
+        partial(
+            emails.send_ownership_offer,
+            transfer,
+            base_url=emails.base_url(ctx.request),
+            paid_until=queries.paid_until(hub.id),
+        ),
+        robust=True,
     )
     return _transfer_out(transfer)
 
@@ -1072,6 +1078,12 @@ def ownership_accept(ctx: OperationContext, data: ByIdIn) -> dict:
     transfer.status = Transfer.ACCEPTED
     transfer.resolved_at = now
     transfer.save(update_fields=["status", "resolved_at"])
+    # A paid plan stops renewing on the previous payer's card; the new owner keeps it with theirs (HUBS-F28).
+    from billing.services import end_renewal_after_hand_over, expire_open_checkouts
+
+    paid_until = end_renewal_after_hand_over(transfer.hub, transfer.to_user)
+    # What the previous owner left open in Stripe Checkout can no longer be paid (review of saas#89).
+    transaction.on_commit(partial(expire_open_checkouts, transfer.hub_id), robust=True)
     sync_access(transfer.hub)
     bump_state(transfer.hub_id)
     # Both roles changed, and each travels in its Hub session: both sign in again.
@@ -1081,7 +1093,10 @@ def ownership_accept(ctx: OperationContext, data: ByIdIn) -> dict:
     notify_people(ctx, events.OWNERSHIP_CHANGED, transfer.hub_id, transfer.from_user_id)
     push_after_commit(transfer.hub_id)
     transaction.on_commit(
-        partial(emails.send_ownership_accepted, transfer, base_url=emails.base_url(ctx.request)), robust=True
+        partial(
+            emails.send_ownership_accepted, transfer, base_url=emails.base_url(ctx.request), paid_until=paid_until
+        ),
+        robust=True,
     )
     return _transfer_out(transfer)
 
@@ -1231,7 +1246,12 @@ def subscription_apply(ctx: OperationContext, data: SubscriptionApplyIn) -> dict
     changes = {}
     if plan is not None and subscription.plan_id != plan.pk:
         changes["plan"] = plan
+    # A customer sent alone is the payer's (``billing.ensure_customer``): a live subscription keeps the one Stripe
+    # charges until Stripe says otherwise (the previous payer's card after a hand-over, HUBS-F28).
+    payers_only = "stripe_subscription_id" not in sent and bool(subscription.stripe_subscription_id)
     for field in APPLIED_FIELDS:
+        if field == "stripe_customer_id" and payers_only:
+            continue
         if field in sent:
             value = sent[field]
             if value is None and field in CLEARED_TO_EMPTY:
@@ -1351,6 +1371,48 @@ def sync_plan_modules(subscription: Subscription, now=None) -> bool:
             item.save(update_fields=["source", "valid_until", "stripe_item_id", "updated_at"])
             changed = True
     return changed
+
+
+def owe_plan_rights(plan: Plan, now=None) -> int:
+    """The staff changed in the admin what ``plan`` gives (``queries.SNAPSHOT_PLAN_FIELDS``; HUBS-F31): each live
+    business on it, as its plan or as the trial's, gets the modules of its level written (``sync_plan_modules``) and,
+    when its snapshot changes, owes the Hub a newer one, which the next pass of ``reconcile_hub_states`` (every 15
+    minutes) delivers instead of the night's. How many businesses owe it.
+
+    Never pushed here: a plan may have thousands of businesses, and the admin's save is one transaction.
+    """
+    now = now or timezone.now()
+    owed = 0
+    subscriptions = Subscription.objects.select_related("plan", "trial_plan").filter(
+        Q(plan=plan) | Q(trial_plan=plan), hub__status__in=LIVE_STATUSES
+    )
+    for subscription in subscriptions.order_by("pk"):
+        changed = sync_plan_modules(subscription, now)
+        if changed or subscription.effective_plan(now) == plan:
+            bump_state(subscription.hub_id)
+            owed += 1
+    return owed
+
+
+def owe_module_rights(tier: str, previous_tier: str | None = None, now=None) -> int:
+    """A paid module of ``tier`` was added in the admin, or moved there from ``previous_tier`` (HUBS-F34): every live
+    business whose plan (or trial) reaches either level gets its plan's modules written again (``sync_plan_modules``)
+    and, where they changed, owes the Hub a newer snapshot, which the next pass of ``reconcile_hub_states`` delivers.
+    How many businesses owe it. Never pushed here, as ``owe_plan_rights``."""
+    now = now or timezone.now()
+    reached = [queries.LEVELS.index(level) for level in (tier, previous_tier) if level in queries.LEVELS]
+    if not reached:
+        return 0
+    plans = Plan.objects.filter(included_level__in=queries.LEVELS[min(reached) :])
+    owed = 0
+    subscriptions = Subscription.objects.select_related("plan", "trial_plan").filter(
+        Q(plan__in=plans) | Q(trial_plan__in=plans), hub__status__in=LIVE_STATUSES
+    )
+    for subscription in subscriptions.order_by("pk"):
+        if sync_plan_modules(subscription, now):
+            bump_state(subscription.hub_id)
+            owed += 1
+    return owed
 
 
 def _apply_standing(hub: Hub, standing: str, *, was_unpaid: bool) -> bool:

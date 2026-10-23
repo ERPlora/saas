@@ -1,0 +1,345 @@
+# Spanish translations of the assistant app of saas-next (English is the source).
+# Copyright (C) 2026 ERPlora
+# This file is distributed under the same license as ERPlora.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: saas-next\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-23 03:30+0200\n"
+"PO-Revision-Date: 2026-10-23 03:00+0200\n"
+"Last-Translator: ERPlora\n"
+"Language-Team: Spanish\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "No key"
+msgstr "Sin clave"
+
+msgid "Unreadable: type the key again"
+msgstr "Ilegible: vuelve a escribir la clave"
+
+msgid "Key"
+msgstr "Clave"
+
+msgid "Typed once, never shown again. Empty: keep the key it has."
+msgstr "Se escribe una vez y no se vuelve a ver. Vacía: se queda la que tiene."
+
+msgid "Type the provider's key."
+msgstr "Escribe la clave del proveedor."
+
+msgid "The key of the credentials is not configured: no provider key can be kept."
+msgstr "La clave de cifrado de las credenciales no está configurada: no se puede guardar ninguna clave de proveedor."
+
+msgid "key"
+msgstr "clave"
+
+msgid "keys"
+msgstr "claves"
+
+msgid "key ends in"
+msgstr "la clave acaba en"
+
+msgid "Choose the model to try from the list."
+msgstr "Elige de la lista el modelo que quieres probar."
+
+msgid "Write the message to send."
+msgstr "Escribe el mensaje que quieres enviar."
+
+msgid "The tools are not well written: write a list of tools as in the example, each with its name."
+msgstr "Las herramientas no están bien escritas: escribe una lista de herramientas como la del ejemplo, cada una con su nombre."
+
+msgid "Connection"
+msgstr "Conexión"
+
+msgid "Notes"
+msgstr "Notas"
+
+#, python-format
+msgid "The provider did not give its models: %(reason)s"
+msgstr "El proveedor no ha dado sus modelos: %(reason)s"
+
+msgid "The provider listed no chat models."
+msgstr "El proveedor no tiene modelos de conversación en su lista."
+
+msgid "Choose models from the provider"
+msgstr "Elegir modelos del proveedor"
+
+#, python-format
+msgid "%(provider)s: %(created)d new, %(kept)d kept, %(deleted)d removed, %(protected)d in use by the policy."
+msgstr "%(provider)s: %(created)d nuevos, %(kept)d se quedan, %(deleted)d quitados, %(protected)d en uso por el modelo que contesta."
+
+msgid "Choose the models from the list."
+msgstr "Elige los modelos de la lista."
+
+msgid "The model that answers was saved."
+msgstr "Se ha guardado el modelo que contesta."
+
+msgid "Model that answers"
+msgstr "Modelo que contesta"
+
+msgid "Try a model"
+msgstr "Probar un modelo"
+
+msgid "Too many tries in a minute: wait a moment and try again."
+msgstr "Demasiadas pruebas en un minuto: espera un momento y vuelve a intentarlo."
+
+msgid "AI assistant"
+msgstr "Asistente de IA"
+
+msgid "Use an https address: the provider's key travels to it."
+msgstr "Usa una dirección https: la clave del proveedor viaja a ella."
+
+msgid "identifier"
+msgstr "identificador"
+
+msgid "Short name the commands use, e.g. «openai»."
+msgstr "Nombre corto que usan los comandos, p. ej. «openai»."
+
+msgid "name"
+msgstr "nombre"
+
+msgid "API"
+msgstr "API"
+
+msgid "The API the provider speaks. A provider compatible with OpenAI's is «OpenAI» with its address."
+msgstr "La API que habla el proveedor. Uno compatible con la de OpenAI es «OpenAI» con su dirección."
+
+msgid "address"
+msgstr "dirección"
+
+msgid "Empty: the provider's own. Another one (a proxy, a compatible provider) over https."
+msgstr "Vacía: la del propio proveedor. Otra (un proxy, un proveedor compatible), por https."
+
+msgid "enabled"
+msgstr "activado"
+
+msgid "Off: none of its models answers nor can be tried."
+msgstr "Apagado: ninguno de sus modelos contesta ni se puede probar."
+
+msgid "notes"
+msgstr "notas"
+
+msgid "created"
+msgstr "creado"
+
+msgid "updated"
+msgstr "actualizado"
+
+msgid "AI provider"
+msgstr "proveedor de IA"
+
+msgid "AI providers"
+msgstr "proveedores de IA"
+
+msgid "provider"
+msgstr "proveedor"
+
+msgid "label"
+msgstr "etiqueta"
+
+msgid "active"
+msgstr "activa"
+
+msgid "key changed"
+msgstr "clave cambiada"
+
+msgid "added by"
+msgstr "añadida por"
+
+msgid "changed by"
+msgstr "cambiada por"
+
+msgid "provider key"
+msgstr "clave de proveedor"
+
+msgid "provider keys"
+msgstr "claves de proveedor"
+
+msgid "model"
+msgstr "modelo"
+
+msgid "The name the provider's API gives it."
+msgstr "El nombre que le da la API del proveedor."
+
+msgid "context"
+msgstr "contexto"
+
+msgid "Tokens of input it accepts (0: unknown)."
+msgstr "Tokens de entrada que admite (0: no se sabe)."
+
+msgid "input price"
+msgstr "precio de entrada"
+
+msgid "USD per million input tokens."
+msgstr "USD por millón de tokens de entrada."
+
+msgid "output price"
+msgstr "precio de salida"
+
+msgid "USD per million output tokens."
+msgstr "USD por millón de tokens de salida."
+
+msgid "tools"
+msgstr "herramientas"
+
+msgid "images"
+msgstr "imágenes"
+
+msgid "available"
+msgstr "disponible"
+
+msgid "Off: it can neither be tried nor answer."
+msgstr "Apagado: ni se puede probar ni contesta."
+
+msgid "AI model"
+msgstr "modelo de IA"
+
+msgid "AI models"
+msgstr "modelos de IA"
+
+msgid "model that answers"
+msgstr "modelo que contesta"
+
+msgid "fallback model"
+msgstr "modelo de reserva"
+
+msgid "Answers when the provider of the first one fails or cannot be used."
+msgstr "Contesta cuando el proveedor del primero falla o no se puede usar."
+
+msgid "Only ERPlora's staff with this permission configure the AI."
+msgstr "Solo el personal de ERPlora con este permiso configura la IA."
+
+msgid "This provider does not exist."
+msgstr "Este proveedor no existe."
+
+msgid "This provider has no active key: add one on its page and try again."
+msgstr "Este proveedor no tiene ninguna clave activa: añade una en su ficha y vuelve a intentarlo."
+
+msgid "No model can answer: the providers of the chosen models have no active key."
+msgstr "Ningún modelo puede contestar: los proveedores de los modelos elegidos no tienen ninguna clave activa."
+
+msgid "This model is off or its provider is: turn them on to use it."
+msgstr "Este modelo está apagado o lo está su proveedor: enciéndelos para usarlo."
+
+msgid "No model answers yet: choose one on the page “Model that answers”."
+msgstr "Todavía no contesta ningún modelo: elige uno en la página “Modelo que contesta”."
+
+msgid "This provider already has a key with that label."
+msgstr "Este proveedor ya tiene una clave con esa etiqueta."
+
+msgid "This key does not exist."
+msgstr "Esta clave no existe."
+
+msgid "This model cannot answer: it is off, its provider is off or it does not exist."
+msgstr "Este modelo no puede contestar: está apagado, su proveedor está apagado o no existe."
+
+msgid "Choose the model that answers before its fallback."
+msgstr "Elige el modelo que contesta antes que su reserva."
+
+msgid "The fallback model must be another model."
+msgstr "El modelo de reserva tiene que ser otro modelo."
+
+msgid "This model does not exist."
+msgstr "Este modelo no existe."
+
+msgid "Only the platform loads the keys of the environment."
+msgstr "Solo la plataforma carga las claves del entorno."
+
+msgid "Only the platform rotates the key of the credentials."
+msgstr "Solo la plataforma cambia la clave de cifrado de las credenciales."
+
+msgid "Home"
+msgstr "Inicio"
+
+msgid "Back to the provider"
+msgstr "Volver al proveedor"
+
+msgid "Tick the models this provider keeps. The ones not ticked are removed, except the ones the model that answers uses."
+msgstr "Marca los modelos que se quedan en este proveedor. Los no marcados se quitan, salvo los que usa el modelo que contesta."
+
+msgid "Keep"
+msgstr "Se queda"
+
+msgid "Model"
+msgstr "Modelo"
+
+msgid "Name"
+msgstr "Nombre"
+
+msgid "Context"
+msgstr "Contexto"
+
+msgid "Save the choice"
+msgstr "Guardar la elección"
+
+msgid "The model that answers every turn of the assistant, and the one that answers when its provider fails or cannot be used."
+msgstr "El modelo que contesta cada turno del asistente, y el que contesta cuando su proveedor falla o no se puede usar."
+
+msgid "The model that answers is off or its provider is: choose another one."
+msgstr "El modelo que contesta está apagado o lo está su proveedor: elige otro."
+
+msgid "The fallback model is off or its provider is: choose another one."
+msgstr "El modelo de reserva está apagado o lo está su proveedor: elige otro."
+
+msgid "No model can answer yet: add a provider with its key and choose its models."
+msgstr "Todavía no puede contestar ningún modelo: añade un proveedor con su clave y elige sus modelos."
+
+msgid "Fallback model"
+msgstr "Modelo de reserva"
+
+#, python-format
+msgid "Last changed by %(who)s on %(when)s."
+msgstr "Último cambio de %(who)s el %(when)s."
+
+msgid "Save"
+msgstr "Guardar"
+
+msgid "Send one message to one model and watch its answer arrive, with its tokens, its time and its cost, before choosing it. No business, quota nor conversation is touched, and the try stays in the audit trail without the message."
+msgstr "Envía un mensaje a un modelo y mira cómo llega su respuesta, con sus tokens, su tiempo y su coste, antes de elegirlo. No se toca ningún negocio, cupo ni conversación, y la prueba queda en el registro de auditoría sin el mensaje."
+
+msgid "Message"
+msgstr "Mensaje"
+
+msgid "Tools"
+msgstr "Herramientas"
+
+msgid "Optional: the tools the model may ask for, written as in the example, each with its name."
+msgstr "Opcional: las herramientas que el modelo puede pedir, escritas como en el ejemplo, cada una con su nombre."
+
+msgid "Send"
+msgstr "Enviar"
+
+msgid "Sending…"
+msgstr "Enviando…"
+
+msgid "Done."
+msgstr "Hecho."
+
+msgid "The model did not answer:"
+msgstr "El modelo no ha contestado:"
+
+msgid "The try could not be sent: check the connection and try again."
+msgstr "No se ha podido enviar la prueba: revisa la conexión y vuelve a intentarlo."
+
+#, python-brace-format
+msgid "The try was refused (error {status})."
+msgstr "Se ha rechazado la prueba (error {status})."
+
+msgid "Answer"
+msgstr "Respuesta"
+
+msgid "Input tokens"
+msgstr "Tokens de entrada"
+
+msgid "Output tokens"
+msgstr "Tokens de salida"
+
+msgid "Time"
+msgstr "Tiempo"
+
+msgid "Cost"
+msgstr "Coste"

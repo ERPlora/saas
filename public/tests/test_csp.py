@@ -28,7 +28,9 @@ PUBLIC_PATHS = ("/robots.txt", "/llms.txt", "/sitemap.xml", "/cookies/status/")
 CONTROL_PATH = "/robots.txt"
 # Not the public web: the admin's login (a Django template) and the SPA's sign-in keep the global
 # policy.
-GLOBAL_PATHS = ("/admin/login/", "/launch")
+GLOBAL_PATHS = ("/launch",)
+# The admin: the panel's policy without Trusted Types (base.csp.admin_policy), never the public one.
+ADMIN_PATHS = ("/admin/login/",)
 # First segments the public web owns but whose pages do not exist (yet or ever): a real 404.
 NONEXISTENT_PATHS = ("/company/contact/", "/pricing/does-not-exist/", "/developers/")
 
@@ -97,7 +99,7 @@ def test_the_public_policy_names_no_retired_host(settings, debug):
     ("path", "retired"),
     [
         *((path, (*RETIRED_EVERYWHERE, *RETIRED_FROM_PUBLIC)) for path in PUBLIC_PATHS),
-        *((path, RETIRED_EVERYWHERE) for path in GLOBAL_PATHS),
+        *((path, RETIRED_EVERYWHERE) for path in (*GLOBAL_PATHS, *ADMIN_PATHS)),
     ],
 )
 @pytest.mark.usefixtures("spa_manifest")
@@ -213,6 +215,18 @@ def test_the_sign_in_pages_and_the_panel_keep_the_global_policy(client, path):
 
     assert "'strict-dynamic'" in policy
     assert "trusted-types" in _directives(policy)
+    assert policy != _policy(client, CONTROL_PATH)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("path", ADMIN_PATHS)
+def test_the_admin_keeps_the_panel_policy_without_trusted_types(client, path):
+    """Neither does it widen to the admin, whose own policy is the panel's without Trusted Types: Django's admin
+    creates no Trusted Types policy and its jQuery dies under them (the old saas#1828; ACCOUNTS-G10)."""
+    policy = _policy(client, path)
+
+    assert "'strict-dynamic'" in policy
+    assert "trusted-types" not in _directives(policy)
     assert policy != _policy(client, CONTROL_PATH)
 
 

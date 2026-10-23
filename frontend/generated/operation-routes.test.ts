@@ -33,8 +33,9 @@ const STORE_ROUTES = {
 
 /**
  * The operations of the Billing section (plan 2026-10-13 L3-C front): ERPlora's invoices (the list, one, its PDF,
- * the CSV of the list and «Pay»), the subscriptions, the payment method with Stripe's Customer Portal and the
- * VIES check of the billing details (billing/api.py).
+ * the CSV of the list and «Pay»), the subscriptions and «Keep it with my card» of a business handed over to you
+ * (HUBS-F28), the payment method with Stripe's Customer Portal and the VIES check of the billing details
+ * (billing/api.py).
  */
 const BILLING_ROUTES = {
   'billing.invoice.list': { method: 'get', path: '/api/billing/invoices' },
@@ -43,6 +44,7 @@ const BILLING_ROUTES = {
   'billing.invoice.csv': { method: 'get', path: '/api/billing/invoices/csv' },
   'billing.invoice.pay': { method: 'post', path: '/api/billing/invoices/pay' },
   'billing.subscription.list': { method: 'get', path: '/api/billing/subscriptions' },
+  'billing.plan.take_over': { method: 'post', path: '/api/billing/plan/take-over' },
   'billing.payment_method.get': { method: 'get', path: '/api/billing/payment-method' },
   'billing.portal.open': { method: 'post', path: '/api/billing/portal' },
   'billing.vat_check.run': { method: 'post', path: '/api/billing/vat-check' },

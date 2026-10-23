@@ -2,16 +2,17 @@
 «Change email») and the notice to the old address once the account changed it (Google, GitHub and Stripe send
 one, so a change nobody asked for does not go unnoticed).
 
-Plain text, like the mails of hubs, until block 1 brings the branded mail. A mail that cannot leave is logged
+Each leaves branded, as text and as HTML (``base.emails``, ACCOUNTS-F46). A mail that cannot leave is logged
 and reported to the caller (``False``), never raised; the code itself is never logged.
 """
 
 import logging
 
 from django.conf import settings
-from django.core.mail import send_mail
 from django.utils import translation
 from django.utils.translation import gettext as _
+
+from base.emails import branded_message
 
 logger = logging.getLogger(__name__)
 
@@ -19,9 +20,9 @@ logger = logging.getLogger(__name__)
 CODE_MINUTES = 15
 
 
-def _send(subject: str, lines: list[str], to: str, kind: str) -> bool:
+def _send(subject: str, lines: list[str], to: str, kind: str, *, language: str, code: str | None = None) -> bool:
     try:
-        send_mail(subject, "\n".join(lines) + "\n", settings.DEFAULT_FROM_EMAIL, [to])
+        branded_message(subject, lines, [to], language=language, code=code).send()
     except Exception:  # noqa: BLE001 - any failure of the mail backend is reported, not raised
         logger.exception("accounts.mail_failed kind=%s", kind)
         return False
@@ -40,7 +41,7 @@ def send_email_code(email: str, code: str, *, language: str) -> bool:
             _("It works for %(minutes)s minutes. If you did not ask for it, ignore this mail: nothing changes.")
             % {"minutes": CODE_MINUTES},
         ]
-    return _send(subject, lines, email, "email_code")
+    return _send(subject, lines, email, "email_code", language=language, code=code)
 
 
 def send_email_changed(old_email: str, new_email: str, *, language: str) -> bool:
@@ -52,7 +53,7 @@ def send_email_changed(old_email: str, new_email: str, *, language: str) -> bool
             "",
             _("If you did not change it, write to %(support)s at once.") % {"support": settings.SUPPORT_EMAIL},
         ]
-    return _send(subject, lines, old_email, "email_changed")
+    return _send(subject, lines, old_email, "email_changed", language=language)
 
 
 def send_api_key_created(email: str, name: str, scopes: list[str], *, language: str) -> bool:
@@ -68,24 +69,18 @@ def send_api_key_created(email: str, name: str, scopes: list[str], *, language: 
             _("If you did not create it, revoke it in Account → API keys and write to %(support)s at once.")
             % {"support": settings.SUPPORT_EMAIL},
         ]
-    return _send(subject, lines, email, "api_key_created")
+    return _send(subject, lines, email, "api_key_created", language=language)
 
 
 def send_support_report(user, *, subject: str, description: str, context: list[tuple[str, str]]) -> bool:
     """A report of «Report a problem» to the support mailbox (ACCOUNTS-F38), «Reply-To» the account so support answers
     with «Reply». In English, as the contact form's: it is the team's mail, not the account's. ``context`` is what goes
     under the text (the account, its businesses, the page, the browser). The text itself is never logged."""
-    from django.core.mail import EmailMessage
-
     lines = [description, "", "---", *(f"{label}: {value}" for label, value in context)]
     try:
-        EmailMessage(
-            subject=f"[Support] {subject}",
-            body="\n".join(lines) + "\n",
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            to=[settings.SUPPORT_EMAIL],
-            reply_to=[user.email],
-        ).send(fail_silently=False)
+        branded_message(
+            f"[Support] {subject}", lines, [settings.SUPPORT_EMAIL], language="en", reply_to=[user.email]
+        ).send()
     except Exception:  # noqa: BLE001 - any failure of the mail backend is reported, not raised
         logger.exception("accounts.mail_failed kind=support_report")
         return False

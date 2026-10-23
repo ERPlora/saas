@@ -302,8 +302,8 @@ describe('sdk-types.d.ts follows billing/schemas.py (the Billing section)', () =
     [
       'SubscriptionRowOut',
       'SubscriptionAction',
-      '"change_plan", "keep_plan", "view_invoice", "cancel_plan", "view_invoices"',
-      "'change_plan' | 'keep_plan' | 'view_invoice' | 'cancel_plan' | 'view_invoices'",
+      '"take_over", "change_plan", "keep_plan", "view_invoice", "cancel_plan", "view_invoices"',
+      "'take_over' | 'change_plan' | 'keep_plan' | 'view_invoice' | 'cancel_plan' | 'view_invoices'",
     ],
   ])('types the actions of a %s row (%s) as the server names them, in its order', (schema, alias, python, typescript) => {
     const annotation = pythonTypes(schema, sources.get('billing/schemas.py')).actions;

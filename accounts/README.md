@@ -4,8 +4,8 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: qu
 el salto a un negocio (`handoff.py`, `/internal/auth/redeem`) y **Cuenta** (Perfil · Seguridad · Preferencias ·
 Claves de API; PLAN-SAAS §3.6, ronda 17). Este README recoge el lote **L3-A** (back) del plan
 `docs/plans/2026-10-13-panel-saas-unificado.md`; el front (`frontend/`) es de L3-B. Los flujos de la app, en
-lenguaje de usuario, están en `WORKBOOK.md` (y `WORKBOOK.en.md`), que crece por partes (MIGRATION-TASK
-APP-ACCOUNTS-1…5).
+lenguaje de usuario, están en `WORKBOOK.md` (y `WORKBOOK.en.md`), que creció por partes (MIGRATION-TASK
+APP-ACCOUNTS-1…5) y se revisó flujo a flujo, en inglés y en español, en las partes 6 y 7 de 7.
 
 ## Operaciones de Cuenta (L3-A)
 
@@ -93,7 +93,10 @@ lista viva se refresca); ningún rol tiene su permiso y en el admin solo las ve 
   (sesión existente, sin caducar y con el hash de la contraseña actual), sin escribir: una consulta trae las sin
   caducar con sus datos y el hash se comprueba en memoria (nada de cargar una sesión por fila), y el servidor la
   pagina, la actual primero (con más sesiones de las que caben en un resultado vivo no cargaba). Ubicación = IP
-  (GeoIP fuera, plan §6). `UserSessionsAdapter` hace que cerrar por cualquier puerta avise a los negocios.
+  (GeoIP fuera, plan §6). `UserSessionsAdapter` hace que cerrar por cualquier puerta avise a los negocios. En el
+  admin, «Sesiones de usuario» nombra su modelo y sus columnas en el idioma del personal (`UserSessionAdmin` las
+  columnas y `AccountsConfig.ready()` el modelo: allauth no les da nombre; solo el `_meta` en vivo, sin migración en
+  allauth).
 - **Segundo factor** (PLAN-SAAS, nota 2026-10-13 y ronda 19; ACCOUNTS-F05, F14–F17 y F20): `allauth.mfa` sobre
   headless, TOTP + códigos de recuperación, sin passkeys, detrás de `ACCOUNTS_MFA_ENABLED` (apagado por defecto en
   la fase 1: `MFAFlagMiddleware` responde 404 en sus rutas y `mfa.mfa_completed` es falso; nunca se cambia el
@@ -112,6 +115,10 @@ lista viva se refresca); ningún rol tiene su permiso y en el admin solo las ve 
   `admin_has_permission` (`admin.site.has_permission`, en `config/urls.py`) exige un TOTP (los códigos de
   recuperación solos no) y `admin_login` lleva al personal sin él a `/2fa?next=<ruta del admin>`, que ofrece
   «Continue» cuando la app está activa; el salto `hub-admin` lo exige siempre (`_needs_second_factor`).
+- **Nombres en el índice del admin** (`AccountsConfig.ready`): la sección de la app `account` de allauth se llama
+  «Email addresses» (solo guarda los correos; se llamaba «Accounts», como esta) y los autenticadores y las sesiones
+  de allauth llevan nombre traducible (salía el de su clase, sin `es`). Solo lo que se ve: ni etiqueta, ni tabla,
+  ni migración. Lo vigila `config/tests/test_admin_index.py` para toda app.
 - **Señales hacia `hubs`** (`signals.py`; `accounts` nunca importa `hubs`): `sessions_ended(user_id)` al cerrar
   sesiones, eliminar la cuenta o poner contraseña nueva (`password_changed/set/reset` de allauth; PLAN-SAAS
   §2.1) y `account_deleting(user_id)` antes de borrar la cuenta. Al cambiar el correo se envía `email_changed`
@@ -158,8 +165,9 @@ lista viva se refresca); ningún rol tiene su permiso y en el admin solo las ve 
 - **`/api/docs`** (ACCOUNTS-F34): ReDoc de ninja servido por `accounts/api_docs.py` con el nonce de la CSP, sin
   CDN y solo con sesión (sin ella, a la entrada); `/api/openapi.json` sigue abierto (Postman, tests de otras apps).
 - **`manage.py anonymize_old_users`** (F35, semanal) y **`manage.py cleanup_old_logs`** (F37, diaria): sin Celery,
-  con candado de sesión propio (`services.run_exclusively`, gemelo del de `hubs`) y `--dry-run`. Hasta que
-  `saas-cron` (`aws/stacks/prod/scheduler.tf`) los programe, los lanza una persona del equipo.
+  con candado de sesión propio (`services.run_exclusively`, gemelo del de `hubs`) y `--dry-run`. Los lanza
+  `saas-cron` con sus valores por defecto: `anonymize-old-users-weekly` los lunes a las 00:35 UTC y
+  `cleanup-old-logs-nightly` cada noche a las 00:45 UTC (`aws/stacks/prod/scheduler.tf`).
 - **Registro de auditoría** (F36): `django-auditlog` (`accounts/auditlog.py`, desde `AccountsConfig.ready`) sobre
   `User` (sin `password` ni `last_login`), `HubMembership`, `ApiKey` (sin `key_hash` ni `last_used_at`) y
   `allauth.usersessions.UserSession` (sin `session_key`, `data` ni `last_seen_at`), todos con
@@ -176,6 +184,32 @@ lista viva se refresca); ningún rol tiene su permiso y en el admin solo las ve 
   `OssNotice`), `fiscal/auditlog.py` (autorización y sello, sin sus documentos cifrados), `hubs/auditlog.py` (planes,
   pagador, suscripción sin `unpaid_invoice_url` y sus partidas) y `apps/auditlog.py` (`Module`). Sin `updated_at`. El
   registro solo lee un registro fiscal: escribe su propia tabla, y `cleanup_old_logs` poda también estas entradas.
+
+## Plataforma del SaaS (parte 5)
+
+La plataforma no vive en `accounts/` sino en `base/` y `config/`; su manual es `accounts/WORKBOOK.md`
+(ACCOUNTS-F39–F48, con el detalle en «Para quien lo mantiene»).
+
+- **Política de contenido** (F39): la del panel, `settings.SECURE_CSP` sobre `live.csp.base_policy` (y
+  `base/csp.py`); la de la web pública, `public/csp.py`; la del admin, `base.csp.admin_policy` (la del panel sin
+  Trusted Types, que el jQuery del admin de Django no soporta; trampa saas#1828 del viejo). `config/tests/test_csp_policy.py` las lee directiva a
+  directiva con los ajustes de producción. Informes del navegador: `base/csp_report.py`, con
+  `CSP_REPORT_RATELIMIT` (60/h por dirección).
+- **Registro sin datos personales** (F40): `base/logging.py` (`GDPRSafeFormatter`), en `LOGGING`.
+- **Arranque** (F41): `config/asgi.py` cierra el saludo de un WebSocket (`refuse_websockets`); `config/wsgi.py`.
+- **Páginas de error y admin** (F42): `public.errors` y `templates/{404,500}.html`; la marca del admin, en
+  `config/urls.py`.
+- **Mantenimiento** (F43): `base.models.SiteSettings` (fila única, migración `base/0001`), su admin en
+  `base/admin.py`, `base.queries.maintenance_state` y `base/maintenance.py`, con `templates/503.html`.
+- **`manage.py purge_expired_sessions`** (F44, diaria): sesiones caducadas, filas de «Sesiones activas» sin sesión,
+  códigos de salto y cambios de correo caducados (`services.purge_expired_sign_in_leftovers`), con candado y
+  `--dry-run`. Sustituye a `clearsessions_task` y `flush_expired_tokens_task` del viejo (aquí no hay JWT). La lanza
+  `saas-cron` cada noche a las 00:20 UTC (`purge-expired-sessions-nightly` de `aws/stacks/prod/scheduler.tf`).
+- **Correos** (F46): `AWS_SES_CONFIG` en `config/settings.py` (3 s + 10 s, dos intentos); cada correo, en texto y en
+  HTML sobre `templates/emails/base.html` con `base/emails.py` (`branded_message`); los de allauth, por
+  `AccountAdapter.render_mail`, y sus avisos propios con su `_message.html` (`templates/account/email/`,
+  `templates/socialaccount/email/`).
+- No se portan `apps/core/circuit_breaker.py` (G06/G75) ni `templatetags/cards.py` (G27): motivo en el WORKBOOK.
 
 ## Tests portados de ERPlora/saas (`origin/develop`)
 
@@ -199,10 +233,17 @@ lista viva se refresca); ningún rol tiene su permiso y en el admin solo las ve 
   (sin `--no-input`: nunca preguntan); `tests/unit/test_auditlog_coverage.py` → `test_auditlog` de `accounts`,
   `billing`, `fiscal`, `hubs` y `apps` (sin `Payout` ni `StripeConnectAccount`: no hay marketplace); «Reportar un problema» (SAAS_DASHBOARD-F219) →
   `test_support_report`.
+- Parte 5: `apps/core/tests/test_logging.py` → `base/tests/test_logging.py`; la CSP, con tests nuevos
+  (`config/tests/test_csp_policy.py`, una directiva por test, panel y web pública); el `MaintenanceModeMiddleware` y el `SiteSettingsAdmin` →
+  `base/tests/test_maintenance.py`, `test_models.py` y `test_admin.py`, con sus dos huecos cerrados (la salud en 503
+  y el segundo factor del personal cortado); `apps/core/tests/test_branded_emails.py` → `base/tests/test_emails.py`
+  (cada familia por su remitente, en `en` y `es`, y cada correo de allauth hallado en disco). Fuera: los tests del
+  breaker y de la etiqueta `card`, que no se portan.
 
 ## Pendiente (de otros carriles)
 
-- **`aws`**: programar `anonymize_old_users` (semanal) y `cleanup_old_logs` (diaria) en `saas-cron`.
+- **`hubs`**: sus correos (`hubs/emails.py`: personas, invitaciones, roles y traspaso) pasan a la plantilla común
+  (`base/emails.py`, ACCOUNTS-F46) con su porte; hoy salen en texto.
 
 - **`hubs`** conecta `signals.sessions_ended` → `revoke_after_commit(user_id)` y `account_deleting` (en curso en
   su carril); también puede escuchar `allauth.account.signals.email_changed` para refrescar la foto del negocio.

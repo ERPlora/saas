@@ -251,10 +251,8 @@ class TestTheMailOfAnIssuedInvoice:
         assert mail.outbox == []
 
     def test_a_mail_that_still_cannot_leave_fails_the_run(self, hub_double, monkeypatch):
-        from billing import emails
-
         owed(fiscal_status="accepted", qr=QR, payer_email="pagos@example.com")
-        monkeypatch.setattr(emails, "send_mail", lambda *a, **k: (_ for _ in ()).throw(ConnectionRefusedError()))
+        monkeypatch.setattr("django.core.mail.EmailMessage.send", lambda *a, **k: (_ for _ in ()).throw(ConnectionRefusedError()))
 
         with pytest.raises(CommandError, match="mail_failed=1"):
             run()

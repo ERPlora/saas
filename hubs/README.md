@@ -131,6 +131,72 @@ Flujos `HUBS-F15`…`HUBS-F23` del `WORKBOOK.md` (parte 2 de 4).
   el export por negocio de la fase 2 (PLAN-DB «Exports»).
 - **Dominio propio** (F17): no se porta en la fase 1; decisión de mercado y ronda propuesta en la PR de APP-HUBS-2.
 
+## Lo que añadió APP-HUBS-3 (2026-10-23): las personas de cada negocio
+
+Flujos `HUBS-F24`…`HUBS-F30` del `WORKBOOK.md` (parte 3 de 4): invitar, aceptar o rechazar, cambiar el rol, quitar,
+traspasar la propiedad, la pestaña «Miembros» y los accesos en el admin. El código ya estaba (L1-B, L1-A2); esta parte
+lo revisa flujo a flujo con su e2e en 3 tamaños (`tests/e2e/panel/hubs-people.spec.ts`) y arregla lo que no cuadraba:
+
+- **El correo de la oferta de propiedad** enlazaba a `/ownership/<id>`, una página que el panel no tiene: ahora lleva a
+  `/businesses`, donde está la tarjeta «… te ofrece …» con «Aceptar la propiedad». El de la aceptación, que mandaba a
+  los Ajustes del negocio (donde el pagador no se cambia), lleva a `/businesses/<id>` y, con un plan de pago, dice
+  que la tarjeta del saliente ya no lo renueva y hasta cuándo está pagado (F28; `hubs/tests/test_emails.py`).
+- **El pie de «Te han invitado»** prometía «Podrás salir de un negocio cuando quieras desde el panel.» y no hay forma de
+  salir uno mismo (como en Square, Toast o Shopify: quita el propietario o un administrador); ahora dice quién puede
+  quitar el acceso (`InvitationPage.test.ts`).
+- **El Hub cierra las sesiones** (hub, `MIGRATION-TASK: APP-HUBS-3`, BASE-F13): quitar, cambiar el rol y aceptar un
+  traspaso encolan `POST /internal/sessions/revoke` tras el COMMIT y lo reintentan (`SessionRevocation`); el Hub borra
+  esas sesiones por su índice (`base.SessionOwner`), su pestaña abierta deja de recibir y la foto aplica `members`
+  (rol al día, baja fuera). e2e de los dos juntos: `tests/e2e/base-session-revoke.spec.ts` del Hub.
+- **Mover el pagador** (F28, decisión de mercado: Wix, Shopify, Lightspeed, Squarespace, Fresha): el plan es del negocio
+  y la tarjeta no. `hubs.ownership.accept` llama a `billing.end_renewal_after_hand_over` en su transacción: el plan que
+  aún cobra la tarjeta de otra cuenta deja de renovarse (Stripe `cancel_at_period_end`; Stripe caído = 503 y el
+  negocio no cambia de manos). El nuevo propietario lo mantiene con su tarjeta en Facturación › Suscripciones
+  (`billing.plan.take_over`: Embedded Checkout con los mismos precios, `billing_cycle_anchor` = fin del periodo pagado
+  y sin prorrateo); el webhook pasa el negocio a la suscripción nueva y termina la anterior sin reembolso. Un cliente de
+  Stripe enviado sin su suscripción ya no pisa el de una suscripción viva (`hubs.subscription.apply`), y
+  `retax_subscription` no recalcula el impuesto de un plan que cobra otra cuenta. Tests:
+  `billing/tests/test_plan_take_over.py`; e2e: `tests/e2e/panel/hubs-people.spec.ts` («HUBS-G82 (F28)»).
+- **Sin página global de personas** (G86, G34, G115 del SaaS viejo): ronda 17, cada negocio enseña las suyas en
+  «Miembros». «Usuarios del Terminal» (G24) era esa misma página del SaaS viejo, no los empleados con PIN del Hub.
+
+## Lo que añadió APP-HUBS-4 (2026-10-23): el plan, los derechos, quién llama y la taxonomía
+
+Flujos `HUBS-F31`…`HUBS-F37` del `WORKBOOK.md` (parte 4 de 5; la revisión flujo a flujo de los `hecho`, en la 5).
+
+- **VeriFactu en todos los planes** (F31; PLAN §30, ronda 2026-10-22b): `verifactu.live_paid` de la foto va siempre
+  `true`; ya no depende de un plan de pago ni del módulo `verifactu`. Se queda en la foto mientras el Hub lea esa
+  condición (`apps/verifactu`, 409 `verifactu.live_option_unpaid`); cuando el Hub la retire, se quita de aquí.
+- **Lo que da un plan, cambiado en el admin** (F31; trampa de SAAS_DASHBOARD-F53/F54): los campos de `plan` de la foto
+  son `queries.SNAPSHOT_PLAN_FIELDS` (una sola lista para la foto y el admin). Al guardar un `Plan` con alguno cambiado,
+  `PlanAdmin.save_model` llama a `services.owe_plan_rights(plan)`: por cada negocio vivo con ese plan o con su prueba,
+  `sync_plan_modules` y, si su foto cambia, `bump_state`. No empuja en la petición (un plan puede tener miles de
+  negocios): lo entrega la siguiente pasada de `reconcile_hub_states` (15 min), y el admin dice cuántos negocios lo
+  reciben («… negocios con este plan reciben el cambio en los próximos 15 minutos.»). Textos, orden o precio no deben
+  nada. Tests: `tests/test_plan_rights_reach_businesses.py`.
+- **Guardarraíl de `/internal`** (F35): `tests/test_internal_doors.py` recorre el resolver de URLs y comprueba que cada
+  puerta `internal/…` (hoy 14, de `accounts`, `hubs`, `fiscal`, `fiscal_gateway` y `whatsapp`) contesta 401 o 405 sin
+  firma, con la firma de otro secreto, con una marca de hace 10 minutos o con la sesión de un superusuario. Una puerta
+  nueva que se salte `accounts.signing` lo rompe.
+- **Taxonomía en el admin, en el idioma del personal** (F36): los campos de `Sector` y `BusinessType` (`code`, `icon`,
+  `color`, `display_order`, `is_active`, `created_at`, `updated_at`, `sector`, `vertical`) tienen nombre traducible
+  (migración `0017`, solo de estado, sin SQL); antes la lista decía «Code» y «Por is active».
+- **Un módulo nuevo, o que cambia de nivel, en el admin** (F34; era una línea FIX de esta parte): `apps.admin.ModuleAdmin.
+  save_model` llama a `services.owe_module_rights(tier, previous_tier)`: `sync_plan_modules` de cada negocio vivo cuyo plan
+  o prueba alcanza el nivel nuevo o el anterior y `bump_state` si cambian; el admin dice cuántos lo reciben. Antes no
+  llegaba a nadie hasta el siguiente aviso de Stripe de cada negocio.
+- **El admin de Planes en el idioma del personal** (F31, pantalla de F05; era una línea FIX de esta parte): nombres
+  traducibles en los campos de `Plan` (migración `0018`, solo de estado), `__str__` en el idioma activo («Starter · 29,99
+  €/mes») y el nivel y el soporte por sus nombres traducidos en `PlanForm`. Antes, «PRICE MONTHLY» y «Por is active».
+- **Descartado** (G23, G105, G106): el Hub no da de alta, comprueba ni quita personas en el SaaS. El SaaS es la fuente
+  de quién tiene cuenta y acceso (PLAN-SAAS §2, «Quién sabe qué»), lo empuja en `members` de la foto y el Hub lo aplica
+  (BASE-F13); los empleados con PIN viven en la BD del hub; «Invitar desde el Hub» sigue en PLAN-SAAS §8.
+- **Lo que falta en el Hub** (F32–F34, `parcial`): aplicar `max_devices`/`max_users` (llega con `DeviceSession`, fase 2),
+  frenar una app `premium` sin derecho en `modules[]` (402 `app_entitlement_blocked`) y contar los mensajes del
+  asistente (con el turno de `assistant`, parte 2). El SaaS ya los manda en la foto.
+- e2e: `tests/e2e/panel/hubs-rights.spec.ts` (la ficha del plan y su aviso, la entrega al Hub doble tras la pasada, y
+  las listas y fichas de la taxonomía; en `en` y `es`, a 390, 834 y 1440).
+
 ## Pendiente (lotes siguientes)
 
 - **Retirar `accounts.HubMembership`**, en este orden: (1) el salto pasa a `hubs` (`/hub-login/`,
@@ -144,13 +210,11 @@ Flujos `HUBS-F15`…`HUBS-F23` del `WORKBOOK.md` (parte 2 de 4).
   `id` los negocios que le llegan en la foto (los `a`/`b` adoptados aquí traen un UUID nuevo). Cuando los dos lados
   firmen v2, dejar de aceptar llamadas solo v1. `aws-next`: añadir `INTERNAL_SHARED_SECRET_PREVIOUS` (vacío) al
   secreto `erplora/prod/internal` y a las tres tareas para poder rotar sin despliegue de código.
-- Las páginas de Cuenta (L3-B) deben ofrecer verificar el correo: hoy una cuenta con su dirección sin verificar no
-  puede aceptar una invitación (403 `hubs.email_unverified`) y el SaaS no tiene aún la página que lo pida.
 - El SDK (`@erplora/ui`, `ApiError`) solo conserva `code`, `message` y `fields` del sobre de error: para pintar
   `limit` y `used` de `hubs.seat_limit` el panel (L1-D) necesita que los conserve; hoy los tiene en `seats` de la
   lista y en el mensaje.
 - Los usuarios solo con PIN del Hub no pasan por el SaaS: el tope de `max_users` de la foto lo aplica el Hub en
-  sus propias altas (el SaaS ya no recibe el recuento del latido).
+  sus propias altas (el SaaS ya no recibe el recuento del latido); llega con `DeviceSession` (fase 2, HUBS-F32).
 - Mover el pagador de Stripe en un traspaso (L2). Cancelar la suscripción de Stripe al eliminar un negocio lo
   hace `billing` en su siguiente `sweep_unpaid` (L2-B), no `hubs.business.delete` en el acto.
 

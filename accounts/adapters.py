@@ -27,12 +27,14 @@ from allauth.socialaccount.providers.base import AuthProcess
 from allauth.socialaccount.providers.base.constants import AuthError
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.mail import EmailMultiAlternatives
 from django.core.validators import validate_email
 from django.shortcuts import redirect
-from django.utils import timezone
+from django.utils import timezone, translation
 from django.utils.translation import gettext
 
 from accounts.handoff import login_error_url
+from base import emails as branded_mail
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +110,30 @@ class AccountAdapter(DefaultAccountAdapter):
         ``apps/core/emails.py`` (``brand_context``).
         """
         brand = SimpleNamespace(name="ERPlora", domain=settings.PUBLIC_HOST)
-        return super().send_mail(template_prefix, email, {**context, "current_site": brand})
+        return super().send_mail(template_prefix, email, {**context, "current_site": brand, **branded_mail.brand()})
+
+    def render_mail(self, template_prefix, email, context, headers=None):
+        """Every allauth mail leaves as text and as HTML on the common template (ACCOUNTS-F46).
+
+        A notice ERPlora wrote has its own ``<prefix>_message.html`` (``templates/socialaccount/email/``); the
+        mails allauth ships come only as text, so their text is shown on the common template, escaped, with the
+        code boxed (``base.emails``): one wrapper for all, as ERPlora/saas ``emails/_fallback.html``, instead of
+        a copy of each of allauth's texts and translations.
+        """
+        message = super().render_mail(template_prefix, email, context, headers=headers)
+        if isinstance(message, EmailMultiAlternatives) and not any(
+            mimetype == "text/html" for _content, mimetype in message.alternatives
+        ):
+            message.attach_alternative(
+                branded_mail.branded_html(
+                    message.body.splitlines(),
+                    language=translation.get_language() or settings.LANGUAGE_CODE,
+                    subject=message.subject,
+                    code=context.get("code"),
+                ),
+                "text/html",
+            )
+        return message
 
 
 class SocialAccountAdapter(DefaultSocialAccountAdapter):

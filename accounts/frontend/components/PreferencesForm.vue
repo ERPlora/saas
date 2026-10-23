@@ -274,6 +274,15 @@ async function toggleBusinessNotices(event: CustomEvent<{ checked?: boolean }>):
   display: block;
   color: var(--ion-text-color);
 }
+/* «Security, invoices and payments» cannot be turned off, yet the mails it names must read as any text: Ionic dims a
+   disabled toggle whole (0.3 in ios, 0.38 in md), its words included; only its switch stays dimmed (ACCOUNTS-F23). */
+.mail-list ion-toggle.toggle-disabled {
+  opacity: 1;
+}
+.mail-list ion-toggle.toggle-disabled::part(track),
+.mail-list ion-toggle.toggle-disabled::part(handle) {
+  opacity: 0.5;
+}
 .toggle-hint {
   display: block;
   margin-top: 2px;

@@ -64,6 +64,13 @@ const EMPTY_PROFILE = { ...PROFILE, billing_name: '', tax_id: '', billing_addres
 const SESSION = { flow: 'checkout', session_id: 'cs_test_1', client_secret: 'cs_test_1_secret_x', publishable_key: 'pk_test_double', preview: null };
 const PLAN: CheckoutPurchase = { kind: 'plan', slug: 'starter', name: 'Starter', interval: 'year' };
 const MODULE: CheckoutPurchase = { kind: 'module', slug: 'booking', name: 'Bookings', interval: 'month' };
+/** The plan of a handed-over business, kept with the new owner's card from the end of the paid period (HUBS-F28). */
+const TAKE_OVER: CheckoutPurchase = { kind: 'takeover', slug: 'starter', name: 'Starter', interval: 'month', from: '2026-11-01T10:00:00Z' };
+const takeOver: Handler = ({ path }) => {
+  if (path === '/api/hubs/billing-profile') return Response.json(PROFILE);
+  if (path === '/api/billing/plan/take-over') return Response.json(SESSION);
+  return Response.json({});
+};
 
 type Handler = (call: { method: string; path: string; body: unknown }) => Response | Promise<Response>;
 
@@ -73,7 +80,7 @@ const happy: Handler = ({ path }) => {
   return Response.json({});
 };
 
-async function setup(api: Handler = happy, purchase: CheckoutPurchase = PLAN, extra: Record<string, unknown> = {}) {
+async function setup(api: Handler = happy, purchase: CheckoutPurchase = PLAN, extra: Record<string, unknown> = {}, locale: 'en' | 'es' = 'en') {
   const open = ref(true);
   const stale = vi.fn();
   const Host = {
@@ -90,6 +97,7 @@ async function setup(api: Handler = happy, purchase: CheckoutPurchase = PLAN, ex
       }),
   };
   const m = await mountBilling(Host, {
+    locale,
     api: (call) => {
       const url = new URL(call.url, 'http://localhost');
       const body = typeof call.init.body === 'string' ? JSON.parse(call.init.body) : undefined;
@@ -135,6 +143,66 @@ describe('CheckoutModal', () => {
     expect(toastSuccess).toHaveBeenCalledWith('Café Central is now on Starter');
     expect(s.router.currentRoute.value.fullPath).toBe('/businesses/cafe/summary');
     expect(s.open.value).toBe(false);
+  });
+
+  it('keeping a handed-over plan: its own checkout, nothing charged today, paid from the end of the paid period (HUBS-F28)', async () => {
+    const s = await setup(takeOver, TAKE_OVER);
+    expect(s.calls().map((c) => [c.method, c.path, c.body ?? c.query])).toEqual([
+      ['GET', '/api/hubs/billing-profile', { hub_id: 'cafe' }],
+      ['POST', '/api/billing/plan/take-over', { hub_id: 'cafe' }],
+    ]);
+    expect(s.q('checkout-modal')?.getAttribute('aria-label')).toBe('Keep Starter with your card');
+    expect(s.q('checkout-for')?.textContent?.trim()).toBe('For Café Central · nothing is charged today: your card pays it from Nov 1, 2026');
+    expect(stripe.secrets).toEqual(['cs_test_1_secret_x']);
+  });
+
+  it('once kept: what happened and the business’s page', async () => {
+    const s = await setup(takeOver, TAKE_OVER);
+    stripe.complete();
+    await flush();
+    expect(toastSuccess).toHaveBeenCalledWith('Café Central keeps Starter: your card pays it from Nov 1, 2026');
+    expect(s.router.currentRoute.value.fullPath).toBe('/businesses/cafe/summary');
+  });
+
+  it('keeping it, in Spanish', async () => {
+    const s = await setup(takeOver, TAKE_OVER, {}, 'es');
+    expect(s.q('checkout-modal')?.getAttribute('aria-label')).toBe('Mantén Starter con tu tarjeta');
+    expect(s.q('checkout-for')?.textContent?.trim()).toBe('Para Café Central · hoy no se cobra nada: tu tarjeta lo paga desde el 1 nov 2026');
+    stripe.complete();
+    await flush();
+    expect(toastSuccess).toHaveBeenCalledWith('Café Central mantiene Starter: tu tarjeta lo paga desde el 1 nov 2026');
+  });
+
+  it('keeping it asks the new owner’s details first when the payer is still the previous owner’s', async () => {
+    const s = await setup(({ path }) => (path === '/api/hubs/billing-profile' ? Response.json({ ...EMPTY_PROFILE, paid_by_another_account: true }) : takeOver({ path } as never)), TAKE_OVER);
+    expect(s.q('checkout-another-account')).not.toBeNull();
+    expect(s.calls().filter((c) => c.method === 'POST')).toEqual([]);
+  });
+
+  it('keeping it refused by the server is said in the person’s words, with «Retry»', async () => {
+    const s = await setup(
+      ({ path }) =>
+        path === '/api/hubs/billing-profile'
+          ? Response.json(PROFILE)
+          : apiError(409, 'billing.nothing_to_take_over', 'This business’s plan is already paid with your card.'),
+      TAKE_OVER,
+    );
+    expect(s.q('checkout-error')?.textContent).toContain('This business’s plan is already paid with your card.');
+    expect(s.q('checkout-retry')).not.toBeNull();
+    expect(stripe.checkouts).toEqual([]);
+  });
+
+  it('keeping it when the server says the payer is still another account’s goes back to the details', async () => {
+    const s = await setup(
+      ({ path }) =>
+        path === '/api/hubs/billing-profile'
+          ? Response.json(PROFILE)
+          : apiError(409, 'billing.payer_required', 'Say who pays for this business first.'),
+      TAKE_OVER,
+    );
+    expect(s.q('details-postal-code')).not.toBeNull();
+    expect(s.q('checkout-modal-error')?.textContent).toContain('Say who pays for this business first.');
+    expect(stripe.checkouts).toEqual([]);
   });
 
   it('a module bought says it turns on by itself', async () => {

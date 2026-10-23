@@ -5,13 +5,14 @@ the customer paid and got nothing, and had to remember to look in the panel. The
 instead of attaching the PDF: the PDF is the platform hub's and carries the QR only once issued. It leaves
 the first time the platform hub issues the invoice (``billing.invoice.apply_fiscal_status``), once.
 
-Changed: plain text in the payer's language, as every mail of the SaaS until block 1 brings the branded one
-(``hubs/emails.py``), so «text and HTML» is dropped; the link is the panel's Billing page, not the old
+Changed: in the payer's language, branded as text and as HTML on the common template (``base.emails``, whose
+shape ``base/tests/test_emails.py`` checks; ACCOUNTS-F46); the link is the panel's Billing page, not the old
 invoice page; the recipient is the payer's billing e-mail (the invoice's addressee), the account's otherwise.
 """
 
 from datetime import date
 from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 from django.core import mail
@@ -115,7 +116,56 @@ def test_a_mail_that_cannot_leave_raises_so_it_is_sent_again_later(invoice, monk
     def broken(*args, **kwargs):
         raise ConnectionRefusedError("SMTP down")
 
-    monkeypatch.setattr(emails, "send_mail", broken)
+    monkeypatch.setattr("django.core.mail.EmailMessage.send", broken)
 
     with pytest.raises(emails.MailNotSent):
         emails.send_invoice_issued(invoice)
+
+
+@pytest.mark.parametrize("notice", ["invoice", "payment_failed", "business_suspended"])
+def test_a_mail_whose_html_cannot_be_drawn_is_not_sent_either(notice, invoice, monkeypatch):
+    """ACCOUNTS-F46: drawing the branded HTML is part of sending it, so a failure there is ``MailNotSent`` too and
+    the mail is sent again later, never an error that stops whoever asked for it."""
+    def broken(*args, **kwargs):
+        raise OSError("the templates cannot be read")
+
+    monkeypatch.setattr("base.emails.render_to_string", broken)
+    hub = SimpleNamespace(id="0199a0c4-7f3e-7000-8000-000000000001", name="Mi Hub")
+    send = {
+        "invoice": lambda: emails.send_invoice_issued(invoice),
+        "payment_failed": lambda: emails.send_payment_failed(
+            hub,
+            to="a@example.com",
+            language="en",
+            amount=Decimal("29.99"),
+            declined=False,
+            suspends_on=date(2026, 11, 1),
+        ),
+        "business_suspended": lambda: emails.send_business_suspended(
+            hub, to="a@example.com", language="en", amount=Decimal("29.99")
+        ),
+    }[notice]
+
+    with pytest.raises(emails.MailNotSent):
+        send()
+    assert mail.outbox == []
+
+
+@pytest.mark.parametrize("declined", [False, True])
+def test_every_line_of_the_unpaid_mail_reaches_a_spanish_payer_in_spanish(declined):
+    """BILLING-F16: the mail of a renewal that could not be charged says each of its lines in the payer's language,
+    also why the card was declined: none is left in the English source (a sentence rewritten without its
+    translation). The links and the amounts aside, no line of the Spanish mail is a line of the English one."""
+    hub = SimpleNamespace(id="0199a0c4-7f3e-7000-8000-000000000001", name="Mi Hub")
+    for language in ("en", "es"):
+        emails.send_payment_failed(
+            hub,
+            to="a@example.com",
+            language=language,
+            amount=Decimal("29.99"),
+            declined=declined,
+            suspends_on=date(2026, 11, 1),
+        )
+    english, spanish = (set(message.body.splitlines()) - {""} for message in mail.outbox)
+
+    assert spanish.isdisjoint(english)

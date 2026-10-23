@@ -16,6 +16,9 @@ sin SSR y sin prefijo `/es/`; ronda 16 y spec `docs/superpowers/specs/2026-10-13
 - Idioma: catálogo propio en `public/locale/es/` (inglés fuente). El `.po` se mantiene a mano por secciones:
   `makemessages` lo reordena entero, así que se usa para descubrir los `msgid` nuevos y se añaden a mano antes de
   compilar (`msgfmt --check`).
+  Los nombres de Cookie consent en el admin (la sección, sus grupos y su registro; el paquete no trae español) se
+  traducen aquí con los `msgid` del propio paquete (`cookie consent`, `Cookie Group(s)`, `Log item(s)`):
+  `makemessages` no los ve, así que se conservan a mano.
 - Estilos: CSS propio en `public/static/public/` (con tokens `--ep-*`) y las utilidades que generan las plantillas
   (`scripts/build_ionic_utilities.py`, cuyo test falla si una plantilla gana una clase sin regenerar).
 
@@ -37,6 +40,12 @@ sin SSR y sin prefijo `/es/`; ronda 16 y spec `docs/superpowers/specs/2026-10-13
   `/set-language/` (como Stripe, Shopify o Square).
 - **Datos estructurados (PUBLIC-F14):** `OPERATING_SYSTEMS` = los sistemas que se distribuyen (web, Windows, Linux y
   Android).
+- **IndexNow (PUBLIC-F14, 2026-10-23):** `manage.py indexnow_submit` corre cada día en la tarea `saas-cron` de
+  ERPlora/aws, cuya única alarma (`task_failed`) es salir con ≠ 0. Tres finales: enviado (0); nada que enviar, sin
+  `INDEXNOW_KEY` (lo normal en desarrollo) o sin URL en el mapa del sitio (0, con aviso y el motivo en el log); y
+  rechazado (4xx o 5xx) o sin respuesta (tiempo agotado o red), que `indexnow.SubmissionFailed` convierte en
+  `CommandError` con el estado HTTP o el tipo de error. La clave nunca va al log ni al mensaje, aunque la respuesta o la
+  librería la devuelvan. Fuera de `prod` se niega con ≠ 0, como antes.
 - **Ayuda y documentación (PUBLIC-F15, APP-PUBLIC-2):** `/documentation/` deja de ser «Muy pronto» y es un 301 a
   `/help/`, como `/company/` → `/about/`: la documentación que existe son las guías y la pestaña de cada app. Soporte
   ya no manda a «Ayuda y soporte › Reportar un problema» del Hub, que no existe.

@@ -443,3 +443,115 @@ class TestTheUsageAdmin:
         assert staff_client.get("/admin/hubs/hubusagedaily/add/").status_code == 403
         assert not model_admin.has_change_permission(request, day)
         assert not model_admin.has_delete_permission(request, day)
+
+
+# --- HUBS-F36: the taxonomy's admin speaks the staff's language --------------------------------------------------
+
+import re  # noqa: E402
+
+SPANISH_COLUMNS = {
+    "sector": ["Código", "Nombre (inglés)", "Nombre (español)", "Activo", "Orden"],
+    "businesstype": ["Código", "Nombre (inglés)", "Nombre (español)", "Sector", "Vertical", "Activo", "Orden"],
+}
+#: The filters' titles («Por activo»), as Django's ``admin/filter.html`` writes them in ``data-filter-title``.
+SPANISH_FILTERS = {"sector": ["activo"], "businesstype": ["sector", "vertical", "activo"]}
+SPANISH_FIELDS = ["Código", "Icono", "Color", "Orden", "Activo"]
+
+
+def _headings(page: str) -> list[str]:
+    """The column headings of the changelist's table (``#result_list``), its checkbox column left out."""
+    table = re.search(r'<table id="result_list">(.*?)</thead>', page, re.S).group(1)
+    cells = re.findall(r'<div class="text">(.*?)</div>', table, re.S)
+    return [text for cell in cells if (text := re.sub(r"<[^>]+>", "", cell).strip())]
+
+
+@pytest.mark.parametrize("model", ["sector", "businesstype"])
+def test_the_taxonomy_lists_speak_spanish(staff_client, rows, model):
+    """HUBS-F36 (HUBS-G05, HUBS-G01): every column and filter of the list, in the staff's language: the old admin's
+    translation tabs became a column per language, and the rest of the row's fields had no Spanish («Code», «By is
+    active»)."""
+    page = staff_client.get(f"/admin/hubs/{model}/", HTTP_ACCEPT_LANGUAGE="es").content.decode()
+
+    assert _headings(page) == SPANISH_COLUMNS[model]
+    assert re.findall(r'data-filter-title="([^"]*)"', page) == SPANISH_FILTERS[model]
+
+
+@pytest.mark.parametrize("model", ["sector", "businesstype"])
+def test_the_taxonomy_forms_speak_spanish(staff_client, rows, model):
+    page = staff_client.get(f"/admin/hubs/{model}/{rows[model].pk}/change/", HTTP_ACCEPT_LANGUAGE="es").content.decode()
+    labels = [label.strip().rstrip(":") for label in re.findall(r"<label[^>]*>([^<]+)</label>", page)]
+
+    for label in SPANISH_FIELDS:
+        assert label in labels, (label, labels)
+
+
+@pytest.mark.parametrize(("model", "spanish"), [("sector", "Hostelería"), ("businesstype", "Restaurante")])
+def test_a_taxonomy_row_is_named_in_the_staff_language(staff_client, rows, model, spanish):
+    """HUBS-F36: the title of its form, its crumbs and the sector's dropdown name the row in Spanish too (they said
+    «Hair Salon» and «Personal Services & Wellness» in a Spanish admin); English when the Spanish is blank."""
+    from django.utils import translation
+
+    row = rows[model]
+    with translation.override("es"):
+        assert str(row) == spanish
+        type(row).objects.filter(pk=row.pk).update(name_es="")
+        row.refresh_from_db()
+        assert str(row) == row.name_en
+
+
+# --- HUBS-F31 (and HUBS-F05's screen): the plans' admin speaks the staff's language ----------------------------------
+
+PLAN_COLUMNS = ["Identificador", "Nombre (inglés)", "Precio al mes", "Días de prueba", "Activo", "Solo como mejora", "Interno"]
+PLAN_FILTERS = ["activo", "solo como mejora", "interno"]
+PLAN_FIELDS = [
+    "Identificador",
+    "Precio al mes",
+    "Precio al año",
+    "Días de prueba",
+    "Orden",
+    "Activo",
+    "Solo como mejora",
+    "Interno",
+    "Nivel de módulos",
+    "Soporte",
+    "Dominio propio",
+    "Negocios por cliente",
+    "Dispositivos",
+    "Personas",
+    "Transacciones de base de datos a la vez",
+    "Consulta más larga (segundos)",
+    "Producto de Stripe",
+    "Precio mensual de Stripe",
+    "Precio anual de Stripe",
+]
+
+
+def test_the_plan_list_speaks_spanish(staff_client, rows):
+    """Its columns and filters said «PRICE MONTHLY», «TRIAL PERIOD DAYS» and «Por is active» in a Spanish admin (the
+    capture of HUBS-F31's notice, APP-HUBS-4)."""
+    page = staff_client.get("/admin/hubs/plan/", HTTP_ACCEPT_LANGUAGE="es").content.decode()
+
+    assert _headings(page) == PLAN_COLUMNS
+    assert re.findall(r'data-filter-title="([^"]*)"', page) == PLAN_FILTERS
+
+
+def test_the_plan_form_speaks_spanish(staff_client, rows):
+    page = staff_client.get(f"/admin/hubs/plan/{rows['plan'].pk}/change/", HTTP_ACCEPT_LANGUAGE="es").content.decode()
+    labels = [label.strip().rstrip(":") for label in re.findall(r"<label[^>]*>([^<]+)</label>", page)]
+
+    for label in PLAN_FIELDS:
+        assert label in labels, (label, labels)
+    # The level and the support are picked from their Spanish names; their stored values do not change.
+    # (Basic, Pro and Enterprise are the levels' brand names in both languages: the catalog keeps them.)
+    for value, name in (("free", "Gratis"), ("community", "Foro de la comunidad")):
+        assert re.search(rf'value="{value}"( selected)?>{name}<', page), (value, name)
+
+
+def test_a_plan_is_named_in_the_staff_language(rows):
+    from django.utils import translation
+
+    plan = rows["plan"]
+    with translation.override("es"):
+        assert str(plan) == "Starter · 29,99 €/mes"
+    with translation.override("en"):
+        assert str(plan) == "Starter · 29.99 €/month"

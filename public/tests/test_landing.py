@@ -26,8 +26,8 @@ What changed, and why:
   frozen in ``pm/LOCKED.md``, the xfail that waited for it is a plain test now);
 * the plan cards are ``public/components/pricing_card.html`` and the contact page uses the ``ep-*``
   classes (PLAN §16.11);
-* the contact mail is rendered from ``public/templates/public/email/`` and sent with ``EmailMessage``
-  to ``SUPPORT_EMAIL`` (plan §3.o); the limit per address reads the address the load balancer saw
+* the contact mail is rendered from ``public/templates/public/email/`` and sent branded, as text and as HTML
+  (``base.emails``, ACCOUNTS-F46), to ``SUPPORT_EMAIL`` (plan §3.o); the limit per address reads the address the load balancer saw
   (the last hop of ``X-Forwarded-For``), never the balancer's own;
 * no page names Hetzner as the host any more (Ioan, 2026-10-13: AWS; Ireland region, 2026-10-14).
 """
@@ -762,7 +762,7 @@ def test_a_mail_failure_is_told_to_the_visitor_and_logged(client, monkeypatch, c
     def broken(*args, **kwargs):
         raise OSError("SMTP down")
 
-    monkeypatch.setattr(landing.EmailMessage, "send", broken)
+    monkeypatch.setattr("django.core.mail.EmailMessage.send", broken)
 
     response = submit(client)
 
@@ -1121,7 +1121,7 @@ def test_a_mail_failure_keeps_what_was_typed_on_the_home_too(client, monkeypatch
     def broken(*args, **kwargs):
         raise OSError("SMTP down")
 
-    monkeypatch.setattr(landing.EmailMessage, "send", broken)
+    monkeypatch.setattr("django.core.mail.EmailMessage.send", broken)
 
     response = submit(client, next=HOME)
 

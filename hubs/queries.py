@@ -555,11 +555,24 @@ def plans_charged_to(hub_id, user_id):
     )
 
 
+def paid_until(hub_id):
+    """The end of the period already paid of the business's paid plan (a live Stripe subscription), or ``None`` on
+    Free: what the mails of a hand-over say (HUBS-F28)."""
+    subscription = (
+        Subscription.objects.filter(hub_id=hub_id)
+        .exclude(stripe_subscription_id="")
+        .exclude(status__in=ENDED_STATUSES)
+        .first()
+    )
+    return subscription.current_period_end if subscription is not None else None
+
+
 def still_pays(member: HubMember) -> bool:
     """Whether ``member``'s account still pays for its business, whatever its role: it owns its payer
     (``is_payer``), or the plan is still charged to the card of one of its payers (after a hand-over the new owner
-    says who pays from now on, but a live subscription stays on the old Stripe customer until support moves it:
-    ``billing.payer_required``). ``business_list`` annotates the second as ``charged``."""
+    says who pays from now on, but a live subscription stays on the old Stripe customer until they keep it with
+    their card, ``billing.plan.take_over``, HUBS-F28: until then ``billing.payer_required``). ``business_list``
+    annotates the second as ``charged``."""
     if is_payer(member):
         return True
     charged = getattr(member, "charged", None)
@@ -891,18 +904,15 @@ def hub_registry(hub_id: UUID) -> dict[str, Any]:
     }
 
 
-#: The module whose purchase pays VeriFactu's live sending on the Free plan (the snapshot's ``live_paid``).
-VERIFACTU_MODULE = "verifactu"
-
-
 def hub_snapshot(hub_id: UUID) -> dict[str, Any]:
     """The body of ``PUT /internal/hubs/{id}/state`` (PLAN-SAAS §2.2), at the business's state version.
 
     ``hub_id`` names the hub of the path, which the signature (body only) does not cover; ``slug`` names it
     too. ``verifactu`` (plan 2026-10-15, agreed with the Hub): the authorisation for ERPlora to file its
-    records as the staff left it (``fiscal.queries.snapshot_block``) and ``live_paid``, whether the business
-    pays for the live sending (a plan that is not Free, or a live ``verifactu`` module). Two independent
-    facts: the Hub's «live» through ERPlora needs both. ``whatsapp``: the business's WhatsApp channel (its
+    records as the staff left it (``fiscal.queries.snapshot_block``) and ``live_paid``, true for every business:
+    VeriFactu goes in every plan, Free included (PLAN §30, round 2026-10-22b). The Hub's «live» through ERPlora
+    still reads both, so the validated authorisation alone decides; ``live_paid`` goes once the Hub drops that
+    condition. ``whatsapp``: the business's WhatsApp channel (its
     number, the month's usage against the plan's allowance and its templates at Meta), door 4 of the Hub's
     ``whatsapp_inbox`` contract (``whatsapp.queries.channel_block``).
     """
@@ -920,9 +930,6 @@ def hub_snapshot(hub_id: UUID) -> dict[str, Any]:
         [item for item in subscription.items.order_by("module_slug") if item.is_live(now)]
         if subscription
         else []
-    )
-    live_paid = (plan is not None and plan.price_monthly > 0) or any(
-        item.module_slug == VERIFACTU_MODULE for item in items
     )
     members = (
         HubMember.objects.select_related("user")
@@ -960,7 +967,7 @@ def hub_snapshot(hub_id: UUID) -> dict[str, Any]:
             }
             for member in members
         ],
-        "verifactu": {**verifactu_representation(hub.id), "live_paid": live_paid},
+        "verifactu": {**verifactu_representation(hub.id), "live_paid": True},
         # The business's WhatsApp channel, door 4 of the Hub's whatsapp_inbox contract: the body of its door 3 at the
         # snapshot's version (whatsapp.queries.channel_block).
         "whatsapp": channel_block(hub.id, version=hub.state_version),
@@ -978,20 +985,25 @@ def effective_plan(hub_id: UUID, now: datetime) -> Plan | None:
     return _effective_plan(subscription, now)
 
 
+#: The plan's fields its businesses' snapshots carry (``plan`` of PLAN-SAAS §2.2): changing one in the admin owes the
+#: Hub a newer snapshot of every business on the plan (``services.owe_plan_rights``). The monthly messages are counted
+#: and blocked at by the Hub (PLAN-SAAS §3.6): 0 = none.
+SNAPSHOT_PLAN_FIELDS = (
+    "slug",
+    "included_level",
+    "max_devices",
+    "max_users",
+    "max_db_connections",
+    "statement_timeout_seconds",
+    "assistant_messages_per_month",
+    "whatsapp_messages_per_month",
+)
+
+
 def _snapshot_plan(plan: Plan | None) -> dict[str, Any] | None:
     if plan is None:
         return None
-    return {
-        "slug": plan.slug,
-        "included_level": plan.included_level,
-        "max_devices": plan.max_devices,
-        "max_users": plan.max_users,
-        "max_db_connections": plan.max_db_connections,
-        "statement_timeout_seconds": plan.statement_timeout_seconds,
-        # The Hub counts them and blocks at the quota (PLAN-SAAS §3.6): 0 = none.
-        "assistant_messages_per_month": plan.assistant_messages_per_month,
-        "whatsapp_messages_per_month": plan.whatsapp_messages_per_month,
-    }
+    return {field: getattr(plan, field) for field in SNAPSHOT_PLAN_FIELDS}
 
 
 # --- Members and invitations ----------------------------------------------------------------------

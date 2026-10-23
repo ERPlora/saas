@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:9b8b70b9a3493d1ac8437e67b82d6e5afd93f740bbed47496ab2681116e23a59 -->
+<!-- generated from WORKBOOK.md sha256:5d3c32cb9d0aca3c72ac7be142ad23262725f3085b525bfd6a2ef320c92a01b3 -->
 
 ## What it is for and who it is for
 
@@ -18,8 +18,13 @@ Who uses it:
 - **Anyone with an account** creates their business and enters the businesses they are a member of.
 - **The owner** sees the list of their businesses, changes its web address, deletes it, recovers a deleted one and
   changes its plan; with the **administrators**, they change its name, its language and its time zone.
-- **ERPlora's staff** keep the plans from the admin and, from there, send a business again what it did not
-  receive.
+- **The owner** and the **administrators** invite the people of the business, change their role and remove them;
+  only the owner hands out the administrator role and transfers the ownership. A **manager** or an **employee** only
+  opens the business.
+- **ERPlora's staff** keep the plans, the sectors and the business types from the admin and, from there, send a
+  business again what it did not receive and look up who has access to each business.
+- The **system** sends each business, after every change and every night, its plan with its caps, its paid apps,
+  its people and its status; the business works with that copy and does not ask erplora.com on every sale.
 
 ## Reference adopted
 
@@ -38,6 +43,11 @@ Who uses it:
   public website, not to the point of sale, on paid plans and with the certificate set up by itself
   (https://squareup.com/help/article/6916, https://support.toasttab.com/en/article/Toast-Online-Ordering-Pro-Domains,
   https://www.fresha.com/help-center/knowledge-base/online-presence/109902-manage-your-domains).
+- **Shopify and Stripe**: a shop's rights travel in a notice after each change and the app keeps its local copy; it
+  does not ask on every use (https://shopify.dev/docs/apps/build/webhooks, https://docs.stripe.com/billing/entitlements).
+- **Shopify, Square and Toast**: the owner gives their staff access with a role, and each role brings its
+  permissions; the access is changed and removed from the same place, and whoever only works with a PIN at the till
+  is managed inside the point of sale (https://help.shopify.com/en/manual/your-account/staff-accounts).
 
 ## Before you start
 
@@ -86,8 +96,41 @@ The dialog of "Change address": "New address", under it "Your business will open
 give and what happens next; "Change address" is enabled when it differs from the current one.
 
 ### admin › Businesses › Plans
-Each plan's form for the staff: the texts in English and in Spanish, the price, what it includes, its limits and
-its Stripe prices.
+Each plan's form for the staff, in their language: the texts in English and in Spanish, the price, what it includes,
+its limits and its Stripe prices. On saving a change to what the plan gives, the notice "… businesses on this plan get
+the change within 15 minutes.".
+
+### admin › Businesses › Sectors and Business types
+The two lists of the sign-up's taxonomy for the staff, with search and filters, and the form of each one: the code,
+the name and the description in English and in Spanish, the icon, the colour, the order and whether it is active; on
+a business type, also its sector and its template ("Vertical").
+
+### Members
+The "Members" tab of each business, for the owner and the administrators: the "Team" table with "Name" (one's own
+row marked "You"), "Email", "Role", "Status" and "Last access", the owner first; per row, only what the person may
+do with it ("Change role", "Remove", "Resend", "Cancel invitation" and, in the row's menu, "Transfer ownership").
+Below, the places of the plan and "What can each one do?"; above, the ownership offered and waiting for an answer,
+with "Withdraw the offer". On a phone they are cards.
+
+### Invite
+The "Invite to …" dialog: "Email", "Role" and "Message (optional)", with "We send an email with the link. The
+invitation lasts 7 days." and the places left; "Send invitation" is enabled with an address.
+
+### You have been invited
+The centred card of the invitations waiting for an answer: "Someone gave you access to their business. Accept to
+enter.", one card per business with "… invites you · …", "Accept and enter" and "Decline", and at the foot "The
+owner or an admin of the business can take this access away.". In **Businesses** and in the Entrance the same
+invitation shows above the list.
+
+### Transfer the ownership
+The "Transfer …" dialog: to whom it is offered, that they have 7 days to accept it, that a paid plan stays until the
+end of the period already paid and then the new owner pays it with their card, and the business's name typed to
+confirm. Whoever receives it sees "… offers you …" in
+**Businesses**, with "Accept the ownership" and "Decline".
+
+### admin › Businesses › Members
+The list of accesses for the staff: business, person, role, when they were invited, when they accepted and their
+last access, with a search by business or by email and a filter by role; it is only looked up.
 
 ## States of each screen
 
@@ -98,7 +141,7 @@ its Stripe prices.
 | Error | "We could not load your businesses" with "Retry"; a business that could not be prepared: "Not prepared" and "We could not prepare it. We keep retrying; if it keeps failing, contact us.". |
 | Preparing | The row says "Preparing" and "We are preparing it. It opens by itself when it is ready."; "Open" waits. |
 | Offline | "Reconnecting… what you see may be a few seconds old." while the live connection comes back. |
-| No permission | A business of another account does not exist for that person: it is neither listed nor opened. |
+| No permission | A business of another account does not exist for that person: it is neither listed nor opened. A manager or an employee who reaches the page of their business sees "You do not have permission to manage this business". |
 
 ## Flows
 
@@ -127,6 +170,20 @@ its Stripe prices.
 | HUBS-F21 | See the status and the usage of a business | partial |
 | HUBS-F22 | Collect every night the usage of each business | partial |
 | HUBS-F23 | ERPlora's staff acting on a business from the admin | done |
+| HUBS-F24 | Invite a person to a business | done |
+| HUBS-F25 | Accept or decline an invitation to a business | done |
+| HUBS-F26 | Change the role of a person in a business | done |
+| HUBS-F27 | Remove a person from a business | done |
+| HUBS-F28 | Transfer the ownership of a business | done |
+| HUBS-F29 | See the people of a business | done |
+| HUBS-F30 | Look up the accesses of the people in the admin | done |
+| HUBS-F31 | Send each business its plan, its apps and its people | done |
+| HUBS-F32 | Apply the plan's caps on people and devices | partial |
+| HUBS-F33 | Give the business the assistant messages of its plan | partial |
+| HUBS-F34 | Tell the business which paid apps it may use and why | partial |
+| HUBS-F35 | Recognise the businesses' service when it calls erplora.com | done |
+| HUBS-F36 | Keep the sectors and the business types in the admin | done |
+| HUBS-F37 | Read the sectors and the business types | done |
 
 ### HUBS-F01 Create the free business with a single question
 Status: done
@@ -430,3 +487,191 @@ In: the staff account with its second factor.
 Out: what the action sends to the business and the line of the history.
 If it fails: the admin does not create, change or delete businesses, members or paid plans: only their own screens do, so nobody of the staff makes themselves owner of a business or deletes it without its deletion. Support staff see everything and run no action. For the data inside the business there is the businesses' admin (in the businesses' service).
 Involved: the business (receives what is sent again), accounts (the staff account)
+
+### HUBS-F24 Invite a person to a business
+Status: done
+Actor: owner, administrator, integration
+Screen: Members › Invite
+Steps:
+1. In the business's "Members" tab, "Invite" opens "Invite to …" with "Email", "Role" (Employee to start with; only the roles below one's own: the owner also hands out Admin) and "Message (optional)"; below, how many places of the plan are left.
+2. They press "Send invitation": "Invitation sent to …" shows and the person appears in the list as a pending invitation, with "Resend" and "Cancel invitation".
+3. The person receives an email with who invites them, to which business, with which role, until when it is valid and the link to accept it; if they have no account yet, also how to get in (with Google or by setting their password).
+4. "Resend" sends the email again and gives it 7 more days; "Cancel invitation" withdraws it and its link no longer lets anyone in. An integration does the same with the account's session.
+In: the email, the role, the message and the business; the session of whoever invites.
+Out: the invitation, valid for 7 days, which holds a place of the plan; the account of that address if it did not exist, without a password. The business does not receive the person until they accept. Records `hubs.member.invited` (when resent, `hubs.member.invitation_resent`; when cancelled, `hubs.member.invitation_cancelled`).
+If it fails: somebody already in the business, "… is already on this business."; with an invitation still valid, "… already has an invitation waiting. Resend it instead." (an expired one is renewed by inviting again). A role equal to or above one's own, "You cannot hand out a role equal to or above yours.". Without places, the dialog says "The plan has no free places left: change the plan or remove someone to invite more people." and sends nothing. An address of ERPlora's staff, "This address belongs to ERPlora's staff and cannot join a business.". An account that never proved that address is released before being invited: it loses its password, its second factor, its Google and its sessions, and only whoever opens that mailbox gets in. A manager or an employee invites nobody; a deleted business takes no invitations; a business of another account does not exist for whoever invites. If the email does not leave, the invitation stays.
+Involved: accounts (the invited person's account and, if it never proved its address, its release), the business (receives the person when they accept)
+
+### HUBS-F25 Accept or decline an invitation to a business
+Status: done
+Actor: administrator, manager, employee
+Screen: You have been invited, Businesses
+Steps:
+1. The invited person enters erplora.com with the invitation's email (or follows its link): "You have been invited" shows one card per business with "… invites you · …"; in **Businesses** and in the Entrance the same invitation shows above the list.
+2. They press "Accept and enter": they go into the business without typing the password again, with the role the invitation says, and the business is now in their list.
+3. Or they press "Decline" and confirm it in "Decline the invitation": "Invitation declined" shows and whoever invited them would have to invite them again.
+In: the account's invitations waiting for an answer and still within their 7 days.
+Out: on accepting, the person inside the business and the business told, with the list of people up to date; on declining, the invitation deleted. Records `hubs.invitation.accepted` or `hubs.invitation.declined`. The owner and the administrators see the change in "Members" at once.
+If it fails: an expired invitation, "This invitation expired. Ask whoever invited you to send it again."; one already answered, withdrawn or someone else's cannot be answered ("This invitation is no longer valid"). Without the email confirmed, "Confirm your email address before accepting the invitation.". If the plan has no room left, "This business has no seat left on its plan. Ask whoever invited you to free one or to change the plan.". Accepting twice gives nothing more, and it never touches the person's other businesses.
+Involved: accounts (the session and the jump into the business), the business (receives the person)
+
+### HUBS-F26 Change the role of a person in a business
+Status: done
+Actor: owner, administrator, integration
+Screen: Members › Change role
+Steps:
+1. In "Members", in the person's row, "Change role" opens "Change the role of …" with the roles that can be given to them.
+2. They pick the new one and press "Change role": "… is now …" shows and the row shows the new role.
+3. The business receives the list of people with the new role and ends that person's session there at that moment: the next thing they do asks them to sign in again, and they come back with the new role.
+In: the person and the new role; the session of whoever changes it, who has to rank above the person and above the role given.
+Out: the new role and the notice to the business, with the end of that person's session there; the role of an unanswered invitation changes without telling the business. Records `hubs.member.role_changed`.
+If it fails: one's own role, "You cannot change your own membership."; somebody of an equal or higher rank, "You cannot manage a member whose role is equal to or above yours."; a role equal to or above one's own, "You cannot hand out a role equal to or above yours.". The ownership is not given from here (HUBS-F28). A manager or an employee changes no roles; a person of a business of another account does not exist for whoever asks.
+Involved: the business (BASE-F13: receives the new role and ends the session), accounts (the session)
+
+### HUBS-F27 Remove a person from a business
+Status: done
+Actor: owner, administrator, integration
+Screen: Members › Remove
+Steps:
+1. In "Members", in the person's row, "Remove" opens "Remove …" ("… loses access to … at once. Their account and their other businesses stay.").
+2. They press "Remove from the business": "… was removed from the business" shows and the row goes.
+3. The business receives the list of people without them and ends their sessions in that business at that moment, only in that one: if they come back, erplora.com tells them "You don't have access to this hub".
+In: the person; the session of whoever removes them, who has to rank above them.
+Out: the person out of that business (their account and their other businesses stay), an ownership offer pending to them withdrawn, the notice to the business and the end of their sessions there, retried if the business does not answer. Records `hubs.member.removed`.
+If it fails: oneself, "You cannot change your own membership."; somebody of an equal or higher rank (never the owner), "You cannot manage a member whose role is equal to or above yours.". An unanswered invitation is cancelled, not removed: "This person has not answered yet: cancel the invitation.". Whoever still pays for the business (the previous owner after a transfer) is not removed: "… still pays for this business. Say who pays from now on first: your billing details are asked when you pay a plan or a module here." or, if the plan is still on their card, "This business's plan is still paid with …'s card: keep it with yours in Billing first.".
+Involved: the business (BASE-F13: receives the list without them and ends their sessions), billing (who pays for the business)
+
+### HUBS-F28 Transfer the ownership of a business
+Status: done
+Actor: owner
+Screen: Members › Transfer the ownership, Businesses, Billing › Subscriptions
+Steps:
+1. The owner, in "Members", opens the row menu of a person already in the business and chooses "Transfer ownership".
+2. In "Transfer …" they read that the person has 7 days to accept it and that "A paid plan stays until the end of the period already paid; then the new owner pays it with their card, and the current one is not charged again.", type the business's name and press "Offer the ownership": "Offer sent to …: they have 7 days to accept it" shows and, above the list, "Ownership offered to …" with "Withdraw the offer".
+3. The person receives an email with the link to **Businesses**, where they see "… offers you …" with "Accept the ownership" and "Decline".
+4. On accepting, "You are now the owner of …" shows: they become the owner and the previous one stays as administrator; the previous one receives an email that tells them their card no longer pays the plan.
+5. If the business has a paid plan, the new owner sees it in **Billing › Subscriptions** with "Free from …" and "Paid with another account’s card", and presses "Keep it with my card".
+6. In "Keep … with your card" they give their billing details (the previous ones are not theirs), read "For … · nothing is charged today: your card pays it from …" and add their card in the secure payment: "… keeps …: your card pays it from …" shows.
+In: the chosen person, who has to be in the business already; the owner's session and, when answering, that person's; to keep the plan, the new owner's billing details and card.
+Out: the offer, valid for 7 days; on accepting, both roles changed at once (always a single owner), the business told and both people's sessions there ended. The paid plan belongs to the business and the card does not: on accepting it stops renewing on the previous payer's card, which is not charged again, and the business keeps it until the end of the period already paid. With "Keep it with my card", the plan and its modules move to the new owner's card from that day, nothing charged today nor twice, and the previous subscription ends without a refund; otherwise, that day the business goes back to Free, as any cancelled plan. The secure payment the previous owner left open is closed on accepting (it can no longer be paid); if it still completes, it is not applied: it is cancelled, refunded in full (with its corrective invoice) and they get "Your payment for … was refunded" (BILLING-F09). Records `hubs.ownership.requested` and, on the answer, `hubs.ownership.accepted`, `hubs.ownership.declined` or `hubs.ownership.cancelled`; on opening the payment, `billing.checkout.started`; on refunding a payment of somebody who no longer owns it, `billing.checkout.refunded`.
+If it fails: to somebody not in the business yet, "Invite this person to the business first: it can only go to somebody already on it."; to oneself, "You already own this business."; with another offer waiting, "There is already a transfer of this business waiting for an answer.". When answering: "This transfer was already answered.", "This transfer expired. Ask the owner to send it again.", "You are no longer on this business." or "This business already changed hands: ask its current owner to transfer it."; if the payment service does not answer when a business with a paid plan is accepted, it does not change hands: "The payment service did not answer. Nothing was charged; try again in a moment.". If it does not answer when closing the payment the previous owner left open, the hand-over is done anyway and the team sees it in the log (`billing.checkout_not_expired`); a payment of that attempt arriving later is refunded. A free business is not accepted if the person already has theirs: "You already have a free business. Change its plan to create another one.". When keeping the plan: without their details, the dialog asks for them first ("Say who pays for this business first: its billing details are another account's."); with an unpaid invoice, "This business has an unpaid invoice: pay it before buying or changing anything."; if it is already paid with their card or on Free, "This business's plan is already paid with your card, or it is on Free: there is nothing to keep.". Only the owner offers, and only the owner keeps the plan with their card; only the chosen person accepts or declines, and only the owner withdraws the offer.
+Involved: billing (who pays for the business: the plan stops renewing on the previous card and moves to the new owner's), the business (BASE-F13: receives the new roles and ends both people's sessions)
+
+### HUBS-F29 See the people of a business
+Status: done
+Actor: owner, administrator, integration
+Screen: Members
+Steps:
+1. On the business's page, the "Members" tab shows the "Team" table: the owner first and each person with their email, their role, their status (inside, pending invitation or expired) and their last access; one's own row carries "You".
+2. Each row offers only what the person may do with it (HUBS-F24 to HUBS-F28); on a phone they are cards and, with many people, it goes page by page.
+3. Below it says how many places of the plan are used and "What can each one do?"; the list changes by itself when somebody accepts, changes role or leaves.
+In: the account's session and the business.
+Out: nothing stored.
+If it fails: "We could not load the members" with "Retry". A manager or an employee sees "You do not have permission to manage this business"; a business of another account does not exist for whoever asks. An unanswered invitation has no joining date.
+Involved: accounts (the session), billing (the places of the plan)
+
+### HUBS-F30 Look up the accesses of the people in the admin
+Status: done
+Actor: ERPlora's staff
+Screen: admin › Businesses › Members
+Steps:
+1. The staff enter erplora.com's admin and open the list of members; they search by the business or by the person's email and filter by role.
+2. They see, per access, the business, the person, their role, when they were invited, when they accepted and their last access; each business's record also shows its members.
+In: the staff account with its second factor.
+Out: nothing stored.
+If it fails: the admin invites, changes and removes nobody: only the owner and the administrators do it, in "Members", so nobody of the staff gives themselves access to a business. Support staff look it up too.
+Involved: accounts (the staff account)
+
+### HUBS-F31 Send each business its plan, its apps and its people
+Status: done
+Actor: system, ERPlora's staff
+Screen: none; for the staff, admin › Businesses › Plans
+Steps:
+1. Whenever something the business has to know changes —its plan (when it is paid, changed or ended), a paid app bought or cancelled, a person who joins, changes role or leaves, its billing standing or its VeriFactu authorisation—, erplora.com stores it and, as soon as it is stored, sends the business its whole snapshot: the plan with its caps (people, devices, the limits of its database and the assistant and WhatsApp messages a month), its paid apps, its people with their role, its status and its VeriFactu block.
+2. The business always keeps the newest snapshot: one that arrives late and is older than the one it has changes nothing. It works with it without asking erplora.com on every sale, so it keeps selling even if erplora.com does not answer.
+3. If the staff change in the admin what a plan gives (its caps, its level of apps or its messages a month), on saving they see "… businesses on this plan get the change within 15 minutes." and every business on that plan gets it on the next pass; changing only its texts, its order or its price sends nothing.
+4. What a business did not receive is sent to it again every 15 minutes (HUBS-F08) and, every night, every business gets its snapshot again.
+In: the stored change: the payment, the people, the plan's form in the admin or the VeriFactu authorisation.
+Out: the business's snapshot, with a version number that only grows. VeriFactu is in every plan, Free too: with the authorisation validated, the business files its records on whatever plan it has. Records `hubs.subscription.changed` when its plan or its apps change.
+If it fails: if the business does not answer or refuses the snapshot, it stays owed and is retried (HUBS-F08); the refusal shows on its record in the admin (HUBS-F23). A deleted business gets no snapshot. A change from the admin that does not arrive on the next pass arrives the following night.
+Involved: billing (the payment and the plan), fiscal (the VeriFactu authorisation), the business (keeps the snapshot and applies its status, its people, VeriFactu and WhatsApp; the caps and the apps, HUBS-F32 and HUBS-F34)
+
+### HUBS-F32 Apply the plan's caps on people and devices
+Status: partial — erplora.com already stops the invitation that does not fit and sends both caps to the business, but the business does not apply them yet: sessions per device and the employees who enter with a PIN come with each business's own database (phase 2); until then a business on Free opens on more than one device at a time.
+Actor: system, owner, administrator
+Screen: Members › Invite
+Steps:
+1. Each plan says how many people and how many devices at a time it covers in each business: Free, 3 people and 1 device; the paid plans, no cap.
+2. On inviting, erplora.com counts the people already in and the invitations still valid; without a place, the "Invite to …" dialog says "The plan has no free places left: change the plan or remove someone to invite more people." and sends nothing (HUBS-F24). Changing the role of someone already in spends no place.
+3. The business gets both caps in its snapshot (HUBS-F31) and applies them to what only it sees: the employees who enter with a PIN and the devices with an open session.
+In: the business's plan, its people and its invitations.
+Out: the refusal of the invitation that does not fit and both caps in the snapshot; nothing else is stored.
+If it fails: accepting an invitation when the plan has no room any more is stopped on accepting (HUBS-F25). Moving down a plan removes nobody: it stops new invitations until there is room again.
+Involved: billing (the plan), the business (applies the caps to its devices and its PIN employees)
+
+### HUBS-F33 Give the business the assistant messages of its plan
+Status: partial — the business already gets the messages a month its plan includes, but they are not counted or stopped yet: each message goes through the assistant's turn, which comes with the second part of the assistant app.
+Actor: system
+Screen: none
+Steps:
+1. Each plan includes a number of assistant messages a month (Free 30, Starter 300, Standard 600; 0 is no assistant); the staff change it in the plan's form (HUBS-F05).
+2. erplora.com sends it to the business in its snapshot (HUBS-F31), next to WhatsApp's, and again as soon as the plan or the figure changes.
+3. Each message counts for the business's month: at 80 % it warns and at 100 % no more questions can be asked until the 1st of the next month; to get more, the plan is moved up.
+In: the business's plan.
+Out: the plan's messages a month, in the business's snapshot.
+If it fails: a plan with 0 messages leaves the assistant unused. Loose message packs are not sold.
+Involved: assistant (the turn of each message and its count), the business (shows what is left)
+
+### HUBS-F34 Tell the business which paid apps it may use and why
+Status: partial — erplora.com already sends each paid app with its origin and its date, but the business does not stop a paid app without the right yet, nor say on its apps page where it comes from; today no app of the business is paid, so all of them are used without buying them.
+Actor: system, owner
+Screen: none; each business's are seen in Store › Modules (BILLING-F31)
+Steps:
+1. A business has a paid app through its plan (the plan's level includes it) or because it bought it for that business; the free ones need not be on the list: they can always be used.
+2. erplora.com sends the business, in its snapshot (HUBS-F31), each paid app it has, where it comes from (the plan or a purchase) and until when, if it was cancelled.
+3. The business turns on the ones it has; a paid one without the right does not turn on and leads to buying it on erplora.com.
+4. In **Store › Modules**, with the business chosen, the owner sees each app in that business: "Included in your plan" or "You have it" (BILLING-F31).
+In: the business's plan and its purchases.
+Out: the business's paid apps in its snapshot; nothing is stored.
+If it fails: a purchase belongs to a single business: it never gives the app to another, not even to another of the same account. A cancelled one lasts until the end of what was paid. Moving down a plan takes away the ones the previous plan gave; moving up brings the ones of the new level. A paid app the staff put on sale, or move to another level, reaches the businesses whose plan includes it on the next pass (15 minutes at most); the admin says "… businesses whose plan includes it get the change within 15 minutes.".
+Involved: billing (the purchases), apps (which app is paid and its level), the business (turns each app on or stops it)
+
+### HUBS-F35 Recognise the businesses' service when it calls erplora.com
+Status: done
+Actor: system
+Screen: none
+Steps:
+1. When the businesses' service tells or asks erplora.com something (that a business is ready, a person's entry, the VeriFactu authorisation, a filing with the Tax Agency or a WhatsApp), it signs the call with the secret both share and the time.
+2. erplora.com checks the signature and the time (at most 5 minutes apart) before reading anything; during a change of secret it also accepts the previous one.
+3. The business of the call is the one its address names, never a header nor what the body says; with the right signature, it answers only with that business's data.
+In: the signed call.
+Out: that door's answer; nothing else.
+If it fails: without a signature, with the signature of another secret or with a time more than 5 minutes old, it is refused without doing anything; a person's session, even a staff one, does not open these doors. A notice that names a business other than its address's is refused. These doors are not published to the internet.
+Involved: accounts (the signature and each person's entry), fiscal and fiscal_gateway (VeriFactu), whatsapp (the messages), the business (calls)
+
+### HUBS-F36 Keep the sectors and the business types in the admin
+Status: done
+Actor: ERPlora's staff, system
+Screen: admin › Businesses › Sectors and Business types
+Steps:
+1. On every deploy, erplora.com creates the sectors and business types missing from its starting list (12 sectors and 70 types), without touching what the staff already changed.
+2. The staff open "Sectors" or "Business types" in the admin, search by code or name and filter by "Active" (the types, also by "Sector" and by "Vertical"); they change the order and whether it is active from the list itself.
+3. In the form they write the name and the description in English and in Spanish, the icon, the colour, the order and whether it is active; on a business type, also its sector and its "Vertical", the template a business of that type is born with.
+4. They save: the business sign-up, the pages of each sector and whoever reads them through the API get them in their language (HUBS-F37).
+In: what the staff write.
+Out: the sector or the business type, with each text in English and in Spanish.
+If it fails: a Spanish name or description without its accents or copied from the English is not saved and the field says how to fix it; neither are two business types with the same name in one language; a template no app builds is not accepted. An account without the staff mark does not enter the admin.
+Involved: public (the pages of each sector), apps (the templates each app builds), accounts (the business sign-up)
+
+### HUBS-F37 Read the sectors and the business types
+Status: done
+Actor: anyone, integration
+Screen: none; Create business and the pages of each sector use them
+Steps:
+1. Anyone, without signing in, asks for the list of sectors or the list of business types, all of them or a sector's.
+2. erplora.com answers with the active ones, in the order the staff set, each with its code, its name and its description in the language of whoever asks (English when the Spanish is missing), its icon and its colour; each business type, with its sector and its template.
+3. The Create business form fills its "Business type (optional)" with it, and the public website, its sector pages.
+In: the language of whoever asks and, if they want, a sector.
+Out: both lists; nothing is stored.
+If it fails: a sector that does not exist gives an empty list; a deactivated sector or type is not in its list. An API key of the account reads them too.
+Involved: public (the pages of each sector), accounts (the business sign-up at the Entrance)

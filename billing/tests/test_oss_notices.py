@@ -18,6 +18,7 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
+from django.core.mail import EmailMessage
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.utils import timezone
@@ -296,12 +297,12 @@ class TestChargingNeverBreaks:
     ):
         carried(this_year=5100)
         stripe_double.answer("subscriptions.update", subscription())
-        real = emails.EmailMessage.send
+        real = EmailMessage.send
 
         def down(self, *args, **kwargs):
             raise OSError("smtp down")
 
-        monkeypatch.setattr(emails.EmailMessage, "send", down)
+        monkeypatch.setattr("django.core.mail.EmailMessage.send", down)
         charge("in_near", commit=django_capture_on_commit_callbacks)
         assert notices()[0].mailed_at is None
 
@@ -309,7 +310,7 @@ class TestChargingNeverBreaks:
             call_command("retax_subscriptions")
         assert "notices_failed=1" in str(failure.value)
 
-        monkeypatch.setattr(emails.EmailMessage, "send", real)
+        monkeypatch.setattr("django.core.mail.EmailMessage.send", real)
         call_command("retax_subscriptions")
 
         assert notices()[0].mailed_at is not None

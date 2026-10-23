@@ -143,7 +143,9 @@
     "checkout": {
       "titlePlan": "Mejorar a {plan}",
       "titleModule": "Añadir {module}",
+      "titleTakeOver": "Mantén {plan} con tu tarjeta",
       "forBusiness": "Para {business} · se renueva {period}",
+      "forTakeOver": "Para {business} · hoy no se cobra nada: tu tarjeta lo paga desde el {date}",
       "period": {
         "month": "cada mes",
         "year": "cada año"
@@ -160,7 +162,8 @@
       "retry": "Reintentar",
       "stale": "Este negocio ya paga: el precio ha cambiado, revísalo de nuevo.",
       "plan": "{business} ya está en {plan}",
-      "module": "{module} añadido a {business}: se enciende en unos segundos"
+      "module": "{module} añadido a {business}: se enciende en unos segundos",
+      "takenOver": "{business} mantiene {plan}: tu tarjeta lo paga desde el {date}"
     },
     "details": {
       "intro": "¿A nombre de quién facturamos? Lo pedimos una vez, antes del primer pago.",
@@ -332,7 +335,9 @@
       "freeFrom": "Gratis desde el {date}",
       "scheduled": "Cambia a {plan} el {date}",
       "statusUntil": "Hasta el {date}",
+      "paidByAnother": "Se paga con la tarjeta de otra cuenta",
       "actions": {
+        "take_over": "Mantenerlo con mi tarjeta",
         "view_invoice": "Ver la factura",
         "keep_plan": "Mantener el plan",
         "change_plan": "Cambiar plan",

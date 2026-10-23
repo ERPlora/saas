@@ -24,19 +24,28 @@ from django.contrib import admin, messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.auth.forms import AdminUserCreationForm, UserChangeForm
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.http import url_has_allowed_host_and_scheme
-from django.utils.translation import gettext
+from django.utils import formats
+from django.utils.text import capfirst
+from django.utils.translation import gettext, ngettext
 from django.utils.cache import add_never_cache_headers
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.cache import never_cache
 
 from allauth.usersessions.admin import UserSessionAdmin as AllauthUserSessionAdmin
 from allauth.usersessions.models import UserSession
+from auditlog.admin import LogEntryAdmin as AuditlogLogEntryAdmin
+from auditlog.filters import CIDFilter
+from auditlog.filters import ResourceTypeFilter as AuditlogResourceTypeFilter
+from auditlog.mixins import MAX as SUMMARY_MAX
+from auditlog.models import LogEntry
+from auditlog.render import get_field_verbose_name
 
 from accounts import queries, services
 from accounts.models import (
@@ -322,10 +331,10 @@ class ApiKeyIssueForm(forms.ModelForm):
     """«Add API key» (ACCOUNTS-F31): a team account, a name, its permissions and when it expires."""
 
     scopes = forms.MultipleChoiceField(
-        label=_("permissions"), choices=list(API_KEY_SCOPES.items()), widget=forms.CheckboxSelectMultiple
+        label=capfirst(_("permissions")), choices=list(API_KEY_SCOPES.items()), widget=forms.CheckboxSelectMultiple
     )
     expires_in_days = forms.TypedChoiceField(
-        label=_("expires"),
+        label=capfirst(_("expires")),
         choices=[("90", _("In 90 days")), ("30", _("In 30 days")), ("", _("Never"))],
         coerce=int,
         empty_value=None,
@@ -357,17 +366,31 @@ class ApiKeyAdmin(admin.ModelAdmin):
     add_form = ApiKeyIssueForm
     add_fieldsets = ((None, {"fields": ("user", "name", "scopes", "expires_in_days")}),)
 
-    list_display = ("name", "user", "display_prefix", "scopes", "created_at", "last_used_at", "expires_at", "revoked_at")
+    list_display = (
+        "name",
+        "user",
+        "display_prefix",
+        "permissions",
+        "created_at",
+        "last_used_at",
+        "expires_at",
+        "revoked_at",
+    )
     list_filter = ("revoked_at", "expires_at")
     search_fields = ("name", "prefix", "user__email")
     ordering = ("-created_at",)
-    fields = ("name", "user", "display_prefix", "scopes", "created_at", "expires_at", "last_used_at", "revoked_at")
+    fields = ("name", "user", "display_prefix", "permissions", "created_at", "expires_at", "last_used_at", "revoked_at")
     readonly_fields = fields
     actions = ("revoke",)
 
     @admin.display(description=_("prefix"))
     def display_prefix(self, obj):
         return f"{obj.display_prefix}…"
+
+    @admin.display(description=_("permissions"))
+    def permissions(self, obj):
+        """What the key may open, in the words of the Account page («Businesses · read»), never the raw scopes."""
+        return ", ".join(str(API_KEY_SCOPES.get(scope, scope)) for scope in obj.scopes)
 
     def has_add_permission(self, request):
         return request.user.is_superuser
@@ -456,11 +479,37 @@ admin.site.unregister(UserSession)
 class UserSessionAdmin(AllauthUserSessionAdmin):
     """Who is signed in where (``allauth.usersessions``): read only. Deleting a row would only hide a session that
     still signs in; a superuser ends the picked ones with «Close the selected sessions» (ACCOUNTS-F19), which also
-    asks their businesses; ``support`` sees them."""
+    asks their businesses; ``support`` sees them. Every column and label is named here, in the staff's language."""
 
+    list_display = ("account", "signed_in", "last_used", "ip_address", "browser")
     search_fields = ["user__email", "ip"]
-    readonly_fields = ("user", "created_at", "last_seen_at", "ip", "user_agent", "session_key")
+    fields = ("account", "signed_in", "last_used", "ip_address", "browser", "session_key", "session_data")
+    readonly_fields = fields
     actions = ("close_sessions",)
+
+    @admin.display(description=_("Account"), ordering="user__email")
+    def account(self, session):
+        return session.user
+
+    @admin.display(description=_("Signed in"), ordering="created_at")
+    def signed_in(self, session):
+        return session.created_at
+
+    @admin.display(description=_("Last used"), ordering="last_seen_at")
+    def last_used(self, session):
+        return session.last_seen_at
+
+    @admin.display(description=_("IP address"), ordering="ip")
+    def ip_address(self, session):
+        return session.ip
+
+    @admin.display(description=_("Browser"))
+    def browser(self, session):
+        return session.user_agent
+
+    @admin.display(description=_("Session data"))
+    def session_data(self, session):
+        return session.data
 
     def has_add_permission(self, request):
         return False
@@ -478,3 +527,50 @@ class UserSessionAdmin(AllauthUserSessionAdmin):
     def close_sessions(self, request, queryset):
         count = services.close_sessions(by=request.user, sessions=list(queryset))
         self.message_user(request, gettext("Sessions closed: %(count)s.") % {"count": count}, messages.SUCCESS)
+
+
+# auditlog's page writes its summary («1 change: first_name») and its «Correlation ID» header in English whatever the
+# language, and lists the resources by their models' code names (``usersession``).
+admin.site.unregister(LogEntry)
+
+
+class ResourceTypeFilter(AuditlogResourceTypeFilter):
+    """«Resource Type» by each model's name in the staff's language («Clave de API»), not its code name («apikey»)."""
+
+    def lookups(self, request, model_admin):
+        named = []
+        for type_id, code_name in super().lookups(request, model_admin):
+            model = ContentType.objects.get_for_id(type_id).model_class()
+            named.append((type_id, capfirst(model._meta.verbose_name) if model is not None else code_name))
+        return sorted(named, key=lambda choice: str(choice[1]))
+
+
+@admin.register(LogEntry)
+class LogEntryAdmin(AuditlogLogEntryAdmin):
+    """The audit trail (ACCOUNTS-F36), read only as auditlog's own page, with what it says in English said in the
+    staff's language: the summary counts the changes and names each field, as Django's own history does."""
+
+    list_filter = ["action", ResourceTypeFilter, CIDFilter]
+
+    @admin.display(description=_("Created"))
+    def created(self, obj):
+        # A datetime is formatted on the list but printed raw on the entry's page (a read-only callable): formatted
+        # here, the same on both.
+        return formats.localize(super().created(obj))
+
+    @admin.display(description=_("Changes"))
+    def msg_short(self, obj):
+        if obj.action in (LogEntry.Action.DELETE, LogEntry.Action.ACCESS):
+            return ""
+        changes = obj.changes_dict
+        fields = ", ".join(str(get_field_verbose_name(obj, name)) for name in changes)
+        if len(fields) > SUMMARY_MAX:
+            fields = fields[: fields.rfind(" ", 0, SUMMARY_MAX)] + " .."
+        return ngettext("%(count)d change: %(fields)s", "%(count)d changes: %(fields)s", len(changes)) % {
+            "count": len(changes),
+            "fields": fields,
+        }
+
+    @admin.display(description=_("Correlation ID"))
+    def cid_url(self, obj):
+        return super().cid_url(obj)

@@ -222,14 +222,16 @@ class TestTheRun:
     def test_a_second_run_while_one_holds_the_lock_does_nothing(self):
         user = _account("old@example.com", last_login_days=900)
         other = connections["default"].copy()
+        lock = [services.lock_name("anonymize_old_users")]
         try:
             with other.cursor() as cursor:
-                cursor.execute("SELECT pg_advisory_lock(hashtext(%s))", [services.lock_name("anonymize_old_users")])
+                cursor.execute("SELECT pg_advisory_lock(hashtext(%s))", lock)
             output = _run()
         finally:
-            # Unlocked by hand: closing a pooled connection keeps its session, and its lock with it.
+            # Released by hand: closing a pooled connection gives its session back to the pool with the lock held,
+            # and the next run would find it «already running» (conftest.py guards it).
             with other.cursor() as cursor:
-                cursor.execute("SELECT pg_advisory_unlock(hashtext(%s))", [services.lock_name("anonymize_old_users")])
+                cursor.execute("SELECT pg_advisory_unlock(hashtext(%s))", lock)
             other.close()
 
         assert "already running" in output

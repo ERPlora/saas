@@ -1,6 +1,7 @@
 """The mails of accounts, each in its recipient's language (``accounts.emails``): the code that proves a new
 address (Account → «Change email») and the notice to the old one once the change is done (what Google, GitHub
-and Stripe send, so a change nobody asked for does not go unnoticed). Plain text, like the mails of hubs."""
+and Stripe send, so a change nobody asked for does not go unnoticed). Branded, as text and as HTML: what they look
+like is ``base/tests/test_emails.py``'s (ACCOUNTS-F46)."""
 
 import pytest
 from django.core import mail
@@ -33,7 +34,7 @@ def test_a_mail_that_cannot_leave_says_so_and_is_logged(monkeypatch, caplog):
     def broken(*args, **kwargs):
         raise OSError("SMTP down")
 
-    monkeypatch.setattr(emails, "send_mail", broken)
+    monkeypatch.setattr("django.core.mail.EmailMessage.send", broken)
 
     assert emails.send_email_code("ana@new.example", "042317", language="en") is False
     assert "accounts.mail_failed" in caplog.text

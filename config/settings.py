@@ -134,6 +134,9 @@ INSTALLED_APPS = [
     # WhatsApp, erplora.com's side (PLAN-SAAS §1.1, round 2026-10-15b): after hubs, whose businesses it serves
     # and whose snapshot carries its channel.
     "whatsapp",
+    # The AI gateway (PLAN-SAAS §1.1, round 2026-10-15b; PLAN §30): the providers ERPlora pays, their keys and
+    # models, which model answers and the clients of each provider's API (assistant/README.md).
+    "assistant",
     "public",
     # After `public`: its templates override the package's (public/templates/cookie_consent/).
     "cookie_consent",
@@ -149,6 +152,8 @@ MIDDLEWARE = [
     "django.middleware.csp.ContentSecurityPolicyMiddleware",
     # After Django's: the public web's own policy, set before Django's builds the header.
     "public.csp.PublicCSPMiddleware",
+    # And the admin's: the panel's policy without Trusted Types, which Django's admin cannot run under (ACCOUNTS-G10).
+    "base.csp.AdminCSPMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -156,6 +161,9 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     # On the panel, a signed-in account speaks its own language (User.language), not the cookie's.
     "base.language.AccountLanguageMiddleware",
+    # The maintenance mode of «Site settings» in the admin: every visitor gets the 503 page but the staff, the health
+    # checks, the admin and its sign-in, /internal and the webhooks (ACCOUNTS-G82).
+    "base.maintenance.MaintenanceModeMiddleware",
     # With ACCOUNTS_MFA_ENABLED off, the 2FA endpoints answer 404 (accounts/mfa.py).
     "accounts.mfa.MFAFlagMiddleware",
     # The code tries per address and reCAPTCHA before allauth.headless's public doors, after the CSRF check
@@ -272,14 +280,19 @@ CACHES = {
     )
 }
 
-# Logging: everything to the console (CloudWatch Logs in production), at LOG_LEVEL. As in hub-next.
+# Logging: everything to the console (CloudWatch Logs in production), at LOG_LEVEL. As in hub-next. Every line goes
+# through base.logging.GDPRSafeFormatter: an address, a phone, an id number, a card, a key or a password logged by
+# mistake reaches the log as a label, never as written (ACCOUNTS-G14); no filter drops a record.
 
 LOG_LEVEL = config("LOG_LEVEL", default="INFO").upper()
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
-        "plain": {"format": "%(asctime)s %(levelname)s %(name)s %(message)s"}
+        "plain": {
+            "()": "base.logging.GDPRSafeFormatter",
+            "format": "%(asctime)s %(levelname)s %(name)s %(message)s",
+        }
     },
     "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "plain"}},
     "root": {"handlers": ["console"], "level": LOG_LEVEL},
@@ -573,6 +586,9 @@ LANGUAGE_COOKIE_SECURE = not DEBUG
 TIME_ZONE = "Europe/Madrid"
 USE_I18N = True
 USE_TZ = True
+# `urlize` (the links of the branded mails, base/emails.py) opens a link written without its scheme over HTTPS:
+# Django 2028's default, taken now.
+URLIZE_ASSUME_HTTPS = True
 
 # Content Security Policy (Django's native middleware, nonce per response; packages/live).
 # `form-action` filters the whole redirect chain of a form post: «Continue with Google» posts to
@@ -666,6 +682,11 @@ if email_backend == ses_email_backend:
     # The throttle first calls ses:GetSendQuota, which the task role may not (only
     # SendEmail/SendRawEmail).
     AWS_SES_AUTO_THROTTLE = None
+    # A sign-in mails its code inside the request: an SES that does not answer fails within seconds, as the SMTP mailer
+    # (10 s), never boto3's minutes (60 s to connect, 60 s to read, retried). One try more (ACCOUNTS-G79).
+    from botocore.config import Config as _BotoConfig
+
+    AWS_SES_CONFIG = _BotoConfig(connect_timeout=3, read_timeout=10, retries={"total_max_attempts": 2, "mode": "standard"})
 elif email_backend == smtp_email_backend:
     MAILERS["default"]["OPTIONS"] = {
         "host": config("EMAIL_HOST", default="localhost"),
@@ -708,6 +729,11 @@ COOKIE_CONSENT_SECURE = not DEBUG
 CONTACT_FORM_RATELIMIT = config("CONTACT_FORM_RATELIMIT", default="10/h")
 # «Report a problem» of the panel per account (ACCOUNTS-F38; django-ratelimit, over the default cache).
 SUPPORT_REPORT_RATELIMIT = config("SUPPORT_REPORT_RATELIMIT", default="5/h")
+# The browsers' CSP reports per address (/csp-report/, base/csp_report.py; the old SaaS's 60 an hour, ACCOUNTS-G78).
+CSP_REPORT_RATELIMIT = config("CSP_REPORT_RATELIMIT", default="60/h")
+# «Try a model» of the admin per member of the staff (ASSISTANT-F07; the old SaaS's 10 a minute): each try spends
+# ERPlora's key with the provider (django-ratelimit, over the default cache).
+ASSISTANT_TRY_RATELIMIT = config("ASSISTANT_TRY_RATELIMIT", default="10/m")
 # The demo hubs (PLAN-SAAS §3.5, round 2026-10-17; public/demo.py): one switch, and new demos per address
 # (django-ratelimit, over the default cache; a browser re-entering its live demo does not count). The Hub keeps
 # the cap of live demos (MAX_CONCURRENT_DEMOS) and the WAF limits /demo per IP too.
@@ -823,6 +849,14 @@ PLATFORM_INVOICING_ENABLED = config("PLATFORM_INVOICING_ENABLED", default=False,
 # cannot be guessed by brute force.
 PROMO_CHECK_RATE = config("PROMO_CHECK_RATE", default="20/m")
 
+# The AI gateway (assistant/, PLAN-SAAS §1.1): the providers' keys `import_ai_keys_from_env` keeps encrypted in the
+# database (ASSISTANT-F09); the staff may type them in the admin instead. Empty = nothing to load. The gateway reads
+# the keys from the database, never from here.
+OPENAI_API_KEY = config("OPENAI_API_KEY", default="")
+ANTHROPIC_API_KEY = config("ANTHROPIC_API_KEY", default="")
+GEMINI_API_KEY = config("GEMINI_API_KEY", default="")
+DEEPSEEK_API_KEY = config("DEEPSEEK_API_KEY", default="")
+
 # WhatsApp, erplora.com's side (whatsapp/, PLAN-SAAS §1.1, round 2026-10-15b): Meta's app («ERPlora Inbox»), its
 # Embedded Signup configuration and its webhook. Empty = WhatsApp is off, visibly: the webhook answers 503 and the
 # Hub's doors whatsapp.not_configured (`check --deploy` warns, whatsapp.W001). The secrets come from the
@@ -833,8 +867,8 @@ WHATSAPP_VERIFY_TOKEN = config("WHATSAPP_VERIFY_TOKEN", default="")
 WHATSAPP_CONFIG_ID = config("WHATSAPP_CONFIG_ID", default="")
 # The version of Meta's Graph API every call names.
 WHATSAPP_GRAPH_VERSION = config("WHATSAPP_GRAPH_VERSION", default="v25.0")
-# The key of the Meta credentials kept at rest (whatsapp/crypto.py, Fernet); during a rotation the previous one
-# still opens what it closed. Local development uses a fixed key; elsewhere it comes from the environment, and
+# The key of the credentials kept at rest (Meta's, whatsapp/crypto.py; the AI providers', assistant/crypto.py; Fernet);
+# during a rotation the previous one still opens what it closed. Local development uses a fixed key; elsewhere it comes from the environment, and
 # without it no number can be connected.
 FERNET_KEY = config("FERNET_KEY", default="yh5h4Yur2lIgWp9ZxkyLt1BrQfFVrwLH4WhIHCRwXXA=" if DEBUG else "")
 FERNET_KEY_PREVIOUS = config("FERNET_KEY_PREVIOUS", default="")

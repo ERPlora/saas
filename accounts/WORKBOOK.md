@@ -1,7 +1,7 @@
 # Workbook — Cuentas (accounts)
 Prefijo: ACCOUNTS
 Alcance MVP: fase 1 (la cuenta de erplora.com: crearla, entrar y salir, su contraseña y lo que acepta)
-Estado de la app: en construcción (partes 1 a 4 de 5: crear la cuenta, entrar, la contraseña, salir, los términos y el freno; la verificación en dos pasos, los navegadores de confianza y las sesiones abiertas; el perfil, las preferencias, los avisos, el menú de usuario, descargar los datos y eliminar la cuenta; el salto a un negocio y la vuelta, las claves de API y su documentación, la retención de datos, el registro de auditoría y reportar un problema)
+Estado de la app: en uso (dos flujos parciales: ACCOUNTS-F06, que espera a Google de verdad en el entorno de pruebas, y ACCOUNTS-F48, la QA maestra, que espera flujos de otras apps)
 
 > Manual de uso y especificación de la app `accounts` del SaaS (erplora.com). Cuenta cómo se crea una
 > cuenta, cómo se confirma el correo, cómo se entra y se sale, cómo se recupera y se cambia la contraseña,
@@ -10,8 +10,10 @@ Estado de la app: en construcción (partes 1 a 4 de 5: crear la cuenta, entrar, 
 > se cambian el perfil, el idioma, el tema y los avisos por correo, cómo se descargan los datos y se elimina la
 > cuenta, cómo se salta a un negocio y se vuelve, cómo se crean, se usan y se revocan las claves de API y se consulta
 > su documentación, cuánto se guardan las cuentas sin uso y el registro de auditoría, y cómo se reporta un problema
-> a soporte. Esta parte del manual no se publica en la tienda: es la referencia del equipo y de la QA. La plataforma
-> del SaaS (la parte 5) se escribe a continuación.
+> a soporte. También cuenta la plataforma de erplora.com: qué deja cargar cada página, qué guarda el registro, cómo
+> arranca, qué página ve quien llega a un error, cómo se pone en mantenimiento, qué se limpia cada día, qué se frena,
+> cómo salen los correos, cómo se mueve uno por el panel y qué comprueba la QA maestra. Este manual no se publica en
+> la tienda: es la referencia del equipo y de la QA.
 
 ## Para qué sirve y para quién
 
@@ -159,8 +161,9 @@ más» en vez de páginas.
 
 ### admin › Cuentas › Usuarios y Sesiones de usuario
 La lista de cuentas lleva la acción «Cerrar todas sus sesiones», que también acaba la confianza de sus
-navegadores; **Sesiones de usuario** enseña quién ha entrado dónde, solo para leer, con «Cerrar las
-sesiones seleccionadas». Las dos acciones solo las ve un superusuario.
+navegadores; **Sesiones de usuario** enseña quién ha entrado dónde («Cuenta», «Inicio de sesión», «Último uso»,
+«Dirección IP» y «Navegador», en el idioma del personal), solo para leer, con «Cerrar las sesiones seleccionadas».
+Las dos acciones solo las ve un superusuario.
 
 ### Cuenta › Perfil
 «Tus datos» (la foto o las iniciales con «Cambiar foto», «Nombre», «Apellidos», el «Correo con el que entras» con
@@ -175,6 +178,25 @@ Tres tarjetas que se guardan solas: «Apariencia» («Sistema», «Claro», «Os
 El nombre y el correo arriba del menú lateral (en el móvil, dentro del menú): «Cuenta», «Ayuda», el tema y
 «Cerrar sesión».
 
+### Menú del panel
+«Negocios», «Tienda», «Facturación» y «Cuenta», con la de la página abierta marcada; arriba, la tarjeta de la
+persona (el **Menú de usuario**) y abajo, el logo de ERPlora. En una pantalla ancha está siempre a la vista; en
+una tableta o un móvil se abre con el botón del menú de la barra superior.
+
+### Página de error
+En la web pública, con su menú y su pie: «Página no encontrada» y «La página que buscas no existe o ha cambiado de
+dirección.», o «Algo ha fallado» y «Algo ha fallado por nuestra parte. Vuelve a intentarlo en unos minutos.», con
+«Volver a la página de inicio». En la parte privada (la cuenta y la entrada): «No hemos podido encontrar esta página»
+o «Algo ha ido mal por nuestra parte», con «Inicio» y «Contactar Soporte».
+
+### Página de mantenimiento
+«503 · Mantenimiento», «Volvemos enseguida», «Estamos mejorando ERPlora. Vuelve en unos minutos; tus datos están a
+salvo.» (o el mensaje que escribió el personal, en el idioma de quien visita), «Reintentar» y «Contactar Soporte».
+
+### admin › Ajustes del sitio
+Una sola ficha, «Ajustes del sitio», sin «Añadir» ni «Eliminar»: la casilla «modo mantenimiento», el «mensaje en
+inglés» y el «mensaje en español» (vacío, quien visita en español lee el de inglés), y la fecha del último cambio.
+
 ## Estados de cada pantalla
 
 | Estado | Qué ve la persona |
@@ -185,6 +207,7 @@ El nombre y el correo arriba del menú lateral (en el móvil, dentro del menú):
 | Freno | «Demasiados intentos fallidos. Inténtelo más tarde.» o «Demasiados intentos. Espera unos minutos y vuelve a intentarlo.», igual exista o no la cuenta. |
 | Enlace caducado | «Este enlace de restablecimiento ha expirado o no es válido.» con «Solicitar Nuevo Enlace». |
 | Código caducado | La entrada dice «Tu código ha caducado o se ha escrito mal demasiadas veces. Vuelve a iniciar sesión y te enviaremos uno nuevo.» |
+| Mantenimiento | Quien no es del personal ve la **Página de mantenimiento** en cualquier página de erplora.com; el personal con su sesión abierta sigue usándolo todo. |
 | Sin permiso | Una cuenta sin la marca de personal que abre el admin vuelve a la **Entrada**; con sesión, el admin la rechaza. Con la verificación en dos pasos encendida, el personal sin app va a sus ajustes con «Activa la app autenticadora para continuar.». |
 
 ## Flujos
@@ -225,10 +248,20 @@ El nombre y el correo arriba del menú lateral (en el móvil, dentro del menú):
 | ACCOUNTS-F32 | Usar una clave de API: qué abre y qué no | hecho |
 | ACCOUNTS-F33 | Revocar una clave de API | hecho |
 | ACCOUNTS-F34 | Consultar la documentación de la API | hecho |
-| ACCOUNTS-F35 | Borrar las cuentas sin uso en dos años | parcial |
+| ACCOUNTS-F35 | Borrar las cuentas sin uso en dos años | hecho |
 | ACCOUNTS-F36 | Ver quién cambió una cuenta | hecho |
-| ACCOUNTS-F37 | Borrar el registro de auditoría de más de 90 días | parcial |
+| ACCOUNTS-F37 | Borrar el registro de auditoría de más de 90 días | hecho |
 | ACCOUNTS-F38 | Reportar un problema a soporte | hecho |
+| ACCOUNTS-F39 | Dejar cargar en cada página solo lo de erplora.com | hecho |
+| ACCOUNTS-F40 | Guardar en el registro lo que pasa, sin datos personales ni secretos | hecho |
+| ACCOUNTS-F41 | Arrancar erplora.com y atender cada petición | hecho |
+| ACCOUNTS-F42 | Enseñar una página de error | hecho |
+| ACCOUNTS-F43 | Poner erplora.com en mantenimiento | hecho |
+| ACCOUNTS-F44 | Limpiar cada día las sesiones caducadas y los códigos vencidos | hecho |
+| ACCOUNTS-F45 | Frenar el exceso de peticiones | hecho |
+| ACCOUNTS-F46 | Mandar los correos de erplora.com | hecho |
+| ACCOUNTS-F47 | Moverse por el panel | hecho |
+| ACCOUNTS-F48 | Pasar la QA maestra de erplora.com | parcial |
 
 ### ACCOUNTS-F01 Crear la cuenta
 <!-- origen: old-saas:SAAS_AUTH-F01 pc:cloud/auth/signup fi:saas/auth-services#registro-de-usuario-por-api-signup fi:saas/support/auth-services#service-create_user gh:saas#2542 gh:saas#2536 gh:saas#2560 gh:saas#2562 -->
@@ -242,7 +275,7 @@ Pasos:
 4. La pantalla pasa a **Revisa tu correo** (ACCOUNTS-F02); con el código bueno entra sola y llega a «Crea tu negocio».
 Entra: el correo (sin espacios, en minúsculas y con las letras de ancho completo pasadas a las normales, para que una dirección que se parece a otra no cree una segunda cuenta; igual al invitarla a un negocio, que invita a esa cuenta), la contraseña y adónde iba (solo páginas de erplora.com).
 Sale: la cuenta, activa, con su correo aún sin confirmar y los términos aceptados (ACCOUNTS-F10). No se crea ningún negocio. La aplicación que pinta esta pantalla es la misma puerta que cualquier otro programa: las mismas reglas valen para todos.
-Si falla: una contraseña que no pasa las reglas sale debajo de la contraseña y no se crea nada; un correo no válido (también con letras de ancho completo antes de la arroba), debajo del correo. Un correo que ya tiene cuenta responde igual que uno nuevo y a su buzón le llega «ya existe una cuenta con esta dirección» con el enlace para poner contraseña, sin código: así pone la suya también la persona invitada, cuya cuenta aún no tiene contraseña, y nadie se queda con una cuenta ajena. Más de 10 altas en una hora desde la misma dirección de red: «Demasiados intentos. Espera unos minutos y vuelve a intentarlo.».
+Si falla: una contraseña que no pasa las reglas sale debajo de la contraseña y no se crea nada; un correo no válido (también con letras de ancho completo antes de la arroba), debajo del correo. Un correo que ya tiene cuenta responde igual que uno nuevo y a su buzón le llega «ya existe una cuenta con esa dirección de correo electrónico» con el enlace para poner contraseña, sin código: así pone la suya también la persona invitada, cuya cuenta aún no tiene contraseña, y nadie se queda con una cuenta ajena. Más de 10 altas en una hora desde la misma dirección de red: «Demasiados intentos. Espera unos minutos y vuelve a intentarlo.».
 Implicados: hubs (la **Entrada** y «Crea tu negocio»)
 
 ### ACCOUNTS-F02 Confirmar el correo con el código
@@ -346,7 +379,7 @@ Pasos:
 4. Los demás navegadores con su cuenta salen, y erplora.com pide a cada uno de sus negocios que cierre las sesiones abiertas con ella.
 Entra: la contraseña actual y la nueva.
 Sale: la contraseña nueva; las otras sesiones de erplora.com cerradas, este navegador dentro; el aviso a sus negocios. Lo mismo pasa al restablecerla (ACCOUNTS-F07).
-Si falla: una contraseña actual equivocada, debajo de su campo, y la nueva no se guarda; la nueva igual a la actual, «La contraseña nueva tiene que ser distinta de la actual.»; una que no pasa las reglas, sus avisos. Los avisos salen en el idioma de la cuenta. Más de 5 intentos por minuto, «Demasiados intentos…» sin mirar la contraseña, ni la buena: una sesión ajena abierta no sirve para adivinarla. Una cuenta sin contraseña (entró con Google) ve «Crear contraseña», que le manda el enlace de ACCOUNTS-F07.
+Si falla: una contraseña actual equivocada, debajo de su campo, y la nueva no se guarda; la nueva igual a la actual, «La contraseña nueva tiene que ser distinta de la actual.»; una que no pasa las reglas, sus avisos. Los avisos salen en el idioma de la cuenta. Más de 5 intentos por minuto, «Demasiados intentos…» sin mirar la contraseña, ni la buena: una sesión ajena abierta no sirve para adivinarla. Una cuenta sin contraseña (entró con Google) ve «Crear contraseña», que le manda el enlace de ACCOUNTS-F07. Hoy los negocios aún no atienden el aviso (llega en la fase 2): una sesión abierta en un negocio sigue hasta que caduca.
 Implicados: hubs (cada negocio cierra las sesiones de la cuenta)
 
 ### ACCOUNTS-F09 Cerrar la sesión
@@ -677,7 +710,7 @@ Pantalla: Cuenta › Claves de API, admin › Cuentas › Claves de API
 Pasos:
 1. En **Cuenta › Claves de API**, la persona pulsa «Nueva clave»: «Nueva clave de API» pide el «Nombre», sus «Permisos» («Negocios · lectura», «Negocios · escritura», «Facturas · lectura») y cuándo «Caduca» («En 90 días», «En 30 días» o «Nunca»).
 2. Si su última entrada no es reciente, antes confirma que es ella con su contraseña (o entrando otra vez con Google).
-3. Pulsa «Crear clave»: ve la clave entera una sola vez, con «Copiar la clave» y «Cópiala ahora y guárdala en un sitio seguro: no la volverás a ver.»; con «Ya la he guardado», la clave queda en la lista solo con su principio.
+3. Pulsa «Crear clave»: ve la clave entera una sola vez, con «Copiar la clave» y «Cópiala ahora y guárdala en un sitio seguro: no la volverás a ver.»; con «Ya la he guardado», la ventana se cierra, avisa «Clave creada: «…»» y la clave queda en la lista solo con su principio.
 4. Un superusuario del personal crea una clave para una cuenta del equipo desde el admin, con «Añadir clave de API»: elige la cuenta, el nombre, los permisos y la caducidad, y la página le enseña la clave una sola vez, «Cópiala ahora: no se volverá a mostrar.».
 Entra: el nombre, los permisos, la caducidad y, si hace falta, la contraseña.
 Sale: la clave, que actúa como su cuenta y solo con sus permisos; erplora.com guarda solo su huella y su principio. A la cuenta le llega el correo «Nueva clave de API en tu cuenta de ERPlora», sin la clave. Evento `accounts.apikey.created`.
@@ -707,7 +740,7 @@ Pantalla: Cuenta › Claves de API, admin › Cuentas › Claves de API
 Pasos:
 1. En **Cuenta › Claves de API**, la persona pulsa «Revocar» en la fila de la clave: «Revocar «…»» dice «Lo que use esta clave dejará de funcionar al momento. No se puede deshacer: tendrías que crear otra.».
 2. Confirma con «Revocar clave»: «Clave revocada: «…»» y la clave sale de la lista.
-3. Ante un incidente, un superusuario del personal busca la clave en el admin (por su nombre, su principio o su cuenta), la marca y elige «Revocar las claves seleccionadas (dejan de funcionar al momento)»: «Claves revocadas: 1.».
+3. Ante un incidente, un superusuario del personal busca la clave en el admin (por su nombre, su principio o su cuenta; cada fila dice sus «Permisos» con las palabras de la cuenta, como «Negocios · lectura»), la marca y elige «Revocar las claves seleccionadas (dejan de funcionar al momento)»: «Claves revocadas: 1.».
 Entra: la clave elegida.
 Sale: la clave no abre nada desde la siguiente llamada; su fila se queda como rastro, con la fecha en que se revocó, y la lista de su cuenta se actualiza sola. No hay «rotar»: se crea otra y se revoca la vieja. Evento `accounts.apikey.revoked`.
 Si falla: revocarla dos veces no cambia nada; la clave de otra cuenta no se encuentra («Esa clave de API no existe.»). Revocar no pide la contraseña. El soporte ve las claves sin poder revocarlas.
@@ -720,7 +753,7 @@ Actor: cualquier persona con cuenta
 Pantalla: Cuenta › Claves de API, Documentación de la API
 Pasos:
 1. En **Cuenta › Claves de API**, bajo la lista, la persona pulsa «Documentación de la API»: se abre en otra pestaña.
-2. La documentación enseña cada parte de la API (la cuenta, los negocios, las facturas…), con sus llamadas, lo que piden y lo que contestan, y un buscador.
+2. La documentación enseña cada parte de la API (la cuenta, los negocios, las facturas…), con sus llamadas, lo que piden y lo que contestan, y un buscador. Está en inglés, como la propia API.
 3. Para probar la API desde un programa, descarga el esquema desde la propia documentación y lo abre en Postman con una clave de API (ACCOUNTS-F31).
 Entra: la sesión.
 Sale: nada guardado. La documentación es solo para leer: no hace llamadas con los datos de la cuenta.
@@ -729,7 +762,7 @@ Implicados: ninguno
 
 ### ACCOUNTS-F35 Borrar las cuentas sin uso en dos años
 <!-- origen: old-saas:SAAS_AUTH-F15 fi:saas/auth-services#comando-anonimizar-usuarios-inactivos-gdpr fi:saas/support/auth-services#command-anonymize_old_users fi:saas/support/auth-services#task-anonymize_old_users_task -->
-Estado: parcial — el borrado ya existe, pero aún no está programado cada semana: hasta entonces lo lanza una persona del equipo
+Estado: hecho
 Actor: sistema
 Pantalla: ninguna (una tarea semanal de erplora.com)
 Pasos:
@@ -758,7 +791,7 @@ Implicados: ninguno
 
 ### ACCOUNTS-F37 Borrar el registro de auditoría de más de 90 días
 <!-- origen: fi:saas/auth-services#comando-limpiar-logs-antiguos-gdpr fi:saas/support/auth-services#command-cleanup_old_logs fi:saas/support/auth-services#task-cleanup_old_logs_task fi:saas/auth-services#tareas-gdpr-retencion-de-datos -->
-Estado: parcial — la limpieza ya existe, pero aún no está programada cada día: hasta entonces la lanza una persona del equipo
+Estado: hecho
 Actor: sistema
 Pantalla: ninguna (una tarea diaria de erplora.com)
 Pasos:
@@ -783,6 +816,157 @@ Sale: un correo al buzón de soporte con el asunto, el texto y, debajo, la cuent
 Si falla: «Añade un asunto.» o «Describe el problema, por favor.» bajo su campo; tras cinco informes en una hora, «Demasiados intentos. Vuelve a intentarlo en unos minutos.»; si el correo no sale, un aviso con la dirección de soporte para escribir directamente. En todos los casos lo escrito se queda y se puede volver a enviar.
 Implicados: ninguno
 
+### ACCOUNTS-F39 Dejar cargar en cada página solo lo de erplora.com
+<!-- origen: fi:saas/auth-services#content-security-policy-estricta-sin-unsafe-eval -->
+Estado: hecho
+Actor: sistema
+Pantalla: ninguna (cada página del panel y de la web pública)
+Pasos:
+1. Cada página de erplora.com le dice al navegador qué puede cargar y ejecutar en ella: los programas, los estilos, las letras y las imágenes del propio erplora.com, y solo los programas que la página marca como suyos al servirla. Nada de bibliotecas de otros servidores.
+2. El panel admite además lo que necesitan sus pagos con Stripe y la entrada con Google, y sus formularios solo envían a erplora.com, a Google y a los negocios. Ninguna página del panel se puede meter dentro de otra web; la web pública, solo dentro de erplora.com.
+3. El admin de erplora.com sigue la lista del panel, salvo la regla que su propio código no cumple, para que todos sus controles funcionen.
+4. La aplicación instalada sigue hablando con su impresora y su cajón desde cualquier página.
+5. Si el navegador bloquea algo, se lo cuenta a erplora.com.
+Entra: la página que se sirve.
+Sale: nada guardado: la lista viaja con cada página. Lo que el navegador bloquea queda en el registro de erplora.com.
+Si falla: lo que no está en la lista no se carga ni se ejecuta, aunque alguien lo cuele en la página; los avisos de un mismo navegador se frenan a 60 por hora (ACCOUNTS-F45).
+Implicados: public (la web pública)
+
+### ACCOUNTS-F40 Guardar en el registro lo que pasa, sin datos personales ni secretos
+<!-- origen: fi:saas/auth-services#formatter-de-logging-gdpr-safe fi:saas/support/public-core-config#service-logging-py-gdprsafeformatter-sensitivedatafilter -->
+Estado: hecho
+Actor: sistema
+Pantalla: ninguna (el registro de erplora.com que lee el equipo)
+Pasos:
+1. Cada línea que erplora.com escribe en su registro pasa antes por un filtro.
+2. El filtro tapa los correos, los teléfonos, el NIF, el NIE y el CIF, el IBAN, los números de tarjeta, las contraseñas (también la de una dirección de conexión) y las claves de API, de Stripe, de sesión y de acceso, cada una con una marca que dice qué había.
+3. Lo demás se queda tal cual: los nombres de los avisos de erplora.com, los identificadores y las cifras, para que el equipo pueda seguir lo que pasó.
+Entra: cada línea del registro.
+Sale: la línea con lo personal y lo secreto tapado; nada más cambia. Un intento de entrada fallido se registra entero, salvo la contraseña.
+Si falla: ninguna línea se tira por llevar un secreto: se tapa y se escribe. Una línea enorme o hecha para atascar el filtro se limpia sin frenar el registro.
+Implicados: ninguno
+
+### ACCOUNTS-F41 Arrancar erplora.com y atender cada petición
+<!-- origen: fi:saas/auth-services#settings-asgi-wsgi-y-monedas fi:saas/support/public-core-config#asgi-py-wsgi-py fi:saas/support/public-core-config#settings-py -->
+Estado: hecho
+Actor: sistema
+Pantalla: ninguna
+Pasos:
+1. erplora.com arranca con los ajustes de su entorno (producción, pre o el ordenador de quien programa): los secretos, la base de datos, la caché y el correo salen del entorno, nunca del código.
+2. Atiende cada petición detrás del balanceador de AWS, que le dice si llegó cifrada; en producción las cookies solo viajan cifradas y el navegador se queda en la versión cifrada.
+3. Una conexión en tiempo real que nadie ha pedido (un WebSocket) se cierra limpia, sin dejar un error en el registro.
+4. Cobra en euros: los planes y Stripe usan esa moneda y no hay otra que elegir.
+Entra: los ajustes del entorno del despliegue.
+Sale: el servicio en marcha; nada guardado.
+Si falla: sin una clave obligatoria (la de los documentos fiscales en producción) no arranca y dice cuál falta. Con la caché caída, los frenos dejan pasar y todo sigue funcionando. Con la base de datos caída, la comprobación de vida sigue contestando y la de «preparado» avisa.
+Implicados: ninguno
+
+### ACCOUNTS-F42 Enseñar una página de error
+<!-- origen: fi:saas/auth-services#urlconf-raiz-handlers-de-error-branding-admin old-saas:SAAS-F09 -->
+Estado: hecho
+Actor: cualquiera
+Pantalla: Página de error, el admin de erplora.com
+Pasos:
+1. Quien llega a una dirección de la web pública que no existe ve «Página no encontrada» y «La página que buscas no existe o ha cambiado de dirección.», con el menú y el pie de la web y «Volver a la página de inicio».
+2. En la parte privada (la cuenta, la entrada) ve «No hemos podido encontrar esta página», con «Inicio» y «Contactar Soporte».
+3. Si erplora.com falla, la web pública enseña «Algo ha fallado» y «Algo ha fallado por nuestra parte. Vuelve a intentarlo en unos minutos.»; la parte privada, «Algo ha ido mal por nuestra parte». Las dos, en el idioma de quien visita.
+4. El personal ve el admin con el nombre de ERPlora: «ERPlora Cloud» arriba y «Administración» en su portada.
+Entra: la dirección pedida y el idioma de quien visita.
+Sale: la página de error; nada guardado. Un programa conectado por la API recibe el error en su formato, nunca la página.
+Si falla: la página del fallo se pinta aunque la base de datos esté caída: no lee nada de ella.
+Implicados: public (sus páginas de error)
+
+### ACCOUNTS-F43 Poner erplora.com en mantenimiento
+<!-- origen: fi:saas/django-admin#admin-sitesettings-singleton fi:saas/support/orgs-users#modelo-sitesettings old-saas:SAAS-F11 -->
+Estado: hecho
+Actor: superusuario de ERPlora; cualquier visitante
+Pantalla: admin › Ajustes del sitio, Página de mantenimiento
+Pasos:
+1. Un superusuario abre «Ajustes del sitio» en el admin (siempre la misma ficha: no hay otra que crear ni que borrar), marca el «modo mantenimiento» y, si quiere, escribe el «mensaje en inglés» y el «mensaje en español».
+2. Al guardar, el admin dice «El modo mantenimiento está encendido: solo el personal de ERPlora con su sesión abierta usa erplora.com.».
+3. Desde ese momento, quien visita erplora.com ve «Volvemos enseguida» con «Estamos mejorando ERPlora. Vuelve en unos minutos; tus datos están a salvo.» (o el mensaje del personal, en su idioma), «Reintentar» y «Contactar Soporte»; los buscadores entienden que la web vuelve pronto.
+4. El personal con su sesión abierta sigue usándolo todo, y quien es del personal y no la tiene entra por la **Entrada** camino del admin, también con el código de su app autenticadora.
+5. Al desmarcarlo, el admin dice «El modo mantenimiento está apagado: erplora.com está abierto a todo el mundo.» y todos vuelven a entrar.
+Entra: el interruptor y los dos mensajes.
+Sale: el interruptor guardado, que todos los servidores de erplora.com aplican al momento (y, si se perdiera el aviso, en un minuto como mucho). Siguen funcionando las comprobaciones de vida, el admin, las llamadas de los negocios y los avisos de Stripe y de Meta. Un programa conectado por la API recibe «ERPlora está en mantenimiento. Vuelve a intentarlo en unos minutos.».
+Si falla: si el interruptor no se puede leer (la base de datos caída), erplora.com sigue abierto y el registro dice por qué. El mensaje del personal se enseña como texto, nunca como código. Una clave de API no cuenta como sesión del personal, ni una cuenta del personal desactivada.
+Implicados: hubs (sus llamadas siguen), billing (los avisos de Stripe siguen), whatsapp (los avisos de Meta siguen)
+
+### ACCOUNTS-F44 Limpiar cada día las sesiones caducadas y los códigos vencidos
+<!-- origen: fi:saas/support/orgs-users#task-clearsessions_task-flush_expired_tokens_task-backup_database_task-rotate_backups_task-triage_error_report_task old-saas:SAAS-F08 -->
+Estado: hecho
+Actor: sistema
+Pantalla: ninguna (una tarea diaria de erplora.com)
+Pasos:
+1. Una vez al día, erplora.com borra las sesiones caducadas, las filas de «Sesiones activas» cuya sesión ya no existe (con su dirección y su navegador), los códigos de un solo uso del salto a un negocio pasados sus 60 segundos y los cambios de correo cuyo código pasó sus 15 minutos.
+2. Lo vigente se queda: ninguna sesión abierta ni ningún código aún válido cambia.
+3. Como las demás tareas de erplora.com, la lanza a su hora el reloj de la infraestructura; una tarea que falla deja su error a la vista del equipo y vuelve a correr en su siguiente turno.
+Entra: la fecha de caducidad de cada sesión y de cada código.
+Sale: lo caducado, borrado; nada se anota en el registro de auditoría.
+Si falla: si ya hay una pasada en marcha, la segunda no hace nada; un fallo termina la tarea con error y lo borrado antes se queda borrado. El equipo puede contar lo que se borraría sin borrar nada.
+Implicados: ninguno
+
+### ACCOUNTS-F45 Frenar el exceso de peticiones
+<!-- origen: old-saas:SAAS-F05 -->
+Estado: hecho
+Actor: sistema
+Pantalla: ninguna
+Pasos:
+1. Cada puerta que se puede abusar lleva su propio freno, contado por dirección o por cuenta: la entrada, los códigos y los enlaces (ACCOUNTS-F11), el salto a un negocio (ACCOUNTS-F28), las claves de API (ACCOUNTS-F32), reportar un problema (ACCOUNTS-F38), el formulario de contacto de la web y los avisos de seguridad del navegador (60 por hora y dirección).
+2. Pasado el freno, la petición se rechaza sin hacer nada y la pantalla lo dice.
+3. La dirección que cuenta es la real de quien llama, la que da el balanceador: una dirección escrita a mano en la petición no estrena contador, y el freno de una cuenta o de una clave no lo gasta otra.
+Entra: la dirección o la cuenta de quien llama.
+Sale: los contadores, en la caché que comparten los servidores; nada en la base de datos.
+Si falla: con la caché caída, los frenos dejan pasar y erplora.com sigue funcionando. Un aviso de seguridad frenado no se escribe en el registro.
+Implicados: public (el formulario de contacto)
+
+### ACCOUNTS-F46 Mandar los correos de erplora.com
+<!-- origen: old-saas:SAAS-F07 -->
+Estado: hecho
+Actor: sistema
+Pantalla: ninguna
+Pasos:
+1. Algo en erplora.com tiene que avisar a una persona: un código, un enlace, una invitación, una factura, un cambio en su negocio.
+2. El correo lleva la marca de ERPlora, igual en todos: la franja de color arriba, el logo, el texto y el pie «Enviado por ERPlora» con el enlace a erplora.com. Un código va solo, en su recuadro, y los enlaces se pueden pulsar.
+3. Cada correo va en dos versiones que dicen lo mismo, con formato y en texto, para que se lea en cualquier programa de correo, y en el idioma de quien lo recibe; los del equipo de ERPlora (los problemas reportados, el formulario de contacto, las autorizaciones por revisar), en el del equipo.
+4. Del correo solo se descarga el logo, desde erplora.com: nada más se pide a otra web.
+5. El correo sale desde la dirección de ERPlora por el servicio de correo de AWS.
+6. Si el servicio no contesta, erplora.com espera unos segundos, nunca minutos, y lo vuelve a intentar una vez.
+Entra: el aviso, sus datos, el destinatario y su idioma.
+Sale: el correo enviado, con formato y en texto. En el ordenador de quien programa y en las pruebas, el correo se escribe en una carpeta y nunca sale.
+Si falla: un correo que no sale lo trata quien lo pide (por ejemplo, reportar un problema enseña la dirección de soporte para escribir directamente) y la pantalla nunca se queda esperando.
+Implicados: billing, fiscal y whatsapp (sus correos ya salen con la marca); hubs (los de las personas, las invitaciones y los roles de un negocio pasan a ella con su porte)
+
+### ACCOUNTS-F47 Moverse por el panel
+<!-- origen: old-saas:SAAS_DASHBOARD-F201 fi:saas/support/public-core-config#context_processors-py-config -->
+Estado: hecho
+Actor: cualquier persona con cuenta
+Pantalla: Menú del panel
+Pasos:
+1. El menú del panel tiene «Negocios», «Tienda», «Facturación» y «Cuenta»; arriba, la tarjeta de la persona abre el **Menú de usuario** (ACCOUNTS-F25), y abajo está el logo de ERPlora.
+2. En una pantalla ancha el menú está siempre a la vista; en una tableta o un móvil se abre con el botón del menú de la barra superior.
+3. Cada entrada abre su página sin recargar el panel y queda marcada como la actual.
+4. Las páginas que no son del panel (la entrada, las de error, la de mantenimiento) usan el tema de la persona, o el de su navegador si no ha entrado.
+Entra: la sesión.
+Sale: nada guardado.
+Si falla: sin sesión, la **Entrada**, que vuelve a la página tras entrar.
+Implicados: hubs («Negocios»), billing («Tienda» y «Facturación»)
+
+### ACCOUNTS-F48 Pasar la QA maestra de erplora.com
+<!-- origen: qa:shared/qa-saas -->
+Estado: parcial — lo que la QA pide y aún falta ya es un flujo parcial de su app: el paquete de salida al eliminar un negocio y la medida de su uso (hubs), el umbral de ventas a distancia en la UE (billing), borrar lo creado dentro de una demo (public) y abrir el cajón al cobrar (impresión, en el Hub); las personas, las invitaciones y los roles de un negocio llegan con su porte en hubs
+Actor: el equipo de QA de ERPlora
+Pantalla: todas las de erplora.com
+Pasos:
+1. El equipo recorre erplora.com como un cliente nuevo: la web pública con sus planes (el Gratis como entrada, sin tarjeta) y la demo; crear la cuenta y confirmar el correo; crear el negocio gratuito con una sola pregunta y entrar en él; pasarlo a un plan de pago con una tarjeta de prueba de Stripe.
+2. Comprueba en el panel lo que el cliente hace con sus negocios: verlos con su estado y su uso, cambiar de plan, reintentar un pago, cancelar, eliminar un negocio y recuperarlo.
+3. Comprueba el cobro: las facturas con su IVA (también la inversión del sujeto pasivo dentro de la UE), los códigos promocionales que dan días de prueba y la vuelta a Gratis al terminar la suscripción.
+4. Sobre un negocio real, vende y comprueba que el tique sale con su QR, firmado para la AEAT en su entorno de pruebas, y que se imprime.
+Entra: el entorno pre y cuentas de prueba.
+Sale: cada punto de la QA, con el flujo que lo cubre y su prueba automática en el navegador; lo que no tiene sentido en la plataforma de ahora queda fuera con su motivo (ver «Para quien lo mantiene»).
+Si falla: un punto que ningún flujo cubre es un fallo de la QA y se apunta en la app que lo tiene.
+Implicados: hubs, billing, public, apps y fiscal; del Hub, verifactu, invoice y printing
+
 ## Para quien lo mantiene
 
 - Anatomía, operaciones y decisiones: `accounts/README.md` (allauth headless, puertas cerradas, sesiones,
@@ -791,7 +975,7 @@ Implicados: ninguno
   (segundo factor, navegadores de confianza y sesiones) cierra F05 y añade F14–F20; la parte 3 (perfil,
   preferencias, avisos, menú de usuario, exportar y borrar la cuenta) añade F21–F27 y amplía F13; la parte 4
   (salto al Hub, llaves de API y su documentación, retención GDPR, auditlog y reportar un problema) añade F28–F38
-  y amplía F12 y F25; la 5 (plataforma del SaaS) añade los suyos a continuación.
+  y amplía F12 y F25; la parte 5 (plataforma del SaaS) añade F39–F48.
 - Equivalencia de claves del registro: G83, G124, G22 y G59 = F01; G84 y G21 = F02; G107 = F03; G85 y G17 =
   F04; G125 = F05; G86 = F06; G91, G123, G120, G121 y G122 = F07; G109, G92, G42, G45 y G46 = F08; G93 = F09;
   G119 = F10; G96 = F11; G20 y G58 = F12; G18 y G56 = F13. Parte 2: G60 = F04; G88, G12, G19, G55 y G57 =
@@ -800,10 +984,22 @@ Implicados: ninguno
   F21; G114, G39, G38, G44, G65 y G67 = F22; G115 = F23; G29, G11, G74 y G127 = F24; G128 = F25; G111 y G41 =
   F26; G112, G95, G40 y G47 = F27; G32, G35 y G36 = F13. Parte 4: G98 y G99 = F28; G104 = F12; G100 = F29;
   G113 = F30; G101 = F31; G102 = F32; G103 = F33; G105 y G13 = F34; G97, G07, G52 y G61 = F35; G51 y G68 = F36;
-  G08, G53, G62 y G28 = F37; G117 y G01 = F38. Descartadas: G04 (activar o apagar el código por
+  G08, G53, G62 y G28 = F37; G117 y G01 = F38. Parte 5: G10 = F39; G14 y G76 = F40; G26, G72 y G77 = F41; G30 y
+  G81 = F42; G33, G64 y G82 = F43; G71 y G80 = F44; G78 = F45; G79 = F46; G106 y G73 = F47; G129 = F48.
+  Descartadas: G04 (activar o apagar el código por
   correo: se pide en toda entrada con contraseña y no se apaga, PLAN-SAAS ronda 19, §3.7 punto 3) y G31
   (el Hub verificaba en el SaaS un dispositivo de confianza: el Hub nunca consulta al SaaS por petición y
-  sus dispositivos y su PIN son suyos, PLAN-SAAS §2).
+  sus dispositivos y su PIN son suyos, PLAN-SAAS §2). De la parte 5: G06 y G75 (el circuit breaker del viejo,
+  `apps/core/circuit_breaker.py`: estado en memoria de cada proceso, solo alrededor de las llamadas a Stripe de sus
+  webhooks; aquí cada llamada de fuera lleva su tiempo de espera corto y su error visible, Stripe con 10 s y un
+  reintento (`billing/stripe_service.py`), VIES 3 + 5 s, Meta 5 + 15 s, la AEAT 5 + 30 s, el Hub 5 s, S3 2 + 3 s,
+  IndexNow 15 s y SES 3 + 10 s, y un aviso de Stripe que falla lo reintenta Stripe; un breaker por proceso no se
+  comparte entre tareas y no añade nada: simplicidad primero) y G27 (la etiqueta `{% card %}` del panel viejo: el
+  panel es la SPA, con sus componentes de `@erplora/ui`, y la web pública pinta sus tarjetas con sus parciales de
+  `public/templates/public/components/`, ronda 16). Las dos chocan con PLAN-SAAS §6 («Utilidades», casi tal cual):
+  ronda propuesta en la PR de la parte 5. De G71, `backup_database` y `rotate_backups` no siguen (las copias las
+  hace Aurora, PLAN-DB y PLAN-AWS) y `triage_error_report` tampoco: el embudo de errores es una línea de registro que
+  CloudWatch cuenta (PLAN-SAAS §1.1) y lo que cuenta una persona es ACCOUNTS-F38.
 - Puertas propias sobre allauth.headless (`accounts/doors.py`, montadas en `config/urls.py` antes de las de
   allauth): la entrada pliega el correo como el alta (NFKC, `adapters.plain_email`; trampa del SaaS viejo
   #1018) y el alta comprueba la contraseña contra su propio correo (headless la validaba sin cuenta y el
@@ -833,6 +1029,10 @@ Implicados: ninguno
   admin cierra por `accounts.session.close_any` (sin ruta: solo el admin, por el canal de la cuenta); sus
   dos acciones solo las ve el superusuario y el soporte solo lee. La «revocación del comando»
   `revoke_user_sessions` del viejo es esa acción del admin (working-rules §4: todo por la UI o la API).
+  allauth no nombra su modelo ni sus campos (salían en inglés en todo idioma): `UserSessionAdmin` nombra columnas
+  y etiquetas con `admin.display`, y `AccountsConfig.ready()` el modelo con su `_meta` en vivo; las migraciones
+  leen las opciones propias del modelo (`_meta.original_attrs`), así que allauth no gana ninguna
+  (`makemigrations --check` en `tests/test_admin.py` lo vigila).
 - Personal (F20): `admin_has_permission` (instalado en `config/urls.py`) exige, con el interruptor
   encendido, un autenticador TOTP; `admin_login` lleva al personal sin él a `/2fa?next=…`. En el SaaS nuevo
   el personal no tiene API propia: sus poderes viven en el admin y en el salto `hub-admin`, que ya exige el
@@ -859,18 +1059,58 @@ Implicados: ninguno
   superusuario emite las de una cuenta del equipo desde el admin (`ApiKeyAdmin`, `services.issue_api_key`).
   `/api/docs` es ReDoc con nonce y solo con sesión (`accounts/api_docs.py`); `/api/openapi.json` sigue abierto (lo
   leen Postman y los tests de otras apps). `anonymize_old_users` (F35, semanal) y `cleanup_old_logs` (F37, diaria)
-  son comandos con candado propio (`services.run_exclusively`): quedan `parcial` hasta que `saas-cron`
-  (`aws/stacks/prod/scheduler.tf`) los programe. El registro de auditoría (F36) es `django-auditlog`
+  son comandos con candado propio (`services.run_exclusively`) que lanza `saas-cron` con sus valores por defecto:
+  `anonymize-old-users-weekly` los lunes a las 00:35 UTC y `cleanup-old-logs-nightly` cada noche a las 00:45 UTC
+  (`aws/stacks/prod/scheduler.tf`). El registro de auditoría (F36) es `django-auditlog`
   (`accounts/auditlog.py`): la cuenta, su acceso a negocios, sus claves y sus sesiones, sin secretos ni lo que se
   mueve en cada visita; `AuditActorMiddleware` toma la dirección que ya resolvió `public.client_ip` y lee quién
   actúa al escribir cada entrada (una clave de API pone su cuenta después del middleware), y
   `services.forget_deleted_actor` suelta el autor cuando su cuenta se elimina. Los modelos de cobro y de VeriFactu
   los registran sus apps. «Reportar un problema» (F38) es `accounts.support.report`: un correo en inglés a
   `SUPPORT_EMAIL` con «Reply-To» la cuenta, limitado por cuenta (`SUPPORT_REPORT_RATELIMIT`, 5 por hora).
+- Parte 5 (F39–F48): la política de contenido del panel es `settings.SECURE_CSP` sobre `live.csp.base_policy` (más
+  lo que añade `base/csp.py` en una página que cobra), con nonce, `strict-dynamic` y Trusted Types en producción; la
+  de la web pública es `public/csp.py`, sin `strict-dynamic` ni Trusted Types a propósito, y la del admin,
+  `base.csp.admin_policy` (la del panel sin Trusted Types, por `AdminCSPMiddleware`): su jQuery escribe `innerHTML` al
+  cargar y moría con ellos, y con él todos los controles del admin (trampa saas#1828 del viejo, vista de nuevo con
+  `ui-clip-sweep.sh` en la parte 5). Las tres llevan `connect-src`
+  con `ipc:` y `http://ipc.localhost` (la app Tauri), y `config/tests/test_csp_policy.py` las lee directiva a
+  directiva en un proceso con los ajustes de producción. Los
+  informes del navegador van a `base/csp_report.py`, frenados por `CSP_REPORT_RATELIMIT` (60/h por dirección,
+  `public.client_ip`). El registro pasa por `base.logging.GDPRSafeFormatter` (portado de `apps/core/logging.py` con
+  sus casos), puesto en `LOGGING` con `"()"`. `config/asgi.py` cierra con 1008 el saludo de un WebSocket
+  (`refuse_websockets`; el SaaS no sirve `/ws`) y `config/wsgi.py` sirve el mismo proyecto. La marca del admin está
+  en `config/urls.py`. El mantenimiento es `base.models.SiteSettings` (fila única, `base/0001`),
+  `base.queries.maintenance_state` (caché compartida 60 s, borrada tras el COMMIT de un cambio; falla abierta con
+  `base.maintenance_unreadable`) y `base.maintenance.MaintenanceModeMiddleware` (503, `Retry-After: 300`, `no-store`,
+  el sobre con el código `maintenance` en la API), que lee el interruptor antes que la sesión y deja fuera salud,
+  estáticos, admin, `/internal`, webhooks, informes de CSP, la API de allauth, la vuelta de Google y las páginas de la
+  entrada con `next=/admin/…` (las dos trampas del viejo: la salud en 503 y el segundo factor cortado). Se enciende
+  solo desde el admin (working-rules §4). `purge_expired_sessions` (F44) es diaria, con candado propio
+  (`services.run_exclusively`), y la lanza `saas-cron` a las 00:20 UTC (`purge-expired-sessions-nightly` de
+  `aws/stacks/prod/scheduler.tf`, que por eso no programa `clearsessions` aparte); suelta a mano el candado de su conexión copiada del pool. Los correos (F46) salen por `django-ses` con
+  `AWS_SES_CONFIG` (3 s para conectar, 10 s para leer, dos intentos), cada uno en texto y en HTML sobre la plantilla
+  común `templates/emails/base.html` (PLAN-SAAS §7, bloque 13; la vieja saas#1044): `base/emails.py`
+  (`branded_message`, con el idioma del destinatario explícito, porque cada remitente envía fuera de su
+  `translation.override`) en `accounts`, `billing`, `fiscal`, `whatsapp` y el contacto de `public`; los de allauth, por
+  `AccountAdapter.render_mail`, que pone su texto en la plantilla (allauth solo trae `.txt`) salvo los avisos propios,
+  que tienen su `_message.html` junto al `.txt`. `URLIZE_ASSUME_HTTPS` abre por HTTPS un enlace sin esquema. Los de
+  `hubs/emails.py` siguen en texto hasta que los pase su porte. La navegación (F47) es `base/navigation.py` y el shell de `@erplora/ui`; el procesador de contexto que queda es
+  `base.context_processors.theme`. La QA maestra (F48) es `flows/shared/qa-saas.md` del repo `qa` viejo: §3 →
+  PUBLIC-F01–F37; §4.1 → HUBS-F04, F06, F09, F21 y F22; §4.2 → HUBS-F03, BILLING-F07, F08, F10 y F11; §4.4 →
+  HUBS-F18 y F19; §5 → APPS-F01–F07 y BILLING-F31–F35; §6 → BILLING-F02–F06, F12, F13, F15–F17 y F25,
+  ACCOUNTS-F28 y F32; §7 → ACCOUNTS-F01–F03, HUBS-F01 y F11, BILLING-F08 y F29, y en el Hub PRINTING-F07 y F13;
+  §8 → VERIFACTU-F13, F15 y F19 e INVOICE-F01 del Hub. No siguen, por la plataforma de ahora: arrancar, parar,
+  reiniciar y actualizar el contenedor de cada negocio y el inventario de servidores (un solo servicio para todos los
+  hubs en ECS y una Aurora, PLAN-AWS), la descarga de módulos y el portal de desarrolladores (todos los módulos son
+  nuestros y van en la imagen del Hub, PLAN §13–§15), OutfitKit (PLAN §16.11), la suspensión al 25 % (al terminar se
+  vuelve a Gratis, BILLING-F15) y los 15 días de prueba de los planes de pago (sin prueba desde 2026-10-15).
 - Pruebas: cada test cita su clave en el nombre o el docstring. Los e2e de la parte 1 están en
   `tests/e2e/panel/accounts-flows.spec.ts`, los de la parte 2 en `tests/e2e/panel/accounts-security.spec.ts`
   los de la parte 3 en `tests/e2e/panel/accounts-profile.spec.ts` y los de la parte 4 en
-  `tests/e2e/panel/accounts-jump.spec.ts`, `accounts-keys.spec.ts` y `accounts-report.spec.ts`,
+  `tests/e2e/panel/accounts-jump.spec.ts`, `accounts-keys.spec.ts` y `accounts-report.spec.ts`, los de la parte 5 en
+  `tests/e2e/panel/accounts-platform.spec.ts` (menú y mantenimiento), `tests/e2e/public-errors.spec.ts` (404 y 500) y
+  `tests/e2e/panel/accounts-mails.spec.ts` (F46: tres correos leídos de la carpeta de correo y pintados a tres tamaños),
   con la clave del registro (`ACCOUNTS-Gnn`) en el título y la equivalencia con este WORKBOOK en su cabecera;
   el segundo factor se juega en el gemelo del panel con el interruptor encendido (`PANEL_MFA_URL`).
   `signup.spec.ts` y `login.spec.ts` siguen cubriendo las pestañas de la entrada.
@@ -897,3 +1137,8 @@ Implicados: ninguno
 - No borra el registro de auditoría de una cuenta al eliminarla: ese registro se borra entero a los 90 días.
 - No abre una incidencia con cada informe de «Reportar un problema» ni lo guarda: llega por correo a soporte, que
   contesta a la persona.
+- No se pone en mantenimiento por consola ni por un ajuste del despliegue: solo desde el admin.
+- No deja fuera del mantenimiento a quien usa una clave de API, aunque sea del personal.
+- No hace copias de la base de datos: las hace AWS.
+- No corta una llamada a un servicio de fuera que ha fallado varias veces seguidas: cada llamada espera poco y dice
+  su error.

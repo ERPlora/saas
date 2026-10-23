@@ -100,7 +100,8 @@ describe('NewKeyModal', () => {
     expect(s.calls().map((c) => [c.method, c.path, c.body])).toEqual([
       ['POST', '/api/accounts/api-keys', { name: 'Gestoría Martínez', scopes: ['billing.read'], expires_in_days: null }],
     ]);
-    expect(toastSuccess).toHaveBeenCalledWith('Key created: «Gestoría Martínez»');
+    // No toast while the key is on screen: on a phone it would cover the key, shown this once (ACCOUNTS-F31).
+    expect(toastSuccess).not.toHaveBeenCalledWith('Key created: «Gestoría Martínez»');
     expect(s.q('new-key-secret')?.textContent).toContain(SECRET);
     expect(s.q('new-key')?.textContent).toContain('you will not see it again');
     expect(s.q('new-key')?.getAttribute('data-backdrop-dismiss')).toBe('false');
@@ -111,6 +112,24 @@ describe('NewKeyModal', () => {
     s.q('new-key-done')?.click();
     await flush();
     expect(s.open.value).toBe(false);
+    expect(toastSuccess).toHaveBeenCalledWith('Key created: «Gestoría Martínez»');
+  });
+
+  it('says the key was created when the sheet is closed by its ✕ too, and says nothing when no key was made', async () => {
+    const s = await setup();
+    await fill(s);
+    s.q('new-key-submit')?.click();
+    await flush();
+    s.open.value = false;
+    await flush();
+    expect(toastSuccess).toHaveBeenCalledExactlyOnceWith('Key created: «Gestoría Martínez»');
+
+    vi.mocked(toastSuccess).mockClear();
+    s.open.value = true;
+    await flush();
+    s.open.value = false;
+    await flush();
+    expect(toastSuccess).not.toHaveBeenCalled();
   });
 
   it('sends the expiry chosen', async () => {

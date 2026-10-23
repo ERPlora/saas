@@ -199,7 +199,7 @@
       "pageTitle": "You have been invited",
       "lead": "Someone gave you access to their business. Accept to enter.",
       "byLine": "{inviter} invites you · {role}",
-      "foot": "You can leave a business whenever you want from the panel.",
+      "foot": "The owner or an admin of the business can take this access away.",
       "loadError": "We could not load your invitations.",
       "expired": {
         "title": "This invitation is no longer valid",
@@ -378,7 +378,7 @@
         "title": "Transfer {business}",
         "message": "We offer the ownership to {name}. When they accept it, they become the owner and you become an admin.",
         "consequenceWindow": "They have 7 days to accept it; until then nothing changes.",
-        "consequenceBilling": "The invoices keep going to the same payer until the new owner changes it.",
+        "consequenceBilling": "A paid plan stays until the end of the period already paid; then the new owner pays it with their card, and the current one is not charged again.",
         "confirmLabel": "Type the name of the business to confirm",
         "confirm": "Offer the ownership",
         "done": "Offer sent to {email}: they have 7 days to accept it"

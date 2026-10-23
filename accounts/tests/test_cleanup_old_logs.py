@@ -60,6 +60,16 @@ def test_older_than_90_days_goes_and_younger_stays(entry):
     assert "deleted=2" in output
 
 
+def test_the_edge_is_90_days_to_the_hour(entry):
+    # Whole days around the edge leave it loose (a 91-day period still deletes an entry of 91 days): an hour each side
+    # of the 90th day pins it.
+    inside, past = entry(90 - 1 / 24), entry(90 + 1 / 24)
+
+    _run()
+
+    assert _left(inside, past) == [True, False]
+
+
 def test_the_period_comes_from_the_option(entry):
     recent, old = entry(30), entry(60)
 
@@ -115,14 +125,16 @@ def test_it_never_asks(entry, monkeypatch):
 def test_a_second_run_while_one_holds_the_lock_does_nothing(entry):
     old = entry(120)
     other = connections["default"].copy()
+    lock = [services.lock_name("cleanup_old_logs")]
     try:
         with other.cursor() as cursor:
-            cursor.execute("SELECT pg_advisory_lock(hashtext(%s))", [services.lock_name("cleanup_old_logs")])
+            cursor.execute("SELECT pg_advisory_lock(hashtext(%s))", lock)
         output = _run()
     finally:
-        # Unlocked by hand: closing a pooled connection keeps its session, and its lock with it.
+        # Released by hand: closing a pooled connection gives its session back to the pool with the lock held, and
+        # a later run (fiscal's test of this command too) would find it «already running» (conftest.py guards it).
         with other.cursor() as cursor:
-            cursor.execute("SELECT pg_advisory_unlock(hashtext(%s))", [services.lock_name("cleanup_old_logs")])
+            cursor.execute("SELECT pg_advisory_unlock(hashtext(%s))", lock)
         other.close()
 
     assert "already running" in output

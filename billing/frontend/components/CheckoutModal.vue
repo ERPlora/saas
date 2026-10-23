@@ -14,6 +14,9 @@
 // Closing the dialog destroys the checkout (Stripe allows one at a time). The declined card is never
 // offered: the checkout always asks for a card, and the dialog says why when the same payer's was declined.
 // Off the web nothing starts: the apps sell nothing (round 17 §2.6).
+// «Keep it with my card» (HUBS-F28, kind `takeover`): the plan of a business handed over, still on the previous
+// owner's card, is kept with the new owner's: the same dialog, its details first, then `billing.plan.take_over`,
+// whose checkout charges nothing today and bills from the end of the paid period (`from`).
 import { FormModal, type FormModalError, InlineFeedback, StatusPill } from '@erplora/ui/components';
 import { HubIcon, toastSuccess, useSurface } from '@erplora/ui/shell';
 import { useCommand, useLiveClient } from '@erplora/ui/sdk';
@@ -24,14 +27,17 @@ import { useRouter } from 'vue-router';
 
 import { useErrorText } from '../../../hubs/frontend/error-text';
 import type { BillingInterval, BillingProfileOut } from '../../../frontend/sdk-types';
+import { formatDate } from '../format';
 import { type EmbeddedCheckout, loadStripeJs } from '../stripe-js';
 import BillingDetailsForm, { type BillingDetailsDraft } from './BillingDetailsForm.vue';
 
 export interface CheckoutPurchase {
-  kind: 'plan' | 'module';
+  kind: 'plan' | 'module' | 'takeover';
   slug: string;
   name: string;
   interval: BillingInterval;
+  /** `takeover`: the day the period paid with the previous owner's card ends, when the new card starts paying. */
+  from?: string | null;
 }
 
 const props = defineProps<{
@@ -61,12 +67,13 @@ const DETAILS_CODES = new Set([
 type Step = 'loading' | 'details' | 'pay';
 type PayState = 'mounting' | 'mounted' | 'completing' | 'error';
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const { text, forDialog } = useErrorText();
 const { isWeb } = useSurface();
 const client = useLiveClient();
 const router = useRouter();
 const start = useCommand('billing.checkout.start');
+const takeOver = useCommand('billing.plan.take_over');
 const saveProfile = useCommand('hubs.billing_profile.update');
 
 const step = shallowRef<Step>('loading');
@@ -96,11 +103,19 @@ function emptyDraft(): BillingDetailsDraft {
 const title = computed(() => {
   const purchase = props.purchase;
   if (!purchase) return '';
+  if (purchase.kind === 'takeover') return t('billing.checkout.titleTakeOver', { plan: purchase.name });
   return purchase.kind === 'plan'
     ? t('billing.checkout.titlePlan', { plan: purchase.name })
     : t('billing.checkout.titleModule', { module: purchase.name });
 });
 const period = computed(() => t(`billing.checkout.period.${props.purchase?.interval ?? 'month'}`));
+/** The day a kept plan starts being paid with the new card. */
+const keptFrom = computed(() => formatDate(props.purchase?.from ?? null, locale.value));
+const forLine = computed(() =>
+  props.purchase?.kind === 'takeover'
+    ? t('billing.checkout.forTakeOver', { business: props.business.name, date: keptFrom.value })
+    : t('billing.checkout.forBusiness', { business: props.business.name, period: period.value }),
+);
 const invoiceTo = computed(() => {
   const payer = profile.value;
   if (!payer) return '';
@@ -166,16 +181,20 @@ async function pay(mine = attempt): Promise<void> {
   step.value = 'pay';
   payState.value = 'mounting';
   payError.value = '';
+  const command = purchase.kind === 'takeover' ? takeOver : start;
   let session;
   try {
-    session = await start.run(
-      purchase.kind === 'plan'
-        ? { hub_id: props.business.id, plan: purchase.slug, interval: purchase.interval, promo_code: props.promoCode }
-        : { hub_id: props.business.id, module: purchase.slug, interval: purchase.interval },
-    );
+    session =
+      purchase.kind === 'takeover'
+        ? await takeOver.run({ hub_id: props.business.id })
+        : await start.run(
+            purchase.kind === 'plan'
+              ? { hub_id: props.business.id, plan: purchase.slug, interval: purchase.interval, promo_code: props.promoCode }
+              : { hub_id: props.business.id, module: purchase.slug, interval: purchase.interval },
+          );
   } catch {
     if (mine !== attempt) return;
-    const failure = start.error.value;
+    const failure = command.error.value;
     if (failure && DETAILS_CODES.has(failure.code)) {
       step.value = 'details';
       dialogError.value = forDialog(failure);
@@ -222,9 +241,11 @@ async function complete(): Promise<void> {
   letCheckoutGo();
   if (!purchase) return;
   void toastSuccess(
-    purchase.kind === 'plan'
-      ? t('billing.checkout.plan', { business: props.business.name, plan: purchase.name })
-      : t('billing.checkout.module', { module: purchase.name, business: props.business.name }),
+    purchase.kind === 'takeover'
+      ? t('billing.checkout.takenOver', { business: props.business.name, plan: purchase.name, date: keptFrom.value })
+      : purchase.kind === 'plan'
+        ? t('billing.checkout.plan', { business: props.business.name, plan: purchase.name })
+        : t('billing.checkout.module', { module: purchase.name, business: props.business.name }),
   );
   // «Paying…» stays on screen until the business's page takes over.
   await router.push(`/businesses/${props.business.id}/summary`);
@@ -286,7 +307,7 @@ onBeforeUnmount(() => {
       class="checkout-for"
       data-testid="checkout-for"
     >
-      {{ $t('billing.checkout.forBusiness', { business: business.name, period }) }}
+      {{ forLine }}
     </p>
 
     <div

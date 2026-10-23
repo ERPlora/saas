@@ -238,8 +238,9 @@ trata como ninguna (`UNKNOWN`: 503 `billing.payments_unavailable`, nunca un cobr
 - **L2-C**: `billing.module.list` y `hubs.module.list`; nadie escribe aún los items `source = plan` (módulos
   incluidos en un plan).
 - **Eliminar un negocio** cancela su suscripción de Stripe en la siguiente pasada de `sweep_unpaid` (no en el
-  acto: `hubs.business.delete` no llama a `billing`); **mover el pagador** de Stripe en un traspaso sigue
-  pendiente.
+  acto: `hubs.business.delete` no llama a `billing`). **Mover el pagador** en un traspaso: hecho en HUBS-F28
+  (`end_renewal_after_hand_over` al aceptar y «Mantenerlo con mi tarjeta», `billing.plan.take_over`; ver el README de
+  `hubs`).
 - **Eliminar la cuenta** (ACCOUNTS-F27, RGPD art. 17): `payer_leaving` (señal `account_deleting`) pone a cada
   pagador de la cuenta su fecha de purga (`forget_after`, `PAYER_RETENTION` = los 90 días de `Hub.RETENTION`) y
   tras el COMMIT `forget_departed_payer` borra el cliente de Stripe, desliga sus negocios y borra la ficha, salvo
@@ -254,10 +255,11 @@ trata como ninguna (`UNKNOWN`: 503 `billing.payments_unavailable`, nunca un cobr
   de arriba; tras agotar los reintentos, «marcar la suscripción como impagada» (`unpaid`); Customer Portal solo
   con tarjetas y recibos (los cambios de plan van por el panel, que pone nuestros `TaxRate`); precios con
   `tax_behavior = exclusive` (no hay sincronización de productos: los ids se copian en el admin).
-- **aws**: `sweep_unpaid` ya corre cada hora (`sweep-unpaid-hourly` en `stacks/prod/scheduler.tf`); falta programar
-  `retax_subscriptions` y `audit_tax_rules` una vez al día (APP-BILLING-1; mientras no estén, BILLING-F04 y
-  BILLING-F06 siguen `parcial`), y `sync_subscriptions` y `purge_webhook_events` cada noche (APP-BILLING-3;
-  mientras no estén, BILLING-F38 y BILLING-F37 siguen `parcial`).
+- **aws**: `sweep_unpaid` corre cada hora (`sweep-unpaid-hourly` en `stacks/prod/scheduler.tf`);
+  `sync_subscriptions` y `purge_webhook_events` cada noche (`sync-subscriptions-nightly`, 00:10 UTC, y
+  `purge-webhook-events-nightly`, 00:50 UTC; FIX-AWS-BILLING-SYNC-AND-PURGE-NOT-SCHEDULED), y `audit_tax_rules` y
+  `retax_subscriptions` cada día (`audit-tax-rules-daily`, 05:10 UTC, y `retax-subscriptions-daily`, 05:20 UTC;
+  FIX-AWS-BILLING-DAILY-TASKS-NOT-SCHEDULED).
 
 ## La Tienda (L2-D)
 
@@ -350,7 +352,7 @@ PDF). Aquí nunca se simula VeriFactu: sin respuesta del Hub la factura sigue «
 | Pieza | Qué hace |
 |---|---|
 | `models.py` | `Invoice` (factura o rectificativa; pago `open`/`paid`/`void`; estado fiscal `issuing`/`issued`/`accepted`/`accepted_with_errors`/`rejected`, el del Hub; el pagador copiado el día de la emisión; importes en céntimos, `net + tax = total`; pagada ⇔ numerada, en la BD; `stripe_source_id`, `rectification_type`, `rectification_reason` en las rectificativas), `InvoiceLine` (una por línea de Stripe, con su categoría, tipo, base y cuota sellados; `item_kind`/`item_slug` dicen qué plan o módulo cobra), `InvoiceCounter` (año y último número por serie) y `PlanChangeSchedule` (la bajada que espera) |
-| `services.py` | `issue_number`, las operaciones internas `billing.invoice.record`, `billing.credit_note.record`, `billing.refund.record` y `billing.invoice.apply_fiscal_status`, `post_platform_invoice`, `refresh_platform_invoice`, `send_invoice_mail`, `reconcile_platform_invoices`, `invoicing_available` y `billing.invoice.pay` |
+| `services.py` | `issue_number`, las operaciones internas `billing.invoice.record`, `billing.credit_note.record`, `billing.refund.record`, `billing.checkout.refund_record` (un pago de quien ya no es propietario, cancelado y devuelto por el webhook) y `billing.invoice.apply_fiscal_status`, `expire_open_checkouts` (tras el COMMIT de un traspaso), `post_platform_invoice`, `refresh_platform_invoice`, `send_invoice_mail`, `reconcile_platform_invoices`, `invoicing_available` y `billing.invoice.pay` |
 | `queries.py` | `billing.invoice.list`, `.get`, `.pdf`, `.csv`, `billing.subscription.list`, `billing.payment_method.get` |
 | `live.py` | Facturas y Suscripciones son vivas; un evento de una factura llega al canal de su pagador y al del propietario de su negocio. La tarjeta no es viva (pregunta a Stripe) |
 | `emails.py` | El aviso al pagador cuando el Hub la emite (texto plano en su idioma, con enlace a Facturación) |

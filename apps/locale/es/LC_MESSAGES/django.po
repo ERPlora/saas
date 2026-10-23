@@ -16,6 +16,13 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+#: admin.py
+#, python-format
+msgid "%(count)d business whose plan includes it gets the change within 15 minutes."
+msgid_plural "%(count)d businesses whose plan includes it get the change within 15 minutes."
+msgstr[0] "%(count)d negocio cuyo plan lo incluye recibe el cambio en los próximos 15 minutos."
+msgstr[1] "%(count)d negocios cuyo plan lo incluye reciben el cambio en los próximos 15 minutos."
+
 #: admin.py:73
 #, python-format
 msgid ""
