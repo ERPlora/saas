@@ -84,6 +84,7 @@ ve sin poder cambiarla.
 | ASSISTANT-F03 | Hablar con cada proveedor en su propia API | hecho |
 | ASSISTANT-F04 | Elegir los modelos de un proveedor | hecho |
 | ASSISTANT-F05 | Elegir qué modelo contesta | hecho |
+| ASSISTANT-F06 | Elegir proveedor y modelo de cada turno | hecho |
 
 ### ASSISTANT-F01 Dar de alta un proveedor de IA
 <!-- origen: fi:saas/support/auth-services#modelo-aiprovider, fi:saas/django-admin#admin-aiprovider, old-saas:SAAS_ASSISTANT-F22 -->
@@ -158,6 +159,21 @@ Sale: la elección de toda la plataforma (`assistant.policy.updated`, con los do
 Si falla: un modelo apagado, de un proveedor apagado o que ya no existe se rechaza con «Este modelo no puede contestar: está apagado, su proveedor está apagado o no existe.»; la reserva igual al primero, con «El modelo de reserva tiene que ser otro modelo.»; una reserva sin modelo que contesta, con «Elige el modelo que contesta antes que su reserva.»; si el modelo elegido se apaga después, la página avisa «El modelo que contesta está apagado o lo está su proveedor: elige otro.»; quien solo puede mirar no ve «Guardar» y, si lo intenta, no se guarda; sin permiso, el admin no deja entrar. Nadie añade ni borra esta elección, y un modelo en uso no se puede borrar.
 Implicados: ASSISTANT-F04, ASSISTANT-F06
 
+### ASSISTANT-F06 Elegir proveedor y modelo de cada turno
+<!-- origen: old-saas:SAAS_ASSISTANT-F05, fi:saas/support/auth-services#signals-provider-cache-invalidation -->
+Estado: hecho
+Actor: sistema
+Pantalla: ninguna
+Pasos:
+1. Cada turno del asistente lee de nuevo qué modelo contesta y cuál es su reserva, con la clave activa más reciente de cada proveedor que se puede abrir; así, una clave cambiada o otra elección valen ya en el turno siguiente, sin reiniciar nada.
+2. Se salta el modelo apagado, el de un proveedor apagado y el de un proveedor sin clave usable; el turno empieza por el primero que queda y dice qué modelo contesta.
+3. Si su proveedor falla antes de contestar nada (caído, saturado, limitando el ritmo o rechazando la clave), el turno pasa al modelo de reserva y avisa del cambio con su motivo; si ya había empezado a contestar, el turno termina con el fallo, porque la persona ya ha visto el principio de la respuesta.
+4. Al probar un modelo desde el admin, el turno va solo a ese modelo, sin reserva.
+Entra: el modelo que contesta y su reserva (o el modelo que se prueba) y las claves de sus proveedores.
+Sale: el modelo que contesta el turno y, si su proveedor falla antes de contestar, el aviso del paso al modelo de reserva.
+Si falla: sin modelo que contesta, «Todavía no contesta ningún modelo: elige uno en la página “Modelo que contesta”.»; si ninguno de los elegidos se puede usar, «Ningún modelo puede contestar: los proveedores de los modelos elegidos no tienen ninguna clave activa.»; un modelo que se prueba apagado, o de un proveedor apagado, «Este modelo está apagado o lo está su proveedor: enciéndelos para usarlo.»; si fallan todos, el turno termina con el motivo del último; el personal solo prueba un modelo con permiso para cambiar el modelo que contesta.
+Implicados: ASSISTANT-F03, ASSISTANT-F05, ASSISTANT-F07
+
 ## Para quien lo mantiene
 
 - Anatomía, datos y operaciones: `assistant/README.md`.
@@ -173,6 +189,11 @@ Implicados: ASSISTANT-F04, ASSISTANT-F06
   y cambiada con `assistant.policy.update` (`change_airoutingpolicy`). Sin el paso doble del producto viejo
   (razonamiento y ejecución con dos modelos, apagado en producción): un modelo y su reserva, como las pasarelas del
   mercado.
+- El turno: `assistant.route.resolve` (`queries.py`; la plataforma con `platform_context`, el personal con
+  `change_airoutingpolicy` y un modelo) da los modelos en orden con su clave, leídos en cada turno (sin caché ni
+  señales que la limpien: lo que el producto viejo hacía con ASSISTANT-G39); `assistant.routing.stream` los prueba
+  en orden y solo pasa a la reserva si el fallo llega antes del primer texto o herramienta (eventos `model` y
+  `fallback`).
 - Clientes (`assistant/providers/`): `httpx` contra cada API (sin SDK ni LiteLLM), sin caché, uno por llamada;
   todos terminan con un solo `finish` y un fallo es un `error` con `retriable`, nunca una excepción. Se prueban contra
   `assistant/tests/fake_provider.py` (servidor HTTP en `127.0.0.1` que habla el formato de cada proveedor).

@@ -2,6 +2,7 @@
 JSON of a schema shows it (only ``get_secret_value`` does, where the key is used)."""
 
 from datetime import datetime
+from decimal import Decimal
 from uuid import UUID
 
 from ninja import Schema
@@ -115,3 +116,30 @@ class PolicyShowOut(Schema):
     updated_by: str
     #: The models that can be chosen: available, of an enabled provider.
     choices: list[ModelChoice]
+
+
+class RouteIn(Schema):
+    """The route of a turn: the policy's (no ``model``), or one model alone (trying it)."""
+
+    model: UUID | None = None
+
+
+class RouteCandidate(Schema):
+    """A model that can answer, with what its client needs (its key, a secret) and its prices (USD per 1M)."""
+
+    model: UUID
+    model_id: str
+    display_name: str
+    provider: str
+    kind: str
+    base_url: str
+    api_key: SecretStr
+    price_input_per_1m: Decimal
+    price_output_per_1m: Decimal
+    supports_tools: bool
+    supports_vision: bool
+
+
+class RouteOut(Schema):
+    #: In order: the model that answers, then its fallback.
+    candidates: list[RouteCandidate]

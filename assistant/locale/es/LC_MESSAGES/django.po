@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: saas-next\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 03:06+0200\n"
+"POT-Creation-Date: 2026-10-23 03:11+0200\n"
 "PO-Revision-Date: 2026-10-23 03:00+0200\n"
 "Last-Translator: ERPlora\n"
 "Language-Team: Spanish\n"
@@ -203,6 +203,15 @@ msgstr "Este proveedor no existe."
 
 msgid "This provider has no active key: add one on its page and try again."
 msgstr "Este proveedor no tiene ninguna clave activa: añade una en su ficha y vuelve a intentarlo."
+
+msgid "No model can answer: the providers of the chosen models have no active key."
+msgstr "Ningún modelo puede contestar: los proveedores de los modelos elegidos no tienen ninguna clave activa."
+
+msgid "This model is off or its provider is: turn them on to use it."
+msgstr "Este modelo está apagado o lo está su proveedor: enciéndelos para usarlo."
+
+msgid "No model answers yet: choose one on the page “Model that answers”."
+msgstr "Todavía no contesta ningún modelo: elige uno en la página “Modelo que contesta”."
 
 msgid "This provider already has a key with that label."
 msgstr "Este proveedor ya tiene una clave con esa etiqueta."

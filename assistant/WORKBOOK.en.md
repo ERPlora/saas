@@ -80,6 +80,7 @@ being able to change it.
 | ASSISTANT-F03 | Talk to each provider in its own API | hecho |
 | ASSISTANT-F04 | Choose a provider's models | hecho |
 | ASSISTANT-F05 | Choose which model answers | hecho |
+| ASSISTANT-F06 | Choose the provider and model of each turn | hecho |
 
 ### ASSISTANT-F01 Add an AI provider
 <!-- origen: fi:saas/support/auth-services#modelo-aiprovider, fi:saas/django-admin#admin-aiprovider, old-saas:SAAS_ASSISTANT-F22 -->
@@ -154,6 +155,21 @@ Sale: the choice of the whole platform (`assistant.policy.updated`, with both mo
 Si falla: a model that is off, of a provider that is off or that no longer exists is refused with «This model cannot answer: it is off, its provider is off or it does not exist.»; the fallback equal to the first, with «The fallback model must be another model.»; a fallback without a model that answers, with «Choose the model that answers before its fallback.»; if the chosen model is turned off later, the page warns «The model that answers is off or its provider is: choose another one.»; whoever may only look does not see «Save» and, if they try, nothing is saved; without permission, the admin does not let in. Nobody adds nor deletes this choice, and a model in use cannot be deleted.
 Implicados: ASSISTANT-F04, ASSISTANT-F06
 
+### ASSISTANT-F06 Choose the provider and model of each turn
+<!-- origen: old-saas:SAAS_ASSISTANT-F05, fi:saas/support/auth-services#signals-provider-cache-invalidation -->
+Estado: hecho
+Actor: system
+Pantalla: none
+Pasos:
+1. Every assistant turn reads again which model answers and which one is its fallback, with each provider's most recent active key that can be opened; so a changed key or another choice already counts on the next turn, without restarting anything.
+2. A model that is off, one of a provider that is off and one of a provider without a usable key are skipped; the turn starts with the first one left and says which model answers.
+3. If its provider fails before answering anything (down, overloaded, limiting the rate or refusing the key), the turn passes to the fallback model and warns of the change with its reason; if it had already started answering, the turn ends with the failure, because the person already saw the start of the answer.
+4. When a model is tried from the admin, the turn goes to that model alone, without fallback.
+Entra: the model that answers and its fallback (or the model being tried) and their providers' keys.
+Sale: the model that answers the turn and, if its provider fails before answering, the notice of the switch to the fallback model.
+Si falla: without a model that answers, «No model answers yet: choose one on the page “Model that answers”.»; if none of the chosen ones can be used, «No model can answer: the providers of the chosen models have no active key.»; a model being tried that is off, or of a provider that is off, «This model is off or its provider is: turn them on to use it.»; if all of them fail, the turn ends with the reason of the last one; the staff only try a model with permission to change the model that answers.
+Implicados: ASSISTANT-F03, ASSISTANT-F05, ASSISTANT-F07
+
 ## For whoever maintains it
 
 - Anatomy, data and operations: `assistant/README.md`.
@@ -169,6 +185,11 @@ Implicados: ASSISTANT-F04, ASSISTANT-F06
 - The policy is one row (`AIRoutingPolicy.solo`), read with `assistant.policy.show` (`view_airoutingpolicy`) and
   changed with `assistant.policy.update` (`change_airoutingpolicy`). Without the old product's two-step pipeline
   (reasoning and execution with two models, off in production): one model and its fallback, as the market's gateways.
+- The turn: `assistant.route.resolve` (`queries.py`; the platform with `platform_context`, the staff with
+  `change_airoutingpolicy` and one model) gives the models in order with their key, read on every turn (no cache nor
+  signals clearing it: what the old product did with ASSISTANT-G39); `assistant.routing.stream` tries them in order
+  and only passes to the fallback if the failure comes before the first text or tool call (events `model` and
+  `fallback`).
 - Clients (`assistant/providers/`): `httpx` against each API (no SDK nor LiteLLM), no cache, one per call; all end
   with a single `finish` and a failure is an `error` with `retriable`, never an exception. Tested against
   `assistant/tests/fake_provider.py` (an HTTP server on `127.0.0.1` speaking each provider's format).
