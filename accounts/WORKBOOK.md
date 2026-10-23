@@ -247,9 +247,9 @@ inglés» y el «mensaje en español» (vacío, quien visita en español lee el 
 | ACCOUNTS-F32 | Usar una clave de API: qué abre y qué no | hecho |
 | ACCOUNTS-F33 | Revocar una clave de API | hecho |
 | ACCOUNTS-F34 | Consultar la documentación de la API | hecho |
-| ACCOUNTS-F35 | Borrar las cuentas sin uso en dos años | parcial |
+| ACCOUNTS-F35 | Borrar las cuentas sin uso en dos años | hecho |
 | ACCOUNTS-F36 | Ver quién cambió una cuenta | hecho |
-| ACCOUNTS-F37 | Borrar el registro de auditoría de más de 90 días | parcial |
+| ACCOUNTS-F37 | Borrar el registro de auditoría de más de 90 días | hecho |
 | ACCOUNTS-F38 | Reportar un problema a soporte | hecho |
 | ACCOUNTS-F39 | Dejar cargar en cada página solo lo de erplora.com | hecho |
 | ACCOUNTS-F40 | Guardar en el registro lo que pasa, sin datos personales ni secretos | hecho |
@@ -761,7 +761,7 @@ Implicados: ninguno
 
 ### ACCOUNTS-F35 Borrar las cuentas sin uso en dos años
 <!-- origen: old-saas:SAAS_AUTH-F15 fi:saas/auth-services#comando-anonimizar-usuarios-inactivos-gdpr fi:saas/support/auth-services#command-anonymize_old_users fi:saas/support/auth-services#task-anonymize_old_users_task -->
-Estado: parcial — el borrado ya existe, pero aún no está programado cada semana: hasta entonces lo lanza una persona del equipo
+Estado: hecho
 Actor: sistema
 Pantalla: ninguna (una tarea semanal de erplora.com)
 Pasos:
@@ -790,7 +790,7 @@ Implicados: ninguno
 
 ### ACCOUNTS-F37 Borrar el registro de auditoría de más de 90 días
 <!-- origen: fi:saas/auth-services#comando-limpiar-logs-antiguos-gdpr fi:saas/support/auth-services#command-cleanup_old_logs fi:saas/support/auth-services#task-cleanup_old_logs_task fi:saas/auth-services#tareas-gdpr-retencion-de-datos -->
-Estado: parcial — la limpieza ya existe, pero aún no está programada cada día: hasta entonces la lanza una persona del equipo
+Estado: hecho
 Actor: sistema
 Pantalla: ninguna (una tarea diaria de erplora.com)
 Pasos:
@@ -1054,8 +1054,9 @@ Implicados: hubs, billing, public, apps y fiscal; del Hub, verifactu, invoice y 
   superusuario emite las de una cuenta del equipo desde el admin (`ApiKeyAdmin`, `services.issue_api_key`).
   `/api/docs` es ReDoc con nonce y solo con sesión (`accounts/api_docs.py`); `/api/openapi.json` sigue abierto (lo
   leen Postman y los tests de otras apps). `anonymize_old_users` (F35, semanal) y `cleanup_old_logs` (F37, diaria)
-  son comandos con candado propio (`services.run_exclusively`): quedan `parcial` hasta que `saas-cron`
-  (`aws/stacks/prod/scheduler.tf`) los programe. El registro de auditoría (F36) es `django-auditlog`
+  son comandos con candado propio (`services.run_exclusively`) que lanza `saas-cron` con sus valores por defecto:
+  `anonymize-old-users-weekly` los lunes a las 00:35 UTC y `cleanup-old-logs-nightly` cada noche a las 00:45 UTC
+  (`aws/stacks/prod/scheduler.tf`). El registro de auditoría (F36) es `django-auditlog`
   (`accounts/auditlog.py`): la cuenta, su acceso a negocios, sus claves y sus sesiones, sin secretos ni lo que se
   mueve en cada visita; `AuditActorMiddleware` toma la dirección que ya resolvió `public.client_ip` y lee quién
   actúa al escribir cada entrada (una clave de API pone su cuenta después del middleware), y

@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:504aaef927067536a1410d3f747316df607ee1abd17a1301e6009efc21831117 -->
+<!-- generated from WORKBOOK.md sha256:5a663b5a6674e9fc91018e35671e5c30ea9479dda9ac7778c6646cc9d17eee7e -->
 
 ## What it is for and who it is for
 
@@ -223,9 +223,9 @@ the "message in Spanish" (empty, Spanish visitors read the English one), and the
 | ACCOUNTS-F32 | Use an API key: what it opens and what it does not | done |
 | ACCOUNTS-F33 | Revoke an API key | done |
 | ACCOUNTS-F34 | Read the API documentation | done |
-| ACCOUNTS-F35 | Erase the accounts unused for two years | partial |
+| ACCOUNTS-F35 | Erase the accounts unused for two years | done |
 | ACCOUNTS-F36 | See who changed an account | done |
-| ACCOUNTS-F37 | Erase the audit log older than 90 days | partial |
+| ACCOUNTS-F37 | Erase the audit log older than 90 days | done |
 | ACCOUNTS-F38 | Report a problem to support | done |
 | ACCOUNTS-F39 | Let each page load only what is erplora.com's | done |
 | ACCOUNTS-F40 | Keep in the log what happens, without personal data or secrets | done |
@@ -702,7 +702,7 @@ If it fails: without a session, the **Entrance** asks them to sign in and then g
 Involved: none
 
 ### ACCOUNTS-F35 Erase the accounts unused for two years
-Status: partial — the erasure exists, but it is not scheduled every week yet: until then a team member runs it
+Status: done
 Actor: system
 Screen: none (a weekly task of erplora.com)
 Steps:
@@ -729,7 +729,7 @@ If it fails: a secret is never written down (neither the password, nor the API k
 Involved: none
 
 ### ACCOUNTS-F37 Erase the audit log older than 90 days
-Status: partial — the cleanup exists, but it is not scheduled every day yet: until then a team member runs it
+Status: done
 Actor: system
 Screen: none (a daily task of erplora.com)
 Steps:
