@@ -168,7 +168,8 @@ class SeatLimitReached(Conflict):
 )
 def business_create(ctx: OperationContext, data: BusinessCreateIn) -> dict:
     """The sign-up (PLAN-SAAS §3.1 step 2, round 17 §2.3): in one transaction the payer, the business, its
-    owner and its Free subscription (with the Starter trial, ADR-0474); after the COMMIT, the Hub.
+    owner and its Free subscription (no plan carries a trial since 2026-10-15; the Starter trial of ADR-0474
+    only if the staff give it one again); after the COMMIT, the Hub.
 
     One free business per account (``FREE_HUBS_PER_ACCOUNT``, ADR-0154); a name never blocks it.
     """
@@ -687,7 +688,7 @@ def _managed(ctx: OperationContext, member_id: UUID, role: str | None = None) ->
     if target is None:
         raise _member_not_found()
     if target.user_id == actor.user_id:
-        raise PermissionDenied(_("You cannot change your own membership."))
+        raise PermissionDenied(_("You cannot change your own membership."), code="hubs.own_membership")
     if not queries.manages(actor, target):
         raise PermissionDenied(_("You cannot manage a member whose role is equal to or above yours."))
     if role is not None and role not in queries.assignable_roles(actor.role):

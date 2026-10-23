@@ -161,6 +161,18 @@ class TestAcceptingSwapsTheTwoRolesAndNothingElse:
             == "hub_owner"
         )
         assert Hub.objects.get(pk=business.pk).state_version == before + 1
+
+    def test_the_hub_gets_both_new_roles_once_saved(self, business, team, hub_double, django_capture_on_commit_callbacks):
+        """HUBS-F28 «Sale»: the business is told at once, with exactly one owner, not at the next pass of HUBS-F08."""
+        transfer = offer(team["owner"], business, team["employee"])
+
+        with django_capture_on_commit_callbacks(execute=True):
+            accept(team["employee"], transfer.id)
+
+        (snapshot,) = hub_double.calls_to("PUT", f"/internal/hubs/{business.id}/state")
+        sent = {member["email"]: member["role"] for member in snapshot.body["members"]}
+        assert (sent["employee@example.com"], sent["owner@example.com"]) == ("hub_owner", "hub_admin")
+        assert list(sent.values()).count("hub_owner") == 1
         assert HubOwnershipTransfer.objects.get().resolved_at is not None
 
     def test_other_businesses_are_untouched(self, business, team, make_user):
@@ -248,6 +260,16 @@ class TestOnlyTheNamedRecipientAnswers:
             accept(team["admin"], transfer.id)
 
         assert refused.value.code == "hubs.transfer_answered"
+
+    def test_removing_the_recipient_withdraws_the_offer(self, business, team):
+        """HUBS-F27 «Sale»: the offer pending to the person removed is withdrawn, so the owner may offer the
+        business to somebody else at once (and the members page stops saying it is offered)."""
+        transfer = offer(team["owner"], business, team["admin"])
+        services.member_remove(ctx_for(team["owner"]), ByIdIn(id=member_of(business, team["admin"]).id))
+
+        withdrawn = HubOwnershipTransfer.objects.get(pk=transfer.id)
+        assert (withdrawn.status, withdrawn.resolved_at is not None) == ("cancelled", True)
+        assert offer(team["owner"], business, team["manager"]).status == "pending"
 
     def test_an_offer_from_somebody_who_no_longer_owns_it_is_stale(
         self, business, team

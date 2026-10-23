@@ -209,6 +209,22 @@ describe('BusinessCreateForm: creating', () => {
     expect(s.pending.value).toBe(false);
   });
 
+  // flow: HUBS-F01 «Si falla»: two presses in a row create one business (Enter twice, or the dialog's button).
+  it('a second submit while the first is on its way sends nothing more', async () => {
+    let answer!: (r: Response) => void;
+    const s = await setup({
+      api: (c) => (c.path === '/api/hubs/businesses' ? (new Promise<Response>((r) => (answer = r)) as unknown as Response) : undefined),
+    });
+    await s.type('create-name', 'Bar');
+    void s.form.value!.submit();
+    void s.form.value!.submit();
+    await flush();
+    expect(s.calls().filter((c) => c.path === '/api/hubs/businesses')).toHaveLength(1);
+    answer(Response.json(DETAIL, { status: 201 }));
+    await flush();
+    expect(s.created).toHaveBeenCalledTimes(1);
+  });
+
   it("puts the server's field errors on their fields", async () => {
     const s = await setup({
       api: (c) =>

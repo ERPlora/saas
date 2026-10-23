@@ -198,6 +198,21 @@ Flujos `HUBS-F31`…`HUBS-F37` del `WORKBOOK.md` (parte 4 de 5; la revisión flu
 - e2e: `tests/e2e/panel/hubs-rights.spec.ts` (la ficha del plan y su aviso, la entrega al Hub doble tras la pasada, y
   las listas y fichas de la taxonomía; en `en` y `es`, a 390, 834 y 1440).
 
+## Lo que revisó APP-HUBS-5 (2026-10-23): los 30 flujos `hecho`, uno a uno
+
+Parte 5 de 5: cada flujo `hecho` contra su código, con mutantes ejecutados; los que sobrevivían tienen ahora su test.
+
+- **Cada escritura anota su evento** (F01, F11, F15, F19, F24–F28): `tests/test_events.py` comprueba que cada una lo
+  anota una sola vez y para su negocio; antes, quitar un `record_event` solo lo notaba el meta-test.
+- **La fila propia tiene su código** (F26, F27): cambiar el rol o quitarse a uno mismo es 403 `hubs.own_membership`
+  (antes, el mismo `permission_denied` que «rango igual o superior», y la comprobación no se distinguía).
+- **El Hub, al momento**: aceptar una invitación (F25) o un traspaso (F28) empuja la foto tras el COMMIT; quitar a
+  alguien (F27) retira su oferta de propiedad pendiente. Ya lo hacían; ahora lo caza un test (`test_members.py`,
+  `test_ownership.py`).
+- e2e: `tests/e2e/panel/hubs-review.spec.ts` (cada pantalla de los flujos en `en` y `es`, a 390, 834 y 1440: sin inglés
+  en español, sin desbordes, sin etiquetas de campo cortadas y sin errores de consola). Cazó la etiqueta de confirmar el
+  traspaso, cortada a 390 en español: ahora «Nombre del negocio».
+
 ## Pendiente (lotes siguientes)
 
 - **Retirar `accounts.HubMembership`**, en este orden: (1) el salto pasa a `hubs` (`/hub-login/`,

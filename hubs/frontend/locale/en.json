@@ -301,7 +301,7 @@
       "confirmMessage": "It stops working right now for everyone. You can recover it for 90 days; after that it is erased for good.",
       "consequencePlan": "Its plan is cancelled now: if you recover it, it comes back on Free.",
       "consequenceEmail": "We send you an email with the date until which you can recover it.",
-      "confirmLabel": "Type the name of the business to confirm",
+      "confirmLabel": "Business name",
       "restore": "Recover business"
     },
     "members": {
@@ -379,7 +379,7 @@
         "message": "We offer the ownership to {name}. When they accept it, they become the owner and you become an admin.",
         "consequenceWindow": "They have 7 days to accept it; until then nothing changes.",
         "consequenceBilling": "A paid plan stays until the end of the period already paid; then the new owner pays it with their card, and the current one is not charged again.",
-        "confirmLabel": "Type the name of the business to confirm",
+        "confirmLabel": "Business name",
         "confirm": "Offer the ownership",
         "done": "Offer sent to {email}: they have 7 days to accept it"
       }

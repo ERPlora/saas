@@ -21,6 +21,7 @@ from datetime import timedelta
 import pytest
 from django.core import mail
 from django.utils import timezone, translation
+from live.models import OutboxEvent
 from live.slugs import validate_hub_slug
 from live.errors import (
     Conflict,
@@ -32,7 +33,7 @@ from live.errors import (
 )
 
 from accounts.models import AuthExchangeCode, HubMembership
-from hubs import queries, services
+from hubs import events, queries, services
 from hubs.models import BillingProfile, BusinessType, Hub, HubMember, Plan, Subscription
 from hubs.schemas import (
     BusinessCreateIn,
@@ -70,6 +71,13 @@ class TestTheSignUpFromOneQuestion:
         )
         assert hub.id.version == 7
         assert (created.status, created.role) == ("preparing", "hub_owner")
+
+    def test_the_sign_up_records_its_event_for_the_creators_list(self, owner, plans):
+        """HUBS-F01 «Sale»: ``hubs.business.created``, in the transaction, on the channel of who created it."""
+        hub = create_business(owner)
+
+        (event,) = OutboxEvent.objects.filter(name=events.BUSINESS_CREATED)
+        assert (event.payload, event.scope_key) == ({"id": str(hub.id)}, str(owner.id))
 
     def test_the_creator_is_the_owner_born_answered(self, owner, plans):
         hub = create_business(owner)
@@ -540,6 +548,16 @@ class TestUpdate:
         business.refresh_from_db()
 
         assert business.pending_hub_call == ""
+
+    def test_a_change_records_its_event_and_no_change_records_none(self, business, owner):
+        """HUBS-F15 «Sale»: ``hubs.business.updated``, only when something changed."""
+        services.business_update(ctx_for(owner), BusinessUpdateIn(id=business.id, name="Bar Manolo"))
+        assert not OutboxEvent.objects.filter(name=events.BUSINESS_UPDATED).exists()
+
+        services.business_update(ctx_for(owner), BusinessUpdateIn(id=business.id, name="New name"))
+
+        (event,) = OutboxEvent.objects.filter(name=events.BUSINESS_UPDATED)
+        assert event.payload == {"id": str(business.id)}
 
     def test_a_new_name_reaches_the_hub(self, business, owner, hub_double, django_capture_on_commit_callbacks):
         """HUBS-F15, trap of ERPlora/saas SAAS_DASHBOARD-F09: the new name never reached the hub (its screen, its

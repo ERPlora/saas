@@ -87,6 +87,15 @@ describe('BusinessSettings', () => {
     expect(toastSuccess).toHaveBeenCalledWith('Changes saved');
   });
 
+  // flow: HUBS-F15: Enter in a field submits the form; with nothing changed it sends nothing and says nothing.
+  it('submitting without a change (Enter) sends nothing', async () => {
+    const s = await setup();
+    await s.wrapper.get('form').trigger('submit');
+    await flush();
+    expect(s.calls().filter((c) => c.path === '/api/hubs/businesses/update')).toEqual([]);
+    expect(toastSuccess).not.toHaveBeenCalled();
+  });
+
   it('puts the server’s field errors on their fields', async () => {
     const s = await setup(() => apiError(422, 'invalid_payload', 'Invalid payload', { timezone: 'Choose a valid time zone.' }));
     await s.pick('settings-timezone', 'Atlantic/Canary');

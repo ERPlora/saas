@@ -112,18 +112,20 @@ class TestReconcile:
     ):
         first = create_business(owner)
         second = create_business(make_user("lola@example.com"), name="Café Lola")
-        real = services.sync_hub
+        real = services.sync_outcome  # what the pass calls for each business (``_sync_counted``)
 
         def flaky(hub_id):
             if hub_id == first.id:
                 raise RuntimeError("boom")
             return real(hub_id)
 
-        monkeypatch.setattr(services, "sync_hub", flaky)
+        monkeypatch.setattr(services, "sync_outcome", flaky)
 
-        run("reconcile_hub_states")
+        with pytest.raises(CommandError):
+            run("reconcile_hub_states")
 
         assert fresh(second).pending_hub_call == ""
+        assert fresh(first).pending_hub_call == "put"
 
     def test_a_stuck_sign_up_the_hub_finished_is_marked_ready(self, business, hub_double):
         services.sync_hub(business.id)

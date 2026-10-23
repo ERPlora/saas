@@ -301,7 +301,7 @@
       "confirmMessage": "Deja de funcionar ahora mismo para todos. Puedes recuperarlo durante 90 días; después se borra para siempre.",
       "consequencePlan": "Su plan se cancela ahora: si lo recuperas, vuelve en Gratis.",
       "consequenceEmail": "Te enviamos un correo con la fecha hasta la que puedes recuperarlo.",
-      "confirmLabel": "Escribe el nombre del negocio para confirmar",
+      "confirmLabel": "Nombre del negocio",
       "restore": "Recuperar negocio"
     },
     "members": {
@@ -379,7 +379,7 @@
         "message": "Ofrecemos la propiedad a {name}. Cuando la acepte, pasa a ser el propietario y tú, administrador.",
         "consequenceWindow": "Tiene 7 días para aceptarla; hasta entonces no cambia nada.",
         "consequenceBilling": "Un plan de pago sigue hasta el final del periodo ya pagado; después lo paga el nuevo propietario con su tarjeta y la actual no se vuelve a cobrar.",
-        "confirmLabel": "Escribe el nombre del negocio para confirmar",
+        "confirmLabel": "Nombre del negocio",
         "confirm": "Ofrecer la propiedad",
         "done": "Oferta enviada a {email}: tiene 7 días para aceptarla"
       }

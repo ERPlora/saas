@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:9d5971288487a12ab934dffea54494f46a9921bba3d6f825c6ff73615fed8211 -->
+<!-- generated from WORKBOOK.md sha256:8266b921072b7c0706fa01ee6cccdc38afbc6b21e2157b88ad6b0ba7e083a638 -->
 
 ## What it is for and who it is for
 
@@ -65,9 +65,9 @@ with one business, "Hello, …" with "Open …" and "Go to the panel"; with seve
 with the last opened on top. A pending invitation shows above.
 
 ### Create business
-The sign-up form: "What is your business called?", "Business name", "Country" (suggested by the browser's
-language), "Business type (optional)" with "I don't know yet" and, under the name, "Your address will be …". On the
-Entrance it is in the card; in **Businesses**, in the "Create business" dialog.
+The sign-up form: "Business name", "Country" (suggested by the browser's language), "Business type (optional)" with
+"I don't know yet" and, under the name, "Your address will be …". On the Entrance it is in the "Create your business"
+card; in **Businesses**, in the "Create business" dialog, under "What is your business called?".
 
 ### Preparing
 The running bar and three steps: "Business created", "Setting up your business" (or "Installing the modules for …")
@@ -416,7 +416,7 @@ Actor: owner, integration
 Screen: Business settings › Danger zone
 Steps:
 1. In "Settings", in the "Danger zone", the owner presses "Delete business"; the dialog "Delete …" says "It stops working right now for everyone. You can recover it for 90 days; after that it is erased for good." and "Its plan is cancelled now: if you recover it, it comes back on Free.".
-2. They type the business's name in "Type the name of the business to confirm" and press "Delete business": "Business deleted: …. You can recover it until ….".
+2. They type the business's name in "Business name" and press "Delete business": "Business deleted: …. You can recover it until ….".
 3. The page says "It will be erased for good on …" with "Recover business", and the owner gets the email with that date.
 4. An integration with the account's session does the same, with the name typed; an API key does not delete.
 In: the name typed again; the owner's session.

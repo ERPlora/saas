@@ -294,6 +294,22 @@ class TestTaxonomyInALanguage:
             assert hospitality.name() == "Hostelería y Alimentación"
 
 
+@pytest.mark.django_db
+def test_two_business_types_never_share_a_name_in_one_language():
+    """HUBS-F36 «Si falla» (saas#2099): the sign-up lists them by name, so a second «Peluquería» is refused, folded
+    and trimmed; a blank (untranslated) name is never compared."""
+    from hubs.models import BusinessType
+
+    BusinessType.objects.create(code="hair_salon", name_en="Hair salon", name_es="Peluquería")
+    BusinessType.objects.create(code="nails", name_en="Nails", name_es="")
+
+    with pytest.raises(ValidationError) as refused:
+        BusinessType(code="barber", name_en="Barber", name_es=" PELUQUERÍA ").full_clean()
+    assert [error.code for error in refused.value.error_dict["name_es"]] == ["duplicate_business_type_name"]
+
+    BusinessType(code="spa", name_en="Spa", name_es="").full_clean()
+
+
 class TestVertical:
     """``BusinessType.vertical``: the template a new hub of that type is cloned from (PLAN §15.2).
 

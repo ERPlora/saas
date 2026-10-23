@@ -76,9 +76,9 @@ con un negocio, «Hola, …» con «Abrir …» e «Ir al panel»; con varios, �
 arriba. Una invitación pendiente sale encima.
 
 ### Crear negocio
-El formulario del alta: «¿Cómo se llama tu negocio?», «Nombre del negocio», «País» (sugerido por el idioma del
-navegador), «Tipo de negocio (opcional)» con «Todavía no lo sé» y, debajo del nombre, «Tu dirección será …». En la
-Entrada va en la tarjeta; en **Negocios**, en el diálogo «Crear negocio».
+El formulario del alta: «Nombre del negocio», «País» (sugerido por el idioma del navegador), «Tipo de negocio
+(opcional)» con «Todavía no lo sé» y, debajo del nombre, «Tu dirección será …». En la Entrada va en la tarjeta «Crea tu
+negocio»; en **Negocios**, en el diálogo «Crear negocio», bajo «¿Cómo se llama tu negocio?».
 
 ### Preparando
 La barra en marcha y tres pasos: «Negocio creado», «Preparando tu negocio» (o «Instalando los módulos de …») y
@@ -95,7 +95,7 @@ La página de cada negocio abre en su Resumen: el plan (con «Mejorar plan» o �
 Android.
 
 ### Tu negocio se está preparando
-La página que enseña la dirección de un negocio que aún se prepara: «Tu negocio se está preparando» y «Tarda
+La página que enseña la dirección de un negocio que aún se prepara: «Estamos preparando tu negocio» y «Tarda
 unos segundos. Esta página se actualiza sola.».
 
 ### Ajustes del negocio
@@ -275,7 +275,7 @@ Estado: hecho
 Actor: cualquiera
 Pantalla: Tu negocio se está preparando
 Pasos:
-1. Quien abre la dirección de un negocio que aún se prepara ve «Tu negocio se está preparando» y «Tarda unos segundos. Esta página se actualiza sola.».
+1. Quien abre la dirección de un negocio que aún se prepara ve «Estamos preparando tu negocio» y «Tarda unos segundos. Esta página se actualiza sola.».
 2. La página vuelve a mirar cada pocos segundos y, en cuanto el negocio está listo, enseña el negocio (o su entrada, sin sesión).
 Entra: la dirección del negocio.
 Sale: nada; la página no cambia el negocio.
@@ -446,7 +446,7 @@ Actor: propietario, integración
 Pantalla: Ajustes del negocio › Zona de peligro
 Pasos:
 1. En «Ajustes», en la «Zona de peligro», el propietario pulsa «Eliminar negocio»; el diálogo «Eliminar …» dice «Deja de funcionar ahora mismo para todos. Puedes recuperarlo durante 90 días; después se borra para siempre.» y «Su plan se cancela ahora: si lo recuperas, vuelve en Gratis.».
-2. Escribe el nombre del negocio en «Escribe el nombre del negocio para confirmar» y pulsa «Eliminar negocio»: sale «Negocio eliminado: …. Puedes recuperarlo hasta el ….».
+2. Escribe el nombre del negocio en «Nombre del negocio» y pulsa «Eliminar negocio»: sale «Negocio eliminado: …. Puedes recuperarlo hasta el ….».
 3. La página dice «Se eliminará para siempre el …» con «Recuperar negocio», y al propietario le llega el correo con esa fecha.
 4. Una integración con la sesión de la cuenta hace lo mismo, con el nombre escrito; una clave de API no elimina.
 Entra: el nombre escrito otra vez; la sesión del propietario.
