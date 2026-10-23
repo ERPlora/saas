@@ -772,7 +772,15 @@ def test_the_door_without_recaptcha_loads_nothing_of_google(client):
 
 
 @pytest.mark.django_db
-def test_the_door_keeps_googles_sources_in_its_own_policy(client, hub_double):
+def test_the_door_without_recaptcha_names_nothing_of_google_in_its_own_policy(client, hub_double):
+    policy = client.get(DOOR)["Content-Security-Policy"]
+
+    assert "recaptcha" not in policy
+    assert "gstatic.com" not in policy
+
+
+@pytest.mark.django_db
+def test_the_door_keeps_googles_sources_in_its_own_policy(client, hub_double, recaptcha):
     policy = client.get(DOOR)["Content-Security-Policy"]
 
     assert "https://www.google.com/recaptcha/" in policy
