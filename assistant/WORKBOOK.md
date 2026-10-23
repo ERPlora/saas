@@ -96,7 +96,7 @@ entrada», «Tokens de salida», «Tiempo» y «Coste» (en dólares).
 | ASSISTANT-F10 | Cambiar la clave de cifrado sin perder ninguna credencial | hecho |
 
 ### ASSISTANT-F01 Dar de alta un proveedor de IA
-<!-- origen: fi:saas/support/auth-services#modelo-aiprovider, fi:saas/django-admin#admin-aiprovider, old-saas:SAAS_ASSISTANT-F22 -->
+<!-- origen: fi:saas/support/auth-services#modelo-aiprovider fi:saas/django-admin#admin-aiprovider old-saas:SAAS_ASSISTANT-F22 -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin: Proveedores de IA
@@ -110,7 +110,7 @@ Si falla: una dirección que no es https se rechaza con «Usa una dirección htt
 Implicados: ninguno
 
 ### ASSISTANT-F02 Guardar la clave de un proveedor sin que se vea
-<!-- origen: fi:saas/support/auth-services#modelo-aiprovidercredential, fi:saas/django-admin#admin-aiprovidercredential -->
+<!-- origen: fi:saas/support/auth-services#modelo-aiprovidercredential fi:saas/django-admin#admin-aiprovidercredential -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin: Proveedores de IA
@@ -125,7 +125,7 @@ Si falla: una clave nueva sin clave se rechaza con «Escribe la clave del provee
 Implicados: ninguno
 
 ### ASSISTANT-F03 Hablar con cada proveedor en su propia API
-<!-- origen: fi:saas/support/auth-services#service-providers-base-provider-toolspec-turnrequest-providerevent, fi:saas/support/auth-services#service-providers-factory-get_provider, fi:saas/support/auth-services#service-providers-anthropic_provider-anthropicprovider, fi:saas/support/auth-services#service-providers-openai_provider-openaiprovider, fi:saas/support/auth-services#service-providers-gemini_provider-geminiprovider, fi:saas/support/auth-services#service-providers-deepseek_provider-deepseekprovider -->
+<!-- origen: fi:saas/support/auth-services#service-providers-base-provider-toolspec-turnrequest-providerevent fi:saas/support/auth-services#service-providers-factory-get_provider fi:saas/support/auth-services#service-providers-anthropic_provider-anthropicprovider fi:saas/support/auth-services#service-providers-openai_provider-openaiprovider fi:saas/support/auth-services#service-providers-gemini_provider-geminiprovider fi:saas/support/auth-services#service-providers-deepseek_provider-deepseekprovider -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -140,7 +140,7 @@ Si falla: si el proveedor rechaza la clave o la petición, el turno termina con 
 Implicados: ASSISTANT-F04, ASSISTANT-F06, ASSISTANT-F07
 
 ### ASSISTANT-F04 Elegir los modelos de un proveedor
-<!-- origen: fi:saas/support/auth-services#modelo-aimodel, fi:saas/django-admin#admin-aimodel -->
+<!-- origen: fi:saas/support/auth-services#modelo-aimodel fi:saas/django-admin#admin-aimodel -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin: Proveedores de IA, Admin: Elegir modelos del proveedor, Admin: Modelos de IA
@@ -155,7 +155,7 @@ Si falla: sin clave activa que se pueda leer, «Este proveedor no tiene ninguna 
 Implicados: ASSISTANT-F03, ASSISTANT-F05
 
 ### ASSISTANT-F05 Elegir qué modelo contesta
-<!-- origen: fi:saas/support/auth-services#modelo-airoutingpolicy, fi:saas/django-admin#admin-airoutingpolicy-singleton-tester, fi:saas/auth-services#routing-ai-configuracion-de-proveedores-modelos-admin, old-saas:SAAS_ASSISTANT-F23 -->
+<!-- origen: fi:saas/support/auth-services#modelo-airoutingpolicy fi:saas/django-admin#admin-airoutingpolicy-singleton-tester fi:saas/auth-services#routing-ai-configuracion-de-proveedores-modelos-admin old-saas:SAAS_ASSISTANT-F23 -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin: Modelo que contesta
@@ -169,7 +169,7 @@ Si falla: un modelo apagado, de un proveedor apagado o que ya no existe se recha
 Implicados: ASSISTANT-F04, ASSISTANT-F06
 
 ### ASSISTANT-F06 Elegir proveedor y modelo de cada turno
-<!-- origen: old-saas:SAAS_ASSISTANT-F05, fi:saas/support/auth-services#signals-provider-cache-invalidation -->
+<!-- origen: old-saas:SAAS_ASSISTANT-F05 fi:saas/support/auth-services#signals-provider-cache-invalidation -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -199,7 +199,7 @@ Si falla: sin modelo de la lista, «Elige de la lista el modelo que quieres prob
 Implicados: ASSISTANT-F05, ASSISTANT-F06
 
 ### ASSISTANT-F08 Ver quién cambió la configuración de la IA
-<!-- origen: fi:saas/support/auth-services#modelo-aiconfigauditlog, fi:saas/django-admin#admin-aiconfigauditlog -->
+<!-- origen: fi:saas/support/auth-services#modelo-aiconfigauditlog fi:saas/django-admin#admin-aiconfigauditlog -->
 Estado: hecho
 Actor: superusuario de ERPlora (o alguien del equipo con permiso para ver el registro)
 Pantalla: el admin de erplora.com › «Registro de auditoría»
@@ -213,7 +213,7 @@ Si falla: nunca se anota una clave de proveedor, ni en claro ni cifrada: su camb
 Implicados: ACCOUNTS-F36, ASSISTANT-F02, ASSISTANT-F07
 
 ### ASSISTANT-F09 Cargar las claves de los proveedores desde el entorno
-<!-- origen: fi:saas/auth-services#comando-importar-claves-ai-desde-el-entorno, fi:saas/support/auth-services#command-import_ai_keys_from_env -->
+<!-- origen: fi:saas/auth-services#comando-importar-claves-ai-desde-el-entorno fi:saas/support/auth-services#command-import_ai_keys_from_env -->
 Estado: hecho
 Actor: personal de ERPlora, en la línea de órdenes de erplora.com
 Pantalla: ninguna
@@ -228,7 +228,7 @@ Si falla: una variable vacía se salta; un proveedor desconocido detiene la carg
 Implicados: ASSISTANT-F01, ASSISTANT-F02, ASSISTANT-F08
 
 ### ASSISTANT-F10 Cambiar la clave de cifrado sin perder ninguna credencial
-<!-- origen: fi:saas/auth-services#comando-rotacion-de-claves-de-cifrado-gdpr, fi:saas/support/public-core-config#command-rotate_encryption_keys -->
+<!-- origen: fi:saas/auth-services#comando-rotacion-de-claves-de-cifrado-gdpr fi:saas/support/public-core-config#command-rotate_encryption_keys -->
 Estado: hecho
 Actor: personal de ERPlora, en la línea de órdenes de erplora.com
 Pantalla: ninguna
