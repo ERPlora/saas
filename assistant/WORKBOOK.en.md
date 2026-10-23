@@ -87,6 +87,7 @@ and «Cost» (in dollars).
 | ASSISTANT-F05 | Choose which model answers | hecho |
 | ASSISTANT-F06 | Choose the provider and model of each turn | hecho |
 | ASSISTANT-F07 | Try a model before it answers | hecho |
+| ASSISTANT-F08 | See who changed the configuration of the AI | hecho |
 
 ### ASSISTANT-F01 Add an AI provider
 <!-- origen: fi:saas/support/auth-services#modelo-aiprovider, fi:saas/django-admin#admin-aiprovider, old-saas:SAAS_ASSISTANT-F22 -->
@@ -191,6 +192,20 @@ Sale: the model's answer with its usage, its time and its cost; the try stays in
 Si falla: without a model of the list, «Choose the model to try from the list.»; without a message, «Write the message to send.»; badly written tools, «The tools are not well written: write a list of tools as in the example, each with its name.»; a model that is off or of a provider that is off, «This model is off or its provider is: turn them on to use it.»; a provider without a usable key, «No model can answer: the providers of the chosen models have no active key.»; if the provider fails, «The model did not answer: …» with its reason, never the key; more than 10 tries in a minute, «Too many tries in a minute: wait a moment and try again.»; without network, «The try could not be sent: check the connection and try again.». Only whoever may change the model that answers tries one (each try spends ERPlora's key); without that permission, the admin does not let in.
 Implicados: ASSISTANT-F05, ASSISTANT-F06
 
+### ASSISTANT-F08 See who changed the configuration of the AI
+<!-- origen: fi:saas/support/auth-services#modelo-aiconfigauditlog, fi:saas/django-admin#admin-aiconfigauditlog -->
+Estado: hecho
+Actor: ERPlora superuser (or a team member allowed to see the log)
+Pantalla: erplora.com's admin › «Audit log»
+Pasos:
+1. Every addition, change or removal of an AI provider, of a provider's key (also turning it off or replacing it with another), of a model (its prices, whether it is available) and of the model that answers is written down: what changed, from which value to which, when, who did it and from which address.
+2. Every try of a model is written down as an access to that model, with who made it, how long the message was and how many tools it had.
+3. Open «Audit log» in the admin, filter by resource type or search, and open an entry to see its changes.
+Entra: the changes to the configuration of the AI, made from the admin or by erplora.com's commands.
+Sale: one entry per change in the same audit log as the accounts, the charges and the fiscal documentation.
+Si falla: a provider's key is never written down, neither in clear nor encrypted: its change shows in its last four characters and in when it changed; nor is the message of a try. Nobody can create, change or delete an entry by hand, and a team member without the permission cannot open the log.
+Implicados: ACCOUNTS-F36, ASSISTANT-F02, ASSISTANT-F07
+
 ## For whoever maintains it
 
 - Anatomy, data and operations: `assistant/README.md`.
@@ -211,6 +226,10 @@ Implicados: ASSISTANT-F05, ASSISTANT-F06
   signals clearing it: what the old product did with ASSISTANT-G39); `assistant.routing.stream` tries them in order
   and only passes to the fallback if the failure comes before the first text or tool call (events `model` and
   `fallback`).
+- Audit: `assistant/auditlog.py` registers providers, keys, models and policy with `accounts.auditlog.audit`
+  (without `api_key` nor `updated_at`); without the old product's own `AIConfigAuditLog`: one trail for the whole of
+  erplora.com (PLAN-SAAS §1.1). The try of a model is an `ACCESS` entry of the model, written by
+  `assistant.model.try`.
 - Clients (`assistant/providers/`): `httpx` against each API (no SDK nor LiteLLM), no cache, one per call; all end
   with a single `finish` and a failure is an `error` with `retriable`, never an exception. Tested against
   `assistant/tests/fake_provider.py` (an HTTP server on `127.0.0.1` speaking each provider's format).

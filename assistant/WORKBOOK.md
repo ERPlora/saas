@@ -91,6 +91,7 @@ entrada», «Tokens de salida», «Tiempo» y «Coste» (en dólares).
 | ASSISTANT-F05 | Elegir qué modelo contesta | hecho |
 | ASSISTANT-F06 | Elegir proveedor y modelo de cada turno | hecho |
 | ASSISTANT-F07 | Probar un modelo antes de ponerlo a contestar | hecho |
+| ASSISTANT-F08 | Ver quién cambió la configuración de la IA | hecho |
 
 ### ASSISTANT-F01 Dar de alta un proveedor de IA
 <!-- origen: fi:saas/support/auth-services#modelo-aiprovider, fi:saas/django-admin#admin-aiprovider, old-saas:SAAS_ASSISTANT-F22 -->
@@ -195,6 +196,20 @@ Sale: la respuesta del modelo con su consumo, su tiempo y su coste; la prueba qu
 Si falla: sin modelo de la lista, «Elige de la lista el modelo que quieres probar.»; sin mensaje, «Escribe el mensaje que quieres enviar.»; unas herramientas mal escritas, «Las herramientas no están bien escritas: escribe una lista de herramientas como la del ejemplo, cada una con su nombre.»; un modelo apagado o de un proveedor apagado, «Este modelo está apagado o lo está su proveedor: enciéndelos para usarlo.»; un proveedor sin clave usable, «Ningún modelo puede contestar: los proveedores de los modelos elegidos no tienen ninguna clave activa.»; si el proveedor falla, «El modelo no ha contestado: …» con su motivo, nunca la clave; más de 10 pruebas en un minuto, «Demasiadas pruebas en un minuto: espera un momento y vuelve a intentarlo.»; sin red, «No se ha podido enviar la prueba: revisa la conexión y vuelve a intentarlo.». Solo prueba quien puede cambiar el modelo que contesta (cada prueba gasta la clave de ERPlora); sin ese permiso, el admin no deja entrar.
 Implicados: ASSISTANT-F05, ASSISTANT-F06
 
+### ASSISTANT-F08 Ver quién cambió la configuración de la IA
+<!-- origen: fi:saas/support/auth-services#modelo-aiconfigauditlog, fi:saas/django-admin#admin-aiconfigauditlog -->
+Estado: hecho
+Actor: superusuario de ERPlora (o alguien del equipo con permiso para ver el registro)
+Pantalla: el admin de erplora.com › «Registro de auditoría»
+Pasos:
+1. Cada alta, cambio o baja de un proveedor de IA, de una clave de proveedor (también apagarla o cambiarla por otra), de un modelo (sus precios, si está disponible) y del modelo que contesta queda anotado: qué cambió, de qué valor a cuál, cuándo, quién lo hizo y desde qué dirección.
+2. Cada prueba de un modelo queda anotada como una consulta de ese modelo, con quién la hizo, cuánto medía el mensaje y cuántas herramientas llevaba.
+3. Abre «Registro de auditoría» en el admin, filtra por tipo de recurso o busca, y abre una entrada para ver sus cambios.
+Entra: los cambios de la configuración de la IA, hechos desde el admin o por los comandos de erplora.com.
+Sale: una entrada por cambio en el mismo registro de auditoría que las cuentas, los cobros y la documentación fiscal.
+Si falla: nunca se anota una clave de proveedor, ni en claro ni cifrada: su cambio se ve en sus cuatro últimos caracteres y en cuándo se cambió; tampoco el mensaje de una prueba. Nadie puede crear, cambiar ni borrar una entrada a mano, y alguien del equipo sin el permiso no puede abrir el registro.
+Implicados: ACCOUNTS-F36, ASSISTANT-F02, ASSISTANT-F07
+
 ## Para quien lo mantiene
 
 - Anatomía, datos y operaciones: `assistant/README.md`.
@@ -215,6 +230,10 @@ Implicados: ASSISTANT-F05, ASSISTANT-F06
   señales que la limpien: lo que el producto viejo hacía con ASSISTANT-G39); `assistant.routing.stream` los prueba
   en orden y solo pasa a la reserva si el fallo llega antes del primer texto o herramienta (eventos `model` y
   `fallback`).
+- Auditoría: `assistant/auditlog.py` registra proveedores, claves, modelos y política con `accounts.auditlog.audit`
+  (sin `api_key` ni `updated_at`); sin el `AIConfigAuditLog` propio del producto viejo: un solo registro para todo
+  erplora.com (PLAN-SAAS §1.1). La prueba de un modelo es una entrada `ACCESS` del modelo, escrita por
+  `assistant.model.try`.
 - Clientes (`assistant/providers/`): `httpx` contra cada API (sin SDK ni LiteLLM), sin caché, uno por llamada;
   todos terminan con un solo `finish` y un fallo es un `error` con `retriable`, nunca una excepción. Se prueban contra
   `assistant/tests/fake_provider.py` (servidor HTTP en `127.0.0.1` que habla el formato de cada proveedor).

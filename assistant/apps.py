@@ -24,3 +24,7 @@ class AssistantConfig(LiveAppConfig):
 
     def ready(self):
         super().ready()
+        from assistant import auditlog
+
+        # The audit trail of the providers, their keys, their models and the model that answers (ASSISTANT-F08).
+        auditlog.register()
