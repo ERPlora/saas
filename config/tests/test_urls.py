@@ -233,3 +233,22 @@ def test_another_path_under_webhooks_is_not_the_spa(client):
 
 def test_readyz_is_a_django_route():
     assert resolve("/readyz").url_name == "readyz"
+
+
+# ACCOUNTS-G30: the admin of erplora.com says it is ERPlora's (the old SaaS's ADMIN_SITE_HEADER, _TITLE and
+# _INDEX_TITLE), never «Django administration».
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("language", "index_title"), [("en", "Administration"), ("es", "Administración")]
+)
+def test_the_admin_bears_erploras_name(client, django_user_model, language, index_title):
+    staff = django_user_model.objects.create_superuser(email="staff@example.com", password="x", language=language)
+    client.force_login(staff)
+
+    page = client.get("/admin/", HTTP_ACCEPT_LANGUAGE=language).content.decode()
+
+    assert f"<title>{index_title} | ERPlora Admin</title>" in page
+    assert ">ERPlora Cloud</a>" in page
+    assert "Django" not in page
