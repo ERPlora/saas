@@ -249,6 +249,10 @@ msgstr "¡Hola de parte de ERPlora!"
 msgid "Thank you for using ERPlora."
 msgstr "Gracias por usar ERPlora."
 
+#: templates/emails/base.html:24
+msgid "Sent by ERPlora"
+msgstr "Enviado por ERPlora"
+
 #: templates/account/login.html:5
 msgid "Sign In"
 msgstr "Iniciar Sesión"

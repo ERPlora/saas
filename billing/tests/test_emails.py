@@ -5,8 +5,8 @@ the customer paid and got nothing, and had to remember to look in the panel. The
 instead of attaching the PDF: the PDF is the platform hub's and carries the QR only once issued. It leaves
 the first time the platform hub issues the invoice (``billing.invoice.apply_fiscal_status``), once.
 
-Changed: plain text in the payer's language, as every mail of the SaaS until block 1 brings the branded one
-(``hubs/emails.py``), so «text and HTML» is dropped; the link is the panel's Billing page, not the old
+Changed: in the payer's language, branded as text and as HTML on the common template (``base.emails``, whose
+shape ``base/tests/test_emails.py`` checks; ACCOUNTS-F46); the link is the panel's Billing page, not the old
 invoice page; the recipient is the payer's billing e-mail (the invoice's addressee), the account's otherwise.
 """
 
@@ -115,7 +115,7 @@ def test_a_mail_that_cannot_leave_raises_so_it_is_sent_again_later(invoice, monk
     def broken(*args, **kwargs):
         raise ConnectionRefusedError("SMTP down")
 
-    monkeypatch.setattr(emails, "send_mail", broken)
+    monkeypatch.setattr("django.core.mail.EmailMessage.send", broken)
 
     with pytest.raises(emails.MailNotSent):
         emails.send_invoice_issued(invoice)

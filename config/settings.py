@@ -530,6 +530,9 @@ LANGUAGE_COOKIE_SECURE = not DEBUG
 TIME_ZONE = "Europe/Madrid"
 USE_I18N = True
 USE_TZ = True
+# `urlize` (the links of the branded mails, base/emails.py) opens a link written without its scheme over HTTPS:
+# Django 2028's default, taken now.
+URLIZE_ASSUME_HTTPS = True
 
 # Content Security Policy (Django's native middleware, nonce per response; packages/live).
 # `form-action` filters the whole redirect chain of a form post: «Continue with Google» posts to

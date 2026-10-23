@@ -2,8 +2,7 @@
 ``apps/dashboard/billing/emails.py``, saas#1061), and a renewal could not be collected or the business was
 suspended for it (BILLING-F16, saas#2593).
 
-Plain text in the language of the invoice (its payer's), as every mail of the SaaS until block 1 brings the
-branded one (``hubs/emails.py``). It LINKS to the panel's Billing page instead of attaching the PDF: the PDF
+Branded, as text and as HTML (``base.emails``, ACCOUNTS-F46), in the language of the invoice (its payer's). It LINKS to the panel's Billing page instead of attaching the PDF: the PDF
 is the platform hub's, asked on demand, and it carries the QR. Sent after the COMMIT by
 ``billing.services`` the first time the platform hub issues the invoice; one that cannot leave is logged,
 never raised (the invoice is the source of truth). No database here.
@@ -12,11 +11,11 @@ never raised (the invoice is the source of truth). No database here.
 import logging
 
 from django.conf import settings
-from django.core.mail import EmailMessage, send_mail
 from django.utils import translation
 from django.utils.formats import date_format, number_format
 from django.utils.translation import gettext as _
 
+from base.emails import branded_message
 from billing.money import from_cents
 
 logger = logging.getLogger(__name__)
@@ -45,7 +44,8 @@ def send_invoice_issued(invoice) -> bool:
     if not to:
         logger.info("[EMAIL] Invoice %s has nobody to send it to", invoice.number)
         return False
-    with translation.override(invoice.language or settings.LANGUAGE_CODE):
+    language = invoice.language or settings.LANGUAGE_CODE
+    with translation.override(language):
         if invoice.kind == "credit_note":
             subject = _("Credit note %(number)s from ERPlora") % {
                 "number": invoice.number
@@ -71,7 +71,7 @@ def send_invoice_issued(invoice) -> bool:
             % {"url": f"https://{settings.PUBLIC_HOST}/billing"},
         ]
     try:
-        send_mail(subject, "\n".join(lines) + "\n", None, [to])
+        branded_message(subject, lines, [to], language=language).send()
     except Exception as failed:  # noqa: BLE001 - reported to the caller, which sends it again later
         logger.error("[EMAIL] Invoice %s not sent to %s: %s", invoice.number, to, failed)
         raise MailNotSent(str(failed)) from failed
@@ -88,8 +88,8 @@ def _billing_url(hub) -> str:
     return f"https://{settings.PUBLIC_HOST}/billing/invoices?business={hub.id}"
 
 
-def _send_notice(notice: str, subject: str, lines: list[str], to: str) -> None:
-    message = EmailMessage(subject, "\n".join(lines) + "\n", None, [to], headers={"X-ERPlora-Notice": notice})
+def _send_notice(notice: str, subject: str, lines: list[str], to: str, *, language: str) -> None:
+    message = branded_message(subject, lines, [to], language=language, headers={"X-ERPlora-Notice": notice})
     try:
         message.send()
     except Exception as failed:  # noqa: BLE001 - reported to the caller, which sends it again later
@@ -101,7 +101,8 @@ def _send_notice(notice: str, subject: str, lines: list[str], to: str) -> None:
 def send_payment_failed(hub, *, to: str, language: str, amount, declined: bool, suspends_on) -> None:
     """Tell the payer that the renewal of ``hub`` could not be collected: how much, until when it keeps working
     (``suspends_on``) and where to pay it. ``MailNotSent`` when the mail could not leave."""
-    with translation.override(language or settings.LANGUAGE_CODE):
+    language = language or settings.LANGUAGE_CODE
+    with translation.override(language):
         subject = _("We could not charge the plan of %(business)s") % {"business": hub.name}
         lines = [
             _("We could not charge %(amount)s for the plan of %(business)s.")
@@ -115,13 +116,14 @@ def send_payment_failed(hub, *, to: str, language: str, amount, declined: bool, 
             "",
             _("Pay it from Billing: %(url)s") % {"url": _billing_url(hub)},
         ]
-    _send_notice(PAYMENT_FAILED, subject, lines, to)
+    _send_notice(PAYMENT_FAILED, subject, lines, to, language=language)
 
 
 def send_business_suspended(hub, *, to: str, language: str, amount) -> None:
     """Tell the payer that ``hub`` is suspended until its unpaid invoice (``amount``) is paid, and where to pay
     it. ``MailNotSent`` when the mail could not leave."""
-    with translation.override(language or settings.LANGUAGE_CODE):
+    language = language or settings.LANGUAGE_CODE
+    with translation.override(language):
         subject = _("%(business)s is suspended") % {"business": hub.name}
         lines = [
             _("%(business)s is suspended because an invoice of %(amount)s was not paid.")
@@ -130,7 +132,7 @@ def send_business_suspended(hub, *, to: str, language: str, amount) -> None:
             "",
             _("Pay it from Billing: %(url)s") % {"url": _billing_url(hub)},
         ]
-    _send_notice(BUSINESS_SUSPENDED, subject, lines, to)
+    _send_notice(BUSINESS_SUSPENDED, subject, lines, to, language=language)
 
 
 #: The headers of the team's OSS notices (BILLING-F06).
@@ -188,5 +190,7 @@ def send_oss_notice(notice) -> None:
                 _("Destination VAT already applies on its own. Registering in the OSS (form 035) is urgent: do it now."),
             ]
         lines.append(_("This notice is sent once per year."))
-    _send_notice(OSS_NOTICE.format(kind=notice.kind), subject, lines, settings.SUPPORT_EMAIL)
+    _send_notice(
+        OSS_NOTICE.format(kind=notice.kind), subject, lines, settings.SUPPORT_EMAIL, language=settings.LANGUAGE_CODE
+    )
 

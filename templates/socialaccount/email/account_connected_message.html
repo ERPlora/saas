@@ -1,0 +1,8 @@
+{% extends "account/email/base_message.html" %}{% load i18n %}
+{% block message %}<p style="margin:0 0 16px;">{% blocktrans with provider=provider.name %}From now on you can also sign in to your account with {{ provider }}.{% endblocktrans %}</p>
+<ul style="margin:0 0 16px;padding-left:20px;">
+<li>{% trans "IP address" %}: {{ ip }}</li>
+<li>{% trans "Browser" %}: {{ user_agent }}</li>
+<li>{% trans "Date" %}: {{ timestamp }}</li>
+</ul>
+<p style="margin:0 0 16px;">{% blocktrans %}If it was not you, write to us right away at {{ support_email }}: someone else may be able to sign in to your account.{% endblocktrans %}</p>{% endblock message %}

@@ -1,0 +1,36 @@
+{% load i18n %}{% get_current_language as language %}<!DOCTYPE html>
+<html lang="{{ language }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>{{ subject|default:"ERPlora" }}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f6f7f9;color:#1a1c20;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;-webkit-text-size-adjust:100%;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f6f7f9;">
+<tr><td align="center" style="padding:24px 12px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background-color:#ffffff;border:1px solid #e7e9ee;border-radius:12px;border-collapse:separate;">
+<tr><td style="height:4px;line-height:4px;font-size:0;background-color:#1496d6;border-radius:12px 12px 0 0;">&nbsp;</td></tr>
+<tr><td align="center" style="padding:28px 32px 20px;border-bottom:1px solid #e7e9ee;">
+<a href="{{ site_url }}" style="text-decoration:none;"><img src="{{ logo_url }}" width="48" height="48" alt="ERPlora" style="display:block;width:48px;height:48px;border:0;outline:none;text-decoration:none;"></a>
+</td></tr>
+<tr><td style="padding:32px;font-size:16px;line-height:1.6;color:#1a1c20;overflow-wrap:anywhere;word-break:break-word;">
+{% block content %}{% for paragraph in paragraphs %}{% if paragraph.code %}<p style="margin:0 0 16px;padding:14px 16px;background-color:#f6f7f9;border:1px solid #e7e9ee;border-radius:8px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:26px;font-weight:600;letter-spacing:6px;text-align:center;color:#1a1c20;">{{ paragraph.lines.0 }}</p>
+{% else %}<p style="margin:0 0 16px;">{% for line in paragraph.lines %}{{ line|urlize }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</p>
+{% endif %}{% endfor %}{% endblock content %}
+</td></tr>
+<tr><td style="padding:20px 32px;background-color:#f6f7f9;border-top:1px solid #e7e9ee;border-radius:0 0 12px 12px;font-size:13px;line-height:1.5;color:#5f6672;text-align:center;">
+{% translate "Sent by ERPlora" %} · <a href="{{ site_url }}" style="color:#1496d6;text-decoration:none;">{{ site_host }}</a>
+</td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>
+{% comment %}
+  The common template of every mail of erplora.com (base/emails.py; ACCOUNTS-F46), ported in structure from
+  ERPlora/saas templates/emails/base.html: the brand's stripe, the logo, the text, and a footer. CSS inline only
+  (no <style>, no <link>: mail clients drop them) and nothing fetched but the logo. The text comes as paragraphs
+  of lines, escaped and with their links clickable; a template of its own (allauth's) fills `content` instead.
+{% endcomment %}

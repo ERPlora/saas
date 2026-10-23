@@ -145,7 +145,7 @@ class TestWhenMetaSaysNo:
     def test_a_mail_that_did_not_leave_is_tried_again_next_time(self, whatsapp_on, business, monkeypatch):
         number = make_number(business)
         meta_refuses()
-        monkeypatch.setattr("whatsapp.emails.send_mail", lambda *a, **k: (_ for _ in ()).throw(OSError("down")))
+        monkeypatch.setattr("django.core.mail.EmailMessage.send", lambda *a, **k: (_ for _ in ()).throw(OSError("down")))
 
         gateway.renew_tokens()
 
