@@ -1,5 +1,5 @@
 """The rows the AI gateway's specs open: its admin (assistant-admin.spec.ts: ASSISTANT-F01, F02, F04, F05 and F07) and
-the Hub's doors with «Assistant usage» (assistant-gateway.spec.ts: ASSISTANT-F11 to F24).
+the Hub's doors with «Assistant usage records» (assistant-gateway.spec.ts: ASSISTANT-F11 to F24).
 
 ``uv run python tests/e2e/panel/assistant_seed.py <action> [<provider address>]`` from the SaaS, against the run's
 database (development only: known passwords, refused without ``DEBUG``). Every action starts from ``clear``, so a

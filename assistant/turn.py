@@ -217,15 +217,6 @@ def failure(payload: dict) -> dict:
     return {"type": "error", "code": code, "message": MESSAGES[code], "retriable": bool(payload.get("retriable"))}
 
 
-def with_search_rule(messages: list[dict]) -> list[dict]:
-    """``messages`` whose system message (the Hub's instructions) also asks to cite what the web search finds."""
-    from assistant import server_tools
-
-    system = messages[0]
-    rule = f"{str(system.get('content') or '').rstrip()}\n\n{server_tools.WEB_SEARCH_RULE}".lstrip()
-    return [{**system, "content": rule}, *messages[1:]]
-
-
 def assistant_message(text: str, calls: list[dict]) -> dict:
     return {
         "role": "assistant",
@@ -246,7 +237,7 @@ async def run(
     ours."""
     from assistant import attachments, server_tools
 
-    conversation = with_search_rule(list(messages)) if server_tools.search_offered() else list(messages)
+    conversation = list(messages)
     theirs_offered = [tool for tool in tools if not server_tools.is_server_tool(tool.name)]
     remaining = list(candidates)
     rounds = 0

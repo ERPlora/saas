@@ -1,11 +1,10 @@
-"""ASSISTANT-F14 (ASSISTANT-G46) · Tell the tools erplora.com runs from the Hub's: ``current_datetime`` (always),
-``currency_rate`` (the ECB's reference rates, through Frankfurter, no key) and ``web_search`` (Tavily, offered only
-with its key) are run here and their result goes back to the model, which is asked again (at most ``MAX_ROUNDS``
-times, the last one without them, so it answers); a tool of the Hub ends the turn as a ``function_call`` for the Hub
-to run. A tool of ours that fails gives the model an error to answer with, never a failed turn. They spend no message.
+"""ASSISTANT-F14 (ASSISTANT-G46) · Tell the tools erplora.com runs from the Hub's: ``current_datetime`` is run here
+and its result goes back to the model, which is asked again (at most ``MAX_ROUNDS`` times, the last one without it,
+so it answers); a tool of the Hub ends the turn as a ``function_call`` for the Hub to run. A tool of ours that fails
+gives the model an error to answer with, never a failed turn. They spend no message.
 
-Cases of the old product's ``test_server_tools.py``, ``test_currency_provider.py``, ``test_websearch_provider.py``
-and ``test_orchestrator_web_search.py``; Frankfurter and Tavily are the local fake (``fake_provider``) too.
+The old product's web search (Tavily) and exchange rates (Frankfurter) wait for the ERP stage (PLAN §30): not
+offered, whatever the environment holds. Cases of the old product's ``test_server_tools.py``.
 """
 
 import json
@@ -29,26 +28,14 @@ def run(name: str, arguments) -> dict:
     return json.loads(async_to_sync(server_tools.run)(name, raw))
 
 
-@pytest.fixture
-def frankfurter(fake_provider, settings):
-    settings.ASSISTANT_CURRENCY_URL = f"{fake_provider.url}/frankfurter"
-    return fake_provider
-
-
-@pytest.fixture
-def tavily(fake_provider, settings):
-    settings.ASSISTANT_WEB_SEARCH_URL = f"{fake_provider.url}/tavily"
-    settings.TAVILY_API_KEY = "tvly-test-0000000000000000"
-    return fake_provider
-
-
 class TestWhichAreOurs:
-    def test_the_date_and_the_exchange_rate_are_always_offered_the_search_only_with_its_key(self, settings):
-        settings.TAVILY_API_KEY = ""
-        assert {spec.name for spec in server_tools.specs()} == {"current_datetime", "currency_rate"}
-
+    def test_only_the_date_is_ours_even_with_a_search_key_in_the_environment(self, settings):
+        """The web search and the exchange rate wait for the ERP stage (PLAN §30): a key left in the environment
+        offers nothing."""
         settings.TAVILY_API_KEY = "tvly-test"
-        assert {spec.name for spec in server_tools.specs()} == {"current_datetime", "currency_rate", "web_search"}
+
+        assert [spec.name for spec in server_tools.specs()] == ["current_datetime"]
+        assert set(server_tools.TOOLS) == {"current_datetime"}
 
     def test_a_tool_of_the_hub_is_not_ours(self):
         assert server_tools.is_server_tool("current_datetime") is True
@@ -69,87 +56,6 @@ class TestTheDate:
 
     def test_it_ignores_whatever_it_is_given(self):
         assert "utc" in run("current_datetime", "not json")
-
-
-class TestTheExchangeRate:
-    def test_it_converts_with_the_ecbs_rate_and_its_date(self, frankfurter):
-        frankfurter.reply("GET", "/frankfurter/latest", json={"amount": 1.0, "base": "EUR", "date": "2026-10-22", "rates": {"USD": 1.0812}})
-
-        result = run("currency_rate", {"from": "eur", "to": "usd", "amount": 25})
-
-        assert result == {"from": "EUR", "to": "USD", "rate": 1.0812, "amount": 25, "converted": 27.03, "date": "2026-10-22", "source": "ECB"}
-        [asked] = frankfurter.requests
-        assert asked.path == "/frankfurter/latest?from=EUR&to=USD"
-
-    def test_the_amount_is_one_when_not_given(self, frankfurter):
-        frankfurter.reply("GET", "/frankfurter/latest", json={"amount": 1.0, "base": "EUR", "date": "2026-10-22", "rates": {"GBP": 0.86}})
-
-        assert run("currency_rate", {"from": "EUR", "to": "GBP"})["converted"] == 0.86
-
-    def test_the_same_currency_is_one_without_asking(self, frankfurter):
-        assert run("currency_rate", {"from": "EUR", "to": "EUR", "amount": 3})["converted"] == 3
-        assert frankfurter.requests == []
-
-    @pytest.mark.parametrize("arguments", [{"from": "EUR"}, {"from": "EURO", "to": "USD"}, {"from": "E1R", "to": "USD"}, "not json"])
-    def test_wrong_currencies_are_an_error_without_asking(self, frankfurter, arguments):
-        assert "error" in run("currency_rate", arguments)
-        assert frankfurter.requests == []
-
-    def test_a_rate_is_asked_once_an_hour(self, frankfurter):
-        frankfurter.reply("GET", "/frankfurter/latest", json={"amount": 1.0, "base": "EUR", "date": "2026-10-22", "rates": {"USD": 1.1}})
-
-        run("currency_rate", {"from": "EUR", "to": "USD", "amount": 1})
-        second = run("currency_rate", {"from": "EUR", "to": "USD", "amount": 10})
-
-        assert second["converted"] == 11.0
-        assert len(frankfurter.requests) == 1
-
-    def test_frankfurter_down_is_an_error_for_the_model(self, frankfurter):
-        frankfurter.reply("GET", "/frankfurter/latest", status=502, json={"message": "bad gateway"})
-
-        assert "error" in run("currency_rate", {"from": "EUR", "to": "USD"})
-
-
-class TestTheWebSearch:
-    def test_it_gives_the_model_the_results_to_cite(self, tavily):
-        tavily.reply(
-            "POST",
-            "/tavily/search",
-            json={"results": [{"title": "IVA en España", "url": "https://agenciatributaria.es/iva", "content": "El tipo general es del 21 %.", "published_date": "2026-01-01"}]},
-        )
-
-        result = run("web_search", {"query": "tipo general IVA España"})
-
-        assert result == {
-            "query": "tipo general IVA España",
-            "results": [{"title": "IVA en España", "url": "https://agenciatributaria.es/iva", "content": "El tipo general es del 21 %.", "published_date": "2026-01-01"}],
-        }
-        [asked] = tavily.requests
-        assert asked.body == {"query": "tipo general IVA España", "max_results": 5}
-        assert asked.headers["authorization"] == "Bearer tvly-test-0000000000000000"
-        assert "tvly" not in asked.path
-
-    def test_an_empty_query_does_not_ask(self, tavily):
-        assert "error" in run("web_search", {"query": "  "})
-        assert tavily.requests == []
-
-    def test_without_its_key_it_says_so(self, settings):
-        settings.TAVILY_API_KEY = ""
-
-        assert "error" in run("web_search", {"query": "x"})
-
-    def test_tavily_refusing_is_an_error_for_the_model_without_the_key(self, tavily):
-        tavily.reply("POST", "/tavily/search", status=401, json={"detail": {"error": "Unauthorized: tvly-test-0000000000000000"}})
-
-        result = run("web_search", {"query": "x"})
-
-        assert "error" in result
-        assert "tvly-test" not in json.dumps(result)
-
-    def test_no_results_is_an_empty_list(self, tavily):
-        tavily.reply("POST", "/tavily/search", json={"results": []})
-
-        assert run("web_search", {"query": "x"})["results"] == []
 
 
 class TestInTheTurn:
@@ -204,13 +110,12 @@ class TestInTheTurn:
         assert "tools" not in sent[-1].body
         assert got[0] == {"type": "text_delta", "text": "Enough."}
 
-    def test_with_the_search_offered_the_instructions_ask_to_cite(self, internal, business, answering, fake_provider, settings):
+    def test_the_instructions_are_the_hubs_alone_even_with_a_search_key(self, internal, business, answering, fake_provider, settings):
         settings.TAVILY_API_KEY = "tvly-test"
         fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Ok"))
 
         frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business)))
 
         [sent] = self.chat_requests(fake_provider)
-        system = sent.body["messages"][0]["content"]
-        assert system.startswith("Be brief.")
-        assert server_tools.WEB_SEARCH_RULE in system
+        assert sent.body["messages"][0] == {"role": "system", "content": "Be brief."}
+        assert [tool["function"]["name"] for tool in sent.body["tools"]] == ["current_datetime"]

@@ -1,7 +1,7 @@
 # Workbook — Asistente de IA (assistant)
 Prefijo: ASSISTANT
 Alcance MVP: fase 1 (la pasarela de IA de erplora.com: los proveedores que paga ERPlora, sus claves cifradas, sus modelos y qué modelo contesta; el turno del asistente de cada negocio con sus herramientas y sus adjuntos, el cupo de mensajes de su plan, las huellas de su índice, el dictado y la lectura en voz alta, las denuncias de una respuesta y lo que gasta cada negocio)
-Estado de la app: en uso (completa en erplora.com; el asistente que lo usa, con su chat y su voz, es la app del Hub)
+Estado de la app: en uso (un flujo parcial: ASSISTANT-F14, cuya búsqueda en la web y tipo de cambio llegan con la etapa ERP; el asistente que lo usa, con su chat y su voz, es la app del Hub)
 
 > Manual de uso y especificación de la app `assistant` del SaaS (erplora.com). Cuenta lo que hace el personal de
 > ERPlora para que el asistente de IA conteste (dar de alta un proveedor de modelos y su clave, elegir sus modelos,
@@ -31,7 +31,7 @@ Quién la usa:
   soporte no los tiene: las claves son gasto de ERPlora.
 - El **asistente del Hub** de cada negocio (y el de cada demo): manda a erplora.com cada turno, sus adjuntos, los
   textos de su índice, los dictados y lo que hay que leer en voz alta, y enseña a la persona lo que le queda del cupo.
-- El **personal de ERPlora**, en «Uso del asistente», ve lo que gasta cada negocio y lo que cuesta.
+- El **personal de ERPlora**, en «Registros de uso del asistente», ve lo que gasta cada negocio y lo que cuesta.
 
 ## Referencia adoptada
 
@@ -46,8 +46,8 @@ Quién la usa:
   el cupo por negocio, los adjuntos, las huellas y la voz.
 - **Asistentes con cupo** (ChatGPT, Claude, Gemini, Copilot de Microsoft 365, Shopify Magic): un número de mensajes
   por periodo según el plan, que vuelve al empezar el siguiente; al agotarse se avisa y se propone subir de plan; un
-  mensaje que falla antes de contestar no se cobra. Las herramientas que necesitan internet (buscar en la web, el tipo
-  de cambio) las ejecuta el servidor, nunca el dispositivo; la voz es dictado a texto y lectura en voz alta del mismo
+  mensaje que falla antes de contestar no se cobra. Las herramientas que no son del negocio las ejecuta el servidor,
+  nunca el dispositivo; la voz es dictado a texto y lectura en voz alta del mismo
   proveedor (https://platform.openai.com/docs/guides/speech-to-text, https://platform.openai.com/docs/guides/text-to-speech).
 
 ## Antes de empezar
@@ -59,7 +59,6 @@ Quién la usa:
   proveedores no los dan. Sin precio, la prueba dice el consumo y un coste de cero.
 - Las huellas del índice, el dictado y la lectura en voz alta los hace el proveedor de servicios (OpenAI): tiene que
   estar dado de alta, activado y con su clave.
-- La búsqueda en la web del asistente solo se ofrece si erplora.com tiene la clave del buscador en su entorno.
 - El cupo de mensajes de cada plan («Mensajes del asistente de IA al mes») se escribe en el admin de «Planes».
 
 ## Pantallas
@@ -88,7 +87,7 @@ ve sin poder cambiarla. Arriba, «Probar un modelo» (solo para quien puede camb
 «Respuesta»: el modelo que contesta, el texto según llega, las herramientas que pide y una tabla con «Tokens de
 entrada», «Tokens de salida», «Tiempo» y «Coste» (en dólares).
 
-### Admin: Uso del asistente
+### Admin: Registros de uso del asistente
 Una fila por negocio y mes (una demo, una sola en toda su vida) con «Negocio o demo», «Mes», «Mensajes», «Tokens de
 entrada», «Tokens de salida», «Tokens de huellas», «Dictados», «Caracteres leídos en voz alta» y «Coste (USD)».
 Arriba, el buscador (por nombre o dirección del negocio, o por la dirección de la demo) y los meses; a la derecha, el
@@ -99,9 +98,9 @@ filtro «Por tipo» («Negocios» o «Demos») y el del mes. Cada fila se abre p
 | Estado | Qué ve la persona |
 |---|---|
 | Cargando | La carga normal de una página del admin; al probar un modelo, «Enviando…» y el botón «Enviar» apagado hasta que acaba («Hecho.»). |
-| Vacío | «0 proveedores de IA» y la lista vacía; en «Uso del asistente», «0 uso del asistente» hasta el primer mensaje de un negocio; un proveedor sin clave dice «Sin clave»; sin modelos que puedan contestar, «Todavía no puede contestar ningún modelo: añade un proveedor con su clave y elige sus modelos.» |
+| Vacío | «0 proveedores de IA» y la lista vacía; en «Registros de uso del asistente», «0 registros de uso del asistente» hasta el primer mensaje de un negocio; un proveedor sin clave dice «Sin clave»; sin modelos que puedan contestar, «Todavía no puede contestar ningún modelo: añade un proveedor con su clave y elige sus modelos.» |
 | Error | En «Elegir modelos del proveedor», el motivo en rojo: «Este proveedor no tiene ninguna clave activa: añade una en su ficha y vuelve a intentarlo.», «El proveedor no ha dado sus modelos: …» o «El proveedor no tiene modelos de conversación en su lista.»; en las fichas, el error en rojo junto al campo: «Usa una dirección https: la clave del proveedor viaja a ella.», «Escribe la clave del proveedor.», «La clave de cifrado de las credenciales no está configurada: no se puede guardar ninguna clave de proveedor.»; al probar un modelo, en rojo: «El modelo no ha contestado: …», «Demasiadas pruebas en un minuto: espera un momento y vuelve a intentarlo.» o «No se ha podido enviar la prueba: revisa la conexión y vuelve a intentarlo.». |
-| Sin permiso | Sin los permisos de la pasarela, el admin contesta que no tiene permiso; quien solo puede mirar ve las fichas sin el campo «Clave». «Uso del asistente» no se puede cambiar ni borrar, ni siquiera un superusuario. |
+| Sin permiso | Sin los permisos de la pasarela, el admin contesta que no tiene permiso; quien solo puede mirar ve las fichas sin el campo «Clave». «Registros de uso del asistente» no se pueden cambiar ni borrar, ni siquiera un superusuario. |
 
 ## Flujos
 
@@ -120,7 +119,7 @@ filtro «Por tipo» («Negocios» o «Demos») y el del mes. Cada fila se abre p
 | ASSISTANT-F11 | Reconocer quién llama y de qué negocio es | hecho |
 | ASSISTANT-F12 | Contestar un turno del asistente en directo | hecho |
 | ASSISTANT-F13 | Contestar el mismo turno de una vez | hecho |
-| ASSISTANT-F14 | Usar las herramientas de erplora.com y las del negocio | hecho |
+| ASSISTANT-F14 | Usar las herramientas de erplora.com y las del negocio | parcial |
 | ASSISTANT-F15 | Rechazar un turno con su motivo | hecho |
 | ASSISTANT-F16 | Frenar a un negocio que pide demasiado | hecho |
 | ASSISTANT-F17 | No guardar la conversación | hecho |
@@ -326,17 +325,17 @@ Implicados: ASSISTANT-F12, ASSISTANT-F15, ASSISTANT-F18
 
 ### ASSISTANT-F14 Usar las herramientas de erplora.com y las del negocio
 <!-- origen: old-saas:SAAS_ASSISTANT-F06 -->
-Estado: hecho
+Estado: parcial — la búsqueda en la web y el tipo de cambio entre monedas del producto anterior llegan con la etapa ERP; hoy erplora.com da la fecha y la hora
 Actor: el asistente del Hub de un negocio
 Pantalla: ninguna
 Pasos:
-1. En cada turno, el modelo puede usar las herramientas del negocio (las que manda el Hub: buscar un cliente, crear una cita…) y las de erplora.com, que necesitan internet y que el Hub no alcanza: la fecha y la hora de hoy, el tipo de cambio de referencia del Banco Central Europeo entre dos monedas y, si erplora.com tiene la clave del buscador, la búsqueda en la web.
-2. Si el modelo pide una herramienta de erplora.com, erplora.com la ejecuta y le devuelve el resultado sin que el Hub vea nada; con la búsqueda en la web, el modelo cita la fuente y su fecha.
+1. En cada turno, el modelo puede usar las herramientas del negocio (las que manda el Hub: buscar un cliente, crear una cita…) y la de erplora.com: la fecha, la hora y el día de la semana de hoy.
+2. Si el modelo pide una herramienta de erplora.com, erplora.com la ejecuta y le devuelve el resultado sin que el Hub vea nada.
 3. Si pide una del negocio, el turno se la pasa al Hub para que la ejecute (ver ASSISTANT-F12).
 4. El modelo se vuelve a llamar como mucho cinco veces en un turno; en la última ya no se le ofrecen las herramientas de erplora.com y tiene que contestar.
 Entra: las herramientas del negocio y las preguntas del modelo.
 Sale: el resultado de cada herramienta de erplora.com para el modelo; su consumo se suma al del turno y no gasta otro mensaje.
-Si falla: una herramienta de erplora.com que falla (sin red, una moneda que no existe) da al modelo el motivo para que conteste con él, nunca un turno fallido; una herramienta del negocio con el nombre de una de erplora.com la ejecuta erplora.com; sin la clave del buscador no se ofrece la búsqueda en la web.
+Si falla: una herramienta de erplora.com que falla da al modelo el motivo para que conteste con él, nunca un turno fallido; una herramienta del negocio con el nombre de una de erplora.com la ejecuta erplora.com; la búsqueda en la web y el tipo de cambio no se ofrecen, aunque el entorno de erplora.com tenga la clave de un buscador.
 Implicados: ASSISTANT-F12, ASSISTANT-F13
 
 ### ASSISTANT-F15 Rechazar un turno con su motivo
@@ -473,9 +472,9 @@ Implicados: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F17
 <!-- origen: old-saas:SAAS_ASSISTANT-F15 fi:saas/django-admin#admin-assistantusage fi:saas/auth-services#tiers-suscripcion-uso-del-asistente-modelos-admin -->
 Estado: hecho
 Actor: personal de ERPlora
-Pantalla: Admin: Uso del asistente
+Pantalla: Admin: Registros de uso del asistente
 Pasos:
-1. En el admin de erplora.com, abre «Uso del asistente».
+1. En el admin de erplora.com, abre «Registros de uso del asistente».
 2. Busca el negocio por su nombre o su dirección (o la demo por su dirección), o filtra «Por tipo» («Negocios» o «Demos») y por mes.
 3. Lee su fila del mes: «Mensajes» del cupo, «Tokens de entrada», «Tokens de salida», «Tokens de huellas», «Dictados», «Caracteres leídos en voz alta» y «Coste (USD)» (con los precios del modelo que contestó cada turno).
 4. Abre la fila para verla entera, con cuándo se creó y cuándo se cambió.
@@ -565,9 +564,10 @@ propio texto por `code`.
   su vida, y las de más de un día se olvidan al nacer otra). El límite es `Plan.assistant_messages_per_month` del
   plan efectivo (`hubs.queries.effective_plan`); una demo, `ASSISTANT_DEMO_MESSAGES` (10). El Hub no cuenta: enseña
   lo que dicen `usage` y el frame `usage` (aviso al 80 % y bloqueo al 100 % con esas cifras).
-- **Herramientas de erplora.com** (`assistant/server_tools.py`): `current_datetime`, `currency_rate` (Frankfurter,
-  `ASSISTANT_CURRENCY_URL`, una hora en caché) y `web_search` (Tavily, solo con `TAVILY_API_KEY`); como mucho
-  `MAX_ROUNDS` (5) llamadas al modelo por turno. Ganan a una herramienta del Hub con el mismo nombre.
+- **Herramientas de erplora.com** (`assistant/server_tools.py`): `current_datetime`; como mucho `MAX_ROUNDS` (5)
+  llamadas al modelo por turno. Ganan a una herramienta del Hub con el mismo nombre. La búsqueda web (Tavily) y el
+  tipo de cambio (Frankfurter) del producto viejo no se portan en la etapa TPV (PLAN §30, ronda 2026-10-22b): ni
+  herramienta, ni regla de citar en las instrucciones, ni ajuste; F14 queda `parcial` hasta la etapa ERP.
 - **Adjuntos** (`assistant/attachments.py`): `image_url` con `data:` de imagen, `input_file` con `filename`,
   `mime_type` y `data`; `MAX_ATTACHMENT_BYTES` (12 MB de base64) por adjunto, `MAX_ATTACHMENTS` (20) por
   conversación, `MAX_EXTRACTED_CHARS` por documento, zip comprobado antes de abrirlo; nada a disco (un test lo vigila
@@ -582,8 +582,7 @@ propio texto por `code`.
   auditlog; del fallo de un proveedor el log solo lleva el estado (`test_privacy.py`). Ninguna variable `key`,
   `token` ni `api_key` en una llamada al logger (`test_guardrails.py`).
 - **Ajustes nuevos** (`config/settings.py`, con valor seguro por defecto): `ASSISTANT_*_RATELIMIT`,
-  `ASSISTANT_DEMO_MESSAGES`, `ASSISTANT_SERVICE_PROVIDER`, `TAVILY_API_KEY` (vacía: sin búsqueda web),
-  `ASSISTANT_WEB_SEARCH_URL` y `ASSISTANT_CURRENCY_URL`.
+  `ASSISTANT_DEMO_MESSAGES` y `ASSISTANT_SERVICE_PROVIDER`.
 - **Tests** (todos contra `assistant/tests/fake_provider.py`, nunca un proveedor real): `test_internal_caller.py`
   (F11), `test_turn.py` (F12, F13, F15), `test_server_tools.py` (F14), `test_ratelimit.py` (F16),
   `test_privacy.py` (F17), `test_quota.py` (F18), `test_attachments.py` (F19), `test_embeddings.py` (F20),
@@ -607,3 +606,4 @@ propio texto por `code`.
   el cupo es el del plan, que se edita en «Planes», y el modelo que contesta es uno para todos, con su reserva.
 - No vende paquetes de mensajes sueltos: más mensajes es subir de plan.
 - No usa dos modelos por turno (uno que razona y otro que ejecuta): el producto viejo lo tenía apagado.
+- No busca en la web ni da tipos de cambio: llegan con la etapa ERP (PLAN §30).

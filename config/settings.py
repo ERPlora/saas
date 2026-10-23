@@ -746,11 +746,6 @@ ASSISTANT_REPORT_RATELIMIT = config("ASSISTANT_REPORT_RATELIMIT", default="60/h"
 ASSISTANT_DEMO_MESSAGES = config("ASSISTANT_DEMO_MESSAGES", default=10, cast=int)
 # The provider (its identifier in the admin, of OpenAI's API) whose key computes the embeddings and the voice.
 ASSISTANT_SERVICE_PROVIDER = config("ASSISTANT_SERVICE_PROVIDER", default="openai")
-# The tools erplora.com runs itself (ASSISTANT-F14): the web search (Tavily; without a key it is not offered) and
-# the reference exchange rates of the ECB (Frankfurter, no key).
-TAVILY_API_KEY = config("TAVILY_API_KEY", default="")
-ASSISTANT_WEB_SEARCH_URL = config("ASSISTANT_WEB_SEARCH_URL", default="https://api.tavily.com")
-ASSISTANT_CURRENCY_URL = config("ASSISTANT_CURRENCY_URL", default="https://api.frankfurter.dev/v1")
 # The demo hubs (PLAN-SAAS §3.5, round 2026-10-17; public/demo.py): one switch, and new demos per address
 # (django-ratelimit, over the default cache; a browser re-entering its live demo does not count). The Hub keeps
 # the cap of live demos (MAX_CONCURRENT_DEMOS) and the WAF limits /demo per IP too.

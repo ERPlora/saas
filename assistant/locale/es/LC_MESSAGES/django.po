@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: saas-next\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 14:12+0200\n"
+"POT-Creation-Date: 2026-10-23 15:22+0200\n"
 "PO-Revision-Date: 2026-10-23 03:00+0200\n"
 "Last-Translator: ERPlora\n"
 "Language-Team: Spanish\n"
@@ -16,122 +16,122 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: admin.py:82
+#: admin.py:85
 msgid "No key"
 msgstr "Sin clave"
 
-#: admin.py:84
+#: admin.py:87
 msgid "Unreadable: type the key again"
 msgstr "Ilegible: vuelve a escribir la clave"
 
-#: admin.py:96
+#: admin.py:99
 msgid "Key"
 msgstr "Clave"
 
-#: admin.py:100
+#: admin.py:103
 msgid "Typed once, never shown again. Empty: keep the key it has."
 msgstr "Se escribe una vez y no se vuelve a ver. Vacía: se queda la que tiene."
 
-#: admin.py:112 services.py:121 services.py:124
+#: admin.py:115 services.py:121 services.py:124
 msgid "Type the provider's key."
 msgstr "Escribe la clave del proveedor."
 
-#: admin.py:114 services.py:83
+#: admin.py:117 services.py:83
 msgid "The key of the credentials is not configured: no provider key can be kept."
 msgstr "La clave de cifrado de las credenciales no está configurada: no se puede guardar ninguna clave de proveedor."
 
-#: admin.py:124 admin.py:288 models.py:128
+#: admin.py:127 admin.py:291 models.py:128
 msgid "key"
 msgstr "clave"
 
-#: admin.py:125
+#: admin.py:128
 msgid "keys"
 msgstr "claves"
 
-#: admin.py:132 models.py:129
+#: admin.py:135 models.py:129
 msgid "key ends in"
 msgstr "la clave acaba en"
 
-#: admin.py:228
+#: admin.py:231
 msgid "Choose the model to try from the list."
 msgstr "Elige de la lista el modelo que quieres probar."
 
-#: admin.py:231
+#: admin.py:234
 msgid "Write the message to send."
 msgstr "Escribe el mensaje que quieres enviar."
 
-#: admin.py:234
+#: admin.py:237
 msgid "The tools are not well written: write a list of tools as in the example, each with its name."
 msgstr "Las herramientas no están bien escritas: escribe una lista de herramientas como la del ejemplo, cada una con su nombre."
 
-#: admin.py:278
+#: admin.py:281
 msgid "Connection"
 msgstr "Conexión"
 
-#: admin.py:279
+#: admin.py:282
 msgid "Notes"
 msgstr "Notas"
 
-#: admin.py:368
+#: admin.py:371
 #, python-format
 msgid "The provider did not give its models: %(reason)s"
 msgstr "El proveedor no ha dado sus modelos: %(reason)s"
 
-#: admin.py:373
+#: admin.py:376
 msgid "The provider listed no chat models."
 msgstr "El proveedor no tiene modelos de conversación en su lista."
 
-#: admin.py:382 templates/admin/assistant/aiprovider/change_form.html:5
+#: admin.py:385 templates/admin/assistant/aiprovider/change_form.html:5
 msgid "Choose models from the provider"
 msgstr "Elegir modelos del proveedor"
 
-#: admin.py:418
+#: admin.py:421
 #, python-format
 msgid "%(provider)s: %(created)d new, %(kept)d kept, %(deleted)d removed, %(protected)d in use by the policy."
 msgstr "%(provider)s: %(created)d nuevos, %(kept)d se quedan, %(deleted)d quitados, %(protected)d en uso por el modelo que contesta."
 
-#: admin.py:467
+#: admin.py:470
 msgid "Choose the models from the list."
 msgstr "Elige los modelos de la lista."
 
-#: admin.py:469
+#: admin.py:472
 msgid "The model that answers was saved."
 msgstr "Se ha guardado el modelo que contesta."
 
-#: admin.py:476 templates/admin/assistant/airoutingpolicy/policy.html:25
+#: admin.py:479 templates/admin/assistant/airoutingpolicy/policy.html:25
 #: templates/admin/assistant/airoutingpolicy/try.html:20
 msgid "Model that answers"
 msgstr "Modelo que contesta"
 
-#: admin.py:491 templates/admin/assistant/airoutingpolicy/policy.html:12
+#: admin.py:494 templates/admin/assistant/airoutingpolicy/policy.html:12
 msgid "Try a model"
 msgstr "Probar un modelo"
 
-#: admin.py:507
+#: admin.py:510
 msgid "Too many tries in a minute: wait a moment and try again."
 msgstr "Demasiadas pruebas en un minuto: espera un momento y vuelve a intentarlo."
 
-#: admin.py:521
+#: admin.py:524
 msgid "kind"
 msgstr "tipo"
 
-#: admin.py:525
+#: admin.py:528
 msgid "Businesses"
 msgstr "Negocios"
 
-#: admin.py:525
+#: admin.py:528
 msgid "Demos"
 msgstr "Demos"
 
-#: admin.py:571
+#: admin.py:576
 msgid "business or demo"
 msgstr "negocio o demo"
 
-#: admin.py:575 models.py:285
+#: admin.py:580 models.py:285
 msgid "month"
 msgstr "mes"
 
-#: admin.py:579 models.py:292
+#: admin.py:584 models.py:292
 msgid "cost (USD)"
 msgstr "coste (USD)"
 
@@ -335,9 +335,13 @@ msgstr "dictados"
 msgid "characters read aloud"
 msgstr "caracteres leídos en voz alta"
 
-#: models.py:297 models.py:298
-msgid "assistant usage"
-msgstr "uso del asistente"
+#: models.py:297
+msgid "assistant usage record"
+msgstr "registro de uso del asistente"
+
+#: models.py:298
+msgid "assistant usage records"
+msgstr "registros de uso del asistente"
 
 #: queries.py:59
 msgid "Only ERPlora's staff with this permission configure the AI."

@@ -269,7 +269,7 @@ async function atEverySize(page: Page, key: string, ready: () => Promise<void>):
   await page.setViewportSize({ width: 1440, height: 900 });
 }
 
-/** A turn of the bar and one of the demo, so «Assistant usage» has a business, a spent one and a demo. */
+/** A turn of the bar and one of the demo, so «Assistant usage records» has a business, a spent one and a demo. */
 async function spend(request: APIRequestContext, made: Gateway): Promise<void> {
   expect((await call(request, '/internal/assistant/chat', turn(made.bar))).status()).toBe(200);
   expect((await call(request, '/internal/assistant/chat', turn(made.demo))).status()).toBe(200);
@@ -284,7 +284,7 @@ test('ASSISTANT-F24: the staff see what each business spent and what it cost, an
   await page.goto('/admin/assistant/assistantusage/');
   const bar = page.getByRole('row', { name: /E2E Bar Asistente/ });
   await atEverySize(page, 'ASSISTANT-F24', async () => {
-    await expect(page.getByRole('heading', { level: 1, name: /assistant usage/i })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: /assistant usage record/i })).toBeVisible();
     await expect(bar).toContainText('1200');
     // (1200 × 1 + 300 × 2) / 1 000 000 USD.
     await expect(bar).toContainText('0.0018');
@@ -313,7 +313,7 @@ test('ASSISTANT-F24: the staff see what each business spent and what it cost, an
 test.describe('in Spanish', () => {
   test.use({ locale: 'es-ES' });
 
-  test('ASSISTANT-F24: «Uso del asistente» speaks the staff\'s language', async ({ page, request }) => {
+  test('ASSISTANT-F24: «Registros de uso del asistente» speaks the staff\'s language', async ({ page, request }) => {
     const errors = watchPageErrors(page);
     const made = seed('gateway');
     await spend(request, made);
@@ -321,10 +321,11 @@ test.describe('in Spanish', () => {
 
     await page.goto('/admin/assistant/assistantusage/');
     await atEverySize(page, 'ASSISTANT-F24-es', async () => {
-      await expect(page.getByRole('heading', { level: 1, name: /uso del asistente/i })).toBeVisible();
+      await expect(page.getByRole('heading', { level: 1, name: /registro de uso del asistente/i })).toBeVisible();
       await expect(page.getByRole('columnheader', { name: 'Coste (USD)' })).toBeVisible();
       await expect(page.getByRole('columnheader', { name: 'Negocio o demo' })).toBeVisible();
       await expect(page.getByRole('link', { name: 'Negocios' })).toBeVisible();
+      await expect(page.getByText('3 registros de uso del asistente')).toBeVisible();
     });
     expect(errors).toEqual([]);
   });

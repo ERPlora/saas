@@ -294,8 +294,8 @@ class AssistantUsage(models.Model):
     updated_at = models.DateTimeField(_("updated"), auto_now=True)
 
     class Meta:
-        verbose_name = _("assistant usage")
-        verbose_name_plural = _("assistant usage")
+        verbose_name = _("assistant usage record")
+        verbose_name_plural = _("assistant usage records")
         ordering = ["-month", "hub__name", "demo"]
         constraints = [
             models.CheckConstraint(

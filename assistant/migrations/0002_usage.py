@@ -32,8 +32,8 @@ class Migration(migrations.Migration):
                 ('hub', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='assistant_usage', to='hubs.hub', verbose_name='business')),
             ],
             options={
-                'verbose_name': 'assistant usage',
-                'verbose_name_plural': 'assistant usage',
+                'verbose_name': 'assistant usage record',
+                'verbose_name_plural': 'assistant usage records',
                 'ordering': ['-month', 'hub__name', 'demo'],
                 'constraints': [models.CheckConstraint(condition=models.Q(models.Q(('hub__isnull', False), ('demo', '')), models.Q(('hub__isnull', True), models.Q(('demo', ''), _negated=True)), _connector='OR'), name='assistant_usage_business_or_demo'), models.UniqueConstraint(condition=models.Q(('hub__isnull', False)), fields=('hub', 'month'), name='assistant_usage_one_per_month'), models.UniqueConstraint(condition=models.Q(('demo', ''), _negated=True), fields=('demo',), name='assistant_usage_one_per_demo')],
             },

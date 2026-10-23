@@ -21,13 +21,13 @@ la voz y las denuncias. El contrato de esas puertas, en «Para quien lo mantiene
 | `routing.py` | El turno a través de su ruta: prueba los modelos en orden y pasa a la reserva si el proveedor falla antes de contestar. |
 | `internal.py` | Las puertas del Hub, vistas asíncronas firmadas (`door`: método, tamaño, firma, contrato, quién llama y freno por negocio): el turno en directo y de una vez, el cupo, las huellas, el dictado, la lectura en voz alta y la denuncia. |
 | `turn.py` | El turno: prepara la conversación, ofrece las herramientas, emite los frames, el token de continuación de un solo uso y lo gastado (`Outcome`). |
-| `server_tools.py` | Las herramientas que ejecuta erplora.com: fecha y hora, tipo de cambio del BCE (Frankfurter) y búsqueda web (Tavily, con clave). |
+| `server_tools.py` | Las herramientas que ejecuta erplora.com: la fecha y la hora (la búsqueda web y el tipo de cambio esperan a la etapa ERP, PLAN §30). |
 | `attachments.py` | Los adjuntos: imágenes al modelo que ve, PDF/Word/Excel/texto a texto en memoria, con topes y el zip comprobado. El cuerpo de las puertas lo guarda en memoria el servidor (`config/asgi.py`, `BodiesInMemory`), nunca en el temporal en disco de Django. |
 | `media.py` | Huellas (`text-embedding-3-small`), dictado (`whisper-1`) y lectura en voz alta (`tts-1`) por la API de OpenAI del proveedor de servicios. |
 | `providers/` | Clientes `httpx` de OpenAI, Anthropic, Gemini y DeepSeek (`base.py`, `factory.py`): eventos normalizados, sin SDK ni caché. |
 | `auditlog.py` | Registro de auditoría (django-auditlog) de los cuatro modelos, sin la clave ni `updated_at`. |
 | `events.py` | Nombres de los eventos del outbox (sin la clave ni lo que escribe una persona). |
-| `admin.py`, `templates/admin/assistant/` | Admin de Django: proveedores con sus claves y modelos, «Elegir modelos del proveedor» (asíncrona), «Modelo que contesta», «Probar un modelo» (ejecución asíncrona en directo) y «Uso del asistente» (solo lectura). |
+| `admin.py`, `templates/admin/assistant/` | Admin de Django: proveedores con sus claves y modelos, «Elegir modelos del proveedor» (asíncrona), «Modelo que contesta», «Probar un modelo» (ejecución asíncrona en directo) y «Registros de uso del asistente» (solo lectura). |
 | `management/commands/` | `import_ai_keys_from_env` y `rotate_encryption_keys`. |
 
 ## Datos
@@ -84,7 +84,6 @@ negocio: son la pasarela que lo hace posible).
 - `ASSISTANT_DEMO_MESSAGES` (`10`): los mensajes de una demo en toda su vida.
 - `ASSISTANT_SERVICE_PROVIDER` (`openai`): el identificador del proveedor (de API OpenAI) que calcula las huellas y
   la voz.
-- `TAVILY_API_KEY` (vacía: sin búsqueda web), `ASSISTANT_WEB_SEARCH_URL` y `ASSISTANT_CURRENCY_URL`.
 - `INTERNAL_SHARED_SECRET` (y `INTERNAL_SHARED_SECRET_PREVIOUS`): el secreto con que firma el Hub, el de todo
   `/internal`.
 - `FERNET_KEY` (y `FERNET_KEY_PREVIOUS` durante una rotación), para quien despliega: sin ella, el admin lo dice al
@@ -96,5 +95,5 @@ negocio: son la pasarela que lo hace posible).
 proveedor de verdad: los clientes hablan con `assistant/tests/fake_provider.py`, un servidor HTTP en `127.0.0.1`.
 El e2e del admin, `tests/e2e/panel/assistant-admin.spec.ts` (datos de `tests/e2e/panel/assistant_seed.py`), arranca
 ese mismo servidor en el puerto `E2E_SAAS_PORT + 7` (`aiProviderPort` de `tests/e2e/stack.ts`; el `+ 8` es el doble de reCAPTCHA) (`uv run python -m assistant.tests.fake_provider --port …`). El e2e
-de las puertas del Hub y de «Uso del asistente», `tests/e2e/panel/assistant-gateway.spec.ts`, llama firmado como el
+de las puertas del Hub y de «Registros de uso del asistente», `tests/e2e/panel/assistant-gateway.spec.ts`, llama firmado como el
 Hub contra el mismo servidor falso.

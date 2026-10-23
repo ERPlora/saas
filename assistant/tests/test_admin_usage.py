@@ -100,5 +100,13 @@ def test_it_reads_in_spanish(client, viewer, rows):
 
     page = client.get(USAGE, HTTP_ACCEPT_LANGUAGE="es").content.decode()
 
-    assert "Uso del asistente" in page
+    assert "Registros de uso del asistente" in page
     assert "Coste (USD)" in page
+    # The counter under the list speaks a plural (it said «2 uso del asistente»).
+    assert "2 registros de uso del asistente" in page
+
+
+def test_the_counter_under_the_list_is_a_plural(client, viewer, rows):
+    client.force_login(viewer)
+
+    assert "2 assistant usage records" in client.get(USAGE).content.decode()

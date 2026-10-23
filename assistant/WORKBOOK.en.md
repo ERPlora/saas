@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:fc307f465505e38ebaaed3d3e7474da9133fe9cd6ed74f51c5e5709bee3815fb -->
+<!-- generated from WORKBOOK.md sha256:d1ea76e9ca3eb0de70592f5c2ced6a2c912f9378789fcb7041e5fd4929f93d45 -->
 
 ## What it is for and who uses it
 
@@ -20,7 +20,7 @@ Who uses it:
   them: the keys are ERPlora's spend.
 - The **Hub's assistant** of each business (and of each demo): it sends erplora.com each turn, its attachments, the
   texts of its index, the dictations and what is to be read aloud, and shows the person what is left of the allowance.
-- **ERPlora's staff**, in "Assistant usage", see what each business spends and what it costs.
+- **ERPlora's staff**, in "Assistant usage records", see what each business spends and what it costs.
 
 ## Adopted reference
 
@@ -34,8 +34,8 @@ Who uses it:
   allowance per business, the attachments, the fingerprints and the voice.
 - **Assistants with an allowance** (ChatGPT, Claude, Gemini, Microsoft 365 Copilot, Shopify Magic): a number of
   messages per period by plan, which comes back when the next one starts; when it is spent the person is told and a
-  plan up is offered; a message that fails before answering is not charged. The tools that need the internet (web
-  search, the exchange rate) are run by the server, never by the device; the voice is dictation to text and reading
+  plan up is offered; a message that fails before answering is not charged. The tools that are not the business's
+  are run by the server, never by the device; the voice is dictation to text and reading
   aloud by the same provider (https://platform.openai.com/docs/guides/speech-to-text,
   https://platform.openai.com/docs/guides/text-to-speech).
 
@@ -48,7 +48,6 @@ Who uses it:
   a price, the trial says the consumption and a cost of zero.
 - The index's fingerprints, the dictation and the reading aloud are done by the services' provider (OpenAI): it must
   be added, enabled and with its key.
-- The assistant's web search is only offered if erplora.com has the search engine's key in its environment.
 - The message allowance of each plan ("AI assistant messages a month") is typed in the admin of "Plans".
 
 ## Screens
@@ -76,7 +75,7 @@ being able to change it. On top, "Try a model" (only for whoever may change it).
 that answers, the text as it arrives, the tools it asks for and a table with "Input tokens", "Output tokens", "Time"
 and "Cost" (in dollars).
 
-### Admin: Assistant usage
+### Admin: Assistant usage records
 One row per business and month (a demo, a single one in its whole life) with "Business or demo", "Month",
 "Messages", "Input tokens", "Output tokens", "Embedding tokens", "Dictations", "Characters read aloud" and "Cost
 (USD)". On top, the search box (by the business's name or address, or by the demo's address) and the months; on the
@@ -88,9 +87,9 @@ able to change it.
 | State | What the person sees |
 |---|---|
 | Loading | The normal loading of an admin page; when trying a model, "Sending…" and the "Send" button off until it ends ("Done."). |
-| Empty | "0 AI providers" and the empty list; in "Assistant usage", "0 assistant usage" until a business's first message; a provider without a key says "No key"; without models that can answer, "No model can answer yet: add a provider with its key and choose its models." |
+| Empty | "0 AI providers" and the empty list; in "Assistant usage records", "0 assistant usage records" until a business's first message; a provider without a key says "No key"; without models that can answer, "No model can answer yet: add a provider with its key and choose its models." |
 | Error | In "Choose models from the provider", the reason in red: "This provider has no active key: add one on its page and try again.", "The provider did not give its models: …" or "The provider listed no chat models."; on the pages, the error in red next to the field: "Use an https address: the provider's key travels to it.", "Type the provider's key.", "The key of the credentials is not configured: no provider key can be kept."; when trying a model, in red: "The model did not answer: …", "Too many tries in a minute: wait a moment and try again." or "The try could not be sent: check the connection and try again.". |
-| No permission | Without the gateway's permissions, the admin answers there is no permission; whoever may only look sees the pages without the "Key" field. "Assistant usage" cannot be changed nor deleted, not even by a superuser. |
+| No permission | Without the gateway's permissions, the admin answers there is no permission; whoever may only look sees the pages without the "Key" field. "Assistant usage records" cannot be changed nor deleted, not even by a superuser. |
 
 ## Flows
 
@@ -109,7 +108,7 @@ able to change it.
 | ASSISTANT-F11 | Know who calls and for which business | done |
 | ASSISTANT-F12 | Answer an assistant turn live | done |
 | ASSISTANT-F13 | Answer the same turn at once | done |
-| ASSISTANT-F14 | Use erplora.com's tools and the business's | done |
+| ASSISTANT-F14 | Use erplora.com's tools and the business's | partial |
 | ASSISTANT-F15 | Refuse a turn with its reason | done |
 | ASSISTANT-F16 | Stop a business that asks too much | done |
 | ASSISTANT-F17 | Do not keep the conversation | done |
@@ -301,17 +300,17 @@ If it fails: the refusals before the model, the same as live; if the provider fa
 Involved: ASSISTANT-F12, ASSISTANT-F15, ASSISTANT-F18
 
 ### ASSISTANT-F14 Use erplora.com's tools and the business's
-Status: done
+Status: partial — the old product's web search and exchange rate between currencies come with the ERP stage; today erplora.com gives the date and the time
 Actor: the Hub's assistant of a business
 Screen: none
 Steps:
-1. In each turn, the model can use the business's tools (those the Hub sends: find a customer, create an appointment…) and erplora.com's, which need the internet the Hub does not reach: today's date and time, the European Central Bank's reference exchange rate between two currencies and, if erplora.com has the search engine's key, the web search.
-2. If the model asks for a tool of erplora.com, erplora.com runs it and gives it the result without the Hub seeing anything; with the web search, the model cites the source and its date.
+1. In each turn, the model can use the business's tools (those the Hub sends: find a customer, create an appointment…) and erplora.com's: today's date, time and weekday.
+2. If the model asks for a tool of erplora.com, erplora.com runs it and gives it the result without the Hub seeing anything.
 3. If it asks for one of the business, the turn passes it to the Hub to run it (see ASSISTANT-F12).
 4. The model is asked again at most five times in a turn; in the last one erplora.com's tools are no longer offered and it has to answer.
 In: the business's tools and the model's questions.
 Out: the result of each tool of erplora.com for the model; its consumption adds up to the turn's and spends no other message.
-If it fails: a tool of erplora.com that fails (no network, a currency that does not exist) gives the model the reason to answer with, never a failed turn; a tool of the business named as one of erplora.com's is run by erplora.com; without the search engine's key the web search is not offered.
+If it fails: a tool of erplora.com that fails gives the model the reason to answer with, never a failed turn; a tool of the business named as one of erplora.com's is run by erplora.com; the web search and the exchange rate are not offered, even if erplora.com's environment has a search engine's key.
 Involved: ASSISTANT-F12, ASSISTANT-F13
 
 ### ASSISTANT-F15 Refuse a turn with its reason
@@ -438,9 +437,9 @@ Involved: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F17
 ### ASSISTANT-F24 See what a business spent of the assistant
 Status: done
 Actor: ERPlora's staff
-Screen: Admin: Assistant usage
+Screen: Admin: Assistant usage records
 Steps:
-1. In erplora.com's admin, open "Assistant usage".
+1. In erplora.com's admin, open "Assistant usage records".
 2. Search the business by its name or its address (or the demo by its address), or filter "By kind" ("Businesses" or "Demos") and by month.
 3. Read its row of the month: "Messages" of the allowance, "Input tokens", "Output tokens", "Embedding tokens", "Dictations", "Characters read aloud" and "Cost (USD)" (with the prices of the model that answered each turn).
 4. Open the row to see it whole, with when it was created and when it changed.

@@ -14,7 +14,7 @@
 - «Choose models from the provider» (G24, G14): an asynchronous page (the call to the provider never holds a thread
   other requests need) that lists the provider's chat models with ``assistant.provider.connection`` and its client,
   and keeps the ticked ones with ``assistant.model.select``. «AI models» lists them all, to correct their prices.
-- «Assistant usage» (G52, G19, G11): what each business (or demo) spent by month, its messages of the plan's
+- «Assistant usage records» (G52, G19, G11): what each business (or demo) spent by month, its messages of the plan's
   allowance, tokens, dictations, characters read aloud and cost. Read only for everybody: rows are written by the
   gateway alone (``assistant.message.claim|release``, ``assistant.usage.record``).
 
