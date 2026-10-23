@@ -24,8 +24,18 @@ from accounts import services
 from accounts.models import ApiKey, HubMembership
 
 def audit(model, *, exclude: Iterable[str] = ()) -> None:
-    """Register ``model`` in the audit trail: its serialized copy keeps only the logged fields, never ``exclude``."""
-    auditlog.register(model, exclude_fields=list(exclude), serialize_data=True, serialize_auditlog_fields_only=True)
+    """Register ``model`` in the audit trail: its serialized copy keeps only the logged fields, never ``exclude``.
+
+    Nor the rows of other models that point at it (``api_keys``, ``billing_profiles``…): auditlog drops only the
+    many-to-many relations, so a new account listed the managers of those rows («accounts.ApiKey.None») among its
+    changes. Those rows have their own entries."""
+    pointing_at_it = [field.name for field in model._meta.get_fields() if field.auto_created and not field.concrete]
+    auditlog.register(
+        model,
+        exclude_fields=[*exclude, *pointing_at_it],
+        serialize_data=True,
+        serialize_auditlog_fields_only=True,
+    )
 
 
 def register() -> None:

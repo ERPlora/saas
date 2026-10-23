@@ -45,7 +45,12 @@ const expiry = shallowRef<Expiry>('90');
 const created = shallowRef<ApiKeyCreatedOut | null>(null);
 
 watch(open, (isOpen) => {
-  if (!isOpen) return;
+  if (!isOpen) {
+    // Said once the sheet goes («I have saved it» or its ✕), never over the key: on a phone the toast covered it,
+    // shown this once (ACCOUNTS-F31).
+    if (created.value) void toastSuccess(t('accounts.account.keys.created', { name: created.value.key.name }));
+    return;
+  }
   name.value = '';
   chosen.value = [];
   expiry.value = '90';
@@ -68,7 +73,6 @@ async function submit(): Promise<void> {
     );
     if (!answer) return;
     created.value = answer;
-    void toastSuccess(t('accounts.account.keys.created', { name: answer.key.name }));
   } catch {
     // `create.error`: the dialog shows it.
   }

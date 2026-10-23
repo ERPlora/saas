@@ -43,6 +43,23 @@ def test_past_the_limit_a_report_is_refused_and_not_logged(client, settings, cap
     assert "csp.violation" not in caplog.text
 
 
+def test_with_valkey_down_the_brake_lets_reports_through(client, settings):
+    # ACCOUNTS-F45: the production cache with nothing listening (port 1) counts nothing, and the brake lets
+    # everyone through instead of refusing everyone or failing with a 500.
+    settings.CACHES = {
+        "default": {
+            "BACKEND": "base.cache.FailSoftRedisCache",
+            "LOCATION": "redis://127.0.0.1:1",
+            "OPTIONS": {"socket_connect_timeout": 0.5, "socket_timeout": 0.5},
+        }
+    }
+    settings.CSP_REPORT_RATELIMIT = "1/h"
+
+    statuses = [post(client, "203.0.113.7").status_code for _ in range(3)]
+
+    assert statuses == [204, 204, 204]
+
+
 def test_another_address_keeps_its_own_budget(client, settings, caplog):
     settings.CSP_REPORT_RATELIMIT = "1/h"
     post(client, "203.0.113.7")

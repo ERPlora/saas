@@ -10,6 +10,7 @@ the fields that move on every request (``last_login``, a key's ``last_used_at``,
 not logged, the sign-in itself is (the session row). The billing and fiscal models are their apps'.
 """
 
+import re
 from datetime import timedelta
 
 import pytest
@@ -20,6 +21,7 @@ from django.contrib.auth import get_user_model
 from django.http import HttpResponse
 from django.test import RequestFactory
 from django.utils import timezone, translation
+from django.utils.formats import date_format
 
 from accounts.auditlog import AuditActorMiddleware
 from accounts.models import ApiKey, HubMembership
@@ -57,6 +59,17 @@ class TestWhatIsAudited:
 
         entry = _entries_for(ana).filter(action=LogEntry.Action.UPDATE).get()
         assert entry.changes_dict["first_name"] == ["Ana", "Ana María"]
+
+    def test_a_new_account_is_logged_with_its_own_fields_not_the_rows_that_point_at_it(self, ana):
+        """auditlog drops only many-to-many relations: a new account listed «Api keys: None → accounts.ApiKey.None»,
+        «Billing profiles», «Hub members»… among its «changes», the managers of the rows of other models that point
+        at it. Those rows have their own entries; the account's say what the account is."""
+        created = _entries_for(ana).get(action=LogEntry.Action.CREATE)
+        reverse = {field.name for field in get_user_model()._meta.get_fields() if field.auto_created and not field.concrete}
+
+        assert "email" in created.changes_dict
+        assert reverse and not reverse & set(created.changes_dict)
+        assert ".None" not in str(created.changes)
 
     def test_access_to_a_business_is_logged(self, ana):
         membership = HubMembership.objects.create(user=ana, hub_slug="bar-pepe", role=HubMembership.Role.ADMIN)
@@ -282,11 +295,71 @@ class TestTheAdmin:
         assert detail.status_code == 200
         assert client.get("/admin/auditlog/logentry/add/").status_code == 403
 
+    def test_nobody_deletes_an_entry_here_not_even_the_superuser(self, client, ana):
+        """The trail is read only for the whole staff (our ``LogEntryAdmin`` keeps auditlog's own permissions): the
+        delete page is refused and the list offers no «Delete selected» action; 90 days of it go by ``cleanup_old_logs``
+        (ACCOUNTS-F37), never by hand."""
+        ana.first_name = "Anabel"
+        ana.save()
+        root = get_user_model().objects.create_superuser(email="root@example.com", password="x")
+        client.force_login(root)
+        entry = _entries_for(ana).filter(action=LogEntry.Action.UPDATE).get()
+
+        refused = client.post(f"/admin/auditlog/logentry/{entry.pk}/delete/", {"post": "yes"})
+        listing = client.get("/admin/auditlog/logentry/").content.decode()
+
+        assert refused.status_code == 403
+        assert LogEntry.objects.filter(pk=entry.pk).exists()
+        assert 'value="delete_selected"' not in listing
+
     def test_staff_without_the_permission_does_not_see_it(self, client):
         staff = get_user_model().objects.create_user(email="support@example.com", password="x", is_staff=True)
         client.force_login(staff)
 
         assert client.get("/admin/auditlog/logentry/").status_code == 403
+
+    def test_its_list_says_what_changed_in_the_staffs_language(self, client, ana):
+        """The package writes its summary («1 change: first_name») and the header «Correlation ID» in English whatever
+        the language, and its «Resource Type» filter by the models' code names (``usersession``): the list in Spanish (the admin speaks the
+        browser's language) says them in Spanish, each field and model by its name, as Django's own history does."""
+        ana.first_name = "Anabel"
+        ana.save()
+        root = get_user_model().objects.create_superuser(email="root@example.com", password="x", language="es")
+        client.force_login(root)
+        user_type = LogEntry.objects.filter(object_pk=str(ana.pk)).values_list("content_type_id", flat=True).first()
+
+        listing = client.get("/admin/auditlog/logentry/", HTTP_ACCEPT_LANGUAGE="es").content.decode()
+
+        assert "1 cambio: Nombre" in listing
+        assert "ID de correlación" in listing
+        assert "1 change" not in listing and "Correlation ID" not in listing
+        assert re.search(rf'href="\?resource_type={user_type}"[^>]*>\s*Usuario\s*<', listing)
+
+    def test_an_entry_says_when_in_the_staffs_language(self, client, ana):
+        """The list formats the date; the entry's page printed it raw («2026-10-23 11:46:10.268295+02:00»)."""
+        ana.first_name = "Anabel"
+        ana.save()
+        root = get_user_model().objects.create_superuser(email="root@example.com", password="x", language="es")
+        client.force_login(root)
+        entry = _entries_for(ana).filter(action=LogEntry.Action.UPDATE).get()
+
+        page = client.get(f"/admin/auditlog/logentry/{entry.pk}/change/", HTTP_ACCEPT_LANGUAGE="es").content.decode()
+
+        with translation.override("es"):
+            said = date_format(timezone.localtime(entry.timestamp), "DATETIME_FORMAT")
+        assert said in page
+        assert str(timezone.localtime(entry.timestamp)) not in page
+
+    def test_its_list_in_english_counts_the_changes(self, client, ana):
+        ana.first_name, ana.last_name = "Anabel", "Ruiz"
+        ana.save()
+        root = get_user_model().objects.create_superuser(email="root@example.com", password="x", language="en")
+        client.force_login(root)
+
+        listing = client.get("/admin/auditlog/logentry/", HTTP_ACCEPT_LANGUAGE="en").content.decode()
+
+        assert re.search(r"2 changes: (First name, Last name|Last name, First name)", listing)
+        assert "Correlation ID" in listing
 
     def test_its_labels_speak_spanish(self):
         """The package ships no Spanish: the project's catalog carries it («log entries» is Django's own)."""

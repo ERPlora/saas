@@ -41,7 +41,7 @@ def test_signed_in_it_is_the_reference_of_this_api(client, ana):
 
     html = response.content.decode()
     assert response.status_code == 200
-    assert '<div id="redoc-ui"></div>' in html
+    assert '<div id="redoc-ui" lang="en"></div>' in html
     assert '"/api/openapi.json"' in html
 
 
@@ -110,6 +110,18 @@ def test_it_speaks_spanish_when_the_schema_does_not_load(client, ana):
     html = client.get(DOCS, HTTP_HOST=HOST, headers={"Accept-Language": "es"}).content.decode()
 
     assert "No hemos podido cargar la documentación de la API. Recarga la página para volver a intentarlo." in html
+
+
+def test_the_reference_says_it_is_in_english_on_a_page_in_spanish(client, ana):
+    # The reference is the API's own words (its paths, fields and descriptions), in English as Stripe's and GitHub's
+    # are; the page around it (its title, its failure) speaks the visitor's language. A reader of the page in Spanish is
+    # told the reference is English, not left to read English words as Spanish.
+    client.force_login(ana)
+
+    html = client.get(DOCS, HTTP_HOST=HOST, headers={"Accept-Language": "es"}).content.decode()
+
+    assert '<html lang="es">' in html
+    assert '<div id="redoc-ui" lang="en"></div>' in html
 
 
 def test_the_schema_stays_open_for_postman_and_the_suites(client):
