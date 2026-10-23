@@ -403,6 +403,12 @@ for (const { lang, locale } of LANGUAGES) {
       await page.goto(`/admin/accounts/user/?q=${encodeURIComponent(PREFIX)}`);
       await review(page, lang, 'ACCOUNTS-F13', async () => {
         await expect(page.locator('#changelist')).toContainText(staff.email);
+        // Django 6.1.2 leaves these two without Spanish: our catalogue says them (base/tests/test_admin_django_catalog.py).
+        const actions = page.locator('#changelist-form .actions');
+        await expect(actions.locator('button[name="index"]')).toHaveText(lang === 'es' ? 'Ejecutar' : 'Run');
+        await expect(actions.locator('select[name="action"] option').first()).toHaveText(
+          lang === 'es' ? '- Seleccione una opción -' : '- Select an option -',
+        );
       });
       await page.goto(`/admin/accounts/user/${id}/change/`);
       await review(page, lang, 'ACCOUNTS-F10-admin', async () => {
