@@ -70,3 +70,28 @@ def test_each_app_says_where_its_right_comes_from_and_until_when(business):
         {"id": "inventory", "source": "purchase", "valid_until": until.isoformat()},
         {"id": "loyalty", "source": "plan", "valid_until": None},
     ]
+
+
+# --- HUBS-F32 (HUBS-G103, HUBS-G104): the places and devices of the plan ------------------------------------------
+
+
+def test_dropping_to_free_removes_nobody_and_only_stops_new_invitations(business, team, owner):
+    """Five people fit on Starter; back on Free (three) they all stay, the snapshot carries Free's caps (3 people, 1
+    device) and the next invitation is refused with the seats it found."""
+    from live.errors import Conflict
+
+    from hubs.models import HubMember
+    from hubs.schemas import MemberInviteIn, SubscriptionApplyIn
+    from hubs.tests.conftest import ctx_for
+
+    inside = set(HubMember.objects.filter(hub=business).values_list("user_id", flat=True))
+
+    services.subscription_apply(services.system_ctx_for(business.id), SubscriptionApplyIn(hub_id=business.id, plan="free"))
+
+    assert set(HubMember.objects.filter(hub=business).values_list("user_id", flat=True)) == inside
+    plan = queries.hub_snapshot(business.id)["plan"]
+    assert (plan["slug"], plan["max_users"], plan["max_devices"]) == ("free", 3, 1)
+    with pytest.raises(Conflict) as refused:
+        services.member_invite(ctx_for(owner), MemberInviteIn(hub_id=business.id, email="new@example.com"))
+    assert refused.value.code == "hubs.seat_limit"
+    assert refused.value.limit == 3

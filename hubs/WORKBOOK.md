@@ -1,15 +1,16 @@
 # Workbook — Negocios (hubs)
 Prefijo: HUBS
 Alcance MVP: fase 1 (los negocios de cada cuenta de erplora.com: crearlos, esperar a que estén listos, verlos en la lista y entrar en ellos)
-Estado de la app: en construcción (partes 1 a 3 de 4: crear el negocio, los planes, esperar a que esté listo, la lista, la portada del panel, entrar y abrirlo en otro dispositivo; los ajustes, la dirección web, eliminar y recuperar, los suspendidos, el estado y el uso, y el personal en el admin; las personas de cada negocio: invitar, aceptar, cambiar el rol, quitar, traspasar la propiedad y consultarlas)
+Estado de la app: en construcción (partes 1 a 4 de 5: crear el negocio, los planes, esperar a que esté listo, la lista, la portada del panel, entrar y abrirlo en otro dispositivo; los ajustes, la dirección web, eliminar y recuperar, los suspendidos, el estado y el uso, y el personal en el admin; las personas de cada negocio: invitar, aceptar, cambiar el rol, quitar, traspasar la propiedad y consultarlas; lo que cada negocio recibe de erplora.com: su plan, sus topes, sus aplicaciones de pago y los mensajes del asistente, quién llama a erplora.com desde los negocios, y los sectores y tipos de negocio; la revisión flujo a flujo de todo, en la parte 5)
 
 > Manual de uso y especificación de la app `hubs` del SaaS (erplora.com). Cuenta cómo se crea un negocio, qué
 > pasa mientras se prepara, cómo se ve la lista de negocios y cómo se entra en cada uno desde el navegador o desde
 > la aplicación instalada, y cómo se cambian sus ajustes y su dirección web, cómo se elimina y se recupera, qué
 > pasa con uno suspendido por impago y qué hace el personal de ERPlora con él, y quién trabaja en cada negocio:
-> cómo se invita a una persona, cómo acepta, cómo se le cambia el rol o se la quita y cómo se traspasa la propiedad.
-> Esta parte del manual no se publica en la tienda: es la referencia del equipo y de la QA. El plan, los derechos y
-> lo que el negocio recibe de erplora.com (parte 4) se escriben a continuación.
+> cómo se invita a una persona, cómo acepta, cómo se le cambia el rol o se la quita y cómo se traspasa la propiedad,
+> qué recibe cada negocio de erplora.com (su plan, sus topes, sus aplicaciones de pago y sus personas) y cómo mantiene
+> el personal los sectores y tipos de negocio del alta. Esta parte del manual no se publica en la tienda: es la
+> referencia del equipo y de la QA.
 
 ## Para qué sirve y para quién
 
@@ -31,8 +32,10 @@ Quién la usa:
 - El **propietario** y los **administradores** invitan a las personas del negocio, les cambian el rol y las quitan;
   solo el propietario da el rol de administrador y traspasa la propiedad. Un **encargado** o un **empleado** solo
   abre el negocio.
-- El **personal de ERPlora** mantiene los planes desde el admin y, desde ahí, vuelve a mandar a un negocio lo que
-  no recibió y consulta quién tiene acceso a cada negocio.
+- El **personal de ERPlora** mantiene los planes, los sectores y los tipos de negocio desde el admin y, desde ahí,
+  vuelve a mandar a un negocio lo que no recibió y consulta quién tiene acceso a cada negocio.
+- El **sistema** manda a cada negocio, tras cada cambio y cada noche, su plan con sus topes, sus aplicaciones de pago,
+  sus personas y su estado; el negocio trabaja con esa copia y no pregunta a erplora.com en cada venta.
 
 ## Referencia adoptada
 
@@ -51,6 +54,8 @@ Quién la usa:
   pública de la tienda, no al punto de venta, en planes de pago y con el certificado puesto solo
   (https://squareup.com/help/article/6916, https://support.toasttab.com/en/article/Toast-Online-Ordering-Pro-Domains,
   https://www.fresha.com/help-center/knowledge-base/online-presence/109902-manage-your-domains).
+- **Shopify y Stripe**: los derechos de una tienda viajan en un aviso tras cada cambio y la aplicación guarda su copia
+  local; no pregunta en cada uso (https://shopify.dev/docs/apps/build/webhooks, https://docs.stripe.com/billing/entitlements).
 - **Shopify, Square y Toast**: el propietario da acceso a su personal con un rol, y cada rol trae sus permisos; el
   acceso se cambia y se quita desde el mismo sitio, y quien trabaja solo con un PIN en la caja se gestiona dentro
   del punto de venta (https://help.shopify.com/en/manual/your-account/staff-accounts).
@@ -104,7 +109,13 @@ y lo que pasa después; «Cambiar dirección» se activa cuando es distinta de l
 
 ### admin › Negocios › Planes
 La ficha de cada plan para el personal: los textos en inglés y en español, el precio, qué incluye, sus límites y
-sus precios de Stripe.
+sus precios de Stripe. Al guardar un cambio en lo que da el plan, el aviso «… negocios con este plan reciben el cambio
+en los próximos 15 minutos.».
+
+### admin › Negocios › Sectores y Tipos de negocio
+Las dos listas de la taxonomía del alta para el personal, con buscador y filtros, y la ficha de cada una: el código,
+el nombre y la descripción en inglés y en español, el icono, el color, el orden y si está activo; en un tipo de
+negocio, además, su sector y su plantilla («Vertical»).
 
 ### Miembros
 La pestaña «Miembros» de cada negocio, para el propietario y los administradores: la tabla «Equipo» con «Nombre»
@@ -178,6 +189,13 @@ con buscador por negocio o por correo y filtro por rol; solo se consulta.
 | HUBS-F28 | Traspasar la propiedad de un negocio | hecho |
 | HUBS-F29 | Ver las personas de un negocio | hecho |
 | HUBS-F30 | Consultar los accesos de las personas en el admin | hecho |
+| HUBS-F31 | Mandar a cada negocio su plan, sus aplicaciones y sus personas | hecho |
+| HUBS-F32 | Aplicar los topes de personas y de dispositivos del plan | parcial |
+| HUBS-F33 | Dar al negocio los mensajes del asistente de su plan | parcial |
+| HUBS-F34 | Decir al negocio qué aplicaciones de pago puede usar y por qué | parcial |
+| HUBS-F35 | Reconocer al servicio de los negocios cuando llama a erplora.com | hecho |
+| HUBS-F36 | Mantener los sectores y los tipos de negocio en el admin | hecho |
+| HUBS-F37 | Leer los sectores y los tipos de negocio | hecho |
 
 ### HUBS-F01 Crear el negocio gratuito con una sola pregunta
 <!-- origen: old-saas:SAAS_DASHBOARD-F01 fi:saas/support/hubs#modelo-hub -->
@@ -607,14 +625,115 @@ Sale: nada guardado.
 Si falla: el admin no invita, no cambia ni quita a nadie: eso solo lo hacen el propietario y los administradores en «Miembros», así nadie del personal se da acceso a un negocio. El personal de soporte también lo consulta.
 Implicados: accounts (la cuenta del personal)
 
+### HUBS-F31 Mandar a cada negocio su plan, sus aplicaciones y sus personas
+<!-- origen: old-saas:SAAS_DASHBOARD-F116 old-saas:SAAS_DASHBOARD-F40 old-saas:SAAS_DASHBOARD-F54 old-saas:SAAS_DASHBOARD-F53 fi:saas/hubs#entitlement-de-modulos-firmado-rs256 fi:saas/support/public-core-config#service-is_module_entitled-build_signed_entitlement-entitlement-py -->
+Estado: hecho
+Actor: sistema, personal de ERPlora
+Pantalla: ninguna; para el personal, admin › Negocios › Planes
+Pasos:
+1. Cada vez que cambia algo que el negocio tiene que saber —su plan (al pagarlo, cambiarlo o terminarlo), una aplicación de pago comprada o cancelada, una persona que entra, cambia de rol o sale, su estado de cobro o su autorización de VeriFactu—, erplora.com lo guarda y, en cuanto queda guardado, manda al negocio su foto entera: el plan con sus topes (personas, dispositivos, los límites de su base de datos y los mensajes del asistente y de WhatsApp al mes), sus aplicaciones de pago, sus personas con su rol, su estado y su bloque de VeriFactu.
+2. El negocio se queda siempre con la foto más nueva: una que llega tarde y es más vieja que la que ya tiene no cambia nada. Con ella trabaja sin preguntar a erplora.com en cada venta, así que sigue vendiendo aunque erplora.com no responda.
+3. Si el personal cambia en el admin lo que da un plan (sus topes, su nivel de aplicaciones o sus mensajes al mes), al guardar ve «… negocios con este plan reciben el cambio en los próximos 15 minutos.» y cada negocio con ese plan lo recibe en la siguiente pasada; cambiar solo sus textos, su orden o su precio no manda nada.
+4. Lo que un negocio no recibió se le vuelve a mandar cada 15 minutos (HUBS-F08) y, cada noche, todos los negocios reciben su foto otra vez.
+Entra: el cambio guardado: el pago, las personas, la ficha del plan en el admin o la autorización de VeriFactu.
+Sale: la foto del negocio, con un número de versión que solo crece. VeriFactu va en todos los planes, también en Gratis: con la autorización validada, el negocio presenta sus registros en el plan que tenga. Anota `hubs.subscription.changed` cuando cambian su plan o sus aplicaciones.
+Si falla: si el negocio no responde o rechaza la foto, queda pendiente y se le reintenta (HUBS-F08); el rechazo se ve en su ficha del admin (HUBS-F23). Un negocio eliminado no recibe foto. Un cambio del admin que no llega en la pasada siguiente llega la noche siguiente.
+Implicados: billing (el pago y el plan), fiscal (la autorización de VeriFactu), el negocio (guarda la foto y aplica su estado, sus personas, VeriFactu y WhatsApp; los topes y las aplicaciones, HUBS-F32 y HUBS-F34)
+
+### HUBS-F32 Aplicar los topes de personas y de dispositivos del plan
+<!-- origen: old-saas:SAAS_DASHBOARD-F58 old-saas:SAAS_DASHBOARD-F59 -->
+Estado: parcial — erplora.com ya frena la invitación que no cabe y manda los dos topes al negocio, pero el negocio todavía no los aplica: las sesiones por dispositivo y los empleados que entran con un PIN llegan con la base de datos propia de cada negocio (fase 2); hasta entonces un negocio en Gratis se abre en más de un dispositivo a la vez.
+Actor: sistema, propietario, administrador
+Pantalla: Miembros › Invitar
+Pasos:
+1. Cada plan dice cuántas personas y cuántos dispositivos a la vez cubre en cada negocio: Gratis, 3 personas y 1 dispositivo; los planes de pago, sin tope.
+2. Al invitar, erplora.com cuenta a las personas que ya están y las invitaciones que aún valen; sin plaza, el diálogo «Invitar a …» dice «El plan no tiene plazas libres: cambia de plan o quita a alguien para invitar a más personas.» y no manda nada (HUBS-F24). Cambiar el rol de quien ya está no gasta plaza.
+3. El negocio recibe los dos topes en su foto (HUBS-F31) y los aplica en lo que solo él ve: los empleados que entran con un PIN y los dispositivos con la sesión abierta.
+Entra: el plan del negocio, sus personas y sus invitaciones.
+Sale: el rechazo de la invitación que no cabe y los dos topes en la foto; nada más se guarda.
+Si falla: aceptar una invitación cuando el plan ya no tiene sitio se frena al aceptar (HUBS-F25). Bajar de plan no saca a nadie: frena las invitaciones nuevas hasta que vuelva a haber sitio.
+Implicados: billing (el plan), el negocio (aplica los topes a sus dispositivos y a sus empleados con PIN)
+
+### HUBS-F33 Dar al negocio los mensajes del asistente de su plan
+<!-- origen: old-saas:SAAS_ASSISTANT-F12 -->
+Estado: parcial — el negocio ya recibe los mensajes al mes que incluye su plan, pero todavía no se cuentan ni frenan: cada mensaje pasa por el turno del asistente, que llega con la segunda parte de la app del asistente.
+Actor: sistema
+Pantalla: ninguna
+Pasos:
+1. Cada plan incluye un número de mensajes del asistente al mes (Gratis 30, Starter 300, Standard 600; 0 es sin asistente); el personal lo cambia en la ficha del plan (HUBS-F05).
+2. erplora.com lo manda al negocio en su foto (HUBS-F31), junto al de WhatsApp, y otra vez en cuanto cambian el plan o la cifra.
+3. Cada mensaje cuenta para el mes del negocio: al 80 % se avisa y al 100 % no se puede preguntar más hasta el día 1 del mes siguiente; para tener más, se sube de plan.
+Entra: el plan del negocio.
+Sale: los mensajes al mes del plan, en la foto del negocio.
+Si falla: un plan con 0 mensajes deja el asistente sin uso. No se venden paquetes de mensajes sueltos.
+Implicados: assistant (el turno de cada mensaje y su cuenta), el negocio (enseña lo que queda)
+
+### HUBS-F34 Decir al negocio qué aplicaciones de pago puede usar y por qué
+<!-- origen: old-saas:SAAS_DASHBOARD-F62 old-saas:SAAS_PUBLIC-F20 fi:saas/hubs#estado-de-suscripcion-de-modulo-bouncer fi:saas/hubs#modulos-del-terminal -->
+Estado: parcial — erplora.com ya manda cada aplicación de pago con su origen y su fecha, pero el negocio todavía no frena una aplicación de pago sin derecho ni dice en su página de aplicaciones de dónde le viene; hoy ninguna aplicación del negocio es de pago, así que todas se usan sin comprarlas.
+Actor: sistema, propietario
+Pantalla: ninguna; las de cada negocio se ven en Tienda › Módulos (BILLING-F31)
+Pasos:
+1. Un negocio tiene una aplicación de pago por su plan (el nivel del plan la incluye) o porque la compró para ese negocio; las gratuitas no hacen falta en la lista: siempre se pueden usar.
+2. erplora.com manda al negocio, en su foto (HUBS-F31), cada aplicación de pago que tiene, de dónde le viene (el plan o una compra) y hasta cuándo, si se canceló.
+3. El negocio enciende las que tiene; una de pago sin derecho no se enciende y lleva a comprarla en erplora.com.
+4. En **Tienda › Módulos**, con el negocio elegido, el propietario ve cada aplicación en ese negocio: «Incluido en tu plan» o «Ya lo tienes» (BILLING-F31).
+Entra: el plan del negocio y sus compras.
+Sale: las aplicaciones de pago del negocio en su foto; nada se guarda.
+Si falla: una compra es de un solo negocio: nunca da la aplicación a otro, tampoco a otro de la misma cuenta. Una cancelada sigue hasta el final de lo pagado. Al bajar de plan se van las que daba el plan anterior; al subir, llegan las del nivel nuevo.
+Implicados: billing (las compras), apps (qué aplicación es de pago y su nivel), el negocio (enciende o frena cada aplicación)
+
+### HUBS-F35 Reconocer al servicio de los negocios cuando llama a erplora.com
+<!-- origen: old-saas:SAAS-F03 old-saas:SAAS_DASHBOARD-F50 -->
+Estado: hecho
+Actor: sistema
+Pantalla: ninguna
+Pasos:
+1. Cuando el servicio de los negocios avisa o pide algo a erplora.com (que un negocio está listo, la entrada de una persona, la autorización de VeriFactu, una presentación a la Agencia Tributaria o un WhatsApp), firma la llamada con el secreto que comparten los dos y la hora.
+2. erplora.com comprueba la firma y la hora (como mucho 5 minutos de diferencia) antes de leer nada; durante un cambio de secreto acepta también el anterior.
+3. El negocio de la llamada es el que nombra su dirección, nunca una cabecera ni lo que diga el cuerpo; con la firma buena, contesta solo con lo de ese negocio.
+Entra: la llamada firmada.
+Sale: la respuesta de esa puerta; nada más.
+Si falla: sin firma, con la firma de otro secreto o con una hora de hace más de 5 minutos, se rechaza sin hacer nada; la sesión de una persona, aunque sea del personal, no abre estas puertas. Un aviso que nombra a otro negocio que el de su dirección se rechaza. Estas puertas no se publican hacia internet.
+Implicados: accounts (la firma y la entrada de cada persona), fiscal y fiscal_gateway (VeriFactu), whatsapp (los mensajes), el negocio (llama)
+
+### HUBS-F36 Mantener los sectores y los tipos de negocio en el admin
+<!-- origen: fi:saas/django-admin#admin-businesstype fi:saas/django-admin#admin-sector fi:saas/support/developer-commerce#command-seed_taxonomy fi:saas/support/public-core-config#command-seed_taxonomy fi:saas/support/developer-commerce#modelo-businesstype fi:saas/support/developer-commerce#modelo-sector fi:saas/support/public-core-config#modelo-sector-functionalunit-businesstype fi:saas/support/developer-commerce#task-translation-py-modeltranslation fi:saas/support/public-core-config#translation-py-catalog -->
+Estado: hecho
+Actor: personal de ERPlora, sistema
+Pantalla: admin › Negocios › Sectores y Tipos de negocio
+Pasos:
+1. En cada despliegue, erplora.com crea los sectores y tipos de negocio que falten de su lista de partida (12 sectores y 70 tipos), sin tocar lo que el personal ya cambió.
+2. El personal abre «Sectores» o «Tipos de negocio» en el admin, busca por código o nombre y filtra por «Activo» (los tipos, también por «Sector» y por «Vertical»); cambia el orden y si está activo desde la misma lista.
+3. En la ficha escribe el nombre y la descripción en inglés y en español, el icono, el color, el orden y si está activo; en un tipo de negocio, además, su sector y su «Vertical», la plantilla con la que nace un negocio de ese tipo.
+4. Guarda: el alta del negocio, las páginas de cada sector y quien los lea por la API los reciben en su idioma (HUBS-F37).
+Entra: lo que escribe el personal.
+Sale: el sector o el tipo de negocio, con cada texto en inglés y en español.
+Si falla: un nombre o una descripción en español sin sus tildes o copiados del inglés no se guardan y el campo dice cómo corregirlos; dos tipos de negocio con el mismo nombre en un idioma tampoco; una plantilla que ninguna aplicación construye no se acepta. Una cuenta sin la marca de personal no entra en el admin.
+Implicados: public (las páginas de cada sector), apps (las plantillas que construye cada aplicación), accounts (el alta del negocio)
+
+### HUBS-F37 Leer los sectores y los tipos de negocio
+<!-- origen: old-saas:SAAS_PUBLIC-F28 fi:saas/support/developer-commerce#serializer-sectorserializer-functionalunitserializer-businesstypeserializer-functionalunitdetailserializer-catalogmoduleserializer-categoryserializer-subcategoryserializer fi:saas/support/public-core-config#serializers-catalog-sector-functionalunit-businesstype-catalogmodule-category-subcategory -->
+Estado: hecho
+Actor: cualquiera, integración
+Pantalla: ninguna; las usan Crear negocio y las páginas de cada sector
+Pasos:
+1. Cualquiera, sin entrar, pide la lista de sectores o la de tipos de negocio, todos o los de un sector.
+2. erplora.com contesta con los activos, en el orden que puso el personal, cada uno con su código, su nombre y su descripción en el idioma de quien pide (el inglés si falta el español), su icono y su color; cada tipo de negocio, con su sector y su plantilla.
+3. El formulario de Crear negocio llena con ella su «Tipo de negocio (opcional)» y la web pública, sus páginas de sectores.
+Entra: el idioma de quien pide y, si quiere, un sector.
+Sale: las dos listas; nada se guarda.
+Si falla: un sector que no existe da una lista vacía; un sector o un tipo desactivado no sale en su lista. Una clave de API de la cuenta también las lee.
+Implicados: public (las páginas de cada sector), accounts (el alta del negocio en la Entrada)
+
 ## Para quien lo mantiene
 
 - Anatomía, operaciones y decisiones: `hubs/README.md` (negocios, salto al Hub, foto y registro empujados al Hub,
   `reconcile_hub_states`, miembros, uso y demo).
-- Partes del porte (MIGRATION-TASK APP-HUBS-1…4): este WORKBOOK nace en la parte 1 (F01–F14); la parte 2 añade
+- Partes del porte (MIGRATION-TASK APP-HUBS-1…5): este WORKBOOK nace en la parte 1 (F01–F14); la parte 2 añade
   F15–F23 (ajustes, dirección web y dominio propio, eliminar y recuperar, los suspendidos, estado y uso, admin del
-  negocio); la parte 3, F24–F30 (las personas de cada negocio); la parte 4 (plan, derechos, contrato con el Hub y
-  taxonomía) añade los suyos a continuación. La revisión flujo a flujo de los `hecho` la hace la parte 4.
+  negocio); la parte 3, F24–F30 (las personas de cada negocio); la parte 4, F31–F37 (plan, derechos, contrato con el
+  Hub y taxonomía). La revisión flujo a flujo de los `hecho` la hace la parte 5.
 - Equivalencia de claves del registro: G65 y G41 = F01; G66 = F02; G67, G09, G10 y G45 = F03; G68 = F04; G43,
   G04, G06, G21 y G44 = F05; G98 = F06; G91 = F07; G92 = F08; G69, G17, G18, G111 y G113 = F09; G14, G84 y
   G114 = F10; G70 = F11; G71 = F12; G72 y G12 = F13; G19 = F14. Parte 2: G08 y G73 = F15; G74 = F16; G75, G77,
@@ -624,6 +743,9 @@ Implicados: accounts (la cuenta del personal)
   G79 = F25; G80, G29, G26 y G57 = F26; G81, G30, G35 y G64 = F27; G82 = F28; G83, G27, G115, G86, G34, G24 y
   G53 = F29; G03 y G52 = F30. G24 («Usuarios del Terminal») era la página del SaaS viejo con los accesos, la
   actividad y los activos de un negocio (la misma que G83), no los empleados con PIN, que viven en el negocio.
+  Parte 4: G76, G96, G101, G100, G15 y G60 = F31; G103 y G104 = F32; G63 = F33; G107, G109, G16 y G20 = F34; G62 y
+  G99 = F35; G01, G05, G36, G37, G38, G58, G40 y G61 = F36; G110, G39 y G59 = F37. G23, G105 y G106 (el Hub da de alta,
+  comprueba o quita en el SaaS a las personas que añade) se descartan: «Lo que NO hace».
 - Alta (F01–F03): `hubs.business.create` (una transacción: `BillingProfile`, `Hub`, `HubMember` propietario y
   `Subscription` Gratis) y el empuje tras el COMMIT (`services.sync_hub`). El pago es de `billing`
   (`billing.checkout.start`). El país sugerido sale de `navigator.languages` (`regions.suggestedCountry`, con
@@ -692,6 +814,32 @@ Implicados: accounts (la cuenta del personal)
   título), con `members.spec.ts` e `invitation.spec.ts`.
 - Pruebas: cada test cita su clave en el nombre o el docstring; los e2e de esta parte están en
   `tests/e2e/panel/hubs-flows.spec.ts` (con la clave del registro, `HUBS-Gnn`, en el título).
+- La foto (F31; PLAN-SAAS §2.2): `queries.hub_snapshot` (`PUT /internal/hubs/{id}/state`), con `plan` = los campos de
+  `queries.SNAPSHOT_PLAN_FIELDS`; sube `state_version` y se empuja tras el COMMIT (`services.sync_hub`), la reintenta
+  `reconcile_hub_states` y la repite `push_hub_snapshots` cada noche. Un cambio en el admin de uno de esos campos de un
+  `Plan` (`PlanAdmin.save_model` → `services.owe_plan_rights`) reescribe los módulos de su nivel (`sync_plan_modules`) y
+  sube la versión de cada negocio vivo con ese plan o con su prueba; la entrega la siguiente pasada (trampa de
+  SAAS_DASHBOARD-F53/F54: el cambio del admin no llegaba al Hub). VeriFactu en todos los planes (PLAN §30, ronda
+  2026-10-22b): `verifactu.live_paid` va siempre `true` hasta que el Hub retire esa condición (`apps/verifactu` aún la
+  lee); entonces se quita de la foto. Tests: `hubs/tests/test_hub_sync.py`, `test_plan_rights_reach_businesses.py`,
+  `test_contract_hub.py`, `fiscal/tests/test_snapshot.py`; e2e `tests/e2e/panel/hubs-rights.spec.ts` («HUBS-G101»).
+- Lo que el Hub aplica de la foto (F32–F34): hoy guarda `plan` y `modules` sin aplicarlos (`base.services.hub_state_apply`
+  del Hub: «kept until phase 2 applies them»); los topes de dispositivos y de usuarios con PIN llegan con `DeviceSession`
+  (fase 2, PLAN-HUB «Sesión, dispositivo y PIN»), el freno de una app `premium` sin derecho (402
+  `app_entitlement_blocked`) con su activación, y la cuenta de los mensajes del asistente con el turno de `assistant`
+  (parte 2). El SaaS ya aplica `max_users` al invitar (`hubs/tests/test_seats.py`). Tests de la parte 4:
+  `test_snapshot_rights.py` (una compra o el plan de otro negocio nunca llegan a este; bajar a Gratis no saca a nadie).
+- Quién llama (F35): `/internal/*` se firma con HMAC (`accounts/signing.py`: v1 + v2, dos secretos vivos, 5 minutos). El
+  guardarraíl `hubs/tests/test_internal_doors.py` recorre el resolver de URLs: toda puerta `internal/…` contesta 401 (o
+  405) sin firma, con otra firma, con una hora vieja o con la sesión del personal; una puerta nueva sin la comprobación
+  lo hace fallar.
+- Taxonomía (F36, F37): `Sector` y `BusinessType` (columnas por idioma, sin modeltranslation), `seed_taxonomy` (en
+  `saas-migrate` de cada despliegue; crea lo que falta, `--update` lo reescribe) y su admin, con los nombres de sus campos
+  traducidos (migración `0017`, solo de estado). Lectura pública: `hubs.sector.list` y `hubs.business_type.list`
+  (`/api/catalog/sectors`, `/api/catalog/business-types`). Sin unidades funcionales, categorías ni subcategorías
+  (ronda 16, PLAN §21: la sección de una app la declara su `LiveAppConfig`). Tests: `test_api.py`,
+  `test_seed_taxonomy.py`, `test_taxonomy_*.py` y `test_admin.py` («speak Spanish»); e2e `hubs-rights.spec.ts`
+  («HUBS-G05 + HUBS-G01»).
 
 ## Lo que NO hace, a propósito
 
@@ -712,4 +860,13 @@ Implicados: accounts (la cuenta del personal)
 - No enseña la actividad reciente de las personas ni cuántas están conectadas: la actividad vive dentro del negocio.
 - Nadie se sale solo de un negocio: lo quitan el propietario o un administrador, como en Square, Toast o Shopify.
 - No da de alta a los empleados que solo usan un PIN en la caja: se gestionan dentro del negocio.
+- No da de alta, no comprueba ni quita en erplora.com a las personas que se añaden o se quitan dentro del negocio:
+  quién tiene cuenta y acceso se decide en «Miembros» (HUBS-F24 a HUBS-F28) y el negocio lo recibe en su foto
+  (HUBS-F31); la entrada de cada persona la comprueba erplora.com al saltar al negocio.
+- No firma un permiso para comprobarlo sin conexión: el negocio en la nube guarda su foto y no pregunta en cada venta;
+  el permiso firmado de una aplicación que trabaje sin conexión llegará con el modo local.
+- No enseña una página con las aplicaciones instaladas en cada negocio: las encendidas viven en el negocio y las de
+  pago se ven en Tienda › Módulos (BILLING-F31).
+- No clasifica las aplicaciones en unidades funcionales, categorías ni subcategorías: cada aplicación declara su
+  sección y sus tipos de negocio (APPS-F06).
 - La propiedad no se da cambiando el rol: solo con un traspaso que la otra persona acepta.
