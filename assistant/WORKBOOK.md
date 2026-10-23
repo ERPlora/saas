@@ -51,7 +51,15 @@ Quién la usa:
 Lista de los proveedores con su API, si está activado y el estado de su clave: «…» y los cuatro últimos caracteres,
 «Sin clave» o «Ilegible: vuelve a escribir la clave». La ficha de cada proveedor tiene sus claves dentro: etiqueta,
 el campo «Clave» (se escribe una vez, nunca se enseña; vacío deja la que había), si está activa, cuándo se cambió y
-quién.
+quién; y sus modelos, con su precio de entrada y de salida, su contexto y si están disponibles. Arriba, «Elegir
+modelos del proveedor».
+
+### Admin: Elegir modelos del proveedor
+La lista de modelos de conversación que da la API del proveedor, con una casilla «Se queda» (marcada en los que ya
+tiene), su nombre y su contexto, y los botones «Guardar la elección» y «Volver al proveedor».
+
+### Admin: Modelos de IA
+Todos los modelos de todos los proveedores, con su precio, su contexto y si están disponibles, para corregirlos.
 
 ## Estados de cada pantalla
 
@@ -59,7 +67,7 @@ quién.
 |---|---|
 | Cargando | La carga normal de una página del admin. |
 | Vacío | «0 proveedores de IA» y la lista vacía; un proveedor sin clave dice «Sin clave». |
-| Error | El error en rojo junto al campo: «Usa una dirección https: la clave del proveedor viaja a ella.», «Escribe la clave del proveedor.», «La clave de cifrado de las credenciales no está configurada: no se puede guardar ninguna clave de proveedor.». |
+| Error | En «Elegir modelos del proveedor», el motivo en rojo: «Este proveedor no tiene ninguna clave activa: añade una en su ficha y vuelve a intentarlo.», «El proveedor no ha dado sus modelos: …» o «El proveedor no tiene modelos de conversación en su lista.»; en las fichas, el error en rojo junto al campo: «Usa una dirección https: la clave del proveedor viaja a ella.», «Escribe la clave del proveedor.», «La clave de cifrado de las credenciales no está configurada: no se puede guardar ninguna clave de proveedor.». |
 | Sin permiso | Sin los permisos de la pasarela, el admin contesta que no tiene permiso; quien solo puede mirar ve las fichas sin el campo «Clave». |
 
 ## Flujos
@@ -69,6 +77,7 @@ quién.
 | ASSISTANT-F01 | Dar de alta un proveedor de IA | hecho |
 | ASSISTANT-F02 | Guardar la clave de un proveedor sin que se vea | hecho |
 | ASSISTANT-F03 | Hablar con cada proveedor en su propia API | hecho |
+| ASSISTANT-F04 | Elegir los modelos de un proveedor | hecho |
 
 ### ASSISTANT-F01 Dar de alta un proveedor de IA
 <!-- origen: fi:saas/support/auth-services#modelo-aiprovider, fi:saas/django-admin#admin-aiprovider, old-saas:SAAS_ASSISTANT-F22 -->
@@ -114,6 +123,21 @@ Sale: el texto, las herramientas pedidas, el consumo y el final del turno, igual
 Si falla: si el proveedor rechaza la clave o la petición, el turno termina con su motivo y se marca como un fallo que no se arregla repitiendo; si no contesta, tarda demasiado, va saturado o limita el ritmo, termina con un fallo que otro intento puede arreglar (para pasar al modelo de reserva); el motivo nunca lleva la clave. Un proveedor sin clave o con una API desconocida no se llama.
 Implicados: ASSISTANT-F04, ASSISTANT-F06, ASSISTANT-F07
 
+### ASSISTANT-F04 Elegir los modelos de un proveedor
+<!-- origen: fi:saas/support/auth-services#modelo-aimodel, fi:saas/django-admin#admin-aimodel -->
+Estado: hecho
+Actor: personal de ERPlora
+Pantalla: Admin: Proveedores de IA, Admin: Elegir modelos del proveedor, Admin: Modelos de IA
+Pasos:
+1. En la ficha del proveedor, pulsa «Elegir modelos del proveedor»: erplora.com pregunta a la API del proveedor, con su clave, qué modelos de conversación tiene.
+2. Marca los que se quedan (ya salen marcados los que tiene) y pulsa «Guardar la elección».
+3. Vuelve a la ficha con el resumen, por ejemplo «Local: 1 nuevos, 0 se quedan, 1 quitados, 0 en uso por el modelo que contesta.»: los marcados quedan disponibles y los no marcados se quitan, salvo los que usa el modelo que contesta, que se quedan.
+4. En la ficha o en «Modelos de IA», escribe el precio de entrada y de salida de cada modelo (dólares por millón de tokens), corrige su nombre o su contexto, o lo apaga.
+Entra: el proveedor con una clave activa; la elección de modelos; los precios.
+Sale: los modelos del proveedor, exactamente los elegidos más los que están en uso (`assistant.model.selected`, con cuántos se crearon, se quedaron, se quitaron y se protegieron).
+Si falla: sin clave activa que se pueda leer, «Este proveedor no tiene ninguna clave activa: añade una en su ficha y vuelve a intentarlo.» y no se pregunta nada al proveedor; si el proveedor rechaza la clave o no contesta, «El proveedor no ha dado sus modelos:» con su motivo; si no tiene modelos de conversación, «El proveedor no tiene modelos de conversación en su lista.»; sin permiso para ver proveedores y para añadir y quitar modelos, el admin no deja entrar; un modelo en uso por el modelo que contesta no se puede borrar.
+Implicados: ASSISTANT-F03, ASSISTANT-F05
+
 ## Para quien lo mantiene
 
 - Anatomía, datos y operaciones: `assistant/README.md`.
@@ -122,6 +146,9 @@ Implicados: ASSISTANT-F04, ASSISTANT-F06, ASSISTANT-F07
   `assistant.crypto.undecryptable`, sin el token.
 - Escrituras por `assistant.credential.save|delete` (`services.py`), con el permiso del modelo de Django que las
   respalda (`add|change|delete_aiprovidercredential`); el admin las llama como el miembro del personal que pulsa.
+- «Elegir modelos del proveedor» es una vista asíncrona del admin (`AIProviderAdmin.models_view`): la llamada al
+  proveedor no ocupa el hilo que usan las demás peticiones; lee la conexión con `assistant.provider.connection`
+  (`view_aiprovider`) y guarda con `assistant.model.select` (`add_aimodel` y `delete_aimodel`).
 - Clientes (`assistant/providers/`): `httpx` contra cada API (sin SDK ni LiteLLM), sin caché, uno por llamada;
   todos terminan con un solo `finish` y un fallo es un `error` con `retriable`, nunca una excepción. Se prueban contra
   `assistant/tests/fake_provider.py` (servidor HTTP en `127.0.0.1` que habla el formato de cada proveedor).

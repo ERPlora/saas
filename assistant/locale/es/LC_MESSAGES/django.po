@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: saas-next\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 02:48+0200\n"
+"POT-Creation-Date: 2026-10-23 03:02+0200\n"
 "PO-Revision-Date: 2026-10-23 03:00+0200\n"
 "Last-Translator: ERPlora\n"
 "Language-Team: Spanish\n"
@@ -48,6 +48,20 @@ msgstr "Conexión"
 
 msgid "Notes"
 msgstr "Notas"
+
+#, python-format
+msgid "The provider did not give its models: %(reason)s"
+msgstr "El proveedor no ha dado sus modelos: %(reason)s"
+
+msgid "The provider listed no chat models."
+msgstr "El proveedor no tiene modelos de conversación en su lista."
+
+msgid "Choose models from the provider"
+msgstr "Elegir modelos del proveedor"
+
+#, python-format
+msgid "%(provider)s: %(created)d new, %(kept)d kept, %(deleted)d removed, %(protected)d in use by the policy."
+msgstr "%(provider)s: %(created)d nuevos, %(kept)d se quedan, %(deleted)d quitados, %(protected)d en uso por el modelo que contesta."
 
 msgid "AI assistant"
 msgstr "Asistente de IA"
@@ -121,14 +135,93 @@ msgstr "clave de proveedor"
 msgid "provider keys"
 msgstr "claves de proveedor"
 
+msgid "model"
+msgstr "modelo"
+
+#| msgid "Type the provider's key."
+msgid "The name the provider's API gives it."
+msgstr "Escribe la clave del proveedor."
+
+msgid "context"
+msgstr "contexto"
+
+msgid "Tokens of input it accepts (0: unknown)."
+msgstr "Tokens de entrada que admite (0: no se sabe)."
+
+msgid "input price"
+msgstr "precio de entrada"
+
+msgid "USD per million input tokens."
+msgstr "USD por millón de tokens de entrada."
+
+msgid "output price"
+msgstr "precio de salida"
+
+msgid "USD per million output tokens."
+msgstr "USD por millón de tokens de salida."
+
+msgid "tools"
+msgstr "herramientas"
+
+msgid "images"
+msgstr "imágenes"
+
+msgid "available"
+msgstr "disponible"
+
+msgid "Off: it can neither be tried nor answer."
+msgstr "Apagado: ni se puede probar ni contesta."
+
+msgid "AI model"
+msgstr "modelo de IA"
+
+msgid "AI models"
+msgstr "modelos de IA"
+
+msgid "model that answers"
+msgstr "modelo que contesta"
+
+msgid "fallback model"
+msgstr "modelo de reserva"
+
+msgid "Answers when the provider of the first one fails or cannot be used."
+msgstr "Contesta cuando el proveedor del primero falla o no se puede usar."
+
 msgid "Only ERPlora's staff with this permission configure the AI."
 msgstr "Solo el personal de ERPlora con este permiso configura la IA."
 
 msgid "This provider does not exist."
 msgstr "Este proveedor no existe."
 
+msgid "This provider has no active key: add one on its page and try again."
+msgstr "Este proveedor no tiene ninguna clave activa: añade una en su ficha y vuelve a intentarlo."
+
 msgid "This provider already has a key with that label."
 msgstr "Este proveedor ya tiene una clave con esa etiqueta."
 
 msgid "This key does not exist."
 msgstr "Esta clave no existe."
+
+msgid "Home"
+msgstr "Inicio"
+
+msgid "Back to the provider"
+msgstr "Volver al proveedor"
+
+msgid "Tick the models this provider keeps. The ones not ticked are removed, except the ones the model that answers uses."
+msgstr "Marca los modelos que se quedan en este proveedor. Los no marcados se quitan, salvo los que usa el modelo que contesta."
+
+msgid "Keep"
+msgstr "Se queda"
+
+msgid "Model"
+msgstr "Modelo"
+
+msgid "Name"
+msgstr "Nombre"
+
+msgid "Context"
+msgstr "Contexto"
+
+msgid "Save the choice"
+msgstr "Guardar la elección"

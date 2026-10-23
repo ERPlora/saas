@@ -1,0 +1,8 @@
+{% extends "admin/change_form.html" %}
+{% load i18n %}
+{% block object-tools-items %}
+  {% if original %}
+    <li><a href="{% url 'admin:assistant_aiprovider_models' original.pk %}">{% translate "Choose models from the provider" %}</a></li>
+  {% endif %}
+  {{ block.super }}
+{% endblock %}

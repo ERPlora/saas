@@ -49,3 +49,40 @@ class CredentialDeleteIn(Schema):
 
 class CredentialDeleteOut(Schema):
     deleted: bool
+
+
+class ProviderRef(Schema):
+    id: UUID
+
+
+class ConnectionOut(Schema):
+    """What a client needs to call a provider: its API, its address and its usable key (a secret)."""
+
+    id: UUID
+    name: str
+    kind: str
+    base_url: str
+    api_key: SecretStr
+    existing: list[str]
+
+
+class ListedModel(Schema):
+    """A chat model as the provider's API listed it."""
+
+    model_id: str = Field(min_length=1, max_length=128)
+    display_name: str = Field(default="", max_length=128)
+    context_window: int = Field(default=0, ge=0)
+
+
+class ModelSelectIn(Schema):
+    provider: UUID
+    listed: list[ListedModel]
+    #: The ``model_id``s ticked among ``listed``.
+    selected: list[str]
+
+
+class ModelSelectOut(Schema):
+    created: int
+    kept: int
+    deleted: int
+    protected: int

@@ -4,12 +4,16 @@ model answers. Keys are UUIDv7.
 - ``AIProvider`` (ASSISTANT-G25): one of the four APIs the gateway speaks (``kind``) at its address.
 - ``AIProviderCredential`` (G26): a key of a provider, encrypted (``assistant.fields``), with its last four
   characters as hint. Only ``assistant.services`` writes it.
+- ``AIModel`` (G24): a model of a provider the staff chose, with its prices (USD per million tokens, typed by hand:
+  the APIs do not give them) and what it supports.
+- ``AIRoutingPolicy`` (G27): one row, the model that answers and the fallback one; a model it uses is never deleted.
 
 Nothing here holds a conversation: the turn passes through and is forgotten (part 2, ADR-0149 of the old product).
 """
 
 import ipaddress
 import uuid
+from decimal import Decimal
 from urllib.parse import urlsplit
 
 from django.conf import settings
@@ -156,3 +160,95 @@ class AIProviderCredential(models.Model):
     def is_readable(self) -> bool:
         """Whether the key opens with a live key of the platform (an unreadable one reads as empty)."""
         return bool(self.api_key)
+
+
+class AIModel(models.Model):
+    """A model of a provider that the staff keep: it can be tried and chosen to answer."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
+    provider = models.ForeignKey(AIProvider, on_delete=models.CASCADE, related_name="models", verbose_name=_("provider"))
+    model_id = models.CharField(_("model"), max_length=128, help_text=_("The name the provider's API gives it."))
+    display_name = models.CharField(_("name"), max_length=128)
+    context_window = models.PositiveIntegerField(
+        _("context"), default=0, help_text=_("Tokens of input it accepts (0: unknown).")
+    )
+    price_input_per_1m = models.DecimalField(
+        _("input price"), max_digits=10, decimal_places=4, default=Decimal("0"), help_text=_("USD per million input tokens.")
+    )
+    price_output_per_1m = models.DecimalField(
+        _("output price"), max_digits=10, decimal_places=4, default=Decimal("0"), help_text=_("USD per million output tokens.")
+    )
+    supports_tools = models.BooleanField(_("tools"), default=True)
+    supports_vision = models.BooleanField(_("images"), default=False)
+    is_available = models.BooleanField(
+        _("available"), default=True, help_text=_("Off: it can neither be tried nor answer.")
+    )
+    notes = models.TextField(_("notes"), blank=True, default="")
+    created_at = models.DateTimeField(_("created"), auto_now_add=True)
+    updated_at = models.DateTimeField(_("updated"), auto_now=True)
+
+    class Meta:
+        verbose_name = _("AI model")
+        verbose_name_plural = _("AI models")
+        ordering = ["provider__name", "display_name"]
+        constraints = [
+            models.UniqueConstraint(fields=["provider", "model_id"], name="assistant_model_unique_per_provider"),
+        ]
+
+    def __str__(self):
+        return f"{self.display_name} ({self.provider.slug})"
+
+    def estimate_cost(self, tokens_in: int, tokens_out: int) -> Decimal:
+        """USD of a turn with these tokens, exact (money is never a float)."""
+        return (self.price_input_per_1m * tokens_in + self.price_output_per_1m * tokens_out) / Decimal(1_000_000)
+
+
+class AIRoutingPolicy(models.Model):
+    """Which model answers and which one if its provider fails. One row (``slot``); ``solo`` gives it."""
+
+    SLOT = "default"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
+    slot = models.CharField(max_length=16, default=SLOT, unique=True, editable=False)
+    active_model = models.ForeignKey(
+        AIModel,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name=_("model that answers"),
+    )
+    fallback_model = models.ForeignKey(
+        AIModel,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name=_("fallback model"),
+        help_text=_("Answers when the provider of the first one fails or cannot be used."),
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name=_("changed by"),
+        editable=False,
+    )
+    updated_at = models.DateTimeField(_("updated"), auto_now=True)
+
+    class Meta:
+        verbose_name = _("model that answers")
+        verbose_name_plural = _("model that answers")
+
+    def __str__(self):
+        if self.active_model_id is None:
+            return "—"
+        if self.fallback_model_id is None:
+            return str(self.active_model)
+        return f"{self.active_model} → {self.fallback_model}"
+
+    @classmethod
+    def solo(cls) -> "AIRoutingPolicy":
+        return cls.objects.get_or_create(slot=cls.SLOT)[0]

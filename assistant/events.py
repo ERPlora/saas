@@ -9,8 +9,11 @@ names its events.
 CREDENTIAL_SAVED = "assistant.credential.saved"
 #: A provider's key was deleted: ``{"provider", "credential"}``.
 CREDENTIAL_DELETED = "assistant.credential.deleted"
+#: A provider's models were chosen: ``{"provider", "created", "kept", "deleted", "protected"}``.
+MODEL_SELECTED = "assistant.model.selected"
 
 ALL = [
     CREDENTIAL_SAVED,
     CREDENTIAL_DELETED,
+    MODEL_SELECTED,
 ]

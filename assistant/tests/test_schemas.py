@@ -26,3 +26,12 @@ def test_a_key_of_spaces_is_no_key():
 def test_the_label_is_trimmed_and_defaults_to_default():
     assert CredentialIn(provider=PROVIDER).label == "default"
     assert CredentialIn(provider=PROVIDER, label="  main ").label == "main"
+
+
+def test_the_key_of_a_connection_is_a_secret():
+    from assistant.schemas import ConnectionOut
+
+    out = ConnectionOut(id=PROVIDER, name="OpenAI", kind="openai", base_url="https://api.openai.com/v1", api_key=API_KEY, existing=[])
+
+    assert API_KEY not in repr(out) and API_KEY not in out.model_dump_json()
+    assert out.api_key.get_secret_value() == API_KEY

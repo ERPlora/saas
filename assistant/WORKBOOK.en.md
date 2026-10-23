@@ -47,7 +47,15 @@ Who uses it:
 ### Admin: AI providers
 List of the providers with their API, whether enabled and the state of their key: «…» and the last four characters,
 «No key» or «Unreadable: type the key again». Each provider's page has its keys inside: label, the «Key» field (typed
-once, never shown; empty keeps the one there was), whether active, when it changed and by whom.
+once, never shown; empty keeps the one there was), whether active, when it changed and by whom; and its models, with their input and output price, their context and whether they are available. On top,
+«Choose models from the provider».
+
+### Admin: Choose models from the provider
+The list of conversation models the provider's API gives, with a «Keep» checkbox (ticked on those it already has),
+their name and context, and the «Save the choice» and «Back to the provider» buttons.
+
+### Admin: AI models
+Every model of every provider, with its price, its context and whether it is available, to correct them.
 
 ## States of each screen
 
@@ -55,7 +63,7 @@ once, never shown; empty keeps the one there was), whether active, when it chang
 |---|---|
 | Loading | The normal loading of an admin page. |
 | Empty | «0 AI providers» and the empty list; a provider without a key says «No key». |
-| Error | The error in red next to the field: «Use an https address: the provider's key travels to it.», «Type the provider's key.», «The key of the credentials is not configured: no provider key can be kept.». |
+| Error | In «Choose models from the provider», the reason in red: «This provider has no active key: add one on its page and try again.», «The provider did not give its models: …» or «The provider listed no chat models.»; on the pages, the error in red next to the field: «Use an https address: the provider's key travels to it.», «Type the provider's key.», «The key of the credentials is not configured: no provider key can be kept.». |
 | No permission | Without the gateway's permissions, the admin answers there is no permission; whoever may only look sees the pages without the «Key» field. |
 
 ## Flows
@@ -65,6 +73,7 @@ once, never shown; empty keeps the one there was), whether active, when it chang
 | ASSISTANT-F01 | Add an AI provider | hecho |
 | ASSISTANT-F02 | Keep a provider's key without it being seen | hecho |
 | ASSISTANT-F03 | Talk to each provider in its own API | hecho |
+| ASSISTANT-F04 | Choose a provider's models | hecho |
 
 ### ASSISTANT-F01 Add an AI provider
 <!-- origen: fi:saas/support/auth-services#modelo-aiprovider, fi:saas/django-admin#admin-aiprovider, old-saas:SAAS_ASSISTANT-F22 -->
@@ -110,6 +119,21 @@ Sale: the text, the tools asked for, the consumption and the end of the turn, th
 Si falla: if the provider refuses the key or the request, the turn ends with its reason and is marked as a failure repeating does not fix; if it does not answer, takes too long, is overloaded or limits the pace, it ends with a failure another attempt can fix (to move to the fallback model); the reason never carries the key. A provider without a key or with an unknown API is not called.
 Implicados: ASSISTANT-F04, ASSISTANT-F06, ASSISTANT-F07
 
+### ASSISTANT-F04 Choose a provider's models
+<!-- origen: fi:saas/support/auth-services#modelo-aimodel, fi:saas/django-admin#admin-aimodel -->
+Estado: hecho
+Actor: ERPlora's staff
+Pantalla: Admin: AI providers, Admin: Choose models from the provider, Admin: AI models
+Pasos:
+1. On the provider's page, click «Choose models from the provider»: erplora.com asks the provider's API, with its key, which conversation models it has.
+2. Tick the ones that stay (those it has come ticked) and click «Save the choice».
+3. Back on the page with the summary, for example «Local: 1 new, 0 kept, 1 removed, 0 in use by the policy.»: the ticked ones are available and the rest are removed, except those the answering model uses, which stay.
+4. On the page or in «AI models», type each model's input and output price (dollars per million tokens), correct its name or context, or turn it off.
+Entra: the provider with an active key; the choice of models; the prices.
+Sale: the provider's models, exactly the chosen ones plus those in use (`assistant.model.selected`, with how many were created, kept, removed and protected).
+Si falla: without an active readable key, «This provider has no active key: add one on its page and try again.» and nothing is asked of the provider; if the provider refuses the key or does not answer, «The provider did not give its models:» with its reason; if it has no conversation models, «The provider listed no chat models.»; without permission to see providers and to add and remove models, the admin does not let in; a model in use by the answering model cannot be deleted.
+Implicados: ASSISTANT-F03, ASSISTANT-F05
+
 ## For whoever maintains it
 
 - Anatomy, data and operations: `assistant/README.md`.
@@ -118,6 +142,10 @@ Implicados: ASSISTANT-F04, ASSISTANT-F06, ASSISTANT-F07
   `assistant.crypto.undecryptable`, without the token.
 - Writes through `assistant.credential.save|delete` (`services.py`), with the Django model permission that backs
   them (`add|change|delete_aiprovidercredential`); the admin calls them as the member of the staff who clicks.
+- «Choose models from the provider» is an asynchronous admin view (`AIProviderAdmin.models_view`): the call to the
+  provider does not hold the thread the other requests use; it reads the connection with
+  `assistant.provider.connection` (`view_aiprovider`) and saves with `assistant.model.select` (`add_aimodel` and
+  `delete_aimodel`).
 - Clients (`assistant/providers/`): `httpx` against each API (no SDK nor LiteLLM), no cache, one per call; all end
   with a single `finish` and a failure is an `error` with `retriable`, never an exception. Tested against
   `assistant/tests/fake_provider.py` (an HTTP server on `127.0.0.1` speaking each provider's format).

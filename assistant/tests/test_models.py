@@ -78,3 +78,64 @@ def test_two_keys_of_a_provider_cannot_share_a_label(provider):
 
     with pytest.raises(ValidationError):
         AIProviderCredential(provider=provider, label="default", api_key=API_KEY, key_hint="wxyz").validate_constraints()
+
+
+# --- AIModel (G24) --------------------------------------------------------------------------------------
+
+
+def test_a_model_is_named_with_its_provider(provider):
+    from assistant.models import AIModel
+
+    model = AIModel.objects.create(provider=provider, model_id="gpt-5.5", display_name="GPT-5.5")
+
+    assert str(model) == "GPT-5.5 (openai)"
+    assert (model.is_available, model.supports_tools, model.supports_vision, model.context_window) == (True, True, False, 0)
+
+
+def test_the_cost_of_a_turn_is_exact_money(provider):
+    from decimal import Decimal
+
+    from assistant.models import AIModel
+
+    model = AIModel(provider=provider, model_id="m", price_input_per_1m=Decimal("5.0000"), price_output_per_1m=Decimal("30.0000"))
+
+    assert model.estimate_cost(1_200, 300) == Decimal("0.015")
+    assert isinstance(model.estimate_cost(1, 1), Decimal)
+
+
+def test_a_provider_cannot_list_one_model_twice(provider):
+    from assistant.models import AIModel
+
+    AIModel.objects.create(provider=provider, model_id="gpt-5.5", display_name="GPT-5.5")
+
+    with pytest.raises(ValidationError):
+        AIModel(provider=provider, model_id="gpt-5.5", display_name="again").validate_constraints()
+
+
+# --- AIRoutingPolicy (G27) ------------------------------------------------------------------------------
+
+
+def test_there_is_one_policy_and_a_model_it_uses_cannot_be_deleted(provider):
+    from django.db.models import ProtectedError
+
+    from assistant.models import AIModel, AIRoutingPolicy
+
+    model = AIModel.objects.create(provider=provider, model_id="gpt-5.5", display_name="GPT-5.5")
+    policy = AIRoutingPolicy.solo()
+    policy.active_model = model
+    policy.save()
+
+    assert AIRoutingPolicy.solo().pk == policy.pk
+    assert AIRoutingPolicy.objects.count() == 1
+    with pytest.raises(ProtectedError):
+        model.delete()
+
+
+def test_a_policy_says_which_models_answer(provider):
+    from assistant.models import AIModel, AIRoutingPolicy
+
+    active = AIModel.objects.create(provider=provider, model_id="a", display_name="Active")
+    fallback = AIModel.objects.create(provider=provider, model_id="b", display_name="Fallback")
+
+    assert str(AIRoutingPolicy(active_model=active, fallback_model=fallback)) == "Active (openai) → Fallback (openai)"
+    assert str(AIRoutingPolicy()) == "—"

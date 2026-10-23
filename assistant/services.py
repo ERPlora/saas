@@ -8,39 +8,33 @@ on the page. The commands call them as the platform (``platform_context``).
 - ``assistant.credential.save`` / ``.delete`` (ASSISTANT-G26, G16): a provider's key, kept encrypted with its hint;
   typing another one is a rotation. A change that types no key never writes the stored token again (an unreadable
   one stays as it was, waiting for its key to come back or to be typed again).
+- ``assistant.model.select`` (G24, G14): the provider keeps exactly the models ticked among those its API listed,
+  except the ones the policy uses.
 """
 
 from django.utils import timezone, translation
 from django.utils.translation import gettext as _
 from live.context import OperationContext, Scope, system_context
-from live.errors import Conflict, NotFound, OperationError, PermissionDenied
+from live.errors import Conflict, NotFound, OperationError
 from live.operations import operation
 from live.outbox import record_event
 
 from assistant import crypto, events
-from assistant.models import AIProvider, AIProviderCredential
-from assistant.schemas import CredentialDeleteIn, CredentialDeleteOut, CredentialIn, CredentialOut
+from assistant.models import AIModel, AIProvider, AIProviderCredential, AIRoutingPolicy
+from assistant.queries import staff_with
+from assistant.schemas import (
+    CredentialDeleteIn,
+    CredentialDeleteOut,
+    CredentialIn,
+    CredentialOut,
+    ModelSelectIn,
+    ModelSelectOut,
+)
 
 
 def platform_context() -> OperationContext:
     """The platform acting on the gateway (its commands, the Hub's doors)."""
     return system_context(Scope("platform", "assistant"))
-
-
-def staff_with(ctx: OperationContext, permission: str):
-    """The active member of the staff running ``ctx`` who holds ``permission``; anybody else, 403."""
-    user = ctx.actor
-    if not (
-        getattr(user, "is_authenticated", False)
-        and user.is_active
-        and user.is_staff
-        and user.has_perm(permission)
-    ):
-        with translation.override(ctx.language):
-            raise PermissionDenied(
-                _("Only ERPlora's staff with this permission configure the AI."), code="assistant.staff_only"
-            )
-    return user
 
 
 def _encryption_missing(ctx: OperationContext) -> OperationError:
@@ -153,3 +147,59 @@ def credential_delete(ctx: OperationContext, data: CredentialDeleteIn) -> dict:
     credential.delete()
     record_event(ctx, events.CREDENTIAL_DELETED, {"provider": str(provider_id), "credential": str(data.id)})
     return {"deleted": True}
+
+
+def policy_model_ids() -> set:
+    """The models the policy uses: never deleted by a choice."""
+    policy = AIRoutingPolicy.objects.filter(slot=AIRoutingPolicy.SLOT).first()
+    if policy is None:
+        return set()
+    return {pk for pk in (policy.active_model_id, policy.fallback_model_id) if pk}
+
+
+@operation(
+    "assistant.model.select",
+    kind="command",
+    permission="assistant.manage",
+    input=ModelSelectIn,
+    output=ModelSelectOut,
+)
+def model_select(ctx: OperationContext, data: ModelSelectIn) -> dict:
+    """Keep exactly the ticked models of a provider (``add_aimodel`` and ``delete_aimodel``): the ticked ones among
+    those its API listed are created available (or made available again, their name kept); every other model of the
+    provider is deleted, except the ones the policy uses. 404 ``assistant.provider_unknown``."""
+    staff_with(ctx, "assistant.add_aimodel", "assistant.delete_aimodel")
+    with translation.override(ctx.language):
+        provider = AIProvider.objects.filter(pk=data.provider).first()
+        if provider is None:
+            raise NotFound(_("This provider does not exist."), code="assistant.provider_unknown")
+    listed = {item.model_id: item for item in data.listed}
+    ticked = [model_id for model_id in dict.fromkeys(data.selected) if model_id in listed]
+    counts = {"created": 0, "kept": 0, "deleted": 0, "protected": 0}
+    for model_id in ticked:
+        item = listed[model_id]
+        model = AIModel.objects.filter(provider=provider, model_id=model_id).first()
+        if model is None:
+            AIModel.objects.create(
+                provider=provider,
+                model_id=model_id,
+                display_name=item.display_name or model_id,
+                context_window=item.context_window,
+                is_available=True,
+            )
+            counts["created"] += 1
+            continue
+        model.is_available = True
+        if not model.context_window and item.context_window:
+            model.context_window = item.context_window
+        model.save(update_fields=["is_available", "context_window", "updated_at"])
+        counts["kept"] += 1
+    in_use = policy_model_ids()
+    for model in AIModel.objects.filter(provider=provider).exclude(model_id__in=ticked):
+        if model.pk in in_use:
+            counts["protected"] += 1
+            continue
+        model.delete()
+        counts["deleted"] += 1
+    record_event(ctx, events.MODEL_SELECTED, {"provider": str(provider.pk), **counts})
+    return counts
