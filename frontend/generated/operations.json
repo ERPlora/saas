@@ -55,6 +55,7 @@
   "billing.plan.change": { "method": "post", "path": "/api/billing/plan/change" },
   "billing.plan.cancel": { "method": "post", "path": "/api/billing/plan/cancel" },
   "billing.plan.keep": { "method": "post", "path": "/api/billing/plan/keep" },
+  "billing.plan.take_over": { "method": "post", "path": "/api/billing/plan/take-over" },
   "billing.module.cancel": { "method": "post", "path": "/api/billing/module/cancel" },
   "billing.module.keep": { "method": "post", "path": "/api/billing/module/keep" },
   "billing.invoice.list": { "method": "get", "path": "/api/billing/invoices" },

@@ -59,6 +59,10 @@ describe('TransferDialog', () => {
     expect(q('transfer-dialog').getAttribute('aria-label')).toBe('Transfer Panadería López');
     expect(q('transfer-dialog').textContent).toContain('We offer the ownership to Carlos Ruiz.');
     expect(q('transfer-dialog').textContent).toContain('They have 7 days to accept it; until then nothing changes.');
+    // HUBS-F28: a paid plan goes with the business until its paid period ends; the card does not.
+    expect(q('transfer-dialog').textContent).toContain(
+      'A paid plan stays until the end of the period already paid; then the new owner pays it with their card, and the current one is not charged again.',
+    );
     expect(q('transfer-dialog-submit').disabled).toBe(true);
     q('transfer-dialog-input').dispatchEvent(new CustomEvent('ionInput', { detail: { value: 'Panadería López' } }));
     await flush();

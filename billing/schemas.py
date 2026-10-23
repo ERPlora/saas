@@ -520,6 +520,8 @@ class SubscriptionCanOut(Schema):
     change_plan: bool
     cancel_plan: bool
     keep_plan: bool
+    #: «Keep it with my card»: the business was handed over and its plan is still on the previous payer's card.
+    take_over: bool
     view_invoice: bool
     view_invoices: bool
 
@@ -540,7 +542,9 @@ class SubscriptionRowOut(Schema):
     unpaid_invoice_id: UUID | None
     #: A downgrade waiting for the end of the period («Starter from 1 Nov»).
     scheduled_change: ScheduledChangeOut | None = None
-    actions: list[Literal["change_plan", "keep_plan", "view_invoice", "cancel_plan", "view_invoices"]]
+    #: The plan is charged to the card of another account (the payer before a hand-over, HUBS-F28).
+    paid_by_another_account: bool
+    actions: list[Literal["take_over", "change_plan", "keep_plan", "view_invoice", "cancel_plan", "view_invoices"]]
     can: SubscriptionCanOut
 
 

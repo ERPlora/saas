@@ -534,6 +534,8 @@ class CheckoutAttempt(UUIDModel):
     class Kind(models.TextChoices):
         PLAN = "plan", _("Plan")
         MODULE = "module", _("Module")
+        #: The new owner of a handed-over business keeps its plan with their own card (HUBS-F28).
+        TAKEOVER = "takeover", _("Plan kept by the new owner")
 
     class Status(models.TextChoices):
         OPEN = "open", _("Open")

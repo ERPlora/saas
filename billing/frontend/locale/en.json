@@ -143,7 +143,9 @@
     "checkout": {
       "titlePlan": "Upgrade to {plan}",
       "titleModule": "Add {module}",
+      "titleTakeOver": "Keep {plan} with your card",
       "forBusiness": "For {business} · renews {period}",
+      "forTakeOver": "For {business} · nothing is charged today: your card pays it from {date}",
       "period": {
         "month": "every month",
         "year": "every year"
@@ -160,7 +162,8 @@
       "retry": "Retry",
       "stale": "This business already pays: the price changed, check it again.",
       "plan": "{business} is now on {plan}",
-      "module": "{module} added to {business}: it turns on in a few seconds"
+      "module": "{module} added to {business}: it turns on in a few seconds",
+      "takenOver": "{business} keeps {plan}: your card pays it from {date}"
     },
     "details": {
       "intro": "Who do we invoice? We ask it once, before the first payment.",
@@ -332,7 +335,9 @@
       "freeFrom": "Free from {date}",
       "scheduled": "Changes to {plan} on {date}",
       "statusUntil": "Until {date}",
+      "paidByAnother": "Paid with another account’s card",
       "actions": {
+        "take_over": "Keep it with my card",
         "view_invoice": "View the invoice",
         "keep_plan": "Keep the plan",
         "change_plan": "Change plan",

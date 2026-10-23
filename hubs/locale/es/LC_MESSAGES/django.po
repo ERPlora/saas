@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: saas-next\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-22 23:58+0200\n"
+"POT-Creation-Date: 2026-10-23 04:51+0200\n"
 "PO-Revision-Date: 2026-10-13 22:14+0200\n"
 "Last-Translator: ERPlora\n"
 "Language-Team: Spanish\n"
@@ -99,8 +99,8 @@ msgid ""
 "%(count)d business(es) still owed: the Hub is away or refused it (see its "
 "last refusal); reconcile_hub_states retries it."
 msgstr ""
-"%(count)d negocio(s) siguen pendientes: el Hub no responde o lo rechazó "
-"(mira su último rechazo); reconcile_hub_states lo reintenta."
+"%(count)d negocio(s) siguen pendientes: el Hub no responde o lo rechazó (mira"
+" su último rechazo); reconcile_hub_states lo reintenta."
 
 #: admin.py:316
 msgid "End the sessions in the Hub now"
@@ -992,8 +992,8 @@ msgstr "Tu rol en este negocio no lo permite."
 
 #: queries.py:1281
 msgid ""
-"No usage of this business has been measured yet: the first figures arrive "
-"the night after it is created."
+"No usage of this business has been measured yet: the first figures arrive the"
+" night after it is created."
 msgstr ""
 "Aún no se ha medido el uso de este negocio: las primeras cifras llegan la "
 "noche después de crearlo."
@@ -1039,8 +1039,8 @@ msgstr "Ya tienes un negocio gratuito. Cambia su plan para crear otro."
 
 #: services.py:252
 msgid ""
-"Use only lowercase letters, digits and hyphens, without a hyphen at the "
-"start or the end."
+"Use only lowercase letters, digits and hyphens, without a hyphen at the start"
+" or the end."
 msgstr ""
 "Usa solo minúsculas, dígitos y guiones, sin guion al principio ni al final."
 
@@ -1062,8 +1062,8 @@ msgstr "La dirección no puede empezar por «xn--»."
 msgid "This address is reserved. Choose another one."
 msgstr "Esta dirección está reservada. Elige otra."
 
-#: services.py:271 services.py:408 services.py:1138 services.py:1145
-#: services.py:1227
+#: services.py:271 services.py:408 services.py:1142 services.py:1149
+#: services.py:1231
 msgid "Invalid payload"
 msgstr "Los datos enviados no son válidos."
 
@@ -1076,8 +1076,8 @@ msgid ""
 "The country cannot change once the business is ready: its invoices belong to "
 "one country."
 msgstr ""
-"El país no se puede cambiar cuando el negocio ya está listo: sus facturas "
-"son de un solo país."
+"El país no se puede cambiar cuando el negocio ya está listo: sus facturas son"
+" de un solo país."
 
 #: services.py:409
 msgid "Type the name of the business to delete it."
@@ -1166,11 +1166,11 @@ msgstr ""
 #: services.py:848
 #, python-format
 msgid ""
-"This business's plan is still paid with %(name)s's card: contact support to "
-"move it to you first."
+"This business's plan is still paid with %(name)s's card: keep it with yours "
+"in Billing first."
 msgstr ""
 "El plan de este negocio aún se paga con la tarjeta de %(name)s: antes "
-"contacta con soporte para pasarlo a tu nombre."
+"mantenlo con la tuya en Facturación."
 
 #: services.py:870
 msgid "This person already answered the invitation."
@@ -1195,8 +1195,8 @@ msgid ""
 "Invite this person to the business first: it can only go to somebody already "
 "on it."
 msgstr ""
-"Invita antes a esta persona al negocio: solo se puede traspasar a alguien "
-"que ya esté en él."
+"Invita antes a esta persona al negocio: solo se puede traspasar a alguien que"
+" ya esté en él."
 
 #: services.py:1000
 msgid "You already own this business."
@@ -1229,23 +1229,23 @@ msgstr ""
 "Este negocio ya cambió de manos: pide a su propietario actual que lo "
 "traspase."
 
-#: services.py:1145
+#: services.py:1149
 msgid "Enter a valid tax ID for the country of the payer."
 msgstr "Escribe un NIF válido para el país del pagador."
 
-#: services.py:1212
+#: services.py:1216
 msgid "Only the platform applies what Stripe says."
 msgstr "Solo la plataforma aplica lo que dice Stripe."
 
-#: services.py:1227
+#: services.py:1231
 msgid "There is no plan with this identifier."
 msgstr "No hay ningún plan con este identificador."
 
-#: services.py:1903
+#: services.py:1912
 msgid "Only the platform records the usage of a business."
 msgstr "Solo la plataforma registra el uso de un negocio."
 
-#: services.py:2033
+#: services.py:2042
 msgid "Only the platform ages a suspension."
 msgstr "Solo la plataforma hace avanzar una suspensión."
 

@@ -348,7 +348,7 @@ test('HUBS-G82: the owner offers the business to a member, who accepts it on Bus
   const dialog = page.getByTestId('transfer-dialog');
   await atEverySize(page, 'HUBS-G82', async () => {
     await expect(dialog).toContainText('Transfer Bar Manolo');
-    await expect(dialog).toContainText('The invoices keep going to the same payer until the new owner changes it.');
+    await expect(dialog).toContainText('A paid plan stays until the end of the period already paid; then the new owner pays it with their card, and the current one is not charged again.');
   });
   await expect(dialog.getByTestId('transfer-dialog-submit')).toHaveAttribute('aria-disabled', 'true');
   await page.getByTestId('transfer-dialog-input').locator('input').fill('Bar Manolo');

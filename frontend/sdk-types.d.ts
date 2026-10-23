@@ -966,6 +966,7 @@ declare module '@erplora/ui/sdk' {
     'billing.plan.change': { input: PlanChangeIn; output: SubscriptionOut };
     'billing.plan.cancel': { input: HubIn; output: SubscriptionOut };
     'billing.plan.keep': { input: HubIn; output: SubscriptionOut };
+    'billing.plan.take_over': { input: HubIn; output: CheckoutStartOut };
     'billing.module.cancel': { input: ModuleIn; output: SubscriptionOut };
     'billing.module.keep': { input: ModuleIn; output: SubscriptionOut };
   }
@@ -997,7 +998,7 @@ export interface ScheduledChangeOut {
 export type InvoiceAction = 'pay' | 'pdf';
 
 /** The actions of a subscription row (`billing.SubscriptionRowOut.actions`), the fixed one first. */
-export type SubscriptionAction = 'change_plan' | 'keep_plan' | 'view_invoice' | 'cancel_plan' | 'view_invoices';
+export type SubscriptionAction = 'take_over' | 'change_plan' | 'keep_plan' | 'view_invoice' | 'cancel_plan' | 'view_invoices';
 
 /** `billing.InvoiceFilterIn`: a business, the payment, a year and part of a number (all optional). */
 export interface InvoiceFilterIn {
@@ -1166,6 +1167,8 @@ export interface NextInvoiceOut {
 
 /** `billing.SubscriptionCanOut`. */
 export interface SubscriptionCanOut {
+  /** «Keep it with my card»: the business was handed over and its plan is still on the previous payer's card. */
+  take_over: boolean;
   change_plan: boolean;
   cancel_plan: boolean;
   keep_plan: boolean;
@@ -1188,6 +1191,8 @@ export interface SubscriptionRowOut {
   unpaid_invoice_id: string | null;
   /** A downgrade waiting for the end of the period. */
   scheduled_change: ScheduledChangeOut | null;
+  /** The plan is charged to the card of another account (the payer before a hand-over, HUBS-F28). */
+  paid_by_another_account: boolean;
   actions: SubscriptionAction[];
   can: SubscriptionCanOut;
 }

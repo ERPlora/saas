@@ -8,6 +8,8 @@
 // (the Store with that business) —, and «Cancel plan» (CancelPlanDialog) and «View invoices» in «⋮» («View
 // invoices» a button when there is no «⋮»). The list fills the page (`fill`, Ioan 2026-10-14). Changing,
 // keeping and cancelling are web only; inside the apps a sentence says where, without a link (README §4).
+// A business handed over with its plan still on the previous owner's card (HUBS-F28) says so and leads with
+// «Keep it with my card»: the secure payment of that plan (CheckoutModal), billed from the end of the paid period.
 // Module names come from `apps.app.list` (premium, in the person's language) and plan names and Free's
 // limits from `hubs.plan.list`.
 import {
@@ -32,6 +34,7 @@ import { formatDate } from '../format';
 import { formatAmount } from '../invoices';
 import { isFree } from '../store';
 import CancelPlanDialog from './CancelPlanDialog.vue';
+import CheckoutModal, { type CheckoutPurchase } from './CheckoutModal.vue';
 
 /** A row as the table keys and searches it: by its business. */
 type Row = SubscriptionRowOut & { id: string; name: string };
@@ -40,9 +43,9 @@ type Row = SubscriptionRowOut & { id: string; name: string };
  *  (audit 2 R-33: three rows were cards at 1024–1180). */
 const CARD_BREAKPOINT = 1000;
 /** What sells or cancels: web only (README §4). */
-const WEB_ONLY: ReadonlySet<SubscriptionAction> = new Set(['keep_plan', 'change_plan', 'cancel_plan']);
+const WEB_ONLY: ReadonlySet<SubscriptionAction> = new Set(['take_over', 'keep_plan', 'change_plan', 'cancel_plan']);
 /** What may lead a row: the server puts the one that applies first («View the invoice» with an unpaid one). */
-const LEADS: ReadonlySet<SubscriptionAction> = new Set(['view_invoice', 'keep_plan', 'change_plan']);
+const LEADS: ReadonlySet<SubscriptionAction> = new Set(['view_invoice', 'take_over', 'keep_plan', 'change_plan']);
 const TONES: Readonly<Record<string, StatusPillTone>> = {
   active: 'success',
   trialing: 'info',
@@ -188,6 +191,9 @@ const actions = computed<DataTableAction<Row>[]>(() => [
 const cancelling = shallowRef<Row | null>(null);
 const cancelOpen = shallowRef(false);
 const keeping = shallowRef<string | null>(null);
+/** «Keep it with my card»: the business and its plan, for the secure payment (HUBS-F28). */
+const keepingWithCard = shallowRef<{ business: { id: string; name: string }; purchase: CheckoutPurchase } | null>(null);
+const takeOverOpen = shallowRef(false);
 const unpaidOf = (row: Row | null) => (row?.unpaid_invoice_id ? (unpaidLive.data.value?.rows.find((invoice) => invoice.id === row.unpaid_invoice_id) ?? null) : null);
 
 function onAction({ actionId: picked, row }: DataTableActionEvent<Row>): void {
@@ -201,6 +207,13 @@ function onAction({ actionId: picked, row }: DataTableActionEvent<Row>): void {
     cancelling.value = row;
     cancelOpen.value = true;
   } else if (actionId === 'keep_plan') void keepPlan(row, id);
+  else if (actionId === 'take_over') {
+    keepingWithCard.value = {
+      business: { id, name: row.name },
+      purchase: { kind: 'takeover', slug: row.plan.slug, name: row.plan.name, interval: row.plan.interval, from: row.ends_at },
+    };
+    takeOverOpen.value = true;
+  }
 }
 
 async function keepPlan(row: Row, id: string): Promise<void> {
@@ -292,7 +305,12 @@ async function keepPlan(row: Row, id: string): Promise<void> {
         v-if="row.cancelling"
         class="cell-stack"
       >
-        {{ $t('billing.subscriptions.freeFrom', { date: day(row.ends_at) }) }}
+        <span>{{ $t('billing.subscriptions.freeFrom', { date: day(row.ends_at) }) }}</span>
+        <span
+          v-if="row.paid_by_another_account"
+          class="cell-sub"
+          data-testid="subscription-paid-by-another"
+        >{{ $t('billing.subscriptions.paidByAnother') }}</span>
       </div>
       <div
         v-else-if="row.next_invoice"
@@ -303,6 +321,11 @@ async function keepPlan(row: Row, id: string): Promise<void> {
           v-if="row.next_invoice.total_cents !== null"
           class="cell-sub"
         >{{ $t('billing.subscriptions.withVat') }}</span>
+        <span
+          v-if="row.paid_by_another_account"
+          class="cell-sub"
+          data-testid="subscription-paid-by-another"
+        >{{ $t('billing.subscriptions.paidByAnother') }}</span>
       </div>
       <span v-else>—</span>
     </template>
@@ -348,6 +371,13 @@ async function keepPlan(row: Row, id: string): Promise<void> {
       :module-names="moduleNames"
       :free-plan="freePlan"
       :unpaid="unpaidOf(cancelling)"
+    />
+    <CheckoutModal
+      v-if="keepingWithCard"
+      v-model:open="takeOverOpen"
+      :business="keepingWithCard.business"
+      :purchase="keepingWithCard.purchase"
+      promo-code=""
     />
   </WebOnly>
 </template>

@@ -845,7 +845,7 @@ def _refuse_a_payer(target: HubMember) -> None:
         ) % {"name": name}
     else:
         message = _(
-            "This business's plan is still paid with %(name)s's card: contact support to move it to you first."
+            "This business's plan is still paid with %(name)s's card: keep it with yours in Billing first."
         ) % {"name": name}
     raise Conflict(message, code="hubs.member_pays")
 
@@ -1072,6 +1072,10 @@ def ownership_accept(ctx: OperationContext, data: ByIdIn) -> dict:
     transfer.status = Transfer.ACCEPTED
     transfer.resolved_at = now
     transfer.save(update_fields=["status", "resolved_at"])
+    # A paid plan stops renewing on the previous payer's card; the new owner keeps it with theirs (HUBS-F28).
+    from billing.services import end_renewal_after_hand_over
+
+    end_renewal_after_hand_over(transfer.hub, transfer.to_user)
     sync_access(transfer.hub)
     bump_state(transfer.hub_id)
     # Both roles changed, and each travels in its Hub session: both sign in again.
@@ -1231,7 +1235,12 @@ def subscription_apply(ctx: OperationContext, data: SubscriptionApplyIn) -> dict
     changes = {}
     if plan is not None and subscription.plan_id != plan.pk:
         changes["plan"] = plan
+    # A customer sent alone is the payer's (``billing.ensure_customer``): a live subscription keeps the one Stripe
+    # charges until Stripe says otherwise (the previous payer's card after a hand-over, HUBS-F28).
+    payers_only = "stripe_subscription_id" not in sent and bool(subscription.stripe_subscription_id)
     for field in APPLIED_FIELDS:
+        if field == "stripe_customer_id" and payers_only:
+            continue
         if field in sent:
             value = sent[field]
             if value is None and field in CLEARED_TO_EMPTY:
