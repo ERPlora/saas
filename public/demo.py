@@ -9,7 +9,9 @@ Plan ``docs/plans/2026-10-17-demo-hubs-fase-1.md`` §1.6 and §1.8. A demo is an
 * ``start`` (POST, CSRF): asks the Hub for a demo of this browser (``hubs.hub_client.create_demo``) and jumps
   to its ``/auth/login`` (``accounts.queries.hub_start_url``), the same jump with ``state`` as a business.
   New demos are limited per address (``DEMO_SPAWN_RATELIMIT``, as the contact form); a browser that already
-  has a live one is not counted, and the Hub answers it the same demo;
+  has a live one is not counted, and the Hub answers it the same demo. Then reCAPTCHA Enterprise
+  (``recaptcha_token``, action ``demo_request``; ``live.recaptcha``; Ioan, 2026-10-22): only a person gets a demo,
+  and a refused try never reaches the Hub (``?state=unverified``);
 * ``enter`` (GET): where the demo's ``/auth/login`` sends the browser back with its ``state``. If this browser
   owns that demo, it asks the Hub for a one-time code (``create_demo_code``) and answers the auto-submitted
   form of ``accounts/hub_login_form.html``, which posts it to the demo's ``/auth/callback`` (the code never
@@ -39,6 +41,7 @@ from django.utils.dateparse import parse_datetime
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST, require_safe
 from django_ratelimit.decorators import ratelimit
+from live import recaptcha
 from live.slugs import is_demo_slug, validate_hub_slug
 
 from accounts.handoff import STATE_MAX_LENGTH
@@ -55,7 +58,10 @@ SESSION_DEMO = "demo"
 #: The random token whose sha256 names this browser to the Hub (``session_key`` of ``/internal/demos``).
 SESSION_OWNER = "demo_owner"
 #: The outcomes ``start`` and ``enter`` send to the door as ``?state=``; nothing else of the address is read.
-OUTCOMES = frozenset({"expired", "full", "throttled", "unavailable", "failed"})
+OUTCOMES = frozenset({"expired", "full", "throttled", "unverified", "unavailable", "failed"})
+#: The field of reCAPTCHA's token and the action it is made for (frontend/recaptcha.ts, ``data-recaptcha-action``).
+RECAPTCHA_FIELD = "recaptcha_token"
+RECAPTCHA_ACTION = "demo_request"
 #: The Hub's refusal when its cap of live demos is reached.
 DEMO_FULL = "base.demo_full"
 
@@ -172,6 +178,11 @@ def start(request: HttpRequest) -> HttpResponse:
     if getattr(request, "limited", False):
         logger.info("demo.start.throttled")
         return _door("throttled")
+    try:
+        recaptcha.verify_or_raise(request, request.POST.get(RECAPTCHA_FIELD), RECAPTCHA_ACTION)
+    except recaptcha.RecaptchaFailed:
+        logger.info("demo.start.unverified")
+        return _door("unverified")
     try:
         answer = hub_client.create_demo(_owner(request), vertical=None, language=_language())
     except HubRefused as refused:

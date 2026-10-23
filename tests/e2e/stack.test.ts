@@ -11,7 +11,8 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { panelMailDir, panelServers } from './panel/project';
-import { publicServer, runId } from './playwright.config';
+import { publicServer, recaptchaDoubleServer, runId } from './playwright.config';
+import { E2E_RECAPTCHA_API_KEY } from './recaptcha';
 import { isE2eDatabase, stackFrom } from './stack';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -26,6 +27,7 @@ describe('stackFrom', () => {
       publicPort: 8011,
       panelPort: 8012,
       panelMfaPort: 8013,
+      recaptchaDoublePort: 8018,
       hubDoublePort: 8019,
       database: undefined,
     });
@@ -38,6 +40,7 @@ describe('stackFrom', () => {
       publicPort: 8031,
       panelPort: 8032,
       panelMfaPort: 8033,
+      recaptchaDoublePort: 8038,
       hubDoublePort: 8039,
       database: 'saas_e2e_8030',
     });
@@ -112,6 +115,35 @@ describe("the stack's servers", () => {
     );
     expect(server.url).toBe('http://127.0.0.1:8031/robots.txt');
     expect(server.env).toMatchObject({ DEBUG: 'False', DB_NAME: 'saas_e2e_8030' });
+  });
+
+  it('send the public server’s reCAPTCHA assessments to the double of the stack, never to Google', () => {
+    expect(publicServer(SAAS_DIR, SHARED).env).toMatchObject({
+      RECAPTCHA_API_KEY: E2E_RECAPTCHA_API_KEY,
+      RECAPTCHA_ENDPOINT: 'http://127.0.0.1:8018/v1/projects/erplora/assessments',
+    });
+    expect(publicServer(SAAS_DIR, OWN).env?.RECAPTCHA_ENDPOINT).toBe('http://127.0.0.1:8038/v1/projects/erplora/assessments');
+  });
+
+  it('let the run press «Try the demo» more than 3 times an hour from 127.0.0.1 (the throttled door is its own spec)', () => {
+    expect(publicServer(SAAS_DIR, SHARED).env).toMatchObject({ DEMO_SPAWN_RATELIMIT: '30/h' });
+  });
+
+  it('start that double on its port, never reused', () => {
+    expect(recaptchaDoubleServer(SAAS_DIR, SHARED)).toEqual({
+      name: 'recaptcha-double',
+      command: 'node tests/e2e/recaptcha-double.ts 8018',
+      cwd: SAAS_DIR,
+      url: 'http://127.0.0.1:8018/healthz',
+      reuseExistingServer: false,
+      timeout: 30_000,
+    });
+    expect(recaptchaDoubleServer(SAAS_DIR, OWN).command).toBe('node tests/e2e/recaptcha-double.ts 8038');
+  });
+
+  it('switch reCAPTCHA off on the panel, whose specs sign in through the API', () => {
+    expect(panel()['panel-django'].env).toMatchObject({ RECAPTCHA_ENABLED: 'False' });
+    expect(panel()['panel-mfa-django'].env).toMatchObject({ RECAPTCHA_ENABLED: 'False' });
   });
 
   it('send the public mails (the contact form, PUBLIC-G39) to a folder of the stack, never through SMTP', () => {

@@ -4096,3 +4096,18 @@ msgstr "Idioma"
 #: templates/public/partials/app_bar.html
 msgid "Back"
 msgstr "Volver"
+
+#: templates/public/demo/index.html
+msgid "We could not check that you are a person. Try again."
+msgstr "No hemos podido comprobar que eres una persona. Vuelve a intentarlo."
+
+#: templates/public/partials/recaptcha_notice.html
+#, python-format
+msgid ""
+"This site is protected by reCAPTCHA and the Google <a href=\"%(privacy)s\" "
+"target=\"_blank\" rel=\"noopener\">Privacy Policy</a> and <a href=\"%(terms)s\" "
+"target=\"_blank\" rel=\"noopener\">Terms of Service</a> apply."
+msgstr ""
+"Este sitio está protegido por reCAPTCHA y se aplican la <a href=\"%(privacy)s\" "
+"target=\"_blank\" rel=\"noopener\">Política de Privacidad</a> y las <a href=\"%(terms)s"
+"\" target=\"_blank\" rel=\"noopener\">Condiciones del Servicio</a> de Google."

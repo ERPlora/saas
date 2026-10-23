@@ -407,6 +407,11 @@
       "sentTitle": "Informe enviado",
       "sentBody": "Gracias: hemos recibido tu informe y te responderemos a {email} lo antes posible.",
       "back": "Volver"
+    },
+    "recaptcha": {
+      "notice": "Este sitio está protegido por reCAPTCHA y se aplican la {privacy} y las {terms} de Google.",
+      "privacy": "Política de Privacidad",
+      "terms": "Condiciones del Servicio"
     }
   }
 }

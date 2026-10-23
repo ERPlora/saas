@@ -427,3 +427,14 @@ describe('setupAppBack: «Back» of a page opened from the installed app (PUBLIC
     expect(SOURCE).toMatch(/export function boot\(doc: Document\): void \{[^}]*setupAppBack\(doc\)/);
   });
 });
+
+describe('reCAPTCHA on the public forms (frontend/recaptcha.ts; Ioan, 2026-10-22)', () => {
+  it('protects the contact form and the demo at boot', () => {
+    expect(SOURCE).toMatch(/export function boot\(doc: Document\): void \{[^}]*protectForms\(doc\)/);
+  });
+
+  it('hides Google’s badge: its notice is under each protected form (public/partials/recaptcha_notice.html)', () => {
+    const css = readFileSync(join(SAAS_DIR, 'public', 'static', 'public', 'landing.css'), 'utf8');
+    expect(css).toMatch(/\.grecaptcha-badge\s*\{\s*visibility:\s*hidden;?\s*\}/);
+  });
+});

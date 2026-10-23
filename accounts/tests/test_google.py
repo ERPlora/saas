@@ -205,12 +205,14 @@ class TestStartingTheSignIn:
 
     @pytest.mark.usefixtures("spa_manifest")
     def test_google_adds_no_script_nor_connection_source(self, client, google):
-        """The sign-in is a redirect, not a Google script: nothing external may run or be fetched."""
+        """The sign-in is a redirect, not a Google script: nothing of its sign-in may run or be fetched. Google's
+        only sources are reCAPTCHA's (``/recaptcha/``, live.recaptcha: the bots' check of the same page)."""
         policy = client.get("/launch", HTTP_HOST=HOST)["Content-Security-Policy"]
         directives = {part.split()[0]: part.split()[1:] for part in policy.split("; ")}
 
         for directive in ("script-src", "connect-src", "frame-src", "img-src"):
-            assert not any("google" in source for source in directives.get(directive, []))
+            google = [source for source in directives.get(directive, []) if "google" in source or "gstatic" in source]
+            assert all(source.endswith("/recaptcha/") for source in google), (directive, google)
 
 
 class TestComingBackFromGoogle:
