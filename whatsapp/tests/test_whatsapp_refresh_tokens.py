@@ -19,7 +19,7 @@ from django.core.management import CommandError, call_command
 from django.utils import timezone
 
 from hubs.models import Hub
-from whatsapp import gateway
+from whatsapp import gateway, meta
 from whatsapp.models import PhoneNumber
 from whatsapp.tests.conftest import GRAPH
 
@@ -248,6 +248,46 @@ class TestWhenMetaDoesNotAnswer:
         assert (counts["failed"], counts["renewed"]) == (1, 1)
 
 
+#: What leaves a number out of today's round: none at all, one far from its deadline, one disconnected.
+NOTHING_DUE = [None, {"days": 30}, {"is_active": False}]
+
+
+def without_metas_app(settings):
+    settings.WHATSAPP_APP_ID = ""
+    settings.WHATSAPP_APP_SECRET = ""
+
+
+@pytest.mark.django_db
+class TestWithoutMetasApp:
+    """Until Meta's app is loaded nobody can connect a number: an empty round is not an incident for the team."""
+
+    @pytest.mark.parametrize("number", NOTHING_DUE)
+    @respx.mock
+    def test_a_round_with_nothing_due_needs_no_credentials(self, whatsapp_on, business, number):
+        without_metas_app(whatsapp_on)
+        if number is not None:
+            make_number(business, **number)
+        exchange = meta_renews()
+
+        counts = gateway.renew_tokens()
+
+        assert counts["due"] == 0 and sum(counts.values()) == 0
+        assert not exchange.called
+
+    @respx.mock
+    def test_a_number_due_is_still_refused_before_meta_is_asked(self, whatsapp_on, business):
+        without_metas_app(whatsapp_on)
+        number = make_number(business, days=10)
+        exchange = meta_renews()
+
+        with pytest.raises(meta.NotConfigured):
+            gateway.renew_tokens()
+
+        number.refresh_from_db()
+        assert not exchange.called
+        assert (number.access_token, number.needs_reconnect) == ("EAAG-old", False)
+
+
 @pytest.mark.django_db
 class TestTheCommand:
     @respx.mock
@@ -258,11 +298,25 @@ class TestTheCommand:
 
         call_command("whatsapp_refresh_tokens", stdout=out)
 
-        assert "renewed=1" in out.getvalue()
+        assert "due=1" in out.getvalue() and "renewed=1" in out.getvalue()
 
-    def test_without_metas_app_it_fails_visibly(self, whatsapp_on, settings, business):
+    def test_without_metas_app_it_fails_visibly(self, whatsapp_on, settings, business, caplog):
         settings.WHATSAPP_APP_SECRET = ""
         make_number(business)
 
         with pytest.raises(CommandError):
             call_command("whatsapp_refresh_tokens", stdout=StringIO())
+
+        assert "whatsapp.token.not_configured" in caplog.text
+
+    @pytest.mark.parametrize("number", NOTHING_DUE)
+    def test_without_metas_app_and_nothing_due_it_ends_well_and_says_so(self, whatsapp_on, business, caplog, number):
+        without_metas_app(whatsapp_on)
+        if number is not None:
+            make_number(business, **number)
+        out = StringIO()
+
+        call_command("whatsapp_refresh_tokens", stdout=out)
+
+        assert "due=0" in out.getvalue()
+        assert "whatsapp.token.not_configured" not in caplog.text

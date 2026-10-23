@@ -390,12 +390,15 @@ ALARM = timedelta(days=7)
 
 
 def renew_tokens() -> dict[str, int]:
-    """Renew every permission due; ``NotConfigured`` (Meta's app not set) before anything is read."""
-    meta.app_credentials()
+    """Renew every permission due. With none due the round is empty and asks for nothing; with one due,
+    ``NotConfigured`` (Meta's app not set) before Meta is asked or anything is written."""
     ctx = services.platform_context()
-    counts = {"renewed": 0, "needs_reconnect": 0, "unverified": 0, "alerted": 0, "failed": 0}
+    due = queries.renewal_due(ctx, RenewalDueIn()).numbers
+    counts = {"due": len(due), "renewed": 0, "needs_reconnect": 0, "unverified": 0, "alerted": 0, "failed": 0}
+    if due:
+        meta.app_credentials()
     running_out = 0
-    for number in queries.renewal_due(ctx, RenewalDueIn()).numbers:
+    for number in due:
         try:
             outcome, token, expires_at = _renew(number.token.get_secret_value())
             out = services.number_renewal(

@@ -286,7 +286,7 @@ Pasos:
 3. Si Meta lo rechaza, o no contesta y quedan 3 días o menos, marca el número «Hay que reconectar» (el Hub lo enseña) y manda un correo, en su idioma, al propietario del negocio, uno por incidente.
 Entra: los números conectados y sus permisos.
 Sale: el permiso renovado o la marca «Hay que reconectar» con el correo (`whatsapp.number.reconnect_needed`).
-Si falla: si Meta no contesta y queda margen, se reintenta al día siguiente; un correo que no sale se reintenta en la vuelta siguiente; un número que falla no para a los demás; sin la app de Meta configurada, la tarea termina con error para el equipo.
+Si falla: si Meta no contesta y queda margen, se reintenta al día siguiente; un correo que no sale se reintenta en la vuelta siguiente; un número que falla no para a los demás; sin ningún número que renovar, la tarea termina bien aunque falte la app de Meta; con números que renovar y sin la app de Meta configurada, termina con error para el equipo.
 Implicados: negocios (el propietario), bandeja de WhatsApp del Hub
 
 ### WHATSAPP-F13 Confirmar a Meta que la dirección de los avisos es nuestra
