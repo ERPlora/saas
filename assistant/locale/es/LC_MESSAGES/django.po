@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: saas-next\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 03:11+0200\n"
+"POT-Creation-Date: 2026-10-23 03:21+0200\n"
 "PO-Revision-Date: 2026-10-23 03:00+0200\n"
 "Last-Translator: ERPlora\n"
 "Language-Team: Spanish\n"
@@ -43,6 +43,15 @@ msgstr "claves"
 msgid "key ends in"
 msgstr "la clave acaba en"
 
+msgid "Choose the model to try from the list."
+msgstr "Elige de la lista el modelo que quieres probar."
+
+msgid "Write the message to send."
+msgstr "Escribe el mensaje que quieres enviar."
+
+msgid "The tools are not well written: write a list of tools as in the example, each with its name."
+msgstr "Las herramientas no están bien escritas: escribe una lista de herramientas como la del ejemplo, cada una con su nombre."
+
 msgid "Connection"
 msgstr "Conexión"
 
@@ -71,6 +80,12 @@ msgstr "Se ha guardado el modelo que contesta."
 
 msgid "Model that answers"
 msgstr "Modelo que contesta"
+
+msgid "Try a model"
+msgstr "Probar un modelo"
+
+msgid "Too many tries in a minute: wait a moment and try again."
+msgstr "Demasiadas pruebas en un minuto: espera un momento y vuelve a intentarlo."
 
 msgid "AI assistant"
 msgstr "Asistente de IA"
@@ -228,6 +243,9 @@ msgstr "Elige el modelo que contesta antes que su reserva."
 msgid "The fallback model must be another model."
 msgstr "El modelo de reserva tiene que ser otro modelo."
 
+msgid "This model does not exist."
+msgstr "Este modelo no existe."
+
 msgid "Home"
 msgstr "Inicio"
 
@@ -273,3 +291,49 @@ msgstr "Último cambio de %(who)s el %(when)s."
 
 msgid "Save"
 msgstr "Guardar"
+
+msgid "Send one message to one model and watch its answer arrive, with its tokens, its time and its cost, before choosing it. No business, quota nor conversation is touched, and the try stays in the audit trail without the message."
+msgstr "Envía un mensaje a un modelo y mira cómo llega su respuesta, con sus tokens, su tiempo y su coste, antes de elegirlo. No se toca ningún negocio, cupo ni conversación, y la prueba queda en el registro de auditoría sin el mensaje."
+
+msgid "Message"
+msgstr "Mensaje"
+
+msgid "Tools"
+msgstr "Herramientas"
+
+msgid "Optional: the tools the model may ask for, written as in the example, each with its name."
+msgstr "Opcional: las herramientas que el modelo puede pedir, escritas como en el ejemplo, cada una con su nombre."
+
+msgid "Send"
+msgstr "Enviar"
+
+msgid "Sending…"
+msgstr "Enviando…"
+
+msgid "Done."
+msgstr "Hecho."
+
+msgid "The model did not answer:"
+msgstr "El modelo no ha contestado:"
+
+msgid "The try could not be sent: check the connection and try again."
+msgstr "No se ha podido enviar la prueba: revisa la conexión y vuelve a intentarlo."
+
+#, python-brace-format
+msgid "The try was refused (error {status})."
+msgstr "Se ha rechazado la prueba (error {status})."
+
+msgid "Answer"
+msgstr "Respuesta"
+
+msgid "Input tokens"
+msgstr "Tokens de entrada"
+
+msgid "Output tokens"
+msgstr "Tokens de salida"
+
+msgid "Time"
+msgstr "Tiempo"
+
+msgid "Cost"
+msgstr "Coste"

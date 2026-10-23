@@ -60,15 +60,20 @@ Every model of every provider, with its price, its context and whether it is ava
 ### Admin: Model that answers
 One page (its list opens it): «Model that answers» and «Fallback model», each with the models that can answer
 (available and of an enabled provider), who made the last change and «Save». Whoever may only look sees it without
-being able to change it.
+being able to change it. On top, «Try a model» (only for whoever may change it).
+
+### Admin: Try a model
+«Model» (those that can answer), «Message», «Tools» (optional, a list as in the example) and «Send». Below, «Answer»: the model
+that answers, the text as it arrives, the tools it asks for and a table with «Input tokens», «Output tokens», «Time»
+and «Cost» (in dollars).
 
 ## States of each screen
 
 | State | What the person sees |
 |---|---|
-| Loading | The normal loading of an admin page. |
+| Loading | The normal loading of an admin page; when trying a model, «Sending…» and the «Send» button off until it ends («Done.»). |
 | Empty | «0 AI providers» and the empty list; a provider without a key says «No key»; without models that can answer, «No model can answer yet: add a provider with its key and choose its models.» |
-| Error | In «Choose models from the provider», the reason in red: «This provider has no active key: add one on its page and try again.», «The provider did not give its models: …» or «The provider listed no chat models.»; on the pages, the error in red next to the field: «Use an https address: the provider's key travels to it.», «Type the provider's key.», «The key of the credentials is not configured: no provider key can be kept.». |
+| Error | In «Choose models from the provider», the reason in red: «This provider has no active key: add one on its page and try again.», «The provider did not give its models: …» or «The provider listed no chat models.»; on the pages, the error in red next to the field: «Use an https address: the provider's key travels to it.», «Type the provider's key.», «The key of the credentials is not configured: no provider key can be kept.»; when trying a model, in red: «The model did not answer: …», «Too many tries in a minute: wait a moment and try again.» or «The try could not be sent: check the connection and try again.». |
 | No permission | Without the gateway's permissions, the admin answers there is no permission; whoever may only look sees the pages without the «Key» field. |
 
 ## Flows
@@ -81,6 +86,7 @@ being able to change it.
 | ASSISTANT-F04 | Choose a provider's models | hecho |
 | ASSISTANT-F05 | Choose which model answers | hecho |
 | ASSISTANT-F06 | Choose the provider and model of each turn | hecho |
+| ASSISTANT-F07 | Try a model before it answers | hecho |
 
 ### ASSISTANT-F01 Add an AI provider
 <!-- origen: fi:saas/support/auth-services#modelo-aiprovider, fi:saas/django-admin#admin-aiprovider, old-saas:SAAS_ASSISTANT-F22 -->
@@ -169,6 +175,21 @@ Entra: the model that answers and its fallback (or the model being tried) and th
 Sale: the model that answers the turn and, if its provider fails before answering, the notice of the switch to the fallback model.
 Si falla: without a model that answers, «No model answers yet: choose one on the page “Model that answers”.»; if none of the chosen ones can be used, «No model can answer: the providers of the chosen models have no active key.»; a model being tried that is off, or of a provider that is off, «This model is off or its provider is: turn them on to use it.»; if all of them fail, the turn ends with the reason of the last one; the staff only try a model with permission to change the model that answers.
 Implicados: ASSISTANT-F03, ASSISTANT-F05, ASSISTANT-F07
+
+### ASSISTANT-F07 Try a model before it answers
+<!-- origen: old-saas:SAAS_ASSISTANT-F24 -->
+Estado: hecho
+Actor: ERPlora's staff
+Pantalla: Admin: Try a model
+Pasos:
+1. On «Model that answers», click «Try a model».
+2. Choose the «Model», write the «Message» and, to see how it asks for tools, write in «Tools» a list of tools with their name, as in the example.
+3. Click «Send»: «Sending…» shows, then the model that answers and its answer as it arrives, with the tools it asks for.
+4. At the end, «Done.» and the table with «Input tokens», «Output tokens», «Time» and «Cost» (with the model's prices).
+Entra: the model, the message and the tools.
+Sale: the model's answer with its usage, its time and its cost; the try stays in the audit trail with who made it, how long the message was and how many tools it had, never the message (`assistant.model.tried`). No business, quota nor conversation is touched.
+Si falla: without a model of the list, «Choose the model to try from the list.»; without a message, «Write the message to send.»; badly written tools, «The tools are not well written: write a list of tools as in the example, each with its name.»; a model that is off or of a provider that is off, «This model is off or its provider is: turn them on to use it.»; a provider without a usable key, «No model can answer: the providers of the chosen models have no active key.»; if the provider fails, «The model did not answer: …» with its reason, never the key; more than 10 tries in a minute, «Too many tries in a minute: wait a moment and try again.»; without network, «The try could not be sent: check the connection and try again.». Only whoever may change the model that answers tries one (each try spends ERPlora's key); without that permission, the admin does not let in.
+Implicados: ASSISTANT-F05, ASSISTANT-F06
 
 ## For whoever maintains it
 

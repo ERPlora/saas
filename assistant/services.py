@@ -12,8 +12,11 @@ on the page. The commands call them as the platform (``platform_context``).
   except the ones the policy uses.
 - ``assistant.policy.update`` (G27, G17, G10, G60): the model that answers and the fallback one, each available and
   of an enabled provider, and different.
+- ``assistant.model.try`` (G61): a member of the staff tried a model from the admin; it stays in the audit trail (an
+  access to the model) with how long the message was and how many tools it offered, never the message.
 """
 
+from auditlog.models import LogEntry
 from django.utils import timezone, translation
 from django.utils.translation import gettext as _
 from live.context import OperationContext, Scope, system_context
@@ -31,6 +34,8 @@ from assistant.schemas import (
     CredentialOut,
     ModelSelectIn,
     ModelSelectOut,
+    ModelTryIn,
+    ModelTryOut,
     PolicyIn,
     PolicyOut,
 )
@@ -251,3 +256,32 @@ def policy_update(ctx: OperationContext, data: PolicyIn) -> dict:
         },
     )
     return {"active_model": policy.active_model_id, "fallback_model": policy.fallback_model_id, "updated_at": policy.updated_at}
+
+
+@operation(
+    "assistant.model.try",
+    kind="command",
+    permission="assistant.manage",
+    input=ModelTryIn,
+    output=ModelTryOut,
+)
+def model_try(ctx: OperationContext, data: ModelTryIn) -> dict:
+    """Record that the member of the staff tried a model (``change_airoutingpolicy``, the permission that chooses
+    which model answers): an access in the audit trail and ``assistant.model.tried``, with the message's length and
+    the number of tools, never the message. 404 ``assistant.model_unknown``."""
+    user = staff_with(ctx, "assistant.change_airoutingpolicy")
+    with translation.override(ctx.language):
+        model = AIModel.objects.filter(pk=data.model).first()
+        if model is None:
+            raise NotFound(_("This model does not exist."), code="assistant.model_unknown")
+    tried = {"prompt_chars": data.prompt_chars, "tools": data.tools}
+    LogEntry.objects.log_create(
+        model,
+        force_log=True,
+        action=LogEntry.Action.ACCESS,
+        actor=user,
+        remote_addr=getattr(ctx.request, "META", {}).get("REMOTE_ADDR"),
+        additional_data={"tried": True, **tried},
+    )
+    record_event(ctx, events.MODEL_TRIED, {"model": str(model.pk), **tried})
+    return {"recorded": True}

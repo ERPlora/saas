@@ -1,0 +1,181 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+{% block extrastyle %}{{ block.super }}
+<style>
+  #try-model textarea { box-sizing: border-box; width: 100%; max-width: 48rem; font-family: inherit; }
+  #try-model select { max-width: 100%; }
+  #try-answer { white-space: pre-wrap; overflow-wrap: anywhere; padding: 1rem; min-height: 4rem; max-width: 48rem;
+    background: var(--darkened-bg); border: 1px solid var(--hairline-color); border-radius: 4px; }
+  #try-tools li { font-family: monospace; overflow-wrap: anywhere; }
+  #try-metrics { margin-top: 1rem; }
+</style>
+{% endblock %}
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">{% translate "Home" %}</a>
+  &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+  &rsaquo; <a href="{{ policy_url }}">{% translate "Model that answers" %}</a>
+  &rsaquo; {{ title }}
+</div>
+{% endblock %}
+{% block content %}
+<div id="content-main">
+  <p>{% translate "Send one message to one model and watch its answer arrive, with its tokens, its time and its cost, before choosing it. No business, quota nor conversation is touched, and the try stays in the audit trail without the message." %}</p>
+  {% if not choices %}<p class="errornote">{% translate "No model can answer yet: add a provider with its key and choose its models." %}</p>{% endif %}
+  <form id="try-model" method="post" data-run-url="{{ run_url }}">
+    {% csrf_token %}
+    <fieldset class="module aligned">
+      <div class="form-row">
+        <div class="flex-container">
+          <label class="required" for="id_model">{% translate "Model" %}</label>
+          <select name="model" id="id_model" required>
+            {% for choice in choices %}<option value="{{ choice.id }}">{{ choice.label }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="flex-container">
+          <label class="required" for="id_prompt">{% translate "Message" %}</label>
+          <textarea name="prompt" id="id_prompt" rows="4" maxlength="{{ prompt_max }}" required></textarea>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="flex-container">
+          <label for="id_tools">{% translate "Tools" %}</label>
+          <textarea name="tools" id="id_tools" rows="4" spellcheck="false" placeholder='[{"name": "create_invoice", "description": "…", "parameters": {"type": "object", "properties": {}}}]'></textarea>
+        </div>
+        <div class="help">{% translate "Optional: the tools the model may ask for, written as in the example, each with its name." %}</div>
+      </div>
+    </fieldset>
+    <div class="submit-row">
+      <input type="submit" class="default" value="{% translate 'Send' %}"{% if not choices %} disabled{% endif %}>
+    </div>
+  </form>
+  <div id="try-result" class="module" hidden
+       data-text-sending="{% translate 'Sending…' %}"
+       data-text-done="{% translate 'Done.' %}"
+       data-text-failed="{% translate 'The model did not answer:' %}"
+       data-text-unsent="{% translate 'The try could not be sent: check the connection and try again.' %}"
+       data-text-refused="{% translate 'The try was refused (error {status}).' %}">
+    <h2>{% translate "Answer" %}</h2>
+    <p id="try-status" role="status" aria-live="polite"></p>
+    <p id="try-model-name" hidden></p>
+    <div id="try-answer"></div>
+    <ul id="try-tools" hidden></ul>
+    <p id="try-error" class="errornote" hidden></p>
+    <table id="try-metrics" hidden>
+      <tbody>
+        <tr><th scope="row">{% translate "Input tokens" %}</th><td data-metric="input_tokens"></td></tr>
+        <tr><th scope="row">{% translate "Output tokens" %}</th><td data-metric="output_tokens"></td></tr>
+        <tr><th scope="row">{% translate "Time" %}</th><td data-metric="latency_ms"></td></tr>
+        <tr><th scope="row">{% translate "Cost" %}</th><td data-metric="cost_usd"></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+<script nonce="{{ csp_nonce }}">
+  // Posts the form to its run view and paints the server-sent events of the answer as they arrive. Text only
+  // (textContent): the page enforces Trusted Types and nothing here builds HTML.
+  (() => {
+    "use strict";
+    const form = document.getElementById("try-model");
+    const result = document.getElementById("try-result");
+    const status = document.getElementById("try-status");
+    const modelName = document.getElementById("try-model-name");
+    const answer = document.getElementById("try-answer");
+    const tools = document.getElementById("try-tools");
+    const error = document.getElementById("try-error");
+    const metrics = document.getElementById("try-metrics");
+    const submit = form.querySelector('[type="submit"]');
+    const text = result.dataset;
+
+    function reset() {
+      result.hidden = false;
+      status.textContent = text.textSending;
+      modelName.hidden = true;
+      modelName.textContent = "";
+      answer.textContent = "";
+      tools.hidden = true;
+      tools.replaceChildren();
+      error.hidden = true;
+      error.textContent = "";
+      metrics.hidden = true;
+    }
+
+    function fail(message) {
+      error.textContent = message;
+      error.hidden = false;
+      status.textContent = "";
+    }
+
+    function paint(event) {
+      if (event.type === "model") {
+        modelName.textContent = `${event.provider} · ${event.display_name} (${event.model_id})`;
+        modelName.hidden = false;
+      } else if (event.type === "text_delta") {
+        answer.textContent += event.text;
+      } else if (event.type === "tool_call") {
+        const item = document.createElement("li");
+        item.textContent = `${event.name}(${event.arguments})`;
+        tools.append(item);
+        tools.hidden = false;
+      } else if (event.type === "error") {
+        // A provider's failure carries «retriable»; a refusal of the page is already a sentence for the staff.
+        fail("retriable" in event ? `${text.textFailed} ${event.message}` : event.message);
+      } else if (event.type === "metrics") {
+        metrics.querySelector('[data-metric="input_tokens"]').textContent = String(event.input_tokens);
+        metrics.querySelector('[data-metric="output_tokens"]').textContent = String(event.output_tokens);
+        metrics.querySelector('[data-metric="latency_ms"]').textContent = `${event.latency_ms} ms`;
+        metrics.querySelector('[data-metric="cost_usd"]').textContent = `${event.cost_usd} USD`;
+        metrics.hidden = false;
+      } else if (event.type === "done" && error.hidden) {
+        status.textContent = text.textDone;
+      }
+    }
+
+    async function read(response) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let cut;
+        while ((cut = buffer.indexOf("\n\n")) >= 0) {
+          const block = buffer.slice(0, cut);
+          buffer = buffer.slice(cut + 2);
+          for (const line of block.split("\n")) {
+            if (line.startsWith("data: ")) paint(JSON.parse(line.slice(6)));
+          }
+        }
+      }
+    }
+
+    form.addEventListener("submit", async (submitted) => {
+      submitted.preventDefault();
+      reset();
+      submit.disabled = true;
+      try {
+        const response = await fetch(form.dataset.runUrl, {
+          method: "POST",
+          body: new FormData(form),
+          credentials: "same-origin",
+          headers: { Accept: "text/event-stream" },
+        });
+        if (response.status === 429) {
+          fail(await response.text());
+        } else if (!response.ok || !response.body) {
+          fail(text.textRefused.replace("{status}", String(response.status)));
+        } else {
+          await read(response);
+        }
+      } catch {
+        fail(text.textUnsent);
+      } finally {
+        submit.disabled = false;
+      }
+    });
+  })();
+</script>
+{% endblock %}

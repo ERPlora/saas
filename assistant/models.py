@@ -55,6 +55,11 @@ def validate_base_url(value: str) -> None:
     )
 
 
+def estimate_cost(price_input_per_1m: Decimal, price_output_per_1m: Decimal, tokens_in: int, tokens_out: int) -> Decimal:
+    """USD of a turn with these tokens at these prices (USD per million tokens), exact (money is never a float)."""
+    return (price_input_per_1m * tokens_in + price_output_per_1m * tokens_out) / Decimal(1_000_000)
+
+
 class AIProvider(models.Model):
     """A provider of models ERPlora pays, spoken to with the client of its ``kind`` (``assistant.providers``)."""
 
@@ -200,7 +205,7 @@ class AIModel(models.Model):
 
     def estimate_cost(self, tokens_in: int, tokens_out: int) -> Decimal:
         """USD of a turn with these tokens, exact (money is never a float)."""
-        return (self.price_input_per_1m * tokens_in + self.price_output_per_1m * tokens_out) / Decimal(1_000_000)
+        return estimate_cost(self.price_input_per_1m, self.price_output_per_1m, tokens_in, tokens_out)
 
 
 class AIRoutingPolicy(models.Model):

@@ -143,3 +143,15 @@ class RouteCandidate(Schema):
 class RouteOut(Schema):
     #: In order: the model that answers, then its fallback.
     candidates: list[RouteCandidate]
+
+
+class ModelTryIn(Schema):
+    """A try of a model from the admin: how long the message was and how many tools it offered, never the message."""
+
+    model: UUID
+    prompt_chars: int = Field(ge=0)
+    tools: int = Field(ge=0)
+
+
+class ModelTryOut(Schema):
+    recorded: bool

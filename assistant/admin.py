@@ -7,6 +7,10 @@
   the model permission.
 - «Model that answers» (G27, G17, G10, G60): the one policy on one page (its list opens it), saved with
   ``assistant.policy.update``; nobody adds nor deletes it.
+- «Try a model» (G61): one message to one model, its answer streamed to the page as server-sent events with its
+  tokens, time and cost (``assistant.route.resolve`` with the model, then ``assistant.routing.stream``). The run is an
+  asynchronous view (the provider's call never holds a thread), for the staff who may change the model that
+  answers, at most ``ASSISTANT_TRY_RATELIMIT`` per person; each one is recorded with ``assistant.model.try``.
 - «Choose models from the provider» (G24, G14): an asynchronous page (the call to the provider never holds a thread
   other requests need) that lists the provider's chat models with ``assistant.provider.connection`` and its client,
   and keeps the ticked ones with ``assistant.model.select``. «AI models» lists them all, to correct their prices.
@@ -15,6 +19,8 @@ Only active staff enter the admin (``accounts.admin.admin_has_permission``) and 
 of Django that backs it; ``support`` gets none of the assistant's (its keys are ERPlora's spend).
 """
 
+import json
+import time
 import uuid
 
 from asgiref.sync import sync_to_async
@@ -24,30 +30,38 @@ from django.contrib import admin, messages
 from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import PermissionDenied
 from django.db.models import Prefetch
-from django.http import Http404, HttpResponseRedirect
+from django.http import Http404, HttpResponse, HttpResponseNotAllowed, HttpResponseRedirect, StreamingHttpResponse
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
+from django_ratelimit.core import is_ratelimited
 from live.context import OperationContext, Scope
 from live.errors import NotFound, OperationError
 
-from assistant import crypto, queries, services
-from assistant.models import AIModel, AIProvider, AIProviderCredential, AIRoutingPolicy
-from assistant.providers.base import ProviderError
+from assistant import crypto, queries, routing, services
+from assistant.models import AIModel, AIProvider, AIProviderCredential, AIRoutingPolicy, estimate_cost
+from assistant.providers.base import ProviderError, ToolSpec, TurnRequest
 from assistant.providers.factory import get_provider
 from assistant.schemas import (
     CredentialDeleteIn,
     CredentialIn,
     ListedModel,
     ModelSelectIn,
+    ModelTryIn,
     NoInput,
     PolicyIn,
     ProviderRef,
+    RouteCandidate,
+    RouteIn,
 )
 
 #: What choosing a provider's models needs: seeing the provider, adding models and deleting them.
 CHOOSE_PERMISSIONS = ("assistant.view_aiprovider", "assistant.add_aimodel", "assistant.delete_aimodel")
+#: What trying a model needs: the permission that chooses which model answers (a try spends ERPlora's key).
+TRY_PERMISSIONS = ("assistant.change_airoutingpolicy",)
+#: The longest message a try sends.
+TRY_PROMPT_MAX = 4000
 
 
 def staff_context(request) -> OperationContext:
@@ -148,6 +162,98 @@ async def staff_gate(admin_site, request, permissions) -> HttpResponseRedirect |
     if not allowed:
         raise PermissionDenied
     return None
+
+
+# --- Try a model --------------------------------------------------------------------------------------------
+
+
+def sse(kind: str, payload: dict | None = None) -> bytes:
+    """One server-sent event of a try: ``data: {"type": kind, ...payload}``."""
+    return f"data: {json.dumps({'type': kind, **(payload or {})}, ensure_ascii=False)}\n\n".encode()
+
+
+def event_stream(chunks) -> StreamingHttpResponse:
+    response = StreamingHttpResponse(chunks, content_type="text/event-stream")
+    response["Cache-Control"] = "no-cache"
+    response["X-Accel-Buffering"] = "no"
+    return response
+
+
+async def refused_try(message: str):
+    yield sse("error", {"message": message})
+    yield sse("done")
+
+
+def parse_tools(raw: str) -> list[ToolSpec] | None:
+    """The tools typed (a JSON list of ``{"name", "description", "parameters"}``, or OpenAI's ``{"function": …}``);
+    ``[]`` for none, ``None`` when it is not a list of named tools."""
+    raw = (raw or "").strip()
+    if not raw:
+        return []
+    try:
+        data = json.loads(raw)
+    except ValueError:
+        return None
+    if not isinstance(data, list):
+        return None
+    tools = []
+    for item in data:
+        spec = item.get("function", item) if isinstance(item, dict) else None
+        name = spec.get("name") if isinstance(spec, dict) else None
+        if not isinstance(name, str) or not name.strip():
+            return None
+        parameters = spec.get("parameters") or {"type": "object", "properties": {}}
+        if not isinstance(parameters, dict):
+            return None
+        tools.append(ToolSpec(name=name.strip(), description=str(spec.get("description") or ""), parameters=parameters))
+    return tools
+
+
+def too_many_tries(request) -> bool:
+    """Count this try of the member of the staff; whether it went past ``ASSISTANT_TRY_RATELIMIT``."""
+    return is_ratelimited(
+        request,
+        group="assistant.try_model",
+        key=lambda group, request: f"user:{request.user.pk}",
+        rate=settings.ASSISTANT_TRY_RATELIMIT,
+        increment=True,
+    )
+
+
+def prepare_try(request, ctx: OperationContext) -> tuple[RouteCandidate, TurnRequest] | str:
+    """The model and the turn of a try, recorded; or the message that refuses it (in the staff's language)."""
+    try:
+        model = uuid.UUID(request.POST.get("model") or "")
+    except ValueError:
+        return _("Choose the model to try from the list.")
+    prompt = (request.POST.get("prompt") or "").strip()[:TRY_PROMPT_MAX]
+    if not prompt:
+        return _("Write the message to send.")
+    tools = parse_tools(request.POST.get("tools", ""))
+    if tools is None:
+        return _("The tools are not well written: write a list of tools as in the example, each with its name.")
+    try:
+        [candidate] = queries.route_resolve(ctx, RouteIn(model=model)).candidates
+        services.model_try(ctx, ModelTryIn(model=model, prompt_chars=len(prompt), tools=len(tools)))
+    except OperationError as refused:
+        return refused.message
+    return candidate, TurnRequest(model_id=candidate.model_id, messages=[{"role": "user", "content": prompt}], tools=tools)
+
+
+async def try_events(candidate: RouteCandidate, turn: TurnRequest):
+    """The events of the model's answer, then its ``metrics`` (tokens, milliseconds and USD) and ``done``."""
+    started = time.monotonic()
+    usage = {"input_tokens": 0, "output_tokens": 0}
+    async for event in routing.stream([candidate], lambda _candidate: turn):
+        if event.type == "usage":
+            usage = {"input_tokens": event.payload["input_tokens"], "output_tokens": event.payload["output_tokens"]}
+        yield sse(event.type, event.payload)
+    cost = estimate_cost(
+        candidate.price_input_per_1m, candidate.price_output_per_1m, usage["input_tokens"], usage["output_tokens"]
+    )
+    latency_ms = int((time.monotonic() - started) * 1000)
+    yield sse("metrics", {"latency_ms": latency_ms, **usage, "cost_usd": format(cost.normalize(), "f")})
+    yield sse("done")
 
 
 @admin.register(AIModel)
@@ -329,6 +435,8 @@ class AIRoutingPolicyAdmin(admin.ModelAdmin):
         wrap = self.admin_site.admin_view
         return [
             path("policy/", wrap(self.policy_view), name="assistant_airoutingpolicy_policy"),
+            path("policy/try/", wrap(self.try_view), name="assistant_airoutingpolicy_try"),
+            path("policy/try/run/", self.try_run, name="assistant_airoutingpolicy_try_run"),
             *super().get_urls(),
         ]
 
@@ -368,7 +476,40 @@ class AIRoutingPolicyAdmin(admin.ModelAdmin):
             "title": _("Model that answers"),
             "shown": shown,
             "can_change": self.has_change_permission(request),
+            "try_url": reverse("admin:assistant_airoutingpolicy_try"),
             "active_missing": shown.active_model is not None and shown.active_model not in choices,
             "fallback_missing": shown.fallback_model is not None and shown.fallback_model not in choices,
         }
         return TemplateResponse(request, "admin/assistant/airoutingpolicy/policy.html", context)
+
+    def try_view(self, request):
+        if not self.has_change_permission(request):
+            raise PermissionDenied
+        context = {
+            **self.admin_site.each_context(request),
+            "opts": self.model._meta,
+            "title": _("Try a model"),
+            "policy_url": reverse("admin:assistant_airoutingpolicy_policy"),
+            "run_url": reverse("admin:assistant_airoutingpolicy_try_run"),
+            "choices": [{"id": model.pk, "label": queries.model_label(model)} for model in queries.choosable_models()],
+            "prompt_max": TRY_PROMPT_MAX,
+        }
+        return TemplateResponse(request, "admin/assistant/airoutingpolicy/try.html", context)
+
+    async def try_run(self, request):
+        if request.method != "POST":
+            return HttpResponseNotAllowed(["POST"])
+        refused = await staff_gate(self.admin_site, request, TRY_PERMISSIONS)
+        if refused is not None:
+            return refused
+        if await sync_to_async(too_many_tries)(request):
+            return HttpResponse(
+                _("Too many tries in a minute: wait a moment and try again."),
+                status=429,
+                content_type="text/plain; charset=utf-8",
+            )
+        ctx = await sync_to_async(staff_context)(request)
+        prepared = await sync_to_async(prepare_try)(request, ctx)
+        if isinstance(prepared, str):
+            return event_stream(refused_try(prepared))
+        return event_stream(try_events(*prepared))

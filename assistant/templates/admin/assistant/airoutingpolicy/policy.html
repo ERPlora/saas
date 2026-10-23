@@ -9,7 +9,9 @@
 {% endblock %}
 {% block content %}
 <div id="content-main">
-  {% block object-tools %}{% endblock %}
+  {% block object-tools %}{% if can_change %}
+    <ul class="object-tools"><li><a href="{{ try_url }}">{% translate "Try a model" %}</a></li></ul>
+  {% endif %}{% endblock %}
   <p>{% translate "The model that answers every turn of the assistant, and the one that answers when its provider fails or cannot be used." %}</p>
   {% if active_missing %}<p class="errornote">{% translate "The model that answers is off or its provider is: choose another one." %}</p>{% endif %}
   {% if fallback_missing %}<p class="errornote">{% translate "The fallback model is off or its provider is: choose another one." %}</p>{% endif %}

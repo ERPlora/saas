@@ -13,10 +13,13 @@ CREDENTIAL_DELETED = "assistant.credential.deleted"
 MODEL_SELECTED = "assistant.model.selected"
 #: The model that answers or its fallback changed: ``{"active_model", "fallback_model"}`` (ids or ``None``).
 POLICY_UPDATED = "assistant.policy.updated"
+#: A member of the staff tried a model from the admin: ``{"model", "prompt_chars", "tools"}`` (never the message).
+MODEL_TRIED = "assistant.model.tried"
 
 ALL = [
     CREDENTIAL_SAVED,
     CREDENTIAL_DELETED,
     MODEL_SELECTED,
     POLICY_UPDATED,
+    MODEL_TRIED,
 ]

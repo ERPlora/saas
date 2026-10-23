@@ -64,15 +64,20 @@ Todos los modelos de todos los proveedores, con su precio, su contexto y si est�
 ### Admin: Modelo que contesta
 Una sola página (su lista la abre): «Modelo que contesta» y «Modelo de reserva», cada uno con los modelos que pueden
 contestar (disponibles y de un proveedor activado), quién hizo el último cambio y «Guardar». Quien solo puede mirar la
-ve sin poder cambiarla.
+ve sin poder cambiarla. Arriba, «Probar un modelo» (solo para quien puede cambiarla).
+
+### Admin: Probar un modelo
+«Modelo» (los que pueden contestar), «Mensaje», «Herramientas» (opcional, una lista como la del ejemplo) y «Enviar». Debajo,
+«Respuesta»: el modelo que contesta, el texto según llega, las herramientas que pide y una tabla con «Tokens de
+entrada», «Tokens de salida», «Tiempo» y «Coste» (en dólares).
 
 ## Estados de cada pantalla
 
 | Estado | Qué ve la persona |
 |---|---|
-| Cargando | La carga normal de una página del admin. |
+| Cargando | La carga normal de una página del admin; al probar un modelo, «Enviando…» y el botón «Enviar» apagado hasta que acaba («Hecho.»). |
 | Vacío | «0 proveedores de IA» y la lista vacía; un proveedor sin clave dice «Sin clave»; sin modelos que puedan contestar, «Todavía no puede contestar ningún modelo: añade un proveedor con su clave y elige sus modelos.» |
-| Error | En «Elegir modelos del proveedor», el motivo en rojo: «Este proveedor no tiene ninguna clave activa: añade una en su ficha y vuelve a intentarlo.», «El proveedor no ha dado sus modelos: …» o «El proveedor no tiene modelos de conversación en su lista.»; en las fichas, el error en rojo junto al campo: «Usa una dirección https: la clave del proveedor viaja a ella.», «Escribe la clave del proveedor.», «La clave de cifrado de las credenciales no está configurada: no se puede guardar ninguna clave de proveedor.». |
+| Error | En «Elegir modelos del proveedor», el motivo en rojo: «Este proveedor no tiene ninguna clave activa: añade una en su ficha y vuelve a intentarlo.», «El proveedor no ha dado sus modelos: …» o «El proveedor no tiene modelos de conversación en su lista.»; en las fichas, el error en rojo junto al campo: «Usa una dirección https: la clave del proveedor viaja a ella.», «Escribe la clave del proveedor.», «La clave de cifrado de las credenciales no está configurada: no se puede guardar ninguna clave de proveedor.»; al probar un modelo, en rojo: «El modelo no ha contestado: …», «Demasiadas pruebas en un minuto: espera un momento y vuelve a intentarlo.» o «No se ha podido enviar la prueba: revisa la conexión y vuelve a intentarlo.». |
 | Sin permiso | Sin los permisos de la pasarela, el admin contesta que no tiene permiso; quien solo puede mirar ve las fichas sin el campo «Clave». |
 
 ## Flujos
@@ -85,6 +90,7 @@ ve sin poder cambiarla.
 | ASSISTANT-F04 | Elegir los modelos de un proveedor | hecho |
 | ASSISTANT-F05 | Elegir qué modelo contesta | hecho |
 | ASSISTANT-F06 | Elegir proveedor y modelo de cada turno | hecho |
+| ASSISTANT-F07 | Probar un modelo antes de ponerlo a contestar | hecho |
 
 ### ASSISTANT-F01 Dar de alta un proveedor de IA
 <!-- origen: fi:saas/support/auth-services#modelo-aiprovider, fi:saas/django-admin#admin-aiprovider, old-saas:SAAS_ASSISTANT-F22 -->
@@ -173,6 +179,21 @@ Entra: el modelo que contesta y su reserva (o el modelo que se prueba) y las cla
 Sale: el modelo que contesta el turno y, si su proveedor falla antes de contestar, el aviso del paso al modelo de reserva.
 Si falla: sin modelo que contesta, «Todavía no contesta ningún modelo: elige uno en la página “Modelo que contesta”.»; si ninguno de los elegidos se puede usar, «Ningún modelo puede contestar: los proveedores de los modelos elegidos no tienen ninguna clave activa.»; un modelo que se prueba apagado, o de un proveedor apagado, «Este modelo está apagado o lo está su proveedor: enciéndelos para usarlo.»; si fallan todos, el turno termina con el motivo del último; el personal solo prueba un modelo con permiso para cambiar el modelo que contesta.
 Implicados: ASSISTANT-F03, ASSISTANT-F05, ASSISTANT-F07
+
+### ASSISTANT-F07 Probar un modelo antes de ponerlo a contestar
+<!-- origen: old-saas:SAAS_ASSISTANT-F24 -->
+Estado: hecho
+Actor: personal de ERPlora
+Pantalla: Admin: Probar un modelo
+Pasos:
+1. En «Modelo que contesta», pulsa «Probar un modelo».
+2. Elige el «Modelo», escribe el «Mensaje» y, si quiere ver cómo pide herramientas, escribe en «Herramientas» una lista de herramientas con su nombre, como en el ejemplo.
+3. Pulsa «Enviar»: sale «Enviando…», el modelo que contesta y su respuesta según llega, con las herramientas que pide.
+4. Al acabar, «Hecho.» y la tabla con «Tokens de entrada», «Tokens de salida», «Tiempo» y «Coste» (con los precios del modelo).
+Entra: el modelo, el mensaje y las herramientas.
+Sale: la respuesta del modelo con su consumo, su tiempo y su coste; la prueba queda en el registro de auditoría con quién la hizo, cuánto medía el mensaje y cuántas herramientas llevaba, nunca el mensaje (`assistant.model.tried`). No toca ningún negocio, cupo ni conversación.
+Si falla: sin modelo de la lista, «Elige de la lista el modelo que quieres probar.»; sin mensaje, «Escribe el mensaje que quieres enviar.»; unas herramientas mal escritas, «Las herramientas no están bien escritas: escribe una lista de herramientas como la del ejemplo, cada una con su nombre.»; un modelo apagado o de un proveedor apagado, «Este modelo está apagado o lo está su proveedor: enciéndelos para usarlo.»; un proveedor sin clave usable, «Ningún modelo puede contestar: los proveedores de los modelos elegidos no tienen ninguna clave activa.»; si el proveedor falla, «El modelo no ha contestado: …» con su motivo, nunca la clave; más de 10 pruebas en un minuto, «Demasiadas pruebas en un minuto: espera un momento y vuelve a intentarlo.»; sin red, «No se ha podido enviar la prueba: revisa la conexión y vuelve a intentarlo.». Solo prueba quien puede cambiar el modelo que contesta (cada prueba gasta la clave de ERPlora); sin ese permiso, el admin no deja entrar.
+Implicados: ASSISTANT-F05, ASSISTANT-F06
 
 ## Para quien lo mantiene
 
