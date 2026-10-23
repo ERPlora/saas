@@ -53,6 +53,34 @@ def test_a_user_can_be_added_with_email_and_password(staff_client):
     assert get_user_model().objects.get(email="bo@example.com").check_password("a-long-pass-phrase")
 
 
+@pytest.mark.parametrize("query", ["lp@example", "Lucía", "Pérez"])
+def test_the_staff_find_an_account_by_its_email_or_its_names(staff_client, query):
+    """ACCOUNTS-F13: «El personal busca una cuenta por correo o nombre»; the names are not in the address."""
+    client, _ = staff_client
+    get_user_model().objects.create_user(email="lp@example.com", password="x", first_name="Lucía", last_name="Pérez")
+
+    response = client.get("/admin/accounts/user/", {"q": query})
+
+    assert [user.email for user in response.context["cl"].result_list] == ["lp@example.com"]
+
+
+@pytest.mark.parametrize(
+    ("filters", "found"),
+    [
+        ({"language__exact": "es"}, ["ana@example.com"]),
+        ({"is_staff__exact": "1"}, ["root@example.com"]),
+        ({"is_active__exact": "0"}, []),
+    ],
+)
+def test_the_staff_filter_the_accounts_by_active_staff_and_language(staff_client, ana, filters, found):
+    """ACCOUNTS-F13: «… o filtra por activa, personal e idioma»."""
+    client, _ = staff_client
+
+    response = client.get("/admin/accounts/user/", filters)
+
+    assert sorted(user.email for user in response.context["cl"].result_list) == found
+
+
 def test_exchange_codes_are_read_only(staff_client):
     client, _ = staff_client
 
