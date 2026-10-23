@@ -2691,7 +2691,13 @@ def checkout_completed(session: dict) -> str:
         subscription_id = subscription_id["id"]
     with holding(hub.id):
         attempt = CheckoutAttempt.objects.select_related("owner").filter(stripe_session_id=session.get("id")).first()
-        if attempt is not None and attempt.owner_id is not None and attempt.owner_id != hub_queries.owner_id(hub.id):
+        # One already applied is a redelivery, whoever owns the business now: it is left to the paths below.
+        if (
+            attempt is not None
+            and attempt.owner_id is not None
+            and attempt.status != CheckoutAttempt.Status.COMPLETED
+            and attempt.owner_id != hub_queries.owner_id(hub.id)
+        ):
             return _end_not_owner(hub, attempt, session, subscription_id)
         if checkout_session_kind(metadata) is CheckoutKind.PLAN_TAKEOVER:
             return _takeover_completed(hub, session, subscription_id, metadata.get("replaces") or "")

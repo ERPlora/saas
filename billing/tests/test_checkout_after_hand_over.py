@@ -303,3 +303,28 @@ class TestTheHandOverExpiresTheOpenCheckouts:
         assert status(attempt) == CheckoutAttempt.Status.OPEN
         stripe_charged(stripe_double)
         assert services.checkout_completed(completed(attempt, stripe_double)) == "not_owner"
+
+
+class TestARedeliveryOfAPaymentAppliedBeforeTheHandOver:
+    def test_it_changes_nothing_and_the_business_keeps_what_it_paid(
+        self, shop, owner, heir, stripe_double, django_capture_on_commit_callbacks
+    ):
+        """The owner paid and the payment was applied; then the business changed hands and Stripe delivers the
+        same ``checkout.session.completed`` again (a lost 200, a resend from the Dashboard): a payment applied
+        while its payer owned the business is not ended nor refunded, the business keeps the period it paid."""
+        attempt = opened_by(owner, shop)
+        stripe_charged(stripe_double)
+        session = completed(attempt, stripe_double)
+        assert services.checkout_completed(session) == "completed"
+        paying = {**subscription("sub_new", customer="cus_new", items=[item("si_plan", "price_starter_month")],
+                                 cancel_at_period_end=True), "latest_invoice": "in_sub_new"}
+        stripe_double.answer("subscriptions.update", paying)
+        with django_capture_on_commit_callbacks(execute=True):
+            hand_over(shop, owner, heir)
+
+        assert services.checkout_completed(session) == "completed"
+
+        assert (local(shop).plan.slug, local(shop).stripe_subscription_id) == ("starter", "sub_new")
+        assert stripe_double.calls_to("subscriptions.cancel") == []
+        assert stripe_double.calls_to("refunds.create") == []
+        assert status(attempt) == CheckoutAttempt.Status.COMPLETED
