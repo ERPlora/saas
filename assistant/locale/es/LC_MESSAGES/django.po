@@ -1,0 +1,134 @@
+# Spanish translations of the assistant app of saas-next (English is the source).
+# Copyright (C) 2026 ERPlora
+# This file is distributed under the same license as ERPlora.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: saas-next\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-23 02:48+0200\n"
+"PO-Revision-Date: 2026-10-23 03:00+0200\n"
+"Last-Translator: ERPlora\n"
+"Language-Team: Spanish\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "No key"
+msgstr "Sin clave"
+
+msgid "Unreadable: type the key again"
+msgstr "Ilegible: vuelve a escribir la clave"
+
+msgid "Key"
+msgstr "Clave"
+
+msgid "Typed once, never shown again. Empty: keep the key it has."
+msgstr "Se escribe una vez y no se vuelve a ver. Vacía: se queda la que tiene."
+
+msgid "Type the provider's key."
+msgstr "Escribe la clave del proveedor."
+
+msgid "The key of the credentials is not configured: no provider key can be kept."
+msgstr "La clave de cifrado de las credenciales no está configurada: no se puede guardar ninguna clave de proveedor."
+
+msgid "key"
+msgstr "clave"
+
+msgid "keys"
+msgstr "claves"
+
+msgid "key ends in"
+msgstr "la clave acaba en"
+
+msgid "Connection"
+msgstr "Conexión"
+
+msgid "Notes"
+msgstr "Notas"
+
+msgid "AI assistant"
+msgstr "Asistente de IA"
+
+msgid "Use an https address: the provider's key travels to it."
+msgstr "Usa una dirección https: la clave del proveedor viaja a ella."
+
+msgid "identifier"
+msgstr "identificador"
+
+msgid "Short name the commands use, e.g. «openai»."
+msgstr "Nombre corto que usan los comandos, p. ej. «openai»."
+
+msgid "name"
+msgstr "nombre"
+
+msgid "API"
+msgstr "API"
+
+msgid "The API the provider speaks. A provider compatible with OpenAI's is «OpenAI» with its address."
+msgstr "La API que habla el proveedor. Uno compatible con la de OpenAI es «OpenAI» con su dirección."
+
+msgid "address"
+msgstr "dirección"
+
+msgid "Empty: the provider's own. Another one (a proxy, a compatible provider) over https."
+msgstr "Vacía: la del propio proveedor. Otra (un proxy, un proveedor compatible), por https."
+
+msgid "enabled"
+msgstr "activado"
+
+msgid "Off: none of its models answers nor can be tried."
+msgstr "Apagado: ninguno de sus modelos contesta ni se puede probar."
+
+msgid "notes"
+msgstr "notas"
+
+msgid "created"
+msgstr "creado"
+
+msgid "updated"
+msgstr "actualizado"
+
+msgid "AI provider"
+msgstr "proveedor de IA"
+
+msgid "AI providers"
+msgstr "proveedores de IA"
+
+msgid "provider"
+msgstr "proveedor"
+
+msgid "label"
+msgstr "etiqueta"
+
+msgid "active"
+msgstr "activa"
+
+msgid "key changed"
+msgstr "clave cambiada"
+
+msgid "added by"
+msgstr "añadida por"
+
+msgid "changed by"
+msgstr "cambiada por"
+
+msgid "provider key"
+msgstr "clave de proveedor"
+
+msgid "provider keys"
+msgstr "claves de proveedor"
+
+msgid "Only ERPlora's staff with this permission configure the AI."
+msgstr "Solo el personal de ERPlora con este permiso configura la IA."
+
+msgid "This provider does not exist."
+msgstr "Este proveedor no existe."
+
+msgid "This provider already has a key with that label."
+msgstr "Este proveedor ya tiene una clave con esa etiqueta."
+
+msgid "This key does not exist."
+msgstr "Esta clave no existe."

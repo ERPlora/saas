@@ -133,6 +133,9 @@ INSTALLED_APPS = [
     # WhatsApp, erplora.com's side (PLAN-SAAS §1.1, round 2026-10-15b): after hubs, whose businesses it serves
     # and whose snapshot carries its channel.
     "whatsapp",
+    # The AI gateway (PLAN-SAAS §1.1, round 2026-10-15b; PLAN §30): the providers ERPlora pays, their keys and
+    # models, which model answers and the clients of each provider's API (assistant/README.md).
+    "assistant",
     "public",
     # After `public`: its templates override the package's (public/templates/cookie_consent/).
     "cookie_consent",
