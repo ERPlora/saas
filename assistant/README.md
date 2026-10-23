@@ -95,6 +95,6 @@ negocio: son la pasarela que lo hace posible).
 `uv run pytest -q assistant` (BD de prueba propia: `TEST_DB_NAME=test_saas_next_<tema>`). Ningún test llama a un
 proveedor de verdad: los clientes hablan con `assistant/tests/fake_provider.py`, un servidor HTTP en `127.0.0.1`.
 El e2e del admin, `tests/e2e/panel/assistant-admin.spec.ts` (datos de `tests/e2e/panel/assistant_seed.py`), arranca
-ese mismo servidor en el puerto `E2E_SAAS_PORT + 8` (`uv run python -m assistant.tests.fake_provider --port …`). El e2e
+ese mismo servidor en el puerto `E2E_SAAS_PORT + 7` (`aiProviderPort` de `tests/e2e/stack.ts`; el `+ 8` es el doble de reCAPTCHA) (`uv run python -m assistant.tests.fake_provider --port …`). El e2e
 de las puertas del Hub y de «Uso del asistente», `tests/e2e/panel/assistant-gateway.spec.ts`, llama firmado como el
 Hub contra el mismo servidor falso.

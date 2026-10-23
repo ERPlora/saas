@@ -27,6 +27,7 @@ describe('stackFrom', () => {
       publicPort: 8011,
       panelPort: 8012,
       panelMfaPort: 8013,
+      aiProviderPort: 8017,
       recaptchaDoublePort: 8018,
       hubDoublePort: 8019,
       database: undefined,
@@ -40,10 +41,16 @@ describe('stackFrom', () => {
       publicPort: 8031,
       panelPort: 8032,
       panelMfaPort: 8033,
+      aiProviderPort: 8037,
       recaptchaDoublePort: 8038,
       hubDoublePort: 8039,
       database: 'saas_e2e_8030',
     });
+  });
+
+  it("gives the assistant's fake AI provider a port of its own, apart from the stack's servers", () => {
+    const servers = [OWN.publicPort, OWN.panelPort, OWN.panelMfaPort, OWN.recaptchaDoublePort, OWN.hubDoublePort];
+    expect(servers).not.toContain(OWN.aiProviderPort);
   });
 
   it('takes the e2e database the run exports, whatever its ports', () => {
