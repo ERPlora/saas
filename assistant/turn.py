@@ -211,6 +211,15 @@ def failure(payload: dict) -> dict:
     return {"type": "error", "code": code, "message": MESSAGES[code], "retriable": bool(payload.get("retriable"))}
 
 
+def with_search_rule(messages: list[dict]) -> list[dict]:
+    """``messages`` whose system message (the Hub's instructions) also asks to cite what the web search finds."""
+    from assistant import server_tools
+
+    system = messages[0]
+    rule = f"{str(system.get('content') or '').rstrip()}\n\n{server_tools.WEB_SEARCH_RULE}".lstrip()
+    return [{**system, "content": rule}, *messages[1:]]
+
+
 def assistant_message(text: str, calls: list[dict]) -> dict:
     return {
         "role": "assistant",
@@ -225,11 +234,18 @@ def assistant_message(text: str, calls: list[dict]) -> dict:
 async def run(
     candidates: Sequence[RouteCandidate], messages: list[dict], tools: list[ToolSpec], outcome: Outcome
 ) -> AsyncIterator[dict]:
-    """Stream the turn: the frames of the answer as they come; ``outcome`` filled as it goes."""
-    conversation = list(messages)
+    """Stream the turn: the frames of the answer as they come; ``outcome`` filled as it goes. The tools erplora.com
+    runs itself (``server_tools``) are run here and the model is asked again, at most ``server_tools.MAX_ROUNDS``
+    times; on the last round they are not offered, so the model answers. A tool of the Hub named as one of ours is
+    ours."""
+    from assistant import server_tools
+
+    conversation = with_search_rule(list(messages)) if server_tools.search_offered() else list(messages)
+    theirs_offered = [tool for tool in tools if not server_tools.is_server_tool(tool.name)]
     remaining = list(candidates)
+    rounds = 0
     while True:
-        offered = tools
+        offered = theirs_offered + (server_tools.specs() if rounds < server_tools.MAX_ROUNDS else [])
         text, calls, failed, answering = "", [], None, remaining[0]
 
         def build(candidate: RouteCandidate) -> TurnRequest:
@@ -268,7 +284,17 @@ async def run(
             outcome.error = failure(failed)
             yield outcome.error
             return
-        for call in calls:
+        remaining = remaining[remaining.index(answering) :]
+        mine = [call for call in calls if server_tools.is_server_tool(call["name"])]
+        theirs = [call for call in calls if not server_tools.is_server_tool(call["name"])]
+        if mine and not theirs and rounds < server_tools.MAX_ROUNDS:
+            conversation.append(assistant_message(text, mine))
+            for call in mine:
+                result = await server_tools.run(call["name"], call["arguments"])
+                conversation.append({"role": "tool", "tool_call_id": call["call_id"], "content": result})
+            rounds += 1
+            continue
+        for call in theirs:
             outcome.calls.append(call)
             outcome.answered = True
             yield {"type": "function_call", **call}
