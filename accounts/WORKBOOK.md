@@ -204,7 +204,7 @@ inglés» y el «mensaje en español» (vacío, quien visita en español lee el 
 | Cargando | El botón de enviar se apaga mientras va la petición, también «Descargar mis datos» mientras prepara el fichero; el perfil y las preferencias, sus tarjetas cargando; el enlace del correo dice «Comprobando tu enlace…»; los ajustes de la verificación en dos pasos, «Cargando…»; las sesiones, la tabla cargando. |
 | Vacío | Sin sesión, toda página del panel lleva a la **Entrada**, que vuelve a ella tras entrar. Con esta sesión sola, «Cerrar las demás sesiones» está apagado; sin códigos de recuperación, «Sin ellos, perder tu autenticador te bloquea el acceso a tu cuenta.» con «Generar códigos de recuperación». |
 | Error | Cada error sale debajo de su campo, con las palabras de la regla que falla («La contraseña nueva tiene que ser distinta de la actual.»); un fallo de red, «No hemos podido iniciar tu sesión. Vuelve a intentarlo.» o «Algo ha ido mal. Inténtalo de nuevo.». Los ajustes que no cargan, «No hemos podido cargar tu configuración de seguridad. Vuelve a intentarlo.» con «Reintentar»; las sesiones, «No hemos podido cargar tus sesiones» con «Reintentar»; el perfil, «No hemos podido cargar tu cuenta», y las preferencias, «No hemos podido cargar tus preferencias», con «Reintentar». Un cambio de preferencias que no se guarda vuelve a como estaba. |
-| Freno | «Demasiados intentos fallidos. Inténtelo más tarde.» o «Demasiados intentos. Espera unos minutos y vuelve a intentarlo.», igual exista o no la cuenta. |
+| Freno | «Demasiados intentos fallidos. Inténtelo más tarde.» o «Demasiados intentos. Espera unos minutos y vuelve a intentarlo.», igual exista o no la cuenta; si Google no ve una persona, «No hemos podido comprobar que eres una persona. Vuelve a intentarlo.». |
 | Enlace caducado | «Este enlace de restablecimiento ha expirado o no es válido.» con «Solicitar Nuevo Enlace». |
 | Código caducado | La entrada dice «Tu código ha caducado o se ha escrito mal demasiadas veces. Vuelve a iniciar sesión y te enviaremos uno nuevo.» |
 | Mantenimiento | Quien no es del personal ve la **Página de mantenimiento** en cualquier página de erplora.com; el personal con su sesión abierta sigue usándolo todo. |
@@ -415,15 +415,16 @@ Implicados: public (las páginas de los términos y de la privacidad)
 <!-- origen: old-saas:SAAS_AUTH-F14 -->
 Estado: hecho
 Actor: sistema
-Pantalla: Entrada, Revisa tu correo, Restablece tu contraseña
+Pantalla: Entrada, Revisa tu correo, Restablece tu contraseña, Establece una nueva contraseña, Verificación en dos pasos
 Pasos:
-1. Cada contraseña equivocada gasta del presupuesto de su cuenta (5 en 5 minutos) y del de la dirección de red (10 por minuto); agotado, ni la buena entra hasta que pasa el plazo. Una entrada buena devuelve su intento: el dueño no gasta presupuesto.
-2. Antes de mirar la contraseña, cada dirección de red tiene 30 entradas por minuto.
-3. Los códigos del correo admiten 3 intentos; el de la entrada dura 3 minutos.
-4. Los enlaces de restablecer, 5 por minuto por correo y 20 por dirección de red; las altas, 10 por hora por dirección; el cambio de contraseña, 5 por minuto por cuenta.
-Entra: el correo que se prueba y la dirección de red de quien llama.
-Sale: la respuesta de freno, la misma exista o no la cuenta y con el mismo número de intentos: «Demasiados intentos fallidos. Inténtelo más tarde.» en la **Entrada** o «Demasiados intentos. Espera unos minutos y vuelve a intentarlo.».
-Si falla: si la memoria compartida de los contadores no responde, el freno se abre (la puerta sigue usable) y queda un aviso en el registro.
+1. Antes de nada, Google comprueba sin que se vea (sin casilla ni puzle) que quien envía el formulario es una persona: entrar, crear la cuenta, pedir el enlace de restablecer, la contraseña nueva del enlace, el código del correo y «Enviar un código nuevo», el código de cada entrada y el de la app autenticadora. Debajo de cada uno, «Este sitio está protegido por reCAPTCHA y se aplican la Política de Privacidad y las Condiciones del Servicio de Google.». «Continuar con Google» no pasa por aquí: lo comprueba Google.
+2. Cada contraseña equivocada gasta del presupuesto de su cuenta y del de la dirección de red (5 en 5 minutos cada uno); agotado, ni la buena entra hasta que pasa el plazo. Una entrada buena devuelve su intento: el dueño no gasta presupuesto.
+3. Antes de mirar la contraseña, cada dirección de red tiene 30 entradas por minuto.
+4. Los códigos del correo admiten 3 intentos; el de la entrada dura 3 minutos. Además, cada dirección de red tiene 10 códigos rechazados en 5 minutos, del correo o de la app autenticadora; uno bueno no gasta.
+5. Los enlaces de restablecer, 10 por hora por dirección de red y 5 por hora por cuenta; el formulario del enlace, 20 envíos por minuto por dirección; un código nuevo, uno cada 10 segundos por cuenta; las altas, 10 por hora por dirección; el cambio de contraseña, 5 por minuto por cuenta.
+Entra: el correo que se prueba, la dirección de red de quien llama y el visto bueno de Google.
+Sale: la respuesta de freno, la misma exista o no la cuenta y con el mismo número de intentos: «Demasiados intentos fallidos. Inténtelo más tarde.» en la **Entrada** o «Demasiados intentos. Espera unos minutos y vuelve a intentarlo.»; si Google no ve una persona, «No hemos podido comprobar que eres una persona. Vuelve a intentarlo.» y no se hace nada.
+Si falla: si la memoria compartida de los contadores no responde, el freno se abre (la puerta sigue usable) y queda un aviso en el registro. Si Google no contesta, entrar, el código de la entrada y el de la app autenticadora siguen (ya los guardan la contraseña, el código y los frenos) y queda un error en el registro; el resto de formularios se rechaza con el mensaje de arriba.
 Implicados: ninguno
 
 ### ACCOUNTS-F12 Saber quién ha entrado
@@ -1009,8 +1010,14 @@ Implicados: hubs, billing, public, apps y fiscal; del Hub, verifactu, invoice y 
   «Last updated» de `/legal/terms/` y `/legal/privacy/`; `tests/test_terms.py` falla si una página cambia
   su fecha sin la versión. `services.accept_legal_texts` escucha `user_signed_up` de allauth y
   `user_logged_in` de Django.
-- Freno (ACCOUNTS-F11): los límites son los de allauth (`ACCOUNT_RATE_LIMITS` solo sube el de altas a
-  10/h) sobre la caché de Django (Valkey en AWS, `base.cache.FailSoftRedisCache`); `tests/test_throttle.py`.
+- Freno (ACCOUNTS-F11): todos los límites escritos en `ACCOUNT_RATE_LIMITS` de `config/settings.py` (saas#88:
+  `login_failed` 5/5m por dirección y por cuenta, `reset_password` 10/h por dirección y 5/h por cuenta y
+  `code_attempts`, nuestro, 10 códigos rechazados en 5 minutos por dirección) sobre la caché de Django (Valkey en
+  AWS, `base.cache.FailSoftRedisCache`); `tests/test_throttle.py`. reCAPTCHA Enterprise por puntuación
+  (`live.recaptcha`, mínimo `RECAPTCHA_MIN_SCORE` 0.5) delante de las puertas de allauth.headless en
+  `accounts/bot_check.py` (400 `recaptcha_failed`; abre sin Google solo en `login`, `login_code` y
+  `mfa_authenticate`), aviso en `components/RecaptchaNotice.vue`; `tests/test_bot_check.py`. Detalle y runbook,
+  README de la raíz, «Protección contra bots»; PLAN-SAAS §3.7, ronda 2026-10-23.
   Los pases del salto a un negocio tienen su propio freno: 20 en 5 minutos por cuenta (`HUB_LOGIN_RATELIMIT`, F28).
 - Lo que no sigue del viejo, a propósito: el asistente de `two_factor` (retirado en el viejo, ADR-0417), el
   `EmailDevice` creado a cada cuenta (lo sustituye el código por correo de cada entrada), el par de
