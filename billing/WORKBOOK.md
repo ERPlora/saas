@@ -1,7 +1,7 @@
 # Workbook — Facturación (billing)
 Prefijo: BILLING
 Alcance MVP: fase 1 (lo que una cuenta paga a ERPlora: planes, módulos, IVA y facturas)
-Estado de la app: en construcción (partes 1, 2 y 3 de 3: el plan, su dinero, las aplicaciones de pago y el soporte de Stripe)
+Estado de la app: en uso (tres flujos parciales: BILLING-F33, BILLING-F34 y BILLING-F35, la parte del Hub que apaga una aplicación de pago)
 
 > Manual de uso y especificación de la app `billing` del SaaS (erplora.com). Cuenta cómo se paga y se
 > cambia el plan de un negocio, cómo se contratan y se cancelan sus aplicaciones de pago, qué pasa si un
@@ -157,8 +157,8 @@ caben y, al propietario, el botón para mejorarlo o cambiarlo.
 | BILLING-F34 | Terminar una aplicación de pago al final de su periodo | parcial |
 | BILLING-F35 | Llevar una aplicación de pago a otro negocio | parcial |
 | BILLING-F36 | Ver una factura | hecho |
-| BILLING-F37 | Olvidar los avisos de Stripe de más de 30 días | parcial |
-| BILLING-F38 | Releer cada noche las suscripciones en Stripe y corregir lo que se desvió | parcial |
+| BILLING-F37 | Olvidar los avisos de Stripe de más de 30 días | hecho |
+| BILLING-F38 | Releer cada noche las suscripciones en Stripe y corregir lo que se desvió | hecho |
 
 ### BILLING-F01 Decir dónde se factura el negocio y con qué identificación fiscal
 <!-- origen: old-saas:SAAS_DASHBOARD-F90 fi:saas/orgs-users#informacion-de-facturacion-de-la-organizacion-ver-editar -->
@@ -690,7 +690,7 @@ Implicados: ninguno
 
 ### BILLING-F37 Olvidar los avisos de Stripe de más de 30 días
 <!-- origen: fi:saas/support/billing-fiscal#task-cleanup_old_webhook_events -->
-Estado: parcial — falta programarlo cada noche en la infraestructura: hasta entonces no se ejecuta solo
+Estado: hecho
 Actor: sistema
 Pantalla: ninguna
 Pasos:
@@ -703,7 +703,7 @@ Implicados: ninguno
 
 ### BILLING-F38 Releer cada noche las suscripciones en Stripe y corregir lo que se desvió
 <!-- origen: fi:saas/support/hubs#command-sync_subscriptions -->
-Estado: parcial — falta programarlo cada noche en la infraestructura: hasta entonces no se ejecuta solo
+Estado: hecho
 Actor: sistema
 Pantalla: ninguna
 Pasos:
@@ -736,8 +736,9 @@ Implicados: hubs (la suscripción del negocio), el negocio (recibe su plan)
   `manage.py retax_subscriptions` (BILLING-F02, BILLING-F06) y `manage.py sync_subscriptions` (BILLING-F38;
   `--dry-run` solo informa) salen con error si dejan algo por hacer, que es lo que la alarma `task_failed`
   avisa al equipo; `manage.py purge_webhook_events` (BILLING-F37) solo borra. Las programa el repo de
-  infraestructura (`stacks/prod/scheduler.tf` de `ERPlora/aws`): `audit_tax_rules` cada día a las 05:10 UTC y
-  `retax_subscriptions` a las 05:20 UTC; `sync_subscriptions` y `purge_webhook_events`, aún no.
+  infraestructura (`stacks/prod/scheduler.tf` de `ERPlora/aws`): `sync_subscriptions` cada noche a las 00:10 UTC
+  (antes de la foto de las 00:30 y de la re-tarificación), `purge_webhook_events` a las 00:50 UTC,
+  `audit_tax_rules` cada día a las 05:10 UTC y `retax_subscriptions` a las 05:20 UTC.
 
 ## Lo que NO hace, a propósito
 

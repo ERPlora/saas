@@ -254,11 +254,11 @@ trata como ninguna (`UNKNOWN`: 503 `billing.payments_unavailable`, nunca un cobr
   de arriba; tras agotar los reintentos, «marcar la suscripción como impagada» (`unpaid`); Customer Portal solo
   con tarjetas y recibos (los cambios de plan van por el panel, que pone nuestros `TaxRate`); precios con
   `tax_behavior = exclusive` (no hay sincronización de productos: los ids se copian en el admin).
-- **aws**: `sweep_unpaid` corre cada hora (`sweep-unpaid-hourly` en `stacks/prod/scheduler.tf`), y
-  `audit_tax_rules` y `retax_subscriptions` cada día (`audit-tax-rules-daily`, 05:10 UTC, y
-  `retax-subscriptions-daily`, 05:20 UTC; FIX-AWS-BILLING-DAILY-TASKS-NOT-SCHEDULED); falta programar
-  `sync_subscriptions` y `purge_webhook_events` cada noche (APP-BILLING-3; mientras no estén, BILLING-F38 y
-  BILLING-F37 siguen `parcial`).
+- **aws**: `sweep_unpaid` corre cada hora (`sweep-unpaid-hourly` en `stacks/prod/scheduler.tf`);
+  `sync_subscriptions` y `purge_webhook_events` cada noche (`sync-subscriptions-nightly`, 00:10 UTC, y
+  `purge-webhook-events-nightly`, 00:50 UTC; FIX-AWS-BILLING-SYNC-AND-PURGE-NOT-SCHEDULED), y `audit_tax_rules` y
+  `retax_subscriptions` cada día (`audit-tax-rules-daily`, 05:10 UTC, y `retax-subscriptions-daily`, 05:20 UTC;
+  FIX-AWS-BILLING-DAILY-TASKS-NOT-SCHEDULED).
 
 ## La Tienda (L2-D)
 

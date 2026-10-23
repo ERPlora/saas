@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:e385a67335d7ad04fd09835371b86d04440a7c1353d4737960cf5e094688f17d -->
+<!-- generated from WORKBOOK.md sha256:811b5ba8688767301f79cfa21fccf23789a604a46f009574d4e82db0bcefaf39 -->
 
 ## What it is for and who it is for
 
@@ -144,8 +144,8 @@ the owner, the button to upgrade or change it.
 | BILLING-F34 | End a paid app at the end of its period | partial |
 | BILLING-F35 | Take a paid app to another business | partial |
 | BILLING-F36 | See an invoice | done |
-| BILLING-F37 | Forget Stripe's notices older than 30 days | partial |
-| BILLING-F38 | Read the subscriptions again in Stripe every night and put right what drifted | partial |
+| BILLING-F37 | Forget Stripe's notices older than 30 days | done |
+| BILLING-F38 | Read the subscriptions again in Stripe every night and put right what drifted | done |
 
 ### BILLING-F01 Say where the business is invoiced and with which tax ID
 <!-- origen: old-saas:SAAS_DASHBOARD-F90 fi:saas/orgs-users#informacion-de-facturacion-de-la-organizacion-ver-editar -->
@@ -677,7 +677,7 @@ Involved: none
 
 ### BILLING-F37 Forget Stripe's notices older than 30 days
 <!-- origen: fi:saas/support/billing-fiscal#task-cleanup_old_webhook_events -->
-Status: partial — it still has to be scheduled every night in the infrastructure: until then it does not run by itself
+Status: done
 Actor: system
 Screen: none
 Steps:
@@ -690,7 +690,7 @@ Involved: none
 
 ### BILLING-F38 Read the subscriptions again in Stripe every night and put right what drifted
 <!-- origen: fi:saas/support/hubs#command-sync_subscriptions -->
-Status: partial — it still has to be scheduled every night in the infrastructure: until then it does not run by itself
+Status: done
 Actor: system
 Screen: none
 Steps:
