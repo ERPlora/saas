@@ -59,6 +59,17 @@ class TestWhatIsAudited:
         entry = _entries_for(ana).filter(action=LogEntry.Action.UPDATE).get()
         assert entry.changes_dict["first_name"] == ["Ana", "Ana María"]
 
+    def test_a_new_account_is_logged_with_its_own_fields_not_the_rows_that_point_at_it(self, ana):
+        """auditlog drops only many-to-many relations: a new account listed «Api keys: None → accounts.ApiKey.None»,
+        «Billing profiles», «Hub members»… among its «changes», the managers of the rows of other models that point
+        at it. Those rows have their own entries; the account's say what the account is."""
+        created = _entries_for(ana).get(action=LogEntry.Action.CREATE)
+        reverse = {field.name for field in get_user_model()._meta.get_fields() if field.auto_created and not field.concrete}
+
+        assert "email" in created.changes_dict
+        assert reverse and not reverse & set(created.changes_dict)
+        assert ".None" not in str(created.changes)
+
     def test_access_to_a_business_is_logged(self, ana):
         membership = HubMembership.objects.create(user=ana, hub_slug="bar-pepe", role=HubMembership.Role.ADMIN)
 
