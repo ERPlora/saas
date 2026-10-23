@@ -1187,6 +1187,11 @@ msgid "site settings"
 msgstr "ajustes del sitio"
 
 #: base/models.py
+msgctxt "one"
+msgid "site settings"
+msgstr "ajuste del sitio"
+
+#: base/models.py
 msgid "Site settings"
 msgstr "Ajustes del sitio"
 
