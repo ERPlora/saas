@@ -261,3 +261,58 @@ class TurnIn(CallerIn):
     instructions: str = Field(default="", max_length=200_000)
     tools: list[dict[str, Any]] = Field(default_factory=list, max_length=256)
     continuation: str | None = Field(default=None, max_length=4096)
+
+
+class ServiceConnectionOut(Schema):
+    """What the embeddings and the voice need of the services' provider (of OpenAI's API): its address and its key."""
+
+    provider: str
+    base_url: str
+    api_key: SecretStr
+
+
+class EmbeddingsIn(CallerIn):
+    """The texts whose fingerprints (vectors) the Hub's index keeps, 1 to 256."""
+
+    texts: list[str] = Field(min_length=1, max_length=256)
+
+    @field_validator("texts")
+    @classmethod
+    def _no_empty_text(cls, texts):
+        if any(not text.strip() for text in texts):
+            raise ValueError("every text must have something written")
+        return texts
+
+
+class TranscribeIn(CallerIn):
+    """A dictation: its audio in base64, its type (``audio/webm``, ``audio/ogg``, ``audio/wav``, ``audio/mp4``,
+    ``audio/mpeg`` or ``audio/flac``) and, if the Hub knows it, its language (``es`` or ``es-ES``)."""
+
+    audio: str = Field(min_length=1)
+    mime_type: str
+    language: str = Field(default="", max_length=16)
+
+    @field_validator("mime_type")
+    @classmethod
+    def _an_audio_type(cls, value):
+        from assistant.media import AUDIO_TYPES
+
+        kind = value.split(";")[0].strip().lower()
+        if kind not in AUDIO_TYPES:
+            raise ValueError(f"one of {', '.join(sorted(AUDIO_TYPES))}")
+        return kind
+
+
+class SynthesizeIn(CallerIn):
+    """A text to read aloud and, optionally, its voice (``alloy``, ``echo``, ``fable``, ``onyx``, ``nova`` or
+    ``shimmer``; another one is ``alloy``)."""
+
+    text: str = Field(max_length=100_000)
+    voice: str = Field(default="", max_length=32)
+
+    @field_validator("text")
+    @classmethod
+    def _something_to_read(cls, value):
+        if not value.strip():
+            raise ValueError("write the text to read aloud")
+        return value.strip()

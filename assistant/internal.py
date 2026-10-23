@@ -19,6 +19,8 @@ saas#2531). An operation's refusal is its envelope ``{"error": {"code", "message
 from __future__ import annotations
 
 import asyncio
+import base64
+import binascii
 import json
 import logging
 import math
@@ -36,8 +38,20 @@ from live.errors import OperationError
 from pydantic import BaseModel, ValidationError
 
 from accounts.signing import live_secrets, may_be_signed, verify_signed
-from assistant import queries, services, turn
-from assistant.schemas import Caller, CallerIn, ClaimOut, MessageReleaseIn, RouteIn, TurnIn, UsageRecordIn
+from assistant import media, queries, services, turn
+from assistant.schemas import (
+    Caller,
+    CallerIn,
+    ClaimOut,
+    EmbeddingsIn,
+    MessageReleaseIn,
+    NoInput,
+    RouteIn,
+    SynthesizeIn,
+    TranscribeIn,
+    TurnIn,
+    UsageRecordIn,
+)
 from assistant.services import platform_context
 
 logger = logging.getLogger(__name__)
@@ -150,11 +164,11 @@ def resolve(hub: str) -> Caller:
 
 def spend(request: HttpRequest, bucket: str, rate: str, caller: Caller) -> None:
     """One call of ``caller``'s budget ``bucket``; over ``rate``, 429 ``rate_limited`` with the seconds left."""
-    key = f"demo:{caller.demo}" if caller.demo else f"hub:{caller.hub_id}"
-    usage = get_usage(request, group=f"assistant.{bucket}", key=lambda group, request: key, rate=rate, increment=True)
+    who = turn.caller_key(caller)
+    usage = get_usage(request, group=f"assistant.{bucket}", key=lambda group, request: who, rate=rate, increment=True)
     if usage is not None and usage["should_limit"]:
         wait = max(1, math.ceil(usage["time_left"]))
-        logger.warning("assistant.internal.rate_limited bucket=%s caller=%s", bucket, key)
+        logger.warning("assistant.internal.rate_limited bucket=%s caller=%s", bucket, who)
         raise Refused(
             429, "rate_limited", "Too many requests of this business: wait a moment and try again.", retry_after=wait
         )
@@ -272,7 +286,7 @@ INTERNAL_ERROR = {
 
 async def stream(started: Turn):
     """The frames of the turn, then ``response`` (unless it failed), ``usage`` and ``[DONE]``. Whatever ends it (the
-    end, a failure, the Hub closing the connection) settles the message and what it spent."""
+    end, a failure, the Hub closing the service) settles the message and what it spent."""
     outcome = turn.Outcome()
     try:
         async for frame in turn.run(started.candidates, started.messages, started.tools, outcome):
@@ -321,3 +335,78 @@ async def chat(call: Call) -> HttpResponse:
         return refusal(502, error.pop("code"), error.pop("message"), quota=usage, **error)
     body = {key: value for key, value in response_frame(started, outcome).items() if key != "type"}
     return JsonResponse({**body, "quota": usage})
+
+
+# --- Embeddings and voice (ASSISTANT-G54, G56, G57) --------------------------------------------------------------
+
+#: The body of a batch of texts to embed (256 descriptions of the Hub's modules fit many times over).
+EMBED_BODY_BYTES = 2 * 1024 * 1024
+#: The body of a dictation: its audio in base64 and a little more.
+TRANSCRIBE_BODY_BYTES = 4 * 1024 * 1024
+
+
+async def services_connection():
+    """The services' provider, or 503 ``assistant.provider_not_configured``."""
+    try:
+        return await sync_to_async(queries.service_connection)(platform_context(), NoInput())
+    except OperationError as refused:
+        if refused.code != "assistant.provider_not_configured":
+            raise
+        logger.warning("assistant.media.no_provider")
+        raise Refused(503, refused.code, refused.message, retriable=False) from None
+
+
+def media_failed(problem: media.MediaFailed) -> JsonResponse:
+    return refusal(502, problem.code, turn.MESSAGES[problem.code], retriable=problem.retriable)
+
+
+async def record(caller: Caller, **spent) -> None:
+    await sync_to_async(services.usage_record)(platform_context(), UsageRecordIn(caller=caller, **spent))
+
+
+@door(EmbeddingsIn, bucket="embed", rate="ASSISTANT_EMBED_RATELIMIT", max_bytes=EMBED_BODY_BYTES)
+async def embeddings(call: Call) -> HttpResponse:
+    """The fingerprints of ``texts`` for the Hub's index, in their order: ``{embeddings, model}``. The tokens and
+    their cost go to the business's month; the allowance of messages is not looked at."""
+    service = await services_connection()
+    try:
+        vectors, tokens = await media.embed(service, call.data.texts)
+    except media.MediaFailed as problem:
+        return media_failed(problem)
+    await record(call.caller, tokens_embedding=tokens, cost_usd=media.embedding_cost(tokens))
+    return JsonResponse({"embeddings": vectors, "model": media.EMBEDDING_MODEL})
+
+
+@door(TranscribeIn, bucket="transcribe", rate="ASSISTANT_TRANSCRIBE_RATELIMIT", max_bytes=TRANSCRIBE_BODY_BYTES)
+async def transcribe(call: Call) -> HttpResponse:
+    """The text of a dictation: ``{text, language}`` (``language`` as asked, base code; empty: the model found it).
+    413 over ``MAX_AUDIO_BYTES`` of audio."""
+    try:
+        audio = base64.b64decode(call.data.audio, validate=True)
+    except (binascii.Error, ValueError):
+        raise Refused(422, "invalid_payload", "The body is not the door's contract.", fields={"audio": "not valid base64"}) from None
+    if not audio:
+        raise Refused(422, "invalid_payload", "The body is not the door's contract.", fields={"audio": "empty"})
+    if len(audio) > media.MAX_AUDIO_BYTES:
+        raise Refused(413, "payload_too_large", f"The audio exceeds {media.MAX_AUDIO_BYTES} bytes.")
+    service = await services_connection()
+    language = media.base_language(call.data.language)
+    try:
+        text = await media.transcribe(service, audio, call.data.mime_type, language)
+    except media.MediaFailed as problem:
+        return media_failed(problem)
+    await record(call.caller, transcriptions=1)
+    return JsonResponse({"text": text, "language": language})
+
+
+@door(SynthesizeIn, bucket="synthesize", rate="ASSISTANT_SYNTHESIZE_RATELIMIT")
+async def synthesize(call: Call) -> HttpResponse:
+    """``text`` spoken (cut to ``MAX_SPEECH_CHARS``), ``audio/mpeg``; an unknown ``voice`` is the default one."""
+    service = await services_connection()
+    text = media.speech_text(call.data.text)
+    try:
+        audio = await media.synthesize(service, text, media.voice_of(call.data.voice))
+    except media.MediaFailed as problem:
+        return media_failed(problem)
+    await record(call.caller, speech_characters=len(text))
+    return HttpResponse(audio, content_type="audio/mpeg")

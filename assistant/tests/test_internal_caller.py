@@ -21,6 +21,9 @@ DOORS = [
     "/internal/assistant/chat/stream",
     "/internal/assistant/chat",
     "/internal/assistant/usage",
+    "/internal/assistant/embeddings",
+    "/internal/speech/transcribe",
+    "/internal/speech/synthesize",
 ]
 
 pytestmark = pytest.mark.django_db

@@ -161,6 +161,9 @@ urlpatterns = [
     path("internal/assistant/chat/stream", assistant_internal.chat_stream, name="internal_assistant_chat_stream"),
     path("internal/assistant/chat", assistant_internal.chat, name="internal_assistant_chat"),
     path("internal/assistant/usage", assistant_internal.usage, name="internal_assistant_usage"),
+    path("internal/assistant/embeddings", assistant_internal.embeddings, name="internal_assistant_embeddings"),
+    path("internal/speech/transcribe", assistant_internal.transcribe, name="internal_speech_transcribe"),
+    path("internal/speech/synthesize", assistant_internal.synthesize, name="internal_speech_synthesize"),
     # Stripe's single webhook (PLAN-SAAS §4): signed by Stripe, no session nor CSRF.
     path("webhooks/stripe/", billing_webhooks.stripe_webhook, name="stripe_webhook"),
     # Meta's single WhatsApp webhook (whatsapp/webhooks.py): its verification (GET) and its signed notices.

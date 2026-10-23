@@ -38,6 +38,7 @@ from assistant.schemas import (
     ProviderRef,
     RouteIn,
     RouteOut,
+    ServiceConnectionOut,
     UsageOut,
 )
 from hubs import queries as hubs_queries
@@ -303,3 +304,28 @@ def usage_show(ctx: OperationContext, data: Caller) -> dict:
     if ctx.actor != "system":
         staff_with(ctx, "assistant.view_assistantusage")
     return usage_of(data, timezone.now())
+
+
+@operation(
+    "assistant.service.connection",
+    kind="query",
+    permission="assistant.manage",
+    input=NoInput,
+    output=ServiceConnectionOut,
+)
+def service_connection(ctx: OperationContext, data: NoInput) -> dict:
+    """The address and the usable key of the services' provider (``ASSISTANT_SERVICE_PROVIDER``), which computes the
+    embeddings and the voice (the platform only). 409 ``assistant.provider_not_configured`` if it does not exist, is
+    off, speaks another API than OpenAI's or has no active key that opens."""
+    platform_only(ctx)
+    provider = AIProvider.objects.filter(
+        slug=settings.ASSISTANT_SERVICE_PROVIDER, is_enabled=True, kind=AIProvider.Kind.OPENAI
+    ).first()
+    api_key = usable_key(provider) if provider is not None else ""
+    if not api_key:
+        with translation.override(ctx.language):
+            raise Conflict(
+                _("The provider of the embeddings and the voice is not configured: add OpenAI with its key."),
+                code="assistant.provider_not_configured",
+            )
+    return {"provider": provider.slug, "base_url": provider.api_base, "api_key": api_key}
