@@ -144,10 +144,12 @@ lo revisa flujo a flujo con su e2e en 3 tamaños (`tests/e2e/panel/hubs-people.s
 - **El pie de «Te han invitado»** prometía «Podrás salir de un negocio cuando quieras desde el panel.» y no hay forma de
   salir uno mismo (como en Square, Toast o Shopify: quita el propietario o un administrador); ahora dice quién puede
   quitar el acceso (`InvitationPage.test.ts`).
-- **Lo que sigue `parcial`**: el Hub aún no sirve `POST /internal/sessions/revoke` (`base/internal.py`, fase 2): quitar,
-  cambiar el rol y aceptar un traspaso lo encolan y lo reintentan (`SessionRevocation`), pero la sesión abierta en el
-  Hub sigue con el rol anterior (F26, F27, F28). Y un plan de pago traspasado sigue en la tarjeta del propietario
-  anterior hasta que soporte lo mueva, sin herramienta todavía (F28; PLAN-SAAS «mover el pagador»).
+- **El Hub cierra las sesiones** (hub, `MIGRATION-TASK: APP-HUBS-3`, BASE-F13): quitar, cambiar el rol y aceptar un
+  traspaso encolan `POST /internal/sessions/revoke` tras el COMMIT y lo reintentan (`SessionRevocation`); el Hub borra
+  esas sesiones por su índice (`base.SessionOwner`), su pestaña abierta deja de recibir y la foto aplica `members`
+  (rol al día, baja fuera). e2e de los dos juntos: `tests/e2e/base-session-revoke.spec.ts` del Hub.
+- **Lo que sigue `parcial`**: un plan de pago traspasado sigue en la tarjeta del propietario anterior hasta que soporte
+  lo mueva, sin herramienta todavía (F28; PLAN-SAAS «mover el pagador»).
 - **Sin página global de personas** (G86, G34, G115 del SaaS viejo): ronda 17, cada negocio enseña las suyas en
   «Miembros». «Usuarios del Terminal» (G24) era esa misma página del SaaS viejo, no los empleados con PIN del Hub.
 

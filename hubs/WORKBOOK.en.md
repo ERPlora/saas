@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:f07dc07af93339ccb70ab8d093ac8e55fb529e7e204b668fb2e4cf3c3761e468 -->
+<!-- generated from WORKBOOK.md sha256:8a8bd43dba184ba02816381d1220bc8567580c8b952c2492b30a6a685d2e0d51 -->
 
 ## What it is for and who it is for
 
@@ -161,8 +161,8 @@ last access, with a search by business or by email and a filter by role; it is o
 | HUBS-F23 | ERPlora's staff acting on a business from the admin | done |
 | HUBS-F24 | Invite a person to a business | done |
 | HUBS-F25 | Accept or decline an invitation to a business | done |
-| HUBS-F26 | Change the role of a person in a business | partial |
-| HUBS-F27 | Remove a person from a business | partial |
+| HUBS-F26 | Change the role of a person in a business | done |
+| HUBS-F27 | Remove a person from a business | done |
 | HUBS-F28 | Transfer the ownership of a business | partial |
 | HUBS-F29 | See the people of a business | done |
 | HUBS-F30 | Look up the accesses of the people in the admin | done |
@@ -498,33 +498,33 @@ If it fails: an expired invitation, "This invitation expired. Ask whoever invite
 Involved: accounts (the session and the jump into the business), the business (receives the person)
 
 ### HUBS-F26 Change the role of a person in a business
-Status: partial — erplora.com changes the role and asks the business to end that person's session, but the businesses' service does not act on that notice yet (it comes with phase 2): if the person had the business open, they keep the previous role until they enter again.
+Status: done
 Actor: owner, administrator, integration
 Screen: Members › Change role
 Steps:
 1. In "Members", in the person's row, "Change role" opens "Change the role of …" with the roles that can be given to them.
 2. They pick the new one and press "Change role": "… is now …" shows and the row shows the new role.
-3. The business receives the list of people with the new role; the person enters with it the next time they open the business.
+3. The business receives the list of people with the new role and ends that person's session there at that moment: the next thing they do asks them to sign in again, and they come back with the new role.
 In: the person and the new role; the session of whoever changes it, who has to rank above the person and above the role given.
 Out: the new role and the notice to the business, with the end of that person's session there; the role of an unanswered invitation changes without telling the business. Records `hubs.member.role_changed`.
 If it fails: one's own role, "You cannot change your own membership."; somebody of an equal or higher rank, "You cannot manage a member whose role is equal to or above yours."; a role equal to or above one's own, "You cannot hand out a role equal to or above yours.". The ownership is not given from here (HUBS-F28). A manager or an employee changes no roles; a person of a business of another account does not exist for whoever asks.
-Involved: the business (receives the new role and ends the session), accounts (the session)
+Involved: the business (BASE-F13: receives the new role and ends the session), accounts (the session)
 
 ### HUBS-F27 Remove a person from a business
-Status: partial — erplora.com no longer lets the person in and asks the business to end their sessions, retrying until it gets through; but the businesses' service does not end those sessions yet (it comes with phase 2): if they had it open, they stay inside until they leave, although the dialog says "at once".
+Status: done
 Actor: owner, administrator, integration
 Screen: Members › Remove
 Steps:
 1. In "Members", in the person's row, "Remove" opens "Remove …" ("… loses access to … at once. Their account and their other businesses stay.").
 2. They press "Remove from the business": "… was removed from the business" shows and the row goes.
-3. The business receives the list of people without them and the notice to end their sessions in that business, only in that one.
+3. The business receives the list of people without them and ends their sessions in that business at that moment, only in that one: if they come back, erplora.com tells them "You don't have access to this hub".
 In: the person; the session of whoever removes them, who has to rank above them.
 Out: the person out of that business (their account and their other businesses stay), an ownership offer pending to them withdrawn, the notice to the business and the end of their sessions there, retried if the business does not answer. Records `hubs.member.removed`.
 If it fails: oneself, "You cannot change your own membership."; somebody of an equal or higher rank (never the owner), "You cannot manage a member whose role is equal to or above yours.". An unanswered invitation is cancelled, not removed: "This person has not answered yet: cancel the invitation.". Whoever still pays for the business (the previous owner after a transfer) is not removed: "… still pays for this business. Say who pays from now on first: your billing details are asked when you pay a plan or a module here." or, if the plan is still on their card, "This business's plan is still paid with …'s card: contact support to move it to you first.".
-Involved: the business (receives the list without them and ends their sessions), billing (who pays for the business)
+Involved: the business (BASE-F13: receives the list without them and ends their sessions), billing (who pays for the business)
 
 ### HUBS-F28 Transfer the ownership of a business
-Status: partial — a paid plan keeps being charged to the previous owner's card until support moves it to the new owner's name, and there is no way to do it yet; and, as in HUBS-F26, whoever had the business open keeps their previous role until they enter again.
+Status: partial — a paid plan keeps being charged to the previous owner's card until support moves it to the new owner's name, and there is no way to do it yet.
 Actor: owner
 Screen: Members › Transfer the ownership, Businesses
 Steps:
@@ -535,7 +535,7 @@ Steps:
 In: the chosen person, who has to be in the business already; the owner's session and, when answering, that person's.
 Out: the offer, valid for 7 days; on accepting, both roles changed at once (always a single owner), the business told and both people's sessions there ended. Who pays does not change: the new owner gives their own billing details when paying a plan or a module. Records `hubs.ownership.requested` and, on the answer, `hubs.ownership.accepted`, `hubs.ownership.declined` or `hubs.ownership.cancelled`.
 If it fails: to somebody not in the business yet, "Invite this person to the business first: it can only go to somebody already on it."; to oneself, "You already own this business."; with another offer waiting, "There is already a transfer of this business waiting for an answer.". When answering: "This transfer was already answered.", "This transfer expired. Ask the owner to send it again.", "You are no longer on this business." or "This business already changed hands: ask its current owner to transfer it.". A free business is not accepted if the person already has theirs: "You already have a free business. Change its plan to create another one.". Only the owner offers; only the chosen person accepts or declines, and only the owner withdraws the offer.
-Involved: billing (who pays for the business), the business (receives the new roles)
+Involved: billing (who pays for the business), the business (BASE-F13: receives the new roles and ends both people's sessions)
 
 ### HUBS-F29 See the people of a business
 Status: done

@@ -172,8 +172,8 @@ con buscador por negocio o por correo y filtro por rol; solo se consulta.
 | HUBS-F23 | Actuar el personal de ERPlora sobre un negocio desde el admin | hecho |
 | HUBS-F24 | Invitar a una persona a un negocio | hecho |
 | HUBS-F25 | Aceptar o rechazar una invitación a un negocio | hecho |
-| HUBS-F26 | Cambiar el rol de una persona en un negocio | parcial |
-| HUBS-F27 | Quitar a una persona de un negocio | parcial |
+| HUBS-F26 | Cambiar el rol de una persona en un negocio | hecho |
+| HUBS-F27 | Quitar a una persona de un negocio | hecho |
 | HUBS-F28 | Traspasar la propiedad de un negocio | parcial |
 | HUBS-F29 | Ver las personas de un negocio | hecho |
 | HUBS-F30 | Consultar los accesos de las personas en el admin | hecho |
@@ -536,35 +536,35 @@ Implicados: accounts (la sesión y el salto al negocio), el negocio (recibe a la
 
 ### HUBS-F26 Cambiar el rol de una persona en un negocio
 <!-- origen: old-saas:SAAS_DASHBOARD-F15 fi:saas/orgs-users#cambiar-rol-de-un-miembro fi:saas/orgs-users#api-miembro-detalle-cambiar-rol-eliminar-rest fi:saas/support/orgs-users#service-user_can_access_hub-get_user_hub_role-funciones-modulo-nivel -->
-Estado: parcial — erplora.com cambia el rol y pide al negocio que cierre la sesión de esa persona, pero el servicio de los negocios aún no atiende ese aviso (llega con la fase 2): si la persona tenía el negocio abierto, sigue con el rol anterior hasta que vuelva a entrar.
+Estado: hecho
 Actor: propietario, administrador, integración
 Pantalla: Miembros › Cambiar rol
 Pasos:
 1. En «Miembros», en la fila de la persona, «Cambiar rol» abre «Cambiar el rol de …» con los roles que se le pueden dar.
 2. Elige el nuevo y pulsa «Cambiar rol»: sale «… ahora es …» y la fila enseña el rol nuevo.
-3. El negocio recibe la lista de personas con el rol nuevo; la persona entra con él la próxima vez que abra el negocio.
+3. El negocio recibe la lista de personas con el rol nuevo y cierra en ese momento la sesión de esa persona allí: lo siguiente que haga le pide volver a entrar, y vuelve con el rol nuevo.
 Entra: la persona y el rol nuevo; la sesión de quien lo cambia, que tiene que tener más rango que la persona y que el rol que da.
 Sale: el rol nuevo y el aviso al negocio, con el cierre de la sesión de esa persona allí; el de una invitación sin responder cambia sin avisar al negocio. Anota `hubs.member.role_changed`.
 Si falla: el propio rol, «No puedes cambiar tu propia pertenencia.»; alguien de igual o más rango, «No puedes gestionar a un miembro con un rol igual o superior al tuyo.»; un rol igual o superior al propio, «No puedes dar un rol igual o superior al tuyo.». La propiedad no se da desde aquí (HUBS-F28). Un encargado o un empleado no cambia roles; una persona de un negocio ajeno no existe para quien lo pide.
-Implicados: el negocio (recibe el rol nuevo y cierra la sesión), accounts (la sesión)
+Implicados: el negocio (BASE-F13: recibe el rol nuevo y cierra la sesión), accounts (la sesión)
 
 ### HUBS-F27 Quitar a una persona de un negocio
 <!-- origen: old-saas:SAAS_DASHBOARD-F16 old-saas:SAAS_AUTH-F22 fi:saas/orgs-users#eliminar-un-miembro fi:saas/orgs-users#quitar-acceso-de-un-usuario-a-un-hub gh:saas#2569 -->
-Estado: parcial — erplora.com ya no deja entrar a la persona y pide al negocio que cierre sus sesiones, y lo reintenta hasta que lo recibe; pero el servicio de los negocios aún no cierra esas sesiones (llega con la fase 2): si la tenía abierta, sigue dentro hasta que salga, aunque el diálogo dice «al momento».
+Estado: hecho
 Actor: propietario, administrador, integración
 Pantalla: Miembros › Quitar
 Pasos:
 1. En «Miembros», en la fila de la persona, «Quitar» abre «Quitar a …» («… deja de tener acceso a … al momento. Su cuenta y sus otros negocios se quedan.»).
 2. Pulsa «Quitar del negocio»: sale «… ya no está en el negocio» y la fila desaparece.
-3. El negocio recibe la lista de personas sin ella y el aviso de cerrar sus sesiones en ese negocio, solo en ese.
+3. El negocio recibe la lista de personas sin ella y cierra en ese momento sus sesiones en ese negocio, solo en ese: si vuelve, erplora.com le dice «No tienes acceso a este hub».
 Entra: la persona; la sesión de quien la quita, que tiene que tener más rango que ella.
 Sale: la persona fuera de ese negocio (su cuenta y sus otros negocios siguen), una oferta de propiedad que tuviera pendiente retirada, el aviso al negocio y el cierre de sus sesiones allí, que se reintenta si el negocio no contesta. Anota `hubs.member.removed`.
 Si falla: a uno mismo, «No puedes cambiar tu propia pertenencia.»; a alguien de igual o más rango (el propietario nunca), «No puedes gestionar a un miembro con un rol igual o superior al tuyo.». Una invitación sin responder se cancela, no se quita: «Esta persona aún no ha respondido: cancela la invitación.». A quien aún paga el negocio (el propietario anterior tras un traspaso) no se le quita: «… sigue pagando este negocio. Antes di quién paga a partir de ahora: tus datos de facturación se piden al pagar aquí un plan o un módulo.» o, si el plan sigue en su tarjeta, «El plan de este negocio aún se paga con la tarjeta de …: antes contacta con soporte para pasarlo a tu nombre.».
-Implicados: el negocio (recibe la lista sin ella y cierra sus sesiones), billing (quién paga el negocio)
+Implicados: el negocio (BASE-F13: recibe la lista sin ella y cierra sus sesiones), billing (quién paga el negocio)
 
 ### HUBS-F28 Traspasar la propiedad de un negocio
 <!-- origen: old-saas:SAAS_DASHBOARD-F17 -->
-Estado: parcial — un plan de pago sigue cobrándose en la tarjeta del propietario anterior hasta que soporte lo pasa a nombre del nuevo, y aún no hay una manera de hacerlo; y, como en HUBS-F26, quien tenía el negocio abierto sigue con su rol anterior hasta que vuelva a entrar.
+Estado: parcial — un plan de pago sigue cobrándose en la tarjeta del propietario anterior hasta que soporte lo pasa a nombre del nuevo, y aún no hay una manera de hacerlo.
 Actor: propietario
 Pantalla: Miembros › Transferir la propiedad, Negocios
 Pasos:
@@ -575,7 +575,7 @@ Pasos:
 Entra: la persona elegida, que ya tiene que estar en el negocio; la sesión del propietario y, al responder, la de esa persona.
 Sale: la oferta, que vale 7 días; al aceptar, los dos roles cambiados a la vez (siempre un solo propietario), el negocio avisado y las sesiones de los dos cerradas allí. Quién paga no cambia: el nuevo propietario pone sus propios datos de facturación al pagar un plan o un módulo. Anota `hubs.ownership.requested` y, al responder, `hubs.ownership.accepted`, `hubs.ownership.declined` o `hubs.ownership.cancelled`.
 Si falla: a quien aún no está en el negocio, «Invita antes a esta persona al negocio: solo se puede traspasar a alguien que ya esté en él.»; a uno mismo, «Ya eres el propietario de este negocio.»; con otra oferta esperando, «Ya hay un traspaso de este negocio esperando respuesta.». Al responder: «Este traspaso ya se respondió.», «Este traspaso ha caducado. Pide al propietario que lo vuelva a enviar.», «Ya no estás en este negocio.» o «Este negocio ya cambió de manos: pide a su propietario actual que lo traspase.». Un negocio gratuito no se acepta si la persona ya tiene el suyo: «Ya tienes un negocio gratuito. Cambia su plan para crear otro.». Solo el propietario ofrece; solo la persona elegida acepta o rechaza, y solo el propietario retira la oferta.
-Implicados: billing (quién paga el negocio), el negocio (recibe los roles nuevos)
+Implicados: billing (quién paga el negocio), el negocio (BASE-F13: recibe los roles nuevos y cierra las sesiones de los dos)
 
 ### HUBS-F29 Ver las personas de un negocio
 <!-- origen: old-saas:SAAS_DASHBOARD-F18 old-saas:SAAS_DASHBOARD-F214 fi:saas/hubs#usuarios-del-terminal fi:saas/orgs-users#api-miembros-de-un-hub-concreto-rest fi:saas/orgs-users#listar-usuarios-global-por-organizaciones-gestionadas pc:cloud/dashboard/users-list fi:saas/support/orgs-users#serializer-hubaccessserializer -->
