@@ -64,6 +64,7 @@ once, never shown; empty keeps the one there was), whether active, when it chang
 |---|---|---|
 | ASSISTANT-F01 | Add an AI provider | hecho |
 | ASSISTANT-F02 | Keep a provider's key without it being seen | hecho |
+| ASSISTANT-F03 | Talk to each provider in its own API | hecho |
 
 ### ASSISTANT-F01 Add an AI provider
 <!-- origen: fi:saas/support/auth-services#modelo-aiprovider, fi:saas/django-admin#admin-aiprovider, old-saas:SAAS_ASSISTANT-F22 -->
@@ -94,6 +95,21 @@ Sale: the encrypted key with its end in sight (`assistant.credential.saved`, wit
 Si falla: a new key row without a key is refused with «Type the provider's key.»; a repeated label in the same provider is refused; without erplora.com's encryption key, «The key of the credentials is not configured: no provider key can be kept.» and nothing is saved; a key that can no longer be read shows as «Unreadable: type the key again» and saving the page without typing another does not touch it; whoever may only look does not see the «Key» field; without permission, the admin does not let in.
 Implicados: none
 
+### ASSISTANT-F03 Talk to each provider in its own API
+<!-- origen: fi:saas/support/auth-services#service-providers-base-provider-toolspec-turnrequest-providerevent, fi:saas/support/auth-services#service-providers-factory-get_provider, fi:saas/support/auth-services#service-providers-anthropic_provider-anthropicprovider, fi:saas/support/auth-services#service-providers-openai_provider-openaiprovider, fi:saas/support/auth-services#service-providers-gemini_provider-geminiprovider, fi:saas/support/auth-services#service-providers-deepseek_provider-deepseekprovider -->
+Estado: hecho
+Actor: system
+Pantalla: none
+Pasos:
+1. When a model has to be called (an assistant turn, an admin trial or a provider's list of models), erplora.com prepares the call in the shape the provider's API asks: OpenAI (and those compatible with it), Anthropic, Google Gemini or DeepSeek, with the provider's key and address.
+2. It sends the conversation with its instructions, its images, the tools offered (only one per answer) and the output maximum, and receives the answer live, piece by piece.
+3. It translates what each provider answers into the same for all: the text as it arrives, each tool the model asks for with its complete data, the input and output consumption and how it ended (normally, because it asked for a tool, for length or by the content filter).
+4. For the list of models, it asks the provider for its conversation models, page by page, and leaves out those that do not converse (voice, images, text fingerprints).
+Entra: the provider's API, address and key; the model, the conversation, the instructions and the tools.
+Sale: the text, the tools asked for, the consumption and the end of the turn, the same whatever the provider; or the list of conversation models.
+Si falla: if the provider refuses the key or the request, the turn ends with its reason and is marked as a failure repeating does not fix; if it does not answer, takes too long, is overloaded or limits the pace, it ends with a failure another attempt can fix (to move to the fallback model); the reason never carries the key. A provider without a key or with an unknown API is not called.
+Implicados: ASSISTANT-F04, ASSISTANT-F06, ASSISTANT-F07
+
 ## For whoever maintains it
 
 - Anatomy, data and operations: `assistant/README.md`.
@@ -102,6 +118,9 @@ Implicados: none
   `assistant.crypto.undecryptable`, without the token.
 - Writes through `assistant.credential.save|delete` (`services.py`), with the Django model permission that backs
   them (`add|change|delete_aiprovidercredential`); the admin calls them as the member of the staff who clicks.
+- Clients (`assistant/providers/`): `httpx` against each API (no SDK nor LiteLLM), no cache, one per call; all end
+  with a single `finish` and a failure is an `error` with `retriable`, never an exception. Tested against
+  `assistant/tests/fake_provider.py` (an HTTP server on `127.0.0.1` speaking each provider's format).
 - Traps of the old product covered: saas#528 (key in the clear in the database: `test_fields.py`), saas#2489 (app
   name untranslated in the admin: `test_apps.py`).
 

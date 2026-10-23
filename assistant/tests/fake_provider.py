@@ -72,7 +72,7 @@ class FakeProvider:
                 self._replies.setdefault(key, []).append(Reply(**reply))
 
     def start(self) -> None:
-        self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
+        self._thread = threading.Thread(target=self._server.serve_forever, kwargs={"poll_interval": 0.02}, daemon=True)
         self._thread.start()
 
     def stop(self) -> None:
