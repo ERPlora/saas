@@ -1,4 +1,4 @@
-"""ASSISTANT-F12 (ASSISTANT-G43, G08, G06, G31, G38) · Receive a turn of the Hub and send the answer live, and
+"""ASSISTANT-F12 (ASSISTANT-G43, G08, G31) · Receive a turn of the Hub and send the answer live, and
 ASSISTANT-F13 (G44, G07) · the same turn answered at once, in JSON; ASSISTANT-F15 (G47) · refuse a turn with a code.
 
 ``POST /internal/assistant/chat/stream`` answers ``text/event-stream`` (over HTTP, no channels: the old WebSocket,
@@ -8,7 +8,8 @@ message, keeps the last 100 messages, offers the Hub's tools and sends the turn 
 (ASSISTANT-F06), passing to its fallback if the provider fails before answering. What can be decided before the model
 is called is an HTTP status (quota, size, no model); a failure of the provider once the answer started is an ``error``
 frame. Cases of the old product's ``test_stateless_bridge.py``, ``test_error_codes.py``, ``test_quota_signal.py`` and
-``test_sse_stream_asgi.py``; the provider is the local fake (``fake_provider``), never a real one.
+``test_sse_stream_asgi.py``; the provider is the local fake (``fake_provider``), never a real one. The old two-step
+pipeline (G06) and its ``ContextObject`` (G38) are not ported: one model and its fallback (ASSISTANT-F06).
 """
 
 from decimal import Decimal
@@ -20,7 +21,7 @@ from django.utils import timezone
 from assistant import queries
 from assistant.models import AIModel, AIProviderCredential, AIRoutingPolicy, AssistantUsage
 from assistant.tests.conftest import API_KEY, on_plan, openai_answer, openai_tool_call
-from assistant.tests.doors import door, error_code, frames
+from assistant.tests.doors import door, error_code, frames, hang_up
 
 STREAM = "/internal/assistant/chat/stream"
 JSON = "/internal/assistant/chat"
@@ -351,6 +352,17 @@ class TestFailuresOfTheProvider:
         got = frames(door(client, STREAM, turn(business)))
 
         assert (got[0]["code"], got[0]["retriable"]) == ("assistant.provider_unavailable", True)
+
+    def test_a_hub_that_hangs_up_before_any_answer_gets_its_message_back(self, client, internal, business, answering, fake_provider):
+        from assistant.tests.fake_provider import openai_chunk
+
+        fake_provider.reply("POST", COMPLETIONS, sse=[openai_chunk(), *openai_answer("Too late")], delay=1.0)
+        response = door(client, STREAM, turn(business))
+        assert response.status_code == 200 and usage_row(business).messages == 1
+
+        hang_up(response, after=0.3)
+
+        assert usage_row(business).messages == 0
 
     def test_a_failure_after_the_answer_started_keeps_the_message_and_the_text(self, client, internal, business, answering, fake_provider):
         from assistant.tests.fake_provider import openai_chunk

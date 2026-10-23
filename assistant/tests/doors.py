@@ -5,6 +5,8 @@ signed with the shared secret (``accounts.signing``: v1 over the body, or v2 ove
 (``text/event-stream``) into its frames, ``[DONE]`` included as the string ``"[DONE]"``.
 """
 
+import asyncio
+import contextlib
 import json
 import time
 from typing import Any
@@ -71,3 +73,21 @@ def parse_frames(raw: str) -> list[Any]:
 
 def error_code(response) -> str:
     return response.json()["error"]["code"]
+
+
+def hang_up(response, *, after: float) -> None:
+    """The Hub closing the connection ``after`` seconds into a streamed answer, as daphne does when the client goes:
+    the task reading the stream is cancelled wherever it waits."""
+
+    async def read_then_cancel():
+        async def drain():
+            async for _chunk in response.streaming_content:
+                pass
+
+        reading = asyncio.ensure_future(drain())
+        await asyncio.sleep(after)
+        reading.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await reading
+
+    async_to_sync(read_then_cancel)()

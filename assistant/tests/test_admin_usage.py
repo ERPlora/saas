@@ -1,4 +1,4 @@
-"""ASSISTANT-F24 (ASSISTANT-G52, G19, G29, G11) · See what a business spent of the assistant and what it cost: the
+"""ASSISTANT-F24 (ASSISTANT-G52, G19, G11) · See what a business spent of the assistant and what it cost: the
 admin's «Assistant usage» (``erplora.com/admin/assistant/assistantusage/``), a row per business and month (a demo,
 one for its whole life) with its messages of the plan's allowance, the tokens of its turns and of its embeddings, its
 dictations, the characters read aloud and the cost in USD (with the prices of the model that answered each turn).
