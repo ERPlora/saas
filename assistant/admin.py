@@ -40,7 +40,7 @@ from live.context import OperationContext, Scope
 from live.errors import NotFound, OperationError
 
 from assistant import crypto, queries, routing, services
-from assistant.models import AIModel, AIProvider, AIProviderCredential, AIRoutingPolicy, estimate_cost
+from assistant.models import AIModel, AIProvider, AIProviderCredential, AIRoutingPolicy, AssistantUsage, estimate_cost
 from assistant.providers.base import ProviderError, ToolSpec, TurnRequest
 from assistant.providers.factory import get_provider
 from assistant.schemas import (
@@ -513,3 +513,78 @@ class AIRoutingPolicyAdmin(admin.ModelAdmin):
         if isinstance(prepared, str):
             return event_stream(refused_try(prepared))
         return event_stream(try_events(*prepared))
+
+
+class UsageKindFilter(admin.SimpleListFilter):
+    """Businesses or demos."""
+
+    title = gettext_lazy("kind")
+    parameter_name = "kind"
+
+    def lookups(self, request, model_admin):
+        return [("business", gettext_lazy("Businesses")), ("demo", gettext_lazy("Demos"))]
+
+    def queryset(self, request, queryset):
+        if self.value() == "business":
+            return queryset.filter(hub__isnull=False)
+        if self.value() == "demo":
+            return queryset.filter(hub__isnull=True)
+        return queryset
+
+
+@admin.register(AssistantUsage)
+class AssistantUsageAdmin(admin.ModelAdmin):
+    """What each business (or demo) spent through the gateway, by month (ASSISTANT-F24): read only for everybody,
+    so no member of the staff gives a business its allowance back by editing or deleting its row."""
+
+    list_display = (
+        "spender",
+        "period",
+        "messages",
+        "tokens_input",
+        "tokens_output",
+        "tokens_embedding",
+        "transcriptions",
+        "speech_characters",
+        "cost",
+    )
+    list_filter = (UsageKindFilter, "month")
+    search_fields = ("hub__name", "hub__slug", "demo")
+    list_select_related = ("hub",)
+    date_hierarchy = "month"
+    fields = (
+        "hub",
+        "demo",
+        "month",
+        "messages",
+        "tokens_input",
+        "tokens_output",
+        "tokens_embedding",
+        "transcriptions",
+        "speech_characters",
+        "cost_usd",
+        "created_at",
+        "updated_at",
+    )
+    readonly_fields = fields
+
+    @admin.display(description=gettext_lazy("business or demo"), ordering="hub__name")
+    def spender(self, row: AssistantUsage) -> str:
+        return row.demo or f"{row.hub.name} ({row.hub.slug})"
+
+    @admin.display(description=gettext_lazy("month"), ordering="month")
+    def period(self, row: AssistantUsage) -> str:
+        return row.month.strftime("%Y-%m")
+
+    @admin.display(description=gettext_lazy("Cost (USD)"), ordering="cost_usd")
+    def cost(self, row: AssistantUsage) -> str:
+        return format(row.cost_usd.normalize(), "f")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
