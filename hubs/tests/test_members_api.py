@@ -319,23 +319,23 @@ class TestTheRoleChangeDoor:
         assert member_of(business, team["employee"]).role == "hub_admin"
 
     @pytest.mark.parametrize(
-        "who, target, role",
+        "who, target, role, code",
         [
-            ("employee", "manager", "hub_employee"),  # below admin, nobody
-            ("manager", "employee", "hub_manager"),
-            ("admin", "admin", "hub_manager"),  # never one's own row
-            ("admin", "employee", "hub_admin"),  # never one's own rank
-            ("admin", "owner", "hub_employee"),  # never a superior
+            ("employee", "manager", "hub_employee", "permission_denied"),  # below admin, nobody
+            ("manager", "employee", "hub_manager", "permission_denied"),
+            ("admin", "admin", "hub_manager", "hubs.own_membership"),  # never one's own row (HUBS-F26)
+            ("admin", "employee", "hub_admin", "permission_denied"),  # never one's own rank
+            ("admin", "owner", "hub_employee", "permission_denied"),  # never a superior
         ],
     )
     def test_the_door_refuses_what_the_row_did_not_offer(
-        self, as_, business, team, who, target, role
+        self, as_, business, team, who, target, role, code
     ):
         before = member_of(business, team[target]).role
 
         response = self.change(as_(team[who]), member_of(business, team[target]), role)
 
-        assert error(response) == (403, "permission_denied")
+        assert error(response) == (403, code)
         assert member_of(business, team[target]).role == before
 
     def test_the_owner_is_not_a_role_to_hand_out(self, as_, business, team):

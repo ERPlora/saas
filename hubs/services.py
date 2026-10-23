@@ -688,7 +688,7 @@ def _managed(ctx: OperationContext, member_id: UUID, role: str | None = None) ->
     if target is None:
         raise _member_not_found()
     if target.user_id == actor.user_id:
-        raise PermissionDenied(_("You cannot change your own membership."))
+        raise PermissionDenied(_("You cannot change your own membership."), code="hubs.own_membership")
     if not queries.manages(actor, target):
         raise PermissionDenied(_("You cannot manage a member whose role is equal to or above yours."))
     if role is not None and role not in queries.assignable_roles(actor.role):

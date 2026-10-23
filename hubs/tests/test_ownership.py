@@ -249,6 +249,16 @@ class TestOnlyTheNamedRecipientAnswers:
 
         assert refused.value.code == "hubs.transfer_answered"
 
+    def test_removing_the_recipient_withdraws_the_offer(self, business, team):
+        """HUBS-F27 «Sale»: the offer pending to the person removed is withdrawn, so the owner may offer the
+        business to somebody else at once (and the members page stops saying it is offered)."""
+        transfer = offer(team["owner"], business, team["admin"])
+        services.member_remove(ctx_for(team["owner"]), ByIdIn(id=member_of(business, team["admin"]).id))
+
+        withdrawn = HubOwnershipTransfer.objects.get(pk=transfer.id)
+        assert (withdrawn.status, withdrawn.resolved_at is not None) == ("cancelled", True)
+        assert offer(team["owner"], business, team["manager"]).status == "pending"
+
     def test_an_offer_from_somebody_who_no_longer_owns_it_is_stale(
         self, business, team
     ):

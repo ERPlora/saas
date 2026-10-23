@@ -342,6 +342,24 @@ class TestChangeRole:
 # --- Removing -------------------------------------------------------------------------------------
 
 
+@pytest.mark.parametrize(
+    "write",
+    [
+        lambda ctx, member: services.member_change_role(ctx, MemberRoleIn(id=member.id, role="hub_employee")),
+        lambda ctx, member: services.member_remove(ctx, ByIdIn(id=member.id)),
+    ],
+    ids=["change_role", "remove"],
+)
+def test_ones_own_membership_is_refused_with_its_own_code(business, team, write):
+    """HUBS-F26 and HUBS-F27 «Si falla»: on one's own row it says so («You cannot change your own membership.»),
+    not that the role is too high; nothing changes."""
+    with pytest.raises(PermissionDenied) as refused:
+        write(ctx_for(team["admin"]), member_of(business, team["admin"]))
+
+    assert refused.value.code == "hubs.own_membership"
+    assert member_of(business, team["admin"]).role == "hub_admin"
+
+
 class TestRemove:
     def remove(self, actor, member):
         return services.member_remove(ctx_for(actor), ByIdIn(id=member.id))
@@ -593,6 +611,19 @@ class TestAccept:
             user=team["invitee"], hub_slug=business.slug
         ).exists()
         assert version(business) == before + 1
+
+    def test_the_hub_gets_the_people_with_the_newcomer_once_saved(
+        self, business, team, hub_double, django_capture_on_commit_callbacks
+    ):
+        """HUBS-F25 «Sale»: the business is told at once, not at the next pass of HUBS-F08."""
+        with django_capture_on_commit_callbacks(execute=True):
+            self.accept(team["invitee"], member_of(business, team["invitee"]).id)
+
+        (snapshot,) = hub_double.calls_to("PUT", f"/internal/hubs/{business.id}/state")
+        assert {"email": "invitee@example.com", "role": "hub_employee"}.items() <= next(
+            m for m in snapshot.body["members"] if m["email"] == "invitee@example.com"
+        ).items()
+        assert snapshot.body["version"] == version(business)
 
     def test_somebody_elses_invitation_is_not_found(self, business, team):
         with pytest.raises(NotFound):
