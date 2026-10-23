@@ -166,6 +166,18 @@ class TestTheHandOverStopsThePreviousPayersRenewal:
         assert HubOwnershipTransfer.objects.get().status == HubOwnershipTransfer.Status.PENDING
         assert local(paid).cancel_at_period_end is False
 
+    def test_without_stripe_configured_the_business_does_not_change_hands(self, shop, owner, heir, stripe_double,
+                                                                          settings):
+        paid = pay(shop)
+        settings.STRIPE_SECRET_KEY = ""
+
+        error = refused("billing.payments_unavailable", lambda: hand_over(paid, owner, heir))
+
+        assert error.status == 503
+        assert stripe_double.calls_to("subscriptions.update") == []
+        assert role(paid, owner) == HubMember.Role.OWNER
+        assert HubOwnershipTransfer.objects.get().status == HubOwnershipTransfer.Status.PENDING
+
 
     def test_the_new_owners_details_do_not_retax_the_plan_on_the_previous_payers_card(self, shop, owner, heir,
                                                                                        stripe_double):

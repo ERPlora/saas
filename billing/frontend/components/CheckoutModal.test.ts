@@ -179,6 +179,32 @@ describe('CheckoutModal', () => {
     expect(s.calls().filter((c) => c.method === 'POST')).toEqual([]);
   });
 
+  it('keeping it refused by the server is said in the person’s words, with «Retry»', async () => {
+    const s = await setup(
+      ({ path }) =>
+        path === '/api/hubs/billing-profile'
+          ? Response.json(PROFILE)
+          : apiError(409, 'billing.nothing_to_take_over', 'This business’s plan is already paid with your card.'),
+      TAKE_OVER,
+    );
+    expect(s.q('checkout-error')?.textContent).toContain('This business’s plan is already paid with your card.');
+    expect(s.q('checkout-retry')).not.toBeNull();
+    expect(stripe.checkouts).toEqual([]);
+  });
+
+  it('keeping it when the server says the payer is still another account’s goes back to the details', async () => {
+    const s = await setup(
+      ({ path }) =>
+        path === '/api/hubs/billing-profile'
+          ? Response.json(PROFILE)
+          : apiError(409, 'billing.payer_required', 'Say who pays for this business first.'),
+      TAKE_OVER,
+    );
+    expect(s.q('details-postal-code')).not.toBeNull();
+    expect(s.q('checkout-modal-error')?.textContent).toContain('Say who pays for this business first.');
+    expect(stripe.checkouts).toEqual([]);
+  });
+
   it('a module bought says it turns on by itself', async () => {
     const s = await setup(happy, MODULE);
     stripe.complete();
