@@ -158,8 +158,9 @@ lista viva se refresca); ningún rol tiene su permiso y en el admin solo las ve 
 - **`/api/docs`** (ACCOUNTS-F34): ReDoc de ninja servido por `accounts/api_docs.py` con el nonce de la CSP, sin
   CDN y solo con sesión (sin ella, a la entrada); `/api/openapi.json` sigue abierto (Postman, tests de otras apps).
 - **`manage.py anonymize_old_users`** (F35, semanal) y **`manage.py cleanup_old_logs`** (F37, diaria): sin Celery,
-  con candado de sesión propio (`services.run_exclusively`, gemelo del de `hubs`) y `--dry-run`. Hasta que
-  `saas-cron` (`aws/stacks/prod/scheduler.tf`) los programe, los lanza una persona del equipo.
+  con candado de sesión propio (`services.run_exclusively`, gemelo del de `hubs`) y `--dry-run`. Los lanza
+  `saas-cron` con sus valores por defecto: `anonymize-old-users-weekly` los lunes a las 00:35 UTC y
+  `cleanup-old-logs-nightly` cada noche a las 00:45 UTC (`aws/stacks/prod/scheduler.tf`).
 - **Registro de auditoría** (F36): `django-auditlog` (`accounts/auditlog.py`, desde `AccountsConfig.ready`) sobre
   `User` (sin `password` ni `last_login`), `HubMembership`, `ApiKey` (sin `key_hash` ni `last_used_at`) y
   `allauth.usersessions.UserSession` (sin `session_key`, `data` ni `last_seen_at`), todos con
@@ -234,7 +235,6 @@ La plataforma no vive en `accounts/` sino en `base/` y `config/`; su manual es `
 
 ## Pendiente (de otros carriles)
 
-- **`aws`**: programar `anonymize_old_users` (semanal) y `cleanup_old_logs` (diaria) en `saas-cron`.
 - **`hubs`**: sus correos (`hubs/emails.py`: personas, invitaciones, roles y traspaso) pasan a la plantilla común
   (`base/emails.py`, ACCOUNTS-F46) con su porte; hoy salen en texto.
 
