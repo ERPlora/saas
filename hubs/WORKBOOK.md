@@ -446,7 +446,7 @@ Actor: propietario, integración
 Pantalla: Ajustes del negocio › Zona de peligro
 Pasos:
 1. En «Ajustes», en la «Zona de peligro», el propietario pulsa «Eliminar negocio»; el diálogo «Eliminar …» dice «Deja de funcionar ahora mismo para todos. Puedes recuperarlo durante 90 días; después se borra para siempre.» y «Su plan se cancela ahora: si lo recuperas, vuelve en Gratis.».
-2. Escribe el nombre del negocio en «Escribe el nombre del negocio para confirmar» y pulsa «Eliminar negocio»: sale «Negocio eliminado: …. Puedes recuperarlo hasta el ….».
+2. Escribe el nombre del negocio en «Nombre del negocio» y pulsa «Eliminar negocio»: sale «Negocio eliminado: …. Puedes recuperarlo hasta el ….».
 3. La página dice «Se eliminará para siempre el …» con «Recuperar negocio», y al propietario le llega el correo con esa fecha.
 4. Una integración con la sesión de la cuenta hace lo mismo, con el nombre escrito; una clave de API no elimina.
 Entra: el nombre escrito otra vez; la sesión del propietario.

@@ -330,6 +330,22 @@ for (const { language, locale } of LANGUAGES) {
         },
         { where: dialog, english: [say('en', 'hubs.addressDialog.submit')] },
       );
+      await page.keyboard.press('Escape');
+      await expect(dialog).toBeHidden();
+      // «Delete business» (HUBS-F18, `parcial` for what it lacks, not for this screen): its field's label fits.
+      await settings.getByTestId('danger-delete').click();
+      const deleting = page.getByTestId('delete-dialog');
+      await atEverySize(
+        page,
+        'HUBS-F18',
+        language,
+        async () => {
+          await expect(deleting.getByTestId('delete-dialog-submit')).toBeInViewport({ ratio: 1 });
+          await expect(deleting).toContainText(say(language, 'hubs.danger.confirmTitle', { name: 'Bar Manolo' }));
+          await expect(deleting.getByTestId('delete-dialog-input')).toBeVisible();
+        },
+        { where: deleting, english: [say('en', 'hubs.danger.confirmMessage')] },
+      );
       expect(errors).toEqual([]);
     });
 

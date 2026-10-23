@@ -301,7 +301,7 @@
       "confirmMessage": "Deja de funcionar ahora mismo para todos. Puedes recuperarlo durante 90 días; después se borra para siempre.",
       "consequencePlan": "Su plan se cancela ahora: si lo recuperas, vuelve en Gratis.",
       "consequenceEmail": "Te enviamos un correo con la fecha hasta la que puedes recuperarlo.",
-      "confirmLabel": "Escribe el nombre del negocio para confirmar",
+      "confirmLabel": "Nombre del negocio",
       "restore": "Recuperar negocio"
     },
     "members": {
