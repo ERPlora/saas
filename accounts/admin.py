@@ -31,6 +31,7 @@ from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils import formats
 from django.utils.text import capfirst
 from django.utils.translation import gettext, ngettext
 from django.utils.cache import add_never_cache_headers
@@ -536,6 +537,12 @@ class LogEntryAdmin(AuditlogLogEntryAdmin):
     staff's language: the summary counts the changes and names each field, as Django's own history does."""
 
     list_filter = ["action", ResourceTypeFilter, CIDFilter]
+
+    @admin.display(description=_("Created"))
+    def created(self, obj):
+        # A datetime is formatted on the list but printed raw on the entry's page (a read-only callable): formatted
+        # here, the same on both.
+        return formats.localize(super().created(obj))
 
     @admin.display(description=_("Changes"))
     def msg_short(self, obj):

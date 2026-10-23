@@ -21,6 +21,7 @@ from django.contrib.auth import get_user_model
 from django.http import HttpResponse
 from django.test import RequestFactory
 from django.utils import timezone, translation
+from django.utils.formats import date_format
 
 from accounts.auditlog import AuditActorMiddleware
 from accounts.models import ApiKey, HubMembership
@@ -316,6 +317,21 @@ class TestTheAdmin:
         assert "ID de correlación" in listing
         assert "1 change" not in listing and "Correlation ID" not in listing
         assert re.search(rf'href="\?resource_type={user_type}"[^>]*>\s*Usuario\s*<', listing)
+
+    def test_an_entry_says_when_in_the_staffs_language(self, client, ana):
+        """The list formats the date; the entry's page printed it raw («2026-10-23 11:46:10.268295+02:00»)."""
+        ana.first_name = "Anabel"
+        ana.save()
+        root = get_user_model().objects.create_superuser(email="root@example.com", password="x", language="es")
+        client.force_login(root)
+        entry = _entries_for(ana).filter(action=LogEntry.Action.UPDATE).get()
+
+        page = client.get(f"/admin/auditlog/logentry/{entry.pk}/change/", HTTP_ACCEPT_LANGUAGE="es").content.decode()
+
+        with translation.override("es"):
+            said = date_format(timezone.localtime(entry.timestamp), "DATETIME_FORMAT")
+        assert said in page
+        assert str(timezone.localtime(entry.timestamp)) not in page
 
     def test_its_list_in_english_counts_the_changes(self, client, ana):
         ana.first_name, ana.last_name = "Anabel", "Ruiz"
