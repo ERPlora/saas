@@ -164,9 +164,10 @@ lo revisa flujo a flujo con su e2e en 3 tamaños (`tests/e2e/panel/hubs-people.s
 
 Flujos `HUBS-F31`…`HUBS-F37` del `WORKBOOK.md` (parte 4 de 5; la revisión flujo a flujo de los `hecho`, en la 5).
 
-- **VeriFactu en todos los planes** (F31; PLAN §30, ronda 2026-10-22b): `verifactu.live_paid` de la foto va siempre
-  `true`; ya no depende de un plan de pago ni del módulo `verifactu`. Se queda en la foto mientras el Hub lea esa
-  condición (`apps/verifactu`, 409 `verifactu.live_option_unpaid`); cuando el Hub la retire, se quita de aquí.
+- **VeriFactu en todos los planes** (F31; PLAN §30, ronda 2026-10-22b): el bloque `verifactu` de la foto lleva solo
+  `representation`; no depende de un plan de pago ni del módulo `verifactu`. `live_paid` salió de la foto cuando el Hub
+  retiró esa condición (FIX-HUB-VERIFACTU-RETIRE-LIVE-PAID: sin 409 `verifactu.live_option_unpaid`); el Hub acepta y
+  no lee el campo si aún le llega de un SaaS anterior.
 - **Lo que da un plan, cambiado en el admin** (F31; trampa de SAAS_DASHBOARD-F53/F54): los campos de `plan` de la foto
   son `queries.SNAPSHOT_PLAN_FIELDS` (una sola lista para la foto y el admin). Al guardar un `Plan` con alguno cambiado,
   `PlanAdmin.save_model` llama a `services.owe_plan_rights(plan)`: por cada negocio vivo con ese plan o con su prueba,
