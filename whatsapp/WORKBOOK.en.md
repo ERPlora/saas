@@ -262,7 +262,7 @@ Steps:
 3. If Meta refuses it, or does not answer and 3 days or less are left, it marks the number "Needs reconnecting" (the Hub shows it) and sends an email, in their language, to the business's owner, one per incident.
 In: the connected numbers and their permissions.
 Out: the permission renewed or the "Needs reconnecting" mark with the email (`whatsapp.number.reconnect_needed`).
-If it fails: if Meta does not answer and there is time left, it is retried the next day; an email that does not go out is retried in the next round; a number that fails does not stop the others; without Meta's app configured, the task ends with an error for the team.
+If it fails: if Meta does not answer and there is time left, it is retried the next day; an email that does not go out is retried in the next round; a number that fails does not stop the others; with no number to renew, the task ends well even without Meta's app; with numbers to renew and Meta's app not configured, it ends with an error for the team.
 Involved: businesses (the owner), the Hub's WhatsApp inbox
 
 ### WHATSAPP-F13 Confirm to Meta that the notices address is ours
