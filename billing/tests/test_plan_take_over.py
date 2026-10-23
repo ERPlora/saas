@@ -298,10 +298,12 @@ class TestTheTakeOverCompletes:
         stripe_holds(stripe_double)
         services.checkout_completed(completed_takeover(paid))
         stripe_holds(stripe_double, old_status="canceled")
+        asked = len(stripe_double.calls)
 
         assert services.checkout_completed(completed_takeover(paid)) == "completed"
 
         assert len(stripe_double.calls_to("subscriptions.cancel")) == 1
+        assert len(stripe_double.calls) == asked, "a business already moved asks Stripe nothing"
         assert local(paid).stripe_subscription_id == "sub_2"
 
     def test_a_previous_subscription_stripe_ended_already_is_not_ended_again(self, shop, owner, heir,
