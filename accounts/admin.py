@@ -366,17 +366,31 @@ class ApiKeyAdmin(admin.ModelAdmin):
     add_form = ApiKeyIssueForm
     add_fieldsets = ((None, {"fields": ("user", "name", "scopes", "expires_in_days")}),)
 
-    list_display = ("name", "user", "display_prefix", "scopes", "created_at", "last_used_at", "expires_at", "revoked_at")
+    list_display = (
+        "name",
+        "user",
+        "display_prefix",
+        "permissions",
+        "created_at",
+        "last_used_at",
+        "expires_at",
+        "revoked_at",
+    )
     list_filter = ("revoked_at", "expires_at")
     search_fields = ("name", "prefix", "user__email")
     ordering = ("-created_at",)
-    fields = ("name", "user", "display_prefix", "scopes", "created_at", "expires_at", "last_used_at", "revoked_at")
+    fields = ("name", "user", "display_prefix", "permissions", "created_at", "expires_at", "last_used_at", "revoked_at")
     readonly_fields = fields
     actions = ("revoke",)
 
     @admin.display(description=_("prefix"))
     def display_prefix(self, obj):
         return f"{obj.display_prefix}…"
+
+    @admin.display(description=_("permissions"))
+    def permissions(self, obj):
+        """What the key may open, in the words of the Account page («Businesses · read»), never the raw scopes."""
+        return ", ".join(str(API_KEY_SCOPES.get(scope, scope)) for scope in obj.scopes)
 
     def has_add_permission(self, request):
         return request.user.is_superuser
