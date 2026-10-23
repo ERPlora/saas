@@ -11,6 +11,8 @@ jump names the hub's host and links back to it from the slug alone. ``spa-config
 takes no attributes for ``<html>``, so ``frontend/main.ts`` reads it here and hands it to
 ``createShell({ surface })``.
 
+``spa-config.recaptchaSiteKey`` is reCAPTCHA Enterprise's public key (empty when it is off): the sign-in's pages ask
+Google's enterprise.js for a token with it (``accounts/frontend/recaptcha.ts``, ``accounts/bot_check.py``).
 Beside them, ``support-email`` is ``SUPPORT_EMAIL``, the address of the SPA's «Contact Support» (PUBLIC-F18).
 Its Content Security Policy admits Stripe for the Store's Embedded Checkout (``base/csp.py``), except on
 the account surface, which sells nothing.
@@ -19,6 +21,7 @@ the account surface, which sells nothing.
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse
 from django.views.decorators.http import require_safe
+from live import recaptcha
 from live.ninja import run_operation_sync
 from live.spa import render_spa
 
@@ -38,6 +41,7 @@ def spa(request: HttpRequest) -> HttpResponse:
         "googleEnabled": settings.GOOGLE_OAUTH_ENABLED,
         "mfaEnabled": settings.ACCOUNTS_MFA_ENABLED,
         "hubOrigin": hub_origin("{slug}"),
+        "recaptchaSiteKey": recaptcha.site_key(),
     }
     surface = account_surface(request)
     if surface is not None:

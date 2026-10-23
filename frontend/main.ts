@@ -56,11 +56,18 @@ const USER_MENU_ITEMS: ShellUserMenuItem[] = [
   { id: 'report', labelKey: 'saas.userMenu.reportProblem', icon: 'ion:chatbubbles-outline', to: '/report-a-problem' },
 ];
 /**
- * The only origin whose script URLs the page's `default` Trusted Types policy admits: Stripe.js's loader
+ * The only places whose script URLs the page's `default` Trusted Types policy admits. Stripe.js's loader
  * sets its chunks' `src` as plain strings (the Store's Embedded Checkout, `billing/frontend/stripe-js.ts`).
  * The CSP's `script-src` still decides page by page (the account surface names no Stripe, `base/csp.py`).
+ * reCAPTCHA Enterprise on the sign-in's pages (2026-10-22): our code sets `www.google.com/recaptcha/enterprise.js`
+ * as a string and that loader sets its release from `www.gstatic.com/recaptcha/` the same way (frontend/recaptcha.ts):
+ * those two paths only, nothing else of Google's origins.
  */
-const TRUSTED_SCRIPT_ORIGINS = ['https://js.stripe.com'] as const;
+const TRUSTED_SCRIPT_ORIGINS = [
+  'https://js.stripe.com',
+  'https://www.google.com/recaptcha/',
+  'https://www.gstatic.com/recaptcha/',
+] as const;
 /** The entry's own texts (the user menu), merged with the apps' catalogues under `saas`; and, at the top, the shell's
  *  texts the panel says otherwise (`notFound`: the panel, not a hub; audit 2 R-18). */
 const ENTRY_CATALOGUES = { 'frontend/locale/en.json': en, 'frontend/locale/es.json': es };

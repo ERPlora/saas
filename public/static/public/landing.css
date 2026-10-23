@@ -181,3 +181,8 @@
 
 /* The feature list of the plan cards. */
 .plan-features { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: .55rem; font-size: .92rem; }
+
+/* reCAPTCHA Enterprise's badge: hidden, as Google allows only with its notice near each protected form
+   (public/partials/recaptcha_notice.html; reCAPTCHA FAQ). */
+.grecaptcha-badge { visibility: hidden; }
+.ep-recaptcha-notice a { color: inherit; text-decoration: underline; }

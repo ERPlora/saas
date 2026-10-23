@@ -5,7 +5,7 @@
 // `/password/reset/key/<key>` (PasswordResetKeyPage) and answers the same whether the address has an
 // account or not, so the page says the same in both cases and never echoes the address. «Try again»
 // goes back to the form with the address kept.
-import { ApiError, createAllauthClient, type FieldErrors, useLiveClient } from '@erplora/ui/sdk';
+import { ApiError, type FieldErrors, useLiveClient } from '@erplora/ui/sdk';
 import { IonButton, IonInput } from '@ionic/vue';
 import { computed, onMounted, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -13,12 +13,14 @@ import { useRouter } from 'vue-router';
 
 import AuthShell from '../components/AuthShell.vue';
 import { LAUNCHER } from '../paths';
+import { createProtectedAllauthClient } from '../recaptcha';
+import RecaptchaNotice from '../components/RecaptchaNotice.vue';
 
 const NON_FIELD = '__all__';
 
 const { t } = useI18n();
 const router = useRouter();
-const auth = createAllauthClient(useLiveClient().config);
+const auth = createProtectedAllauthClient(useLiveClient().config);
 
 const email = shallowRef('');
 const sent = shallowRef(false);
@@ -120,6 +122,7 @@ async function submit(): Promise<void> {
       >
         {{ $t('accounts.passwordReset.send') }}
       </ion-button>
+      <RecaptchaNotice />
     </form>
 
     <template #foot>

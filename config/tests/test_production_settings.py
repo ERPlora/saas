@@ -36,6 +36,9 @@ PRODUCTION_ENV = {
     "WHATSAPP_VERIFY_TOKEN": "prod-verify-token",
     "WHATSAPP_CONFIG_ID": "987654321",
     "FERNET_KEY": "yh5h4Yur2lIgWp9ZxkyLt1BrQfFVrwLH4WhIHCRwXXA=",
+    # reCAPTCHA Enterprise on every public form (live.recaptcha): the site key and the assessments' API key.
+    "RECAPTCHA_SITE_KEY": "prod-recaptcha-site-key",
+    "RECAPTCHA_API_KEY": "prod-recaptcha-api-key",
 }
 # The infra's own values for the hardening variables (`base_env` and `saas_env` of apps.tf).
 AWS_ENV = {
@@ -543,6 +546,10 @@ SAAS_TASK_ENV = {
     # erplora/prod/saas: the Fernet key of the hubs' fiscal documents (fiscal/crypto.py; plan 2026-10-15).
     # NEW: aws-next must add it to every saas* task before this deploys, or the tasks refuse to start.
     "FISCAL_DOCUMENTS_KEY": "kX1Hq3xmJ2a6r0pN7yTbV4cZ8uW5sE9dL1fG2hJ3kM4=",
+    # erplora/<env>/saas: reCAPTCHA Enterprise's site key and API key (live.recaptcha). NEW (2026-10-22): aws must
+    # hand both to every saas* task before this deploys, or the tasks refuse to start.
+    "RECAPTCHA_SITE_KEY": "6Lprod-recaptcha-site-key",
+    "RECAPTCHA_API_KEY": "prod-recaptcha-api-key",
 }
 SEAL_SLOTS_AS_BORN = {
     "FISCAL_SEAL_CURRENT_P12_BASE64": "",
@@ -846,13 +853,22 @@ def rate_limits(env: dict[str, str]) -> tuple[dict, dict]:
     [PRODUCTION_ENV, TASKS["saas"], {"DEBUG": "True"}],
     ids=["production", "saas-task", "development"],
 )
-def test_sign_in_keeps_allauth_s_rate_limit(env):
-    """Production and development alike (the dev server with DEBUG=True alone): allauth's limits, with
-    sign-up's own on top (10 an hour per address, as today's SaaS)."""
+def test_the_sign_in_limits_are_written_out(env):
+    """Production and development alike (the dev server with DEBUG=True alone): every limit written out
+    (config/settings.py), allauth's sign-in limit kept, and nothing of allauth's left unsaid."""
     effective, allauth = rate_limits(env)
 
     assert effective["login"] == allauth["login"]
-    assert effective == {**allauth, "signup": "10/h/ip"}
+    assert {**allauth, **effective} == {
+        **allauth,
+        "login": "30/m/ip",
+        "login_failed": "5/5m/ip,5/5m/key",
+        "signup": "10/h/ip",
+        "reset_password": "10/h/ip,5/h/key",
+        "reset_password_from_key": "20/m/ip",
+        "confirm_email": "1/10s/key",
+        "code_attempts": "10/5m/ip",
+    }
 
 
 @pytest.mark.parametrize("off", ["0", "False"])
@@ -862,14 +878,18 @@ def test_the_e2e_variable_turned_off_keeps_the_sign_in_limit(off):
     assert effective["login"] == allauth["login"]
 
 
-def test_the_e2e_raises_the_sign_in_limit_and_nothing_else():
-    """Out of the e2e's reach (one sign-in takes over 0.1 s, one at a time), still a limit: sign-up,
-    the mailed codes and the failed attempts keep theirs."""
+def test_the_e2e_raises_the_limits_per_address_of_the_sign_in_and_nothing_else():
+    """Every panel spec signs in from 127.0.0.1, password and mailed code: the address's budgets of the sign-in, of the
+    failed passwords and of the typed codes go out of the e2e's reach (one sign-in takes over 0.1 s, one at a time),
+    still a limit. Each account keeps its own (5 wrong passwords in 5 minutes), and so do sign-up, the reset links and
+    «Send another code»."""
     relaxed, allauth = rate_limits({"DEBUG": "True", "E2E_RELAX_LOGIN_RATE_LIMIT": "True"})
     kept, _ = rate_limits({"DEBUG": "True"})
 
     assert relaxed["login"] == "1000/m/ip" != allauth["login"]
-    assert {**relaxed, "login": kept["login"]} == kept
+    assert relaxed["login_failed"] == "1000/m/ip,5/5m/key"
+    assert relaxed["code_attempts"] == "1000/m/ip"
+    assert {**relaxed, "login": kept["login"], "login_failed": kept["login_failed"], "code_attempts": kept["code_attempts"]} == kept
 
 
 def test_production_refuses_to_start_with_the_e2e_s_sign_in_limit():
@@ -900,3 +920,97 @@ def test_the_whatsapp_return_page_may_be_given_by_the_environment():
     given = "http://localhost:8601/whatsapp/return"
 
     assert development("s.WHATSAPP_REDIRECT_URI", WHATSAPP_REDIRECT_URI=given) == given
+
+
+# reCAPTCHA Enterprise (live.recaptcha; Ioan, 2026-10-22): every public form is checked in production, which refuses to
+# start without both keys and cannot switch it off; development checks only with both keys (`.env`), and the test run
+# never (config/settings_pytest.py). The minimum score and the endpoint come from the environment.
+
+RECAPTCHA = "s.LIVE['recaptcha']"
+RECAPTCHA_KEYS = {"RECAPTCHA_SITE_KEY": "dev-site-key", "RECAPTCHA_API_KEY": "dev-api-key"}
+
+
+def test_production_checks_every_public_form_with_recaptcha():
+    assert production(RECAPTCHA) == {
+        "enabled": True,
+        "project": "erplora",
+        "site_key": "prod-recaptcha-site-key",
+        "api_key": "prod-recaptcha-api-key",
+        "min_score": 0.5,
+        "endpoint": None,
+    }
+
+
+@pytest.mark.parametrize("missing", ["RECAPTCHA_SITE_KEY", "RECAPTCHA_API_KEY"])
+@pytest.mark.parametrize("how", ["absent", "empty"])
+def test_production_refuses_to_start_without_a_recaptcha_key(missing, how):
+    env = {key: value for key, value in PRODUCTION_ENV.items() if key != missing}
+    if how == "empty":
+        env[missing] = ""
+
+    result = _run("import config.settings", env)
+
+    assert result.returncode != 0
+    assert missing in result.stderr
+
+
+@pytest.mark.parametrize("task", sorted(TASKS))
+def test_every_saas_task_starts_with_recaptcha_on(task):
+    result = _run(f"import config.settings as s\nprint({RECAPTCHA}['enabled'])", TASKS[task])
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "True"
+
+
+def test_production_cannot_switch_recaptcha_off():
+    result = _run("import config.settings", {**PRODUCTION_ENV, "RECAPTCHA_ENABLED": "False"})
+
+    assert result.returncode != 0
+    assert "RECAPTCHA_ENABLED" in result.stderr
+
+
+def test_the_minimum_score_and_the_project_come_from_the_environment():
+    conf = production(RECAPTCHA, RECAPTCHA_MIN_SCORE="0.7", RECAPTCHA_PROJECT="erplora-pre")
+
+    assert (conf["min_score"], conf["project"]) == (0.7, "erplora-pre")
+
+
+@pytest.mark.parametrize("score", ["1.5", "-0.1", "high"])
+def test_a_minimum_score_outside_zero_to_one_refuses_to_start(score):
+    result = _run("import config.settings", {**PRODUCTION_ENV, "RECAPTCHA_MIN_SCORE": score})
+
+    assert result.returncode != 0
+    assert "RECAPTCHA_MIN_SCORE" in result.stderr
+
+
+def test_the_assessments_may_go_to_another_endpoint():
+    url = "http://127.0.0.1:8018/v1/projects/erplora/assessments"
+
+    assert production(RECAPTCHA, RECAPTCHA_ENDPOINT=url)["endpoint"] == url
+
+
+def test_development_without_keys_checks_nothing():
+    assert development(RECAPTCHA)["enabled"] is False
+
+
+def test_development_with_both_keys_checks_the_forms():
+    conf = development(RECAPTCHA, **RECAPTCHA_KEYS)
+
+    assert (conf["enabled"], conf["site_key"], conf["api_key"]) == (True, "dev-site-key", "dev-api-key")
+
+
+def test_development_with_keys_may_switch_it_off():
+    assert development(RECAPTCHA, **RECAPTCHA_KEYS, RECAPTCHA_ENABLED="False")["enabled"] is False
+
+
+def test_development_switched_on_without_keys_refuses_to_start():
+    result = _run("import config.settings", {"DEBUG": "True", "RECAPTCHA_ENABLED": "True"})
+
+    assert result.returncode != 0
+    assert "RECAPTCHA_SITE_KEY" in result.stderr
+
+
+def test_the_test_run_never_checks_whatever_the_dotenv_says():
+    from django.conf import settings
+
+    assert settings.LIVE["recaptcha"]["enabled"] is False

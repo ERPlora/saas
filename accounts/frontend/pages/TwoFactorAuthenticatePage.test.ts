@@ -22,6 +22,7 @@ import {
   signedIn,
 } from '../__tests__/allauth-server';
 import { mountAccountPage } from '../__tests__/mount-account-page';
+import { forgetRecaptcha, withRecaptcha } from '../__tests__/recaptcha-page';
 import { choose } from '../__tests__/mount-panel';
 import TwoFactorAuthenticatePage from './TwoFactorAuthenticatePage.vue';
 
@@ -355,5 +356,22 @@ describe('TwoFactorAuthenticatePage: «Back to sign in»', () => {
     await flushPromises();
     expect(router.currentRoute.value.path).toBe('/2fa/authenticate');
     expect(wrapper.get('.non-field-error').text()).toBe('We could not sign you in. Please try again.');
+  });
+});
+
+describe('TwoFactorAuthenticatePage: reCAPTCHA, invisible (accounts/frontend/recaptcha.ts; Ioan, 2026-10-22)', () => {
+  afterEach(forgetRecaptcha);
+
+  it('posts the app’s code with the token of `mfa_authenticate` and says reCAPTCHA protects the form', async () => {
+    withRecaptcha();
+    const server = fakeAllauth({ 'GET /auth/session': pendingSecondFactor, 'POST /auth/2fa/authenticate': signedIn });
+    const { verify, wrapper } = await mountPage();
+    expect(wrapper.find('[data-testid="recaptcha-notice"]').exists()).toBe(true);
+
+    await verify('654321');
+
+    expect(server.callsTo('POST /auth/2fa/authenticate').map((c) => c.body)).toEqual([
+      { code: '654321', recaptcha_token: 'token-for-mfa_authenticate' },
+    ]);
   });
 });

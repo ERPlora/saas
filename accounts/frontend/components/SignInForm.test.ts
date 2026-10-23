@@ -25,6 +25,7 @@ import {
   tooManyRequests,
 } from '../__tests__/allauth-server';
 import { mountAccountPage } from '../__tests__/mount-account-page';
+import { forgetRecaptcha, withRecaptcha } from '../__tests__/recaptcha-page';
 import { choose } from '../__tests__/mount-panel';
 import SignInForm from './SignInForm.vue';
 
@@ -578,5 +579,57 @@ describe('SignInForm: «Create account» never signs in', () => {
     const { signIn } = await mountForm({ path: '/launch?tab=signup' });
     await signIn('new@example.com', 'a long pass phrase');
     expect(assign).toHaveBeenCalledExactlyOnceWith('/launch');
+  });
+});
+
+describe('SignInForm: reCAPTCHA, invisible (accounts/frontend/recaptcha.ts; Ioan, 2026-10-22)', () => {
+  afterEach(forgetRecaptcha);
+
+  it('signs in with Google’s token of `login` and says reCAPTCHA protects the form', async () => {
+    withRecaptcha();
+    const { callsTo } = fakeAllauth({ 'GET /auth/session': anonymous, 'POST /auth/login': pendingLoginCode });
+    const { wrapper, signIn } = await mountForm();
+
+    await signIn();
+
+    expect(callsTo('POST /auth/login')[0].body).toEqual({
+      email: 'owner@example.com',
+      password: 'owner',
+      recaptcha_token: 'token-for-login',
+    });
+    expect(wrapper.get('[data-testid="recaptcha-notice"]').text()).toContain('This site is protected by reCAPTCHA');
+  });
+
+  it('creates the account with the token of `signup`', async () => {
+    withRecaptcha();
+    const { callsTo } = fakeAllauth({ 'GET /auth/session': anonymous, 'POST /auth/signup': pendingEmailVerification });
+    const { signIn } = await mountForm({ path: '/launch?tab=signup' });
+
+    await signIn('new@example.com', 'a long new password');
+
+    expect(callsTo('POST /auth/signup')[0].body).toMatchObject({ recaptcha_token: 'token-for-signup' });
+  });
+
+  it('paints the server’s refusal for the whole form', async () => {
+    withRecaptcha();
+    fakeAllauth({
+      'GET /auth/session': anonymous,
+      'POST /auth/login': rejected('We could not check that you are a person. Try again.', undefined, 'recaptcha_failed'),
+    });
+    const { signIn, failure } = await mountForm();
+
+    await signIn();
+
+    expect(failure().text()).toBe('We could not check that you are a person. Try again.');
+  });
+
+  it('without reCAPTCHA sends no token and shows no notice', async () => {
+    const { callsTo } = fakeAllauth({ 'GET /auth/session': anonymous, 'POST /auth/login': pendingLoginCode });
+    const { wrapper, signIn } = await mountForm();
+
+    await signIn();
+
+    expect(callsTo('POST /auth/login')[0].body).toEqual({ email: 'owner@example.com', password: 'owner' });
+    expect(wrapper.find('[data-testid="recaptcha-notice"]').exists()).toBe(false);
   });
 });

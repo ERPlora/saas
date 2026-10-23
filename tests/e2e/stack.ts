@@ -24,6 +24,8 @@ export interface Stack {
   panelPort: number;
   /** The port of the panel's twin with the second factor on (`base + 3`; ACCOUNTS_MFA_ENABLED is off by default). */
   panelMfaPort: number;
+  /** Where the public server asks reCAPTCHA's assessments (`RECAPTCHA_ENDPOINT`), the double of recaptcha-double.ts (`base + 8`). */
+  recaptchaDoublePort: number;
   /** Where the panel's Django calls the Hub (`HUB_INTERNAL_URL`), which a spec plays (`base + 9`). */
   hubDoublePort: number;
   /** The run's own e2e database, which every Django process opens (`DB_NAME`); `undefined`: `.env`'s `saas`. */
@@ -96,6 +98,7 @@ export function stackFrom(env: Env): Stack {
     publicPort: base + 1,
     panelPort: base + 2,
     panelMfaPort: base + 3,
+    recaptchaDoublePort: base + 8,
     hubDoublePort: base + LAST_OFFSET,
     database: databaseOf(env, base),
   };

@@ -28,6 +28,7 @@ import { defineConfig, type PlaywrightTestConfig } from '@playwright/test';
 
 import { djangoEnv } from './django-env';
 import { panelProject, panelServers } from './panel/project';
+import { recaptchaServerEnv } from './recaptcha';
 import { STACK, type Stack } from './stack';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -96,9 +97,27 @@ export function publicServer(saasDir: string, stack: Stack = STACK): WebServer {
         ALLOWED_HOSTS: '127.0.0.1,localhost',
         EMAIL_BACKEND: 'django.core.mail.backends.filebased.EmailBackend',
         EMAIL_FILE_PATH: publicMailDir(stack),
+        // Production refuses to start without reCAPTCHA: its assessments go to the run's double, never to Google,
+        // and its pages get a fake enterprise.js (recaptcha.ts).
+        ...recaptchaServerEnv(stack, saasDir),
+        // The run presses «Try the demo» from 127.0.0.1 more than production's 3 an hour (demo-door, public-demo,
+        // recaptcha); the throttled door is a spec of its own (`?state=throttled`, public-demo.spec.ts).
+        DEMO_SPAWN_RATELIMIT: '30/h',
       },
       stack,
     ),
+  };
+}
+
+/** The double of reCAPTCHA's assessments the public server of `stack` asks (recaptcha-double.ts), never reused. */
+export function recaptchaDoubleServer(saasDir: string, stack: Stack = STACK): WebServer {
+  return {
+    name: 'recaptcha-double',
+    command: `node tests/e2e/recaptcha-double.ts ${stack.recaptchaDoublePort}`,
+    cwd: saasDir,
+    url: `http://127.0.0.1:${stack.recaptchaDoublePort}/healthz`,
+    reuseExistingServer: false,
+    timeout: 30_000,
   };
 }
 
@@ -124,6 +143,7 @@ export default defineConfig({
   },
   projects: [{ name: 'public', testIgnore: 'panel/**' }, panelProject],
   webServer: [
+    recaptchaDoubleServer(SAAS_DIR),
     publicServer(SAAS_DIR),
     ...panelServers(SAAS_DIR),
   ],
