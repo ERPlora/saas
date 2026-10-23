@@ -368,6 +368,31 @@ class TestApiKeys:
         assert "ana@example.com" in listing.text and "erps_live_" in listing.text
         assert key.key_hash not in listing.text + page.text
 
+    @pytest.mark.parametrize(
+        ("language", "heading", "labels"),
+        [
+            ("en", "Permissions", "Businesses · read, Invoices · read"),
+            ("es", "Permisos", "Negocios · lectura, Facturas · lectura"),
+        ],
+    )
+    def test_the_permissions_are_named_as_the_panel_names_them(self, staff_client, ana, language, heading, labels):
+        """ACCOUNTS-F33: the list and the key's page say what a key may open in words, never the raw scope list."""
+        client, _ = staff_client
+        key = _key(ana)
+        key.scopes = ["hubs.read", "billing.read"]
+        key.save(update_fields=["scopes"])
+
+        listing = unescape(client.get("/admin/accounts/apikey/", headers={"Accept-Language": language}).text)
+        page = unescape(
+            client.get(f"/admin/accounts/apikey/{key.pk}/change/", headers={"Accept-Language": language}).text
+        )
+
+        for html in (listing, page):
+            assert labels in html
+            assert "hubs.read" not in html and "billing.read" not in html
+        assert re.search(rf'class="column-permissions">\s*<div class="text"><span>{heading}</span>', listing)
+        assert f"<label>{heading}:</label>" in page
+
     def test_keys_are_not_changed_nor_deleted_here(self, staff_client, ana):
         client, _ = staff_client
         key = _key(ana)
@@ -439,6 +464,19 @@ class TestTheSuperuserIssuesAKey:
         with pytest.raises(NotFound):
             services.issue_api_key(ana, name="Monitor", scopes=["hubs.read"], expires_in_days=30, by=root)
         assert not ana.api_keys.exists()
+
+    @pytest.mark.parametrize(
+        ("language", "labels"),
+        [("en", ["User:", "Name:", "Permissions:", "Expires:"]), ("es", ["Usuario:", "Nombre:", "Permisos:", "Caduca:"])],
+    )
+    def test_the_form_names_each_field_alike(self, staff_client, language, labels):
+        """Django capitalises the labels it takes from the model («User:», «Name:»), not the form's own: «permissions:»
+        and «expires:» stood out in lower case."""
+        client, _ = staff_client
+
+        page = client.get(self.ADD, HTTP_ACCEPT_LANGUAGE=language).text
+
+        assert [unescape(label).strip() for label in re.findall(r"<(?:label|legend)[^>]*>([^<]+:)</(?:label|legend)>", page)][:4] == labels
 
     def test_the_form_offers_only_team_accounts(self, staff_client, teammate, ana):
         client, _ = staff_client

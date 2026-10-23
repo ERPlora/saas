@@ -6,7 +6,7 @@ without compiling it fails too.
 
 import pytest
 from django.utils import translation
-from django.utils.translation import gettext
+from django.utils.translation import gettext, ngettext
 
 NEW_MESSAGES = [
     # services.py
@@ -81,6 +81,30 @@ def test_each_new_message_has_its_spanish(message):
 
     assert spanish != message
     assert spanish.count("%(count)d") == message.count("%(count)d")
+
+
+#: HUBS-F31: the admin's notice when what a plan gives changes (``PlanAdmin.save_model``), singular and plural.
+PLAN_RIGHTS_NOTICE = (
+    "%(count)d business on this plan gets the change within 15 minutes.",
+    "%(count)d businesses on this plan get the change within 15 minutes.",
+)
+
+
+#: HUBS-F34: the same notice in the modules' admin (``apps.admin.ModuleAdmin.save_model``, the catalog of ``apps``).
+MODULE_RIGHTS_NOTICE = (
+    "%(count)d business whose plan includes it gets the change within 15 minutes.",
+    "%(count)d businesses whose plan includes it get the change within 15 minutes.",
+)
+
+
+@pytest.mark.parametrize("notice", [PLAN_RIGHTS_NOTICE, MODULE_RIGHTS_NOTICE], ids=["plan", "module"])
+@pytest.mark.parametrize("count", [1, 2])
+def test_the_notice_of_a_plan_change_has_its_spanish(count, notice):
+    with translation.override("es"):
+        spanish = ngettext(*notice, count)
+
+    assert spanish not in notice
+    assert spanish.count("%(count)d") == 1
 
 
 @pytest.mark.django_db

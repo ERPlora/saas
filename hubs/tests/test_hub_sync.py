@@ -90,11 +90,11 @@ class TestTheSnapshot:
         )
 
     def test_it_carries_the_verifactu_block(self, business):
-        """``fiscal.queries.snapshot_block`` (the authorisation) and whether live sending is paid (a new business is
-        on Free, with no trial since 2026-10-15: no). The rest is ``fiscal/tests/test_snapshot.py``."""
+        """``fiscal.queries.snapshot_block`` (the authorisation) and ``live_paid``, true on Free too: VeriFactu goes in
+        every plan (PLAN §30; a new business is on Free). The rest is ``fiscal/tests/test_snapshot.py``."""
         assert queries.hub_snapshot(business.id)["verifactu"] == {
             "representation": {"status": "none", "updated_at": None, "reason": ""},
-            "live_paid": False,
+            "live_paid": True,
         }
 
     @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)

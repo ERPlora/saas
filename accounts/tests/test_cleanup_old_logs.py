@@ -60,6 +60,16 @@ def test_older_than_90_days_goes_and_younger_stays(entry):
     assert "deleted=2" in output
 
 
+def test_the_edge_is_90_days_to_the_hour(entry):
+    # Whole days around the edge leave it loose (a 91-day period still deletes an entry of 91 days): an hour each side
+    # of the 90th day pins it.
+    inside, past = entry(90 - 1 / 24), entry(90 + 1 / 24)
+
+    _run()
+
+    assert _left(inside, past) == [True, False]
+
+
 def test_the_period_comes_from_the_option(entry):
     recent, old = entry(30), entry(60)
 

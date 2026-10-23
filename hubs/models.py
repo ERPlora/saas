@@ -31,6 +31,7 @@ from django.db import models
 from django.db.models import F, Q
 from live.slugs import hub_slug_validator
 from django.utils import timezone
+from django.utils.formats import number_format
 from django.utils.translation import get_language, ngettext
 from django.utils.translation import gettext_lazy as _
 from django.utils.translation import pgettext_lazy
@@ -136,43 +137,61 @@ class Plan(TranslatedFields):
     }
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
-    slug = models.SlugField(max_length=50, unique=True, help_text=_("Stable identifier of the plan (free, starter…)."))
+    slug = models.SlugField(
+        _("identifier"), max_length=50, unique=True, help_text=_("Stable identifier of the plan (free, starter…).")
+    )
     name_en = models.CharField(_("name (English)"), max_length=100)
     name_es = models.CharField(_("name (Spanish)"), max_length=100, blank=True)
     description_en = models.TextField(_("description (English)"), blank=True)
     description_es = models.TextField(_("description (Spanish)"), blank=True)
     price_monthly = models.DecimalField(
-        max_digits=10, decimal_places=2, help_text=_("Monthly price in EUR, VAT excluded (net).")
+        _("monthly price"), max_digits=10, decimal_places=2, help_text=_("Monthly price in EUR, VAT excluded (net).")
     )
     price_annual = models.DecimalField(
-        max_digits=10, decimal_places=2, default=0, help_text=_("Annual price in EUR, VAT excluded (0 = no annual option).")
+        _("annual price"),
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text=_("Annual price in EUR, VAT excluded (0 = no annual option)."),
     )
     features_en = models.JSONField(_("features (English)"), default=list, blank=True)
     features_es = models.JSONField(_("features (Spanish)"), default=list, blank=True)
     featured_label_en = models.CharField(_("badge (English)"), max_length=32, blank=True, default="")
     featured_label_es = models.CharField(_("badge (Spanish)"), max_length=32, blank=True, default="")
-    is_active = models.BooleanField(default=True, help_text=_("Available for new subscriptions."))
-    upgrade_only = models.BooleanField(default=False, help_text=_("Only offered as an upgrade, never at sign-up."))
+    is_active = models.BooleanField(_("active"), default=True, help_text=_("Available for new subscriptions."))
+    upgrade_only = models.BooleanField(
+        _("only as an upgrade"), default=False, help_text=_("Only offered as an upgrade, never at sign-up.")
+    )
     internal_only = models.BooleanField(
-        default=False, help_text=_("Never offered to customers; only staff may buy it (saas#1052).")
+        _("internal"), default=False, help_text=_("Never offered to customers; only staff may buy it (saas#1052).")
     )
-    stripe_product_id = models.CharField(max_length=255, blank=True)
-    stripe_price_id = models.CharField(max_length=255, blank=True, help_text=_("Stripe price of the monthly option."))
+    stripe_product_id = models.CharField(_("Stripe product"), max_length=255, blank=True)
+    stripe_price_id = models.CharField(
+        _("Stripe monthly price"), max_length=255, blank=True, help_text=_("Stripe price of the monthly option.")
+    )
     stripe_price_id_annual = models.CharField(
-        max_length=255, blank=True, help_text=_("Stripe price of the annual option.")
+        _("Stripe annual price"), max_length=255, blank=True, help_text=_("Stripe price of the annual option.")
     )
-    trial_period_days = models.PositiveIntegerField(default=0, help_text=_("Free trial days (0 = no trial)."))
-    display_order = models.IntegerField(default=0)
+    trial_period_days = models.PositiveIntegerField(
+        _("trial days"), default=0, help_text=_("Free trial days (0 = no trial).")
+    )
+    display_order = models.IntegerField(_("order"), default=0)
     max_hubs_per_org = models.PositiveIntegerField(
-        default=1, help_text=_("Hubs a customer may run on this plan (0 = unlimited).")
+        _("businesses per customer"), default=1, help_text=_("Hubs a customer may run on this plan (0 = unlimited).")
     )
-    max_devices = models.PositiveIntegerField(default=0, help_text=_("Devices per hub (0 = unlimited)."))
-    max_users = models.PositiveIntegerField(default=0, help_text=_("Active users per hub (0 = unlimited)."))
+    max_devices = models.PositiveIntegerField(
+        _("devices"), default=0, help_text=_("Devices per hub (0 = unlimited).")
+    )
+    max_users = models.PositiveIntegerField(_("people"), default=0, help_text=_("Active users per hub (0 = unlimited)."))
     max_db_connections = models.PositiveIntegerField(
-        default=1, help_text=_("Database transactions a hub runs at a time per process (PLAN §14.2).")
+        _("database transactions at a time"),
+        default=1,
+        help_text=_("Database transactions a hub runs at a time per process (PLAN §14.2)."),
     )
     statement_timeout_seconds = models.PositiveIntegerField(
-        default=5, help_text=_("Longest database statement of a hub, in seconds (PLAN §14.2).")
+        _("longest database statement (seconds)"),
+        default=5,
+        help_text=_("Longest database statement of a hub, in seconds (PLAN §14.2)."),
     )
     #: What the plan includes of the assistant and of WhatsApp each month (PLAN-SAAS §3.6, 2026-10-15): one request
     #: of the user to the assistant is one message. They travel in the hub's state snapshot and the Hub counts
@@ -188,11 +207,15 @@ class Plan(TranslatedFields):
         default=0,
         help_text=_("WhatsApp messages a business may send each month (0 = none)."),
     )
-    included_level = models.CharField(max_length=16, choices=IncludedLevel.choices, default=IncludedLevel.FREE)
-    support_level = models.CharField(max_length=16, choices=SupportLevel.choices, default=SupportLevel.COMMUNITY)
-    includes_custom_domain = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    included_level = models.CharField(
+        _("level of modules"), max_length=16, choices=IncludedLevel.choices, default=IncludedLevel.FREE
+    )
+    support_level = models.CharField(
+        _("support"), max_length=16, choices=SupportLevel.choices, default=SupportLevel.COMMUNITY
+    )
+    includes_custom_domain = models.BooleanField(_("own domain"), default=False)
+    created_at = models.DateTimeField(_("created at"), auto_now_add=True)
+    updated_at = models.DateTimeField(_("updated at"), auto_now=True)
 
     objects = PlanQuerySet.as_manager()
 
@@ -202,7 +225,11 @@ class Plan(TranslatedFields):
         verbose_name_plural = _("plans")
 
     def __str__(self):
-        return f"{self.name_en} - EUR {self.price_monthly}/month"
+        """Its name and monthly price in the active language (the staff's in the admin): «Starter · 29,99 €/mes»."""
+        return _("%(name)s · %(price)s €/month") % {
+            "name": self.translated("name"),
+            "price": number_format(self.price_monthly, 2),
+        }
 
     def has_trial(self) -> bool:
         return self.trial_period_days > 0
@@ -264,19 +291,20 @@ class TaxonomyEntry(TranslatedFields):
     name_es = models.CharField(_("name (Spanish)"), max_length=200, blank=True)
     description_en = models.TextField(_("description (English)"), blank=True)
     description_es = models.TextField(_("description (Spanish)"), blank=True)
-    icon = models.CharField(max_length=100, blank=True)
-    color = models.CharField(max_length=20, blank=True, help_text=_("Hex colour, e.g. #ff6b35."))
-    display_order = models.IntegerField(default=0)
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    icon = models.CharField(_("icon"), max_length=100, blank=True)
+    color = models.CharField(_("colour"), max_length=20, blank=True, help_text=_("Hex colour, e.g. #ff6b35."))
+    display_order = models.IntegerField(_("order"), default=0)
+    is_active = models.BooleanField(_("active"), default=True)
+    created_at = models.DateTimeField(_("created at"), auto_now_add=True)
+    updated_at = models.DateTimeField(_("updated at"), auto_now=True)
 
     class Meta:
         abstract = True
         ordering = ["display_order", "code"]
 
     def __str__(self):
-        return self.name_en or self.code
+        """In the active language (the staff's in the admin), English when its column is blank."""
+        return self.name() or self.code
 
     def name(self, language: str | None = None) -> str:
         return self.translated("name", language)
@@ -298,7 +326,9 @@ class TaxonomyEntry(TranslatedFields):
 class Sector(TaxonomyEntry):
     """A business sector (hospitality, retail, healthcare…); groups the business types."""
 
-    code = models.SlugField(max_length=50, unique=True, help_text=_("Stable code used by the API. Never change it."))
+    code = models.SlugField(
+        _("code"), max_length=50, unique=True, help_text=_("Stable code used by the API. Never change it.")
+    )
 
     class Meta(TaxonomyEntry.Meta):
         verbose_name = _("sector")
@@ -312,11 +342,19 @@ class BusinessType(TaxonomyEntry):
     PLAN §15.2); blank, the hub starts from ``hub_template``, only ``base``.
     """
 
-    code = models.SlugField(max_length=80, unique=True, help_text=_("Stable code used by the API. Never change it."))
+    code = models.SlugField(
+        _("code"), max_length=80, unique=True, help_text=_("Stable code used by the API. Never change it.")
+    )
     sector = models.ForeignKey(
-        Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name="business_types"
+        Sector,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="business_types",
+        verbose_name=_("sector"),
     )
     vertical = models.CharField(
+        _("vertical"),
         max_length=40,
         blank=True,
         default="",

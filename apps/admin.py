@@ -4,12 +4,14 @@
 shows them and never adds, changes nor deletes a row. ``Module`` is written here, by hand, and its
 form runs ``Module.clean()`` (the slug is a paid app of the catalog, spec §5.4) and checks in Stripe the prices
 pasted on it (APPS-F04, the same checks as a plan's, BILLING-F28). A module some business still has is not deleted
-(saas#2568): taking it off sale («active» off) is how it stops being sold.
+(saas#2568): taking it off sale («active» off) is how it stops being sold. A new module, or a new level of one, owes
+the businesses whose plan includes it a newer snapshot (``hubs.services.owe_module_rights``, HUBS-F34).
 """
 
 from django import forms
 from django.contrib import admin, messages
 from django.utils.translation import gettext as _
+from django.utils.translation import ngettext
 
 from apps.models import App, AppDoc, Module
 
@@ -108,6 +110,23 @@ class ModuleAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
         if getattr(form, "unchecked", ""):
             self.message_user(request, form.unchecked, messages.WARNING)
+        # HUBS-F34: a new module, or one moved to another level, reaches the businesses whose plan includes it within
+        # 15 minutes, not at Stripe's next notice of each of them.
+        if not change or "tier" in form.changed_data:
+            from hubs import services as hub_services
+
+            previous = form.initial.get("tier") if change else None
+            owed = hub_services.owe_module_rights(obj.tier, previous)
+            if owed:
+                self.message_user(
+                    request,
+                    ngettext(
+                        "%(count)d business whose plan includes it gets the change within 15 minutes.",
+                        "%(count)d businesses whose plan includes it get the change within 15 minutes.",
+                        owed,
+                    )
+                    % {"count": owed},
+                )
 
     def get_deleted_objects(self, objs, request):
         """Django's own refusal of a protected relation, for the modules some business still has: Stripe would

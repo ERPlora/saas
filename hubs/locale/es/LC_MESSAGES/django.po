@@ -16,6 +16,114 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+#: models.py
+msgid "identifier"
+msgstr "identificador"
+
+#: models.py
+msgid "monthly price"
+msgstr "precio al mes"
+
+#: models.py
+msgid "annual price"
+msgstr "precio al año"
+
+#: models.py
+msgid "only as an upgrade"
+msgstr "solo como mejora"
+
+#: models.py
+msgid "internal"
+msgstr "interno"
+
+#: models.py
+msgid "Stripe product"
+msgstr "producto de Stripe"
+
+#: models.py
+msgid "Stripe monthly price"
+msgstr "precio mensual de Stripe"
+
+#: models.py
+msgid "Stripe annual price"
+msgstr "precio anual de Stripe"
+
+#: models.py
+msgid "trial days"
+msgstr "días de prueba"
+
+#: models.py
+msgid "businesses per customer"
+msgstr "negocios por cliente"
+
+#: models.py
+msgid "devices"
+msgstr "dispositivos"
+
+#: models.py
+msgid "people"
+msgstr "personas"
+
+#: models.py
+msgid "database transactions at a time"
+msgstr "transacciones de base de datos a la vez"
+
+#: models.py
+msgid "longest database statement (seconds)"
+msgstr "consulta más larga (segundos)"
+
+#: models.py
+msgid "level of modules"
+msgstr "nivel de módulos"
+
+#: models.py
+msgid "support"
+msgstr "soporte"
+
+#: models.py
+msgid "own domain"
+msgstr "dominio propio"
+
+#: models.py
+#, python-format
+msgid "%(name)s · %(price)s €/month"
+msgstr "%(name)s · %(price)s €/mes"
+
+#: models.py
+msgid "code"
+msgstr "código"
+
+#: models.py
+msgid "icon"
+msgstr "icono"
+
+#: models.py
+msgid "colour"
+msgstr "color"
+
+#: models.py
+msgid "order"
+msgstr "orden"
+
+#: models.py
+msgid "active"
+msgstr "activo"
+
+#: models.py
+msgid "updated at"
+msgstr "actualizado el"
+
+#: models.py
+msgid "vertical"
+msgstr "vertical"
+
+#: admin.py
+#, python-format
+msgid "%(count)d business on this plan gets the change within 15 minutes."
+msgid_plural "%(count)d businesses on this plan get the change within 15 minutes."
+msgstr[0] "%(count)d negocio con este plan recibe el cambio en los próximos 15 minutos."
+msgstr[1] "%(count)d negocios con este plan reciben el cambio en los próximos 15 minutos."
+
 #: admin.py:52 admin.py:66
 msgid "Display"
 msgstr "Presentación"

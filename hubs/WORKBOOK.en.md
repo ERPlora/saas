@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:1b19e4f06fd41ba193b1f7e1c6b3612db2a57f4f1b2a51e28cc7c7335664b2c5 -->
+<!-- generated from WORKBOOK.md sha256:5d3c32cb9d0aca3c72ac7be142ad23262725f3085b525bfd6a2ef320c92a01b3 -->
 
 ## What it is for and who it is for
 
@@ -21,8 +21,10 @@ Who uses it:
 - **The owner** and the **administrators** invite the people of the business, change their role and remove them;
   only the owner hands out the administrator role and transfers the ownership. A **manager** or an **employee** only
   opens the business.
-- **ERPlora's staff** keep the plans from the admin and, from there, send a business again what it did not
-  receive and look up who has access to each business.
+- **ERPlora's staff** keep the plans, the sectors and the business types from the admin and, from there, send a
+  business again what it did not receive and look up who has access to each business.
+- The **system** sends each business, after every change and every night, its plan with its caps, its paid apps,
+  its people and its status; the business works with that copy and does not ask erplora.com on every sale.
 
 ## Reference adopted
 
@@ -41,6 +43,8 @@ Who uses it:
   public website, not to the point of sale, on paid plans and with the certificate set up by itself
   (https://squareup.com/help/article/6916, https://support.toasttab.com/en/article/Toast-Online-Ordering-Pro-Domains,
   https://www.fresha.com/help-center/knowledge-base/online-presence/109902-manage-your-domains).
+- **Shopify and Stripe**: a shop's rights travel in a notice after each change and the app keeps its local copy; it
+  does not ask on every use (https://shopify.dev/docs/apps/build/webhooks, https://docs.stripe.com/billing/entitlements).
 - **Shopify, Square and Toast**: the owner gives their staff access with a role, and each role brings its
   permissions; the access is changed and removed from the same place, and whoever only works with a PIN at the till
   is managed inside the point of sale (https://help.shopify.com/en/manual/your-account/staff-accounts).
@@ -92,8 +96,14 @@ The dialog of "Change address": "New address", under it "Your business will open
 give and what happens next; "Change address" is enabled when it differs from the current one.
 
 ### admin › Businesses › Plans
-Each plan's form for the staff: the texts in English and in Spanish, the price, what it includes, its limits and
-its Stripe prices.
+Each plan's form for the staff, in their language: the texts in English and in Spanish, the price, what it includes,
+its limits and its Stripe prices. On saving a change to what the plan gives, the notice "… businesses on this plan get
+the change within 15 minutes.".
+
+### admin › Businesses › Sectors and Business types
+The two lists of the sign-up's taxonomy for the staff, with search and filters, and the form of each one: the code,
+the name and the description in English and in Spanish, the icon, the colour, the order and whether it is active; on
+a business type, also its sector and its template ("Vertical").
 
 ### Members
 The "Members" tab of each business, for the owner and the administrators: the "Team" table with "Name" (one's own
@@ -167,6 +177,13 @@ last access, with a search by business or by email and a filter by role; it is o
 | HUBS-F28 | Transfer the ownership of a business | done |
 | HUBS-F29 | See the people of a business | done |
 | HUBS-F30 | Look up the accesses of the people in the admin | done |
+| HUBS-F31 | Send each business its plan, its apps and its people | done |
+| HUBS-F32 | Apply the plan's caps on people and devices | partial |
+| HUBS-F33 | Give the business the assistant messages of its plan | partial |
+| HUBS-F34 | Tell the business which paid apps it may use and why | partial |
+| HUBS-F35 | Recognise the businesses' service when it calls erplora.com | done |
+| HUBS-F36 | Keep the sectors and the business types in the admin | done |
+| HUBS-F37 | Read the sectors and the business types | done |
 
 ### HUBS-F01 Create the free business with a single question
 Status: done
@@ -564,3 +581,97 @@ In: the staff account with its second factor.
 Out: nothing stored.
 If it fails: the admin invites, changes and removes nobody: only the owner and the administrators do it, in "Members", so nobody of the staff gives themselves access to a business. Support staff look it up too.
 Involved: accounts (the staff account)
+
+### HUBS-F31 Send each business its plan, its apps and its people
+Status: done
+Actor: system, ERPlora's staff
+Screen: none; for the staff, admin › Businesses › Plans
+Steps:
+1. Whenever something the business has to know changes —its plan (when it is paid, changed or ended), a paid app bought or cancelled, a person who joins, changes role or leaves, its billing standing or its VeriFactu authorisation—, erplora.com stores it and, as soon as it is stored, sends the business its whole snapshot: the plan with its caps (people, devices, the limits of its database and the assistant and WhatsApp messages a month), its paid apps, its people with their role, its status and its VeriFactu block.
+2. The business always keeps the newest snapshot: one that arrives late and is older than the one it has changes nothing. It works with it without asking erplora.com on every sale, so it keeps selling even if erplora.com does not answer.
+3. If the staff change in the admin what a plan gives (its caps, its level of apps or its messages a month), on saving they see "… businesses on this plan get the change within 15 minutes." and every business on that plan gets it on the next pass; changing only its texts, its order or its price sends nothing.
+4. What a business did not receive is sent to it again every 15 minutes (HUBS-F08) and, every night, every business gets its snapshot again.
+In: the stored change: the payment, the people, the plan's form in the admin or the VeriFactu authorisation.
+Out: the business's snapshot, with a version number that only grows. VeriFactu is in every plan, Free too: with the authorisation validated, the business files its records on whatever plan it has. Records `hubs.subscription.changed` when its plan or its apps change.
+If it fails: if the business does not answer or refuses the snapshot, it stays owed and is retried (HUBS-F08); the refusal shows on its record in the admin (HUBS-F23). A deleted business gets no snapshot. A change from the admin that does not arrive on the next pass arrives the following night.
+Involved: billing (the payment and the plan), fiscal (the VeriFactu authorisation), the business (keeps the snapshot and applies its status, its people, VeriFactu and WhatsApp; the caps and the apps, HUBS-F32 and HUBS-F34)
+
+### HUBS-F32 Apply the plan's caps on people and devices
+Status: partial — erplora.com already stops the invitation that does not fit and sends both caps to the business, but the business does not apply them yet: sessions per device and the employees who enter with a PIN come with each business's own database (phase 2); until then a business on Free opens on more than one device at a time.
+Actor: system, owner, administrator
+Screen: Members › Invite
+Steps:
+1. Each plan says how many people and how many devices at a time it covers in each business: Free, 3 people and 1 device; the paid plans, no cap.
+2. On inviting, erplora.com counts the people already in and the invitations still valid; without a place, the "Invite to …" dialog says "The plan has no free places left: change the plan or remove someone to invite more people." and sends nothing (HUBS-F24). Changing the role of someone already in spends no place.
+3. The business gets both caps in its snapshot (HUBS-F31) and applies them to what only it sees: the employees who enter with a PIN and the devices with an open session.
+In: the business's plan, its people and its invitations.
+Out: the refusal of the invitation that does not fit and both caps in the snapshot; nothing else is stored.
+If it fails: accepting an invitation when the plan has no room any more is stopped on accepting (HUBS-F25). Moving down a plan removes nobody: it stops new invitations until there is room again.
+Involved: billing (the plan), the business (applies the caps to its devices and its PIN employees)
+
+### HUBS-F33 Give the business the assistant messages of its plan
+Status: partial — the business already gets the messages a month its plan includes, but they are not counted or stopped yet: each message goes through the assistant's turn, which comes with the second part of the assistant app.
+Actor: system
+Screen: none
+Steps:
+1. Each plan includes a number of assistant messages a month (Free 30, Starter 300, Standard 600; 0 is no assistant); the staff change it in the plan's form (HUBS-F05).
+2. erplora.com sends it to the business in its snapshot (HUBS-F31), next to WhatsApp's, and again as soon as the plan or the figure changes.
+3. Each message counts for the business's month: at 80 % it warns and at 100 % no more questions can be asked until the 1st of the next month; to get more, the plan is moved up.
+In: the business's plan.
+Out: the plan's messages a month, in the business's snapshot.
+If it fails: a plan with 0 messages leaves the assistant unused. Loose message packs are not sold.
+Involved: assistant (the turn of each message and its count), the business (shows what is left)
+
+### HUBS-F34 Tell the business which paid apps it may use and why
+Status: partial — erplora.com already sends each paid app with its origin and its date, but the business does not stop a paid app without the right yet, nor say on its apps page where it comes from; today no app of the business is paid, so all of them are used without buying them.
+Actor: system, owner
+Screen: none; each business's are seen in Store › Modules (BILLING-F31)
+Steps:
+1. A business has a paid app through its plan (the plan's level includes it) or because it bought it for that business; the free ones need not be on the list: they can always be used.
+2. erplora.com sends the business, in its snapshot (HUBS-F31), each paid app it has, where it comes from (the plan or a purchase) and until when, if it was cancelled.
+3. The business turns on the ones it has; a paid one without the right does not turn on and leads to buying it on erplora.com.
+4. In **Store › Modules**, with the business chosen, the owner sees each app in that business: "Included in your plan" or "You have it" (BILLING-F31).
+In: the business's plan and its purchases.
+Out: the business's paid apps in its snapshot; nothing is stored.
+If it fails: a purchase belongs to a single business: it never gives the app to another, not even to another of the same account. A cancelled one lasts until the end of what was paid. Moving down a plan takes away the ones the previous plan gave; moving up brings the ones of the new level. A paid app the staff put on sale, or move to another level, reaches the businesses whose plan includes it on the next pass (15 minutes at most); the admin says "… businesses whose plan includes it get the change within 15 minutes.".
+Involved: billing (the purchases), apps (which app is paid and its level), the business (turns each app on or stops it)
+
+### HUBS-F35 Recognise the businesses' service when it calls erplora.com
+Status: done
+Actor: system
+Screen: none
+Steps:
+1. When the businesses' service tells or asks erplora.com something (that a business is ready, a person's entry, the VeriFactu authorisation, a filing with the Tax Agency or a WhatsApp), it signs the call with the secret both share and the time.
+2. erplora.com checks the signature and the time (at most 5 minutes apart) before reading anything; during a change of secret it also accepts the previous one.
+3. The business of the call is the one its address names, never a header nor what the body says; with the right signature, it answers only with that business's data.
+In: the signed call.
+Out: that door's answer; nothing else.
+If it fails: without a signature, with the signature of another secret or with a time more than 5 minutes old, it is refused without doing anything; a person's session, even a staff one, does not open these doors. A notice that names a business other than its address's is refused. These doors are not published to the internet.
+Involved: accounts (the signature and each person's entry), fiscal and fiscal_gateway (VeriFactu), whatsapp (the messages), the business (calls)
+
+### HUBS-F36 Keep the sectors and the business types in the admin
+Status: done
+Actor: ERPlora's staff, system
+Screen: admin › Businesses › Sectors and Business types
+Steps:
+1. On every deploy, erplora.com creates the sectors and business types missing from its starting list (12 sectors and 70 types), without touching what the staff already changed.
+2. The staff open "Sectors" or "Business types" in the admin, search by code or name and filter by "Active" (the types, also by "Sector" and by "Vertical"); they change the order and whether it is active from the list itself.
+3. In the form they write the name and the description in English and in Spanish, the icon, the colour, the order and whether it is active; on a business type, also its sector and its "Vertical", the template a business of that type is born with.
+4. They save: the business sign-up, the pages of each sector and whoever reads them through the API get them in their language (HUBS-F37).
+In: what the staff write.
+Out: the sector or the business type, with each text in English and in Spanish.
+If it fails: a Spanish name or description without its accents or copied from the English is not saved and the field says how to fix it; neither are two business types with the same name in one language; a template no app builds is not accepted. An account without the staff mark does not enter the admin.
+Involved: public (the pages of each sector), apps (the templates each app builds), accounts (the business sign-up)
+
+### HUBS-F37 Read the sectors and the business types
+Status: done
+Actor: anyone, integration
+Screen: none; Create business and the pages of each sector use them
+Steps:
+1. Anyone, without signing in, asks for the list of sectors or the list of business types, all of them or a sector's.
+2. erplora.com answers with the active ones, in the order the staff set, each with its code, its name and its description in the language of whoever asks (English when the Spanish is missing), its icon and its colour; each business type, with its sector and its template.
+3. The Create business form fills its "Business type (optional)" with it, and the public website, its sector pages.
+In: the language of whoever asks and, if they want, a sector.
+Out: both lists; nothing is stored.
+If it fails: a sector that does not exist gives an empty list; a deactivated sector or type is not in its list. An API key of the account reads them too.
+Involved: public (the pages of each sector), accounts (the business sign-up at the Entrance)

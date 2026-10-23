@@ -140,6 +140,40 @@ class TestOurOwnEventKeysSurvive:
         assert _fmt(f"event={key} rejected key {secret}") == f"event={key} rejected key [TOKEN_REDACTED]"
 
 
+class TestOurOwnIdsSurvive:
+    """ACCOUNTS-F40: the ids stay, so the team can follow what happened (ACCOUNTS-F35 logs an account it could not
+    erase by its id, never by its email). Every key of this project is a UUIDv7 (``uuid.uuid7()``) and no credential is
+    UUID-shaped (no ``UUIDField`` but primary keys), yet the token rule read every ``user=<id>`` as a credential."""
+
+    def test_an_id_as_python_prints_it_reaches_the_log_whole(self):
+        account, business = "019a1b2c-3d4e-7f60-8a1b-2c3d4e5f6071", "019a1b2c-3d4e-7f60-9b2c-3d4e5f607182"
+
+        line = f"accounts.anonymize_old_users.failed user={account} hub={business}"
+
+        assert _fmt(line) == line
+
+    def test_the_email_beside_an_id_still_goes(self):
+        account = "019a1b2c-3d4e-7f60-8a1b-2c3d4e5f6071"
+
+        assert _fmt(f"user={account} email=ana@example.com") == f"user={account} email=[EMAIL_REDACTED]"
+
+    @pytest.mark.parametrize(
+        "secret",
+        [
+            # Only the id as Python prints it: hyphens swapped for underscores, capitals, or more behind it is no id.
+            "550e8400_e29b_41d4_a716_446655440000",
+            "550E8400-E29B-41D4-A716-446655440000",
+            "550e8400-e29b-41d4-a716-446655440000abcd",
+            "550e8400-e29b-41d4-a716-446655440000-e29b",
+        ],
+    )
+    def test_what_only_looks_like_an_id_is_still_redacted(self, secret):
+        out = _fmt(f"key {secret} used")
+
+        assert secret not in out
+        assert "[TOKEN_REDACTED]" in out
+
+
 class TestCredentialsStillLookLikeCredentials:
     """The other side of saas#2140: widening the keep-list must not open a door to a secret."""
 
@@ -176,8 +210,8 @@ class TestCredentialsStillLookLikeCredentials:
             "abcdefghijklmnopqrstu_live",
             # base64url (``secrets.token_urlsafe``) carrying both of its extra characters.
             "kJ8x_Q2m-Zt7VwP_n4Ls-Yb9Hd3R_fG6aE1q",
-            # A uuid, as printed and with its hyphens swapped for underscores.
-            "550e8400-e29b-41d4-a716-446655440000",
+            # A uuid with its hyphens swapped for underscores. As Python prints it, it is one of our ids, and it stays
+            # (TestOurOwnIdsSurvive): the old SaaS's list had it here, but no credential here is UUID-shaped.
             "550e8400_e29b_41d4_a716_446655440000",
             # A slug is cut from the business name, and a sole trader's is their own name: a
             # hyphen anywhere keeps it out of the event-key rule, underscore prefix or not.

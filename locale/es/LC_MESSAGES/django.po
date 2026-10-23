@@ -1019,6 +1019,13 @@ msgstr "Recurso"
 msgid "Correlation ID"
 msgstr "ID de correlación"
 
+#: accounts/admin.py
+#, python-format
+msgid "%(count)d change: %(fields)s"
+msgid_plural "%(count)d changes: %(fields)s"
+msgstr[0] "%(count)d cambio: %(fields)s"
+msgstr[1] "%(count)d cambios: %(fields)s"
+
 #. django-auditlog ships no Spanish: its admin (accounts/auditlog.py, ACCOUNTS-F36)
 msgid "Click to filter by records with this correlation id"
 msgstr "Pulsa para ver los registros con este ID de correlación"
@@ -1178,6 +1185,11 @@ msgstr "Para quien visita en español; vacío, lee el de inglés."
 #: base/models.py
 msgid "site settings"
 msgstr "ajustes del sitio"
+
+#: base/models.py
+msgctxt "one"
+msgid "site settings"
+msgstr "ajuste del sitio"
 
 #: base/models.py
 msgid "Site settings"
