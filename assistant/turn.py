@@ -13,7 +13,8 @@ provider fails before answering) and yields the frames the Hub reads:
 
 ``Outcome`` keeps what the door needs after the stream: the text, the Hub's tool calls, the tokens and their cost
 (with the prices of the model that answered), whether anything was answered and the error. The provider's own words
-of a failure stay in the log (without the key); the Hub gets a code and a plain sentence.
+of a failure reach neither the Hub nor a log (they may quote the conversation): the Hub gets a code and a plain
+sentence, the log the status.
 
 When the model asks for tools of the Hub, the turn ends there with a ``continuation`` token: the Hub runs them and
 sends the conversation back with their results and that token, and that turn costs no message (it answers the same
@@ -262,7 +263,8 @@ async def run(
             elif event.type == "error":
                 failed = payload
         if failed is not None:
-            logger.warning("assistant.turn.provider_failed status=%s message=%s", failed.get("status"), failed.get("message"))
+            # The status only: the provider's words may quote what the person wrote (ASSISTANT-G49).
+            logger.warning("assistant.turn.provider_failed status=%s retriable=%s", failed.get("status"), failed.get("retriable"))
             outcome.error = failure(failed)
             yield outcome.error
             return
