@@ -256,7 +256,7 @@ inglés» y el «mensaje en español» (vacío, quien visita en español lee el 
 | ACCOUNTS-F41 | Arrancar erplora.com y atender cada petición | hecho |
 | ACCOUNTS-F42 | Enseñar una página de error | hecho |
 | ACCOUNTS-F43 | Poner erplora.com en mantenimiento | hecho |
-| ACCOUNTS-F44 | Limpiar cada día las sesiones caducadas y los códigos vencidos | parcial |
+| ACCOUNTS-F44 | Limpiar cada día las sesiones caducadas y los códigos vencidos | hecho |
 | ACCOUNTS-F45 | Frenar el exceso de peticiones | hecho |
 | ACCOUNTS-F46 | Mandar los correos de erplora.com | hecho |
 | ACCOUNTS-F47 | Moverse por el panel | hecho |
@@ -893,7 +893,7 @@ Implicados: hubs (sus llamadas siguen), billing (los avisos de Stripe siguen), w
 
 ### ACCOUNTS-F44 Limpiar cada día las sesiones caducadas y los códigos vencidos
 <!-- origen: fi:saas/support/orgs-users#task-clearsessions_task-flush_expired_tokens_task-backup_database_task-rotate_backups_task-triage_error_report_task old-saas:SAAS-F08 -->
-Estado: parcial — la limpieza ya existe, pero aún no está programada cada día: hasta entonces la lanza una persona del equipo
+Estado: hecho
 Actor: sistema
 Pantalla: ninguna (una tarea diaria de erplora.com)
 Pasos:
@@ -1081,8 +1081,8 @@ Implicados: hubs, billing, public, apps y fiscal; del Hub, verifactu, invoice y 
   estáticos, admin, `/internal`, webhooks, informes de CSP, la API de allauth, la vuelta de Google y las páginas de la
   entrada con `next=/admin/…` (las dos trampas del viejo: la salud en 503 y el segundo factor cortado). Se enciende
   solo desde el admin (working-rules §4). `purge_expired_sessions` (F44) es diaria, con candado propio
-  (`services.run_exclusively`), y queda `parcial` hasta que `saas-cron` (`aws/stacks/prod/scheduler.tf`) la programe;
-  suelta a mano el candado de su conexión copiada del pool. Los correos (F46) salen por `django-ses` con
+  (`services.run_exclusively`), y la lanza `saas-cron` a las 00:20 UTC (`purge-expired-sessions-nightly` de
+  `aws/stacks/prod/scheduler.tf`, que por eso no programa `clearsessions` aparte); suelta a mano el candado de su conexión copiada del pool. Los correos (F46) salen por `django-ses` con
   `AWS_SES_CONFIG` (3 s para conectar, 10 s para leer, dos intentos), cada uno en texto y en HTML sobre la plantilla
   común `templates/emails/base.html` (PLAN-SAAS §7, bloque 13; la vieja saas#1044): `base/emails.py`
   (`branded_message`, con el idioma del destinatario explícito, porque cada remitente envía fuera de su
