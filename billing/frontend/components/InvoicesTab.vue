@@ -294,8 +294,18 @@ function fileError(error: ApiError): string | null {
   return text(error);
 }
 
-/** Downloads the PDF of each issued one, one after the other; says once how many are still being issued
- *  (and once what failed, not per file). Alone, one still being issued says so in its own words. */
+/** One notice from several sentences: one after the other on one line, each ending with its stop. A notice is one
+ *  line of text (Material's snackbar): a line break would paint as a bare space between two sentences. */
+function sentences(parts: readonly string[]): string {
+  return parts
+    .map((part) => part.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .map((part) => (/[.!?…]$/.test(part) ? part : `${part}.`))
+    .join(' ');
+}
+
+/** Downloads the PDF of each issued one, one after the other; says in one notice what failed (once, not per file)
+ *  and how many are still being issued. Alone, one still being issued says so in its own words. */
 async function downloadPdfs(invoices: InvoiceRowOut[]): Promise<void> {
   let waiting = 0;
   let failure: string | null = null;
@@ -320,10 +330,15 @@ async function downloadPdfs(invoices: InvoiceRowOut[]): Promise<void> {
       fetching.value = withId(fetching.value, invoice.id, false);
     }
   }
-  if (failure) void toastError(failure);
-  if (!waiting) return;
   const alone = invoices.length === 1;
-  void toastInfo(alone ? t('billing.invoices.pdfIssuing') : t('billing.invoices.pdfNotReady', { count: waiting }, waiting));
+  const issuing = !waiting
+    ? ''
+    : alone
+      ? t('billing.invoices.pdfIssuing')
+      : t('billing.invoices.pdfNotReady', { count: waiting }, waiting);
+  // One notice for the download (a second one would close the first): what failed, then what is still being issued.
+  if (failure) void toastError(sentences([failure, issuing]));
+  else if (issuing) void toastInfo(issuing);
 }
 
 /** The selected invoices that have their PDF, and how many have none yet: unpaid (an unpaid invoice has no PDF

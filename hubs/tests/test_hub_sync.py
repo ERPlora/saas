@@ -110,6 +110,8 @@ class TestTheSnapshot:
             # The monthly messages the Hub counts and blocks at (PLAN-SAAS §3.6, 2026-10-15): 0 = none.
             "assistant_messages_per_month": 300,
             "whatsapp_messages_per_month": 150,
+            # The space for the business's files its tier includes, the Hub's «Space» (BASE-F52, F53): 5 GiB.
+            "max_storage_bytes": 5 * 1024**3,
         }
 
     def test_after_the_trial_it_is_free(self, business):
@@ -127,6 +129,7 @@ class TestTheSnapshot:
             plan["statement_timeout_seconds"],
             plan["assistant_messages_per_month"],
             plan["whatsapp_messages_per_month"],
+            plan["max_storage_bytes"],
         ) == (
             "free",
             1,
@@ -135,6 +138,7 @@ class TestTheSnapshot:
             5,
             30,
             30,
+            1024**3,
         )
 
     def test_the_members_are_those_who_answered(self, business, team):
