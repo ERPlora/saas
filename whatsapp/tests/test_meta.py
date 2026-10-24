@@ -237,3 +237,18 @@ def test_an_attachment_meta_fails_or_redirects_is_unreachable(whatsapp_on, statu
     with pytest.raises(meta.MetaUnreachable):
         with meta.download(url, token="EAAG-token"):
             pass
+
+
+@respx.mock
+def test_a_refusal_longer_than_the_limit_is_meta_refused_without_metas_error(whatsapp_on):
+    """The refusal's body is read only up to ``REFUSAL_LIMIT`` (Meta's error object is a few hundred bytes): a 4xx
+    with a longer body is ``MetaRefused`` with its status and no code, never read whole for its error."""
+    url = "https://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=1"
+    too_long = {"error": {"message": "x" * 16 * 1024, "type": "OAuthException", "code": 190}}
+    respx.get(url).mock(return_value=httpx.Response(401, json=too_long))
+
+    with pytest.raises(meta.MetaRefused) as refused:
+        with meta.download(url, token="EAAG-token"):
+            pass
+
+    assert (refused.value.status, refused.value.code) == (401, None)
