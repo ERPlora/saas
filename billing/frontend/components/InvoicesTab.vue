@@ -294,8 +294,8 @@ function fileError(error: ApiError): string | null {
   return text(error);
 }
 
-/** Downloads the PDF of each issued one, one after the other; says once how many are still being issued
- *  (and once what failed, not per file). Alone, one still being issued says so in its own words. */
+/** Downloads the PDF of each issued one, one after the other; says in one notice what failed (once, not per file)
+ *  and how many are still being issued. Alone, one still being issued says so in its own words. */
 async function downloadPdfs(invoices: InvoiceRowOut[]): Promise<void> {
   let waiting = 0;
   let failure: string | null = null;
@@ -320,10 +320,15 @@ async function downloadPdfs(invoices: InvoiceRowOut[]): Promise<void> {
       fetching.value = withId(fetching.value, invoice.id, false);
     }
   }
-  if (failure) void toastError(failure);
-  if (!waiting) return;
   const alone = invoices.length === 1;
-  void toastInfo(alone ? t('billing.invoices.pdfIssuing') : t('billing.invoices.pdfNotReady', { count: waiting }, waiting));
+  const issuing = !waiting
+    ? ''
+    : alone
+      ? t('billing.invoices.pdfIssuing')
+      : t('billing.invoices.pdfNotReady', { count: waiting }, waiting);
+  // One notice for the download (a second one would close the first): what failed, then what is still being issued.
+  if (failure) void toastError([failure, issuing].filter(Boolean).join('\n'));
+  else if (issuing) void toastInfo(issuing);
 }
 
 /** The selected invoices that have their PDF, and how many have none yet: unpaid (an unpaid invoice has no PDF
