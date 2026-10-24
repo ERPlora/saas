@@ -5,9 +5,9 @@
   the plan cards with the ex-VAT note and the trial note, the plan-by-plan table, the two competitor
   tables, the FAQ and the closing band, with the same texts. What changed:
   the ok-* are the component partials and ep-* classes (PLAN §16.11); the style block of the old page is
-  public/static/public/pricing.css; a premium app is included in the paid plans (decision 17), so
-  the copy no longer sells «premium add-ons» nor prices «per module», and the competitor table says
-  «app catalogue», not «marketplace»; the counter hardware is the ERPlora app, not the retired
+  public/static/public/pricing.css; every plan includes every module (ronda 2026-10-24b, PLAN §32), so the copy
+  sells no tier of apps (no «premium», no «Apps included» column: `included_level` stays dormant off the public web)
+  nor prices «per module», and the competitor table says «app catalogue», not «marketplace»; the counter hardware is the ERPlora app, not the retired
   Bridge (ADR-0196). Without any plan on sale the page says so instead of painting empty tables.
   The ronda 2026-10-24b (PLAN-SAAS §9) took away the infrastructure offer by contact: no band, no row, no FAQ entry.
   Since 2026-10-24 (Ioan, PLAN-SAAS §9; corrects 2026-10-15) the upgrade-only plans are shown again, read from the
@@ -19,7 +19,7 @@
 {% endcomment %}
 
 {% block title %}{% trans "Plans" %} · ERPlora{% endblock %}
-{% block meta_description %}{% trans "ERPlora Cloud Hub plans — monthly or annual billing. Every plan includes the free apps, and the paid plans include the premium apps too. Switch anytime, no migration or data loss." %}{% endblock %}
+{% block meta_description %}{% trans "ERPlora Cloud Hub plans — monthly or annual billing. Every plan includes all the apps. Switch anytime, no migration or data loss." %}{% endblock %}
 
 {% block extra_css %}<link rel="stylesheet" href="{% static 'public/pricing.css' %}">{% endblock %}
 
@@ -37,7 +37,7 @@
   {% endif %}
   {% trans "Start free." as hero_title %}
   {% trans "Scale when you need it." as hero_title_accent %}
-  {% trans "Every plan includes all the free apps, and the paid plans include the premium apps too. Switch plans in one click, with no migration or data loss. Cancel anytime." as hero_description %}
+  {% trans "Every plan includes all the apps. Paid plans add unlimited devices, more capacity and higher AI and WhatsApp quotas. Switch plans in one click, with no migration or data loss. Cancel anytime." as hero_description %}
   {% include "public/partials/page_hero.html" with hero_eyebrow=hero_eyebrow hero_title=hero_title hero_title_accent=hero_title_accent hero_description=hero_description hero_note=hero_note hero_compact=True %}
 
   <!-- PLAN CARDS -->
@@ -115,13 +115,12 @@
               <th>{% trans "Database throughput" %}</th>
               <th>{% trans "AI assistant" %}</th>
               <th>WhatsApp</th>
-              <th>{% trans "Apps included" %}</th>
               <th>{% trans "Support" %}</th>
               <th>{% trans "Access" %}</th>
             </tr>
           </thead>
           <tbody>
-            <tr class="cat ep-table-group"><td colspan="9">{% trans "Plans · sign up directly" %}</td></tr>
+            <tr class="cat ep-table-group"><td colspan="8">{% trans "Plans · sign up directly" %}</td></tr>
             {% for plan in plans_main %}
               <tr{% if plan.featured_label %} class="primary-col"{% endif %}>
                 <td>
@@ -134,7 +133,7 @@
               </tr>
             {% endfor %}
             {% if plans_upgrade %}
-              <tr class="cat ep-table-group"><td colspan="9">{% trans "More capacity" %}</td></tr>
+              <tr class="cat ep-table-group"><td colspan="8">{% trans "More capacity" %}</td></tr>
               {% for plan in plans_upgrade %}
                 <tr>
                   <td><strong>{{ plan.name }}</strong></td>

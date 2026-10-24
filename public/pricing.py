@@ -11,8 +11,9 @@ Port of ERPlora/saas ``apps/public/pricing/views.py`` (origin/develop c5ca8ca). 
   ``Plan.objects.signup_trial_days()``: an upgrade grants none (#809);
 * the period label (``{% plan_period %}`` of the old ``money`` tags, saas#1836) is
   :func:`plan_period`, one definition for every selling screen;
-* a premium app is included in the paid plans (decision 17): the FAQ no longer charges «per
-  activated module»;
+* every plan includes every module (ronda 2026-10-24b, PLAN §32; before, decision 17 put the premium apps in the
+  paid plans): the FAQ charges nothing «per activated module», sells no tier of apps, and a downgrade turns nothing
+  off;
 * the storage answer names the host: AWS (Ioan, 2026-10-13), Ireland region (Ioan, 2026-10-14);
 * three plans on sale at sign-up (Ioan, 2026-10-15): the cards with a sign-up button are only the plans a visitor
   can sign up for; the infrastructure offer by contact that sat above them went in the ronda 2026-10-24b (PLAN-SAAS
@@ -247,9 +248,9 @@ def faq_items(days: TrialDays | None = None) -> list[dict[str, str]]:
             "key": "switch",
             "question": _("Can I switch plans at any time?"),
             "answer": _(
-                "Yes. The change is immediate and the difference is prorated. There's no penalty "
-                "or commitment period. Downgrading is also free — premium apps are turned off but "
-                "their data is retained for 90 days."
+                "Yes. Moving up is immediate and the difference is prorated; moving down takes effect "
+                "at the end of the period you have already paid for. There's no penalty or commitment "
+                "period, and moving down turns nothing off: your apps and their data stay as they are."
             ),
         },
         {
@@ -291,10 +292,10 @@ def faq_items(days: TrialDays | None = None) -> list[dict[str, str]]:
             "key": "pricing",
             "question": _("Do you charge per app or per usage?"),
             "answer": _(
-                "Neither. You pay one fixed price per hub, the price of its plan. The free apps "
-                "come with every plan and the premium apps are included in the paid plans, so "
-                "turning an app on or off never changes your bill. We don't charge by usage — no "
-                "per-transaction or metered fees — so your bill stays predictable every month."
+                "Neither. You pay one fixed price per hub, the price of its plan. Every plan includes "
+                "all the apps, so turning an app on or off never changes your bill. We don't "
+                "charge by usage — no per-transaction or metered fees — so your bill stays "
+                "predictable every month."
             ),
         },
         {

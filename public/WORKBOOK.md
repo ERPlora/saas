@@ -205,7 +205,7 @@ Estado: hecho
 Actor: visitante
 Pantalla: Planes y precios
 Pasos:
-1. La persona abre «Precios» y ve «Empieza gratis. Escala cuando lo necesites.» y una tarjeta por plan con el que se puede empezar (Gratis, Starter y Standard), con el precio mensual por hub, sus características y los mensajes al mes del asistente y de WhatsApp.
+1. La persona abre «Precios» y ve «Empieza gratis. Escala cuando lo necesites.», que todos los planes incluyen todas las apps, y una tarjeta por plan con el que se puede empezar (Gratis, Starter y Standard), con el precio mensual por hub, sus características y los mensajes al mes del asistente y de WhatsApp.
 2. Si el plan tiene precio anual, la tarjeta dice el precio del año y los meses que ahorra («≈ 299,90 €/año · 2 meses gratis»), calculados de los dos precios; si todos los planes de pago ahorran lo mismo, la cabecera lo dice una vez («Paga el año y llévate 2 meses gratis.»).
 3. Más abajo, «Más capacidad»: los planes de mejora (hoy Pro, Enterprise y Max), cada uno con su precio mensual y anual, su descripción y sus características, y «Disponible al pasar a Starter» en lugar del botón de alta; un solo botón, «Empieza gratis y mejora cuando quieras», lleva a la pantalla de entrar.
 4. Después, la tabla de lo incluido en cada plan (también los de mejora), las comparativas con otros ERP y las preguntas frecuentes; nada se ofrece por contacto.
@@ -754,7 +754,11 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   corrige la nota del 2026-10-15); la infraestructura dedicada por contacto (la constante `DEDICATED_FROM`, su banda,
   su fila y su pregunta) se retiró en la ronda 2026-10-24b. Las superficies de las secciones alternan según lo que se
   pinta (`section_surfaces`). Ni la tabla ni las fichas de Gratis, Starter y Standard dicen que el plan incluya los
-  locales (`hubs/0021`): la multitienda va desde Pro y se cobra por ubicación (PLAN §32).
+  locales (`hubs/0021`): la multitienda va desde Pro y se cobra por ubicación (PLAN §32). Tampoco venden niveles de
+  apps: todos los planes incluyen todas las apps (PLAN §32; la palabra de la web es «apps», decisión 19), la `0021`
+  cambia «All free apps» y «free and premium» de Gratis y Starter por «All apps included» y la tabla ya no tiene la
+  fila «Apps included»: `included_level` queda dormido (modelo, Tienda y checkout) para cuando haya un módulo
+  `premium`. Bajar de plan no apaga nada (respuesta «switch» del FAQ).
 - Promesas (F07, F08): la tabla de la portada es `landing.TYPICAL_STACK` (total sumado); las listas de frases
   prohibidas están en `public/tests/test_product.py` (`UNSHIPPED_CLAIMS`, `UNVERIFIED_SECURITY_CLAIMS`). El
   balanceador acepta TLS 1.2 y 1.3 (`ssl_policy` de ERPlora/aws).

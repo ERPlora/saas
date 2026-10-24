@@ -139,6 +139,11 @@ test('PUBLIC-G31 the plans: a card per plan on sale, the upgrade-only ones under
   await expect(table.locator('tbody strong')).toHaveText(['Free', 'Starter', 'Standard', 'Pro', 'Enterprise', 'Max']);
   await expect(table.getByText('Available once you are on Starter')).toHaveCount(3);
   await expect(page.getByText('all your locations', { exact: false })).toHaveCount(0);
+  // Every plan includes all the apps (PLAN §32): no tier of apps on the page, no «Apps included» column.
+  await expect(page.getByText('Every plan includes all the apps. Paid plans add unlimited devices', { exact: false })).toBeVisible();
+  await expect(table.locator('thead th')).toHaveCount(8);
+  await expect(table.locator('thead th', { hasText: 'Apps included' })).toHaveCount(0);
+  expect(await page.evaluate(() => document.body.innerText)).not.toMatch(/premium/i);
 
   const starter = page.locator('.ep-pricing-card', { has: page.locator('.ep-pricing-card__name', { hasText: 'Starter' }) });
   await expect(starter).toContainText('€29.99');

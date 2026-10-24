@@ -1,10 +1,15 @@
-"""Data: the cards on sale stop including every location (Ioan, 2026-10-24; PLAN-SAAS §9, round 2026-10-24b).
+"""Data: the cards on sale say what every plan gives (Ioan, 2026-10-24; PLAN-SAAS §9, round 2026-10-24b, PLAN §32).
 
 0013 seeded Starter and Standard with «Priced per business — every location, device and user included», and Standard
-with «… for busy counters and several locations». Multi-location comes from Pro and is charged per location (PLAN
-§32), so those words promised what the two plans do not sell, on the public web and in the Store. From here the line
-says devices and users, which the paid plans do not cap, and Standard's throughput line ends at the counters. Free
-never named a location. The plans, their prices and their limits do not move.
+with «… for busy counters and several locations». Multi-location comes from Pro and is charged per location, so those
+words promised what the two plans do not sell, on the public web and in the Store. From here the line says devices and
+users, which the paid plans do not cap, and Standard's throughput line ends at the counters. Free never named a
+location.
+
+0013 also sold tiers of apps: Free «All free apps included», Starter «All apps included, free and premium». Every plan
+includes every module now (``included_level`` stays, dormant, for a future ``premium`` module), so both say «All
+apps included», the word the public web uses for them (decision 19 of the catalog spec). Standard, Pro, Enterprise and Max say «Everything in …» and never named a tier. The plans, their
+prices and their limits do not move.
 
 Only the columns of ``COPY`` are written, each only while it still reads 0013's words: what staff wrote in the admin
 is theirs. Reverse: each goes back to 0013's words while it still reads this migration's. Idempotent; a database
@@ -24,6 +29,60 @@ MANAGED_DATABASE_ES = (
 
 #: slug → column → (0013's words, the words from here).
 COPY = {
+    "free": {
+        "features_en": (
+            [
+                "1 device",
+                "3 users",
+                "Basic database throughput, sized for one device",
+                "No credit card required",
+                "All free apps included",
+                "Fully managed cloud on Amazon Web Services, in Europe, with automatic scaling",
+                MANAGED_DATABASE_EN,
+                "Encrypted data and automatic SSL certificate",
+                ".erplora.com subdomain",
+                "Community support",
+            ],
+            [
+                "1 device",
+                "3 users",
+                "Basic database throughput, sized for one device",
+                "No credit card required",
+                "All apps included",
+                "Fully managed cloud on Amazon Web Services, in Europe, with automatic scaling",
+                MANAGED_DATABASE_EN,
+                "Encrypted data and automatic SSL certificate",
+                ".erplora.com subdomain",
+                "Community support",
+            ],
+        ),
+        "features_es": (
+            [
+                "1 dispositivo",
+                "3 usuarios",
+                "Capacidad de base de datos básica, a la medida de un dispositivo",
+                "Sin tarjeta de crédito",
+                "Todas las apps gratuitas incluidas",
+                "Cloud gestionado en Amazon Web Services, en Europa, con autoescalado",
+                MANAGED_DATABASE_ES,
+                "Datos cifrados y certificado SSL automático",
+                "Subdominio .erplora.com",
+                "Soporte de la comunidad",
+            ],
+            [
+                "1 dispositivo",
+                "3 usuarios",
+                "Capacidad de base de datos básica, a la medida de un dispositivo",
+                "Sin tarjeta de crédito",
+                "Todas las apps incluidas",
+                "Cloud gestionado en Amazon Web Services, en Europa, con autoescalado",
+                MANAGED_DATABASE_ES,
+                "Datos cifrados y certificado SSL automático",
+                "Subdominio .erplora.com",
+                "Soporte de la comunidad",
+            ],
+        ),
+    },
     "starter": {
         "features_en": (
             [
@@ -44,7 +103,7 @@ COPY = {
                 "Unlimited devices — sell from several at once",
                 "Unlimited users",
                 "Full database throughput, for several devices at once",
-                "All apps included, free and premium",
+                "All apps included",
                 "Access from any device, always up to date",
                 "Fully managed cloud on Amazon Web Services, in Europe, with automatic scaling",
                 MANAGED_DATABASE_EN,
@@ -72,7 +131,7 @@ COPY = {
                 "Dispositivos ilimitados: vende desde varios a la vez",
                 "Usuarios ilimitados",
                 "Capacidad de base de datos completa, para varios dispositivos a la vez",
-                "Todas las apps incluidas, gratuitas y premium",
+                "Todas las apps incluidas",
                 "Acceso desde cualquier dispositivo, siempre actualizado",
                 "Cloud gestionado en Amazon Web Services, en Europa, con autoescalado",
                 MANAGED_DATABASE_ES,
@@ -130,7 +189,7 @@ def _rewrite(apps, source: int, target: int) -> None:
             Plan.objects.filter(slug=slug, **{column: words[source]}).update(**{column: words[target]})
 
 
-def stop_including_every_location(apps, schema_editor):
+def describe_the_cards_on_sale(apps, schema_editor):
     _rewrite(apps, 0, 1)
 
 
@@ -145,5 +204,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(stop_including_every_location, give_back_the_words_of_0013),
+        migrations.RunPython(describe_the_cards_on_sale, give_back_the_words_of_0013),
     ]

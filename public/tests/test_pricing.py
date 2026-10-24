@@ -390,14 +390,12 @@ def test_table_shows_the_devices_and_users_each_plan_buys(client, seeded):
     assert "Unlimited users" in table
 
 
-def test_table_shows_what_each_plan_includes_and_its_support(client, seeded):
+def test_table_shows_the_support_of_each_plan(client, seeded):
     """The plans on sale, then the upgrade-only ones (Ioan, 2026-10-24); the dedicated row is gone (PLAN-SAAS §9,
     2026-10-24b)."""
     table = plan_table(html_of(client))
-    signable, upgrades = table.split('<td colspan="9">More capacity</td>', 1)
+    signable, upgrades = table.split('<td colspan="8">More capacity</td>', 1)
 
-    for level in ("Free", "Basic"):
-        assert level in signable, level
     for support in ("Community forum", "Email", "Priority email"):
         assert support in signable, support
     for gone in ("Pro", "Enterprise", "Agreed in contract"):
@@ -458,7 +456,7 @@ def test_the_columns_survive_translation_to_spanish(client, seeded):
     table = plan_table(html_of(client, language="es"))
 
     assert "Dispositivos y usuarios" in table
-    assert "Apps incluidas" in table
+    assert "Apps incluidas" not in table
     assert "1 dispositivo" in table
     assert "3 usuarios" in table
     assert "Dispositivos ilimitados" in table
@@ -701,8 +699,9 @@ def test_faq_items_called_on_its_own_reads_the_plans_too(no_plans):
 # --- Decision 17 and the host -----------------------------------------------------------------
 
 
-def test_premium_apps_are_included_in_the_paid_plans_never_an_add_on(client, seeded):
-    """Decision 17: no premium app is sold on its own (ADR-0474) and there is no marketplace."""
+def test_no_app_is_sold_on_its_own_and_there_is_no_marketplace(client, seeded):
+    """No app is sold on its own (ADR-0474) and there is no marketplace; since the ronda 2026-10-24b (PLAN §32) every
+    plan includes every module, so the page sells no tier of apps either (the tests below)."""
     lowered = visible_markup(html_of(client)).lower()
 
     # «add-on» stays where it describes a competitor («paid add-on, read-only»): what goes is ours.
@@ -715,9 +714,95 @@ def test_premium_apps_are_included_in_the_paid_plans_never_an_add_on(client, see
         "per-module pricing",
     ):
         assert gone not in lowered, gone
-    assert "premium apps" in lowered
     (pricing_item,) = [item for item in pricing.faq_items() if item["key"] == "pricing"]
-    assert "included in the paid plans" in str(pricing_item["answer"])
+    assert "Every plan includes all the apps" in str(pricing_item["answer"])
+
+
+# --- Every module in every plan (Ioan, 2026-10-24, PLAN §32 and PLAN-SAAS §9) ------------------------------------
+# The page sold tiers of apps («the free apps» on Free, «the premium apps» on the paid plans) and compared the plans
+# on «Apps included» (``included_level``). Every plan includes every module now; ``included_level`` stays, dormant, in
+# the model, the Store and the checkout, for when a ``premium`` module exists, and leaves the public web.
+
+HERO_EN = (
+    "Every plan includes all the apps. Paid plans add unlimited devices, more capacity and higher AI and WhatsApp "
+    "quotas."
+)
+HERO_ES = (
+    "Todos los planes incluyen todas las apps. Los de pago añaden dispositivos ilimitados, más capacidad y más "
+    "mensajes de IA y WhatsApp."
+)
+
+
+def test_the_hero_says_every_plan_includes_all_the_apps(client, seeded):
+    body = " ".join(visible_text(html_of(client)).split())
+
+    assert HERO_EN in body
+    assert "free apps" not in body.lower()
+
+
+def test_the_hero_reads_in_spanish(client, seeded):
+    body = " ".join(visible_text(html_of(client, language="es")).split())
+
+    assert HERO_ES in body
+    assert "apps gratuitas" not in body
+
+
+def test_the_meta_description_sells_no_tier_of_apps(client, seeded):
+    for language, words in (("en", "Every plan includes all the apps."), ("es", "Todos los planes incluyen todas las apps.")):
+        html = html_of(client, language=language)
+        description = re.search(r'<meta name="description" content="([^"]*)"', html).group(1)
+        assert words in description, language
+        assert "premium" not in description.lower(), language
+
+
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_premium_is_nowhere_on_the_page(client, seeded, language):
+    """Neither the cards (hubs/0021), the hero, the table, the FAQ nor its JSON-LD sell a premium tier."""
+    html = html_of(client, language=language)
+
+    assert "Pro" in visible_text(html), "control: the page is the plans page"
+    assert "premium" not in visible_text(html).lower()
+    assert "premium" not in json.dumps(faq_page_of(html)).lower()
+
+
+@pytest.mark.parametrize(("language", "word"), [("en", r"\bmodules?\b"), ("es", r"\bmódulos?\b")])
+def test_the_page_calls_them_apps_never_modules(client, seeded, language, word):
+    """Decision 19 of the catalog spec: the public web's word is «apps» (its menu, /apps/), so «every module» of PLAN
+    §32 reads «all the apps» here, as on the home (public/tests/test_product.py)."""
+    body = " ".join(visible_text(html_of(client, language=language)).split())
+
+    assert ("all the apps" if language == "en" else "todas las apps") in body
+    assert not re.search(word, body, re.IGNORECASE), re.search(word, body, re.IGNORECASE)
+
+
+def test_the_table_compares_no_tier_of_apps(client, seeded):
+    table = plan_table(html_of(client))
+    head = table.split("</thead>", 1)[0]
+
+    assert "Support" in head, "control: the table has its columns"
+    assert len(re.findall(r"<th\b", head)) == 8
+    assert "Apps included" not in table
+    for plan in Plan.objects.public():
+        assert f'data-title="Apps included">{plan.included_level_label}<' not in table
+
+
+def test_included_level_stays_a_dormant_field_of_the_plan(seeded):
+    """Not on the public web, but kept in the model and in hubs.plan.list (the Store, the checkout)."""
+    plans = pricing.plans_on_sale()
+
+    assert {plan.included_level for plan in Plan.objects.public()} >= {"free", "basic"}
+    assert all(plan.included_level_label for plan in plans.plans)
+
+
+def test_the_faq_sells_no_tier_of_apps_and_a_downgrade_turns_nothing_off(client, seeded):
+    items = {item["key"]: str(item["answer"]) for item in pricing.faq_items()}
+
+    assert "Every plan includes all the apps, so turning an app on or off never changes your bill." in items["pricing"]
+    assert "turns nothing off" in items["switch"]
+    assert "at the end of the period you have already paid for" in items["switch"]
+    for key, answer in items.items():
+        assert "premium" not in answer.lower(), key
+        assert "free apps" not in answer.lower(), key
 
 
 def test_the_storage_answer_names_aws_in_ireland_and_never_hetzner(client):
@@ -810,7 +895,7 @@ def test_the_comparison_table_ends_with_the_upgrade_only_plans_and_no_offer_by_c
 def test_the_table_signs_up_on_the_plans_on_sale_and_says_when_the_others_open(client, seeded):
     table = plan_table(html_of(client))
     groups = re.findall(r'<tr class="cat ep-table-group"><td colspan="\d+">(.*?)</td></tr>', table)
-    signable, upgrades = table.split('<td colspan="9">More capacity</td>', 1)
+    signable, upgrades = table.split('<td colspan="8">More capacity</td>', 1)
 
     assert groups == ["Plans · sign up directly", "More capacity"]
     assert signable.count('href="/launch"') == 3
@@ -823,7 +908,7 @@ def test_the_table_signs_up_on_the_plans_on_sale_and_says_when_the_others_open(c
 def test_the_table_reads_the_upgrade_only_plans_in_spanish(client, seeded):
     table = plan_table(html_of(client, language="es"))
 
-    assert '<td colspan="9">Más capacidad</td>' in table
+    assert '<td colspan="8">Más capacidad</td>' in table
     assert table.count("Disponible al pasar a Starter") == 3
 
 
@@ -972,7 +1057,7 @@ def test_without_upgrade_only_plans_there_is_no_more_capacity_section(client, se
 
     assert UPGRADE_SECTION not in html
     assert "More capacity</h2>" not in html
-    assert '<td colspan="9">More capacity</td>' not in html
+    assert '<td colspan="8">More capacity</td>' not in html
     assert "Available once you are on Starter" not in html
 
 

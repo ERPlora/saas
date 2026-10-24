@@ -3619,8 +3619,8 @@ msgid_plural "Yes. Start free with no card — the Free plan is free forever. A 
 msgstr[0] "Sí. Empieza gratis sin tarjeta —el plan Free es gratis para siempre. Un plan de pago elegido al crear un Hub incluye una prueba gratuita de %(days)d día con tus propios datos, para que compruebes que encaja antes de comprometerte. Pasar a un plan de pago un Hub que ya está en servicio no inicia un nuevo periodo de prueba."
 msgstr[1] "Sí. Empieza gratis sin tarjeta —el plan Free es gratis para siempre. Un plan de pago elegido al crear un Hub incluye una prueba gratuita de %(days)d días con tus propios datos, para que compruebes que encaja antes de comprometerte. Pasar a un plan de pago un Hub que ya está en servicio no inicia un nuevo periodo de prueba."
 
-msgid "Yes. The change is immediate and the difference is prorated. There's no penalty or commitment period. Downgrading is also free — premium apps are turned off but their data is retained for 90 days."
-msgstr "Sí. El cambio es inmediato y la diferencia se prorratea. No hay penalización ni periodo de compromiso. Bajar de plan también es gratis: las apps premium se desactivan, pero sus datos se conservan 90 días."
+msgid "Yes. Moving up is immediate and the difference is prorated; moving down takes effect at the end of the period you have already paid for. There's no penalty or commitment period, and moving down turns nothing off: your apps and their data stay as they are."
+msgstr "Sí. Subir de plan es inmediato y la diferencia se prorratea; bajar se aplica al final del periodo que ya has pagado. No hay penalización ni periodo de compromiso, y bajar de plan no desactiva nada: tus apps y sus datos se quedan como están."
 
 msgid "Within the European Union: on Amazon Web Services, in its Ireland region (eu-west-1), on GDPR-compliant infrastructure. The one exception is the AI assistant: if its European provider is unavailable, a backup provider may answer from outside the EU, under the safeguards our privacy policy describes."
 msgstr "Dentro de la Unión Europea: en Amazon Web Services, en su región de Irlanda (eu-west-1), sobre infraestructura conforme al RGPD. La única excepción es el asistente de IA: si su proveedor europeo no está disponible, un proveedor de respaldo puede responder desde fuera de la UE, con las garantías que describe nuestra política de privacidad."
@@ -3628,8 +3628,8 @@ msgstr "Dentro de la Unión Europea: en Amazon Web Services, en su región de Ir
 msgid "Do you charge per app or per usage?"
 msgstr "¿Cobráis por app o por uso?"
 
-msgid "Neither. You pay one fixed price per hub, the price of its plan. The free apps come with every plan and the premium apps are included in the paid plans, so turning an app on or off never changes your bill. We don't charge by usage — no per-transaction or metered fees — so your bill stays predictable every month."
-msgstr "Ni lo uno ni lo otro. Pagas un precio fijo por hub, el de su plan. Las apps gratuitas vienen con todos los planes y las apps premium están incluidas en los planes de pago, así que activar o desactivar una app nunca cambia tu factura. No cobramos por uso —ni comisiones por transacción ni tarifas medidas—, así que tu factura es previsible todos los meses."
+msgid "Neither. You pay one fixed price per hub, the price of its plan. Every plan includes all the apps, so turning an app on or off never changes your bill. We don't charge by usage — no per-transaction or metered fees — so your bill stays predictable every month."
+msgstr "Ni lo uno ni lo otro. Pagas un precio fijo por hub, el de su plan. Todos los planes incluyen todas las apps, así que activar o desactivar una app nunca cambia tu factura. No cobramos por uso —ni comisiones por transacción ni tarifas medidas—, así que tu factura es previsible todos los meses."
 
 #, python-format
 msgid "Get a full ERPlora Hub on the %(plan)s plan — free for 12 months (valued at €%(price)s/year)."
@@ -3715,11 +3715,11 @@ msgid_plural "%(users)s users"
 msgstr[0] "%(users)s usuario"
 msgstr[1] "%(users)s usuarios"
 
-msgid "ERPlora Cloud Hub plans — monthly or annual billing. Every plan includes the free apps, and the paid plans include the premium apps too. Switch anytime, no migration or data loss."
-msgstr "Planes de Hub en la nube de ERPlora: facturación mensual o anual. Todos los planes incluyen las apps gratuitas, y los planes de pago incluyen también las apps premium. Cambia cuando quieras, sin migraciones ni pérdida de datos."
+msgid "ERPlora Cloud Hub plans — monthly or annual billing. Every plan includes all the apps. Switch anytime, no migration or data loss."
+msgstr "Planes de Hub en la nube de ERPlora: facturación mensual o anual. Todos los planes incluyen todas las apps. Cambia cuando quieras, sin migraciones ni pérdida de datos."
 
-msgid "Every plan includes all the free apps, and the paid plans include the premium apps too. Switch plans in one click, with no migration or data loss. Cancel anytime."
-msgstr "Todos los planes incluyen todas las apps gratuitas, y los planes de pago incluyen también las apps premium. Cambia de plan en un clic, sin migraciones ni pérdida de datos. Cancela cuando quieras."
+msgid "Every plan includes all the apps. Paid plans add unlimited devices, more capacity and higher AI and WhatsApp quotas. Switch plans in one click, with no migration or data loss. Cancel anytime."
+msgstr "Todos los planes incluyen todas las apps. Los de pago añaden dispositivos ilimitados, más capacidad y más mensajes de IA y WhatsApp. Cambia de plan en un clic, sin migraciones ni pérdida de datos. Cancela cuando quieras."
 
 msgid "There are no plans on sale right now."
 msgstr "Ahora mismo no hay planes a la venta."
@@ -3765,9 +3765,6 @@ msgstr "Explorar las apps"
 
 msgid "Premium apps"
 msgstr "Apps premium"
-
-msgid "Apps included"
-msgstr "Apps incluidas"
 
 msgid "app catalogue, 1 click"
 msgstr "catálogo de apps, 1 clic"

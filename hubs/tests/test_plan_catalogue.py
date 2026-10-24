@@ -397,19 +397,38 @@ def test_the_recovery_window_is_the_one_aurora_keeps(catalogue):
     )
 
 
-def test_the_plans_promise_the_free_apps_not_every_module(catalogue):
-    """Decision 17 of the catalog spec (round 16): premium apps go with the paid plans, so no card says
-    «all modules»; Free promises the free apps and Starter (the first paid plan) every app, free and premium —
-    what the hero of /pricing/ already promises (2026-10-15)."""
-    free = catalogue["free"]
-    assert "All free apps included" in free.features_en
-    assert "Todas las apps gratuitas incluidas" in free.features_es
-    starter = catalogue["starter"]
-    assert "All apps included, free and premium" in starter.features_en
-    assert "Todas las apps incluidas, gratuitas y premium" in starter.features_es
-    for plan in catalogue.values():
-        lines = [line.lower() for line in [*plan.features_en, *plan.features_es]]
-        assert not any("all modules" in line or "todos los módulos" in line for line in lines), plan.slug
+def test_free_and_starter_include_every_module(catalogue):
+    """Ronda 2026-10-24b (PLAN §32, corrects decision 17 of the catalog spec): every plan includes every module, so
+    Free's and Starter's cards say «All apps included» (hubs/0021; «apps», the public web's word, decision 19), not
+    «the free apps» nor «free and premium»; the plans above say «Everything in …»."""
+    for slug in ("free", "starter"):
+        assert "All apps included" in catalogue[slug].features_en, slug
+        assert "Todas las apps incluidas" in catalogue[slug].features_es, slug
+
+
+#: A tier of apps, as no card says it any more (PLAN §32): ``premium`` stays a dormant field, never a card's word.
+APP_TIER_WORDS = re.compile(r"\bpremium\b|\bfree apps\b|\bapps gratuitas\b|\bapps de pago\b|\bpaid apps\b", re.IGNORECASE)
+
+
+def _app_tiers_named(texts) -> list[str]:
+    return [text for text in texts if APP_TIER_WORDS.search(text)]
+
+
+def test_no_plan_sells_a_tier_of_apps(catalogue):
+    for slug, plan in catalogue.items():
+        assert _app_tiers_named(_copy(plan)) == [], slug
+
+
+def test_the_app_tier_guard_catches_the_lines_that_were_actually_published():
+    """Positive control: the lines 0013 seeded on Free and Starter and 0021 took away, in both languages."""
+    for published in (
+        "All free apps included",
+        "Todas las apps gratuitas incluidas",
+        "All apps included, free and premium",
+        "Todas las apps incluidas, gratuitas y premium",
+    ):
+        assert _app_tiers_named([published]), published
+    assert _app_tiers_named(["All apps included", "Todas las apps incluidas", "Everything in Starter"]) == []
 
 
 def test_db_limits_match_the_round_9_decision(catalogue):

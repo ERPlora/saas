@@ -3,7 +3,8 @@
   saas#1955: the axes that really change from plan to plan, in one partial (two hand-kept copies of
   these cells is how a table whose rows all say the same thing comes back). Devices and users are
   `_plan_limits.html`, shared with /download/. Port of apps/public/pricing/templates/pricing/_plan_compare_cells.html
-  (origin/develop); the column is «Apps included» (decision 19); «Database throughput» is the plan's
+  (origin/develop) without its «Apps included» column: every plan includes every module (ronda 2026-10-24b, PLAN
+  §32) and `included_level` stays dormant off the public web; «Database throughput» is the plan's
   `resources_label` (Ioan, 2026-10-15: the «resources» that grow from plan to plan are the database's input/output
   capacity, in words; never an engine, a connection count nor a number). «AI assistant» and «WhatsApp» are
   the messages a month the plan includes (PLAN-SAAS §3.6, 2026-10-15); 0 = «Not included».
@@ -13,5 +14,4 @@
 {% trans "Not included" as not_included %}
 <td data-title="{% trans 'AI assistant' %}">{{ plan.assistant_label|default:not_included }}</td>
 <td data-title="WhatsApp">{{ plan.whatsapp_label|default:not_included }}</td>
-<td data-title="{% trans 'Apps included' %}">{{ plan.included_level_label }}</td>
 <td data-title="{% trans 'Support' %}">{{ plan.support_level_label }}</td>
