@@ -878,7 +878,7 @@ def test_the_way_in_is_translated_into_spanish(client):
     assert "website" not in spanish_clause
 
 
-# Our apps, not a marketplace (spec §8.3, decision 17)
+# Our apps, not a marketplace (spec §8.3), and all of them on every plan (ronda 2026-10-24b, PLAN §32)
 
 
 @pytest.mark.django_db
@@ -887,11 +887,40 @@ def test_the_terms_speak_of_our_apps_not_of_a_marketplace(client):
         assert "marketplace" not in terms_html(client, language).lower(), language
     english = terms_html(client, "en")
     assert "a catalogue of apps of its own" in english
-    assert "the premium apps are included in the paid plans" in english
     assert "The apps turned on in the Hub are updated under these same rules." in english
     spanish_terms = terms_html(client, "es")
     assert "un catálogo de apps propias" in spanish_terms
     assert "Las apps activadas en el Hub se actualizan con estas mismas reglas." in spanish_terms
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("language", "clause"),
+    [
+        (
+            "en",
+            "ERPlora offers a modular, multi-tenant ERP/POS SaaS platform, deployed on European "
+            "cloud infrastructure, with features such as sales, inventory, and customer "
+            "management, invoicing, tax integrations (VeriFactu), and a catalogue of apps of its "
+            "own that the customer turns on in their Hub: every plan includes all the apps.",
+        ),
+        (
+            "es",
+            "ERPlora ofrece una plataforma SaaS multi-tenant tipo ERP/POS, modular, desplegada en "
+            "infraestructura cloud europea, con funcionalidades como gestión de ventas, "
+            "inventario, clientes, facturación, integraciones fiscales (VeriFactu) y un catálogo "
+            "de apps propias que el cliente activa en su Hub: todos los planes incluyen todas las "
+            "apps.",
+        ),
+    ],
+)
+def test_the_service_clause_puts_every_app_on_every_plan(client, language, clause):
+    """§1 said «the free apps come with every plan, and the premium apps are included in the paid
+    plans»: every plan includes all the apps now (PLAN §32), and the rest of the terms is untouched."""
+    html = terms_html(client, language)
+
+    assert clause in html
+    assert "premium" not in html.lower()
 
 
 # The shared reading pattern (test_ui_stack_contract.py)

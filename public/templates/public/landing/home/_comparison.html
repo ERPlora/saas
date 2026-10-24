@@ -1,8 +1,8 @@
 {% load i18n icons %}
 {% comment %}
   «How we compare»: port of landing/home/sections/_comparison.html (origin/develop). The ERPlora
-  «Included apps» cell counts the listed apps, free and premium (the «+ N premium» suffix only with
-  one); without any listed app the row is omitted (spec §5.3).
+  «Included apps» cell counts the listed apps, all of them on every plan (ronda 2026-10-24b, PLAN
+  §32; it said «N free + M premium»); without any listed app the row is omitted (spec §5.3).
 {% endcomment %}
   <section id="comparativa" class="ep-section ep-section--compact ep-section--center ep-section--divider">
     <header class="ep-section-head">
@@ -24,7 +24,7 @@
         </thead>
         <tbody>
           <tr><td>{% trans "Entry cost" %}</td><td data-title="ERPlora" class="text-primary font-semibold"><span class="text-success">{% trans "Free" %}</span></td><td data-title="SAP Business One" class="font-mono">€108</td><td data-title="Odoo Enterprise" class="font-mono">€11.90<small class="opacity-60">/{% trans "user" %}</small></td><td data-title="Holded" class="font-mono">€45</td><td data-title="Zoho One" class="font-mono">€37</td></tr>
-          {% if total_apps %}<tr><td>{% trans "Included apps" %}</td><td data-title="ERPlora" class="text-primary font-semibold">{{ free_apps }} {% trans "free" %}{% if premium_apps %} + {{ premium_apps }} {% trans "premium" %}{% endif %}</td><td data-title="SAP Business One">3</td><td data-title="Odoo Enterprise">{% trans "1 free / all paid" %}</td><td data-title="Holded">4</td><td data-title="Zoho One">{% trans "40+ (limited)" %}</td></tr>{% endif %}
+          {% if total_apps %}<tr><td>{% trans "Included apps" %}</td><td data-title="ERPlora" class="text-primary font-semibold">{% blocktrans with apps=total_apps %}{{ apps }} on every plan{% endblocktrans %}</td><td data-title="SAP Business One">3</td><td data-title="Odoo Enterprise">{% trans "1 free / all paid" %}</td><td data-title="Holded">4</td><td data-title="Zoho One">{% trans "40+ (limited)" %}</td></tr>{% endif %}
           <tr><td>{% trans "Per-user pricing" %}</td><td data-title="ERPlora" class="text-primary font-semibold"><span class="text-success">{% trans "Flat per hub" %}</span></td><td data-title="SAP Business One">{% trans "per user" %}</td><td data-title="Odoo Enterprise">{% trans "per user" %}</td><td data-title="Holded">{% trans "per user" %}</td><td data-title="Zoho One">{% trans "per user" %}</td></tr>
           <tr><td>{% trans "Counter hardware from the app" %}</td><td data-title="ERPlora" class="text-primary font-semibold"><span class="text-success">{% trans "Free (Win/Linux/Android)" %}</span></td><td data-title="SAP Business One">—</td><td data-title="Odoo Enterprise">—</td><td data-title="Holded">—</td><td data-title="Zoho One">—</td></tr>
           <tr><td>{% trans "Cloud PWA — always online" %}</td><td data-title="ERPlora"><span class="text-success">✓</span></td><td data-title="SAP Business One">—</td><td data-title="Odoo Enterprise">{% trans "partial" %}</td><td data-title="Holded">—</td><td data-title="Zoho One">—</td></tr>
@@ -33,7 +33,7 @@
           <tr><td>{% trans "Consultant required" %}</td><td data-title="ERPlora"><span class="text-success">{% trans "No" %}</span></td><td data-title="SAP Business One">{% trans "Yes" %}</td><td data-title="Odoo Enterprise">{% trans "Recommended" %}</td><td data-title="Holded">{% trans "No" %}</td><td data-title="Zoho One">{% trans "No" %}</td></tr>
         </tbody>
       </table>
-      <p class="mt-8 text-center text-sm opacity-70 max-w-2xl mx-auto">{% trans 'ERPlora runs in the browser as an always-online cloud PWA, with a free app (Windows, Linux, Android) that drives the printers and cash drawer at your counter — no per-user fees. Start on the Free plan, then paid tiers add capacity, multi-device and the premium apps. There is no user cap: you scale capacity as you grow.' %}</p>
+      <p class="mt-8 text-center text-sm opacity-70 max-w-2xl mx-auto">{% trans 'ERPlora runs in the browser as an always-online cloud PWA, with a free app (Windows, Linux, Android) that drives the printers and cash drawer at your counter — no per-user fees. Every plan includes all the apps, the Free one too; paid plans add unlimited devices, more capacity and higher AI and WhatsApp quotas. There is no user cap: you scale capacity as you grow.' %}</p>
       <div class="mt-10 flex justify-center">
         <a href="{% url 'public:pricing' %}#comparativa" class="inline-flex items-center gap-2 text-sm font-semibold text-primary group">
           <span>{% trans "Full comparison" %}</span>

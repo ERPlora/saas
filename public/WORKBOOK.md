@@ -488,12 +488,12 @@ Estado: hecho
 Actor: visitante
 Pantalla: Tienda de apps
 Pasos:
-1. «Apps» del menú abre la tienda: las apps publicadas agrupadas por sección (ventas, catálogo, personas, restaurante, organización), cada una con su icono, su resumen y si es «Gratis» o «Incluida en los planes de pago».
-2. «Buscar apps» busca en el nombre y el resumen; los filtros de sección (con cuántas apps tiene cada una) y de acceso (gratis o premium) se combinan con la búsqueda.
+1. «Apps» del menú abre la tienda: las apps publicadas agrupadas por sección (ventas, catálogo, personas, restaurante, organización), cada una con su icono, su resumen y «Incluida en todos los planes».
+2. «Buscar apps» busca en el nombre y el resumen; los filtros de sección (con cuántas apps tiene cada una) se combinan con la búsqueda.
 3. Las direcciones antiguas del marketplace, de las soluciones y de los módulos llevan para siempre a la tienda.
 Entra: el catálogo publicado.
 Sale: nada guardado.
-Si falla: sin apps publicadas dice «Todavía no hay apps publicadas.» y no se indexa; si nada coincide, «Ninguna app coincide con tu búsqueda.», con la forma de quitar los filtros. Ninguna app tiene precio propio: las premium vienen con los planes de pago.
+Si falla: sin apps publicadas dice «Todavía no hay apps publicadas.» y no se indexa; si nada coincide, «Ninguna app coincide con tu búsqueda.», con la forma de quitar los filtros. Ninguna app tiene precio propio: todos los planes incluyen todas las apps.
 Implicados: apps (el catálogo)
 
 ### PUBLIC-F23 Ver la ficha de una app
@@ -758,9 +758,14 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   apps: todos los planes incluyen todas las apps (PLAN §32; la palabra de la web es «apps», decisión 19), la `0021`
   cambia «All free apps» y «free and premium» de Gratis y Starter por «All apps included» y la tabla ya no tiene la
   fila «Apps included»: `included_level` queda dormido (modelo, Tienda y checkout) para cuando haya un módulo
-  `premium`. Bajar de plan no apaga nada (respuesta «switch» del FAQ).
+  `premium`. Bajar de plan no apaga nada (respuesta «switch» del FAQ). El resto de la web pública tampoco vende niveles
+  de apps (ronda 2026-10-24b): la cabecera de planes, el ecosistema y la comparativa de la portada, `llms.txt`, las
+  descargas, la tienda (sin insignia «Premium» ni filtro de acceso: `?premium=` se ignora y toda app se ofrece a 0 en
+  su JSON-LD), los sectores, «Sobre nosotros» y la cláusula 1 de las condiciones dicen que todos los planes incluyen
+  todas las apps. La web no lee la marca `premium` (reservada, sin uso hoy: PLAN §32).
 - Promesas (F07, F08): la tabla de la portada es `landing.TYPICAL_STACK` (total sumado); las listas de frases
-  prohibidas están en `public/tests/test_product.py` (`UNSHIPPED_CLAIMS`, `UNVERIFIED_SECURITY_CLAIMS`). El
+  prohibidas están en `public/tests/test_product.py` (`UNSHIPPED_CLAIMS`, `UNVERIFIED_SECURITY_CLAIMS` y
+  `APP_TIER_CLAIMS`, los niveles de apps). El
   balanceador acepta TLS 1.2 y 1.3 (`ssl_policy` de ERPlora/aws).
 - Cumplimiento (F09): `compliance.COUNTRY_NAMES` tiene que casar con `hubs.schemas.COUNTRIES` (lo exige un test);
   `FISCAL_SYSTEMS` dice qué sistema fiscal conecta cada país, hoy solo VeriFactu en España. Un país nuevo conectado

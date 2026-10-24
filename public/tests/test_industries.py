@@ -29,6 +29,7 @@ from decimal import Decimal
 from urllib.parse import urlparse
 
 import pytest
+from django.conf import settings
 from django.db import DatabaseError
 from django.urls import reverse
 
@@ -417,6 +418,37 @@ def test_the_lead_and_the_faq_state_the_entry_price(no_plans, client, salon, ent
     assert price_answers[0].startswith("Plans start at €29.99")
 
 
+@pytest.mark.parametrize(
+    ("language", "answer"),
+    [
+        (
+            "en",
+            "Plans start at €29.99 per month per hub, VAT excluded. One subscription covers the "
+            "whole business — every device and every user in it — and every plan includes all the "
+            "apps; you never pay per transaction.",
+        ),
+        (
+            "es",
+            "Los planes empiezan en 29.99 € al mes por hub, IVA no incluido. Una suscripción cubre "
+            "todo el negocio —todos sus dispositivos y todos sus usuarios— y todos los planes "
+            "incluyen todas las apps; nunca pagas por transacción.",
+        ),
+    ],
+)
+def test_the_price_answer_puts_every_app_on_every_plan(
+    no_plans, client, salon, entry_plan, language, answer
+):
+    """Ronda 2026-10-24b (PLAN §32): it said «the premium apps are included in the paid plans»."""
+    client.cookies[settings.LANGUAGE_COOKIE_NAME] = language
+    response = _page(client)
+    (price,) = [
+        str(item["answer"]) for item in response.context["faq_items"] if item["key"] == "price"
+    ]
+
+    assert price == answer
+    assert "premium" not in response.content.decode().lower()
+
+
 def test_a_free_entry_plan_is_announced_as_free_and_permanent(no_plans, client, salon):
     Plan.objects.create(
         slug="free", name_en="Free", price_monthly=Decimal("0"), display_order=0
@@ -634,10 +666,10 @@ def test_each_app_card_links_to_the_store_and_paints_the_cleaned_icon(client):
         "the app's icon is painted inline, not escaped"
     )
     assert "&lt;svg" not in main
-    assert "Free" in main
-    assert "Included in the paid plans" in main, (
-        "a premium app is announced as included (decision 17)"
-    )
+    # Every plan includes all the apps (PLAN §32): the flagged one too, no «Free» against «paid».
+    assert main.count('<span class="ep-product-card__price">Included in every plan</span>') == 2
+    assert "Included in the paid plans" not in main
+    assert '<span class="ep-product-card__price">Free</span>' not in main
 
 
 def test_without_a_vertical_there_is_no_apps_block(client, salon):

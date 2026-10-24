@@ -8,6 +8,11 @@ the ninja routes run. No view touches the ORM (``public/tests/test_store.py`` ch
 Each tab is its own URL (the old page swapped htmx fragments): «Overview» at ``/apps/<id>/`` and
 «Documentation» at ``/apps/<id>/docs/``. No reviews, changelog, tiers nor payment (spec §8.1).
 
+Every plan includes all the apps (ronda 2026-10-24b, PLAN §32; before, decision 17 split them into
+free and premium): every card and page says «Included in every plan», there is no «Premium» badge nor
+access filter, and every app is offered at ``0``. The ``premium`` flag stays reserved, unused today,
+for the panel's Store (PLAN-SAAS §9); the public web does not read it.
+
 The sitemap's ``/apps/`` entry (``public/sitemaps.py``; the app pages read ``apps.app.sitemap``)
 and ``llms.txt`` (``public/seo.py``) read the listed apps through :func:`listed_apps`, outside any
 visitor's language.
@@ -39,12 +44,12 @@ from accounts.handoff import LAUNCHER
 from apps.schemas import AppByIdIn, AppListIn, AppOut, AppSummaryOut
 from base.operations import ANONYMOUS_KEY
 from hubs.schemas import BusinessTypeListIn
-from public import pricing, structured_data
+from public import structured_data
 
 #: The operations' «not here» codes: an unknown or unlisted app, an app without documentation.
 NOT_FOUND_CODES = frozenset({"apps.app_not_found", "apps.doc_not_found"})
 #: The filters of the list, in the order their query string is written.
-FILTERS = ("q", "category", "premium")
+FILTERS = ("q", "category")
 
 
 # --- Reading the catalog ------------------------------------------------------------------------
@@ -80,11 +85,6 @@ def _category_label(category: str | None) -> str | None:
     return Category(category).label if category in Category.values else None
 
 
-def _access_label(premium: bool) -> str:
-    """Decision 17: a premium app is not sold on its own while ADR-0474 holds."""
-    return gettext("Included in the paid plans") if premium else gettext("Free")
-
-
 def _card(app: AppSummaryOut) -> dict[str, Any]:
     """What a card and the page header paint. ``icon_svg`` comes cleaned with nh3 by the operation
     (spec §8.4), so it is painted inline as it is."""
@@ -94,8 +94,8 @@ def _card(app: AppSummaryOut) -> dict[str, Any]:
         "summary": app.summary,
         "icon_svg": mark_safe(app.icon_svg),  # noqa: S308 - cleaned by apps.queries (nh3)
         "category_label": _category_label(app.category),
-        "premium": app.premium,
-        "access_label": _access_label(app.premium),
+        # Every plan includes all the apps (PLAN §32): no app is sold on its own (ADR-0474).
+        "access_label": gettext("Included in every plan"),
         "href": reverse("public:store_detail", args=[app.id]),
     }
 
@@ -109,10 +109,6 @@ def _store_url(**params: Any) -> str:
         [(name, params[name]) for name in FILTERS if params.get(name) not in (None, "")]
     )
     return f"{reverse('public:store')}?{query}" if query else reverse("public:store")
-
-
-def _premium_param(premium: bool | None) -> str | None:
-    return None if premium is None else ("1" if premium else "0")
 
 
 def _groups(apps: list[AppSummaryOut]) -> list[dict[str, Any]]:
@@ -136,23 +132,20 @@ def _groups(apps: list[AppSummaryOut]) -> list[dict[str, Any]]:
 
 @require_safe
 def store(request: HttpRequest) -> HttpResponse:
-    """``/apps/``: the listed apps by section, with ``?q=``, ``?category=`` and ``?premium=0|1``.
+    """``/apps/``: the listed apps by section, with ``?q=`` and ``?category=``.
 
-    A filter it does not understand is ignored (``AppListIn``). Three states (spec §5.3): the
+    A filter it does not understand is ignored (``AppListIn``), and so is the old ``?premium=``: the
+    store sells no tier of apps (PLAN §32). Three states (spec §5.3): the
     apps; no listed app at all (a new database), said so and kept out of the index; or filters
     that match nothing, with a way to clear them.
     """
-    filters = AppListIn(
-        q=request.GET.get("q"),
-        category=request.GET.get("category"),
-        premium=request.GET.get("premium"),
-    )
-    q, category, premium = filters.q, filters.category, filters.premium
+    filters = AppListIn(q=request.GET.get("q"), category=request.GET.get("category"))
+    q, category = filters.q, filters.category
     category = category.value if category is not None else None
     every_app = _run(request, "apps.app.list", AppListIn()).apps
-    filtered = q is not None or category is not None or premium is not None
+    filtered = q is not None or category is not None
     apps = _run(request, "apps.app.list", filters).apps if filtered else every_app
-    current = {"q": q, "category": category, "premium": _premium_param(premium)}
+    current = {"q": q, "category": category}
 
     counts: dict[str, int] = {}
     for app in every_app:
@@ -176,20 +169,6 @@ def store(request: HttpRequest) -> HttpResponse:
             if choice.value in counts
         ),
     ]
-    access_chips = [
-        {
-            "label": label,
-            # The active one turns the filter off; the other one replaces it.
-            "href": _store_url(
-                **{
-                    **current,
-                    "premium": None if premium == value else _premium_param(value),
-                }
-            ),
-            "active": premium == value,
-        }
-        for value, label in ((False, gettext("Free")), (True, gettext("Premium")))
-    ]
     return render(
         request,
         "public/store/list.html",
@@ -200,9 +179,7 @@ def store(request: HttpRequest) -> HttpResponse:
             "filtered": filtered,
             "q": q or "",
             "category": category,
-            "premium": current["premium"],
             "category_chips": category_chips,
-            "access_chips": access_chips,
         },
     )
 
@@ -266,18 +243,7 @@ def store_detail(request: HttpRequest, app_id: str) -> HttpResponse:
     base = f"https://{request.get_host()}"
     url = f"{base}{reverse('public:store_detail', args=[app.id])}"
     json_ld = structured_data.app_software_application(
-        base,
-        name=app.name,
-        description=app.description or app.summary,
-        url=url,
-        premium=app.premium,
-        # Decision 17: a premium app is priced at the monthly price of the cheapest paid plan on
-        # sale (L7); without one it has no offer, never a made-up one. Read only when it matters.
-        cheapest_paid_price=(
-            pricing.cheapest_paid_price(pricing.plans_on_sale(request))
-            if app.premium
-            else None
-        ),
+        name=app.name, description=app.description or app.summary, url=url
     )
     return render(
         request,

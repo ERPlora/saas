@@ -119,7 +119,8 @@ def llms_txt(request: HttpRequest) -> HttpResponse:
         "maintain. Spanish VeriFactu invoicing is built in, and a free desktop/mobile app "
         "drives the counter's receipt printer and cash drawer.",
         "",
-        "Hosted in the EU. Free plan with no card; paid plans add capacity and premium apps. "
+        "Hosted in the EU. Free plan with no card; every plan includes all the apps, and paid "
+        "plans add unlimited devices, more capacity and higher AI and WhatsApp quotas. "
         "Each customer gets an isolated Hub with its own database.",
         "",
     ]

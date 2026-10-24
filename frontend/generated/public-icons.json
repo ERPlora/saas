@@ -115,10 +115,6 @@
     "body": "<g stroke='currentColor'><rect width='448' height='320' x='32' y='64' rx='32' ry='32' stroke-linejoin='round' fill='none' stroke-width='32'/><path d='m304 448-8-64h-80l-8 64z' stroke-linecap='round' stroke-linejoin='round' stroke-width='32'/><path d='M368 448H144' stroke-linecap='round' stroke-linejoin='round' fill='none' stroke-width='32'/><path d='M32 304v48a32.09 32.09 0 0 0 32 32h384a32.09 32.09 0 0 0 32-32v-48Zm224 64a16 16 0 1 1 16-16 16 16 0 0 1-16 16'/></g>",
     "viewBox": "0 0 512 512"
   },
-  "ion:diamond-outline": {
-    "body": "<g stroke='currentColor'><path stroke-linecap='round' stroke-linejoin='round' d='m35.42 188.21 207.75 269.46a16.17 16.17 0 0 0 25.66 0l207.75-269.46a16.52 16.52 0 0 0 .95-18.75L407.06 55.71A16.22 16.22 0 0 0 393.27 48H118.73a16.22 16.22 0 0 0-13.79 7.71L34.47 169.46a16.52 16.52 0 0 0 .95 18.75M48 176h416' fill='none' stroke-width='32'/><path stroke-linecap='round' stroke-linejoin='round' d='m400 64-48 112-96-128M112 64l48 112 96-128M256 448l-96-272M256 448l96-272' fill='none' stroke-width='32'/></g>",
-    "viewBox": "0 0 512 512"
-  },
   "ion:download-outline": {
     "body": "<g stroke='currentColor'><path d='M336 176h40a40 40 0 0 1 40 40v208a40 40 0 0 1-40 40H136a40 40 0 0 1-40-40V216a40 40 0 0 1 40-40h40' stroke-linecap='round' stroke-linejoin='round' fill='none' stroke-width='32'/><path d='m176 272 80 80 80-80M256 48v288' stroke-linecap='round' stroke-linejoin='round' fill='none' stroke-width='32'/></g>",
     "viewBox": "0 0 512 512"

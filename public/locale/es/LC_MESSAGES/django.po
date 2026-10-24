@@ -1239,8 +1239,8 @@ msgstr "Privacidad"
 # --- The app store (L6): store.py, templates/public/store/, the menu and the footer ---
 
 #: store.py
-msgid "Included in the paid plans"
-msgstr "Incluida en los planes de pago"
+msgid "Included in every plan"
+msgstr "Incluida en todos los planes"
 
 #: store.py
 msgid "Free"
@@ -1249,10 +1249,6 @@ msgstr "Gratis"
 #: store.py
 msgid "All"
 msgstr "Todas"
-
-#: store.py templates/public/store/_card.html
-msgid "Premium"
-msgstr "Premium"
 
 #: templates/public/store/list.html templates/public/partials/nav_links.html
 #: templates/public/partials/footer_links.html
@@ -1300,10 +1296,6 @@ msgstr "Buscar apps"
 #: templates/public/store/list.html
 msgid "Filter by category"
 msgstr "Filtrar por categoría"
-
-#: templates/public/store/list.html
-msgid "Filter by access"
-msgstr "Filtrar por acceso"
 
 #: templates/public/store/list.html
 msgid "No app matches your search."
@@ -1439,8 +1431,8 @@ msgstr "¿ERPlora encaja en tu %(business)s?"
 
 #: industries.py
 #, python-format
-msgid "Plans start at €%(price)s per month per hub, VAT excluded. One subscription covers the whole business — every device and every user in it — and the premium apps are included in the paid plans; you never pay per transaction."
-msgstr "Los planes empiezan en %(price)s € al mes por hub, IVA no incluido. Una suscripción cubre todo el negocio —todos sus dispositivos y todos sus usuarios— y las apps premium están incluidas en los planes de pago; nunca pagas por transacción."
+msgid "Plans start at €%(price)s per month per hub, VAT excluded. One subscription covers the whole business — every device and every user in it — and every plan includes all the apps; you never pay per transaction."
+msgstr "Los planes empiezan en %(price)s € al mes por hub, IVA no incluido. Una suscripción cubre todo el negocio —todos sus dispositivos y todos sus usuarios— y todos los planes incluyen todas las apps; nunca pagas por transacción."
 
 #: industries.py
 #, python-format
@@ -2299,11 +2291,11 @@ msgstr "Tus datos viven en su propia base de datos, aislada de la de cualquier o
 msgid "Our Apps"
 msgstr "Nuestras apps"
 
-msgid "Every app is built by the ERPlora team and shares one database, one interface and one login. Free apps or premium features — you choose what fits your business."
-msgstr "Todas las apps las desarrolla el equipo de ERPlora y comparten una base de datos, una interfaz y un inicio de sesión. Apps gratuitas o funciones premium: tú eliges lo que encaja con tu negocio."
+msgid "Every app is built by the ERPlora team and shares one database, one interface and one login. Every plan includes all of them — you turn on what fits your business."
+msgstr "Todas las apps las desarrolla el equipo de ERPlora y comparten una base de datos, una interfaz y un inicio de sesión. Todos los planes las incluyen todas: tú activas lo que encaja con tu negocio."
 
-msgid "All free apps included, VeriFactu ready"
-msgstr "Todas las apps gratuitas incluidas, listo para VeriFactu"
+msgid "All apps included, VeriFactu ready"
+msgstr "Todas las apps incluidas, listo para VeriFactu"
 
 msgid "Process transactions in milliseconds, with live updates on every device."
 msgstr "Procesa transacciones en milisegundos, con actualizaciones en vivo en todos los dispositivos."
@@ -2663,9 +2655,6 @@ msgstr "Coste de entrada"
 msgid "user"
 msgstr "usuario"
 
-msgid "free"
-msgstr "gratis"
-
 msgid "1 free / all paid"
 msgstr "1 gratis / todas de pago"
 
@@ -2778,8 +2767,8 @@ msgstr "Tu ERP, listo en 5 minutos."
 msgid "No installation, no consultants, no credit card to try it. Spin up a hub and explore."
 msgstr "Sin instalación, sin consultores, sin tarjeta para probarlo. Crea un terminal y explora."
 
-msgid "One ecosystem. Two modes."
-msgstr "Un ecosistema. Dos modos."
+msgid "One ecosystem. Every app on every plan."
+msgstr "Un ecosistema. Todas las apps en todos los planes."
 
 msgid "Invoicing + VeriFactu"
 msgstr "Facturación + VeriFactu"
@@ -2796,11 +2785,11 @@ msgstr "Citas + reservas online"
 msgid "Mobile + cloud PWA"
 msgstr "Móvil + PWA en la nube"
 
-msgid "Core"
-msgstr "Core"
+msgid "Every plan"
+msgstr "Todos los planes"
 
-msgid "Free forever"
-msgstr "Gratis para siempre"
+msgid "All the apps"
+msgstr "Todas las apps"
 
 msgid "Your whole business, in the cloud"
 msgstr "Todo tu negocio, en la nube"
@@ -3492,8 +3481,9 @@ msgstr "Construido a medida"
 msgid "Compare"
 msgstr "Comparar"
 
-msgid "premium"
-msgstr "premium"
+#, python-format
+msgid "%(apps)s on every plan"
+msgstr "%(apps)s en todos los planes"
 
 msgid "Counter hardware from the app"
 msgstr "Hardware de mostrador desde la app"
@@ -3510,8 +3500,8 @@ msgstr "¿Quieres ver ERPlora"
 msgid "with your own data?"
 msgstr "con tus propios datos?"
 
-msgid "Extensions"
-msgstr "Extensiones"
+msgid "Paid plans"
+msgstr "Planes de pago"
 
 msgid "Infinite configurations."
 msgstr "Infinitas configuraciones."
@@ -3670,29 +3660,29 @@ msgid_plural "%(counter)s apps. Turn them on and off without breaking anything. 
 msgstr[0] "%(counter)s app. Actívala y desactívala sin romper nada. Cambia de plan en un clic."
 msgstr[1] "%(counter)s apps. Actívalas y desactívalas sin romper nada. Cambia de plan en un clic."
 
-msgid "ERPlora runs in the browser as an always-online cloud PWA, with a free app (Windows, Linux, Android) that drives the printers and cash drawer at your counter — no per-user fees. Start on the Free plan, then paid tiers add capacity, multi-device and the premium apps. There is no user cap: you scale capacity as you grow."
-msgstr "ERPlora funciona en el navegador como una PWA en la nube siempre en línea, con una app gratuita (Windows, Linux, Android) que maneja las impresoras y el cajón de tu mostrador, sin cuotas por usuario. Empieza con el plan Gratis; los planes de pago añaden capacidad, varios dispositivos y las apps premium. No hay tope de usuarios: amplías la capacidad a medida que creces."
+msgid "ERPlora runs in the browser as an always-online cloud PWA, with a free app (Windows, Linux, Android) that drives the printers and cash drawer at your counter — no per-user fees. Every plan includes all the apps, the Free one too; paid plans add unlimited devices, more capacity and higher AI and WhatsApp quotas. There is no user cap: you scale capacity as you grow."
+msgstr "ERPlora funciona en el navegador como una PWA en la nube siempre en línea, con una app gratuita (Windows, Linux, Android) que maneja las impresoras y el cajón de tu mostrador, sin cuotas por usuario. Todos los planes incluyen todas las apps, también Gratis; los de pago añaden dispositivos ilimitados, más capacidad y más mensajes de IA y WhatsApp. No hay tope de usuarios: amplías la capacidad a medida que creces."
 
 msgid "Start free in minutes with your own hub — the Free plan is free forever, no card required."
 msgstr "Empieza gratis en minutos con tu propio hub: el plan Gratis es gratis para siempre y no pide tarjeta."
 
-msgid "The core apps to run an SMB — free forever."
-msgstr "Las apps básicas para llevar una pyme, gratis para siempre."
+msgid "Every app comes with every plan, Free included: turn on the ones your business needs."
+msgstr "Todas las apps vienen con todos los planes, también con Gratis: activa las que necesite tu negocio."
 
-msgid "Included in the paid plans: turn them on when your business needs them."
-msgstr "Incluidas en los planes de pago: actívalas cuando tu negocio las necesite."
+msgid "When your business grows, a paid plan adds:"
+msgstr "Cuando tu negocio crece, un plan de pago añade:"
 
-msgid "More premium apps as the catalogue grows"
-msgstr "Más apps premium a medida que crece el catálogo"
+msgid "Higher AI and WhatsApp quotas"
+msgstr "Más mensajes de IA y WhatsApp"
 
-msgid "Every plan includes all the free apps, and the paid plans include the premium apps too — plans only change hub size, support and user count."
-msgstr "Todos los planes incluyen todas las apps gratuitas, y los planes de pago incluyen también las apps premium: los planes solo cambian el tamaño del hub, el soporte y el número de usuarios."
+msgid "Every plan includes all the apps. Paid plans add unlimited devices, more capacity and higher AI and WhatsApp quotas."
+msgstr "Todos los planes incluyen todas las apps. Los de pago añaden dispositivos ilimitados, más capacidad y más mensajes de IA y WhatsApp."
 
 msgid "Every app shares the same data, the same look and the same login. No integrations to maintain."
 msgstr "Todas las apps comparten los mismos datos, el mismo aspecto y el mismo acceso. Sin integraciones que mantener."
 
-msgid "ERPlora offers a modular, multi-tenant ERP/POS SaaS platform, deployed on European cloud infrastructure, with features such as sales, inventory, and customer management, invoicing, tax integrations (VeriFactu), and a catalogue of apps of its own that the customer turns on in their Hub: the free apps come with every plan, and the premium apps are included in the paid plans."
-msgstr "ERPlora ofrece una plataforma SaaS multi-tenant tipo ERP/POS, modular, desplegada en infraestructura cloud europea, con funcionalidades como gestión de ventas, inventario, clientes, facturación, integraciones fiscales (VeriFactu) y un catálogo de apps propias que el cliente activa en su Hub: las apps gratuitas vienen con todos los planes y las apps premium están incluidas en los planes de pago."
+msgid "ERPlora offers a modular, multi-tenant ERP/POS SaaS platform, deployed on European cloud infrastructure, with features such as sales, inventory, and customer management, invoicing, tax integrations (VeriFactu), and a catalogue of apps of its own that the customer turns on in their Hub: every plan includes all the apps."
+msgstr "ERPlora ofrece una plataforma SaaS multi-tenant tipo ERP/POS, modular, desplegada en infraestructura cloud europea, con funcionalidades como gestión de ventas, inventario, clientes, facturación, integraciones fiscales (VeriFactu) y un catálogo de apps propias que el cliente activa en su Hub: todos los planes incluyen todas las apps."
 
 #, python-format
 msgid "A paid plan chosen when creating a Hub comes with a free trial of %(days)s day, shown on the pricing page at the time of signup; a promotional code applied at signup may set a different length. Moving a Hub that is already in service to a paid plan does not start a new trial. If not cancelled before the end of the trial, the first period is billed automatically."
@@ -3763,8 +3753,8 @@ msgstr "Apps incluidas"
 msgid "Explore the apps"
 msgstr "Explorar las apps"
 
-msgid "Premium apps"
-msgstr "Apps premium"
+msgid "Room to grow"
+msgstr "Espacio para crecer"
 
 msgid "app catalogue, 1 click"
 msgstr "catálogo de apps, 1 clic"

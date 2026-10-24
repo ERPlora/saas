@@ -1,5 +1,5 @@
 """``/pricing/`` and ``/pricing/<slug>/``: the plans on sale (spec §8.1), and the reading of the plans
-the other public pages share (the home, the terms, ``/collaborate/``, the store's JSON-LD).
+the other public pages share (the home, the terms, ``/collaborate/``, ``/download/``).
 
 Port of ERPlora/saas ``apps/public/pricing/views.py`` (origin/develop c5ca8ca). What changed:
 
@@ -97,7 +97,9 @@ def free_plan(plans):
 def cheapest_paid_price(plans) -> Decimal | None:
     """The monthly price of the cheapest paid plan a visitor can sign up for, or ``None``.
 
-    What a premium app costs (decision 17: it is included in the paid plans, never sold alone).
+    What the collaborator year of ``/collaborate/`` is valued at. It is no app's price any more:
+    every plan includes all the apps (ronda 2026-10-24b, PLAN §32; before, decision 17 priced a
+    premium app at it).
     """
     prices = [
         plan.price_monthly

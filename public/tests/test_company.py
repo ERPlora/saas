@@ -123,6 +123,27 @@ def test_about_says_what_the_platform_gives_not_what_it_is_built_with(
     assert names_the_stack(copy_of(html)) == []
 
 
+@pytest.mark.parametrize(
+    ("language", "sentence"),
+    [
+        (
+            "en",
+            "Every app is built by the ERPlora team and shares one database, one interface and one "
+            "login. Every plan includes all of them — you turn on what fits your business.",
+        ),
+        (
+            "es",
+            "Todas las apps las desarrolla el equipo de ERPlora y comparten una base de datos, una "
+            "interfaz y un inicio de sesión. Todos los planes las incluyen todas: tú activas lo que "
+            "encaja con tu negocio.",
+        ),
+    ],
+)
+def test_our_apps_card_puts_every_app_on_every_plan(client, language, sentence):
+    """Ronda 2026-10-24b (PLAN §32): the card said «Free apps or premium features — you choose»."""
+    assert sentence in page(client, "/about/", language)
+
+
 def test_about_in_spanish(client):
     html = page(client, "/about/", "es")
 

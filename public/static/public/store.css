@@ -126,11 +126,6 @@
   margin-top: 1.25rem;
 }
 
-.ep-store-hero__access-note {
-  color: var(--ep-muted, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.62));
-  font-size: 0.9rem;
-}
-
 .ep-store-hero__card {
   margin: 0;
   border-radius: var(--ep-radius, 16px);

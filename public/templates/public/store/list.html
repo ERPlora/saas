@@ -3,10 +3,10 @@
 {% comment %}
   /apps/ (public/store.py): the store. Port of modules/pages/index.html and modules/marketplace.html
   (origin/develop): the hero with the count, the filter bar and the apps in sections, one per
-  category in the order of live.meta, each a grid of product cards (icon, category, name, Premium
-  badge, summary and access). The filters are links and a GET form (no htmx): ?q=, ?category= and
-  ?premium=0|1. Empty states of spec §5.3: no listed app at all (noindex), or filters that match
-  nothing (with «Clear filters»).
+  category in the order of live.meta, each a grid of product cards (icon, category, name, summary
+  and access). The filters are links and a GET form (no htmx): ?q= and ?category=; no access filter,
+  every plan includes all the apps (ronda 2026-10-24b, PLAN §32). Empty states of spec §5.3: no
+  listed app at all (noindex), or filters that match nothing (with «Clear filters»).
 {% endcomment %}
 
 {% block title %}{% trans "Apps" %} · ERPlora{% endblock %}
@@ -31,16 +31,10 @@
     <form class="ep-store-search" method="get" action="{% url 'public:store' %}" role="search">
       <ion-searchbar class="ep-search" name="q" value="{{ q }}" placeholder="{% trans 'Search apps' %}" aria-label="{% trans 'Search apps' %}" debounce="0"></ion-searchbar>
       {% if category %}<input type="hidden" name="category" value="{{ category }}">{% endif %}
-      {% if premium %}<input type="hidden" name="premium" value="{{ premium }}">{% endif %}
     </form>
     <nav class="ep-store-filters" aria-label="{% trans 'Filter by category' %}">
       {% for chip in category_chips %}
       <a class="ep-store-filters__chip" href="{{ chip.href }}"{% if chip.active %} aria-current="true"{% endif %}><ion-chip color="{% if chip.active %}primary{% else %}medium{% endif %}">{{ chip.label }}<span class="ep-store-filters__count">{{ chip.count }}</span></ion-chip></a>
-      {% endfor %}
-    </nav>
-    <nav class="ep-store-filters" aria-label="{% trans 'Filter by access' %}">
-      {% for chip in access_chips %}
-      <a class="ep-store-filters__chip" href="{{ chip.href }}"{% if chip.active %} aria-current="true"{% endif %}><ion-chip color="{% if chip.active %}primary{% else %}medium{% endif %}">{{ chip.label }}</ion-chip></a>
       {% endfor %}
     </nav>
   </section>

@@ -1,6 +1,6 @@
 {% load i18n %}
 {% comment %} The two cells of the ecosystem section (public/components/bento.html). {% endcomment %}
-{% trans "Core" as eyebrow %}{% trans "Free forever" as heading %}
-{% include "public/components/bento_item.html" with cols=1 glass=True icon="lucide:gift" eyebrow=eyebrow heading=heading body_template="public/landing/home/_ecosystem_free.html" only %}
-{% trans "Extensions" as eyebrow %}{% trans "Premium apps" as heading %}
-{% include "public/components/bento_item.html" with cols=1 tone="primary" icon="lucide:puzzle" eyebrow=eyebrow heading=heading body_template="public/landing/home/_ecosystem_premium.html" premium_app_examples=premium_app_examples only %}
+{% trans "Every plan" as eyebrow %}{% trans "All the apps" as heading %}
+{% include "public/components/bento_item.html" with cols=1 glass=True icon="lucide:puzzle" eyebrow=eyebrow heading=heading body_template="public/landing/home/_ecosystem_apps.html" only %}
+{% trans "Paid plans" as eyebrow %}{% trans "Room to grow" as heading %}
+{% include "public/components/bento_item.html" with cols=1 tone="primary" icon="lucide:layers" eyebrow=eyebrow heading=heading body_template="public/landing/home/_ecosystem_paid.html" only %}

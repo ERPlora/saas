@@ -17,10 +17,11 @@ What changed, and why:
   demo and downloads;
 * the modules are apps (decision 19): the six featured cards and the twelve chips are the first
   ``listed`` apps by section and name (``apps.app.list``, spec §8.1; ``is_featured`` and downloads do
-  not exist any more), counted free or ``premium``; without any listed app the apps blocks are
+  not exist any more), counted as one catalogue; without any listed app the apps blocks are
   omitted (spec §5.3). The chips link to the store filtered by section (``/apps/?category=``);
-* the ecosystem section is our own catalogue: a premium app is included in the paid plans
-  (decision 17), there is no marketplace and no third party;
+* the ecosystem section is our own catalogue, there is no marketplace and no third party, and every
+  plan includes all the apps (ronda 2026-10-24b, PLAN §32; before, decision 17 split them into free
+  and premium): the home sells no tier of apps, the paid plans add devices, capacity and quotas;
 * the plans come from ``hubs.plan.list`` (plan §3.m): the cards end with the plan's real trial and
   carry the ex-VAT note instead of the «with 21 % Spanish VAT» line (WORKFLOW F55; the landing was
   frozen in ``pm/LOCKED.md``, the xfail that waited for it is a plain test now);
@@ -224,7 +225,8 @@ def test_a_paid_plan_card_of_the_home_says_get_started_not_start_free(no_plans, 
 
 @pytest.fixture
 def catalogue():
-    """Fourteen listed apps over three sections, two premium, and one that is not listed."""
+    """Fourteen listed apps over three sections, two flagged ``premium`` (reserved, unused today:
+    PLAN §32), and one that is not listed."""
     apps = [
         make_app(f"sales_{n:02d}", category="sales", name_en=f"Sales {n:02d}")
         for n in range(1, 6)
@@ -273,16 +275,16 @@ def test_the_twelve_chips_link_to_the_store_by_section(client, catalogue):
     assert f'href="{reverse("public:store")}?category=people"' in html
 
 
-def test_the_counts_are_the_listed_apps_free_and_premium(client, catalogue):
+def test_the_count_is_every_listed_app_without_a_tier(client, catalogue):
+    """Every plan includes all the apps (PLAN §32): the home counts them, never free apart from premium."""
     context = page(client).context
 
     assert context["total_apps"] == 14
-    assert context["free_apps"] == 12
-    assert context["premium_apps"] == 2
-    assert [name for name in context["premium_app_examples"]] == [
-        "People 01",
-        "People 02",
-    ]
+    assert [
+        key
+        for key in ("free_apps", "premium_apps", "premium_app_examples")
+        if key in context
+    ] == []
 
 
 def test_the_apps_section_points_to_the_store(client, catalogue):
@@ -303,22 +305,52 @@ def test_without_listed_apps_the_apps_blocks_are_omitted(client):
 
 
 def test_the_ecosystem_is_our_catalogue_not_a_marketplace(client, catalogue):
-    """Decision 17: premium apps are included in the paid plans; no third party, no marketplace."""
+    """No third party, no marketplace: every app is ours."""
     html = html_of(client)
     ecosystem = section(html, "ecosystem")
 
     assert "Marketplace" not in ecosystem
-    assert "Included in the paid plans" in ecosystem
-    assert "People 01" in ecosystem
     assert "marketplace" not in html.lower()
 
 
-def test_without_premium_apps_the_ecosystem_says_so_honestly(client):
-    make_app("inventory")
+@pytest.mark.parametrize(
+    ("language", "sentences"),
+    [
+        (
+            "en",
+            (
+                "One ecosystem. Every app on every plan.",
+                "All the apps",
+                "Every app comes with every plan, Free included: turn on the ones your business needs.",
+                "Room to grow",
+                "When your business grows, a paid plan adds:",
+                "Unlimited devices",
+                "More capacity",
+                "Higher AI and WhatsApp quotas",
+            ),
+        ),
+        (
+            "es",
+            (
+                "Un ecosistema. Todas las apps en todos los planes.",
+                "Todas las apps",
+                "Todas las apps vienen con todos los planes, también con Gratis: activa las que necesite tu negocio.",
+                "Espacio para crecer",
+                "Cuando tu negocio crece, un plan de pago añade:",
+                "Dispositivos ilimitados",
+                "Más capacidad",
+                "Más mensajes de IA y WhatsApp",
+            ),
+        ),
+    ],
+)
+def test_the_ecosystem_puts_every_app_on_every_plan(client, catalogue, language, sentences):
+    """Ronda 2026-10-24b (PLAN §32): the two cells were «Free forever» and «Premium apps», with real
+    premium names; now every app comes with every plan and the paid plans add room, not apps."""
+    ecosystem = section(html_of(client, language=language), "ecosystem")
 
-    ecosystem = section(html_of(client), "ecosystem")
-
-    assert "More premium apps as the catalogue grows" in ecosystem
+    assert [sentence for sentence in sentences if sentence not in ecosystem] == []
+    assert "People 01" not in ecosystem, "no app is quoted as the example of a tier"
 
 
 # --- The plans (test_views.py, test_internal_plans_are_never_public.py) -----------------------
@@ -439,36 +471,69 @@ def test_the_home_shows_the_net_price_with_the_ex_vat_note_and_no_vat_figure(cli
 
 
 @pytest.fixture
-def three_free_one_premium():
+def four_apps_one_flagged_premium():
     for app_id in ("pos", "inventory", "customers"):
         make_app(app_id)
     make_app("assistant", premium=True)
 
 
-def test_the_comparison_counts(client, three_free_one_premium):
-    context = page(client).context
-
-    assert context["free_apps"] == 3
-    assert context["premium_apps"] == 1
-
-
-def test_the_comparison_cell_interpolates_the_live_counts(
-    client, three_free_one_premium
+@pytest.mark.parametrize(
+    ("language", "cell"),
+    [("en", "4 on every plan"), ("es", "4 en todos los planes")],
+)
+def test_the_comparison_cell_counts_every_app_on_every_plan(
+    client, four_apps_one_flagged_premium, language, cell
 ):
-    comparison = section(html_of(client), "comparativa")
+    """Every plan includes all the apps (PLAN §32): the cell said «3 free + 1 premium»."""
+    comparison = section(html_of(client, language=language), "comparativa")
 
-    assert "3 free" in comparison
-    assert "+ 1 premium" in comparison
+    assert f'<td data-title="ERPlora" class="text-primary font-semibold">{cell}</td>' in comparison
+    assert " free +" not in comparison and " gratis +" not in comparison
 
 
-def test_the_premium_suffix_is_hidden_without_premium_apps(client):
-    make_app("pos")
-    make_app("inventory")
+@pytest.mark.parametrize(
+    ("language", "sentence"),
+    [
+        (
+            "en",
+            "Every plan includes all the apps, the Free one too; paid plans add unlimited devices, "
+            "more capacity and higher AI and WhatsApp quotas.",
+        ),
+        (
+            "es",
+            "Todos los planes incluyen todas las apps, también Gratis; los de pago añaden dispositivos "
+            "ilimitados, más capacidad y más mensajes de IA y WhatsApp.",
+        ),
+    ],
+)
+def test_the_comparison_note_says_what_the_paid_plans_add(client, language, sentence):
+    """It said «paid tiers add capacity, multi-device and the premium apps»."""
+    comparison = section(html_of(client, language=language), "comparativa")
 
-    comparison = section(html_of(client), "comparativa")
+    assert sentence in comparison
 
-    assert "2 free" in comparison
-    assert "+ 0 premium" not in comparison
+
+@pytest.mark.parametrize(
+    ("language", "sentence"),
+    [
+        (
+            "en",
+            "Every plan includes all the apps. Paid plans add unlimited devices, more capacity and "
+            "higher AI and WhatsApp quotas.",
+        ),
+        (
+            "es",
+            "Todos los planes incluyen todas las apps. Los de pago añaden dispositivos ilimitados, "
+            "más capacidad y más mensajes de IA y WhatsApp.",
+        ),
+    ],
+)
+def test_the_plans_section_says_every_plan_includes_all_the_apps(client, language, sentence):
+    """The same promise as the head of /pricing/ (saas#119); it said «all the free apps, and the
+    paid plans include the premium apps too»."""
+    plans = section(html_of(client, language=language), "planes")
+
+    assert f'<p class="ep-section-sub">{sentence}</p>' in plans
 
 
 # --- test_ai_data_residency.py ----------------------------------------------------------------

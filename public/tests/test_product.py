@@ -19,7 +19,9 @@ import pytest
 from django.conf import settings
 from django.urls import reverse
 
+from apps.tests.factories import make_app
 from public.landing import TYPICAL_STACK
+from public.tests.test_industries import make_business_type, make_sector
 from public.tests.test_stack_copy import copy_of, names_the_stack
 
 pytestmark = pytest.mark.django_db
@@ -434,6 +436,65 @@ def test_no_page_promises_what_the_old_stack_did(
     html = without_tokens(page(client, path, language))
 
     assert [claim for claim in STALE_CLAIMS if claim in html] == []
+
+
+# --- No tiers of apps (ronda 2026-10-24b, PLAN §32 and PLAN-SAAS §9) -----------------------------
+# Every plan includes all the apps; what changes by plan is the devices, the capacity and the AI and
+# WhatsApp quotas, and a downgrade turns nothing off. /pricing/ stopped selling tiers of apps first
+# (saas#119); the home, llms.txt, the downloads, the store, the industries, «About» and the terms
+# still said «the free apps come with every plan and the premium ones with the paid plans».
+
+#: Lower-case: a page is scanned in lower case, whatever the sentence starts with.
+APP_TIER_CLAIMS = (
+    "premium",
+    "free apps",
+    "apps gratis",
+    "apps gratuitas",
+    "free and paid apps",
+)
+
+
+@pytest.fixture
+def catalogue_with_the_premium_flag():
+    """A listed app and one flagged ``premium`` (reserved, unused today: PLAN §32), both for the
+    restaurant vertical of a business type, so every block that reads the catalogue is painted."""
+    make_business_type("pizzeria", sector=make_sector("hospitality"), vertical="restaurant")
+    make_app("kitchen", verticals=["restaurant"])
+    make_app("tables", verticals=["restaurant"], premium=True)
+
+
+@pytest.mark.parametrize("language", ["en", "es"])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/",
+        "/download/",
+        "/about/",
+        "/apps/",
+        "/apps/kitchen/",
+        "/apps/tables/",
+        "/industries/pizzeria/",
+        "/legal/terms/",
+        "/pricing/",
+        "/collaborate/",
+    ],
+)
+def test_no_page_sells_tiers_of_apps(
+    client, path, language, tokens_spelling_the_claims, catalogue_with_the_premium_flag
+):
+    html = without_tokens(page(client, path, language)).lower()
+
+    assert [claim for claim in APP_TIER_CLAIMS if claim in html] == []
+
+
+def test_llms_txt_sells_no_tier_of_apps(client, catalogue_with_the_premium_flag):
+    text = client.get("/llms.txt").content.decode().lower()
+
+    assert [claim for claim in APP_TIER_CLAIMS if claim in text] == []
+    assert (
+        "every plan includes all the apps, and paid plans add unlimited devices, more capacity "
+        "and higher ai and whatsapp quotas." in text
+    )
 
 
 @pytest.mark.parametrize(

@@ -498,12 +498,21 @@ class TestWaysToTryPage:
     def test_download_does_not_link_the_old_demo_host(self, client):
         assert "demo.erplora.com" not in client.get("/download/").content.decode()
 
-    def test_download_does_not_promise_premium_apps_on_the_free_plan(self, client):
-        """Premium apps come with the paid plans (spec decision 17): the free hub has the free ones."""
+    @pytest.mark.parametrize(
+        ("language", "line"),
+        [
+            ("en", "All apps included, VeriFactu ready"),
+            ("es", "Todas las apps incluidas, listo para VeriFactu"),
+        ],
+    )
+    def test_the_free_hub_comes_with_every_app(self, client, language, line):
+        """Every plan includes all the apps (ronda 2026-10-24b, PLAN §32): the free hub said «All
+        free apps included», as if the paid plans had others; the web says «apps», never «modules»."""
+        client.cookies[settings.LANGUAGE_COOKIE_NAME] = language
         html = client.get("/download/").content.decode()
 
         assert "All modules included" not in html
-        assert "All free apps included, VeriFactu ready" in html
+        assert f"<span>{line}</span>" in html
 
     def test_download_in_spanish(self, client):
         client.cookies[settings.LANGUAGE_COOKIE_NAME] = "es"

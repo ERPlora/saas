@@ -105,6 +105,12 @@ test('PUBLIC-G49 the home and the plans promise only what the product does', asy
   for (const claim of ['v3.4', 'QuickBooks', 'HR and payroll', 'Support tickets', 'Healthcare']) {
     await expect(page.getByText(claim, { exact: false })).toHaveCount(0);
   }
+  // Every plan includes all the apps (ronda 2026-10-24b, PLAN §32): the home sells no tier of apps.
+  await expect(page.locator('#planes .ep-section-sub')).toHaveText(
+    'Every plan includes all the apps. Paid plans add unlimited devices, more capacity and higher AI and WhatsApp quotas.',
+  );
+  await expect(page.locator('#ecosystem')).toContainText('One ecosystem. Every app on every plan.');
+  expect(await page.evaluate(() => document.body.innerText)).not.toMatch(/premium|free apps/i);
 
   await captureEverywhere(page, '/pricing/', 'PUBLIC-G49', async (p) => {
     await expect(p.locator('.compare-table').first()).toBeVisible();
