@@ -42,6 +42,13 @@ def test_staff_edit_the_monthly_messages_of_a_plan(staff_client, rows):
     assert 'name="whatsapp_messages_per_month"' in page
 
 
+def test_staff_edit_how_many_modules_a_plan_lets_a_business_turn_on(staff_client, rows):
+    """``max_apps`` (Ioan, 2026-10-24) is edited next to the plan's other limits."""
+    page = staff_client.get(f"/admin/hubs/plan/{rows['plan'].pk}/change/").content.decode()
+
+    assert 'name="max_apps"' in page
+
+
 def test_staff_write_every_text_of_a_plan_in_english_and_in_spanish(staff_client, rows):
     """HUBS-F05 (HUBS-G06, HUBS-G44: the old admin's translation tabs, ``PlanTranslationOptions``): the name,
     the description, the card's features and its badge, one field per language, English the source."""
