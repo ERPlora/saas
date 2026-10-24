@@ -143,20 +143,12 @@ def industry_software_application(
     return block
 
 
-def app_software_application(
-    base: str,
-    *,
-    name: str,
-    description: str,
-    url: str,
-    premium: bool,
-    cheapest_paid_price: Decimal | None,
-) -> dict:
+def app_software_application(*, name: str, description: str, url: str) -> dict:
     """``SoftwareApplication`` for one app page (``/apps/<id>/``, spec §8.2).
 
-    A free app is offered at ``0``. A ``premium`` one is included in the paid plans (decision 17):
-    its offer is the monthly price of the cheapest paid plan, and none without a paid plan. No
-    ``aggregateRating``: there are no reviews.
+    Every app is offered at ``0`` on its own page: every plan includes all the apps, the Free one
+    too (ronda 2026-10-24b, PLAN §32; before, decision 17 priced a premium app at the cheapest paid
+    plan). No ``aggregateRating``: there are no reviews.
     """
     block = {
         "@context": "https://schema.org",
@@ -168,8 +160,5 @@ def app_software_application(
         "url": url,
         "author": {"@type": "Organization", "name": "ERPlora"},
     }
-    if not premium:
-        block["offers"] = _offer("0", url)
-    elif cheapest_paid_price is not None:
-        block["offers"] = _offer(cheapest_paid_price, f"{base}/pricing/")
+    block["offers"] = _offer("0", url)
     return block

@@ -37,7 +37,7 @@
           <ion-item button detail="true" href="{{ row.card.href }}">
             <span slot="start" class="ep-store-required__icon">{{ row.card.icon_svg }}</span>
             <ion-label>{{ row.name }}</ion-label>
-            <span slot="end">{% if row.card.premium %}{% trans "Premium" as pill %}{% include "public/components/status_pill.html" with tone="primary" label=pill size="sm" %}{% else %}{% include "public/components/status_pill.html" with tone="success" label=row.card.access_label size="sm" %}{% endif %}</span>
+            <span slot="end">{% include "public/components/status_pill.html" with tone="success" label=row.card.access_label size="sm" %}</span>
           </ion-item>
           {% else %}
           <ion-item>

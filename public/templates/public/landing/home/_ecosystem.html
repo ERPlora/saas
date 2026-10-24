@@ -1,14 +1,14 @@
 {% load i18n icons %}
 {% comment %}
-  «One ecosystem. Two modes.»: the old «Marketplace» section (_ecosystem.html of origin/develop) as
-  our own catalogue. Every app is ours (no third party, no marketplace) and a premium app is
-  included in the paid plans (decision 17). The examples are real premium apps of the catalogue,
-  never invented names; without one, an honest generic line.
+  «One ecosystem. Every app on every plan.»: the old «Marketplace» section (_ecosystem.html of
+  origin/develop) as our own catalogue. Every app is ours (no third party, no marketplace) and every
+  plan includes all of them (ronda 2026-10-24b, PLAN §32): one cell says so, the other what a paid
+  plan adds. Before, decision 17 split the two cells into «Free forever» and «Premium apps».
 {% endcomment %}
   <section id="ecosystem" class="ep-section ep-section--compact ep-section--center ep-section--divider">
     <header class="ep-section-head">
       <span class="ep-eyebrow">{% trans 'Apps' %}</span>
-      <h2 class="ep-section-title">{% trans 'One ecosystem. Two modes.' %}</h2>
+      <h2 class="ep-section-title">{% trans 'One ecosystem. Every app on every plan.' %}</h2>
     </header>
     <div class="ep-reveal" data-reveal="up">
       {% include "public/components/bento.html" with items_template="public/landing/home/_ecosystem_items.html" cols=2 cols_md=2 %}

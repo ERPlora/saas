@@ -8,8 +8,10 @@
   public.legal.SUSPENDED_HUB_DELETE_DAYS and the trial of §4 from the plans on sale (public/legal.py).
 
   Legal text changed in the port (L7), with the date: §1 and §7.3 spoke of modules bought from a
-  marketplace; every app is ours now, and a premium app is included in the paid plans (spec §8.3,
-  decision 17). Contract: public/tests/test_legal.py.
+  marketplace; every app is ours now (spec §8.3). §1 said that the free apps come with every plan
+  and the premium apps with the paid plans (decision 17); every plan includes all the apps now
+  (ronda 2026-10-24b, PLAN §32), and §3.1 no longer sells modules on their own, with the date of
+  October 25, 2026. Contract: public/tests/test_legal.py.
 {% endcomment %}
 
 {% block title %}{% trans "Terms of Use" %} · ERPlora{% endblock %}
@@ -28,7 +30,7 @@
   <section class="ep-section--compact ep-section--divider">
     <div class="ep-container ep-section-content">
       <article class="ep-prose max-w-4xl mx-auto">
-        <p class="text-sm text-fg/60"><strong>{% trans "Last updated:" %}</strong> {% trans "October 13, 2026" %}</p>
+        <p class="text-sm text-fg/60"><strong>{% trans "Last updated:" %}</strong> {% trans "October 25, 2026" %}</p>
 
         <p>
           {% blocktrans trimmed %}
@@ -46,8 +48,8 @@
           ERPlora offers a modular, multi-tenant ERP/POS SaaS platform, deployed on
           European cloud infrastructure, with features such as sales, inventory, and
           customer management, invoicing, tax integrations (VeriFactu), and a catalogue of
-          apps of its own that the customer turns on in their Hub: the free apps come with
-          every plan, and the premium apps are included in the paid plans.
+          apps of its own that the customer turns on in their Hub: every plan includes all
+          the apps.
           {% endblocktrans %}
         </p>
         <p>
@@ -84,7 +86,7 @@
           <h3>{% trans "3.1 Customers in the United Kingdom" %}</h3>
           <p>
             {% blocktrans trimmed %}
-            In the United Kingdom, ERPlora sells its paid plans and modules only to businesses, for
+            In the United Kingdom, ERPlora sells its paid plans only to businesses, for
             use in the course of their business. By
             subscribing to a paid service with a billing address in the United Kingdom, the customer
             declares that it acts as a business and not as a consumer.

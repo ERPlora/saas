@@ -246,8 +246,12 @@ test('PUBLIC-G26 G10 G11 the store lists the apps by section, filters them and t
   await captureEverywhere(page, '/apps/', 'PUBLIC-G26', async (p) => {
     await expect(p.locator(`a[href="/apps/${APP}/"]`).first()).toBeVisible();
   });
-  await page.locator('.ep-store-filters__chip').filter({ hasText: 'Premium' }).click();
-  await expect(page).toHaveURL(/premium=1/);
+  // Every plan includes all the apps (ronda 2026-10-24b, PLAN §32): no «Free» / «Premium» filter, every card says so.
+  await expect(page.locator('nav[aria-label="Filter by access"]')).toHaveCount(0);
+  await expect(page.locator(`a[href="/apps/${APP}/"] .ep-product-card__price`).first()).toHaveText('Included in every plan');
+  expect(await page.evaluate(() => document.body.innerText)).not.toMatch(/premium/i);
+  await page.locator('nav[aria-label="Filter by category"] .ep-store-filters__chip').nth(1).click();
+  await expect(page).toHaveURL(/category=/);
   await page.goto('/apps/?q=zzzz-nothing');
   await expect(page.getByText('No app matches your search.')).toBeVisible();
 

@@ -134,21 +134,18 @@ class TestIndustrySoftwareApplication:
 
 
 class TestAppSoftwareApplication:
-    """One block per app page (spec §8.2, decision 17): a free app is offered at 0; a premium one at
-    the monthly price of the cheapest paid plan; no rating (there are no reviews)."""
+    """One block per app page (spec §8.2): every app is offered at 0 on its own page, because every
+    plan includes all the apps, the Free one too (ronda 2026-10-24b, PLAN §32; before, decision 17
+    priced a premium app at the cheapest paid plan); no rating (there are no reviews)."""
 
-    def _block(self, **overrides):
-        values = {
-            "name": "Inventory",
-            "description": "Stock and warehouses.",
-            "url": f"{BASE}/apps/inventory/",
-            "premium": False,
-            "cheapest_paid_price": Decimal("19.00"),
-        }
-        values.update(overrides)
-        return app_software_application(BASE, **values)
+    def _block(self):
+        return app_software_application(
+            name="Inventory",
+            description="Stock and warehouses.",
+            url=f"{BASE}/apps/inventory/",
+        )
 
-    def test_a_free_app_is_offered_at_zero(self):
+    def test_every_app_is_offered_at_zero_on_its_own_page(self):
         block = self._block()
 
         assert block["@type"] == "SoftwareApplication"
@@ -156,15 +153,7 @@ class TestAppSoftwareApplication:
         assert block["url"] == f"{BASE}/apps/inventory/"
         assert block["offers"]["price"] == "0"
         assert block["offers"]["priceCurrency"] == "EUR"
-
-    def test_a_premium_app_is_offered_at_the_cheapest_paid_plan(self):
-        offers = self._block(premium=True)["offers"]
-
-        assert offers["price"] == "19.00"
-        assert offers["url"] == f"{BASE}/pricing/"
-
-    def test_a_premium_app_without_a_paid_plan_has_no_offer(self):
-        assert "offers" not in self._block(premium=True, cheapest_paid_price=None)
+        assert block["offers"]["url"] == f"{BASE}/apps/inventory/"
 
     def test_there_is_no_rating(self):
         assert "aggregateRating" not in self._block()
@@ -180,9 +169,7 @@ class TestOperatingSystems:
         "industry": lambda: industry_software_application(
             BASE, name="n", url="u", description="d", cheapest_price=None
         ),
-        "app": lambda: app_software_application(
-            BASE, name="n", description="d", url="u", premium=False, cheapest_paid_price=None
-        ),
+        "app": lambda: app_software_application(name="n", description="d", url="u"),
     }
 
     def test_every_block_names_the_systems_we_distribute(self):

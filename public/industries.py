@@ -7,8 +7,9 @@ Ported from ERPlora/saas ``apps/public/industries/views.py`` (origin/develop c5c
   ``apps.app.list``, with ``run_operation_sync`` as ``base/spa.py`` does (plan §3.m, spec §5.1);
 * a page's apps are the listed apps of its business type's ``vertical``, in one list: what a business
   of that vertical comes with (decision 13). Without a vertical, no block (spec §5.3);
-* the copy says «apps» and «catalogue» where it said «modules» and «marketplace», and a premium app
-  is «included in the paid plans» (decision 17): there is no fee per app;
+* the copy says «apps» and «catalogue» where it said «modules» and «marketplace», and every app is
+  «included in every plan» (ronda 2026-10-24b, PLAN §32; before, decision 17 put the premium apps in
+  the paid plans): there is no fee per app and no tier of apps;
 * the taxonomy has no catch-all «Other» row any more, so every page names its business type;
 * the taxonomy's icons are data: one that is not baked into the public icons paints the default.
 
@@ -218,8 +219,8 @@ def faq_items(subject: str, apps: list[dict[str, Any]], plan) -> list[dict[str, 
         if plan.price_monthly:
             price_answer = _(
                 "Plans start at €%(price)s per month per hub, VAT excluded. One subscription "
-                "covers the whole business — every device and every user in it — and the premium "
-                "apps are included in the paid plans; you never pay per transaction."
+                "covers the whole business — every device and every user in it — and every plan "
+                "includes all the apps; you never pay per transaction."
             ) % {"price": f"{plan.price_monthly:.2f}"}
         else:
             price_answer = _(
@@ -298,7 +299,8 @@ def _app_card(app) -> dict[str, Any]:
         # Cleaned with nh3 by apps.app.list (spec §8.4): safe to paint inline.
         "icon_svg": mark_safe(app.icon_svg),
         "category": Category(app.category).label if app.category else "",
-        "badge": _("Included in the paid plans") if app.premium else _("Free"),
+        # Every plan includes all the apps (PLAN §32): the flag ``premium`` is reserved, unused today.
+        "access_label": _("Included in every plan"),
     }
 
 

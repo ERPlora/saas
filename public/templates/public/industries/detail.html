@@ -40,7 +40,7 @@
       <div class="ep-grid-cards">
         {% for app in apps %}
         {% url 'public:store_detail' app.id as app_url %}
-        {% include "public/components/product_card.html" with name=app.name category=app.category badge=app.badge href=app_url icon_svg=app.icon_svg body=app.summary %}
+        {% include "public/components/product_card.html" with name=app.name category=app.category price=app.access_label href=app_url icon_svg=app.icon_svg body=app.summary %}
         {% endfor %}
       </div>
     </div>

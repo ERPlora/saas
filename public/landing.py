@@ -7,9 +7,10 @@ Port of ERPlora/saas ``apps/public/landing/views.py`` (origin/develop c5ca8ca); 
 * no model: the plans come from ``hubs.plan.list`` (``public.pricing``) and the apps from
   ``apps.app.list`` (plan §3.m, spec §5.1), with ``run_operation_sync`` as ``base/spa.py`` does;
 * the six featured apps and the twelve chips are the first ``listed`` apps by section and name (the
-  order of ``apps.app.list``; ``is_featured`` and the downloads do not exist any more), counted free
-  or ``premium`` (decision 17: a premium app is included in the paid plans). Without a listed app
-  the apps blocks are omitted (spec §5.3);
+  order of ``apps.app.list``; ``is_featured`` and the downloads do not exist any more), counted as one
+  catalogue: every plan includes all the apps (ronda 2026-10-24b, PLAN §32; before, decision 17 put
+  the premium apps in the paid plans), so the home sells no tier of apps. Without a listed app the
+  apps blocks are omitted (spec §5.3);
 * the contact mail is rendered from ``public/templates/public/email/`` and sent to ``SUPPORT_EMAIL``
   (plan §3.o) with the visitor as «Reply-To»; its limit per address reads the address the load balancer saw;
   a refused or failed message comes back typed (PUBLIC-G39), and a page that links the form may name its
@@ -52,8 +53,6 @@ logger = logging.getLogger(__name__)
 #: The featured cards and the chips of the home (spec §8.1).
 FEATURED_COUNT = 6
 CHIP_COUNT = 12
-#: How many premium app names the ecosystem section quotes.
-PREMIUM_EXAMPLES = 5
 #: The anchor of the contact section, on the home and on /contact/.
 CONTACT_ANCHOR = "#contacto"
 #: What the limiter gets when no address can be read: never the source of a real connection.
@@ -130,7 +129,6 @@ def _app_card(app) -> dict[str, Any]:
         "icon_svg": mark_safe(app.icon_svg),
         "category": app.category or "",
         "category_label": category.label if category else "",
-        "premium": app.premium,
         "url": reverse("public:store_detail", args=[app.id]),
         "store_url": (
             f"{reverse('public:store')}?category={app.category}"
@@ -166,7 +164,6 @@ def home(request: HttpRequest) -> HttpResponse:
     plans = pricing.plans_on_sale(request)
     entry = pricing.cheapest(plans)
     apps = [_app_card(app) for app in run_operation_sync(request, "apps.app.list").apps]
-    premium = [app for app in apps if app["premium"]]
     return render(
         request,
         "public/landing/home.html",
@@ -181,9 +178,6 @@ def home(request: HttpRequest) -> HttpResponse:
             ],
             "chip_apps": apps[:CHIP_COUNT],
             "total_apps": len(apps),
-            "free_apps": len(apps) - len(premium),
-            "premium_apps": len(premium),
-            "premium_app_examples": [app["name"] for app in premium[:PREMIUM_EXAMPLES]],
             "contact_trial_note": contact_trial_note(pricing.trial_days(plans)),
             **contact_form_context(request),
             "typical_stack": [

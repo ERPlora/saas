@@ -26,13 +26,7 @@
       <h1 class="ep-hero__title">{{ app.name }}</h1>
       <div class="ep-hero__subtitle"><p>{{ app.summary }}</p></div>
       <div class="ep-store-hero__access">
-        {% if app.premium %}
-          {% trans "Premium" as premium_label %}
-          {% include "public/components/status_pill.html" with tone="primary" label=premium_label icon="diamond-outline" %}
-          <span class="ep-store-hero__access-note">{{ app.access_label }}</span>
-        {% else %}
-          {% include "public/components/status_pill.html" with tone="success" label=app.access_label icon="checkmark-circle-outline" %}
-        {% endif %}
+        {% include "public/components/status_pill.html" with tone="success" label=app.access_label icon="checkmark-circle-outline" %}
       </div>
       <div class="ep-hero__actions">
         {% if user.is_authenticated %}

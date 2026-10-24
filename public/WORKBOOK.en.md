@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:3ec49c450701e045b9df6edf88c31d28dd83166de338fd7746c846746b9c79c2 -->
+<!-- generated from WORKBOOK.md sha256:de9b5c33d632735301d8f5dbe55ca748793167268639add5d595cf29b9bcc89f -->
 
 ## What it is for and who it is for
 
@@ -456,12 +456,12 @@ Status: done
 Actor: visitor
 Screen: App store
 Steps:
-1. "Apps" in the menu opens the store: the published apps grouped by section (sales, catalogue, people, restaurant, organisation), each with its icon, its summary and whether it is "Free" or "Included in the paid plans".
-2. "Search apps" searches the name and the summary; the section filters (with how many apps each has) and the access filters (free or premium) combine with the search.
+1. "Apps" in the menu opens the store: the published apps grouped by section (sales, catalogue, people, restaurant, organisation), each with its icon, its summary and "Included in every plan".
+2. "Search apps" searches the name and the summary; the section filters (with how many apps each has) combine with the search.
 3. The old addresses of the marketplace, the solutions and the modules lead to the store for good.
 In: the published catalogue.
 Out: nothing saved.
-If it fails: without published apps it says "No apps published yet." and is not indexed; if nothing matches, "No app matches your search.", with the way to clear the filters. No app has a price of its own: the premium ones come with the paid plans.
+If it fails: without published apps it says "No apps published yet." and is not indexed; if nothing matches, "No app matches your search.", with the way to clear the filters. No app has a price of its own: every plan includes all the apps.
 Involved: apps (the catalogue)
 
 ### PUBLIC-F23 See an app's page

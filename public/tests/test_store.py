@@ -17,11 +17,16 @@ Ported and adapted from ERPlora/saas (origin/develop c5ca8ca):
   publication states: an unlisted app is a 404 (spec §9, ``test_module_detail_serves_a_tombstone_
   not_a_hole.py`` is not ported).
 - ``tests/unit/modules/test_module_detail_structured_data.py`` (18), to the JSON-LD of spec §8.2:
-  ``0`` for a free app; a premium one at the cheapest paid plan's monthly price (L7), none without one;
+  every app at ``0``, the one flagged ``premium`` too: every plan includes all the apps, the Free one
+  as well (ronda 2026-10-24b, PLAN §32; before, decision 17 priced a premium app at the cheapest paid
+  plan, L7);
   tiers, intervals, one-time and pay-as-you-go prices are gone with ``ModuleTier``; the author is
   always ERPlora (every app is ours); the block stays valid JSON.
 - ``tests/unit/modules/test_required_modules_card.py`` (4): the «Required apps» card, one linked
   ``ion-item`` per listed app with its icon and its translated access pill.
+- The store sells no tier of apps (PLAN §32): every card and page says «Included in every plan», with
+  no «Premium» badge and no access filter (``?premium=`` is ignored like any filter it does not
+  understand); the ``premium`` flag stays reserved, unused today, for the panel's Store.
 - ``tests/unit/modules/test_marketplace_and_solutions_es_titles.py`` (5): without the solutions
   half (``/solutions/`` is a 301 now). There is no «Related Modules» section any more, so the title
   is checked against its own Spanish, not against that one.
@@ -152,18 +157,19 @@ def test_the_store_lists_each_listed_app_as_a_card(client, catalog):
     assert "Sales, payments and tax" in card  # its category
     assert '<h3 class="ep-product-card__name">Invoices</h3>' in card
     assert "Bill your customers." in card
-    assert '<span class="ep-product-card__price">Free</span>' in card
+    assert '<span class="ep-product-card__price">Included in every plan</span>' in card
     assert 'class="ep-product-card__badge"' not in card
 
 
-def test_a_premium_app_carries_the_premium_badge_and_is_included_in_the_paid_plans(
-    client, catalog
-):
-    """Decision 17: a premium app is not sold on its own, it comes with the paid plans."""
+def test_an_app_flagged_premium_is_shown_like_any_other(client, catalog):
+    """Every plan includes all the apps (PLAN §32): no «Premium» badge, no «Included in the paid
+    plans»; the flag is reserved, unused today."""
     card = card_of(get_html(client, "/apps/"), "whatsapp_inbox")
 
-    assert '<span class="ep-product-card__badge">Premium</span>' in card
-    assert "Included in the paid plans" in card
+    assert '<span class="ep-product-card__price">Included in every plan</span>' in card
+    assert 'class="ep-product-card__badge"' not in card
+    assert "premium" not in card.lower()
+    assert "paid plans" not in card
 
 
 def test_an_unlisted_app_is_never_in_the_store(client, catalog):
@@ -193,8 +199,11 @@ def test_a_spanish_visitor_reads_the_store_in_spanish(client, catalog):
     assert section_titles(html)[0] == "Venta, cobro y fiscalidad 1"
     card = card_of(html, "invoice")
     assert "Facturas" in card and "Factura a tus clientes." in card
-    assert '<span class="ep-product-card__price">Gratis</span>' in card
-    assert "Incluida en los planes de pago" in card_of(html, "whatsapp_inbox")
+    assert '<span class="ep-product-card__price">Incluida en todos los planes</span>' in card
+    assert (
+        '<span class="ep-product-card__price">Incluida en todos los planes</span>'
+        in card_of(html, "whatsapp_inbox")
+    )
 
 
 def test_the_search_finds_apps_by_name_and_summary(client, catalog):
@@ -209,18 +218,16 @@ def test_the_category_filter(client, catalog):
     assert section_titles(html) == ["Restaurant 1"]
 
 
-@pytest.mark.parametrize(
-    ("premium", "expected"),
-    [("1", ["whatsapp_inbox"]), ("0", ["invoice", "inventory", "tables"])],
-)
-def test_the_premium_filter(client, catalog, premium, expected):
-    assert card_ids(get_html(client, f"/apps/?premium={premium}")) == expected
+def test_there_is_no_access_filter(client, catalog):
+    """The chips «Free» and «Premium» sold a tier of apps (PLAN §32): only the sections filter."""
+    html = get_html(client, "/apps/")
+
+    assert 'aria-label="Filter by access"' not in html
+    assert "premium" not in html.lower()
 
 
 def test_the_filters_combine(client, catalog):
-    assert card_ids(get_html(client, "/apps/?q=s&category=catalog&premium=0")) == [
-        "inventory"
-    ]
+    assert card_ids(get_html(client, "/apps/?q=s&category=catalog")) == ["inventory"]
 
 
 @pytest.mark.parametrize(
@@ -228,6 +235,8 @@ def test_the_filters_combine(client, catalog):
     [
         "?category=kitchen",
         "?premium=maybe",
+        "?premium=1",
+        "?premium=0",
         "?category=&premium=",
         "?q=%20",
         "?q=%00",
@@ -249,16 +258,14 @@ def test_a_nul_inside_the_search_is_dropped_not_a_500(client, catalog):
     assert card_ids(get_html(client, "/apps/?q=st%00ock")) == ["inventory"]
 
 
-def test_the_filter_links_keep_the_other_filters(client, catalog):
+def test_the_filter_links_keep_the_search(client, catalog):
     html = get_html(client, "/apps/?q=s&premium=0")
 
     category_bar = html[html.index('aria-label="Filter by category"') :]
-    assert 'href="/apps/?q=s&amp;category=catalog&amp;premium=0"' in category_bar
-    assert 'href="/apps/?q=s&amp;premium=0"' in category_bar  # «All»
-    access_bar = html[html.index('aria-label="Filter by access"') :]
-    # The active access filter turns off; the other one replaces it.
-    assert 'href="/apps/?q=s"' in access_bar
-    assert 'href="/apps/?q=s&amp;premium=1"' in access_bar
+    assert 'href="/apps/?q=s&amp;category=catalog"' in category_bar
+    assert 'href="/apps/?q=s"' in category_bar  # «All»
+    filters = html[html.index('class="ep-store-search"') : html.index("</section>", html.index('class="ep-store-search"'))]
+    assert "premium" not in filters, "an old ?premium= is dropped, never carried on by the filters"
 
 
 def test_the_active_filters_are_marked_and_the_search_keeps_its_text(client, catalog):
@@ -340,7 +347,7 @@ def test_the_empty_store_in_spanish(client):
 
 
 def test_filters_without_results_offer_to_clear_them(client, catalog):
-    html = get_html(client, "/apps/?q=zzz-nothing&premium=1")
+    html = get_html(client, "/apps/?q=zzz-nothing")
 
     assert cards(html) == []
     assert "No app matches your search." in html
@@ -373,16 +380,18 @@ def test_the_app_page_shows_its_overview(client, catalog):
     assert re.search(r'aria-current="page"[^>]*>\s*Overview', html)
     details = text_of(html[html.index("Details") :])
     assert "Category Sales, payments and tax" in details
-    assert "Access Free" in details
+    assert "Access Included in every plan" in details
 
 
-def test_a_premium_app_page_says_it_comes_with_the_paid_plans(client, catalog):
+def test_an_app_flagged_premium_has_the_page_of_any_other(client, catalog):
+    """Every plan includes all the apps (PLAN §32): no «Premium» pill, no «Included in the paid plans»."""
     html = get_html(client, "/apps/whatsapp_inbox/")
 
-    assert "Access Included in the paid plans" in text_of(html[html.index("Details") :])
-    assert "Premium" in hero_of(html)
+    assert "Access Included in every plan" in text_of(html[html.index("Details") :])
+    assert "Included in every plan" in text_of(hero_of(html))
+    assert "premium" not in html.lower()
     with translation.override("es"):
-        assert gettext("Included in the paid plans") == "Incluida en los planes de pago"
+        assert gettext("Included in every plan") == "Incluida en todos los planes"
 
 
 def test_the_app_page_names_the_business_types_it_is_built_for(client, catalog):
@@ -496,7 +505,7 @@ def test_each_listed_required_app_is_a_linked_row_with_icon_name_and_access(
         == "Stock"
     )
     assert re.search(r'<span slot="end">\s*<span class="ep-status-pill', inventory)
-    assert "Free" in text_of(inventory)
+    assert "Included in every plan" in text_of(inventory)
     # A required app that is not listed: its name, and no page to link to.
     assert "href" not in loyalty
     assert "Loyalty" in text_of(loyalty)
@@ -504,7 +513,10 @@ def test_each_listed_required_app_is_a_linked_row_with_icon_name_and_access(
 
 @pytest.mark.parametrize(
     ("headers", "title", "free"),
-    [({}, "Required apps", "Free"), (SPANISH, "Apps necesarias", "Gratis")],
+    [
+        ({}, "Required apps", "Included in every plan"),
+        (SPANISH, "Apps necesarias", "Incluida en todos los planes"),
+    ],
 )
 def test_the_required_apps_card_is_translated(client, catalog, headers, title, free):
     card = required_card(get_html(client, "/apps/tables/", **headers))
@@ -556,42 +568,23 @@ def test_a_free_app_is_offered_at_zero_on_its_page(client, catalog):
     }
 
 
-def test_a_premium_app_is_offered_at_the_cheapest_paid_plan(no_plans, client, catalog):
-    """Decision 17: a premium app is included in the paid plans, so its offer is the monthly price
-    of the cheapest paid plan a visitor can sign up for (L7, through hubs.plan.list): never the Free
-    plan, an upgrade-only one, an internal one or one off sale."""
-    from decimal import Decimal
-
-    from hubs.models import Plan
-
-    for slug, price, extra in (
-        ("free", "0", {}),
-        ("starter", "19.99", {}),
-        ("standard", "39.99", {}),
-        ("pro", "9.00", {"upgrade_only": True}),
-        ("payment-test", "1.00", {"internal_only": True}),
-        ("retired", "2.00", {"is_active": False}),
-    ):
-        Plan.objects.create(slug=slug, name_en=slug.title(), price_monthly=Decimal(price), **extra)
-
-    assert application(client, "whatsapp_inbox")["offers"] == {
-        "@type": "Offer",
-        "price": "19.99",
-        "priceCurrency": "EUR",
-        "url": "https://testserver/pricing/",
-        "availability": "https://schema.org/InStock",
-    }
-
-
-def test_a_premium_app_without_a_paid_plan_on_sale_has_no_offer(no_plans, client, catalog):
-    """Advertising a price we do not charge is worse than advertising none."""
+def test_an_app_flagged_premium_is_offered_at_zero_too(no_plans, client, catalog):
+    """Every plan includes all the apps, the Free one too (PLAN §32): the offer was the monthly price
+    of the cheapest paid plan (decision 17, L7), as if the app were sold with it."""
     from decimal import Decimal
 
     from hubs.models import Plan
 
     Plan.objects.create(slug="free", name_en="Free", price_monthly=Decimal("0"))
+    Plan.objects.create(slug="starter", name_en="Starter", price_monthly=Decimal("19.99"))
 
-    assert "offers" not in application(client, "whatsapp_inbox")
+    assert application(client, "whatsapp_inbox")["offers"] == {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "EUR",
+        "url": "https://testserver/apps/whatsapp_inbox/",
+        "availability": "https://schema.org/InStock",
+    }
 
 
 def test_the_block_names_erplora_as_the_author_and_has_no_rating(client, catalog):
