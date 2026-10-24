@@ -33,7 +33,7 @@ from live.slugs import hub_slug_validator
 #: The versions of the terms (``/legal/terms/``) and of the privacy policy (``/legal/privacy/``) an account accepts
 #: today: the «Last updated» date each page shows (``tests/test_terms.py`` keeps them equal). Update the page and
 #: its date here together: every account then accepts the new text at its next sign-in.
-TERMS_VERSION = date(2026, 10, 13)
+TERMS_VERSION = date(2026, 10, 25)
 PRIVACY_VERSION = date(2026, 10, 21)
 
 

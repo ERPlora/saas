@@ -841,6 +841,33 @@ def test_the_uk_clause_is_limited_to_paid_services(client):
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("language", "sells", "old"),
+    [
+        (
+            "en",
+            "In the United Kingdom, ERPlora sells its paid plans only to businesses, for use in the "
+            "course of their business.",
+            "plans and modules",
+        ),
+        (
+            "es",
+            "En Reino Unido, ERPlora vende sus planes de pago solo a empresas y profesionales, para "
+            "el ejercicio de su actividad.",
+            "planes y módulos",
+        ),
+    ],
+)
+def test_the_uk_clause_sells_plans_not_modules(client, language, sells, old):
+    """Our modules are not sold on their own: every plan includes all the apps (ronda 2026-10-24b,
+    PLAN §32). The clause said «its paid plans and modules»."""
+    clause = uk_clause(terms_html(client, language))
+
+    assert sells in clause
+    assert old not in clause
+
+
+@pytest.mark.django_db
 def test_the_uk_clause_is_translated_into_spanish(client):
     english = uk_clause(terms_html(client))
     spanish_clause = uk_clause(terms_html(client, "es"))
@@ -852,13 +879,16 @@ def test_the_uk_clause_is_translated_into_spanish(client):
 
 @pytest.mark.django_db
 def test_the_terms_date_moved_with_the_last_change(client):
-    """The two marketplace sentences changed (L7): the page says when."""
+    """The page says when its text last changed: the marketplace sentences (L7), then §1 and §3.1,
+    every app on every plan and no module sold on its own (ronda 2026-10-24b, PLAN §32)."""
     html = terms_html(client)
+    spanish = terms_html(client, "es")
 
-    assert "August 8, 2026" not in html
-    assert "October 1, 2026" not in html
-    assert "October 13, 2026" in html
-    assert "13 de octubre de 2026" in terms_html(client, "es")
+    for old in ("August 8, 2026", "October 1, 2026", "October 13, 2026"):
+        assert old not in html, old
+    assert "<strong>Last updated:</strong> October 25, 2026" in html
+    assert "13 de octubre de 2026" not in spanish
+    assert "25 de octubre de 2026" in spanish
 
 
 @pytest.mark.django_db

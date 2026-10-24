@@ -2301,8 +2301,8 @@ msgid "Process transactions in milliseconds, with live updates on every device."
 msgstr "Procesa transacciones en milisegundos, con actualizaciones en vivo en todos los dispositivos."
 
 #: templates/public/legal/terms.html
-msgid "October 13, 2026"
-msgstr "13 de octubre de 2026"
+msgid "October 25, 2026"
+msgstr "25 de octubre de 2026"
 
 #: templates/public/legal/privacy.html
 msgid "October 21, 2026"
@@ -2909,8 +2909,8 @@ msgstr "Un Hub que permanezca suspendido %(days)s días se elimina, junto con su
 msgid "3.1 Customers in the United Kingdom"
 msgstr "3.1 Clientes en Reino Unido"
 
-msgid "In the United Kingdom, ERPlora sells its paid plans and modules only to businesses, for use in the course of their business. By subscribing to a paid service with a billing address in the United Kingdom, the customer declares that it acts as a business and not as a consumer."
-msgstr "En Reino Unido, ERPlora vende sus planes y módulos de pago solo a empresas y profesionales, para el ejercicio de su actividad. Al contratar un servicio de pago con dirección de facturación en Reino Unido, el cliente declara que actúa como empresa o profesional y no como consumidor."
+msgid "In the United Kingdom, ERPlora sells its paid plans only to businesses, for use in the course of their business. By subscribing to a paid service with a billing address in the United Kingdom, the customer declares that it acts as a business and not as a consumer."
+msgstr "En Reino Unido, ERPlora vende sus planes de pago solo a empresas y profesionales, para el ejercicio de su actividad. Al contratar un servicio de pago con dirección de facturación en Reino Unido, el cliente declara que actúa como empresa o profesional y no como consumidor."
 
 msgid "A customer registered for VAT in the United Kingdom must provide its UK VAT registration number (for example GB123456782) before paying. ERPlora may check it against the register of HM Revenue &amp; Customs (HMRC)."
 msgstr "El cliente registrado a efectos del IVA en el Reino Unido debe indicar su número de IVA británico (por ejemplo, GB123456782) antes de pagar. ERPlora puede comprobarlo en el registro de la administración tributaria británica (HMRC)."
