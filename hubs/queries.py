@@ -1003,7 +1003,11 @@ SNAPSHOT_PLAN_FIELDS = (
 def _snapshot_plan(plan: Plan | None) -> dict[str, Any] | None:
     if plan is None:
         return None
-    return {field: getattr(plan, field) for field in SNAPSHOT_PLAN_FIELDS}
+    # The space for files its tier includes (the Hub's «Space», BASE-F52 and F53): from ``included_level``, already
+    # a field above, so a change of tier owes the newer snapshot.
+    return {field: getattr(plan, field) for field in SNAPSHOT_PLAN_FIELDS} | {
+        "max_storage_bytes": storage_limit_bytes(plan)
+    }
 
 
 # --- Members and invitations ----------------------------------------------------------------------
