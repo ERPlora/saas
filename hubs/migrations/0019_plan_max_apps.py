@@ -5,8 +5,9 @@ Every module is on every plan; a plan caps only the modules the business picks, 
 
 The column is new, so every row already in production reads 0 after ``AddField``; ``RunPython`` gives the plans of
 the catalogue their figure, frozen here as literals (a migration is history). Free 15 and each plan up doubles the one
-below: never under what a business born on the biggest vertical template chooses (the restaurant's 12 roots on
-2026-10-24, with ``tip`` and ``website`` on their way) plus a margin. ``payment-test`` reads as Starter; the
+below: never under what a business born on the biggest vertical template chooses (its roots, the ones no other module
+of it requires: the restaurant's 13 on the Hub's main of 2026-10-24, ``website`` included, and ``tip`` on its way)
+plus a margin. ``payment-test`` reads as Starter; the
 upgrade-only tiers (``pro``, ``enterprise``, ``max``) keep 0, no cap. Only a row that exists is written, and a plan
 staff added keeps 0. The column has a database default, so a row the code before it writes without the column is valid
 during a deploy.

@@ -432,9 +432,10 @@ EXPECTED_MAX_APPS = {
     "max": 0,
     PAYMENT_TEST: 30,
 }
-#: The modules a business on the biggest vertical template chooses (its roots: the restaurant's 12 on 2026-10-24) and
-#: the two on their way into it (``tip``, ``website``): no plan on sale caps below them.
-BIGGEST_TEMPLATE_ROOTS = 12 + 2
+#: The modules a business on the biggest vertical template chooses (its roots, the ones no other module of it
+#: requires: the restaurant's 13 on the Hub's main of 2026-10-24, ``website`` included) and the one on its way into it
+#: (``tip``): no plan on sale caps below them.
+BIGGEST_TEMPLATE_ROOTS = 13 + 1
 
 
 def test_each_plan_caps_the_modules_a_business_chooses_to_turn_on(catalogue):
