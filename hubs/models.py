@@ -89,10 +89,10 @@ class PlanQuerySet(models.QuerySet):
 class Plan(TranslatedFields):
     """A subscription plan of a hub. Prices are NET, VAT excluded (saas#1098).
 
-    One subscription buys one hub and everything inside it: every location, device and user
-    (saas#1760). Free is permanent and needs no card (ADR-0154) and is the way in: no plan carries a trial
-    since 2026-10-15 (``trial_period_days`` stays, dormant, for staff to use); Pro, Enterprise and Max are
-    upgrade-only; ``payment-test`` is internal. The plans live only in the database and staff keep them in the
+    One subscription buys one hub and everything inside it: every device and user (saas#1760; multi-location
+    comes from Pro and is charged per location, PLAN §32). Free is permanent and needs no card (ADR-0154) and is
+    the way in: no plan carries a trial since 2026-10-15 (``trial_period_days`` stays, dormant, for staff to use);
+    Pro, Enterprise and Max are upgrade-only; ``payment-test`` is internal. The plans live only in the database and staff keep them in the
     admin: migration ``hubs/0013`` seeds them, and no deploy writes them again.
     """
 

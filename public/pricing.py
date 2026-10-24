@@ -11,13 +11,19 @@ Port of ERPlora/saas ``apps/public/pricing/views.py`` (origin/develop c5ca8ca). 
   ``Plan.objects.signup_trial_days()``: an upgrade grants none (#809);
 * the period label (``{% plan_period %}`` of the old ``money`` tags, saas#1836) is
   :func:`plan_period`, one definition for every selling screen;
-* a premium app is included in the paid plans (decision 17): the FAQ no longer charges «per
-  activated module»;
+* every plan includes every module (ronda 2026-10-24b, PLAN §32; before, decision 17 put the premium apps in the
+  paid plans): the FAQ charges nothing «per activated module», sells no tier of apps, and a downgrade turns nothing
+  off;
 * the storage answer names the host: AWS (Ioan, 2026-10-13), Ireland region (Ioan, 2026-10-14);
-* three plans on sale at sign-up (Ioan, 2026-10-15): the page lists only the plans a visitor can sign up for
-  (an ``upgrade_only`` row — Pro, Enterprise and Max, kept for the Store's upgrades — stays off the page and
-  answers 404 on its detail), and nothing above them: the infrastructure offer by contact that sat there
-  went in the ronda 2026-10-24b (PLAN-SAAS §9), the plans no longer sell infrastructure;
+* three plans on sale at sign-up (Ioan, 2026-10-15): the cards with a sign-up button are only the plans a visitor
+  can sign up for; the infrastructure offer by contact that sat above them went in the ronda 2026-10-24b (PLAN-SAAS
+  §9), the plans no longer sell infrastructure;
+* the upgrade-only plans are shown too (Ioan, 2026-10-24, PLAN-SAAS §9; corrects 2026-10-15), so a visitor knows they
+  exist: an ``upgrade_only`` row — Pro, Enterprise and Max — is a card under «More capacity» and a row of the table,
+  read from the database like the others, marked «Available once you are on Starter» instead of a sign-up button.
+  The mechanism does not move: the Store offers them to a business that already pays, the checkout from Free refuses
+  them (``billing.plan_upgrade_only``) and their detail answers 404;
+* the sections alternate their surface whatever the catalogue shows (:func:`section_surfaces`);
 * the assistant and WhatsApp messages a month each plan includes (PLAN-SAAS §3.6, 2026-10-15) are a line of
   every card and a column of the table, in plain words (:func:`messages_a_month`); a quota of 0 is none.
 """
@@ -242,9 +248,9 @@ def faq_items(days: TrialDays | None = None) -> list[dict[str, str]]:
             "key": "switch",
             "question": _("Can I switch plans at any time?"),
             "answer": _(
-                "Yes. The change is immediate and the difference is prorated. There's no penalty "
-                "or commitment period. Downgrading is also free — premium apps are turned off but "
-                "their data is retained for 90 days."
+                "Yes. Moving up is immediate and the difference is prorated; moving down takes effect "
+                "at the end of the period you have already paid for. There's no penalty or commitment "
+                "period, and moving down turns nothing off: your apps and their data stay as they are."
             ),
         },
         {
@@ -286,10 +292,10 @@ def faq_items(days: TrialDays | None = None) -> list[dict[str, str]]:
             "key": "pricing",
             "question": _("Do you charge per app or per usage?"),
             "answer": _(
-                "Neither. You pay one fixed price per hub, the price of its plan. The free apps "
-                "come with every plan and the premium apps are included in the paid plans, so "
-                "turning an app on or off never changes your bill. We don't charge by usage — no "
-                "per-transaction or metered fees — so your bill stays predictable every month."
+                "Neither. You pay one fixed price per hub, the price of its plan. Every plan includes "
+                "all the apps, so turning an app on or off never changes your bill. We don't "
+                "charge by usage — no per-transaction or metered fees — so your bill stays "
+                "predictable every month."
             ),
         },
         {
@@ -313,22 +319,40 @@ def faq_items(days: TrialDays | None = None) -> list[dict[str, str]]:
 
 
 def signable_cards(plans) -> list[dict[str, Any]]:
-    """The plans a visitor can sign up for, as cards: an ``upgrade_only`` row is not on the public web."""
+    """The plans a visitor can sign up for, as cards with a sign-up button."""
     return [plan_card(plan) for plan in plans.plans if not plan.upgrade_only]
+
+
+def upgrade_cards(plans) -> list[dict[str, Any]]:
+    """The ``upgrade_only`` plans on sale (active, not internal), as cards: shown, never signed up on."""
+    return [plan_card(plan) for plan in plans.plans if plan.upgrade_only]
+
+
+def section_surfaces(shown: list[str]) -> dict[str, bool]:
+    """Which of the sections shown, in page order, paint on the soft surface: every other one, the first plain (the
+    hero above it is soft). Read from what the page shows, so a section that is not there never leaves two of the same
+    surface side by side."""
+    return {name: index % 2 == 1 for index, name in enumerate(shown)}
 
 
 @require_safe
 def index(request: HttpRequest) -> HttpResponse:
-    """The plans a visitor can sign up for, as cards, the table that compares them and the FAQ."""
+    """The plans a visitor can sign up for, as cards, the upgrade-only ones under «More capacity», the table that
+    compares them all and the FAQ."""
     plans = plans_on_sale(request)
     days = trial_days(plans)
     faq = faq_items(days)
     entry = cheapest(plans)
+    signable = signable_cards(plans)
+    upgrades = upgrade_cards(plans) if signable else []
+    shown = ["plans", *(["upgrades"] if upgrades else []), *(["compare"] if signable else []), "competitors", "faq"]
     return render(
         request,
         "public/pricing/index.html",
         {
-            "plans_main": signable_cards(plans),
+            "plans_main": signable,
+            "plans_upgrade": upgrades,
+            "soft": section_surfaces(shown),
             "cheapest_plan": plan_card(entry) if entry else None,
             "trial_note": trial_note(days),
             "months_free": common_months_free(plans),

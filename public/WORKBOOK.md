@@ -205,12 +205,13 @@ Estado: hecho
 Actor: visitante
 Pantalla: Planes y precios
 Pasos:
-1. La persona abre «Precios» y ve «Empieza gratis. Escala cuando lo necesites.» y una tarjeta por plan con el que se puede empezar (Gratis, Starter y Standard), con el precio mensual por hub, sus características y los mensajes al mes del asistente y de WhatsApp.
+1. La persona abre «Precios» y ve «Empieza gratis. Escala cuando lo necesites.», que todos los planes incluyen todas las apps, y una tarjeta por plan con el que se puede empezar (Gratis, Starter y Standard), con el precio mensual por hub, sus características y los mensajes al mes del asistente y de WhatsApp.
 2. Si el plan tiene precio anual, la tarjeta dice el precio del año y los meses que ahorra («≈ 299,90 €/año · 2 meses gratis»), calculados de los dos precios; si todos los planes de pago ahorran lo mismo, la cabecera lo dice una vez («Paga el año y llévate 2 meses gratis.»).
-3. Más abajo, la tabla de lo incluido en cada plan, las comparativas con otros ERP y las preguntas frecuentes; por encima de Standard no ofrece nada más.
-Entra: los planes a la venta (los de mejora, como Pro, Enterprise y Max, no se pintan).
+3. Más abajo, «Más capacidad»: los planes de mejora (hoy Pro, Enterprise y Max), cada uno con su precio mensual y anual, su descripción y sus características, y «Disponible al pasar a Starter» en lugar del botón de alta; un solo botón, «Empieza gratis y mejora cuando quieras», lleva a la pantalla de entrar.
+4. Después, la tabla de lo incluido en cada plan (también los de mejora), las comparativas con otros ERP y las preguntas frecuentes; nada se ofrece por contacto.
+Entra: los planes a la venta, también los de mejora (activos y no internos), en el orden que les da el personal.
 Sale: nada guardado; los datos estructurados de las preguntas frecuentes, salidos de la misma lista que el desplegable.
-Si falla: sin planes a la venta, la página lo dice y no pinta tablas. Si el precio anual no ahorra ningún mes entero, la tarjeta dice solo el precio del año, sin «meses gratis». Un plan sin mensajes de asistente o de WhatsApp no los nombra.
+Si falla: sin planes a la venta, la página lo dice y no pinta tablas ni «Más capacidad»; sin planes de mejora, no hay «Más capacidad». Si el precio anual no ahorra ningún mes entero, la tarjeta dice solo el precio del año, sin «meses gratis». Un plan sin mensajes de asistente o de WhatsApp no los nombra.
 Implicados: hubs (los planes), billing (el cobro, PUBLIC-F04)
 
 ### PUBLIC-F03 Ver el detalle de un plan
@@ -748,8 +749,16 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
 - Precios (F02–F04): los planes se leen con `hubs.plan.list`; el ahorro anual es `annual_months_free` (12 menos los
   meses que paga el precio anual, redondeado hacia abajo) y la cabecera usa `common_months_free`. El cobro es
   `billing.services.plan_sale` y la comprobación de los precios de Stripe al guardar un plan, `plan_price_problems`
-  (BILLING-F28). Por encima de Standard la página no ofrece nada: la infraestructura dedicada por contacto (la
-  constante `DEDICATED_FROM`, su banda, su fila y su pregunta) se retiró en la ronda 2026-10-24b (PLAN-SAAS §9).
+  (BILLING-F28). Por encima de Standard la página solo pinta los planes `upgrade_only` (`upgrade_cards`: tarjetas en
+  «Más capacidad» y filas de la tabla, sin botón de alta ni página de detalle; Ioan, 2026-10-24, PLAN-SAAS §9, que
+  corrige la nota del 2026-10-15); la infraestructura dedicada por contacto (la constante `DEDICATED_FROM`, su banda,
+  su fila y su pregunta) se retiró en la ronda 2026-10-24b. Las superficies de las secciones alternan según lo que se
+  pinta (`section_surfaces`). Ni la tabla ni las fichas de Gratis, Starter y Standard dicen que el plan incluya los
+  locales (`hubs/0021`): la multitienda va desde Pro y se cobra por ubicación (PLAN §32). Tampoco venden niveles de
+  apps: todos los planes incluyen todas las apps (PLAN §32; la palabra de la web es «apps», decisión 19), la `0021`
+  cambia «All free apps» y «free and premium» de Gratis y Starter por «All apps included» y la tabla ya no tiene la
+  fila «Apps included»: `included_level` queda dormido (modelo, Tienda y checkout) para cuando haya un módulo
+  `premium`. Bajar de plan no apaga nada (respuesta «switch» del FAQ).
 - Promesas (F07, F08): la tabla de la portada es `landing.TYPICAL_STACK` (total sumado); las listas de frases
   prohibidas están en `public/tests/test_product.py` (`UNSHIPPED_CLAIMS`, `UNVERIFIED_SECURITY_CLAIMS`). El
   balanceador acepta TLS 1.2 y 1.3 (`ssl_policy` de ERPlora/aws).
@@ -772,8 +781,9 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
 - No lleva el plan ni el sector elegidos al alta: todo negocio nace en Gratis y el plan se cambia después.
 - No tiene página de desarrolladores, marketplace de terceros ni puente local: todas las apps son de ERPlora.
 - No cobra ni vende nada en la web pública: el pago está en el panel.
-- No ofrece nada por encima de Standard: ni infraestructura dedicada ni planes por contacto (ronda 2026-10-24b,
-  PLAN-SAAS §9).
+- No vende nada por encima de Standard: los planes de mejora se enseñan, pero se contratan desde la Tienda de un
+  negocio que ya paga (el alta los rechaza), y no hay infraestructura dedicada ni planes por contacto (ronda
+  2026-10-24b, PLAN-SAAS §9).
 - No nombra normativas fiscales de países a cuyo sistema no se conecta.
 - No pide consentimiento de cookies mientras no mide visitas: las cookies técnicas no lo necesitan.
 - No tiene una página de documentación aparte: la documentación es el centro de ayuda y la pestaña de cada app.

@@ -1,0 +1,8 @@
+{% load i18n %}
+{% comment %}
+  The foot of an upgrade-only plan's card on /pricing/ (Pro, Enterprise, Max; Ioan, 2026-10-24, PLAN-SAAS §9): no
+  sign-up button, since the checkout from Free refuses the plan (`billing.plan_upgrade_only`); a label that says when
+  it opens, as the Store says it. The section's one call to action is in index.html.
+{% endcomment %}
+{% trans "Available once you are on Starter" as upgrade_note %}
+{% include "public/components/status_pill.html" with tone="primary" label=upgrade_note only %}

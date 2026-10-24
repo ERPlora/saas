@@ -62,10 +62,14 @@ async function luminances(page: Page) {
       return 0.2126 * r + 0.7152 * g + 0.0722 * b;
     };
     const hero = document.querySelector('.ep-hero');
+    // The soft band of /pricing/'s upgrade-only plans («More capacity», PLAN-SAAS §9): a soft surface that must follow
+    // the scheme as the hero does.
+    const more = document.querySelector('#more-capacity');
     return {
       canvas: luminance(getComputedStyle(document.documentElement).backgroundColor),
       text: luminance(getComputedStyle(document.body).color),
       hero: hero ? luminance(getComputedStyle(hero).backgroundColor) : null,
+      more: more ? luminance(getComputedStyle(more).backgroundColor) : null,
       dark: document.documentElement.classList.contains('ion-palette-dark'),
     };
   });
@@ -77,11 +81,13 @@ function expectScheme(seen: Awaited<ReturnType<typeof luminances>>, scheme: Sche
     expect(seen.canvas, `${where}: dark canvas`).toBeLessThan(0.05);
     expect(seen.text, `${where}: light text`).toBeGreaterThan(0.7);
     if (seen.hero !== null) expect(seen.hero, `${where}: dark hero`).toBeLessThan(0.05);
+    if (seen.more !== null) expect(seen.more, `${where}: dark «More capacity»`).toBeLessThan(0.05);
   } else {
     expect(seen.dark, where).toBe(false);
     expect(seen.canvas, `${where}: light canvas`).toBeGreaterThan(0.85);
     expect(seen.text, `${where}: dark text`).toBeLessThan(0.05);
     if (seen.hero !== null) expect(seen.hero, `${where}: light hero`).toBeGreaterThan(0.85);
+    if (seen.more !== null) expect(seen.more, `${where}: light «More capacity»`).toBeGreaterThan(0.85);
   }
 }
 

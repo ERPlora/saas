@@ -774,7 +774,11 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
 - Planes (F05): `Plan` con columnas por idioma (`TranslatedFields`, `<campo>_en` y `<campo>_es`), sembrados por la
   migración `0013`; el admin (`hubs/admin.py`) es la única escritura. La lista pública es `hubs.plan.list`. La
   `0020` quita de las fichas de Pro, Enterprise y Max (descripción y características) lo que prometía
-  infraestructura, sin tocar planes, precios ni límites (PLAN-SAAS §9).
+  infraestructura, sin tocar planes, precios ni límites (PLAN-SAAS §9). La `0021` quita de las características de
+  Starter y Standard «todos sus locales» y «varios locales» (la multitienda va desde Pro y se cobra por ubicación,
+  PLAN §32) y de Gratis y Starter los niveles de apps («All free apps included», «free and premium» → «All apps
+  included»: todos los planes incluyen todas las apps), con la misma guarda: solo si la columna sigue con el texto de
+  la `0013`, y reverse simétrico. `included_level` se queda en el modelo, sin uso en la web pública.
 - Dirección web (F16): `hubs.business.change_address` (solo el propietario; `can.change_address` en la página),
   validada como la valida el Hub (`live.slugs`, `_chosen_slug`); sube `registry_version` y `state_version`, debe
   `put` y empuja tras el COMMIT; `sync_access(hub, previous_slug=…)` mueve el espejo del salto. La antigua queda en

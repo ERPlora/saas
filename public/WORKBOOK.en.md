@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:148d4be83aaa7646de2b001705a975a49b42bef8ba7898398a804cc774d592d2 -->
+<!-- generated from WORKBOOK.md sha256:3ec49c450701e045b9df6edf88c31d28dd83166de338fd7746c846746b9c79c2 -->
 
 ## What it is for and who it is for
 
@@ -193,12 +193,13 @@ Status: done
 Actor: visitor
 Screen: Plans and prices
 Steps:
-1. The person opens "Pricing" and sees "Start free. Scale when you need it." and one card per plan one can start with (Free, Starter and Standard), with the monthly price per hub, its features and the assistant and WhatsApp messages a month.
+1. The person opens "Pricing" and sees "Start free. Scale when you need it.", that every plan includes all the apps, and one card per plan one can start with (Free, Starter and Standard), with the monthly price per hub, its features and the assistant and WhatsApp messages a month.
 2. If the plan has an annual price, the card states the year's price and the months it saves ("≈ €299.90/year · 2 months free"), worked out from the two prices; if every paid plan saves the same, the header says it once ("Pay for the year and get 2 months free.").
-3. Further down, the table of what each plan includes, the comparisons with other ERPs and the frequently asked questions; above Standard it offers nothing more.
-In: the plans on sale (the upgrade plans, such as Pro, Enterprise and Max, are not painted).
+3. Further down, "More capacity": the upgrade plans (today Pro, Enterprise and Max), each with its monthly and annual price, its description and its features, and "Available once you are on Starter" instead of the sign-up button; one button, "Start free and upgrade whenever you want", leads to the sign-in screen.
+4. Then the table of what each plan includes (the upgrade plans too), the comparisons with other ERPs and the frequently asked questions; nothing is offered by contact.
+In: the plans on sale, the upgrade plans too (active and not internal), in the order staff give them.
 Out: nothing saved; the structured data of the frequently asked questions, taken from the same list as the accordion.
-If it fails: without plans on sale, the page says so and paints no tables. If the annual price saves no whole month, the card states only the year's price, without "months free". A plan without assistant or WhatsApp messages does not name them.
+If it fails: without plans on sale, the page says so and paints neither tables nor "More capacity"; without upgrade plans, there is no "More capacity". If the annual price saves no whole month, the card states only the year's price, without "months free". A plan without assistant or WhatsApp messages does not name them.
 Involved: hubs (the plans), billing (the charge, PUBLIC-F04)
 
 ### PUBLIC-F03 See the detail of a plan

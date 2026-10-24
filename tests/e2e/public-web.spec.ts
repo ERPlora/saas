@@ -115,12 +115,35 @@ test('PUBLIC-G49 the home and the plans promise only what the product does', asy
   await clean('/ and /pricing/');
 });
 
-test('PUBLIC-G31 the plans: a card per plan on sale, the annual saving worked out and the storage answer', async ({ page }) => {
+test('PUBLIC-G31 the plans: a card per plan on sale, the upgrade-only ones under More capacity, the annual saving worked out and the storage answer', async ({ page }) => {
   const clean = await watch(page);
 
   await captureEverywhere(page, '/pricing/', 'PUBLIC-G31', async (p) => {
-    await expect(p.locator('.ep-pricing-card')).toHaveCount(3);
+    // Three plans to sign up on, then the three upgrade-only ones under «More capacity» (Ioan, 2026-10-24).
+    await expect(p.locator('.ep-pricing-card')).toHaveCount(6);
+    await expect(p.locator('#more-capacity .ep-pricing-card')).toHaveCount(3);
+    await expect(p.locator('#more-capacity ion-button[href="/launch"]')).toBeVisible();
   });
+
+  // More capacity (PLAN-SAAS §9): Pro, Enterprise and Max from their rows, each saying when it opens instead of a
+  // sign-up button, and one call to action to start free.
+  const more = page.locator('#more-capacity');
+  await expect(more.getByRole('heading', { level: 2 })).toHaveText('More capacity');
+  await expect(more.locator('.ep-pricing-card__name')).toHaveText(['Pro', 'Enterprise', 'Max']);
+  await expect(more.locator('.ep-pricing-card__amount')).toHaveText(['€109.99', '€209.99', '€419.99']);
+  await expect(more.locator('.ep-pricing-card__cta')).toHaveText(Array(3).fill('Available once you are on Starter'));
+  await expect(more.locator('.ep-pricing-card ion-button')).toHaveCount(0);
+  await expect(more.locator('ion-button')).toHaveCount(1);
+  await expect(more.locator('ion-button[href="/launch"]')).toContainText('Start free and upgrade whenever you want');
+  const table = page.locator('#plan-compare');
+  await expect(table.locator('tbody strong')).toHaveText(['Free', 'Starter', 'Standard', 'Pro', 'Enterprise', 'Max']);
+  await expect(table.getByText('Available once you are on Starter')).toHaveCount(3);
+  await expect(page.getByText('all your locations', { exact: false })).toHaveCount(0);
+  // Every plan includes all the apps (PLAN §32): no tier of apps on the page, no «Apps included» column.
+  await expect(page.getByText('Every plan includes all the apps. Paid plans add unlimited devices', { exact: false })).toBeVisible();
+  await expect(table.locator('thead th')).toHaveCount(8);
+  await expect(table.locator('thead th', { hasText: 'Apps included' })).toHaveCount(0);
+  expect(await page.evaluate(() => document.body.innerText)).not.toMatch(/premium/i);
 
   const starter = page.locator('.ep-pricing-card', { has: page.locator('.ep-pricing-card__name', { hasText: 'Starter' }) });
   await expect(starter).toContainText('€29.99');
