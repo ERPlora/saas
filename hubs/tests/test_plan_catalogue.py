@@ -420,10 +420,37 @@ def test_the_seat_cap_is_the_number_the_free_card_promises(catalogue):
     )
 
 
-def test_no_plan_caps_the_modules_a_business_turns_on_yet(catalogue):
-    """Every module is on every plan (Ioan, 2026-10-24); a plan only caps how many modules a business chooses to turn
-    on (``max_apps``, the ones it picks, not what they require), and the figures are not set yet: 0, no cap."""
-    assert {slug: plan.max_apps for slug, plan in catalogue.items()} == dict.fromkeys(catalogue, 0)
+#: How many modules a business may choose to turn on, by plan (2026-10-24): every module is on every plan; a plan caps
+#: only the ones the business picks (``max_apps``), never what they require. Free 15, each plan up doubles the one
+#: below; the upgrade-only tiers have no cap (0); ``payment-test`` reads as Starter.
+EXPECTED_MAX_APPS = {
+    "free": 15,
+    "starter": 30,
+    "standard": 60,
+    "pro": 0,
+    "enterprise": 0,
+    "max": 0,
+    PAYMENT_TEST: 30,
+}
+#: The modules a business on the biggest vertical template chooses (its roots: the restaurant's 12 on 2026-10-24) and
+#: the two on their way into it (``tip``, ``website``): no plan on sale caps below them.
+BIGGEST_TEMPLATE_ROOTS = 12 + 2
+
+
+def test_each_plan_caps_the_modules_a_business_chooses_to_turn_on(catalogue):
+    assert {slug: plan.max_apps for slug, plan in catalogue.items()} == EXPECTED_MAX_APPS
+
+
+def test_each_plan_on_sale_doubles_the_modules_of_the_one_below(catalogue):
+    free, starter, standard = (catalogue[slug].max_apps for slug in ("free", "starter", "standard"))
+
+    assert (starter, standard) == (2 * free, 2 * starter)
+
+
+def test_no_plan_on_sale_caps_below_what_the_biggest_template_chooses(catalogue):
+    """A business born on the biggest vertical's template can still turn on every module it came with, and more."""
+    for slug in ("free", "starter", "standard"):
+        assert catalogue[slug].max_apps > BIGGEST_TEMPLATE_ROOTS, slug
 
 
 def test_a_new_plan_caps_no_modules(db):

@@ -878,14 +878,83 @@ def test_hubs_migrates_back_before_the_clock_and_forward_again_dating_the_suspen
 # --- 0019: how many modules a business may choose to turn on (Ioan, 2026-10-24) -----------------------------------
 
 
+MODULE_CAP = "0019_plan_max_apps"
+#: What 0019 writes, by slug: Free 15, each plan up doubles the one below, ``payment-test`` reads as Starter and the
+#: upgrade-only tiers have no cap (0).
+MAX_APPS_0019 = {"free": 15, "starter": 30, "standard": 60, "payment-test": 30}
+UPGRADE_ONLY_0019 = {"pro": 0, "enterprise": 0, "max": 0}
+
+
+def _module_cap():
+    return import_module(f"hubs.migrations.{MODULE_CAP}")
+
+
+def _caps_of(Plan) -> dict[str, int]:
+    return dict(Plan.objects.order_by("slug").values_list("slug", "max_apps"))
+
+
 @pytest.mark.django_db
-def test_hubs_migrates_back_before_the_module_cap_and_forward_again_with_no_plan_capped():
-    """``migrate hubs 0018`` and back: the column goes and comes with a 0 (no limit) on every plan, and a row written
-    without it, as the code before the column writes, gets the database's 0 too."""
+class TestEachPlanGetsItsModuleCap:
+    """The column is new, so every row already in production reads 0 (no limit) until the migration gives the plans
+    of the catalogue their figure; a plan staff added keeps 0. Only a row that exists is written."""
+
+    @pytest.fixture
+    def catalogue_without_caps(self, plans):
+        from hubs.models import Plan
+
+        Plan.objects.update(max_apps=0)
+        return Plan
+
+    def test_each_plan_gets_its_figure_and_the_upgrade_only_tiers_none(self, catalogue_without_caps):
+        _module_cap().give_module_caps(global_apps, _SchemaEditor())
+
+        assert _caps_of(catalogue_without_caps) == {**MAX_APPS_0019, **UPGRADE_ONLY_0019}
+
+    def test_a_plan_staff_added_is_left_without_a_cap(self, catalogue_without_caps):
+        catalogue_without_caps.objects.create(slug="staff-plan", name_en="Staff plan", price_monthly=Decimal("9.99"))
+
+        _module_cap().give_module_caps(global_apps, _SchemaEditor())
+
+        assert catalogue_without_caps.objects.get(slug="staff-plan").max_apps == 0
+
+    def test_a_plan_without_its_row_is_not_created(self):
+        from hubs.models import Plan
+
+        Plan.objects.filter(slug__in=MAX_APPS_0019).delete()
+
+        _module_cap().give_module_caps(global_apps, _SchemaEditor())
+
+        assert not Plan.objects.filter(slug__in=MAX_APPS_0019).exists()
+
+    def test_the_catalogue_the_migrations_leave_carries_its_figures(self):
+        from hubs.models import Plan
+
+        assert _caps_of(Plan) == {**MAX_APPS_0019, **UPGRADE_ONLY_0019}
+
+    def test_it_is_frozen_and_reads_nothing_of_the_code(self):
+        assert [name for name in _imported_modules(_module_cap()) if name.startswith("hubs")] == []
+
+    def test_it_is_idempotent_and_survives_a_database_without_the_rows(self, db):
+        from hubs.models import Plan
+
+        Plan.objects.all().delete()
+        _module_cap().give_module_caps(global_apps, _SchemaEditor())
+        _module_cap().give_module_caps(global_apps, _SchemaEditor())
+
+        assert Plan.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_hubs_migrates_back_before_the_module_cap_and_forward_again():
+    """``migrate hubs 0018`` and back: the column goes and comes back with the figure of each plan, and a row written
+    without it, as the code before the column writes, gets the database's 0 (no limit)."""
     from hubs.models import Plan
 
     slugs = set(Plan.objects.values_list("slug", flat=True))
     call_command("migrate", "hubs", "0018", verbosity=0)
+    with connection.cursor() as cursor:
+        columns = {column.name for column in connection.introspection.get_table_description(cursor, "hubs_plan")}
+    assert "max_apps" not in columns
     call_command("migrate", "hubs", verbosity=0)
     with connection.cursor() as cursor:
         cursor.execute(
@@ -900,4 +969,4 @@ def test_hubs_migrates_back_before_the_module_cap_and_forward_again_with_no_plan
         )
 
     assert set(Plan.objects.values_list("slug", flat=True)) == slugs | {"old-code"}
-    assert set(Plan.objects.values_list("max_apps", flat=True)) == {0}
+    assert _caps_of(Plan) == {**MAX_APPS_0019, **UPGRADE_ONLY_0019, "old-code": 0}

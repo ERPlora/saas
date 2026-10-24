@@ -210,7 +210,8 @@ class Plan(TranslatedFields):
     #: How many modules a business may choose to turn on (Ioan, 2026-10-24): every module is on every plan, a plan
     #: caps only how many the business picks; the modules they require come along and do not count (as Odoo's «one
     #: app free»). It travels in the hub's state snapshot; the Hub checks it when a business turns a module on, which
-    #: comes with the per-business activation of apps (phase 2). 0 = no limit, every plan until the figures are set.
+    #: comes with the per-business activation of apps (phase 2). 0 = no limit (the upgrade-only tiers; the figures of
+    #: the catalogue, migration 0019).
     max_apps = models.PositiveIntegerField(
         _("modules turned on"),
         default=0,
