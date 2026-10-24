@@ -482,7 +482,7 @@ Pasos:
 6. Una integración de la cuenta, con una clave de lectura de Facturación, lee la misma lista con los mismos filtros, cada factura con su negocio, sus líneas, su IVA y a quién va, su PDF y la hoja de cálculo.
 Entra: las facturas que pagó la cuenta y las de los negocios de los que es propietaria.
 Sale: el PDF de la factura emitida, que hace en cada descarga el negocio de plataforma de ERPlora con su QR de VeriFactu (BILLING-F25), y la hoja de cálculo de lo filtrado.
-Si falla: una factura que aún se emite dice «Emitiéndose» y no ofrece PDF; si el servicio de facturas no responde, «El servicio de facturas no responde. Prueba de nuevo en un momento»; sin facturas, «Aún no hay facturas». Una factura de otra cuenta no se encuentra.
+Si falla: una factura que aún se emite dice «Emitiéndose» y no ofrece PDF; si el servicio de facturas no responde, «El servicio de facturas no responde. Prueba de nuevo en un momento»; si en «Descargar PDF (n)» unas fallan y otras aún se emiten, un solo aviso dice las dos cosas (se ve un aviso a la vez: uno nuevo cierra el anterior); sin facturas, «Aún no hay facturas». Una factura de otra cuenta no se encuentra.
 Implicados: ninguno
 
 ### BILLING-F23 Ver las suscripciones de cada negocio

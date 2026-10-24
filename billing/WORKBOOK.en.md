@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:eb5030943c894f46900f03a9c4c85656b5e05f98129a46267816d5790fb8cf17 -->
+<!-- generated from WORKBOOK.md sha256:d3235b823d3fbbcb72308f8c15651b1de3a7b97420f0bfe128d6d40c312784ec -->
 
 ## What it is for and who it is for
 
@@ -469,7 +469,7 @@ Steps:
 6. An integration of the account, with a Billing read key, reads the same list with the same filters, each invoice with its business, its lines, its VAT and who it is made out to, its PDF and the spreadsheet.
 In: the invoices the account paid and those of the businesses it owns.
 Out: the PDF of the issued invoice, which ERPlora's platform business makes on each download with its VeriFactu QR (BILLING-F25), and the spreadsheet of what is filtered.
-If it fails: an invoice still being issued says "Issuing" and offers no PDF; if the invoice service does not answer, "The invoice service is not answering. Try again in a moment"; without invoices, "No invoices yet". An invoice of another account is not found.
+If it fails: an invoice still being issued says "Issuing" and offers no PDF; if the invoice service does not answer, "The invoice service is not answering. Try again in a moment"; if in "Download PDF (n)" some fail and others are still being issued, a single notice says both (one notice shows at a time: a new one closes the one before); without invoices, "No invoices yet". An invoice of another account is not found.
 Involved: none
 
 ### BILLING-F23 See the subscriptions of each business
