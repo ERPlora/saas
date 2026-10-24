@@ -26,6 +26,7 @@ import pytest
 from django.conf import settings
 from django.urls import reverse
 from hubs.models import Plan
+from public.tests.test_pricing import PRICE_400, visible_text
 
 pytestmark = pytest.mark.django_db
 
@@ -325,20 +326,6 @@ class TestAndroidPageWhileThePlayListingIsNotLive:
 
         assert "Muy pronto en Google Play" in html
 
-    def test_the_linux_card_names_a_till_computer(self, client):
-        """Ronda 2026-10-24b (PLAN-SAAS §9): «dedicated» on the public web named an offer that is gone."""
-        html = client.get(download_url("android")).content.decode()
-
-        assert "The same app, portable, for a till computer on your business network." in html
-        assert "dedicated" not in html.lower()
-
-    def test_the_linux_card_names_a_till_computer_in_spanish(self, client):
-        client.cookies[settings.LANGUAGE_COOKIE_NAME] = "es"
-        html = client.get(download_url("android")).content.decode()
-
-        assert "La misma app, portable, para un equipo de caja en la red de tu negocio." in html
-        assert "dedicad" not in html.lower()
-
     def test_it_flips_to_play_with_a_setting_the_day_the_listing_goes_live(
         self, client, settings
     ):
@@ -443,22 +430,36 @@ class TestInstallableAppPage:
         assert "/accounts/login/" not in html
 
 
-class TestTheLinuxBuildReadsAsATillComputer:
-    """Ronda 2026-10-24b (PLAN-SAAS §9): «dedicated» on the public web named the dedicated-infrastructure offer,
-    which is gone; the Linux build is for a till computer, and ``/app/`` says so in plain words."""
+#: The Linux card of each download page, in each language: a computer of the business, not an offer of ours.
+LINUX_CARD = {
+    ("app", "en"): "For a dedicated machine on your business network.",
+    ("app", "es"): "Para una máquina dedicada en la red de tu negocio.",
+    ("android", "en"): "The same app, portable, for a dedicated machine on your business network.",
+    ("android", "es"): "La misma app, portable, para un equipo dedicado en la red de tu negocio.",
+}
 
-    def test_in_english(self, client):
-        html = client.get("/app/").content.decode()
 
-        assert "For a till computer on your business network." in html
-        assert "dedicated" not in html.lower()
+class TestTheDownloadPagesSellNoInfrastructure:
+    """Ronda 2026-10-24b (PLAN-SAAS §9): the dedicated-infrastructure offer is gone from the public web, and the
+    download pages never name it nor its price. Their Linux card's «dedicated machine» is the business's own computer,
+    not that offer, and stays."""
 
-    def test_in_spanish(self, client):
-        client.cookies[settings.LANGUAGE_COOKIE_NAME] = "es"
-        html = client.get("/app/").content.decode()
+    @pytest.fixture(autouse=True)
+    def _listing_switched_off(self, settings):
+        settings.GOOGLE_PLAY_LISTING_LIVE = False
 
-        assert "Para un equipo de caja en la red de tu negocio." in html
-        assert "dedicad" not in html.lower()
+    @pytest.mark.parametrize(("page", "language"), sorted(LINUX_CARD))
+    def test_no_dedicated_infrastructure_nor_its_price(self, client, page, language):
+        client.cookies[settings.LANGUAGE_COOKIE_NAME] = language
+        response = client.get(reverse("public:app") if page == "app" else download_url("android"))
+
+        assert response.status_code == 200
+        text = visible_text(response.content.decode())
+        # The positive control first: the page is the one in that language, Linux card included.
+        assert LINUX_CARD[(page, language)] in text
+        for offer in ("dedicated infrastructure", "infraestructura dedicada"):
+            assert offer not in text.lower(), offer
+        assert not PRICE_400.search(text)
 
 
 class TestTheAppPageIsTranslated:

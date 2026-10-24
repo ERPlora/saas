@@ -191,6 +191,18 @@ def test_no_plan_sells_infrastructure_specs(catalogue):
                 )
 
 
+#: What the plans no longer sell (round 6, PLAN-SAAS §9 of 2026-10-24b) and nobody runs: no plan's description, the
+#: line the Store shows under its name, promises it.
+UNSOLD_INFRASTRUCTURE = ("dedicated", "dedicad", "autoscal", "autoescal", "disaster", "desastre", "contract", "contrato")
+
+
+def test_no_plan_description_promises_infrastructure_we_do_not_sell(catalogue):
+    for slug, plan in catalogue.items():
+        for text in (plan.description_en, plan.description_es):
+            for word in UNSOLD_INFRASTRUCTURE:
+                assert word not in text.lower(), f"[{slug}] {word!r} in the description: {text!r}"
+
+
 def test_no_plan_publishes_an_uptime_sla_percentage(catalogue):
     """saas#1760: the only availability statement is the one in the terms (99.5 %, reasonable efforts)."""
     for slug, plan in catalogue.items():
