@@ -11,7 +11,8 @@ never shown on erplora.com's origin: it is downloaded, sandboxed, with ``nosniff
 
 Answers: 200 the bytes; 401 ``unauthorized`` without a session; 404 ``whatsapp.media_not_found`` (not this
 person's business, not an attachment, or Meta no longer has it); 405; 409 ``whatsapp.not_connected`` (no connected
-number, or Meta refused its permission: the number is marked «needs reconnecting»); 502
+number); 409 ``whatsapp.reconnect_needed`` (Meta refused its permission, its 190: the number is marked «needs
+reconnecting»); 502
 ``whatsapp.media_unavailable`` (Meta not reached, failing, or pointing somewhere that is not Meta).
 """
 
@@ -95,7 +96,7 @@ def media(request: HttpRequest, delivery_id: str) -> HttpResponse:
     except meta.MetaRefused as refused:
         if refused.code == EXPIRED_PERMISSION:
             services.number_reconnect_needed(ctx, ReconnectIn(hub_id=found.hub_id))
-            return _error(409, "whatsapp.not_connected", "WhatsApp needs connecting again to open attachments.")
+            return _error(409, "whatsapp.reconnect_needed", "WhatsApp needs connecting again to open attachments.")
         logger.info("whatsapp.media.refused meta_status=%s meta_code=%s", refused.status, refused.code)
         return _error(404, "whatsapp.media_not_found", "This attachment is not available.")
     except meta.MetaUnreachable:

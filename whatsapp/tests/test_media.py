@@ -228,7 +228,7 @@ def test_an_expired_permission_is_409_and_marks_the_number_to_reconnect(client, 
 
     response = open_media(client, row)
 
-    assert (response.status_code, error_code(response)) == (409, "whatsapp.not_connected")
+    assert (response.status_code, error_code(response)) == (409, "whatsapp.reconnect_needed")
     number.refresh_from_db()
     assert number.needs_reconnect is True
 

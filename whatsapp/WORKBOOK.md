@@ -216,7 +216,7 @@ Pasos:
 4. El estado de un mensaje del negocio («Entregado», «Leído», «No entregado») llega a la bandeja: el de uno enviado desde el Hub, cuando erplora.com sabe cuál es; el de una respuesta del dueño desde el móvil, después de esa respuesta.
 Entra: los avisos de Meta: mensajes, ecos del móvil, historial, estados de entrega y veredictos de plantillas.
 Sale: el mensaje o el estado en la bandeja del Hub (`whatsapp.webhook.ingested`, `whatsapp.delivery.recorded`).
-Si falla: un aviso sin la firma de Meta se rechaza y no se guarda; uno de un número que nadie tiene conectado se descarta; el estado de un mensaje que el Hub no tiene se espera diez minutos y se descarta; si el Hub dice que el mensaje no vale, no se reintenta y queda a la vista del personal; un adjunto de otro negocio, o que Meta ya no tiene, dice «no disponible».
+Si falla: un aviso sin la firma de Meta se rechaza y no se guarda; uno de un número que nadie tiene conectado se descarta; el estado de un mensaje que el Hub no tiene se espera diez minutos y se descarta; si el Hub dice que el mensaje no vale, no se reintenta y queda a la vista del personal; un adjunto de otro negocio, o que Meta ya no tiene, dice «no disponible»; si al abrir un adjunto el permiso de Meta caducó o el negocio lo retiró en Meta, el adjunto no se abre, se dice que hay que volver a conectar el número (no que está sin conectar) y el número queda «Hay que reconectar» en el Hub.
 Implicados: bandeja de WhatsApp del Hub
 
 ### WHATSAPP-F08 Ver los números de WhatsApp en el admin
@@ -328,7 +328,7 @@ Pasos:
 3. La registra en Meta (o, si Meta ya la tenía, edita la suya) y el Hub la enseña «En revisión»; el veredicto de Meta llega solo después.
 Entra: la plantilla tal como se escribió y la clave del guardado.
 Sale: la plantilla en Meta y su copia en erplora.com, que viaja al Hub en la foto de estado (`whatsapp.template.registered`).
-Si falla: una regla rota dice cuál; Meta rechazándola da su motivo para la persona; si Meta no contesta o pide esperar, no se guarda nada y se puede reintentar; el mismo guardado repetido no se registra dos veces.
+Si falla: una regla rota dice cuál; Meta rechazándola da su motivo para la persona; si el permiso de Meta caducó o el negocio lo retiró en Meta, no se registra, se dice que hay que volver a conectar el número (no que está sin conectar) y el número queda «Hay que reconectar» en el Hub; si Meta no contesta o pide esperar, no se guarda nada y se puede reintentar; el mismo guardado repetido no se registra dos veces.
 Implicados: bandeja de WhatsApp del Hub
 
 ### WHATSAPP-F16 Subir a Meta la muestra de la cabecera de una plantilla
@@ -355,7 +355,7 @@ Pasos:
 3. El Hub la da por borrada.
 Entra: el nombre, el idioma y el identificador de Meta de la plantilla.
 Sale: la plantilla fuera de Meta y de la copia de erplora.com (`whatsapp.template.forgotten`).
-Si falla: si Meta ya no la tiene, cuenta como borrada; si Meta la rechaza o no contesta, sigue viva y el Hub lo vuelve a pedir.
+Si falla: si Meta ya no la tiene, cuenta como borrada; si el permiso de Meta caducó o el negocio lo retiró en Meta, sigue viva, se dice que hay que volver a conectar el número (no que está sin conectar) y el número queda «Hay que reconectar» en el Hub; si Meta la rechaza o no contesta, sigue viva y el Hub lo vuelve a pedir.
 Implicados: bandeja de WhatsApp del Hub
 
 ### WHATSAPP-F18 Lo que puede hacer el personal de ERPlora
@@ -393,15 +393,20 @@ Implicados: ninguno
   - **12** `POST /internal/whatsapp/disconnect` `{"hub"}` → 200 `{"disconnected": true|false}` (WHATSAPP-F02).
   El canal (puerta 3) no se usa desde el SaaS: la clave `whatsapp` de la foto (puerta 4) es la única fuente, con la
   versión de la foto y el reintento de `reconcile_hub_states`.
-- **Puerta 5 y el permiso caducado** (FIX-SAAS-WHATSAPP-EXPIRED-TOKEN-SAYS-NOT-CONNECTED, **propuesta** al Hub): a los
-  409 del contrato (`whatsapp.cap_reached`, `not_connected`, `window_closed`, `template_not_approved`,
-  `recipient_blocked` y `meta_rejected`) se suma `whatsapp.reconnect_needed`: Meta contestó 190 (el permiso caducó o
-  el negocio lo retiró en Meta), el número queda «Hay que reconectar» y la foto lo lleva con una versión nueva
-  (WHATSAPP-F06, F03). Los otros códigos de Meta de un número que no envía (10, 200, 131031, 133010) siguen siendo
-  `not_connected`, sin marca. El Hub de hoy lo lee como todo 409 que no conoce: `whatsapp_inbox.send_refused` con el
-  motivo de Meta, igual que `not_connected`. Las plantillas (puertas 8 y 9) y los adjuntos siguen contestando
-  `not_connected` a un 190 (y marcan el número) hasta que el Hub conozca el código nuevo: allí su `not_connected`
-  tiene texto propio.
+- **El permiso caducado** (FIX-SAAS-WHATSAPP-EXPIRED-TOKEN-SAYS-NOT-CONNECTED en la puerta 5;
+  FIX-SAAS-WHATSAPP-TEMPLATE-DOORS-SAY-NOT-CONNECTED-ON-EXPIRED-PERMISSION en las puertas 8 y 9 y en los adjuntos):
+  a los 409 de la puerta 5 (`whatsapp.cap_reached`, `not_connected`, `window_closed`, `template_not_approved`,
+  `recipient_blocked` y `meta_rejected`) y de las puertas 8 y 9 (`whatsapp.meta_unreachable`, `meta_rate_limited`,
+  `not_connected` y `template_invalid` en la 8 o `meta_rejected` en la 9) se suma `whatsapp.reconnect_needed`, que también
+  contesta `GET /whatsapp/media/<id>`: Meta contestó 190 (el permiso caducó o el negocio lo retiró en Meta), el
+  número queda «Hay que reconectar» y la foto lo lleva con una versión nueva (WHATSAPP-F06, F15, F17, F07, F03); la
+  plantilla no se registra ni se borra.
+  Los otros códigos de Meta de un número que no puede (10, 200, 131031, 133010) siguen siendo `not_connected` en las
+  puertas 5, 8 y 9, sin marca; en los adjuntos, como cualquier otro rechazo de Meta, un 404
+  `whatsapp.media_not_found`. El Hub lo entiende en la puerta 5 y en las plantillas
+  (`whatsapp_inbox.reconnect_needed` con su propio texto, hub#245). Un adjunto lo abre el navegador de la persona
+  (`<img>`, `<audio>` o un enlace), que no lee el código: cualquier 409 es para el Hub un adjunto que no carga, así
+  que el código nuevo no cambia lo que pinta.
 - **Puerta 5 y el tope** (FIX-SAAS-WHATSAPP-CAP-REFUSAL-DOES-NOT-PUSH-USAGE, WHATSAPP-F05): el 409
   `whatsapp.cap_reached` no cambia para el Hub, pero ya no deshace la transacción: `whatsapp.message.claim` lo
   devuelve (`refused`, sin la clave: queda libre) y, si el consumo del mes no se había avisado con esa cifra

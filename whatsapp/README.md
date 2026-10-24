@@ -21,11 +21,11 @@ renombran** (el Hub ya está en producción con ellas). Firma de todo `/internal
 | 2 `POST /internal/whatsapp/status` | SaaS → Hub | un estado con su `client_message_id`; sin ella, el de una respuesta del dueño desde el móvil ya entregada por la puerta 1 | `hub_client.post_status` |
 | 3 `PUT /internal/whatsapp/channel` | SaaS → Hub | el canal | **no se usa**: va en la foto (puerta 4) |
 | 4 clave `whatsapp` de `PUT /internal/hubs/{id}/state` | SaaS → Hub | el canal con la versión de la foto | `queries.channel_block` en `hubs.queries.hub_snapshot`; `services.announce_channel` sube la versión y empuja tras el COMMIT (también el rechazo por tope, una vez por cifra) |
-| 5 `POST /internal/whatsapp/send` + `Idempotency-Key` | Hub → SaaS | enviar; **propone** el 409 `whatsapp.reconnect_needed` (Meta dijo 190: el permiso caducó o se retiró; el número queda «Hay que reconectar»), distinto de `not_connected`; el 409 `whatsapp.cap_reached` no cambia, pero empuja la foto con el consumo real del mes si no se había avisado esa cifra (WHATSAPP-F05; `WORKBOOK.md`, «Para quien lo mantiene») | `internal.send` → `gateway.send` |
+| 5 `POST /internal/whatsapp/send` + `Idempotency-Key` | Hub → SaaS | enviar; el 409 `whatsapp.reconnect_needed` (Meta dijo 190: el permiso caducó o se retiró; el número queda «Hay que reconectar»), distinto de `not_connected`, ya en el contrato del Hub; el 409 `whatsapp.cap_reached` no cambia, pero empuja la foto con el consumo real del mes si no se había avisado esa cifra (WHATSAPP-F05; `WORKBOOK.md`, «Para quien lo mantiene») | `internal.send` → `gateway.send` |
 | 6 `POST /internal/whatsapp/erase` | Hub → SaaS | olvidar un número de cliente | `gateway.erase` |
 | 7 | — | envío de estados (obligación de la 2) | el webhook los aparca y `deliver` los empuja |
-| 8 `POST /internal/whatsapp/templates` + `Idempotency-Key` | Hub → SaaS | registrar una plantilla | `gateway.submit_template` |
-| 9 `POST /internal/whatsapp/templates/delete` | Hub → SaaS | borrar una plantilla en un idioma | `gateway.delete_template` |
+| 8 `POST /internal/whatsapp/templates` + `Idempotency-Key` | Hub → SaaS | registrar una plantilla; a un 190 de Meta, 409 `whatsapp.reconnect_needed` y el número «Hay que reconectar», como en la 5 (el Hub ya lo entiende, hub#245; su lista de 409 de la puerta 8 aún no lo nombra) | `gateway.submit_template` |
+| 9 `POST /internal/whatsapp/templates/delete` | Hub → SaaS | borrar una plantilla en un idioma; a un 190 de Meta, 409 `whatsapp.reconnect_needed`, como en la 8 | `gateway.delete_template` |
 | 10 `POST /internal/whatsapp/config` | Hub → SaaS | **propuesta**: lo público para abrir la ventana de Meta, con `redirect_uri` (la página de vuelta) | `gateway.config` |
 | 11 `POST /internal/whatsapp/connect` | Hub → SaaS | **propuesta**: conectar el número que dio la ventana | `gateway.connect` |
 | 12 `POST /internal/whatsapp/disconnect` | Hub → SaaS | **propuesta**: desconectar | `gateway.disconnect` |
@@ -49,7 +49,7 @@ Las puertas 10–12 y la página de vuelta de la ventana de Meta (`GET /whatsapp
 | `gateway.py` | Los pasos de cada puerta alrededor de las operaciones: nunca una transacción esperando a Meta o al Hub. Sin ORM |
 | `templates.py` | Las reglas de Meta de una plantilla antes de llamarla (`check`), sus componentes y la lectura de la lista de Meta (`from_meta`) |
 | `signup_return.py` | `GET /whatsapp/return`: la vuelta de la ventana de Meta; devuelve el código (o el motivo de Meta) por `postMessage` solo al origen del hub que nombra el `state` y se cierra; COOP `unsafe-none` solo aquí, el dato en `json_script` y el script con el nonce de la CSP; plantilla `templates/whatsapp/signup_return.html` |
-| `media.py` | `GET /whatsapp/media/<id de la entrega>`: el adjunto de un cliente con la sesión de erplora.com y miembro aceptado del negocio, en streaming desde Meta, sin caché; lo que no es imagen, audio o vídeo se descarga con CSP `sandbox` |
+| `media.py` | `GET /whatsapp/media/<id de la entrega>`: el adjunto de un cliente con la sesión de erplora.com y miembro aceptado del negocio, en streaming desde Meta, sin caché; lo que no es imagen, audio o vídeo se descarga con CSP `sandbox`; a un 190 de Meta, 409 `whatsapp.reconnect_needed` y el número «Hay que reconectar» (sin número, 409 `whatsapp.not_connected`) |
 | `emails.py` | «Vuelve a conectar WhatsApp», en el idioma del propietario |
 | `admin.py` | Números, plantillas, entregas, envíos y consumo: solo lectura; acciones de superusuario (desconectar, volver a leer las plantillas, entregar ahora). `support` solo mira (`0002`) |
 | `checks.py` | `whatsapp.E001` (`FERNET_KEY` no es una clave Fernet) y `whatsapp.I001` (WhatsApp apagado, informativo; también con una `WHATSAPP_REDIRECT_URI` no válida) |

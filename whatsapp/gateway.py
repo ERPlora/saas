@@ -15,7 +15,8 @@ Meta (``meta``) and to the Hub (``hub_client``), so that no transaction waits fo
 - ``erase``: door 6;
 - ``submit_template``: door 8 (WHATSAPP-G15). Meta's rules checked first (``templates.check``), then claim (the key)
   → Meta → record. Meta saying it already has that name in that language (a first call whose answer was lost) adopts
-  its id and edits it. Every «not taken» is a 409 whose key is free to try again;
+  its id and edits it. Every «not taken» is a 409 whose key is free to try again (Meta's 190 is
+  ``whatsapp.reconnect_needed`` and marks the number, as in door 5);
 - ``delete_template``: door 9 (WHATSAPP-G17). Only that template in that language, by its id at Meta (the body's,
   the mirror's or Meta's own list's); Meta not having it is the 404 ``whatsapp.template_not_found`` the Hub reads as
   deleted;
@@ -128,8 +129,8 @@ def _push(delivery) -> tuple[str, str]:
 WINDOW_CLOSED = frozenset({131047, 470})
 RECIPIENT_BLOCKED = frozenset({131021, 131026, 131030, 131049, 131050})
 NOT_CONNECTED = frozenset({10, 190, 200, 131031, 133010})
-#: The business's permission expired or was withdrawn in Meta: only connecting the number again fixes it. Door 5
-#: says ``whatsapp.reconnect_needed`` (the number is marked so); the template doors still say ``not_connected``.
+#: The business's permission expired or was withdrawn in Meta: only connecting the number again fixes it. Doors 5, 8
+#: and 9 (and the attachments, ``media``) say ``whatsapp.reconnect_needed`` and mark the number so.
 EXPIRED_PERMISSION = 190
 
 
@@ -314,9 +315,10 @@ def _template_failure(failure: Exception, hub_id, hub: str, what: str) -> tuple[
     )
     if refused.rate_limited:
         return 409, envelope("whatsapp.meta_rate_limited", reason)
+    if refused.code == EXPIRED_PERMISSION:
+        services.number_reconnect_needed(services.platform_context(), ReconnectIn(hub_id=hub_id))
+        return 409, envelope("whatsapp.reconnect_needed", reason)
     if refused.code in NOT_CONNECTED:
-        if refused.code == EXPIRED_PERMISSION:
-            services.number_reconnect_needed(services.platform_context(), ReconnectIn(hub_id=hub_id))
         return 409, envelope("whatsapp.not_connected", reason)
     if what == "delete":
         return 409, envelope("whatsapp.meta_rejected", reason)
