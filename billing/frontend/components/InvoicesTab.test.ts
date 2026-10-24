@@ -705,7 +705,7 @@ describe('InvoicesTab: a file is saved only when it is the file (audit 2026-10-1
     await press(s, 'invoices-pdf-selected');
     expect(saved).toEqual([]);
     expect(toastError).toHaveBeenCalledExactlyOnceWith(
-      'The invoice service is not answering. Try again in a moment.\n2 invoices are still being issued: their PDF is ready in a few minutes.',
+      'The invoice service is not answering. Try again in a moment. 2 invoices are still being issued: their PDF is ready in a few minutes.',
     );
     expect(toastInfo).not.toHaveBeenCalled();
   });
@@ -723,9 +723,28 @@ describe('InvoicesTab: a file is saved only when it is the file (audit 2026-10-1
     await flush();
     await press(s, 'invoices-pdf-selected');
     expect(toastError).toHaveBeenCalledExactlyOnceWith(
-      'El servicio de facturas no responde. Prueba de nuevo en un momento.\nEsa factura aún se está emitiendo: su PDF estará en unos minutos.',
+      'El servicio de facturas no responde. Prueba de nuevo en un momento. Esa factura aún se está emitiendo: su PDF estará en unos minutos.',
     );
     expect(toastInfo).not.toHaveBeenCalled();
+  });
+
+  // A notice is one line of text (Material's snackbar): its sentences one after the other, each with its stop, never a
+  // line break (painted as a bare space) nor two sentences run together when the server's words end without one.
+  it('what failed and what is still being issued read as two sentences on one line, even without the server’s stop', async () => {
+    serveFiles((url) =>
+      url.endsWith('00123')
+        ? envelope(503, 'service_unavailable', 'The service is not available right now')
+        : envelope(404, 'billing.invoice_not_issued', 'This invoice is still being issued: its PDF is ready once it is.'),
+    );
+    watchSaves();
+    const s = await setup();
+    await s.show([PAID, invoiceRow('00125')]);
+    s.table().vm.$emit('update:selected', ['00123', '00125']);
+    await flush();
+    await press(s, 'invoices-pdf-selected');
+    const said = String(vi.mocked(toastError).mock.calls[0]?.[0]);
+    expect(said).not.toMatch(/\n/);
+    expect(said).toBe('The service is not available right now. That invoice is still being issued: its PDF is ready in a few minutes.');
   });
 
   it('says it in Spanish', async () => {
