@@ -110,8 +110,8 @@ class TestTheSnapshot:
             # The monthly messages the Hub counts and blocks at (PLAN-SAAS §3.6, 2026-10-15): 0 = none.
             "assistant_messages_per_month": 300,
             "whatsapp_messages_per_month": 150,
-            # The modules a business may choose to turn on (2026-10-24; what they require does not count): Starter's 30.
-            "max_apps": 30,
+            # The modules a business may choose to turn on (2026-10-24; what they require does not count): Starter's 40.
+            "max_apps": 40,
             # The space for the business's files its tier includes, the Hub's «Space» (BASE-F52, F53): 5 GiB.
             "max_storage_bytes": 5 * 1024**3,
         }
@@ -141,7 +141,7 @@ class TestTheSnapshot:
             5,
             30,
             30,
-            15,
+            20,
             1024**3,
         )
 

@@ -879,9 +879,9 @@ def test_hubs_migrates_back_before_the_clock_and_forward_again_dating_the_suspen
 
 
 MODULE_CAP = "0019_plan_max_apps"
-#: What 0019 writes, by slug: Free 15, each plan up doubles the one below, ``payment-test`` reads as Starter and the
+#: What 0019 writes, by slug: Free 20, each plan up doubles the one below, ``payment-test`` reads as Starter and the
 #: upgrade-only tiers have no cap (0).
-MAX_APPS_0019 = {"free": 15, "starter": 30, "standard": 60, "payment-test": 30}
+MAX_APPS_0019 = {"free": 20, "starter": 40, "standard": 80, "payment-test": 40}
 UPGRADE_ONLY_0019 = {"pro": 0, "enterprise": 0, "max": 0}
 
 

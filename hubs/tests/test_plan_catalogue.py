@@ -22,6 +22,7 @@ Changed from the original:
   2026-10-15; what the migrations write is pinned by ``hubs/tests/test_migrations.py``.
 """
 
+import math
 import re
 from decimal import Decimal
 
@@ -421,21 +422,22 @@ def test_the_seat_cap_is_the_number_the_free_card_promises(catalogue):
 
 
 #: How many modules a business may choose to turn on, by plan (2026-10-24): every module is on every plan; a plan caps
-#: only the ones the business picks (``max_apps``), never what they require. Free 15, each plan up doubles the one
+#: only the ones the business picks (``max_apps``), never what they require. Free 20, each plan up doubles the one
 #: below; the upgrade-only tiers have no cap (0); ``payment-test`` reads as Starter.
 EXPECTED_MAX_APPS = {
-    "free": 15,
-    "starter": 30,
-    "standard": 60,
+    "free": 20,
+    "starter": 40,
+    "standard": 80,
     "pro": 0,
     "enterprise": 0,
     "max": 0,
-    PAYMENT_TEST: 30,
+    PAYMENT_TEST: 40,
 }
-#: The modules a business on the biggest vertical template chooses (its roots, the ones no other module of it
-#: requires: the restaurant's 13 on the Hub's main of 2026-10-24, ``website`` included) and the one on its way into it
-#: (``tip``): no plan on sale caps below them.
-BIGGEST_TEMPLATE_ROOTS = 13 + 1
+#: The modules a business on the biggest vertical template chooses: its roots, the ones no other module of it requires
+#: (the restaurant's 13 on the Hub's main of 2026-10-24, ``website`` included).
+BIGGEST_TEMPLATE_ROOTS = 13
+#: The module on its way into that template (``tip``).
+ON_ITS_WAY = 1
 
 
 def test_each_plan_caps_the_modules_a_business_chooses_to_turn_on(catalogue):
@@ -448,10 +450,13 @@ def test_each_plan_on_sale_doubles_the_modules_of_the_one_below(catalogue):
     assert (starter, standard) == (2 * free, 2 * starter)
 
 
-def test_no_plan_on_sale_caps_below_what_the_biggest_template_chooses(catalogue):
-    """A business born on the biggest vertical's template can still turn on every module it came with, and more."""
+def test_free_caps_at_the_biggest_templates_roots_rounded_up_to_five_plus_five(catalogue):
+    """The criterion of the figures (2026-10-24): Free's cap is the roots of the biggest vertical template rounded up to
+    the next multiple of 5, plus 5; so a business born on any template can turn on every module it came with, the one
+    on its way, and more."""
+    assert catalogue["free"].max_apps == math.ceil(BIGGEST_TEMPLATE_ROOTS / 5) * 5 + 5
     for slug in ("free", "starter", "standard"):
-        assert catalogue[slug].max_apps > BIGGEST_TEMPLATE_ROOTS, slug
+        assert catalogue[slug].max_apps > BIGGEST_TEMPLATE_ROOTS + ON_ITS_WAY, slug
 
 
 def test_a_new_plan_caps_no_modules(db):
