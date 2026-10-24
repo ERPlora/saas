@@ -624,6 +624,15 @@ def _assert_the_catalogue_of_0013(Plan):
         assert _row(Plan.objects.get(slug=slug), expected) == expected, slug
 
 
+def _assert_the_catalogue_the_migrations_leave(Plan):
+    """0013's catalogue as the later data migrations leave it: the cards of Pro, Enterprise and Max of 0020."""
+    expected = _expected_0013()
+    for slug, fields in COPY_0020.items():
+        expected[slug] = {**expected[slug], **fields}
+    for slug, fields in expected.items():
+        assert _row(Plan.objects.get(slug=slug), fields) == fields, slug
+
+
 #: The rows production had on 2026-10-15, before 0013: the seven seeded plans as the old seed wrote them (a 15-day
 #: trial on Starter and Standard, older prices and copy, the flat paid ladder, no messages), with their Stripe ids.
 PRODUCTION_ROWS = {
@@ -681,7 +690,7 @@ class TestThePlansLiveInTheDatabase:
         call_command("migrate", "hubs", verbosity=0)
 
         assert set(Plan.objects.values_list("slug", flat=True)) == set(CATALOGUE_0013)
-        _assert_the_catalogue_of_0013(Plan)
+        _assert_the_catalogue_the_migrations_leave(Plan)
         assert set(Plan.objects.values_list("trial_period_days", flat=True)) == {0}
 
     def test_the_test_database_holds_the_catalogue_the_migrations_leave(self):
@@ -689,7 +698,7 @@ class TestThePlansLiveInTheDatabase:
         from hubs.models import Plan
 
         assert set(Plan.objects.values_list("slug", flat=True)) == set(CATALOGUE_0013)
-        _assert_the_catalogue_of_0013(Plan)
+        _assert_the_catalogue_the_migrations_leave(Plan)
 
     def test_the_three_migrations_of_that_day_agree(self):
         """0013 writes the copy and the ladder 0011 froze and the messages 0012 gave: one catalogue, read thrice."""
@@ -811,7 +820,7 @@ def test_hubs_migrates_back_before_the_plans_in_the_database_and_forward_again()
     }
     call_command("migrate", "hubs", verbosity=0)
 
-    _assert_the_catalogue_of_0013(Plan)
+    _assert_the_catalogue_the_migrations_leave(Plan)
 
 
 # --- 0016: the clock of a suspended business (HUBS-F20) ----------------------------------------------------------
@@ -970,3 +979,220 @@ def test_hubs_migrates_back_before_the_module_cap_and_forward_again():
 
     assert set(Plan.objects.values_list("slug", flat=True)) == slugs | {"old-code"}
     assert _caps_of(Plan) == {**MAX_APPS_0019, **UPGRADE_ONLY_0019, "old-code": 0}
+
+
+# --- 0020: the paid cards stop promising infrastructure (Ioan, 2026-10-24, PLAN-SAAS §9) ------------------------------
+
+
+PLAN_COPY = "0020_paid_plan_copy"
+#: The words of a paid card that promise infrastructure the plans no longer sell (round 6) and nobody runs, in both
+#: languages; the support «agreed in contract» is Enterprise's and Max's real ``support_level`` and stays.
+INFRASTRUCTURE_WORDS = (
+    "dedicated", "isolated", "autoscal", "disaster", "monitoring", "single-node", "infrastructure",
+    "dedicada", "aislada", "autoescalado", "desastres", "monitoreo", "un solo nodo", "infraestructura",
+)  # fmt: skip
+#: What 0020 writes, by plan and column: only what each row gives (``max_db_connections`` 12 / 24 / 48 against
+#: Starter's 3, the messages of a month, no cap on devices or users, its ``support_level``).
+COPY_0020 = {
+    "pro": {
+        "description_en": (
+            "Four times the database capacity of Starter, for businesses with many devices and users, with priority "
+            "email support."
+        ),
+        "description_es": (
+            "El cuádruple de capacidad de base de datos que Starter, para negocios con muchos dispositivos y usuarios, "
+            "con soporte por email prioritario."
+        ),
+        "features_en": [
+            "Everything in Standard", "Four times the database throughput of Starter",
+            "Priority email support (business hours)",
+        ],
+        "features_es": [
+            "Todo lo del plan Standard", "El cuádruple de capacidad de base de datos que Starter",
+            "Soporte por email prioritario (horario laboral)",
+        ],
+    },
+    "enterprise": {
+        "description_en": (
+            "Twice the database throughput of Pro and more assistant and WhatsApp messages, for businesses with many "
+            "devices and users, with support agreed in contract."
+        ),
+        "description_es": (
+            "El doble de capacidad de base de datos que Pro y más mensajes del asistente y de WhatsApp, para negocios "
+            "con muchos dispositivos y usuarios, con soporte acordado en contrato."
+        ),
+        "features_en": [
+            "Everything in Pro", "Eight times the database throughput of Starter",
+            "Support channels and escalation agreed in contract",
+        ],
+        "features_es": [
+            "Todo lo del plan Pro", "Ocho veces la capacidad de base de datos de Starter",
+            "Canales de soporte y escalado acordados en contrato",
+        ],
+    },
+    "max": {
+        "description_en": (
+            "Sixteen times the database capacity of Starter and a named technical contact, for the most demanding "
+            "businesses."
+        ),
+        "description_es": (
+            "Dieciséis veces la capacidad de base de datos que Starter y un responsable técnico asignado, para los "
+            "negocios más exigentes."
+        ),
+    },
+}  # fmt: skip
+#: What 0013 seeded in those same columns, and 0020 gives back on reverse.
+COPY_0013 = {slug: {column: CATALOGUE_0013[slug][column] for column in columns} for slug, columns in COPY_0020.items()}
+#: Every column 0020 writes, as ``(plan, column)``.
+CARD_COLUMNS = [(slug, column) for slug, columns in COPY_0020.items() for column in columns]
+
+
+def _plan_copy():
+    return import_module(f"hubs.migrations.{PLAN_COPY}")
+
+
+def _forward():
+    _plan_copy().describe_what_the_plans_give(global_apps, _SchemaEditor())
+
+
+def _backward():
+    _plan_copy().give_back_the_words_of_0013(global_apps, _SchemaEditor())
+
+
+def _cards_of(Plan) -> dict[str, dict]:
+    return {slug: _row(Plan.objects.get(slug=slug), columns) for slug, columns in COPY_0020.items()}
+
+
+def _edited(column: str):
+    return ["Edited by staff"] if column.startswith("features") else "Edited by staff"
+
+
+@pytest.mark.django_db
+class TestThePaidCardsStopPromisingInfrastructure:
+    """The Store shows a paid plan's description and features to a business that already pays; from 0020 they say
+    what the plan gives and nothing it does not. Only the columns of COPY_0020 move, each only while it still reads
+    0013's words: what staff wrote in the admin is theirs. The plans, their prices and their limits stay."""
+
+    @pytest.fixture
+    def seeded_cards(self, plans):
+        from hubs.models import Plan
+
+        for slug, columns in COPY_0013.items():
+            Plan.objects.filter(slug=slug).update(**columns)
+        return Plan
+
+    def test_the_0013_words_are_the_ones_that_promised_infrastructure(self):
+        for slug, columns in COPY_0013.items():
+            text = " ".join(" ".join(value) if isinstance(value, list) else value for value in columns.values())
+            assert any(word in text.lower() for word in INFRASTRUCTURE_WORDS), slug
+
+    def test_each_card_reads_what_its_plan_gives(self, seeded_cards):
+        _forward()
+
+        assert _cards_of(seeded_cards) == COPY_0020
+
+    def test_nothing_but_those_columns_moves(self, seeded_cards):
+        before = _snapshot(seeded_cards)
+
+        _forward()
+
+        after = _snapshot(seeded_cards)
+        assert {slug: row for slug, row in after.items() if slug not in COPY_0020} == {
+            slug: row for slug, row in before.items() if slug not in COPY_0020
+        }
+        for slug, columns in COPY_0020.items():
+            assert after[slug] == {**before[slug], **columns}, slug
+
+    @pytest.mark.parametrize(("slug", "column"), CARD_COLUMNS)
+    def test_a_column_staff_rewrote_is_theirs(self, seeded_cards, slug, column):
+        seeded_cards.objects.filter(slug=slug).update(**{column: _edited(column)})
+
+        _forward()
+
+        expected = {plan: dict(columns) for plan, columns in COPY_0020.items()}
+        expected[slug][column] = _edited(column)
+        assert _cards_of(seeded_cards) == expected
+
+    def test_reversing_gives_back_the_words_of_0013(self, seeded_cards):
+        _forward()
+        _backward()
+
+        assert _cards_of(seeded_cards) == COPY_0013
+
+    @pytest.mark.parametrize(("slug", "column"), CARD_COLUMNS)
+    def test_reversing_keeps_what_staff_wrote_after_it(self, seeded_cards, slug, column):
+        _forward()
+        seeded_cards.objects.filter(slug=slug).update(**{column: _edited(column)})
+
+        _backward()
+
+        expected = {plan: dict(columns) for plan, columns in COPY_0013.items()}
+        expected[slug][column] = _edited(column)
+        assert _cards_of(seeded_cards) == expected
+
+    def test_it_is_idempotent_and_survives_a_database_without_the_rows(self, plans):
+        from hubs.models import Plan
+
+        Plan.objects.filter(slug__in=COPY_0020).delete()
+        for _ in range(2):
+            _forward()
+            _backward()
+
+        assert not Plan.objects.filter(slug__in=COPY_0020).exists()
+
+    def test_it_is_frozen_and_reads_nothing_of_the_code(self):
+        assert [name for name in _imported_modules(_plan_copy()) if name.startswith("hubs")] == []
+        assert {slug: {column: old for column, (old, _) in columns.items()} for slug, columns in _plan_copy().COPY.items()} == COPY_0013
+        assert {slug: {column: new for column, (_, new) in columns.items()} for slug, columns in _plan_copy().COPY.items()} == COPY_0020
+
+    def test_the_new_words_promise_no_infrastructure(self):
+        for slug, columns in COPY_0020.items():
+            for value in columns.values():
+                for text in value if isinstance(value, list) else [value]:
+                    for word in INFRASTRUCTURE_WORDS:
+                        assert word not in text.lower(), (slug, word, text)
+
+    def test_the_new_words_are_what_the_rows_give(self):
+        """Each claim of COPY_0020 against the seed of 0013: the throughput ladder, the messages, no cap, the support."""
+        starter, pro, enterprise, top = (CATALOGUE_0013[slug] for slug in ("starter", "pro", "enterprise", "max"))
+        connections = starter["max_db_connections"]
+
+        assert pro["max_db_connections"] == 4 * connections
+        assert enterprise["max_db_connections"] == 2 * pro["max_db_connections"] == 8 * connections
+        assert top["max_db_connections"] == 16 * connections
+        assert enterprise["assistant_messages_per_month"] > pro["assistant_messages_per_month"]
+        assert enterprise["whatsapp_messages_per_month"] > pro["whatsapp_messages_per_month"]
+        for plan in (pro, enterprise, top):
+            assert (plan["max_devices"], plan["max_users"]) == (0, 0)
+        assert (pro["support_level"], enterprise["support_level"], top["support_level"]) == (
+            "priority_email", "contract", "contract",
+        )
+        # Max's named contact is a feature of its card that 0020 keeps.
+        assert "Named technical contact agreed in contract" in top["features_en"]
+        assert "max" not in [slug for slug, columns in COPY_0020.items() if "features_en" in columns]
+
+
+@pytest.mark.django_db
+def test_hubs_migrates_back_before_the_paid_cards_and_forward_again():
+    """``migrate hubs 0019`` and back: the cards read 0013's words again, then 0020's."""
+    from hubs.models import Plan
+
+    call_command("migrate", "hubs", "0019", verbosity=0)
+    assert _cards_of(Plan) == COPY_0013
+
+    call_command("migrate", "hubs", verbosity=0)
+    assert _cards_of(Plan) == COPY_0020
+
+
+@pytest.mark.django_db
+def test_putting_the_catalogue_back_leaves_what_the_migrations_leave():
+    """A transactional test starts from a flushed database: ``put_the_catalogue_back`` runs the data migrations of the
+    plans again, so it reads what pytest's migrated database reads — 0019's caps and 0020's cards included."""
+    from hubs.models import Plan
+    from hubs.tests.conftest import put_the_catalogue_back
+
+    Plan.objects.all().delete()
+    put_the_catalogue_back()
+
+    assert _caps_of(Plan) == {**MAX_APPS_0019, **UPGRADE_ONLY_0019}
+    _assert_the_catalogue_the_migrations_leave(Plan)

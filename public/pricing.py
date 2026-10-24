@@ -16,9 +16,8 @@ Port of ERPlora/saas ``apps/public/pricing/views.py`` (origin/develop c5ca8ca). 
 * the storage answer names the host: AWS (Ioan, 2026-10-13), Ireland region (Ioan, 2026-10-14);
 * three plans on sale at sign-up (Ioan, 2026-10-15): the page lists only the plans a visitor can sign up for
   (an ``upgrade_only`` row — Pro, Enterprise and Max, kept for the Store's upgrades — stays off the page and
-  answers 404 on its detail), and above them it offers **dedicated infrastructure**, from
-  :data:`DEDICATED_FROM` a month, agreed by contact — a band, a row of the table and a FAQ entry, never
-  a checkout;
+  answers 404 on its detail), and nothing above them: the infrastructure offer by contact that sat there
+  went in the ronda 2026-10-24b (PLAN-SAAS §9), the plans no longer sell infrastructure;
 * the assistant and WhatsApp messages a month each plan includes (PLAN-SAAS §3.6, 2026-10-15) are a line of
   every card and a column of the table, in plain words (:func:`messages_a_month`); a quota of 0 is none.
 """
@@ -46,16 +45,6 @@ from public.structured_data import faq_page, json_ld
 
 #: ``(shortest, longest)`` trial of the plans a visitor can sign up for; both ``None`` without one.
 TrialDays = tuple[int | None, int | None]
-
-#: Dedicated infrastructure starts here, net, a month (Ioan, 2026-10-15). A quote, not a plan: there is no
-#: row, no checkout and no Stripe price behind it, so this is the one place the figure lives.
-DEDICATED_FROM = Decimal("400")
-
-
-def dedicated_price_label() -> str:
-    """``€400``, painted as the plan cards paint their monthly price."""
-    return f"€{floatformat(DEDICATED_FROM, '-2')}"
-
 
 # --- The plans on sale, for every public page ---------------------------------------------------
 
@@ -270,16 +259,6 @@ def faq_items(days: TrialDays | None = None) -> list[dict[str, str]]:
             ),
         },
         {
-            "key": "dedicated",
-            "question": _("What is dedicated infrastructure and who is it for?"),
-            "answer": _(
-                "A private environment reserved for your business alone, for companies with several "
-                "locations, high volume or requirements of their own: its own capacity, a replicated "
-                "database and priority support, from %(price)s a month. Contact us and we will size it "
-                "with you."
-            ) % {"price": dedicated_price_label()},
-        },
-        {
             "key": "trial",
             "question": _("Is there a trial period?"),
             "answer": _trial_answer(days),
@@ -340,7 +319,7 @@ def signable_cards(plans) -> list[dict[str, Any]]:
 
 @require_safe
 def index(request: HttpRequest) -> HttpResponse:
-    """The plans a visitor can sign up for, as cards, and the dedicated offer by contact above them."""
+    """The plans a visitor can sign up for, as cards, the table that compares them and the FAQ."""
     plans = plans_on_sale(request)
     days = trial_days(plans)
     faq = faq_items(days)
@@ -350,7 +329,6 @@ def index(request: HttpRequest) -> HttpResponse:
         "public/pricing/index.html",
         {
             "plans_main": signable_cards(plans),
-            "dedicated_from": dedicated_price_label(),
             "cheapest_plan": plan_card(entry) if entry else None,
             "trial_note": trial_note(days),
             "months_free": common_months_free(plans),

@@ -377,25 +377,27 @@ def test_table_shows_the_devices_and_users_each_plan_buys(client, seeded):
 
 
 def test_table_shows_what_each_plan_includes_and_its_support(client, seeded):
-    """The three plans of 2026-10-15 and, under them, the dedicated row with its own words."""
+    """The three plans on sale and nothing under them: the dedicated row is gone (PLAN-SAAS §9, 2026-10-24b)."""
     table = plan_table(html_of(client))
 
-    for level in ("Free", "Basic", "All apps, free and premium"):
+    for level in ("Free", "Basic"):
         assert level in table, level
-    for support in ("Community forum", "Email", "Priority email", "Dedicated, agreed with you"):
+    for support in ("Community forum", "Email", "Priority email"):
         assert support in table, support
-    assert "Pro" not in table and "Enterprise" not in table and "Agreed in contract" not in table
+    for gone in ("Pro", "Enterprise", "Agreed in contract", "All apps, free and premium", "Dedicated, agreed with you"):
+        assert gone not in table, gone
 
 
 def test_table_shows_the_resources_each_plan_buys_in_plain_words(client, seeded):
     """Ioan, 2026-10-15: the «resources» that grow from plan to plan are the database's input/output capacity.
-    Free for one device, Starter the full tier, Standard twice it, dedicated its own — a buyer reads the ladder
-    as database throughput, never an engine, a connection count nor a timeout."""
+    Free for one device, Starter the full tier, Standard twice it — a buyer reads the ladder as database
+    throughput, never an engine, a connection count nor a timeout."""
     table = plan_table(html_of(client))
 
     assert "Database throughput" in table
-    for label in ("Basic, for one device", "Full, for several devices", "Double", "Your own, sized with you"):
+    for label in ("Basic, for one device", "Full, for several devices", "Double"):
         assert label in table, label
+    assert "Your own, sized with you" not in table
     assert not re.search(r"\b(connections?|timeout|aurora)\b", table, re.I)
 
 
@@ -403,8 +405,9 @@ def test_the_table_reads_the_resources_in_spanish(client, seeded):
     table = plan_table(html_of(client, language="es"))
 
     assert "Capacidad de la base de datos" in table
-    for label in ("Básica, para un dispositivo", "Completa, para varios dispositivos", "El doble", "Propia, a tu medida"):
+    for label in ("Básica, para un dispositivo", "Completa, para varios dispositivos", "El doble"):
         assert label in table, label
+    assert "Propia, a tu medida" not in table
 
 
 def test_the_limits_answer_says_each_plan_up_doubles_the_resources(client):
@@ -487,8 +490,8 @@ def test_the_table_compares_the_messages_of_each_plan(client, seeded):
     assert "<th>AI assistant</th>" in table and "<th>WhatsApp</th>" in table
     for messages in ("30 messages a month", "300 messages a month", "600 messages a month", "150 messages a month"):
         assert messages in table, messages
-    # Dedicated infrastructure has no fixed quota: it is sized with the customer.
-    assert table.count("Agreed with you") == 2
+    # No row agrees its quota by contact any more (PLAN-SAAS §9, 2026-10-24b).
+    assert "Agreed with you" not in table
 
 
 def test_a_plan_without_messages_reads_not_included_in_the_table(no_plans, client):
@@ -502,7 +505,7 @@ def test_the_table_reads_the_messages_in_spanish(client, seeded):
 
     assert "<th>Asistente de IA</th>" in table
     assert "300 mensajes al mes" in table
-    assert "Acordado contigo" in table
+    assert "Acordado contigo" not in table
 
 
 def test_every_row_of_the_table_spans_its_columns(client, seeded):
@@ -547,8 +550,8 @@ def test_the_card_trial_is_translated(no_plans, client):
 
 
 def test_an_upgrade_only_plan_is_neither_listed_nor_has_a_detail_page(no_plans, client):
-    """Ioan, 2026-10-15: /pricing/ sells the plans a visitor can sign up for; anything above them is
-    dedicated infrastructure, agreed by contact, never a plan card. A row staff still mark
+    """Ioan, 2026-10-15: /pricing/ sells the plans a visitor can sign up for, and nothing above them (the
+    dedicated offer by contact went in the ronda 2026-10-24b, PLAN-SAAS §9). A row staff still mark
     ``upgrade_only`` stays off the page, off the detail pages and out of «Other plans»."""
     make_plan("starter", trial_days=15)
     make_plan("pro", trial_days=15, upgrade_only=True)
@@ -727,63 +730,83 @@ def test_without_plans_on_sale_the_page_says_so_and_paints_no_table(no_plans, cl
     assert faq_page_of(html)
 
 
-# --- Dedicated infrastructure, by contact (Ioan, 2026-10-15) ----------------------------------
+# --- Nothing above the plans: no dedicated infrastructure (Ioan, 2026-10-24, PLAN-SAAS §9) ---------
 
 CONTACT = "/contact/"
+PRICE_400 = re.compile(r"(?<![\d.,])400(?![\d.,])")
 
 
-def test_the_page_offers_dedicated_infrastructure_by_contact(client, seeded):
-    """Above Standard there is no plan to buy: a private setup from 400 € a month, agreed with us."""
+def visible_text(html: str) -> str:
+    """What a reader reads: :func:`visible_markup` without its tags (``data-reveal-delay="400"`` is no price)."""
+    return re.sub(r"<[^>]+>", " ", visible_markup(html))
+
+
+def test_the_page_offers_nothing_above_the_plans(client, seeded):
+    """Ronda 2026-10-24b: the «Dedicated infrastructure, from €400 a month» band is no product (no runbook, no
+    Terraform) and the plans no longer sell infrastructure; above Standard the page offers nothing."""
     html = html_of(client)
     body = visible_markup(html)
 
-    assert 'id="dedicated"' in html
-    assert "Dedicated infrastructure" in body
-    assert "From €400 a month" in body
-    assert f'href="{CONTACT}"' in html
-    for gone in ("Upgrade-only", "Professional tier", "upgrade from inside the dashboard", "live catalogue"):
+    # The positive control first: an empty page would pass every `not in` below.
+    assert [plan["slug"] for plan in get(client).context["plans_main"]] == ["free", "starter", "standard"]
+    assert 'id="dedicated"' not in html
+    assert "dedicated" not in body.lower()
+    assert not PRICE_400.search(visible_text(html))
+    for gone in ("Need more?", "By contact", "Upgrade-only", "Professional tier", "upgrade from inside the dashboard"):
         assert gone not in body, gone
 
 
-def test_the_dedicated_offer_reads_in_spanish(client, seeded):
-    body = visible_markup(html_of(client, language="es"))
+def test_the_page_offers_nothing_above_the_plans_in_spanish(client, seeded):
+    html = html_of(client, language="es")
+    body = visible_markup(html)
 
-    assert "Infraestructura dedicada" in body
-    assert "Desde €400 al mes" in body
-    assert "Dedicated infrastructure" not in body
-
-
-def test_the_dedicated_price_is_one_constant_painted_like_the_plans(client, seeded):
-    assert pricing.DEDICATED_FROM == Decimal("400")
-    assert pricing.dedicated_price_label() == "€400"
-    assert get(client).context["dedicated_from"] == "€400"
+    assert "Todo lo incluido en cada plan" in body
+    assert "dedicad" not in body.lower()
+    assert "Por contacto" not in body
+    assert not PRICE_400.search(visible_text(html))
 
 
-def test_the_comparison_table_ends_with_the_dedicated_row(client, seeded):
-    html = html_of(client)
-    table = html.split('id="plan-compare"', 1)[1].split("</table>", 1)[0]
-    last_row = table.split("<tr")[-1]
+def test_pricing_has_no_dedicated_price_left(client, seeded):
+    assert not hasattr(pricing, "DEDICATED_FROM")
+    assert not hasattr(pricing, "dedicated_price_label")
+    assert "dedicated_from" not in get(client).context
 
-    assert "Dedicated" in last_row and "€400" in last_row and f'href="{CONTACT}"' in last_row
+
+def test_the_comparison_table_ends_with_the_last_plan_on_sale(client, seeded):
+    table = plan_table(html_of(client))
+    rows = [row for row in table.split("<tr")[1:] if "ep-table-group" not in row and "<th>" not in row]
+
+    assert len(rows) == 3
+    assert "<strong>Standard</strong>" in rows[-1]
+    assert f'href="{CONTACT}"' not in table
     assert "Upgrade-only" not in table and "Professional" not in table
 
 
-def test_the_dedicated_offer_sells_what_the_customer_gets_not_how_we_run_it(client, seeded):
+def test_the_table_intro_sends_nobody_to_a_custom_setup(client, seeded):
+    body = visible_markup(html_of(client))
+
+    assert "one hub covers all your locations" in body
+    assert "Need more than that?" not in body
+
+
+def test_the_page_sells_what_the_customer_gets_not_how_we_run_it(client, seeded):
     """Plain words for a buyer: no engine, cluster or instance names anywhere on the page."""
     body = visible_markup(html_of(client)).lower()
-    dedicated = body.split('id="dedicated"', 1)[1].split("</section>", 1)[0]
 
+    assert "amazon web services" in body
     for internal in ("postgres", "aurora", "ecs", "fargate", "kubernetes", "docker", "pgbouncer", "replica set"):
         assert internal not in body, internal
-    assert "replicated" in dedicated
 
 
-def test_the_faq_answers_what_dedicated_infrastructure_is(client):
-    (item,) = [item for item in pricing.faq_items() if item["key"] == "dedicated"]
+def test_the_faq_has_no_dedicated_entry(client, seeded):
+    items = pricing.faq_items()
+    html = html_of(client)
 
-    assert "€400" in str(item["answer"])
-    assert "contact" in str(item["answer"]).lower()
-    assert str(item["question"]) in visible_markup(html_of(client))
+    assert items and "trial" in [item["key"] for item in items]
+    assert "dedicated" not in [item["key"] for item in items]
+    for item in items:
+        assert "dedicated" not in f"{item['question']} {item['answer']}".lower(), item["key"]
+    assert "dedicated" not in json.dumps(faq_page_of(html)).lower()
 
 
 # --- The detail page --------------------------------------------------------------------------
@@ -928,34 +951,30 @@ def test_pricing_faq_uses_the_shared_container():
         .split("<!-- Closing CTA -->", 1)[0]
     )
 
-    assert '<section id="faq" class="ep-section--compact ep-section--divider">' in faq
+    assert '<section id="faq" class="ep-section--compact ep-section--soft ep-section--divider">' in faq
     assert '<div class="ep-container ep-section-content">' in faq
 
 
 def test_pricing_uses_the_shared_alternating_section_surface():
     page = source("index.html")
 
+    # Without the dedicated band the surfaces still alternate: cards, table (soft), competitors, FAQ (soft).
     assert page.count("ep-section--soft") == 2
-    assert (
-        'class="ep-section--compact ep-section--soft ep-section--center ep-section--divider" id="dedicated"'
-        in page
-    )
-    assert (
-        '<section id="comparativa" class="ep-section--compact ep-section--soft ep-section--divider">'
-        in page
-    )
+    table = page.split("<!-- FEATURE COMPARISON TABLE", 1)[1].split("\n", 2)[2].lstrip()
+    assert table.startswith('<section class="ep-section--compact ep-section--soft ep-section--divider">')
+    assert '<section id="comparativa" class="ep-section--compact ep-section--divider">' in page
+    assert '<section id="faq" class="ep-section--compact ep-section--soft ep-section--divider">' in page
 
 
-def test_the_dedicated_offer_replaces_the_upgrade_only_plans_in_the_template():
+def test_the_template_has_no_offer_above_the_plans():
+    """Neither the upgrade-only plans (2026-10-15) nor the dedicated band that replaced them (2026-10-24b)."""
     page = source("index.html")
-    dedicated = page.split("<!-- DEDICATED INFRASTRUCTURE", 1)[1].split("<!-- FEATURE COMPARISON TABLE", 1)[0]
 
+    assert "<!-- PLAN CARDS -->" in page
     assert "plans_pro" not in page
     assert "Upgrade-only" not in page
-    assert '<ion-card class="ion-no-margin">' in dedicated
-    assert "{% url 'public:contact' %}" in dedicated
-    # The figure is public/pricing.py's, never typed in the template.
-    assert "price=dedicated_from" in dedicated and "400" not in dedicated
+    assert "dedicated" not in page.lower()
+    assert "{% url 'public:contact' %}" not in page
 
 
 def test_pricing_is_a_primary_page_with_the_compact_hero_and_the_shared_rhythm():

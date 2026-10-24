@@ -54,8 +54,9 @@ def make_user(db):
 
 
 def put_the_catalogue_back():
-    """The plans the migrations leave (``hubs/0013``; pytest builds its database by running them). A transactional
-    test starts from a database the one before flushed: there the data migration that writes them runs again."""
+    """The plans the migrations leave (``hubs/0013``, the module caps of ``hubs/0019`` and the paid cards of
+    ``hubs/0020``; pytest builds its database by running them). A transactional test starts from a database the one
+    before flushed: there the data migrations that write them run again, in their order."""
     from importlib import import_module
 
     from django.apps import apps
@@ -64,6 +65,8 @@ def put_the_catalogue_back():
 
     if not Plan.objects.exists():
         import_module("hubs.migrations.0013_plans_in_the_database").put_the_catalogue_in(apps, None)
+        import_module("hubs.migrations.0019_plan_max_apps").give_module_caps(apps, None)
+        import_module("hubs.migrations.0020_paid_plan_copy").describe_what_the_plans_give(apps, None)
 
 
 @pytest.fixture

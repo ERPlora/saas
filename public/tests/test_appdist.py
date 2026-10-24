@@ -26,6 +26,7 @@ import pytest
 from django.conf import settings
 from django.urls import reverse
 from hubs.models import Plan
+from public.tests.test_pricing import PRICE_400, visible_text
 
 pytestmark = pytest.mark.django_db
 
@@ -427,6 +428,38 @@ class TestInstallableAppPage:
         assert "You need a hub before you need the app." in html
         assert 'href="/launch"' in html
         assert "/accounts/login/" not in html
+
+
+#: The Linux card of each download page, in each language: a computer of the business, not an offer of ours.
+LINUX_CARD = {
+    ("app", "en"): "For a dedicated machine on your business network.",
+    ("app", "es"): "Para una máquina dedicada en la red de tu negocio.",
+    ("android", "en"): "The same app, portable, for a dedicated machine on your business network.",
+    ("android", "es"): "La misma app, portable, para un equipo dedicado en la red de tu negocio.",
+}
+
+
+class TestTheDownloadPagesSellNoInfrastructure:
+    """Ronda 2026-10-24b (PLAN-SAAS §9): the dedicated-infrastructure offer is gone from the public web, and the
+    download pages never name it nor its price. Their Linux card's «dedicated machine» is the business's own computer,
+    not that offer, and stays."""
+
+    @pytest.fixture(autouse=True)
+    def _listing_switched_off(self, settings):
+        settings.GOOGLE_PLAY_LISTING_LIVE = False
+
+    @pytest.mark.parametrize(("page", "language"), sorted(LINUX_CARD))
+    def test_no_dedicated_infrastructure_nor_its_price(self, client, page, language):
+        client.cookies[settings.LANGUAGE_COOKIE_NAME] = language
+        response = client.get(reverse("public:app") if page == "app" else download_url("android"))
+
+        assert response.status_code == 200
+        text = visible_text(response.content.decode())
+        # The positive control first: the page is the one in that language, Linux card included.
+        assert LINUX_CARD[(page, language)] in text
+        for offer in ("dedicated infrastructure", "infraestructura dedicada"):
+            assert offer not in text.lower(), offer
+        assert not PRICE_400.search(text)
 
 
 class TestTheAppPageIsTranslated:

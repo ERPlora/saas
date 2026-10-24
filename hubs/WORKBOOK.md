@@ -772,7 +772,9 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   `accounts` retiene la cuenta de quien paga (`accounts.pays_businesses`, ACCOUNTS-F27). Tests:
   `hubs/tests/test_members.py::TestRemoveThePayer`.
 - Planes (F05): `Plan` con columnas por idioma (`TranslatedFields`, `<campo>_en` y `<campo>_es`), sembrados por la
-  migración `0013`; el admin (`hubs/admin.py`) es la única escritura. La lista pública es `hubs.plan.list`.
+  migración `0013`; el admin (`hubs/admin.py`) es la única escritura. La lista pública es `hubs.plan.list`. La
+  `0020` quita de las fichas de Pro, Enterprise y Max (descripción y características) lo que prometía
+  infraestructura, sin tocar planes, precios ni límites (PLAN-SAAS §9).
 - Dirección web (F16): `hubs.business.change_address` (solo el propietario; `can.change_address` en la página),
   validada como la valida el Hub (`live.slugs`, `_chosen_slug`); sube `registry_version` y `state_version`, debe
   `put` y empuja tras el COMMIT; `sync_access(hub, previous_slug=…)` mueve el espejo del salto. La antigua queda en

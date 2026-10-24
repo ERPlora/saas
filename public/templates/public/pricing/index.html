@@ -9,9 +9,10 @@
   the copy no longer sells «premium add-ons» nor prices «per module», and the competitor table says
   «app catalogue», not «marketplace»; the counter hardware is the ERPlora app, not the retired
   Bridge (ADR-0196). Without any plan on sale the page says so instead of painting empty tables.
-  Since 2026-10-15 (Ioan) the upgrade-only plans are gone: above the three plans there is dedicated
-  infrastructure, from `dedicated_from` a month, agreed by contact — a band, the last row of the plan
-  table and a FAQ entry; the copy sells what the customer gets, never how we run it.
+  Since 2026-10-15 (Ioan) the upgrade-only plans are gone, and since the ronda 2026-10-24b (PLAN-SAAS §9)
+  nothing is offered above the three plans: no band, no extra row of the plan table, no FAQ entry, and the
+  surfaces still alternate (cards, table on soft, competitors, FAQ on soft). The copy sells what the
+  customer gets, never how we run it.
   Data: public/pricing.py (hubs.plan.list). Contract: public/tests/test_pricing.py.
 {% endcomment %}
 
@@ -59,54 +60,9 @@
     </div>
   </section>
 
-  <!-- DEDICATED INFRASTRUCTURE — above the plans there is no checkout: a quote, agreed by contact -->
-  <section class="ep-section--compact ep-section--soft ep-section--center ep-section--divider" id="dedicated">
-    <div class="ep-container ep-section-content">
-      <header class="ep-section-head">
-        <span class="ep-eyebrow">{% trans "Need more?" %}</span>
-        <h2 class="ep-section-title">{% trans "Dedicated infrastructure" %}</h2>
-        <p class="ep-section-sub">
-          {% blocktrans trimmed with price=dedicated_from %}
-          Several locations, high volume or requirements of your own? We set up a private environment
-          reserved for your business alone: its own capacity, a replicated database and priority support.
-          From {{ price }} a month, sized to what you need.
-          {% endblocktrans %}
-        </p>
-      </header>
-
-      <div class="max-w-lg mx-auto">
-        <ion-card class="ion-no-margin">
-          <ion-card-header>
-            <span class="font-mono text-xs uppercase tracking-wider text-fg/60">{% trans "By contact" %}</span>
-            <h3 class="font-display font-semibold text-xl tracking-tight mt-1">{% trans "Dedicated infrastructure" %}</h3>
-          </ion-card-header>
-          <ion-card-content>
-            <p class="font-display font-semibold text-2xl tracking-tight">
-              {% blocktrans with price=dedicated_from %}From {{ price }}{% endblocktrans %}
-              <span class="font-sans text-sm font-normal text-fg/60">{% trans "/ month per business" %}</span>
-            </p>
-            <ul class="mt-4 space-y-2 text-sm text-left">
-              <li class="flex gap-2 items-start">{% icon "lucide:check" css_class="text-success mt-1" %}<span>{% trans "A private environment, reserved for your business" %}</span></li>
-              <li class="flex gap-2 items-start">{% icon "lucide:check" css_class="text-success mt-1" %}<span>{% trans "Its own capacity and a replicated database" %}</span></li>
-              <li class="flex gap-2 items-start">{% icon "lucide:check" css_class="text-success mt-1" %}<span>{% trans "Priority support and set-up with our team" %}</span></li>
-            </ul>
-            <ion-button href="{% url 'public:contact' %}" expand="block" class="mt-6">
-              {% trans "Contact us" %}
-              <span slot="end">{% icon "lucide:arrow-right" %}</span>
-            </ion-button>
-          </ion-card-content>
-        </ion-card>
-      </div>
-
-      <p class="mt-10 text-center text-xs text-fg/70">
-        {% trans "Tell us about your business and we will come back with a quote." %}
-      </p>
-    </div>
-  </section>
-
   <!-- FEATURE COMPARISON TABLE (PLAN VS PLAN) -->
   {% if plans_main %}
-  <section class="ep-section--compact ep-section--divider">
+  <section class="ep-section--compact ep-section--soft ep-section--divider">
     <div class="ep-container ep-section-content">
       <div class="text-center mb-10">
         <div class="kbd-pill mb-3">{% trans "Full detail" %}</div>
@@ -115,8 +71,7 @@
           {% blocktrans trimmed %}
           Every plan is priced per hub, and one hub covers all your locations, devices and
           users. You start on the plan that fits you today and move up in one click when you
-          need a custom domain or more capacity — no migration and no downtime. Need more than
-          that? We set up dedicated infrastructure for you.
+          need a custom domain or more capacity — no migration and no downtime.
           {% endblocktrans %}
         </p>
       </div>
@@ -151,19 +106,6 @@
                 <td data-title="{% trans 'Access' %}"><a href="/launch" class="text-primary font-mono text-xs whitespace-nowrap">{% trans "Get started" %} →</a></td>
               </tr>
             {% endfor %}
-
-            <tr class="cat ep-table-group"><td colspan="9">{% trans "Dedicated infrastructure · by contact" %}</td></tr>
-            <tr>
-              <td><strong>{% trans "Dedicated" %}</strong></td>
-              <td data-title="{% trans 'Monthly, per hub' %}" class="num">{% blocktrans with price=dedicated_from %}From {{ price }}{% endblocktrans %}</td>
-              <td data-title="{% trans 'Devices and users' %}">{% trans "Unlimited devices" %} · {% trans "Unlimited users" %}</td>
-              <td data-title="{% trans 'Database throughput' %}">{% trans "Your own, sized with you" %}</td>
-              <td data-title="{% trans 'AI assistant' %}">{% trans "Agreed with you" %}</td>
-              <td data-title="WhatsApp">{% trans "Agreed with you" %}</td>
-              <td data-title="{% trans 'Apps included' %}">{% trans "All apps, free and premium" %}</td>
-              <td data-title="{% trans 'Support' %}">{% trans "Dedicated, agreed with you" %}</td>
-              <td data-title="{% trans 'Access' %}"><a href="{% url 'public:contact' %}" class="text-primary font-mono text-xs whitespace-nowrap">{% trans "Contact us" %} →</a></td>
-            </tr>
           </tbody>
         </table>
       </div>
@@ -176,7 +118,7 @@
   {% endif %}
 
   <!-- COMPARISON VS COMPETITORS -->
-  <section id="comparativa" class="ep-section--compact ep-section--soft ep-section--divider">
+  <section id="comparativa" class="ep-section--compact ep-section--divider">
     <div class="ep-container ep-section-content">
       <div class="text-center mb-12 max-w-2xl mx-auto">
         <div class="kbd-pill mb-3">{% trans "why us" %}</div>
@@ -267,7 +209,7 @@
   </section>
 
   <!-- FAQ -->
-  <section id="faq" class="ep-section--compact ep-section--divider">
+  <section id="faq" class="ep-section--compact ep-section--soft ep-section--divider">
     <div class="ep-container ep-section-content">
       <div class="text-center mb-8">
         <div class="kbd-pill mb-3">{% trans "FAQ" %}</div>

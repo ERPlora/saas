@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:54b237e4406c7a841ced83bf5a5734c75e73a1e812e17c8e0543edd458bb307f -->
+<!-- generated from WORKBOOK.md sha256:148d4be83aaa7646de2b001705a975a49b42bef8ba7898398a804cc774d592d2 -->
 
 ## What it is for and who it is for
 
@@ -70,8 +70,8 @@ strip "Made for small businesses", what a typical set of tools costs against ERP
 counter app, the plans, a comparison, the closing call and the contact.
 
 ### Plans and prices
-"Start free. Scale when you need it." with one card per plan on sale, the dedicated infrastructure offer, the table
-of what each plan includes, the comparisons with other ERPs and the frequently asked questions.
+"Start free. Scale when you need it." with one card per plan on sale, the table of what each plan includes, the
+comparisons with other ERPs and the frequently asked questions.
 
 ### Plan detail
 The name, the description, the monthly price per hub with the VAT note, "What's included", the button to get started
@@ -195,7 +195,7 @@ Screen: Plans and prices
 Steps:
 1. The person opens "Pricing" and sees "Start free. Scale when you need it." and one card per plan one can start with (Free, Starter and Standard), with the monthly price per hub, its features and the assistant and WhatsApp messages a month.
 2. If the plan has an annual price, the card states the year's price and the months it saves ("≈ €299.90/year · 2 months free"), worked out from the two prices; if every paid plan saves the same, the header says it once ("Pay for the year and get 2 months free.").
-3. Higher up it offers dedicated infrastructure, by contact; further down, the table of what each plan includes, the comparisons with other ERPs and the frequently asked questions.
+3. Further down, the table of what each plan includes, the comparisons with other ERPs and the frequently asked questions; above Standard it offers nothing more.
 In: the plans on sale (the upgrade plans, such as Pro, Enterprise and Max, are not painted).
 Out: nothing saved; the structured data of the frequently asked questions, taken from the same list as the accordion.
 If it fails: without plans on sale, the page says so and paints no tables. If the annual price saves no whole month, the card states only the year's price, without "months free". A plan without assistant or WhatsApp messages does not name them.

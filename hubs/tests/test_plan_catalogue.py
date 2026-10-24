@@ -191,6 +191,54 @@ def test_no_plan_sells_infrastructure_specs(catalogue):
                 )
 
 
+#: What the plans no longer sell (round 6, PLAN-SAAS §9 of 2026-10-24b) and nobody runs: no description nor feature
+#: of any plan, what the Store shows a business, promises it. The support «agreed in contract» is a ``support_level``.
+UNSOLD_INFRASTRUCTURE = (
+    "dedicated", "isolated", "autoscal", "disaster", "monitoring", "single-node", "infrastructure",
+    "dedicada", "aislada", "autoescalado", "desastres", "monitoreo", "un solo nodo", "infraestructura",
+)  # fmt: skip
+
+
+#: The one line that names scaling and stays (Free and Starter, 0011 and 0013): the shared cloud every plan runs on
+#: does scale on its own, and that is no infrastructure of the business's own. In English it never matched
+#: «autoscal»; its Spanish says «autoescalado».
+SHARED_CLOUD_LINES = {
+    "Fully managed cloud on Amazon Web Services, in Europe, with automatic scaling",
+    "Cloud gestionado en Amazon Web Services, en Europa, con autoescalado",
+}
+
+
+def _infrastructure_promises(texts) -> list[str]:
+    return [
+        f"{word!r} in {text!r}"
+        for text in texts
+        if text not in SHARED_CLOUD_LINES
+        for word in UNSOLD_INFRASTRUCTURE
+        if word in text.lower()
+    ]
+
+
+def test_no_plan_promises_infrastructure_we_do_not_sell(catalogue):
+    for slug, plan in catalogue.items():
+        assert _infrastructure_promises(_copy(plan)) == [], slug
+
+
+def test_the_infrastructure_guard_catches_the_lines_that_were_actually_published():
+    """Positive control: lines 0013 seeded and 0020 took away, in both languages."""
+    for published in (
+        "Dedicated infrastructure with autoscaling, disaster recovery and contract-backed support.",
+        "Infraestructura aislada",
+        "Recuperación ante desastres (PITR)",
+        "Monitoreo avanzado",
+        "Maximum single-node performance, for the most demanding businesses.",
+        "Máximo rendimiento de un solo nodo, para los negocios más exigentes.",
+    ):
+        assert _infrastructure_promises([published]), published
+    assert _infrastructure_promises(["Support channels and escalation agreed in contract", *SHARED_CLOUD_LINES]) == []
+    # The shared cloud line is exempt by its exact words, never by a word of it.
+    assert _infrastructure_promises(["Autoescalado automático de contenedores"])
+
+
 def test_no_plan_publishes_an_uptime_sla_percentage(catalogue):
     """saas#1760: the only availability statement is the one in the terms (99.5 %, reasonable efforts)."""
     for slug, plan in catalogue.items():
