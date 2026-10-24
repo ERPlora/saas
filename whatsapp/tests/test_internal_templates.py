@@ -4,8 +4,9 @@ mirror of Meta's templates the Hub's snapshot carries.
 
 Door 8 registers a template at Meta (new, or with ``meta_id`` an edit of the one Meta has) once per
 ``Idempotency-Key``: 200 ``{"meta_id", "status"}``; 409 ``whatsapp.template_invalid | meta_unreachable |
-meta_rate_limited | not_connected`` with Meta's reason = not taken. Door 9 deletes that one template in that language:
-200 ``{"deleted": true}``, or 404 ``whatsapp.template_not_found`` when Meta no longer has it; anything else keeps it.
+meta_rate_limited | not_connected | reconnect_needed`` with Meta's reason = not taken (``reconnect_needed``: Meta's 190,
+the number marked «needs reconnecting»). Door 9 deletes that one template in that language: 200 ``{"deleted": true}``,
+or 404 ``whatsapp.template_not_found`` when Meta no longer has it; anything else keeps it.
 
 Meta is replaced at the HTTP border only (``respx``), with Meta's documented bodies. Cases of the old product's
 ``test_templates.py`` and ``test_whatsapp_templates_door.py``.
@@ -247,9 +248,29 @@ class TestNotTaken:
 
         response = submit(client)
 
-        assert (response.status_code, error_code(response)) == (409, "whatsapp.not_connected")
+        assert (response.status_code, error_code(response)) == (409, "whatsapp.reconnect_needed")
         assert PhoneNumber.objects.get(hub=business).needs_reconnect is True
         assert Hub.objects.get(pk=business.pk).state_version > before
+
+    @respx.mock
+    def test_an_expired_permission_editing_one_asks_to_connect_again_too(self, client, number, business):
+        mirrored(business)
+        respx.post(f"{GRAPH}/{META_ID}").mock(return_value=refused(401, 190, message="Error validating access token"))
+
+        response = submit(client, template_body(meta_id=META_ID))
+
+        assert (response.status_code, error_code(response)) == (409, "whatsapp.reconnect_needed")
+        assert PhoneNumber.objects.get(hub=business).needs_reconnect is True
+
+    @pytest.mark.parametrize("code", sorted(gateway.NOT_CONNECTED - {gateway.EXPIRED_PERMISSION}))
+    @respx.mock
+    def test_any_other_lost_connection_is_not_connected_and_marks_nothing(self, client, number, business, code):
+        respx.post(TEMPLATES).mock(return_value=refused(403, code, message="Permission denied"))
+
+        response = submit(client)
+
+        assert (response.status_code, error_code(response)) == (409, "whatsapp.not_connected")
+        assert PhoneNumber.objects.get(hub=business).needs_reconnect is False
 
     def test_a_business_without_a_number_has_no_account_to_register_into(self, client, internal, business):
         with respx.mock:
@@ -377,6 +398,42 @@ class TestDeleting:
 
         assert (response.status_code, error_code(response)) == (409, code)
         assert Template.objects.filter(hub=business).exists()
+
+    @respx.mock
+    def test_an_expired_permission_keeps_it_and_asks_to_connect_again(self, client, number, business):
+        mirrored(business)
+        respx.delete(TEMPLATES).mock(return_value=refused(401, 190, message="Error validating access token"))
+        before = Hub.objects.get(pk=business.pk).state_version
+
+        response = remove(client)
+
+        assert (response.status_code, error_code(response)) == (409, "whatsapp.reconnect_needed")
+        assert Template.objects.filter(hub=business).exists()
+        assert PhoneNumber.objects.get(hub=business).needs_reconnect is True
+        assert Hub.objects.get(pk=business.pk).state_version > before
+
+    @respx.mock
+    def test_an_expired_permission_asking_meta_for_its_id_asks_to_connect_again(self, client, number, business):
+        respx.get(TEMPLATES).mock(return_value=refused(401, 190, message="Error validating access token"))
+        meta = respx.delete(TEMPLATES)
+
+        response = remove(client, {"hub": "bar-manolo", "name": "recordatorio", "language": "es"})
+
+        assert (response.status_code, error_code(response)) == (409, "whatsapp.reconnect_needed")
+        assert not meta.called
+        assert PhoneNumber.objects.get(hub=business).needs_reconnect is True
+
+    @pytest.mark.parametrize("code", sorted(gateway.NOT_CONNECTED - {gateway.EXPIRED_PERMISSION}))
+    @respx.mock
+    def test_any_other_lost_connection_keeps_it_as_not_connected(self, client, number, business, code):
+        mirrored(business)
+        respx.delete(TEMPLATES).mock(return_value=refused(403, code, message="Permission denied"))
+
+        response = remove(client)
+
+        assert (response.status_code, error_code(response)) == (409, "whatsapp.not_connected")
+        assert Template.objects.filter(hub=business).exists()
+        assert PhoneNumber.objects.get(hub=business).needs_reconnect is False
 
     def test_a_business_without_a_number_cannot_delete_at_meta(self, client, internal, business):
         response = remove(client)

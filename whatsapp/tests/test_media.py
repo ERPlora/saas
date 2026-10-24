@@ -228,9 +228,48 @@ def test_an_expired_permission_is_409_and_marks_the_number_to_reconnect(client, 
 
     response = open_media(client, row)
 
-    assert (response.status_code, error_code(response)) == (409, "whatsapp.not_connected")
+    assert (response.status_code, error_code(response)) == (409, "whatsapp.reconnect_needed")
     number.refresh_from_db()
     assert number.needs_reconnect is True
+
+
+@respx.mock
+def test_an_expired_permission_at_the_download_is_409_and_marks_the_number_to_reconnect(client, number, business, owner):
+    _, download = meta_has_it()
+    download.mock(
+        return_value=httpx.Response(
+            401, json={"error": {"message": "Error validating access token", "type": "OAuthException", "code": 190}}
+        )
+    )
+    row = attachment(business)
+    client.force_login(owner)
+
+    response = open_media(client, row)
+
+    assert (response.status_code, error_code(response)) == (409, "whatsapp.reconnect_needed")
+    number.refresh_from_db()
+    assert number.needs_reconnect is True
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        httpx.Response(404, json={"error": {"message": "Unsupported get request.", "type": "GraphMethodException", "code": 100}}),
+        httpx.Response(403, content=b"Forbidden"),
+    ],
+)
+@respx.mock
+def test_any_other_refusal_of_the_download_is_502_and_marks_nothing(client, number, business, owner, answer):
+    _, download = meta_has_it()
+    download.mock(return_value=answer)
+    row = attachment(business)
+    client.force_login(owner)
+
+    response = open_media(client, row)
+
+    assert (response.status_code, error_code(response)) == (502, "whatsapp.media_unavailable")
+    number.refresh_from_db()
+    assert number.needs_reconnect is False
 
 
 @pytest.mark.parametrize(

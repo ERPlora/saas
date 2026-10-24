@@ -210,3 +210,45 @@ def test_an_attachment_streams_from_meta_with_the_token_in_a_header(whatsapp_on)
         assert b"".join(response.iter_bytes()) == b"\xff\xd8jpeg"
 
     assert route.calls.last.request.headers["Authorization"] == "Bearer EAAG-token"
+
+
+@respx.mock
+def test_meta_refusing_an_attachment_is_meta_refused_with_its_code(whatsapp_on):
+    url = "https://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=1"
+    respx.get(url).mock(
+        return_value=httpx.Response(
+            401, json={"error": {"message": "Error validating access token", "type": "OAuthException", "code": 190}}
+        )
+    )
+
+    with pytest.raises(meta.MetaRefused) as refused:
+        with meta.download(url, token="EAAG-token"):
+            pass
+
+    assert (refused.value.status, refused.value.code) == (401, 190)
+
+
+@pytest.mark.parametrize("status", [500, 302])
+@respx.mock
+def test_an_attachment_meta_fails_or_redirects_is_unreachable(whatsapp_on, status):
+    url = "https://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=1"
+    respx.get(url).mock(return_value=httpx.Response(status, headers={"Location": "https://lookaside.fbsbx.com/x"}))
+
+    with pytest.raises(meta.MetaUnreachable):
+        with meta.download(url, token="EAAG-token"):
+            pass
+
+
+@respx.mock
+def test_a_refusal_longer_than_the_limit_is_meta_refused_without_metas_error(whatsapp_on):
+    """The refusal's body is read only up to ``REFUSAL_LIMIT`` (Meta's error object is a few hundred bytes): a 4xx
+    with a longer body is ``MetaRefused`` with its status and no code, never read whole for its error."""
+    url = "https://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=1"
+    too_long = {"error": {"message": "x" * 16 * 1024, "type": "OAuthException", "code": 190}}
+    respx.get(url).mock(return_value=httpx.Response(401, json=too_long))
+
+    with pytest.raises(meta.MetaRefused) as refused:
+        with meta.download(url, token="EAAG-token"):
+            pass
+
+    assert (refused.value.status, refused.value.code) == (401, None)

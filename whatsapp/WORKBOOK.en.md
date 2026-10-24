@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:882688b585c97d3e78f9d2629bebccff52cc0cfb7482f6a2a3fbef8fbfbd539e -->
+<!-- generated from WORKBOOK.md sha256:91f97cb2be0e89958770f26353ef5b5bbdfa8fe74c1e055da628550857dd055c -->
 
 ## What it is for and who it is for
 
@@ -197,7 +197,7 @@ Steps:
 4. The status of a message of the business ("Delivered", "Read", "Not delivered") reaches the inbox: that of one sent from the Hub, once erplora.com knows which it is; that of a reply of the owner from the phone, after that reply.
 In: Meta's notices: messages, echoes from the phone, history, delivery statuses and template verdicts.
 Out: the message or the status in the Hub's inbox (`whatsapp.webhook.ingested`, `whatsapp.delivery.recorded`).
-If it fails: a notice without Meta's signature is refused and not kept; one of a number nobody has connected is discarded; the status of a message the Hub does not have is waited for ten minutes and discarded; if the Hub says the message is not valid, it is not retried and stays visible to staff; an attachment of another business, or one Meta no longer has, says "not available".
+If it fails: a notice without Meta's signature is refused and not kept; one of a number nobody has connected is discarded; the status of a message the Hub does not have is waited for ten minutes and discarded; if the Hub says the message is not valid, it is not retried and stays visible to staff; an attachment of another business, or one Meta no longer has, says "not available"; if, on opening an attachment, Meta's permission expired or the business withdrew it in Meta, the attachment does not open, it says the number has to be connected again (not that it is not connected) and the number shows "Needs reconnecting" in the Hub.
 Involved: the Hub's WhatsApp inbox
 
 ### WHATSAPP-F08 See the WhatsApp numbers in the admin
@@ -301,7 +301,7 @@ Steps:
 3. It registers it at Meta (or, if Meta already had it, edits Meta's) and the Hub shows it "Under review"; Meta's verdict arrives on its own afterwards.
 In: the template as it was written and the key of the save.
 Out: the template at Meta and its copy in erplora.com, which travels to the Hub in the state snapshot (`whatsapp.template.registered`).
-If it fails: a broken rule says which one; Meta refusing it gives its reason for the person; if Meta does not answer or asks to wait, nothing is saved and it can be retried; the same save repeated is never registered twice.
+If it fails: a broken rule says which one; Meta refusing it gives its reason for the person; if Meta's permission expired or the business withdrew it in Meta, it is not registered, it says the number has to be connected again (not that it is not connected) and the number shows "Needs reconnecting" in the Hub; if Meta does not answer or asks to wait, nothing is saved and it can be retried; the same save repeated is never registered twice.
 Involved: the Hub's WhatsApp inbox
 
 ### WHATSAPP-F16 Upload to Meta the sample of a template's header
@@ -326,7 +326,7 @@ Steps:
 3. The Hub takes it as deleted.
 In: the template's name, language and Meta id.
 Out: the template gone from Meta and from erplora.com's copy (`whatsapp.template.forgotten`).
-If it fails: if Meta no longer has it, it counts as deleted; if Meta refuses or does not answer, it stays alive and the Hub asks again.
+If it fails: if Meta no longer has it, it counts as deleted; if Meta's permission expired or the business withdrew it in Meta, it stays alive, it says the number has to be connected again (not that it is not connected) and the number shows "Needs reconnecting" in the Hub; if Meta refuses or does not answer, it stays alive and the Hub asks again.
 Involved: the Hub's WhatsApp inbox
 
 ### WHATSAPP-F18 What ERPlora staff can do
