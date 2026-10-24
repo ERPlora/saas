@@ -325,6 +325,20 @@ class TestAndroidPageWhileThePlayListingIsNotLive:
 
         assert "Muy pronto en Google Play" in html
 
+    def test_the_linux_card_names_a_till_computer(self, client):
+        """Ronda 2026-10-24b (PLAN-SAAS §9): «dedicated» on the public web named an offer that is gone."""
+        html = client.get(download_url("android")).content.decode()
+
+        assert "The same app, portable, for a till computer on your business network." in html
+        assert "dedicated" not in html.lower()
+
+    def test_the_linux_card_names_a_till_computer_in_spanish(self, client):
+        client.cookies[settings.LANGUAGE_COOKIE_NAME] = "es"
+        html = client.get(download_url("android")).content.decode()
+
+        assert "La misma app, portable, para un equipo de caja en la red de tu negocio." in html
+        assert "dedicad" not in html.lower()
+
     def test_it_flips_to_play_with_a_setting_the_day_the_listing_goes_live(
         self, client, settings
     ):
@@ -427,6 +441,24 @@ class TestInstallableAppPage:
         assert "You need a hub before you need the app." in html
         assert 'href="/launch"' in html
         assert "/accounts/login/" not in html
+
+
+class TestTheLinuxBuildReadsAsATillComputer:
+    """Ronda 2026-10-24b (PLAN-SAAS §9): «dedicated» on the public web named the dedicated-infrastructure offer,
+    which is gone; the Linux build is for a till computer, and ``/app/`` says so in plain words."""
+
+    def test_in_english(self, client):
+        html = client.get("/app/").content.decode()
+
+        assert "For a till computer on your business network." in html
+        assert "dedicated" not in html.lower()
+
+    def test_in_spanish(self, client):
+        client.cookies[settings.LANGUAGE_COOKIE_NAME] = "es"
+        html = client.get("/app/").content.decode()
+
+        assert "Para un equipo de caja en la red de tu negocio." in html
+        assert "dedicad" not in html.lower()
 
 
 class TestTheAppPageIsTranslated:

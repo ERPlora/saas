@@ -78,8 +78,8 @@ la franja «Hecho para pequeños negocios», lo que cuesta un conjunto típico d
 plataforma, las apps, la app del mostrador, los planes, una comparativa, la llamada final y el contacto.
 
 ### Planes y precios
-«Empieza gratis. Escala cuando lo necesites.» con una tarjeta por plan a la venta, la oferta de infraestructura
-dedicada, la tabla de lo incluido en cada plan, las comparativas con otros ERP y las preguntas frecuentes.
+«Empieza gratis. Escala cuando lo necesites.» con una tarjeta por plan a la venta, la tabla de lo incluido en cada
+plan, las comparativas con otros ERP y las preguntas frecuentes.
 
 ### Detalle de un plan
 El nombre, la descripción, el precio mensual por hub con la nota de IVA, «Qué incluye», el botón para empezar y
@@ -207,7 +207,7 @@ Pantalla: Planes y precios
 Pasos:
 1. La persona abre «Precios» y ve «Empieza gratis. Escala cuando lo necesites.» y una tarjeta por plan con el que se puede empezar (Gratis, Starter y Standard), con el precio mensual por hub, sus características y los mensajes al mes del asistente y de WhatsApp.
 2. Si el plan tiene precio anual, la tarjeta dice el precio del año y los meses que ahorra («≈ 299,90 €/año · 2 meses gratis»), calculados de los dos precios; si todos los planes de pago ahorran lo mismo, la cabecera lo dice una vez («Paga el año y llévate 2 meses gratis.»).
-3. Más arriba ofrece la infraestructura dedicada, por contacto; más abajo, la tabla de lo incluido en cada plan, las comparativas con otros ERP y las preguntas frecuentes.
+3. Más abajo, la tabla de lo incluido en cada plan, las comparativas con otros ERP y las preguntas frecuentes; por encima de Standard no ofrece nada más.
 Entra: los planes a la venta (los de mejora, como Pro, Enterprise y Max, no se pintan).
 Sale: nada guardado; los datos estructurados de las preguntas frecuentes, salidos de la misma lista que el desplegable.
 Si falla: sin planes a la venta, la página lo dice y no pinta tablas. Si el precio anual no ahorra ningún mes entero, la tarjeta dice solo el precio del año, sin «meses gratis». Un plan sin mensajes de asistente o de WhatsApp no los nombra.
@@ -748,7 +748,8 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
 - Precios (F02–F04): los planes se leen con `hubs.plan.list`; el ahorro anual es `annual_months_free` (12 menos los
   meses que paga el precio anual, redondeado hacia abajo) y la cabecera usa `common_months_free`. El cobro es
   `billing.services.plan_sale` y la comprobación de los precios de Stripe al guardar un plan, `plan_price_problems`
-  (BILLING-F28). La infraestructura dedicada es la constante `DEDICATED_FROM`.
+  (BILLING-F28). Por encima de Standard la página no ofrece nada: la infraestructura dedicada por contacto (la
+  constante `DEDICATED_FROM`, su banda, su fila y su pregunta) se retiró en la ronda 2026-10-24b (PLAN-SAAS §9).
 - Promesas (F07, F08): la tabla de la portada es `landing.TYPICAL_STACK` (total sumado); las listas de frases
   prohibidas están en `public/tests/test_product.py` (`UNSHIPPED_CLAIMS`, `UNVERIFIED_SECURITY_CLAIMS`). El
   balanceador acepta TLS 1.2 y 1.3 (`ssl_policy` de ERPlora/aws).
@@ -771,6 +772,8 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
 - No lleva el plan ni el sector elegidos al alta: todo negocio nace en Gratis y el plan se cambia después.
 - No tiene página de desarrolladores, marketplace de terceros ni puente local: todas las apps son de ERPlora.
 - No cobra ni vende nada en la web pública: el pago está en el panel.
+- No ofrece nada por encima de Standard: ni infraestructura dedicada ni planes por contacto (ronda 2026-10-24b,
+  PLAN-SAAS §9).
 - No nombra normativas fiscales de países a cuyo sistema no se conecta.
 - No pide consentimiento de cookies mientras no mide visitas: las cookies técnicas no lo necesitan.
 - No tiene una página de documentación aparte: la documentación es el centro de ayuda y la pestaña de cada app.
