@@ -88,6 +88,20 @@ def test_the_next_pass_delivers_it(staff_client, on_starter, hub_double):
     assert counts["delivered"] >= 1
 
 
+def test_a_new_module_cap_reaches_the_hub_in_the_snapshot(staff_client, business, on_starter, hub_double):
+    """``max_apps`` (Ioan, 2026-10-24) is a right of the plan like its other limits: changing it owes every business
+    on the plan a newer snapshot, and the next pass takes it to the Hub, which checks it when a module is turned on."""
+    services.reconcile()
+    before = versions(business, on_starter)
+
+    edit(staff_client, "starter", max_apps=3)
+
+    assert versions(business, on_starter) == [before[0], before[1] + 1]
+    services.reconcile()
+    state = hub_double.calls_to("PUT", f"/internal/hubs/{on_starter.id}/state")[-1].body
+    assert (state["plan"]["slug"], state["plan"]["max_apps"]) == ("starter", 3)
+
+
 def test_the_staff_are_told_how_many_businesses_get_it(staff_client, on_starter):
     response = edit(staff_client, "starter", max_users=10)
 
