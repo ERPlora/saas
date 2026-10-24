@@ -402,8 +402,9 @@ Implicados: ninguno
   número queda «Hay que reconectar» y la foto lo lleva con una versión nueva (WHATSAPP-F06, F15, F17, F07, F03); la
   plantilla no se registra ni se borra.
   Los otros códigos de Meta de un número que no puede (10, 200, 131031, 133010) siguen siendo `not_connected` en las
-  puertas 5, 8 y 9, sin marca; en los adjuntos, como cualquier otro rechazo de Meta, un 404
-  `whatsapp.media_not_found`. El Hub lo entiende en la puerta 5 y en las plantillas
+  puertas 5, 8 y 9, sin marca. En los adjuntos el 190 cuenta igual al pedir el adjunto que al descargarlo; cualquier
+  otro rechazo de Meta es un 404 `whatsapp.media_not_found` al pedirlo y un 502 `whatsapp.media_unavailable` al
+  descargarlo, sin marca. El Hub lo entiende en la puerta 5 y en las plantillas
   (`whatsapp_inbox.reconnect_needed` con su propio texto, hub#245). Un adjunto lo abre el navegador de la persona
   (`<img>`, `<audio>` o un enlace), que no lee el código: cualquier 409 es para el Hub un adjunto que no carga, así
   que el código nuevo no cambia lo que pinta.

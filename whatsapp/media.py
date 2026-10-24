@@ -11,9 +11,9 @@ never shown on erplora.com's origin: it is downloaded, sandboxed, with ``nosniff
 
 Answers: 200 the bytes; 401 ``unauthorized`` without a session; 404 ``whatsapp.media_not_found`` (not this
 person's business, not an attachment, or Meta no longer has it); 405; 409 ``whatsapp.not_connected`` (no connected
-number); 409 ``whatsapp.reconnect_needed`` (Meta refused its permission, its 190: the number is marked «needs
-reconnecting»); 502
-``whatsapp.media_unavailable`` (Meta not reached, failing, or pointing somewhere that is not Meta).
+number); 409 ``whatsapp.reconnect_needed`` (Meta refused its permission, its 190, asking for the attachment or
+downloading it: the number is marked «needs reconnecting»); 502 ``whatsapp.media_unavailable`` (Meta not reached,
+failing, refusing the download for another reason, or pointing somewhere that is not Meta).
 """
 
 import logging
@@ -26,6 +26,7 @@ from django.views.decorators.http import require_GET
 from live.errors import OperationError
 
 from whatsapp import meta, queries, services
+from whatsapp.gateway import EXPIRED_PERMISSION
 from whatsapp.schemas import MediaIn, ReconnectIn
 
 logger = logging.getLogger(__name__)
@@ -36,8 +37,6 @@ NEVER_INLINE = frozenset({"image/svg+xml"})
 #: Kept as Meta names them; anything else travels as bytes with no meaning.
 DOWNLOADED = frozenset({"application/pdf"})
 CHUNK = 64 * 1024
-#: Meta's error code of an expired or withdrawn permission.
-EXPIRED_PERMISSION = 190
 
 
 def _error(status: int, code: str, message: str) -> JsonResponse:
@@ -46,6 +45,12 @@ def _error(status: int, code: str, message: str) -> JsonResponse:
 
 def _unavailable() -> JsonResponse:
     return _error(502, "whatsapp.media_unavailable", "Meta could not hand over this attachment now. Try again later.")
+
+
+def _reconnect(ctx, hub_id) -> JsonResponse:
+    """Meta's 190, asking for the attachment or downloading it: the number is marked «needs reconnecting»."""
+    services.number_reconnect_needed(ctx, ReconnectIn(hub_id=hub_id))
+    return _error(409, "whatsapp.reconnect_needed", "WhatsApp needs connecting again to open attachments.")
 
 
 class _Stream:
@@ -95,8 +100,7 @@ def media(request: HttpRequest, delivery_id: str) -> HttpResponse:
         info = meta.get(found.media_id, token=token)
     except meta.MetaRefused as refused:
         if refused.code == EXPIRED_PERMISSION:
-            services.number_reconnect_needed(ctx, ReconnectIn(hub_id=found.hub_id))
-            return _error(409, "whatsapp.reconnect_needed", "WhatsApp needs connecting again to open attachments.")
+            return _reconnect(ctx, found.hub_id)
         logger.info("whatsapp.media.refused meta_status=%s meta_code=%s", refused.status, refused.code)
         return _error(404, "whatsapp.media_not_found", "This attachment is not available.")
     except meta.MetaUnreachable:
@@ -104,6 +108,12 @@ def media(request: HttpRequest, delivery_id: str) -> HttpResponse:
     stack = ExitStack()
     try:
         upstream = stack.enter_context(meta.download(str(info.get("url") or ""), token=token))
+    except meta.MetaRefused as refused:
+        stack.close()
+        if refused.code == EXPIRED_PERMISSION:
+            return _reconnect(ctx, found.hub_id)
+        logger.warning("whatsapp.media.download_refused meta_status=%s meta_code=%s", refused.status, refused.code)
+        return _unavailable()
     except meta.MetaUnreachable as failure:
         stack.close()
         logger.warning("whatsapp.media.unavailable error=%s", failure)

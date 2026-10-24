@@ -18,6 +18,7 @@ No credential, no message text and no recipient is ever logged here.
 """
 
 import contextlib
+import json
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -35,6 +36,8 @@ MEDIA_HOST_SUFFIXES = (".fbsbx.com", ".facebook.com", ".fbcdn.net", ".whatsapp.n
 #: Meta's codes for «slow down» (besides HTTP 429): app and account throttling (80008: the business-use-case limit of
 #: the WhatsApp Business Management API, the templates'), and the number's throughput.
 RATE_LIMIT_CODES = frozenset({4, 17, 32, 613, 80007, 80008, 130429, 131056})
+#: How much of an attachment's refusal is read for Meta's error object (it is a few hundred bytes).
+REFUSAL_LIMIT = 16 * 1024
 
 
 class NotConfigured(Exception):
@@ -212,19 +215,35 @@ def _meta_media_url(url: str) -> bool:
 def download(url: str, *, token: str) -> Iterator[httpx.Response]:
     """Stream an attachment from the link Meta gave for it: only Meta's hosts, over https, never redirected.
 
-    The response is open inside the ``with``: its bytes are read as they arrive, never kept here.
+    The response is open inside the ``with``: its bytes are read as they arrive, never kept here. A 4xx is
+    ``MetaRefused`` with Meta's error object (its 190: the permission expired); anything else but a 200,
+    ``MetaUnreachable``.
     """
     if not _meta_media_url(url):
         raise MetaUnreachable("The attachment's link is not Meta's.", sent=False)
     try:
         with httpx.Client(timeout=TIMEOUT, follow_redirects=False) as client:
             with client.stream("GET", url, headers={"Authorization": f"Bearer {token}"}) as response:
-                if response.status_code != 200:
+                status = response.status_code
+                if 400 <= status < 500:
+                    raise _refused(status, _refusal_body(response))
+                if status != 200:
                     raise MetaUnreachable(
-                        f"Meta answered HTTP {response.status_code} for the attachment.",
-                        sent=True,
-                        status=response.status_code,
+                        f"Meta answered HTTP {status} for the attachment.", sent=True, status=status
                     )
                 yield response
     except httpx.HTTPError as error:
         raise MetaUnreachable(f"The attachment could not be fetched: {type(error).__name__}.", sent=True) from None
+
+
+def _refusal_body(response: httpx.Response):
+    """The JSON of a streamed refusal, read up to ``REFUSAL_LIMIT`` (``None`` when it is not JSON)."""
+    read = b""
+    for chunk in response.iter_bytes():
+        read += chunk
+        if len(read) >= REFUSAL_LIMIT:
+            return None
+    try:
+        return json.loads(read)
+    except ValueError:
+        return None
