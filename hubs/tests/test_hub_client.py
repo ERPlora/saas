@@ -38,6 +38,7 @@ SNAPSHOT = {
         "max_users": 3,
         "max_db_connections": 1,
         "statement_timeout_seconds": 5,
+        "max_apps": 0,
     },
     "modules": [],
     "members": [],

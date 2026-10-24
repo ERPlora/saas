@@ -987,7 +987,8 @@ def effective_plan(hub_id: UUID, now: datetime) -> Plan | None:
 
 #: The plan's fields its businesses' snapshots carry (``plan`` of PLAN-SAAS §2.2): changing one in the admin owes the
 #: Hub a newer snapshot of every business on the plan (``services.owe_plan_rights``). The monthly messages are counted
-#: and blocked at by the Hub (PLAN-SAAS §3.6): 0 = none.
+#: and blocked at by the Hub (PLAN-SAAS §3.6): 0 = none. ``max_apps`` is how many modules the business may choose to
+#: turn on, which the Hub checks when it turns one on (2026-10-24): 0 = no limit.
 SNAPSHOT_PLAN_FIELDS = (
     "slug",
     "included_level",
@@ -997,6 +998,7 @@ SNAPSHOT_PLAN_FIELDS = (
     "statement_timeout_seconds",
     "assistant_messages_per_month",
     "whatsapp_messages_per_month",
+    "max_apps",
 )
 
 

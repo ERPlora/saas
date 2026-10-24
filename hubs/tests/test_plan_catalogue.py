@@ -55,7 +55,7 @@ PLAN_FIELDS = {
     "internal_only", "stripe_product_id", "stripe_price_id", "stripe_price_id_annual", "trial_period_days",
     "display_order", "max_hubs_per_org", "max_devices", "max_users", "max_db_connections",
     "statement_timeout_seconds", "included_level", "support_level", "includes_custom_domain",
-    "assistant_messages_per_month", "whatsapp_messages_per_month",
+    "assistant_messages_per_month", "whatsapp_messages_per_month", "max_apps",
     "created_at", "updated_at",
     # The reverse relation of Subscription.plan (the hubs on the plan), not a column of the plan.
     "subscriptions",
@@ -418,6 +418,19 @@ def test_the_seat_cap_is_the_number_the_free_card_promises(catalogue):
     assert promises, (
         f"free plan no longer promises a user count: {free.features_en} / {free.features_es}"
     )
+
+
+def test_no_plan_caps_the_modules_a_business_turns_on_yet(catalogue):
+    """Every module is on every plan (Ioan, 2026-10-24); a plan only caps how many modules a business chooses to turn
+    on (``max_apps``, the ones it picks, not what they require), and the figures are not set yet: 0, no cap."""
+    assert {slug: plan.max_apps for slug, plan in catalogue.items()} == dict.fromkeys(catalogue, 0)
+
+
+def test_a_new_plan_caps_no_modules(db):
+    """0 is «no limit»: a plan staff add in the admin lets a business turn on every module until they set a figure."""
+    plan = Plan.objects.create(slug="bare", name_en="Bare", price_monthly=Decimal("9.99"))
+
+    assert plan.max_apps == 0
 
 
 def test_paid_plans_do_not_cap_people(catalogue):

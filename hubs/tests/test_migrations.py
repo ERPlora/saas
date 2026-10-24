@@ -671,7 +671,13 @@ class TestThePlansLiveInTheDatabase:
         from hubs.models import Plan
 
         call_command("migrate", "hubs", "0012", verbosity=0)
-        Plan.objects.all().delete()
+        # The model of 0012, not today's: a column a later migration adds is not there yet.
+        old_plan = MigrationLoader(connection).project_state(("hubs", "0012_plan_monthly_messages")).apps.get_model(
+            "hubs", "Plan"
+        )
+        old_plan.objects.all().delete()
+        with connection.cursor() as cursor:
+            cursor.execute("SET CONSTRAINTS ALL IMMEDIATE")
         call_command("migrate", "hubs", verbosity=0)
 
         assert set(Plan.objects.values_list("slug", flat=True)) == set(CATALOGUE_0013)
@@ -867,3 +873,31 @@ def test_hubs_migrates_back_before_the_clock_and_forward_again_dating_the_suspen
     call_command("migrate", "hubs", verbosity=0)
 
     assert Hub.objects.get(pk=business.pk).suspended_at is not None
+
+
+# --- 0019: how many modules a business may choose to turn on (Ioan, 2026-10-24) -----------------------------------
+
+
+@pytest.mark.django_db
+def test_hubs_migrates_back_before_the_module_cap_and_forward_again_with_no_plan_capped():
+    """``migrate hubs 0018`` and back: the column goes and comes with a 0 (no limit) on every plan, and a row written
+    without it, as the code before the column writes, gets the database's 0 too."""
+    from hubs.models import Plan
+
+    slugs = set(Plan.objects.values_list("slug", flat=True))
+    call_command("migrate", "hubs", "0018", verbosity=0)
+    call_command("migrate", "hubs", verbosity=0)
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "INSERT INTO hubs_plan (id, slug, name_en, name_es, description_en, description_es, price_monthly, price_annual,"
+            " features_en, features_es, featured_label_en, featured_label_es, is_active, upgrade_only, internal_only,"
+            " stripe_product_id, stripe_price_id, stripe_price_id_annual, trial_period_days, display_order,"
+            " max_hubs_per_org, max_devices, max_users, max_db_connections, statement_timeout_seconds,"
+            " assistant_messages_per_month, whatsapp_messages_per_month, included_level, support_level,"
+            " includes_custom_domain, created_at, updated_at)"
+            " VALUES (gen_random_uuid(), 'old-code', 'Old', '', '', '', 0, 0, '[]', '[]', '', '', true, false, false, '', '', '', 0, 0,"
+            " 1, 0, 0, 1, 5, 0, 0, 'free', 'community', false, now(), now())"
+        )
+
+    assert set(Plan.objects.values_list("slug", flat=True)) == slugs | {"old-code"}
+    assert set(Plan.objects.values_list("max_apps", flat=True)) == {0}

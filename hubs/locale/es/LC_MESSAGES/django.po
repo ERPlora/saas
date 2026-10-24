@@ -560,6 +560,18 @@ msgid "WhatsApp messages a business may send each month (0 = none)."
 msgstr ""
 "Mensajes de WhatsApp que un negocio puede enviar cada mes (0 = ninguno)."
 
+#: models.py
+msgid "modules turned on"
+msgstr "módulos encendidos"
+
+#: models.py
+msgid ""
+"Modules a business may choose to turn on; the ones they require do not count "
+"(0 = unlimited)."
+msgstr ""
+"Módulos que un negocio puede elegir encender; los que estos necesitan no "
+"cuentan (0 = sin límite)."
+
 #: models.py:201 models.py:688
 msgid "plan"
 msgstr "plan"
