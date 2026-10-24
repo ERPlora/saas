@@ -126,7 +126,7 @@ class PlanAdmin(admin.ModelAdmin):
         (_("Availability"), {"fields": ("is_active", "upgrade_only", "internal_only")}),
         (
             _("What the plan includes"),
-            {"fields": ("included_level", "support_level", "includes_custom_domain", "max_hubs_per_org", "max_devices", "max_users")},
+            {"fields": ("included_level", "support_level", "includes_custom_domain", "max_hubs_per_org", "max_devices", "max_users", "max_apps")},
         ),
         (_("Database limits per hub"), {"fields": ("max_db_connections", "statement_timeout_seconds")}),
         (_("AI assistant and WhatsApp per month"), {"fields": ("assistant_messages_per_month", "whatsapp_messages_per_month")}),

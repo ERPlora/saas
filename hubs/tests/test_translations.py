@@ -62,6 +62,9 @@ NEW_MESSAGES = [
     "Requests to the AI assistant a business may make each month (0 = none).",
     "WhatsApp messages a business may send each month (0 = none).",
     "AI assistant and WhatsApp per month",
+    # models.py: Plan.max_apps (2026-10-24)
+    "modules turned on",
+    "Modules a business may choose to turn on; the ones they require do not count (0 = unlimited).",
     # HUBS-F01 (HUBS-G65): the refusals of the sign-up of a business, which a Spanish account reads.
     "Businesses cannot be created right now. Try again in a few minutes.",
     "You already have a free business. Change its plan to create another one.",

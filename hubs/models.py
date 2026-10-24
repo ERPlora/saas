@@ -5,9 +5,9 @@ the plans and the taxonomy of businesses.
 container sizing PLAN-SAAS §1 drops (vCPU, memory, storage flavour and database size) nor the price
 of a paused container and its Stripe price: there is no container per hub any more. It keeps
 ``max_db_connections`` and ``statement_timeout_seconds`` (round 9, PLAN §14.2) and, since 2026-10-15, the
-assistant and WhatsApp messages a month (PLAN-SAAS §3.6), which travel in the hub's state snapshot
-(PLAN-SAAS §2.2). No modeltranslation: each translatable field is one column
-per language (``name_en``, ``name_es``…), English being the source.
+assistant and WhatsApp messages a month (PLAN-SAAS §3.6) and, since 2026-10-24, how many modules a business may
+choose to turn on (``max_apps``), which travel in the hub's state snapshot (PLAN-SAAS §2.2). No modeltranslation:
+each translatable field is one column per language (``name_en``, ``name_es``…), English being the source.
 
 ``Sector`` and ``BusinessType`` are ported from ERPlora/saas ``public/catalog/models.py``
 (origin/develop) and live here, not in ``public/`` (PLAN §21.4: ``Hub.business_type`` points at
@@ -206,6 +206,17 @@ class Plan(TranslatedFields):
         _("WhatsApp messages a month"),
         default=0,
         help_text=_("WhatsApp messages a business may send each month (0 = none)."),
+    )
+    #: How many modules a business may choose to turn on (Ioan, 2026-10-24): every module is on every plan, a plan
+    #: caps only how many the business picks; the modules they require come along and do not count (as Odoo's «one
+    #: app free»). It travels in the hub's state snapshot; the Hub checks it when a business turns a module on, which
+    #: comes with the per-business activation of apps (phase 2). 0 = no limit (the upgrade-only tiers; the figures of
+    #: the catalogue, migration 0019).
+    max_apps = models.PositiveIntegerField(
+        _("modules turned on"),
+        default=0,
+        db_default=0,
+        help_text=_("Modules a business may choose to turn on; the ones they require do not count (0 = unlimited)."),
     )
     included_level = models.CharField(
         _("level of modules"), max_length=16, choices=IncludedLevel.choices, default=IncludedLevel.FREE
