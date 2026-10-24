@@ -4,6 +4,7 @@ The round trip runs inside the test's transaction (Postgres DDL is transactional
 test database as it found it.
 """
 
+import re
 from io import StringIO
 
 import pytest
@@ -625,9 +626,10 @@ def _assert_the_catalogue_of_0013(Plan):
 
 
 def _assert_the_catalogue_the_migrations_leave(Plan):
-    """0013's catalogue as the later data migrations leave it: the cards of Pro, Enterprise and Max of 0020."""
+    """0013's catalogue as the later data migrations leave it: the cards of Pro, Enterprise and Max of 0020 and the
+    features of Starter and Standard of 0021."""
     expected = _expected_0013()
-    for slug, fields in COPY_0020.items():
+    for slug, fields in (*COPY_0020.items(), *COPY_0021.items()):
         expected[slug] = {**expected[slug], **fields}
     for slug, fields in expected.items():
         assert _row(Plan.objects.get(slug=slug), fields) == fields, slug
@@ -1196,3 +1198,179 @@ def test_putting_the_catalogue_back_leaves_what_the_migrations_leave():
 
     assert _caps_of(Plan) == {**MAX_APPS_0019, **UPGRADE_ONLY_0019}
     _assert_the_catalogue_the_migrations_leave(Plan)
+
+
+# --- 0021: the cards on sale stop including every location (Ioan, 2026-10-24, PLAN-SAAS §9) ------------------------
+
+
+LOCATION_COPY = "0021_plan_copy_without_locations"
+#: The lines of Starter's and Standard's cards that 0013 seeded and 0021 rewrites: «every location included» and
+#: «several locations» promised what the plans do not sell, since multi-location comes from Pro and is charged per
+#: location (PLAN §32). Devices and users stay: those the paid plans do not cap.
+LINES_0021 = {
+    "Priced per business — every location, device and user included": "Priced per business — every device and user included",
+    "Twice the database throughput of Starter, for busy counters and several locations": (
+        "Twice the database throughput of Starter, for busy counters"
+    ),
+    "Precio por negocio — con todos sus locales, dispositivos y usuarios": (
+        "Precio por negocio — con todos sus dispositivos y usuarios"
+    ),
+    "El doble de capacidad de base de datos que Starter, para mostradores con mucho movimiento y varios locales": (
+        "El doble de capacidad de base de datos que Starter, para mostradores con mucho movimiento"
+    ),
+}
+#: The columns 0021 writes: the features of Starter and Standard, in both languages.
+LOCATION_COLUMNS_0021 = {slug: ("features_en", "features_es") for slug in ("starter", "standard")}
+#: What 0013 seeded in those columns (the copy 0011 froze), and 0021 gives back on reverse.
+LOCATIONS_0013 = {
+    slug: {column: list(_three_plans().COPY[slug][column]) for column in columns}
+    for slug, columns in LOCATION_COLUMNS_0021.items()
+}
+#: What 0021 writes: the same lists, each rewritten line in its place.
+COPY_0021 = {
+    slug: {column: [LINES_0021.get(line, line) for line in lines] for column, lines in columns.items()}
+    for slug, columns in LOCATIONS_0013.items()
+}
+#: Every column 0021 writes, as ``(plan, column)``.
+LOCATION_CARD_COLUMNS = [(slug, column) for slug, columns in COPY_0021.items() for column in columns]
+#: «Location» and its Spanish words, as a card on sale must not name them.
+LOCATION_WORDS = re.compile(r"\b(?:multi-?)?(?:locations?|locales?|sucursal(?:es)?|tiendas?)\b", re.IGNORECASE)
+
+
+def _location_copy():
+    return import_module(f"hubs.migrations.{LOCATION_COPY}")
+
+
+def _forward_0021():
+    _location_copy().stop_including_every_location(global_apps, _SchemaEditor())
+
+
+def _backward_0021():
+    _location_copy().give_back_the_words_of_0013(global_apps, _SchemaEditor())
+
+
+def _location_cards_of(Plan) -> dict[str, dict]:
+    return {slug: _row(Plan.objects.get(slug=slug), columns) for slug, columns in COPY_0021.items()}
+
+
+@pytest.mark.django_db
+class TestTheCardsOnSaleStopIncludingEveryLocation:
+    """Starter's and Standard's cards (the public web and the Store) said «every location included» and «several
+    locations»; from 0021 they say devices and users, which is what the plans give. Only the features of the two move,
+    each column only while it still reads 0013's words: what staff wrote in the admin is theirs."""
+
+    @pytest.fixture
+    def seeded_cards(self, plans):
+        from hubs.models import Plan
+
+        for slug, columns in LOCATIONS_0013.items():
+            Plan.objects.filter(slug=slug).update(**columns)
+        return Plan
+
+    def test_the_0013_words_name_a_location_and_the_rewritten_lines_are_theirs(self):
+        for slug, columns in LOCATIONS_0013.items():
+            for column, lines in columns.items():
+                assert [line for line in lines if LOCATION_WORDS.search(line)], (slug, column)
+                assert [line for line in lines if LOCATION_WORDS.search(line) and line not in LINES_0021] == []
+        assert sum(line in LINES_0021 for columns in LOCATIONS_0013.values() for lines in columns.values() for line in lines) == 6
+
+    def test_each_card_reads_what_its_plan_gives(self, seeded_cards):
+        _forward_0021()
+
+        assert _location_cards_of(seeded_cards) == COPY_0021
+
+    def test_standard_reads_its_new_lines_in_both_languages(self, seeded_cards):
+        _forward_0021()
+
+        standard = seeded_cards.objects.get(slug="standard")
+        assert standard.features_en[1:3] == [
+            "Priced per business — every device and user included",
+            "Twice the database throughput of Starter, for busy counters",
+        ]
+        assert standard.features_es[1:3] == [
+            "Precio por negocio — con todos sus dispositivos y usuarios",
+            "El doble de capacidad de base de datos que Starter, para mostradores con mucho movimiento",
+        ]
+        starter = seeded_cards.objects.get(slug="starter")
+        assert starter.features_en[0] == "Priced per business — every device and user included"
+        assert starter.features_es[0] == "Precio por negocio — con todos sus dispositivos y usuarios"
+
+    def test_nothing_but_those_columns_moves(self, seeded_cards):
+        before = _snapshot(seeded_cards)
+
+        _forward_0021()
+
+        after = _snapshot(seeded_cards)
+        assert {slug: row for slug, row in after.items() if slug not in COPY_0021} == {
+            slug: row for slug, row in before.items() if slug not in COPY_0021
+        }
+        for slug, columns in COPY_0021.items():
+            assert after[slug] == {**before[slug], **columns}, slug
+
+    @pytest.mark.parametrize(("slug", "column"), LOCATION_CARD_COLUMNS)
+    def test_a_column_staff_rewrote_is_theirs(self, seeded_cards, slug, column):
+        seeded_cards.objects.filter(slug=slug).update(**{column: ["Edited by staff"]})
+
+        _forward_0021()
+
+        expected = {plan: dict(columns) for plan, columns in COPY_0021.items()}
+        expected[slug][column] = ["Edited by staff"]
+        assert _location_cards_of(seeded_cards) == expected
+
+    def test_reversing_gives_back_the_words_of_0013(self, seeded_cards):
+        _forward_0021()
+        _backward_0021()
+
+        assert _location_cards_of(seeded_cards) == LOCATIONS_0013
+
+    @pytest.mark.parametrize(("slug", "column"), LOCATION_CARD_COLUMNS)
+    def test_reversing_keeps_what_staff_wrote_after_it(self, seeded_cards, slug, column):
+        _forward_0021()
+        seeded_cards.objects.filter(slug=slug).update(**{column: ["Edited by staff"]})
+
+        _backward_0021()
+
+        expected = {plan: dict(columns) for plan, columns in LOCATIONS_0013.items()}
+        expected[slug][column] = ["Edited by staff"]
+        assert _location_cards_of(seeded_cards) == expected
+
+    def test_it_is_idempotent_and_survives_a_database_without_the_rows(self, plans):
+        from hubs.models import Plan
+
+        Plan.objects.filter(slug__in=COPY_0021).delete()
+        for _ in range(2):
+            _forward_0021()
+            _backward_0021()
+
+        assert not Plan.objects.filter(slug__in=COPY_0021).exists()
+
+    def test_it_is_frozen_and_reads_nothing_of_the_code(self):
+        copy = _location_copy().COPY
+
+        assert [name for name in _imported_modules(_location_copy()) if name.startswith("hubs")] == []
+        assert {slug: {column: old for column, (old, _) in columns.items()} for slug, columns in copy.items()} == LOCATIONS_0013
+        assert {slug: {column: new for column, (_, new) in columns.items()} for slug, columns in copy.items()} == COPY_0021
+
+    def test_the_new_words_name_no_location(self):
+        for slug, columns in COPY_0021.items():
+            for column, lines in columns.items():
+                assert [line for line in lines if LOCATION_WORDS.search(line)] == [], (slug, column)
+
+    def test_free_never_named_a_location_so_0021_leaves_it(self):
+        free = _expected_0013()["free"]
+        texts = [free["description_en"], free["description_es"], *free["features_en"], *free["features_es"]]
+
+        assert [text for text in texts if LOCATION_WORDS.search(text)] == []
+        assert "free" not in _location_copy().COPY
+
+
+@pytest.mark.django_db
+def test_hubs_migrates_back_before_the_location_free_cards_and_forward_again():
+    """``migrate hubs 0020`` and back: Starter and Standard read 0013's words again, then 0021's."""
+    from hubs.models import Plan
+
+    call_command("migrate", "hubs", "0020", verbosity=0)
+    assert _location_cards_of(Plan) == LOCATIONS_0013
+
+    call_command("migrate", "hubs", verbosity=0)
+    assert _location_cards_of(Plan) == COPY_0021

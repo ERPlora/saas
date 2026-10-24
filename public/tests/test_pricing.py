@@ -117,6 +117,15 @@ def faq_page_of(html: str) -> dict:
     return block
 
 
+UPGRADE_SECTION = '<section id="more-capacity"'
+
+
+def upgrade_section(html: str) -> str:
+    """The «More capacity» section: the upgrade-only plans (Ioan, 2026-10-24, PLAN-SAAS §9)."""
+    assert UPGRADE_SECTION in html, "no «More capacity» section on /pricing/"
+    return html.split(UPGRADE_SECTION, 1)[1].split("</section>", 1)[0]
+
+
 def visible_markup(html: str) -> str:
     """The page with every ``<script>`` and hidden form field removed: what a reader actually sees (the
     footer's language forms carry Django's ``csrfmiddlewaretoken``, which no reader sees)."""
@@ -172,6 +181,7 @@ def test_pricing_renders_active_plan_data_from_the_database(no_plans, client):
     assert [plan["slug"] for plan in response.context["plans_main"]] == [
         "db-public-sentinel"
     ]
+    assert [plan["slug"] for plan in response.context["plans_upgrade"]] == ["db-upgrade-sentinel"]
     assert "plans_pro" not in response.context
     html = response.content.decode()
     for text in (
@@ -181,9 +191,13 @@ def test_pricing_renders_active_plan_data_from_the_database(no_plans, client):
         "Database feature sentinel",
     ):
         assert text in html, text
-    # An upgrade-only row is no plan a visitor can sign up for: off the page (2026-10-15).
-    for text in ("DB Upgrade Sentinel", "€62.46", "Upgrade feature sentinel", "────────────────────"):
-        assert text not in html, text
+    # An upgrade-only row is shown under «More capacity» (Ioan, 2026-10-24), never with the cards a visitor signs up
+    # on, and without the old visual separators.
+    upgrades = upgrade_section(html)
+    for text in ("DB Upgrade Sentinel", "€62.46", "Upgrade description loaded from the database", "Upgrade feature sentinel"):
+        assert text in upgrades, text
+    assert "DB Upgrade Sentinel" not in html.split(UPGRADE_SECTION, 1)[0]
+    assert "────────────────────" not in html
     assert "DB Inactive Sentinel" not in html
 
 
@@ -377,15 +391,20 @@ def test_table_shows_the_devices_and_users_each_plan_buys(client, seeded):
 
 
 def test_table_shows_what_each_plan_includes_and_its_support(client, seeded):
-    """The three plans on sale and nothing under them: the dedicated row is gone (PLAN-SAAS §9, 2026-10-24b)."""
+    """The plans on sale, then the upgrade-only ones (Ioan, 2026-10-24); the dedicated row is gone (PLAN-SAAS §9,
+    2026-10-24b)."""
     table = plan_table(html_of(client))
+    signable, upgrades = table.split('<td colspan="9">More capacity</td>', 1)
 
     for level in ("Free", "Basic"):
-        assert level in table, level
+        assert level in signable, level
     for support in ("Community forum", "Email", "Priority email"):
-        assert support in table, support
-    for gone in ("Pro", "Enterprise", "Agreed in contract", "All apps, free and premium", "Dedicated, agreed with you"):
-        assert gone not in table, gone
+        assert support in signable, support
+    for gone in ("Pro", "Enterprise", "Agreed in contract"):
+        assert gone not in signable, gone
+    for shown in ("<strong>Pro</strong>", "<strong>Enterprise</strong>", "Priority email", "Agreed in contract"):
+        assert shown in upgrades, shown
+    assert "Dedicated, agreed with you" not in table
 
 
 def test_table_shows_the_resources_each_plan_buys_in_plain_words(client, seeded):
@@ -549,17 +568,21 @@ def test_the_card_trial_is_translated(no_plans, client):
     )
 
 
-def test_an_upgrade_only_plan_is_neither_listed_nor_has_a_detail_page(no_plans, client):
-    """Ioan, 2026-10-15: /pricing/ sells the plans a visitor can sign up for, and nothing above them (the
-    dedicated offer by contact went in the ronda 2026-10-24b, PLAN-SAAS §9). A row staff still mark
-    ``upgrade_only`` stays off the page, off the detail pages and out of «Other plans»."""
+def test_an_upgrade_only_plan_is_shown_but_has_no_sign_up_nor_detail_page(no_plans, client):
+    """Ioan, 2026-10-24 (PLAN-SAAS §9, corrects 2026-10-15): /pricing/ shows an ``upgrade_only`` row under «More
+    capacity», so a visitor knows it exists, but it is still no plan to sign up on: not among the cards a visitor
+    signs up on, no detail page and not in «Other plans». The mechanism does not move: the Store offers it to a
+    business that already pays and the checkout from Free refuses it (``billing.plan_upgrade_only``)."""
     make_plan("starter", trial_days=15)
     make_plan("pro", trial_days=15, upgrade_only=True)
 
     response = get(client)
+    html = response.content.decode()
 
     assert [plan["slug"] for plan in response.context["plans_main"]] == ["starter"]
-    assert '<div class="ep-pricing-card__name">Pro</div>' not in response.content.decode()
+    assert [plan["slug"] for plan in response.context["plans_upgrade"]] == ["pro"]
+    assert '<div class="ep-pricing-card__name">Pro</div>' in upgrade_section(html)
+    assert '<div class="ep-pricing-card__name">Pro</div>' not in html.split(UPGRADE_SECTION, 1)[0]
     assert client.get("/pricing/pro/").status_code == 404
     others = get(client, "/pricing/starter/").context["other_plans"]
     assert [plan["slug"] for plan in others] == []
@@ -741,9 +764,10 @@ def visible_text(html: str) -> str:
     return re.sub(r"<[^>]+>", " ", visible_markup(html))
 
 
-def test_the_page_offers_nothing_above_the_plans(client, seeded):
+def test_the_page_offers_no_dedicated_infrastructure(client, seeded):
     """Ronda 2026-10-24b: the «Dedicated infrastructure, from €400 a month» band is no product (no runbook, no
-    Terraform) and the plans no longer sell infrastructure; above Standard the page offers nothing."""
+    Terraform) and the plans no longer sell infrastructure; above Standard the page shows only the upgrade-only plans
+    (Pro, Enterprise and Max, Ioan 2026-10-24), never an offer by contact."""
     html = html_of(client)
     body = visible_markup(html)
 
@@ -756,7 +780,7 @@ def test_the_page_offers_nothing_above_the_plans(client, seeded):
         assert gone not in body, gone
 
 
-def test_the_page_offers_nothing_above_the_plans_in_spanish(client, seeded):
+def test_the_page_offers_no_dedicated_infrastructure_in_spanish(client, seeded):
     html = html_of(client, language="es")
     body = visible_markup(html)
 
@@ -772,21 +796,51 @@ def test_pricing_has_no_dedicated_price_left(client, seeded):
     assert "dedicated_from" not in get(client).context
 
 
-def test_the_comparison_table_ends_with_the_last_plan_on_sale(client, seeded):
+def test_the_comparison_table_ends_with_the_upgrade_only_plans_and_no_offer_by_contact(client, seeded):
     table = plan_table(html_of(client))
     rows = [row for row in table.split("<tr")[1:] if "ep-table-group" not in row and "<th>" not in row]
 
-    assert len(rows) == 3
-    assert "<strong>Standard</strong>" in rows[-1]
+    assert [re.search(r"<strong>(.*?)</strong>", row).group(1) for row in rows] == [
+        "Free", "Starter", "Standard", "Pro", "Enterprise", "Max",
+    ]  # fmt: skip
     assert f'href="{CONTACT}"' not in table
     assert "Upgrade-only" not in table and "Professional" not in table
 
 
-def test_the_table_intro_sends_nobody_to_a_custom_setup(client, seeded):
-    body = visible_markup(html_of(client))
+def test_the_table_signs_up_on_the_plans_on_sale_and_says_when_the_others_open(client, seeded):
+    table = plan_table(html_of(client))
+    groups = re.findall(r'<tr class="cat ep-table-group"><td colspan="\d+">(.*?)</td></tr>', table)
+    signable, upgrades = table.split('<td colspan="9">More capacity</td>', 1)
 
-    assert "one hub covers all your locations" in body
+    assert groups == ["Plans · sign up directly", "More capacity"]
+    assert signable.count('href="/launch"') == 3
+    assert 'href="/launch"' not in upgrades
+    assert upgrades.count("Available once you are on Starter") == 3
+    for amount in ("€109.99", "€209.99", "€419.99"):
+        assert amount in upgrades, amount
+
+
+def test_the_table_reads_the_upgrade_only_plans_in_spanish(client, seeded):
+    table = plan_table(html_of(client, language="es"))
+
+    assert '<td colspan="9">Más capacidad</td>' in table
+    assert table.count("Disponible al pasar a Starter") == 3
+
+
+def test_the_table_intro_sends_nobody_to_a_custom_setup(client, seeded):
+    body = " ".join(visible_markup(html_of(client)).split())
+
+    assert "one hub covers all your devices and users" in body
     assert "Need more than that?" not in body
+
+
+def test_the_page_includes_no_location_in_any_plan(client, seeded):
+    """Multi-location comes from Pro and is charged per location (PLAN §32, ronda 2026-10-24b): neither the table's
+    intro nor a card on sale (hubs/0021) says a hub covers every location."""
+    for language, words in (("en", r"\blocations?\b"), ("es", r"\blocales\b")):
+        body = " ".join(visible_text(html_of(client, language=language)).split())
+        assert "Pro" in body, "control: the page is the plans page"
+        assert not re.search(words, body, re.IGNORECASE), (language, re.search(words, body, re.IGNORECASE))
 
 
 def test_the_page_sells_what_the_customer_gets_not_how_we_run_it(client, seeded):
@@ -807,6 +861,147 @@ def test_the_faq_has_no_dedicated_entry(client, seeded):
     for item in items:
         assert "dedicated" not in f"{item['question']} {item['answer']}".lower(), item["key"]
     assert "dedicated" not in json.dumps(faq_page_of(html)).lower()
+
+
+# --- More capacity: the upgrade-only plans on the page (Ioan, 2026-10-24, PLAN-SAAS §9) --------------------------
+# Corrects 2026-10-15 («/pricing/ no longer lists them»): Odoo, Holded and Square show the whole ladder on their
+# pricing page. The mechanism does not move: the rows stay ``upgrade_only``, the Store offers them to a business that
+# already pays and the checkout from Free refuses them (``billing.plan_upgrade_only``, billing/tests/test_checkout.py).
+
+UPGRADE_ONLY = ("pro", "enterprise", "max")
+
+
+def upgrade_rows():
+    """The upgrade-only plans a visitor may be shown, as the database orders them."""
+    return list(Plan.objects.public().filter(upgrade_only=True).order_by("display_order", "price_monthly"))
+
+
+def test_the_upgrade_only_plans_are_seeded_on_sale_above_standard(seeded):
+    """Control: the catalogue this block reads (hubs/0013), Pro, Enterprise and Max active, at 109.99, 209.99 and
+    419.99."""
+    assert [(plan.slug, plan.price_monthly) for plan in upgrade_rows()] == [
+        ("pro", Decimal("109.99")), ("enterprise", Decimal("209.99")), ("max", Decimal("419.99")),
+    ]  # fmt: skip
+
+
+def test_more_capacity_shows_each_upgrade_only_plan_from_its_row(client, seeded):
+    response = get(client)
+    section = upgrade_section(response.content.decode())
+
+    assert [card["slug"] for card in response.context["plans_upgrade"]] == list(UPGRADE_ONLY)
+    assert '<h2 class="font-display font-semibold text-3xl tracking-tighter">More capacity</h2>' in section
+    assert painted_prices(section) == {plan.name_en: plan.price_monthly for plan in upgrade_rows()}
+    text = " ".join(section.split())
+    for plan in upgrade_rows():
+        features = without_separators(plan.features_en)
+        assert plan.description_en in text, plan.slug
+        assert card_items(section, plan.name_en)[: len(features)] == features, plan.slug
+        assert f"≈ €{plan.price_annual:.2f}/year · 2 months free" in text, plan.slug
+        assert "/ month per hub" in text
+
+
+def without_separators(features: list[str]) -> list[str]:
+    """A row's features as ``hubs.plan.list`` gives them: the old seed's «───» lines (Max's) are dropped."""
+    return [feature for feature in features if feature.strip().strip("─").strip()]
+
+
+def card_foot(card: str) -> str:
+    """What a card paints under its features: the sign-up button of a plan on sale, the label of an upgrade-only one."""
+    return card.split('<div class="ep-pricing-card__cta">', 1)[1].split("</div>", 1)[0]
+
+
+def test_more_capacity_keeps_the_order_staff_give_the_rows(client, seeded):
+    Plan.objects.filter(slug="max").update(display_order=45)
+
+    names = re.findall(r'<div class="ep-pricing-card__name">(.*?)</div>', upgrade_section(html_of(client)))
+
+    assert names == ["Max", "Pro", "Enterprise"]
+
+
+def test_each_upgrade_only_card_says_when_it_opens_instead_of_a_sign_up_button(client, seeded):
+    section = upgrade_section(html_of(client))
+    cards = CARD_START.split(section)[1:]
+
+    assert len(cards) == 3
+    for card in cards:
+        foot = card_foot(card)
+        assert "Available once you are on Starter" in foot
+        assert "<ion-button" not in card.split('<div class="ep-pricing-card__cta">', 1)[0] + foot
+        assert "Get started" not in foot
+
+
+def test_more_capacity_has_one_call_to_action_to_start_free(client, seeded):
+    section = upgrade_section(html_of(client))
+    buttons = re.findall(r"<ion-button\b[^>]*>(.*?)</ion-button>", section, re.S)
+
+    assert len(buttons) == 1
+    assert "Start free and upgrade whenever you want" in buttons[0]
+    assert re.search(r'<ion-button\b[^>]*href="/launch"', section)
+
+
+def test_more_capacity_reads_in_spanish(client, seeded):
+    section = " ".join(upgrade_section(html_of(client, language="es")).split())
+
+    assert "Más capacidad" in section
+    assert section.count("Disponible al pasar a Starter") == 3
+    assert "Empieza gratis y mejora cuando quieras" in section
+    for plan in upgrade_rows():
+        assert plan.description_es in section, plan.slug
+        for feature in without_separators(plan.features_es):
+            assert feature in section, (plan.slug, feature)
+    for amount in ("€109,99", "€209,99", "€419,99", "≈ 1099,90 €/año · 2 meses gratis"):
+        assert amount in section, amount
+    assert "Available once you are on Starter" not in section
+
+
+def test_an_inactive_or_internal_upgrade_only_plan_is_not_shown(client, seeded):
+    Plan.objects.filter(slug="enterprise").update(is_active=False)
+    Plan.objects.filter(slug="max").update(internal_only=True)
+
+    response = get(client)
+
+    assert [card["slug"] for card in response.context["plans_upgrade"]] == ["pro"]
+    section = upgrade_section(response.content.decode())
+    assert "Enterprise" not in section and "Max" not in section
+
+
+def test_without_upgrade_only_plans_there_is_no_more_capacity_section(client, seeded):
+    Plan.objects.filter(upgrade_only=True).update(is_active=False)
+
+    html = html_of(client)
+
+    assert UPGRADE_SECTION not in html
+    assert "More capacity</h2>" not in html
+    assert '<td colspan="9">More capacity</td>' not in html
+    assert "Available once you are on Starter" not in html
+
+
+def test_the_plans_to_sign_up_on_stay_as_they_were(client, seeded):
+    """Free, Starter and Standard keep their cards, with their sign-up button, before «More capacity»."""
+    response = get(client)
+    html = response.content.decode()
+    signable = html.split(UPGRADE_SECTION, 1)[0]
+
+    assert [card["slug"] for card in response.context["plans_main"]] == ["free", "starter", "standard"]
+    assert re.findall(r'<div class="ep-pricing-card__name">(.*?)</div>', signable) == ["Free", "Starter", "Standard"]
+    assert len(CARD_START.split(signable)[1:]) == 3
+    for card in CARD_START.split(signable)[1:]:
+        assert '<ion-button href="/launch"' in card_foot(card)
+        assert "Available once you are on Starter" not in card
+    assert painted_prices(signable) == {"Free": Decimal("0"), "Starter": Decimal("29.99"), "Standard": Decimal("54.99")}
+
+
+def test_more_capacity_promises_no_trial_nor_a_saving_of_its_own_in_the_hero(no_plans, client):
+    """An upgrade grants no trial (#809) and the hero's saving is the plans on sale's: an upgrade-only row with a trial
+    and another saving changes neither."""
+    make_plan("starter", price_annual=Decimal("299.90"))
+    make_plan("pro", upgrade_only=True, trial_days=30, price_monthly=Decimal("100"), price_annual=Decimal("900"))
+
+    response = get(client)
+
+    assert response.context["months_free"] == 2
+    assert "30-day" not in upgrade_section(response.content.decode())
+    assert response.context["trial_note"] == "Free plan with no card required. Cancel anytime."
 
 
 # --- The detail page --------------------------------------------------------------------------
@@ -951,23 +1146,68 @@ def test_pricing_faq_uses_the_shared_container():
         .split("<!-- Closing CTA -->", 1)[0]
     )
 
-    assert '<section id="faq" class="ep-section--compact ep-section--soft ep-section--divider">' in faq
+    assert re.search(r'<section id="faq" class="ep-section--compact[^"]*ep-section--divider">', faq)
     assert '<div class="ep-container ep-section-content">' in faq
 
 
-def test_pricing_uses_the_shared_alternating_section_surface():
-    page = source("index.html")
-
-    # Without the dedicated band the surfaces still alternate: cards, table (soft), competitors, FAQ (soft).
-    assert page.count("ep-section--soft") == 2
-    table = page.split("<!-- FEATURE COMPARISON TABLE", 1)[1].split("\n", 2)[2].lstrip()
-    assert table.startswith('<section class="ep-section--compact ep-section--soft ep-section--divider">')
-    assert '<section id="comparativa" class="ep-section--compact ep-section--divider">' in page
-    assert '<section id="faq" class="ep-section--compact ep-section--soft ep-section--divider">' in page
+SECTION_TAG = re.compile(r'<section\b(?:\s+id="([^"]+)")?\s+class="([^"]*)"')
 
 
-def test_the_template_has_no_offer_above_the_plans():
-    """Neither the upgrade-only plans (2026-10-15) nor the dedicated band that replaced them (2026-10-24b)."""
+def page_sections(html: str) -> list[tuple[str, bool]]:
+    """The sections of the page's content, in page order: ``(id or "", on the soft surface)``."""
+    content = html.split("<!-- PLAN CARDS -->", 1)[1]
+    return [(section_id, "ep-section--soft" in classes.split()) for section_id, classes in SECTION_TAG.findall(content)]
+
+
+def assert_the_surfaces_alternate(sections: list[tuple[str, bool]]) -> None:
+    """Plain under the hero, then soft and plain in turn: never two of the same surface side by side."""
+    assert [soft for _, soft in sections] == [index % 2 == 1 for index in range(len(sections))], sections
+
+
+def test_pricing_uses_the_shared_alternating_section_surface(client, seeded):
+    """Cards, «More capacity» (soft), the table, the competitors (soft) and the FAQ."""
+    sections = page_sections(html_of(client))
+
+    assert [section_id for section_id, _ in sections] == ["", "more-capacity", "", "comparativa", "faq"]
+    assert_the_surfaces_alternate(sections)
+
+
+def test_the_surfaces_still_alternate_without_upgrade_only_plans(client, seeded):
+    Plan.objects.filter(upgrade_only=True).update(is_active=False)
+
+    sections = page_sections(html_of(client))
+
+    assert [section_id for section_id, _ in sections] == ["", "", "comparativa", "faq"]
+    assert_the_surfaces_alternate(sections)
+
+
+def test_the_surfaces_still_alternate_without_plans_on_sale(no_plans, client):
+    make_plan("pro", upgrade_only=True)
+
+    sections = page_sections(html_of(client))
+
+    assert [section_id for section_id, _ in sections] == ["", "comparativa", "faq"]
+    assert_the_surfaces_alternate(sections)
+
+
+@pytest.mark.parametrize(
+    ("shown", "soft"),
+    [
+        (["plans", "upgrades", "compare", "competitors", "faq"], {"upgrades", "competitors"}),
+        (["plans", "compare", "competitors", "faq"], {"compare", "faq"}),
+        (["plans", "competitors", "faq"], {"competitors"}),
+    ],
+)
+def test_every_other_section_shown_is_soft(shown, soft):
+    surfaces = pricing.section_surfaces(shown)
+
+    assert {name for name, is_soft in surfaces.items() if is_soft} == soft
+    assert set(surfaces) == set(shown)
+
+
+def test_the_template_has_no_offer_by_contact_above_the_plans():
+    """Neither the 2026-10-15 «Upgrade-only plans» band nor the dedicated band that replaced it (2026-10-24b): above
+    the plans on sale only the upgrade-only rows themselves, under «More capacity» (2026-10-24)."""
     page = source("index.html")
 
     assert "<!-- PLAN CARDS -->" in page

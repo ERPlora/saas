@@ -9,10 +9,12 @@
   the copy no longer sells «premium add-ons» nor prices «per module», and the competitor table says
   «app catalogue», not «marketplace»; the counter hardware is the ERPlora app, not the retired
   Bridge (ADR-0196). Without any plan on sale the page says so instead of painting empty tables.
-  Since 2026-10-15 (Ioan) the upgrade-only plans are gone, and since the ronda 2026-10-24b (PLAN-SAAS §9)
-  nothing is offered above the three plans: no band, no extra row of the plan table, no FAQ entry, and the
-  surfaces still alternate (cards, table on soft, competitors, FAQ on soft). The copy sells what the
-  customer gets, never how we run it.
+  The ronda 2026-10-24b (PLAN-SAAS §9) took away the infrastructure offer by contact: no band, no row, no FAQ entry.
+  Since 2026-10-24 (Ioan, PLAN-SAAS §9; corrects 2026-10-15) the upgrade-only plans are shown again, read from the
+  database, under «More capacity» and in the table, each marked «Available once you are on Starter» instead of a
+  sign-up button, with one call to action to start free. The surfaces alternate whatever the catalogue shows
+  (`soft`, public.pricing.section_surfaces). The copy sells what the customer gets, never how we run it, and
+  includes no location: multi-location comes from Pro and is charged per location (PLAN §32).
   Data: public/pricing.py (hubs.plan.list). Contract: public/tests/test_pricing.py.
 {% endcomment %}
 
@@ -60,18 +62,43 @@
     </div>
   </section>
 
+  <!-- MORE CAPACITY: the upgrade-only plans, shown and never signed up on (Ioan, 2026-10-24, PLAN-SAAS §9) -->
+  {% if plans_upgrade %}
+  <section id="more-capacity" class="ep-section--compact{% if soft.upgrades %} ep-section--soft{% endif %} ep-section--divider">
+    <div class="ep-container ep-section-content">
+      <div class="text-center mb-10">
+        <h2 class="font-display font-semibold text-3xl tracking-tighter">{% trans "More capacity" %}</h2>
+        <p class="mt-3 text-fg/65 mx-auto max-w-2xl leading-relaxed">{% trans "When your business needs more, you move up from your dashboard in one click, with no migration and no downtime." %}</p>
+      </div>
+      <div class="grid md:grid-cols-3 gap-5 items-stretch">
+        {% for plan in plans_upgrade %}
+          <div class="ep-reveal" data-reveal="up" data-reveal-delay="{{ forloop.counter0|add:forloop.counter0 }}00">
+            {% include "public/components/pricing_card.html" with name=plan.name price=plan.price_label period=plan.period description=plan.description featured=plan.featured_label badge=plan.featured_label features_template="public/pricing/_card_features.html" cta_template="public/pricing/_card_upgrade_note.html" %}
+          </div>
+        {% endfor %}
+      </div>
+      <div class="mt-8 text-center">
+        <ion-button href="/launch" fill="outline">
+          {% trans "Start free and upgrade whenever you want" %}
+          <span slot="end">{% icon "lucide:arrow-right" %}</span>
+        </ion-button>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
   <!-- FEATURE COMPARISON TABLE (PLAN VS PLAN) -->
   {% if plans_main %}
-  <section class="ep-section--compact ep-section--soft ep-section--divider">
+  <section class="ep-section--compact{% if soft.compare %} ep-section--soft{% endif %} ep-section--divider">
     <div class="ep-container ep-section-content">
       <div class="text-center mb-10">
         <div class="kbd-pill mb-3">{% trans "Full detail" %}</div>
         <h2 class="font-display font-semibold text-3xl tracking-tighter">{% trans "Everything in each plan" %}</h2>
         <p class="mt-3 text-fg/65 mx-auto max-w-2xl leading-relaxed">
           {% blocktrans trimmed %}
-          Every plan is priced per hub, and one hub covers all your locations, devices and
-          users. You start on the plan that fits you today and move up in one click when you
-          need a custom domain or more capacity — no migration and no downtime.
+          Every plan is priced per hub, and one hub covers all your devices and users. You
+          start on the plan that fits you today and move up in one click when you need a custom
+          domain or more capacity — no migration and no downtime.
           {% endblocktrans %}
         </p>
       </div>
@@ -106,6 +133,17 @@
                 <td data-title="{% trans 'Access' %}"><a href="/launch" class="text-primary font-mono text-xs whitespace-nowrap">{% trans "Get started" %} →</a></td>
               </tr>
             {% endfor %}
+            {% if plans_upgrade %}
+              <tr class="cat ep-table-group"><td colspan="9">{% trans "More capacity" %}</td></tr>
+              {% for plan in plans_upgrade %}
+                <tr>
+                  <td><strong>{{ plan.name }}</strong></td>
+                  <td data-title="{% trans 'Monthly, per hub' %}" class="num">{{ plan.price_label }}</td>
+                  {% include "public/pricing/_plan_compare_cells.html" %}
+                  <td data-title="{% trans 'Access' %}" class="text-fg/70 text-xs">{% trans "Available once you are on Starter" %}</td>
+                </tr>
+              {% endfor %}
+            {% endif %}
           </tbody>
         </table>
       </div>
@@ -118,7 +156,7 @@
   {% endif %}
 
   <!-- COMPARISON VS COMPETITORS -->
-  <section id="comparativa" class="ep-section--compact ep-section--divider">
+  <section id="comparativa" class="ep-section--compact{% if soft.competitors %} ep-section--soft{% endif %} ep-section--divider">
     <div class="ep-container ep-section-content">
       <div class="text-center mb-12 max-w-2xl mx-auto">
         <div class="kbd-pill mb-3">{% trans "why us" %}</div>
@@ -209,7 +247,7 @@
   </section>
 
   <!-- FAQ -->
-  <section id="faq" class="ep-section--compact ep-section--soft ep-section--divider">
+  <section id="faq" class="ep-section--compact{% if soft.faq %} ep-section--soft{% endif %} ep-section--divider">
     <div class="ep-container ep-section-content">
       <div class="text-center mb-8">
         <div class="kbd-pill mb-3">{% trans "FAQ" %}</div>

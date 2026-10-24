@@ -3775,11 +3775,23 @@ msgstr "catálogo de apps, 1 clic"
 msgid "Managed database, replicated across several European data centres, with continuous backups and point-in-time recovery for 14 days"
 msgstr "Base de datos gestionada, replicada en varios centros de datos europeos, con copias de seguridad continuas y recuperación a cualquier momento de los últimos 14 días"
 
-msgid "Every plan is priced per hub, and one hub covers all your locations, devices and users. You start on the plan that fits you today and move up in one click when you need a custom domain or more capacity — no migration and no downtime."
-msgstr "Cada plan se cobra por hub, y un hub cubre todos tus locales, dispositivos y usuarios. Empiezas con el plan que te encaja hoy y subes en un clic cuando necesites dominio propio o más capacidad, sin migración y sin paradas."
+msgid "Every plan is priced per hub, and one hub covers all your devices and users. You start on the plan that fits you today and move up in one click when you need a custom domain or more capacity — no migration and no downtime."
+msgstr "Cada plan se cobra por hub, y un hub cubre todos tus dispositivos y usuarios. Empiezas con el plan que te encaja hoy y subes en un clic cuando necesites dominio propio o más capacidad, sin migración y sin paradas."
 
 msgid "Plans · sign up directly"
 msgstr "Planes · regístrate directamente"
+
+msgid "More capacity"
+msgstr "Más capacidad"
+
+msgid "When your business needs more, you move up from your dashboard in one click, with no migration and no downtime."
+msgstr "Cuando tu negocio necesite más, subes desde tu panel en un clic, sin migración y sin paradas."
+
+msgid "Start free and upgrade whenever you want"
+msgstr "Empieza gratis y mejora cuando quieras"
+
+msgid "Available once you are on Starter"
+msgstr "Disponible al pasar a Starter"
 
 msgid "Every plan runs on fully managed infrastructure on Amazon Web Services, in Europe — there is no server for you to set up or maintain, and your data is backed up continuously."
 msgstr "Todos los planes funcionan sobre infraestructura totalmente gestionada en Amazon Web Services, en Europa: no hay ningún servidor que tengas que montar ni mantener, y tus datos se copian de forma continua."

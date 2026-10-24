@@ -239,6 +239,35 @@ def test_the_infrastructure_guard_catches_the_lines_that_were_actually_published
     assert _infrastructure_promises(["Autoescalado automático de contenedores"])
 
 
+#: «Location» and its Spanish words. Multi-location comes from Pro and is charged per location (PLAN §32, ronda
+#: 2026-10-24b), so no card a business can sign up on (Free, Starter, Standard) names a location: 0013 said «every
+#: location included» and «several locations», and 0021 took it away.
+LOCATION_WORDS = re.compile(r"\b(?:multi-?)?(?:locations?|locales?|sucursal(?:es)?|tiendas?)\b", re.IGNORECASE)
+PLANS_ON_SALE = ("free", "starter", "standard")
+
+
+def _locations_named(texts) -> list[str]:
+    return [text for text in texts if LOCATION_WORDS.search(text)]
+
+
+def test_no_plan_on_sale_includes_a_location(catalogue):
+    for slug in PLANS_ON_SALE:
+        assert _locations_named(_copy(catalogue[slug])) == [], slug
+
+
+def test_the_location_guard_catches_the_lines_that_were_actually_published():
+    """Positive control: the lines 0013 seeded on Starter and Standard and 0021 took away, in both languages."""
+    for published in (
+        "Priced per business — every location, device and user included",
+        "Twice the database throughput of Starter, for busy counters and several locations",
+        "Precio por negocio — con todos sus locales, dispositivos y usuarios",
+        "El doble de capacidad de base de datos que Starter, para mostradores con mucho movimiento y varios locales",
+        "Multi-location from Pro",
+    ):
+        assert _locations_named([published]), published
+    assert _locations_named(["Priced per business — every device and user included", "3 users", "Usuarios ilimitados"]) == []
+
+
 def test_no_plan_publishes_an_uptime_sla_percentage(catalogue):
     """saas#1760: the only availability statement is the one in the terms (99.5 %, reasonable efforts)."""
     for slug, plan in catalogue.items():
@@ -250,7 +279,7 @@ def test_no_plan_publishes_an_uptime_sla_percentage(catalogue):
 
 
 def test_subscription_unit_is_the_hub(catalogue):
-    """saas#1760: one subscription buys ONE hub, with every location and device in it. The copy calls it what the
+    """saas#1760: one subscription buys ONE hub, with every device and user in it. The copy calls it what the
     panel calls it, a business (audit 2 S-12: «Precio por hub» in the Store was the Hub's word)."""
     for slug in ("starter", "standard"):
         plan = catalogue[slug]
@@ -515,7 +544,7 @@ def test_a_new_plan_caps_no_modules(db):
 
 
 def test_paid_plans_do_not_cap_people(catalogue):
-    """ "Every location, device and user included" is the paid promise (saas#1760)."""
+    """ "Every device and user included" is the paid promise (saas#1760; locations left it in 0021, PLAN §32)."""
     for slug in ("starter", "standard", "pro", "enterprise", "max"):
         assert catalogue[slug].max_users == 0, (
             f"[{slug}] paid plans must not cap users"
