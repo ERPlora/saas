@@ -208,7 +208,7 @@ Implicados: el Hub (su página de apps, BASE-F20), billing (la Tienda)
   y `billing/tests/test_services.py::TestThePricesOfAModule` (`module_price_problems`); F05 `test_queries.py` (no listadas), `billing/tests/test_store_catalog.py`,
   `billing/tests/test_module_cancel.py` y `billing/tests/test_admin.py` (borrado protegido); F06
   `test_queries.py` (secciones, filtros, `known_verticals`) y `hubs/tests/test_models.py`; F07 el e2e
-  `tests/e2e/panel/billing-support.spec.ts` (`/store/modules?business=`), `billing/frontend/pages/StorePage.test.ts`
+  `tests/e2e/panel/billing-support.spec.ts` (`/dashboard/store/modules?business=`), `billing/frontend/pages/StorePage.test.ts`
   (la app instalada no vende) y, en el Hub, `base/tests/test_queries_apps.py::test_the_store_of_this_business` y
   `base/frontend/pages/AppsPage.test.ts` (BASE-F20: «Mejorar plan» a la Tienda, solo en el navegador y para quien
   administra).
