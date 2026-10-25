@@ -14,7 +14,9 @@
   database, under «More capacity» and in the table, each marked «Available once you are on Starter» instead of a
   sign-up button, with one call to action to start free. The surfaces alternate whatever the catalogue shows
   (`soft`, public.pricing.section_surfaces). The copy sells what the customer gets, never how we run it, and
-  includes no location: multi-location comes from Pro and is charged per location (PLAN §32).
+  includes no location: multi-location comes from Pro and is charged per location (PLAN §32). The apps each plan lets a
+  business turn on at once (`max_apps`, the cap the Hub applies since hub#256) are a column next to the devices and users
+  and a line of every card (public.pricing.apps_at_once), read from the row.
   Data: public/pricing.py (hubs.plan.list). Contract: public/tests/test_pricing.py.
 {% endcomment %}
 
@@ -112,6 +114,7 @@
               <th>{% trans "Plan" %}</th>
               <th class="num">{% trans "Monthly, per hub" %}</th>
               <th>{% trans "Devices and users" %}</th>
+              <th>{% trans "Apps turned on at once" %}</th>
               <th>{% trans "Database throughput" %}</th>
               <th>{% trans "AI assistant" %}</th>
               <th>WhatsApp</th>
@@ -120,7 +123,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr class="cat ep-table-group"><td colspan="8">{% trans "Plans · sign up directly" %}</td></tr>
+            <tr class="cat ep-table-group"><td colspan="9">{% trans "Plans · sign up directly" %}</td></tr>
             {% for plan in plans_main %}
               <tr{% if plan.featured_label %} class="primary-col"{% endif %}>
                 <td>
@@ -133,7 +136,7 @@
               </tr>
             {% endfor %}
             {% if plans_upgrade %}
-              <tr class="cat ep-table-group"><td colspan="8">{% trans "More capacity" %}</td></tr>
+              <tr class="cat ep-table-group"><td colspan="9">{% trans "More capacity" %}</td></tr>
               {% for plan in plans_upgrade %}
                 <tr>
                   <td><strong>{{ plan.name }}</strong></td>

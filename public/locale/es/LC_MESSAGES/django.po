@@ -3609,8 +3609,8 @@ msgid_plural "Yes. Start free with no card — the Free plan is free forever. A 
 msgstr[0] "Sí. Empieza gratis sin tarjeta —el plan Free es gratis para siempre. Un plan de pago elegido al crear un Hub incluye una prueba gratuita de %(days)d día con tus propios datos, para que compruebes que encaja antes de comprometerte. Pasar a un plan de pago un Hub que ya está en servicio no inicia un nuevo periodo de prueba."
 msgstr[1] "Sí. Empieza gratis sin tarjeta —el plan Free es gratis para siempre. Un plan de pago elegido al crear un Hub incluye una prueba gratuita de %(days)d días con tus propios datos, para que compruebes que encaja antes de comprometerte. Pasar a un plan de pago un Hub que ya está en servicio no inicia un nuevo periodo de prueba."
 
-msgid "Yes. Moving up is immediate and the difference is prorated; moving down takes effect at the end of the period you have already paid for. There's no penalty or commitment period, and moving down turns nothing off: your apps and their data stay as they are."
-msgstr "Sí. Subir de plan es inmediato y la diferencia se prorratea; bajar se aplica al final del periodo que ya has pagado. No hay penalización ni periodo de compromiso, y bajar de plan no desactiva nada: tus apps y sus datos se quedan como están."
+msgid "Yes. Moving up is immediate and the difference is prorated; moving down takes effect at the end of the period you have already paid for. There's no penalty or commitment period, and moving down turns nothing off: your apps and their data stay as they are. If you have more apps turned on than the new plan allows, they stay on; you just can't turn on more until you are under the limit."
+msgstr "Sí. Subir de plan es inmediato y la diferencia se prorratea; bajar se aplica al final del periodo que ya has pagado. No hay penalización ni periodo de compromiso, y bajar de plan no desactiva nada: tus apps y sus datos se quedan como están. Si tienes más apps activadas de las que permite el plan nuevo, se quedan activadas; solo no podrás activar más hasta estar por debajo del límite."
 
 msgid "Within the European Union: on Amazon Web Services, in its Ireland region (eu-west-1), on GDPR-compliant infrastructure. The one exception is the AI assistant: if its European provider is unavailable, a backup provider may answer from outside the EU, under the safeguards our privacy policy describes."
 msgstr "Dentro de la Unión Europea: en Amazon Web Services, en su región de Irlanda (eu-west-1), sobre infraestructura conforme al RGPD. La única excepción es el asistente de IA: si su proveedor europeo no está disponible, un proveedor de respaldo puede responder desde fuera de la UE, con las garantías que describe nuestra política de privacidad."
@@ -3793,6 +3793,22 @@ msgstr[1] "%(count)d mensajes al mes"
 
 msgid "AI assistant: %(messages)s"
 msgstr "Asistente de IA: %(messages)s"
+
+msgid "Apps turned on at once"
+msgstr "Apps activadas a la vez"
+
+msgid "All the apps turned on at once"
+msgstr "Todas las apps activadas a la vez"
+
+#, python-format
+msgid "Up to %(count)d app turned on at once"
+msgid_plural "Up to %(count)d apps turned on at once"
+msgstr[0] "Hasta %(count)d app activada a la vez"
+msgstr[1] "Hasta %(count)d apps activadas a la vez"
+
+msgctxt "apps turned on at once"
+msgid "Unlimited"
+msgstr "Ilimitadas"
 
 msgid "WhatsApp: %(messages)s"
 msgstr "WhatsApp: %(messages)s"

@@ -129,6 +129,9 @@ test('PUBLIC-G31 the plans: a card per plan on sale, the upgrade-only ones under
     await expect(p.locator('.ep-pricing-card')).toHaveCount(6);
     await expect(p.locator('#more-capacity .ep-pricing-card')).toHaveCount(3);
     await expect(p.locator('#more-capacity ion-button[href="/launch"]')).toBeVisible();
+    // The table gained a column (the apps turned on at once, hub#256): it still fits its surface at every width.
+    const spill = await p.locator('#plan-compare').evaluate((table) => table.scrollWidth - (table.parentElement?.clientWidth ?? 0));
+    expect(spill, `the plan table spills out of its surface at ${p.viewportSize()?.width}px`).toBeLessThanOrEqual(0);
   });
 
   // More capacity (PLAN-SAAS §9): Pro, Enterprise and Max from their rows, each saying when it opens instead of a
@@ -147,13 +150,21 @@ test('PUBLIC-G31 the plans: a card per plan on sale, the upgrade-only ones under
   await expect(page.getByText('all your locations', { exact: false })).toHaveCount(0);
   // Every plan includes all the apps (PLAN §32): no tier of apps on the page, no «Apps included» column.
   await expect(page.getByText('Every plan includes all the apps. Paid plans add unlimited devices', { exact: false })).toBeVisible();
-  await expect(table.locator('thead th')).toHaveCount(8);
+  await expect(table.locator('thead th')).toHaveCount(9);
   await expect(table.locator('thead th', { hasText: 'Apps included' })).toHaveCount(0);
   expect(await page.evaluate(() => document.body.innerText)).not.toMatch(/premium/i);
 
   const starter = page.locator('.ep-pricing-card', { has: page.locator('.ep-pricing-card__name', { hasText: 'Starter' }) });
   await expect(starter).toContainText('€29.99');
   await expect(starter).toContainText('≈ €299.90/year · 2 months free');
+  // The apps a business may turn on at once, the cap the Hub applies (hub#256), read from each plan's row: a column
+  // next to the devices and users, and a line of every card right after what the plan includes.
+  await expect(table.locator('thead th').nth(3)).toHaveText('Apps turned on at once');
+  await expect(table.locator('thead th').nth(2)).toHaveText('Devices and users');
+  await expect(table.locator('tbody td[data-title="Apps turned on at once"]')).toHaveText(['20', '40', '80', 'Unlimited', 'Unlimited', 'Unlimited']);
+  await expect(starter.locator('li')).toContainText(['All apps included', 'Up to 40 apps turned on at once']);
+  const pro = more.locator('.ep-pricing-card', { has: page.locator('.ep-pricing-card__name', { hasText: 'Pro' }) });
+  await expect(pro.locator('li')).toContainText(['Everything in Standard', 'All the apps turned on at once']);
   await expect(page.getByText('Pay for the year and get 2 months free.')).toBeVisible();
   await page.locator('ion-accordion[value="storage"] ion-item').click();
   const storage = page.locator('ion-accordion[value="storage"] [slot="content"]');
@@ -175,6 +186,7 @@ test('PUBLIC-G32 PUBLIC-G33 a plan page paints the price of its card', async ({ 
   });
 
   expect(painted).toBe('€54.99');
+  await expect(page.getByText('Up to 80 apps turned on at once')).toBeVisible();
   await expect(page.getByText('54.99 €', { exact: false }).first()).toBeVisible();
   await expect(page.getByText('All prices exclude VAT', { exact: false }).first()).toBeVisible();
   expect((await page.goto('/pricing/pro/'))?.status()).toBe(404);

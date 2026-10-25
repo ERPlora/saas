@@ -70,3 +70,16 @@
 .compare-table .num {
   font-family: var(--font-mono);
 }
+
+/* The plan table has nine columns since the apps each plan turns on at once joined it (hub#256): on a tablet, before
+ * it stacks under 768 px, its cells tighten so it fits its surface instead of scrolling inside it. */
+@media (min-width: 768px) and (max-width: 1023px) {
+  #plan-compare {
+    font-size: 13px;
+  }
+
+  #plan-compare :is(th, td) {
+    padding-left: 0.4rem;
+    padding-right: 0.4rem;
+  }
+}

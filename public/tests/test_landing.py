@@ -301,7 +301,7 @@ def test_without_listed_apps_the_apps_blocks_are_omitted(client):
 
     assert 'id="modulos"' not in html
     assert "?category=" not in html
-    assert "0 apps" not in html
+    assert not re.search(r"(?<!\d)0 apps", html)
 
 
 def test_the_ecosystem_is_our_catalogue_not_a_marketplace(client, catalogue):
@@ -404,6 +404,7 @@ def test_the_home_card_ends_with_the_trial_the_plan_grants(no_plans, client):
 
     assert card_items(html_of(client), "Starter") == [
         "Unlimited users",
+        "All the apps turned on at once",
         "21-day free trial",
     ]
 
@@ -421,6 +422,7 @@ def test_the_home_card_trial_is_translated(no_plans, client):
 
     assert card_items(html_of(client, language="es"), "Starter") == [
         "Usuarios ilimitados",
+        "Todas las apps activadas a la vez",
         "21 días de prueba gratis",
     ]
 
@@ -428,7 +430,18 @@ def test_the_home_card_trial_is_translated(no_plans, client):
 def test_a_plan_without_trial_shows_no_trial_line_on_the_home(no_plans, client):
     make_plan("free", trial_days=0, price_monthly=Decimal("0"))
 
-    assert card_items(html_of(client), "Free") == ["Unlimited users"]
+    assert card_items(html_of(client), "Free") == ["Unlimited users", "All the apps turned on at once"]
+
+
+def test_the_home_card_says_the_apps_the_plan_turns_on_at_once_after_what_it_includes(no_plans, client):
+    """The same card as /pricing/ (public.pricing.plan_card): the cap the Hub applies (hub#256), from the row."""
+    make_plan("starter", features_en=["All apps included", "Unlimited users"], max_apps=40)
+
+    assert card_items(html_of(client), "Starter") == [
+        "All apps included",
+        "Up to 40 apps turned on at once",
+        "Unlimited users",
+    ]
 
 
 def test_painting_the_trial_never_writes_it_into_the_plan(no_plans, client):

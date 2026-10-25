@@ -138,6 +138,8 @@ export interface PlanOut {
   assistant_messages_per_month: number;
   /** WhatsApp messages the plan includes each month; 0 = none. */
   whatsapp_messages_per_month: number;
+  /** Apps the business may choose to turn on at once, the ones they require aside (hub#256); 0 = no limit. */
+  max_apps: number;
   upgrade_only: boolean;
   internal_only: boolean;
 }
