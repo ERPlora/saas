@@ -25,7 +25,11 @@ Port of ERPlora/saas ``apps/public/pricing/views.py`` (origin/develop c5ca8ca). 
   them (``billing.plan_upgrade_only``) and their detail answers 404;
 * the sections alternate their surface whatever the catalogue shows (:func:`section_surfaces`);
 * the assistant and WhatsApp messages a month each plan includes (PLAN-SAAS §3.6, 2026-10-15) are a line of
-  every card and a column of the table, in plain words (:func:`messages_a_month`); a quota of 0 is none.
+  every card and a column of the table, in plain words (:func:`messages_a_month`); a quota of 0 is none;
+* the apps a business may choose to turn on at once (``max_apps``, the cap the Hub applies since hub#256; the ones
+  they require do not count) are a line of every card, right after what the plan includes, and a column of the table
+  next to the devices and users (:func:`apps_at_once`), worked out from the row so the admin is the one place to
+  change them; 0 is no limit. The switch answer says a downgrade over the cap turns no app off.
 """
 
 from __future__ import annotations
@@ -38,7 +42,7 @@ from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.template.defaultfilters import floatformat
 from django.urls import reverse
-from django.utils.translation import get_language, ngettext
+from django.utils.translation import get_language, ngettext, pgettext
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_safe
 from live.context import OperationContext, Scope
@@ -165,16 +169,53 @@ def _message_lines(assistant: str, whatsapp: str) -> list[str]:
     return lines
 
 
+#: The card lines that say what a plan includes, in the languages its rows are written in: «All apps included» (Free,
+#: Starter) and «Everything in …» (the plans above include the one below, hubs/0013 and 0021). The apps it turns on at
+#: once go right after the first of them.
+INCLUDES_LINES = frozenset({"All apps included", "Todas las apps incluidas"})
+INCLUDES_PREFIXES = ("Everything in ", "Todo lo del plan ")
+
+
+def apps_at_once(count: int) -> str:
+    """The card line of the apps a business may choose to turn on at once (``max_apps``, hub#256): ``Up to 20 apps
+    turned on at once``; 0 is no limit, so every app."""
+    if count <= 0:
+        return _("All the apps turned on at once")
+    return ngettext(
+        "Up to %(count)d app turned on at once", "Up to %(count)d apps turned on at once", count
+    ) % {"count": count}
+
+
+def apps_at_once_label(count: int) -> str:
+    """The table's cell of the same cap: the number, or ``Unlimited`` for 0."""
+    return str(count) if count > 0 else pgettext("apps turned on at once", "Unlimited")
+
+
+def _with_apps_at_once(features: list[str], line: str) -> list[str]:
+    """``features`` with ``line`` right after the first one that says what the plan includes; staff word the rows as
+    they like, so without one the line ends them."""
+    at = next(
+        (
+            index + 1
+            for index, feature in enumerate(features)
+            if feature in INCLUDES_LINES or feature.startswith(INCLUDES_PREFIXES)
+        ),
+        len(features),
+    )
+    return [*features[:at], line, *features[at:]]
+
+
 def plan_card(plan) -> dict[str, Any]:
-    """A plan as the selling screens paint it: its own features, then the messages a month it includes, then its
-    trial (the operation's last line, saas#2424)."""
+    """A plan as the selling screens paint it: its own features with the apps it turns on at once, then the messages
+    a month it includes, then its trial (the operation's last line, saas#2424)."""
     features = list(plan.features)
     trial = [features.pop()] if _has_trial_line(plan) else []
     assistant = messages_a_month(plan.assistant_messages_per_month)
     whatsapp = messages_a_month(plan.whatsapp_messages_per_month)
-    own_features = [*features, *_message_lines(assistant, whatsapp)]
+    own_features = [*_with_apps_at_once(features, apps_at_once(plan.max_apps)), *_message_lines(assistant, whatsapp)]
     return {
         **plan.model_dump(),
+        "apps_label": apps_at_once_label(plan.max_apps),
         "assistant_label": assistant,
         "whatsapp_label": whatsapp,
         "display_features": [*own_features, *trial],
@@ -252,7 +293,9 @@ def faq_items(days: TrialDays | None = None) -> list[dict[str, str]]:
             "answer": _(
                 "Yes. Moving up is immediate and the difference is prorated; moving down takes effect "
                 "at the end of the period you have already paid for. There's no penalty or commitment "
-                "period, and moving down turns nothing off: your apps and their data stay as they are."
+                "period, and moving down turns nothing off: your apps and their data stay as they are. "
+                "If you have more apps turned on than the new plan allows, they stay on; you just can't "
+                "turn on more until you are under the limit."
             ),
         },
         {

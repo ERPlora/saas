@@ -29,6 +29,7 @@ from __future__ import annotations
 import json
 import re
 from decimal import Decimal
+from html import unescape
 from pathlib import Path
 
 import pytest
@@ -373,6 +374,11 @@ def test_public_plan_detail_does_not_offer_internal_plans_as_alternatives(
 TABLE_RE = re.compile(r'<table[^>]*id="plan-compare".*?</table>', re.S)
 
 
+#: The columns of the comparison table: plan, price, devices and users, apps turned on at once (hub#256), database
+#: throughput, AI assistant, WhatsApp, support and access.
+COLUMNS = 9
+
+
 def plan_table(html: str) -> str:
     match = TABLE_RE.search(html)
     assert match, (
@@ -394,7 +400,7 @@ def test_table_shows_the_support_of_each_plan(client, seeded):
     """The plans on sale, then the upgrade-only ones (Ioan, 2026-10-24); the dedicated row is gone (PLAN-SAAS §9,
     2026-10-24b)."""
     table = plan_table(html_of(client))
-    signable, upgrades = table.split('<td colspan="8">More capacity</td>', 1)
+    signable, upgrades = table.split(f'<td colspan="{COLUMNS}">More capacity</td>', 1)
 
     for support in ("Community forum", "Email", "Priority email"):
         assert support in signable, support
@@ -485,7 +491,9 @@ def test_a_plan_without_messages_says_nothing_of_them(no_plans, client):
     """0 is «none»: the card paints no line rather than «0 messages»."""
     make_plan("starter", trial_days=15, assistant_messages_per_month=0, whatsapp_messages_per_month=40)
 
-    assert card_items(html_of(client), "Starter") == ["Unlimited users", "WhatsApp: 40 messages a month", "15-day free trial"]
+    assert card_items(html_of(client), "Starter") == [
+        "Unlimited users", "All the apps turned on at once", "WhatsApp: 40 messages a month", "15-day free trial",
+    ]  # fmt: skip
 
 
 def test_one_message_reads_in_the_singular(no_plans, client):
@@ -533,6 +541,176 @@ def test_every_row_of_the_table_spans_its_columns(client, seeded):
     assert set(re.findall(r'colspan="(\d+)"', table)) == {str(columns)}
 
 
+# --- The apps each plan lets a business turn on at once (hub#256, PLAN-SAAS §9) --------------------------------------
+# The Hub caps the apps a business chooses to turn on by its plan's ``max_apps`` (the ones they require do not count;
+# 0 = no limit), «as the plans published on the SaaS say» (Ioan, 2026-10-25): the page publishes that same number,
+# read from the row, in a column of the table and a line of every card.
+
+APPS_HEADER = {"en": "Apps turned on at once", "es": "Apps activadas a la vez"}
+DEVICES_HEADER = {"en": "Devices and users", "es": "Dispositivos y usuarios"}
+#: «Ilimitadas», as the table's «Dispositivos ilimitados»: «Sin límite» is the old home's false «No limit» per user
+#: (public/tests/test_product.py, UNSHIPPED_CLAIMS).
+NO_LIMIT = {"en": "Unlimited", "es": "Ilimitadas"}
+#: The plans of the table, in its order (the seed's, hubs/0013).
+TABLE_ORDER = ("Free", "Starter", "Standard", "Pro", "Enterprise", "Max")
+
+
+def table_head(table: str) -> list[str]:
+    return re.findall(r"<th\b[^>]*>(.*?)</th>", table.split("</thead>", 1)[0])
+
+
+def plan_rows(table: str) -> list[str]:
+    """The table's plan rows, in order (not the group rows nor the head)."""
+    return [row for row in table.split("<tr")[1:] if "<strong>" in row]
+
+
+def apps_cells(table: str, language: str = "en") -> list[str]:
+    """The «Apps turned on at once» cell of each plan row, in the table's order."""
+    cells = []
+    for row in plan_rows(table):
+        match = re.search(rf'<td data-title="{APPS_HEADER[language]}">(.*?)</td>', row, re.S)
+        assert match, row[:200]
+        cells.append(" ".join(match.group(1).split()))
+    return cells
+
+
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_the_table_compares_the_apps_each_plan_turns_on_at_once_next_to_devices_and_users(client, seeded, language):
+    table = plan_table(html_of(client, language=language))
+    head = table_head(table)
+
+    assert head[head.index(DEVICES_HEADER[language]) + 1] == APPS_HEADER[language]
+    unlimited = NO_LIMIT[language]
+    assert apps_cells(table, language) == ["20", "40", "80", unlimited, unlimited, unlimited]
+    # Each cell sits under its column: a row's cells carry the head's titles, in its order.
+    for row in plan_rows(table):
+        assert re.findall(r'<td data-title="([^"]*)"', row) == head[1:]
+
+
+def test_the_table_reads_the_apps_from_the_rows_not_a_typed_number(client, seeded):
+    Plan.objects.filter(slug="free").update(max_apps=0)
+    Plan.objects.filter(slug="starter").update(max_apps=7)
+    Plan.objects.filter(slug="pro").update(max_apps=150)
+
+    assert apps_cells(plan_table(html_of(client))) == ["Unlimited", "7", "80", "150", "Unlimited", "Unlimited"]
+
+
+#: The card line the cap goes after: «All apps included» (Free, Starter) or «Everything in …» (the plans above).
+CARD_APPS = {
+    "en": {
+        "Free": ("All apps included", "Up to 20 apps turned on at once"),
+        "Starter": ("All apps included", "Up to 40 apps turned on at once"),
+        "Standard": ("Everything in Starter", "Up to 80 apps turned on at once"),
+        "Pro": ("Everything in Standard", "All the apps turned on at once"),
+        "Enterprise": ("Everything in Pro", "All the apps turned on at once"),
+        "Max": ("Everything in Enterprise", "All the apps turned on at once"),
+    },
+    "es": {
+        "Gratis": ("Todas las apps incluidas", "Hasta 20 apps activadas a la vez"),
+        "Starter": ("Todas las apps incluidas", "Hasta 40 apps activadas a la vez"),
+        "Standard": ("Todo lo del plan Starter", "Hasta 80 apps activadas a la vez"),
+        "Pro": ("Todo lo del plan Standard", "Todas las apps activadas a la vez"),
+        "Enterprise": ("Todo lo del plan Pro", "Todas las apps activadas a la vez"),
+        "Max": ("Todo lo del plan Enterprise", "Todas las apps activadas a la vez"),
+    },
+}
+
+
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_each_card_says_the_apps_it_turns_on_at_once_right_after_what_it_includes(client, seeded, language):
+    html = html_of(client, language=language)
+
+    for name, (anchor, line) in CARD_APPS[language].items():
+        items = card_items(html, name)
+        assert items[items.index(anchor) + 1] == line, (name, items)
+        assert items.count(line) == 1, name
+
+
+def test_the_cards_follow_the_row_when_its_cap_changes(client, seeded):
+    Plan.objects.filter(slug="starter").update(max_apps=7)
+    Plan.objects.filter(slug="free").update(max_apps=0)
+    Plan.objects.filter(slug="pro").update(max_apps=150)
+    html = html_of(client)
+
+    assert "Up to 7 apps turned on at once" in card_items(html, "Starter")
+    assert "All the apps turned on at once" in card_items(html, "Free")
+    assert "Up to 150 apps turned on at once" in card_items(upgrade_section(html), "Pro")
+    assert "Up to 40 apps turned on at once" not in html
+
+
+@pytest.mark.parametrize(
+    ("language", "line"), [("en", "Up to 1 app turned on at once"), ("es", "Hasta 1 app activada a la vez")]
+)
+def test_a_cap_of_one_app_reads_in_the_singular(no_plans, client, language, line):
+    make_plan("starter", name_es="Starter", features_es=["Usuarios ilimitados"], max_apps=1)
+
+    assert line in card_items(html_of(client, language=language), "Starter")
+
+
+def test_without_an_includes_line_the_cap_ends_the_plans_own_features(no_plans, client):
+    """Staff may word the features as they like: without «All apps included» nor «Everything in …», the line goes after
+    the plan's own lines, before the messages and the trial."""
+    make_plan("starter", trial_days=15, max_apps=10, assistant_messages_per_month=0, whatsapp_messages_per_month=40)
+
+    assert card_items(html_of(client), "Starter") == [
+        "Unlimited users",
+        "Up to 10 apps turned on at once",
+        "WhatsApp: 40 messages a month",
+        "15-day free trial",
+    ]
+
+
+def test_the_cap_line_is_worked_out_on_the_page_and_never_written_in_the_rows(seeded):
+    """The seed does not carry it, so editing ``max_apps`` in the admin is enough for the page to follow."""
+    for plan in Plan.objects.all():
+        for feature in [*plan.features_en, *plan.features_es]:
+            assert "apps turned on" not in feature and "apps activadas" not in feature, (plan.slug, feature)
+
+
+SWITCH_CAP = {
+    "en": (
+        "If you have more apps turned on than the new plan allows, they stay on; you just can't turn on more until "
+        "you are under the limit."
+    ),
+    "es": (
+        "Si tienes más apps activadas de las que permite el plan nuevo, se quedan activadas; solo no podrás activar "
+        "más hasta estar por debajo del límite."
+    ),
+}
+
+
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_the_switch_answer_says_a_downgrade_over_the_cap_turns_no_app_off(client, seeded, language):
+    with translation.override(language):
+        (switch,) = [item for item in pricing.faq_items() if item["key"] == "switch"]
+    html = html_of(client, language=language)
+    (marked_up,) = [
+        entry
+        for entry in faq_page_of(html)["mainEntity"]
+        if entry["name"] == str(switch["question"])
+    ]
+
+    assert str(switch["answer"]).endswith(SWITCH_CAP[language])
+    assert SWITCH_CAP[language] in unescape(" ".join(visible_text(html).split()))
+    assert SWITCH_CAP[language] in marked_up["acceptedAnswer"]["text"]
+
+
+@pytest.mark.parametrize(
+    ("slug", "language", "line"),
+    [
+        ("starter", "en", "Up to 40 apps turned on at once"),
+        ("standard", "es", "Hasta 80 apps activadas a la vez"),
+    ],
+)
+def test_the_detail_says_the_apps_the_plan_turns_on_at_once(client, seeded, slug, language, line):
+    response = get(client, f"/pricing/{slug}/", language)
+    # «What's included»: the plan's own lines, not the other plans under it.
+    included = response.content.decode().split('<h2 class="text-2xl font-semibold mb-6">', 1)[1].split("</ion-card>", 1)[0]
+
+    assert line in response.context["plan"]["own_features"]
+    assert line in included
+
+
 # --- test_pricing_card_trial.py ---------------------------------------------------------------
 
 
@@ -541,7 +719,7 @@ def test_the_card_shows_the_trial_the_plan_grants(no_plans, client):
 
     items = card_items(html_of(client), "Starter")
 
-    assert items == ["Unlimited users", "21-day free trial"]
+    assert items == ["Unlimited users", "All the apps turned on at once", "21-day free trial"]
 
 
 def test_the_card_follows_the_plan_when_its_trial_changes(no_plans, client):
@@ -555,7 +733,7 @@ def test_the_card_follows_the_plan_when_its_trial_changes(no_plans, client):
 def test_a_plan_without_trial_shows_no_trial_line(no_plans, client):
     make_plan("free", trial_days=0)
 
-    assert card_items(html_of(client), "Free") == ["Unlimited users"]
+    assert card_items(html_of(client), "Free") == ["Unlimited users", "All the apps turned on at once"]
 
 
 def test_the_card_trial_is_translated(no_plans, client):
@@ -780,7 +958,7 @@ def test_the_table_compares_no_tier_of_apps(client, seeded):
     head = table.split("</thead>", 1)[0]
 
     assert "Support" in head, "control: the table has its columns"
-    assert len(re.findall(r"<th\b", head)) == 8
+    assert len(re.findall(r"<th\b", head)) == COLUMNS
     assert "Apps included" not in table
     for plan in Plan.objects.public():
         assert f'data-title="Apps included">{plan.included_level_label}<' not in table
@@ -895,7 +1073,7 @@ def test_the_comparison_table_ends_with_the_upgrade_only_plans_and_no_offer_by_c
 def test_the_table_signs_up_on_the_plans_on_sale_and_says_when_the_others_open(client, seeded):
     table = plan_table(html_of(client))
     groups = re.findall(r'<tr class="cat ep-table-group"><td colspan="\d+">(.*?)</td></tr>', table)
-    signable, upgrades = table.split('<td colspan="8">More capacity</td>', 1)
+    signable, upgrades = table.split(f'<td colspan="{COLUMNS}">More capacity</td>', 1)
 
     assert groups == ["Plans · sign up directly", "More capacity"]
     assert signable.count('href="/launch"') == 3
@@ -908,7 +1086,7 @@ def test_the_table_signs_up_on_the_plans_on_sale_and_says_when_the_others_open(c
 def test_the_table_reads_the_upgrade_only_plans_in_spanish(client, seeded):
     table = plan_table(html_of(client, language="es"))
 
-    assert '<td colspan="8">Más capacidad</td>' in table
+    assert f'<td colspan="{COLUMNS}">Más capacidad</td>' in table
     assert table.count("Disponible al pasar a Starter") == 3
 
 
@@ -980,7 +1158,9 @@ def test_more_capacity_shows_each_upgrade_only_plan_from_its_row(client, seeded)
     for plan in upgrade_rows():
         features = without_separators(plan.features_en)
         assert plan.description_en in text, plan.slug
-        assert card_items(section, plan.name_en)[: len(features)] == features, plan.slug
+        # The row's lines, with the apps it turns on at once (hub#256) right after its «Everything in …».
+        expected = [features[0], "All the apps turned on at once", *features[1:]]
+        assert card_items(section, plan.name_en)[: len(expected)] == expected, plan.slug
         assert f"≈ €{plan.price_annual:.2f}/year · 2 months free" in text, plan.slug
         assert "/ month per hub" in text
 
@@ -1057,7 +1237,7 @@ def test_without_upgrade_only_plans_there_is_no_more_capacity_section(client, se
 
     assert UPGRADE_SECTION not in html
     assert "More capacity</h2>" not in html
-    assert '<td colspan="8">More capacity</td>' not in html
+    assert f'<td colspan="{COLUMNS}">More capacity</td>' not in html
     assert "Available once you are on Starter" not in html
 
 
@@ -1352,6 +1532,10 @@ def test_the_python_messages_have_their_spanish_entry(no_plans):
             pricing.trial_note((15, 30)),
             pricing.trial_note((15, 15)),
             pricing.trial_note((None, None)),
+            pricing.apps_at_once(20),
+            pricing.apps_at_once(1),
+            pricing.apps_at_once(0),
+            pricing.apps_at_once_label(0),
         ]
     with translation.override("en"):
         english = [
@@ -1360,6 +1544,10 @@ def test_the_python_messages_have_their_spanish_entry(no_plans):
             pricing.trial_note((15, 30)),
             pricing.trial_note((15, 15)),
             pricing.trial_note((None, None)),
+            pricing.apps_at_once(20),
+            pricing.apps_at_once(1),
+            pricing.apps_at_once(0),
+            pricing.apps_at_once_label(0),
         ]
 
     assert [es for es, en in zip(texts, english) if es == en] == []

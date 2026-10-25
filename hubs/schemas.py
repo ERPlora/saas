@@ -95,6 +95,9 @@ class PlanOut(Schema):
     assistant_messages_per_month: int
     #: WhatsApp messages the plan includes each month; 0 = none.
     whatsapp_messages_per_month: int
+    #: Apps the business may choose to turn on at once, the ones they require aside (the cap the Hub applies, hub#256);
+    #: 0 = no limit.
+    max_apps: int
     upgrade_only: bool
     internal_only: bool
 

@@ -80,6 +80,7 @@ def test_the_shape_of_a_plan(seeded):
         "resources_label",
         "assistant_messages_per_month",
         "whatsapp_messages_per_month",
+        "max_apps",
         "upgrade_only",
         "internal_only",
     }
@@ -101,6 +102,8 @@ def test_the_shape_of_a_plan(seeded):
     )
     assert (starter["upgrade_only"], starter["internal_only"]) == (False, False)
     assert (starter["assistant_messages_per_month"], starter["whatsapp_messages_per_month"]) == (300, 150)
+    # The apps the business may choose to turn on (hub#256), published on /pricing/ as the Hub applies it.
+    assert starter["max_apps"] == 40
     # No trial since 2026-10-15 (the Free plan is the way in): the features end with the plan's own.
     assert starter["features"] == Plan.objects.get(slug="starter").features_en
     assert (starter["included_level_label"], starter["support_level_label"]) == (

@@ -205,10 +205,10 @@ Estado: hecho
 Actor: visitante
 Pantalla: Planes y precios
 Pasos:
-1. La persona abre «Precios» y ve «Empieza gratis. Escala cuando lo necesites.», que todos los planes incluyen todas las apps, y una tarjeta por plan con el que se puede empezar (Gratis, Starter y Standard), con el precio mensual por hub, sus características y los mensajes al mes del asistente y de WhatsApp.
+1. La persona abre «Precios» y ve «Empieza gratis. Escala cuando lo necesites.», que todos los planes incluyen todas las apps, y una tarjeta por plan con el que se puede empezar (Gratis, Starter y Standard), con el precio mensual por hub, sus características, cuántas apps se pueden tener activadas a la vez («Hasta 20 apps activadas a la vez»; sin tope, «Todas las apps activadas a la vez») y los mensajes al mes del asistente y de WhatsApp.
 2. Si el plan tiene precio anual, la tarjeta dice el precio del año y los meses que ahorra («≈ 299,90 €/año · 2 meses gratis»), calculados de los dos precios; si todos los planes de pago ahorran lo mismo, la cabecera lo dice una vez («Paga el año y llévate 2 meses gratis.»).
 3. Más abajo, «Más capacidad»: los planes de mejora (hoy Pro, Enterprise y Max), cada uno con su precio mensual y anual, su descripción y sus características, y «Disponible al pasar a Starter» en lugar del botón de alta; un solo botón, «Empieza gratis y mejora cuando quieras», lleva a la pantalla de entrar.
-4. Después, la tabla de lo incluido en cada plan (también los de mejora), las comparativas con otros ERP y las preguntas frecuentes; nada se ofrece por contacto.
+4. Después, la tabla de lo incluido en cada plan (también los de mejora), con las apps activadas a la vez de cada uno, el mismo tope que aplica el Hub («Ilimitadas» sin tope); las comparativas con otros ERP y las preguntas frecuentes, donde la de cambiar de plan explica que bajar no apaga ninguna app: con más apps activadas que el tope nuevo, se quedan activadas y no se pueden activar más hasta estar por debajo. Nada se ofrece por contacto.
 Entra: los planes a la venta, también los de mejora (activos y no internos), en el orden que les da el personal.
 Sale: nada guardado; los datos estructurados de las preguntas frecuentes, salidos de la misma lista que el desplegable.
 Si falla: sin planes a la venta, la página lo dice y no pinta tablas ni «Más capacidad»; sin planes de mejora, no hay «Más capacidad». Si el precio anual no ahorra ningún mes entero, la tarjeta dice solo el precio del año, sin «meses gratis». Un plan sin mensajes de asistente o de WhatsApp no los nombra.
@@ -221,7 +221,7 @@ Actor: visitante
 Pantalla: Detalle de un plan
 Pasos:
 1. La persona llega a la página de un plan (por su dirección o desde «Otros planes» de otro plan).
-2. Ve el nombre, la descripción, el precio mensual por hub con la nota de IVA y «Qué incluye».
+2. Ve el nombre, la descripción, el precio mensual por hub con la nota de IVA y «Qué incluye», con las apps que se pueden tener activadas a la vez.
 3. Pulsa «Comenzar» y llega a la pantalla de entrar, donde también se crea la cuenta (PUBLIC-F11); «Otros planes» lleva a los demás planes a la venta.
 Entra: el plan por su identificador.
 Sale: nada guardado.

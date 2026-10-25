@@ -7,9 +7,11 @@
   §32) and `included_level` stays dormant off the public web; «Database throughput» is the plan's
   `resources_label` (Ioan, 2026-10-15: the «resources» that grow from plan to plan are the database's input/output
   capacity, in words; never an engine, a connection count nor a number). «AI assistant» and «WhatsApp» are
-  the messages a month the plan includes (PLAN-SAAS §3.6, 2026-10-15); 0 = «Not included».
+  the messages a month the plan includes (PLAN-SAAS §3.6, 2026-10-15); 0 = «Not included». «Apps turned on at once» is
+  the plan's `max_apps`, the cap the Hub applies (hub#256): `apps_label`, the number or «Unlimited» for 0.
 {% endcomment %}
 <td data-title="{% trans 'Devices and users' %}">{% include "public/pricing/_plan_limits.html" %}</td>
+<td data-title="{% trans 'Apps turned on at once' %}">{{ plan.apps_label }}</td>
 <td data-title="{% trans 'Database throughput' %}">{{ plan.resources_label }}</td>
 {% trans "Not included" as not_included %}
 <td data-title="{% trans 'AI assistant' %}">{{ plan.assistant_label|default:not_included }}</td>
