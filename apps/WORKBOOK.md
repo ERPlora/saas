@@ -1,7 +1,7 @@
 # Workbook — Apps (apps)
 Prefijo: APPS
 Alcance MVP: fase 1 (el catálogo de apps que lee la tienda y lo que erplora.com vende de cada app de pago)
-Estado de la app: en uso (un flujo parcial: APPS-F07, la parte del Hub)
+Estado de la app: en uso
 
 > Manual de uso y especificación de la app `apps` del SaaS (erplora.com). Cuenta cómo llega a erplora.com
 > el catálogo de las apps del Hub, cómo se lee desde fuera (la lista, la ficha y la documentación de cada
@@ -85,7 +85,7 @@ modificación, con filtros por nivel y activo y un buscador. La ficha de cada m�
 | APPS-F04 | Enlazar una app de pago con su producto y sus precios de Stripe | hecho |
 | APPS-F05 | Sacar una app de la tienda o dejar de venderla | hecho |
 | APPS-F06 | Clasificar una app por sección y tipo de negocio | hecho |
-| APPS-F07 | Comprar una app de pago siempre en erplora.com, nunca dentro del negocio | parcial |
+| APPS-F07 | Comprar una app de pago siempre en erplora.com, nunca dentro del negocio | hecho |
 
 ### APPS-F01 Consultar el catálogo de apps
 <!-- origen: old-saas:SAAS_PUBLIC-F12 old-saas:SAAS_PUBLIC-F13 fi:saas/support/public-core-config#serializer-modulelistserializer-moduledetailserializer -->
@@ -180,17 +180,17 @@ Implicados: el Hub (declara la clasificación), hubs (los tipos de negocio del a
 
 ### APPS-F07 Comprar una app de pago siempre en erplora.com, nunca dentro del negocio
 <!-- origen: old-saas:SAAS_PUBLIC-F21 -->
-Estado: parcial — falta la parte del Hub: su página de apps todavía no ofrece una app de pago sin derecho con el enlace a la Tienda de erplora.com
+Estado: hecho
 Actor: propietario, sistema
 Pantalla: Tienda
 Pasos:
-1. Dentro del negocio no se compra nada: una app de pago que el negocio no tiene se ofrece con un enlace a la Tienda de erplora.com.
+1. Dentro del negocio no se compra nada: en Apps del Hub, una app de pago que el negocio no tiene sale con «Necesita suscripción» y, para quien administra el negocio en el navegador, «Mejorar plan», que abre la Tienda de erplora.com (BASE-F20). Hoy ninguna app se vende aparte (todas van en todos los planes): este paso vale para la que vuelva a venderse aparte.
 2. El enlace abre **Tienda › Módulos** con ese negocio ya elegido arriba, y allí se compra como cualquier otra (BILLING-F32).
 3. Desde la app instalada (Android, Windows) la Tienda no vende: dice «La tienda no está en la app» y «Para cambiar de plan o añadir módulos, entra en erplora.com desde el navegador.», sin enlace.
 Entra: el negocio que lleva el enlace.
 Sale: lo comprado, como en BILLING-F32; nada se cobra fuera de la Tienda.
 Si falla: arriba solo se pueden elegir los negocios de los que se es propietario. erplora.com no tiene ninguna puerta por la que un negocio compre por su cuenta.
-Implicados: el Hub (su página de apps), billing (la Tienda)
+Implicados: el Hub (su página de apps, BASE-F20), billing (la Tienda)
 
 ## Para quien lo mantiene
 
@@ -208,7 +208,10 @@ Implicados: el Hub (su página de apps), billing (la Tienda)
   y `billing/tests/test_services.py::TestThePricesOfAModule` (`module_price_problems`); F05 `test_queries.py` (no listadas), `billing/tests/test_store_catalog.py`,
   `billing/tests/test_module_cancel.py` y `billing/tests/test_admin.py` (borrado protegido); F06
   `test_queries.py` (secciones, filtros, `known_verticals`) y `hubs/tests/test_models.py`; F07 el e2e
-  `tests/e2e/panel/billing-support.spec.ts` (`/store/modules?business=`).
+  `tests/e2e/panel/billing-support.spec.ts` (`/store/modules?business=`), `billing/frontend/pages/StorePage.test.ts`
+  (la app instalada no vende) y, en el Hub, `base/tests/test_queries_apps.py::test_the_store_of_this_business` y
+  `base/frontend/pages/AppsPage.test.ts` (BASE-F20: «Mejorar plan» a la Tienda, solo en el navegador y para quien
+  administra).
 - Filas del registro: G01, G02 y G13 → F03; G03, G08 y G09 → F01; G04, G06, G07 y G14 → F02; G05 → F04;
   G10 → F07; G11 → F05; G12 → F06.
 - Se tiraron con la entrega de código (rondas 15 y 16): `module.json`, git-sync, zips, firma, carriles y
@@ -219,7 +222,8 @@ Implicados: el Hub (su página de apps), billing (la Tienda)
 - APPS-F04 comparte con BILLING-F28 la comprobación de `billing/services.py` (`_price_problems`, con
   `plan_price_problems` y `module_price_problems` encima): `PriceCheckSkipped` (sin claves: se guarda con aviso) y
   `PriceCheckFailed` (Stripe no contesta: no se guarda y se pide repetir), en `ModuleForm` y en `PlanForm`.
-- Hueco abierto: APPS-F07 (la página de apps del Hub, BASE-G74, de la tarea de `base`).
+- APPS-F07: la parte del Hub es BASE-F20 (hub#229; el enlace se llama «Mejorar plan» desde hub#256). Con la ronda
+  2026-10-24b (PLAN §32, PLAN-SAAS §9) ningún módulo es `premium`: el enlace no le sale a nadie hasta que vuelva uno.
 
 ## Lo que NO hace, a propósito
 
