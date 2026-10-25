@@ -74,10 +74,10 @@ test('ACCOUNTS-G117 · G01 · report a problem from the user menu: support gets 
   const me = createAccount(`${PREFIX}owner-${Date.now()}@example.com`);
   await signIn(page.request, me);
 
-  await page.goto('/account/profile');
+  await page.goto('/dashboard/account/profile');
   await openUserMenu(page);
   await page.getByTestId('user-menu-report').click();
-  await expect(page).toHaveURL(/\/report-a-problem$/);
+  await expect(page).toHaveURL(/\/dashboard\/report-a-problem$/);
   const send = page.getByTestId('report-send');
   await atEverySize(page, 'ACCOUNTS-G117-form', async () => {
     await expect(page.getByTestId('report-subject')).toBeVisible();
@@ -100,13 +100,13 @@ test('ACCOUNTS-G117 · G01 · report a problem from the user menu: support gets 
   expect(mail.map((one) => one.subject)).toEqual(['[Support] The printer stops']);
   expect(await waitForMail(support, since, /^Account: (\S+)/m)).toBe(me.email);
   expect(await waitForMail(support, since, /^Businesses: (.+)$/m)).toBe(`${BUSINESS} (hub_admin)`);
-  expect(await waitForMail(support, since, /^Page: (.+)$/m)).toBe('/account/profile');
+  expect(await waitForMail(support, since, /^Page: (.+)$/m)).toBe('/dashboard/account/profile');
   expect(await waitForMail(support, since, /^Browser: (.+)$/m)).toContain('Mozilla/5.0');
   await atEverySize(page, 'ACCOUNTS-G117-sent', async () => {
     await expect(sent).toBeVisible();
   });
 
   await page.getByTestId('report-back').click();
-  await expect(page).toHaveURL(/\/account\/profile$/);
+  await expect(page).toHaveURL(/\/dashboard\/account\/profile$/);
   expect(errors).toEqual([]);
 });

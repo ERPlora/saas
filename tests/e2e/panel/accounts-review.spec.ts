@@ -132,7 +132,7 @@ for (const { lang, locale } of LANGUAGES) {
       createAccount(email, lang);
       djangoPrint(`from allauth.account.models import EmailAddress\nEmailAddress.objects.filter(email="${email}").update(verified=False)`);
 
-      await page.goto('/account/profile');
+      await page.goto('/dashboard/account/profile');
       await expect(page).toHaveURL(/\/launch\?next=/);
       await submitSignInForm(page, { email, password: PASSWORD });
       await expect(page).toHaveURL(/\/verify-email\?next=/);
@@ -205,12 +205,12 @@ for (const { lang, locale } of LANGUAGES) {
       try {
         await signIn(phone.request, account);
 
-        await page.goto('/account/profile');
+        await page.goto('/dashboard/account/profile');
         await review(page, lang, 'ACCOUNTS-F21', async () => {
           await expect(page.getByText(t(lang, 'accounts.account.profile.heading'), { exact: true })).toBeVisible();
           await expect(page.getByTestId('profile-first-name').locator('input')).toHaveValue('Lucía');
         });
-        await page.goto('/account/preferences');
+        await page.goto('/dashboard/account/preferences');
         await review(page, lang, 'ACCOUNTS-F22-F23', async () => {
           await expect(page.getByText(t(lang, 'accounts.account.preferences.appearance'), { exact: true })).toBeVisible();
           await expect(page.getByText(t(lang, 'accounts.account.preferences.hubAlerts'), { exact: true })).toBeVisible();
@@ -224,7 +224,7 @@ for (const { lang, locale } of LANGUAGES) {
             'the always-on switch looks locked',
           ).toBeLessThan(1);
         });
-        await page.goto('/account/security');
+        await page.goto('/dashboard/account/security');
         await review(page, lang, 'ACCOUNTS-F18', async () => {
           await expect(page.getByText(t(lang, 'accounts.account.sessions.title'), { exact: true })).toBeVisible();
           await expect(page.getByTestId('sessions-row')).toHaveCount(2);
@@ -297,7 +297,7 @@ for (const { lang, locale } of LANGUAGES) {
         const used = new Set<string>();
         await signIn(page.request, account);
 
-        await page.goto('/account/security');
+        await page.goto('/dashboard/account/security');
         await review(page, lang, 'ACCOUNTS-F15-off', async () => {
           await expect(page.getByTestId('two-factor-state')).toHaveText(t(lang, 'accounts.twoFactor.off'));
         });
@@ -336,7 +336,7 @@ for (const { lang, locale } of LANGUAGES) {
           await expect(page.getByText(t(lang, 'accounts.twoFactor.deactivate.title'))).toBeVisible();
         });
         await page.getByTestId('deactivate-keep').click();
-        await page.goto('/account/security');
+        await page.goto('/dashboard/account/security');
         await review(page, lang, 'ACCOUNTS-F15-on', async () => {
           await expect(page.getByTestId('two-factor-state')).toHaveText(t(lang, 'accounts.twoFactor.on'));
         });

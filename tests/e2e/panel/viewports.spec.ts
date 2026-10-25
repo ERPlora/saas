@@ -24,7 +24,7 @@ interface Screen {
 }
 
 const bakery = (tab: string) => async (request: BrowserContext['request']) =>
-  `/businesses/${await businessIdOf(request, 'Panadería López')}/${tab}`;
+  `/dashboard/businesses/${await businessIdOf(request, 'Panadería López')}/${tab}`;
 
 const SCREENS: Screen[] = [
   { name: 'launch-signed-out', account: null, path: '/launch', ready: (p) => p.getByTestId('login-form') },
@@ -39,10 +39,10 @@ const SCREENS: Screen[] = [
   { name: 'launch-one', account: 'one', path: '/launch', ready: (p) => p.getByTestId('launch-open') },
   { name: 'launch-several', account: 'several', path: '/launch', ready: (p) => p.getByTestId('launch-business').first() },
   { name: 'launch-first-invited', account: 'invited', path: '/launch', ready: (p) => p.getByTestId('launch-accept') },
-  { name: 'businesses-default', account: 'several', path: '/businesses', ready: (p) => p.getByTestId('businesses-row').first() },
-  { name: 'businesses-empty', account: 'first', path: '/businesses', ready: (p) => p.getByTestId('businesses-empty') },
+  { name: 'businesses-default', account: 'several', path: '/dashboard/businesses', ready: (p) => p.getByTestId('businesses-row').first() },
+  { name: 'businesses-empty', account: 'first', path: '/dashboard/businesses', ready: (p) => p.getByTestId('businesses-empty') },
   // An account without a Free business: «several» fills its one with Café Central (audit 2 S-02).
-  { name: 'businesses-create', account: 'first', path: '/businesses?create=1', ready: (p) => p.getByTestId('create-modal-submit') },
+  { name: 'businesses-create', account: 'first', path: '/dashboard/businesses?create=1', ready: (p) => p.getByTestId('create-modal-submit') },
   { name: 'business-default', account: 'several', path: bakery('summary'), ready: (p) => p.getByTestId('summary-plan') },
   { name: 'business-default-members', account: 'several', path: bakery('members'), ready: (p) => p.getByTestId('members-row').first() },
   { name: 'business-default-modules', account: 'several', path: bakery('modules'), ready: (p) => p.getByTestId('business-modules') },
@@ -102,7 +102,7 @@ test('the sideways-scroll reader catches a page that overflows (the check of the
   await withContext(browser, 'several', 'light', async (context) => {
     const page = await context.newPage();
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto('/businesses');
+    await page.goto('/dashboard/businesses');
     await expect(page.getByTestId('businesses-row').first()).toBeVisible();
     await settled(page);
     expect(await sidewaysScroll(page)).toEqual([]);

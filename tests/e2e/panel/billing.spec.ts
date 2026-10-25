@@ -1,4 +1,4 @@
-// Billing (`/billing/:tab`, plan 2026-10-13 L3-C front; mockups `billing.html`) in Chrome, against the panel's
+// Billing (`/dashboard/billing/:tab`, plan 2026-10-13 L3-C front; mockups `billing.html`) in Chrome, against the panel's
 // own Django (project.ts) and the rows of billing_seed.py. Stripe and the platform hub do not run here: the
 // spec plays Stripe's pages (the invoice page «Pay» goes to, the Customer Portal) and the platform hub's PDF at
 // their boundaries, and leaves everything else to the real server — the invoices, the subscriptions, «Pay»
@@ -127,8 +127,8 @@ async function actionsOverflow(page: Page): Promise<string[]> {
 test.describe('billing', () => {
   test('Invoices: every business’s invoices, what waits for a payment, «Issuing» without its PDF, filters', async ({ page }) => {
     const errors = watchPageErrors(page);
-    await page.goto('/billing');
-    await expect(page).toHaveURL(/\/billing\/invoices$/);
+    await page.goto('/dashboard/billing');
+    await expect(page).toHaveURL(/\/dashboard\/billing\/invoices$/);
     await expect(page.getByTestId('billing-lead')).toHaveText(
       'What you pay ERPlora for all your businesses. The invoices of your sales are inside each business.',
     );
@@ -175,11 +175,11 @@ test.describe('billing', () => {
     await page.getByTestId('invoices-show-all').click();
     await expect(page.getByTestId('invoices-row')).toHaveCount(4);
     // A business of the address that is not the account's: every invoice, saying so (W-F15).
-    await page.goto('/billing/invoices?business=00000000-0000-7000-8000-000000000000');
+    await page.goto('/dashboard/billing/invoices?business=00000000-0000-7000-8000-000000000000');
     await expect(page.getByTestId('invoices-unknown-business')).toBeVisible();
     await expect(page.getByTestId('invoices-row')).toHaveCount(4);
     // A business on Free has none (X-18).
-    await page.goto(`/billing/invoices?business=${await businessIdOf(page.request, 'Café Central')}`);
+    await page.goto(`/dashboard/billing/invoices?business=${await businessIdOf(page.request, 'Café Central')}`);
     await expect(page.getByTestId('invoices-empty')).toContainText('Café Central is on Free: it has no invoices.');
     expect(errors).toEqual([]);
   });
@@ -198,7 +198,7 @@ test.describe('billing', () => {
     });
     await new Promise<void>((listening) => hub.listen(HUB_DOUBLE_PORT, '127.0.0.1', () => listening()));
     try {
-      await page.goto('/billing/invoices');
+      await page.goto('/dashboard/billing/invoices');
       const ids = await invoiceIds(page);
       const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId(`invoices-row-${ids['E2EBAKERY_AUG-0001']}-pdf`).click()]);
       expect(download.suggestedFilename()).toBe('ERP-2026-90071.pdf');
@@ -229,7 +229,7 @@ test.describe('billing', () => {
   test('PDF and CSV refused (R-05): a toast says why, the action waits, and no `.json` is ever saved', async ({ page }) => {
     const saved: string[] = [];
     page.on('download', (download) => saved.push(download.suggestedFilename()));
-    await page.goto('/billing/invoices');
+    await page.goto('/dashboard/billing/invoices');
     const ids = await invoiceIds(page);
     const issued = page.getByTestId(`invoices-row-${ids['E2EBAKERY_AUG-0001']}-pdf`);
     // The platform hub away (nobody listens on the Hub's port): the server answers 503.
@@ -269,13 +269,13 @@ test.describe('billing', () => {
     const errors = watchPageErrors(page);
     // A Spanish account (the seed's speaks English; the next test's seed sets it back).
     expect((await apiPost(page.request, '/api/accounts/preferences', { language: 'es' })).status()).toBe(200);
-    await page.goto('/billing/invoices');
+    await page.goto('/dashboard/billing/invoices');
     const ids = await invoiceIds(page);
     await page.route(/\/api\/billing\/invoices\/(pdf\?|csv)/, (route) => route.abort('internetdisconnected'));
     for (const viewport of VIEWPORTS) {
       await page.setViewportSize(viewport);
       // «Descargar PDF» of the invoice's page.
-      await page.goto(`/billing/invoices/${ids['E2EBAKERY_AUG-0001']}`);
+      await page.goto(`/dashboard/billing/invoices/${ids['E2EBAKERY_AUG-0001']}`);
       await expect(page.getByTestId('invoice-pdf')).toHaveText('Descargar PDF');
       await page.getByTestId('invoice-pdf').click();
       await expect(toast(page, offline)).toBeVisible();
@@ -284,7 +284,7 @@ test.describe('billing', () => {
       await expect.poll(() => toastGap(page), { message: `the toast stops whole on screen at ${viewport.width} px` }).toBeGreaterThanOrEqual(8);
       await page.screenshot({ path: shot(`FIX-SAAS-BILLING-INVOICE-DOWNLOAD-NETWORK-ERROR-ENGLISH-${viewport.width}`) });
       // «Descargar Excel» of the list, the same way.
-      await page.goto('/billing/invoices');
+      await page.goto('/dashboard/billing/invoices');
       await expect(page.getByTestId('invoices-row')).toHaveCount(4);
       await page.getByTestId('invoices-csv').click();
       await expect(toast(page, offline)).toBeVisible();
@@ -294,7 +294,7 @@ test.describe('billing', () => {
   });
 
   test('«Download Excel»: the CSV of what the filters show, ready for Excel', async ({ page }) => {
-    await page.goto('/billing/invoices?status=paid');
+    await page.goto('/dashboard/billing/invoices?status=paid');
     await expect(page.getByTestId('invoices-row')).toHaveCount(2);
     const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('invoices-csv').click()]);
     expect(download.suggestedFilename()).toMatch(/^erplora-invoices-\d{4}-\d{2}-\d{2}\.csv$/);
@@ -313,7 +313,7 @@ test.describe('billing', () => {
       await new Promise((later) => setTimeout(later, 1500));
       await route.continue();
     });
-    await page.goto('/billing/invoices');
+    await page.goto('/dashboard/billing/invoices');
     const ids = await invoiceIds(page);
     // Bar La Plaza: the bank declined the card — «Change card» first, «Pay» waits, saying why.
     const plaza = banner(page, 'Bar La Plaza');
@@ -339,7 +339,7 @@ test.describe('billing', () => {
         `Invoice.objects.filter(stripe_invoice_id="in_e2e_billing_norte").update(payment_status="paid", number="ERP-2026-90120", series="ERP", sequence=90120, issued_on=timezone.localdate(), paid_at=timezone.now(), fiscal_status="issuing")`,
       ].join('\n'),
     );
-    await page.goto('/billing/invoices');
+    await page.goto('/dashboard/billing/invoices');
     await expect(toast(page, 'Invoice paid: Bar Norte is up to date again')).toBeVisible();
     await expect(banner(page, 'Bar Norte')).toHaveCount(0);
     await page.screenshot({ path: join(SHOTS_DIR, 'billing-paid-1280-light.png') });
@@ -353,7 +353,7 @@ test.describe('billing', () => {
       opened.push(route.request().postDataJSON());
       await route.fulfill({ json: { url: 'https://billing.stripe.com/p/session/e2e' } });
     });
-    await page.goto('/billing/invoices');
+    await page.goto('/dashboard/billing/invoices');
     await banner(page, 'Bar La Plaza').getByTestId('unpaid-group-change-card').click();
     await page.waitForURL('https://billing.stripe.com/p/session/e2e');
     expect(opened).toEqual([{ hub_id: await businessIdOf(page.request, 'Bar La Plaza') }]);
@@ -361,7 +361,7 @@ test.describe('billing', () => {
 
   test('Subscriptions: one row per business, the server’s actions, «Cancel plan» of that business with Free’s limits', async ({ page }) => {
     const errors = watchPageErrors(page);
-    await page.goto('/billing/subscriptions');
+    await page.goto('/dashboard/billing/subscriptions');
     await expect(page.getByTestId('subscriptions-row')).toHaveCount(3);
     await expect(page.getByTestId('billing-unpaid-text')).toHaveText('2 unpaid invoices: €72.58.');
     const bakery = await businessIdOf(page.request, 'Panadería López');
@@ -392,17 +392,17 @@ test.describe('billing', () => {
     await expect(dialog).toBeHidden();
     // «View the invoice» of a business that owes one: Invoices, that business, not collected.
     await page.getByTestId(`subscriptions-row-${plaza}-lead`).click();
-    await expect(page).toHaveURL(new RegExp(`/billing/invoices\\?business=${plaza}&status=open$`));
+    await expect(page).toHaveURL(new RegExp(`/dashboard/billing/invoices\\?business=${plaza}&status=open$`));
     await expect(page.getByTestId('invoices-row')).toHaveCount(1);
     // «Change plan»: the Store, with that business.
-    await page.goto('/billing/subscriptions');
+    await page.goto('/dashboard/billing/subscriptions');
     await page.getByTestId(`subscriptions-row-${bakery}-lead`).click();
-    await expect(page).toHaveURL(new RegExp(`/store/plans\\?business=${bakery}$`));
+    await expect(page).toHaveURL(new RegExp(`/dashboard/store/plans\\?business=${bakery}$`));
     expect(errors).toEqual([]);
   });
 
   test('Payment details: the card (Stripe away says so) and the billing details, edited with their VIES check', async ({ page }) => {
-    await page.goto('/billing/payment');
+    await page.goto('/dashboard/billing/payment');
     // No Stripe here: the server says it cannot show the card now, never invents one.
     await expect(page.getByTestId('payment-card-detail')).toHaveText('We cannot show the card right now: try again in a few minutes.');
     await expect(page.getByTestId('profile-name')).toHaveText('Panadería López S.L.');
@@ -445,7 +445,7 @@ test.describe('billing', () => {
     page.on('request', (request) => {
       if (/stripe\.com/.test(request.url())) stripe.push(request.url());
     });
-    await page.goto('/billing/invoices?surface=account');
+    await page.goto('/dashboard/billing/invoices?surface=account');
     await expect(page.getByTestId('invoices-row')).toHaveCount(4);
     await expect(page.getByTestId('pay-invoice')).toHaveCount(0);
     await expect(page.locator('[data-testid$="-pay"]')).toHaveCount(0);
@@ -458,23 +458,23 @@ test.describe('billing', () => {
     const png = await page.screenshot({ path: join(SHOTS_DIR, 'billing-default-mobile-390-light.png'), fullPage: true });
     expect(await repeatedTop(page, png), 'billing-default-mobile-390-light.png repeats the top of the page at its bottom').toBe(0);
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto('/billing/subscriptions');
+    await page.goto('/dashboard/billing/subscriptions');
     await expect(page.getByTestId('subscriptions-app-hint')).toHaveText('This account was opened from the app: plans are not changed nor cancelled from here.');
     // Only what looks: «View the invoice» and «View invoices»; nothing changes or cancels a plan, no «⋮».
     await expect(page.locator('[data-testid^="subscriptions-row-"][data-testid$="-lead"]')).toHaveText(['View the invoice', 'View the invoice']);
     await expect(page.locator('[data-testid^="subscriptions-row-"][data-testid$="-menu"]')).toHaveCount(0);
-    await page.goto('/billing/payment');
+    await page.goto('/dashboard/billing/payment');
     await expect(page.getByTestId('payment-app')).toHaveText('This account was opened from the app: the card is not changed from here.');
     await expect(page.getByTestId('payment-change')).toHaveCount(0);
     await expect(page.getByTestId('profile-edit')).toBeVisible();
     expect(await page.locator('ion-router-outlet a[href*="stripe"]').count()).toBe(0);
     // Back to the web for the rest of the session; then the Tauri bridge (the installed apps).
-    await page.goto('/billing/invoices?surface=web');
+    await page.goto('/dashboard/billing/invoices?surface=web');
     await expect(page.getByTestId('pay-invoice').first()).toBeVisible();
     await page.addInitScript(() => {
       (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ = {};
     });
-    await page.goto('/billing/invoices');
+    await page.goto('/dashboard/billing/invoices');
     await expect(page.getByTestId('invoices-row')).toHaveCount(4);
     await expect(page.getByTestId('pay-invoice')).toHaveCount(0);
     expect(stripe).toEqual([]);
@@ -489,7 +489,7 @@ test.describe('billing', () => {
         await page.setViewportSize({ width, height: width <= 390 ? 844 : width <= 834 ? 1112 : 900 });
         const ready: Record<string, string> = { invoices: 'invoices-row', subscriptions: 'subscriptions-row', payment: 'profile-name' };
         for (const [tab, hook] of Object.entries(ready)) {
-          await page.goto(`/billing/${tab}`);
+          await page.goto(`/dashboard/billing/${tab}`);
           await expect(page.getByTestId(hook).first()).toBeVisible();
           // What waits for a payment is live: on top of every tab once the stream answers.
           await expect(page.getByTestId(tab === 'invoices' ? 'billing-unpaid-group' : 'billing-unpaid-text').first()).toBeVisible();

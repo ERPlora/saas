@@ -263,7 +263,7 @@ trata como ninguna (`UNKNOWN`: 503 `billing.payments_unavailable`, nunca un cobr
 
 ## La Tienda (L2-D)
 
-Página `/store/:tab` (`plans` | `modules`, `?business=<id>`) de `billing/frontend/` (maqueta `store.html`, ronda
+Página `/dashboard/store/:tab` (`plans` | `modules`, `?business=<id>`) de `billing/frontend/` (maqueta `store.html`, ronda
 17 §2.10–§2.11). Solo web: dentro de las apps y con `?surface=account` la propia página dice «La tienda no está
 en la app» sin enlace y no carga nada (`<WebOnly>`; el `NotInAppPage` de `meta.webOnly` del shell no puede
 decir ese texto).
@@ -424,7 +424,7 @@ Ve una factura la cuenta que la pagó (su pagador ese día) y el propietario act
 
 ### Las páginas de Facturación (L3-C front)
 
-`/billing/:tab` (`invoices` | `subscriptions` | `payment`; `/billing` abre Facturas conservando la consulta, que es
+`/dashboard/billing/:tab` (`invoices` | `subscriptions` | `payment`; `/dashboard/billing` abre Facturas conservando la consulta, que es
 también la vuelta del Customer Portal) en `billing/frontend/` (maqueta `billing.html`, ronda 17 §2.6, §2.7 y §2.11).
 No vende, así que está en todas las superficies: en las apps y con `?surface=account` se ven facturas y
 suscripciones y se editan los datos fiscales; pagar, cambiar la tarjeta y cambiar, mantener o cancelar el plan
@@ -447,7 +447,7 @@ son solo web, y en su lugar se dice, sin enlace, cómo hacerlo desde el navegado
   tipo, la etiqueta del servidor) y la factura que rectifica (de `billing.invoice.get`: la lista no lo trae), que
   la busca. Selección con «Descargar PDF (n)» (las que aún se emiten se dicen en un aviso) y «Descargar Excel» (el CSV
   de lo filtrado).
-- **Una factura** (`/billing/invoices/:id`, `pages/InvoicePage.vue`, BILLING-F36): `billing.invoice.get` viva;
+- **Una factura** (`/dashboard/billing/invoices/:id`, `pages/InvoicePage.vue`, BILLING-F36): `billing.invoice.get` viva;
   número (o «no cobrada»), fecha, negocio, cobro, estado VeriFactu, líneas con periodo, «Prorrateado», base e IVA,
   totales y destinatario sellado. «Descargar PDF» con `can.pdf`, «Pagar» (solo web) si no se cobró, enlace a la
   factura que rectifica (`invoice-rectified-link`) y «Atrás» a Facturas. Se abre con «Ver la factura» (`view`) de

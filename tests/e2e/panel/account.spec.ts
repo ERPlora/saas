@@ -1,4 +1,4 @@
-// Account (`/account/:tab`, round 17: PLAN-SAAS §3.6 point 1; mockups `account.html`) in Ioan's Chrome, the «Hecho
+// Account (`/dashboard/account/:tab`, round 17: PLAN-SAAS §3.6 point 1; mockups `account.html`) in Ioan's Chrome, the «Hecho
 // L3» flows of docs/plans/2026-10-13-panel-saas-unificado.md that L3-B covers: editing the profile; the theme and
 // the language, kept after a reload; the password, changed with the current one; the sessions (a second browser signed in as the same account, «Close other
 // sessions» ends it here and asks the Hub to end it in the businesses); an API key created after «Confirm it's you»
@@ -78,8 +78,8 @@ async function sidewaysScroll(page: Page): Promise<string[]> {
 test('editing the profile keeps the names after a reload', async ({ page }) => {
   const errors = watchPageErrors(page);
   await signIn(page.request, panelAccount('one'));
-  await page.goto('/account');
-  await expect(page).toHaveURL(/\/account\/profile$/);
+  await page.goto('/dashboard/account');
+  await expect(page).toHaveURL(/\/dashboard\/account\/profile$/);
   await expect(fieldValue(page, 'profile-first-name')).toHaveValue('Laura');
   // `ion-button` keeps `disabled` as a property of its own (Playwright's `toBeDisabled` reads native controls).
   await expect(page.getByTestId('profile-save')).toHaveJSProperty('disabled', true);
@@ -100,7 +100,7 @@ test('opening the profile with no first name says nothing; leaving the empty fie
   const said = first.locator('.error-text');
   for (const { width, height } of VIEWPORTS) {
     await page.setViewportSize({ width, height });
-    await page.goto('/account/profile');
+    await page.goto('/dashboard/account/profile');
     await expect(fieldValue(page, 'profile-first-name')).toHaveValue('');
     await expect(first).not.toHaveClass(/ion-invalid/);
     await expect(said).toBeHidden();
@@ -125,7 +125,7 @@ test('changing only the last name with no first name says why «Save changes» s
   // e2e-jorge: no names yet. Nothing is saved: the account stays as seeded.
   await signIn(page.request, panelAccount('jorge'));
   await page.setViewportSize(VIEWPORTS[0]);
-  await page.goto('/account/profile');
+  await page.goto('/dashboard/account/profile');
   const first = page.getByTestId('profile-first-name');
   await expect(first).not.toHaveClass(/ion-invalid/);
   await fieldValue(page, 'profile-last-name').fill('Gómez');
@@ -143,7 +143,7 @@ test('the theme and the language stay after a reload', async ({ page }) => {
   const errors = watchPageErrors(page);
   // An account of its own: the others' specs read English.
   await signIn(page.request, panelAccount('invited'));
-  await page.goto('/account/preferences');
+  await page.goto('/dashboard/account/preferences');
   await page.getByTestId('preferences-theme').locator('ion-segment-button', { hasText: 'Dark' }).click();
   await expect(page.locator('html')).toHaveClass(/ion-palette-dark/);
   await expect(toast(page, 'Preferences saved')).toBeVisible();
@@ -166,7 +166,7 @@ test('«Close other sessions» ends the other browser here and in the businesses
   const hub = await startHubDouble();
   try {
     await signIn(other.request, account);
-    await page.goto('/account/security');
+    await page.goto('/dashboard/account/security');
     const rows = page.getByTestId('sessions-row');
     await expect(rows).toHaveCount(2);
     await expect(rows.first()).toContainText('This session');
@@ -226,7 +226,7 @@ test('with more sessions than a page, «Active sessions» loads, this one first,
   const pager = page.locator('.data-table__pager');
   for (const viewport of VIEWPORTS) {
     await page.setViewportSize(viewport);
-    await page.goto('/account/security');
+    await page.goto('/dashboard/account/security');
     await expect(rows).toHaveCount(25);
     await expect(rows.first()).toContainText('This session');
     await expect(pager).toContainText('Showing 1–25 of');
@@ -270,7 +270,7 @@ test('the password changes with the current one, and only the new one signs in a
   const account = panelAccount('free');
   const changed = 'Pan-de-centeno-2026';
   await signIn(page.request, account);
-  await page.goto('/account/security');
+  await page.goto('/dashboard/account/security');
   await expect(page.getByTestId('sign-in-card')).toContainText('Password');
   await page.getByTestId('password-row-change').click();
   await page.getByTestId('password-current').locator('input').fill('not-the-password');
@@ -302,7 +302,7 @@ test('an API key asks «Confirm it’s you», opens the API once and is refused 
   const errors = watchPageErrors(page);
   await signIn(page.request, panelAccount('one'));
   await ageSignIn(page.request);
-  await page.goto('/account/api-keys');
+  await page.goto('/dashboard/account/api-keys');
   await expect(page.getByTestId('api-keys-empty')).toBeVisible();
   await page.getByTestId('api-keys-empty-new').click();
   await page.getByTestId('new-key-name').locator('input').fill('Gestoría Martínez');
@@ -347,7 +347,7 @@ test('the email changes with the code mailed to the new address', async ({ page 
   const errors = watchPageErrors(page);
   const next = 'e2e-first-new@example.com';
   await signIn(page.request, panelAccount('first'));
-  await page.goto('/account/profile');
+  await page.goto('/dashboard/account/profile');
   await expect(page.getByTestId('profile-email')).toContainText('e2e-first@example.com');
   await page.getByTestId('profile-email-change').click();
   await page.getByTestId('email-change-address').locator('input').fill(next);
@@ -381,7 +381,7 @@ test('each tab at the three viewports, light and dark, without scrolling sideway
       for (const { width, height } of VIEWPORTS) {
         await page.setViewportSize({ width, height });
         for (const { tab, ready } of TABS) {
-          await page.goto(`/account/${tab}`);
+          await page.goto(`/dashboard/account/${tab}`);
           await expect(ready(page)).toBeVisible();
           await page.evaluate(() => document.fonts.ready);
           await page.waitForTimeout(300);

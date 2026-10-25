@@ -110,7 +110,7 @@ test('a wrong sign-in code says so under the input and the right one still signs
 
   await page.getByTestId('code').locator('input').fill(code);
   await page.getByTestId('verify-email-submit').click();
-  await expect(page).toHaveURL(/\/account\/profile$/);
+  await expect(page).toHaveURL(/\/dashboard\/account\/profile$/);
   expect((await sessionOf(page.request)).user).toMatchObject({ label: owner.email });
   expect(pageErrors).toEqual([]);
 });

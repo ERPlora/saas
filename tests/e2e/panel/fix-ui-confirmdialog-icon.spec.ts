@@ -3,7 +3,7 @@
 // (`hubs/frontend/components/buttons.css`, `InvoiceFilters.vue`: `margin-inline-end`), so a ui rule that brought
 // back ALL of Ionic's slotted margin (`margin: revert-layer`) also brought its `-0.3em` on the outer side: the icon
 // sank 4.5–5.3 px into the button's padding («Change card», «Pay the invoice», «Download Excel», «Filters»).
-// Measured in the page on `/billing/invoices` (rows of billing_seed.py) at 390×844, 834×1112 and 1440×900: the
+// Measured in the page on `/dashboard/billing/invoices` (rows of billing_seed.py) at 390×844, 834×1112 and 1440×900: the
 // icon's outer margin is `0px` and the icon sits as far from the button's left padding as the label ends from
 // its right one, as on main.
 // flow: ui:ConfirmDialog
@@ -21,7 +21,7 @@ const SHOTS = join(SAAS_DIR, 'tests', 'e2e', '.artifacts', 'fix-ui-confirmdialog
 
 const BILLING = qaAccount('BILLING', panelAccount('billing'));
 
-/** The panel's buttons on `/billing/invoices` with an icon in `slot="start"` and their own gap rule. */
+/** The panel's buttons on `/dashboard/billing/invoices` with an icon in `slot="start"` and their own gap rule. */
 const BUTTONS = ['unpaid-group-change-card', 'pay-invoice', 'invoices-csv', 'invoices-filters'] as const;
 
 function seedBilling(action: 'seed' | 'clear'): void {
@@ -76,7 +76,7 @@ function startSide(button: Locator): Promise<StartSide> {
 test('ui:ConfirmDialog — the panel’s buttons keep their icon off the button’s edge, as on main', async ({ page }) => {
   for (const viewport of VIEWPORTS) {
     await page.setViewportSize(viewport);
-    await page.goto('/billing/invoices');
+    await page.goto('/dashboard/billing/invoices');
     for (const testid of BUTTONS) await expect(page.getByTestId(testid).first()).toBeVisible();
     await settled(page);
     for (const testid of BUTTONS) {

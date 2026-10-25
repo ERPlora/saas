@@ -1,4 +1,4 @@
-// The Store (`/store/:tab`, plan 2026-10-13 L2-D; mockups `store.html`) in Chrome, against the panel's own
+// The Store (`/dashboard/store/:tab`, plan 2026-10-13 L2-D; mockups `store.html`) in Chrome, against the panel's own
 // Django (project.ts) and the rows of store_seed.py. Stripe cannot run here: no keys, no network to it. The
 // spec plays Stripe at the browser's boundary — a `Stripe` global that records the publishable key and the
 // client secret and mounts a placeholder where the Embedded Checkout would be, and the answers of the
@@ -97,7 +97,7 @@ test.describe('store', () => {
 
   test('the SPA admits Stripe in its CSP, and nothing loads from Stripe until a payment opens', async ({ page }) => {
     const stripe = watchStripeRequests(page);
-    const response = await page.goto('/store/plans');
+    const response = await page.goto('/dashboard/store/plans');
     const csp = response?.headers()['content-security-policy'] ?? '';
     expect(csp).toMatch(/script-src [^;]*https:\/\/js\.stripe\.com/);
     expect(csp).toMatch(/frame-src 'self'[^;]*https:\/\/checkout\.stripe\.com/);
@@ -115,7 +115,7 @@ test.describe('store', () => {
       started.push(route.request().postDataJSON());
       await route.fulfill({ json: { flow: 'checkout', session_id: 'cs_test_e2e', client_secret: 'cs_test_e2e_secret', publishable_key: 'pk_test_e2e', preview: null } });
     });
-    await page.goto(`/store/plans?business=${cafe}`);
+    await page.goto(`/dashboard/store/plans?business=${cafe}`);
     await expect(page.getByTestId('store-business')).toHaveJSProperty('value', cafe);
     await expect(page.getByTestId('plan-free').getByTestId('plan-current')).toBeVisible();
     await page.getByTestId('store-period-year').click();
@@ -129,7 +129,7 @@ test.describe('store', () => {
     await page.screenshot({ path: join(SHOTS_DIR, 'store-checkout-1440.png') });
     // Stripe says the payment went through: the page goes to the business and says so.
     await page.evaluate(() => (window as unknown as { __stripe: { complete: () => void } }).__stripe.complete());
-    await expect(page).toHaveURL(new RegExp(`/businesses/${cafe}/summary$`));
+    await expect(page).toHaveURL(new RegExp(`/dashboard/businesses/${cafe}/summary$`));
     await expect(toast(page, 'Café Central is now on Starter')).toBeVisible();
     expect((await stripeState(page)).destroyed).toBe(1);
     expect(errors).toEqual([]);
@@ -147,7 +147,7 @@ test.describe('store', () => {
         json: { hub_id: bakery, plan: 'starter', billing_interval: 'month', status: 'active', cancel_at_period_end: false, current_period_end: null, trial_end: null, modules: [{ slug: 'e2e_bookings', source: 'purchase', valid_until: null }] },
       });
     });
-    await page.goto(`/store/modules?business=${bakery}`);
+    await page.goto(`/dashboard/store/modules?business=${bakery}`);
     const bookings = page.getByTestId('module-e2e_bookings');
     await expect(bookings.getByTestId('module-name')).toHaveText('E2E Bookings');
     await expect(page.getByTestId('module-e2e_free_app')).toHaveCount(0);
@@ -168,7 +168,7 @@ test.describe('store', () => {
     await page.route('**/api/billing/module/keep', (route) =>
       route.fulfill({ json: { hub_id: bakery, plan: 'starter', billing_interval: 'month', status: 'active', cancel_at_period_end: false, current_period_end: null, trial_end: null, modules: [{ slug: 'e2e_loyalty', source: 'purchase', valid_until: null }] } }),
     );
-    await page.goto(`/store/modules?business=${bakery}`);
+    await page.goto(`/dashboard/store/modules?business=${bakery}`);
     const loyalty = page.getByTestId('module-e2e_loyalty');
     await expect(loyalty.getByTestId('module-cancelled')).toContainText('(cancelled)');
     await loyalty.getByTestId('module-keep').click();
@@ -178,7 +178,7 @@ test.describe('store', () => {
 
   test('a business with an unpaid invoice buys nothing, and says why', async ({ page }) => {
     const bar = await businessIdOf(page.request, 'Bar La Plaza');
-    await page.goto(`/store/plans?business=${bar}`);
+    await page.goto(`/dashboard/store/plans?business=${bar}`);
     await expect(page.getByTestId('store-unpaid')).toContainText('Bar La Plaza has an unpaid invoice');
     await expect(page.getByTestId('store-unpaid')).toContainText('The bank declined the last card.');
     await page.getByTestId('store-period-year').click();
@@ -190,7 +190,7 @@ test.describe('store', () => {
 
   test('inside the apps and on the account surface it does not sell: no prices, no Stripe, no link out', async ({ page }) => {
     const stripe = watchStripeRequests(page);
-    await page.goto('/store/plans?surface=account');
+    await page.goto('/dashboard/store/plans?surface=account');
     const notice = page.getByTestId('store-in-app');
     // Already in the browser: why nothing is bought here, not «go to erplora.com in your browser» (audit 2 S-09).
     await expect(notice).toContainText('Nothing is bought from here');
@@ -203,13 +203,13 @@ test.describe('store', () => {
     const png = await page.screenshot({ path: join(SHOTS_DIR, 'store-app-390.png') });
     expect(await repeatedTop(page, png), 'store-app-390.png repeats the top of the page at its bottom').toBe(0);
     // Back to the web for the rest of the session.
-    await page.goto('/store/plans?surface=web');
+    await page.goto('/dashboard/store/plans?surface=web');
     await expect(page.getByTestId('store-plans')).toBeVisible();
     // The Tauri bridge (the installed apps).
     await page.addInitScript(() => {
       (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ = {};
     });
-    await page.goto('/store/modules');
+    await page.goto('/dashboard/store/modules');
     await expect(page.getByTestId('store-in-app')).toBeVisible();
     await expect(page.getByTestId('module-e2e_bookings')).toHaveCount(0);
     expect(stripe).toEqual([]);
@@ -219,7 +219,7 @@ test.describe('store', () => {
   // taken before a frame at the new size repeated the top of the page at its bottom (87 rows, 3 in 6 at 390 px).
   test('a screenshot right after a resize is the Store as painted, never its top repeated at the bottom', async ({ page }) => {
     const bakery = await businessIdOf(page.request, 'Panadería López');
-    await page.goto(`/store/plans?business=${bakery}`);
+    await page.goto(`/dashboard/store/plans?business=${bakery}`);
     await expect(page.getByTestId('store-plans')).toBeVisible();
     const striped: string[] = [];
     for (let round = 0; round < 4; round++) {
@@ -242,7 +242,7 @@ test.describe('store', () => {
         await page.setViewportSize({ width, height });
         const bakery = await businessIdOf(page.request, 'Panadería López');
         for (const tab of ['plans', 'modules'] as const) {
-          await page.goto(`/store/${tab}?business=${bakery}`);
+          await page.goto(`/dashboard/store/${tab}?business=${bakery}`);
           await expect(page.getByTestId(`store-${tab}`)).toBeVisible();
           await settled(page);
           expect(await sidewaysScroll(page), `${tab} at ${width}`).toEqual([]);

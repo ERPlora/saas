@@ -1063,7 +1063,8 @@ Implicados: hubs, billing, public, apps y fiscal; del Hub, verifactu, invoice y 
 - Parte 4 (F28–F38): el salto es el contrato de PLAN-SAAS §2 (`accounts/handoff.py`, `internal.py` con
   `/internal/auth/redeem`, `signing.py`): código de un solo uso atado al negocio y al `state` del navegador, enviado
   por `form_post` sin `Referer`. Las direcciones viejas de la cuenta (`/dashboard/profile/…`) son 301 de
-  `accounts/redirects.py`, que conservan `?surface=account` (la app nativa no cambia). Las claves de API del SaaS
+  `accounts/redirects.py` a Cuenta bajo `/dashboard/account/…` en un salto, que conservan `?surface=account` (la app
+  nativa no cambia; FIX-SAAS-PANEL-UNDER-DASHBOARD-PREFIX). Las claves de API del SaaS
   (`erps_live_…`, `accounts/api_auth.py`) solo abren las operaciones con `expose_api=True` de su permiso; el
   superusuario emite las de una cuenta del equipo desde el admin (`ApiKeyAdmin`, `services.issue_api_key`).
   `/api/docs` es ReDoc con nonce y solo con sesión (`accounts/api_docs.py`); `/api/openapi.json` sigue abierto (lo

@@ -96,9 +96,15 @@ Flujos en `WORKBOOK.md` (`HUBS-F01`…`HUBS-F14`, parte 1 de 4 de la migración;
   `frontend/routes.ts`); su «Abrir» pide `hubs.business.open` con `shell: true` y el salto lleva `&shell=1`, la marca
   con la que la app enlaza el terminal al negocio. `GET /shell/open/<id>/` (`shell.py`) es la misma puerta para un
   enlace: sin sesión, al inicio de la app; negocio ajeno o desconocido, 404; uno que no abre ahora, vuelta al lanzador.
-- **Direcciones viejas** (`redirects.py`, 301): `/dashboard/`, `/dashboard/hubs/{,active/,inactive/}` → `/businesses`;
-  `/dashboard/hubs/create/` → `/businesses?create=1`; `/dashboard/hubs/<id>/qr/` → el Resumen del negocio («En tus
-  dispositivos»). Los filtros de las viejas se descartan.
+- **El panel bajo `/dashboard/`** (FIX-SAAS-PANEL-UNDER-DASHBOARD-PREFIX): Negocios es `/dashboard/businesses` (y
+  `/dashboard/businesses/<id>/<sección>`), como la Tienda, Facturación, Cuenta y «Reportar un problema»; `/dashboard` y
+  `/dashboard/` abren Negocios. La Entrada (`/launch`, `/shell`) y las invitaciones siguen en la raíz. Las rutas se
+  nombran en `base/navigation.py` (servidor) y `accounts/frontend/paths.ts` (páginas). Las de la raíz de antes
+  (`/businesses…`, `/account…`, `/billing…`, `/store…`, `/report-a-problem`) son 301 a la misma página bajo `/dashboard/`
+  con su consulta (`config/urls.py`, `MovedToPanel`): el Hub enlaza aún a ellas.
+- **Direcciones viejas** (`redirects.py`, 301 en un salto): `/dashboard/`, `/dashboard/hubs/{,active/,inactive/}` →
+  `/dashboard/businesses`; `/dashboard/hubs/create/` → `/dashboard/businesses?create=1`; `/dashboard/hubs/<id>/qr/` → el
+  Resumen del negocio («En tus dispositivos»). Los filtros de las viejas se descartan.
 - **El país del alta** sale sugerido por los idiomas del navegador (`frontend/regions.ts`, `suggestedCountry`), entre
   los países que ERPlora sirve; si ninguno encaja, España.
 - **Planes**: los textos de cada plan (nombre, descripción, características, etiqueta) se escriben en inglés y en
@@ -138,8 +144,9 @@ traspasar la propiedad, la pestaña «Miembros» y los accesos en el admin. El c
 lo revisa flujo a flujo con su e2e en 3 tamaños (`tests/e2e/panel/hubs-people.spec.ts`) y arregla lo que no cuadraba:
 
 - **El correo de la oferta de propiedad** enlazaba a `/ownership/<id>`, una página que el panel no tiene: ahora lleva a
-  `/businesses`, donde está la tarjeta «… te ofrece …» con «Aceptar la propiedad». El de la aceptación, que mandaba a
-  los Ajustes del negocio (donde el pagador no se cambia), lleva a `/businesses/<id>` y, con un plan de pago, dice
+  `/dashboard/businesses`, donde está la tarjeta «… te ofrece …» con «Aceptar la propiedad». El de la aceptación, que
+  mandaba a los Ajustes del negocio (donde el pagador no se cambia), lleva a `/dashboard/businesses/<id>` y, con un plan
+  de pago, dice
   que la tarjeta del saliente ya no lo renueva y hasta cuándo está pagado (F28; `hubs/tests/test_emails.py`).
 - **El pie de «Te han invitado»** prometía «Podrás salir de un negocio cuando quieras desde el panel.» y no hay forma de
   salir uno mismo (como en Square, Toast o Shopify: quita el propietario o un administrador); ahora dice quién puede
