@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:d3235b823d3fbbcb72308f8c15651b1de3a7b97420f0bfe128d6d40c312784ec -->
+<!-- generated from WORKBOOK.md sha256:3256f4ff302aaa1e0e4a6ca08b99391d24243bcc7086507e57cc2bfd928905dc -->
 
 ## What it is for and who it is for
 
@@ -52,7 +52,9 @@ Who uses it:
 ### Store
 Menu **Store**, with two sections: **Plans** and **Modules**, and at the top the business it buys for (only
 the businesses one owns). Plans shows each plan with its price without VAT, the period ("Monthly" or
-"Annual · −n %"), "Your current plan" on the one it has and each plan's button: "Upgrade to …",
+"Annual · −n %"), its lines as on /pricing/ (after "All apps included" or "Everything in …", "Up to 40 apps
+turned on at once", or "All the apps turned on at once" when the plan has no cap; then the messages a month and,
+last, the trial), "Your current plan" on the one it has and each plan's button: "Upgrade to …",
 "Change to …", "Change to annual · …" or "Downgrade to Free"; with the plan cancelled, "Keep the plan". If the
 business has an unpaid invoice, the notice with "Pay the invoice" comes at the top and nothing is sold to that
 business.
@@ -89,8 +91,9 @@ top, "Download PDF" once it is issued and "Pay" if it was not collected; a credi
 corrects. The arrow at the top goes back to Invoices.
 
 ### Business summary
-On each business's page, the **Plan** card says which plan it is on, how many users and devices fit and, to
-the owner, the button to upgrade or change it.
+On each business's page, the **Plan** card says which plan it is on, how many users and devices fit, how many
+apps can be turned on at once ("Apps turned on at once": the number or "Unlimited") and, to the owner, the button
+to upgrade or change it.
 
 ## States of each screen
 
@@ -259,7 +262,7 @@ Status: done
 Actor: owner
 Screen: Store, Secure payment
 Steps:
-1. In **Store › Plans**, with the business chosen at the top, the owner sees each plan with its price without VAT, its users and its devices, picks "Monthly" or "Annual" (which says how much is saved) and taps "Upgrade to …".
+1. In **Store › Plans**, with the business chosen at the top, the owner sees each plan with its price without VAT, its users, its devices and the apps it can have turned on at once, picks "Monthly" or "Annual" (which says how much is saved) and taps "Upgrade to …".
 2. The secure payment opens: the billing details if they are missing and then Stripe's card form inside the dialog, titled "Upgrade to …" with "For … · renews every month" (or every year).
 3. Enter the card; if the bank asks for authentication, Stripe shows it in the same form.
 4. When done, "Paying…", the notice "… is now on …" and the business's page, whose Plan card changes as soon as Stripe confirms it. The business keeps working all the time.
