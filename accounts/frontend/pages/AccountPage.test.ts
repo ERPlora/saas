@@ -1,4 +1,4 @@
-// Account (`/account/:tab`, round 17: PLAN-SAAS §3.6 point 1; mockups `account.html`): Profile · Security ·
+// Account (`/dashboard/account/:tab`, round 17: PLAN-SAAS §3.6 point 1; mockups `account.html`): Profile · Security ·
 // Preferences · API keys in the footer tabbar, each at its own address, the top bar naming the section. Everything
 // here shows on every surface (nothing is sold here); the account's bills are Billing, a section of the menu.
 import { AppPage } from '@erplora/ui/shell';
@@ -20,7 +20,7 @@ afterEach(() => {
 
 async function open(tab: string, locale: 'en' | 'es' = 'en') {
   fakeAllauth({ 'GET /account/authenticators': ok([]), 'GET /account/providers': ok([]) });
-  const s = await mountPanel(AccountPage, { props: { tab }, path: `/account/${tab}`, locale });
+  const s = await mountPanel(AccountPage, { props: { tab }, path: `/dashboard/account/${tab}`, locale });
   await flush();
   return s;
 }

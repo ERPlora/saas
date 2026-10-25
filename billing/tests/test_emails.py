@@ -91,7 +91,7 @@ class TestTheMailGoesOut:
 
         emails.send_invoice_issued(invoice)
 
-        assert "https://erplora.com/billing" in mail.outbox[0].body
+        assert "https://erplora.com/dashboard/billing" in mail.outbox[0].body
 
 
 class TestItIsNotSentWhenItShouldNot:

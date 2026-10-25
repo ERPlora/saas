@@ -18,6 +18,7 @@ import { IonButton, IonCard, IonCardContent } from '@ionic/vue';
 import { computed, onMounted, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import { STORE } from '../../../accounts/frontend/paths';
 import type { BusinessDetailOut, PlanOut } from '../../../frontend/sdk-types';
 import { countryName } from '../regions';
 import { formatUsageDay, isYesterday } from '../usage-day';
@@ -52,7 +53,7 @@ const onFree = computed(() => {
   const plan = plans.value.find((candidate) => candidate.slug === props.business.plan?.slug);
   return !props.business.plan || (!!plan && Number(plan.price_monthly) === 0 && Number(plan.price_annual) === 0);
 });
-const toStore = computed(() => `/store/plans?business=${encodeURIComponent(props.business.id)}`);
+const toStore = computed(() => `${STORE}/plans?business=${encodeURIComponent(props.business.id)}`);
 const seats = computed(() => props.business.seats);
 const users = computed(() =>
   seats.value.limit === null ? t('hubs.common.unlimited') : t('hubs.business.plan.usersOf', { used: seats.value.used, limit: seats.value.limit }),

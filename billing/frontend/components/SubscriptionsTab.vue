@@ -27,6 +27,7 @@ import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
+import { BILLING, STORE } from '../../../accounts/frontend/paths';
 import { useLiveState } from '../../../frontend/live-state';
 import { useErrorText } from '../../../hubs/frontend/error-text';
 import type { PlanOut, SubscriptionAction, SubscriptionRowOut } from '../../../frontend/sdk-types';
@@ -200,9 +201,9 @@ function onAction({ actionId: picked, row }: DataTableActionEvent<Row>): void {
   const id = row.business.id;
   const actionId = picked === 'lead' ? leadOf(row) : picked === 'view_invoices_menu' ? 'view_invoices' : picked;
   if (!id || !actionId) return;
-  if (actionId === 'change_plan') void router.push({ path: '/store/plans', query: { business: id } });
-  else if (actionId === 'view_invoices') void router.push({ path: '/billing/invoices', query: { business: id } });
-  else if (actionId === 'view_invoice') void router.push({ path: '/billing/invoices', query: { business: id, status: 'open' } });
+  if (actionId === 'change_plan') void router.push({ path: `${STORE}/plans`, query: { business: id } });
+  else if (actionId === 'view_invoices') void router.push({ path: `${BILLING}/invoices`, query: { business: id } });
+  else if (actionId === 'view_invoice') void router.push({ path: `${BILLING}/invoices`, query: { business: id, status: 'open' } });
   else if (actionId === 'cancel_plan') {
     cancelling.value = row;
     cancelOpen.value = true;
@@ -349,7 +350,7 @@ async function keepPlan(row: Row, id: string): Promise<void> {
         <span>{{ $t('billing.subscriptions.empty.body') }}</span>
         <WebOnly>
           <ion-button
-            router-link="/store/plans"
+            :router-link="`${STORE}/plans`"
             data-testid="subscriptions-empty-plans"
           >
             <HubIcon

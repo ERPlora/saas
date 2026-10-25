@@ -4,7 +4,8 @@ The installed app (``ERPlora/app``, copied as it is: working rules §12) opens t
 ``/dashboard/profile/?surface=account`` (``navigation.rs``: ``ACCOUNT_PAGES``), the old SaaS's address; the person's
 bookmarks and old mails hold the same ones. Each lands on its tab of Account, keeping the query: ``?surface=account``
 is what paints the account without what sells (``base.surface``), and the sign-in that a signed-out visitor meets on
-the way keeps it in ``next``.
+the way keeps it in ``next``. Account lives under ``/dashboard/`` with the rest of the panel
+(FIX-SAAS-PANEL-UNDER-DASHBOARD-PREFIX): one hop, never through its old address at the root.
 """
 
 import json
@@ -29,9 +30,9 @@ def _spa_config(response) -> dict:
 
 
 OLD_ADDRESSES = [
-    ("/dashboard/profile/", "/account/profile"),
-    ("/dashboard/profile/sessions/", "/account/security"),
-    ("/dashboard/settings/", "/account/preferences"),
+    ("/dashboard/profile/", "/dashboard/account/profile"),
+    ("/dashboard/profile/sessions/", "/dashboard/account/security"),
+    ("/dashboard/settings/", "/dashboard/account/preferences"),
 ]
 
 
@@ -53,7 +54,7 @@ def test_the_query_survives_so_the_app_keeps_its_account_surface(client, old, ne
 def test_signed_out_the_app_lands_on_the_account_surface_and_keeps_it_for_the_sign_in(client):
     response = client.get("/dashboard/profile/", {"surface": "account"}, follow=True, HTTP_HOST=HOST)
 
-    assert response.redirect_chain == [("/account/profile?surface=account", 301)]
+    assert response.redirect_chain == [("/dashboard/account/profile?surface=account", 301)]
     assert _spa_config(response)["surface"] == "account"
     assert client.session[SURFACE_SESSION_KEY] == "account"
 
@@ -64,5 +65,5 @@ def test_signed_in_the_app_opens_the_account_on_its_surface(client, ana):
 
     response = client.get("/dashboard/profile/", {"surface": "account"}, follow=True, HTTP_HOST=HOST)
 
-    assert response.redirect_chain == [("/account/profile?surface=account", 301)]
+    assert response.redirect_chain == [("/dashboard/account/profile?surface=account", 301)]
     assert _spa_config(response)["surface"] == "account"

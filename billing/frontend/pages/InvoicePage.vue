@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The page of one ERPlora invoice (`/billing/invoices/:id`; BILLING-G05, the old «Detalle de factura», and the
+// The page of one ERPlora invoice (`/dashboard/billing/invoices/:id`; BILLING-G05, the old «Detalle de factura», and the
 // «View» of `/dashboard/billing/invoices/`, BILLING-G92): `billing.invoice.get`, live, so «Issuing» turns into
 // its fiscal status while it is on screen. Back returns to Invoices. A reading page (`detail`):
 //   - its number (Stripe's reference while it is not collected), date, business, status and fiscal status;
@@ -17,6 +17,7 @@ import { computed, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { RouterLink } from 'vue-router';
 
+import { BILLING } from '../../../accounts/frontend/paths';
 import { useLiveState } from '../../../frontend/live-state';
 import LoadFailed from '../../../frontend/LoadFailed.vue';
 import type { InvoiceDetailOut, InvoiceLineOut } from '../../../frontend/sdk-types';
@@ -99,7 +100,7 @@ async function downloadPdf(): Promise<void> {
 <template>
   <AppPage
     :title="title"
-    back-href="/billing/invoices"
+    :back-href="`${BILLING}/invoices`"
     content-layout="detail"
   >
     <div class="invoice-stack">
@@ -176,7 +177,7 @@ async function downloadPdf(): Promise<void> {
             >
               <RouterLink
                 v-if="invoice.rectifies"
-                :to="`/billing/invoices/${invoice.rectifies.id}`"
+                :to="`${BILLING}/invoices/${invoice.rectifies.id}`"
                 data-testid="invoice-rectified-link"
               >
                 {{ $t('billing.invoices.rectifies', { number: invoice.rectifies.number }) }}

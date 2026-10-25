@@ -61,7 +61,7 @@ class TestOff:
 
 @pytest.mark.usefixtures("maintenance")
 class TestOnForAVisitor:
-    @pytest.mark.parametrize("path", ["/", "/pricing/", "/launch", "/account/profile", "/hub-login/?hub=a"])
+    @pytest.mark.parametrize("path", ["/", "/pricing/", "/launch", "/dashboard/account/profile", "/hub-login/?hub=a"])
     def test_every_page_is_the_maintenance_page(self, client, path):
         response = get(client, path)
 
@@ -122,7 +122,7 @@ class TestOnForAVisitor:
     def test_a_customer_with_a_session_gets_it_too(self, client, django_user_model):
         client.force_login(django_user_model.objects.create_user(email="ana@example.com", password="x"))
 
-        assert is_maintenance(get(client, "/account/profile"))
+        assert is_maintenance(get(client, "/dashboard/account/profile"))
 
     def test_an_api_key_of_the_staff_is_no_session(self, client, django_user_model, maintenance):
         from accounts.models import ApiKey

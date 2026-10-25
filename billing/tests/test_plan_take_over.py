@@ -209,7 +209,7 @@ class TestTheMailsOfTheHandOver:
         offer, accepted = self.mails(django_capture_on_commit_callbacks, paid, owner, heir)
 
         assert day(until, heir.language) in offer.body
-        assert "/billing/subscriptions" in offer.body
+        assert "/dashboard/billing/subscriptions" in offer.body
         assert day(local(paid).current_period_end, owner.language) in accepted.body
 
     def test_a_business_on_free_says_nothing_of_a_plan(self, shop, owner, heir, stripe_double,
@@ -243,6 +243,7 @@ class TestTheNewOwnerKeepsThePlan:
         assert params["metadata"]["kind"] == "plan_takeover"
         assert params["metadata"]["replaces"] == "sub_1"
         assert params["metadata"]["hub_id"] == str(paid.id)
+        assert params["return_url"].endswith(f"/dashboard/businesses/{paid.id}/summary?checkout={{CHECKOUT_SESSION_ID}}")
         attempt = CheckoutAttempt.objects.get()
         assert (attempt.kind, attempt.owner_id) == (CheckoutAttempt.Kind.TAKEOVER, heir.pk)
 

@@ -37,7 +37,7 @@ class TestSending:
         HubMembership.objects.create(user=ana, hub_slug="bar-pepe", role=HubMembership.Role.ADMIN)
         client.force_login(ana)
 
-        response = _report(client, page="/businesses")
+        response = _report(client, page="/dashboard/businesses")
 
         assert response.status_code == 200
         assert response.json() == {"reply_to": "ana@example.com"}
@@ -46,7 +46,7 @@ class TestSending:
         assert sent.reply_to == ["ana@example.com"]
         assert sent.subject == "[Support] The printer stops"
         assert "I sell a ticket and nothing prints." in sent.body
-        for context in ("ana@example.com", str(ana.pk), "bar-pepe (hub_admin)", "/businesses", BROWSER):
+        for context in ("ana@example.com", str(ana.pk), "bar-pepe (hub_admin)", "/dashboard/businesses", BROWSER):
             assert context in sent.body
 
     def test_without_a_page_or_a_business_it_says_none(self, client, ana):

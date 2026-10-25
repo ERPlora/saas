@@ -258,9 +258,9 @@ describe('the panel (round 17, PLAN-SAAS §3.6)', () => {
     await main.boot({});
     const { userMenu } = shellOptions();
     expect(userMenu?.items).toEqual([
-      { id: 'account', labelKey: 'saas.userMenu.account', icon: 'ion:person-outline', to: '/account' },
+      { id: 'account', labelKey: 'saas.userMenu.account', icon: 'ion:person-outline', to: '/dashboard/account' },
       // ACCOUNTS-F38: nothing is sold there, so it shows on the app surfaces too.
-      { id: 'report', labelKey: 'saas.userMenu.reportProblem', icon: 'ion:chatbubbles-outline', to: '/report-a-problem' },
+      { id: 'report', labelKey: 'saas.userMenu.reportProblem', icon: 'ion:chatbubbles-outline', to: '/dashboard/report-a-problem' },
     ]);
     expect(userMenu?.helpPath).toBe('/help');
     expect(userMenu?.logout).toBeTypeOf('function');
@@ -364,7 +364,7 @@ describe('the panel (round 17, PLAN-SAAS §3.6)', () => {
   it("the panel's home is Businesses: the menu's brand, «not found» and «not in the app» lead there, never to the public `/` the SPA does not have (audit 2 R-18)", async () => {
     fakeShell();
     await main.boot({});
-    expect(shellOptions().homePath).toBe('/businesses');
+    expect(shellOptions().homePath).toBe('/dashboard/businesses');
   });
 
   it('a page that does not exist speaks of the panel, not of a hub (audit 2 R-18)', () => {

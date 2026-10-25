@@ -250,9 +250,9 @@ class TestComingBackFromGoogle:
         SocialAccount.objects.create(user=ana, provider="google", uid=ANA_UID)
         client.force_login(ana)
 
-        response, _, _ = _sign_in_with_google(client, _claims(ANA_UID, ana.email), "/account/api-keys")
+        response, _, _ = _sign_in_with_google(client, _claims(ANA_UID, ana.email), "/dashboard/account/api-keys")
 
-        assert (response.status_code, response.url) == (302, "/account/api-keys")
+        assert (response.status_code, response.url) == (302, "/dashboard/account/api-keys")
         assert [record["method"] for record in client.session["account_authentication_methods"]] == ["socialaccount"]
 
     def test_the_email_matches_whatever_its_case(self, client, google, ana):
@@ -364,7 +364,7 @@ class TestConnectingGoogleToTheOpenSession:
     a crafted form) ends on the Vue error page that says so, never on the launcher with a Django message the SPA
     does not show."""
 
-    def _connect(self, client, claims, next_path="/account/security"):
+    def _connect(self, client, claims, next_path="/dashboard/account/security"):
         """The round trip of a ``process=connect`` post: allauth.headless's redirect, then Google's way back."""
         data = {"provider": "google", "process": "connect", "callback_url": next_path}
         state = _query(client.post(PROVIDER_REDIRECT, data, HTTP_HOST=HOST)["Location"])["state"]
@@ -378,7 +378,7 @@ class TestConnectingGoogleToTheOpenSession:
 
         assert (response.status_code, response.url) == (
             302,
-            "/login/error?code=google_link_refused&next=/account/security",
+            "/login/error?code=google_link_refused&next=/dashboard/account/security",
         )
 
     def test_nothing_is_linked_and_the_session_stays_the_owners(self, client, google, ana):

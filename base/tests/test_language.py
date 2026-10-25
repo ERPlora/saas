@@ -60,7 +60,7 @@ class TestThePanel:
         assert response.json()["error"]["message"] == "This business does not exist or you have no access to it."
 
     def test_the_spa_page_is_served_in_it(self, ana):
-        response = client_for(ana, cookie="en").get("/businesses", HTTP_HOST=HOST)
+        response = client_for(ana, cookie="en").get("/dashboard/businesses", HTTP_HOST=HOST)
 
         assert '<html lang="es"' in response.content.decode()
 

@@ -71,13 +71,13 @@ const NEW_IN_THE_VUE_PAGES = new Set([
 ]);
 
 /**
- * The Account page (`/account/:tab`, plan 2026-10-13 L3-B) had no template: its texts, under `accounts.account`, are
+ * The Account page (`/dashboard/account/:tab`, plan 2026-10-13 L3-B) had no template: its texts, under `accounts.account`, are
  * new. One that happens to be a msgid of django.po («API keys») is translated as django.po translates it, its
  * first letter capitalised as the page needs (django.po writes «claves de API» for the middle of a sentence).
  */
 const ACCOUNT_PAGE = 'accounts.account.';
 
-/** «Report a problem» (`/report-a-problem`, ACCOUNTS-F38) had no template in saas-next either: its texts are new. */
+/** «Report a problem» (`/dashboard/report-a-problem`, ACCOUNTS-F38) had no template in saas-next either: its texts are new. */
 const REPORT_PAGE = 'accounts.report.';
 
 /**

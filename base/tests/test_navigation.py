@@ -15,10 +15,10 @@ from base import navigation
 
 def test_four_entries_in_the_mockups_order_with_their_icons():
     assert [(nav.id, nav.path, nav.icon) for nav in navigation.NAVIGATION] == [
-        ("businesses", "/businesses", "lucide:store"),
-        ("store", "/store", "lucide:shopping-bag"),
-        ("billing", "/billing", "lucide:receipt"),
-        ("account", "/account", "lucide:circle-user"),
+        ("businesses", "/dashboard/businesses", "lucide:store"),
+        ("store", "/dashboard/store", "lucide:shopping-bag"),
+        ("billing", "/dashboard/billing", "lucide:receipt"),
+        ("account", "/dashboard/account", "lucide:circle-user"),
     ]
     assert all(isinstance(nav, Nav) for nav in navigation.NAVIGATION)
 
@@ -49,25 +49,25 @@ def test_the_menu_is_one_section_without_a_header():
                 "label": "",
                 "items": [
                     {
-                        "path": "/businesses",
+                        "path": "/dashboard/businesses",
                         "label": "Businesses",
                         "icon": "lucide:store",
                         "webOnly": False,
                     },
                     {
-                        "path": "/store",
+                        "path": "/dashboard/store",
                         "label": "Store",
                         "icon": "lucide:shopping-bag",
                         "webOnly": True,
                     },
                     {
-                        "path": "/billing",
+                        "path": "/dashboard/billing",
                         "label": "Billing",
                         "icon": "lucide:receipt",
                         "webOnly": False,
                     },
                     {
-                        "path": "/account",
+                        "path": "/dashboard/account",
                         "label": "Account",
                         "icon": "lucide:circle-user",
                         "webOnly": False,

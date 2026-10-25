@@ -1,4 +1,4 @@
-// A business's page (`/businesses/:id/:tab`, round 17 §2.3; mockups `business.html`): the live
+// A business's page (`/dashboard/businesses/:id/:tab`, round 17 §2.3; mockups `business.html`): the live
 // `hubs.business.get`, a header with its name, address, status, plan and role and «Open», and four
 // sections in the footer tabbar — Summary · Members · Modules · Settings — each at its own address.
 // Deleted, a banner says until when it can be recovered; a payment pending or a suspension is said too.
@@ -64,7 +64,7 @@ afterEach(() => {
 async function setup(tab = 'summary', business: Record<string, unknown> | null = {}, locale: 'en' | 'es' = 'en') {
   vi.spyOn(navigation, 'assign').mockImplementation(() => undefined);
   const m = await mountHubs(BusinessPage, {
-    path: `/businesses/h1/${tab}`,
+    path: `/dashboard/businesses/h1/${tab}`,
     props: { id: 'h1', tab },
     locale,
     api: (call) => {
@@ -85,16 +85,16 @@ describe('BusinessPage: the frame', () => {
   it('follows hubs.business.get of the business, titled by its name, back to Businesses', async () => {
     const s = await setup();
     expect(s.client.stream.subscriptions('hubs.business.get').map((sub) => sub.params)).toEqual([{ id: 'h1' }]);
-    expect(s.page().props()).toMatchObject({ title: 'Panadería López', backHref: '/businesses', tabsLabel: 'Business sections' });
+    expect(s.page().props()).toMatchObject({ title: 'Panadería López', backHref: '/dashboard/businesses', tabsLabel: 'Business sections' });
   });
 
   it('has the four sections in the footer tabbar, each at its address, with its icon', async () => {
     const s = await setup();
     expect(s.page().props('tabs')).toEqual([
-      { id: 'summary', label: 'Summary', icon: 'ion:grid-outline', to: '/businesses/h1/summary' },
-      { id: 'members', label: 'Members', icon: 'ion:people-outline', to: '/businesses/h1/members' },
-      { id: 'modules', label: 'Modules', icon: 'ion:apps-outline', to: '/businesses/h1/modules' },
-      { id: 'settings', label: 'Settings', icon: 'ion:settings-outline', to: '/businesses/h1/settings' },
+      { id: 'summary', label: 'Summary', icon: 'ion:grid-outline', to: '/dashboard/businesses/h1/summary' },
+      { id: 'members', label: 'Members', icon: 'ion:people-outline', to: '/dashboard/businesses/h1/members' },
+      { id: 'modules', label: 'Modules', icon: 'ion:apps-outline', to: '/dashboard/businesses/h1/modules' },
+      { id: 'settings', label: 'Settings', icon: 'ion:settings-outline', to: '/dashboard/businesses/h1/settings' },
     ]);
   });
 

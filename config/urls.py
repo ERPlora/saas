@@ -7,7 +7,8 @@ jump to a hub and its redeem, the API, the live stream, the admin, the CSP repor
 no route here.
 ``/webhooks/stripe/`` is Stripe's single webhook (``billing.webhooks``, lot L2-B); anything else under
 ``/webhooks/`` is a 404 of Django's, never the SPA. Every other path is the Ionic Vue SPA (``base.spa``):
-the launcher with its sign-in (``/launch``) and the sign-in's errors (``/login/error``) among them.
+the launcher with its sign-in (``/launch``) and the sign-in's errors (``/login/error``) among them, and the panel
+under ``/dashboard/`` (its old addresses at the root lead there for good).
 """
 
 from django.contrib import admin
@@ -23,6 +24,7 @@ from accounts.adapters import SPA_LOGIN
 from assistant import internal as assistant_internal
 from base.csp_report import csp_report
 from base.health import readyz
+from base.navigation import PANEL
 from base.spa import spa
 from billing import webhooks as billing_webhooks
 from config.api import api
@@ -55,6 +57,10 @@ NON_SPA_PREFIXES = (
 #: The launcher's «Create account» tab (`SignInForm.vue`; «Sign in», the default, is `SPA_LOGIN` alone).
 SPA_SIGN_UP = f"{SPA_LOGIN}?tab=signup"
 
+#: The panel's pages at the root before it moved under `PANEL` (FIX-SAAS-PANEL-UNDER-DASHBOARD-PREFIX), each with the
+#: pages under it. Not `accounts`: allauth's old prefix, matched whole above.
+MOVED_PANEL_PAGES = r"^(?:businesses|account|billing|store|report-a-problem)(?:/.*)?$"
+
 
 class SignUpRedirect(RedirectView):
     """The old address of the sign-up, for good, to the launcher's «Create account» tab in one hop, keeping
@@ -67,6 +73,17 @@ class SignUpRedirect(RedirectView):
         query.pop("tab", None)
         rest = query.urlencode(safe="/")
         return f"{SPA_SIGN_UP}&{rest}" if rest else SPA_SIGN_UP
+
+
+class MovedToPanel(RedirectView):
+    """A page of the panel at its old address at the root, for good, to the same page under `PANEL` in one hop,
+    keeping the query (`?business=`, `?surface=account`): bookmarks, the Hub's links and the mails already sent. The
+    path is the request's, escaped as it came, so the new address is always one of this site."""
+
+    permanent = True
+
+    def get_redirect_url(self, *args, **kwargs) -> str:
+        return f"{PANEL}{self.request.get_full_path()}"
 
 
 # The admin's login is the SaaS's sign-in (it asks for the mailed code and the authenticator app).
@@ -110,6 +127,8 @@ urlpatterns = [
     # The old panel's addresses of the businesses, for good, to the new panel (PLAN-SAAS §1).
     path("", include("hubs.redirects")),
     path("", include("accounts.redirects")),
+    # The panel's old addresses at the root, before the SPA's catch-all would answer them.
+    re_path(MOVED_PANEL_PAGES, MovedToPanel.as_view()),
     # ReDoc for /api/docs without its one outside address (ACCOUNTS-F34), before ninja's /api/.
     path("", include("accounts.api_docs")),
     path("internal/auth/redeem", internal.redeem, name="internal_auth_redeem"),

@@ -279,7 +279,7 @@ class TestThePortal:
 
         sent = stripe_double.last("billing_portal.sessions.create").params
         assert sent["customer"] == "cus_1"
-        assert sent["return_url"].endswith("/billing")
+        assert sent["return_url"].endswith("/dashboard/billing")
         assert answer["url"].startswith("https://billing.stripe.com/")
 
     def test_it_opens_with_our_configuration(self, shop, owner, stripe_double, settings):

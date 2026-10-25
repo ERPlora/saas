@@ -15,19 +15,26 @@ const routes: RouteRecordRaw[] = [
     meta: { auth: false, chrome: false },
   },
   {
+    // The panel lives under /dashboard (FIX-SAAS-PANEL-UNDER-DASHBOARD-PREFIX; `paths.ts` PANEL), as the old
+    // product's `apps/dashboard/`: the bare address is its home, Businesses.
+    path: '/dashboard',
+    redirect: '/dashboard/businesses',
+    meta: { auth: true },
+  },
+  {
     // The panel's home: the account's businesses (where the web sign-in lands).
-    path: '/businesses',
+    path: '/dashboard/businesses',
     component: () => import('./pages/BusinessListPage.vue'),
     meta: { auth: true },
   },
   {
-    path: '/businesses/:id',
-    redirect: (to) => `/businesses/${String(to.params.id)}/summary`,
+    path: '/dashboard/businesses/:id',
+    redirect: (to) => `/dashboard/businesses/${String(to.params.id)}/summary`,
     meta: { auth: true },
   },
   {
     // A business's page, one address per section: the footer tabbar follows the route.
-    path: '/businesses/:id/:tab(summary|members|modules|settings)',
+    path: '/dashboard/businesses/:id/:tab(summary|members|modules|settings)',
     component: () => import('./pages/BusinessPage.vue'),
     // Ionic keeps one view per URL and hands it its params once: no reactive route to go stale.
     props: true,

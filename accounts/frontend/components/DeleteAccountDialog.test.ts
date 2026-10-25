@@ -78,8 +78,8 @@ describe('DeleteAccountDialog', () => {
     expect(s.q('delete-account-blocked')?.textContent).toContain('You own businesses');
     const links = [...document.querySelectorAll('[data-testid="delete-account-business"]')];
     expect(links.map((a) => [a.textContent?.trim(), a.getAttribute('href')])).toEqual([
-      ['Panadería López', '/businesses/b1/settings'],
-      ['Café Central', '/businesses/b2/settings'],
+      ['Panadería López', '/dashboard/businesses/b1/settings'],
+      ['Café Central', '/dashboard/businesses/b2/settings'],
     ]);
     expect(leave).not.toHaveBeenCalled();
     expect(s.open.value).toBe(true);

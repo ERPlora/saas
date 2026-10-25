@@ -480,7 +480,7 @@ class TestThePayerIsTold:
 
         message = mailoutbox[0]
         assert message.to == ["owner@example.com"]
-        assert f"https://erplora.com/billing/invoices?business={running.id}" in message.body
+        assert f"https://erplora.com/dashboard/billing/invoices?business={running.id}" in message.body
         assert PaymentFailure.objects.get().notified_at is not None
 
     def test_another_failed_attempt_of_the_same_invoice_tells_nothing_more(self, running, told, stripe_double):

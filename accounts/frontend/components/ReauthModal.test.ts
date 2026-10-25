@@ -22,7 +22,7 @@ afterEach(() => {
   document.cookie = 'csrftoken=; max-age=0';
 });
 
-async function setup(request: ReauthRequest, path = '/account/api-keys') {
+async function setup(request: ReauthRequest, path = '/dashboard/account/api-keys') {
   const asked = ref<ReauthRequest | null>(request);
   const confirmed = vi.fn(() => (asked.value = null));
   const cancelled = vi.fn(() => (asked.value = null));
@@ -94,7 +94,7 @@ describe('ReauthModal', () => {
   it('sends an account that only signs in with Google to Google, back to this page', async () => {
     document.cookie = 'csrftoken=tok123';
     const submit = vi.spyOn(HTMLFormElement.prototype, 'submit').mockImplementation(() => undefined);
-    const s = await setup({ flows: ['provider_redirect'], providers: ['google'] }, '/account/api-keys');
+    const s = await setup({ flows: ['provider_redirect'], providers: ['google'] }, '/dashboard/account/api-keys');
     expect(s.q('reauth-password')).toBeNull();
     expect(s.q('reauth-modal')?.textContent).toContain('signing in with Google again');
     expect(s.q('reauth-modal-submit')?.textContent).toContain('Continue with Google');
@@ -106,7 +106,7 @@ describe('ReauthModal', () => {
     expect(Object.fromEntries(new FormData(form).entries())).toEqual({
       provider: 'google',
       process: 'login',
-      callback_url: '/account/api-keys',
+      callback_url: '/dashboard/account/api-keys',
       csrfmiddlewaretoken: 'tok123',
     });
     expect(submit).toHaveBeenCalledTimes(1);

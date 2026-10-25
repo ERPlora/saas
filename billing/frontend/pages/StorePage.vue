@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The Store (`/store/:tab`, round 17 §2.10; mockups `store.html`): the shell's page, with its two sections
+// The Store (`/dashboard/store/:tab`, round 17 §2.10; mockups `store.html`): the shell's page, with its two sections
 // in the footer tabbar, Plans · Modules, each at its own address and carrying the business it sells to
 // (`?business=`, which the shop writes back when the owner picks another).
 // It sells, so it is the web's only (PLAN-SAAS §3.6 point 6; README §4): inside the apps and on the
@@ -13,6 +13,7 @@ import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
+import { BUSINESSES, STORE } from '../../../accounts/frontend/paths';
 import StoreShop from '../components/StoreShop.vue';
 
 type Tab = 'plans' | 'modules';
@@ -47,7 +48,7 @@ const tabs = computed<ShellTab[]>(() => {
     id: section.id,
     label: t(`billing.store.tabs.${section.id}`),
     icon: section.icon,
-    to: `/store/${section.id}${query}`,
+    to: `${STORE}/${section.id}${query}`,
     webOnly: true,
   }));
 });
@@ -83,7 +84,7 @@ const inAccount = computed(() => surface.value === 'account');
         >
           <template #action>
             <ion-button
-              router-link="/businesses"
+              :router-link="BUSINESSES"
               data-testid="store-in-app-businesses"
             >
               {{ $t('billing.store.inApp.action') }}

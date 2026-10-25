@@ -1,4 +1,4 @@
-// Businesses (`/businesses`, round 17 §2.3; mockups `businesses.html`, README §3b): the account's
+// Businesses (`/dashboard/businesses`, round 17 §2.3; mockups `businesses.html`, README §3b): the account's
 // businesses in a server-side DataTable (list or cards; cards up to 900 px), with their status, plan,
 // role and last use; per row «Open», «Manage», «Recover», «Delete» by what the role allows; above it
 // the pending invitations and ownership offers and the unpaid invoices; «Create business» opens the
@@ -99,7 +99,7 @@ afterEach(() => {
 async function setup(options: MountOptions & { respond?: (c: ReturnType<typeof describeCall>) => Response | undefined } = {}) {
   vi.spyOn(navigation, 'assign').mockImplementation(() => undefined);
   const m = await mountHubs(BusinessListPage, {
-    path: '/businesses',
+    path: '/dashboard/businesses',
     api: (call) => {
       const c = describeCall(call);
       const answer = options.respond?.(c);
@@ -208,7 +208,7 @@ describe('BusinessListPage: the list', () => {
     await s.show(page(ROWS));
     await s.rows()[0].get('[data-testid="business-name"]').trigger('click');
     await flush();
-    expect(s.router.currentRoute.value.path).toBe('/businesses/bakery/summary');
+    expect(s.router.currentRoute.value.path).toBe('/dashboard/businesses/bakery/summary');
     await s.rows()[2].get('[data-testid="business-name"]').trigger('click');
     await flush();
     expect(s.calls().find((c) => c.path === '/api/hubs/businesses/open')?.body).toEqual({ id: 'salon', next: '/' });
@@ -268,7 +268,7 @@ describe('BusinessListPage: row actions', () => {
     expect(action(s, 'salon', 'manage').exists()).toBe(false);
     await action(s, 'admin', 'manage').trigger('click');
     await flush();
-    expect(s.router.currentRoute.value.path).toBe('/businesses/admin/summary');
+    expect(s.router.currentRoute.value.path).toBe('/dashboard/businesses/admin/summary');
   });
 
   it('«Delete» is not on the row (README §3b): it lives in the business’s Settings, with its confirmation', async () => {
@@ -531,7 +531,7 @@ describe('BusinessListPage: «Create business»', () => {
       expect(store.textContent).toContain('Change the plan of Café Central');
       store.click();
       await flush();
-      expect(s.router.currentRoute.value.fullPath).toBe('/store/plans?business=cafe');
+      expect(s.router.currentRoute.value.fullPath).toBe('/dashboard/store/plans?business=cafe');
       expect(s.q('create-modal')?.querySelector('.ion-delegate-host') === null).toBe(true);
     });
 
@@ -559,13 +559,13 @@ describe('BusinessListPage: «Create business»', () => {
   });
 
   it('opens by itself from the launcher’s «Create another business» (?create=1), also when the page is shown again', async () => {
-    const s = await setup({ path: '/businesses?create=1' });
+    const s = await setup({ path: '/dashboard/businesses?create=1' });
     await flush();
     expect(s.q('create-modal')).not.toBeNull();
     s.q('create-modal-cancel')!.click();
     await flush();
     expect(s.q('create-modal')?.querySelector('.ion-delegate-host')).toBeNull();
-    await s.router.push('/businesses?create=1');
+    await s.router.push('/dashboard/businesses?create=1');
     enterView(s.wrapper);
     await flush();
     expect(s.q('create-modal')?.querySelector('.ion-delegate-host')).not.toBeNull();

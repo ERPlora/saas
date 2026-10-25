@@ -41,7 +41,7 @@ import { useRoute, useRouter } from 'vue-router';
 import AuthShell from '../components/AuthShell.vue';
 import CodeField from '../components/CodeField.vue';
 import { localNext } from '../next';
-import { LAUNCHER } from '../paths';
+import { ACCOUNT, LAUNCHER } from '../paths';
 
 type View = 'index' | 'activate' | 'deactivate' | 'recoveryCodes' | 'regenerate';
 /** How «Turn on» confirms a recent login: allauth's `reauthenticate` or `mfa_reauthenticate`. */
@@ -50,7 +50,7 @@ type ConfirmWith = 'password' | 'code';
 const HERE = '/2fa';
 const REAUTHENTICATE = '/reauthenticate';
 /** «Back to settings»: Account › Security, the page of the «Two-step verification» row. */
-const SECURITY = '/account/security';
+const SECURITY = `${ACCOUNT}/security`;
 /** A server with 2FA switched off sends to the launcher with a notice; «Back to settings» goes there too. */
 const UNAVAILABLE = { path: LAUNCHER, query: { notice: 'mfa_unavailable' } };
 /** allauth's flows that confirm a recent login: the password, the authenticator (or a recovery code). */

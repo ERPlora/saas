@@ -27,6 +27,7 @@ import { type ComponentPublicInstance, computed, shallowRef, useTemplateRef, wat
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
+import { BILLING, STORE } from '../../../accounts/frontend/paths';
 import { useLiveState } from '../../../frontend/live-state';
 import { useErrorText } from '../../../hubs/frontend/error-text';
 import type { InvoiceFilterIn, InvoicePaymentStatus, InvoiceRowOut } from '../../../frontend/sdk-types';
@@ -216,7 +217,7 @@ const actions = computed<DataTableAction<InvoiceRowOut>[]>(() => [
 function onAction({ actionId, row }: DataTableActionEvent<InvoiceRowOut>): void {
   if (actionId === 'pay' && row.can.pay) void pay(row);
   else if (actionId === 'pdf') void downloadPdfs([row]);
-  else if (actionId === 'view') void router.push(`/billing/invoices/${row.id}`);
+  else if (actionId === 'view') void router.push(`${BILLING}/invoices/${row.id}`);
 }
 
 // ── Credit notes ────────────────────────────────────────────────────────────────────────────────
@@ -558,7 +559,7 @@ const freeBusiness = computed(() => {
             <span>{{ $t('billing.invoices.empty.body') }}</span>
             <WebOnly>
               <ion-button
-                router-link="/store/plans"
+                :router-link="`${STORE}/plans`"
                 data-testid="invoices-empty-plans"
               >
                 <HubIcon

@@ -48,7 +48,7 @@ def test_a_signed_in_shell_embeds_its_user_and_the_panels_menu(client, ana):
 
     assert me["user"] == {"id": str(ana.pk), "label": "Ana García", "email": "ana@example.com"}
     [section] = me["menu"]
-    assert [item["path"] for item in section["items"]] == ["/businesses", "/store", "/billing", "/account"]
+    assert [item["path"] for item in section["items"]] == ["/dashboard/businesses", "/dashboard/store", "/dashboard/billing", "/dashboard/account"]
 
 
 def test_the_embedded_json_cannot_close_the_script(client, django_user_model):
@@ -79,7 +79,7 @@ def test_spa_config_says_whether_two_step_verification_is_switched_on(client, se
     """Off, its endpoints answer 404 (``accounts/mfa.py``): the Account page does not ask them."""
     settings.ACCOUNTS_MFA_ENABLED = enabled
 
-    _, config = json_block(client.get("/account/security", HTTP_HOST=HOST), "spa-config")
+    _, config = json_block(client.get("/dashboard/account/security", HTTP_HOST=HOST), "spa-config")
 
     assert config["mfaEnabled"] is enabled
 

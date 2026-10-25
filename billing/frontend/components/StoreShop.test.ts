@@ -193,7 +193,7 @@ describe('StoreShop', () => {
     const notice = s.el('store-unpaid');
     expect(notice.text()).toContain('Bar La Plaza has an unpaid invoice');
     expect(notice.text()).toContain('The bank declined the last card.');
-    expect(s.el('store-unpaid-billing').attributes('routerlink')).toBe('/billing?business=plaza');
+    expect(s.el('store-unpaid-billing').attributes('routerlink')).toBe('/dashboard/billing?business=plaza');
     // A declined card cannot pay: no «Pay the invoice» until the card changes.
     expect(s.el('store-unpaid-pay').exists()).toBe(false);
     await s.wrapper.setProps({ tab: 'modules' });

@@ -18,6 +18,7 @@ import { useI18n } from 'vue-i18n';
 import LoadFailed from '../../../frontend/LoadFailed.vue';
 import { useLiveState } from '../../../frontend/live-state';
 import type { BusinessRowOut, ProfileOut } from '../../../frontend/sdk-types';
+import { BUSINESSES } from '../paths';
 import DeleteAccountDialog from './DeleteAccountDialog.vue';
 
 defineProps<{
@@ -101,7 +102,7 @@ const deleting = shallowRef(false);
               <router-link
                 v-if="part.business"
                 data-testid="profile-danger-business"
-                :to="`/businesses/${part.business.id}/settings`"
+                :to="`${BUSINESSES}/${part.business.id}/settings`"
               >
                 {{ part.business.name }}
               </router-link>
