@@ -298,6 +298,48 @@ test('the password changes with the current one, and only the new one signs in a
   expect(errors).toEqual([]);
 });
 
+test('ACCOUNTS-F31 · «New key» with an old sign-in asks «Confirm it’s you» in a dialog and the page stays, at 390, 834 and 1440 px', async ({
+  page,
+}) => {
+  // The server answers the command with a 401 that asks for a recent sign-in: the panel asks for it over the page,
+  // never reloads it (the SDK took every 401 for a session that ended, FIX-SAAS-PANEL-UNDER-DASHBOARD-PREFIX).
+  const errors = watchPageErrors(page);
+  await signIn(page.request, panelAccount('one'));
+  for (const size of VIEWPORTS) {
+    await ageSignIn(page.request);
+    await page.setViewportSize(size);
+    await page.goto('/dashboard/account/api-keys');
+    await page.getByTestId('api-keys-empty-new').click();
+    await page.getByTestId('new-key-name').locator('input').fill('Gestoría Martínez');
+    await page.getByTestId('new-key-scope-hubs.read').click();
+    // A mark on this page's window: a reload would take it away.
+    await page.evaluate(() => Object.assign(window, { reauthE2ePage: 'same' }));
+    // The capture waits for the dialog to be in place: its sheet slides in after its text is there.
+    const presented = page.evaluate(
+      () =>
+        new Promise<void>((done) => {
+          document.addEventListener('ionModalDidPresent', function seen(event) {
+            if ((event.target as HTMLElement).dataset.testid !== 'reauth-modal') return;
+            document.removeEventListener('ionModalDidPresent', seen);
+            done();
+          });
+        }),
+    );
+    await page.getByTestId('new-key-submit').click();
+    await presented;
+    await expect(page.getByTestId('reauth-modal')).toContainText("Confirm it's you");
+    expect(await page.evaluate(() => (window as { reauthE2ePage?: string }).reauthE2ePage), `reloaded at ${size.width}`).toBe(
+      'same',
+    );
+    await expect(page).toHaveURL(/\/dashboard\/account\/api-keys$/);
+    await settled(page);
+    await page.screenshot({ path: shot(`FIX-SAAS-PANEL-UNDER-DASHBOARD-PREFIX-reauth-${size.width}`) });
+    await page.getByTestId('reauth-modal-cancel').click();
+    await expect(page.getByTestId('reauth-modal')).toBeHidden();
+  }
+  expect(errors).toEqual([]);
+});
+
 test('an API key asks «Confirm it’s you», opens the API once and is refused once revoked', async ({ page }) => {
   const errors = watchPageErrors(page);
   await signIn(page.request, panelAccount('one'));
@@ -315,9 +357,10 @@ test('an API key asks «Confirm it’s you», opens the API once and is refused 
   await page.getByTestId('reauth-modal-submit').click();
   const secret = (await page.getByTestId('new-key-secret').textContent())?.trim() ?? '';
   expect(secret).toMatch(/^erps_live_[0-9A-Za-z]{48}$/);
-  await expect(toast(page, 'Key created: «Gestoría Martínez»')).toBeVisible();
   await page.screenshot({ path: join(SHOTS_DIR, 'account-api-keys-created-1280-light.png') });
   await page.getByTestId('new-key-done').click();
+  // «I have saved it» closes the sheet and only then says so, never over the key (ACCOUNTS-F31).
+  await expect(toast(page, 'Key created: «Gestoría Martínez»')).toBeVisible();
   await expect(page.getByTestId('api-keys-row')).toHaveCount(1);
   await expect(page.getByTestId('api-keys-row').first()).toContainText(secret.slice(0, 14));
 
