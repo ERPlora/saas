@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:80e0b7d1c5cf016859fda405bdf5def79e095e4a113e4511e8d4412209315baa -->
+<!-- generated from WORKBOOK.md sha256:0ba485f6559ddb9d5fc4eb2024819f330ab1ef89798bd5d4bc4db7d303b8d512 -->
 
 ## What it is for and who it is for
 
@@ -75,7 +75,7 @@ change, with filters by tier and active and a search box. Each module's page: "A
 | APPS-F04 | Link a paid app to its Stripe product and prices | done |
 | APPS-F05 | Take an app out of the store or off sale | done |
 | APPS-F06 | Classify an app by section and business type | done |
-| APPS-F07 | Buy a paid app always on erplora.com, never inside the business | partial |
+| APPS-F07 | Buy a paid app always on erplora.com, never inside the business | done |
 
 ### APPS-F01 Browse the app catalog
 <!-- origen: old-saas:SAAS_PUBLIC-F12 old-saas:SAAS_PUBLIC-F13 fi:saas/support/public-core-config#serializer-modulelistserializer-moduledetailserializer -->
@@ -170,14 +170,14 @@ Involved: the Hub (declares the classification), hubs (the business types of the
 
 ### APPS-F07 Buy a paid app always on erplora.com, never inside the business
 <!-- origen: old-saas:SAAS_PUBLIC-F21 -->
-Status: partial — the Hub's part is missing: its apps page does not yet offer a paid app without entitlement with the link to the erplora.com Store
+Status: done
 Actor: owner, system
 Screen: Store
 Steps:
-1. Nothing is bought inside the business: a paid app the business does not have is offered with a link to the erplora.com Store.
+1. Nothing is bought inside the business: in the Hub's Apps, a paid app the business does not have shows "Needs a subscription" and, for whoever runs the business in the browser, "Upgrade plan", which opens the erplora.com Store (BASE-F20). Today no app is sold separately (every app comes with every plan): this step holds for one sold separately again.
 2. The link opens **Store › Modules** with that business already chosen at the top, and there it is bought like any other (BILLING-F32).
 3. From the installed app (Android, Windows) the Store does not sell: it says "The store is not in the app" and "To change your plan or add modules, go to erplora.com in your browser.", without a link.
 In: the business the link carries.
 Out: what is bought, as in BILLING-F32; nothing is charged outside the Store.
 If it fails: only the businesses one owns can be chosen at the top. erplora.com has no door through which a business buys on its own.
-Involved: the Hub (its apps page), billing (the Store)
+Involved: the Hub (its apps page, BASE-F20), billing (the Store)
