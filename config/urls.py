@@ -132,6 +132,7 @@ urlpatterns = [
     # ReDoc for /api/docs without its one outside address (ACCOUNTS-F34), before ninja's /api/.
     path("", include("accounts.api_docs")),
     path("internal/auth/redeem", internal.redeem, name="internal_auth_redeem"),
+    path("internal/support/report", internal.support_report, name="internal_support_report"),
     path(
         "internal/hubs/<uuid:hub_id>/ready",
         hubs_internal.ready,

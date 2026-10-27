@@ -29,7 +29,7 @@ solo sobre la cuenta que llama. Ninguna está expuesta a claves de API.
 | `accounts.apikey.list` (viva) | `GET /api/accounts/api-keys` | Claves no revocadas (las caducadas, marcadas) y el catálogo de `scopes` con su rótulo |
 | `accounts.apikey.create` | `POST /api/accounts/api-keys` (201) | Reautenticación; devuelve la clave entera **una vez** (`secret`) y avisa por correo a la cuenta (sin la clave) |
 | `accounts.apikey.revoke` | `POST /api/accounts/api-keys/revoke` | La corta al momento; dos veces no cambia nada |
-| `accounts.support.report` | `POST /api/accounts/support/report` | «Reportar un problema» (ACCOUNTS-F38): un correo en inglés a `SUPPORT_EMAIL` con «Reply-To» la cuenta, el texto y debajo la cuenta, sus negocios (`HubMembership`), la página de la que viene y el navegador; 422 por campo, 429 `accounts.too_many_attempts` pasado `SUPPORT_REPORT_RATELIMIT` (5/h por cuenta), 503 `accounts.report_not_sent` si el correo no sale; no guarda nada ni registra el texto |
+| `accounts.support.report` | `POST /api/accounts/support/report` | «Reportar un problema» (ACCOUNTS-F38): un correo en inglés a `SUPPORT_EMAIL` con «Reply-To» la cuenta, el texto y debajo la cuenta, sus negocios (`HubMembership`), de dónde llega (`From: Panel`), la página de la que viene y el navegador; 422 por campo, 429 `accounts.too_many_attempts` pasado `SUPPORT_REPORT_RATELIMIT` (5/h por cuenta), 503 `accounts.report_not_sent` si el correo no sale; no guarda nada ni registra el texto. El del menú de usuario del Hub entra por `POST /internal/support/report` (firmada v1 + v2 como `/internal/auth/redeem`; `internal.support_report` → `services.support_report_from_hub`): el mismo `services.send_support_report`, con el mismo límite por cuenta, más `From: Hub` y `Business: <slug> (<id>)`; 404 `accounts.unknown_account` (cuenta que no existe o está apagada) y 403 `accounts.not_a_member` (no es del negocio), sin correo |
 
 Eventos (`events.py`): `accounts.profile.updated`, `accounts.profile.deleted`, `accounts.email.change_requested`,
 `accounts.preferences.updated`, `accounts.session.closed`, `accounts.browser_trust.revoked`,
@@ -232,7 +232,7 @@ La plataforma no vive en `accounts/` sino en `base/` y `config/`; su manual es `
   `apps/auth/users/tests/test_anonymize_skips_hub_owners.py` → `test_anonymize_old_users` y `test_cleanup_old_logs`
   (sin `--no-input`: nunca preguntan); `tests/unit/test_auditlog_coverage.py` → `test_auditlog` de `accounts`,
   `billing`, `fiscal`, `hubs` y `apps` (sin `Payout` ni `StripeConnectAccount`: no hay marketplace); «Reportar un problema» (SAAS_DASHBOARD-F219) →
-  `test_support_report`.
+  `test_support_report`, y el del menú de usuario del Hub (FIX-HUB-BASE-REPORT-PROBLEM-MODAL) → `test_internal_support_report`.
 - Parte 5: `apps/core/tests/test_logging.py` → `base/tests/test_logging.py`; la CSP, con tests nuevos
   (`config/tests/test_csp_policy.py`, una directiva por test, panel y web pública); el `MaintenanceModeMiddleware` y el `SiteSettingsAdmin` →
   `base/tests/test_maintenance.py`, `test_models.py` y `test_admin.py`, con sus dos huecos cerrados (la salud en 503

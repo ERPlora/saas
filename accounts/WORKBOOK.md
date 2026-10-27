@@ -812,10 +812,11 @@ Pasos:
 1. En el **Menú de usuario**, «Reportar un problema» (también en la cuenta abierta desde la aplicación). La pantalla dice «Cuéntanos qué ha fallado. Te responderemos por correo electrónico.».
 2. Escribe «Asunto» y «¿Qué pasó?» («Describe los pasos y lo que esperabas que pasara») y pulsa «Enviar informe», que espera a que los dos estén escritos. Debajo, la pantalla avisa: «Con tu informe van tu cuenta, tus negocios, la página de la que vienes y tu navegador.».
 3. Ve «Informe enviado», con el correo al que soporte le responderá, y «Volver», que lleva a la pantalla de la que venía.
+4. Desde un negocio, «Reportar un problema» del menú de usuario del hub abre lo mismo en una ventana, sin salir del negocio, a quien entró con su cuenta (nunca con un PIN): el informe llega igual, con el negocio desde el que se envía (BASE-F108).
 Entra: el asunto y lo que pasó.
-Sale: un correo al buzón de soporte con el asunto, el texto y, debajo, la cuenta, sus negocios, la pantalla de la que venía y su navegador; al contestar, soporte escribe directamente a la persona. No se guarda nada en erplora.com ni se abre ninguna incidencia.
-Si falla: «Añade un asunto.» o «Describe el problema, por favor.» bajo su campo; tras cinco informes en una hora, «Demasiados intentos. Vuelve a intentarlo en unos minutos.»; si el correo no sale, un aviso con la dirección de soporte para escribir directamente. En todos los casos lo escrito se queda y se puede volver a enviar.
-Implicados: ninguno
+Sale: un correo al buzón de soporte con el asunto, el texto y, debajo, la cuenta, sus negocios, de dónde llega (el panel o el hub, y desde el hub, el negocio), la pantalla de la que venía y su navegador; al contestar, soporte escribe directamente a la persona. No se guarda nada en erplora.com ni se abre ninguna incidencia.
+Si falla: «Añade un asunto.» o «Describe el problema, por favor.» bajo su campo; tras cinco informes en una hora, «Demasiados intentos. Vuelve a intentarlo en unos minutos.» (el límite cuenta los del panel y los del hub juntos); si el correo no sale, un aviso con la dirección de soporte para escribir directamente. En todos los casos lo escrito se queda y se puede volver a enviar.
+Implicados: el hub (su menú de usuario, BASE-F108)
 
 ### ACCOUNTS-F39 Dejar cargar en cada página solo lo de erplora.com
 <!-- origen: fi:saas/auth-services#content-security-policy-estricta-sin-unsafe-eval -->

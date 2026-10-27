@@ -7,6 +7,7 @@ preferences, the live sessions, whether this browser is trusted (ACCOUNTS-F17) a
 request carries (``api_auth``)."""
 
 import time
+import uuid
 from collections.abc import Iterable
 from datetime import UTC, datetime
 from typing import Any
@@ -175,6 +176,15 @@ def account_of(ctx: OperationContext):
     if ctx.actor is None:
         raise Unauthorized(gettext("Sign in to manage your account."))
     return ctx.actor
+
+
+def active_account(account_id: str):
+    """The active account whose id is ``account_id`` (the Hub's session names it), or ``None`` (none, off, no id)."""
+    try:
+        account = uuid.UUID(account_id)
+    except (TypeError, ValueError, AttributeError):
+        return None
+    return active_user(account)
 
 
 def preferences_of(user) -> dict[str, Any]:

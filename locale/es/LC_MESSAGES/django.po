@@ -1140,6 +1140,9 @@ msgstr "Describe el problema, por favor."
 msgid "We could not send your report. Write to us directly at %(email)s."
 msgstr "No hemos podido enviar tu informe. Escríbenos directamente a %(email)s."
 
+msgid "That account is not a member of that business."
+msgstr "Esa cuenta no es miembro de ese negocio."
+
 #: fiscal_gateway/apps.py:16
 msgid "Fiscal gateway"
 msgstr "Pasarela fiscal"

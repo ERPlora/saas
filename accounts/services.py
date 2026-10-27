@@ -1403,6 +1403,11 @@ def _one_line(value: str) -> str:
     return " ".join(value.split())
 
 
+#: Where a report comes from, in its mail: the panel's page or the Hub's user menu.
+REPORT_FROM_PANEL = "Panel"
+REPORT_FROM_HUB = "Hub"
+
+
 @operation(
     "accounts.support.report",
     kind="command",
@@ -1412,11 +1417,40 @@ def _one_line(value: str) -> str:
 )
 def support_report(ctx: OperationContext, data: SupportReportIn) -> dict:
     """«Report a problem» (ACCOUNTS-F38; PLAN-SAAS §1.1): mail the support mailbox what the person wrote, with the
-    account, its businesses, the page it came from and its browser, «Reply-To» the account. Limited per account
-    (``SUPPORT_REPORT_RATELIMIT``, as the contact form per address); nothing is kept and no issue is opened."""
+    account, its businesses, the page it came from and its browser, «Reply-To» the account (:func:`send_support_report`)."""
+    browser = ctx.request.headers.get("User-Agent", "") if ctx.request is not None else ""
+    return send_support_report(queries.account_of(ctx), data, browser=browser, source=REPORT_FROM_PANEL)
+
+
+class UnknownAccount(OperationError):
+    status = 404
+    code = "accounts.unknown_account"
+
+
+class NotAMember(OperationError):
+    status = 403
+    code = "accounts.not_a_member"
+
+
+def support_report_from_hub(account: str, *, hub: str, hub_id: str, data: SupportReportIn, browser: str) -> dict:
+    """The Hub's «Report a problem» (its user menu, ``POST /internal/support/report``): the panel's report for the
+    ``account`` of the Hub's session, from the business ``hub`` (its slug and id). An account that does not exist or
+    is off is :class:`UnknownAccount`; one that is no member of that business, :class:`NotAMember`: no mail."""
+    user = queries.active_account(account)
+    if user is None:
+        raise UnknownAccount(gettext("That account does not exist."))
+    if not HubMembership.objects.filter(user=user, hub_slug=hub).exists():
+        raise NotAMember(gettext("That account is not a member of that business."))
+    return send_support_report(user, data, browser=browser, source=REPORT_FROM_HUB, business=f"{hub} ({hub_id})")
+
+
+def send_support_report(user, data: SupportReportIn, *, browser: str, source: str, business: str | None = None) -> dict:
+    """Mail the support mailbox ``user``'s report, «Reply-To» the account, with what goes with it: the account, its
+    businesses, where it comes from (``source``, and the ``business`` of the Hub it was sent from), the page and the
+    browser. One path for the panel and the Hub. Limited per account (``SUPPORT_REPORT_RATELIMIT``, as the contact
+    form per address, whichever sends it); nothing is kept and no issue is opened."""
     from django_ratelimit.core import is_ratelimited
 
-    user = queries.account_of(ctx)
     if is_ratelimited(
         None,
         group="accounts.support.report",
@@ -1426,11 +1460,12 @@ def support_report(ctx: OperationContext, data: SupportReportIn) -> dict:
     ):
         raise too_many_attempts()
     memberships = HubMembership.objects.filter(user=user).order_by("hub_slug")
-    browser = ctx.request.headers.get("User-Agent", "") if ctx.request is not None else ""
     context = [
         ("Account", f"{user.email} ({user.pk})"),
         ("Language", user.language),
         ("Businesses", ", ".join(f"{row.hub_slug} ({row.role})" for row in memberships) or "none"),
+        ("From", source),
+        *([("Business", _one_line(business))] if business else []),
         ("Page", _one_line(data.page or "") or "unknown"),
         ("Browser", _one_line(browser)[:REPORT_BROWSER_MAX] or "unknown"),
         ("Sent", timezone.now().isoformat(timespec="seconds")),
@@ -1441,5 +1476,5 @@ def support_report(ctx: OperationContext, data: SupportReportIn) -> dict:
             code="accounts.report_not_sent",
             status=503,
         )
-    logger.info("accounts.support_report_sent user=%s", user.pk)
+    logger.info("accounts.support_report_sent user=%s from=%s", user.pk, source)
     return {"reply_to": user.email}

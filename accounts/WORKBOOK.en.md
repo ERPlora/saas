@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:5cd01f95d3e78507814f146d7d97a38dc0839b8fa1191fda71f0d0aef8036d5b -->
+<!-- generated from WORKBOOK.md sha256:404db59e188fb1badd19231e56d7b53cbb3058ac9c05a43305e70151879d42b2 -->
 
 ## What it is for and who it is for
 
@@ -750,10 +750,11 @@ Steps:
 1. In the **User menu**, "Report a problem" (also in the account opened from the app). The screen says "Tell us what went wrong. We will reply by email.".
 2. They write "Subject" and "What happened?" ("Describe the steps and what you expected to happen") and press "Send report", which waits until both are written. Below, the screen warns: "Your account, your businesses, the page you came from and your browser go with your report.".
 3. They see "Report sent", with the email support will answer to, and "Back", which leads to the screen they came from.
+4. From a business, "Report a problem" in the hub's user menu opens the same in a window, without leaving the business, for whoever entered with their account (never with a PIN): the report arrives the same way, with the business it is sent from (BASE-F108).
 In: the subject and what happened.
-Out: a mail to the support mailbox with the subject, the text and, below, the account, its businesses, the screen they came from and their browser; when answering, support writes straight to the person. Nothing is kept on erplora.com and no ticket is opened.
-If it fails: "Add a subject." or "Describe the problem, please." under its field; after five reports in an hour, "Too many attempts. Please try again in a few minutes."; if the mail cannot leave, a notice with the support address to write to directly. In every case what was written stays and can be sent again.
-Involved: none
+Out: a mail to the support mailbox with the subject, the text and, below, the account, its businesses, where it comes from (the panel or the hub, and from the hub, the business), the screen they came from and their browser; when answering, support writes straight to the person. Nothing is kept on erplora.com and no ticket is opened.
+If it fails: "Add a subject." or "Describe the problem, please." under its field; after five reports in an hour, "Too many attempts. Please try again in a few minutes." (the limit counts the panel's and the hub's together); if the mail cannot leave, a notice with the support address to write to directly. In every case what was written stays and can be sent again.
+Involved: the hub (its user menu, BASE-F108)
 
 ### ACCOUNTS-F39 Let each page load only what is erplora.com's
 Status: done
