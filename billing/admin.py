@@ -17,6 +17,9 @@ Hub) and says what the Hub answered. Its page links the PDF the platform hub iss
 the staff downloads it, as the account's «Download PDF».
 """
 
+import io
+import zipfile
+
 from django.contrib import admin, messages
 from django.contrib.admin.utils import unquote
 from django.core.exceptions import PermissionDenied
@@ -473,7 +476,7 @@ class InvoiceAdmin(ReadOnlyAdmin):
     date_hierarchy = "issued_on"
     ordering = ("-issued_on", "-created_at")
     inlines = [InvoiceLineInline]
-    actions = ["send_to_platform", "send_mail_again"]
+    actions = ["send_to_platform", "send_mail_again", "download_pdfs"]
     readonly_fields = ("pdf",)
 
     @admin.display(description=gettext_lazy("PDF"))
@@ -505,6 +508,41 @@ class InvoiceAdmin(ReadOnlyAdmin):
             return redirect("admin:billing_invoice_change", invoice.pk)
         response = HttpResponse(content, content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{invoice.number}.pdf"'
+        return response
+
+    @admin.action(description=gettext_lazy("Download the PDFs (ZIP)"), permissions=["view"])
+    def download_pdfs(self, request, queryset):
+        """The PDFs of the selected invoices in one ZIP, each asked of the platform hub as the single download is
+        (``queries.platform_invoice_pdf``). One without its PDF (still being issued, or the Hub does not return it)
+        is named, never dropped silently: in the admin's message and in ``not-included.txt`` inside the ZIP. With no
+        PDF at all there is no empty ZIP: only the message, back on the list."""
+        files, missing = [], []
+        for invoice in queryset.order_by("series", "sequence", "issued_on"):
+            label = invoice.number or invoice.stripe_invoice_id
+            try:
+                files.append((f"{label}.pdf", queries.platform_invoice_pdf(invoice)))
+            except OperationError as refused:
+                missing.append(f"{label}: {refused.message}")
+        if not files:
+            messages.error(
+                request,
+                _("None of the selected invoices has its PDF yet: %(invoices)s") % {"invoices": "; ".join(missing)},
+            )
+            return None
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+            for name, content in files:
+                archive.writestr(name, content)
+            if missing:
+                note = _("These invoices were left out of the ZIP:")
+                archive.writestr("not-included.txt", "\n".join([note, *missing]) + "\n")
+        if missing:
+            messages.warning(
+                request,
+                _("These invoices were left out of the ZIP: %(invoices)s") % {"invoices": "; ".join(missing)},
+            )
+        response = HttpResponse(buffer.getvalue(), content_type="application/zip")
+        response["Content-Disposition"] = f'attachment; filename="invoices-{timezone.localdate():%Y-%m-%d}.zip"'
         return response
 
     @admin.display(description=gettext_lazy("Total"), ordering="total_cents")

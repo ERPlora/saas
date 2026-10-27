@@ -218,6 +218,24 @@ msgstr ""
 msgid "Download the PDF"
 msgstr "Descargar el PDF"
 
+#: admin.py
+msgid "Download the PDFs (ZIP)"
+msgstr "Descargar los PDF (ZIP)"
+
+#: admin.py
+#, python-format
+msgid "None of the selected invoices has its PDF yet: %(invoices)s"
+msgstr "Ninguna de las facturas elegidas tiene aún su PDF: %(invoices)s"
+
+#: admin.py
+msgid "These invoices were left out of the ZIP:"
+msgstr "Estas facturas se han quedado fuera del ZIP:"
+
+#: admin.py
+#, python-format
+msgid "These invoices were left out of the ZIP: %(invoices)s"
+msgstr "Estas facturas se han quedado fuera del ZIP: %(invoices)s"
+
 #: admin.py:482 queries.py:1016
 msgid "Total"
 msgstr "Total"
