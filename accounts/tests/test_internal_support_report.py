@@ -111,6 +111,14 @@ class TestSent:
         assert "4242" not in caplog.text
         assert "accounts.support_report_sent" in caplog.text
 
+    def test_it_needs_no_csrf_token(self, member):
+        from django.test import Client
+
+        response = report(Client(enforce_csrf_checks=True), payload(member))
+
+        assert response.status_code == 200
+        assert len(mail.outbox) == 1
+
 
 class TestNotTheHub:
     def test_without_a_valid_signature_it_is_a_401_and_nothing_is_mailed(self, client, member):
@@ -207,4 +215,3 @@ class TestRefused:
         assert error["code"] == "accounts.report_not_sent"
         assert "support@example.com" in error["message"]
         assert "accounts.mail_failed kind=support_report" in caplog.text
-
