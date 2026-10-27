@@ -169,23 +169,58 @@ class TestAppDownloadView:
         [("windows", "erplora-app-setup.exe"), ("linux", "erplora-app.AppImage")],
     )
     def test_each_platform_gets_its_own_binary(self, client, platform, filename):
+        """Whatever the channel (the bucket for Windows, the GitHub release for Linux), the file
+        at the end of the 302 is the platform's own."""
         with patch(
             "public.appdist.presigned_download_url",
-            return_value="https://signed.example/x",
-        ) as presign:
-            client.get(download_url(platform))
+            side_effect=lambda key: f"https://signed.example/{key}",
+        ):
+            response = client.get(download_url(platform))
 
-        assert presign.call_args.args[0].endswith(filename)
+        assert response.status_code == 302
+        assert response["Location"].endswith(f"/{filename}")
 
     def test_never_hands_out_a_versioned_address(self, client):
-        """Point 1 of hub#400: `latest/`, so a cached link keeps delivering the last build."""
+        """Point 1 of hub#400: `latest/`, so a cached link keeps delivering the last build. The
+        bucket's key for Windows and GitHub's «latest release» address for Linux."""
         with patch(
             "public.appdist.presigned_download_url",
             return_value="https://signed.example/x",
         ) as presign:
-            client.get(download_url("linux"))
+            client.get(download_url("windows"))
+            linux = client.get(download_url("linux"))
 
         assert "/v" not in presign.call_args.args[0].removeprefix("downloads/app/")
+        assert "/releases/latest/download/" in linux["Location"]
+
+    def test_linux_gets_the_appimage_of_the_latest_github_release(self, client):
+        """The contract changed by product decision (Ioan, 2026-10-27): Linux no longer comes
+        from the bucket, where no AppImage is published and the presigned link answered 404, but
+        from the latest release of the public repo ``ERPlora/app``, whose CI
+        (``tauri-release.yml``) uploads ``erplora-app.AppImage`` and publishes it with
+        ``--latest``. The bucket is not even asked."""
+        with patch(
+            "public.appdist.presigned_download_url",
+            return_value="https://signed.example/x",
+        ) as presign:
+            response = client.get(download_url("linux"))
+
+        assert response.status_code == 302
+        assert response["Location"] == (
+            "https://github.com/ERPlora/app/releases/latest/download/erplora-app.AppImage"
+        )
+        presign.assert_not_called()
+
+    def test_every_platform_has_one_channel_only(self):
+        """One rule per platform: a platform served by a GitHub release is not also a binary of
+        the bucket (the first table asked would win in silence), and Android is in neither: its
+        only channel is Google Play (hub#984)."""
+        from public.appdist import _APP_PLATFORM_FILES
+        from public.downloads import GITHUB_RELEASE_URLS
+
+        assert set(GITHUB_RELEASE_URLS).isdisjoint(_APP_PLATFORM_FILES)
+        assert "android" not in GITHUB_RELEASE_URLS
+        assert "android" not in _APP_PLATFORM_FILES
 
     def test_macos_is_not_served_because_nothing_publishes_one(self, client):
         assert client.get(download_url("macos")).status_code == 404
@@ -217,6 +252,8 @@ class TestAppDownloadView:
         )
 
     def test_linux_never_goes_to_a_store(self, client, settings):
+        """With both stores configured, Linux still gets its GitHub release (2026-10-27; before,
+        the bucket's presigned AppImage)."""
         settings.MICROSOFT_STORE_APP_ID = "9NBLGGH4ABCD"
         settings.GOOGLE_PLAY_APP_ID = "com.erplora.app"
         with patch(
@@ -225,7 +262,9 @@ class TestAppDownloadView:
         ):
             response = client.get(download_url("linux"))
 
-        assert response["Location"] == "https://signed.example/x"
+        assert response["Location"] == (
+            "https://github.com/ERPlora/app/releases/latest/download/erplora-app.AppImage"
+        )
 
     def test_android_never_hands_out_an_apk_even_with_the_setting_empty(
         self, client, settings

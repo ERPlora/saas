@@ -177,9 +177,13 @@ class TestOperatingSystems:
             assert build()["operatingSystem"] == "Web, Windows, Linux, Android", name
 
     def test_the_systems_are_the_platforms_the_app_page_serves(self):
+        """Served from the bucket or from the GitHub release (Linux, 2026-10-27): both count."""
         from public.appdist import _APP_PLATFORM_FILES
+        from public.downloads import GITHUB_RELEASE_URLS
 
         systems = software_application(BASE, None, 0)["operatingSystem"].lower()
+        served = set(_APP_PLATFORM_FILES) | set(GITHUB_RELEASE_URLS)
 
-        assert all(platform in systems for platform in _APP_PLATFORM_FILES)
+        assert served == {"windows", "linux"}
+        assert all(platform in systems for platform in served)
         assert "macos" not in systems and "ios" not in systems.split(", ")

@@ -777,11 +777,12 @@ HUB_EXIT_PACKAGE_TTL_DAYS = config("HUB_EXIT_PACKAGE_TTL_DAYS", default=90, cast
 
 # The installable app (`/app/`): its installers live in a private S3 bucket on AWS (Ireland region,
 # PLAN-AWS «s3_downloads.tf»), served by short presigned links; `latest/`, never a version, so a
-# cached link keeps delivering the last build. No keys here: boto3 takes the ECS task's role (or
-# the environment in development); DOWNLOADS_ENDPOINT_URL is only for local development (empty =
-# AWS). The stores win when their listing exists: Microsoft Store by its Store ID (assigned by
-# Microsoft), Google Play by the package (an override of `com.erplora.app`, never a switch to the
-# APK) while its listing is live.
+# cached link keeps delivering the last build. Linux's AppImage is the exception: it comes from the
+# latest GitHub release of `ERPlora/app` (`public.downloads.GITHUB_RELEASE_URLS`). No keys here:
+# boto3 takes the ECS task's role (or the environment in development); DOWNLOADS_ENDPOINT_URL is
+# only for local development (empty = AWS). The stores win when their listing exists: Microsoft
+# Store by its Store ID (assigned by Microsoft), Google Play by the package (an override of
+# `com.erplora.app`, never a switch to the APK) while its listing is live.
 DOWNLOADS_BUCKET = config("DOWNLOADS_BUCKET", default="erplora-saas")
 DOWNLOADS_REGION = config("DOWNLOADS_REGION", default="eu-west-1")
 DOWNLOADS_ENDPOINT_URL = config("DOWNLOADS_ENDPOINT_URL", default="")

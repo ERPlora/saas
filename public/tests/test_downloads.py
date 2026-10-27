@@ -198,6 +198,24 @@ class TestStoreUrlFor:
         assert store_url_for("linux", **STORE_SETTINGS) is None
 
 
+class TestGithubReleaseUrls:
+    """``GITHUB_RELEASE_URLS`` — the platforms downloaded from the latest release of the public
+    repo ``ERPlora/app`` (Ioan, 2026-10-27): today only Linux, whose AppImage the bucket never had.
+
+    A contract with ``.github/workflows/tauri-release.yml`` of ``ERPlora/app``: it uploads the
+    asset with this exact name and publishes the release with ``--latest``, and GitHub resolves
+    ``releases/latest/download/<asset>`` to the newest one. One word changed on either side and the
+    button is a 404.
+    """
+
+    def test_linux_is_the_appimage_of_the_latest_release_of_the_public_app_repo(self):
+        from public.downloads import GITHUB_RELEASE_URLS
+
+        assert GITHUB_RELEASE_URLS == {
+            "linux": "https://github.com/ERPlora/app/releases/latest/download/erplora-app.AppImage",
+        }
+
+
 class TestStoreSettingsContract:
     """The store settings (ADR-0160): one listing per store, no legacy aliases."""
 

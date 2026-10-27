@@ -1,4 +1,4 @@
-"""Presigned downloads from the private S3 bucket, and the switch to the app stores.
+"""Where each channel of the app lives: the private S3 bucket, the GitHub releases and the stores.
 
 Port of ``apps/public/downloads.py`` (origin/develop c5ca8ca). The hub's CI
 (``tauri-release.yml``) uploads the installers of the app to ``downloads/app/latest/`` of a PRIVATE
@@ -6,8 +6,9 @@ S3 bucket on AWS (``DOWNLOADS_BUCKET`` in ``DOWNLOADS_REGION``, Ireland; PLAN-AW
 before, Hetzner's object storage), so the public download asks for a short-lived presigned GET URL
 instead of redirecting to a world-public object. The client takes no static keys: boto3 uses the
 ECS task's role, or the environment in development, where ``DOWNLOADS_ENDPOINT_URL`` may point it
-at a local S3. ``store_url_for`` is the ONLY switch between «store» and «our own binary»;
-``public.appdist`` uses both.
+at a local S3. ``GITHUB_RELEASE_URLS`` names the platforms served instead by the latest release of
+the public repo ``ERPlora/app`` (Linux, 2026-10-27). ``store_url_for`` is the ONLY switch between
+«store» and «our own binary»; ``public.appdist`` uses all three.
 """
 
 import boto3
@@ -19,6 +20,17 @@ from django.conf import settings
 #: time. That is why Android's door does not ask an environment variable (hub#984): when it did, a
 #: deploy without the variable handed out the APK outside Play, silently.
 ANDROID_PLAY_PACKAGE = "com.erplora.app"
+
+#: The platforms downloaded from the LATEST release of the public repo ``ERPlora/app``, and the
+#: address of each (Ioan, 2026-10-27). The bucket holds no AppImage, so Linux's presigned link
+#: answered 404; the app's CI (``tauri-release.yml``) uploads it to the GitHub release under this
+#: exact name and publishes that release with ``--latest``. GitHub resolves
+#: ``releases/latest/download/<asset>`` to the newest release, so the address carries no version and
+#: a cached link keeps delivering the last build (hub#400, point 1). Until ``ERPlora/app`` publishes
+#: its first release, GitHub answers this address with a 404.
+GITHUB_RELEASE_URLS = {
+    "linux": "https://github.com/ERPlora/app/releases/latest/download/erplora-app.AppImage",
+}
 
 
 def _s3_client():
@@ -63,7 +75,8 @@ def store_url_for(
     * any other platform (linux, macos…) → ``None``.
 
     ``None`` does NOT mean «serve the binary»: it means «no store». Which platforms fall back to
-    the presigned binary is ``public.appdist``'s list, where Android is not and will not be.
+    a GitHub release (``GITHUB_RELEASE_URLS``) or to the presigned binary (``public.appdist``'s
+    list) is said by those two tables, where Android is not and will not be.
     """
     if platform == "windows":
         store_id = getattr(settings, ms_store_setting, "")
