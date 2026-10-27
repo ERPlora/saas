@@ -169,6 +169,9 @@ test('PUBLIC-G31 the plans: a card per plan on sale, the upgrade-only ones under
   await page.locator('ion-accordion[value="storage"] ion-item').click();
   const storage = page.locator('ion-accordion[value="storage"] [slot="content"]');
   await expect(storage).toContainText('if its European provider is unavailable');
+  // The assistant's voice provider is a transfer too (privacy policy §6): «the one exception» no longer holds.
+  await expect(storage).toContainText('transcribing a voice dictation');
+  await expect(storage).not.toContainText('The one exception');
   await expect(storage.getByRole('link', { name: 'Read the privacy policy' })).toHaveAttribute('href', '/legal/privacy/');
   await clean('/pricing/');
 });
