@@ -1,9 +1,11 @@
 # `apps` — el catálogo de apps del Hub y lo que el SaaS vende de cada una
 
 App de plataforma del SaaS (`LiveAppConfig`, `kind = "platform"`), antes `marketplace` (ronda 16, PLAN §21.1
-punto 10). Es una hoja del grafo: `hubs`, `billing` y `public` la leen; ella no lee a nadie. El manual y los
-flujos están en `WORKBOOK.md` (APPS-F01 a APPS-F07); el contrato, en PLAN §21 y PLAN-SAAS §2.6, con el detalle en
-`docs/superpowers/specs/2026-10-13-saas-public-web-and-app-catalog-design.md`.
+punto 10). `hubs`, `billing` y `public` la leen; ella solo llama a otras desde el admin de `Module` (`billing` para
+comprobar los precios y nombrar a quien lo tiene, `hubs` para avisar a los negocios de su plan) y a `accounts` para el
+registro de cambios. El manual y los flujos están en `WORKBOOK.md` (APPS-F01 a APPS-F07, app completa desde el
+2026-10-27); el contrato, en PLAN §21 y PLAN-SAAS §2.6 y §9, con el detalle en
+`docs/superpowers/specs/2026-10-13-saas-public-web-and-app-catalog-design.md`; el cierre, en PLAN-SAAS §12.
 
 ## Qué hay
 
@@ -15,7 +17,8 @@ flujos están en `WORKBOOK.md` (APPS-F01 a APPS-F07); el contrato, en PLAN §21 
 | `api.py` | `GET /api/apps`, `/api/apps/get`, `/api/apps/doc` y `/api/apps/sitemap`, cada una ligada a su operación |
 | `icons.py` | Limpieza del `icon_svg` que manda el Hub (nh3, solo formas) y el icono de respaldo |
 | `checks.py` | `apps.E001`: un `Module.slug` sin app en `shared.app`; corre con `manage.py check --database default` |
-| `admin.py` | `App` y `AppDoc` de solo lectura para todos; `Module` editable con `ModuleForm`, que comprueba en Stripe los precios pegados (APPS-F04, `billing.services.module_price_problems`), y con el borrado de un módulo que algún negocio tiene rechazado (saas#2568) |
+| `admin.py` | `App` y `AppDoc` de solo lectura para todos; `Module` editable con `ModuleForm`, que comprueba en Stripe los precios pegados (APPS-F04, `billing.services.module_price_problems`), que al guardar uno nuevo o con otro `tier` lo hace llegar a los negocios de su plan (HUBS-F34, `hubs.services.owe_module_rights`), y con el borrado de un módulo que algún negocio tiene rechazado (saas#2568) |
+| `auditlog.py` | Registro de cambios de `Module` con django-auditlog (ACCOUNTS-F36, sin `updated_at`); `App` y `AppDoc` no se registran |
 
 ## Reglas
 
@@ -24,6 +27,9 @@ flujos están en `WORKBOOK.md` (APPS-F01 a APPS-F07); el contrato, en PLAN §21 
 - La documentación se pinta con `live.markdown` y se guarda en caché un día por `app:idioma:hash`
   (`DOC_RENDER_VERSION` se sube cuando cambia lo que deja pasar el renderizador).
 - Sin `services.py`: esta app no tiene escrituras propias; el admin de `Module` es la única, y su comprobación de Stripe es de `billing`.
+- Desde la ronda 2026-10-24b (PLAN §32, PLAN-SAAS §9) ningún módulo es `premium`: `Module`, su comprobación de Stripe y
+  la compra en la Tienda siguen construidos y probados, pero sin uso (APPS-F03, F04, F05 y F07; contradicción señalada en
+  PLAN-SAAS §12).
 
 ## Tests
 
@@ -32,4 +38,5 @@ Cada test cita su flujo `APPS-Fnn` en el nombre o en el docstring cuando lo aña
 
 ## Huecos conocidos
 
-- APPS-F07: la página de apps del Hub aún no manda a comprar a la Tienda (BASE-G74 del Hub).
+- Ninguno. El de APPS-F07 (la página de apps del Hub no mandaba a comprar a la Tienda, BASE-G74) se cerró con BASE-F20
+  (hub#229; el enlace se llama «Mejorar plan» desde hub#256).
