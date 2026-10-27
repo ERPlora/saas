@@ -340,6 +340,146 @@ def test_privacy_keeps_the_ai_assistant_in_frankfurt(client):
     assert "Fráncfort" in ia
 
 
+# --- The assistant's voice and search services (FIX-SAAS-PRIVACY-POLICY-OMITS-DICTATION-AUDIO-TO-TRANSCRIPTION) ----
+# ``assistant/media.py`` sends three services to the provider of ``ASSISTANT_SERVICE_PROVIDER`` (OpenAI's API at
+# ``api.openai.com`` by default), none of them the backup model: the transcription of a dictation (``whisper-1``, the
+# audio of the recording), the reading aloud of an answer (``tts-1``) and the fingerprints of the Hub's index
+# (``text-embedding-3-small``). Google Play checks the app's «Data safety › Audio» against this page (app#4).
+
+VOICE_PROVIDER = "OpenAI Ireland Ltd. ("
+
+VOICE_SERVICES = {
+    "en": (
+        "BY DEFAULT",
+        "transcribes voice dictation into text (it receives the audio of the recording)",
+        "reads an answer aloud (it receives the text of the answer)",
+        "computes the search fingerprints, or embeddings",
+        "outside the European Economic Area",
+    ),
+    "es": (
+        "POR DEFECTO",
+        "transcribe a texto el dictado por voz (recibe el audio de la grabación)",
+        "lee en voz alta una respuesta (recibe el texto de la respuesta)",
+        "calcula las huellas de búsqueda (embeddings)",
+        "fuera del Espacio Económico Europeo",
+    ),
+}
+
+
+def privacy(client, language: str) -> str:
+    return spanish(client, "/legal/privacy/") if language == "es" else client.get("/legal/privacy/").content.decode()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_privacy_names_the_default_provider_of_the_assistant_voice_and_search_services(client, language):
+    """Art. 13.1.e GDPR: the processor that receives a dictation's audio is named, with what it receives."""
+    [voice] = list_items_naming(privacy(client, language), VOICE_PROVIDER)
+
+    assert [claim for claim in VOICE_SERVICES[language] if claim.lower() not in voice.lower()] == []
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_privacy_promises_no_residency_or_retention_the_voice_provider_does_not_give(client, language):
+    """``api.openai.com`` keeps no data in the EU by contract, and how long it keeps a request is set by its API terms,
+    not by our code: the item promises neither."""
+    [voice] = list_items_naming(privacy(client, language), VOICE_PROVIDER)
+
+    for promise in ("takes place in the European Union", "se realiza en la Unión Europea", "days", "días", "zero", "cero"):
+        assert promise not in voice
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("language", "marker", "claims"),
+    [
+        (
+            "en",
+            "Voice dictation:",
+            ("to the transcription provider", "only its text comes back", "Neither your hub nor ERPlora keeps the audio"),
+        ),
+        (
+            "es",
+            "Dictado por voz:",
+            ("al proveedor de transcripción", "solo vuelve su texto", "Ni tu hub ni ERPlora guardan el audio"),
+        ),
+    ],
+)
+def test_privacy_says_where_the_dictation_audio_goes_and_that_nobody_here_keeps_it(client, language, marker, claims):
+    """The Hub's operation opens no database (``database=False``) and erplora.com passes the audio from memory to the
+    provider (``assistant/media.py``): only a count of the dictation stays, in the month's usage."""
+    [dictation] = list_items_naming(privacy(client, language), marker)
+
+    assert [claim for claim in claims if claim not in dictation] == []
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("language", "model", "outside", "voice"),
+    [
+        (
+            "en",
+            "The language model of the AI assistant is served from",
+            "Some processors may process data outside the EEA",
+            "the provider of the voice and search services of the assistant",
+        ),
+        (
+            "es",
+            "El modelo de lenguaje del asistente IA se sirve desde",
+            "Algunos encargados pueden tratar datos fuera del EEE",
+            "el proveedor de los servicios de voz y de búsqueda del asistente",
+        ),
+    ],
+)
+def test_privacy_counts_the_voice_provider_among_the_transfers_outside_the_eea(client, language, model, outside, voice):
+    """Section 6: Frankfurt serves the language model, not the dictation, and the voice provider is a transfer."""
+    paragraphs = [" ".join(text.split()) for text in re.findall(r"<p>(.*?)</p>", privacy(client, language), re.DOTALL)]
+    [transfers] = [text for text in paragraphs if outside in text]
+
+    assert [text for text in paragraphs if model in text]
+    assert voice in transfers
+
+
+# What decides that the assistant is used: the Hub has no switch for it and asks for no consent. Anyone with
+# ``base.view_home`` sees its button (hub ``base/frontend/components/TopbarChrome.vue``), it is used when someone sends
+# it a message or dictates, and the plan's monthly messages (``Plan.assistant_messages_per_month``, 0 = none;
+# ``assistant/queries.py`` ``monthly_limit``) bound the questions that reach the model.
+
+ASSISTANT_CONDITION = {
+    "en": {
+        "promises": ("explicit consent in the Hub", "does not enable it", "the customer enables"),
+        "condition": (
+            "it is used only when someone in your hub sends it a message or dictates to it",
+            "A plan without assistant messages sends no question to the model",
+        ),
+        "basis": "Used ONLY when someone in your hub uses the assistant, to provide the contracted service (Art. 6.1.b GDPR)",
+    },
+    "es": {
+        "promises": ("consentimiento explícito en el Hub", "no lo activa", "el cliente activa"),
+        "condition": (
+            "solo se usa cuando alguien de tu hub le envía un mensaje o le dicta",
+            "Un plan sin mensajes del asistente no envía ninguna pregunta al modelo",
+        ),
+        "basis": "Usado ÚNICAMENTE cuando alguien de tu hub usa el asistente, para prestar el servicio contratado (Art. 6.1.b RGPD)",
+    },
+}
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_privacy_promises_no_switch_nor_consent_the_hub_lacks_and_says_when_the_assistant_is_used(client, language):
+    """Art. 13 GDPR: the policy describes the processing as it is; a consent the Hub never asks for and a switch it
+    does not have are false statements, however reassuring."""
+    expected = ASSISTANT_CONDITION[language]
+    html = " ".join(privacy(client, language).split())
+    [model] = list_items_naming(html, "Model Studio")
+
+    assert [promise for promise in expected["promises"] if promise in html] == []
+    assert [condition for condition in expected["condition"] if condition not in html] == []
+    assert expected["basis"] in model
+
+
 # --- The shared reading pattern (test_ui_stack_contract.py) ------------------------------------
 
 

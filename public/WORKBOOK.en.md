@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:e6bfd26f060f393073e53c405f94a23b16c480cb6f1c89e1287dc34864c2b728 -->
+<!-- generated from WORKBOOK.md sha256:d4d5f57149992fcf2ba5ecbc3173f938b363a56d5cc3fdebe20d975b35092d45 -->
 
 ## What it is for and who it is for
 
@@ -274,7 +274,7 @@ Screen: Security, Plans and prices, Home, About us
 Steps:
 1. The person reads what Security, the pricing FAQ, the home and About us say about access, data and availability.
 2. They read what works today: server sessions in secure cookies, a one-time code to enter the business, sign-in with Google, salted password hashing, encryption in transit and at rest, HTTPS only with TLS 1.2 or 1.3, AWS in Ireland with its web firewall, continuous backups recoverable to any moment of the last 14 days and high availability.
-3. To "Where is my data stored?" the answer is the European Union, with the one exception of the assistant if its European provider is unavailable, and the link "Read the privacy policy".
+3. To "Where is my data stored?" the answer is the European Union, with the exceptions of the assistant: its voice and its search, such as transcribing a voice dictation, and its backup provider if the European one is unavailable; and the link "Read the privacy policy". The home says that the assistant's language model is served from the European Union, not the whole assistant.
 In: nothing; the pages' text, checked against the infrastructure and the privacy policy.
 Out: nothing saved.
 If it fails: no availability agreement with a percentage, 24/7 support, regular audits, penetration test reports, end-to-end encryption or sign-in with GitHub is promised, and never "your data never leaves the EU", which would contradict the privacy policy.
@@ -431,11 +431,11 @@ Actor: visitor
 Screen: Legal texts
 Steps:
 1. In the footer, "Legal Notice", "Privacy" and "Terms" open each text on its own page; the cookie policy opens from the privacy policy.
-2. The privacy policy names who the data is entrusted to: Amazon Web Services in the Ireland region for hosting and email, and the assistant in Frankfurt, without training on it.
+2. The privacy policy names who the data is entrusted to: Amazon Web Services in the Ireland region for hosting and email, the assistant's language model in Frankfurt, without training on it, and OpenAI for the assistant's voice and search: it transcribes the audio of a dictation, which neither the hub nor ERPlora keeps, and may process it outside the European Economic Area.
 3. The terms give the numbers the product keeps: the days of the exit package, the days a suspended business waits before it is deleted and the trial of the plans on sale (none if none has one).
 In: the plans on sale (the terms).
 Out: nothing saved.
-If it fails: no text names a provider no longer used or another hosting, and no link between texts leads to a page that does not exist.
+If it fails: no text names a provider no longer used or another hosting, nor keeps quiet about where the audio of a dictation goes, nor promises EU residency or a retention period for it, nor a consent or a switch for the assistant that the hub does not have (the assistant is used when someone in the hub writes or dictates to it, with the messages the plan gives), and no link between texts leads to a page that does not exist.
 Involved: hubs (the plans)
 
 ### PUBLIC-F21 Check the responsible declaration of the invoicing system

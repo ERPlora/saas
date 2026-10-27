@@ -107,8 +107,13 @@ test('PUBLIC-G01 G02 G03 G21 G25 G38 the help center lists the guides, opens one
     await expect(p.locator('[data-help-section]')).not.toHaveCount(0);
   });
 
+  // Every guide starts folded (PUBLIC-F15): the click opens the first one. Ionic marks the accordion `hydrated` once
+  // its header listens; a click before that is lost.
   const first = page.locator('[data-help-section]').first();
+  await expect(first).toHaveClass(/\bhydrated\b/);
+  await expect(first.locator('[slot="content"]')).toBeHidden();
   await first.locator('ion-item[slot="header"]').click();
+  await expect(first).toHaveClass(/\baccordion-expanded\b/);
   await expect(first.locator('[slot="content"]')).toBeVisible();
 
   await page.locator('#help-search input').fill('zzzz-no-guide-says-this');
@@ -221,6 +226,38 @@ test('PUBLIC-G45 G17 the legal texts read, each with its own page', async ({ pag
   await page.goto('/legal/privacy/');
   await expect(page.getByText('Ireland region, eu-west-1', { exact: false }).first()).toBeVisible();
   await clean('legal');
+});
+
+test.describe('in Spanish', () => {
+  test.use({ locale: 'es-ES' });
+
+  // flow: PUBLIC-F20 PUBLIC-F08 (FIX-SAAS-PRIVACY-POLICY-OMITS-DICTATION-AUDIO-TO-TRANSCRIPTION)
+  test('PUBLIC-F20 the privacy policy names where the audio of a dictation goes', async ({ page }) => {
+    const clean = await watch(page);
+    mkdirSync(ARTIFACTS, { recursive: true });
+    for (const viewport of VIEWPORTS) {
+      await page.setViewportSize(viewport);
+      await page.goto('/legal/privacy/');
+      const recipients = page.getByRole('heading', { level: 2, name: '5. Destinatarios — Encargados del tratamiento' });
+      const transfers = page.getByRole('heading', { level: 2, name: '6. Transferencias internacionales' });
+      const voice = page.locator('li', { hasText: 'OpenAI Ireland Ltd. (Irlanda) — API de OpenAI:' });
+      await expect(voice).toContainText('Transcribe a texto el dictado por voz (recibe el audio de la grabación)');
+      await expect(voice).toContainText('fuera del Espacio Económico Europeo');
+      await expect(page.locator('li', { hasText: 'Dictado por voz:' })).toContainText('Ni tu hub ni ERPlora guardan el audio');
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      expect(overflow, `/legal/privacy/ overflows sideways at ${viewport.width}px`).toBeLessThanOrEqual(0);
+      // The whole of section 5, from its heading to the next one.
+      await recipients.scrollIntoViewIfNeeded();
+      const top = await recipients.evaluate((node) => node.getBoundingClientRect().top + window.scrollY);
+      const bottom = await transfers.evaluate((node) => node.getBoundingClientRect().top + window.scrollY);
+      await page.screenshot({
+        path: join(ARTIFACTS, `FIX-SAAS-PRIVACY-POLICY-OMITS-DICTATION-AUDIO-TO-TRANSCRIPTION-${viewport.width}.png`),
+        fullPage: true,
+        clip: { x: 0, y: Math.max(0, top - 16), width: viewport.width, height: bottom - top + 16 },
+      });
+    }
+    await clean('privacy, in Spanish');
+  });
 });
 
 test('PUBLIC-G46 the responsible declaration in force, with its archive', async ({ page }) => {

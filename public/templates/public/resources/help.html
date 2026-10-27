@@ -27,7 +27,7 @@
                      debounce="120"
                      show-clear-button="focus"></ion-searchbar>
 
-      <ion-accordion-group expand="inset" value="{{ sections.0.id }}">
+      <ion-accordion-group expand="inset">
         {% for section in sections %}
           <ion-accordion class="ep-accordion" value="{{ section.id }}" data-help-section>
             <ion-item slot="header" lines="none" class="ep-accordion-header">

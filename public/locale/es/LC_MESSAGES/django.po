@@ -709,17 +709,16 @@ msgstr ""
 "región Alemania (Fráncfort):"
 
 #: templates/public/legal/privacy.html
-msgid ""
-"provider of the language model the AI assistant uses BY DEFAULT. Processing "
-"takes place in the European Union. Used ONLY when the customer enables this "
-"feature and after explicit consent in the Hub, under a Data Processing "
-"Addendum incorporating EU Standard Contractual Clauses."
-msgstr ""
-"proveedor del modelo de lenguaje que el asistente IA usa POR DEFECTO. El "
-"tratamiento se realiza en la Unión Europea. Usado ÚNICAMENTE cuando el "
-"cliente activa esta funcionalidad y previo consentimiento explícito en el "
-"Hub, al amparo de un acuerdo de tratamiento de datos con Cláusulas "
-"Contractuales Tipo de la UE."
+msgid "provider of the language model the AI assistant uses BY DEFAULT. Processing takes place in the European Union. Used ONLY when someone in your hub uses the assistant, to provide the contracted service (Art. 6.1.b GDPR), under a Data Processing Addendum incorporating EU Standard Contractual Clauses."
+msgstr "proveedor del modelo de lenguaje que el asistente IA usa POR DEFECTO. El tratamiento se realiza en la Unión Europea. Usado ÚNICAMENTE cuando alguien de tu hub usa el asistente, para prestar el servicio contratado (Art. 6.1.b RGPD), al amparo de un acuerdo de tratamiento de datos con Cláusulas Contractuales Tipo de la UE."
+
+#: templates/public/legal/privacy.html
+msgid "OpenAI Ireland Ltd. (Ireland) — OpenAI API:"
+msgstr "OpenAI Ireland Ltd. (Irlanda) — API de OpenAI:"
+
+#: templates/public/legal/privacy.html
+msgid "provider of the voice and search services the AI assistant uses BY DEFAULT. It transcribes voice dictation into text (it receives the audio of the recording) and, when your hub asks for them, it reads an answer aloud (it receives the text of the answer) and computes the search fingerprints, or embeddings, of your hub's index (it receives the texts to index). Used ONLY when someone in your hub uses one of these functions. Processing may take place outside the European Economic Area (section 6). Under its own DPA."
+msgstr "proveedor de los servicios de voz y de búsqueda que el asistente IA usa POR DEFECTO. Transcribe a texto el dictado por voz (recibe el audio de la grabación) y, cuando tu hub se los pide, lee en voz alta una respuesta (recibe el texto de la respuesta) y calcula las huellas de búsqueda (embeddings) del índice de tu hub (recibe los textos que se indexan). Usado ÚNICAMENTE cuando alguien de tu hub usa una de estas funciones. El tratamiento puede realizarse fuera del Espacio Económico Europeo (apartado 6). Bajo su propio DPA."
 
 #: templates/public/legal/privacy.html
 msgid "OpenAI Ireland Ltd. and Anthropic Ireland Ltd. (Ireland):"
@@ -738,12 +737,8 @@ msgid "What the AI assistant does — and does not — receive"
 msgstr "Qué recibe —y qué no recibe— el asistente IA"
 
 #: templates/public/legal/privacy.html
-msgid ""
-"The assistant is OPTIONAL. If the customer does not enable it, no data "
-"whatsoever is sent to a language model provider."
-msgstr ""
-"El asistente es OPCIONAL. Si el cliente no lo activa, no se envía ningún "
-"dato a un proveedor de modelos de lenguaje."
+msgid "The assistant is OPTIONAL: it is used only when someone in your hub sends it a message or dictates to it, and until then nothing is sent to any of these providers. A plan without assistant messages sends no question to the model."
+msgstr "El asistente es OPCIONAL: solo se usa cuando alguien de tu hub le envía un mensaje o le dicta, y hasta entonces no se envía nada a ninguno de estos proveedores. Un plan sin mensajes del asistente no envía ninguna pregunta al modelo."
 
 #: templates/public/legal/privacy.html
 msgid ""
@@ -780,6 +775,10 @@ msgstr ""
 "contador de mensajes y el consumo de tokens, a efectos de facturación."
 
 #: templates/public/legal/privacy.html
+msgid "Voice dictation: the recording travels from your device, through your hub and the platform, to the transcription provider, and only its text comes back, to the message box, where you review it before sending it. Neither your hub nor ERPlora keeps the audio: we only record that there was a dictation, in the month's usage."
+msgstr "Dictado por voz: la grabación viaja desde tu dispositivo, a través de tu hub y de la plataforma, al proveedor de transcripción, y solo vuelve su texto, a la caja del mensaje, donde lo revisas antes de enviarlo. Ni tu hub ni ERPlora guardan el audio: solo anotamos que hubo un dictado, en el uso del mes."
+
+#: templates/public/legal/privacy.html
 msgid ""
 "None of these providers uses the data to train their models, under the API "
 "terms of service applicable to us."
@@ -793,12 +792,12 @@ msgstr "6. Transferencias internacionales"
 
 #: templates/public/legal/privacy.html
 msgid ""
-"The AI assistant is served from Alibaba Cloud Model Studio's Germany "
-"(Frankfurt) region, on a workspace whose deployment scope is restricted to "
-"the European Union: queries are processed inside the EU and are NOT "
-"transferred to China."
+"The language model of the AI assistant is served from Alibaba Cloud Model "
+"Studio's Germany (Frankfurt) region, on a workspace whose deployment scope is "
+"restricted to the European Union: queries are processed inside the EU and are "
+"NOT transferred to China."
 msgstr ""
-"El asistente IA se sirve desde la región Alemania (Fráncfort) de Alibaba "
+"El modelo de lenguaje del asistente IA se sirve desde la región Alemania (Fráncfort) de Alibaba "
 "Cloud Model Studio, en un workspace cuyo ámbito de despliegue está "
 "restringido a la Unión Europea: las consultas se procesan dentro de la UE y "
 "no se transfieren a China."
@@ -2325,8 +2324,8 @@ msgid "delivery of the service's transactional email. Processing takes place in 
 msgstr "envío del correo electrónico transaccional del servicio. El tratamiento se realiza en la Unión Europea."
 
 #: templates/public/legal/privacy.html
-msgid "Some processors may process data outside the EEA: the backup model providers, only if the European one is unavailable. These transfers are carried out under Standard Contractual Clauses (SCCs) approved by the European Commission (EU Decision 2021/914) or, when possible, by keeping the data within the EU through regional configuration. The customer may request a copy of the SCCs at"
-msgstr "Algunos encargados pueden tratar datos fuera del EEE: los proveedores de modelos de respaldo, solo si el europeo no está disponible. Estas transferencias se realizan amparadas en Cláusulas Contractuales Tipo (CCT) aprobadas por la Comisión Europea (Decisión UE 2021/914) o, cuando es posible, manteniendo el dato dentro de la UE mediante configuración regional. El cliente puede solicitar copia de las CCT en"
+msgid "Some processors may process data outside the EEA: the provider of the voice and search services of the assistant and, only if the European one is unavailable, the backup model providers. These transfers are carried out under Standard Contractual Clauses (SCCs) approved by the European Commission (EU Decision 2021/914) or, when possible, by keeping the data within the EU through regional configuration. The customer may request a copy of the SCCs at"
+msgstr "Algunos encargados pueden tratar datos fuera del EEE: el proveedor de los servicios de voz y de búsqueda del asistente y, solo si el europeo no está disponible, los proveedores de modelos de respaldo. Estas transferencias se realizan amparadas en Cláusulas Contractuales Tipo (CCT) aprobadas por la Comisión Europea (Decisión UE 2021/914) o, cuando es posible, manteniendo el dato dentro de la UE mediante configuración regional. El cliente puede solicitar copia de las CCT en"
 
 # --- L7: the home, /contact/, /pricing/, /legal/terms/ and /collaborate/ (landing.py, pricing.py, legal.py, company.py and their templates; origin/develop .po where the copy is the same) ---
 
@@ -2625,8 +2624,8 @@ msgstr "Los tiques, las comandas de cocina y las etiquetas llegan a la impresora
 msgid "Everything your company needs. In one place."
 msgstr "Todo lo que tu empresa necesita. En un solo lugar."
 
-msgid "Your assistant is served from the European Union — the computation too, not just the storage. No provider uses your data to train its models."
-msgstr "Tu asistente se sirve desde la Unión Europea — también el cómputo, no solo el almacenamiento. Ningún proveedor usa tus datos para entrenar sus modelos."
+msgid "Your assistant's language model is served from the European Union — the computation too, not just the storage. No provider uses your data to train its models."
+msgstr "El modelo de lenguaje de tu asistente se sirve desde la Unión Europea — también el cómputo, no solo el almacenamiento. Ningún proveedor usa tus datos para entrenar sus modelos."
 
 msgid "How we handle your data"
 msgstr "Cómo tratamos tus datos"
@@ -3612,8 +3611,8 @@ msgstr[1] "Sí. Empieza gratis sin tarjeta —el plan Free es gratis para siempr
 msgid "Yes. Moving up is immediate and the difference is prorated; moving down takes effect at the end of the period you have already paid for. There's no penalty or commitment period, and moving down turns nothing off: your apps and their data stay as they are. If you have more apps turned on than the new plan allows, they stay on; you just can't turn on more until you are under the limit."
 msgstr "Sí. Subir de plan es inmediato y la diferencia se prorratea; bajar se aplica al final del periodo que ya has pagado. No hay penalización ni periodo de compromiso, y bajar de plan no desactiva nada: tus apps y sus datos se quedan como están. Si tienes más apps activadas de las que permite el plan nuevo, se quedan activadas; solo no podrás activar más hasta estar por debajo del límite."
 
-msgid "Within the European Union: on Amazon Web Services, in its Ireland region (eu-west-1), on GDPR-compliant infrastructure. The one exception is the AI assistant: if its European provider is unavailable, a backup provider may answer from outside the EU, under the safeguards our privacy policy describes."
-msgstr "Dentro de la Unión Europea: en Amazon Web Services, en su región de Irlanda (eu-west-1), sobre infraestructura conforme al RGPD. La única excepción es el asistente de IA: si su proveedor europeo no está disponible, un proveedor de respaldo puede responder desde fuera de la UE, con las garantías que describe nuestra política de privacidad."
+msgid "Within the European Union: on Amazon Web Services, in its Ireland region (eu-west-1), on GDPR-compliant infrastructure. The exceptions are in the AI assistant: its voice and search services, such as transcribing a voice dictation, and, if its European provider is unavailable, a backup provider may process data outside the EU, under the safeguards our privacy policy describes."
+msgstr "Dentro de la Unión Europea: en Amazon Web Services, en su región de Irlanda (eu-west-1), sobre infraestructura conforme al RGPD. Las excepciones están en el asistente de IA: sus servicios de voz y de búsqueda, como transcribir un dictado por voz, y, si su proveedor europeo no está disponible, un proveedor de respaldo pueden tratar datos fuera de la UE, con las garantías que describe nuestra política de privacidad."
 
 msgid "Do you charge per app or per usage?"
 msgstr "¿Cobráis por app o por uso?"
