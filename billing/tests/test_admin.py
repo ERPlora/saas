@@ -137,6 +137,45 @@ def test_what_stripe_did_is_read_only(staff_client, model_name):
     assert staff_client.get(f"/admin/billing/{model_name}/add/").status_code == 403
 
 
+class TestTheRowsOnlyTheCodeWrites:
+    """BILLING-F27 (PLAN-SAAS §1.1, «Modelos sin ModelAdmin»): a promo code used, a series' counter and a downgrade
+    waiting for the end of the period are seen in the admin and never written there: the checkout, the invoice's
+    numbering and the plan change are their only writers."""
+
+    @pytest.fixture
+    def rows(self, db):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from billing.models import InvoiceCounter, PlanChangeSchedule, PromoCode, PromoRedemption
+        from hubs.models import Hub
+
+        hub = Hub.objects.create(slug="bakery", name="Bakery")
+        promo = PromoCode.objects.create(code="launch", trial_days=30)
+        return {
+            "promoredemption": PromoRedemption.objects.create(promo=promo, hub=hub, stripe_customer_id="cus_1"),
+            "invoicecounter": InvoiceCounter.objects.create(series="ERP", year=2026, last_number=7),
+            "planchangeschedule": PlanChangeSchedule.objects.create(
+                hub=hub, stripe_schedule_id="sub_sched_1", plan_slug="starter", interval="month",
+                starts_at=timezone.now() + timedelta(days=10),
+            ),
+        }
+
+    @pytest.mark.parametrize("model_name", ["promoredemption", "invoicecounter", "planchangeschedule"])
+    def test_it_is_listed_and_opens_but_is_never_added_changed_or_deleted(self, staff_client, rows, model_name):
+        row = rows[model_name]
+        base = f"/admin/billing/{model_name}/"
+
+        assert staff_client.get(base).status_code == 200
+        page = staff_client.get(f"{base}{row.pk}/change/")
+        assert page.status_code == 200
+        assert b'name="_save"' not in page.content
+        assert staff_client.get(f"{base}add/").status_code == 403
+        assert staff_client.post(f"{base}{row.pk}/delete/", {"post": "yes"}).status_code == 403
+        assert type(row).objects.filter(pk=row.pk).exists()
+
+
 def test_a_stripe_event_opens_read_only(staff_client):
     from billing.models import WebhookEvent
 

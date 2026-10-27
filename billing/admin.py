@@ -33,12 +33,15 @@ from billing import queries, services
 from billing.models import (
     CheckoutAttempt,
     Invoice,
+    InvoiceCounter,
     InvoiceLine,
     CompanyConfig,
     FiscalPolicy,
     OssNotice,
     PaymentFailure,
+    PlanChangeSchedule,
     PromoCode,
+    PromoRedemption,
     TaxCategory,
     TaxRule,
     VatCheck,
@@ -417,6 +420,31 @@ class OssNoticeAdmin(ReadOnlyAdmin):
     @admin.display(description=_("threshold"), ordering="threshold_cents")
     def threshold(self, obj):
         return f"{from_cents(obj.threshold_cents)} €"
+
+
+@admin.register(PromoRedemption)
+class PromoRedemptionAdmin(ReadOnlyAdmin):
+    """A promo code used by a business (once per business and per payer): written when its checkout is paid."""
+
+    list_display = ("created_at", "promo", "hub", "stripe_customer_id")
+    list_select_related = ("promo", "hub")
+    search_fields = ("promo__code", "hub__slug", "hub__name", "stripe_customer_id")
+
+
+@admin.register(InvoiceCounter)
+class InvoiceCounterAdmin(ReadOnlyAdmin):
+    """The last number of each series and year: only the invoice's numbering moves it (``services.issue_number``)."""
+
+    list_display = ("series", "year", "last_number")
+
+
+@admin.register(PlanChangeSchedule)
+class PlanChangeScheduleAdmin(ReadOnlyAdmin):
+    """A downgrade waiting for the end of the paid period, as Stripe's subscription schedule holds it."""
+
+    list_display = ("starts_at", "hub", "plan_slug", "interval", "stripe_schedule_id")
+    list_select_related = ("hub",)
+    search_fields = ("hub__slug", "hub__name", "stripe_schedule_id")
 
 
 class InvoiceLineInline(admin.TabularInline):
