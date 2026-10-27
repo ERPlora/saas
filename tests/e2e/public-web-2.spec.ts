@@ -107,8 +107,13 @@ test('PUBLIC-G01 G02 G03 G21 G25 G38 the help center lists the guides, opens one
     await expect(p.locator('[data-help-section]')).not.toHaveCount(0);
   });
 
+  // Every guide starts folded (PUBLIC-F15): the click opens the first one. Ionic marks the accordion `hydrated` once
+  // its header listens; a click before that is lost.
   const first = page.locator('[data-help-section]').first();
+  await expect(first).toHaveClass(/\bhydrated\b/);
+  await expect(first.locator('[slot="content"]')).toBeHidden();
   await first.locator('ion-item[slot="header"]').click();
+  await expect(first).toHaveClass(/\baccordion-expanded\b/);
   await expect(first.locator('[slot="content"]')).toBeVisible();
 
   await page.locator('#help-search input').fill('zzzz-no-guide-says-this');

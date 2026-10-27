@@ -269,6 +269,23 @@ def test_help_center_uses_ionic_accordions(client):
 
 
 @pytest.mark.django_db
+def test_every_guide_starts_folded(client):
+    """PUBLIC-F15: «a guide per topic, each one folded; opening one reads it whole». A ``value`` on the group opened the
+    first guide by itself, so a click on it folded it (PUBLIC-G01 of ``public-web-2.spec.ts`` passed only when its
+    check ran before Ionic repainted)."""
+    sections = [
+        {"id": "getting-started", "title": "Getting Started", "html": "<p>Welcome</p>"},
+        {"id": "inventory", "title": "Inventory", "html": "<p>Stock guide</p>"},
+    ]
+
+    with patch("public.help.all_sections", return_value=sections):
+        html = client.get("/help/").content.decode()
+
+    [group] = re.findall(r"<ion-accordion-group\b[^>]*>", html)
+    assert "value=" not in group
+
+
+@pytest.mark.django_db
 def test_help_center_renders_repo_guides(client):
     """The FAQ guide title proves the page reads the in-repo docs."""
     body = client.get("/help/").content.decode().lower()
