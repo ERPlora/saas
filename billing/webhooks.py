@@ -11,12 +11,9 @@ Ported from ERPlora/saas ``hubs/main/webhooks.py`` (``stripe_webhook``, origin/d
 3. ``billing.services.process_stripe_event`` reads the LIVE subscription and writes it through
    ``hubs.subscription.apply``. A failure is 500 and stays claimable: Stripe's retry processes it again.
 
-Answers ``{"status": <outcome>, "event_id"}``. Events to subscribe in Stripe: ``checkout.session.completed``,
-``checkout.session.async_payment_succeeded``, ``checkout.session.async_payment_failed``,
-``checkout.session.expired``, ``invoice.paid``, ``invoice.payment_failed``, ``customer.subscription.created``,
-``customer.subscription.updated``, ``customer.subscription.deleted`` and ``customer.updated``; and, for
-ERPlora's invoices (lot L3-C), ``invoice.voided``, ``invoice.marked_uncollectible``, ``credit_note.created`` and
-``charge.refunded``. A paid invoice, a credit note or a refund that cannot be invoiced yet (its business or
+Answers ``{"status": <outcome>, "event_id"}``. The events to subscribe in Stripe are
+``billing.services.STRIPE_WEBHOOK_EVENTS``, the one list, which ``manage.py audit_stripe_webhooks`` compares the
+endpoint with every day (BILLING-F39). A paid invoice, a credit note or a refund that cannot be invoiced yet (its business or
 the invoice it rectifies unknown, VIES down with no proof on file, lines that do not add up) is a 500: Stripe
 retries it, nothing is forgotten.
 """

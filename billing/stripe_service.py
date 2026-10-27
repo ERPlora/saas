@@ -365,6 +365,18 @@ def _every(method: Callable, parent_id: str) -> list[dict]:
         params = {**params, "starting_after": page["data"][-1]["id"]}
 
 
+def webhook_endpoints() -> list[dict]:
+    """Every webhook endpoint of the account behind the key, page after page (``audit_stripe_webhooks``, BILLING-F39)."""
+    params: dict = {"limit": 100}
+    found: list[dict] = []
+    while True:
+        page = _call(client().v1.webhook_endpoints.list, params=params)
+        found += page["data"]
+        if not page.get("has_more") or not page["data"]:
+            return found
+        params = {**params, "starting_after": page["data"][-1]["id"]}
+
+
 def invoice_paid_by(payment_intent_id: str) -> str | None:
     """The Stripe invoice a PaymentIntent paid, or ``None`` (a charge of no invoice)."""
     payments = _call(

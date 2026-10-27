@@ -2622,6 +2622,28 @@ def purge_webhook_events() -> int:
     return deleted
 
 
+#: The events ERPlora's Stripe endpoint sends to ``/webhooks/stripe/`` (PLAN-SAAS §4): what ``process_stripe_event``
+#: handles, and the one list ``audit_stripe_webhooks`` compares the endpoint with every day (BILLING-F39);
+#: ``billing/README.md`` and ``billing/webhooks.py`` cite it instead of repeating it. ``invoice.payment_succeeded`` is
+#: handled as ``invoice.paid`` but not subscribed: one notice per payment is enough.
+STRIPE_WEBHOOK_EVENTS = (
+    "checkout.session.completed",
+    "checkout.session.async_payment_succeeded",
+    "checkout.session.async_payment_failed",
+    "checkout.session.expired",
+    "invoice.paid",
+    "invoice.payment_failed",
+    "invoice.voided",
+    "invoice.marked_uncollectible",
+    "credit_note.created",
+    "charge.refunded",
+    "customer.subscription.created",
+    "customer.subscription.updated",
+    "customer.subscription.deleted",
+    "customer.updated",
+)
+
+
 def process_stripe_event(event: dict) -> str:
     """Process one signed Stripe event; its outcome (``completed``, ``processed``, ``ignored``, ``unknown``,
     ``invalid``, ``pending``…). Raises when it must be retried (Stripe did not answer a read the event needs)."""
