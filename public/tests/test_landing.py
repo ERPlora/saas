@@ -564,6 +564,30 @@ def test_the_landing_says_the_assistant_data_stays_in_the_eu(client):
     assert "unión europea" in html or "no sale" in html
 
 
+@pytest.mark.parametrize(
+    ("language", "claim", "whole_assistant"),
+    [
+        (
+            "en",
+            "Your assistant's language model is served from the European Union",
+            "Your assistant is served from the European Union",
+        ),
+        (
+            "es",
+            "El modelo de lenguaje de tu asistente se sirve desde la Unión Europea",
+            "Tu asistente se sirve desde la Unión Europea",
+        ),
+    ],
+)
+def test_the_landing_puts_in_the_eu_the_language_model_not_the_whole_assistant(client, language, claim, whole_assistant):
+    """Frankfurt serves the language model; a dictation is transcribed by the voice provider, which may process it
+    outside the EEA (privacy policy §5 and §6, FIX-SAAS-PRIVACY-POLICY-OMITS-DICTATION-AUDIO-TO-TRANSCRIPTION)."""
+    html = html_of(client, language=language)
+
+    assert claim in html
+    assert whole_assistant not in html
+
+
 def test_the_landing_links_the_residency_claim_to_the_privacy_policy(client):
     assert reverse("public:privacy") in html_of(client, language="es")
 

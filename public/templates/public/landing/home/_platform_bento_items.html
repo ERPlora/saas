@@ -19,10 +19,11 @@
 {% include "public/components/bento_item.html" with cols=3 rows=1 tone="success" icon="lucide:shield-check" heading=heading body=body only %}
 
 {% comment %}
-  Where the AI's data lives: the assistant is served from Alibaba Cloud Model Studio, Germany
-  (Frankfurt) region, on a workspace whose deployment scope is the European Union, so the
-  COMPUTATION stays in the EU too, not just the storage. No bare «never leaves the EU»: the backup
-  providers may process outside the EEA under SCCs, and the privacy policy says so.
+  Where the AI's data lives: the assistant's language model is served from Alibaba Cloud Model
+  Studio, Germany (Frankfurt) region, on a workspace whose deployment scope is the European Union,
+  so the COMPUTATION stays in the EU too, not just the storage. No bare «never leaves the EU»: the
+  backup providers and the provider of the voice and search services (a dictation's audio) may
+  process outside the EEA under SCCs, and the privacy policy says so.
 {% endcomment %}
 {% trans "AI assistant on European servers" as heading %}
 {% include "public/components/bento_item.html" with cols=6 rows=1 tone="primary" icon="lucide:sparkles" heading=heading body_template="public/landing/home/_bento_ai.html" only %}

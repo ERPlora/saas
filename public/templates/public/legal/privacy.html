@@ -84,6 +84,7 @@
           <li><strong>{% trans "Amazon Web Services EMEA SARL (Luxembourg) — Amazon SES, Ireland region, eu-west-1:" %}</strong> {% trans "delivery of the service's transactional email. Processing takes place in the European Union." %}</li>
           <li><strong>{% trans "Stripe Payments Europe Ltd. (Irish):" %}</strong> {% trans "payment processing. Does NOT receive the customer's ERP data, only billing data." %}</li>
           <li><strong>{% trans "Alibaba (Netherlands) B.V. (Netherlands) — Alibaba Cloud Model Studio, Germany (Frankfurt) region:" %}</strong> {% trans "provider of the language model the AI assistant uses BY DEFAULT. Processing takes place in the European Union. Used ONLY when the customer enables this feature and after explicit consent in the Hub, under a Data Processing Addendum incorporating EU Standard Contractual Clauses." %}</li>
+          <li><strong>{% trans "OpenAI Ireland Ltd. (Ireland) — OpenAI API:" %}</strong> {% blocktrans trimmed %}provider of the voice and search services the AI assistant uses BY DEFAULT. It transcribes voice dictation into text (it receives the audio of the recording) and, when your hub asks for them, it reads an answer aloud (it receives the text of the answer) and computes the search fingerprints, or embeddings, of your hub's index (it receives the texts to index). Used ONLY when someone in your hub uses one of these functions. Processing may take place outside the European Economic Area (section 6). Under its own DPA.{% endblocktrans %}</li>
           <li><strong>{% trans "OpenAI Ireland Ltd. and Anthropic Ireland Ltd. (Ireland):" %}</strong> {% trans "BACKUP language model providers, used only if the European provider is unavailable. Each one under its own DPA." %}</li>
         </ul>
 
@@ -93,13 +94,14 @@
           <li>{% blocktrans trimmed %}Your hub database is never replicated or copied, neither to ERPlora nor to the model provider. The model holds no standing access to it and cannot query it on its own.{% endblocktrans %}</li>
           <li>{% blocktrans trimmed %}The model receives only your message, any document you attach to it, and the result of the specific query each question requires. If you ask about today's sales, your hub runs that query locally and hands over only that result — there is no dump of your catalogue, your sales history or your customer file.{% endblocktrans %}</li>
           <li>{% blocktrans trimmed %}We do not store the content of the conversation: the platform acts as a stateless gateway between your hub and the provider. We only record a message counter and token consumption, for billing.{% endblocktrans %}</li>
+          <li>{% blocktrans trimmed %}Voice dictation: the recording travels from your device, through your hub and the platform, to the transcription provider, and only its text comes back, to the message box, where you review it before sending it. Neither your hub nor ERPlora keeps the audio: we only record that there was a dictation, in the month's usage.{% endblocktrans %}</li>
           <li>{% trans "None of these providers uses the data to train their models, under the API terms of service applicable to us." %}</li>
         </ul>
 
         <h2>{% trans "6. International transfers" %}</h2>
         <p>
           {% blocktrans trimmed %}
-          The AI assistant is served from Alibaba Cloud Model Studio's Germany
+          The language model of the AI assistant is served from Alibaba Cloud Model Studio's Germany
           (Frankfurt) region, on a workspace whose deployment scope is restricted to
           the European Union: queries are processed inside the EU and are NOT
           transferred to China.
@@ -107,8 +109,9 @@
         </p>
         <p>
           {% blocktrans trimmed %}
-          Some processors may process data outside the EEA: the backup model providers,
-          only if the European one is unavailable. These transfers are carried out under Standard Contractual
+          Some processors may process data outside the EEA: the provider of the voice and search
+          services of the assistant and, only if the European one is unavailable, the backup model
+          providers. These transfers are carried out under Standard Contractual
           Clauses (SCCs) approved by the European Commission (EU Decision 2021/914) or,
           when possible, by keeping the data within the EU through regional
           configuration. The customer may request a copy of the SCCs at

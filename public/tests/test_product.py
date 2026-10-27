@@ -667,16 +667,28 @@ def test_security_states_the_tls_versions_the_load_balancer_accepts(client, lang
 
 
 @pytest.mark.parametrize(
-    ("language", "exception"),
+    ("language", "exceptions", "one_exception"),
     [
-        ("en", "if its European provider is unavailable"),
-        ("es", "si su proveedor europeo no está disponible"),
+        (
+            "en",
+            ("if its European provider is unavailable", "transcribing a voice dictation"),
+            "The one exception",
+        ),
+        (
+            "es",
+            ("si su proveedor europeo no está disponible", "transcribir un dictado por voz"),
+            "La única excepción",
+        ),
     ],
 )
-def test_the_storage_answer_names_the_one_exception_of_the_privacy_policy(client, language, exception):
+def test_the_storage_answer_names_the_exceptions_of_the_privacy_policy(client, language, exceptions, one_exception):
+    """The privacy policy (§6) has two transfers of the assistant: the backup model providers and the provider of
+    its voice and search services (a dictation's audio goes to OpenAI's API by default), so «the one exception» is
+    no longer true."""
     html = page(client, "/pricing/", language)
     answers = re.findall(r'<div class="ion-padding" slot="content">(.*?)</div>', html, re.S)
     (storage,) = [answer for answer in answers if "eu-west-1" in answer]
 
-    assert exception in storage
+    assert [exception for exception in exceptions if exception not in storage] == []
+    assert one_exception not in storage
     assert 'href="/legal/privacy/"' in storage
