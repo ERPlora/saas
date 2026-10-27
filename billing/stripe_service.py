@@ -346,6 +346,11 @@ def invoice_lines(invoice: dict) -> list[dict]:
     return _every(client().v1.invoices.line_items.list, invoice["id"])
 
 
+def retrieve_credit_note(credit_note_id: str) -> dict:
+    """A credit note as it is NOW (its ``status``: ``issued`` or ``void``), not as its event saw it."""
+    return _call(client().v1.credit_notes.retrieve, credit_note_id)
+
+
 def credit_note_lines(credit_note: dict) -> list[dict]:
     """Every line of a credit note, as ``invoice_lines``."""
     embedded = credit_note.get("lines") or {}
@@ -359,6 +364,18 @@ def _every(method: Callable, parent_id: str) -> list[dict]:
     found: list[dict] = []
     while True:
         page = _call(method, parent_id, params=params)
+        found += page["data"]
+        if not page.get("has_more") or not page["data"]:
+            return found
+        params = {**params, "starting_after": page["data"][-1]["id"]}
+
+
+def webhook_endpoints() -> list[dict]:
+    """Every webhook endpoint of the account behind the key, page after page (``audit_stripe_webhooks``, BILLING-F39)."""
+    params: dict = {"limit": 100}
+    found: list[dict] = []
+    while True:
+        page = _call(client().v1.webhook_endpoints.list, params=params)
         found += page["data"]
         if not page.get("has_more") or not page["data"]:
             return found

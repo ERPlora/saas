@@ -55,6 +55,8 @@ YEAR = timezone.localdate().year
 @pytest.fixture(autouse=True)
 def _stripe(stripe_double, issuer_identity):
     stripe_double.answer("subscriptions.retrieve", subscription())
+    # A credit note is read LIVE before it becomes a rectifying invoice (a voided one never does, BILLING-F26).
+    stripe_double.answer("credit_notes.retrieve", lambda call: {"id": call.args[0], "object": "credit_note", "status": "issued"})
     return stripe_double
 
 
@@ -637,6 +639,70 @@ class TestCreditNotes:
         deliver(event("credit_note.created", credit_note(reason="fraudulent")))
 
         assert Invoice.objects.get(kind="credit_note").rectification_type == "R4"
+
+
+class TestAVoidedCreditNote:
+    """BILLING-F26, ``credit_note.voided`` (market-decision in PLAN-SAAS §13). Stripe voids a credit note only while its
+    invoice is OPEN, and a rectifying invoice is only recorded here for a PAID one: so the voided note is normally one
+    whose ``credit_note.created`` is still waiting for its invoice. It must never become a rectifying invoice later:
+    the note is read live before recording. A rectifying invoice already recorded (against Stripe's rule) is never
+    touched, a record sent to the AEAT is corrected with a new one: the team is told, once, to do it by hand."""
+
+    def voided(self, stripe_double):
+        stripe_double.answer(
+            "credit_notes.retrieve", lambda call: {"id": call.args[0], "object": "credit_note", "status": "void"}
+        )
+        return event("credit_note.voided", {**credit_note(), "status": "void"}, event_id="evt_void_1")
+
+    def test_the_endpoint_sends_it(self):
+        from billing import services
+
+        assert "credit_note.voided" in services.STRIPE_WEBHOOK_EVENTS
+
+    def test_one_voided_while_waiting_for_its_invoice_never_becomes_a_rectifying_invoice(
+        self, running, stripe_double, mailoutbox
+    ):
+        deliver(event("credit_note.created", credit_note(), event_id="evt_cn_1"), status=500)
+
+        assert deliver(self.voided(stripe_double)) == "voided"
+        deliver(paid())
+        assert deliver(event("credit_note.created", credit_note(), event_id="evt_cn_1")) == "ignored"
+
+        assert not Invoice.objects.filter(kind="credit_note").exists()
+        assert not InvoiceCounter.objects.filter(series="ERPR", last_number__gt=0).exists()
+        assert mailoutbox == []
+
+    def test_a_rectifying_invoice_is_never_touched_and_the_team_is_told_once(self, running, stripe_double, mailoutbox):
+        deliver(paid())
+        deliver(event("credit_note.created", credit_note()))
+        before = Invoice.objects.values().get(kind="credit_note")
+
+        assert deliver(self.voided(stripe_double)) == "needs_review"
+        assert deliver(self.voided(stripe_double)) == "duplicate"
+
+        assert Invoice.objects.values().get(kind="credit_note") == before
+        [mail] = mailoutbox
+        assert mail.to == ["support@erplora.com"]
+        assert mail.extra_headers["X-ERPlora-Notice"] == "billing.credit_note_voided"
+        assert before["number"] in mail.subject
+        assert "cn_1" in mail.body and before["number"] in mail.body
+
+    def test_a_notice_that_cannot_leave_is_retried_by_stripe_not_lost(self, running, stripe_double, monkeypatch):
+        from billing import emails
+
+        deliver(paid())
+        deliver(event("credit_note.created", credit_note()))
+        monkeypatch.setattr(emails, "branded_message", lambda *args, **kwargs: (_ for _ in ()).throw(OSError("smtp")))
+
+        deliver(self.voided(stripe_double), status=500)
+
+    def test_stripe_away_while_reading_the_note_records_nothing(self, running, stripe_double):
+        deliver(paid())
+        stripe_double.answer("credit_notes.retrieve", connection_error())
+
+        deliver(event("credit_note.created", credit_note()), status=500)
+
+        assert not Invoice.objects.filter(kind="credit_note").exists()
 
 
 @pytest.mark.django_db(transaction=True)

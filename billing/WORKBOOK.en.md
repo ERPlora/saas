@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:ff3208e0708385fca081d8013f0658f769a7e4f21885bc327f51ef5d76f675b8 -->
+<!-- generated from WORKBOOK.md sha256:110f58b5827349cdaef8b401f790e45dcc8caeb7d2bf9d6e8534c3b7179de5b0 -->
 
 ## What it is for and who it is for
 
@@ -153,6 +153,7 @@ to upgrade or change it.
 | BILLING-F36 | See an invoice | done |
 | BILLING-F37 | Forget Stripe's notices older than 30 days | done |
 | BILLING-F38 | Read the subscriptions again in Stripe every night and put right what drifted | done |
+| BILLING-F39 | Check every day that Stripe sends a notice of everything erplora.com handles | done |
 
 ### BILLING-F01 Say where the business is invoiced and with which tax ID
 <!-- origen: old-saas:SAAS_DASHBOARD-F90 fi:saas/orgs-users#informacion-de-facturacion-de-la-organizacion-ver-editar -->
@@ -531,7 +532,7 @@ Steps:
 3. The corrective invoice appears in **Billing › Invoices** with "Credit note R1 · reason" and the invoice it corrects.
 In: the notice of the refund or the credit note.
 Out: the corrective invoice of its own series (ERPR-year-number), issued as any invoice (`billing.credit_note.recorded`).
-If it fails: a refund of an invoice that does not exist yet waits and Stripe sends the notice again; the same refund never corrects twice.
+If it fails: a refund of an invoice that does not exist yet waits and Stripe sends the notice again; the same refund never corrects twice. A credit note voided in Stripe (only possible while its invoice is not paid) never becomes a corrective invoice, even if its notice arrives later; and if it already was one, the corrective invoice is not touched —an invoice sent to the AEAT is not modified— and support gets an email to issue by hand the invoice that cancels it.
 Involved: ERPlora's platform business (issues the corrective invoice)
 
 ### BILLING-F27 What ERPlora staff can do about a customer's billing
@@ -541,13 +542,13 @@ Actor: ERPlora staff
 Screen: Admin
 Steps:
 1. A person of ERPlora enters the admin with the SaaS account (email code and authenticator app).
-2. They see, read-only, the subscriptions and their lines, Stripe's notices and the payment attempts: what Stripe says is not edited here, it is changed in Stripe and arrives with its notice.
-3. On the businesses they can "Send the latest state to the business" and "Retry what the business still owes"; on the invoices, with their lines, "Send again to the platform business", "Send the invoice email again" and "Download the PDF" of any invoice already issued.
+2. They see, read-only, the subscriptions and their lines, Stripe's notices, the payment attempts, the promo codes used, the counters of each invoice series and the plan changes waiting for the end of the period: what Stripe says is not edited here, it is changed in Stripe and arrives with its notice.
+3. On the businesses they can "Send the latest state to the business" and "Retry what the business still owes"; on the invoices, with their lines, "Send again to the platform business", "Send the invoice email again", "Download the PDF" of any invoice already issued and, choosing several in the list, "Download the PDFs (ZIP)".
 4. They keep the promo codes, the VAT table, the tax policy and ERPlora's details (born with those of the Modelo 036, and the ones VIES sees of who asks); refunds and immediate cancellations are made in Stripe's dashboard.
 5. A paid app some business has is not deleted from the catalog: the admin says which business has it and to take it off sale.
 In: the staff account with its role.
 Out: what its actions do; nothing that belongs to Stripe changes from the admin.
-If it fails: without the role, the admin does not open; the support group only looks, it does not run actions. The PDF of an invoice not issued yet does not exist: the admin says so ("Not issued yet"), and if the platform business does not answer, it goes back to the invoice saying why.
+If it fails: without the role, the admin does not open; the support group only looks, it does not run actions. The PDF of an invoice not issued yet does not exist: the admin says so ("Not issued yet"), and if the platform business does not answer, it goes back to the invoice saying why. In the ZIP, the invoices without a PDF (still being issued, or that the platform business does not return) are left out with their reason, in an admin notice and in `not-included.txt` inside the ZIP; if none has a PDF, nothing is downloaded and the notice says so.
 Involved: hubs (the businesses' status)
 
 ### BILLING-F28 Keep the plans' prices in Stripe
@@ -708,3 +709,17 @@ In: the subscriptions Stripe charges.
 Out: each subscription as Stripe says (`hubs.subscription.changed` if anything changed) and its plan sent to the business.
 If it fails: a subscription Stripe does not know, or that could not be read, is not touched and the task ends with an error, which tells the team; a business that fails does not stop the others. It can run as a trial, writing nothing, to only see what drifted.
 Involved: hubs (the business's subscription), the business (gets its plan)
+
+### BILLING-F39 Check every day that Stripe sends a notice of everything erplora.com handles
+<!-- origen: gh:saas#2402 -->
+Status: done
+Actor: system
+Screen: none
+Steps:
+1. Every day, erplora.com reads in Stripe the destinations of its notices.
+2. It checks that an enabled one points at its notice address (`/webhooks/stripe/`) and that it sends exactly the notices erplora.com handles (BILLING-F19), not one fewer and not one more.
+3. If everything matches, it notes it and ends; if not, it ends with an error, which tells the team, saying what is missing and what is extra.
+In: the notice destinations of the Stripe account.
+Out: nothing that changes: what was seen and, if something does not match, the warning to the team.
+If it fails: no enabled destination to the address, one that points at a route erplora.com does not serve or at another environment, more than one to the address, or one that sends every notice (`*`) or misses or adds any, ends with an error and names it. If Stripe does not answer, too. Without a Stripe key (in development) there is nothing to check: it says so and ends well.
+Involved: none

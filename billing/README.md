@@ -6,7 +6,7 @@ Lote **L2-A**: el motor de IVA de la UE, portado de `ERPlora/saas` `apps/dashboa
 `c5ca8cae8`) con sus tests. Lote **L2-B**: Stripe (pago de planes y módulos, la suscripción de cada negocio, el
 webhook único y el impago), portado de `hubs/subscriptions`, `hubs/main/webhooks.py`, `services/lifecycle.py` y
 `apps/core/stripe_*`. Lote **L3-C**: las facturas de ERPlora a sus clientes (se registran del webhook, se numeran
-aquí y las emite el hub de plataforma de `hub-next`) y la sección Facturación (Facturas · Suscripciones · Datos de
+aquí y las emite el hub de plataforma del Hub, `ERPlora/hub`) y la sección Facturación (Facturas · Suscripciones · Datos de
 pago); detalle en «Facturas de ERPlora (L3-C)».
 
 ## Qué hay
@@ -104,6 +104,7 @@ pago); detalle en «Facturas de ERPlora (L3-C)».
 | `management/commands/sweep_unpaid.py` | `saas-cron`: impagos que Stripe dejó de reintentar, suscripciones de negocios eliminados y pagadores de cuentas eliminadas (`payers_forgotten`) |
 | `management/commands/retax_subscriptions.py` | `saas-cron` (diaria): el tipo de hoy en cada suscripción viva y en las fases de su bajada programada (cambio de dirección no empujado, umbral OSS) y el reenvío de los avisos de la OSS que no salieron |
 | `management/commands/audit_tax_rules.py` | `saas-cron` (diaria) o a mano: la tabla de IVA cobra cada venta posible |
+| `management/commands/audit_stripe_webhooks.py` | `saas-cron` (diaria) o a mano (`--base-url` para otro entorno): Stripe manda a `/webhooks/stripe/` exactamente `STRIPE_WEBHOOK_EVENTS` (BILLING-F39) |
 
 ### Operaciones (solo el propietario del negocio; permiso `billing.pay`)
 
@@ -154,11 +155,10 @@ en otra solo por sus operaciones), que sube `state_version` y empuja la foto al 
 
 ### Webhook
 
-Eventos a suscribir en Stripe: `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
-`checkout.session.async_payment_failed`, `checkout.session.expired`, `invoice.paid`, `invoice.payment_failed`,
-`invoice.voided`, `invoice.marked_uncollectible`, `credit_note.created`, `charge.refunded` (los cuatro de L3-C),
-`customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted` y
-`customer.updated`. Sin firma válida, 400; sin `STRIPE_WEBHOOK_SECRET`, 503; duplicado, 200 `duplicate`; en curso
+Eventos a suscribir en Stripe: **`billing.services.STRIPE_WEBHOOK_EVENTS`**, la única lista (15 hoy: los de
+checkout, las facturas y sus rectificativas, las suscripciones y el cliente), junto al `match` que los trata;
+`manage.py audit_stripe_webhooks` la compara cada día con el destino de Stripe y dice qué falta y qué sobra
+(BILLING-F39). Sin firma válida, 400; sin `STRIPE_WEBHOOK_SECRET`, 503; duplicado, 200 `duplicate`; en curso
 en otra entrega, 409; fallo, 500 (Stripe reintenta). Siempre se lee la suscripción **viva** con el negocio
 bloqueado (el mismo orden de bloqueo que las operaciones: negocio y después `PaymentFailure`); si Stripe no
 contesta, **no se aplica nada**: 500 y Stripe reintenta. Una factura que llega antes que su
@@ -172,6 +172,12 @@ checkout pagado para un negocio que ya paga no se aplica: esa suscripción se ca
 usado como crédito, y queda un ERROR para soporte. `invoice.paid` además registra la factura de ERPlora (L3-C)
 con `vat.resolve_vat` + `clear_tax_id_for_stripe`: una venta sujeta sin impuesto es un ERROR
 `fiscal.vat.stripe_charged_no_tax_on_subject_sale` y la factura saca el IVA de lo cobrado.
+Una nota de crédito se lee **viva** antes de volverse rectificativa (`credit_note_created`): el evento es la foto
+de cuando se creó, y una nota anulada después no rectifica nada. `credit_note.voided` (BILLING-F26): Stripe solo
+anula una nota de una factura abierta, y aquí la rectificativa nace solo de una cobrada, así que lo normal es que no
+haya ninguna (`voided`). Si la hubiera, no se toca (lo enviado a la AEAT no se modifica): ERROR
+`fiscal.credit.voided_after_rectifying` y correo a `SUPPORT_EMAIL` (`X-ERPlora-Notice: billing.credit_note_voided`)
+para emitir a mano la factura que la anula (`needs_review`); si el correo no sale, 500 y Stripe reintenta.
 
 ### Impago
 
@@ -214,7 +220,7 @@ trata como ninguna (`UNKNOWN`: 503 `billing.payments_unavailable`, nunca un cobr
 - `STRIPE_SECRET_KEY`: una clave **restringida de test** `rk_test_…` con los mismos permisos que la live;
   `STRIPE_PUBLISHABLE_KEY`, la `pk_test_…`;
 - `STRIPE_WEBHOOK_SECRET`: el `whsec_…` del endpoint de test `https://pre.erplora.com/webhooks/stripe/`, suscrito
-  a los mismos 14 eventos que prod (los de «Webhook»). Con pre apagado, Stripe reintenta hasta 3 días;
+  a los mismos eventos que prod (`STRIPE_WEBHOOK_EVENTS`, «Webhook»). Con pre apagado, Stripe reintenta hasta 3 días;
 - `STRIPE_PORTAL_CONFIGURATION`: el `bpc_…` de un Customer Portal de test, solo tarjetas y recibos, como prod;
 - los precios: los ids de Stripe **test** en cada `Plan` y `apps.Module`, desde el admin de pre. Se paga con las
   tarjetas de prueba de Stripe (`4242 4242 4242 4242`).
@@ -226,17 +232,21 @@ trata como ninguna (`UNKNOWN`: 503 `billing.payments_unavailable`, nunca un cobr
 - **L2-B (hecho)**: `hubs.billing_profile.update` llama a `validate_vat_for_profile` y exige cinco dígitos al
   código postal español; checkout con `TaxRateSpec` → `TaxRate` de Stripe; webhook con `resolve_vat`; la suma
   OSS desconocida frena toda venta con clave live (409 `billing.oss_total_unknown`); umbral de factura completa
-  (400 € con IVA). Sin portar: cliente de HMRC y `audit_tax_rules`.
+  (400 € con IVA). `audit_tax_rules` llegó después (BILLING-F04, «Reglas que conviene saber»); el cliente de HMRC
+  no se porta, a propósito (PLAN-SAAS §1.1: el Reino Unido se vende solo a empresas, y un número británico no se
+  pregunta a VIES).
 - **L3-C (hecho)**: `Invoice`; `queries.cross_border_b2c_cents` suma sus facturas (el tripwire se sustituyó por
   los dos tests portados de `fiscal/tests/test_tax_rules.py` y cuatro más) y las pruebas de la factura de
   `test_vies_contract`, `test_payer_vat_reaches_the_invoice` y `test_reverse_charge_switch` están en
   `test_invoice_recording` y `test_invoice_models`.
 
-## Pendiente tras L2-B
+## Después de L2-B
 
-- **L2-D (front)**: hecho, ver «La Tienda (L2-D)» abajo; queda el bloqueo de Trusted Types que se cuenta allí.
-- **L2-C**: `billing.module.list` y `hubs.module.list`; nadie escribe aún los items `source = plan` (módulos
-  incluidos en un plan).
+- **L2-D (front)**: hecho, ver «La Tienda (L2-D)» abajo, con Trusted Types resuelto el 2026-10-14.
+- **L2-C**: no hay `billing.module.list` ni `hubs.module.list`. La Tienda lee los módulos con `billing.store.catalog` y
+  Suscripciones con `billing.subscription.list`; los items `source = plan` (módulos que trae el plan) los escribe
+  `hubs.services.sync_plan_modules` al cambiar de plan y cuando un módulo nuevo o con otro nivel llega a los negocios
+  de su plan (HUBS-F34, `owe_module_rights`).
 - **Eliminar un negocio** cancela su suscripción de Stripe en la siguiente pasada de `sweep_unpaid` (no en el
   acto: `hubs.business.delete` no llama a `billing`). **Mover el pagador** en un traspaso: hecho en HUBS-F28
   (`end_renewal_after_hand_over` al aceptar y «Mantenerlo con mi tarjeta», `billing.plan.take_over`; ver el README de
@@ -256,10 +266,13 @@ trata como ninguna (`UNKNOWN`: 503 `billing.payments_unavailable`, nunca un cobr
   con tarjetas y recibos (los cambios de plan van por el panel, que pone nuestros `TaxRate`); precios con
   `tax_behavior = exclusive` (no hay sincronización de productos: los ids se copian en el admin).
 - **aws**: `sweep_unpaid` corre cada hora (`sweep-unpaid-hourly` en `stacks/prod/scheduler.tf`);
+  `reconcile_platform_invoices` cada 15 minutos (`reconcile-platform-invoices`, L3-C);
   `sync_subscriptions` y `purge_webhook_events` cada noche (`sync-subscriptions-nightly`, 00:10 UTC, y
   `purge-webhook-events-nightly`, 00:50 UTC; FIX-AWS-BILLING-SYNC-AND-PURGE-NOT-SCHEDULED), y `audit_tax_rules` y
   `retax_subscriptions` cada día (`audit-tax-rules-daily`, 05:10 UTC, y `retax-subscriptions-daily`, 05:20 UTC;
-  FIX-AWS-BILLING-DAILY-TASKS-NOT-SCHEDULED).
+  FIX-AWS-BILLING-DAILY-TASKS-NOT-SCHEDULED), y `audit_stripe_webhooks` a las 05:40 UTC
+  (`audit-stripe-webhooks-daily`, `ERPlora/aws#21`). La clave restringida `rk_live_` necesita leer *Webhook
+  Endpoints* para esa auditoría: sin ese permiso, Stripe la rechaza y la tarea falla cada día (`task_failed`).
 
 ## La Tienda (L2-D)
 
@@ -314,7 +327,7 @@ decir ese texto).
 ## Facturas de ERPlora (L3-C)
 
 El recibo de Stripe no es la factura legal (PLAN-SAAS §4, ADR-0478). La factura la **registra y numera el SaaS**
-en la transacción del webhook y la **emite el hub de plataforma** de `hub-next` (su cadena VeriFactu, su QR y su
+en la transacción del webhook y la **emite el hub de plataforma** del Hub, `ERPlora/hub` (su cadena VeriFactu, su QR y su
 PDF). Aquí nunca se simula VeriFactu: sin respuesta del Hub la factura sigue «emitiéndose».
 
 ### Decisiones fiscales
@@ -322,7 +335,7 @@ PDF). Aquí nunca se simula VeriFactu: sin respuesta del Hub la factura sigue «
 - **Numera el SaaS**: contador propio por serie (`ERP-<año>-<5 cifras>`; las rectificativas, `ERPR-…`, serie
   propia, RD 1619/2012 art. 15.5), bloqueado en la transacción de la factura; la fecha de expedición se lee con el
   bloqueo ya tomado (un número posterior nunca lleva una fecha anterior) y el año nuevo vuelve a empezar en 1. El
-  Hub recibe número y fecha. (PLAN-SAAS §4 decía que el Hub «devuelve número»: señalado, falta la ronda.)
+  Hub recibe número y fecha (PLAN-SAAS §4, «Decidido (2026-10-14, L3-C)», que corrige el «devuelve número» de antes).
 - **Se factura al cobrar** (PLAN-SAAS §4): una renovación sin pagar se lista «No cobrada», sin número, y se
   numera la misma fila al pagarla; anulada o incobrable en Stripe, `void`, sin factura.
 - **Las bajadas esperan al final del periodo**: un plan más barato, o de anual a mensual, no se cobra ahora (eso
@@ -454,7 +467,11 @@ son solo web, y en su lugar se dice, sin enlace, cómo hacerlo desde el navegado
   cada fila de Facturas. Un error o un 404 se dicen igual: «No hemos podido cargar esta factura» con «Reintentar».
 - **Admin de facturas** (`billing/admin.py`, `InvoiceAdmin`): campo «PDF» con «Descargar el PDF» de cualquier
   factura emitida (`<id>/pdf/`, `queries.platform_invoice_pdf`, con `view_invoice`); sin emitir, lo dice; Hub
-  caído, vuelve a la factura con el motivo.
+  caído, vuelve a la factura con el motivo. La acción «Descargar los PDF (ZIP)» (`download_pdfs`, con `view_invoice`)
+  baja en un ZIP los de las facturas elegidas, cada uno pedido al Hub igual; las que no tienen PDF (emitiéndose o
+  que el Hub no devuelve) se nombran con su motivo en el aviso del admin y en `not-included.txt` dentro del ZIP, y
+  sin ningún PDF no hay ZIP, solo el aviso. `PromoRedemption`, `InvoiceCounter` y `PlanChangeSchedule` se ven en el
+  admin de solo lectura (`ReadOnlyAdmin`): los escriben el cobro, la numeración y el cambio de plan.
 - **Descargas**: el fichero lo pide el SDK (`fetchFile` de `@erplora/ui/sdk`, con su `Accept` y la cookie de
   sesión) y `browser.ts` lo guarda con un enlace del mismo origen solo si la respuesta es ese fichero; no hay
   `fetch` propio (el SPA solo llega al servidor por el SDK, regla de eslint, y `api.call` lee JSON). Sin red, el
@@ -470,21 +487,23 @@ son solo web, y en su lugar se dice, sin enlace, cómo hacerlo desde el navegado
   la tarjeta (`billing.payment_method.get`; si Stripe no contesta, se dice) con su último cobro fallido y «Cambiar
   tarjeta» (solo web); y los datos de facturación (`hubs.billing_profile.get/update` por el primer negocio que paga),
   editables en un diálogo con el formulario de la Tienda y la comprobación en VIES al escribir (`billing.vat_check.run`).
-- **Aviso para `@erplora/ui`**: la `DataTable` mide la columna de acciones por el `scrollWidth` de su caja, que no
-  ve los botones que desbordan hacia el inicio; medida en un momento intermedio, la columna se quedaba estrecha y
-  los botones pisaban el estado. Facturas y Suscripciones lo evitan con una regla `:deep` que no deja encoger la
-  caja (la propia medición de la tabla corrige entonces la columna); `billing.spec.ts` lo vigila («actions over the
-  previous column»). Hay que arreglarlo en la `DataTable` y quitar esas reglas.
+- **La columna de acciones** la mide la propia `DataTable` de `@erplora/ui` (`max-content` hasta medirla y después el
+  ancho de sus botones, `DataTable.actions.test.ts`), sin reglas propias en Facturas ni en Suscripciones;
+  `billing.spec.ts` sigue vigilando que los botones no pisen la columna anterior («actions over the previous column»).
 - **e2e**: `tests/e2e/panel/billing.spec.ts` con `billing_seed.py` (cuatro negocios: facturas pagada y emitida,
   pagada emitiéndose, no cobrada con tarjeta rechazada y no cobrada con fallo blando; Gratis sin facturas).
 
-### Pendiente (L3-C)
+### Estado (L3-C)
 
-- **Carril Hub**: implementar las cuatro rutas `/internal/platform/…` de arriba (módulo `fiscal`, PLAN-HUB bloque
-  6; `Hub.is_platform` no hace falta en el SaaS: la ruta no lleva negocio). Hasta entonces, en local real, las
-  facturas se quedan «emitiéndose» y sin PDF, y una clave live no cobra.
-- **aws-next**: programar `reconcile_platform_invoices` cada 15 min en `scheduler.tf` (`saas-cron`) y dar
-  `PLATFORM_INVOICING_ENABLED` al servicio cuando el Hub tenga sus rutas.
-- **PLAN-SAAS**: escribir como ronda las decisiones fiscales de arriba (número del SaaS, bajadas al final del
-  periodo, VIES al facturar).
-- Una rectificativa anulada en Stripe (`credit_note.voided`) no se trata: pediría otra rectificativa.
+- **Carril Hub**: hecho. El Hub sirve las cuatro rutas `/internal/platform/…` de arriba (`base/internal.py` y la app
+  `invoice`; las facturas del hub de plataforma, VERIFACTU-G10…G14, `ERPlora/hub#133`). `Hub.is_platform` no hace
+  falta en el SaaS: la ruta no lleva negocio.
+- **aws**: `reconcile_platform_invoices` corre cada 15 minutos (`reconcile-platform-invoices`, `saas-cron`).
+  `PLATFORM_INVOICING_ENABLED` sigue en `false` en prod y en pre (`stacks/prod/apps.tf` y `pre_apps.tf`, fijado por
+  `stacks/prod/tests/compute.tftest.hcl`): encenderlo es la transmisión real de las facturas de ERPlora a la AEAT, que
+  queda bajo la supervisión de Ioan (reglas de trabajo §15). Hasta entonces, una clave live no cobra (409
+  `billing.invoicing_unavailable`).
+- **PLAN-SAAS**: las decisiones fiscales de arriba (número del SaaS, bajadas al final del periodo, VIES al facturar)
+  están en PLAN-SAAS §4, «Decidido (2026-10-14, L3-C)»; el cierre de la app, en PLAN-SAAS §13.
+- Una nota de crédito anulada en Stripe (`credit_note.voided`) se trata como dice «Webhook» (BILLING-F26): nunca se
+  vuelve rectificativa y la ya registrada no se toca.

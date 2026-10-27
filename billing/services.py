@@ -2622,6 +2622,29 @@ def purge_webhook_events() -> int:
     return deleted
 
 
+#: The events ERPlora's Stripe endpoint sends to ``/webhooks/stripe/`` (PLAN-SAAS §4): what ``process_stripe_event``
+#: handles, and the one list ``audit_stripe_webhooks`` compares the endpoint with every day (BILLING-F39);
+#: ``billing/README.md`` and ``billing/webhooks.py`` cite it instead of repeating it. ``invoice.payment_succeeded`` is
+#: handled as ``invoice.paid`` but not subscribed: one notice per payment is enough.
+STRIPE_WEBHOOK_EVENTS = (
+    "checkout.session.completed",
+    "checkout.session.async_payment_succeeded",
+    "checkout.session.async_payment_failed",
+    "checkout.session.expired",
+    "invoice.paid",
+    "invoice.payment_failed",
+    "invoice.voided",
+    "invoice.marked_uncollectible",
+    "credit_note.created",
+    "credit_note.voided",
+    "charge.refunded",
+    "customer.subscription.created",
+    "customer.subscription.updated",
+    "customer.subscription.deleted",
+    "customer.updated",
+)
+
+
 def process_stripe_event(event: dict) -> str:
     """Process one signed Stripe event; its outcome (``completed``, ``processed``, ``ignored``, ``unknown``,
     ``invalid``, ``pending``…). Raises when it must be retried (Stripe did not answer a read the event needs)."""
@@ -2641,6 +2664,8 @@ def process_stripe_event(event: dict) -> str:
             return invoice_voided(obj)
         case "credit_note.created":
             return credit_note_created(obj)
+        case "credit_note.voided":
+            return credit_note_voided(obj)
         case "charge.refunded":
             return charge_refunded(obj)
         case "customer.subscription.created" | "customer.subscription.updated":
@@ -4559,12 +4584,41 @@ def credit_note_created(credit_note: dict) -> str:
     original = _issued_invoice(rectified)
     if original is None:
         raise _missing_original(f"Credit note {credit_note.get('id')}", rectified)
+    # The event is a snapshot of when it was created: a note voided since (``credit_note.voided``, possible while its
+    # invoice was open, when this event was still waiting for it) is no rectification, so it is read LIVE.
+    if stripe_service.retrieve_credit_note(credit_note["id"]).get("status") == "void":
+        logger.warning("[INVOICE] Credit note %s was voided in Stripe: no rectifying invoice", credit_note["id"])
+        return "ignored"
     lines = stripe_service.credit_note_lines(credit_note)
     credit_note_record(
         _invoice_ctx(original),
         CreditNoteRecordIn(credit_note={**credit_note, "lines": {"object": "list", "data": lines, "has_more": False}}),
     )
     return "processed"
+
+
+def credit_note_voided(credit_note: dict) -> str:
+    """A credit note voided in Stripe (``credit_note.voided``; BILLING-F26). Stripe voids one only while its invoice is
+    OPEN, and a rectifying invoice is recorded here only for a PAID one, so normally there is none: ``voided``, and its
+    ``credit_note.created`` never records it (read live there). Nothing fiscal is done on its own: a rectifying
+    invoice recorded anyway is never modified (a record sent to the AEAT is corrected with a new one) and the team is
+    told by mail to correct it by hand: ``needs_review``. A mail that cannot leave raises, so Stripe retries it."""
+    from billing import emails
+
+    rectifying = (
+        Invoice.objects.filter(kind=Invoice.Kind.CREDIT_NOTE, stripe_source_id=credit_note.get("id") or "")
+        .only("id", "number", "series", "sequence", "fiscal_status", "rectifies_id", "total_cents")
+        .first()
+    )
+    if rectifying is None:
+        logger.info("[INVOICE] Credit note %s voided in Stripe: it was never a rectifying invoice", credit_note.get("id"))
+        return "voided"
+    logger.error(
+        "[INVOICE] Credit note %s voided in Stripe after it became rectifying invoice %s: correct it by hand",
+        credit_note.get("id"), rectifying.number, extra={"event": "fiscal.credit.voided_after_rectifying"},
+    )
+    emails.send_credit_note_voided(rectifying, credit_note.get("id") or "")
+    return "needs_review"
 
 
 @operation(

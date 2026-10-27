@@ -290,3 +290,90 @@ class TestThePdfForTheStaff:
             assert response.redirect_chain[-1][0] == "/admin/", object_id
             assert "Perhaps it was deleted?" in response.content.decode(), object_id
         assert hub_double.calls_to("GET", "/pdf") == []
+
+
+class TestDownloadThePdfs:
+    """BILLING-F27 (PLAN-SAAS §1.1, admin of ``Invoice``: «Descargar los PDF» in a ZIP). The staff selects invoices and
+    downloads their PDFs at once, each asked of the platform hub as the single download is. One without its PDF (still
+    being issued, or the Hub does not return it) never fails silently: the ZIP carries the others plus a note naming it,
+    and the admin says it; with no PDF at all there is no empty ZIP, only the message."""
+
+    def post(self, client, *invoices):
+        return client.post(
+            "/admin/billing/invoice/",
+            {"action": "download_pdfs", "_selected_action": [str(invoice.pk) for invoice in invoices]},
+        )
+
+    def issued(self, number, sequence):
+        return Invoice.objects.create(
+            stripe_invoice_id=f"in_{sequence}", business_name="Panadería López", payment_status="paid",
+            series="ERP", sequence=sequence, number=number, issued_on=date(2026, 10, sequence),
+            net_cents=2999, tax_cents=630, total_cents=3629, payer_name="Panadería López SL",
+            fiscal_status="accepted",
+        )
+
+    def members(self, response):
+        import io
+        import zipfile
+
+        assert response.status_code == 200
+        assert response["Content-Type"] == "application/zip"
+        assert response["Content-Disposition"].startswith('attachment; filename="invoices-')
+        with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
+            return {name: archive.read(name) for name in archive.namelist()}
+
+    def test_a_reader_of_invoices_has_the_action(self, invoice_admin, rf):
+        from django.contrib.auth.models import Permission
+
+        reader = get_user_model().objects.create_user(email="reader@example.com", password="x", is_staff=True)
+        reader.user_permissions.add(Permission.objects.get(codename="view_invoice"))
+        request = rf.get("/admin/billing/invoice/")
+        request.user = get_user_model().objects.get(pk=reader.pk)
+
+        assert "download_pdfs" in invoice_admin.get_actions(request)
+
+    def test_every_selected_pdf_goes_in_one_zip(self, staff_client, hub_double):
+        first, second = self.issued("ERP-2026-00001", 1), self.issued("ERP-2026-00002", 2)
+        hub_double.answer("GET", rf"/{first.pk}/pdf$", 200, {"pdf": "first"})
+        hub_double.answer("GET", rf"/{second.pk}/pdf$", 200, {"pdf": "second"})
+
+        members = self.members(self.post(staff_client, first, second))
+
+        assert set(members) == {"ERP-2026-00001.pdf", "ERP-2026-00002.pdf"}
+        assert b"first" in members["ERP-2026-00001.pdf"]
+        assert b"second" in members["ERP-2026-00002.pdf"]
+        assert len(hub_double.calls_to("GET", "/pdf")) == 2
+
+    def test_the_ones_without_their_pdf_are_named_not_dropped_silently(self, staff_client, invoice, hub_double):
+        ready, away = self.issued("ERP-2026-00002", 2), self.issued("ERP-2026-00003", 3)
+        hub_double.answer("GET", rf"/{ready.pk}/pdf$", 200, {"pdf": "ready"})
+        hub_double.answer("GET", rf"/{away.pk}/pdf$", 503, {})
+
+        members = self.members(self.post(staff_client, invoice, ready, away))
+
+        assert set(members) == {"ERP-2026-00002.pdf", "not-included.txt"}
+        note = members["not-included.txt"].decode()
+        assert "ERP-2026-00001" in note and "ERP-2026-00003" in note
+        assert "ERP-2026-00002" not in note
+        said = staff_client.get("/admin/billing/invoice/").content.decode()
+        assert "ERP-2026-00001" in said and "ERP-2026-00003" in said
+        assert "were left out of the ZIP" in said
+        assert [call.path for call in hub_double.calls_to("GET", "/pdf")] == [
+            f"/internal/platform/invoices/{ready.pk}/pdf",
+            f"/internal/platform/invoices/{away.pk}/pdf",
+        ]
+
+    def test_with_no_pdf_at_all_there_is_no_empty_zip(self, staff_client, invoice, hub_double):
+        response = self.post(staff_client, invoice)
+
+        assert response.status_code == 302
+        said = staff_client.get(response["Location"]).content.decode()
+        assert "None of the selected invoices has its PDF yet" in said
+        assert "ERP-2026-00001" in said
+        assert hub_double.calls_to("GET", "/pdf") == []
+
+    def test_staff_who_may_not_read_invoices_has_no_action(self, client, invoice, hub_double):
+        client.force_login(get_user_model().objects.create_user(email="other@example.com", password="x", is_staff=True))
+
+        assert self.post(client, invoice).status_code == 403
+        assert hub_double.calls_to("GET", "/pdf") == []
