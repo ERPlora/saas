@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:98f4d3bc5d23888131d473b21e24f533559b2e43f8abb03124f148ea8d6f2a18 -->
+<!-- generated from WORKBOOK.md sha256:03ec8f31ac8280835b4ef3d105704f68ea4254e170f6df85c912490528983698 -->
 
 ## What it is for and who it is for
 
@@ -143,9 +143,9 @@ to upgrade or change it.
 | BILLING-F30 | Use live Stripe keys only in production and test keys elsewhere | done |
 | BILLING-F31 | See the paid apps and their state in each business | done |
 | BILLING-F32 | Subscribe a business to a paid app | done |
-| BILLING-F33 | Cancel a paid app | partial |
+| BILLING-F33 | Cancel a paid app | done |
 | BILLING-F34 | End a paid app at the end of its period | partial |
-| BILLING-F35 | Take a paid app to another business | partial |
+| BILLING-F35 | Take a paid app to another business | done |
 | BILLING-F36 | See an invoice | done |
 | BILLING-F37 | Forget Stripe's notices older than 30 days | done |
 | BILLING-F38 | Read the subscriptions again in Stripe every night and put right what drifted | done |
@@ -622,7 +622,7 @@ Involved: hubs (the business's subscription), the business (receives the app)
 
 ### BILLING-F33 Cancel a paid app
 <!-- origen: old-saas:SAAS_DASHBOARD-F112 gh:saas#2535 gh:saas#2568 gh:saas#2589 -->
-Status: partial — the business does not turn off an app that stopped being paid yet: today every app is on in every business
+Status: done
 Actor: owner who pays
 Screen: Store
 Steps:
@@ -637,7 +637,7 @@ Involved: hubs (the business's subscription), the business (receives until when 
 
 ### BILLING-F34 End a paid app at the end of its period
 <!-- origen: old-saas:SAAS_DASHBOARD-F113 -->
-Status: partial — the business does not turn off the ended app yet: today every app is on in every business
+Status: partial — the business stops having the app that day and has it again when it is bought again, but it is still to be proven that it comes back with its data as it was
 Actor: system
 Screen: Store, Billing › Subscriptions
 Steps:
@@ -651,7 +651,7 @@ Involved: the business (stops receiving the app)
 
 ### BILLING-F35 Take a paid app to another business
 <!-- origen: old-saas:SAAS_DASHBOARD-F114 gh:saas#2589 -->
-Status: partial — it depends on BILLING-F33: the business of origin does not turn the app off yet when it ends
+Status: done
 Actor: owner
 Screen: Store
 Steps:

@@ -1,7 +1,7 @@
 # Workbook — Facturación (billing)
 Prefijo: BILLING
 Alcance MVP: fase 1 (lo que una cuenta paga a ERPlora: planes, módulos, IVA y facturas)
-Estado de la app: en uso (tres flujos parciales: BILLING-F33, BILLING-F34 y BILLING-F35, la parte del Hub que apaga una aplicación de pago)
+Estado de la app: en uso (un flujo parcial: BILLING-F34, falta la prueba en el Hub de que una aplicación de pago vuelve con sus datos al contratarla de nuevo)
 
 > Manual de uso y especificación de la app `billing` del SaaS (erplora.com). Cuenta cómo se paga y se
 > cambia el plan de un negocio, cómo se contratan y se cancelan sus aplicaciones de pago, qué pasa si un
@@ -156,9 +156,9 @@ al propietario, el botón para mejorarlo o cambiarlo.
 | BILLING-F30 | Usar claves reales de Stripe solo en producción y de prueba fuera de ella | hecho |
 | BILLING-F31 | Ver las aplicaciones de pago y su estado en cada negocio | hecho |
 | BILLING-F32 | Contratar una aplicación de pago para un negocio | hecho |
-| BILLING-F33 | Cancelar una aplicación de pago | parcial |
+| BILLING-F33 | Cancelar una aplicación de pago | hecho |
 | BILLING-F34 | Terminar una aplicación de pago al final de su periodo | parcial |
-| BILLING-F35 | Llevar una aplicación de pago a otro negocio | parcial |
+| BILLING-F35 | Llevar una aplicación de pago a otro negocio | hecho |
 | BILLING-F36 | Ver una factura | hecho |
 | BILLING-F37 | Olvidar los avisos de Stripe de más de 30 días | hecho |
 | BILLING-F38 | Releer cada noche las suscripciones en Stripe y corregir lo que se desvió | hecho |
@@ -635,7 +635,7 @@ Implicados: hubs (la suscripción del negocio), el negocio (recibe la aplicació
 
 ### BILLING-F33 Cancelar una aplicación de pago
 <!-- origen: old-saas:SAAS_DASHBOARD-F112 gh:saas#2535 gh:saas#2568 gh:saas#2589 -->
-Estado: parcial — el negocio todavía no apaga una aplicación que dejó de pagarse: hoy todas las aplicaciones están encendidas en todos los negocios
+Estado: hecho
 Actor: propietario que paga
 Pantalla: Tienda
 Pasos:
@@ -650,7 +650,7 @@ Implicados: hubs (la suscripción del negocio), el negocio (recibe hasta cuándo
 
 ### BILLING-F34 Terminar una aplicación de pago al final de su periodo
 <!-- origen: old-saas:SAAS_DASHBOARD-F113 -->
-Estado: parcial — el negocio todavía no apaga la aplicación terminada: hoy todas las aplicaciones están encendidas en todos los negocios
+Estado: parcial — el negocio deja de tener la aplicación ese día y la vuelve a tener al contratarla de nuevo, pero falta probar que vuelve con sus datos como estaba
 Actor: sistema
 Pantalla: Tienda, Facturación › Suscripciones
 Pasos:
@@ -664,7 +664,7 @@ Implicados: el negocio (deja de recibir la aplicación)
 
 ### BILLING-F35 Llevar una aplicación de pago a otro negocio
 <!-- origen: old-saas:SAAS_DASHBOARD-F114 gh:saas#2589 -->
-Estado: parcial — depende de BILLING-F33: el negocio de origen todavía no apaga la aplicación cuando termina
+Estado: hecho
 Actor: propietario
 Pantalla: Tienda
 Pasos:
