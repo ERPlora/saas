@@ -45,10 +45,10 @@ describe('accounts routes.ts', () => {
       ['/2fa', { auth: true, chrome: false }],
       ['/reauthenticate', { auth: true, chrome: false }],
       // Account (round 17, PLAN-SAAS §3.6): one address per section, the footer tabbar follows the route.
-      ['/account', { auth: true }],
-      ['/account/:tab(profile|security|preferences|api-keys)', { auth: true }],
+      ['/dashboard/account', { auth: true }],
+      ['/dashboard/account/:tab(profile|security|preferences|api-keys)', { auth: true }],
       // «Report a problem» of the user menu (ACCOUNTS-F38): the account goes with the report.
-      ['/report-a-problem', { auth: true }],
+      ['/dashboard/report-a-problem', { auth: true }],
     ]);
   });
 
@@ -56,16 +56,16 @@ describe('accounts routes.ts', () => {
     const entry = routes.find((r) => r.path === '/login')!;
     expect(entry.component).toBeUndefined();
     const redirect = entry.redirect as (to: { query: Record<string, string> }) => unknown;
-    expect(redirect({ query: { next: '/account', notice: 'password_reset' } })).toEqual({
+    expect(redirect({ query: { next: '/dashboard/account', notice: 'password_reset' } })).toEqual({
       path: '/launch',
-      query: { next: '/account', notice: 'password_reset' },
+      query: { next: '/dashboard/account', notice: 'password_reset' },
     });
   });
 
   it('opens Account on its Profile, and hands each section its tab as a prop', () => {
-    const entry = routes.find((r) => r.path === '/account')!;
-    expect(entry.redirect).toBe('/account/profile');
-    const page = routes.find((r) => r.path.startsWith('/account/:tab'))!;
+    const entry = routes.find((r) => r.path === '/dashboard/account')!;
+    expect(entry.redirect).toBe('/dashboard/account/profile');
+    const page = routes.find((r) => r.path.startsWith('/dashboard/account/:tab'))!;
     expect(page.props).toBe(true);
   });
 
@@ -83,8 +83,8 @@ describe('accounts routes.ts', () => {
       '/2fa/authenticate': 'TwoFactorAuthenticatePage',
       '/2fa': 'TwoFactorSettingsPage',
       '/reauthenticate': 'ReauthenticatePage',
-      '/account/:tab(profile|security|preferences|api-keys)': 'AccountPage',
-      '/report-a-problem': 'ReportProblemPage',
+      '/dashboard/account/:tab(profile|security|preferences|api-keys)': 'AccountPage',
+      '/dashboard/report-a-problem': 'ReportProblemPage',
     };
     for (const route of routes.filter((r) => !r.redirect)) {
       expect(typeof route.component, route.path).toBe('function');

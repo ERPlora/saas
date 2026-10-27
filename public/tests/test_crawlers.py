@@ -36,6 +36,12 @@ def test_the_private_prefixes_are_those_of_saas_next():
         "/verify-email",
         "/2fa",
         "/reauthenticate",
+        "/dashboard",
+        "/businesses",
+        "/account",
+        "/billing",
+        "/store",
+        "/report-a-problem",
     )
 
 
@@ -68,6 +74,14 @@ def test_the_answer_engines_are_named_one_by_one():
         "/api/nope",
         "/_allauth/nope",
         "/webhooks/stripe/",
+        # The panel's old addresses, now 301s to it (FIX-SAAS-PANEL-UNDER-DASHBOARD-PREFIX): a redirect to the
+        # panel is still a URL a crawler can index, as it was when the SPA answered them.
+        "/businesses",
+        "/account/profile?surface=account",
+        "/store/plans?business=1",
+        "/billing",
+        "/report-a-problem",
+        "/dashboard/",
     ],
 )
 def test_the_private_paths_carry_noindex(client, path):

@@ -129,7 +129,7 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
   test('BILLING-G61: the Store says what each paid app is in the business: had, cancelled, off sale or for sale', async ({ page }) => {
     const errors = watchPageErrors(page);
     const bakery = await businessIdOf(page.request, 'Panadería López');
-    await page.goto(`/store/modules?business=${bakery}`);
+    await page.goto(`/dashboard/store/modules?business=${bakery}`);
     const bookings = page.getByTestId('module-e2e_apps_bookings');
     const reports = page.getByTestId('module-e2e_apps_reports');
     const loyalty = page.getByTestId('module-e2e_apps_loyalty');
@@ -153,7 +153,7 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
       confirmed.push(route.request().postDataJSON());
       await route.fulfill({ json: subscriptionOut(bakery, [{ slug: 'e2e_apps_bookings', valid_until: null }, { slug: 'e2e_apps_loyalty', valid_until: null }]) });
     });
-    await page.goto(`/store/modules?business=${bakery}`);
+    await page.goto(`/dashboard/store/modules?business=${bakery}`);
     const loyalty = page.getByTestId('module-e2e_apps_loyalty');
     await loyalty.getByTestId('module-add').click();
     const dialog = page.getByTestId('proration-modal');
@@ -183,12 +183,12 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
       started.push(route.request().postDataJSON());
       await route.fulfill({ json: { flow: 'checkout', session_id: 'cs_test_e2e_apps', client_secret: 'cs_test_e2e_apps_secret', publishable_key: 'pk_test_e2e', preview: null } });
     });
-    await page.goto(`/store/modules?business=${cafe}`);
+    await page.goto(`/dashboard/store/modules?business=${cafe}`);
     await page.getByTestId('module-e2e_apps_bookings').getByTestId('module-add').click();
     await expect(page.getByTestId('checkout-modal').getByTestId('stripe-double')).toBeVisible();
     expect(started).toEqual([expect.objectContaining({ hub_id: cafe, module: 'e2e_apps_bookings' })]);
     await page.evaluate(() => (window as unknown as { __stripe: { complete: () => void } }).__stripe.complete());
-    await expect(page).toHaveURL(new RegExp(`/businesses/${cafe}/summary$`));
+    await expect(page).toHaveURL(new RegExp(`/dashboard/businesses/${cafe}/summary$`));
     await expect(toast(page, 'E2E Apps Bookings added to Café Central: it turns on in a few seconds')).toBeVisible();
     await atEverySize(page, 'BILLING-G63', async () => {
       await expect(page.getByTestId('summary-plan')).toBeVisible();
@@ -205,7 +205,7 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
       cancelled.push(route.request().postDataJSON());
       await route.fulfill({ json: subscriptionOut(bakery, [{ slug: 'e2e_apps_bookings', valid_until: until }, { slug: 'e2e_apps_reports', valid_until: null }]) });
     });
-    await page.goto(`/store/modules?business=${bakery}`);
+    await page.goto(`/dashboard/store/modules?business=${bakery}`);
     const bookings = page.getByTestId('module-e2e_apps_bookings');
     await bookings.getByTestId('module-cancel').click();
     const dialog = page.getByTestId('store-cancel-module');
@@ -229,7 +229,7 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
   test('BILLING-G67: an app whose cancellation ended is for sale again; one still running says until when', async ({ page }) => {
     const errors = watchPageErrors(page);
     const norte = await businessIdOf(page.request, 'Bar Norte');
-    await page.goto(`/store/modules?business=${norte}`);
+    await page.goto(`/dashboard/store/modules?business=${norte}`);
     await atEverySize(page, 'BILLING-G67', async () => {
       await expect(page.getByTestId('module-e2e_apps_bookings').getByTestId('module-add')).toBeVisible();
       await expect(page.getByTestId('module-e2e_apps_loyalty').getByTestId('module-cancelled')).toContainText('(cancelled)');
@@ -241,10 +241,10 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
     const errors = watchPageErrors(page);
     const bakery = await businessIdOf(page.request, 'Panadería López');
     const norte = await businessIdOf(page.request, 'Bar Norte');
-    await page.goto(`/store/modules?business=${bakery}`);
+    await page.goto(`/dashboard/store/modules?business=${bakery}`);
     await expect(page.getByTestId('module-e2e_apps_bookings').getByTestId('module-cancel')).toBeVisible();
     // The picker chooses the other business: there the same app is on sale.
-    await page.goto(`/store/modules?business=${norte}`);
+    await page.goto(`/dashboard/store/modules?business=${norte}`);
     await atEverySize(page, 'BILLING-G68', async () => {
       await expect(page.getByTestId('store-business')).toHaveJSProperty('value', norte);
       await expect(page.getByTestId('module-e2e_apps_bookings').getByTestId('module-add')).toBeVisible();
@@ -254,13 +254,13 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
 
   test('BILLING-G92: Invoices lists every invoice with «View invoice», and it opens its page', async ({ page }) => {
     const errors = watchPageErrors(page);
-    await page.goto('/billing/invoices');
+    await page.goto('/dashboard/billing/invoices');
     await atEverySize(page, 'BILLING-G92', async () => {
       await expect(page.getByText('ERP-2026-90201').first()).toBeVisible();
     });
     const row = page.locator('[data-testid^="invoices-row-"][data-testid$="-view"]').first();
     await row.click();
-    await expect(page).toHaveURL(/\/billing\/invoices\/[0-9a-f-]+$/);
+    await expect(page).toHaveURL(/\/dashboard\/billing\/invoices\/[0-9a-f-]+$/);
     await expect(page.getByTestId('invoice-title')).toBeVisible();
     expect(errors).toEqual([]);
   });
@@ -270,7 +270,7 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
     const [id, creditId] = djangoPrint(
       'from billing.models import Invoice\nfor number in ("ERP-2026-90201", "ERPR-2026-90007"): print(Invoice.objects.get(number=number).id)',
     ).split('\n');
-    await page.goto(`/billing/invoices/${id}`);
+    await page.goto(`/dashboard/billing/invoices/${id}`);
     await atEverySize(page, 'BILLING-G05', async () => {
       await expect(page.getByTestId('invoice-title')).toHaveText('Invoice ERP-2026-90201');
       await expect(page.getByTestId('invoice-line')).toHaveCount(2);
@@ -278,19 +278,19 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
       await expect(page.getByTestId('invoice-recipient')).toContainText('Panadería López S.L.');
       await expect(page.getByTestId('invoice-pdf')).toBeVisible();
     });
-    await page.goto('/billing/invoices');
+    await page.goto('/dashboard/billing/invoices');
     await page.getByTestId(`invoices-row-${creditId}-view`).click();
     await expect(page.getByTestId('invoice-rectification')).toContainText('Credit note R1 · Duplicate charge');
     await page.getByTestId('invoice-rectified-link').click();
     // Ionic keeps the credit note's page under the invoice's: the one on screen is the last one not hidden.
-    await expect(page).toHaveURL(new RegExp(`/billing/invoices/${id}$`));
+    await expect(page).toHaveURL(new RegExp(`/dashboard/billing/invoices/${id}$`));
     await expect(page.locator('.ion-page:not(.ion-page-hidden)').last().getByTestId('invoice-title')).toHaveText('Invoice ERP-2026-90201');
     expect(errors).toEqual([]);
   });
 
   test('BILLING-G94: Subscriptions says the plan and the paid apps of each business, a cancelled one until when', async ({ page }) => {
     const errors = watchPageErrors(page);
-    await page.goto('/billing/subscriptions');
+    await page.goto('/dashboard/billing/subscriptions');
     await atEverySize(page, 'BILLING-G94', async () => {
       await expect(page.getByText('Bar Norte').first()).toBeVisible();
       await expect(page.getByText(/E2E Apps Reports/).first()).toBeVisible();
@@ -304,7 +304,7 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
   test('BILLING-G95: the plans and their prices, in the Store of a business on Free', async ({ page }) => {
     const errors = watchPageErrors(page);
     const cafe = await businessIdOf(page.request, 'Café Central');
-    await page.goto(`/store/plans?business=${cafe}`);
+    await page.goto(`/dashboard/store/plans?business=${cafe}`);
     await atEverySize(page, 'BILLING-G95', async () => {
       await expect(page.getByTestId('plan-free').getByTestId('plan-current')).toBeVisible();
       await expect(page.getByTestId('plan-starter').getByTestId('plan-upgrade')).toBeVisible();
@@ -321,7 +321,7 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
     await page.route('**/api/billing/checkout/start', (route) =>
       route.fulfill({ json: { flow: 'confirm', session_id: null, client_secret: null, publishable_key: null, preview: { amount_due_cents: 1452, tax_cents: 252, currency: 'eur', proration_date: Math.floor(Date.now() / 1000), charge_starts_at: null } } }),
     );
-    await page.goto(`/store/plans?business=${bakery}`);
+    await page.goto(`/dashboard/store/plans?business=${bakery}`);
     await expect(page.getByTestId('plan-starter').getByTestId('plan-current')).toBeVisible();
     await page.getByTestId('plan-standard').getByTestId('plan-change').click();
     const dialog = page.getByTestId('proration-modal');

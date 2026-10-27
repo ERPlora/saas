@@ -24,7 +24,7 @@ import AuthShell from '../../../accounts/frontend/components/AuthShell.vue';
 import SignInForm from '../../../accounts/frontend/components/SignInForm.vue';
 import { legalHref } from '../../../accounts/frontend/legal';
 import { localNext } from '../../../accounts/frontend/next';
-import { LAUNCHER } from '../../../accounts/frontend/paths';
+import { BUSINESSES, LAUNCHER } from '../../../accounts/frontend/paths';
 import { HubIcon, useSession, useSurface } from '@erplora/ui/shell';
 import { useLive } from '@erplora/ui/sdk';
 import { IonButton, IonProgressBar, IonSpinner, onIonViewWillEnter } from '@ionic/vue';
@@ -45,8 +45,6 @@ import RecoverButton from '../components/RecoverButton.vue';
 import UnpaidActions from '../components/UnpaidActions.vue';
 import { useAcceptInvitation } from '../invitations';
 import { useOpenBusiness } from '../open-business';
-
-const PANEL = '/businesses';
 
 const { t, locale } = useI18n();
 const router = useRouter();
@@ -198,7 +196,7 @@ function decline(it: InvitationOut): void {
   declineOpen.value = true;
 }
 
-const toPanel = () => router.push(PANEL);
+const toPanel = () => router.push(BUSINESSES);
 
 /** Each time the page comes on screen (Ionic reuses it): what its address says, and the tab's name. */
 function entered(): void {
@@ -601,7 +599,7 @@ onIonViewWillEnter(entered);
           class="link-button"
           expand="block"
           fill="clear"
-          @click="router.push({ path: PANEL, query: { create: '1' } })"
+          @click="router.push({ path: BUSINESSES, query: { create: '1' } })"
         >
           <HubIcon
             slot="start"

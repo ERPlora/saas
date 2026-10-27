@@ -49,6 +49,7 @@ from live.operations import operation
 from live.outbox import notify, record_event
 
 from apps.models import Module
+from base.navigation import BILLING, BUSINESSES
 from billing import events, queries, stripe_service, stripe_test_clocks, vat, vies
 from billing.models import (
     CheckoutAttempt,
@@ -1471,7 +1472,7 @@ def _open_checkout(
         "metadata": metadata,
         "subscription_data": subscription_data,
         "redirect_on_completion": "if_required",
-        "return_url": f"{base}/businesses/{hub.id}/summary?checkout={{CHECKOUT_SESSION_ID}}",
+        "return_url": f"{base}{BUSINESSES}/{hub.id}/summary?checkout={{CHECKOUT_SESSION_ID}}",
         "locale": "auto",
         # Without an address there is no country, and without it no tax jurisdiction (saas#1051).
         "billing_address_collection": "required",
@@ -2136,7 +2137,7 @@ def _open_takeover(ctx, hub: Hub, subscription: Subscription, line_items: list[d
             "proration_behavior": "none",
         },
         "redirect_on_completion": "if_required",
-        "return_url": f"{base}/businesses/{hub.id}/summary?checkout={{CHECKOUT_SESSION_ID}}",
+        "return_url": f"{base}{BUSINESSES}/{hub.id}/summary?checkout={{CHECKOUT_SESSION_ID}}",
         "locale": "auto",
         "billing_address_collection": "required",
         "tax_id_collection": {"enabled": False},
@@ -2360,7 +2361,7 @@ def portal_open(ctx: OperationContext, data: PortalOpenIn) -> dict:
     with stripe_errors():
         session = stripe_service.create_portal_session(
             customer,
-            return_url=f"{hub_emails.base_url(ctx.request)}/billing",
+            return_url=f"{hub_emails.base_url(ctx.request)}{BILLING}",
             configuration=settings.STRIPE_PORTAL_CONFIGURATION,
         )
     record_event(ctx, events.PORTAL_OPENED, {"hub_id": str(hub.id)})

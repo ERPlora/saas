@@ -122,7 +122,7 @@ class TestTheEmbeddedCheckout:
         assert params["ui_mode"] == "embedded_page"
         assert params["mode"] == "subscription"
         assert params["redirect_on_completion"] == "if_required"
-        assert "{CHECKOUT_SESSION_ID}" in params["return_url"]
+        assert params["return_url"].endswith(f"/dashboard/businesses/{shop.id}/summary?checkout={{CHECKOUT_SESSION_ID}}")
         assert params["line_items"] == [
             {
                 "price": "price_starter_month",

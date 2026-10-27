@@ -17,6 +17,7 @@ from django.utils.formats import date_format, number_format
 from django.utils.translation import gettext as _
 
 from base.emails import branded_message
+from base.navigation import BILLING
 from billing.money import from_cents
 
 logger = logging.getLogger(__name__)
@@ -69,7 +70,7 @@ def send_invoice_issued(invoice) -> bool:
             _("Total: %(amount)s") % {"amount": _money(invoice.total)},
             "",
             _("Download it from Billing: %(url)s")
-            % {"url": f"https://{settings.PUBLIC_HOST}/billing"},
+            % {"url": f"https://{settings.PUBLIC_HOST}{BILLING}"},
         ]
     try:
         branded_message(subject, lines, [to], language=language).send()
@@ -86,7 +87,7 @@ BUSINESS_SUSPENDED = "billing.business_suspended"
 
 
 def _billing_url(hub) -> str:
-    return f"https://{settings.PUBLIC_HOST}/billing/invoices?business={hub.id}"
+    return f"https://{settings.PUBLIC_HOST}{BILLING}/invoices?business={hub.id}"
 
 
 def _send_notice(notice: str, subject: str, lines: list[str], to: str, *, language: str) -> None:

@@ -19,6 +19,7 @@ from django.utils.translation import gettext as _
 
 from accounts.queries import hub_start_url, receives_business_notices
 from base.emails import branded_message
+from base.navigation import BILLING, BUSINESSES
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +91,7 @@ def send_ownership_offer(transfer, *, base_url: str, paid_until=None) -> bool:
             % {
                 "date": _date(transfer.expires_at),
                 # Answered on Businesses, whose card offers «Accept the ownership» (HUBS-G82).
-                "url": f"{base_url}/businesses",
+                "url": f"{base_url}{BUSINESSES}",
             },
         ]
         if paid_until is not None:
@@ -100,7 +101,7 @@ def send_ownership_offer(transfer, *, base_url: str, paid_until=None) -> bool:
                     "Its paid plan is paid until %(date)s. From then on you pay it with your card: once you accept, "
                     "keep it in Billing › Subscriptions: %(url)s"
                 )
-                % {"date": _date(paid_until), "url": f"{base_url}/billing/subscriptions"},
+                % {"date": _date(paid_until), "url": f"{base_url}{BILLING}/subscriptions"},
             ]
     return _send(subject, lines, transfer.to_email, language)
 
@@ -119,7 +120,7 @@ def send_ownership_accepted(transfer, *, base_url: str, paid_until=None) -> bool
                 "%(who)s accepted the ownership of %(business)s. You stay on it as an administrator."
             )
             % {"who": transfer.to_email, "business": transfer.hub.name},
-            _("See it in your businesses: %(url)s") % {"url": f"{base_url}/businesses/{transfer.hub_id}"},
+            _("See it in your businesses: %(url)s") % {"url": f"{base_url}{BUSINESSES}/{transfer.hub_id}"},
         ]
         if paid_until is not None:
             lines += [
@@ -153,7 +154,7 @@ def send_deletion(hub, owner, *, base_url: str, unpaid: bool = False) -> bool:
             _(
                 "You can recover it until %(date)s from %(url)s. After that date it is erased for good."
             )
-            % {"date": _date(hub.purge_after), "url": f"{base_url}/businesses"},
+            % {"date": _date(hub.purge_after), "url": f"{base_url}{BUSINESSES}"},
         ]
     return _send(subject, lines, owner.email, language)
 
@@ -171,7 +172,7 @@ def send_ready(hub, owner, *, base_url: str) -> bool:
             _("%(business)s is ready: open it and start selling.") % {"business": hub.name},
             "",
             _("Open it: %(url)s") % {"url": hub_start_url(hub.slug)},
-            _("Manage it from the panel: %(url)s") % {"url": f"{base_url}/businesses/{hub.id}"},
+            _("Manage it from the panel: %(url)s") % {"url": f"{base_url}{BUSINESSES}/{hub.id}"},
         ]
     return _send(subject, lines, owner.email, language)
 
@@ -192,7 +193,7 @@ def send_suspension_notice(hub, owner, *, base_url: str, delete_on, final: bool)
             _("If it is not paid, the business will be deleted on %(date)s.") % values,
             _("After that you can still recover it for 90 days, on the Free plan.") % values,
             "",
-            _("Pay it from Billing and it works again at once: %(url)s") % {"url": f"{base_url}/billing/invoices?business={hub.id}"},
+            _("Pay it from Billing and it works again at once: %(url)s") % {"url": f"{base_url}{BILLING}/invoices?business={hub.id}"},
         ]
     return _send(subject, lines, owner.email, language)
 

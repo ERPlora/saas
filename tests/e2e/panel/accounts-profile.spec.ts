@@ -169,7 +169,7 @@ test("ACCOUNTS-G108 (F21): Profile shows the account and keeps the names after a
   const account = createAccount(address("profile"));
   await signIn(page.request, account);
 
-  await page.goto("/account/profile");
+  await page.goto("/dashboard/account/profile");
   await expect(page.getByTestId("profile-email")).toContainText(account.email);
   await page.getByTestId("profile-first-name").locator("input").fill("Lucía");
   await page.getByTestId("profile-last-name").locator("input").fill("Martín");
@@ -193,7 +193,7 @@ test("ACCOUNTS-G114 (F22): Preferences saves the appearance and the language on 
   const account = createAccount(address("preferences"));
   await signIn(page.request, account);
 
-  await page.goto("/account/preferences");
+  await page.goto("/dashboard/account/preferences");
   await page
     .getByTestId("preferences-theme")
     .locator("ion-segment-button", { hasText: "Dark" })
@@ -224,7 +224,7 @@ test("ACCOUNTS-G115 (F23): «Business notices» is the one switch, kept after a 
   const account = createAccount(address("notices"));
   await signIn(page.request, account);
 
-  await page.goto("/account/preferences");
+  await page.goto("/dashboard/account/preferences");
   const mails = page.getByTestId("preferences-mails");
   await expect(mails).toContainText("Security, invoices and payments");
   await expect(mails).toContainText(
@@ -275,7 +275,7 @@ test("ACCOUNTS-G127 (F24): the theme of the user menu is painted at once and kep
   const account = createAccount(address("theme"));
   await signIn(page.request, account);
 
-  await page.goto("/businesses");
+  await page.goto("/dashboard/businesses");
   await openUserMenu(page);
   // The segment's buttons, as the menu lists them: light, dark, system.
   const dark = page
@@ -312,7 +312,7 @@ test("ACCOUNTS-G128 (F25): the user menu has «Account», «Report a problem», 
   const account = createAccount(address("menu"), { firstName: "Marta" });
   await signIn(page.request, account);
 
-  await page.goto("/businesses");
+  await page.goto("/dashboard/businesses");
   await atEverySize(
     page,
     "G128",
@@ -331,7 +331,7 @@ test("ACCOUNTS-G128 (F25): the user menu has «Account», «Report a problem», 
   );
   await openUserMenu(page);
   await page.getByTestId("user-menu-account").click();
-  await expect(page).toHaveURL(/\/account\/profile$/);
+  await expect(page).toHaveURL(/\/dashboard\/account\/profile$/);
   await expect(page.getByTestId("profile-email")).toContainText(account.email);
   expect(errors).toEqual([]);
 });
@@ -346,7 +346,7 @@ test("ACCOUNTS-G111 (F26): «Download my data» saves a JSON with the account, i
   businessWithInvoice(other.email, "Bodega de Bea", 4243);
   await signIn(page.request, account);
 
-  await page.goto("/account/profile");
+  await page.goto("/dashboard/account/profile");
   const card = page.getByTestId("profile-export-card");
   await expect(card).toContainText(
     "A copy of your account, your businesses and your ERPlora invoices, in a file other apps can read.",
@@ -385,7 +385,7 @@ test("ACCOUNTS-G112 (F27): an owner is told to hand over its business first; wit
   businessWithInvoice(account.email, "Café de Ana", 4244);
   await signIn(page.request, account);
 
-  await page.goto("/account/profile");
+  await page.goto("/dashboard/account/profile");
   const danger = page.getByTestId("profile-danger");
   await expect(danger).toContainText(
     "You own 1 business: transfer or delete it before deleting your account.",
@@ -428,7 +428,7 @@ test("ACCOUNTS-G112 (F27): an owner is told to hand over its business first; wit
     .locator("input")
     .fill(account.email);
   await page.getByTestId("delete-account-submit").click();
-  await expect(page).not.toHaveURL(/\/account/);
+  await expect(page).not.toHaveURL(/\/dashboard\/account/);
   expect(readBack(account.email, "user is None")).toBe("True");
   expect(
     djangoPrint(

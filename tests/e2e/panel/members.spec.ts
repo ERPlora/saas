@@ -1,4 +1,4 @@
-// Members (`/businesses/<id>/members`, mockups `business.html` «members», round 17 §2.7–2.8) in Ioan's
+// Members (`/dashboard/businesses/<id>/members`, mockups `business.html` «members», round 17 §2.7–2.8) in Ioan's
 // Chrome, the «Hecho L1» flow of docs/plans/2026-10-13-panel-saas-unificado.md: the owner of Panadería
 // López invites an address with no account through «Invite»; the row is a pending invitation with
 // the actions the server allows; the invited person, in a browser of their own, follows the links of
@@ -162,7 +162,7 @@ test.describe('members', () => {
     const errors = watchPageErrors(page);
     await signIn(page.request, panelAccount('several'));
     const id = await businessIdOf(page.request, 'Panadería López');
-    await page.goto(`/businesses/${id}/members`);
+    await page.goto(`/dashboard/businesses/${id}/members`);
     const rows = page.getByTestId('members-row');
     const count = page.locator('.data-table__pager-count');
     await expect(rows).toHaveCount(5);
@@ -298,7 +298,7 @@ test.describe('members', () => {
       });
       expect(invited.status(), await invited.text()).toBe(200);
     }
-    await page.goto(`/businesses/${id}/members`);
+    await page.goto(`/dashboard/businesses/${id}/members`);
     const seats = page.getByTestId('members-seats');
     await expect(seats).toHaveText(`${limit - 1} of ${limit} places on the plan`);
 
@@ -372,7 +372,7 @@ test.describe('members', () => {
     if (!oldOwner) throw new Error('the old owner is not in hubs.member.list');
     expect(oldOwner.role).toBe('hub_admin');
     expect(oldOwner.actions).toContain('remove');
-    await carlos.goto(`/businesses/${id}/members`);
+    await carlos.goto(`/dashboard/businesses/${id}/members`);
     const dialog = carlos.getByTestId('remove-dialog');
     const refusal = carlos.getByTestId('remove-dialog-error');
     for (const size of [

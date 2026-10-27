@@ -15,7 +15,7 @@ test.afterAll(() => seedPanel('clear'));
 test('create → Preparing → the Hub reports it ready → Ready', async ({ page }) => {
   const errors = watchPageErrors(page);
   await signIn(page.request, panelAccount('creator'));
-  await page.goto('/businesses');
+  await page.goto('/dashboard/businesses');
   await expect(page.getByTestId('businesses-empty')).toContainText('Create your first business');
 
   await page.getByTestId('create-name').locator('input').fill('Pastelería Dulce E2E');

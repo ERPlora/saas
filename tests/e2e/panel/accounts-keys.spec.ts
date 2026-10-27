@@ -156,7 +156,7 @@ test('ACCOUNTS-G105 · G13 · the API documentation: for signed-in accounts, fro
   await expect(page.locator('#redoc-ui')).toContainText('/api/accounts/api-keys');
 
   // From Account › API keys: the link opens it beside the panel.
-  await page.goto('/account/api-keys');
+  await page.goto('/dashboard/account/api-keys');
   const [docs] = await Promise.all([context.waitForEvent('page'), page.getByTestId('api-keys-docs').click()]);
   const docsErrors = watchPageErrors(docs);
   const consoleErrors: string[] = [];

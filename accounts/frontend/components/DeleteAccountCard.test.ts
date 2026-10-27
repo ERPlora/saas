@@ -67,9 +67,9 @@ describe('DeleteAccountCard', () => {
     expect(s.q('profile-danger')?.querySelector('ul, li')).toBeNull();
     const links = [...document.querySelectorAll('[data-testid="profile-danger-business"]')];
     expect(links.map((a) => [a.textContent?.trim(), a.getAttribute('href')])).toEqual([
-      ['Panadería López', '/businesses/b1/settings'],
-      ['Café Central', '/businesses/b2/settings'],
-      ['Bar La Plaza', '/businesses/b6/settings'],
+      ['Panadería López', '/dashboard/businesses/b1/settings'],
+      ['Café Central', '/dashboard/businesses/b2/settings'],
+      ['Bar La Plaza', '/dashboard/businesses/b6/settings'],
     ]);
     expect(ionProps(s.q('profile-delete'), 'disabled')).toEqual({ disabled: true });
   });

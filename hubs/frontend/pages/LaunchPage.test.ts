@@ -274,7 +274,7 @@ describe('LaunchPage: the first time (no business)', () => {
     expect(s.testid('launch-foot').text()).toBe('Invited? The invitation shows up here if you sign in with the email it was sent to.');
     await s.testid('launch-panel').trigger('click');
     await flush();
-    expect(s.router.currentRoute.value.path).toBe('/businesses');
+    expect(s.router.currentRoute.value.path).toBe('/dashboard/businesses');
   });
 
   it('after creating it, shows its preparation and opens it by itself once it is ready', async () => {
@@ -523,7 +523,7 @@ describe('LaunchPage: several businesses', () => {
     const s = await showing(page(ROWS));
     await s.testid('launch-create-another').trigger('click');
     await flush();
-    expect(s.router.currentRoute.value.fullPath).toBe('/businesses?create=1');
+    expect(s.router.currentRoute.value.fullPath).toBe('/dashboard/businesses?create=1');
   });
 
   it('points to a pending invitation above the businesses', async () => {

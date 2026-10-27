@@ -233,15 +233,15 @@ test('ACCOUNTS-G100 · from a business, an erplora.com page opens with the sessi
   const ana = createAccount(address('back'));
 
   // Signed out (another browser, or the session ended): the sign-in, then the page the business linked to.
-  await page.goto('/account/security');
-  expect(await nextOfTheSignIn(page)).toBe('/account/security');
+  await page.goto('/dashboard/account/security');
+  expect(await nextOfTheSignIn(page)).toBe('/dashboard/account/security');
   await signInThroughPage(page, ana);
-  await expect(page).toHaveURL('/account/security');
+  await expect(page).toHaveURL('/dashboard/account/security');
 
   // Signed in on erplora.com (the browser came from it to the business): straight in, no password again.
-  await page.goto('/account/profile');
+  await page.goto('/dashboard/account/profile');
   await atEverySize(page, 'ACCOUNTS-G100', async () => {
-    await expect(page).toHaveURL('/account/profile');
+    await expect(page).toHaveURL('/dashboard/account/profile');
     await expect(page.getByRole('heading', { name: 'Your details' })).toBeVisible();
   });
   expect(errors).toEqual([]);
@@ -254,9 +254,9 @@ test('ACCOUNTS-G113 · the app opens the account on its own: its old address, th
   const ana = createAccount(address('app'));
 
   await page.goto('/dashboard/profile/?surface=account');
-  expect(await nextOfTheSignIn(page)).toBe('/account/profile?surface=account');
+  expect(await nextOfTheSignIn(page)).toBe('/dashboard/account/profile?surface=account');
   await signInThroughPage(page, ana);
-  await expect(page).toHaveURL('/account/profile?surface=account');
+  await expect(page).toHaveURL('/dashboard/account/profile?surface=account');
 
   await atEverySize(page, 'ACCOUNTS-G113', async () => {
     await expect(page.getByRole('heading', { name: 'Your details' })).toBeVisible();
@@ -265,7 +265,7 @@ test('ACCOUNTS-G113 · the app opens the account on its own: its old address, th
     await expect(menuItem(page, 'Businesses')).toHaveCount(1);
   });
   // Without the mark (the browser's own panel) the Store is in the menu: the check above can fail.
-  await page.goto('/account/profile?surface=web');
+  await page.goto('/dashboard/account/profile?surface=web');
   await expect(page.getByRole('heading', { name: 'Your details' })).toBeVisible();
   await expect(menuItem(page, 'Store')).toHaveCount(1);
   expect(errors).toEqual([]);

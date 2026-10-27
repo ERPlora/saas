@@ -112,7 +112,7 @@ test('HUBS-G73: the owner renames the business in «General»; an empty name is 
   test.skip(!!process.env.E2E_REAL_HUB, NO_HUB);
   const errors = watchPageErrors(page);
   const { id } = await ownerOf(page, 'rename', 'Bar Manolo');
-  await page.goto(`/businesses/${id}/settings`);
+  await page.goto(`/dashboard/businesses/${id}/settings`);
   const general = shown(page).getByTestId('settings-general');
   await atEverySize(page, 'HUBS-G73', async () => {
     await expect(general.getByTestId('settings-name')).toBeVisible();
@@ -133,7 +133,7 @@ test('HUBS-G74: the owner moves the business to another web address; the old one
   const errors = watchPageErrors(page);
   const { id, slug } = await ownerOf(page, 'address', 'Bar Manolo');
   const wanted = `${slug}-nuevo`;
-  await page.goto(`/businesses/${id}/settings`);
+  await page.goto(`/dashboard/businesses/${id}/settings`);
   const general = shown(page).getByTestId('settings-general');
   await general.getByTestId('settings-change-address').click();
   const dialog = page.getByTestId('address-dialog');
@@ -163,7 +163,7 @@ test('HUBS-G74: the owner moves the business to another web address; the old one
 test('HUBS-G88 + HUBS-G22: the owner deletes the business typing its name, then recovers it', async ({ page }) => {
   const errors = watchPageErrors(page);
   const { id } = await ownerOf(page, 'delete', 'Bar Manolo');
-  await page.goto(`/businesses/${id}/settings`);
+  await page.goto(`/dashboard/businesses/${id}/settings`);
   const danger = shown(page).getByTestId('danger-zone');
   await danger.getByTestId('danger-delete').click();
   const dialog = page.getByTestId('delete-dialog');
@@ -198,7 +198,7 @@ test('HUBS-G90: the Summary says the business’s status, its plan and the usage
       '    s3_bytes=900 * 1024 * 1024, db_bytes=0, active_users_1d=2, active_users_30d=3)',
     ].join('\n'),
   );
-  await page.goto(`/businesses/${id}/summary`);
+  await page.goto(`/dashboard/businesses/${id}/summary`);
   const usage = shown(page).getByTestId('summary-usage');
   await expect(shown(page).getByTestId('representation')).toBeVisible();
   // One stream with all the page shows: the business and its authorisation to file invoices (a Spanish business).
@@ -271,7 +271,7 @@ test.describe('against the real Hub', () => {
     const { id, slug } = await signedUpWith(page, 'real', 'Taberna Hub Real E2E');
     await expect.poll(() => status(id), { timeout: 30_000 }).toBe('active');
     expect(inTheHub(id)).toBe(`${slug} Taberna Hub Real E2E`);
-    await page.goto(`/businesses/${id}/settings`);
+    await page.goto(`/dashboard/businesses/${id}/settings`);
     const general = shown(page).getByTestId('settings-general');
     await typeInto(page, 'settings-name', 'Bodegon Hub Real E2E');
     await general.getByTestId('settings-save').click();
@@ -283,7 +283,7 @@ test.describe('against the real Hub', () => {
     await dialog.getByTestId('address-dialog-submit').click();
     await expect(page.getByText(`The business now opens at ${wanted}.`)).toBeVisible();
     await expect.poll(() => inTheHub(id), { timeout: 30_000 }).toBe(`${wanted} Bodegon Hub Real E2E`);
-    await page.goto('/businesses');
+    await page.goto('/dashboard/businesses');
     await shown(page)
       .getByTestId('businesses-row')
       .filter({ hasText: 'Bodegon Hub Real E2E' })

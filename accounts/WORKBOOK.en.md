@@ -720,10 +720,10 @@ Involved: hubs (the businesses that hold the account), billing (the invoices tha
 ### ACCOUNTS-F36 See who changed an account
 Status: done
 Actor: ERPlora superuser (or a team member allowed to see the log)
-Screen: erplora.com's admin › «Audit log»
+Screen: erplora.com's admin › "Audit log"
 Steps:
 1. Every change to an account (name, email, language, whether it is active, whether it is staff), to its access to a business and to its API keys (creating one, revoking it), every session that opens and every change to what is charged and to the fiscal documentation (a business's subscription and its paid apps, its payer, its invoices and their VeriFactu state, a failed charge, a purchase in progress, a plan change waiting, the prices of the plans and of the apps, the VAT rules, ERPlora's details on the invoices, the promo codes, a business's signed authorisation and its review, and ERPlora's stamp) is written down: what changed, from which value to which, when, who did it and from which address.
-2. The superuser opens «Audit log» in the admin, filters by resource type or searches by email, and opens an entry to see its changes.
+2. The superuser opens "Audit log" in the admin, filters by resource type or searches by email, and opens an entry to see its changes.
 3. Nobody can create, change or delete an entry by hand: they are only read.
 In: the changes to the accounts, to what is charged and to the fiscal documentation, made from the panel, with an API key, from the admin, by erplora.com's tasks or by Stripe when it charges.
 Out: one entry per change, naming whoever acted at that moment (the account with the open session or the owner of the API key; nobody in an erplora.com task or after signing out) and the visitor's real address, never the one its browser claims.
@@ -747,12 +747,12 @@ Status: done
 Actor: any person with an account
 Screen: Report a problem
 Steps:
-1. In the **User menu**, «Report a problem» (also in the account opened from the app). The screen says «Tell us what went wrong. We will reply by email.».
-2. They write «Subject» and «What happened?» («Describe the steps and what you expected to happen») and press «Send report», which waits until both are written. Below, the screen warns: «Your account, your businesses, the page you came from and your browser go with your report.».
-3. They see «Report sent», with the email support will answer to, and «Back», which leads to the screen they came from.
+1. In the **User menu**, "Report a problem" (also in the account opened from the app). The screen says "Tell us what went wrong. We will reply by email.".
+2. They write "Subject" and "What happened?" ("Describe the steps and what you expected to happen") and press "Send report", which waits until both are written. Below, the screen warns: "Your account, your businesses, the page you came from and your browser go with your report.".
+3. They see "Report sent", with the email support will answer to, and "Back", which leads to the screen they came from.
 In: the subject and what happened.
 Out: a mail to the support mailbox with the subject, the text and, below, the account, its businesses, the screen they came from and their browser; when answering, support writes straight to the person. Nothing is kept on erplora.com and no ticket is opened.
-If it fails: «Add a subject.» or «Describe the problem, please.» under its field; after five reports in an hour, «Too many attempts. Please try again in a few minutes.»; if the mail cannot leave, a notice with the support address to write to directly. In every case what was written stays and can be sent again.
+If it fails: "Add a subject." or "Describe the problem, please." under its field; after five reports in an hour, "Too many attempts. Please try again in a few minutes."; if the mail cannot leave, a notice with the support address to write to directly. In every case what was written stays and can be sent again.
 Involved: none
 
 ### ACCOUNTS-F39 Let each page load only what is erplora.com's
@@ -794,7 +794,7 @@ Steps:
 4. It charges in euros: the plans and Stripe use that currency and there is no other to choose.
 In: the settings of the deployment's environment.
 Out: the service running; nothing kept.
-If it fails: without a mandatory key (the fiscal documents' one in production) it does not start and says which one is missing. With the cache down, the brakes let requests through and everything keeps working. With the database down, the liveness check keeps answering and the «ready» one warns.
+If it fails: without a mandatory key (the fiscal documents' one in production) it does not start and says which one is missing. With the cache down, the brakes let requests through and everything keeps working. With the database down, the liveness check keeps answering and the "ready" one warns.
 Involved: none
 
 ### ACCOUNTS-F42 Show an error page
@@ -802,10 +802,10 @@ Status: done
 Actor: anyone
 Screen: Error page, erplora.com's admin
 Steps:
-1. Whoever reaches an address of the public web that does not exist sees «Page not found» and «The page you are looking for does not exist or has moved.», with the web's menu and footer and «Back to the home page».
-2. In the private part (the account, the entrance) they see «We couldn't find this page», with «Home» and «Contact Support».
-3. If erplora.com fails, the public web shows «Something went wrong» and «Something went wrong on our side. Please try again in a few minutes.»; the private part, «Something went wrong on our end». Both in the visitor's language.
-4. The staff sees the admin with ERPlora's name: «ERPlora Cloud» at the top and «Administration» on its front page.
+1. Whoever reaches an address of the public web that does not exist sees "Page not found" and "The page you are looking for does not exist or has moved.", with the web's menu and footer and "Back to the home page".
+2. In the private part (the account, the entrance) they see "We couldn't find this page", with "Home" and "Contact Support".
+3. If erplora.com fails, the public web shows "Something went wrong" and "Something went wrong on our side. Please try again in a few minutes."; the private part, "Something went wrong on our end". Both in the visitor's language.
+4. The staff sees the admin with ERPlora's name: "ERPlora Cloud" at the top and "Administration" on its front page.
 In: the address asked for and the visitor's language.
 Out: the error page; nothing kept. A program connected through the API gets the error in its format, never the page.
 If it fails: the failure page is painted even with the database down: it reads nothing from it.
@@ -816,13 +816,13 @@ Status: done
 Actor: ERPlora superuser; any visitor
 Screen: admin › Site settings, Maintenance page
 Steps:
-1. A superuser opens «Site settings» in the admin (always the same record: there is no other to create or delete), ticks «maintenance mode» and, if they want, writes the «message in English» and the «message in Spanish».
-2. On saving, the admin says «Maintenance mode is on: only the ERPlora staff with a session uses erplora.com.».
-3. From then on, whoever visits erplora.com sees «We will be back soon» with «We are improving ERPlora. Come back in a few minutes; your data is safe.» (or the staff's message, in their language), «Retry» and «Contact Support»; search engines understand the web is back soon.
+1. A superuser opens "Site settings" in the admin (always the same record: there is no other to create or delete), ticks "maintenance mode" and, if they want, writes the "message in English" and the "message in Spanish".
+2. On saving, the admin says "Maintenance mode is on: only the ERPlora staff with a session uses erplora.com.".
+3. From then on, whoever visits erplora.com sees "We will be back soon" with "We are improving ERPlora. Come back in a few minutes; your data is safe." (or the staff's message, in their language), "Retry" and "Contact Support"; search engines understand the web is back soon.
 4. The staff with its session open keeps using everything, and a staff member without one signs in through the **Entrance** on the way to the admin, also with the code of their authenticator app.
-5. On unticking it, the admin says «Maintenance mode is off: erplora.com is open to everyone.» and everyone gets in again.
+5. On unticking it, the admin says "Maintenance mode is off: erplora.com is open to everyone." and everyone gets in again.
 In: the switch and the two messages.
-Out: the switch saved, which every server of erplora.com applies at once (and, if the notice were lost, within a minute at most). The liveness checks, the admin, the businesses' calls and Stripe's and Meta's notices keep working. A program connected through the API gets «ERPlora is under maintenance. Try again in a few minutes.».
+Out: the switch saved, which every server of erplora.com applies at once (and, if the notice were lost, within a minute at most). The liveness checks, the admin, the businesses' calls and Stripe's and Meta's notices keep working. A program connected through the API gets "ERPlora is under maintenance. Try again in a few minutes.".
 If it fails: if the switch cannot be read (the database down), erplora.com stays open and the log says why. The staff's message is shown as text, never as code. An API key does not count as a staff session, nor does a deactivated staff account.
 Involved: hubs (their calls keep working), billing (Stripe's notices keep working), whatsapp (Meta's notices keep working)
 
@@ -831,7 +831,7 @@ Status: done
 Actor: system
 Screen: none (a daily task of erplora.com)
 Steps:
-1. Once a day, erplora.com deletes the expired sessions, the «Active sessions» rows whose session no longer exists (with their address and their browser), the one-time codes of the jump to a business past their 60 seconds and the email changes whose code is past its 15 minutes.
+1. Once a day, erplora.com deletes the expired sessions, the "Active sessions" rows whose session no longer exists (with their address and their browser), the one-time codes of the jump to a business past their 60 seconds and the email changes whose code is past its 15 minutes.
 2. What is still valid stays: no open session and no code still valid changes.
 3. Like erplora.com's other tasks, the infrastructure's clock runs it at its time; a task that fails leaves its error in sight of the team and runs again on its next turn.
 In: the expiry date of each session and of each code.
@@ -858,7 +858,7 @@ Actor: system
 Screen: none
 Steps:
 1. Something in erplora.com has to tell a person: a code, a link, an invitation, an invoice, a change in their business.
-2. The email carries ERPlora's brand, the same in all of them: the coloured stripe on top, the logo, the text and the footer «Sent by ERPlora» with the link to erplora.com. A code stands alone, in its box, and the links can be clicked.
+2. The email carries ERPlora's brand, the same in all of them: the coloured stripe on top, the logo, the text and the footer "Sent by ERPlora" with the link to erplora.com. A code stands alone, in its box, and the links can be clicked.
 3. Each email comes in two versions that say the same, formatted and as text, so it reads in any mail program, and in the language of whoever gets it; the ERPlora team's (reported problems, the contact form, authorisations to review), in the team's.
 4. Only the logo is downloaded from the email, from erplora.com: nothing else is asked of another website.
 5. The email leaves from ERPlora's address through AWS's mail service.
@@ -873,14 +873,14 @@ Status: done
 Actor: any person with an account
 Screen: Panel menu
 Steps:
-1. The panel's menu has «Businesses», «Store», «Billing» and «Account»; at the top, the person's card opens the **User menu** (ACCOUNTS-F25), and at the bottom is ERPlora's logo.
+1. The panel's menu has "Businesses", "Store", "Billing" and "Account"; at the top, the person's card opens the **User menu** (ACCOUNTS-F25), and at the bottom is ERPlora's logo.
 2. On a wide screen the menu is always in sight; on a tablet or a phone it opens with the menu button of the top bar.
 3. Each entry opens its page without reloading the panel and is marked as the current one.
 4. The pages outside the panel (the entrance, the error pages, the maintenance page) use the person's theme, or their browser's if they have not signed in.
 In: the session.
 Out: nothing kept.
 If it fails: without a session, the **Entrance**, which goes back to the page after signing in.
-Involved: hubs («Businesses»), billing («Store» and «Billing»)
+Involved: hubs ("Businesses"), billing ("Store" and "Billing")
 
 ### ACCOUNTS-F48 Pass erplora.com's master QA
 Status: partial — what the QA asks for and is still missing is already a partial flow of its app: the exit package when a business is deleted and the measure of its use (hubs), the distance-selling threshold in the EU (billing), deleting what was created inside a demo (public) and opening the drawer on payment (printing, in the Hub); a business's people, invitations and roles come with their port in hubs
@@ -892,6 +892,6 @@ Steps:
 3. It checks the billing: the invoices with their VAT (also the reverse charge within the EU), the promo codes that give trial days and the return to Free when the subscription ends.
 4. On a real business, it sells and checks that the receipt comes with its QR, signed for the AEAT in its test environment, and that it prints.
 In: the pre environment and test accounts.
-Out: each point of the QA, with the flow that covers it and its automated test in the browser; what makes no sense on today's platform stays out with its reason (see «For whoever maintains it»).
+Out: each point of the QA, with the flow that covers it and its automated test in the browser; what makes no sense on today's platform stays out with its reason (see "For whoever maintains it").
 If it fails: a point no flow covers is a QA failure and is noted in the app that owns it.
 Involved: hubs, billing, public, apps and fiscal; in the Hub, verifactu, invoice and printing

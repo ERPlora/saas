@@ -280,7 +280,7 @@ test('HUBS-G78: the owner invites a person from «Team»; the invitation waits w
   const owner = account('invite-owner', 'Olga', 'Ruiz');
   const id = await businessOf(page, owner, 'Bar Manolo');
   const invitee = `${PREFIX}invitee-${Date.now()}@example.com`;
-  await page.goto(`/businesses/${id}/members`);
+  await page.goto(`/dashboard/businesses/${id}/members`);
   const rows = shown(page).getByTestId('members-row');
   await expect(rows).toHaveCount(1);
 
@@ -363,7 +363,7 @@ test('HUBS-G80: the owner changes the role of a person; the Hub hears it and end
   const member = await rowOf(page, id, ana.email);
   expect(member.actions).toEqual(['change_role', 'remove', 'transfer']);
 
-  await page.goto(`/businesses/${id}/members`);
+  await page.goto(`/dashboard/businesses/${id}/members`);
   await shown(page).getByTestId(`members-row-${member.id}-change_role`).click();
   const modal = page.getByTestId('role-modal');
   await atEverySize(page, 'HUBS-G80', async () => {
@@ -404,7 +404,7 @@ test('HUBS-G81 + HUBS-G64: the owner removes a person; the Hub gets a snapshot w
   const member = await rowOf(page, id, ana.email);
   await expect.poll(() => roleInLastSnapshot(hub, id, ana.email)).toBe('hub_employee');
 
-  await page.goto(`/businesses/${id}/members`);
+  await page.goto(`/dashboard/businesses/${id}/members`);
   await shown(page).getByTestId(`members-row-${member.id}-remove`).click();
   const dialog = page.getByTestId('remove-dialog');
   await atEverySize(page, 'HUBS-G81', async () => {
@@ -447,7 +447,7 @@ test('HUBS-G82: the owner offers the business to a member, who accepts it on Bus
   await joins(page, browser, id, carlos, 'hub_admin');
   const member = await rowOf(page, id, carlos.email);
 
-  await page.goto(`/businesses/${id}/members`);
+  await page.goto(`/dashboard/businesses/${id}/members`);
   await shown(page).getByTestId(`members-row-${member.id}-menu`).click();
   await page.locator('ion-popover.data-table__row-menu').getByTestId(`members-row-${member.id}-transfer`).click();
   const dialog = page.getByTestId('transfer-dialog');
@@ -466,7 +466,7 @@ test('HUBS-G82: the owner offers the business to a member, who accepts it on Bus
   expect(again.status()).toBe(409);
 
   // Carlos follows the mail's link: Businesses, with the offer on top.
-  const link = await waitForMail(carlos.email, offeredAt, new RegExp(`${PANEL}/businesses(?=\\s|$)`, 'm'));
+  const link = await waitForMail(carlos.email, offeredAt, new RegExp(`${PANEL}/dashboard/businesses(?=\\s|$)`, 'm'));
   const { context, page: theirs, errors: theirErrors } = await browserOf(browser, carlos);
   await theirs.goto(link);
   const offer = shown(theirs).locator('[data-testid^="businesses-offer-"]');
@@ -482,7 +482,7 @@ test('HUBS-G82: the owner offers the business to a member, who accepts it on Bus
   const roles = Object.fromEntries((await membersOf(theirs, id)).map((one) => [one.email, one.role]));
   expect(roles).toEqual({ [owner.email]: 'hub_admin', [carlos.email]: 'hub_owner' });
   await expect.poll(() => roleInLastSnapshot(hub, id, carlos.email)).toBe('hub_owner');
-  await waitForMail(owner.email, acceptedAt, new RegExp(`${PANEL}/businesses/${id}(?=\\s|$)`, 'm'));
+  await waitForMail(owner.email, acceptedAt, new RegExp(`${PANEL}/dashboard/businesses/${id}(?=\\s|$)`, 'm'));
   await context.close();
   expect(theirErrors).toEqual([]);
   expect(errors).toEqual([]);
@@ -533,7 +533,7 @@ test('HUBS-G82 (F28): a business handed over on a paid plan: the new owner keeps
     opened.push(route.request().postDataJSON());
     await route.fulfill({ json: { flow: 'checkout', session_id: 'cs_test_e2e_keep', client_secret: 'cs_test_e2e_keep_secret', publishable_key: 'pk_test_e2e', preview: null } });
   });
-  await theirs.goto('/billing/subscriptions');
+  await theirs.goto('/dashboard/billing/subscriptions');
   const lead = shown(theirs).getByTestId(`subscriptions-row-${id}-lead`);
   await atEverySize(theirs, 'HUBS-G82-keep-plan', async () => {
     await expect(lead).toHaveText('Keep it with my card');
@@ -557,7 +557,7 @@ test('HUBS-G82 (F28): a business handed over on a paid plan: the new owner keeps
   expect(opened).toEqual([{ hub_id: id }]);
   await theirs.evaluate(() => (window as unknown as { __stripe: { complete?: () => void } }).__stripe.complete?.());
   await expect(theirs.locator('ion-toast').filter({ hasText: /^Bar Manolo keeps Starter: your card pays it from / })).toBeVisible();
-  await expect(theirs).toHaveURL(new RegExp(`/businesses/${id}/summary`));
+  await expect(theirs).toHaveURL(new RegExp(`/dashboard/businesses/${id}/summary`));
 
   // Stripe tells the checkout completed (the webhook): the business moves to his card, Olga's subscription ends now.
   withStripe([
@@ -568,7 +568,7 @@ test('HUBS-G82 (F28): a business handed over on a paid plan: the new owner keeps
     `assert services.checkout_completed({"id": "cs_test_e2e_keep", "mode": "subscription", "payment_status": "no_payment_required", "status": "complete", "subscription": "${newSub}", "customer": "${newCustomer}", "metadata": {"kind": "plan_takeover", "hub_id": "${id}", "replaces": "${oldSub}"}}) == "completed"`,
     `assert [call.args for call in double.calls_to("subscriptions.cancel")] == [("${oldSub}",)], double.paths()`,
   ]);
-  await theirs.goto('/billing/subscriptions');
+  await theirs.goto('/dashboard/billing/subscriptions');
   await expect(lead).toHaveText('Change plan');
   await expect(shown(theirs).getByTestId('subscription-paid-by-another')).toHaveCount(0);
   await atEverySize(theirs, 'HUBS-G82-kept', async () => {
@@ -605,7 +605,7 @@ test('HUBS-G82 (F28), in Spanish: «Mantenerlo con mi tarjeta» and the secure p
   const offered = await apiPost(page.request, '/api/hubs/ownership/transfer', { hub_id: id, member_id: member.id });
   expect(offered.status(), await offered.text()).toBe(200);
   // The offer of a paid business says until when it is paid and where she keeps it: her mail, in Spanish.
-  await waitForMail(lucia.email, offeredAt, new RegExp(`${PANEL}/billing/subscriptions(?=\\s|$)`, 'm'));
+  await waitForMail(lucia.email, offeredAt, new RegExp(`${PANEL}/dashboard/billing/subscriptions(?=\\s|$)`, 'm'));
   await paintMail(browser, 'HUBS-G82-offer-mail-es', lucia.email, offeredAt, 'quiere traspasarte Bar Manolo', 'es');
   withStripe([
     'from django.contrib.auth import get_user_model',
@@ -625,7 +625,7 @@ test('HUBS-G82 (F28), in Spanish: «Mantenerlo con mi tarjeta» and the secure p
   await theirs.route('**/api/billing/plan/take-over', (route) =>
     route.fulfill({ json: { flow: 'checkout', session_id: 'cs_test_e2e_es', client_secret: 'cs_test_e2e_es_secret', publishable_key: 'pk_test_e2e', preview: null } }),
   );
-  await theirs.goto('/billing/subscriptions');
+  await theirs.goto('/dashboard/billing/subscriptions');
   const lead = shown(theirs).getByTestId(`subscriptions-row-${id}-lead`);
   await atEverySize(theirs, 'HUBS-G82-keep-plan-es', async () => {
     await expect(lead).toHaveText('Mantenerlo con mi tarjeta');
@@ -660,7 +660,7 @@ test('HUBS-G83: «Team» lists the people of a business, with their role, status
   const invited = await apiPost(page.request, '/api/hubs/members/invite', { hub_id: id, email: pending, role: 'hub_employee', message: '' });
   expect(invited.status(), await invited.text()).toBe(200);
 
-  await page.goto(`/businesses/${id}/members`);
+  await page.goto(`/dashboard/businesses/${id}/members`);
   const tab = shown(page);
   const rows = tab.getByTestId('members-row');
   await atEverySize(page, 'HUBS-G83', async () => {
@@ -678,7 +678,7 @@ test('HUBS-G83: «Team» lists the people of a business, with their role, status
   const { context, page: theirs, errors: theirErrors } = await browserOf(browser, marta);
   const refused = await theirs.request.get(`/api/hubs/members?hub_id=${id}&limit=50&offset=0`);
   expect(refused.status()).toBe(403);
-  await theirs.goto(`/businesses/${id}/members`);
+  await theirs.goto(`/dashboard/businesses/${id}/members`);
   await expect(shown(theirs)).toContainText('You do not have permission to manage this business');
   await expect(shown(theirs).getByTestId('members-row')).toHaveCount(0);
   await context.close();

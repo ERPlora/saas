@@ -25,6 +25,7 @@ import { computed, nextTick, onBeforeUnmount, shallowRef, useTemplateRef, watch 
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
+import { BUSINESSES } from '../../../accounts/frontend/paths';
 import { useErrorText } from '../../../hubs/frontend/error-text';
 import type { BillingInterval, BillingProfileOut } from '../../../frontend/sdk-types';
 import { formatDate } from '../format';
@@ -248,7 +249,7 @@ async function complete(): Promise<void> {
         : t('billing.checkout.module', { module: purchase.name, business: props.business.name }),
   );
   // «Paying…» stays on screen until the business's page takes over.
-  await router.push(`/businesses/${props.business.id}/summary`);
+  await router.push(`${BUSINESSES}/${props.business.id}/summary`);
   attempt += 1;
   open.value = false;
 }

@@ -1,4 +1,4 @@
-// Businesses (`/businesses`, mockups `businesses.html`) in Ioan's Chrome: the account's businesses in
+// Businesses (`/dashboard/businesses`, mockups `businesses.html`) in Ioan's Chrome: the account's businesses in
 // the DataTable with their statuses, the banners of what waits (an invitation, an unpaid invoice), the
 // cards on a phone, «Manage» into a business's page and its four sections, and «Delete» → «Recover».
 import { type Page } from '@playwright/test';
@@ -33,7 +33,7 @@ test.afterAll(() => seedPanel('clear'));
 test('lists the businesses with their status, plan and role, and what waits above them', async ({ page }) => {
   const errors = watchPageErrors(page);
   await signIn(page.request, panelAccount('several'));
-  await page.goto('/businesses');
+  await page.goto('/dashboard/businesses');
   const rows = page.getByTestId('businesses-row');
   await expect(rows).toHaveCount(4);
   await expect(rows.first()).toContainText('Panadería López');
@@ -51,7 +51,7 @@ test('lists the businesses with their status, plan and role, and what waits abov
 test('on a phone the businesses are cards, with their actions', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await signIn(page.request, panelAccount('several'));
-  await page.goto('/businesses');
+  await page.goto('/dashboard/businesses');
   await expect(page.locator('.data-table__card').first()).toContainText('Panadería López');
   await expect(page.locator('.data-table__card')).toHaveCount(4);
 });
@@ -59,9 +59,9 @@ test('on a phone the businesses are cards, with their actions', async ({ page })
 test('«Manage» opens the business’s page, whose tabbar walks its four sections', async ({ page }) => {
   const errors = watchPageErrors(page);
   await signIn(page.request, panelAccount('several'));
-  await page.goto('/businesses');
+  await page.goto('/dashboard/businesses');
   await page.getByTestId('businesses-row').first().locator('[data-testid$="-manage"]').click();
-  await expect(page).toHaveURL(/\/businesses\/[0-9a-f-]+\/summary$/);
+  await expect(page).toHaveURL(/\/dashboard\/businesses\/[0-9a-f-]+\/summary$/);
   await expect(page.getByTestId('business-header')).toContainText('Panadería López');
   await expect(page.getByTestId('summary-plan')).toContainText('Starter');
   // The apps Starter turns on at once (its `max_apps`), as /pricing/'s table says it (saas#121).
@@ -85,7 +85,7 @@ test('«Manage» opens the business’s page, whose tabbar walks its four sectio
 test('«Delete» lives in the business’s Settings and asks for the name; deleted, «Recover» brings it back', async ({ page }) => {
   const errors = watchPageErrors(page);
   await signIn(page.request, panelAccount('several'));
-  await page.goto('/businesses');
+  await page.goto('/dashboard/businesses');
   const cafe = page.getByTestId('businesses-row').filter({ hasText: 'Café Central' });
   await expect(cafe.locator('[data-testid$="-delete"]')).toHaveCount(0);
   await cafe.locator('[data-testid$="-manage"]').click();
@@ -100,7 +100,7 @@ test('«Delete» lives in the business’s Settings and asks for the name; delet
   await expect(page.getByTestId('business-deleted')).toContainText('It will be erased for good on');
   await page.getByTestId('business-restore').click();
   await expect(page.getByTestId('business-deleted')).toHaveCount(0);
-  await page.goto('/businesses');
+  await page.goto('/dashboard/businesses');
   await expect(cafe).toContainText('Preparing');
   expect(errors).toEqual([]);
 });
@@ -112,7 +112,7 @@ test('«Delete» lives in the business’s Settings and asks for the name; delet
 test('Businesses opens its live stream once, with everything the page shows', async ({ page }) => {
   const streams = watchLiveStreams(page);
   await signIn(page.request, panelAccount('several'));
-  await page.goto('/businesses');
+  await page.goto('/dashboard/businesses');
   await expect(page.getByTestId('businesses-row')).toHaveCount(4);
   await page.waitForTimeout(QUIET_MS);
   expect({ opened: streams.opened, failed: [...streams.failed] }).toEqual({
@@ -129,7 +129,7 @@ for (const { width, height } of VIEWPORTS) {
     const errors = watchPageErrors(page);
     await signIn(page.request, panelAccount('several'));
     const id = await businessIdOf(page.request, 'Panadería López');
-    await page.goto(`/businesses/${id}/members`);
+    await page.goto(`/dashboard/businesses/${id}/members`);
     await expect(page.getByTestId('members-row').or(page.locator('.data-table__card'))).toHaveCount(5);
     await expect(page.getByTestId('business-header')).toContainText('Panadería López');
     await page.waitForTimeout(QUIET_MS);

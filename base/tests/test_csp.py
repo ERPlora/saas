@@ -100,7 +100,7 @@ class TestThePolicy:
 @pytest.mark.usefixtures("spa_manifest")
 class TestTheSpaPage:
     def test_the_spa_admits_stripe_with_its_nonce(self, client):
-        response = client.get("/store/plans", HTTP_HOST=HOST)
+        response = client.get("/dashboard/store/plans", HTTP_HOST=HOST)
 
         header = directives(response["Content-Security-Policy"])
         assert "https://js.stripe.com" in header["script-src"]
@@ -113,14 +113,14 @@ class TestTheSpaPage:
     def test_production_keeps_trusted_types_with_the_page_s_own_policies(self, client, settings):
         settings.SECURE_CSP = base_policy()
 
-        header = directives(client.get("/store/plans", HTTP_HOST=HOST)["Content-Security-Policy"])
+        header = directives(client.get("/dashboard/store/plans", HTTP_HOST=HOST)["Content-Security-Policy"])
 
         assert "'script'" in header["require-trusted-types-for"]
         assert header["trusted-types"] == base_policy()["trusted-types"]
         assert "erplora-stripe-js" not in header["trusted-types"]
 
     def test_the_account_surface_sells_nothing_and_admits_no_stripe(self, client):
-        response = client.get("/account?surface=account", HTTP_HOST=HOST)
+        response = client.get("/dashboard/account?surface=account", HTTP_HOST=HOST)
 
         assert "stripe.com" not in response["Content-Security-Policy"]
 

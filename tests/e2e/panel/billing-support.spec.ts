@@ -100,7 +100,7 @@ test.describe('billing part 3: the screens of the old pricing, payment, billing 
   test('BILLING-G19: the plans of the Store, with their monthly and their annual price', async ({ page }) => {
     const errors = watchPageErrors(page);
     const cafe = await businessIdOf(page.request, 'Café Central');
-    await page.goto(`/store/plans?business=${cafe}`);
+    await page.goto(`/dashboard/store/plans?business=${cafe}`);
     const starter = page.getByTestId('plan-starter');
     await expect(starter.getByTestId('plan-upgrade')).toBeVisible();
     const monthly = (await starter.getByTestId('plan-price').innerText()).trim();
@@ -118,11 +118,11 @@ test.describe('billing part 3: the screens of the old pricing, payment, billing 
     await playStripe(page);
     const cafe = await businessIdOf(page.request, 'Café Central');
     await page.route('**/api/billing/checkout/start', (route) => route.fulfill({ json: CHECKOUT }));
-    await page.goto(`/store/plans?business=${cafe}`);
+    await page.goto(`/dashboard/store/plans?business=${cafe}`);
     await page.getByTestId('plan-starter').getByTestId('plan-upgrade').click();
     await expect(page.getByTestId('checkout-modal').getByTestId('stripe-double')).toBeVisible();
     await page.evaluate(() => (window as unknown as { __stripe: { complete: () => void } }).__stripe.complete());
-    await expect(page).toHaveURL(new RegExp(`/businesses/${cafe}/summary$`));
+    await expect(page).toHaveURL(new RegExp(`/dashboard/businesses/${cafe}/summary$`));
     await expect(toast(page, 'Café Central is now on Starter')).toBeVisible();
     await atEverySize(page, 'BILLING-G20', async () => {
       await expect(page.getByTestId('summary-plan')).toBeVisible();
@@ -139,7 +139,7 @@ test.describe('billing part 3: the screens of the old pricing, payment, billing 
       started.push(route.request().postDataJSON());
       await route.fulfill({ json: CHECKOUT });
     });
-    await page.goto(`/store/plans?business=${cafe}`);
+    await page.goto(`/dashboard/store/plans?business=${cafe}`);
     const upgrade = page.getByTestId('plan-starter').getByTestId('plan-upgrade');
     const dialog = page.getByTestId('checkout-modal');
     await upgrade.click();
@@ -166,7 +166,7 @@ test.describe('billing part 3: the screens of the old pricing, payment, billing 
 
   test('BILLING-G26: the billing details are edited and saved, for the next invoices', async ({ page }) => {
     const errors = watchPageErrors(page);
-    await page.goto('/billing/payment');
+    await page.goto('/dashboard/billing/payment');
     await expect(page.getByTestId('profile-name')).toHaveText('Panadería López S.L.');
     await page.getByTestId('profile-edit').click();
     await atEverySize(
@@ -209,7 +209,7 @@ test.describe('billing part 3: the screens of the old pricing, payment, billing 
       opened.push(route.request().postDataJSON());
       await route.fulfill({ json: { url: 'https://billing.stripe.com/p/session/e2e' } });
     });
-    await page.goto('/billing/payment');
+    await page.goto('/dashboard/billing/payment');
     const change = page.getByTestId('payment-change');
     await atEverySize(page, 'BILLING-G27', async () => {
       await expect(page.getByTestId('payment-card')).toHaveText('Visa •••• 4242');
@@ -230,7 +230,7 @@ test.describe('billing part 3: the screens of the old pricing, payment, billing 
       started.push(route.request().postDataJSON());
       await route.fulfill({ json: CHECKOUT });
     });
-    await page.goto(`/store/modules?business=${cafe}`);
+    await page.goto(`/dashboard/store/modules?business=${cafe}`);
     await page.getByTestId('module-e2e_apps_bookings').getByTestId('module-add').click();
     const dialog = page.getByTestId('checkout-modal');
     await atEverySize(

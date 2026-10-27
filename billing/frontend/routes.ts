@@ -8,33 +8,33 @@ import type { RouteRecordRaw } from 'vue-router';
 
 const routes: RouteRecordRaw[] = [
   {
-    path: '/store',
-    redirect: (to) => ({ path: '/store/plans', query: to.query }),
+    path: '/dashboard/store',
+    redirect: (to) => ({ path: '/dashboard/store/plans', query: to.query }),
     meta: { auth: true },
   },
   {
     // One address per section (the footer tabbar follows it); `?business=` is the business it sells to.
-    path: '/store/:tab(plans|modules)',
+    path: '/dashboard/store/:tab(plans|modules)',
     component: () => import('./pages/StorePage.vue'),
     props: true,
     meta: { auth: true },
   },
   {
     // Billing (lot L3-C; round 17 §2.7): what the account pays ERPlora. Not selling, so on every surface; the
-    // menu and Stripe's Customer Portal come back to `/billing`, which opens Invoices keeping the query.
-    path: '/billing',
-    redirect: (to) => ({ path: '/billing/invoices', query: to.query }),
+    // menu and Stripe's Customer Portal come back to `/dashboard/billing`, which opens Invoices keeping the query.
+    path: '/dashboard/billing',
+    redirect: (to) => ({ path: '/dashboard/billing/invoices', query: to.query }),
     meta: { auth: true },
   },
   {
-    path: '/billing/:tab(invoices|subscriptions|payment)',
+    path: '/dashboard/billing/:tab(invoices|subscriptions|payment)',
     component: () => import('./pages/BillingPage.vue'),
     props: true,
     meta: { auth: true },
   },
   {
     // One invoice (BILLING-G05): its lines, totals and recipient; Back returns to Invoices. Not selling either.
-    path: '/billing/invoices/:id',
+    path: '/dashboard/billing/invoices/:id',
     component: () => import('./pages/InvoicePage.vue'),
     props: true,
     meta: { auth: true },

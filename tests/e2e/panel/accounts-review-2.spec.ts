@@ -129,7 +129,7 @@ for (const { lang, locale } of LANGUAGES) {
       ownBusiness(account.email, 'Panadería de Lucía');
       await signIn(page.request, account);
 
-      await page.goto('/businesses');
+      await page.goto('/dashboard/businesses');
       await review(page, lang, 'ACCOUNTS-F47', async () => {
         await closeOverlays(page);
         await openMenu(page);
@@ -150,7 +150,7 @@ for (const { lang, locale } of LANGUAGES) {
       await closeOverlays(page);
 
       // An owner is held: the card names its business and «Delete account» is off.
-      await page.goto('/account/profile');
+      await page.goto('/dashboard/account/profile');
       await review(page, lang, 'ACCOUNTS-F26-F27-held', async () => {
         await expect(page.getByTestId('profile-export-card')).toContainText(t(lang, 'accounts.account.export.lead'));
         await expect(page.getByTestId('profile-export')).toHaveText(t(lang, 'accounts.account.export.download'));
@@ -178,7 +178,7 @@ for (const { lang, locale } of LANGUAGES) {
       await closeOverlays(page);
 
       // The account on its own, as the installed app opens it: nothing that sells.
-      await page.goto('/account/profile?surface=account');
+      await page.goto('/dashboard/account/profile?surface=account');
       await review(page, lang, 'ACCOUNTS-F30', async () => {
         await closeOverlays(page);
         await openMenu(page);
@@ -194,7 +194,7 @@ for (const { lang, locale } of LANGUAGES) {
       const account = createAccount(address('keys', lang), lang);
       await signIn(page.request, account);
 
-      await page.goto('/account/api-keys');
+      await page.goto('/dashboard/account/api-keys');
       await review(page, lang, 'ACCOUNTS-F31-empty', async () => {
         await expect(page.getByTestId('api-keys-empty')).toContainText(t(lang, 'accounts.account.keys.empty'));
         await expect(page.getByTestId('api-keys-docs')).toHaveText(t(lang, 'accounts.account.keys.docs'));
@@ -378,10 +378,10 @@ for (const { lang, locale } of LANGUAGES) {
       const account = createAccount(address('report', lang), lang);
       await signIn(page.request, account);
 
-      await page.goto('/account/security');
+      await page.goto('/dashboard/account/security');
       await openUserMenu(page);
       await page.getByTestId('user-menu-report').click();
-      await expect(page).toHaveURL(/\/report-a-problem/);
+      await expect(page).toHaveURL(/\/dashboard\/report-a-problem/);
       await review(page, lang, 'ACCOUNTS-F38-form', async () => {
         await expect(page.getByTestId('report-intro')).toHaveText(t(lang, 'accounts.report.intro'));
         await expect(page.getByTestId('report-context')).toContainText(t(lang, 'accounts.report.context'));
@@ -395,7 +395,7 @@ for (const { lang, locale } of LANGUAGES) {
         await expect(page.getByTestId('report-sent')).toContainText(account.email);
       });
       await page.getByTestId('report-back').click();
-      await expect(page).toHaveURL(/\/account\/security$/);
+      await expect(page).toHaveURL(/\/dashboard\/account\/security$/);
       expect(errors).toEqual([]);
     });
   });

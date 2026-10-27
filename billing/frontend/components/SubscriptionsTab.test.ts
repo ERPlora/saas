@@ -192,15 +192,15 @@ describe('SubscriptionsTab: the list', () => {
     await s.show();
     await s.testid('subscriptions-row-bakery-lead').trigger('click');
     await flush();
-    expect(s.router.currentRoute.value.fullPath).toBe('/store/plans?business=bakery');
+    expect(s.router.currentRoute.value.fullPath).toBe('/dashboard/store/plans?business=bakery');
     await s.testid('subscriptions-row-bakery-menu').trigger('click');
     await flush();
     await s.testid('subscriptions-row-bakery-view_invoices_menu').trigger('click');
     await flush();
-    expect(s.router.currentRoute.value.fullPath).toBe('/billing/invoices?business=bakery');
+    expect(s.router.currentRoute.value.fullPath).toBe('/dashboard/billing/invoices?business=bakery');
     await s.testid('subscriptions-row-plaza-lead').trigger('click');
     await flush();
-    expect(s.router.currentRoute.value.fullPath).toBe('/billing/invoices?business=plaza&status=open');
+    expect(s.router.currentRoute.value.fullPath).toBe('/dashboard/billing/invoices?business=plaza&status=open');
   });
 
   it('the list fills the page between the topbar and the tabbar: rows scroll inside, toolbar and footer stay', async () => {
@@ -291,7 +291,7 @@ describe('SubscriptionsTab: the list', () => {
     await s.show([]);
     expect(s.testid('subscriptions-empty').text()).toContain('All your businesses are on Free');
     expect(s.testid('subscriptions-empty').text()).toContain('Without a paid plan there is no subscription and nothing is charged.');
-    expect(s.testid('subscriptions-empty-plans').attributes('routerlink')).toBe('/store/plans');
+    expect(s.testid('subscriptions-empty-plans').attributes('routerlink')).toBe('/dashboard/store/plans');
   });
 
   it('speaks Spanish', async () => {

@@ -42,7 +42,7 @@ test('first time: the sign-up card, with «Go to the panel» and where an invita
     'Invited? The invitation shows up here if you sign in with the email it was sent to.',
   );
   await page.getByTestId('launch-panel').click();
-  await expect(page).toHaveURL(/\/businesses$/);
+  await expect(page).toHaveURL(/\/dashboard\/businesses$/);
   expect(errors).toEqual([]);
 });
 
@@ -87,7 +87,7 @@ test('several businesses: the last opened first, why one does not open, and the 
   await expect(cafe.getByTestId('launch-open')).toHaveAttribute('aria-disabled', 'true');
   await expect(page.getByTestId('launch-invitation')).toContainText('You have been invited to Bar Norte');
   await page.getByTestId('launch-create-another').click();
-  await expect(page).toHaveURL(/\/businesses$/);
+  await expect(page).toHaveURL(/\/dashboard\/businesses$/);
   // Café Central fills its one Free business: the dialog says so before any form (audit 2 S-02).
   await expect(page.getByTestId('create-free-limit')).toContainText('yours is Café Central');
   expect(errors).toEqual([]);

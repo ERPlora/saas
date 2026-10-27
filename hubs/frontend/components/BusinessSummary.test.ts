@@ -128,7 +128,7 @@ describe('BusinessSummary', () => {
     const s = await setup();
     const store = s.card('summary-plan').find('[data-testid="summary-plan-store"]');
     expect(store.text()).toBe('Upgrade plan');
-    expect(store.attributes('routerlink')).toBe('/store/plans?business=h1');
+    expect(store.attributes('routerlink')).toBe('/dashboard/store/plans?business=h1');
   });
 
   it('a paid plan is changed in the Store', async () => {

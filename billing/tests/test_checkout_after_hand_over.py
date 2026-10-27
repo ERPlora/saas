@@ -141,7 +141,7 @@ class TestAPaymentOfSomebodyWhoNoLongerOwnsIt:
         (message,) = [message for message in mail.outbox if message.to == [owner.email]]
         assert shop.name in message.subject
         assert "36,29 €" in message.body
-        assert "/billing/invoices" in message.body
+        assert "/dashboard/billing/invoices" in message.body
         assert message.alternatives, "branded: text and HTML"
 
     def test_a_redelivery_ends_and_refunds_nothing_twice(self, shop, owner, heir, stripe_double):

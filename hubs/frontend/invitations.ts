@@ -8,6 +8,7 @@ import { shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
+import { BUSINESSES } from '../../accounts/frontend/paths';
 import type { InvitationOut } from '../../frontend/sdk-types';
 import { useErrorText } from './error-text';
 import { useOpenBusiness } from './open-business';
@@ -34,7 +35,7 @@ export function useAcceptInvitation() {
     void toastSuccess(t('hubs.invitation.accepted', { name: business.name }));
     if (business.can_open && (await open(business))) return;
     accepting.value = null;
-    await router.push('/businesses');
+    await router.push(BUSINESSES);
   }
 
   return { accept, accepting, error: command.error };

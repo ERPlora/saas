@@ -43,21 +43,21 @@ def surface_of(client, path: str):
 
 
 def test_the_web_has_no_surface_and_writes_no_session(client, settings):
-    response = client.get("/businesses", HTTP_HOST=HOST)
+    response = client.get("/dashboard/businesses", HTTP_HOST=HOST)
 
     assert "surface" not in spa_config(response)
     assert settings.SESSION_COOKIE_NAME not in response.cookies
 
 
 def test_the_query_marks_the_account_surface(client):
-    assert surface_of(client, "/businesses?surface=account") == "account"
+    assert surface_of(client, "/dashboard/businesses?surface=account") == "account"
 
 
 def test_the_mark_sticks_to_the_session(client):
-    surface_of(client, "/account?surface=account")
+    surface_of(client, "/dashboard/account?surface=account")
 
-    assert surface_of(client, "/businesses") == "account"
-    assert surface_of(client, "/billing") == "account"
+    assert surface_of(client, "/dashboard/businesses") == "account"
+    assert surface_of(client, "/dashboard/billing") == "account"
 
 
 def test_the_mark_survives_signing_in(client, ana, password):
@@ -67,27 +67,27 @@ def test_the_mark_survives_signing_in(client, ana, password):
 
     sign_in(client, ana.email, password)
 
-    assert surface_of(client, "/account") == "account"
+    assert surface_of(client, "/dashboard/account") == "account"
 
 
 @pytest.mark.parametrize("other", ["web", "desktop", "nonsense", ""])
 def test_any_other_surface_leaves_it(client, other):
-    surface_of(client, "/account?surface=account")
+    surface_of(client, "/dashboard/account?surface=account")
 
-    assert surface_of(client, f"/account?surface={other}") == "absent"
-    assert surface_of(client, "/account") == "absent"
+    assert surface_of(client, f"/dashboard/account?surface={other}") == "absent"
+    assert surface_of(client, "/dashboard/account") == "absent"
 
 
 def test_signing_out_ends_it(client, ana, password):
     sign_in(client, ana.email, password)
-    surface_of(client, "/account?surface=account")
+    surface_of(client, "/dashboard/account?surface=account")
 
     signed_out = client.delete(SESSION, HTTP_HOST=HOST)
 
     assert signed_out.status_code == 401  # allauth.headless answers the anonymous state
-    assert surface_of(client, "/account") == "absent"
+    assert surface_of(client, "/dashboard/account") == "absent"
 
 
 def test_only_the_account_surface_is_kept(client):
     """The other surfaces are the shell's to detect (the Tauri bridge, the user agent, the query)."""
-    assert surface_of(client, "/account?surface=mobile") == "absent"
+    assert surface_of(client, "/dashboard/account?surface=mobile") == "absent"

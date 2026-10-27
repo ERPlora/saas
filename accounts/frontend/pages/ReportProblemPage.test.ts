@@ -1,4 +1,4 @@
-// «Report a problem» (`/report-a-problem`, the user menu; ACCOUNTS-F38): «Subject» and «What happened?», «Send report»,
+// «Report a problem» (`/dashboard/report-a-problem`, the user menu; ACCOUNTS-F38): «Subject» and «What happened?», «Send report»,
 // and «Report sent» with the address support answers to. The account, its businesses, the page the person came from
 // and the browser go with it on their own (the screen says so). A refusal keeps what was typed: per field (422) under
 // its field, the rest (the limit, a mail that could not leave, no network) above «Send report».
@@ -14,10 +14,10 @@ afterEach(() => {
 
 type Api = Parameters<typeof mountPanel>[1] extends infer O ? (O extends { api?: infer A } ? A : never) : never;
 
-/** The page, opened from `/businesses` (the page the report says the person came from), on the panel's history. */
+/** The page, opened from `/dashboard/businesses` (the page the report says the person came from), on the panel's history. */
 async function open(api: Api = () => Response.json({ reply_to: 'laura@example.com' }), locale: 'en' | 'es' = 'en') {
-  const s = await mountPanel(ReportProblemPage, { path: '/businesses', api, locale, history: createWebHistory() });
-  await s.router.push('/report-a-problem');
+  const s = await mountPanel(ReportProblemPage, { path: '/dashboard/businesses', api, locale, history: createWebHistory() });
+  await s.router.push('/dashboard/report-a-problem');
   await flush();
   return s;
 }
@@ -74,7 +74,7 @@ describe('ReportProblemPage', () => {
       {
         method: 'POST',
         path: '/api/accounts/support/report',
-        body: { subject: 'The printer stops', description: 'Nothing prints.', page: '/businesses' },
+        body: { subject: 'The printer stops', description: 'Nothing prints.', page: '/dashboard/businesses' },
       },
     ]);
     expect(s.q('report-subject')).toBeNull();
@@ -94,7 +94,7 @@ describe('ReportProblemPage', () => {
     await flush();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(s.router.currentRoute.value.path).toBe('/businesses');
+    expect(s.router.currentRoute.value.path).toBe('/dashboard/businesses');
   });
 
   it('a field refused by the server is said under it, and what was typed stays', async () => {

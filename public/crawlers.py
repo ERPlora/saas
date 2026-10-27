@@ -54,8 +54,9 @@ def private_prefixes() -> tuple[str, ...]:
     sign-in pages of the SPA (``accounts/frontend/routes.ts``, the pages allauth's mails link
     included). Without a trailing slash where the SPA serves the bare path (``/launch``, ``/login``…),
     each covering the pages under it (``/login/error``, ``/password/reset/key/…``,
-    ``/2fa/authenticate``). Any other page of the SPA is private too: :func:`is_private` recognises
-    its route.
+    ``/2fa/authenticate``), and the panel (``/dashboard``) with its old addresses at the root
+    (``/businesses``, ``/account``…), 301s to it. Any other page of the SPA is private too:
+    :func:`is_private` recognises its route.
     """
     return (
         "/admin/",
@@ -73,6 +74,14 @@ def private_prefixes() -> tuple[str, ...]:
         "/verify-email",
         "/2fa",
         "/reauthenticate",
+        # The panel (FIX-SAAS-PANEL-UNDER-DASHBOARD-PREFIX) and its old addresses at the root, 301s to it: a
+        # redirect to the panel is a URL a crawler can index too, as the pages were when the SPA answered them.
+        "/dashboard",
+        "/businesses",
+        "/account",
+        "/billing",
+        "/store",
+        "/report-a-problem",
     )
 
 

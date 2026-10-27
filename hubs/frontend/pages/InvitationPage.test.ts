@@ -99,7 +99,7 @@ describe('InvitationPage', () => {
     expect(s.testid('invitation-expired').text()).toContain('Ask whoever invited you to send it again, to the email you sign in with: laura@example.com.');
     await s.testid('invitation-panel').trigger('click');
     await flush();
-    expect(s.router.currentRoute.value.path).toBe('/businesses');
+    expect(s.router.currentRoute.value.path).toBe('/dashboard/businesses');
     await s.testid('invitation-create-own').trigger('click');
     await flush();
     expect(s.router.currentRoute.value.path).toBe('/launch');

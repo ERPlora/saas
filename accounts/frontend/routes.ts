@@ -45,7 +45,8 @@ const routes: RouteRecordRaw[] = [
     meta: { auth: false },
   },
   {
-    // The 2FA settings (authenticator app, recovery codes), in the auth frame as the launcher.
+    // The 2FA settings (authenticator app, recovery codes), in the auth frame as the launcher: not the panel's (no
+    // menu), so at the root with the sign-in's pages (FIX-SAAS-PANEL-UNDER-DASHBOARD-PREFIX).
     path: '/2fa',
     component: () => import('./pages/TwoFactorSettingsPage.vue'),
     meta: { auth: true, chrome: false },
@@ -58,13 +59,13 @@ const routes: RouteRecordRaw[] = [
   },
   {
     // Account (round 17, PLAN-SAAS §3.6): the user menu and the side menu land on its Profile.
-    path: '/account',
-    redirect: '/account/profile',
+    path: '/dashboard/account',
+    redirect: '/dashboard/account/profile',
     meta: { auth: true },
   },
   {
     // One address per section of Account: the footer tabbar follows the route.
-    path: '/account/:tab(profile|security|preferences|api-keys)',
+    path: '/dashboard/account/:tab(profile|security|preferences|api-keys)',
     component: () => import('./pages/AccountPage.vue'),
     // Ionic keeps one view per URL and hands it its params once: no reactive route to go stale.
     props: true,
@@ -72,7 +73,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     // «Report a problem» of the user menu (ACCOUNTS-F38): the account, its businesses and the browser go with it.
-    path: '/report-a-problem',
+    path: '/dashboard/report-a-problem',
     component: () => import('./pages/ReportProblemPage.vue'),
     meta: { auth: true },
   },

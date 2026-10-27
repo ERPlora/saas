@@ -163,7 +163,7 @@ test.describe('the second factor (the panel with ACCOUNTS_MFA_ENABLED on)', () =
     const account = createAccount(address('setup'));
     const used = new Set<string>();
     await signIn(page.request, account);
-    await page.goto('/account/security');
+    await page.goto('/dashboard/account/security');
     await expect(page.getByTestId('two-factor-state')).toHaveText('Off');
     await page.getByTestId('two-factor-manage').click();
     await expect(page).toHaveURL(/\/2fa$/);
@@ -193,7 +193,7 @@ test.describe('the second factor (the panel with ACCOUNTS_MFA_ENABLED on)', () =
     await signIn(page.request, account);
     await page.goto('/2fa');
     await setUpTheApp(page, used);
-    await page.goto('/account/security');
+    await page.goto('/dashboard/account/security');
     await expect(page.getByTestId('two-factor-state')).toHaveText('On');
     await expect(page.getByTestId('two-factor-manage')).toContainText('Manage');
     await atEverySize(page, 'G116', async () => {
@@ -360,7 +360,7 @@ test.describe('the open sessions (the panel as production has it)', () => {
     try {
       await signIn(phone.request, account);
       await signIn(tablet.request, account);
-      await page.goto('/account/security');
+      await page.goto('/dashboard/account/security');
       const rows = page.getByTestId('sessions-row');
       await expect(rows).toHaveCount(3);
       await expect(rows.first()).toContainText('This session');
