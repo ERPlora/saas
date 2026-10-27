@@ -26,6 +26,7 @@ from django.utils import translation
 from django.utils.translation import gettext as _
 
 from base.emails import branded_message
+from base.navigation import BUSINESSES
 from fiscal.models import RepresentationGrant
 from fiscal.queries import step_to_announce
 
@@ -76,7 +77,7 @@ def _tell_the_desk(grant: RepresentationGrant) -> None:
 
 def _tell_the_business(grant: RepresentationGrant, person) -> None:
     business = grant.hub.name
-    panel = f"{_site()}/businesses/{grant.hub_id}"
+    panel = f"{_site()}{BUSINESSES}/{grant.hub_id}"
     language = person.language or settings.LANGUAGE_CODE
     with translation.override(language):
         if grant.status == Status.SUBMITTED:

@@ -151,7 +151,7 @@ describe('TwoFactorSettingsPage: index (mfa/index.html)', () => {
     expect(has('recovery-section')).toBe(false);
     const foot = wrapper.get('.foot a');
     // Back where the «Two-step verification» row is: Account › Security (it went to the launcher).
-    expect([foot.text(), foot.attributes('href')]).toEqual(['Back to settings', '/account/security']);
+    expect([foot.text(), foot.attributes('href')]).toEqual(['Back to settings', '/dashboard/account/security']);
     expect(text('totp-section')).not.toContain('On');
   });
 

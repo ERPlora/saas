@@ -125,9 +125,9 @@ def test_the_ownership_mails_link_to_pages_the_panel_has(hub, make_user):
     emails.send_ownership_accepted(transfer, base_url=BASE)
 
     offer, accepted = mail.outbox
-    assert f"{BASE}/businesses\n" in f"{offer.body}\n"
+    assert f"{BASE}/dashboard/businesses\n" in f"{offer.body}\n"
     assert "/ownership/" not in offer.body
-    assert f"{BASE}/businesses/{hub.id}" in accepted.body
+    assert f"{BASE}/dashboard/businesses/{hub.id}" in accepted.body
     assert "/settings" not in accepted.body
 
 
@@ -151,7 +151,7 @@ def test_the_offer_of_a_paid_business_says_until_when_it_is_paid_and_where_it_is
 
     (offer,) = mail.outbox
     assert day(PAID_UNTIL, "es") in offer.body
-    assert f"{BASE}/billing/subscriptions" in offer.body
+    assert f"{BASE}/dashboard/billing/subscriptions" in offer.body
 
 
 def test_the_acceptance_tells_the_previous_owner_until_when_their_card_paid(hub, make_user):
@@ -188,7 +188,7 @@ def test_the_deletion_says_until_when_it_can_be_recovered(hub, make_user):
             date_format(timezone.localtime(hub.purge_after), "DATE_FORMAT")
             in message.body
         )
-    assert f"{BASE}/businesses" in message.body
+    assert f"{BASE}/dashboard/businesses" in message.body
 
 
 def test_the_ready_mail_opens_the_business(hub, make_user, settings):
@@ -203,7 +203,7 @@ def test_the_ready_mail_opens_the_business(hub, make_user, settings):
     assert message.to == ["olga@example.com"]
     assert message.subject == "Bar Manolo ya está listo"
     assert "https://bar-manolo.erplora.com/auth/login?next=/" in message.body
-    assert f"{BASE}/businesses/{hub.id}" in message.body
+    assert f"{BASE}/dashboard/businesses/{hub.id}" in message.body
 
 
 def test_a_mail_that_cannot_leave_is_logged_not_raised(

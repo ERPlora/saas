@@ -69,6 +69,22 @@ function acceptedVersions(email: string): string {
   );
 }
 
+/** The versions of the terms and of the privacy policy an account accepts today (`accounts.models`), as the
+ *  database keeps them and as the admin shows the terms' one: read from the SaaS, so a new text never leaves this
+ *  spec behind (saas#120 moved the terms to 2026-10-25). */
+function todaysVersions(): { kept: string; termsShown: string } {
+  const [kept, termsShown] = djangoPrint(
+    [
+      'from django.utils import formats, translation',
+      'from accounts.models import PRIVACY_VERSION, TERMS_VERSION',
+      'translation.activate("en")',
+      'print(f"{TERMS_VERSION} {PRIVACY_VERSION}")',
+      'print(formats.date_format(TERMS_VERSION))',
+    ].join('\n'),
+  ).split('\n');
+  return { kept, termsShown };
+}
+
 /** `ready` at each size: no sideways scroll and a capture `APP-ACCOUNTS-1-<key>-<size>`; back at 1440 after. */
 async function atEverySize(page: Page, key: string, ready: () => Promise<void>): Promise<void> {
   for (const size of SIZES) {
@@ -175,8 +191,8 @@ test('ACCOUNTS-G107: an address never proven asks for its code before the panel 
   createAccount(email, { verified: false });
 
   // A page of the panel without a session: the sign-in, keeping where it was going.
-  await page.goto('/account/profile');
-  await expect(page).toHaveURL(/\/launch\?next=(%2F|\/)account(%2F|\/)profile$/);
+  await page.goto('/dashboard/account/profile');
+  await expect(page).toHaveURL(/\/launch\?next=(%2F|\/)dashboard(%2F|\/)account(%2F|\/)profile$/);
   const since = Date.now();
   await submitSignInForm(page, { email, password: PASSWORD });
   await expect(page).toHaveURL(/\/verify-email\?next=/);
@@ -187,7 +203,7 @@ test('ACCOUNTS-G107: an address never proven asks for its code before the panel 
   await page.getByTestId('code').locator('input').fill(await waitForMailCode(email, since));
   await page.getByTestId('verify-email-submit').click();
 
-  await expect(page).toHaveURL(onPath('/account/profile'));
+  await expect(page).toHaveURL(onPath('/dashboard/account/profile'));
   expect((await sessionOf(page.request)).user).toMatchObject({ label: email });
   expect(errors).toEqual([]);
 });
@@ -197,7 +213,7 @@ test('ACCOUNTS-G85: the email and the password, then the code mailed at every si
   const email = address('signin');
   createAccount(email);
 
-  await page.goto('/launch?next=/account/security');
+  await page.goto('/launch?next=/dashboard/account/security');
   await atEverySize(page, 'ACCOUNTS-G85', async () => {
     await expect(page.getByTestId('login-form')).toBeVisible();
     await expect(page.getByTestId('login-forgot')).toBeVisible();
@@ -206,7 +222,7 @@ test('ACCOUNTS-G85: the email and the password, then the code mailed at every si
   await expect(page.getByTestId('login-password')).toContainText('The email address and/or password you specified are not correct.');
   await signInThroughPage(page, { email, password: PASSWORD });
 
-  await expect(page).toHaveURL(onPath('/account/security'));
+  await expect(page).toHaveURL(onPath('/dashboard/account/security'));
   // Who signed in (ACCOUNTS-G20): the shell's account and /api/me name it.
   const session = await sessionOf(page.request);
   expect(session.user).toMatchObject({ label: email });
@@ -273,7 +289,7 @@ test('ACCOUNTS-G109: «Change password» asks for the current one, refuses it as
   const phone = await browser.newContext({ baseURL: PANEL_URL });
   try {
     await signIn(phone.request, { email, password: PASSWORD });
-    await page.goto('/account/security');
+    await page.goto('/dashboard/account/security');
     await page.getByTestId('password-row-change').click();
     await atEverySize(page, 'ACCOUNTS-G109', async () => {
       await expect(page.getByTestId('password-current')).toBeVisible();
@@ -303,10 +319,10 @@ test('ACCOUNTS-G93: «Sign out» in the user menu ends the session and leaves th
   await signIn(page.request, { email, password: PASSWORD });
 
   await atEverySize(page, 'ACCOUNTS-G93', async () => {
-    await page.goto('/account/profile');
+    await page.goto('/dashboard/account/profile');
     await openUserMenuPresented(page);
   });
-  await page.goto('/account/profile');
+  await page.goto('/dashboard/account/profile');
   await openUserMenu(page);
   await page.getByTestId('user-menu-logout').click();
 
@@ -314,7 +330,7 @@ test('ACCOUNTS-G93: «Sign out» in the user menu ends the session and leaves th
   await expect(page.getByTestId('login-form')).toBeVisible();
   expect((await sessionOf(page.request)).user).toBeNull();
   // Back to a page of the panel: the sign-in again, not the account.
-  await page.goto('/account/profile');
+  await page.goto('/dashboard/account/profile');
   await expect(page).toHaveURL(/\/launch\?next=/);
   expect(errors).toEqual([]);
 });
@@ -384,7 +400,7 @@ test('ACCOUNTS-G93: the user menu reads whole at every size — «Theme» on one
   const sizes = [...SIZES, { name: '375', width: 375, height: 667 }, { name: '820', width: 820, height: 1180 }];
   for (const size of sizes) {
     await page.setViewportSize({ width: size.width, height: size.height });
-    await page.goto('/account/profile');
+    await page.goto('/dashboard/account/profile');
     await openUserMenuPresented(page);
     const menu = await measureUserMenu(page);
     const at = `${size.name}: ${JSON.stringify(menu)}`;
@@ -435,7 +451,7 @@ test('ACCOUNTS-G119: the sign-in says what continuing accepts, and the account k
   await expect(foot.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', /\/legal\/privacy\/$/);
   await signInThroughPage(page, { email, password: PASSWORD });
 
-  expect(acceptedVersions(email)).toBe('2026-10-13 2026-10-21 True');
+  expect(acceptedVersions(email)).toBe(`${todaysVersions().kept} True`);
   expect(errors).toEqual([]);
 });
 
@@ -480,7 +496,7 @@ test('ACCOUNTS-G18: the staff sees on an account’s page what it accepted, read
   await atEverySize(page, 'ACCOUNTS-G18', async () => {
     await expect(page.getByRole('heading', { name: 'Terms and privacy' })).toBeVisible();
   });
-  await expect(page.locator('.field-terms_version .readonly')).toHaveText('Oct. 13, 2026');
+  await expect(page.locator('.field-terms_version .readonly')).toHaveText(todaysVersions().termsShown);
   await expect(page.locator('input[name="terms_version"]')).toHaveCount(0);
   expect(errors).toEqual([]);
 });

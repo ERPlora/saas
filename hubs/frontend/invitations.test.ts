@@ -68,7 +68,7 @@ describe('useAcceptInvitation', () => {
     const m = await mountHubs(Probe, { api: () => Response.json({ ...ROW, can_open: false }) });
     await api.accept(INVITATION as never);
     await flush();
-    expect(m.router.currentRoute.value.path).toBe('/businesses');
+    expect(m.router.currentRoute.value.path).toBe('/dashboard/businesses');
     expect(api.accepting.value).toBeNull();
   });
 

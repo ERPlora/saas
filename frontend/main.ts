@@ -37,7 +37,7 @@ import './panel-chrome.css';
 import { type Ref, ref } from 'vue';
 import { isNavigationFailure, type RouteRecordRaw } from 'vue-router';
 
-import { LAUNCHER } from '../accounts/frontend/paths';
+import { ACCOUNT, BUSINESSES, LAUNCHER, REPORT_PROBLEM } from '../accounts/frontend/paths';
 import { recaptchaSiteKey } from '../accounts/frontend/recaptcha';
 import { OPERATION_ROUTES } from './generated/operation-routes';
 import en from './locale/en.json';
@@ -48,13 +48,13 @@ import { installSkipLink } from './skip-link';
 /** «Help» of the user menu. */
 const HELP_PATH = '/help';
 /** The panel's home (the shell's Home: the menu's brand, «not found», «not in the app»): `/` is the public web,
- *  a Django page the SPA does not have (audit 2 R-18). */
-const HOME_PATH = '/businesses';
+ *  a Django page the SPA does not have (audit 2 R-18). Businesses, under `/dashboard` with the rest of the panel. */
+const HOME_PATH = BUSINESSES;
 /** The SaaS's entries of the user menu, before Help and Sign out (mockups README §3). */
 const USER_MENU_ITEMS: ShellUserMenuItem[] = [
-  { id: 'account', labelKey: 'saas.userMenu.account', icon: 'ion:person-outline', to: '/account' },
+  { id: 'account', labelKey: 'saas.userMenu.account', icon: 'ion:person-outline', to: ACCOUNT },
   // «Report a problem» (ACCOUNTS-F38): sells nothing, so the app surfaces keep it.
-  { id: 'report', labelKey: 'saas.userMenu.reportProblem', icon: 'ion:chatbubbles-outline', to: '/report-a-problem' },
+  { id: 'report', labelKey: 'saas.userMenu.reportProblem', icon: 'ion:chatbubbles-outline', to: REPORT_PROBLEM },
 ];
 /**
  * The places whose script URLs the page's `default` Trusted Types policy admits. Stripe.js's loader

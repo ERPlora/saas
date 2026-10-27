@@ -18,8 +18,8 @@ FULL = {
             "id": "base",
             "label": "",
             "items": [
-                {"path": "/businesses", "label": "Negocios", "icon": "lucide:store", "webOnly": False},
-                {"path": "/store", "label": "Tienda", "icon": "lucide:shopping-bag", "webOnly": True},
+                {"path": "/dashboard/businesses", "label": "Negocios", "icon": "lucide:store", "webOnly": False},
+                {"path": "/dashboard/store", "label": "Tienda", "icon": "lucide:shopping-bag", "webOnly": True},
             ],
         }
     ],

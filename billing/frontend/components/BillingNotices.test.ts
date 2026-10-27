@@ -91,7 +91,7 @@ describe('BillingNotices', () => {
     expect(line.attributes('role')).toBe('alert');
     expect(line.get('[data-testid="billing-unpaid-text"]').text()).toBe('Bar La Plaza has an unpaid invoice: €36.29.');
     expect(line.get('a').text()).toBe('View the invoice');
-    expect(line.get('a').attributes('href')).toBe('/billing/invoices?business=plaza&status=open');
+    expect(line.get('a').attributes('href')).toBe('/dashboard/billing/invoices?business=plaza&status=open');
   });
 
   it('with several, one line with the count, the sum and a link to all of them', async () => {
@@ -100,7 +100,7 @@ describe('BillingNotices', () => {
     const line = s.wrapper.get('[data-testid="billing-unpaid-line"]');
     expect(line.get('[data-testid="billing-unpaid-text"]').text()).toBe('2 unpaid invoices: €72.58.');
     expect(line.get('a').text()).toBe('View the invoices');
-    expect(line.get('a').attributes('href')).toBe('/billing/invoices?status=open');
+    expect(line.get('a').attributes('href')).toBe('/dashboard/billing/invoices?status=open');
   });
 
   it('nothing waits: nothing is shown', async () => {

@@ -12,6 +12,7 @@ import { useI18n } from 'vue-i18n';
 
 import type { ProfileOut } from '../../../frontend/sdk-types';
 import { useErrorText } from '../error-text';
+import { BUSINESSES } from '../paths';
 import { reauthRequestOf, useReauthentication } from '../reauth';
 import ReauthModal from './ReauthModal.vue';
 
@@ -107,7 +108,7 @@ const dialogError = computed(() => {
         >
           <router-link
             data-testid="delete-account-business"
-            :to="`/businesses/${business.id}/settings`"
+            :to="`${BUSINESSES}/${business.id}/settings`"
             @click="open = false"
           >
             {{ business.name }}

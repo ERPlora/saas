@@ -103,7 +103,7 @@ test.describe('R-01/R-10: the AA theme', () => {
       await page.emulateMedia({ colorScheme: scheme });
       const measured: Record<string, number> = {};
       await signIn(page.request, panelAccount('several'));
-      await page.goto('/businesses');
+      await page.goto('/dashboard/businesses');
       await expect(shown(page).getByTestId('businesses-row').first()).toBeVisible();
       await expect(page.locator('html')).toHaveAttribute('data-ep-contrast', 'aa');
       await settled(page);
@@ -118,25 +118,25 @@ test.describe('R-01/R-10: the AA theme', () => {
       await page.route(/\/api\/live\?/, (route) =>
         route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { code: 'service_unavailable', message: 'Down.' } }) }),
       );
-      await page.goto(`/businesses/${bakery}/summary`);
+      await page.goto(`/dashboard/businesses/${bakery}/summary`);
       await expect(shown(page).getByTestId('business-retry')).toBeVisible();
       await settled(page);
       measured['«Retry» on the error notice'] = await contrastOf(shown(page).getByTestId('business-retry'));
       await page.unroute(/\/api\/live\?/);
 
       await signInAs(page, 'billing');
-      await page.goto('/billing/subscriptions');
+      await page.goto('/dashboard/billing/subscriptions');
       const link = shown(page).locator('.billing-alert__link');
       await expect(link).toBeVisible();
       await settled(page);
       measured['link «View the invoices»'] = await contrastOf(link);
-      await page.goto('/billing/invoices');
+      await page.goto('/dashboard/billing/invoices');
       await expect(shown(page).getByTestId('invoices-row').first()).toBeVisible();
       await settled(page);
       measured['outlined «Download Excel»'] = await contrastOf(shown(page).getByTestId('invoices-csv'));
       measured['outlined «Filters»'] = await contrastOf(shown(page).getByTestId('invoices-filters'));
       const plaza = await businessIdOf(page.request, 'Bar La Plaza');
-      await page.goto(`/store/plans?business=${plaza}`);
+      await page.goto(`/dashboard/store/plans?business=${plaza}`);
       const hint = shown(page).getByTestId('plan-hint').first();
       await expect(hint).toBeVisible();
       await settled(page);
@@ -151,7 +151,7 @@ test.describe('R-01/R-10: the AA theme', () => {
 test.describe('the chrome', () => {
   test('S-05: «Skip to content» lives in a landmark of its own and points at an element that exists', async ({ page }) => {
     await signIn(page.request, panelAccount('several'));
-    await page.goto('/businesses');
+    await page.goto('/dashboard/businesses');
     await expect(shown(page).getByTestId('businesses-row').first()).toBeVisible();
     const skip = await page.evaluate(() => {
       const first = document.body.firstElementChild;
@@ -168,7 +168,7 @@ test.describe('the chrome', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await signIn(page.request, panelAccount('several'));
     const bakery = await businessIdOf(page.request, 'Panadería López');
-    await page.goto(`/businesses/${bakery}/members`);
+    await page.goto(`/dashboard/businesses/${bakery}/members`);
     await expect(shown(page).getByTestId('business-header')).toBeVisible();
     await settled(page);
     const title = await shown(page)
@@ -182,7 +182,7 @@ test.describe('the chrome', () => {
     await page.screenshot({ path: join(SHOTS_DIR, 'business-members-390-light.png') });
 
     const ana = await businessIdOf(page.request, 'Peluquería Ana');
-    await page.goto(`/businesses/${ana}/members`);
+    await page.goto(`/dashboard/businesses/${ana}/members`);
     const error = shown(page).getByTestId('business-error');
     await expect(error).toContainText('You do not have permission to manage this business');
     await expect(error).toContainText('Your role does not allow it. If you need it, ask the owner.');
@@ -198,7 +198,7 @@ test.describe('the chrome', () => {
     await expect(notFound).toContainText('The address you opened is not part of the panel.');
     await expect(notFound).not.toContainText('hub');
     await shown(page).getByTestId('not-found-home').click();
-    await expect(page).toHaveURL(/\/businesses$/);
+    await expect(page).toHaveURL(/\/dashboard\/businesses$/);
   });
 });
 
@@ -206,7 +206,7 @@ test.describe('creating and buying', () => {
   test('S-02: with its Free business taken, «Create business» says so before any form and leads to its plan', async ({ page }) => {
     const errors = watchPageErrors(page);
     await signIn(page.request, panelAccount('several'));
-    await page.goto('/businesses');
+    await page.goto('/dashboard/businesses');
     await shown(page).getByTestId('businesses-add').click();
     const limit = page.getByTestId('create-free-limit');
     await expect(limit).toContainText('You already have a free business');
@@ -216,18 +216,18 @@ test.describe('creating and buying', () => {
     await page.screenshot({ path: join(SHOTS_DIR, 'businesses-create-limit-1280-light.png') });
     const cafe = await businessIdOf(page.request, 'Café Central');
     await page.getByTestId('create-free-limit-store').click();
-    await expect(page).toHaveURL(new RegExp(`/store/plans\\?business=${cafe}$`));
+    await expect(page).toHaveURL(new RegExp(`/dashboard/store/plans\\?business=${cafe}$`));
     expect(errors).toEqual([]);
   });
 
   test('S-03/R-17: a Free business is offered the plans sold at sign-up; the Store opens on one that can buy', async ({ page }) => {
     await signIn(page.request, panelAccount('billing'));
-    await page.goto('/store/plans');
+    await page.goto('/dashboard/store/plans');
     await expect(shown(page).getByTestId('store-plans')).toBeVisible();
     // Bar La Plaza and Bar Norte owe an invoice: not the business it opens on.
     await expect(shown(page).getByTestId('store-unpaid')).toHaveCount(0);
     const cafe = await businessIdOf(page.request, 'Café Central');
-    await page.goto(`/store/plans?business=${cafe}`);
+    await page.goto(`/dashboard/store/plans?business=${cafe}`);
     await expect(shown(page).getByTestId('plan-name')).toHaveText(['Free', 'Starter', 'Standard']);
     await expect(shown(page).getByTestId('store-plans-later')).toHaveText('Pro, Enterprise, and Max: available after moving to Starter.');
     // The server refuses an upgrade-only plan to a Free business too.
@@ -238,7 +238,7 @@ test.describe('creating and buying', () => {
 
   test('S-01: unpaid invoices have no PDF; S-07/S-08: the grouped notices, the most urgent first, with amounts', async ({ page }) => {
     await signIn(page.request, panelAccount('billing'));
-    await page.goto('/billing/invoices');
+    await page.goto('/dashboard/billing/invoices');
     await expect(shown(page).getByTestId('invoices-row').first()).toBeVisible();
     const unpaid = shown(page).locator('[data-testid="invoices-row"]').filter({ hasText: /Not collected/ });
     await expect(unpaid).toHaveCount(2);
@@ -248,7 +248,7 @@ test.describe('creating and buying', () => {
       '2 selected invoices are unpaid: an unpaid invoice has no PDF until it is paid.',
     );
     const billingOrder = await shown(page).getByTestId('unpaid-group-text').allInnerTexts();
-    await page.goto('/businesses');
+    await page.goto('/dashboard/businesses');
     const group = shown(page).getByTestId('businesses-unpaid');
     await expect(group).toContainText('2 businesses have unpaid invoices: €');
     await expect(group.getByTestId('businesses-unpaid-amount')).toHaveCount(2);
@@ -278,7 +278,7 @@ test.describe('creating and buying', () => {
   test('R-13: «View the invoices» is a 44 px target on a phone', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await signIn(page.request, panelAccount('billing'));
-    await page.goto('/billing/subscriptions');
+    await page.goto('/dashboard/billing/subscriptions');
     const link = shown(page).locator('.billing-alert__link');
     await expect(link).toBeVisible();
     const box = await link.boundingBox();
@@ -289,10 +289,10 @@ test.describe('creating and buying', () => {
 test.describe('screenshots for the supervisor', () => {
   const SCREENS: Array<[string, string, string, string]> = [
     ['launch', 'several', '/launch', 'launch-business'],
-    ['businesses', 'billing', '/businesses', 'businesses-row'],
+    ['businesses', 'billing', '/dashboard/businesses', 'businesses-row'],
     ['business-summary', 'several', 'bakery:summary', 'business-header'],
     ['store-plans-free', 'billing', 'cafe:store', 'store-plans'],
-    ['billing-invoices', 'billing', '/billing/invoices', 'invoices-row'],
+    ['billing-invoices', 'billing', '/dashboard/billing/invoices', 'invoices-row'],
   ];
   for (const scheme of ['light', 'dark'] as const) {
     test(`390, 834 and 1440 px (${scheme})`, async ({ page }) => {
@@ -304,8 +304,8 @@ test.describe('screenshots for the supervisor', () => {
           account = who;
         }
         let path = where;
-        if (where === 'bakery:summary') path = `/businesses/${await businessIdOf(page.request, 'Panadería López')}/summary`;
-        if (where === 'cafe:store') path = `/store/plans?business=${await businessIdOf(page.request, 'Café Central')}`;
+        if (where === 'bakery:summary') path = `/dashboard/businesses/${await businessIdOf(page.request, 'Panadería López')}/summary`;
+        if (where === 'cafe:store') path = `/dashboard/store/plans?business=${await businessIdOf(page.request, 'Café Central')}`;
         for (const width of [390, 834, 1440]) {
           await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
           await page.goto(path);

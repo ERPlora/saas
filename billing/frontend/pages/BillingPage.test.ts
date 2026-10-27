@@ -1,4 +1,4 @@
-// Billing (`/billing/:tab`; round 17, PLAN-SAAS §3.6 points 1, 6, 7 and 11; mockups `billing.html`): the shell's
+// Billing (`/dashboard/billing/:tab`; round 17, PLAN-SAAS §3.6 points 1, 6, 7 and 11; mockups `billing.html`): the shell's
 // page with its three sections in the footer tabbar — Invoices · Subscriptions · Payment details — each at its
 // own address. A composition surface: on top, what waits for a payment (BillingNotices) and, on Invoices, what
 // this section is in one line (V-30); below, the section. Billing is not selling: it shows on every surface,
@@ -22,7 +22,7 @@ afterEach(() => {
 const STUBS = { BillingNotices: true, InvoicesTab: true, SubscriptionsTab: true, PaymentTab: true };
 
 async function page(tab: 'invoices' | 'subscriptions' | 'payment' = 'invoices', locale: 'en' | 'es' = 'en') {
-  return mountBilling(BillingPage, { path: `/billing/${tab}`, locale, props: { tab }, stubs: STUBS });
+  return mountBilling(BillingPage, { path: `/dashboard/billing/${tab}`, locale, props: { tab }, stubs: STUBS });
 }
 
 describe('BillingPage', () => {
@@ -31,9 +31,9 @@ describe('BillingPage', () => {
     const frame = s.wrapper.findComponent(AppPage);
     expect(frame.props()).toMatchObject({ title: 'Billing', tabsLabel: 'Billing sections', contentLayout: 'detail-fill' });
     expect(frame.props('tabs')).toEqual([
-      { id: 'invoices', label: 'Invoices', icon: 'ion:receipt-outline', to: '/billing/invoices' },
-      { id: 'subscriptions', label: 'Subscriptions', icon: 'ion:sync-outline', to: '/billing/subscriptions' },
-      { id: 'payment', label: 'Payment details', icon: 'ion:card-outline', to: '/billing/payment' },
+      { id: 'invoices', label: 'Invoices', icon: 'ion:receipt-outline', to: '/dashboard/billing/invoices' },
+      { id: 'subscriptions', label: 'Subscriptions', icon: 'ion:sync-outline', to: '/dashboard/billing/subscriptions' },
+      { id: 'payment', label: 'Payment details', icon: 'ion:card-outline', to: '/dashboard/billing/payment' },
     ]);
   });
 

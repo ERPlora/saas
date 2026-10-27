@@ -11,6 +11,7 @@ import { IonButton } from '@ionic/vue';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import { BILLING } from '../../../accounts/frontend/paths';
 import { formatAmount } from '../invoices';
 import { useUnpaidInvoices } from '../unpaid';
 import UnpaidGroupNotice from './UnpaidGroupNotice.vue';
@@ -37,13 +38,13 @@ const line = computed(() => {
     return {
       text: t('billing.notice.lineOne', { name: first.business.name, amount }),
       link: t('billing.notice.viewOne'),
-      to: { path: '/billing/invoices', query: first.business.id ? { business: first.business.id, status: 'open' } : { status: 'open' } },
+      to: { path: `${BILLING}/invoices`, query: first.business.id ? { business: first.business.id, status: 'open' } : { status: 'open' } },
     };
   }
   return {
     text: t('billing.notice.lineMany', { count: owed.length, amount }),
     link: t('billing.notice.viewMany'),
-    to: { path: '/billing/invoices', query: { status: 'open' } },
+    to: { path: `${BILLING}/invoices`, query: { status: 'open' } },
   };
 });
 </script>

@@ -61,10 +61,10 @@ def test_a_signed_in_user_gets_the_panels_menu(ana):
             "id": "base",
             "label": "",
             "items": [
-                {"path": "/businesses", "label": "Businesses", "icon": "lucide:store", "webOnly": False},
-                {"path": "/store", "label": "Store", "icon": "lucide:shopping-bag", "webOnly": True},
-                {"path": "/billing", "label": "Billing", "icon": "lucide:receipt", "webOnly": False},
-                {"path": "/account", "label": "Account", "icon": "lucide:circle-user", "webOnly": False},
+                {"path": "/dashboard/businesses", "label": "Businesses", "icon": "lucide:store", "webOnly": False},
+                {"path": "/dashboard/store", "label": "Store", "icon": "lucide:shopping-bag", "webOnly": True},
+                {"path": "/dashboard/billing", "label": "Billing", "icon": "lucide:receipt", "webOnly": False},
+                {"path": "/dashboard/account", "label": "Account", "icon": "lucide:circle-user", "webOnly": False},
             ],
         }
     ]
@@ -83,7 +83,7 @@ def test_the_menu_is_the_one_of_base_navigation(ana):
 
     [section] = me["menu"]
     assert [item["path"] for item in section["items"]] == [nav.path for nav in navigation.NAVIGATION]
-    assert [item["path"] for item in section["items"] if item["webOnly"]] == ["/store"]
+    assert [item["path"] for item in section["items"] if item["webOnly"]] == ["/dashboard/store"]
 
 
 def test_without_a_name_the_label_is_the_email(django_user_model):

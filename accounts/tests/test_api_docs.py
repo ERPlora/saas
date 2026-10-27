@@ -94,7 +94,7 @@ def test_only_this_page_goes_without_trusted_types_and_its_search_runs_in_a_work
     client.force_login(ana)
 
     policy = _csp(client.get(DOCS, HTTP_HOST=HOST))
-    panel = _csp(client.get("/account/profile", HTTP_HOST=HOST))
+    panel = _csp(client.get("/dashboard/account/profile", HTTP_HOST=HOST))
 
     assert panel["require-trusted-types-for"] == ["'script'"]
     assert "require-trusted-types-for" not in policy

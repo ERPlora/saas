@@ -14,7 +14,7 @@ import { computed, onMounted, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
-import { LAUNCHER } from '../../../accounts/frontend/paths';
+import { BUSINESSES, LAUNCHER } from '../../../accounts/frontend/paths';
 import { useLiveState } from '../../../frontend/live-state';
 import LoadFailed from '../../../frontend/LoadFailed.vue';
 import type { InvitationOut } from '../../../frontend/sdk-types';
@@ -108,7 +108,7 @@ onIonViewWillEnter(entered);
           data-testid="invitation-panel"
           expand="block"
           class="invite-main"
-          @click="router.push('/businesses')"
+          @click="router.push(BUSINESSES)"
         >
           <HubIcon
             slot="start"

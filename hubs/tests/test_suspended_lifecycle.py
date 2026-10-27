@@ -109,7 +109,7 @@ class TestTheNotices:
         assert [message.to for message in mail.outbox] == [[owner.email]]
         delete_on = hub.suspended_at + timedelta(days=SUSPENDED_DELETE_DAYS)
         assert str(delete_on.year) in mail.outbox[0].body
-        assert "/billing" in mail.outbox[0].body
+        assert f"/dashboard/billing/invoices?business={hub.id}" in mail.outbox[0].body
 
     def test_the_final_notice_goes_out_once(self, paid):
         hub = suspended_for(paid, SUSPENDED_FINAL_NOTICE_DAYS, suspension_warned_at=timezone.now())

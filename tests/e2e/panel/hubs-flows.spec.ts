@@ -153,20 +153,20 @@ test('HUBS-G67: a paid business is born on Free and «Upgrade plan» opens the S
   const errors = watchPageErrors(page);
   await signIn(page.request, panelAccount('one'));
   const id = await businessIdOf(page.request, 'Panadería López');
-  await page.goto('/businesses');
+  await page.goto('/dashboard/businesses');
   await shown(page).getByTestId('businesses-add').click();
   await atEverySize(page, 'HUBS-G67', async () => {
     await expect(page.getByTestId('create-free-limit')).toContainText('You already have a free business');
   });
   await page.getByTestId('create-free-limit-store').click();
-  await expect(page).toHaveURL(new RegExp(`/store/plans\\?business=${id}$`));
-  await page.goto(`/businesses/${id}/summary`);
+  await expect(page).toHaveURL(new RegExp(`/dashboard/store/plans\\?business=${id}$`));
+  await page.goto(`/dashboard/businesses/${id}/summary`);
   await expect(shown(page).getByTestId('summary-plan-store')).toHaveText(/Upgrade plan/);
   await atEverySize(page, 'HUBS-G67-summary', async () => {
     await expect(shown(page).getByTestId('summary-plan')).toBeVisible();
   });
   await shown(page).getByTestId('summary-plan-store').click();
-  await expect(page).toHaveURL(new RegExp(`/store/plans\\?business=${id}$`));
+  await expect(page).toHaveURL(new RegExp(`/dashboard/store/plans\\?business=${id}$`));
   expect(errors).toEqual([]);
 });
 
@@ -191,7 +191,7 @@ test('HUBS-G69: the list with each status, the deleted one with «Recover», and
   await signIn(page.request, panelAccount('several'));
   for (const old of ['/dashboard/hubs/active/', '/dashboard/hubs/inactive/']) {
     await page.goto(old);
-    await expect(page).toHaveURL(/\/businesses$/);
+    await expect(page).toHaveURL(/\/dashboard\/businesses$/);
   }
   await atEverySize(page, 'HUBS-G69', async () => {
     await expect(shown(page).getByText('Bar Antiguo').first()).toBeVisible();
@@ -212,9 +212,9 @@ test('HUBS-G84: the panel’s home is Businesses, from «Go to the panel» and f
   await signIn(page.request, panelAccount('one'));
   await page.goto('/launch');
   await page.getByTestId('launch-panel').click();
-  await expect(page).toHaveURL(/\/businesses$/);
+  await expect(page).toHaveURL(/\/dashboard\/businesses$/);
   await page.goto('/dashboard/');
-  await expect(page).toHaveURL(/\/businesses$/);
+  await expect(page).toHaveURL(/\/dashboard\/businesses$/);
   await atEverySize(page, 'HUBS-G84', async () => {
     await expect(shown(page).getByTestId('businesses-row').or(shown(page).locator('.data-table__card')).first()).toBeVisible();
   });
@@ -265,7 +265,7 @@ test('HUBS-G72: «On your devices» shares the business’s address and the apps
   await signIn(page.request, panelAccount('one'));
   const id = await businessIdOf(page.request, 'Panadería López');
   await page.goto(`/dashboard/hubs/${id}/qr/`);
-  await expect(page).toHaveURL(new RegExp(`/businesses/${id}/summary$`));
+  await expect(page).toHaveURL(new RegExp(`/dashboard/businesses/${id}/summary$`));
   const card = shown(page).getByTestId('device-access-card');
   await atEverySize(page, 'HUBS-G72', async () => {
     await expect(card).toContainText('On your devices');
@@ -344,7 +344,7 @@ test.describe('against the real Hub', () => {
     await page.getByTestId('create-name').locator('input').fill('Granja Hub Real E2E');
     await page.getByTestId('create-submit').click();
     await page.waitForURL(/granja-hub-real-e2e\.localhost/, { timeout: 60_000 });
-    await page.goto(`/businesses`);
+    await page.goto(`/dashboard/businesses`);
     await shown(page).getByTestId('businesses-row').filter({ hasText: 'Granja Hub Real E2E' }).getByRole('button', { name: 'Open Granja Hub Real E2E' }).click();
     await page.waitForURL(new RegExp(`^http://granja-hub-real-e2e\\.localhost:${HUB_DOUBLE_PORT}/(?!auth)`), { timeout: 30_000 });
   });

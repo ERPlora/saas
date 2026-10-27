@@ -141,7 +141,7 @@ describe('CheckoutModal', () => {
     await flush();
     expect(stripe.checkouts[0].destroyed).toBe(true);
     expect(toastSuccess).toHaveBeenCalledWith('Café Central is now on Starter');
-    expect(s.router.currentRoute.value.fullPath).toBe('/businesses/cafe/summary');
+    expect(s.router.currentRoute.value.fullPath).toBe('/dashboard/businesses/cafe/summary');
     expect(s.open.value).toBe(false);
   });
 
@@ -161,7 +161,7 @@ describe('CheckoutModal', () => {
     stripe.complete();
     await flush();
     expect(toastSuccess).toHaveBeenCalledWith('Café Central keeps Starter: your card pays it from Nov 1, 2026');
-    expect(s.router.currentRoute.value.fullPath).toBe('/businesses/cafe/summary');
+    expect(s.router.currentRoute.value.fullPath).toBe('/dashboard/businesses/cafe/summary');
   });
 
   it('keeping it, in Spanish', async () => {
@@ -210,7 +210,7 @@ describe('CheckoutModal', () => {
     stripe.complete();
     await flush();
     expect(toastSuccess).toHaveBeenCalledWith('Bookings added to Café Central: it turns on in a few seconds');
-    expect(s.router.currentRoute.value.fullPath).toBe('/businesses/cafe/summary');
+    expect(s.router.currentRoute.value.fullPath).toBe('/dashboard/businesses/cafe/summary');
   });
 
   it('without the payer’s details, asks them first, saves them and then pays', async () => {

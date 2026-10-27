@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Billing (`/billing/:tab`; round 17, PLAN-SAAS §3.6 points 1, 6, 7 and 11; mockups `billing.html`): what the
+// Billing (`/dashboard/billing/:tab`; round 17, PLAN-SAAS §3.6 points 1, 6, 7 and 11; mockups `billing.html`): what the
 // account pays ERPlora for its businesses, in the shell's page with its three sections in the footer tabbar —
 // Invoices · Subscriptions · Payment details — each at its own address (Back leaves Billing). A composition
 // surface: on top, what waits for a payment (BillingNotices) and, on Invoices, what this section is in one
@@ -11,6 +11,7 @@ import { AppPage, HubIcon, type ShellTab } from '@erplora/ui/shell';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import { BILLING } from '../../../accounts/frontend/paths';
 import BillingNotices from '../components/BillingNotices.vue';
 import InvoicesTab from '../components/InvoicesTab.vue';
 import PaymentTab from '../components/PaymentTab.vue';
@@ -37,7 +38,7 @@ providePaying();
 const fills = computed(() => props.tab !== 'payment');
 
 const tabs = computed<ShellTab[]>(() =>
-  SECTIONS.map((section) => ({ id: section.id, label: t(`billing.page.tabs.${section.id}`), icon: section.icon, to: `/billing/${section.id}` })),
+  SECTIONS.map((section) => ({ id: section.id, label: t(`billing.page.tabs.${section.id}`), icon: section.icon, to: `${BILLING}/${section.id}` })),
 );
 </script>
 

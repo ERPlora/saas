@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// A business's page (`/businesses/:id/:tab`, round 17 §2.3; mockups `business.html`): the live
+// A business's page (`/dashboard/businesses/:id/:tab`, round 17 §2.3; mockups `business.html`): the live
 // `hubs.business.get` (owner and admins; anybody else gets the server's 403/404 as an error), a header
 // with the business's name, address, status, plan and role and «Open» (solid on the Summary, outlined
 // elsewhere, V-23; gone while suspended or deleted), and four sections in the footer tabbar, each at
@@ -25,6 +25,7 @@ import { IonButton, IonCard, IonCardContent, IonSkeletonText, IonSpinner } from 
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import { BUSINESSES } from '../../../accounts/frontend/paths';
 import RepresentationCard from '../../../fiscal/frontend/components/RepresentationCard.vue';
 import { useLiveState } from '../../../frontend/live-state';
 import LoadFailed from '../../../frontend/LoadFailed.vue';
@@ -73,7 +74,7 @@ const tabs = computed<ShellTab[]>(() =>
     id: section.id,
     label: t(`hubs.business.tabs.${section.id}`),
     icon: section.icon,
-    to: `/businesses/${props.id}/${section.id}`,
+    to: `${BUSINESSES}/${props.id}/${section.id}`,
   })),
 );
 /** The section on screen: a deleted business only has its Summary (with the way to recover it). */
@@ -110,7 +111,7 @@ async function recover(): Promise<void> {
 <template>
   <AppPage
     :title="business?.name ?? $t('hubs.list.title')"
-    back-href="/businesses"
+    :back-href="BUSINESSES"
     :content-layout="fills ? 'detail-fill' : 'detail'"
     :tabs="tabs"
     :tabs-label="$t('hubs.business.tabsLabel')"

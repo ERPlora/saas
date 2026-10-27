@@ -49,7 +49,7 @@ async function atEverySize(page: Page, key: string, ready: () => Promise<void>):
 test.describe('billing flows', () => {
   test('BILLING-G82: «Payment details» says who ERPlora invoices for the businesses, and edits it', async ({ page }) => {
     const errors = watchPageErrors(page);
-    await page.goto('/billing/payment');
+    await page.goto('/dashboard/billing/payment');
     await atEverySize(page, 'BILLING-G82', async () => {
       await expect(page.getByTestId('profile-name').first()).toBeVisible();
       await expect(page.getByTestId('profile-edit').first()).toBeVisible();
@@ -61,15 +61,15 @@ test.describe('billing flows', () => {
     const errors = watchPageErrors(page);
     const cafe = await businessIdOf(page.request, 'Café Central');
     const bakery = await businessIdOf(page.request, 'Panadería López');
-    await page.goto(`/businesses/${cafe}/summary`);
+    await page.goto(`/dashboard/businesses/${cafe}/summary`);
     const store = page.getByTestId('summary-plan-store');
     await atEverySize(page, 'BILLING-G84', async () => {
       await expect(page.getByTestId('summary-plan')).toBeVisible();
       await expect(store).toHaveText('Upgrade plan');
     });
     await store.click();
-    await expect(page).toHaveURL(new RegExp(`/store/plans\\?business=${cafe}$`));
-    await page.goto(`/businesses/${bakery}/summary`);
+    await expect(page).toHaveURL(new RegExp(`/dashboard/store/plans\\?business=${cafe}$`));
+    await page.goto(`/dashboard/businesses/${bakery}/summary`);
     await expect(page.getByTestId('summary-plan-store')).toHaveText('Change plan');
     expect(errors).toEqual([]);
   });
@@ -77,7 +77,7 @@ test.describe('billing flows', () => {
   test('BILLING-G87: a business on Free sees «Upgrade» on every paid plan of the Store', async ({ page }) => {
     const errors = watchPageErrors(page);
     const cafe = await businessIdOf(page.request, 'Café Central');
-    await page.goto(`/store/plans?business=${cafe}`);
+    await page.goto(`/dashboard/store/plans?business=${cafe}`);
     await atEverySize(page, 'BILLING-G87', async () => {
       await expect(page.getByTestId('plan-starter').getByTestId('plan-upgrade')).toBeVisible();
       await expect(page.getByTestId('plan-standard').getByTestId('plan-upgrade')).toBeVisible();
@@ -93,7 +93,7 @@ test.describe('billing flows', () => {
         json: { flow: 'confirm', session_id: null, client_secret: null, publishable_key: null, preview: { amount_due_cents: 1452, tax_cents: 252, currency: 'eur', proration_date: Math.floor(Date.now() / 1000), charge_starts_at: null } },
       }),
     );
-    await page.goto(`/store/plans?business=${bakery}`);
+    await page.goto(`/dashboard/store/plans?business=${bakery}`);
     await atEverySize(page, 'BILLING-G88', async () => {
       await expect(page.getByTestId('plan-starter').getByTestId('plan-current')).toBeVisible();
       await expect(page.getByTestId('plan-standard').getByTestId('plan-change')).toBeVisible();
@@ -121,7 +121,7 @@ test.describe('billing flows', () => {
       asked.push('keep');
       await route.fulfill({ json: answer(false) });
     });
-    await page.goto('/billing/subscriptions');
+    await page.goto('/dashboard/billing/subscriptions');
     const row = page.locator(`[data-testid="subscriptions-row"][data-id="${bakery}"]`);
     await atEverySize(page, 'BILLING-G55', async () => {
       await expect(row).toBeVisible();
@@ -137,7 +137,7 @@ test.describe('billing flows', () => {
     expect(asked).toEqual(['cancel']);
     // «Keep the plan» is what the server offers once the plan ends with its period (the seed marks it so).
     djangoPrint(`from hubs.models import Subscription;print(Subscription.objects.filter(hub_id='${bakery}').update(cancel_at_period_end=True))`);
-    await page.goto('/billing/subscriptions');
+    await page.goto('/dashboard/billing/subscriptions');
     await atEverySize(page, 'BILLING-G56', async () => {
       await expect(row.getByTestId(`subscriptions-row-${bakery}-lead`)).toHaveText('Keep the plan');
     });
@@ -149,7 +149,7 @@ test.describe('billing flows', () => {
   // Paying it (the invoice page at Stripe, «Invoice paid» back) is billing.spec.ts's «Pay» test.
   test('BILLING-G54 and BILLING-G58: an unpaid plan is said on Invoices business by business, with its way to pay', async ({ page }) => {
     const errors = watchPageErrors(page);
-    await page.goto('/billing/invoices');
+    await page.goto('/dashboard/billing/invoices');
     const declined = page.getByTestId('unpaid-group-item').filter({ hasText: 'Bar La Plaza' });
     const soft = page.getByTestId('unpaid-group-item').filter({ hasText: 'Bar Norte' });
     await atEverySize(page, 'BILLING-G54', async () => {
@@ -166,7 +166,7 @@ test.describe('billing flows', () => {
 
   test('BILLING-G69: «Invoices» lists the invoices of every business it pays', async ({ page }) => {
     const errors = watchPageErrors(page);
-    await page.goto('/billing/invoices');
+    await page.goto('/dashboard/billing/invoices');
     await atEverySize(page, 'BILLING-G69', async () => {
       await expect(page.getByTestId('invoices-row').first()).toBeVisible();
     });
@@ -175,7 +175,7 @@ test.describe('billing flows', () => {
 
   test('BILLING-G70: «Subscriptions» has one row per business with what it pays', async ({ page }) => {
     const errors = watchPageErrors(page);
-    await page.goto('/billing/subscriptions');
+    await page.goto('/dashboard/billing/subscriptions');
     await atEverySize(page, 'BILLING-G70', async () => {
       await expect(page.getByTestId('subscriptions-row')).toHaveCount(3);
     });
@@ -192,7 +192,7 @@ test.describe('billing flows', () => {
       opened.push(route.request().postDataJSON());
       await route.fulfill({ json: { url: 'https://billing.stripe.com/p/session/e2e' } });
     });
-    await page.goto('/billing/invoices');
+    await page.goto('/dashboard/billing/invoices');
     const change = page.getByTestId('unpaid-group-item').filter({ hasText: 'Bar La Plaza' }).getByTestId('unpaid-group-change-card');
     await atEverySize(page, 'BILLING-G71', async () => {
       await expect(change).toBeVisible();

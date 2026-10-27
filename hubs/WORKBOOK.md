@@ -760,9 +760,16 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   (superficies `desktop` y `mobile`, no `account`) pide `hubs.business.open` con `shell: true`, y
   `/shell/open/<id>/` (`hubs/shell.py`) hace lo mismo para un enlace: 302 al inicio del salto del Hub con
   `&shell=1`; sin sesión, `/shell/?next=…`; un negocio ajeno, 404; uno que no abre, vuelta a `/shell/`.
-- Direcciones viejas (F03, F09, F10, F13): `hubs/redirects.py`, 301 de `/dashboard/`, `/dashboard/hubs/`,
-  `…/active/`, `…/inactive/`, `…/create/` (`/businesses?create=1`) y `…/<id>/qr/` (el Resumen). El resto de
-  `/dashboard/*` es de sus apps.
+- El panel vive bajo `/dashboard/` (FIX-SAAS-PANEL-UNDER-DASHBOARD-PREFIX, como `apps/dashboard/` del viejo): Negocios
+  en `/dashboard/businesses`, Tienda, Facturación, Cuenta y «Reportar un problema» igual, nombrados una vez en
+  `base/navigation.py` (`PANEL`, menú, correos, vuelta de Stripe) y `accounts/frontend/paths.ts` (páginas; guardarraíl
+  `paths.test.ts`). La Entrada (`/launch`, `/shell`), las invitaciones y las páginas de la entrada se quedan en la raíz.
+  `/dashboard` y `/dashboard/` → `/dashboard/businesses`.
+- Direcciones viejas (F03, F09, F10, F13): `hubs/redirects.py`, 301 directo (un salto) de `/dashboard/`,
+  `/dashboard/hubs/`, `…/active/`, `…/inactive/`, `…/create/` (`/dashboard/businesses?create=1`) y `…/<id>/qr/` (el
+  Resumen). El resto de `/dashboard/*` viejo es de sus apps. Las del panel en la raíz antes del prefijo (`/businesses`,
+  `/account`, `/billing`, `/store`, `/report-a-problem` y sus hijas, a las que enlaza el Hub) son 301 de
+  `config/urls.py` (`MovedToPanel`) a la misma página bajo `/dashboard/`, con su consulta (`config/tests/test_panel_prefix.py`).
 - Quitar a quien aún paga (trampa saas#2587 y saas#2569; HUBS-F27): `hubs.member.remove`
   no saca del negocio a quien aún lo paga (`queries.still_pays`: es dueño de su pagador, o tras un traspaso el plan
   se sigue cobrando al cliente de Stripe de uno de sus pagadores). 409 `hubs.member_pays` con qué hacer: que el
@@ -811,9 +818,9 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   que se reintenta con espera creciente y en `reconcile_hub_states` si el negocio no contesta. Correos (`emails.py`,
   con la plantilla común `base.emails.branded_message`, texto y HTML en el idioma de quien recibe): `send_invitation`
   (enlaza a `/invitation` y, a una cuenta sin forma de entrar, a `/password/reset`), `send_ownership_offer` (enlaza a
-  `/businesses`, donde está la tarjeta de la oferta; el panel no tiene página `/ownership/<id>`; con un plan de pago
-  dice hasta cuándo está pagado y enlaza a `/billing/subscriptions`) y `send_ownership_accepted` (enlaza a
-  `/businesses/<id>` y, con un plan de pago, dice que la tarjeta del saliente ya no lo renueva). Tests:
+  `/dashboard/businesses`, donde está la tarjeta de la oferta; el panel no tiene página `/ownership/<id>`; con un plan
+  de pago dice hasta cuándo está pagado y enlaza a `/dashboard/billing/subscriptions`) y `send_ownership_accepted`
+  (enlaza a `/dashboard/businesses/<id>` y, con un plan de pago, dice que la tarjeta del saliente ya no lo renueva). Tests:
   `hubs/tests/test_members.py`, `test_members_api.py`,
   `test_ownership.py`, `test_session_revocations.py`, `test_invite_unverified_account.py`, `test_emails.py`,
   `test_permission_matrix.py` y `test_admin.py`; e2e en `tests/e2e/panel/hubs-people.spec.ts` (clave `HUBS-Gnn` en el

@@ -96,7 +96,7 @@ def test_a_submission_tells_the_owner_it_arrived_in_their_language(
 
     (message,) = to(owner.email)
     assert message.subject == "Hemos recibido la autorización firmada de Bar Manolo"
-    assert f"https://erplora.example/businesses/{business.pk}" in message.body
+    assert f"https://erplora.example/dashboard/businesses/{business.pk}" in message.body
 
 
 def test_an_approval_tells_the_owner_it_is_in_force(business, owner, desk):

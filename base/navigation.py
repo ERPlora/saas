@@ -6,6 +6,10 @@ approved mockups (``mockups/saas-panel/``). ``base.session.me`` sends it already
 
 The Store sells, so the app surfaces leave it out (PLAN-SAAS §3.6 point 6): ``Nav`` has no field
 for that (``live.meta`` is shared with the Hub), so ``WEB_ONLY`` says it here.
+
+The panel's addresses are named here once (``PANEL`` and the pages under it): the menu, the 301s of the old ones
+(``config/urls.py``, ``hubs.redirects``, ``accounts.redirects``) and every link the server writes to the panel
+(mails, Stripe's return) build on them.
 """
 
 from typing import Any
@@ -16,13 +20,20 @@ from live.meta import Nav
 #: The id of the menu's only section: the app that declares it. Its empty label paints no header.
 SECTION_ID = "base"
 
+#: Where the panel lives: every page shown with this menu, as the old product's ``apps/dashboard/``
+#: (FIX-SAAS-PANEL-UNDER-DASHBOARD-PREFIX). The launcher, the sign-in's pages and the invitations stay at the root.
+PANEL = "/dashboard"
+BUSINESSES = f"{PANEL}/businesses"
+STORE = f"{PANEL}/store"
+BILLING = f"{PANEL}/billing"
+ACCOUNT = f"{PANEL}/account"
+REPORT_PROBLEM = f"{PANEL}/report-a-problem"
+
 NAVIGATION: list[Nav] = [
-    Nav(
-        id="businesses", label=_("Businesses"), icon="lucide:store", path="/businesses"
-    ),
-    Nav(id="store", label=_("Store"), icon="lucide:shopping-bag", path="/store"),
-    Nav(id="billing", label=_("Billing"), icon="lucide:receipt", path="/billing"),
-    Nav(id="account", label=_("Account"), icon="lucide:circle-user", path="/account"),
+    Nav(id="businesses", label=_("Businesses"), icon="lucide:store", path=BUSINESSES),
+    Nav(id="store", label=_("Store"), icon="lucide:shopping-bag", path=STORE),
+    Nav(id="billing", label=_("Billing"), icon="lucide:receipt", path=BILLING),
+    Nav(id="account", label=_("Account"), icon="lucide:circle-user", path=ACCOUNT),
 ]
 
 #: The entries that sell: on the web only (``SessionMenuItem.webOnly`` of packages/ui).

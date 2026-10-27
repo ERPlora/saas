@@ -121,7 +121,7 @@ test('ACCOUNTS-G106 · G73 · the menu opens Businesses, Store, Billing and Acco
   const errors = watchPageErrors(page);
   await signIn(page.request, createAccount('nav'));
 
-  await page.goto('/businesses');
+  await page.goto('/dashboard/businesses');
   await atEverySize(
     page,
     'ACCOUNTS-G106',
@@ -134,10 +134,10 @@ test('ACCOUNTS-G106 · G73 · the menu opens Businesses, Store, Billing and Acco
   );
 
   for (const [label, path] of [
-    ['Billing', /\/billing/],
-    ['Store', /\/store/],
-    ['Account', /\/account/],
-    ['Businesses', /\/businesses/],
+    ['Billing', /\/dashboard\/billing/],
+    ['Store', /\/dashboard\/store/],
+    ['Account', /\/dashboard\/account/],
+    ['Businesses', /\/dashboard\/businesses/],
   ] as const) {
     await openMenu(page);
     await page.locator('ion-menu .nav-item').filter({ hasText: label }).click();
@@ -151,7 +151,7 @@ test('ACCOUNTS-G106 · the menu speaks Spanish', async ({ page }) => {
   const errors = watchPageErrors(page);
   await signIn(page.request, createAccount('nav-es', { language: 'es' }));
 
-  await page.goto('/businesses');
+  await page.goto('/dashboard/businesses');
   await atEverySize(
     page,
     'ACCOUNTS-G106-es',
@@ -204,7 +204,7 @@ test('ACCOUNTS-G82 · G33 · G64 · the staff turns maintenance on in the admin:
 
     // The staff keeps using the panel.
     const errors = watchPageErrors(page);
-    expect((await page.goto('/businesses'))?.status()).toBe(200);
+    expect((await page.goto('/dashboard/businesses'))?.status()).toBe(200);
     await expect(page.locator('ion-menu .nav-item').first()).toBeAttached();
     expect(errors).toEqual([]);
 

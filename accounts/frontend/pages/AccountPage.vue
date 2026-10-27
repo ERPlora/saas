@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Account (`/account/:tab`; round 17, PLAN-SAAS §3.6 point 1; mockups `account.html`): Profile · Security ·
+// Account (`/dashboard/account/:tab`; round 17, PLAN-SAAS §3.6 point 1; mockups `account.html`): Profile · Security ·
 // Preferences · API keys, the footer tabbar of the shell (`AppPage` `tabs`), each section at its own address so
 // Back leaves Account instead of walking its tabs. A composition surface: each section is its own component with
 // its own live query. Nothing here sells, so it all shows on every surface (deleting the account too: Google Play
@@ -9,6 +9,7 @@ import { AppPage, type ShellTab } from '@erplora/ui/shell';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import { ACCOUNT } from '../paths';
 import ApiKeysTable from '../components/ApiKeysTable.vue';
 import PreferencesForm from '../components/PreferencesForm.vue';
 import ProfileTab from '../components/ProfileTab.vue';
@@ -30,7 +31,7 @@ const SECTIONS: Array<{ id: Tab; label: string; icon: string }> = [
 
 const { t } = useI18n();
 const tabs = computed<ShellTab[]>(() =>
-  SECTIONS.map((section) => ({ id: section.id, label: t(section.label), icon: section.icon, to: `/account/${section.id}` })),
+  SECTIONS.map((section) => ({ id: section.id, label: t(section.label), icon: section.icon, to: `${ACCOUNT}/${section.id}` })),
 );
 const active = computed(() => props.tab);
 /** Security (the sessions) and API keys are lists: they fill the page between the topbar and the tabbar

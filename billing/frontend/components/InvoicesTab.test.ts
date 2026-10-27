@@ -56,7 +56,7 @@ const ROWS = [OPEN, ISSUING, PAID];
 /** A business the account works in but neither owns nor pays: its invoices are not the account's. */
 const SALON = businessRow('salon', 'Peluquería Ana', { role: 'hub_manager', role_label: 'Manager', is_payer: false });
 
-async function setup(path = '/billing/invoices', api: (call: ReturnType<typeof describeCall>) => Response = () => Response.json({}), locale: 'en' | 'es' = 'en') {
+async function setup(path = '/dashboard/billing/invoices', api: (call: ReturnType<typeof describeCall>) => Response = () => Response.json({}), locale: 'en' | 'es' = 'en') {
   const s = await mountBilling(InvoicesTab, { path, locale, api: (call) => api(describeCall(call)) });
   const call: StreamCall = await s.live();
   const push = async (op: string, data: unknown, rev = 1) => {
@@ -139,7 +139,7 @@ describe('InvoicesTab: the list', () => {
   });
 
   it('a credit note says so under its number, and links to the invoice it rectifies', async () => {
-    const s = await setup('/billing/invoices', (call) =>
+    const s = await setup('/dashboard/billing/invoices', (call) =>
       call.path === '/api/billing/invoices/detail' ? Response.json({ ...invoiceRow(call.query.id), rectifies: { id: '00123', number: 'ERP-2026-00123' } }) : Response.json({}),
     );
     await s.show([PAID, invoiceRow('c1', { kind: 'credit_note', kind_label: 'Credit note', number: 'ERPR-2026-00001', total_cents: -3629 })]);
@@ -179,7 +179,7 @@ describe('InvoicesTab: the list', () => {
     const cell = (s: Awaited<ReturnType<typeof setup>>, id: string) =>
       s.wrapper.get(`[data-testid="invoices-row"][data-id="${id}"]`).findAll('[role="cell"]')[0];
 
-    const en = await setup('/billing/invoices', detail);
+    const en = await setup('/dashboard/billing/invoices', detail);
     await en.show([PAID, credit, noReason]);
     expect(cell(en, 'c1').get('[data-testid="invoice-kind"]').text()).toBe('Credit note R1 · Duplicate charge');
     expect(cell(en, 'c1').get('[data-testid="invoice-kind"]').attributes('title')).toBe('Credit note R1 · Duplicate charge');
@@ -189,7 +189,7 @@ describe('InvoicesTab: the list', () => {
     expect(cell(en, '00123').find('[data-testid="invoice-kind"]').exists()).toBe(false);
     en.wrapper.unmount();
 
-    const es = await setup('/billing/invoices', detail, 'es');
+    const es = await setup('/dashboard/billing/invoices', detail, 'es');
     await es.show([PAID, credit]);
     expect(cell(es, 'c1').get('[data-testid="invoice-kind"]').text()).toBe('Rectificativa R1 · Duplicate charge');
     expect(cell(es, 'c1').get('[data-testid="invoice-rectifies"]').text()).toBe('Rectifica ERP-2026-00123');
@@ -216,12 +216,12 @@ describe('InvoicesTab: the list', () => {
     await s.show();
     await s.testid('invoices-row-00123-view').trigger('click');
     await flush();
-    expect(s.router.currentRoute.value.path).toBe('/billing/invoices/00123');
+    expect(s.router.currentRoute.value.path).toBe('/dashboard/billing/invoices/00123');
   });
 
   it('«Pay» goes to Stripe’s page of that invoice', async () => {
     const assign = vi.spyOn(browser, 'assign').mockImplementation(() => {});
-    const s = await setup('/billing/invoices', (call) => (call.path === '/api/billing/invoices/pay' ? Response.json({ url: 'https://invoice.stripe.com/i/x' }) : Response.json({})));
+    const s = await setup('/dashboard/billing/invoices', (call) => (call.path === '/api/billing/invoices/pay' ? Response.json({ url: 'https://invoice.stripe.com/i/x' }) : Response.json({})));
     await s.show();
     await s.testid('invoices-row-i9-pay').trigger('click');
     await flush();
@@ -289,7 +289,7 @@ describe('InvoicesTab: a list that does not load says so, never «No invoices ye
   });
 
   it('the stream refused (/api/live answers 503): it could not load, it does not say there are no invoices', async () => {
-    const s = await mountBilling(InvoicesTab, { path: '/billing/invoices' });
+    const s = await mountBilling(InvoicesTab, { path: '/dashboard/billing/invoices' });
     s.liveDown.value = true;
     await s.clock.advance(150);
     expect(s.client.stream.subscriptions('billing.invoice.list')).toHaveLength(1);
@@ -324,7 +324,7 @@ describe('InvoicesTab: a list that does not load says so, never «No invoices ye
   });
 
   it('says it in Spanish', async () => {
-    const s = await setup('/billing/invoices', undefined, 'es');
+    const s = await setup('/dashboard/billing/invoices', undefined, 'es');
     await s.clock.advance(LIVE_TIMEOUT_MS);
     expect(s.prop('error')).toBe('Comprueba tu conexión y vuelve a intentarlo.');
     expect(s.prop<Record<string, string>>('labels')).toMatchObject({ loadError: 'No hemos podido cargar tus facturas', retry: 'Reintentar' });
@@ -379,7 +379,7 @@ describe('InvoicesTab: filters and search', () => {
   });
 
   it('«Clear filters» drops the business, the status and the year, and keeps the search', async () => {
-    const s = await setup('/billing/invoices?business=plaza&status=open&year=2026');
+    const s = await setup('/dashboard/billing/invoices?business=plaza&status=open&year=2026');
     await s.show([OPEN]);
     s.query.value = '0004';
     await s.openFilters();
@@ -390,7 +390,7 @@ describe('InvoicesTab: filters and search', () => {
   });
 
   it('opens on the business of the address (`?business=`), with its status', async () => {
-    const s = await setup('/billing/invoices?business=plaza&status=open');
+    const s = await setup('/dashboard/billing/invoices?business=plaza&status=open');
     expect(s.params()).toEqual([{ hub_id: 'plaza', status: 'open', limit: 25, offset: 0 }]);
     await s.show([OPEN]);
     await s.openFilters();
@@ -400,7 +400,7 @@ describe('InvoicesTab: filters and search', () => {
   });
 
   it('a business of the address that is not the account’s: every invoice, saying so', async () => {
-    const s = await setup('/billing/invoices?business=xyz');
+    const s = await setup('/dashboard/billing/invoices?business=xyz');
     await s.show();
     expect(s.testid('invoices-unknown-business').text()).toBe('We could not find that business among yours: here are the invoices of all of them.');
     expect(s.params()).toEqual([{ limit: 25, offset: 0 }]);
@@ -418,7 +418,7 @@ describe('InvoicesTab: filters and search', () => {
 
   it('«Download Excel» downloads what the filters show', async () => {
     const download = vi.spyOn(browser, 'download').mockResolvedValue();
-    const s = await setup('/billing/invoices?business=bakery&year=2026');
+    const s = await setup('/dashboard/billing/invoices?business=bakery&year=2026');
     await s.show([PAID]);
     const csv = s.testid('invoices-csv');
     // On a phone it reads «Excel» (the toolbar stays on two lines); its name is the whole one everywhere.
@@ -447,7 +447,7 @@ describe('InvoicesTab: the toolbar on one line from 641 px (audit 2026-10-14, R-
     const observers = mockResizeObserver();
     let line: 1 | 2 = 1;
     layOut(() => line);
-    const s = await setup('/billing/invoices?year=2026');
+    const s = await setup('/dashboard/billing/invoices?year=2026');
     await s.show([PAID]);
     observers.fire();
     await flush();
@@ -466,7 +466,7 @@ describe('InvoicesTab: the toolbar on one line from 641 px (audit 2026-10-14, R-
     const observers = mockResizeObserver();
     let line: 1 | 2 = 2;
     layOut(() => line);
-    const s = await setup('/billing/invoices?year=2026');
+    const s = await setup('/dashboard/billing/invoices?year=2026');
     await s.show([PAID]);
     observers.fire();
     await flush();
@@ -531,7 +531,7 @@ describe('InvoicesTab: selection', () => {
   });
 
   it('says it in Spanish', async () => {
-    const s = await setup('/billing/invoices', undefined, 'es');
+    const s = await setup('/dashboard/billing/invoices', undefined, 'es');
     await s.show([OPEN, PAID]);
     s.table().vm.$emit('update:selected', ['i9', '00123']);
     await flush();
@@ -649,7 +649,7 @@ describe('InvoicesTab: a file is saved only when it is the file (audit 2026-10-1
   it('«Download Excel» that fails (503): says why and saves nothing', async () => {
     const asked = serveFiles(() => envelope(503, 'service_unavailable', 'The service is not available right now.'));
     const saved = watchSaves();
-    const s = await setup('/billing/invoices?year=2026');
+    const s = await setup('/dashboard/billing/invoices?year=2026');
     await s.show([PAID]);
     await press(s, 'invoices-csv');
     expect(asked).toEqual(['/api/billing/invoices/csv?year=2026']);
@@ -717,7 +717,7 @@ describe('InvoicesTab: a file is saved only when it is the file (audit 2026-10-1
         : envelope(404, 'billing.invoice_not_issued', 'Esta factura aún se está emitiendo.'),
     );
     watchSaves();
-    const s = await setup('/billing/invoices', undefined, 'es');
+    const s = await setup('/dashboard/billing/invoices', undefined, 'es');
     await s.show([PAID, invoiceRow('00125')]);
     s.table().vm.$emit('update:selected', ['00123', '00125']);
     await flush();
@@ -754,7 +754,7 @@ describe('InvoicesTab: a file is saved only when it is the file (audit 2026-10-1
         : envelope(503, 'billing.platform_unavailable', 'Ahora no se puede descargar la factura.'),
     );
     watchSaves();
-    const s = await setup('/billing/invoices', undefined, 'es');
+    const s = await setup('/dashboard/billing/invoices', undefined, 'es');
     await s.show([PAID, invoiceRow('00125')]);
     await press(s, 'invoices-row-00123-pdf');
     expect(toastInfo).toHaveBeenCalledExactlyOnceWith('Esta factura se está emitiendo: su PDF estará listo en cuanto termine.');
@@ -771,7 +771,7 @@ describe('InvoicesTab: empty', () => {
     const empty = s.testid('invoices-empty');
     expect(empty.text()).toContain('No invoices yet');
     expect(empty.text()).toContain('On the Free plan nothing is charged, so there are no invoices. They appear here when you pay for a plan or a module.');
-    expect(s.testid('invoices-empty-plans').attributes('routerlink')).toBe('/store/plans');
+    expect(s.testid('invoices-empty-plans').attributes('routerlink')).toBe('/dashboard/store/plans');
   });
 
   it('inside the apps, the same without selling', async () => {
@@ -783,13 +783,13 @@ describe('InvoicesTab: empty', () => {
   });
 
   it('a business on Free says it has none', async () => {
-    const s = await setup('/billing/invoices?business=cafe');
+    const s = await setup('/dashboard/billing/invoices?business=cafe');
     await s.show([]);
     expect(s.testid('invoices-empty').text()).toContain('Café Central is on Free: it has no invoices.');
   });
 
   it('filters that find nothing keep the toolbar and offer to show everything', async () => {
-    const s = await setup('/billing/invoices?status=open&year=2024');
+    const s = await setup('/dashboard/billing/invoices?status=open&year=2024');
     await s.show([]);
     expect(s.prop('hideToolbarWhenEmpty')).toBe(false);
     expect(s.testid('invoices-empty').text()).toContain('No invoice matches the search or the filters');
@@ -802,7 +802,7 @@ describe('InvoicesTab: empty', () => {
 
 describe('InvoicesTab: Spanish', () => {
   it('speaks Spanish', async () => {
-    const s = await setup('/billing/invoices', undefined, 'es');
+    const s = await setup('/dashboard/billing/invoices', undefined, 'es');
     await s.show([OPEN]);
     expect(s.prop('title')).toBe('Facturas de ERPlora');
     expect(s.wrapper.get('[data-testid="invoices-row"]').findAll('[role="cell"]').map((c) => c.text()).slice(0, 5)).toEqual([

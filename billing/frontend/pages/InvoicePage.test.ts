@@ -1,4 +1,4 @@
-// The page of one ERPlora invoice (`/billing/invoices/:id`, BILLING-G05; the old «Detalle de factura» and the
+// The page of one ERPlora invoice (`/dashboard/billing/invoices/:id`, BILLING-G05; the old «Detalle de factura» and the
 // «View» of `/dashboard/billing/invoices/`, BILLING-G92): live (`billing.invoice.get`), with Back to Invoices:
 //   - its number (or Stripe's reference while it is not collected), date, business, status and fiscal status;
 //   - its lines (what it charges, the period, net, VAT and total) and the totals;
@@ -89,7 +89,7 @@ describe('InvoicePage (BILLING-G05)', () => {
     expect(s.el('invoice-title').text()).toBe('Invoice ERP-2026-00042');
     await s.el('topbar-back').trigger('click');
     await flush();
-    expect(s.router.currentRoute.value.path).toBe('/billing/invoices');
+    expect(s.router.currentRoute.value.path).toBe('/dashboard/billing/invoices');
   });
 
   it('says its date, business, status and fiscal status', async () => {
@@ -137,7 +137,7 @@ describe('InvoicePage (BILLING-G05)', () => {
     );
     expect(s.el('invoice-title').text()).toBe('Credit note ERPR-2026-00003');
     expect(s.el('invoice-rectification').text()).toContain('Credit note R1 · Duplicate charge');
-    expect(s.el('invoice-rectified-link').attributes('href') ?? s.el('invoice-rectified-link').attributes('router-link')).toContain('/billing/invoices/00042');
+    expect(s.el('invoice-rectified-link').attributes('href') ?? s.el('invoice-rectified-link').attributes('router-link')).toContain('/dashboard/billing/invoices/00042');
   });
 
   it('issued: «Download PDF»; not collected: no number yet, «Pay» and no PDF', async () => {

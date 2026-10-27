@@ -72,7 +72,7 @@ async function nestedScrollers(page: Page): Promise<string[]> {
 
 async function openInvoices(page: Page, width: number): Promise<void> {
   await page.setViewportSize({ width, height: VIEWPORTS.find((v) => v.width === width)!.height });
-  await page.goto('/billing/invoices');
+  await page.goto('/dashboard/billing/invoices');
   await expect(page.getByTestId('invoices-row')).toHaveCount(4);
   await settled(page);
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// «Report a problem» (`/report-a-problem`, the user menu; ACCOUNTS-F38, PLAN-SAAS §1.1): «Subject» and «What
+// «Report a problem» (`/dashboard/report-a-problem`, the user menu; ACCOUNTS-F38, PLAN-SAAS §1.1): «Subject» and «What
 // happened?» go to the support mailbox (`accounts.support.report`) with the account, its businesses, the page the
 // person came from and the browser, which the screen says; «Report sent» names the address support answers to. A
 // refusal keeps what was typed: a field's (422) under it, the rest (the limit, a mail that could not leave, no
@@ -11,10 +11,11 @@ import { IonButton, IonCard, IonCardContent, IonInput, IonSpinner, IonTextarea }
 import { computed, shallowRef } from 'vue';
 import { useRouter } from 'vue-router';
 
+import { BUSINESSES } from '../paths';
 import { useErrorText } from '../error-text';
 
 /** Where Back goes when the page was opened on its own (a link, a reload). */
-const PANEL_HOME = '/businesses';
+const PANEL_HOME = BUSINESSES;
 
 const router = useRouter();
 const { text } = useErrorText();

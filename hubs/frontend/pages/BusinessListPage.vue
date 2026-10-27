@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Businesses (`/businesses`): the panel's home (round 17 §2.3; mockups `businesses.html`, README §3b).
+// Businesses (`/dashboard/businesses`): the panel's home (round 17 §2.3; mockups `businesses.html`, README §3b).
 // Management, not the launcher: the account's businesses in a server-side DataTable (list or cards;
 // cards up to 900 px so names are not cut on a tablet) with their status (and why), plan, role and
 // last use; per row what the server says it allows (`can`): «Open» (not while suspended or deleted),
@@ -45,6 +45,7 @@ import {
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
+import { BUSINESSES, STORE } from '../../../accounts/frontend/paths';
 import { useLiveState } from '../../../frontend/live-state';
 import type { BusinessDetailOut, BusinessRowOut, InvitationOut, OwnershipOfferOut } from '../../../frontend/sdk-types';
 import { opensAtAll, preparationFailed, reasonDate, reasonKey, statusPill } from '../business-status';
@@ -160,7 +161,7 @@ function why(row: BusinessRowOut): string {
   return t(key, { date: reasonDate(row, locale.value) });
 }
 
-const pageOf = (row: { id: string }) => `/businesses/${row.id}/summary`;
+const pageOf = (row: { id: string }) => `${BUSINESSES}/${row.id}/summary`;
 
 /** The row's buttons, as the table folds them when its box narrows (README §3b, W-19): «Open» stays,
  *  «Manage» and «Recover» go into «⋮» first. Each is named with its business for a screen reader. */
@@ -253,7 +254,7 @@ const limited = computed(() => !created.value && !!freeBusiness.value);
 
 function changeFreePlan(id: string): void {
   createOpen.value = false;
-  void router.push(`/store/plans?business=${id}`);
+  void router.push(`${STORE}/plans?business=${id}`);
 }
 
 const phase = computed<'form' | 'preparing' | 'ready' | 'error'>(() => {

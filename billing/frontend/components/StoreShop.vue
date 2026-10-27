@@ -24,6 +24,7 @@ import { IonButton, IonCard, IonCardContent, IonInput, IonLabel, IonSegment, Ion
 import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import { BILLING, BUSINESSES } from '../../../accounts/frontend/paths';
 import { useLiveState } from '../../../frontend/live-state';
 import { useErrorText } from '../../../hubs/frontend/error-text';
 import type {
@@ -462,7 +463,7 @@ async function keepTheModule(module: SaleModule): Promise<void> {
       data-testid="store-no-business"
     >
       <template #action>
-        <ion-button router-link="/businesses">
+        <ion-button :router-link="BUSINESSES">
           {{ $t('billing.store.noBusiness.action') }}
         </ion-button>
       </template>
@@ -510,7 +511,7 @@ async function keepTheModule(module: SaleModule): Promise<void> {
           <ion-button
             size="small"
             fill="outline"
-            :router-link="`/billing?business=${business.id}`"
+            :router-link="`${BILLING}?business=${business.id}`"
             data-testid="store-unpaid-billing"
           >
             <HubIcon

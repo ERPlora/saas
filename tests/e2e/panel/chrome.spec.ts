@@ -96,7 +96,7 @@ test.describe('R-04/R-08: a failure is never an empty page nor a spinner for eve
     const bakery = await businessIdOf(page.request, 'Panadería López');
     await liveRefused(page);
 
-    await page.goto('/businesses');
+    await page.goto('/dashboard/businesses');
     await expect(page.getByTestId('businesses-retry')).toBeVisible();
     await expect(shown(page)).toContainText('We could not load your businesses');
     await expect(page.getByTestId('businesses-empty')).toHaveCount(0);
@@ -107,7 +107,7 @@ test.describe('R-04/R-08: a failure is never an empty page nor a spinner for eve
     await expect(page.getByTestId('launch-error')).toContainText('We could not load your businesses.');
     await expect(page.getByTestId('launch-loading')).toHaveCount(0);
 
-    await page.goto(`/businesses/${bakery}/members`);
+    await page.goto(`/dashboard/businesses/${bakery}/members`);
     await expect(page.getByTestId('business-error')).toBeVisible();
     // No tabbar on an error: its sections would only repeat it (W-18).
     await expect(shown(page).locator('[data-testid^="tab-"]')).toHaveCount(0);
@@ -116,15 +116,15 @@ test.describe('R-04/R-08: a failure is never an empty page nor a spinner for eve
     await expect(page.getByTestId('invitation-error')).toBeVisible();
     await expect(page.getByTestId('invitation-expired')).toHaveCount(0);
 
-    await page.goto('/account/profile');
+    await page.goto('/dashboard/account/profile');
     await expect(page.getByTestId('profile-error')).toBeVisible();
     await expect(page.getByTestId('profile-loading')).toHaveCount(0);
 
-    await page.goto('/account/preferences');
+    await page.goto('/dashboard/account/preferences');
     await expect(page.getByTestId('preferences-error')).toBeVisible();
 
     // The service is back: «Retry» loads the page.
-    await page.goto('/businesses');
+    await page.goto('/dashboard/businesses');
     await expect(page.getByTestId('businesses-retry')).toBeVisible();
     await page.unroute(/\/api\/live\?/);
     await page.getByTestId('businesses-retry').click();
@@ -197,7 +197,7 @@ test.describe('R-06/R-07/R-09/R-15: the way to pay outside Billing', () => {
   });
 
   test('Businesses groups the unpaid invoices in one notice, each business with its way out, days without the time', async ({ page }) => {
-    await page.goto('/businesses');
+    await page.goto('/dashboard/businesses');
     const group = page.getByTestId('businesses-unpaid');
     await expect(group).toContainText('2 businesses have unpaid invoices');
     const lines = group.getByTestId('businesses-unpaid-line');
@@ -235,7 +235,7 @@ async function smallTargets(page: Page, inDialog = false): Promise<string[]> {
 test.describe('R-11/R-13/R-20: the chrome of every page', () => {
   test('«Skip to content» is the first stop of the keyboard and takes it to the page', async ({ page }) => {
     await signIn(page.request, panelAccount('several'));
-    await page.goto('/businesses');
+    await page.goto('/dashboard/businesses');
     await expect(page.getByTestId('businesses-row').first()).toBeVisible();
     await page.keyboard.press('Tab');
     const link = page.locator('#skip-to-content');
@@ -257,10 +257,10 @@ test.describe('R-11/R-13/R-20: the chrome of every page', () => {
     const bakery = await businessIdOf(page.request, 'Panadería López');
     const screens: Array<[string, string, string]> = [
       ['launch', '/launch', 'launch-business'],
-      ['businesses', '/businesses', 'businesses-row'],
-      ['business-summary', `/businesses/${bakery}/summary`, 'business-header'],
-      ['business-members', `/businesses/${bakery}/members`, 'members-row'],
-      ['account-preferences', '/account/preferences', 'preferences-theme'],
+      ['businesses', '/dashboard/businesses', 'businesses-row'],
+      ['business-summary', `/dashboard/businesses/${bakery}/summary`, 'business-header'],
+      ['business-members', `/dashboard/businesses/${bakery}/members`, 'members-row'],
+      ['account-preferences', '/dashboard/account/preferences', 'preferences-theme'],
     ];
     const offenders: string[] = [];
     for (const [name, path, ready] of screens) {
@@ -272,17 +272,17 @@ test.describe('R-11/R-13/R-20: the chrome of every page', () => {
     }
     // A dialog: its ✕ and its buttons (with Café Central on Free, the one-Free-business limit and its way out,
     // audit 2 S-02).
-    await page.goto('/businesses?create=1');
+    await page.goto('/dashboard/businesses?create=1');
     await expect(page.getByTestId('create-free-limit-store')).toBeVisible();
     await settled(page);
     offenders.push(...(await smallTargets(page, true)).map((target) => `create dialog: ${target}`));
     await snap(page, 'businesses-create-390');
     expect(offenders).toEqual([]);
 
-    await page.goto(`/businesses/${bakery}/summary`);
+    await page.goto(`/dashboard/businesses/${bakery}/summary`);
     await expect(shown(page).getByTestId('topbar-back')).toBeVisible();
     await expect(shown(page).locator('ion-menu-button')).toBeHidden();
-    await page.goto('/businesses');
+    await page.goto('/dashboard/businesses');
     await expect(shown(page).locator('ion-menu-button')).toBeVisible();
   });
 });
@@ -293,9 +293,9 @@ test.describe('R-13: Billing and the Store at 390 px', () => {
     await signIn(page.request, panelAccount('billing'));
     const bakery = await businessIdOf(page.request, 'Panadería López');
     const screens: Array<[string, string, string]> = [
-      ['billing-invoices', '/billing/invoices', 'invoices-row'],
-      ['billing-subscriptions', '/billing/subscriptions', 'subscriptions-row'],
-      ['store-plans', `/store/plans?business=${bakery}`, 'store-plans'],
+      ['billing-invoices', '/dashboard/billing/invoices', 'invoices-row'],
+      ['billing-subscriptions', '/dashboard/billing/subscriptions', 'subscriptions-row'],
+      ['store-plans', `/dashboard/store/plans?business=${bakery}`, 'store-plans'],
     ];
     const offenders: string[] = [];
     for (const [name, path, ready] of screens) {
@@ -334,7 +334,7 @@ test.describe('R-14: the table’s toolbar in one row on a tablet and a laptop',
     test(`Businesses at ${width} px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       await signIn(page.request, panelAccount('several'));
-      await page.goto('/businesses');
+      await page.goto('/dashboard/businesses');
       await expect(page.getByTestId('businesses-row').first()).toBeVisible();
       await settled(page);
       expect(await toolbarRows(page)).toBe(1);
@@ -344,7 +344,7 @@ test.describe('R-14: the table’s toolbar in one row on a tablet and a laptop',
     test(`Invoices at ${width} px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       await signIn(page.request, panelAccount('billing'));
-      await page.goto('/billing/invoices');
+      await page.goto('/dashboard/billing/invoices');
       await expect(page.getByTestId('invoices-row').first()).toBeVisible();
       await settled(page);
       expect(await toolbarRows(page)).toBe(1);

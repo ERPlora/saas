@@ -47,10 +47,10 @@ def test_signed_in_gets_the_panels_menu_in_its_language(client, ana):
 
     [section] = body["menu"]
     assert [(i["path"], i["label"], i["icon"], i["webOnly"]) for i in section["items"]] == [
-        ("/businesses", "Negocios", "lucide:store", False),
-        ("/store", "Tienda", "lucide:shopping-bag", True),
-        ("/billing", "Facturación", "lucide:receipt", False),
-        ("/account", "Cuenta", "lucide:circle-user", False),
+        ("/dashboard/businesses", "Negocios", "lucide:store", False),
+        ("/dashboard/store", "Tienda", "lucide:shopping-bag", True),
+        ("/dashboard/billing", "Facturación", "lucide:receipt", False),
+        ("/dashboard/account", "Cuenta", "lucide:circle-user", False),
     ]
 
 

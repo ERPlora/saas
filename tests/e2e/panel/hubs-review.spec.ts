@@ -246,7 +246,7 @@ for (const { language, locale } of LANGUAGES) {
 
       // The old overview of the panel leads to Businesses, its home (HUBS-F10).
       await page.goto('/dashboard/');
-      await expect(page).toHaveURL(/\/businesses$/);
+      await expect(page).toHaveURL(/\/dashboard\/businesses$/);
       const list = shown(page);
       await atEverySize(
         page,
@@ -273,7 +273,7 @@ for (const { language, locale } of LANGUAGES) {
         { where: dialog, english: [say('en', 'hubs.create.heading')] },
       );
       await page.keyboard.press('Escape');
-      await page.goto(`/businesses/${gone}/summary`);
+      await page.goto(`/dashboard/businesses/${gone}/summary`);
       await atEverySize(
         page,
         'HUBS-F19',
@@ -293,7 +293,7 @@ for (const { language, locale } of LANGUAGES) {
       await signIn(page.request, { email: owner.email, password: PASSWORD });
       const id = await businessOf(page, 'Bar Manolo');
 
-      await page.goto(`/businesses/${id}/summary`);
+      await page.goto(`/dashboard/businesses/${id}/summary`);
       const summary = shown(page);
       await atEverySize(
         page,
@@ -306,7 +306,7 @@ for (const { language, locale } of LANGUAGES) {
         },
         { where: summary, english: [say('en', 'hubs.business.devices.title')] },
       );
-      await page.goto(`/businesses/${id}/settings`);
+      await page.goto(`/dashboard/businesses/${id}/settings`);
       const settings = shown(page);
       await atEverySize(
         page,
@@ -357,7 +357,7 @@ for (const { language, locale } of LANGUAGES) {
       const id = await businessOf(page, 'Bar Manolo', { paid: true });
       const member = await invite(page, browser, id, ana, true);
 
-      await page.goto(`/businesses/${id}/members`);
+      await page.goto(`/dashboard/businesses/${id}/members`);
       const team = shown(page);
       await atEverySize(
         page,
