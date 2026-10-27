@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:03ec8f31ac8280835b4ef3d105704f68ea4254e170f6df85c912490528983698 -->
+<!-- generated from WORKBOOK.md sha256:b71d58e5b5725399112fbf3b6cff527b4d11989f437c2c9df9af9412cf11c4fe -->
 
 ## What it is for and who it is for
 
@@ -144,7 +144,7 @@ to upgrade or change it.
 | BILLING-F31 | See the paid apps and their state in each business | done |
 | BILLING-F32 | Subscribe a business to a paid app | done |
 | BILLING-F33 | Cancel a paid app | done |
-| BILLING-F34 | End a paid app at the end of its period | partial |
+| BILLING-F34 | End a paid app at the end of its period | done |
 | BILLING-F35 | Take a paid app to another business | done |
 | BILLING-F36 | See an invoice | done |
 | BILLING-F37 | Forget Stripe's notices older than 30 days | done |
@@ -637,7 +637,7 @@ Involved: hubs (the business's subscription), the business (receives until when 
 
 ### BILLING-F34 End a paid app at the end of its period
 <!-- origen: old-saas:SAAS_DASHBOARD-F113 -->
-Status: partial — the business stops having the app that day and has it again when it is bought again, but it is still to be proven that it comes back with its data as it was
+Status: done
 Actor: system
 Screen: Store, Billing › Subscriptions
 Steps:

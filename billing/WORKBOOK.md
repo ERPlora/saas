@@ -1,7 +1,7 @@
 # Workbook — Facturación (billing)
 Prefijo: BILLING
 Alcance MVP: fase 1 (lo que una cuenta paga a ERPlora: planes, módulos, IVA y facturas)
-Estado de la app: en uso (un flujo parcial: BILLING-F34, falta la prueba en el Hub de que una aplicación de pago vuelve con sus datos al contratarla de nuevo)
+Estado de la app: en uso
 
 > Manual de uso y especificación de la app `billing` del SaaS (erplora.com). Cuenta cómo se paga y se
 > cambia el plan de un negocio, cómo se contratan y se cancelan sus aplicaciones de pago, qué pasa si un
@@ -157,7 +157,7 @@ al propietario, el botón para mejorarlo o cambiarlo.
 | BILLING-F31 | Ver las aplicaciones de pago y su estado en cada negocio | hecho |
 | BILLING-F32 | Contratar una aplicación de pago para un negocio | hecho |
 | BILLING-F33 | Cancelar una aplicación de pago | hecho |
-| BILLING-F34 | Terminar una aplicación de pago al final de su periodo | parcial |
+| BILLING-F34 | Terminar una aplicación de pago al final de su periodo | hecho |
 | BILLING-F35 | Llevar una aplicación de pago a otro negocio | hecho |
 | BILLING-F36 | Ver una factura | hecho |
 | BILLING-F37 | Olvidar los avisos de Stripe de más de 30 días | hecho |
@@ -650,7 +650,7 @@ Implicados: hubs (la suscripción del negocio), el negocio (recibe hasta cuándo
 
 ### BILLING-F34 Terminar una aplicación de pago al final de su periodo
 <!-- origen: old-saas:SAAS_DASHBOARD-F113 -->
-Estado: parcial — el negocio deja de tener la aplicación ese día y la vuelve a tener al contratarla de nuevo, pero falta probar que vuelve con sus datos como estaba
+Estado: hecho
 Actor: sistema
 Pantalla: Tienda, Facturación › Suscripciones
 Pasos:
