@@ -23,6 +23,11 @@ legal por cada cobro, que se ve y se descarga en **Facturación**.
 - Si un cobro falla, el negocio sigue funcionando 7 días mientras se reintenta; después se suspende
   hasta que se pague, sin perder ningún dato.
 
+Hoy ninguna aplicación es de pago: todas van en todos los planes (ronda 2026-10-24b, PLAN §32 y PLAN-SAAS §9).
+Lo que este manual cuenta de las aplicaciones de pago (la pantalla **Tienda › Módulos** y contratar, cancelar,
+terminar y llevar una a otro negocio, BILLING-F31 a BILLING-F35) funciona y está probado, pero no se usa hasta que
+vuelva a haber una.
+
 Quién la usa:
 
 - El **propietario** del negocio paga, cambia y cancela su plan, y ve sus facturas.
@@ -727,6 +732,10 @@ Implicados: hubs (la suscripción del negocio), el negocio (recibe su plan)
   existían el soporte de Stripe del SaaS viejo (precios, vuelta del pago, servicio de Stripe, modelos,
   serializadores y tareas) y añade BILLING-F37 y BILLING-F38. Lo que allí eran tareas de Celery aquí son
   tareas programadas o se hace tras el COMMIT (el correo de la factura).
+- Las aplicaciones de pago (BILLING-F31 a BILLING-F35) están hechas y probadas con los dobles de Stripe y del Hub
+  (`billing/tests/test_module_end_reaches_the_hub.py`; en el Hub, `base/tests/test_entitlement.py`), pero hoy no se
+  usan: desde la ronda 2026-10-24b (PLAN §32 punto 1, PLAN-SAAS §9) todos los módulos van en todos los planes y
+  ninguno es `premium`, así que no hay fila `Module` a la venta. Vuelven a usarse en cuanto la haya.
 - Fuera del modelo viejo, a propósito: sin cuota de mantenimiento del 25 % al terminar un plan (PLAN-SAAS
   §3.3: vuelve a Gratis), sin estado «pendiente de pago» en el alta (el negocio nace en Gratis) y sin
   sincronización automática de productos de Stripe (los identificadores se pegan en el admin).

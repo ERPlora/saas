@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:b71d58e5b5725399112fbf3b6cff527b4d11989f437c2c9df9af9412cf11c4fe -->
+<!-- generated from WORKBOOK.md sha256:ff3208e0708385fca081d8013f0658f769a7e4f21885bc327f51ef5d76f675b8 -->
 
 ## What it is for and who it is for
 
@@ -13,6 +13,10 @@ and downloaded in **Billing**.
   goes back to Free.
 - If a charge fails, the business keeps working for 7 days while it is retried; then it is suspended until it
   is paid, without losing any data.
+
+Today no app is paid: every app comes with every plan (round 2026-10-24b, PLAN §32 and PLAN-SAAS §9). What this
+manual tells of the paid apps (the **Store › Modules** screen, and buying, cancelling, ending and taking one to
+another business, BILLING-F31 to BILLING-F35) works and is tested, but is not used until there is one again.
 
 Who uses it:
 
