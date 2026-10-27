@@ -11,16 +11,18 @@ Port of ``apps/public/appdist/views.py`` and ``apps/public/landing/downloads_vie
   the answer is ``None``, never an invented number**: the Hub turns anything that is not a version
   into «could not check», silence; a number too many would send a till to download something that
   does not exist.
-* ``download`` — ``GET /app/download/<platform>/``: the store when its listing is live, the
-  installer (always ``latest/``) otherwise. It is the only download door: the store-or-presigned
-  rule lives once (``public.downloads.store_url_for``), and it is an address of ``erplora.com``,
-  which the installed app may open (ADR-0255), where a presigned URL of the bucket is not.
+* ``download`` — ``GET /app/download/<platform>/``: the store when its listing is live, else the
+  platform's own channel, always the latest build: Linux's AppImage from the latest GitHub release
+  of ``ERPlora/app`` (``public.downloads.GITHUB_RELEASE_URLS``, 2026-10-27), Windows' installer from
+  the bucket's ``latest/``. It is the only download door: where each channel lives is said once
+  (``public.downloads``), and it is an address of ``erplora.com``, which the installed app may
+  open (ADR-0255), where a presigned URL of the bucket is not.
 * ``index`` — ``GET /app/``, the app's public page; ``ways_to_try`` — ``GET /download/``.
 
-**Android has no fallback** (hub#984): its only channel is Google Play (ADR-0160). It is not in
-``_APP_PLATFORM_FILES``, so without a store it gets a page of ours (saas#1719) while
-``GOOGLE_PLAY_LISTING_LIVE`` is off, and never the APK. The listing is live since 2026-10-01 and the
-switch defaults to on: the page only comes back if Google pulls the listing.
+**Android has no fallback** (hub#984): its only channel is Google Play (ADR-0160). It is neither in
+``_APP_PLATFORM_FILES`` nor in ``GITHUB_RELEASE_URLS``, so without a store it gets a page of ours
+(saas#1719) while ``GOOGLE_PLAY_LISTING_LIVE`` is off, and never the APK. The listing is live since
+2026-10-01 and the switch defaults to on: the page only comes back if Google pulls the listing.
 """
 
 import json
@@ -33,7 +35,12 @@ from django.shortcuts import render
 from django.views.decorators.http import require_safe
 
 from public import pricing
-from public.downloads import _s3_client, presigned_download_url, store_url_for
+from public.downloads import (
+    GITHUB_RELEASE_URLS,
+    _s3_client,
+    presigned_download_url,
+    store_url_for,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -46,12 +53,13 @@ RELEASE_MANIFEST_KEY = "downloads/app/latest/latest.json"
 #: something that changes once per release: without this, one `get_object` per till and round.
 RELEASE_CACHE_TTL = 600
 
-#: The platforms served as a WEB DOWNLOAD, and the binary of each. No macOS (no Apple Developer ID
-#: certificate, nothing is published) and, on purpose, no Android (hub#984): its only channel is
-#: Google Play; the CI still uploads the APK, as an internal QA artefact without a public door.
+#: The platforms served as a WEB DOWNLOAD from the bucket, and the binary of each. Not Linux: its
+#: AppImage comes from the latest GitHub release (``GITHUB_RELEASE_URLS``), and a platform is in one
+#: table only. No macOS (no Apple Developer ID certificate, nothing is published) and, on purpose,
+#: no Android (hub#984): its only channel is Google Play; the CI still uploads the APK, as an
+#: internal QA artefact without a public door.
 _APP_PLATFORM_FILES = {
     "windows": "erplora-app-setup.exe",
-    "linux": "erplora-app.AppImage",
 }
 
 #: The settings that pick the store, in one place: `download` decides the destination with them and
@@ -116,18 +124,22 @@ def index(request: HttpRequest) -> HttpResponse:
 
 @require_safe
 def download(request: HttpRequest, platform: str) -> HttpResponse:
-    """``/app/download/<platform>/``: the store, Android's page, or the installer.
+    """``/app/download/<platform>/``: the store, Android's page, the GitHub release or the bucket.
 
-    The prefix is ``latest/``, never ``v{version}/``: a page that caches this link keeps
-    delivering the latest build (hub#400, point 1). The store is asked BEFORE the binary, and that
-    order is the fix of hub#984: Android has no binary entry, so without a store it falls on its
-    page, never on the presigned APK.
+    Never a versioned address, so a page that caches this link keeps delivering the latest build
+    (hub#400, point 1): GitHub's ``releases/latest/download/`` for Linux, the bucket's ``latest/``
+    prefix for Windows. The store is asked BEFORE any binary, and that order is the fix of
+    hub#984: Android has no binary entry, so without a store it falls on its page, never on the
+    presigned APK.
     """
     store_url = _store_url(platform)
     if store_url:
         return HttpResponseRedirect(store_url)
     if platform == "android":
         return render(request, "public/appdist/android.html")
+    release_url = GITHUB_RELEASE_URLS.get(platform)
+    if release_url:
+        return HttpResponseRedirect(release_url)
     filename = _APP_PLATFORM_FILES.get(platform)
     if not filename:
         raise Http404
