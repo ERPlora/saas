@@ -412,6 +412,13 @@
       "notice": "This site is protected by reCAPTCHA and the Google {privacy} and {terms} apply.",
       "privacy": "Privacy Policy",
       "terms": "Terms of Service"
+    },
+    "signOut": {
+      "title": "Sign out of erplora.com?",
+      "lead": "You are still signed in to erplora.com in this browser as {account}.",
+      "confirm": "Sign out",
+      "stay": "Stay signed in",
+      "failed": "Could not sign out. Try again."
     }
   }
 }

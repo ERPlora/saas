@@ -106,3 +106,22 @@ def test_posting_an_old_sign_in_signs_nobody_in(client, password, old):
 )
 def test_allauths_template_pages_are_gone(client, page):
     assert client.get(page, HTTP_HOST=HOST).status_code == 404
+
+
+#: Where the Hub's «Sign out» lands on a device without the PIN pad (hub ``base/auth_views.py`` ``SAAS_LOGOUT_PATH``,
+#: BASE-F61): erplora.com's page that asks before closing its own session (ACCOUNTS-F09,
+#: ``accounts/frontend/pages/SignOutPage.vue``), instead of allauth's ``/accounts/logout/``, gone above.
+HUB_SIGN_OUT = "/logout"
+
+
+@pytest.mark.usefixtures("spa_manifest")
+def test_the_hubs_sign_out_lands_on_a_page_of_the_spa_that_closes_nothing_by_being_opened(client, password):
+    user = get_user_model().objects.create_user(email="ana@example.com", password=password)
+    client.force_login(user)
+
+    response = client.get(HUB_SIGN_OUT, HTTP_HOST=HOST)
+
+    assert response.status_code == 200
+    assert SHELL_MARK in response.content.decode()
+    # Only the page's «Sign out» closes the session: a loose link (or another site's <img>) never does.
+    assert client.session["_auth_user_id"] == str(user.pk)

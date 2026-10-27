@@ -19,6 +19,7 @@ vi.mock('./pages/TwoFactorSettingsPage.vue', () => ({ default: { name: 'TwoFacto
 vi.mock('./pages/ReauthenticatePage.vue', () => ({ default: { name: 'ReauthenticatePage' } }));
 vi.mock('./pages/AccountPage.vue', () => ({ default: { name: 'AccountPage' } }));
 vi.mock('./pages/ReportProblemPage.vue', () => ({ default: { name: 'ReportProblemPage' } }));
+vi.mock('./pages/SignOutPage.vue', () => ({ default: { name: 'SignOutPage' } }));
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -49,6 +50,9 @@ describe('accounts routes.ts', () => {
       ['/dashboard/account/:tab(profile|security|preferences|api-keys)', { auth: true }],
       // «Report a problem» of the user menu (ACCOUNTS-F38): the account goes with the report.
       ['/dashboard/report-a-problem', { auth: true }],
+      // Where the Hub's «Sign out» lands (BASE-F61, hub `base/auth_views.py` SAAS_LOGOUT_PATH): erplora.com asks before
+      // closing its own session (ACCOUNTS-F09), in the auth card; open to a visitor, whom it sends to the launcher.
+      ['/logout', { auth: false, chrome: false }],
     ]);
   });
 
@@ -85,6 +89,7 @@ describe('accounts routes.ts', () => {
       '/reauthenticate': 'ReauthenticatePage',
       '/dashboard/account/:tab(profile|security|preferences|api-keys)': 'AccountPage',
       '/dashboard/report-a-problem': 'ReportProblemPage',
+      '/logout': 'SignOutPage',
     };
     for (const route of routes.filter((r) => !r.redirect)) {
       expect(typeof route.component, route.path).toBe('function');

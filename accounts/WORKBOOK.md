@@ -178,6 +178,11 @@ Tres tarjetas que se guardan solas: «Apariencia» («Sistema», «Claro», «Os
 El nombre y el correo arriba del menú lateral (en el móvil, dentro del menú): «Cuenta», «Ayuda», el tema y
 «Cerrar sesión».
 
+### Cerrar la sesión de erplora.com
+Adonde lleva «Cerrar sesión» de un negocio abierto en un dispositivo sin teclado de PIN, con el logo y «ERPlora
+Cloud · Panel global» de la **Entrada**: «¿Cerrar la sesión de erplora.com?», «Sigues conectado a erplora.com en este
+navegador como …», «Cerrar sesión» y «Seguir conectado».
+
 ### Menú del panel
 «Negocios», «Tienda», «Facturación» y «Cuenta», con la de la página abierta marcada; arriba, la tarjeta de la
 persona (el **Menú de usuario**) y abajo, el logo de ERPlora. En una pantalla ancha está siempre a la vista; en
@@ -386,14 +391,15 @@ Implicados: hubs (cada negocio cierra las sesiones de la cuenta)
 <!-- origen: old-saas:SAAS_AUTH-F11 -->
 Estado: hecho
 Actor: cualquier persona con cuenta
-Pantalla: Menú de usuario, Entrada
+Pantalla: Menú de usuario, Entrada, Cerrar la sesión de erplora.com
 Pasos:
 1. En el panel, la persona abre el **Menú de usuario** (en el móvil, dentro del menú) y pulsa «Cerrar sesión»; en la **Entrada** con sesión, «Cerrar sesión» está bajo su cuenta.
 2. La sesión de ese navegador se cierra y vuelve la **Entrada**, lista para entrar.
 3. Una página del panel abierta después lleva a la **Entrada**.
+4. Desde un negocio, en un dispositivo sin teclado de PIN, su «Cerrar sesión» cierra la del negocio y abre **Cerrar la sesión de erplora.com**: «Cerrar sesión» cierra también esta, como en el paso 2; «Seguir conectado» la deja abierta y vuelve la **Entrada** con los negocios de la cuenta. Sin sesión, lleva a la **Entrada**.
 Entra: la sesión del navegador.
 Sale: la sesión de ese navegador cerrada. Las demás sesiones, las llaves de API y los negocios no se tocan: para cerrar otras está **Cuenta › Seguridad**.
-Si falla: si no se pudo cerrar, «No se ha podido cerrar la sesión. Inténtalo de nuevo.» y sigue dentro. Un enlace suelto no cierra ninguna sesión.
+Si falla: si no se pudo cerrar, «No se ha podido cerrar la sesión. Inténtalo de nuevo.» y sigue dentro. Un enlace suelto no cierra ninguna sesión: abrir **Cerrar la sesión de erplora.com** solo pregunta.
 Implicados: ninguno
 
 ### ACCOUNTS-F10 Aceptar los términos y la política de privacidad

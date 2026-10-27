@@ -77,6 +77,14 @@ const routes: RouteRecordRaw[] = [
     component: () => import('./pages/ReportProblemPage.vue'),
     meta: { auth: true },
   },
+  {
+    // Where the Hub's «Sign out» lands on a device without the PIN pad (BASE-F61): erplora.com asks before closing its
+    // own session (ACCOUNTS-F09), in the auth card as the old SaaS's allauth page did. Open to a visitor, whom it sends
+    // to the launcher: there is nothing to close. Not under `/accounts/`, which is Django's (allauth's pages are gone).
+    path: '/logout',
+    component: () => import('./pages/SignOutPage.vue'),
+    meta: { auth: false, chrome: false },
+  },
 ];
 
 export default routes;

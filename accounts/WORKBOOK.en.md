@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:404db59e188fb1badd19231e56d7b53cbb3058ac9c05a43305e70151879d42b2 -->
+<!-- generated from WORKBOOK.md sha256:b5be886f2a52e23ce63e1ff764fcbffe844ba03dd260b26f3b99ed92eb332401 -->
 
 ## What it is for and who it is for
 
@@ -153,6 +153,11 @@ Three cards that save on their own: "Appearance" ("System", "Light", "Dark"), "L
 ### User menu
 The name and the email at the top of the side menu (on a phone, inside the menu): "Account", "Help", the
 theme and "Sign out".
+
+### Sign out of erplora.com
+Where a business's "Sign out" leads on a device without the PIN pad, with the logo and "ERPlora Cloud · Global
+panel" of the **Entrance**: "Sign out of erplora.com?", "You are still signed in to erplora.com in this browser as
+…", "Sign out" and "Stay signed in".
 
 ### Panel menu
 "Businesses", "Store", "Billing" and "Account", with the one of the open page marked; at the top, the person's card
@@ -353,14 +358,15 @@ Involved: hubs (each business ends the account's sessions)
 ### ACCOUNTS-F09 Sign out
 Status: done
 Actor: any person with an account
-Screen: User menu, Entrance
+Screen: User menu, Entrance, Sign out of erplora.com
 Steps:
 1. In the panel, the person opens the **User menu** (on a phone, inside the menu) and taps "Sign out"; on the **Entrance** with a session, "Sign out" is under their account.
 2. That browser's session ends and the **Entrance** comes back, ready to sign in.
 3. A page of the panel opened afterwards leads to the **Entrance**.
+4. From a business, on a device without the PIN pad, its "Sign out" ends the business's and opens **Sign out of erplora.com**: "Sign out" ends this one too, as in step 2; "Stay signed in" leaves it open and the **Entrance** comes back with the account's businesses. Without a session, it leads to the **Entrance**.
 In: the browser's session.
 Out: that browser's session ended. The other sessions, the API keys and the businesses are not touched: to end others there is **Account › Security**.
-If it fails: if it could not be ended, "Could not sign out. Try again." and they stay signed in. A loose link ends no session.
+If it fails: if it could not be ended, "Could not sign out. Try again." and they stay signed in. A loose link ends no session: opening **Sign out of erplora.com** only asks.
 Involved: none
 
 ### ACCOUNTS-F10 Accept the terms and the privacy policy

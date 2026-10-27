@@ -80,6 +80,10 @@ const ACCOUNT_PAGE = 'accounts.account.';
 /** «Report a problem» (`/dashboard/report-a-problem`, ACCOUNTS-F38) had no template in saas-next either: its texts are new. */
 const REPORT_PAGE = 'accounts.report.';
 
+/** «Sign out of erplora.com?» (`/logout`, ACCOUNTS-F09), where the Hub's «Sign out» lands, asks in words of its own: the old
+ *  allauth page («Are you sure you want to sign out?») came after nothing, this one after the Hub's own sign-out. */
+const SIGN_OUT_PAGE = 'accounts.signOut.';
+
 /**
  * Pages whose templates ERPlora/saas had and saas-next never ported (the sign-up's code,
  * `account/confirm_email_verification_code.html`; the password reset, `account/password_reset*.html`):
@@ -88,7 +92,7 @@ const REPORT_PAGE = 'accounts.report.';
  */
 const UNPORTED_TEMPLATE_PAGES = ['accounts.verifyEmail.', 'accounts.passwordReset.'];
 const newPage = (key: string) =>
-  key.startsWith(ACCOUNT_PAGE) || key.startsWith(REPORT_PAGE) || UNPORTED_TEMPLATE_PAGES.some((page) => key.startsWith(page));
+  key.startsWith(ACCOUNT_PAGE) || key.startsWith(REPORT_PAGE) || key.startsWith(SIGN_OUT_PAGE) || UNPORTED_TEMPLATE_PAGES.some((page) => key.startsWith(page));
 
 /** vue-i18n's separator of plural forms (`singular | plural`). */
 const PLURAL = ' | ';
