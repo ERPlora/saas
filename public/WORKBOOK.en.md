@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:c3af683f95d39ffb974724f7f09b7cabe13e1990831b1a181254d53f07c72cc1 -->
+<!-- generated from WORKBOOK.md sha256:d4d5f57149992fcf2ba5ecbc3173f938b363a56d5cc3fdebe20d975b35092d45 -->
 
 ## What it is for and who it is for
 
@@ -435,7 +435,7 @@ Steps:
 3. The terms give the numbers the product keeps: the days of the exit package, the days a suspended business waits before it is deleted and the trial of the plans on sale (none if none has one).
 In: the plans on sale (the terms).
 Out: nothing saved.
-If it fails: no text names a provider no longer used or another hosting, nor keeps quiet about where the audio of a dictation goes, nor promises EU residency or a retention period for it, and no link between texts leads to a page that does not exist.
+If it fails: no text names a provider no longer used or another hosting, nor keeps quiet about where the audio of a dictation goes, nor promises EU residency or a retention period for it, nor a consent or a switch for the assistant that the hub does not have (the assistant is used when someone in the hub writes or dictates to it, with the messages the plan gives), and no link between texts leads to a page that does not exist.
 Involved: hubs (the plans)
 
 ### PUBLIC-F21 Check the responsible declaration of the invoicing system

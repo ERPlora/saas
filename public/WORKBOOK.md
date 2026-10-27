@@ -465,7 +465,7 @@ Pasos:
 3. Los términos dan los números que el producto cumple: los días del paquete de salida, los días que espera un negocio suspendido antes de borrarse y la prueba de los planes a la venta (ninguna si ninguno la tiene).
 Entra: los planes a la venta (los términos).
 Sale: nada guardado.
-Si falla: ningún texto nombra un proveedor que ya no se usa ni otro alojamiento, ni calla a quién va el audio de un dictado, ni promete para él residencia en la UE o un plazo de conservación, y ningún enlace entre textos lleva a una página que no existe.
+Si falla: ningún texto nombra un proveedor que ya no se usa ni otro alojamiento, ni calla a quién va el audio de un dictado, ni promete para él residencia en la UE o un plazo de conservación, ni un consentimiento o un interruptor del asistente que el hub no tiene (el asistente se usa cuando alguien del hub le escribe o le dicta, con los mensajes que dé el plan), y ningún enlace entre textos lleva a una página que no existe.
 Implicados: hubs (los planes)
 
 ### PUBLIC-F21 Consultar la declaración responsable del sistema de facturación

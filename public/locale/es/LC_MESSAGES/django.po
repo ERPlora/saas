@@ -709,17 +709,8 @@ msgstr ""
 "región Alemania (Fráncfort):"
 
 #: templates/public/legal/privacy.html
-msgid ""
-"provider of the language model the AI assistant uses BY DEFAULT. Processing "
-"takes place in the European Union. Used ONLY when the customer enables this "
-"feature and after explicit consent in the Hub, under a Data Processing "
-"Addendum incorporating EU Standard Contractual Clauses."
-msgstr ""
-"proveedor del modelo de lenguaje que el asistente IA usa POR DEFECTO. El "
-"tratamiento se realiza en la Unión Europea. Usado ÚNICAMENTE cuando el "
-"cliente activa esta funcionalidad y previo consentimiento explícito en el "
-"Hub, al amparo de un acuerdo de tratamiento de datos con Cláusulas "
-"Contractuales Tipo de la UE."
+msgid "provider of the language model the AI assistant uses BY DEFAULT. Processing takes place in the European Union. Used ONLY when someone in your hub uses the assistant, to provide the contracted service (Art. 6.1.b GDPR), under a Data Processing Addendum incorporating EU Standard Contractual Clauses."
+msgstr "proveedor del modelo de lenguaje que el asistente IA usa POR DEFECTO. El tratamiento se realiza en la Unión Europea. Usado ÚNICAMENTE cuando alguien de tu hub usa el asistente, para prestar el servicio contratado (Art. 6.1.b RGPD), al amparo de un acuerdo de tratamiento de datos con Cláusulas Contractuales Tipo de la UE."
 
 #: templates/public/legal/privacy.html
 msgid "OpenAI Ireland Ltd. (Ireland) — OpenAI API:"
@@ -746,12 +737,8 @@ msgid "What the AI assistant does — and does not — receive"
 msgstr "Qué recibe —y qué no recibe— el asistente IA"
 
 #: templates/public/legal/privacy.html
-msgid ""
-"The assistant is OPTIONAL. If the customer does not enable it, no data "
-"whatsoever is sent to a language model provider."
-msgstr ""
-"El asistente es OPCIONAL. Si el cliente no lo activa, no se envía ningún "
-"dato a un proveedor de modelos de lenguaje."
+msgid "The assistant is OPTIONAL: it is used only when someone in your hub sends it a message or dictates to it, and until then nothing is sent to any of these providers. A plan without assistant messages sends no question to the model."
+msgstr "El asistente es OPCIONAL: solo se usa cuando alguien de tu hub le envía un mensaje o le dicta, y hasta entonces no se envía nada a ninguno de estos proveedores. Un plan sin mensajes del asistente no envía ninguna pregunta al modelo."
 
 #: templates/public/legal/privacy.html
 msgid ""

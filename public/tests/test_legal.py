@@ -441,6 +441,45 @@ def test_privacy_counts_the_voice_provider_among_the_transfers_outside_the_eea(c
     assert voice in transfers
 
 
+# What decides that the assistant is used: the Hub has no switch for it and asks for no consent. Anyone with
+# ``base.view_home`` sees its button (hub ``base/frontend/components/TopbarChrome.vue``), it is used when someone sends
+# it a message or dictates, and the plan's monthly messages (``Plan.assistant_messages_per_month``, 0 = none;
+# ``assistant/queries.py`` ``monthly_limit``) bound the questions that reach the model.
+
+ASSISTANT_CONDITION = {
+    "en": {
+        "promises": ("explicit consent in the Hub", "does not enable it", "the customer enables"),
+        "condition": (
+            "it is used only when someone in your hub sends it a message or dictates to it",
+            "A plan without assistant messages sends no question to the model",
+        ),
+        "basis": "Used ONLY when someone in your hub uses the assistant, to provide the contracted service (Art. 6.1.b GDPR)",
+    },
+    "es": {
+        "promises": ("consentimiento explícito en el Hub", "no lo activa", "el cliente activa"),
+        "condition": (
+            "solo se usa cuando alguien de tu hub le envía un mensaje o le dicta",
+            "Un plan sin mensajes del asistente no envía ninguna pregunta al modelo",
+        ),
+        "basis": "Usado ÚNICAMENTE cuando alguien de tu hub usa el asistente, para prestar el servicio contratado (Art. 6.1.b RGPD)",
+    },
+}
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_privacy_promises_no_switch_nor_consent_the_hub_lacks_and_says_when_the_assistant_is_used(client, language):
+    """Art. 13 GDPR: the policy describes the processing as it is; a consent the Hub never asks for and a switch it
+    does not have are false statements, however reassuring."""
+    expected = ASSISTANT_CONDITION[language]
+    html = " ".join(privacy(client, language).split())
+    [model] = list_items_naming(html, "Model Studio")
+
+    assert [promise for promise in expected["promises"] if promise in html] == []
+    assert [condition for condition in expected["condition"] if condition not in html] == []
+    assert expected["basis"] in model
+
+
 # --- The shared reading pattern (test_ui_stack_contract.py) ------------------------------------
 
 
