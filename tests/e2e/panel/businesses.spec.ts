@@ -64,6 +64,9 @@ test('«Manage» opens the business’s page, whose tabbar walks its four sectio
   await expect(page).toHaveURL(/\/businesses\/[0-9a-f-]+\/summary$/);
   await expect(page.getByTestId('business-header')).toContainText('Panadería López');
   await expect(page.getByTestId('summary-plan')).toContainText('Starter');
+  // The apps Starter turns on at once (its `max_apps`), as /pricing/'s table says it (saas#121).
+  await expect(page.getByTestId('summary-plan-apps').locator('dt')).toHaveText('Apps turned on at once');
+  await expect(page.getByTestId('summary-plan-apps').locator('dd')).toHaveText('40');
   // A Spanish business that never sent its signed authorisation (fiscal.representation.status): «Not granted».
   await expect(page.getByTestId('representation')).toContainText('Authorisation for ERPlora to file your invoices');
   await expect(page.getByTestId('representation-pill')).toHaveText('Not granted');

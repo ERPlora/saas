@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:8266b921072b7c0706fa01ee6cccdc38afbc6b21e2157b88ad6b0ba7e083a638 -->
+<!-- generated from WORKBOOK.md sha256:5cb5226de95831905a4d0202cd165a4b2832d537bc2fff9bcb0934d54fda76fe -->
 
 ## What it is for and who it is for
 
@@ -455,7 +455,7 @@ Status: partial — the business does not measure its usage every night yet (HUB
 Actor: owner, administrator
 Screen: Business summary
 Steps:
-1. On the business's page, the header says its status ("Active", "Preparing", "Payment due", "Suspended" or deleted) and the Summary, its plan with the devices and the people against the seats.
+1. On the business's page, the header says its status ("Active", "Preparing", "Payment due", "Suspended" or deleted) and the Summary, its plan with the devices, the apps it can have turned on at once and the people against the seats.
 2. The "Usage" card ("How your business is doing in ERPlora") shows the "Storage" used of its plan's space, with a warning when it nears the limit, and the people "Active yesterday" and over the "Last 30 days", with "Yesterday's data: updated every night.".
 In: the business and what it measured last night.
 Out: nothing is saved; the page changes by itself when a new night arrives.
