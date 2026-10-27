@@ -230,6 +230,8 @@
         "none": "No plan",
         "trial": "Trying {plan} until {date}",
         "devices": "Devices",
+        "apps": "Apps turned on at once",
+        "appsUnlimited": "Unlimited",
         "users": "Users",
         "usersOf": "{used} of {limit}",
         "deleted": "It was cancelled when the business was deleted. If you recover it, it comes back on Free.",

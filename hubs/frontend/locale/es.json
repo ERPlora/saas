@@ -230,6 +230,8 @@
         "none": "Sin plan",
         "trial": "Probando {plan} hasta el {date}",
         "devices": "Dispositivos",
+        "apps": "Apps activadas a la vez",
+        "appsUnlimited": "Ilimitadas",
         "users": "Usuarios",
         "usersOf": "{used} de {limit}",
         "deleted": "Se canceló al eliminar el negocio. Si lo recuperas, vuelve en Gratis.",

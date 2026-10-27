@@ -174,7 +174,7 @@ describe('PlanCard', () => {
       const s = await card({ plan: withMessages(600, 300), subscription: FREE_SUBSCRIPTION });
       expect(quotas(s)).toEqual(['AI assistant: 600 messages a month', 'WhatsApp: 300 messages a month']);
       const items = s.wrapper.findAll('ion-item').map((item) => item.attributes('data-testid'));
-      expect(items).toEqual(['plan-feature', 'plan-quota', 'plan-quota']);
+      expect(items).toEqual(['plan-feature', 'plan-apps', 'plan-quota', 'plan-quota']);
     });
 
     it('0 is none: no line rather than «0 messages»', async () => {
@@ -189,6 +189,91 @@ describe('PlanCard', () => {
     it('in Spanish', async () => {
       const s = await card({ plan: withMessages(300, 150), locale: 'es' });
       expect(quotas(s)).toEqual(['Asistente de IA: 300 mensajes al mes', 'WhatsApp: 150 mensajes al mes']);
+    });
+  });
+
+  describe('the apps it turns on at once (`max_apps`, the cap the Hub applies since hub#256)', () => {
+    /** Every line of the card, in order, with what it is. */
+    const lines = (s: Awaited<ReturnType<typeof card>>) =>
+      s.wrapper.findAll('ion-item').map((item) => [item.attributes('data-testid'), (item.element as HTMLElement).innerText.trim()]);
+    const withApps = (maxApps: number, features: string[], extra: Partial<typeof STARTER> = {}) =>
+      plan('standard', 'Standard', '54.99', '549.90', { max_apps: maxApps, features, ...extra });
+
+    it('says up to how many, right after «All apps included», as /pricing/ does', async () => {
+      const s = await card({ plan: withApps(40, ['All apps included', 'Up to 3 devices']) });
+      expect(lines(s)).toEqual([
+        ['plan-feature', 'All apps included'],
+        ['plan-apps', 'Up to 40 apps turned on at once'],
+        ['plan-feature', 'Up to 3 devices'],
+      ]);
+    });
+
+    it('right after «Everything in …» on the plans above', async () => {
+      const s = await card({ plan: withApps(80, ['Everything in Starter', 'Priority support']) });
+      expect(lines(s)).toEqual([
+        ['plan-feature', 'Everything in Starter'],
+        ['plan-apps', 'Up to 80 apps turned on at once'],
+        ['plan-feature', 'Priority support'],
+      ]);
+    });
+
+    it('0 is no limit: every app turned on at once', async () => {
+      const s = await card({ plan: withApps(0, ['Everything in Standard']) });
+      expect(lines(s)).toEqual([
+        ['plan-feature', 'Everything in Standard'],
+        ['plan-apps', 'All the apps turned on at once'],
+      ]);
+    });
+
+    it('one app reads in the singular', async () => {
+      const s = await card({ plan: withApps(1, ['All apps included']) });
+      expect(lines(s)).toEqual([
+        ['plan-feature', 'All apps included'],
+        ['plan-apps', 'Up to 1 app turned on at once'],
+      ]);
+    });
+
+    it('without such a line it ends the plan’s own features: then the messages, then its trial, as /pricing/', async () => {
+      const s = await card({
+        plan: withApps(20, ['Sell and invoice', '15-day free trial'], { trial_period_days: 15, has_trial: true, whatsapp_messages_per_month: 40 }),
+      });
+      expect(lines(s)).toEqual([
+        ['plan-feature', 'Sell and invoice'],
+        ['plan-apps', 'Up to 20 apps turned on at once'],
+        ['plan-quota', 'WhatsApp: 40 messages a month'],
+        ['plan-feature', '15-day free trial'],
+      ]);
+    });
+
+    it('an upgrade-only plan has no trial line: its last feature stays a feature', async () => {
+      const s = await card({ plan: withApps(0, ['Sell and invoice', 'Priority support'], { trial_period_days: 15, upgrade_only: true }) });
+      expect(lines(s)).toEqual([
+        ['plan-feature', 'Sell and invoice'],
+        ['plan-feature', 'Priority support'],
+        ['plan-apps', 'All the apps turned on at once'],
+      ]);
+    });
+
+    it('in Spanish, after «Todas las apps incluidas» or «Todo lo del plan …»', async () => {
+      const starter = await card({ plan: withApps(40, ['Todas las apps incluidas', 'Hasta 3 dispositivos']), locale: 'es' });
+      expect(lines(starter)).toEqual([
+        ['plan-feature', 'Todas las apps incluidas'],
+        ['plan-apps', 'Hasta 40 apps activadas a la vez'],
+        ['plan-feature', 'Hasta 3 dispositivos'],
+      ]);
+      const max = await card({ plan: withApps(0, ['Todo lo del plan Standard', 'Soporte prioritario']), locale: 'es' });
+      expect(lines(max)).toEqual([
+        ['plan-feature', 'Todo lo del plan Standard'],
+        ['plan-apps', 'Todas las apps activadas a la vez'],
+        ['plan-feature', 'Soporte prioritario'],
+      ]);
+      const one = await card({ plan: withApps(1, ['Todas las apps incluidas']), locale: 'es' });
+      expect(lines(one)).toContainEqual(['plan-apps', 'Hasta 1 app activada a la vez']);
+    });
+
+    it('the line carries the same check as the features', async () => {
+      const s = await card({ plan: withApps(40, ['All apps included']) });
+      expect((s.text('plan-apps').find('ion-icon').element as unknown as { name?: string }).name).toBe('checkmark-outline');
     });
   });
 

@@ -14,8 +14,8 @@ const PLANS = {
   signup_trial_days: 14,
   cheapest_slug: 'free',
   plans: [
-    { slug: 'free', name: 'Free', max_users: 3, max_devices: 1, price_monthly: '0.00', price_annual: '0.00' },
-    { slug: 'starter', name: 'Starter', max_users: 0, max_devices: 0, price_monthly: '19.00', price_annual: '190.00' },
+    { slug: 'free', name: 'Free', max_users: 3, max_devices: 1, max_apps: 20, price_monthly: '0.00', price_annual: '0.00' },
+    { slug: 'starter', name: 'Starter', max_users: 0, max_devices: 0, max_apps: 0, price_monthly: '19.00', price_annual: '190.00' },
   ],
 };
 const BUSINESS = {
@@ -64,11 +64,11 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-async function setup(business: Record<string, unknown> = {}, locale: 'en' | 'es' = 'en') {
+async function setup(business: Record<string, unknown> = {}, locale: 'en' | 'es' = 'en', plans: Response = Response.json(PLANS)) {
   const m = await mountHubs(BusinessSummary, {
     props: { business: { ...BUSINESS, ...business } },
     locale,
-    api: (call) => (describeCall(call).path === '/api/plans' ? Response.json(PLANS) : Response.json({})),
+    api: (call) => (describeCall(call).path === '/api/plans' ? plans : Response.json({})),
   });
   await flush();
   const card = (id: string) => m.wrapper.find(`[data-testid="${id}"]`);
@@ -81,7 +81,25 @@ describe('BusinessSummary', () => {
     const s = await setup();
     expect(s.calls().map((c) => c.path)).toEqual(['/api/plans']);
     expect(s.card('summary-plan').get('.card-title').text()).toBe('Free');
-    expect(s.kv('summary-plan')).toEqual({ Devices: '1', Users: '2 of 3' });
+    expect(s.kv('summary-plan')).toEqual({ Devices: '1', 'Apps turned on at once': '20', Users: '2 of 3' });
+  });
+
+  it('the apps it turns on at once, from the plan it uses (`max_apps`, the cap the Hub applies): 0 is unlimited', async () => {
+    const trying = await setup({ trial_plan: { slug: 'starter', name: 'Starter' }, trial_end: '2026-10-30T10:00:00Z' });
+    expect(trying.kv('summary-plan')).toMatchObject({ 'Apps turned on at once': 'Unlimited' });
+  });
+
+  it('in Spanish: «Apps activadas a la vez», and «Ilimitadas» without a cap', async () => {
+    const free = await setup({}, 'es');
+    expect(free.kv('summary-plan')).toMatchObject({ 'Apps activadas a la vez': '20' });
+    document.body.innerHTML = '';
+    const trying = await setup({ trial_plan: { slug: 'starter', name: 'Starter' }, trial_end: '2026-10-30T10:00:00Z' }, 'es');
+    expect(trying.kv('summary-plan')).toMatchObject({ 'Apps activadas a la vez': 'Ilimitadas' });
+  });
+
+  it('without the plans on sale, what the plan covers reads «—» and the people stay the business’s', async () => {
+    const s = await setup({}, 'en', Response.json({ error: { code: 'internal' } }, { status: 500 }));
+    expect(s.kv('summary-plan')).toEqual({ Devices: '—', 'Apps turned on at once': '—', Users: '2 of 3' });
   });
 
   it('says when the account pays for the business («You pay»), and nothing otherwise', async () => {
@@ -94,7 +112,7 @@ describe('BusinessSummary', () => {
 
   it('a paid plan or a trial covers everyone: unlimited, and the trial says until when', async () => {
     const s = await setup({ trial_plan: { slug: 'starter', name: 'Starter' }, trial_end: '2026-10-30T10:00:00Z', seats: { used: 2, limit: null } });
-    expect(s.kv('summary-plan')).toEqual({ Devices: 'Unlimited', Users: 'Unlimited' });
+    expect(s.kv('summary-plan')).toEqual({ Devices: 'Unlimited', 'Apps turned on at once': 'Unlimited', Users: 'Unlimited' });
     expect(s.card('summary-plan').get('[data-testid="summary-trial"]').text()).toMatch(/^Trying Starter until Oct 30, 2026/);
   });
 

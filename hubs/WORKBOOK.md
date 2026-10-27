@@ -488,7 +488,7 @@ Estado: parcial — el negocio todavía no mide su uso cada noche (HUBS-F22): su
 Actor: propietario, administrador
 Pantalla: Resumen del negocio
 Pasos:
-1. En la página del negocio, la cabecera dice su estado («Activo», «Preparando», «Pago pendiente», «Suspendido» o eliminado) y el Resumen, su plan con los dispositivos y las personas frente a las plazas.
+1. En la página del negocio, la cabecera dice su estado («Activo», «Preparando», «Pago pendiente», «Suspendido» o eliminado) y el Resumen, su plan con los dispositivos, las apps que puede tener activadas a la vez y las personas frente a las plazas.
 2. La tarjeta «Uso» («Cómo va tu negocio en ERPlora») enseña el «Almacenamiento» usado del espacio de su plan, con aviso al acercarse al tope, y las personas «Activos ayer» y de los «Últimos 30 días», con «Datos de ayer: se actualizan cada noche.».
 Entra: el negocio y lo que midió la última noche.
 Sale: nada se guarda; la página cambia sola cuando llega una noche nueva.

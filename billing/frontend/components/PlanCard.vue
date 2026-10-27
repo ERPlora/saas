@@ -1,8 +1,9 @@
 <script setup lang="ts">
 // A plan of the Store (mockups `store.html` «Planes»; round 17 §2.11; UX-AUDIT-4 X-03, X-08, X-09, X-14):
-// its name, description, net price (monthly or annual, as the switch above says), features and the messages a
-// month it includes (assistant and WhatsApp, PLAN-SAAS §3.6; 0 = none, no line), and the
-// ONE thing the chosen business can do with it now. What each button does is the page's: the card only
+// its name, description, net price (monthly or annual, as the switch above says), features, the apps it turns
+// on at once (`max_apps`, the cap the Hub applies since hub#256; 0 = all), the messages a month it includes
+// (assistant and WhatsApp, PLAN-SAAS §3.6; 0 = none, no line) and its trial, in the order of /pricing/'s cards
+// (public/pricing.py `plan_card`), and the ONE thing the chosen business can do with it now. What each button does is the page's: the card only
 // says which one applies and emits it.
 //   - On Free: «Upgrade to …» (Embedded Checkout), at the billing of the switch; the plan it is trying
 //     says until when, and that buying it keeps the days left.
@@ -118,14 +119,30 @@ const price = computed(() => {
   return { amount: formatEuros(props.plan.price_monthly, locale.value), suffix: t('billing.plans.perMonth') };
 });
 
-/** The messages a month the plan includes (PLAN-SAAS §3.6), after its features; a quota of 0 is none: no line. */
-const quotas = computed(() => {
-  const lines: string[] = [];
-  const assistant = props.plan.assistant_messages_per_month;
-  const whatsapp = props.plan.whatsapp_messages_per_month;
-  if (assistant > 0) lines.push(t('billing.plans.assistantMessages', { count: assistant }, assistant));
-  if (whatsapp > 0) lines.push(t('billing.plans.whatsappMessages', { count: whatsapp }, whatsapp));
-  return lines;
+type Line = { kind: 'feature' | 'apps' | 'quota'; text: string };
+
+/** The features that say what a plan includes, in the languages its rows are written in (as /pricing/'s
+ * `INCLUDES_LINES` and `INCLUDES_PREFIXES`): the apps it turns on at once go right after the first of them. */
+const INCLUDES_LINES = new Set(['All apps included', 'Todas las apps incluidas']);
+const INCLUDES_PREFIXES = ['Everything in ', 'Todo lo del plan '];
+const saysWhatItIncludes = (feature: string) => INCLUDES_LINES.has(feature) || INCLUDES_PREFIXES.some((prefix) => feature.startsWith(prefix));
+
+/** The lines of the card, as /pricing/ paints them: the plan's own features with the apps it turns on at once
+ * right after what it includes (else at their end), the messages a month (a quota of 0 is none: no line) and,
+ * last, its trial, the line `hubs.plan.list` ends a signable plan's features with. */
+const lines = computed<Line[]>(() => {
+  const plan = props.plan;
+  const own = [...plan.features];
+  const trial = !plan.upgrade_only && plan.trial_period_days > 0 && own.length > 0 ? own.splice(-1) : [];
+  const apps = plan.max_apps > 0 ? t('billing.plans.appsAtOnce', { count: plan.max_apps }, plan.max_apps) : t('billing.plans.allAppsAtOnce');
+  const at = own.findIndex(saysWhatItIncludes) + 1 || own.length;
+  const feature = (text: string): Line => ({ kind: 'feature', text });
+  const result: Line[] = [...own.slice(0, at).map(feature), { kind: 'apps', text: apps }, ...own.slice(at).map(feature)];
+  const assistant = plan.assistant_messages_per_month;
+  const whatsapp = plan.whatsapp_messages_per_month;
+  if (assistant > 0) result.push({ kind: 'quota', text: t('billing.plans.assistantMessages', { count: assistant }, assistant) });
+  if (whatsapp > 0) result.push({ kind: 'quota', text: t('billing.plans.whatsappMessages', { count: whatsapp }, whatsapp) });
+  return [...result, ...trial.map(feature)];
 });
 
 /** What the card says under the features: a cancellation, Free's date, a trial's days. */
@@ -200,9 +217,9 @@ function run(): void {
         class="plan-card__features"
       >
         <ion-item
-          v-for="feature in plan.features"
-          :key="feature"
-          data-testid="plan-feature"
+          v-for="(line, index) in lines"
+          :key="index"
+          :data-testid="`plan-${line.kind}`"
         >
           <HubIcon
             slot="start"
@@ -210,21 +227,7 @@ function run(): void {
             aria-hidden="true"
           />
           <ion-label class="ion-text-wrap">
-            {{ feature }}
-          </ion-label>
-        </ion-item>
-        <ion-item
-          v-for="quota in quotas"
-          :key="quota"
-          data-testid="plan-quota"
-        >
-          <HubIcon
-            slot="start"
-            name="ion:checkmark-outline"
-            aria-hidden="true"
-          />
-          <ion-label class="ion-text-wrap">
-            {{ quota }}
+            {{ line.text }}
           </ion-label>
         </ion-item>
       </ion-list>

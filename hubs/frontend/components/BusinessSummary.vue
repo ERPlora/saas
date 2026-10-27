@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // The Summary of a business (mockups `business.html` «summary», PLAN-SAAS §3.6): four cards.
-//   - Plan: its name, the trial while it lasts, the devices it covers (from `hubs.plan.list`: the plans
-//     on sale, public) and the people (`seats`, the server's count against the plan's cap). Changing
+//   - Plan: its name, the trial while it lasts, the devices it covers and the apps it turns on at once
+//     (`max_apps`, the cap the Hub applies since hub#256; from `hubs.plan.list`: the plans on sale, public)
+//     and the people (`seats`, the server's count against the plan's cap). Changing
 //     or cancelling the plan is the Store's (web only): whoever handles the billing gets «Upgrade plan» on
 //     Free and «Change plan» on a paid one, to the Store with this business chosen (BILLING-F07); inside the
 //     apps it says where, without a link.
@@ -43,10 +44,18 @@ onMounted(async () => {
 const deleted = computed(() => props.business.status === 'deleting');
 /** What the business uses now: the plan it tries while the trial lasts, else its own. */
 const effective = computed(() => props.business.trial_plan ?? props.business.plan);
+/** The plan on sale the business uses now; none while the plans load or if they could not. */
+const effectivePlan = computed(() => plans.value.find((candidate) => candidate.slug === effective.value?.slug));
 const devices = computed(() => {
-  const plan = plans.value.find((candidate) => candidate.slug === effective.value?.slug);
+  const plan = effectivePlan.value;
   if (!plan) return '—';
   return plan.max_devices ? String(plan.max_devices) : t('hubs.common.unlimited');
+});
+/** How many apps the business may choose to turn on at once: 0 is no cap. */
+const apps = computed(() => {
+  const plan = effectivePlan.value;
+  if (!plan) return '—';
+  return plan.max_apps ? String(plan.max_apps) : t('hubs.business.plan.appsUnlimited');
 });
 /** Free is the plan without a price: from it the Store upgrades; from a paid one it changes. */
 const onFree = computed(() => {
@@ -116,6 +125,10 @@ const dayHint = computed(() =>
             <div>
               <dt>{{ $t('hubs.business.plan.devices') }}</dt>
               <dd>{{ devices }}</dd>
+            </div>
+            <div data-testid="summary-plan-apps">
+              <dt>{{ $t('hubs.business.plan.apps') }}</dt>
+              <dd>{{ apps }}</dd>
             </div>
             <div>
               <dt>{{ $t('hubs.business.plan.users') }}</dt>

@@ -308,6 +308,9 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
     await atEverySize(page, 'BILLING-G95', async () => {
       await expect(page.getByTestId('plan-free').getByTestId('plan-current')).toBeVisible();
       await expect(page.getByTestId('plan-starter').getByTestId('plan-upgrade')).toBeVisible();
+      // The apps each plan turns on at once, from the plan's `max_apps` (hubs/0021), worded as /pricing/ (saas#121).
+      await expect(page.getByTestId('plan-free').getByTestId('plan-apps')).toHaveText('Up to 20 apps turned on at once');
+      await expect(page.getByTestId('plan-starter').getByTestId('plan-apps')).toHaveText('Up to 40 apps turned on at once');
     });
     expect(errors).toEqual([]);
   });

@@ -64,7 +64,9 @@ Quién la usa:
 ### Tienda
 Menú **Tienda**, con dos secciones: **Planes** y **Módulos**, y arriba el negocio para el que se compra
 (solo los negocios de los que se es propietario). Planes enseña cada plan con su precio sin IVA, el
-periodo («Mensual» o «Anual · −n %»), «Tu plan actual» en el que se tiene y el botón de cada uno:
+periodo («Mensual» o «Anual · −n %»), sus líneas como en /pricing/ (tras «Todas las apps incluidas» o «Todo lo
+del plan …», «Hasta 40 apps activadas a la vez», o «Todas las apps activadas a la vez» si el plan no tiene tope;
+después los mensajes al mes y, al final, la prueba), «Tu plan actual» en el que se tiene y el botón de cada uno:
 «Mejorar a …», «Cambiar a …», «Cambiar a anual · …» o «Bajar a Gratis»; con el plan cancelado, «Mantener
 el plan». Si el negocio tiene una factura sin pagar, arriba sale el aviso con «Pagar la factura» y no se
 vende nada a ese negocio.
@@ -103,7 +105,8 @@ factura que rectifica. La flecha de arriba vuelve a Facturas.
 
 ### Resumen del negocio
 En la página de cada negocio, la tarjeta **Plan** dice en qué plan está, cuántos usuarios y dispositivos
-caben y, al propietario, el botón para mejorarlo o cambiarlo.
+caben, cuántas apps se pueden tener activadas a la vez («Apps activadas a la vez»: el número o «Ilimitadas») y,
+al propietario, el botón para mejorarlo o cambiarlo.
 
 ## Estados de cada pantalla
 
@@ -272,7 +275,7 @@ Estado: hecho
 Actor: propietario
 Pantalla: Tienda, Pago seguro
 Pasos:
-1. En **Tienda › Planes**, con el negocio elegido arriba, el propietario ve cada plan con su precio sin IVA, sus usuarios y sus dispositivos, elige «Mensual» o «Anual» (que dice cuánto se ahorra) y pulsa «Mejorar a …».
+1. En **Tienda › Planes**, con el negocio elegido arriba, el propietario ve cada plan con su precio sin IVA, sus usuarios, sus dispositivos y las apps que puede tener activadas a la vez, elige «Mensual» o «Anual» (que dice cuánto se ahorra) y pulsa «Mejorar a …».
 2. Se abre el pago seguro: los datos de facturación si faltan y después el formulario de tarjeta de Stripe dentro del diálogo, titulado «Mejorar a …» con «Para … · se renueva cada mes» (o cada año).
 3. Mete la tarjeta; si el banco pide autenticación, la muestra Stripe en el mismo formulario.
 4. Al terminar, «Pagando…», el aviso «… ya está en …» y la página del negocio, cuya tarjeta Plan cambia en cuanto Stripe lo confirma. El negocio sigue funcionando todo el tiempo.
