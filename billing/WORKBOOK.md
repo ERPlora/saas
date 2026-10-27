@@ -7,7 +7,8 @@ Estado de la app: completa (2026-10-27)
 > cambia el plan de un negocio, cómo se contratan y se cancelan sus aplicaciones de pago, qué pasa si un
 > cobro falla, qué IVA lleva cada cobro y cómo se ven y descargan las facturas de ERPlora. Este manual no
 > se publica en la tienda: es la referencia del equipo y de la QA. Lo que erplora.com hace solo cada noche con
-> Stripe (olvidar avisos viejos y releer las suscripciones) está en BILLING-F37 y BILLING-F38.
+> Stripe (olvidar avisos viejos y releer las suscripciones) está en BILLING-F37 y BILLING-F38, y lo que comprueba cada
+> día de su aviso (que Stripe mande todos los que trata), en BILLING-F39.
 
 ## Para qué sirve y para quién
 
@@ -167,6 +168,7 @@ al propietario, el botón para mejorarlo o cambiarlo.
 | BILLING-F36 | Ver una factura | hecho |
 | BILLING-F37 | Olvidar los avisos de Stripe de más de 30 días | hecho |
 | BILLING-F38 | Releer cada noche las suscripciones en Stripe y corregir lo que se desvió | hecho |
+| BILLING-F39 | Comprobar cada día que Stripe avisa de todo lo que erplora.com trata | hecho |
 
 ### BILLING-F01 Decir dónde se factura el negocio y con qué identificación fiscal
 <!-- origen: old-saas:SAAS_DASHBOARD-F90 fi:saas/orgs-users#informacion-de-facturacion-de-la-organizacion-ver-editar -->
@@ -545,7 +547,7 @@ Pasos:
 3. La rectificativa sale en **Facturación › Facturas** con «Rectificativa R1 · motivo» y la factura que rectifica.
 Entra: el aviso de la devolución o de la nota de crédito.
 Sale: la rectificativa de su serie propia (ERPR-año-número), emitida como cualquier factura (`billing.credit_note.recorded`).
-Si falla: una devolución de una factura que aún no existe espera y Stripe vuelve a avisar; la misma devolución nunca rectifica dos veces.
+Si falla: una devolución de una factura que aún no existe espera y Stripe vuelve a avisar; la misma devolución nunca rectifica dos veces. Una nota de crédito anulada en Stripe (solo se puede mientras su factura no está cobrada) nunca se vuelve rectificativa, aunque su aviso llegue después; y si ya lo era, la rectificativa no se toca —una factura enviada a la AEAT no se modifica— y soporte recibe un correo para emitir a mano la factura que la anula.
 Implicados: el negocio de plataforma de ERPlora (emite la rectificativa)
 
 ### BILLING-F27 Lo que el personal de ERPlora puede hacer sobre el cobro de un cliente
@@ -555,13 +557,13 @@ Actor: personal de ERPlora
 Pantalla: Admin
 Pasos:
 1. Una persona de ERPlora entra en el admin con la cuenta del SaaS (código por correo y app de autenticación).
-2. Ve, solo para leer, las suscripciones y sus líneas, los avisos de Stripe y los intentos de pago: lo que dice Stripe no se edita aquí, se cambia en Stripe y llega por su aviso.
-3. En los negocios puede «Enviar el último estado al negocio» y «Reintentar lo que el negocio aún debe»; en las facturas, con sus líneas, «Reenviar al negocio de plataforma», «Reenviar el correo de la factura» y «Descargar el PDF» de cualquier factura ya emitida.
+2. Ve, solo para leer, las suscripciones y sus líneas, los avisos de Stripe, los intentos de pago, los códigos promocionales usados, los contadores de cada serie de facturas y los cambios de plan que esperan al final del periodo: lo que dice Stripe no se edita aquí, se cambia en Stripe y llega por su aviso.
+3. En los negocios puede «Enviar el último estado al negocio» y «Reintentar lo que el negocio aún debe»; en las facturas, con sus líneas, «Reenviar al negocio de plataforma», «Reenviar el correo de la factura», «Descargar el PDF» de cualquier factura ya emitida y, eligiendo varias en la lista, «Descargar los PDF (ZIP)».
 4. Mantiene los códigos promocionales, la tabla de IVA, la política fiscal y los datos de ERPlora (nacen con los del Modelo 036 y son los que VIES ve de quien pregunta); las devoluciones y las cancelaciones al momento se hacen en el panel de Stripe.
 5. Una aplicación de pago que algún negocio tiene no se borra del catálogo: el admin dice qué negocio la tiene y que se quite de la venta.
 Entra: la cuenta del personal con su papel.
 Sale: lo que hacen sus acciones; nada de lo que es de Stripe cambia desde el admin.
-Si falla: sin el papel, el admin no se abre; el grupo de soporte solo mira, no lanza acciones. El PDF de una factura que aún no se ha emitido no existe: el admin lo dice («Aún no se ha emitido»), y si el negocio de plataforma no responde, vuelve a la factura diciendo por qué.
+Si falla: sin el papel, el admin no se abre; el grupo de soporte solo mira, no lanza acciones. El PDF de una factura que aún no se ha emitido no existe: el admin lo dice («Aún no se ha emitido»), y si el negocio de plataforma no responde, vuelve a la factura diciendo por qué. En el ZIP, las facturas sin PDF (aún emitiéndose o que el negocio de plataforma no devuelve) quedan fuera con su motivo, en un aviso del admin y en `not-included.txt` dentro del ZIP; si ninguna tiene PDF, no se descarga nada y el aviso lo dice.
 Implicados: hubs (el estado de los negocios)
 
 ### BILLING-F28 Mantener en Stripe los precios de los planes
@@ -723,6 +725,20 @@ Sale: cada suscripción como dice Stripe (`hubs.subscription.changed` si cambió
 Si falla: una suscripción que Stripe no conoce, o que no se pudo leer, no se toca y la tarea termina con error, que avisa al equipo; un negocio que falla no para a los demás. Puede ejecutarse en prueba, sin escribir nada, para ver solo qué se desvió.
 Implicados: hubs (la suscripción del negocio), el negocio (recibe su plan)
 
+### BILLING-F39 Comprobar cada día que Stripe avisa de todo lo que erplora.com trata
+<!-- origen: gh:saas#2402 -->
+Estado: hecho
+Actor: sistema
+Pantalla: ninguna
+Pasos:
+1. Cada día, erplora.com lee en Stripe los destinos de sus avisos.
+2. Comprueba que uno activo apunta a su dirección de avisos (`/webhooks/stripe/`) y que manda exactamente los avisos que erplora.com trata (BILLING-F19), ni uno menos ni uno más.
+3. Si todo cuadra, lo anota y termina; si no, termina con error, que avisa al equipo, diciendo qué falta y qué sobra.
+Entra: los destinos de avisos de la cuenta de Stripe.
+Sale: nada que cambie: lo que se vio y, si algo no cuadra, el aviso al equipo.
+Si falla: ningún destino activo hacia la dirección, uno que apunta a una ruta que erplora.com no sirve o a otro entorno, más de uno hacia la dirección, o uno que manda todos los avisos (`*`) o le falta o le sobra alguno, termina con error y lo nombra. Si Stripe no contesta, también. Sin clave de Stripe (en desarrollo) no hay nada que comprobar: lo dice y termina bien.
+Implicados: ninguno
+
 ## Para quien lo mantiene
 
 - Anatomía y operaciones: `billing/README.md` (IVA, Stripe, facturas, impago y la Tienda).
@@ -750,8 +766,12 @@ Implicados: hubs (la suscripción del negocio), el negocio (recibe su plan)
   avisa al equipo; `manage.py purge_webhook_events` (BILLING-F37) solo borra. Las programa el repo de
   infraestructura (`stacks/prod/scheduler.tf` de `ERPlora/aws`): `sync_subscriptions` cada noche a las 00:10 UTC
   (antes de la foto de las 00:30 y de la re-tarificación), `purge_webhook_events` a las 00:50 UTC,
-  `audit_tax_rules` cada día a las 05:10 UTC y `retax_subscriptions` a las 05:20 UTC.
-- Cierre (CLOSE-BILLING, 2026-10-27): ronda en PLAN-SAAS §13. Las facturas de ERPlora las emite el Hub desde
+  `audit_tax_rules` cada día a las 05:10 UTC, `retax_subscriptions` a las 05:20 UTC y `audit_stripe_webhooks`
+  (BILLING-F39) a las 05:40 UTC. Los avisos que trata el webhook son una sola lista,
+  `billing.services.STRIPE_WEBHOOK_EVENTS`, que el comando compara con el destino de Stripe.
+- Cierre (CLOSE-BILLING, 2026-10-27): ronda en PLAN-SAAS §13, con lo que PLAN-SAAS §1.1 aún pedía portar: el admin
+  de solo lectura de los códigos usados, los contadores y las bajadas programadas, y el ZIP de los PDF (BILLING-F27),
+  `audit_stripe_webhooks` (BILLING-F39) y la nota de crédito anulada (BILLING-F26). Las facturas de ERPlora las emite el Hub desde
   `ERPlora/hub#133`, pero en producción no se cobra con clave live mientras `PLATFORM_INVOICING_ENABLED` siga en
   `false` (reglas de trabajo §15: la transmisión real queda bajo la supervisión de Ioan). La compra suelta de BILLING-F32
   frente a PLAN §32 punto 1 es la contradicción ya señalada en PLAN-SAAS §12, que esa ronda cita sin elegir.

@@ -104,6 +104,7 @@ pago); detalle en «Facturas de ERPlora (L3-C)».
 | `management/commands/sweep_unpaid.py` | `saas-cron`: impagos que Stripe dejó de reintentar, suscripciones de negocios eliminados y pagadores de cuentas eliminadas (`payers_forgotten`) |
 | `management/commands/retax_subscriptions.py` | `saas-cron` (diaria): el tipo de hoy en cada suscripción viva y en las fases de su bajada programada (cambio de dirección no empujado, umbral OSS) y el reenvío de los avisos de la OSS que no salieron |
 | `management/commands/audit_tax_rules.py` | `saas-cron` (diaria) o a mano: la tabla de IVA cobra cada venta posible |
+| `management/commands/audit_stripe_webhooks.py` | `saas-cron` (diaria) o a mano (`--base-url` para otro entorno): Stripe manda a `/webhooks/stripe/` exactamente `STRIPE_WEBHOOK_EVENTS` (BILLING-F39) |
 
 ### Operaciones (solo el propietario del negocio; permiso `billing.pay`)
 
@@ -154,11 +155,10 @@ en otra solo por sus operaciones), que sube `state_version` y empuja la foto al 
 
 ### Webhook
 
-Eventos a suscribir en Stripe: `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
-`checkout.session.async_payment_failed`, `checkout.session.expired`, `invoice.paid`, `invoice.payment_failed`,
-`invoice.voided`, `invoice.marked_uncollectible`, `credit_note.created`, `charge.refunded` (los cuatro de L3-C),
-`customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted` y
-`customer.updated`. Sin firma válida, 400; sin `STRIPE_WEBHOOK_SECRET`, 503; duplicado, 200 `duplicate`; en curso
+Eventos a suscribir en Stripe: **`billing.services.STRIPE_WEBHOOK_EVENTS`**, la única lista (15 hoy: los de
+checkout, las facturas y sus rectificativas, las suscripciones y el cliente), junto al `match` que los trata;
+`manage.py audit_stripe_webhooks` la compara cada día con el destino de Stripe y dice qué falta y qué sobra
+(BILLING-F39). Sin firma válida, 400; sin `STRIPE_WEBHOOK_SECRET`, 503; duplicado, 200 `duplicate`; en curso
 en otra entrega, 409; fallo, 500 (Stripe reintenta). Siempre se lee la suscripción **viva** con el negocio
 bloqueado (el mismo orden de bloqueo que las operaciones: negocio y después `PaymentFailure`); si Stripe no
 contesta, **no se aplica nada**: 500 y Stripe reintenta. Una factura que llega antes que su
@@ -172,6 +172,12 @@ checkout pagado para un negocio que ya paga no se aplica: esa suscripción se ca
 usado como crédito, y queda un ERROR para soporte. `invoice.paid` además registra la factura de ERPlora (L3-C)
 con `vat.resolve_vat` + `clear_tax_id_for_stripe`: una venta sujeta sin impuesto es un ERROR
 `fiscal.vat.stripe_charged_no_tax_on_subject_sale` y la factura saca el IVA de lo cobrado.
+Una nota de crédito se lee **viva** antes de volverse rectificativa (`credit_note_created`): el evento es la foto
+de cuando se creó, y una nota anulada después no rectifica nada. `credit_note.voided` (BILLING-F26): Stripe solo
+anula una nota de una factura abierta, y aquí la rectificativa nace solo de una cobrada, así que lo normal es que no
+haya ninguna (`voided`). Si la hubiera, no se toca (lo enviado a la AEAT no se modifica): ERROR
+`fiscal.credit.voided_after_rectifying` y correo a `SUPPORT_EMAIL` (`X-ERPlora-Notice: billing.credit_note_voided`)
+para emitir a mano la factura que la anula (`needs_review`); si el correo no sale, 500 y Stripe reintenta.
 
 ### Impago
 
@@ -214,7 +220,7 @@ trata como ninguna (`UNKNOWN`: 503 `billing.payments_unavailable`, nunca un cobr
 - `STRIPE_SECRET_KEY`: una clave **restringida de test** `rk_test_…` con los mismos permisos que la live;
   `STRIPE_PUBLISHABLE_KEY`, la `pk_test_…`;
 - `STRIPE_WEBHOOK_SECRET`: el `whsec_…` del endpoint de test `https://pre.erplora.com/webhooks/stripe/`, suscrito
-  a los mismos 14 eventos que prod (los de «Webhook»). Con pre apagado, Stripe reintenta hasta 3 días;
+  a los mismos eventos que prod (`STRIPE_WEBHOOK_EVENTS`, «Webhook»). Con pre apagado, Stripe reintenta hasta 3 días;
 - `STRIPE_PORTAL_CONFIGURATION`: el `bpc_…` de un Customer Portal de test, solo tarjetas y recibos, como prod;
 - los precios: los ids de Stripe **test** en cada `Plan` y `apps.Module`, desde el admin de pre. Se paga con las
   tarjetas de prueba de Stripe (`4242 4242 4242 4242`).
@@ -264,7 +270,9 @@ trata como ninguna (`UNKNOWN`: 503 `billing.payments_unavailable`, nunca un cobr
   `sync_subscriptions` y `purge_webhook_events` cada noche (`sync-subscriptions-nightly`, 00:10 UTC, y
   `purge-webhook-events-nightly`, 00:50 UTC; FIX-AWS-BILLING-SYNC-AND-PURGE-NOT-SCHEDULED), y `audit_tax_rules` y
   `retax_subscriptions` cada día (`audit-tax-rules-daily`, 05:10 UTC, y `retax-subscriptions-daily`, 05:20 UTC;
-  FIX-AWS-BILLING-DAILY-TASKS-NOT-SCHEDULED).
+  FIX-AWS-BILLING-DAILY-TASKS-NOT-SCHEDULED), y `audit_stripe_webhooks` a las 05:40 UTC
+  (`audit-stripe-webhooks-daily`, `ERPlora/aws#21`). La clave restringida `rk_live_` necesita leer *Webhook
+  Endpoints* para esa auditoría: sin ese permiso, Stripe la rechaza y la tarea falla cada día (`task_failed`).
 
 ## La Tienda (L2-D)
 
@@ -459,7 +467,11 @@ son solo web, y en su lugar se dice, sin enlace, cómo hacerlo desde el navegado
   cada fila de Facturas. Un error o un 404 se dicen igual: «No hemos podido cargar esta factura» con «Reintentar».
 - **Admin de facturas** (`billing/admin.py`, `InvoiceAdmin`): campo «PDF» con «Descargar el PDF» de cualquier
   factura emitida (`<id>/pdf/`, `queries.platform_invoice_pdf`, con `view_invoice`); sin emitir, lo dice; Hub
-  caído, vuelve a la factura con el motivo.
+  caído, vuelve a la factura con el motivo. La acción «Descargar los PDF (ZIP)» (`download_pdfs`, con `view_invoice`)
+  baja en un ZIP los de las facturas elegidas, cada uno pedido al Hub igual; las que no tienen PDF (emitiéndose o
+  que el Hub no devuelve) se nombran con su motivo en el aviso del admin y en `not-included.txt` dentro del ZIP, y
+  sin ningún PDF no hay ZIP, solo el aviso. `PromoRedemption`, `InvoiceCounter` y `PlanChangeSchedule` se ven en el
+  admin de solo lectura (`ReadOnlyAdmin`): los escriben el cobro, la numeración y el cambio de plan.
 - **Descargas**: el fichero lo pide el SDK (`fetchFile` de `@erplora/ui/sdk`, con su `Accept` y la cookie de
   sesión) y `browser.ts` lo guarda con un enlace del mismo origen solo si la respuesta es ese fichero; no hay
   `fetch` propio (el SPA solo llega al servidor por el SDK, regla de eslint, y `api.call` lee JSON). Sin red, el
@@ -493,5 +505,5 @@ son solo web, y en su lugar se dice, sin enlace, cómo hacerlo desde el navegado
   `billing.invoicing_unavailable`).
 - **PLAN-SAAS**: las decisiones fiscales de arriba (número del SaaS, bajadas al final del periodo, VIES al facturar)
   están en PLAN-SAAS §4, «Decidido (2026-10-14, L3-C)»; el cierre de la app, en PLAN-SAAS §13.
-- Una rectificativa anulada en Stripe (`credit_note.voided`) no se trata: no está entre los eventos del webhook, y
-  reflejarla pediría otra rectificativa.
+- Una nota de crédito anulada en Stripe (`credit_note.voided`) se trata como dice «Webhook» (BILLING-F26): nunca se
+  vuelve rectificativa y la ya registrada no se toca.
