@@ -1,7 +1,7 @@
 # Workbook — Apps (apps)
 Prefijo: APPS
 Alcance MVP: fase 1 (el catálogo de apps que lee la tienda y lo que erplora.com vende de cada app de pago)
-Estado de la app: en uso
+Estado de la app: completa (2026-10-27)
 
 > Manual de uso y especificación de la app `apps` del SaaS (erplora.com). Cuenta cómo llega a erplora.com
 > el catálogo de las apps del Hub, cómo se lee desde fuera (la lista, la ficha y la documentación de cada
@@ -20,6 +20,10 @@ erplora.com enseña la tienda de apps a cualquiera, con cuenta o sin ella, en es
 De las apps de pago, erplora.com guarda además lo que vende: el plan más bajo que las incluye y su precio
 mensual y anual sin IVA, con sus precios de Stripe. Una app gratuita no tiene nada que vender: viene con
 cualquier negocio.
+
+Hoy ninguna app es de pago: todas van en todos los planes. Lo que este manual cuenta de las apps de pago
+(ponerlas a la venta, enlazarlas con Stripe y comprarlas en la Tienda) funciona, pero no se usa hasta que
+vuelva a haber una.
 
 - El catálogo lo escribe solo el Hub: erplora.com lo lee y no lo cambia.
 - Una app nunca se borra: se saca de la tienda o se deja de vender, y quien la tiene la conserva.
@@ -127,11 +131,11 @@ Pasos:
 1. Una app que el Hub registró como de pago sale en **Admin › Apps**, pero no se vende hasta que tiene su módulo.
 2. En **Admin › Módulos**, el personal pulsa «Añadir módulo» y escribe en «App» la etiqueta de la app, tal como sale en Admin › Apps.
 3. Elige el «Nivel», que es el plan más bajo que la incluye sin pagarla aparte, y escribe su «Precio mensual (céntimos)» y su «Precio anual (céntimos)», sin IVA (un precio anual de 0 = sin opción anual).
-4. Guarda: desde ese momento la app sale a la venta en la Tienda del panel con ese precio, y los negocios cuyo plan llega a su nivel la tienen incluida.
+4. Guarda: desde ese momento la app sale a la venta en la Tienda del panel con ese precio, y los negocios cuyo plan llega a su nivel la tienen incluida; les llega en 15 minutos como mucho, y el admin dice a cuántos (lo mismo al cambiar el «Nivel»).
 Entra: la etiqueta de una app de pago del catálogo, su nivel y sus precios.
 Sale: el módulo a la venta.
 Si falla: una etiqueta que no está en el catálogo no se guarda y dice que el Hub registra sus apps al arrancar; una app gratuita tampoco, porque solo se vende una app de pago; un precio negativo o con decimales no se acepta. Un módulo cuya app ya no está en el catálogo (escrito por otro camino que el admin) lo denuncia la comprobación que corre en cada despliegue.
-Implicados: billing (la Tienda y el cobro), hubs (qué apps incluye cada plan)
+Implicados: billing (la Tienda y el cobro), hubs (qué apps incluye cada plan y cómo llegan a cada negocio, HUBS-F34)
 
 ### APPS-F04 Enlazar una app de pago con su producto y sus precios de Stripe
 <!-- origen: fi:saas/support/public-core-config#service-modulestripeservice-services-stripe-py -->
@@ -224,6 +228,14 @@ Implicados: el Hub (su página de apps, BASE-F20), billing (la Tienda)
   `PriceCheckFailed` (Stripe no contesta: no se guarda y se pide repetir), en `ModuleForm` y en `PlanForm`.
 - APPS-F07: la parte del Hub es BASE-F20 (hub#229; el enlace se llama «Mejorar plan» desde hub#256). Con la ronda
   2026-10-24b (PLAN §32, PLAN-SAAS §9) ningún módulo es `premium`: el enlace no le sale a nadie hasta que vuelva uno.
+- APPS-F03 paso 4: al guardar un `Module` nuevo o con otro `tier`, `ModuleAdmin.save_model` llama a
+  `hubs.services.owe_module_rights` (HUBS-F34) y dice a cuántos negocios les llega
+  (`hubs/tests/test_plan_rights_reach_businesses.py::test_a_new_module_of_a_plans_level_reaches_its_businesses`).
+- `Module` lleva registro de cambios (django-auditlog, `apps/auditlog.py`, ACCOUNTS-F36; sin `updated_at`); `App` y
+  `AppDoc` no, porque no son dinero y el Hub los reescribe en cada arranque (`apps/tests/test_auditlog.py`).
+- Cierre (CLOSE-APPS, 2026-10-27): ronda en PLAN-SAAS §12. Desde la ronda 2026-10-24b, F03, F04, F05 (pasos 1 y 2) y
+  F07 están construidos y probados pero sin uso; PLAN §32 dice que nuestros módulos no se venden sueltos y PLAN-SAAS
+  §2.6 que el derecho de un módulo `premium` futuro lo daría el plan: contradicción señalada en esa ronda, no elegida.
 
 ## Lo que NO hace, a propósito
 

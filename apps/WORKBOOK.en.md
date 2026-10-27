@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:0ba485f6559ddb9d5fc4eb2024819f330ab1ef89798bd5d4bc4db7d303b8d512 -->
+<!-- generated from WORKBOOK.md sha256:aeb07dea7464d00e82114ccc5ed0f84577fbe1e74e8dcb6793fd80ce95ed66b9 -->
 
 ## What it is for and who it is for
 
@@ -10,6 +10,10 @@ store to anyone, with or without an account, in Spanish or in English.
 Of the paid apps, erplora.com also keeps what it sells: the lowest plan that includes them and their net
 monthly and annual price, with their Stripe prices. A free app has nothing to sell: it comes with any
 business.
+
+Today no app is paid: every app comes with every plan. What this manual tells about paid apps (putting
+them on sale, linking them to Stripe and buying them in the Store) works, but it is not used until there
+is one again.
 
 - Only the Hub writes the catalog: erplora.com reads it and never changes it.
 - An app is never deleted: it is taken out of the store or off sale, and whoever has it keeps it.
@@ -117,11 +121,11 @@ Steps:
 1. An app the Hub registered as paid shows in **Admin › Apps**, but it is not sold until it has its module.
 2. In **Admin › Modules**, the staff tap "Add module" and type in "App" the app's label, as Admin › Apps shows it.
 3. They choose the "Tier", which is the lowest plan that includes it without paying it separately, and type its "Monthly price (cents)" and its "Annual price (cents)", without VAT (an annual price of 0 = no annual option).
-4. They save: from then on the app is on sale in the panel's Store at that price, and the businesses whose plan reaches its tier have it included.
+4. They save: from then on the app is on sale in the panel's Store at that price, and the businesses whose plan reaches its tier have it included; it reaches them within 15 minutes at most, and the admin says how many (the same when the "Tier" changes).
 In: the label of a paid app of the catalog, its tier and its prices.
 Out: the module on sale.
 If it fails: a label that is not in the catalog is not saved and says the Hub registers its apps when it starts; a free app is not saved either, because only a paid app is sold; a negative or decimal price is not accepted. A module whose app is no longer in the catalog (written some other way than the admin) is reported by the check that runs on every deployment.
-Involved: billing (the Store and the charge), hubs (which apps each plan includes)
+Involved: billing (the Store and the charge), hubs (which apps each plan includes and how they reach each business, HUBS-F34)
 
 ### APPS-F04 Link a paid app to its Stripe product and prices
 <!-- origen: fi:saas/support/public-core-config#service-modulestripeservice-services-stripe-py -->
