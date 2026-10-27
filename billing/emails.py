@@ -176,6 +176,28 @@ def send_checkout_refunded(hub, *, to: str, language: str, amount) -> None:
     _send_notice(CHECKOUT_REFUNDED, subject, lines, to, language=language)
 
 
+#: The header of the team's notice of a credit note voided after its rectifying invoice (BILLING-F26).
+CREDIT_NOTE_VOIDED = "billing.credit_note_voided"
+
+
+def send_credit_note_voided(rectifying, credit_note_id: str) -> None:
+    """Tell the team's mailbox (``SUPPORT_EMAIL``) that Stripe voided a credit note that is already a rectifying
+    invoice: nothing was changed, a person corrects it (a new invoice that cancels the rectifying one).
+    ``MailNotSent`` when the mail could not leave."""
+    values = {"number": rectifying.number, "credit_note": credit_note_id}
+    with translation.override(settings.LANGUAGE_CODE):
+        subject = _("Stripe voided the credit note of rectifying invoice %(number)s") % values
+        lines = [
+            _("Stripe voided credit note %(credit_note)s, which is rectifying invoice %(number)s.") % values,
+            "",
+            _(
+                "Nothing was changed: an invoice sent to the AEAT is never modified. If the money was not given back, "
+                "issue the invoice that cancels it by hand."
+            ),
+        ]
+    _send_notice(CREDIT_NOTE_VOIDED, subject, lines, settings.SUPPORT_EMAIL, language=settings.LANGUAGE_CODE)
+
+
 #: The headers of the team's OSS notices (BILLING-F06).
 OSS_NOTICE = "billing.oss_{kind}"
 

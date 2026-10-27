@@ -1994,3 +1994,21 @@ msgid ""
 "The bank declined the card. Change the card first, then pay the invoice."
 msgstr ""
 "El banco rechazó la tarjeta. Cámbiala primero y después paga la factura."
+
+#: emails.py
+#, python-format
+msgid "Stripe voided the credit note of rectifying invoice %(number)s"
+msgstr "Stripe ha anulado la nota de crédito de la factura rectificativa %(number)s"
+
+#: emails.py
+#, python-format
+msgid "Stripe voided credit note %(credit_note)s, which is rectifying invoice %(number)s."
+msgstr "Stripe ha anulado la nota de crédito %(credit_note)s, que es la factura rectificativa %(number)s."
+
+#: emails.py
+msgid ""
+"Nothing was changed: an invoice sent to the AEAT is never modified. If the money was not given back, issue "
+"the invoice that cancels it by hand."
+msgstr ""
+"No se ha cambiado nada: una factura enviada a la AEAT nunca se modifica. Si el dinero no se devolvió, emite "
+"a mano la factura que la anula."

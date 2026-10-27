@@ -41,6 +41,8 @@ YEAR = timezone.localdate().year
 @pytest.fixture(autouse=True)
 def _stripe(stripe_double, issuer_identity):
     stripe_double.answer("subscriptions.retrieve", subscription())
+    # A credit note is read LIVE before it becomes a rectifying invoice (a voided one never does, BILLING-F26).
+    stripe_double.answer("credit_notes.retrieve", lambda call: {"id": call.args[0], "object": "credit_note", "status": "issued"})
     return stripe_double
 
 

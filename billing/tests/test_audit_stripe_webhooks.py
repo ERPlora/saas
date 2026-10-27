@@ -52,7 +52,7 @@ def refused(*args) -> str:
 class TestTheOneList:
     HANDLERS = (
         "checkout_completed", "checkout_closed", "invoice_paid", "invoice_payment_failed", "invoice_voided",
-        "credit_note_created", "charge_refunded", "subscription_updated", "subscription_deleted", "customer_updated",
+        "credit_note_created", "credit_note_voided", "charge_refunded", "subscription_updated", "subscription_deleted", "customer_updated",
     )
 
     def test_every_event_of_the_list_reaches_a_handler(self, monkeypatch):
