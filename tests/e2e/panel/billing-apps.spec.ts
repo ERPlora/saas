@@ -5,6 +5,7 @@
 // is a double that mounts a placeholder; everything else is the real server. Each test names its flow by its
 // registry key (BILLING-Gnn); in billing/WORKBOOK.md: G61=F31, G62=F32, G63=F09, G66=F33, G67=F34, G68=F35,
 // G05=F36, G92=F22, G94=F23, G95=F08, G17=F11.
+// flow: BILLING-F33 BILLING-F34 BILLING-F35 — what the Hub then receives: billing/tests/test_module_end_reaches_the_hub.py.
 import { execFileSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -221,7 +222,13 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
     );
     await page.getByTestId('store-cancel-module-submit').click();
     await expect(toast(page, /E2E Apps Bookings cancelled: it works until/)).toBeVisible();
-    await expect(bookings.getByTestId('module-keep')).toBeVisible();
+    // The card of the cancelled app: until when the business has it, and «Keep» while it lasts (the sheet gone first:
+    // below 640px it slides down, and a capture taken meanwhile shows it halfway).
+    await expect(dialog).toBeHidden();
+    await atEverySize(page, 'BILLING-G66-keep', async () => {
+      await expect(bookings.getByTestId('module-cancelled')).toContainText('(cancelled)');
+      await expect(bookings.getByTestId('module-keep')).toBeVisible();
+    });
     expect(cancelled).toEqual([{ hub_id: bakery, module: 'e2e_apps_bookings' }]);
     expect(errors).toEqual([]);
   });
