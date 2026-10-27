@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:98f4d3bc5d23888131d473b21e24f533559b2e43f8abb03124f148ea8d6f2a18 -->
+<!-- generated from WORKBOOK.md sha256:ff3208e0708385fca081d8013f0658f769a7e4f21885bc327f51ef5d76f675b8 -->
 
 ## What it is for and who it is for
 
@@ -13,6 +13,10 @@ and downloaded in **Billing**.
   goes back to Free.
 - If a charge fails, the business keeps working for 7 days while it is retried; then it is suspended until it
   is paid, without losing any data.
+
+Today no app is paid: every app comes with every plan (round 2026-10-24b, PLAN §32 and PLAN-SAAS §9). What this
+manual tells of the paid apps (the **Store › Modules** screen, and buying, cancelling, ending and taking one to
+another business, BILLING-F31 to BILLING-F35) works and is tested, but is not used until there is one again.
 
 Who uses it:
 
@@ -143,9 +147,9 @@ to upgrade or change it.
 | BILLING-F30 | Use live Stripe keys only in production and test keys elsewhere | done |
 | BILLING-F31 | See the paid apps and their state in each business | done |
 | BILLING-F32 | Subscribe a business to a paid app | done |
-| BILLING-F33 | Cancel a paid app | partial |
-| BILLING-F34 | End a paid app at the end of its period | partial |
-| BILLING-F35 | Take a paid app to another business | partial |
+| BILLING-F33 | Cancel a paid app | done |
+| BILLING-F34 | End a paid app at the end of its period | done |
+| BILLING-F35 | Take a paid app to another business | done |
 | BILLING-F36 | See an invoice | done |
 | BILLING-F37 | Forget Stripe's notices older than 30 days | done |
 | BILLING-F38 | Read the subscriptions again in Stripe every night and put right what drifted | done |
@@ -622,7 +626,7 @@ Involved: hubs (the business's subscription), the business (receives the app)
 
 ### BILLING-F33 Cancel a paid app
 <!-- origen: old-saas:SAAS_DASHBOARD-F112 gh:saas#2535 gh:saas#2568 gh:saas#2589 -->
-Status: partial — the business does not turn off an app that stopped being paid yet: today every app is on in every business
+Status: done
 Actor: owner who pays
 Screen: Store
 Steps:
@@ -637,7 +641,7 @@ Involved: hubs (the business's subscription), the business (receives until when 
 
 ### BILLING-F34 End a paid app at the end of its period
 <!-- origen: old-saas:SAAS_DASHBOARD-F113 -->
-Status: partial — the business does not turn off the ended app yet: today every app is on in every business
+Status: done
 Actor: system
 Screen: Store, Billing › Subscriptions
 Steps:
@@ -651,7 +655,7 @@ Involved: the business (stops receiving the app)
 
 ### BILLING-F35 Take a paid app to another business
 <!-- origen: old-saas:SAAS_DASHBOARD-F114 gh:saas#2589 -->
-Status: partial — it depends on BILLING-F33: the business of origin does not turn the app off yet when it ends
+Status: done
 Actor: owner
 Screen: Store
 Steps:

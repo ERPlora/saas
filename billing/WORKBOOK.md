@@ -1,7 +1,7 @@
 # Workbook — Facturación (billing)
 Prefijo: BILLING
 Alcance MVP: fase 1 (lo que una cuenta paga a ERPlora: planes, módulos, IVA y facturas)
-Estado de la app: en uso (tres flujos parciales: BILLING-F33, BILLING-F34 y BILLING-F35, la parte del Hub que apaga una aplicación de pago)
+Estado de la app: en uso
 
 > Manual de uso y especificación de la app `billing` del SaaS (erplora.com). Cuenta cómo se paga y se
 > cambia el plan de un negocio, cómo se contratan y se cancelan sus aplicaciones de pago, qué pasa si un
@@ -22,6 +22,11 @@ legal por cada cobro, que se ve y se descarga en **Facturación**.
   vuelve a Gratis.
 - Si un cobro falla, el negocio sigue funcionando 7 días mientras se reintenta; después se suspende
   hasta que se pague, sin perder ningún dato.
+
+Hoy ninguna aplicación es de pago: todas van en todos los planes (ronda 2026-10-24b, PLAN §32 y PLAN-SAAS §9).
+Lo que este manual cuenta de las aplicaciones de pago (la pantalla **Tienda › Módulos** y contratar, cancelar,
+terminar y llevar una a otro negocio, BILLING-F31 a BILLING-F35) funciona y está probado, pero no se usa hasta que
+vuelva a haber una.
 
 Quién la usa:
 
@@ -156,9 +161,9 @@ al propietario, el botón para mejorarlo o cambiarlo.
 | BILLING-F30 | Usar claves reales de Stripe solo en producción y de prueba fuera de ella | hecho |
 | BILLING-F31 | Ver las aplicaciones de pago y su estado en cada negocio | hecho |
 | BILLING-F32 | Contratar una aplicación de pago para un negocio | hecho |
-| BILLING-F33 | Cancelar una aplicación de pago | parcial |
-| BILLING-F34 | Terminar una aplicación de pago al final de su periodo | parcial |
-| BILLING-F35 | Llevar una aplicación de pago a otro negocio | parcial |
+| BILLING-F33 | Cancelar una aplicación de pago | hecho |
+| BILLING-F34 | Terminar una aplicación de pago al final de su periodo | hecho |
+| BILLING-F35 | Llevar una aplicación de pago a otro negocio | hecho |
 | BILLING-F36 | Ver una factura | hecho |
 | BILLING-F37 | Olvidar los avisos de Stripe de más de 30 días | hecho |
 | BILLING-F38 | Releer cada noche las suscripciones en Stripe y corregir lo que se desvió | hecho |
@@ -635,7 +640,7 @@ Implicados: hubs (la suscripción del negocio), el negocio (recibe la aplicació
 
 ### BILLING-F33 Cancelar una aplicación de pago
 <!-- origen: old-saas:SAAS_DASHBOARD-F112 gh:saas#2535 gh:saas#2568 gh:saas#2589 -->
-Estado: parcial — el negocio todavía no apaga una aplicación que dejó de pagarse: hoy todas las aplicaciones están encendidas en todos los negocios
+Estado: hecho
 Actor: propietario que paga
 Pantalla: Tienda
 Pasos:
@@ -650,7 +655,7 @@ Implicados: hubs (la suscripción del negocio), el negocio (recibe hasta cuándo
 
 ### BILLING-F34 Terminar una aplicación de pago al final de su periodo
 <!-- origen: old-saas:SAAS_DASHBOARD-F113 -->
-Estado: parcial — el negocio todavía no apaga la aplicación terminada: hoy todas las aplicaciones están encendidas en todos los negocios
+Estado: hecho
 Actor: sistema
 Pantalla: Tienda, Facturación › Suscripciones
 Pasos:
@@ -664,7 +669,7 @@ Implicados: el negocio (deja de recibir la aplicación)
 
 ### BILLING-F35 Llevar una aplicación de pago a otro negocio
 <!-- origen: old-saas:SAAS_DASHBOARD-F114 gh:saas#2589 -->
-Estado: parcial — depende de BILLING-F33: el negocio de origen todavía no apaga la aplicación cuando termina
+Estado: hecho
 Actor: propietario
 Pantalla: Tienda
 Pasos:
@@ -727,6 +732,10 @@ Implicados: hubs (la suscripción del negocio), el negocio (recibe su plan)
   existían el soporte de Stripe del SaaS viejo (precios, vuelta del pago, servicio de Stripe, modelos,
   serializadores y tareas) y añade BILLING-F37 y BILLING-F38. Lo que allí eran tareas de Celery aquí son
   tareas programadas o se hace tras el COMMIT (el correo de la factura).
+- Las aplicaciones de pago (BILLING-F31 a BILLING-F35) están hechas y probadas con los dobles de Stripe y del Hub
+  (`billing/tests/test_module_end_reaches_the_hub.py`; en el Hub, `base/tests/test_entitlement.py`), pero hoy no se
+  usan: desde la ronda 2026-10-24b (PLAN §32 punto 1, PLAN-SAAS §9) todos los módulos van en todos los planes y
+  ninguno es `premium`, así que no hay fila `Module` a la venta. Vuelven a usarse en cuanto la haya.
 - Fuera del modelo viejo, a propósito: sin cuota de mantenimiento del 25 % al terminar un plan (PLAN-SAAS
   §3.3: vuelve a Gratis), sin estado «pendiente de pago» en el alta (el negocio nace en Gratis) y sin
   sincronización automática de productos de Stripe (los identificadores se pegan en el admin).
