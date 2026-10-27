@@ -1,7 +1,7 @@
 # Workbook — Facturación (billing)
 Prefijo: BILLING
 Alcance MVP: fase 1 (lo que una cuenta paga a ERPlora: planes, módulos, IVA y facturas)
-Estado de la app: en uso
+Estado de la app: completa (2026-10-27)
 
 > Manual de uso y especificación de la app `billing` del SaaS (erplora.com). Cuenta cómo se paga y se
 > cambia el plan de un negocio, cómo se contratan y se cancelan sus aplicaciones de pago, qué pasa si un
@@ -751,6 +751,10 @@ Implicados: hubs (la suscripción del negocio), el negocio (recibe su plan)
   infraestructura (`stacks/prod/scheduler.tf` de `ERPlora/aws`): `sync_subscriptions` cada noche a las 00:10 UTC
   (antes de la foto de las 00:30 y de la re-tarificación), `purge_webhook_events` a las 00:50 UTC,
   `audit_tax_rules` cada día a las 05:10 UTC y `retax_subscriptions` a las 05:20 UTC.
+- Cierre (CLOSE-BILLING, 2026-10-27): ronda en PLAN-SAAS §13. Las facturas de ERPlora las emite el Hub desde
+  `ERPlora/hub#133`, pero en producción no se cobra con clave live mientras `PLATFORM_INVOICING_ENABLED` siga en
+  `false` (reglas de trabajo §15: la transmisión real queda bajo la supervisión de Ioan). La compra suelta de BILLING-F32
+  frente a PLAN §32 punto 1 es la contradicción ya señalada en PLAN-SAAS §12, que esa ronda cita sin elegir.
 
 ## Lo que NO hace, a propósito
 
