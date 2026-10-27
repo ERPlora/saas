@@ -412,6 +412,13 @@
       "notice": "Este sitio está protegido por reCAPTCHA y se aplican la {privacy} y las {terms} de Google.",
       "privacy": "Política de Privacidad",
       "terms": "Condiciones del Servicio"
+    },
+    "signOut": {
+      "title": "¿Cerrar la sesión de erplora.com?",
+      "lead": "Sigues conectado a erplora.com en este navegador como {account}.",
+      "confirm": "Cerrar sesión",
+      "stay": "Seguir conectado",
+      "failed": "No se ha podido cerrar la sesión. Inténtalo de nuevo."
     }
   }
 }
