@@ -13,6 +13,12 @@ import { VITE_ROOT_HEADER } from './tests/e2e/panel/project';
 import e2eConfig, { browserWindow } from './tests/e2e/playwright.config';
 import config, { FRONTEND_APPS } from './vite.config';
 
+// The real `readFileSync`, watched: the guardrail must read each module once (see `importsOf`).
+vi.mock('node:fs', async (importOriginal) => {
+  const fs = await importOriginal<typeof import('node:fs')>();
+  return { ...fs, readFileSync: vi.fn(fs.readFileSync) };
+});
+
 const SAAS_DIR = dirname(fileURLToPath(import.meta.url));
 /** The shell stylesheet `erplora:tailwind-sources` appends the project's frontends to. */
 const SHELL_GLOBAL_CSS = join(SAAS_DIR, 'packages', 'ui', 'src', 'shell', 'theme', 'global.css');
@@ -211,16 +217,37 @@ function resolveRelative(from: string, specifier: string): string | undefined {
   return [base, `${base}.ts`, join(base, 'index.ts')].find((path) => statSync(path, { throwIfNoEntry: false })?.isFile());
 }
 
+/** What a module loads: whether it imports `@playwright/test` itself, and the modules of the project it imports. */
+interface ModuleImports {
+  readonly playwright: boolean;
+  readonly modules: readonly string[];
+}
+
+/**
+ * Each module's imports, read once per run. The ~140 test files share their pages, components and helpers:
+ * walking each test's imports from the disk again read 4,606 files for 330 modules (2026-10-28), and on a
+ * loaded machine that took this guardrail past Vitest's 5 s.
+ */
+const importsByPath = new Map<string, ModuleImports>();
+
+function importsOf(path: string): ModuleImports {
+  const known = importsByPath.get(path);
+  if (known) return known;
+  const specifiers = [...readFileSync(path, 'utf8').matchAll(RUNTIME_IMPORTS)].map(([, ...found]) => found.find(Boolean) ?? '');
+  const imports: ModuleImports = {
+    playwright: specifiers.includes('@playwright/test'),
+    modules: specifiers.flatMap((specifier) => (specifier.startsWith('.') ? (resolveRelative(path, specifier) ?? []) : [])),
+  };
+  importsByPath.set(path, imports);
+  return imports;
+}
+
 /** Whether loading the module at `path` loads Playwright: it imports `@playwright/test` or a module of the project that does. */
 function loadsPlaywright(path: string, seen = new Set<string>()): boolean {
   if (seen.has(path)) return false;
   seen.add(path);
-  return [...readFileSync(path, 'utf8').matchAll(RUNTIME_IMPORTS)].some(([, ...specifiers]) => {
-    const specifier = specifiers.find(Boolean) ?? '';
-    if (specifier === '@playwright/test') return true;
-    const module = specifier.startsWith('.') ? resolveRelative(path, specifier) : undefined;
-    return module !== undefined && loadsPlaywright(module, seen);
-  });
+  const { playwright, modules } = importsOf(path);
+  return playwright || modules.some((module) => loadsPlaywright(module, seen));
 }
 
 /** The environment Vitest gives a test file: its docblock's (read anywhere in the file, as Vitest does), else the config's. */
@@ -237,15 +264,18 @@ describe('the tests that load Playwright', () => {
     expect(['window', 'XMLHttpRequest'].filter((name) => name in globalThis)).toEqual([]);
   });
 
+  // Reads every module the tests load from the disk, so its time is the machine's: with `pnpm test` beside other
+  // runs (load 25–40) it took up to 4.0 s reading each module once (2026-10-28; 18.7 s when it read them again for
+  // each test file), against Vitest's 5 s. 60 s, as the guardrail that type-checks the e2e (tests/e2e/typecheck.test.ts).
   it("give every test file that loads Playwright Node's environment", () => {
     const files = globSync(config.test?.include ?? [], { cwd: SAAS_DIR }).filter(
       (file) => !file.split(sep).includes('node_modules'),
     );
-    const sources = new Map(files.map((file) => [file, readFileSync(join(SAAS_DIR, file), 'utf8')]));
     const loading = files.filter((file) => loadsPlaywright(join(SAAS_DIR, file)));
     expect(loading).toEqual(expect.arrayContaining(['vite.config.test.ts', join('tests', 'e2e', 'django-env.test.ts')]));
-    expect(loading.filter((file) => environmentOf(sources.get(file) ?? '') !== 'node')).toEqual([]);
-  });
+    const outsideNode = loading.filter((file) => environmentOf(readFileSync(join(SAAS_DIR, file), 'utf8')) !== 'node');
+    expect(outsideNode).toEqual([]);
+  }, 60_000);
 
   it('see Playwright loaded through a helper or a dynamic import, and not through types', () => {
     const work = mkdtempSync(join(tmpdir(), 'saas-loads-playwright-'));
@@ -269,6 +299,36 @@ describe('the tests that load Playwright', () => {
       'through-helper.test.ts',
       'through-config.test.ts',
       'dynamic.test.ts',
+    ]);
+  });
+
+  it('read each module once, however many test files load it', () => {
+    const work = mkdtempSync(join(tmpdir(), 'saas-loads-playwright-'));
+    const modules: Record<string, string> = {
+      'shared.ts': 'export const shared = 1;\n',
+      'helper.ts': "import { shared } from './shared';\nexport const helper = shared;\n",
+      'first.test.ts': "import { helper } from './helper';\n",
+      'second.test.ts': "import { helper } from './helper';\nimport { shared } from './shared';\n",
+    };
+    for (const [name, code] of Object.entries(modules)) writeFileSync(join(work, name), code);
+    vi.mocked(readFileSync).mockClear();
+    expect(['first.test.ts', 'second.test.ts'].filter((name) => loadsPlaywright(join(work, name)))).toEqual([]);
+    const read = vi.mocked(readFileSync).mock.calls.map(([path]) => relative(work, String(path)));
+    expect(read.sort()).toEqual(['first.test.ts', 'helper.ts', 'second.test.ts', 'shared.ts']);
+  });
+
+  it('see Playwright through a module that another test file already walked', () => {
+    const work = mkdtempSync(join(tmpdir(), 'saas-loads-playwright-'));
+    const modules: Record<string, string> = {
+      'page.ts': "import { test } from '@playwright/test';\nexport const page = test;\n",
+      'helper.ts': "import { page } from './page';\nexport const helper = page;\n",
+      'first.test.ts': "import { helper } from './helper';\n",
+      'second.test.ts': "import { helper } from './helper';\n",
+    };
+    for (const [name, code] of Object.entries(modules)) writeFileSync(join(work, name), code);
+    expect(['first.test.ts', 'second.test.ts'].filter((name) => loadsPlaywright(join(work, name)))).toEqual([
+      'first.test.ts',
+      'second.test.ts',
     ]);
   });
 });
