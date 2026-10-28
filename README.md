@@ -263,8 +263,9 @@ reconstruir nada si aparece spam:
   del enlace; un código nuevo cada 10 s; y 10 códigos rechazados en 5 minutos por dirección (uno bueno no gasta:
   `code_attempts`, `accounts/bot_check.py`; además de los 3 intentos de cada código). El contacto (10 por hora) y
   la demo (3 demos nuevas por hora) siguen con su límite por dirección, que va antes que reCAPTCHA: lo frenado no
-  gasta evaluaciones. Solo el Django del panel de la e2e sube los límites por dirección de la entrada
-  (`E2E_RELAX_LOGIN_RATE_LIMIT`: todas sus specs entran desde `127.0.0.1`); producción no arranca con él.
+  gasta evaluaciones. Solo el Django del panel de la e2e sube los límites por dirección de la entrada y del alta
+  (`E2E_RELAX_LOGIN_RATE_LIMIT`: todas sus specs entran y dan de alta sus cuentas desde `127.0.0.1`); producción no
+  arranca con él.
 
 ## Panel único (ronda 17): Stripe, facturas y uso
 
