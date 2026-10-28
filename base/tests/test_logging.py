@@ -11,8 +11,10 @@ line held the process for seconds: every rule must run in linear time). Only the
 
 from __future__ import annotations
 
+import contextlib
 import io
 import logging
+import logging.config
 import random
 import re
 
@@ -608,17 +610,20 @@ class TestTheLogOfThisProject:
         assert formatter["()"] == "base.logging.GDPRSafeFormatter"
 
     def test_a_line_of_any_logger_reaches_the_console_without_the_address_nor_the_key(self):
-        # The console handler the process set up from settings.LOGGING, pointed at a buffer for this line and back:
-        # rebuilding the logging inside a capture would leave every later line writing to a closed stream.
-        console = logging.getHandlerByName("console")
+        from django.conf import settings
+
+        # settings.LOGGING built while stderr is a buffer, so every handler that writes to the console writes there (a
+        # second one without the formatter shows up, one on stdout leaves it empty); built again once stderr is back,
+        # so the next tests log where they did: built inside a capture, every later line would write to a closed stream.
         written = io.StringIO()
-        stream = console.setStream(written)
         try:
+            with contextlib.redirect_stderr(written):
+                logging.config.dictConfig(settings.LOGGING)
             logging.getLogger("accounts.mail").warning(
                 "mail to ana@example.com failed with key erps_live_Q7cRm2ZtV9xKp4LwN8bYs3HdJ6fGa1EqU5oTi0WkBnMvCzXyPl"
             )
         finally:
-            console.setStream(stream)
+            logging.config.dictConfig(settings.LOGGING)
         err = written.getvalue()
         assert "accounts.mail" in err
         assert "mail to [EMAIL_REDACTED] failed with key [TOKEN_REDACTED]" in err
