@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:110f58b5827349cdaef8b401f790e45dcc8caeb7d2bf9d6e8534c3b7179de5b0 -->
+<!-- generated from WORKBOOK.md sha256:c9db71e11a6dba352c4d9b507b76ca755e013780678a4a08d5462699a0447c4a -->
 
 ## What it is for and who it is for
 
@@ -140,7 +140,7 @@ to upgrade or change it.
 | BILLING-F23 | See the subscriptions of each business | done |
 | BILLING-F24 | Open Stripe's payment portal to change the card | done |
 | BILLING-F25 | Issue ERPlora's invoice for a charge | done |
-| BILLING-F26 | Refund a charge | done |
+| BILLING-F26 | Refund a charge | partial |
 | BILLING-F27 | What ERPlora staff can do about a customer's billing | done |
 | BILLING-F28 | Keep the plans' prices in Stripe | done |
 | BILLING-F29 | Test real charging in PRE with a Stripe test clock | done |
@@ -153,7 +153,7 @@ to upgrade or change it.
 | BILLING-F36 | See an invoice | done |
 | BILLING-F37 | Forget Stripe's notices older than 30 days | done |
 | BILLING-F38 | Read the subscriptions again in Stripe every night and put right what drifted | done |
-| BILLING-F39 | Check every day that Stripe sends a notice of everything erplora.com handles | done |
+| BILLING-F39 | Check every day that Stripe sends a notice of everything erplora.com handles | partial |
 
 ### BILLING-F01 Say where the business is invoiced and with which tax ID
 <!-- origen: old-saas:SAAS_DASHBOARD-F90 fi:saas/orgs-users#informacion-de-facturacion-de-la-organizacion-ver-editar -->
@@ -523,7 +523,7 @@ Involved: ERPlora's platform business (issues the invoice)
 
 ### BILLING-F26 Refund a charge
 <!-- origen: old-saas:SAAS_DASHBOARD-F121 gh:saas#2527 -->
-Status: done
+Status: partial — refunding a charge and the credit note already work, and a note voided before it becomes a corrective invoice never becomes one; but if Stripe voids one that already was, the email to support does not leave until the team subscribes, in Stripe, the destinations of erplora.com and of its test environment to the notice of a voided credit note
 Actor: ERPlora staff
 Screen: none
 Steps:
@@ -712,7 +712,7 @@ Involved: hubs (the business's subscription), the business (gets its plan)
 
 ### BILLING-F39 Check every day that Stripe sends a notice of everything erplora.com handles
 <!-- origen: gh:saas#2402 -->
-Status: done
+Status: partial — the check is already in erplora.com, but it does not run every day yet: its schedule waits for the team to subscribe, in Stripe, the destinations of erplora.com and of its test environment to the notice of a voided credit note (BILLING-F26), because without it the check would fail every day, and for the team to confirm that erplora.com's Stripe key can read those destinations
 Actor: system
 Screen: none
 Steps:
