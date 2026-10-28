@@ -10,7 +10,7 @@ from importlib import import_module
 
 import pytest
 from django.conf import settings
-from django.contrib.auth import SESSION_KEY
+from django.contrib.auth import HASH_SESSION_KEY, SESSION_KEY, get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.db import connection
 from django.test import Client, RequestFactory
@@ -241,3 +241,28 @@ class TestASessionThatEnded:
         end_by_signing_out_in_another_tab(browser, ana, password)
 
         assert Executor()._run_in_language(stream, sub) == BYE_FRAME
+
+    def test_a_session_that_now_signs_in_another_account_ends_this_stream(self, browser, ctx, password):
+        """A session row that now names another account (its hash untouched) no longer signs this account in: the
+        stream it opened ends, as ``django.contrib.auth.get_user`` would sign that other account in instead."""
+        other = get_user_model().objects.create_user(email="bruno@example.com", password=password)
+        store = browser_session(browser)
+        store[SESSION_KEY] = str(other.pk)
+        store.save()
+
+        with pytest.raises(Unauthorized) as ended:
+            UserContextBuilder().refresh(ctx)
+
+        assert (ended.value.status, ended.value.code) == (401, "base.session_ended")
+
+    def test_a_session_without_its_auth_hash_ends_this_stream(self, browser, ctx):
+        """A session that lost its auth hash signs nobody in (``django.contrib.auth.get_user`` flushes it at its next
+        request): the stream it opened ends too."""
+        store = browser_session(browser)
+        del store[HASH_SESSION_KEY]
+        store.save()
+
+        with pytest.raises(Unauthorized) as ended:
+            UserContextBuilder().refresh(ctx)
+
+        assert (ended.value.status, ended.value.code) == (401, "base.session_ended")
