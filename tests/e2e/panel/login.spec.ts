@@ -1,4 +1,4 @@
-// flow: FIX-LAUNCH-TABS
+// flow: FIX-LAUNCH-TABS, ACCOUNTS-F49
 // The panel's smoke (plan 2026-10-13-panel-saas-unificado, L0-G; launcher of L1-C): the pipeline from
 // the browser to the panel's dev server (:8012 by default, project.ts) works end to end. A visitor opens the entry
 // (/launch, open to visitors since round 17 §2.2), whose card is the sign-in itself (Ioan, 2026-10-15): the
@@ -13,6 +13,8 @@ import {
   OWNER,
   VIEWPORTS,
   expect,
+  panelAccount,
+  seedPanel,
   sessionOf,
   shot,
   signInThroughPage,
@@ -130,4 +132,40 @@ test('the signed-in fixture opens the launcher at 390, 834 and 1440 px without a
     await page.screenshot({ path: shot(`launcher--${viewport.width}`), fullPage: true });
   }
   expect(pageErrors).toEqual([]);
+});
+
+test.describe('the store review account (ACCOUNTS-F49, panel_seed.py)', () => {
+  test.beforeAll(() => seedPanel());
+  test.afterAll(() => seedPanel('clear'));
+
+  test('its password alone signs it in, never through «Check your email», and «Open» enters its business', async ({
+    page,
+  }) => {
+    const pageErrors = watchPageErrors(page);
+    const reviewer = panelAccount('store-review');
+    const visited: string[] = [];
+    page.on('framenavigated', (frame) => {
+      if (frame === page.mainFrame()) visited.push(frame.url());
+    });
+    // Stands in for the Hub's start of the jump (launch.spec.ts): no Hub has to run.
+    const jumps: string[] = [];
+    await page.route(/^http:\/\/[\w-]+\.localhost:8000\//, async (route) => {
+      jumps.push(route.request().url());
+      await route.fulfill({ status: 200, contentType: 'text/html', body: '<h1>Hub</h1>' });
+    });
+
+    await page.goto('/launch');
+    await submitSignInForm(page, reviewer);
+
+    await expect(page.getByRole('heading', { name: 'Hello, Laura' })).toBeVisible();
+    await expect(page).toHaveURL(/\/launch$/);
+    expect(visited.filter((url) => url.includes('/verify-email'))).toEqual([]);
+    // The session's label is the account's name (panel_seed.py), its email only without one.
+    expect((await sessionOf(page.request)).user).toMatchObject({ label: 'Laura Martín' });
+    await expect(page.getByTestId('launch-business')).toContainText('Tienda de Prueba');
+    await page.screenshot({ path: shot('login--store-review') });
+    await page.getByTestId('launch-open').click();
+    await expect.poll(() => jumps).toEqual(['http://e2e-store-review-shop.localhost:8000/auth/login?next=/']);
+    expect(pageErrors).toEqual([]);
+  });
 });

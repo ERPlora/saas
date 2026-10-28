@@ -72,6 +72,52 @@ class TestUser:
         assert admin.is_staff and admin.is_superuser
 
 
+class TestStoreReviewAccount:
+    """ACCOUNTS-F49: the account the app stores review with signs in with its password, without the mailed code.
+    Only the staff mark it, and never on an account of the staff."""
+
+    def test_no_account_is_one_unless_marked(self, ana):
+        assert ana.is_store_review_account is False
+
+    def test_the_mark_says_what_it_does_in_english_and_spanish(self):
+        field = get_user_model()._meta.get_field("is_store_review_account")
+
+        assert (str(field.verbose_name), str(field.help_text)) == (
+            "Store review account",
+            (
+                "Signs in with its password, without the mailed code. Only for the account Google Play and the App "
+                "Store review the app with."
+            ),
+        )
+        with translation.override("es"):
+            assert (str(field.verbose_name), str(field.help_text)) == (
+                "Cuenta de revisión de tienda",
+                (
+                    "Entra con su contraseña, sin el código por correo. Solo para la cuenta con la que Google Play y "
+                    "la App Store revisan la app."
+                ),
+            )
+
+    def test_a_customer_account_may_carry_it(self, ana):
+        ana.is_store_review_account = True
+
+        ana.full_clean()
+
+    @pytest.mark.parametrize(
+        "role", [{"is_staff": True}, {"is_staff": True, "is_superuser": True}, {"is_superuser": True}]
+    )
+    def test_an_account_of_the_staff_may_not_carry_it(self, role):
+        user = get_user_model().objects.create_user(email="help@erplora.com", password="x", **role)
+        user.is_store_review_account = True
+
+        with pytest.raises(ValidationError) as refused:
+            user.full_clean()
+
+        assert refused.value.messages == ["A staff account cannot be a store review account."]
+        with translation.override("es"):
+            assert refused.value.messages == ["Una cuenta del personal no puede ser cuenta de revisión de tienda."]
+
+
 class TestHubMembership:
     def test_customer_roles_are_owner_admin_manager_and_employee_with_the_hub_prefix(
         self,

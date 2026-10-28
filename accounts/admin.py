@@ -171,13 +171,31 @@ class UserAdmin(DjangoUserAdmin):
     fieldsets = (
         (None, {"fields": ("id", "email", "password")}),
         (_("Personal info"), {"fields": ("first_name", "last_name", "language")}),
-        (_("Permissions"), {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
+        (
+            _("Permissions"),
+            {
+                "fields": (
+                    "is_active",
+                    "is_store_review_account",
+                    "is_staff",
+                    "is_superuser",
+                    "groups",
+                    "user_permissions",
+                )
+            },
+        ),
         (_("Important dates"), {"fields": ("last_login", "date_joined")}),
         # What the account accepted (ACCOUNTS-G119): evidence, so nobody edits it here.
         (_("Terms and privacy"), {"fields": ("terms_accepted_at", "terms_version", "privacy_version")}),
     )
     add_fieldsets = ((None, {"classes": ("wide",), "fields": ("email", "usable_password", "password1", "password2")}),)
     actions = ("close_sessions",)
+
+    def get_readonly_fields(self, request, obj=None):
+        # The store review account (ACCOUNTS-F49) drops the mailed code of its sign-in: only a superuser sets or clears
+        # it; whoever else sees the page sees it. A staff account never carries it (``User.clean``).
+        readonly = super().get_readonly_fields(request, obj)
+        return readonly if request.user.is_superuser else (*readonly, "is_store_review_account")
 
     def get_inlines(self, request, obj):
         # Adding is email + password only (as Django's UserAdmin); hubs are given once it exists.

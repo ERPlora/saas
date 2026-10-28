@@ -135,6 +135,18 @@ def test_a_customer_of_a_hub_is_never_turned_into_platform_staff(ana):
     assert (ana.is_staff, ana.is_superuser, in_support(ana)) == (False, False, False)
 
 
+@pytest.mark.parametrize("role", ["admin", "support"])
+def test_the_store_review_account_is_never_turned_into_platform_staff(ana, role):
+    """ACCOUNTS-F49: its sign-in skips the mailed code, so it never leads to the admin."""
+    get_user_model().objects.filter(pk=ana.pk).update(is_store_review_account=True)
+
+    with pytest.raises(CommandError, match="store review account"):
+        run("ana@example.com", "--role", role)
+
+    ana.refresh_from_db()
+    assert (ana.is_staff, ana.is_superuser, in_support(ana)) == (False, False, False)
+
+
 def test_without_the_support_group_it_fails_loudly():
     Group.objects.filter(name="support").delete()
 

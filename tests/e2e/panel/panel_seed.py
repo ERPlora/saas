@@ -18,6 +18,8 @@ play the Hub's part, e.g. its signed ``ready`` callback). Every account's passwo
 - ``e2e-creator``: nothing, for the spec that creates a business through the panel.
 - ``e2e-free``: one active business, Frutería Sol, on Free with no trial: its plan caps the people
   (the seat limit of the members spec).
+- ``e2e-store-review``: the store review account (ACCOUNTS-F49), signing in without the mailed code, with one
+  active business, Tienda de Prueba (the business the stores review the app with).
 
 The accounts a spec creates through the panel (``e2e-newcomer``, ``e2e-seat-<n>``, invited by
 members.spec.ts) match the same pattern, so ``clear`` removes them too.
@@ -45,6 +47,7 @@ ACCOUNTS = {
     "e2e-jorge": ("", ""),
     "e2e-creator": ("Laura", "Martín"),
     "e2e-free": ("Laura", "Martín"),
+    "e2e-store-review": ("Laura", "Martín"),
 }
 
 
@@ -225,6 +228,11 @@ def _seed() -> None:
 
     # e2e-free: Free with no trial, so its plan's seat limit applies.
     business("fruteria-sol", "Frutería Sol", "e2e-free")
+
+    # e2e-store-review: marked as the superuser does in the admin, with the business the stores review.
+    users["e2e-store-review"].is_store_review_account = True
+    users["e2e-store-review"].save(update_fields=["is_store_review_account"])
+    business("store-review-shop", "Tienda de Prueba", "e2e-store-review")
 
 
 if __name__ == "__main__":

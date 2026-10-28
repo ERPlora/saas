@@ -68,6 +68,22 @@ msgstr "versión de los términos"
 msgid "privacy policy version"
 msgstr "versión de la política de privacidad"
 
+#: accounts/models.py
+msgid "Store review account"
+msgstr "Cuenta de revisión de tienda"
+
+#: accounts/models.py
+msgid ""
+"Signs in with its password, without the mailed code. Only for the account "
+"Google Play and the App Store review the app with."
+msgstr ""
+"Entra con su contraseña, sin el código por correo. Solo para la cuenta con "
+"la que Google Play y la App Store revisan la app."
+
+#: accounts/models.py
+msgid "A staff account cannot be a store review account."
+msgstr "Una cuenta del personal no puede ser cuenta de revisión de tienda."
+
 #: accounts/admin.py:40
 msgid "Personal info"
 msgstr "Información personal"

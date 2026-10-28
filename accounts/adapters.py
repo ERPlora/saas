@@ -3,7 +3,8 @@
 Sign-up is open, as in today's SaaS (ADR-0154): an email without an account creates one on the «Create
 account» tab of the launcher (allauth's own sign-up; the sign-in tab never creates one), and a Google email
 without one creates it on the way back from Google. Every sign-in with a password also asks for the code mailed to the account
-(``ACCOUNT_LOGIN_BY_CODE_REQUIRED``, ``AccountAdapter.is_login_by_code_required``). Every way back from
+(``ACCOUNT_LOGIN_BY_CODE_REQUIRED``, ``AccountAdapter.is_login_by_code_required``), except the store review account's
+(ACCOUNTS-F49). Every way back from
 Google that does not sign in lands on a Vue page: «Cancel» on the sign-in (``/launch``), any refusal or
 failure on ``/login/error?code=…``, both keeping ``next``.
 Google links to an account only by signing in with a Google that proves the account's own address;
@@ -70,6 +71,10 @@ def plain_email(email: str) -> str:
     return email
 
 
+def _is_store_review_account(user) -> bool:
+    return user is not None and user.is_store_review_account and not (user.is_staff or user.is_superuser)
+
+
 class AccountAdapter(DefaultAccountAdapter):
     def is_login_by_code_required(self, login) -> bool:
         """The mailed sign-in code (``ACCOUNT_LOGIN_BY_CODE_REQUIRED``), unless the login already waits for
@@ -80,8 +85,15 @@ class AccountAdapter(DefaultAccountAdapter):
         proves the address too. They get the verification code instead, the mail that says what it is for
         («… to register an account on erplora.com»): ``EmailVerificationStage`` mails it and the login
         waits for it (``ACCOUNT_EMAIL_VERIFICATION = "mandatory"``), the same proof of the mailbox.
+
+        The store review account (ACCOUNTS-F49) signs in with its password alone, its address proven: the reviewer of
+        Google Play or the App Store has no access to its mailbox. Never an account of the staff, whose sign-in
+        leads to the admin (the model refuses the mark on one; a row written past it still gets the code). The
+        authenticator app, if it has one, still asks for its code.
         """
         if login.signup or (login.user is not None and not has_verified_email(login.user, login.email)):
+            return False
+        if _is_store_review_account(login.user):
             return False
         return super().is_login_by_code_required(login)
 

@@ -1,7 +1,7 @@
 # Workbook — Cuentas (accounts)
 Prefijo: ACCOUNTS
 Alcance MVP: fase 1 (la cuenta de erplora.com: crearla, entrar y salir, su contraseña y lo que acepta)
-Estado de la app: en uso (dos flujos parciales: ACCOUNTS-F06, que espera a Google de verdad en el entorno de pruebas, y ACCOUNTS-F48, la QA maestra, que espera flujos de otras apps; uno sin hacer: ACCOUNTS-F49, la cuenta de revisión de tienda)
+Estado de la app: en uso (dos flujos parciales: ACCOUNTS-F06, que espera a Google de verdad en el entorno de pruebas, y ACCOUNTS-F48, la QA maestra, que espera flujos de otras apps)
 
 > Manual de uso y especificación de la app `accounts` del SaaS (erplora.com). Cuenta cómo se crea una
 > cuenta, cómo se confirma el correo, cómo se entra y se sale, cómo se recupera y se cambia la contraseña,
@@ -183,7 +183,8 @@ más» en vez de páginas.
 La lista de cuentas lleva la acción «Cerrar todas sus sesiones», que también acaba la confianza de sus
 navegadores; **Sesiones de usuario** enseña quién ha entrado dónde («Cuenta», «Inicio de sesión», «Último uso»,
 «Dirección IP» y «Navegador», en el idioma del personal), solo para leer, con «Cerrar las sesiones seleccionadas».
-Las dos acciones solo las ve un superusuario.
+Las dos acciones solo las ve un superusuario. La ficha de una cuenta lleva en «Permisos» la marca «Cuenta de
+revisión de tienda» (ACCOUNTS-F49): un superusuario la pone y la quita; el resto del personal solo la ve.
 
 ### Cuenta › Perfil
 «Tus datos» (la foto o las iniciales con «Cambiar foto», «Nombre», «Apellidos», el «Correo con el que entras» con
@@ -287,7 +288,7 @@ inglés» y el «mensaje en español» (vacío, quien visita en español lee el 
 | ACCOUNTS-F46 | Mandar los correos de erplora.com | hecho |
 | ACCOUNTS-F47 | Moverse por el panel | hecho |
 | ACCOUNTS-F48 | Pasar la QA maestra de erplora.com | parcial |
-| ACCOUNTS-F49 | Entrar como cuenta de revisión de tienda sin el código por correo | no hecho |
+| ACCOUNTS-F49 | Entrar como cuenta de revisión de tienda sin el código por correo | hecho |
 
 ### ACCOUNTS-F01 Crear la cuenta
 <!-- origen: old-saas:SAAS_AUTH-F01 pc:cloud/auth/signup fi:saas/auth-services#registro-de-usuario-por-api-signup fi:saas/support/auth-services#service-create_user gh:saas#2542 gh:saas#2536 gh:saas#2560 gh:saas#2562 -->
@@ -998,7 +999,7 @@ Implicados: hubs, billing, public, apps y fiscal; del Hub, verifactu, invoice y 
 
 ### ACCOUNTS-F49 Entrar como cuenta de revisión de tienda sin el código por correo
 <!-- origen: nuevo (Google Play y la App Store piden un acceso reutilizable sin código de un solo uso; Auth0, Microsoft Entra, Google Workspace, Odoo y WooCommerce eximen por cuenta desde la administración; ver «Referencia adoptada») gh:saas#132 gh:app#7 -->
-Estado: no hecho — falta la marca «Cuenta de revisión de tienda» en la ficha de la cuenta del admin, que su cambio quede en el registro de auditoría y que la entrada con contraseña de una cuenta marcada no pida el código; hoy toda entrada con contraseña lo pide (ACCOUNTS-F04)
+Estado: hecho
 Actor: personal de ERPlora y el revisor de una tienda de apps
 Pantalla: admin › Cuentas › Usuarios, Entrada › «Entrar»
 Pasos:
@@ -1047,7 +1048,15 @@ Implicados: el admin de erplora.com (la ficha de la cuenta y el registro de audi
   CloudWatch cuenta (PLAN-SAAS §1.1) y lo que cuenta una persona es ACCOUNTS-F38.
 - ACCOUNTS-F49 nace fuera del porte (saas#132; PLAN-SAAS, ronda 2026-10-27 de la cuenta de revisión de tienda):
   es la única excepción al código de cada entrada que G04 y PLAN-SAAS §3.7 punto 3 dejan siempre encendido, y la
-  pone el personal, nunca la persona.
+  pone el personal, nunca la persona. La marca es `User.is_store_review_account` (migración 0010, con `db_default`);
+  `AccountAdapter.is_login_by_code_required` la lee después de la regla de un solo código, así que una dirección sin
+  probar sigue recibiendo el que la prueba, y la app autenticadora sigue en su etapa de allauth. Solo la cambia un
+  superusuario (`UserAdmin.get_readonly_fields`; `support` solo ve la ficha); `User.clean` la rechaza en una cuenta
+  del personal (y hacer del personal una cuenta marcada), `services.create_platform_user` se niega a convertirla en
+  personal y el adaptador no la respeta en una cuenta del personal escrita a mano en la BD. El registro de auditoría
+  la anota sin nada nuevo: `User` se registra con todos sus campos salvo la contraseña y `last_login`. Tests:
+  `test_sign_in_code.py` (`TestAStoreReviewAccount`), `test_admin.py` (`TestTheStoreReviewMark`), `test_models.py`,
+  `test_auditlog.py`, `test_throttle.py`, `test_profile.py` y `test_create_platform_user.py`.
 - Puertas propias sobre allauth.headless (`accounts/doors.py`, montadas en `config/urls.py` antes de las de
   allauth): la entrada pliega el correo como el alta (NFKC, `adapters.plain_email`; trampa del SaaS viejo
   #1018) y el alta comprueba la contraseña contra su propio correo (headless la validaba sin cuenta y el
@@ -1170,7 +1179,8 @@ Implicados: el admin de erplora.com (la ficha de la cuenta y el registro de audi
   `tests/e2e/panel/accounts-mails.spec.ts` (F46: tres correos leídos de la carpeta de correo y pintados a tres tamaños),
   con la clave del registro (`ACCOUNTS-Gnn`) en el título y la equivalencia con este WORKBOOK en su cabecera;
   el segundo factor se juega en el gemelo del panel con el interruptor encendido (`PANEL_MFA_URL`).
-  `signup.spec.ts` y `login.spec.ts` siguen cubriendo las pestañas de la entrada.
+  `signup.spec.ts` y `login.spec.ts` siguen cubriendo las pestañas de la entrada; `login.spec.ts` juega también
+  F49 con la cuenta `e2e-store-review` de `panel_seed.py`.
 
 ## Lo que NO hace, a propósito
 

@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:482879be243265d2c5fff74827a743f848762bcdc73c601e248beb2fbb93ad15 -->
+<!-- generated from WORKBOOK.md sha256:6a1a55533c8f69d5fc709bd12d6dfa09ab1bc2c3be76d3bc56e80b60c7960606 -->
 
 ## What it is for and who it is for
 
@@ -159,7 +159,8 @@ marked "This session", and each other one carries "Close session". On top, "Clos
 The list of accounts carries the action "Close all their sessions", which also ends the trust of their
 browsers; **User sessions** shows who signed in where ("Account", "Signed in", "Last used", "IP address" and
 "Browser", in the staff's language), read only, with "Close the selected sessions". Only a superuser sees both
-actions.
+actions. An account's page carries under "Permissions" the mark "Store review account" (ACCOUNTS-F49): a superuser
+sets and removes it; the rest of the staff only see it.
 
 ### Account › Profile
 "Your details" (the photo or the initials with "Change photo", "First name", "Last name", the "Email you sign in
@@ -263,7 +264,7 @@ the "message in Spanish" (empty, Spanish visitors read the English one), and the
 | ACCOUNTS-F46 | Send erplora.com's emails | done |
 | ACCOUNTS-F47 | Move around the panel | done |
 | ACCOUNTS-F48 | Pass erplora.com's master QA | partial |
-| ACCOUNTS-F49 | Sign in as a store review account without the email code | not done |
+| ACCOUNTS-F49 | Sign in as a store review account without the email code | done |
 
 ### ACCOUNTS-F01 Create the account
 Status: done
@@ -925,12 +926,12 @@ If it fails: a point no flow covers is a QA failure and is noted in the app that
 Involved: hubs, billing, public, apps and fiscal; in the Hub, verifactu, invoice and printing
 
 ### ACCOUNTS-F49 Sign in as a store review account without the email code
-Status: not done — missing the "Store review account" mark on the account's page in the admin, its change being kept in the audit log, and a sign-in with the password of a marked account not asking for the code; today every sign-in with a password asks for it (ACCOUNTS-F04)
+Status: done
 Actor: ERPlora staff and the reviewer of an app store
 Screen: admin › Accounts › Users, Entrance › "Sign in"
 Steps:
 1. Staff create in the admin the account the stores review ERPlora's app with (ACCOUNTS-F13): an account only for that, with a long password and a test business, without real customer data. Its email is confirmed once, like any account's (ACCOUNTS-F03).
-2. On that account's page they tick "Store review account" ("Signs in with its password, without the email code. Only for the account that Google Play and the App Store use to review the app.") and save.
+2. On that account's page they tick "Store review account" ("Signs in with its password, without the mailed code. Only for the account Google Play and the App Store review the app with.") and save.
 3. They give the email and the password to each store, in its access section for the review; before each release on Google Play, the automatic check of ERPlora's app signs in with them.
 4. The reviewer opens the **Entrance**, on the web or in the app, types the email and the password and taps "Sign in": without going through **Check your email**, they go where they were going or to the **Entrance** with their session, which shows their business, and enter it (ACCOUNTS-F28).
 5. If the account stops being used for the stores or its password leaks, staff remove the mark or reset the password from the same page: from the next sign-in the code is asked again.

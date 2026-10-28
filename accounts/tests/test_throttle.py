@@ -59,6 +59,17 @@ def test_five_failed_passwords_close_the_account_even_to_the_right_one(verified)
     assert mail.outbox == []
 
 
+def test_the_store_review_account_is_closed_alike(verified):
+    """ACCOUNTS-F49: the mark skips the mailed code, never the limit on failed passwords."""
+    type(verified).objects.filter(pk=verified.pk).update(is_store_review_account=True)
+    for _ in range(5):
+        _from_new_address(LOGIN, {"email": verified.email, "password": "a guess"})
+
+    _, response = _from_new_address(LOGIN, {"email": verified.email, "password": PASSWORD})
+
+    assert (response.status_code, _codes(response)) == (400, ["too_many_login_attempts"])
+
+
 def test_the_account_opens_again_after_five_minutes(verified, wait):
     for _ in range(5):
         _from_new_address(LOGIN, {"email": verified.email, "password": "a guess"})

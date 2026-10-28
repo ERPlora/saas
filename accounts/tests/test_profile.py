@@ -136,6 +136,18 @@ class TestOverHttp:
         ana.refresh_from_db()
         assert (ana.email, ana.last_name) == ("ana@example.com", "García")
 
+    def test_the_store_review_mark_is_neither_shown_nor_changed_here(self, client, ana):
+        """ACCOUNTS-F49: only the staff set it, in the admin; the account never sees it."""
+        client.force_login(ana)
+
+        assert "is_store_review_account" not in api_get(client, PROFILE).json()
+        response = api_post(client, PROFILE, {"first_name": "Ana", "last_name": "Gil", "is_store_review_account": True})
+
+        assert response.status_code == 422
+        assert "is_store_review_account" in response.json()["error"]["fields"]
+        ana.refresh_from_db()
+        assert (ana.is_store_review_account, ana.last_name) == (False, "García")
+
     def test_a_blank_first_name_is_a_422_on_its_field_in_the_accounts_language(self, client, ana):
         client.force_login(ana)
 
