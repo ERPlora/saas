@@ -134,6 +134,20 @@ class TestAllauthsSessionsEndpoint:
         assert phone.get("/api/accounts/profile", HTTP_HOST=HOST).status_code == 401
         assert _recorded() == _woken(ana)
 
+    def test_ending_several_sessions_of_the_account_wakes_its_streams_once(self, signed_in, ana, password):
+        """One event per account, however many of its sessions end together: its streams re-run once."""
+        phone = sign_in(Client(), ana.email, password)
+        tablet = sign_in(Client(), ana.email, password)
+        others = [
+            UserSession.objects.get(session_key=device.session.session_key).pk for device in (phone, tablet)
+        ]
+
+        response = signed_in.delete(SESSIONS, {"sessions": others}, content_type="application/json", HTTP_HOST=HOST)
+
+        assert response.status_code == 200, response.content
+        assert [device.get("/api/accounts/profile", HTTP_HOST=HOST).status_code for device in (phone, tablet)] == [401, 401]
+        assert _recorded() == _woken(ana)
+
 
 def test_no_role_may_announce_ended_sessions(signed_in):
     """Only the system wakes an account's streams this way: no role holds the permission, and no route serves it."""
