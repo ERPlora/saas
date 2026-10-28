@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:110f58b5827349cdaef8b401f790e45dcc8caeb7d2bf9d6e8534c3b7179de5b0 -->
+<!-- generated from WORKBOOK.md sha256:9fe29431788bd2e68db8a623e34a3f8a497664cb31deeb7323c976367a2e6c0f -->
 
 ## What it is for and who it is for
 
@@ -153,7 +153,7 @@ to upgrade or change it.
 | BILLING-F36 | See an invoice | done |
 | BILLING-F37 | Forget Stripe's notices older than 30 days | done |
 | BILLING-F38 | Read the subscriptions again in Stripe every night and put right what drifted | done |
-| BILLING-F39 | Check every day that Stripe sends a notice of everything erplora.com handles | done |
+| BILLING-F39 | Check every day that Stripe sends a notice of everything erplora.com handles | partial |
 
 ### BILLING-F01 Say where the business is invoiced and with which tax ID
 <!-- origen: old-saas:SAAS_DASHBOARD-F90 fi:saas/orgs-users#informacion-de-facturacion-de-la-organizacion-ver-editar -->
@@ -712,7 +712,7 @@ Involved: hubs (the business's subscription), the business (gets its plan)
 
 ### BILLING-F39 Check every day that Stripe sends a notice of everything erplora.com handles
 <!-- origen: gh:saas#2402 -->
-Status: done
+Status: partial — the check is already in erplora.com, but it does not run every day yet: its schedule waits for the team to subscribe, in Stripe, the destinations of erplora.com and of its test environment to the notice of a voided credit note (BILLING-F26), because without it the check would fail every day, and for the team to confirm that erplora.com's Stripe key can read those destinations
 Actor: system
 Screen: none
 Steps:
