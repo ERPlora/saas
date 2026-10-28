@@ -1,8 +1,10 @@
 """Fixtures shared by every saas-next test."""
 
 import json
+import logging
 
 import pytest
+from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model
 from django.utils import translation
 
@@ -21,6 +23,33 @@ def _default_language():
     """
     yield
     translation.deactivate()
+
+
+def _log_streams() -> dict[str, list]:
+    """The stream each console handler of ``settings.LOGGING`` writes to, per logger (the root as ``""``).
+
+    Only ``logging.StreamHandler`` itself: pytest's own handlers are subclasses and change at every phase."""
+    names = ["", *django_settings.LOGGING.get("loggers", {})]
+    return {
+        name: [h.stream for h in logging.getLogger(name).handlers if type(h) is logging.StreamHandler]
+        for name in names
+    }
+
+
+@pytest.fixture(autouse=True)
+def _log_stays_on_its_stream():
+    """Every test leaves the process's log writing where it found it.
+
+    Rebuilding the logging (``dictConfig``, ``django.setup()``, a ``LOGGING`` override) inside a capture ties the
+    console handler to that capture's stream, which pytest closes when the test ends: every later line of every
+    test comes out as a logging error on a closed file (FIX-SAAS-LOGGING-TEST-LEAVES-CLOSED-STREAM).
+    """
+    before = _log_streams()
+    yield
+    assert _log_streams() == before, (
+        "this test left the log writing to another stream; point the console handler back "
+        "(logging.getHandlerByName('console').setStream) instead of rebuilding the logging inside a capture"
+    )
 
 
 @pytest.fixture

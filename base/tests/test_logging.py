@@ -11,6 +11,7 @@ line held the process for seconds: every rule must run in linear time). Only the
 
 from __future__ import annotations
 
+import io
 import logging
 import random
 import re
@@ -606,19 +607,19 @@ class TestTheLogOfThisProject:
         formatter = settings.LOGGING["formatters"][handler["formatter"]]
         assert formatter["()"] == "base.logging.GDPRSafeFormatter"
 
-    def test_a_line_of_any_logger_reaches_the_console_without_the_address_nor_the_key(self, capsys):
-        import logging.config
-
-        from django.conf import settings
-
-        logging.config.dictConfig(settings.LOGGING)
+    def test_a_line_of_any_logger_reaches_the_console_without_the_address_nor_the_key(self):
+        # The console handler the process set up from settings.LOGGING, pointed at a buffer for this line and back:
+        # rebuilding the logging inside a capture would leave every later line writing to a closed stream.
+        console = logging.getHandlerByName("console")
+        written = io.StringIO()
+        stream = console.setStream(written)
         try:
             logging.getLogger("accounts.mail").warning(
                 "mail to ana@example.com failed with key erps_live_Q7cRm2ZtV9xKp4LwN8bYs3HdJ6fGa1EqU5oTi0WkBnMvCzXyPl"
             )
         finally:
-            logging.config.dictConfig(settings.LOGGING)
-        err = capsys.readouterr().err
+            console.setStream(stream)
+        err = written.getvalue()
         assert "accounts.mail" in err
         assert "mail to [EMAIL_REDACTED] failed with key [TOKEN_REDACTED]" in err
         assert "ana@example.com" not in err
