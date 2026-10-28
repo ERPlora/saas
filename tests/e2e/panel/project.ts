@@ -150,8 +150,9 @@ function panelDjangoEnv(vitePort: number, stack: Stack): Record<string, string> 
       EMAIL_FILE_PATH: panelMailDir(stack),
       // Its dev shell and CSP point at this run's Vite.
       VITE_DEV_PORT: String(vitePort),
-      // Every spec signs in from 127.0.0.1, password and code, past the limits per address when repeated
-      // (config/settings.py): only this server raises them (sign-ins, failed passwords, typed codes).
+      // Every spec signs in from 127.0.0.1, password and code, and signs its accounts up from there, past the
+      // limits per address when repeated (config/settings.py): only this server raises them (sign-ins, failed
+      // passwords, typed codes, sign-ups).
       E2E_RELAX_LOGIN_RATE_LIMIT: 'True',
       // reCAPTCHA off, whatever `.env` holds: the specs sign in through allauth's API, with no browser to ask
       // Google for a token. The public server checks it (recaptcha.spec.ts, recaptcha.ts).

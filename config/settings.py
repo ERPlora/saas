@@ -378,11 +378,13 @@ ACCOUNT_RATE_LIMITS = {
     "confirm_email": "1/10s/key",
     "code_attempts": "10/5m/ip",
 }
-# The e2e's panel server alone (tests/e2e/panel/project.ts) raises the limits per address of the sign-in: every spec
-# signs in from 127.0.0.1, password and mailed code, and one spec repeated got 429 at the sign-in. The sign-ins, the
-# failed passwords and the typed codes per address; each account keeps its own 5 wrong passwords in 5 minutes, and
-# sign-up, the reset links and «Send another code» keep theirs. Its own variable, never DEBUG (the dev server keeps
-# the limits). Production refuses to start with it.
+# The e2e's panel server alone (tests/e2e/panel/project.ts) raises the limits per address of the sign-in and of the
+# sign-up: every spec signs in from 127.0.0.1, password and mailed code, and creates its accounts from there too; one
+# spec repeated got 429 at the sign-in, and the eleventh «Create account» of a run 429 at the sign-up. The sign-ins,
+# the failed passwords, the typed codes and the sign-ups per address, still a limit; each account keeps its own 5
+# wrong passwords in 5 minutes, and the reset links and «Send another code» keep theirs (no spec goes past them). The
+# name says «login» for history: the panel's project.ts, its test and the README name it. Its own variable, never
+# DEBUG (the dev server keeps the limits). Production refuses to start with it.
 E2E_RELAX_LOGIN_RATE_LIMIT = config("E2E_RELAX_LOGIN_RATE_LIMIT", default=False, cast=bool)
 if E2E_RELAX_LOGIN_RATE_LIMIT and not DEBUG:
     raise ImproperlyConfigured(
@@ -391,6 +393,7 @@ if E2E_RELAX_LOGIN_RATE_LIMIT and not DEBUG:
 if E2E_RELAX_LOGIN_RATE_LIMIT:
     ACCOUNT_RATE_LIMITS["login"] = "1000/m/ip"
     ACCOUNT_RATE_LIMITS["login_failed"] = "1000/m/ip,5/5m/key"
+    ACCOUNT_RATE_LIMITS["signup"] = "1000/m/ip"
     ACCOUNT_RATE_LIMITS["code_attempts"] = "1000/m/ip"
 # A recent sign-in (allauth's reauthentication) before any change of the account's addresses or of its
 # Google link through allauth.headless, as Cuenta's own «Cambiar correo» asks (accounts.email.change).
