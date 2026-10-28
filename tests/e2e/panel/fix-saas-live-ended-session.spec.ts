@@ -186,3 +186,87 @@ for (const size of VIEWPORTS) {
     expect(errors).toEqual([]);
   });
 }
+
+// flow: live-session-events — FIX-LIVE-SESSION-CLOSED-WAKES-ONLY-SESSION-LIST: a tab on a page without the live list of
+// sessions (Businesses, Profile) also leaves for the sign-in when its session ends elsewhere. `accounts.session.closed`
+// is the session event of `LIVE["session_events"]` (config/settings.py): every stream of the account re-reads its
+// context and the one whose session ended says `bye`, whatever its page subscribes to; a tab whose session lives
+// stays. Before the fix only the live list of sessions heard the event: Businesses and Profile stayed on screen.
+const SESSION_KEY = 'FIX-LIVE-SESSION-CLOSED-WAKES-ONLY-SESSION-LIST';
+/** Two pages whose live queries never listen to `accounts.session.closed`, and what shows each one loaded. */
+const PAGES = [
+  { name: 'businesses', path: '/dashboard/businesses', ready: 'businesses-empty', left: /\/launch\?next=(%2F|\/)dashboard(%2F|\/)businesses$/ },
+  { name: 'profile', path: '/dashboard/account/profile', ready: 'profile-card', left: /\/launch\?next=(%2F|\/)dashboard(%2F|\/)account(%2F|\/)profile$/ },
+] as const;
+
+for (const size of VIEWPORTS) {
+  for (const [target, signer] of [PAGES, [...PAGES].reverse()]) {
+    test(`live-session-events: signing out in a tab on ${signer.name} takes the tab on ${target.name} to the sign-in (${size.width})`, async ({
+      page,
+    }) => {
+      const errors = watchPageErrors(page);
+      const account = createAccount(`${size.width}-${target.name}`);
+      await page.setViewportSize(size);
+      await signIn(page.request, account);
+      await page.goto(target.path);
+      await expect(page.getByTestId(target.ready)).toBeVisible();
+
+      // A second tab of this browser (the same session), on the other page, signs out from the user menu.
+      const tab = await page.context().newPage();
+      await tab.setViewportSize(size);
+      await tab.goto(signer.path);
+      await expect(tab.getByTestId(signer.ready)).toBeVisible();
+      await signOutFromUserMenu(tab);
+      await expect(tab).toHaveURL(/\/launch/);
+
+      // This tab never touched a button: the sign-out's session event ends its stream and the page leaves.
+      await expect(page).toHaveURL(target.left);
+      await expect(page.getByTestId(target.ready)).toHaveCount(0);
+      expect((await sessionOf(page.request)).user).toBeNull();
+      await settled(page);
+      await page.screenshot({ path: shot(`${SESSION_KEY}-${target.name}-${size.width}`), fullPage: true });
+      expect(errors).toEqual([]);
+    });
+  }
+
+  test(`live-session-events: «Close the other sessions» from another browser takes the tab on businesses to the sign-in, and that browser's tab on profile stays (${size.width})`, async ({
+    page,
+    browser,
+  }) => {
+    const errors = watchPageErrors(page);
+    const account = createAccount(`${size.width}-close-others`);
+    const [businesses, profile] = PAGES;
+    await page.setViewportSize(size);
+    await signIn(page.request, account);
+    const other = await newContextOn(browser, PANEL_URL);
+    try {
+      await signIn(other.request, account);
+      await page.goto(businesses.path);
+      await expect(page.getByTestId(businesses.ready)).toBeVisible();
+      // The other browser: one tab on Profile (its session goes on) and one on Security, which closes the others.
+      const otherProfile = await other.newPage();
+      await otherProfile.setViewportSize(size);
+      await otherProfile.goto(profile.path);
+      await expect(otherProfile.getByTestId(profile.ready)).toBeVisible();
+      const otherSecurity = await other.newPage();
+      await otherSecurity.goto('/dashboard/account/security');
+      await expect(otherSecurity.getByTestId('sessions-row')).toHaveCount(2);
+      await otherSecurity.getByTestId('sessions-close-others').click();
+      await otherSecurity.getByTestId('sessions-close-others-dialog-submit').click();
+      await expect(otherSecurity.getByTestId('sessions-row')).toHaveCount(1);
+
+      await expect(page).toHaveURL(businesses.left);
+      expect((await sessionOf(page.request)).user).toBeNull();
+      // The tab whose session lives heard the same event and stays where it was, signed in.
+      await settled(otherProfile);
+      await expect(otherProfile).toHaveURL(new RegExp(`${profile.path}$`));
+      await expect(otherProfile.getByTestId(profile.ready)).toBeVisible();
+      expect((await sessionOf(other.request)).user).toMatchObject({ label: account.email });
+      await settled(page);
+      await page.screenshot({ path: shot(`${SESSION_KEY}-${size.width}`), fullPage: true });
+    } finally {
+      await other.close();
+    }
+    expect(errors).toEqual([]);
+  });
+}

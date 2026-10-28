@@ -635,6 +635,9 @@ WHITENOISE_IMMUTABLE_FILE_TEST = r"^/static/spa/assets/"
 LIVE = {
     "context_builder": "base.operations.UserContextBuilder",
     "control_alias": "default",
+    # Signing out, a new password and «Close the other sessions» record it on the account's channel: every stream of
+    # the account re-reads its session and the one that ended says bye, whatever its page subscribes to (live.E019).
+    "session_events": ["accounts.session.closed"],
     # Shortest hub slug (live.slugs, shared with hub-next): 3 in production; development opens
     # one-letter slugs for the demo hubs `a` and `b` (`demo_seed`).
     "hub_slug_min_length": 1 if DEBUG else 3,
