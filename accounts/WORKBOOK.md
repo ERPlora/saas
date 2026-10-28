@@ -1,7 +1,7 @@
 # Workbook — Cuentas (accounts)
 Prefijo: ACCOUNTS
 Alcance MVP: fase 1 (la cuenta de erplora.com: crearla, entrar y salir, su contraseña y lo que acepta)
-Estado de la app: en uso (dos flujos parciales: ACCOUNTS-F06, que espera a Google de verdad en el entorno de pruebas, y ACCOUNTS-F48, la QA maestra, que espera flujos de otras apps)
+Estado de la app: en uso (dos flujos parciales: ACCOUNTS-F06, que espera a Google de verdad en el entorno de pruebas, y ACCOUNTS-F48, la QA maestra, que espera flujos de otras apps; uno sin hacer: ACCOUNTS-F49, la cuenta de revisión de tienda)
 
 > Manual de uso y especificación de la app `accounts` del SaaS (erplora.com). Cuenta cómo se crea una
 > cuenta, cómo se confirma el correo, cómo se entra y se sale, cómo se recupera y se cambia la contraseña,
@@ -94,6 +94,26 @@ Quién la usa:
   que se pague o se anule, 90 días como mucho (los que se guarda un negocio eliminado), porque la factura tiene que
   identificar a quién se emite (RGPD art. 17.3.b; Código de Comercio art. 30, Ley General Tributaria art. 66).
 - **GitHub («Export account data»)**: descargar los datos de la cuenta está junto a eliminarla, en la misma página.
+- **Cuenta de revisión de tienda** (13 referencias, saas#132): las tiendas piden un acceso que el revisor pueda usar
+  siempre, sin un código de un solo uso, y el mercado lo resuelve eximiendo del segundo paso a esa cuenta concreta,
+  desde la administración y sin tocar a las demás. Google Play pide credenciales reutilizables que salten la
+  verificación en dos pasos o el código de un solo uso (https://support.google.com/googleplay/android-developer/answer/15748846);
+  Apple, una cuenta de demostración activa con acceso completo (https://developer.apple.com/app-store/review/guidelines/),
+  y rechaza la que pide un código (https://developer.apple.com/forums/thread/762367,
+  https://developer.apple.com/forums/thread/750326). Auth0 exime a una cuenta concreta
+  (https://support.auth0.com/center/s/article/bypass-multi-factor-authentication-for-a-specific-user-in-auth0);
+  Microsoft Entra, con el que se entra en Business Central, excluye cuentas de la política que lo exige a todos
+  (https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-mfa-strength); Google Workspace,
+  con un grupo de excepción, nunca a un administrador
+  (https://knowledge.workspace.google.com/admin/security/avoid-account-lockouts-when-2-step-verification-is-enforced-by-your-organization);
+  Odoo lo exige a los empleados o a todos (https://www.odoo.com/documentation/19.0/applications/general/users/2fa.html),
+  y los complementos de WooCommerce excluyen cuentas o papeles
+  (https://melapress.com/support/kb/wp-2fa-configure-2fa-policies-enforce/). El código fijo es de los productos sin
+  contraseña: Firebase (https://docs.cloud.google.com/identity-platform/docs/test-phone-numbers), Authgear
+  (https://docs.authgear.com/strategies/passwordless-demo-user-for-apple-app-review) y Clerk, que lo desaconseja en
+  producción (https://clerk.com/docs/guides/development/testing/test-emails-and-phones); aquí hay contraseña, y un
+  código fijo solo sería una segunda contraseña. Apagar el código para todos, como el interruptor único de Square
+  (https://squareup.com/help/us/en/article/5593), quitaría la seguridad a todas las cuentas por una.
 
 ## Antes de empezar
 
@@ -267,6 +287,7 @@ inglés» y el «mensaje en español» (vacío, quien visita en español lee el 
 | ACCOUNTS-F46 | Mandar los correos de erplora.com | hecho |
 | ACCOUNTS-F47 | Moverse por el panel | hecho |
 | ACCOUNTS-F48 | Pasar la QA maestra de erplora.com | parcial |
+| ACCOUNTS-F49 | Entrar como cuenta de revisión de tienda sin el código por correo | no hecho |
 
 ### ACCOUNTS-F01 Crear la cuenta
 <!-- origen: old-saas:SAAS_AUTH-F01 pc:cloud/auth/signup fi:saas/auth-services#registro-de-usuario-por-api-signup fi:saas/support/auth-services#service-create_user gh:saas#2542 gh:saas#2536 gh:saas#2560 gh:saas#2562 -->
@@ -309,7 +330,7 @@ Pasos:
 3. Con el código bueno, el correo queda confirmado y la persona llega a la página a la que iba.
 Entra: la cuenta y su correo.
 Sale: ninguna sesión hasta confirmar el correo: sin ella no se abre el panel, ni sus páginas ni su API, ni se pueden crear llaves de API.
-Si falla: sin el código no hay sesión. Una cuenta creada por una invitación prueba su correo al poner su contraseña con el enlace del correo (ACCOUNTS-F07).
+Si falla: sin el código no hay sesión, tampoco para la cuenta de revisión de tienda (ACCOUNTS-F49), cuya marca solo quita el código de cada entrada. Una cuenta creada por una invitación prueba su correo al poner su contraseña con el enlace del correo (ACCOUNTS-F07).
 Implicados: hubs (las invitaciones solo valen para correos confirmados)
 
 ### ACCOUNTS-F04 Entrar con el correo y la contraseña
@@ -323,7 +344,7 @@ Pasos:
 3. Escribe el código y pulsa «Verificar».
 4. Dentro, va adonde iba (una página de erplora.com o el salto a un negocio) o a la **Entrada** con su sesión, que enseña sus negocios.
 Entra: correo, contraseña, el código y adónde iba (solo páginas de erplora.com).
-Sale: la sesión de ese navegador, que dura aunque se cierre el navegador; su nombre y su correo en el menú de usuario. Toda cuenta recibe el código por correo en cada entrada con contraseña, sin activarlo ni poder apagarlo; con la app autenticadora, después del código del correo se pide el de la app (ACCOUNTS-F05).
+Sale: la sesión de ese navegador, que dura aunque se cierre el navegador; su nombre y su correo en el menú de usuario. Toda cuenta recibe el código por correo en cada entrada con contraseña, sin activarlo ni poder apagarlo (la única excepción, la cuenta de revisión de tienda que marca el personal, ACCOUNTS-F49); con la app autenticadora, después del código del correo se pide el de la app (ACCOUNTS-F05).
 Si falla: un correo o una contraseña que no casan, «La dirección de correo electrónico y/o la contraseña que ha indicado no son correctas.» debajo de la contraseña, igual exista o no la cuenta, con «¿Es tu primera vez? Crea tu cuenta». Un código equivocado, debajo del código. Con una sesión ya abierta, la **Entrada** enseña los negocios.
 Implicados: hubs (la **Entrada** con los negocios y el salto a un negocio)
 
@@ -975,6 +996,22 @@ Sale: cada punto de la QA, con el flujo que lo cubre y su prueba automática en 
 Si falla: un punto que ningún flujo cubre es un fallo de la QA y se apunta en la app que lo tiene.
 Implicados: hubs, billing, public, apps y fiscal; del Hub, verifactu, invoice y printing
 
+### ACCOUNTS-F49 Entrar como cuenta de revisión de tienda sin el código por correo
+<!-- origen: nuevo (Google Play y la App Store piden un acceso reutilizable sin código de un solo uso; Auth0, Microsoft Entra, Google Workspace, Odoo y WooCommerce eximen por cuenta desde la administración; ver «Referencia adoptada») gh:saas#132 gh:app#7 -->
+Estado: no hecho — falta la marca «Cuenta de revisión de tienda» en la ficha de la cuenta del admin, que su cambio quede en el registro de auditoría y que la entrada con contraseña de una cuenta marcada no pida el código; hoy toda entrada con contraseña lo pide (ACCOUNTS-F04)
+Actor: personal de ERPlora y el revisor de una tienda de apps
+Pantalla: admin › Cuentas › Usuarios, Entrada › «Entrar»
+Pasos:
+1. El personal crea en el admin la cuenta con la que las tiendas revisan la app de ERPlora (ACCOUNTS-F13): una cuenta solo para eso, con una contraseña larga y un negocio de prueba, sin datos de clientes reales. Su correo se confirma una vez, como el de cualquier cuenta (ACCOUNTS-F03).
+2. En la ficha de esa cuenta marca «Cuenta de revisión de tienda» («Entra con su contraseña, sin el código por correo. Solo para la cuenta con la que Google Play y la App Store revisan la app.») y guarda.
+3. Da el correo y la contraseña a cada tienda, en su apartado de acceso para la revisión; antes de publicar cada versión en Google Play, la comprobación automática de la app de ERPlora entra con ellos.
+4. El revisor abre la **Entrada**, en la web o en la app, escribe el correo y la contraseña y pulsa «Entrar»: sin pasar por **Revisa tu correo**, va adonde iba o a la **Entrada** con su sesión, que enseña su negocio, y entra en él (ACCOUNTS-F28).
+5. Si la cuenta deja de usarse para las tiendas o su contraseña se filtra, el personal quita la marca o restablece la contraseña desde la misma ficha: desde la siguiente entrada vuelve a pedirse el código.
+Entra: la marca, que solo pone y quita el personal, y el correo y la contraseña de la cuenta.
+Sale: la sesión de ese navegador, como en ACCOUNTS-F04 pero sin el código por correo; la sesión sale entre las abiertas de la cuenta como cualquier otra (ACCOUNTS-F18 y ACCOUNTS-F19), y el registro de auditoría anota quién puso o quitó la marca, cuándo y desde qué dirección (ACCOUNTS-F36).
+Si falla: una cuenta sin la marca sigue pidiendo el código en cada entrada con contraseña (ACCOUNTS-F04). La persona no ve ni cambia la marca desde su cuenta, el soporte la ve en el admin sin poder cambiarla, y una cuenta del personal no puede llevarla: «Una cuenta del personal no puede ser cuenta de revisión de tienda.», y no se guarda. La marca no salta nada más: un correo sin confirmar pide su código (ACCOUNTS-F03), la app autenticadora, si la cuenta la tiene, pide el suyo (ACCOUNTS-F05), y una contraseña equivocada, los límites de intentos (ACCOUNTS-F11) y la respuesta igual exista o no la cuenta siguen como en cualquier otra.
+Implicados: el admin de erplora.com (la ficha de la cuenta y el registro de auditoría); la app de ERPlora (repositorio ERPlora/app), cuya comprobación de Google Play entra con esta cuenta antes de cada publicación; saas#132 y app#7
+
 ## Para quien lo mantiene
 
 - Anatomía, operaciones y decisiones: `accounts/README.md` (allauth headless, puertas cerradas, sesiones,
@@ -1008,6 +1045,9 @@ Implicados: hubs, billing, public, apps y fiscal; del Hub, verifactu, invoice y 
   ronda propuesta en la PR de la parte 5. De G71, `backup_database` y `rotate_backups` no siguen (las copias las
   hace Aurora, PLAN-DB y PLAN-AWS) y `triage_error_report` tampoco: el embudo de errores es una línea de registro que
   CloudWatch cuenta (PLAN-SAAS §1.1) y lo que cuenta una persona es ACCOUNTS-F38.
+- ACCOUNTS-F49 nace fuera del porte (saas#132; PLAN-SAAS, ronda 2026-10-27 de la cuenta de revisión de tienda):
+  es la única excepción al código de cada entrada que G04 y PLAN-SAAS §3.7 punto 3 dejan siempre encendido, y la
+  pone el personal, nunca la persona.
 - Puertas propias sobre allauth.headless (`accounts/doors.py`, montadas en `config/urls.py` antes de las de
   allauth): la entrada pliega el correo como el alta (NFKC, `adapters.plain_email`; trampa del SaaS viejo
   #1018) y el alta comprueba la contraseña contra su propio correo (headless la validaba sin cuenta y el
@@ -1139,7 +1179,8 @@ Implicados: hubs, billing, public, apps y fiscal; del Hub, verifactu, invoice y 
 - No dice nunca qué correos tienen cuenta.
 - No enlaza Google desde una sesión abierta ni guarda los tokens de Google.
 - No lleva a otro dominio al entrar: solo a páginas de erplora.com; el salto a un negocio es otro flujo.
-- No deja apagar el código por correo de cada entrada, ni con la app autenticadora activa.
+- No deja apagar el código por correo de cada entrada, ni con la app autenticadora activa: solo el personal exime
+  de él a la cuenta de revisión de tienda (ACCOUNTS-F49).
 - No lista los navegadores de confianza uno a uno: dice si lo es este y deja de confiar en todos a la vez,
   como «Revocar todos» de Google.
 - No ofrece llaves de acceso (passkeys) ni códigos por SMS: la app autenticadora y sus códigos de

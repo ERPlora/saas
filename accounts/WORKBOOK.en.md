@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:b5be886f2a52e23ce63e1ff764fcbffe844ba03dd260b26f3b99ed92eb332401 -->
+<!-- generated from WORKBOOK.md sha256:482879be243265d2c5fff74827a743f848762bcdc73c601e248beb2fbb93ad15 -->
 
 ## What it is for and who it is for
 
@@ -76,6 +76,26 @@ Who uses it:
   it is waited for until paid or cancelled, 90 days at most (the days a deleted business is kept), because the
   invoice must name whom it is issued to (GDPR art. 17.3.b; Commercial Code art. 30, General Tax Law art. 66).
 - **GitHub ("Export account data")**: downloading the account's data sits next to deleting it, on the same page.
+- **Store review account** (13 references, saas#132): the stores ask for an access the reviewer can use at
+  any time, without a one-time code, and the market solves it by exempting that one account from the second
+  step, from the administration and without touching the others. Google Play asks for reusable credentials that
+  bypass two-step verification or the one-time password (https://support.google.com/googleplay/android-developer/answer/15748846);
+  Apple, an active demo account with full access (https://developer.apple.com/app-store/review/guidelines/),
+  and rejects one that asks for a code (https://developer.apple.com/forums/thread/762367,
+  https://developer.apple.com/forums/thread/750326). Auth0 exempts one specific account
+  (https://support.auth0.com/center/s/article/bypass-multi-factor-authentication-for-a-specific-user-in-auth0);
+  Microsoft Entra, which Business Central signs in with, excludes accounts from the policy that requires it of everyone
+  (https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-mfa-strength); Google Workspace,
+  with an exception group, never an administrator
+  (https://knowledge.workspace.google.com/admin/security/avoid-account-lockouts-when-2-step-verification-is-enforced-by-your-organization);
+  Odoo requires it of employees or of everyone (https://www.odoo.com/documentation/19.0/applications/general/users/2fa.html),
+  and WooCommerce's plugins exclude accounts or roles
+  (https://melapress.com/support/kb/wp-2fa-configure-2fa-policies-enforce/). The fixed code belongs to products without
+  a password: Firebase (https://docs.cloud.google.com/identity-platform/docs/test-phone-numbers), Authgear
+  (https://docs.authgear.com/strategies/passwordless-demo-user-for-apple-app-review) and Clerk, which discourages it in
+  production (https://clerk.com/docs/guides/development/testing/test-emails-and-phones); here there is a password, and
+  a fixed code would only be a second password. Turning the code off for everyone, like Square's single switch
+  (https://squareup.com/help/us/en/article/5593), would take the security away from every account for one.
 
 ## Before you start
 
@@ -243,6 +263,7 @@ the "message in Spanish" (empty, Spanish visitors read the English one), and the
 | ACCOUNTS-F46 | Send erplora.com's emails | done |
 | ACCOUNTS-F47 | Move around the panel | done |
 | ACCOUNTS-F48 | Pass erplora.com's master QA | partial |
+| ACCOUNTS-F49 | Sign in as a store review account without the email code | not done |
 
 ### ACCOUNTS-F01 Create the account
 Status: done
@@ -282,7 +303,7 @@ Steps:
 3. With the right code, the email is confirmed and the person reaches the page they were going to.
 In: the account and its email.
 Out: no session until the email is confirmed: without one the panel does not open, neither its pages nor its API, and no API keys can be created.
-If it fails: without the code there is no session. An account created by an invitation proves its email when setting its password with the email's link (ACCOUNTS-F07).
+If it fails: without the code there is no session, not even for the store review account (ACCOUNTS-F49), whose mark only removes the code of each sign-in. An account created by an invitation proves its email when setting its password with the email's link (ACCOUNTS-F07).
 Involved: hubs (invitations only work for confirmed emails)
 
 ### ACCOUNTS-F04 Sign in with the email and the password
@@ -295,7 +316,7 @@ Steps:
 3. They type the code and tap "Verify".
 4. Once in, they go where they were going (a page of erplora.com or the jump to a business) or to the **Entrance** with their session, which shows their businesses.
 In: email, password, the code and where they were going (only pages of erplora.com).
-Out: that browser's session, which lasts even if the browser is closed; their name and their email in the user menu. Every account gets the code by email at each sign-in with a password, without turning it on and without being able to turn it off; with the authenticator app, the app's code is asked after the email's (ACCOUNTS-F05).
+Out: that browser's session, which lasts even if the browser is closed; their name and their email in the user menu. Every account gets the code by email at each sign-in with a password, without turning it on and without being able to turn it off (the only exception, the store review account that staff mark, ACCOUNTS-F49); with the authenticator app, the app's code is asked after the email's (ACCOUNTS-F05).
 If it fails: an email or a password that do not match, "The email address and/or password you specified are not correct." under the password, whether the account exists or not, with "First time here? Create your account". A wrong code, under the code. With a session already open, the **Entrance** shows the businesses.
 Involved: hubs (the **Entrance** with the businesses and the jump to a business)
 
@@ -902,3 +923,18 @@ In: the pre environment and test accounts.
 Out: each point of the QA, with the flow that covers it and its automated test in the browser; what makes no sense on today's platform stays out with its reason (see "For whoever maintains it").
 If it fails: a point no flow covers is a QA failure and is noted in the app that owns it.
 Involved: hubs, billing, public, apps and fiscal; in the Hub, verifactu, invoice and printing
+
+### ACCOUNTS-F49 Sign in as a store review account without the email code
+Status: not done — missing the "Store review account" mark on the account's page in the admin, its change being kept in the audit log, and a sign-in with the password of a marked account not asking for the code; today every sign-in with a password asks for it (ACCOUNTS-F04)
+Actor: ERPlora staff and the reviewer of an app store
+Screen: admin › Accounts › Users, Entrance › "Sign in"
+Steps:
+1. Staff create in the admin the account the stores review ERPlora's app with (ACCOUNTS-F13): an account only for that, with a long password and a test business, without real customer data. Its email is confirmed once, like any account's (ACCOUNTS-F03).
+2. On that account's page they tick "Store review account" ("Signs in with its password, without the email code. Only for the account that Google Play and the App Store use to review the app.") and save.
+3. They give the email and the password to each store, in its access section for the review; before each release on Google Play, the automatic check of ERPlora's app signs in with them.
+4. The reviewer opens the **Entrance**, on the web or in the app, types the email and the password and taps "Sign in": without going through **Check your email**, they go where they were going or to the **Entrance** with their session, which shows their business, and enter it (ACCOUNTS-F28).
+5. If the account stops being used for the stores or its password leaks, staff remove the mark or reset the password from the same page: from the next sign-in the code is asked again.
+In: the mark, which only staff set and remove, and the account's email and password.
+Out: that browser's session, as in ACCOUNTS-F04 but without the email code; the session shows among the account's open ones like any other (ACCOUNTS-F18 and ACCOUNTS-F19), and the audit log notes who set or removed the mark, when and from which address (ACCOUNTS-F36).
+If it fails: an account without the mark keeps asking for the code at each sign-in with a password (ACCOUNTS-F04). The person neither sees nor changes the mark from their account, support see it in the admin without being able to change it, and a staff account cannot carry it: "A staff account cannot be a store review account.", and it is not saved. The mark skips nothing else: an unconfirmed email asks for its code (ACCOUNTS-F03), the authenticator app, if the account has one, asks for its own (ACCOUNTS-F05), and a wrong password, the attempt limits (ACCOUNTS-F11) and the same answer whether the account exists or not stay as for any other.
+Involved: erplora.com's admin (the account's page and the audit log); ERPlora's app (repository ERPlora/app), whose Google Play check signs in with this account before each release; saas#132 and app#7
