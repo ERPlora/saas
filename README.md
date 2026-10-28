@@ -88,6 +88,8 @@ Vue, sobre `allauth.headless` (cliente `browser`, `/_allauth/browser/v1/…`), e
   (`img/favicon.ico` y `public/img/apple-touch-icon.png`), declarados en `LIVE["spa"]["icons"]`.
   Una ruta que nombra un fichero sin URL propia (`/favicon.ico`, `/wp-login.php`; `base.spa.NOT_A_FILE`) no es
   de la SPA: el 404 llano de Django, sin la SPA ni `csrftoken` (FIX-SAAS-SPA-STATIC-PROBES-SET-CSRF-COOKIE).
+  Un stream vivo cuya sesión terminó (salir, «Cerrar las demás sesiones», contraseña nueva) acaba en su siguiente
+  re-ejecución con `bye` (401 `base.session_ended`, el código del Hub) y la pestaña sale sola al login (ui#25).
 - Los enlaces de los correos de allauth (`HEADLESS_FRONTEND_URLS`) son rutas de la SPA: `/password/reset`,
   `/password/reset/key/{key}` y `/launch` (el correo «no hay ninguna cuenta» de una recuperación invita a
   darse de alta, que es el mismo formulario). Sin `account_confirm_email`: el correo se confirma con un
