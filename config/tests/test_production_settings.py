@@ -830,8 +830,9 @@ def test_check_deploy_refuses_a_live_key_in_pre(key):
 
 # Sign-in attempts (allauth's rate limits): allauth lays ACCOUNT_RATE_LIMITS over its own defaults, so
 # what it enforces is read where allauth reads it (allauth.account.app_settings), never from the dict the
-# settings write. Only the e2e's panel server raises the sign-in limit (E2E_RELAX_LOGIN_RATE_LIMIT): every
-# spec signs in from 127.0.0.1, and one spec repeated (`--repeat-each=6`) went past allauth's 30 a minute.
+# settings write. Only the e2e's panel server raises the limits per address of the sign-in and of the sign-up
+# (E2E_RELAX_LOGIN_RATE_LIMIT): every spec signs in from 127.0.0.1, and one spec repeated (`--repeat-each=6`)
+# went past allauth's 30 a minute; the eleventh sign-up of a run, past the 10 an hour.
 
 RATE_LIMITS = (
     "from django.conf import settings\n"
@@ -873,24 +874,37 @@ def test_the_sign_in_limits_are_written_out(env):
 
 
 @pytest.mark.parametrize("off", ["0", "False"])
-def test_the_e2e_variable_turned_off_keeps_the_sign_in_limit(off):
+def test_the_e2e_variable_turned_off_keeps_every_limit(off):
     effective, allauth = rate_limits({"DEBUG": "True", "E2E_RELAX_LOGIN_RATE_LIMIT": off})
+    kept, _ = rate_limits({"DEBUG": "True"})
 
     assert effective["login"] == allauth["login"]
+    assert effective["signup"] == "10/h/ip"
+    assert effective == kept
 
 
-def test_the_e2e_raises_the_limits_per_address_of_the_sign_in_and_nothing_else():
-    """Every panel spec signs in from 127.0.0.1, password and mailed code: the address's budgets of the sign-in, of the
-    failed passwords and of the typed codes go out of the e2e's reach (one sign-in takes over 0.1 s, one at a time),
-    still a limit. Each account keeps its own (5 wrong passwords in 5 minutes), and so do sign-up, the reset links and
-    «Send another code»."""
+# What the e2e variable raises: the budgets per address (`ip`) that every spec, from 127.0.0.1, shares.
+E2E_RELAXED = {
+    "login": "1000/m/ip",
+    "login_failed": "1000/m/ip,5/5m/key",
+    "signup": "1000/m/ip",
+    "code_attempts": "1000/m/ip",
+}
+
+
+def test_the_e2e_raises_the_limits_per_address_of_the_sign_in_and_of_the_sign_up_and_nothing_else():
+    """Every panel spec signs in from 127.0.0.1, password and mailed code, and the specs that create their accounts
+    through «Create account» sign up from there too: the address's budgets of the sign-in, of the failed passwords, of
+    the typed codes and of the sign-up go out of the e2e's reach (one at a time, each over 0.1 s), still a limit.
+    Each account keeps its own (5 wrong passwords in 5 minutes), and so do the reset links and «Send another code»."""
     relaxed, allauth = rate_limits({"DEBUG": "True", "E2E_RELAX_LOGIN_RATE_LIMIT": "True"})
     kept, _ = rate_limits({"DEBUG": "True"})
 
-    assert relaxed["login"] == "1000/m/ip" != allauth["login"]
-    assert relaxed["login_failed"] == "1000/m/ip,5/5m/key"
-    assert relaxed["code_attempts"] == "1000/m/ip"
-    assert {**relaxed, "login": kept["login"], "login_failed": kept["login_failed"], "code_attempts": kept["code_attempts"]} == kept
+    assert relaxed["login"] != allauth["login"]
+    assert relaxed["signup"] != kept["signup"] == "10/h/ip"
+    assert {action: relaxed[action] for action in E2E_RELAXED} == E2E_RELAXED
+    assert {**relaxed, **{action: kept[action] for action in E2E_RELAXED}} == kept
+    assert (relaxed["reset_password"], relaxed["confirm_email"]) == ("10/h/ip,5/h/key", "1/10s/key")
 
 
 def test_production_refuses_to_start_with_the_e2e_s_sign_in_limit():
