@@ -104,7 +104,7 @@ pago); detalle en «Facturas de ERPlora (L3-C)».
 | `management/commands/sweep_unpaid.py` | `saas-cron`: impagos que Stripe dejó de reintentar, suscripciones de negocios eliminados y pagadores de cuentas eliminadas (`payers_forgotten`) |
 | `management/commands/retax_subscriptions.py` | `saas-cron` (diaria): el tipo de hoy en cada suscripción viva y en las fases de su bajada programada (cambio de dirección no empujado, umbral OSS) y el reenvío de los avisos de la OSS que no salieron |
 | `management/commands/audit_tax_rules.py` | `saas-cron` (diaria) o a mano: la tabla de IVA cobra cada venta posible |
-| `management/commands/audit_stripe_webhooks.py` | `saas-cron` (diaria, cuando se aplique `ERPlora/aws#21`) o a mano (`--base-url` para otro entorno): Stripe manda a `/webhooks/stripe/` exactamente `STRIPE_WEBHOOK_EVENTS` (BILLING-F39) |
+| `management/commands/audit_stripe_webhooks.py` | `saas-cron` (diaria, 05:40 UTC, `ERPlora/aws#21`) o a mano (`--base-url` para otro entorno): Stripe manda a `/webhooks/stripe/` exactamente `STRIPE_WEBHOOK_EVENTS` (BILLING-F39) |
 
 ### Operaciones (solo el propietario del negocio; permiso `billing.pay`)
 
@@ -157,8 +157,8 @@ en otra solo por sus operaciones), que sube `state_version` y empuja la foto al 
 
 Eventos a suscribir en Stripe: **`billing.services.STRIPE_WEBHOOK_EVENTS`**, la única lista (15 hoy: los de
 checkout, las facturas y sus rectificativas, las suscripciones y el cliente), junto al `match` que los trata;
-`manage.py audit_stripe_webhooks` la compara con el destino de Stripe (cada día, cuando se aplique su horario:
-ver «aws») y dice qué falta y qué sobra (BILLING-F39). Sin firma válida, 400; sin `STRIPE_WEBHOOK_SECRET`, 503;
+`manage.py audit_stripe_webhooks` la compara con el destino de Stripe (cada día a las 05:40 UTC: ver «aws») y
+dice qué falta y qué sobra (BILLING-F39). Sin firma válida, 400; sin `STRIPE_WEBHOOK_SECRET`, 503;
 duplicado, 200 `duplicate`; en curso en otra entrega, 409; fallo, 500 (Stripe reintenta). Siempre se lee la
 suscripción **viva** con el negocio bloqueado (el mismo orden de bloqueo que las operaciones: negocio y después
 `PaymentFailure`); si Stripe no contesta, **no se aplica nada**: 500 y Stripe reintenta. Una factura que llega antes que su
@@ -178,8 +178,7 @@ anula una nota de una factura abierta, y aquí la rectificativa nace solo de una
 haya ninguna (`voided`). Si la hubiera, no se toca (lo enviado a la AEAT no se modifica): ERROR
 `fiscal.credit.voided_after_rectifying` y correo a `SUPPORT_EMAIL` (`X-ERPlora-Notice: billing.credit_note_voided`)
 para emitir a mano la factura que la anula (`needs_review`); si el correo no sale, 500 y Stripe reintenta.
-Hasta que se suscriba `credit_note.voided` en los endpoints de Stripe live y pre (README de `ERPlora/aws`), ese
-aviso no llega y este correo no sale (BILLING-F26 `parcial`).
+Los endpoints de Stripe live y pre lo suscriben desde el 2026-10-28 (README de `ERPlora/aws`).
 
 ### Impago
 
@@ -273,9 +272,10 @@ trata como ninguna (`UNKNOWN`: 503 `billing.payments_unavailable`, nunca un cobr
   `purge-webhook-events-nightly`, 00:50 UTC; FIX-AWS-BILLING-SYNC-AND-PURGE-NOT-SCHEDULED), y `audit_tax_rules` y
   `retax_subscriptions` cada día (`audit-tax-rules-daily`, 05:10 UTC, y `retax-subscriptions-daily`, 05:20 UTC;
   FIX-AWS-BILLING-DAILY-TASKS-NOT-SCHEDULED), y `audit_stripe_webhooks` a las 05:40 UTC
-  (`audit-stripe-webhooks-daily`, `ERPlora/aws#21`), mergeada pero sin `apply`: espera a suscribir `credit_note.voided`
-  en los endpoints de Stripe live y pre (README de `ERPlora/aws`) y hasta entonces no corre (BILLING-F39 `parcial`).
-  La clave restringida `rk_live_` necesita leer *Webhook Endpoints* para esa auditoría: sin ese permiso, Stripe la
+  (`audit-stripe-webhooks-daily`, `ERPlora/aws#21`, aplicada el 2026-10-28): sale con error cada día, y `task_failed`
+  avisa, mientras sigan activos en Stripe live los tres endpoints del stack viejo en `erplora.com`
+  (`/marketplace/webhooks/stripe/`, `/dashboard/billing/webhooks/stripe-connect/` y `/assistant/stripe/webhook/`;
+  ids en el WORKBOOK, «Para quien lo mantiene»), y por eso BILLING-F39 está `parcial`. La clave restringida `rk_live_` necesita leer *Webhook Endpoints* para esa auditoría: sin ese permiso, Stripe la
   rechaza y la tarea falla cada día (`task_failed`).
 
 ## La Tienda (L2-D)

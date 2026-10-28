@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:c9db71e11a6dba352c4d9b507b76ca755e013780678a4a08d5462699a0447c4a -->
+<!-- generated from WORKBOOK.md sha256:370ae7e67cf3f7b4335e0903a9011d6b521433ede2cad45726318d47cb488211 -->
 
 ## What it is for and who it is for
 
@@ -140,7 +140,7 @@ to upgrade or change it.
 | BILLING-F23 | See the subscriptions of each business | done |
 | BILLING-F24 | Open Stripe's payment portal to change the card | done |
 | BILLING-F25 | Issue ERPlora's invoice for a charge | done |
-| BILLING-F26 | Refund a charge | partial |
+| BILLING-F26 | Refund a charge | done |
 | BILLING-F27 | What ERPlora staff can do about a customer's billing | done |
 | BILLING-F28 | Keep the plans' prices in Stripe | done |
 | BILLING-F29 | Test real charging in PRE with a Stripe test clock | done |
@@ -523,7 +523,7 @@ Involved: ERPlora's platform business (issues the invoice)
 
 ### BILLING-F26 Refund a charge
 <!-- origen: old-saas:SAAS_DASHBOARD-F121 gh:saas#2527 -->
-Status: partial — refunding a charge and the credit note already work, and a note voided before it becomes a corrective invoice never becomes one; but if Stripe voids one that already was, the email to support does not leave until the team subscribes, in Stripe, the destinations of erplora.com and of its test environment to the notice of a voided credit note
+Status: done
 Actor: ERPlora staff
 Screen: none
 Steps:
@@ -712,7 +712,7 @@ Involved: hubs (the business's subscription), the business (gets its plan)
 
 ### BILLING-F39 Check every day that Stripe sends a notice of everything erplora.com handles
 <!-- origen: gh:saas#2402 -->
-Status: partial — the check is already in erplora.com, but it does not run every day yet: its schedule waits for the team to subscribe, in Stripe, the destinations of erplora.com and of its test environment to the notice of a voided credit note (BILLING-F26), because without it the check would fail every day, and for the team to confirm that erplora.com's Stripe key can read those destinations
+Status: partial — the check is already in erplora.com and scheduled every day at 05:40 UTC, but it will fail every day while the three notice destinations of the previous system on erplora.com stay enabled in Stripe (`/marketplace/webhooks/stripe/`, `/dashboard/billing/webhooks/stripe-connect/` and `/assistant/stripe/webhook/`), addresses erplora.com does not serve; it becomes done when the team disables them in Stripe and a check ends without errors
 Actor: system
 Screen: none
 Steps:

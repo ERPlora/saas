@@ -1,7 +1,7 @@
 # Workbook — Facturación (billing)
 Prefijo: BILLING
 Alcance MVP: fase 1 (lo que una cuenta paga a ERPlora: planes, módulos, IVA y facturas)
-Estado de la app: en uso (dos flujos parciales, que esperan a que el equipo suscriba en Stripe el aviso de la nota de crédito anulada: BILLING-F26, el correo a soporte cuando se anula una rectificativa, y BILLING-F39, la comprobación diaria de los avisos de Stripe; el resto, completo desde el 2026-10-27)
+Estado de la app: en uso (un flujo parcial, BILLING-F39, la comprobación diaria de los avisos de Stripe, que fallará cada día mientras sigan activos en Stripe tres destinos de avisos del sistema anterior; el resto, completo desde el 2026-10-28)
 
 > Manual de uso y especificación de la app `billing` del SaaS (erplora.com). Cuenta cómo se paga y se
 > cambia el plan de un negocio, cómo se contratan y se cancelan sus aplicaciones de pago, qué pasa si un
@@ -155,7 +155,7 @@ al propietario, el botón para mejorarlo o cambiarlo.
 | BILLING-F23 | Ver las suscripciones de cada negocio | hecho |
 | BILLING-F24 | Abrir el portal de pagos de Stripe para cambiar la tarjeta | hecho |
 | BILLING-F25 | Emitir la factura de ERPlora por un cobro | hecho |
-| BILLING-F26 | Devolver un cobro | parcial |
+| BILLING-F26 | Devolver un cobro | hecho |
 | BILLING-F27 | Lo que el personal de ERPlora puede hacer sobre el cobro de un cliente | hecho |
 | BILLING-F28 | Mantener en Stripe los precios de los planes | hecho |
 | BILLING-F29 | Probar el cobro real en PRE con un reloj de prueba de Stripe | hecho |
@@ -538,7 +538,7 @@ Implicados: el negocio de plataforma de ERPlora (emite la factura)
 
 ### BILLING-F26 Devolver un cobro
 <!-- origen: old-saas:SAAS_DASHBOARD-F121 gh:saas#2527 -->
-Estado: parcial — devolver un cobro y la nota de crédito ya funcionan, y una nota anulada antes de volverse rectificativa nunca se vuelve; pero si Stripe anula una que ya lo era, el correo a soporte no sale hasta que el equipo suscriba en Stripe el aviso de la nota de crédito anulada en los destinos de erplora.com y de su entorno de pruebas
+Estado: hecho
 Actor: personal de ERPlora
 Pantalla: ninguna
 Pasos:
@@ -727,7 +727,7 @@ Implicados: hubs (la suscripción del negocio), el negocio (recibe su plan)
 
 ### BILLING-F39 Comprobar cada día que Stripe avisa de todo lo que erplora.com trata
 <!-- origen: gh:saas#2402 -->
-Estado: parcial — la comprobación ya está en erplora.com, pero aún no corre cada día: su horario espera a que el equipo suscriba en Stripe el aviso de la nota de crédito anulada (BILLING-F26) en los destinos de erplora.com y de su entorno de pruebas, porque sin él fallaría cada día, y a que compruebe que la clave de Stripe de erplora.com puede leer esos destinos
+Estado: parcial — la comprobación ya está en erplora.com y programada cada día a las 05:40 UTC, pero fallará cada día mientras sigan activos en Stripe los tres destinos de avisos del sistema anterior en erplora.com (`/marketplace/webhooks/stripe/`, `/dashboard/billing/webhooks/stripe-connect/` y `/assistant/stripe/webhook/`), direcciones que erplora.com no sirve; pasa a hecho cuando el equipo los desactive en Stripe y una comprobación termine bien
 Actor: sistema
 Pantalla: ninguna
 Pasos:
@@ -767,9 +767,12 @@ Implicados: ninguno
   infraestructura (`stacks/prod/scheduler.tf` de `ERPlora/aws`): `sync_subscriptions` cada noche a las 00:10 UTC
   (antes de la foto de las 00:30 y de la re-tarificación), `purge_webhook_events` a las 00:50 UTC,
   `audit_tax_rules` cada día a las 05:10 UTC, `retax_subscriptions` a las 05:20 UTC y `audit_stripe_webhooks`
-  (BILLING-F39) a las 05:40 UTC (`audit-stripe-webhooks-daily`, `ERPlora/aws#21`), que aún no corre: su `apply` espera
-  a suscribir `credit_note.voided` en los destinos de Stripe live y pre (README de `ERPlora/aws`) y a confirmar que la
-  clave `rk_live_` lee esos destinos, y por eso BILLING-F39 está `parcial`. Los avisos que trata el webhook son una
+  (BILLING-F39) a las 05:40 UTC (`audit-stripe-webhooks-daily`, `ERPlora/aws#21`, aplicada el 2026-10-28 tras
+  suscribir `credit_note.voided` en los destinos de Stripe live y pre). Sale con error cada día, y `task_failed` avisa,
+  mientras sigan activos en Stripe live los tres endpoints del stack viejo en `erplora.com`
+  (`we_1UIyXWG5mOoM2dqitS8TFImp` a `/marketplace/webhooks/stripe/`, `we_1UIyXVG5mOoM2dqidg2Ai6WD` a
+  `/dashboard/billing/webhooks/stripe-connect/` y `we_1UIyXUG5mOoM2dqiftLTSFdL` a `/assistant/stripe/webhook/`):
+  `endpoint_problems` cuenta todo endpoint activo del host, y por eso BILLING-F39 está `parcial`. Los avisos que trata el webhook son una
   sola lista, `billing.services.STRIPE_WEBHOOK_EVENTS`, que el comando compara con el destino de Stripe.
 - Cierre (CLOSE-BILLING, 2026-10-27): ronda en PLAN-SAAS §13, con lo que PLAN-SAAS §1.1 aún pedía portar: el admin
   de solo lectura de los códigos usados, los contadores y las bajadas programadas, y el ZIP de los PDF (BILLING-F27),
