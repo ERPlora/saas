@@ -84,7 +84,8 @@ Vue, sobre `allauth.headless` (cliente `browser`, `/_allauth/browser/v1/…`), e
   código caducado o fallado tres veces (409) vuelve a `/launch?notice=code_expired`, que lo explica.
 - `base`: `base.session.me` (ámbito = el usuario, `UserContextBuilder`), `GET /api/me`, el HTML de la
   SPA (`base/spa.py`, sobre `live.spa`) para toda ruta sin URL propia de Django y `/healthz` como
-  primer middleware.
+  primer middleware. Los iconos de la pestaña y de la pantalla de inicio del panel son los de la web pública
+  (`img/favicon.ico` y `public/img/apple-touch-icon.png`), declarados en `LIVE["spa"]["icons"]`.
 - Los enlaces de los correos de allauth (`HEADLESS_FRONTEND_URLS`) son rutas de la SPA: `/password/reset`,
   `/password/reset/key/{key}` y `/launch` (el correo «no hay ninguna cuenta» de una recuperación invita a
   darse de alta, que es el mismo formulario). Sin `account_confirm_email`: el correo se confirma con un

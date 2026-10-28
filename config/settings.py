@@ -642,6 +642,11 @@ LIVE = {
         "palette_default": "erplora",
         "palettes": ["erplora"],
         "title": "ERPlora Cloud",
+        # The tab's and the home screen's icons, the public web's (public/templates/public/public_base.html).
+        "icons": [
+            {"rel": "icon", "path": "img/favicon.ico", "sizes": "any"},
+            {"rel": "apple-touch-icon", "path": "public/img/apple-touch-icon.png"},
+        ],
         # A web panel must zoom (WCAG 1.4.4); the Hub's point of sale keeps the fixed scale.
         "user_scalable": True,
     },
