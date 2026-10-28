@@ -188,6 +188,12 @@ function movingInPage(): string[] {
   return moving;
 }
 
+/** A page that navigates while `settled` asks what moves: it asks the new page next (as `waitForFunction` did). */
+function navigating(error: Error): string[] {
+  if (!/Execution context was destroyed/.test(error.message)) throw error;
+  return ['(navigating)'];
+}
+
 /**
  * Settled: the fonts loaded, nothing moving (an overlay of Ionic entering included; endless spinners aside) and the
  * page painted as it is now. The last one is what a screenshot right after `setViewportSize` needs: taken before the
@@ -197,7 +203,7 @@ function movingInPage(): string[] {
 export async function settled(page: Page): Promise<void> {
   await page.evaluate(() => document.fonts.ready);
   await expect
-    .poll(() => page.evaluate(movingInPage), { message: 'settled(): still moving', timeout: SETTLE_TIMEOUT_MS, intervals: [16] })
+    .poll(() => page.evaluate(movingInPage).catch(navigating), { message: 'settled(): still moving', timeout: SETTLE_TIMEOUT_MS, intervals: [16] })
     .toEqual([]);
   // A frame's callbacks run before it is painted; the next frame's, once it has been.
   await page.evaluate(() => new Promise<void>((painted) => requestAnimationFrame(() => requestAnimationFrame(() => painted()))));

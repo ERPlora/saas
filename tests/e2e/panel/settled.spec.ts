@@ -79,3 +79,19 @@ test('saas-e2e-settled: `settled()` waits for an animation two shadow roots deep
   expect(await page.evaluate(() => (window as unknown as { settledProbe: Animation }).settledProbe.playState)).toBe('finished');
   expect(await stillMoving(page)).toEqual([]);
 });
+
+test('saas-e2e-settled: `settled()` keeps waiting when the page reloads under it', async ({ page }) => {
+  // Something still moves when the page reloads: `settled()` asks the new page instead of failing with the old one's
+  // «Execution context was destroyed». A few rounds, each reloading at another moment of the wait.
+  for (let round = 0; round < 5; round++) {
+    await page.goto('/launch');
+    await expect(page.getByTestId('login-form')).toBeVisible();
+    await page.evaluate((delay) => {
+      document.body.appendChild(document.createElement('div')).animate([{ opacity: 0 }, { opacity: 1 }], { duration: 1500 });
+      setTimeout(() => location.reload(), delay);
+    }, 200 + round * 37);
+    await settled(page);
+  }
+  await expect(page.getByTestId('login-form')).toBeVisible();
+  expect(await stillMoving(page)).toEqual([]);
+});
