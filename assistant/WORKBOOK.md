@@ -315,13 +315,13 @@ Estado: hecho
 Actor: el asistente del Hub de un negocio
 Pantalla: ninguna
 Pasos:
-1. Cuando el Hub no necesita ver la respuesta según llega (una tarea del propio Hub, un mensaje que no se pinta), manda el mismo turno que en ASSISTANT-F12 a la puerta que contesta de una vez.
+1. Cuando el Hub no necesita ver la respuesta según llega (una tarea del propio Hub, un mensaje que no se pinta), manda el mismo turno que en ASSISTANT-F12 a la puerta que contesta de una vez. Así llega el paso «Pedírselo al asistente» de una automatización del negocio, sin nadie delante: es un turno más, sin nada que lo distinga del chat.
 2. erplora.com hace lo mismo que en directo: prepara la conversación, toma el mensaje del cupo, llama al modelo (o a su reserva) y ejecuta sus propias herramientas.
 3. Devuelve de una vez la respuesta entera, las herramientas que el negocio tiene que ejecutar con su pase de continuación, el consumo y el cupo que queda.
 Entra: lo mismo que el turno en directo.
 Sale: la respuesta entera con su consumo, su pase de continuación y el cupo que queda (`assistant.message.claimed`; lo gastado, `assistant.usage.recorded`).
-Si falla: los rechazos antes del modelo, iguales que en directo; si el proveedor falla, un error de pasarela con su motivo, si vale la pena repetir y el cupo que queda, y el mensaje vuelve al cupo si no se contestó nada.
-Implicados: ASSISTANT-F12, ASSISTANT-F15, ASSISTANT-F18
+Si falla: los rechazos antes del modelo, iguales que en directo; si el proveedor falla, un error de pasarela con su motivo, si vale la pena repetir y el cupo que queda, y el mensaje vuelve al cupo si no se contestó nada. El paso de una automatización gasta lo mismo que el chat: su primer turno, un mensaje; los turnos que contestan a sus herramientas con su pase de continuación, ninguno.
+Implicados: ASSISTANT-F12, ASSISTANT-F15, ASSISTANT-F18 y, en el Hub, FLOW-F39
 
 ### ASSISTANT-F14 Usar las herramientas de erplora.com y las del negocio
 <!-- origen: old-saas:SAAS_ASSISTANT-F06 -->
