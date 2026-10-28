@@ -673,9 +673,13 @@ msgstr "Cuenta"
 msgid "Sign in to see your businesses."
 msgstr "Inicia sesión para ver tus negocios."
 
-#: base/operations.py:53
+#: base/operations.py:93
 msgid "The account is no longer active."
 msgstr "La cuenta ya no está activa."
+
+#: base/operations.py:95
+msgid "Your session ended: sign in again."
+msgstr "Tu sesión ha terminado: vuelve a entrar."
 
 #: templates/400.html:8
 msgid "Bad Request"
