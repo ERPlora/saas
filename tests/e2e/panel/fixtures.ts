@@ -165,18 +165,46 @@ export async function sidewaysScroll(page: Page): Promise<string[]> {
   });
 }
 
+/** How long `settled` waits for the page to stop moving: Ionic's overlays enter in well under a second. */
+const SETTLE_TIMEOUT_MS = 10_000;
+
 /**
- * Settled: the fonts loaded, no transition of Ionic running (endless spinners aside) and the page painted as it
- * is now. The last one is what a screenshot right after `setViewportSize` needs: taken before the browser paints
- * a frame at the new size, it repeats the top of the page at its bottom (`repeatedTop`).
+ * What moves on the page now (run in the page, so self-contained): every finite animation running in the document
+ * and in every open shadow root under it, however deep. `document.getAnimations()` leaves shadow roots out, and
+ * Ionic animates its overlays (`ion-toast`, `ion-modal`, `ion-popover`) inside theirs. Endless ones (spinners)
+ * never stop, so they never count.
+ */
+function movingInPage(): string[] {
+  const roots: Array<Document | ShadowRoot> = [document];
+  const moving: string[] = [];
+  for (const root of roots) {
+    for (const element of root.querySelectorAll('*')) if (element.shadowRoot) roots.push(element.shadowRoot);
+    for (const animation of root.getAnimations()) {
+      if (animation.playState !== 'running' || animation.effect?.getTiming().iterations === Infinity) continue;
+      const target = (animation.effect as KeyframeEffect | null)?.target;
+      moving.push(`${root instanceof ShadowRoot ? `${root.host.localName} › ` : ''}${target?.localName ?? '?'}`);
+    }
+  }
+  return moving;
+}
+
+/** A page that navigates while `settled` asks what moves: it asks the new page next (as `waitForFunction` did). */
+function navigating(error: Error): string[] {
+  if (!/Execution context was destroyed/.test(error.message)) throw error;
+  return ['(navigating)'];
+}
+
+/**
+ * Settled: the fonts loaded, nothing moving (an overlay of Ionic entering included; endless spinners aside) and the
+ * page painted as it is now. The last one is what a screenshot right after `setViewportSize` needs: taken before the
+ * browser paints a frame at the new size, it repeats the top of the page at its bottom (`repeatedTop`). A page that
+ * still moves after `SETTLE_TIMEOUT_MS` fails the spec, naming what moves.
  */
 export async function settled(page: Page): Promise<void> {
   await page.evaluate(() => document.fonts.ready);
-  await page.waitForFunction(() =>
-    document
-      .getAnimations()
-      .every((animation) => animation.playState !== 'running' || animation.effect?.getTiming().iterations === Infinity),
-  );
+  await expect
+    .poll(() => page.evaluate(movingInPage).catch(navigating), { message: 'settled(): still moving', timeout: SETTLE_TIMEOUT_MS, intervals: [16] })
+    .toEqual([]);
   // A frame's callbacks run before it is painted; the next frame's, once it has been.
   await page.evaluate(() => new Promise<void>((painted) => requestAnimationFrame(() => requestAnimationFrame(() => painted()))));
 }
