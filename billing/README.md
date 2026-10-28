@@ -178,6 +178,8 @@ anula una nota de una factura abierta, y aquí la rectificativa nace solo de una
 haya ninguna (`voided`). Si la hubiera, no se toca (lo enviado a la AEAT no se modifica): ERROR
 `fiscal.credit.voided_after_rectifying` y correo a `SUPPORT_EMAIL` (`X-ERPlora-Notice: billing.credit_note_voided`)
 para emitir a mano la factura que la anula (`needs_review`); si el correo no sale, 500 y Stripe reintenta.
+Hasta que se suscriba `credit_note.voided` en los endpoints de Stripe live y pre (README de `ERPlora/aws`), ese
+aviso no llega y este correo no sale (BILLING-F26 `parcial`).
 
 ### Impago
 

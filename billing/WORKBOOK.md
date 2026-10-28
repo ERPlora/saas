@@ -1,7 +1,7 @@
 # Workbook — Facturación (billing)
 Prefijo: BILLING
 Alcance MVP: fase 1 (lo que una cuenta paga a ERPlora: planes, módulos, IVA y facturas)
-Estado de la app: en uso (un flujo parcial: BILLING-F39, la comprobación diaria de los avisos de Stripe, cuyo horario espera a suscribir en Stripe el aviso de la nota de crédito anulada; el resto, completo desde el 2026-10-27)
+Estado de la app: en uso (dos flujos parciales, que esperan a que el equipo suscriba en Stripe el aviso de la nota de crédito anulada: BILLING-F26, el correo a soporte cuando se anula una rectificativa, y BILLING-F39, la comprobación diaria de los avisos de Stripe; el resto, completo desde el 2026-10-27)
 
 > Manual de uso y especificación de la app `billing` del SaaS (erplora.com). Cuenta cómo se paga y se
 > cambia el plan de un negocio, cómo se contratan y se cancelan sus aplicaciones de pago, qué pasa si un
@@ -155,7 +155,7 @@ al propietario, el botón para mejorarlo o cambiarlo.
 | BILLING-F23 | Ver las suscripciones de cada negocio | hecho |
 | BILLING-F24 | Abrir el portal de pagos de Stripe para cambiar la tarjeta | hecho |
 | BILLING-F25 | Emitir la factura de ERPlora por un cobro | hecho |
-| BILLING-F26 | Devolver un cobro | hecho |
+| BILLING-F26 | Devolver un cobro | parcial |
 | BILLING-F27 | Lo que el personal de ERPlora puede hacer sobre el cobro de un cliente | hecho |
 | BILLING-F28 | Mantener en Stripe los precios de los planes | hecho |
 | BILLING-F29 | Probar el cobro real en PRE con un reloj de prueba de Stripe | hecho |
@@ -538,7 +538,7 @@ Implicados: el negocio de plataforma de ERPlora (emite la factura)
 
 ### BILLING-F26 Devolver un cobro
 <!-- origen: old-saas:SAAS_DASHBOARD-F121 gh:saas#2527 -->
-Estado: hecho
+Estado: parcial — devolver un cobro y la nota de crédito ya funcionan, y una nota anulada antes de volverse rectificativa nunca se vuelve; pero si Stripe anula una que ya lo era, el correo a soporte no sale hasta que el equipo suscriba en Stripe el aviso de la nota de crédito anulada en los destinos de erplora.com y de su entorno de pruebas
 Actor: personal de ERPlora
 Pantalla: ninguna
 Pasos:
