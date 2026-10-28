@@ -39,7 +39,13 @@ cuenta del equipo, ACCOUNTS-F31: `services.issue_api_key` desde `ApiKeyAdmin`, q
 `accounts.apikey.revoke_any`, la «Revocar» del admin, y `accounts.session.close_any`, las dos acciones
 «Cerrar sesiones» del admin (ACCOUNTS-F19: todas las de una cuenta y la confianza de sus navegadores, o las
 elegidas en «Sesiones de usuario»; `services.close_sessions`), con contexto de sistema en el canal del dueño (su
-lista viva se refresca); ningún rol tiene su permiso y en el admin solo las ve el superusuario.
+lista viva se refresca); ningún rol tiene su permiso y en el admin solo las ve el superusuario. Y
+`accounts.session.announce_ended` (`services.announce_ended_sessions`): una sesión que termina fuera de **Cuenta**
+(salir con `DELETE auth/session` de allauth.headless, desde `AccountAdapter.logout` y ya borrada la sesión; una
+contraseña nueva, cambiada o restablecida; el `auth/sessions` de allauth) registra `accounts.session.closed` en el
+canal de la cuenta, como «Cerrar las demás sesiones»: sus streams se re-ejecutan y las pestañas cuya sesión terminó
+vuelven solas a la Entrada (`base.operations`). Contexto de sistema (el outbox guarda `system`, nunca el correo);
+ningún rol tiene su permiso.
 
 ## Decisiones
 

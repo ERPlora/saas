@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:6a1a55533c8f69d5fc709bd12d6dfa09ab1bc2c3be76d3bc56e80b60c7960606 -->
+<!-- generated from WORKBOOK.md sha256:6db81734b40d52add99914ce298d8fbc311a55d8e5445e085bd629ebd5437b0b -->
 
 ## What it is for and who it is for
 
@@ -371,7 +371,7 @@ Steps:
 1. In **Account › Security**, "Password" row, the person taps "Change password".
 2. They type the "Current password" and the "New password", which passes the same rules as at sign-up; the hint says how strong it looks.
 3. They tap "Change password": "Password changed. Your businesses will ask you to sign in again."; they stay signed in on this browser.
-4. The other browsers with their account are signed out, and erplora.com asks each of their businesses to end the sessions open with it.
+4. The other browsers with their account are signed out: their open tabs go back to the **Entrance** by themselves. erplora.com asks each of their businesses to end the sessions open with it.
 In: the current password and the new one.
 Out: the new password; the other erplora.com sessions ended, this browser signed in; the notice to their businesses. The same happens when resetting it (ACCOUNTS-F07).
 If it fails: a wrong current password, under its field, and the new one is not saved; the new one equal to the current one, "Your new password must be different from the current one."; one that does not pass the rules, its warnings. The warnings appear in the account's language. More than 5 attempts a minute, "Too many attempts…" without looking at the password, not even the right one: someone else's open session is no way to guess it. An account without a password (it signed in with Google) sees "Create a password", which sends it the link of ACCOUNTS-F07. Today the businesses do not act on the notice yet (it comes in phase 2): a session open in a business goes on until it expires.
@@ -383,7 +383,7 @@ Actor: any person with an account
 Screen: User menu, Entrance, Sign out of erplora.com
 Steps:
 1. In the panel, the person opens the **User menu** (on a phone, inside the menu) and taps "Sign out"; on the **Entrance** with a session, "Sign out" is under their account.
-2. That browser's session ends and the **Entrance** comes back, ready to sign in.
+2. That browser's session ends and the **Entrance** comes back, ready to sign in; the other tabs open with that session go back to the **Entrance** by themselves.
 3. A page of the panel opened afterwards leads to the **Entrance**.
 4. From a business, on a device without the PIN pad, its "Sign out" ends the business's and opens **Sign out of erplora.com**: "Sign out" ends this one too, as in step 2; "Stay signed in" leaves it open and the **Entrance** comes back with the account's businesses. Without a session, it leads to the **Entrance**.
 In: the browser's session.
