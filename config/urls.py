@@ -8,7 +8,9 @@ no route here.
 ``/webhooks/stripe/`` is Stripe's single webhook (``billing.webhooks``, lot L2-B); anything else under
 ``/webhooks/`` is a 404 of Django's, never the SPA. Every other path is the Ionic Vue SPA (``base.spa``):
 the launcher with its sign-in (``/launch``) and the sign-in's errors (``/login/error``) among them, and the panel
-under ``/dashboard/`` (its old addresses at the root lead there for good).
+under ``/dashboard/`` (its old addresses at the root lead there for good). Save a path that names a file and has no
+URL of its own (``/favicon.ico``, ``/wp-login.php``: ``base.spa.NOT_A_FILE``), which is Django's plain 404, with no
+shell and no cookie.
 """
 
 from django.contrib import admin
@@ -16,7 +18,7 @@ from django.urls import include, path, re_path
 from django.utils.translation import gettext_lazy
 from django.views.generic import RedirectView
 from live.live_view import live_stream
-from live.spa import BASE_NON_SPA_PREFIXES, spa_path_pattern
+from live.spa import BASE_NON_SPA_PREFIXES
 
 from accounts import admin as accounts_admin
 from accounts import doors, google, handoff, internal
@@ -25,7 +27,7 @@ from assistant import internal as assistant_internal
 from base.csp_report import csp_report
 from base.health import readyz
 from base.navigation import PANEL
-from base.spa import spa
+from base.spa import spa, spa_route
 from billing import webhooks as billing_webhooks
 from config.api import api
 from fiscal import internal as fiscal_internal
@@ -213,7 +215,8 @@ urlpatterns = [
     # `home` is the project-wide name of `/` (the public web's navbar, footer and error pages): the landing,
     # `public:home`, answers `/` from the include above, so this line only names it (plan §3.c).
     path("", landing.home, name="home"),
-    re_path(spa_path_pattern(NON_SPA_PREFIXES), spa, name="spa"),
+    # Last: every other path, save one that names a file (/favicon.ico, /wp-login.php), which is a plain 404.
+    re_path(spa_route(NON_SPA_PREFIXES), spa, name="spa"),
 ]
 
 # The site's error pages are the public web's (public/errors.py), with its CSP.
