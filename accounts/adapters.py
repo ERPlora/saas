@@ -109,6 +109,18 @@ class AccountAdapter(DefaultAccountAdapter):
             raise ValidationError(gettext("Your new password must be different from the current one."), code="password_unchanged")
         return super().clean_password(password, user=user)
 
+    def logout(self, request) -> None:
+        """Sign out (allauth.headless ``DELETE auth/session``, ACCOUNTS-F09), then wake the account's live streams: this
+        browser's other tabs leave for the sign-in by themselves. Here and not on Django's ``user_logged_out``, which
+        comes before the session is gone (``services.announce_ended_sessions``)."""
+        from accounts import services
+
+        user = getattr(request, "user", None)
+        signed_in = user is not None and user.is_authenticated
+        super().logout(request)
+        if signed_in:
+            services.announce_ended_sessions(user.pk)
+
     def format_email_subject(self, subject):
         """No ``[site.name]`` prefix: allauth takes it from the ``Site`` row (``example.com``)."""
         return subject
