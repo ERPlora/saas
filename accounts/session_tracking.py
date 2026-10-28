@@ -62,4 +62,11 @@ def _mark(session_key: str) -> bool:
 
 class UserSessionsAdapter(DefaultUserSessionsAdapter):
     def end_sessions(self, sessions) -> None:
-        services.end_sessions(list(sessions))
+        """allauth's ``auth/sessions`` (and its Google sign-in that ends the others): the sessions end, the businesses
+        are asked to end theirs and the accounts' live streams wake (``services.announce_ended_sessions``), as the
+        Account page's «Close» records its event. Ending this browser's own session also signs it out, which wakes
+        them once more (``AccountAdapter.logout``)."""
+        sessions = list(sessions)
+        services.end_sessions(sessions)
+        for user_id in dict.fromkeys(session.user_id for session in sessions):
+            services.announce_ended_sessions(user_id)

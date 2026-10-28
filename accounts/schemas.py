@@ -290,6 +290,14 @@ class SessionCloseAnyIn(StrictIn):
     ids: list[int] | None = None
 
 
+class SessionsEndedIn(StrictIn):
+    """A session of the account (the context's) ended outside the Account page: nothing else to say."""
+
+
+class SessionsEndedOut(Schema):
+    announced: bool
+
+
 # --- Account → Security → Two-factor authentication: the trusted browsers (ACCOUNTS-F17) -----------------------
 
 

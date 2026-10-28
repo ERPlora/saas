@@ -403,7 +403,7 @@ Pasos:
 1. En **Cuenta › Seguridad**, fila «Contraseña», la persona pulsa «Cambiar contraseña».
 2. Escribe la «Contraseña actual» y la «Contraseña nueva», que pasa las mismas reglas que en el alta; la pista dice lo fuerte que parece.
 3. Pulsa «Cambiar contraseña»: «Contraseña cambiada. Tus negocios te pedirán entrar otra vez.»; sigue dentro en este navegador.
-4. Los demás navegadores con su cuenta salen, y erplora.com pide a cada uno de sus negocios que cierre las sesiones abiertas con ella.
+4. Los demás navegadores con su cuenta salen: sus pestañas abiertas vuelven solas a la **Entrada**. erplora.com pide a cada uno de sus negocios que cierre las sesiones abiertas con ella.
 Entra: la contraseña actual y la nueva.
 Sale: la contraseña nueva; las otras sesiones de erplora.com cerradas, este navegador dentro; el aviso a sus negocios. Lo mismo pasa al restablecerla (ACCOUNTS-F07).
 Si falla: una contraseña actual equivocada, debajo de su campo, y la nueva no se guarda; la nueva igual a la actual, «La contraseña nueva tiene que ser distinta de la actual.»; una que no pasa las reglas, sus avisos. Los avisos salen en el idioma de la cuenta. Más de 5 intentos por minuto, «Demasiados intentos…» sin mirar la contraseña, ni la buena: una sesión ajena abierta no sirve para adivinarla. Una cuenta sin contraseña (entró con Google) ve «Crear contraseña», que le manda el enlace de ACCOUNTS-F07. Hoy los negocios aún no atienden el aviso (llega en la fase 2): una sesión abierta en un negocio sigue hasta que caduca.
@@ -416,7 +416,7 @@ Actor: cualquier persona con cuenta
 Pantalla: Menú de usuario, Entrada, Cerrar la sesión de erplora.com
 Pasos:
 1. En el panel, la persona abre el **Menú de usuario** (en el móvil, dentro del menú) y pulsa «Cerrar sesión»; en la **Entrada** con sesión, «Cerrar sesión» está bajo su cuenta.
-2. La sesión de ese navegador se cierra y vuelve la **Entrada**, lista para entrar.
+2. La sesión de ese navegador se cierra y vuelve la **Entrada**, lista para entrar; las demás pestañas abiertas con esa sesión vuelven solas a la **Entrada**.
 3. Una página del panel abierta después lleva a la **Entrada**.
 4. Desde un negocio, en un dispositivo sin teclado de PIN, su «Cerrar sesión» cierra la del negocio y abre **Cerrar la sesión de erplora.com**: «Cerrar sesión» cierra también esta, como en el paso 2; «Seguir conectado» la deja abierta y vuelve la **Entrada** con los negocios de la cuenta. Sin sesión, lleva a la **Entrada**.
 Entra: la sesión del navegador.

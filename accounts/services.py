@@ -64,6 +64,8 @@ from accounts.schemas import (
     SessionCloseIn,
     SessionCloseOthersIn,
     SessionsClosedOut,
+    SessionsEndedIn,
+    SessionsEndedOut,
     ProfileDeletedOut,
     ProfileDeleteIn,
     ProfileOut,
@@ -1186,6 +1188,35 @@ def close_sessions(*, by, users=(), sessions=()) -> int:
     return count
 
 
+#: A session ended outside the Account page (allauth's sign-out, a new password, its ``auth/sessions``): a system
+#: context only (no role grants it), on the account's channel.
+ANNOUNCE_ENDED_SESSIONS = "accounts.announce_ended_sessions"
+
+
+@operation(
+    "accounts.session.announce_ended",
+    kind="command",
+    permission=ANNOUNCE_ENDED_SESSIONS,
+    input=SessionsEndedIn,
+    output=SessionsEndedOut,
+)
+def session_announce_ended(ctx: OperationContext, data: SessionsEndedIn) -> dict:
+    """The account's event of a closed session (``accounts.session.closed``, as «Close the other sessions» records it)
+    on the context's channel: each live stream of the account re-runs, and the ones whose session ended leave for the
+    sign-in (``base.operations``). Called only by :func:`announce_ended_sessions`; no route."""
+    record_event(ctx, events.SESSION_CLOSED)
+    return {"announced": True}
+
+
+def announce_ended_sessions(user_id) -> None:
+    """Wake the live streams of the account ``user_id`` once a session of it ended outside the Account page. Called
+    after the session is gone: the notice goes at the COMMIT, and a stream it woke before would still find its session
+    and stay. By the system, so the outbox keeps no email of the account (``forget_in_outbox``)."""
+    from live.context import Scope, system_context
+
+    session_announce_ended(system_context(Scope("user", str(user_id))), SessionsEndedIn())
+
+
 # --- Account → Security → Two-factor authentication: the trusted browsers (ACCOUNTS-F17) ---------------------
 
 
@@ -1389,10 +1420,12 @@ def revoke_api_keys(keys, *, by) -> int:
 
 def password_changed_ends_sessions(sender, request=None, user=None, **kwargs) -> None:
     """allauth's ``password_changed``, ``password_set`` and ``password_reset``: a new password ends the account's
-    other sessions here (Django), and in every business too (PLAN-SAAS §2.1, ``signals.sessions_ended``)."""
+    other sessions here (Django), and in every business too (PLAN-SAAS §2.1, ``signals.sessions_ended``); the account's
+    tabs open with them leave for the sign-in by themselves (``announce_ended_sessions``)."""
     if user is None:
         return
     signals.sessions_ended.send(sender=get_user_model(), user_id=user.pk)
+    announce_ended_sessions(user.pk)
 
 
 # --- «Report a problem» (ACCOUNTS-F38) ------------------------------------------------------------
