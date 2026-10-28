@@ -17,6 +17,11 @@ with it (``accounts/frontend/recaptcha.ts``, ``accounts/bot_check.py``). Off, th
 Beside them, ``support-email`` is ``SUPPORT_EMAIL``, the address of the SPA's «Contact Support» (PUBLIC-F18).
 Its Content Security Policy admits Stripe for the Store's Embedded Checkout (``base/csp.py``), except on
 the account surface, which sells nothing.
+
+A path that names a file (:data:`NOT_A_FILE`: ``/favicon.ico``, ``/apple-touch-icon.png``, ``/wp-login.php``) is no
+route of the SPA (:func:`spa_route`): without a URL of its own it gets Django's plain 404, with no shell and no
+``csrftoken``, with a session or without and whatever it accepts. The public web's files keep their own URLs
+(``robots.txt``, ``llms.txt``, ``sitemap.xml``, IndexNow's key; ``public/urls.py``), matched before the SPA.
 """
 
 from django.conf import settings
@@ -24,7 +29,7 @@ from django.http import HttpRequest, HttpResponse
 from django.views.decorators.http import require_safe
 from live import recaptcha
 from live.ninja import run_operation_sync
-from live.spa import render_spa
+from live.spa import render_spa, spa_path_pattern
 
 from accounts.queries import hub_origin
 from base import queries
@@ -33,6 +38,16 @@ from base.surface import account_surface
 
 SESSION_ME_ID = "session-me"
 SUPPORT_EMAIL_ID = "support-email"
+#: A path whose last segment has an extension names a file, and no page of the SPA looks like one (its parameters are
+#: UUIDs and allauth's reset key, hex and base 36). It is the fallback rule of connect-history-api-fallback and of
+#: ASP.NET Core's ``{*path:nonfile}``. With a trailing slash too: else ``APPEND_SLASH`` would send ``/favicon.ico`` to
+#: ``/favicon.ico/``, and that to the shell.
+NOT_A_FILE = r"(?!.*\.[^/]*/?$)"
+
+
+def spa_route(prefixes: tuple[str, ...]) -> str:
+    """The SPA's ``re_path``: every path ``live.spa.spa_path_pattern(prefixes)`` leaves it, save a file's."""
+    return rf"^{NOT_A_FILE}{spa_path_pattern(prefixes)}"
 
 
 @require_safe
