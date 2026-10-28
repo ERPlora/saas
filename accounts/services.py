@@ -339,8 +339,8 @@ def create_platform_user(email: str, role: str, password: str | None = None):
 
     ``admin`` is a superuser; ``support`` is staff in the ``support`` group (view only). An
     existing account takes the role and keeps its password unless ``password`` is given; a new
-    one without ``password`` has no usable password. A customer of a hub is refused: platform and
-    customer roles never share an account.
+    one without ``password`` has no usable password. A customer of a hub and the store review account
+    are refused: platform and customer roles never share an account.
     """
     if role not in PLATFORM_ROLES:
         raise PlatformRoleRefused(f"unknown platform role {role!r}")
@@ -356,6 +356,9 @@ def create_platform_user(email: str, role: str, password: str | None = None):
             user = user_model(email=email)
         elif HubMembership.objects.filter(user=user).exists():
             raise PlatformRoleRefused(f"{email} is a customer of a hub")
+        elif user.is_store_review_account:
+            # Its sign-in skips the mailed code (ACCOUNTS-F49): never a way into the admin.
+            raise PlatformRoleRefused(f"{email} is a store review account")
         if password is not None:
             user.set_password(password)
         elif created:

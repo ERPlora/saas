@@ -54,7 +54,10 @@ lista viva se refresca); ningún rol tiene su permiso y en el admin solo las ve 
   resto; `AccountAdapter.is_login_by_code_required` evita pedir los dos. Valores de allauth: 3 intentos, 3
   minutos; sin reenvío del de inicio de sesión (allauth solo lo reenvía con `ACCOUNT_LOGIN_BY_CODE_ENABLED`,
   que abriría la entrada solo con el código, sin contraseña): se pide otro entrando de nuevo. Google no pide
-  código. Con la app autenticadora encendida, primero el código por correo y luego el de la app (orden de
+  código, ni la cuenta de revisión de tienda (ACCOUNTS-F49, saas#132: `User.is_store_review_account`, que solo
+  pone un superusuario en el admin y nunca lleva una cuenta del personal), que entra solo con la contraseña y su
+  correo ya probado; todo lo demás le aplica igual. Con la app autenticadora encendida, primero el código por
+  correo y luego el de la app (orden de
   allauth). `/admin/login/` también pasa por este login. En local cada correo queda en `saas-next/.mail/`
   (`EMAIL_FILE_PATH`): el código se lee de ahí; las e2e, con `readMailCode` de `@erplora/ui/testing/mail`.
 - **Reautenticación** (lo destructivo y lo que da acceso: eliminar la cuenta, crear una clave, cambiar a otro

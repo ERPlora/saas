@@ -26,6 +26,7 @@ from django.utils.formats import date_format
 from accounts.auditlog import AuditActorMiddleware
 from accounts.models import ApiKey, HubMembership
 from accounts.tests.conftest import api_post
+from accounts.tests.test_admin import _as_posted, _change_page
 from hubs.tests.conftest import plans  # noqa: F401 - the plans fixture
 
 pytestmark = pytest.mark.django_db
@@ -188,6 +189,23 @@ class TestWhoAndFromWhere:
 
         entry = _entries_for(ana).filter(action=LogEntry.Action.UPDATE).latest("timestamp")
         assert entry.remote_addr == "203.0.113.9"
+
+    def test_the_store_review_mark_names_who_set_it_and_cleared_it_and_from_where(self, client, ana, settings):
+        """ACCOUNTS-F49: the mark drops the mailed code of a sign-in; the trail says who put it on and took it off."""
+        settings.TRUSTED_PROXY_HOPS = 0
+        root = get_user_model().objects.create_superuser(email="root@example.com", password="x")
+        client.force_login(root)
+        change = f"/admin/accounts/user/{ana.pk}/change/"
+
+        for ticked, address in (("on", "10.0.0.8"), (False, "10.0.0.9")):
+            page = _change_page(client, ana)
+            response = client.post(change, _as_posted(page, is_store_review_account=ticked), REMOTE_ADDR=address)
+            assert response.status_code == 302
+
+        marked, cleared = _entries_for(ana).filter(action=LogEntry.Action.UPDATE).order_by("timestamp")
+        assert (marked.changes_dict["is_store_review_account"], marked.remote_addr) == (["False", "True"], "10.0.0.8")
+        assert (cleared.changes_dict["is_store_review_account"], cleared.remote_addr) == (["True", "False"], "10.0.0.9")
+        assert {(entry.actor, entry.actor_email) for entry in (marked, cleared)} == {(root, "root@example.com")}
 
     def test_the_actor_is_whoever_the_request_acts_as_when_the_change_is_written(self, ana):
         """An API key's account is set on the request after the middleware ran (``accounts.api_auth``)."""

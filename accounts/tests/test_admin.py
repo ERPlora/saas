@@ -6,7 +6,7 @@ from io import StringIO
 
 import pytest
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import Group, Permission
 from django.core.management import call_command
 from django.test import override_settings
 
@@ -612,6 +612,144 @@ def test_the_user_page_shows_the_terms_it_accepted_read_only(staff_client, ana):
     assert "Oct. 14, 2026" in page.text
     for field in ("terms_accepted_at", "terms_version", "privacy_version"):
         assert f'name="{field}"' not in page.text
+
+
+REFUSED_ON_STAFF = "A staff account cannot be a store review account."
+
+
+def _change_page(client, user):
+    return client.get(f"/admin/accounts/user/{user.pk}/change/")
+
+
+def _as_posted(page, **changes) -> dict:
+    """What the account's page posts back as it stands, with ``changes`` (``False`` unticks a box): its editable
+    fields and the management forms of its inlines."""
+    form = page.context["adminform"].form
+    data = {}
+    for name, field in form.fields.items():
+        value = form[name].value()
+        if not field.disabled and value not in (None, False, "", []):
+            data[name] = "on" if value is True else value
+    for inline in page.context["inline_admin_formsets"]:
+        management = inline.formset.management_form
+        data.update({management.add_prefix(name): management[name].value() for name in management.fields})
+    data.update(changes)
+    return {name: value for name, value in data.items() if value is not False}
+
+
+def _save(client, user, **changes):
+    return client.post(f"/admin/accounts/user/{user.pk}/change/", _as_posted(_change_page(client, user), **changes))
+
+
+def _mark_for_store_review(user):
+    get_user_model().objects.filter(pk=user.pk).update(is_store_review_account=True)
+
+
+class TestTheStoreReviewMark:
+    """ACCOUNTS-F49: on the account's page only a superuser sets and clears «Store review account»; ``support`` sees
+    it; an account of the staff never carries it."""
+
+    @pytest.fixture
+    def editor(self, client):
+        """Staff that may change accounts without being a superuser (no such role today: the mark stays the
+        superuser's even if one comes)."""
+        editor = get_user_model().objects.create_user(email="editor@erplora.com", password="x", is_staff=True)
+        editor.user_permissions.add(
+            *Permission.objects.filter(content_type__app_label="accounts", codename__in=["view_user", "change_user"])
+        )
+        client.force_login(editor)
+        return client
+
+    def test_the_superuser_sees_it_with_what_it_does(self, staff_client, ana):
+        client, _ = staff_client
+
+        page = _change_page(client, ana)
+
+        assert 'name="is_store_review_account"' in page.text
+        assert "Store review account" in page.text
+        assert "Signs in with its password, without the mailed code." in page.text
+
+    def test_the_superuser_marks_it_and_clears_it(self, staff_client, ana):
+        client, _ = staff_client
+
+        assert _save(client, ana, is_store_review_account="on").status_code == 302
+        ana.refresh_from_db()
+        assert ana.is_store_review_account is True
+
+        assert _save(client, ana, is_store_review_account=False).status_code == 302
+        ana.refresh_from_db()
+        assert ana.is_store_review_account is False
+
+    def test_an_account_of_the_staff_cannot_carry_it_and_nothing_is_saved(self, staff_client):
+        client, _ = staff_client
+        helper = get_user_model().objects.create_user(
+            email="help@erplora.com", password="x", is_staff=True, first_name="Helena"
+        )
+
+        response = _save(client, helper, is_store_review_account="on", first_name="Elena")
+
+        assert response.status_code == 200
+        assert REFUSED_ON_STAFF in response.text
+        helper.refresh_from_db()
+        assert (helper.is_store_review_account, helper.first_name) == (False, "Helena")
+
+    def test_nor_does_a_marked_account_become_staff(self, staff_client, ana):
+        client, _ = staff_client
+        _mark_for_store_review(ana)
+
+        response = _save(client, ana, is_staff="on")
+
+        assert response.status_code == 200
+        assert REFUSED_ON_STAFF in response.text
+        ana.refresh_from_db()
+        assert (ana.is_staff, ana.is_store_review_account) == (False, True)
+
+    def test_the_refusal_speaks_spanish(self, staff_client):
+        client, _ = staff_client
+        client.defaults["HTTP_ACCEPT_LANGUAGE"] = "es"
+        helper = get_user_model().objects.create_user(email="help@erplora.com", password="x", is_staff=True)
+
+        response = _save(client, helper, is_store_review_account="on")
+
+        assert "Una cuenta del personal no puede ser cuenta de revisión de tienda." in response.text
+        assert "Cuenta de revisión de tienda" in response.text
+
+    def test_support_sees_it_and_cannot_change_it(self, client, ana):
+        helper = get_user_model().objects.create_user(email="help@erplora.com", password="x", is_staff=True)
+        helper.groups.add(Group.objects.get(name="support"))
+        client.force_login(helper)
+        _mark_for_store_review(ana)
+
+        page = _change_page(client, ana)
+
+        assert page.status_code == 200
+        assert "Store review account" in page.text
+        assert 'name="is_store_review_account"' not in page.text
+        assert client.post(f"/admin/accounts/user/{ana.pk}/change/", {"is_store_review_account": ""}).status_code == 403
+        ana.refresh_from_db()
+        assert ana.is_store_review_account is True
+
+    def test_staff_who_may_change_accounts_only_see_it(self, editor, ana):
+        page = _change_page(editor, ana)
+
+        assert "Store review account" in page.text
+        assert 'name="is_store_review_account"' not in page.text
+        response = editor.post(
+            f"/admin/accounts/user/{ana.pk}/change/", _as_posted(page, is_store_review_account="on")
+        )
+        assert response.status_code == 302
+        ana.refresh_from_db()
+        assert ana.is_store_review_account is False
+
+    def test_nor_may_they_make_a_marked_account_staff(self, editor, ana):
+        _mark_for_store_review(ana)
+
+        response = _save(editor, ana, is_staff="on")
+
+        assert response.status_code == 200
+        assert REFUSED_ON_STAFF in response.text
+        ana.refresh_from_db()
+        assert (ana.is_staff, ana.is_store_review_account) == (False, True)
 
 
 def test_the_sessions_of_allauth_have_their_page(staff_client):

@@ -24,6 +24,7 @@ from django.contrib.auth.models import (
     BaseUserManager,
     PermissionsMixin,
 )
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -82,6 +83,18 @@ class User(AbstractBaseUser, PermissionsMixin):
     terms_accepted_at = models.DateTimeField(_("terms accepted at"), null=True, blank=True)
     terms_version = models.DateField(_("terms version"), null=True, blank=True)
     privacy_version = models.DateField(_("privacy policy version"), null=True, blank=True)
+    # The account Google Play and the App Store review the app with (ACCOUNTS-F49): its password sign-in skips the
+    # mailed code (``AccountAdapter.is_login_by_code_required``), nothing else. Only a superuser sets it, in the admin;
+    # ``db_default`` keeps a row the previous code writes during a deploy valid.
+    is_store_review_account = models.BooleanField(
+        _("Store review account"),
+        default=False,
+        db_default=False,
+        help_text=_(
+            "Signs in with its password, without the mailed code. Only for the account Google Play and the App Store "
+            "review the app with."
+        ),
+    )
 
     objects = UserManager()
 
@@ -95,6 +108,15 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+
+    def clean(self):
+        super().clean()
+        # The mark drops a factor of the sign-in: never on an account that enters the admin (ACCOUNTS-F49). A
+        # non-field error, so a form that shows either field read only still says it.
+        if self.is_store_review_account and (self.is_staff or self.is_superuser):
+            raise ValidationError(
+                _("A staff account cannot be a store review account."), code="staff_store_review_account"
+            )
 
     def get_full_name(self):
         return f"{self.first_name} {self.last_name}".strip()

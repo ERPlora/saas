@@ -14,6 +14,10 @@ address (``verify_email``), which is the same proof of the mailbox (``AccountAda
 Google already is a strong sign-in and proves the address itself: no code (``test_google``).
 With the authenticator app (``ACCOUNTS_MFA_ENABLED``) both are asked, in allauth's order: the mailed
 code, then the app's.
+
+The one exception, the store review account (ACCOUNTS-F49, saas#132): the account Google Play and the App Store
+review the app with signs in with its password alone. The mark skips the mailed code of each sign-in and nothing
+else.
 """
 
 import re
@@ -24,6 +28,7 @@ import pytest
 from allauth.account.internal.flows import code_verification
 from allauth.account.models import EmailAddress
 from allauth.mfa.totp.internal import auth as totp_auth
+from allauth.usersessions.models import UserSession
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core import mail
@@ -327,6 +332,99 @@ class TestWithTheAuthenticatorApp:
 
         assert response.status_code == 200
         assert _methods(browser) == ["password", "code", "mfa"]
+
+
+def _mark_for_store_review(user, *, marked: bool = True):
+    """What a superuser does in the admin (``test_admin``): the account becomes the stores' review account."""
+    get_user_model().objects.filter(pk=user.pk).update(is_store_review_account=marked)
+
+
+def _sign_out(client):
+    client.delete(SESSION, HTTP_X_CSRFTOKEN=client.cookies["csrftoken"].value)
+
+
+class TestAStoreReviewAccount:
+    """ACCOUNTS-F49: its password signs in, without «Check your email»; every other rule stays."""
+
+    def test_the_password_alone_signs_in_and_mails_nothing(self, browser, verified):
+        _mark_for_store_review(verified)
+
+        response = _continue(browser, verified.email)
+
+        assert response.status_code == 200
+        assert response.json()["meta"]["is_authenticated"] is True
+        assert mail.outbox == []
+        assert _signed_in_email(browser) == verified.email
+        assert _methods(browser) == ["password"]
+
+    def test_its_session_is_listed_among_the_accounts_like_any_other(self, browser, verified):
+        """ACCOUNTS-F18 and F19 see it and close it as any session."""
+        _mark_for_store_review(verified)
+
+        _continue(browser, verified.email)
+
+        assert UserSession.objects.filter(user=verified).count() == 1
+
+    def test_the_session_is_remembered(self, browser, verified):
+        _mark_for_store_review(verified)
+
+        response = _continue(browser, verified.email)
+
+        assert response.status_code == 200
+        assert browser.session.get_expire_at_browser_close() is False
+        assert response.cookies["sessionid"]["max-age"] == settings.SESSION_COOKIE_AGE
+
+    def test_without_the_mark_the_next_sign_in_asks_for_the_code_again(self, browser, verified):
+        _mark_for_store_review(verified)
+        assert _continue(browser, verified.email).status_code == 200
+        _sign_out(browser)
+        _mark_for_store_review(verified, marked=False)
+
+        response = _continue(browser, verified.email)
+
+        assert (response.status_code, _pending(response)) == (401, ["login_by_code"])
+
+    def test_a_wrong_password_answers_as_for_an_unknown_email(self, browser, verified):
+        _mark_for_store_review(verified)
+
+        wrong = _continue(browser, verified.email, password="not her password")
+        unknown = _continue(browser, NEWCOMER)
+
+        assert wrong.status_code == 400
+        assert (wrong.status_code, wrong.json()) == (unknown.status_code, unknown.json())
+        assert mail.outbox == []
+        assert _signed_in_email(browser) is None
+
+    def test_an_address_never_proven_still_gets_the_code_that_proves_it(self, browser, unverified):
+        _mark_for_store_review(unverified)
+
+        response = _continue(browser, unverified.email)
+
+        assert (response.status_code, _pending(response)) == (401, ["verify_email"])
+        assert _signed_in_email(browser) is None
+
+    def test_the_authenticator_app_still_asks_for_its_code(self, browser, verified, settings):
+        settings.ACCOUNTS_MFA_ENABLED = True
+        totp_auth.TOTP.activate(verified, totp_auth.generate_totp_secret())
+        _mark_for_store_review(verified)
+
+        response = _continue(browser, verified.email)
+
+        assert (response.status_code, _pending(response)) == (401, ["mfa_authenticate"])
+        assert mail.outbox == []
+        assert _signed_in_email(browser) is None
+
+    @pytest.mark.parametrize(
+        "staff", [{"is_staff": True}, {"is_staff": True, "is_superuser": True}, {"is_superuser": True}]
+    )
+    def test_an_account_of_the_staff_marked_behind_the_admins_back_still_gets_the_code(self, browser, verified, staff):
+        """The admin refuses the mark on a staff account (``test_models``); one written straight to the database
+        drops no factor of a way into the admin either."""
+        get_user_model().objects.filter(pk=verified.pk).update(is_store_review_account=True, **staff)
+
+        response = _continue(browser, verified.email)
+
+        assert (response.status_code, _pending(response)) == (401, ["login_by_code"])
 
 
 class TestTheJumpToAHub:
