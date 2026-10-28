@@ -146,3 +146,29 @@ def test_the_shell_embeds_the_support_address_of_the_settings(client, settings):
     nonce, email = json_block(response, "support-email")
     assert nonce == csp_nonce(response)
     assert email == "help@erplora.test"
+
+
+# flow: saas-spa-icon (FIX-SAAS-SPA-NO-TAB-ICON) — the panel's tab and home-screen icons are the public web's
+# (public/templates/public/public_base.html), static files of the SaaS linked by its static storage (live.spa,
+# LIVE["spa"]["icons"]), never a URL of elsewhere: without them the tab has no ERPlora logo.
+PANEL_ICONS = [
+    ("icon", "img/favicon.ico", ' sizes="any"'),
+    ("apple-touch-icon", "public/img/apple-touch-icon.png", ""),
+]
+
+
+@pytest.mark.parametrize(("path", "signed_in"), [("/launch", False), ("/dashboard/businesses", True)])
+def test_the_panel_declares_the_public_web_s_icons_from_its_static_files(client, ana, path, signed_in):
+    from django.contrib.staticfiles import finders
+    from django.templatetags.static import static
+
+    if signed_in:
+        client.force_login(ana)
+    response = client.get(path, HTTP_HOST=HOST, HTTP_ACCEPT="text/html")
+    assert response.status_code == 200
+    html = response.content.decode()
+    head = html[: html.index("</head>")]
+    for rel, static_path, sizes in PANEL_ICONS:
+        assert finders.find(static_path), f"{static_path} is no static file of the SaaS"
+        assert static(static_path).startswith("/static/")
+        assert f'<link rel="{rel}" href="{static(static_path)}"{sizes}>' in head
