@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 import type { Page } from '@playwright/test';
 
+import { horizontalOverflow } from './horizontal-overflow';
 import { expect, test } from './public-test';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -76,7 +77,7 @@ async function captureEverywhere(page: Page, path: string, key: string, state: s
     await page.goto(path);
     await expect(card(page, state)).toBeVisible();
     expect(await startFree(page, state), `${path}: one «Start free»`).toHaveLength(1);
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    const overflow = await horizontalOverflow(page);
     expect(overflow, `${path} overflows sideways at ${viewport.width}px`).toBeLessThanOrEqual(0);
     await page.screenshot({ path: join(ARTIFACTS, `APP-PUBLIC-3-${key}-${viewport.width}.png`), fullPage: true });
   }
