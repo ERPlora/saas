@@ -10,7 +10,7 @@ codes and answers.
 
 Every door: 401 ``unauthorized`` (unsigned, stale or another secret; decided by the headers before the body is
 read when they already rule it out), 405 ``method_not_allowed``, 413 ``payload_too_large`` (over
-``MAX_BODY_BYTES``; door 8, which carries a header's file, over ``MAX_TEMPLATE_BODY_BYTES``), 422
+``MAX_BODY_BYTES``; doors 5 and 8, which carry a header's file, over ``MAX_TEMPLATE_BODY_BYTES``), 422
 ``invalid_payload`` (not JSON or not the contract, with the failing ``fields``), 404
 ``hub_unknown`` (``hub`` names no business the SaaS knows, a demo included: saas#2599). The rest of each answer is
 the door's (``gateway``).
@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 #: The largest body a door reads: a template with its examples and buttons fits many times over.
 MAX_BODY_BYTES = 256 * 1024
-#: Door 8's: a template and the heaviest file of a header (``templates.MAX_SAMPLE_BYTES``) in base64.
+#: Doors 5 and 8's: a template and the heaviest file of a header (``templates.MAX_SAMPLE_BYTES``) in base64.
 MAX_TEMPLATE_BODY_BYTES = MAX_BODY_BYTES + 4 * -(-MAX_SAMPLE_BYTES // 3)
 IDEMPOTENCY_HEADER = "Idempotency-Key"
 MAX_KEY_LENGTH = 255
@@ -136,7 +136,7 @@ def _too_large(max_bytes: int) -> _Refused:
     return _Refused(413, "payload_too_large", f"The body exceeds {max_bytes} bytes.")
 
 
-@_door(SendIn, keyed=True)
+@_door(SendIn, keyed=True, max_bytes=MAX_TEMPLATE_BODY_BYTES)
 def send(data: SendIn, key: str) -> tuple[int, dict]:
     """Door 5: send a text or a template for the business, once per ``Idempotency-Key``."""
     return gateway.send(data, key)

@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:36af8d8e4e2b2604eb700ca6fae87dc4e7be65ee2d37e30c1cbf97f2632c96a5 -->
+<!-- generated from WORKBOOK.md sha256:3d4bf3044c213a1828d37293f88ac6b39ce1c32b482d9ba71b37132f49b698e8 -->
 
 ## What it is for and who it is for
 
@@ -180,10 +180,11 @@ Screen: WhatsApp inbox (in the Hub)
 Steps:
 1. In the inbox, someone replies to a customer or sends them an approved template; the Hub passes it to erplora.com with its own key for the send.
 2. erplora.com reserves the allowance place, sends it to Meta with the business's permission and returns the WhatsApp message id.
-3. What Meta says afterwards (delivered, read, failed) reaches the inbox as its status.
-In: to whom, the text or the template with its variables, and the key of the send.
+3. If the template has a photo, a video or a document in its header, the Hub sends the file with it: erplora.com tells what it is by its first bytes (the same types and sizes as when registering it, F16), uploads it to the business's number at Meta and sends the template with it.
+4. What Meta says afterwards (delivered, read, failed) reaches the inbox as its status.
+In: to whom, the text or the template with its variables (and its header's file, if it has one), and the key of the send.
 Out: the message sent through WhatsApp; the key noted so it is never sent twice (`whatsapp.message.recorded`).
-If it fails: outside the 24 hours since the customer's last message, "only a template can be sent"; a customer who blocked the business, a template not approved or a number not connected say their reason and use no allowance; if Meta's permission expired or the business withdrew it in Meta, nothing goes out nor uses allowance, it says the number has to be connected again (not that it is not connected) and the number shows "Needs reconnecting" in the Hub; if Meta does not answer, it is unknown whether it went out: the Hub retries with the same key and erplora.com never sends it twice.
+If it fails: outside the 24 hours since the customer's last message, "only a template can be sent"; a customer who blocked the business, a template not approved or a number not connected say their reason and use no allowance; if Meta's permission expired or the business withdrew it in Meta, nothing goes out nor uses allowance, it says the number has to be connected again (not that it is not connected) and the number shows "Needs reconnecting" in the Hub; if Meta does not answer, it is unknown whether it went out: the Hub retries with the same key and erplora.com never sends it twice. A header file of the wrong type or too heavy says the rule and never reaches Meta; if Meta refuses the file or does not answer while it is uploaded, the message does not go out nor use allowance, and the same key tries again.
 Involved: the Hub's WhatsApp inbox
 
 ### WHATSAPP-F07 Receive Meta's notices and hand them to the Hub

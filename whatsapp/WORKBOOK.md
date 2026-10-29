@@ -198,10 +198,11 @@ Pantalla: Bandeja de WhatsApp (en el Hub)
 Pasos:
 1. En la bandeja, alguien contesta a un cliente o le envía una plantilla aprobada; el Hub lo pasa a erplora.com con una clave propia del envío.
 2. erplora.com reserva la plaza del cupo, lo envía a Meta con el permiso del negocio y devuelve el identificador del mensaje de WhatsApp.
-3. Lo que Meta diga después (entregado, leído, fallido) llega a la bandeja como su estado.
-Entra: a quién, el texto o la plantilla con sus variables, y la clave del envío.
+3. Si la plantilla lleva en la cabecera una foto, un vídeo o un documento, el Hub manda el archivo con ella: erplora.com mira qué es por sus primeros bytes (los mismos tipos y pesos que al registrarla, F16), lo sube al número del negocio en Meta y envía la plantilla con él.
+4. Lo que Meta diga después (entregado, leído, fallido) llega a la bandeja como su estado.
+Entra: a quién, el texto o la plantilla con sus variables (y el archivo de su cabecera, si lo lleva), y la clave del envío.
 Sale: el mensaje enviado por WhatsApp; la clave anotada para no enviarlo dos veces (`whatsapp.message.recorded`).
-Si falla: fuera de las 24 horas desde el último mensaje del cliente, «solo se puede enviar una plantilla»; un cliente que bloqueó al negocio, una plantilla no aprobada o un número sin conectar dicen su motivo y no gastan cupo; si el permiso de Meta caducó o el negocio lo retiró en Meta, no sale ni gasta cupo, se dice que hay que volver a conectar el número (no que está sin conectar) y el número queda «Hay que reconectar» en el Hub; si Meta no contesta, no se sabe si salió: el Hub reintenta con la misma clave y erplora.com nunca lo envía dos veces.
+Si falla: fuera de las 24 horas desde el último mensaje del cliente, «solo se puede enviar una plantilla»; un cliente que bloqueó al negocio, una plantilla no aprobada o un número sin conectar dicen su motivo y no gastan cupo; si el permiso de Meta caducó o el negocio lo retiró en Meta, no sale ni gasta cupo, se dice que hay que volver a conectar el número (no que está sin conectar) y el número queda «Hay que reconectar» en el Hub; si Meta no contesta, no se sabe si salió: el Hub reintenta con la misma clave y erplora.com nunca lo envía dos veces. Un archivo de la cabecera que no es del tipo o pesa de más dice la regla y no llega a Meta; si Meta rechaza el archivo o no contesta al subirlo, el mensaje no sale ni gasta cupo y la misma clave lo vuelve a intentar.
 Implicados: bandeja de WhatsApp del Hub
 
 ### WHATSAPP-F07 Recibir los avisos de Meta y entregarlos al Hub
@@ -427,6 +428,16 @@ Implicados: ninguno
   `example.header_handle`, también al editar. Un rechazo o un silencio de Meta en la subida son los mismos 409 con
   nombre que al registrar, con la clave libre, y sin `WHATSAPP_APP_ID` es 503 `whatsapp.not_configured`, también
   con la clave libre. El Hub espera la puerta 8 con archivo hasta 90 s. El archivo no se guarda en erplora.com.
+- **Puerta 5 con el archivo de la cabecera** (FIX-HUB-WHATSAPP-INBOX-TEMPLATE-HEADER-MEDIA-NOW-STORABLE, WHATSAPP-F06):
+  `template` lleva `header_format` (`IMAGE`, `VIDEO` o `DOCUMENT`) y `header_sample` `{"name", "content_base64"}`
+  cuando la cabecera es un archivo; el cuerpo pesa hasta `MAX_TEMPLATE_BODY_BYTES`, como la puerta 8.
+  `templates.send_sample` lo comprueba como la puerta 8 (tipo por los primeros bytes, topes de Meta) y lo que no casa
+  es 409 `whatsapp.template_invalid` antes de reclamar la clave. Con la clave reclamada, `meta.upload_media` lo sube
+  al número (`POST /<PHONE_NUMBER_ID>/media`, multipart con `messaging_product` y su tipo; Meta lo guarda 30 días) y
+  el mensaje lleva `{"type": "header", "parameters": [{"type": "image|video|document", "<tipo>": {"id"}}]}` (el
+  documento, con `filename`). La subida no envía nada: su rechazo es el mismo 409 con nombre que el del envío y su
+  silencio (o una respuesta sin `id`) es 503 `whatsapp.meta_unreachable`, los dos con la plaza y la clave libres. La
+  misma clave ya enviada no sube ni envía otra vez. El archivo no se guarda en erplora.com.
 - **Puerta 5 y el tope** (FIX-SAAS-WHATSAPP-CAP-REFUSAL-DOES-NOT-PUSH-USAGE, WHATSAPP-F05): el 409
   `whatsapp.cap_reached` no cambia para el Hub, pero ya no deshace la transacción: `whatsapp.message.claim` lo
   devuelve (`refused`, sin la clave: queda libre) y, si el consumo del mes no se había avisado con esa cifra

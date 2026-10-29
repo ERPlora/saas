@@ -176,6 +176,17 @@ def sniff(head: bytes) -> tuple[str, str] | None:
     return None
 
 
+def send_sample(template) -> Sample | None:
+    """The header's file of a template door 5 sends (``schemas.TemplateRef``), checked as door 8's: ``None`` for a
+    header of text or none; ``Invalid`` for a file Meta would refuse."""
+    header_format = template.header_format.strip().upper()
+    if header_format in ("", "TEXT"):
+        return None
+    if header_format not in FILE_HEADERS:
+        raise Invalid("The header is a text, a photo, a video or a document.")
+    return _sample(template.header_sample, header_format)
+
+
 def _sample(raw, header_format: str) -> Sample:
     """The header's file, if it is one Meta takes for ``header_format``."""
     if raw is None or not raw.content_base64:

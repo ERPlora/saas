@@ -671,8 +671,9 @@ class TestHeaderSample:
         assert session.calls.last.request.url.params["file_name"] == "carta.jpg"
 
     def test_the_other_doors_keep_their_256_kb(self, client, number):
-        payload = {"hub": "bar-manolo", "to": "+34600111222", "type": "text", "text": "x" * 300_000}
-        response = door(client, "/internal/whatsapp/send", payload)
+        """Doors 5 and 8 carry a header's file; the rest (door 6 here) keep their 256 KB."""
+        payload = {"hub": "bar-manolo", "phone": "+34600111222", "wa_message_ids": ["x" * 300_000]}
+        response = door(client, "/internal/whatsapp/erase", payload)
 
         assert (response.status_code, error_code(response)) == (413, "payload_too_large")
 

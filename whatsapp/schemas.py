@@ -70,10 +70,24 @@ class RecordOut(Schema):
 # --- Door 5: send ---------------------------------------------------------------------------------------------
 
 
+class HeaderSampleIn(Schema):
+    """The file of a header with a photo, a video or a document, in base64: Meta reviews the template with it (door 8)
+    and the customer receives it (door 5). Its type is read from its bytes (``templates``), never from its name; its
+    size is bounded by the door's body."""
+
+    name: Annotated[str, StringConstraints(strip_whitespace=True, max_length=255)] = ""
+    content_base64: str = ""
+
+
 class TemplateRef(Schema):
+    """Door 5's template: its name, language and the values of its body; a header with a photo, a video or a document
+    carries its file (``header_format`` ``IMAGE``, ``VIDEO`` or ``DOCUMENT`` and ``header_sample``)."""
+
     name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=512)]
     language: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=16)] = "es"
     variables: list[Annotated[str, StringConstraints(max_length=1024)]] = Field(default_factory=list, max_length=100)
+    header_format: Annotated[str, StringConstraints(strip_whitespace=True, max_length=16)] = ""
+    header_sample: HeaderSampleIn | None = None
 
 
 class SendIn(Schema):
@@ -144,14 +158,6 @@ class EraseOut(Schema):
 
 
 # --- Doors 8 and 9: templates ---------------------------------------------------------------------------------
-
-
-class HeaderSampleIn(Schema):
-    """The file of a header with a photo, a video or a document, in base64: Meta reviews the template with it. Its
-    type is read from its bytes (``templates.check``), never from its name; its size is bounded by the door's body."""
-
-    name: Annotated[str, StringConstraints(strip_whitespace=True, max_length=255)] = ""
-    content_base64: str = ""
 
 
 class TemplateIn(Schema):

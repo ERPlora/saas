@@ -11,7 +11,11 @@ Meta (``meta``) and to the Hub (``hub_client``), so that no transaction waits fo
   in its snapshot (once per figure, WHATSAPP-F05).
   Meta's refusal frees the place and the key; no answer keeps both (``unknown``: the same key sends again only after
   ``services.IN_FLIGHT``); a 2xx without Meta's id is sent for good, never again (saas#2653). Meta's 190 (the
-  permission expired or withdrawn) is ``whatsapp.reconnect_needed`` and marks the number «needs reconnecting»;
+  permission expired or withdrawn) is ``whatsapp.reconnect_needed`` and marks the number «needs reconnecting». A
+  template whose header is a photo, a video or a document carries its file (``templates.send_sample``: 409
+  ``whatsapp.template_invalid`` before the claim when Meta would refuse it); after the claim it is uploaded to the
+  number (``meta.upload_media``) and the message names its id. The upload sends no message: its refusal or silence
+  frees the place and the key (the same 409 with a name, or 503 ``whatsapp.meta_unreachable``);
 - ``erase``: door 6;
 - ``submit_template``: door 8 (WHATSAPP-G15). Meta's rules checked first (``templates.check``, a header's file
   included), then claim (the key) → the header's file to Meta (``meta.upload_sample``), when it has one → Meta →
@@ -144,6 +148,10 @@ def envelope(code: str, message: str) -> dict:
 def send(data: SendIn, key: str) -> tuple[int, dict]:
     ctx = services.platform_context()
     template = data.template
+    try:
+        sample = templates.send_sample(template) if template is not None else None
+    except templates.Invalid as invalid:
+        return 409, envelope("whatsapp.template_invalid", str(invalid))
     claim = services.message_claim(
         ctx,
         SendClaimIn(
@@ -157,11 +165,32 @@ def send(data: SendIn, key: str) -> tuple[int, dict]:
         return _sent(claim.wa_message_id)
     if claim.outcome == "refused":
         return claim.status, envelope(claim.code, claim.message)
+    token = claim.token.get_secret_value()
+    media_id = ""
+    if sample is not None:
+        # Uploading sends no message: whatever happens to it, the place and the key are free and nothing left.
+        try:
+            media_id = meta.upload_media(
+                claim.phone_number_id, token, name=sample.name, mime_type=sample.mime_type, content=sample.content
+            )
+        except meta.MetaRefused as refused:
+            services.message_record(
+                ctx,
+                SendRecordIn(send_id=claim.send_id, outcome="released", needs_reconnect=refused.code == EXPIRED_PERMISSION),
+            )
+            logger.warning("whatsapp.send.upload_refused hub=%s meta_code=%s", data.hub, refused.code)
+            return _refusal(refused)
+        except meta.MetaUnreachable:
+            services.message_record(ctx, SendRecordIn(send_id=claim.send_id, outcome="released"))
+            logger.warning("whatsapp.send.upload_unreachable hub=%s", data.hub)
+            return 503, envelope(
+                "whatsapp.meta_unreachable", "Meta did not take the header's file: nothing left. Retry later."
+            )
     try:
         answer = meta.post(
             f"{claim.phone_number_id}/messages",
-            token=claim.token.get_secret_value(),
-            json=_meta_message(data),
+            token=token,
+            json=_meta_message(data, sample, media_id),
             timeout=meta.SEND_TIMEOUT,
         )
     except meta.MetaRefused as refused:
@@ -195,14 +224,22 @@ def _sent(wa_message_id: str) -> tuple[int, dict]:
     return 200, {"wa_message_id": wa_message_id}
 
 
-def _meta_message(data: SendIn) -> dict:
+def _meta_message(data: SendIn, sample: templates.Sample | None = None, media_id: str = "") -> dict:
+    """Meta's message: a text, or a template with its header's file (uploaded first, by its id) and its values."""
     message = {"messaging_product": "whatsapp", "recipient_type": "individual", "to": data.to.lstrip("+")}
     if data.type == "text":
         return {**message, "type": "text", "text": {"preview_url": False, "body": data.text}}
     template = {"name": data.template.name, "language": {"code": data.template.language}}
+    components = []
+    if sample is not None:
+        kind = data.template.header_format.strip().lower()
+        media = {"id": media_id, **({"filename": sample.name} if kind == "document" else {})}
+        components.append({"type": "header", "parameters": [{"type": kind, kind: media}]})
     if data.template.variables:
         parameters = [{"type": "text", "text": value} for value in data.template.variables]
-        template["components"] = [{"type": "body", "parameters": parameters}]
+        components.append({"type": "body", "parameters": parameters})
+    if components:
+        template["components"] = components
     return {**message, "type": "template", "template": template}
 
 

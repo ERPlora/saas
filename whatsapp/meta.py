@@ -20,6 +20,9 @@ the file's name, length and type, ``Bearer``), then the bytes to that session (`
 ``Authorization: OAuth`` and ``file_offset: 0``), answered ``{"h": <handle>}``. The second address comes from Meta's
 answer, so it is checked to name an upload session and nothing else of Graph before the token follows it.
 
+``upload_media`` puts a file on the business's number (``POST /<PHONE_NUMBER_ID>/media``, multipart with
+``messaging_product`` and its type): its id is what a template message names in its header's parameter.
+
 No credential, no message text and no recipient is ever logged here.
 """
 
@@ -148,6 +151,24 @@ def upload_sample(token: str, *, name: str, mime_type: str, content: bytes) -> s
     if not isinstance(handle, str) or not handle.strip():
         raise MetaUnreachable("Meta took the sample without its handle.", sent=True)
     return handle.strip()
+
+
+def upload_media(phone_number_id: str, token: str, *, name: str, mime_type: str, content: bytes) -> str:
+    """The id of ``content`` uploaded to the business's number (``POST /<PHONE_NUMBER_ID>/media``), for a message to
+    name it (a template's header); Meta keeps it 30 days. ``MetaRefused`` / ``MetaUnreachable`` as any call, the latter
+    also when Meta answers without the id."""
+    answer = _request(
+        "POST",
+        f"{phone_number_id}/media",
+        token=token,
+        data={"messaging_product": "whatsapp", "type": mime_type},
+        files={"file": (name, content, mime_type)},
+        timeout=UPLOAD_TIMEOUT,
+    )
+    media_id = answer.get("id")
+    if not isinstance(media_id, str) or not media_id.strip():
+        raise MetaUnreachable("Meta took the file without its id.", sent=True)
+    return media_id.strip()
 
 
 def _upload_session(upload_id) -> str | None:
