@@ -275,6 +275,20 @@ Va en `panel/` e importa `test` y `expect` de `./fixtures`, no de `@playwright/t
 El idioma del proyecto `panel` es `en-US` sea cual sea el del equipo: las specs leen los textos en
 inglés.
 
+## Sin scroll horizontal
+
+Toda comprobación de «nada se sale por la derecha» de las dos partes (`public` y `panel`) pasa por
+`horizontalOverflow(page)` (`horizontal-overflow.ts`): los píxeles que quedan más allá del borde derecho de su caja, 0 si
+todo cabe. Mide el documento **y la caja de scroll de cada `ion-content`** (la de la página del panel, la del menú
+lateral fijo y la de una hoja abierta), en su shadow root (`part="scroll"`). Ionic fija el `body` a la ventana y cada
+pantalla del panel se desplaza dentro de su `ion-content`, así que una que se sale por la derecha queda cortada ahí y el
+documento nunca crece: mirar solo el documento (`documentElement.scrollWidth` contra la ventana) la daba por buena. Es la
+misma medida que la del Hub (`horizontalOverflow` de su `tests/e2e/helpers.ts`). `panel/horizontal-overflow.spec.ts`
+comprueba que la ve en la página, en el menú, en una hoja y en una página sin Ionic (la web pública).
+`horizontal-overflow.test.ts` (Vitest), sin trinquete: ningún fichero de `tests/e2e` salvo `horizontal-overflow.ts` vuelve
+a medir el documento a mano. `sidewaysScroll(page)` de `panel/fixtures.ts` sigue siendo la sonda que además nombra las
+tablas que se desplazan de lado.
+
 ## Tipos
 
 Playwright solo quita los tipos de una spec al cargarla: no los comprueba. Los comprueba `pnpm typecheck`
