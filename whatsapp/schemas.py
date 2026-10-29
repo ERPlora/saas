@@ -146,16 +146,28 @@ class EraseOut(Schema):
 # --- Doors 8 and 9: templates ---------------------------------------------------------------------------------
 
 
+class HeaderSampleIn(Schema):
+    """The file of a header with a photo, a video or a document, in base64: Meta reviews the template with it. Its
+    type is read from its bytes (``templates.check``), never from its name; its size is bounded by the door's body."""
+
+    name: Annotated[str, StringConstraints(strip_whitespace=True, max_length=255)] = ""
+    content_base64: str = ""
+
+
 class TemplateIn(Schema):
     """Door 8's body: a template to register at Meta (new, or an edit of its ``meta_id``). The fields are loose on
-    purpose: Meta's rules (name, lengths, variables, buttons) are checked by ``templates.check``, which says which
-    one failed in the 409 ``whatsapp.template_invalid`` the Hub shows, instead of a bare 422."""
+    purpose: Meta's rules (name, lengths, variables, buttons, the header's file) are checked by ``templates.check``,
+    which says which one failed in the 409 ``whatsapp.template_invalid`` the Hub shows, instead of a bare 422.
+    ``header_format`` empty is a text header when there is ``header`` (as before it existed); ``IMAGE``, ``VIDEO``
+    and ``DOCUMENT`` come with their ``header_sample``."""
 
     hub: HubRef
     name: Annotated[str, StringConstraints(strip_whitespace=True, max_length=600)]
     language: Annotated[str, StringConstraints(strip_whitespace=True, max_length=32)]
     category: Annotated[str, StringConstraints(strip_whitespace=True, max_length=32)]
+    header_format: Annotated[str, StringConstraints(strip_whitespace=True, max_length=16)] = ""
     header: Annotated[str, StringConstraints(max_length=2000)] = ""
+    header_sample: HeaderSampleIn | None = None
     body: Annotated[str, StringConstraints(max_length=8192)] = ""
     body_examples: list[Annotated[str, StringConstraints(max_length=1024)]] = Field(
         default_factory=list, max_length=100

@@ -12,6 +12,7 @@ Meta is replaced at the HTTP border only (``respx``), with Meta's documented bod
 ``test_templates.py`` and ``test_whatsapp_templates_door.py``.
 """
 
+import base64
 import json
 from datetime import timedelta
 
@@ -22,8 +23,9 @@ from django.utils import timezone
 
 from hubs.models import Hub
 from whatsapp import gateway, queries
+from whatsapp import internal as internal_module
 from whatsapp.models import PhoneNumber, Template, TemplateSubmission
-from whatsapp.tests.conftest import GRAPH
+from whatsapp.tests.conftest import APP_ID, GRAPH
 from whatsapp.tests.test_internal import door, error_code, internal, number  # noqa: F401 - shared fixtures
 
 TEMPLATES = f"{GRAPH}/W/message_templates"
@@ -520,3 +522,217 @@ class TestTheMirror:
 
         assert listed.called
         assert Template.objects.get(hub=business).meta_id == "55"
+
+
+# ── A header with a file (WHATSAPP_INBOX-F29): its sample, uploaded to Meta before the template ─────────────────────
+
+UPLOADS = f"{GRAPH}/{APP_ID}/uploads"
+UPLOAD_ID = "upload:MTphdHRhY2htZW50OjA1"
+UPLOAD = f"{GRAPH}/{UPLOAD_ID}"
+HANDLE = "4::aW1hZ2UvanBlZw==:ARb-sample"
+JPEG = b"\xff\xd8\xff\xe0\x00\x10JFIF\x00" + b"\x00" * 64
+PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
+MP4 = b"\x00\x00\x00\x18ftypmp42" + b"\x00" * 64
+PDF = b"%PDF-1.7\n" + b"\x00" * 64
+MB = 1024 * 1024
+
+
+def sample(content: bytes = JPEG, name: str = "carta.jpg") -> dict:
+    return {"name": name, "content_base64": base64.b64encode(content).decode()}
+
+
+def with_file(header_format: str = "IMAGE", content: bytes = JPEG, name: str = "carta.jpg", **fields) -> dict:
+    return template_body(**{"header": "", "header_format": header_format, "header_sample": sample(content, name), **fields})
+
+
+def uploading(handle: str = HANDLE, upload_id: str = UPLOAD_ID):
+    """Meta's Resumable Upload API: a session on our app, then the bytes, answered with the sample's handle."""
+    session = respx.post(UPLOADS).mock(return_value=httpx.Response(200, json={"id": upload_id}))
+    upload = respx.post(f"{GRAPH}/{upload_id}").mock(return_value=httpx.Response(200, json={"h": handle}))
+    return session, upload
+
+
+@pytest.mark.django_db
+class TestHeaderSample:
+    @respx.mock
+    def test_an_image_header_is_uploaded_to_meta_and_registered_with_its_handle(self, client, number, business):
+        session, upload = uploading()
+        meta = respx.post(TEMPLATES).mock(return_value=httpx.Response(200, json=CREATED))
+
+        response = submit(client, with_file())
+
+        assert (response.status_code, response.json()) == (200, {"meta_id": META_ID, "status": "PENDING"})
+        opened = session.calls.last.request
+        assert dict(opened.url.params) == {"file_name": "carta.jpg", "file_length": str(len(JPEG)), "file_type": "image/jpeg"}
+        assert opened.headers["Authorization"] == "Bearer EAAG-token"
+        sent = upload.calls.last.request
+        assert (sent.headers["Authorization"], sent.headers["file_offset"], sent.content) == ("OAuth EAAG-token", "0", JPEG)
+        assert "EAAG-token" not in str(opened.url) + str(sent.url)
+        components = json.loads(meta.calls.last.request.content)["components"]
+        assert components[0] == {"type": "HEADER", "format": "IMAGE", "example": {"header_handle": [HANDLE]}}
+        row = Template.objects.get(hub=business)
+        assert (row.header_format, row.header) == ("IMAGE", "")
+
+    @pytest.mark.parametrize(
+        ("header_format", "content", "name", "mime"),
+        [
+            ("IMAGE", PNG, "logo.png", "image/png"),
+            ("VIDEO", MP4, "visita.mp4", "video/mp4"),
+            ("DOCUMENT", PDF, "carta.pdf", "application/pdf"),
+        ],
+    )
+    @respx.mock
+    def test_each_kind_goes_with_the_type_its_bytes_say(self, client, number, header_format, content, name, mime):
+        session, _ = uploading()
+        meta = respx.post(TEMPLATES).mock(return_value=httpx.Response(200, json=CREATED))
+
+        response = submit(client, with_file(header_format, content, name))
+
+        assert response.status_code == 200
+        assert session.calls.last.request.url.params["file_type"] == mime
+        header = json.loads(meta.calls.last.request.content)["components"][0]
+        assert (header["format"], header["example"]) == (header_format, {"header_handle": [HANDLE]})
+
+    @respx.mock
+    def test_an_edit_uploads_its_sample_again_for_metas_review(self, client, number, business):
+        mirrored(business, header_format="IMAGE")
+        uploading()
+        edit = respx.post(f"{GRAPH}/{META_ID}").mock(return_value=httpx.Response(200, json={"success": True}))
+
+        response = submit(client, with_file(meta_id=META_ID))
+
+        assert response.status_code == 200
+        header = json.loads(edit.calls.last.request.content)["components"][0]
+        assert header == {"type": "HEADER", "format": "IMAGE", "example": {"header_handle": [HANDLE]}}
+
+    @respx.mock
+    def test_the_same_key_never_uploads_nor_registers_twice(self, client, number):
+        session, upload = uploading()
+        meta = respx.post(TEMPLATES).mock(return_value=httpx.Response(200, json=CREATED))
+
+        first = submit(client, with_file())
+        again = submit(client, with_file())
+
+        assert again.json() == first.json()
+        assert (session.call_count, upload.call_count, meta.call_count) == (1, 1, 1)
+
+    @pytest.mark.parametrize(
+        ("payload", "said"),
+        [
+            (with_file("IMAGE", PDF), "JPEG or PNG"),
+            (with_file("VIDEO", JPEG), "MP4"),
+            (with_file("DOCUMENT", MP4), "PDF"),
+            (with_file("IMAGE", b"GIF89a" + b"\x00" * 64), "JPEG or PNG"),
+            (with_file("IMAGE", JPEG + b"\x00" * (5 * MB)), "5 MB"),
+            (with_file("VIDEO", MP4 + b"\x00" * (16 * MB)), "16 MB"),
+            (template_body(header="", header_format="IMAGE"), "file"),
+            (with_file("IMAGE", header="Tu cita"), "text"),
+            (template_body(header="", header_format="IMAGE", header_sample={"name": "x.jpg", "content_base64": "@@"}), "whole"),
+        ],
+    )
+    def test_a_sample_meta_would_refuse_never_reaches_meta(self, client, number, payload, said):
+        with respx.mock:
+            session = respx.post(UPLOADS)
+            meta = respx.post(TEMPLATES)
+            response = submit(client, payload)
+
+        assert (response.status_code, error_code(response)) == (409, "whatsapp.template_invalid")
+        assert said in response.json()["error"]["message"]
+        assert not session.called and not meta.called
+        assert not TemplateSubmission.objects.exists()
+
+    def test_a_document_of_the_hubs_largest_fits_the_door(self, client, number):
+        """The door takes a body far above the other doors' 256 KB: a 25 MB PDF in base64, and no more."""
+        big = PDF + b"\x00" * (25 * MB - len(PDF))
+        with respx.mock:
+            uploading()
+            respx.post(TEMPLATES).mock(return_value=httpx.Response(200, json=CREATED))
+            assert submit(client, with_file("DOCUMENT", big, "carta.pdf")).status_code == 200
+
+        too_big = submit(client, with_file("DOCUMENT", big + b"\x00", "carta.pdf"), key="another-key")
+        assert (too_big.status_code, error_code(too_big)) == (409, "whatsapp.template_invalid")
+        assert "25 MB" in too_big.json()["error"]["message"]
+
+    def test_a_body_beyond_the_largest_sample_is_refused_unread(self, client, number):
+        response = submit(client, raw=b"{" + b" " * (internal_module.MAX_TEMPLATE_BODY_BYTES + 1) + b"}")
+
+        assert (response.status_code, error_code(response)) == (413, "payload_too_large")
+
+    def test_the_other_doors_keep_their_256_kb(self, client, number):
+        payload = {"hub": "bar-manolo", "to": "+34600111222", "type": "text", "text": "x" * 300_000}
+        response = door(client, "/internal/whatsapp/send", payload)
+
+        assert (response.status_code, error_code(response)) == (413, "payload_too_large")
+
+    @pytest.mark.parametrize("failure", [httpx.ConnectError("refused"), httpx.ReadTimeout("slow")])
+    @respx.mock
+    def test_meta_unreachable_while_uploading_registers_nothing_and_frees_the_key(self, client, number, failure):
+        """gh:hub#2731: Meta not answering is said as Meta's, never as ERPlora's, and nothing is kept."""
+        respx.post(UPLOADS).mock(return_value=httpx.Response(200, json={"id": UPLOAD_ID}))
+        respx.post(UPLOAD).mock(side_effect=failure)
+        meta = respx.post(TEMPLATES)
+
+        response = submit(client, with_file())
+
+        assert (response.status_code, error_code(response)) == (409, "whatsapp.meta_unreachable")
+        assert "Meta" in response.json()["error"]["message"]
+        assert not meta.called
+        assert not Template.objects.exists() and not TemplateSubmission.objects.exists()
+
+    @pytest.mark.parametrize(
+        ("answer", "code"),
+        [
+            (refused(429, 4), "whatsapp.meta_rate_limited"),
+            (refused(400, 100, user_msg="El archivo no es válido."), "whatsapp.template_invalid"),
+            (refused(403, 200, message="Permission denied"), "whatsapp.not_connected"),
+        ],
+    )
+    @respx.mock
+    def test_metas_refusal_of_the_upload_is_the_doors_409(self, client, number, answer, code):
+        respx.post(UPLOADS).mock(return_value=answer)
+        meta = respx.post(TEMPLATES)
+
+        response = submit(client, with_file())
+
+        assert (response.status_code, error_code(response)) == (409, code)
+        assert not meta.called
+        assert not TemplateSubmission.objects.exists()
+
+    @respx.mock
+    def test_an_expired_permission_while_uploading_asks_to_connect_again(self, client, number, business):
+        respx.post(UPLOADS).mock(return_value=refused(401, 190, message="Error validating access token"))
+
+        response = submit(client, with_file())
+
+        assert (response.status_code, error_code(response)) == (409, "whatsapp.reconnect_needed")
+        assert PhoneNumber.objects.get(hub=business).needs_reconnect is True
+
+    @pytest.mark.parametrize("session_answer", [{}, {"id": "upload:x/../../me"}, {"id": "me?fields=id"}, {"id": "upload:a b"}])
+    def test_a_session_meta_did_not_document_is_never_followed_with_the_token(self, client, number, session_answer):
+        with respx.mock(assert_all_called=False) as mock:
+            mock.post(UPLOADS).mock(return_value=httpx.Response(200, json=session_answer))
+            anywhere = mock.route(host="graph.facebook.com", path__regex=r"^/v25\.0/(?!1234567890/uploads).*")
+            response = submit(client, with_file())
+
+        assert (response.status_code, error_code(response)) == (409, "whatsapp.meta_unreachable")
+        assert not anywhere.called
+
+    @respx.mock
+    def test_an_upload_meta_took_without_a_handle_registers_nothing(self, client, number):
+        uploading(handle="")
+        meta = respx.post(TEMPLATES)
+
+        response = submit(client, with_file())
+
+        assert (response.status_code, error_code(response)) == (409, "whatsapp.meta_unreachable")
+        assert not meta.called
+
+    def test_without_metas_app_no_sample_can_be_uploaded(self, client, number, settings):
+        settings.WHATSAPP_APP_ID = ""
+        with respx.mock:
+            session = respx.post(UPLOADS)
+            response = submit(client, with_file())
+
+        assert (response.status_code, error_code(response)) == (503, "whatsapp.not_configured")
+        assert not session.called
+        assert not TemplateSubmission.objects.exists()
