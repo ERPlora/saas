@@ -1,4 +1,4 @@
-"""WHATSAPP-G15, WHATSAPP-G17 · Door 8, ``POST /internal/whatsapp/templates``, and door 9,
+"""WHATSAPP-G15, WHATSAPP-F16, WHATSAPP-G17 · Door 8, ``POST /internal/whatsapp/templates``, and door 9,
 ``POST /internal/whatsapp/templates/delete`` (the Hub's WORKBOOK ``whatsapp_inbox``, «Contrato con el SaaS»), and the
 mirror of Meta's templates the Hub's snapshot carries.
 
