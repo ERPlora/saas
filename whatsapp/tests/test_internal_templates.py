@@ -23,7 +23,6 @@ from django.utils import timezone
 
 from hubs.models import Hub
 from whatsapp import gateway, queries
-from whatsapp import internal as internal_module
 from whatsapp.models import PhoneNumber, Template, TemplateSubmission
 from whatsapp.tests.conftest import APP_ID, GRAPH
 from whatsapp.tests.test_internal import door, error_code, internal, number  # noqa: F401 - shared fixtures
@@ -621,6 +620,7 @@ class TestHeaderSample:
         [
             (with_file("IMAGE", PDF), "JPEG or PNG"),
             (with_file("VIDEO", JPEG), "MP4"),
+            (with_file("VIDEO", b"\x00\x00\x00\x18ftyp3gp4" + b"\x00" * 64, "visita.3gp"), "MP4"),
             (with_file("DOCUMENT", MP4), "PDF"),
             (with_file("IMAGE", b"GIF89a" + b"\x00" * 64), "JPEG or PNG"),
             (with_file("IMAGE", JPEG + b"\x00" * (5 * MB)), "5 MB"),
