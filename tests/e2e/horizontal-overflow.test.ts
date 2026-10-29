@@ -6,7 +6,9 @@
 // document never grows. No ratchet: no file of the e2e but horizontal-overflow.ts measures it.
 // Nor through a name given to the root (`const root = document.documentElement; root.scrollWidth`), nor one `ion-content`
 // by hand (its `getScrollElement()`, `.inner-scroll` or `part="scroll"` and their `scrollWidth`): that copy left out the
-// menu and the sheets (seen by the reviewer of hub#393). Its vertical scroll (`scrollTop`, `scrollHeight`) stays free.
+// menu and the sheets (seen by the reviewer of hub#393). Nor its width destructured (`const { scrollWidth } = document.
+// documentElement`), the root found by its selector or a locator (`page.locator('html')`), or a measure split over lines
+// (seen by the reviewer of saas#153). Its vertical scroll (`scrollTop`, `scrollHeight`) stays free.
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,15 +20,32 @@ const E2E_DIR = dirname(fileURLToPath(import.meta.url));
 /** The file of the one measure. */
 const MEASURE = 'horizontal-overflow.ts';
 
-/** The ways of reading how wide the document is: its root's, its scrolling element's or its body's `scrollWidth`. */
-const DOCUMENT_WIDTH = /\b(?:documentElement|scrollingElement|document\s*\.\s*body)\s*!?\s*\??\.\s*scrollWidth\b/;
+/** The document's root found by its selector: `querySelector('html')`, `'body'` or `':root'`. */
+const ROOT_QUERY = String.raw`querySelector(?:<[^>]*>)?\(\s*['"\x60](?:html|body|:root)['"\x60]\s*\)`;
+
+/** The ways of reading how wide the document is: its root's, its scrolling element's or its body's `scrollWidth`, the root
+ *  found by its selector too. */
+const DOCUMENT_WIDTH = new RegExp(
+  String.raw`\b(?:documentElement|scrollingElement|document\s*\.\s*body|${ROOT_QUERY})\s*!?\s*\??\.\s*scrollWidth\b`,
+);
 
 /** An `ion-content`'s scroll box read right there: `(await content.getScrollElement()).scrollWidth`, `….scrollWidth` of its
  *  `.inner-scroll` or its `part="scroll"`. */
 const SCROLL_BOX_WIDTH = /(?:getScrollElement\(\)|inner-scroll|part~?=["']?scroll)[^;\n]*?\)\s*!?\s*\??\.\s*scrollWidth\b/;
 
-/** The document's root by any of its names (`document.documentElement`, `.scrollingElement`, `.body`). */
-const ROOT = String.raw`document\s*\.\s*(?:documentElement|scrollingElement|body)\s*!?`;
+/** The root found by a locator of Playwright and its width read in the same statement: `page.locator('html').evaluate(
+ *  (html) => html.scrollWidth …)`, `page.$eval('body', …)`. */
+const ROOT_LOCATOR_WIDTH = /(?:\blocator|\$eval|\$)\(\s*['"`](?:html|body|:root)['"`][^;]*\bscrollWidth\b/;
+
+/** The document's root by any of its names (`document.documentElement`, `.scrollingElement`, `.body`, `querySelector('html')`). */
+const ROOT = String.raw`document\s*\.\s*(?:documentElement|scrollingElement|body|${ROOT_QUERY})\s*!?`;
+
+/** `scrollWidth` taken by a destructuring from what follows it: `const { scrollWidth, clientWidth } = …`. */
+const WIDTH_TAKEN = String.raw`\{[^}]*\bscrollWidth\b[^}]*\}\s*=\s*(?:await\s+)?\(?\s*`;
+
+/** The width of the root or of an `ion-content`'s scroll box taken by a destructuring (`= document.documentElement`,
+ *  `= await content.getScrollElement()`). */
+const TAKEN_WIDTH = new RegExp(String.raw`${WIDTH_TAKEN}(?:${ROOT}|[^;]*(?:getScrollElement\(|inner-scroll|part~?=["']?scroll))`);
 
 /** A name given to the root (`const root = document.documentElement`, `?? document.body`, `as HTMLElement`). */
 const ROOT_NAME = new RegExp(
@@ -34,18 +53,32 @@ const ROOT_NAME = new RegExp(
 );
 
 /** The names a destructuring of `document` gives to the root (`const { body, documentElement: html } = document`). */
-const ROOT_DESTRUCTURED = /\b(?:const|let|var)\s*\{([^}]*)\}\s*=\s*document\s*[;\n]/;
+const ROOT_DESTRUCTURED = /\b(?:const|let|var)\s*\{([^}]*)\}\s*=\s*document\s*(?:[;,)]|$)/;
 
 /** A name given to an `ion-content`'s scroll box: from its `getScrollElement()`, its `.inner-scroll` or its `part="scroll"`. */
 const SCROLL_BOX_NAME = /\b(?:const|let|var)\s+(\w+)(?:\s*:[^=]+)?\s*=[^;\n]*(?:getScrollElement\(|inner-scroll|part~?=["']?scroll)/;
 
+/**
+ * The statements of `source`, each with the line it starts on: a line that goes on with a chain (`.x`, `?.x`) is joined to
+ * the one before it, so that a measure split over lines (`document.documentElement` and `.scrollWidth` below) reads as one.
+ */
+function statements(source: string): Array<{ line: number; text: string }> {
+  const found: Array<{ line: number; text: string }> = [];
+  source.split('\n').forEach((text, index) => {
+    const last = found.at(-1);
+    if (last && /^\s*\??\.(?!\.)/.test(text)) last.text += text.trim();
+    else found.push({ line: index + 1, text });
+  });
+  return found;
+}
+
 /** The names `source` gives to the document's root or to an `ion-content`'s scroll box. */
 function boxNames(source: string): string[] {
   const names = new Set<string>();
-  for (const line of source.split('\n')) {
-    const named = line.match(ROOT_NAME) ?? line.match(SCROLL_BOX_NAME);
+  for (const { text } of statements(source)) {
+    const named = text.match(ROOT_NAME) ?? text.match(SCROLL_BOX_NAME);
     if (named) names.add(named[1]);
-    for (const entry of line.match(ROOT_DESTRUCTURED)?.[1].split(',') ?? []) {
+    for (const entry of text.match(ROOT_DESTRUCTURED)?.[1].split(',') ?? []) {
       const [key, alias] = entry.split(':').map((part) => part.trim());
       if (/^(?:documentElement|scrollingElement|body)$/.test(key)) names.add(alias || key);
     }
@@ -54,18 +87,15 @@ function boxNames(source: string): string[] {
 }
 
 /**
- * `file:line` of each line of `source` (the file `name`) that measures by hand how wide the document or one `ion-content`
- * is: its `scrollWidth`, read directly or through a name given to it. A vertical read (`scrollTop`, `scrollHeight`) is
- * no such measure.
+ * `file:line` of each statement of `source` (the file `name`) that measures by hand how wide the document or one
+ * `ion-content` is: its `scrollWidth`, read directly, through a name given to it, taken by a destructuring or through a
+ * locator of the root. A vertical read (`scrollTop`, `scrollHeight`) is no such measure.
  */
 function documentMeasures(name: string, source: string): string[] {
-  const names = boxNames(source);
-  const named = names.length ? new RegExp(String.raw`\b(?:${names.join('|')})\s*!?\s*\??\.\s*scrollWidth\b`) : null;
-  return source
-    .split('\n')
-    .flatMap((line, index) =>
-      DOCUMENT_WIDTH.test(line) || SCROLL_BOX_WIDTH.test(line) || named?.test(line) ? [`${name}:${index + 1}`] : [],
-    );
+  const names = boxNames(source).join('|');
+  const named = names ? new RegExp(String.raw`\b(?:${names})\s*!?\s*\??\.\s*scrollWidth\b|${WIDTH_TAKEN}(?:${names})\b`) : null;
+  const measures = [DOCUMENT_WIDTH, SCROLL_BOX_WIDTH, ROOT_LOCATOR_WIDTH, TAKEN_WIDTH, ...(named ? [named] : [])];
+  return statements(source).flatMap(({ line, text }) => (measures.some((measure) => measure.test(text)) ? [`${name}:${line}`] : []));
 }
 
 /** The files of the e2e, `panel/` included (the specs and their helpers, not Vitest's own tests nor the artifacts). */
@@ -135,6 +165,36 @@ describe('the e2e checks for a horizontal scroll go through horizontalOverflow()
     ];
     expect(documentMeasures('b.ts', shadow.join('\n'))).toEqual(['b.ts:2']);
     expect(documentMeasures('b.ts', `return content.shadowRoot?.querySelector('[part~="scroll"]')?.scrollWidth ?? 0;`)).toEqual(['b.ts:1']);
+  });
+
+  it('the count reads the width taken from the root, the root found by its selector or its locator, and a measure split over lines', () => {
+    const copies = [
+      ['const { scrollWidth, clientWidth } = document.documentElement;', 'return scrollWidth - clientWidth;'],
+      ["const html = document.querySelector('html')!;", 'return html.scrollWidth - innerWidth;'],
+      ["return document.querySelector('body')?.scrollWidth ?? 0;"],
+      ["const overflow = await page.locator('html').evaluate((html) => html.scrollWidth - html.clientWidth);"],
+      ["const wide = await page.$eval('body', (body) => body.scrollWidth > innerWidth);"],
+      ['const { scrollWidth } = await content.getScrollElement();'],
+      ['page.evaluate(() =>', '  document.documentElement', '    .scrollWidth - window.innerWidth)'],
+      ['const overflow = await page', "  .locator(':root')", '  .evaluate((root) => root.scrollWidth - root.clientWidth);'],
+    ];
+    expect(copies.map((copy) => documentMeasures('d.ts', copy.join('\n')))).toEqual([
+      ['d.ts:1'],
+      ['d.ts:2'],
+      ['d.ts:1'],
+      ['d.ts:1'],
+      ['d.ts:1'],
+      ['d.ts:1'],
+      ['d.ts:2'],
+      ['d.ts:1'],
+    ]);
+    const none = [
+      ['const { scrollWidth } = table;'],
+      ['const { scrollHeight, clientHeight } = document.documentElement;'],
+      ["await page.locator('body').press('Escape');"],
+      ['const cut = await page', "  .locator('.label')", '  .evaluate((label) => label.scrollWidth > label.clientWidth);'],
+    ];
+    expect(none.map((lines) => documentMeasures('d.ts', lines.join('\n')))).toEqual(none.map(() => []));
   });
 
   it('the count leaves alone the vertical scroll of an ion-content and an element that is only put in the body', () => {
