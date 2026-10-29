@@ -10,6 +10,7 @@ import { join } from 'node:path';
 
 import { type APIRequestContext, type Page, request as playwrightRequest } from '@playwright/test';
 
+import { overflowingBoxes } from '../horizontal-overflow';
 import {
   djangoPrint,
   expect,
@@ -61,18 +62,18 @@ async function ageSignIn(request: APIRequestContext): Promise<void> {
   expect(Number(aged), 'sign-in records aged').toBeGreaterThan(0);
 }
 
-/** What scrolls sideways on the page on screen (Ionic pins `body`: read its `ion-content` and every DataTable). */
+/** What scrolls sideways on the page on screen (Ionic pins `body`: the one measure, `overflowingBoxes`, and every DataTable). */
 async function sidewaysScroll(page: Page): Promise<string[]> {
-  return page.evaluate(() => {
+  const boxes = await overflowingBoxes(page, 1);
+  const tables = await page.evaluate(() => {
     const shown = [...document.querySelectorAll('ion-router-outlet > .ion-page:not(.ion-page-hidden)')].at(-1) ?? document;
     const found: string[] = [];
-    const scroll = shown.querySelector('ion-content')?.shadowRoot?.querySelector<HTMLElement>('.inner-scroll');
-    if (scroll && scroll.scrollWidth > scroll.clientWidth + 1) found.push(`ion-content ${scroll.scrollWidth} > ${scroll.clientWidth}`);
     for (const table of shown.querySelectorAll<HTMLElement>('.data-table__scroll')) {
       if (table.scrollWidth > table.clientWidth + 1) found.push(`data-table ${table.scrollWidth} > ${table.clientWidth}`);
     }
     return found;
   });
+  return [...boxes, ...tables];
 }
 
 test('editing the profile keeps the names after a reload', async ({ page }) => {

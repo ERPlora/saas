@@ -7,7 +7,7 @@
 // put a block wider than any window in each box the helper has to read and expect to see it.
 import type { Locator, Page } from '@playwright/test';
 
-import { horizontalOverflow } from '../horizontal-overflow';
+import { horizontalOverflow, overflowingBoxes } from '../horizontal-overflow';
 import { expect, repeatedTop, settled, shot, test, VIEWPORTS } from './fixtures';
 
 const TASK = 'FIX-HUB-E2E-HORIZONTAL-SCROLL-CHECK-BLIND-TO-ION-CONTENT';
@@ -105,6 +105,25 @@ test.describe('horizontalOverflow: the pixels of the page past the right edge', 
     });
     await settled(page);
     expect(await horizontalOverflow(page), 'the preferences fit once the sheet is gone').toBe(0);
+  });
+
+  test('e2e-overflow: overflowingBoxes() names each box past its right edge, beyond the slack it is given', async ({ signedInPage: page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/dashboard/account/preferences');
+    await expect(page.getByTestId('preferences-hub-alerts')).toBeVisible();
+    await settled(page);
+    expect(await overflowingBoxes(page), 'the preferences fit').toEqual([]);
+    const content = pageContent(page);
+    await widen(content);
+    await settled(page);
+    const box = await boxWidth(content);
+    const named = await overflowingBoxes(page);
+    expect(named, 'the page’s content, named').toHaveLength(1);
+    expect(named[0]).toMatch(new RegExp(`^ion-content \\d+ > ${box}$`));
+    expect(Number(named[0].split(' ')[1]), 'how wide its content is').toBeGreaterThanOrEqual(WIDE);
+    await page.setContent('<!doctype html><body style="margin: 0"><main style="width: 391px">One pixel too wide</main></body>');
+    expect(await overflowingBoxes(page), 'one pixel past the edge').toEqual(['document 391 > 390']);
+    expect(await overflowingBoxes(page, 1), 'one pixel past the edge, with a slack of 1').toEqual([]);
   });
 
   test('e2e-overflow: it still sees a page without Ionic that scrolls sideways, as the public web', async ({ page }) => {

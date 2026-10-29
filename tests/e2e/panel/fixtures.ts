@@ -13,6 +13,7 @@ import { readMailCode, readPasswordResetLink, waitForMail as waitForMailIn } fro
 import { type APIRequestContext, type APIResponse, type BrowserContext, type Page, test as base, expect } from '@playwright/test';
 
 import { djangoEnv } from '../django-env';
+import { overflowingBoxes } from '../horizontal-overflow';
 import { HUB_DOUBLE_PORT, PANEL_MAIL_DIR, VITE_PORT, viteHmrSocket } from './project';
 
 export { expect };
@@ -143,26 +144,23 @@ export async function freezeFrontend(context: BrowserContext): Promise<void> {
 
 /**
  * What scrolls sideways on the page on screen: Ionic pins `body` (its width never grows), so the
- * scroll is read where it happens — the page's `ion-content` scroll box (in its shadow) and every
- * DataTable's own scroll box, which also says so with `data-table__scroll--overflow`. A page that is
- * no Ionic page (Django's admin, a template) scrolls its document: read there (ACCOUNTS-G09).
+ * scroll is read where it happens — the scroll box of every `ion-content` and the document (a page
+ * that is no Ionic page, Django's admin or a template, scrolls its document: ACCOUNTS-G09), by the one
+ * measure (`overflowingBoxes` of ../horizontal-overflow.ts, past 1 px), and every DataTable's own
+ * scroll box of the page, which also says so with `data-table__scroll--overflow`.
  */
 export async function sidewaysScroll(page: Page): Promise<string[]> {
-  return page.evaluate(() => {
-    const ionic = [...document.querySelectorAll('ion-router-outlet > .ion-page:not(.ion-page-hidden)')].at(-1);
-    const shown = ionic ?? document;
+  const boxes = await overflowingBoxes(page, 1);
+  const tables = await page.evaluate(() => {
+    const shown = [...document.querySelectorAll('ion-router-outlet > .ion-page:not(.ion-page-hidden)')].at(-1) ?? document;
     const found: string[] = [];
-    const root = document.documentElement;
-    if (!ionic && root.scrollWidth > root.clientWidth + 1) found.push(`document ${root.scrollWidth} > ${root.clientWidth}`);
-    const content = shown.querySelector('ion-content');
-    const scroll = content?.shadowRoot?.querySelector<HTMLElement>('.inner-scroll');
-    if (scroll && scroll.scrollWidth > scroll.clientWidth + 1) found.push(`ion-content ${scroll.scrollWidth} > ${scroll.clientWidth}`);
     for (const table of shown.querySelectorAll<HTMLElement>('.data-table__scroll')) {
       if (table.scrollWidth > table.clientWidth + 1) found.push(`data-table ${table.scrollWidth} > ${table.clientWidth}`);
       if (table.classList.contains('data-table__scroll--overflow')) found.push('data-table__scroll--overflow');
     }
     return found;
   });
+  return [...boxes, ...tables];
 }
 
 /** How long `settled` waits for the page to stop moving: Ionic's overlays enter in well under a second. */
