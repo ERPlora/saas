@@ -3,14 +3,21 @@
 Meta answers a malformed template with a generic error the business reads as «it did not work», so its rules
 are checked here before the call (``check``), each one refused with a sentence that names what is wrong; the
 Hub shows it as the reason of its 409 ``whatsapp.template_invalid``. Only what the Hub's door 8 can write
-travels: a text header without variables, a body numbered ``{{1}}…{{n}}`` or named ``{{name}}`` with one
-example each, a footer and quick reply, link or call buttons. An authentication template (Meta's one-time
-codes) needs parts this door has no field for, so it is refused by name rather than half-registered.
+travels: a text header without variables or a header with a photo, a video or a document (its sample file), a
+body numbered ``{{1}}…{{n}}`` or named ``{{name}}`` with one example each, a footer and quick reply, link or call
+buttons. An authentication template (Meta's one-time codes) needs parts this door has no field for, so it is
+refused by name rather than half-registered.
+
+A header's file is told by its first bytes, never by its name or a declared type (``sniff``): a JPEG or PNG photo up
+to 5 MB and an MP4 video up to 16 MB, Meta's limits; a PDF document up to 25 MB, the Hub's ceiling for a file it
+keeps (``base.files.MAX_FILE_BYTES``; Meta takes up to 100 MB). Anything else Meta answers with a generic error.
 
 ``mirror`` and ``from_meta`` give a template as the mirror (``models.Template``) keeps it: the one Meta just took,
 and one of Meta's list.
 """
 
+import base64
+import binascii
 import re
 from dataclasses import dataclass, field
 from itertools import pairwise
@@ -37,10 +44,28 @@ MAX_BUTTON_URL = 2000
 CALL_TO_ACTION = ("URL", "PHONE_NUMBER")
 #: A call button's number as Meta takes it: country code first, digits only once spaces are gone.
 PHONE_RE = re.compile(r"^\+[1-9]\d{6,14}$")
+MB = 1024 * 1024
+#: The headers that carry a file, and what each takes: the file types a person reads and the largest file.
+FILE_HEADERS = ("IMAGE", "VIDEO", "DOCUMENT")
+SAMPLE_TYPES = {"IMAGE": "JPEG or PNG", "VIDEO": "MP4", "DOCUMENT": "PDF"}
+MAX_SAMPLE = {"IMAGE": 5 * MB, "VIDEO": 16 * MB, "DOCUMENT": 25 * MB}
+#: The heaviest file a header carries (door 8's body is sized for it in base64).
+MAX_SAMPLE_BYTES = max(MAX_SAMPLE.values())
+#: The MP4 brands of an ``ftyp`` box; a 3GPP file shares the box, but Meta's sample must be MP4.
+MP4_BRANDS = (b"isom", b"iso2", b"iso4", b"iso5", b"iso6", b"mp41", b"mp42", b"avc1", b"dash", b"M4V ", b"MSNV")
 
 
 class Invalid(ValueError):
     """The template breaks one of Meta's rules; the message says which, for the business."""
+
+
+@dataclass(frozen=True)
+class Sample:
+    """A header's file as Meta's upload takes it: the name it shows, its type and its bytes."""
+
+    name: str
+    mime_type: str
+    content: bytes
 
 
 @dataclass(frozen=True)
@@ -59,6 +84,9 @@ class Clean:
     named: bool
     #: For a named body: each distinct name, in the order the body first uses it, paired with ``examples``.
     param_names: list[str] = field(default_factory=list)
+    #: ``""``, ``TEXT`` or one of ``FILE_HEADERS``; the file of a file header.
+    header_format: str = ""
+    sample: Sample | None = None
 
 
 def check(template: TemplateIn) -> Clean:
@@ -82,10 +110,20 @@ def check(template: TemplateIn) -> Clean:
     if len(body) > MAX_BODY:
         raise Invalid(f"The text is at most {MAX_BODY} characters.")
     header = template.header.strip()
-    if len(header) > MAX_HEADER:
-        raise Invalid(f"The header is at most {MAX_HEADER} characters.")
-    if PLACEHOLDER_RE.search(header):
-        raise Invalid("The header takes no variables.")
+    header_format = template.header_format.strip().upper()
+    sample = None
+    if header_format in FILE_HEADERS:
+        if header:
+            raise Invalid("A header with a photo, a video or a document has no text.")
+        sample = _sample(template.header_sample, header_format)
+    elif header_format in ("", "TEXT"):
+        if len(header) > MAX_HEADER:
+            raise Invalid(f"The header is at most {MAX_HEADER} characters.")
+        if PLACEHOLDER_RE.search(header):
+            raise Invalid("The header takes no variables.")
+        header_format = "TEXT" if header else ""
+    else:
+        raise Invalid("The header is a text, a photo, a video or a document.")
     footer = template.footer.strip()
     if len(footer) > MAX_FOOTER:
         raise Invalid(f"The footer is at most {MAX_FOOTER} characters.")
@@ -120,7 +158,57 @@ def check(template: TemplateIn) -> Clean:
         variables=count,
         named=bool(names),
         param_names=param_names,
+        header_format=header_format,
+        sample=sample,
     )
+
+
+def sniff(head: bytes) -> tuple[str, str] | None:
+    """The header kind and the type of a file Meta takes as a sample that these first bytes start, or None."""
+    if head.startswith(b"\xff\xd8\xff"):
+        return "IMAGE", "image/jpeg"
+    if head.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "IMAGE", "image/png"
+    if head.startswith(b"%PDF-"):
+        return "DOCUMENT", "application/pdf"
+    if head[4:8] == b"ftyp" and head[8:12] in MP4_BRANDS:
+        return "VIDEO", "video/mp4"
+    return None
+
+
+def send_sample(template) -> Sample | None:
+    """The header's file of a template door 5 sends (``schemas.TemplateRef``), checked as door 8's: ``None`` for a
+    header of text or none; ``Invalid`` for a file Meta would refuse."""
+    header_format = template.header_format.strip().upper()
+    if header_format in ("", "TEXT"):
+        return None
+    if header_format not in FILE_HEADERS:
+        raise Invalid("The header is a text, a photo, a video or a document.")
+    return _sample(template.header_sample, header_format)
+
+
+def _sample(raw, header_format: str) -> Sample:
+    """The header's file, if it is one Meta takes for ``header_format``."""
+    if raw is None or not raw.content_base64:
+        raise Invalid("A header with a photo, a video or a document needs its file.")
+    try:
+        content = base64.b64decode(raw.content_base64, validate=True)
+    except (binascii.Error, ValueError):
+        raise Invalid("The header's file did not arrive whole.") from None
+    kind = sniff(content[:16])
+    types = SAMPLE_TYPES[header_format]
+    if kind is None or kind[0] != header_format:
+        raise Invalid(f"This header takes a {types} file.")
+    limit = MAX_SAMPLE[header_format]
+    if len(content) > limit:
+        raise Invalid(f"The header's {types} file is {limit // MB} MB at most.")
+    return Sample(name=_file_name(raw.name), mime_type=kind[1], content=content)
+
+
+def _file_name(name: str) -> str:
+    """The name Meta shows for the sample: the base name, without a path or control characters."""
+    base = (name or "").replace("\\", "/").rsplit("/", 1)[-1]
+    return "".join(ch for ch in base if ch.isprintable())[:200] or "sample"
 
 
 def _buttons(raw: list[dict]) -> list[dict]:
@@ -160,10 +248,13 @@ def _buttons(raw: list[dict]) -> list[dict]:
     return buttons
 
 
-def components(clean: Clean) -> list[dict]:
-    """The ``components`` Meta documents for a template, with the examples its review asks for."""
+def components(clean: Clean, header_handle: str = "") -> list[dict]:
+    """The ``components`` Meta documents for a template, with the examples its review asks for: a file header's is
+    the ``header_handle`` of its sample, uploaded first (``meta.upload_sample``)."""
     result: list[dict] = []
-    if clean.header:
+    if clean.header_format in FILE_HEADERS:
+        result.append({"type": "HEADER", "format": clean.header_format, "example": {"header_handle": [header_handle]}})
+    elif clean.header:
         result.append({"type": "HEADER", "format": "TEXT", "text": clean.header})
     body: dict = {"type": "BODY", "text": clean.body}
     if clean.named:
@@ -193,7 +284,7 @@ def mirror(clean: Clean, *, meta_id: str, status: str, category: str) -> dict:
         "status": parse.hub_verdict(status) or "PENDING",
         "rejected_reason": "",
         "meta_id": meta_id,
-        "header_format": "TEXT" if clean.header else "",
+        "header_format": clean.header_format,
         "header": clean.header,
         "body": clean.body,
         "body_examples": clean.examples,

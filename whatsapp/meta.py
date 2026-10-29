@@ -14,6 +14,15 @@ How a call ends:
 - ``MetaUnreachable``: no usable answer. ``sent`` is whether the request may have reached Meta (a 5xx, a read
   timeout, a redirect) or certainly did not (no connection).
 
+``upload_sample`` is Meta's Resumable Upload API, the only way a template's header with a photo, a video or a
+document gets the ``header_handle`` its review needs: a session on OUR app (``POST /<WHATSAPP_APP_ID>/uploads`` with
+the file's name, length and type, ``Bearer``), then the bytes to that session (``POST /<upload id>`` with
+``Authorization: OAuth`` and ``file_offset: 0``), answered ``{"h": <handle>}``. The second address comes from Meta's
+answer, so it is checked to name an upload session and nothing else of Graph before the token follows it.
+
+``upload_media`` puts a file on the business's number (``POST /<PHONE_NUMBER_ID>/media``, multipart with
+``messaging_product`` and its type): its id is what a template message names in its header's parameter.
+
 No credential, no message text and no recipient is ever logged here.
 """
 
@@ -30,6 +39,8 @@ from django.urls import reverse
 
 TIMEOUT = httpx.Timeout(15.0, connect=5.0)
 SEND_TIMEOUT = httpx.Timeout(30.0, connect=5.0)
+#: A header's sample, up to 25 MB, to Meta: with the session and the template, within the Hub's 90 s for door 8.
+UPLOAD_TIMEOUT = httpx.Timeout(60.0, connect=5.0)
 GRAPH_HOST = "graph.facebook.com"
 #: The hosts Meta serves attachments from: its media links point there, nowhere else.
 MEDIA_HOST_SUFFIXES = (".fbsbx.com", ".facebook.com", ".fbcdn.net", ".whatsapp.net")
@@ -115,6 +126,62 @@ def delete(path: str, *, token: str, params: dict | None = None) -> dict:
     return _request("DELETE", path, token=token, params=params)
 
 
+def upload_sample(token: str, *, name: str, mime_type: str, content: bytes) -> str:
+    """The ``header_handle`` of ``content`` uploaded to Meta as a template's header sample (``NotConfigured`` without
+    Meta's app; ``MetaRefused`` / ``MetaUnreachable`` as any call, the latter also when Meta answers without what its
+    documentation says)."""
+    app = str(getattr(settings, "WHATSAPP_APP_ID", "") or "").strip()
+    if not app:
+        raise NotConfigured("WHATSAPP_APP_ID is not set.")
+    query = {"file_name": name, "file_length": len(content), "file_type": mime_type}
+    session = _request("POST", f"{app}/uploads", token=token, params=query)
+    upload = _upload_session(session.get("id"))
+    if upload is None:
+        raise MetaUnreachable("Meta's upload session is not the documented one.", sent=True)
+    answer = _request(
+        "POST",
+        upload,
+        token=token,
+        scheme="OAuth",
+        content=content,
+        headers={"file_offset": "0", "Content-Type": "application/octet-stream"},
+        timeout=UPLOAD_TIMEOUT,
+    )
+    handle = answer.get("h")
+    if not isinstance(handle, str) or not handle.strip():
+        raise MetaUnreachable("Meta took the sample without its handle.", sent=True)
+    return handle.strip()
+
+
+def upload_media(phone_number_id: str, token: str, *, name: str, mime_type: str, content: bytes) -> str:
+    """The id of ``content`` uploaded to the business's number (``POST /<PHONE_NUMBER_ID>/media``), for a message to
+    name it (a template's header); Meta keeps it 30 days. ``MetaRefused`` / ``MetaUnreachable`` as any call, the latter
+    also when Meta answers without the id."""
+    answer = _request(
+        "POST",
+        f"{phone_number_id}/media",
+        token=token,
+        data={"messaging_product": "whatsapp", "type": mime_type},
+        files={"file": (name, content, mime_type)},
+        timeout=UPLOAD_TIMEOUT,
+    )
+    media_id = answer.get("id")
+    if not isinstance(media_id, str) or not media_id.strip():
+        raise MetaUnreachable("Meta took the file without its id.", sent=True)
+    return media_id.strip()
+
+
+def _upload_session(upload_id) -> str | None:
+    """The path of the upload's second hop, only if it names a session (``upload:…``, with Meta's own ``?sig=``) and
+    cannot walk to another node of Graph with the business's token (``upload:x/../../me``) or break the request."""
+    if not isinstance(upload_id, str) or not upload_id.startswith("upload:"):
+        return None
+    path = upload_id.split("?", 1)[0]
+    if "/" in path or "\\" in path or "#" in upload_id or any(ch.isspace() for ch in upload_id):
+        return None
+    return upload_id
+
+
 def exchange_token(token: str) -> dict:
     """Meta's long-lived exchange of a business token for a fresh one (``{"access_token", "expires_in"?}``)."""
     app_id, secret = app_credentials()
@@ -154,13 +221,23 @@ def _request(
     json: dict | None = None,
     data: dict | None = None,
     files: dict | None = None,
+    content: bytes | None = None,
+    headers: dict | None = None,
+    scheme: str = "Bearer",
     timeout: httpx.Timeout = TIMEOUT,
 ) -> dict:
-    headers = {"Authorization": f"Bearer {token}"} if token else {}
+    sent = {**(headers or {}), **({"Authorization": f"{scheme} {token}"} if token else {})}
     try:
         with httpx.Client(timeout=timeout, follow_redirects=False) as client:
             response = client.request(
-                method, graph_url(path), params=params, json=json, data=data, files=files, headers=headers
+                method,
+                graph_url(path),
+                params=params,
+                json=json,
+                data=data,
+                files=files,
+                content=content,
+                headers=sent,
             )
     except (httpx.ConnectError, httpx.ConnectTimeout, httpx.PoolTimeout) as error:
         raise MetaUnreachable(f"Meta could not be reached: {type(error).__name__}.", sent=False) from None

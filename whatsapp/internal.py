@@ -10,7 +10,8 @@ codes and answers.
 
 Every door: 401 ``unauthorized`` (unsigned, stale or another secret; decided by the headers before the body is
 read when they already rule it out), 405 ``method_not_allowed``, 413 ``payload_too_large`` (over
-``MAX_BODY_BYTES``), 422 ``invalid_payload`` (not JSON or not the contract, with the failing ``fields``), 404
+``MAX_BODY_BYTES``; doors 5 and 8, which carry a header's file, over ``MAX_TEMPLATE_BODY_BYTES``), 422
+``invalid_payload`` (not JSON or not the contract, with the failing ``fields``), 404
 ``hub_unknown`` (``hub`` names no business the SaaS knows, a demo included: saas#2599). The rest of each answer is
 the door's (``gateway``).
 """
@@ -29,11 +30,14 @@ from pydantic import BaseModel, ValidationError
 from accounts.signing import live_secrets, may_be_signed, verify_signed
 from whatsapp import gateway
 from whatsapp.schemas import ConfigIn, ConnectIn, DisconnectIn, EraseIn, SendIn, TemplateDeleteIn, TemplateIn
+from whatsapp.templates import MAX_SAMPLE_BYTES
 
 logger = logging.getLogger(__name__)
 
 #: The largest body a door reads: a template with its examples and buttons fits many times over.
 MAX_BODY_BYTES = 256 * 1024
+#: Doors 5 and 8's: a template and the heaviest file of a header (``templates.MAX_SAMPLE_BYTES``) in base64.
+MAX_TEMPLATE_BODY_BYTES = MAX_BODY_BYTES + 4 * -(-MAX_SAMPLE_BYTES // 3)
 IDEMPOTENCY_HEADER = "Idempotency-Key"
 MAX_KEY_LENGTH = 255
 
@@ -51,16 +55,16 @@ class _Refused(Exception):
         return response
 
 
-def _door(schema: type[BaseModel], *, keyed: bool = False):
-    """A signed door reading ``schema`` (and the ``Idempotency-Key`` when ``keyed``) and answering ``answer``'s
-    ``(status, body)``; an operation's refusal is its envelope."""
+def _door(schema: type[BaseModel], *, keyed: bool = False, max_bytes: int = MAX_BODY_BYTES):
+    """A signed door reading ``schema`` (and the ``Idempotency-Key`` when ``keyed``) from a body of ``max_bytes`` at
+    most and answering ``answer``'s ``(status, body)``; an operation's refusal is its envelope."""
 
     def decorate(answer):
         @csrf_exempt
         @never_cache
         def view(request: HttpRequest) -> JsonResponse:
             try:
-                data = _body(request, schema)
+                data = _body(request, schema, max_bytes)
                 args = (data, _key(request)) if keyed else (data,)
                 status, body = answer(*args)
             except _Refused as refused:
@@ -76,22 +80,22 @@ def _door(schema: type[BaseModel], *, keyed: bool = False):
     return decorate
 
 
-def _body(request: HttpRequest, schema: type[BaseModel]) -> BaseModel:
+def _body(request: HttpRequest, schema: type[BaseModel], max_bytes: int) -> BaseModel:
     if request.method != "POST":
         raise _Refused(405, "method_not_allowed", "Only POST is allowed.")
     try:
         declared = int(request.META.get("CONTENT_LENGTH") or 0)
     except ValueError:
         declared = 0
-    if declared > MAX_BODY_BYTES:
-        raise _too_large()
+    if declared > max_bytes:
+        raise _too_large(max_bytes)
     now = int(time.time())
     max_age = settings.INTERNAL_SIGNATURE_MAX_AGE_SECONDS
     if not may_be_signed(request.headers, now=now, max_age=max_age):
         raise _unauthorized(request)
-    raw = request.read(MAX_BODY_BYTES + 1)
-    if len(raw) > MAX_BODY_BYTES:
-        raise _too_large()
+    raw = request.read(max_bytes + 1)
+    if len(raw) > max_bytes:
+        raise _too_large(max_bytes)
     signed = verify_signed(
         request.method, request.get_full_path(), raw, request.headers, secrets=live_secrets(), now=now, max_age=max_age
     )
@@ -128,11 +132,11 @@ def _unauthorized(request: HttpRequest) -> _Refused:
     return _Refused(401, "unauthorized", "Missing, stale or invalid signature.")
 
 
-def _too_large() -> _Refused:
-    return _Refused(413, "payload_too_large", f"The body exceeds {MAX_BODY_BYTES} bytes.")
+def _too_large(max_bytes: int) -> _Refused:
+    return _Refused(413, "payload_too_large", f"The body exceeds {max_bytes} bytes.")
 
 
-@_door(SendIn, keyed=True)
+@_door(SendIn, keyed=True, max_bytes=MAX_TEMPLATE_BODY_BYTES)
 def send(data: SendIn, key: str) -> tuple[int, dict]:
     """Door 5: send a text or a template for the business, once per ``Idempotency-Key``."""
     return gateway.send(data, key)
@@ -144,9 +148,10 @@ def erase(data: EraseIn) -> tuple[int, dict]:
     return gateway.erase(data)
 
 
-@_door(TemplateIn, keyed=True)
+@_door(TemplateIn, keyed=True, max_bytes=MAX_TEMPLATE_BODY_BYTES)
 def templates(data: TemplateIn, key: str) -> tuple[int, dict]:
-    """Door 8: register a template at Meta for the business (new, or an edit of its ``meta_id``), once per key."""
+    """Door 8: register a template at Meta for the business (new, or an edit of its ``meta_id``), once per key; a
+    header's file is uploaded to Meta first."""
     return gateway.submit_template(data, key)
 
 

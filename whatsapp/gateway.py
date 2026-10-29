@@ -11,12 +11,18 @@ Meta (``meta``) and to the Hub (``hub_client``), so that no transaction waits fo
   in its snapshot (once per figure, WHATSAPP-F05).
   Meta's refusal frees the place and the key; no answer keeps both (``unknown``: the same key sends again only after
   ``services.IN_FLIGHT``); a 2xx without Meta's id is sent for good, never again (saas#2653). Meta's 190 (the
-  permission expired or withdrawn) is ``whatsapp.reconnect_needed`` and marks the number «needs reconnecting»;
+  permission expired or withdrawn) is ``whatsapp.reconnect_needed`` and marks the number «needs reconnecting». A
+  template whose header is a photo, a video or a document carries its file (``templates.send_sample``: 409
+  ``whatsapp.template_invalid`` before the claim when Meta would refuse it); after the claim it is uploaded to the
+  number (``meta.upload_media``) and the message names its id. The upload sends no message: its refusal or silence
+  frees the place and the key (the same 409 with a name, or 503 ``whatsapp.meta_unreachable``);
 - ``erase``: door 6;
-- ``submit_template``: door 8 (WHATSAPP-G15). Meta's rules checked first (``templates.check``), then claim (the key)
-  → Meta → record. Meta saying it already has that name in that language (a first call whose answer was lost) adopts
-  its id and edits it. Every «not taken» is a 409 whose key is free to try again (Meta's 190 is
-  ``whatsapp.reconnect_needed`` and marks the number, as in door 5);
+- ``submit_template``: door 8 (WHATSAPP-G15). Meta's rules checked first (``templates.check``, a header's file
+  included), then claim (the key) → the header's file to Meta (``meta.upload_sample``), when it has one → Meta →
+  record. Meta saying it already has that name in that language (a first call whose answer was lost) adopts its id
+  and edits it. Every «not taken» is a 409 whose key is free to try again, the upload's too (Meta's 190 is
+  ``whatsapp.reconnect_needed`` and marks the number, as in door 5); a file header without Meta's app configured
+  is 503 ``whatsapp.not_configured``, its key free again;
 - ``delete_template``: door 9 (WHATSAPP-G17). Only that template in that language, by its id at Meta (the body's,
   the mirror's or Meta's own list's); Meta not having it is the 404 ``whatsapp.template_not_found`` the Hub reads as
   deleted;
@@ -142,6 +148,10 @@ def envelope(code: str, message: str) -> dict:
 def send(data: SendIn, key: str) -> tuple[int, dict]:
     ctx = services.platform_context()
     template = data.template
+    try:
+        sample = templates.send_sample(template) if template is not None else None
+    except templates.Invalid as invalid:
+        return 409, envelope("whatsapp.template_invalid", str(invalid))
     claim = services.message_claim(
         ctx,
         SendClaimIn(
@@ -155,11 +165,32 @@ def send(data: SendIn, key: str) -> tuple[int, dict]:
         return _sent(claim.wa_message_id)
     if claim.outcome == "refused":
         return claim.status, envelope(claim.code, claim.message)
+    token = claim.token.get_secret_value()
+    media_id = ""
+    if sample is not None:
+        # Uploading sends no message: whatever happens to it, the place and the key are free and nothing left.
+        try:
+            media_id = meta.upload_media(
+                claim.phone_number_id, token, name=sample.name, mime_type=sample.mime_type, content=sample.content
+            )
+        except meta.MetaRefused as refused:
+            services.message_record(
+                ctx,
+                SendRecordIn(send_id=claim.send_id, outcome="released", needs_reconnect=refused.code == EXPIRED_PERMISSION),
+            )
+            logger.warning("whatsapp.send.upload_refused hub=%s meta_code=%s", data.hub, refused.code)
+            return _refusal(refused)
+        except meta.MetaUnreachable:
+            services.message_record(ctx, SendRecordIn(send_id=claim.send_id, outcome="released"))
+            logger.warning("whatsapp.send.upload_unreachable hub=%s", data.hub)
+            return 503, envelope(
+                "whatsapp.meta_unreachable", "Meta did not take the header's file: nothing left. Retry later."
+            )
     try:
         answer = meta.post(
             f"{claim.phone_number_id}/messages",
-            token=claim.token.get_secret_value(),
-            json=_meta_message(data),
+            token=token,
+            json=_meta_message(data, sample, media_id),
             timeout=meta.SEND_TIMEOUT,
         )
     except meta.MetaRefused as refused:
@@ -193,14 +224,22 @@ def _sent(wa_message_id: str) -> tuple[int, dict]:
     return 200, {"wa_message_id": wa_message_id}
 
 
-def _meta_message(data: SendIn) -> dict:
+def _meta_message(data: SendIn, sample: templates.Sample | None = None, media_id: str = "") -> dict:
+    """Meta's message: a text, or a template with its header's file (uploaded first, by its id) and its values."""
     message = {"messaging_product": "whatsapp", "recipient_type": "individual", "to": data.to.lstrip("+")}
     if data.type == "text":
         return {**message, "type": "text", "text": {"preview_url": False, "body": data.text}}
     template = {"name": data.template.name, "language": {"code": data.template.language}}
+    components = []
+    if sample is not None:
+        kind = data.template.header_format.strip().lower()
+        media = {"id": media_id, **({"filename": sample.name} if kind == "document" else {})}
+        components.append({"type": "header", "parameters": [{"type": kind, kind: media}]})
     if data.template.variables:
         parameters = [{"type": "text", "text": value} for value in data.template.variables]
-        template["components"] = [{"type": "body", "parameters": parameters}]
+        components.append({"type": "body", "parameters": parameters})
+    if components:
+        template["components"] = components
     return {**message, "type": "template", "template": template}
 
 
@@ -252,10 +291,20 @@ def submit_template(data: TemplateIn, key: str) -> tuple[int, dict]:
     if claim.outcome == "done":
         return 200, {"meta_id": claim.meta_id, "status": claim.status}
     token = claim.token.get_secret_value()
+    released = TemplateRecordIn(submission_id=claim.submission_id, outcome="released")
     try:
-        meta_id, answer = _register(claim.waba_id, token, clean, data.meta_id)
+        handle = _sample_handle(token, clean.sample, data.hub)
+    except meta.NotConfigured:
+        logger.error("whatsapp.template.not_configured hub=%s missing=WHATSAPP_APP_ID", data.hub)
+        services.template_record(ctx, released)
+        return 503, _NOT_CONFIGURED
     except (meta.MetaRefused, meta.MetaUnreachable) as failure:
-        services.template_record(ctx, TemplateRecordIn(submission_id=claim.submission_id, outcome="released"))
+        services.template_record(ctx, released)
+        return _template_failure(failure, claim.hub_id, data.hub, "upload")
+    try:
+        meta_id, answer = _register(claim.waba_id, token, clean, data.meta_id, handle)
+    except (meta.MetaRefused, meta.MetaUnreachable) as failure:
+        services.template_record(ctx, released)
         return _template_failure(failure, claim.hub_id, data.hub, "register")
     mirror = templates.mirror(
         clean, meta_id=meta_id, status=str(answer.get("status") or ""), category=str(answer.get("category") or "")
@@ -264,32 +313,46 @@ def submit_template(data: TemplateIn, key: str) -> tuple[int, dict]:
     return 200, {"meta_id": meta_id, "status": mirror["status"]}
 
 
-def _register(waba_id: str, token: str, clean: templates.Clean, meta_id: str) -> tuple[str, dict]:
+_NOT_CONFIGURED = envelope("whatsapp.not_configured", "WhatsApp is not configured on erplora.com yet.")
+
+
+def _sample_handle(token: str, sample: templates.Sample | None, hub: str) -> str:
+    """The ``header_handle`` of a file header's sample, uploaded to Meta now (Meta asks for it on every edit too);
+    ``""`` for a template without one."""
+    if sample is None:
+        return ""
+    handle = meta.upload_sample(token, name=sample.name, mime_type=sample.mime_type, content=sample.content)
+    logger.info("whatsapp.template.sample_uploaded hub=%s type=%s bytes=%s", hub, sample.mime_type, len(sample.content))
+    return handle
+
+
+def _register(
+    waba_id: str, token: str, clean: templates.Clean, meta_id: str, header_handle: str = ""
+) -> tuple[str, dict]:
     """Create the template at Meta, or edit the one it has (``meta_id``); its id and Meta's answer."""
     if meta_id:
-        return meta_id, _edit(meta_id, token, clean)
+        return meta_id, _edit(meta_id, token, clean, header_handle)
     named = {"parameter_format": "NAMED"} if clean.named else {}
     body = {"name": clean.name, "language": clean.language, "category": clean.category, **named}
+    components = templates.components(clean, header_handle)
     try:
-        answer = meta.post(
-            f"{waba_id}/message_templates", token=token, json={**body, "components": templates.components(clean)}
-        )
+        answer = meta.post(f"{waba_id}/message_templates", token=token, json={**body, "components": components})
     except meta.MetaRefused as refused:
         found = _find(waba_id, token, clean.name, clean.language) if refused.subcode == TEMPLATE_EXISTS else ""
         if not found:
             raise
-        return found, _edit(found, token, clean)
+        return found, _edit(found, token, clean, header_handle)
     found = str(answer.get("id") or "")
     if not found:
         raise meta.MetaUnreachable("Meta took the template without its id.", sent=True)
     return found, answer
 
 
-def _edit(meta_id: str, token: str, clean: templates.Clean) -> dict:
+def _edit(meta_id: str, token: str, clean: templates.Clean, header_handle: str = "") -> dict:
     """An edit goes back through Meta's review: its answer (``{"success": true}``) carries no verdict, so it is
     pending until Meta says otherwise."""
     named = {"parameter_format": "NAMED"} if clean.named else {}
-    body = {"category": clean.category, "components": templates.components(clean), **named}
+    body = {"category": clean.category, "components": templates.components(clean, header_handle), **named}
     meta.post(meta_id, token=token, json=body)
     return {"status": "PENDING"}
 

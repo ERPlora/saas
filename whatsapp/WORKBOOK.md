@@ -114,7 +114,7 @@ estado y su mes; y lo gastado cada mes por negocio.
 | WHATSAPP-F13 | Confirmar a Meta que la dirección de los avisos es nuestra | hecho |
 | WHATSAPP-F14 | Olvidar los mensajes que el Hub ya recogió | hecho |
 | WHATSAPP-F15 | Registrar en Meta una plantilla nueva o editada | hecho |
-| WHATSAPP-F16 | Subir a Meta la muestra de la cabecera de una plantilla | parcial |
+| WHATSAPP-F16 | Subir a Meta la muestra de la cabecera de una plantilla | hecho |
 | WHATSAPP-F17 | Borrar una plantilla en Meta | hecho |
 | WHATSAPP-F18 | Lo que puede hacer el personal de ERPlora | hecho |
 
@@ -198,10 +198,11 @@ Pantalla: Bandeja de WhatsApp (en el Hub)
 Pasos:
 1. En la bandeja, alguien contesta a un cliente o le envía una plantilla aprobada; el Hub lo pasa a erplora.com con una clave propia del envío.
 2. erplora.com reserva la plaza del cupo, lo envía a Meta con el permiso del negocio y devuelve el identificador del mensaje de WhatsApp.
-3. Lo que Meta diga después (entregado, leído, fallido) llega a la bandeja como su estado.
-Entra: a quién, el texto o la plantilla con sus variables, y la clave del envío.
+3. Si la plantilla lleva en la cabecera una foto, un vídeo o un documento, el Hub manda el archivo con ella: erplora.com mira qué es por sus primeros bytes (los mismos tipos y pesos que al registrarla, F16), lo sube al número del negocio en Meta y envía la plantilla con él.
+4. Lo que Meta diga después (entregado, leído, fallido) llega a la bandeja como su estado.
+Entra: a quién, el texto o la plantilla con sus variables (y el archivo de su cabecera, si lo lleva), y la clave del envío.
 Sale: el mensaje enviado por WhatsApp; la clave anotada para no enviarlo dos veces (`whatsapp.message.recorded`).
-Si falla: fuera de las 24 horas desde el último mensaje del cliente, «solo se puede enviar una plantilla»; un cliente que bloqueó al negocio, una plantilla no aprobada o un número sin conectar dicen su motivo y no gastan cupo; si el permiso de Meta caducó o el negocio lo retiró en Meta, no sale ni gasta cupo, se dice que hay que volver a conectar el número (no que está sin conectar) y el número queda «Hay que reconectar» en el Hub; si Meta no contesta, no se sabe si salió: el Hub reintenta con la misma clave y erplora.com nunca lo envía dos veces.
+Si falla: fuera de las 24 horas desde el último mensaje del cliente, «solo se puede enviar una plantilla»; un cliente que bloqueó al negocio, una plantilla no aprobada o un número sin conectar dicen su motivo y no gastan cupo; si el permiso de Meta caducó o el negocio lo retiró en Meta, no sale ni gasta cupo, se dice que hay que volver a conectar el número (no que está sin conectar) y el número queda «Hay que reconectar» en el Hub; si Meta no contesta, no se sabe si salió: el Hub reintenta con la misma clave y erplora.com nunca lo envía dos veces. Un archivo de la cabecera que no es del tipo o pesa de más dice la regla y no llega a Meta; si Meta rechaza el archivo o no contesta al subirlo, el mensaje no sale ni gasta cupo y la misma clave lo vuelve a intentar.
 Implicados: bandeja de WhatsApp del Hub
 
 ### WHATSAPP-F07 Recibir los avisos de Meta y entregarlos al Hub
@@ -323,7 +324,7 @@ Estado: hecho
 Actor: propietario, administrador
 Pantalla: Bandeja de WhatsApp › Ajustes › Plantilla (en el Hub)
 Pasos:
-1. En el Hub, se escribe la plantilla (nombre, idioma, categoría, cabecera, texto con sus variables y un ejemplo de cada una, pie y botones) y se pulsa «Guardar».
+1. En el Hub, se escribe la plantilla (nombre, idioma, categoría, cabecera —de texto, o con una foto, un vídeo o un documento: F16—, texto con sus variables y un ejemplo de cada una, pie y botones) y se pulsa «Guardar».
 2. erplora.com comprueba las reglas de Meta antes de llamarla: nombre en minúsculas, cifras y guiones bajos, variables seguidas o con nombre, un ejemplo por variable, como mucho 10 botones con sus límites.
 3. La registra en Meta (o, si Meta ya la tenía, edita la suya) y el Hub la enseña «En revisión»; el veredicto de Meta llega solo después.
 Entra: la plantilla tal como se escribió y la clave del guardado.
@@ -333,15 +334,21 @@ Implicados: bandeja de WhatsApp del Hub
 
 ### WHATSAPP-F16 Subir a Meta la muestra de la cabecera de una plantilla
 <!-- origen: old-saas:SAAS_WHATSAPP_INBOX-F18 -->
-Estado: parcial — el Hub no ofrece cabeceras con foto, vídeo o documento (se hacen en WhatsApp Manager), así que no hay muestra que subir; las plantillas con esa cabecera hechas en WhatsApp Manager sí se ven en el Hub
+Estado: hecho
 Actor: propietario, administrador
 Pantalla: Bandeja de WhatsApp › Ajustes › Plantilla (en el Hub)
 Pasos:
-1. Una plantilla con cabecera de foto, vídeo o documento se crea en WhatsApp Manager de Meta.
-2. erplora.com la trae con lo que dice Meta de ella y el Hub la enseña con su tipo de cabecera.
-Entra: la plantilla tal como la tiene Meta.
-Sale: su copia en erplora.com y en el Hub.
-Si falla: si Meta no contesta, la lista se queda como estaba hasta la siguiente lectura.
+1. En el Hub, se elige para la cabecera de la plantilla una foto, un vídeo o un documento y se manda a revisión.
+2. erplora.com mira qué es el archivo por sus primeros bytes, nunca por su nombre: una foto JPEG o PNG de hasta 5 MB,
+   un vídeo MP4 de hasta 16 MB o un documento PDF de hasta 25 MB.
+3. Lo sube a Meta como muestra con el permiso del número del negocio y registra la plantilla con ella (F15); en cada
+   cambio de la plantilla la vuelve a subir, porque Meta la pide en cada revisión.
+Entra: el archivo de la cabecera con su nombre, junto a la plantilla y la clave del guardado.
+Sale: la muestra en Meta y la plantilla registrada con su cabecera; erplora.com no se queda con el archivo.
+Si falla: un archivo que no es del tipo de la cabecera, o que pesa más de lo que admite, dice cuál es la regla y no
+llega a Meta; si Meta no contesta, pide esperar o rechaza la muestra, la plantilla no se registra y el mismo guardado
+se puede repetir (si el permiso de Meta caducó, se pide volver a conectar el número, como en F15); el mismo guardado
+repetido no sube la muestra dos veces.
 Implicados: bandeja de WhatsApp del Hub
 
 ### WHATSAPP-F17 Borrar una plantilla en Meta
@@ -408,6 +415,29 @@ Implicados: ninguno
   (`whatsapp_inbox.reconnect_needed` con su propio texto, hub#245). Un adjunto lo abre el navegador de la persona
   (`<img>`, `<audio>` o un enlace), que no lee el código: cualquier 409 es para el Hub un adjunto que no carga, así
   que el código nuevo no cambia lo que pinta.
+- **La muestra de la cabecera** (FIX-HUB-WHATSAPP-INBOX-TEMPLATE-HEADER-MEDIA-NOW-STORABLE, WHATSAPP-F16): la puerta 8
+  lleva `header_format` (vacío o `TEXT`: cabecera de texto, como antes; `IMAGE`, `VIDEO` o `DOCUMENT`) y, con archivo,
+  `header_sample` `{"name", "content_base64"}`. Su cuerpo pesa hasta `MAX_TEMPLATE_BODY_BYTES` (los 256 KB de las otras
+  puertas más 25 MB en base64; por encima, 413 `payload_too_large` sin leerlo). `templates.check` lee el tipo por los
+  primeros bytes (JPEG o PNG hasta 5 MB y MP4 hasta 16 MB, los de Meta; PDF hasta 25 MB, el tope del Hub para un
+  archivo que guarda, `base.files.MAX_FILE_BYTES`, aunque Meta admite 100 MB) y lo que no casa es 409
+  `whatsapp.template_invalid` antes de reclamar la clave. Con la clave reclamada, `meta.upload_sample` hace la
+  *Resumable Upload API* de Meta: la sesión en `/<WHATSAPP_APP_ID>/uploads` (nombre, tamaño y tipo; `Bearer`) y los
+  bytes en `/<upload:…>` (`OAuth`, `file_offset: 0`, hasta 60 s), sin seguir redirecciones; el id de la sesión se
+  comprueba (empieza por `upload:` y no sale de su ruta) antes de mandarle el permiso. El componente `HEADER` va con
+  `example.header_handle`, también al editar. Un rechazo o un silencio de Meta en la subida son los mismos 409 con
+  nombre que al registrar, con la clave libre, y sin `WHATSAPP_APP_ID` es 503 `whatsapp.not_configured`, también
+  con la clave libre. El Hub espera la puerta 8 con archivo hasta 90 s. El archivo no se guarda en erplora.com.
+- **Puerta 5 con el archivo de la cabecera** (FIX-HUB-WHATSAPP-INBOX-TEMPLATE-HEADER-MEDIA-NOW-STORABLE, WHATSAPP-F06):
+  `template` lleva `header_format` (`IMAGE`, `VIDEO` o `DOCUMENT`) y `header_sample` `{"name", "content_base64"}`
+  cuando la cabecera es un archivo; el cuerpo pesa hasta `MAX_TEMPLATE_BODY_BYTES`, como la puerta 8.
+  `templates.send_sample` lo comprueba como la puerta 8 (tipo por los primeros bytes, topes de Meta) y lo que no casa
+  es 409 `whatsapp.template_invalid` antes de reclamar la clave. Con la clave reclamada, `meta.upload_media` lo sube
+  al número (`POST /<PHONE_NUMBER_ID>/media`, multipart con `messaging_product` y su tipo; Meta lo guarda 30 días) y
+  el mensaje lleva `{"type": "header", "parameters": [{"type": "image|video|document", "<tipo>": {"id"}}]}` (el
+  documento, con `filename`). La subida no envía nada: su rechazo es el mismo 409 con nombre que el del envío y su
+  silencio (o una respuesta sin `id`) es 503 `whatsapp.meta_unreachable`, los dos con la plaza y la clave libres. La
+  misma clave ya enviada no sube ni envía otra vez. El archivo no se guarda en erplora.com.
 - **Puerta 5 y el tope** (FIX-SAAS-WHATSAPP-CAP-REFUSAL-DOES-NOT-PUSH-USAGE, WHATSAPP-F05): el 409
   `whatsapp.cap_reached` no cambia para el Hub, pero ya no deshace la transacción: `whatsapp.message.claim` lo
   devuelve (`refused`, sin la clave: queda libre) y, si el consumo del mes no se había avisado con esa cifra
@@ -441,4 +471,4 @@ Implicados: ninguno
 - No deja cambiar a mano el negocio de un número ni activarlo: solo la ventana de Meta conecta un número.
 - No da de baja el número en Meta al desconectarlo: solo quita la app de ERPlora de su cuenta; el número sigue siendo
   del negocio en Meta.
-- No sube muestras de cabecera de plantillas: las plantillas con foto, vídeo o documento se hacen en WhatsApp Manager.
+- No guarda la muestra de la cabecera de una plantilla: la recibe del Hub en cada envío a revisión y solo la sube a Meta.
