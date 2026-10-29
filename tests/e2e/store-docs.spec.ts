@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 
 import type { Page } from '@playwright/test';
 
+import { horizontalOverflow } from './horizontal-overflow';
 import { expect, test } from './public-test';
 
 const APP = 'e2e_store_docs';
@@ -120,7 +121,7 @@ for (const width of [390, 834, 1440]) {
         await page.goto(path);
         await expect(page.locator('h1').first()).toBeVisible();
         if (name === 'docs') await expect(page.locator('pre.mermaid svg')).toBeVisible();
-        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+        const overflow = await horizontalOverflow(page);
         expect(overflow, `${path} (${language}) overflows ${width} px`).toBeLessThanOrEqual(0);
         await page.screenshot({ path: shot(`store-${name}--${language}-${width}`), fullPage: true });
       }

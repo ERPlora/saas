@@ -32,6 +32,7 @@ import { fileURLToPath } from 'node:url';
 import { readMailCode } from '@erplora/ui/testing/mail';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
+import { horizontalOverflow } from '../horizontal-overflow';
 import { OWNER, shot, submitSignInForm, VIEWPORTS } from './fixtures';
 import { WHATSAPP_E2E } from './project';
 
@@ -139,7 +140,7 @@ async function openInbox(page: Page): Promise<void> {
 const shown = (page: Page) => page.locator('.ion-page:not(.ion-page-hidden)').last();
 
 /** No horizontal scroll in the page at its current size. */
-const fits = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
+const fits = async (page: Page) => (await horizontalOverflow(page)) === 0;
 
 /** `target` brought into sight at the page's new size, again if the page painted it anew meanwhile. */
 async function inSight(target: Locator): Promise<void> {
@@ -211,7 +212,7 @@ test('WHATSAPP-G07: a customer’s message, the owner’s reply from the phone a
   for (const viewport of VIEWPORTS) {
     await page.setViewportSize(viewport);
     await expect(reply.locator('[data-testid=whatsapp-inbox-message-status]')).toContainText('Read');
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    expect(await horizontalOverflow(page)).toBe(0);
     await page.screenshot({ path: shot(`APP-WHATSAPP-WHATSAPP-G07-${viewport.width}`) });
   }
 });

@@ -29,6 +29,7 @@ import { fileURLToPath } from 'node:url';
 import { readMailCode } from '@erplora/ui/testing/mail';
 import { type BrowserContext, expect, type Page, test } from '@playwright/test';
 
+import { horizontalOverflow } from '../horizontal-overflow';
 import { OWNER, repeatedTop, settled, shot, submitSignInForm, VIEWPORTS } from './fixtures';
 import { PANEL_URL, WHATSAPP_E2E } from './project';
 
@@ -49,7 +50,7 @@ async function captures(page: Page, name: string, ready: () => Promise<void>): P
     await page.setViewportSize(viewport);
     await ready();
     await settled(page);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    expect(await horizontalOverflow(page)).toBe(0);
     const png = await page.screenshot({ path: shot(`${name}-${viewport.width}`) });
     expect(await repeatedTop(page, png)).toBe(0);
   }

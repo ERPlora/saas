@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { type Page, expect, test } from '@playwright/test';
 
 import { djangoEnv } from './django-env';
+import { horizontalOverflow } from './horizontal-overflow';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SAAS_DIR = resolve(HERE, '..', '..');
@@ -60,7 +61,7 @@ function rendered500(side: 'private' | 'public', language: string): string {
 }
 
 async function sidewaysScroll(page: Page): Promise<number> {
-  return page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  return horizontalOverflow(page);
 }
 
 async function atEverySize(page: Page, key: string, check: () => Promise<void>): Promise<void> {

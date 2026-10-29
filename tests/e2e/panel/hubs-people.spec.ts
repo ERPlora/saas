@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 
 import { type Browser, type Page } from '@playwright/test';
 
+import { horizontalOverflow } from '../horizontal-overflow';
 import {
   apiPost,
   djangoPrint,
@@ -183,7 +184,7 @@ async function paintMail(browser: Browser, key: string, to: string, since: numbe
       const words = line.replace(/\s+/g, ' ').trim();
       if (words) expect(shownText, `${key} at ${size.name} shows «${words}»`).toContain(words);
     }
-    expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1), `${key} scrolls sideways at ${size.name}`).toBe(false);
+    expect(await horizontalOverflow(page), `${key} scrolls sideways at ${size.name}`).toBeLessThanOrEqual(1);
     await page.screenshot({ path: shot(`APP-HUBS-3-${key}-${size.name}`), fullPage: true });
   }
   expect([...new Set(fetched)], `${key} fetches only the logo`).toEqual([LOGO_URL]);
