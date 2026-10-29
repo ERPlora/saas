@@ -287,10 +287,11 @@ misma medida que la del Hub (`horizontalOverflow` de su `tests/e2e/helpers.ts`).
 comprueba que la ve en la página, en el menú, en una hoja y en una página sin Ionic (la web pública).
 `horizontal-overflow.test.ts` (Vitest), sin trinquete: ningún fichero de `tests/e2e` salvo `horizontal-overflow.ts` vuelve
 a medir el documento a mano, ni por un nombre dado a su raíz (`const root = document.documentElement`,
-`document.querySelector('html')`), ni desestructurando su ancho (`const { scrollWidth } = document.documentElement`), ni
+`document.querySelector('html')`, `window.document.documentElement`), ni leyéndolo con `??` o `as` en línea o por un
+`then()`, ni desestructurando su ancho (`const { scrollWidth } = document.documentElement`, también anidado), ni
 con un localizador del raíz (`page.locator('html').evaluate(…)`, `page.$eval('body', …)`), ni partida en varias líneas,
 ni un solo `ion-content` (su `getScrollElement()`, `.inner-scroll` o `part="scroll"` y su `scrollWidth`); su scroll
-vertical (`scrollTop`, `scrollHeight`) sigue libre. `sidewaysScroll(page)` de `panel/fixtures.ts` nombra lo que se desplaza de
+vertical (`scrollTop`, `scrollHeight`) sigue libre. Sus reglas son las del guardarraíl del Hub, línea por línea. `sidewaysScroll(page)` de `panel/fixtures.ts` nombra lo que se desplaza de
 lado con la misma medida (`overflowingBoxes(page, 1)`: `document N > M`, `ion-content N > M`) y, además, las tablas.
 
 ## Tipos
