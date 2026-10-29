@@ -14,6 +14,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { djangoEnv } from '../django-env';
+import { overflowingBoxes } from '../horizontal-overflow';
 import { businessIdOf, expect, panelAccount, qaAccount, repeatedTop, settled, shot, signIn, test, VIEWPORTS, watchPageErrors } from './fixtures';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -81,13 +82,9 @@ function watchStripeRequests(page: Page): string[] {
   return seen;
 }
 
-/** The sideways scroll of the page on screen, read where Ionic scrolls (as viewports.spec.ts). */
+/** The sideways scroll of the page on screen, read where Ionic scrolls (the one measure, `overflowingBoxes`). */
 async function sidewaysScroll(page: Page): Promise<string[]> {
-  return page.evaluate(() => {
-    const shown = [...document.querySelectorAll('ion-router-outlet > .ion-page:not(.ion-page-hidden)')].at(-1) ?? document;
-    const scroll = shown.querySelector('ion-content')?.shadowRoot?.querySelector<HTMLElement>('.inner-scroll');
-    return scroll && scroll.scrollWidth > scroll.clientWidth + 1 ? [`ion-content ${scroll.scrollWidth} > ${scroll.clientWidth}`] : [];
-  });
+  return overflowingBoxes(page, 1);
 }
 
 test.describe('store', () => {

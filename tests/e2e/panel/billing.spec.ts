@@ -22,6 +22,7 @@ import {
   repeatedTop,
   settled,
   shot,
+  sidewaysScroll,
   signIn,
   test,
   VIEWPORTS,
@@ -87,21 +88,6 @@ const banner = (page: Page, name: string) => page.getByTestId('unpaid-group-item
 async function pick(page: Page, testid: string, option: string): Promise<void> {
   await page.getByTestId(testid).click();
   await page.locator('ion-popover ion-radio').filter({ hasText: option }).click();
-}
-
-/** What scrolls sideways on the page on screen (as viewports.spec.ts reads it). */
-async function sidewaysScroll(page: Page): Promise<string[]> {
-  return page.evaluate(() => {
-    const shown = [...document.querySelectorAll('ion-router-outlet > .ion-page:not(.ion-page-hidden)')].at(-1) ?? document;
-    const found: string[] = [];
-    const scroll = shown.querySelector('ion-content')?.shadowRoot?.querySelector<HTMLElement>('.inner-scroll');
-    if (scroll && scroll.scrollWidth > scroll.clientWidth + 1) found.push(`ion-content ${scroll.scrollWidth} > ${scroll.clientWidth}`);
-    for (const table of shown.querySelectorAll<HTMLElement>('.data-table__scroll')) {
-      if (table.scrollWidth > table.clientWidth + 1) found.push(`data-table ${table.scrollWidth} > ${table.clientWidth}`);
-      if (table.classList.contains('data-table__scroll--overflow')) found.push('data-table__scroll--overflow');
-    }
-    return found;
-  });
 }
 
 /**

@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import type { Page } from '@playwright/test';
 
 import { djangoEnv } from './django-env';
+import { horizontalOverflow } from './horizontal-overflow';
 import { PUBLIC_MAIL_DIR } from './playwright.config';
 import { expect, test } from './public-test';
 
@@ -67,7 +68,7 @@ async function captureEverywhere(page: Page, path: string, key: string, ready: (
     await page.setViewportSize(viewport);
     await page.goto(path);
     await ready(page);
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    const overflow = await horizontalOverflow(page);
     expect(overflow, `${path} overflows sideways at ${viewport.width}px`).toBeLessThanOrEqual(0);
     await page.screenshot({ path: join(ARTIFACTS, `APP-PUBLIC-2-${key}-${viewport.width}.png`), fullPage: true });
   }
@@ -244,7 +245,7 @@ test.describe('in Spanish', () => {
       await expect(voice).toContainText('Transcribe a texto el dictado por voz (recibe el audio de la grabación)');
       await expect(voice).toContainText('fuera del Espacio Económico Europeo');
       await expect(page.locator('li', { hasText: 'Dictado por voz:' })).toContainText('Ni tu hub ni ERPlora guardan el audio');
-      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      const overflow = await horizontalOverflow(page);
       expect(overflow, `/legal/privacy/ overflows sideways at ${viewport.width}px`).toBeLessThanOrEqual(0);
       // The whole of section 5, from its heading to the next one.
       await recipients.scrollIntoViewIfNeeded();

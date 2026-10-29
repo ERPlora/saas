@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 
 import type { Page } from '@playwright/test';
 
+import { horizontalOverflow } from './horizontal-overflow';
 import { expect, test } from './public-test';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -78,7 +79,7 @@ test('PUBLIC-G54 PUBLIC-G55 PUBLIC-G56 a press creates the demo, opens it as «D
       [...element.querySelectorAll('[href="/launch"]')].map((link) => (link.textContent ?? '').trim()),
     );
     expect(startFree).toEqual(['Start free']);
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    const overflow = await horizontalOverflow(page);
     expect(overflow, `the running door overflows at ${viewport.width}px`).toBeLessThanOrEqual(0);
     await page.screenshot({ path: join(ARTIFACTS, `APP-PUBLIC-3-PUBLIC-G54-${viewport.width}.png`), fullPage: true });
 

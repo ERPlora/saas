@@ -9,6 +9,7 @@
 // card; only its frame and that it did not fail are asserted here (its variants: launch.spec.ts).
 import { type Page } from '@playwright/test';
 
+import { horizontalOverflow } from '../horizontal-overflow';
 import {
   OWNER,
   VIEWPORTS,
@@ -127,7 +128,7 @@ test('the signed-in fixture opens the launcher at 390, 834 and 1440 px without a
     await page.setViewportSize(viewport);
     await page.goto('/launch');
     await expectLauncher(page);
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    const overflow = await horizontalOverflow(page);
     expect(overflow, `/launch overflows ${viewport.width} px`).toBeLessThanOrEqual(0);
     await page.screenshot({ path: shot(`launcher--${viewport.width}`), fullPage: true });
   }

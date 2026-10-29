@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import type { Page } from '@playwright/test';
 
 import { djangoEnv } from './django-env';
+import { horizontalOverflow } from './horizontal-overflow';
 import { expect, test } from './public-test';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -62,7 +63,7 @@ async function captureEverywhere(page: Page, path: string, key: string, ready: (
     await page.setViewportSize(viewport);
     await page.goto(path);
     await ready(page);
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    const overflow = await horizontalOverflow(page);
     expect(overflow, `${path} overflows sideways at ${viewport.width}px`).toBeLessThanOrEqual(0);
     await page.screenshot({ path: join(ARTIFACTS, `APP-PUBLIC-1-${key}-${viewport.width}.png`), fullPage: true });
   }
