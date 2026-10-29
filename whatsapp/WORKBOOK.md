@@ -425,8 +425,8 @@ Implicados: ninguno
   bytes en `/<upload:…>` (`OAuth`, `file_offset: 0`, hasta 60 s), sin seguir redirecciones; el id de la sesión se
   comprueba (empieza por `upload:` y no sale de su ruta) antes de mandarle el permiso. El componente `HEADER` va con
   `example.header_handle`, también al editar. Un rechazo o un silencio de Meta en la subida son los mismos 409 con
-  nombre que al registrar, con la clave libre; sin `WHATSAPP_APP_ID`, 503 `whatsapp.not_configured` sin reclamarla. El
-  Hub espera la puerta 8 con archivo hasta 90 s. El archivo no se guarda en erplora.com.
+  nombre que al registrar, con la clave libre, y sin `WHATSAPP_APP_ID` es 503 `whatsapp.not_configured`, también
+  con la clave libre. El Hub espera la puerta 8 con archivo hasta 90 s. El archivo no se guarda en erplora.com.
 - **Puerta 5 y el tope** (FIX-SAAS-WHATSAPP-CAP-REFUSAL-DOES-NOT-PUSH-USAGE, WHATSAPP-F05): el 409
   `whatsapp.cap_reached` no cambia para el Hub, pero ya no deshace la transacción: `whatsapp.message.claim` lo
   devuelve (`refused`, sin la clave: queda libre) y, si el consumo del mes no se había avisado con esa cifra

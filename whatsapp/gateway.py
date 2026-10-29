@@ -18,7 +18,7 @@ Meta (``meta``) and to the Hub (``hub_client``), so that no transaction waits fo
   record. Meta saying it already has that name in that language (a first call whose answer was lost) adopts its id
   and edits it. Every «not taken» is a 409 whose key is free to try again, the upload's too (Meta's 190 is
   ``whatsapp.reconnect_needed`` and marks the number, as in door 5); a file header without Meta's app configured
-  is 503 ``whatsapp.not_configured`` before the key is claimed;
+  is 503 ``whatsapp.not_configured``, its key free again;
 - ``delete_template``: door 9 (WHATSAPP-G17). Only that template in that language, by its id at Meta (the body's,
   the mirror's or Meta's own list's); Meta not having it is the 404 ``whatsapp.template_not_found`` the Hub reads as
   deleted;
@@ -249,9 +249,6 @@ def submit_template(data: TemplateIn, key: str) -> tuple[int, dict]:
         clean = templates.check(data)
     except templates.Invalid as invalid:
         return 409, envelope("whatsapp.template_invalid", str(invalid))
-    if clean.sample is not None and not meta.app_id():
-        logger.error("whatsapp.template.not_configured hub=%s missing=WHATSAPP_APP_ID", data.hub)
-        return 503, _NOT_CONFIGURED
     ctx = services.platform_context()
     claim = services.template_claim(ctx, TemplateClaimIn(hub=data.hub, key=key))
     if claim.outcome == "done":
@@ -261,6 +258,7 @@ def submit_template(data: TemplateIn, key: str) -> tuple[int, dict]:
     try:
         handle = _sample_handle(token, clean.sample, data.hub)
     except meta.NotConfigured:
+        logger.error("whatsapp.template.not_configured hub=%s missing=WHATSAPP_APP_ID", data.hub)
         services.template_record(ctx, released)
         return 503, _NOT_CONFIGURED
     except (meta.MetaRefused, meta.MetaUnreachable) as failure:

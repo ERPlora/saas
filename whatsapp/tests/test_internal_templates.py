@@ -654,9 +654,21 @@ class TestHeaderSample:
         assert "25 MB" in too_big.json()["error"]["message"]
 
     def test_a_body_beyond_the_largest_sample_is_refused_unread(self, client, number):
-        response = submit(client, raw=b"{" + b" " * (internal_module.MAX_TEMPLATE_BODY_BYTES + 1) + b"}")
+        """The other doors' 256 KB plus a 25 MB file in base64, and not a byte more."""
+        ceiling = 256 * 1024 + 4 * -(-25 * MB // 3)
+        response = submit(client, raw=b"{" + b" " * (ceiling - 1) + b"}")
 
         assert (response.status_code, error_code(response)) == (413, "payload_too_large")
+
+    def test_metas_sample_is_named_by_the_files_base_name(self, client, number):
+        """A name with a folder or a control character reaches Meta as the bare name of the file."""
+        with respx.mock:
+            session, _ = uploading()
+            respx.post(TEMPLATES).mock(return_value=httpx.Response(200, json=CREATED))
+            response = submit(client, with_file(name="C:\\fotos\\otoño/../carta\x07.jpg"))
+
+        assert response.status_code == 200
+        assert session.calls.last.request.url.params["file_name"] == "carta.jpg"
 
     def test_the_other_doors_keep_their_256_kb(self, client, number):
         payload = {"hub": "bar-manolo", "to": "+34600111222", "type": "text", "text": "x" * 300_000}

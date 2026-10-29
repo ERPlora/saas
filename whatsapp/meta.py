@@ -91,11 +91,6 @@ def app_credentials() -> tuple[str, str]:
     return app_id, secret
 
 
-def app_id() -> str:
-    """The id of Meta's app (``WHATSAPP_APP_ID``), ``""`` when it is not set."""
-    return str(getattr(settings, "WHATSAPP_APP_ID", "") or "").strip()
-
-
 def redirect_uri() -> str:
     """erplora.com's page Meta's window brings its one-time code back to (``WHATSAPP_REDIRECT_URI``): an absolute
     address of this site's ``/whatsapp/return``, https (plain http in development only), with no query nor
@@ -132,7 +127,7 @@ def upload_sample(token: str, *, name: str, mime_type: str, content: bytes) -> s
     """The ``header_handle`` of ``content`` uploaded to Meta as a template's header sample (``NotConfigured`` without
     Meta's app; ``MetaRefused`` / ``MetaUnreachable`` as any call, the latter also when Meta answers without what its
     documentation says)."""
-    app = app_id()
+    app = str(getattr(settings, "WHATSAPP_APP_ID", "") or "").strip()
     if not app:
         raise NotConfigured("WHATSAPP_APP_ID is not set.")
     query = {"file_name": name, "file_length": len(content), "file_type": mime_type}
