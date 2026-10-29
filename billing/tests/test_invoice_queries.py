@@ -14,7 +14,7 @@ platform hub issued it. Dropped: staff downloading any invoice (the admin is whe
 
 import csv
 import io
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -672,16 +672,25 @@ class TestPay:
             self.pay(make_user("other@example.com"), issue(business, 1, status="open"))
 
 
-def test_a_week_old_open_invoice_keeps_its_date(owner, business):
+@pytest.mark.parametrize(
+    ("moment", "billed_on"),
+    [
+        # A week after summer time ends: billed at 00:42 summer time, looked at 23:42 winter time.
+        (datetime(2026, 10, 28, 22, 42, tzinfo=UTC), "2026-10-22"),
+        (datetime(2026, 10, 28, 23, 10, tzinfo=UTC), "2026-10-22"),
+        # A week after it starts: billed at 23:30 winter time, looked at 00:30 summer time.
+        (datetime(2026, 4, 1, 22, 30, tzinfo=UTC), "2026-03-25"),
+    ],
+)
+def test_a_week_old_open_invoice_keeps_its_date(owner, business, monkeypatch, moment, billed_on):
+    """An open invoice is dated the day it was billed in the SaaS's zone (Europe/Madrid), whatever the clock
+    says now: «today minus seven days» is a day off for an hour a night during the week after a clock change
+    (saas#148's CI, 22:42Z on 2026-10-28)."""
+    monkeypatch.setattr(timezone, "now", lambda: moment)
     invoice = issue(business, 1, status="open")
-    Invoice.objects.filter(pk=invoice.pk).update(
-        billed_at=timezone.now() - timedelta(days=7)
-    )
+    Invoice.objects.filter(pk=invoice.pk).update(billed_at=moment - timedelta(days=7))
 
-    assert (
-        listing(owner)["rows"][0]["date"]
-        == (timezone.localdate() - timedelta(days=7)).isoformat()
-    )
+    assert listing(owner)["rows"][0]["date"] == billed_on
 
 
 class TestAnApiKey:
