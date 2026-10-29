@@ -8,10 +8,14 @@ adjuntos. **Sin pantallas en el panel** (PLAN-SAAS, bloque 12): la bandeja y sus
 (`WHATSAPP-Fnn`). Porte de `ERPlora/saas` `apps/whatsapp_inbox/` (`origin/develop`) y del inventario
 `fi:saas/auth-services` (MIGRATION-TASK APP-WHATSAPP, con FIX-SAAS-WHATSAPP-GATEWAY-DOORS).
 
+**Estado: completa (2026-10-30)**: los 18 flujos `hecho` (WHATSAPP-F01…F18; F16, la muestra de la cabecera de una
+plantilla, desde saas#154 + hub#398). Lo decidido al migrarla está en `PLAN-SAAS.md`, ronda «cierre de `whatsapp`».
+
 ## El contrato manda
 
-Las puertas 1–9 son las del `WORKBOOK.md` de `whatsapp_inbox` del Hub, «Contrato con el SaaS», y **no se
-renombran** (el Hub ya está en producción con ellas). Firma de todo `/internal`, en los dos sentidos:
+Las puertas 1–12 son las del `WORKBOOK.md` de `whatsapp_inbox` del Hub, «Contrato con el SaaS», y **no se
+renombran** (el Hub ya está en producción con ellas; las 10–12 nacieron aquí, saas#63, y el Hub las recoge desde
+hub#151). Firma de todo `/internal`, en los dos sentidos:
 `X-Erplora-Timestamp` + `X-Erplora-Signature` = HMAC-SHA256 de `f"{timestamp}.{cuerpo}"` con
 `INTERNAL_SHARED_SECRET` (±300 s; `accounts.signing`, v1 o v2, secreto actual o el previo).
 
@@ -24,11 +28,11 @@ renombran** (el Hub ya está en producción con ellas). Firma de todo `/internal
 | 5 `POST /internal/whatsapp/send` + `Idempotency-Key` | Hub → SaaS | enviar; el 409 `whatsapp.reconnect_needed` (Meta dijo 190: el permiso caducó o se retiró; el número queda «Hay que reconectar»), distinto de `not_connected`, ya en el contrato del Hub; una plantilla con foto, vídeo o documento en la cabecera lleva su archivo (`header_format` + `header_sample`), que se sube al número (`meta.upload_media`) antes de enviarla; el 409 `whatsapp.cap_reached` no cambia, pero empuja la foto con el consumo real del mes si no se había avisado esa cifra (WHATSAPP-F05; `WORKBOOK.md`, «Para quien lo mantiene») | `internal.send` → `gateway.send` |
 | 6 `POST /internal/whatsapp/erase` | Hub → SaaS | olvidar un número de cliente | `gateway.erase` |
 | 7 | — | envío de estados (obligación de la 2) | el webhook los aparca y `deliver` los empuja |
-| 8 `POST /internal/whatsapp/templates` + `Idempotency-Key` | Hub → SaaS | registrar una plantilla (con una cabecera de foto, vídeo o documento, su muestra en base64, que se sube antes a Meta: cuerpo hasta `MAX_TEMPLATE_BODY_BYTES`, WHATSAPP-F16); a un 190 de Meta, 409 `whatsapp.reconnect_needed` y el número «Hay que reconectar», como en la 5 (el Hub ya lo entiende, hub#245; su lista de 409 de la puerta 8 aún no lo nombra) | `gateway.submit_template` |
+| 8 `POST /internal/whatsapp/templates` + `Idempotency-Key` | Hub → SaaS | registrar una plantilla (con una cabecera de foto, vídeo o documento, su muestra en base64, que se sube antes a Meta: cuerpo hasta `MAX_TEMPLATE_BODY_BYTES`, WHATSAPP-F16); a un 190 de Meta, 409 `whatsapp.reconnect_needed` y el número «Hay que reconectar», como en la 5 (el Hub ya lo entiende, hub#245) | `gateway.submit_template` |
 | 9 `POST /internal/whatsapp/templates/delete` | Hub → SaaS | borrar una plantilla en un idioma; a un 190 de Meta, 409 `whatsapp.reconnect_needed`, como en la 8 | `gateway.delete_template` |
-| 10 `POST /internal/whatsapp/config` | Hub → SaaS | **propuesta**: lo público para abrir la ventana de Meta, con `redirect_uri` (la página de vuelta) | `gateway.config` |
-| 11 `POST /internal/whatsapp/connect` | Hub → SaaS | **propuesta**: conectar el número que dio la ventana | `gateway.connect` |
-| 12 `POST /internal/whatsapp/disconnect` | Hub → SaaS | **propuesta**: desconectar | `gateway.disconnect` |
+| 10 `POST /internal/whatsapp/config` | Hub → SaaS | lo público para abrir la ventana de Meta, con `redirect_uri` (la página de vuelta) | `gateway.config` |
+| 11 `POST /internal/whatsapp/connect` | Hub → SaaS | conectar el número que dio la ventana | `gateway.connect` |
+| 12 `POST /internal/whatsapp/disconnect` | Hub → SaaS | desconectar | `gateway.disconnect` |
 
 Respuestas y códigos de cada puerta: el docstring de `internal.py` (comunes: 401 `unauthorized`, 405, 413, 422
 `invalid_payload` con `fields`, 404 `hub_unknown`, también para una demo) y el de cada función de `gateway.py`.
@@ -87,8 +91,9 @@ Las puertas 10–12 y la página de vuelta de la ventana de Meta (`GET /whatsapp
   (`whatsapp.token.not_configured`) o si un número revienta.
 - `manage.py whatsapp_purge [--days N]`: cada día; N de 1 a 30.
 
-Programarlas y dar los secretos (`WHATSAPP_APP_ID`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`,
-`WHATSAPP_CONFIG_ID`, `FERNET_KEY`, `FERNET_KEY_PREVIOUS`) es del repo de infraestructura.
+Las programa el repo de infraestructura (`aws`, `stacks/prod/scheduler.tf`), que también da los secretos
+(`WHATSAPP_APP_ID`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_CONFIG_ID`, `FERNET_KEY`,
+`FERNET_KEY_PREVIOUS`; `secrets.tf` y `apps.tf`, y los de `pre`, propios, en `pre_data.tf`).
 
 ## Ajustes
 
@@ -102,7 +107,8 @@ Programarlas y dar los secretos (`WHATSAPP_APP_ID`, `WHATSAPP_APP_SECRET`, `WHAT
 
 `TEST_DB_NAME=test_saas_next_<tema> uv run pytest -q whatsapp`. Meta se sustituye solo en la frontera HTTP (`respx`,
 con cuerpos de su documentación y de los tests viejos); el Hub, con su doble HTTP real de `hubs.tests.hub_double`, que
-comprueba la firma. Cada test cita su clave del registro (`WHATSAPP-Gnn`) en el docstring del fichero.
+comprueba la firma. Cada test cita su clave del registro en el docstring del fichero: `WHATSAPP-Gnn` los de antes de
+`promote` y `WHATSAPP-Fnn` los posteriores, con el mismo número.
 
 `tests/test_channel_contract.py` valida la clave `whatsapp` de la foto contra una copia campo a campo de
 `ChannelSyncIn` del Hub: un bloque que no la pase hace que el Hub rechace la foto entera (422), y el empuje lo deja
