@@ -37,8 +37,10 @@ from live.models import OutboxEvent
 from billing.models import VatCheck
 from billing.tests.vies_double import (
     MEMBER_STATE_DOWN,
+    POST,
     VALID,
     no_network,
+    reply,
     vies_answers,
     vies_is_down,
     vies_says,
@@ -505,6 +507,38 @@ class TestTheAdminAction:
 
         assert vies.call_count == 1
         assert VatCheck.objects.count() == 3
+        assert any(
+            message.level == constants.ERROR and "FR40303265045" in message.message
+            for message in _messages(response)
+        )
+
+    def test_the_limit_holds_when_the_minute_turns_between_two_queries(
+        self, admin_client, support, rate_limited, monkeypatch
+    ):
+        """saas#150: the budget's window is fixed (django-ratelimit's, one per key), so a first query in
+        its last second and the next one a second later fall in two windows and both went through. The
+        limit tests must not depend on the second the CI runs them: the limiter's clock stands still in
+        the billing tests (``conftest._rate_limit_clock_stands_still``), whatever the wall clock says."""
+        import time
+
+        from django_ratelimit.core import _get_window
+
+        moment = [_get_window(f"user:{support.pk}", 60)]  # the last second of this window
+        monkeypatch.setattr(time, "time", lambda: float(moment[0]))
+
+        def a_query_that_takes_a_second(*args, **kwargs):
+            moment[0] += 1
+            return reply(**VALID)
+
+        rows = [
+            VatCheck.objects.create(vat_number=n, status=VatCheck.UNAVAILABLE)
+            for n in ("DE812871812", "FR40303265045")
+        ]
+
+        with patch(POST, side_effect=a_query_that_takes_a_second) as vies:
+            response = self._run(admin_client, rows)
+
+        assert vies.call_count == 1
         assert any(
             message.level == constants.ERROR and "FR40303265045" in message.message
             for message in _messages(response)
