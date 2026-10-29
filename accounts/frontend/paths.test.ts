@@ -78,10 +78,14 @@ describe('the code the guardrails search', () => {
 
   it("is every frontend's code, without its comments", () => {
     const files = spelledIn(/(?:)/);
-    const frontends = DIRS.map((dir) => relative(SAAS_DIR, dir));
+    // Written out, not taken from `DIRS`: a frontend dropped from it would leave the guardrails blind to it.
+    const frontends = ['accounts/frontend', 'hubs/frontend', 'billing/frontend', 'fiscal/frontend', 'frontend'];
     expect(frontends.filter((dir) => !files.some((file) => file.startsWith(`${dir}/`)))).toEqual([]);
     expect(files).toEqual(expect.arrayContaining(['frontend/main.ts', 'accounts/frontend/pages/AccountPage.vue']));
     expect(spelledIn(/\/\*[\s\S]*?\*\/|<!--[\s\S]*?-->/)).toEqual([]);
+    // Only the comments go: the code between two of them is still searched.
+    const between = withoutComments(`/* a */ '/launch' /* b */ <!-- c --> '/dashboard' <!-- d -->`);
+    expect([SPELLED.test(between), PANEL_SPELLED.test(between)]).toEqual([true, true]);
   });
 });
 
