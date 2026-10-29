@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:91f97cb2be0e89958770f26353ef5b5bbdfa8fe74c1e055da628550857dd055c -->
+<!-- generated from WORKBOOK.md sha256:36af8d8e4e2b2604eb700ca6fae87dc4e7be65ee2d37e30c1cbf97f2632c96a5 -->
 
 ## What it is for and who it is for
 
@@ -102,7 +102,7 @@ and their month; and what each business used each month.
 | WHATSAPP-F13 | Confirm to Meta that the notices address is ours | done |
 | WHATSAPP-F14 | Forget the messages the Hub already took | done |
 | WHATSAPP-F15 | Register a new or edited template at Meta | done |
-| WHATSAPP-F16 | Upload to Meta the sample of a template's header | partial |
+| WHATSAPP-F16 | Upload to Meta the sample of a template's header | done |
 | WHATSAPP-F17 | Delete a template at Meta | done |
 | WHATSAPP-F18 | What ERPlora staff can do | done |
 
@@ -296,7 +296,7 @@ Status: done
 Actor: owner, admin
 Screen: WhatsApp inbox › Settings › Template (in the Hub)
 Steps:
-1. In the Hub, the template is written (name, language, category, header, text with its variables and an example of each, footer and buttons) and "Save" is tapped.
+1. In the Hub, the template is written (name, language, category, header —a text, or a photo, a video or a document: F16—, text with its variables and an example of each, footer and buttons) and "Save" is tapped.
 2. erplora.com checks Meta's rules before calling it: name in lowercase letters, digits and underscores, variables in sequence or named, one example per variable, at most 10 buttons with their limits.
 3. It registers it at Meta (or, if Meta already had it, edits Meta's) and the Hub shows it "Under review"; Meta's verdict arrives on its own afterwards.
 In: the template as it was written and the key of the save.
@@ -305,15 +305,21 @@ If it fails: a broken rule says which one; Meta refusing it gives its reason for
 Involved: the Hub's WhatsApp inbox
 
 ### WHATSAPP-F16 Upload to Meta the sample of a template's header
-Status: partial — the Hub does not offer headers with a photo, video or document (they are made in WhatsApp Manager), so there is no sample to upload; templates with such a header made in WhatsApp Manager are shown in the Hub
+Status: done
 Actor: owner, admin
 Screen: WhatsApp inbox › Settings › Template (in the Hub)
 Steps:
-1. A template with a photo, video or document header is created in Meta's WhatsApp Manager.
-2. erplora.com brings it with what Meta says about it and the Hub shows it with its header kind.
-In: the template as Meta has it.
-Out: its copy in erplora.com and in the Hub.
-If it fails: if Meta does not answer, the list stays as it was until the next read.
+1. In the Hub, a photo, a video or a document is chosen for the template's header and it is sent for review.
+2. erplora.com tells what the file is by its first bytes, never by its name: a JPEG or PNG photo of up to 5 MB,
+   an MP4 video of up to 16 MB or a PDF document of up to 25 MB.
+3. It uploads it to Meta as the sample with the permission of the business's number and registers the template with
+   it (F15); on every change of the template it uploads it again, because Meta asks for it on every review.
+In: the header's file with its name, together with the template and the key of the save.
+Out: the sample at Meta and the template registered with its header; erplora.com does not keep the file.
+If it fails: a file that is not of the header's kind, or that weighs more than it takes, says which rule it breaks and
+never reaches Meta; if Meta does not answer, asks to wait or refuses the sample, the template is not registered and
+the same save can be repeated (if Meta's permission expired, it asks to connect the number again, as in F15); the same
+save repeated never uploads the sample twice.
 Involved: the Hub's WhatsApp inbox
 
 ### WHATSAPP-F17 Delete a template at Meta
