@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:4051049680a7856e5ef17eea460dac53a1af985a0b4c90caa057e6339a9fdd23 -->
+<!-- generated from WORKBOOK.md sha256:72db404fa23b65e5c20a53f28dd03d0b9da5ef127564b242516712ec7757c9fc -->
 
 ## What it is for and who uses it
 
@@ -291,13 +291,13 @@ Status: done
 Actor: the Hub's assistant of a business
 Screen: none
 Steps:
-1. When the Hub does not need to see the answer as it arrives (a task of the Hub itself, a message that is not painted), it sends the same turn as in ASSISTANT-F12 to the door that answers at once.
+1. When the Hub does not need to see the answer as it arrives (a task of the Hub itself, a message that is not painted), it sends the same turn as in ASSISTANT-F12 to the door that answers at once. That is how the «Ask the assistant» step of one of the business's automations arrives, with nobody in front: one more turn, with nothing that tells it from the chat.
 2. erplora.com does the same as live: it prepares the conversation, takes the message from the allowance, calls the model (or its fallback) and runs its own tools.
 3. It sends back at once the whole answer, the tools the business has to run with their continuation pass, the consumption and the allowance left.
 In: the same as the live turn.
 Out: the whole answer with its consumption, its continuation pass and the allowance left (`assistant.message.claimed`; what it spent, `assistant.usage.recorded`).
-If it fails: the refusals before the model, the same as live; if the provider fails, a gateway error with its reason, whether it is worth repeating and the allowance left, and the message goes back to the allowance if nothing was answered.
-Involved: ASSISTANT-F12, ASSISTANT-F15, ASSISTANT-F18
+If it fails: the refusals before the model, the same as live; if the provider fails, a gateway error with its reason, whether it is worth repeating and the allowance left, and the message goes back to the allowance if nothing was answered. An automation's step spends the same as the chat: its first turn, one message; the turns that answer all its tools (also those that were not made) with their continuation pass, none; if they answer after the pass's 15 minutes (a change that waited for a person's yes), one.
+Involved: ASSISTANT-F12, ASSISTANT-F15, ASSISTANT-F18 and, in the Hub, FLOW-F39
 
 ### ASSISTANT-F14 Use erplora.com's tools and the business's
 Status: partial — the old product's web search and exchange rate between currencies come with the ERP stage; today erplora.com gives the date and the time
