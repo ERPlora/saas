@@ -15,7 +15,7 @@ import httpx
 import pytest
 import respx
 
-from whatsapp.models import Send
+from whatsapp.models import PhoneNumber, Send
 from whatsapp.tests.conftest import GRAPH
 from whatsapp.tests.test_internal import ACCEPTED, PHONE_NUMBER_ID, SEND, error_code, send, used
 from whatsapp.tests.test_internal import internal, number  # noqa: F401 - fixtures
@@ -136,8 +136,10 @@ class TestMetaAndTheUpload:
         response = send(client, with_file())
 
         assert (response.status_code, error_code(response)) == (409, code)
-        assert "Meta" in response.json()["error"]["message"] or "Invalid parameter" in response.json()["error"]["message"]
-        assert not meta.called and used(business) == 0
+        assert "Invalid parameter" in response.json()["error"]["message"], "Meta's own reason, never ERPlora's"
+        assert not meta.called and used(business) == 0 and not Send.objects.exists()
+        # Meta's 190 (the permission expired or withdrawn) marks the number, as a refused send does.
+        assert PhoneNumber.objects.get(pk=number.pk).needs_reconnect is (meta_code == 190)
 
     @pytest.mark.parametrize(
         "failure",
