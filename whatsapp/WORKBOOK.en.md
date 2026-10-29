@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:3d4bf3044c213a1828d37293f88ac6b39ce1c32b482d9ba71b37132f49b698e8 -->
+<!-- generated from WORKBOOK.md sha256:5fc635304f14a60bdf727f1d34714e58d96542464c958cc17e13aa44bd1b60ce -->
 
 ## What it is for and who it is for
 
@@ -60,9 +60,11 @@ connect your number again", with the link to the Hub.
 
 ### Admin: WhatsApp numbers
 erplora.com's admin, only for ERPlora staff. Columns: number, business, the number's id at Meta, WhatsApp Business
-account, active, from the WhatsApp Business app, Meta's permission ("Stored", "Expired" or "Missing"), when the
-permission expires, needs reconnecting and connection date. Filters by active, WhatsApp Business app and needs
-reconnecting; search by number, ids and business. Actions "Disconnect the number" and "Read Meta's templates again".
+account, active, from the WhatsApp Business app, Meta's permission ("Stored: this number can send and receive.",
+"Expired: the business has to connect the number again." or "Missing: the business has to connect the number
+again."), when the permission expires, needs reconnecting and connection date. Filters by active, WhatsApp Business
+app and needs reconnecting; search by number, ids and business. Actions "Disconnect the number" and "Read Meta's
+templates again".
 
 ### Admin: WhatsApp deliveries to the Hub
 What was received from Meta for each business: message id, kind ("Message" or "Delivery status"), business,
@@ -79,9 +81,9 @@ and their month; and what each business used each month.
 |---|---|
 | Loading | In the Hub, the inbox; in the admin, the normal loading of a list. |
 | Empty | In the admin, "0 WhatsApp numbers" and the empty list. |
-| Error | An email that does not go out is retried in the next renewal; in the admin, each action says what it did and what it did not ("Meta could not be read now: the templates stay as they were"). |
+| Error | An email that does not go out is retried in the next renewal; in the admin, each action says what it did and what it did not ("Meta could not be read now: the templates stay as they were."). |
 | Not configured | WhatsApp without Meta's app or without its return page: the Hub does not offer to connect and Meta cannot deliver its notices. |
-| No permission | The admin does not open without the role; the support group only looks, without actions. An attachment of another business says "not available". |
+| No permission | The admin does not open without the role; the support group only looks, without actions. An attachment of another business says it is not available. |
 
 ## Flows
 
@@ -117,7 +119,7 @@ Steps:
 4. "Your number" turns "Connected" with the number and the business's name on WhatsApp.
 In: what Meta's window gives the Hub: a one-time code, the WhatsApp Business account, the chosen number and the portfolio.
 Out: the business's active number with its permission and PIN encrypted; the Hub learns it through its state snapshot (`whatsapp.number.connected`).
-If it fails: if Meta gives no code, the Hub receives its reason and nothing is connected; the code only goes back to the business that opened the window: if the window comes with another one, or with none, nothing is handed back and the window says "This window can be closed now.". If Meta refuses a step (the code expired, the PIN does not match, the subscription is not accepted) nothing is saved and Meta's reason is shown; if the chosen number is not in the account, or the account has several and none was chosen, no other one is connected: it asks to choose; if Meta does not answer, "try again"; without Meta's app configured, WhatsApp is not available. A demo cannot connect any number. If Meta does not give the history, the number stays connected anyway.
+If it fails: if Meta gives no code, the Hub receives its reason and nothing is connected; the code only goes back to the business that opened the window: if the window comes with another one, or with none, nothing is handed back and the window says "This window can be closed now.". If Meta refuses a step (the code expired, the PIN does not match, the subscription is not accepted) nothing is saved and Meta's reason is shown; if the chosen number is not in the account, or the account has several and none was chosen, no other one is connected: it asks to choose; if Meta does not answer, it asks to try again; without Meta's app configured, WhatsApp is not available. A demo cannot connect any number. If Meta does not give the history, the number stays connected anyway.
 Involved: the Hub's WhatsApp inbox (settings)
 
 ### WHATSAPP-F02 Disconnect the number
@@ -156,7 +158,7 @@ Steps:
 3. A business has a single active number; connecting another disconnects the previous one.
 In: what the connection gives.
 Out: the business's number, used by sending, receiving and the templates.
-If it fails: a permission that can no longer be decrypted (the key changed) reads as missing and the number is treated as "not connected"; it is written as an error for the team.
+If it fails: a permission that can no longer be decrypted (the key changed) reads as missing and the number is treated as "Not connected"; it is written as an error for the team.
 Involved: none
 
 ### WHATSAPP-F05 Count the month's messages and stop at the plan's cap
@@ -184,7 +186,7 @@ Steps:
 4. What Meta says afterwards (delivered, read, failed) reaches the inbox as its status.
 In: to whom, the text or the template with its variables (and its header's file, if it has one), and the key of the send.
 Out: the message sent through WhatsApp; the key noted so it is never sent twice (`whatsapp.message.recorded`).
-If it fails: outside the 24 hours since the customer's last message, "only a template can be sent"; a customer who blocked the business, a template not approved or a number not connected say their reason and use no allowance; if Meta's permission expired or the business withdrew it in Meta, nothing goes out nor uses allowance, it says the number has to be connected again (not that it is not connected) and the number shows "Needs reconnecting" in the Hub; if Meta does not answer, it is unknown whether it went out: the Hub retries with the same key and erplora.com never sends it twice. A header file of the wrong type or too heavy says the rule and never reaches Meta; if Meta refuses the file or does not answer while it is uploaded, the message does not go out nor use allowance, and the same key tries again.
+If it fails: outside the 24 hours since the customer's last message, it says WhatsApp only lets you write to them with an approved template; a customer who blocked the business, a template not approved or a number not connected say their reason and use no allowance; if Meta's permission expired or the business withdrew it in Meta, nothing goes out nor uses allowance, it says the number has to be connected again (not that it is not connected) and the number shows "Needs reconnecting" in the Hub; if Meta does not answer, it is unknown whether it went out: the Hub retries with the same key and erplora.com never sends it twice. A header file of the wrong type or too heavy says the rule and never reaches Meta; if Meta refuses the file or does not answer while it is uploaded, the message does not go out nor use allowance, and the same key tries again.
 Involved: the Hub's WhatsApp inbox
 
 ### WHATSAPP-F07 Receive Meta's notices and hand them to the Hub
@@ -198,7 +200,7 @@ Steps:
 4. The status of a message of the business ("Delivered", "Read", "Not delivered") reaches the inbox: that of one sent from the Hub, once erplora.com knows which it is; that of a reply of the owner from the phone, after that reply.
 In: Meta's notices: messages, echoes from the phone, history, delivery statuses and template verdicts.
 Out: the message or the status in the Hub's inbox (`whatsapp.webhook.ingested`, `whatsapp.delivery.recorded`).
-If it fails: a notice without Meta's signature is refused and not kept; one of a number nobody has connected is discarded; the status of a message the Hub does not have is waited for ten minutes and discarded; if the Hub says the message is not valid, it is not retried and stays visible to staff; an attachment of another business, or one Meta no longer has, says "not available"; if, on opening an attachment, Meta's permission expired or the business withdrew it in Meta, the attachment does not open, it says the number has to be connected again (not that it is not connected) and the number shows "Needs reconnecting" in the Hub.
+If it fails: a notice without Meta's signature is refused and not kept; one of a number nobody has connected is discarded; the status of a message the Hub does not have is waited for ten minutes and discarded; if the Hub says the message is not valid, it is not retried and stays visible to staff; an attachment of another business, or one Meta no longer has, says it is not available; if, on opening an attachment, Meta's permission expired or the business withdrew it in Meta, the attachment does not open, it says the number has to be connected again (not that it is not connected) and the number shows "Needs reconnecting" in the Hub.
 Involved: the Hub's WhatsApp inbox
 
 ### WHATSAPP-F08 See the WhatsApp numbers in the admin
@@ -207,7 +209,7 @@ Actor: ERPlora staff
 Screen: Admin: WhatsApp numbers
 Steps:
 1. Open "WhatsApp numbers" in erplora.com's admin.
-2. See each number with its business, its Meta ids, whether it is active, whether it comes from the phone app, whether its permission is "Stored", "Expired" or "Missing", when it expires and whether it needs reconnecting; filter by "needs reconnecting" or search by number or business.
+2. See each number with its business, its Meta ids, whether it is active, whether it comes from the phone app, whether its Meta permission is stored or expired, or missing, when it expires and whether it needs reconnecting; filter by "needs reconnecting" or search by number or business.
 3. Open one to see it whole; nothing is written by hand.
 In: the staff account with its role.
 Out: nothing; it is only looked at.
@@ -247,7 +249,7 @@ Screen: WhatsApp inbox › Settings (in the Hub)
 Steps:
 1. When painting "Your number", the Hub asks erplora.com.
 2. erplora.com answers whether WhatsApp is configured and, if it is, the id of Meta's app, the id of the Embedded Signup configuration, the Meta version it uses and its page Meta brings the code back to; it later exchanges the code with that very page.
-3. Without the app configured, or without a valid return page, it answers "not configured" with the ids empty, and the Hub does not show "Connect WhatsApp".
+3. Without the app configured, or without a valid return page, it answers that it is not configured, with the ids empty, and the Hub does not show "Connect WhatsApp".
 In: the business.
 Out: the app's public ids; the secret and the verification token never go out.
 If it fails: a business erplora.com does not know, or a demo, receives nothing.
@@ -297,9 +299,9 @@ Status: done
 Actor: owner, admin
 Screen: WhatsApp inbox › Settings › Template (in the Hub)
 Steps:
-1. In the Hub, the template is written (name, language, category, header —a text, or a photo, a video or a document: F16—, text with its variables and an example of each, footer and buttons) and "Save" is tapped.
+1. In the Hub, the template is written (name, language, category, header —a text, or a photo, a video or a document: F16—, text with its variables and an example of each, footer and buttons) and "Send to Meta for review" is tapped (when editing it, "Save and send to Meta").
 2. erplora.com checks Meta's rules before calling it: name in lowercase letters, digits and underscores, variables in sequence or named, one example per variable, at most 10 buttons with their limits.
-3. It registers it at Meta (or, if Meta already had it, edits Meta's) and the Hub shows it "Under review"; Meta's verdict arrives on its own afterwards.
+3. It registers it at Meta (or, if Meta already had it, edits Meta's) and the Hub shows it "In review"; Meta's verdict arrives on its own afterwards.
 In: the template as it was written and the key of the save.
 Out: the template at Meta and its copy in erplora.com, which travels to the Hub in the state snapshot (`whatsapp.template.registered`).
 If it fails: a broken rule says which one; Meta refusing it gives its reason for the person; if Meta's permission expired or the business withdrew it in Meta, it is not registered, it says the number has to be connected again (not that it is not connected) and the number shows "Needs reconnecting" in the Hub; if Meta does not answer or asks to wait, nothing is saved and it can be retried; the same save repeated is never registered twice.

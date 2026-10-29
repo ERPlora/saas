@@ -1,7 +1,7 @@
 # Workbook — WhatsApp (whatsapp)
 Prefijo: WHATSAPP
 Alcance MVP: fase 1 (la cuenta de WhatsApp Business de cada negocio en erplora.com: su número, los avisos de Meta, los envíos, el cupo del mes y las plantillas, al servicio de la bandeja del Hub)
-Estado de la app: en uso
+Estado de la app: completa (2026-10-30)
 
 > Manual de uso y especificación de la app `whatsapp` del SaaS (erplora.com). Cuenta qué hace erplora.com con el
 > WhatsApp de cada negocio: guarda su número y el permiso que Meta le da, recibe los avisos de Meta y los entrega
@@ -70,11 +70,12 @@ los mensajes de los clientes no llegarán al Hub, y «Es un minuto: entra en tu 
 conectar tu número», con el enlace al Hub.
 
 ### Admin: Números de WhatsApp
-Admin de erplora.com, solo para el personal de ERPlora. Columnas: número, negocio, identificador del número en
-Meta, cuenta de WhatsApp Business, activo, desde la app WhatsApp Business, permiso de Meta («Guardado», «Caducado»
-o «Falta»), caducidad del permiso, hay que reconectar y fecha de conexión. Filtros por activo, app WhatsApp
-Business y hay que reconectar; búsqueda por número, identificadores y negocio. Acciones «Desconectar el número» y
-«Volver a leer las plantillas de Meta».
+Admin de erplora.com, solo para el personal de ERPlora. Columnas: número, negocio, identificador del número en Meta,
+cuenta de WhatsApp Business, activo, desde la app WhatsApp Business, permiso de Meta («Guardado: este número puede
+enviar y recibir.», «Caducado: el negocio tiene que volver a conectar el número.» o «Falta: el negocio tiene que
+volver a conectar el número.»), caducidad del permiso, hay que reconectar y fecha de conexión. Filtros por activo,
+app WhatsApp Business y hay que reconectar; búsqueda por número, identificadores y negocio. Acciones «Desconectar el
+número» y «Volver a leer las plantillas de Meta».
 
 ### Admin: Entregas de WhatsApp al Hub
 Lo recibido de Meta para cada negocio: identificador del mensaje, tipo («Mensaje» o «Estado de entrega»), negocio,
@@ -90,10 +91,10 @@ estado y su mes; y lo gastado cada mes por negocio.
 | Estado | Qué ve la persona |
 |---|---|
 | Cargando | En el Hub, la bandeja; en el admin, la carga normal de una lista. |
-| Vacío | En el admin, «0 números de WhatsApp» y la lista vacía. |
-| Error | Un correo que no sale se reintenta en la renovación siguiente; en el admin, cada acción dice qué hizo y qué no («Ahora no se ha podido leer Meta: las plantillas siguen como estaban»). |
+| Vacío | En el admin, «0 Números de WhatsApp» y la lista vacía. |
+| Error | Un correo que no sale se reintenta en la renovación siguiente; en el admin, cada acción dice qué hizo y qué no («Ahora no se ha podido leer Meta: las plantillas siguen como estaban.»). |
 | Sin configurar | WhatsApp sin la app de Meta o sin su página de vuelta: el Hub no ofrece conectar y Meta no puede entregar sus avisos. |
-| Sin permiso | El admin no se abre sin el papel; el grupo de soporte solo mira, sin acciones. Un adjunto de otro negocio dice «no disponible». |
+| Sin permiso | El admin no se abre sin el papel; el grupo de soporte solo mira, sin acciones. Un adjunto de otro negocio dice que no está disponible. |
 
 ## Flujos
 
@@ -130,7 +131,7 @@ Pasos:
 4. «Tu número» pasa a «Conectado» con el número y el nombre del negocio en WhatsApp.
 Entra: lo que la ventana de Meta da al Hub: un código de un solo uso, la cuenta de WhatsApp Business, el número elegido y el portfolio.
 Sale: el número activo del negocio con su permiso y su PIN cifrados; el Hub lo sabe por su foto de estado (`whatsapp.number.connected`).
-Si falla: si Meta no da el código, el Hub recibe su motivo y no se conecta nada; el código solo vuelve al negocio que abrió la ventana: si la ventana llega con otro, o sin ninguno, no se devuelve nada y la ventana dice «Esta ventana ya se puede cerrar.». Si Meta rechaza un paso (el código caducó, el PIN no coincide, la suscripción no se acepta) no se guarda nada y se dice el motivo de Meta; si el número elegido no está en la cuenta, o la cuenta tiene varios y no se eligió ninguno, no se conecta otro: se dice que se elija; si Meta no contesta, «inténtalo de nuevo»; sin la app de Meta configurada, WhatsApp no está disponible. Una demo no puede conectar ningún número. Si Meta no da el historial, el número queda conectado igual.
+Si falla: si Meta no da el código, el Hub recibe su motivo y no se conecta nada; el código solo vuelve al negocio que abrió la ventana: si la ventana llega con otro, o sin ninguno, no se devuelve nada y la ventana dice «Esta ventana ya se puede cerrar.». Si Meta rechaza un paso (el código caducó, el PIN no coincide, la suscripción no se acepta) no se guarda nada y se dice el motivo de Meta; si el número elegido no está en la cuenta, o la cuenta tiene varios y no se eligió ninguno, no se conecta otro: se dice que se elija; si Meta no contesta, se pide intentarlo de nuevo; sin la app de Meta configurada, WhatsApp no está disponible. Una demo no puede conectar ningún número. Si Meta no da el historial, el número queda conectado igual.
 Implicados: bandeja de WhatsApp del Hub (ajustes)
 
 ### WHATSAPP-F02 Desconectar el número
@@ -172,7 +173,7 @@ Pasos:
 3. Un negocio tiene un solo número activo; conectar otro desconecta el anterior.
 Entra: lo que da la conexión.
 Sale: el número del negocio, que usan el envío, la recepción y las plantillas.
-Si falla: un permiso que ya no se puede descifrar (la clave cambió) se lee como que falta y el número se trata como «sin conectar»; queda escrito como error para el equipo.
+Si falla: un permiso que ya no se puede descifrar (la clave cambió) se lee como que falta y el número se trata como «Sin conectar»; queda escrito como error para el equipo.
 Implicados: ninguno
 
 ### WHATSAPP-F05 Llevar la cuenta de los mensajes del mes y parar al llegar al tope del plan
@@ -202,7 +203,7 @@ Pasos:
 4. Lo que Meta diga después (entregado, leído, fallido) llega a la bandeja como su estado.
 Entra: a quién, el texto o la plantilla con sus variables (y el archivo de su cabecera, si lo lleva), y la clave del envío.
 Sale: el mensaje enviado por WhatsApp; la clave anotada para no enviarlo dos veces (`whatsapp.message.recorded`).
-Si falla: fuera de las 24 horas desde el último mensaje del cliente, «solo se puede enviar una plantilla»; un cliente que bloqueó al negocio, una plantilla no aprobada o un número sin conectar dicen su motivo y no gastan cupo; si el permiso de Meta caducó o el negocio lo retiró en Meta, no sale ni gasta cupo, se dice que hay que volver a conectar el número (no que está sin conectar) y el número queda «Hay que reconectar» en el Hub; si Meta no contesta, no se sabe si salió: el Hub reintenta con la misma clave y erplora.com nunca lo envía dos veces. Un archivo de la cabecera que no es del tipo o pesa de más dice la regla y no llega a Meta; si Meta rechaza el archivo o no contesta al subirlo, el mensaje no sale ni gasta cupo y la misma clave lo vuelve a intentar.
+Si falla: fuera de las 24 horas desde el último mensaje del cliente, se dice que WhatsApp solo deja escribirle con una plantilla aprobada; un cliente que bloqueó al negocio, una plantilla no aprobada o un número sin conectar dicen su motivo y no gastan cupo; si el permiso de Meta caducó o el negocio lo retiró en Meta, no sale ni gasta cupo, se dice que hay que volver a conectar el número (no que está sin conectar) y el número queda «Hay que reconectar» en el Hub; si Meta no contesta, no se sabe si salió: el Hub reintenta con la misma clave y erplora.com nunca lo envía dos veces. Un archivo de la cabecera que no es del tipo o pesa de más dice la regla y no llega a Meta; si Meta rechaza el archivo o no contesta al subirlo, el mensaje no sale ni gasta cupo y la misma clave lo vuelve a intentar.
 Implicados: bandeja de WhatsApp del Hub
 
 ### WHATSAPP-F07 Recibir los avisos de Meta y entregarlos al Hub
@@ -217,7 +218,7 @@ Pasos:
 4. El estado de un mensaje del negocio («Entregado», «Leído», «No entregado») llega a la bandeja: el de uno enviado desde el Hub, cuando erplora.com sabe cuál es; el de una respuesta del dueño desde el móvil, después de esa respuesta.
 Entra: los avisos de Meta: mensajes, ecos del móvil, historial, estados de entrega y veredictos de plantillas.
 Sale: el mensaje o el estado en la bandeja del Hub (`whatsapp.webhook.ingested`, `whatsapp.delivery.recorded`).
-Si falla: un aviso sin la firma de Meta se rechaza y no se guarda; uno de un número que nadie tiene conectado se descarta; el estado de un mensaje que el Hub no tiene se espera diez minutos y se descarta; si el Hub dice que el mensaje no vale, no se reintenta y queda a la vista del personal; un adjunto de otro negocio, o que Meta ya no tiene, dice «no disponible»; si al abrir un adjunto el permiso de Meta caducó o el negocio lo retiró en Meta, el adjunto no se abre, se dice que hay que volver a conectar el número (no que está sin conectar) y el número queda «Hay que reconectar» en el Hub.
+Si falla: un aviso sin la firma de Meta se rechaza y no se guarda; uno de un número que nadie tiene conectado se descarta; el estado de un mensaje que el Hub no tiene se espera diez minutos y se descarta; si el Hub dice que el mensaje no vale, no se reintenta y queda a la vista del personal; un adjunto de otro negocio, o que Meta ya no tiene, dice que no está disponible; si al abrir un adjunto el permiso de Meta caducó o el negocio lo retiró en Meta, el adjunto no se abre, se dice que hay que volver a conectar el número (no que está sin conectar) y el número queda «Hay que reconectar» en el Hub.
 Implicados: bandeja de WhatsApp del Hub
 
 ### WHATSAPP-F08 Ver los números de WhatsApp en el admin
@@ -227,7 +228,7 @@ Actor: personal de ERPlora
 Pantalla: Admin: Números de WhatsApp
 Pasos:
 1. Abre «Números de WhatsApp» en el admin de erplora.com.
-2. Ve cada número con su negocio, sus identificadores de Meta, si está activo, si viene de la app del móvil, si su permiso está «Guardado», «Caducado» o «Falta», cuándo caduca y si hay que reconectarlo; filtra por «hay que reconectar» o busca por número o negocio.
+2. Ve cada número con su negocio, sus identificadores de Meta, si está activo, si viene de la app del móvil, si su permiso de Meta está guardado o caducado, o si falta, cuándo caduca y si hay que reconectarlo; filtra por «hay que reconectar» o busca por número o negocio.
 3. Abre uno para verlo entero; nada se escribe a mano.
 Entra: la cuenta del personal con su papel.
 Sale: nada; solo se mira.
@@ -270,7 +271,7 @@ Pantalla: Bandeja de WhatsApp › Ajustes (en el Hub)
 Pasos:
 1. Al pintar «Tu número», el Hub pregunta a erplora.com.
 2. erplora.com contesta si WhatsApp está configurado y, si lo está, el identificador de la app de Meta, el de la configuración del alta embebida, la versión de Meta que usa y su página a la que Meta devuelve el código; con esa misma página canjea después el código.
-3. Sin la app configurada, o sin una página de vuelta válida, contesta «no configurado» con los identificadores vacíos, y el Hub no enseña «Conectar WhatsApp».
+3. Sin la app configurada, o sin una página de vuelta válida, contesta que no está configurado, con los identificadores vacíos, y el Hub no enseña «Conectar WhatsApp».
 Entra: el negocio.
 Sale: los identificadores públicos de la app; el secreto y el token de verificación no salen nunca.
 Si falla: un negocio que erplora.com no conoce, o una demo, no recibe nada.
@@ -324,7 +325,7 @@ Estado: hecho
 Actor: propietario, administrador
 Pantalla: Bandeja de WhatsApp › Ajustes › Plantilla (en el Hub)
 Pasos:
-1. En el Hub, se escribe la plantilla (nombre, idioma, categoría, cabecera —de texto, o con una foto, un vídeo o un documento: F16—, texto con sus variables y un ejemplo de cada una, pie y botones) y se pulsa «Guardar».
+1. En el Hub, se escribe la plantilla (nombre, idioma, categoría, cabecera —de texto, o con una foto, un vídeo o un documento: F16—, texto con sus variables y un ejemplo de cada una, pie y botones) y se pulsa «Enviar a revisión de Meta» (al editarla, «Guardar y enviar a Meta»).
 2. erplora.com comprueba las reglas de Meta antes de llamarla: nombre en minúsculas, cifras y guiones bajos, variables seguidas o con nombre, un ejemplo por variable, como mucho 10 botones con sus límites.
 3. La registra en Meta (o, si Meta ya la tenía, edita la suya) y el Hub la enseña «En revisión»; el veredicto de Meta llega solo después.
 Entra: la plantilla tal como se escribió y la clave del guardado.
@@ -383,10 +384,10 @@ Implicados: ninguno
 ## Para quien lo mantiene
 
 - Anatomía, datos, operaciones y tareas: `whatsapp/README.md`.
-- **Contrato con el Hub**: las puertas 1–9 son las del WORKBOOK de `whatsapp_inbox` del Hub («Contrato con el SaaS»),
-  que mandan y no se renombran. Este porte añade tres puertas, propuestas al Hub, con la misma firma de todo
-  `/internal` (`X-Erplora-Timestamp` + `X-Erplora-Signature`, HMAC-SHA256 de `f"{timestamp}.{cuerpo}"` con
-  `INTERNAL_SHARED_SECRET`, ±300 s):
+- **Contrato con el Hub**: las puertas 1–12 son las del WORKBOOK de `whatsapp_inbox` del Hub («Contrato con el SaaS»),
+  que mandan y no se renombran. Las 10–12 nacieron en este porte (saas#63) y el Hub las llama y las recoge en su
+  contrato desde hub#151; llevan la misma firma de todo `/internal` (`X-Erplora-Timestamp` + `X-Erplora-Signature`,
+  HMAC-SHA256 de `f"{timestamp}.{cuerpo}"` con `INTERNAL_SHARED_SECRET`, ±300 s):
   - **10** `POST /internal/whatsapp/config` `{"hub"}` → 200 `{"configured", "app_id", "config_id", "graph_version",
     "redirect_uri"}` (WHATSAPP-F11); 404 `hub_unknown`. `redirect_uri` = `WHATSAPP_REDIRECT_URI` (por defecto
     `https://<PUBLIC_HOST>/whatsapp/return`; en desarrollo `http://localhost:8001/whatsapp/return`), absoluta, https
@@ -457,12 +458,15 @@ Implicados: ninguno
   del negocio; lo que no es imagen, audio o vídeo se descarga con `Content-Disposition: attachment` y CSP `sandbox`.
   El Hub debe permitir el origen de erplora.com en `img-src` y `media-src` (su «Contrato con `base`»).
 - Tareas programadas (ECS, `saas-cron`): `whatsapp_deliver` cada minuto (WHATSAPP-F07), `whatsapp_refresh_tokens`
-  (WHATSAPP-F12) y `whatsapp_purge` (WHATSAPP-F14) una vez al día; programarlas, y los secretos `WHATSAPP_*` y
-  `FERNET_KEY`, es del repo de infraestructura.
-- Los tests de cada flujo citan su clave del registro (`WHATSAPP-Gnn`) en el nombre del fichero de test o en su
-  docstring; `promote` en el registro la convierte en `WHATSAPP-Fnn` con el mismo número.
-- Contradicción escrita, sin resolver: `PLAN-SAAS.md` y `PLAN-HUB.md` dicen que WhatsApp «sale del SaaS» y que el Hub
-  llama a Meta directamente; el encargo del 2026-10-15 lo dejó en el SaaS, y esta app lo sigue. Falta la ronda.
+  (WHATSAPP-F12) y `whatsapp_purge` (WHATSAPP-F14) una vez al día; las programa el repo de infraestructura
+  (`aws`, `stacks/prod/scheduler.tf`), que también da los secretos `WHATSAPP_*` y `FERNET_KEY` (`secrets.tf` y
+  `apps.tf`; los de `pre`, propios, en `pre_data.tf`).
+- Los tests de cada flujo citan su clave del registro en el nombre del fichero de test o en su docstring:
+  `WHATSAPP-Gnn` los de antes de `promote` y `WHATSAPP-Fnn` los posteriores, con el mismo número.
+- Contradicción resuelta: «WhatsApp sale del SaaS y el Hub llama a Meta» lo derogan las rondas 2026-10-21 de
+  `PLAN-SAAS.md` (§1.1, saas#63) y `PLAN-HUB.md` (§8, saas#63): WhatsApp se queda en el SaaS como única pasarela con
+  Meta y el Hub habla con él por `/internal`. La ronda de cierre de la app (`PLAN-SAAS.md`, «cierre de `whatsapp`») recoge
+  lo decidido al migrarla.
 
 ## Lo que NO hace, a propósito
 
