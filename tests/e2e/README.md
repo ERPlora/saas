@@ -286,8 +286,10 @@ documento nunca crece: mirar solo el documento (`documentElement.scrollWidth` co
 misma medida que la del Hub (`horizontalOverflow` de su `tests/e2e/helpers.ts`). `panel/horizontal-overflow.spec.ts`
 comprueba que la ve en la página, en el menú, en una hoja y en una página sin Ionic (la web pública).
 `horizontal-overflow.test.ts` (Vitest), sin trinquete: ningún fichero de `tests/e2e` salvo `horizontal-overflow.ts` vuelve
-a medir el documento a mano. `sidewaysScroll(page)` de `panel/fixtures.ts` sigue siendo la sonda que además nombra las
-tablas que se desplazan de lado.
+a medir el documento a mano, ni por un nombre dado a su raíz (`const root = document.documentElement`), ni un solo
+`ion-content` (su `getScrollElement()`, `.inner-scroll` o `part="scroll"` y su `scrollWidth`); su scroll vertical
+(`scrollTop`, `scrollHeight`) sigue libre. `sidewaysScroll(page)` de `panel/fixtures.ts` nombra lo que se desplaza de
+lado con la misma medida (`overflowingBoxes(page, 1)`: `document N > M`, `ion-content N > M`) y, además, las tablas.
 
 ## Tipos
 
