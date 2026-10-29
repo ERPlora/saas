@@ -1,9 +1,5 @@
 """Fixtures of the billing tests: no real VIES, ERPlora's identity, accounts and their contexts."""
 
-import time
-from types import SimpleNamespace
-
-import django_ratelimit.core
 import pytest
 from django.contrib.auth import get_user_model
 from live.context import OperationContext, Scope
@@ -23,17 +19,6 @@ ISSUER = {
     "postal_code": "28822",
     "country": "ES",
 }
-
-
-@pytest.fixture(autouse=True)
-def _rate_limit_clock_stands_still(monkeypatch):
-    """django-ratelimit counts in fixed windows, so two requests a second apart may fall in two windows
-    and a limit under test lets the second one through, depending on the second the suite runs
-    (saas#150). Its clock stands still for the test: every request counts in the same window. Only the
-    limiter's clock: the rest of the code keeps the real one, and a test that needs the window to turn
-    moves ``django_ratelimit.core.time`` itself."""
-    now = time.time()
-    monkeypatch.setattr(django_ratelimit.core, "time", SimpleNamespace(time=lambda: now))
 
 
 @pytest.fixture

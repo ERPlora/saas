@@ -217,8 +217,9 @@ class TestTheNewAddressCountsOnlyOnceProven:
         """However many accounts or sessions ask: an address is nobody's inbox to flood."""
         import time
 
-        # At the start of an hour: the budget's window (django-ratelimit's) is the clock's hour.
-        moment = [time.time() // 3600 * 3600 + 1]
+        # The wall clock passes the resend delay between asks; the budget's window stands still (the
+        # root conftest), so the four asks count in the same hour.
+        moment = [time.time()]
         monkeypatch.setattr(time, "time", lambda: moment[0])
         for _ in range(3):
             assert api_post(signed_in, CHANGE, {"email": NEW}).status_code == 200

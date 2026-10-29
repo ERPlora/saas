@@ -518,7 +518,7 @@ class TestTheAdminAction:
         """saas#150: the budget's window is fixed (django-ratelimit's, one per key), so a first query in
         its last second and the next one a second later fall in two windows and both went through. The
         limit tests must not depend on the second the CI runs them: the limiter's clock stands still in
-        the billing tests (``conftest._rate_limit_clock_stands_still``), whatever the wall clock says."""
+        every test (the root ``conftest._rate_limit_clock_stands_still``), whatever the wall clock says."""
         import time
 
         from django_ratelimit.core import _get_window
