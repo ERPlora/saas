@@ -134,7 +134,8 @@ Flujos `HUBS-F15`…`HUBS-F23` del `WORKBOOK.md` (parte 2 de 4).
 - **Admin** (F23): las acciones de plataforma llevan `@traced`, que deja en el historial del admin de cada fila
   quién ejecutó qué («Ran «…»» / «Ejecutó «…»»).
 - **Eliminar** (F18): el texto ya no promete el enlace de descarga de los datos, que el correo no lleva: llega con
-  el export por negocio de la fase 2 (PLAN-DB «Exports»).
+  el export por negocio de la fase 2 (PLAN-DB «Exports»). → **Tenencia (2026-10-30):** el correo de la baja ya lleva
+  el camino a la copia de los datos (abajo, «Lo que añadió la tenencia»).
 - **Dominio propio** (F17): no se porta en la fase 1; decisión de mercado y ronda propuesta en la PR de APP-HUBS-2.
 
 ## Lo que añadió APP-HUBS-3 (2026-10-23): las personas de cada negocio
@@ -336,6 +337,84 @@ X-Erplora-Timestamp, X-Erplora-Signature (v1) y X-Erplora-Signature-V2 (cubre m�
 - La gráfica del panel con `hubs.usage.series` (bloque 8 de PLAN-SAAS; no está en la maqueta).
 - `support` sin acceso al uso en el admin (si se quiere, migración de datos como `0007`).
 
+## Lo que añadió la tenencia (2026-10-30): alta y demo asíncronas, y las copias de los datos
+
+Plan: `docs/plans/2026-10-22-fase-2-tenencia.md`; PLAN-DB, ronda 2026-10-30 (propuestas (a), (e), (j), (k), (l) y (m),
+decididas). Cada negocio nace con su BD propia, clonada de la plantilla de su vertical: el Hub ya no tiene el negocio
+listo al responder, y lo dice.
+
+- **Alta asíncrona** (HUBS-F01…F04): `PUT /internal/hubs/{id}` responde 202 `{status: "requested"}` (ya lo trataba
+  así el SaaS) y el Hub avisa después con `POST /internal/hubs/{id}/ready`. El sondeo de las altas atascadas
+  (`reconcile_hub_states`, más de 2 minutos sin el aviso) entiende cada estado: `requested`, `creating`, `migrating` y
+  `seeding` siguen «preparando» (`preparing`); `ready` lo abre; `failed` graba el error `hubs.provision_failed`
+  (`services.PROVISION_FAILED`, por `hubs.business.record_hub_error`, con su evento) y el panel dice «No hemos podido
+  prepararlo. Seguimos reintentándolo; si sigue fallando, avísanos.» en vez de «preparando» para siempre (el Hub lo
+  reintenta solo: 1 min, 5 min, 15 min, 1 h); `cancelled`, `expired`, `purged` o un estado fuera del contrato se
+  registran (`hubs.reconcile.unexpected_status`) y hacen fallar la pasada (`unexpected`), igual que `failed`
+  (`provision_failed`). El aviso `ready` (o el sondeo que lo oye) borra ese error; una llamada entregada después no
+  lo borra (la preparación sigue debida). Los estados viven en `hub_client` (`PREPARING_STATUSES`, `FAILED_STATUS`,
+  `ENDED_STATUSES`).
+- **Demo asíncrona** (PUBLIC-F28; `public/demo.py`): `POST /internal/demos` responde 202 con `status: "requested"`.
+  `/demo/start/` guarda la demo con `ready: false` y vuelve a la puerta, que dice «Preparando tu demo…»
+  (`data-testid="demo-state-preparing"`, `role="status"`) mientras su página pregunta `GET /demo/status/` cada segundo
+  durante 30 s como mucho (`frontend/demo-wait.ts`). `/demo/status/` (JSON, sin caché ni índice) solo pregunta al Hub
+  (`GET /internal/hubs/{id}`) por una demo que se está preparando: `ready` → la recuerda lista y da el salto a su
+  `/auth/login`; los cuatro de preparación (o el Hub caído un momento) → sigue esperando; `failed` → la puerta
+  `?state=not_ready`; `expired`/`cancelled`/`purged` o 404/410 → la olvida y `?state=expired`; cualquier otra
+  respuesta → `?state=unavailable`. Sin respuesta en 30 s, `not_ready`: «Tu demo aún no está lista. Vuelve a
+  intentarlo en un momento.» con «Volver a intentarlo», que espera otra vez a la misma demo (o pide una si el
+  navegador no tiene ninguna). El código de entrada (`POST /internal/demos/{slug}/codes`) solo se pide para una demo
+  lista: `/demo/enter/` con una que aún se prepara vuelve a la puerta. Una sesión de antes (sin `id` ni `ready`) es
+  una demo lista. Ningún texto nombra bases de datos.
+- **Las copias de los datos** (HUBS-F18, HUBS-F20; propuesta (k)): el Hub copia la BD del negocio (`pg_dump -Fc`) al
+  recibir la baja (`offboarding`) y antes de restablecerlo (`reset`) y guarda cada copia 90 días. El panel las pide en
+  `hubs.data_copy.list` (`GET /api/hubs/data-copies?business_id=`: `id`, `kind`, `created_at`, `bytes`, de más nueva
+  a más vieja, sin enlace) y cada clic pide el enlace al Hub en `hubs.data_copy.link` (`GET
+  /api/hubs/data-copies/link?business_id=&copy_id=` → `{url}`, el prefirmado de 15 min del Hub; 404
+  `hubs.data_copy_gone` si ya no está, 503 `hubs.data_copy_unavailable` con el Hub caído o un enlace que no es una
+  dirección web). Solo el propietario (`can.download_data`; matriz de `tests/test_permission_matrix.py`). Con el Hub
+  caído o sin copias, la lista sale vacía, nunca un 500.
+- **Panel** (`frontend/components/DataCopyCard.vue`, al final del Resumen): «Descargar los datos», qué es (la copia
+  completa, para restaurar: formato de PostgreSQL, `pg_restore`; propuesta (l)), y por fila fecha, tipo («Al
+  eliminarlo», «Antes de restablecer sus datos») y tamaño, con «Descargar». En un negocio eliminado sale siempre:
+  sin copia, «La copia todavía no está lista. Te avisaremos por correo cuando lo esté.»; un error del panel, con
+  «Reintentar». En uno vivo, solo si tiene alguna copia (lo restablecieron).
+- **Correos**: el de la baja (`send_deletion`, F18 y el del día 180 de F20) añade «Descarga una copia completa de
+  sus datos: <página del negocio>» (el panel, nunca el fichero: así el enlace del correo no caduca). «Te avisaremos»
+  se cumple en `reconcile_hub_states`: por cada negocio eliminado sin avisar, pregunta las copias y, con la de esta
+  baja (`offboarding` no anterior a `deletion_requested_at`, un minuto de holgura entre relojes), manda
+  `send_data_copy_ready` una vez (`Hub.data_copy_mailed_at`, migración `0022`; se vuelve a avisar si se recupera y
+  se elimina otra vez). El Hub caído cuenta `unreachable`; un correo que no sale, `data_copy_unsent`; los dos hacen
+  fallar la pasada y se reintentan.
+- **Uso nocturno** (F21, F22; propuesta (j)): sin cambios en el SaaS. Un hub que aún comparte la BD de control no se
+  mide y no sale en `GET /internal/usage`: la pasada guarda el resto y termina bien (test de contrato en
+  `tests/test_collect_hub_usage.py`).
+
+### Contrato para el Hub (carril Hub): alta, demo y copias
+
+Firmado como todo `/internal` (v1 + v2). El doble de los tests es `tests/hub_double.py`.
+
+```
+PUT  /internal/hubs/{id}            → 202 {"status": "requested"} (alta nueva) · 200 (ya lo conocía)
+POST /internal/hubs/{id}/ready      ← el Hub, cuando el negocio está listo (ya existía)
+GET  /internal/hubs/{id}            → 200 {"status": "requested" | "creating" | "migrating" | "seeding" | "ready"
+                                             | "failed" | "cancelled" | "expired" | "purged"} · 404 desconocido
+                                       (nunca datos de conexión)
+POST /internal/demos                → 202 {"id", "slug", "status": "requested", "expires_at", "created": true}
+                                       · 200 la viva de ese navegador con su "status" ("created": false)
+                                       · 503 base.demo_full
+GET  /internal/hubs/{id}/dumps      → 200 {"dumps": [{"id": "<clave S3>", "kind": "offboarding" | "reset",
+                                             "created_at": "<ISO 8601 con zona>", "bytes": <int ≥ 0>,
+                                             "url": "<prefirmado de 15 min>"}]}
+                                       de más nueva a más vieja; [] sin copias; 404 hub desconocido
+```
+
+- Una demo que falla (`failed`) se sigue devolviendo como «la viva» de su navegador mientras dure: la puerta dice
+  `not_ready` y «Volver a intentarlo» espera a la misma, así que el Hub debe reintentar también la de una demo.
+- Una fila de `dumps` fuera del contrato (otro `kind`, fecha sin zona, `bytes` negativo o no entero, `id` vacío o de
+  más de 512) se deja fuera y se registra; un `url` que no es `http(s)://` no se da nunca. El SaaS no guarda ni
+  registra los enlaces.
+
 ## Demo (ronda 2026-10-17; PLAN-SAAS §3.5)
 
 Plan: `docs/plans/2026-10-17-demo-hubs-fase-1.md` (§1.6 y §1.8). Una demo es un hub **vacío** del Hub
@@ -359,7 +438,8 @@ Plan: `docs/plans/2026-10-17-demo-hubs-fase-1.md` (§1.6 y §1.8). Una demo es u
 
   | Llamada | Cuerpo | Respuesta |
   |---|---|---|
-  | `POST /internal/demos` (`create_demo`) | `{session_key, vertical: null, language}` | 201 `{id, slug, expires_at, created: true}`; 200 la viva de ese navegador (`created: false`); 503 `base.demo_full` |
+  | `POST /internal/demos` (`create_demo`) | `{session_key, vertical: null, language}` | 202 `{id, slug, status: "requested", expires_at, created: true}` (→ tenencia, 2026-10-30; antes 201 lista al momento, que se sigue aceptando: sin `status` = lista); 200 la viva de ese navegador con su `status` (`created: false`); 503 `base.demo_full` |
+  | `GET /internal/hubs/{id}` (`get_hub`) | — | 200 `{status}` (abajo, «Lo que añadió la tenencia»); 404/410: la demo ya no existe |
   | `POST /internal/demos/{slug}/codes` (`create_demo_code`) | `{session_key, language}` | 201 `{code, expires_at}`; 404; 410 `base.hub_gone`; 403 `base.demo_not_owner` |
 
   `503 base.demo_full` es el **único 5xx** que el cliente trata como negativa (`HubRefused`, por

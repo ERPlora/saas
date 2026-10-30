@@ -70,6 +70,11 @@ gemelo con el segundo factor, `+8` el doble de reCAPTCHA y `+9` el Hub de las sp
   (`PANEL_MFA_URL` de `panel/project.ts`; APP-ACCOUNTS-2). El panel de `:8012` queda como producción, con el segundo
   factor apagado. Las dos son `localhost`: cada contexto del navegador va a una sola de las dos, porque las cookies no
   distinguen el puerto.
+- **`:8014` (el Hub del servidor público)**: el `HUB_INTERNAL_URL` del servidor público (`publicHubDoublePort` de
+  `stack.ts`, base + 4). Nadie escucha (la demo dice «no disponible» al momento) salvo mientras `demo-wait.spec.ts`
+  hace de Hub de las demos (`POST /internal/demos` 202 «requested» y `GET /internal/hubs/{id}` con el estado que
+  pone el test). Con `E2E_DEMO_HUB` (abajo, «La demo contra un Hub de verdad») no se fija: manda el
+  `HUB_INTERNAL_URL` exportado.
 - **`:8019` (el Hub de las specs)**: nadie escucha salvo mientras una spec hace de Hub con
   `startHubDouble()` (hoy `members.spec.ts`): registra cada llamada a `/internal` y responde 200 a la
   foto (`PUT /internal/hubs/{id}/state`) y a la revocación (`POST /internal/sessions/revoke`), y 503 al

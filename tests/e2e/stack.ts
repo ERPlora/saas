@@ -24,6 +24,8 @@ export interface Stack {
   panelPort: number;
   /** The port of the panel's twin with the second factor on (`base + 3`; ACCOUNTS_MFA_ENABLED is off by default). */
   panelMfaPort: number;
+  /** Where the public server calls the Hub (`HUB_INTERNAL_URL`): the demo a spec plays (`base + 4`; demo-wait.spec.ts). */
+  publicHubDoublePort: number;
   /** The AI provider the assistant's specs start, assistant.tests.fake_provider (`base + 7`). */
   aiProviderPort: number;
   /** Where the public server asks reCAPTCHA's assessments (`RECAPTCHA_ENDPOINT`), the double of recaptcha-double.ts (`base + 8`). */
@@ -100,6 +102,7 @@ export function stackFrom(env: Env): Stack {
     publicPort: base + 1,
     panelPort: base + 2,
     panelMfaPort: base + 3,
+    publicHubDoublePort: base + 4,
     aiProviderPort: base + 7,
     recaptchaDoublePort: base + 8,
     hubDoublePort: base + LAST_OFFSET,

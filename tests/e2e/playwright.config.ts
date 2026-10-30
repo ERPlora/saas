@@ -103,6 +103,10 @@ export function publicServer(saasDir: string, stack: Stack = STACK, env: Record<
         // The run presses «Try the demo» from 127.0.0.1 more than production's 3 an hour (demo-door, public-demo,
         // recaptcha); the throttled door is a spec of its own (`?state=throttled`, public-demo.spec.ts).
         DEMO_SPAWN_RATELIMIT: '30/h',
+        // Its Hub is the one demo-wait.spec.ts plays on the stack (nobody listens otherwise: «not available» at once),
+        // unless the run walks a real demo (`E2E_DEMO_HUB`, README «La demo contra un Hub de verdad»), whose exported
+        // HUB_INTERNAL_URL then reaches the server.
+        ...(env.E2E_DEMO_HUB ? {} : { HUB_INTERNAL_URL: `http://127.0.0.1:${stack.publicHubDoublePort}` }),
       },
       stack,
     ),
