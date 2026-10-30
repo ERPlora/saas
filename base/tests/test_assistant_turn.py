@@ -79,7 +79,7 @@ class TestTheCatalog:
     def test_the_account_gets_the_saas_tools_and_none_of_what_is_internal(self, account):
         tools = assistant.catalog(ctx_for(account))
 
-        assert {"hubs.business.list", "hubs.business.create", "billing.invoice.list", "accounts.profile.get"} <= set(
+        assert {"hubs.business.list", "hubs.business.create", "billing.invoice.list", "accounts.preferences.get"} <= set(
             tools
         )
         assert {"apps.app.list", "billing.plan.change", "hubs.business.delete"} <= set(tools)
@@ -87,6 +87,8 @@ class TestTheCatalog:
             "accounts.apikey.create",
             "hubs.business.open",
             "accounts.data.export",
+            # Its photo travels as a data URL of up to 150 KB: the model has the name and the email in its instructions.
+            "accounts.profile.get",
             "billing.invoice.pdf",
             "billing.checkout.start",
             "base.session.me",
@@ -110,7 +112,7 @@ class TestTheCatalog:
         for sold in ("billing.plan.change", "billing.plan.cancel", "billing.store.catalog", "apps.app.list"):
             assert sold in assistant.catalog(ctx_for(account))
             assert sold not in unsold
-        assert {"hubs.business.list", "billing.invoice.list", "accounts.profile.get"} <= set(unsold)
+        assert {"hubs.business.list", "billing.invoice.list", "accounts.preferences.get"} <= set(unsold)
 
     def test_nobody_signed_in_has_no_tools(self):
         assert assistant.catalog(ctx_for(None)) == {}

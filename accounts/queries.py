@@ -269,7 +269,7 @@ def profile_of(user, request=None) -> dict[str, Any]:
     permission="accounts.view",
     input=ProfileGetIn,
     output=ProfileOut,
-    ai=AI(description="The signed-in account's profile: names, email and language."),
+    ai=INTERNAL,  # photo
 )
 def profile_get(ctx: OperationContext, data: ProfileGetIn) -> dict[str, Any]:
     """Account → Profile of the signed-in account."""
