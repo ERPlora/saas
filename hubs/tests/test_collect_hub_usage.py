@@ -146,6 +146,21 @@ class TestCollect:
         assert HubUsageDaily.objects.filter(hub=business).exists()
         assert "unknown=1" in output
 
+    def test_a_business_the_hub_did_not_measure_is_left_out_and_the_run_passes(
+        self, business, owner, make_user, hub_double
+    ):
+        """HUBS-F21/F22 (PLAN-DB round 2026-10-30, proposal (j)): the nightly measure skips a hub still on the shared
+        database of control, so its row is not in the answer. The pass records the rest and ends well; the business
+        left out keeps «no data yet» (or its last day), never the size of the control database."""
+        measured = create_business(make_user("lola@example.com"), name="Café Lola")
+        hub_double.usage[DAY.isoformat()] = [row(measured.id, db_bytes=7 * GIB)]
+
+        output = collect()
+
+        assert figures(measured)[1] == 7 * GIB
+        assert not HubUsageDaily.objects.filter(hub=business).exists()
+        assert "recorded=1" in output and "invalid=0" in output and "failed=0" in output
+
     def test_a_broken_row_is_skipped_the_rest_is_kept_and_the_run_fails(
         self, business, hub_double
     ):

@@ -12,10 +12,11 @@ Both are idempotent (a second run with nothing new does nothing) and hold a Post
 two runs never overlap: the second returns at once. A business that fails never stops the batch.
 """
 
-from datetime import timedelta
+from datetime import UTC, timedelta
 from io import StringIO
 
 import pytest
+from django.core import mail
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.utils import timezone
@@ -309,6 +310,101 @@ class TestReconcile:
 
         assert other_session.execute(f"SELECT pg_try_advisory_lock({LOCK_KEY})").fetchone()[0] is True
         other_session.execute(f"SELECT pg_advisory_unlock({LOCK_KEY})")
+
+
+# --- «We'll let you know»: the copy of a deleted business's data is ready (PLAN-DB round 2026-10-30, (a), (k)) -----
+
+
+def deleted_at(hub, moment):
+    Hub.objects.filter(pk=hub.pk).update(status=Hub.Status.DELETING, deletion_requested_at=moment)
+    return Hub.objects.get(pk=hub.pk)
+
+
+def offboarding_copy(hub, made):
+    stamp = made.astimezone(UTC).strftime("%Y%m%dT%H%M%SZ")
+    return {"id": f"{hub.id.hex}/{stamp}-offboarding.dump", "kind": "offboarding", "created_at": made.isoformat(), "bytes": 4096}
+
+
+def dump_calls(double):
+    return double.calls_to("GET", "/dumps")
+
+
+class TestDataCopyReady:
+    def test_the_owner_hears_once_that_the_copy_of_a_deleted_business_is_ready(self, business, owner, hub_double, settings):
+        settings.PUBLIC_HOST = "erplora.com"
+        moment = timezone.now() - timedelta(minutes=10)
+        hub = deleted_at(business, moment)
+        hub_double.dumps[str(hub.id)] = [offboarding_copy(hub, moment + timedelta(seconds=30))]
+
+        output = run("reconcile_hub_states")
+
+        (message,) = mail.outbox
+        assert message.to == [owner.email]
+        assert f"https://erplora.com/dashboard/businesses/{hub.id}" in message.body
+        assert "data_copies_told=1" in output
+        assert fresh(hub).data_copy_mailed_at is not None
+        run("reconcile_hub_states")
+        assert len(mail.outbox) == 1
+        assert len(dump_calls(hub_double)) == 1  # told: the Hub is not asked again
+
+    def test_no_mail_while_the_hub_has_no_copy_yet_and_it_is_asked_again(self, business, hub_double):
+        hub = deleted_at(business, timezone.now())
+        hub_double.dumps[str(hub.id)] = []
+
+        run("reconcile_hub_states")
+        run("reconcile_hub_states")
+
+        assert mail.outbox == []
+        assert len(dump_calls(hub_double)) == 2
+        assert fresh(hub).data_copy_mailed_at is None
+
+    @pytest.mark.parametrize("kind", ["offboarding", "reset"])
+    def test_a_copy_that_is_not_this_deletions_tells_nothing(self, business, hub_double, kind):
+        """A copy from an earlier deletion (recovered since), or the one made before a reset, is not this one."""
+        moment = timezone.now()
+        hub = deleted_at(business, moment)
+        old = offboarding_copy(hub, moment - timedelta(days=3))
+        hub_double.dumps[str(hub.id)] = [{**old, "kind": kind}]
+
+        run("reconcile_hub_states")
+
+        assert mail.outbox == []
+
+    def test_deleted_again_after_a_recovery_the_owner_hears_of_the_new_copy(self, business, hub_double):
+        moment = timezone.now()
+        hub = deleted_at(business, moment)
+        Hub.objects.filter(pk=hub.pk).update(data_copy_mailed_at=moment - timedelta(days=5))
+        hub_double.dumps[str(hub.id)] = [offboarding_copy(hub, moment + timedelta(seconds=5))]
+
+        run("reconcile_hub_states")
+
+        assert len(mail.outbox) == 1
+
+    def test_the_hub_away_fails_the_run_and_tells_nobody(self, business, offline_hub):
+        deleted_at(business, timezone.now())
+
+        with pytest.raises(CommandError) as failed:
+            run("reconcile_hub_states")
+
+        assert "unreachable=1" in str(failed.value)
+        assert mail.outbox == []
+
+    def test_a_mail_that_cannot_leave_fails_the_run_and_is_sent_again(self, business, hub_double, monkeypatch):
+        moment = timezone.now()
+        hub = deleted_at(business, moment)
+        hub_double.dumps[str(hub.id)] = [offboarding_copy(hub, moment)]
+        monkeypatch.setattr(services.emails, "send_data_copy_ready", lambda *args, **kwargs: False)
+
+        with pytest.raises(CommandError) as failed:
+            run("reconcile_hub_states")
+
+        assert "data_copy_unsent=1" in str(failed.value)
+        assert fresh(hub).data_copy_mailed_at is None
+
+    def test_a_business_that_lives_is_not_asked(self, business, hub_double):
+        run("reconcile_hub_states")
+
+        assert dump_calls(hub_double) == []
 
 
 def test_the_lock_follows_the_saas_convention_and_is_its_own():

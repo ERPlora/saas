@@ -1760,8 +1760,19 @@ LIVE_STATUSES = [Hub.Status.PREPARING, Hub.Status.ACTIVE, Hub.Status.PAST_DUE, H
 #: The Hub's last error recorded on a business it says it could not prepare (``failed``): the panel shows «We could not
 #: prepare it. We keep retrying» (the Hub retries on its own and calls ``ready`` once it can), never «preparing» for ever.
 PROVISION_FAILED = "hubs.provision_failed"
+#: How far before its deletion the Hub's copy of a business may say it was made and still be that deletion's (the two
+#: clocks; the Hub copies on receiving the ``DELETE``, after the SaaS's COMMIT).
+DATA_COPY_CLOCK_SKEW = timedelta(minutes=1)
 #: Counts that make a run end with an error (the ``task_failed`` alarm), after its whole pass.
-FAILING_COUNTS = ("owed", "unreachable", "failed", "provision_failed", "unexpected", "sessions_pending")
+FAILING_COUNTS = (
+    "owed",
+    "unreachable",
+    "failed",
+    "provision_failed",
+    "unexpected",
+    "data_copy_unsent",
+    "sessions_pending",
+)
 
 
 def lock_name(command: str) -> str:
@@ -1830,6 +1841,8 @@ def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER) -> Counter:
         "unexpected",
         "unreachable",
         "failed",
+        "data_copies_told",
+        "data_copy_unsent",
         "sessions_ended",
         "sessions_pending",
     )
@@ -1864,6 +1877,15 @@ def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER) -> Counter:
             _settle_stuck(hub_id, counts)
         except Exception:  # noqa: BLE001 - one business never stops the pass
             logger.exception("hubs.reconcile.crashed hub=%s", hub_id)
+            counts["failed"] += 1
+    untold = Hub.objects.filter(status=Hub.Status.DELETING, deletion_requested_at__isnull=False).filter(
+        Q(data_copy_mailed_at__isnull=True) | Q(data_copy_mailed_at__lt=F("deletion_requested_at"))
+    )
+    for hub_id in untold.values_list("id", flat=True):
+        try:
+            _tell_data_copy(hub_id, counts)
+        except Exception:  # noqa: BLE001 - one business never stops the pass
+            logger.exception("hubs.data_copy.crashed hub=%s", hub_id)
             counts["failed"] += 1
     due = SessionRevocation.objects.filter(delivered_at__isnull=True, next_attempt_at__lte=now)
     for revocation_id in due.order_by("next_attempt_at").values_list("id", flat=True):
@@ -1906,6 +1928,26 @@ def _settle_stuck(hub_id: UUID, counts: Counter) -> None:
     else:
         logger.error("hubs.reconcile.unexpected_status hub=%s status=%r", hub_id, status)
         counts["unexpected"] += 1
+
+
+def _tell_data_copy(hub_id: UUID, counts: Counter) -> None:
+    """«We'll let you know» of a deleted business's page: once the Hub keeps the copy it made at this deletion
+    (``offboarding``, no older than ``deletion_requested_at``), its owner is told by mail, once; asked again on each pass
+    until then. The Hub away counts ``unreachable``; a mail that cannot leave, ``data_copy_unsent`` (sent again)."""
+    hub = Hub.objects.get(pk=hub_id)
+    copies = queries.hub_data_copies(hub.id)
+    if copies is None:
+        counts["unreachable"] += 1
+        return
+    since = hub.deletion_requested_at - DATA_COPY_CLOCK_SKEW
+    if not any(copy["kind"] == "offboarding" and copy["created_at"] >= since for copy in copies):
+        return
+    owner = HubMember.objects.filter(hub=hub, role=Role.OWNER).select_related("user").first()
+    if not emails.send_data_copy_ready(hub, owner.user if owner else None, base_url=emails.base_url(None)):
+        counts["data_copy_unsent"] += 1
+        return
+    Hub.objects.filter(pk=hub.pk).update(data_copy_mailed_at=timezone.now())
+    counts["data_copies_told"] += 1
 
 
 # --- The platform's actions in the admin (hubs.admin) ----------------------------------------------

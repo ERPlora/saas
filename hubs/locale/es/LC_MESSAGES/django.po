@@ -1419,3 +1419,15 @@ msgstr "La copia completa de los datos de %(business)s está lista."
 #: emails.py
 msgid "Download it from %(url)s until %(date)s."
 msgstr "Descárgala desde %(url)s hasta el %(date)s."
+
+#: models.py
+msgid "copy of the data announced at"
+msgstr "copia de los datos avisada el"
+
+#: queries.py
+msgid "The copy cannot be downloaded right now. Try again in a moment."
+msgstr "La copia no se puede descargar ahora mismo. Vuelve a intentarlo en un momento."
+
+#: queries.py
+msgid "This copy of the data is no longer kept."
+msgstr "Esta copia de los datos ya no se conserva."

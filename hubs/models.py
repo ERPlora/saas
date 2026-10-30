@@ -534,6 +534,9 @@ class Hub(models.Model):
     suspended_at = models.DateTimeField(_("suspended at"), null=True, blank=True)
     suspension_warned_at = models.DateTimeField(_("first suspension notice"), null=True, blank=True)
     suspension_final_notice_at = models.DateTimeField(_("last suspension notice"), null=True, blank=True)
+    #: When the owner of a deleted business was told the copy of its data made at that deletion is ready
+    #: (``services.reconcile``, «We'll let you know» of its page); older than ``deletion_requested_at``: not yet told.
+    data_copy_mailed_at = models.DateTimeField(_("copy of the data announced at"), null=True, blank=True)
     state_version = models.PositiveBigIntegerField(_("state version"), default=1)
     pushed_state_version = models.PositiveBigIntegerField(_("state version the Hub has"), default=0)
     #: Grows with every change of the registry (``PUT /internal/hubs/{id}``): an acknowledgement of an
