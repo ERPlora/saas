@@ -56,3 +56,15 @@ def test_unreadable_trusted_certificates_are_unreachable_naming_the_file(hub_dou
         record.levelno == logging.ERROR and names_the_file(record.getMessage(), unreadable_ca)
         for record in caplog.records
     )
+
+
+def test_the_call_uses_the_trusted_certificates_it_read(hub_double, ca_gone_after_one_read):
+    """FIX-SAAS-WHATSAPP-HTTP-CALLS-CRASH-WHEN-SSL-CERT-FILE-MISSING · WHATSAPP-F07: the client takes the context
+    ``base.tls`` read (``verify=``), so the certificates are read once per call and a file renewed between the check
+    and the call never crashes it."""
+    hub_double.answer("POST", r"^/internal/whatsapp/status$", 200, {"updated": True, "status": "read"})
+
+    answer = hub_client.post_status({"hub": "bar-manolo", "wa_message_id": "wamid.A", "status": "read"})
+
+    assert answer.status == 200
+    assert not ca_gone_after_one_read.exists()

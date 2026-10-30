@@ -296,3 +296,13 @@ def test_an_attachment_with_unreadable_trusted_certificates_is_unreachable_and_n
     assert names_the_file(str(unreachable.value), unreadable_ca)
     assert not route.called
     assert logged_error_naming(caplog, unreadable_ca)
+
+
+@respx.mock
+def test_a_call_uses_the_trusted_certificates_it_read(whatsapp_on, ca_gone_after_one_read):
+    """WHATSAPP-F10: the client takes the context ``base.tls`` read (``verify=``), so the certificates are read once
+    per call and a file renewed between the check and the call never crashes it."""
+    respx.get(f"{GRAPH}/me").mock(return_value=httpx.Response(200, json={"id": "1"}))
+
+    assert meta.get("me", token="EAAG-token") == {"id": "1"}
+    assert not ca_gone_after_one_read.exists()
