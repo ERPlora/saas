@@ -12,6 +12,7 @@ frame. Cases of the old product's ``test_stateless_bridge.py``, ``test_error_cod
 pipeline (G06) and its ``ContextObject`` (G38) are not ported: one model and its fallback (ASSISTANT-F06).
 """
 
+import logging
 from decimal import Decimal
 
 import pytest
@@ -375,6 +376,16 @@ class TestFailuresOfTheProvider:
         assert got[1]["type"] == "error"
         assert usage_row(business).messages == 1
 
+    def test_a_server_without_its_trusted_certificates_ends_the_turn_for_good(self, client, internal, business, answering, fake_provider, missing_ca):
+        """``SSL_CERT_FILE`` naming a file that is not there: no attempt nor fallback clears it (the server's
+        configuration), so the error is final and the message is given back."""
+        got = frames(door(client, STREAM, turn(business)))
+
+        assert [frame["type"] if isinstance(frame, dict) else frame for frame in got] == ["error", "usage", "[DONE]"]
+        assert (got[0]["code"], got[0]["retriable"]) == ("assistant.provider_rejected", False)
+        assert chat_requests(fake_provider) == []
+        assert usage_row(business).messages == 0
+
 
 class TestTheJsonDoor:
     def test_the_whole_turn_arrives_at_once_with_the_usage_after_it(self, client, internal, business, answering, fake_provider):
@@ -408,6 +419,20 @@ class TestTheJsonDoor:
         assert response.status_code == 502
         assert (response.json()["error"]["code"], response.json()["error"]["retriable"]) == (code, retriable)
         assert usage_row(business).messages == 0
+
+    def test_a_server_without_its_trusted_certificates_is_a_final_502_the_log_explains(self, client, internal, business, answering, fake_provider, missing_ca, caplog):
+        """FIX-SAAS-ASSISTANT-GATEWAY-502-WHEN-SSL-CERT-FILE-MISSING: it was a mute ``assistant.internal_error``; now the
+        Hub gets the provider's final failure and the log names the setting and its file."""
+        with caplog.at_level(logging.ERROR, logger="assistant"):
+            response = door(client, JSON, turn(business))
+
+        assert response.status_code == 502
+        assert (error_code(response), response.json()["error"]["retriable"]) == ("assistant.provider_rejected", False)
+        assert str(missing_ca) not in response.content.decode()
+        assert chat_requests(fake_provider) == []
+        assert usage_row(business).messages == 0
+        logged = [record.getMessage() for record in caplog.records]
+        assert any("SSL_CERT_FILE" in line and str(missing_ca) in line for line in logged)
 
     def test_a_spent_allowance_is_a_429_with_the_same_code(self, client, internal, business, answering, fake_provider):
         AssistantUsage.objects.create(hub=business, month=queries.month_of(timezone.now()), messages=30)

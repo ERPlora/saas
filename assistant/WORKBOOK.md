@@ -172,7 +172,7 @@ Pasos:
 4. Para la lista de modelos, pide al proveedor sus modelos de conversación, página a página, y deja fuera los que no conversan (voz, imágenes, huellas de texto).
 Entra: la API, la dirección y la clave del proveedor; el modelo, la conversación, las instrucciones y las herramientas.
 Sale: el texto, las herramientas pedidas, el consumo y el final del turno, iguales sea cual sea el proveedor; o la lista de modelos de conversación.
-Si falla: si el proveedor rechaza la clave o la petición, el turno termina con su motivo y se marca como un fallo que no se arregla repitiendo; si no contesta, tarda demasiado, va saturado o limita el ritmo, termina con un fallo que otro intento puede arreglar (para pasar al modelo de reserva); el motivo nunca lleva la clave. Un proveedor sin clave o con una API desconocida no se llama.
+Si falla: si el proveedor rechaza la clave o la petición, el turno termina con su motivo y se marca como un fallo que no se arregla repitiendo; si no contesta, tarda demasiado, va saturado o limita el ritmo, termina con un fallo que otro intento puede arreglar (para pasar al modelo de reserva); el motivo nunca lleva la clave. Si erplora.com no puede cargar sus certificados de confianza (`SSL_CERT_FILE` nombra un fichero que no está o que no tiene ninguno), la llamada no llega a salir: termina con un fallo que no se arregla repitiendo, y su motivo y el registro del servidor nombran la variable y el fichero. Un proveedor sin clave o con una API desconocida no se llama.
 Implicados: ASSISTANT-F04, ASSISTANT-F06, ASSISTANT-F07
 
 ### ASSISTANT-F04 Elegir los modelos de un proveedor

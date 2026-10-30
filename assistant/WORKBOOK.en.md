@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:72db404fa23b65e5c20a53f28dd03d0b9da5ef127564b242516712ec7757c9fc -->
+<!-- generated from WORKBOOK.md sha256:bb673917a8c3be8e3e9723b90f4f529758000b86fb6452b6d31587eff0d0b152 -->
 
 ## What it is for and who uses it
 
@@ -158,7 +158,7 @@ Steps:
 4. For the list of models, it asks the provider for its conversation models, page by page, and leaves out those that do not converse (voice, images, text fingerprints).
 In: the provider's API, address and key; the model, the conversation, the instructions and the tools.
 Out: the text, the tools asked for, the consumption and the end of the turn, the same whatever the provider; or the list of conversation models.
-If it fails: if the provider refuses the key or the request, the turn ends with its reason and is marked as a failure repeating does not fix; if it does not answer, takes too long, is overloaded or limits the pace, it ends with a failure another attempt can fix (to move to the fallback model); the reason never carries the key. A provider without a key or with an unknown API is not called.
+If it fails: if the provider refuses the key or the request, the turn ends with its reason and is marked as a failure repeating does not fix; if it does not answer, takes too long, is overloaded or limits the pace, it ends with a failure another attempt can fix (to move to the fallback model); the reason never carries the key. If erplora.com cannot load its trusted certificates (`SSL_CERT_FILE` names a file that is not there or holds none), the call never goes out: it ends with a failure repeating does not fix, and its reason and the server's log name the variable and the file. A provider without a key or with an unknown API is not called.
 Involved: ASSISTANT-F04, ASSISTANT-F06, ASSISTANT-F07
 
 ### ASSISTANT-F04 Choose a provider's models
