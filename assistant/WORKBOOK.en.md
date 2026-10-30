@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:b8018f4eeedc4b6b7b8e0b5111a002bfe6d81562d53a1eee9efd85a48867bf47 -->
+<!-- generated from WORKBOOK.md sha256:46d58bc86f379928fbafbd1834d90acf828cefc9d24d5ce7c9bd3a049996797f -->
 
 ## What it is for and who uses it
 
@@ -459,12 +459,12 @@ Steps:
 1. The person, signed in to erplora.com's panel, writes to the assistant ("Which businesses do I have?", "How much do I pay a month?", "Create a business for my hair salon").
 2. erplora.com offers the model the panel's tools this account may use (its businesses and their people, the plans, its invoices and subscriptions, its account, the catalogue of apps), first those of what was asked, and always the list of its businesses.
 3. A read the model asks for runs on its own, as the person themselves: it never sees a business that is not theirs.
-4. A change the model asks for stops at a card that says what it will do, where (the panel's screen: "Businesses", "Billing", "Account" or "Store") and with which data, naming the business by its name; it is only done if the person says yes. Creating, deleting or changing the address of a business, offering it to someone else, changing or cancelling a plan also ask to type "CONFIRM".
+4. A change the model asks for stops at a card that says what it will do, where (the panel's screen: "Businesses", "Billing", "Account" or "Store") and with which data, naming the business by its name; it is only done if the person says yes. Creating, deleting or changing the address of a business, offering it to someone else or cancelling its plan also ask to type "CONFIRM"; changing plan is not done from the chat but in the Store, which shows first what will be charged.
 5. With what the tools returned, the model answers live, piece by piece, in the person's language, and links the panel's screen where what it cannot do is done; for what happens inside a business (sales, products, the people at the till) it says to open the business and ask its assistant.
 In: the conversation (it lives in the person's browser), the tools the model asked for and the person's answer to its card.
 Out: what was done and its result, the card of the change that waits, the text as it arrives, the allowance left and the close; what each tool does leaves its own trace (`hubs.business.created`…), never the conversation.
 If it fails: without a session, it does not answer (one must sign in); with the month's allowance spent, the first notice is the allowance spent, with how many were used and when they come back (see ASSISTANT-F26); with too many turns in a row, it says to wait a moment; without a model that answers, that the assistant cannot answer now. A tool the account does not have, or that is not for the chat (downloading a file, creating an API key, opening the payment, entering a business), never runs. Without the word typed or with a "no", the change is not made and the model says so. Where nothing is sold (the account opened from the installed app), neither the Store nor its plan changes are offered. Past six rounds of tools in a single question, it stops.
-Involved: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F23, ASSISTANT-F26, HUBS-F01, HUBS-F09, BILLING-F11
+Involved: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F23, ASSISTANT-F26, HUBS-F01, HUBS-F09, BILLING-F13
 
 ### ASSISTANT-F26 Count an account's messages with the panel's assistant
 Status: done

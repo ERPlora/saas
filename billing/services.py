@@ -1878,11 +1878,9 @@ def checkout_confirm(ctx: OperationContext, data: CheckoutConfirmIn) -> dict:
     permission="billing.pay",
     input=PlanChangeIn,
     output=SubscriptionOut,
-    ai=AI(
-        description="Moves a paying business to another plan or billing interval and charges the difference now; "
-                    "proration_date is the current Unix time in seconds. A free business buys a plan in the store.",
-        risk="high",
-    ),
+    # It needs a fresh preview of the server (``proration_date``, ``_require_fresh_preview``) that the chat has not: its
+    # tool comes with the previews of billing's writes (plan 2026-10-30-asistente-saas §7, «Fuera»).
+    ai=INTERNAL,  # preview
 )
 def plan_change(ctx: OperationContext, data: PlanChangeIn) -> dict:
     """Move a paying business to another plan or billing, at the previewed proration (``billing.checkout.start``

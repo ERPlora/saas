@@ -9,6 +9,7 @@ are the gateway's (``assistant.services``), called as the platform for the sessi
 import json
 import logging
 
+from django.conf import settings
 from django.utils import translation
 from django.utils.translation import gettext
 from live.context import OperationContext
@@ -16,6 +17,7 @@ from live.errors import OperationError, Unauthorized
 from live.operations import INTERNAL, operation
 
 from assistant import services as gateway_services
+from assistant import turn as gateway
 from assistant.schemas import Caller, ReportSendIn
 from base import assistant
 from base.schemas import (
@@ -166,11 +168,23 @@ def assistant_turn(ctx: OperationContext, data: AssistantTurnIn) -> dict:
 )
 def assistant_report(ctx: OperationContext, data: AssistantReportIn) -> dict:
     """Send ERPlora's team an answer of the panel's assistant the account reports, with the question that led to it
-    (``assistant.report.send``: the same answer within a day mails nothing again). 503
-    ``base.assistant_report_not_sent`` when the mail cannot leave."""
+    (``assistant.report.send``: the same answer within a day mails nothing again), within the account's budget of
+    the Hub's ``report`` door (``ASSISTANT_REPORT_RATELIMIT``; past it, 429 ``rate_limited`` and nothing is mailed).
+    503 ``base.assistant_report_not_sent`` when the mail cannot leave."""
     if ctx.actor is None:
         raise Unauthorized(gettext("Sign in to talk to the assistant."))
-    report = ReportSendIn(caller=Caller(user_id=ctx.actor.pk), **data.model_dump())
+    caller = Caller(user_id=ctx.actor.pk)
+    try:
+        # The budget of the Hub's ``report`` door, per account: a new ``message_id`` each time never floods support.
+        gateway.spend(getattr(ctx, "request", None), "report", settings.ASSISTANT_REPORT_RATELIMIT, caller)
+    except gateway.Refused:
+        with translation.override(ctx.language):
+            raise OperationError(
+                gettext("Too many reports in a short time: wait a moment and try again."),
+                code="rate_limited",
+                status=429,
+            ) from None
+    report = ReportSendIn(caller=caller, **data.model_dump())
     try:
         sent = gateway_services.report_send(gateway_services.platform_context(), report)
     except OperationError as failed:

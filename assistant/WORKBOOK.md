@@ -497,12 +497,12 @@ Pasos:
 1. La persona, con su sesión abierta en el panel de erplora.com, escribe al asistente («¿Qué negocios tengo?», «¿Cuánto pago al mes?», «Crea un negocio para mi peluquería»).
 2. erplora.com le ofrece al modelo las herramientas del panel que esa cuenta puede usar (sus negocios y su gente, los planes, sus facturas y suscripciones, su cuenta, el catálogo de apps), primero las de lo que ha preguntado, y siempre la lista de sus negocios.
 3. Una consulta que el modelo pide se ejecuta sola, como la propia persona: nunca ve un negocio que no es suyo.
-4. Un cambio que el modelo pide se para en una tarjeta que dice qué va a hacer, dónde (la pantalla del panel: «Negocios», «Facturación», «Cuenta» o «Tienda») y con qué datos, nombrando el negocio por su nombre; solo se hace si la persona dice que sí. Crear, borrar o cambiar la dirección de un negocio, ofrecerlo a otro, cambiar o cancelar un plan piden además escribir «CONFIRMAR».
+4. Un cambio que el modelo pide se para en una tarjeta que dice qué va a hacer, dónde (la pantalla del panel: «Negocios», «Facturación», «Cuenta» o «Tienda») y con qué datos, nombrando el negocio por su nombre; solo se hace si la persona dice que sí. Crear, borrar o cambiar la dirección de un negocio, ofrecerlo a otro o cancelar su plan piden además escribir «CONFIRMAR»; cambiar de plan no se hace desde el chat, sino en la Tienda, que enseña antes lo que se cobra.
 5. Con lo que han devuelto las herramientas, el modelo contesta en directo, trozo a trozo, en el idioma de la persona, y enlaza la pantalla del panel donde se hace lo que no puede hacer él; para lo que pasa dentro de un negocio (ventas, productos, la gente de la caja) dice que se abra el negocio y se pregunte a su asistente.
 Entra: la conversación (vive en el navegador de la persona), las herramientas que el modelo pidió y la respuesta de la persona a su tarjeta.
 Sale: lo que se ha hecho y su resultado, la tarjeta del cambio que espera, el texto según llega, el cupo que queda y el cierre; lo que hace cada herramienta deja su propio rastro (`hubs.business.created`…), nunca la conversación.
 Si falla: sin sesión, no contesta (hay que entrar); con el cupo del mes gastado, el primer aviso es el cupo agotado, con cuántos se han usado y cuándo vuelven (ver ASSISTANT-F26); con demasiados turnos seguidos, avisa de que hay que esperar un momento; sin un modelo que conteste, de que el asistente no puede contestar ahora. Una herramienta que la cuenta no tiene, o que no es del chat (descargar un fichero, crear una clave de API, abrir el pago, entrar en un negocio), no se ejecuta nunca. Sin la palabra escrita o con un «no», el cambio no se hace y el modelo lo dice. Donde no se vende (la cuenta abierta desde la aplicación instalada), no se ofrecen la Tienda ni sus cambios de plan. Pasadas seis rondas de herramientas en una misma pregunta, se para.
-Implicados: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F23, ASSISTANT-F26, HUBS-F01, HUBS-F09, BILLING-F11
+Implicados: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F23, ASSISTANT-F26, HUBS-F01, HUBS-F09, BILLING-F13
 
 ### ASSISTANT-F26 Contar los mensajes de una cuenta con el asistente del panel
 <!-- origen: nuevo (PLAN-SAAS §23: un cupo fijo por cuenta, como los asistentes de cuenta de Shopify, Square, Stripe, GitHub y Vercel, que van con la cuenta y no con el plan de cada tienda) -->
@@ -634,12 +634,16 @@ propio texto por `code`.
 - **Rutas** (`base/api.py`, con sesión; las mismas que el Hub): `POST /api/assistant/turn` (`base.assistant.turn`,
   `text/event-stream`; cuerpo hasta `TURN_BODY_BYTES` con `base/request_body.py` y en memoria por
   `config.asgi.IN_MEMORY_PATHS`), `GET /api/assistant/usage` (`base.assistant.usage`) y `POST /api/assistant/report`
-  (`base.assistant.report`, 503 `base.assistant_report_not_sent`). Permiso `assistant.ask` del rol `account`.
+  (`base.assistant.report`: el freno `ASSISTANT_REPORT_RATELIMIT` de la puerta `report` del Hub, por cuenta, 429
+  `rate_limited` sin correo; 503 `base.assistant_report_not_sent`). Permiso `assistant.ask` del rol `account` en las
+  tres (sin él, 403).
 - **Herramientas**: toda operación del SaaS declara `ai=` (`live.E017`): `AI(description=…, risk=…)` o `INTERNAL` con
   su motivo en un comentario. `catalog(ctx)` = las `AI` que la cuenta puede usar, en todas las apps (son de
   plataforma); en la superficie de la cuenta (`base.surface`) sin las de la pantalla Tienda (`navigation.WEB_ONLY`).
   `relevant` con `ALWAYS = ("hubs.business.list",)` y las palabras de las pantallas del menú. La tarjeta
-  (`PanelWords`) nombra el negocio por `hubs.business.list` de la cuenta y la pantalla del panel.
+  (`PanelWords`) nombra el negocio por `hubs.business.list` de la cuenta y la pantalla del panel. `billing.plan.change`
+  es `INTERNAL` (`preview`): pide un `proration_date` reciente del servidor que el chat no tiene; su herramienta llega
+  con las vistas previas de las escrituras de billing (plan 2026-10-30 §7, «Fuera»).
 - **La pasarela en proceso**: `turn_frames` → `assistant.turn.spend` (cubo `turn` por `user:<id>`) → `turn.start`
   (cupo) → `turn.frames` → `settle`; un `turn.Refused` es el primer marco `error` (`assistant.quota_exceeded` con
   `used/limit/resets_at/demo`, `assistant.rate_limited` + `retry_after`, `assistant.too_large`,

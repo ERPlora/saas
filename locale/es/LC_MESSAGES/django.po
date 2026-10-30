@@ -1342,3 +1342,7 @@ msgstr "Entra para hablar con el asistente."
 #: base/services.py
 msgid "The report could not be sent: try again in a moment."
 msgstr "No se ha podido enviar la denuncia: inténtalo de nuevo en un momento."
+
+#: base/services.py
+msgid "Too many reports in a short time: wait a moment and try again."
+msgstr "Demasiadas denuncias seguidas: espera un momento y vuelve a intentarlo."

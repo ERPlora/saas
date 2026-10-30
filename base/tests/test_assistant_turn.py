@@ -82,11 +82,13 @@ class TestTheCatalog:
         assert {"hubs.business.list", "hubs.business.create", "billing.invoice.list", "accounts.preferences.get"} <= set(
             tools
         )
-        assert {"apps.app.list", "billing.plan.change", "hubs.business.delete", "hubs.data_copy.list"} <= set(tools)
+        assert {"apps.app.list", "billing.plan.cancel", "hubs.business.delete", "hubs.data_copy.list"} <= set(tools)
         for internal in (
             "accounts.apikey.create",
             "hubs.business.open",
             "accounts.data.export",
+            # Its proration_date is a fresh preview of the server's: the chat has none (billing previews, plan §7).
+            "billing.plan.change",
             # A link to download a whole copy of a business's data: the screen's button, never a chat bubble.
             "hubs.data_copy.link",
             # Its photo travels as a data URL of up to 150 KB: the model has the name and the email in its instructions.
@@ -111,7 +113,7 @@ class TestTheCatalog:
         request.session = {"base.surface": "account"}
         unsold = assistant.catalog(dataclasses.replace(ctx_for(account), request=request))
 
-        for sold in ("billing.plan.change", "billing.plan.cancel", "billing.store.catalog", "apps.app.list"):
+        for sold in ("billing.plan.keep", "billing.plan.cancel", "billing.store.catalog", "apps.app.list"):
             assert sold in assistant.catalog(ctx_for(account))
             assert sold not in unsold
         assert {"hubs.business.list", "billing.invoice.list", "accounts.preferences.get"} <= set(unsold)

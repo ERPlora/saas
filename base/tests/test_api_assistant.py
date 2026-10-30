@@ -84,6 +84,24 @@ class TestTheRoutes:
         assert body_ceiling({"path": "/api/assistant/usage", "headers": []}) is None
 
 
+    @pytest.mark.parametrize("name", list(ROUTES))
+    def test_an_account_without_the_assistants_permission_gets_a_403(self, signed_in, monkeypatch, name):
+        """Each route is its operation's ``permission="assistant.ask"``: without it, the 403 envelope."""
+        from live.meta import all_live_app_configs, permissions_for_role
+
+        from base import operations
+
+        granted = permissions_for_role(all_live_app_configs(), operations.ACCOUNT_ROLE) - {"assistant.ask"}
+        monkeypatch.setattr(operations, "_permissions", lambda actor: granted)
+        method, path = ROUTES[name]
+        bodies = {"base.assistant.turn": {"messages": [{"role": "user", "content": "hi"}]}, "base.assistant.report": report()}
+
+        response = post(signed_in, path, bodies[name]) if method == "post" else signed_in.get(path, HTTP_HOST=HOST)
+
+        assert (response.status_code, response.json()["error"]["code"]) == (403, "permission_denied")
+        assert not mail.outbox
+
+
 class TestTheUsage:
     def test_the_account_sees_its_own_month(self, signed_in, account):
         services.message_claim(platform_context(), Caller(user_id=account.pk))
@@ -137,6 +155,25 @@ class TestTheReport:
         assert failed.status_code == 503
         assert failed.json()["error"]["code"] == "base.assistant_report_not_sent"
         assert post(signed_in, "/api/assistant/report", report()).json() == {"sent": True, "duplicate": False}
+
+    def test_reports_are_limited_per_account_as_the_hubs_door(self, signed_in, settings):
+        """The Hub's ``report`` door spends ``ASSISTANT_REPORT_RATELIMIT`` per caller; the panel's too, so a signed-in
+        account cannot flood the support mailbox with a new ``message_id`` each time."""
+        settings.ASSISTANT_REPORT_RATELIMIT = "60/h"
+        for number in range(60):
+            assert post(signed_in, "/api/assistant/report", report(message_id=f"msg_{number}")).status_code == 200
+
+        refused = post(signed_in, "/api/assistant/report", report(message_id="msg_60"))
+
+        assert (refused.status_code, refused.json()["error"]["code"]) == (429, "rate_limited")
+        assert len(mail.outbox) == 60
+
+    def test_the_reports_budget_is_each_accounts_own(self, client, signed_in, make_user, settings):
+        settings.ASSISTANT_REPORT_RATELIMIT = "1/h"
+        assert post(signed_in, "/api/assistant/report", report()).status_code == 200
+        client.force_login(make_user("other@example.com"))
+
+        assert post(client, "/api/assistant/report", report()).status_code == 200
 
     def test_a_report_without_its_answer_is_a_422(self, signed_in):
         response = post(signed_in, "/api/assistant/report", report(answer=""))
