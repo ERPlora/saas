@@ -329,8 +329,10 @@ class TestDeleteAndRestore:
                 BusinessDeleteIn(id=business.id, confirm_name="Bar Manolo"),
             )
 
+        # The deletion, and after it the deletion mail's read of whether a copy will come (ruling of 2026-10-30).
         assert [(c.method, c.path, c.body) for c in hub_double.calls] == [
-            ("DELETE", f"/internal/hubs/{business.id}", {"id": str(business.id)})
+            ("DELETE", f"/internal/hubs/{business.id}", {"id": str(business.id)}),
+            ("GET", f"/internal/hubs/{business.id}/dumps", None),
         ]
         assert fresh(business).pending_hub_call == ""
 
