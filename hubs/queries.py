@@ -1432,12 +1432,12 @@ def data_copy_list(ctx: OperationContext, data: DataCopyListIn) -> dict[str, Any
     permission="hubs.view",
     input=DataCopyLinkIn,
     output=DataCopyLinkOut,
-    expose_api=True,
 )
 def data_copy_link(ctx: OperationContext, data: DataCopyLinkIn) -> dict[str, Any]:
     """A link to download one copy of the business's data, asked to the Hub now (it lasts 15 minutes, so a page left
-    open still downloads, and the link in a mail never expires: it leads here). Only the owner. A copy the Hub no
-    longer keeps: 404 ``hubs.data_copy_gone``; the Hub away, or a link that is no web address: 503
+    open still downloads, and the link in a mail never expires: it leads here). Only the owner, in the owner's
+    session: no API key downloads a full copy of every person's data of the business (as none deletes it). A copy the
+    Hub no longer keeps: 404 ``hubs.data_copy_gone``; the Hub away, or a link that is no web address: 503
     ``hubs.data_copy_unavailable``."""
     user = account_of(ctx)
     hub = access(user, data.business_id, Role.OWNER).hub

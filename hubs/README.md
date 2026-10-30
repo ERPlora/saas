@@ -372,8 +372,10 @@ listo al responder, y lo dice.
   a más vieja, sin enlace) y cada clic pide el enlace al Hub en `hubs.data_copy.link` (`GET
   /api/hubs/data-copies/link?business_id=&copy_id=` → `{url}`, el prefirmado de 15 min del Hub; 404
   `hubs.data_copy_gone` si ya no está, 503 `hubs.data_copy_unavailable` con el Hub caído o un enlace que no es una
-  dirección web). Solo el propietario (`can.download_data`; matriz de `tests/test_permission_matrix.py`). Con el Hub
-  caído o sin copias, la lista sale vacía, nunca un 500.
+  dirección web). Solo el propietario (`can.download_data`; matriz de `tests/test_permission_matrix.py`); la lista
+  está abierta a una clave de API con `hubs.read`, el enlace no (`expose_api` apagado: una copia completa de los datos
+  de todas las personas del negocio pide la sesión del propietario, como eliminarlo). Con el Hub caído o sin copias,
+  la lista sale vacía, nunca un 500.
 - **Panel** (`frontend/components/DataCopyCard.vue`, al final del Resumen): «Descargar los datos», qué es (la copia
   completa, para restaurar: formato de PostgreSQL, `pg_restore`; propuesta (l)), y por fila fecha, tipo («Al
   eliminarlo», «Antes de restablecer sus datos») y tamaño, con «Descargar». En un negocio eliminado sale siempre:

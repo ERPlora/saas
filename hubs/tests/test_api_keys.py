@@ -28,6 +28,8 @@ EXPOSED = {
     # The usage of a business (L4-A).
     "hubs.usage.get",
     "hubs.usage.series",
+    # The copies of a business's data, listed (PLAN-DB round 2026-10-30, (k)): never their links.
+    "hubs.data_copy.list",
     "hubs.plan.list",
     "hubs.sector.list",
     "hubs.business_type.list",
@@ -192,3 +194,24 @@ class TestBillingRead:
             403,
             "api_key_missing_scope",
         )
+
+
+class TestTheCopiesOfABusinesssData:
+    """A key lists the copies the Hub keeps of a business's data (when, which, how big) but never downloads one: a full
+    copy of every person's data of the business takes its owner's session, as deleting it does (HUBS-F18)."""
+
+    def test_a_key_with_hubs_read_lists_them(self, business, owner, hub_double):
+        hub_double.dumps[str(business.id)] = []
+        secret = key_of(owner, "hubs.read")
+
+        response = get("/hubs/data-copies", secret, business_id=str(business.id))
+
+        assert (response.status_code, response.json()["copies"]) == (200, [])
+
+    def test_no_key_downloads_one(self, business, owner, hub_double):
+        secret = key_of(owner, "hubs.read", "hubs.write", "billing.read")
+
+        response = get("/hubs/data-copies/link", secret, business_id=str(business.id), copy_id="any.dump")
+
+        assert (response.status_code, response.json()["error"]["code"]) == (403, "api_key_not_allowed")
+        assert hub_double.calls_to("GET", "/dumps") == []
