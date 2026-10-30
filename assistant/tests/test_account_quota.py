@@ -1,4 +1,4 @@
-"""ASSISTANT-F27 · Count an account's own messages of the assistant of erplora.com's panel (plan 2026-10-30, §4,
+"""ASSISTANT-F26 · Count an account's own messages of the assistant of erplora.com's panel (plan 2026-10-30, §4,
 PLAN-SAAS §23): a fixed allowance per account and calendar month (UTC), ``ASSISTANT_ACCOUNT_MESSAGES`` (30), apart
 from the plan allowance of each of its businesses. The same claim, release and record as a business's
 (``assistant.message.claim`` / ``.release`` / ``assistant.usage.record``), on a row of its own per (account, month).

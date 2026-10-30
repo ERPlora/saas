@@ -1,14 +1,16 @@
 # Workbook — Asistente de IA (assistant)
 Prefijo: ASSISTANT
-Alcance MVP: fase 1 (la pasarela de IA de erplora.com: los proveedores que paga ERPlora, sus claves cifradas, sus modelos y qué modelo contesta; el turno del asistente de cada negocio con sus herramientas y sus adjuntos, el cupo de mensajes de su plan, las huellas de su índice, el dictado y la lectura en voz alta, las denuncias de una respuesta y lo que gasta cada negocio)
-Estado de la app: en uso (un flujo parcial: ASSISTANT-F14, cuya búsqueda en la web y tipo de cambio llegan con la etapa ERP; el asistente que lo usa, con su chat y su voz, es la app del Hub)
+Alcance MVP: fase 1 (la pasarela de IA de erplora.com: los proveedores que paga ERPlora, sus claves cifradas, sus modelos y qué modelo contesta; el turno del asistente de cada negocio con sus herramientas y sus adjuntos, el cupo de mensajes de su plan, las huellas de su índice, el dictado y la lectura en voz alta, las denuncias de una respuesta y lo que gasta cada negocio; el asistente del panel de erplora.com para cada cuenta, con las herramientas del panel y su propio cupo)
+Estado de la app: en uso (dos flujos parciales: ASSISTANT-F14, cuya búsqueda en la web y tipo de cambio llegan con la etapa ERP, y ASSISTANT-F25, cuyo chat en el panel llega con su pantalla; el asistente de cada negocio, con su chat y su voz, es la app del Hub)
 
 > Manual de uso y especificación de la app `assistant` del SaaS (erplora.com). Cuenta lo que hace el personal de
 > ERPlora para que el asistente de IA conteste (dar de alta un proveedor de modelos y su clave, elegir sus modelos,
 > decidir qué modelo contesta y probarlo antes, ver lo que gasta cada negocio) y lo que hace erplora.com cada vez que
 > el asistente de un negocio le pide algo: contestar un turno, leer sus adjuntos, contar sus mensajes, calcular las
-> huellas de su índice, transcribir un dictado o leer una respuesta en voz alta. No se publica en la tienda: es la
-> referencia del equipo y de la QA. Ningún cliente ve estas pantallas; el asistente que usa el negocio vive en el Hub.
+> huellas de su índice, transcribir un dictado o leer una respuesta en voz alta. También contesta al asistente del
+> propio panel de erplora.com, el de cada cuenta: sus negocios, lo que paga a ERPlora y su cuenta. No se publica en la
+> tienda: es la referencia del equipo y de la QA. Ningún cliente ve estas pantallas; el asistente que usa el negocio
+> vive en el Hub.
 
 ## Para qué sirve y para quién
 
@@ -88,10 +90,11 @@ ve sin poder cambiarla. Arriba, «Probar un modelo» (solo para quien puede camb
 entrada», «Tokens de salida», «Tiempo» y «Coste» (en dólares).
 
 ### Admin: Registros de uso del asistente
-Una fila por negocio y mes (una demo, una sola en toda su vida) con «Negocio o demo», «Mes», «Mensajes», «Tokens de
-entrada», «Tokens de salida», «Tokens de huellas», «Dictados», «Caracteres leídos en voz alta» y «Coste (USD)».
-Arriba, el buscador (por nombre o dirección del negocio, o por la dirección de la demo) y los meses; a la derecha, el
-filtro «Por tipo» («Negocios» o «Demos») y el del mes. Cada fila se abre para verla entera, sin poder cambiarla.
+Una fila por negocio y mes (una demo, una sola en toda su vida; una cuenta, una por mes con el asistente del panel)
+con «Negocio, demo o cuenta» (de una cuenta, su correo), «Mes», «Mensajes», «Tokens de entrada», «Tokens de salida»,
+«Tokens de huellas», «Dictados», «Caracteres leídos en voz alta» y «Coste (USD)». Arriba, el buscador (por nombre o
+dirección del negocio, por la dirección de la demo o por el correo de la cuenta) y los meses; a la derecha, el filtro
+«Por tipo» («Negocios», «Demos» o «Cuentas») y el del mes. Cada fila se abre para verla entera, sin poder cambiarla.
 
 ## Estados de cada pantalla
 
@@ -130,6 +133,8 @@ filtro «Por tipo» («Negocios» o «Demos») y el del mes. Cada fila se abre p
 | ASSISTANT-F22 | Leer una respuesta en voz alta | hecho |
 | ASSISTANT-F23 | Recibir la denuncia de una respuesta del asistente | hecho |
 | ASSISTANT-F24 | Ver lo que ha gastado un negocio del asistente | hecho |
+| ASSISTANT-F25 | Contestar al asistente del panel de una cuenta | parcial |
+| ASSISTANT-F26 | Contar los mensajes de una cuenta con el asistente del panel | hecho |
 
 ### ASSISTANT-F01 Dar de alta un proveedor de IA
 <!-- origen: fi:saas/support/auth-services#modelo-aiprovider fi:saas/django-admin#admin-aiprovider old-saas:SAAS_ASSISTANT-F22 -->
@@ -475,13 +480,44 @@ Actor: personal de ERPlora
 Pantalla: Admin: Registros de uso del asistente
 Pasos:
 1. En el admin de erplora.com, abre «Registros de uso del asistente».
-2. Busca el negocio por su nombre o su dirección (o la demo por su dirección), o filtra «Por tipo» («Negocios» o «Demos») y por mes.
+2. Busca el negocio por su nombre o su dirección (la demo por su dirección, la cuenta por su correo), o filtra «Por tipo» («Negocios», «Demos» o «Cuentas») y por mes.
 3. Lee su fila del mes: «Mensajes» del cupo, «Tokens de entrada», «Tokens de salida», «Tokens de huellas», «Dictados», «Caracteres leídos en voz alta» y «Coste (USD)» (con los precios del modelo que contestó cada turno).
 4. Abre la fila para verla entera, con cuándo se creó y cuándo se cambió.
-Entra: el negocio o la demo y el mes.
-Sale: lo gastado por el negocio en el mes, sin poder cambiarlo.
+Entra: el negocio, la demo o la cuenta y el mes.
+Sale: lo gastado por el negocio (o la cuenta) en el mes, sin poder cambiarlo.
 Si falla: nadie puede añadir, cambiar ni borrar una fila, ni siquiera un superusuario (borrar la del mes devolvía al negocio todo su cupo); alguien del equipo sin el permiso para verlo no entra.
-Implicados: ASSISTANT-F18, ASSISTANT-F20, ASSISTANT-F21, ASSISTANT-F22
+Implicados: ASSISTANT-F18, ASSISTANT-F20, ASSISTANT-F21, ASSISTANT-F22, ASSISTANT-F26
+
+### ASSISTANT-F25 Contestar al asistente del panel de una cuenta
+<!-- origen: nuevo (decisión de Ioan del 30/10/2026: el mismo asistente que el del Hub, con las herramientas propias de erplora.com; Shopify Sidekick, Square Assistant, Stripe Assistant y el Copilot de GitHub contestan en el panel de la cuenta; ver PLAN-SAAS §23) -->
+Estado: parcial — erplora.com ya contesta cada turno de la cuenta; el chat que lo abre desde la barra del panel llega con su pantalla
+Actor: la persona con cuenta en erplora.com
+Pantalla: ninguna
+Pasos:
+1. La persona, con su sesión abierta en el panel de erplora.com, escribe al asistente («¿Qué negocios tengo?», «¿Cuánto pago al mes?», «Crea un negocio para mi peluquería»).
+2. erplora.com le ofrece al modelo las herramientas del panel que esa cuenta puede usar (sus negocios y su gente, los planes, sus facturas y suscripciones, su cuenta, el catálogo de apps), primero las de lo que ha preguntado, y siempre la lista de sus negocios.
+3. Una consulta que el modelo pide se ejecuta sola, como la propia persona: nunca ve un negocio que no es suyo.
+4. Un cambio que el modelo pide se para en una tarjeta que dice qué va a hacer, dónde (la pantalla del panel: «Negocios», «Facturación», «Cuenta» o «Tienda») y con qué datos, nombrando el negocio por su nombre; solo se hace si la persona dice que sí. Crear, borrar o cambiar la dirección de un negocio, ofrecerlo a otro, cambiar o cancelar un plan piden además escribir «CONFIRMAR».
+5. Con lo que han devuelto las herramientas, el modelo contesta en directo, trozo a trozo, en el idioma de la persona, y enlaza la pantalla del panel donde se hace lo que no puede hacer él; para lo que pasa dentro de un negocio (ventas, productos, la gente de la caja) dice que se abra el negocio y se pregunte a su asistente.
+Entra: la conversación (vive en el navegador de la persona), las herramientas que el modelo pidió y la respuesta de la persona a su tarjeta.
+Sale: lo que se ha hecho y su resultado, la tarjeta del cambio que espera, el texto según llega, el cupo que queda y el cierre; lo que hace cada herramienta deja su propio rastro (`hubs.business.created`…), nunca la conversación.
+Si falla: sin sesión, no contesta (hay que entrar); con el cupo del mes gastado, el primer aviso es el cupo agotado, con cuántos se han usado y cuándo vuelven (ver ASSISTANT-F26); con demasiados turnos seguidos, avisa de que hay que esperar un momento; sin un modelo que conteste, de que el asistente no puede contestar ahora. Una herramienta que la cuenta no tiene, o que no es del chat (descargar un fichero, crear una clave de API, abrir el pago, entrar en un negocio), no se ejecuta nunca. Sin la palabra escrita o con un «no», el cambio no se hace y el modelo lo dice. Donde no se vende (la cuenta abierta desde la aplicación instalada), no se ofrecen la Tienda ni sus cambios de plan. Pasadas seis rondas de herramientas en una misma pregunta, se para.
+Implicados: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F23, ASSISTANT-F26, HUBS-F01, HUBS-F09, BILLING-F11
+
+### ASSISTANT-F26 Contar los mensajes de una cuenta con el asistente del panel
+<!-- origen: nuevo (PLAN-SAAS §23: un cupo fijo por cuenta, como los asistentes de cuenta de Shopify, Square, Stripe, GitHub y Vercel, que van con la cuenta y no con el plan de cada tienda) -->
+Estado: hecho
+Actor: la persona con cuenta en erplora.com
+Pantalla: ninguna
+Pasos:
+1. Cada cuenta tiene 30 mensajes al mes con el asistente del panel, tenga los negocios que tenga y en el plan que estén; el cupo de cada negocio es aparte, el de su plan en su Hub (ver ASSISTANT-F18).
+2. Cada mensaje que la persona escribe gasta uno al empezar el turno, antes de llamar al modelo; la vuelta con los resultados de las herramientas que el modelo pidió no gasta otro.
+3. Si el turno no llega a contestar nada (el proveedor falla, la persona corta), el mensaje se devuelve al mes en que se tomó.
+4. El panel pregunta cuánto le queda (cuántos se han usado, de cuántos y cuándo vuelven); el cierre de cada turno trae las mismas cifras. El cupo vuelve el día 1 de cada mes a las 00:00 UTC.
+Entra: la cuenta de la sesión.
+Sale: el mensaje tomado o devuelto y lo gastado en el mes de la cuenta (`assistant.message.claimed`, `assistant.message.released`, `assistant.usage.recorded`, con la cuenta).
+Si falla: sin mensajes libres, el turno se rechaza con el cupo agotado y la fecha en que vuelven; no hay plan que subir ni paquetes sueltos. Una cuenta nunca gasta los mensajes de sus negocios, ni un negocio los de su cuenta; al borrar la cuenta se borran sus filas.
+Implicados: ASSISTANT-F18, ASSISTANT-F24, ASSISTANT-F25
 
 ## Para quien lo mantiene
 
@@ -593,14 +629,38 @@ propio texto por `code`.
   `test_internal_caller.py`, `test_speech.py`), saas#2445 (el nombre del fichero en el log: `test_attachments.py`),
   saas#2599 (la demo sin tope: `test_quota.py`).
 
+### El asistente del panel (`base/assistant.py`, ASSISTANT-F25, F26)
+
+- **Rutas** (`base/api.py`, con sesión; las mismas que el Hub): `POST /api/assistant/turn` (`base.assistant.turn`,
+  `text/event-stream`; cuerpo hasta `TURN_BODY_BYTES` con `base/request_body.py` y en memoria por
+  `config.asgi.IN_MEMORY_PATHS`), `GET /api/assistant/usage` (`base.assistant.usage`) y `POST /api/assistant/report`
+  (`base.assistant.report`, 503 `base.assistant_report_not_sent`). Permiso `assistant.ask` del rol `account`.
+- **Herramientas**: toda operación del SaaS declara `ai=` (`live.E017`): `AI(description=…, risk=…)` o `INTERNAL` con
+  su motivo en un comentario. `catalog(ctx)` = las `AI` que la cuenta puede usar, en todas las apps (son de
+  plataforma); en la superficie de la cuenta (`base.surface`) sin las de la pantalla Tienda (`navigation.WEB_ONLY`).
+  `relevant` con `ALWAYS = ("hubs.business.list",)` y las palabras de las pantallas del menú. La tarjeta
+  (`PanelWords`) nombra el negocio por `hubs.business.list` de la cuenta y la pantalla del panel.
+- **La pasarela en proceso**: `turn_frames` → `assistant.turn.spend` (cubo `turn` por `user:<id>`) → `turn.start`
+  (cupo) → `turn.frames` → `settle`; un `turn.Refused` es el primer marco `error` (`assistant.quota_exceeded` con
+  `used/limit/resets_at/demo`, `assistant.rate_limited` + `retry_after`, `assistant.too_large`,
+  `assistant.unavailable`), como `_refusal` del Hub. Las puertas del Hub (`internal.py`) usan las mismas piezas.
+- **Cupo por cuenta**: `Caller(user_id=…)`, una fila `AssistantUsage(user, month)` (check «negocio, demo o cuenta»,
+  única por cuenta y mes; migración `0003_account_usage`, que al volver atrás borra las filas de cuentas),
+  `ASSISTANT_ACCOUNT_MESSAGES` (30).
+- **Tests**: `base/tests/test_assistant_turn.py`, `base/tests/test_api_assistant.py`,
+  `assistant/tests/test_account_quota.py`, `test_admin_usage.py` (la cuenta en el admin) y `test_privacy.py` (la ruta
+  del panel no guarda la conversación).
+
 ## Lo que NO hace, a propósito
 
 - No enseña nunca una clave guardada, ni a un superusuario: se vuelve a escribir.
-- No tiene pantalla en el panel de erplora.com ni en el Hub.
+- No tiene pantalla en el Hub: el chat de cada negocio es la app del Hub. El del panel de erplora.com contesta ya
+  (ASSISTANT-F25) y su chat, con el botón en la barra del panel, llega con el frontend del panel.
 - No guarda aparte una copia de la clave de cifrado (el producto viejo la copiaba a un almacén externo): la guarda el
   gestor de secretos de la nube, con sus versiones y su plazo de recuperación, y una credencial perdida se vuelve a
   escribir.
-- No guarda la conversación, ni un historial de chats: la conversación es del navegador de la persona, en el Hub.
+- No guarda la conversación, ni un historial de chats: la conversación es del navegador de la persona, en el Hub o
+  en el panel.
 - No habla por WebSocket: el turno en directo va por HTTP (sin channels), y el de una vez, en una respuesta.
 - No tiene «niveles» del asistente con su cupo, su precio y su modelo (el producto viejo, con su siembra y su admin):
   el cupo es el del plan, que se edita en «Planes», y el modelo que contesta es uno para todos, con su reserva.

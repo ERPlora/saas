@@ -1,4 +1,4 @@
-"""ASSISTANT-F26 · The assistant of erplora.com's own panel answers a turn of the signed-in account (plan
+"""ASSISTANT-F25 · The assistant of erplora.com's own panel answers a turn of the signed-in account (plan
 2026-10-30-asistente-saas §4, PLAN-SAAS §23): ``POST /api/assistant/turn`` (``base.assistant.turn``), the same frames
 as the Hub's panel (``executed``, ``confirm``, ``text``, ``usage``, ``error``, ``done``), with the SaaS's own
 operations as its tools and the gateway called in process (no ``/internal``, no signature).
