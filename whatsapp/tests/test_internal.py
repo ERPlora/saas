@@ -386,6 +386,23 @@ class TestMetasRefusals:
         meta.mock(return_value=httpx.Response(200, json=ACCEPTED))
         assert send(client).status_code == 200
 
+    @respx.mock
+    def test_unreadable_trusted_certificates_left_nothing_and_the_hub_retries(
+        self, client, number, business, unreadable_ca, monkeypatch
+    ):
+        """FIX-SAAS-WHATSAPP-HTTP-CALLS-CRASH-WHEN-SSL-CERT-FILE-MISSING: the server cannot load its trusted
+        certificates, so nothing leaves for Meta: the place and the key are free, as when Meta is not reached, and
+        the same key sends once the server is fixed."""
+        meta = respx.post(SEND).mock(return_value=httpx.Response(200, json=ACCEPTED))
+
+        response = send(client)
+
+        assert (response.status_code, error_code(response)) == (503, "whatsapp.meta_unreachable")
+        assert not meta.called
+        assert used(business) == 0 and not Send.objects.exists()
+        monkeypatch.delenv("SSL_CERT_FILE")
+        assert send(client).status_code == 200
+
 
 @pytest.mark.django_db
 class TestTheMonthsAllowance:

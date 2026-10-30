@@ -5,8 +5,10 @@ delivery status of a message the Hub sent).
 Plain HTTP, no ORM: ``gateway.deliver`` hands in the bodies and records the answers. Signed as every call of the
 SaaS to the Hub (``hubs.hub_client.signed_headers``: v1 over the body, v2 over method, path and body), to
 ``HUB_INTERNAL_URL``. Any answer is returned (``Answer``): the caller decides that a 200 is delivered, a 422 is not
-worth retrying and anything else is retried; no answer at all raises ``Unreachable``. 5 s to connect and 5 s more to
-answer at most (``LONGEST_CALL``): it runs after the COMMIT of Meta's webhook, which waits for it.
+worth retrying and anything else is retried; no answer at all raises ``Unreachable``, and so does a server whose
+trusted certificates cannot be loaded (``base.tls``: the message names ``SSL_CERT_FILE`` and its file, nothing left;
+``httpx`` loads them even for an ``http://`` Hub). 5 s to connect and 5 s more to answer at most (``LONGEST_CALL``): it
+runs after the COMMIT of Meta's webhook, which waits for it.
 """
 
 import json
@@ -18,6 +20,7 @@ from typing import Any
 import httpx
 from django.conf import settings
 
+from base import tls
 from hubs.hub_client import signed_headers
 
 INBOUND_PATH = "/internal/whatsapp/inbound"
@@ -50,8 +53,12 @@ def _post(path: str, payload: dict) -> Answer:
     raw = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode()
     headers = signed_headers("POST", path, raw, int(time.time()))
     try:
+        context = tls.trusted_context("whatsapp.hub_client")
+    except tls.TrustStoreUnreadable as unreadable:
+        raise Unreachable(f"POST {path}: {unreadable.message}") from None
+    try:
         response = httpx.post(
-            settings.HUB_INTERNAL_URL.rstrip("/") + path, content=raw, headers=headers, timeout=TIMEOUT
+            settings.HUB_INTERNAL_URL.rstrip("/") + path, content=raw, headers=headers, timeout=TIMEOUT, verify=context
         )
     except httpx.HTTPError as error:
         raise Unreachable(f"POST {path}: {type(error).__name__}") from None

@@ -7,6 +7,7 @@ Meta is a third party with no test environment here: its Graph API is replaced a
 
 import pytest
 
+from base.tests.conftest import unreadable_ca  # noqa: F401 - the server's unreadable trusted certificates
 from hubs.tests.conftest import (  # noqa: F401 - fixtures shared with hubs
     add_member,
     business,

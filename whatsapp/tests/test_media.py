@@ -205,6 +205,20 @@ def test_meta_unreachable_is_502(client, number, business, owner):
     assert (response.status_code, error_code(response)) == (502, "whatsapp.media_unavailable")
 
 
+@respx.mock
+def test_unreadable_trusted_certificates_are_502_before_meta(client, number, business, owner, unreadable_ca):
+    """FIX-SAAS-WHATSAPP-HTTP-CALLS-CRASH-WHEN-SSL-CERT-FILE-MISSING: the server cannot load its trusted
+    certificates: the attachment says it cannot be handed over now, never a 500, and Meta is not asked."""
+    info, download = meta_has_it()
+    row = attachment(business)
+    client.force_login(owner)
+
+    response = open_media(client, row)
+
+    assert (response.status_code, error_code(response)) == (502, "whatsapp.media_unavailable")
+    assert not info.called and not download.called
+
+
 def test_without_a_connected_number_it_is_409(client, whatsapp_on, business, owner):
     row = attachment(business)
     client.force_login(owner)
