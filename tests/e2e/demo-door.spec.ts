@@ -1,8 +1,8 @@
 // The door of the demo hubs (/demo/, public/demo.py; PLAN-SAAS §3.5, round 2026-10-17) in a real browser,
 // under the public web's CSP with zero violations: the home's «Try the demo» leads to it, it offers a demo
 // in English and in Spanish at the three viewports, and its button (an ion-button inside a POST form) really
-// submits. This server has no Hub (`HUB_INTERNAL_URL` is the private name, unresolvable here), so the press
-// lands on the visible «not available» state; the whole walk into a demo hub is the Hub's e2e
+// submits. Nobody plays its Hub here (`HUB_INTERNAL_URL` is the stack's port for it, which only demo-wait.spec.ts
+// listens on), so the press lands on the visible «not available» state; the whole walk into a demo hub is the Hub's e2e
 // (hub/tests/e2e/demo.spec.ts). The screenshots stay in `.artifacts/demo/` for review.
 import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';

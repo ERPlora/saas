@@ -56,6 +56,12 @@ const USAGE_ROUTES = {
   'hubs.usage.series': { method: 'get', path: '/api/hubs/usage/series' },
 };
 
+/** The copies of a business's data (hubs/api.py, PLAN-DB round 2026-10-30 (k)): the list and a fresh link per click. */
+const DATA_COPY_ROUTES = {
+  'hubs.data_copy.list': { method: 'get', path: '/api/hubs/data-copies' },
+  'hubs.data_copy.link': { method: 'get', path: '/api/hubs/data-copies/link' },
+};
+
 /** The signed authorisation of a business (fiscal/api.py, plan 2026-10-15): its state on the business's page. */
 const FISCAL_ROUTES = {
   'fiscal.representation.status': { method: 'get', path: '/api/fiscal/representation' },
@@ -176,6 +182,12 @@ describe('OPERATION_ROUTES', () => {
     for (const [op, route] of Object.entries(USAGE_ROUTES)) expect(api[op], op).toEqual(route);
   });
 
+  it('binds the copies of a business’s data to their routes, as hubs/api.py does', () => {
+    expect(OPERATION_ROUTES).toMatchObject(DATA_COPY_ROUTES);
+    const api = hubsRoutes(HUBS_API);
+    for (const [op, route] of Object.entries(DATA_COPY_ROUTES)) expect(api[op], op).toEqual(route);
+  });
+
   it('binds the operations of the Billing section to their routes, as billing/api.py does', () => {
     expect(OPERATION_ROUTES).toMatchObject(BILLING_ROUTES);
     const api = hubsRoutes(BILLING_API);
@@ -221,6 +233,7 @@ describe('OPERATION_ROUTES', () => {
         ...Object.keys(STORE_ROUTES),
         ...Object.keys(BILLING_ROUTES),
         ...Object.keys(USAGE_ROUTES),
+        ...Object.keys(DATA_COPY_ROUTES),
         ...Object.keys(FISCAL_ROUTES),
       ].sort(),
     );

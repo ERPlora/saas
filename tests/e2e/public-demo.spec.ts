@@ -4,7 +4,7 @@
 // the connection, ended), each with its way out to «Start free»; and a press that finds no Hub is said, not kept.
 // Each screen is captured at 390×844, 834×1112 and 1440×900 as `APP-PUBLIC-3-<key>-<width>.png` in `.artifacts/`.
 //
-// What needs a Hub is not here: this server has none (`HUB_INTERNAL_URL` is the private name, unresolvable). The walk
+// What needs a Hub is not here: nobody plays it for these specs (the waiting door is demo-wait.spec.ts). The walk
 // into a demo — created, «Opening your demo…», the shell as «Demo», «Back to my demo», ended → 410 → the door — is
 // the Hub's tests/e2e/demo.spec.ts, run with this SaaS as its SaaS. The switched-off door (PUBLIC-G58) needs a server
 // with DEMO_ENABLED off: public/tests/test_demo.py renders it.

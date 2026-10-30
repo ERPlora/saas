@@ -7,15 +7,21 @@ body-only v1), records every call and answers what the test asks for, with the H
 - ``PUT /internal/hubs/{id}`` → 202 (asynchronous sign-up: «requested»), 200 once it is known;
 - ``PUT /internal/hubs/{id}/state`` → 200, ``applied`` false for a version not newer than the last
   one applied (the Hub ignores an older snapshot, §2.2);
-- ``GET /internal/hubs/{id}`` → 200 with the registry's status, 404 for a hub it never got;
+- ``GET /internal/hubs/{id}`` → 200 with the registry's status (a demo's too: ``requested`` until the test says
+  ``ready``, ``expired`` once it ended), 404 for a hub it never got;
+- ``GET /internal/hubs/{id}/dumps`` → 200 ``{"available": bool, "dumps": [...]}``: the copies of ``dumps[id]`` as the
+  test sets them (``{id, kind, created_at, bytes}``), newest first, each with a fresh ``url`` (a presigned link of 15
+  minutes in the Hub); ``[]`` for a known hub without any; ``available`` false for a hub in ``without_copies`` (no
+  database of its own, so never a copy); 404 for a hub it never got;
 - ``DELETE /internal/hubs/{id}`` → 202; ``POST /internal/hubs/{id}/restore`` → 200;
 - ``POST /internal/sessions/revoke`` → 200;
 - ``GET /internal/usage?day=YYYY-MM-DD[&cursor=…]`` → 200 with the rows of ``usage[day]`` (each business's
   usage that day, as the test sets it), ``usage_page_size`` per page and ``next_cursor`` until the last;
   422 without a ``day``;
-- ``POST /internal/demos`` (``{session_key, vertical, language}``) → 201 with a new ``demo-<8 hex>`` that ends
-  ``DEMO_MINUTES`` later, or 200 with the live one of that ``session_key`` (``created`` false): one live demo per
-  browser, as the Hub keeps it (plan ``docs/plans/2026-10-17-demo-hubs-fase-1.md`` §1.5);
+- ``POST /internal/demos`` (``{session_key, vertical, language}``) → 202 with a new ``demo-<8 hex>`` that ends
+  ``DEMO_MINUTES`` later and is ``status: "requested"`` (the Hub prepares its database afterwards), or 200 with the
+  live one of that ``session_key`` and its status (``created`` false): one live demo per browser, as the Hub keeps it
+  (plan ``docs/plans/2026-10-17-demo-hubs-fase-1.md`` §1.5; the asynchronous demo of the tenancy, 2026-10-30);
 - ``POST /internal/demos/{slug}/codes`` (``{session_key, language}``) → 201 ``{code, expires_at}``; 404 for a demo
   it never made, 410 ``base.hub_gone`` once it ended, 403 ``base.demo_not_owner`` for another browser's.
 
@@ -38,7 +44,7 @@ from typing import Any
 from accounts.signing import SIGNATURE_V2_HEADER, verify_signed
 
 HUB_PATH = re.compile(
-    r"^/internal/hubs/(?P<id>[0-9a-f-]{36})(?P<rest>/state|/restore)?$"
+    r"^/internal/hubs/(?P<id>[0-9a-f-]{36})(?P<rest>/state|/restore|/dumps)?$"
 )
 DEMO_CODES_PATH = re.compile(r"^/internal/demos/(?P<slug>[a-z0-9-]+)/codes$")
 #: How long a demo of the double lives, as the Hub's ``DEMO_TTL_MINUTES``.
@@ -80,6 +86,10 @@ class HubDouble:
         #: ``POST /internal/demos``: the demos it made, by slug (``{id, slug, session_key, expires_at}``,
         #: ``expires_at`` a datetime a test may move to the past).
         self.demos: dict[str, dict] = {}
+        #: ``GET /internal/hubs/{id}/dumps``: the copies of each hub's data (``{id, kind, created_at, bytes}``).
+        self.dumps: dict[str, list[dict]] = {}
+        #: The hubs without a database of their own: ``available`` false, never a copy.
+        self.without_copies: set[str] = set()
         self._lock = threading.Lock()
         double = self
 
@@ -181,6 +191,12 @@ class HubDouble:
         if match is None:
             return 404, {"error": {"code": "not_found", "message": "No such route."}}
         hub_id, rest = match["id"], match["rest"]
+        demo = self._demo_by_id(hub_id)
+        if method == "GET" and rest is None and demo is not None:
+            ended = demo["expires_at"] <= datetime.now(UTC)
+            return 200, {"status": "expired" if ended else demo["status"]}
+        if method == "GET" and rest == "/dumps":
+            return self._dumps(hub_id)
         if method == "PUT" and rest is None:
             known = hub_id in self.registry
             self.registry[hub_id] = {
@@ -230,8 +246,25 @@ class HubDouble:
             "slug": slug,
             "session_key": body.get("session_key"),
             "expires_at": now + timedelta(minutes=DEMO_MINUTES),
+            "status": "requested",
         }
-        return 201, {**self._demo_out(self.demos[slug]), "created": True}
+        return 202, {**self._demo_out(self.demos[slug]), "created": True}
+
+    def _demo_by_id(self, hub_id: str) -> dict | None:
+        return next((demo for demo in self.demos.values() if demo["id"] == hub_id), None)
+
+    def _dumps(self, hub_id: str) -> tuple[int, Any]:
+        """The hub's copies, newest first, each with a link made now (``url``)."""
+        if hub_id not in self.registry and hub_id not in self.dumps:
+            return 404, {"error": {"code": "not_found", "message": "Unknown hub."}}
+        copies = sorted(self.dumps.get(hub_id, []), key=lambda copy: copy["created_at"], reverse=True)
+        return 200, {
+            "available": hub_id not in self.without_copies,
+            "dumps": [
+                {**copy, "url": f"https://dumps.example.test/{copy['id']}?X-Amz-Expires=900&X-Amz-Signature={secrets.token_hex(8)}"}
+                for copy in copies
+            ]
+        }
 
     def _create_demo_code(self, slug: str, body: dict) -> tuple[int, Any]:
         demo = self.demos.get(slug)
@@ -246,4 +279,9 @@ class HubDouble:
 
     @staticmethod
     def _demo_out(demo: dict) -> dict:
-        return {"id": demo["id"], "slug": demo["slug"], "expires_at": demo["expires_at"].isoformat()}
+        return {
+            "id": demo["id"],
+            "slug": demo["slug"],
+            "status": demo["status"],
+            "expires_at": demo["expires_at"].isoformat(),
+        }

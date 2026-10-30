@@ -74,6 +74,17 @@ NEW_MESSAGES = [
     "%(business)s is ready: open it and start selling.",
     "Open it: %(url)s",
     "Manage it from the panel: %(url)s",
+    # The copies of a business's data (PLAN-DB round 2026-10-30, (k)): the deletion's way to them, the mail when one
+    # is ready (emails.py) and the refusals of a download (queries.data_copy_link).
+    "Download a full copy of its data: %(url)s",
+    "The copy of the data of %(business)s is ready",
+    "The full copy of the data of %(business)s is ready.",
+    "Download it from %(url)s until %(date)s.",
+    "The copy cannot be downloaded right now. Try again in a moment.",
+    "This copy of the data is no longer kept.",
+    "copy of the data announced at",
+    "tries of the copy's mail",
+    "The copy of the data could not be checked right now. Try again in a moment.",
 ]
 
 

@@ -759,6 +759,50 @@ class TestDelete:
         # The account reads Spanish.
         assert "recuperar" in message.body.lower()
 
+    # The deletion mail asks the Hub first whether a copy will come (ruling of 2026-10-30 on saas#168).
+    COPY_LINE = "Descarga una copia completa de sus datos"
+
+    def test_the_mail_leads_to_the_copy_when_the_hub_will_make_one(
+        self, business, owner, django_capture_on_commit_callbacks, hub_double
+    ):
+        hub_double.dumps[str(business.id)] = []
+
+        with django_capture_on_commit_callbacks(execute=True):
+            self.delete(owner, business)
+
+        (message,) = mail.outbox
+        assert f"{self.COPY_LINE}: " in message.body
+        assert hub_double.calls_to("GET", f"/internal/hubs/{business.id}/dumps")
+
+    def test_the_mail_promises_no_copy_of_a_business_without_its_own_database(
+        self, business, owner, django_capture_on_commit_callbacks, hub_double
+    ):
+        hub_double.dumps[str(business.id)] = []
+        hub_double.without_copies.add(str(business.id))
+
+        with django_capture_on_commit_callbacks(execute=True):
+            self.delete(owner, business)
+
+        (message,) = mail.outbox
+        assert self.COPY_LINE not in message.body
+        assert "recuperar" in message.body.lower()
+
+    @pytest.mark.parametrize("hub", ["away", "refusing"])
+    def test_with_the_hub_away_the_mail_still_leads_to_the_copy(
+        self, business, owner, django_capture_on_commit_callbacks, hub_double, settings, hub
+    ):
+        """The page promises nothing it cannot keep, so the mail keeps the way to it when the Hub cannot say."""
+        if hub == "away":
+            settings.HUB_INTERNAL_URL = "http://127.0.0.1:9"
+        else:
+            hub_double.answer("GET", r"/dumps$", 403, {"error": {"code": "forbidden"}})
+
+        with django_capture_on_commit_callbacks(execute=True):
+            self.delete(owner, business)
+
+        (message,) = mail.outbox
+        assert f"{self.COPY_LINE}: " in message.body
+
     def test_deleting_cancels_the_plan_at_once(self, business, owner, plans):
         """Round 17 §2.11: it comes back on Free."""
         Subscription.objects.filter(hub=business).update(

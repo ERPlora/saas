@@ -4,7 +4,9 @@
 // with the business's name, address, status, plan and role and «Open» (solid on the Summary, outlined
 // elsewhere, V-23; gone while suspended or deleted), and four sections in the footer tabbar, each at
 // its own address: Summary · Members · Modules · Settings. Deleted, a banner says until when it can be
-// recovered (the owner recovers it there); a payment pending or a suspension is said under the header.
+// recovered (the owner recovers it there); a payment pending or a suspension is said under the header. The Summary
+// ends, for its owner, with «Download the data» (DataCopyCard): always on a deleted business, where its deletion
+// mail leads; on a live one, once its data was reset.
 // The Summary of a Spanish business ends with the authorisation for ERPlora to file its invoices (fiscal's
 // RepresentationCard), whose «Manage in your business» opens the business as «Open» does.
 // Modules: turning apps on and off is the Hub's (PLAN §20.4), so the tab says so and the header's «Open»,
@@ -32,6 +34,7 @@ import LoadFailed from '../../../frontend/LoadFailed.vue';
 import { reasonKey, statusPill } from '../business-status';
 import BusinessSettings from '../components/BusinessSettings.vue';
 import BusinessSummary from '../components/BusinessSummary.vue';
+import DataCopyCard from '../components/DataCopyCard.vue';
 import DangerZone from '../components/DangerZone.vue';
 import HostName from '../components/HostName.vue';
 import MembersTab from '../components/MembersTab.vue';
@@ -273,6 +276,11 @@ async function recover(): Promise<void> {
 
         <template v-if="section === 'summary'">
           <BusinessSummary :business="business" />
+          <!-- Asked again when the owner changes (a hand-over seen live): the copies are only the owner's. -->
+          <DataCopyCard
+            :key="`${business.id}:${business.can.download_data}`"
+            :business="business"
+          />
         </template>
         <ion-card
           v-else-if="section === 'modules'"
