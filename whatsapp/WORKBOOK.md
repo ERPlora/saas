@@ -203,7 +203,7 @@ Pasos:
 4. Lo que Meta diga después (entregado, leído, fallido) llega a la bandeja como su estado.
 Entra: a quién, el texto o la plantilla con sus variables (y el archivo de su cabecera, si lo lleva), y la clave del envío.
 Sale: el mensaje enviado por WhatsApp; la clave anotada para no enviarlo dos veces (`whatsapp.message.recorded`).
-Si falla: fuera de las 24 horas desde el último mensaje del cliente, se dice que WhatsApp solo deja escribirle con una plantilla aprobada; un cliente que bloqueó al negocio, una plantilla no aprobada o un número sin conectar dicen su motivo y no gastan cupo; si el permiso de Meta caducó o el negocio lo retiró en Meta, no sale ni gasta cupo, se dice que hay que volver a conectar el número (no que está sin conectar) y el número queda «Hay que reconectar» en el Hub; si Meta no contesta, no se sabe si salió: el Hub reintenta con la misma clave y erplora.com nunca lo envía dos veces. Un archivo de la cabecera que no es del tipo o pesa de más dice la regla y no llega a Meta; si Meta rechaza el archivo o no contesta al subirlo, el mensaje no sale ni gasta cupo y la misma clave lo vuelve a intentar.
+Si falla: fuera de las 24 horas desde el último mensaje del cliente, se dice que WhatsApp solo deja escribirle con una plantilla aprobada; un cliente que bloqueó al negocio, una plantilla no aprobada o un número sin conectar dicen su motivo y no gastan cupo; si el permiso de Meta caducó o el negocio lo retiró en Meta, no sale ni gasta cupo, se dice que hay que volver a conectar el número (no que está sin conectar) y el número queda «Hay que reconectar» en el Hub; si Meta no contesta, no se sabe si salió: el Hub reintenta con la misma clave y erplora.com nunca lo envía dos veces. Un archivo de la cabecera que no es del tipo o pesa de más dice la regla y no llega a Meta; si Meta rechaza el archivo o no contesta al subirlo, el mensaje no sale ni gasta cupo y la misma clave lo vuelve a intentar. Si erplora.com no puede cargar sus certificados de confianza (`SSL_CERT_FILE` nombra un fichero que no está o que no tiene ninguno), no llega a llamar a Meta: el mensaje no sale ni gasta cupo, la misma clave lo vuelve a intentar y el registro del servidor nombra la variable y el fichero.
 Implicados: bandeja de WhatsApp del Hub
 
 ### WHATSAPP-F07 Recibir los avisos de Meta y entregarlos al Hub
@@ -218,7 +218,7 @@ Pasos:
 4. El estado de un mensaje del negocio («Entregado», «Leído», «No entregado») llega a la bandeja: el de uno enviado desde el Hub, cuando erplora.com sabe cuál es; el de una respuesta del dueño desde el móvil, después de esa respuesta.
 Entra: los avisos de Meta: mensajes, ecos del móvil, historial, estados de entrega y veredictos de plantillas.
 Sale: el mensaje o el estado en la bandeja del Hub (`whatsapp.webhook.ingested`, `whatsapp.delivery.recorded`).
-Si falla: un aviso sin la firma de Meta se rechaza y no se guarda; uno de un número que nadie tiene conectado se descarta; el estado de un mensaje que el Hub no tiene se espera diez minutos y se descarta; si el Hub dice que el mensaje no vale, no se reintenta y queda a la vista del personal; un adjunto de otro negocio, o que Meta ya no tiene, dice que no está disponible; si al abrir un adjunto el permiso de Meta caducó o el negocio lo retiró en Meta, el adjunto no se abre, se dice que hay que volver a conectar el número (no que está sin conectar) y el número queda «Hay que reconectar» en el Hub.
+Si falla: un aviso sin la firma de Meta se rechaza y no se guarda; uno de un número que nadie tiene conectado se descarta; el estado de un mensaje que el Hub no tiene se espera diez minutos y se descarta; si el Hub dice que el mensaje no vale, no se reintenta y queda a la vista del personal; un adjunto de otro negocio, o que Meta ya no tiene, dice que no está disponible; si al abrir un adjunto el permiso de Meta caducó o el negocio lo retiró en Meta, el adjunto no se abre, se dice que hay que volver a conectar el número (no que está sin conectar) y el número queda «Hay que reconectar» en el Hub. Si erplora.com no puede cargar sus certificados de confianza (`SSL_CERT_FILE` nombra un fichero que no está o que no tiene ninguno), no llega a llamar al Hub ni a Meta: lo que contó Meta se queda guardado y se reintenta como cuando el Hub no está, con el motivo como último error de la entrega; un adjunto dice que ahora no se puede abrir; el motivo y el registro del servidor nombran la variable y el fichero.
 Implicados: bandeja de WhatsApp del Hub
 
 ### WHATSAPP-F08 Ver los números de WhatsApp en el admin
@@ -260,7 +260,7 @@ Pasos:
 3. El permiso, el código de un solo uso y el secreto de la app no aparecen en ningún registro.
 Entra: lo que cada flujo pide a Meta.
 Sale: la respuesta de Meta, o el motivo por el que no la hay.
-Si falla: un adjunto cuyo enlace no es de Meta o no va cifrado no se descarga.
+Si falla: un adjunto cuyo enlace no es de Meta o no va cifrado no se descarga. Si erplora.com no puede cargar sus certificados de confianza (`SSL_CERT_FILE` nombra un fichero que no está o que no tiene ninguno), ninguna llamada sale, tampoco la de un adjunto: termina como cuando no hay conexión con Meta, sabiendo que no llegó, y su motivo y el registro del servidor nombran la variable y el fichero.
 Implicados: ninguno
 
 ### WHATSAPP-F11 Dar al Hub lo que necesita para abrir la ventana de Meta
@@ -445,6 +445,17 @@ Implicados: ninguno
   (`Usage.cap_announced_usage`), sube la versión de la foto y la empuja tras el COMMIT, con `monthly_usage` al día
   (`reconcile_hub_states` la reintenta si el Hub no la toma). La misma cifra rechazada otra vez no sube nada: un
   empuje por cifra, no por envío rechazado.
+- **Sin los certificados de confianza del servidor** (FIX-SAAS-WHATSAPP-HTTP-CALLS-CRASH-WHEN-SSL-CERT-FILE-MISSING;
+  WHATSAPP-F06, F07, F10): `httpx` carga los certificados al crear cada cliente, también para el `http://` del Hub, y
+  un `SSL_CERT_FILE` que nombra un fichero que no está, una carpeta o un fichero sin certificados lanzaba
+  `FileNotFoundError` o `ssl.SSLError` (500 en la puerta 5 y en los adjuntos; `whatsapp_deliver` caía con las entregas
+  reclamadas). `hub_client` y `meta` sacan el contexto TLS de `base.tls.trusted_context`, que escribe una línea ERROR
+  `base.tls.trust_store_unreadable caller=whatsapp.hub_client|whatsapp.meta` con la variable y el fichero, y se lo dan
+  al cliente (`verify=`): el Hub es `Unreachable` (la entrega queda en `retry` con el motivo en `last_error` y llega en
+  cuanto se arregla) y Meta es `MetaUnreachable(sent=False)` (puerta 5: 503 `whatsapp.meta_unreachable` con la plaza y la
+  clave libres; plantillas: 409 `whatsapp.meta_unreachable`; conectar: 503; adjuntos: 502 `whatsapp.media_unavailable`;
+  renovación del permiso: sin veredicto). Nada se comprueba al arrancar, a propósito: la pila e2e del Hub levanta el SaaS
+  antes de crear su CA (hub#415), y cada llamada vuelve a leer el fichero.
 - Vuelta de la ventana de Meta: `GET /whatsapp/return?code=…&state=<slug>.<32 hex>` (o `?error=…&error_description=…`;
   `whatsapp/signup_return.py`, WHATSAPP-F01), pública, sin sesión, sin caché y sin BD. Hace
   `window.opener.postMessage({"type": "erplora.whatsapp.signup", "state", "code" | "error", "error_description"},

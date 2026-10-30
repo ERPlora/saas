@@ -12,7 +12,8 @@ How a call ends:
 - ``MetaRefused``: Meta answered 4xx; ``code``/``subcode``/``message``/``title``/``detail``/``user_message`` are
   Meta's error object, ``rate_limited`` whether it asks to slow down (HTTP 429 or its throttling codes);
 - ``MetaUnreachable``: no usable answer. ``sent`` is whether the request may have reached Meta (a 5xx, a read
-  timeout, a redirect) or certainly did not (no connection).
+  timeout, a redirect) or certainly did not (no connection; or a server whose trusted certificates cannot be loaded,
+  ``base.tls``, whose message names ``SSL_CERT_FILE`` and its file: nothing leaves, not even an attachment's download).
 
 ``upload_sample`` is Meta's Resumable Upload API, the only way a template's header with a photo, a video or a
 document gets the ``header_handle`` its review needs: a session on OUR app (``POST /<WHATSAPP_APP_ID>/uploads`` with
@@ -36,6 +37,8 @@ from urllib.parse import urlsplit
 import httpx
 from django.conf import settings
 from django.urls import reverse
+
+from base import tls
 
 TIMEOUT = httpx.Timeout(15.0, connect=5.0)
 SEND_TIMEOUT = httpx.Timeout(30.0, connect=5.0)
@@ -228,7 +231,7 @@ def _request(
 ) -> dict:
     sent = {**(headers or {}), **({"Authorization": f"{scheme} {token}"} if token else {})}
     try:
-        with httpx.Client(timeout=timeout, follow_redirects=False) as client:
+        with _client(timeout) as client:
             response = client.request(
                 method,
                 graph_url(path),
@@ -244,6 +247,16 @@ def _request(
     except httpx.HTTPError as error:
         raise MetaUnreachable(f"No answer from Meta: {type(error).__name__}.", sent=True) from None
     return _read(response)
+
+
+def _client(timeout: httpx.Timeout) -> httpx.Client:
+    """A client that follows no redirect, or ``MetaUnreachable`` (nothing sent) when the server's trusted
+    certificates cannot be loaded (``base.tls``)."""
+    try:
+        context = tls.trusted_context("whatsapp.meta")
+    except tls.TrustStoreUnreadable as unreadable:
+        raise MetaUnreachable(f"Meta could not be reached: {unreadable.message}", sent=False) from None
+    return httpx.Client(timeout=timeout, follow_redirects=False, verify=context)
 
 
 def _read(response: httpx.Response) -> dict:
@@ -294,12 +307,12 @@ def download(url: str, *, token: str) -> Iterator[httpx.Response]:
 
     The response is open inside the ``with``: its bytes are read as they arrive, never kept here. A 4xx is
     ``MetaRefused`` with Meta's error object (its 190: the permission expired); anything else but a 200,
-    ``MetaUnreachable``.
+    ``MetaUnreachable`` (``sent=False`` when the server's trusted certificates cannot be loaded: Meta is not asked).
     """
     if not _meta_media_url(url):
         raise MetaUnreachable("The attachment's link is not Meta's.", sent=False)
     try:
-        with httpx.Client(timeout=TIMEOUT, follow_redirects=False) as client:
+        with _client(TIMEOUT) as client:
             with client.stream("GET", url, headers={"Authorization": f"Bearer {token}"}) as response:
                 status = response.status_code
                 if 400 <= status < 500:

@@ -12,6 +12,7 @@ import httpx
 import pytest
 import respx
 
+from base.tests.conftest import names_the_file
 from whatsapp import meta
 from whatsapp.tests.conftest import APP_ID, APP_SECRET, GRAPH
 
@@ -252,3 +253,56 @@ def test_a_refusal_longer_than_the_limit_is_meta_refused_without_metas_error(wha
             pass
 
     assert (refused.value.status, refused.value.code) == (401, None)
+
+
+# --- The server's trusted certificates (FIX-SAAS-WHATSAPP-HTTP-CALLS-CRASH-WHEN-SSL-CERT-FILE-MISSING) ---------------
+
+
+def logged_error_naming(caplog, path) -> bool:
+    return any(
+        record.levelno == logging.ERROR and names_the_file(record.getMessage(), path) for record in caplog.records
+    )
+
+
+@respx.mock
+def test_unreadable_trusted_certificates_are_unreachable_and_never_arrived(whatsapp_on, unreadable_ca, caplog):
+    """WHATSAPP-F10: ``httpx`` loads the server's trusted certificates as it makes the client; unreadable, no call
+    leaves and it ends in its own ``MetaUnreachable`` (nothing sent), naming the setting and its file."""
+    route = respx.get(f"{GRAPH}/me").mock(return_value=httpx.Response(200, json={"id": "1"}))
+
+    with caplog.at_level(logging.ERROR), pytest.raises(meta.MetaUnreachable) as unreachable:
+        meta.get("me", token="EAAG-token")
+
+    assert (unreachable.value.sent, unreachable.value.status) == (False, None)
+    assert names_the_file(str(unreachable.value), unreadable_ca)
+    assert not route.called
+    assert logged_error_naming(caplog, unreadable_ca)
+    assert "EAAG-token" not in caplog.text
+
+
+@respx.mock
+def test_an_attachment_with_unreadable_trusted_certificates_is_unreachable_and_never_asked(
+    whatsapp_on, unreadable_ca, caplog
+):
+    """WHATSAPP-F07: the attachment's download makes its own client: the same failure, before Meta is asked."""
+    url = "https://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=1"
+    route = respx.get(url).mock(return_value=httpx.Response(200, content=b"\xff\xd8jpeg"))
+
+    with caplog.at_level(logging.ERROR), pytest.raises(meta.MetaUnreachable) as unreachable:
+        with meta.download(url, token="EAAG-token"):
+            pass
+
+    assert unreachable.value.sent is False
+    assert names_the_file(str(unreachable.value), unreadable_ca)
+    assert not route.called
+    assert logged_error_naming(caplog, unreadable_ca)
+
+
+@respx.mock
+def test_a_call_uses_the_trusted_certificates_it_read(whatsapp_on, ca_gone_after_one_read):
+    """WHATSAPP-F10: the client takes the context ``base.tls`` read (``verify=``), so the certificates are read once
+    per call and a file renewed between the check and the call never crashes it."""
+    respx.get(f"{GRAPH}/me").mock(return_value=httpx.Response(200, json={"id": "1"}))
+
+    assert meta.get("me", token="EAAG-token") == {"id": "1"}
+    assert not ca_gone_after_one_read.exists()

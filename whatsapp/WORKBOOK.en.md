@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:5fc635304f14a60bdf727f1d34714e58d96542464c958cc17e13aa44bd1b60ce -->
+<!-- generated from WORKBOOK.md sha256:259a607dbf2d6b91d433bfd9b230b6ee1427c35f57cfcd5b97710d5a7b189235 -->
 
 ## What it is for and who it is for
 
@@ -186,7 +186,7 @@ Steps:
 4. What Meta says afterwards (delivered, read, failed) reaches the inbox as its status.
 In: to whom, the text or the template with its variables (and its header's file, if it has one), and the key of the send.
 Out: the message sent through WhatsApp; the key noted so it is never sent twice (`whatsapp.message.recorded`).
-If it fails: outside the 24 hours since the customer's last message, it says WhatsApp only lets you write to them with an approved template; a customer who blocked the business, a template not approved or a number not connected say their reason and use no allowance; if Meta's permission expired or the business withdrew it in Meta, nothing goes out nor uses allowance, it says the number has to be connected again (not that it is not connected) and the number shows "Needs reconnecting" in the Hub; if Meta does not answer, it is unknown whether it went out: the Hub retries with the same key and erplora.com never sends it twice. A header file of the wrong type or too heavy says the rule and never reaches Meta; if Meta refuses the file or does not answer while it is uploaded, the message does not go out nor use allowance, and the same key tries again.
+If it fails: outside the 24 hours since the customer's last message, it says WhatsApp only lets you write to them with an approved template; a customer who blocked the business, a template not approved or a number not connected say their reason and use no allowance; if Meta's permission expired or the business withdrew it in Meta, nothing goes out nor uses allowance, it says the number has to be connected again (not that it is not connected) and the number shows "Needs reconnecting" in the Hub; if Meta does not answer, it is unknown whether it went out: the Hub retries with the same key and erplora.com never sends it twice. A header file of the wrong type or too heavy says the rule and never reaches Meta; if Meta refuses the file or does not answer while it is uploaded, the message does not go out nor use allowance, and the same key tries again. If erplora.com cannot load its trusted certificates (`SSL_CERT_FILE` names a file that is not there or holds none), it never calls Meta: the message does not go out nor use allowance, the same key tries again and the server's log names the variable and the file.
 Involved: the Hub's WhatsApp inbox
 
 ### WHATSAPP-F07 Receive Meta's notices and hand them to the Hub
@@ -200,7 +200,7 @@ Steps:
 4. The status of a message of the business ("Delivered", "Read", "Not delivered") reaches the inbox: that of one sent from the Hub, once erplora.com knows which it is; that of a reply of the owner from the phone, after that reply.
 In: Meta's notices: messages, echoes from the phone, history, delivery statuses and template verdicts.
 Out: the message or the status in the Hub's inbox (`whatsapp.webhook.ingested`, `whatsapp.delivery.recorded`).
-If it fails: a notice without Meta's signature is refused and not kept; one of a number nobody has connected is discarded; the status of a message the Hub does not have is waited for ten minutes and discarded; if the Hub says the message is not valid, it is not retried and stays visible to staff; an attachment of another business, or one Meta no longer has, says it is not available; if, on opening an attachment, Meta's permission expired or the business withdrew it in Meta, the attachment does not open, it says the number has to be connected again (not that it is not connected) and the number shows "Needs reconnecting" in the Hub.
+If it fails: a notice without Meta's signature is refused and not kept; one of a number nobody has connected is discarded; the status of a message the Hub does not have is waited for ten minutes and discarded; if the Hub says the message is not valid, it is not retried and stays visible to staff; an attachment of another business, or one Meta no longer has, says it is not available; if, on opening an attachment, Meta's permission expired or the business withdrew it in Meta, the attachment does not open, it says the number has to be connected again (not that it is not connected) and the number shows "Needs reconnecting" in the Hub. If erplora.com cannot load its trusted certificates (`SSL_CERT_FILE` names a file that is not there or holds none), it never calls the Hub nor Meta: what Meta reported stays kept and is retried as when the Hub is away, with the reason as the delivery's last error; an attachment says it cannot be opened now; the reason and the server's log name the variable and the file.
 Involved: the Hub's WhatsApp inbox
 
 ### WHATSAPP-F08 See the WhatsApp numbers in the admin
@@ -239,7 +239,7 @@ Steps:
 3. The permission, the one-time code and the app's secret appear in no log.
 In: what each flow asks of Meta.
 Out: Meta's answer, or the reason there is none.
-If it fails: an attachment whose link is not Meta's or is not encrypted is not downloaded.
+If it fails: an attachment whose link is not Meta's or is not encrypted is not downloaded. If erplora.com cannot load its trusted certificates (`SSL_CERT_FILE` names a file that is not there or holds none), no call goes out, not even an attachment's: it ends as when there is no connection to Meta, knowing it did not arrive, and its reason and the server's log name the variable and the file.
 Involved: none
 
 ### WHATSAPP-F11 Give the Hub what it needs to open Meta's window

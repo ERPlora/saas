@@ -7,6 +7,7 @@ from datetime import timedelta
 import pytest
 from django.utils import timezone
 
+from base.tests.conftest import names_the_file
 from whatsapp import gateway
 from whatsapp.models import Delivery, PhoneNumber
 from whatsapp.tests.test_parse import BUSINESS, CUSTOMER, PHONE_NUMBER_ID, WABA, messages, text, webhook
@@ -60,6 +61,20 @@ def test_no_hub_at_all_is_retried(number, offline_hub):
 
     assert gateway.deliver()["retried"] == 1
     assert "Unreachable" in Delivery.objects.get().last_error or "POST" in Delivery.objects.get().last_error
+
+
+def test_unreadable_trusted_certificates_keep_the_delivery_naming_the_file(number, hub_double, unreadable_ca):
+    """FIX-SAAS-WHATSAPP-HTTP-CALLS-CRASH-WHEN-SSL-CERT-FILE-MISSING · WHATSAPP-F07: the server that cannot load its
+    trusted certificates reaches no Hub; the run does not crash, and what Meta reported stays parked with the reason
+    in view (the setting and its file), so it reaches the Hub once the server is fixed."""
+    ingest(messages(text("wamid.1")))
+
+    assert gateway.deliver() == {"delivered": 0, "retried": 1, "refused": 0, "dropped": 0}
+
+    row = Delivery.objects.get()
+    assert row.delivered_at is None and row.next_attempt_at > timezone.now()
+    assert names_the_file(row.last_error, unreadable_ca)
+    assert hub_double.calls_to("POST", "/internal/whatsapp/inbound") == []
 
 
 def test_what_is_not_due_yet_waits(number, hub_double):
