@@ -30,6 +30,7 @@ from datetime import timedelta
 
 from auditlog.models import LogEntry
 from django.apps import apps
+from django.contrib.auth import get_user_model
 from django.conf import settings
 from django.db.models import F, TextField, Value
 from django.db.models.functions import Cast
@@ -567,8 +568,8 @@ REPORT_ONCE_SECONDS = 24 * 60 * 60
 )
 def report_send(ctx: OperationContext, data: ReportSendIn) -> dict:
     """Mail the report of an answer to the support mailbox (the platform only), in English (the team's mail), with
-    the business, the reason, the comment, the question and the answer, each cut to ``REPORT_TEXT_MAX``; nothing is
-    kept nor logged. The same answer (``message_id``) of the same business within a day is a ``duplicate``. A business
+    the business (the demo, or the account of the panel's own assistant), the reason, the comment, the question and
+    the answer, each cut to ``REPORT_TEXT_MAX``; nothing is kept nor logged. The same answer (``message_id``) of the same business within a day is a ``duplicate``. A business
     that stopped working since the door resolved it gets the door's answer (404 ``hub_unknown``, 403 ``hub_inactive``)
     and nothing is mailed. 503 ``assistant.report_not_sent`` if the mail cannot leave. The event is written before the
     mail, so nothing that can undo the transaction comes after it: a mail that cannot leave undoes the event, and an
@@ -579,10 +580,16 @@ def report_send(ctx: OperationContext, data: ReportSendIn) -> dict:
     caller = data.caller
     if caller.demo:
         who, details = caller.demo, [("Demo", caller.demo)]
+    elif caller.user_id is not None:
+        email = get_user_model().objects.filter(pk=caller.user_id).values_list("email", flat=True).first()
+        if email is None:
+            raise NotFound(_("The account no longer exists."), code="assistant.account_unknown")
+        who, details = email, [("Account", email)]
     else:
         hub = queries.working(Hub.objects.filter(pk=caller.hub_id).first())
         who, details = hub.name, [("Business", f"{hub.name} ({hub.slug}, {hub.id})")]
-    once = f"assistant:report:{'demo:' + caller.demo if caller.demo else caller.hub_id}:{data.message_id}"
+    key = f"demo:{caller.demo}" if caller.demo else f"user:{caller.user_id}" if caller.user_id else caller.hub_id
+    once = f"assistant:report:{key}:{data.message_id}"
     if not cache.add(once, 1, REPORT_ONCE_SECONDS):
         return {"sent": False, "duplicate": True}
     try:

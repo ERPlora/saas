@@ -3,13 +3,17 @@
 import logging
 from typing import Any
 
-from django.utils import translation
+from django.utils import timezone, translation
+from django.utils.translation import gettext
 from live.context import OperationContext
+from live.errors import Unauthorized
 from live.operations import INTERNAL, operation
 
 from accounts.queries import preferences_of
+from assistant import queries as gateway_queries
+from assistant.schemas import Caller
 from base import navigation
-from base.schemas import SessionMeIn, SessionMeOut
+from base.schemas import AssistantUsageIn, AssistantUsageOut, SessionMeIn, SessionMeOut
 
 logger = logging.getLogger(__name__)
 
@@ -107,3 +111,23 @@ def maintenance_state() -> dict[str, str] | None:
         return None
     cache.set(MAINTENANCE_CACHE_KEY, {"state": state}, MAINTENANCE_KEEP_SECONDS)
     return state
+
+
+# --- The panel's assistant (PLAN-SAAS §23) --------------------------------------------------------------------------
+
+
+@operation(
+    "base.assistant.usage",
+    kind="query",
+    permission="assistant.ask",
+    input=AssistantUsageIn,
+    output=AssistantUsageOut,
+    ai=INTERNAL,  # panel
+)
+def assistant_usage(ctx: OperationContext, data: AssistantUsageIn) -> dict[str, Any]:
+    """This month's messages of the panel's assistant of the session's account (``ASSISTANT_ACCOUNT_MESSAGES``): used,
+    of how many, and when they come back (the first of next month, UTC). Its businesses' are their own, in their Hub."""
+    if ctx.actor is None:
+        raise Unauthorized(gettext("Sign in to talk to the assistant."))
+    usage = gateway_queries.usage_of(Caller(user_id=ctx.actor.pk), timezone.now())
+    return {**usage, "resets_at": usage["resets_at"].isoformat().replace("+00:00", "Z") if usage["resets_at"] else None}

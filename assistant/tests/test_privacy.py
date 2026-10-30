@@ -82,3 +82,31 @@ def test_the_providers_words_of_a_failure_reach_no_log(internal, business, answe
     assert got[0]["code"] == "assistant.provider_rejected"
     assert SECRET_QUESTION not in str(got)
     assert_forgotten(every_log, SECRET_QUESTION, "Rosalía")
+
+
+def test_a_turn_of_the_panels_assistant_leaves_nothing_of_what_was_said(
+    client, owner, plans, answering, fake_provider, every_log
+):
+    """The panel's own assistant (``POST /api/assistant/turn``, PLAN-SAAS §23): the account's conversation is forgotten
+    as the Hub's is, its tool's results too."""
+    from hubs.tests.conftest import create_business
+
+    create_business(owner, name="Bar Olga")
+    fake_provider.reply("POST", COMPLETIONS, sse=openai_answer(SECRET_ANSWER))
+    client.force_login(owner)
+    call = {"call_id": "c1", "name": "hubs__business__list", "arguments": "{}"}
+    asked = [
+        {"role": "user", "content": SECRET_QUESTION},
+        {"role": "assistant", "content": "", "tool_calls": [{"id": "c1", "type": "function", "function": {"name": call["name"], "arguments": "{}"}}]},
+    ]
+
+    response = client.post(
+        "/api/assistant/turn",
+        {"messages": asked, "pending": [call]},
+        content_type="application/json",
+        HTTP_HOST="localhost:8001",
+    )
+    got = frames(response)
+
+    assert any(frame.get("text") == SECRET_ANSWER for frame in got if isinstance(frame, dict))
+    assert_forgotten(every_log, SECRET_QUESTION, SECRET_ANSWER, "Rosalía")

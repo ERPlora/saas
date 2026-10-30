@@ -131,7 +131,9 @@ class TestGivingBackAndRecording:
     def test_a_message_given_back_is_free_again_in_its_month(self, account):
         claimed = claim(account_of(account))
 
-        shown = services.message_release(platform_context(), MessageReleaseIn(caller=account_of(account), month=claimed.month))
+        shown = services.message_release(
+            platform_context(), MessageReleaseIn(caller=account_of(account), month=claimed.month)
+        )
 
         assert shown.used == 0
         assert AssistantUsage.objects.get(user=account).messages == 0
@@ -152,7 +154,9 @@ class TestGivingBackAndRecording:
         assert AssistantUsage.objects.get(hub=business).messages == 5
 
     def test_the_tokens_and_the_cost_go_to_the_accounts_month(self, account):
-        record = UsageRecordIn(caller=account_of(account), tokens_input=1000, tokens_output=200, cost_usd=Decimal("0.0036"))
+        record = UsageRecordIn(
+            caller=account_of(account), tokens_input=1000, tokens_output=200, cost_usd=Decimal("0.0036")
+        )
         services.usage_record(platform_context(), record)
 
         row = AssistantUsage.objects.get(user=account)
@@ -164,6 +168,40 @@ class TestGivingBackAndRecording:
 
         payload = OutboxEvent.objects.get(name="assistant.message.claimed").payload
         assert payload == {"hub": None, "demo": "", "user": str(account.pk), "used": 1, "limit": 30}
+
+
+class TestTheReportOfAnAccount:
+    def test_an_account_gone_mails_nothing(self, account):
+        from django.core import mail
+        from live.errors import NotFound
+
+        from assistant.schemas import ReportSendIn
+
+        caller = account_of(account)
+        account.delete()
+
+        with pytest.raises(NotFound):
+            services.report_send(
+                platform_context(), ReportSendIn(caller=caller, message_id="m1", reason="other", answer="a")
+            )
+        assert not mail.outbox
+
+    def test_the_same_message_id_of_another_account_is_its_own_report(self, account, make_user):
+        from django.core import mail
+
+        from assistant.schemas import ReportSendIn
+
+        other = make_user("other@example.com")
+        for who in (account, other):
+            sent = services.report_send(
+                platform_context(), ReportSendIn(caller=account_of(who), message_id="m1", reason="other", answer="a")
+            )
+            assert (sent.sent, sent.duplicate) == (True, False)
+
+        assert [message.subject for message in mail.outbox] == [
+            f"[Assistant report] {account.email} · other",
+            "[Assistant report] other@example.com · other",
+        ]
 
 
 class TestWhoACallerIs:
