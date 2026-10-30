@@ -1365,6 +1365,8 @@ export interface DataCopyOut {
 
 export interface DataCopyListOut {
   business_id: string;
+  /** False: the business has no database of its own, so it never gets a copy. */
+  available: boolean;
   /** Newest first; empty while the Hub has none yet (or is away). */
   copies: DataCopyOut[];
 }

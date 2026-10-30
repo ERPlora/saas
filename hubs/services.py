@@ -1843,6 +1843,7 @@ def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER) -> Counter:
         "failed",
         "data_copies_told",
         "data_copy_unsent",
+        "data_copy_none",
         "sessions_ended",
         "sessions_pending",
     )
@@ -1935,12 +1936,16 @@ def _tell_data_copy(hub_id: UUID, counts: Counter) -> None:
     (``offboarding``, no older than ``deletion_requested_at``), its owner is told by mail, once; asked again on each pass
     until then. The Hub away counts ``unreachable``; a mail that cannot leave, ``data_copy_unsent`` (sent again)."""
     hub = Hub.objects.get(pk=hub_id)
-    copies = queries.hub_data_copies(hub.id)
-    if copies is None:
+    kept = queries.hub_data_copies(hub.id)
+    if kept is None:
         counts["unreachable"] += 1
         return
+    if not kept["available"]:
+        # No database of its own: no copy will ever come, and its page promised none.
+        counts["data_copy_none"] += 1
+        return
     since = hub.deletion_requested_at - DATA_COPY_CLOCK_SKEW
-    if not any(copy["kind"] == "offboarding" and copy["created_at"] >= since for copy in copies):
+    if not any(copy["kind"] == "offboarding" and copy["created_at"] >= since for copy in kept["copies"]):
         return
     owner = HubMember.objects.filter(hub=hub, role=Role.OWNER).select_related("user").first()
     if not emails.send_data_copy_ready(hub, owner.user if owner else None, base_url=emails.base_url(None)):

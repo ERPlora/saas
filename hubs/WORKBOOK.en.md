@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:87c29684e28fb1001c49bf3afd7959a105ab6758b25ebee03b9f1998c8ec4956 -->
+<!-- generated from WORKBOOK.md sha256:bf79e3a516831e295603291cfa3e21c1ac818f1b1d5e15c43e25f00a02e26e89 -->
 
 ## What it is for and who it is for
 
@@ -421,7 +421,7 @@ Steps:
 4. An integration with the account's session does the same, with the name typed; an API key does not delete.
 In: the name typed again; the owner's session.
 Out: the business deleted, which stops opening at once for everyone and is erased for good after 90 days; its plan goes back to Free and what Stripe was charging is cancelled in the next pass; the business receives the deletion after saving. Records `hubs.business.deleted`.
-If it fails: a name that does not match deletes nothing (case and spaces around do not matter); deleting it twice, "This business was deleted.". Only the owner deletes it and downloads its data. With no copy yet, "The copy is not ready yet. We will let you know by email when it is."; a copy no longer kept, "This copy of the data is no longer kept."; if it cannot be downloaded now, "The copy cannot be downloaded right now. Try again in a moment.". To stop paying without deleting it, the plan is cancelled from Billing (BILLING-F13).
+If it fails: a name that does not match deletes nothing (case and spaces around do not matter); deleting it twice, "This business was deleted.". Only the owner deletes it and downloads its data. With no copy yet, "The copy is not ready yet. We will let you know by email when it is."; a business that never had its own database, "This business has no copy of its data.", with no notice; a copy no longer kept, "This copy of the data is no longer kept."; if it cannot be downloaded now, "The copy cannot be downloaded right now. Try again in a moment.". To stop paying without deleting it, the plan is cancelled from Billing (BILLING-F13).
 Involved: billing (cancels what was being charged), the business (stops opening and keeps it 90 days)
 
 ### HUBS-F19 Recover a deleted business

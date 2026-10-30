@@ -272,6 +272,7 @@
         "download": "Download",
         "downloadName": "Download the copy of {date}",
         "notReady": "The copy is not ready yet. We will let you know by email when it is.",
+        "none": "This business has no copy of its data.",
         "loadError": "We could not load the copies of the data."
       },
       "facts": {

@@ -401,6 +401,18 @@ class TestDataCopyReady:
         assert "data_copy_unsent=1" in str(failed.value)
         assert fresh(hub).data_copy_mailed_at is None
 
+    def test_a_business_that_will_never_have_a_copy_is_promised_nothing(self, business, hub_double):
+        """``available: false``: a business without its own database never gets a copy, so no mail is due."""
+        hub = deleted_at(business, timezone.now())
+        hub_double.dumps[str(hub.id)] = []
+        hub_double.without_copies.add(str(hub.id))
+
+        output = run("reconcile_hub_states")
+
+        assert mail.outbox == []
+        assert "data_copy_none=1" in output
+        assert fresh(hub).data_copy_mailed_at is None
+
     def test_a_business_that_lives_is_not_asked(self, business, hub_double):
         run("reconcile_hub_states")
 

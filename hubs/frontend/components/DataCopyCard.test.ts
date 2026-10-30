@@ -51,7 +51,7 @@ function mountIt(business: Record<string, unknown>, answers: { list?: Answer; li
     locale,
     api: (call) => {
       const { path } = describeCall(call);
-      if (path === LIST) return answer(answers.list, () => Response.json({ business_id: 'plaza', copies: [OFFBOARDING, RESET] }));
+      if (path === LIST) return answer(answers.list, () => Response.json({ business_id: 'plaza', available: true, copies: [OFFBOARDING, RESET] }));
       if (path === LINK) return answer(answers.link, () => Response.json({ url: PRESIGNED }));
       return Response.json({});
     },
@@ -108,7 +108,7 @@ describe('DataCopyCard', () => {
   });
 
   it('a deleted business without a copy yet says it is not ready and that we will tell', async () => {
-    const m = await mountIt(DELETED, { list: Response.json({ business_id: 'plaza', copies: [] }) });
+    const m = await mountIt(DELETED, { list: Response.json({ business_id: 'plaza', available: true, copies: [] }) });
     await flush();
 
     expect(m.wrapper.get('[data-testid="data-copy-not-ready"]').text()).toContain(
@@ -117,13 +117,29 @@ describe('DataCopyCard', () => {
     expect(m.wrapper.find('[data-testid="data-copy-row"]').exists()).toBe(false);
   });
 
+  it('a deleted business without a database of its own says it has no copy, and promises nothing', async () => {
+    const m = await mountIt(DELETED, { list: Response.json({ business_id: 'plaza', available: false, copies: [] }) });
+    await flush();
+
+    expect(m.wrapper.get('[data-testid="data-copy-none"]').text()).toContain('This business has no copy of its data.');
+    expect(m.wrapper.find('[data-testid="data-copy-not-ready"]').exists()).toBe(false);
+    expect(m.wrapper.text()).not.toContain('We will let you know');
+  });
+
+  it('says it has no copy in Spanish', async () => {
+    const m = await mountIt(DELETED, { list: Response.json({ business_id: 'plaza', available: false, copies: [] }) }, 'es');
+    await flush();
+
+    expect(m.wrapper.get('[data-testid="data-copy-none"]').text()).toContain('Este negocio no tiene copia de datos.');
+  });
+
   it('an error of the panel says so with «Retry», which asks again', async () => {
     let asked = 0;
     const m = await mountIt(DELETED, {
       list: () =>
         asked++ === 0
           ? apiError(500, 'internal_error', 'Something went wrong.')
-          : Response.json({ business_id: 'plaza', copies: [OFFBOARDING] }),
+          : Response.json({ business_id: 'plaza', available: true, copies: [OFFBOARDING] }),
     });
     await flush();
 
@@ -136,14 +152,15 @@ describe('DataCopyCard', () => {
   });
 
   it('a live business shows its copies once it has one', async () => {
-    const m = await mountIt(LIVE, { list: Response.json({ business_id: 'plaza', copies: [RESET] }) });
+    const m = await mountIt(LIVE, { list: Response.json({ business_id: 'plaza', available: true, copies: [RESET] }) });
     await flush();
 
     expect(m.wrapper.findAll('[data-testid="data-copy-row"]')).toHaveLength(1);
   });
 
   it.each([
-    ['no copy', Response.json({ business_id: 'plaza', copies: [] })],
+    ['no copy', Response.json({ business_id: 'plaza', available: true, copies: [] })],
+    ['no database of its own', Response.json({ business_id: 'plaza', available: false, copies: [] })],
     ['an error', apiError(500, 'internal_error', 'Something went wrong.')],
   ])('a live business with %s shows nothing', async (_case, list) => {
     const m = await mountIt(LIVE, { list });
@@ -174,7 +191,7 @@ describe('DataCopyCard', () => {
   });
 
   it('says it is not ready in Spanish', async () => {
-    const m = await mountIt(DELETED, { list: Response.json({ business_id: 'plaza', copies: [] }) }, 'es');
+    const m = await mountIt(DELETED, { list: Response.json({ business_id: 'plaza', available: true, copies: [] }) }, 'es');
     await flush();
 
     expect(m.wrapper.get('[data-testid="data-copy-not-ready"]').text()).toContain(

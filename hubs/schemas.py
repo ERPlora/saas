@@ -362,6 +362,8 @@ class DataCopyOut(Schema):
 
 class DataCopyListOut(Schema):
     business_id: UUID
+    #: False: the business has no database of its own, so it never gets a copy (the page promises nothing).
+    available: bool
     #: Newest first; empty while the Hub has none yet (or is away).
     copies: list[DataCopyOut]
 

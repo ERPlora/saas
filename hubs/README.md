@@ -372,21 +372,24 @@ listo al responder, y lo dice.
   a más vieja, sin enlace) y cada clic pide el enlace al Hub en `hubs.data_copy.link` (`GET
   /api/hubs/data-copies/link?business_id=&copy_id=` → `{url}`, el prefirmado de 15 min del Hub; 404
   `hubs.data_copy_gone` si ya no está, 503 `hubs.data_copy_unavailable` con el Hub caído o un enlace que no es una
-  dirección web). Solo el propietario (`can.download_data`; matriz de `tests/test_permission_matrix.py`); la lista
+  dirección web). La lista lleva `available`: falso cuando el negocio no tiene BD propia y nunca tendrá copia (ruling del
+  2026-10-30); un Hub que no lo dice cuenta como `true`. Solo el propietario (`can.download_data`; matriz de `tests/test_permission_matrix.py`); la lista
   está abierta a una clave de API con `hubs.read`, el enlace no (`expose_api` apagado: una copia completa de los datos
   de todas las personas del negocio pide la sesión del propietario, como eliminarlo). Con el Hub caído o sin copias,
   la lista sale vacía, nunca un 500.
 - **Panel** (`frontend/components/DataCopyCard.vue`, al final del Resumen): «Descargar los datos», qué es (la copia
   completa, para restaurar: formato de PostgreSQL, `pg_restore`; propuesta (l)), y por fila fecha, tipo («Al
   eliminarlo», «Antes de restablecer sus datos») y tamaño, con «Descargar». En un negocio eliminado sale siempre:
-  sin copia, «La copia todavía no está lista. Te avisaremos por correo cuando lo esté.»; un error del panel, con
+  sin copia, «La copia todavía no está lista. Te avisaremos por correo cuando lo esté.»; sin BD propia
+  (`available: false`), «Este negocio no tiene copia de datos.», sin prometer nada; un error del panel, con
   «Reintentar». En uno vivo, solo si tiene alguna copia (lo restablecieron).
 - **Correos**: el de la baja (`send_deletion`, F18 y el del día 180 de F20) añade «Descarga una copia completa de
   sus datos: <página del negocio>» (el panel, nunca el fichero: así el enlace del correo no caduca). «Te avisaremos»
   se cumple en `reconcile_hub_states`: por cada negocio eliminado sin avisar, pregunta las copias y, con la de esta
   baja (`offboarding` no anterior a `deletion_requested_at`, un minuto de holgura entre relojes), manda
   `send_data_copy_ready` una vez (`Hub.data_copy_mailed_at`, migración `0022`; se vuelve a avisar si se recupera y
-  se elimina otra vez). El Hub caído cuenta `unreachable`; un correo que no sale, `data_copy_unsent`; los dos hacen
+  se elimina otra vez). Con `available: false` no hay aviso que mandar (`data_copy_none`, no falla). El Hub caído
+  cuenta `unreachable`; un correo que no sale, `data_copy_unsent`; los dos hacen
   fallar la pasada y se reintentan.
 - **Uso nocturno** (F21, F22; propuesta (j)): sin cambios en el SaaS. Un hub que aún comparte la BD de control no se
   mide y no sale en `GET /internal/usage`: la pasada guarda el resto y termina bien (test de contrato en
@@ -405,14 +408,18 @@ GET  /internal/hubs/{id}            → 200 {"status": "requested" | "creating" 
 POST /internal/demos                → 202 {"id", "slug", "status": "requested", "expires_at", "created": true}
                                        · 200 la viva de ese navegador con su "status" ("created": false)
                                        · 503 base.demo_full
-GET  /internal/hubs/{id}/dumps      → 200 {"dumps": [{"id": "<clave S3>", "kind": "offboarding" | "reset",
+GET  /internal/hubs/{id}/dumps      → 200 {"available": true | false,
+                                        "dumps": [{"id": "<clave S3>", "kind": "offboarding" | "reset",
                                              "created_at": "<ISO 8601 con zona>", "bytes": <int ≥ 0>,
                                              "url": "<prefirmado de 15 min>"}]}
-                                       de más nueva a más vieja; [] sin copias; 404 hub desconocido
+                                       de más nueva a más vieja; [] sin copias; "available": false si el negocio
+                                       no tiene BD propia (nunca tendrá copia); 404 hub desconocido
 ```
 
-- Una demo que falla (`failed`) se sigue devolviendo como «la viva» de su navegador mientras dure: la puerta dice
-  `not_ready` y «Volver a intentarlo» espera a la misma, así que el Hub debe reintentar también la de una demo.
+- Una demo `failed` no es «la viva» de su navegador (ruling del 2026-10-30, lo aplica el Hub): «Volver a intentarlo»
+  de la puerta espera a la misma demo mientras el Hub la dé, y si no, pide otra.
+- La copia que el usuario descarga es la del `DELETE`; la del día 90, antes del `DROP`, es de la plataforma (ruling
+  del 2026-10-30).
 - Una fila de `dumps` fuera del contrato (otro `kind`, fecha sin zona, `bytes` negativo o no entero, `id` vacío o de
   más de 512) se deja fuera y se registra; un `url` que no es `http(s)://` no se da nunca. El SaaS no guarda ni
   registra los enlaces.

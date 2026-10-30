@@ -272,6 +272,7 @@
         "download": "Descargar",
         "downloadName": "Descargar la copia del {date}",
         "notReady": "La copia todavía no está lista. Te avisaremos por correo cuando lo esté.",
+        "none": "Este negocio no tiene copia de datos.",
         "loadError": "No hemos podido cargar las copias de los datos."
       },
       "facts": {

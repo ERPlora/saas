@@ -4,7 +4,8 @@
 // downloaded with a fresh link of the Hub's asked on the click (`hubs.data_copy.link`; it lasts 15 minutes, so a page
 // left open still downloads and the mail's link, which leads here, never expires). Only its owner
 // (`can.download_data`, the server's). A deleted business always has the card: «not ready yet, we will let you know»
-// while the Hub has no copy (or is away), an error with «Retry» when the panel cannot ask. A live business shows it
+// while the Hub has no copy (or is away), «this business has no copy» when it has no database of its own (`available`
+// false: none will ever come), an error with «Retry» when the panel cannot ask. A live business shows it
 // only once it has a copy (the one made before its data was reset): nothing while it asks, nothing without one.
 import { formatDateTime, InlineFeedback } from '@erplora/ui/components';
 import { HubIcon, toastError } from '@erplora/ui/shell';
@@ -28,6 +29,8 @@ const list = useCommand('hubs.data_copy.list');
 const link = useCommand('hubs.data_copy.link');
 
 const copies = shallowRef<DataCopyOut[] | null>(null);
+/** False: the business has no database of its own, so it never gets a copy (nothing is promised). */
+const available = shallowRef(true);
 const failed = shallowRef<ApiError | null>(null);
 /** The copy whose link is being asked (one at a time). */
 const opening = shallowRef<string | null>(null);
@@ -43,7 +46,9 @@ async function load(): Promise<void> {
   failed.value = null;
   copies.value = null;
   try {
-    copies.value = (await list.run({ business_id: props.business.id })).copies;
+    const kept = await list.run({ business_id: props.business.id });
+    available.value = kept.available;
+    copies.value = kept.copies;
   } catch {
     failed.value = list.error.value;
   }
@@ -116,6 +121,14 @@ onMounted(load);
           style="width: 50%; height: 14px"
         />
       </div>
+      <InlineFeedback
+        v-else-if="!available"
+        class="ion-margin-top"
+        tone="neutral"
+        data-testid="data-copy-none"
+      >
+        {{ $t('hubs.business.dataCopy.none') }}
+      </InlineFeedback>
       <InlineFeedback
         v-else-if="copies.length === 0"
         class="ion-margin-top"

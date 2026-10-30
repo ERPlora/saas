@@ -53,7 +53,7 @@ def test_the_owner_of_a_deleted_business_sees_its_copies_newest_first_without_th
 
     answer = listed(owner, hub)
 
-    assert answer["business_id"] == hub.id
+    assert (answer["business_id"], answer["available"]) == (hub.id, True)
     assert [row["id"] for row in answer["copies"]] == [newer["id"], older["id"]]
     assert answer["copies"][0] == {
         "id": newer["id"],
@@ -78,6 +78,34 @@ def test_without_copies_yet_the_list_is_empty(business, owner, hub_double):
     hub_double.dumps[str(hub.id)] = []
 
     assert listed(owner, hub)["copies"] == []
+
+
+def test_a_business_without_its_own_database_has_no_copy_and_never_will(business, owner, hub_double):
+    """``available: false`` (ruling 2026-10-30): the Hub never copies a business still on the shared database of
+    control, so the page promises nothing."""
+    hub = deleted(business)
+    hub_double.dumps[str(hub.id)] = []
+    hub_double.without_copies.add(str(hub.id))
+
+    answer = listed(owner, hub)
+
+    assert (answer["available"], answer["copies"]) == (False, [])
+
+
+def test_a_hub_that_does_not_say_whether_copies_exist_is_taken_as_able_to_make_them(business, owner, hub_double):
+    hub = deleted(business)
+    hub_double.answer("GET", r"/dumps$", 200, {"dumps": []})
+
+    assert (listed(owner, hub)["available"], listed(owner, hub)["copies"]) == (True, [])
+
+
+@pytest.mark.parametrize("available", ["no", 0, None])
+def test_an_availability_off_the_contract_is_logged(business, owner, hub_double, available, caplog):
+    hub = deleted(business)
+    hub_double.answer("GET", r"/dumps$", 200, {"available": available, "dumps": []})
+
+    assert (listed(owner, hub)["available"], listed(owner, hub)["copies"]) == (True, [])
+    assert f"hubs.data_copy.bad_answer hub={hub.id}" in caplog.text
 
 
 def test_the_hub_away_is_an_empty_list_and_a_log(business, owner, offline_hub, caplog):
@@ -219,5 +247,6 @@ def test_the_hub_away_never_reaches_the_panel_as_a_500(client, business, owner, 
     )
 
     assert (listing.status_code, json.loads(listing.content)["copies"]) == (200, [])
+    assert json.loads(listing.content)["available"] is True  # away is «not ready yet», never «no copy»
     assert download.status_code == 503
     assert json.loads(download.content)["error"]["code"] == "hubs.data_copy_unavailable"

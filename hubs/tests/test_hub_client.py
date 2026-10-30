@@ -267,6 +267,7 @@ def test_get_dumps_asks_for_the_copies_of_a_hubs_data_signed(hub_double):
     answer = hub_client.get_dumps(hub_id)
 
     assert answer.status == 200
+    assert answer.body["available"] is True
     assert [copy["kind"] for copy in answer.body["dumps"]] == ["offboarding", "reset"]
     assert all(copy["url"].startswith("https://") for copy in answer.body["dumps"])
     (call,) = hub_double.calls_to("GET")

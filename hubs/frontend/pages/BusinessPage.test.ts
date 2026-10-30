@@ -75,7 +75,7 @@ async function setup(tab = 'summary', business: Record<string, unknown> | null =
       if (c.path === '/api/hubs/businesses/open') return Response.json({ url: 'http://bakery.localhost:8000/auth/login?next=/' });
       if (c.path === '/api/hubs/businesses/restore') return Response.json({ ...BUSINESS, status: 'active' });
       if (c.path === '/api/plans') return Response.json({ signup_trial_days: 0, cheapest_slug: null, plans: [] });
-      if (c.path === '/api/hubs/data-copies') return Response.json({ business_id: 'h1', copies: [COPY] });
+      if (c.path === '/api/hubs/data-copies') return Response.json({ business_id: 'h1', available: true, copies: [COPY] });
       return Response.json({});
     },
   });

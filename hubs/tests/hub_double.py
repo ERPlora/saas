@@ -9,9 +9,10 @@ body-only v1), records every call and answers what the test asks for, with the H
   one applied (the Hub ignores an older snapshot, §2.2);
 - ``GET /internal/hubs/{id}`` → 200 with the registry's status (a demo's too: ``requested`` until the test says
   ``ready``, ``expired`` once it ended), 404 for a hub it never got;
-- ``GET /internal/hubs/{id}/dumps`` → 200 ``{"dumps": [...]}``: the copies of ``dumps[id]`` as the test sets them
-  (``{id, kind, created_at, bytes}``), newest first, each with a fresh ``url`` (a presigned link of 15 minutes in the
-  Hub); ``[]`` for a known hub without any, 404 for a hub it never got;
+- ``GET /internal/hubs/{id}/dumps`` → 200 ``{"available": bool, "dumps": [...]}``: the copies of ``dumps[id]`` as the
+  test sets them (``{id, kind, created_at, bytes}``), newest first, each with a fresh ``url`` (a presigned link of 15
+  minutes in the Hub); ``[]`` for a known hub without any; ``available`` false for a hub in ``without_copies`` (no
+  database of its own, so never a copy); 404 for a hub it never got;
 - ``DELETE /internal/hubs/{id}`` → 202; ``POST /internal/hubs/{id}/restore`` → 200;
 - ``POST /internal/sessions/revoke`` → 200;
 - ``GET /internal/usage?day=YYYY-MM-DD[&cursor=…]`` → 200 with the rows of ``usage[day]`` (each business's
@@ -87,6 +88,8 @@ class HubDouble:
         self.demos: dict[str, dict] = {}
         #: ``GET /internal/hubs/{id}/dumps``: the copies of each hub's data (``{id, kind, created_at, bytes}``).
         self.dumps: dict[str, list[dict]] = {}
+        #: The hubs without a database of their own: ``available`` false, never a copy.
+        self.without_copies: set[str] = set()
         self._lock = threading.Lock()
         double = self
 
@@ -256,6 +259,7 @@ class HubDouble:
             return 404, {"error": {"code": "not_found", "message": "Unknown hub."}}
         copies = sorted(self.dumps.get(hub_id, []), key=lambda copy: copy["created_at"], reverse=True)
         return 200, {
+            "available": hub_id not in self.without_copies,
             "dumps": [
                 {**copy, "url": f"https://dumps.example.test/{copy['id']}?X-Amz-Expires=900&X-Amz-Signature={secrets.token_hex(8)}"}
                 for copy in copies
