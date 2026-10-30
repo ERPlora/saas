@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:46d58bc86f379928fbafbd1834d90acf828cefc9d24d5ce7c9bd3a049996797f -->
+<!-- generated from WORKBOOK.md sha256:f71b05d6f8534acc7dd05844615ee109417f6424b5fb5b2bc769379052e28d91 -->
 
 ## What it is for and who uses it
 
@@ -21,6 +21,9 @@ Who uses it:
 - The **Hub's assistant** of each business (and of each demo): it sends erplora.com each turn, its attachments, the
   texts of its index, the dictations and what is to be read aloud, and shows the person what is left of the allowance.
 - **ERPlora's staff**, in "Assistant usage records", see what each business spends and what it costs.
+- The **person with an account** at erplora.com, in the panel: opens the assistant with the "Assistant" button of the
+  bar and asks it about their businesses, what they pay and their account (ASSISTANT-F25), with 30 messages a month
+  (ASSISTANT-F26).
 
 ## Adopted reference
 
@@ -83,14 +86,28 @@ business's name or address, by the demo's address or by the account's email) and
 kind" filter ("Businesses", "Demos" or "Accounts") and the month's. Each row opens to see it whole, without being able
 to change it.
 
+### Panel: Assistant
+On every screen of erplora.com's panel with the session open, at the end of the top bar, the "Assistant" button (the
+sparkles), pressed while the panel is open. The panel opens on the right: from 768 px wide it docks beside the screen,
+which narrows and keeps working; on a phone it covers it over a veil. On top, "Assistant", "New conversation" (once
+there is one) and × ("Close"); in the middle, the conversation: without one, "Ask me about your businesses, your
+invoices or your account." and three shortcuts ("Which businesses do I have?", "How much do I pay a month?" and "How do
+I create a business?"); with one, the person's bubbles and the answers, with "Go to …" for the panel's screens they
+name, what was done under each change ("Done: …", "Not done, cancelled: …"), "Read aloud" (the device's own voice) and
+"Report a problem". At the bottom, the notice of how many messages are left (from 80 % of the month), the clip to
+attach and the box "Write a message…" with "Send" ("Stop" while it answers). A change the model asks for opens the card
+"Run this action?" on top, with "Cancel" and "Run it"; creating, deleting or changing the address of a business,
+offering it to someone else or cancelling its plan also ask to type "CONFIRM". No microphone: dictation is not in the
+panel.
+
 ## States of each screen
 
 | State | What the person sees |
 |---|---|
-| Loading | The normal loading of an admin page; when trying a model, "Sending…" and the "Send" button off until it ends ("Done."). |
-| Empty | "0 AI providers" and the empty list; in "Assistant usage records", "0 assistant usage records" until a business's first message; a provider without a key says "No key"; without models that can answer, "No model can answer yet: add a provider with its key and choose its models." |
-| Error | In "Choose models from the provider", the reason in red: "This provider has no active key: add one on its page and try again.", "The provider did not give its models: …" or "The provider listed no chat models."; on the pages, the error in red next to the field: "Use an https address: the provider's key travels to it.", "Type the provider's key.", "The key of the credentials is not configured: no provider key can be kept."; when trying a model, in red: "The model did not answer: …", "Too many tries in a minute: wait a moment and try again." or "The try could not be sent: check the connection and try again.". |
-| No permission | Without the gateway's permissions, the admin answers there is no permission; whoever may only look sees the pages without the "Key" field. "Assistant usage records" cannot be changed nor deleted, not even by a superuser. |
+| Loading | The normal loading of an admin page; when trying a model, "Sending…" and the "Send" button off until it ends ("Done."). In the panel's assistant, the bubble "The assistant is writing" until the first word and "Stop" instead of "Send". |
+| Empty | "0 AI providers" and the empty list; in "Assistant usage records", "0 assistant usage records" until a business's first message; a provider without a key says "No key"; without models that can answer, "No model can answer yet: add a provider with its key and choose its models." In the panel's assistant, "Ask me about your businesses, your invoices or your account." with its three shortcuts. |
+| Error | In "Choose models from the provider", the reason in red: "This provider has no active key: add one on its page and try again.", "The provider did not give its models: …" or "The provider listed no chat models."; on the pages, the error in red next to the field: "Use an https address: the provider's key travels to it.", "Type the provider's key.", "The key of the credentials is not configured: no provider key can be kept."; when trying a model, in red: "The model did not answer: …", "Too many tries in a minute: wait a moment and try again." or "The try could not be sent: check the connection and try again.". In the panel's assistant, under the question: "The assistant is not available right now. Try again in a few minutes." with "Try again"; with the month spent, "You have used all the assistant's messages of this month (30 of 30). They renew on …" and "Each business has its own assistant, with its own messages: open the business to keep asking there.", without "Upgrade plan"; without a connection, in the foot, "No connection: you can write, and send when it is back." |
+| No permission | Without the gateway's permissions, the admin answers there is no permission; whoever may only look sees the pages without the "Key" field. "Assistant usage records" cannot be changed nor deleted, not even by a superuser. Without a session, the panel sends to sign in and there is no "Assistant" button; a session that ends mid-conversation says "Your session has ended. Sign in again to keep talking." with "Sign in again". |
 
 ## Flows
 
@@ -120,7 +137,7 @@ to change it.
 | ASSISTANT-F22 | Read an answer aloud | done |
 | ASSISTANT-F23 | Receive the report of an answer of the assistant | done |
 | ASSISTANT-F24 | See what a business spent of the assistant | done |
-| ASSISTANT-F25 | Answer the panel's assistant of an account | partial |
+| ASSISTANT-F25 | Answer the panel's assistant of an account | done |
 | ASSISTANT-F26 | Count an account's messages with the panel's assistant | done |
 
 ### ASSISTANT-F01 Add an AI provider
@@ -452,18 +469,20 @@ If it fails: nobody can add, change nor delete a row, not even a superuser (dele
 Involved: ASSISTANT-F18, ASSISTANT-F20, ASSISTANT-F21, ASSISTANT-F22, ASSISTANT-F26
 
 ### ASSISTANT-F25 Answer the panel's assistant of an account
-Status: partial — erplora.com already answers each turn of the account; the chat that opens it from the panel's bar comes with its screen
+Status: done
 Actor: the person with an account at erplora.com
-Screen: none
+Screen: Panel: Assistant
 Steps:
-1. The person, signed in to erplora.com's panel, writes to the assistant ("Which businesses do I have?", "How much do I pay a month?", "Create a business for my hair salon").
-2. erplora.com offers the model the panel's tools this account may use (its businesses and their people, the plans, its invoices and subscriptions, its account, the catalogue of apps), first those of what was asked, and always the list of its businesses.
-3. A read the model asks for runs on its own, as the person themselves: it never sees a business that is not theirs.
-4. A change the model asks for stops at a card that says what it will do, where (the panel's screen: "Businesses", "Billing", "Account" or "Store") and with which data, naming the business by its name; it is only done if the person says yes. Creating, deleting or changing the address of a business, offering it to someone else or cancelling its plan also ask to type "CONFIRM"; changing plan is not done from the chat but in the Store, which shows first what will be charged.
-5. With what the tools returned, the model answers live, piece by piece, in the person's language, and links the panel's screen where what it cannot do is done; for what happens inside a business (sales, products, the people at the till) it says to open the business and ask its assistant.
+1. The person, signed in to erplora.com's panel, presses "Assistant" at the end of the bar and the assistant's panel opens: beside the screen from 768 px, on top of it on a phone. Without a conversation, they see "Ask me about your businesses, your invoices or your account." with three shortcuts.
+2. They write to the assistant or press a shortcut ("Which businesses do I have?", "How much do I pay a month?", "Create a business for my hair salon"); until the first word of the answer they see the bubble "The assistant is writing".
+3. erplora.com offers the model the panel's tools this account may use (its businesses and their people, the plans, its invoices and subscriptions, its account, the catalogue of apps), first those of what was asked, and always the list of its businesses.
+4. A read the model asks for runs on its own, as the person themselves: it never sees a business that is not theirs.
+5. A change the model asks for stops at the card "Run this action?", which says what it will do, where (the panel's screen: "Businesses", "Billing", "Account" or "Store") and with which data, naming the business by its name; it is only done if the person presses "Run it", and "Cancel" changes nothing. Creating, deleting or changing the address of a business, offering it to someone else or cancelling its plan also ask to type "CONFIRM"; changing plan is not done from the chat but in the Store, which shows first what will be charged.
+6. With what the tools returned, the model answers live, piece by piece, in the person's language, and links the panel's screen where what it cannot do is done ("Go to Businesses"…); for what happens inside a business (sales, products, the people at the till) it says to open the business and ask its assistant. Under the answer stays what was done of each change ("Done: Create business in Businesses", "Not done, cancelled: …").
+7. From 80 % of the month's messages, the panel's foot says how many are left and when they come back (see ASSISTANT-F26). The panel closes with ×, Escape, the veil or the same button; the device remembers whether it was left open, and the conversation is forgotten when the session is closed.
 In: the conversation (it lives in the person's browser), the tools the model asked for and the person's answer to its card.
 Out: what was done and its result, the card of the change that waits, the text as it arrives, the allowance left and the close; what each tool does leaves its own trace (`hubs.business.created`…), never the conversation.
-If it fails: without a session, it does not answer (one must sign in); with the month's allowance spent, the first notice is the allowance spent, with how many were used and when they come back (see ASSISTANT-F26); with too many turns in a row, it says to wait a moment; without a model that answers, that the assistant cannot answer now. A tool the account does not have, or that is not for the chat (downloading a file, creating an API key, opening the payment, entering a business), never runs. Without the word typed or with a "no", the change is not made and the model says so. Where nothing is sold (the account opened from the installed app), neither the Store nor its plan changes are offered. Past six rounds of tools in a single question, it stops.
+If it fails: without a session, the panel sends to sign in and there is no "Assistant" button, and a session that ends mid-conversation asks to sign in again; with the month's allowance spent, the first notice is the allowance spent, with how many were used and when they come back, and that each business has its own assistant, without "Upgrade plan" (see ASSISTANT-F26); with too many turns in a row, it says to wait a moment; without a model that answers, that the assistant cannot answer now, with "Try again"; without a connection, the foot says so. A tool the account does not have, or that is not for the chat (downloading a file, creating an API key, opening the payment, entering a business), never runs. Without the word typed or with a "no", the change is not made and the model says so. Where nothing is sold (the account opened from the installed app), neither the Store nor its plan changes are offered. Past six rounds of tools in a single question, it stops.
 Involved: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F23, ASSISTANT-F26, HUBS-F01, HUBS-F09, BILLING-F13
 
 ### ASSISTANT-F26 Count an account's messages with the panel's assistant
