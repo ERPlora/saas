@@ -23,7 +23,9 @@ What each door answers:
   weak; ERPlora's seal in that case is ``no_seal``), ``environment_not_allowed`` (``production`` from a
   deployment that is not prod: ``pre`` only presents to the AEAT's tests);
 - ``502 {"error": {"code": "aeat_unreachable", "message", "sent"}}``: no answer from the AEAT. ``sent``
-  says whether the request may have reached it (the Hub then keeps the record as sent and asks again);
+  says whether the request may have reached it (the Hub then keeps the record as sent and asks again). Also,
+  ``sent: false``, when the server's trusted certificates cannot be loaded (``aeat.TrustStoreUnreadable``: the
+  message names ``SSL_CERT_FILE`` and its file), decided before the AEAT, which the Hub retries in its cycle;
 - ``503 gateway_busy``: ``VERIFACTU_GATEWAY_CONCURRENCY`` presentations are already under way in this
   process (the Hub retries, as when the gateway is unreachable);
 - ``401`` unsigned, ``405`` not POST, ``413`` over ``MAX_BODY_BYTES``, ``422`` not the contract. A
@@ -33,7 +35,7 @@ What each door answers:
 ``probe`` presents nothing: ``200 {"ready", "detail"}`` says whether a presentation would leave now
 (``detail``: which certificate, or why not; an unknown business or a missing authorisation is
 ``ready: false`` too). It loads the certificate into TLS as a presentation does, so a certificate TLS
-refuses is ``ready: false`` there too.
+refuses, or trusted certificates the server cannot load, is ``ready: false`` there too.
 
 ERPlora's seal presents for a business's taxpayer only with the business's approved authorisation
 (the Anexo I the staff reviewed, ``fiscal.RepresentationGrant``) whose taxpayer is ``nif``. The one
@@ -79,15 +81,14 @@ SLOTS = threading.BoundedSemaphore(settings.VERIFACTU_GATEWAY_CONCURRENCY)
 
 
 class _Refused(Exception):
-    def __init__(
-        self, status: int, code: str, message: str, fields: dict | None = None
-    ):
+    """The answer of a call the gateway does not present; ``extra``: more fields of its error (``fields``, ``sent``)."""
+
+    def __init__(self, status: int, code: str, message: str, **extra):
         super().__init__(message)
-        self.status, self.code, self.message, self.fields = status, code, message, fields
+        self.status, self.code, self.message, self.extra = status, code, message, extra
 
     def response(self) -> JsonResponse:
-        extra = {"fields": self.fields} if self.fields else {}
-        response = _error(self.status, self.code, self.message, **extra)
+        response = _error(self.status, self.code, self.message, **self.extra)
         if self.status == 405:
             response["Allow"] = "POST"
         return response
@@ -237,7 +238,10 @@ def _body(request: HttpRequest, schema: type[ProbeIn]) -> ProbeIn:
             for error in invalid.errors(include_input=False, include_url=False)
         }
         raise _Refused(
-            422, "invalid_payload", "The body is not the gateway's contract.", fields
+            422,
+            "invalid_payload",
+            "The body is not the gateway's contract.",
+            fields=fields,
         ) from None
 
 
@@ -341,8 +345,13 @@ def _identity(body: ProbeIn) -> tuple[seal.Identity, ssl.SSLContext]:
 
 @sensitive_variables()
 def _tls(identity: seal.Identity, code: str) -> ssl.SSLContext:
-    """``identity`` loaded into TLS, or the refusal ``code`` if TLS will not take it."""
+    """``identity`` loaded into TLS, or the refusal ``code`` if TLS will not take it; ``aeat_unreachable``, not
+    sent, if the server's trusted certificates cannot be loaded."""
     try:
         return aeat.tls_context(identity)
     except seal.SealInvalid as invalid:
         raise _Refused(409, code, str(invalid)) from None
+    except aeat.TrustStoreUnreadable as unreadable:
+        raise _Refused(
+            502, "aeat_unreachable", str(unreadable), sent=unreadable.sent
+        ) from None
