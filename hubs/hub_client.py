@@ -59,8 +59,9 @@ DEMO_REFUSALS = frozenset({"base.demo_full"})
 PREPARING_STATUSES = frozenset({"requested", "creating", "migrating", "seeding"})
 #: A hub the Hub could not prepare: it retries on its own (1 min, 5 min, 15 min, 1 h) and reports ``ready`` when it can.
 FAILED_STATUS = "failed"
-#: A hub that ended: deleted (``cancelled``), a demo past its hour (``expired``), or its database dropped (``purged``).
-ENDED_STATUSES = frozenset({"cancelled", "expired", "purged"})
+#: A hub that ended: deleted (``cancelled``), a demo past its hour (``expired``), on its way out (``archiving``: its copy
+#: being made; ``dropping``: its database going; hub#471), or its database dropped (``purged``).
+ENDED_STATUSES = frozenset({"cancelled", "archiving", "dropping", "expired", "purged"})
 
 
 class HubUnavailable(Exception):
