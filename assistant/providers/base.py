@@ -13,18 +13,24 @@ streams the answer over ``httpx`` and yields ``ProviderEvent``s:
 
 A turn always ends with exactly one ``finish``; an upstream failure is an ``error`` followed by ``finish`` ``error``,
 never an exception, so the caller decides whether to try the fallback model (``retriable``). No message ever carries
-the key (``redact``).
+the key (``redact``). Every client is made by ``open_client``: a server whose trusted certificates cannot be loaded
+(``SSL_CERT_FILE`` naming a file that is not there, or that holds none) fails there, before it connects, even to an
+``http://`` address, as a final failure that names the setting and its file, in the message and in the log.
 """
 
 from __future__ import annotations
 
 import json
+import logging
+import os
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 #: Connect, write and pool limits short; a read may wait for the model to think (a stream's pause between events).
 TIMEOUT = httpx.Timeout(connect=10.0, read=120.0, write=30.0, pool=10.0)
@@ -46,6 +52,26 @@ class ProviderError(Exception):
 
 class ProviderUnavailable(ProviderError):
     """The provider cannot be called: no key, an unknown API."""
+
+
+class TrustStoreUnreadable(Exception):
+    """The server's trusted certificates cannot be loaded: its configuration, so no attempt nor fallback clears it."""
+
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.message = message
+
+
+def open_client(timeout: httpx.Timeout) -> httpx.AsyncClient:
+    """An ``httpx`` client, or ``TrustStoreUnreadable`` naming where its certificates were read from, logged."""
+    try:
+        return httpx.AsyncClient(timeout=timeout)
+    except OSError as problem:  # FileNotFoundError, PermissionError, ssl.SSLError (a file with no certificate)
+        path = os.environ.get("SSL_CERT_FILE")
+        source = f"SSL_CERT_FILE={path}" if path else "the default certificates"
+        message = f"the server's trusted certificates cannot be loaded from {source} ({problem.strerror or problem})"
+        logger.error("assistant.provider.trust_store_unreadable %s", message)
+        raise TrustStoreUnreadable(message) from None
 
 
 def is_retriable_status(status: int | None) -> bool:
@@ -185,7 +211,7 @@ class Provider(ABC):
     async def stream_turn(self, req: TurnRequest) -> AsyncIterator[ProviderEvent]:
         url, headers, body = self.chat_request(req)
         try:
-            async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+            async with open_client(TIMEOUT) as client:
                 async with client.stream("POST", url, headers=headers, json=body) as response:
                     if response.status_code >= 400:
                         raw = await response.aread()
@@ -196,6 +222,9 @@ class Provider(ABC):
                         return
                     async for event in self.parse_stream(response, req):
                         yield event
+        except TrustStoreUnreadable as problem:
+            yield error_event(redact(f"{self.kind}: {problem.message}", self.api_key), retriable=False)
+            yield finish_event("error")
         except httpx.TimeoutException:
             yield error_event(f"{self.kind}: the provider took too long to answer", retriable=True)
             yield finish_event("error")
@@ -206,8 +235,10 @@ class Provider(ABC):
     async def get_json(self, url: str, headers: dict[str, str]) -> Any:
         """A listing call's JSON; ``ProviderError`` with the provider's words if it fails."""
         try:
-            async with httpx.AsyncClient(timeout=LIST_TIMEOUT) as client:
+            async with open_client(LIST_TIMEOUT) as client:
                 response = await client.get(url, headers=headers)
+        except TrustStoreUnreadable as problem:
+            raise ProviderError(redact(f"{self.kind}: {problem.message}", self.api_key), retriable=False) from None
         except httpx.TimeoutException:
             raise ProviderError(f"{self.kind}: the provider took too long to answer", retriable=True) from None
         except httpx.HTTPError as problem:

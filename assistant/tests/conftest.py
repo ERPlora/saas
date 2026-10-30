@@ -89,6 +89,16 @@ def fake_provider():
 
 
 @pytest.fixture
+def missing_ca(tmp_path, monkeypatch):
+    """The server's ``SSL_CERT_FILE`` naming a file that is not there (the e2e stack of the Hub before its CA
+    exists): ``httpx`` fails to load it as each client is made, before it connects, even to ``http://``."""
+    path = tmp_path / "missing.pem"
+    monkeypatch.setenv("SSL_CERT_FILE", str(path))
+    monkeypatch.delenv("SSL_CERT_DIR", raising=False)
+    return path
+
+
+@pytest.fixture
 def provider(db):
     """OpenAI, enabled, without a key."""
     from assistant.models import AIProvider

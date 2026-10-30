@@ -3,17 +3,22 @@ yields, the reading of a server-sent stream, which upstream failures another att
 that shape a conversation for each API."""
 
 import json
+import logging
+import socket
 
 import httpx
 import pytest
 
 from assistant.providers.base import (
     Provider,
+    ProviderError,
     ProviderEvent,
+    TurnRequest,
     is_retriable_status,
     redact,
     sse_events,
 )
+from assistant.providers.openai import OpenAIProvider
 
 
 class _Lines(httpx.AsyncByteStream):
@@ -110,3 +115,86 @@ def test_a_client_without_a_key_is_unavailable():
 
     with pytest.raises(ProviderUnavailable):
         OpenAIProvider(api_key="", base_url="https://api.openai.com/v1")
+
+
+# --- The server's trusted certificates (FIX-SAAS-ASSISTANT-GATEWAY-502-WHEN-SSL-CERT-FILE-MISSING) ------------------
+
+KEY = "sk-test-base-0000"
+
+
+def nowhere() -> OpenAIProvider:
+    """A client of a provider on a free port of ``127.0.0.1``, over ``http://``: the real ``httpx``, nothing patched."""
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+    return OpenAIProvider(api_key=KEY, base_url=f"http://127.0.0.1:{port}/v1")
+
+
+@pytest.fixture(params=["missing", "not_a_certificate"])
+def unreadable_ca(request, missing_ca):
+    """``SSL_CERT_FILE`` naming a file that is not there, or one that holds no certificate."""
+    if request.param == "not_a_certificate":
+        missing_ca.write_text("not a certificate\n")
+    return missing_ca
+
+
+def names_the_file(message: str, path) -> bool:
+    return "SSL_CERT_FILE" in message and str(path) in message
+
+
+@pytest.mark.asyncio
+async def test_a_turn_without_the_servers_certificates_ends_in_a_final_error_naming_the_file(unreadable_ca, caplog):
+    request = TurnRequest(model_id="gpt-test", messages=[{"role": "user", "content": "Hi"}])
+
+    with caplog.at_level(logging.ERROR, logger="assistant"):
+        events = [event async for event in nowhere().stream_turn(request)]
+
+    assert [event.type for event in events] == ["error", "finish"]
+    assert events[1].payload == {"reason": "error"}
+    assert events[0].payload["retriable"] is False
+    assert events[0].payload["message"].startswith("openai: ")
+    assert names_the_file(events[0].payload["message"], unreadable_ca)
+    assert any(names_the_file(record.getMessage(), unreadable_ca) for record in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_a_listing_without_the_servers_certificates_is_a_final_error_naming_the_file(unreadable_ca):
+    provider = nowhere()
+
+    with pytest.raises(ProviderError) as raised:
+        await provider.get_json(f"{provider.base_url}/models", {})
+
+    assert raised.value.retriable is False
+    assert raised.value.message.startswith("openai: ")
+    assert names_the_file(raised.value.message, unreadable_ca)
+
+
+@pytest.mark.asyncio
+async def test_the_failure_of_the_servers_certificates_never_carries_the_key(tmp_path, monkeypatch):
+    monkeypatch.setenv("SSL_CERT_FILE", str(tmp_path / f"{KEY}.pem"))
+    request = TurnRequest(model_id="gpt-test", messages=[{"role": "user", "content": "Hi"}])
+
+    provider = nowhere()
+
+    events = [event async for event in provider.stream_turn(request)]
+    with pytest.raises(ProviderError) as raised:
+        await provider.get_json(f"{provider.base_url}/models", {})
+
+    assert "SSL_CERT_FILE" in events[0].payload["message"] and KEY not in events[0].payload["message"]
+    assert "SSL_CERT_FILE" in raised.value.message and KEY not in raised.value.message
+
+
+@pytest.mark.asyncio
+async def test_without_ssl_cert_file_the_failure_of_the_bundled_certificates_is_final_too(tmp_path, monkeypatch):
+    import certifi
+
+    monkeypatch.delenv("SSL_CERT_FILE", raising=False)
+    monkeypatch.delenv("SSL_CERT_DIR", raising=False)
+    monkeypatch.setattr(certifi, "where", lambda: str(tmp_path / "gone.pem"))
+    provider = nowhere()
+
+    with pytest.raises(ProviderError) as raised:
+        await provider.get_json(f"{provider.base_url}/models", {})
+
+    assert raised.value.retriable is False
+    assert "SSL_CERT_FILE" not in raised.value.message

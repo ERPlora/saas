@@ -7,6 +7,7 @@ caller pick any model, of very different price, SAAS_ASSISTANT-F17 «parcial»).
 ``test_embeddings_endpoint.py``; OpenAI is the local fake.
 """
 
+import logging
 from decimal import Decimal
 
 import pytest
@@ -115,6 +116,18 @@ def test_a_failure_of_the_provider_is_a_502_with_its_code_never_the_key(client, 
     assert response.status_code == 502
     assert (error_code(response), response.json()["error"]["retriable"]) == (code, retriable)
     assert API_KEY not in response.content.decode()
+
+
+def test_a_server_without_its_trusted_certificates_is_a_final_502_the_log_explains(client, internal, business, answering, fake_provider, missing_ca, caplog):
+    """FIX-SAAS-ASSISTANT-GATEWAY-502-WHEN-SSL-CERT-FILE-MISSING: ``SSL_CERT_FILE`` naming a file that is not there is
+    the server's configuration, not the provider's: final, and the log names the setting and its file."""
+    with caplog.at_level(logging.ERROR, logger="assistant"):
+        response = door(client, EMBEDDINGS, {"hub": business.slug, "texts": ["x"]})
+
+    assert response.status_code == 502
+    assert (error_code(response), response.json()["error"]["retriable"]) == ("assistant.provider_rejected", False)
+    assert fake_provider.requests == []
+    assert any("SSL_CERT_FILE" in record.getMessage() and str(missing_ca) in record.getMessage() for record in caplog.records)
 
 
 def test_the_embeddings_have_their_own_budget(client, internal, business, answering, fake_provider, settings):
