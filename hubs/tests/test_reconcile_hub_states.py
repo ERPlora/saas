@@ -195,9 +195,10 @@ class TestReconcile:
         assert services.sync_outcome(business.id) == services.DELIVERED
         assert fresh(business).last_hub_error == services.PROVISION_FAILED
 
-    @pytest.mark.parametrize("status", ["cancelled", "expired", "purged", "dropped", None])
+    @pytest.mark.parametrize("status", ["cancelled", "archiving", "dropping", "expired", "purged", "dropped", None])
     def test_a_status_the_sign_up_cannot_have_is_logged_and_fails_the_run(self, business, hub_double, status, caplog):
-        """A business the SaaS is preparing that the Hub calls ended (or anything off the contract) is a person's job."""
+        """A business the SaaS is preparing that the Hub calls ended (``cancelled``, or on its way out: ``archiving``,
+        ``dropping``, hub#471), or anything off the contract, is a person's job."""
         stuck(business)
         hub_double.registry[str(business.id)]["status"] = status
 

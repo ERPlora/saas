@@ -349,7 +349,7 @@ listo al responder, y lo dice.
   `seeding` siguen «preparando» (`preparing`); `ready` lo abre; `failed` graba el error `hubs.provision_failed`
   (`services.PROVISION_FAILED`, por `hubs.business.record_hub_error`, con su evento) y el panel dice «No hemos podido
   prepararlo. Seguimos reintentándolo; si sigue fallando, avísanos.» en vez de «preparando» para siempre (el Hub lo
-  reintenta solo: 1 min, 5 min, 15 min, 1 h); `cancelled`, `expired`, `purged` o un estado fuera del contrato se
+  reintenta solo: 1 min, 5 min, 15 min, 1 h); `cancelled`, `archiving`, `dropping`, `expired`, `purged` o un estado fuera del contrato se
   registran (`hubs.reconcile.unexpected_status`) y hacen fallar la pasada (`unexpected`), igual que `failed`
   (`provision_failed`). El aviso `ready` (o el sondeo que lo oye) borra ese error; una llamada entregada después no
   lo borra (la preparación sigue debida). Los estados viven en `hub_client` (`PREPARING_STATUSES`, `FAILED_STATUS`,
@@ -360,7 +360,7 @@ listo al responder, y lo dice.
   durante 30 s como mucho (`frontend/demo-wait.ts`). `/demo/status/` (JSON, sin caché ni índice) solo pregunta al Hub
   (`GET /internal/hubs/{id}`) por una demo que se está preparando: `ready` → la recuerda lista y da el salto a su
   `/auth/login`; los cuatro de preparación (o el Hub caído un momento) → sigue esperando; `failed` → la puerta
-  `?state=not_ready`; `expired`/`cancelled`/`purged` o 404/410 → la olvida y `?state=expired`; cualquier otra
+  `?state=not_ready`; `expired`/`cancelled`/`archiving`/`dropping`/`purged` (hub#471: la demo de salida) o 404/410 → la olvida y `?state=expired`; cualquier otra
   respuesta → `?state=unavailable`. Cada navegador tiene un tope en el servidor (`demo.STATUS_RATE`, 90 por
   minuto, por su token de demo): pasado, responde «sigue preparando» sin preguntar al Hub. Sin respuesta en 30 s, `not_ready`: «Tu demo aún no está lista. Vuelve a
   intentarlo en un momento.» con «Volver a intentarlo», que espera otra vez a la misma demo (o pide una si el
@@ -410,7 +410,8 @@ Firmado como todo `/internal` (v1 + v2). El doble de los tests es `tests/hub_dou
 PUT  /internal/hubs/{id}            → 202 {"status": "requested"} (alta nueva) · 200 (ya lo conocía)
 POST /internal/hubs/{id}/ready      ← el Hub, cuando el negocio está listo (ya existía)
 GET  /internal/hubs/{id}            → 200 {"status": "requested" | "creating" | "migrating" | "seeding" | "ready"
-                                             | "failed" | "cancelled" | "expired" | "purged"} · 404 desconocido
+                                             | "failed" | "cancelled" | "archiving" | "dropping" | "expired"
+                                             | "purged"} · 404 desconocido
                                        (nunca datos de conexión)
 POST /internal/demos                → 202 {"id", "slug", "status": "requested", "expires_at", "created": true}
                                        · 200 la viva de ese navegador con su "status" ("created": false)

@@ -360,3 +360,10 @@ def test_an_error_that_is_not_an_object_is_still_a_refusal(hub_double):
         hub_client.create_demo_code("demo-0123abcd", BROWSER, language="en")
 
     assert (refused.value.status, refused.value.code) == (403, "refused")
+
+
+def test_a_hub_on_its_way_out_has_ended():
+    """hub#471: ``GET /internal/hubs/{id}`` also says ``archiving`` (its copy being made) and ``dropping`` (its database
+    going) after ``cancelled`` or ``expired``: ended, like those, never being prepared."""
+    assert {"cancelled", "archiving", "dropping", "expired", "purged"} == hub_client.ENDED_STATUSES
+    assert not hub_client.ENDED_STATUSES & hub_client.PREPARING_STATUSES

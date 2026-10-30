@@ -552,8 +552,9 @@ def test_the_status_of_a_demo_the_hub_could_not_prepare_is_not_ready(client, hub
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("ended", ["expired", "cancelled", "purged"])
+@pytest.mark.parametrize("ended", ["expired", "cancelled", "archiving", "dropping", "purged"])
 def test_the_status_of_a_demo_that_ended_forgets_it(client, hub_double, ended):
+    """``archiving`` and ``dropping`` (hub#471) are the Hub dropping it: ended as ``expired`` is, never «not available»."""
     slug = start(client, hub_double, ready=False)
     hub_double.answer("GET", rf"^/internal/hubs/{hub_double.demos[slug]['id']}$", 200, {"status": ended})
 
