@@ -107,7 +107,7 @@ test.describe('in English', () => {
     await page.getByTestId('demo-start').click();
 
     await expect(page.getByTestId('demo-state-preparing')).toBeVisible();
-    await expect(page.getByRole('status')).toContainText('Preparing your demo…');
+    await expect(page.getByTestId('demo-state-preparing').getByRole('status')).toContainText('Preparing your demo…');
     await page.waitForURL(/^http:\/\/demo-[0-9a-f]{8}\.localhost(:\d+)?\/auth\/login\?next=\/$/, { timeout: 15_000 });
     expect(visits).toHaveLength(1);
     const [demo] = [...demos.values()].slice(-1);
@@ -150,7 +150,7 @@ test.describe('in Spanish', () => {
 
     await page.getByTestId('demo-start').click();
 
-    await expect(page.getByRole('status')).toContainText('Preparando tu demo…');
+    await expect(page.getByTestId('demo-state-preparing').getByRole('status')).toContainText('Preparando tu demo…');
     mkdirSync(ARTIFACTS, { recursive: true });
     for (const width of WIDTHS) {
       await page.setViewportSize({ width, height: 900 });
