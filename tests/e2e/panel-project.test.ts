@@ -59,6 +59,12 @@ describe('panelServers', () => {
     expect(servers(5225)['panel-django'].env).toMatchObject({ ASSISTANT_SERVICE_PROVIDER: 'e2e-local' });
   });
 
+  it("gives each account 2 messages a month with the panel's assistant, so a spec spends them (ASSISTANT-F26)", () => {
+    // assistant-panel.spec.ts asks twice, then sees the month spent; the panel's twin with the second factor too.
+    expect(servers(5225)['panel-django'].env).toMatchObject({ ASSISTANT_ACCOUNT_MESSAGES: '2' });
+    expect(servers(5225)['panel-mfa-django'].env).toMatchObject({ ASSISTANT_ACCOUNT_MESSAGES: '2' });
+  });
+
   it('keeps 5174 by default', () => {
     expect(panelServers(SAAS_DIR).find((server) => server.name === 'panel-vite')?.url).toBe(
       `http://localhost:${vitePort(process.env)}/static/spa/@vite/client`,

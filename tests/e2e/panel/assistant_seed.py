@@ -1,12 +1,13 @@
-"""The rows the AI gateway's specs open: its admin (assistant-admin.spec.ts: ASSISTANT-F01, F02, F04, F05 and F07) and
-the Hub's doors with «Assistant usage records» (assistant-gateway.spec.ts: ASSISTANT-F11 to F24).
+"""The rows the AI gateway's specs open: its admin (assistant-admin.spec.ts: ASSISTANT-F01, F02, F04, F05 and F07), the
+Hub's doors with «Assistant usage records» (assistant-gateway.spec.ts: ASSISTANT-F11 to F24) and the panel's own
+assistant (assistant-panel.spec.ts: ASSISTANT-F25 and F26).
 
-``uv run python tests/e2e/panel/assistant_seed.py <action> [<provider address>]`` from the SaaS, against the run's
+``uv run python tests/e2e/panel/assistant_seed.py <action> [<provider address>] [<language>]`` from the SaaS, against the run's
 database (development only: known passwords, refused without ``DEBUG``). Every action starts from ``clear``, so a
 run always finds the same rows; ``clear`` removes every account ``e2e-assistant-*@example.com``, every provider whose
 identifier starts with ``e2e-`` (its keys and models with it) and the choice of the model that answers when it named
-one of them, every business whose address starts with ``e2e-assistant-`` (its usage with it) and the usage of the
-demo ``demo-0e2ea55e``.
+one of them, every business whose address starts with ``e2e-assistant-`` (its usage and its people's access with it)
+and the usage of the demo ``demo-0e2ea55e``; an account's month of messages goes with the account.
 
 - ``staff``: ``e2e-assistant-admin`` (ERPlora's staff with every permission of the gateway) and
   ``e2e-assistant-viewer`` (staff who may only look at the providers, models and the model that answers).
@@ -18,6 +19,9 @@ demo ``demo-0e2ea55e``.
   (no subscription): ``e2e-assistant-bar`` with its allowance whole and ``e2e-assistant-spent`` with this month's
   messages spent. Prints one line of JSON for the spec: the plan's allowance and the addresses of the businesses and
   of the demo (the spec signs with ``fixtures.internalSecret``, as the Hub would).
+- ``panel <address> [<language>]``: ``gpt-e2e-large`` answering, as in ``gateway``, and ``e2e-assistant-owner``: an
+  account like any other (no staff), in ``language`` (``es`` by default), owner of one working business on the Free
+  plan, «E2E Asistente Panel». Prints one line of JSON for the spec: the owner's email, the business and its address.
 
 No real key is ever written: the key here is made up and the provider is the local fake one.
 """
@@ -51,10 +55,12 @@ def clear() -> None:
     from django.contrib.auth import get_user_model
     from django.db.models import Q
 
+    from accounts.models import HubMembership
     from assistant.models import AIProvider, AIRoutingPolicy, AssistantUsage
     from hubs.models import Hub
 
     AssistantUsage.objects.filter(demo=DEMO).delete()
+    HubMembership.objects.filter(hub_slug__startswith=BUSINESS_PREFIX).delete()
     Hub.objects.filter(slug__startswith=BUSINESS_PREFIX).delete()
     ours = AIProvider.objects.filter(slug__startswith="e2e-")
     AIRoutingPolicy.objects.filter(
@@ -106,17 +112,24 @@ def models(address: str):
     return large
 
 
-def gateway(address: str) -> dict:
-    from django.utils import timezone
-
-    from assistant import queries
-    from assistant.models import AIRoutingPolicy, AssistantUsage
-    from hubs.models import Hub, Plan
+def answering(address: str) -> None:
+    """``models`` with ``gpt-e2e-large`` answering, without a model in reserve."""
+    from assistant.models import AIRoutingPolicy
 
     policy = AIRoutingPolicy.solo()
     policy.active_model = models(address)
     policy.fallback_model = None
     policy.save()
+
+
+def gateway(address: str) -> dict:
+    from django.utils import timezone
+
+    from assistant import queries
+    from assistant.models import AssistantUsage
+    from hubs.models import Hub, Plan
+
+    answering(address)
     now = timezone.now()
     limit = Plan.objects.get(slug="free").assistant_messages_per_month
 
@@ -140,7 +153,35 @@ def gateway(address: str) -> dict:
     }
 
 
-def main(action: str, address: str) -> None:
+def panel(address: str, language: str = "es") -> dict:
+    from allauth.account.models import EmailAddress
+    from django.contrib.auth import get_user_model
+    from django.utils import timezone
+
+    from accounts.models import HubMembership
+    from hubs.models import Hub, HubMember
+
+    answering(address)
+    owner = get_user_model().objects.create_user(
+        email=f"{PREFIX}owner{DOMAIN}", password=PASSWORD, language=language, first_name="Lena", last_name="Panel"
+    )
+    # Proven address: every account proves it before its first session (the code a sign-up mails).
+    EmailAddress.objects.create(user=owner, email=owner.email, verified=True, primary=True)
+    now = timezone.now()
+    hub = Hub.objects.create(
+        slug=f"{BUSINESS_PREFIX}panel",
+        name="E2E Asistente Panel",
+        country="ES",
+        language=language,
+        status=Hub.Status.ACTIVE,
+        ready_at=now,
+    )
+    HubMember.objects.create(hub=hub, user=owner, role=HubMember.Role.OWNER, joined_at=now, accepted_at=now)
+    HubMembership.objects.create(user=owner, hub_slug=hub.slug, role=HubMembership.Role.OWNER)
+    return {"owner": owner.email, "business": hub.name, "slug": hub.slug}
+
+
+def main(action: str, address: str, language: str) -> None:
     setup_django()
     from django.conf import settings
     from django.db import transaction
@@ -153,6 +194,7 @@ def main(action: str, address: str) -> None:
         "provider": lambda: provider(address),
         "models": lambda: models(address),
         "gateway": lambda: gateway(address),
+        "panel": lambda: panel(address, language),
     }
     if action not in actions:
         sys.exit(f"unknown action {action!r}: one of {', '.join(actions)}")
@@ -163,4 +205,8 @@ def main(action: str, address: str) -> None:
 
 
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else "staff", sys.argv[2] if len(sys.argv) > 2 else "")
+    main(
+        sys.argv[1] if len(sys.argv) > 1 else "staff",
+        sys.argv[2] if len(sys.argv) > 2 else "",
+        sys.argv[3] if len(sys.argv) > 3 else "es",
+    )
