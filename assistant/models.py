@@ -264,12 +264,14 @@ class AIRoutingPolicy(models.Model):
 
 
 class AssistantUsage(models.Model):
-    """What a business spent through the gateway in a calendar month (UTC), or a demo in its whole life.
+    """What a business spent through the gateway in a calendar month (UTC), a demo in its whole life, or an account
+    with the assistant of erplora.com's own panel in a calendar month.
 
-    ``messages`` is what the plan's monthly allowance (``Plan.assistant_messages_per_month``) is counted against, one
-    per request of a person, reserved before the model is called (``assistant.message.claim``); the tokens and the
-    cost (USD, with the prices of the model that answered) are added when the turn ends. A demo has no row in the
-    SaaS (its Hub keeps it): it is named by its ``demo-…`` address and has one row.
+    ``messages`` is what the allowance is counted against — a business's plan's (``Plan.assistant_messages_per_month``),
+    a demo's few, an account's fixed ``ASSISTANT_ACCOUNT_MESSAGES`` —, one per request of a person, reserved before the
+    model is called (``assistant.message.claim``); the tokens and the cost (USD, with the prices of the model that
+    answered) are added when the turn ends. A demo has no row in the SaaS (its Hub keeps it): it is named by its
+    ``demo-…`` address and has one row. Each row is of exactly one of them: an account's never counts its businesses'.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
@@ -282,6 +284,14 @@ class AssistantUsage(models.Model):
         verbose_name=_("business"),
     )
     demo = models.CharField(_("demo"), max_length=63, blank=True, default="")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="assistant_usage",
+        verbose_name=_("account"),
+    )
     month = models.DateField(_("month"), help_text=_("The first day of the month (UTC)."))
     messages = models.PositiveIntegerField(_("messages"), default=0)
     tokens_input = models.PositiveBigIntegerField(_("input tokens"), default=0)
@@ -296,18 +306,23 @@ class AssistantUsage(models.Model):
     class Meta:
         verbose_name = _("assistant usage record")
         verbose_name_plural = _("assistant usage records")
-        ordering = ["-month", "hub__name", "demo"]
+        ordering = ["-month", "hub__name", "demo", "user__email"]
         constraints = [
             models.CheckConstraint(
-                condition=(Q(hub__isnull=False) & Q(demo="")) | (Q(hub__isnull=True) & ~Q(demo="")),
-                name="assistant_usage_business_or_demo",
+                condition=(Q(hub__isnull=False) & Q(demo="") & Q(user__isnull=True))
+                | (Q(hub__isnull=True) & ~Q(demo="") & Q(user__isnull=True))
+                | (Q(hub__isnull=True) & Q(demo="") & Q(user__isnull=False)),
+                name="assistant_usage_business_demo_or_account",
             ),
             models.UniqueConstraint(
                 fields=["hub", "month"], condition=Q(hub__isnull=False), name="assistant_usage_one_per_month"
             ),
             models.UniqueConstraint(fields=["demo"], condition=~Q(demo=""), name="assistant_usage_one_per_demo"),
+            models.UniqueConstraint(
+                fields=["user", "month"], condition=Q(user__isnull=False), name="assistant_usage_one_per_account_month"
+            ),
         ]
 
     def __str__(self):
-        who = self.demo or (self.hub.name if self.hub_id else "—")
+        who = self.demo or (self.hub.name if self.hub_id else self.user.email if self.user_id else "—")
         return f"{who} · {self.month:%Y-%m}"

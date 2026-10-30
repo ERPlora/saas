@@ -7,7 +7,7 @@ from typing import Any, Literal
 from uuid import UUID
 
 from ninja import Schema
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 
 
 class CredentialIn(Schema):
@@ -209,11 +209,20 @@ class CallerIn(Schema):
 
 
 class Caller(Schema):
-    """Who a call of the Hub is for: a business (``hub_id``) or a demo (``demo``, its address); never both."""
+    """Who a turn of the assistant is for: a business (``hub_id``) or a demo (``demo``, its address), through the Hub's
+    doors; or an account (``user_id``), through erplora.com's own panel. Exactly one."""
 
     hub_id: UUID | None = None
     demo: str = ""
-    slug: str
+    user_id: UUID | None = None
+    #: The business's (or the demo's) address; an account has none.
+    slug: str = ""
+
+    @model_validator(mode="after")
+    def _exactly_one(self) -> "Caller":
+        if [self.hub_id is not None, bool(self.demo), self.user_id is not None].count(True) != 1:
+            raise ValueError("a caller is exactly one of a business, a demo or an account")
+        return self
 
 
 class UsageOut(Schema):

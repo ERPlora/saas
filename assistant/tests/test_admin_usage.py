@@ -110,3 +110,51 @@ def test_the_counter_under_the_list_is_a_plural(client, viewer, rows):
     client.force_login(viewer)
 
     assert "2 assistant usage records" in client.get(USAGE).content.decode()
+
+
+# --- An account's own allowance of the panel's assistant (plan 2026-10-30, §4) ----------------------------------
+
+
+@pytest.fixture
+def account_row(make_user):
+    account = make_user("ana.cuenta@example.com", first_name="Ana")
+    return AssistantUsage.objects.create(user=account, month=queries.month_of(timezone.now()), messages=9)
+
+
+def test_an_accounts_row_is_named_by_its_email(client, viewer, rows, account_row, business):
+    client.force_login(viewer)
+
+    page = client.get(USAGE).content.decode()
+
+    assert "ana.cuenta@example.com" in page
+    assert "3 assistant usage records" in page
+
+
+def test_the_accounts_are_a_kind_of_their_own(client, viewer, rows, account_row, business):
+    client.force_login(viewer)
+
+    accounts = client.get(USAGE, {"kind": "account"}).content.decode()
+    businesses = client.get(USAGE, {"kind": "business"}).content.decode()
+    demos = client.get(USAGE, {"kind": "demo"}).content.decode()
+
+    assert "ana.cuenta@example.com" in accounts
+    assert business.name not in accounts and "demo-1a2b3c4d" not in accounts
+    assert "ana.cuenta@example.com" not in businesses and "ana.cuenta@example.com" not in demos
+    assert ">Accounts<" in accounts
+
+
+def test_an_account_is_found_by_its_email(client, viewer, rows, account_row, business):
+    client.force_login(viewer)
+
+    found = client.get(USAGE, {"q": "ana.cuenta"}).content.decode()
+
+    assert "ana.cuenta@example.com" in found and business.name not in found
+
+
+def test_the_accounts_read_in_spanish(client, viewer, rows, account_row):
+    client.force_login(viewer)
+
+    page = client.get(USAGE, HTTP_ACCEPT_LANGUAGE="es").content.decode()
+
+    assert ">Cuentas<" in page
+    assert "Negocio, demo o cuenta" in page

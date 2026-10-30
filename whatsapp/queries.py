@@ -18,7 +18,7 @@ from django.db.models import Q
 from django.utils import timezone
 from live.context import OperationContext
 from live.errors import Conflict, NotFound
-from live.operations import operation
+from live.operations import INTERNAL, operation
 
 from hubs.models import Hub, HubMember
 from hubs.services import LIVE_STATUSES
@@ -142,7 +142,12 @@ def not_connected() -> Conflict:
 
 
 @operation(
-    "whatsapp.template.account", kind="query", permission=PERMISSION, input=TemplateAccountIn, output=TemplateAccountOut
+    "whatsapp.template.account",
+    kind="query",
+    permission=PERMISSION,
+    input=TemplateAccountIn,
+    output=TemplateAccountOut,
+    ai=INTERNAL,  # hub
 )
 def template_account(ctx: OperationContext, data: TemplateAccountIn) -> TemplateAccountOut:
     """The account at Meta a business's templates live in (its active number's WhatsApp Business account and token)
@@ -167,7 +172,12 @@ def template_account(ctx: OperationContext, data: TemplateAccountIn) -> Template
 
 
 @operation(
-    "whatsapp.number.renewal_due", kind="query", permission=PERMISSION, input=RenewalDueIn, output=RenewalDueOut
+    "whatsapp.number.renewal_due",
+    kind="query",
+    permission=PERMISSION,
+    input=RenewalDueIn,
+    output=RenewalDueOut,
+    ai=INTERNAL,  # scheduled
 )
 def renewal_due(ctx: OperationContext, data: RenewalDueIn) -> RenewalDueOut:
     """The connected numbers whose permission expires within ``window_days`` (or already did), of businesses that
@@ -188,7 +198,14 @@ def renewal_due(ctx: OperationContext, data: RenewalDueIn) -> RenewalDueOut:
     )
 
 
-@operation("whatsapp.number.connecting", kind="query", permission=PERMISSION, input=ConnectingIn, output=ConnectingOut)
+@operation(
+    "whatsapp.number.connecting",
+    kind="query",
+    permission=PERMISSION,
+    input=ConnectingIn,
+    output=ConnectingOut,
+    ai=INTERNAL,  # meta
+)
 def number_connecting(ctx: OperationContext, data: ConnectingIn) -> ConnectingOut:
     """The business a connection is for (404 ``hub_unknown`` before anything is asked of Meta) and, for
     ``phone_number_id``, the PIN erplora.com registered it with (``""``: none yet), so registering it again never
@@ -207,7 +224,14 @@ def media_not_found() -> NotFound:
     return NotFound("This attachment is not available.", code="whatsapp.media_not_found")
 
 
-@operation("whatsapp.media.locate", kind="query", permission=PERMISSION, input=MediaIn, output=MediaOut)
+@operation(
+    "whatsapp.media.locate",
+    kind="query",
+    permission=PERMISSION,
+    input=MediaIn,
+    output=MediaOut,
+    ai=INTERNAL,  # hub
+)
 def media_locate(ctx: OperationContext, data: MediaIn) -> MediaOut:
     """The attachment of a message erplora.com keeps for a business, for an accepted member of that business only
     (anyone else, or an id that is not one, reads «not available»: nothing says it exists), with the permission of

@@ -45,7 +45,7 @@ from django_ratelimit.core import is_ratelimited
 from live.context import OperationContext, Scope, system_context
 from live.errors import Conflict, InvalidPayload, OperationError, Unauthorized
 from live.errors import NotFound as NotFoundError
-from live.operations import operation
+from live.operations import AI, INTERNAL, operation
 from live.outbox import notify, record_event
 
 from apps.models import Module
@@ -551,6 +551,7 @@ def sale_tax_rates(
     permission="billing.vat_check",
     input=VatCheckIn,
     output=VatCheckOut,
+    ai=AI(description="Checks a VAT number in the EU's VIES: whether it is valid and sales to it are reverse charge."),
 )
 def vat_check_run(ctx: OperationContext, data: VatCheckIn) -> dict:
     """Check a VAT number in VIES before paying (the create-business and billing-profile forms): the verdict
@@ -1341,6 +1342,7 @@ def _trial_end(
     permission="billing.pay",
     input=CheckoutStartIn,
     output=CheckoutStartOut,
+    ai=INTERNAL,  # stripe
 )
 def checkout_start(ctx: OperationContext, data: CheckoutStartIn) -> dict:
     """The owner buys a plan or a module for a business. Without a Stripe subscription (Free): an Embedded
@@ -1826,6 +1828,7 @@ def _checkout_required() -> Conflict:
     permission="billing.pay",
     input=CheckoutConfirmIn,
     output=SubscriptionOut,
+    ai=INTERNAL,  # stripe
 )
 def checkout_confirm(ctx: OperationContext, data: CheckoutConfirmIn) -> dict:
     """Add a module to the subscription of a business that pays already, at the previewed proration: the
@@ -1875,6 +1878,11 @@ def checkout_confirm(ctx: OperationContext, data: CheckoutConfirmIn) -> dict:
     permission="billing.pay",
     input=PlanChangeIn,
     output=SubscriptionOut,
+    ai=AI(
+        description="Moves a paying business to another plan or billing interval and charges the difference now; "
+                    "proration_date is the current Unix time in seconds. A free business buys a plan in the store.",
+        risk="high",
+    ),
 )
 def plan_change(ctx: OperationContext, data: PlanChangeIn) -> dict:
     """Move a paying business to another plan or billing, at the previewed proration (``billing.checkout.start``
@@ -1932,6 +1940,10 @@ def plan_change(ctx: OperationContext, data: PlanChangeIn) -> dict:
     permission="billing.pay",
     input=HubIn,
     output=SubscriptionOut,
+    ai=AI(
+        description="Cancels the plan of a business at the end of its period: then it goes back to Free with its data.",
+        risk="high",
+    ),
 )
 def plan_cancel(ctx: OperationContext, data: HubIn) -> dict:
     """Cancel the plan at the end of its period (PLAN-SAAS §3.3): it works until then and the business goes
@@ -1961,6 +1973,7 @@ def plan_cancel(ctx: OperationContext, data: HubIn) -> dict:
     permission="billing.pay",
     input=HubIn,
     output=SubscriptionOut,
+    ai=AI(description="Undoes the cancellation of a business's plan before its period ends: it renews as before."),
 )
 def plan_keep(ctx: OperationContext, data: HubIn) -> dict:
     """Undo a cancellation before the period ends: the plan renews as before. Not with an unpaid invoice
@@ -2039,6 +2052,7 @@ def _nothing_to_take_over() -> Conflict:
     permission="billing.pay",
     input=HubIn,
     output=CheckoutStartOut,
+    ai=INTERNAL,  # stripe
 )
 def plan_take_over(ctx: OperationContext, data: HubIn) -> dict:
     """«Keep it with my card» (HUBS-F28): the new owner of a handed-over business keeps its plan and modules with
@@ -2200,6 +2214,7 @@ def _bought_item(subscription: Subscription | None, slug: str) -> SubscriptionIt
     permission="billing.pay",
     input=ModuleIn,
     output=SubscriptionOut,
+    ai=INTERNAL,  # unused
 )
 def module_cancel(ctx: OperationContext, data: ModuleIn) -> dict:
     """Cancel a bought module: it leaves the subscription without proration and works until the end of the
@@ -2239,6 +2254,7 @@ def module_cancel(ctx: OperationContext, data: ModuleIn) -> dict:
     permission="billing.pay",
     input=ModuleIn,
     output=SubscriptionOut,
+    ai=INTERNAL,  # unused
 )
 def module_keep(ctx: OperationContext, data: ModuleIn) -> dict:
     """Undo the cancellation of a module before it ends: it is billed again from the next renewal (nothing
@@ -2337,6 +2353,7 @@ def module_keep(ctx: OperationContext, data: ModuleIn) -> dict:
     permission="billing.pay",
     input=PortalOpenIn,
     output=PortalOpenOut,
+    ai=INTERNAL,  # stripe
 )
 def portal_open(ctx: OperationContext, data: PortalOpenIn) -> dict:
     """Stripe's Customer Portal for the payer of the business: cards and Stripe's receipts (the panel opens
@@ -2841,6 +2858,7 @@ def _end_not_owner(hub: Hub, attempt: CheckoutAttempt, session: dict, subscripti
     permission="billing.manage",
     input=CheckoutRefundRecordIn,
     output=CheckoutRefundRecordOut,
+    ai=INTERNAL,  # platform
 )
 def checkout_refund_record(ctx: OperationContext, data: CheckoutRefundRecordIn) -> dict:
     """A checkout already ended and refunded in Stripe because its payer no longer owned the business (the platform
@@ -4036,6 +4054,7 @@ def _payer_snapshot(hub: Hub, *, verified: bool, consultation: str) -> dict:
     permission="billing.manage",
     input=InvoiceRecordIn,
     output=InvoiceRecordOut,
+    ai=INTERNAL,  # platform
 )
 def invoice_record(ctx: OperationContext, data: InvoiceRecordIn) -> dict:
     """The webhook's door to ERPlora's invoices (the platform only; no route): a Stripe invoice of a
@@ -4627,6 +4646,7 @@ def credit_note_voided(credit_note: dict) -> str:
     permission="billing.manage",
     input=CreditNoteRecordIn,
     output=InvoiceRecordOut,
+    ai=INTERNAL,  # platform
 )
 def credit_note_record(ctx: OperationContext, data: CreditNoteRecordIn) -> dict:
     """A Stripe credit note as a rectifying invoice (the platform only; no route): negative amounts, the
@@ -4688,6 +4708,7 @@ def charge_refunded(charge: dict) -> str:
     permission="billing.manage",
     input=RefundRecordIn,
     output=InvoiceRecordOut,
+    ai=INTERNAL,  # platform
 )
 def refund_record(ctx: OperationContext, data: RefundRecordIn) -> dict:
     """A Stripe refund without a credit note as a rectifying invoice of ``invoice_id`` (the platform only; no
@@ -4906,6 +4927,7 @@ def refresh_platform_invoice(invoice_id) -> str:
     permission="billing.manage",
     input=FiscalAnswerIn,
     output=FiscalAnswerOut,
+    ai=INTERNAL,  # platform
 )
 def invoice_apply_fiscal_status(ctx: OperationContext, data: FiscalAnswerIn) -> dict:
     """What the platform hub says of an invoice, stored as it says it (the platform only; no route). «Issuing»
@@ -5032,7 +5054,14 @@ def platform_run_failed(counts: Counter) -> bool:
 # --- «Pay» an invoice not collected -----------------------------------------------------------------
 
 
-@operation("billing.invoice.pay", kind="command", permission="billing.pay", input=InvoicePayIn, output=InvoicePayOut)
+@operation(
+    "billing.invoice.pay",
+    kind="command",
+    permission="billing.pay",
+    input=InvoicePayIn,
+    output=InvoicePayOut,
+    ai=INTERNAL,  # stripe
+)
 def invoice_pay(ctx: OperationContext, data: InvoicePayIn) -> dict:
     """Stripe's page to pay an invoice not collected (the panel opens it only on the web; the apps sell
     nothing, round 17 §2.6). Only its payer pays it; with a card the bank declined, «Pay» waits until the

@@ -37,7 +37,7 @@ from django.utils import timezone, translation
 from django.utils.translation import gettext as _
 from live.context import OperationContext, Scope, system_context
 from live.errors import Conflict, NotFound, OperationError, PermissionDenied
-from live.operations import operation
+from live.operations import INTERNAL, operation
 from live.outbox import record_event
 
 import whatsapp.fields
@@ -103,6 +103,7 @@ def _credential_out(credential: AIProviderCredential) -> dict:
     permission="assistant.manage",
     input=CredentialIn,
     output=CredentialOut,
+    ai=INTERNAL,  # staff
 )
 def credential_save(ctx: OperationContext, data: CredentialIn) -> dict:
     """Add a provider's key (``add_aiprovidercredential``) or change one (``change_aiprovidercredential``): its
@@ -174,6 +175,7 @@ def credential_save(ctx: OperationContext, data: CredentialIn) -> dict:
     permission="assistant.manage",
     input=CredentialDeleteIn,
     output=CredentialDeleteOut,
+    ai=INTERNAL,  # staff
 )
 def credential_delete(ctx: OperationContext, data: CredentialDeleteIn) -> dict:
     """Forget a provider's key (``delete_aiprovidercredential``): its models answer with another active key of the
@@ -203,6 +205,7 @@ def policy_model_ids() -> set:
     permission="assistant.manage",
     input=ModelSelectIn,
     output=ModelSelectOut,
+    ai=INTERNAL,  # staff
 )
 def model_select(ctx: OperationContext, data: ModelSelectIn) -> dict:
     """Keep exactly the ticked models of a provider (``add_aimodel`` and ``delete_aimodel``): the ticked ones among
@@ -251,6 +254,7 @@ def model_select(ctx: OperationContext, data: ModelSelectIn) -> dict:
     permission="assistant.manage",
     input=PolicyIn,
     output=PolicyOut,
+    ai=INTERNAL,  # staff
 )
 def policy_update(ctx: OperationContext, data: PolicyIn) -> dict:
     """Choose the model that answers and the fallback one (``change_airoutingpolicy``). 422
@@ -295,6 +299,7 @@ def policy_update(ctx: OperationContext, data: PolicyIn) -> dict:
     permission="assistant.manage",
     input=ModelTryIn,
     output=ModelTryOut,
+    ai=INTERNAL,  # staff
 )
 def model_try(ctx: OperationContext, data: ModelTryIn) -> dict:
     """Record that the member of the staff tried a model (``change_airoutingpolicy``, the permission that chooses
@@ -324,6 +329,7 @@ def model_try(ctx: OperationContext, data: ModelTryIn) -> dict:
     permission="assistant.manage",
     input=CredentialImportIn,
     output=CredentialImportOut,
+    ai=INTERNAL,  # staff
 )
 def credential_import(ctx: OperationContext, data: CredentialImportIn) -> dict:
     """Keep a provider's key as the platform (``import_ai_keys_from_env``): the provider whose identifier is its API,
@@ -389,6 +395,7 @@ def encrypted_columns() -> list[tuple[type, str]]:
     permission="assistant.manage",
     input=EncryptionRotateIn,
     output=EncryptionRotateOut,
+    ai=INTERNAL,  # staff
 )
 def encryption_rotate(ctx: OperationContext, data: EncryptionRotateIn) -> dict:
     """Write every value kept with ``FERNET_KEY`` again with the current key (``rotate_encryption_keys``, the
@@ -437,17 +444,31 @@ DEMO_USAGE_KEPT = timedelta(days=1)
 
 
 def _caller_payload(caller: Caller) -> dict:
-    return {"hub": str(caller.hub_id) if caller.hub_id else None, "demo": caller.demo}
+    payload = {"hub": str(caller.hub_id) if caller.hub_id else None, "demo": caller.demo}
+    if caller.user_id is not None:
+        payload["user"] = str(caller.user_id)
+    return payload
+
+
+def _rows_of(caller: Caller, month):
+    """The caller's rows that count ``month``: a business's or an account's of that month, a demo's only one."""
+    if caller.demo:
+        return AssistantUsage.objects.filter(demo=caller.demo)
+    if caller.user_id is not None:
+        return AssistantUsage.objects.filter(user_id=caller.user_id, month=month)
+    return AssistantUsage.objects.filter(hub_id=caller.hub_id, month=month)
 
 
 def _row_of(caller: Caller, now) -> AssistantUsage:
-    """The caller's row of usage now (made the first time): a business's of this month, a demo's only one. A demo's
-    first row forgets the rows of the demos that started more than a day ago."""
+    """The caller's row of usage now (made the first time): a business's or an account's of this month, a demo's only
+    one. A demo's first row forgets the rows of the demos that started more than a day ago."""
     if caller.demo:
         row, created = AssistantUsage.objects.get_or_create(demo=caller.demo, defaults={"month": queries.month_of(now)})
         if created:
-            AssistantUsage.objects.filter(hub__isnull=True, created_at__lt=now - DEMO_USAGE_KEPT).delete()
+            AssistantUsage.objects.exclude(demo="").filter(created_at__lt=now - DEMO_USAGE_KEPT).delete()
         return row
+    if caller.user_id is not None:
+        return AssistantUsage.objects.get_or_create(user_id=caller.user_id, month=queries.month_of(now))[0]
     return AssistantUsage.objects.get_or_create(hub_id=caller.hub_id, month=queries.month_of(now))[0]
 
 
@@ -457,6 +478,7 @@ def _row_of(caller: Caller, now) -> AssistantUsage:
     permission="assistant.manage",
     input=Caller,
     output=ClaimOut,
+    ai=INTERNAL,  # platform
 )
 def message_claim(ctx: OperationContext, data: Caller) -> dict:
     """Take a message of the caller's allowance for a turn, before the model is called (the platform only): one
@@ -488,15 +510,14 @@ def message_claim(ctx: OperationContext, data: Caller) -> dict:
     permission="assistant.manage",
     input=MessageReleaseIn,
     output=UsageOut,
+    ai=INTERNAL,  # platform
 )
 def message_release(ctx: OperationContext, data: MessageReleaseIn) -> dict:
     """Give back the message a turn took in ``month``, when it failed before answering anything (the platform only):
     the person saw no answer, so it is not spent. Never below zero."""
     queries.platform_only(ctx)
     caller = data.caller
-    rows = AssistantUsage.objects.filter(demo=caller.demo) if caller.demo else AssistantUsage.objects.filter(
-        hub_id=caller.hub_id, month=data.month
-    )
+    rows = _rows_of(caller, data.month)
     if rows.filter(messages__gt=0).update(messages=F("messages") - 1, updated_at=timezone.now()):
         record_event(
             ctx,
@@ -512,6 +533,7 @@ def message_release(ctx: OperationContext, data: MessageReleaseIn) -> dict:
     permission="assistant.manage",
     input=UsageRecordIn,
     output=UsageOut,
+    ai=INTERNAL,  # platform
 )
 def usage_record(ctx: OperationContext, data: UsageRecordIn) -> dict:
     """Add what a turn, an embedding or the voice spent to the caller's row of now (the platform only): tokens,
@@ -541,6 +563,7 @@ REPORT_ONCE_SECONDS = 24 * 60 * 60
     permission="assistant.manage",
     input=ReportSendIn,
     output=ReportOut,
+    ai=INTERNAL,  # platform
 )
 def report_send(ctx: OperationContext, data: ReportSendIn) -> dict:
     """Mail the report of an answer to the support mailbox (the platform only), in English (the team's mail), with

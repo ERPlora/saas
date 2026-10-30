@@ -19,7 +19,7 @@ from uuid import UUID
 from django.db.models import BooleanField, Case, ExpressionWrapper, F, Q, Value, When
 from django.db.models.functions import Coalesce, Greatest
 from live.context import OperationContext
-from live.operations import operation
+from live.operations import INTERNAL, operation
 
 from billing.models import CompanyConfig
 from fiscal import crypto
@@ -91,6 +91,7 @@ def _reason(grant: RepresentationGrant) -> str:
     permission="fiscal.view",
     input=RepresentationStatusIn,
     output=RepresentationStatusOut,
+    ai=INTERNAL,  # screen
 )
 def representation_status(
     ctx: OperationContext, data: RepresentationStatusIn

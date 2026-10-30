@@ -5,7 +5,7 @@ from typing import Any
 
 from django.utils import translation
 from live.context import OperationContext
-from live.operations import operation
+from live.operations import INTERNAL, operation
 
 from accounts.queries import preferences_of
 from base import navigation
@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
     permission=None,
     input=SessionMeIn,
     output=SessionMeOut,
+    ai=INTERNAL,  # screen
 )
 def session_me(ctx: OperationContext, data: SessionMeIn) -> dict[str, Any]:
     """The account in front of the SPA, in the shape the shell reads.

@@ -23,7 +23,7 @@ from live.context import OperationContext
 from live.errors import NotFound
 from live.markdown import render_markdown
 from live.meta import Category
-from live.operations import operation
+from live.operations import AI, INTERNAL, operation
 
 from apps.icons import FALLBACK_ICON, FALLBACK_ICON_SVG, clean_icon_svg
 from apps.models import App, AppDoc
@@ -126,7 +126,12 @@ def _served_doc(app: App, language: str) -> AppDoc | None:
 
 
 @operation(
-    "apps.app.list", kind="query", permission=None, input=AppListIn, output=AppListOut
+    "apps.app.list",
+    kind="query",
+    permission=None,
+    input=AppListIn,
+    output=AppListOut,
+    ai=AI(description="The apps of ERPlora's catalogue for businesses, by text, category, premium or sector."),
 )
 def app_list(ctx: OperationContext, data: AppListIn) -> dict[str, Any]:
     """The listed apps that match, by section (Category) and then by name in the language."""
@@ -155,7 +160,12 @@ def app_list(ctx: OperationContext, data: AppListIn) -> dict[str, Any]:
 
 
 @operation(
-    "apps.app.get", kind="query", permission=None, input=AppByIdIn, output=AppOut
+    "apps.app.get",
+    kind="query",
+    permission=None,
+    input=AppByIdIn,
+    output=AppOut,
+    ai=AI(description="One app of the catalogue: what it does, the apps it requires and whether it has documentation."),
 )
 def app_get(ctx: OperationContext, data: AppByIdIn) -> dict[str, Any]:
     """A listed app's page: its card, description, required apps and whether it has documentation."""
@@ -186,7 +196,12 @@ def app_get(ctx: OperationContext, data: AppByIdIn) -> dict[str, Any]:
 
 
 @operation(
-    "apps.app.doc", kind="query", permission=None, input=AppByIdIn, output=AppDocOut
+    "apps.app.doc",
+    kind="query",
+    permission=None,
+    input=AppByIdIn,
+    output=AppDocOut,
+    ai=AI(description="The user documentation of one app of the catalogue, in the person's language."),
 )
 def app_doc(ctx: OperationContext, data: AppByIdIn) -> dict[str, Any]:
     """A listed app's user documentation as safe HTML, in the language or else in Spanish."""
@@ -215,6 +230,7 @@ def app_doc(ctx: OperationContext, data: AppByIdIn) -> dict[str, Any]:
     permission=None,
     input=AppSitemapIn,
     output=AppSitemapOut,
+    ai=INTERNAL,  # sitemap
 )
 def app_sitemap(ctx: OperationContext, data: AppSitemapIn) -> dict[str, Any]:
     """Every listed app's page for ``/sitemap.xml`` (spec §8.2), by id, in one read.

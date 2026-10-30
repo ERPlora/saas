@@ -25,7 +25,7 @@ from django.utils import timezone, translation
 from django.utils.translation import gettext as _
 from live.context import OperationContext
 from live.errors import Conflict, NotFound, OperationError, PermissionDenied
-from live.operations import operation
+from live.operations import INTERNAL, operation
 from live.slugs import is_demo_slug, validate_hub_slug
 
 from assistant.models import AIModel, AIProvider, AIProviderCredential, AIRoutingPolicy, AssistantUsage
@@ -75,6 +75,7 @@ def usable_key(provider: AIProvider) -> str:
     permission="assistant.manage",
     input=ProviderRef,
     output=ConnectionOut,
+    ai=INTERNAL,  # staff
 )
 def provider_connection(ctx: OperationContext, data: ProviderRef) -> dict:
     """The API, address and usable key of a provider (``view_aiprovider``). 404 ``assistant.provider_unknown``,
@@ -118,6 +119,7 @@ def model_label(model: AIModel) -> str:
     permission="assistant.manage",
     input=NoInput,
     output=PolicyShowOut,
+    ai=INTERNAL,  # staff
 )
 def policy_show(ctx: OperationContext, data: NoInput) -> dict:
     """The policy and the models that can be chosen (``view_airoutingpolicy``)."""
@@ -165,6 +167,7 @@ def provider_not_configured() -> Conflict:
     permission="assistant.manage",
     input=RouteIn,
     output=RouteOut,
+    ai=INTERNAL,  # platform
 )
 def route_resolve(ctx: OperationContext, data: RouteIn) -> dict:
     """The models a turn tries, in order, with their keys: the platform's turns take the policy's (no ``model``);
@@ -238,6 +241,7 @@ def working(hub: Hub | None) -> Hub:
     permission="assistant.manage",
     input=CallerIn,
     output=Caller,
+    ai=INTERNAL,  # platform
 )
 def caller_resolve(ctx: OperationContext, data: CallerIn) -> dict:
     """The business (or the demo) a call of the Hub names in ``hub`` (the platform only): a business by its address
@@ -272,18 +276,24 @@ def resets_at(month: date) -> datetime:
 
 
 def monthly_limit(caller: Caller, now: datetime) -> int:
-    """The messages the caller may send: a demo, its own few for its whole life; a business, its plan's this month
-    (``Plan.assistant_messages_per_month`` of the plan whose rights it has now, its trial's included; 0 = none)."""
+    """The messages the caller may send: a demo, its own few for its whole life; an account, the panel's fixed ones
+    this month (``ASSISTANT_ACCOUNT_MESSAGES``, whatever the plans of its businesses); a business, its plan's this
+    month (``Plan.assistant_messages_per_month`` of the plan whose rights it has now, its trial's included; 0 = none)."""
     if caller.demo:
         return settings.ASSISTANT_DEMO_MESSAGES
+    if caller.user_id is not None:
+        return settings.ASSISTANT_ACCOUNT_MESSAGES
     plan = hubs_queries.effective_plan(caller.hub_id, now)
     return plan.assistant_messages_per_month if plan is not None else 0
 
 
 def usage_row(caller: Caller, now: datetime):
-    """The caller's row of usage now (a business's this month, a demo's only one), or ``None`` before its first use."""
+    """The caller's row of usage now (a business's or an account's this month, a demo's only one), or ``None`` before
+    its first use."""
     if caller.demo:
         return AssistantUsage.objects.filter(demo=caller.demo).first()
+    if caller.user_id is not None:
+        return AssistantUsage.objects.filter(user_id=caller.user_id, month=month_of(now)).first()
     return AssistantUsage.objects.filter(hub_id=caller.hub_id, month=month_of(now)).first()
 
 
@@ -303,6 +313,7 @@ def usage_of(caller: Caller, now: datetime) -> dict:
     permission="assistant.manage",
     input=Caller,
     output=UsageOut,
+    ai=INTERNAL,  # platform
 )
 def usage_show(ctx: OperationContext, data: Caller) -> dict:
     """What the caller spent of its allowance now (the platform: the Hub's ``usage`` door and every turn's last
@@ -318,6 +329,7 @@ def usage_show(ctx: OperationContext, data: Caller) -> dict:
     permission="assistant.manage",
     input=NoInput,
     output=ServiceConnectionOut,
+    ai=INTERNAL,  # platform
 )
 def service_connection(ctx: OperationContext, data: NoInput) -> dict:
     """The address and the usable key of the services' provider (``ASSISTANT_SERVICE_PROVIDER``), which computes the

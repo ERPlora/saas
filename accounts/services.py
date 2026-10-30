@@ -28,7 +28,7 @@ from django.utils.translation import gettext
 from live import operations
 from live.context import OperationContext
 from live.errors import Conflict, InvalidPayload, LiveMisuse, NotFound, OperationError
-from live.operations import operation
+from live.operations import AI, INTERNAL, operation
 from live.outbox import record_event
 from live.slugs import validate_hub_slug
 
@@ -394,6 +394,7 @@ def seed_demo_platform_admin(email: str, password: str):
     permission="accounts.manage",
     input=PreferencesUpdateIn,
     output=PreferencesOut,
+    ai=AI(description="Changes the account's theme, language or alerts of its businesses."),
 )
 def preferences_update(ctx: OperationContext, data: PreferencesUpdateIn) -> dict:
     """Change what was sent and nothing else. The language is the account's own (``User.language``); the
@@ -416,7 +417,14 @@ def preferences_update(ctx: OperationContext, data: PreferencesUpdateIn) -> dict
 # --- Account → Profile ------------------------------------------------------------------------------
 
 
-@operation("accounts.profile.update", kind="command", permission="accounts.manage", input=ProfileUpdateIn, output=ProfileOut)
+@operation(
+    "accounts.profile.update",
+    kind="command",
+    permission="accounts.manage",
+    input=ProfileUpdateIn,
+    output=ProfileOut,
+    ai=AI(description="Changes the account's first and last name."),
+)
 def profile_update(ctx: OperationContext, data: ProfileUpdateIn) -> dict:
     """The names, trimmed: the first one is required (audit 2 S-10), an empty last one clears it. The sign-in email
     has its own door, ``accounts.email.change``."""
@@ -571,7 +579,12 @@ def end_every_session(user) -> int:
 
 
 @operation(
-    "accounts.profile.delete", kind="command", permission="accounts.manage", input=ProfileDeleteIn, output=ProfileDeletedOut
+    "accounts.profile.delete",
+    kind="command",
+    permission="accounts.manage",
+    input=ProfileDeleteIn,
+    output=ProfileDeletedOut,
+    ai=INTERNAL,  # reauthentication
 )
 def profile_delete(ctx: OperationContext, data: ProfileDeleteIn) -> dict:
     """Delete the signed-in account (GDPR, art. 17; Google Play asks for it in the apps too).
@@ -704,6 +717,7 @@ def belongs_to_a_business(user) -> bool:
     permission=ERASE_INACTIVE,
     input=InactiveAccountIn,
     output=InactiveAccountOut,
+    ai=INTERNAL,  # scheduled
 )
 def profile_erase_inactive(ctx: OperationContext, data: InactiveAccountIn) -> dict:
     """Erase an account unused for ``inactive_days`` as its owner would delete it (``_erase_account``), on its own
@@ -851,7 +865,14 @@ def _spent(rate: str, group: str, key: str) -> bool:
     return is_ratelimited(None, group=group, key=lambda group, request: key, rate=rate, increment=True)
 
 
-@operation("accounts.email.change", kind="command", permission="accounts.manage", input=EmailChangeIn, output=ProfileOut)
+@operation(
+    "accounts.email.change",
+    kind="command",
+    permission="accounts.manage",
+    input=EmailChangeIn,
+    output=ProfileOut,
+    ai=INTERNAL,  # reauthentication
+)
 def email_change(ctx: OperationContext, data: EmailChangeIn) -> dict:
     """Mail a 6-digit code to the new address; the account switches to it once the code is typed in this same
     session (``accounts.email.verify``), and until then it keeps answering to the old one (saas#2536). The change
@@ -929,7 +950,12 @@ def email_change(ctx: OperationContext, data: EmailChangeIn) -> dict:
 
 
 @operation(
-    "accounts.email.verify", kind="command", permission="accounts.manage", input=EmailVerifyIn, output=EmailVerifyOut
+    "accounts.email.verify",
+    kind="command",
+    permission="accounts.manage",
+    input=EmailVerifyIn,
+    output=EmailVerifyOut,
+    ai=INTERNAL,  # reauthentication
 )
 def email_verify(ctx: OperationContext, data: EmailVerifyIn) -> dict:
     """The code mailed by ``accounts.email.change``, typed in the session that asked for it: the account answers to
@@ -1017,7 +1043,14 @@ def too_many_attempts() -> OperationError:
     )
 
 
-@operation("accounts.photo.upload", kind="command", permission="accounts.manage", input=PhotoUploadIn, output=ProfileOut)
+@operation(
+    "accounts.photo.upload",
+    kind="command",
+    permission="accounts.manage",
+    input=PhotoUploadIn,
+    output=ProfileOut,
+    ai=INTERNAL,  # file
+)
 def photo_upload(ctx: OperationContext, data: PhotoUploadIn) -> dict:
     """Keep the account's photo, cleaned (``accounts.photos``), in place of the one it had."""
     from django_ratelimit.core import is_ratelimited
@@ -1040,7 +1073,14 @@ def photo_upload(ctx: OperationContext, data: PhotoUploadIn) -> dict:
     return queries.profile_of(user, ctx.request)
 
 
-@operation("accounts.photo.remove", kind="command", permission="accounts.manage", input=PhotoRemoveIn, output=ProfileOut)
+@operation(
+    "accounts.photo.remove",
+    kind="command",
+    permission="accounts.manage",
+    input=PhotoRemoveIn,
+    output=ProfileOut,
+    ai=INTERNAL,  # file
+)
 def photo_remove(ctx: OperationContext, data: PhotoRemoveIn) -> dict:
     """Remove the account's photo (the panel paints its initials). Without one, nothing changes."""
     user = queries.account_of(ctx)
@@ -1101,7 +1141,12 @@ def _end_and_sign_out(ctx: OperationContext, sessions: list, *, user=None) -> No
 
 
 @operation(
-    "accounts.session.close", kind="command", permission="accounts.manage", input=SessionCloseIn, output=SessionsClosedOut
+    "accounts.session.close",
+    kind="command",
+    permission="accounts.manage",
+    input=SessionCloseIn,
+    output=SessionsClosedOut,
+    ai=AI(description="Ends one session of the account (this one signs it out)."),
 )
 def session_close(ctx: OperationContext, data: SessionCloseIn) -> dict:
     """End one session of the account (this one too: the answer signs it out)."""
@@ -1122,6 +1167,7 @@ def session_close(ctx: OperationContext, data: SessionCloseIn) -> dict:
     permission="accounts.manage",
     input=SessionCloseOthersIn,
     output=SessionsClosedOut,
+    ai=AI(description="Ends every session of the account except this one."),
 )
 def session_close_others(ctx: OperationContext, data: SessionCloseOthersIn) -> dict:
     """End every session of the account but this one; the businesses are asked even when none was left here
@@ -1147,6 +1193,7 @@ CLOSE_ANY_SESSIONS = "accounts.close_any_sessions"
     permission=CLOSE_ANY_SESSIONS,
     input=SessionCloseAnyIn,
     output=SessionsClosedOut,
+    ai=INTERNAL,  # staff
 )
 def session_close_any(ctx: OperationContext, data: SessionCloseAnyIn) -> dict:
     """End sessions of any account from the admin, as its owner would: the picked ones (``ids``) or, without them,
@@ -1199,6 +1246,7 @@ ANNOUNCE_ENDED_SESSIONS = "accounts.announce_ended_sessions"
     permission=ANNOUNCE_ENDED_SESSIONS,
     input=SessionsEndedIn,
     output=SessionsEndedOut,
+    ai=INTERNAL,  # platform
 )
 def session_announce_ended(ctx: OperationContext, data: SessionsEndedIn) -> dict:
     """The account's event of a closed session (``accounts.session.closed``, as «Close the other sessions» records it)
@@ -1268,6 +1316,7 @@ def _follow_new_authenticator_ids(request, renamed: dict[int, int]) -> None:
     permission="accounts.manage",
     input=BrowserTrustRevokeIn,
     output=BrowserTrustOut,
+    ai=AI(description="Stops trusting every browser for two-factor authentication, this one included."),
 )
 def browser_trust_revoke(ctx: OperationContext, data: BrowserTrustRevokeIn) -> dict:
     """«Stop trusting all browsers» (Security → Two-factor authentication, ACCOUNTS-F17): as Google's and Microsoft's
@@ -1287,7 +1336,12 @@ API_KEY_LAST_USED_RESOLUTION = timedelta(minutes=10)
 
 
 @operation(
-    "accounts.apikey.create", kind="command", permission="accounts.manage", input=ApiKeyCreateIn, output=ApiKeyCreatedOut
+    "accounts.apikey.create",
+    kind="command",
+    permission="accounts.manage",
+    input=ApiKeyCreateIn,
+    output=ApiKeyCreatedOut,
+    ai=INTERNAL,  # secret
 )
 def apikey_create(ctx: OperationContext, data: ApiKeyCreateIn) -> dict:
     """A new key of the account, bounded by its scopes: the answer carries the whole key, the only time it exists
@@ -1332,7 +1386,14 @@ def _new_api_key(ctx: OperationContext, user, data: ApiKeyCreateIn) -> dict:
     return {"key": queries.api_key_row(key, now), "secret": secret}
 
 
-@operation("accounts.apikey.revoke", kind="command", permission="accounts.manage", input=ApiKeyRevokeIn, output=ApiKeyRowOut)
+@operation(
+    "accounts.apikey.revoke",
+    kind="command",
+    permission="accounts.manage",
+    input=ApiKeyRevokeIn,
+    output=ApiKeyRowOut,
+    ai=AI(description="Revokes an API key of the account at once: what uses it stops working."),
+)
 def apikey_revoke(ctx: OperationContext, data: ApiKeyRevokeIn) -> dict:
     """Cut a key of the account on the spot. Revoking is the audit trail: the row stays. Twice changes nothing."""
     user = queries.account_of(ctx)
@@ -1362,7 +1423,14 @@ REVOKE_ANY_KEY = "accounts.revoke_any_key"
 ISSUE_ANY_KEY = "accounts.issue_any_key"
 
 
-@operation("accounts.apikey.issue_any", kind="command", permission=ISSUE_ANY_KEY, input=ApiKeyIssueIn, output=ApiKeyCreatedOut)
+@operation(
+    "accounts.apikey.issue_any",
+    kind="command",
+    permission=ISSUE_ANY_KEY,
+    input=ApiKeyIssueIn,
+    output=ApiKeyCreatedOut,
+    ai=INTERNAL,  # staff
+)
 def apikey_issue_any(ctx: OperationContext, data: ApiKeyIssueIn) -> dict:
     """A key for a team account, issued by a superuser from the admin (PLAN-SAAS §1.1, ronda 2026-10-15b; the old
     SaaS's ``POST /api/v1/admin/api-keys/``). Only an active staff account: a customer's keys are the customer's own
@@ -1389,7 +1457,14 @@ def issue_api_key(user, *, name: str, scopes: list[str], expires_in_days: int | 
     return issued
 
 
-@operation("accounts.apikey.revoke_any", kind="command", permission=REVOKE_ANY_KEY, input=ApiKeyRevokeIn, output=ApiKeyRowOut)
+@operation(
+    "accounts.apikey.revoke_any",
+    kind="command",
+    permission=REVOKE_ANY_KEY,
+    input=ApiKeyRevokeIn,
+    output=ApiKeyRowOut,
+    ai=INTERNAL,  # staff
+)
 def apikey_revoke_any(ctx: OperationContext, data: ApiKeyRevokeIn) -> dict:
     """Cut any account's key (the admin's «Revoke»), as its owner would: the event goes to the owner's channel
     (the context's scope), so its live list refreshes. Called only by ``revoke_api_keys``; no route."""
@@ -1450,6 +1525,7 @@ REPORT_FROM_HUB = "Hub"
     permission="accounts.manage",
     input=SupportReportIn,
     output=SupportReportOut,
+    ai=INTERNAL,  # dialog
 )
 def support_report(ctx: OperationContext, data: SupportReportIn) -> dict:
     """«Report a problem» (ACCOUNTS-F38; PLAN-SAAS §1.1): mail the support mailbox what the person wrote, with the
