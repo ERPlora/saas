@@ -1757,9 +1757,6 @@ def record_state_pushed(hub_id: UUID, version: int) -> None:
 #: An sign-up without the Hub's ``ready`` callback this long is asked about (PLAN-SAAS §3.1 step 3).
 STUCK_AFTER = timedelta(minutes=2)
 LIVE_STATUSES = [Hub.Status.PREPARING, Hub.Status.ACTIVE, Hub.Status.PAST_DUE, Hub.Status.SUSPENDED]
-#: What ``GET /internal/hubs/{id}`` says of a sign-up the Hub is still preparing (the asynchronous sign-up: 202
-#: «requested», then its database is cloned, migrated and seeded; PLAN-SAAS §3.1, PLAN-DB §6).
-PREPARING_STATUSES = frozenset({"requested", "creating", "migrating", "seeding"})
 #: The Hub's last error recorded on a business it says it could not prepare (``failed``): the panel shows «We could not
 #: prepare it. We keep retrying» (the Hub retries on its own and calls ``ready`` once it can), never «preparing» for ever.
 PROVISION_FAILED = "hubs.provision_failed"
@@ -1900,9 +1897,9 @@ def _settle_stuck(hub_id: UUID, counts: Counter) -> None:
     if status == "ready":
         business_mark_ready(system_ctx_for(hub_id), MarkReadyIn(id=hub_id))
         counts["ready"] += 1
-    elif status in PREPARING_STATUSES:
+    elif status in hub_client.PREPARING_STATUSES:
         counts["preparing"] += 1
-    elif status == "failed":
+    elif status == hub_client.FAILED_STATUS:
         logger.warning("hubs.reconcile.provision_failed hub=%s", hub_id)
         _record_hub_error(hub_id, PROVISION_FAILED)
         counts["provision_failed"] += 1

@@ -11,7 +11,8 @@
 //     operating system's, followed live (the head's inline script already painted the first frame);
 //   - Mermaid, imported only when the page has a `pre.mermaid` (spec §6);
 //   - reCAPTCHA Enterprise on the forms that ask it (`data-recaptcha-action`: the contact form, the demo), invisible:
-//     the token of each submit in `recaptcha_token` (frontend/recaptcha.ts).
+//     the token of each submit in `recaptcha_token` (frontend/recaptcha.ts);
+//   - the door of a demo being prepared, which asks how it is going until it can go in (frontend/demo-wait.ts).
 // No CDN and no runtime icon fetch: icons are SVG painted on the server by `{% icon %}`.
 import '@ionic/core/css/core.css';
 import '@ionic/core/css/normalize.css';
@@ -42,10 +43,12 @@ import { defineCustomElement as defineLabel } from '@ionic/core/components/ion-l
 import { defineCustomElement as defineList } from '@ionic/core/components/ion-list.js';
 import { defineCustomElement as defineNote } from '@ionic/core/components/ion-note.js';
 import { defineCustomElement as defineSearchbar } from '@ionic/core/components/ion-searchbar.js';
+import { defineCustomElement as defineSpinner } from '@ionic/core/components/ion-spinner.js';
 import { defineCustomElement as defineTextarea } from '@ionic/core/components/ion-textarea.js';
 import { defineCustomElement as defineToast } from '@ionic/core/components/ion-toast.js';
 import { defineCustomElement as defineToggle } from '@ionic/core/components/ion-toggle.js';
 
+import { waitForDemo } from './demo-wait';
 import { protectForms } from './recaptcha';
 
 // One stylesheet per component partial of public/templates/public/components/ (and the hero,
@@ -76,6 +79,7 @@ export const ION_COMPONENTS: Record<string, () => void> = {
   'ion-list': defineList,
   'ion-note': defineNote,
   'ion-searchbar': defineSearchbar,
+  'ion-spinner': defineSpinner,
   'ion-textarea': defineTextarea,
   'ion-toast': defineToast,
   'ion-toggle': defineToggle,
@@ -271,6 +275,7 @@ export function boot(doc: Document): void {
   setupReveal(doc, doc.defaultView?.IntersectionObserver);
   presentServerMessages(doc);
   protectForms(doc);
+  void waitForDemo(doc);
   void renderDiagrams(doc);
 }
 

@@ -2,20 +2,27 @@
 
 Plan ``docs/plans/2026-10-17-demo-hubs-fase-1.md`` §1.6 and §1.8. A demo is an empty hub of the Hub's own
 (``demo-<8 hex>``, 60 minutes); the SaaS keeps no row of it, only the browser's session knows it
-(``session["demo"] = {slug, expires_at}``). Three routes:
+(``session["demo"] = {id, slug, expires_at, ready}``). Four routes:
 
 * ``index`` (GET): the page, in one of its states, always 200. It never creates a demo: a crawler, a prefetch
   or a reload must not spend the Hub's cap of live demos;
-* ``start`` (POST, CSRF): asks the Hub for a demo of this browser (``hubs.hub_client.create_demo``) and jumps
-  to its ``/auth/login`` (``accounts.queries.hub_start_url``), the same jump with ``state`` as a business.
+* ``start`` (POST, CSRF): asks the Hub for a demo of this browser (``hubs.hub_client.create_demo``). The Hub answers
+  202 «requested» and prepares its database afterwards (the asynchronous demo of the tenancy, 2026-10-30): the browser
+  goes back to the door, which says «Preparing your demo…» while its page asks ``status`` every second (for 30 seconds,
+  ``frontend/demo-wait.ts``). A demo already ready (the live one given back, or a Hub from before, which answers 201
+  without ``status``) jumps at once to its ``/auth/login`` (``accounts.queries.hub_start_url``), the same jump with
+  ``state`` as a business.
   New demos are limited per address (``DEMO_SPAWN_RATELIMIT``, as the contact form); a browser that already
   has a live one is not counted, and the Hub answers it the same demo. Then reCAPTCHA Enterprise
   (``recaptcha_token``, action ``demo_request``; ``live.recaptcha``; Ioan, 2026-10-22): only a person gets a demo,
   and a refused try never reaches the Hub (``?state=unverified``);
+* ``status`` (GET, JSON): how the browser's demo is going, ``{state, url?}``; with a ``url`` the page goes there (the
+  jump once the Hub has it ready, or the door with what happened: ``not_ready`` when the Hub could not prepare it,
+  ``expired`` when it ended). Only a demo being prepared asks the Hub (``GET /internal/hubs/{id}``);
 * ``enter`` (GET): where the demo's ``/auth/login`` sends the browser back with its ``state``. If this browser
   owns that demo, it asks the Hub for a one-time code (``create_demo_code``) and answers the auto-submitted
   form of ``accounts/hub_login_form.html``, which posts it to the demo's ``/auth/callback`` (the code never
-  sits in a URL). Never indexed.
+  sits in a URL). Never indexed. A demo still being prepared is never entered: the code is asked only once it is ready.
 
 The browser is named to the Hub by the sha256 of a random token of its session (``session["demo_owner"]``),
 never by the session cookie: the token survives the session key's rotation when the visitor signs in to the
@@ -30,9 +37,10 @@ import math
 import secrets
 from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 from django.conf import settings
-from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
+from django.http import HttpRequest, HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone, translation
@@ -53,12 +61,13 @@ from public.csp import public_policy
 
 logger = logging.getLogger(__name__)
 
-#: The browser's demo in its session: ``{"slug": "demo-…", "expires_at": "<ISO 8601>"}``.
+#: The browser's demo in its session: ``{"id": "<UUID>", "slug": "demo-…", "expires_at": "<ISO 8601>", "ready": bool}``.
+#: A session from before the asynchronous demo holds only ``slug`` and ``expires_at``: that demo was ready.
 SESSION_DEMO = "demo"
 #: The random token whose sha256 names this browser to the Hub (``session_key`` of ``/internal/demos``).
 SESSION_OWNER = "demo_owner"
 #: The outcomes ``start`` and ``enter`` send to the door as ``?state=``; nothing else of the address is read.
-OUTCOMES = frozenset({"expired", "full", "throttled", "unverified", "unavailable", "failed"})
+OUTCOMES = frozenset({"expired", "full", "throttled", "unverified", "unavailable", "failed", "not_ready"})
 #: The field of reCAPTCHA's token and the action it is made for (frontend/recaptcha.ts, ``data-recaptcha-action``).
 RECAPTCHA_FIELD = "recaptcha_token"
 RECAPTCHA_ACTION = "demo_request"
@@ -86,10 +95,19 @@ def _expiry(value: Any) -> datetime | None:
     return moment if moment is not None and timezone.is_aware(moment) else None
 
 
-def _demo_of(body: Any) -> dict[str, Any] | None:
-    """``{slug, expires_at}`` of an answer that names a demo hub with its end; ``None`` for anything else.
+def _hub_id(value: Any) -> str | None:
+    """The hub's id as the Hub wrote it if it is a UUID, else ``None``."""
+    try:
+        return str(UUID(value)) if isinstance(value, str) else None
+    except ValueError:
+        return None
 
-    The door only ever jumps into a ``demo-…`` hub: an answer naming a business is no demo.
+
+def _demo_of(body: Any) -> dict[str, Any] | None:
+    """``{id, slug, expires_at, status}`` of an answer that names a demo hub with its end; ``None`` for anything else.
+
+    The door only ever jumps into a ``demo-…`` hub: an answer naming a business is no demo, nor one whose ``id`` is not
+    a UUID. ``id`` and ``status`` are ``None`` when the answer has none (a Hub from before the asynchronous demo).
     """
     if not isinstance(body, dict):
         return None
@@ -100,13 +118,29 @@ def _demo_of(body: Any) -> dict[str, Any] | None:
         validate_hub_slug(slug, allow_demo=True)
     except ValueError:
         return None
-    return {"slug": slug, "expires_at": expires_at}
+    hub_id = _hub_id(body.get("id"))
+    if body.get("id") is not None and hub_id is None:
+        return None
+    status = body.get("status")
+    return {"id": hub_id, "slug": slug, "expires_at": expires_at, "status": status if isinstance(status, str) else None}
 
 
 def _live_demo(request: HttpRequest) -> dict[str, Any] | None:
-    """The browser's demo while it lasts, else ``None``."""
-    demo = _demo_of(request.session.get(SESSION_DEMO))
-    return demo if demo is not None and demo["expires_at"] > timezone.now() else None
+    """The browser's demo while it lasts (``{id, slug, expires_at, ready}``), else ``None``."""
+    entry = request.session.get(SESSION_DEMO)
+    demo = _demo_of(entry)
+    if demo is None or demo["expires_at"] <= timezone.now():
+        return None
+    return {**demo, "ready": entry.get("ready") is not False}
+
+
+def _remember(request: HttpRequest, demo: dict[str, Any], *, ready: bool) -> None:
+    request.session[SESSION_DEMO] = {
+        "id": demo["id"],
+        "slug": demo["slug"],
+        "expires_at": demo["expires_at"].isoformat(),
+        "ready": ready,
+    }
 
 
 def _door(outcome: str | None = None) -> HttpResponseRedirect:
@@ -155,8 +189,10 @@ def index(request: HttpRequest) -> HttpResponse:
         state = "expired"
     elif asked in OUTCOMES:
         state = asked
+    elif live is None:
+        state = "idle"
     else:
-        state = "ready" if live is not None else "idle"
+        state = "ready" if live["ready"] else "preparing"
     context: dict[str, Any] = {"demo_state": state, "demo": None}
     if live is not None and state != "off":
         seconds = (live["expires_at"] - timezone.now()).total_seconds()
@@ -164,8 +200,11 @@ def index(request: HttpRequest) -> HttpResponse:
             "slug": live["slug"],
             "expires_at": live["expires_at"],
             "minutes_left": max(1, math.ceil(seconds / 60)),
-            "url": hub_start_url(live["slug"]),
+            # Only a demo the Hub has ready is jumped into; one being prepared is waited for on this page.
+            "url": hub_start_url(live["slug"]) if live["ready"] else None,
         }
+    if state == "preparing":
+        context["wait"] = {"status_url": reverse("public:demo_status"), "timeout_url": _door("not_ready")["Location"]}
     return _to_a_hub(render(request, "public/demo/index.html", context))
 
 
@@ -195,12 +234,79 @@ def start(request: HttpRequest) -> HttpResponse:
         logger.warning("demo.start.hub_unavailable %s", away)
         return _door("unavailable")
     demo = _demo_of(answer.body)
-    if demo is None:
+    # A Hub from before the asynchronous demo answers without ``status``: its demo is ready as it answers.
+    ready = demo is not None and demo["status"] in (None, "ready")
+    waiting = (
+        demo is not None
+        and demo["id"] is not None
+        and (demo["status"] in hub_client.PREPARING_STATUSES or demo["status"] == hub_client.FAILED_STATUS)
+    )
+    if not (ready or waiting):
         logger.error("demo.start.bad_answer status=%s", answer.status)
         return _door("unavailable")
-    request.session[SESSION_DEMO] = {"slug": demo["slug"], "expires_at": demo["expires_at"].isoformat()}
-    logger.info("demo.start hub=%s created=%s", demo["slug"], answer.status == 201)
-    return HttpResponseRedirect(hub_start_url(demo["slug"], "/"))
+    _remember(request, demo, ready=ready)
+    logger.info("demo.start hub=%s created=%s ready=%s", demo["slug"], answer.status in (201, 202), ready)
+    return HttpResponseRedirect(hub_start_url(demo["slug"], "/") if ready else reverse("public:demo"))
+
+
+def _status(state: str, url: str | None = None) -> JsonResponse:
+    answer = JsonResponse({"state": state} if url is None else {"state": state, "url": url})
+    answer["X-Robots-Tag"] = "noindex, nofollow"
+    return answer
+
+
+def _forget(request: HttpRequest) -> None:
+    request.session.pop(SESSION_DEMO, None)
+
+
+@require_safe
+@never_cache
+def status(request: HttpRequest) -> JsonResponse:
+    """How the browser's demo is going, for the door's page while it waits: ``{state}`` while the Hub prepares it (or
+    is away a moment), ``{state, url}`` when the page should go to ``url``: the jump once it is ready (remembered, so
+    the Hub is asked no more), or the door with what happened.
+
+    Only the session's demo, never one named in the address; only a demo being prepared costs a call to the Hub.
+    """
+    door = reverse("public:demo")
+    if not settings.DEMO_ENABLED:
+        return _status("off", door)
+    live = _live_demo(request)
+    if live is None:
+        # None, or its hour passed: the door says which (and forgets an ended one, once).
+        return _status("idle", door)
+    slug = live["slug"]
+    if live["ready"]:
+        return _status("ready", hub_start_url(slug, "/"))
+    try:
+        answer = hub_client.get_hub(live["id"])
+    except HubRefused as refused:
+        if refused.status in (404, 410):
+            _forget(request)
+            logger.info("demo.status.ended hub=%s status=%s", slug, refused.status)
+            return _status("expired", _door("expired")["Location"])
+        logger.error("demo.status.bad_answer hub=%s status=%s code=%s", slug, refused.status, refused.code)
+        return _status("unavailable", _door("unavailable")["Location"])
+    except HubUnavailable as away:
+        logger.warning("demo.status.hub_unavailable hub=%s %s", slug, away)
+        return _status("preparing")
+    hub_status = answer.body.get("status") if isinstance(answer.body, dict) else None
+    if hub_status == "ready":
+        _remember(request, live, ready=True)
+        logger.info("demo.status.ready hub=%s", slug)
+        return _status("ready", hub_start_url(slug, "/"))
+    if hub_status in hub_client.PREPARING_STATUSES:
+        return _status("preparing")
+    if hub_status == hub_client.FAILED_STATUS:
+        # The Hub retries it on its own: «Try again» waits for the same demo.
+        logger.warning("demo.status.not_prepared hub=%s", slug)
+        return _status("not_ready", _door("not_ready")["Location"])
+    if hub_status in hub_client.ENDED_STATUSES:
+        _forget(request)
+        logger.info("demo.status.ended hub=%s status=%s", slug, hub_status)
+        return _status("expired", _door("expired")["Location"])
+    logger.error("demo.status.bad_answer hub=%s status=%s hub_status=%r", slug, answer.status, hub_status)
+    return _status("unavailable", _door("unavailable")["Location"])
 
 
 @require_safe
@@ -214,6 +320,10 @@ def enter(request: HttpRequest) -> HttpResponse:
     if live is None or live["slug"] != slug:
         # Not this browser's demo, or it ended: the door says which (nothing is echoed back).
         logger.info("demo.enter.not_this_browsers")
+        return _door()
+    if not live["ready"]:
+        # Still being prepared: the door waits for it; the code is asked only for a demo the Hub has ready.
+        logger.info("demo.enter.not_ready hub=%s", slug)
         return _door()
     next_path = local_path(request.GET.get("next", ""))
     state = request.GET.get("state", "")
