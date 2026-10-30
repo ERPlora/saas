@@ -27,11 +27,12 @@ httpx cannot take a key from memory, so the certificate and its key go to two fi
 private temporary directory, which goes as soon as TLS has read them, whatever happens. A certificate
 TLS refuses (its key is not the certificate's, or is too weak for OpenSSL's security level) raises
 ``SealInvalid`` before anything leaves (``tls_context``, which the gateway calls first so that it can
-refuse it, and probe it, without presenting). The server's trusted certificates are httpx's (certifi's, or the
-file ``SSL_CERT_FILE`` names): when they cannot be loaded (a file that is not there, or that holds none),
+refuse it, and probe it, without presenting). The server's trusted certificates are read by ``base.tls``
+(``trusted_context``, caller ``fiscal_gateway.aeat``: certifi's, or the file ``SSL_CERT_FILE`` names), once per
+presentation: when they cannot be loaded (a file that is not there, a folder, or one that holds none),
 ``tls_context`` raises ``TrustStoreUnreadable``, an ``AeatUnreachable`` with ``sent=False`` whose message names the
-setting and its file, logged; it is checked on every call, never on start (the e2e stack of the Hub starts the
-SaaS before its CA exists), and no attempt of the gateway clears it. Headers as the proven client of the gateway
+setting and its file, logged by ``base.tls``; it is checked on every call, never on start (the e2e stack of the Hub
+starts the SaaS before its CA exists), and no attempt of the gateway clears it. Headers as the proven client of the gateway
 this one replaces: ``Content-Type: text/xml;charset=UTF-8`` and ``SOAPAction: ""`` (the WSDL's, for both
 operations).
 
@@ -57,6 +58,7 @@ from xml.parsers import expat
 
 import httpx
 
+from base import tls
 from fiscal_gateway.seal import Identity, SealInvalid
 
 logger = logging.getLogger(__name__)
@@ -182,21 +184,14 @@ async def _post(url: str, body: bytes, context: ssl.SSLContext) -> httpx.Respons
 
 
 def tls_context(identity: Identity) -> ssl.SSLContext:
-    """httpx's TLS context (certifi's roots, or ``SSL_CERT_FILE``'s) with ``identity`` as the client certificate.
+    """The server's trusted certificates (``base.tls``) with ``identity`` as the client certificate.
 
     ``SealInvalid`` if TLS refuses it; ``TrustStoreUnreadable`` if the server's trusted certificates cannot be
-    loaded, naming where they were read from, logged."""
+    loaded, naming where they were read from (``base.tls`` logs it)."""
     try:
-        context = httpx.create_ssl_context()
-    except OSError as problem:  # FileNotFoundError, IsADirectoryError, ssl.SSLError (a file with no certificate)
-        path = os.environ.get("SSL_CERT_FILE")
-        source = f"SSL_CERT_FILE={path}" if path else "the default certificates"
-        message = (
-            f"The gateway's trusted certificates cannot be loaded from {source} "
-            f"({problem.strerror or problem}): nothing was sent."
-        )
-        logger.error("fiscal_gateway.aeat.trust_store_unreadable %s", message)
-        raise TrustStoreUnreadable(message) from None
+        context = tls.trusted_context("fiscal_gateway.aeat")
+    except tls.TrustStoreUnreadable as unreadable:
+        raise TrustStoreUnreadable(f"{unreadable.message} Nothing was sent.") from None
     with tempfile.TemporaryDirectory(prefix="fiscal-gateway-") as directory:
         cert_file = os.path.join(directory, "cert.pem")
         key_file = os.path.join(directory, "key.pem")

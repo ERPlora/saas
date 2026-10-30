@@ -44,7 +44,7 @@ o su UUID en minúsculas (con guiones). Tiene que ser un negocio que el SaaS con
 | `409 no_certificate` | `route = "own"` sin certificado |
 | `409 certificate_invalid` | No abre con su contraseña, no permite autenticación de cliente (EKU), ha caducado o TLS lo rechaza (la clave no es la del certificado o es demasiado débil, p. ej. RSA de 1024); no sale nada hacia la AEAT |
 | `409 environment_not_allowed` | `production` desde un despliegue que no es `prod` (`pre` solo presenta a pruebas) |
-| `502 {"error": {"code": "aeat_unreachable", "sent"}}` | Sin respuesta de la AEAT; `sent = true` si la petición pudo llegar. También, con `sent = false`, si el servidor no puede cargar sus certificados de confianza (`SSL_CERT_FILE` a un fichero que no existe o sin certificados): el mensaje nombra la variable y el fichero, y el Hub conserva el registro y lo reintenta |
+| `502 {"error": {"code": "aeat_unreachable", "sent"}}` | Sin respuesta de la AEAT; `sent = true` si la petición pudo llegar. También, con `sent = false`, si el servidor no puede cargar sus certificados de confianza (`SSL_CERT_FILE` a un fichero que no existe, a una carpeta o sin certificados): el mensaje nombra la variable y el fichero, y el Hub conserva el registro y lo reintenta |
 | `503 gateway_busy` | Semáforo lleno; el Hub reintenta |
 | `401 unauthorized` | Sin firma, firma caducada (±300 s) o que no casa. Sin marca de tiempo, sin firma o con la marca fuera de la ventana (o de más de 20 dígitos) se decide por las cabeceras, **sin leer** el cuerpo |
 | `405 method_not_allowed` | No es `POST` |
@@ -67,9 +67,11 @@ tope de 10 MiB, y no por `request.body`: un envío de 1000 registros supera el l
   `personal` (solo persona) o `unknown`. Un EKU declarado sin `clientAuth` se rechaza.
 - **Puerta**: `seal` → `prewww10.aeat.es` (pruebas) / `www10.agenciatributaria.gob.es` (producción); cualquier
   otro → `prewww1.aeat.es` / `www1.agenciatributaria.gob.es`; ruta `/wlpl/TIKE-CONT/ws/SistemaFacturacion/VerifactuSOAP`.
-- **Presentación**: mTLS con `httpx` (raíces de `certifi`, o las de `SSL_CERT_FILE` si está puesta: un fichero que no
-  existe o sin certificados da `aeat.TrustStoreUnreadable`, `sent = false`, nombrando la variable y el fichero en el
-  mensaje y en el log, en cada llamada y sin parar el arranque); certificado y clave en dos ficheros `0600` de un
+- **Presentación**: mTLS con `httpx` sobre el contexto TLS de `base.tls` (`trusted_context`, caller
+  `fiscal_gateway.aeat`: raíces de `certifi`, o las de `SSL_CERT_FILE` si está puesta, leídas una vez por presentación;
+  un fichero que no existe, una carpeta o un fichero sin certificados da `aeat.TrustStoreUnreadable`, `sent = false`,
+  nombrando la variable y el fichero en el mensaje y en la línea ERROR
+  `base.tls.trust_store_unreadable caller=fiscal_gateway.aeat`, en cada llamada y sin parar el arranque); certificado y clave en dos ficheros `0600` de un
   directorio temporal privado que se borra en cuanto TLS los ha leído, pase lo que pase. `Content-Type:
   text/xml;charset=UTF-8`, `SOAPAction: ""`. Tiempos (`aeat.TIMEOUT`): 5 s para conectar y 30 s para leer (PLAN-SAAS §4,
   ronda 2026-10-15c; PLAN §28), 5 s para escribir el sobre y 1 s de espera de conexión (httpx daría a cada fase sin

@@ -25,6 +25,8 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.serialization import pkcs12
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID, ObjectIdentifier
 
+from base.tests.conftest import ca_gone_after_one_read, unreadable_ca  # noqa: F401 - the server's trusted certificates
+
 FIXTURES = Path(__file__).parent / "fixtures"
 PASSWORD = "secret"
 #: The business the Hub presents for: its registry UUID (lowercase) and its slug.
@@ -108,25 +110,6 @@ def no_seal(settings):
     settings.FISCAL_SEAL_NEXT_P12_BASE64 = ""
     settings.FISCAL_SEAL_NEXT_PASSWORD = ""
     return settings
-
-
-@pytest.fixture(params=["missing", "not_a_certificate"])
-def unreadable_ca(request, tmp_path, monkeypatch):
-    """The server's ``SSL_CERT_FILE`` naming a file that is not there (the e2e stack of the Hub starts the SaaS
-    before its CA exists, hub#415), or one that holds no certificate: ``httpx`` reads it as each TLS context is
-    made. Its own folder, so it never looks like what a presentation leaves behind."""
-    path = tmp_path / "ca" / "missing.pem"
-    path.parent.mkdir()
-    if request.param == "not_a_certificate":
-        path.write_text("not a certificate\n")
-    monkeypatch.setenv("SSL_CERT_FILE", str(path))
-    monkeypatch.delenv("SSL_CERT_DIR", raising=False)
-    return path
-
-
-def names_the_file(text: str, path) -> bool:
-    """Whether ``text`` names the setting and the file the trusted certificates were read from."""
-    return f"SSL_CERT_FILE={path}" in text
 
 
 @pytest.fixture

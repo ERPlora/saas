@@ -16,13 +16,13 @@ import time
 import httpx
 import pytest
 
+from base.tests.conftest import names_the_file
 from fiscal_gateway import aeat, seal
 from fiscal_gateway.tests.conftest import (
     PASSWORD,
     b64,
     fixture,
     make_p12,
-    names_the_file,
 )
 
 PATH = "/wlpl/TIKE-CONT/ws/SistemaFacturacion/VerifactuSOAP"
@@ -328,36 +328,68 @@ def test_an_answer_slower_than_the_deadline_is_cut_and_may_have_arrived(identity
 
 
 # The server's trusted certificates (FIX-SAAS-FISCAL-GATEWAY-AEAT-TLS-CRASHES-WHEN-SSL-CERT-FILE-MISSING)
+#
+# FIX-SAAS-FISCAL-GATEWAY-OWN-TRUST-STORE-COPY-INSTEAD-OF-BASE-TLS: they are read by ``base.tls``, the one place every
+# outgoing call of the SaaS reads them, never by a copy of the gateway's own: one ERROR line, ``base.tls``'s, naming
+# the caller.
+
+
+def the_trust_store_line(caplog, path) -> None:
+    """The single ERROR line of the unreadable certificates is ``base.tls``'s, naming the gateway, the setting and
+    its file: nothing of the gateway logs them a second time."""
+    (line,) = [record for record in caplog.records if "trust_store_unreadable" in record.getMessage()]
+    assert (line.name, line.levelno) == ("base.tls", logging.ERROR)
+    assert "caller=fiscal_gateway.aeat " in line.getMessage()
+    assert names_the_file(line.getMessage(), path)
 
 
 def test_without_the_servers_certificates_the_tls_context_fails_naming_the_file(
     identity, unreadable_ca, caplog
 ):
-    with caplog.at_level(logging.ERROR, logger="fiscal_gateway"):
-        with pytest.raises(aeat.TrustStoreUnreadable) as raised:
-            aeat.tls_context(identity)
+    with caplog.at_level(logging.ERROR), pytest.raises(aeat.TrustStoreUnreadable) as raised:
+        aeat.tls_context(identity)
 
     assert raised.value.sent is False
     assert raised.value.__suppress_context__
     assert names_the_file(str(raised.value), unreadable_ca)
-    assert any(
-        record.levelno == logging.ERROR and names_the_file(record.getMessage(), unreadable_ca)
-        for record in caplog.records
-    )
+    the_trust_store_line(caplog, unreadable_ca)
+
+
+def test_ssl_cert_file_naming_a_folder_is_unreadable_too(identity, tmp_path, monkeypatch):
+    monkeypatch.setenv("SSL_CERT_FILE", str(tmp_path))
+    monkeypatch.delenv("SSL_CERT_DIR", raising=False)
+
+    with pytest.raises(aeat.TrustStoreUnreadable) as raised:
+        aeat.tls_context(identity)
+
+    assert raised.value.sent is False
+    assert names_the_file(str(raised.value), tmp_path)
 
 
 def test_a_presentation_without_the_servers_certificates_sends_nothing(
-    identity, unreadable_ca, respx_mock, private_tmp
+    identity, unreadable_ca, respx_mock, private_tmp, caplog
 ):
     """Nothing left this process: the Hub keeps the record and retries it in its own cycle, without duplicating it."""
-    with pytest.raises(aeat.AeatUnreachable) as raised:
+    with caplog.at_level(logging.ERROR), pytest.raises(aeat.AeatUnreachable) as raised:
         aeat.present(identity, "testing", SENT, operation="submit")
 
     assert isinstance(raised.value, aeat.TrustStoreUnreadable)
     assert raised.value.sent is False
     assert names_the_file(str(raised.value), unreadable_ca)
+    the_trust_store_line(caplog, unreadable_ca)
     assert not respx_mock.calls
     assert not list(private_tmp.glob("fiscal-gateway-*"))
+
+
+def test_a_presentation_uses_the_trusted_certificates_it_read(identity, respx_mock, ca_gone_after_one_read):
+    """The client takes the context ``tls_context`` built (``verify=``): the certificates are read once per
+    presentation, so a file renewed between that reading and the POST never breaks it."""
+    respx_mock.post(PRE_HOLDER).mock(return_value=httpx.Response(200, text="<ok/>"))
+
+    answer = aeat.present(identity, "testing", SENT, operation="submit")
+
+    assert answer == aeat.Answer(status=200, body="<ok/>")
+    assert not ca_gone_after_one_read.exists()
 
 
 def test_without_ssl_cert_file_the_failure_of_the_bundled_certificates_is_told_too(
