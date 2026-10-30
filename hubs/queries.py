@@ -1350,18 +1350,22 @@ def hub_data_copies(hub_id: UUID) -> dict[str, Any] | None:
     """What the Hub keeps of a business's data: ``{available, copies}``, ``copies`` newest first, each ``{id, kind,
     created_at, bytes, url}`` (``url`` a link of 15 minutes, as the Hub gave it). ``available`` false: the business has
     no database of its own, so it never gets a copy (ruling of 2026-10-30); a Hub that does not say it is taken as able
-    to make them. No copies, or a Hub that no longer has the business (404, 410: the purge): ``copies`` empty. ``None``
-    with the Hub away. A row out of the contract is left out, and an answer out of it is no copy yet; both are logged,
-    never with a link."""
+    to make them. No copies, or a Hub that does not know the business (404): ``copies`` empty. A cancelled business
+    answers 200 at ``/internal`` (the 410 is the door of its host), so any other refusal is a fault: ``HubRefused``,
+    as ``HubUnavailable`` with the Hub away (both logged). A row out of the contract is left out, and an answer out of
+    it is no copy yet; both are logged, never with a link."""
     nothing_yet: dict[str, Any] = {"available": True, "copies": []}
     try:
         answer = hub_client.get_dumps(str(hub_id))
     except HubUnavailable as away:
         logger.warning("hubs.data_copy.hub_unavailable hub=%s %s", hub_id, away)
-        return None
+        raise
     except HubRefused as refused:
-        logger.warning("hubs.data_copy.hub_refused hub=%s status=%s code=%s", hub_id, refused.status, refused.code)
-        return nothing_yet
+        if refused.status == 404:
+            logger.warning("hubs.data_copy.hub_refused hub=%s status=404 code=%s", hub_id, refused.code)
+            return nothing_yet
+        logger.error("hubs.data_copy.hub_refused hub=%s status=%s code=%s", hub_id, refused.status, refused.code)
+        raise
     body = answer.body if isinstance(answer.body, dict) else {}
     rows, available = body.get("dumps"), body.get("available", True)
     if not isinstance(rows, list) or not isinstance(available, bool):
@@ -1423,10 +1427,20 @@ def data_copy_list(ctx: OperationContext, data: DataCopyListIn) -> dict[str, Any
     """The copies the Hub keeps of the business's data (the panel's «Download the data»): when, which and how big,
     newest first and without their links (``hubs.data_copy.link`` asks for one on each click). Only the owner. With
     the Hub away or no copy yet, an empty list: the page says the copy is not ready yet; ``available`` false, the
-    business has no database of its own and never gets one, so the page promises nothing."""
+    business has no database of its own and never gets one, so the page promises nothing. The Hub refusing (anything
+    but a 404): 503 ``hubs.data_copy_unchecked``, and the page says it could not check."""
     user = account_of(ctx)
     hub = access(user, data.business_id, Role.OWNER).hub
-    kept = hub_data_copies(hub.id) or {"available": True, "copies": []}
+    try:
+        kept = hub_data_copies(hub.id)
+    except HubUnavailable:
+        kept = {"available": True, "copies": []}
+    except HubRefused:
+        raise OperationError(
+            _("The copy of the data could not be checked right now. Try again in a moment."),
+            code="hubs.data_copy_unchecked",
+            status=503,
+        ) from None
     return {
         "business_id": hub.id,
         "available": kept["available"],
@@ -1449,9 +1463,10 @@ def data_copy_link(ctx: OperationContext, data: DataCopyLinkIn) -> dict[str, Any
     ``hubs.data_copy_unavailable``."""
     user = account_of(ctx)
     hub = access(user, data.business_id, Role.OWNER).hub
-    kept = hub_data_copies(hub.id)
-    if kept is None:
-        raise _data_copy_unavailable()
+    try:
+        kept = hub_data_copies(hub.id)
+    except (HubUnavailable, HubRefused):
+        raise _data_copy_unavailable() from None
     wanted = next((copy for copy in kept["copies"] if copy["id"] == data.copy_id), None)
     if wanted is None:
         raise NotFound(_("This copy of the data is no longer kept."), code="hubs.data_copy_gone")

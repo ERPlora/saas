@@ -115,12 +115,27 @@ def test_the_hub_away_is_an_empty_list_and_a_log(business, owner, offline_hub, c
     assert f"hubs.data_copy.hub_unavailable hub={hub.id}" in caplog.text
 
 
-@pytest.mark.parametrize("refusal", [404, 410])
-def test_a_hub_that_no_longer_has_the_business_is_an_empty_list(business, owner, hub_double, refusal, caplog):
+def test_a_hub_that_does_not_know_the_business_is_an_empty_list(business, owner, hub_double, caplog):
     hub = deleted(business)
-    hub_double.answer("GET", r"/dumps$", refusal, {"error": {"code": "not_found"}})
+    hub_double.answer("GET", r"/dumps$", 404, {"error": {"code": "not_found"}})
 
     assert listed(owner, hub)["copies"] == []
+    assert f"hubs.data_copy.hub_refused hub={hub.id} status=404" in caplog.text
+
+
+@pytest.mark.parametrize("refusal", [401, 403, 410])
+def test_any_other_refusal_of_the_hub_says_the_copy_could_not_be_checked(business, owner, hub_double, refusal, caplog):
+    """Review of saas#168: a cancelled business answers 200 at ``/internal`` (the 410 is the host's door), so any
+    refusal but a 404 is a fault: the page says it could not check, never «we will let you know»."""
+    from live.errors import OperationError
+
+    hub = deleted(business)
+    hub_double.answer("GET", r"/dumps$", refusal, {"error": {"code": "refused"}})
+
+    with pytest.raises(OperationError) as unchecked:
+        listed(owner, hub)
+
+    assert (unchecked.value.code, unchecked.value.status) == ("hubs.data_copy_unchecked", 503)
     assert f"hubs.data_copy.hub_refused hub={hub.id} status={refusal}" in caplog.text
 
 

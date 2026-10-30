@@ -389,17 +389,62 @@ class TestDataCopyReady:
         assert "unreachable=1" in str(failed.value)
         assert mail.outbox == []
 
-    def test_a_mail_that_cannot_leave_fails_the_run_and_is_sent_again(self, business, hub_double, monkeypatch):
+    def test_a_mail_that_cannot_leave_is_logged_and_tried_a_few_times_without_failing_the_run(
+        self, business, hub_double, monkeypatch, caplog
+    ):
+        """A mail is logged, never raised (emails.py): a recipient refused for good (SES in its sandbox) is tried
+        ``DATA_COPY_MAIL_ATTEMPTS`` passes and then given up, and no pass fails for it."""
         moment = timezone.now()
         hub = deleted_at(business, moment)
         hub_double.dumps[str(hub.id)] = [offboarding_copy(hub, moment)]
         monkeypatch.setattr(services.emails, "send_data_copy_ready", lambda *args, **kwargs: False)
 
+        for attempt in range(1, services.DATA_COPY_MAIL_ATTEMPTS + 1):
+            output = run("reconcile_hub_states")
+            assert "data_copy_unsent=1" in output
+            assert fresh(hub).data_copy_mail_attempts == attempt
+        asked = len(dump_calls(hub_double))
+        run("reconcile_hub_states")
+
+        assert len(dump_calls(hub_double)) == asked  # given up: the Hub is not asked again
+        assert fresh(hub).data_copy_mailed_at is None
+        assert caplog.text.count(f"hubs.data_copy.mail_given_up hub={hub.id}") == 1
+
+    def test_a_deleted_business_whose_owner_left_is_not_asked_and_the_pass_passes(self, business, owner, hub_double):
+        """Review of saas#168: the owner deletes their account after deleting the business (``HubMember.user``
+        cascades); nobody is left to tell, so the Hub is not asked and no pass fails for it."""
+        moment = timezone.now()
+        hub = deleted_at(business, moment)
+        hub_double.dumps[str(hub.id)] = [offboarding_copy(hub, moment)]
+        owner.delete()
+
+        output = run("reconcile_hub_states")
+
+        assert mail.outbox == []
+        assert dump_calls(hub_double) == []
+        assert "data_copy_unsent=0" in output
+
+    def test_deleting_it_again_tries_the_mail_again(self, business, owner, hub_double):
+        from hubs.schemas import BusinessDeleteIn
+        from hubs.tests.conftest import ctx_for
+
+        Hub.objects.filter(pk=business.pk).update(data_copy_mail_attempts=services.DATA_COPY_MAIL_ATTEMPTS)
+
+        services.business_delete(ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name=business.name))
+
+        assert fresh(business).data_copy_mail_attempts == 0
+
+    @pytest.mark.parametrize("refusal", [401, 403, 410])
+    def test_a_refusal_of_the_hub_fails_the_run_and_tells_nobody(self, business, hub_double, refusal):
+        """Review of saas#168: only a 404 is «no copy»; any other refusal is a fault, as in ``_settle_stuck``."""
+        deleted_at(business, timezone.now())
+        hub_double.answer("GET", r"/dumps$", refusal, {"error": {"code": "refused"}})
+
         with pytest.raises(CommandError) as failed:
             run("reconcile_hub_states")
 
-        assert "data_copy_unsent=1" in str(failed.value)
-        assert fresh(hub).data_copy_mailed_at is None
+        assert "unreachable=1" in str(failed.value)
+        assert mail.outbox == []
 
     def test_a_business_that_will_never_have_a_copy_is_promised_nothing(self, business, hub_double):
         """``available: false``: a business without its own database never gets a copy, so no mail is due."""

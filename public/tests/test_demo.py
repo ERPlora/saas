@@ -633,6 +633,37 @@ def test_the_status_is_never_stored_nor_indexed(client, hub_double):
 
 
 @pytest.mark.django_db
+def test_the_status_is_limited_per_browser_and_past_it_asks_the_hub_nothing(client, hub_double, monkeypatch, caplog):
+    """Review of saas#168: the page asks once a second; a browser asking faster than ``STATUS_RATE`` waits without
+    reaching the Hub."""
+    from public import demo
+
+    monkeypatch.setattr(demo, "STATUS_RATE", "2/m")
+    start(client, hub_double, ready=False)
+
+    answers = [status(client) for _ in range(3)]
+
+    assert answers == [{"state": "preparing"}] * 3
+    assert len([c for c in hub_double.calls if c.method == "GET"]) == 2
+    assert "demo.status.throttled" in caplog.text
+
+
+@pytest.mark.django_db
+def test_another_browser_has_its_own_limit(client, hub_double, monkeypatch):
+    from public import demo
+
+    monkeypatch.setattr(demo, "STATUS_RATE", "1/m")
+    start(client, hub_double, ready=False)
+    other = Client()
+    start(other, hub_double, ready=False)
+
+    status(client)
+    status(other)
+
+    assert len([c for c in hub_double.calls if c.method == "GET"]) == 2
+
+
+@pytest.mark.django_db
 def test_the_status_is_only_read(client, hub_double):
     assert client.post(STATUS).status_code == 405
 

@@ -537,6 +537,9 @@ class Hub(models.Model):
     #: When the owner of a deleted business was told the copy of its data made at that deletion is ready
     #: (``services.reconcile``, «We'll let you know» of its page); older than ``deletion_requested_at``: not yet told.
     data_copy_mailed_at = models.DateTimeField(_("copy of the data announced at"), null=True, blank=True)
+    #: How many passes the mail of the copy could not leave since this deletion (a refused recipient): given up at
+    #: ``services.DATA_COPY_MAIL_ATTEMPTS``; back to 0 when the business is deleted again.
+    data_copy_mail_attempts = models.PositiveSmallIntegerField(_("tries of the copy's mail"), default=0, db_default=0)
     state_version = models.PositiveBigIntegerField(_("state version"), default=1)
     pushed_state_version = models.PositiveBigIntegerField(_("state version the Hub has"), default=0)
     #: Grows with every change of the registry (``PUT /internal/hubs/{id}``): an acknowledgement of an

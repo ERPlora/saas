@@ -73,6 +73,9 @@ RECAPTCHA_FIELD = "recaptcha_token"
 RECAPTCHA_ACTION = "demo_request"
 #: The Hub's refusal when its cap of live demos is reached.
 DEMO_FULL = "base.demo_full"
+#: How often one browser may ask how its demo is going (its page asks once a second): past it, the answer is «still
+#: preparing» without reaching the Hub (review of saas#168).
+STATUS_RATE = "90/m"
 
 
 def _language() -> str:
@@ -259,8 +262,19 @@ def _forget(request: HttpRequest) -> None:
     request.session.pop(SESSION_DEMO, None)
 
 
+def _status_rate(group, request: HttpRequest) -> str:
+    return STATUS_RATE
+
+
+def _browser(group, request: HttpRequest) -> str:
+    """The browser that asks: its demo token, or its address before it has one."""
+    token = request.session.get(SESSION_OWNER)
+    return token if isinstance(token, str) and token else landing.visitor_address(group, request)
+
+
 @require_safe
 @never_cache
+@ratelimit(key=_browser, rate=_status_rate, block=False)
 def status(request: HttpRequest) -> JsonResponse:
     """How the browser's demo is going, for the door's page while it waits: ``{state}`` while the Hub prepares it (or
     is away a moment), ``{state, url}`` when the page should go to ``url``: the jump once it is ready (remembered, so
@@ -278,6 +292,9 @@ def status(request: HttpRequest) -> JsonResponse:
     slug = live["slug"]
     if live["ready"]:
         return _status("ready", hub_start_url(slug, "/"))
+    if getattr(request, "limited", False):
+        logger.info("demo.status.throttled hub=%s", slug)
+        return _status("preparing")
     try:
         answer = hub_client.get_hub(live["id"])
     except HubRefused as refused:

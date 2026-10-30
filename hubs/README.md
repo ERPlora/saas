@@ -361,7 +361,8 @@ listo al responder, y lo dice.
   (`GET /internal/hubs/{id}`) por una demo que se está preparando: `ready` → la recuerda lista y da el salto a su
   `/auth/login`; los cuatro de preparación (o el Hub caído un momento) → sigue esperando; `failed` → la puerta
   `?state=not_ready`; `expired`/`cancelled`/`purged` o 404/410 → la olvida y `?state=expired`; cualquier otra
-  respuesta → `?state=unavailable`. Sin respuesta en 30 s, `not_ready`: «Tu demo aún no está lista. Vuelve a
+  respuesta → `?state=unavailable`. Cada navegador tiene un tope en el servidor (`demo.STATUS_RATE`, 90 por
+  minuto, por su token de demo): pasado, responde «sigue preparando» sin preguntar al Hub. Sin respuesta en 30 s, `not_ready`: «Tu demo aún no está lista. Vuelve a
   intentarlo en un momento.» con «Volver a intentarlo», que espera otra vez a la misma demo (o pide una si el
   navegador no tiene ninguna). El código de entrada (`POST /internal/demos/{slug}/codes`) solo se pide para una demo
   lista: `/demo/enter/` con una que aún se prepara vuelve a la puerta. Una sesión de antes (sin `id` ni `ready`) es
@@ -371,8 +372,11 @@ listo al responder, y lo dice.
   `hubs.data_copy.list` (`GET /api/hubs/data-copies?business_id=`: `id`, `kind`, `created_at`, `bytes`, de más nueva
   a más vieja, sin enlace) y cada clic pide el enlace al Hub en `hubs.data_copy.link` (`GET
   /api/hubs/data-copies/link?business_id=&copy_id=` → `{url}`, el prefirmado de 15 min del Hub; 404
-  `hubs.data_copy_gone` si ya no está, 503 `hubs.data_copy_unavailable` con el Hub caído o un enlace que no es una
-  dirección web). La lista lleva `available`: falso cuando el negocio no tiene BD propia y nunca tendrá copia (ruling del
+  `hubs.data_copy_gone` si ya no está, 503 `hubs.data_copy_unavailable` con el Hub caído, rechazando o un enlace que
+  no es una dirección web). Solo un 404 del Hub es «sin copias»: un negocio `cancelled` responde 200 en `/internal`
+  (el 410 es de la puerta de su host), así que cualquier otro rechazo (401, 403, 410…) es un fallo: la lista responde
+  503 `hubs.data_copy_unchecked` («No se ha podido consultar la copia de los datos ahora mismo…») y la pasada de
+  `reconcile_hub_states` cuenta `unreachable` (revisión de saas#168). La lista lleva `available`: falso cuando el negocio no tiene BD propia y nunca tendrá copia (ruling del
   2026-10-30); un Hub que no lo dice cuenta como `true`. Solo el propietario (`can.download_data`; matriz de `tests/test_permission_matrix.py`); la lista
   está abierta a una clave de API con `hubs.read`, el enlace no (`expose_api` apagado: una copia completa de los datos
   de todas las personas del negocio pide la sesión del propietario, como eliminarlo). Con el Hub caído o sin copias,
@@ -388,9 +392,11 @@ listo al responder, y lo dice.
   se cumple en `reconcile_hub_states`: por cada negocio eliminado sin avisar, pregunta las copias y, con la de esta
   baja (`offboarding` no anterior a `deletion_requested_at`, un minuto de holgura entre relojes), manda
   `send_data_copy_ready` una vez (`Hub.data_copy_mailed_at`, migración `0022`; se vuelve a avisar si se recupera y
-  se elimina otra vez). Con `available: false` no hay aviso que mandar (`data_copy_none`, no falla). El Hub caído
-  cuenta `unreachable`; un correo que no sale, `data_copy_unsent`; los dos hacen
-  fallar la pasada y se reintentan.
+  se elimina otra vez). Con `available: false` no hay aviso que mandar (`data_copy_none`, no falla). No se pregunta
+  por un negocio sin propietario (su cuenta se borró después: `HubMember.user` en cascada). El Hub caído o rechazando
+  cuenta `unreachable` y hace fallar la pasada; un correo que no sale se registra (`data_copy_unsent`, sin fallar la
+  pasada) y se reintenta en las pasadas siguientes hasta `DATA_COPY_MAIL_ATTEMPTS` (6) veces
+  (`Hub.data_copy_mail_attempts`, a 0 en cada baja; al rendirse, log `hubs.data_copy.mail_given_up`).
 - **Uso nocturno** (F21, F22; propuesta (j)): sin cambios en el SaaS. Un hub que aún comparte la BD de control no se
   mide y no sale en `GET /internal/usage`: la pasada guarda el resto y termina bien (test de contrato en
   `tests/test_collect_hub_usage.py`).
@@ -413,7 +419,9 @@ GET  /internal/hubs/{id}/dumps      → 200 {"available": true | false,
                                              "created_at": "<ISO 8601 con zona>", "bytes": <int ≥ 0>,
                                              "url": "<prefirmado de 15 min>"}]}
                                        de más nueva a más vieja; [] sin copias; "available": false si el negocio
-                                       no tiene BD propia (nunca tendrá copia); 404 hub desconocido
+                                       no tiene BD propia (nunca tendrá copia); 404 hub desconocido. Un hub
+                                       cancelled responde 200 (el 410 es solo de la puerta de host, nunca de
+                                       /internal): otro rechazo es un fallo para el SaaS
 ```
 
 - Una demo `failed` no es «la viva» de su navegador (ruling del 2026-10-30, lo aplica el Hub): «Volver a intentarlo»

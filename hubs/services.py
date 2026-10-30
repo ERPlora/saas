@@ -23,7 +23,7 @@ from uuid import UUID
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, connection, transaction
-from django.db.models import F, Q
+from django.db.models import Exists, F, OuterRef, Q
 from django.utils import timezone
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
@@ -422,11 +422,14 @@ def _delete_business(ctx: OperationContext, hub: Hub, owner, *, base_url: str, u
     hub.pending_hub_call = Call.DELETE
     # Out of the clock of HUBS-F20: recovered, it comes back on Free, with nothing unpaid.
     hub.suspended_at = hub.suspension_warned_at = hub.suspension_final_notice_at = None
+    # The mail «the copy of its data is ready» of this deletion is tried afresh.
+    hub.data_copy_mail_attempts = 0
     hub.save(
         update_fields=[
             "status",
             "deletion_requested_at",
             "pending_hub_call",
+            "data_copy_mail_attempts",
             "suspended_at",
             "suspension_warned_at",
             "suspension_final_notice_at",
@@ -1763,6 +1766,9 @@ PROVISION_FAILED = "hubs.provision_failed"
 #: How far before its deletion the Hub's copy of a business may say it was made and still be that deletion's (the two
 #: clocks; the Hub copies on receiving the ``DELETE``, after the SaaS's COMMIT).
 DATA_COPY_CLOCK_SKEW = timedelta(minutes=1)
+#: How many passes the mail «the copy is ready» is tried before it is given up (a recipient refused for good: SES in
+#: its sandbox, an address gone). A mail is logged, never raised (``emails``): it never fails a pass.
+DATA_COPY_MAIL_ATTEMPTS = 6
 #: Counts that make a run end with an error (the ``task_failed`` alarm), after its whole pass.
 FAILING_COUNTS = (
     "owed",
@@ -1770,7 +1776,6 @@ FAILING_COUNTS = (
     "failed",
     "provision_failed",
     "unexpected",
-    "data_copy_unsent",
     "sessions_pending",
 )
 
@@ -1879,8 +1884,14 @@ def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER) -> Counter:
         except Exception:  # noqa: BLE001 - one business never stops the pass
             logger.exception("hubs.reconcile.crashed hub=%s", hub_id)
             counts["failed"] += 1
-    untold = Hub.objects.filter(status=Hub.Status.DELETING, deletion_requested_at__isnull=False).filter(
-        Q(data_copy_mailed_at__isnull=True) | Q(data_copy_mailed_at__lt=F("deletion_requested_at"))
+    # Deleted, not told since this deletion, the mail not given up, and somebody to tell: an owner whose account was
+    # deleted since (``HubMember.user`` cascades) leaves nobody, so the Hub is not asked (review of saas#168).
+    untold = Hub.objects.filter(
+        Q(data_copy_mailed_at__isnull=True) | Q(data_copy_mailed_at__lt=F("deletion_requested_at")),
+        Exists(HubMember.objects.filter(hub=OuterRef("pk"), role=Role.OWNER)),
+        status=Hub.Status.DELETING,
+        deletion_requested_at__isnull=False,
+        data_copy_mail_attempts__lt=DATA_COPY_MAIL_ATTEMPTS,
     )
     for hub_id in untold.values_list("id", flat=True):
         try:
@@ -1934,10 +1945,12 @@ def _settle_stuck(hub_id: UUID, counts: Counter) -> None:
 def _tell_data_copy(hub_id: UUID, counts: Counter) -> None:
     """«We'll let you know» of a deleted business's page: once the Hub keeps the copy it made at this deletion
     (``offboarding``, no older than ``deletion_requested_at``), its owner is told by mail, once; asked again on each pass
-    until then. The Hub away counts ``unreachable``; a mail that cannot leave, ``data_copy_unsent`` (sent again)."""
+    until then. The Hub away or refusing (anything but a 404) counts ``unreachable`` and fails the pass; a mail that
+    cannot leave counts ``data_copy_unsent`` and is tried again next pass, ``DATA_COPY_MAIL_ATTEMPTS`` times at most."""
     hub = Hub.objects.get(pk=hub_id)
-    kept = queries.hub_data_copies(hub.id)
-    if kept is None:
+    try:
+        kept = queries.hub_data_copies(hub.id)
+    except (HubUnavailable, HubRefused):
         counts["unreachable"] += 1
         return
     if not kept["available"]:
@@ -1949,7 +1962,11 @@ def _tell_data_copy(hub_id: UUID, counts: Counter) -> None:
         return
     owner = HubMember.objects.filter(hub=hub, role=Role.OWNER).select_related("user").first()
     if not emails.send_data_copy_ready(hub, owner.user if owner else None, base_url=emails.base_url(None)):
+        attempts = hub.data_copy_mail_attempts + 1
+        Hub.objects.filter(pk=hub.pk).update(data_copy_mail_attempts=F("data_copy_mail_attempts") + 1)
         counts["data_copy_unsent"] += 1
+        if attempts >= DATA_COPY_MAIL_ATTEMPTS:
+            logger.error("hubs.data_copy.mail_given_up hub=%s attempts=%s", hub.id, attempts)
         return
     Hub.objects.filter(pk=hub.pk).update(data_copy_mailed_at=timezone.now())
     counts["data_copies_told"] += 1

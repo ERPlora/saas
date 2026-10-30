@@ -1431,3 +1431,11 @@ msgstr "La copia no se puede descargar ahora mismo. Vuelve a intentarlo en un mo
 #: queries.py
 msgid "This copy of the data is no longer kept."
 msgstr "Esta copia de los datos ya no se conserva."
+
+#: models.py
+msgid "tries of the copy's mail"
+msgstr "intentos del correo de la copia"
+
+#: queries.py
+msgid "The copy of the data could not be checked right now. Try again in a moment."
+msgstr "No se ha podido consultar la copia de los datos ahora mismo. Vuelve a intentarlo en un momento."

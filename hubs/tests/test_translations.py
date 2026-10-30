@@ -83,6 +83,8 @@ NEW_MESSAGES = [
     "The copy cannot be downloaded right now. Try again in a moment.",
     "This copy of the data is no longer kept.",
     "copy of the data announced at",
+    "tries of the copy's mail",
+    "The copy of the data could not be checked right now. Try again in a moment.",
 ]
 
 
