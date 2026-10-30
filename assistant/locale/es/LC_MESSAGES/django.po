@@ -549,3 +549,167 @@ msgstr "cuenta"
 #: services.py
 msgid "The account no longer exists."
 msgstr "La cuenta ya no existe."
+
+#: knowledge.py
+msgid "Account"
+msgstr "Cuenta"
+
+#: knowledge.py
+msgid "Billing"
+msgstr "Facturación"
+
+#: knowledge.py
+msgid "Apps"
+msgstr "Apps"
+
+#: knowledge.py
+msgid "%(monthly)s € a month or %(annual)s € a year, VAT excluded."
+msgstr "%(monthly)s € al mes o %(annual)s € al año, IVA no incluido."
+
+#: knowledge.py
+msgid "Unlimited users."
+msgstr "Usuarios ilimitados."
+
+#: knowledge.py
+msgid "Up to %(count)s user."
+msgid_plural "Up to %(count)s users."
+msgstr[0] "Hasta %(count)s usuario."
+msgstr[1] "Hasta %(count)s usuarios."
+
+#: knowledge.py
+msgid "Unlimited devices."
+msgstr "Dispositivos ilimitados."
+
+#: knowledge.py
+msgid "Up to %(count)s device."
+msgid_plural "Up to %(count)s devices."
+msgstr[0] "Hasta %(count)s dispositivo."
+msgstr[1] "Hasta %(count)s dispositivos."
+
+#: knowledge.py
+msgid "No limit on the apps turned on."
+msgstr "Sin límite de apps activas."
+
+#: knowledge.py
+msgid "Up to %(count)s app turned on at once, besides the ones it requires."
+msgid_plural "Up to %(count)s apps turned on at once, besides the ones they require."
+msgstr[0] "Hasta %(count)s app activa a la vez, además de las que necesita."
+msgstr[1] "Hasta %(count)s apps activas a la vez, además de las que necesitan."
+
+#: knowledge.py
+msgid "No assistant."
+msgstr "Sin asistente."
+
+#: knowledge.py
+msgid "%(count)s message a month with the assistant."
+msgid_plural "%(count)s messages a month with the assistant."
+msgstr[0] "%(count)s mensaje al mes con el asistente."
+msgstr[1] "%(count)s mensajes al mes con el asistente."
+
+#: knowledge.py
+msgid "No WhatsApp messages."
+msgstr "Sin mensajes de WhatsApp."
+
+#: knowledge.py
+msgid "%(count)s WhatsApp message a month."
+msgid_plural "%(count)s WhatsApp messages a month."
+msgstr[0] "%(count)s mensaje de WhatsApp al mes."
+msgstr[1] "%(count)s mensajes de WhatsApp al mes."
+
+#: knowledge.py
+msgid "Not chosen when signing up: only as an upgrade from another plan."
+msgstr "No se elige al darse de alta: solo como mejora desde otro plan."
+
+#: knowledge.py
+msgid "Includes: %(features)s."
+msgstr "Incluye: %(features)s."
+
+#: knowledge.py
+msgid "ERPlora plans"
+msgstr "Planes de ERPlora"
+
+#: knowledge.py
+msgid "The plans a business can have on ERPlora, with their prices and what each one includes."
+msgstr "Los planes que puede tener un negocio en ERPlora, con sus precios y lo que incluye cada uno."
+
+#: knowledge.py
+msgid "A sign-up gets a trial of %(count)s day."
+msgid_plural "A sign-up gets a trial of %(count)s days."
+msgstr[0] "Un alta tiene una prueba de %(count)s día."
+msgstr[1] "Un alta tiene una prueba de %(count)s días."
+
+#: models.py
+msgid "source"
+msgstr "fuente"
+
+#: models.py
+msgid "path"
+msgstr "ruta"
+
+#: models.py
+msgid "language"
+msgstr "idioma"
+
+#: models.py
+msgid "heading"
+msgstr "título"
+
+#: models.py
+msgid "text"
+msgstr "texto"
+
+#: models.py
+msgid "content hash"
+msgstr "hash del contenido"
+
+#: models.py
+msgid "fingerprint"
+msgstr "huella"
+
+#: models.py
+msgid "indexed"
+msgstr "indexado"
+
+#: models.py
+msgid "documentation excerpt"
+msgstr "fragmento de la documentación"
+
+#: models.py
+msgid "documentation excerpts"
+msgstr "fragmentos de la documentación"
+
+#: models.py
+msgid "Help"
+msgstr "Ayuda"
+
+#: models.py
+msgid "Apps' documentation"
+msgstr "Documentación de las apps"
+
+#: models.py
+msgid "Workbook of the panel"
+msgstr "Workbook del panel"
+
+#: models.py
+msgid "Plans"
+msgstr "Planes"
+
+#: models.py
+msgid "Where it comes from: a file, «app_doc:<app>» or «plans»."
+msgstr "De dónde sale: un fichero, «app_doc:<app>» o «plans»."
+
+#: models.py
+msgid "Its path of headings: «FAQ > Access > Why…?»."
+msgstr "Su ruta de títulos: «Preguntas frecuentes > Acceso > ¿Por qué…?»."
+
+#: queries.py
+msgid "ERPlora's documentation cannot be searched now: the provider of the embeddings is not configured."
+msgstr "Ahora no se puede buscar en la documentación de ERPlora: el proveedor de las huellas no está configurado."
+
+#: queries.py
+msgid "ERPlora's documentation cannot be searched now: try again in a moment."
+msgstr "Ahora no se puede buscar en la documentación de ERPlora: vuelve a intentarlo en un momento."
+
+#: services.py
+msgid "An excerpt to write is not among the ones the source keeps."
+msgstr "Un fragmento que se iba a escribir no está entre los que guarda la fuente."

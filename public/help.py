@@ -42,7 +42,7 @@ _PENDING_TRANSLATION_RE = re.compile(
 )
 
 
-def _is_pending_translation(raw: str) -> bool:
+def is_pending_translation(raw: str) -> bool:
     """Whether a guide is only an untranslated placeholder (or empty)."""
     return not raw.strip() or bool(_PENDING_TRANSLATION_RE.fullmatch(raw))
 
@@ -79,7 +79,7 @@ def _load(lang: str) -> tuple[dict, ...]:
     docs = []
     for path in sorted(directory.glob("*.md")):
         raw = path.read_text(encoding="utf-8")
-        if _is_pending_translation(raw):
+        if is_pending_translation(raw):
             continue
         title, _body = _split_title(raw, path.stem)
         docs.append({"id": path.stem, "title": title})
@@ -110,10 +110,10 @@ def get_doc(doc_id: str, lang: str | None = None) -> dict | None:
 
     path = _help_dir(resolved) / f"{doc_id}.md"
     raw = path.read_text(encoding="utf-8") if path.is_file() else ""
-    if _is_pending_translation(raw) and resolved != DEFAULT_LANG:
+    if is_pending_translation(raw) and resolved != DEFAULT_LANG:
         path = _help_dir(DEFAULT_LANG) / f"{doc_id}.md"
         raw = path.read_text(encoding="utf-8") if path.is_file() else ""
-    if _is_pending_translation(raw):
+    if is_pending_translation(raw):
         return None
     title, body = _split_title(raw, doc_id)
     return {"id": doc_id, "title": title, "html": render_markdown(body)}

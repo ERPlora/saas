@@ -1,5 +1,6 @@
-"""The services of OpenAI's API the Hub's assistant uses besides the turn (ASSISTANT-G54, G56, G57): the fingerprints
-(embeddings) of the Hub's index, the transcription of a dictation and the reading aloud of an answer.
+"""The services of OpenAI's API the assistants use besides the turn (ASSISTANT-G54, G56, G57, F27): the fingerprints
+(embeddings) of the Hub's index and of the panel's documentation (``index_docs``, ``assistant.docs.search``), the
+transcription of a dictation and the reading aloud of an answer.
 
 Each call goes to the services' provider (``assistant.service.connection``: ``ASSISTANT_SERVICE_PROVIDER``, kept in
 the admin with its key, rotatable) over ``httpx``, with no SDK, the same way as ``assistant.providers``. A failure is
@@ -58,10 +59,10 @@ class MediaFailed(Exception):
         return "assistant.provider_unavailable" if self.retriable else "assistant.provider_rejected"
 
 
-async def _post(service: ServiceConnectionOut, path: str, **request) -> httpx.Response:
+async def _post(service: ServiceConnectionOut, path: str, *, timeout: httpx.Timeout = TIMEOUT, **request) -> httpx.Response:
     headers = {"Authorization": f"Bearer {service.api_key.get_secret_value()}"}
     try:
-        async with httpx.AsyncClient(timeout=TIMEOUT, verify=tls.trusted_context("assistant.media")) as client:
+        async with httpx.AsyncClient(timeout=timeout, verify=tls.trusted_context("assistant.media")) as client:
             response = await client.post(f"{service.base_url}{path}", headers=headers, **request)
     except tls.TrustStoreUnreadable:
         raise MediaFailed(retriable=False) from None
@@ -74,9 +75,12 @@ async def _post(service: ServiceConnectionOut, path: str, **request) -> httpx.Re
     return response
 
 
-async def embed(service: ServiceConnectionOut, texts: list[str]) -> tuple[list[list[float]], int]:
-    """A vector per text, in the order of ``texts``, and the tokens the provider counted."""
-    response = await _post(service, "/embeddings", json={"model": EMBEDDING_MODEL, "input": texts})
+async def embed(
+    service: ServiceConnectionOut, texts: list[str], *, timeout: httpx.Timeout = TIMEOUT
+) -> tuple[list[list[float]], int]:
+    """A vector per text, in the order of ``texts``, and the tokens the provider counted; ``timeout`` bounds a call
+    that waits inside a transaction (``assistant.docs.search``)."""
+    response = await _post(service, "/embeddings", timeout=timeout, json={"model": EMBEDDING_MODEL, "input": texts})
     try:
         body = response.json()
         rows = sorted(body["data"], key=lambda row: row["index"])

@@ -352,3 +352,99 @@ class ReportOut(Schema):
     #: Whether a mail left now; a report of the same answer within a day is a ``duplicate`` and mails nothing.
     sent: bool
     duplicate: bool
+
+
+# --- The documentation of the panel's assistant (ASSISTANT-F27) -------------------------------------------------
+
+DocSource = Literal["help", "app_doc", "workbook", "plans"]
+DocLanguage = Literal["en", "es"]
+#: The most excerpts a search returns, whatever it asks for.
+DOCS_SEARCH_MAX = 12
+
+
+class DocsSourceIn(Schema):
+    source: DocSource
+
+
+class DocsListOut(Schema):
+    #: The ``content_hash`` of every excerpt the source has in the index.
+    hashes: list[str]
+
+
+class DocChunkIn(Schema):
+    """An excerpt of the source and its fingerprint (``EMBEDDING_DIMENSIONS`` numbers)."""
+
+    path: str = Field(min_length=1, max_length=255)
+    lang: DocLanguage
+    heading: str
+    text: str = Field(min_length=1)
+    embedding: list[float]
+
+    @field_validator("embedding")
+    @classmethod
+    def _of_the_model(cls, embedding):
+        from assistant.models import EMBEDDING_DIMENSIONS
+
+        if len(embedding) != EMBEDDING_DIMENSIONS:
+            raise ValueError(f"a fingerprint has {EMBEDDING_DIMENSIONS} numbers, not {len(embedding)}")
+        return embedding
+
+
+class DocsIndexIn(Schema):
+    """What a source has now: the hash of each of its excerpts (``keep``: the others go) and the excerpts whose
+    fingerprint was just computed (new ones, or every one with ``--full``)."""
+
+    source: DocSource
+    keep: list[str]
+    chunks: list[DocChunkIn] = Field(default_factory=list)
+
+
+class DocsIndexOut(Schema):
+    source: DocSource
+    #: The excerpts the source has in the index now.
+    chunks: int
+    #: Those written with a fingerprint just computed.
+    embedded: int
+    #: Those that no longer exist, deleted.
+    deleted: int
+
+
+class DocsSearchIn(Schema):
+    """A question about how ERPlora works, in the person's words; ``limit`` excerpts at most (up to 12)."""
+
+    query: str = Field(min_length=1, max_length=500, description="The how-to question, in the person's words.")
+    limit: int = Field(
+        default=8,
+        ge=1,
+        description=f"How many excerpts to return, at most {DOCS_SEARCH_MAX}.",
+        json_schema_extra={"maximum": DOCS_SEARCH_MAX},
+    )
+
+    @field_validator("query")
+    @classmethod
+    def _something_asked(cls, query):
+        query = query.strip()
+        if not query:
+            raise ValueError("ask something")
+        return query
+
+    @field_validator("limit")
+    @classmethod
+    def _capped(cls, limit):
+        return min(limit, DOCS_SEARCH_MAX)
+
+
+class DocsSearchResult(Schema):
+    """An excerpt that answers, with where it comes from to cite it."""
+
+    source: DocSource
+    path: str
+    heading: str
+    text: str
+    #: How close it is to the question: 1 is the same meaning, 0 nothing in common.
+    score: float
+    lang: DocLanguage
+
+
+class DocsSearchOut(Schema):
+    results: list[DocsSearchResult]

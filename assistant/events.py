@@ -1,8 +1,7 @@
 """Events of the assistant (``<app>.<entity>.<fact>``): recorded by services.py in the outbox, in the transaction of
 the write. Their payloads carry ids and counts, never a provider's key nor what a person wrote.
 
-The assistant reacts to no event of another app and has no live list (no screen in the panel), so this module only
-names its events. Those of a turn carry numbers only: never a conversation, a person nor a text.
+The assistant reacts to no event of another app and has no live list, so this module only names its events. Those of a turn carry numbers only: never a conversation, a person nor a text.
 """
 
 #: A provider's key was added or changed (``rotated``: another key was typed): ``{"provider", "credential", "rotated"}``.
@@ -32,6 +31,10 @@ USAGE_RECORDED = "assistant.usage.recorded"
 #: the comment).
 REPORT_SENT = "assistant.report.sent"
 
+#: A source of the documentation the panel's assistant searches was indexed again (``index_docs``):
+#: ``{"source", "chunks", "embedded", "deleted"}`` (counts; never a text).
+DOCS_INDEXED = "assistant.docs.indexed"
+
 ALL = [
     CREDENTIAL_SAVED,
     CREDENTIAL_DELETED,
@@ -43,4 +46,5 @@ ALL = [
     MESSAGE_RELEASED,
     USAGE_RECORDED,
     REPORT_SENT,
+    DOCS_INDEXED,
 ]

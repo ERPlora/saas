@@ -21,7 +21,8 @@ jobs:
       contents: read
     services:
       postgres:
-        image: postgres:18
+        # Postgres 18 with the extension `vector` (pgvector): the assistant's documentation index (assistant/0004).
+        image: pgvector/pgvector:pg18
         env:
           POSTGRES_USER: hub
           POSTGRES_PASSWORD: hub

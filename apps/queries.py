@@ -29,6 +29,8 @@ from apps.icons import FALLBACK_ICON, FALLBACK_ICON_SVG, clean_icon_svg
 from apps.models import App, AppDoc
 from apps.schemas import (
     AppByIdIn,
+    AppDocListIn,
+    AppDocListOut,
     AppDocOut,
     AppListIn,
     AppListOut,
@@ -222,6 +224,32 @@ def app_doc(ctx: OperationContext, data: AppByIdIn) -> dict[str, Any]:
         )
         cache.set(key, html, DOC_CACHE_SECONDS)
     return {"html": html, "lang": doc.lang, "fallback": doc.lang != language}
+
+
+@operation(
+    "apps.doc.list",
+    kind="query",
+    permission=None,
+    input=AppDocListIn,
+    output=AppDocListOut,
+    ai=INTERNAL,  # index
+)
+def doc_list(ctx: OperationContext, data: AppDocListIn) -> dict[str, Any]:
+    """Every listed app's user documentation, as written, in each language it has (an empty one is a language
+    that no longer exists, spec §4.2): what the panel's assistant indexes (``assistant.knowledge``). By app, then
+    language; one read."""
+    docs = (
+        AppDoc.objects.filter(app__listed=True)
+        .exclude(markdown="")
+        .select_related("app")
+        .order_by("app_id", "lang")
+    )
+    return {
+        "docs": [
+            {"app": doc.app_id, "name": _text(doc.app, "name", doc.lang), "lang": doc.lang, "markdown": doc.markdown}
+            for doc in docs
+        ]
+    }
 
 
 @operation(

@@ -1346,3 +1346,7 @@ msgstr "No se ha podido enviar la denuncia: inténtalo de nuevo en un momento."
 #: base/services.py
 msgid "Too many reports in a short time: wait a moment and try again."
 msgstr "Demasiadas denuncias seguidas: espera un momento y vuelve a intentarlo."
+
+#: base/assistant.py
+msgid "Help"
+msgstr "Ayuda"

@@ -23,6 +23,8 @@ on the page. The commands call them as the platform (``platform_context``).
 - ``assistant.usage.record`` (G29, G52): what a turn, an embedding or the voice spent (tokens, dictations, characters
   read aloud) and its cost in USD.
 - ``assistant.report.send`` (G58): the report of an answer, mailed to the support mailbox; nothing kept.
+- ``assistant.docs.index`` (F27): what one source of the panel's assistant's documentation has now (``index_docs``):
+  its excerpts that no longer exist go, the ones just embedded are written with their fingerprint.
 """
 
 import logging
@@ -43,7 +45,8 @@ from live.outbox import record_event
 
 import whatsapp.fields
 from assistant import crypto, events, fields, queries
-from assistant.models import AIModel, AIProvider, AIProviderCredential, AIRoutingPolicy, AssistantUsage
+from assistant.models import AIModel, AIProvider, AIProviderCredential, AIRoutingPolicy, AssistantUsage, DocChunk
+from assistant.models import content_hash
 from assistant.queries import choosable_models, staff_with
 from hubs.models import Hub
 from assistant.schemas import (
@@ -60,6 +63,8 @@ from assistant.schemas import (
     CredentialImportOut,
     CredentialIn,
     CredentialOut,
+    DocsIndexIn,
+    DocsIndexOut,
     EncryptionRotateIn,
     EncryptionRotateOut,
     ModelSelectIn,
@@ -627,3 +632,48 @@ def _mail_report(ctx: OperationContext, who: str, details: list[tuple[str, str]]
             raise OperationError(
                 _("The report could not be sent: try again in a moment."), code="assistant.report_not_sent", status=503
             ) from None
+
+
+# --- The documentation of the panel's assistant (ASSISTANT-F27) -------------------------------------------------
+
+
+@operation(
+    "assistant.docs.index",
+    kind="command",
+    permission="assistant.manage",
+    input=DocsIndexIn,
+    output=DocsIndexOut,
+    ai=INTERNAL,  # platform
+)
+def docs_index(ctx: OperationContext, data: DocsIndexIn) -> dict:
+    """What ``source`` has now, in one transaction (the platform only: ``index_docs``): its excerpts whose hash is not
+    in ``keep`` go; each of ``chunks`` is written with its fingerprint, new or over the one it had (``--full``). The
+    hash of an excerpt is computed here, never taken from the caller."""
+    queries.platform_only(ctx)
+    keep = set(data.keep)
+    deleted, _ = DocChunk.objects.filter(source=data.source).exclude(content_hash__in=keep).delete()
+    now = timezone.now()
+    rows = {}
+    for chunk in data.chunks:
+        digest = content_hash(data.source, chunk.path, chunk.lang, chunk.heading, chunk.text)
+        if digest not in keep:
+            with translation.override(ctx.language):
+                raise OperationError(
+                    _("An excerpt to write is not among the ones the source keeps."), code="assistant.docs_not_kept", status=422
+                )
+        rows[digest] = DocChunk(
+            source=data.source,
+            path=chunk.path,
+            lang=chunk.lang,
+            heading=chunk.heading,
+            text=chunk.text,
+            content_hash=digest,
+            embedding=chunk.embedding,
+            indexed_at=now,
+        )
+    DocChunk.objects.bulk_create(
+        rows.values(), update_conflicts=True, unique_fields=["content_hash"], update_fields=["embedding", "indexed_at"]
+    )
+    counts = {"chunks": DocChunk.objects.filter(source=data.source).count(), "embedded": len(rows), "deleted": deleted}
+    record_event(ctx, events.DOCS_INDEXED, {"source": data.source, **counts})
+    return {"source": data.source, **counts}

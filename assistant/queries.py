@@ -10,29 +10,42 @@
   assistant now.
 - ``assistant.usage.show`` (G05, G50, G51): what a business (or a demo) spent of its allowance: the plan's monthly
   messages (a demo, its own few for its whole life).
+- ``assistant.docs.search`` (F27): the excerpts of ERPlora's documentation nearest to a how-to question, a tool of
+  the panel's assistant for every account; ``assistant.docs.list``, the hashes ``index_docs`` already has.
 
 ``staff_with`` is the gate every operation of the staff passes: an active member of the staff holding the model
 permission of Django that backs it.
 """
 
+import hashlib
 from datetime import date, datetime
 from datetime import timezone as dt_timezone
 from uuid import UUID
 
+import httpx
+from asgiref.sync import async_to_sync
 from django.conf import settings
+from django.core.cache import cache
 from django.db.models import Q
 from django.utils import timezone, translation
 from django.utils.translation import gettext as _
 from live.context import OperationContext
 from live.errors import Conflict, NotFound, OperationError, PermissionDenied
-from live.operations import INTERNAL, operation
+from live.operations import AI, INTERNAL, operation
 from live.slugs import is_demo_slug, validate_hub_slug
+from pgvector.django import CosineDistance
 
-from assistant.models import AIModel, AIProvider, AIProviderCredential, AIRoutingPolicy, AssistantUsage
+from assistant import media
+
+from assistant.models import AIModel, AIProvider, AIProviderCredential, AIRoutingPolicy, AssistantUsage, DocChunk
 from assistant.schemas import (
     Caller,
     CallerIn,
     ConnectionOut,
+    DocsListOut,
+    DocsSearchIn,
+    DocsSearchOut,
+    DocsSourceIn,
     NoInput,
     PolicyShowOut,
     ProviderRef,
@@ -336,14 +349,128 @@ def service_connection(ctx: OperationContext, data: NoInput) -> dict:
     embeddings and the voice (the platform only). 409 ``assistant.provider_not_configured`` if it does not exist, is
     off, speaks another API than OpenAI's or has no active key that opens."""
     platform_only(ctx)
-    provider = AIProvider.objects.filter(
-        slug=settings.ASSISTANT_SERVICE_PROVIDER, is_enabled=True, kind=AIProvider.Kind.OPENAI
-    ).first()
-    api_key = usable_key(provider) if provider is not None else ""
-    if not api_key:
+    service = services_provider()
+    if service is None:
         with translation.override(ctx.language):
             raise Conflict(
                 _("The provider of the embeddings and the voice is not configured: add OpenAI with its key."),
                 code="assistant.provider_not_configured",
             )
+    return service
+
+
+def services_provider() -> dict | None:
+    """The services' provider with its usable key, or ``None`` if it does not exist, is off, speaks another API than
+    OpenAI's or has no active key that opens."""
+    provider = AIProvider.objects.filter(
+        slug=settings.ASSISTANT_SERVICE_PROVIDER, is_enabled=True, kind=AIProvider.Kind.OPENAI
+    ).first()
+    api_key = usable_key(provider) if provider is not None else ""
+    if not api_key:
+        return None
     return {"provider": provider.slug, "base_url": provider.api_base, "api_key": api_key}
+
+
+# --- The documentation of the panel's assistant (ASSISTANT-F27) -------------------------------------------------
+
+
+@operation(
+    "assistant.docs.list",
+    kind="query",
+    permission="assistant.manage",
+    input=DocsSourceIn,
+    output=DocsListOut,
+    ai=INTERNAL,  # platform
+)
+def docs_list(ctx: OperationContext, data: DocsSourceIn) -> dict:
+    """The hash of every excerpt ``source`` has in the index: what ``index_docs`` does not embed again (the platform
+    only)."""
+    platform_only(ctx)
+    return {"hashes": list(DocChunk.objects.filter(source=data.source).values_list("content_hash", flat=True))}
+
+
+#: An excerpt this close to the question (cosine distance: 0 is the same meaning, 1 nothing in common) answers it.
+CLOSE = 0.55
+#: With fewer close excerpts than this in the person's language, the English ones join.
+ENOUGH = 3
+#: How long the fingerprint of a question is kept.
+QUESTION_CACHE_SECONDS = 60 * 60 * 24
+#: The wait for a question's fingerprint, inside the search's read transaction: well under the 30 s after which Aurora
+#: ends a transaction left idle (``idle_in_transaction_session_timeout``).
+SEARCH_TIMEOUT = httpx.Timeout(connect=5.0, read=10.0, write=5.0, pool=5.0)
+
+
+def docs_language(language: str) -> str:
+    """The language of the documentation a person reads: Spanish for any Spanish, English for any other."""
+    return "es" if media.base_language(language or "") == "es" else "en"
+
+
+def question_fingerprint(service: ServiceConnectionOut, query: str) -> list[float]:
+    """The fingerprint of ``query``, kept a day by the hash of the question as it was asked (spaces and case aside):
+    a question asked again costs no call."""
+    asked = " ".join(query.split()).casefold()
+    key = f"assistant:docs:question:{media.EMBEDDING_MODEL}:{hashlib.sha256(asked.encode()).hexdigest()}"
+    vector = cache.get(key)
+    if vector is None:
+        [vector], _ = async_to_sync(media.embed)(service, [query], timeout=SEARCH_TIMEOUT)
+        cache.set(key, vector, QUESTION_CACHE_SECONDS)
+    return vector
+
+
+def nearest(vector: list[float], language: str, limit: int) -> list[DocChunk]:
+    return list(
+        DocChunk.objects.filter(lang=language)
+        .annotate(distance=CosineDistance("embedding", vector))
+        .order_by("distance", "path", "heading")[:limit]
+    )
+
+
+@operation(
+    "assistant.docs.search",
+    kind="query",
+    permission="assistant.ask",
+    input=DocsSearchIn,
+    output=DocsSearchOut,
+    ai=AI(
+        description=(
+            "Searches ERPlora's help, the documentation of its apps and the plans for how-to questions: returns up to "
+            "8 cited excerpts. Not for live data of the account."
+        )
+    ),
+)
+def docs_search(ctx: OperationContext, data: DocsSearchIn) -> dict:
+    """The excerpts of ERPlora's documentation nearest to ``query``, in the person's language, with the English ones
+    when fewer than ``ENOUGH`` of those are close (``CLOSE``); at most ``limit``. 409
+    ``assistant.provider_not_configured`` without the services' provider; 503 with its code when it fails."""
+    raw = services_provider()
+    with translation.override(ctx.language):
+        if raw is None:
+            raise Conflict(
+                _("ERPlora's documentation cannot be searched now: the provider of the embeddings is not configured."),
+                code="assistant.provider_not_configured",
+            )
+        try:
+            vector = question_fingerprint(ServiceConnectionOut(**raw), data.query)
+        except media.MediaFailed as problem:
+            raise OperationError(
+                _("ERPlora's documentation cannot be searched now: try again in a moment."), code=problem.code, status=503
+            ) from None
+    language = docs_language(ctx.language)
+    found = nearest(vector, language, data.limit)
+    if language != "en" and sum(row.distance < CLOSE for row in found) < ENOUGH:
+        found = sorted(
+            [*found, *nearest(vector, "en", data.limit)], key=lambda row: (row.distance, row.lang != language)
+        )[: data.limit]
+    return {
+        "results": [
+            {
+                "source": row.source,
+                "path": row.path,
+                "heading": row.heading,
+                "text": row.text,
+                "score": round(1 - row.distance, 4),
+                "lang": row.lang,
+            }
+            for row in found
+        ]
+    }
