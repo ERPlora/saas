@@ -11,6 +11,7 @@ from django.contrib.auth.models import Permission
 from live.context import OperationContext, Scope
 
 from assistant.tests.fake_provider import FakeProvider
+from base.tests.conftest import ca_gone_after_one_read, unreadable_ca  # noqa: F401 - the server's trusted certificates
 from hubs.tests.conftest import make_user, plans  # noqa: F401 - shared fixtures
 
 FERNET_KEY = "mbAv33BqhZbROx9FgnZVR3XPEUopApIq3G-xQR4E58w="
@@ -86,16 +87,6 @@ def fake_provider():
     server.start()
     yield server
     server.stop()
-
-
-@pytest.fixture
-def missing_ca(tmp_path, monkeypatch):
-    """The server's ``SSL_CERT_FILE`` naming a file that is not there (the e2e stack of the Hub before its CA
-    exists): ``httpx`` fails to load it as each client is made, before it connects, even to ``http://``."""
-    path = tmp_path / "missing.pem"
-    monkeypatch.setenv("SSL_CERT_FILE", str(path))
-    monkeypatch.delenv("SSL_CERT_DIR", raising=False)
-    return path
 
 
 @pytest.fixture

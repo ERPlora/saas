@@ -19,6 +19,8 @@ from assistant.providers.base import (
     sse_events,
 )
 from assistant.providers.openai import OpenAIProvider
+from assistant.tests.fake_provider import openai_chunk
+from base.tests.conftest import names_the_file
 
 
 class _Lines(httpx.AsyncByteStream):
@@ -118,6 +120,9 @@ def test_a_client_without_a_key_is_unavailable():
 
 
 # --- The server's trusted certificates (FIX-SAAS-ASSISTANT-GATEWAY-502-WHEN-SSL-CERT-FILE-MISSING) ------------------
+#
+# FIX-SAAS-ASSISTANT-OWN-TRUST-STORE-COPY-INSTEAD-OF-BASE-TLS: they are read by ``base.tls``, the one place every
+# outgoing call of the SaaS reads them, never by a copy of its own: one ERROR line, ``base.tls``'s, naming the caller.
 
 KEY = "sk-test-base-0000"
 
@@ -130,23 +135,20 @@ def nowhere() -> OpenAIProvider:
     return OpenAIProvider(api_key=KEY, base_url=f"http://127.0.0.1:{port}/v1")
 
 
-@pytest.fixture(params=["missing", "not_a_certificate"])
-def unreadable_ca(request, missing_ca):
-    """``SSL_CERT_FILE`` naming a file that is not there, or one that holds no certificate."""
-    if request.param == "not_a_certificate":
-        missing_ca.write_text("not a certificate\n")
-    return missing_ca
-
-
-def names_the_file(message: str, path) -> bool:
-    return "SSL_CERT_FILE" in message and str(path) in message
+def the_trust_store_line(caplog, path, caller: str) -> None:
+    """The single ERROR line of the unreadable certificates is ``base.tls``'s, naming ``caller``, the setting and its
+    file: nothing of the assistant logs them a second time."""
+    (line,) = [record for record in caplog.records if "trust_store_unreadable" in record.getMessage()]
+    assert (line.name, line.levelno) == ("base.tls", logging.ERROR)
+    assert f"caller={caller} " in line.getMessage()
+    assert names_the_file(line.getMessage(), path)
 
 
 @pytest.mark.asyncio
 async def test_a_turn_without_the_servers_certificates_ends_in_a_final_error_naming_the_file(unreadable_ca, caplog):
     request = TurnRequest(model_id="gpt-test", messages=[{"role": "user", "content": "Hi"}])
 
-    with caplog.at_level(logging.ERROR, logger="assistant"):
+    with caplog.at_level(logging.ERROR):
         events = [event async for event in nowhere().stream_turn(request)]
 
     assert [event.type for event in events] == ["error", "finish"]
@@ -154,19 +156,44 @@ async def test_a_turn_without_the_servers_certificates_ends_in_a_final_error_nam
     assert events[0].payload["retriable"] is False
     assert events[0].payload["message"].startswith("openai: ")
     assert names_the_file(events[0].payload["message"], unreadable_ca)
-    assert any(names_the_file(record.getMessage(), unreadable_ca) for record in caplog.records)
+    the_trust_store_line(caplog, unreadable_ca, "assistant.provider")
 
 
 @pytest.mark.asyncio
-async def test_a_listing_without_the_servers_certificates_is_a_final_error_naming_the_file(unreadable_ca):
+async def test_a_listing_without_the_servers_certificates_is_a_final_error_naming_the_file(unreadable_ca, caplog):
     provider = nowhere()
 
-    with pytest.raises(ProviderError) as raised:
+    with caplog.at_level(logging.ERROR), pytest.raises(ProviderError) as raised:
         await provider.get_json(f"{provider.base_url}/models", {})
 
     assert raised.value.retriable is False
     assert raised.value.message.startswith("openai: ")
     assert names_the_file(raised.value.message, unreadable_ca)
+    the_trust_store_line(caplog, unreadable_ca, "assistant.provider")
+
+
+@pytest.mark.asyncio
+async def test_a_turn_uses_the_trusted_certificates_it_read(fake_provider, ca_gone_after_one_read):
+    """The client takes the context ``base.tls`` read (``verify=``): the certificates are read once per turn, so a
+    file renewed between that reading and the call never breaks it."""
+    fake_provider.reply("POST", "/v1/chat/completions", sse=[openai_chunk("Hi", finish="stop"), "[DONE]"])
+    provider = OpenAIProvider(api_key=KEY, base_url=f"{fake_provider.url}/v1")
+    request = TurnRequest(model_id="gpt-test", messages=[{"role": "user", "content": "Hi"}])
+
+    events = [event async for event in provider.stream_turn(request)]
+
+    assert [event.type for event in events] == ["text_delta", "finish"]
+    assert events[-1].payload == {"reason": "stop"}
+    assert not ca_gone_after_one_read.exists()
+
+
+@pytest.mark.asyncio
+async def test_a_listing_uses_the_trusted_certificates_it_read(fake_provider, ca_gone_after_one_read):
+    fake_provider.reply("GET", "/v1/models", json={"data": [{"id": "gpt-test"}]})
+    provider = OpenAIProvider(api_key=KEY, base_url=f"{fake_provider.url}/v1")
+
+    assert await provider.get_json(f"{provider.base_url}/models", {}) == {"data": [{"id": "gpt-test"}]}
+    assert not ca_gone_after_one_read.exists()
 
 
 @pytest.mark.asyncio

@@ -5,13 +5,9 @@ Meta is a third party with no test environment here: its Graph API is replaced a
 ``/internal`` is the real-HTTP double of hubs (``hubs.tests.hub_double``), which verifies the signature.
 """
 
-import shutil
-import ssl
-
-import certifi
 import pytest
 
-from base.tests.conftest import unreadable_ca  # noqa: F401 - the server's unreadable trusted certificates
+from base.tests.conftest import ca_gone_after_one_read, unreadable_ca  # noqa: F401 - the server's trusted certificates
 from hubs.tests.conftest import (  # noqa: F401 - fixtures shared with hubs
     add_member,
     business,
@@ -47,25 +43,6 @@ def whatsapp_on(settings):
     settings.FERNET_KEY = FERNET_KEY
     settings.FERNET_KEY_PREVIOUS = ""
     return settings
-
-
-@pytest.fixture
-def ca_gone_after_one_read(tmp_path, monkeypatch):
-    """The server's ``SSL_CERT_FILE``, readable once and gone right after (renewed under a running server): a call
-    that read the trusted certificates twice, once in ``base.tls`` and again as its client is made, would crash."""
-    path = tmp_path / "server.pem"
-    shutil.copyfile(certifi.where(), path)
-    monkeypatch.setenv("SSL_CERT_FILE", str(path))
-    monkeypatch.delenv("SSL_CERT_DIR", raising=False)
-    read = ssl.create_default_context
-
-    def read_then_gone(*args, **kwargs):
-        context = read(*args, **kwargs)
-        path.unlink(missing_ok=True)
-        return context
-
-    monkeypatch.setattr(ssl, "create_default_context", read_then_gone)
-    return path
 
 
 @pytest.fixture

@@ -5,8 +5,8 @@ Each call goes to the services' provider (``assistant.service.connection``: ``AS
 the admin with its key, rotatable) over ``httpx``, with no SDK, the same way as ``assistant.providers``. A failure is
 a ``MediaFailed`` with the provider's class (rejected, or worth trying again) and never the key nor the provider's
 words (they could quote what was dictated); the log says the status only. A server whose trusted certificates cannot
-be loaded is a final failure, logged with the setting and its file (``providers.base.open_client``). Nothing is
-written to disk: the audio goes from memory to the provider.
+be loaded is a final failure, logged with the setting and its file by ``base.tls`` (caller ``assistant.media``).
+Nothing is written to disk: the audio goes from memory to the provider.
 """
 
 from __future__ import annotations
@@ -16,8 +16,9 @@ from decimal import Decimal
 
 import httpx
 
-from assistant.providers.base import TrustStoreUnreadable, is_retriable_status, open_client
+from assistant.providers.base import is_retriable_status
 from assistant.schemas import ServiceConnectionOut
+from base import tls
 
 logger = logging.getLogger(__name__)
 
@@ -60,9 +61,9 @@ class MediaFailed(Exception):
 async def _post(service: ServiceConnectionOut, path: str, **request) -> httpx.Response:
     headers = {"Authorization": f"Bearer {service.api_key.get_secret_value()}"}
     try:
-        async with open_client(TIMEOUT) as client:
+        async with httpx.AsyncClient(timeout=TIMEOUT, verify=tls.trusted_context("assistant.media")) as client:
             response = await client.post(f"{service.base_url}{path}", headers=headers, **request)
-    except TrustStoreUnreadable:
+    except tls.TrustStoreUnreadable:
         raise MediaFailed(retriable=False) from None
     except httpx.HTTPError as problem:
         logger.warning("assistant.media.unreachable path=%s kind=%s", path, type(problem).__name__)

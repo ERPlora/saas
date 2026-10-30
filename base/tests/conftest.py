@@ -1,5 +1,9 @@
-"""Fixtures of base's tests."""
+"""Fixtures of base's tests, and those of the server's trusted certificates every app with outgoing calls shares."""
 
+import shutil
+import ssl
+
+import certifi
 import psycopg
 import pytest
 from django.db import connections
@@ -16,6 +20,25 @@ def unreadable_ca(request, tmp_path, monkeypatch):
         path.write_text("not a certificate\n")
     monkeypatch.setenv("SSL_CERT_FILE", str(path))
     monkeypatch.delenv("SSL_CERT_DIR", raising=False)
+    return path
+
+
+@pytest.fixture
+def ca_gone_after_one_read(tmp_path, monkeypatch):
+    """The server's ``SSL_CERT_FILE``, readable once and gone right after (renewed under a running server): a call
+    that read the trusted certificates twice, once in ``base.tls`` and again as its client is made, would crash."""
+    path = tmp_path / "server.pem"
+    shutil.copyfile(certifi.where(), path)
+    monkeypatch.setenv("SSL_CERT_FILE", str(path))
+    monkeypatch.delenv("SSL_CERT_DIR", raising=False)
+    read = ssl.create_default_context
+
+    def read_then_gone(*args, **kwargs):
+        context = read(*args, **kwargs)
+        path.unlink(missing_ok=True)
+        return context
+
+    monkeypatch.setattr(ssl, "create_default_context", read_then_gone)
     return path
 
 

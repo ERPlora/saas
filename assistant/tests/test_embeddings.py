@@ -18,6 +18,7 @@ from assistant.media import EMBEDDING_MODEL
 from assistant.models import AssistantUsage
 from assistant.tests.conftest import API_KEY
 from assistant.tests.doors import door, error_code
+from base.tests.conftest import names_the_file
 
 EMBEDDINGS = "/internal/assistant/embeddings"
 
@@ -118,16 +119,33 @@ def test_a_failure_of_the_provider_is_a_502_with_its_code_never_the_key(client, 
     assert API_KEY not in response.content.decode()
 
 
-def test_a_server_without_its_trusted_certificates_is_a_final_502_the_log_explains(client, internal, business, answering, fake_provider, missing_ca, caplog):
-    """FIX-SAAS-ASSISTANT-GATEWAY-502-WHEN-SSL-CERT-FILE-MISSING: ``SSL_CERT_FILE`` naming a file that is not there is
-    the server's configuration, not the provider's: final, and the log names the setting and its file."""
-    with caplog.at_level(logging.ERROR, logger="assistant"):
+def test_a_server_without_its_trusted_certificates_is_a_final_502_the_log_explains(client, internal, business, answering, fake_provider, unreadable_ca, caplog):
+    """FIX-SAAS-ASSISTANT-GATEWAY-502-WHEN-SSL-CERT-FILE-MISSING: ``SSL_CERT_FILE`` naming a file that is not there, or
+    one that holds no certificate, is the server's configuration, not the provider's: final, and the log names the
+    setting and its file. FIX-SAAS-ASSISTANT-OWN-TRUST-STORE-COPY-INSTEAD-OF-BASE-TLS: in ``base.tls``'s one ERROR
+    line, naming the caller, never in a copy of the assistant's own."""
+    with caplog.at_level(logging.ERROR):
         response = door(client, EMBEDDINGS, {"hub": business.slug, "texts": ["x"]})
 
     assert response.status_code == 502
     assert (error_code(response), response.json()["error"]["retriable"]) == ("assistant.provider_rejected", False)
+    assert str(unreadable_ca) not in response.content.decode()
     assert fake_provider.requests == []
-    assert any("SSL_CERT_FILE" in record.getMessage() and str(missing_ca) in record.getMessage() for record in caplog.records)
+    (line,) = [record for record in caplog.records if "trust_store_unreadable" in record.getMessage()]
+    assert (line.name, line.levelno) == ("base.tls", logging.ERROR)
+    assert "caller=assistant.media " in line.getMessage()
+    assert names_the_file(line.getMessage(), unreadable_ca)
+
+
+def test_the_call_uses_the_trusted_certificates_it_read(client, internal, business, answering, fake_provider, ca_gone_after_one_read):
+    """The client takes the context ``base.tls`` read (``verify=``): the certificates are read once per call, so a
+    file renewed between that reading and the call never breaks it."""
+    fake_provider.reply("POST", "/v1/embeddings", json=vectors_answer([0.1]))
+
+    response = door(client, EMBEDDINGS, {"hub": business.slug, "texts": ["x"]})
+
+    assert response.status_code == 200
+    assert not ca_gone_after_one_read.exists()
 
 
 def test_the_embeddings_have_their_own_budget(client, internal, business, answering, fake_provider, settings):
