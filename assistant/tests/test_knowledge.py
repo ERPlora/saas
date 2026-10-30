@@ -63,6 +63,11 @@ class TestChunkMarkdown:
             Section("FAQ > Access > Is there a set-up wizard?", "No: every app is set up on its own screen."),
         ]
 
+    def test_a_section_after_a_question_is_not_named_by_it(self):
+        text = "# FAQ\n\n## Access\n\n### Why?\n\nBecause.\n\n## Data\n\nIn the cloud.\n"
+
+        assert chunk_markdown(text)[-1] == Section("FAQ > Data", "In the cloud.")
+
     def test_a_given_title_names_a_document_without_its_own(self):
         assert chunk_markdown("## Prices\n\nNet, VAT excluded.\n", title="Plans") == [
             Section("Plans > Prices", "Net, VAT excluded.")
@@ -112,6 +117,13 @@ class TestChunk:
 
     def test_what_is_embedded_carries_its_headings(self):
         assert Chunk("help", "p", "en", "FAQ > Access", "Because.").embedding_text == "FAQ > Access\nBecause."
+
+    def test_what_is_embedded_never_passes_what_the_model_reads_at_once(self):
+        """One huge «word» (an address, a picture written inline) must not make the provider refuse the whole batch."""
+        chunk = Chunk("help", "p", "en", "FAQ", "x" * 50_000)
+
+        assert len(chunk.embedding_text) == knowledge.MAX_EMBEDDING_CHARS
+        assert chunk.embedding_text.startswith("FAQ\nxxx")
 
 
 # --- The sources -----------------------------------------------------------------------------------------------

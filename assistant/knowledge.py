@@ -6,8 +6,8 @@ cut into the excerpts ``assistant.docs.search`` returns and ``index_docs`` keeps
   words that overlap by ``OVERLAP_WORDS``: a sentence cut at the edge of one is whole in the next. HTML comments go;
   a heading inside a code block is text. The idea of the old product's in-memory index (``apps/dashboard/assistant/
   knowledge.py``), without its store: the excerpts live in ``assistant.DocChunk``.
-- The four sources (``SOURCES``), each in English and Spanish: the public help (``docs/<lang>/help/*.md``, never a
-  guide still waiting for its translation, the rule of ``public.help``); the user documentation of the Hub's apps
+- The four sources (``SOURCES``), each in English and Spanish: the public help (``docs/<lang>/help/*.md``; a guide
+  still waiting for its translation is only its ``<!-- pending translation from en -->``, with no excerpt); the user documentation of the Hub's apps
   (``apps.doc.list``, what the Hub registers with each release); the customer's part of the WORKBOOKs of the panel's
   apps (``WORKBOOK_APPS``: from their first ``##`` to «Para quien lo mantiene», never what is written for the
   maintainers); and one document of the plans on sale (``hubs.plan.list``) with their prices and what each one
@@ -37,6 +37,9 @@ from public import help as public_help
 #: The words of an excerpt, and how many of them the next one repeats.
 MAX_WORDS = 220
 OVERLAP_WORDS = 50
+#: What of an excerpt its fingerprint is computed from, at most: well under the 8192 tokens the model reads at once,
+#: so one huge «word» (an address, a picture written inline) never makes the provider refuse the whole batch.
+MAX_EMBEDDING_CHARS = 6000
 SOURCES = ("help", "app_doc", "workbook", "plans")
 #: The languages the documentation is written in.
 LANGUAGES = ("en", "es")
@@ -89,7 +92,7 @@ class Chunk:
     @property
     def embedding_text(self) -> str:
         """What its fingerprint is computed from: its headings weigh as much as its words."""
-        return f"{self.heading}\n{self.text}" if self.heading else self.text
+        return (f"{self.heading}\n{self.text}" if self.heading else self.text)[:MAX_EMBEDDING_CHARS]
 
 
 def _windows(words: list[str], max_words: int, overlap_words: int) -> list[list[str]]:
@@ -158,10 +161,8 @@ def help_chunks(root: Path) -> list[Chunk]:
     chunks = []
     for lang in public_help.SUPPORTED_LANGS:
         for path in sorted((root / "docs" / lang / "help").glob("*.md")):
-            raw = path.read_text(encoding="utf-8")
-            if public_help.is_pending_translation(raw):
-                continue
-            chunks += _chunks("help", path.relative_to(root).as_posix(), lang, raw)
+            # A guide still waiting for its translation is only its marker, a comment: it has no excerpt.
+            chunks += _chunks("help", path.relative_to(root).as_posix(), lang, path.read_text(encoding="utf-8"))
     return chunks
 
 

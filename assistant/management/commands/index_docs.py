@@ -2,9 +2,10 @@
 
 Every excerpt of the four sources of ``assistant.knowledge`` (the public help, the user documentation of the Hub's
 apps, the customer's part of the panel's WORKBOOKs and the plans on sale) is kept in ``assistant.DocChunk`` with its
-fingerprint, one source at a time (``assistant.docs.index``, one transaction each). Idempotent by the hash of each
+fingerprint, one source at a time (``assistant.docs.index``, one transaction per batch). Idempotent by the hash of each
 excerpt: only a new one is embedded, in batches of ``BATCH`` texts by the services' provider
-(``ASSISTANT_SERVICE_PROVIDER``), and one that no longer exists goes; a run without changes calls nobody. Its cost is
+(``ASSISTANT_SERVICE_PROVIDER``), each written before the next is asked for (a run holds one batch of fingerprints:
+saas-cron has 512 MB), and one that no longer exists goes; a run without changes calls nobody. Its cost is
 ERPlora's own, not an account's (no ``AssistantUsage``): each source ends with one line of what it spent, in the log
 and on the screen. Daily on ``saas-cron`` and once by hand after the first deploy (``saas/README.md``).
 
@@ -13,7 +14,7 @@ and on the screen. Daily on ``saas-cron`` and once by hand after the first deplo
     python manage.py index_docs --full      # every excerpt embedded again (another model of fingerprints)
 
 Without the services' provider (or its key) it ends with exit code 2 and writes nothing; a provider that fails ends
-the run with an error and leaves the source it was on as it was. Under the advisory lock of its name: a second run
+the run with an error, keeping what was embedded before it (the next run does the rest). Under the advisory lock of its name: a second run
 returns at once.
 """
 
@@ -80,39 +81,39 @@ class Command(BaseCommand):
                 f"deleted={len(known - wanted)}"
             )
             return
-        vectors, tokens = self._embed(service, source, new)
-        out = services.docs_index(
-            ctx,
-            DocsIndexIn(
-                source=source,
-                keep=sorted(wanted),
-                chunks=[
-                    DocChunkIn(path=chunk.path, lang=chunk.lang, heading=chunk.heading, text=chunk.text, embedding=vector)
-                    for chunk, vector in zip(new, vectors, strict=True)
-                ],
-            ),
-        )
+        embedded = deleted = tokens = 0
+        # One batch at a time, embedded then written: a run holds one batch of fingerprints, whatever the source has.
+        # The first call also says what the source keeps, so its excerpts that no longer exist go (with nothing new,
+        # that call alone).
+        for start in range(0, max(len(new), 1), BATCH):
+            batch = new[start : start + BATCH]
+            vectors, spent = self._embed(service, source, batch) if batch else ([], 0)
+            out = services.docs_index(
+                ctx,
+                DocsIndexIn(
+                    source=source,
+                    keep=sorted(wanted) if start == 0 else None,
+                    chunks=[
+                        DocChunkIn(path=chunk.path, lang=chunk.lang, heading=chunk.heading, text=chunk.text, embedding=vector)
+                        for chunk, vector in zip(batch, vectors, strict=True)
+                    ],
+                ),
+            )
+            embedded, deleted, tokens = embedded + out.embedded, deleted + out.deleted, tokens + spent
         cost = media.embedding_cost(tokens).quantize(Decimal("0.000001"))
         line = (
-            f"assistant.index_docs source={source} chunks={out.chunks} embedded={out.embedded} deleted={out.deleted} "
+            f"assistant.index_docs source={source} chunks={out.chunks} embedded={embedded} deleted={deleted} "
             f"tokens={tokens} cost_usd={cost}"
         )
         logger.info(line)
         self.stdout.write(line)
 
-    def _embed(self, service, source: str, chunks: list[knowledge.Chunk]) -> tuple[list[list[float]], int]:
-        vectors: list[list[float]] = []
-        tokens = 0
-        for start in range(0, len(chunks), BATCH):
-            texts = [chunk.embedding_text for chunk in chunks[start : start + BATCH]]
-            try:
-                batch, spent = async_to_sync(media.embed)(service, texts)
-            except media.MediaFailed as problem:
-                logger.warning("assistant.index_docs.failed source=%s code=%s", source, problem.code)
-                raise CommandError(
-                    f"{source}: the provider of the embeddings failed ({problem.code}); this source was left as it "
-                    "was. Run index_docs again."
-                ) from None
-            vectors += batch
-            tokens += spent
-        return vectors, tokens
+    def _embed(self, service, source: str, batch: list[knowledge.Chunk]) -> tuple[list[list[float]], int]:
+        try:
+            return async_to_sync(media.embed)(service, [chunk.embedding_text for chunk in batch])
+        except media.MediaFailed as problem:
+            logger.warning("assistant.index_docs.failed source=%s code=%s", source, problem.code)
+            raise CommandError(
+                f"{source}: the provider of the embeddings failed ({problem.code}); what was embedded before stays. "
+                "Run index_docs again to finish."
+            ) from None

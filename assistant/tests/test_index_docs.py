@@ -177,6 +177,8 @@ class TestTheNextRuns:
         run()
 
         assert DocChunk.objects.filter(source="help", path="docs/en/help/02-twice.md").count() == 1
+        embedded = [text for seen in embedder.requests for text in seen.body["input"]]
+        assert embedded.count("Same\nWords.") == 1
 
     def test_full_embeds_every_excerpt_again(self, docs, embedder):
         run()
@@ -191,6 +193,19 @@ class TestTheNextRuns:
         assert after.keys() == before.keys()
         assert all(after[key] > before[key] for key in before)
 
+    def test_full_writes_the_new_fingerprint_over_the_old(self, docs, answering, fake_provider):
+        fake_provider.reply("POST", EMBEDDINGS, always=True, answer=embeddings_for)
+        run()
+        fake_provider.reply(
+            "POST", EMBEDDINGS, always=True, answer=lambda body: {**embeddings_for(body), "data": [
+                {"object": "embedding", "index": index, "embedding": vector(7)} for index in range(len(body["input"]))
+            ]}
+        )
+
+        run("--full")
+
+        assert {row.embedding[7] for row in help_rows()} == {1.0}
+
 
 class TestTheBatches:
     def test_the_provider_gets_at_most_64_texts_a_call(self, docs, embedder):
@@ -203,6 +218,27 @@ class TestTheBatches:
         assert help_calls == [64, 64, 2]
         assert DocChunk.objects.filter(source="help").count() == 130
         assert max(batches(embedder)) == 64
+
+    def test_each_batch_is_written_before_the_next_is_embedded(self, docs, embedder, monkeypatch):
+        """The memory of a run is one batch of fingerprints, whatever a source has (saas-cron has 512 MB)."""
+        from assistant import services
+
+        sections = "\n\n".join(f"## Section {number}\n\nWords of section {number}." for number in range(130))
+        write(docs, "docs/en/help/01-getting-started.md", f"# Long guide\n\n{sections}\n")
+        written = []
+        index = services.docs_index
+
+        def spy(ctx, data):
+            if data.source == "help":
+                written.append((len(data.chunks), len(batches(embedder)), data.keep is not None))
+            return index(ctx, data)
+
+        monkeypatch.setattr(services, "docs_index", spy)
+
+        output = run()
+
+        assert written == [(64, 1, True), (64, 2, False), (2, 3, False)]
+        assert "source=help chunks=130 embedded=130 deleted=0 tokens=1300 " in output
 
 
 class TestWhatStopsIt:
@@ -229,7 +265,7 @@ class TestWhatStopsIt:
     def test_a_dry_run_needs_no_provider(self, docs):
         assert "(dry run) assistant.index_docs source=help chunks=3 embedded=3" in run("--dry-run")
 
-    def test_a_provider_that_fails_stops_the_run_and_its_source_writes_nothing(self, docs, answering, fake_provider):
+    def test_a_provider_that_fails_stops_the_run(self, docs, answering, fake_provider):
         fake_provider.reply("POST", EMBEDDINGS, always=True, status=500, json={"error": {"message": "down"}})
 
         with pytest.raises(CommandError, match="help") as failed:
@@ -237,6 +273,23 @@ class TestWhatStopsIt:
 
         assert failed.value.returncode == 1
         assert not DocChunk.objects.exists()
+
+    def test_what_was_embedded_before_a_failure_stays_and_the_next_run_does_the_rest(
+        self, docs, answering, fake_provider
+    ):
+        sections = "\n\n".join(f"## Section {number}\n\nWords of section {number}." for number in range(70))
+        write(docs, "docs/en/help/01-getting-started.md", f"# Long guide\n\n{sections}\n")
+        fake_provider.reply("POST", EMBEDDINGS, answer=embeddings_for)
+        fake_provider.reply("POST", EMBEDDINGS, status=500, json={"error": {"message": "down"}})
+
+        with pytest.raises(CommandError, match="help"):
+            run()
+        assert DocChunk.objects.filter(source="help").count() == 64
+
+        fake_provider.reply("POST", EMBEDDINGS, always=True, answer=embeddings_for)
+        output = run()
+
+        assert "source=help chunks=70 embedded=6 deleted=0 " in output
 
     def test_a_second_run_returns_at_once_while_one_holds_the_lock(self, docs, embedder, other_session):
         other_session.execute(f"SELECT pg_advisory_lock({LOCK_KEY})")
@@ -278,3 +331,43 @@ class TestTheMigration:
 
         assert "USING hnsw (embedding vector_cosine_ops)" in definition
         assert "m='16'" in definition and "ef_construction='64'" in definition
+
+
+class TestTheWrite:
+    """``assistant.docs.index`` and ``assistant.docs.list``: the platform's, and it computes each hash itself."""
+
+    def test_an_excerpt_the_source_does_not_keep_is_refused(self, db):
+        from live.errors import OperationError
+
+        from assistant import services
+        from assistant.schemas import DocChunkIn, DocsIndexIn
+
+        chunk = DocChunkIn(path="docs/en/help/01.md", lang="en", heading="Guide", text="Text.", embedding=vector(0))
+
+        with pytest.raises(OperationError) as refused:
+            services.docs_index(services.platform_context(), DocsIndexIn(source="help", keep=["0" * 64], chunks=[chunk]))
+
+        assert (refused.value.status, refused.value.code) == (422, "assistant.docs_not_kept")
+        assert not DocChunk.objects.exists()
+
+    def test_a_fingerprint_of_another_length_is_refused(self):
+        from pydantic import ValidationError
+
+        from assistant.schemas import DocChunkIn
+
+        with pytest.raises(ValidationError):
+            DocChunkIn(path="p", lang="en", heading="h", text="t", embedding=[0.1] * 3)
+
+    @pytest.mark.parametrize("operation", ["assistant.docs.index", "assistant.docs.list"])
+    def test_only_the_platform_runs_them(self, operation, make_user):
+        from live.errors import PermissionDenied
+        from live.operations import get
+
+        from hubs.tests.conftest import ctx_for
+
+        op = get(operation)
+        ctx = ctx_for(make_user("staff@erplora.com", is_staff=True))
+        ctx = type(ctx)(scope=ctx.scope, actor=ctx.actor, permissions=frozenset({"assistant.manage"}), language="en")
+
+        with pytest.raises(PermissionDenied):
+            op(ctx, op.input(source="help"))

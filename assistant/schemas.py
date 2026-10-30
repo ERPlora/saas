@@ -391,11 +391,11 @@ class DocChunkIn(Schema):
 
 
 class DocsIndexIn(Schema):
-    """What a source has now: the hash of each of its excerpts (``keep``: the others go) and the excerpts whose
-    fingerprint was just computed (new ones, or every one with ``--full``)."""
+    """A batch of what a source has now: the excerpts whose fingerprint was just computed (new ones, or every one with
+    ``--full``) and, with the first batch, the hash of each excerpt the source keeps (``keep``: the others go)."""
 
     source: DocSource
-    keep: list[str]
+    keep: list[str] | None = None
     chunks: list[DocChunkIn] = Field(default_factory=list)
 
 
@@ -403,9 +403,9 @@ class DocsIndexOut(Schema):
     source: DocSource
     #: The excerpts the source has in the index now.
     chunks: int
-    #: Those written with a fingerprint just computed.
+    #: Those of the batch, written with their fingerprint.
     embedded: int
-    #: Those that no longer exist, deleted.
+    #: Those that are not kept, deleted.
     deleted: int
 
 

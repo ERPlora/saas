@@ -23,8 +23,8 @@ on the page. The commands call them as the platform (``platform_context``).
 - ``assistant.usage.record`` (G29, G52): what a turn, an embedding or the voice spent (tokens, dictations, characters
   read aloud) and its cost in USD.
 - ``assistant.report.send`` (G58): the report of an answer, mailed to the support mailbox; nothing kept.
-- ``assistant.docs.index`` (F27): what one source of the panel's assistant's documentation has now (``index_docs``):
-  its excerpts that no longer exist go, the ones just embedded are written with their fingerprint.
+- ``assistant.docs.index`` (F27): a batch of what one source of the panel's assistant's documentation has now
+  (``index_docs``): its excerpts that no longer exist go, the ones just embedded are written with their fingerprint.
 """
 
 import logging
@@ -646,17 +646,19 @@ def _mail_report(ctx: OperationContext, who: str, details: list[tuple[str, str]]
     ai=INTERNAL,  # platform
 )
 def docs_index(ctx: OperationContext, data: DocsIndexIn) -> dict:
-    """What ``source`` has now, in one transaction (the platform only: ``index_docs``): its excerpts whose hash is not
-    in ``keep`` go; each of ``chunks`` is written with its fingerprint, new or over the one it had (``--full``). The
-    hash of an excerpt is computed here, never taken from the caller."""
+    """A batch of what ``source`` has now, in one transaction (the platform only: ``index_docs``): with ``keep``, its
+    excerpts whose hash is not there go; each of ``chunks`` is written with its fingerprint, new or over the one it
+    had (``--full``). The hash of an excerpt is computed here, never taken from the caller."""
     queries.platform_only(ctx)
-    keep = set(data.keep)
-    deleted, _ = DocChunk.objects.filter(source=data.source).exclude(content_hash__in=keep).delete()
+    keep = None if data.keep is None else set(data.keep)
+    deleted = 0
+    if keep is not None:
+        deleted = DocChunk.objects.filter(source=data.source).exclude(content_hash__in=keep).delete()[0]
     now = timezone.now()
     rows = {}
     for chunk in data.chunks:
         digest = content_hash(data.source, chunk.path, chunk.lang, chunk.heading, chunk.text)
-        if digest not in keep:
+        if keep is not None and digest not in keep:
             with translation.override(ctx.language):
                 raise OperationError(
                     _("An excerpt to write is not among the ones the source keeps."), code="assistant.docs_not_kept", status=422

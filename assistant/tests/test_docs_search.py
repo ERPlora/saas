@@ -186,6 +186,24 @@ class TestTheQuestionsFingerprint:
 
         assert len(embedding_calls(embedder)) == 2
 
+    def test_the_wait_for_it_is_short_inside_the_read_transaction(self, account, embedder, monkeypatch):
+        """Aurora ends a transaction left idle 30 s: the search waits 10 s at most, never the 60 s of the index."""
+        from assistant import media
+
+        waits = []
+        embed = media.embed
+
+        async def spy(service, texts, **options):
+            waits.append(options.get("timeout"))
+            return await embed(service, texts, **options)
+
+        monkeypatch.setattr(media, "embed", spy)
+
+        search(account)
+
+        assert [wait.read for wait in waits] == [10.0]
+        assert waits[0].connect <= 5.0
+
     def test_it_is_kept_for_a_day(self, account, embedder, monkeypatch):
         kept = {}
         monkeypatch.setattr(cache, "set", lambda key, value, timeout=None: kept.update({key: timeout}))
