@@ -29,7 +29,7 @@ from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 from live.context import OperationContext, Scope, system_context
 from live.errors import Conflict, InvalidPayload, NotFound, OperationError, PermissionDenied
-from live.operations import operation
+from live.operations import AI, INTERNAL, operation
 from live.outbox import record_event
 from live.slugs import (
     HUB_SLUG_MAX_LENGTH,
@@ -165,6 +165,10 @@ class SeatLimitReached(Conflict):
     permission="hubs.manage",
     input=BusinessCreateIn,
     output=BusinessDetailOut,
+    ai=AI(
+        description="Creates a business on the Free plan with its address; one free business per account.",
+        risk="high",
+    ),
 )
 def business_create(ctx: OperationContext, data: BusinessCreateIn) -> dict:
     """The sign-up (PLAN-SAAS §3.1 step 2, round 17 §2.3): in one transaction the payer, the business, its
@@ -315,6 +319,7 @@ def _subscribe_to_free(hub: Hub, plan, now) -> Subscription:
     permission="hubs.manage",
     input=BusinessUpdateIn,
     output=BusinessDetailOut,
+    ai=AI(description="Changes the name, country, language or time zone of a business; its owner and administrators."),
 )
 def business_update(ctx: OperationContext, data: BusinessUpdateIn) -> dict:
     """Name, country, language and time zone (the Settings tab): the owner and the administrators. The
@@ -350,6 +355,10 @@ def business_update(ctx: OperationContext, data: BusinessUpdateIn) -> dict:
     permission="hubs.manage",
     input=BusinessAddressIn,
     output=BusinessDetailOut,
+    ai=AI(
+        description="Moves a business to another web address; people must use the new one. Only its owner.",
+        risk="high",
+    ),
 )
 def business_change_address(ctx: OperationContext, data: BusinessAddressIn) -> dict:
     """The owner moves the business to another web address (HUBS-F16; PLAN-SAAS §1.1, round 2026-10-15b), checked
@@ -396,6 +405,11 @@ def business_change_address(ctx: OperationContext, data: BusinessAddressIn) -> d
     permission="hubs.manage",
     input=BusinessDeleteIn,
     output=BusinessDetailOut,
+    ai=AI(
+        description="Deletes a business: it stops opening at once, is kept 90 days and its plan goes back to Free. "
+                    "confirm_name is the business's exact name. Only its owner.",
+        risk="high",
+    ),
 )
 def business_delete(ctx: OperationContext, data: BusinessDeleteIn) -> dict:
     """The owner deletes the business (PLAN-SAAS §3.4, round 17 §2.11): it stops opening at once, the
@@ -487,6 +501,7 @@ def _back_to_free(hub: Hub) -> None:
     permission="hubs.manage",
     input=ByIdIn,
     output=BusinessDetailOut,
+    ai=AI(description="Recovers a business deleted less than 90 days ago, on the Free plan; only its owner."),
 )
 def business_restore(ctx: OperationContext, data: ByIdIn) -> dict:
     """The owner recovers a deleted business within its 90 days (round 17 §2.11), on Free."""
@@ -542,6 +557,7 @@ NOT_OPENING = {
     permission="hubs.manage",
     input=BusinessOpenIn,
     output=BusinessOpenOut,
+    ai=INTERNAL,  # screen
 )
 def business_open(ctx: OperationContext, data: BusinessOpenIn) -> dict:
     """«Open» (PLAN-SAAS §3.1 step 5), for every role: the Hub's start of the jump, ``url``.
@@ -579,6 +595,7 @@ def system_ctx_for(hub_id: UUID) -> OperationContext:
     permission="hubs.manage",
     input=MarkReadyIn,
     output=HubStatusOut,
+    ai=INTERNAL,  # hub
 )
 def business_mark_ready(ctx: OperationContext, data: MarkReadyIn) -> dict:
     """The Hub's ``POST /internal/hubs/{id}/ready``: the business's database is ready (§3.1 step 3).
@@ -628,6 +645,7 @@ def business_mark_ready(ctx: OperationContext, data: MarkReadyIn) -> dict:
     permission="hubs.manage",
     input=HubErrorIn,
     output=HubStatusOut,
+    ai=INTERNAL,  # hub
 )
 def business_record_hub_error(ctx: OperationContext, data: HubErrorIn) -> dict:
     """The Hub's last refusal of a call about the business (its error code), or ``None`` once a call
@@ -657,6 +675,7 @@ def business_record_hub_error(ctx: OperationContext, data: HubErrorIn) -> dict:
     permission="hubs.manage",
     input=NotifyPeopleIn,
     output=NotifyPeopleOut,
+    ai=INTERNAL,  # platform
 )
 def business_notify_people(ctx: OperationContext, data: NotifyPeopleIn) -> dict:
     """A change of the people of the business, recorded on this context's channel, so the lists of that
@@ -755,7 +774,16 @@ def _mail_invitation(ctx: OperationContext, member: HubMember) -> None:
     )
 
 
-@operation("hubs.member.invite", kind="command", permission="hubs.manage", input=MemberInviteIn, output=MemberRowOut)
+@operation(
+    "hubs.member.invite",
+    kind="command",
+    permission="hubs.manage",
+    input=MemberInviteIn,
+    output=MemberRowOut,
+    ai=AI(
+        description="Invites a person by email to a business with a role below one's own; the invitation lasts 7 days.",
+    ),
+)
 def member_invite(ctx: OperationContext, data: MemberInviteIn) -> dict:
     """Invite somebody to the business with a role below one's own (round 17 §2.8).
 
@@ -817,7 +845,14 @@ def member_invite(ctx: OperationContext, data: MemberInviteIn) -> dict:
     return queries.member_row(actor, member, now)
 
 
-@operation("hubs.member.change_role", kind="command", permission="hubs.manage", input=MemberRoleIn, output=MemberRowOut)
+@operation(
+    "hubs.member.change_role",
+    kind="command",
+    permission="hubs.manage",
+    input=MemberRoleIn,
+    output=MemberRowOut,
+    ai=AI(description="Gives a member or a pending invitation of a business another role below one's own."),
+)
 def member_change_role(ctx: OperationContext, data: MemberRoleIn) -> dict:
     """Give a member (or an invitation) another role below one's own; never the owner's."""
     actor, target = _managed(ctx, data.id, data.role)
@@ -835,7 +870,17 @@ def member_change_role(ctx: OperationContext, data: MemberRoleIn) -> dict:
     return queries.member_row(actor, target, timezone.now())
 
 
-@operation("hubs.member.remove", kind="command", permission="hubs.manage", input=ByIdIn, output=RemovedOut)
+@operation(
+    "hubs.member.remove",
+    kind="command",
+    permission="hubs.manage",
+    input=ByIdIn,
+    output=RemovedOut,
+    ai=AI(
+        description="Takes a person out of one business: their access to it ends; their account and other businesses "
+                    "stay.",
+    ),
+)
 def member_remove(ctx: OperationContext, data: ByIdIn) -> dict:
     """Take somebody out of this business only (their other businesses and account stay): their
     access ends, the Hub learns it in the next snapshot and ends their sessions there."""
@@ -889,7 +934,14 @@ def _pending_only(target: HubMember) -> None:
         raise Conflict(_("This person already answered the invitation."), code="hubs.member_not_pending")
 
 
-@operation("hubs.member.resend", kind="command", permission="hubs.manage", input=ByIdIn, output=MemberRowOut)
+@operation(
+    "hubs.member.resend",
+    kind="command",
+    permission="hubs.manage",
+    input=ByIdIn,
+    output=MemberRowOut,
+    ai=AI(description="Sends a pending invitation to a business again, valid for 7 more days."),
+)
 def member_resend(ctx: OperationContext, data: ByIdIn) -> dict:
     """Send the invitation again: it gets 7 more days."""
     actor, target = _managed(ctx, data.id)
@@ -904,7 +956,14 @@ def member_resend(ctx: OperationContext, data: ByIdIn) -> dict:
     return queries.member_row(actor, target, now)
 
 
-@operation("hubs.member.cancel", kind="command", permission="hubs.manage", input=ByIdIn, output=RemovedOut)
+@operation(
+    "hubs.member.cancel",
+    kind="command",
+    permission="hubs.manage",
+    input=ByIdIn,
+    output=RemovedOut,
+    ai=AI(description="Withdraws an invitation to a business nobody answered yet."),
+)
 def member_cancel(ctx: OperationContext, data: ByIdIn) -> dict:
     """Withdraw an invitation nobody answered: the row goes."""
     _actor, target = _managed(ctx, data.id)
@@ -937,7 +996,14 @@ def _my_invitation(ctx: OperationContext, member_id: UUID) -> HubMember:
     return member
 
 
-@operation("hubs.invitation.accept", kind="command", permission="hubs.manage", input=ByIdIn, output=BusinessRowOut)
+@operation(
+    "hubs.invitation.accept",
+    kind="command",
+    permission="hubs.manage",
+    input=ByIdIn,
+    output=BusinessRowOut,
+    ai=AI(description="Accepts an invitation of this account to a business, within its 7 days."),
+)
 def invitation_accept(ctx: OperationContext, data: ByIdIn) -> dict:
     """Accept an invitation within its 7 days: the account enters with the role it says, if the plan
     still has a seat beside the people already inside (``_check_seat_to_enter``). An account that never
@@ -963,7 +1029,14 @@ def invitation_accept(ctx: OperationContext, data: ByIdIn) -> dict:
     return queries.business_row(member, now)
 
 
-@operation("hubs.invitation.decline", kind="command", permission="hubs.manage", input=ByIdIn, output=RemovedOut)
+@operation(
+    "hubs.invitation.decline",
+    kind="command",
+    permission="hubs.manage",
+    input=ByIdIn,
+    output=RemovedOut,
+    ai=AI(description="Declines an invitation of this account to a business."),
+)
 def invitation_decline(ctx: OperationContext, data: ByIdIn) -> dict:
     """Decline an invitation: the row goes (round 17 §2.8)."""
     member = _my_invitation(ctx, data.id)
@@ -998,7 +1071,16 @@ def _expire_stale(hub: Hub, now) -> None:
 
 
 @operation(
-    "hubs.ownership.transfer", kind="command", permission="hubs.manage", input=OwnershipTransferIn, output=OwnershipTransferOut
+    "hubs.ownership.transfer",
+    kind="command",
+    permission="hubs.manage",
+    input=OwnershipTransferIn,
+    output=OwnershipTransferOut,
+    ai=AI(
+        description="Offers a business to one of its members, who has 7 days to accept; the payer does not change and the "
+                    "owner stays as administrator.",
+        risk="high",
+    ),
 )
 def ownership_transfer(ctx: OperationContext, data: OwnershipTransferIn) -> dict:
     """The owner offers the business to somebody already on it, who answers within 7 days (saas#1670).
@@ -1070,7 +1152,16 @@ def _answer(ctx: OperationContext, transfer_id: UUID, party: str) -> HubOwnershi
     return transfer
 
 
-@operation("hubs.ownership.accept", kind="command", permission="hubs.manage", input=ByIdIn, output=OwnershipTransferOut)
+@operation(
+    "hubs.ownership.accept",
+    kind="command",
+    permission="hubs.manage",
+    input=ByIdIn,
+    output=OwnershipTransferOut,
+    ai=AI(
+        description="Accepts the offer to become the owner of a business; the previous owner stays as administrator.",
+    ),
+)
 def ownership_accept(ctx: OperationContext, data: ByIdIn) -> dict:
     """The named recipient takes the business: the two roles swap in one transaction (exactly one owner
     before and after) and nobody leaves it."""
@@ -1126,7 +1217,14 @@ def _resolve(transfer: HubOwnershipTransfer, status: str) -> None:
     transfer.save(update_fields=["status", "resolved_at"])
 
 
-@operation("hubs.ownership.decline", kind="command", permission="hubs.manage", input=ByIdIn, output=OwnershipTransferOut)
+@operation(
+    "hubs.ownership.decline",
+    kind="command",
+    permission="hubs.manage",
+    input=ByIdIn,
+    output=OwnershipTransferOut,
+    ai=AI(description="Declines the offer to become the owner of a business; nothing changes."),
+)
 def ownership_decline(ctx: OperationContext, data: ByIdIn) -> dict:
     """The named recipient says no: nothing about the business changes."""
     transfer = _answer(ctx, data.id, "to_user")
@@ -1136,7 +1234,14 @@ def ownership_decline(ctx: OperationContext, data: ByIdIn) -> dict:
     return _transfer_out(transfer)
 
 
-@operation("hubs.ownership.cancel", kind="command", permission="hubs.manage", input=ByIdIn, output=OwnershipTransferOut)
+@operation(
+    "hubs.ownership.cancel",
+    kind="command",
+    permission="hubs.manage",
+    input=ByIdIn,
+    output=OwnershipTransferOut,
+    ai=AI(description="The owner withdraws an offer of the business nobody answered yet."),
+)
 def ownership_cancel(ctx: OperationContext, data: ByIdIn) -> dict:
     """The owner withdraws the offer before it is answered."""
     transfer = _answer(ctx, data.id, "from_user")
@@ -1150,7 +1255,15 @@ def ownership_cancel(ctx: OperationContext, data: ByIdIn) -> dict:
 
 
 @operation(
-    "hubs.billing_profile.update", kind="command", permission="hubs.manage", input=BillingProfileIn, output=BillingProfileOut
+    "hubs.billing_profile.update",
+    kind="command",
+    permission="hubs.manage",
+    input=BillingProfileIn,
+    output=BillingProfileOut,
+    ai=AI(
+        description="Changes who ERPlora invoices for a business: name, tax ID, billing address and email; only its "
+                    "owner.",
+    ),
 )
 def billing_profile_update(ctx: OperationContext, data: BillingProfileIn) -> dict:
     """The owner says who ERPlora invoices for the business. «Use the business's data» copies its name
@@ -1232,6 +1345,7 @@ STANDING_MOVES = {
     permission="hubs.manage",
     input=SubscriptionApplyIn,
     output=SubscriptionApplyOut,
+    ai=INTERNAL,  # platform
 )
 def subscription_apply(ctx: OperationContext, data: SubscriptionApplyIn) -> dict:
     """Write what the LIVE Stripe subscription says of a business (billing reads it: webhook, checkout,
@@ -2050,6 +2164,7 @@ USAGE_FAILING_COUNTS = ("unreachable", "refused", "invalid", "failed")
     permission="hubs.manage",
     input=UsageRecordIn,
     output=UsageRecordOut,
+    ai=INTERNAL,  # hub
 )
 def usage_record(ctx: OperationContext, data: UsageRecordIn) -> dict:
     """One day of a business's usage as the Hub measured it (``collect_hub_usage``); only the platform runs it.
@@ -2181,6 +2296,7 @@ def age_suspended() -> Counter:
     permission="hubs.manage",
     input=ByIdIn,
     output=SuspensionStepOut,
+    ai=INTERNAL,  # scheduled
 )
 def business_age_suspension(ctx: OperationContext, data: ByIdIn) -> dict:
     """The step of the clock that is due for one suspended business (HUBS-F20), platform only: the first notice

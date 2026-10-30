@@ -28,7 +28,7 @@ from django.utils import timezone, translation
 from django.utils.translation import gettext as _
 from live.context import OperationContext, Scope, system_context
 from live.errors import Conflict, InvalidPayload, NotFound, PermissionDenied
-from live.operations import operation
+from live.operations import INTERNAL, operation
 from live.outbox import record_event
 from PIL import Image, UnidentifiedImageError
 
@@ -76,6 +76,7 @@ PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
     permission="fiscal.manage",
     input=RepresentationSubmitIn,
     output=RepresentationSubmitOut,
+    ai=INTERNAL,  # hub
 )
 def representation_submit(ctx: OperationContext, data: RepresentationSubmitIn) -> dict:
     """``POST /internal/hubs/{id}/representation``: file the business's authorisation for review.
@@ -220,6 +221,7 @@ def _document_refusal(name: str, code: str) -> tuple[str, str]:
     permission="fiscal.manage",
     input=ReviewIn,
     output=ReviewOut,
+    ai=INTERNAL,  # staff
 )
 def representation_approve(ctx: OperationContext, data: ReviewIn) -> dict:
     """A person of the staff accepts the documents: the authorisation is in force and replaces the one that
@@ -256,6 +258,7 @@ def representation_approve(ctx: OperationContext, data: ReviewIn) -> dict:
     permission="fiscal.manage",
     input=ReturnIn,
     output=ReviewOut,
+    ai=INTERNAL,  # staff
 )
 def representation_return(ctx: OperationContext, data: ReturnIn) -> dict:
     """A person of the staff sends the documents back, saying why (the customer reads it). Only a waiting one;
@@ -283,6 +286,7 @@ def representation_return(ctx: OperationContext, data: ReturnIn) -> dict:
     permission="fiscal.manage",
     input=WithdrawIn,
     output=ReviewOut,
+    ai=INTERNAL,  # staff
 )
 def representation_withdraw(ctx: OperationContext, data: WithdrawIn) -> dict:
     """A person of the staff withdraws an approval, saying why: ERPlora no longer files for the business by
@@ -396,6 +400,7 @@ def _stepped(ctx: OperationContext, event: str, grant: RepresentationGrant) -> N
     permission="fiscal.manage",
     input=NotifyIn,
     output=NotifyOut,
+    ai=INTERNAL,  # platform
 )
 def representation_notify(ctx: OperationContext, data: NotifyIn) -> dict:
     """A change of the business's authorisation, recorded on this context's channel so that account's page
@@ -427,6 +432,7 @@ def tell_the_business(ctx: OperationContext, hub_id: UUID) -> None:
     permission="fiscal.manage",
     input=StampUploadIn,
     output=StampOut,
+    ai=INTERNAL,  # staff
 )
 def stamp_upload(ctx: OperationContext, data: StampUploadIn) -> dict:
     """A member of the staff with ``STAMP_PERMISSION`` uploads ERPlora's stamp and signature: every model a
@@ -454,6 +460,7 @@ def stamp_upload(ctx: OperationContext, data: StampUploadIn) -> dict:
     permission="fiscal.manage",
     input=StampDeleteIn,
     output=StampDeleteOut,
+    ai=INTERNAL,  # staff
 )
 def stamp_delete(ctx: OperationContext, data: StampDeleteIn) -> dict:
     """A member of the staff with ``STAMP_PERMISSION`` removes ERPlora's stamp: the models go without it until

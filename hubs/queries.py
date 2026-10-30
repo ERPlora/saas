@@ -32,7 +32,7 @@ from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 from live.context import OperationContext
 from live.errors import NotFound, OperationError, PermissionDenied, Unauthorized
-from live.operations import operation
+from live.operations import AI, INTERNAL, operation
 from live.slugs import is_demo_slug, is_reserved_hub_slug, validate_hub_slug
 
 from accounts.models import HubMembership
@@ -106,6 +106,7 @@ def _entry(row: Sector | BusinessType, language: str) -> dict[str, Any]:
     input=SectorListIn,
     output=SectorListOut,
     expose_api=True,
+    ai=AI(description="The sectors a business can belong to (hospitality, beauty…), to choose its type."),
 )
 def sector_list(ctx: OperationContext, data: SectorListIn) -> dict[str, Any]:
     """The active sectors, by their display order."""
@@ -120,6 +121,7 @@ def sector_list(ctx: OperationContext, data: SectorListIn) -> dict[str, Any]:
     input=BusinessTypeListIn,
     output=BusinessTypeListOut,
     expose_api=True,
+    ai=AI(description="The types of business of each sector (a restaurant, a hair salon…)."),
 )
 def business_type_list(
     ctx: OperationContext, data: BusinessTypeListIn
@@ -157,6 +159,7 @@ def _sector_ref(sector: Sector | None, language: str) -> dict[str, str] | None:
     input=PlanListIn,
     output=PlanListOut,
     expose_api=True,
+    ai=AI(description="The plans ERPlora sells, with their prices and what each one includes."),
 )
 def plan_list(ctx: OperationContext, data: PlanListIn) -> dict[str, Any]:
     """The plans on sale (``Plan.objects.public()``), by display order then price.
@@ -451,6 +454,7 @@ def free_slug(name: str) -> str:
     permission="hubs.view",
     input=AddressProposeIn,
     output=AddressProposeOut,
+    ai=AI(description="The web address proposed for a new business from its name, before creating it."),
 )
 def address_propose(ctx: OperationContext, data: AddressProposeIn) -> dict[str, Any]:
     """The address «Create a business» proposes while the name is typed."""
@@ -469,6 +473,7 @@ def address_propose(ctx: OperationContext, data: AddressProposeIn) -> dict[str, 
     input=BusinessListIn,
     output=BusinessListOut,
     expose_api=True,
+    ai=AI(description="Lists the businesses of this account: name, address, status and plan."),
 )
 def business_list(ctx: OperationContext, data: BusinessListIn) -> dict[str, Any]:
     """The account's businesses, the last opened first (round 17 §2.2), then by name.
@@ -682,6 +687,7 @@ def _name_of(user) -> str | None:
     input=ByIdIn,
     output=BusinessDetailOut,
     expose_api=True,
+    ai=AI(description="One business of this account with its people, plan and address."),
 )
 def business_get(ctx: OperationContext, data: ByIdIn) -> dict[str, Any]:
     """A business's page (the Summary and Settings tabs): its owner and its administrators."""
@@ -1069,6 +1075,10 @@ def ranked(members):
     input=MemberListIn,
     output=MemberListOut,
     expose_api=True,
+    ai=AI(
+        description="The people of one business and its pending invitations, with their roles; for its owner and "
+                    "administrators.",
+    ),
 )
 def member_list(ctx: OperationContext, data: MemberListIn) -> dict[str, Any]:
     """The members page of a business (the Members tab), for its owner and its administrators: every member
@@ -1172,6 +1182,7 @@ def member_row(
     permission="hubs.view",
     input=InvitationListIn,
     output=InvitationListOut,
+    ai=AI(description="The invitations to businesses waiting for this account's answer."),
 )
 def invitation_list_mine(
     ctx: OperationContext, data: InvitationListIn
@@ -1202,6 +1213,10 @@ PAYER_FIELDS = (
     permission="hubs.view",
     input=BillingProfileGetIn,
     output=BillingProfileOut,
+    ai=AI(
+        description="Who ERPlora invoices for one business: its payer's name, tax ID and billing address; only its "
+        "owner.",
+    ),
 )
 def billing_profile_get(
     ctx: OperationContext, data: BillingProfileGetIn
@@ -1299,6 +1314,10 @@ def plan_in_force(hub: Hub, now: datetime) -> Plan | None:
     input=UsageGetIn,
     output=UsageOut,
     expose_api=True,
+    ai=AI(
+        description="The last day measured of one business's usage against what its plan includes; its owner and "
+                    "administrators.",
+    ),
 )
 def usage_get(ctx: OperationContext, data: UsageGetIn) -> dict[str, Any]:
     """The last day the Hub measured of a business (the «Usage» card of its Summary): its owner and admins."""
@@ -1321,6 +1340,7 @@ def usage_get(ctx: OperationContext, data: UsageGetIn) -> dict[str, Any]:
     input=UsageSeriesIn,
     output=UsageSeriesOut,
     expose_api=True,
+    ai=AI(description="One business's usage day by day over the last days, against what its plan includes."),
 )
 def usage_series(ctx: OperationContext, data: UsageSeriesIn) -> dict[str, Any]:
     """The days measured of a business in the last ``days`` up to yesterday, oldest first, against the space
@@ -1422,6 +1442,10 @@ def _data_copy_unavailable() -> OperationError:
     input=DataCopyListIn,
     output=DataCopyListOut,
     expose_api=True,
+    ai=AI(
+        description="The copies of a business's data its Hub keeps for its owner to download: when and how big, newest "
+        "first; the download itself is on the business's page."
+    ),
 )
 def data_copy_list(ctx: OperationContext, data: DataCopyListIn) -> dict[str, Any]:
     """The copies the Hub keeps of the business's data (the panel's «Download the data»): when, which and how big,
@@ -1454,6 +1478,7 @@ def data_copy_list(ctx: OperationContext, data: DataCopyListIn) -> dict[str, Any
     permission="hubs.view",
     input=DataCopyLinkIn,
     output=DataCopyLinkOut,
+    ai=INTERNAL,  # file
 )
 def data_copy_link(ctx: OperationContext, data: DataCopyLinkIn) -> dict[str, Any]:
     """A link to download one copy of the business's data, asked to the Hub now (it lasts 15 minutes, so a page left

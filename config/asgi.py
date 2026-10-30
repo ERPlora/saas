@@ -16,7 +16,8 @@ handshake is refused instead (``websocket.close``, which Daphne answers with 403
 F21) or the customer's signed authorisation with its identity documents (FISCAL-F03) is larger, and none of them
 touches the disk. Each door up to its own ceiling; what passes it, or a declared length over it, is received and
 dropped, never kept, and the door answers 413. Those doors are under ``/internal``, not published on the ALB: only
-the Hub reaches them.
+the Hub reaches them; but for the turn of the panel's own assistant (``/api/assistant/turn``, PLAN-SAAS §23), the
+same conversation and attachments for the signed-in account.
 
 https://docs.djangoproject.com/en/6.1/howto/deployment/asgi/
 """
@@ -37,6 +38,8 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 #: The paths whose body stays in memory, each with the setting of its door's ceiling (``module.NAME``).
 IN_MEMORY_PATHS = (
     (re.compile(r"/internal/(?:assistant|speech)/"), "assistant.internal.TURN_BODY_BYTES"),
+    # The turn of the panel's own assistant (PLAN-SAAS §23): the same conversation and attachments.
+    (re.compile(r"/api/assistant/turn\Z"), "assistant.internal.TURN_BODY_BYTES"),
     (re.compile(r"/internal/hubs/[^/]+/representation\Z"), "fiscal.internal.MAX_BODY_BYTES"),
 )
 #: The ceiling of the request in hand when its body stays in memory (``None``: Django's own reading).

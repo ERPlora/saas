@@ -11,7 +11,7 @@ import time
 from typing import Any
 
 from live.context import OperationContext
-from live.operations import operation
+from live.operations import INTERNAL, operation
 
 from public import appdist
 from public.schemas import AppReleaseIn, AppReleaseOut
@@ -23,6 +23,7 @@ from public.schemas import AppReleaseIn, AppReleaseOut
     permission=None,
     input=AppReleaseIn,
     output=AppReleaseOut,
+    ai=INTERNAL,  # public
 )
 def app_release(ctx: OperationContext, data: AppReleaseIn) -> dict[str, Any]:
     """``{"version": str | None}``: ``None`` whenever the bucket could not tell, never a guess."""

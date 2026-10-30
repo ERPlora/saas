@@ -22,7 +22,7 @@ from django.utils.translation import gettext as _
 from django_ratelimit.core import is_ratelimited
 from live.context import OperationContext
 from live.errors import OperationError, Unauthorized
-from live.operations import operation
+from live.operations import AI, INTERNAL, operation
 
 from apps import queries as app_queries
 from apps.icons import FALLBACK_ICON_SVG
@@ -496,6 +496,7 @@ def _vat_status_on_file(vat_number: str, country: str) -> str:
     input=TaxPreviewIn,
     output=TaxPreviewOut,
     expose_api=True,
+    ai=AI(description="The VAT a sale to a payer carries (by country, postal code and VAT number)."),
 )
 def tax_preview(ctx: OperationContext, params: TaxPreviewIn) -> dict:
     """The tax a sale to this payer carries, with the same engine the checkout charges with: «€29.99 + 21 %
@@ -572,6 +573,7 @@ def redeemable_promo(
     permission="billing.view",
     input=PromoCheckIn,
     output=PromoCheckOut,
+    ai=AI(description="Whether a promo code is valid now and the trial it grants."),
 )
 def promo_check(ctx: OperationContext, params: PromoCheckIn) -> dict:
     """Whether a promo code grants a trial now, before paying (the store). An invalid code is an answer, not
@@ -676,6 +678,7 @@ def offered_plans(paying: bool):
     permission="billing.view",
     input=StoreCatalogIn,
     output=StoreCatalogOut,
+    ai=AI(description="What the store sells a business, with prices, and what it already has."),
 )
 def store_catalog(ctx: OperationContext, params: StoreCatalogIn) -> dict:
     """What the Store sells the business and what it already has: every paid module on sale with its net
@@ -874,6 +877,9 @@ def _invoice_row(invoice: Invoice, user, declined: set[str]) -> dict:
     input=InvoiceListIn,
     output=InvoiceListOut,
     expose_api=True,
+    ai=AI(
+        description="ERPlora's invoices to this account, newest first, by business, payment status, year and number.",
+    ),
 )
 def invoice_list(ctx: OperationContext, data: InvoiceListIn) -> dict:
     """ERPlora's invoices of the account, the newest first, filtered by business, payment, year and number:
@@ -895,6 +901,7 @@ def invoice_list(ctx: OperationContext, data: InvoiceListIn) -> dict:
     input=InvoiceByIdIn,
     output=InvoiceDetailOut,
     expose_api=True,
+    ai=AI(description="One invoice of ERPlora to this account with its lines and amounts."),
 )
 def invoice_get(ctx: OperationContext, data: InvoiceByIdIn) -> dict:
     """One invoice with its lines, its recipient as it was on the issue date and its QR."""
@@ -949,6 +956,7 @@ def invoice_get(ctx: OperationContext, data: InvoiceByIdIn) -> dict:
     input=InvoiceByIdIn,
     output=InvoiceFileOut,
     expose_api=True,
+    ai=INTERNAL,  # file
 )
 def invoice_pdf(ctx: OperationContext, data: InvoiceByIdIn) -> dict:
     """The PDF of an invoice, as ERPlora's platform hub issued it (``GET /internal/platform/invoices/{id}/pdf``,
@@ -1000,6 +1008,7 @@ def _csv_amount(cents: int, separator: str) -> str:
     input=InvoiceFilterIn,
     output=InvoiceFileOut,
     expose_api=True,
+    ai=INTERNAL,  # file
 )
 def invoice_csv(ctx: OperationContext, data: InvoiceFilterIn) -> dict:
     """«Download Excel» (W-F9): the invoices the filters show, all of them, as CSV for the accountant.
@@ -1147,6 +1156,7 @@ def _subscription_row(
     input=SubscriptionListIn,
     output=SubscriptionListOut,
     expose_api=True,
+    ai=AI(description="What each business of the account pays ERPlora: plan, modules, price and next invoice."),
 )
 def subscription_list(ctx: OperationContext, data: SubscriptionListIn) -> dict:
     """One row per business of the account that Stripe bills (it owns it or pays it): the plan and modules at
@@ -1220,6 +1230,7 @@ def _card_of(customer_id: str, subscription_id: str) -> tuple[dict | None, bool]
     permission="billing.view",
     input=PaymentMethodIn,
     output=PaymentMethodOut,
+    ai=AI(description="The card each payer of the account's businesses pays with, and its last failed charge."),
 )
 def payment_method_get(ctx: OperationContext, data: PaymentMethodIn) -> dict:
     """The card of each of the account's payers (one Stripe customer per business's payer), the businesses it

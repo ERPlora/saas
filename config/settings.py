@@ -760,6 +760,9 @@ ASSISTANT_SYNTHESIZE_RATELIMIT = config("ASSISTANT_SYNTHESIZE_RATELIMIT", defaul
 ASSISTANT_REPORT_RATELIMIT = config("ASSISTANT_REPORT_RATELIMIT", default="60/h")
 # A demo's messages for its whole life (SAAS_ASSISTANT-F11, saas#2599: each browser gets a new demo).
 ASSISTANT_DEMO_MESSAGES = config("ASSISTANT_DEMO_MESSAGES", default=10, cast=int)
+# An account's messages a month with the assistant of erplora.com's own panel (PLAN-SAAS §23): fixed, whatever the
+# plans of its businesses, each of which has its own allowance in its Hub.
+ASSISTANT_ACCOUNT_MESSAGES = config("ASSISTANT_ACCOUNT_MESSAGES", default=30, cast=int)
 # The provider (its identifier in the admin, of OpenAI's API) whose key computes the embeddings and the voice.
 ASSISTANT_SERVICE_PROVIDER = config("ASSISTANT_SERVICE_PROVIDER", default="openai")
 # The demo hubs (PLAN-SAAS §3.5, round 2026-10-17; public/demo.py): one switch, and new demos per address

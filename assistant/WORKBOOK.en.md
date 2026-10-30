@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:bb673917a8c3be8e3e9723b90f4f529758000b86fb6452b6d31587eff0d0b152 -->
+<!-- generated from WORKBOOK.md sha256:46d58bc86f379928fbafbd1834d90acf828cefc9d24d5ce7c9bd3a049996797f -->
 
 ## What it is for and who uses it
 
@@ -76,11 +76,12 @@ that answers, the text as it arrives, the tools it asks for and a table with "In
 and "Cost" (in dollars).
 
 ### Admin: Assistant usage records
-One row per business and month (a demo, a single one in its whole life) with "Business or demo", "Month",
-"Messages", "Input tokens", "Output tokens", "Embedding tokens", "Dictations", "Characters read aloud" and "Cost
-(USD)". On top, the search box (by the business's name or address, or by the demo's address) and the months; on the
-right, the "By kind" filter ("Businesses" or "Demos") and the month's. Each row opens to see it whole, without being
-able to change it.
+One row per business and month (a demo, a single one in its whole life; an account, one per month with the panel's
+assistant) with "Business, demo or account" (an account's, its email), "Month", "Messages", "Input tokens", "Output
+tokens", "Embedding tokens", "Dictations", "Characters read aloud" and "Cost (USD)". On top, the search box (by the
+business's name or address, by the demo's address or by the account's email) and the months; on the right, the "By
+kind" filter ("Businesses", "Demos" or "Accounts") and the month's. Each row opens to see it whole, without being able
+to change it.
 
 ## States of each screen
 
@@ -119,6 +120,8 @@ able to change it.
 | ASSISTANT-F22 | Read an answer aloud | done |
 | ASSISTANT-F23 | Receive the report of an answer of the assistant | done |
 | ASSISTANT-F24 | See what a business spent of the assistant | done |
+| ASSISTANT-F25 | Answer the panel's assistant of an account | partial |
+| ASSISTANT-F26 | Count an account's messages with the panel's assistant | done |
 
 ### ASSISTANT-F01 Add an AI provider
 Status: done
@@ -440,10 +443,39 @@ Actor: ERPlora's staff
 Screen: Admin: Assistant usage records
 Steps:
 1. In erplora.com's admin, open "Assistant usage records".
-2. Search the business by its name or its address (or the demo by its address), or filter "By kind" ("Businesses" or "Demos") and by month.
+2. Search the business by its name or its address (the demo by its address, the account by its email), or filter "By kind" ("Businesses", "Demos" or "Accounts") and by month.
 3. Read its row of the month: "Messages" of the allowance, "Input tokens", "Output tokens", "Embedding tokens", "Dictations", "Characters read aloud" and "Cost (USD)" (with the prices of the model that answered each turn).
 4. Open the row to see it whole, with when it was created and when it changed.
-In: the business or the demo and the month.
-Out: what the business spent in the month, without being able to change it.
+In: the business, the demo or the account and the month.
+Out: what the business (or the account) spent in the month, without being able to change it.
 If it fails: nobody can add, change nor delete a row, not even a superuser (deleting the month's row gave the business its whole allowance back); a team member without the permission to see it does not enter.
-Involved: ASSISTANT-F18, ASSISTANT-F20, ASSISTANT-F21, ASSISTANT-F22
+Involved: ASSISTANT-F18, ASSISTANT-F20, ASSISTANT-F21, ASSISTANT-F22, ASSISTANT-F26
+
+### ASSISTANT-F25 Answer the panel's assistant of an account
+Status: partial — erplora.com already answers each turn of the account; the chat that opens it from the panel's bar comes with its screen
+Actor: the person with an account at erplora.com
+Screen: none
+Steps:
+1. The person, signed in to erplora.com's panel, writes to the assistant ("Which businesses do I have?", "How much do I pay a month?", "Create a business for my hair salon").
+2. erplora.com offers the model the panel's tools this account may use (its businesses and their people, the plans, its invoices and subscriptions, its account, the catalogue of apps), first those of what was asked, and always the list of its businesses.
+3. A read the model asks for runs on its own, as the person themselves: it never sees a business that is not theirs.
+4. A change the model asks for stops at a card that says what it will do, where (the panel's screen: "Businesses", "Billing", "Account" or "Store") and with which data, naming the business by its name; it is only done if the person says yes. Creating, deleting or changing the address of a business, offering it to someone else or cancelling its plan also ask to type "CONFIRM"; changing plan is not done from the chat but in the Store, which shows first what will be charged.
+5. With what the tools returned, the model answers live, piece by piece, in the person's language, and links the panel's screen where what it cannot do is done; for what happens inside a business (sales, products, the people at the till) it says to open the business and ask its assistant.
+In: the conversation (it lives in the person's browser), the tools the model asked for and the person's answer to its card.
+Out: what was done and its result, the card of the change that waits, the text as it arrives, the allowance left and the close; what each tool does leaves its own trace (`hubs.business.created`…), never the conversation.
+If it fails: without a session, it does not answer (one must sign in); with the month's allowance spent, the first notice is the allowance spent, with how many were used and when they come back (see ASSISTANT-F26); with too many turns in a row, it says to wait a moment; without a model that answers, that the assistant cannot answer now. A tool the account does not have, or that is not for the chat (downloading a file, creating an API key, opening the payment, entering a business), never runs. Without the word typed or with a "no", the change is not made and the model says so. Where nothing is sold (the account opened from the installed app), neither the Store nor its plan changes are offered. Past six rounds of tools in a single question, it stops.
+Involved: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F23, ASSISTANT-F26, HUBS-F01, HUBS-F09, BILLING-F13
+
+### ASSISTANT-F26 Count an account's messages with the panel's assistant
+Status: done
+Actor: the person with an account at erplora.com
+Screen: none
+Steps:
+1. Each account has 30 messages a month with the panel's assistant, whatever businesses it has and whatever their plans; each business's allowance is apart, its plan's in its Hub (see ASSISTANT-F18).
+2. Each message the person writes spends one when the turn starts, before calling the model; the return with the results of the tools the model asked for spends no other.
+3. If the turn does not answer anything (the provider fails, the person cuts), the message goes back to the month it was taken from.
+4. The panel asks how much is left (how many were used, out of how many and when they come back); the close of each turn brings the same figures. The allowance comes back on day 1 of each month at 00:00 UTC.
+In: the session's account.
+Out: the message taken or given back and what was spent in the account's month (`assistant.message.claimed`, `assistant.message.released`, `assistant.usage.recorded`, with the account).
+If it fails: with no free messages, the turn is refused with the allowance spent and the date they come back; there is no plan to go up nor loose packs. An account never spends its businesses' messages, nor a business its account's; deleting the account deletes its rows.
+Involved: ASSISTANT-F18, ASSISTANT-F24, ASSISTANT-F25

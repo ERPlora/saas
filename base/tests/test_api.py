@@ -11,7 +11,8 @@ HOST = "localhost:8001"
 def test_me_is_bound_to_session_me():
     from base.api import router
 
-    [(path, view)] = router.path_operations.items()
+    assert set(router.path_operations) == {"/me", "/assistant/turn", "/assistant/usage", "/assistant/report"}
+    path, view = "/me", router.path_operations["/me"]
     [route] = view.operations
     assert (path, route.methods, route.operation_id) == (
         "/me",

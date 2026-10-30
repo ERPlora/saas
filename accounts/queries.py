@@ -26,7 +26,7 @@ from django.utils.crypto import constant_time_compare
 from django.utils.translation import gettext
 from live.context import OperationContext
 from live.errors import Unauthorized
-from live.operations import operation
+from live.operations import AI, INTERNAL, operation
 
 from accounts.models import (
     API_KEY_PREFIX_LENGTH,
@@ -124,7 +124,14 @@ def hub_start_url(slug: str, next_path: str = "/") -> str:
     return f"{hub_origin(slug)}{HUB_START_PATH}?{urlencode({'next': local_path(next_path)}, safe='/')}"
 
 
-@operation("accounts.hub.list", kind="query", permission=None, input=HubListIn, output=HubListOut)
+@operation(
+    "accounts.hub.list",
+    kind="query",
+    permission=None,
+    input=HubListIn,
+    output=HubListOut,
+    ai=INTERNAL,  # screen
+)
 def hub_list(ctx: OperationContext, data: HubListIn) -> dict[str, Any]:
     """The hubs of the signed-in account, alphabetically, each with its host and the jump to it.
 
@@ -206,7 +213,12 @@ def receives_business_notices(user) -> bool:
 
 
 @operation(
-    "accounts.preferences.get", kind="query", permission="accounts.view", input=PreferencesGetIn, output=PreferencesOut
+    "accounts.preferences.get",
+    kind="query",
+    permission="accounts.view",
+    input=PreferencesGetIn,
+    output=PreferencesOut,
+    ai=AI(description="The account's preferences: theme, language and alerts of its businesses."),
 )
 def preferences_get(ctx: OperationContext, data: PreferencesGetIn) -> dict[str, Any]:
     """Account → Preferences of the signed-in account."""
@@ -251,7 +263,14 @@ def profile_of(user, request=None) -> dict[str, Any]:
     }
 
 
-@operation("accounts.profile.get", kind="query", permission="accounts.view", input=ProfileGetIn, output=ProfileOut)
+@operation(
+    "accounts.profile.get",
+    kind="query",
+    permission="accounts.view",
+    input=ProfileGetIn,
+    output=ProfileOut,
+    ai=INTERNAL,  # photo
+)
 def profile_get(ctx: OperationContext, data: ProfileGetIn) -> dict[str, Any]:
     """Account → Profile of the signed-in account."""
     return profile_of(account_of(ctx), ctx.request)
@@ -312,7 +331,14 @@ def session_row(session, current: str | None) -> dict[str, Any]:
     }
 
 
-@operation("accounts.session.list", kind="query", permission="accounts.view", input=SessionListIn, output=SessionListOut)
+@operation(
+    "accounts.session.list",
+    kind="query",
+    permission="accounts.view",
+    input=SessionListIn,
+    output=SessionListOut,
+    ai=AI(description="The account's active sessions (browsers and apps), this one first."),
+)
 def session_list(ctx: OperationContext, data: SessionListIn) -> dict[str, Any]:
     """Account → Security → Active sessions, a page at a time: this session first, then the rest by last use."""
     from allauth.usersessions.models import UserSession
@@ -353,7 +379,12 @@ def browser_trusted_until(user, request) -> datetime | None:
 
 
 @operation(
-    "accounts.browser_trust.get", kind="query", permission="accounts.view", input=BrowserTrustGetIn, output=BrowserTrustOut
+    "accounts.browser_trust.get",
+    kind="query",
+    permission="accounts.view",
+    input=BrowserTrustGetIn,
+    output=BrowserTrustOut,
+    ai=AI(description="Whether this browser is trusted for two-factor authentication, and until when."),
 )
 def browser_trust_get(ctx: OperationContext, data: BrowserTrustGetIn) -> dict[str, Any]:
     """Security → Two-factor authentication: whether this browser is trusted, and until when."""
@@ -384,7 +415,14 @@ def api_key_scopes(language: str) -> list[dict[str, str]]:
         return [{"id": scope, "label": str(label)} for scope, label in API_KEY_SCOPES.items()]
 
 
-@operation("accounts.apikey.list", kind="query", permission="accounts.view", input=ApiKeyListIn, output=ApiKeyListOut)
+@operation(
+    "accounts.apikey.list",
+    kind="query",
+    permission="accounts.view",
+    input=ApiKeyListIn,
+    output=ApiKeyListOut,
+    ai=AI(description="The account's API keys that are not revoked, with their scopes (never their secret)."),
+)
 def apikey_list(ctx: OperationContext, data: ApiKeyListIn) -> dict[str, Any]:
     """Account → API keys: the account's keys that are not revoked, the newest first, and the scopes on offer."""
     user = account_of(ctx)
@@ -461,7 +499,14 @@ def _export_sessions(user) -> list[dict[str, Any]]:
     return [session_row(found[pk], None) for pk in order if pk in found]
 
 
-@operation("accounts.data.export", kind="query", permission="accounts.view", input=DataExportIn, output=DataExportOut)
+@operation(
+    "accounts.data.export",
+    kind="query",
+    permission="accounts.view",
+    input=DataExportIn,
+    output=DataExportOut,
+    ai=INTERNAL,  # file
+)
 def data_export(ctx: OperationContext, data: DataExportIn) -> dict[str, Any]:
     """Account → Profile → «Download my data»: everything the account is and did here, in one JSON document (GDPR
     art. 20). Only the caller's: each part is read for its account, and the businesses and invoices through the

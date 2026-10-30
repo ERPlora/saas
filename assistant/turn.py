@@ -20,25 +20,38 @@ When the model asks for tools of the Hub, the turn ends there with a ``continuat
 sends the conversation back with their results and that token, and that turn costs no message (it answers the same
 request of the person). The token is signed, names the business and the calls, lasts ``CONTINUATION_SECONDS`` and
 serves once.
+
+The turn as a door serves it (``start``, ``stream``, ``settle``, ``spend``) is the same for the Hub's doors
+(``assistant.internal``, signed) and for the assistant of erplora.com's own panel (``base.assistant``, in process, for
+the signed-in account): the checks before the model, each a ``Refused`` that counts nothing; the frames; and, whatever
+ends it, the message given back if nothing was answered and what it spent recorded.
 """
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import logging
+import math
 from collections.abc import AsyncIterator, Sequence
+from contextlib import aclosing
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
 
+from asgiref.sync import sync_to_async
 from django.core import signing
 from django.core.cache import cache
+from django.http import HttpRequest, JsonResponse
+from django_ratelimit.core import get_usage
+from live.errors import OperationError
 
-from assistant import routing
+from assistant import queries, routing, services
 from assistant.models import estimate_cost
 from assistant.providers.base import ToolSpec, TurnRequest
-from assistant.schemas import Caller, RouteCandidate
+from assistant.schemas import Caller, ClaimOut, MessageReleaseIn, RouteCandidate, RouteIn, UsageRecordIn
+from assistant.services import platform_context
 
 logger = logging.getLogger(__name__)
 
@@ -154,7 +167,12 @@ def hub_tools(tools: Sequence[dict]) -> list[ToolSpec]:
 
 
 def caller_key(caller: Caller) -> str:
-    return f"demo:{caller.demo}" if caller.demo else f"hub:{caller.hub_id}"
+    """The caller as its budgets and continuations name it: ``hub:<id>``, ``demo:<address>`` or ``user:<id>``."""
+    if caller.demo:
+        return f"demo:{caller.demo}"
+    if caller.user_id is not None:
+        return f"user:{caller.user_id}"
+    return f"hub:{caller.hub_id}"
 
 
 def continuation_token(caller: Caller, call_ids: Sequence[str]) -> str:
@@ -302,3 +320,161 @@ def _uuid(value: Any):
     from uuid import UUID
 
     return value if isinstance(value, UUID) else UUID(str(value))
+
+
+# --- The turn as a door serves it (ASSISTANT-G43, G44, G47, G51) -------------------------------------------------
+
+
+class Refused(Exception):
+    """A refusal before the model is called: its status, its code, its message (and the failing ``fields``, the
+    ``Retry-After``, and what else its envelope says)."""
+
+    def __init__(
+        self, status: int, code: str, message: str, *, fields: dict | None = None, retry_after: int = 0, **extra
+    ):
+        super().__init__(message)
+        self.status, self.code, self.message, self.fields, self.retry_after = status, code, message, fields, retry_after
+        self.extra = extra
+
+    def response(self) -> JsonResponse:
+        return refusal(
+            self.status, self.code, self.message, fields=self.fields, retry_after=self.retry_after, **self.extra
+        )
+
+
+def refusal(status: int, code: str, message: str, *, fields: dict | None = None, retry_after: int = 0, **extra):
+    """The envelope of a refusal, ``{"error": {"code", "message", "fields"?, …}}``."""
+    error = {"code": code, "message": message, **({"fields": fields} if fields else {}), **extra}
+    response = JsonResponse({"error": error}, status=status)
+    if status == 405:
+        response["Allow"] = "POST"
+    if retry_after:
+        response["Retry-After"] = str(retry_after)
+    return response
+
+
+def spend(request: HttpRequest, bucket: str, rate: str, caller: Caller) -> None:
+    """One call of ``caller``'s budget ``bucket``; over ``rate``, 429 ``rate_limited`` with the seconds left."""
+    who = caller_key(caller)
+    usage = get_usage(request, group=f"assistant.{bucket}", key=lambda group, request: who, rate=rate, increment=True)
+    if usage is not None and usage["should_limit"]:
+        wait = max(1, math.ceil(usage["time_left"]))
+        logger.warning("assistant.internal.rate_limited bucket=%s caller=%s", bucket, who)
+        raise Refused(
+            429, "rate_limited", "Too many requests of this business: wait a moment and try again.", retry_after=wait
+        )
+
+
+#: The route's refusals, which the Hub reads as «the assistant cannot answer now» (nothing is counted).
+ROUTE_REFUSALS = frozenset({"assistant.no_model", "assistant.provider_not_configured"})
+
+
+@dataclass
+class Turn:
+    """A turn that may go to the model: its conversation, its tools, its route and the message it took."""
+
+    caller: Caller
+    messages: list[dict]
+    tools: list
+    candidates: list
+    claim: ClaimOut | None
+
+
+async def start(caller: Caller, data: Any) -> Turn:
+    """The checks before the model is called, each a refusal that counts nothing: the conversation (413, 422), the
+    route (503 ``assistant.no_model`` or ``assistant.provider_not_configured``) and, unless it answers the tools the
+    caller was asked for, a message of the allowance (429 ``assistant.quota_exceeded``). ``data`` carries the turn's
+    ``messages``, ``instructions``, ``tools`` and ``continuation`` (``assistant.schemas.TurnIn``, or the panel's)."""
+    try:
+        messages = await sync_to_async(prepare, thread_sensitive=False)(data.messages, data.instructions)
+    except TurnRefused as refused:
+        raise Refused(refused.status, refused.code, refused.message, fields=refused.fields, retriable=False) from None
+    try:
+        route = await sync_to_async(queries.route_resolve)(platform_context(), RouteIn())
+    except OperationError as refused:
+        if refused.code not in ROUTE_REFUSALS:
+            raise
+        logger.warning("assistant.turn.no_route code=%s", refused.code)
+        raise Refused(503, refused.code, refused.message, retriable=False) from None
+    claim = None
+    if not is_continuation(caller, data.continuation, messages):
+        claim = await sync_to_async(services.message_claim)(platform_context(), caller)
+        if not claim.claimed:
+            raise Refused(
+                429,
+                "assistant.quota_exceeded",
+                "The assistant's messages of this period are spent.",
+                retriable=False,
+                upgrade_required=True,
+                used=claim.used,
+                limit=claim.limit,
+                resets_at=claim.resets_at.isoformat() if claim.resets_at else None,
+                demo=claim.demo,
+            )
+    return Turn(caller, messages, hub_tools(data.tools), list(route.candidates), claim)
+
+
+def settle(started: Turn, outcome: Outcome) -> dict:
+    """After the turn: its message given back if nothing was answered, what it spent recorded; the usage after it."""
+    if started.claim is not None and not outcome.answered:
+        services.message_release(platform_context(), MessageReleaseIn(caller=started.caller, month=started.claim.month))
+    if outcome.tokens_input or outcome.tokens_output:
+        services.usage_record(
+            platform_context(),
+            UsageRecordIn(
+                caller=started.caller,
+                tokens_input=outcome.tokens_input,
+                tokens_output=outcome.tokens_output,
+                cost_usd=outcome.cost,
+            ),
+        )
+    return queries.usage_show(platform_context(), started.caller).model_dump(mode="json")
+
+
+def response_frame(started: Turn, outcome: Outcome) -> dict:
+    token = continuation_token(started.caller, [call["call_id"] for call in outcome.calls]) if outcome.calls else None
+    return {
+        "type": "response",
+        "output": outcome.output(),
+        "usage": {"input_tokens": outcome.tokens_input, "output_tokens": outcome.tokens_output},
+        "continuation": token,
+    }
+
+
+def sse(frame) -> str:
+    return f"data: {frame if isinstance(frame, str) else json.dumps(frame, ensure_ascii=False)}\n\n"
+
+
+INTERNAL_ERROR = {
+    "type": "error",
+    "code": "assistant.internal_error",
+    "message": MESSAGES["assistant.internal_error"],
+    "retriable": True,
+}
+
+
+async def frames(started: Turn) -> AsyncIterator[dict | str]:
+    """The frames of the turn, then ``response`` (unless it failed), ``usage`` and ``"[DONE]"``. Whatever ends it (the
+    end, a failure, the caller closing the stream) settles the message and what it spent."""
+    outcome = Outcome()
+    try:
+        async for frame in run(started.candidates, started.messages, started.tools, outcome):
+            yield frame
+        if outcome.error is None:
+            yield response_frame(started, outcome)
+    except Exception:
+        logger.exception("assistant.turn.failed")
+        outcome.error = INTERNAL_ERROR
+        yield INTERNAL_ERROR
+    finally:
+        usage = await asyncio.shield(sync_to_async(settle)(started, outcome))
+    yield {"type": "usage", **usage}
+    yield "[DONE]"
+
+
+async def stream(started: Turn) -> AsyncIterator[str]:
+    """``frames`` as server-sent events, as the Hub's door sends them; closed with them, so a caller that hangs up
+    settles the turn at once."""
+    async with aclosing(frames(started)) as framed:
+        async for frame in framed:
+            yield sse(frame)

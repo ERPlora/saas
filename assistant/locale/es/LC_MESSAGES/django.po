@@ -123,9 +123,13 @@ msgstr "Negocios"
 msgid "Demos"
 msgstr "Demos"
 
+#: admin.py
+msgid "Accounts"
+msgstr "Cuentas"
+
 #: admin.py:576
-msgid "business or demo"
-msgstr "negocio o demo"
+msgid "business, demo or account"
+msgstr "negocio, demo o cuenta"
 
 #: admin.py:580 models.py:285
 msgid "month"
@@ -537,3 +541,11 @@ msgstr "Tiempo"
 #: templates/admin/assistant/airoutingpolicy/try.html:74
 msgid "Cost"
 msgstr "Coste"
+
+#: models.py
+msgid "account"
+msgstr "cuenta"
+
+#: services.py
+msgid "The account no longer exists."
+msgstr "La cuenta ya no existe."
