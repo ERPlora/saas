@@ -205,6 +205,18 @@ def test_the_deletion_leads_to_the_copy_of_the_data_in_the_panel_never_to_the_fi
     assert "X-Amz" not in message.body
 
 
+@pytest.mark.parametrize(("language", "line"), [("en", "Download a full copy of its data"), ("es", "Descarga una copia completa")])
+def test_the_deletion_of_a_business_that_never_gets_a_copy_promises_none(hub, make_user, language, line):
+    owner = make_user("olga@example.com", language=language)
+    hub.deletion_requested_at = timezone.now()
+
+    emails.send_deletion(hub, owner, base_url=BASE, data_copy=False)
+
+    (message,) = mail.outbox
+    assert line not in message.body
+    assert f"{BASE}/dashboard/businesses" in message.body  # still until when it can be recovered
+
+
 def test_the_deletion_leads_to_the_copy_in_spanish(hub, make_user):
     owner = make_user("olga@example.com", language="es")
     hub.deletion_requested_at = timezone.now()

@@ -449,9 +449,20 @@ def _delete_business(ctx: OperationContext, hub: Hub, owner, *, base_url: str, u
     record_event(ctx, events.BUSINESS_DELETED, {"id": str(hub.id)})
     push_after_commit(hub.id)
     transaction.on_commit(
-        partial(emails.send_deletion, hub, owner, base_url=base_url, unpaid=unpaid),
+        partial(_send_deletion, hub, owner, base_url=base_url, unpaid=unpaid),
         robust=True,
     )
+
+
+def _send_deletion(hub: Hub, owner, *, base_url: str, unpaid: bool) -> None:
+    """The deletion mail, after the COMMIT: it leads to the copy of the business's data unless the Hub says the business
+    never gets one (``available`` false: no database of its own; ruling of 2026-10-30 on saas#168). The Hub away or
+    refusing keeps the way to it: the page itself promises nothing it cannot keep."""
+    try:
+        data_copy = queries.hub_data_copies(hub.id)["available"]
+    except (HubUnavailable, HubRefused):
+        data_copy = True
+    emails.send_deletion(hub, owner, base_url=base_url, unpaid=unpaid, data_copy=data_copy)
 
 
 def _back_to_free(hub: Hub) -> None:

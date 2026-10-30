@@ -388,7 +388,8 @@ listo al responder, y lo dice.
   (`available: false`), «Este negocio no tiene copia de datos.», sin prometer nada; un error del panel, con
   «Reintentar». En uno vivo, solo si tiene alguna copia (lo restablecieron).
 - **Correos**: el de la baja (`send_deletion`, F18 y el del día 180 de F20) añade «Descarga una copia completa de
-  sus datos: <página del negocio>» (el panel, nunca el fichero: así el enlace del correo no caduca). «Te avisaremos»
+  sus datos: <página del negocio>», salvo que el Hub diga `available: false` al enviarlo (`services._send_deletion`
+  pregunta `/dumps` antes; con el Hub caído o rechazando, el párrafo se queda) (el panel, nunca el fichero: así el enlace del correo no caduca). «Te avisaremos»
   se cumple en `reconcile_hub_states`: por cada negocio eliminado sin avisar, pregunta las copias y, con la de esta
   baja (`offboarding` no anterior a `deletion_requested_at`, un minuto de holgura entre relojes), manda
   `send_data_copy_ready` una vez (`Hub.data_copy_mailed_at`, migración `0022`; se vuelve a avisar si se recupera y
