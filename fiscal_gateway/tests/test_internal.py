@@ -25,6 +25,7 @@ import pytest
 from django.test import RequestFactory
 
 from accounts.signing import sign, signed_headers
+from base.tests.conftest import names_the_file
 from fiscal.tests.conftest import make_grant
 from fiscal_gateway import internal, seal
 from fiscal_gateway.tests.conftest import (
@@ -34,7 +35,6 @@ from fiscal_gateway.tests.conftest import (
     b64,
     fixture,
     make_p12,
-    names_the_file,
 )
 from hubs.models import Hub
 
@@ -459,17 +459,21 @@ def test_without_the_servers_certificates_nothing_is_sent_and_the_file_is_named(
     client, respx_mock, erplora_seal, own_p12, unreadable_ca, caplog, door, route
 ):
     """The gateway's own configuration, not the AEAT: ``502 aeat_unreachable`` with ``sent: false``, which the
-    Hub keeps in its queue and retries, never a mute 500."""
+    Hub keeps in its queue and retries, never a mute 500. FIX-SAAS-FISCAL-GATEWAY-OWN-TRUST-STORE-COPY-INSTEAD-OF-BASE-TLS:
+    logged once, in ``base.tls``'s ERROR line naming the gateway, never in a copy of its own."""
     body = payload() if route == "erplora" else own(own_p12)
 
-    with caplog.at_level(logging.ERROR, logger="fiscal_gateway"):
+    with caplog.at_level(logging.ERROR):
         response = call(client, door, body)
 
     assert response.status_code == 502
     error = response.json()["error"]
     assert (error["code"], error["sent"]) == ("aeat_unreachable", False)
     assert names_the_file(error["message"], unreadable_ca)
-    assert any(names_the_file(record.getMessage(), unreadable_ca) for record in caplog.records)
+    (line,) = [record for record in caplog.records if "trust_store_unreadable" in record.getMessage()]
+    assert (line.name, line.levelno) == ("base.tls", logging.ERROR)
+    assert "caller=fiscal_gateway.aeat " in line.getMessage()
+    assert names_the_file(line.getMessage(), unreadable_ca)
     assert not respx_mock.calls
 
 
