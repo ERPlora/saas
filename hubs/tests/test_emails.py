@@ -191,6 +191,59 @@ def test_the_deletion_says_until_when_it_can_be_recovered(hub, make_user):
     assert f"{BASE}/dashboard/businesses" in message.body
 
 
+@pytest.mark.parametrize("unpaid", [False, True])
+def test_the_deletion_leads_to_the_copy_of_the_data_in_the_panel_never_to_the_file(hub, make_user, unpaid):
+    """HUBS-F18 and HUBS-F20 (the day-180 deletion): the copy the Hub makes of the business's data is downloaded from
+    the business's page (the panel asks the Hub for a link of 15 minutes there), so this link never expires."""
+    owner = make_user("olga@example.com", language="en")
+    hub.deletion_requested_at = timezone.now()
+
+    emails.send_deletion(hub, owner, base_url=BASE, unpaid=unpaid)
+
+    (message,) = mail.outbox
+    assert f"Download a full copy of its data: {BASE}/dashboard/businesses/{hub.id}" in message.body
+    assert "X-Amz" not in message.body
+
+
+def test_the_deletion_leads_to_the_copy_in_spanish(hub, make_user):
+    owner = make_user("olga@example.com", language="es")
+    hub.deletion_requested_at = timezone.now()
+
+    emails.send_deletion(hub, owner, base_url=BASE)
+
+    (message,) = mail.outbox
+    assert f"Descarga una copia completa de sus datos: {BASE}/dashboard/businesses/{hub.id}" in message.body
+
+
+@pytest.mark.parametrize(
+    ("language", "subject", "line"),
+    [
+        ("en", "The copy of the data of Bar Manolo is ready", "Download it from {url} until {date}."),
+        ("es", "La copia de los datos de Bar Manolo está lista", "Descárgala desde {url} hasta el {date}."),
+    ],
+)
+def test_the_copy_ready_mail_leads_to_the_business_page_until_it_is_erased(hub, make_user, language, subject, line):
+    """«We'll let you know» of the business's page, kept: the copy of a deleted business's data is ready."""
+    owner = make_user("olga@example.com", language=language)
+    hub.deletion_requested_at = timezone.now()
+
+    assert emails.send_data_copy_ready(hub, owner, base_url=BASE) is True
+
+    (message,) = mail.outbox
+    assert message.to == ["olga@example.com"]
+    assert message.subject == subject
+    assert line.format(url=f"{BASE}/dashboard/businesses/{hub.id}", date=day(hub.purge_after, language)) in message.body
+
+
+def test_the_copy_ready_mail_without_an_owner_is_not_sent_and_says_so(hub, caplog):
+    hub.deletion_requested_at = timezone.now()
+
+    assert emails.send_data_copy_ready(hub, None, base_url=BASE) is False
+
+    assert mail.outbox == []
+    assert f"hubs.mail.data_copy_unsent hub={hub.pk}" in caplog.text
+
+
 def test_the_ready_mail_opens_the_business(hub, make_user, settings):
     """HUBS-F04 (HUBS-G68) and HUBS-F07 (HUBS-G91): once the Hub reports it ready, the owner hears it with
     the way in (the jump, which starts at the business) and the business's page in the panel."""
@@ -247,6 +300,7 @@ def senders(hub, make_user, language):
         "ownership_accepted": lambda: emails.send_ownership_accepted(transfer, base_url=BASE, paid_until=PAID_UNTIL),
         "deletion": lambda: emails.send_deletion(hub, olga, base_url=BASE, unpaid=True),
         "ready": lambda: emails.send_ready(hub, olga, base_url=BASE),
+        "data_copy_ready": lambda: emails.send_data_copy_ready(hub, olga, base_url=BASE),
         "suspension": lambda: emails.send_suspension_notice(
             hub, olga, base_url=BASE, delete_on=PAID_UNTIL, final=True
         ),
@@ -255,7 +309,7 @@ def senders(hub, make_user, language):
 
 @pytest.mark.parametrize("language", ["en", "es"])
 @pytest.mark.parametrize(
-    "family", ["invitation", "ownership_offer", "ownership_accepted", "deletion", "ready", "suspension"]
+    "family", ["invitation", "ownership_offer", "ownership_accepted", "deletion", "ready", "data_copy_ready", "suspension"]
 )
 def test_every_mail_of_hubs_is_branded_in_its_recipients_language(hub, make_user, family, language):
     assert senders(hub, make_user, language)[family]() is True

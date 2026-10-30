@@ -261,6 +261,19 @@
         "windows": "App for Windows",
         "android": "App for Android"
       },
+      "dataCopy": {
+        "eyebrow": "Your data",
+        "title": "Download the data",
+        "body": "A full copy of all the business's data, to restore it (PostgreSQL format, opened with pg_restore). Each copy is kept for 90 days.",
+        "kind": {
+          "offboarding": "When it was deleted",
+          "reset": "Before its data was reset"
+        },
+        "download": "Download",
+        "downloadName": "Download the copy of {date}",
+        "notReady": "The copy is not ready yet. We will let you know by email when it is.",
+        "loadError": "We could not load the copies of the data."
+      },
       "facts": {
         "eyebrow": "Details",
         "title": "Business details",

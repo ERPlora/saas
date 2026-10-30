@@ -25,6 +25,8 @@ from hubs.schemas import (
     BusinessTypeListIn,
     BusinessUpdateIn,
     ByIdIn,
+    DataCopyLinkIn,
+    DataCopyListIn,
     InvitationListIn,
     MemberInviteIn,
     MemberListIn,
@@ -192,3 +194,16 @@ async def usage_get(request, params: Query[UsageGetIn]):
 @bind(router, "hubs.usage.series", "/hubs/usage/series")
 async def usage_series(request, params: Query[UsageSeriesIn]):
     return await run_operation(request, queries.usage_series, params)
+
+
+# --- The copies of a business's data (PLAN-DB, round 2026-10-30, proposal (k)) ----------------------------------
+
+
+@bind(router, "hubs.data_copy.list", "/hubs/data-copies")
+async def data_copy_list(request, params: Query[DataCopyListIn]):
+    return await run_operation(request, queries.data_copy_list, params)
+
+
+@bind(router, "hubs.data_copy.link", "/hubs/data-copies/link")
+async def data_copy_link(request, params: Query[DataCopyLinkIn]):
+    return await run_operation(request, queries.data_copy_link, params)

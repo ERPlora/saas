@@ -261,6 +261,19 @@
         "windows": "App para Windows",
         "android": "App para Android"
       },
+      "dataCopy": {
+        "eyebrow": "Tus datos",
+        "title": "Descargar los datos",
+        "body": "Una copia completa de todos los datos del negocio, para restaurarlo (formato de PostgreSQL, se abre con pg_restore). Cada copia se guarda 90 días.",
+        "kind": {
+          "offboarding": "Al eliminarlo",
+          "reset": "Antes de restablecer sus datos"
+        },
+        "download": "Descargar",
+        "downloadName": "Descargar la copia del {date}",
+        "notReady": "La copia todavía no está lista. Te avisaremos por correo cuando lo esté.",
+        "loadError": "No hemos podido cargar las copias de los datos."
+      },
       "facts": {
         "eyebrow": "Datos",
         "title": "Ficha del negocio",

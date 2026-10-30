@@ -1403,3 +1403,19 @@ msgstr ""
 #~ "La facturación no ha cambiado: las facturas siguen yendo al mismo pagador "
 #~ "hasta que el nuevo propietario ponga sus propios datos de facturación en el "
 #~ "negocio. Lo que paga cada uno de tus pagadores está en %(url)s."
+
+#: emails.py
+msgid "Download a full copy of its data: %(url)s"
+msgstr "Descarga una copia completa de sus datos: %(url)s"
+
+#: emails.py
+msgid "The copy of the data of %(business)s is ready"
+msgstr "La copia de los datos de %(business)s está lista"
+
+#: emails.py
+msgid "The full copy of the data of %(business)s is ready."
+msgstr "La copia completa de los datos de %(business)s está lista."
+
+#: emails.py
+msgid "Download it from %(url)s until %(date)s."
+msgstr "Descárgala desde %(url)s hasta el %(date)s."

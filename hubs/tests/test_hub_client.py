@@ -255,12 +255,35 @@ BROWSER = "ab" * 32
 OTHER_BROWSER = "cd" * 32
 
 
+def test_get_dumps_asks_for_the_copies_of_a_hubs_data_signed(hub_double):
+    """``GET /internal/hubs/{id}/dumps`` (PLAN-DB, round 2026-10-30, proposal (k)): the copies, newest first, each with
+    a link of 15 minutes; ``[]`` without any; 404 for a hub the Hub never had."""
+    hub_id = "0193a0c4-0000-7000-8000-00000000000a"
+    hub_double.dumps[hub_id] = [
+        {"id": f"{hub_id.replace("-", "")}/20261030T101500Z-reset.dump", "kind": "reset", "created_at": "2026-10-30T10:15:00+00:00", "bytes": 10},
+        {"id": f"{hub_id.replace("-", "")}/20261031T090000Z-offboarding.dump", "kind": "offboarding", "created_at": "2026-10-31T09:00:00+00:00", "bytes": 20},
+    ]
+
+    answer = hub_client.get_dumps(hub_id)
+
+    assert answer.status == 200
+    assert [copy["kind"] for copy in answer.body["dumps"]] == ["offboarding", "reset"]
+    assert all(copy["url"].startswith("https://") for copy in answer.body["dumps"])
+    (call,) = hub_double.calls_to("GET")
+    assert call.path == f"/internal/hubs/{hub_id}/dumps"
+    assert call.signed_v2
+    with pytest.raises(HubRefused) as refused:
+        hub_client.get_dumps("0193a0c4-0000-7000-8000-00000000000b")
+    assert refused.value.status == 404
+
+
 def test_create_demo_asks_the_hub_for_a_demo_of_this_browser(hub_double):
     answer = hub_client.create_demo(BROWSER, vertical=None, language="es")
 
-    assert answer.status == 201
+    # The asynchronous demo: taken (202) and prepared afterwards.
+    assert answer.status == 202
     assert re.fullmatch(r"demo-[0-9a-f]{8}", answer.body["slug"])
-    assert answer.body["created"] is True
+    assert (answer.body["created"], answer.body["status"]) == (True, "requested")
     (call,) = hub_double.calls_to("POST", "/internal/demos")
     assert call.path == "/internal/demos"
     assert call.body == {"session_key": BROWSER, "vertical": None, "language": "es"}
