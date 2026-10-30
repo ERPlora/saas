@@ -20,6 +20,8 @@ from hubs.schemas import (
     BusinessOpenIn,
     BusinessUpdateIn,
     ByIdIn,
+    DataCopyLinkIn,
+    DataCopyListIn,
     MemberInviteIn,
     MemberListIn,
     MemberRoleIn,
@@ -83,6 +85,10 @@ def call(name, hub, team):
         # A night measured, so «nothing yet» (also a 404) never hides what the role decides.
         "usage.get": (queries.usage_get, UsageGetIn(business_id=measured(hub).id)),
         "usage.series": (queries.usage_series, UsageSeriesIn(business_id=hub.id)),
+        # The copies of its data (PLAN-DB round 2026-10-30, (k)): with the Hub away, past the role is an empty list or
+        # a 503, never the role's answer.
+        "data_copy.list": (queries.data_copy_list, DataCopyListIn(business_id=hub.id)),
+        "data_copy.link": (queries.data_copy_link, DataCopyLinkIn(business_id=hub.id, copy_id="any.dump")),
     }[name]
 
 
@@ -119,6 +125,9 @@ MATRIX = {
     # The usage of the business (L4-A): who sees its page.
     "usage.get": (OK, OK, DENIED, DENIED, HIDDEN, HIDDEN),
     "usage.series": (OK, OK, DENIED, DENIED, HIDDEN, HIDDEN),
+    # A full copy of the business's data: only its owner, as deleting it.
+    "data_copy.list": (OK, DENIED, DENIED, DENIED, HIDDEN, HIDDEN),
+    "data_copy.link": (OK, DENIED, DENIED, DENIED, HIDDEN, HIDDEN),
 }
 
 
@@ -136,7 +145,7 @@ def outcome(operation, ctx, data):
 
 @pytest.mark.parametrize("name", MATRIX)
 @pytest.mark.parametrize("role", ROLES)
-def test_the_role_decides(business, team, name, role):
+def test_the_role_decides(business, team, name, role, offline_hub):
     operation, data = call(name, business, team)
 
     assert (

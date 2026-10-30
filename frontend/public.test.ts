@@ -428,6 +428,12 @@ describe('setupAppBack: «Back» of a page opened from the installed app (PUBLIC
   });
 });
 
+describe('the door of a demo being prepared (frontend/demo-wait.ts)', () => {
+  it('waits for the demo at boot', () => {
+    expect(SOURCE).toMatch(/export function boot\(doc: Document\): void \{[^}]*waitForDemo\(doc\)/);
+  });
+});
+
 describe('reCAPTCHA on the public forms (frontend/recaptcha.ts; Ioan, 2026-10-22)', () => {
   it('protects the contact form and the demo at boot', () => {
     expect(SOURCE).toMatch(/export function boot\(doc: Document\): void \{[^}]*protectForms\(doc\)/);

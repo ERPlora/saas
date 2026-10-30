@@ -9,8 +9,10 @@ verify v1 only, every body names the hub of its path (``id`` or ``hub_id``) and 
 - ``put_hub`` → ``PUT /internal/hubs/{id}``: the registry (slug, name, country, time zone, language,
   vertical); 202 while the Hub provisions it, 200 when it already knew it.
 - ``put_state`` → ``PUT /internal/hubs/{id}/state``: the snapshot of §2.2 with its monotonic version.
-- ``get_hub`` → ``GET /internal/hubs/{id}``: the registry's status, to poll an sign-up stuck without its
-  ``ready`` callback.
+- ``get_hub`` → ``GET /internal/hubs/{id}``: the registry's status (``PREPARING_STATUSES``, ``ready``, ``failed``,
+  ``ENDED_STATUSES``), to poll a sign-up stuck without its ``ready`` callback and a demo the door waits for.
+- ``get_dumps`` → ``GET /internal/hubs/{id}/dumps``: the copies of the hub's data, each with a link of 15 minutes
+  (the panel's «Download the data», asked on each click; PLAN-DB round 2026-10-30, proposal (k)).
 - ``delete_hub`` → ``DELETE /internal/hubs/{id}``; ``restore_hub`` → ``POST /internal/hubs/{id}/restore``.
 - ``revoke_sessions`` → ``POST /internal/sessions/revoke`` (``{user_id, hub_id?}``, §2.1).
 - ``post_platform_invoice`` → ``POST /internal/platform/invoices``: an invoice of ERPlora to a customer, to
@@ -22,8 +24,8 @@ verify v1 only, every body names the hub of its path (``id`` or ``hub_id``) and 
 - ``get_usage`` → ``GET /internal/usage?day=YYYY-MM-DD[&cursor=…]``: one page of what the Hub measured that
   day of every business (PLAN-SAAS §5; ``collect_hub_usage``, lot L4-A). The cursor goes back as it came.
 - ``create_demo`` → ``POST /internal/demos``: a demo hub for one browser (PLAN-SAAS §3.5, round 2026-10-17;
-  ``public/demo.py``); ``create_demo_code`` → ``POST /internal/demos/{slug}/codes``: the one-time code that
-  browser posts to the demo's ``/auth/callback``.
+  ``public/demo.py``), 202 while the Hub prepares it; ``create_demo_code`` → ``POST /internal/demos/{slug}/codes``:
+  the one-time code that browser posts to the demo's ``/auth/callback``, once it is ready.
 
 A 4xx raises ``HubRefused`` (with the Hub's error code); a 5xx, a timeout or no connection raises
 ``HubUnavailable``. One 5xx is a refusal too: ``503 base.demo_full`` of ``create_demo``, the Hub's cap of live
@@ -51,6 +53,14 @@ TIMEOUT_SECONDS = 5.0
 
 #: The 5xx codes of ``POST /internal/demos`` that are the Hub refusing, not the Hub being away.
 DEMO_REFUSALS = frozenset({"base.demo_full"})
+
+#: What ``GET /internal/hubs/{id}`` says of a hub (a business or a demo) the Hub is still preparing: the sign-up and the
+#: demo are asynchronous (202 ``requested``, then its database is cloned, migrated and seeded; PLAN-DB §6).
+PREPARING_STATUSES = frozenset({"requested", "creating", "migrating", "seeding"})
+#: A hub the Hub could not prepare: it retries on its own (1 min, 5 min, 15 min, 1 h) and reports ``ready`` when it can.
+FAILED_STATUS = "failed"
+#: A hub that ended: deleted (``cancelled``), a demo past its hour (``expired``), or its database dropped (``purged``).
+ENDED_STATUSES = frozenset({"cancelled", "expired", "purged"})
 
 
 class HubUnavailable(Exception):
@@ -91,6 +101,13 @@ def put_state(hub_id: str, snapshot: dict[str, Any]) -> HubAnswer:
 
 def get_hub(hub_id: str) -> HubAnswer:
     return _call("GET", f"/internal/hubs/{hub_id}", None)
+
+
+def get_dumps(hub_id: str) -> HubAnswer:
+    """The copies the Hub keeps of the hub's data (``pg_dump`` to its bucket: at the deletion, ``offboarding``, and
+    before a reset, ``reset``): 200 ``{"dumps": [{id, kind, created_at, bytes, url}]}``, newest first, each ``url`` a
+    presigned link of 15 minutes; ``[]`` without any; 404 for a hub it never had."""
+    return _call("GET", f"/internal/hubs/{hub_id}/dumps", None)
 
 
 def delete_hub(hub_id: str) -> HubAnswer:
@@ -137,9 +154,10 @@ def get_usage(day: date, cursor: str | None = None) -> HubAnswer:
 def create_demo(session_key: str, vertical: str | None, language: str) -> HubAnswer:
     """A demo hub for the browser ``session_key`` names (a sha256 hex, never a cookie).
 
-    201 ``{id, slug, expires_at, created: true}`` for a new one; 200 with ``created: false`` when that browser
-    already has a live one, which costs the Hub's cap nothing. ``HubRefused(503, "base.demo_full")`` when the
-    cap of live demos is reached.
+    202 ``{id, slug, status: "requested", expires_at, created: true}`` for a new one, which the Hub prepares
+    afterwards (``get_hub`` says when it is ``ready``); 200 with its ``status`` and ``created: false`` when that browser
+    already has a live one, which costs the Hub's cap nothing. A Hub from before the asynchronous demo answers 201
+    without ``status``: that demo is ready. ``HubRefused(503, "base.demo_full")`` when the cap of live demos is reached.
     """
     body = {"session_key": session_key, "vertical": vertical, "language": language}
     return _call("POST", "/internal/demos", body, refusals=DEMO_REFUSALS)

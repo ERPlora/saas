@@ -572,8 +572,8 @@ Actor: visitante, sistema
 Pantalla: Demo
 Pasos:
 1. La persona pulsa «Prueba la demo».
-2. Se crea un hub vacío para ese navegador, con una dirección propia al azar que empieza por «demo-», y dura 60 minutos desde ese momento. Está listo al instante: no hay espera.
-3. La pantalla dice «Abriendo tu demo…» y el navegador entra solo en la demo, como el usuario «Demo», sin cuenta, contraseña ni PIN; sin JavaScript, el botón «Continuar» hace lo mismo.
+2. Se crea un hub vacío para ese navegador, con una dirección propia al azar que empieza por «demo-», y dura 60 minutos desde ese momento. Tarda unos segundos en estar listo: la pantalla de la demo dice «Preparando tu demo…» y «Tarda unos segundos y se abre sola cuando está lista.», y mira cada segundo si ya lo está.
+3. Lista la demo, la pantalla dice «Abriendo tu demo…» y el navegador entra solo en ella, como el usuario «Demo», sin cuenta, contraseña ni PIN; sin JavaScript, el botón «Continuar» hace lo mismo.
 4. Si vuelve a la pantalla de la demo mientras dura, ve «Tu demo está en marcha», «Termina en 12 minutos.» (lo que le quede) y «Volver a mi demo», que la devuelve a la misma demo.
 5. Pulsar otra vez, recargar o abrir otra pestaña del mismo navegador devuelve la misma demo, y entrar después en su cuenta de erplora.com no la pierde.
 Entra: el idioma del visitante, en el que se abre la demo.
@@ -589,7 +589,8 @@ Pantalla: Demo
 Pasos:
 1. Si el hub no contesta o rechaza la petición, la persona vuelve a la pantalla de la demo y ve «La demo no está disponible ahora mismo.» con «Volver a intentarlo».
 2. Si la demo se creó pero la entrada no funcionó, ve «No hemos podido abrir tu demo. Vuelve a intentarlo.» y «Volver a mi demo», que la lleva a la misma demo mientras dure.
-3. En los dos casos tiene también «Empieza gratis».
+3. Si la demo no está lista en 30 segundos (o no se ha podido preparar), ve «Tu demo aún no está lista. Vuelve a intentarlo en un momento.» y «Volver a intentarlo», que vuelve a esperar a la misma demo.
+4. En todos los casos tiene también «Empieza gratis».
 Entra: nada.
 Sale: nada: un intento fallido no se queda como la demo de ese navegador, así que «Volver a intentarlo» la pide otra vez.
 Si falla: el fallo queda en el registro del servicio; la persona solo ve el mensaje, nunca un error técnico.

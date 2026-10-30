@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:d4d5f57149992fcf2ba5ecbc3173f938b363a56d5cc3fdebe20d975b35092d45 -->
+<!-- generated from WORKBOOK.md sha256:f47e9275449f793897a04018592964c5f28951e6088b96167aac06262d425cda -->
 
 ## What it is for and who it is for
 
@@ -534,8 +534,8 @@ Actor: visitor, system
 Screen: Demo
 Steps:
 1. The person presses "Try the demo".
-2. An empty hub is created for that browser, with its own random address starting with "demo-", and it lasts 60 minutes from that moment. It is ready at once: there is no wait.
-3. The screen says "Opening your demo…" and the browser goes into the demo by itself, as the user "Demo", with no account, password or PIN; without JavaScript, the "Continue" button does the same.
+2. An empty hub is created for that browser, with its own random address starting with "demo-", and it lasts 60 minutes from that moment. It takes a few seconds to be ready: the demo screen says "Preparing your demo…" and "It takes a few seconds and opens by itself when it is ready.", and checks every second whether it is.
+3. Once the demo is ready, the screen says "Opening your demo…" and the browser goes into it by itself, as the user "Demo", with no account, password or PIN; without JavaScript, the "Continue" button does the same.
 4. If they come back to the demo screen while it lasts, they see "Your demo is running", "It ends in 12 minutes." (whatever is left) and "Back to my demo", which takes them back to the same demo.
 5. Pressing again, reloading or opening another tab of the same browser gives back the same demo, and signing in to their erplora.com account afterwards does not lose it.
 In: the visitor's language, which the demo opens in.
@@ -550,7 +550,8 @@ Screen: Demo
 Steps:
 1. If the hub does not answer or refuses the request, the person comes back to the demo screen and sees "The demo is not available right now." with "Try again".
 2. If the demo was created but going in did not work, they see "We could not open your demo. Try again." and "Back to my demo", which takes them to the same demo while it lasts.
-3. In both cases they also have "Start free".
+3. If the demo is not ready within 30 seconds (or could not be prepared), they see "Your demo is not ready yet. Try again in a moment." and "Try again", which waits for the same demo again.
+4. In every case they also have "Start free".
 In: nothing.
 Out: nothing: a failed try does not stay as that browser's demo, so "Try again" asks for it again.
 If it fails: the failure stays in the service's log; the person only sees the message, never a technical error.

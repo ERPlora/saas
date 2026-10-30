@@ -101,6 +101,8 @@ urlpatterns = [
     path("demo/", demo.index, name="demo"),
     path("demo/start/", demo.start, name="demo_start"),
     path("demo/enter/", demo.enter, name="demo_enter"),
+    # How the browser's demo is going, which the door's page asks while the Hub prepares it (JSON, never indexed).
+    path("demo/status/", demo.status, name="demo_status"),
     # The same door at the address the old stack handed out (PUBLIC-F27): /demo/ was once a permanent redirect
     # that browsers keep. It serves the page itself (never a redirect) and names /demo/ as canonical.
     path("try/", demo.index, name="demo_try"),

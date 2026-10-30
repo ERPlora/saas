@@ -61,6 +61,9 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
+/** A copy the Hub keeps of the business's data (`hubs.data_copy.list`). */
+const COPY = { id: 'h1hex/20261013T100500Z-offboarding.dump', kind: 'offboarding', created_at: '2026-10-13T10:05:00Z', bytes: 2048 };
+
 async function setup(tab = 'summary', business: Record<string, unknown> | null = {}, locale: 'en' | 'es' = 'en') {
   vi.spyOn(navigation, 'assign').mockImplementation(() => undefined);
   const m = await mountHubs(BusinessPage, {
@@ -72,6 +75,7 @@ async function setup(tab = 'summary', business: Record<string, unknown> | null =
       if (c.path === '/api/hubs/businesses/open') return Response.json({ url: 'http://bakery.localhost:8000/auth/login?next=/' });
       if (c.path === '/api/hubs/businesses/restore') return Response.json({ ...BUSINESS, status: 'active' });
       if (c.path === '/api/plans') return Response.json({ signup_trial_days: 0, cheapest_slug: null, plans: [] });
+      if (c.path === '/api/hubs/data-copies') return Response.json({ business_id: 'h1', available: true, copies: [COPY] });
       return Response.json({});
     },
   });
@@ -343,6 +347,20 @@ describe('BusinessPage: deleted', () => {
     const s = await setup('summary', { ...DELETED, role: 'hub_admin', role_label: 'Admin', can: { ...DELETED.can, restore: false } });
     expect(s.testid('business-deleted').text()).toContain('Only its owner can recover it.');
     expect(s.testid('business-restore').exists()).toBe(false);
+  });
+
+  it('its owner downloads the copy of its data from its Summary, where the deletion mail leads (HUBS-F18)', async () => {
+    const s = await setup('summary', { ...DELETED, can: { ...DELETED.can, download_data: true } });
+    await flush();
+    expect(s.testid('data-copy-card').text()).toContain('Download the data');
+    expect(s.wrapper.findAll('[data-testid="data-copy-row"]')).toHaveLength(1);
+  });
+
+  it('nobody else is offered the copy of its data', async () => {
+    const s = await setup('summary', { ...DELETED, role: 'hub_admin', role_label: 'Admin', can: { ...DELETED.can, restore: false, download_data: false } });
+    await flush();
+    expect(s.testid('data-copy-card').exists()).toBe(false);
+    expect(s.calls().some((c) => c.path === '/api/hubs/data-copies')).toBe(false);
   });
 });
 

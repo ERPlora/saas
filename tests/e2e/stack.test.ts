@@ -27,6 +27,7 @@ describe('stackFrom', () => {
       publicPort: 8011,
       panelPort: 8012,
       panelMfaPort: 8013,
+      publicHubDoublePort: 8014,
       aiProviderPort: 8017,
       recaptchaDoublePort: 8018,
       hubDoublePort: 8019,
@@ -41,6 +42,7 @@ describe('stackFrom', () => {
       publicPort: 8031,
       panelPort: 8032,
       panelMfaPort: 8033,
+      publicHubDoublePort: 8034,
       aiProviderPort: 8037,
       recaptchaDoublePort: 8038,
       hubDoublePort: 8039,
@@ -138,6 +140,15 @@ describe("the stack's servers", () => {
       RECAPTCHA_ENDPOINT: 'http://127.0.0.1:8018/v1/projects/erplora/assessments',
     });
     expect(publicServer(SAAS_DIR, OWN, on).env?.RECAPTCHA_ENDPOINT).toBe('http://127.0.0.1:8038/v1/projects/erplora/assessments');
+  });
+
+  it('send the public server’s calls to the Hub to the double a demo spec plays on the stack, never the private name', () => {
+    expect(publicServer(SAAS_DIR, SHARED, {}).env).toMatchObject({ HUB_INTERNAL_URL: 'http://127.0.0.1:8014' });
+    expect(publicServer(SAAS_DIR, OWN, {}).env).toMatchObject({ HUB_INTERNAL_URL: 'http://127.0.0.1:8034' });
+  });
+
+  it('leave the Hub the run exports to the public server when it walks a real demo (E2E_DEMO_HUB)', () => {
+    expect(publicServer(SAAS_DIR, SHARED, { E2E_DEMO_HUB: 'http://localhost:8710' }).env).not.toHaveProperty('HUB_INTERNAL_URL');
   });
 
   it('let the run press «Try the demo» more than 3 times an hour from 127.0.0.1 (the throttled door is its own spec)', () => {

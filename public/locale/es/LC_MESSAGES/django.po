@@ -3891,6 +3891,18 @@ msgid "We could not open your demo. Try again."
 msgstr "No hemos podido abrir tu demo. Vuelve a intentarlo."
 
 #: templates/public/demo/index.html
+msgid "Preparing your demo…"
+msgstr "Preparando tu demo…"
+
+#: templates/public/demo/index.html
+msgid "It takes a few seconds and opens by itself when it is ready."
+msgstr "Tarda unos segundos y se abre sola cuando está lista."
+
+#: templates/public/demo/index.html
+msgid "Your demo is not ready yet. Try again in a moment."
+msgstr "Tu demo aún no está lista. Vuelve a intentarlo en un momento."
+
+#: templates/public/demo/index.html
 msgid "Back to my demo"
 msgstr "Volver a mi demo"
 

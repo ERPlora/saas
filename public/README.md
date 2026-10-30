@@ -65,7 +65,10 @@ sin SSR y sin prefijo `/es/`; ronda 16 y spec `docs/superpowers/specs/2026-10-13
 - **Descargas (PUBLIC-F24):** los dispositivos y usuarios del hub gratis de `/download/` son los del plan Gratis
   (`pricing.free_plan` y el parcial `pricing/_plan_limits.html`, el de la tabla de precios); sin plan Gratis, ninguno.
 - **Demo (PUBLIC-F27–F37, APP-PUBLIC-3, 2026-10-22):** la demo de la fase 1 (ronda 2026-10-17) se queda como está:
-  la puerta pide pulsar (el GET nunca crea) y la demo está lista al momento, sin pantalla de espera. `/try/` vuelve como
+  la puerta pide pulsar (el GET nunca crea) y la demo está lista al momento, sin pantalla de espera. → **Tenencia
+  (2026-10-30):** la demo nace con su BD y el Hub la prepara después (202 «requested»): la puerta dice «Preparando tu
+  demo…» y su página pregunta `/demo/status/` cada segundo durante 30 s (`frontend/demo-wait.ts`), con `not_ready`
+  si no llega; detalle en `hubs/README.md`, «Lo que añadió la tenencia». `/try/` vuelve como
   la misma vista con canónica `/demo/` (la dirección que repartía el stack viejo, saas#1164), fuera del mapa del
   sitio. La puerta JSON (`/api/demo/spawn/`) queda descartada: nadie la llamaba y la demo solo se abre en el
   navegador que la pide (PUBLIC-F36). Lo creado dentro de una demo se borra con ella desde la fase 2 (PUBLIC-F34).

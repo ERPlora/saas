@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:5cb5226de95831905a4d0202cd165a4b2832d537bc2fff9bcb0934d54fda76fe -->
+<!-- generated from WORKBOOK.md sha256:933c3ab724e6358dd93da0c453ce9c362366c9d9aef174aa70b96f1292a8c70a -->
 
 ## What it is for and who it is for
 
@@ -411,17 +411,17 @@ If it fails: a domain that does not point to ERPlora stays inactive and the miss
 Involved: website (the business's public website), the business (serves the website on its domain)
 
 ### HUBS-F18 Delete a business
-Status: partial — the deletion email does not carry the link to download the business's data yet: that copy comes with each business's own database (phase 2); until then the email and the panel say until when it can be recovered.
+Status: partial — erplora.com already leads to the copy of the data (the deletion email links to the business's page, which shows it and downloads it, and tells when it is ready), but the copy is made by the business when it receives the deletion, with each business's own database (tenancy, second part of the sign-up); until then the page says it is not ready yet.
 Actor: owner, integration
 Screen: Business settings › Danger zone
 Steps:
 1. In "Settings", in the "Danger zone", the owner presses "Delete business"; the dialog "Delete …" says "It stops working right now for everyone. You can recover it for 90 days; after that it is erased for good." and "Its plan is cancelled now: if you recover it, it comes back on Free.".
 2. They type the business's name in "Business name" and press "Delete business": "Business deleted: …. You can recover it until ….".
-3. The page says "It will be erased for good on …" with "Recover business", and the owner gets the email with that date.
+3. The page says "It will be erased for good on …" with "Recover business" and, below, "Download the data": each full copy of its data with its date, "When it was deleted" and its size, and "Download". The owner gets the email with that date and "Download a full copy of its data: …", which leads to that page; when the copy is ready, another email: "The copy of the data of … is ready".
 4. An integration with the account's session does the same, with the name typed; an API key does not delete.
 In: the name typed again; the owner's session.
 Out: the business deleted, which stops opening at once for everyone and is erased for good after 90 days; its plan goes back to Free and what Stripe was charging is cancelled in the next pass; the business receives the deletion after saving. Records `hubs.business.deleted`.
-If it fails: a name that does not match deletes nothing (case and spaces around do not matter); deleting it twice, "This business was deleted.". Only the owner deletes it. To stop paying without deleting it, the plan is cancelled from Billing (BILLING-F13).
+If it fails: a name that does not match deletes nothing (case and spaces around do not matter); deleting it twice, "This business was deleted.". Only the owner deletes it and downloads its data. With no copy yet, "The copy is not ready yet. We will let you know by email when it is."; a business that never had its own database, "This business has no copy of its data.", with no notice, and its deletion email does not lead to the copy; a copy no longer kept, "This copy of the data is no longer kept."; if it cannot be downloaded now, "The copy cannot be downloaded right now. Try again in a moment.". To stop paying without deleting it, the plan is cancelled from Billing (BILLING-F13).
 Involved: billing (cancels what was being charged), the business (stops opening and keeps it 90 days)
 
 ### HUBS-F19 Recover a deleted business
@@ -437,7 +437,7 @@ If it fails: after the 90 days, "This business was erased for good and cannot be
 Involved: the business (opens it again)
 
 ### HUBS-F20 Warn and close a business suspended for an unpaid plan
-Status: partial — the deletion of day 180 is HUBS-F18's and does not carry the link to download the data yet either (it comes with each business's own database, phase 2).
+Status: partial — the deletion of day 180 is HUBS-F18's: its email already leads to the copy of the data, which the business makes when it receives the deletion with its own database (tenancy, second part of the sign-up); until then the page says it is not ready yet.
 Actor: system
 Screen: none
 Steps:

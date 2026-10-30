@@ -4,10 +4,11 @@
 Ported from ERPlora/saas ``apps/dashboard/hubs/main/emails.py`` (origin/develop): the invitation
 (``send_invitation``), the ownership offer and its acceptance (``send_ownership_offer``,
 ``send_ownership_accepted``, which say until when a paid plan is paid, HUBS-F28), the deletion with the date
-until which the business can be recovered (``send_deletion``), the business ready to open (``send_ready``, once,
-when the Hub reports it ready) and the notices of a business suspended for an unpaid plan
-(``send_suspension_notice``). Services call them after the COMMIT: a mail never announces a write that rolled
-back, and one that cannot leave is logged, never raised (the write is the source of truth).
+until which the business can be recovered and the way to the copy of its data (``send_deletion``), that copy ready to
+download (``send_data_copy_ready``), the business ready to open (``send_ready``, once, when the Hub reports it ready)
+and the notices of a business suspended for an unpaid plan (``send_suspension_notice``). Services call them after
+the COMMIT: a mail never announces a write that rolled back, and one that cannot leave is logged, never raised (the
+write is the source of truth).
 """
 
 import logging
@@ -134,9 +135,11 @@ def send_ownership_accepted(transfer, *, base_url: str, paid_until=None) -> bool
     return _send(subject, lines, transfer.from_email, language)
 
 
-def send_deletion(hub, owner, *, base_url: str, unpaid: bool = False) -> bool:
-    """Tell the owner the business was deleted and until when it can still be recovered; ``unpaid``: it was
-    deleted because it stayed suspended for an unpaid plan (HUBS-F20)."""
+def send_deletion(hub, owner, *, base_url: str, unpaid: bool = False, data_copy: bool = True) -> bool:
+    """Tell the owner the business was deleted, until when it can still be recovered and where to download the copy of
+    its data (the business's page: the panel asks the Hub for a link of 15 minutes there, so this one never expires);
+    ``unpaid``: it was deleted because it stayed suspended for an unpaid plan (HUBS-F20); ``data_copy`` false: the
+    business never gets a copy (no database of its own), so the mail does not lead to one."""
     if owner is None:
         logger.error("hubs.mail.deletion_unsent hub=%s: the business has no owner to tell", hub.pk)
         return False
@@ -155,6 +158,26 @@ def send_deletion(hub, owner, *, base_url: str, unpaid: bool = False) -> bool:
                 "You can recover it until %(date)s from %(url)s. After that date it is erased for good."
             )
             % {"date": _date(hub.purge_after), "url": f"{base_url}{BUSINESSES}"},
+            *([_("Download a full copy of its data: %(url)s") % {"url": _page(hub, base_url)}] if data_copy else []),
+        ]
+    return _send(subject, lines, owner.email, language)
+
+
+def send_data_copy_ready(hub, owner, *, base_url: str) -> bool:
+    """Tell the owner of a deleted business that the copy of its data is ready, as its page promised («we'll let you
+    know»): where to download it and until when (the business, and the copy with it, is erased at ``purge_after``).
+    Always sent: the owner is waiting for it."""
+    if owner is None:
+        logger.error("hubs.mail.data_copy_unsent hub=%s: the business has no owner to tell", hub.pk)
+        return False
+    language = _language_of(owner)
+    with translation.override(language):
+        values = {"business": hub.name, "url": _page(hub, base_url), "date": _date(hub.purge_after)}
+        subject = _("The copy of the data of %(business)s is ready") % values
+        lines = [
+            _("The full copy of the data of %(business)s is ready.") % values,
+            "",
+            _("Download it from %(url)s until %(date)s.") % values,
         ]
     return _send(subject, lines, owner.email, language)
 
@@ -196,6 +219,11 @@ def send_suspension_notice(hub, owner, *, base_url: str, delete_on, final: bool)
             _("Pay it from Billing and it works again at once: %(url)s") % {"url": f"{base_url}{BILLING}/invoices?business={hub.id}"},
         ]
     return _send(subject, lines, owner.email, language)
+
+
+def _page(hub, base_url: str) -> str:
+    """The business's page in the panel."""
+    return f"{base_url}{BUSINESSES}/{hub.id}"
 
 
 def _language_of(user) -> str:

@@ -7,6 +7,8 @@
 
     off         the demo is switched off (DEMO_ENABLED): only «Start free»
     idle        the button that starts one (a POST: the GET never creates a demo)
+    preparing   this browser's demo is being prepared by the Hub: «Preparing your demo…» while the page asks
+                /demo/status/ every second for 30 seconds (frontend/demo-wait.ts) and goes where it says
     ready       this browser has a live demo: back into it, and how long it has left
     expired     its demo ended (or the Hub says so): start another one
     full        the Hub's cap of live demos is reached: try again in a few minutes
@@ -14,6 +16,8 @@
     unverified  reCAPTCHA could not tell a person pressed the button (or Google did not answer): try again
     unavailable the Hub did not answer or refused: try again
     failed      the demo's sign-in did not take the code: back into the live demo, or start one
+    not_ready   the demo was not ready in time, or the Hub could not prepare it (it retries): «Try again» waits for
+                the same demo, or starts one when the browser has none
 
   The look is the public web's: the page hero and one card, as /download/. «Try the demo» is a form: with a site
   key, frontend/recaptcha.ts fills its `recaptcha_token` with Google's token for `demo_request` on submit, and the
@@ -37,7 +41,18 @@
         <ion-card class="ion-no-margin">
           <ion-card-content class="p-6 flex flex-col gap-5">
 
-            {% if demo_state == "ready" %}
+            {% if demo_state == "preparing" %}
+              <div class="flex items-start gap-4" role="status" data-demo-wait data-demo-status-url="{{ wait.status_url }}" data-demo-timeout-url="{{ wait.timeout_url }}">
+                <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+                  <ion-spinner name="crescent" aria-hidden="true"></ion-spinner>
+                </div>
+                <div>
+                  <ion-card-title class="mb-2">{% trans "Preparing your demo…" %}</ion-card-title>
+                  <p class="text-fg/65 m-0">{% trans "It takes a few seconds and opens by itself when it is ready." %}</p>
+                </div>
+              </div>
+
+            {% elif demo_state == "ready" %}
               <div class="flex items-start gap-4">
                 <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-primary">
                   {% icon "lucide:play" size=26 %}
@@ -87,11 +102,21 @@
               {% elif demo_state == "failed" %}
                 {% trans "We could not open your demo. Try again." as message %}
                 {% include "public/components/inline_feedback.html" with tone="danger" message=message only %}
+              {% elif demo_state == "not_ready" %}
+                {% trans "Your demo is not ready yet. Try again in a moment." as message %}
+                {% include "public/components/inline_feedback.html" with tone="warning" message=message only %}
               {% endif %}
             {% endif %}
 
-            {% comment %} The action: back into the live demo, else start one (or start free when no demo can be had now). {% endcomment %}
-            {% if demo %}
+            {% comment %} The action: back into the live demo, else start one (or start free when no demo can be had now).
+               A demo being prepared has none: the page goes on by itself; not ready yet, «Try again» waits for it again. {% endcomment %}
+            {% if demo_state == "preparing" %}
+            {% elif demo_state == "not_ready" and demo %}
+              <ion-button href="{% url 'public:demo' %}" expand="block" size="large" data-testid="demo-retry">
+                {% trans "Try again" %}
+                <span slot="end">{% icon "lucide:arrow-right" size=15 %}</span>
+              </ion-button>
+            {% elif demo.url %}
               <ion-button href="{{ demo.url }}" expand="block" size="large">
                 {% trans "Back to my demo" %}
                 <span slot="end">{% icon "lucide:arrow-right" size=15 %}</span>

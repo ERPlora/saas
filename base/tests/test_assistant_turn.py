@@ -82,11 +82,13 @@ class TestTheCatalog:
         assert {"hubs.business.list", "hubs.business.create", "billing.invoice.list", "accounts.preferences.get"} <= set(
             tools
         )
-        assert {"apps.app.list", "billing.plan.change", "hubs.business.delete"} <= set(tools)
+        assert {"apps.app.list", "billing.plan.change", "hubs.business.delete", "hubs.data_copy.list"} <= set(tools)
         for internal in (
             "accounts.apikey.create",
             "hubs.business.open",
             "accounts.data.export",
+            # A link to download a whole copy of a business's data: the screen's button, never a chat bubble.
+            "hubs.data_copy.link",
             # Its photo travels as a data URL of up to 150 KB: the model has the name and the email in its instructions.
             "accounts.profile.get",
             "billing.invoice.pdf",

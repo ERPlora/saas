@@ -441,17 +441,17 @@ Implicados: website (la web pública del negocio), el negocio (sirve la web por 
 
 ### HUBS-F18 Eliminar un negocio
 <!-- origen: fi:saas/hubs#borrado-cancelacion-del-terminal old-saas:SAAS_DASHBOARD-F22 old-saas:SAAS_DASHBOARD-F23 old-saas:SAAS_DASHBOARD-F24 -->
-Estado: parcial — el correo de la baja todavía no lleva el enlace para descargar los datos del negocio: esa copia llega con la base de datos propia de cada negocio (fase 2); hasta entonces el correo y el panel dicen hasta cuándo se puede recuperar.
+Estado: parcial — erplora.com ya lleva a la copia de los datos (el correo de la baja enlaza a la página del negocio, que la enseña y la descarga, y avisa cuando está lista), pero la copia la hace el negocio al recibir la baja, con la base de datos propia de cada negocio (tenencia, segunda parte del alta); hasta entonces la página dice que todavía no está lista.
 Actor: propietario, integración
 Pantalla: Ajustes del negocio › Zona de peligro
 Pasos:
 1. En «Ajustes», en la «Zona de peligro», el propietario pulsa «Eliminar negocio»; el diálogo «Eliminar …» dice «Deja de funcionar ahora mismo para todos. Puedes recuperarlo durante 90 días; después se borra para siempre.» y «Su plan se cancela ahora: si lo recuperas, vuelve en Gratis.».
 2. Escribe el nombre del negocio en «Nombre del negocio» y pulsa «Eliminar negocio»: sale «Negocio eliminado: …. Puedes recuperarlo hasta el ….».
-3. La página dice «Se eliminará para siempre el …» con «Recuperar negocio», y al propietario le llega el correo con esa fecha.
+3. La página dice «Se eliminará para siempre el …» con «Recuperar negocio» y, debajo, «Descargar los datos»: cada copia completa de sus datos con su fecha, «Al eliminarlo» y su tamaño, y «Descargar». Al propietario le llega el correo con esa fecha y «Descarga una copia completa de sus datos: …», que lleva a esa página; cuando la copia está lista, otro correo: «La copia de los datos de … está lista».
 4. Una integración con la sesión de la cuenta hace lo mismo, con el nombre escrito; una clave de API no elimina.
 Entra: el nombre escrito otra vez; la sesión del propietario.
 Sale: el negocio eliminado, que deja de abrirse al momento para todos y se borra para siempre a los 90 días; su plan vuelve a Gratis y lo que se cobraba en Stripe se cancela en la pasada siguiente; el negocio recibe la baja tras guardar. Anota `hubs.business.deleted`.
-Si falla: un nombre que no coincide no elimina nada (da igual en mayúsculas o con espacios alrededor); eliminarlo dos veces, «Este negocio se ha eliminado.». Solo el propietario lo elimina. Para dejar de pagar sin eliminarlo, se cancela el plan desde Facturación (BILLING-F13).
+Si falla: un nombre que no coincide no elimina nada (da igual en mayúsculas o con espacios alrededor); eliminarlo dos veces, «Este negocio se ha eliminado.». Solo el propietario lo elimina y descarga sus datos. Sin copia todavía, «La copia todavía no está lista. Te avisaremos por correo cuando lo esté.»; un negocio que nunca tuvo base de datos propia, «Este negocio no tiene copia de datos.», sin aviso, y su correo de la baja no lleva a la copia; una copia que ya no se guarda, «Esta copia de los datos ya no se conserva.»; si ahora no se puede bajar, «La copia no se puede descargar ahora mismo. Vuelve a intentarlo en un momento.». Para dejar de pagar sin eliminarlo, se cancela el plan desde Facturación (BILLING-F13).
 Implicados: billing (cancela lo que se cobraba), el negocio (deja de abrirse y lo guarda 90 días)
 
 ### HUBS-F19 Recuperar un negocio eliminado
@@ -469,7 +469,7 @@ Implicados: el negocio (lo vuelve a abrir)
 
 ### HUBS-F20 Avisar y dar de baja un negocio suspendido por impago
 <!-- origen: old-saas:SAAS_DASHBOARD-F35 fi:saas/support/hubs#task-cleanup_inactive_hubs fi:saas/support/hubs#task-send_hub_suspended_email_task -->
-Estado: parcial — la baja del día 180 es la de HUBS-F18 y tampoco lleva todavía el enlace para descargar los datos (llega con la base de datos propia de cada negocio, fase 2).
+Estado: parcial — la baja del día 180 es la de HUBS-F18: su correo ya lleva a la copia de los datos, que el negocio hace al recibir la baja con su base de datos propia (tenencia, segunda parte del alta); hasta entonces la página dice que todavía no está lista.
 Actor: sistema
 Pantalla: ninguna
 Pasos:
