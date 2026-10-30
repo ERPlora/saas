@@ -588,6 +588,10 @@ def business_mark_ready(ctx: OperationContext, data: MarkReadyIn) -> dict:
     if opens:
         hub.status = Hub.Status.ACTIVE
         changed.append("status")
+    if hub.last_hub_error == PROVISION_FAILED:
+        # Ready after the Hub's own retry: the preparation it reported failed is no longer owed.
+        hub.last_hub_error, hub.hub_error_at = "", None
+        changed += ["last_hub_error", "hub_error_at"]
     if changed:
         hub.save(update_fields=[*changed, "updated_at"])
         record_event(ctx, events.BUSINESS_READY, {"id": str(hub.id)})
@@ -1691,7 +1695,8 @@ def sync_outcome(hub_id: UUID) -> str:
         logger.error("hubs.sync.refused hub=%s call=%s: %s", hub_id, call or "state", refused)
         _record_hub_error(hub_id, refused.code[:64])
         return REFUSED
-    if Hub.objects.filter(pk=hub_id).exclude(last_hub_error="").exists():
+    if Hub.objects.filter(pk=hub_id).exclude(last_hub_error__in=["", PROVISION_FAILED]).exists():
+        # A delivered call clears the Hub's last refusal, not a preparation it still owes (``ready`` clears that one).
         _record_hub_error(hub_id, None)
     return DELIVERED
 
@@ -1752,8 +1757,14 @@ def record_state_pushed(hub_id: UUID, version: int) -> None:
 #: An sign-up without the Hub's ``ready`` callback this long is asked about (PLAN-SAAS §3.1 step 3).
 STUCK_AFTER = timedelta(minutes=2)
 LIVE_STATUSES = [Hub.Status.PREPARING, Hub.Status.ACTIVE, Hub.Status.PAST_DUE, Hub.Status.SUSPENDED]
+#: What ``GET /internal/hubs/{id}`` says of a sign-up the Hub is still preparing (the asynchronous sign-up: 202
+#: «requested», then its database is cloned, migrated and seeded; PLAN-SAAS §3.1, PLAN-DB §6).
+PREPARING_STATUSES = frozenset({"requested", "creating", "migrating", "seeding"})
+#: The Hub's last error recorded on a business it says it could not prepare (``failed``): the panel shows «We could not
+#: prepare it. We keep retrying» (the Hub retries on its own and calls ``ready`` once it can), never «preparing» for ever.
+PROVISION_FAILED = "hubs.provision_failed"
 #: Counts that make a run end with an error (the ``task_failed`` alarm), after its whole pass.
-FAILING_COUNTS = ("owed", "unreachable", "failed", "sessions_pending")
+FAILING_COUNTS = ("owed", "unreachable", "failed", "provision_failed", "unexpected", "sessions_pending")
 
 
 def lock_name(command: str) -> str:
@@ -1818,6 +1829,8 @@ def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER) -> Counter:
         "ready",
         "re_registered",
         "preparing",
+        "provision_failed",
+        "unexpected",
         "unreachable",
         "failed",
         "sessions_ended",
@@ -1867,7 +1880,9 @@ def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER) -> Counter:
 
 
 def _settle_stuck(hub_id: UUID, counts: Counter) -> None:
-    """Ask the Hub about an sign-up without its ``ready`` callback: ready → mark it; unknown → register again."""
+    """Ask the Hub about a sign-up without its ``ready`` callback: ready → mark it; still preparing → wait; failed →
+    the panel says so (``PROVISION_FAILED``); unknown → register again. Any other answer (the Hub calls ended a
+    business the SaaS is preparing, or a status off the contract) is logged for a person and fails the run."""
     try:
         answer = hub_client.get_hub(str(hub_id))
     except HubRefused as refused:
@@ -1881,11 +1896,19 @@ def _settle_stuck(hub_id: UUID, counts: Counter) -> None:
     except HubUnavailable:
         counts["unreachable"] += 1
         return
-    if isinstance(answer.body, dict) and answer.body.get("status") == "ready":
+    status = answer.body.get("status") if isinstance(answer.body, dict) else None
+    if status == "ready":
         business_mark_ready(system_ctx_for(hub_id), MarkReadyIn(id=hub_id))
         counts["ready"] += 1
-    else:
+    elif status in PREPARING_STATUSES:
         counts["preparing"] += 1
+    elif status == "failed":
+        logger.warning("hubs.reconcile.provision_failed hub=%s", hub_id)
+        _record_hub_error(hub_id, PROVISION_FAILED)
+        counts["provision_failed"] += 1
+    else:
+        logger.error("hubs.reconcile.unexpected_status hub=%s status=%r", hub_id, status)
+        counts["unexpected"] += 1
 
 
 # --- The platform's actions in the admin (hubs.admin) ----------------------------------------------

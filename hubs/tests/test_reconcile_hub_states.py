@@ -21,7 +21,7 @@ from django.core.management.base import CommandError
 from django.utils import timezone
 
 from accounts.models import HubMembership
-from hubs import hub_client, services
+from hubs import hub_client, queries, services
 from hubs.models import Hub, Subscription
 from hubs.tests.conftest import create_business
 
@@ -39,6 +39,12 @@ def run(command, *args):
 
 def fresh(hub):
     return Hub.objects.get(pk=hub.pk)
+
+
+def stuck(hub):
+    """A sign-up the Hub took (202) and has not reported ready for longer than the threshold."""
+    services.sync_hub(hub.id)
+    Hub.objects.filter(pk=hub.pk).update(provision_requested_at=timezone.now() - timedelta(minutes=5))
 
 
 
@@ -141,6 +147,65 @@ class TestReconcile:
             True,
         )
         assert "ready=1" in output
+
+    @pytest.mark.parametrize("status", ["requested", "creating", "migrating", "seeding"])
+    def test_a_stuck_sign_up_the_hub_is_still_preparing_keeps_waiting(self, business, hub_double, status):
+        """The asynchronous sign-up (202 «requested», PLAN-SAAS §3.1): each step the Hub reports is «still preparing»."""
+        stuck(business)
+        hub_double.registry[str(business.id)]["status"] = status
+
+        output = run("reconcile_hub_states")
+
+        assert (fresh(business).status, fresh(business).last_hub_error) == ("preparing", "")
+        assert "preparing=1" in output
+
+    def test_a_sign_up_the_hub_could_not_prepare_is_shown_and_fails_the_run(self, business, hub_double):
+        """``failed``: the panel says it could not be prepared (and that it is retried), never «preparing» for ever."""
+        stuck(business)
+        hub_double.registry[str(business.id)]["status"] = "failed"
+
+        with pytest.raises(CommandError) as failed:
+            run("reconcile_hub_states")
+
+        assert "provision_failed=1" in str(failed.value)
+        assert (fresh(business).status, fresh(business).last_hub_error) == ("preparing", services.PROVISION_FAILED)
+        assert queries.open_blocked_reason(fresh(business)) == "error"
+
+    def test_a_failed_sign_up_the_hub_prepares_later_opens_without_the_error(self, business, hub_double):
+        stuck(business)
+        hub_double.registry[str(business.id)]["status"] = "failed"
+        with pytest.raises(CommandError):
+            run("reconcile_hub_states")
+        hub_double.registry[str(business.id)]["status"] = "ready"
+
+        output = run("reconcile_hub_states")
+
+        assert (fresh(business).status, fresh(business).last_hub_error) == ("active", "")
+        assert "ready=1" in output
+
+    def test_a_snapshot_delivered_meanwhile_does_not_hide_the_failed_preparation(self, business, hub_double):
+        """A delivered push clears the Hub's last refusal, not the preparation it still owes."""
+        stuck(business)
+        hub_double.registry[str(business.id)]["status"] = "failed"
+        with pytest.raises(CommandError):
+            run("reconcile_hub_states")
+        services.bump_state(business.id)
+
+        assert services.sync_outcome(business.id) == services.DELIVERED
+        assert fresh(business).last_hub_error == services.PROVISION_FAILED
+
+    @pytest.mark.parametrize("status", ["cancelled", "expired", "purged", "dropped", None])
+    def test_a_status_the_sign_up_cannot_have_is_logged_and_fails_the_run(self, business, hub_double, status, caplog):
+        """A business the SaaS is preparing that the Hub calls ended (or anything off the contract) is a person's job."""
+        stuck(business)
+        hub_double.registry[str(business.id)]["status"] = status
+
+        with pytest.raises(CommandError) as failed:
+            run("reconcile_hub_states")
+
+        assert "unexpected=1" in str(failed.value)
+        assert fresh(business).status == "preparing"
+        assert f"hubs.reconcile.unexpected_status hub={business.id}" in caplog.text
 
     def test_a_stuck_sign_up_the_hub_does_not_know_is_registered_again(
         self, business, hub_double

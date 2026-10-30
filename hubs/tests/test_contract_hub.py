@@ -7,9 +7,11 @@ double after each COMMIT, and the double's signed ``ready`` callback to ``/inter
 
 import json
 import time
+from datetime import timedelta
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
 from accounts.signing import sign
 from apps.tests.factories import make_app
@@ -91,6 +93,30 @@ def test_create_then_202_then_ready_then_it_opens(panel, client, hub_double):
     assert (
         panel("POST", "/hubs/businesses/open", {"id": created["id"]}).status_code == 200
     )
+
+
+def test_202_then_still_preparing_then_failed_then_ready_by_its_callback(panel, client, hub_double):
+    """The asynchronous sign-up end to end: the Hub takes it (202 «requested»), the poll of a stuck one hears
+    each step and then ``failed`` (the panel says it could not be prepared, never «preparing» for ever), and the
+    Hub's ``ready`` callback after its own retry opens it without the error."""
+    created = panel("POST", "/hubs/businesses", {"name": "Bar Manolo", "country": "ES"}).json()
+    assert hub_double.registry[created["id"]]["status"] == "requested"
+    later = timezone.now() + services.STUCK_AFTER + timedelta(seconds=1)
+
+    hub_double.registry[created["id"]]["status"] = "creating"
+    assert services.reconcile(now=later)["preparing"] == 1
+    row = panel("GET", "/hubs/businesses").json()["rows"][0]
+    assert (row["status"], row["open_blocked_reason"]) == ("preparing", "preparing")
+
+    hub_double.registry[created["id"]]["status"] = "failed"
+    assert services.reconcile(now=later)["provision_failed"] == 1
+    row = panel("GET", "/hubs/businesses").json()["rows"][0]
+    assert (row["status"], row["open_blocked_reason"], row["can_open"]) == ("preparing", "error", False)
+
+    assert hub_reports_ready(client, created["id"]).status_code == 200
+
+    row = panel("GET", "/hubs/businesses").json()["rows"][0]
+    assert (row["status"], row["hub_error"], row["can_open"]) == ("active", None, True)
 
 
 def test_without_a_type_no_vertical_travels(panel, hub_double):
