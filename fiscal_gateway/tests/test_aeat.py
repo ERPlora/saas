@@ -7,6 +7,7 @@ byte for byte from hub-next).
 
 import asyncio
 import dataclasses
+import logging
 import os
 import ssl
 import stat
@@ -16,7 +17,13 @@ import httpx
 import pytest
 
 from fiscal_gateway import aeat, seal
-from fiscal_gateway.tests.conftest import PASSWORD, b64, fixture, make_p12
+from fiscal_gateway.tests.conftest import (
+    PASSWORD,
+    b64,
+    fixture,
+    make_p12,
+    names_the_file,
+)
 
 PATH = "/wlpl/TIKE-CONT/ws/SistemaFacturacion/VerifactuSOAP"
 PRE_SEAL = f"https://prewww10.aeat.es{PATH}"
@@ -318,3 +325,52 @@ def test_an_answer_slower_than_the_deadline_is_cut_and_may_have_arrived(identity
 
     assert unreachable.value.sent is True
     assert time.monotonic() - started < 1.5
+
+
+# The server's trusted certificates (FIX-SAAS-FISCAL-GATEWAY-AEAT-TLS-CRASHES-WHEN-SSL-CERT-FILE-MISSING)
+
+
+def test_without_the_servers_certificates_the_tls_context_fails_naming_the_file(
+    identity, unreadable_ca, caplog
+):
+    with caplog.at_level(logging.ERROR, logger="fiscal_gateway"):
+        with pytest.raises(aeat.TrustStoreUnreadable) as raised:
+            aeat.tls_context(identity)
+
+    assert raised.value.sent is False
+    assert raised.value.__suppress_context__
+    assert names_the_file(str(raised.value), unreadable_ca)
+    assert any(
+        record.levelno == logging.ERROR and names_the_file(record.getMessage(), unreadable_ca)
+        for record in caplog.records
+    )
+
+
+def test_a_presentation_without_the_servers_certificates_sends_nothing(
+    identity, unreadable_ca, respx_mock, private_tmp
+):
+    """Nothing left this process: the Hub keeps the record and retries it in its own cycle, without duplicating it."""
+    with pytest.raises(aeat.AeatUnreachable) as raised:
+        aeat.present(identity, "testing", SENT, operation="submit")
+
+    assert isinstance(raised.value, aeat.TrustStoreUnreadable)
+    assert raised.value.sent is False
+    assert names_the_file(str(raised.value), unreadable_ca)
+    assert not respx_mock.calls
+    assert not list(private_tmp.glob("fiscal-gateway-*"))
+
+
+def test_without_ssl_cert_file_the_failure_of_the_bundled_certificates_is_told_too(
+    identity, tmp_path, monkeypatch
+):
+    import certifi
+
+    monkeypatch.delenv("SSL_CERT_FILE", raising=False)
+    monkeypatch.delenv("SSL_CERT_DIR", raising=False)
+    monkeypatch.setattr(certifi, "where", lambda: str(tmp_path / "gone.pem"))
+
+    with pytest.raises(aeat.TrustStoreUnreadable) as raised:
+        aeat.tls_context(identity)
+
+    assert raised.value.sent is False
+    assert "the default certificates" in str(raised.value)

@@ -34,6 +34,7 @@ from fiscal_gateway.tests.conftest import (
     b64,
     fixture,
     make_p12,
+    names_the_file,
 )
 from hubs.models import Hub
 
@@ -452,6 +453,26 @@ def test_a_refused_connection_is_502_not_sent(client, respx_mock, erplora_seal):
     assert response.json()["error"]["sent"] is False
 
 
+@pytest.mark.parametrize("door", ["submit", "query"])
+@pytest.mark.parametrize("route", ["erplora", "own"])
+def test_without_the_servers_certificates_nothing_is_sent_and_the_file_is_named(
+    client, respx_mock, erplora_seal, own_p12, unreadable_ca, caplog, door, route
+):
+    """The gateway's own configuration, not the AEAT: ``502 aeat_unreachable`` with ``sent: false``, which the
+    Hub keeps in its queue and retries, never a mute 500."""
+    body = payload() if route == "erplora" else own(own_p12)
+
+    with caplog.at_level(logging.ERROR, logger="fiscal_gateway"):
+        response = call(client, door, body)
+
+    assert response.status_code == 502
+    error = response.json()["error"]
+    assert (error["code"], error["sent"]) == ("aeat_unreachable", False)
+    assert names_the_file(error["message"], unreadable_ca)
+    assert any(names_the_file(record.getMessage(), unreadable_ca) for record in caplog.records)
+    assert not respx_mock.calls
+
+
 # Representation: through ERPlora's seal, only for whom ERPlora may present
 
 
@@ -837,6 +858,21 @@ def test_probe_with_a_certificate_tls_refuses_is_not_ready(client, respx_mock, c
     for secret in ("pw-5d1e8b", b64(weak)[:60], b64(weak)[-60:], "PRIVATE KEY"):
         assert secret not in logged
         assert secret not in response.content.decode()
+
+
+@pytest.mark.parametrize("route", ["erplora", "own"])
+def test_probe_without_the_servers_certificates_is_not_ready_and_names_the_file(
+    client, respx_mock, erplora_seal, own_p12, unreadable_ca, route
+):
+    """The probe's own answer for a presentation that would not leave now: ``ready: false`` and why."""
+    body = probe_body(payload() if route == "erplora" else own(own_p12))
+
+    response = call(client, "probe", body)
+
+    assert response.status_code == 200
+    assert response.json()["ready"] is False
+    assert names_the_file(response.json()["detail"], unreadable_ca)
+    assert not respx_mock.calls
 
 
 def test_probe_own_route_without_a_certificate_is_not_ready(client):
