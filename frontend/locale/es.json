@@ -13,7 +13,104 @@
       "forbiddenBody": "Tu rol no lo permite. Si lo necesitas, pídeselo al propietario."
     },
     "skipLink": "Saltar al contenido",
-    "skipNav": "Atajos"
+    "skipNav": "Atajos",
+    "assistant": {
+      "empty": "Pregúntame por tus negocios, tus facturas o tu cuenta.",
+      "shortcuts": {
+        "businesses": "¿Qué negocios tengo?",
+        "billing": "¿Cuánto pago al mes?",
+        "create": "¿Cómo creo un negocio?"
+      },
+      "screens": {
+        "businesses": "Negocios",
+        "store": "Tienda",
+        "billing": "Facturación",
+        "account": "Cuenta"
+      },
+      "card": {
+        "actions": {
+          "accept": "Aceptar",
+          "cancel": "Cancelar",
+          "change_address": "Cambiar dirección",
+          "change_role": "Cambiar rol",
+          "close": "Cerrar",
+          "close_others": "Cerrar las demás",
+          "create": "Crear",
+          "decline": "Rechazar",
+          "delete": "Eliminar",
+          "invite": "Invitar",
+          "keep": "Mantener",
+          "remove": "Quitar",
+          "resend": "Reenviar",
+          "restore": "Recuperar",
+          "revoke": "Revocar",
+          "run": "Comprobar",
+          "transfer": "Transferir",
+          "update": "Cambiar"
+        },
+        "operations": {
+          "accounts": {
+            "apikey": {
+              "revoke": "Revocar clave"
+            },
+            "browser_trust": {
+              "revoke": "Dejar de confiar en todos los navegadores"
+            },
+            "preferences": {
+              "update": "Cambiar las preferencias"
+            },
+            "profile": {
+              "update": "Cambiar el perfil"
+            },
+            "session": {
+              "close": "Cerrar sesión",
+              "close_others": "Cerrar las demás sesiones"
+            }
+          },
+          "billing": {
+            "plan": {
+              "cancel": "Cancelar plan",
+              "keep": "Mantener el plan"
+            },
+            "vat_check": {
+              "run": "Comprobar el NIF en VIES"
+            }
+          },
+          "hubs": {
+            "billing_profile": {
+              "update": "Cambiar los datos de facturación"
+            },
+            "business": {
+              "change_address": "Cambiar dirección",
+              "create": "Crear negocio",
+              "delete": "Eliminar negocio",
+              "restore": "Recuperar negocio",
+              "update": "Cambiar el negocio"
+            },
+            "invitation": {
+              "accept": "Aceptar invitación",
+              "decline": "Rechazar invitación"
+            },
+            "member": {
+              "cancel": "Cancelar invitación",
+              "change_role": "Cambiar rol",
+              "invite": "Enviar invitación",
+              "remove": "Quitar del negocio",
+              "resend": "Reenviar invitación"
+            },
+            "ownership": {
+              "accept": "Aceptar la propiedad",
+              "cancel": "Retirar la oferta",
+              "decline": "Rechazar la propiedad",
+              "transfer": "Ofrecer la propiedad"
+            }
+          }
+        }
+      },
+      "errors": {
+        "quotaSpentAccount": "Cada negocio tiene su propio asistente, con sus propios mensajes: abre el negocio para seguir preguntando allí."
+      }
+    }
   },
   "notFound": {
     "body": "La dirección que has abierto no forma parte del panel. Puede ser un enlace antiguo o mal copiado: tus negocios, la facturación y tu cuenta están en el menú.",

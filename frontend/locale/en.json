@@ -13,7 +13,104 @@
       "forbiddenBody": "Your role does not allow it. If you need it, ask the owner."
     },
     "skipLink": "Skip to content",
-    "skipNav": "Shortcuts"
+    "skipNav": "Shortcuts",
+    "assistant": {
+      "empty": "Ask me about your businesses, your invoices or your account.",
+      "shortcuts": {
+        "businesses": "Which businesses do I have?",
+        "billing": "How much do I pay a month?",
+        "create": "How do I create a business?"
+      },
+      "screens": {
+        "businesses": "Businesses",
+        "store": "Store",
+        "billing": "Billing",
+        "account": "Account"
+      },
+      "card": {
+        "actions": {
+          "accept": "Accept",
+          "cancel": "Cancel",
+          "change_address": "Change address",
+          "change_role": "Change role",
+          "close": "Close",
+          "close_others": "Close the others",
+          "create": "Create",
+          "decline": "Decline",
+          "delete": "Delete",
+          "invite": "Invite",
+          "keep": "Keep",
+          "remove": "Remove",
+          "resend": "Resend",
+          "restore": "Recover",
+          "revoke": "Revoke",
+          "run": "Check",
+          "transfer": "Transfer",
+          "update": "Change"
+        },
+        "operations": {
+          "accounts": {
+            "apikey": {
+              "revoke": "Revoke key"
+            },
+            "browser_trust": {
+              "revoke": "Stop trusting all browsers"
+            },
+            "preferences": {
+              "update": "Change preferences"
+            },
+            "profile": {
+              "update": "Change profile"
+            },
+            "session": {
+              "close": "Close session",
+              "close_others": "Close other sessions"
+            }
+          },
+          "billing": {
+            "plan": {
+              "cancel": "Cancel plan",
+              "keep": "Keep the plan"
+            },
+            "vat_check": {
+              "run": "Check the tax ID in VIES"
+            }
+          },
+          "hubs": {
+            "billing_profile": {
+              "update": "Change billing details"
+            },
+            "business": {
+              "change_address": "Change address",
+              "create": "Create business",
+              "delete": "Delete business",
+              "restore": "Recover business",
+              "update": "Change the business"
+            },
+            "invitation": {
+              "accept": "Accept invitation",
+              "decline": "Decline invitation"
+            },
+            "member": {
+              "cancel": "Cancel invitation",
+              "change_role": "Change role",
+              "invite": "Send invitation",
+              "remove": "Remove from the business",
+              "resend": "Resend invitation"
+            },
+            "ownership": {
+              "accept": "Accept the ownership",
+              "cancel": "Withdraw the offer",
+              "decline": "Decline the ownership",
+              "transfer": "Offer the ownership"
+            }
+          }
+        }
+      },
+      "errors": {
+        "quotaSpentAccount": "Each business has its own assistant, with its own messages: open the business to keep asking there."
+      }
+    }
   },
   "notFound": {
     "body": "The address you opened is not part of the panel. It may be an old or mistyped link: your businesses, billing and account are in the menu.",

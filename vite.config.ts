@@ -29,7 +29,7 @@ const ROOT_HEADER = 'x-erplora-vite-root';
  * The apps with a `frontend/`: at the project root, next to `base/` (no `apps/`, PLAN §20.2). No
  * `marketplace` (round 16): the app catalogue is `apps`, and neither it nor `public` has a frontend.
  */
-export const FRONTEND_APPS = ['accounts', 'hubs', 'billing', 'fiscal'];
+export const FRONTEND_APPS = ['accounts', 'hubs', 'billing', 'fiscal', 'assistant'];
 
 export default defineConfig({
   // From the string: under happy-dom (tests) the global `URL` is not Node's.

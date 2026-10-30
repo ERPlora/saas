@@ -20,6 +20,11 @@ vi.mock('@erplora/ui/shell', async (importOriginal) => ({
   createShell: vi.fn(),
   toastError: vi.fn(),
 }));
+// The real chat (its configuration and its words); only the forgetting of a conversation is watched.
+vi.mock('@erplora/ui/components', async (importOriginal) => ({
+  ...((await importOriginal()) as object),
+  forgetAssistant: vi.fn(),
+}));
 vi.mock('@erplora/ui/sdk', async (importOriginal) => ({
   ...((await importOriginal()) as object),
   createLiveClient: vi.fn(() => sdk.client),
@@ -29,6 +34,12 @@ vi.mock('@erplora/ui/sdk', async (importOriginal) => ({
 
 import { chooseThemeMode, createShell, setThemeMode, setThemePersister, themeMode, toastError } from '@erplora/ui/shell';
 import { ApiError, createAllauthClient, createLiveClient, provideLiveClient } from '@erplora/ui/sdk';
+import { assistantConfig, assistantMessages, configureAssistant, forgetAssistant } from '@erplora/ui/components';
+import type { Component } from 'vue';
+
+import AssistantBackground from '../assistant/frontend/components/AssistantBackground.vue';
+import AssistantTopbar from '../assistant/frontend/components/AssistantTopbar.vue';
+import { SAAS_ASSISTANT } from '../assistant/frontend/options';
 
 import { OPERATION_ROUTES } from './generated/operation-routes';
 import entryEn from './locale/en.json';
@@ -155,10 +166,13 @@ describe('main.ts', () => {
         '../zeta/frontend/locale/en.json': { zeta: { title: 'Zeta' } },
       },
     );
-    // Plus the entry's own catalogue (frontend/locale), under `saas`.
+    // Plus the entry's own catalogue (frontend/locale), under `saas`, over the shared assistant's words (`assistant`),
+    // which the panel says otherwise in one place (below).
+    const assistantEn = { ...assistantMessages.en.assistant, askOwner: entryEn.saas.assistant.errors.quotaSpentAccount };
+    const assistantEs = { ...assistantMessages.es.assistant, askOwner: entryEs.saas.assistant.errors.quotaSpentAccount };
     expect(shellOptions().messages).toEqual({
-      en: { ...entryEn, accounts: { title: 'Sign In' }, zeta: { title: 'Zeta' } },
-      es: { ...entryEs, accounts: { title: 'Iniciar Sesión' } },
+      en: { assistant: assistantEn, ...entryEn, accounts: { title: 'Sign In' }, zeta: { title: 'Zeta' } },
+      es: { assistant: assistantEs, ...entryEs, accounts: { title: 'Iniciar Sesión' } },
     });
   });
 
@@ -489,6 +503,78 @@ describe("the user menu's theme, kept in the account (accounts.preferences.updat
   });
 });
 
+describe("the panel's assistant (plan 2026-10-30-asistente-saas §6, ASSISTANT-F25)", () => {
+  /** What an async component of the chrome loads (`defineAsyncComponent`). */
+  async function loaded(component: Component | undefined): Promise<unknown> {
+    const module = (await (component as { __asyncLoader: () => Promise<unknown> }).__asyncLoader()) as
+      | { default?: unknown }
+      | unknown;
+    return (module as { default?: unknown }).default ?? module;
+  }
+
+  it("configures the shared chat as the panel's before the shell boots", async () => {
+    configureAssistant(undefined);
+    let configured: unknown;
+    vi.mocked(createShell).mockImplementation(async () => {
+      configured = assistantConfig();
+      return { app: { mount: vi.fn() }, router: { isReady: () => Promise.resolve() } } as never;
+    });
+    await main.boot({});
+    expect(configured).toBe(SAAS_ASSISTANT);
+  });
+
+  it('puts its button at the end of the topbar and its panel beside the pane, each loaded on demand', async () => {
+    fakeShell();
+    await main.boot({});
+    const { chrome } = shellOptions();
+    expect(Object.keys(chrome ?? {}).sort()).toEqual(['background', 'topbar']);
+    expect(await loaded(chrome?.topbar)).toBe(AssistantTopbar);
+    expect(await loaded(chrome?.background)).toBe(AssistantBackground);
+  });
+
+  it("speaks with the chat's own words (`assistant.*`) and the panel's (`saas.assistant.*`), in en and es", () => {
+    type Words = { assistant: { title: string }; saas: { assistant: { empty: string } } };
+    const messages = importBoot.messages as Record<string, Words>;
+    expect([messages.en.assistant.title, messages.es.assistant.title]).toEqual([
+      assistantMessages.en.assistant.title,
+      assistantMessages.es.assistant.title,
+    ]);
+    expect([messages.en.saas.assistant.empty, messages.es.saas.assistant.empty]).toEqual([
+      'Ask me about your businesses, your invoices or your account.',
+      'Pregúntame por tus negocios, tus facturas o tu cuenta.',
+    ]);
+  });
+
+  it('under a spent allowance says where to keep asking, never to ask whoever runs the business for a plan', () => {
+    // The account's 30 messages are no plan's (ASSISTANT-F26): the chat's «Ask whoever runs the business to upgrade
+    // the plan» under «Upgrade plan», which nobody is offered here, would send the person after a plan that gives none.
+    const messages = importBoot.messages as Record<string, { assistant: { askOwner: string } }>;
+    expect([messages.en.assistant.askOwner, messages.es.assistant.askOwner]).toEqual([
+      'Each business has its own assistant, with its own messages: open the business to keep asking there.',
+      'Cada negocio tiene su propio asistente, con sus propios mensajes: abre el negocio para seguir preguntando allí.',
+    ]);
+    expect(messages.en.assistant.askOwner).not.toBe(assistantMessages.en.assistant.askOwner);
+  });
+
+  it("forgets the tab's conversation once the session ended, before the launcher loads", async () => {
+    vi.mocked(sdk.auth.logout).mockResolvedValue({ authenticated: false, flows: [] });
+    assign.mockImplementation(() => expect(forgetAssistant).toHaveBeenCalledOnce());
+    fakeShell();
+    await main.boot({});
+    await shellOptions().userMenu!.logout!();
+    expect(forgetAssistant).toHaveBeenCalledOnce();
+    expect(assign).toHaveBeenCalledExactlyOnceWith('/launch');
+  });
+
+  it('keeps the conversation when the sign out fails: the person is still signed in', async () => {
+    vi.mocked(sdk.auth.logout).mockRejectedValue(new ApiError(0, 'network_error', 'Network error'));
+    fakeShell();
+    await main.boot({});
+    await expect(shellOptions().userMenu!.logout!()).rejects.toThrow('Network error');
+    expect(forgetAssistant).not.toHaveBeenCalled();
+  });
+});
+
 describe('import order guards (hub#1060)', () => {
   it('imports the shell before anything that loads @ionic/vue (the SDK, the generated routes)', () => {
     const source = readFileSync(join(HERE, 'main.ts'), 'utf8');
@@ -553,9 +639,9 @@ describe('root app guards (saas-next has no apps/: its apps live next to base/, 
     expect(globs[1][1]).toEqual(globs[0][1]);
   });
 
-  it('globs the apps with a frontend: accounts, hubs, billing and fiscal (round 16: no marketplace; apps and public have none)', () => {
+  it("globs the apps with a frontend: accounts, hubs, billing, fiscal and the panel's assistant (round 16: no marketplace; apps and public have none)", () => {
     const [[, globbed]] = globbedApps();
-    expect(globbed).toEqual(['accounts', 'hubs', 'billing', 'fiscal']);
+    expect(globbed).toEqual(['accounts', 'hubs', 'billing', 'fiscal', 'assistant']);
   });
 
   it('globs every root app with a frontend/: one left out would lose its pages and texts silently', () => {
