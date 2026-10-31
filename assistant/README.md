@@ -99,8 +99,9 @@ Todas llevan `ai=INTERNAL` (son la pasarela, no herramientas del asistente) salv
   `ASSISTANT_TURN_RATELIMIT`, por cuenta.
 - `ASSISTANT_SERVICE_PROVIDER` (`openai`): el identificador del proveedor (de API OpenAI) que calcula las huellas
   (las del índice del Hub y las de la documentación del panel, `index_docs` y `assistant.docs.search`) y la voz.
-- Postgres con la extensión `vector` (pgvector, imagen `pgvector/pgvector`; en Aurora, extensión de confianza): la
-  crea la migración `assistant/0004_doc_chunks`.
+- Postgres con la extensión `vector` (pgvector, imagen `pgvector/pgvector` en local y CI, donde la crea la migración
+  `assistant/0004_doc_chunks`). En Aurora no es de confianza (solo `rds_superuser`): la crea antes el arranque de
+  plataforma del Hub (`bootstrap_databases`, usuario maestro) en `saas` y `pre_saas`.
 - `INTERNAL_SHARED_SECRET` (y `INTERNAL_SHARED_SECRET_PREVIOUS`): el secreto con que firma el Hub, el de todo
   `/internal`.
 - `FERNET_KEY` (y `FERNET_KEY_PREVIOUS` durante una rotación), para quien despliega: sin ella, el admin lo dice al

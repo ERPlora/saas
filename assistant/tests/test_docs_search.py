@@ -1,9 +1,11 @@
 """ASSISTANT-F27 · The panel's assistant searches ERPlora's documentation (``assistant.docs.search``; plan
 2026-10-30-asistente-saas §5): a tool of every account (``assistant.ask``), for how-to questions.
 
-The question is embedded by the services' provider (cached a day by the hash of the question as it was asked, spaces
-and case aside) and the excerpts of ``index_docs`` come back nearest first by the cosine of their fingerprints, in
-the person's language; when fewer than three of them are close (a distance under ``CLOSE``), the English ones join.
+The question is embedded by the services' provider before the search runs and outside any transaction
+(``queries.prepare_questions``, which the panel's turn calls for every search the model asked for, so no connection
+waits on the provider inside a transaction), cached a day by the hash of the question as it was asked (spaces and case
+aside); the search itself never calls the provider. The excerpts of ``index_docs`` come back nearest first by the
+cosine of their fingerprints, in the person's language; when fewer than three of them are close (a distance under ``CLOSE``), the English ones join.
 At most 12, whatever is asked; each with where it comes from, to cite it. Without the provider: 409
 ``assistant.provider_not_configured`` (the model says the documentation is not available). The provider is the
 local fake.
@@ -92,7 +94,16 @@ def excerpt(lang: str, text: str, embedding, *, source="help", path=None, headin
     )
 
 
-def search(account, query="¿Cómo invito a alguien a mi negocio?", language="es", **extra):
+def prepare(*questions: str) -> None:
+    from asgiref.sync import async_to_sync
+
+    async_to_sync(queries.prepare_questions)(list(questions))
+
+
+def search(account, query="¿Cómo invito a alguien a mi negocio?", language="es", *, prepared=True, **extra):
+    """The search as the panel's turn runs it: the question's fingerprint first, outside the operation."""
+    if prepared:
+        prepare(query)
     return queries.docs_search(ctx_for(account, language), DocsSearchIn(query=query, **extra)).results
 
 
@@ -171,6 +182,67 @@ class TestTheSearch:
 
 
 class TestTheQuestionsFingerprint:
+    def test_the_search_itself_never_calls_the_provider(self, account, embedder):
+        excerpt("es", "Respuesta.", SAME)
+        prepare("¿Cómo invito a alguien?")
+        calls = len(embedding_calls(embedder))
+
+        results = search(account, query="¿Cómo invito a alguien?", prepared=False)
+
+        assert texts(results) == ["Respuesta."]
+        assert len(embedding_calls(embedder)) == calls == 1
+
+    def test_a_question_nobody_prepared_cannot_be_searched_now(self, account, embedder):
+        with pytest.raises(OperationError) as refused:
+            search(account, prepared=False)
+
+        assert (refused.value.status, refused.value.code) == (503, "assistant.provider_unavailable")
+        assert embedding_calls(embedder) == []
+
+    def test_preparing_asks_once_for_every_new_question(self, embedder):
+        prepare("¿Cómo invito?", "  ¿Qué incluye Starter?", "¿cómo   INVITO?", "")
+
+        [call] = embedding_calls(embedder)
+        assert call.body["input"] == ["¿Cómo invito?", "¿Qué incluye Starter?"]
+
+    def test_preparing_a_known_question_calls_nobody(self, embedder):
+        prepare("¿Cómo invito?")
+        prepare("¿Cómo invito?")
+
+        assert len(embedding_calls(embedder)) == 1
+
+    def test_preparing_never_fails_the_turn(self, answering, fake_provider, provider):
+        fake_provider.reply("POST", EMBEDDINGS, always=True, status=503, json={"error": {"message": "down"}})
+
+        prepare("¿Cómo invito?")
+
+    def test_no_transaction_is_open_while_the_provider_computes_it(self, client, account, embedder, monkeypatch):
+        """The panel's turn prepares the searches the model asked for before its operation opens a transaction:
+        no connection of the request waits on the provider inside one."""
+        from django.db import connections
+
+        from assistant import media
+
+        request_connection = connections["default"]
+        outside = len(request_connection.atomic_blocks)
+        seen = []
+        embed = media.embed
+
+        async def spy(service, texts, **options):
+            seen.append(len(request_connection.atomic_blocks))
+            return await embed(service, texts, **options)
+
+        monkeypatch.setattr(media, "embed", spy)
+        excerpt("es", "Invita desde la ficha del negocio.", SAME)
+        embedder.reply("POST", COMPLETIONS, sse=openai_answer("Desde la ficha."))
+        client.force_login(account)
+        call = {"call_id": "c1", "name": "assistant__docs__search", "arguments": '{"query": "¿Cómo invito?"}'}
+
+        got = frames(post_turn(client, {"messages": [{"role": "user", "content": "¿Cómo invito?"}], "pending": [call]}))
+
+        assert seen == [outside]
+        assert (got[0]["name"], got[0]["outcome"]) == ("assistant.docs.search", "ok")
+
     def test_the_same_question_is_embedded_once_a_day(self, account, embedder, settings):
         excerpt("es", "Respuesta.", SAME)
 
@@ -187,7 +259,7 @@ class TestTheQuestionsFingerprint:
         assert len(embedding_calls(embedder)) == 2
 
     def test_the_wait_for_it_is_short_inside_the_read_transaction(self, account, embedder, monkeypatch):
-        """Aurora ends a transaction left idle 30 s: the search waits 10 s at most, never the 60 s of the index."""
+        """The turn waits 10 s at most for the question's fingerprint, never the 60 s of the index."""
         from assistant import media
 
         waits = []
@@ -206,9 +278,12 @@ class TestTheQuestionsFingerprint:
 
     def test_it_is_kept_for_a_day(self, account, embedder, monkeypatch):
         kept = {}
-        monkeypatch.setattr(cache, "set", lambda key, value, timeout=None: kept.update({key: timeout}))
+        async def keep(data, timeout=None, version=None):
+            kept.update(dict.fromkeys(data, timeout))
 
-        search(account)
+        monkeypatch.setattr(cache, "aset_many", keep)
+
+        prepare("¿Cómo invito a alguien a mi negocio?")
 
         assert list(kept.values()) == [60 * 60 * 24]
 
@@ -216,7 +291,7 @@ class TestTheQuestionsFingerprint:
 class TestWhatItRefuses:
     def test_without_the_services_provider_a_409(self, account, provider):
         with pytest.raises(OperationError) as refused:
-            search(account)
+            search(account)  # nothing to prepare it with
 
         assert (refused.value.status, refused.value.code) == (409, "assistant.provider_not_configured")
         assert "documentación" in refused.value.message
@@ -265,6 +340,23 @@ class TestTheTool:
 
         assert "assistant.docs.search" in tools
         assert offered[:2] == ["hubs.business.list", "assistant.docs.search"]
+
+    def test_the_turn_prepares_only_the_questions_of_its_searches(self):
+        from types import SimpleNamespace
+
+        def call(name, arguments):
+            return SimpleNamespace(call_id="c", name=name, arguments=arguments)
+
+        pending = [
+            call("assistant__docs__search", '{"query": "¿Cómo invito?"}'),
+            call("hubs__business__list", '{"query": "not a search"}'),
+            call("assistant__docs__search", "not json"),
+            call("assistant__docs__search", '["a list"]'),
+            call("assistant__docs__search", '{"query": 3}'),
+            call("assistant__docs__search", '{"query": "¿Qué incluye Starter?", "limit": 3}'),
+        ]
+
+        assert assistant.searched_questions(pending) == ["¿Cómo invito?", "¿Qué incluye Starter?"]
 
     def test_the_instructions_name_it_as_the_gateway_calls_it(self, account):
         text = assistant.instructions(language="en", account="Lena", screens={}, docs=True)

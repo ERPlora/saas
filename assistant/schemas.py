@@ -392,7 +392,7 @@ class DocChunkIn(Schema):
 
 class DocsIndexIn(Schema):
     """A batch of what a source has now: the excerpts whose fingerprint was just computed (new ones, or every one with
-    ``--full``) and, with the first batch, the hash of each excerpt the source keeps (``keep``: the others go)."""
+    ``--full``) and, with the last batch, the hash of each excerpt the source keeps (``keep``: the others go)."""
 
     source: DocSource
     keep: list[str] | None = None

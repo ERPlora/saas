@@ -677,9 +677,11 @@ propio texto por `code`.
 
 - **Índice**: `assistant.DocChunk` en la BD de control (`id` UUIDv7, `source` `help` | `app_doc` | `workbook` |
   `plans`, `path`, `lang`, `heading`, `text`, `content_hash` único, `embedding` `vector(1536)`, `indexed_at`), con
-  índice `HnswIndex` por coseno (`m=16`, `ef_construction=64`). La extensión `vector` (pgvector) la crea la migración
-  `0004_doc_chunks` (`VectorExtension`), que al volver atrás borra la tabla y la extensión; Postgres local y de CI con
-  la imagen `pgvector/pgvector` (`.github/workflows/test.yml`); `django.contrib.postgres` instalado por el índice.
+  índice `HnswIndex` por coseno (`m=16`, `ef_construction=64`). La extensión `vector` (pgvector) no es de confianza en
+  Aurora (solo `rds_superuser`): la crea antes, como usuario maestro, el arranque de plataforma del Hub
+  (`bootstrap_databases`) en `saas` y `pre_saas`; la migración `0004_doc_chunks` (`VectorExtension`) la busca antes de
+  crearla, así que solo la crea en local y en CI (imagen `pgvector/pgvector`, `.github/workflows/test.yml`); al volver
+  atrás borra la tabla y la extensión. `django.contrib.postgres` instalado por el índice.
 - **Fragmentos** (`knowledge.chunk_markdown`): corte por `##` y `###` (las preguntas de la FAQ son `###`), títulos
   en ruta («Preguntas frecuentes > Acceso > ¿Por qué…?»), ventana de 220 palabras con solape de 50, comentarios HTML
   fuera; la huella se calcula sobre títulos + texto, hasta 6000 caracteres. `content_hash` = sha256 de fuente, ruta,
@@ -691,23 +693,25 @@ propio texto por `code`.
   apps a la vez, mensajes del asistente y de WhatsApp, si es solo de mejora y lo que incluye).
 - **`index_docs [--full] [--dry-run]`**: por fuente, `assistant.docs.list` (los hashes que ya tiene), embebe solo los
   nuevos (`--full`: todos) en lotes de 64 con `media.embed` y el proveedor de servicios
-  (`ASSISTANT_SERVICE_PROVIDER`), y escribe cada lote con `assistant.docs.index` (una transacción por lote; el primero
-  lleva `keep`, lo que la fuente guarda, y borra lo demás). Lote a lote porque escribir una fuente de una vez llegó a
+  (`ASSISTANT_SERVICE_PROVIDER`), y escribe cada lote con `assistant.docs.index` (una transacción por lote; el último
+  lleva `keep`, lo que la fuente guarda, y borra lo demás: una pasada que falla a medias deja un documento cambiado
+  con sus fragmentos viejos, buscable). Lote a lote porque escribir una fuente de una vez llegó a
   688 MB en local con las 26 apps del Hub (saas-cron tiene 512 MB); así, 266 MB. Una línea por fuente en el log y en
   pantalla: `assistant.index_docs source=… chunks=… embedded=… deleted=… tokens=… cost_usd=…`; sin fila de
   `AssistantUsage` (gasto de la plataforma). Sin proveedor sale con código 2 sin escribir nada; si el proveedor falla
-  sale con error y lo ya escrito se queda (la siguiente pasada hace el resto). Advisory lock
+  sale con error, lo ya escrito se queda y no se borra nada (la siguiente pasada hace el resto). Advisory lock
   `hashtext('erplora.saas.index_docs')` (`hubs.services.run_exclusively`). Evento `assistant.docs.indexed` por lote.
   Medido en local (2026-10-31): 68 fragmentos de ayuda, 2162 de las apps del Hub, 685 de los WORKBOOK y 14 de planes;
   un indexado completo ≈ 680 000 tokens ≈ 0,014 $; una pasada sin cambios, 0 llamadas.
 - **Programación**: diario a las 06:50 UTC en `saas-cron` (`index-docs-daily` de `platform_schedule_specs`, issue en
   ERPlora/aws); el primer indexado, a mano tras el despliegue (`saas/README.md`, «Operación»).
 - **`assistant.docs.search`** (`queries.py`, `kind="query"`, `assistant.ask`, herramienta `assistant__docs__search`):
-  la huella de la pregunta con un tope de espera de 10 s (vive dentro de la transacción de lectura y Aurora corta una
-  inactiva a los 30 s), en la caché de Django un día por el sha256 de la pregunta normalizada (espacios y mayúsculas
-  fuera); orden por `CosineDistance` en el idioma de la persona (`es` para cualquier español, si no `en`); con menos
-  de 3 a distancia < 0,55 se suman los de `en`; `limit` 8 por defecto, recortado a 12. Sin proveedor, 409
-  `assistant.provider_not_configured`; si falla, 503 con su código. En `base/assistant.py` está en `ALWAYS` (una
+  nunca llama al proveedor. La huella de la pregunta la calcula antes `queries.prepare_questions`, fuera de toda
+  transacción (la ruta del turno, `base.assistant.prepare`, para cada búsqueda que pidió el modelo; una llamada para
+  todas, tope de espera de 10 s, nunca falla), y la guarda en la caché de Django un día por el sha256 de la pregunta
+  normalizada (espacios y mayúsculas fuera): ninguna conexión espera al proveedor dentro de una transacción. Sin la
+  huella en la caché, 409 si no hay proveedor y 503 si no se pudo calcular. Orden por `CosineDistance` en el idioma de la persona (`es` para cualquier español, si no `en`); con menos
+  de 3 a distancia < 0,55 se suman los de `en`; `limit` 8 por defecto, recortado a 12. En `base/assistant.py` está en `ALWAYS` (una
   pregunta de «cómo se hace» no comparte palabras con la herramienta y sin eso quedaba fuera de las 40) y su recibo no
   nombra una pantalla del panel sino la ayuda.
 - **Tests**: `assistant/tests/test_knowledge.py`, `test_index_docs.py` (con la migración de ida y vuelta y el índice

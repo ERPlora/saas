@@ -381,6 +381,12 @@ aws ecs describe-tasks --cluster erplora-prod --tasks "$TASK" --region eu-west-1
 aws logs tail /ecs/erplora-prod-saas-cron --since 30m --region eu-west-1 | grep assistant.index_docs
 ```
 
+**Requisito en un entorno nuevo**: la extensión `vector` tiene que existir antes de `saas-migrate`. En Aurora no es de
+confianza (solo `rds_superuser`; el rol de `saas-migrate` no puede, «permission denied to create extension "vector"»):
+la crea, como usuario maestro, el arranque de plataforma del Hub (`bootstrap_databases`, PR
+`fix/bootstrap-saas-vector-extension`) en `saas` y `pre_saas`, desplegado antes que la migración
+`assistant/0004_doc_chunks`.
+
 `--dry-run` cuenta lo que embebería y borraría sin llamar al proveedor ni escribir; `--full` vuelve a embeber todo
 (otro modelo de huellas). En pre no hay `saas-cron`: lo mismo con el cluster `erplora-pre`, la familia
 `erplora-pre-saas-migrate` (contenedor `saas-migrate`) y la red de su servicio `saas-pre`.

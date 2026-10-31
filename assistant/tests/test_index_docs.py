@@ -237,7 +237,9 @@ class TestTheBatches:
 
         output = run()
 
-        assert written == [(64, 1, True), (64, 2, False), (2, 3, False)]
+        # What the source keeps goes with the last batch: its excerpts that no longer exist are deleted only once
+        # every new one is written.
+        assert written == [(64, 1, False), (64, 2, False), (2, 3, True)]
         assert "source=help chunks=130 embedded=130 deleted=0 tokens=1300 " in output
 
 
@@ -290,6 +292,31 @@ class TestWhatStopsIt:
         output = run()
 
         assert "source=help chunks=70 embedded=6 deleted=0 " in output
+
+    def test_a_failure_leaves_a_changed_guide_searchable_with_its_old_excerpts(self, docs, answering, fake_provider):
+        def guide(word: str) -> str:
+            sections = "\n\n".join(f"## Section {number}\n\n{word} {number}." for number in range(70))
+            return f"# Long guide\n\n{sections}\n"
+
+        write(docs, "docs/en/help/01-getting-started.md", guide("Old"))
+        fake_provider.reply("POST", EMBEDDINGS, always=True, answer=embeddings_for)
+        run()
+        write(docs, "docs/en/help/01-getting-started.md", guide("New"))
+        fake_provider.reply("POST", EMBEDDINGS, answer=embeddings_for)
+        fake_provider.reply("POST", EMBEDDINGS, status=500, json={"error": {"message": "down"}})
+
+        with pytest.raises(CommandError, match="help"):
+            run()
+
+        texts = list(DocChunk.objects.filter(source="help").values_list("text", flat=True))
+        assert len([text for text in texts if text.startswith("Old")]) == 70
+        assert len([text for text in texts if text.startswith("New")]) == 64
+
+        fake_provider.reply("POST", EMBEDDINGS, always=True, answer=embeddings_for)
+        output = run()
+
+        assert "source=help chunks=70 embedded=6 deleted=70 " in output
+        assert all(text.startswith("New") for text in DocChunk.objects.filter(source="help").values_list("text", flat=True))
 
     def test_a_second_run_returns_at_once_while_one_holds_the_lock(self, docs, embedder, other_session):
         other_session.execute(f"SELECT pg_advisory_lock({LOCK_KEY})")

@@ -5,7 +5,7 @@ apps, the customer's part of the panel's WORKBOOKs and the plans on sale) is kep
 fingerprint, one source at a time (``assistant.docs.index``, one transaction per batch). Idempotent by the hash of each
 excerpt: only a new one is embedded, in batches of ``BATCH`` texts by the services' provider
 (``ASSISTANT_SERVICE_PROVIDER``), each written before the next is asked for (a run holds one batch of fingerprints:
-saas-cron has 512 MB), and one that no longer exists goes; a run without changes calls nobody. Its cost is
+saas-cron has 512 MB), and one that no longer exists goes with the last batch; a run without changes calls nobody. Its cost is
 ERPlora's own, not an account's (no ``AssistantUsage``): each source ends with one line of what it spent, in the log
 and on the screen. Daily on ``saas-cron`` and once by hand after the first deploy (``saas/README.md``).
 
@@ -14,7 +14,7 @@ and on the screen. Daily on ``saas-cron`` and once by hand after the first deplo
     python manage.py index_docs --full      # every excerpt embedded again (another model of fingerprints)
 
 Without the services' provider (or its key) it ends with exit code 2 and writes nothing; a provider that fails ends
-the run with an error, keeping what was embedded before it (the next run does the rest). Under the advisory lock of its name: a second run
+the run with an error, keeping what was embedded before it and every old excerpt (the next run does the rest). Under the advisory lock of its name: a second run
 returns at once.
 """
 
@@ -83,8 +83,9 @@ class Command(BaseCommand):
             return
         embedded = deleted = tokens = 0
         # One batch at a time, embedded then written: a run holds one batch of fingerprints, whatever the source has.
-        # The first call also says what the source keeps, so its excerpts that no longer exist go (with nothing new,
-        # that call alone).
+        # The last call also says what the source keeps, so its excerpts that no longer exist go only once every new
+        # one is written: a run that fails halfway leaves a changed document searchable by its old excerpts (with
+        # nothing new, that call alone).
         for start in range(0, max(len(new), 1), BATCH):
             batch = new[start : start + BATCH]
             vectors, spent = self._embed(service, source, batch) if batch else ([], 0)
@@ -92,7 +93,7 @@ class Command(BaseCommand):
                 ctx,
                 DocsIndexIn(
                     source=source,
-                    keep=sorted(wanted) if start == 0 else None,
+                    keep=sorted(wanted) if start + BATCH >= len(new) else None,
                     chunks=[
                         DocChunkIn(path=chunk.path, lang=chunk.lang, heading=chunk.heading, text=chunk.text, embedding=vector)
                         for chunk, vector in zip(batch, vectors, strict=True)

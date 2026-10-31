@@ -30,6 +30,8 @@ from base.schemas import AssistantReportIn, AssistantTurnIn  # noqa: E402
 @bind(router, "base.assistant.turn", "/assistant/turn")
 @decorate_view(accept_body_up_to(TURN_BODY_BYTES))
 async def assistant_turn(request, data: AssistantTurnIn):
+    # The network wait of its tools (a documentation search's fingerprint) goes before the operation's transaction.
+    await assistant.prepare(data)
     plan = await run_operation(request, services.assistant_turn, data)
     return assistant.turn_response(request, plan.model_dump(mode="json"))
 

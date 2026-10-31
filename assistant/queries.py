@@ -18,18 +18,19 @@ permission of Django that backs it.
 """
 
 import hashlib
+import logging
 from datetime import date, datetime
 from datetime import timezone as dt_timezone
 from uuid import UUID
 
 import httpx
-from asgiref.sync import async_to_sync
+from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Q
 from django.utils import timezone, translation
 from django.utils.translation import gettext as _
-from live.context import OperationContext
+from live.context import OperationContext, Scope, system_context
 from live.errors import Conflict, NotFound, OperationError, PermissionDenied
 from live.operations import AI, INTERNAL, operation
 from live.slugs import is_demo_slug, validate_hub_slug
@@ -55,6 +56,8 @@ from assistant.schemas import (
 )
 from hubs import queries as hubs_queries
 from hubs.models import Hub
+
+logger = logging.getLogger(__name__)
 
 
 def staff_with(ctx: OperationContext, *permissions: str):
@@ -394,9 +397,10 @@ CLOSE = 0.55
 ENOUGH = 3
 #: How long the fingerprint of a question is kept.
 QUESTION_CACHE_SECONDS = 60 * 60 * 24
-#: The wait for a question's fingerprint, inside the search's read transaction: well under the 30 s after which Aurora
-#: ends a transaction left idle (``idle_in_transaction_session_timeout``).
+#: The wait for a question's fingerprint: the panel's turn waits on it before its operation runs.
 SEARCH_TIMEOUT = httpx.Timeout(connect=5.0, read=10.0, write=5.0, pool=5.0)
+#: The longest question a search takes (``DocsSearchIn``).
+QUESTION_MAX = 500
 
 
 def docs_language(language: str) -> str:
@@ -404,16 +408,42 @@ def docs_language(language: str) -> str:
     return "es" if media.base_language(language or "") == "es" else "en"
 
 
-def question_fingerprint(service: ServiceConnectionOut, query: str) -> list[float]:
-    """The fingerprint of ``query``, kept a day by the hash of the question as it was asked (spaces and case aside):
-    a question asked again costs no call."""
+def question_key(query: str) -> str:
+    """Where the fingerprint of ``query`` is kept: by the hash of the question as it was asked, spaces and case
+    aside."""
     asked = " ".join(query.split()).casefold()
-    key = f"assistant:docs:question:{media.EMBEDDING_MODEL}:{hashlib.sha256(asked.encode()).hexdigest()}"
-    vector = cache.get(key)
-    if vector is None:
-        [vector], _ = async_to_sync(media.embed)(service, [query], timeout=SEARCH_TIMEOUT)
-        cache.set(key, vector, QUESTION_CACHE_SECONDS)
-    return vector
+    return f"assistant:docs:question:{media.EMBEDDING_MODEL}:{hashlib.sha256(asked.encode()).hexdigest()}"
+
+
+async def prepare_questions(questions: list[str]) -> None:
+    """The fingerprints of ``questions`` not kept yet, computed in one call and kept a day: what
+    ``assistant.docs.search`` reads. Called before any transaction opens (the panel's turn does it for every search
+    the model asked for), so no connection waits on the provider inside one. It never fails: without the services'
+    provider, or when it fails, the search itself says so (409 or 503)."""
+    wanted: dict[str, str] = {}
+    for question in questions:
+        question = (question or "").strip() if isinstance(question, str) else ""
+        if question and len(question) <= QUESTION_MAX:
+            wanted.setdefault(question_key(question), question)
+    if not wanted:
+        return
+    known = await cache.aget_many(list(wanted))
+    missing = {key: question for key, question in wanted.items() if key not in known}
+    if not missing:
+        return
+    try:
+        service = await sync_to_async(service_connection)(
+            system_context(Scope("platform", "assistant")), NoInput()
+        )
+    except OperationError as refused:
+        logger.warning("assistant.docs.question_not_prepared code=%s", refused.code)
+        return
+    try:
+        vectors, _tokens = await media.embed(service, list(missing.values()), timeout=SEARCH_TIMEOUT)
+    except media.MediaFailed as problem:
+        logger.warning("assistant.docs.question_not_prepared code=%s", problem.code)
+        return
+    await cache.aset_many(dict(zip(missing, vectors, strict=True)), QUESTION_CACHE_SECONDS)
 
 
 def nearest(vector: list[float], language: str, limit: int) -> list[DocChunk]:
@@ -439,21 +469,23 @@ def nearest(vector: list[float], language: str, limit: int) -> list[DocChunk]:
 )
 def docs_search(ctx: OperationContext, data: DocsSearchIn) -> dict:
     """The excerpts of ERPlora's documentation nearest to ``query``, in the person's language, with the English ones
-    when fewer than ``ENOUGH`` of those are close (``CLOSE``); at most ``limit``. 409
-    ``assistant.provider_not_configured`` without the services' provider; 503 with its code when it fails."""
-    raw = services_provider()
-    with translation.override(ctx.language):
-        if raw is None:
-            raise Conflict(
-                _("ERPlora's documentation cannot be searched now: the provider of the embeddings is not configured."),
-                code="assistant.provider_not_configured",
-            )
-        try:
-            vector = question_fingerprint(ServiceConnectionOut(**raw), data.query)
-        except media.MediaFailed as problem:
+    when fewer than ``ENOUGH`` of those are close (``CLOSE``); at most ``limit``. It never calls the provider: the
+    question's fingerprint was computed before, outside its transaction (``prepare_questions``). 409
+    ``assistant.provider_not_configured`` without the services' provider; 503 ``assistant.provider_unavailable``
+    when the fingerprint could not be computed."""
+    vector = cache.get(question_key(data.query))
+    if vector is None:
+        with translation.override(ctx.language):
+            if services_provider() is None:
+                raise Conflict(
+                    _("ERPlora's documentation cannot be searched now: the provider of the embeddings is not configured."),
+                    code="assistant.provider_not_configured",
+                )
             raise OperationError(
-                _("ERPlora's documentation cannot be searched now: try again in a moment."), code=problem.code, status=503
-            ) from None
+                _("ERPlora's documentation cannot be searched now: try again in a moment."),
+                code="assistant.provider_unavailable",
+                status=503,
+            )
     language = docs_language(ctx.language)
     found = nearest(vector, language, data.limit)
     if language != "en" and sum(row.distance < CLOSE for row in found) < ENOUGH:

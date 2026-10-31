@@ -17,6 +17,7 @@ write and its word, the tool run as the person); this module gives them the pane
   (``Caller(user_id=…)``, ``ASSISTANT_ACCOUNT_MESSAGES``); nothing of the conversation is kept.
 """
 
+import json
 import logging
 from collections.abc import AsyncIterator, Iterable
 from contextlib import aclosing
@@ -37,6 +38,7 @@ from live.meta import all_live_app_configs
 from live.operations import Operation
 from live.operations import get as get_operation
 
+from assistant import queries as gateway_queries
 from assistant import turn as gateway
 from assistant.schemas import Caller
 from base import navigation
@@ -193,6 +195,37 @@ ERPlora and its account. Answer in {language_name}, short and plain. Use Markdow
 - When the person should go to a screen, link it with its path, only one of these:
 {links}
 - If something cannot be done from here (you have no tool for it), say on which screen it is done."""
+
+
+# ── What the tools wait on the network for, before the turn's transaction ───────────────────────────────────────
+
+
+#: The documentation search: the fingerprint of its question comes from the provider (ASSISTANT-F27).
+DOCS_SEARCH = "assistant.docs.search"
+
+
+def searched_questions(pending: Iterable[Any]) -> list[str]:
+    """The questions of the documentation searches among the tools the model asked for (their ``query``)."""
+    name = shared.tool_name(DOCS_SEARCH)
+    questions = []
+    for call in pending:
+        if call.name != name:
+            continue
+        try:
+            arguments = json.loads(call.arguments or "{}")
+        except ValueError:
+            continue
+        query = arguments.get("query") if isinstance(arguments, dict) else None
+        if isinstance(query, str):
+            questions.append(query)
+    return questions
+
+
+async def prepare(data: Any) -> None:
+    """What the turn's tools wait on the network for, done before ``base.assistant.turn`` opens its transaction: the
+    fingerprints of the documentation searches the model asked for. A connection never waits on the provider inside
+    a transaction; what cannot be prepared, the search itself refuses."""
+    await gateway_queries.prepare_questions(searched_questions(data.pending))
 
 
 # ── The turn, through the gateway in this process ────────────────────────────────────────────────────────────────
