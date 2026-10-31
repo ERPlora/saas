@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { assertViteOfThisTree, panelServers, VITE_ROOT_HEADER, viteHmrSocket, vitePort, WHATSAPP_E2E } from './panel/project';
+import { STACK } from './stack';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -63,6 +64,24 @@ describe('panelServers', () => {
     // assistant-panel.spec.ts asks twice, then sees the month spent; the panel's twin with the second factor too.
     expect(servers(5225)['panel-django'].env).toMatchObject({ ASSISTANT_ACCOUNT_MESSAGES: '2' });
     expect(servers(5225)['panel-mfa-django'].env).toMatchObject({ ASSISTANT_ACCOUNT_MESSAGES: '2' });
+  });
+
+  it("with QA_REAL_PROVIDER=1 names the real «openai» as the services' provider and gives production's 30 messages", () => {
+    // assistant-battery.spec.ts: the embeddings of the documentation search go to OpenAI, and the battery's questions
+    // fit in the month of an account as in production. Both Djangos, so the twin never answers with the fake one.
+    const real = Object.fromEntries(
+      panelServers(SAAS_DIR, 5225, STACK, { QA_REAL_PROVIDER: '1' }).map((server) => [server.name, server]),
+    );
+    for (const name of ['panel-django', 'panel-mfa-django']) {
+      expect(real[name].env).toMatchObject({ ASSISTANT_SERVICE_PROVIDER: 'openai', ASSISTANT_ACCOUNT_MESSAGES: '30' });
+    }
+  });
+
+  it('keeps the e2e provider and the 2 messages when QA_REAL_PROVIDER is not 1', () => {
+    const fake = Object.fromEntries(
+      panelServers(SAAS_DIR, 5225, STACK, { QA_REAL_PROVIDER: '0' }).map((server) => [server.name, server]),
+    );
+    expect(fake['panel-django'].env).toMatchObject({ ASSISTANT_SERVICE_PROVIDER: 'e2e-local', ASSISTANT_ACCOUNT_MESSAGES: '2' });
   });
 
   it('keeps 5174 by default', () => {

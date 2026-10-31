@@ -255,6 +255,48 @@ env -u DB_NAME E2E_SAAS_PORT=8180 VITE_DEV_PORT=5580 E2E_DEMO_HUB=http://localho
 - **Web pública**: `store_docs_seed.py` (`globalSetup`) crea las apps `e2e_store_docs` y
   `e2e_store_base` y las borra al acabar, aunque falle una spec.
 
+## El asistente con el modelo de verdad
+
+La batería de QA del asistente del panel (`panel/assistant-battery.spec.ts`; plan
+`docs/plans/2026-10-31-qa-asistente.md` de erplora-next: bloque A y las comprobaciones C35, C36 y C38) habla con el
+**modelo de verdad** y con el **índice de verdad** de la documentación. Es una herramienta de QA local, **nunca de la
+CI**: sin `QA_REAL_PROVIDER=1` sus tests se saltan, y con él en GitHub Actions (`GITHUB_ACTIONS=true`) la ejecución se
+niega a arrancar (`realProviderMode`, `assistant-battery.ts`). Coste orientativo: unos 30 turnos de Qwen más las
+huellas de las preguntas, céntimos.
+
+- **Pila propia y BD e2e propia**: `assistant_seed.py real` solo escribe claves de verdad en una BD e2e
+  (`saas_…_e2e…`); con la `saas` compartida se niega. Las claves se leen **solo** del entorno (`QA_QWEN_API_KEY`,
+  `QA_OPENAI_API_KEY`): nada en el repo, en los registros ni en el informe.
+- **Proveedores**, por las operaciones del gateway, como los tiene producción: «Qwen» (`qwen`, API de OpenAI en el
+  espacio de Frankfurt de Alibaba) con `qwen3.7-plus` contestando, y «OpenAI» (`openai`, `assistant.credential.import`)
+  con `gpt-5.4-mini` de reserva y las huellas de la búsqueda (`ASSISTANT_SERVICE_PROVIDER=openai`, que `panel/project.ts`
+  pone con `QA_REAL_PROVIDER=1`, junto con los 30 mensajes al mes de producción). La cuenta es
+  `e2e-assistant-qa-battery@example.com` (contraseña `e2e-panel`), dueña de «QA Base» en Gratis.
+- **Documentación de las apps del Hub** (`apps.AppDoc`): la escribe el `register_apps` del Hub en el esquema `shared`
+  de la BD del SaaS. Una vez por BD e2e, desde un árbol del Hub en `origin/main` con su `.env`:
+  `SHARED_DB_NAME=saas_e2e_qa uv run python manage.py register_apps`.
+- **El índice** (`assistant.DocChunk`): el `beforeAll` corre `manage.py index_docs`, que solo calcula las huellas de
+  lo que cambió (la primera vez, unos 2 900 fragmentos, ~0,015 USD).
+
+Receta (desde el worktree del SaaS, con `pnpm build` hecho y el `.env` copiado; las claves, sin imprimirlas):
+
+```bash
+export QA_QWEN_API_KEY=…      # la del espacio ws-7mg2… de Alibaba (memoria assistant-prod-unconfigured-old-keys-location)
+export QA_OPENAI_API_KEY=…
+export COMPOSE_FILE=<erplora-next>/compose.yaml   # el Postgres con pgvector
+env DB_NAME=saas_e2e_qa E2E_SAAS_PORT=8530 node tests/e2e/database.ts            # crea y migra la BD e2e
+(cd <hub en origin/main> && SHARED_DB_NAME=saas_e2e_qa uv run python manage.py register_apps)
+QA_REAL_PROVIDER=1 DB_NAME=saas_e2e_qa E2E_SAAS_PORT=8530 VITE_DEV_PORT=5530 pnpm e2e:ci assistant-battery
+```
+
+Cada pregunta, en una conversación nueva: se escribe en español, se sigue el turno hasta el final (la tarjeta de la
+escritura esperada se confirma con la palabra que pide; cualquier otra se cancela) y se guarda lo que enseñó el panel:
+la respuesta, las herramientas que corrieron (los frames del turno), la tarjeta, los fragmentos que devolvió la
+búsqueda, los recibos, los avisos, los fallos y los mensajes del mes. El veredicto automático solo mira lo objetivo
+(herramientas, tarjetas, avisos y la API), nunca la redacción del modelo. Salida, ignorada por git:
+`.artifacts/qa/assistant-battery-A.md` (el informe que lee el chat supervisor, pregunta a pregunta),
+`.artifacts/qa/A<n>-<slug>.png` (y `-card.png` donde hubo tarjeta) y `.artifacts/qa/results/<ejecución>/`.
+
 ## Escribir una spec del panel
 
 Va en `panel/` e importa `test` y `expect` de `./fixtures`, no de `@playwright/test`:
