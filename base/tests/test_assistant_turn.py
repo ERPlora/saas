@@ -16,6 +16,8 @@ import json
 
 import pytest
 from django.utils import timezone
+from live.assistant import risk
+from live.operations import get as get_operation
 
 from assistant import queries
 from assistant.models import AssistantUsage
@@ -53,6 +55,20 @@ def types(got: list) -> list:
 
 def model_requests(fake_provider) -> list:
     return [seen for seen in fake_provider.requests if seen.path.endswith("/chat/completions")]
+
+
+def tool_rounds(count: int) -> list:
+    """``count`` rounds of the model asking for a tool, as the browser keeps them in the conversation."""
+    return [
+        {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [
+                {"id": f"r{i}", "type": "function", "function": {"name": "hubs__business__list", "arguments": "{}"}}
+            ],
+        }
+        for i in range(count)
+    ]
 
 
 @pytest.fixture
@@ -101,6 +117,37 @@ class TestTheCatalog:
             "whatsapp.message.claim",
         ):
             assert internal not in tools
+
+    def test_it_gets_the_tools_of_each_part_of_the_panel(self, account):
+        """Its businesses and their people, the plans, its invoices and subscriptions, its account and the catalogue of
+        apps (ASSISTANT-F25, step 3)."""
+        tools = assistant.catalog(ctx_for(account))
+
+        for name in (
+            "hubs.business.list",
+            "hubs.member.list",
+            "hubs.plan.list",
+            "billing.invoice.list",
+            "billing.subscription.list",
+            "accounts.preferences.get",
+            "apps.app.list",
+        ):
+            assert name in tools, name
+
+    def test_only_the_five_dangerous_writes_ask_to_type_the_word(self, account):
+        """Creating, deleting or changing the address of a business, offering it to another and cancelling its plan ask
+        to type the word; any other write, only «Run» (ASSISTANT-F25, step 5)."""
+        tools = assistant.catalog(ctx_for(account))
+
+        typed = {name for name, op in tools.items() if risk(op) == "high"}
+
+        assert typed == {
+            "hubs.business.create",
+            "hubs.business.delete",
+            "hubs.business.change_address",
+            "hubs.ownership.transfer",
+            "billing.plan.cancel",
+        }
 
     def test_of_the_assistants_own_only_the_documentation_search_is_a_tool(self, account):
         """ASSISTANT-F27 (``assistant/tests/test_docs_search.py``); the gateway's other operations are the platform's."""
@@ -218,6 +265,24 @@ class TestARead:
         assert got[0]["outcome"] == "ok"
         assert "Bar Ajeno" not in got[-1]["append"][0]["content"]
 
+    def test_the_answer_comes_piece_by_piece_as_the_model_writes_it(self, signed_in, account, answering, fake_provider):
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("You have ", "no business yet."))
+
+        got = frames(post_turn(signed_in, {"messages": [ask("Which businesses do I have?")]}))
+
+        assert [frame["text"] for frame in got if frame["type"] == "text"] == ["You have ", "no business yet."]
+        assert got[-1]["append"] == [{"role": "assistant", "content": "You have no business yet."}]
+
+    def test_it_answers_in_the_language_of_the_person(self, client, make_user, plans, answering, fake_provider):
+        client.force_login(make_user("sol@example.com", first_name="Sol", language="es"))
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Hola."))
+
+        frames(post_turn(client, {"messages": [ask("¿Qué negocios tengo?")]}))
+
+        system = model_requests(fake_provider)[0].body["messages"][0]["content"]
+        assert "Answer in Spanish" in system
+        assert "[Negocios](/dashboard/businesses)" in system
+
     def test_the_model_reads_the_tools_of_what_was_asked_and_the_panels_instructions(
         self, signed_in, account, answering, fake_provider
     ):
@@ -324,6 +389,21 @@ class TestAWrite:
         assert "Bar Lena" in values and "Bar Nuevo" in values
         assert str(hub.id) not in json.dumps(card)
 
+    @pytest.mark.parametrize(
+        ("operation", "where"),
+        [
+            ("hubs.business.update", "Negocios"),
+            ("billing.vat_check.run", "Facturación"),
+            ("accounts.preferences.update", "Cuenta"),
+            ("billing.plan.keep", "Tienda"),
+        ],
+    )
+    def test_the_card_says_on_which_of_the_panels_screens_it_happens(self, account, operation, where):
+        """Where a change happens is the panel's screen as its menu names it (ASSISTANT-F25, step 5)."""
+        card = assistant.card(get_operation(operation), {}, ctx_for(account, "es"))
+
+        assert card["app_name"] == where
+
     def test_a_tool_the_account_was_not_offered_never_runs(self, signed_in, account, answering, fake_provider):
         fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("I cannot."))
         secret_key = {
@@ -389,22 +469,21 @@ class TestWhatStopsATurn:
         assert used_by(account) == 0
 
     def test_too_many_rounds_of_tools_stop_before_the_model(self, signed_in, account, answering, fake_provider):
-        rounds = [
-            {
-                "role": "assistant",
-                "content": "",
-                "tool_calls": [
-                    {"id": f"r{i}", "type": "function", "function": {"name": "hubs__business__list", "arguments": "{}"}}
-                ],
-            }
-            for i in range(assistant.MAX_ROUNDS)
-        ]
-
-        got = frames(post_turn(signed_in, {"messages": [ask("Loop"), *rounds]}))
+        got = frames(post_turn(signed_in, {"messages": [ask("Loop"), *tool_rounds(assistant.MAX_ROUNDS)]}))
 
         assert types(got) == ["error", "done"]
         assert got[0] == {"type": "error", "code": "assistant.too_many_steps"}
         assert model_requests(fake_provider) == []
+
+    def test_a_question_gets_six_rounds_of_tools_and_no_more(self, signed_in, account, answering, fake_provider):
+        """The six rounds the WORKBOOK promises: after five the model still answers; the sixth stops (above)."""
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Here."))
+
+        got = frames(post_turn(signed_in, {"messages": [ask("Loop"), *tool_rounds(5)]}))
+
+        assert assistant.MAX_ROUNDS == 6
+        assert types(got) == ["text", "usage", "done"]
+        assert len(model_requests(fake_provider)) == 1
 
     def test_without_a_session_it_is_the_envelopes_401(self, client):
         response = post_turn(client, {"messages": [ask("Hello")]})

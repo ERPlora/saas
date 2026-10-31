@@ -5,7 +5,8 @@
 // names the account's business; a write stops at its card, which asks to type the word, and a «Cancel» changes
 // nothing; the account's month (2 messages in this run, panel/project.ts) ends with the allowance spent and no
 // «Upgrade plan». In Spanish and in English, at 390, 834 and 1440 (screenshots under `.artifacts/panel/`). Signed out,
-// the panel sends to the sign-in and nobody sees the assistant.
+// the panel sends to the sign-in and nobody sees the assistant; a session that ends in the middle of the conversation
+// asks to sign in again. The panel closes with ×, Escape, the veil or its own button, and the device remembers it open.
 // The model is assistant-provider.ts, a real HTTP server on 127.0.0.1 that speaks OpenAI's API, set to answer by
 // assistant_seed.py «panel» (with `e2e-assistant-owner`, an account like any other with one business): no test reaches
 // a real provider and no real key is ever typed.
@@ -15,7 +16,7 @@ import { execFileSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 import { NEW_BUSINESS, type Provider, startProvider } from '../assistant-provider';
 import { djangoEnv } from '../django-env';
@@ -93,6 +94,39 @@ async function docking(page: Page): Promise<{ panel: number; pushed: number }> {
   };
 }
 
+/** The open panel with `visible` at the three sizes, each one's screenshot `assistant-panel-<name>-<size>-<language>`:
+ *  docked beside the screen from 768 px, over a veil on a phone, nothing scrolling sideways. Ends back at 1440. */
+async function atEachSize(page: Page, name: string, language: string, visible: Locator): Promise<void> {
+  const panel = page.getByTestId('assistant-panel');
+  for (const size of SIZES) {
+    await page.setViewportSize({ width: size.width, height: size.height });
+    if (size.width >= 768) {
+      await expect(page.locator('html')).toHaveClass(/assistant-docked/);
+      await expect(page.getByTestId('assistant-veil')).toHaveCount(0);
+      const pushed = await docking(page);
+      expect(pushed.pushed).toBeCloseTo(pushed.panel, 0);
+    } else {
+      await expect(page.getByTestId('assistant-veil')).toBeVisible();
+      await expect(page.locator('html')).not.toHaveClass(/assistant-docked/);
+      await expect(panel).toHaveAttribute('aria-modal', 'true');
+      expect((await docking(page)).panel).toBe(size.width);
+    }
+    await expect(visible).toBeVisible();
+    expect(await sidewaysScroll(page), `${size.name}: nothing scrolls sideways`).toEqual([]);
+    await settled(page);
+    await page.screenshot({ path: shot(`assistant-panel-${name}-${size.name}-${language}`) });
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
+}
+
+/** Signs `OWNER` in and opens the businesses at 1440, the panel closed. */
+async function openBusinesses(page: Page): Promise<void> {
+  await signIn(page.request, OWNER);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/dashboard/businesses');
+  await expect(page.getByText(BUSINESS).first()).toBeVisible();
+}
+
 test.beforeAll(async () => {
   provider = await startProvider(0);
 });
@@ -127,11 +161,10 @@ for (const language of ['es', 'en'] as const) {
     expect(docked.pushed).toBeGreaterThan(300);
     expect(docked.pushed).toBeCloseTo(docked.panel, 0);
 
-    // The empty conversation: the panel's sentence and its three shortcuts.
+    // The empty conversation: the panel's sentence and its three shortcuts, at the three sizes.
     await expect(page.getByTestId('assistant-empty')).toContainText(words.empty);
     await expect(page.getByTestId('assistant-shortcut')).toHaveText([...words.shortcuts]);
-    await settled(page);
-    await page.screenshot({ path: shot(`assistant-panel-empty-1440-${language}`) });
+    await atEachSize(page, 'empty', language, page.getByTestId('assistant-empty'));
 
     // A read runs alone: «writing» until the first words, then the account's business, and «Go to Businesses».
     await page.getByTestId('assistant-shortcut').first().click();
@@ -140,6 +173,9 @@ for (const language of ['es', 'en'] as const) {
     const answer = page.getByTestId('assistant-bubble-assistant').last();
     await expect(answer).toContainText(words.answer);
     await expect(page.getByTestId('assistant-go')).toContainText(words.goTo);
+    // One of the month's two messages is half of it: under 80 % the foot says nothing of the allowance.
+    await expect(page.getByTestId('assistant-stop')).toHaveCount(0);
+    await expect(page.getByTestId('assistant-usage')).toHaveCount(0);
 
     // A write stops at its card: creating a business asks to type the word; «Cancel» changes nothing.
     await ask(page, words.create);
@@ -150,8 +186,7 @@ for (const language of ['es', 'en'] as const) {
     // `ion-button` is no native button: Ionic says it is off on its host.
     await expect(page.getByTestId('assistant-confirm-submit')).toHaveAttribute('aria-disabled', 'true');
     await expect(page.getByTestId('assistant-confirm-input')).toBeVisible();
-    await settled(page);
-    await page.screenshot({ path: shot(`assistant-panel-card-1440-${language}`) });
+    await atEachSize(page, 'card', language, card);
     await page.getByTestId('assistant-confirm-cancel').click();
     await expect(card).toBeHidden();
     await expect(page.getByTestId('assistant-bubble-assistant').last()).toContainText(words.notCreated);
@@ -173,33 +208,76 @@ for (const language of ['es', 'en'] as const) {
     await expect(page.getByTestId('assistant-upgrade')).toHaveCount(0);
 
     // The same conversation at the three sizes: docked from 768 px, over a veil on a phone.
-    for (const size of SIZES) {
-      await page.setViewportSize({ width: size.width, height: size.height });
-      if (size.width >= 768) {
-        await expect(page.locator('html')).toHaveClass(/assistant-docked/);
-        await expect(page.getByTestId('assistant-veil')).toHaveCount(0);
-        const pushed = await docking(page);
-        expect(pushed.pushed).toBeCloseTo(pushed.panel, 0);
-      } else {
-        await expect(page.getByTestId('assistant-veil')).toBeVisible();
-        await expect(page.locator('html')).not.toHaveClass(/assistant-docked/);
-        await expect(panel).toHaveAttribute('aria-modal', 'true');
-        expect((await docking(page)).panel).toBe(size.width);
-      }
-      await expect(failure).toBeVisible();
-      expect(await sidewaysScroll(page), `${size.name}: nothing scrolls sideways`).toEqual([]);
-      await settled(page);
-      await page.screenshot({ path: shot(`assistant-panel-spent-${size.name}-${language}`) });
-    }
+    await atEachSize(page, 'spent', language, failure);
 
     // × closes it: the screen takes the whole width back.
-    await page.setViewportSize({ width: 1440, height: 900 });
     await page.getByTestId('assistant-close').click();
     await expect(panel).toHaveAttribute('data-open', 'false');
     await expect(page.locator('html')).not.toHaveClass(/assistant-docked/);
     expect(errors).toEqual([]);
   });
 }
+
+test('the panel closes with Escape, its own button or the veil, and the device remembers it open', async ({ page }) => {
+  seed('panel');
+  await openBusinesses(page);
+  const errors = watchPageErrors(page);
+  const button = page.getByTestId('assistant-button');
+  const panel = page.getByTestId('assistant-panel');
+  await button.click();
+  await expect(panel).toHaveAttribute('data-open', 'true');
+  await expect(button).toHaveAttribute('aria-pressed', 'true');
+
+  // Left open, the next visit on this device finds it open, docked.
+  await page.reload();
+  await expect(page.getByText(BUSINESS).first()).toBeVisible();
+  await expect(panel).toHaveAttribute('data-open', 'true');
+  await expect(page.locator('html')).toHaveClass(/assistant-docked/);
+
+  // Escape closes it; its own button opens it and closes it again.
+  await page.keyboard.press('Escape');
+  await expect(panel).toHaveAttribute('data-open', 'false');
+  await expect(button).toHaveAttribute('aria-pressed', 'false');
+  await button.click();
+  await expect(panel).toHaveAttribute('data-open', 'true');
+  await button.click();
+  await expect(panel).toHaveAttribute('data-open', 'false');
+
+  // Left closed, the next visit finds it closed.
+  await page.reload();
+  await expect(page.getByText(BUSINESS).first()).toBeVisible();
+  await expect(button).toBeVisible();
+  await expect(panel).toHaveAttribute('data-open', 'false');
+
+  // Narrower than 768 px it goes over the screen, and the veil beside it closes it (on a phone it takes the whole width).
+  await page.setViewportSize({ width: 700, height: 1000 });
+  await button.click();
+  const veil = page.getByTestId('assistant-veil');
+  await expect(veil).toBeVisible();
+  await veil.click({ position: { x: 20, y: 500 } });
+  await expect(panel).toHaveAttribute('data-open', 'false');
+  await expect(veil).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test('a session that ends in the middle of the conversation asks to sign in again, and the sign-in follows', async ({
+  page,
+}) => {
+  seed('panel');
+  await openBusinesses(page);
+  await page.getByTestId('assistant-button').click();
+  await expect(page.getByTestId('assistant-panel')).toHaveAttribute('data-open', 'true');
+
+  // The session ends elsewhere (signed out in another tab, closed from «Sessions»): the browser keeps its CSRF cookie.
+  await page.context().clearCookies({ name: 'sessionid' });
+  await ask(page, WORDS.es.shortcuts[0]);
+  const failure = page.getByTestId('assistant-failure').last();
+  await expect(failure).toContainText('Tu sesión ha terminado. Vuelve a entrar para seguir hablando.');
+  await page.getByTestId('assistant-sign-in').click();
+  await expect(page).toHaveURL(/\/launch(\?|$)/);
+  await expect(page.getByTestId('login-form')).toBeVisible();
+  await expect(page.getByTestId('assistant-button')).toHaveCount(0);
+});
 
 test('signed out, the panel sends to the sign-in and nobody sees the assistant', async ({ page }) => {
   await page.goto('/dashboard/businesses');
