@@ -88,8 +88,8 @@ Todas llevan `ai=INTERNAL` (son la pasarela, no herramientas del asistente) salv
   clave del proveedor y el token y el PIN de WhatsApp); termina con error si alguna no se abre.
 - `index_docs [--full] [--dry-run]`: indexa la documentación del asistente del panel (ASSISTANT-F27); solo embebe lo
   que cambió, en lotes de 64, con el proveedor de servicios; una línea por fuente con lo que costó; código 2 sin
-  proveedor. Diario a las 06:50 UTC en `saas-cron` y una vez a mano tras el primer despliegue (`saas/README.md`,
-  «Operación»).
+  proveedor. A mano como tarea suelta de `saas-cron` (`saas/README.md`, «Operación») hasta que ERPlora/aws#25
+  lo programe a diario a las 06:50 UTC.
 - `ASSISTANT_TRY_RATELIMIT` (por defecto `10/m`): pruebas de un modelo por persona del personal.
 - Freno por negocio de las puertas del Hub: `ASSISTANT_TURN_RATELIMIT` (`600/h`, turnos y cupo),
   `ASSISTANT_EMBED_RATELIMIT` (`600/h`), `ASSISTANT_TRANSCRIBE_RATELIMIT` (`120/h`),

@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:431c00d201d62e044b6106b3c9176c9063e66965fb129a585173ff9b9079a634 -->
+<!-- generated from WORKBOOK.md sha256:36a2c61f0b8023efba10cc2c1deb863529f1b09ccfa03660673628ea3b4f2954 -->
 
 ## What it is for and who uses it
 
@@ -475,7 +475,7 @@ Actor: the person with an account at erplora.com
 Screen: Panel: Assistant
 Steps:
 1. The person, signed in to erplora.com's panel, presses "Assistant" at the end of the bar and the assistant's panel opens: beside the screen from 768 px, on top of it on a phone. Without a conversation, they see "Ask me about your businesses, your invoices or your account." with three shortcuts.
-2. They write to the assistant or press a shortcut ("Which businesses do I have?", "How much do I pay a month?", "Create a business for my hair salon"); until the first word of the answer they see the bubble "The assistant is writing".
+2. They write to the assistant or press a shortcut ("Which businesses do I have?", "How much do I pay a month?", "How do I create a business?"); until the first word of the answer they see the bubble "The assistant is writing".
 3. erplora.com offers the model the panel's tools this account may use (its businesses and their people, the plans, its invoices and subscriptions, its account, the catalogue of apps), first those of what was asked, and always the list of its businesses.
 4. A read the model asks for runs on its own, as the person themselves: it never sees a business that is not theirs.
 5. A change the model asks for stops at the card "Run this action?", which says what it will do, where (the panel's screen: "Businesses", "Billing", "Account" or "Store") and with which data, naming the business by its name; it is only done if the person presses "Run it", and "Cancel" changes nothing. Creating, deleting or changing the address of a business, offering it to someone else or cancelling its plan also ask to type "CONFIRM"; changing plan is not done from the chat but in the Store, which shows first what will be charged.
@@ -510,7 +510,7 @@ Steps:
 3. erplora.com searches erplora.com's public help, the documentation of each app of the Hub that is in the store, the user part of the panel's manuals (the account, the businesses, billing, the store and the website) and the plans on sale with their prices and what each one includes.
 4. It returns up to 8 excerpts (12 at most, even if the model asks for more), the closest to the question, in the person's language; if fewer than three in their language really answer, the English ones join. Each excerpt says where it comes from and under which headings.
 5. The model answers with what those excerpts say and cites where they come from; a price or what a plan includes always comes from the plans on sale, never from memory.
-6. The documentation is indexed again every day: a change in the help, in a manual, in an app's documentation or in a plan reaches the assistant the next day.
+6. The documentation is brought up to date when ERPlora's team indexes it again: a change in the help, in a manual, in an app's documentation or in a plan reaches the assistant with the next run. It is not yet indexed again on its own every day.
 In: the question (up to 500 characters) and how many excerpts the model wants.
 Out: the excerpts with their source, where they come from, their headings, their text, their language and how close they are to the question; of the question only its fingerprint stays in the cache for a day (the same question again is not computed anew).
 If it fails: without the provider of the fingerprints configured, or if it fails, the search answers that the documentation cannot be searched now and the model tells the person; an account without the permission to ask the assistant does not search; while the documentation has not been indexed, it finds nothing and the model says it does not know instead of making it up.
