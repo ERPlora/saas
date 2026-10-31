@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:36a2c61f0b8023efba10cc2c1deb863529f1b09ccfa03660673628ea3b4f2954 -->
+<!-- generated from WORKBOOK.md sha256:d9f0b85f637a03a4647cf84f037148b172a8b6701bba3df9972a92245d00b07d -->
 
 ## What it is for and who uses it
 
@@ -19,7 +19,8 @@ Who uses it:
 - **ERPlora's staff**, in erplora.com's admin, with the AI gateway's permissions. The support group does not have
   them: the keys are ERPlora's spend.
 - The **Hub's assistant** of each business (and of each demo): it sends erplora.com each turn, its attachments, the
-  texts of its index, the dictations and what is to be read aloud, and shows the person what is left of the allowance.
+  questions about how something is done in ERPlora (ASSISTANT-F28), the dictations and what is to be read aloud, and
+  shows the person what is left of the allowance.
 - **ERPlora's staff**, in "Assistant usage records", see what each business spends and what it costs.
 - The **person with an account** at erplora.com, in the panel: opens the assistant with the "Assistant" button of the
   bar and asks it about their businesses, what they pay and their account (ASSISTANT-F25), with 30 messages a month
@@ -140,6 +141,7 @@ panel.
 | ASSISTANT-F25 | Answer the panel's assistant of an account | done |
 | ASSISTANT-F26 | Count an account's messages with the panel's assistant | done |
 | ASSISTANT-F27 | Search the documentation from the panel | done |
+| ASSISTANT-F28 | Search the documentation from the Hub | done |
 
 ### ASSISTANT-F01 Add an AI provider
 Status: done
@@ -407,7 +409,7 @@ Status: done
 Actor: the Hub's assistant of a business
 Screen: none
 Steps:
-1. So the assistant finds what it looks for (which app does what, which screen to open), the Hub keeps an index with the fingerprint of each text and sends erplora.com the texts it needs the fingerprint of, 1 to 256 at a time.
+1. A Hub that keeps an index of its own with the fingerprint of each text sends erplora.com the texts it needs the fingerprint of, 1 to 256 at a time. Today's Hub keeps none: it searches ERPlora's documentation through erplora.com (see ASSISTANT-F28).
 2. erplora.com asks the services' provider for the fingerprints, always with the same fingerprint model, and gives them back in the order of the texts.
 3. The tokens and their cost add up to the business's month.
 In: the business and the texts.
@@ -515,3 +517,18 @@ In: the question (up to 500 characters) and how many excerpts the model wants.
 Out: the excerpts with their source, where they come from, their headings, their text, their language and how close they are to the question; of the question only its fingerprint stays in the cache for a day (the same question again is not computed anew).
 If it fails: without the provider of the fingerprints configured, or if it fails, the search answers that the documentation cannot be searched now and the model tells the person; an account without the permission to ask the assistant does not search; while the documentation has not been indexed, it finds nothing and the model says it does not know instead of making it up.
 Involved: ASSISTANT-F20, ASSISTANT-F25, APPS-F02, HUBS-F05, PUBLIC-F15
+
+### ASSISTANT-F28 Search the documentation from the Hub
+Status: done
+Actor: the Hub's assistant of a business
+Screen: none
+Steps:
+1. A person of the business asks the Hub's assistant how something is done in ERPlora, what an option means or what a plan includes ("How do I open the cash register?", "What does the Starter plan include?").
+2. The Hub does not keep the documentation: it sends erplora.com the question, the business (or the demo) and the person's language.
+3. erplora.com computes the question's fingerprint and searches the same documentation as the panel's assistant (see ASSISTANT-F27): erplora.com's public help, the documentation of each app of the Hub, the user part of the panel's manuals and the plans on sale with their prices.
+4. It returns up to 8 excerpts (12 at most, even if more are asked for), the closest to the question, in the person's language; if fewer than three in their language really answer, the English ones join. Each excerpt says where it comes from and under which headings.
+5. The Hub's assistant answers only with what those excerpts say and cites where they come from; if there is none, it says the documentation does not cover it instead of making it up.
+In: the business or the demo, the question (up to 500 characters), the language (English or Spanish) and how many excerpts it wants.
+Out: the excerpts with their source, where they come from, their headings, their text, their language and how close they are to the question; of the question only its fingerprint stays in the cache for a day (the same question again is not computed anew). It spends no message of the allowance.
+If it fails: without the provider of the fingerprints configured, it answers that the documentation cannot be searched now because the provider is not configured; if the provider fails, to try again in a moment; with too many searches in a row from the same business, to wait a moment; a call that is not signed, from a business erplora.com does not know or from one that is not active is refused as at any door of the Hub; while the documentation has not been indexed, it finds nothing and the assistant says the documentation does not cover it.
+Involved: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F27

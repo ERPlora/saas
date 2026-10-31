@@ -9,7 +9,8 @@ auditoría y los comandos de claves; la 2 (APP-ASSISTANT-2) con las puertas del 
 la voz y las denuncias. El contrato de esas puertas, en «Para quien lo mantiene» del WORKBOOK. Desde la ronda
 2026-10-30e (PLAN-SAAS §23, plan `docs/plans/2026-10-30-asistente-saas.md`) la pasarela contesta también, en
 proceso, al asistente del propio panel (`base/assistant.py`, `POST /api/assistant/turn`), con un cupo por cuenta y
-su propia documentación para buscar (`assistant.docs.search` sobre pgvector, ASSISTANT-F27). El chat del panel
+su propia documentación para buscar (`assistant.docs.search` sobre pgvector, ASSISTANT-F27), la misma que el Hub
+busca por `/internal/assistant/docs/search` (ASSISTANT-F28). El chat del panel
 (ASSISTANT-F25) viene del «Asistente Cloud» del panel viejo: preguntarle (SAAS_DASHBOARD-F220) y confirmar o cancelar
 la acción que propone (SAAS_DASHBOARD-F221, hoy la tarjeta «¿Ejecutar esta acción?»). Lo decidió Ioan el 30/10/2026
 (PLAN-SAAS §23): el mismo asistente que el del Hub, con las herramientas propias de erplora.com, porque el Sidekick de
@@ -31,7 +32,7 @@ Shopify, el Square Assistant y el asistente de Stripe contestan el «cómo se ha
 | `queries.py` | Lecturas (`@operation`, `kind="query"`): la conexión de un proveedor, la política, la ruta de un turno, quién llama, el cupo que queda y el proveedor de servicios. |
 | `services.py` | Escrituras (`@operation`, `kind="command"`), cada una con el permiso del modelo de Django que la respalda (o solo la plataforma); `encrypted_columns` para la rotación. |
 | `routing.py` | El turno a través de su ruta: prueba los modelos en orden y pasa a la reserva si el proveedor falla antes de contestar. |
-| `internal.py` | Las puertas del Hub, vistas asíncronas firmadas (`door`: método, tamaño, firma, contrato, quién llama y freno por negocio): el turno en directo y de una vez, el cupo, las huellas, el dictado, la lectura en voz alta y la denuncia. |
+| `internal.py` | Las puertas del Hub, vistas asíncronas firmadas (`door`: método, tamaño, firma, contrato, quién llama y freno por negocio): el turno en directo y de una vez, el cupo, las huellas, la búsqueda en la documentación, el dictado, la lectura en voz alta y la denuncia. |
 | `turn.py` | El turno: prepara la conversación, ofrece las herramientas, emite los frames, el token de continuación de un solo uso y lo gastado (`Outcome`); y el turno tal como lo sirve una puerta, sea la del Hub o la del panel (`start`, `frames`/`stream`, `settle`, `spend`, `Refused`). |
 | `server_tools.py` | Las herramientas que ejecuta erplora.com: la fecha y la hora (la búsqueda web y el tipo de cambio esperan a la etapa ERP, PLAN §30). |
 | `attachments.py` | Los adjuntos: imágenes al modelo que ve, PDF/Word/Excel/texto a texto en memoria, con topes y el zip comprobado. El cuerpo de las puertas lo guarda en memoria el servidor (`config/asgi.py`, `BodiesInMemory`), nunca en el temporal en disco de Django. |
@@ -86,7 +87,8 @@ No se guarda ninguna conversación, adjunto, audio ni texto leído: el turno pas
 | `assistant.docs.search` | `assistant.ask` (toda cuenta) | — |
 
 Todas llevan `ai=INTERNAL` (son la pasarela, no herramientas del asistente) salvo `assistant.docs.search`, que es
-`AI(...)`: la herramienta `assistant__docs__search` del asistente del panel (`live.E017`, PLAN §30).
+`AI(...)`: la herramienta `assistant__docs__search` del asistente del panel (`live.E017`, PLAN §30). La puerta
+`/internal/assistant/docs/search` corre esa misma operación como la plataforma, en el idioma que manda el Hub.
 
 ## Comandos y ajustes
 
@@ -100,14 +102,16 @@ Todas llevan `ai=INTERNAL` (son la pasarela, no herramientas del asistente) salv
   lo programe a diario a las 06:50 UTC.
 - `ASSISTANT_TRY_RATELIMIT` (por defecto `10/m`): pruebas de un modelo por persona del personal.
 - Freno por negocio de las puertas del Hub: `ASSISTANT_TURN_RATELIMIT` (`600/h`, turnos y cupo),
-  `ASSISTANT_EMBED_RATELIMIT` (`600/h`), `ASSISTANT_TRANSCRIBE_RATELIMIT` (`120/h`),
+  `ASSISTANT_EMBED_RATELIMIT` (`600/h`), `ASSISTANT_DOCS_RATELIMIT` (`600/h`, búsquedas en la documentación),
+  `ASSISTANT_TRANSCRIBE_RATELIMIT` (`120/h`),
   `ASSISTANT_SYNTHESIZE_RATELIMIT` (`120/h`) y `ASSISTANT_REPORT_RATELIMIT` (`60/h`), con la caché de Django.
 - `ASSISTANT_DEMO_MESSAGES` (`10`): los mensajes de una demo en toda su vida.
 - `ASSISTANT_ACCOUNT_MESSAGES` (`30`): los mensajes al mes de cada cuenta con el asistente del panel de erplora.com,
   fijos, aparte del cupo del plan de cada uno de sus negocios. El freno de turnos del panel es el mismo
   `ASSISTANT_TURN_RATELIMIT`, por cuenta.
 - `ASSISTANT_SERVICE_PROVIDER` (`openai`): el identificador del proveedor (de API OpenAI) que calcula las huellas
-  (las del índice del Hub y las de la documentación del panel, `index_docs` y `assistant.docs.search`) y la voz.
+  de la documentación (`index_docs` y las preguntas de `assistant.docs.search`, del panel y de la puerta del Hub) y
+  la voz. La puerta `/internal/assistant/embeddings` sigue abierta, pero ningún Hub la llama: el Hub no guarda índice.
 - Postgres con la extensión `vector` (pgvector, imagen `pgvector/pgvector` en local y CI, donde la crea la migración
   `assistant/0004_doc_chunks`). En Aurora no es de confianza (solo `rds_superuser`): la crea antes el arranque de
   plataforma del Hub (`bootstrap_databases`, usuario maestro) en `saas` y `pre_saas`.
