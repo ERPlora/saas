@@ -9,11 +9,15 @@ auditoría y los comandos de claves; la 2 (APP-ASSISTANT-2) con las puertas del 
 la voz y las denuncias. El contrato de esas puertas, en «Para quien lo mantiene» del WORKBOOK. Desde la ronda
 2026-10-30e (PLAN-SAAS §23, plan `docs/plans/2026-10-30-asistente-saas.md`) la pasarela contesta también, en
 proceso, al asistente del propio panel (`base/assistant.py`, `POST /api/assistant/turn`), con un cupo por cuenta y
-su propia documentación para buscar (`assistant.docs.search` sobre pgvector, ASSISTANT-F27). Esa búsqueda viene de
-`search_cloud_docs`, una de las herramientas del asistente del panel viejo (SAAS_DASHBOARD-F220), cuyo índice vivía
-en memoria y se rehacía en cada arranque; aquí es una herramienta del panel con su índice en la BD (plan
-`docs/plans/2026-10-30-asistente-saas.md` §5, PLAN-SAAS §23), porque el Sidekick de Shopify, el Square Assistant y el
-asistente de Stripe contestan el «cómo se hace» con su propia ayuda y la citan.
+su propia documentación para buscar (`assistant.docs.search` sobre pgvector, ASSISTANT-F27). El chat del panel
+(ASSISTANT-F25) viene del «Asistente Cloud» del panel viejo: preguntarle (SAAS_DASHBOARD-F220) y confirmar o cancelar
+la acción que propone (SAAS_DASHBOARD-F221, hoy la tarjeta «¿Ejecutar esta acción?»). Lo decidió Ioan el 30/10/2026
+(PLAN-SAAS §23): el mismo asistente que el del Hub, con las herramientas propias de erplora.com, porque el Sidekick de
+Shopify, el Square Assistant, el asistente de Stripe y el Copilot de GitHub contestan en el panel de la cuenta. La
+búsqueda en la documentación viene de `search_cloud_docs`, una de las herramientas de aquel asistente
+(SAAS_DASHBOARD-F220), cuyo índice vivía en memoria y se rehacía en cada arranque; aquí es una herramienta del panel
+con su índice en la BD (plan `docs/plans/2026-10-30-asistente-saas.md` §5, PLAN-SAAS §23), porque el Sidekick de
+Shopify, el Square Assistant y el asistente de Stripe contestan el «cómo se hace» con su propia ayuda y la citan.
 
 ## Anatomía
 

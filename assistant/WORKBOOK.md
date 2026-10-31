@@ -506,7 +506,7 @@ Si falla: nadie puede añadir, cambiar ni borrar una fila, ni siquiera un superu
 Implicados: ASSISTANT-F18, ASSISTANT-F20, ASSISTANT-F21, ASSISTANT-F22, ASSISTANT-F26
 
 ### ASSISTANT-F25 Contestar al asistente del panel de una cuenta
-<!-- origen: nuevo (decisión de Ioan del 30/10/2026: el mismo asistente que el del Hub, con las herramientas propias de erplora.com; Shopify Sidekick, Square Assistant, Stripe Assistant y el Copilot de GitHub contestan en el panel de la cuenta; ver PLAN-SAAS §23) -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F220 old-saas:SAAS_DASHBOARD-F221 -->
 Estado: hecho
 Actor: la persona con cuenta en erplora.com
 Pantalla: Panel: Asistente
