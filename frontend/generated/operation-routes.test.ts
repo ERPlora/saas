@@ -13,6 +13,7 @@ const ACCOUNTS_API = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 
 const BILLING_API = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'billing', 'api.py'), 'utf8');
 const APPS_API = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'apps', 'api.py'), 'utf8');
 const FISCAL_API = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'fiscal', 'api.py'), 'utf8');
+const BASE_API = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'base', 'api.py'), 'utf8');
 
 /** The operations of the Store (plan 2026-10-13 L2-D): billing/api.py, apps/api.py and the payer of hubs/api.py. */
 const STORE_ROUTES = {
@@ -65,6 +66,15 @@ const DATA_COPY_ROUTES = {
 /** The signed authorisation of a business (fiscal/api.py, plan 2026-10-15): its state on the business's page. */
 const FISCAL_ROUTES = {
   'fiscal.representation.status': { method: 'get', path: '/api/fiscal/representation' },
+};
+
+/**
+ * The panel's assistant (base/api.py, plan 2026-10-30-asistente-saas §6): the month's allowance of the account and the
+ * report of an answer. Its turn is no call of the client: the chat posts it to its own route and reads the stream.
+ */
+const ASSISTANT_ROUTES = {
+  'base.assistant.usage': { method: 'get', path: '/api/assistant/usage' },
+  'base.assistant.report': { method: 'post', path: '/api/assistant/report' },
 };
 
 /** The operations of the Account page (accounts/api.py, plan 2026-10-13 L3-A): queries GET, commands POST. */
@@ -200,6 +210,12 @@ describe('OPERATION_ROUTES', () => {
     expect(api).toEqual(FISCAL_ROUTES);
   });
 
+  it("binds the panel's assistant's allowance and report to their routes, as base/api.py does", () => {
+    expect(OPERATION_ROUTES).toMatchObject(ASSISTANT_ROUTES);
+    const api = hubsRoutes(BASE_API);
+    for (const [op, route] of Object.entries(ASSISTANT_ROUTES)) expect(api[op], op).toEqual(route);
+  });
+
   it('holds nothing else: every operation in the map is one of the API (no stale route)', () => {
     expect(Object.keys(OPERATION_ROUTES).sort()).toEqual(
       [
@@ -235,6 +251,7 @@ describe('OPERATION_ROUTES', () => {
         ...Object.keys(USAGE_ROUTES),
         ...Object.keys(DATA_COPY_ROUTES),
         ...Object.keys(FISCAL_ROUTES),
+        ...Object.keys(ASSISTANT_ROUTES),
       ].sort(),
     );
   });

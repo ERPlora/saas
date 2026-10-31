@@ -1436,3 +1436,38 @@ declare module '@erplora/ui/sdk' {
     'fiscal.representation.status': { input: RepresentationStatusIn; output: RepresentationStatusOut };
   }
 }
+
+/** `base.AssistantUsageIn`: no input (the session's account). */
+export type AssistantUsageIn = Record<string, never>;
+
+/** `base.AssistantUsageOut`: the account's messages of the month with the panel's assistant (ASSISTANT-F26). */
+export interface AssistantUsageOut {
+  used: number;
+  limit: number;
+  /** When the allowance comes back (UTC): the first of next month. */
+  resets_at: string | null;
+  /** Always false: the panel's assistant is never a demo's. */
+  demo: boolean;
+}
+
+/** `base.AssistantReportIn`: a bad answer the person reports to ERPlora's team (ASSISTANT-F23). */
+export interface AssistantReportIn {
+  message_id: string;
+  reason: 'incorrect' | 'harmful' | 'instructions' | 'other';
+  comment?: string;
+  question?: string;
+  answer: string;
+}
+
+/** `base.AssistantReportOut`: mailed, or already reported. */
+export interface AssistantReportOut {
+  sent: boolean;
+  duplicate: boolean;
+}
+
+declare module '@erplora/ui/sdk' {
+  interface Operations {
+    'base.assistant.usage': { input: AssistantUsageIn; output: AssistantUsageOut };
+    'base.assistant.report': { input: AssistantReportIn; output: AssistantReportOut };
+  }
+}

@@ -16,6 +16,7 @@ su propia documentación para buscar (`assistant.docs.search` sobre pgvector, AS
 | Fichero | Qué hace |
 |---|---|
 | `apps.py` | `AssistantConfig`: `assistant.manage`, de la plataforma y del personal, y `assistant.ask`, de toda cuenta (el asistente del panel); registra la auditoría. |
+| `frontend/` | El chat del panel (ASSISTANT-F25): el del Hub, de `@erplora/ui/components`, configurado en `options.ts` (`SAAS_ASSISTANT`, `ASSISTANT_MESSAGES`); `components/AssistantTopbar.vue` (el botón de la barra) y `components/AssistantBackground.vue` (el panel con su vacío y sus atajos), que `frontend/main.ts` monta como `chrome`. Sus palabras, en `saas.assistant.*` del catálogo de la entrada (`frontend/locale`). |
 | `models.py` | `AIProvider` (una de las cuatro API, su dirección), `AIProviderCredential` (clave cifrada con su final), `AIModel` (precios, contexto, qué admite), `AIRoutingPolicy` (una fila: el modelo que contesta y su reserva), `AssistantUsage` (lo gastado por negocio y mes; una demo, una fila en su vida; una cuenta, una por mes) y `DocChunk` (un fragmento de la documentación con su huella, `vector(1536)` con índice HNSW por coseno); `estimate_cost`, `content_hash`. |
 | `crypto.py`, `fields.py` | Fernet con `FERNET_KEY` (+ `FERNET_KEY_PREVIOUS` para leer en una rotación); la columna guarda el token. |
 | `schemas.py` | Entradas y salidas; la clave viaja como `SecretStr`. |
