@@ -506,7 +506,7 @@ Si falla: nadie puede añadir, cambiar ni borrar una fila, ni siquiera un superu
 Implicados: ASSISTANT-F18, ASSISTANT-F20, ASSISTANT-F21, ASSISTANT-F22, ASSISTANT-F26
 
 ### ASSISTANT-F25 Contestar al asistente del panel de una cuenta
-<!-- origen: nuevo (decisión de Ioan del 30/10/2026: el mismo asistente que el del Hub, con las herramientas propias de erplora.com; Shopify Sidekick, Square Assistant, Stripe Assistant y el Copilot de GitHub contestan en el panel de la cuenta; ver PLAN-SAAS §23) -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F220 old-saas:SAAS_DASHBOARD-F221 -->
 Estado: hecho
 Actor: la persona con cuenta en erplora.com
 Pantalla: Panel: Asistente
@@ -539,7 +539,7 @@ Si falla: sin mensajes libres, el turno se rechaza con el cupo agotado y la fech
 Implicados: ASSISTANT-F18, ASSISTANT-F24, ASSISTANT-F25
 
 ### ASSISTANT-F27 Buscar en la documentación desde el panel
-<!-- origen: old-saas:search_cloud_docs (el índice en memoria de apps/dashboard/assistant/knowledge.py, que se rehacía en cada arranque); nuevo como herramienta del panel (plan 2026-10-30-asistente-saas §5, PLAN-SAAS §23: el Sidekick de Shopify, el Square Assistant y el asistente de Stripe contestan el «cómo se hace» con su propia ayuda y la citan) -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F220 old:saas/apps/dashboard/assistant/knowledge.py old:saas/apps/dashboard/assistant/tools.py#search_cloud_docs -->
 Estado: hecho
 Actor: la persona con cuenta en erplora.com
 Pantalla: ninguna
