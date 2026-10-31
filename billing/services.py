@@ -1956,8 +1956,16 @@ def plan_change(ctx: OperationContext, data: PlanChangeIn) -> dict:
         description="Cancels the plan of a business at the end of its period: then it goes back to Free with its data.",
         risk="high",
         asks={
-            "en": ("cancel the bar's plan", "I don't want to pay for Starter anymore", "downgrade the salon to Free"),
-            "es": ("cancela el plan del bar", "ya no quiero pagar el Starter", "pásame la peluquería al plan Gratis"),
+            "en": (
+                "cancel the bar's plan",
+                "I don't want to pay for Starter anymore",
+                "stop charging me for the salon when the month ends",
+            ),
+            "es": (
+                "cancela el plan del bar",
+                "ya no quiero pagar el Starter",
+                "dejad de cobrarme la peluquería cuando acabe el mes",
+            ),
         },
     ),
 )

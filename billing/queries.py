@@ -506,7 +506,7 @@ def _vat_status_on_file(vat_number: str, country: str) -> str:
             ),
             "es": (
                 "¿cuánto IVA me cobraríais si estoy en Canarias?",
-                "¿qué impuesto lleva pagar desde Portugal?",
+                "si pago desde Portugal, ¿me cobráis IVA?",
                 "¿con empresa en Francia me cobráis IVA?",
             ),
         },
@@ -918,7 +918,7 @@ def _invoice_row(invoice: Invoice, user, declined: set[str]) -> dict:
     ai=AI(
         description="ERPlora's invoices to this account, newest first, by business, payment status, year and number.",
         asks={
-            "en": ("show my invoices", "download last invoice", "which invoices are unpaid?"),
+            "en": ("show my invoices", "which is my latest invoice?", "which invoices are unpaid?"),
             "es": (
                 "enséñame mis últimas facturas",
                 "¿tengo alguna factura sin pagar?",

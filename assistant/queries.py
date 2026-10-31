@@ -467,12 +467,12 @@ def nearest(vector: list[float], language: str, limit: int) -> list[DocChunk]:
         ),
         asks={
             "en": (
-                "how do I invite someone to my business?",
+                "how do I set up the kitchen printer?",
                 "what's the difference between Free and Starter?",
                 "is VeriFactu included?",
             ),
             "es": (
-                "¿cómo invito a un empleado?",
+                "¿cómo configuro la impresora de cocina?",
                 "¿qué diferencia hay entre el plan Gratis y el Starter?",
                 "¿qué es VeriFactu?",
             ),

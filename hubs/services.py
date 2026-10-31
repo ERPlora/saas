@@ -182,12 +182,12 @@ def _refuse_staff(user) -> None:
             "en": (
                 "create another business in Valencia",
                 "open a new shop called Café Luna",
-                "I want to add a second restaurant",
+                "set up my restaurant on ERPlora",
             ),
             "es": (
                 "créame otro negocio en Valencia",
                 "abre un negocio nuevo que se llame Café Luna",
-                "quiero dar de alta otra peluquería",
+                "quiero dar de alta mi peluquería",
             ),
         },
     ),
@@ -458,7 +458,7 @@ def business_change_address(ctx: OperationContext, data: BusinessAddressIn) -> d
             "en": (
                 "delete the test business",
                 "remove Bar Manolo, I don't need it anymore",
-                "close down my old shop for good",
+                "close down my old shop",
             ),
             "es": ("borra el negocio de pruebas", "elimina Bar Manolo", "elimina el local viejo, ya no lo uso"),
         },
@@ -848,12 +848,12 @@ def _mail_invitation(ctx: OperationContext, member: HubMember) -> None:
         asks={
             "en": (
                 "invite perito@correo.com to the salon",
-                "add Marta to my team as manager",
+                "add marta@gmail.com to my team as manager",
                 "send an invite to luis@gmail.com",
             ),
             "es": (
                 "invita a perito@correo.com a la peluquería",
-                "añade a Marta al equipo como encargada",
+                "añade a marta@gmail.com al equipo como encargada",
                 "manda una invitación a luis@gmail.com",
             ),
         },

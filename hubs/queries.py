@@ -1577,7 +1577,7 @@ def _data_copy_unavailable() -> OperationError:
             "en": (
                 "do I have a backup of the bar?",
                 "when was the last copy of my data?",
-                "download a copy of the salon's data",
+                "how big is the last copy of the salon's data?",
             ),
             "es": (
                 "¿tengo copia de seguridad del bar?",
