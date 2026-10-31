@@ -323,7 +323,8 @@ test.describe('in Spanish', () => {
     await atEverySize(page, 'ASSISTANT-F24-es', async () => {
       await expect(page.getByRole('heading', { level: 1, name: /registro de uso del asistente/i })).toBeVisible();
       await expect(page.getByRole('columnheader', { name: 'Coste (USD)' })).toBeVisible();
-      await expect(page.getByRole('columnheader', { name: 'Negocio o demo' })).toBeVisible();
+      // Since ASSISTANT-F26 an account has its rows too (assistant/admin.py `business, demo or account`).
+      await expect(page.getByRole('columnheader', { name: 'Negocio, demo o cuenta' })).toBeVisible();
       await expect(page.getByRole('link', { name: 'Negocios' })).toBeVisible();
       await expect(page.getByText('3 registros de uso del asistente')).toBeVisible();
     });
