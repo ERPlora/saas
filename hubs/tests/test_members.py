@@ -29,6 +29,7 @@ from django.utils import timezone, translation
 from live.errors import Conflict, NotFound, PermissionDenied
 
 from accounts.models import HubMembership
+from accounts.services import create_platform_user
 from hubs import queries, services
 from hubs.models import BillingProfile, Hub, HubMember, Subscription
 from hubs.schemas import (
@@ -660,6 +661,20 @@ class TestAccept:
 
         with pytest.raises(NotFound):
             self.accept(team["invitee"], member_of(business, team["invitee"]).id)
+
+    def test_an_account_made_staff_while_invited_cannot_enter_with_the_invitation(self, business, team):
+        """The platform's staff and the customers never share an account (``test_a_staff_account_creates_no_business``):
+        ``create_platform_user`` sees no business of an account whose invitation still waits, so the answer refuses
+        it, as the invitation itself would have (W11b)."""
+        invitee = team["invitee"]
+        create_platform_user(invitee.email, "support")
+
+        with pytest.raises(Conflict) as refused:
+            self.accept(invitee, member_of(business, invitee).id)
+
+        assert refused.value.code == "hubs.platform_account"
+        assert member_of(business, invitee).is_pending
+        assert not HubMembership.objects.filter(user=invitee).exists()
 
     def test_accepting_never_touches_another_business_of_mine(
         self, business, team, make_user

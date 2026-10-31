@@ -159,6 +159,16 @@ class SeatLimitReached(Conflict):
 # --- Creating a business --------------------------------------------------------------------------
 
 
+def _refuse_staff(user) -> None:
+    """The platform's staff and the customers never share an account: a staff account neither creates a business,
+    nor is invited to one, nor enters one with an invitation that waited while it was made staff (409
+    ``hubs.platform_account``)."""
+    if user.is_staff:
+        raise Conflict(
+            _("This address belongs to ERPlora's staff and cannot join a business."), code="hubs.platform_account"
+        )
+
+
 @operation(
     "hubs.business.create",
     kind="command",
@@ -185,10 +195,7 @@ def business_create(ctx: OperationContext, data: BusinessCreateIn) -> dict:
             code="hubs.free_plan_missing",
             status=503,
         )
-    if user.is_staff:
-        raise Conflict(
-            _("This address belongs to ERPlora's staff and cannot join a business."), code="hubs.platform_account"
-        )
+    _refuse_staff(user)
     check_free_quota(user)
     now = timezone.now()
     profile = BillingProfile.objects.create(
@@ -820,15 +827,13 @@ def member_invite(ctx: OperationContext, data: MemberInviteIn) -> dict:
     else:
         _check_seat(hub, now)
         user = get_user_model().objects.filter(email__iexact=data.email).first()
-        if user is not None and user.is_staff:
-            raise Conflict(
-                _("This address belongs to ERPlora's staff and cannot join a business."), code="hubs.platform_account"
-            )
         if user is None:
             user = get_user_model().objects.create_user(email=data.email, password=None, language=hub.language)
-        elif not account_queries.email_is_proven(user, data.email):
-            account_services.release_unproven_account(user, reason="invited_while_unverified")
-            revoke_after_commit(user.pk)
+        else:
+            _refuse_staff(user)
+            if not account_queries.email_is_proven(user, data.email):
+                account_services.release_unproven_account(user, reason="invited_while_unverified")
+                revoke_after_commit(user.pk)
         member = HubMember.objects.create(
             hub=hub,
             user=user,
@@ -1009,6 +1014,7 @@ def invitation_accept(ctx: OperationContext, data: ByIdIn) -> dict:
     still has a seat beside the people already inside (``_check_seat_to_enter``). An account that never
     proved its address confirms it first (saas#2541: 403 ``hubs.email_unverified``)."""
     member = _my_invitation(ctx, data.id)
+    _refuse_staff(member.user)
     if not account_queries.email_is_proven(member.user, member.user.email):
         raise PermissionDenied(
             _("Confirm your email address before accepting the invitation."), code="hubs.email_unverified"
