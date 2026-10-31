@@ -539,7 +539,7 @@ Si falla: sin mensajes libres, el turno se rechaza con el cupo agotado y la fech
 Implicados: ASSISTANT-F18, ASSISTANT-F24, ASSISTANT-F25
 
 ### ASSISTANT-F27 Buscar en la documentación desde el panel
-<!-- origen: old-saas:search_cloud_docs (el índice en memoria de apps/dashboard/assistant/knowledge.py, que se rehacía en cada arranque); nuevo como herramienta del panel (plan 2026-10-30-asistente-saas §5, PLAN-SAAS §23: el Sidekick de Shopify, el Square Assistant y el asistente de Stripe contestan el «cómo se hace» con su propia ayuda y la citan) -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F220 old:saas/apps/dashboard/assistant/knowledge.py old:saas/apps/dashboard/assistant/tools.py#search_cloud_docs -->
 Estado: hecho
 Actor: la persona con cuenta en erplora.com
 Pantalla: ninguna

@@ -9,7 +9,11 @@ auditoría y los comandos de claves; la 2 (APP-ASSISTANT-2) con las puertas del 
 la voz y las denuncias. El contrato de esas puertas, en «Para quien lo mantiene» del WORKBOOK. Desde la ronda
 2026-10-30e (PLAN-SAAS §23, plan `docs/plans/2026-10-30-asistente-saas.md`) la pasarela contesta también, en
 proceso, al asistente del propio panel (`base/assistant.py`, `POST /api/assistant/turn`), con un cupo por cuenta y
-su propia documentación para buscar (`assistant.docs.search` sobre pgvector, ASSISTANT-F27).
+su propia documentación para buscar (`assistant.docs.search` sobre pgvector, ASSISTANT-F27). Esa búsqueda viene de
+`search_cloud_docs`, una de las herramientas del asistente del panel viejo (SAAS_DASHBOARD-F220), cuyo índice vivía
+en memoria y se rehacía en cada arranque; aquí es una herramienta del panel con su índice en la BD (plan
+`docs/plans/2026-10-30-asistente-saas.md` §5, PLAN-SAAS §23), porque el Sidekick de Shopify, el Square Assistant y el
+asistente de Stripe contestan el «cómo se hace» con su propia ayuda y la citan.
 
 ## Anatomía
 
