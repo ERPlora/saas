@@ -277,6 +277,9 @@ huellas de las preguntas, céntimos.
   `SHARED_DB_NAME=saas_e2e_qa uv run python manage.py register_apps`.
 - **El índice** (`assistant.DocChunk`): el `beforeAll` corre `manage.py index_docs`, que solo calcula las huellas de
   lo que cambió (la primera vez, unos 2 900 fragmentos, ~0,015 USD).
+- **Al acabar, las claves fuera**: la BD e2e las guarda cifradas con la `FERNET_KEY` de desarrollo, que es pública.
+  Se borran con `assistant.credential.delete` (como el admin) o se tira la BD (`node tests/e2e/database.ts --drop` con
+  el mismo `DB_NAME`); la siguiente ejecución las vuelve a guardar desde el entorno.
 
 Receta (desde el worktree del SaaS, con `pnpm build` hecho y el `.env` copiado; las claves, sin imprimirlas):
 
