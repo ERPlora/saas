@@ -11,6 +11,9 @@
 // the user menu (Account, Help, Sign out) and the surface the server keeps in the session. What the
 // account chose (Account → Preferences, in `base.session.me`) is painted before the first paint: its
 // theme mode and its own language; the user menu's theme is kept in the account.
+// The panel's assistant (plan 2026-10-30-asistente-saas §6, ASSISTANT-F25): the shared chat configured as the panel's
+// (`SAAS_ASSISTANT`), its sparkles at the end of the topbar and its panel beside the pane (`CHROME`), its words merged
+// under the apps' (`appMessages`), and the tab's conversation forgotten when the account signs out.
 import {
   createShell,
   type CreateShellOptions,
@@ -22,6 +25,7 @@ import {
   type Surface,
   toastError,
 } from '@erplora/ui/shell';
+import { configureAssistant, forgetAssistant } from '@erplora/ui/components';
 import {
   type AllauthClient,
   createAllauthClient,
@@ -34,11 +38,12 @@ import {
 import './fonts.css';
 // The panel's chrome: «Skip to content», touch targets of 44 px, Back without ☰ in a detail page (audit 2026-10-14).
 import './panel-chrome.css';
-import { type Ref, ref } from 'vue';
+import { defineAsyncComponent, type Ref, ref } from 'vue';
 import { isNavigationFailure, type RouteRecordRaw } from 'vue-router';
 
 import { ACCOUNT, BUSINESSES, LAUNCHER, REPORT_PROBLEM } from '../accounts/frontend/paths';
 import { recaptchaSiteKey } from '../accounts/frontend/recaptcha';
+import { ASSISTANT_MESSAGES, SAAS_ASSISTANT } from '../assistant/frontend/options';
 import { OPERATION_ROUTES } from './generated/operation-routes';
 import en from './locale/en.json';
 import es from './locale/es.json';
@@ -73,6 +78,15 @@ const RECAPTCHA_SCRIPT_ORIGINS = ['https://www.google.com/recaptcha/', 'https://
  *  texts the panel says otherwise (`notFound`: the panel, not a hub; audit 2 R-18). */
 const ENTRY_CATALOGUES = { 'frontend/locale/en.json': en, 'frontend/locale/es.json': es };
 
+/**
+ * The panel's pieces of the chrome: the assistant's sparkles at the end of the topbar and its panel beside the pane
+ * (the shell mounts the panel only while someone is signed in). Loaded on demand: neither is needed to paint.
+ */
+export const CHROME: NonNullable<CreateShellOptions['chrome']> = {
+  topbar: defineAsyncComponent(() => import('../assistant/frontend/components/AssistantTopbar.vue')),
+  background: defineAsyncComponent(() => import('../assistant/frontend/components/AssistantBackground.vue')),
+};
+
 /** An app's `frontend/routes.ts` default-exports its routes → pages, and nothing else. */
 export type AppRoutes = { default: RouteRecordRaw[] };
 
@@ -87,9 +101,10 @@ export function appRoutes(routeFiles: Record<string, AppRoutes>): RouteRecordRaw
 /** An app's `frontend/locale/<lang>.json`, all under the app id (guard: main.test.ts). */
 export type AppCatalogue = Record<string, unknown>;
 
-/** Every app catalogue, by the language in its file name; distinct app ids, so a spread never collides. */
+/** Every app catalogue, by the language in its file name, over the shared assistant's words as the panel says them
+ *  (`assistant`); distinct app ids, so a spread never collides. */
 export function appMessages(catalogues: Record<string, AppCatalogue>): CreateShellOptions['messages'] {
-  const messages: Record<string, AppCatalogue> = {};
+  const messages: Record<string, AppCatalogue> = { en: { ...ASSISTANT_MESSAGES.en }, es: { ...ASSISTANT_MESSAGES.es } };
   for (const [file, catalogue] of Object.entries(catalogues)) {
     const language = file.slice(file.lastIndexOf('/') + 1, -'.json'.length);
     messages[language] = { ...messages[language], ...catalogue };
@@ -163,6 +178,8 @@ function keepThemeInAccount(client: LiveClient, session: Ref<SessionMeOut | unde
 async function signOut(auth: AllauthClient): Promise<void> {
   const state = await auth.logout();
   if (state.authenticated) throw new Error('saas: still signed in after signing out');
+  // The tab's conversation with the assistant is this account's: the next one starts empty.
+  forgetAssistant();
   location.assign(LAUNCHER);
 }
 
@@ -173,6 +190,8 @@ export async function boot(
   doc: Document = document,
 ): Promise<void> {
   const config = readSpaConfig(doc);
+  // The shared assistant's chat as the panel's: its routes, base's operations, its words and who uses it.
+  configureAssistant(SAAS_ASSISTANT);
   const client = createLiveClient(config, { routes: OPERATION_ROUTES });
   const auth = createAllauthClient(config);
   const session = loadSession(client, doc);
@@ -191,6 +210,7 @@ export async function boot(
     // AA contrast (audit 2 §5.1, option A): the primary solid at 4.87:1 with white, and dark text on the
     // dark theme's (`data-ep-contrast="aa"`, packages/ui theme/variables.css).
     contrast: 'aa',
+    chrome: CHROME,
   });
   provideLiveClient(client, app);
   try {
@@ -204,8 +224,8 @@ export async function boot(
 }
 
 void boot(
-  import.meta.glob<AppRoutes>('../{accounts,hubs,billing,fiscal}/frontend/routes.ts', { eager: true }),
-  import.meta.glob<AppCatalogue>('../{accounts,hubs,billing,fiscal}/frontend/locale/*.json', {
+  import.meta.glob<AppRoutes>('../{accounts,hubs,billing,fiscal,assistant}/frontend/routes.ts', { eager: true }),
+  import.meta.glob<AppCatalogue>('../{accounts,hubs,billing,fiscal,assistant}/frontend/locale/*.json', {
     eager: true,
     import: 'default',
   }),

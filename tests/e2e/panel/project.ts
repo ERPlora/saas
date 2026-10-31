@@ -165,6 +165,9 @@ function panelDjangoEnv(vitePort: number, stack: Stack): Record<string, string> 
       // The assistant's embeddings and voice go to the e2e's own provider (assistant_seed.py, the local fake on
       // `aiProviderPort`), never to a provider «openai» the shared database may hold with a real key.
       ASSISTANT_SERVICE_PROVIDER: 'e2e-local',
+      // Each account's messages a month with the panel's assistant (30 in production): assistant-panel.spec.ts asks
+      // twice, then sees the month spent (ASSISTANT-F26). No other spec asks the panel's assistant.
+      ASSISTANT_ACCOUNT_MESSAGES: '2',
     },
     stack,
   );

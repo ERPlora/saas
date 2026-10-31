@@ -16,6 +16,8 @@
     "billing/frontend/**/__tests__/**/*",
     "fiscal/frontend/**/*.test.ts",
     "fiscal/frontend/**/__tests__/**/*",
+    "assistant/frontend/**/*.test.ts",
+    "assistant/frontend/**/__tests__/**/*",
     "*.test.ts",
     "vitest.setup.ts",
     "frontend/env.d.ts",
