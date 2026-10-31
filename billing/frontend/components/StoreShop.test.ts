@@ -9,7 +9,7 @@
 //   - after buying, «Activating…»; owned, never on sale twice; cancelled, «Keep · no charge today»;
 //   - with an unpaid invoice, nothing that charges, for THAT business.
 // The dialogs have their own tests: here they are stubs, and what the shop hands them is checked.
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@ionic/vue', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@ionic/vue')>()),
@@ -46,7 +46,15 @@ import CheckoutModal from './CheckoutModal.vue';
 import ProrationDialog from './ProrationDialog.vue';
 import StoreShop from './StoreShop.vue';
 
+beforeEach(() => {
+  // The shop compares a module's `valid_until` with now (`apply`): the fixtures end on Oct 31, 2026, so the
+  // clock stays before it. Only the date: the timers stay real (the harness has its own fake clock).
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-10-20T10:00:00Z'));
+});
+
 afterEach(() => {
+  vi.useRealTimers();
   vi.mocked(toastSuccess).mockClear();
   vi.mocked(toastInfo).mockClear();
   document.body.innerHTML = '';

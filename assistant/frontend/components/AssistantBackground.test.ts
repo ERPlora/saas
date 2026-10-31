@@ -3,6 +3,7 @@
 // shortcuts, each asked at once. Its states as the person sees them: the empty conversation, the bubble «writing»
 // while the answer has not come, a failure of the turn with its way out, what is left of the month's messages from 80 %
 // (read with `base.assistant.usage`) and a spent month without «Upgrade plan» (an account has no plan for them).
+// clock: data only — no code under test compares these dates with now.
 import { createAssistant, installAssistant, type TurnFrame } from '@erplora/ui/components';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 

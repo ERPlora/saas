@@ -6,6 +6,7 @@
 // operation the server reads too (`can.delete`: the owner; `is_payer`: it pays for it). While that list is not known
 // (loading, failed, or no answer in time) nothing says the account is free to go: deletion stays off, and a failure
 // is said with «Retry» (audit 2026-10-14, R-04/R-08).
+// clock: data only — no code under test compares these dates with now.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@ionic/vue', async (importOriginal) => ({

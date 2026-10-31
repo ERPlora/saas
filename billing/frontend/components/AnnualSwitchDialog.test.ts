@@ -2,6 +2,7 @@
 // UX-AUDIT-4 W-F2/X-03/V-37): for THAT business, with what it charges today WITH VAT — Stripe's prorated
 // preview — the new price, what it is a month, and that its modules follow the billing. Confirmed with
 // `billing.plan.change` at the preview's proration date.
+// clock: data only — no code under test compares these dates with now.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { h, ref } from 'vue';
 

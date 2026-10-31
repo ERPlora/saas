@@ -4,6 +4,7 @@
 // and its amount, the dates as days (never the hour). On the web each line has its own action: «Pay the
 // invoice», or after a declined card «Change card» first and «Pay» waiting, said why. Another account paying
 // the business: only why. Inside the apps no button, only where to pay them.
+// clock: data only — no code under test compares these dates with now.
 import { applySurface } from '@erplora/ui/shell';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
