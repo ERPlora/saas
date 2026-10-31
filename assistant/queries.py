@@ -36,7 +36,6 @@ from live.slugs import is_demo_slug, validate_hub_slug
 from pgvector.django import CosineDistance
 
 from assistant import media
-
 from assistant.models import AIModel, AIProvider, AIProviderCredential, AIRoutingPolicy, AssistantUsage, DocChunk
 from assistant.schemas import (
     Caller,
