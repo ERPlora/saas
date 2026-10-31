@@ -701,7 +701,10 @@ propio texto por `code`.
   su motivo en un comentario. `catalog(ctx)` = las `AI` que la cuenta puede usar, en todas las apps (son de
   plataforma); en la superficie de la cuenta (`base.surface`) sin las de la pantalla Tienda (`navigation.WEB_ONLY`).
   `relevant` con `ALWAYS = ("hubs.business.list", "assistant.docs.search")` y las palabras de las pantallas del menú. La tarjeta
-  (`PanelWords`) nombra el negocio por `hubs.business.list` de la cuenta y la pantalla del panel. `billing.plan.change`
+  (`PanelWords`) nombra el negocio por `hubs.business.list` de la cuenta y la pantalla del panel; sus datos salen por
+  `AssistantFieldOut` con todas las marcas de `live.assistant.field` (`titled`, `signed`, `named`, `money`), así que una
+  lista que el servidor dijo elemento a elemento llega con `named` y la tarjeta de `@erplora/ui` dice sus elementos (hoy
+  ninguna escritura del panel manda una lista; guarda: `TestTheCardOfAList`, saas#181). `billing.plan.change`
   es `INTERNAL` (`preview`): pide un `proration_date` reciente del servidor que el chat no tiene; su herramienta llega
   con las vistas previas de las escrituras de billing (plan 2026-10-30 §7, «Fuera»).
 - **La pasarela en proceso**: `turn_frames` → `assistant.turn.spend` (cubo `turn` por `user:<id>`) → `turn.start`
