@@ -7,7 +7,9 @@ write and its word, the tool run as the person); this module gives them the pane
 - **Its tools** (``catalog``) are the operations of the SaaS's apps (all of them platform apps, always on) whose
   ``ai=`` is an ``AI(...)`` that this account may run; never the assistant's own. Where nothing is sold (the app's
   account surface, ``base.surface``) neither are the store's (``WEB_ONLY``). A turn offers only the few of what was
-  asked (``relevant``), the account's businesses and the documentation search first (``ALWAYS``).
+  asked (``relevant``), the account's businesses and the documentation search first (``ALWAYS``). The same tools of a
+  role (``role_catalog``) are what the assistant's QA reads (``export_assistant_catalog``), each with what people type
+  to ask for it (its ``asks``, ``base/tests/test_assistant_asks.py``).
 - **A write never runs without the person's yes**: its card (``card``) names where it happens by the panel's screen
   (``screen``) and a business by its name (``PanelWords``), never by its id.
 - **The gateway is in this process** (``assistant.turn``): no ``/internal`` call nor signature. ``turn_frames``
@@ -33,8 +35,8 @@ from django.utils import translation
 from django.utils.translation import get_language_info, gettext
 from live import assistant as shared
 from live.assistant import LEFT_OUT, MAX_ROUNDS, MAX_TOOLS, PlainWords, ToolOutcome, tool_spec  # noqa: F401
-from live.context import OperationContext
-from live.meta import all_live_app_configs
+from live.context import OperationContext, Scope
+from live.meta import all_live_app_configs, permissions_for_role
 from live.operations import Operation
 from live.operations import get as get_operation
 
@@ -42,6 +44,7 @@ from assistant import queries as gateway_queries
 from assistant import turn as gateway
 from assistant.schemas import Caller
 from base import navigation
+from base.operations import ACCOUNT_ROLE
 from base.surface import ACCOUNT, account_surface
 
 logger = logging.getLogger(__name__)
@@ -54,6 +57,12 @@ ALWAYS = ("hubs.business.list", "assistant.docs.search")
 SCREEN_OF_APP = {"hubs": "businesses", "accounts": "account", "billing": "billing", "apps": "store"}
 #: What billing does in the store: the catalogue, its promo codes and changing a plan.
 STORE_ENTITIES = frozenset({"store", "promo", "plan"})
+#: The panel's roles, as the assistant's QA names them (docs plan 2026-10-31 §4): every signed-in account has the one
+#: role ``account``. Who may act on a business is decided inside each operation, so an owner's tools and an
+#: employee's are the same.
+ROLES = (ACCOUNT_ROLE,)
+#: Where the panel is used: the web, and the app's account surface, which sells nothing (``sells_nothing``).
+SURFACES = ("web", "app")
 
 
 # ── Tools ────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -87,16 +96,36 @@ def is_tool(op: Operation) -> bool:
     return shared.is_tool(op) and not op.name.startswith("base.assistant.")
 
 
+def granted(ctx: OperationContext, *, sells: bool) -> dict[str, Operation]:
+    """The tools ``ctx``'s permissions grant, by name, in name order; none of the store's unless where it ``sells``."""
+    labels = {config.label for config in all_live_app_configs()}
+    tools = shared.catalog(ctx, active_labels=labels)
+    return {
+        name: op for name, op in tools.items() if is_tool(op) and (sells or screen(op) not in navigation.WEB_ONLY)
+    }
+
+
 def catalog(ctx: OperationContext) -> dict[str, Operation]:
     """The tools of ``ctx``'s account, by name, in name order; where nothing is sold, none of the store's."""
     if ctx.actor is None:
         return {}
-    labels = {config.label for config in all_live_app_configs()}
-    tools = shared.catalog(ctx, active_labels=labels)
-    unsold = sells_nothing(getattr(ctx, "request", None))
-    return {
-        name: op for name, op in tools.items() if is_tool(op) and not (unsold and screen(op) in navigation.WEB_ONLY)
-    }
+    return granted(ctx, sells=not sells_nothing(getattr(ctx, "request", None)))
+
+
+def role_catalog(role: str, *, surface: str = "web") -> dict[str, Operation]:
+    """What ``catalog`` gives every signed-in account of ``role`` (``ROLES``) on ``surface`` (``SURFACES``): the
+    catalogue the assistant's QA with the real model reads (``export_assistant_catalog``)."""
+    if role not in ROLES:
+        raise ValueError(f"Unknown role {role!r}: the panel's are {', '.join(ROLES)}.")
+    if surface not in SURFACES:
+        raise ValueError(f"Unknown surface {surface!r}: the panel's are {', '.join(SURFACES)}.")
+    ctx = OperationContext(
+        scope=Scope("user", role),
+        actor=None,
+        permissions=permissions_for_role(all_live_app_configs(), role),
+        language=settings.LANGUAGE_CODE,
+    )
+    return granted(ctx, sells=surface == "web")
 
 
 @cache

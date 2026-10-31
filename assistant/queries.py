@@ -464,7 +464,19 @@ def nearest(vector: list[float], language: str, limit: int) -> list[DocChunk]:
         description=(
             "Searches ERPlora's help, the documentation of its apps and the plans for how-to questions: returns up to "
             "8 cited excerpts. Not for live data of the account."
-        )
+        ),
+        asks={
+            "en": (
+                "how do I invite someone to my business?",
+                "what's the difference between Free and Starter?",
+                "is VeriFactu included?",
+            ),
+            "es": (
+                "¿cómo invito a un empleado?",
+                "¿qué diferencia hay entre el plan Gratis y el Starter?",
+                "¿qué es VeriFactu?",
+            ),
+        },
     ),
 )
 def docs_search(ctx: OperationContext, data: DocsSearchIn) -> dict:

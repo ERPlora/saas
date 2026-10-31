@@ -395,7 +395,13 @@ def seed_demo_platform_admin(email: str, password: str):
     permission="accounts.manage",
     input=PreferencesUpdateIn,
     output=PreferencesOut,
-    ai=AI(description="Changes the account's theme, language or alerts of its businesses."),
+    ai=AI(
+        description="Changes the account's theme, language or alerts of its businesses.",
+        asks={
+            "en": ("switch the panel to dark mode", "change my language to English", "I want the light theme back"),
+            "es": ("ponme el modo oscuro", "cámbiame el idioma a inglés", "desactiva los avisos"),
+        },
+    ),
 )
 def preferences_update(ctx: OperationContext, data: PreferencesUpdateIn) -> dict:
     """Change what was sent and nothing else. The language is the account's own (``User.language``); the
@@ -424,7 +430,13 @@ def preferences_update(ctx: OperationContext, data: PreferencesUpdateIn) -> dict
     permission="accounts.manage",
     input=ProfileUpdateIn,
     output=ProfileOut,
-    ai=AI(description="Changes the account's first and last name."),
+    ai=AI(
+        description="Changes the account's first and last name.",
+        asks={
+            "en": ("change my name to Lena Ruiz", "my surname is wrong, it's García", "update my last name"),
+            "es": ("cambia mi nombre a Lena Ruiz", "mi apellido está mal, es García", "ponme de apellido Martínez"),
+        },
+    ),
 )
 def profile_update(ctx: OperationContext, data: ProfileUpdateIn) -> dict:
     """The names, trimmed: the first one is required (audit 2 S-10), an empty last one clears it. The sign-in email
@@ -1161,7 +1173,17 @@ def _end_and_sign_out(ctx: OperationContext, sessions: list, *, user=None) -> No
     permission="accounts.manage",
     input=SessionCloseIn,
     output=SessionsClosedOut,
-    ai=AI(description="Ends one session of the account (this one signs it out)."),
+    ai=AI(
+        description="Ends one session of the account (this one signs it out).",
+        asks={
+            "en": ("sign out the iPad", "close the session on my old phone", "log me out of that Chrome on Windows"),
+            "es": (
+                "cierra la sesión del iPad",
+                "desconecta el móvil viejo",
+                "sácame de la sesión de Chrome en Windows",
+            ),
+        },
+    ),
 )
 def session_close(ctx: OperationContext, data: SessionCloseIn) -> dict:
     """End one session of the account (this one too: the answer signs it out)."""
@@ -1182,7 +1204,17 @@ def session_close(ctx: OperationContext, data: SessionCloseIn) -> dict:
     permission="accounts.manage",
     input=SessionCloseOthersIn,
     output=SessionsClosedOut,
-    ai=AI(description="Ends every session of the account except this one."),
+    ai=AI(
+        description="Ends every session of the account except this one.",
+        asks={
+            "en": ("log me out everywhere else", "close all my other sessions", "kick out every other device"),
+            "es": (
+                "cierra todas las demás sesiones",
+                "desconéctame de los otros dispositivos",
+                "echa a todos menos a este navegador",
+            ),
+        },
+    ),
 )
 def session_close_others(ctx: OperationContext, data: SessionCloseOthersIn) -> dict:
     """End every session of the account but this one; the businesses are asked even when none was left here
@@ -1331,7 +1363,21 @@ def _follow_new_authenticator_ids(request, renamed: dict[int, int]) -> None:
     permission="accounts.manage",
     input=BrowserTrustRevokeIn,
     output=BrowserTrustOut,
-    ai=AI(description="Stops trusting every browser for two-factor authentication, this one included."),
+    ai=AI(
+        description="Stops trusting every browser for two-factor authentication, this one included.",
+        asks={
+            "en": (
+                "stop trusting my browsers",
+                "ask me for the 2FA code everywhere again",
+                "forget the trusted devices",
+            ),
+            "es": (
+                "deja de confiar en mis navegadores",
+                "que me vuelva a pedir el código de verificación en todos lados",
+                "olvida los navegadores de confianza",
+            ),
+        },
+    ),
 )
 def browser_trust_revoke(ctx: OperationContext, data: BrowserTrustRevokeIn) -> dict:
     """«Stop trusting all browsers» (Security → Two-factor authentication, ACCOUNTS-F17): as Google's and Microsoft's
@@ -1407,7 +1453,17 @@ def _new_api_key(ctx: OperationContext, user, data: ApiKeyCreateIn) -> dict:
     permission="accounts.manage",
     input=ApiKeyRevokeIn,
     output=ApiKeyRowOut,
-    ai=AI(description="Revokes an API key of the account at once: what uses it stops working."),
+    ai=AI(
+        description="Revokes an API key of the account at once: what uses it stops working.",
+        asks={
+            "en": ("revoke the Zapier key", "kill that API key, it leaked", "disable my old API key"),
+            "es": (
+                "revoca la clave de Zapier",
+                "anula esa clave de la API, se ha filtrado",
+                "quita la clave de API vieja",
+            ),
+        },
+    ),
 )
 def apikey_revoke(ctx: OperationContext, data: ApiKeyRevokeIn) -> dict:
     """Cut a key of the account on the spot. Revoking is the audit trail: the row stays. Twice changes nothing."""

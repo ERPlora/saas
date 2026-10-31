@@ -496,7 +496,21 @@ def _vat_status_on_file(vat_number: str, country: str) -> str:
     input=TaxPreviewIn,
     output=TaxPreviewOut,
     expose_api=True,
-    ai=AI(description="The VAT a sale to a payer carries (by country, postal code and VAT number)."),
+    ai=AI(
+        description="The VAT a sale to a payer carries (by country, postal code and VAT number).",
+        asks={
+            "en": (
+                "how much VAT would you charge me in Portugal?",
+                "do I pay VAT if my company is in the Canaries?",
+                "what tax goes on 29 euros for a buyer in France?",
+            ),
+            "es": (
+                "¿cuánto IVA me cobraríais si estoy en Canarias?",
+                "¿qué impuesto lleva pagar desde Portugal?",
+                "¿con empresa en Francia me cobráis IVA?",
+            ),
+        },
+    ),
 )
 def tax_preview(ctx: OperationContext, params: TaxPreviewIn) -> dict:
     """The tax a sale to this payer carries, with the same engine the checkout charges with: «€29.99 + 21 %
@@ -573,7 +587,17 @@ def redeemable_promo(
     permission="billing.view",
     input=PromoCheckIn,
     output=PromoCheckOut,
-    ai=AI(description="Whether a promo code is valid now and the trial it grants."),
+    ai=AI(
+        description="Whether a promo code is valid now and the trial it grants.",
+        asks={
+            "en": (
+                "is the code SUMMER26 valid?",
+                "does this promo code still work?",
+                "what do I get with code WELCOME?",
+            ),
+            "es": ("¿sirve el código VERANO26?", "¿este cupón sigue valiendo?", "¿qué me da el código de bienvenida?"),
+        },
+    ),
 )
 def promo_check(ctx: OperationContext, params: PromoCheckIn) -> dict:
     """Whether a promo code grants a trial now, before paying (the store). An invalid code is an answer, not
@@ -678,7 +702,21 @@ def offered_plans(paying: bool):
     permission="billing.view",
     input=StoreCatalogIn,
     output=StoreCatalogOut,
-    ai=AI(description="What the store sells a business, with prices, and what it already has."),
+    ai=AI(
+        description="What the store sells a business, with prices, and what it already has.",
+        asks={
+            "en": (
+                "what can I buy for the bar?",
+                "how much would the inventory module cost me?",
+                "what's for sale in the store?",
+            ),
+            "es": (
+                "¿qué puedo comprar para el bar?",
+                "¿cuánto me costaría añadir el módulo de stock?",
+                "¿qué vende la tienda?",
+            ),
+        },
+    ),
 )
 def store_catalog(ctx: OperationContext, params: StoreCatalogIn) -> dict:
     """What the Store sells the business and what it already has: every paid module on sale with its net
@@ -879,6 +917,14 @@ def _invoice_row(invoice: Invoice, user, declined: set[str]) -> dict:
     expose_api=True,
     ai=AI(
         description="ERPlora's invoices to this account, newest first, by business, payment status, year and number.",
+        asks={
+            "en": ("show my invoices", "download last invoice", "which invoices are unpaid?"),
+            "es": (
+                "enséñame mis últimas facturas",
+                "¿tengo alguna factura sin pagar?",
+                "facturas de 2026 de la peluquería",
+            ),
+        },
     ),
 )
 def invoice_list(ctx: OperationContext, data: InvoiceListIn) -> dict:
@@ -901,7 +947,17 @@ def invoice_list(ctx: OperationContext, data: InvoiceListIn) -> dict:
     input=InvoiceByIdIn,
     output=InvoiceDetailOut,
     expose_api=True,
-    ai=AI(description="One invoice of ERPlora to this account with its lines and amounts."),
+    ai=AI(
+        description="One invoice of ERPlora to this account with its lines and amounts.",
+        asks={
+            "en": ("open invoice ERP-2026-0042", "what's on my last invoice?", "show me the details of October's bill"),
+            "es": (
+                "ábreme la factura ERP-2026-0042",
+                "¿qué me cobrasteis en la última factura?",
+                "detalle de la factura de octubre",
+            ),
+        },
+    ),
 )
 def invoice_get(ctx: OperationContext, data: InvoiceByIdIn) -> dict:
     """One invoice with its lines, its recipient as it was on the issue date and its QR."""
@@ -1156,7 +1212,13 @@ def _subscription_row(
     input=SubscriptionListIn,
     output=SubscriptionListOut,
     expose_api=True,
-    ai=AI(description="What each business of the account pays ERPlora: plan, modules, price and next invoice."),
+    ai=AI(
+        description="What each business of the account pays ERPlora: plan, modules, price and next invoice.",
+        asks={
+            "en": ("how much do I pay per month?", "when's my next invoice?", "what plan is each of my businesses on?"),
+            "es": ("¿cuánto pago al mes?", "¿cuándo me cobráis la próxima vez?", "¿qué plan tiene cada negocio?"),
+        },
+    ),
 )
 def subscription_list(ctx: OperationContext, data: SubscriptionListIn) -> dict:
     """One row per business of the account that Stripe bills (it owns it or pays it): the plan and modules at
@@ -1230,7 +1292,21 @@ def _card_of(customer_id: str, subscription_id: str) -> tuple[dict | None, bool]
     permission="billing.view",
     input=PaymentMethodIn,
     output=PaymentMethodOut,
-    ai=AI(description="The card each payer of the account's businesses pays with, and its last failed charge."),
+    ai=AI(
+        description="The card each payer of the account's businesses pays with, and its last failed charge.",
+        asks={
+            "en": (
+                "which card am I paying with?",
+                "why did my last payment fail?",
+                "what card is on file for the bar?",
+            ),
+            "es": (
+                "¿con qué tarjeta estoy pagando?",
+                "¿por qué falló el último cobro?",
+                "¿qué tarjeta tiene puesta la peluquería?",
+            ),
+        },
+    ),
 )
 def payment_method_get(ctx: OperationContext, data: PaymentMethodIn) -> dict:
     """The card of each of the account's payers (one Stripe customer per business's payer), the businesses it

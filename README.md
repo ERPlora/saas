@@ -391,6 +391,27 @@ la crea, como usuario maestro, el arranque de plataforma del Hub (`bootstrap_dat
 (otro modelo de huellas). En pre no hay `saas-cron`: lo mismo con el cluster `erplora-pre`, la familia
 `erplora-pre-saas-migrate` (contenedor `saas-migrate`) y la red de su servicio `saas-pre`.
 
+### Lo que la gente pide al asistente del panel y su catálogo para la QA (`export_assistant_catalog`)
+
+Cada herramienta del asistente del panel dice en `ai=AI(…, asks={"en": (…), "es": (…)})` cómo la pediría una persona
+en el chat («créame otro negocio en Valencia», «¿cuánto pago al mes?», «download last invoice»), nunca con el nombre
+de la operación ni de la pantalla (plan del asistente de 2026-10-31, §3). `LIVE_ASSISTANT_ASKS_REQUIRED` lista todas
+las apps con herramientas (`accounts`, `apps`, `assistant`, `billing`, `hubs`): `manage.py check` falla (`live.E020`)
+si una herramienta suya no dice al menos dos frases por idioma. La capa 1 de la QA
+(`base/tests/test_assistant_asks.py`, sin modelo ni red) pasa cada frase por la selección de un turno con el catálogo
+real de la cuenta (dueño y empleado, en la web y en la superficie de cuenta de la app) y exige que su herramienta salga
+entre las 10 primeras; una frase natural que no llega se arregla en su causa (la descripción, las palabras de la app o
+`SYNONYMS`/`VERBS` de `live`), nunca retorciendo la frase. El panel tiene un solo rol, `account`: quién puede actuar
+sobre un negocio lo decide cada operación, así que el catálogo del dueño y el del empleado son el mismo.
+
+La capa 2 (QA con el modelo real) lee el catálogo de un rol en JSON:
+
+```bash
+uv run python manage.py export_assistant_catalog --language es                      # la cuenta en la web
+uv run python manage.py export_assistant_catalog --language en --surface app        # sin la Tienda
+uv run python manage.py export_assistant_catalog --language es --apps hubs,billing
+```
+
 ## Arrancar en local
 
 Postgres del `compose.yaml` raíz (BD `saas`). El SaaS lee solo el entorno del proceso y

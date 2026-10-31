@@ -551,7 +551,21 @@ def sale_tax_rates(
     permission="billing.vat_check",
     input=VatCheckIn,
     output=VatCheckOut,
-    ai=AI(description="Checks a VAT number in the EU's VIES: whether it is valid and sales to it are reverse charge."),
+    ai=AI(
+        description="Checks a VAT number in the EU's VIES: whether it is valid and sales to it are reverse charge.",
+        asks={
+            "en": (
+                "is VAT number PT123456789 valid?",
+                "check this EU VAT ID in VIES",
+                "is my company's VAT number good for reverse charge?",
+            ),
+            "es": (
+                "¿es válido el NIF-IVA ESB12345678?",
+                "comprueba este número de IVA en el VIES",
+                "¿mi CIF intracomunitario sirve para la inversión del sujeto pasivo?",
+            ),
+        },
+    ),
 )
 def vat_check_run(ctx: OperationContext, data: VatCheckIn) -> dict:
     """Check a VAT number in VIES before paying (the create-business and billing-profile forms): the verdict
@@ -1941,6 +1955,10 @@ def plan_change(ctx: OperationContext, data: PlanChangeIn) -> dict:
     ai=AI(
         description="Cancels the plan of a business at the end of its period: then it goes back to Free with its data.",
         risk="high",
+        asks={
+            "en": ("cancel the bar's plan", "I don't want to pay for Starter anymore", "downgrade the salon to Free"),
+            "es": ("cancela el plan del bar", "ya no quiero pagar el Starter", "pásame la peluquería al plan Gratis"),
+        },
     ),
 )
 def plan_cancel(ctx: OperationContext, data: HubIn) -> dict:
@@ -1971,7 +1989,21 @@ def plan_cancel(ctx: OperationContext, data: HubIn) -> dict:
     permission="billing.pay",
     input=HubIn,
     output=SubscriptionOut,
-    ai=AI(description="Undoes the cancellation of a business's plan before its period ends: it renews as before."),
+    ai=AI(
+        description="Undoes the cancellation of a business's plan before its period ends: it renews as before.",
+        asks={
+            "en": (
+                "actually, keep my plan",
+                "undo the cancellation of the salon's plan",
+                "don't cancel my subscription after all",
+            ),
+            "es": (
+                "al final no cancelo, mantén el plan",
+                "deshaz la cancelación de la peluquería",
+                "sigo con el Starter, no lo des de baja",
+            ),
+        },
+    ),
 )
 def plan_keep(ctx: OperationContext, data: HubIn) -> dict:
     """Undo a cancellation before the period ends: the plan renews as before. Not with an unpaid invoice
