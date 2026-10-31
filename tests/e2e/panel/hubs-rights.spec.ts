@@ -18,6 +18,7 @@ import type { Page } from '@playwright/test';
 import { djangoEnv } from '../django-env';
 import {
   djangoPrint,
+  djangoPrintAsync,
   expect,
   type HubCall,
   type HubDouble,
@@ -106,9 +107,12 @@ function starterPlaces(): number {
   return Number(djangoPrint('from hubs.models import Plan;print(Plan.objects.get(slug="starter").max_users)'));
 }
 
-/** The pass of `reconcile_hub_states` (every 15 minutes in production), with the Hub this spec plays. */
-function nextPass(): void {
-  djangoPrint(
+/**
+ * The pass of `reconcile_hub_states` (every 15 minutes in production), with the Hub this spec plays, which answers
+ * while it runs: the pass also takes whatever else the run's database owes the Hub (saas#176).
+ */
+async function nextPass(): Promise<void> {
+  await djangoPrintAsync(
     [
       'from django.conf import settings',
       `settings.HUB_INTERNAL_URL = "http://127.0.0.1:${HUB_DOUBLE_PORT}"`,
@@ -124,6 +128,15 @@ const snapshots = (hub: HubDouble, id: string): HubCall[] =>
 function placesInLastSnapshot(hub: HubDouble, id: string): number | undefined {
   const plan = snapshots(hub, id).at(-1)?.body.plan as { max_users?: number } | undefined;
   return plan?.max_users;
+}
+
+/** Whether the SaaS still owes business `id`'s Hub a snapshot: it never heard the Hub take the last one. */
+function snapshotOwed(id: string): boolean {
+  return (
+    djangoPrint(
+      `from django.db.models import F;from hubs.models import Hub;print(Hub.objects.filter(pk="${id}", pushed_state_version__lt=F("state_version")).exists())`,
+    ) === 'True'
+  );
 }
 
 let hub: HubDouble;
@@ -212,9 +225,12 @@ for (const run of [
         const places = await raiseStarterPlaces(page, run.plan, `HUBS-G101${run.suffix}`);
         expect(placesInLastSnapshot(hub, id), 'nothing leaves before the pass').toBeUndefined();
 
-        nextPass();
+        await nextPass();
 
         await expect.poll(() => placesInLastSnapshot(hub, id)).toBe(places);
+        // The Hub answered during the pass (saas#176): a double that cannot answer leaves the snapshot owed, and each
+        // call of the pass waits out its timeout (80 queued revocations held the pass ~6 minutes).
+        expect(snapshotOwed(id), 'the SaaS heard the Hub take the snapshot').toBe(false);
       } finally {
         djangoPrint(`from hubs.models import Plan;Plan.objects.filter(slug="starter").update(max_users=${before})`);
       }
