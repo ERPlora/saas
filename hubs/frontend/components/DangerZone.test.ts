@@ -1,6 +1,7 @@
 // The Danger zone of a business's Settings (mockups `business.html` «settings»): «Delete business» with
 // its 90-day notice, for the owner only (a ConfirmDialog asks for the name); deleted, «Recover
 // business» within those days.
+// clock: data only — no code under test compares these dates with now.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@ionic/vue', async (importOriginal) => ({

@@ -3,6 +3,7 @@
 // expired key marked) — with «New key» (NewKeyModal) and «Revoke» on each row, confirmed naming that key
 // (W-F8). Empty, it explains what a key is for and offers to create one — only with a real answer of the server:
 // a failed load (an error, or no answer in time) is said with «Retry», never as «no keys» (audit 2026-10-14, R-04).
+// clock: data only — no code under test compares these dates with now.
 import { DataTable } from '@erplora/ui/components';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Component } from 'vue';

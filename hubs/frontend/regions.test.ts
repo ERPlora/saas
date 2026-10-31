@@ -1,6 +1,7 @@
 // The countries a business may be created in and the time zones its settings offer: the server's lists
 // (hubs/schemas.py `COUNTRIES`, hubs/services.py `TIME_ZONES`), named in the person's language by Intl,
 // never by a catalogue of ours.
+// clock: data only — no code under test compares these dates with now.
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';

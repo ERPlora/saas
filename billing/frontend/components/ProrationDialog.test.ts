@@ -5,6 +5,7 @@
 // costs from the renewal — then confirms with the preview's proration date (`billing.checkout.confirm` for
 // a module, `billing.plan.change` for a plan). A refusal stays in the dialog; an out-of-date price is asked
 // again and said.
+// clock: data only — no code under test compares these dates with now.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { h, ref } from 'vue';
 

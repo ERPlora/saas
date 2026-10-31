@@ -6,8 +6,8 @@ Estado de la app: en uso (un flujo parcial: ASSISTANT-F14, cuya búsqueda en la 
 > Manual de uso y especificación de la app `assistant` del SaaS (erplora.com). Cuenta lo que hace el personal de
 > ERPlora para que el asistente de IA conteste (dar de alta un proveedor de modelos y su clave, elegir sus modelos,
 > decidir qué modelo contesta y probarlo antes, ver lo que gasta cada negocio) y lo que hace erplora.com cada vez que
-> el asistente de un negocio le pide algo: contestar un turno, leer sus adjuntos, contar sus mensajes, calcular las
-> huellas de su índice, transcribir un dictado o leer una respuesta en voz alta. También contesta al asistente del
+> el asistente de un negocio le pide algo: contestar un turno, leer sus adjuntos, contar sus mensajes, buscar en la
+> documentación de ERPlora, transcribir un dictado o leer una respuesta en voz alta. También contesta al asistente del
 > propio panel de erplora.com, el de cada cuenta: sus negocios, lo que paga a ERPlora y su cuenta. No se publica en la
 > tienda: es la referencia del equipo y de la QA. Ningún cliente ve las pantallas del admin; la cuenta ve el chat del
 > panel (ASSISTANT-F25), y el asistente que usa el negocio vive en el Hub.
@@ -31,8 +31,9 @@ Quién la usa:
 
 - El **personal de ERPlora**, en el admin de erplora.com, con los permisos de la pasarela de IA. El grupo de
   soporte no los tiene: las claves son gasto de ERPlora.
-- El **asistente del Hub** de cada negocio (y el de cada demo): manda a erplora.com cada turno, sus adjuntos, los
-  textos de su índice, los dictados y lo que hay que leer en voz alta, y enseña a la persona lo que le queda del cupo.
+- El **asistente del Hub** de cada negocio (y el de cada demo): manda a erplora.com cada turno, sus adjuntos, las
+  preguntas de cómo se hace algo en ERPlora (ASSISTANT-F28), los dictados y lo que hay que leer en voz alta, y enseña
+  a la persona lo que le queda del cupo.
 - El **personal de ERPlora**, en «Registros de uso del asistente», ve lo que gasta cada negocio y lo que cuesta.
 - La **persona con cuenta** en erplora.com, en el panel: abre el asistente con el botón «Asistente» de la barra y le
   pregunta por sus negocios, lo que paga y su cuenta (ASSISTANT-F25), con 30 mensajes al mes (ASSISTANT-F26).
@@ -152,6 +153,7 @@ panel.
 | ASSISTANT-F25 | Contestar al asistente del panel de una cuenta | hecho |
 | ASSISTANT-F26 | Contar los mensajes de una cuenta con el asistente del panel | hecho |
 | ASSISTANT-F27 | Buscar en la documentación desde el panel | hecho |
+| ASSISTANT-F28 | Buscar en la documentación desde el Hub | hecho |
 
 ### ASSISTANT-F01 Dar de alta un proveedor de IA
 <!-- origen: fi:saas/support/auth-services#modelo-aiprovider fi:saas/django-admin#admin-aiprovider old-saas:SAAS_ASSISTANT-F22 -->
@@ -439,7 +441,7 @@ Estado: hecho
 Actor: el asistente del Hub de un negocio
 Pantalla: ninguna
 Pasos:
-1. Para que el asistente encuentre lo que busca (qué app hace qué, qué pantalla abrir), el Hub guarda un índice con la huella de cada texto y manda a erplora.com los textos de los que necesita la huella, de 1 a 256 a la vez.
+1. Un Hub que guarde un índice propio con la huella de cada texto manda a erplora.com los textos de los que necesita la huella, de 1 a 256 a la vez. El Hub de hoy no guarda ninguno: busca en la documentación de ERPlora a través de erplora.com (ver ASSISTANT-F28).
 2. erplora.com pide las huellas al proveedor de servicios, siempre con el mismo modelo de huellas, y las devuelve en el orden de los textos.
 3. Los tokens y su coste se suman al mes del negocio.
 Entra: el negocio y los textos.
@@ -555,6 +557,22 @@ Sale: los fragmentos con su fuente, de dónde salen, sus títulos, su texto, su 
 Si falla: sin el proveedor de las huellas configurado, o si falla, la búsqueda contesta que ahora no se puede buscar en la documentación y el modelo se lo dice a la persona; una cuenta sin permiso para preguntar al asistente no busca; mientras la documentación no se ha indexado, no encuentra nada y el modelo dice que no lo sabe en lugar de inventarlo.
 Implicados: ASSISTANT-F20, ASSISTANT-F25, APPS-F02, HUBS-F05, PUBLIC-F15
 
+### ASSISTANT-F28 Buscar en la documentación desde el Hub
+<!-- origen: old-saas:SAAS_ASSISTANT-F17 fi:saas/auth-services#proxy-de-embeddings-rag-local-del-hub -->
+Estado: hecho
+Actor: el asistente del Hub de un negocio
+Pantalla: ninguna
+Pasos:
+1. Una persona del negocio pregunta al asistente del Hub cómo se hace algo en ERPlora, qué significa una opción o qué incluye un plan («¿Cómo abro la caja?», «¿Qué incluye el plan Starter?»).
+2. El Hub no guarda la documentación: manda a erplora.com la pregunta, el negocio (o la demo) y el idioma de la persona.
+3. erplora.com calcula la huella de la pregunta y busca en la misma documentación que el asistente del panel (ver ASSISTANT-F27): la ayuda pública de erplora.com, la documentación de cada app del Hub, la parte de usuario de los manuales del panel y los planes en venta con sus precios.
+4. Devuelve hasta 8 fragmentos (12 como mucho, aunque se pidan más), los más cercanos a la pregunta, en el idioma de la persona; si en su idioma hay menos de tres que de verdad respondan, se suman los de inglés. Cada fragmento dice de dónde sale y bajo qué títulos.
+5. El asistente del Hub contesta solo con lo que dicen esos fragmentos y cita de dónde salen; si no hay ninguno, dice que la documentación no lo cubre en lugar de inventarlo.
+Entra: el negocio o la demo, la pregunta (hasta 500 caracteres), el idioma (inglés o español) y cuántos fragmentos quiere.
+Sale: los fragmentos con su fuente, de dónde salen, sus títulos, su texto, su idioma y lo cerca que están de la pregunta; de la pregunta solo queda su huella en la caché durante un día (la misma pregunta otra vez no se calcula de nuevo). No gasta mensajes del cupo.
+Si falla: sin el proveedor de las huellas configurado, contesta que ahora no se puede buscar en la documentación porque el proveedor no está configurado; si el proveedor falla, que se vuelva a intentar en un momento; con demasiadas búsquedas seguidas del mismo negocio, que espere un momento; una llamada sin firmar, de un negocio que erplora.com no conoce o de uno que no está activo se rechaza como en cualquier puerta del Hub; mientras la documentación no se ha indexado, no encuentra nada y el asistente dice que la documentación no lo cubre.
+Implicados: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F27
+
 ## Para quien lo mantiene
 
 - Anatomía, datos y operaciones: `assistant/README.md`.
@@ -598,7 +616,7 @@ Implicados: ASSISTANT-F20, ASSISTANT-F25, APPS-F02, HUBS-F05, PUBLIC-F15
   contestó. `seed_ai_providers` del producto viejo no se porta (sembraba dos proveedores apagados de API que no
   hablamos): los proveedores los da el admin o `import_ai_keys_from_env`.
 
-### Las puertas del Hub (`assistant/internal.py`, ASSISTANT-F11…F23)
+### Las puertas del Hub (`assistant/internal.py`, ASSISTANT-F11…F23, F28)
 
 Todas `POST`, firmadas como todo `/internal` (`accounts.signing`: v1 sobre el cuerpo o v2 sobre método, ruta y
 cuerpo; ±`INTERNAL_SIGNATURE_MAX_AGE_SECONDS`; el secreto actual o el previo), sin CSRF, asíncronas (un turno que
@@ -615,7 +633,8 @@ propio texto por `code`.
 | `/internal/assistant/chat/stream` | `hub`, `messages` (1–1000), `instructions`, `tools` (≤256, formato de OpenAI), `continuation` | `text/event-stream` (abajo) | `ASSISTANT_TURN_RATELIMIT` 600/h |
 | `/internal/assistant/chat` | igual | `{output, usage, continuation, quota}`; fallo del proveedor: 502 con `code`, `retriable` y `quota` | el mismo |
 | `/internal/assistant/usage` | `hub` | `{used, limit, resets_at, demo}` (`resets_at` UTC; `null` en una demo) | el mismo |
-| `/internal/assistant/embeddings` | `hub`, `texts` (1–256, ninguno vacío) | `{embeddings, model}` en el orden de `texts` | `ASSISTANT_EMBED_RATELIMIT` 600/h |
+| `/internal/assistant/embeddings` | `hub`, `texts` (1–256, ninguno vacío) | `{embeddings, model}` en el orden de `texts`; ningún Hub la llama hoy (no guarda índice) | `ASSISTANT_EMBED_RATELIMIT` 600/h |
+| `/internal/assistant/docs/search` | `hub`, `query` (1–500, no en blanco), `language` (`en` \| `es`), `limit` (≥1, recortado a 12; 8 por defecto) | `{results: [{source, path, heading, text, score, lang}]}` (vacío con el índice vacío); 409 `assistant.provider_not_configured`, 503 `assistant.provider_unavailable` | `ASSISTANT_DOCS_RATELIMIT` 600/h |
 | `/internal/speech/transcribe` | `hub`, `audio` (base64, ≤2 MB), `mime_type`, `language` | `{text, language}` | `ASSISTANT_TRANSCRIBE_RATELIMIT` 120/h |
 | `/internal/speech/synthesize` | `hub`, `text`, `voice` | `audio/mpeg` (≤4096 caracteres leídos) | `ASSISTANT_SYNTHESIZE_RATELIMIT` 120/h |
 | `/internal/assistant/report` | `hub`, `message_id`, `reason` (`incorrect`, `harmful`, `instructions`, `other`), `comment`, `question`, `answer` | 202 `{sent, duplicate}`; 503 `assistant.report_not_sent` | `ASSISTANT_REPORT_RATELIMIT` 60/h |
@@ -647,6 +666,11 @@ propio texto por `code`.
   temporal en disco por encima de `FILE_UPLOAD_MAX_MEMORY_SIZE` (2,5 MB) antes de la vista; `config/asgi.py`
   (`BodiesInMemory`) guarda en memoria el de `/internal/assistant/*` y `/internal/speech/*` hasta `TURN_BODY_BYTES` y
   descarta lo que pase (la puerta contesta 413), `test_body_in_memory.py`.
+- **La documentación** (`docs_search`, ASSISTANT-F28): calcula la huella de la pregunta con
+  `queries.prepare_questions` (fuera de toda transacción, en la caché un día) y corre la misma operación que el panel,
+  `assistant.docs.search`, como la plataforma (`platform_context()`) en el `language` del cuerpo: una sola búsqueda
+  para los dos asistentes y un solo índice (`DocChunk`). No toma mensaje ni apunta tokens (una pregunta son unas
+  decenas). En el Hub es la herramienta `base__docs__search` (`base.docs.search`, ERPlora/hub).
 - **Huellas y voz** (`assistant/media.py`): el proveedor de servicios es el `AIProvider` de slug
   `ASSISTANT_SERVICE_PROVIDER` («openai»), de API OpenAI, activado y con clave (`assistant.service.connection`);
   modelos fijos `text-embedding-3-small`, `whisper-1` y `tts-1`.
@@ -658,7 +682,7 @@ propio texto por `code`.
 - **Tests** (todos contra `assistant/tests/fake_provider.py`, nunca un proveedor real): `test_internal_caller.py`
   (F11), `test_turn.py` (F12, F13, F15), `test_server_tools.py` (F14), `test_ratelimit.py` (F16),
   `test_privacy.py` (F17), `test_quota.py` (F18), `test_attachments.py` (F19), `test_embeddings.py` (F20),
-  `test_speech.py` (F21, F22), `test_report.py` (F23) y `test_admin_usage.py` (F24); `assistant/tests/doors.py`
+  `test_speech.py` (F21, F22), `test_report.py` (F23), `test_admin_usage.py` (F24) y `test_internal_docs.py` (F28); `assistant/tests/doors.py`
   firma como el Hub, lee los frames y cuelga a medias (`hang_up`). e2e de las puertas y del admin:
   `tests/e2e/panel/assistant-gateway.spec.ts`.
 - Trampas del producto viejo cubiertas: saas#2531 (el freno se gastaba antes de comprobar la firma:

@@ -754,9 +754,11 @@ CSP_REPORT_RATELIMIT = config("CSP_REPORT_RATELIMIT", default="60/h")
 ASSISTANT_TRY_RATELIMIT = config("ASSISTANT_TRY_RATELIMIT", default="10/m")
 # The Hub's doors of the assistant (/internal/assistant/*, /internal/speech/*; ASSISTANT-F16), per business or demo,
 # counted after the signature and the business pass (django-ratelimit, over the default cache): the turn's doors
-# (live, JSON and the allowance), the embeddings, each voice door on its own and the reports of an answer.
+# (live, JSON and the allowance), the embeddings, the searches in the documentation, each voice door on its own and
+# the reports of an answer.
 ASSISTANT_TURN_RATELIMIT = config("ASSISTANT_TURN_RATELIMIT", default="600/h")
 ASSISTANT_EMBED_RATELIMIT = config("ASSISTANT_EMBED_RATELIMIT", default="600/h")
+ASSISTANT_DOCS_RATELIMIT = config("ASSISTANT_DOCS_RATELIMIT", default="600/h")
 ASSISTANT_TRANSCRIBE_RATELIMIT = config("ASSISTANT_TRANSCRIBE_RATELIMIT", default="120/h")
 ASSISTANT_SYNTHESIZE_RATELIMIT = config("ASSISTANT_SYNTHESIZE_RATELIMIT", default="120/h")
 ASSISTANT_REPORT_RATELIMIT = config("ASSISTANT_REPORT_RATELIMIT", default="60/h")

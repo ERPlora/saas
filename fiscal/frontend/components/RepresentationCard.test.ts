@@ -2,6 +2,7 @@
 // `fiscal.representation.status` (owner and admins), its state in plain words (a pill and a line), what the
 // business sent and what is missing, the history of its submissions, and «Manage in your business» (the upload
 // and the signature are the Hub's: VeriFactu → Settings). Loading: a skeleton; a failure: `LoadFailed`.
+// clock: data only — no code under test compares these dates with now.
 import { formatDateTime } from '@erplora/ui/components';
 import { afterEach, describe, expect, it } from 'vitest';
 

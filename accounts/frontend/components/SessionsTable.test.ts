@@ -3,6 +3,7 @@
 // use — with «Close session» on every row but this one (an app's asks first: it may be charging at a till, W-F5)
 // and «Close other sessions» in the toolbar, confirmed with how many and that the apps close too. A failed load (an
 // error, or no answer in time) is said with «Retry», never as «no results · 0 sessions» (audit 2026-10-14, R-04).
+// clock: data only — no code under test compares these dates with now.
 import { DataTable } from '@erplora/ui/components';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Component } from 'vue';

@@ -4,6 +4,7 @@
 // is suspended and nothing is deleted. On the web «Pay the invoice» is the main action; after a declined card
 // «Change card» is, and «Pay» waits with the reason next to it. Once the card changed, the banner says so and
 // «Pay» is back. Inside the apps, how to pay it, without a button nor a link.
+// clock: data only — no code under test compares these dates with now.
 import { applySurface } from '@erplora/ui/shell';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 

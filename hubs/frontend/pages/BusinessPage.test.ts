@@ -2,6 +2,7 @@
 // `hubs.business.get`, a header with its name, address, status, plan and role and «Open», and four
 // sections in the footer tabbar — Summary · Members · Modules · Settings — each at its own address.
 // Deleted, a banner says until when it can be recovered; a payment pending or a suspension is said too.
+// clock: data only — no code under test compares these dates with now.
 import { RELEASE_GRACE_MS } from '@erplora/ui/sdk';
 import { AppPage, applySurface } from '@erplora/ui/shell';
 import { afterEach, describe, expect, it, vi } from 'vitest';
