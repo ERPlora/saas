@@ -13,11 +13,14 @@ without a session). The provider is the local fake (``fake_provider``), never a 
 """
 
 import json
+from datetime import datetime
 
 import pytest
 from django.utils import timezone
 from live.assistant import risk
+from live.operations import Operation, registry
 from live.operations import get as get_operation
+from ninja import Schema
 
 from assistant import queries
 from assistant.models import AssistantUsage
@@ -457,6 +460,70 @@ class TestAWrite:
             "not_available",
         )
         assert not account.api_keys.exists()
+
+
+class ListedIn(Schema):
+    """A write that sends lists: days (each said in words on its card) and codes nobody names (sent as they are)."""
+
+    starts: list[datetime]
+    codes: list[str]
+
+
+#: No write of the panel sends a list today (saas#181): this one, test-only, is the shape of the first that will.
+LISTED = Operation(
+    name="hubs.business.settle",
+    kind="command",
+    permission="hubs.manage",
+    input=ListedIn,
+    output=ListedIn,
+    expose_api=False,
+    ai={"description": "Books a business on several days."},
+    fn=lambda ctx, data: data,
+)
+
+
+class TestTheCardOfAList:
+    """saas#181 · ASSISTANT-F25 step 5: the card of a write says its data by name. A list whose every item the server
+    said in words carries ``named`` (``live.assistant.NAMED``) and the shared card says its items; the turn's schema
+    had no place for it, so it was lost on its way out and the card said «2 items»."""
+
+    CALL = {
+        "call_id": "c4",
+        "name": "hubs__business__settle",
+        "arguments": json.dumps(
+            {"starts": ["2026-11-02T09:00:00Z", "2026-11-09T09:00:00Z"], "codes": ["sale.sale.create"]}
+        ),
+    }
+
+    def test_a_list_said_item_by_item_reaches_the_card_marked_named_and_one_of_codes_does_not(
+        self, signed_in, account, answering, fake_provider, monkeypatch
+    ):
+        monkeypatch.setitem(registry, LISTED.name, LISTED)
+
+        got = frames(post_turn(signed_in, {"messages": [ask("Book my business on two days")], "pending": [self.CALL]}))
+
+        assert types(got) == ["confirm", "done"]
+        assert [(field["name"], field["kind"], field.get("named")) for field in got[0]["card"]["fields"]] == [
+            ("starts", "list", True),
+            ("codes", "list", False),
+        ]
+
+    def test_nothing_the_card_says_of_a_datum_is_lost_on_its_way_out(
+        self, signed_in, account, answering, fake_provider, monkeypatch
+    ):
+        """Every mark ``live`` puts on a datum of the card reaches the screen: the turn's schema drops none."""
+        monkeypatch.setitem(registry, LISTED.name, LISTED)
+        said = assistant.card(LISTED, json.loads(self.CALL["arguments"]), ctx_for(account))
+
+        got = frames(post_turn(signed_in, {"messages": [ask("Book my business on two days")], "pending": [self.CALL]}))
+
+        streamed = got[0]["card"]["fields"]
+        assert [field["name"] for field in streamed] == [field["name"] for field in said["fields"]]
+        lost = [
+            {key: value for key, value in sent.items() if shown.get(key) != value}
+            for sent, shown in zip(said["fields"], streamed, strict=True)
+        ]
+        assert lost == [{}, {}]
 
 
 class TestWhatStopsATurn:
