@@ -133,7 +133,21 @@ def _served_doc(app: App, language: str) -> AppDoc | None:
     permission=None,
     input=AppListIn,
     output=AppListOut,
-    ai=AI(description="The apps of ERPlora's catalogue for businesses, by text, category, premium or sector."),
+    ai=AI(
+        description="The apps of ERPlora's catalogue for businesses, by text, category, premium or sector.",
+        asks={
+            "en": (
+                "what apps are there for a hair salon?",
+                "which modules can I add?",
+                "is there an app for inventory?",
+            ),
+            "es": (
+                "¿qué apps hay para peluquerías?",
+                "¿qué módulos puedo añadir?",
+                "¿tenéis algo para controlar el stock?",
+            ),
+        },
+    ),
 )
 def app_list(ctx: OperationContext, data: AppListIn) -> dict[str, Any]:
     """The listed apps that match, by section (Category) and then by name in the language."""
@@ -167,7 +181,21 @@ def app_list(ctx: OperationContext, data: AppListIn) -> dict[str, Any]:
     permission=None,
     input=AppByIdIn,
     output=AppOut,
-    ai=AI(description="One app of the catalogue: what it does, the apps it requires and whether it has documentation."),
+    ai=AI(
+        description="One app of the catalogue: what it does, the apps it requires and whether it has documentation.",
+        asks={
+            "en": (
+                "what does the loyalty app do?",
+                "what do I need before installing online booking?",
+                "tell me about the tables module",
+            ),
+            "es": (
+                "¿qué hace la app de fidelización?",
+                "¿qué necesita el módulo de reservas online?",
+                "háblame de la app de mesas",
+            ),
+        },
+    ),
 )
 def app_get(ctx: OperationContext, data: AppByIdIn) -> dict[str, Any]:
     """A listed app's page: its card, description, required apps and whether it has documentation."""
@@ -203,7 +231,21 @@ def app_get(ctx: OperationContext, data: AppByIdIn) -> dict[str, Any]:
     permission=None,
     input=AppByIdIn,
     output=AppDocOut,
-    ai=AI(description="The user documentation of one app of the catalogue, in the person's language."),
+    ai=AI(
+        description="The user documentation of one app of the catalogue, in the person's language.",
+        asks={
+            "en": (
+                "how does the inventory app work?",
+                "show me the manual of the appointments app",
+                "docs for the reservations module",
+            ),
+            "es": (
+                "¿cómo funciona la app de inventario?",
+                "pásame el manual del módulo de citas",
+                "documentación de la app de reservas",
+            ),
+        },
+    ),
 )
 def app_doc(ctx: OperationContext, data: AppByIdIn) -> dict[str, Any]:
     """A listed app's user documentation as safe HTML, in the language or else in Spanish."""

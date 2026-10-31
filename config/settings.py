@@ -676,6 +676,9 @@ LIVE = {
         "endpoint": RECAPTCHA_ENDPOINT,
     },
 }
+# The apps whose assistant tools all say what a person would type to ask for them (``AI(asks=...)``, live.E020): every
+# app with tools (base/tests/test_assistant_asks.py keeps the list whole).
+LIVE_ASSISTANT_ASKS_REQUIRED = ("accounts", "apps", "assistant", "billing", "hubs")
 
 # Email (allauth's codes and password reset, the «Google was linked» notice, until block 1 brings the
 # branded mail): locally a file per mail in saas-next/.mail/ (EMAIL_FILE_PATH), where the code of every

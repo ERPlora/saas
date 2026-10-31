@@ -106,7 +106,17 @@ def _entry(row: Sector | BusinessType, language: str) -> dict[str, Any]:
     input=SectorListIn,
     output=SectorListOut,
     expose_api=True,
-    ai=AI(description="The sectors a business can belong to (hospitality, beauty…), to choose its type."),
+    ai=AI(
+        description="The sectors a business can belong to (hospitality, beauty…), to choose its type.",
+        asks={
+            "en": (
+                "which sectors can a business be in?",
+                "is retail one of the sectors?",
+                "what industries do you cover?",
+            ),
+            "es": ("¿qué sectores hay?", "¿estáis para comercio o solo hostelería?", "¿a qué sectores os dedicáis?"),
+        },
+    ),
 )
 def sector_list(ctx: OperationContext, data: SectorListIn) -> dict[str, Any]:
     """The active sectors, by their display order."""
@@ -121,7 +131,17 @@ def sector_list(ctx: OperationContext, data: SectorListIn) -> dict[str, Any]:
     input=BusinessTypeListIn,
     output=BusinessTypeListOut,
     expose_api=True,
-    ai=AI(description="The types of business of each sector (a restaurant, a hair salon…)."),
+    ai=AI(
+        description="The types of business of each sector (a restaurant, a hair salon…).",
+        asks={
+            "en": (
+                "what kinds of business can I choose?",
+                "is there a type for a barbershop?",
+                "which types are there in hospitality?",
+            ),
+            "es": ("¿qué tipos de negocio hay?", "¿hay un tipo para barbería?", "¿qué tipos tenéis de hostelería?"),
+        },
+    ),
 )
 def business_type_list(
     ctx: OperationContext, data: BusinessTypeListIn
@@ -159,7 +179,13 @@ def _sector_ref(sector: Sector | None, language: str) -> dict[str, str] | None:
     input=PlanListIn,
     output=PlanListOut,
     expose_api=True,
-    ai=AI(description="The plans ERPlora sells, with their prices and what each one includes."),
+    ai=AI(
+        description="The plans ERPlora sells, with their prices and what each one includes.",
+        asks={
+            "en": ("what plans do you have?", "how much is Standard?", "what does the Starter plan include?"),
+            "es": ("¿qué planes hay?", "¿cuánto cuesta el Standard?", "¿qué incluye el plan Starter?"),
+        },
+    ),
 )
 def plan_list(ctx: OperationContext, data: PlanListIn) -> dict[str, Any]:
     """The plans on sale (``Plan.objects.public()``), by display order then price.
@@ -454,7 +480,21 @@ def free_slug(name: str) -> str:
     permission="hubs.view",
     input=AddressProposeIn,
     output=AddressProposeOut,
-    ai=AI(description="The web address proposed for a new business from its name, before creating it."),
+    ai=AI(
+        description="The web address proposed for a new business from its name, before creating it.",
+        asks={
+            "en": (
+                "what web address would Bar Manolo get?",
+                "suggest a URL for my new café",
+                "which link would my new shop have?",
+            ),
+            "es": (
+                "¿qué dirección web le tocaría a Bar Manolo?",
+                "sugiéreme una URL para el café nuevo",
+                "si creo Café Luna, ¿qué dirección web tendría?",
+            ),
+        },
+    ),
 )
 def address_propose(ctx: OperationContext, data: AddressProposeIn) -> dict[str, Any]:
     """The address «Create a business» proposes while the name is typed."""
@@ -473,7 +513,13 @@ def address_propose(ctx: OperationContext, data: AddressProposeIn) -> dict[str, 
     input=BusinessListIn,
     output=BusinessListOut,
     expose_api=True,
-    ai=AI(description="Lists the businesses of this account: name, address, status and plan."),
+    ai=AI(
+        description="Lists the businesses of this account: name, address, status and plan.",
+        asks={
+            "en": ("what businesses do I have?", "list my shops", "show all my businesses"),
+            "es": ("¿qué negocios tengo?", "enséñame mis negocios", "¿cuántos locales tengo?"),
+        },
+    ),
 )
 def business_list(ctx: OperationContext, data: BusinessListIn) -> dict[str, Any]:
     """The account's businesses, the last opened first (round 17 §2.2), then by name.
@@ -689,7 +735,17 @@ def _name_of(user) -> str | None:
     input=ByIdIn,
     output=BusinessDetailOut,
     expose_api=True,
-    ai=AI(description="One business of this account with its people, plan and address."),
+    ai=AI(
+        description="One business of this account with its people, plan and address.",
+        asks={
+            "en": (
+                "show me Bar Manolo",
+                "who has access to the salon and on what plan?",
+                "what's the address of the café?",
+            ),
+            "es": ("enséñame Bar Manolo", "¿qué plan tiene el café?", "¿cuál es la dirección de la peluquería?"),
+        },
+    ),
 )
 def business_get(ctx: OperationContext, data: ByIdIn) -> dict[str, Any]:
     """A business's page (the Summary and Settings tabs): its owner and its administrators."""
@@ -1097,6 +1153,10 @@ def ranked(members):
     ai=AI(
         description="The people of one business and its pending invitations, with their roles; for its owner and "
                     "administrators.",
+        asks={
+            "en": ("who has access to the bar?", "show the people of my salon", "list the team and pending invites"),
+            "es": ("¿quién tiene acceso al bar?", "¿quiénes están en la peluquería?", "enséñame el equipo del negocio"),
+        },
     ),
 )
 def member_list(ctx: OperationContext, data: MemberListIn) -> dict[str, Any]:
@@ -1201,7 +1261,17 @@ def member_row(
     permission="hubs.view",
     input=InvitationListIn,
     output=InvitationListOut,
-    ai=AI(description="The invitations to businesses waiting for this account's answer."),
+    ai=AI(
+        description="The invitations to businesses waiting for this account's answer.",
+        asks={
+            "en": ("do I have any invitations?", "who invited me?", "pending invites for me"),
+            "es": (
+                "¿tengo invitaciones pendientes?",
+                "¿alguien me ha invitado a su negocio?",
+                "¿quién me ha invitado?",
+            ),
+        },
+    ),
 )
 def invitation_list_mine(
     ctx: OperationContext, data: InvitationListIn
@@ -1235,6 +1305,18 @@ PAYER_FIELDS = (
     ai=AI(
         description="Who ERPlora invoices for one business: its payer's name, tax ID and billing address; only its "
         "owner.",
+        asks={
+            "en": (
+                "who are the bar's invoices made out to?",
+                "what tax ID is on the salon's bills?",
+                "show the billing details of my business",
+            ),
+            "es": (
+                "¿a nombre de quién salen las facturas del bar?",
+                "¿qué CIF aparece en las facturas de la peluquería?",
+                "datos de facturación del negocio",
+            ),
+        },
     ),
 )
 def billing_profile_get(
@@ -1334,8 +1416,20 @@ def plan_in_force(hub: Hub, now: datetime) -> Plan | None:
     output=UsageOut,
     expose_api=True,
     ai=AI(
-        description="The last day measured of one business's usage against what its plan includes; its owner and "
-                    "administrators.",
+        description="The last day measured of one business's usage (its storage and its active users) against what "
+                    "its plan includes; its owner and administrators.",
+        asks={
+            "en": (
+                "how much storage is the bar using?",
+                "am I close to my plan's limit?",
+                "how many active users does the salon have?",
+            ),
+            "es": (
+                "¿cuánto espacio ocupa el bar?",
+                "¿me estoy pasando del límite del plan?",
+                "¿cuánta gente usa la peluquería?",
+            ),
+        },
     ),
 )
 def usage_get(ctx: OperationContext, data: UsageGetIn) -> dict[str, Any]:
@@ -1359,7 +1453,22 @@ def usage_get(ctx: OperationContext, data: UsageGetIn) -> dict[str, Any]:
     input=UsageSeriesIn,
     output=UsageSeriesOut,
     expose_api=True,
-    ai=AI(description="One business's usage day by day over the last days, against what its plan includes."),
+    ai=AI(
+        description="One business's usage (its storage and its active users) day by day over the last days, against "
+                    "what its plan includes.",
+        asks={
+            "en": (
+                "show the bar's usage over the last month",
+                "how has my usage gone day by day?",
+                "usage of the salon this week",
+            ),
+            "es": (
+                "¿cómo ha ido el consumo del bar este mes?",
+                "uso día a día de la peluquería",
+                "gráfica de uso de la última semana",
+            ),
+        },
+    ),
 )
 def usage_series(ctx: OperationContext, data: UsageSeriesIn) -> dict[str, Any]:
     """The days measured of a business in the last ``days`` up to yesterday, oldest first, against the space
@@ -1463,7 +1572,19 @@ def _data_copy_unavailable() -> OperationError:
     expose_api=True,
     ai=AI(
         description="The copies of a business's data its Hub keeps for its owner to download: when and how big, newest "
-        "first; the download itself is on the business's page."
+        "first; the download itself is on the business's page.",
+        asks={
+            "en": (
+                "do I have a backup of the bar?",
+                "when was the last copy of my data?",
+                "how big is the last copy of the salon's data?",
+            ),
+            "es": (
+                "¿tengo copia de seguridad del bar?",
+                "¿cuándo se hizo la última copia de mis datos?",
+                "¿hay copias de los datos de la peluquería?",
+            ),
+        },
     ),
 )
 def data_copy_list(ctx: OperationContext, data: DataCopyListIn) -> dict[str, Any]:

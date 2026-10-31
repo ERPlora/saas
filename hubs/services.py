@@ -178,6 +178,18 @@ def _refuse_staff(user) -> None:
     ai=AI(
         description="Creates a business on the Free plan with its address; one free business per account.",
         risk="high",
+        asks={
+            "en": (
+                "create another business in Valencia",
+                "open a new shop called Café Luna",
+                "set up my restaurant on ERPlora",
+            ),
+            "es": (
+                "créame otro negocio en Valencia",
+                "abre un negocio nuevo que se llame Café Luna",
+                "quiero dar de alta mi peluquería",
+            ),
+        },
     ),
 )
 def business_create(ctx: OperationContext, data: BusinessCreateIn) -> dict:
@@ -326,7 +338,21 @@ def _subscribe_to_free(hub: Hub, plan, now) -> Subscription:
     permission="hubs.manage",
     input=BusinessUpdateIn,
     output=BusinessDetailOut,
-    ai=AI(description="Changes the name, country, language or time zone of a business; its owner and administrators."),
+    ai=AI(
+        description="Changes the name, country, language or time zone of a business; its owner and administrators.",
+        asks={
+            "en": (
+                "rename the bar to Bar Manolo 2",
+                "change the salon's time zone to the Canaries",
+                "the café's language should be English",
+            ),
+            "es": (
+                "cámbiale el nombre al bar",
+                "pon la peluquería en hora de Canarias",
+                "el café tiene que ir en inglés",
+            ),
+        },
+    ),
 )
 def business_update(ctx: OperationContext, data: BusinessUpdateIn) -> dict:
     """Name, country, language and time zone (the Settings tab): the owner and the administrators. The
@@ -365,6 +391,18 @@ def business_update(ctx: OperationContext, data: BusinessUpdateIn) -> dict:
     ai=AI(
         description="Moves a business to another web address; people must use the new one. Only its owner.",
         risk="high",
+        asks={
+            "en": (
+                "change the bar's web address to barmanolo",
+                "I want a different link for my salon",
+                "move my shop to a new URL",
+            ),
+            "es": (
+                "cambia la dirección web del bar a barmanolo",
+                "quiero otro enlace para la peluquería",
+                "cámbiale la URL al negocio",
+            ),
+        },
     ),
 )
 def business_change_address(ctx: OperationContext, data: BusinessAddressIn) -> dict:
@@ -416,6 +454,14 @@ def business_change_address(ctx: OperationContext, data: BusinessAddressIn) -> d
         description="Deletes a business: it stops opening at once, is kept 90 days and its plan goes back to Free. "
                     "confirm_name is the business's exact name. Only its owner.",
         risk="high",
+        asks={
+            "en": (
+                "delete the test business",
+                "remove Bar Manolo, I don't need it anymore",
+                "close down my old shop",
+            ),
+            "es": ("borra el negocio de pruebas", "elimina Bar Manolo", "elimina el local viejo, ya no lo uso"),
+        },
     ),
 )
 def business_delete(ctx: OperationContext, data: BusinessDeleteIn) -> dict:
@@ -508,7 +554,17 @@ def _back_to_free(hub: Hub) -> None:
     permission="hubs.manage",
     input=ByIdIn,
     output=BusinessDetailOut,
-    ai=AI(description="Recovers a business deleted less than 90 days ago, on the Free plan; only its owner."),
+    ai=AI(
+        description="Recovers a business deleted less than 90 days ago, on the Free plan; only its owner.",
+        asks={
+            "en": ("bring back the business I deleted", "undo deleting Bar Manolo", "recover my old salon"),
+            "es": (
+                "recupera el negocio que borré",
+                "me he equivocado, devuélveme Bar Manolo",
+                "restaura la peluquería borrada",
+            ),
+        },
+    ),
 )
 def business_restore(ctx: OperationContext, data: ByIdIn) -> dict:
     """The owner recovers a deleted business within its 90 days (round 17 §2.11), on Free."""
@@ -789,6 +845,18 @@ def _mail_invitation(ctx: OperationContext, member: HubMember) -> None:
     output=MemberRowOut,
     ai=AI(
         description="Invites a person by email to a business with a role below one's own; the invitation lasts 7 days.",
+        asks={
+            "en": (
+                "invite perito@correo.com to the salon",
+                "add marta@gmail.com to my team as manager",
+                "send an invite to luis@gmail.com",
+            ),
+            "es": (
+                "invita a perito@correo.com a la peluquería",
+                "añade a marta@gmail.com al equipo como encargada",
+                "manda una invitación a luis@gmail.com",
+            ),
+        },
     ),
 )
 def member_invite(ctx: OperationContext, data: MemberInviteIn) -> dict:
@@ -857,7 +925,13 @@ def member_invite(ctx: OperationContext, data: MemberInviteIn) -> dict:
     permission="hubs.manage",
     input=MemberRoleIn,
     output=MemberRowOut,
-    ai=AI(description="Gives a member or a pending invitation of a business another role below one's own."),
+    ai=AI(
+        description="Gives a member or a pending invitation of a business another role below one's own.",
+        asks={
+            "en": ("make Marta an admin", "change Luis's role to employee", "give Ana manager rights at the salon"),
+            "es": ("cámbiale el rol a Marta", "haz a Luis encargado", "pon a Ana de administradora en la peluquería"),
+        },
+    ),
 )
 def member_change_role(ctx: OperationContext, data: MemberRoleIn) -> dict:
     """Give a member (or an invitation) another role below one's own; never the owner's."""
@@ -885,6 +959,14 @@ def member_change_role(ctx: OperationContext, data: MemberRoleIn) -> dict:
     ai=AI(
         description="Takes a person out of one business: their access to it ends; their account and other businesses "
                     "stay.",
+        asks={
+            "en": (
+                "remove Luis from the bar",
+                "Marta no longer works here, take her out",
+                "revoke Ana's access to the salon",
+            ),
+            "es": ("quita a Luis del bar", "Marta ya no trabaja aquí, sácala", "quítale el acceso a Ana"),
+        },
     ),
 )
 def member_remove(ctx: OperationContext, data: ByIdIn) -> dict:
@@ -946,7 +1028,21 @@ def _pending_only(target: HubMember) -> None:
     permission="hubs.manage",
     input=ByIdIn,
     output=MemberRowOut,
-    ai=AI(description="Sends a pending invitation to a business again, valid for 7 more days."),
+    ai=AI(
+        description="Sends a pending invitation to a business again, valid for 7 more days.",
+        asks={
+            "en": (
+                "resend the invitation to Marta",
+                "Luis didn't get the invite, send it again",
+                "send the invite again",
+            ),
+            "es": (
+                "reenvía la invitación a Marta",
+                "a Luis no le llegó la invitación, mándasela otra vez",
+                "vuelve a mandar la invitación a perito@correo.com",
+            ),
+        },
+    ),
 )
 def member_resend(ctx: OperationContext, data: ByIdIn) -> dict:
     """Send the invitation again: it gets 7 more days."""
@@ -969,7 +1065,17 @@ def member_resend(ctx: OperationContext, data: ByIdIn) -> dict:
     permission="hubs.manage",
     input=ByIdIn,
     output=RemovedOut,
-    ai=AI(description="Withdraws an invitation to a business nobody answered yet."),
+    ai=AI(
+        description="Withdraws an invitation to a business nobody answered yet.",
+        asks={
+            "en": ("cancel the invitation to perito@correo.com", "withdraw Luis's invite", "never mind inviting Marta"),
+            "es": (
+                "cancela la invitación de perito@correo.com",
+                "retira la invitación a Luis",
+                "al final no invites a Marta",
+            ),
+        },
+    ),
 )
 def member_cancel(ctx: OperationContext, data: ByIdIn) -> dict:
     """Withdraw an invitation nobody answered: the row goes."""
@@ -1009,7 +1115,17 @@ def _my_invitation(ctx: OperationContext, member_id: UUID) -> HubMember:
     permission="hubs.manage",
     input=ByIdIn,
     output=BusinessRowOut,
-    ai=AI(description="Accepts an invitation of this account to a business, within its 7 days."),
+    ai=AI(
+        description="Accepts an invitation of this account to a business, within its 7 days.",
+        asks={
+            "en": ("accept the invitation from Bar Manolo", "yes, I'll join the salon's team", "accept Marta's invite"),
+            "es": (
+                "acepta la invitación del Bar Manolo",
+                "vale, me uno al equipo de la peluquería",
+                "acepto la invitación de Marta",
+            ),
+        },
+    ),
 )
 def invitation_accept(ctx: OperationContext, data: ByIdIn) -> dict:
     """Accept an invitation within its 7 days: the account enters with the role it says, if the plan
@@ -1043,7 +1159,21 @@ def invitation_accept(ctx: OperationContext, data: ByIdIn) -> dict:
     permission="hubs.manage",
     input=ByIdIn,
     output=RemovedOut,
-    ai=AI(description="Declines an invitation of this account to a business."),
+    ai=AI(
+        description="Declines an invitation of this account to a business.",
+        asks={
+            "en": (
+                "decline the invitation from the café",
+                "I don't want to join that business",
+                "reject Marta's invite",
+            ),
+            "es": (
+                "rechaza la invitación del café",
+                "no quiero unirme a ese negocio",
+                "dile que no a la invitación de Marta",
+            ),
+        },
+    ),
 )
 def invitation_decline(ctx: OperationContext, data: ByIdIn) -> dict:
     """Decline an invitation: the row goes (round 17 §2.8)."""
@@ -1088,6 +1218,18 @@ def _expire_stale(hub: Hub, now) -> None:
         description="Offers a business to one of its members, who has 7 days to accept; the payer does not change and the "
                     "owner stays as administrator.",
         risk="high",
+        asks={
+            "en": (
+                "transfer the bar to Marta",
+                "make Luis the owner of the salon",
+                "hand over my business to my partner",
+            ),
+            "es": (
+                "pásale el bar a Marta",
+                "haz a Luis dueño de la peluquería",
+                "quiero traspasar el negocio a mi socio",
+            ),
+        },
     ),
 )
 def ownership_transfer(ctx: OperationContext, data: OwnershipTransferIn) -> dict:
@@ -1168,6 +1310,14 @@ def _answer(ctx: OperationContext, transfer_id: UUID, party: str) -> HubOwnershi
     output=OwnershipTransferOut,
     ai=AI(
         description="Accepts the offer to become the owner of a business; the previous owner stays as administrator.",
+        asks={
+            "en": ("accept ownership of the bar", "yes, I'll take over the salon", "accept the transfer of Café Luna"),
+            "es": (
+                "acepto quedarme con el bar",
+                "acepta el traspaso de la peluquería",
+                "sí, quiero ser el dueño del café",
+            ),
+        },
     ),
 )
 def ownership_accept(ctx: OperationContext, data: ByIdIn) -> dict:
@@ -1231,7 +1381,21 @@ def _resolve(transfer: HubOwnershipTransfer, status: str) -> None:
     permission="hubs.manage",
     input=ByIdIn,
     output=OwnershipTransferOut,
-    ai=AI(description="Declines the offer to become the owner of a business; nothing changes."),
+    ai=AI(
+        description="Declines the offer to become the owner of a business; nothing changes.",
+        asks={
+            "en": (
+                "decline the ownership of the bar",
+                "I don't want to own the salon",
+                "reject the transfer from Marta",
+            ),
+            "es": (
+                "rechaza el traspaso del bar",
+                "no quiero ser el dueño de la peluquería",
+                "dile a Marta que no me quedo con el café",
+            ),
+        },
+    ),
 )
 def ownership_decline(ctx: OperationContext, data: ByIdIn) -> dict:
     """The named recipient says no: nothing about the business changes."""
@@ -1248,7 +1412,21 @@ def ownership_decline(ctx: OperationContext, data: ByIdIn) -> dict:
     permission="hubs.manage",
     input=ByIdIn,
     output=OwnershipTransferOut,
-    ai=AI(description="The owner withdraws an offer of the business nobody answered yet."),
+    ai=AI(
+        description="The owner withdraws an offer of the business nobody answered yet.",
+        asks={
+            "en": (
+                "cancel the transfer of the bar",
+                "I changed my mind, don't hand the salon over",
+                "withdraw the ownership offer to Marta",
+            ),
+            "es": (
+                "cancela el traspaso del bar",
+                "ya no quiero ceder la peluquería",
+                "retira la oferta de propiedad a Marta",
+            ),
+        },
+    ),
 )
 def ownership_cancel(ctx: OperationContext, data: ByIdIn) -> dict:
     """The owner withdraws the offer before it is answered."""
@@ -1271,6 +1449,18 @@ def ownership_cancel(ctx: OperationContext, data: ByIdIn) -> dict:
     ai=AI(
         description="Changes who ERPlora invoices for a business: name, tax ID, billing address and email; only its "
                     "owner.",
+        asks={
+            "en": (
+                "put the bar's invoices in the name of Manolo SL",
+                "change the tax ID on my invoices to B12345678",
+                "update the billing address of the salon",
+            ),
+            "es": (
+                "pon las facturas del bar a nombre de Manolo SL",
+                "cambia el CIF de facturación a B12345678",
+                "la dirección fiscal de la peluquería ha cambiado",
+            ),
+        },
     ),
 )
 def billing_profile_update(ctx: OperationContext, data: BillingProfileIn) -> dict:
