@@ -124,6 +124,20 @@ describe('AssistantBackground', () => {
     expect(wrapper.get('[data-testid="assistant-bubble-assistant"]').text()).toContain('You have Bar Lena.');
   });
 
+  it('paints a «---» line of an answer as a separator, never as text (ui#56)', async () => {
+    const text = 'You have **Bar Lena**.\n\n---\n\nAsk me about your invoices.';
+    test_.script.push([{ type: 'text', text }, done(text)]);
+    const { wrapper } = await mountAssistant(AssistantBackground, { onApi: serving(usage(0)) });
+
+    await wrapper.findAll('[data-testid="assistant-shortcut"]')[0].trigger('click');
+    await flush();
+
+    const answer = wrapper.get('[data-testid="assistant-bubble-assistant"]');
+    expect(answer.findAll('hr')).toHaveLength(1);
+    expect(answer.text()).not.toContain('---');
+    expect(answer.text()).toContain('Ask me about your invoices.');
+  });
+
   it('shows the bubble «writing» while the answer has not come', async () => {
     installAssistant(
       createAssistant({
