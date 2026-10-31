@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:46d58bc86f379928fbafbd1834d90acf828cefc9d24d5ce7c9bd3a049996797f -->
+<!-- generated from WORKBOOK.md sha256:93c980b9d8946b4ce7d30d5543c3b7f64206d7682b6ba2b0d8a0ddede14a0f6a -->
 
 ## What it is for and who uses it
 
@@ -122,6 +122,7 @@ to change it.
 | ASSISTANT-F24 | See what a business spent of the assistant | done |
 | ASSISTANT-F25 | Answer the panel's assistant of an account | partial |
 | ASSISTANT-F26 | Count an account's messages with the panel's assistant | done |
+| ASSISTANT-F27 | Search the documentation from the panel | done |
 
 ### ASSISTANT-F01 Add an AI provider
 Status: done
@@ -479,3 +480,19 @@ In: the session's account.
 Out: the message taken or given back and what was spent in the account's month (`assistant.message.claimed`, `assistant.message.released`, `assistant.usage.recorded`, with the account).
 If it fails: with no free messages, the turn is refused with the allowance spent and the date they come back; there is no plan to go up nor loose packs. An account never spends its businesses' messages, nor a business its account's; deleting the account deletes its rows.
 Involved: ASSISTANT-F18, ASSISTANT-F24, ASSISTANT-F25
+
+### ASSISTANT-F27 Search the documentation from the panel
+Status: done
+Actor: the person with an account at erplora.com
+Screen: none
+Steps:
+1. The person asks the panel's assistant how something is done in ERPlora or what a plan includes ("How do I invite someone to my business?", "What does the Starter plan include?").
+2. The assistant always has the documentation search at hand, next to the account's list of businesses, and uses it for how-to questions.
+3. erplora.com searches erplora.com's public help, the documentation of each app of the Hub that is in the store, the user part of the panel's manuals (the account, the businesses, billing, the store and the website) and the plans on sale with their prices and what each one includes.
+4. It returns up to 8 excerpts (12 at most, even if the model asks for more), the closest to the question, in the person's language; if fewer than three in their language really answer, the English ones join. Each excerpt says where it comes from and under which headings.
+5. The model answers with what those excerpts say and cites where they come from; a price or what a plan includes always comes from the plans on sale, never from memory.
+6. The documentation is indexed again every day: a change in the help, in a manual, in an app's documentation or in a plan reaches the assistant the next day.
+In: the question (up to 500 characters) and how many excerpts the model wants.
+Out: the excerpts with their source, where they come from, their headings, their text, their language and how close they are to the question; of the question only its fingerprint stays in the cache for a day (the same question again is not computed anew).
+If it fails: without the provider of the fingerprints configured, or if it fails, the search answers that the documentation cannot be searched now and the model tells the person; an account without the permission to ask the assistant does not search; while the documentation has not been indexed, it finds nothing and the model says it does not know instead of making it up.
+Involved: ASSISTANT-F20, ASSISTANT-F25, APPS-F02, HUBS-F05, PUBLIC-F15

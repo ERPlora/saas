@@ -358,6 +358,33 @@ etiqueta las revisiones de prod (paso H1 del plan).
 (`gha-deploy-saas`, confía en `main`), `AWS_DEPLOY_ROLE_ARN_PRE` (`gha-deploy-saas-pre`, confía en `pre`) y,
 opcional, `BUILD_RUNNER`. Sin la variable del entorno, el despliegue falla; nunca toma la del otro.
 
+## Operación
+
+### Primer indexado de la documentación del asistente del panel (`index_docs`)
+
+El asistente del panel busca en la documentación de ERPlora (`assistant.docs.search`, ASSISTANT-F27) sobre el
+índice que llena `index_docs` (`assistant/README.md`). Se programa a diario a las 06:50 UTC en `saas-cron`
+(`index-docs-daily`, issue de ERPlora/aws «saas-cron: index_docs diario»); hasta que se aplique, y siempre tras el
+primer despliegue con la migración `assistant/0004_doc_chunks`, se lanza una vez a mano como tarea suelta de
+`erplora-prod-saas-cron` (la imagen desplegada, con la red del servicio `saas`). Necesita el proveedor de servicios
+(`ASSISTANT_SERVICE_PROVIDER`, «openai», con su clave en el admin): sin él sale con código 2 y no escribe nada. Es
+idempotente (solo embebe lo que cambió) y toma el advisory lock de su nombre. Tiene que acabar con `exitCode` 0; la
+salida, una línea por fuente con lo que costó (`assistant.index_docs source=… chunks=… embedded=… deleted=… tokens=…
+cost_usd=…`), queda en `/ecs/erplora-prod-saas-cron`:
+
+```bash
+NET=$(aws ecs describe-services --cluster erplora-prod --services saas --region eu-west-1 --query 'services[0].networkConfiguration' --output json)
+OVR='{"containerOverrides":[{"name":"saas-cron","command":["python","manage.py","index_docs"]}]}'
+TASK=$(aws ecs run-task --cluster erplora-prod --launch-type FARGATE --task-definition erplora-prod-saas-cron --network-configuration "$NET" --overrides "$OVR" --started-by manual --region eu-west-1 --query 'tasks[0].taskArn' --output text)
+aws ecs wait tasks-stopped --cluster erplora-prod --tasks "$TASK" --region eu-west-1
+aws ecs describe-tasks --cluster erplora-prod --tasks "$TASK" --region eu-west-1 --query 'tasks[0].containers[0].exitCode'
+aws logs tail /ecs/erplora-prod-saas-cron --since 30m --region eu-west-1 | grep assistant.index_docs
+```
+
+`--dry-run` cuenta lo que embebería y borraría sin llamar al proveedor ni escribir; `--full` vuelve a embeber todo
+(otro modelo de huellas). En pre no hay `saas-cron`: lo mismo con el cluster `erplora-pre`, la familia
+`erplora-pre-saas-migrate` (contenedor `saas-migrate`) y la red de su servicio `saas-pre`.
+
 ## Arrancar en local
 
 Postgres del `compose.yaml` raíz (BD `saas`). El SaaS lee solo el entorno del proceso y

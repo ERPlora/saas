@@ -12,7 +12,7 @@ registro de cambios. El manual y los flujos están en `WORKBOOK.md` (APPS-F01 a 
 | Pieza | Qué hace |
 |---|---|
 | `models.py` | `App` y `AppDoc`: el esquema `shared` de la BD `saas` (`live.shared_catalog`). El SaaS es dueño de las tablas y de sus migraciones; las escribe el worker del Hub (`register_apps`, rol `hub_shared`) con cada release, y aquí solo se leen. `Module`: lo comercial de una app de pago (`slug`, `tier`, precios netos en céntimos, ids de Stripe, `is_active`), escrito a mano en el admin; su `clean()` exige una app de pago del catálogo |
-| `queries.py` | Las operaciones públicas (`auth=None`, sin permiso) `apps.app.list`, `apps.app.get`, `apps.app.doc` y `apps.app.sitemap`, en el idioma del contexto (`es` → columnas `_es`, cualquier otro → `_en`); `cards_of` (las tarjetas de unas apps, también retiradas, para `billing`) y `known_verticals` (para `BusinessType.clean()` de `hubs`) |
+| `queries.py` | Las operaciones públicas (`auth=None`, sin permiso) `apps.app.list`, `apps.app.get`, `apps.app.doc` y `apps.app.sitemap`, en el idioma del contexto (`es` → columnas `_es`, cualquier otro → `_en`), y `apps.doc.list` (`ai=INTERNAL`: el markdown de cada app listada en cada idioma, lo que indexa el asistente del panel, `assistant/knowledge.py`); `cards_of` (las tarjetas de unas apps, también retiradas, para `billing`) y `known_verticals` (para `BusinessType.clean()` de `hubs`) |
 | `schemas.py` | Entrada y salida de las operaciones; los filtros que no se entienden se ignoran (nunca 422) |
 | `api.py` | `GET /api/apps`, `/api/apps/get`, `/api/apps/doc` y `/api/apps/sitemap`, cada una ligada a su operación |
 | `icons.py` | Limpieza del `icon_svg` que manda el Hub (nh3, solo formas) y el icono de respaldo |
