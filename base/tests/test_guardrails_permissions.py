@@ -66,13 +66,17 @@ OPEN_OPERATIONS: dict[str, tuple[str, str]] = {
     "apps.app.sitemap": (PUBLIC, "The listed apps' pages for /sitemap.xml."),
     "apps.doc.list": (
         PUBLIC,
-        "Every listed app's user documentation, the same the store's pages publish, for the assistant's index "
-        "(assistant.knowledge).",
+        (
+            "Every listed app's user documentation, the same the store's pages publish, for the assistant's index "
+            "(assistant.knowledge)."
+        ),
     ),
     "base.session.me": (
         OWN_ACCOUNT,
-        "The SPA's own session, read at start: an anonymous visitor gets no user, no permission and no menu (the "
-        "login).",
+        (
+            "The SPA's own session, read at start: an anonymous visitor gets no user, no permission and no menu "
+            "(the login)."
+        ),
     ),
     "hubs.business_type.list": (PUBLIC, "The types of business of each sector: the sign-up and /industries/."),
     "hubs.plan.list": (PUBLIC, "The plans on sale and their prices: /pricing/ and the sign-up, never an internal one."),
