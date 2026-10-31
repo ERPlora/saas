@@ -225,8 +225,8 @@ Parte 5 de 5: cada flujo `hecho` contra su código, con mutantes ejecutados; los
 
 - **Retirar `accounts.HubMembership`**, en este orden: (1) el salto pasa a `hubs` (`/hub-login/`,
   `issue_code`/`redeem_code`, `AuthExchangeCode` con `destination_hub`, `/internal/auth/redeem`) y lee `HubMember`
-  de negocios abiertos; (2) `accounts.queries.hub_slugs_of`/`hubs_with_members` (página «Hubs» del admin) y
-  `create_platform_user` leen `HubMember`; (3) `queries.slug_taken`/`free_slug` dejan de mirar el espejo; (4) se
+  de negocios abiertos; (2) `accounts.queries.hub_slugs_of`/`hubs_with_members` (página «Hubs» del admin) leen
+  `HubMember` (`create_platform_user` ya lo lee por `hubs.business.list`, W11b: solo le sobra mirar el espejo); (3) `queries.slug_taken`/`free_slug` dejan de mirar el espejo; (4) se
   quitan `sync_access`, `verify_access_mirror`, el check `hubs.W001` y el guardarraíl; (5) migración que borra
   `HubMembership` (y su inline y su admin). `tests/e2e/panel/panel_seed.py` escribe hoy el espejo a mano: que llame a
   `sync_access` (carril front).

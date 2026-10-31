@@ -29,7 +29,7 @@ from django.utils import timezone, translation
 from live.errors import Conflict, NotFound, PermissionDenied
 
 from accounts.models import HubMembership
-from accounts.services import create_platform_user
+from accounts.services import PlatformRoleRefused, create_platform_user
 from hubs import queries, services
 from hubs.models import BillingProfile, Hub, HubMember, Subscription
 from hubs.schemas import (
@@ -592,6 +592,33 @@ class TestResendAndCancel:
 # --- Answering an invitation ----------------------------------------------------------------------
 
 
+class TestThePlatformsDoor:
+    """``manage.py create_platform_user`` makes no staff of anybody on a business, also where the mirror of who
+    enters (``HubMembership``) holds no row of theirs: an invitation still waiting, or a business in its 90 days of
+    recovery, which a restore gives back (W11b)."""
+
+    def test_an_invitee_is_never_made_staff(self, business, team):
+        invitee = team["invitee"]
+
+        with pytest.raises(PlatformRoleRefused):
+            create_platform_user(invitee.email, "support")
+
+        invitee.refresh_from_db()
+        assert (invitee.is_staff, invitee.is_superuser) == (False, False)
+
+    def test_a_member_of_a_business_in_recovery_is_never_made_staff(self, business, team):
+        employee = team["employee"]
+        Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETING)
+        services.sync_access(Hub.objects.get(pk=business.pk))
+        assert not HubMembership.objects.filter(user=employee).exists()  # nobody enters a business in recovery
+
+        with pytest.raises(PlatformRoleRefused):
+            create_platform_user(employee.email, "admin")
+
+        employee.refresh_from_db()
+        assert (employee.is_staff, employee.is_superuser) == (False, False)
+
+
 class TestAccept:
     def accept(self, user, member_id):
         return services.invitation_accept(ctx_for(user), ByIdIn(id=member_id))
@@ -664,10 +691,12 @@ class TestAccept:
 
     def test_an_account_made_staff_while_invited_cannot_enter_with_the_invitation(self, business, team):
         """The platform's staff and the customers never share an account (``test_a_staff_account_creates_no_business``):
-        ``create_platform_user`` sees no business of an account whose invitation still waits, so the answer refuses
-        it, as the invitation itself would have (W11b)."""
+        an account raised to staff while its invitation waited (in the admin, by a superuser: ``create_platform_user``
+        refuses an invitee, ``TestThePlatformsDoor``) does not enter with it, as the invitation itself would have
+        refused it (W11b)."""
         invitee = team["invitee"]
-        create_platform_user(invitee.email, "support")
+        type(invitee).objects.filter(pk=invitee.pk).update(is_staff=True)
+        invitee.refresh_from_db()
 
         with pytest.raises(Conflict) as refused:
             self.accept(invitee, member_of(business, invitee).id)
