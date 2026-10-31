@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:933c3ab724e6358dd93da0c453ce9c362366c9d9aef174aa70b96f1292a8c70a -->
+<!-- generated from WORKBOOK.md sha256:c4cd7c612ac109f10089e4f6c817ffb324c3aca34cb7c487ffa622819f7f5307 -->
 
 ## What it is for and who it is for
 
@@ -512,7 +512,7 @@ Steps:
 3. Or they press "Decline" and confirm it in "Decline the invitation": "Invitation declined" shows and whoever invited them would have to invite them again.
 In: the account's invitations waiting for an answer and still within their 7 days.
 Out: on accepting, the person inside the business and the business told, with the list of people up to date; on declining, the invitation deleted. Records `hubs.invitation.accepted` or `hubs.invitation.declined`. The owner and the administrators see the change in "Members" at once.
-If it fails: an expired invitation, "This invitation expired. Ask whoever invited you to send it again."; one already answered, withdrawn or someone else's cannot be answered ("This invitation is no longer valid"). Without the email confirmed, "Confirm your email address before accepting the invitation.". If the plan has no room left, "This business has no seat left on its plan. Ask whoever invited you to free one or to change the plan.". Accepting twice gives nothing more, and it never touches the person's other businesses.
+If it fails: an expired invitation, "This invitation expired. Ask whoever invited you to send it again."; one already answered, withdrawn or someone else's cannot be answered ("This invitation is no longer valid"). Without the email confirmed, "Confirm your email address before accepting the invitation.". An account that joined ERPlora's staff while the invitation waited does not enter: "This address belongs to ERPlora's staff and cannot join a business.". If the plan has no room left, "This business has no seat left on its plan. Ask whoever invited you to free one or to change the plan.". Accepting twice gives nothing more, and it never touches the person's other businesses.
 Involved: accounts (the session and the jump into the business), the business (receives the person)
 
 ### HUBS-F26 Change the role of a person in a business

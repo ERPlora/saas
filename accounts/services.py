@@ -341,8 +341,9 @@ def create_platform_user(email: str, role: str, password: str | None = None):
 
     ``admin`` is a superuser; ``support`` is staff in the ``support`` group (view only). An
     existing account takes the role and keeps its password unless ``password`` is given; a new
-    one without ``password`` has no usable password. A customer of a hub and the store review account
-    are refused: platform and customer roles never share an account.
+    one without ``password`` has no usable password. A customer of a hub (also one whose invitation still waits, or
+    whose business is in its days of recovery: ``on_a_business``) and the store review account are refused: platform
+    and customer roles never share an account.
     """
     if role not in PLATFORM_ROLES:
         raise PlatformRoleRefused(f"unknown platform role {role!r}")
@@ -356,7 +357,7 @@ def create_platform_user(email: str, role: str, password: str | None = None):
         created = user is None
         if created:
             user = user_model(email=email)
-        elif HubMembership.objects.filter(user=user).exists():
+        elif is_a_customer(user):
             raise PlatformRoleRefused(f"{email} is a customer of a hub")
         elif user.is_store_review_account:
             # Its sign-in skips the mailed code (ACCOUNTS-F49): never a way into the admin.
@@ -694,6 +695,20 @@ def _as_account(user) -> OperationContext:
         permissions=permissions_for_role(all_live_app_configs(), ACCOUNT_ROLE),
         language=user.language,
     )
+
+
+def is_a_customer(user) -> bool:
+    """Whether ``user`` is on a business: in the mirror the jump reads, or anywhere ``on_a_business`` sees. Neither
+    ``create_platform_user`` nor ``User.clean`` (the admin's form) makes such an account staff."""
+    return HubMembership.objects.filter(user=user).exists() or on_a_business(user)
+
+
+def on_a_business(user) -> bool:
+    """Whether ``user`` is on a business in any way ``hubs.business.list`` sees (called by its name: accounts never
+    imports hubs): a member, also of one in its days of recovery (a restore gives it back), or invited to one."""
+    business_list = operations.get(BUSINESS_LIST)
+    page = business_list(_as_account(user), business_list.input(limit=1, offset=0))
+    return page.total > 0 or bool(page.invitations)
 
 
 def belongs_to_a_business(user) -> bool:

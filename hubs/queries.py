@@ -621,18 +621,20 @@ def _plan_of(hub: Hub, now: datetime) -> dict[str, str] | None:
     return {"slug": plan.slug, "name": plan.translated("name")}
 
 
+def _waiting_invitations(now: datetime):
+    """The invitations waiting for an answer: not answered, not expired, business not deleted."""
+    return HubMember.objects.filter(
+        accepted_at__isnull=True,
+        hub__status__in=[s for s in LISTED if s != Hub.Status.DELETING],
+    ).filter(Q(invitation_expires_at__isnull=True) | Q(invitation_expires_at__gt=now))
+
+
 def invitations_of(user, now: datetime) -> list[dict[str, Any]]:
-    """The invitations waiting for ``user``'s answer: not answered, not expired, business not deleted."""
+    """The invitations waiting for ``user``'s answer (``_waiting_invitations``)."""
     pending = (
-        HubMember.objects.select_related("hub", "invited_by")
-        .filter(
-            user=user,
-            accepted_at__isnull=True,
-            hub__status__in=[s for s in LISTED if s != Hub.Status.DELETING],
-        )
-        .filter(
-            Q(invitation_expires_at__isnull=True) | Q(invitation_expires_at__gt=now)
-        )
+        _waiting_invitations(now)
+        .select_related("hub", "invited_by")
+        .filter(user=user)
         .order_by("invited_at", "id")
     )
     return [
@@ -893,6 +895,23 @@ def verify_access_mirror() -> list[MirrorDrift]:
         for slug, user_id in sorted(should.keys() | has.keys())
         if should.get((slug, user_id)) != has.get((slug, user_id))
     ]
+
+
+#: An account of ERPlora's staff on a business: ``(email, slug, "member" | "invited")``.
+StaffOnABusiness = tuple[str, str, str]
+
+
+def staff_on_businesses(now: datetime) -> list[StaffOnABusiness]:
+    """Every account of ERPlora's staff (``is_staff`` or ``is_superuser``) that is also on a business, as
+    ``accounts.services.on_a_business`` sees it: a member of one not deleted (one in its days of recovery too, which a
+    restore gives back) or invited to one (``_waiting_invitations``). By email, then slug. The doors refuse it since
+    W11b; the system check ``hubs.W002`` names what is left from before (``hubs.checks``)."""
+    staff = Q(user__is_staff=True) | Q(user__is_superuser=True)
+    members = HubMember.objects.filter(staff, accepted_at__isnull=False, hub__status__in=LISTED)
+    invited = _waiting_invitations(now).filter(staff)
+    found = {(email, slug, "member") for email, slug in members.values_list("user__email", "hub__slug")}
+    found |= {(email, slug, "invited") for email, slug in invited.values_list("user__email", "hub__slug")}
+    return sorted(found)
 
 
 # --- What the Hub is told (hubs.services.sync_hub) ------------------------------------------------

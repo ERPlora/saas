@@ -117,6 +117,30 @@ class User(AbstractBaseUser, PermissionsMixin):
             raise ValidationError(
                 _("A staff account cannot be a store review account."), code="staff_store_review_account"
             )
+        # ERPlora's staff and the customers never share an account (W11b): raising either flag of an account on a
+        # business is refused, here (the admin's form validates the model) as in ``create_platform_user``. Only
+        # raising: one that is both from before (``hubs.W002``) still saves its other changes, and lowering a flag.
+        if self._raises_a_staff_flag():
+            # Here, not at the top: accounts.services imports this module.
+            from accounts.services import is_a_customer
+
+            if is_a_customer(self):
+                raise ValidationError(
+                    _("This account is on a business: ERPlora's staff and the customers never share an account."),
+                    code="staff_on_a_business",
+                )
+
+    def _raises_a_staff_flag(self) -> bool:
+        if not (self.is_staff or self.is_superuser):
+            return False
+        # Here, not at the top: accounts.queries imports this module.
+        from accounts.queries import stored_staff_flags
+
+        stored = stored_staff_flags(self.pk)
+        if stored is None:  # a new account is on no business yet
+            return False
+        was_staff, was_superuser = stored
+        return (self.is_staff and not was_staff) or (self.is_superuser and not was_superuser)
 
     def get_full_name(self):
         return f"{self.first_name} {self.last_name}".strip()
