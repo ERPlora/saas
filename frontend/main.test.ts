@@ -167,12 +167,10 @@ describe('main.ts', () => {
       },
     );
     // Plus the entry's own catalogue (frontend/locale), under `saas`, over the shared assistant's words (`assistant`),
-    // which the panel says otherwise in one place (below).
-    const assistantEn = { ...assistantMessages.en.assistant, askOwner: entryEn.saas.assistant.errors.quotaSpentAccount };
-    const assistantEs = { ...assistantMessages.es.assistant, askOwner: entryEs.saas.assistant.errors.quotaSpentAccount };
+    // untouched: the panel's own line under a spent allowance is its configuration's (`spentNoteKey`, below).
     expect(shellOptions().messages).toEqual({
-      en: { assistant: assistantEn, ...entryEn, accounts: { title: 'Sign In' }, zeta: { title: 'Zeta' } },
-      es: { assistant: assistantEs, ...entryEs, accounts: { title: 'Iniciar Sesión' } },
+      en: { assistant: assistantMessages.en.assistant, ...entryEn, accounts: { title: 'Sign In' }, zeta: { title: 'Zeta' } },
+      es: { assistant: assistantMessages.es.assistant, ...entryEs, accounts: { title: 'Iniciar Sesión' } },
     });
   });
 
@@ -548,12 +546,14 @@ describe("the panel's assistant (plan 2026-10-30-asistente-saas §6, ASSISTANT-F
   it('under a spent allowance says where to keep asking, never to ask whoever runs the business for a plan', () => {
     // The account's 30 messages are no plan's (ASSISTANT-F26): the chat's «Ask whoever runs the business to upgrade
     // the plan» under «Upgrade plan», which nobody is offered here, would send the person after a plan that gives none.
-    const messages = importBoot.messages as Record<string, { assistant: { askOwner: string } }>;
-    expect([messages.en.assistant.askOwner, messages.es.assistant.askOwner]).toEqual([
+    // The panel gives its own line (`spentNoteKey`, ui#49), which the real catalogues say in en and es.
+    const messages = importBoot.messages as Record<string, unknown>;
+    const say = (language: string) =>
+      SAAS_ASSISTANT.spentNoteKey!.split('.').reduce<unknown>((node, part) => (node as Record<string, unknown>)?.[part], messages[language]);
+    expect([say('en'), say('es')]).toEqual([
       'Each business has its own assistant, with its own messages: open the business to keep asking there.',
       'Cada negocio tiene su propio asistente, con sus propios mensajes: abre el negocio para seguir preguntando allí.',
     ]);
-    expect(messages.en.assistant.askOwner).not.toBe(assistantMessages.en.assistant.askOwner);
   });
 
   it("forgets the tab's conversation once the session ended, before the launcher loads", async () => {
