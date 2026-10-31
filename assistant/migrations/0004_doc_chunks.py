@@ -5,17 +5,17 @@
 In Aurora ``vector`` is not a trusted extension: only ``rds_superuser`` creates it, never the role of ``saas-migrate``
 (the pre deploy of saas#171 failed so: «permission denied to create extension "vector"»). The Hub's platform bootstrap
 (``bootstrap_databases``, as the master user, as it does for ``hub_template``) creates it beforehand in ``saas`` and
-``pre_saas``; ``VectorExtension`` looks for it before creating it, so here it only creates it where the role may (a
-local Postgres, CI). Without it, the migration fails here with Postgres's message, never silently. Going back drops the
-table, then the extension (in Aurora that also needs the master user); the excerpts come back with the next
-``index_docs``."""
+``pre_saas``; ``CREATE EXTENSION IF NOT EXISTS`` finds it before checking any privilege, so here it only creates it
+where the role may (a local Postgres, CI). Without it, the migration fails here with Postgres's message, never
+silently. Going back drops the table and its index and leaves the extension: in Aurora it is the master user's and
+``saas_migrator`` could not drop it («must be owner of extension vector»), so ``VectorExtension`` (which drops it) is
+not used. The excerpts come back with the next ``index_docs``."""
 
 import uuid
 
 import pgvector.django.indexes
 import pgvector.django.vector
 from django.db import migrations, models
-from pgvector.django import VectorExtension
 
 
 class Migration(migrations.Migration):
@@ -25,7 +25,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        VectorExtension(),
+        migrations.RunSQL("CREATE EXTENSION IF NOT EXISTS vector", reverse_sql=migrations.RunSQL.noop),
         migrations.CreateModel(
             name='DocChunk',
             fields=[

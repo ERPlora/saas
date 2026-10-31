@@ -330,7 +330,9 @@ class TestWhatStopsIt:
 
 
 class TestTheMigration:
-    def test_going_back_drops_the_table_and_the_extension_and_forward_brings_them_back(self, docs, embedder):
+    def test_going_back_drops_the_table_and_keeps_the_extension_and_forward_brings_it_back(self, docs, embedder):
+        """In Aurora the extension is the master user's (the Hub's bootstrap creates it): ``saas_migrator`` cannot drop
+        it, so going back leaves it where it is."""
         from django.db import connection
 
         run()
@@ -344,7 +346,7 @@ class TestTheMigration:
         tables_after_back = set(connection.introspection.table_names())
         call_command("migrate", "assistant", verbosity=0)
 
-        assert extension_after_back == 0
+        assert extension_after_back == 1
         assert "assistant_docchunk" not in tables_after_back
         assert "assistant_docchunk" in connection.introspection.table_names()
         assert not DocChunk.objects.exists()

@@ -679,9 +679,10 @@ propio texto por `code`.
   `plans`, `path`, `lang`, `heading`, `text`, `content_hash` único, `embedding` `vector(1536)`, `indexed_at`), con
   índice `HnswIndex` por coseno (`m=16`, `ef_construction=64`). La extensión `vector` (pgvector) no es de confianza en
   Aurora (solo `rds_superuser`): la crea antes, como usuario maestro, el arranque de plataforma del Hub
-  (`bootstrap_databases`) en `saas` y `pre_saas`; la migración `0004_doc_chunks` (`VectorExtension`) la busca antes de
-  crearla, así que solo la crea en local y en CI (imagen `pgvector/pgvector`, `.github/workflows/test.yml`); al volver
-  atrás borra la tabla y la extensión. `django.contrib.postgres` instalado por el índice.
+  (`bootstrap_databases`) en `saas` y `pre_saas`; la migración `0004_doc_chunks`
+  (`CREATE EXTENSION IF NOT EXISTS vector`) la encuentra antes de mirar permisos, así que solo la crea en local y en
+  CI (imagen `pgvector/pgvector`, `.github/workflows/test.yml`); al volver atrás borra la tabla y su índice y deja la
+  extensión (en Aurora es del usuario maestro: `saas_migrator` no podría borrarla). `django.contrib.postgres` instalado por el índice.
 - **Fragmentos** (`knowledge.chunk_markdown`): corte por `##` y `###` (las preguntas de la FAQ son `###`), títulos
   en ruta («Preguntas frecuentes > Acceso > ¿Por qué…?»), ventana de 220 palabras con solape de 50, comentarios HTML
   fuera; la huella se calcula sobre títulos + texto, hasta 6000 caracteres. `content_hash` = sha256 de fuente, ruta,
