@@ -157,7 +157,16 @@ def _timezone(value: str) -> str:
     return value
 
 
-Country = Annotated[str, AfterValidator(_country)]
+#: An ISO 3166-1 alpha-2 code of the markets served; its JSON schema lists them, so a client (and the assistant's
+#: model, live#17) sends «ES», never «España».
+Country = Annotated[
+    str,
+    AfterValidator(_country),
+    Field(
+        description="ISO 3166-1 alpha-2 code of a country ERPlora serves (e.g. ES).",
+        json_schema_extra={"enum": sorted(COUNTRIES)},
+    ),
+]
 Email = Annotated[str, AfterValidator(_email)]
 LocalPath = Annotated[str, Field(max_length=500), AfterValidator(_local_path)]
 TimeZone = Annotated[str, Field(max_length=64), AfterValidator(_timezone)]

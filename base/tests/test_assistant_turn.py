@@ -373,6 +373,43 @@ class TestAWrite:
         assert got[0]["type"] == "executed" and got[0]["outcome"] == "cancelled"
         assert not Hub.objects.filter(name="Sol Hair").exists()
 
+    def test_data_the_write_would_refuse_show_no_card_and_the_model_corrects_them_in_the_same_turn(
+        self, signed_in, account, answering, fake_provider
+    ):
+        """live#17 (QA 2026-10-31, A2.12): the card said «country: España», the person typed CONFIRMAR, the write was
+        refused and a second card came. The model hears the refusal before any card, within the same turn, and its
+        corrected call is the only card the person answers."""
+        spain = {"call_id": "call_1", "name": "hubs__business__create", "arguments": '{"name": "Sol Hair", "country": "España"}'}
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_tool_call("hubs__business__create", spain["arguments"]))
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_tool_call("hubs__business__create", self.CREATE["arguments"]))
+        first = frames(post_turn(signed_in, {"messages": [ask("Create the business Sol Hair in Spain")]}))
+        done = first[-1]
+        assert done["pending"] == [spain]
+
+        second = frames(
+            post_turn(
+                signed_in,
+                {
+                    "messages": [ask("Create the business Sol Hair in Spain"), *done["append"]],
+                    "pending": done["pending"],
+                    "continuation": done["continuation"],
+                },
+            )
+        )
+
+        assert "confirm" not in types(second)
+        assert (second[0]["type"], second[0]["outcome"], second[0]["code"]) == ("executed", "error", "invalid_payload")
+        refusal = json.loads(second[-1]["append"][0]["content"])["error"]
+        assert set(refusal["fields"]) == {"country"}
+        assert json.loads(second[-1]["pending"][0]["arguments"])["country"] == "ES"
+        assert not Hub.objects.filter(name="Sol Hair").exists()
+        assert len(model_requests(fake_provider)) == 2 and used_by(account) == 1
+
+    def test_the_model_is_told_the_countries_a_business_may_be_in(self):
+        country = assistant.tool_spec(get_operation("hubs.business.create"))["parameters"]["properties"]["country"]
+        assert "ES" in country["enum"] and "FR" in country["enum"] and "US" not in country["enum"]
+        assert "ISO 3166-1 alpha-2" in country["description"]
+
     def test_the_card_of_a_change_names_the_business_never_its_id(self, signed_in, account, answering, fake_provider):
         hub = create_business(account, name="Bar Lena")
         rename = {
