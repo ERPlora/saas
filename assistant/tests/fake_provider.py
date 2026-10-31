@@ -15,6 +15,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from collections.abc import Callable
 from typing import Any
 
 
@@ -27,6 +28,8 @@ class Reply:
     headers: dict[str, str] = field(default_factory=dict)
     #: Seconds between two server-sent events (a stream that arrives piece by piece).
     delay: float = 0.0
+    #: The JSON answer computed from the request's body (a batch of embeddings answers as many vectors as texts).
+    answer: Callable[[Any], Any] | None = None
 
 
 @dataclass
@@ -124,7 +127,10 @@ class FakeProvider:
                         if reply.delay:
                             time.sleep(reply.delay)
                     return
-                payload = reply.body if reply.body is not None else json.dumps(reply.json).encode()
+                if reply.answer is not None:
+                    payload = json.dumps(reply.answer(body)).encode()
+                else:
+                    payload = reply.body if reply.body is not None else json.dumps(reply.json).encode()
                 if "Content-Type" not in reply.headers:
                     self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(payload)))

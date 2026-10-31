@@ -10,10 +10,13 @@ model answers. Keys are UUIDv7.
 - ``AssistantUsage`` (G29, G51, G52): what a business (or a demo) spent through the gateway, a row per calendar month
   (UTC; a demo, one row for its whole life): its messages, the tokens of its turns and of its embeddings, its voice
   and what it cost. Numbers only: never a conversation, a person nor a text.
+- ``DocChunk`` (ASSISTANT-F27): an excerpt of ERPlora's documentation with its fingerprint, what
+  ``assistant.docs.search`` returns to the panel's assistant (``assistant.knowledge``; written by ``index_docs``).
 
 Nothing here holds a conversation: the turn passes through and is forgotten (ADR-0149 of the old product).
 """
 
+import hashlib
 import ipaddress
 import uuid
 from decimal import Decimal
@@ -24,6 +27,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
+from pgvector.django import HnswIndex, VectorField
 
 from assistant.fields import EncryptedTextField
 
@@ -326,3 +330,57 @@ class AssistantUsage(models.Model):
     def __str__(self):
         who = self.demo or (self.hub.name if self.hub_id else self.user.email if self.user_id else "—")
         return f"{who} · {self.month:%Y-%m}"
+
+
+#: The length of a fingerprint of ``assistant.media.EMBEDDING_MODEL`` (``text-embedding-3-small``).
+EMBEDDING_DIMENSIONS = 1536
+
+
+def content_hash(source: str, path: str, lang: str, heading: str, text: str) -> str:
+    """What tells one excerpt from another: the same words elsewhere, or under another heading, are another."""
+    return hashlib.sha256("\x1f".join((source, path, lang, heading, text)).encode()).hexdigest()
+
+
+class DocChunk(models.Model):
+    """An excerpt of ERPlora's documentation and its fingerprint (ASSISTANT-F27): what the panel's assistant finds
+    with ``assistant.docs.search``, nearest first by the cosine of the fingerprints (``HnswIndex``).
+
+    Written only by ``assistant.docs.index`` (``index_docs``), one source at a time: an excerpt is new when its
+    ``content_hash`` is (``content_hash()``), so a run without changes computes no fingerprint.
+    """
+
+    class Source(models.TextChoices):
+        HELP = "help", _("Help")
+        APP_DOC = "app_doc", _("Apps' documentation")
+        WORKBOOK = "workbook", _("Workbook of the panel")
+        PLANS = "plans", _("Plans")
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
+    source = models.CharField(_("source"), max_length=16, choices=Source.choices)
+    path = models.CharField(
+        _("path"), max_length=255, help_text=_("Where it comes from: a file, «app_doc:<app>» or «plans».")
+    )
+    lang = models.CharField(_("language"), max_length=8)
+    heading = models.TextField(_("heading"), help_text=_("Its path of headings: «FAQ > Access > Why…?»."))
+    text = models.TextField(_("text"))
+    content_hash = models.CharField(_("content hash"), max_length=64, unique=True)
+    embedding = VectorField(_("fingerprint"), dimensions=EMBEDDING_DIMENSIONS)
+    indexed_at = models.DateTimeField(_("indexed"))
+
+    class Meta:
+        verbose_name = _("documentation excerpt")
+        verbose_name_plural = _("documentation excerpts")
+        ordering = ["source", "path", "lang", "heading"]
+        indexes = [
+            HnswIndex(
+                name="assistant_docchunk_embedding",
+                fields=["embedding"],
+                opclasses=["vector_cosine_ops"],
+                m=16,
+                ef_construction=64,
+            ),
+            models.Index(fields=["source"], name="assistant_docchunk_source"),
+        ]
+
+    def __str__(self):
+        return f"{self.path} · {self.heading}"

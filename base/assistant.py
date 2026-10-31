@@ -7,7 +7,7 @@ write and its word, the tool run as the person); this module gives them the pane
 - **Its tools** (``catalog``) are the operations of the SaaS's apps (all of them platform apps, always on) whose
   ``ai=`` is an ``AI(...)`` that this account may run; never the assistant's own. Where nothing is sold (the app's
   account surface, ``base.surface``) neither are the store's (``WEB_ONLY``). A turn offers only the few of what was
-  asked (``relevant``), the account's businesses first (``ALWAYS``).
+  asked (``relevant``), the account's businesses and the documentation search first (``ALWAYS``).
 - **A write never runs without the person's yes**: its card (``card``) names where it happens by the panel's screen
   (``screen``) and a business by its name (``PanelWords``), never by its id.
 - **The gateway is in this process** (``assistant.turn``): no ``/internal`` call nor signature. ``turn_frames``
@@ -17,6 +17,7 @@ write and its word, the tool run as the person); this module gives them the pane
   (``Caller(user_id=…)``, ``ASSISTANT_ACCOUNT_MESSAGES``); nothing of the conversation is kept.
 """
 
+import json
 import logging
 from collections.abc import AsyncIterator, Iterable
 from contextlib import aclosing
@@ -29,7 +30,7 @@ from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.http import HttpRequest, StreamingHttpResponse
 from django.utils import translation
-from django.utils.translation import get_language_info
+from django.utils.translation import get_language_info, gettext
 from live import assistant as shared
 from live.assistant import LEFT_OUT, MAX_ROUNDS, MAX_TOOLS, PlainWords, ToolOutcome, tool_spec  # noqa: F401
 from live.context import OperationContext
@@ -37,6 +38,7 @@ from live.meta import all_live_app_configs
 from live.operations import Operation
 from live.operations import get as get_operation
 
+from assistant import queries as gateway_queries
 from assistant import turn as gateway
 from assistant.schemas import Caller
 from base import navigation
@@ -44,8 +46,10 @@ from base.surface import ACCOUNT, account_surface
 
 logger = logging.getLogger(__name__)
 
-#: Always offered when the account may read them: its businesses (the first thing asked of the panel).
-ALWAYS = ("hubs.business.list",)
+#: Always offered when the account may read them: its businesses (the first thing asked of the panel) and the search in
+#: ERPlora's documentation, which the instructions send every how-to question to and whose words a question rarely
+#: shares (ASSISTANT-F27).
+ALWAYS = ("hubs.business.list", "assistant.docs.search")
 #: The panel's screen where each app's actions are done; the store's of billing are the store's (``screen``).
 SCREEN_OF_APP = {"hubs": "businesses", "accounts": "account", "billing": "billing", "apps": "store"}
 #: What billing does in the store: the catalogue, its promo codes and changing a plan.
@@ -56,15 +60,20 @@ STORE_ENTITIES = frozenset({"store", "promo", "plan"})
 
 
 def screen(op: Operation) -> str:
-    """The key of the panel's screen (``base.navigation``) where ``op`` is done: an app's, or the store's."""
+    """The key of the panel's screen (``base.navigation``) where ``op`` is done: an app's, or the store's; none (``""``)
+    for the documentation search, which reads ERPlora's help on no screen of the panel."""
     app, entity, _ = op.name.split(".")
+    if app == "assistant":
+        return ""
     if app == "billing" and entity in STORE_ENTITIES:
         return "store"
     return SCREEN_OF_APP.get(app, "account")
 
 
 def screen_name(key: str) -> str:
-    """The screen ``key`` as the panel's menu names it, in the active language."""
+    """The screen ``key`` as the panel's menu names it, in the active language; the help for no screen."""
+    if not key:
+        return gettext("Help")
     return next(str(nav.label) for nav in navigation.NAVIGATION if nav.id == key)
 
 
@@ -186,6 +195,37 @@ ERPlora and its account. Answer in {language_name}, short and plain. Use Markdow
 - When the person should go to a screen, link it with its path, only one of these:
 {links}
 - If something cannot be done from here (you have no tool for it), say on which screen it is done."""
+
+
+# ── What the tools wait on the network for, before the turn's transaction ───────────────────────────────────────
+
+
+#: The documentation search: the fingerprint of its question comes from the provider (ASSISTANT-F27).
+DOCS_SEARCH = "assistant.docs.search"
+
+
+def searched_questions(pending: Iterable[Any]) -> list[str]:
+    """The questions of the documentation searches among the tools the model asked for (their ``query``)."""
+    name = shared.tool_name(DOCS_SEARCH)
+    questions = []
+    for call in pending:
+        if call.name != name:
+            continue
+        try:
+            arguments = json.loads(call.arguments or "{}")
+        except ValueError:
+            continue
+        query = arguments.get("query") if isinstance(arguments, dict) else None
+        if isinstance(query, str):
+            questions.append(query)
+    return questions
+
+
+async def prepare(data: Any) -> None:
+    """What the turn's tools wait on the network for, done before ``base.assistant.turn`` opens its transaction: the
+    fingerprints of the documentation searches the model asked for. A connection never waits on the provider inside
+    a transaction; what cannot be prepared, the search itself refuses."""
+    await gateway_queries.prepare_questions(searched_questions(data.pending))
 
 
 # ── The turn, through the gateway in this process ────────────────────────────────────────────────────────────────

@@ -8,7 +8,8 @@ auditoría y los comandos de claves; la 2 (APP-ASSISTANT-2) con las puertas del 
 `/internal/speech/*`): el turno, sus herramientas y sus adjuntos, el cupo por plan y el uso, las huellas del índice,
 la voz y las denuncias. El contrato de esas puertas, en «Para quien lo mantiene» del WORKBOOK. Desde la ronda
 2026-10-30e (PLAN-SAAS §23, plan `docs/plans/2026-10-30-asistente-saas.md`) la pasarela contesta también, en
-proceso, al asistente del propio panel (`base/assistant.py`, `POST /api/assistant/turn`), con un cupo por cuenta.
+proceso, al asistente del propio panel (`base/assistant.py`, `POST /api/assistant/turn`), con un cupo por cuenta y
+su propia documentación para buscar (`assistant.docs.search` sobre pgvector, ASSISTANT-F27).
 
 ## Anatomía
 
@@ -16,7 +17,7 @@ proceso, al asistente del propio panel (`base/assistant.py`, `POST /api/assistan
 |---|---|
 | `apps.py` | `AssistantConfig`: `assistant.manage`, de la plataforma y del personal, y `assistant.ask`, de toda cuenta (el asistente del panel); registra la auditoría. |
 | `frontend/` | El chat del panel (ASSISTANT-F25): el del Hub, de `@erplora/ui/components`, configurado en `options.ts` (`SAAS_ASSISTANT`, `ASSISTANT_MESSAGES`); `components/AssistantTopbar.vue` (el botón de la barra) y `components/AssistantBackground.vue` (el panel con su vacío y sus atajos), que `frontend/main.ts` monta como `chrome`. Sus palabras, en `saas.assistant.*` del catálogo de la entrada (`frontend/locale`). |
-| `models.py` | `AIProvider` (una de las cuatro API, su dirección), `AIProviderCredential` (clave cifrada con su final), `AIModel` (precios, contexto, qué admite), `AIRoutingPolicy` (una fila: el modelo que contesta y su reserva) y `AssistantUsage` (lo gastado por negocio y mes; una demo, una fila en su vida; una cuenta, una por mes); `estimate_cost`. |
+| `models.py` | `AIProvider` (una de las cuatro API, su dirección), `AIProviderCredential` (clave cifrada con su final), `AIModel` (precios, contexto, qué admite), `AIRoutingPolicy` (una fila: el modelo que contesta y su reserva), `AssistantUsage` (lo gastado por negocio y mes; una demo, una fila en su vida; una cuenta, una por mes) y `DocChunk` (un fragmento de la documentación con su huella, `vector(1536)` con índice HNSW por coseno); `estimate_cost`, `content_hash`. |
 | `crypto.py`, `fields.py` | Fernet con `FERNET_KEY` (+ `FERNET_KEY_PREVIOUS` para leer en una rotación); la columna guarda el token. |
 | `schemas.py` | Entradas y salidas; la clave viaja como `SecretStr`. |
 | `queries.py` | Lecturas (`@operation`, `kind="query"`): la conexión de un proveedor, la política, la ruta de un turno, quién llama, el cupo que queda y el proveedor de servicios. |
@@ -27,11 +28,12 @@ proceso, al asistente del propio panel (`base/assistant.py`, `POST /api/assistan
 | `server_tools.py` | Las herramientas que ejecuta erplora.com: la fecha y la hora (la búsqueda web y el tipo de cambio esperan a la etapa ERP, PLAN §30). |
 | `attachments.py` | Los adjuntos: imágenes al modelo que ve, PDF/Word/Excel/texto a texto en memoria, con topes y el zip comprobado. El cuerpo de las puertas lo guarda en memoria el servidor (`config/asgi.py`, `BodiesInMemory`), nunca en el temporal en disco de Django. |
 | `media.py` | Huellas (`text-embedding-3-small`), dictado (`whisper-1`) y lectura en voz alta (`tts-1`) por la API de OpenAI del proveedor de servicios. |
+| `knowledge.py` | La documentación del asistente del panel (ASSISTANT-F27): `chunk_markdown` (corte por `##`/`###`, ventana de 220 palabras con solape de 50) y sus cuatro fuentes (ayuda pública, documentación de las apps del Hub por `apps.doc.list`, parte de usuario de los WORKBOOK del panel y los planes en venta por `hubs.plan.list`); sin ORM. |
 | `providers/` | Clientes `httpx` de OpenAI, Anthropic, Gemini y DeepSeek (`base.py`, `factory.py`): eventos normalizados, sin SDK ni caché; cada cliente toma el contexto TLS de `base.tls` (`trusted_context`): si el servidor no puede cargar sus certificados (`SSL_CERT_FILE`), el fallo es definitivo y nombra la variable y el fichero. |
 | `auditlog.py` | Registro de auditoría (django-auditlog) de los cuatro modelos, sin la clave ni `updated_at`. |
 | `events.py` | Nombres de los eventos del outbox (sin la clave ni lo que escribe una persona). |
 | `admin.py`, `templates/admin/assistant/` | Admin de Django: proveedores con sus claves y modelos, «Elegir modelos del proveedor» (asíncrona), «Modelo que contesta», «Probar un modelo» (ejecución asíncrona en directo) y «Registros de uso del asistente» (solo lectura). |
-| `management/commands/` | `import_ai_keys_from_env` y `rotate_encryption_keys`. |
+| `management/commands/` | `import_ai_keys_from_env`, `rotate_encryption_keys` e `index_docs`. |
 
 ## Datos
 
@@ -45,6 +47,8 @@ proceso, al asistente del propio panel (`base/assistant.py`, `POST /api/assistan
 | Lo gastado por un negocio en un mes: mensajes del cupo, tokens del turno y de las huellas, dictados, caracteres leídos y coste (USD) | BD `saas`, `assistant_assistantusage` (una fila por negocio y mes) | Con el negocio (al purgarlo); nunca a mano |
 | Lo gastado por una demo en toda su vida | BD `saas`, `assistant_assistantusage` (una fila por dirección `demo-…`) | Al nacer otra demo, las de más de un día |
 | Un token de continuación ya usado y una denuncia ya enviada (solo su clave) | Caché de Django | A los 15 minutos y a las 24 horas |
+| Fragmentos de la documentación del panel: fuente, ruta, idioma, títulos, texto, hash y huella | BD `saas`, `assistant_docchunk` | Al dejar de existir en su fuente (el siguiente `index_docs`) |
+| La huella de una pregunta a la documentación (sin la pregunta: la clave es su sha256) | Caché de Django | A las 24 horas |
 
 No se guarda ninguna conversación, adjunto, audio ni texto leído: el turno pasa y se olvida (ASSISTANT-F17).
 
@@ -69,10 +73,12 @@ No se guarda ninguna conversación, adjunto, audio ni texto leído: el turno pas
 | `assistant.message.release` | solo la plataforma | `assistant.message.released` |
 | `assistant.usage.record` | solo la plataforma | `assistant.usage.recorded` |
 | `assistant.report.send` | solo la plataforma | `assistant.report.sent` |
+| `assistant.docs.list` | solo la plataforma | — |
+| `assistant.docs.index` | solo la plataforma | `assistant.docs.indexed` |
+| `assistant.docs.search` | `assistant.ask` (toda cuenta) | — |
 
-Ninguna lleva todavía `ai=`: el paquete `live` de este repo no tiene `AI(...)` ni `INTERNAL` ni el check `live.E017`
-(PLAN §30). Cuando lleguen, todas las de esta app son `ai=INTERNAL` (ninguna es una herramienta del asistente del
-negocio: son la pasarela que lo hace posible).
+Todas llevan `ai=INTERNAL` (son la pasarela, no herramientas del asistente) salvo `assistant.docs.search`, que es
+`AI(...)`: la herramienta `assistant__docs__search` del asistente del panel (`live.E017`, PLAN §30).
 
 ## Comandos y ajustes
 
@@ -80,6 +86,10 @@ negocio: son la pasarela que lo hace posible).
   `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` y `DEEPSEEK_API_KEY` (vacías por defecto); crea el proveedor si falta.
 - `rotate_encryption_keys [--dry-run]`: vuelve a cifrar con `FERNET_KEY` toda columna de `ROTATED_FIELD_CLASSES` (la
   clave del proveedor y el token y el PIN de WhatsApp); termina con error si alguna no se abre.
+- `index_docs [--full] [--dry-run]`: indexa la documentación del asistente del panel (ASSISTANT-F27); solo embebe lo
+  que cambió, en lotes de 64, con el proveedor de servicios; una línea por fuente con lo que costó; código 2 sin
+  proveedor. Diario a las 06:50 UTC en `saas-cron` y una vez a mano tras el primer despliegue (`saas/README.md`,
+  «Operación»).
 - `ASSISTANT_TRY_RATELIMIT` (por defecto `10/m`): pruebas de un modelo por persona del personal.
 - Freno por negocio de las puertas del Hub: `ASSISTANT_TURN_RATELIMIT` (`600/h`, turnos y cupo),
   `ASSISTANT_EMBED_RATELIMIT` (`600/h`), `ASSISTANT_TRANSCRIBE_RATELIMIT` (`120/h`),
@@ -88,8 +98,11 @@ negocio: son la pasarela que lo hace posible).
 - `ASSISTANT_ACCOUNT_MESSAGES` (`30`): los mensajes al mes de cada cuenta con el asistente del panel de erplora.com,
   fijos, aparte del cupo del plan de cada uno de sus negocios. El freno de turnos del panel es el mismo
   `ASSISTANT_TURN_RATELIMIT`, por cuenta.
-- `ASSISTANT_SERVICE_PROVIDER` (`openai`): el identificador del proveedor (de API OpenAI) que calcula las huellas y
-  la voz.
+- `ASSISTANT_SERVICE_PROVIDER` (`openai`): el identificador del proveedor (de API OpenAI) que calcula las huellas
+  (las del índice del Hub y las de la documentación del panel, `index_docs` y `assistant.docs.search`) y la voz.
+- Postgres con la extensión `vector` (pgvector, imagen `pgvector/pgvector` en local y CI, donde la crea la migración
+  `assistant/0004_doc_chunks`). En Aurora no es de confianza (solo `rds_superuser`): la crea antes el arranque de
+  plataforma del Hub (`bootstrap_databases`, usuario maestro) en `saas` y `pre_saas`.
 - `INTERNAL_SHARED_SECRET` (y `INTERNAL_SHARED_SECRET_PREVIOUS`): el secreto con que firma el Hub, el de todo
   `/internal`.
 - `FERNET_KEY` (y `FERNET_KEY_PREVIOUS` durante una rotación), para quien despliega: sin ella, el admin lo dice al

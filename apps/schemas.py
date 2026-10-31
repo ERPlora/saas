@@ -131,3 +131,22 @@ class AppSitemapEntryOut(Schema):
 
 class AppSitemapOut(Schema):
     apps: list[AppSitemapEntryOut]
+
+
+class AppDocListIn(Schema):
+    pass
+
+
+class AppDocSourceOut(Schema):
+    """A listed app's user documentation in one language, as written (markdown): what the panel's assistant
+    indexes."""
+
+    app: str
+    #: The app's name in the document's language.
+    name: str
+    lang: Literal["es", "en"]
+    markdown: str
+
+
+class AppDocListOut(Schema):
+    docs: list[AppDocSourceOut]

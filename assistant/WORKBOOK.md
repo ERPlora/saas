@@ -151,6 +151,7 @@ panel.
 | ASSISTANT-F24 | Ver lo que ha gastado un negocio del asistente | hecho |
 | ASSISTANT-F25 | Contestar al asistente del panel de una cuenta | hecho |
 | ASSISTANT-F26 | Contar los mensajes de una cuenta con el asistente del panel | hecho |
+| ASSISTANT-F27 | Buscar en la documentación desde el panel | hecho |
 
 ### ASSISTANT-F01 Dar de alta un proveedor de IA
 <!-- origen: fi:saas/support/auth-services#modelo-aiprovider fi:saas/django-admin#admin-aiprovider old-saas:SAAS_ASSISTANT-F22 -->
@@ -537,6 +538,23 @@ Sale: el mensaje tomado o devuelto y lo gastado en el mes de la cuenta (`assista
 Si falla: sin mensajes libres, el turno se rechaza con el cupo agotado y la fecha en que vuelven; no hay plan que subir ni paquetes sueltos. Una cuenta nunca gasta los mensajes de sus negocios, ni un negocio los de su cuenta; al borrar la cuenta se borran sus filas.
 Implicados: ASSISTANT-F18, ASSISTANT-F24, ASSISTANT-F25
 
+### ASSISTANT-F27 Buscar en la documentación desde el panel
+<!-- origen: old-saas:search_cloud_docs (el índice en memoria de apps/dashboard/assistant/knowledge.py, que se rehacía en cada arranque); nuevo como herramienta del panel (plan 2026-10-30-asistente-saas §5, PLAN-SAAS §23: el Sidekick de Shopify, el Square Assistant y el asistente de Stripe contestan el «cómo se hace» con su propia ayuda y la citan) -->
+Estado: hecho
+Actor: la persona con cuenta en erplora.com
+Pantalla: ninguna
+Pasos:
+1. La persona pregunta al asistente del panel cómo se hace algo en ERPlora o qué incluye un plan («¿Cómo invito a alguien a mi negocio?», «¿Qué incluye el plan Starter?»).
+2. El asistente tiene siempre a mano la búsqueda en la documentación, junto a la lista de negocios de la cuenta, y la usa para las preguntas de cómo se hace.
+3. erplora.com busca en la ayuda pública de erplora.com, en la documentación de cada app del Hub que está en la tienda, en la parte de usuario de los manuales del panel (la cuenta, los negocios, la facturación, la tienda y la web) y en los planes en venta con sus precios y lo que incluye cada uno.
+4. Devuelve hasta 8 fragmentos (12 como mucho, aunque el modelo pida más), los más cercanos a la pregunta, en el idioma de la persona; si en su idioma hay menos de tres que de verdad respondan, se suman los de inglés. Cada fragmento dice de dónde sale y bajo qué títulos.
+5. El modelo contesta con lo que dicen esos fragmentos y cita de dónde salen; un precio o lo que incluye un plan sale siempre de los planes en venta, nunca de memoria.
+6. La documentación se vuelve a indexar cada día: un cambio en la ayuda, en un manual, en la documentación de una app o en un plan llega al asistente al día siguiente.
+Entra: la pregunta (hasta 500 caracteres) y cuántos fragmentos quiere el modelo.
+Sale: los fragmentos con su fuente, de dónde salen, sus títulos, su texto, su idioma y lo cerca que están de la pregunta; de la pregunta solo queda su huella en la caché durante un día (la misma pregunta otra vez no se calcula de nuevo).
+Si falla: sin el proveedor de las huellas configurado, o si falla, la búsqueda contesta que ahora no se puede buscar en la documentación y el modelo se lo dice a la persona; una cuenta sin permiso para preguntar al asistente no busca; mientras la documentación no se ha indexado, no encuentra nada y el modelo dice que no lo sabe en lugar de inventarlo.
+Implicados: ASSISTANT-F20, ASSISTANT-F25, APPS-F02, HUBS-F05, PUBLIC-F15
+
 ## Para quien lo mantiene
 
 - Anatomía, datos y operaciones: `assistant/README.md`.
@@ -658,7 +676,7 @@ propio texto por `code`.
 - **Herramientas**: toda operación del SaaS declara `ai=` (`live.E017`): `AI(description=…, risk=…)` o `INTERNAL` con
   su motivo en un comentario. `catalog(ctx)` = las `AI` que la cuenta puede usar, en todas las apps (son de
   plataforma); en la superficie de la cuenta (`base.surface`) sin las de la pantalla Tienda (`navigation.WEB_ONLY`).
-  `relevant` con `ALWAYS = ("hubs.business.list",)` y las palabras de las pantallas del menú. La tarjeta
+  `relevant` con `ALWAYS = ("hubs.business.list", "assistant.docs.search")` y las palabras de las pantallas del menú. La tarjeta
   (`PanelWords`) nombra el negocio por `hubs.business.list` de la cuenta y la pantalla del panel. `billing.plan.change`
   es `INTERNAL` (`preview`): pide un `proration_date` reciente del servidor que el chat no tiene; su herramienta llega
   con las vistas previas de las escrituras de billing (plan 2026-10-30 §7, «Fuera»).
@@ -683,6 +701,51 @@ propio texto por `code`.
   del panel no guarda la conversación); Vitest de `assistant/frontend/` y `frontend/main.test.ts`; e2e
   `tests/e2e/panel/assistant-panel.spec.ts` (proveedor `tests/e2e/assistant-provider.ts`, siembra
   `assistant_seed.py panel`, `ASSISTANT_ACCOUNT_MESSAGES=2` en `panel/project.ts`).
+
+### La documentación del asistente del panel (`assistant/knowledge.py`, ASSISTANT-F27)
+
+- **Índice**: `assistant.DocChunk` en la BD de control (`id` UUIDv7, `source` `help` | `app_doc` | `workbook` |
+  `plans`, `path`, `lang`, `heading`, `text`, `content_hash` único, `embedding` `vector(1536)`, `indexed_at`), con
+  índice `HnswIndex` por coseno (`m=16`, `ef_construction=64`). La extensión `vector` (pgvector) no es de confianza en
+  Aurora (solo `rds_superuser`): la crea antes, como usuario maestro, el arranque de plataforma del Hub
+  (`bootstrap_databases`) en `saas` y `pre_saas`; la migración `0004_doc_chunks`
+  (`CREATE EXTENSION IF NOT EXISTS vector`) la encuentra antes de mirar permisos, así que solo la crea en local y en
+  CI (imagen `pgvector/pgvector`, `.github/workflows/test.yml`); al volver atrás borra la tabla y su índice y deja la
+  extensión (en Aurora es del usuario maestro: `saas_migrator` no podría borrarla). `django.contrib.postgres` instalado por el índice.
+- **Fragmentos** (`knowledge.chunk_markdown`): corte por `##` y `###` (las preguntas de la FAQ son `###`), títulos
+  en ruta («Preguntas frecuentes > Acceso > ¿Por qué…?»), ventana de 220 palabras con solape de 50, comentarios HTML
+  fuera; la huella se calcula sobre títulos + texto, hasta 6000 caracteres. `content_hash` = sha256 de fuente, ruta,
+  idioma, títulos y texto (`models.content_hash`): el mismo texto en otro sitio es otro fragmento.
+- **Fuentes** (`knowledge.SOURCES`): `docs/<lang>/help/*.md`; `apps.doc.list` (el markdown de cada app que la tienda
+  lista, por idioma; lo escribe el Hub con cada versión); la parte de usuario de `accounts|hubs|billing|apps|public`
+  `/WORKBOOK.md` (hasta «## Para quien lo mantiene»; sin ese título falla, `WorkbookWithoutCut`) y `WORKBOOK.en.md`;
+  y `plans`, un documento por idioma desde `hubs.plan.list` (precio al mes y al año sin IVA, personas, dispositivos,
+  apps a la vez, mensajes del asistente y de WhatsApp, si es solo de mejora y lo que incluye).
+- **`index_docs [--full] [--dry-run]`**: por fuente, `assistant.docs.list` (los hashes que ya tiene), embebe solo los
+  nuevos (`--full`: todos) en lotes de 64 con `media.embed` y el proveedor de servicios
+  (`ASSISTANT_SERVICE_PROVIDER`), y escribe cada lote con `assistant.docs.index` (una transacción por lote; el último
+  lleva `keep`, lo que la fuente guarda, y borra lo demás: una pasada que falla a medias deja un documento cambiado
+  con sus fragmentos viejos, buscable). Lote a lote porque escribir una fuente de una vez llegó a
+  688 MB en local con las 26 apps del Hub (saas-cron tiene 512 MB); así, 266 MB. Una línea por fuente en el log y en
+  pantalla: `assistant.index_docs source=… chunks=… embedded=… deleted=… tokens=… cost_usd=…`; sin fila de
+  `AssistantUsage` (gasto de la plataforma). Sin proveedor sale con código 2 sin escribir nada; si el proveedor falla
+  sale con error, lo ya escrito se queda y no se borra nada (la siguiente pasada hace el resto). Advisory lock
+  `hashtext('erplora.saas.index_docs')` (`hubs.services.run_exclusively`). Evento `assistant.docs.indexed` por lote.
+  Medido en local (2026-10-31): 68 fragmentos de ayuda, 2162 de las apps del Hub, 685 de los WORKBOOK y 14 de planes;
+  un indexado completo ≈ 680 000 tokens ≈ 0,014 $; una pasada sin cambios, 0 llamadas.
+- **Programación**: diario a las 06:50 UTC en `saas-cron` (`index-docs-daily` de `platform_schedule_specs`, issue en
+  ERPlora/aws); el primer indexado, a mano tras el despliegue (`saas/README.md`, «Operación»).
+- **`assistant.docs.search`** (`queries.py`, `kind="query"`, `assistant.ask`, herramienta `assistant__docs__search`):
+  nunca llama al proveedor. La huella de la pregunta la calcula antes `queries.prepare_questions`, fuera de toda
+  transacción (la ruta del turno, `base.assistant.prepare`, para cada búsqueda que pidió el modelo; una llamada para
+  todas, tope de espera de 10 s, nunca falla), y la guarda en la caché de Django un día por el sha256 de la pregunta
+  normalizada (espacios y mayúsculas fuera): ninguna conexión espera al proveedor dentro de una transacción. Sin la
+  huella en la caché, 409 si no hay proveedor y 503 si no se pudo calcular. Orden por `CosineDistance` en el idioma de la persona (`es` para cualquier español, si no `en`); con menos
+  de 3 a distancia < 0,55 se suman los de `en`; `limit` 8 por defecto, recortado a 12. En `base/assistant.py` está en `ALWAYS` (una
+  pregunta de «cómo se hace» no comparte palabras con la herramienta y sin eso quedaba fuera de las 40) y su recibo no
+  nombra una pantalla del panel sino la ayuda.
+- **Tests**: `assistant/tests/test_knowledge.py`, `test_index_docs.py` (con la migración de ida y vuelta y el índice
+  HNSW) y `test_docs_search.py` (también por el turno del panel); `apps/tests/test_queries.py` (`apps.doc.list`).
 
 ## Lo que NO hace, a propósito
 

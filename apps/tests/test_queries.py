@@ -530,6 +530,39 @@ def test_an_empty_catalog_has_no_sitemap_entries():
     assert sitemap_entries() == []
 
 
+# --- apps.doc.list: the documentation the panel's assistant indexes (assistant.knowledge) ---------
+
+
+def documents():
+    from apps.schemas import AppDocListIn
+
+    return [doc.model_dump() for doc in queries.doc_list(visitor(), AppDocListIn()).docs]
+
+
+def test_the_assistant_reads_every_listed_document_as_written(catalog):
+    """The markdown itself, not its HTML: the assistant's index cuts it by its headings."""
+    make_doc(catalog["invoice"], "es", markdown="## Emitir\n\nPulsa «Emitir».\n")
+    make_doc(catalog["invoice"], "en", markdown="## Issue\n\nPress «Issue».\n")
+    make_doc(catalog["inventory"], "es", markdown="")
+
+    assert documents() == [
+        {"app": "invoice", "name": "Invoices", "lang": "en", "markdown": "## Issue\n\nPress «Issue».\n"},
+        {"app": "invoice", "name": "Facturas", "lang": "es", "markdown": "## Emitir\n\nPulsa «Emitir».\n"},
+    ]
+
+
+def test_an_app_the_store_does_not_list_has_no_document_to_index(catalog):
+    make_doc(make_app("retired_app", listed=False), "es", markdown="## Old\n\nGone.\n")
+
+    assert documents() == []
+
+
+def test_the_list_of_documents_is_no_tool_of_the_assistant():
+    from live.operations import INTERNAL
+
+    assert get("apps.doc.list").ai is INTERNAL
+
+
 # --- known_verticals: what BusinessType.clean() checks a vertical against (spec §5.4) -----------
 
 

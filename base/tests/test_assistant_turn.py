@@ -102,8 +102,11 @@ class TestTheCatalog:
         ):
             assert internal not in tools
 
-    def test_the_documentation_search_is_not_a_tool_yet(self, account):
-        assert not [name for name in assistant.catalog(ctx_for(account)) if name.startswith("assistant.")]
+    def test_of_the_assistants_own_only_the_documentation_search_is_a_tool(self, account):
+        """ASSISTANT-F27 (``assistant/tests/test_docs_search.py``); the gateway's other operations are the platform's."""
+        assert [name for name in assistant.catalog(ctx_for(account)) if name.startswith("assistant.")] == [
+            "assistant.docs.search"
+        ]
 
     def test_where_nothing_is_sold_the_stores_tools_are_not_offered(self, account, rf):
         """The app's account surface sells nothing (PLAN-SAAS §3.6 point 6): neither does its assistant."""
