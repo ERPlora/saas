@@ -512,7 +512,7 @@ Actor: la persona con cuenta en erplora.com
 Pantalla: Panel: Asistente
 Pasos:
 1. La persona, con su sesión abierta en el panel de erplora.com, pulsa «Asistente» al final de la barra y se abre el panel del asistente: junto a la pantalla desde 768 px, encima en el móvil. Sin conversación, ve «Pregúntame por tus negocios, tus facturas o tu cuenta.» con tres atajos.
-2. Escribe al asistente o pulsa un atajo («¿Qué negocios tengo?», «¿Cuánto pago al mes?», «Crea un negocio para mi peluquería»); hasta la primera palabra de la respuesta ve la burbuja de «El asistente está escribiendo».
+2. Escribe al asistente o pulsa un atajo («¿Qué negocios tengo?», «¿Cuánto pago al mes?», «¿Cómo creo un negocio?»); hasta la primera palabra de la respuesta ve la burbuja de «El asistente está escribiendo».
 3. erplora.com le ofrece al modelo las herramientas del panel que esa cuenta puede usar (sus negocios y su gente, los planes, sus facturas y suscripciones, su cuenta, el catálogo de apps), primero las de lo que ha preguntado, y siempre la lista de sus negocios.
 4. Una consulta que el modelo pide se ejecuta sola, como la propia persona: nunca ve un negocio que no es suyo.
 5. Un cambio que el modelo pide se para en la tarjeta «¿Ejecutar esta acción?», que dice qué va a hacer, dónde (la pantalla del panel: «Negocios», «Facturación», «Cuenta» o «Tienda») y con qué datos, nombrando el negocio por su nombre; solo se hace si la persona pulsa «Ejecutar», y «Cancelar» no cambia nada. Crear, borrar o cambiar la dirección de un negocio, ofrecerlo a otro o cancelar su plan piden además escribir «CONFIRMAR»; cambiar de plan no se hace desde el chat, sino en la Tienda, que enseña antes lo que se cobra.
@@ -549,7 +549,7 @@ Pasos:
 3. erplora.com busca en la ayuda pública de erplora.com, en la documentación de cada app del Hub que está en la tienda, en la parte de usuario de los manuales del panel (la cuenta, los negocios, la facturación, la tienda y la web) y en los planes en venta con sus precios y lo que incluye cada uno.
 4. Devuelve hasta 8 fragmentos (12 como mucho, aunque el modelo pida más), los más cercanos a la pregunta, en el idioma de la persona; si en su idioma hay menos de tres que de verdad respondan, se suman los de inglés. Cada fragmento dice de dónde sale y bajo qué títulos.
 5. El modelo contesta con lo que dicen esos fragmentos y cita de dónde salen; un precio o lo que incluye un plan sale siempre de los planes en venta, nunca de memoria.
-6. La documentación se vuelve a indexar cada día: un cambio en la ayuda, en un manual, en la documentación de una app o en un plan llega al asistente al día siguiente.
+6. La documentación se pone al día cuando el equipo de ERPlora la vuelve a indexar: un cambio en la ayuda, en un manual, en la documentación de una app o en un plan llega al asistente con la siguiente pasada. Todavía no se vuelve a indexar sola cada día.
 Entra: la pregunta (hasta 500 caracteres) y cuántos fragmentos quiere el modelo.
 Sale: los fragmentos con su fuente, de dónde salen, sus títulos, su texto, su idioma y lo cerca que están de la pregunta; de la pregunta solo queda su huella en la caché durante un día (la misma pregunta otra vez no se calcula de nuevo).
 Si falla: sin el proveedor de las huellas configurado, o si falla, la búsqueda contesta que ahora no se puede buscar en la documentación y el modelo se lo dice a la persona; una cuenta sin permiso para preguntar al asistente no busca; mientras la documentación no se ha indexado, no encuentra nada y el modelo dice que no lo sabe en lugar de inventarlo.
@@ -733,8 +733,9 @@ propio texto por `code`.
   `hashtext('erplora.saas.index_docs')` (`hubs.services.run_exclusively`). Evento `assistant.docs.indexed` por lote.
   Medido en local (2026-10-31): 68 fragmentos de ayuda, 2162 de las apps del Hub, 685 de los WORKBOOK y 14 de planes;
   un indexado completo ≈ 680 000 tokens ≈ 0,014 $; una pasada sin cambios, 0 llamadas.
-- **Programación**: diario a las 06:50 UTC en `saas-cron` (`index-docs-daily` de `platform_schedule_specs`, issue en
-  ERPlora/aws); el primer indexado, a mano tras el despliegue (`saas/README.md`, «Operación»).
+- **Programación**: pendiente de ERPlora/aws#25 (`index-docs-daily` de `platform_schedule_specs`, diario a las 06:50
+  UTC en `saas-cron`); hasta que se aplique, el indexado se lanza a mano como tarea suelta de `saas-cron`
+  (`saas/README.md`, «Operación»), y por eso el paso 6 de ASSISTANT-F27 no promete la pasada diaria.
 - **`assistant.docs.search`** (`queries.py`, `kind="query"`, `assistant.ask`, herramienta `assistant__docs__search`):
   nunca llama al proveedor. La huella de la pregunta la calcula antes `queries.prepare_questions`, fuera de toda
   transacción (la ruta del turno, `base.assistant.prepare`, para cada búsqueda que pidió el modelo; una llamada para
