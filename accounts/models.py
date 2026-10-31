@@ -133,7 +133,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     def _raises_a_staff_flag(self) -> bool:
         if not (self.is_staff or self.is_superuser):
             return False
-        stored = type(self).objects.filter(pk=self.pk).values_list("is_staff", "is_superuser").first()
+        # Here, not at the top: accounts.queries imports this module.
+        from accounts.queries import stored_staff_flags
+
+        stored = stored_staff_flags(self.pk)
         if stored is None:  # a new account is on no business yet
             return False
         was_staff, was_superuser = stored

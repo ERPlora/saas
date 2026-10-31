@@ -819,6 +819,7 @@ def member_invite(ctx: OperationContext, data: MemberInviteIn) -> dict:
             )
         if not queries.manages(actor, member):
             raise PermissionDenied(_("You cannot manage a member whose role is equal to or above yours."))
+        _refuse_staff(member.user)
         _check_seat(hub, now)
         member.role = data.role
         member.invitation_message = data.message

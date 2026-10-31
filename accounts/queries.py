@@ -79,6 +79,12 @@ def active_user(pk):
     return get_user_model().objects.filter(pk=pk, is_active=True).first()
 
 
+def stored_staff_flags(pk) -> tuple[bool, bool] | None:
+    """``(is_staff, is_superuser)`` of account ``pk`` as saved, or ``None`` if it is not saved yet (``User.clean``
+    tells raising a flag from keeping it)."""
+    return get_user_model().objects.filter(pk=pk).values_list("is_staff", "is_superuser").first()
+
+
 def has_totp(user) -> bool:
     """Whether ``user`` has turned on an authenticator app. Recovery codes alone are no second factor:
     they are the way back in when the phone is lost."""

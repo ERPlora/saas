@@ -34,8 +34,10 @@ import ast
 import inspect
 import textwrap
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
+from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser, Group
@@ -384,12 +386,20 @@ def test_the_panel_gives_the_staff_what_it_gives_any_account(customer, staff, su
 #: The flags only the platform sets.
 STAFF_FLAGS = frozenset({"is_staff", "is_superuser"})
 #: Where they may be set: ``createsuperuser`` and ``manage.py create_platform_user`` (the platform's ``admin`` and
-#: ``support``). The admin's user form sets them too, for a superuser of the staff alone (Django's own fields).
+#: ``support``). The admin's user form writes them too (Django's own fields, for a superuser of the staff); what
+#: holds it is ``User.clean``, which the form runs: it never raises either flag of an account on a business.
 STAFF_DOORS = frozenset({("accounts/models.py", "create_superuser"), ("accounts/services.py", "create_platform_user")})
 #: Calls that read the flags (``filter(is_staff=True)``) rather than write them.
 READS = frozenset({"filter", "exclude", "get", "first", "exists", "count"})
-CODE_DIRS = ("accounts", "apps", "assistant", "base", "billing", "config", "fiscal", "fiscal_gateway", "hubs", "public",
-             "whatsapp")
+
+
+def code_dirs(app_configs) -> list[Path]:
+    """The SaaS's own code: every installed app that is a top-level folder of the project, so a new app is swept as
+    soon as it is installed (``live`` in ``packages/`` and Django's or third parties' apps in the virtualenv are not
+    ours), and ``config``."""
+    root = Path(settings.BASE_DIR).resolve()
+    own = {Path(config.path).resolve() for config in app_configs}
+    return sorted({folder for folder in own if folder.parent == root} | {root / "config"})
 
 
 def sets_a_staff_flag(node: ast.AST) -> bool:
@@ -420,11 +430,24 @@ def staff_flags_set_in(source: str) -> list[tuple[str, int]]:
     return found
 
 
+def test_the_sweep_takes_every_app_of_the_saas_and_nothing_else():
+    root = Path(settings.BASE_DIR).resolve()
+    new_app = SimpleNamespace(path=str(root / "loyalty"))
+    live = SimpleNamespace(path=str(root / "packages" / "live" / "live"))
+    django_auth = SimpleNamespace(path=str(Path(ast.__file__).parent / "site-packages" / "django" / "contrib" / "auth"))
+    in_the_venv = SimpleNamespace(path=str(root / ".venv" / "lib" / "python3.14" / "site-packages" / "allauth"))
+
+    swept = code_dirs([new_app, live, django_auth, in_the_venv])
+
+    assert swept == [root / "config", root / "loyalty"]
+    assert {root / name for name in ("accounts", "base", "hubs", "whatsapp")} <= set(code_dirs(apps.get_app_configs()))
+
+
 def test_only_the_platform_s_doors_set_the_staff_flags():
-    root = Path(settings.BASE_DIR)
+    root = Path(settings.BASE_DIR).resolve()
     found = []
-    for directory in CODE_DIRS:
-        for path in sorted((root / directory).rglob("*.py")):
+    for directory in code_dirs(apps.get_app_configs()):
+        for path in sorted(directory.rglob("*.py")):
             if {"tests", "migrations"} & set(path.parts):
                 continue
             relative = path.relative_to(root).as_posix()

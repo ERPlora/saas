@@ -162,6 +162,20 @@ class TestInvite:
         assert member.invitation_expires_at > timezone.now() + timedelta(days=6)
         assert HubMember.objects.filter(hub=business, user=team["invitee"]).count() == 1
 
+    @pytest.mark.parametrize("flag", ["is_staff", "is_superuser"])
+    def test_an_expired_invitation_of_an_account_made_staff_is_not_renewed(self, business, team, flag):
+        """Renewing is inviting again: ERPlora's staff is refused as a new invitation is (W11b)."""
+        invitee = team["invitee"]
+        HubMember.objects.filter(user=invitee).update(invitation_expires_at=timezone.now() - timedelta(days=1))
+        type(invitee).objects.filter(pk=invitee.pk).update(**{flag: True})
+
+        with pytest.raises(Conflict) as refused:
+            invite(team["owner"], business, "invitee@example.com")
+
+        assert refused.value.code == "hubs.platform_account"
+        assert member_of(business, invitee).is_expired(timezone.now())
+        assert mail.outbox == []
+
     def test_an_admin_invites_managers_and_employees(self, business, team):
         assert (
             invite(team["admin"], business, "m@example.com", "hub_manager").role
