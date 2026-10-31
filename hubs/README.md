@@ -47,6 +47,16 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
   en `tests/test_access_mirror.py`); el admin de `accounts` lo enseña de solo lectura. `queries.verify_access_mirror()`
   dice dónde discrepan y el check `hubs.W001` (`hubs/checks.py`, de base de datos: `manage.py check --database
   default` y `migrate`; aviso, nunca error; calla mientras falten migraciones) lo avisa.
+- **Personal en un negocio** (`hubs.W002`, W11b): el personal de ERPlora (`is_staff` o `is_superuser`) y los clientes
+  nunca comparten cuenta. Las puertas lo impiden (`hubs.business.create`, `hubs.member.invite`/`resend` e
+  `hubs.invitation.accept` responden 409 `hubs.platform_account`; `create_platform_user` y `User.clean`, es decir el
+  formulario del admin, no hacen personal a quien está en un negocio). Lo que quede de antes lo nombra el check
+  `hubs.W002` (`queries.staff_on_businesses`: miembro de un negocio no borrado, también en recuperación, o con una
+  invitación pendiente), de base de datos y aviso como `hubs.W001`, para no parar `migrate` ni el despliegue
+  (`--fail-level WARNING` lo vuelve fallo). Nada se apaga solo; se arregla a mano, cuenta por cuenta: si es del
+  personal, se le quitan «Es del equipo» y «Estado de superusuario» en su página del admin (`/admin/accounts/user/<id>/change/`;
+  bajar los flags siempre se guarda); si es cliente, se la saca del negocio (quitar al miembro o retirar la
+  invitación desde el panel; si es la dueña, primero traspasa la propiedad) y el personal usa otra cuenta.
 - **Migración de datos `0006_adopt_seed_hubs`**: cada slug de `HubMembership` sin `Hub` (los hubs del seed de la
   fase 1) pasa a negocio **adoptado**, tal como ya corre en el Hub: `active`, `ready_at` = ahora, nada debido al
   Hub (`pending_hub_call` vacío y `pushed_state_version` = `state_version` = 1, así que no se registra ni se sondea

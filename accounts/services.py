@@ -357,7 +357,7 @@ def create_platform_user(email: str, role: str, password: str | None = None):
         created = user is None
         if created:
             user = user_model(email=email)
-        elif HubMembership.objects.filter(user=user).exists() or on_a_business(user):
+        elif is_a_customer(user):
             raise PlatformRoleRefused(f"{email} is a customer of a hub")
         elif user.is_store_review_account:
             # Its sign-in skips the mailed code (ACCOUNTS-F49): never a way into the admin.
@@ -695,6 +695,12 @@ def _as_account(user) -> OperationContext:
         permissions=permissions_for_role(all_live_app_configs(), ACCOUNT_ROLE),
         language=user.language,
     )
+
+
+def is_a_customer(user) -> bool:
+    """Whether ``user`` is on a business: in the mirror the jump reads, or anywhere ``on_a_business`` sees. Neither
+    ``create_platform_user`` nor ``User.clean`` (the admin's form) makes such an account staff."""
+    return HubMembership.objects.filter(user=user).exists() or on_a_business(user)
 
 
 def on_a_business(user) -> bool:

@@ -951,6 +951,7 @@ def member_resend(ctx: OperationContext, data: ByIdIn) -> dict:
     """Send the invitation again: it gets 7 more days."""
     actor, target = _managed(ctx, data.id)
     _pending_only(target)
+    _refuse_staff(target.user)
     now = timezone.now()
     if target.is_expired(now):
         _check_seat(target.hub, now)

@@ -24,8 +24,8 @@ from datetime import timedelta
 import pytest
 from allauth.account.models import EmailAddress
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
 from django.core import mail
+from django.core.exceptions import ValidationError
 from django.utils import timezone, translation
 from live.errors import Conflict, NotFound, PermissionDenied
 

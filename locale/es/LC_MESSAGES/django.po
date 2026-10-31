@@ -84,6 +84,12 @@ msgstr ""
 msgid "A staff account cannot be a store review account."
 msgstr "Una cuenta del personal no puede ser cuenta de revisión de tienda."
 
+#: accounts/models.py
+msgid "This account is on a business: ERPlora's staff and the customers never share an account."
+msgstr ""
+"Esta cuenta está en un negocio: el personal de ERPlora y los clientes nunca "
+"comparten cuenta."
+
 #: accounts/admin.py:40
 msgid "Personal info"
 msgstr "Información personal"
