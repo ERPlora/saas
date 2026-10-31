@@ -22,6 +22,7 @@ import { fileURLToPath } from 'node:url';
 
 import type { PlaywrightTestConfig, Project } from '@playwright/test';
 
+import { realProviderMode } from '../assistant-battery';
 import { djangoEnv } from '../django-env';
 import { STACK, type Stack } from '../stack';
 
@@ -140,7 +141,7 @@ export const panelProject: Project = {
 };
 
 /** The environment of the panel's Django of `stack` (and of its twin, which adds the second factor on). */
-function panelDjangoEnv(vitePort: number, stack: Stack): Record<string, string> {
+function panelDjangoEnv(vitePort: number, stack: Stack, real: boolean): Record<string, string> {
   // Playwright puts its own environment under these, DEBUG included, and the stack's database (django-env.ts).
   return djangoEnv(
     true,
@@ -163,11 +164,13 @@ function panelDjangoEnv(vitePort: number, stack: Stack): Record<string, string> 
       WHATSAPP_VERIFY_TOKEN: WHATSAPP_E2E.verifyToken,
       WHATSAPP_CONFIG_ID: WHATSAPP_E2E.configId,
       // The assistant's embeddings and voice go to the e2e's own provider (assistant_seed.py, the local fake on
-      // `aiProviderPort`), never to a provider «openai» the shared database may hold with a real key.
-      ASSISTANT_SERVICE_PROVIDER: 'e2e-local',
+      // `aiProviderPort`), never to a provider «openai» the shared database may hold with a real key. Only the QA
+      // battery with the real model (QA_REAL_PROVIDER=1, assistant-battery.spec.ts, never in the CI) uses the real
+      // «openai» that `assistant_seed.py real` keeps in the run's own e2e database.
+      ASSISTANT_SERVICE_PROVIDER: real ? 'openai' : 'e2e-local',
       // Each account's messages a month with the panel's assistant (30 in production): assistant-panel.spec.ts asks
-      // twice, then sees the month spent (ASSISTANT-F26). No other spec asks the panel's assistant.
-      ASSISTANT_ACCOUNT_MESSAGES: '2',
+      // twice, then sees the month spent (ASSISTANT-F26). The real battery asks as in production.
+      ASSISTANT_ACCOUNT_MESSAGES: real ? '30' : '2',
     },
     stack,
   );
@@ -189,13 +192,19 @@ function panelDjango(name: string, saasDir: string, port: number, env: Record<st
 
 /**
  * Django on `stack`'s panel port (:8012 by default), its twin with the second factor on (:8013) and Vite on
- * `vitePort` (:5174 by default), from saas/ (`saasDir`).
+ * `vitePort` (:5174 by default), from saas/ (`saasDir`). With `QA_REAL_PROVIDER=1` in `env` the assistant's services go
+ * to the real «openai» and an account has production's messages (assistant-battery.spec.ts).
  */
-export function panelServers(saasDir: string, vitePort = VITE_PORT, stack: Stack = STACK): WebServer[] {
-  const env = panelDjangoEnv(vitePort, stack);
+export function panelServers(
+  saasDir: string,
+  vitePort = VITE_PORT,
+  stack: Stack = STACK,
+  env: Record<string, string | undefined> = process.env,
+): WebServer[] {
+  const django = panelDjangoEnv(vitePort, stack, realProviderMode(env));
   return [
-    panelDjango('panel-django', saasDir, stack.panelPort, env),
-    panelDjango('panel-mfa-django', saasDir, stack.panelMfaPort, { ...env, ACCOUNTS_MFA_ENABLED: 'True' }),
+    panelDjango('panel-django', saasDir, stack.panelPort, django),
+    panelDjango('panel-mfa-django', saasDir, stack.panelMfaPort, { ...django, ACCOUNTS_MFA_ENABLED: 'True' }),
     {
       name: 'panel-vite',
       command: 'pnpm run dev',
