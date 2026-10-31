@@ -12,15 +12,13 @@
 //   operation (`card.operations.<app>.<entity>.<action>`, one per write: guardrail base/tests/
 //   test_assistant_panel_words.py), else by its action (`card.actions.<action>`), else the chat's «Do this»; and the
 //   menu's four screens (`screens.<key>`), by the server's key (base/assistant.py `SCREEN_OF_APP`) or by their path.
-// - The chat's own words (`assistantMessages`), but one: under a spent allowance, where the Hub says to ask whoever
-//   runs the business to upgrade the plan, the panel says that each business has its own assistant
-//   (`saas.assistant.errors.quotaSpentAccount`): the account's messages are no plan's, and nobody is offered
-//   «Upgrade plan» here. The package has no option for that sentence (`assistant.askOwner`), so it is the catalogue's.
-import { type AssistantConfig, assistantMessages } from '@erplora/ui/components';
+// - Under a spent allowance, where the Hub says to ask whoever runs the business to upgrade the plan, the panel says
+//   that each business has its own assistant (`spentNoteKey`: `saas.assistant.errors.quotaSpentAccount`): the
+//   account's messages are no plan's, and nobody is offered «Upgrade plan» here.
+import type { AssistantConfig } from '@erplora/ui/components';
 
 import { ACCOUNT, BILLING, BUSINESSES, STORE } from '../../accounts/frontend/paths';
 import en from '../../frontend/locale/en.json';
-import es from '../../frontend/locale/es.json';
 
 /** Who may ask the panel's assistant (assistant/apps.py, the `account` role's). */
 export const ASK = 'assistant.ask';
@@ -73,10 +71,5 @@ export const SAAS_ASSISTANT: AssistantConfig = {
   verbKey: actionKey,
   placeKey,
   screenKey: panelScreenKey,
+  spentNoteKey: 'saas.assistant.errors.quotaSpentAccount',
 };
-
-/** The chat's words as the panel says them (`assistant.*`), for the entry to merge with its own catalogue. */
-export const ASSISTANT_MESSAGES = {
-  en: { assistant: { ...assistantMessages.en.assistant, askOwner: en.saas.assistant.errors.quotaSpentAccount } },
-  es: { assistant: { ...assistantMessages.es.assistant, askOwner: es.saas.assistant.errors.quotaSpentAccount } },
-} as const;

@@ -3,7 +3,7 @@
 // catalogues main.ts merges (the chat's words as the panel says them and the entry's `saas.*`), a session, the shell's
 // config, a memory router with the panel's screens, Ionic's router API on it, and the chat configured as the panel's
 // (`SAAS_ASSISTANT`). The tab's assistant is the test's own (`installAssistant`): its turns go to the test's `post`.
-import { createAssistant, installAssistant, type Assistant, configureAssistant } from '@erplora/ui/components';
+import { assistantMessages, createAssistant, installAssistant, type Assistant, configureAssistant } from '@erplora/ui/components';
 import type { TurnBody, TurnFrame, TurnOptions } from '@erplora/ui/components';
 import { createShellI18n, ION_ICONS, provideSession, provideShellConfig, type SessionMe } from '@erplora/ui/shell';
 import { LIVE_CLIENT_KEY } from '@erplora/ui/sdk';
@@ -17,7 +17,7 @@ import { ACCOUNT, BILLING, BUSINESSES, STORE } from '../../../accounts/frontend/
 import { OPERATION_ROUTES } from '../../../frontend/generated/operation-routes';
 import saasEn from '../../../frontend/locale/en.json';
 import saasEs from '../../../frontend/locale/es.json';
-import { ASK, ASSISTANT_MESSAGES, SAAS_ASSISTANT } from '../options';
+import { ASK, SAAS_ASSISTANT } from '../options';
 
 export { flush } from '../../../packages/ui/src/sdk/__tests__/live-harness';
 
@@ -131,8 +131,8 @@ export async function mountAssistant(component: Component, options: MountOptions
   provideSession(ref(options.session === null ? undefined : (options.session ?? LENA)), ref('live'), { app });
   provideShellConfig({ homePath: BUSINESSES }, app);
   const messages = {
-    en: { ...ASSISTANT_MESSAGES.en, ...saasEn },
-    es: { ...ASSISTANT_MESSAGES.es, ...saasEs },
+    en: { ...assistantMessages.en, ...saasEn },
+    es: { ...assistantMessages.es, ...saasEs },
   };
   const wrapper = mount(component, {
     attachTo: document.body,

@@ -721,8 +721,9 @@ propio texto por `code`.
   AssistantBackground }`, bajo demanda, y lo olvida al cerrar sesión. Sus palabras van en el catálogo de la entrada
   (`saas.assistant.*` de `frontend/locale`, porque `assistant` es el espacio del chat compartido): el verbo de cada
   escritura `AI` (`card.operations`, una por escritura: `base/tests/test_assistant_panel_words.py`), el de cada acción
-  (`card.actions`), las cuatro pantallas, el vacío y sus atajos; `ASSISTANT_MESSAGES` cambia `assistant.askOwner` del
-  paquete por `saas.assistant.errors.quotaSpentAccount` (el paquete no tiene opción para esa frase).
+  (`card.actions`), las cuatro pantallas, el vacío y sus atajos; la frase bajo el cupo agotado, donde nadie sube de
+  plan, es `spentNoteKey: 'saas.assistant.errors.quotaSpentAccount'` de `SAAS_ASSISTANT` (opción del paquete, ui#49),
+  y las palabras del chat (`assistant.*`) van tal cual.
 - **Tests**: `base/tests/test_assistant_turn.py`, `base/tests/test_api_assistant.py`,
   `assistant/tests/test_account_quota.py`, `test_admin_usage.py` (la cuenta en el admin) y `test_privacy.py` (la ruta
   del panel no guarda la conversación); Vitest de `assistant/frontend/` y `frontend/main.test.ts`; e2e

@@ -25,7 +25,7 @@ import {
   type Surface,
   toastError,
 } from '@erplora/ui/shell';
-import { configureAssistant, forgetAssistant } from '@erplora/ui/components';
+import { assistantMessages, configureAssistant, forgetAssistant } from '@erplora/ui/components';
 import {
   type AllauthClient,
   createAllauthClient,
@@ -43,7 +43,7 @@ import { isNavigationFailure, type RouteRecordRaw } from 'vue-router';
 
 import { ACCOUNT, BUSINESSES, LAUNCHER, REPORT_PROBLEM } from '../accounts/frontend/paths';
 import { recaptchaSiteKey } from '../accounts/frontend/recaptcha';
-import { ASSISTANT_MESSAGES, SAAS_ASSISTANT } from '../assistant/frontend/options';
+import { SAAS_ASSISTANT } from '../assistant/frontend/options';
 import { OPERATION_ROUTES } from './generated/operation-routes';
 import en from './locale/en.json';
 import es from './locale/es.json';
@@ -101,10 +101,10 @@ export function appRoutes(routeFiles: Record<string, AppRoutes>): RouteRecordRaw
 /** An app's `frontend/locale/<lang>.json`, all under the app id (guard: main.test.ts). */
 export type AppCatalogue = Record<string, unknown>;
 
-/** Every app catalogue, by the language in its file name, over the shared assistant's words as the panel says them
- *  (`assistant`); distinct app ids, so a spread never collides. */
+/** Every app catalogue, by the language in its file name, over the shared assistant's words (`assistant`); distinct
+ *  app ids, so a spread never collides. */
 export function appMessages(catalogues: Record<string, AppCatalogue>): CreateShellOptions['messages'] {
-  const messages: Record<string, AppCatalogue> = { en: { ...ASSISTANT_MESSAGES.en }, es: { ...ASSISTANT_MESSAGES.es } };
+  const messages: Record<string, AppCatalogue> = { en: { ...assistantMessages.en }, es: { ...assistantMessages.es } };
   for (const [file, catalogue] of Object.entries(catalogues)) {
     const language = file.slice(file.lastIndexOf('/') + 1, -'.json'.length);
     messages[language] = { ...messages[language], ...catalogue };
