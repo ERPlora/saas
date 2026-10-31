@@ -24,6 +24,7 @@ from datetime import timedelta
 import pytest
 from allauth.account.models import EmailAddress
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.core import mail
 from django.utils import timezone, translation
 from live.errors import Conflict, NotFound, PermissionDenied
@@ -538,6 +539,18 @@ class TestResendAndCancel:
         assert member.invitation_expires_at > timezone.now() + timedelta(days=6)
         assert [message.to for message in mail.outbox] == [["invitee@example.com"]]
 
+    @pytest.mark.parametrize("flag", ["is_staff", "is_superuser"])
+    def test_an_invitee_made_staff_meanwhile_gets_no_invitation_again(self, business, team, flag):
+        """As ``member_invite`` refuses ERPlora's staff, so does sending it again (W11b)."""
+        invitee = team["invitee"]
+        type(invitee).objects.filter(pk=invitee.pk).update(**{flag: True})
+
+        with pytest.raises(Conflict) as refused:
+            services.member_resend(ctx_for(team["owner"]), ByIdIn(id=member_of(business, invitee).id))
+
+        assert refused.value.code == "hubs.platform_account"
+        assert mail.outbox == []
+
     def test_an_answered_member_has_nothing_to_resend(self, business, team):
         with pytest.raises(Conflict) as refused:
             services.member_resend(
@@ -592,6 +605,9 @@ class TestResendAndCancel:
 # --- Answering an invitation ----------------------------------------------------------------------
 
 
+ON_A_BUSINESS = "This account is on a business: ERPlora's staff and the customers never share an account."
+
+
 class TestThePlatformsDoor:
     """``manage.py create_platform_user`` makes no staff of anybody on a business, also where the mirror of who
     enters (``HubMembership``) holds no row of theirs: an invitation still waiting, or a business in its 90 days of
@@ -605,6 +621,29 @@ class TestThePlatformsDoor:
 
         invitee.refresh_from_db()
         assert (invitee.is_staff, invitee.is_superuser) == (False, False)
+
+    @pytest.mark.parametrize("flag", ["is_staff", "is_superuser"])
+    def test_nor_by_hand_through_the_model_s_validation(self, business, team, flag):
+        """The admin's form validates the model (``User.clean``): the same refusal for whoever raises a flag there."""
+        invitee = team["invitee"]
+        setattr(invitee, flag, True)
+
+        with pytest.raises(ValidationError) as refused:
+            invitee.full_clean()
+
+        assert refused.value.messages == [ON_A_BUSINESS]
+
+    def test_an_account_already_both_is_refused_nothing_else(self, business, team):
+        """Only raising a flag is refused: an account that is staff and on a business from before (``hubs.W002``,
+        put right by hand) still saves its other changes, and lowering its flags."""
+        employee = team["employee"]
+        type(employee).objects.filter(pk=employee.pk).update(is_staff=True, is_superuser=True)
+        employee.refresh_from_db()
+
+        employee.first_name = "Eva"
+        employee.full_clean()
+        employee.is_staff = employee.is_superuser = False
+        employee.full_clean()
 
     def test_a_member_of_a_business_in_recovery_is_never_made_staff(self, business, team):
         employee = team["employee"]

@@ -160,10 +160,10 @@ class SeatLimitReached(Conflict):
 
 
 def _refuse_staff(user) -> None:
-    """The platform's staff and the customers never share an account: a staff account neither creates a business,
-    nor is invited to one, nor enters one with an invitation that waited while it was made staff (409
-    ``hubs.platform_account``)."""
-    if user.is_staff:
+    """The platform's staff and the customers never share an account: a staff or superuser account neither creates a
+    business, nor is invited to one (nor invited again), nor enters one with an invitation that waited while it was
+    made staff (409 ``hubs.platform_account``)."""
+    if user.is_staff or user.is_superuser:
         raise Conflict(
             _("This address belongs to ERPlora's staff and cannot join a business."), code="hubs.platform_account"
         )
