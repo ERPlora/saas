@@ -1,6 +1,7 @@
 // How a business's status is painted everywhere (launcher, Businesses, its page): the ui's pill for the
 // status, a danger pill when the Hub refused to prepare it, and the sentence that says why «Open» does
 // not work (or what to do), which inside the apps never points at a payment page.
+// clock: data only — no code under test compares these dates with now.
 import { describe, expect, it } from 'vitest';
 
 import { reasonDate, reasonKey, statusPill, unpaidDeadline } from './business-status';

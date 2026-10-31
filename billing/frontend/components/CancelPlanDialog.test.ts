@@ -4,6 +4,7 @@
 // (nothing is deleted), what Free covers against the people it has now (`hubs.business.get` seats), that an
 // unpaid invoice stays pending, and that «Keep the plan» undoes it until then. Confirmed, `billing.plan.cancel`
 // and a toast that says until when.
+// clock: data only — no code under test compares these dates with now.
 import { ConfirmDialog } from '@erplora/ui/components';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Component } from 'vue';

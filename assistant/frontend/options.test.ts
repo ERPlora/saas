@@ -1,6 +1,7 @@
 // The panel's configuration of the shared assistant (`options.ts`, plan 2026-10-30-asistente-saas §6): the same chat as
 // the Hub's, wired to the SaaS's own routes and operations (base/api.py), the account's words for its writes and its
 // screens, no microphone (D9) and nobody upgrading (an account has no plan for its 30 messages).
+// clock: data only — no code under test compares these dates with now.
 import { createShellSession, type SessionMe } from '@erplora/ui/shell';
 import { assistantMessages } from '@erplora/ui/components';
 import type { LiveClient } from '@erplora/ui/sdk';

@@ -3,6 +3,7 @@
 // the state of their business (`hubs.business.list`, live). On Invoices, its banner, or ONE banner for two or
 // more (audit 2026-10-14, R-15); on the other tabs the same warning in one line with a link to it. When one of them is paid — here, in another tab, or at
 // Stripe's page and back — «Invoice paid: … is up to date again».
+// clock: data only — no code under test compares these dates with now.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@erplora/ui/shell', async (importOriginal) => ({

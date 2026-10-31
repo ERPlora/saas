@@ -6,7 +6,7 @@
 //     «Downgrade to Free» (a cancellation at the end of the period);
 //   - cancelled: «Keep the plan», and Free says from when;
 //   - with an unpaid invoice nothing that charges, and the reason under the button (X-34).
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { FREE, FREE_SUBSCRIPTION, STARTER, plan, subscription } from '../__tests__/fixtures';
 import { mountBilling } from '../__tests__/mount-billing';
@@ -25,6 +25,17 @@ async function card(props: { plan?: typeof STARTER; period?: 'month' | 'year'; s
   const text = (id: string) => m.wrapper.find(`[data-testid="${id}"]`);
   return { ...m, text };
 }
+
+beforeEach(() => {
+  // The card says a trial only while `trial_end` is ahead of now: the clock stays before the fixtures' dates
+  // (`FREE_SUBSCRIPTION` tries Starter until Oct 20, 2099). Only the date: the timers stay real.
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-10-20T10:00:00Z'));
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe('PlanCard', () => {
   it('paints its name, description, net price and features', async () => {

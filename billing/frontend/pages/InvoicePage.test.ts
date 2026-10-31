@@ -6,6 +6,7 @@
 //   - a credit note says its type and reason and links the invoice it rectifies;
 //   - «Download PDF» once issued and «Pay» (web only) while it is not collected;
 //   - loading, and a failure (or an invoice that is not the account's) said with «Retry».
+// clock: data only — no code under test compares these dates with now.
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { invoiceRow, unpaidRow } from '../__tests__/billing-fixtures';

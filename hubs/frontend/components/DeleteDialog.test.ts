@@ -2,6 +2,7 @@
 // ConfirmDialog that asks to type the business's name, says what follows (stops at once, 90 days to
 // recover it, the plan back to Free, an email with the data), runs `hubs.business.delete` with the
 // name typed and says until when it can be recovered.
+// clock: data only — no code under test compares these dates with now.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { h, ref } from 'vue';
 
