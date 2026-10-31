@@ -156,6 +156,8 @@ for (const language of ['es', 'en'] as const) {
     await expect(card).toBeHidden();
     await expect(page.getByTestId('assistant-bubble-assistant').last()).toContainText(words.notCreated);
     await expect(page.getByTestId('assistant-receipt').last()).toHaveText(words.receipt);
+    // Saying it did not create it is no claim of a change (ui#47): no «the assistant said it made a change» under it.
+    await expect(page.getByTestId('assistant-notice-claimed_change')).toHaveCount(0);
     const listed = (await (await page.request.get('/api/hubs/businesses')).json()) as { rows: { name: string }[] };
     expect(listed.rows.map((row) => row.name)).toEqual([BUSINESS]);
 
