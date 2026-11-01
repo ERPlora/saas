@@ -366,6 +366,9 @@ X-Erplora-Timestamp, X-Erplora-Signature (v1) y X-Erplora-Signature-V2 (cubre m�
 - La gráfica del panel con `hubs.usage.series` (bloque 8 de PLAN-SAAS; no está en la maqueta): fuera de esta versión,
   ningún flujo la pide (HUBS-F21 enseña la última noche medida).
 - `support` sin acceso al uso en el admin (si se quiere, migración de datos como `0007`).
+- La poda de `HubUsageDaily` vieja que PLAN-SAAS §1.1 («Limpiezas y podas diarias») deja a `hubs` no existe: las filas solo
+  se van con su negocio (`on_delete=CASCADE`). Contradicción abierta en la ronda de cierre (PLAN-SAAS §27); CLOSE-HUBS la
+  propone como tarea aparte.
 
 ## Lo que añadió la tenencia (2026-10-30): alta y demo asíncronas, y las copias de los datos
 
