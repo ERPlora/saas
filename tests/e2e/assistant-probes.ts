@@ -8,7 +8,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { type Card, type Citation, citationOf, DOCS_SEARCH, type Turns, type Verdict } from './assistant-battery.ts';
+import { CATALOGUE, type Card, type Citation, citationOf, DOCS_SEARCH, type Turns, type Verdict } from './assistant-battery.ts';
 
 /** What a probe expects the panel to do with its phrase. */
 export const PROBE_EXPECTS = ['read', 'card', 'refused', 'docs'] as const;
@@ -26,8 +26,6 @@ export const PANEL_ROLES = ['account'] as const;
 /** How much of the answer the report keeps. */
 export const ANSWER_CHARS = 300;
 const CLAIMED_CHANGE = 'claimed_change';
-/** The manual of a Hub app (`apps.app.doc`, the web's only): documentation too, read whole. */
-const APP_MANUAL = 'apps.app.doc';
 
 export interface Probe {
   /** Unique across every probe file: `<language>-<surface>-<tool>-<n>` as the generator writes it. */
@@ -42,6 +40,8 @@ export interface Probe {
   phrase: string;
   expect: ProbeExpect;
   decide?: ProbeDecision;
+  /** For «read»: the reads the model may rightly run before the probe's tool (to find the business, say). */
+  lookups?: string[];
   notes?: string;
 }
 
@@ -87,7 +87,7 @@ export interface ProbeReportMeta {
   notes: string[];
 }
 
-const FIELDS = new Set(['id', 'app', 'tool', 'role', 'surface', 'language', 'phrase', 'expect', 'decide', 'notes']);
+const FIELDS = new Set(['id', 'app', 'tool', 'role', 'surface', 'language', 'phrase', 'expect', 'decide', 'lookups', 'notes']);
 const isText = (value: unknown): value is string => typeof value === 'string' && value.trim() !== '';
 const oneOf = (values: readonly string[], value: unknown): boolean => typeof value === 'string' && values.includes(value);
 
@@ -107,6 +107,10 @@ function entryProblems(entry: unknown, position: number): string[] {
   if (value.decide !== undefined) {
     if (!oneOf(PROBE_DECISIONS, value.decide)) problems.push(`decide must be one of ${PROBE_DECISIONS.join(', ')}`);
     else if (value.expect !== 'card') problems.push('decide is only for expect «card»');
+  }
+  if (value.lookups !== undefined) {
+    if (!Array.isArray(value.lookups) || !value.lookups.every(isText)) problems.push('lookups must be a list of tool names');
+    else if (value.expect !== 'read') problems.push('lookups is only for expect «read»');
   }
   if (value.notes !== undefined && typeof value.notes !== 'string') problems.push('notes must be a string');
   for (const key of Object.keys(value)) {
@@ -170,18 +174,25 @@ export function loadProbes(files: string[]): { probe: Probe; source: string }[] 
 
 const normalized = (text: string): string =>
   text
+    .normalize('NFD')
+    .replace(/\p{M}+/gu, '')
     .toLocaleLowerCase()
+    .replace(/[^\p{L}\p{N}\s]+/gu, '')
     .replace(/\s+/g, ' ')
-    .replace(/^[\s¿¡"'«“‘]+|[\s?!.,;:"'»”’]+$/g, '');
+    .trim();
 
-/** Whether `phrase` is `ask` (without case, extra spaces, nor the opening and closing punctuation). */
+/** Whether `phrase` is `ask`, without case, accents, punctuation nor extra spaces. */
 export function sameAsk(phrase: string, ask: string): boolean {
   return normalized(phrase) === normalized(ask);
 }
 
-/** Why `probe` cannot be asked as it is, against the catalogues of its language: the whole one (`web`) and the one of
- *  its surface. Empty when it can. */
-export function probeProblems(probe: Probe, catalogs: { web: CatalogTool[]; surface: CatalogTool[] }): string[] {
+/** Why `probe` cannot be asked as it is, against the catalogues of its language (the whole one, `web`, and the one of
+ *  its surface) and the whole ones of every language (`everyLanguage`: a phrase is none of its tool's asks in any).
+ *  Empty when it can. */
+export function probeProblems(
+  probe: Probe,
+  catalogs: { web: CatalogTool[]; surface: CatalogTool[]; everyLanguage: CatalogTool[] },
+): string[] {
   if (!probe.phrase.trim()) return ['the phrase is empty: write it'];
   const problems: string[] = [];
   if (!(PANEL_ROLES as readonly string[]).includes(probe.role)) {
@@ -191,7 +202,8 @@ export function probeProblems(probe: Probe, catalogs: { web: CatalogTool[]; surf
   const offered = catalogs.surface.find((tool) => tool.name === probe.tool);
   const app = known?.app_label ?? probe.tool.split('.')[0];
   if (probe.app !== app) problems.push(`app ${probe.app}: ${probe.tool} is of ${app}`);
-  if (known?.asks.some((ask) => sameAsk(probe.phrase, ask))) {
+  const asks = catalogs.everyLanguage.filter((tool) => tool.name === probe.tool).flatMap((tool) => tool.asks);
+  if (asks.some((ask) => sameAsk(probe.phrase, ask))) {
     problems.push(`the phrase is one of the asks of ${probe.tool}: write a new one`);
   }
   if (probe.expect === 'refused') {
@@ -208,6 +220,11 @@ export function probeProblems(probe: Probe, catalogs: { web: CatalogTool[]; surf
     else if (offered.kind === 'write') problems.push(`${probe.tool} is a write: expect «card»`);
   }
   if (probe.expect === 'card' && offered.kind === 'read') problems.push(`${probe.tool} is a read: expect «read»`);
+  for (const lookup of probe.lookups ?? []) {
+    if (catalogs.surface.find((tool) => tool.name === lookup)?.kind !== 'read') {
+      problems.push(`lookup ${lookup} is not a read the ${probe.surface} surface offers`);
+    }
+  }
   return problems;
 }
 
@@ -217,25 +234,26 @@ export function decisionFor(probe: Probe, card: Card | undefined): ProbeDecision
   return own ? 'confirm' : 'cancel';
 }
 
-const REFUSAL = [
-  // Spanish, in the first person: «no puedo», «no tengo acceso / forma / esa opción», «no me es posible».
-  /\bno (?:puedo|podemos|me es posible|dispongo|tengo (?:acceso|forma|manera|una herramienta|herramientas|esa opción|la opción))\b/i,
-  // Spanish, about here: «no está disponible aquí / en la app», «desde aquí / la app no se puede».
-  /\bno (?:está|están) disponibles? (?:aquí|desde aquí|en la app|desde la app|en esta app)\b/i,
-  /\bdesde (?:aquí|la app|esta app) no se puede\b/i,
-  // English, in the first person: «I can't», «I cannot», «I'm unable», «I don't have access / a tool / a way».
-  /\bI(?:['’]m| am)? (?:can['’]?t|cannot|can not|unable to|not able to)\b/i,
-  /\bI (?:don['’]?t|do not) have (?:access|a tool|the tools?|a way|the option)\b/i,
-  // English, about here: «isn't available here / in the app».
-  /\b(?:is|are)(?:n['’]t| not) available (?:here|from here|in the app|in this app)\b/i,
-  // The account surface's own words (PLAN-SAAS §3.6, point 6): go to erplora.com from the browser.
-  /\berplora\.com\b[^.]*\b(?:navegador|browser)\b|\b(?:navegador|browser)\b[^.]*\berplora\.com\b/i,
+/** Saying it cannot (Spanish, English): never enough alone, «no puedo» also answers «I have no invoices». */
+const UNABLE = [
+  /\bno (?:puedo|podemos|puedes|se puede|es posible|me es posible|está disponible|están disponibles|tienes permiso|tiene permiso|tengo permiso)\b|\bsin permiso\b|\bsolo (?:se puede|puedes|puede|lo puede|el|la|los|las|un|una|desde|en)\b/i,
+  /\b(?:can['’]?t|cannot|can not|unable to|not able to|not (?:allowed|permitted|available)|(?:is|are)n['’]t (?:allowed|available)|only (?:from|on|in|the|an?|owners?|admins?))\b/i,
 ];
+/** Why: a permission, a role, or where it is done (the app does not sell; erplora.com in the browser does). */
+const BECAUSE = [
+  /\b(?:permisos?|rol|propietari[oa]s?|dueñ[oa]s?|administrador(?:a|es)?|navegador|erplora\.com|la web|(?:en|desde) (?:la|esta) app)\b/i,
+  /\b(?:permissions?|roles?|owners?|admins?|administrators?|browser|erplora\.com|the web|(?:in|from) (?:the|this) app)\b/i,
+];
+/** The account surface's own words (PLAN-SAAS §3.6, point 6): go to erplora.com from the browser. */
+const REDIRECT = /\berplora\.com\b.*\b(?:navegador|browser)\b|\b(?:navegador|browser)\b.*\berplora\.com\b/i;
 
-/** Whether the answer says it cannot here, in the first person or by sending to erplora.com in the browser (Spanish
- *  or English): only a refusal reads the model's words, and an impersonal «it cannot be used» is no refusal. */
+/** Whether the answer refuses and says why, in one sentence (Spanish or English): it cannot because of a permission,
+ *  a role or where it is done, or it sends to erplora.com in the browser. A bare «I cannot», an empty list («I don't
+ *  have any invoices yet») or an impersonal «it cannot be used» is no refusal. Only a refusal reads the model's words. */
 export function refusalIn(answer: string): boolean {
-  return REFUSAL.some((pattern) => pattern.test(answer));
+  return answer
+    .split(/(?<=[.!?])\s+|\n+/)
+    .some((sentence) => REDIRECT.test(sentence) || (UNABLE.some((p) => p.test(sentence)) && BECAUSE.some((p) => p.test(sentence))));
 }
 
 const ok = (turns: Turns, name: string): boolean => turns.tools.some((tool) => tool.name === name && tool.outcome === 'ok');
@@ -267,7 +285,7 @@ function citesDocs(answer: string, links: string[], citations: Citation[]): bool
 
 /** The automatic verdict of a probe on what is objective: the tools that ran, the cards, the notices, the outbox; the
  *  model's words only to hear that it cannot. */
-export function probeVerdict(probe: Probe, observed: ProbeObserved): { verdict: Verdict; reasons: string[] } {
+export function probeVerdict(probe: Probe, observed: ProbeObserved, always: readonly string[] = []): { verdict: Verdict; reasons: string[] } {
   const { turns } = observed;
   const reasons = [
     ...observed.failures.map((failure) => `failure shown: ${failure}`),
@@ -282,6 +300,11 @@ export function probeVerdict(probe: Probe, observed: ProbeObserved): { verdict: 
         reasons.push(`expected ${probe.tool} to run (${names.length ? `ran: ${names.join(', ')}` : 'nothing ran'})`);
       } else if (!ok(turns, probe.tool)) {
         reasons.push(`${probe.tool} ran with ${last.outcome}: ${last.code}${last.detail ? ` — ${last.detail}` : ''}`);
+      } else {
+        // The first tool the model chose: past the always offered ones and the probe's lookups.
+        const skipped = new Set([...always, ...(probe.lookups ?? [])]);
+        const first = turns.tools.find((tool) => tool.name === probe.tool || !skipped.has(tool.name));
+        if (first && first.name !== probe.tool) reasons.push(`${first.name} ran before ${probe.tool}`);
       }
       noCardNorWrite(turns, reasons);
       unchanged(observed.events, reasons);
@@ -290,6 +313,12 @@ export function probeVerdict(probe: Probe, observed: ProbeObserved): { verdict: 
     case 'card': {
       const shown = turns.cards.some((card) => card.operation === probe.tool);
       if (!shown) reasons.push(`no card of ${probe.tool}${turns.cards.length ? ` (cards: ${cardsOf(turns)})` : ''}`);
+      else {
+        const first = turns.cards[0].operation;
+        if (first !== probe.tool) reasons.push(`the first card was ${first}, not ${probe.tool}`);
+        const others = turns.cards.filter((card) => card.operation !== probe.tool);
+        if (others.length) reasons.push(`another card showed: ${others.map((card) => `${card.operation} (${card.risk})`).join(', ')}`);
+      }
       if (probe.decide === 'confirm') {
         if (shown && !ok(turns, probe.tool)) {
           reasons.push(`${probe.tool} did not run after the confirmation${last ? ` (${last.outcome}: ${last.code})` : ''}`);
@@ -308,18 +337,18 @@ export function probeVerdict(probe: Probe, observed: ProbeObserved): { verdict: 
       if (!refusalIn(observed.answer)) reasons.push('the answer does not say it cannot');
       unchanged(observed.events, reasons);
       break;
-    case 'docs':
-      // Grounded in ERPlora's documentation: its search, cited; or the manual of a Hub app, read whole.
-      if (ok(turns, DOCS_SEARCH)) {
-        if (!ok(turns, APP_MANUAL) && !citesDocs(observed.answer, observed.links, turns.citations)) {
-          reasons.push('the answer cites no documentation');
-        }
-      } else if (!ok(turns, APP_MANUAL)) {
-        reasons.push(`no documentation was read (${DOCS_SEARCH} or ${APP_MANUAL})`);
-      }
-      noCardNorWrite(turns, reasons);
+    case 'docs': {
+      // Grounded in ERPlora's documentation: its search returned excerpts and the answer names one; ERPlora's own
+      // published reads (its apps, plans) may help, a tool of the account may not.
+      if (!ok(turns, DOCS_SEARCH)) reasons.push(`${DOCS_SEARCH} did not run`);
+      else if (!turns.citations.length) reasons.push('the documentation search returned nothing');
+      else if (!citesDocs(observed.answer, observed.links, turns.citations)) reasons.push('the answer cites no documentation');
+      const account = unique(turns.tools.filter((tool) => !CATALOGUE.has(tool.name)).map((tool) => tool.name));
+      if (account.length) reasons.push(`a tool of the account ran: ${account.join(', ')}`);
+      if (turns.cards.length) reasons.push(`a card showed: ${cardsOf(turns)}`);
       unchanged(observed.events, reasons);
       break;
+    }
   }
   return { verdict: reasons.length ? 'fail' : 'pass', reasons };
 }

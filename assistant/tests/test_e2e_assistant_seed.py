@@ -93,3 +93,33 @@ def test_every_run_starts_from_scratch(seed):
 
     assert get_user_model().objects.filter(email="e2e-assistant-owner@example.com").count() == 1
     assert Hub.objects.filter(slug="e2e-assistant-panel").count() == 1
+
+
+def _keyed(slug: str) -> None:
+    from assistant.models import AIProvider, AIProviderCredential
+
+    provider = AIProvider.objects.create(slug=slug, name=slug.title(), kind="openai", base_url="https://example.com/v1")
+    AIProviderCredential.objects.create(
+        provider=provider, label="default", api_key=f"sk-{slug}-0000000000000000", key_hint="0000"
+    )
+
+
+def test_forget_takes_the_real_keys_away_and_keeps_the_others(seed):
+    from assistant.models import AIProviderCredential
+
+    for slug in ("qwen", "openai", "mistral"):
+        _keyed(slug)
+
+    seed.forget()
+
+    assert list(AIProviderCredential.objects.values_list("provider__slug", flat=True)) == ["mistral"]
+
+
+def test_forget_and_real_refuse_any_database_but_the_run_s_own_e2e_one(seed):
+    # pytest's own database is no e2e one; the shared ``saas`` of a developer is refused the same way.
+    with pytest.raises(SystemExit, match="forget: only on the run's own e2e database"):
+        seed.e2e_only("forget")
+    with pytest.raises(SystemExit, match="real: .* never on 'saas'"):
+        seed.e2e_only("real", "saas")
+    seed.e2e_only("forget", "saas_e2e_8630")
+    seed.e2e_only("real", "saas_e2e_qa2")

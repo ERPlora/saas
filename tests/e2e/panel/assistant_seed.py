@@ -24,6 +24,8 @@ the account.
   account like any other (no staff), in ``language`` (``es`` by default), owner of one working business on the Free
   plan, «E2E Asistente Panel». Prints one line of JSON for the spec: the owner's email, the business and its address.
 
+- ``forget``: ``clear`` and the real keys of ``real`` deleted (on the run's own e2e database only): what the probes'
+  spec (``assistant-probes.spec.ts``) runs after every worker, so no real key stays behind.
 - ``real [<language>]``: the QA battery with the real model (``assistant-battery.spec.ts``, only with
   ``QA_REAL_PROVIDER=1``, never in the CI), on the run's own e2e database only (``saas_…_e2e…``; the shared ``saas`` is
   refused). ``staff`` plus the real providers as production has them, each through the gateway's operations: «Qwen»
@@ -234,14 +236,30 @@ def _chosen(ctx, provider, model: dict):
     return AIModel.objects.get(provider=provider, model_id=model["model"])
 
 
+def e2e_only(action: str, database: str | None = None) -> None:
+    """Refuses ``action`` (``real``, ``forget``) on any database but the run's own e2e one (``database``, the
+    configured one by default): never the shared ``saas`` of a developer."""
+    if database is None:
+        from django.conf import settings
+
+        database = settings.DATABASES["default"]["NAME"]
+    if not E2E_DATABASE.match(database):
+        sys.exit(f"{action}: only on the run's own e2e database (saas_…_e2e…), never on {database!r}")
+
+
 def real_keys() -> tuple[str, str]:
     """The keys of ``real``, before anything is cleared: only on the run's own e2e database, never the shared one."""
-    from django.conf import settings
-
-    database = settings.DATABASES["default"]["NAME"]
-    if not E2E_DATABASE.match(database):
-        sys.exit(f"real: only on the run's own e2e database (saas_…_e2e…), never on {database!r}")
+    e2e_only("real")
     return _secret(QWEN["key"]), _secret(OPENAI["key"])
+
+
+def forget() -> None:
+    """The real keys ``real`` saved (Qwen's and OpenAI's credentials) taken out of the e2e database: the probes' spec
+    runs it after every worker (with ``clear`` before, the QA accounts go too). The providers and models stay, keyless;
+    the next ``real`` saves the keys again from the environment."""
+    from assistant.models import AIProviderCredential
+
+    AIProviderCredential.objects.filter(provider__slug__in=(QWEN["slug"], OPENAI["slug"])).delete()
 
 
 def real(keys: tuple[str, str], language: str = "es") -> dict:
@@ -301,10 +319,13 @@ def main(action: str, address: str, language: str) -> None:
         "gateway": lambda: gateway(address),
         "panel": lambda: panel(address, language),
         "real": lambda: real(keys, language),
+        "forget": forget,
     }
     if action not in actions:
         sys.exit(f"unknown action {action!r}: one of {', '.join(actions)}")
     keys = real_keys() if action == "real" else ("", "")
+    if action == "forget":
+        e2e_only(action)
     with transaction.atomic():
         clear()
         made = actions[action]()

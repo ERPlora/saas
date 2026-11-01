@@ -50,6 +50,12 @@ export function seedRealAssistant(language = 'es'): { seed: RealSeed; indexed: s
   return { seed, indexed };
 }
 
+/** The real keys and the QA accounts out of the run's e2e database (`assistant_seed.py forget`; it refuses any other):
+ *  after a worker, whatever happened to it. */
+export function forgetRealAssistant(): void {
+  uvRun(['python', 'tests/e2e/panel/assistant_seed.py', 'forget']);
+}
+
 const isTurn = (url: string): boolean => new URL(url).pathname === '/api/assistant/turn';
 
 /** What the panel showed under a question. */

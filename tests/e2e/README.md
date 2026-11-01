@@ -278,7 +278,8 @@ huellas de las preguntas, céntimos.
 - **El índice** (`assistant.DocChunk`): el `beforeAll` corre `manage.py index_docs`, que solo calcula las huellas de
   lo que cambió (la primera vez, unos 2 900 fragmentos, ~0,015 USD).
 - **Al acabar, las claves fuera**: la BD e2e las guarda cifradas con la `FERNET_KEY` de desarrollo, que es pública.
-  Se borran con `assistant.credential.delete` (como el admin) o se tira la BD (`node tests/e2e/database.ts --drop` con
+  Se borran con `assistant.credential.delete` (como el admin), con `uv run python tests/e2e/panel/assistant_seed.py
+  forget` (con el `DB_NAME` de la BD e2e; lo corre la spec de las sondas al acabar cada worker) o se tira la BD (`node tests/e2e/database.ts --drop` con
   el mismo `DB_NAME`); la siguiente ejecución las vuelve a guardar desde el entorno.
 
 Receta (desde el worktree del SaaS, con `pnpm build` hecho y el `.env` copiado; las claves, sin imprimirlas):
@@ -310,12 +311,17 @@ panel con el **modelo de verdad**. Mide que el modelo generaliza más allá de l
 por BD e2e, el `register_apps` del Hub (sin los manuales de sus apps, una pregunta como «¿cómo conecto WhatsApp?» no
 tiene de dónde salir y falla sin culpa del producto).
 
-- **Sonda**: `{id, app, tool, role: "account", surface: "web"|"app", language: "en"|"es", phrase, expect, decide?, notes?}`.
-  `expect` es `read` (corre su herramienta, sin tarjeta), `card` (la tarjeta de su herramienta; `decide` `cancel` por
-  defecto: no cambia nada en el outbox; `confirm`: corre), `refused` (sin tarjeta ni escritura, su herramienta no corre
-  y la respuesta dice que no puede: lo que la superficie no ofrece, como la tienda en la app) o `docs`
-  (`assistant.docs.search` corre y la respuesta cita la documentación, o se lee el manual de una app del Hub,
-  `apps.app.doc`). El formato es el mismo que el del Hub.
+- **Sonda**: `{id, app, tool, role: "account", surface: "web"|"app", language: "en"|"es", phrase, expect, decide?,
+  lookups?, notes?}`, el mismo formato que el del Hub. `expect`:
+  - `read`: su herramienta es la primera que corre (pasadas las que se ofrecen siempre, `base.assistant.ALWAYS`, y
+    las `lookups` de la sonda, lecturas previas legítimas), sin tarjeta;
+  - `card`: la primera tarjeta es la de su herramienta y no sale otra; `decide` `cancel` por defecto (nada nuevo en
+    el outbox) o `confirm` (corre);
+  - `refused`: sin tarjeta ni escritura, su herramienta no corre y la respuesta dice **por qué** no puede (un permiso,
+    un rol, la app, erplora.com en el navegador); un «no puedo» suelto o «no tengo facturas» no cuentan. Es lo que la
+    superficie no ofrece, como la tienda en la app;
+  - `docs`: `assistant.docs.search` devuelve fragmentos y la respuesta nombra uno (su sección, su fichero o el título
+    del manual de una app del Hub), sin que corra ninguna herramienta de la cuenta.
 - **Corpus**: `qa/probes/*.json`, una lista de sondas por fichero (`<idioma>-<superficie>-<día>.json`). Vitest comprueba
   que cargan, que ningún `id` se repite y que toda frase está escrita (`assistant-probes.test.ts`).
 - **Generador**: `pnpm qa:probes --language es [--surface web|app] [--apps hubs,billing] [--sample 2 | --all]
@@ -324,10 +330,12 @@ tiene de dónde salir y falla sin culpa del producto).
   (búsqueda de documentación → `docs`, lectura → `read`, escritura → `card` cancelada) y `refused` para las de la web
   que la superficie no ofrece. La frase queda vacía: se escribe a mano, nunca copiada de las `asks`.
 - **La spec** (`panel/assistant-probes.spec.ts`) lee el corpus o `QA_PROBES` (ficheros o carpetas, separados por
-  comas). Antes de preguntar comprueba cada sonda contra el catálogo de su idioma y superficie: una frase igual a una
-  `ask` (sin mayúsculas, espacios ni signos de los extremos) o una expectativa que el catálogo contradice no se
-  pregunta (n.a.) y falla. El idioma de la cuenta y la superficie (`?surface=account` es la app) siguen a cada sonda;
-  los mensajes del mes se reponen al agotarse.
+  comas). Antes de preguntar comprueba cada sonda contra los catálogos: una frase igual a una `ask` de su herramienta
+  en cualquier idioma (sin mayúsculas, acentos, signos ni espacios de más) o una expectativa que el catálogo de su
+  superficie contradice no se pregunta (n.a.) y falla. El idioma de la cuenta y la superficie (`?surface=account` es
+  la app) siguen a cada sonda; los mensajes del mes se reponen al agotarse. Cada worker siembra las claves y la
+  cuenta y, al acabar (también tras un fallo), `assistant_seed.py forget` las borra con las cuentas de QA: no queda
+  ninguna clave de verdad en la BD e2e. `real` y `forget` se niegan fuera de una BD e2e (`saas_…_e2e…`).
 - **Salida**, ignorada por git: `.artifacts/qa/probes/<ejecución>/` con el JSON y las capturas de cada sonda y
   `report.md` (aprobadas, fallidas y n.a.; la herramienta que eligió el modelo; los primeros 300 caracteres de la
   respuesta; claves tapadas).
