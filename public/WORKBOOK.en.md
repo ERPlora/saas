@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:f47e9275449f793897a04018592964c5f28951e6088b96167aac06262d425cda -->
+<!-- generated from WORKBOOK.md sha256:0eba9a13607bd867239dc60ba869bb4b7cdf96d787c3a69df4bdd53ffec2b4fc -->
 
 ## What it is for and who it is for
 
@@ -170,7 +170,7 @@ many from the connection, not available, ended) with what can be done. There is 
 | PUBLIC-F31 | Every demo is taken | done |
 | PUBLIC-F32 | Limit of demos per connection | done |
 | PUBLIC-F33 | The demo ended | done |
-| PUBLIC-F34 | Retire the demos that run out | partial |
+| PUBLIC-F34 | Retire the demos that run out | done |
 | PUBLIC-F35 | From the demo to a real account | done |
 | PUBLIC-F36 | Ask for a demo from another application | discarded |
 | PUBLIC-F37 | The demo does not count as a business | done |
@@ -609,16 +609,17 @@ If it fails: a demo may end before its hour (the team retires it); "Back to my d
 Involved: the Hub (the page of the ended demo)
 
 ### PUBLIC-F34 Retire the demos that run out
-Status: partial — what the person created inside the demo is not deleted when it is retired: until phase 2 the demos share the apps' data with the others (round 2026-10-17, PLAN-SAAS §3.5 and PLAN-DB §6); each demo's own database, deleted with it, comes with the tenancy
+Status: done
 Actor: system
 Screen: none
 Steps:
 1. As soon as its hour has passed, the demo's address answers "This demo has ended", even if nobody has retired it yet.
-2. Every minute, the hub retires the demos that ran out: it deletes their entry codes, their user "Demo" and their access, and marks them retired; a failure in one does not stop the others.
-3. After a few days, the retired address stops existing altogether.
+2. Every minute, the hub retires the demos that ran out: it deletes everything that was done inside each one (every demo has its own database, which is deleted whole without touching any other business's), their entry codes, their user "Demo" and their access, and marks them retired; a failure in one does not stop the others.
+3. A demo that was still being prepared when it ended is retired all the same, without finishing its preparation.
+4. After a few days, the retired address stops existing altogether.
 In: the demos whose hour has passed.
-Out: the retired demo, with no user and no way in.
-If it fails: if retiring one fails, it is tried again on the next round; meanwhile its address already says it has ended.
+Out: the retired demo, with nothing of what was done in it, no user and no way in.
+If it fails: if retiring one fails, it is tried again later, with a longer wait each time; meanwhile its address already says it has ended.
 Involved: the Hub (its registry of hubs and its background process)
 
 ### PUBLIC-F35 From the demo to a real account
