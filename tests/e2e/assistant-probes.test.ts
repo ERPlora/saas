@@ -366,11 +366,45 @@ describe('probeVerdict', () => {
     expect(probeVerdict(docs, shown)).toEqual({ verdict: 'pass', reasons: [] });
   });
 
-  it('fails a how-to that did not search or did not cite', () => {
-    expect(probeVerdict(docs, observed({ answer: 'Pulsa el botón.' })).reasons).toEqual([
-      'assistant.docs.search did not run',
+  it('takes the title of a Hub app’s manual the search returned as a citation, not the first heading of the help', () => {
+    const search = (source: string, path: string, heading: string) => ({
+      ...NO_TURNS,
+      tools: [ran('assistant.docs.search', 'query')],
+      citations: [{ source, path, heading, lang: 'es' }],
+    });
+    // What the panel answered on 2026-11-01: the WhatsApp inbox's manual, named by its title.
+    const manual = search('app_doc', 'app_doc:whatsapp_inbox', 'Bandeja de WhatsApp > Flujos > WHATSAPP_INBOX-F33 Enviar una plantilla');
+    expect(probeVerdict(docs, observed({ answer: 'ERPlora tiene la app Bandeja de WhatsApp: conéctala en sus Ajustes.', turns: manual }))).toEqual({
+      verdict: 'pass',
+      reasons: [],
+    });
+    const help = search('help', 'docs/es/help/businesses.md', 'Negocios > Crear un negocio');
+    expect(probeVerdict(docs, observed({ answer: 'Tus negocios están en Negocios.', turns: help })).reasons).toEqual([
       'the answer cites no documentation',
     ]);
+  });
+
+  it('passes a how-to answered from the manual of a Hub app (apps.app.doc), which is documentation too', () => {
+    const shown = observed({
+      answer: 'Ve a Bandeja de WhatsApp → Ajustes → Conectar WhatsApp.',
+      turns: { ...NO_TURNS, tools: [ran('apps.app.list', 'query'), ran('apps.app.doc', 'query')] },
+    });
+    expect(probeVerdict(docs, shown)).toEqual({ verdict: 'pass', reasons: [] });
+  });
+
+  it('fails a how-to that read no documentation, or searched it and did not cite it', () => {
+    expect(probeVerdict(docs, observed({ answer: 'Pulsa el botón.', turns: { ...NO_TURNS, tools: [ran('apps.app.list', 'query')] } })).reasons).toEqual([
+      'no documentation was read (assistant.docs.search or apps.app.doc)',
+    ]);
+    const uncited = observed({
+      answer: 'Pulsa el botón.',
+      turns: {
+        ...NO_TURNS,
+        tools: [ran('assistant.docs.search', 'query')],
+        citations: [{ source: 'help', path: 'docs/es/help/businesses.md', heading: 'Negocios > Crear un negocio', lang: 'es' }],
+      },
+    });
+    expect(probeVerdict(docs, uncited).reasons).toEqual(['the answer cites no documentation']);
   });
 });
 

@@ -8,7 +8,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { type Card, citationOf, DOCS_SEARCH, type Turns, type Verdict } from './assistant-battery.ts';
+import { type Card, type Citation, citationOf, DOCS_SEARCH, type Turns, type Verdict } from './assistant-battery.ts';
 
 /** What a probe expects the panel to do with its phrase. */
 export const PROBE_EXPECTS = ['read', 'card', 'refused', 'docs'] as const;
@@ -26,6 +26,8 @@ export const PANEL_ROLES = ['account'] as const;
 /** How much of the answer the report keeps. */
 export const ANSWER_CHARS = 300;
 const CLAIMED_CHANGE = 'claimed_change';
+/** The manual of a Hub app (`apps.app.doc`, the web's only): documentation too, read whole. */
+const APP_MANUAL = 'apps.app.doc';
 
 export interface Probe {
   /** Unique across every probe file: `<language>-<surface>-<tool>-<n>` as the generator writes it. */
@@ -251,6 +253,18 @@ function unchanged(events: string[] | null, reasons: string[]): void {
   if (events?.length) reasons.push(`changed: ${events.join(', ')}`);
 }
 
+/** Whether the answer cites what the documentation search returned: a section it names (`citationOf`, as the battery
+ *  reads it), or the title of a Hub app's manual (its first heading: the app's own name, never a common word like the
+ *  help's «Negocios»). */
+function citesDocs(answer: string, links: string[], citations: Citation[]): boolean {
+  if (citationOf(answer, links, citations).cited) return true;
+  const said = answer.toLocaleLowerCase();
+  return citations.some((citation) => {
+    const title = citation.source === 'app_doc' ? (citation.heading.split(' > ')[0]?.trim().toLocaleLowerCase() ?? '') : '';
+    return title.length >= 4 && said.includes(title);
+  });
+}
+
 /** The automatic verdict of a probe on what is objective: the tools that ran, the cards, the notices, the outbox; the
  *  model's words only to hear that it cannot. */
 export function probeVerdict(probe: Probe, observed: ProbeObserved): { verdict: Verdict; reasons: string[] } {
@@ -295,8 +309,14 @@ export function probeVerdict(probe: Probe, observed: ProbeObserved): { verdict: 
       unchanged(observed.events, reasons);
       break;
     case 'docs':
-      if (!ok(turns, DOCS_SEARCH)) reasons.push(`${DOCS_SEARCH} did not run`);
-      if (!citationOf(observed.answer, observed.links, turns.citations).cited) reasons.push('the answer cites no documentation');
+      // Grounded in ERPlora's documentation: its search, cited; or the manual of a Hub app, read whole.
+      if (ok(turns, DOCS_SEARCH)) {
+        if (!ok(turns, APP_MANUAL) && !citesDocs(observed.answer, observed.links, turns.citations)) {
+          reasons.push('the answer cites no documentation');
+        }
+      } else if (!ok(turns, APP_MANUAL)) {
+        reasons.push(`no documentation was read (${DOCS_SEARCH} or ${APP_MANUAL})`);
+      }
       noCardNorWrite(turns, reasons);
       unchanged(observed.events, reasons);
       break;

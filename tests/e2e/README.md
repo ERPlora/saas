@@ -306,13 +306,16 @@ La capa 2 de la QA del asistente (plan `docs/plans/2026-10-31-asistente-conocimi
 frases **nuevas**, escritas por quien hace la QA, para las herramientas del catálogo exportado, mandadas al chat real del
 panel con el **modelo de verdad**. Mide que el modelo generaliza más allá de las `asks` de cada operación (la capa 1,
 `base/tests/test_assistant_asks.py`, ya prueba que esas llegan). Mismas reglas que la batería: solo con
-`QA_REAL_PROVIDER=1`, nunca en la CI, pila y BD e2e propias, la misma siembra (`assistant_seed.py real`).
+`QA_REAL_PROVIDER=1`, nunca en la CI, pila y BD e2e propias, la misma siembra (`assistant_seed.py real`) y, una vez
+por BD e2e, el `register_apps` del Hub (sin los manuales de sus apps, una pregunta como «¿cómo conecto WhatsApp?» no
+tiene de dónde salir y falla sin culpa del producto).
 
 - **Sonda**: `{id, app, tool, role: "account", surface: "web"|"app", language: "en"|"es", phrase, expect, decide?, notes?}`.
   `expect` es `read` (corre su herramienta, sin tarjeta), `card` (la tarjeta de su herramienta; `decide` `cancel` por
   defecto: no cambia nada en el outbox; `confirm`: corre), `refused` (sin tarjeta ni escritura, su herramienta no corre
   y la respuesta dice que no puede: lo que la superficie no ofrece, como la tienda en la app) o `docs`
-  (`assistant.docs.search` corre y la respuesta cita la documentación). El formato es el mismo que el del Hub.
+  (`assistant.docs.search` corre y la respuesta cita la documentación, o se lee el manual de una app del Hub,
+  `apps.app.doc`). El formato es el mismo que el del Hub.
 - **Corpus**: `qa/probes/*.json`, una lista de sondas por fichero (`<idioma>-<superficie>-<día>.json`). Vitest comprueba
   que cargan, que ningún `id` se repite y que toda frase está escrita (`assistant-probes.test.ts`).
 - **Generador**: `pnpm qa:probes --language es [--surface web|app] [--apps hubs,billing] [--sample 2 | --all]
@@ -333,6 +336,7 @@ panel con el **modelo de verdad**. Mide que el modelo generaliza más allá de l
 
 ```bash
 pnpm qa:probes --language es --surface app --apps billing        # esqueleto en qa/probes/es-app-<día>.json
+# la BD e2e, el register_apps del Hub y las claves, como en la receta de la batería (arriba)
 QA_REAL_PROVIDER=1 DB_NAME=saas_e2e_qa E2E_SAAS_PORT=8530 VITE_DEV_PORT=5530 pnpm e2e:ci assistant-probes
 QA_PROBES=tests/e2e/qa/probes/es-app-2026-11-01.json QA_REAL_PROVIDER=1 … pnpm e2e:ci assistant-probes   # un fichero
 ```

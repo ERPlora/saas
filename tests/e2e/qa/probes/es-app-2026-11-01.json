@@ -8,6 +8,6 @@
     "language": "es",
     "phrase": "me han pasado el cupón PRIMAVERA20, ¿me vale para pagar menos?",
     "expect": "refused",
-    "notes": "The app's account surface sells nothing: no promotion codes there."
+    "notes": "The app's account surface sells nothing: no promotion codes there. Fails: saas#192 (the checkout explained instead)."
   }
 ]

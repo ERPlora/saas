@@ -3,7 +3,8 @@
 // `QA_PROBES`, comma-separated) is a NEW natural phrase for one tool of the exported catalogue, typed in the real panel
 // chat, and its automatic verdict (assistant-probes.ts, `probeVerdict`): «read» → its tool ran, no card; «card» → the
 // card of its tool, cancelled (nothing in the outbox) or confirmed (it ran); «refused» → no card nor write, its tool
-// not run and the answer says it cannot; «docs» → the documentation search ran and the answer cites it. Before it is
+// not run and the answer says it cannot; «docs» → the documentation search ran and the answer cites it, or the manual
+// of a Hub app was read (`apps.app.doc`; its documents come from the Hub's `register_apps`). Before it is
 // asked, a probe is checked against the catalogue of its language and surface (`probeProblems`): a phrase equal to
 // one of the tool's asks, or an expectation the catalogue contradicts, is not asked (n.a.) and fails.
 //
@@ -52,7 +53,8 @@ const OWNER = { email: 'e2e-assistant-qa-battery@example.com', password: process
 const SECRETS = [process.env.QA_QWEN_API_KEY, process.env.QA_OPENAI_API_KEY];
 
 const REAL = realProviderMode(process.env);
-/** Read when the spec loads, also in the CI where it is skipped: a broken probe file stops the run there. */
+/** Read when the spec loads, also when it is skipped: a broken probe file stops any run (the CI's Vitest checks the
+ *  corpus too, assistant-probes.test.ts). */
 const FILES = probeFiles(process.env.QA_PROBES || CORPUS);
 /** Each probe with its file, named from the SaaS (`tests/e2e/qa/probes/…`). */
 const PROBES = loadProbes(FILES).map(({ probe, source }) => ({ probe, source: relative(SAAS_DIR, resolve(source)) }));

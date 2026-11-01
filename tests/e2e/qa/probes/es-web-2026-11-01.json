@@ -21,7 +21,7 @@
     "phrase": "voy a abrir una cafetería en Sevilla que se llamará Café Triana, móntamela aquí también",
     "expect": "card",
     "decide": "cancel",
-    "notes": "High risk. A business creation in colloquial words; cancelled."
+    "notes": "High risk. A business creation in colloquial words; cancelled. Intermittent: saas#193 (asked to confirm in text, no card)."
   },
   {
     "id": "es-web-assistant.docs.search-1",
