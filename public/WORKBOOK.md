@@ -1,7 +1,7 @@
 # Workbook — Web pública (public)
 Prefijo: PUBLIC
 Alcance MVP: fase 1 (la web pública de erplora.com: lo que lee quien todavía no tiene cuenta y la puerta hacia el alta)
-Estado de la app: hecha (la web, la ayuda, el contacto, las cookies, los textos legales, la tienda de apps, las descargas y la demo); lo que se crea dentro de una demo se borra con ella desde la fase 2 (PUBLIC-F34)
+Estado de la app: completa (2026-11-01)
 
 > Manual de uso y especificación de la app `public` del SaaS (erplora.com). Cuenta lo que ve una persona que llega a
 > erplora.com sin cuenta: qué es ERPlora, cuánto cuesta, para qué negocios sirve, cómo protege los datos, en qué
@@ -180,7 +180,7 @@ llena, demasiadas desde la conexión, no disponible, terminada) con lo que se pu
 | PUBLIC-F31 | Todas las demos están ocupadas | hecho |
 | PUBLIC-F32 | Límite de demos por conexión | hecho |
 | PUBLIC-F33 | La demo terminó | hecho |
-| PUBLIC-F34 | Retirar las demos que vencen | parcial |
+| PUBLIC-F34 | Retirar las demos que vencen | hecho |
 | PUBLIC-F35 | De la demo a una cuenta de verdad | hecho |
 | PUBLIC-F36 | Pedir una demo desde otra aplicación | descartado |
 | PUBLIC-F37 | La demo no cuenta como un negocio | hecho |
@@ -653,16 +653,17 @@ Implicados: el Hub (la página de la demo terminada)
 
 ### PUBLIC-F34 Retirar las demos que vencen
 <!-- origen: old-saas:SAAS_PUBLIC-F89 -->
-Estado: parcial — lo que la persona creó dentro de la demo no se borra al retirarla: hasta la fase 2 las demos comparten los datos de las apps con las demás (ronda 2026-10-17, PLAN-SAAS §3.5 y PLAN-DB §6); la base de datos propia de cada demo, que se borra con ella, llega con la tenencia
+Estado: hecho
 Actor: sistema
 Pantalla: ninguna
 Pasos:
 1. En cuanto pasa su hora, la dirección de la demo contesta «La demo ha terminado», aunque nadie la haya retirado todavía.
-2. Cada minuto, el hub retira las demos vencidas: borra sus códigos de entrada, su usuario «Demo» y su acceso, y la marca como retirada; un fallo en una no detiene a las demás.
-3. Pasados unos días, la dirección retirada deja de existir del todo.
+2. Cada minuto, el hub retira las demos vencidas: borra todo lo que se hizo dentro de cada una (cada demo tiene su propia base de datos, que se borra entera sin tocar la de ningún otro negocio), sus códigos de entrada, su usuario «Demo» y su acceso, y la marca como retirada; un fallo en una no detiene a las demás.
+3. Una demo que aún se estaba preparando cuando terminó se retira igual, sin acabar de prepararla.
+4. Pasados unos días, la dirección retirada deja de existir del todo.
 Entra: las demos cuya hora ha pasado.
-Sale: la demo retirada, sin usuario ni forma de entrar.
-Si falla: si retirar una falla, se reintenta en la siguiente vuelta; mientras, su dirección ya dice que ha terminado.
+Sale: la demo retirada, sin nada de lo que se hizo en ella, sin usuario ni forma de entrar.
+Si falla: si retirar una falla, se reintenta más tarde, cada vez con más espera; mientras, su dirección ya dice que ha terminado.
 Implicados: el Hub (su registro de hubs y su proceso de fondo)
 
 ### PUBLIC-F35 De la demo a una cuenta de verdad
@@ -722,7 +723,9 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   `create_demo_code`). `DEMO_ENABLED` lo miran las tres vistas. Lo demás es del Hub (`base/`): el registro
   `base.Hub` con `is_demo`, `POST /internal/demos` con `MAX_CONCURRENT_DEMOS` (503 `base.demo_full`), el 410 de una
   demo vencida con su enlace a `/demo/?state=expired`, `reap_demos` en el worker cada `REAPER_INTERVAL_SECONDS` y
-  `purge_demo_data`, vacío a propósito en la fase 1 (F34 `parcial`). El prefijo `demo-` lo reserva
+  `purge_demo_data`, que borra la BD propia de la demo (`<control>_demo_<hex>`, `DROP DATABASE … WITH (FORCE)`, solo
+  esa) desde la tenencia S2a (hub#471; F34 `hecho` en CLOSE-PUBLIC). Una demo de antes de la tenencia (`db_name`
+  vacío) no tenía BD propia y no borra nada. El prefijo `demo-` lo reserva
   `live.slugs` (`validate_hub_slug(allow_demo=…)`) y `hubs.queries.base_slug` lo normaliza (F37).
 - Equivalencia de claves de la parte 3: G53 = F27; G54, G55 y G56 = F28; G57 = F29; G58 = F30; G59 = F31; G60 = F32;
   G61 = F33; G62 = F34; G63 = F35; G64 = F36; G65 = F37.

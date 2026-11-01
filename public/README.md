@@ -6,7 +6,10 @@ sin SSR y sin prefijo `/es/`; ronda 16 y spec `docs/superpowers/specs/2026-10-13
 `config/urls.py` delante del comodín de la SPA; sus primeros segmentos son `PUBLIC_PREFIXES`.
 
 - Flujos y comportamiento: `WORKBOOK.md` (y su traducción `WORKBOOK.en.md`, con el hash de la parte de usuario en la
-  cabecera, el mismo esquema que `translate_workbooks` del Hub).
+  cabecera, el mismo esquema que `translate_workbooks` del Hub). El SaaS no tiene ese comando: la traducción se
+  escribe a mano y la cabecera es el sha256 de `base.catalog.user_part` del Hub sobre este `WORKBOOK.md` (del primer
+  `## ` a «Para quien lo mantiene», sin los comentarios HTML), recalculado tras cada cambio por encima del corte.
+  La lee el asistente del panel (`assistant/knowledge.py`, `WORKBOOK_APPS`).
 - Un módulo por área: `landing.py` (portada y contacto), `pricing.py` (planes), `industries.py` (sectores),
   `product.py`, `company.py`, `compliance.py`, `resources.py`, `help.py`, `legal.py`, `declaracion.py`, `store.py`
   (tienda `/apps/` y redirecciones viejas), `appdist.py`/`downloads.py` (la app y descargas), `demo.py`,
@@ -71,7 +74,9 @@ sin SSR y sin prefijo `/es/`; ronda 16 y spec `docs/superpowers/specs/2026-10-13
   si no llega; detalle en `hubs/README.md`, «Lo que añadió la tenencia». `/try/` vuelve como
   la misma vista con canónica `/demo/` (la dirección que repartía el stack viejo, saas#1164), fuera del mapa del
   sitio. La puerta JSON (`/api/demo/spawn/`) queda descartada: nadie la llamaba y la demo solo se abre en el
-  navegador que la pide (PUBLIC-F36). Lo creado dentro de una demo se borra con ella desde la fase 2 (PUBLIC-F34).
+  navegador que la pide (PUBLIC-F36). Lo creado dentro de una demo se borra con ella: al retirarla, el Hub borra
+  su BD propia entera (`purge_demo_data`, tenencia S2a, hub#471; PUBLIC-F34 `hecho` desde CLOSE-PUBLIC, 2026-11-01).
+  El SaaS no interviene: no guarda filas de demo.
 - **Tabla de la portada (PUBLIC-F01):** «Cin7 / TradeGecko» pasa a «Zoho Inventory / Sortly» (TradeGecko lo cerró
   Intuit; las dos son las que más repiten las comparativas de 2026 para pequeños negocios, con tramos de 49 a 149 $).
 
