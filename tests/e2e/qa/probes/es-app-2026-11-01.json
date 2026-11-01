@@ -1,0 +1,13 @@
+[
+  {
+    "id": "es-app-billing.promo.check-1",
+    "app": "billing",
+    "tool": "billing.promo.check",
+    "role": "account",
+    "surface": "app",
+    "language": "es",
+    "phrase": "me han pasado el cupón PRIMAVERA20, ¿me vale para pagar menos?",
+    "expect": "refused",
+    "notes": "The app's account surface sells nothing: no promotion codes there."
+  }
+]

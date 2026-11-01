@@ -16,9 +16,8 @@
 // flow: ASSISTANT-F25 — the account asks the panel's assistant: reads alone, writes after the card.
 // flow: ASSISTANT-F26 — the account's messages of the month.
 // flow: ASSISTANT-F27 — the panel's assistant answers how-to questions from ERPlora's documentation.
-import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type { BrowserContext, Locator, Page } from '@playwright/test';
@@ -33,15 +32,13 @@ import {
   realProviderMode,
   renderReport,
   type ReportMeta,
-  summarizeTurns,
   verdictOf,
 } from '../assistant-battery';
-import { djangoEnv } from '../django-env';
+import { AssistantChat, seedRealAssistant, TURN_MS } from './assistant-chat';
 import { djangoPrint, expect, signIn, test } from './fixtures';
 import { PANEL_URL } from './project';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const SAAS_DIR = resolve(HERE, '..', '..', '..');
 const QA_DIR = join(HERE, '..', '.artifacts', 'qa');
 const RESULTS = join(QA_DIR, 'results', process.env.PW_RUN_ID ?? 'local');
 const REPORT = join(QA_DIR, 'assistant-battery-A.md');
@@ -52,10 +49,6 @@ const BASE_BUSINESS = 'QA Base';
 const NEW_BUSINESS = 'QA Asistente 31';
 const RENAMED = 'QA Asistente 31b';
 const CANCELLED_NAME = 'QA Base cancelada';
-/** How long one question may take, cards included: the real model, its tools and the documentation search. */
-const TURN_MS = 240_000;
-/** How long nothing moves before a turn counts as over. */
-const QUIET_MS = 2_500;
 /** The panel's foot speaks of the month's messages from 80 % (`usageNote` of @erplora/ui). */
 const FOOT_FROM = 0.8;
 /** The question C35 repeats to bring the month to the foot's 80 %: a read, cheap and always the same. */
@@ -78,23 +71,8 @@ test.describe.configure({ timeout: TURN_MS + 60_000 });
 
 let context: BrowserContext | undefined;
 let page: Page;
+let chat: AssistantChat;
 let seeded: Seeded;
-/** The bodies of the turns of the question being asked, and how many are still streaming. */
-let bodies: Promise<string>[] = [];
-let streaming = 0;
-
-const isTurn = (url: string): boolean => new URL(url).pathname === '/api/assistant/turn';
-
-/** `uv run <args>` from the SaaS against the run's database, its output (the keys stay in the seed's environment). */
-function uv(args: string[], extra: Record<string, string> = {}): string {
-  return execFileSync('uv', ['run', ...args], {
-    cwd: SAAS_DIR,
-    env: { ...djangoEnv(true), ...extra },
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-    timeout: 900_000,
-  }).trim();
-}
 
 /** The real providers, the account and the documentation index, once per run (a new worker after a failure reads what
  *  the first one did: the battery goes on with its businesses). */
@@ -102,11 +80,7 @@ function seedOnce(): Seeded {
   const marker = join(RESULTS, 'seed.json');
   if (existsSync(marker)) return JSON.parse(readFileSync(marker, 'utf8')) as Seeded;
   mkdirSync(RESULTS, { recursive: true });
-  const made = JSON.parse(uv(['python', 'tests/e2e/panel/assistant_seed.py', 'real', 'es']).split('\n').pop() ?? '{}') as Seeded;
-  // Idempotent: only the excerpts that changed since the last run are embedded again.
-  const indexed = uv(['python', 'manage.py', 'index_docs'], { ASSISTANT_SERVICE_PROVIDER: 'openai' })
-    .split('\n')
-    .filter((line) => /^assistant\.index_docs source=/.test(line));
+  const { seed: made, indexed } = seedRealAssistant('es');
   const counts = JSON.parse(
     djangoPrint(
       [
@@ -153,12 +127,7 @@ function writeReport(): void {
 }
 
 /** The month's messages of the account, as the panel's API says them. */
-async function usageNow(): Promise<{ used: number | null; limit: number | null }> {
-  const response = await page.request.get('/api/assistant/usage');
-  if (!response.ok()) return { used: null, limit: null };
-  const body = (await response.json()) as { used?: number; limit?: number };
-  return { used: body.used ?? null, limit: body.limit ?? null };
-}
+const usageNow = () => chat.usage();
 
 async function businesses(): Promise<{ name: string; status?: string }[]> {
   const response = await page.request.get('/api/hubs/businesses?limit=50&offset=0');
@@ -174,79 +143,27 @@ async function apiKeys(): Promise<number> {
   return rows.length;
 }
 
-/** Writes `text` in the composer and sends it, once the turn before is over. */
-async function ask(text: string): Promise<void> {
-  await expect(page.getByTestId('assistant-stop')).toHaveCount(0);
-  await page.getByTestId('assistant-input').locator('textarea').fill(text);
-  await page.getByTestId('assistant-send').click();
-}
-
 /** The card on screen: confirmed with the word it asks for when it is the item's expected write, cancelled otherwise. */
 async function decide(item: Item, card: Locator): Promise<void> {
-  const shown = summarizeTurns(await Promise.all(bodies)).cards.at(-1);
+  const shown = await chat.lastCard();
   await page.screenshot({ path: join(QA_DIR, `${item.shot}-${item.slug}-card.png`) });
   const expected = item.decision === 'confirm' && shown !== undefined && (item.operations ?? []).includes(shown.operation);
-  if (!expected) {
-    await page.getByTestId('assistant-confirm-cancel').click();
-    await expect(card).toBeHidden();
-    return;
-  }
-  const prompt = card.locator('.ep-confirm-dialog__prompt strong');
-  if (await prompt.count()) {
-    await page.getByTestId('assistant-confirm-input').locator('input').fill((await prompt.innerText()).trim());
-  }
-  await page.getByTestId('assistant-confirm-submit').click();
-  await expect(card).toBeHidden();
+  await chat.resolveCard(card, expected ? 'confirm' : 'cancel');
 }
 
-/** Follows the question's turns to their end: no turn streaming, nothing «writing», and quiet for a while. */
-async function settle(item: Item): Promise<void> {
-  const deadline = Date.now() + TURN_MS;
-  let quietSince = 0;
-  while (Date.now() < deadline) {
-    await page.waitForTimeout(400);
-    const card = page.getByTestId('assistant-confirm');
-    if (streaming === 0 && (await card.isVisible())) {
-      await decide(item, card);
-      quietSince = 0;
-      continue;
-    }
-    const busy = streaming > 0 || bodies.length === 0 || (await page.getByTestId('assistant-stop').count()) > 0;
-    if (busy) {
-      quietSince = 0;
-      continue;
-    }
-    quietSince ||= Date.now();
-    if (Date.now() - quietSince >= QUIET_MS) return;
-  }
-  throw new Error(`${item.id}: the turn did not end in ${TURN_MS / 1000} s`);
-}
-
-async function texts(locator: Locator): Promise<string[]> {
-  return (await locator.allInnerTexts()).map((value) => value.trim()).filter(Boolean);
-}
+/** Follows the question's turns to their end, each card decided as the item says. */
+const settle = (item: Item): Promise<void> => chat.settle(item.id, (card) => decide(item, card));
 
 /** What the panel showed for the question: the answer, its links, receipts, notices, failures and foot. */
 async function observe(item: Item, before: { used: number | null; limit: number | null }): Promise<Observed> {
-  const answers = page.getByTestId('assistant-bubble-assistant');
-  const links = await answers.locator('a[href]').evaluateAll((anchors) => anchors.map((anchor) => (anchor as HTMLAnchorElement).href));
-  const goes = await texts(page.getByTestId('assistant-go'));
-  const notices = await page
-    .locator('[data-testid^="assistant-notice-"]')
-    .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-testid')?.replace('assistant-notice-', '') ?? ''));
-  const foot = page.getByTestId('assistant-usage');
+  const shown = await chat.shown();
   const after = await usageNow();
   const screenshot = join(QA_DIR, `${item.shot}-${item.slug}.png`);
   await page.screenshot({ path: screenshot });
   return {
     asked: true,
-    answer: (await texts(answers)).join('\n\n'),
-    links: [...links, ...goes.map((go) => `button: ${go}`)],
-    receipts: await texts(page.getByTestId('assistant-receipt')),
-    notices,
-    failures: await texts(page.getByTestId('assistant-failure')),
-    footer: (await foot.count()) ? (await foot.innerText()).trim() : '',
-    turns: summarizeTurns(await Promise.all(bodies)),
+    ...shown,
+    turns: await chat.turns(),
     usage: { before: before.used, after: after.used, limit: after.limit ?? before.limit },
     check: null,
     screenshot,
@@ -255,11 +172,9 @@ async function observe(item: Item, before: { used: number | null; limit: number 
 
 /** A new conversation, the question asked and followed to its end, and what the panel showed. */
 async function askItem(item: Item, question = item.question): Promise<Observed> {
-  if (await page.getByTestId('assistant-new').isVisible()) await page.getByTestId('assistant-new').click();
-  await expect(page.getByTestId('assistant-bubble-user')).toHaveCount(0);
-  bodies = [];
+  await chat.newConversation();
   const before = await usageNow();
-  await ask(question);
+  await chat.send(question);
   await settle(item);
   return observe(item, before);
 }
@@ -311,23 +226,11 @@ test.beforeAll(async ({ browser }) => {
   seeded = seedOnce();
   context = await browser.newContext({ baseURL: PANEL_URL, locale: 'es-ES', viewport: { width: 1440, height: 900 } });
   page = await context.newPage();
-  page.on('request', (request) => {
-    if (isTurn(request.url())) streaming += 1;
-  });
-  const ended = (request: { url(): string }) => {
-    if (isTurn(request.url())) streaming = Math.max(0, streaming - 1);
-  };
-  page.on('requestfinished', ended);
-  page.on('requestfailed', ended);
-  page.on('response', (response) => {
-    if (isTurn(response.url())) bodies.push(response.text().catch(() => ''));
-  });
+  chat = new AssistantChat(page);
   await signIn(page.request, OWNER);
   await page.goto('/dashboard/businesses');
   await expect(page.getByText(BASE_BUSINESS).first()).toBeVisible();
-  const panel = page.getByTestId('assistant-panel');
-  if ((await panel.getAttribute('data-open')) !== 'true') await page.getByTestId('assistant-button').click();
-  await expect(panel).toHaveAttribute('data-open', 'true');
+  await chat.open();
 });
 
 test.afterAll(async () => {

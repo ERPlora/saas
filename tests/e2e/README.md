@@ -300,6 +300,43 @@ búsqueda, los recibos, los avisos, los fallos y los mensajes del mes. El veredi
 `.artifacts/qa/assistant-battery-A.md` (el informe que lee el chat supervisor, pregunta a pregunta),
 `.artifacts/qa/A<n>-<slug>.png` (y `-card.png` donde hubo tarjeta) y `.artifacts/qa/results/<ejecución>/`.
 
+## Sondas del asistente (capa 2)
+
+La capa 2 de la QA del asistente (plan `docs/plans/2026-10-31-asistente-conocimiento-y-qa.md` de erplora-next, §1.5):
+frases **nuevas**, escritas por quien hace la QA, para las herramientas del catálogo exportado, mandadas al chat real del
+panel con el **modelo de verdad**. Mide que el modelo generaliza más allá de las `asks` de cada operación (la capa 1,
+`base/tests/test_assistant_asks.py`, ya prueba que esas llegan). Mismas reglas que la batería: solo con
+`QA_REAL_PROVIDER=1`, nunca en la CI, pila y BD e2e propias, la misma siembra (`assistant_seed.py real`).
+
+- **Sonda**: `{id, app, tool, role: "account", surface: "web"|"app", language: "en"|"es", phrase, expect, decide?, notes?}`.
+  `expect` es `read` (corre su herramienta, sin tarjeta), `card` (la tarjeta de su herramienta; `decide` `cancel` por
+  defecto: no cambia nada en el outbox; `confirm`: corre), `refused` (sin tarjeta ni escritura, su herramienta no corre
+  y la respuesta dice que no puede: lo que la superficie no ofrece, como la tienda en la app) o `docs`
+  (`assistant.docs.search` corre y la respuesta cita la documentación). El formato es el mismo que el del Hub.
+- **Corpus**: `qa/probes/*.json`, una lista de sondas por fichero (`<idioma>-<superficie>-<día>.json`). Vitest comprueba
+  que cargan, que ningún `id` se repite y que toda frase está escrita (`assistant-probes.test.ts`).
+- **Generador**: `pnpm qa:probes --language es [--surface web|app] [--apps hubs,billing] [--sample 2 | --all]
+  [--out <fichero>]` lee `manage.py export_assistant_catalog` y escribe el esqueleto: N herramientas por app (2 por
+  defecto; primero las que tienen menos sondas en ese idioma y superficie), la expectativa sacada de la herramienta
+  (búsqueda de documentación → `docs`, lectura → `read`, escritura → `card` cancelada) y `refused` para las de la web
+  que la superficie no ofrece. La frase queda vacía: se escribe a mano, nunca copiada de las `asks`.
+- **La spec** (`panel/assistant-probes.spec.ts`) lee el corpus o `QA_PROBES` (ficheros o carpetas, separados por
+  comas). Antes de preguntar comprueba cada sonda contra el catálogo de su idioma y superficie: una frase igual a una
+  `ask` (sin mayúsculas, espacios ni signos de los extremos) o una expectativa que el catálogo contradice no se
+  pregunta (n.a.) y falla. El idioma de la cuenta y la superficie (`?surface=account` es la app) siguen a cada sonda;
+  los mensajes del mes se reponen al agotarse.
+- **Salida**, ignorada por git: `.artifacts/qa/probes/<ejecución>/` con el JSON y las capturas de cada sonda y
+  `report.md` (aprobadas, fallidas y n.a.; la herramienta que eligió el modelo; los primeros 300 caracteres de la
+  respuesta; claves tapadas).
+- **El ciclo**: generar el esqueleto, escribir las frases, correr la spec, abrir una issue por cada fallo de producto
+  (con su sonda como reproducción) y proponer las sondas nuevas en una PR. El Hub hace lo mismo con su pila.
+
+```bash
+pnpm qa:probes --language es --surface app --apps billing        # esqueleto en qa/probes/es-app-<día>.json
+QA_REAL_PROVIDER=1 DB_NAME=saas_e2e_qa E2E_SAAS_PORT=8530 VITE_DEV_PORT=5530 pnpm e2e:ci assistant-probes
+QA_PROBES=tests/e2e/qa/probes/es-app-2026-11-01.json QA_REAL_PROVIDER=1 … pnpm e2e:ci assistant-probes   # un fichero
+```
+
 ## Escribir una spec del panel
 
 Va en `panel/` e importa `test` y `expect` de `./fixtures`, no de `@playwright/test`:
