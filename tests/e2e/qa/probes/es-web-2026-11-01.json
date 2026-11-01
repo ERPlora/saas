@@ -1,0 +1,37 @@
+[
+  {
+    "id": "es-web-hubs.member.invite-1",
+    "app": "hubs",
+    "tool": "hubs.member.invite",
+    "role": "account",
+    "surface": "web",
+    "language": "es",
+    "phrase": "Lucía me va a echar una mano los findes en QA Base, dale acceso con lucia.ferrer@gmail.com",
+    "expect": "card",
+    "decide": "cancel",
+    "notes": "An invitation with an email and without the verb «invitar»; cancelled."
+  },
+  {
+    "id": "es-web-hubs.business.create-1",
+    "app": "hubs",
+    "tool": "hubs.business.create",
+    "role": "account",
+    "surface": "web",
+    "language": "es",
+    "phrase": "voy a abrir una cafetería en Sevilla que se llamará Café Triana, móntamela aquí también",
+    "expect": "card",
+    "decide": "cancel",
+    "notes": "High risk. A business creation in colloquial words; cancelled. Intermittent: saas#193 (asked to confirm in text, no card)."
+  },
+  {
+    "id": "es-web-assistant.docs.search-1",
+    "app": "assistant",
+    "tool": "assistant.docs.search",
+    "role": "account",
+    "surface": "web",
+    "language": "es",
+    "phrase": "oye, ¿y lo de contestar a los clientes por WhatsApp desde ERPlora cómo se monta?",
+    "expect": "docs",
+    "notes": "A how-to: grounded in the documentation and citing it."
+  }
+]

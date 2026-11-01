@@ -278,7 +278,8 @@ huellas de las preguntas, céntimos.
 - **El índice** (`assistant.DocChunk`): el `beforeAll` corre `manage.py index_docs`, que solo calcula las huellas de
   lo que cambió (la primera vez, unos 2 900 fragmentos, ~0,015 USD).
 - **Al acabar, las claves fuera**: la BD e2e las guarda cifradas con la `FERNET_KEY` de desarrollo, que es pública.
-  Se borran con `assistant.credential.delete` (como el admin) o se tira la BD (`node tests/e2e/database.ts --drop` con
+  Se borran con `assistant.credential.delete` (como el admin), con `uv run python tests/e2e/panel/assistant_seed.py
+  forget` (con el `DB_NAME` de la BD e2e; lo corre la spec de las sondas al acabar cada worker) o se tira la BD (`node tests/e2e/database.ts --drop` con
   el mismo `DB_NAME`); la siguiente ejecución las vuelve a guardar desde el entorno.
 
 Receta (desde el worktree del SaaS, con `pnpm build` hecho y el `.env` copiado; las claves, sin imprimirlas):
@@ -299,6 +300,54 @@ búsqueda, los recibos, los avisos, los fallos y los mensajes del mes. El veredi
 (herramientas, tarjetas, avisos y la API), nunca la redacción del modelo. Salida, ignorada por git:
 `.artifacts/qa/assistant-battery-A.md` (el informe que lee el chat supervisor, pregunta a pregunta),
 `.artifacts/qa/A<n>-<slug>.png` (y `-card.png` donde hubo tarjeta) y `.artifacts/qa/results/<ejecución>/`.
+
+## Sondas del asistente (capa 2)
+
+La capa 2 de la QA del asistente (plan `docs/plans/2026-10-31-asistente-conocimiento-y-qa.md` de erplora-next, §1.5):
+frases **nuevas**, escritas por quien hace la QA, para las herramientas del catálogo exportado, mandadas al chat real del
+panel con el **modelo de verdad**. Mide que el modelo generaliza más allá de las `asks` de cada operación (la capa 1,
+`base/tests/test_assistant_asks.py`, ya prueba que esas llegan). Mismas reglas que la batería: solo con
+`QA_REAL_PROVIDER=1`, nunca en la CI, pila y BD e2e propias, la misma siembra (`assistant_seed.py real`) y, una vez
+por BD e2e, el `register_apps` del Hub (sin los manuales de sus apps, una pregunta como «¿cómo conecto WhatsApp?» no
+tiene de dónde salir y falla sin culpa del producto).
+
+- **Sonda**: `{id, app, tool, role: "account", surface: "web"|"app", language: "en"|"es", phrase, expect, decide?,
+  lookups?, notes?}`, el mismo formato que el del Hub. `expect`:
+  - `read`: su herramienta es la primera que corre (pasadas las que se ofrecen siempre, `base.assistant.ALWAYS`, y
+    las `lookups` de la sonda, lecturas previas legítimas), sin tarjeta;
+  - `card`: la primera tarjeta es la de su herramienta y no sale otra; `decide` `cancel` por defecto (nada nuevo en
+    el outbox) o `confirm` (corre);
+  - `refused`: sin tarjeta ni escritura, su herramienta no corre y la respuesta dice **por qué** no puede (un permiso,
+    un rol, la app, erplora.com en el navegador); un «no puedo» suelto o «no tengo facturas» no cuentan. Es lo que la
+    superficie no ofrece, como la tienda en la app;
+  - `docs`: `assistant.docs.search` devuelve fragmentos y la respuesta nombra uno (su sección, su fichero o el título
+    del manual de una app del Hub; un enlace a la ayuda no basta), sin que corra ninguna herramienta de la cuenta.
+- **Corpus**: `qa/probes/*.json`, una lista de sondas por fichero (`<idioma>-<superficie>-<día>.json`). Vitest comprueba
+  que cargan, que ningún `id` se repite y que toda frase está escrita (`assistant-probes.test.ts`).
+- **Generador**: `pnpm qa:probes --language es [--surface web|app] [--apps hubs,billing] [--sample 2 | --all]
+  [--out <fichero>]` lee `manage.py export_assistant_catalog` y escribe el esqueleto: N herramientas por app (2 por
+  defecto; primero las que tienen menos sondas en ese idioma y superficie), la expectativa sacada de la herramienta
+  (búsqueda de documentación → `docs`, lectura → `read`, escritura → `card` cancelada) y `refused` para las de la web
+  que la superficie no ofrece. La frase queda vacía: se escribe a mano, nunca copiada de las `asks`.
+- **La spec** (`panel/assistant-probes.spec.ts`) lee el corpus o `QA_PROBES` (ficheros o carpetas, separados por
+  comas). Antes de preguntar comprueba cada sonda contra los catálogos: una frase igual a una `ask` de su herramienta
+  en cualquier idioma (sin mayúsculas, acentos, signos ni espacios de más) o una expectativa que el catálogo de su
+  superficie contradice no se pregunta (n.a.) y falla. El idioma de la cuenta y la superficie (`?surface=account` es
+  la app) siguen a cada sonda; los mensajes del mes se reponen al agotarse. Cada worker siembra las claves y la
+  cuenta y, al acabar (también tras un fallo), `assistant_seed.py forget` las borra con las cuentas de QA: no queda
+  ninguna clave de verdad en la BD e2e. `real` y `forget` se niegan fuera de una BD e2e (`saas_…_e2e…`).
+- **Salida**, ignorada por git: `.artifacts/qa/probes/<ejecución>/` con el JSON y las capturas de cada sonda y
+  `report.md` (aprobadas, fallidas y n.a.; la herramienta que eligió el modelo; los primeros 300 caracteres de la
+  respuesta; claves tapadas).
+- **El ciclo**: generar el esqueleto, escribir las frases, correr la spec, abrir una issue por cada fallo de producto
+  (con su sonda como reproducción) y proponer las sondas nuevas en una PR. El Hub hace lo mismo con su pila.
+
+```bash
+pnpm qa:probes --language es --surface app --apps billing        # esqueleto en qa/probes/es-app-<día>.json
+# la BD e2e, el register_apps del Hub y las claves, como en la receta de la batería (arriba)
+QA_REAL_PROVIDER=1 DB_NAME=saas_e2e_qa E2E_SAAS_PORT=8530 VITE_DEV_PORT=5530 pnpm e2e:ci assistant-probes
+QA_PROBES=tests/e2e/qa/probes/es-app-2026-11-01.json QA_REAL_PROVIDER=1 … pnpm e2e:ci assistant-probes   # un fichero
+```
 
 ## Escribir una spec del panel
 
