@@ -49,6 +49,10 @@ NEW_MESSAGES = [
     "database (bytes)",
     "active that day",
     "active in the 30 days",
+    # hub#603: what the Hub measures during the day, in the admin.
+    "requests",
+    "peak connections",
+    "requests with no room",
     "collected at",
     "daily usage",
     "daily usages",
@@ -140,3 +144,17 @@ def test_the_unconfirmed_refusal_is_said_in_spanish(business, owner):
         services.invitation_accept(ctx_for(ana, language="es"), ByIdIn(id=member.id))
 
     assert refused.value.message == "Confirma tu correo electrónico antes de aceptar la invitación."
+
+
+@pytest.mark.parametrize(
+    ("source", "spanish"),
+    [
+        ("requests", "peticiones"),
+        ("peak connections", "pico de conexiones"),
+        # The words of the Hub's own screen (BASE-F40): the same figure is called the same on both sides.
+        ("requests with no room", "peticiones sin hueco"),
+    ],
+)
+def test_the_figures_of_the_day_read_as_the_hub_says_them(source, spanish):
+    with translation.override("es"):
+        assert gettext(source) == spanish

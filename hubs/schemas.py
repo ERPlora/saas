@@ -719,6 +719,8 @@ class BillingProfileOut(Schema):
 #: The largest figures the columns of ``HubUsageDaily`` hold.
 MAX_BYTES = 2**63 - 1
 MAX_PEOPLE = 2**31 - 1
+MAX_REQUESTS = 2**63 - 1
+MAX_CONNECTIONS = 2**31 - 1
 
 
 class UsageGetIn(Schema):
@@ -748,13 +750,20 @@ class UsageSeriesOut(Schema):
 
 
 class HubUsageIn(Schema):
-    """One business's usage on a day, as the Hub sends it (``GET /internal/usage``, ``hubs/README.md``)."""
+    """One business's usage on a day, as the Hub sends it (``GET /internal/usage``, ``hubs/README.md``).
+
+    ``requests``, ``peak_connections`` and ``busy_requests`` are ``None`` when the Hub did not measure them, or does
+    not send them yet: not measured is never a 0. A figure this schema does not know is ignored, so the Hub can add
+    one before the SaaS reads it."""
 
     id: UUID
     s3_bytes: int = Field(ge=0, le=MAX_BYTES)
     db_bytes: int = Field(ge=0, le=MAX_BYTES)
     active_users_1d: int = Field(ge=0, le=MAX_PEOPLE)
     active_users_30d: int = Field(ge=0, le=MAX_PEOPLE)
+    requests: int | None = Field(None, ge=0, le=MAX_REQUESTS)
+    peak_connections: int | None = Field(None, ge=0, le=MAX_CONNECTIONS)
+    busy_requests: int | None = Field(None, ge=0, le=MAX_REQUESTS)
 
     @model_validator(mode="after")
     def _one_day_within_its_thirty(self):
