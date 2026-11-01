@@ -2,23 +2,30 @@
 person would type to the panel's assistant to ask for each tool (its ``asks``, ``live.assistant_qa``) reaches that
 tool among the first ten a turn offers. Each phrase goes through the selection of a turn as the turn makes it: the
 real catalogue of the person (``base.assistant.catalog`` over the context ``base.operations`` builds from the
-request), with the panel's ``ALWAYS`` and its app words; the asks of an ``ALWAYS`` tool are ranked without it, so they
-reach it on their own words. No model and no network.
+request), with the panel's ``ALWAYS``, its app words, its words (``SYNONYMS``) and its how-to search (``HOWTO``); the
+asks of an ``ALWAYS`` tool are ranked without it, so they reach it on their own words. No model and no network.
+
+How far the asks reach their tool on the other asks' words (``own_asks=False``: as a person's new phrase would) is
+printed as a warning per app and language (``AsksReach``), information only; the phrases that reach so only through
+what ``live`` reads since live#22 or the panel's words (``REACH_ON_OTHERS``) must.
 
 The panel has one role, ``account``: who may act on a business is decided inside each operation, so an owner and an
 employee of a business hold the same tools (one regression test says so). What changes a catalogue is where the panel is used: the app's account
 surface sells nothing (PLAN-SAAS §3.6 point 6), so the store's tools are not in it.
 """
 
+import warnings
+from functools import cache
+
 import pytest
 from django.conf import settings
 from django.core import checks
-from live.assistant import tool_name
-from live.assistant_qa import misses, uncovered
+from live.assistant import asks_of, tool_name
+from live.assistant_qa import Reach, misses, report, uncovered
 from live.operations import AI, registry
 
 from base import assistant
-from base.operations import UserContextBuilder
+from base.operations import ACCOUNT_ROLE, UserContextBuilder
 from hubs.tests.conftest import business, make_user, owner, plans, team  # noqa: F401 - shared fixtures
 
 LANGUAGES = ("en", "es")
@@ -26,6 +33,27 @@ LANGUAGES = ("en", "es")
 SURFACES = {"web": {}, "app": {"base.surface": "account"}}
 #: The tools of the store, offered on the web only.
 SOLD = ("billing.plan.cancel", "billing.plan.keep", "billing.store.catalog", "billing.promo.check", "apps.app.list")
+#: Asks that reach their tool on the other asks' words too only because of what ``live`` reads since live#22 or of
+#: what the panel passes a turn: its words (``base.assistant.SYNONYMS``: a person's own, other, new or old «tienda»
+#: and a «shop» are a business) and its how-to search (``HOWTO``). The first ten were kept out of the asks until then.
+REACH_ON_OTHERS = (
+    ("accounts.preferences.update", "en", "turn off the alerts from my businesses"),
+    ("accounts.preferences.update", "es", "no quiero recibir avisos de los negocios"),
+    ("accounts.preferences.get", "es", "¿tengo activados los avisos de mis negocios?"),
+    ("hubs.business.delete", "en", "get rid of Bar Manolo"),
+    ("hubs.business.delete", "es", "quiero cerrar para siempre la tienda vieja"),
+    ("hubs.address.propose", "es", "¿qué enlace tendría mi nueva tienda?"),
+    ("hubs.data_copy.list", "es", "quiero descargarme los datos de la peluquería"),
+    ("assistant.docs.search", "en", "how do I invite someone to my business?"),
+    ("assistant.docs.search", "en", "how do I connect WhatsApp to my business?"),
+    ("assistant.docs.search", "es", "¿cómo invito a un empleado?"),
+    ("hubs.business.delete", "en", "close down my old shop"),
+    ("hubs.business.list", "en", "list my shops"),
+)
+
+
+class AsksReach(UserWarning):
+    """How many asks of each app reach their tool among the first ten on the other asks' words: information only."""
 
 
 def labels_with_tools() -> set[str]:
@@ -47,15 +75,53 @@ def of_app(tools: dict, label: str) -> dict:
     return {name: op for name, op in tools.items() if op.app_label == label}
 
 
+def ranking() -> dict:
+    """How a turn ranks (``base.assistant.relevant``): with the panel's app words, its words and its how-to search."""
+    return {"top": 10, "app_words": assistant.app_words, "synonyms": assistant.SYNONYMS, "howto": assistant.HOWTO}
+
+
+def always_offered() -> set[str]:
+    return {tool_name(name) for name in assistant.ALWAYS}
+
+
 def missed(tools: dict, language: str) -> list:
     """The asks whose tool a turn does not offer among its first ten. Those of a tool always offered (``ALWAYS``) are
     ranked as any other's, with nothing put first: they reach their tool on their own words, never by its place."""
-    always = {tool_name(name) for name in assistant.ALWAYS}
-    ranked = {"language": language, "top": 10, "app_words": assistant.app_words}
+    always = always_offered()
     return [
-        *(miss for miss in misses(tools, always=assistant.ALWAYS, **ranked) if miss.tool_name not in always),
-        *(miss for miss in misses(tools, always=(), **ranked) if miss.tool_name in always),
+        *(miss for miss in misses(tools, language=language, always=assistant.ALWAYS, **ranking())
+          if miss.tool_name not in always),
+        *(miss for miss in misses(tools, language=language, always=(), **ranking()) if miss.tool_name in always),
     ]
+
+
+@cache
+def reach(language: str) -> tuple[Reach, ...]:
+    """Where each ask in ``language`` brings its tool in the catalogue of the panel's role (``role_catalog``, the turn's
+    of every account on the web), counting itself and on the other asks' words (``live.assistant_qa.report``); the
+    tools of ``ALWAYS`` ranked as in ``missed``."""
+    tools = assistant.role_catalog(ACCOUNT_ROLE)
+    always = always_offered()
+    return tuple(
+        sorted(
+            [
+                *(one for one in report(tools, language, always=assistant.ALWAYS, **ranking())
+                  if one.tool_name not in always),
+                *(one for one in report(tools, language, always=(), **ranking()) if one.tool_name in always),
+            ]
+        )
+    )
+
+
+def reach_on_others(language: str) -> dict[str, tuple[int, int]]:
+    """Per app with tools: how many of its asks in ``language`` reach their tool among the first ten on the other
+    asks' words, and of how many."""
+    found: dict[str, tuple[int, int]] = {}
+    for one in reach(language):
+        label = one.tool_name.split("__", 1)[0]
+        within, total = found.get(label, (0, 0))
+        found[label] = (within + one.unseen_within, total + len(one.asks))
+    return found
 
 
 def test_every_app_with_tools_must_say_their_asks():
@@ -94,3 +160,29 @@ def test_where_nothing_is_sold_the_store_is_not_in_the_catalogue(rf, owner):
     for sold in SOLD:
         assert sold in web
         assert sold not in app
+
+
+@pytest.mark.parametrize("language", LANGUAGES)
+def test_a_phrase_once_out_of_reach_is_an_ask_and_reaches_on_the_others_words(language):
+    tools = assistant.role_catalog(ACCOUNT_ROLE)
+    unseen = {(one.tool_name, ask): position for one in reach(language) for ask, position in zip(one.asks, one.unseen)}
+    phrases = [(name, ask) for name, lang, ask in REACH_ON_OTHERS if lang == language]
+
+    assert phrases
+    assert [ask for name, ask in phrases if ask not in asks_of(tools[name]).get(language, ())] == []
+    far = [(ask, unseen[(tool_name(name), ask)]) for name, ask in phrases]
+    assert [(ask, position) for ask, position in far if position is None or position > 10] == []
+
+
+@pytest.mark.parametrize("language", LANGUAGES)
+def test_how_many_asks_reach_on_the_others_words_is_printed_per_app(language):
+    by_app = reach_on_others(language)
+
+    assert set(by_app) == labels_with_tools()
+    assert all(0 <= within <= total for within, total in by_app.values())
+    assert sum(total for _, total in by_app.values()) == sum(
+        len(asks_of(op).get(language, ())) for op in assistant.role_catalog(ACCOUNT_ROLE).values()
+    )
+    summary = ", ".join(f"{label} {within}/{total}" for label, (within, total) in sorted(by_app.items()))
+    warnings.warn(AsksReach(f"asks reaching their tool among the first 10 on the others' words, {language}: {summary}"),
+                  stacklevel=1)

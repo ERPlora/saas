@@ -459,8 +459,14 @@ def business_change_address(ctx: OperationContext, data: BusinessAddressIn) -> d
                 "delete the test business",
                 "remove Bar Manolo, I don't need it anymore",
                 "close down my old shop",
+                "get rid of Bar Manolo",
             ),
-            "es": ("borra el negocio de pruebas", "elimina Bar Manolo", "elimina el local viejo, ya no lo uso"),
+            "es": (
+                "borra el negocio de pruebas",
+                "elimina Bar Manolo",
+                "elimina el local viejo, ya no lo uso",
+                "quiero cerrar para siempre la tienda vieja",
+            ),
         },
     ),
 )

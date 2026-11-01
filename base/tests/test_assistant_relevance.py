@@ -38,6 +38,23 @@ BLOCK_A = [
     # Of a business, not of the panel: the assistant sends the person to open it.
     ("¿Cuántas ventas hice ayer en mi negocio?", {"hubs.business.list", DOCS}),
 ]
+#: What the panel's words name (``base.assistant.SYNONYMS``), right after what is always offered: a «tienda» that is
+#: the person's, another, new or old is one of their businesses; «la tienda» alone is the panel's Store.
+PANEL_WORDS = [
+    ("borra mi tienda de pruebas", "hubs.business.delete"),
+    ("quiero abrir otra tienda", "hubs.business.create"),
+    ("cambia el nombre de mi tienda", "hubs.business.update"),
+    ("¿qué vende la tienda?", "billing.store.catalog"),
+    ("¿qué módulos hay en la tienda?", "apps.app.list"),
+]
+#: How-to questions that name what other tools do (the team, the language, the plan): they reach the documentation
+#: search as how-to questions (``base.assistant.HOWTO``), not only because it is always offered.
+HOW_TO = [
+    ("es", "¿cómo añado a alguien a mi equipo?"),
+    ("es", "¿cómo cambio el idioma del panel?"),
+    ("en", "how do I add someone to my team?"),
+    ("en", "tell me how to change my plan"),
+]
 
 
 @pytest.fixture
@@ -62,3 +79,15 @@ def test_each_question_of_the_qa_battery_is_offered_its_tools(account, index, as
 
 def test_no_tool_hands_an_api_key_out(account):
     assert "accounts.apikey.create" not in assistant.catalog(ctx_for(account, "es"))
+
+
+@pytest.mark.parametrize(("asked", "expected"), PANEL_WORDS)
+def test_the_panels_words_name_what_they_mean_there(account, asked, expected):
+    assert offered(ctx_for(account, "es"), asked)[len(assistant.ALWAYS)] == expected
+
+
+@pytest.mark.parametrize(("language", "asked"), HOW_TO)
+def test_a_how_to_question_reaches_the_documentation_search_on_its_own(account, monkeypatch, language, asked):
+    monkeypatch.setattr(assistant, "ALWAYS", ())
+
+    assert offered(ctx_for(account, language), asked)[0] == DOCS

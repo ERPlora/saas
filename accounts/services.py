@@ -398,8 +398,18 @@ def seed_demo_platform_admin(email: str, password: str):
     ai=AI(
         description="Changes the account's theme, language or alerts of its businesses.",
         asks={
-            "en": ("switch the panel to dark mode", "change my language to English", "I want the light theme back"),
-            "es": ("ponme el modo oscuro", "cámbiame el idioma a inglés", "desactiva los avisos"),
+            "en": (
+                "switch the panel to dark mode",
+                "change my language to English",
+                "I want the light theme back",
+                "turn off the alerts from my businesses",
+            ),
+            "es": (
+                "ponme el modo oscuro",
+                "cámbiame el idioma a inglés",
+                "desactiva los avisos",
+                "no quiero recibir avisos de los negocios",
+            ),
         },
     ),
 )

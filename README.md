@@ -404,6 +404,15 @@ entre las 10 primeras; una frase natural que no llega se arregla en su causa (la
 `SYNONYMS`/`VERBS` de `live`), nunca retorciendo la frase. El panel tiene un solo rol, `account`: quién puede actuar
 sobre un negocio lo decide cada operación, así que el catálogo del dueño y el del empleado son el mismo.
 
+El turno y la capa 1 ordenan con lo mismo, de `base/assistant.py`: `ALWAYS`, las palabras de pantalla del panel,
+`SYNONYMS` (lo que una palabra nombra solo en el panel: «mi tienda», «otra tienda», «la tienda vieja» y «shop» son un
+negocio; «la tienda» a secas es la pantalla Tienda; «cuenta» ya es la pantalla Cuenta y no lleva grupo) y `HOWTO` (una
+pregunta de «cómo se hace» va a la búsqueda en la documentación, `assistant.docs.search`). La capa 1 avisa
+(`AsksReach`, solo información) de cuántas frases de cada app e idioma llegan a su herramienta sin contarse a sí mismas
+(`own_asks=False`, como llegaría la frase nueva de una persona), y exige que lleguen así las que solo llegan por lo
+que `live` lee desde live#22 o por las palabras del panel (`REACH_ON_OTHERS`; diez se quedaron fuera de las frases
+hasta entonces).
+
 La capa 2 (QA con el modelo real) lee el catálogo de un rol en JSON:
 
 ```bash
