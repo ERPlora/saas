@@ -1,12 +1,16 @@
 """The Django admin shows every model of hubs (PLAN-SAAS §6: «el Django admin, lo más completo posible»)."""
 
+import html
+import re
+from datetime import date
 from decimal import Decimal
 
 import pytest
 from django.contrib.auth import get_user_model
 
 from apps.tests.factories import make_app
-from hubs.models import BusinessType, Plan, Sector
+from hubs.models import BusinessType, HubUsageDaily, Plan, Sector
+from hubs.tests.conftest import create_business
 
 pytestmark = pytest.mark.django_db
 
@@ -428,6 +432,29 @@ class TestSupport:
     def test_sees_every_model(self, support_client, plane, model):
         assert support_client.get(f"/admin/hubs/{model}/").status_code == 200
 
+    def test_sees_the_daily_usage_and_its_figures_and_writes_nothing(self, support_client, business):
+        """HUBS-F23: the staff sees its usage; only the nightly collection writes it."""
+        day = HubUsageDaily.objects.create(
+            hub=business,
+            day=date(2026, 10, 13),
+            s3_bytes=0,
+            db_bytes=0,
+            active_users_1d=0,
+            active_users_30d=0,
+            requests=1200,
+        )
+        kept = HubUsageDaily.objects.values().get(pk=day.pk)
+
+        listing = support_client.get("/admin/hubs/hubusagedaily/")
+        page = support_client.get(f"/admin/hubs/hubusagedaily/{day.pk}/change/")
+
+        assert (listing.status_code, page.status_code) == (200, 200)
+        assert '<td class="field-served">1200</td>' in listing.content.decode()
+        assert support_client.get("/admin/hubs/hubusagedaily/add/").status_code == 403
+        assert support_client.post(f"/admin/hubs/hubusagedaily/{day.pk}/change/", {"requests": 1}).status_code == 403
+        assert support_client.post(f"/admin/hubs/hubusagedaily/{day.pk}/delete/", {"post": "yes"}).status_code == 403
+        assert HubUsageDaily.objects.values().get(pk=day.pk) == kept
+
     def test_runs_no_action(self, support_client, business, hub_double):
         _act(support_client, "hub", "send_latest_state", [business])
 
@@ -474,6 +501,79 @@ class TestTheUsageAdmin:
         assert staff_client.get("/admin/hubs/hubusagedaily/add/").status_code == 403
         assert not model_admin.has_change_permission(request, day)
         assert not model_admin.has_delete_permission(request, day)
+
+
+class TestTheFiguresOfTheDayInTheAdmin:
+    """hub#603, PLAN-SAAS §28: ERPlora's team sees what the Hub measures of each business; unmeasured is never a 0."""
+
+    COLUMNS = ("served", "connections", "without_room")
+
+    def day(self, business, **figures):
+        return HubUsageDaily.objects.create(
+            hub=business,
+            day=date(2026, 10, 13),
+            s3_bytes=0,
+            db_bytes=0,
+            active_users_1d=0,
+            active_users_30d=0,
+            **figures,
+        )
+
+    def test_the_list_shows_them_as_measured_a_zero_included(self, staff_client, business):
+        self.day(business, requests=1200, peak_connections=5, busy_requests=0)
+
+        listing = staff_client.get("/admin/hubs/hubusagedaily/").content.decode()
+
+        assert '<td class="field-served">1200</td>' in listing
+        assert '<td class="field-connections">5</td>' in listing
+        assert '<td class="field-without_room">0</td>' in listing
+
+    def test_the_list_names_them(self, staff_client, business):
+        self.day(business)
+
+        listing = staff_client.get("/admin/hubs/hubusagedaily/").content.decode()
+
+        for header in ("Requests", "Peak connections", "Requests with no room"):
+            assert f">{header}</a>" in listing
+
+    def test_the_list_says_a_dash_when_not_measured_never_a_zero(self, staff_client, business):
+        self.day(business)
+
+        listing = staff_client.get("/admin/hubs/hubusagedaily/").content.decode()
+
+        for column in self.COLUMNS:
+            assert f'<td class="field-{column}">—</td>' in listing
+
+    def test_its_page_says_a_dash_when_not_measured_and_changes_nothing(self, staff_client, business):
+        day = self.day(business, peak_connections=5)
+
+        page = staff_client.get(f"/admin/hubs/hubusagedaily/{day.pk}/change/").content.decode()
+
+        assert re.search(r'field-requests.*?<div class="readonly">—</div>', page, re.S)
+        assert re.search(r'field-peak_connections.*?<div class="readonly">5</div>', page, re.S)
+        assert re.search(r'field-busy_requests.*?<div class="readonly">—</div>', page, re.S)
+        assert 'name="requests"' not in page
+
+    @pytest.mark.parametrize(
+        ("column", "field"),
+        [("served", "requests"), ("connections", "peak_connections"), ("without_room", "busy_requests")],
+    )
+    def test_its_first_click_says_who_is_highest_and_leaves_the_unmeasured_last(
+        self, staff_client, make_user, plans, column, field
+    ):
+        """Who ran out of room is what the team comes here for: a column of «—» on top would hide it."""
+        unmeasured = create_business(make_user("unmeasured@example.com"), name="Unmeasured")
+        quiet = create_business(make_user("quiet@example.com"), name="Quiet")
+        busy = create_business(make_user("busy@example.com"), name="Busy")
+        self.day(unmeasured)
+        self.day(quiet, **{field: 0})
+        self.day(busy, **{field: 9})
+        page = staff_client.get("/admin/hubs/hubusagedaily/").content.decode()
+        link = re.search(rf'column-{column}.*?href="(\?o=[^"]*)"', page, re.S).group(1)
+
+        listing = staff_client.get(f"/admin/hubs/hubusagedaily/{html.unescape(link)}").content.decode()
+
+        assert listing.index(f">{busy}<") < listing.index(f">{quiet}<") < listing.index(f">{unmeasured}<")
 
 
 # --- HUBS-F36: the taxonomy's admin speaks the staff's language --------------------------------------------------

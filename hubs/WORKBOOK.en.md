@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:474f068b9d4d968bedb4dbafa7efce71bb680b1963346ecd842e728315b78ae2 -->
+<!-- generated from WORKBOOK.md sha256:153bd677ea0656dfad1941196cbc6a237a8b5291d2e83970e36e2f2236e5e804 -->
 
 ## What it is for and who it is for
 
@@ -457,23 +457,25 @@ Screen: Business summary
 Steps:
 1. On the business's page, the header says its status ("Active", "Preparing", "Payment due", "Suspended" or deleted) and the Summary, its plan with the devices, the apps it can have turned on at once and the people against the seats.
 2. The "Usage" card ("How your business is doing in ERPlora") shows the "Storage" used of its plan's space, with a warning when it nears the limit, and the people "Active yesterday" and over the "Last 30 days", with "Yesterday's data: updated every night.".
+3. This card does not show each day's requests, the peak connections or the requests with no room: those are for ERPlora's team, in its admin (HUBS-F22), and for whoever runs the business, in System · Resources of its hub (BASE-F40).
 In: the business and what it measured last night.
 Out: nothing is saved; the page changes by itself when a new night arrives.
 If it fails: without any night measured, "No data yet. The figures arrive every night, from the first one after the business is created."; with data of a day before yesterday, "Data from …: updated every night.". A manager or an employee do not see the business's page, only "Open".
-Involved: the business (measures its usage)
+Involved: the business (BASE-F40: measures its usage and shows those figures to whoever runs it)
 
 ### HUBS-F22 Collect every night the usage of each business
 Status: done
 Actor: system
 Screen: none
 Steps:
-1. Every night, erplora.com asks the businesses' service what it measured of each one the day before: the space of its files, that of its database and the people who came in that day and over the last 30.
+1. Every night, erplora.com asks the businesses' service what it measured of each one the day before: the space of its files, that of its database, the people who came in that day and over the last 30, its requests that day, the peak connections and the requests with no room.
 2. It keeps one day per business; if it collects a day already kept again, it replaces the figures only if they changed, and tells that business's page.
 3. A day that was missed is collected later, asking for it by its date.
+4. ERPlora's team sees each day in its admin, in "Daily usages": besides the above, "Requests", "Peak connections" and "Requests with no room". On erplora.com they are the admin's only: the business's panel does not show them (HUBS-F21).
 In: the night's measurement, page by page.
 Out: the usage of each business and day. Records `hubs.business.usage_collected`.
-If it fails: if the service does not answer or refuses, the pass ends with an error and alerts; a broken row does not stop the others; a business erplora.com did not sell is noted without an error. Two passes at once do not step on each other.
-Involved: the business (measures its usage)
+If it fails: if the service does not answer or refuses, the pass ends with an error and alerts; a broken row does not stop the others; a business erplora.com did not sell is noted without an error. Two passes at once do not step on each other. A figure the service did not measure, or does not send yet, is kept without a figure and the admin says "—", never a 0.
+Involved: the business (BASE-F40: measures its usage and serves it)
 
 ### HUBS-F23 ERPlora's staff acting on a business from the admin
 Status: done
