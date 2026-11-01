@@ -228,7 +228,12 @@ def receives_business_notices(user) -> bool:
         description="The account's preferences: theme, language and alerts of its businesses.",
         asks={
             "en": ("what language is my account in?", "do I get alerts from my businesses?", "show my preferences"),
-            "es": ("¿en qué idioma tengo la cuenta?", "¿qué preferencias tengo?", "¿qué tema tengo puesto?"),
+            "es": (
+                "¿en qué idioma tengo la cuenta?",
+                "¿qué preferencias tengo?",
+                "¿qué tema tengo puesto?",
+                "¿tengo activados los avisos de mis negocios?",
+            ),
         },
     ),
 )

@@ -7,9 +7,10 @@ write and its word, the tool run as the person); this module gives them the pane
 - **Its tools** (``catalog``) are the operations of the SaaS's apps (all of them platform apps, always on) whose
   ``ai=`` is an ``AI(...)`` that this account may run; never the assistant's own. Where nothing is sold (the app's
   account surface, ``base.surface``) neither are the store's (``WEB_ONLY``). A turn offers only the few of what was
-  asked (``relevant``), the account's businesses and the documentation search first (``ALWAYS``). The same tools of a
-  role (``role_catalog``) are what the assistant's QA reads (``export_assistant_catalog``), each with what people type
-  to ask for it (its ``asks``, ``base/tests/test_assistant_asks.py``).
+  asked (``relevant``, in the panel's words: ``SYNONYMS``, ``HOWTO``), the account's businesses and the documentation
+  search first (``ALWAYS``). The same tools of a role (``role_catalog``) are what the assistant's QA reads
+  (``export_assistant_catalog``), each with what people type to ask for it (its ``asks``,
+  ``base/tests/test_assistant_asks.py``).
 - **A write never runs without the person's yes**: its card (``card``) names where it happens by the panel's screen
   (``screen``) and a business by its name (``PanelWords``), never by its id.
 - **The gateway is in this process** (``assistant.turn``): no ``/internal`` call nor signature. ``turn_frames``
@@ -53,6 +54,17 @@ logger = logging.getLogger(__name__)
 #: ERPlora's documentation, which the instructions send every how-to question to and whose words a question rarely
 #: shares (ASSISTANT-F27).
 ALWAYS = ("hubs.business.list", "assistant.docs.search")
+#: What a word names in the panel and nowhere else (``live.assistant.relevant``'s ``synonyms``), for a turn and the
+#: assistant's QA. A person's own, other, new or old «tienda» is one of their businesses, as a «shop» is: the panel's
+#: Store is one and is «la tienda» alone (its screen's name, ``app_words``), and the English panel calls it «Store».
+#: «Cuenta» needs no group here: it is the Account screen's name, so it already names the person's account.
+SYNONYMS = (
+    ("negocio", "business", "shop", "mi tienda", "mis tiendas", "nuestra tienda", "otra tienda", "nueva tienda",
+     "tienda nueva", "tienda vieja"),
+)
+#: The tool a how-to question («how do I…?», «¿cómo invito…?») is for (``relevant``'s ``howto``): the search in
+#: ERPlora's documentation, which then reaches it on being such a question, not only on being always offered.
+HOWTO = ("assistant.docs.search",)
 #: The panel's screen where each app's actions are done; the store's of billing are the store's (``screen``).
 SCREEN_OF_APP = {"hubs": "businesses", "accounts": "account", "billing": "billing", "apps": "store"}
 #: What billing does in the store: the catalogue, its promo codes and changing a plan.
@@ -142,8 +154,9 @@ def app_words(label: str, language: str) -> frozenset[str]:
 
 
 def relevant(tools: dict[str, Operation], texts: Iterable[str], language: str) -> list[Operation]:
-    """The tools of what ``texts`` ask, best first, at most ``MAX_TOOLS``: ``ALWAYS`` first."""
-    return shared.relevant(tools, texts, language, always=ALWAYS, app_words=app_words)
+    """The tools of what ``texts`` ask, best first, at most ``MAX_TOOLS``: ``ALWAYS`` first, in the panel's words
+    (``SYNONYMS``) and with how-to questions sent to the documentation search (``HOWTO``)."""
+    return shared.relevant(tools, texts, language, always=ALWAYS, app_words=app_words, synonyms=SYNONYMS, howto=HOWTO)
 
 
 # ── The card of a write in the panel's words ─────────────────────────────────────────────────────────────────────
