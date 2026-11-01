@@ -300,7 +300,7 @@ Parte 5 de 5: cada flujo `hecho` contra su código, con mutantes ejecutados; los
 - Las dos de uso: propietario y administradores (como la página del negocio; matriz de
   `tests/test_permission_matrix.py`), vivas, en `/api/hubs/usage` y `/api/hubs/usage/series`, y abiertas a una
   clave de API con `hubs.read`.
-- **Admin**: `HubUsageDaily` de solo lectura (solo superusuarios; `support` no lo ve todavía), con los tamaños
+- **Admin**: `HubUsageDaily` de solo lectura (superusuarios y, desde la migración `0024`, `support`), con los tamaños
   legibles, la BD incluida, búsqueda por dirección o nombre y navegación por días. Enseña además «Peticiones», «Pico
   de conexiones» y «Peticiones sin hueco» (hub#603): «—» si el Hub no las midió, nunca un 0; el primer clic en su
   columna ordena de mayor a menor, con las sin medir al final.
@@ -356,7 +356,6 @@ X-Erplora-Timestamp, X-Erplora-Signature (v1) y X-Erplora-Signature-V2 (cubre m�
 - **`aws-next`**: programar `python manage.py collect_hub_usage` cada noche en `scheduler.tf` (`saas-cron`), después
   de la medición del Hub (propuesta: 01:15 UTC; `push_hub_snapshots` va a las 00:30).
 - La gráfica del panel con `hubs.usage.series` (bloque 8 de PLAN-SAAS; no está en la maqueta).
-- `support` sin acceso al uso en el admin (si se quiere, migración de datos como `0007`).
 
 ## Lo que añadió la tenencia (2026-10-30): alta y demo asíncronas, y las copias de los datos
 

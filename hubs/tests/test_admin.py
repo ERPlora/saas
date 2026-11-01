@@ -432,6 +432,29 @@ class TestSupport:
     def test_sees_every_model(self, support_client, plane, model):
         assert support_client.get(f"/admin/hubs/{model}/").status_code == 200
 
+    def test_sees_the_daily_usage_and_its_figures_and_writes_nothing(self, support_client, business):
+        """HUBS-F23: the staff sees its usage; only the nightly collection writes it."""
+        day = HubUsageDaily.objects.create(
+            hub=business,
+            day=date(2026, 10, 13),
+            s3_bytes=0,
+            db_bytes=0,
+            active_users_1d=0,
+            active_users_30d=0,
+            requests=1200,
+        )
+        kept = HubUsageDaily.objects.values().get(pk=day.pk)
+
+        listing = support_client.get("/admin/hubs/hubusagedaily/")
+        page = support_client.get(f"/admin/hubs/hubusagedaily/{day.pk}/change/")
+
+        assert (listing.status_code, page.status_code) == (200, 200)
+        assert '<td class="field-served">1200</td>' in listing.content.decode()
+        assert support_client.get("/admin/hubs/hubusagedaily/add/").status_code == 403
+        assert support_client.post(f"/admin/hubs/hubusagedaily/{day.pk}/change/", {"requests": 1}).status_code == 403
+        assert support_client.post(f"/admin/hubs/hubusagedaily/{day.pk}/delete/", {"post": "yes"}).status_code == 403
+        assert HubUsageDaily.objects.values().get(pk=day.pk) == kept
+
     def test_runs_no_action(self, support_client, business, hub_double):
         _act(support_client, "hub", "send_latest_state", [business])
 
