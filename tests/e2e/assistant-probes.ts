@@ -271,11 +271,11 @@ function unchanged(events: string[] | null, reasons: string[]): void {
   if (events?.length) reasons.push(`changed: ${events.join(', ')}`);
 }
 
-/** Whether the answer cites what the documentation search returned: a section it names (`citationOf`, as the battery
- *  reads it), or the title of a Hub app's manual (its first heading: the app's own name, never a common word like the
- *  help's «Negocios»). */
-function citesDocs(answer: string, links: string[], citations: Citation[]): boolean {
-  if (citationOf(answer, links, citations).cited) return true;
+/** Whether the answer cites what the documentation search returned: a section it names or its file (`citationOf`,
+ *  as the battery reads it, but never a mere link to the help, which a from-memory answer can carry), or the title of
+ *  a Hub app's manual (its first heading: the app's own name, never a common word like the help's «Negocios»). */
+function citesDocs(answer: string, citations: Citation[]): boolean {
+  if (citationOf(answer, [], citations).cited) return true;
   const said = answer.toLocaleLowerCase();
   return citations.some((citation) => {
     const title = citation.source === 'app_doc' ? (citation.heading.split(' > ')[0]?.trim().toLocaleLowerCase() ?? '') : '';
@@ -342,7 +342,7 @@ export function probeVerdict(probe: Probe, observed: ProbeObserved, always: read
       // published reads (its apps, plans) may help, a tool of the account may not.
       if (!ok(turns, DOCS_SEARCH)) reasons.push(`${DOCS_SEARCH} did not run`);
       else if (!turns.citations.length) reasons.push('the documentation search returned nothing');
-      else if (!citesDocs(observed.answer, observed.links, turns.citations)) reasons.push('the answer cites no documentation');
+      else if (!citesDocs(observed.answer, turns.citations)) reasons.push('the answer cites no documentation');
       const account = unique(turns.tools.filter((tool) => !CATALOGUE.has(tool.name)).map((tool) => tool.name));
       if (account.length) reasons.push(`a tool of the account ran: ${account.join(', ')}`);
       if (turns.cards.length) reasons.push(`a card showed: ${cardsOf(turns)}`);
@@ -367,6 +367,12 @@ export function redact(text: string, secrets: (string | undefined)[] = []): stri
   }
   for (const [shape, replacement] of SECRET_SHAPES) clean = clean.replace(shape, replacement);
   return clean;
+}
+
+/** `error` (a failed command's, say) as an `Error` whose message carries no key: what reaches the console. */
+export function redactedError(error: unknown, secrets: (string | undefined)[] = []): Error {
+  const message = error instanceof Error ? error.message : String(error);
+  return new Error(redact(message, secrets));
 }
 
 /** A value inside a cell of a Markdown table: its pipes escaped, its lines kept with `<br>`. */

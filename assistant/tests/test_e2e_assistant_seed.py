@@ -123,3 +123,47 @@ def test_forget_and_real_refuse_any_database_but_the_run_s_own_e2e_one(seed):
         seed.e2e_only("real", "saas")
     seed.e2e_only("forget", "saas_e2e_8630")
     seed.e2e_only("real", "saas_e2e_qa2")
+
+
+def _named(settings, name: str) -> None:
+    """The configured database named ``name`` for the seed's guard (the test's connection is not touched)."""
+    settings.DEBUG = True
+    settings.DATABASES = {**settings.DATABASES, "default": {**settings.DATABASES["default"], "NAME": name}}
+
+
+def _left() -> tuple[list[str], list[str], list[str]]:
+    from assistant.models import AIProviderCredential
+
+    return (
+        sorted(get_user_model().objects.filter(email__startswith="e2e-assistant-").values_list("email", flat=True)),
+        sorted(Hub.objects.filter(slug__startswith="e2e-assistant-").values_list("slug", flat=True)),
+        sorted(AIProviderCredential.objects.values_list("provider__slug", flat=True)),
+    )
+
+
+@pytest.mark.filterwarnings("ignore:Overriding setting DATABASES:UserWarning")
+@pytest.mark.parametrize("action", ["forget", "real"])
+def test_main_refuses_the_shared_database_and_deletes_nothing(seed, settings, action):
+    seed.panel(ADDRESS)
+    for slug in ("qwen", "openai"):
+        _keyed(slug)
+    before = _left()
+    _named(settings, "saas")
+
+    with pytest.raises(SystemExit, match=f"{action}: only on the run's own e2e database .* never on 'saas'"):
+        seed.main(action, "", "es")
+
+    assert _left() == before
+    assert before[0] and before[1]
+
+
+@pytest.mark.filterwarnings("ignore:Overriding setting DATABASES:UserWarning")
+def test_main_forget_on_an_e2e_database_removes_the_qa_accounts_their_businesses_and_the_real_keys(seed, settings):
+    seed.panel(ADDRESS)
+    for slug in ("qwen", "openai", "mistral"):
+        _keyed(slug)
+    _named(settings, "saas_e2e_8630")
+
+    seed.main("forget", "", "es")
+
+    assert _left() == ([], [], ["mistral"])

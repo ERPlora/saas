@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import type { Locator, Page } from '@playwright/test';
 
 import { type Card, summarizeTurns, type Turns } from '../assistant-battery';
+import { redactedError } from '../assistant-probes';
 import { djangoEnv } from '../django-env';
 import { expect } from './fixtures';
 
@@ -19,15 +20,20 @@ export const TURN_MS = 240_000;
 /** How long nothing moves before a turn counts as over. */
 const QUIET_MS = 2_500;
 
-/** `uv run <args>` from the SaaS against the run's database, its output (the keys stay in the seed's environment). */
+/** `uv run <args>` from the SaaS against the run's database, its output (the keys stay in the seed's environment);
+ *  a failure's message (with the command's output) reaches the console without the real keys. */
 export function uvRun(args: string[], extra: Record<string, string> = {}): string {
-  return execFileSync('uv', ['run', ...args], {
-    cwd: SAAS_DIR,
-    env: { ...djangoEnv(true), ...extra },
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-    timeout: 900_000,
-  }).trim();
+  try {
+    return execFileSync('uv', ['run', ...args], {
+      cwd: SAAS_DIR,
+      env: { ...djangoEnv(true), ...extra },
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 900_000,
+    }).trim();
+  } catch (error) {
+    throw redactedError(error, [process.env.QA_QWEN_API_KEY, process.env.QA_OPENAI_API_KEY]);
+  }
 }
 
 /** What `assistant_seed.py real` made: the account, its business and the models. */

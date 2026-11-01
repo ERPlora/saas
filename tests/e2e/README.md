@@ -321,7 +321,7 @@ tiene de dónde salir y falla sin culpa del producto).
     un rol, la app, erplora.com en el navegador); un «no puedo» suelto o «no tengo facturas» no cuentan. Es lo que la
     superficie no ofrece, como la tienda en la app;
   - `docs`: `assistant.docs.search` devuelve fragmentos y la respuesta nombra uno (su sección, su fichero o el título
-    del manual de una app del Hub), sin que corra ninguna herramienta de la cuenta.
+    del manual de una app del Hub; un enlace a la ayuda no basta), sin que corra ninguna herramienta de la cuenta.
 - **Corpus**: `qa/probes/*.json`, una lista de sondas por fichero (`<idioma>-<superficie>-<día>.json`). Vitest comprueba
   que cargan, que ningún `id` se repite y que toda frase está escrita (`assistant-probes.test.ts`).
 - **Generador**: `pnpm qa:probes --language es [--surface web|app] [--apps hubs,billing] [--sample 2 | --all]

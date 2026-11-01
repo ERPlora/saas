@@ -24,6 +24,7 @@ import {
   type ProbeResult,
   probeVerdict,
   redact,
+  redactedError,
   refusalIn,
   renderProbeReport,
   sameAsk,
@@ -439,12 +440,31 @@ describe('probeVerdict', () => {
     expect(probeVerdict(docs, empty, ALWAYS).reasons).toEqual(['the documentation search returned nothing']);
   });
 
+  it('does not take a link to the help for a citation: the answer has to name what the search returned', () => {
+    const fromMemory = observed({
+      answer: 'Pulsa el botón de arriba; tienes más en la ayuda.',
+      links: ['https://x/help'],
+      turns: { ...NO_TURNS, tools: [ran('assistant.docs.search', 'query')], citations: [HELP] },
+    });
+    expect(probeVerdict(docs, fromMemory, ALWAYS).reasons).toEqual(['the answer cites no documentation']);
+  });
+
   it('fails a how-to when a tool of the account ran', () => {
     const shown = observed({
       answer: 'Ve a **Crear un negocio**.',
       turns: { ...NO_TURNS, tools: [ran('assistant.docs.search', 'query'), ran('hubs.business.list', 'query')], citations: [HELP] },
     });
     expect(probeVerdict(docs, shown, ALWAYS).reasons).toEqual(['a tool of the account ran: hubs.business.list']);
+  });
+});
+
+describe('redactedError', () => {
+  it('keeps the message of a failed command without the keys it might carry', () => {
+    const error = new Error('Command failed: uv run …\nQA_QWEN_API_KEY=qwen-secret-value-123 sk-abcdefghijklmnopqrstuvwx');
+    const clean = redactedError(error, ['qwen-secret-value-123']);
+    expect(clean).toBeInstanceOf(Error);
+    expect(clean.message).toBe('Command failed: uv run …\nQA_QWEN_API_KEY=[redacted] [redacted]');
+    expect(redactedError('plain text', []).message).toBe('plain text');
   });
 });
 
