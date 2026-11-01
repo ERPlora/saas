@@ -1090,6 +1090,15 @@ msgstr "activos ese día"
 msgid "active in the 30 days"
 msgstr "activos en los 30 días"
 
+msgid "requests"
+msgstr "peticiones"
+
+msgid "peak connections"
+msgstr "pico de conexiones"
+
+msgid "requests with no room"
+msgstr "peticiones sin hueco"
+
 #: models.py:826
 msgid "collected at"
 msgstr "recogido el"

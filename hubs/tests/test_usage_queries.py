@@ -18,7 +18,16 @@ from pydantic import ValidationError
 
 from hubs import queries
 from hubs.models import HubUsageDaily, Plan, Subscription
-from hubs.schemas import ByIdIn, UsageGetIn, UsageSeriesIn
+from hubs.schemas import (
+    ActiveUsersOut,
+    ByIdIn,
+    StorageUsageOut,
+    UsageGetIn,
+    UsageOut,
+    UsagePointOut,
+    UsageSeriesIn,
+    UsageSeriesOut,
+)
 from hubs.tests.conftest import ctx_for
 
 pytestmark = pytest.mark.django_db
@@ -51,6 +60,15 @@ def on_plan(hub, slug):
 
 def usage(user, hub):
     return queries.usage_get(ctx_for(user), UsageGetIn(business_id=hub.id)).model_dump()
+
+
+def keys_of(answer) -> set[str]:
+    """Every key of a JSON answer, at any depth."""
+    if isinstance(answer, dict):
+        return set(answer) | {key for value in answer.values() for key in keys_of(value)}
+    if isinstance(answer, list):
+        return {key for value in answer for key in keys_of(value)}
+    return set()
 
 
 class TestUsageGet:
@@ -216,6 +234,56 @@ class TestSeries:
             queries.usage_series(
                 ctx_for(team["employee"]), UsageSeriesIn(business_id=business.id)
             )
+
+
+class TestTheCustomerNeverSeesTheFiguresOfTheDay:
+    """PLAN-SAAS §28: requests, peak connections and requests without room are for ERPlora's admin only: the panel
+    of erplora.com keeps its «Usage» card, and whoever runs the business reads them in its Hub (BASE-F40)."""
+
+    NAMES = {"requests", "peak_connections", "busy_requests"}
+    #: Figures nothing else on these pages can be by chance.
+    MEASURED = {"requests": 7_654_321, "peak_connections": 6_543_217, "busy_requests": 5_432_173}
+
+    @pytest.fixture
+    def measured(self, business):
+        HubUsageDaily.objects.create(
+            hub=business,
+            day=yesterday(),
+            s3_bytes=1,
+            db_bytes=1,
+            active_users_1d=1,
+            active_users_30d=1,
+            **self.MEASURED,
+        )
+
+    @pytest.mark.parametrize(
+        "schema", [UsageOut, UsagePointOut, UsageSeriesOut, StorageUsageOut, ActiveUsersOut]
+    )
+    def test_the_answers_have_no_place_for_them(self, schema):
+        assert not self.NAMES & set(schema.model_fields)
+
+    @pytest.mark.usefixtures("measured")
+    @pytest.mark.parametrize(
+        ("path", "params"),
+        [
+            ("/api/hubs/usage", {}),
+            ("/api/hubs/usage/series", {"days": 7}),
+            ("/api/hubs/businesses/detail", None),
+        ],
+    )
+    def test_no_page_of_the_panel_answers_with_them(
+        self, client, business, owner, path, params
+    ):
+        client.force_login(owner)
+        query = {"id": str(business.id)} if params is None else {"business_id": str(business.id), **params}
+
+        response = client.get(path, query, HTTP_HOST=HOST)
+
+        assert response.status_code == 200
+        assert "on_day" in keys_of(response.json())  # the day is there, and these figures are not
+        assert not self.NAMES & keys_of(response.json())
+        for figure in self.MEASURED.values():
+            assert str(figure) not in response.content.decode()
 
 
 class TestOverHttp:

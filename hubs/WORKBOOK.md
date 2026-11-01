@@ -490,10 +490,11 @@ Pantalla: Resumen del negocio
 Pasos:
 1. En la página del negocio, la cabecera dice su estado («Activo», «Preparando», «Pago pendiente», «Suspendido» o eliminado) y el Resumen, su plan con los dispositivos, las apps que puede tener activadas a la vez y las personas frente a las plazas.
 2. La tarjeta «Uso» («Cómo va tu negocio en ERPlora») enseña el «Almacenamiento» usado del espacio de su plan, con aviso al acercarse al tope, y las personas «Activos ayer» y de los «Últimos 30 días», con «Datos de ayer: se actualizan cada noche.».
+3. Esta tarjeta no enseña las peticiones de cada día, el pico de conexiones ni las peticiones sin hueco: son para el equipo de ERPlora, en su admin (HUBS-F22), y para quien lleva el negocio, en Sistema · Recursos de su hub (BASE-F40).
 Entra: el negocio y lo que midió la última noche.
 Sale: nada se guarda; la página cambia sola cuando llega una noche nueva.
 Si falla: sin ninguna noche medida, «Sin datos todavía. Las cifras llegan cada noche, desde la primera tras crear el negocio.»; con datos de un día anterior a ayer, «Datos del …: se actualizan cada noche.». Un gerente o un empleado no ven la página del negocio, solo «Abrir».
-Implicados: el negocio (mide su uso)
+Implicados: el negocio (BASE-F40: mide su uso y enseña esas cifras a quien lo lleva)
 
 ### HUBS-F22 Recoger cada noche el uso de cada negocio
 <!-- origen: old-saas:SAAS_DASHBOARD-F57 -->
@@ -501,13 +502,14 @@ Estado: parcial — erplora.com ya lo pide cada noche, pero el servicio de los n
 Actor: sistema
 Pantalla: ninguna
 Pasos:
-1. Cada noche, erplora.com pide al servicio de los negocios lo que midió de cada uno el día anterior: el espacio de sus ficheros, el de su base de datos y las personas que entraron ese día y en los últimos 30.
+1. Cada noche, erplora.com pide al servicio de los negocios lo que midió de cada uno el día anterior: el espacio de sus ficheros, el de su base de datos, las personas que entraron ese día y en los últimos 30, sus peticiones de ese día, el pico de conexiones y las peticiones que se quedaron sin hueco.
 2. Guarda un día por negocio; si vuelve a recoger un día ya guardado, sustituye las cifras solo si cambiaron, y avisa a la página de ese negocio.
 3. Un día que se perdió se recoge después, pidiéndolo por su fecha.
+4. El equipo de ERPlora ve cada día en su admin, en «Usos diarios»: además de lo anterior, «Peticiones», «Pico de conexiones» y «Peticiones sin hueco». En erplora.com son solo del admin: el panel del negocio no las enseña (HUBS-F21).
 Entra: la medición de la noche, página a página.
 Sale: el uso de cada negocio y día. Anota `hubs.business.usage_collected`.
-Si falla: si el servicio no contesta o se niega, la pasada termina con error y avisa; una fila rota no para las demás; un negocio que erplora.com no vendió se apunta sin error. Dos pasadas a la vez no se pisan.
-Implicados: el negocio (mide su uso)
+Si falla: si el servicio no contesta o se niega, la pasada termina con error y avisa; una fila rota no para las demás; un negocio que erplora.com no vendió se apunta sin error. Dos pasadas a la vez no se pisan. Una cifra que el servicio no midió, o que aún no manda, se guarda sin cifra y el admin dice «—», nunca un 0.
+Implicados: el negocio (BASE-F40: mide su uso y lo sirve)
 
 ### HUBS-F23 Actuar el personal de ERPlora sobre un negocio desde el admin
 <!-- origen: fi:saas/django-admin#admin-hub fi:saas/hubs#administracion-de-hubs-django-admin old-saas:SAAS_DASHBOARD-F41 -->
