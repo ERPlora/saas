@@ -3,14 +3,13 @@
 // screens, no microphone (D9) and nobody upgrading (an account has no plan for its 30 messages).
 // clock: data only — no code under test compares these dates with now.
 import { createShellSession, type SessionMe } from '@erplora/ui/shell';
-import { assistantMessages } from '@erplora/ui/components';
 import type { LiveClient } from '@erplora/ui/sdk';
 import { describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 
 import en from '../../frontend/locale/en.json';
 import es from '../../frontend/locale/es.json';
-import { actionKey, ASK, ASSISTANT_MESSAGES, PANEL_SCREENS, panelScreenKey, placeKey, SAAS_ASSISTANT } from './options';
+import { actionKey, ASK, PANEL_SCREENS, panelScreenKey, placeKey, SAAS_ASSISTANT } from './options';
 
 type Catalogue = { [key: string]: string | Catalogue };
 
@@ -85,6 +84,15 @@ describe('SAAS_ASSISTANT', () => {
   it("offers nobody «Upgrade plan»: the account's messages are not a plan's, not even a superuser's", () => {
     expect(SAAS_ASSISTANT.canUpgrade!(sessionWith(['*']))).toBe(false);
     expect(SAAS_ASSISTANT.planUrl).toBeUndefined();
+  });
+
+  it('under a spent allowance sends to the business, never to a plan nobody offers (ui#49)', () => {
+    expect(SAAS_ASSISTANT.spentNoteKey).toBe('saas.assistant.errors.quotaSpentAccount');
+    for (const catalogue of [en, es]) {
+      const line = lookup(catalogue as unknown as Catalogue, SAAS_ASSISTANT.spentNoteKey!);
+      expect(line).toBeTruthy();
+      expect(line).not.toMatch(/plan/i);
+    }
   });
 
   it("asks nobody's approval: the panel has no manager's approval (the Hub's)", () => {
@@ -162,23 +170,5 @@ describe('panelScreenKey', () => {
     expect(panelScreenKey('/dashboard/businesses/x')).toBeNull();
     expect(panelScreenKey('/')).toBeNull();
     expect(panelScreenKey('/settings')).toBeNull();
-  });
-});
-
-describe('ASSISTANT_MESSAGES', () => {
-  it("are the chat's own words, in en and es", () => {
-    for (const language of ['en', 'es'] as const) {
-      expect({ ...ASSISTANT_MESSAGES[language].assistant, askOwner: '' }).toEqual({
-        ...assistantMessages[language].assistant,
-        askOwner: '',
-      });
-    }
-  });
-
-  it('but the sentence under a spent allowance, which sends to the business, never to a plan nobody offers', () => {
-    expect(ASSISTANT_MESSAGES.en.assistant.askOwner).toBe(en.saas.assistant.errors.quotaSpentAccount);
-    expect(ASSISTANT_MESSAGES.es.assistant.askOwner).toBe(es.saas.assistant.errors.quotaSpentAccount);
-    expect(ASSISTANT_MESSAGES.en.assistant.askOwner).not.toMatch(/plan/i);
-    expect(ASSISTANT_MESSAGES.es.assistant.askOwner).not.toMatch(/plan/i);
   });
 });
