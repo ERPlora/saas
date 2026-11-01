@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:d4cc38c4827a714eaadc9a6b0869fd07bd19f0675c0a5a13c83c5a1be174aba7 -->
+<!-- generated from WORKBOOK.md sha256:153bd677ea0656dfad1941196cbc6a237a8b5291d2e83970e36e2f2236e5e804 -->
 
 ## What it is for and who it is for
 
@@ -163,12 +163,12 @@ last access, with a search by business or by email and a filter by role; it is o
 | HUBS-F14 | See the businesses through the API | done |
 | HUBS-F15 | Change the name, the language and the time zone of the business | done |
 | HUBS-F16 | Change the web address of the business | done |
-| HUBS-F17 | Connect an own domain to the business's website | partial |
-| HUBS-F18 | Delete a business | partial |
+| HUBS-F17 | Connect an own domain to the business's website | discarded |
+| HUBS-F18 | Delete a business | done |
 | HUBS-F19 | Recover a deleted business | done |
-| HUBS-F20 | Warn and close a business suspended for an unpaid plan | partial |
-| HUBS-F21 | See the status and the usage of a business | partial |
-| HUBS-F22 | Collect every night the usage of each business | partial |
+| HUBS-F20 | Warn and close a business suspended for an unpaid plan | done |
+| HUBS-F21 | See the status and the usage of a business | done |
+| HUBS-F22 | Collect every night the usage of each business | done |
 | HUBS-F23 | ERPlora's staff acting on a business from the admin | done |
 | HUBS-F24 | Invite a person to a business | done |
 | HUBS-F25 | Accept or decline an invitation to a business | done |
@@ -178,9 +178,9 @@ last access, with a search by business or by email and a filter by role; it is o
 | HUBS-F29 | See the people of a business | done |
 | HUBS-F30 | Look up the accesses of the people in the admin | done |
 | HUBS-F31 | Send each business its plan, its apps and its people | done |
-| HUBS-F32 | Apply the plan's caps on people and devices | partial |
+| HUBS-F32 | Apply the plan's caps on people and devices | done |
 | HUBS-F33 | Give the business the assistant messages of its plan | done |
-| HUBS-F34 | Tell the business which paid apps it may use and why | partial |
+| HUBS-F34 | Tell the business which paid apps it may use and why | done |
 | HUBS-F35 | Recognise the businesses' service when it calls erplora.com | done |
 | HUBS-F36 | Keep the sectors and the business types in the admin | done |
 | HUBS-F37 | Read the sectors and the business types | done |
@@ -397,7 +397,7 @@ If it fails: a reserved address, "This address is reserved. Choose another one."
 Involved: the business (receives its new address), accounts (the way in at the new address)
 
 ### HUBS-F17 Connect an own domain to the business's website
-Status: partial — not in phase 1: the own domain stays (as in the market's shops) only for the business's public website and on the plans that include it, and comes with its three pieces at once; today there is none: the check of the domain in erplora.com, its certificate at ERPlora's entrance and the business serving its website on that domain. Until then the panel does not show it.
+Status: discarded — not in phase 1: the own domain is only for the business's public website, on the plans that include it, and comes with its three pieces at once (the check of the domain in erplora.com, its certificate at ERPlora's entrance and the business serving its website on that domain); until then the panel does not show it (saas#195)
 Actor: owner
 Screen: Business settings
 Steps:
@@ -411,7 +411,7 @@ If it fails: a domain that does not point to ERPlora stays inactive and the miss
 Involved: website (the business's public website), the business (serves the website on its domain)
 
 ### HUBS-F18 Delete a business
-Status: partial — erplora.com already leads to the copy of the data (the deletion email links to the business's page, which shows it and downloads it, and tells when it is ready), but the copy is made by the business when it receives the deletion, with each business's own database (tenancy, second part of the sign-up); until then the page says it is not ready yet.
+Status: done
 Actor: owner, integration
 Screen: Business settings › Danger zone
 Steps:
@@ -437,7 +437,7 @@ If it fails: after the 90 days, "This business was erased for good and cannot be
 Involved: the business (opens it again)
 
 ### HUBS-F20 Warn and close a business suspended for an unpaid plan
-Status: partial — the deletion of day 180 is HUBS-F18's: its email already leads to the copy of the data, which the business makes when it receives the deletion with its own database (tenancy, second part of the sign-up); until then the page says it is not ready yet.
+Status: done
 Actor: system
 Screen: none
 Steps:
@@ -451,7 +451,7 @@ If it fails: a notice that could not leave is sent again on the next pass, and w
 Involved: billing (suspends, tells of the suspension and runs the pass), the business (stops opening)
 
 ### HUBS-F21 See the status and the usage of a business
-Status: partial — the business does not measure its usage every night yet (HUBS-F22): its space is that of its own database, which comes in phase 2; so on a real business the "Usage" card says "No data yet. The figures arrive every night, from the first one after the business is created."; the status, the plan and the seats are already the real ones.
+Status: done
 Actor: owner, administrator
 Screen: Business summary
 Steps:
@@ -464,7 +464,7 @@ If it fails: without any night measured, "No data yet. The figures arrive every 
 Involved: the business (BASE-F40: measures its usage and shows those figures to whoever runs it)
 
 ### HUBS-F22 Collect every night the usage of each business
-Status: partial — erplora.com already asks for it every night, but the businesses' service does not serve its measurement yet: a business's space is that of its own database, which comes in phase 2; until it does, the pass ends with an error and nothing is saved.
+Status: done
 Actor: system
 Screen: none
 Steps:
@@ -599,17 +599,17 @@ If it fails: if the business does not answer or refuses the snapshot, it stays o
 Involved: billing (the payment and the plan), fiscal (the VeriFactu authorisation), the business (keeps the snapshot and applies its status, its people, VeriFactu and WhatsApp; the caps and the apps, HUBS-F32 and HUBS-F34)
 
 ### HUBS-F32 Apply the plan's caps on people and devices
-Status: partial — erplora.com already stops the invitation that does not fit and sends both caps to the business, but the business does not apply them yet: sessions per device and the employees who enter with a PIN come with each business's own database (phase 2); until then a business on Free opens on more than one device at a time.
+Status: done
 Actor: system, owner, administrator
 Screen: Members › Invite
 Steps:
 1. Each plan says how many people and how many devices at a time it covers in each business: Free, 3 people and 1 device; the paid plans, no cap.
 2. On inviting, erplora.com counts the people already in and the invitations still valid; without a place, the "Invite to …" dialog says "The plan has no free places left: change the plan or remove someone to invite more people." and sends nothing (HUBS-F24). Changing the role of someone already in spends no place.
-3. The business gets both caps in its snapshot (HUBS-F31) and applies them to what only it sees: the employees who enter with a PIN and the devices with an open session.
+3. The business gets both caps in its snapshot (HUBS-F31) and applies the devices one: on entering one device more than the plan covers, the session of the one that has gone longest without entering is closed (BASE-F57). People, also those who enter with a PIN, are always the ones in "Members", so erplora.com applies the people cap on inviting; the business shows in its staff how many places are taken (BASE-F77).
 In: the business's plan, its people and its invitations.
 Out: the refusal of the invitation that does not fit and both caps in the snapshot; nothing else is stored.
 If it fails: accepting an invitation when the plan has no room any more is stopped on accepting (HUBS-F25). Moving down a plan removes nobody: it stops new invitations until there is room again.
-Involved: billing (the plan), the business (applies the caps to its devices and its PIN employees)
+Involved: billing (the plan), the business (closes the session of the devices left over and shows the places taken)
 
 ### HUBS-F33 Give the business the assistant messages of its plan
 Status: done
@@ -625,13 +625,13 @@ If it fails: a plan with 0 messages leaves the assistant unused. Loose message p
 Involved: assistant (the turn of each message and its count, ASSISTANT-F18), the business (shows what is left and warns at 80 %)
 
 ### HUBS-F34 Tell the business which paid apps it may use and why
-Status: partial — erplora.com already sends each paid app with its origin and its date, but the business does not stop a paid app without the right yet, nor say on its apps page where it comes from; today no app of the business is paid, so all of them are used without buying them.
+Status: done
 Actor: system, owner
 Screen: none; each business's are seen in Store › Modules (BILLING-F31)
 Steps:
 1. A business has a paid app through its plan (the plan's level includes it) or because it bought it for that business; the free ones need not be on the list: they can always be used.
 2. erplora.com sends the business, in its snapshot (HUBS-F31), each paid app it has, where it comes from (the plan or a purchase) and until when, if it was cancelled.
-3. The business turns on the ones it has; a paid one without the right does not turn on and leads to buying it on erplora.com.
+3. The business turns on the ones it has and on its apps page says where each one comes from ("Included in your plan", "Subscribed"); a paid one without the right does not turn on, does nothing it is asked and leads to buying it on erplora.com (BASE-F20, BASE-F27).
 4. In **Store › Modules**, with the business chosen, the owner sees each app in that business: "Included in your plan" or "You have it" (BILLING-F31).
 In: the business's plan and its purchases.
 Out: the business's paid apps in its snapshot; nothing is stored.

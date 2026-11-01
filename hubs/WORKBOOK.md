@@ -1,7 +1,7 @@
 # Workbook — Negocios (hubs)
 Prefijo: HUBS
 Alcance MVP: fase 1 (los negocios de cada cuenta de erplora.com: crearlos, esperar a que estén listos, verlos en la lista y entrar en ellos)
-Estado de la app: en construcción (partes 1 a 4 de 5: crear el negocio, los planes, esperar a que esté listo, la lista, la portada del panel, entrar y abrirlo en otro dispositivo; los ajustes, la dirección web, eliminar y recuperar, los suspendidos, el estado y el uso, y el personal en el admin; las personas de cada negocio: invitar, aceptar, cambiar el rol, quitar, traspasar la propiedad y consultarlas; lo que cada negocio recibe de erplora.com: su plan, sus topes, sus aplicaciones de pago y los mensajes del asistente, quién llama a erplora.com desde los negocios, y los sectores y tipos de negocio; la revisión flujo a flujo de todo, en la parte 5)
+Estado de la app: completa (2026-11-01)
 
 > Manual de uso y especificación de la app `hubs` del SaaS (erplora.com). Cuenta cómo se crea un negocio, qué
 > pasa mientras se prepara, cómo se ve la lista de negocios y cómo se entra en cada uno desde el navegador o desde
@@ -175,12 +175,12 @@ con buscador por negocio o por correo y filtro por rol; solo se consulta.
 | HUBS-F14 | Ver los negocios por la API | hecho |
 | HUBS-F15 | Cambiar el nombre, el idioma y la zona horaria del negocio | hecho |
 | HUBS-F16 | Cambiar la dirección web del negocio | hecho |
-| HUBS-F17 | Conectar un dominio propio a la web del negocio | parcial |
-| HUBS-F18 | Eliminar un negocio | parcial |
+| HUBS-F17 | Conectar un dominio propio a la web del negocio | descartado |
+| HUBS-F18 | Eliminar un negocio | hecho |
 | HUBS-F19 | Recuperar un negocio eliminado | hecho |
-| HUBS-F20 | Avisar y dar de baja un negocio suspendido por impago | parcial |
-| HUBS-F21 | Ver el estado y el uso de un negocio | parcial |
-| HUBS-F22 | Recoger cada noche el uso de cada negocio | parcial |
+| HUBS-F20 | Avisar y dar de baja un negocio suspendido por impago | hecho |
+| HUBS-F21 | Ver el estado y el uso de un negocio | hecho |
+| HUBS-F22 | Recoger cada noche el uso de cada negocio | hecho |
 | HUBS-F23 | Actuar el personal de ERPlora sobre un negocio desde el admin | hecho |
 | HUBS-F24 | Invitar a una persona a un negocio | hecho |
 | HUBS-F25 | Aceptar o rechazar una invitación a un negocio | hecho |
@@ -190,9 +190,9 @@ con buscador por negocio o por correo y filtro por rol; solo se consulta.
 | HUBS-F29 | Ver las personas de un negocio | hecho |
 | HUBS-F30 | Consultar los accesos de las personas en el admin | hecho |
 | HUBS-F31 | Mandar a cada negocio su plan, sus aplicaciones y sus personas | hecho |
-| HUBS-F32 | Aplicar los topes de personas y de dispositivos del plan | parcial |
+| HUBS-F32 | Aplicar los topes de personas y de dispositivos del plan | hecho |
 | HUBS-F33 | Dar al negocio los mensajes del asistente de su plan | hecho |
-| HUBS-F34 | Decir al negocio qué aplicaciones de pago puede usar y por qué | parcial |
+| HUBS-F34 | Decir al negocio qué aplicaciones de pago puede usar y por qué | hecho |
 | HUBS-F35 | Reconocer al servicio de los negocios cuando llama a erplora.com | hecho |
 | HUBS-F36 | Mantener los sectores y los tipos de negocio en el admin | hecho |
 | HUBS-F37 | Leer los sectores y los tipos de negocio | hecho |
@@ -426,7 +426,7 @@ Implicados: el negocio (recibe su nueva dirección), accounts (la entrada a la n
 
 ### HUBS-F17 Conectar un dominio propio a la web del negocio
 <!-- origen: old-saas:SAAS_DASHBOARD-F11 old-saas:SAAS_DASHBOARD-F12 fi:saas/hubs#configuracion-de-dominios-subdominio-dominios-personalizados fi:saas/support/hubs#modelo-hubcustomdomain pc:cloud/dashboard/hubs-domains fi:saas/support/hubs#task-check_domain_validation old-saas:SAAS_DASHBOARD-F39 -->
-Estado: parcial — no entra en la fase 1: el dominio propio se queda (como en las tiendas del mercado) solo para la web pública del negocio y en los planes que lo incluyen, y llega a la vez en sus tres piezas; hoy no hay ninguna: la comprobación del dominio en erplora.com, su certificado en la entrada de ERPlora y que el negocio sirva su web por ese dominio. Hasta entonces el panel no lo enseña.
+Estado: descartado — no entra en la fase 1: el dominio propio es solo de la web pública del negocio, en los planes que lo incluyen, y llega a la vez con sus tres piezas (la comprobación del dominio en erplora.com, su certificado en la entrada de ERPlora y que el negocio sirva su web por ese dominio); hasta entonces el panel no lo enseña (saas#195)
 Actor: propietario
 Pantalla: Ajustes del negocio
 Pasos:
@@ -441,7 +441,7 @@ Implicados: website (la web pública del negocio), el negocio (sirve la web por 
 
 ### HUBS-F18 Eliminar un negocio
 <!-- origen: fi:saas/hubs#borrado-cancelacion-del-terminal old-saas:SAAS_DASHBOARD-F22 old-saas:SAAS_DASHBOARD-F23 old-saas:SAAS_DASHBOARD-F24 -->
-Estado: parcial — erplora.com ya lleva a la copia de los datos (el correo de la baja enlaza a la página del negocio, que la enseña y la descarga, y avisa cuando está lista), pero la copia la hace el negocio al recibir la baja, con la base de datos propia de cada negocio (tenencia, segunda parte del alta); hasta entonces la página dice que todavía no está lista.
+Estado: hecho
 Actor: propietario, integración
 Pantalla: Ajustes del negocio › Zona de peligro
 Pasos:
@@ -469,7 +469,7 @@ Implicados: el negocio (lo vuelve a abrir)
 
 ### HUBS-F20 Avisar y dar de baja un negocio suspendido por impago
 <!-- origen: old-saas:SAAS_DASHBOARD-F35 fi:saas/support/hubs#task-cleanup_inactive_hubs fi:saas/support/hubs#task-send_hub_suspended_email_task -->
-Estado: parcial — la baja del día 180 es la de HUBS-F18: su correo ya lleva a la copia de los datos, que el negocio hace al recibir la baja con su base de datos propia (tenencia, segunda parte del alta); hasta entonces la página dice que todavía no está lista.
+Estado: hecho
 Actor: sistema
 Pantalla: ninguna
 Pasos:
@@ -484,7 +484,7 @@ Implicados: billing (suspende, avisa de la suspensión y hace la pasada), el neg
 
 ### HUBS-F21 Ver el estado y el uso de un negocio
 <!-- origen: old-saas:SAAS_DASHBOARD-F26 -->
-Estado: parcial — el negocio todavía no mide su uso cada noche (HUBS-F22): su espacio es el de su propia base de datos, que llega en la fase 2; así que en un negocio real la tarjeta «Uso» dice «Sin datos todavía. Las cifras llegan cada noche, desde la primera tras crear el negocio.»; el estado, el plan y las plazas ya son los de verdad.
+Estado: hecho
 Actor: propietario, administrador
 Pantalla: Resumen del negocio
 Pasos:
@@ -498,7 +498,7 @@ Implicados: el negocio (BASE-F40: mide su uso y enseña esas cifras a quien lo l
 
 ### HUBS-F22 Recoger cada noche el uso de cada negocio
 <!-- origen: old-saas:SAAS_DASHBOARD-F57 -->
-Estado: parcial — erplora.com ya lo pide cada noche, pero el servicio de los negocios todavía no sirve su medición: el espacio de un negocio es el de su propia base de datos, que llega en la fase 2; hasta que la sirva, la pasada termina con error y no se guarda nada.
+Estado: hecho
 Actor: sistema
 Pantalla: ninguna
 Pasos:
@@ -644,17 +644,17 @@ Implicados: billing (el pago y el plan), fiscal (la autorización de VeriFactu),
 
 ### HUBS-F32 Aplicar los topes de personas y de dispositivos del plan
 <!-- origen: old-saas:SAAS_DASHBOARD-F58 old-saas:SAAS_DASHBOARD-F59 -->
-Estado: parcial — erplora.com ya frena la invitación que no cabe y manda los dos topes al negocio, pero el negocio todavía no los aplica: las sesiones por dispositivo y los empleados que entran con un PIN llegan con la base de datos propia de cada negocio (fase 2); hasta entonces un negocio en Gratis se abre en más de un dispositivo a la vez.
+Estado: hecho
 Actor: sistema, propietario, administrador
 Pantalla: Miembros › Invitar
 Pasos:
 1. Cada plan dice cuántas personas y cuántos dispositivos a la vez cubre en cada negocio: Gratis, 3 personas y 1 dispositivo; los planes de pago, sin tope.
 2. Al invitar, erplora.com cuenta a las personas que ya están y las invitaciones que aún valen; sin plaza, el diálogo «Invitar a …» dice «El plan no tiene plazas libres: cambia de plan o quita a alguien para invitar a más personas.» y no manda nada (HUBS-F24). Cambiar el rol de quien ya está no gasta plaza.
-3. El negocio recibe los dos topes en su foto (HUBS-F31) y los aplica en lo que solo él ve: los empleados que entran con un PIN y los dispositivos con la sesión abierta.
+3. El negocio recibe los dos topes en su foto (HUBS-F31) y aplica el de dispositivos: al entrar en uno más de los que cubre el plan, se cierra la sesión del que lleva más tiempo sin entrar (BASE-F57). Las personas, también las que entran con un PIN, son siempre las de «Miembros», así que el tope de personas lo aplica erplora.com al invitar; el negocio enseña en su personal cuántas plazas hay ocupadas (BASE-F77).
 Entra: el plan del negocio, sus personas y sus invitaciones.
 Sale: el rechazo de la invitación que no cabe y los dos topes en la foto; nada más se guarda.
 Si falla: aceptar una invitación cuando el plan ya no tiene sitio se frena al aceptar (HUBS-F25). Bajar de plan no saca a nadie: frena las invitaciones nuevas hasta que vuelva a haber sitio.
-Implicados: billing (el plan), el negocio (aplica los topes a sus dispositivos y a sus empleados con PIN)
+Implicados: billing (el plan), el negocio (cierra la sesión de los dispositivos que sobran y enseña las plazas ocupadas)
 
 ### HUBS-F33 Dar al negocio los mensajes del asistente de su plan
 <!-- origen: old-saas:SAAS_ASSISTANT-F12 -->
@@ -672,13 +672,13 @@ Implicados: assistant (el turno de cada mensaje y su cuenta, ASSISTANT-F18), el 
 
 ### HUBS-F34 Decir al negocio qué aplicaciones de pago puede usar y por qué
 <!-- origen: old-saas:SAAS_DASHBOARD-F62 old-saas:SAAS_PUBLIC-F20 fi:saas/hubs#estado-de-suscripcion-de-modulo-bouncer fi:saas/hubs#modulos-del-terminal -->
-Estado: parcial — erplora.com ya manda cada aplicación de pago con su origen y su fecha, pero el negocio todavía no frena una aplicación de pago sin derecho ni dice en su página de aplicaciones de dónde le viene; hoy ninguna aplicación del negocio es de pago, así que todas se usan sin comprarlas.
+Estado: hecho
 Actor: sistema, propietario
 Pantalla: ninguna; las de cada negocio se ven en Tienda › Módulos (BILLING-F31)
 Pasos:
 1. Un negocio tiene una aplicación de pago por su plan (el nivel del plan la incluye) o porque la compró para ese negocio; las gratuitas no hacen falta en la lista: siempre se pueden usar.
 2. erplora.com manda al negocio, en su foto (HUBS-F31), cada aplicación de pago que tiene, de dónde le viene (el plan o una compra) y hasta cuándo, si se canceló.
-3. El negocio enciende las que tiene; una de pago sin derecho no se enciende y lleva a comprarla en erplora.com.
+3. El negocio enciende las que tiene y en su página de aplicaciones dice de dónde le viene cada una («Incluida en tu plan», «Contratada»); una de pago sin derecho no se enciende, no hace nada de lo que se le pida y lleva a comprarla en erplora.com (BASE-F20, BASE-F27).
 4. En **Tienda › Módulos**, con el negocio elegido, el propietario ve cada aplicación en ese negocio: «Incluido en tu plan» o «Ya lo tienes» (BILLING-F31).
 Entra: el plan del negocio y sus compras.
 Sale: las aplicaciones de pago del negocio en su foto; nada se guarda.
@@ -735,7 +735,10 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
 - Partes del porte (MIGRATION-TASK APP-HUBS-1…5): este WORKBOOK nace en la parte 1 (F01–F14); la parte 2 añade
   F15–F23 (ajustes, dirección web y dominio propio, eliminar y recuperar, los suspendidos, estado y uso, admin del
   negocio); la parte 3, F24–F30 (las personas de cada negocio); la parte 4, F31–F37 (plan, derechos, contrato con el
-  Hub y taxonomía). La revisión flujo a flujo de los `hecho` la hace la parte 5.
+  Hub y taxonomía). La revisión flujo a flujo de los `hecho` la hace la parte 5. Completa el 2026-11-01 (CLOSE-HUBS):
+  F18, F20, F21 y F22 llegaron con la tenencia S2b (hub#580, saas#168); F32 y F34 ya los aplicaba el Hub (APP-BASE-3,
+  -4 y -5); F17 se descarta en esta versión (saas#195). Lo decidido durante la migración está en la ronda de PLAN-SAAS
+  de ese día.
 - Equivalencia de claves del registro: G65 y G41 = F01; G66 = F02; G67, G09, G10 y G45 = F03; G68 = F04; G43,
   G04, G06, G21 y G44 = F05; G98 = F06; G91 = F07; G92 = F08; G69, G17, G18, G111 y G113 = F09; G14, G84 y
   G114 = F10; G70 = F11; G71 = F12; G72 y G12 = F13; G19 = F14. Parte 2: G08 y G73 = F15; G74 = F16; G75, G77,
@@ -804,12 +807,14 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   `hubs/tests/test_suspended_lifecycle.py` y `hubs/tests/test_migrations.py`.
 - Admin (F23): las acciones de plataforma llevan `@traced` (`hubs/admin.py`), que escribe en el historial del admin
   («Ejecutó «…»») cada fila sobre la que corrieron. Tests: `hubs/tests/test_admin.py::TestTheTrail`.
-- Uso (F21, F22): el Hub aún no sirve `GET /internal/usage` (contrato en `hubs/README.md`): `db_bytes` es
-  `pg_database_size(hub_<hex>)`, que necesita la BD por hub (fase 2, `docs/plans/2026-10-22-fase-2-tenencia.md`).
-  `collect_hub_usage` ya está programado (`hub-usage-daily`). Sin él, la pasada falla y la tarjeta dice «Sin datos todavía…».
-- Dominio propio (F17): decisión de mercado de APP-HUBS-2, propuesta como ronda de PLAN-SAAS (ADR-0502): se mantiene
-  solo para la web pública (`website`) y en planes con `includes_custom_domain`, y llega con sus tres piezas
-  (erplora.com, borde de `aws` y el host en `base` del Hub); hasta entonces no hay modelo ni pantalla.
+- Uso (F21, F22): el Hub sirve `GET /internal/usage` desde la tenencia S2b (hub#580; contrato en `hubs/README.md`):
+  `db_bytes` es el tamaño de la BD propia de cada negocio. `collect_hub_usage` lo recoge cada noche (`hub-usage-daily`);
+  sin ninguna noche medida, la tarjeta dice «Sin datos todavía…». La copia de los datos de F18 y F20 la hace el Hub al
+  recibir la baja (hub#580) y el SaaS la enseña y la descarga con `GET /internal/hubs/{id}/dumps` (saas#168).
+- Dominio propio (F17, `descartado` en esta versión, saas#195): decisión de mercado de APP-HUBS-2 (PLAN-SAAS §8, ronda
+  2026-10-22; ADR-0502): se mantiene solo para la web pública (`website`) y en planes con `includes_custom_domain`, y
+  llega con sus tres piezas (erplora.com, borde de `aws` y el host en `base` del Hub); hasta entonces no hay modelo ni
+  pantalla.
 - Pruebas de la parte 2: e2e en `tests/e2e/panel/hubs-settings.spec.ts` (clave `HUBS-Gnn` en el título).
 - Personas (F24–F30): `hubs.member.{list,invite,change_role,remove,resend,cancel}`,
   `hubs.invitation.{list_mine,accept,decline}` y `hubs.ownership.{transfer,accept,decline,cancel}` (`api.py`, bajo
@@ -838,10 +843,11 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   2026-10-22b): el bloque `verifactu` lleva solo `representation`; `live_paid` se quitó de la foto cuando el Hub retiró
   esa condición (FIX-HUB-VERIFACTU-RETIRE-LIVE-PAID). Tests: `hubs/tests/test_hub_sync.py`, `test_plan_rights_reach_businesses.py`,
   `test_contract_hub.py`, `fiscal/tests/test_snapshot.py`; e2e `tests/e2e/panel/hubs-rights.spec.ts` («HUBS-G101»).
-- Lo que el Hub aplica de la foto (F32 y F34): hoy guarda `plan` y `modules` sin aplicarlos (`base.services.hub_state_apply`
-  del Hub: «kept until phase 2 applies them»); los topes de dispositivos y de usuarios con PIN llegan con `DeviceSession`
-  (fase 2, PLAN-HUB «Sesión, dispositivo y PIN») y el freno de una app `premium` sin derecho (402
-  `app_entitlement_blocked`), con su activación. Los mensajes del asistente (F33) no los cuenta el Hub: los cuenta y los
+- Lo que el Hub aplica de la foto (F32 y F34; APP-BASE-3, -4 y -5 del Hub, hub#232, hub#229 y hub#244): `plan.max_devices`
+  al entrar (`_end_other_devices`, BASE-F57), las plazas de `plan.max_users` en su personal (BASE-F77; las personas del
+  Hub son las `members` de la foto, así que el tope lo aplica el SaaS al invitar) y el derecho de cada módulo `premium`
+  (`base/entitlement.py`: 402 `app_entitlement_blocked`, fuera del menú y del relevo; su página de apps dice `plan`,
+  `purchase` o la app que la trae, BASE-F14, F20 y F27). Los mensajes del asistente (F33) no los cuenta el Hub: los cuenta y los
   frena en cada turno la pasarela de `assistant` (ASSISTANT-F18, `assistant.message.claim`), con el cupo del plan
   (`Plan.assistant_messages_per_month`), y el Hub enseña las cifras de su puerta `usage` y del frame `usage`. El SaaS ya aplica `max_users` al invitar (`hubs/tests/test_seats.py`). Tests de la parte 4:
   `test_snapshot_rights.py` (una compra o el plan de otro negocio nunca llegan a este; bajar a Gratis no saca a nadie).
@@ -863,6 +869,13 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   `test_seed_taxonomy.py`, `test_taxonomy_*.py` y `test_admin.py` («speak Spanish»); e2e `hubs-rights.spec.ts`
   («HUBS-G05 + HUBS-G01»).
 
+## Lo que queda fuera
+
+- **Conectar un dominio propio a la web del negocio** (HUBS-F17): fuera de la fase 1, llega con sus tres piezas
+  (erplora.com, la entrada de ERPlora y el Hub) — saas#195.
+- **Desde el Hub, «Mejorar plan» y «erplora.com» piden volver a entrar con la cuenta si el navegador no tenía la sesión
+  abierta** (BASE-F11 del Hub, cruza esta app) — saas#190.
+
 ## Lo que NO hace, a propósito
 
 - No tiene una «Vista general» con cifras ni actividad: la portada del panel es Negocios (ronda 17).
@@ -874,14 +887,15 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
 - No pausa ni reinicia negocios, ni enseña su CPU, su memoria o sus conexiones: un solo servicio sirve a todos.
 - No pausa, avisa ni borra un negocio gratuito porque nadie lo use, ni lo despierta al volver: sin un servidor por
   negocio no hay nada que dormir, y no hay borrado por inactividad hasta medir lo que cuesta uno ocioso.
-- No conecta todavía un dominio propio (HUBS-F17): la web y la entrada de cada negocio están en su dirección de
-  erplora.com.
+- No conecta todavía un dominio propio (HUBS-F17, saas#195): la web y la entrada de cada negocio están en su dirección
+  de erplora.com.
 - No entra sola en un negocio ya existente al abrir la Entrada, tampoco con uno solo: elige la persona.
 - No tiene una página con las personas de todos los negocios: cada negocio enseña las suyas en «Miembros» (ronda 17:
   el panel es Negocios, Tienda, Facturación y Cuenta).
 - No enseña la actividad reciente de las personas ni cuántas están conectadas: la actividad vive dentro del negocio.
 - Nadie se sale solo de un negocio: lo quitan el propietario o un administrador, como en Square, Toast o Shopify.
-- No da de alta a los empleados que solo usan un PIN en la caja: se gestionan dentro del negocio.
+- No da de alta a empleados que solo usen un PIN en la caja: toda persona entra en el negocio por «Miembros», con su
+  cuenta, y su PIN o su placa se ponen dentro del negocio.
 - No da de alta, no comprueba ni quita en erplora.com a las personas que se añaden o se quitan dentro del negocio:
   quién tiene cuenta y acceso se decide en «Miembros» (HUBS-F24 a HUBS-F28) y el negocio lo recibe en su foto
   (HUBS-F31); la entrada de cada persona la comprueba erplora.com al saltar al negocio.
