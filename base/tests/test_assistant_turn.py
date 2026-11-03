@@ -34,7 +34,7 @@ from assistant.tests.conftest import (  # noqa: F401 - the gateway's fixtures
 )
 from assistant.tests.doors import frames
 from base import assistant
-from hubs.models import Hub, HubMember
+from hubs.models import Hub, HubMember, Plan, Subscription
 from hubs.tests.conftest import create_business, ctx_for, make_user, plans  # noqa: F401 - shared fixtures
 
 pytestmark = pytest.mark.django_db
@@ -504,6 +504,59 @@ class TestAWrite:
             "not_available",
         )
         assert not account.api_keys.exists()
+
+
+class TestTheCardIsTheOnlyQuestion:
+    """saas#193 (ASSISTANT-F25 step 5, HUBS-F01): a change is asked once, on its card. The real model sometimes wrote a
+    summary and «do you confirm?» instead, or refused a business on its own from what it knows of the Free plan. So
+    calling the tool has to be right every time: an account the write would refuse hears why before any card."""
+
+    @pytest.mark.parametrize("sells", [True, False])
+    def test_the_instructions_leave_the_question_to_the_card(self, sells):
+        text = assistant.instructions(language="es", account="Lena", screens={}, sells=sells)
+
+        rule = next(one for one in text.split("\n- ") if one.startswith("To change something"))
+        said = " ".join(rule.split())
+
+        assert "call its tool as soon as you have the data it needs" in said
+        assert "never ask in your text whether to go ahead" in said
+        assert "never write a summary of the change" in said
+        assert "ask only for a datum that no tool gives and the person has not said" in said
+        assert "never refuse a change yourself" in said
+        assert "«not confirmed» or with an error, nothing changed" in said, "what it had to say about a refusal stays"
+
+    def test_the_model_is_told_the_tool_decides_whether_a_free_business_fits(self):
+        description = assistant.tool_spec(get_operation("hubs.business.create"))["description"]
+
+        assert "hubs.free_hub_limit" in description
+        assert "Change the plan" in description
+
+    def test_an_account_with_no_room_hears_why_before_any_card(self, signed_in, account, answering, fake_provider):
+        create_business(account, name="Bar Lena")
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("You already have your free business."))
+
+        got = frames(post_turn(signed_in, {"messages": TestAWrite().asked(), "pending": [TestAWrite.CREATE]}))
+
+        assert "confirm" not in types(got)
+        assert (got[0]["type"], got[0]["name"], got[0]["outcome"], got[0]["code"]) == (
+            "executed",
+            "hubs.business.create",
+            "error",
+            "hubs.free_hub_limit",
+        )
+        sent = model_requests(fake_provider)[-1].body["messages"]
+        assert "hubs.free_hub_limit" in next(m["content"] for m in sent if m["role"] == "tool")
+        assert not Hub.objects.filter(name="Sol Hair").exists()
+
+    def test_an_account_with_room_gets_its_card_with_nothing_more_on_it(self, signed_in, account, answering):
+        hub = create_business(account, name="Bar Lena")
+        Subscription.objects.filter(hub=hub).update(plan=Plan.objects.get(slug="starter"))
+
+        got = frames(post_turn(signed_in, {"messages": TestAWrite().asked(), "pending": [TestAWrite.CREATE]}))
+
+        assert types(got) == ["confirm", "done"]
+        assert got[0]["card"]["operation"] == "hubs.business.create"
+        assert got[0]["card"]["preview"] == []
 
 
 class ListedIn(Schema):

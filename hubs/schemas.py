@@ -444,6 +444,14 @@ class BusinessCreateIn(Schema):
     slug: str | None = Field(None, max_length=63)
 
 
+class BusinessCreateCheckIn(Schema):
+    pass
+
+
+class BusinessCreateCheckOut(Schema):
+    """Nothing to show: ``hubs.business.create_check`` only says, by refusing, that the account cannot create one."""
+
+
 class BusinessUpdateIn(Schema):
     """Only the fields sent change; ``null`` leaves a field as it is."""
 

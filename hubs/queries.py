@@ -31,7 +31,7 @@ from django.utils.text import slugify
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 from live.context import OperationContext
-from live.errors import NotFound, OperationError, PermissionDenied, Unauthorized
+from live.errors import Conflict, NotFound, OperationError, PermissionDenied, Unauthorized
 from live.operations import AI, INTERNAL, operation
 from live.slugs import is_demo_slug, is_reserved_hub_slug, validate_hub_slug
 
@@ -54,6 +54,8 @@ from hubs.models import (
 )
 from hubs.retired_codes import current_business_type_code
 from hubs.schemas import (
+    BusinessCreateCheckIn,
+    BusinessCreateCheckOut,
     AddressProposeIn,
     AddressProposeOut,
     BillingProfileGetIn,
@@ -407,6 +409,57 @@ def free_business_filling_quota(user) -> Hub | None:
     if owned.count() < getattr(settings, "FREE_HUBS_PER_ACCOUNT", 1):
         return None
     return owned.first()
+
+
+def plan_of_a_new_business() -> Plan:
+    """The Free plan a new business is born on; without it none can be created right now (503)."""
+    plan = free_plan()
+    if plan is None:
+        raise OperationError(
+            _("Businesses cannot be created right now. Try again in a few minutes."),
+            code="hubs.free_plan_missing",
+            status=503,
+        )
+    return plan
+
+
+def refuse_staff(user) -> None:
+    """The platform's staff and the customers never share an account: a staff or superuser account neither creates a
+    business, nor is invited to one (nor invited again), nor enters one with an invitation that waited while it was
+    made staff (409 ``hubs.platform_account``)."""
+    if user.is_staff or user.is_superuser:
+        raise Conflict(
+            _("This address belongs to ERPlora's staff and cannot join a business."), code="hubs.platform_account"
+        )
+
+
+def refuse_full_free_quota(user, excluding: UUID | None = None) -> None:
+    """One more Free business does not fit ``user``'s quota (``FREE_HUBS_PER_ACCOUNT``, ADR-0154): 409
+    ``hubs.free_hub_limit``. Counts without a lock: a write first takes it (``services.check_free_quota``)."""
+    if free_hubs_owned(user, excluding=excluding) >= getattr(settings, "FREE_HUBS_PER_ACCOUNT", 1):
+        raise Conflict(
+            _("You already have a free business. Change its plan to create another one."),
+            code="hubs.free_hub_limit",
+        )
+
+
+@operation(
+    "hubs.business.create_check",
+    kind="query",
+    permission="hubs.manage",
+    input=BusinessCreateCheckIn,
+    output=BusinessCreateCheckOut,
+    ai=INTERNAL,  # preview
+)
+def business_create_check(ctx: OperationContext, params: BusinessCreateCheckIn) -> dict:
+    """Refuses as ``hubs.business.create`` refuses, before its card asks anybody to confirm it (ASSISTANT-F25, saas#193):
+    the assistant hears why and nobody confirms a business that was never going to be created. It locks nothing and
+    the write checks again under its lock."""
+    user = account_of(ctx)
+    plan_of_a_new_business()
+    refuse_staff(user)
+    refuse_full_free_quota(user)
+    return {}
 
 
 def business_type_for(code: str | None) -> BusinessType | None:
