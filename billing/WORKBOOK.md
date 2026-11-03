@@ -168,7 +168,7 @@ al propietario, el botón para mejorarlo o cambiarlo.
 | BILLING-F36 | Ver una factura | hecho |
 | BILLING-F37 | Olvidar los avisos de Stripe de más de 30 días | hecho |
 | BILLING-F38 | Releer cada noche las suscripciones en Stripe y corregir lo que se desvió | hecho |
-| BILLING-F39 | Comprobar cada día que Stripe avisa de todo lo que erplora.com trata | descartado |
+| BILLING-F39 | Comprobar cada día que Stripe avisa de todo lo que erplora.com trata | hecho |
 
 ### BILLING-F01 Decir dónde se factura el negocio y con qué identificación fiscal
 <!-- origen: old-saas:SAAS_DASHBOARD-F90 fi:saas/orgs-users#informacion-de-facturacion-de-la-organizacion-ver-editar -->
@@ -727,7 +727,7 @@ Implicados: hubs (la suscripción del negocio), el negocio (recibe su plan)
 
 ### BILLING-F39 Comprobar cada día que Stripe avisa de todo lo que erplora.com trata
 <!-- origen: gh:saas#2402 -->
-Estado: descartado — sin confirmar en el cierre del 2026-11-03: la comprobación está programada cada día a las 05:40 UTC y terminó bien el 29, el 30 y el 31 de octubre, pero ese día no se pudo volver a mirar, porque los accesos de lectura a Stripe y a los registros estaban caducados; vuelve a hecho en cuanto se vea una comprobación reciente que termine bien (saas#200)
+Estado: hecho
 Actor: sistema
 Pantalla: ninguna
 Pasos:
@@ -772,10 +772,8 @@ Implicados: ninguno
   stack viejo en `erplora.com` (`we_1UIyXWG5mOoM2dqitS8TFImp` a `/marketplace/webhooks/stripe/`,
   `we_1UIyXVG5mOoM2dqidg2Ai6WD` a `/dashboard/billing/webhooks/stripe-connect/` y `we_1UIyXUG5mOoM2dqiftLTSFdL` a
   `/assistant/stripe/webhook/`) están `disabled` desde el 2026-10-28, sin borrar, y las ejecuciones del 29, 30 y 31 de
-  octubre terminaron en `OK` (CloudWatch `/ecs/erplora-prod-saas-cron`, leído el 2026-11-01). El cierre del 2026-11-03
-  no pudo releerlo (las sesiones de la CLI de Stripe y de AWS habían caducado), y por eso BILLING-F39 está `descartado`
-  con `saas#200`, que dice cómo devolverlo a `hecho`. Si uno de esos tres volviera a activarse, `endpoint_problems` lo
-  contaría y la tarea saldría con error, que `task_failed` avisa. Los avisos que trata el webhook son una
+  octubre terminaron en `OK` (CloudWatch `/ecs/erplora-prod-saas-cron`, leído el 2026-11-01). Si uno de esos tres volviera
+  a activarse, `endpoint_problems` lo contaría y la tarea saldría con error, que `task_failed` avisa. Los avisos que trata el webhook son una
   sola lista, `billing.services.STRIPE_WEBHOOK_EVENTS`, que el comando compara con el destino de Stripe.
 - Cierre (CLOSE-BILLING, 2026-10-27): ronda en PLAN-SAAS §13, con lo que PLAN-SAAS §1.1 aún pedía portar: el admin
   de solo lectura de los códigos usados, los contadores y las bajadas programadas, y el ZIP de los PDF (BILLING-F27),
@@ -783,13 +781,9 @@ Implicados: ninguno
   `ERPlora/hub#133`, pero en producción no se cobra con clave live mientras `PLATFORM_INVOICING_ENABLED` siga en
   `false` (reglas de trabajo §15: la transmisión real queda bajo la supervisión de Ioan). La compra suelta de BILLING-F32
   frente a PLAN §32 punto 1 es la contradicción ya señalada en PLAN-SAAS §12, que esa ronda cita sin elegir.
-- Segundo cierre (CLOSE-BILLING, 2026-11-03): ronda 2026-11-03 de PLAN-SAAS §28. Resuelve el único `parcial` que quedaba,
-  BILLING-F39, y deja la app `completa`.
-
-## Lo que queda fuera
-
-- **Confirmar que la comprobación diaria de los avisos de Stripe sigue terminando bien** (BILLING-F39): no se pudo
-  releer en el cierre del 2026-11-03, con los accesos de lectura caducados — saas#200.
+- Segundo cierre (CLOSE-BILLING, 2026-11-03): ronda 2026-11-03 de PLAN-SAAS §28. BILLING-F39, el único `parcial` que
+  quedaba, pasa a `hecho` porque se cumplió su condición (los tres endpoints viejos desactivados y una ejecución buena), y
+  la app queda `completa`.
 
 ## Lo que NO hace, a propósito
 

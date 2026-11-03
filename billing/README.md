@@ -275,8 +275,7 @@ trata como ninguna (`UNKNOWN`: 503 `billing.payments_unavailable`, nunca un cobr
   (`audit-stripe-webhooks-daily`, `ERPlora/aws#21`, aplicada el 2026-10-28). Los tres endpoints del stack viejo en
   `erplora.com` (`/marketplace/webhooks/stripe/`, `/dashboard/billing/webhooks/stripe-connect/` y
   `/assistant/stripe/webhook/`; ids en el WORKBOOK, «Para quien lo mantiene») están `disabled` desde el 2026-10-28, y las
-  ejecuciones del 29, 30 y 31 de octubre terminaron en `OK`; BILLING-F39 está `descartado` con `saas#200` porque el
-  cierre del 2026-11-03 no pudo releerlo, con las sesiones de Stripe y de AWS caducadas. La clave restringida `rk_live_` necesita leer *Webhook Endpoints* para esa auditoría: sin ese permiso, Stripe la
+  ejecuciones del 29, 30 y 31 de octubre terminaron en `OK`, y por eso BILLING-F39 está `hecho`. La clave restringida `rk_live_` necesita leer *Webhook Endpoints* para esa auditoría: sin ese permiso, Stripe la
   rechaza y la tarea falla cada día (`task_failed`).
 
 ## La Tienda (L2-D)
