@@ -713,3 +713,48 @@ msgstr "Ahora no se puede buscar en la documentación de ERPlora: vuelve a inten
 #: services.py
 msgid "An excerpt to write is not among the ones the source keeps."
 msgstr "Un fragmento que se iba a escribir no está entre los que guarda la fuente."
+
+#: models.py
+msgid "mailed that the messages run out"
+msgstr "avisado de que se acaban los mensajes"
+
+#: models.py
+msgid "mailed that the messages are spent"
+msgstr "avisado de que se han gastado los mensajes"
+
+#: emails.py
+#, python-format
+msgid "You have %(left)s message left with the assistant this month"
+msgid_plural "You have %(left)s messages left with the assistant this month"
+msgstr[0] "Te queda %(left)s mensaje con el asistente este mes"
+msgstr[1] "Te quedan %(left)s mensajes con el asistente este mes"
+
+#: emails.py
+#, python-format
+msgid "You have %(left)s of %(limit)s messages left with the assistant this month."
+msgid_plural "You have %(left)s of %(limit)s messages left with the assistant this month."
+msgstr[0] "Te queda %(left)s de %(limit)s mensajes con el asistente este mes."
+msgstr[1] "Te quedan %(left)s de %(limit)s mensajes con el asistente este mes."
+
+#: emails.py
+#, python-format
+msgid "They renew on %(date)s."
+msgstr "Se renuevan el %(date)s."
+
+#: emails.py
+#, python-format
+msgid "Open your panel: %(url)s"
+msgstr "Abre tu panel: %(url)s"
+
+#: emails.py
+msgid "You have used this month's messages with the assistant"
+msgstr "Has usado los mensajes del asistente de este mes"
+
+#: emails.py
+#, python-format
+msgid "You have used all %(limit)s messages with the assistant this month."
+msgstr "Has usado los %(limit)s mensajes con el asistente de este mes."
+
+#: emails.py
+msgid "Each business has its own assistant, with its own messages: open the business to keep asking there."
+msgstr "Cada negocio tiene su propio asistente, con sus propios mensajes: abre el negocio para seguir preguntando allí."

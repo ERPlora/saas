@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:18723027b0d3b07fb0a4e550a7dae0faccab887d4ceb591e92810aae0a44ec53 -->
+<!-- generated from WORKBOOK.md sha256:79e5be8152e3ebb12cf7cfa3aef9c8088d2d8544ab20e7ef2d038e88da3995cd -->
 
 ## What it is for and who uses it
 
@@ -167,7 +167,7 @@ offering it to someone else or cancelling its plan also ask to type "CONFIRM".
 | ASSISTANT-F26 | Count an account's messages with the panel's assistant | done |
 | ASSISTANT-F27 | Search the documentation from the panel | done |
 | ASSISTANT-F28 | Search the documentation from the Hub | done |
-| ASSISTANT-F29 | Email an account that its messages with the panel's assistant are running out | not done |
+| ASSISTANT-F29 | Email an account that its messages with the panel's assistant are running out | done |
 
 ### ASSISTANT-F01 Add an AI provider
 Status: done
@@ -560,7 +560,7 @@ If it fails: without the provider of the fingerprints configured, it answers tha
 Involved: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F27
 
 ### ASSISTANT-F29 Email an account that its messages with the panel's assistant are running out
-Status: not done — still missing: sending the two emails as the messages are spent, the mark that they already went out that month, their texts in English and Spanish and counting them among the always-on emails of ACCOUNTS-F23; today only the panel's footer says it (ASSISTANT-F25)
+Status: done
 Actor: the person with an account at erplora.com
 Screen: none
 Steps:
