@@ -11,7 +11,8 @@ from pathlib import Path
 import pytest
 from django.apps import apps
 from live import operations
-from live.errors import Unauthorized
+from live.context import OperationContext, Scope
+from live.errors import PermissionDenied, Unauthorized
 
 from accounts import services as account_services
 from hubs import queries, services
@@ -79,15 +80,21 @@ class TestMemberListMine:
         assert mine(lola) == [(other.slug, "hub_owner")]
         assert mine(owner) == [(business.slug, "hub_owner")]
 
-    def test_a_caller_without_an_account_is_refused(self):
-        with pytest.raises(Unauthorized):
+    def test_a_visitor_without_an_account_is_refused(self):
+        with pytest.raises(PermissionDenied):
             queries.member_list_mine(ctx_for(None), MemberListMineIn())
+
+    def test_a_caller_with_the_permission_but_no_account_is_refused(self):
+        """A system context: the permission is not the account, and it has no businesses of its own."""
+        system = OperationContext(scope=Scope("user", "system"), actor="system", permissions=["*"])
+
+        with pytest.raises(Unauthorized):
+            queries.member_list_mine(system, MemberListMineIn())
 
     def test_it_is_reachable_by_name_as_a_read_without_a_route(self):
         operation = operations.get("hubs.member.list_mine")
 
-        assert operation.meta.kind == "query"
-        assert operation.meta.permission == "hubs.view"
+        assert (operation.kind, operation.permission, operation.expose_api) == ("query", "hubs.view", False)
 
 
 class TestTheAccessFollowsTheMembersAtOnce:

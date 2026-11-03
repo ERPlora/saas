@@ -28,20 +28,6 @@ def test_a_user_without_memberships_has_no_hubs(ana):
     assert queries.hub_slugs_of(ana) == []
 
 
-def test_hubs_with_members_lists_every_hub_once_with_its_member_count(ana):
-    """The «Hubs» page of the admin (ronda 13): one row per hub, whoever its members are."""
-    bo = get_user_model().objects.create_user(email="bo@example.com", password="x")
-    enter(ana, "b", "hub_owner")
-    enter(ana, "a", "hub_owner")
-    enter(bo, "a", "hub_employee")
-
-    assert queries.hubs_with_members() == [("a", 2), ("b", 1)]
-
-
-def test_without_memberships_there_is_no_hub():
-    assert queries.hubs_with_members() == []
-
-
 @pytest.mark.parametrize(("slug", "link"), [("a", "/admin/hub/a/"), ("0day", "/admin/hub/0day/")])
 def test_the_deep_link_of_a_hub_in_the_hub_admin(slug, link):
     """``hubs.erplora.com/admin/hub/<slug>/`` fixes that hub in the Hub admin's session (PLAN §18.1.5)."""

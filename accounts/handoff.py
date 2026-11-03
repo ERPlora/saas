@@ -37,8 +37,8 @@ ones included): past it, ``/login/error?code=too_many`` asks to wait, and no cod
 button opens ``hubs.erplora.com/auth/login?hub=<slug>&next=/admin/hub/<slug>/`` (``accounts.admin``),
 whose ``state`` brings the browser back here. It mints a ``hub-admin`` code (a platform role, no
 membership) and posts it to ``HUB_ADMIN_CALLBACK_URL``. Without that role: 403, never a login. With
-``ACCOUNTS_MFA_ENABLED`` it always needs the second factor: without it, back to the memberships of
-the admin with a message (no detour: an account without an authenticator app could not finish it).
+``ACCOUNTS_MFA_ENABLED`` it always needs the second factor: without it, back to «Hubs» of the admin with a message
+(no detour: an account without an authenticator app could not finish it).
 """
 
 import logging
@@ -127,7 +127,7 @@ def hub_login(request: HttpRequest) -> HttpResponse:
         if staff_jump:
             logger.info("hub_login.hub_admin.second_factor_required user=%s hub=%s", request.user.pk, slug)
             messages.error(request, REFUSED_WITHOUT_SECOND_FACTOR)
-            return redirect("admin:accounts_hubmembership_changelist")
+            return redirect("accounts_hubs")
         logger.info("hub_login.second_factor_required hub=%s", slug)
         return HttpResponseRedirect(reauthenticate_url(request.get_full_path()))
     except services.HubAccessDenied:

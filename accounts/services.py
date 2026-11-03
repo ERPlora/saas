@@ -39,7 +39,6 @@ from accounts.models import (
     ApiKey,
     AuthExchangeCode,
     EmailChangeRequest,
-    HubMembership,
     ProfilePhoto,
     UserPreferences,
 )
@@ -103,7 +102,7 @@ class SupportGroupMissing(Exception):
     """The ``support`` group (data migration ``0003_support_group``) is not in the database."""
 
 
-#: Platform roles, only for the SaaS admin: never stored in ``HubMembership`` nor sent to a hub.
+#: Platform roles, only for the SaaS admin: never stored in ``hubs.HubMember`` nor sent to a hub.
 PLATFORM_ADMIN = "admin"
 PLATFORM_SUPPORT = "support"
 PLATFORM_ROLES = (PLATFORM_ADMIN, PLATFORM_SUPPORT)
@@ -157,8 +156,7 @@ def _role_in(user, hub_slug: str, audience: str) -> str | None:
     """What ``user`` is on ``hub_slug`` for ``audience``: a member's ``hub_*`` role or a platform role."""
     if audience == AuthExchangeCode.HUB_ADMIN_AUDIENCE:
         return _platform_role(user)
-    membership = HubMembership.objects.filter(user=user, hub_slug=hub_slug).first()
-    return membership.role if membership is not None else None
+    return queries.hub_roles_of(user).get(hub_slug)
 
 
 def _needs_second_factor(user, audience: str) -> bool:
@@ -326,8 +324,7 @@ def seed_demo_customer(email: str, password: str):
     """Create (or leave as it is) a customer account of ``demo_seed``: never staff, in no hub yet, its
     address proven.
 
-    Its businesses and roles are ``hubs.services.seed_demo_business``'s: the access the jump reads
-    (``HubMembership``) is the mirror of a business's members, written only by ``hubs.services.sync_access``.
+    Its businesses and roles are ``hubs.services.seed_demo_business``'s.
     """
     user = get_user_model().objects.filter(email=email).first()
     if user is None:
@@ -704,32 +701,17 @@ def inactive_account_ids(*, inactive_days: int = INACTIVE_DAYS) -> list:
     return list(_unused_since(inactive_days).order_by("date_joined", "pk").values_list("pk", flat=True))
 
 
-def _as_account(user) -> OperationContext:
-    """The context ``user`` gets from a request, outside one: to read what it sees through other apps' operations."""
-    from live.context import Scope
-    from live.meta import all_live_app_configs, permissions_for_role
-
-    from base.operations import ACCOUNT_ROLE
-
-    return OperationContext(
-        scope=Scope("user", str(user.pk)),
-        actor=user,
-        permissions=permissions_for_role(all_live_app_configs(), ACCOUNT_ROLE),
-        language=user.language,
-    )
-
-
 def is_a_customer(user) -> bool:
-    """Whether ``user`` is on a business: in the mirror the jump reads, or anywhere ``on_a_business`` sees. Neither
-    ``create_platform_user`` nor ``User.clean`` (the admin's form) makes such an account staff."""
-    return HubMembership.objects.filter(user=user).exists() or on_a_business(user)
+    """Whether ``user`` is on a business (``on_a_business``). Neither ``create_platform_user`` nor ``User.clean`` (the
+    admin's form) makes such an account staff."""
+    return on_a_business(user)
 
 
 def on_a_business(user) -> bool:
     """Whether ``user`` is on a business in any way ``hubs.business.list`` sees (called by its name: accounts never
     imports hubs): a member, also of one in its days of recovery (a restore gives it back), or invited to one."""
     business_list = operations.get(BUSINESS_LIST)
-    page = business_list(_as_account(user), business_list.input(limit=1, offset=0))
+    page = business_list(queries.as_account(user), business_list.input(limit=1, offset=0))
     return page.total > 0 or bool(page.invitations)
 
 
@@ -737,7 +719,7 @@ def belongs_to_a_business(user) -> bool:
     """Whether ``user`` is in a business that is not deleted (owner, payer or member), from ``hubs.business.list``
     (called by its name: accounts never imports hubs). A business in its 90 days of recovery holds nobody (F27)."""
     business_list = operations.get(BUSINESS_LIST)
-    as_account = _as_account(user)
+    as_account = queries.as_account(user)
     offset = 0
     while True:
         page = business_list(as_account, business_list.input(limit=100, offset=offset))
@@ -1632,7 +1614,7 @@ def support_report_from_hub(account: str, *, hub: str, hub_id: str, data: Suppor
     user = queries.active_account(account)
     if user is None:
         raise UnknownAccount(gettext("That account does not exist."))
-    if not HubMembership.objects.filter(user=user, hub_slug=hub).exists():
+    if hub not in queries.hub_roles_of(user):
         raise NotAMember(gettext("That account is not a member of that business."))
     return send_support_report(user, data, browser=browser, source=REPORT_FROM_HUB, business=f"{hub} ({hub_id})")
 
@@ -1652,11 +1634,10 @@ def send_support_report(user, data: SupportReportIn, *, browser: str, source: st
         increment=True,
     ):
         raise too_many_attempts()
-    memberships = HubMembership.objects.filter(user=user).order_by("hub_slug")
     context = [
         ("Account", f"{user.email} ({user.pk})"),
         ("Language", user.language),
-        ("Businesses", ", ".join(f"{row.hub_slug} ({row.role})" for row in memberships) or "none"),
+        ("Businesses", ", ".join(f"{slug} ({role})" for slug, role in queries.hub_roles_of(user).items()) or "none"),
         ("From", source),
         *([("Business", _one_line(business))] if business else []),
         ("Page", _one_line(data.page or "") or "unknown"),

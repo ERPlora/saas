@@ -618,6 +618,20 @@ class MemberListOut(Page[MemberRowOut]):
     invitable_roles: list[InvitableRole]
 
 
+class MemberListMineIn(Schema):
+    """Nothing to ask: the account is the caller's."""
+
+
+class MemberMineOut(Schema):
+    slug: str
+    role: Role
+
+
+class MemberListMineOut(Schema):
+    #: The businesses the account enters, by address.
+    rows: list[MemberMineOut]
+
+
 class MemberInviteIn(Schema):
     hub_id: UUID
     email: Email
