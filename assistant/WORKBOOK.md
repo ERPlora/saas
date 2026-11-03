@@ -1,7 +1,7 @@
 # Workbook — Asistente de IA (assistant)
 Prefijo: ASSISTANT
 Alcance MVP: fase 1 (la pasarela de IA de erplora.com: los proveedores que paga ERPlora, sus claves cifradas, sus modelos y qué modelo contesta; el turno del asistente de cada negocio con sus herramientas y sus adjuntos, el cupo de mensajes de su plan, las huellas de su índice, el dictado y la lectura en voz alta, las denuncias de una respuesta y lo que gasta cada negocio; el asistente del panel de erplora.com para cada cuenta, con las herramientas del panel y su propio cupo)
-Estado de la app: completa (2026-11-03)
+Estado de la app: en uso (uno sin hacer: ASSISTANT-F29, el aviso por correo de que se acaban los mensajes del panel)
 
 > Manual de uso y especificación de la app `assistant` del SaaS (erplora.com). Cuenta lo que hace el personal de
 > ERPlora para que el asistente de IA conteste (dar de alta un proveedor de modelos y su clave, elegir sus modelos,
@@ -54,6 +54,19 @@ Quién la usa:
   mensaje que falla antes de contestar no se cobra. Las herramientas que no son del negocio las ejecuta el servidor,
   nunca el dispositivo; la voz es dictado a texto y lectura en voz alta del mismo
   proveedor (https://platform.openai.com/docs/guides/speech-to-text, https://platform.openai.com/docs/guides/text-to-speech).
+- **Avisos de cupo por correo** (ASSISTANT-F29): un correo al acercarse al límite y otro al llegar, también en los productos
+  que ya lo enseñan en pantalla. GitHub, al 90 % y al 100 % de lo incluido en el plan
+  (https://docs.github.com/en/billing/concepts/budgets-and-alerts); HubSpot, al 75 % y al 100 % de su límite mensual
+  de IA (https://knowledge.hubspot.com/records/understand-communication-analysis-limit-notifications); Tern, al 75, 90
+  y 100 % de su cupo de IA por persona (https://help.tern.travel/en/articles/15303956-ai-usage-limits); Eraser
+  (https://docs.eraser.io/docs/usage-based-pricing) y Outfunnel
+  (https://support.outfunnel.com/en/articles/3245437-what-happens-if-i-exceed-my-monthly-active-contacts-plan-limit),
+  al 80 % y al 100 %; Vercel, «Usage increased» y «Usage limit reached» (https://vercel.com/docs/notifications); Userflow,
+  al 90 % y al parar por el límite (https://help.userflow.com/docs/managing-the-ai-assistant-usage-notifications). La
+  excepción es Odoo, con una sola alerta de umbral y destinatarios configurables
+  (https://www.odoo.com/documentation/master/applications/essentials/in_app_purchase.html). Apagarlos: el mercado está
+  partido (GitHub y Vercel lo dejan; en Userflow no hay nada que configurar); aquí no se apagan por simples, son dos
+  correos al mes como mucho.
 
 ## Antes de empezar
 
@@ -154,6 +167,7 @@ panel.
 | ASSISTANT-F26 | Contar los mensajes de una cuenta con el asistente del panel | hecho |
 | ASSISTANT-F27 | Buscar en la documentación desde el panel | hecho |
 | ASSISTANT-F28 | Buscar en la documentación desde el Hub | hecho |
+| ASSISTANT-F29 | Avisar por correo a una cuenta de que se le acaban los mensajes del asistente del panel | no hecho |
 
 ### ASSISTANT-F01 Dar de alta un proveedor de IA
 <!-- origen: fi:saas/support/auth-services#modelo-aiprovider fi:saas/django-admin#admin-aiprovider old-saas:SAAS_ASSISTANT-F22 -->
@@ -523,7 +537,7 @@ Pasos:
 Entra: la conversación (vive en el navegador de la persona), las herramientas que el modelo pidió y la respuesta de la persona a su tarjeta.
 Sale: lo que se ha hecho y su resultado, la tarjeta del cambio que espera, el texto según llega, el cupo que queda y el cierre; lo que hace cada herramienta deja su propio rastro (`hubs.business.created`…), nunca la conversación.
 Si falla: sin sesión, el panel lleva a entrar y no hay botón «Asistente», y una sesión que termina a media conversación pide volver a entrar; con el cupo del mes gastado, el primer aviso es el cupo agotado, con cuántos se han usado y cuándo vuelven, y que cada negocio tiene su propio asistente, sin «Mejorar plan» (ver ASSISTANT-F26); con demasiados turnos seguidos, avisa de que hay que esperar un momento; sin un modelo que conteste, de que el asistente no puede contestar ahora, con «Reintentar»; sin conexión, el pie lo dice. Una herramienta que la cuenta no tiene, o que no es del chat (descargar un fichero, crear una clave de API, abrir el pago, entrar en un negocio), no se ejecuta nunca. Sin la palabra escrita o con un «no», el cambio no se hace y el modelo lo dice. Unos datos que el cambio no acepta (un país que no es de los que sirve ERPlora, un valor fuera de su lista) no llegan a la tarjeta: vuelven al modelo, que los corrige en la misma pregunta, y la persona confirma una sola vez. Donde no se vende (la cuenta abierta desde la aplicación instalada), no se ofrecen la Tienda ni sus cambios de plan. Pasadas seis rondas de herramientas en una misma pregunta, se para.
-Implicados: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F23, ASSISTANT-F26, HUBS-F01, HUBS-F09, BILLING-F13
+Implicados: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F23, ASSISTANT-F26, ASSISTANT-F29, HUBS-F01, HUBS-F09, BILLING-F13
 
 ### ASSISTANT-F26 Contar los mensajes de una cuenta con el asistente del panel
 <!-- origen: nuevo (PLAN-SAAS §23: un cupo fijo por cuenta, como los asistentes de cuenta de Shopify, Square, Stripe, GitHub y Vercel, que van con la cuenta y no con el plan de cada tienda) -->
@@ -538,7 +552,7 @@ Pasos:
 Entra: la cuenta de la sesión.
 Sale: el mensaje tomado o devuelto y lo gastado en el mes de la cuenta (`assistant.message.claimed`, `assistant.message.released`, `assistant.usage.recorded`, con la cuenta).
 Si falla: sin mensajes libres, el turno se rechaza con el cupo agotado y la fecha en que vuelven; no hay plan que subir ni paquetes sueltos. Una cuenta nunca gasta los mensajes de sus negocios, ni un negocio los de su cuenta; al borrar la cuenta se borran sus filas.
-Implicados: ASSISTANT-F18, ASSISTANT-F24, ASSISTANT-F25
+Implicados: ASSISTANT-F18, ASSISTANT-F24, ASSISTANT-F25, ASSISTANT-F29
 
 ### ASSISTANT-F27 Buscar en la documentación desde el panel
 <!-- origen: old-saas:SAAS_DASHBOARD-F220 old:saas/apps/dashboard/assistant/knowledge.py old:saas/apps/dashboard/assistant/tools.py#search_cloud_docs -->
@@ -572,6 +586,20 @@ Entra: el negocio o la demo, la pregunta (hasta 500 caracteres), el idioma (ingl
 Sale: los fragmentos con su fuente, de dónde salen, sus títulos, su texto, su idioma y lo cerca que están de la pregunta; de la pregunta solo queda su huella en la caché durante un día (la misma pregunta otra vez no se calcula de nuevo). No gasta mensajes del cupo.
 Si falla: sin el proveedor de las huellas configurado, contesta que ahora no se puede buscar en la documentación porque el proveedor no está configurado; si el proveedor falla, que se vuelva a intentar en un momento; con demasiadas búsquedas seguidas del mismo negocio, que espere un momento; una llamada sin firmar, de un negocio que erplora.com no conoce o de uno que no está activo se rechaza como en cualquier puerta del Hub; mientras la documentación no se ha indexado, no encuentra nada y el asistente dice que la documentación no lo cubre.
 Implicados: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F27
+
+### ASSISTANT-F29 Avisar por correo a una cuenta de que se le acaban los mensajes del asistente del panel
+<!-- origen: nuevo (PLAN-SAAS §23 y §29; gh:saas#204; avisan al acercarse al tope y otra vez al llegar: ver «Referencia adoptada») -->
+Estado: no hecho — falta mandar los dos correos al gastar los mensajes, la marca de que ya salieron ese mes, sus textos en inglés y español y que cuenten entre los correos siempre activos de ACCOUNTS-F23; hoy solo lo dice el pie del panel (ASSISTANT-F25)
+Actor: la persona con cuenta en erplora.com
+Pantalla: ninguna
+Pasos:
+1. Al gastar el mensaje que la deja en el 80 % del mes, el 24 de 30, el mismo punto desde el que lo dice el pie del panel (ASSISTANT-F25), erplora.com le manda un correo a la dirección de su cuenta y en su idioma: «Te quedan 6 de 30 mensajes con el asistente este mes.», cuándo vuelven («Se renuevan el 1 de diciembre.») y un enlace al panel.
+2. Al gastar el último, el 30 de 30, le manda otro: «Has usado los 30 mensajes con el asistente de este mes.», cuándo vuelven, «Cada negocio tiene su propio asistente, con sus propios mensajes: abre el negocio para seguir preguntando allí.» y el enlace al panel. Ninguno ofrece subir de plan ni comprar mensajes, porque no existen (ASSISTANT-F26).
+3. Cada correo sale una sola vez por cuenta y mes, aunque dos turnos a la vez lleguen al mismo punto. Un mensaje devuelto (ASSISTANT-F26, paso 3) no anula el aviso ya mandado ni hace que se repita al volver a llegar. Con el cupo del mes siguiente pueden volver a salir.
+Entra: el mensaje tomado de la cuenta (ASSISTANT-F26), y el correo y el idioma de la persona.
+Sale: el correo, y la marca de que ya salió en el mes de la cuenta (`assistant.usage.warned`, con la cuenta y las cifras).
+Si falla: un correo que no sale no frena el turno: queda en el registro y se vuelve a intentar con el siguiente mensaje que la persona escriba ese mes, con las cifras de ese momento, también si ya no le queda ninguno; con el cupo gastado solo sale el de «Has usado», nunca el de «Te quedan». El cupo de un negocio (ASSISTANT-F18) y el de una demo no mandan este correo. No se puede apagar en Preferencias: son dos correos al mes como mucho y sin publicidad (ver ACCOUNTS-F23).
+Implicados: ASSISTANT-F25, ASSISTANT-F26, ACCOUNTS-F23
 
 ## Para quien lo mantiene
 
@@ -714,6 +742,13 @@ propio texto por `code`.
 - **Cupo por cuenta**: `Caller(user_id=…)`, una fila `AssistantUsage(user, month)` (check «negocio, demo o cuenta»,
   única por cuenta y mes; migración `0003_account_usage`, que al volver atrás borra las filas de cuentas),
   `ASSISTANT_ACCOUNT_MESSAGES` (30).
+- **El aviso por correo de los mensajes** (ASSISTANT-F29, sin hacer, saas#204), lo que falta: `assistant/emails.py` con
+  `branded_message`, como `_send` de `hubs/emails.py` (try/except, log y si salió); dos columnas nulas en
+  `AssistantUsage` (migración reversible); en `message_claim`, solo con `data.user_id`, coger la marca con
+  `UPDATE … WHERE <columna> IS NULL`, evento `assistant.usage.warned` en la misma transacción y envío con
+  `transaction.on_commit(partial(…), robust=True)`, que limpia la marca si no sale; también cuando `claimed` es falso,
+  para que el reintento alcance al último. El umbral es el de `usageNote` de `@erplora/ui` (`NOTE_FROM`, 0,8). El e2e
+  fija `ASSISTANT_ACCOUNT_MESSAGES=2`: ahí solo sale el del 100 %.
 - **El chat** (`assistant/frontend/`): el del Hub, de `@erplora/ui/components` (`AssistantPanel`, `AssistantButton`,
   `AssistantEmpty`), configurado en `options.ts` (`SAAS_ASSISTANT`: turno en `/api/assistant/turn`, sin `?surface=`,
   que el servidor lee de la sesión; cupo y denuncia por `base.assistant.usage|report`; sin `transcribe`; `canUse` =

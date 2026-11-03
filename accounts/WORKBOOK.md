@@ -627,7 +627,7 @@ Pasos:
 Entra: «Avisos de mis negocios».
 Sale: con él apagado, el correo de un negocio listo no se manda; el negocio abre igual y el panel lo dice. Los demás correos se mandan siempre: los códigos y los avisos de seguridad, las facturas y los pagos fallidos, el negocio eliminado con su fecha para recuperarlo y lo que pide hacer algo, como volver a conectar WhatsApp.
 Si falla: si no se puede guardar, el interruptor vuelve a como estaba y un aviso dice por qué.
-Implicados: hubs (el correo de un negocio listo), billing (las facturas y los pagos, siempre)
+Implicados: hubs (el correo de un negocio listo), billing (las facturas y los pagos, siempre), assistant (ASSISTANT-F29, aún sin hacer: el aviso de los mensajes del panel)
 
 ### ACCOUNTS-F24 Cambiar el tema desde el menú de usuario
 <!-- origen: fi:saas/auth-services#toggle-de-tema-server-side-sin-js fi:saas/auth-services#context-processor-de-tema fi:saas/support/public-core-config#context_processors-py-theme-apps-py-coreconfig pc:cloud/dashboard/theme_picker -->
