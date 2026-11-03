@@ -167,3 +167,22 @@ def test_an_unknown_provider_is_a_404(as_ai_admin):
 def test_an_address_that_names_no_provider_is_a_404(as_ai_admin):
     assert as_ai_admin.get("/admin/assistant/aiprovider/not-an-id/models/").status_code == 404
     assert as_ai_admin.post("/admin/assistant/aiprovider/not-an-id/models/", {"listed": [], "models": []}).status_code == 404
+
+
+def test_a_provider_that_reads_aloud_offers_no_models_to_choose(as_ai_admin, listed_provider, fake_provider):
+    """Azure AI Speech answers no turn (``assistant.models.SPEECH_KINDS``): its page has neither «Choose models from the
+    provider» nor a list of models, and the choosing page says why without asking it anything."""
+    speech = AIProvider.objects.create(
+        slug="azure-speech", name="Azure AI Speech", kind="azure_speech", base_url=f"{fake_provider.url}/westeurope"
+    )
+    AIProviderCredential.objects.create(provider=speech, label="default", api_key=API_KEY, key_hint="wxyz")
+
+    chat = as_ai_admin.get(f"/admin/assistant/aiprovider/{listed_provider.pk}/change/").content.decode()
+    change = as_ai_admin.get(f"/admin/assistant/aiprovider/{speech.pk}/change/").content.decode()
+    choose = as_ai_admin.get(choose_url(speech)).content.decode()
+
+    assert "models-TOTAL_FORMS" in chat and choose_url(listed_provider) in chat
+    assert "models-TOTAL_FORMS" not in change and choose_url(speech) not in change
+    assert "This provider reads aloud: it answers no turn, so it has no models to choose." in choose
+    assert 'name="models"' not in choose
+    assert [seen.path for seen in fake_provider.requests if "westeurope" in seen.path] == []

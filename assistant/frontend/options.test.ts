@@ -1,15 +1,16 @@
 // The panel's configuration of the shared assistant (`options.ts`, plan 2026-10-30-asistente-saas §6): the same chat as
 // the Hub's, wired to the SaaS's own routes and operations (base/api.py), the account's words for its writes and its
-// screens, its dictation (ASSISTANT-F21) and nobody upgrading (an account has no plan for its 30 messages).
+// screens, its dictation (ASSISTANT-F21), its reading aloud in a server voice (ASSISTANT-F22) and nobody upgrading (an
+// account has no plan for its 30 messages).
 // clock: data only — no code under test compares these dates with now.
 import { createShellSession, type SessionMe } from '@erplora/ui/shell';
-import type { LiveClient } from '@erplora/ui/sdk';
+import { ApiError, type LiveClient } from '@erplora/ui/sdk';
 import { describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 
 import en from '../../frontend/locale/en.json';
 import es from '../../frontend/locale/es.json';
-import { actionKey, ASK, PANEL_SCREENS, panelScreenKey, placeKey, SAAS_ASSISTANT } from './options';
+import { actionKey, ASK, PANEL_SCREENS, panelScreenKey, placeKey, SAAS_ASSISTANT, speak } from './options';
 
 type Catalogue = { [key: string]: string | Catalogue };
 
@@ -177,3 +178,56 @@ describe('panelScreenKey', () => {
     expect(panelScreenKey('/settings')).toBeNull();
   });
 });
+
+/** A page of the panel: its SPA config and its CSRF cookie, as Django serves it. */
+function panelPage(): Document {
+  const doc = document.implementation.createHTMLDocument('panel');
+  const config = doc.createElement('script');
+  config.id = 'spa-config';
+  config.type = 'application/json';
+  config.textContent = JSON.stringify({ csrfCookieName: 'csrftoken', csrfHeader: 'X-CSRFToken', lang: 'es', deviceIdStorageKey: 'erplora.device' });
+  doc.body.append(config);
+  Object.defineProperty(doc, 'cookie', { value: 'csrftoken=tok123' });
+  return doc;
+}
+
+const SPEECH = { text: 'Tienes dos negocios.', language: 'es' as const, voice: 'es-ES-Tristan:DragonHDLatestNeural' };
+
+describe('speak (ASSISTANT-F22): the mp3 of an answer in a server voice, base.assistant.speak', () => {
+  it('posts the text, its language and its voice to the route with the CSRF token, and gives back the mp3', async () => {
+    const mp3 = new Blob(['ID3 spoken words'], { type: 'audio/mpeg' });
+    const fetch = vi.fn().mockResolvedValue(new Response(mp3, { status: 200, headers: { 'Content-Type': 'audio/mpeg' } }));
+
+    const audio = await speak(SPEECH, { fetch, doc: panelPage() });
+
+    expect(audio).toBeInstanceOf(Blob);
+    expect(await audio.text()).toBe('ID3 spoken words');
+    const [url, init] = fetch.mock.calls[0];
+    expect(url).toBe('/api/assistant/speak');
+    expect(init.method).toBe('POST');
+    expect(init.credentials).toBe('same-origin');
+    expect(init.headers).toMatchObject({ 'X-CSRFToken': 'tok123', 'Content-Type': 'application/json', Accept: 'audio/mpeg' });
+    expect(JSON.parse(init.body)).toEqual(SPEECH);
+  });
+
+  it('rejects with the envelope of a refusal, so the chat reads in the device voice', async () => {
+    const refusal = { error: { code: 'assistant.speech_unavailable', message: 'Reading aloud is not available right now.' } };
+    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(refusal), { status: 503, headers: { 'Content-Type': 'application/json' } }));
+
+    const spoken = speak(SPEECH, { fetch, doc: panelPage() });
+
+    await expect(spoken).rejects.toBeInstanceOf(ApiError);
+    await expect(spoken).rejects.toMatchObject({ status: 503, code: 'assistant.speech_unavailable', message: 'Reading aloud is not available right now.' });
+  });
+
+  it('rejects when there is no network at all', async () => {
+    const fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+
+    await expect(speak(SPEECH, { fetch, doc: panelPage() })).rejects.toMatchObject({ status: 0, code: 'network_error' });
+  });
+
+  it('is what the panel gives the chat as its server voice', () => {
+    expect(SAAS_ASSISTANT.speak).toBeTypeOf('function');
+  });
+});
+

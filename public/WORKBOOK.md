@@ -461,7 +461,7 @@ Actor: visitante
 Pantalla: Textos legales
 Pasos:
 1. En el pie, «Aviso legal», «Privacidad» y «Términos» abren cada texto en su página; la política de cookies se abre desde la privacidad.
-2. La privacidad nombra a quién se confían los datos: Amazon Web Services en la región de Irlanda para el alojamiento y el correo, el modelo de lenguaje del asistente en Fráncfort, sin entrenar con ellos, y OpenAI para la voz y la búsqueda del asistente: transcribe el audio de un dictado, que ni el hub ni ERPlora guardan, y puede tratarlo fuera del Espacio Económico Europeo.
+2. La privacidad nombra a quién se confían los datos: Amazon Web Services en la región de Irlanda para el alojamiento y el correo, el modelo de lenguaje del asistente en Fráncfort, sin entrenar con ellos, y OpenAI para la voz y la búsqueda del asistente: transcribe el audio de un dictado, que ni el hub ni ERPlora guardan, y puede tratarlo fuera del Espacio Económico Europeo; y Microsoft (Azure AI Speech, en Suecia, dentro de la Unión Europea) para leer una respuesta en voz alta con la voz del servidor.
 3. Los términos dan los números que el producto cumple: los días del paquete de salida, los días que espera un negocio suspendido antes de borrarse y la prueba de los planes a la venta (ninguna si ninguno la tiene).
 Entra: los planes a la venta (los términos).
 Sale: nada guardado.
@@ -778,12 +778,16 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   prohibidas están en `public/tests/test_product.py` (`UNSHIPPED_CLAIMS`, `UNVERIFIED_SECURITY_CLAIMS` y
   `APP_TIER_CLAIMS`, los niveles de apps). El
   balanceador acepta TLS 1.2 y 1.3 (`ssl_policy` de ERPlora/aws).
-- Textos legales (F20, F08): la privacidad nombra a cada encargado que recibe datos y qué recibe. La voz y la búsqueda
-  del asistente (`assistant/media.py`: `whisper-1`, `tts-1` y `text-embedding-3-small`) van al proveedor de
+- Textos legales (F20, F08): la privacidad nombra a cada encargado que recibe datos y qué recibe. El dictado y la
+  búsqueda del asistente (`assistant/media.py`: `whisper-1` y `text-embedding-3-small`) van al proveedor de
   `ASSISTANT_SERVICE_PROVIDER`, la API de OpenAI en `api.openai.com` por defecto, sin residencia en la UE por contrato.
+  La lectura en voz alta va al proveedor de `ASSISTANT_SPEECH_PROVIDER`, Azure AI Speech en la dirección de su región
+  (`swedencentral` por defecto, UE; PLAN-SAAS ronda 2026-11-03m): poner otra región fuera de la UE en el admin es
+  cambiar también el encargado de §5 (`test_legal.py`).
   Cambiarlo es cambiar en la misma entrega §5 y §6 de la privacidad, la respuesta «storage» de `/pricing/` y la celda
   del asistente de la portada (`test_legal.py`, `test_product.py` y `test_landing.py`, en `en` y `es`). El Hub y el
-  panel solo usan hoy el dictado (`base.assistant.transcribe`, cada uno el suyo); «Leer en voz alta» lee con la voz del dispositivo.
+  panel usan el dictado (`base.assistant.transcribe`, cada uno el suyo); «Leer en voz alta» del panel pide la voz del
+  servidor (`base.assistant.speak`) y, si falla, lee la del dispositivo; la del Hub, hoy, la del dispositivo.
 - Cumplimiento (F09): `hubs.countries.COUNTRY_NAMES` tiene que casar con `hubs.schemas.COUNTRIES` (lo exige un test);
   `FISCAL_SYSTEMS` dice qué sistema fiscal conecta cada país, hoy solo VeriFactu en España. Un país nuevo conectado
   se añade ahí con su app, en la misma entrega.

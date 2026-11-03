@@ -22,10 +22,11 @@ def test_each_api_gets_its_client(kind, client):
     assert provider.base_url == "https://example.com"
 
 
-def test_the_clients_are_the_four_apis_of_a_provider():
-    from assistant.models import AIProvider
+def test_the_clients_are_the_four_apis_of_a_provider_of_models():
+    """A provider of the voice (Azure AI Speech) answers no turn: it has no chat client."""
+    from assistant.models import SPEECH_KINDS, AIProvider
 
-    assert set(CLIENTS) == set(AIProvider.Kind.values)
+    assert set(CLIENTS) == set(AIProvider.Kind.values) - SPEECH_KINDS
 
 
 def test_an_unknown_api_cannot_answer():

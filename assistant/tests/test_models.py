@@ -18,8 +18,11 @@ pytestmark = pytest.mark.django_db
 # --- AIProvider (G25) ------------------------------------------------------------------------------------
 
 
-def test_the_kinds_are_the_four_apis_the_gateway_speaks():
-    assert set(AIProvider.Kind.values) == {"openai", "anthropic", "gemini", "deepseek"}
+def test_the_kinds_are_the_four_apis_of_models_and_the_one_of_the_voice():
+    from assistant.models import SPEECH_KINDS
+
+    assert set(AIProvider.Kind.values) == {"openai", "anthropic", "gemini", "deepseek", "azure_speech"}
+    assert SPEECH_KINDS == {"azure_speech"}
 
 
 @pytest.mark.parametrize(

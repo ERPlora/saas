@@ -14,6 +14,7 @@ from urllib.parse import urlsplit
 
 from decouple import Config, Csv, RepositoryEmpty, RepositoryEnv
 from django.core.exceptions import ImproperlyConfigured
+from django.utils.csp import CSP
 from live.csp import base_policy, debug_policy
 from live.recaptcha import with_recaptcha
 
@@ -621,6 +622,9 @@ SECURE_CSP["form-action"] = [
     HUB_ORIGIN_PATTERN,
     HUB_ADMIN_ORIGIN,
 ]
+# «Read aloud» of the panel's assistant plays the mp3 it fetched from its own route (base.assistant.speak) as a
+# `blob:` URL; without `media-src` the browser falls back to `default-src 'self'` and refuses it.
+SECURE_CSP["media-src"] = [CSP.SELF, "blob:"]
 
 # Static files: WhiteNoise. The template pages' Ionic (the public web, the error pages) and fonts are
 # vendored under static/vendor/ (nothing from a CDN). Vite already hashes the SPA build, served under /static/spa/
@@ -777,8 +781,13 @@ ASSISTANT_DEMO_MESSAGES = config("ASSISTANT_DEMO_MESSAGES", default=10, cast=int
 # An account's messages a month with the assistant of erplora.com's own panel (PLAN-SAAS §23): fixed, whatever the
 # plans of its businesses, each of which has its own allowance in its Hub.
 ASSISTANT_ACCOUNT_MESSAGES = config("ASSISTANT_ACCOUNT_MESSAGES", default=30, cast=int)
-# The provider (its identifier in the admin, of OpenAI's API) whose key computes the embeddings and the voice.
+# The provider (its identifier in the admin, of OpenAI's API) whose key computes the embeddings and the dictation.
 ASSISTANT_SERVICE_PROVIDER = config("ASSISTANT_SERVICE_PROVIDER", default="openai")
+# The provider (its identifier in the admin, of Azure AI Speech's API) that reads the answers aloud
+# (/internal/speech/synthesize and the panel's base.assistant.speak; PLAN-SAAS round 2026-11-03m): its address is its
+# region's endpoint (Sweden Central unless the admin says another). Without it, or without its key: 503
+# assistant.speech_unavailable, and the Hub and the panel read with the device's voice.
+ASSISTANT_SPEECH_PROVIDER = config("ASSISTANT_SPEECH_PROVIDER", default="azure-speech")
 # The demo hubs (PLAN-SAAS §3.5, round 2026-10-17; public/demo.py): one switch, and new demos per address
 # (django-ratelimit, over the default cache; a browser re-entering its live demo does not count). The Hub keeps
 # the cap of live demos (MAX_CONCURRENT_DEMOS) and the WAF limits /demo per IP too.
@@ -902,6 +911,7 @@ OPENAI_API_KEY = config("OPENAI_API_KEY", default="")
 ANTHROPIC_API_KEY = config("ANTHROPIC_API_KEY", default="")
 GEMINI_API_KEY = config("GEMINI_API_KEY", default="")
 DEEPSEEK_API_KEY = config("DEEPSEEK_API_KEY", default="")
+AZURE_SPEECH_KEY = config("AZURE_SPEECH_KEY", default="")
 
 # WhatsApp, erplora.com's side (whatsapp/, PLAN-SAAS §1.1, round 2026-10-15b): Meta's app («ERPlora Inbox»), its
 # Embedded Signup configuration and its webhook. Empty = WhatsApp is off, visibly: the webhook answers 503 and the

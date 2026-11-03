@@ -24,6 +24,8 @@ from base import assistant
 from base.schemas import (
     AssistantReportIn,
     AssistantReportOut,
+    AssistantSpeakIn,
+    AssistantSpeakOut,
     AssistantTranscribeIn,
     AssistantTranscribeOut,
     AssistantTurnIn,
@@ -278,3 +280,32 @@ def assistant_transcribe(ctx: OperationContext, data: AssistantTranscribeIn) -> 
                 status=429,
             ) from None
     return {"text": "", "language": gateway_media.base_language(data.language or ctx.language)}
+
+
+@operation(
+    "base.assistant.speak",
+    kind="command",
+    permission=ASK,
+    input=AssistantSpeakIn,
+    output=AssistantSpeakOut,
+    ai=INTERNAL,  # panel
+    # The door, with no transaction open: the route waits on Azure after it (``assistant.spoken``), and a connection
+    # never waits on a provider inside a transaction.
+    database=False,
+)
+def assistant_speak(ctx: OperationContext, data: AssistantSpeakIn) -> dict:
+    """A reading aloud of the panel made ready, as a dictation is: the session's account, its permission, its budget
+    of the Hub's ``synthesize`` door (``ASSISTANT_SYNTHESIZE_RATELIMIT``, 429 ``rate_limited``) and the language it is
+    read in (as asked, else the account's; English for a language without voices). The audio comes from the route
+    (``base.assistant.spoken``); nothing is written of what is read."""
+    try:
+        gateway.spend(getattr(ctx, "request", None), "synthesize", settings.ASSISTANT_SYNTHESIZE_RATELIMIT, Caller(user_id=ctx.actor.pk))
+    except gateway.Refused:
+        with translation.override(ctx.language):
+            raise OperationError(
+                gettext("Too many readings aloud in a short time: wait a moment and try again."),
+                code="rate_limited",
+                status=429,
+            ) from None
+    language = data.language or gateway_media.base_language(ctx.language)
+    return {"language": language if language in gateway_media.SPEECH_LANGUAGES else "en"}

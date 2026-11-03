@@ -94,6 +94,11 @@ class TestThePanelPolicyInProduction:
         assert panel_policy["img-src"][0] == CSP.SELF
         assert "https:" not in panel_policy["img-src"]
 
+    def test_audio_plays_from_our_origin_and_from_the_pages_own_blobs(self, panel_policy):
+        """«Read aloud» plays the mp3 the panel fetched (``base.assistant.speak``) from a ``blob:`` URL of its own;
+        no other origin plays media."""
+        assert panel_policy["media-src"] == [CSP.SELF, "blob:"]
+
     def test_violations_are_reported(self, panel_policy):
         assert panel_policy["report-uri"] == ["/csp-report/"]
 

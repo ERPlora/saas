@@ -1480,10 +1480,22 @@ export interface AssistantTranscribeOut {
   language: string;
 }
 
+/**
+ * `base.AssistantSpeakIn`: an answer to read aloud for the session's account (ASSISTANT-F22), in a voice of Azure's
+ * catalogue (`es-ES-Ximena:DragonHDLatestNeural`…, the ids of `@erplora/ui`) or the default of its language (empty:
+ * the account's). Its route answers with the mp3 itself (`audio/mpeg`), so the operation has no JSON output.
+ */
+export interface AssistantSpeakIn {
+  text: string;
+  language?: '' | 'es' | 'en';
+  voice?: string;
+}
+
 declare module '@erplora/ui/sdk' {
   interface Operations {
     'base.assistant.usage': { input: AssistantUsageIn; output: AssistantUsageOut };
     'base.assistant.report': { input: AssistantReportIn; output: AssistantReportOut };
     'base.assistant.transcribe': { input: AssistantTranscribeIn; output: AssistantTranscribeOut };
+    'base.assistant.speak': { input: AssistantSpeakIn; output: never };
   }
 }

@@ -159,9 +159,10 @@ class ModelTryOut(Schema):
 
 
 class CredentialImportIn(Schema):
-    """A provider's key the platform loads (from the environment): the provider is the one of its API (``kind``)."""
+    """A provider's key the platform loads (from the environment): the provider is the one of its API (``kind``),
+    whose identifier is the API's (``azure_speech`` is ``azure-speech``, ``assistant.models.provider_slug``)."""
 
-    kind: Literal["openai", "anthropic", "gemini", "deepseek"]
+    kind: Literal["openai", "anthropic", "gemini", "deepseek", "azure_speech"]
     api_key: SecretStr
     label: str = Field(default="default", min_length=1, max_length=64)
     #: Replace a key already kept with that label.
@@ -273,7 +274,8 @@ class TurnIn(CallerIn):
 
 
 class ServiceConnectionOut(Schema):
-    """What the embeddings and the voice need of the services' provider (of OpenAI's API): its address and its key."""
+    """What a service needs of its provider: its address and its key (the embeddings and the dictation, of the
+    services' provider of OpenAI's API; the reading aloud, of the provider of the voice, Azure AI Speech)."""
 
     provider: str
     base_url: str
@@ -317,12 +319,13 @@ class TranscribeIn(CallerIn, DictationIn):
     """A dictation the Hub sends for a business."""
 
 
-class SynthesizeIn(CallerIn):
-    """A text to read aloud and, optionally, its voice (``alloy``, ``echo``, ``fable``, ``onyx``, ``nova`` or
-    ``shimmer``; another one is ``alloy``)."""
+class SpeechIn(Schema):
+    """A text to read aloud, its language (``es`` or ``en``) and, optionally, a voice of the catalogue
+    (``assistant.media.VOICES``: ``es-ES-Ximena:DragonHDLatestNeural``…); without one, the language's default."""
 
     text: str = Field(max_length=100_000)
-    voice: str = Field(default="", max_length=32)
+    language: Literal["es", "en"]
+    voice: str = Field(default="", max_length=64)
 
     @field_validator("text")
     @classmethod
@@ -330,6 +333,20 @@ class SynthesizeIn(CallerIn):
         if not value.strip():
             raise ValueError("write the text to read aloud")
         return value.strip()
+
+    @field_validator("voice")
+    @classmethod
+    def _a_voice_of_the_catalogue(cls, value):
+        from assistant.media import VOICE_IDS
+
+        voice = value.strip()
+        if voice and voice not in VOICE_IDS:
+            raise ValueError(f"one of {', '.join(sorted(VOICE_IDS))}")
+        return voice
+
+
+class SynthesizeIn(CallerIn, SpeechIn):
+    """A text the Hub sends for a business to read aloud."""
 
 
 class ReportFields(Schema):

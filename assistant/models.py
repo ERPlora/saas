@@ -1,7 +1,8 @@
 """What the AI gateway keeps (README.md «Datos»): the providers ERPlora pays, their keys and their models, and which
 model answers. Keys are UUIDv7.
 
-- ``AIProvider`` (ASSISTANT-G25): one of the four APIs the gateway speaks (``kind``) at its address.
+- ``AIProvider`` (ASSISTANT-G25): one of the four APIs of models the gateway speaks (``kind``) at its address, or
+  the one that reads aloud (Azure AI Speech, ``SPEECH_KINDS``: no model of its answers a turn).
 - ``AIProviderCredential`` (G26): a key of a provider, encrypted (``assistant.fields``), with its last four
   characters as hint. Only ``assistant.services`` writes it.
 - ``AIModel`` (G24): a model of a provider the staff chose, with its prices (USD per million tokens, typed by hand:
@@ -37,7 +38,17 @@ DEFAULT_BASE_URLS = {
     "anthropic": "https://api.anthropic.com",
     "gemini": "https://generativelanguage.googleapis.com",
     "deepseek": "https://api.deepseek.com",
+    # The region is the address: another one is another region's endpoint (https://<region>.tts.speech.microsoft.com).
+    "azure_speech": "https://swedencentral.tts.speech.microsoft.com",
 }
+#: The kinds that read aloud and answer no turn: no model of theirs is offered, chosen nor routed.
+SPEECH_KINDS = frozenset({"azure_speech"})
+
+
+def provider_slug(kind: str) -> str:
+    """The identifier a kind's provider gets when the platform adds it (``import_ai_keys_from_env``): ``openai``,
+    ``azure-speech`` (a slug's words go with hyphens)."""
+    return kind.replace("_", "-")
 
 
 def on_this_machine(host: str) -> bool:
@@ -76,6 +87,7 @@ class AIProvider(models.Model):
         ANTHROPIC = "anthropic", "Anthropic"
         GEMINI = "gemini", "Google Gemini"
         DEEPSEEK = "deepseek", "DeepSeek"
+        AZURE_SPEECH = "azure_speech", "Azure AI Speech"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     slug = models.SlugField(
@@ -113,6 +125,11 @@ class AIProvider(models.Model):
 
     def __str__(self):
         return self.name or self.slug
+
+    @property
+    def reads_aloud(self) -> bool:
+        """A provider of the voice (``SPEECH_KINDS``): it answers no turn and has no models to choose."""
+        return self.kind in SPEECH_KINDS
 
     @property
     def api_base(self) -> str:

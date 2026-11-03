@@ -1343,6 +1343,18 @@ msgstr "El dictado no está disponible en este momento."
 msgid "The audio could not be transcribed: try again."
 msgstr "No se ha podido transcribir el audio: inténtalo de nuevo."
 
+#: base/services.py
+msgid "Too many readings aloud in a short time: wait a moment and try again."
+msgstr "Demasiadas lecturas en voz alta seguidas: espera un momento y vuelve a intentarlo."
+
+#: base/assistant.py
+msgid "Reading aloud is not available right now."
+msgstr "La lectura en voz alta no está disponible en este momento."
+
+#: base/assistant.py
+msgid "The answer could not be read aloud: try again."
+msgstr "No se ha podido leer la respuesta en voz alta: inténtalo de nuevo."
+
 #: base/assistant.py
 msgid "Help"
 msgstr "Ayuda"
