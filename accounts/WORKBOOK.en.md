@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:85efe546132d5e9487f56d8e71de760984f4f1aa1fa4bb0acd0b73a6de6bc47d -->
+<!-- generated from WORKBOOK.md sha256:89cde6d125e94492e60e8156e20f89237eac75df61619e42301b384804ccdf65 -->
 
 ## What it is for and who it is for
 
@@ -580,7 +580,7 @@ Steps:
 In: "Business notices".
 Out: with it off, the mail that a business is ready is not sent; the business opens all the same and the panel says so. The other mails are always sent: the codes and the security notices, the invoices and the failed payments, the deleted business with its date to recover it, and anything that asks them to act, such as connecting WhatsApp again.
 If it fails: if it cannot be saved, the switch goes back to how it was and a notice says why.
-Involved: hubs (the mail of a ready business), billing (the invoices and the payments, always)
+Involved: hubs (the mail of a ready business), billing (the invoices and the payments, always), assistant (ASSISTANT-F29, not done yet: the notice about the panel's messages)
 
 ### ACCOUNTS-F24 Change the theme from the user menu
 Status: done

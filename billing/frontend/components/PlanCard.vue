@@ -10,6 +10,9 @@
 //   - Paying: «Change to …» (confirmed with its proration), «Switch to annual/monthly» on its own plan
 //     when the switch shows the other billing, «Downgrade to Free» (cancels at the end of the period).
 //   - Cancelled: «Keep the plan» on its plan; Free says from when; another plan waits for it.
+//   - A downgrade that waits for the end of the period (PLAN-SAAS §31): its plan says to what and when, with
+//     «Keep the plan» (it charges nothing, so an unpaid invoice does not stop it); the plan it moves to says from
+//     when; any other plan, and Free, still change it.
 //   - An unpaid invoice disables what charges, with the reason under the button (`aria-describedby`).
 //     Cancelling is never blocked: it only stops the next charges.
 import { StatusPill } from '@erplora/ui/components';
@@ -30,6 +33,8 @@ const props = defineProps<{
   subscription: StoreSubscriptionOut | null;
   /** An unpaid invoice of the business: nothing that charges. */
   block: Block | null;
+  /** The name of the plan a downgrade that waits moves the business to (`subscription.scheduled_change`). */
+  scheduledPlanName?: string;
 }>();
 
 const emit = defineEmits<{
@@ -41,7 +46,7 @@ const emit = defineEmits<{
   switch: [period: BillingInterval];
   /** Cancel the paid plan: the business goes to Free at the end of the period. */
   downgrade: [];
-  /** Undo the cancellation. */
+  /** Undo the cancellation, or the downgrade that waits. */
   keep: [];
 }>();
 
@@ -55,6 +60,9 @@ const paying = computed(() => !!props.subscription?.paying);
 const current = computed(() => (props.subscription ? props.subscription.plan === props.plan.slug : free.value));
 const cancelling = computed(() => paying.value && !!props.subscription?.cancel_at_period_end);
 const periodEnd = computed(() => formatDate(props.subscription?.current_period_end, locale.value));
+/** The downgrade that waits for the end of the period (a cancellation wins over it). */
+const scheduled = computed(() => (paying.value && !cancelling.value ? (props.subscription?.scheduled_change ?? null) : null));
+const scheduledFrom = computed(() => formatDate(scheduled.value?.starts_at, locale.value));
 const trying = computed(() => {
   const subscription = props.subscription;
   if (!subscription || paying.value || subscription.trial_plan !== props.plan.slug || !subscription.trial_end) return false;
@@ -70,11 +78,14 @@ const action = computed<{ kind: Action; disabled: boolean; hint: string } | null
   }
   if (current.value && paying.value) {
     if (cancelling.value) return { kind: 'keep', disabled: !!props.block, hint: payFirst };
+    if (scheduled.value) return { kind: 'keep', disabled: false, hint: '' };
     if (props.period !== props.subscription?.billing_interval) return { kind: 'switch', disabled: !!props.block, hint: payFirst };
     return null;
   }
   if (paying.value) {
     if (cancelling.value) return { kind: 'change', disabled: true, hint: t('billing.plans.keepFirst') };
+    const waiting = scheduled.value;
+    if (waiting && waiting.plan === props.plan.slug && waiting.interval === props.period) return null;
     return { kind: 'change', disabled: !!props.block, hint: payFirst };
   }
   return { kind: 'upgrade', disabled: !!props.block, hint: payFirst };
@@ -145,11 +156,24 @@ const lines = computed<Line[]>(() => {
   return [...result, ...trial.map(feature)];
 });
 
-/** What the card says under the features: a cancellation, Free's date, a trial's days. */
+/** What the card says under the features: a cancellation or a downgrade that waits, Free's date, a trial's days. */
 const note = computed(() => {
   if (current.value && cancelling.value && !free.value) {
     return t('billing.plans.cancelled', { plan: props.plan.name, date: periodEnd.value });
   }
+  const waiting = scheduled.value;
+  if (waiting && current.value && !free.value) {
+    if (waiting.plan === props.plan.slug) {
+      return t('billing.plans.scheduledBilling', {
+        plan: props.plan.name,
+        from: t(`billing.plans.periodName.${props.subscription?.billing_interval ?? 'year'}`),
+        date: scheduledFrom.value,
+        to: t(`billing.plans.periodName.${waiting.interval}`),
+      });
+    }
+    return t('billing.plans.scheduled', { plan: props.plan.name, date: scheduledFrom.value, next: props.scheduledPlanName || waiting.plan });
+  }
+  if (waiting && waiting.plan === props.plan.slug) return t('billing.plans.scheduledFrom', { plan: props.plan.name, date: scheduledFrom.value });
   if (free.value && cancelling.value) return t('billing.plans.freeFrom', { date: periodEnd.value });
   if (trying.value) return t('billing.plans.trialKeeps');
   return '';

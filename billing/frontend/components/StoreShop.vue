@@ -175,6 +175,11 @@ const later = computed(() => {
   return t('billing.plans.later', { plans: names, plan: first.name });
 });
 const currentPlan = computed(() => plans.value?.find((plan) => plan.slug === subscription.value?.plan) ?? null);
+/** The plan a downgrade that waits moves the business to: its card says it, the current one offers to keep it. */
+const scheduledPlanName = computed(() => {
+  const slug = subscription.value?.scheduled_change?.plan;
+  return slug ? (plans.value?.find((plan) => plan.slug === slug)?.name ?? slug) : '';
+});
 const renewal = computed(() => subscription.value?.current_period_end ?? null);
 /** Bought in this visit: `<business>:<module>`. */
 const activating = shallowRef(new Set<string>());
@@ -283,6 +288,7 @@ function apply(out: SubscriptionOut): void {
       current_period_end: out.current_period_end,
       trial_plan: now.subscription?.trial_plan ?? null,
       trial_end: out.trial_end,
+      scheduled_change: out.scheduled_change ?? null,
     },
     modules: now.modules.map((module) => {
       const item = items.get(module.slug);
@@ -592,6 +598,7 @@ async function keepTheModule(module: SaleModule): Promise<void> {
             :period="period"
             :subscription="subscription"
             :block="block"
+            :scheduled-plan-name="scheduledPlanName"
             @upgrade="upgrade(plan, $event)"
             @change="change(plan, $event)"
             @switch="switchBilling($event)"

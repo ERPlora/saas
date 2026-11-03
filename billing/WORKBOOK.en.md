@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:110f58b5827349cdaef8b401f790e45dcc8caeb7d2bf9d6e8534c3b7179de5b0 -->
+<!-- generated from WORKBOOK.md sha256:c455468860a448f96cf8aaccebbd3e231af98948451f46df8db393bef1fb80e4 -->
 
 ## What it is for and who it is for
 
@@ -59,7 +59,8 @@ the businesses one owns). Plans shows each plan with its price without VAT, the 
 "Annual · −n %"), its lines as on /pricing/ (after "All apps included" or "Everything in …", "Up to 40 apps
 turned on at once", or "All the apps turned on at once" when the plan has no cap; then the messages a month and,
 last, the trial), "Your current plan" on the one it has and each plan's button: "Upgrade to …",
-"Change to …", "Change to annual · …" or "Downgrade to Free"; with the plan cancelled, "Keep the plan". If the
+"Change to …", "Change to annual · …" or "Downgrade to Free"; with the plan cancelled or a downgrade scheduled,
+"Keep the plan". If the
 business has an unpaid invoice, the notice with "Pay the invoice" comes at the top and nothing is sold to that
 business.
 
@@ -128,7 +129,7 @@ to upgrade or change it.
 | BILLING-F11 | Change between paid plans | done |
 | BILLING-F12 | Give trial days with a promo code | done |
 | BILLING-F13 | Cancel the plan at the end of the period | done |
-| BILLING-F14 | Undo a pending cancellation | done |
+| BILLING-F14 | Undo a pending cancellation or downgrade | done |
 | BILLING-F15 | End the subscription: the business goes back to Free | done |
 | BILLING-F16 | Unpaid plan: retries, suspension and return | done |
 | BILLING-F17 | Reactivate a suspended business by paying its invoice | done |
@@ -312,7 +313,7 @@ Screen: Store, Change plan
 Steps:
 1. In **Store › Plans** of a business that already pays, the owner taps "Change to …", "Change to annual · …" or "Change to monthly · …".
 2. The dialog works out what is charged today ("Working out what is charged today…") and shows "Today (prorated)", the VAT, the "Total today" and what will be charged "Afterwards", with the note that the modules stay the same.
-3. An upgrade is confirmed with "Pay … and change": it is charged at once with the saved card and the business moves to the new plan at once. A downgrade (a cheaper plan, or annual to monthly) charges nothing today: it moves to the new plan at the end of the paid period, and **Billing › Subscriptions** says "Changes to … on …".
+3. An upgrade is confirmed with "Pay … and change": it is charged at once with the saved card and the business moves to the new plan at once. A downgrade (a cheaper plan, or annual to monthly) charges nothing today: it moves to the new plan at the end of the paid period, and **Billing › Subscriptions** says "Changes to … on …". Until that date it is undone with "Keep the plan", on that row and on the card of the current plan in the Store (BILLING-F14).
 4. Notice: "… is now on …" (or "…, paid annually").
 In: the new plan and period and the business's subscription with its card; when the period changes, each module's price changes too.
 Out: the plan changed (`billing.plan.changed`) or the downgrade scheduled (`billing.plan.change_scheduled`), with the table's VAT on each line, and the new plan sent to the business.
@@ -347,17 +348,17 @@ Out: the subscription marked in Stripe to end at the end of the period (`billing
 If it fails: if Stripe refuses it or does not answer, nothing changes and it is said. Cancelling with an unpaid invoice is allowed, but it does not void it: the dialog warns about it. A business on Free has nothing to cancel.
 Involved: the business (receives the end date)
 
-### BILLING-F14 Undo a pending cancellation
+### BILLING-F14 Undo a pending cancellation or downgrade
 <!-- origen: old-saas:SAAS_DASHBOARD-F102 gh:saas#2529 gh:saas#2574 -->
 Status: done
 Actor: paying owner
 Screen: Billing › Subscriptions, Store
 Steps:
-1. On the row of a business with its plan cancelled, the owner taps "Keep the plan" (in the Store: "Cancelled: … until … and then Free" with "Keep the plan").
+1. On the row of a business with its plan cancelled or with a downgrade scheduled ("Changes to … on …"), the owner taps "Keep the plan". In the Store, the card of the current plan says "Cancelled: … until … and then Free" or "Downgrade scheduled: … until … and then …", with "Keep the plan"; the card of the plan it moves to says "The business moves to … on …", with no button.
 2. Notice: "… stays on …" or "… is kept: it renews on …". The row has a next invoice again.
-In: the subscription with its end marked.
-Out: the subscription renews again in Stripe, with the status Stripe says (`billing.plan.kept`); a scheduled downgrade is undone too.
-If it fails: with an unpaid invoice it is not kept: it is paid first (a plan is not recovered without paying it). Keeping a plan that was not cancelled changes nothing.
+In: the subscription with its end marked or with its downgrade scheduled.
+Out: the subscription renews again in Stripe, with the status Stripe says (`billing.plan.kept`); a scheduled downgrade is undone and the row stops saying "Changes to … on …".
+If it fails: with an unpaid invoice, a cancelled plan is not kept: it is paid first (a plan is not recovered without paying it). A scheduled downgrade is undone even with an unpaid invoice: it charges nothing and hands back no plan that was lost. Keeping a plan that was neither cancelled nor had a downgrade changes nothing.
 Involved: none
 
 ### BILLING-F15 End the subscription: the business goes back to Free
