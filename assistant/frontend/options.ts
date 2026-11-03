@@ -7,8 +7,9 @@
 //   web too.
 // - Whoever may ask the assistant sees its button (`assistant.ask`, every account's); nobody upgrades a plan from it:
 //   the account's 30 messages a month are no plan's (ASSISTANT-F26). Its microphone goes to `base.assistant.transcribe`
-//   (ASSISTANT-F21): the Hub's same dictation, counted in the account's month. No approvals: the panel has no manager's
-//   approval (the Hub's).
+//   (ASSISTANT-F21): the Hub's same dictation, counted in the account's month. «Read aloud» reads in the server voice
+//   the person chooses (`speak`: `base.assistant.speak`, ASSISTANT-F22, the mp3 of Azure AI Speech), and in the device's
+//   own when it fails. No approvals: the panel has no manager's approval (the Hub's).
 // - The panel's words (`saas.assistant.*`, frontend/locale): the verb of each write the assistant may run, by its
 //   operation (`card.operations.<app>.<entity>.<action>`, one per write: guardrail base/tests/
 //   test_assistant_panel_words.py), else by its action (`card.actions.<action>`), else the chat's «Do this»; and the
@@ -16,9 +17,11 @@
 // - Under a spent allowance, where the Hub says to ask whoever runs the business to upgrade the plan, the panel says
 //   that each business has its own assistant (`spentNoteKey`: `saas.assistant.errors.quotaSpentAccount`): the
 //   account's messages are no plan's, and nobody is offered «Upgrade plan» here.
-import type { AssistantConfig } from '@erplora/ui/components';
+import type { AssistantConfig, AssistantSpeech } from '@erplora/ui/components';
+import { createHeaderProvider, fetchFile, readSpaConfig } from '@erplora/ui/sdk';
 
 import { ACCOUNT, BILLING, BUSINESSES, STORE } from '../../accounts/frontend/paths';
+import { OPERATION_ROUTES } from '../../frontend/generated/operation-routes';
 import en from '../../frontend/locale/en.json';
 
 /** Who may ask the panel's assistant (assistant/apps.py, the `account` role's). */
@@ -63,10 +66,59 @@ export function panelScreenKey(path: string): string | null {
   return Object.hasOwn(PANEL_SCREENS, path) ? `saas.assistant.screens.${PANEL_SCREENS[path]}` : null;
 }
 
+/** What `speak` takes from the browser: its `fetch` and the page (its SPA config and its CSRF cookie). */
+export interface SpeakDeps {
+  fetch: typeof globalThis.fetch;
+  doc: Document;
+}
+
+/** The SDK's headers of a write on this page: the CSRF token and the device's id. */
+function writeHeaders(doc: Document): Record<string, string> {
+  const provider = createHeaderProvider(readSpaConfig(doc), {
+    storage: {
+      getItem: (key) => {
+        try {
+          return globalThis.localStorage?.getItem(key) ?? null;
+        } catch {
+          return null;
+        }
+      },
+      setItem: (key, value) => {
+        try {
+          globalThis.localStorage?.setItem(key, value);
+        } catch {
+          // A storage that refuses: the device id lives in memory (the SDK's own fallback).
+        }
+      },
+    },
+    cookies: () => doc.cookie,
+    randomUUID: () => globalThis.crypto.randomUUID(),
+  });
+  return provider.apiHeaders('POST');
+}
+
+/** The mp3 of `input` read in its server voice (`base.assistant.speak`, ASSISTANT-F22). Its answer is the file itself,
+ *  not JSON, so it is the SDK's `fetchFile` with the write's method, body and headers (the session cookie, the CSRF
+ *  token): anything but an mp3 rejects with the envelope's `ApiError`, and no network with the SDK's `network_error`.
+ *  The chat then reads the answer in the device's voice. */
+export async function speak(
+  input: AssistantSpeech,
+  deps: SpeakDeps = { fetch: (url, init) => globalThis.fetch(url, init), doc: document },
+): Promise<Blob> {
+  const { path } = OPERATION_ROUTES['base.assistant.speak'];
+  const body = JSON.stringify({ text: input.text, language: input.language, voice: input.voice });
+  const headers = { ...writeHeaders(deps.doc), 'Content-Type': 'application/json' };
+  const file = await fetchFile(path, 'audio/mpeg', (url, init) =>
+    deps.fetch(url, { ...init, method: 'POST', headers: { ...headers, ...init?.headers }, body }),
+  );
+  return file.blob;
+}
+
 export const SAAS_ASSISTANT: AssistantConfig = {
   turnUrl: '/api/assistant/turn',
   usage: (client) => client.api.call('base.assistant.usage', {}),
   transcribe: (client, clip) => client.api.call('base.assistant.transcribe', clip),
+  speak: (input) => speak(input),
   report: (client, report) => client.api.call('base.assistant.report', report),
   canUse: (session) => session.can(ASK),
   canUpgrade: () => false,

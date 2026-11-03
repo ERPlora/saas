@@ -121,8 +121,8 @@ Todas llevan `ai=INTERNAL` (son la pasarela, no herramientas del asistente) salv
   en voz alta (`/internal/speech/synthesize` y `POST /api/assistant/speak` del panel; PLAN-SAAS ronda 2026-11-03m).
   Como el de servicios, vive en el admin con su clave cifrada y rotable; su dirección es el endpoint de su región
   (vacía: Suecia Central, `https://swedencentral.tts.speech.microsoft.com`). Sin él, o sin clave que se abra, las dos
-  contestan 503 `assistant.speech_unavailable` y quien llama lee con la voz del dispositivo. Hoy ni el Hub ni el
-  frontend del panel las llaman. `AZURE_SPEECH_KEY` solo alimenta `import_ai_keys_from_env`.
+  contestan 503 `assistant.speech_unavailable` y quien llama lee con la voz del dispositivo. Hoy el panel la
+  pide (`speak` de `assistant/frontend/options.ts`) y el Hub todavía no. `AZURE_SPEECH_KEY` solo alimenta `import_ai_keys_from_env`.
 - Postgres con la extensión `vector` (pgvector, imagen `pgvector/pgvector` en local y CI, donde la crea la migración
   `assistant/0004_doc_chunks`). En Aurora no es de confianza (solo `rds_superuser`): la crea antes el arranque de
   plataforma del Hub (`bootstrap_databases`, usuario maestro) en `saas` y `pre_saas`.

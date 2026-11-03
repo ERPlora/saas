@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:b9cbd8d40c0de7bbbae424c0cfdbf10db3cf212e6012296152dddff2a33180b6 -->
+<!-- generated from WORKBOOK.md sha256:825c04a5a70171f1fff59a2438ec82185a59672b52c9df2004662db0738ea4fe -->
 
 ## What it is for and who uses it
 
@@ -118,12 +118,13 @@ to change it.
 ### Panel: Assistant
 On every screen of erplora.com's panel with the session open, at the end of the top bar, the "Assistant" button (the
 sparkles), pressed while the panel is open. The panel opens on the right: from 768 px wide it docks beside the screen,
-which narrows and keeps working; on a phone it covers it over a veil. On top, "Assistant", "New conversation" (once
-there is one) and × ("Close"); in the middle, the conversation: without one, "Ask me about your businesses, your
+which narrows and keeps working; on a phone it covers it over a veil. On top, "Assistant", "Voice" (the choice of the voice that
+reads the answers: its language's two, Ximena and Tristan or Ava and Andrew, and "Device voice"; the first, unless
+another is chosen), "New conversation" (once there is one) and × ("Close"); in the middle, the conversation: without one, "Ask me about your businesses, your
 invoices or your account." and three shortcuts ("Which businesses do I have?", "How much do I pay a month?" and "How do
 I create a business?"); with one, the person's bubbles and the answers, with "Go to …" for the panel's screens they
-name, what was done under each change ("Done: …", "Not done, cancelled: …"), "Read aloud" (the device's own voice) and
-"Report a problem". At the bottom, the notice of how many messages are left (from 80 % of the month), the clip to
+name, what was done under each change ("Done: …", "Not done, cancelled: …"), "Read aloud" (in the chosen voice; when
+erplora.com's is not available, in the device's own) and "Report a problem". At the bottom, the notice of how many messages are left (from 80 % of the month), the clip to
 attach, the microphone "Dictate by voice" ("Stop recording" while it records; it spins while it transcribes) and the
 box "Write a message…" with "Send" ("Stop" while it answers). A change the model asks for opens the card
 "Run this action?" on top, with "Cancel" and "Run it"; creating, deleting or changing the address of a business,
@@ -464,12 +465,12 @@ Status: done
 Actor: the Hub's assistant of a business
 Screen: none
 Steps:
-1. A Hub that wants to read an answer with erplora.com's voice sends it the text, its language (Spanish or English) and, if it wants, the voice: Ximena or Tristan in Spanish, Ava or Andrew in English; without one, the language's woman's voice (Ximena or Ava). The assistant of erplora.com's panel has the same reading aloud for the account. Today neither the Hub nor the panel asks for it: "Read aloud" uses the device's own voice.
+1. A Hub that wants to read an answer with erplora.com's voice sends it the text, its language (Spanish or English) and, if it wants, the voice: Ximena or Tristan in Spanish, Ava or Andrew in English; without one, the language's woman's voice (Ximena or Ava). The assistant of erplora.com's panel asks for it for the account in the voice chosen in its head; today's Hub does not ask for it and reads with the device's own voice.
 2. erplora.com asks Azure AI Speech for the audio, with its high-definition voices (at most the first 4,096 characters), and gives it back in MP3.
 3. The characters read are counted in the month of the business (or of the account); it spends no messages.
 In: the business, the text, the language and the voice.
 Out: the audio of the answer (`assistant.usage.recorded`).
-If it fails: an empty text, a language without voices or a voice not in the catalogue are refused; without the voice provider configured, that reading aloud is not available (and the Hub reads with the device's voice); if Azure fails, a gateway error that says whether it is worth repeating. The text stays neither kept nor in a log.
+If it fails: an empty text, a language without voices or a voice not in the catalogue are refused; without the voice provider configured, that reading aloud is not available (and the Hub or the panel reads with the device's voice); if Azure fails, a gateway error that says whether it is worth repeating. The text stays neither kept nor in a log.
 Involved: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F24
 
 ### ASSISTANT-F23 Receive the report of an answer of the assistant
