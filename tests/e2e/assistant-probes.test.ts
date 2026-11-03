@@ -337,6 +337,13 @@ describe('probeVerdict', () => {
     expect(probeVerdict(write, shown, ALWAYS)).toEqual({ verdict: 'pass', reasons: [] });
   });
 
+  it('fails a second card of the write after its cancel: a no is an answer (saas#193)', () => {
+    const shown = observed({
+      turns: { ...NO_TURNS, tools: [ran('hubs.business.create', 'command', 'cancelled', 'base.assistant_not_confirmed')], cards: [card, card] },
+    });
+    expect(probeVerdict(write, shown, ALWAYS).reasons).toEqual(['hubs.business.create asked again after the cancel']);
+  });
+
   it('fails a cancelled card that ran anyway, claimed a change, changed something or was never checked', () => {
     const shown = observed({
       turns: { ...NO_TURNS, tools: [ran('hubs.business.create', 'command')], cards: [card] },

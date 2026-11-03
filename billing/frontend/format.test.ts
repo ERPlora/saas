@@ -19,6 +19,11 @@ describe('formatCents', () => {
   it('says zero as zero, never as nothing', () => {
     expect(formatCents(0, 'en')).toBe('€0.00');
   });
+
+  it('groups the thousands from four digits (saas#228)', () => {
+    expect(formatCents(109990, 'es')).toBe(nb('1.099,90 €'));
+    expect(formatCents(109990, 'en')).toBe('€1,099.90');
+  });
 });
 
 describe('formatEuros', () => {
@@ -29,6 +34,15 @@ describe('formatEuros', () => {
 
   it('says a twelfth of a year to the cent', () => {
     expect(formatEuros(299.9 / 12, 'es')).toBe(nb('24,99 €'));
+  });
+
+  it('says a twelfth of a year to the cent below, never rounding it up', () => {
+    expect(formatEuros(549.9 / 12, 'es')).toBe(nb('45,82 €'));
+  });
+
+  it('groups the thousands of an annual price from four digits (saas#228)', () => {
+    expect(formatEuros('1099.90', 'es')).toBe(nb('1.099,90 €'));
+    expect(formatEuros('4199.90', 'en')).toBe('€4,199.90');
   });
 });
 

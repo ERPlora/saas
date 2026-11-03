@@ -27,7 +27,7 @@ from django.utils import timezone
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 from live.context import OperationContext, Scope, system_context
-from live.errors import Conflict, InvalidPayload, NotFound, OperationError, PermissionDenied
+from live.errors import Conflict, InvalidPayload, NotFound, PermissionDenied
 from live.operations import AI, INTERNAL, operation
 from live.outbox import record_event
 from live.slugs import (
@@ -159,16 +159,6 @@ class SeatLimitReached(Conflict):
 # --- Creating a business --------------------------------------------------------------------------
 
 
-def _refuse_staff(user) -> None:
-    """The platform's staff and the customers never share an account: a staff or superuser account neither creates a
-    business, nor is invited to one (nor invited again), nor enters one with an invitation that waited while it was
-    made staff (409 ``hubs.platform_account``)."""
-    if user.is_staff or user.is_superuser:
-        raise Conflict(
-            _("This address belongs to ERPlora's staff and cannot join a business."), code="hubs.platform_account"
-        )
-
-
 @operation(
     "hubs.business.create",
     kind="command",
@@ -176,8 +166,14 @@ def _refuse_staff(user) -> None:
     input=BusinessCreateIn,
     output=BusinessDetailOut,
     ai=AI(
-        description="Creates a business on the Free plan with its address; one free business per account.",
+        description=(
+            "Creates a business on the Free plan with its address. An account has one free business, and whether one "
+            "more fits is for this tool to say: call it, never refuse on your own. With no room it answers "
+            "hubs.free_hub_limit: Change the plan of that business to create another one."
+        ),
         risk="high",
+        # Its card only comes if the write would run (saas#193): it has nothing more to show.
+        preview={"operation": "hubs.business.create_check", "fields": []},
         asks={
             "en": (
                 "create another business in Valencia",
@@ -200,14 +196,8 @@ def business_create(ctx: OperationContext, data: BusinessCreateIn) -> dict:
     One free business per account (``FREE_HUBS_PER_ACCOUNT``, ADR-0154); a name never blocks it.
     """
     user = queries.account_of(ctx)
-    plan = queries.free_plan()
-    if plan is None:
-        raise OperationError(
-            _("Businesses cannot be created right now. Try again in a few minutes."),
-            code="hubs.free_plan_missing",
-            status=503,
-        )
-    _refuse_staff(user)
+    plan = queries.plan_of_a_new_business()
+    queries.refuse_staff(user)
     check_free_quota(user)
     now = timezone.now()
     profile = BillingProfile.objects.create(
@@ -232,11 +222,7 @@ def check_free_quota(user, excluding: UUID | None = None) -> None:
     serialised here, so the second counts the business the first is creating.
     """
     get_user_model().objects.select_for_update().filter(pk=user.pk).first()
-    if queries.free_hubs_owned(user, excluding=excluding) >= getattr(settings, "FREE_HUBS_PER_ACCOUNT", 1):
-        raise Conflict(
-            _("You already have a free business. Change its plan to create another one."),
-            code="hubs.free_hub_limit",
-        )
+    queries.refuse_full_free_quota(user, excluding=excluding)
 
 
 def _create_hub(
@@ -889,7 +875,7 @@ def member_invite(ctx: OperationContext, data: MemberInviteIn) -> dict:
             )
         if not queries.manages(actor, member):
             raise PermissionDenied(_("You cannot manage a member whose role is equal to or above yours."))
-        _refuse_staff(member.user)
+        queries.refuse_staff(member.user)
         _check_seat(hub, now)
         member.role = data.role
         member.invitation_message = data.message
@@ -901,7 +887,7 @@ def member_invite(ctx: OperationContext, data: MemberInviteIn) -> dict:
         if user is None:
             user = get_user_model().objects.create_user(email=data.email, password=None, language=hub.language)
         else:
-            _refuse_staff(user)
+            queries.refuse_staff(user)
             if not account_queries.email_is_proven(user, data.email):
                 account_services.release_unproven_account(user, reason="invited_while_unverified")
                 revoke_after_commit(user.pk)
@@ -1048,7 +1034,7 @@ def member_resend(ctx: OperationContext, data: ByIdIn) -> dict:
     """Send the invitation again: it gets 7 more days."""
     actor, target = _managed(ctx, data.id)
     _pending_only(target)
-    _refuse_staff(target.user)
+    queries.refuse_staff(target.user)
     now = timezone.now()
     if target.is_expired(now):
         _check_seat(target.hub, now)
@@ -1132,7 +1118,7 @@ def invitation_accept(ctx: OperationContext, data: ByIdIn) -> dict:
     still has a seat beside the people already inside (``_check_seat_to_enter``). An account that never
     proved its address confirms it first (saas#2541: 403 ``hubs.email_unverified``)."""
     member = _my_invitation(ctx, data.id)
-    _refuse_staff(member.user)
+    queries.refuse_staff(member.user)
     if not account_queries.email_is_proven(member.user, member.user.email):
         raise PermissionDenied(
             _("Confirm your email address before accepting the invitation."), code="hubs.email_unverified"

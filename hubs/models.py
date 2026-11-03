@@ -37,6 +37,7 @@ from django.utils.translation import gettext_lazy as _
 from django.utils.translation import pgettext_lazy
 
 from apps.queries import known_verticals
+from hubs.countries import COUNTRY_NAMES, PAYER_COUNTRY_NAMES
 from hubs.spanish_copy import spanish_copy_complaint, untranslated_copy_complaint
 
 
@@ -452,7 +453,7 @@ class BillingProfile(models.Model):
     billing_address = models.TextField(_("address"), blank=True)
     billing_city = models.CharField(_("city"), max_length=100, blank=True)
     billing_postal_code = models.CharField(_("postal code"), max_length=20, blank=True)
-    billing_country = models.CharField(_("country"), max_length=2, blank=True)
+    billing_country = models.CharField(_("country"), max_length=2, blank=True, choices=PAYER_COUNTRY_NAMES)
     billing_email = models.EmailField(_("billing email"), blank=True)
     same_as_business = models.BooleanField(_("same as the business"), default=False)
     stripe_customer_id = models.CharField(max_length=255, blank=True, db_index=True)
@@ -505,7 +506,7 @@ class Hub(models.Model):
     #: takes it and receives the old links and QR codes; released when the address changes again.
     previous_slug = models.CharField(_("previous address"), max_length=63, blank=True, default="", db_index=True)
     name = models.CharField(_("name"), max_length=120)
-    country = models.CharField(_("country"), max_length=2, help_text=_("ISO 3166-1 alpha-2, e.g. ES."))
+    country = models.CharField(_("country"), max_length=2, choices=COUNTRY_NAMES, help_text=_("ISO 3166-1 alpha-2, e.g. ES."))
     timezone = models.CharField(_("time zone"), max_length=64, default="Europe/Madrid")
     language = models.CharField(_("language"), max_length=8, choices=settings.LANGUAGES, default=settings.LANGUAGE_CODE)
     business_type = models.ForeignKey(

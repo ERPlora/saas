@@ -17,6 +17,7 @@ from datetime import datetime
 
 import pytest
 from django.utils import timezone
+from live import assistant as assistant_shared
 from live.assistant import risk
 from live.operations import Operation, registry
 from live.operations import get as get_operation
@@ -34,7 +35,8 @@ from assistant.tests.conftest import (  # noqa: F401 - the gateway's fixtures
 )
 from assistant.tests.doors import frames
 from base import assistant
-from hubs.models import Hub, HubMember
+from base.services import NOT_CONFIRMED_CODE
+from hubs.models import Hub, HubMember, Plan, Subscription
 from hubs.tests.conftest import create_business, ctx_for, make_user, plans  # noqa: F401 - shared fixtures
 
 pytestmark = pytest.mark.django_db
@@ -504,6 +506,195 @@ class TestAWrite:
             "not_available",
         )
         assert not account.api_keys.exists()
+
+
+class TestTheCardIsTheOnlyQuestion:
+    """saas#193 (ASSISTANT-F25 step 5, HUBS-F01): a change is asked once, on its card. The real model sometimes wrote a
+    summary and «do you confirm?» instead, or refused a business on its own from what it knows of the Free plan. So
+    calling the tool has to be right every time: an account the write would refuse hears why before any card."""
+
+    @pytest.mark.parametrize("sells", [True, False])
+    def test_the_instructions_leave_the_question_to_the_card(self, sells):
+        text = assistant.instructions(language="es", account="Lena", screens={}, sells=sells)
+
+        rule = next(one for one in text.split("\n- ") if one.startswith("To change something"))
+        said = " ".join(rule.split())
+
+        assert "call its tool as soon as you have the data it needs" in said
+        assert "never ask in your text whether to go ahead" in said
+        assert "never write a summary of the change" in said
+        assert "ask only for a datum its tool requires, that no tool gives and the person has not said" in said
+        assert "never refuse a change yourself" in said
+        assert "«not confirmed» or with an error, nothing changed" in said, "what it had to say about a refusal stays"
+        assert "«not confirmed» is the person's answer and its card is gone" in said
+        assert "do not tell them to confirm it" in said
+        assert "do not call that tool again unless they ask anew" in said
+
+    def test_the_model_is_told_the_tool_decides_whether_a_free_business_fits(self):
+        description = assistant.tool_spec(get_operation("hubs.business.create"))["description"]
+
+        assert "hubs.free_hub_limit" in description
+        assert "Change the plan" in description
+
+    def test_an_account_with_no_room_hears_why_before_any_card(self, signed_in, account, answering, fake_provider):
+        create_business(account, name="Bar Lena")
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("You already have your free business."))
+
+        got = frames(post_turn(signed_in, {"messages": TestAWrite().asked(), "pending": [TestAWrite.CREATE]}))
+
+        assert "confirm" not in types(got)
+        assert (got[0]["type"], got[0]["name"], got[0]["outcome"], got[0]["code"]) == (
+            "executed",
+            "hubs.business.create",
+            "error",
+            "hubs.free_hub_limit",
+        )
+        sent = model_requests(fake_provider)[-1].body["messages"]
+        assert "hubs.free_hub_limit" in next(m["content"] for m in sent if m["role"] == "tool")
+        assert not Hub.objects.filter(name="Sol Hair").exists()
+
+    def test_an_account_with_room_gets_its_card_with_nothing_more_on_it(self, signed_in, account, answering):
+        hub = create_business(account, name="Bar Lena")
+        Subscription.objects.filter(hub=hub).update(plan=Plan.objects.get(slug="starter"))
+
+        got = frames(post_turn(signed_in, {"messages": TestAWrite().asked(), "pending": [TestAWrite.CREATE]}))
+
+        assert types(got) == ["confirm", "done"]
+        assert got[0]["card"]["operation"] == "hubs.business.create"
+        assert got[0]["card"]["preview"] == []
+
+
+class TestANoIsAnAnswer:
+    """saas#193, QA with the real model: at «Cancel», the model called the same write again and the person got a second
+    card (2 of 14 runs), up to «too many steps». A no stands until the person writes again: the model cannot ask twice."""
+
+    CREATE = TestAWrite.CREATE
+    NO = {"role": "tool", "tool_call_id": "c1", "content": assistant_shared.error_content(NOT_CONFIRMED_CODE, "No.")}
+
+    def asked_again(self) -> dict:
+        """What the model sends after the person's no to ``c1``: the same write, in a call of its own."""
+        return {"call_id": "c2", "name": self.CREATE["name"], "arguments": self.CREATE["arguments"]}
+
+    def round_of(self, *calls: dict) -> dict:
+        return {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [
+                {"id": call["call_id"], "type": "function", "function": {"name": call["name"], "arguments": call["arguments"]}}
+                for call in calls
+            ],
+        }
+
+    def test_the_model_hears_a_no_and_a_closed_card_never_a_wait(self, signed_in, account, answering, fake_provider):
+        """After «Cancel» the real model answered «confirm it on the card» (3 of 4 runs of the Spanish probe): «Not
+        confirmed by the person» reads as still waiting, and that card is no longer on the screen."""
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("All right, I did not create it."))
+
+        frames(
+            post_turn(
+                signed_in,
+                {
+                    "messages": TestAWrite().asked(),
+                    "pending": [self.CREATE],
+                    "decision": {"call_id": "c1", "accepted": False},
+                },
+            )
+        )
+
+        heard = next(m["content"] for m in model_requests(fake_provider)[-1].body["messages"] if m.get("tool_call_id") == "c1")
+        error = json.loads(heard)["error"]
+        assert error["code"] == NOT_CONFIRMED_CODE
+        said = error["message"]
+        assert "said no" in said
+        assert "card is closed" in said
+        assert "nothing was done" in said
+        assert not said.startswith("Not confirmed")
+        assert "nothing left to confirm" not in said, "read as all confirmed: the model answered «Switched to dark mode»"
+
+    def test_the_same_write_asked_again_after_a_no_shows_no_second_card(self, signed_in, account, answering, fake_provider):
+        again = self.asked_again()
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("All right, I did not create it."))
+        messages = [ask("Create Sol Hair"), self.round_of(self.CREATE), self.NO, self.round_of(again)]
+
+        got = frames(post_turn(signed_in, {"messages": messages, "pending": [again]}))
+
+        assert "confirm" not in types(got)
+        assert not Hub.objects.filter(name="Sol Hair").exists()
+        heard = next(m["content"] for m in model_requests(fake_provider)[-1].body["messages"] if m.get("tool_call_id") == "c2")
+        assert json.loads(heard)["error"]["code"] == NOT_CONFIRMED_CODE
+
+    def test_the_person_sees_their_no_once(self, signed_in, account, answering, fake_provider):
+        """Under the answer stays what was done of each change: asking again changed nothing they answered."""
+        again = self.asked_again()
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("All right."))
+        messages = [ask("Create Sol Hair"), self.round_of(self.CREATE), self.NO, self.round_of(again)]
+
+        got = frames(post_turn(signed_in, {"messages": messages, "pending": [again]}))
+
+        assert "executed" not in types(got)
+
+    def test_a_write_asked_with_other_data_is_the_same_no(self, signed_in, account, answering, fake_provider):
+        again = {"call_id": "c2", "name": self.CREATE["name"], "arguments": '{"name": "Sol Hair", "country": "ES", "slug": "sol"}'}
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("All right."))
+        messages = [ask("Create Sol Hair"), self.round_of(self.CREATE), self.NO, self.round_of(again)]
+
+        assert "confirm" not in types(frames(post_turn(signed_in, {"messages": messages, "pending": [again]})))
+
+    def test_a_new_message_of_the_person_asks_it_again(self, signed_in, account, answering, fake_provider):
+        again = self.asked_again()
+        messages = [
+            ask("Create Sol Hair"),
+            self.round_of(self.CREATE),
+            self.NO,
+            {"role": "assistant", "content": "All right, I did not create it."},
+            ask("Yes, create it after all"),
+            self.round_of(again),
+        ]
+
+        got = frames(post_turn(signed_in, {"messages": messages, "pending": [again]}))
+
+        assert types(got) == ["confirm", "done"]
+        assert got[0]["card"]["operation"] == "hubs.business.create"
+
+    def test_another_write_of_the_same_round_still_gets_its_card(self, signed_in, account, answering, fake_provider):
+        """Two businesses asked at once: a no to the first says nothing of the second, which nobody has answered."""
+        second = {"call_id": "c2", "name": self.CREATE["name"], "arguments": '{"name": "Luna", "country": "ES"}'}
+        third = {"call_id": "c3", "name": self.CREATE["name"], "arguments": '{"name": "Mar", "country": "ES"}'}
+        messages = [ask("Create Sol Hair, Luna and Mar"), self.round_of(self.CREATE, second, third), self.NO]
+
+        got = frames(post_turn(signed_in, {"messages": messages, "pending": [third]}))
+
+        assert types(got) == ["confirm", "done"]
+        assert got[0]["call"] == third
+
+    def test_a_no_to_one_write_leaves_another_write_free(self, signed_in, account, answering, fake_provider):
+        other = {"call_id": "c2", "name": "accounts__preferences__update", "arguments": '{"language": "es"}'}
+        messages = [ask("Create Sol Hair, or set my language"), self.round_of(self.CREATE), self.NO, self.round_of(other)]
+
+        got = frames(post_turn(signed_in, {"messages": messages, "pending": [other]}))
+
+        assert got[0]["type"] == "confirm"
+        assert got[0]["card"]["operation"] == "accounts.preferences.update"
+
+    @pytest.mark.parametrize(
+        "broken",
+        [
+            {"role": "assistant", "tool_calls": "nonsense"},
+            {"role": "assistant", "tool_calls": 7},
+            {"role": "assistant", "tool_calls": ["nonsense"]},
+            {"role": "assistant", "tool_calls": [{"id": "c1"}]},
+            {"role": "assistant", "tool_calls": [{"id": "c1", "function": "nonsense"}]},
+            {"role": "tool", "tool_call_id": ["c1"], "content": NOT_CONFIRMED_CODE},
+        ],
+    )
+    def test_a_conversation_it_cannot_read_is_no_no(self, signed_in, account, answering, fake_provider, broken):
+        """The browser keeps the conversation: a shape it does not expect is not a 500 and not a no."""
+        again = self.asked_again()
+        messages = [ask("Create Sol Hair"), broken, self.NO, self.round_of(again)]
+
+        got = frames(post_turn(signed_in, {"messages": messages, "pending": [again]}))
+
+        assert types(got) == ["confirm", "done"]
 
 
 class ListedIn(Schema):
