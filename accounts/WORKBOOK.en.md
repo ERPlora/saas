@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:89cde6d125e94492e60e8156e20f89237eac75df61619e42301b384804ccdf65 -->
+<!-- generated from WORKBOOK.md sha256:003f36eb285944cdb27d8ddd16f94eccbe922ba908e69509eb4d4b639b8ec820 -->
 
 ## What it is for and who it is for
 
@@ -755,7 +755,7 @@ Steps:
 3. Nobody can create, change or delete an entry by hand: they are only read.
 In: the changes to the accounts, to what is charged and to the fiscal documentation, made from the panel, with an API key, from the admin, by erplora.com's tasks or by Stripe when it charges.
 Out: one entry per change, naming whoever acted at that moment (the account with the open session or the owner of the API key; nobody in an erplora.com task or after signing out) and the visitor's real address, never the one its browser claims.
-If it fails: a secret is never written down (neither the password, nor the API key, nor a session's, nor a Stripe purchase's, nor the link that opens a Stripe invoice, nor an authorisation's documents or the stamp) nor what moves by itself (the last sign-in, a key's last use, the last time a session was seen, the counters, the retries sending an invoice to the AEAT). Writing a change down never changes an invoice or its VeriFactu record. If the account is deleted, its entries keep its email and no link to it until they are erased after 90 days (ACCOUNTS-F37). A team member without the permission cannot open it.
+If it fails: a secret is never written down (neither the password, nor the API key, nor a session's, nor a Stripe purchase's, nor the link that opens a Stripe invoice, nor an authorisation's documents or the stamp) nor what the inviter writes to a person invited to a business, nor what moves by itself (the last sign-in, a key's last use, the last time a session was seen, the last time a person opened a business, the counters, the retries sending an invoice to the AEAT). Writing a change down never changes an invoice or its VeriFactu record. If the account is deleted, its entries keep its email and no link to it until they are erased after 90 days (ACCOUNTS-F37). A team member without the permission cannot open it.
 Involved: none
 
 ### ACCOUNTS-F37 Erase the audit log older than 90 days
