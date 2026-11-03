@@ -1467,9 +1467,23 @@ export interface AssistantReportOut {
   duplicate: boolean;
 }
 
+/** `base.AssistantTranscribeIn`: a dictation of the session's account, its audio in base64 (ASSISTANT-F21). */
+export interface AssistantTranscribeIn {
+  audio: string;
+  mime_type: string;
+  language?: string;
+}
+
+/** `base.AssistantTranscribeOut`: the words, for the person to check, and the language they went in. */
+export interface AssistantTranscribeOut {
+  text: string;
+  language: string;
+}
+
 declare module '@erplora/ui/sdk' {
   interface Operations {
     'base.assistant.usage': { input: AssistantUsageIn; output: AssistantUsageOut };
     'base.assistant.report': { input: AssistantReportIn; output: AssistantReportOut };
+    'base.assistant.transcribe': { input: AssistantTranscribeIn; output: AssistantTranscribeOut };
   }
 }

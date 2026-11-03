@@ -6,8 +6,9 @@
 //   (base/surface.py): the route carries no `?surface=`, which would stick to the session and hide the Store from the
 //   web too.
 // - Whoever may ask the assistant sees its button (`assistant.ask`, every account's); nobody upgrades a plan from it:
-//   the account's 30 messages a month are no plan's (ASSISTANT-F26). No microphone: the voice stays out of the panel
-//   (D9). No approvals: the panel has no manager's approval (the Hub's).
+//   the account's 30 messages a month are no plan's (ASSISTANT-F26). Its microphone goes to `base.assistant.transcribe`
+//   (ASSISTANT-F21): the Hub's same dictation, counted in the account's month. No approvals: the panel has no manager's
+//   approval (the Hub's).
 // - The panel's words (`saas.assistant.*`, frontend/locale): the verb of each write the assistant may run, by its
 //   operation (`card.operations.<app>.<entity>.<action>`, one per write: guardrail base/tests/
 //   test_assistant_panel_words.py), else by its action (`card.actions.<action>`), else the chat's «Do this»; and the
@@ -65,6 +66,7 @@ export function panelScreenKey(path: string): string | null {
 export const SAAS_ASSISTANT: AssistantConfig = {
   turnUrl: '/api/assistant/turn',
   usage: (client) => client.api.call('base.assistant.usage', {}),
+  transcribe: (client, clip) => client.api.call('base.assistant.transcribe', clip),
   report: (client, report) => client.api.call('base.assistant.report', report),
   canUse: (session) => session.can(ASK),
   canUpgrade: () => false,

@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:41f2365b8d6e3784e06cddc87b9336ff69cc68c6b9b2502dd8109eb64f9a6f56 -->
+<!-- generated from WORKBOOK.md sha256:31438a314430ba2d18786b196d3f787c2d1a3b7396842c50fde9ff95572c9c26 -->
 
 ## What it is for and who it is for
 
@@ -435,7 +435,7 @@ Steps:
 3. The terms give the numbers the product keeps: the days of the exit package, the days a suspended business waits before it is deleted and the trial of the plans on sale (none if none has one).
 In: the plans on sale (the terms).
 Out: nothing saved.
-If it fails: no text names a provider no longer used or another hosting, nor keeps quiet about where the audio of a dictation goes, nor promises EU residency or a retention period for it, nor a consent or a switch for the assistant that the hub does not have (the assistant is used when someone in the hub writes or dictates to it, with the messages the plan gives), and no link between texts leads to a page that does not exist.
+If it fails: no text names a provider no longer used or another hosting, nor keeps quiet about where the audio of a dictation goes, nor promises EU residency or a retention period for it, nor a consent or a switch for the assistant that the hub does not have (the assistant is used when someone writes or dictates to it: in the hub, with the messages the plan gives; in erplora.com's panel, with the account's), and no link between texts leads to a page that does not exist.
 Involved: hubs (the plans)
 
 ### PUBLIC-F21 Check the responsible declaration of the invoicing system

@@ -1323,6 +1323,26 @@ msgstr "No se ha podido enviar la denuncia: inténtalo de nuevo en un momento."
 msgid "Too many reports in a short time: wait a moment and try again."
 msgstr "Demasiadas denuncias seguidas: espera un momento y vuelve a intentarlo."
 
+#: base/services.py
+msgid "Too many dictations in a short time: wait a moment and try again."
+msgstr "Demasiados dictados seguidos: espera un momento y vuelve a intentarlo."
+
+#: base/assistant.py
+msgid "The recording is too long: dictate a shorter message."
+msgstr "La grabación es demasiado larga: dicta un mensaje más corto."
+
+#: base/assistant.py
+msgid "The recording could not be read: record it again."
+msgstr "No se ha podido leer la grabación: vuelve a grabarla."
+
+#: base/assistant.py
+msgid "Dictation is not available right now."
+msgstr "El dictado no está disponible en este momento."
+
+#: base/assistant.py
+msgid "The audio could not be transcribed: try again."
+msgstr "No se ha podido transcribir el audio: inténtalo de nuevo."
+
 #: base/assistant.py
 msgid "Help"
 msgstr "Ayuda"
