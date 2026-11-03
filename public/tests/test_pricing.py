@@ -667,20 +667,22 @@ def test_the_cap_line_is_worked_out_on_the_page_and_never_written_in_the_rows(se
             assert "apps turned on" not in feature and "apps activadas" not in feature, (plan.slug, feature)
 
 
+#: A downgrade over the new plan's limits takes nothing away (PLAN-SAAS, ronda 2026-11-03g): the apps turned on stay on,
+#: and the users and the files stay; only adding more waits until the business is under the limit.
 SWITCH_CAP = {
     "en": (
-        "If you have more apps turned on than the new plan allows, they stay on; you just can't turn on more until "
-        "you are under the limit."
+        "If you are over the new plan's limits, you keep what you have: apps turned on stay on, and your users and "
+        "files stay; you just can't add more until you are under the limit."
     ),
     "es": (
-        "Si tienes más apps activadas de las que permite el plan nuevo, se quedan activadas; solo no podrás activar "
-        "más hasta estar por debajo del límite."
+        "Si superas los límites del plan nuevo, conservas lo que tienes: las apps activadas siguen activadas, y tus "
+        "usuarios y tus archivos se quedan; solo no podrás añadir más hasta estar por debajo del límite."
     ),
 }
 
 
 @pytest.mark.parametrize("language", ["en", "es"])
-def test_the_switch_answer_says_a_downgrade_over_the_cap_turns_no_app_off(client, seeded, language):
+def test_the_switch_answer_says_a_downgrade_over_the_limits_takes_nothing_away(client, seeded, language):
     with translation.override(language):
         (switch,) = [item for item in pricing.faq_items() if item["key"] == "switch"]
     html = html_of(client, language=language)
@@ -972,11 +974,11 @@ def test_included_level_stays_a_dormant_field_of_the_plan(seeded):
     assert all(plan.included_level_label for plan in plans.plans)
 
 
-def test_the_faq_sells_no_tier_of_apps_and_a_downgrade_turns_nothing_off(client, seeded):
+def test_the_faq_sells_no_tier_of_apps_and_a_downgrade_deletes_and_turns_nothing_off(client, seeded):
     items = {item["key"]: str(item["answer"]) for item in pricing.faq_items()}
 
     assert "Every plan includes all the apps, so turning an app on or off never changes your bill." in items["pricing"]
-    assert "turns nothing off" in items["switch"]
+    assert "moving down deletes nothing and turns nothing off" in items["switch"]
     assert "at the end of the period you have already paid for" in items["switch"]
     for key, answer in items.items():
         assert "premium" not in answer.lower(), key

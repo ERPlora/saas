@@ -654,7 +654,7 @@ Pasos:
 3. El negocio recibe los dos topes en su foto (HUBS-F31) y aplica el de dispositivos: al entrar en uno más de los que cubre el plan, se cierra la sesión del que lleva más tiempo sin entrar (BASE-F57). Las personas, también las que entran con un PIN, son siempre las de «Miembros», así que el tope de personas lo aplica erplora.com al invitar; el negocio enseña en su personal cuántas plazas hay ocupadas (BASE-F77).
 Entra: el plan del negocio, sus personas y sus invitaciones.
 Sale: el rechazo de la invitación que no cabe y los dos topes en la foto; nada más se guarda.
-Si falla: aceptar una invitación cuando el plan ya no tiene sitio se frena al aceptar (HUBS-F25). Bajar de plan no saca a nadie: frena las invitaciones nuevas hasta que vuelva a haber sitio.
+Si falla: aceptar una invitación cuando el plan ya no tiene sitio se frena al aceptar (HUBS-F25). Bajar de plan no saca a nadie ni cierra ninguna sesión: frena las invitaciones nuevas hasta que vuelva a haber sitio, y el tope de dispositivos se aplica en la siguiente entrada.
 Implicados: billing (el plan), el negocio (cierra la sesión de los dispositivos que sobran y enseña las plazas ocupadas)
 
 ### HUBS-F33 Dar al negocio los mensajes del asistente de su plan
@@ -679,11 +679,11 @@ Pantalla: ninguna; las de cada negocio se ven en Tienda › Módulos (BILLING-F3
 Pasos:
 1. Un negocio tiene una aplicación de pago por su plan (el nivel del plan la incluye) o porque la compró para ese negocio; las gratuitas no hacen falta en la lista: siempre se pueden usar.
 2. erplora.com manda al negocio, en su foto (HUBS-F31), cada aplicación de pago que tiene, de dónde le viene (el plan o una compra) y hasta cuándo, si se canceló.
-3. El negocio enciende las que tiene y en su página de aplicaciones dice de dónde le viene cada una («Incluida en tu plan», «Contratada»); una de pago sin derecho no se enciende, no hace nada de lo que se le pida y lleva a comprarla en erplora.com (BASE-F20, BASE-F27).
+3. El negocio enciende las que tiene y en su página de aplicaciones dice de dónde le viene cada una («Incluida en tu plan», «Contratada»); una de pago sin derecho no se enciende, no hace nada de lo que se le pida y lleva a erplora.com a subir de plan (BASE-F20, BASE-F27).
 4. En **Tienda › Módulos**, con el negocio elegido, el propietario ve cada aplicación en ese negocio: «Incluido en tu plan» o «Ya lo tienes» (BILLING-F31).
 Entra: el plan del negocio y sus compras.
 Sale: las aplicaciones de pago del negocio en su foto; nada se guarda.
-Si falla: una compra es de un solo negocio: nunca da la aplicación a otro, tampoco a otro de la misma cuenta. Una cancelada sigue hasta el final de lo pagado. Al bajar de plan se van las que daba el plan anterior; al subir, llegan las del nivel nuevo. Una aplicación de pago que el personal pone a la venta, o a la que cambia de nivel, llega a los negocios cuyo plan la incluye en la pasada siguiente (como mucho 15 minutos); el admin dice «… negocios cuyo plan lo incluye reciben el cambio en los próximos 15 minutos.».
+Si falla: una compra es de un solo negocio: nunca da la aplicación a otro, tampoco a otro de la misma cuenta. Una cancelada sigue hasta el final de lo pagado. Al bajar de plan, al final del periodo pagado, las que solo daba el plan anterior dejan de llegar en la foto y el negocio las bloquea: no se apagan ni se borran, guardan sus datos y vuelven tal cual al subir otra vez de plan; al subir, llegan las del nivel nuevo. Una aplicación de pago que el personal pone a la venta, o a la que cambia de nivel, llega a los negocios cuyo plan la incluye en la pasada siguiente (como mucho 15 minutos); el admin dice «… negocios cuyo plan lo incluye reciben el cambio en los próximos 15 minutos.».
 Implicados: billing (las compras), apps (qué aplicación es de pago y su nivel), el negocio (enciende o frena cada aplicación)
 
 ### HUBS-F35 Reconocer al servicio de los negocios cuando llama a erplora.com

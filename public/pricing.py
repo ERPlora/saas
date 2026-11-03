@@ -12,8 +12,8 @@ Port of ERPlora/saas ``apps/public/pricing/views.py`` (origin/develop c5ca8ca). 
 * the period label (``{% plan_period %}`` of the old ``money`` tags, saas#1836) is
   :func:`plan_period`, one definition for every selling screen;
 * every plan includes every module (ronda 2026-10-24b, PLAN §32; before, decision 17 put the premium apps in the
-  paid plans): the FAQ charges nothing «per activated module», sells no tier of apps, and a downgrade turns nothing
-  off;
+  paid plans): the FAQ charges nothing «per activated module», sells no tier of apps, and a downgrade deletes and
+  turns nothing off;
 * the storage answer names the host: AWS (Ioan, 2026-10-13), Ireland region (Ioan, 2026-10-14);
 * three plans on sale at sign-up (Ioan, 2026-10-15): the cards with a sign-up button are only the plans a visitor
   can sign up for; the infrastructure offer by contact that sat above them went in the ronda 2026-10-24b (PLAN-SAAS
@@ -29,7 +29,8 @@ Port of ERPlora/saas ``apps/public/pricing/views.py`` (origin/develop c5ca8ca). 
 * the apps a business may choose to turn on at once (``max_apps``, the cap the Hub applies since hub#256; the ones
   they require do not count) are a line of every card, right after what the plan includes, and a column of the table
   next to the devices and users (:func:`apps_at_once`), worked out from the row so the admin is the one place to
-  change them; 0 is no limit. The switch answer says a downgrade over the cap turns no app off.
+  change them; 0 is no limit. The switch answer says a downgrade over the plan's limits takes nothing away: the apps
+  turned on stay on, the users and the files stay, and only adding more waits (PLAN-SAAS, ronda 2026-11-03g).
 """
 
 from __future__ import annotations
@@ -293,9 +294,10 @@ def faq_items(days: TrialDays | None = None) -> list[dict[str, str]]:
             "answer": _(
                 "Yes. Moving up is immediate and the difference is prorated; moving down takes effect "
                 "at the end of the period you have already paid for. There's no penalty or commitment "
-                "period, and moving down turns nothing off: your apps and their data stay as they are. "
-                "If you have more apps turned on than the new plan allows, they stay on; you just can't "
-                "turn on more until you are under the limit."
+                "period, and moving down deletes nothing and turns nothing off: your apps and their data "
+                "stay as they are. If you are over the new plan's limits, you keep what you have: apps "
+                "turned on stay on, and your users and files stay; you just can't add more until you are "
+                "under the limit."
             ),
         },
         {
