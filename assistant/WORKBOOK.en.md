@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:5a6c32050771d691308117d902f982783e97b54a9a942ca877a73ecddd0bf08c -->
+<!-- generated from WORKBOOK.md sha256:898197766588a6bc180d9a05fcac61396154ec9122fbed212da74f1524b8c32c -->
 
 ## What it is for and who uses it
 
@@ -19,8 +19,8 @@ Who uses it:
 - **ERPlora's staff**, in erplora.com's admin, with the AI gateway's permissions. The support group does not have
   them: the keys are ERPlora's spend.
 - The **Hub's assistant** of each business (and of each demo): it sends erplora.com each turn, its attachments, the
-  questions about how something is done in ERPlora (ASSISTANT-F28), the dictations and what is to be read aloud, and
-  shows the person what is left of the allowance.
+  questions about how something is done in ERPlora (ASSISTANT-F28) and the dictations, and shows the person what is
+  left of the allowance.
 - **ERPlora's staff**, in "Assistant usage records", see what each business spends and what it costs.
 - The **person with an account** at erplora.com, in the panel: opens the assistant with the "Assistant" button of the
   bar and asks it about their businesses, what they pay and their account (ASSISTANT-F25), with 30 messages a month
@@ -127,7 +127,7 @@ panel.
 | ASSISTANT-F11 | Know who calls and for which business | done |
 | ASSISTANT-F12 | Answer an assistant turn live | done |
 | ASSISTANT-F13 | Answer the same turn at once | done |
-| ASSISTANT-F14 | Use erplora.com's tools and the business's | partial |
+| ASSISTANT-F14 | Use erplora.com's tools and the business's | discarded |
 | ASSISTANT-F15 | Refuse a turn with its reason | done |
 | ASSISTANT-F16 | Stop a business that asks too much | done |
 | ASSISTANT-F17 | Do not keep the conversation | done |
@@ -314,7 +314,7 @@ Status: done
 Actor: the Hub's assistant of a business
 Screen: none
 Steps:
-1. When the Hub does not need to see the answer as it arrives (a task of the Hub itself, a message that is not painted), it sends the same turn as in ASSISTANT-F12 to the door that answers at once. That is how the «Ask the assistant» step of one of the business's automations arrives, with nobody in front: one more turn, with nothing that tells it from the chat.
+1. When the Hub does not need to see the answer as it arrives (a task of the Hub itself, a message that is not painted), it sends the same turn as in ASSISTANT-F12 to the door that answers at once. That is how the "Ask the assistant" step of one of the business's automations arrives, with nobody in front: one more turn, with nothing that tells it from the chat.
 2. erplora.com does the same as live: it prepares the conversation, takes the message from the allowance, calls the model (or its fallback) and runs its own tools.
 3. It sends back at once the whole answer, the tools the business has to run with their continuation pass, the consumption and the allowance left.
 In: the same as the live turn.
@@ -323,7 +323,7 @@ If it fails: the refusals before the model, the same as live; if the provider fa
 Involved: ASSISTANT-F12, ASSISTANT-F15, ASSISTANT-F18 and, in the Hub, FLOW-F39
 
 ### ASSISTANT-F14 Use erplora.com's tools and the business's
-Status: partial — the old product's web search and exchange rate between currencies come with the ERP stage; today erplora.com gives the date and the time
+Status: discarded — the old product's web search and exchange rate between currencies come with the ERP stage (saas#202); the business's tools and erplora.com's date and time do work
 Actor: the Hub's assistant of a business
 Screen: none
 Steps:
@@ -435,7 +435,7 @@ Status: done
 Actor: the Hub's assistant of a business
 Screen: none
 Steps:
-1. The person asks the assistant to read its answer; the Hub sends erplora.com the text and, if it wants, the voice (alloy, echo, fable, onyx, nova or shimmer).
+1. A Hub that wants to read an answer with erplora.com's voice sends it the text and, if it wants, the voice (alloy, echo, fable, onyx, nova or shimmer). Today's Hub does not ask for it: "Read aloud" uses the device's own voice.
 2. erplora.com asks the services' provider for the audio (at most the first 4,096 characters) and gives it back in MP3.
 3. The characters read are counted in the business's month; it spends no messages.
 In: the business, the text and the voice.
@@ -512,7 +512,7 @@ Steps:
 3. erplora.com searches erplora.com's public help, the documentation of each app of the Hub that is in the store, the user part of the panel's manuals (the account, the businesses, billing, the store and the website) and the plans on sale with their prices and what each one includes.
 4. It returns up to 8 excerpts (12 at most, even if the model asks for more), the closest to the question, in the person's language; if fewer than three in their language really answer, the English ones join. Each excerpt says where it comes from and under which headings.
 5. The model answers with what those excerpts say and cites where they come from; a price or what a plan includes always comes from the plans on sale, never from memory.
-6. The documentation is brought up to date when ERPlora's team indexes it again: a change in the help, in a manual, in an app's documentation or in a plan reaches the assistant with the next run. It is not yet indexed again on its own every day.
+6. The documentation is brought up to date with each indexing run: a change in the help, in a manual, in an app's documentation or in a plan reaches the assistant with the next run.
 In: the question (up to 500 characters) and how many excerpts the model wants.
 Out: the excerpts with their source, where they come from, their headings, their text, their language and how close they are to the question; of the question only its fingerprint stays in the cache for a day (the same question again is not computed anew).
 If it fails: without the provider of the fingerprints configured, or if it fails, the search answers that the documentation cannot be searched now and the model tells the person; an account without the permission to ask the assistant does not search; while the documentation has not been indexed, it finds nothing and the model says it does not know instead of making it up.

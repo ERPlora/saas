@@ -364,7 +364,7 @@ opcional, `BUILD_RUNNER`. Sin la variable del entorno, el despliegue falla; nunc
 
 El asistente del panel busca en la documentación de ERPlora (`assistant.docs.search`, ASSISTANT-F27) sobre el
 índice que llena `index_docs` (`assistant/README.md`). Se programa a diario a las 06:50 UTC en `saas-cron`
-(`index-docs-daily`, issue de ERPlora/aws «saas-cron: index_docs diario»); hasta que se aplique, y siempre tras el
+(`index-docs-daily`, ERPlora/aws#28); siempre tras el
 primer despliegue con la migración `assistant/0004_doc_chunks`, se lanza una vez a mano como tarea suelta de
 `erplora-prod-saas-cron` (la imagen desplegada, con la red del servicio `saas`). Necesita el proveedor de servicios
 (`ASSISTANT_SERVICE_PROVIDER`, «openai», con su clave en el admin): sin él sale con código 2 y no escribe nada. Es
