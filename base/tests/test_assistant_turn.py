@@ -526,7 +526,9 @@ class TestTheCardIsTheOnlyQuestion:
         assert "ask only for a datum that no tool gives and the person has not said" in said
         assert "never refuse a change yourself" in said
         assert "«not confirmed» or with an error, nothing changed" in said, "what it had to say about a refusal stays"
-        assert "«not confirmed» is the person's answer: do not call that tool again unless they ask anew" in said
+        assert "«not confirmed» is the person's answer and its card is gone" in said
+        assert "do not tell them to confirm it" in said
+        assert "do not call that tool again unless they ask anew" in said
 
     def test_the_model_is_told_the_tool_decides_whether_a_free_business_fits(self):
         description = assistant.tool_spec(get_operation("hubs.business.create"))["description"]
