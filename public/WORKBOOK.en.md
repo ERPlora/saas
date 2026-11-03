@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:0eba9a13607bd867239dc60ba869bb4b7cdf96d787c3a69df4bdd53ffec2b4fc -->
+<!-- generated from WORKBOOK.md sha256:41f2365b8d6e3784e06cddc87b9336ff69cc68c6b9b2502dd8109eb64f9a6f56 -->
 
 ## What it is for and who it is for
 
@@ -614,11 +614,11 @@ Actor: system
 Screen: none
 Steps:
 1. As soon as its hour has passed, the demo's address answers "This demo has ended", even if nobody has retired it yet.
-2. Every minute, the hub retires the demos that ran out: it deletes everything that was done inside each one (every demo has its own database, which is deleted whole without touching any other business's), their entry codes, their user "Demo" and their access, and marks them retired; a failure in one does not stop the others.
+2. Every minute, the hub retires the demos that ran out: it deletes each one's data (every demo has its own database, which is deleted whole without touching any other business's), their entry codes, their user "Demo" and their access, and marks them retired; a failure in one does not stop the others.
 3. A demo that was still being prepared when it ended is retired all the same, without finishing its preparation.
 4. After a few days, the retired address stops existing altogether.
 In: the demos whose hour has passed.
-Out: the retired demo, with nothing of what was done in it, no user and no way in.
+Out: the retired demo, without its data, with no user and no way in. The files uploaded inside the demo (photos, for example) are not deleted yet, but nobody can open them from ERPlora any more.
 If it fails: if retiring one fails, it is tried again later, with a longer wait each time; meanwhile its address already says it has ended.
 Involved: the Hub (its registry of hubs and its background process)
 
