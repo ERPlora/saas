@@ -428,3 +428,10 @@ class TestWhetherABusinessCanBeCreated:
     def test_a_visitor_without_an_account_is_refused(self, plans):
         with pytest.raises(PermissionDenied):
             self.check(None)
+
+    def test_it_asks_the_same_permission_as_the_write(self):
+        """The read behind the card refuses by role exactly as the write does: never wider, never narrower."""
+        from live.operations import registry
+
+        assert registry["hubs.business.create_check"].permission == registry["hubs.business.create"].permission
+        assert registry["hubs.business.create_check"].permission == "hubs.manage"
