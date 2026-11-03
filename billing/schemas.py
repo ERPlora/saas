@@ -275,6 +275,8 @@ class StoreSubscriptionOut(Schema):
     #: The plan the business tries while ``trial_end`` lasts (every sign-up tries Starter).
     trial_plan: str | None
     trial_end: datetime | None
+    #: A downgrade waiting for the end of the period: its card says it and offers «Keep the plan» (saas#208).
+    scheduled_change: ScheduledChangeOut | None = None
 
 
 class StoreCatalogOut(Schema):

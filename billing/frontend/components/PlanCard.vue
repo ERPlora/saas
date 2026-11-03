@@ -10,6 +10,8 @@
 //   - Paying: «Change to …» (confirmed with its proration), «Switch to annual/monthly» on its own plan
 //     when the switch shows the other billing, «Downgrade to Free» (cancels at the end of the period).
 //   - Cancelled: «Keep the plan» on its plan; Free says from when; another plan waits for it.
+//   - A downgrade that waits for the end of the period (PLAN-SAAS §31, saas#208): its plan says to what and when
+//     («Changes to Starter on …») and offers «Keep the plan», which charges nothing today; the other plans stay.
 //   - An unpaid invoice disables what charges, with the reason under the button (`aria-describedby`).
 //     Cancelling is never blocked: it only stops the next charges.
 import { StatusPill } from '@erplora/ui/components';
@@ -30,6 +32,8 @@ const props = defineProps<{
   subscription: StoreSubscriptionOut | null;
   /** An unpaid invoice of the business: nothing that charges. */
   block: Block | null;
+  /** The name of the plan a downgrade that waits moves the business to (`subscription.scheduled_change`). */
+  changesTo?: string;
 }>();
 
 const emit = defineEmits<{
@@ -41,7 +45,7 @@ const emit = defineEmits<{
   switch: [period: BillingInterval];
   /** Cancel the paid plan: the business goes to Free at the end of the period. */
   downgrade: [];
-  /** Undo the cancellation. */
+  /** Undo the cancellation, or the downgrade that waits. */
   keep: [];
 }>();
 
@@ -54,6 +58,8 @@ const free = computed(() => isFree(props.plan));
 const paying = computed(() => !!props.subscription?.paying);
 const current = computed(() => (props.subscription ? props.subscription.plan === props.plan.slug : free.value));
 const cancelling = computed(() => paying.value && !!props.subscription?.cancel_at_period_end);
+/** A downgrade that waits for the end of the period: a cancellation wins over it (Free wins). */
+const waiting = computed(() => (paying.value && !cancelling.value ? (props.subscription?.scheduled_change ?? null) : null));
 const periodEnd = computed(() => formatDate(props.subscription?.current_period_end, locale.value));
 const trying = computed(() => {
   const subscription = props.subscription;
@@ -70,6 +76,8 @@ const action = computed<{ kind: Action; disabled: boolean; hint: string } | null
   }
   if (current.value && paying.value) {
     if (cancelling.value) return { kind: 'keep', disabled: !!props.block, hint: payFirst };
+    // Undoing a downgrade charges nothing today: the plan renews as it is (`billing.plan.keep`).
+    if (waiting.value) return { kind: 'keep', disabled: false, hint: '' };
     if (props.period !== props.subscription?.billing_interval) return { kind: 'switch', disabled: !!props.block, hint: payFirst };
     return null;
   }
@@ -145,10 +153,17 @@ const lines = computed<Line[]>(() => {
   return [...result, ...trial.map(feature)];
 });
 
-/** What the card says under the features: a cancellation, Free's date, a trial's days. */
+/** What the card says under the features: a cancellation, a downgrade that waits, Free's date, a trial's days. */
 const note = computed(() => {
   if (current.value && cancelling.value && !free.value) {
     return t('billing.plans.cancelled', { plan: props.plan.name, date: periodEnd.value });
+  }
+  const change = waiting.value;
+  if (current.value && change && !free.value) {
+    const date = formatDate(change.starts_at, locale.value);
+    // Annual → monthly on the same plan is a downgrade too: it says the billing, not the plan it already has.
+    if (change.plan === props.plan.slug && change.interval === 'month') return t('billing.plans.scheduledMonthly', { date });
+    return t('billing.plans.scheduled', { plan: props.changesTo || change.plan, date });
   }
   if (free.value && cancelling.value) return t('billing.plans.freeFrom', { date: periodEnd.value });
   if (trying.value) return t('billing.plans.trialKeeps');

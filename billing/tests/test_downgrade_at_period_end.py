@@ -208,3 +208,51 @@ class TestWhilePending:
         [row] = queries.subscription_list(ctx_for(owner), SubscriptionListIn()).model_dump(mode="json")["rows"]
 
         assert (row["scheduled_change"]["plan"], row["scheduled_change"]["interval"]) == ("starter", "month")
+
+    def test_the_subscriptions_tab_offers_to_keep_the_plan_and_forgets_the_change_once_kept(
+        self, shop, owner, stripe_double
+    ):
+        """saas#208 (PLAN-SAAS §31 point 2): «Keep the plan» leads the row while the downgrade waits, as with a
+        cancellation; «Cancel plan» stays in its menu (Free wins over a downgrade). Kept, the row is the plan
+        as it renews."""
+        from billing import queries
+        from billing.schemas import SubscriptionListIn
+
+        paid = self.pending(shop, owner, stripe_double)
+
+        def row():
+            [only] = queries.subscription_list(ctx_for(owner), SubscriptionListIn()).model_dump(mode="json")["rows"]
+            return only
+
+        waiting = row()
+        assert waiting["actions"] == ["keep_plan", "change_plan", "cancel_plan", "view_invoices"]
+        assert waiting["can"]["keep_plan"] is True
+
+        services.plan_keep(ctx_for(owner), HubIn(hub_id=paid.id))
+
+        kept = row()
+        assert kept["scheduled_change"] is None
+        assert kept["actions"] == ["change_plan", "cancel_plan", "view_invoices"]
+        assert kept["can"]["keep_plan"] is False
+
+    def test_the_store_says_to_what_and_when_until_it_is_kept(self, shop, owner, stripe_double):
+        """saas#208: the Store's card of the current plan says the change that waits (``billing.store.catalog``)."""
+        from billing import queries
+        from billing.schemas import StoreCatalogIn
+
+        paid = self.pending(shop, owner, stripe_double)
+
+        def waiting():
+            return queries.store_catalog(ctx_for(owner), StoreCatalogIn(hub_id=paid.id)).model_dump(mode="json")[
+                "subscription"
+            ]["scheduled_change"]
+
+        change_ = waiting()
+        assert (change_["plan"], change_["interval"]) == ("starter", "month")
+        assert change_["starts_at"] == PlanChangeSchedule.objects.get(hub=paid).starts_at.isoformat().replace(
+            "+00:00", "Z"
+        )
+
+        services.plan_keep(ctx_for(owner), HubIn(hub_id=paid.id))
+
+        assert waiting() is None

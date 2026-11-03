@@ -244,6 +244,25 @@ class TestWhatTheBusinessHas:
 
         assert catalog(owner, paid)["subscription"]["cancel_at_period_end"] is True
 
+    def test_a_downgrade_that_waits_says_to_what_and_when(self, shop, owner, inventory):
+        """saas#208: the card of the current plan says «Changes to … on …» and offers to keep the plan."""
+        from billing.models import PlanChangeSchedule
+
+        paid = pay(shop, plan="standard")
+        starts = paid.subscription.current_period_end
+        PlanChangeSchedule.objects.create(
+            hub=paid, stripe_schedule_id="sub_sched_1", plan_slug="starter", interval="month", starts_at=starts
+        )
+
+        assert catalog(owner, paid)["subscription"]["scheduled_change"] == {
+            "plan": "starter",
+            "interval": "month",
+            "starts_at": starts.isoformat().replace("+00:00", "Z"),
+        }
+
+    def test_without_a_change_that_waits_there_is_none(self, shop, owner, inventory):
+        assert catalog(owner, pay(shop))["subscription"]["scheduled_change"] is None
+
 
 class TestOnlyTheOwnerBuys:
     def test_an_admin_is_refused(self, shop, make_user, inventory):

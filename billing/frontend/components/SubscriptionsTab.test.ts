@@ -262,6 +262,30 @@ describe('SubscriptionsTab: the list', () => {
     expect(toastSuccess).toHaveBeenCalledWith('Panadería López stays on Starter');
   });
 
+  it('a downgrade that waits leads with «Keep the plan», and once kept the row stops saying it (saas#208)', async () => {
+    const waiting = subscriptionRow('bakery', 'Panadería López', {
+      scheduled_change: { plan: 'basic', interval: 'month', starts_at: '2026-11-01T10:00:00Z' },
+      actions: ['keep_plan', 'change_plan', 'cancel_plan', 'view_invoices'],
+      can: { take_over: false, change_plan: true, cancel_plan: true, keep_plan: true, view_invoice: false, view_invoices: true },
+    });
+    const s = await setup('en', (call) => (call.path === '/api/billing/plan/keep' ? Response.json({}) : api(call)));
+    await s.show([waiting]);
+    expect(s.testid('subscriptions-row-bakery-lead').text()).toBe('Keep the plan');
+    // Cancelling stays in «⋮»: Free wins over a downgrade that waits.
+    expect(s.actionsOf('bakery')).toEqual(['lead', 'menu']);
+    await s.testid('subscriptions-row-bakery-menu').trigger('click');
+    await flush();
+    expect(s.testid('subscriptions-row-bakery-cancel_plan').text()).toBe('Cancel plan');
+    await s.testid('subscriptions-row-bakery-lead').trigger('click');
+    await flush();
+    expect(s.calls().filter((c) => c.method === 'POST')).toEqual([{ method: 'POST', path: '/api/billing/plan/keep', body: { hub_id: 'bakery' }, query: {} }]);
+    expect(toastSuccess).toHaveBeenCalledWith('Panadería López stays on Starter');
+    // `billing.plan.kept` re-runs the list: the row as it renews, without the change nor «Keep the plan».
+    await s.show([subscriptionRow('bakery', 'Panadería López')]);
+    expect(s.testid('subscription-scheduled').exists()).toBe(false);
+    expect(s.testid('subscriptions-row-bakery-lead').text()).toBe('Change plan');
+  });
+
   it('a refused «Keep the plan» says why', async () => {
     const s = await setup('en', (call) =>
       call.path === '/api/billing/plan/keep' ? apiError(409, 'billing.invoice_unpaid', 'Pay the pending invoice first.') : api(call),

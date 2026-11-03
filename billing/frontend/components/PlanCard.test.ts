@@ -16,7 +16,14 @@ import PlanCard from './PlanCard.vue';
 const PRO = plan('pro', 'Pro', '59.99', '599.90');
 const nb = (text: string) => text.replace(/ €/g, ' €');
 
-async function card(props: { plan?: typeof STARTER; period?: 'month' | 'year'; subscription?: unknown; block?: Block | null; locale?: 'en' | 'es' }) {
+async function card(props: {
+  plan?: typeof STARTER;
+  period?: 'month' | 'year';
+  subscription?: unknown;
+  block?: Block | null;
+  changesTo?: string;
+  locale?: 'en' | 'es';
+}) {
   const { locale, ...rest } = props;
   const m = await mountBilling(PlanCard, {
     locale,
@@ -165,6 +172,77 @@ describe('PlanCard', () => {
       const s = await card({ subscription: cancelled, block: 'unpaid' });
       expect((s.text('plan-keep').element as unknown as { disabled: boolean }).disabled).toBe(true);
       expect(s.text('plan-hint').text()).toBe('Pay the pending invoice first.');
+    });
+  });
+
+  describe('a downgrade that waits for the end of the period (saas#208, PLAN-SAAS §31)', () => {
+    const STANDARD = plan('standard', 'Standard', '59.99', '599.90');
+    const waiting = (extra: Record<string, unknown> = {}) =>
+      subscription({
+        plan: 'standard',
+        scheduled_change: { plan: 'starter', interval: 'month', starts_at: '2026-10-31T12:00:00Z' },
+        ...extra,
+      });
+
+    it('its own card says to what and when, and offers to keep the plan', async () => {
+      const s = await card({ plan: STANDARD, subscription: waiting(), changesTo: 'Starter' });
+      expect(s.text('plan-current').exists()).toBe(true);
+      expect(s.text('plan-note').text()).toBe('Changes to Starter on Oct 31, 2026.');
+      const button = s.text('plan-keep');
+      expect(button.text()).toBe('Keep the plan');
+      expect((button.find('ion-icon').element as unknown as { name?: string }).name).toBe('refresh-outline');
+      await button.trigger('click');
+      expect(s.wrapper.emitted('keep')).toHaveLength(1);
+    });
+
+    it('keeping it comes before switching its billing', async () => {
+      const s = await card({ plan: STANDARD, period: 'year', subscription: waiting(), changesTo: 'Starter' });
+      expect(s.text('plan-keep').exists()).toBe(true);
+      expect(s.text('plan-switch').exists()).toBe(false);
+    });
+
+    it('annual to monthly on the same plan says the billing it moves to', async () => {
+      const s = await card({
+        plan: STANDARD,
+        period: 'year',
+        subscription: waiting({
+          billing_interval: 'year',
+          scheduled_change: { plan: 'standard', interval: 'month', starts_at: '2026-10-31T12:00:00Z' },
+        }),
+        changesTo: 'Standard',
+      });
+      expect(s.text('plan-note').text()).toBe('Changes to monthly billing on Oct 31, 2026.');
+      expect(s.text('plan-keep').exists()).toBe(true);
+    });
+
+    it('keeping it charges nothing today: an unpaid invoice does not stop it', async () => {
+      const s = await card({ plan: STANDARD, subscription: waiting(), changesTo: 'Starter', block: 'unpaid' });
+      expect((s.text('plan-keep').element as unknown as { disabled: boolean }).disabled).toBe(false);
+      expect(s.text('plan-hint').exists()).toBe(false);
+    });
+
+    it('the other plans can still be chosen, and Free cancels', async () => {
+      const other = await card({ plan: PRO, subscription: waiting(), changesTo: 'Starter' });
+      expect((other.text('plan-change').element as unknown as { disabled: boolean }).disabled).toBe(false);
+      expect(other.text('plan-note').exists()).toBe(false);
+      const free = await card({ plan: FREE, subscription: waiting(), changesTo: 'Starter' });
+      expect(free.text('plan-downgrade').exists()).toBe(true);
+    });
+
+    it('speaks Spanish', async () => {
+      const s = await card({ plan: STANDARD, subscription: waiting(), changesTo: 'Starter', locale: 'es' });
+      expect(s.text('plan-note').text()).toBe('Cambia a Starter el 31 oct 2026.');
+      expect(s.text('plan-keep').text()).toBe('Mantener el plan');
+      const billing = await card({
+        plan: STANDARD,
+        subscription: waiting({
+          billing_interval: 'year',
+          scheduled_change: { plan: 'standard', interval: 'month', starts_at: '2026-10-31T12:00:00Z' },
+        }),
+        changesTo: 'Standard',
+        locale: 'es',
+      });
+      expect(billing.text('plan-note').text()).toBe('Pasa a pago mensual el 31 oct 2026.');
     });
   });
 

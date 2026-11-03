@@ -381,6 +381,60 @@ describe('StoreShop', () => {
     expect(s.el('plan-keep').exists()).toBe(false);
   });
 
+  describe('a downgrade that waits for the end of the period (saas#208, PLAN-SAAS §31)', () => {
+    const plans = { ...PLANS, plans: [...PLANS.plans, PRO] };
+    const kept = {
+      hub_id: 'bakery',
+      plan: 'pro',
+      billing_interval: 'month',
+      status: 'active',
+      cancel_at_period_end: false,
+      current_period_end: '2026-10-31T12:00:00Z',
+      trial_end: null,
+      modules: [],
+      scheduled_change: null,
+    };
+    const toStarter = { plan: 'starter', interval: 'month', starts_at: '2026-10-31T12:00:00Z' };
+
+    it('confirmed, the current plan says to what and when, and «Keep the plan» undoes it', async () => {
+      const onPro = catalog('bakery', { subscription: subscription({ plan: 'pro' }) });
+      const s = await setup({
+        answer: ({ path }) => {
+          if (path === '/api/plans') return Response.json(plans);
+          if (path === '/api/billing/store') return Response.json(onPro);
+          if (path === '/api/billing/plan/keep') return Response.json(kept);
+          return undefined;
+        },
+      });
+      expect(s.el('plan-keep').exists()).toBe(false);
+      await s.el('plan-starter').find('[data-testid="plan-change"]').trigger('click');
+      s.wrapper.findComponent(ProrationDialog).vm.$emit('done', { ...kept, scheduled_change: toStarter });
+      await flush();
+      expect(s.el('plan-pro').find('[data-testid="plan-note"]').text()).toBe('Changes to Starter on Oct 31, 2026.');
+
+      await s.el('plan-pro').find('[data-testid="plan-keep"]').trigger('click');
+      await flush();
+      expect(s.calls().at(-1)).toMatchObject({ method: 'POST', path: '/api/billing/plan/keep', body: { hub_id: 'bakery' } });
+      expect(toastSuccess).toHaveBeenCalledWith('Pro is kept: it renews on Oct 31, 2026');
+      expect(s.el('plan-keep').exists()).toBe(false);
+      expect(s.el('plan-pro').find('[data-testid="plan-note"]').exists()).toBe(false);
+    });
+
+    it('in Spanish, the plan it changes to by its name', async () => {
+      const waiting = catalog('bakery', { subscription: subscription({ plan: 'pro', scheduled_change: toStarter }) });
+      const s = await setup({
+        locale: 'es',
+        answer: ({ path }) => {
+          if (path === '/api/plans') return Response.json(plans);
+          if (path === '/api/billing/store') return Response.json(waiting);
+          return undefined;
+        },
+      });
+      expect(s.el('plan-pro').find('[data-testid="plan-note"]').text()).toBe('Cambia a Starter el 31 oct 2026.');
+      expect(s.el('plan-pro').find('[data-testid="plan-keep"]').text()).toBe('Mantener el plan');
+    });
+  });
+
   it('«Keep · no charge today» keeps a cancelled module and says when it renews', async () => {
     const s = await setup({
       tab: 'modules',

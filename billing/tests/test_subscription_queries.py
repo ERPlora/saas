@@ -21,7 +21,7 @@ from django.core.cache import cache
 from django.utils import timezone
 
 from billing import queries
-from billing.models import Invoice, PaymentFailure
+from billing.models import Invoice, PaymentFailure, PlanChangeSchedule
 from billing.schemas import PaymentMethodIn, SubscriptionListIn
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import connection_error, event, signed
@@ -268,6 +268,42 @@ class TestTheActions:
         assert row["actions"] == ["keep_plan", "change_plan", "view_invoices"]
         assert (row["cancelling"], row["next_invoice"]) == (True, None)
         assert row["ends_at"] is not None
+
+    def test_a_downgrade_that_waits_is_kept_first_and_can_still_be_cancelled(self, owner, shop):
+        """saas#208: a cheaper plan waiting for the end of the period is undone with «Keep the plan», as a
+        cancellation is; cancelling stays (Free wins over a downgrade), and so does the next invoice."""
+        paid = pay(shop, plan="standard")
+        PlanChangeSchedule.objects.create(
+            hub=paid,
+            stripe_schedule_id="sub_sched_1",
+            plan_slug="starter",
+            interval="month",
+            starts_at=paid.subscription.current_period_end,
+        )
+
+        [row] = subscriptions(owner)
+
+        assert row["actions"] == ["keep_plan", "change_plan", "cancel_plan", "view_invoices"]
+        assert (row["can"]["keep_plan"], row["can"]["cancel_plan"]) == (True, True)
+        assert row["cancelling"] is False
+        assert row["next_invoice"] is not None
+
+    def test_a_downgrade_on_another_account_s_card_is_not_kept_by_the_owner(self, owner, shop, make_user):
+        """Keeping needs the owner who pays (HUBS-F28): on the previous payer's card the owner only takes it over."""
+        paid = pay(shop, plan="standard")
+        PlanChangeSchedule.objects.create(
+            hub=paid,
+            stripe_schedule_id="sub_sched_1",
+            plan_slug="starter",
+            interval="month",
+            starts_at=paid.subscription.current_period_end,
+        )
+        BillingProfile.objects.filter(pk=paid.billing_profile_id).update(owner=make_user("payer@example.com"))
+
+        actions, can = self.actions(owner)
+
+        assert actions == ["take_over", "view_invoices"]
+        assert can["keep_plan"] is False
 
     def test_with_an_invoice_not_collected_it_is_viewed_first(self, owner, shop):
         pay(shop, status="past_due")

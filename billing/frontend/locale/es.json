@@ -59,6 +59,8 @@
       "downgrade": "Bajar a Gratis",
       "keep": "Mantener el plan",
       "cancelled": "Cancelado: {plan} hasta el {date} y después Gratis.",
+      "scheduled": "Cambia a {plan} el {date}.",
+      "scheduledMonthly": "Pasa a pago mensual el {date}.",
       "freeFrom": "El negocio pasa a Gratis el {date}.",
       "keepFirst": "Mantén antes el plan para cambiarlo.",
       "payFirst": "Antes, paga la factura pendiente.",

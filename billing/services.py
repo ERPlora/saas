@@ -2441,15 +2441,8 @@ def subscription_out(hub_id) -> dict:
             }
             for item in subscription.items.order_by("module_slug")
         ],
-        "scheduled_change": scheduled_change_of(hub_id),
+        "scheduled_change": queries.scheduled_change_of(hub_id),
     }
-
-
-def scheduled_change_of(hub_id) -> dict | None:
-    pending = PlanChangeSchedule.objects.filter(hub_id=hub_id).first()
-    if pending is None:
-        return None
-    return {"plan": pending.plan_slug, "interval": pending.interval, "starts_at": pending.starts_at}
 
 
 # --- What the live subscription says, applied (webhook, operations, sweep) ---------------------------

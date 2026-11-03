@@ -59,6 +59,8 @@
       "downgrade": "Downgrade to Free",
       "keep": "Keep the plan",
       "cancelled": "Cancelled: {plan} until {date}, then Free.",
+      "scheduled": "Changes to {plan} on {date}.",
+      "scheduledMonthly": "Changes to monthly billing on {date}.",
       "freeFrom": "The business goes to Free on {date}.",
       "keepFirst": "Keep the plan first to change it.",
       "payFirst": "Pay the pending invoice first.",

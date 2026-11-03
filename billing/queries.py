@@ -696,6 +696,14 @@ def offered_plans(paying: bool):
     return plans.order_by("display_order", "price_monthly")
 
 
+def scheduled_change_of(hub_id) -> dict | None:
+    """The downgrade of the business that waits for the end of the period («Changes to Starter on 1 Nov»)."""
+    change = PlanChangeSchedule.objects.filter(hub_id=hub_id).first()
+    if change is None:
+        return None
+    return {"plan": change.plan_slug, "interval": change.interval, "starts_at": change.starts_at}
+
+
 @operation(
     "billing.store.catalog",
     kind="query",
@@ -771,6 +779,7 @@ def store_catalog(ctx: OperationContext, params: StoreCatalogIn) -> dict:
             "current_period_end": subscription.current_period_end,
             "trial_plan": subscription.trial_plan.slug if subscription.trial_plan_id else None,
             "trial_end": subscription.trial_end,
+            "scheduled_change": scheduled_change_of(member.hub_id),
         }
     return {
         "hub_id": member.hub_id,
@@ -1177,16 +1186,18 @@ def _subscription_row(
     writable = hub.id in owned and hub_queries.is_writable(hub)
     manages = writable and not elsewhere
     unpaid_id = unpaid.get(hub.id)
+    waiting = scheduled.get(hub.id)
     can = {
         "take_over": writable and elsewhere,
         "change_plan": manages and unpaid_id is None,
         "cancel_plan": manages and not cancelling,
-        "keep_plan": manages and cancelling,
+        # A cancellation or a downgrade that waits for the end of the period is undone the same way
+        # (``billing.plan.keep``; PLAN-SAAS §31 point 2, saas#208).
+        "keep_plan": manages and (cancelling or waiting is not None),
         "view_invoice": unpaid_id is not None,
         "view_invoices": True,
     }
-    order = ["view_invoice", "take_over",
-             *(["keep_plan", "change_plan"] if cancelling else ["change_plan", "cancel_plan"]), "view_invoices"]
+    order = ["view_invoice", "take_over", "keep_plan", "change_plan", "cancel_plan", "view_invoices"]
     return {
         "business": {"id": hub.id, "name": hub.name},
         "plan": {"slug": plan.slug, "name": plan.translated("name"), "interval": interval, "price_cents": plan_cents},
@@ -1198,7 +1209,7 @@ def _subscription_row(
         "ends_at": subscription.current_period_end if cancelling else None,
         "cancel_requested": subscription.cancel_requested_at is not None,
         "unpaid_invoice_id": unpaid_id,
-        "scheduled_change": scheduled.get(hub.id),
+        "scheduled_change": waiting,
         "paid_by_another_account": elsewhere and hub.id in owned,
         "actions": [action for action in order if can[action]],
         "can": can,
