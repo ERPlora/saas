@@ -18,6 +18,7 @@ from live.errors import NotFound, OperationError, PermissionDenied
 from apps.icons import FALLBACK_ICON_SVG
 from apps.tests.factories import CUBE_SVG, make_app
 from billing import queries
+from billing.models import PlanChangeSchedule
 from billing.schemas import StoreCatalogIn
 from billing.tests.conftest import ctx_for, pay
 from hubs.models import HubMember, SubscriptionItem
@@ -243,6 +244,28 @@ class TestWhatTheBusinessHas:
         paid = pay(shop, cancel_at_period_end=True)
 
         assert catalog(owner, paid)["subscription"]["cancel_at_period_end"] is True
+
+    def test_a_downgrade_that_waits_says_to_what_and_when(self, shop, owner, inventory):
+        """PLAN-SAAS §31 point 2 (saas#208): the card of the current plan says the downgrade that waits and offers
+        «Keep the plan»; the Store reads it here."""
+        paid = pay(shop, plan="standard", interval="year")
+        starts = timezone.now() + timedelta(days=30)
+        PlanChangeSchedule.objects.create(
+            hub=paid, stripe_schedule_id="sub_sched_1", plan_slug="starter", interval="month", starts_at=starts
+        )
+
+        subscription = catalog(owner, paid)["subscription"]
+
+        assert subscription["scheduled_change"] == {
+            "plan": "starter",
+            "interval": "month",
+            "starts_at": starts.isoformat().replace("+00:00", "Z"),
+        }
+
+    def test_without_a_downgrade_waiting_nothing_is_scheduled(self, shop, owner, inventory):
+        paid = pay(shop, plan="standard")
+
+        assert catalog(owner, paid)["subscription"]["scheduled_change"] is None
 
 
 class TestOnlyTheOwnerBuys:
