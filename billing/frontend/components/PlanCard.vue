@@ -58,8 +58,9 @@ const free = computed(() => isFree(props.plan));
 const paying = computed(() => !!props.subscription?.paying);
 const current = computed(() => (props.subscription ? props.subscription.plan === props.plan.slug : free.value));
 const cancelling = computed(() => paying.value && !!props.subscription?.cancel_at_period_end);
-/** A downgrade that waits for the end of the period: a cancellation wins over it (Free wins). */
-const waiting = computed(() => (paying.value && !cancelling.value ? (props.subscription?.scheduled_change ?? null) : null));
+/** A downgrade that waits for the end of the period. A cancellation releases it (`billing.plan.cancel`: Free
+ * wins), and both readers below ask for the cancellation first. */
+const waiting = computed(() => props.subscription?.scheduled_change ?? null);
 const periodEnd = computed(() => formatDate(props.subscription?.current_period_end, locale.value));
 const trying = computed(() => {
   const subscription = props.subscription;
