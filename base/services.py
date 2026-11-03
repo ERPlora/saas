@@ -35,7 +35,10 @@ ASK = "assistant.ask"
 #: What the model hears of a tool that did not run (in English, as its instructions).
 #: The person said no to a card: what the model hears, and what stops it asking again (saas#193).
 NOT_CONFIRMED_CODE = "base.assistant_not_confirmed"
-NOT_CONFIRMED = "Not confirmed by the person: nothing was done."
+NOT_CONFIRMED = (
+    "The person said no on the card and the card is closed: nothing was done. Say it was not done and do not tell them "
+    "to confirm it: there is nothing left to confirm."
+)
 STOPPED = "The person stopped this request: nothing more was done."
 ASKED_AGAIN = (
     "The person already said no to this and has not written since: nothing was done. Do not ask again: say it was not "

@@ -585,6 +585,31 @@ class TestANoIsAnAnswer:
             ],
         }
 
+    def test_the_model_hears_a_no_and_a_closed_card_never_a_wait(self, signed_in, account, answering, fake_provider):
+        """After «Cancel» the real model answered «confirm it on the card» (3 of 4 runs of the Spanish probe): «Not
+        confirmed by the person» reads as still waiting, and that card is no longer on the screen."""
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("All right, I did not create it."))
+
+        frames(
+            post_turn(
+                signed_in,
+                {
+                    "messages": TestAWrite().asked(),
+                    "pending": [self.CREATE],
+                    "decision": {"call_id": "c1", "accepted": False},
+                },
+            )
+        )
+
+        heard = next(m["content"] for m in model_requests(fake_provider)[-1].body["messages"] if m.get("tool_call_id") == "c1")
+        error = json.loads(heard)["error"]
+        assert error["code"] == NOT_CONFIRMED_CODE
+        said = error["message"]
+        assert "said no" in said
+        assert "card is closed" in said
+        assert "nothing was done" in said
+        assert not said.startswith("Not confirmed")
+
     def test_the_same_write_asked_again_after_a_no_shows_no_second_card(self, signed_in, account, answering, fake_provider):
         again = self.asked_again()
         fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("All right, I did not create it."))
