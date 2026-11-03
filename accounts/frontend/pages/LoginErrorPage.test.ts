@@ -197,3 +197,60 @@ describe('LoginErrorPage: in Spanish, with the translations of the templates', (
     expect(page.links.map(([text]) => text)).toEqual(['Volver al hub', 'Contactar Soporte']);
   });
 });
+
+describe('LoginErrorPage: the pass back from a business (ACCOUNTS-F29, saas#190)', () => {
+  const PLAN = '/dashboard/store/plans?business=0193a5b2-0000-7000-8000-000000000001';
+
+  it('invalid_pass: the link was not signed by the business; sign in, with support', async () => {
+    const page = await mountError('code=invalid_pass');
+    expect(page.badge().text()).toBe('400 · Invalid link');
+    expect(page.heading()).toBe('This link from your business is not valid');
+    expect(page.message()).toBe(
+      "We couldn't check where it came from, so we didn't sign you in. Go back to your business and tap the button again, or sign in with your account.",
+    );
+    expect(page.primary()).toEqual(['Sign in', '/launch']);
+    expect(page.links).toEqual([['Contact Support', 'mailto:help@erplora.test']]);
+    expect(document.title).toBe('Invalid link - ERPlora Cloud');
+  });
+
+  it('pass_expired: past its minute or already used; signing in goes on where it was going', async () => {
+    const page = await mountError(`code=pass_expired&next=${encodeURIComponent(PLAN)}`);
+    expect(page.badge().text()).toBe('410 · Link expired');
+    expect(page.heading()).toBe('This link from your business has expired');
+    expect(page.message()).toBe(
+      'For your security, links from your business to erplora.com work only once and for one minute. Sign in to go on, or tap the button in your business again.',
+    );
+    expect(page.primary()).toEqual(['Sign in', `/launch?next=${encodeURIComponent(PLAN)}`]);
+    expect(page.links).toEqual([['Contact Support', 'mailto:help@erplora.test']]);
+    expect(document.title).toBe('Link expired - ERPlora Cloud');
+  });
+
+  it('pass_expired never carries a next that leaves the site', async () => {
+    const page = await mountError(`code=pass_expired&next=${encodeURIComponent('//evil.example.com/')}`);
+    expect(page.primary()).toEqual(['Sign in', '/launch']);
+  });
+
+  it('with another account signed in, the way back is home', async () => {
+    const page = await mountError(`code=pass_expired&next=${encodeURIComponent(PLAN)}`, { session: SIGNED_IN });
+    expect(page.primary()).toEqual(['Home', '/launch']);
+  });
+
+  it('in Spanish', async () => {
+    const expiredPage = await mountError(`code=pass_expired&next=${encodeURIComponent(PLAN)}`, { locale: 'es' });
+    expect(expiredPage.badge().text()).toBe('410 · Enlace caducado');
+    expect(expiredPage.heading()).toBe('Este enlace de tu negocio ha caducado');
+    expect(expiredPage.message()).toBe(
+      'Por seguridad, los enlaces de tu negocio a erplora.com sirven una sola vez y durante un minuto. Inicia sesión para seguir, o vuelve a pulsar el botón en tu negocio.',
+    );
+    expect(expiredPage.primary()).toEqual(['Iniciar sesión', `/launch?next=${encodeURIComponent(PLAN)}`]);
+    expiredPage.wrapper.unmount();
+
+    const invalidPage = await mountError('code=invalid_pass', { locale: 'es' });
+    expect(invalidPage.badge().text()).toBe('400 · Enlace no válido');
+    expect(invalidPage.heading()).toBe('Este enlace de tu negocio no es válido');
+    expect(invalidPage.message()).toBe(
+      'No hemos podido comprobar de dónde viene, así que no hemos abierto tu sesión. Vuelve a tu negocio y pulsa el botón otra vez, o inicia sesión con tu cuenta.',
+    );
+    expect(invalidPage.primary()).toEqual(['Iniciar sesión', '/launch']);
+  });
+});
