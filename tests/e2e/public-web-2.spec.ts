@@ -352,8 +352,14 @@ test('PUBLIC-G47 from the installed app, the terms open in app mode and «Back»
   await expect(page.locator('footer.ep-footer')).toHaveCount(0);
   await expect(page.locator('ion-button[href="/launch"]')).toHaveCount(0);
 
+  // With the page's script run (a module: it runs before DOMContentLoaded), «Back» goes back through the history to
+  // the screen that opened the text. Its link leads to the same address (saas#236), so only the history tells the
+  // two apart: forward is the text again.
+  await page.waitForLoadState('domcontentloaded');
   await page.locator('[data-app-back]').click();
   await expect(page).toHaveURL(/\/shell\/\?surface=desktop$/);
+  await page.goForward();
+  await expect(page).toHaveURL(/\/legal\/terms\/\?surface=desktop$/);
 
   await captureEverywhere(page, '/legal/privacy/', 'PUBLIC-G47', async (p) => {
     await expect(p.locator('[data-app-back]')).toBeVisible();
