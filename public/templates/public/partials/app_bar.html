@@ -1,11 +1,14 @@
 {% load i18n icons %}
 {% comment %}
-  The bar of a public page opened from the installed app (PUBLIC-F26), in place of the navbar: «Back» returns to
-  the app's screen that opened it (frontend/public.ts, `data-app-back`: the browser's history); without a history
-  (the page opened alone) the link goes to the app's start, /shell/.
+  The bar of a public page opened from the installed app (PUBLIC-F26), in place of the navbar. «Back» is a real
+  link, not an ion-button: an ion-button is no link until frontend/public.ts has defined it, so pressed before that
+  (a slow device) it did nothing (saas#236). The link goes to the app's start, /shell/, with the app's surface, as
+  the app's own links to these texts carry it; once the page's script runs (`data-app-back`, frontend/public.ts)
+  it returns instead to the app's screen that opened the page, through the browser's history. It keeps the look of
+  the ion-button with fill="clear" it replaced (components/app-bar.css).
 {% endcomment %}
 <header class="ep-app-bar">
   <div class="ep-container">
-    <ion-button fill="clear" href="/shell/" data-app-back><span slot="start">{% icon "arrow-back-outline" %}</span>{% trans "Back" %}</ion-button>
+    <a class="ep-app-bar__back" href="/shell/?surface={{ app_surface }}" data-app-back>{% icon "arrow-back-outline" %}<span>{% trans "Back" %}</span></a>
   </div>
 </header>

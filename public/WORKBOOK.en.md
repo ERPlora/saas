@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:55030f72b0bd5e20f0bd20f7214a7033288ef5239e278e5d92cb0817ecfc341c -->
+<!-- generated from WORKBOOK.md sha256:f042c0c440edc44d0a6bcfc239e0466433f69c2b640b3ce9f8950350044b6c54 -->
 
 ## What it is for and who it is for
 
@@ -509,7 +509,7 @@ Screen: Legal texts
 Steps:
 1. In the installed app (and in the account the app opens in the browser), the sign-in screen and the email check screen link the terms and the privacy policy.
 2. Pressing one opens the text as an app's viewer does: only the text and "Back", without the web's menu, footer or sign-up buttons.
-3. The texts that one links open the same way while the app's session lasts; "Back" leads to the app screen that opened it, or to its start if the text was opened alone.
+3. The texts that one links open the same way while the app's session lasts; "Back" leads to the app screen that opened it, or to its start if the text was opened alone. "Back" responds from the first moment: pressed before the page has finished loading, it leads to the app's start.
 In: which part of the app opens it.
 Out: the app mark in that window's session.
 If it fails: inside the app the cookie notice does not show and no measurement loads, even if they were accepted on the web; a mark the web does not know is treated as the web.

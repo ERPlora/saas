@@ -255,7 +255,8 @@ export type BackHistory = Pick<History, 'length' | 'back'>;
 /**
  * «Back» of a public page opened from the installed app: the app screen that opened it is the previous entry of
  * the history, so it goes back there. Without one (the page opened alone) the link's own address, the app's
- * start, is followed.
+ * start, is followed. «Back» is a real link (public/partials/app_bar.html), so before this script runs it already
+ * leads to the app's start (saas#236).
  */
 export function setupAppBack(doc: Document, history: BackHistory | undefined = doc.defaultView?.history): void {
   doc.querySelector<HTMLElement>('[data-app-back]')?.addEventListener('click', (event) => {
