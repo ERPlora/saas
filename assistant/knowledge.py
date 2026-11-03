@@ -193,8 +193,9 @@ def en_header(spanish: str, where: str) -> str:
     """The first line of the ``WORKBOOK.en.md`` translated from the WORKBOOK ``spanish``: the sha256 of its customer's
     part, without the comments on a line of their own nor the blank lines they would double.
 
-    The same bytes as ``en_header(source_hash(user_part(…)))`` of the Hub's ``base.catalog`` for those comments, the
-    only ones a WORKBOOK has; one inside a line or a code block counts here, and not in the Hub.
+    The same bytes as ``en_header(source_hash(user_part(…)))`` of the Hub's ``base.catalog`` for those comments outside
+    a code block, the only ones a WORKBOOK has. On the others they part: one inside a line or over several counts here
+    and not in the Hub; one alone on its line of a code block counts in the Hub and not here.
     """
     kept: list[str] = []
     doubled = False

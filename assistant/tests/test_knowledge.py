@@ -299,6 +299,24 @@ Pasos:
 COMMENTED_WORKBOOK_HEADER = (
     "<!-- generated from WORKBOOK.md sha256:a0e1874be64c5a435d434a10c04365c9766ff69e0ba0ad3f607d87fe11b46149 -->"
 )
+#: What that one does not hold: the blank line after a comment that follows text doubles nothing and stays, and a
+#: comment with spaces before it is on a line of its own all the same.
+SPACED_COMMENTS_WORKBOOK = """## Para qué sirve
+Crear negocios.
+<!-- origen: old:a -->
+
+Más texto.
+
+  <!-- origen: old:b -->
+
+### HUBS-F01 Crear un negocio
+
+## Para quien lo mantiene
+"""
+#: The Hub's own result for it too, same origin as above.
+SPACED_COMMENTS_WORKBOOK_HEADER = (
+    "<!-- generated from WORKBOOK.md sha256:6c64a7293bba370270ab81a9472e52c2f177a8acede517cb6a438d0caf278337 -->"
+)
 #: Folders that hold other repositories' files: the dependencies and the submodules.
 NOT_OURS = frozenset({"node_modules", "packages"})
 
@@ -327,6 +345,9 @@ def wrong_headers(root: Path) -> dict[str, str]:
 class TestTheEnglishHeader:
     def test_it_is_the_one_the_hub_computes_for_the_same_workbook(self):
         assert knowledge.en_header(COMMENTED_WORKBOOK, "hubs/WORKBOOK.md") == COMMENTED_WORKBOOK_HEADER
+
+    def test_it_is_the_hubs_too_with_a_comment_after_text_and_one_with_spaces_before_it(self):
+        assert knowledge.en_header(SPACED_COMMENTS_WORKBOOK, "hubs/WORKBOOK.md") == SPACED_COMMENTS_WORKBOOK_HEADER
 
     def test_only_the_customers_part_counts(self):
         before = knowledge.en_header(COMMENTED_WORKBOOK, "hubs/WORKBOOK.md")
