@@ -440,7 +440,7 @@ def test_no_page_promises_what_the_old_stack_did(
 
 # --- No tiers of apps (ronda 2026-10-24b, PLAN §32 and PLAN-SAAS §9) -----------------------------
 # Every plan includes all the apps; what changes by plan is the devices, the capacity and the AI and
-# WhatsApp quotas, and a downgrade turns nothing off. /pricing/ stopped selling tiers of apps first
+# WhatsApp quotas, and a downgrade deletes and turns nothing off. /pricing/ stopped selling tiers of apps first
 # (saas#119); the home, llms.txt, the downloads, the store, the industries, «About» and the terms
 # still said «the free apps come with every plan and the premium ones with the paid plans».
 

@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:8840f75553eaf600b370b44fb413eb0daabbf0374003a4d15e303a43f40081ba -->
+<!-- generated from WORKBOOK.md sha256:ff263f994017c927fc7b50791b345402591f9dd8e9194ce0487b0dbb12154093 -->
 
 ## What it is for and who it is for
 
@@ -609,7 +609,7 @@ Steps:
 3. The business gets both caps in its snapshot (HUBS-F31) and applies the devices one: on entering one device more than the plan covers, the session of the one that has gone longest without entering is closed (BASE-F57). People, also those who enter with a PIN, are always the ones in "Members", so erplora.com applies the people cap on inviting; the business shows in its staff how many places are taken (BASE-F77).
 In: the business's plan, its people and its invitations.
 Out: the refusal of the invitation that does not fit and both caps in the snapshot; nothing else is stored.
-If it fails: accepting an invitation when the plan has no room any more is stopped on accepting (HUBS-F25). Moving down a plan removes nobody: it stops new invitations until there is room again.
+If it fails: accepting an invitation when the plan has no room any more is stopped on accepting (HUBS-F25). Moving down a plan removes nobody and closes no session: it stops new invitations until there is room again, and the cap on devices applies on the next sign-in.
 Involved: billing (the plan), the business (closes the session of the devices left over and shows the places taken)
 
 ### HUBS-F33 Give the business the assistant messages of its plan
@@ -632,11 +632,11 @@ Screen: none; each business's are seen in Store › Modules (BILLING-F31)
 Steps:
 1. A business has a paid app through its plan (the plan's level includes it) or because it bought it for that business; the free ones need not be on the list: they can always be used.
 2. erplora.com sends the business, in its snapshot (HUBS-F31), each paid app it has, where it comes from (the plan or a purchase) and until when, if it was cancelled.
-3. The business turns on the ones it has and on its apps page says where each one comes from ("Included in your plan", "Subscribed"); a paid one without the right does not turn on, does nothing it is asked and leads to buying it on erplora.com (BASE-F20, BASE-F27).
+3. The business turns on the ones it has and on its apps page says where each one comes from ("Included in your plan", "Subscribed"); a paid one without the right does not turn on, does nothing it is asked and leads to erplora.com to move up a plan (BASE-F20, BASE-F27).
 4. In **Store › Modules**, with the business chosen, the owner sees each app in that business: "Included in your plan" or "You have it" (BILLING-F31).
 In: the business's plan and its purchases.
 Out: the business's paid apps in its snapshot; nothing is stored.
-If it fails: a purchase belongs to a single business: it never gives the app to another, not even to another of the same account. A cancelled one lasts until the end of what was paid. Moving down a plan takes away the ones the previous plan gave; moving up brings the ones of the new level. A paid app the staff put on sale, or move to another level, reaches the businesses whose plan includes it on the next pass (15 minutes at most); the admin says "… businesses whose plan includes it get the change within 15 minutes.".
+If it fails: a purchase belongs to a single business: it never gives the app to another, not even to another of the same account. A cancelled one lasts until the end of what was paid. On moving down a plan, at the end of the paid period, the ones only the previous plan gave stop coming in the snapshot and the business blocks them: they are not turned off nor deleted, they keep their data and come back as they were on moving up a plan again; moving up brings the ones of the new level. A paid app the staff put on sale, or move to another level, reaches the businesses whose plan includes it on the next pass (15 minutes at most); the admin says "… businesses whose plan includes it get the change within 15 minutes.".
 Involved: billing (the purchases), apps (which app is paid and its level), the business (turns each app on or stops it)
 
 ### HUBS-F35 Recognise the businesses' service when it calls erplora.com

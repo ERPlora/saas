@@ -763,7 +763,9 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   apps: todos los planes incluyen todas las apps (PLAN §32; la palabra de la web es «apps», decisión 19), la `0021`
   cambia «All free apps» y «free and premium» de Gratis y Starter por «All apps included» y la tabla ya no tiene la
   fila «Apps included»: `included_level` queda dormido (modelo, Tienda y checkout) para cuando haya un módulo
-  `premium`. Bajar de plan no apaga nada (respuesta «switch» del FAQ). El resto de la web pública tampoco vende niveles
+  `premium`. Bajar de plan no borra ni apaga nada, y lo que excede el plan nuevo (apps activadas, usuarios, archivos) se
+  conserva sin poder añadir más (respuesta «switch» del FAQ; PLAN-SAAS, ronda 2026-11-03g).
+  El resto de la web pública tampoco vende niveles
   de apps (ronda 2026-10-24b): la cabecera de planes, el ecosistema y la comparativa de la portada, `llms.txt`, las
   descargas, la tienda (sin insignia «Premium» ni filtro de acceso: `?premium=` se ignora y toda app se ofrece a 0 en
   su JSON-LD), los sectores, «Sobre nosotros» y la cláusula 1 de las condiciones dicen que todos los planes incluyen
