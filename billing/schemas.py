@@ -6,6 +6,7 @@ from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from ninja import Field, Schema
+from django.utils.translation import gettext_noop
 from pydantic import AfterValidator, model_validator
 
 #: The verdict a VAT number gets (``billing.services.clear_tax_id_for_stripe``):
@@ -214,6 +215,40 @@ class SubscriptionOut(Schema):
     modules: list[SubscriptionModuleOut]
     #: A downgrade waiting for the end of the period («Starter from 1 Nov»).
     scheduled_change: ScheduledChangeOut | None = None
+
+
+class PlanCancelPreviewOut(Schema):
+    """What cancelling the plan of a business will do, before it is confirmed (BILLING-F13, the «Cancel the plan»
+    dialog): ``billing.plan.cancel`` shows it on its card from the panel's assistant (ASSISTANT-F25, step 5). The
+    titles are what its card calls each datum; what is empty is left off it. Nothing is written, nothing asks Stripe."""
+
+    hub_id: UUID = Field(description="The business whose plan would be cancelled.")
+    plan: str = Field(title=gettext_noop("Current plan"), description="The plan it stays on until then, by its name.")
+    paid_until: date | None = Field(
+        title=gettext_noop("Paid until"),
+        description="The last day of its period, the business's own day: then it is not charged again.",
+    )
+    then: str = Field(title=gettext_noop("Then it moves to"), description="The plan it moves to then: Free, by its name.")
+    modules: str = Field(
+        title=gettext_noop("Turned off that day"),
+        description="The modules it has that turn off with the plan, by their names; empty = none.",
+    )
+    free_users: int | None = Field(
+        title=gettext_noop("People on Free"), description="The people Free covers at a time; none = no limit."
+    )
+    free_devices: int | None = Field(
+        title=gettext_noop("Devices on Free"), description="The devices Free covers at a time; none = no limit."
+    )
+    people: int = Field(
+        title=gettext_noop("People in the business now"),
+        description="Its members and live invitations, as Businesses counts its seats.",
+    )
+    unpaid_cents: int | None = Field(
+        title=gettext_noop("Unpaid invoice, still owed"),
+        description="What its unpaid invoice owes, in cents: cancelling does not void it; none = nothing owed.",
+        json_schema_extra={"money": True},
+    )
+    currency: str = Field(description="The currency of the unpaid invoice (EUR without one).")
 
 
 class PortalOpenIn(Schema):

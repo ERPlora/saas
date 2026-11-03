@@ -1955,6 +1955,11 @@ def plan_change(ctx: OperationContext, data: PlanChangeIn) -> dict:
     ai=AI(
         description="Cancels the plan of a business at the end of its period: then it goes back to Free with its data.",
         risk="high",
+        # Its card first says what the «Cancel the plan» dialog of Billing says (BILLING-F13, saas#203).
+        preview={
+            "operation": "billing.plan.cancel_preview",
+            "fields": ["plan", "paid_until", "then", "modules", "free_users", "free_devices", "people", "unpaid_cents"],
+        },
         asks={
             "en": (
                 "cancel the bar's plan",
