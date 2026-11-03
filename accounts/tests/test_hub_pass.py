@@ -449,3 +449,37 @@ class TestTheAddress:
 
         assert response.status_code == 301
         assert response.url.startswith("/hub-pass/?pass=")
+
+
+class TestTwoAtOnce:
+    @pytest.mark.django_db(transaction=True)
+    def test_two_browsers_following_the_same_pass_at_once_open_one_session_only(self, ana, business):
+        """Two redemptions of one pass racing each other: exactly one opens a session; the other lands on expired."""
+        import threading
+
+        from django.db import connection
+
+        token = mint(ana, business.slug)
+        ready = threading.Barrier(2)
+        results: dict[int, tuple[str, object]] = {}
+
+        def race(index: int) -> None:
+            browser = Client()
+            try:
+                ready.wait(timeout=10)
+                response = follow(browser, token)
+                results[index] = (response.url, signed_in(browser))
+            finally:
+                connection.close()
+
+        threads = [threading.Thread(target=race, args=(index,)) for index in range(2)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=30)
+
+        assert sorted(results.values(), key=lambda outcome: outcome[0]) == [
+            (plan_page(business), ana),
+            (expired(plan_page(business)), None),
+        ]
+        assert AuthExchangeCode.objects.filter(audience=hub_pass.AUDIENCE).count() == 1
