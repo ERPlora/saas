@@ -1892,8 +1892,8 @@ def checkout_confirm(ctx: OperationContext, data: CheckoutConfirmIn) -> dict:
     permission="billing.pay",
     input=PlanChangeIn,
     output=SubscriptionOut,
-    # It needs a fresh preview of the server (``proration_date``, ``_require_fresh_preview``) that the chat has not, and
-    # ASSISTANT-F25 (step 5) sends a plan change to the Store: whether the chat changes plans at all is saas#211.
+    # Not a tool of the chat, on purpose (saas#211, ASSISTANT-F25 step 5): it charges now, so it is done in the Store,
+    # whose dialog asks the server for the fresh preview (``proration_date``, ``_require_fresh_preview``) and shows it.
     ai=INTERNAL,  # preview
 )
 def plan_change(ctx: OperationContext, data: PlanChangeIn) -> dict:
