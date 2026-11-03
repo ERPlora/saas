@@ -297,6 +297,44 @@ class TestAnAccountThatGoes:
             assert (gone.actor_id, gone.actor_email) == (None, "ana@example.com")
 
 
+class TestAnEntryOfAModelThatLeftTheCode:
+    """``accounts.HubMembership`` left the code (saas#199) and ``cleanup_old_logs`` keeps 90 days of its entries: their
+    content type names no model, and the staff still read them."""
+
+    @pytest.fixture
+    def entry(self):
+        from django.contrib.contenttypes.models import ContentType
+
+        kind, _ = ContentType.objects.get_or_create(app_label="accounts", model="hubmembership")
+        return LogEntry.objects.create(
+            content_type=kind,
+            object_pk="1",
+            object_repr="ana@example.com @ bar-pepe (Admin)",
+            action=LogEntry.Action.UPDATE,
+            changes={"role": ["hub_admin", "hub_owner"]},
+        )
+
+    @pytest.fixture
+    def staff(self, client):
+        client.force_login(get_user_model().objects.create_superuser(email="root@example.com", password="x"))
+        return client
+
+    def test_the_list_opens_with_it_and_can_filter_by_it(self, staff, entry):
+        listing = staff.get("/admin/auditlog/logentry/")
+        filtered = staff.get(f"/admin/auditlog/logentry/?resource_type={entry.content_type_id}")
+
+        assert listing.status_code == 200
+        assert "bar-pepe" in listing.content.decode()
+        assert filtered.status_code == 200
+        assert "bar-pepe" in filtered.content.decode()
+
+    def test_its_page_opens_and_says_what_changed(self, staff, entry):
+        page = staff.get(f"/admin/auditlog/logentry/{entry.pk}/change/")
+
+        assert page.status_code == 200
+        assert "hub_owner" in page.content.decode()
+
+
 class TestTheAdmin:
     def test_the_superuser_reads_the_trail_and_cannot_change_it(self, client, ana):
         ana.first_name = "Anabel"

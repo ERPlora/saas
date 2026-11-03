@@ -7,6 +7,8 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxLengthValidator
+from django.db import IntegrityError
+from django.utils import translation
 from live.slugs import hub_slug_validator
 
 from accounts.models import (
