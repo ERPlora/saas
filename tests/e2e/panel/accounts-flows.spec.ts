@@ -3,8 +3,8 @@
 // (390×844, 834×1112, 1440×900), against the panel's own Django: the codes and the reset links are read from its
 // mail folder (project.ts), nothing is played. Each test names its flow in its title by its registry key; in
 // accounts/WORKBOOK.md: G83=F01, G84=F02, G107=F03, G85=F04, G91=F07, G109=F08, G93=F09, G119=F10, G96=F11, G18=F13.
-// Google (F06) and the authenticator app (F05) have no e2e: the panel's server has no Google credentials and the
-// second factor is off in phase 1 (the WORKBOOK says why). Accounts of this spec: `e2e-acc1-…@example.com`,
+// Google (F06) plays in accounts-google.spec.ts and the authenticator app (F05) in accounts-security.spec.ts, on the
+// panel's twin: this panel has neither, as the second factor is off in phase 1. Accounts of this spec: `e2e-acc1-…@example.com`,
 // removed before and after (panel_seed.py's `clear` removes every `e2e-…@example.com` too).
 import { type Page } from '@playwright/test';
 
