@@ -32,6 +32,7 @@ from billing import webhooks as billing_webhooks
 from config.api import api
 from fiscal import internal as fiscal_internal
 from fiscal_gateway import internal as fiscal_gateway_internal
+from hubs import admin as hubs_admin
 from hubs import internal as hubs_internal
 from hubs import shell as hubs_shell
 from public import landing
@@ -208,7 +209,7 @@ urlpatterns = [
     # The admin's «Hubs» page (ronda 13): before the admin's own URLs, whose catch-all would take it.
     path(
         "admin/accounts/hubs/",
-        admin.site.admin_view(accounts_admin.hubs_view),
+        admin.site.admin_view(hubs_admin.hubs_view),
         name="accounts_hubs",
     ),
     path("admin/", admin.site.urls),

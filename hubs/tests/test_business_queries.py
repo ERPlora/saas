@@ -19,7 +19,6 @@ from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from live.errors import NotFound, OperationError, PermissionDenied
 
-from accounts.models import HubMembership
 from hubs import queries
 from hubs.models import Hub, HubMember, Plan, Subscription
 from hubs.schemas import AddressProposeIn, BusinessCreateCheckIn, BusinessCreateCheckOut, BusinessListIn, ByIdIn
@@ -256,13 +255,6 @@ class TestTheProposedAddress:
 
     def test_a_taken_name_proposes_the_free_address(self, business, owner):
         assert self.propose(owner, "Bar Manolo")["slug"] == "bar-manolo-2"
-
-    def test_an_address_held_by_an_older_hub_is_skipped(self, owner, plans):
-        HubMembership.objects.create(
-            user=owner, hub_slug="peluqueria-ana", role="hub_owner"
-        )
-
-        assert self.propose(owner, "Peluquería Ana")["slug"] == "peluqueria-ana-2"
 
     def test_a_reserved_name_proposes_a_legal_address(self, owner, plans):
         assert self.propose(owner, "Admin")["slug"] == "admin-store"

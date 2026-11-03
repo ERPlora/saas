@@ -12,11 +12,10 @@ import pytest
 from live.errors import Conflict, InvalidPayload, NotFound, PermissionDenied
 from live.models import OutboxEvent
 
-from accounts.models import HubMembership
 from hubs import events, queries, services
 from hubs.models import Hub
 from hubs.schemas import BusinessAddressIn, ByIdIn
-from hubs.tests.conftest import create_business, ctx_for
+from hubs.tests.conftest import create_business, ctx_for, role_on
 
 pytestmark = pytest.mark.django_db
 
@@ -57,9 +56,8 @@ class TestChangeTheAddress:
     def test_the_jump_follows_the_business_to_its_new_address(self, business, owner):
         change(owner, business, "casa-manolo")
 
-        assert not HubMembership.objects.filter(hub_slug="bar-manolo").exists()
-        assert HubMembership.objects.filter(hub_slug="casa-manolo", user=owner).exists()
-        assert queries.verify_access_mirror() == []
+        assert role_on(owner, "bar-manolo") is None
+        assert role_on(owner, "casa-manolo") == "hub_owner"
 
     def test_the_hub_receives_the_new_address(self, business, owner, hub_double, django_capture_on_commit_callbacks):
         with django_capture_on_commit_callbacks(execute=True):

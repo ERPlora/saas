@@ -42,16 +42,13 @@ def setup_django() -> None:
 def clear() -> None:
     from django.contrib.auth import get_user_model
 
-    from accounts.models import HubMembership
     from apps.models import App, Module
     from hubs.models import BillingProfile, Hub
 
     hubs = Hub.objects.filter(slug__startswith=SLUG_PREFIX)
-    slugs = list(hubs.values_list("slug", flat=True))
     profiles = list(hubs.values_list("billing_profile_id", flat=True))
     hubs.delete()
     BillingProfile.objects.filter(pk__in=profiles).delete()
-    HubMembership.objects.filter(hub_slug__in=slugs).delete()
     get_user_model().objects.filter(email=EMAIL).delete()
     Module.objects.filter(slug__in=APPS).delete()
     App.objects.filter(pk__in=APPS).delete()
@@ -62,7 +59,6 @@ def seed() -> None:
     from django.contrib.auth import get_user_model
     from django.utils import timezone
 
-    from accounts.models import HubMembership
     from apps.models import Module
     from apps.tests.factories import make_app
     from hubs.models import BillingProfile, Hub, HubMember, Plan, Subscription, SubscriptionItem
@@ -126,7 +122,6 @@ def seed() -> None:
             joined_at=now - timedelta(days=200),
             accepted_at=now - timedelta(days=200),
         )
-        HubMembership.objects.create(user=user, hub_slug=hub.slug, role=HubMember.Role.OWNER)
         return made
 
     bakery = business("panaderia", "Panadería López", plan=starter, paying=True)

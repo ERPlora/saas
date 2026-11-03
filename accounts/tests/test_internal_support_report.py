@@ -15,9 +15,8 @@ from django.contrib.auth import get_user_model
 from django.core import mail
 from django.test import override_settings
 
-from accounts.models import HubMembership
 from accounts.signing import sign, signed_headers
-from accounts.tests.conftest import api_post
+from accounts.tests.conftest import api_post, enter
 
 pytestmark = pytest.mark.django_db
 
@@ -42,7 +41,7 @@ def _fresh_limit():
 
 @pytest.fixture
 def member(ana):
-    HubMembership.objects.create(user=ana, hub_slug="bar-pepe", role=HubMembership.Role.MANAGER)
+    enter(ana, "bar-pepe", "hub_manager")
     return ana
 
 
@@ -175,7 +174,7 @@ class TestRefused:
 
     def test_an_account_of_another_business_is_refused_without_a_mail(self, client, member):
         olga = get_user_model().objects.create_user(email="olga@example.com", password=None)
-        HubMembership.objects.create(user=olga, hub_slug="someone-else", role=HubMembership.Role.OWNER)
+        enter(olga, "someone-else", "hub_owner")
 
         response = report(client, payload(olga))
 

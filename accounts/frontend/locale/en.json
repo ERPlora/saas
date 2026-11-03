@@ -325,7 +325,7 @@
         "languageHint": "Also the language of the mails we send you.",
         "mails": "Email notices",
         "invoices": "Security, invoices and payments",
-        "invoicesHint": "Always on: sign-in codes, security notices, invoices, payments and anything that needs you to act.",
+        "invoicesHint": "Always on: sign-in codes, security notices, invoices, payments, the messages you have left with the assistant and anything that needs you to act.",
         "hubAlerts": "Business notices",
         "hubAlertsHint": "When a business of yours is ready to open."
       },

@@ -643,7 +643,8 @@ class HubMember(models.Model):
         indexes = [models.Index(fields=["user", "-last_opened_at"], name="hubs_member_user_opened")]
 
     def __str__(self):
-        return f"{self.user_id} @ {self.hub_id} ({self.role})"
+        # What the staff read in the audit trail and on an account's page: who, on which business, as what.
+        return f"{self.user} @ {self.hub.slug} ({self.get_role_display()})"
 
     @property
     def is_pending(self) -> bool:

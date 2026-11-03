@@ -281,8 +281,8 @@ Pasos:
 3. La tabla de lo que se pagaría por separado solo lista funciones que las apps cubren y su total es la suma de sus filas.
 Entra: nada; el texto de las páginas, contrastado con las apps del producto.
 Sale: nada guardado.
-Si falla: no se anuncia contabilidad, nóminas, tickets de soporte, TicketBAI, los modelos 303, 390 y 347, almacenes con lotes y caducidades ni conciliación bancaria, porque ninguna app los hace; la franja de sectores nombra los negocios que se sirven hoy (hostelería, comercio, peluquería y estética, servicios profesionales). Las comparativas con otros productos pueden nombrar lo que hacen ellos.
-Implicados: ninguno
+Si falla: no se anuncia contabilidad, nóminas, tickets de soporte, TicketBAI, los modelos 303, 390 y 347, almacenes con lotes y caducidades ni conciliación bancaria, porque ninguna app los hace; tampoco el dominio propio, porque ningún negocio puede conectar el suyo todavía (HUBS-F17, saas#195): no lo nombran ni las tarjetas ni las descripciones de los planes, ni Planes y precios, ni los términos de uso; la franja de sectores nombra los negocios que se sirven hoy (hostelería, comercio, peluquería y estética, servicios profesionales). Las comparativas con otros productos pueden nombrar lo que hacen ellos.
+Implicados: hubs (los textos de cada plan; HUBS-F17)
 
 ### PUBLIC-F08 Leer lo que la web dice de seguridad, datos y disponibilidad
 <!-- origen: old-saas:SAAS_PUBLIC-F77 -->

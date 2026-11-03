@@ -32,7 +32,7 @@ from live.errors import (
     Unauthorized,
 )
 
-from accounts.models import AuthExchangeCode, HubMembership
+from accounts.models import AuthExchangeCode
 from hubs import events, queries, services
 from hubs.models import BillingProfile, BusinessType, Hub, HubMember, Plan, Subscription
 from hubs.schemas import (
@@ -43,7 +43,7 @@ from hubs.schemas import (
     ByIdIn,
     MarkReadyIn,
 )
-from hubs.tests.conftest import add_member, create_business, ctx_for
+from hubs.tests.conftest import add_member, create_business, ctx_for, role_on
 
 pytestmark = pytest.mark.django_db
 
@@ -152,12 +152,10 @@ class TestTheSignUpFromOneQuestion:
         assert create_business(owner).language == "es"
 
     def test_the_owner_may_enter_once_it_is_ready(self, owner, plans):
-        """The jump checks the account's access (``accounts.HubMembership``) until it moves to hubs."""
+        """The jump reads the business's answered members: the owner is born answered."""
         hub = create_business(owner)
 
-        assert HubMembership.objects.filter(
-            user=owner, hub_slug=hub.slug, role="hub_owner"
-        ).exists()
+        assert role_on(owner, hub.slug) == "hub_owner"
 
 
 class TestTheAddress:
@@ -176,14 +174,6 @@ class TestTheAddress:
 
     def test_a_short_name_gets_room_to_be_an_address(self, owner, plans):
         assert create(owner, name="Yo").slug == "yo-store"
-
-    def test_an_address_of_an_older_account_hub_is_taken_too(self, owner, plans):
-        """Hubs of the phase-1 seed exist only as ``accounts.HubMembership`` rows."""
-        HubMembership.objects.create(
-            user=owner, hub_slug="bar-manolo", role="hub_owner"
-        )
-
-        assert create(owner).slug == "bar-manolo-2"
 
     def test_a_chosen_address_is_kept(self, owner, plans):
         assert create(owner, slug="manolo-bar").slug == "manolo-bar"
@@ -717,7 +707,7 @@ class TestDelete:
     def test_nobody_enters_a_deleted_business(self, business, team):
         self.delete(team["owner"], business)
 
-        assert not HubMembership.objects.filter(hub_slug=business.slug).exists()
+        assert queries.hubs_with_members() == []
 
     def test_the_name_must_be_typed_again(self, business, owner):
         with pytest.raises(InvalidPayload) as refused:
@@ -846,7 +836,7 @@ class TestRestore:
         )
         assert business.pending_hub_call == "restore"
         assert business.state_version == version + 1
-        assert HubMembership.objects.filter(user=owner, hub_slug=business.slug).exists()
+        assert role_on(owner, business.slug) == "hub_owner"
 
     def test_a_business_that_was_ready_comes_back_active(self, business, owner):
         Hub.objects.filter(pk=business.pk).update(

@@ -29,7 +29,7 @@ solo sobre la cuenta que llama. Ninguna está expuesta a claves de API.
 | `accounts.apikey.list` (viva) | `GET /api/accounts/api-keys` | Claves no revocadas (las caducadas, marcadas) y el catálogo de `scopes` con su rótulo |
 | `accounts.apikey.create` | `POST /api/accounts/api-keys` (201) | Reautenticación; devuelve la clave entera **una vez** (`secret`) y avisa por correo a la cuenta (sin la clave) |
 | `accounts.apikey.revoke` | `POST /api/accounts/api-keys/revoke` | La corta al momento; dos veces no cambia nada |
-| `accounts.support.report` | `POST /api/accounts/support/report` | «Reportar un problema» (ACCOUNTS-F38): un correo en inglés a `SUPPORT_EMAIL` con «Reply-To» la cuenta, el texto y debajo la cuenta, sus negocios (`HubMembership`), de dónde llega (`From: Panel`), la página de la que viene y el navegador; 422 por campo, 429 `accounts.too_many_attempts` pasado `SUPPORT_REPORT_RATELIMIT` (5/h por cuenta), 503 `accounts.report_not_sent` si el correo no sale; no guarda nada ni registra el texto. El del menú de usuario del Hub entra por `POST /internal/support/report` (firmada v1 + v2 como `/internal/auth/redeem`; `internal.support_report` → `services.support_report_from_hub`): el mismo `services.send_support_report`, con el mismo límite por cuenta, más `From: Hub` y `Business: <slug> (<id>)`; 404 `accounts.unknown_account` (cuenta que no existe o está apagada) y 403 `accounts.not_a_member` (no es del negocio), sin correo |
+| `accounts.support.report` | `POST /api/accounts/support/report` | «Reportar un problema» (ACCOUNTS-F38): un correo en inglés a `SUPPORT_EMAIL` con «Reply-To» la cuenta, el texto y debajo la cuenta, sus negocios (los que abre, `hubs.member.list_mine`), de dónde llega (`From: Panel`), la página de la que viene y el navegador; 422 por campo, 429 `accounts.too_many_attempts` pasado `SUPPORT_REPORT_RATELIMIT` (5/h por cuenta), 503 `accounts.report_not_sent` si el correo no sale; no guarda nada ni registra el texto. El del menú de usuario del Hub entra por `POST /internal/support/report` (firmada v1 + v2 como `/internal/auth/redeem`; `internal.support_report` → `services.support_report_from_hub`): el mismo `services.send_support_report`, con el mismo límite por cuenta, más `From: Hub` y `Business: <slug> (<id>)`; 404 `accounts.unknown_account` (cuenta que no existe o está apagada) y 403 `accounts.not_a_member` (no es del negocio), sin correo |
 
 Eventos (`events.py`): `accounts.profile.updated`, `accounts.profile.deleted`, `accounts.email.change_requested`,
 `accounts.preferences.updated`, `accounts.session.closed`, `accounts.browser_trust.revoked`,
@@ -186,7 +186,7 @@ ningún rol tiene su permiso.
   `saas-cron` con sus valores por defecto: `anonymize-old-users-weekly` los lunes a las 00:35 UTC y
   `cleanup-old-logs-nightly` cada noche a las 00:45 UTC (`aws/stacks/prod/scheduler.tf`).
 - **Registro de auditoría** (F36): `django-auditlog` (`accounts/auditlog.py`, desde `AccountsConfig.ready`) sobre
-  `User` (sin `password` ni `last_login`), `HubMembership`, `ApiKey` (sin `key_hash` ni `last_used_at`) y
+  `User` (sin `password` ni `last_login`), `ApiKey` (sin `key_hash` ni `last_used_at`) y
   `allauth.usersessions.UserSession` (sin `session_key`, `data` ni `last_seen_at`), todos con
   `serialize_auditlog_fields_only` (trampa #957 del viejo). `AuditActorMiddleware` sustituye al de la librería: la
   dirección es `REMOTE_ADDR` (ya resuelta por `public.client_ip`, nunca el primer `X-Forwarded-For`) y el autor se

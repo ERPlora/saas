@@ -4,6 +4,7 @@ The round trip runs inside the test's transaction (Postgres DDL is transactional
 test database as it found it.
 """
 
+import functools
 import re
 from io import StringIO
 
@@ -76,8 +77,34 @@ class _SchemaEditor:
     connection = connection
 
 
+@functools.cache
+def _with_the_copy():
+    """The apps as they were the last time ``accounts.HubMembership`` was a model (``accounts/0011`` took it out)."""
+    return (
+        MigrationLoader(connection)
+        .project_state([("accounts", "0010_user_store_review_account"), ("hubs", "0024_support_views_the_daily_usage")])
+        .apps
+    )
+
+
+def _copy():
+    """``accounts.HubMembership``, what ``0006`` read and wrote."""
+    return _with_the_copy().get_model("accounts", "HubMembership")
+
+
 def _adopt():
-    _adoption().adopt_seed_hubs(global_apps, _SchemaEditor())
+    _adoption().adopt_seed_hubs(_with_the_copy(), _SchemaEditor())
+
+
+def _answered_members():
+    from hubs.models import HubMember
+
+    answered = HubMember.objects.filter(accepted_at__isnull=False)
+    return sorted(answered.values_list("hub__slug", "user_id", "role"))
+
+
+def _rows_of_the_copy():
+    return sorted(_copy().objects.values_list("hub_slug", "user_id", "role"))
 
 
 @pytest.mark.django_db
@@ -92,10 +119,8 @@ class TestTheSeedHubsBecomeBusinesses:
         }
 
     def _membership(self, user, slug, role, days_ago=0):
-        from accounts.models import HubMembership
-
-        return HubMembership.objects.create(
-            user=user, hub_slug=slug, role=role, created_at=timezone.now() - timedelta(days=days_ago)
+        return _copy().objects.create(
+            user_id=user.pk, hub_slug=slug, role=role, created_at=timezone.now() - timedelta(days=days_ago)
         )
 
     def test_a_seed_hub_becomes_an_active_ready_business_that_owes_the_hub_nothing(self, people, plans):
@@ -129,7 +154,6 @@ class TestTheSeedHubsBecomeBusinesses:
         assert not Subscription.objects.filter(hub=Hub.objects.get(slug="bar-pepe")).exists()
 
     def test_without_an_owner_the_oldest_member_becomes_it_in_both_tables(self, people):
-        from accounts.models import HubMembership
         from hubs.models import HubMember
 
         self._membership(people["ana"], "bar-pepe", "hub_employee", days_ago=1)
@@ -138,11 +162,10 @@ class TestTheSeedHubsBecomeBusinesses:
         _adopt()
 
         assert HubMember.objects.get(user=people["eva"]).role == "hub_owner"
-        assert HubMembership.objects.get(user=people["eva"]).role == "hub_owner"
+        assert _copy().objects.get(user_id=people["eva"].pk).role == "hub_owner"
         assert HubMember.objects.get(user=people["ana"]).role == "hub_employee"
 
     def test_two_owners_keep_the_oldest_and_the_other_becomes_admin(self, people):
-        from accounts.models import HubMembership
         from hubs.models import HubMember
 
         self._membership(people["olga"], "bar-pepe", "hub_owner", days_ago=3)
@@ -152,12 +175,11 @@ class TestTheSeedHubsBecomeBusinesses:
 
         assert HubMember.objects.get(user=people["olga"]).role == "hub_owner"
         assert HubMember.objects.get(user=people["eva"]).role == "hub_admin"
-        assert HubMembership.objects.get(user=people["eva"]).role == "hub_admin"
+        assert _copy().objects.get(user_id=people["eva"].pk).role == "hub_admin"
 
     @pytest.mark.parametrize("slug", ["www", "hubs", "-bad-", "xn--abc"])
     def test_a_slug_that_is_no_hubs_gives_no_business_and_its_dead_rows_go(self, people, slug):
         """``is_hub_slug`` already refused them at the jump: they opened nothing."""
-        from accounts.models import HubMembership
         from hubs.models import Hub
 
         self._membership(people["olga"], slug, "hub_owner")
@@ -165,33 +187,27 @@ class TestTheSeedHubsBecomeBusinesses:
         _adopt()
 
         assert not Hub.objects.exists()
-        assert not HubMembership.objects.exists()
+        assert not _copy().objects.exists()
 
     def test_a_business_of_the_panel_has_its_mirror_put_right(self, business, owner, people):
-        """A row written around ``sync_access`` (``demo_seed`` before L1-A2) is dropped, a missing one is added."""
-        from accounts.models import HubMembership
-        from hubs import queries
-
-        HubMembership.objects.filter(hub_slug=business.slug).delete()
+        """A row of somebody who is no member (``demo_seed`` before L1-A2) is dropped, a missing one is added."""
         self._membership(people["ana"], business.slug, "hub_admin")
 
         _adopt()
 
-        assert queries.verify_access_mirror() == []
-        assert list(HubMembership.objects.values_list("user_id", "role")) == [(owner.pk, "hub_owner")]
+        assert list(_copy().objects.values_list("user_id", "role")) == [(owner.pk, "hub_owner")]
 
     def test_a_deleted_business_keeps_no_access(self, business, owner):
-        from accounts.models import HubMembership
         from hubs.models import Hub
 
+        self._membership(owner, business.slug, "hub_owner")
         Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETING)
 
         _adopt()
 
-        assert not HubMembership.objects.exists()
+        assert not _copy().objects.exists()
 
     def test_after_it_both_tables_agree_and_running_it_again_changes_nothing(self, people, business):
-        from hubs import queries
         from hubs.models import Hub, HubMember
 
         self._membership(people["olga"], "bar-pepe", "hub_owner")
@@ -201,7 +217,7 @@ class TestTheSeedHubsBecomeBusinesses:
         counts = (Hub.objects.count(), HubMember.objects.count())
         _adopt()
 
-        assert queries.verify_access_mirror() == []
+        assert _rows_of_the_copy() == _answered_members()
         assert (Hub.objects.count(), HubMember.objects.count()) == counts == (3, 3)
 
     def test_the_adopted_hubs_are_not_provisioned_again(self, people, hub_double):
@@ -222,7 +238,7 @@ class TestTheSeedHubsBecomeBusinesses:
         _adopt()
         first = Hub.objects.get(slug="bar-pepe").pk
 
-        _adoption().keep_the_businesses(global_apps, _SchemaEditor())
+        _adoption().keep_the_businesses(_with_the_copy(), _SchemaEditor())
         _adopt()
 
         assert list(Hub.objects.values_list("pk", flat=True)) == [first]
@@ -234,16 +250,20 @@ def test_hubs_migrates_back_before_the_adoption_and_forward_again(django_user_mo
 
     The plans are in the database (0013), so the adoption gives the business its Free subscription. The whole
     round trip runs in the test's one transaction, where a deferred foreign key check would still be pending when
-    a later migration alters ``hubs_subscription``: the checks run at once, as each migration's own COMMIT does."""
-    from accounts.models import HubMembership
+    a later migration alters ``hubs_subscription``: the checks run at once, as each migration's own COMMIT does.
+
+    Going back also takes back ``accounts/0011``, which depends on ``hubs/0024`` and rebuilds the copy from the
+    members: the seed's row goes in after it, as the copy held it before the adoption."""
     from hubs.models import Hub
 
     olga = django_user_model.objects.create_user(email="olga@example.com", password=None)
-    HubMembership.objects.create(user=olga, hub_slug="bar-pepe", role="hub_owner")
     with connection.cursor() as cursor:
         cursor.execute("SET CONSTRAINTS ALL IMMEDIATE")
 
     call_command("migrate", "hubs", "0005", verbosity=0)
+    _copy().objects.create(user_id=olga.pk, hub_slug="bar-pepe", role="hub_owner")
+    with connection.cursor() as cursor:
+        cursor.execute("SET CONSTRAINTS ALL IMMEDIATE")
     call_command("migrate", "hubs", verbosity=0)
 
     hub = Hub.objects.get(slug="bar-pepe", status="active")
@@ -671,10 +691,10 @@ def _assert_the_catalogue_of_0013(Plan):
 
 
 def _assert_the_catalogue_the_migrations_leave(Plan):
-    """0013's catalogue as the later data migrations leave it: the cards of Pro, Enterprise and Max of 0020 and the
-    features of Free, Starter and Standard of 0021."""
+    """0013's catalogue as the later data migrations leave it: the cards of Pro, Enterprise and Max of 0020, the
+    features of Free, Starter and Standard of 0021 and Standard's card without the custom domain of 0026."""
     expected = _expected_0013()
-    for slug, fields in (*COPY_0020.items(), *COPY_0021.items()):
+    for slug, fields in (*COPY_0020.items(), *COPY_0021.items(), *COPY_0026.items()):
         expected[slug] = {**expected[slug], **fields}
     for slug, fields in expected.items():
         assert _row(Plan.objects.get(slug=slug), fields) == fields, slug
@@ -1444,4 +1464,155 @@ def test_hubs_migrates_back_before_the_cards_on_sale_and_forward_again():
     assert _cards_on_sale_of(Plan) == CARDS_0013
 
     call_command("migrate", "hubs", verbosity=0)
-    assert _cards_on_sale_of(Plan) == COPY_0021
+    # 0026 runs too: Standard's features end without the custom domain (saas#233).
+    assert _cards_on_sale_of(Plan) == {**COPY_0021, "standard": {**COPY_0021["standard"], **FEATURES_0026}}
+
+
+# --- 0026: no card sells a custom domain nobody can connect (saas#233; PLAN-SAAS §8, round 2026-10-22) ---------------
+
+
+NO_CUSTOM_DOMAIN = "0026_no_custom_domain_on_sale"
+#: Standard's card as 0013 and 0021 leave it: its description sold «your own domain» and its features «Custom domain
+#: (erp.yourbusiness.com)», which no business can connect (HUBS-F17 ``descartado``, saas#195 deferred).
+CARD_0021 = {
+    "description_en": "For growing businesses: your own domain, twice the resources and priority support.",
+    "description_es": "Para negocios en crecimiento: dominio propio, el doble de recursos y soporte prioritario.",
+    **COPY_0021["standard"],
+}
+#: The features 0026 writes: 0021's, without the custom-domain line.
+FEATURES_0026 = {
+    column: [line for line in lines if not line.startswith(("Custom domain", "Dominio propio"))]
+    for column, lines in COPY_0021["standard"].items()
+}
+#: What 0026 writes on Standard, and only there.
+COPY_0026 = {
+    "standard": {
+        "description_en": "For growing businesses: twice the resources and priority support.",
+        "description_es": "Para negocios en crecimiento: el doble de recursos y soporte prioritario.",
+        **FEATURES_0026,
+    }
+}
+CUSTOM_DOMAIN_CARD_COLUMNS = [("standard", column) for column in CARD_0021]
+
+
+def _no_custom_domain():
+    return import_module(f"hubs.migrations.{NO_CUSTOM_DOMAIN}")
+
+
+def _forward_0026():
+    _no_custom_domain().stop_selling_the_custom_domain(global_apps, _SchemaEditor())
+
+
+def _backward_0026():
+    _no_custom_domain().give_back_the_words_of_0021(global_apps, _SchemaEditor())
+
+
+def _standard_card(Plan) -> dict:
+    return _row(Plan.objects.get(slug="standard"), CARD_0021)
+
+
+@pytest.mark.django_db
+class TestNoCardSellsACustomDomainNobodyCanConnect:
+    """Standard's card (the public web, its detail page and the Store) sold a custom domain; HUBS-F17 is
+    ``descartado`` until saas#195 brings it with its three pieces, so from 0026 the card says only what the plan gives.
+    ``includes_custom_domain`` stays: it is the gate saas#195 will read. Each column moves only while it still reads
+    0021's words: what staff wrote in the admin is theirs."""
+
+    @pytest.fixture
+    def seeded_card(self, plans):
+        from hubs.models import Plan
+
+        Plan.objects.filter(slug="standard").update(**CARD_0021)
+        return Plan
+
+    def test_the_old_card_sold_a_custom_domain_in_every_column_0026_writes(self):
+        from hubs.tests.test_plan_catalogue import CUSTOM_DOMAIN_WORDS
+
+        for column, words in CARD_0021.items():
+            texts = words if isinstance(words, list) else [words]
+            assert [text for text in texts if CUSTOM_DOMAIN_WORDS.search(text)], column
+
+    def test_the_card_names_no_custom_domain_and_keeps_every_other_line(self, seeded_card):
+        from hubs.tests.test_plan_catalogue import CUSTOM_DOMAIN_WORDS
+
+        _forward_0026()
+
+        card = _standard_card(seeded_card)
+        assert card == COPY_0026["standard"]
+        for column in ("features_en", "features_es"):
+            assert [line for line in CARD_0021[column] if not CUSTOM_DOMAIN_WORDS.search(line)] == card[column], column
+            assert len(card[column]) == len(CARD_0021[column]) - 1, column
+        assert [text for text in [card["description_en"], card["description_es"]] if CUSTOM_DOMAIN_WORDS.search(text)] == []
+
+    def test_the_gate_stays_for_saas_195(self, seeded_card):
+        _forward_0026()
+
+        gates = dict(seeded_card.objects.values_list("slug", "includes_custom_domain"))
+        assert {slug for slug, gate in gates.items() if gate} == {"standard", "pro", "enterprise", "max"}
+
+    def test_nothing_but_those_columns_moves(self, seeded_card):
+        before = _snapshot(seeded_card)
+
+        _forward_0026()
+
+        after = _snapshot(seeded_card)
+        assert {slug: row for slug, row in after.items() if slug != "standard"} == {
+            slug: row for slug, row in before.items() if slug != "standard"
+        }
+        assert after["standard"] == {**before["standard"], **COPY_0026["standard"]}
+
+    @pytest.mark.parametrize(("slug", "column"), CUSTOM_DOMAIN_CARD_COLUMNS)
+    def test_a_column_staff_rewrote_is_theirs(self, seeded_card, slug, column):
+        edited = ["Edited by staff"] if column.startswith("features") else "Edited by staff"
+        seeded_card.objects.filter(slug=slug).update(**{column: edited})
+
+        _forward_0026()
+
+        assert _standard_card(seeded_card) == {**COPY_0026["standard"], column: edited}
+
+    def test_reversing_gives_back_the_words_of_0021(self, seeded_card):
+        _forward_0026()
+        _backward_0026()
+
+        assert _standard_card(seeded_card) == CARD_0021
+
+    @pytest.mark.parametrize(("slug", "column"), CUSTOM_DOMAIN_CARD_COLUMNS)
+    def test_reversing_keeps_what_staff_wrote_after_it(self, seeded_card, slug, column):
+        _forward_0026()
+        edited = ["Edited by staff"] if column.startswith("features") else "Edited by staff"
+        seeded_card.objects.filter(slug=slug).update(**{column: edited})
+
+        _backward_0026()
+
+        assert _standard_card(seeded_card) == {**CARD_0021, column: edited}
+
+    def test_it_is_idempotent_and_survives_a_database_without_the_row(self, plans):
+        from hubs.models import Plan
+
+        Plan.objects.filter(slug="standard").delete()
+        for _ in range(2):
+            _forward_0026()
+            _backward_0026()
+
+        assert not Plan.objects.filter(slug="standard").exists()
+
+    def test_it_is_frozen_and_reads_nothing_of_the_code(self):
+        copy = _no_custom_domain().COPY
+
+        assert [name for name in _imported_modules(_no_custom_domain()) if name.startswith("hubs")] == []
+        assert {slug: {column: old for column, (old, _) in columns.items()} for slug, columns in copy.items()} == {
+            "standard": CARD_0021
+        }
+        assert {slug: {column: new for column, (_, new) in columns.items()} for slug, columns in copy.items()} == COPY_0026
+
+
+@pytest.mark.django_db
+def test_hubs_migrates_back_before_0026_and_forward_again():
+    """``migrate hubs 0025`` and back: Standard sells the custom domain again, then stops."""
+    from hubs.models import Plan
+
+    call_command("migrate", "hubs", "0025", verbosity=0)
+    assert _standard_card(Plan) == CARD_0021
+
+    call_command("migrate", "hubs", verbosity=0)
+    assert _standard_card(Plan) == COPY_0026["standard"]

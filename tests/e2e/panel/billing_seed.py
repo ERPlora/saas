@@ -41,7 +41,6 @@ def setup_django() -> None:
 def clear() -> None:
     from django.contrib.auth import get_user_model
 
-    from accounts.models import HubMembership
     from apps.models import App, Module
     from billing.models import Invoice, PaymentFailure
     from hubs.models import BillingProfile, Hub
@@ -49,11 +48,9 @@ def clear() -> None:
     Invoice.objects.filter(stripe_invoice_id__startswith=STRIPE_PREFIX).delete()
     PaymentFailure.objects.filter(stripe_invoice_id__startswith=STRIPE_PREFIX).delete()
     hubs = Hub.objects.filter(slug__startswith=SLUG_PREFIX)
-    slugs = list(hubs.values_list("slug", flat=True))
     profiles = list(hubs.values_list("billing_profile_id", flat=True))
     hubs.delete()
     BillingProfile.objects.filter(pk__in=profiles).delete()
-    HubMembership.objects.filter(hub_slug__in=slugs).delete()
     get_user_model().objects.filter(email=EMAIL).delete()
     Module.objects.filter(slug=APP[0]).delete()
     App.objects.filter(pk=APP[0]).delete()
@@ -64,7 +61,6 @@ def seed() -> None:
     from django.contrib.auth import get_user_model
     from django.utils import timezone
 
-    from accounts.models import HubMembership
     from apps.models import Module
     from apps.tests.factories import make_app
     from billing.models import Invoice, PaymentFailure
@@ -130,7 +126,6 @@ def seed() -> None:
             joined_at=now - timedelta(days=200),
             accepted_at=now - timedelta(days=200),
         )
-        HubMembership.objects.create(user=user, hub_slug=hub.slug, role=HubMember.Role.OWNER)
         return hub, made
 
     def invoice(hub, key, *, number="", days_ago, total=3629, fiscal="", open_url="", **extra):

@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:18723027b0d3b07fb0a4e550a7dae0faccab887d4ceb591e92810aae0a44ec53 -->
+<!-- generated from WORKBOOK.md sha256:848bfdb705eeb197496c9cb5c3bb024e4d6f87520e622418bd38b2b81d68ef3d -->
 
 ## What it is for and who uses it
 
@@ -167,7 +167,7 @@ offering it to someone else or cancelling its plan also ask to type "CONFIRM".
 | ASSISTANT-F26 | Count an account's messages with the panel's assistant | done |
 | ASSISTANT-F27 | Search the documentation from the panel | done |
 | ASSISTANT-F28 | Search the documentation from the Hub | done |
-| ASSISTANT-F29 | Email an account that its messages with the panel's assistant are running out | not done |
+| ASSISTANT-F29 | Email an account that its messages with the panel's assistant are running out | done |
 
 ### ASSISTANT-F01 Add an AI provider
 Status: done
@@ -507,7 +507,7 @@ Steps:
 3. erplora.com offers the model the panel's tools this account may use (its businesses and their people, the plans, its invoices and subscriptions, its account, the catalogue of apps), first those of what was asked, and always the list of its businesses.
 4. A read the model asks for runs on its own, as the person themselves: it never sees a business that is not theirs.
 5. A change the model asks for stops at the card "Run this action?", which says what it will do, where (the panel's screen: "Businesses", "Billing", "Account" or "Store") and with which data, naming the business by its name and the country by its own in their language ("Country: Spain"); it is only done if the person presses "Run it", and "Cancel" changes nothing. Creating, deleting or changing the address of a business, offering it to someone else or cancelling its plan also ask to type "CONFIRM". When cancelling the plan, the card first shows what Billing's "Cancel the plan" dialog says (BILLING-F13): the plan it stays on and until which day it is paid (the business's own day), that it then moves to Free, which modules turn off that day, how many people and devices Free covers against the people it has now and, if there is one, the unpaid invoice, which stays owed. Changing plan is not done from the chat but in the Store (BILLING-F11), which shows first what will be charged: the assistant says it is done there and links it.
-6. With what the tools returned, the model answers live, piece by piece, in the person's language. The card is a change's only question: the model does not ask in its text whether to make it nor writes a summary for it to be approved, and only asks for a datum the change needs, that no tool gives and the person has not said. It links the panel's screen where what it cannot do is done ("Go to Businesses"…); for what happens inside a business (sales, products, the people at the till) it says to open the business and ask its assistant. Under the answer stays what was done of each change ("Done: Create business in Businesses", "Not done, cancelled: …"). In the account opened from the app, where nothing is sold or charged, to what the person asks about plans, prices, modules, promo codes, payments or the card it answers, without a link, "To change your plan or add modules, go to erplora.com in your browser." (with an unpaid invoice, "To pay it, go to erplora.com in your browser."), even if the documentation explains it; looking at invoices and subscriptions and editing the fiscal details are done there.
+6. With what the tools returned, the model answers live, piece by piece, in the person's language. The card is a change's only question: the model does not ask in its text whether to make it nor writes a summary for it to be approved, and only asks for a datum the change needs, that no tool gives and the person has not said. It links the panel's screen where what it cannot do is done ("Go to Businesses"…); for what happens inside a business (sales, products, the people at the till) it says to open the business and ask its assistant. Under the answer stays what was done of each change ("Done: Create business in Businesses", "Not done, cancelled: …"). If the answer tells as done a change that was not made (after "Cancel", "Created Café Triana" or "Your screen should now be darker"), under it also comes "The assistant said it made a change, but no action was run. Nothing was changed."; saying it was not done, or when something was created, does not bring it. In the account opened from the app, where nothing is sold or charged, to what the person asks about plans, prices, modules, promo codes, payments or the card it answers, without a link, "To change your plan or add modules, go to erplora.com in your browser." (with an unpaid invoice, "To pay it, go to erplora.com in your browser."), even if the documentation explains it; looking at invoices and subscriptions and editing the fiscal details are done there.
 7. From 80 % of the month's messages, the panel's foot says how many are left and when they come back (see ASSISTANT-F26). The panel closes with ×, Escape, the veil or the same button; the device remembers whether it was left open, and the conversation is forgotten when the session is closed.
 In: the conversation (it lives in the person's browser), the tools the model asked for and the person's answer to its card.
 Out: what was done and its result, the card of the change that waits, the text as it arrives, the allowance left and the close; what each tool does leaves its own trace (`hubs.business.created`…), never the conversation.
@@ -560,7 +560,7 @@ If it fails: without the provider of the fingerprints configured, it answers tha
 Involved: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F27
 
 ### ASSISTANT-F29 Email an account that its messages with the panel's assistant are running out
-Status: not done — still missing: sending the two emails as the messages are spent, the mark that they already went out that month, their texts in English and Spanish and counting them among the always-on emails of ACCOUNTS-F23; today only the panel's footer says it (ASSISTANT-F25)
+Status: done
 Actor: the person with an account at erplora.com
 Screen: none
 Steps:

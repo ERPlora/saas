@@ -7,9 +7,11 @@ duplicate names are the models' ``clean()``, which the admin form runs.
 
 The account plane (``Hub``, ``HubMember``, ``HubOwnershipTransfer``, ``BillingProfile``, ``Subscription``,
 ``SubscriptionItem``, ``SessionRevocation``; L1-A2) is read-mostly: its writes are the operations of
-``hubs.services`` (state version, the jump's mirror, the push to the Hub), so the admin adds, changes and
-deletes nothing, not even for a superuser. Superusers get the platform's actions (``services.send_latest_state``,
-``retry_owed``, ``deliver_revocations``); ``support`` only sees (data migration ``0007``).
+``hubs.services`` (state version, the push to the Hub), so the admin adds, changes and deletes nothing, not even for
+a superuser. Superusers get the platform's actions (``services.send_latest_state``, ``retry_owed``,
+``deliver_revocations``); ``support`` only sees (data migration ``0007``). A ``User``'s page lists the businesses of the
+account (``AccountMemberInline``), and «Hubs» (``hubs_view``, ``/admin/accounts/hubs/``, routed in ``config/urls.py``)
+has one row per business people enter, each with «Open in the Hub admin».
 
 ``HubUsageDaily`` (L4-A) is what the Hub measured of each business every night (``collect_hub_usage``): read only,
 for superusers, with its sizes readable and the database's, which the customer never sees (PLAN-SAAS §5).
@@ -20,11 +22,22 @@ import functools
 from django import forms
 from django.contrib import admin, messages
 from django.contrib.admin.options import ActionLocation
+from django.core.exceptions import PermissionDenied
 from django.db.models import F
+from django.http import HttpRequest, HttpResponse
 from django.template.defaultfilters import filesizeformat
+from django.template.response import TemplateResponse
+from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 from django.utils.translation import ngettext
 
+from accounts.admin import (
+    JUMP_FAILED,
+    JUMP_FAILED_UNKNOWN,
+    OPEN_IN_HUB_ADMIN,
+    UserAdmin,
+    open_hub_admin_url,
+)
 from hubs import queries, services
 from hubs.models import (
     BillingProfile,
@@ -291,10 +304,58 @@ class HubAdmin(PlatformActions):
 
 @admin.register(HubMember)
 class HubMemberAdmin(PlatformActions):
-    list_display = ["hub", "user", "role", "invited_at", "accepted_at", "last_opened_at"]
+    list_display = ["hub", "user", "role", "invited_at", "accepted_at", "last_opened_at", "open_in_hub_admin"]
     list_filter = ["role"]
     list_select_related = ["hub", "user"]
     search_fields = ["hub__slug", "hub__name", "user__email"]
+
+    @admin.display(description=_("Hub admin"))
+    def open_in_hub_admin(self, obj):
+        url = open_hub_admin_url(obj.hub.slug)
+        if url is None:
+            return self.get_empty_value_display()
+        return format_html('<a class="button" href="{}">{}</a>', url, OPEN_IN_HUB_ADMIN)
+
+
+class AccountMemberInline(ReadOnly, admin.StackedInline):
+    """The businesses of an account on its page: seen only, people change on the business. Stacked: a tabular row's
+    title is cut to one line, and on a phone it lost the business."""
+
+    model = HubMember
+    fk_name = "user"
+    extra = 0
+    fields = ("hub", "role", "accepted_at", "last_opened_at")
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("hub")
+
+
+UserAdmin.inlines = [*UserAdmin.inlines, AccountMemberInline]
+
+
+def hubs_view(request: HttpRequest) -> HttpResponse:
+    """«Hubs» (``/admin/accounts/hubs/``): every business people enter, each with «Open in the Hub admin».
+
+    Wrapped in ``admin.site.admin_view`` by ``config/urls.py``: only active staff, and of them only
+    whoever may view businesses (superuser and ``support``). A failed jump comes back here with
+    ``?error=<code>``: the page says why, from ``JUMP_FAILED``, never echoing the value.
+    """
+    if not request.user.has_perm("hubs.view_hub"):
+        raise PermissionDenied
+    if "error" in request.GET:
+        messages.error(request, JUMP_FAILED.get(request.GET["error"], JUMP_FAILED_UNKNOWN))
+    hubs = [
+        {"slug": slug, "members": members, "url": open_hub_admin_url(slug)}
+        for slug, members in queries.hubs_with_members()
+    ]
+    context = {
+        **admin.site.each_context(request),
+        "title": _("Hubs"),
+        "opts": Hub._meta,
+        "hubs": hubs,
+        "open_in_hub_admin": OPEN_IN_HUB_ADMIN,
+    }
+    return TemplateResponse(request, "admin/hubs/hubs.html", context)
 
 
 @admin.register(HubOwnershipTransfer)

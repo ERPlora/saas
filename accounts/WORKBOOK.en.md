@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:89cde6d125e94492e60e8156e20f89237eac75df61619e42301b384804ccdf65 -->
+<!-- generated from WORKBOOK.md sha256:9870cc14e8e95f0053057d753d3b1d594a346c20c774f6115125ddefa1c8867d -->
 
 ## What it is for and who it is for
 
@@ -573,14 +573,14 @@ Status: done
 Actor: any person with an account
 Screen: Account › Preferences
 Steps:
-1. In **Account › Preferences**, "Email notices" shows "Security, invoices and payments", always on ("Always on: sign-in codes, security notices, invoices, payments and anything that needs you to act.").
+1. In **Account › Preferences**, "Email notices" shows "Security, invoices and payments", always on ("Always on: sign-in codes, security notices, invoices, payments, the messages you have left with the assistant and anything that needs you to act.").
 2. Below, "Business notices" ("When a business of yours is ready to open."), on from the start.
 3. The person turns it off: "Preferences saved", and the next business they create no longer mails them that it is ready.
 4. They turn it on again and the mail comes back.
 In: "Business notices".
-Out: with it off, the mail that a business is ready is not sent; the business opens all the same and the panel says so. The other mails are always sent: the codes and the security notices, the invoices and the failed payments, the deleted business with its date to recover it, and anything that asks them to act, such as connecting WhatsApp again.
+Out: with it off, the mail that a business is ready is not sent; the business opens all the same and the panel says so. The other mails are always sent: the codes and the security notices, the invoices and the failed payments, the deleted business with its date to recover it, the notices that the month's messages with the panel's assistant are running out or spent (ASSISTANT-F29), and anything that asks them to act, such as connecting WhatsApp again.
 If it fails: if it cannot be saved, the switch goes back to how it was and a notice says why.
-Involved: hubs (the mail of a ready business), billing (the invoices and the payments, always), assistant (ASSISTANT-F29, not done yet: the notice about the panel's messages)
+Involved: hubs (the mail of a ready business), billing (the invoices and the payments, always), assistant (ASSISTANT-F29: the notices about the panel's messages, always)
 
 ### ACCOUNTS-F24 Change the theme from the user menu
 Status: done
@@ -755,7 +755,7 @@ Steps:
 3. Nobody can create, change or delete an entry by hand: they are only read.
 In: the changes to the accounts, to what is charged and to the fiscal documentation, made from the panel, with an API key, from the admin, by erplora.com's tasks or by Stripe when it charges.
 Out: one entry per change, naming whoever acted at that moment (the account with the open session or the owner of the API key; nobody in an erplora.com task or after signing out) and the visitor's real address, never the one its browser claims.
-If it fails: a secret is never written down (neither the password, nor the API key, nor a session's, nor a Stripe purchase's, nor the link that opens a Stripe invoice, nor an authorisation's documents or the stamp) nor what moves by itself (the last sign-in, a key's last use, the last time a session was seen, the counters, the retries sending an invoice to the AEAT). Writing a change down never changes an invoice or its VeriFactu record. If the account is deleted, its entries keep its email and no link to it until they are erased after 90 days (ACCOUNTS-F37). A team member without the permission cannot open it.
+If it fails: a secret is never written down (neither the password, nor the API key, nor a session's, nor a Stripe purchase's, nor the link that opens a Stripe invoice, nor an authorisation's documents or the stamp) nor what the inviter writes to a person invited to a business, nor what moves by itself (the last sign-in, a key's last use, the last time a session was seen, the last time a person opened a business, the counters, the retries sending an invoice to the AEAT). Writing a change down never changes an invoice or its VeriFactu record. If the account is deleted, its entries keep its email and no link to it until they are erased after 90 days (ACCOUNTS-F37). A team member without the permission cannot open it.
 Involved: none
 
 ### ACCOUNTS-F37 Erase the audit log older than 90 days

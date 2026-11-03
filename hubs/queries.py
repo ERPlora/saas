@@ -24,7 +24,7 @@ from uuid import UUID
 from django.conf import settings
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
-from django.db.models import Case, Exists, IntegerField, OuterRef, Q, Value, When
+from django.db.models import Case, Count, Exists, IntegerField, OuterRef, Q, Value, When
 from django.utils import timezone, translation
 from django.utils.dateparse import parse_datetime
 from django.utils.text import slugify
@@ -35,7 +35,6 @@ from live.errors import Conflict, NotFound, OperationError, PermissionDenied, Un
 from live.operations import AI, INTERNAL, operation
 from live.slugs import is_demo_slug, is_reserved_hub_slug, validate_hub_slug
 
-from accounts.models import HubMembership
 from accounts.queries import hub_origin
 from apps.models import Module
 from hubs import hub_client
@@ -73,6 +72,8 @@ from hubs.schemas import (
     InvitationListIn,
     InvitationListOut,
     MemberListIn,
+    MemberListMineIn,
+    MemberListMineOut,
     MemberListOut,
     PlanListIn,
     PlanListOut,
@@ -472,12 +473,12 @@ def business_type_for(code: str | None) -> BusinessType | None:
 
 
 def slug_taken(slug: str, excluding: UUID | None = None) -> bool:
-    """A business has it (now or as the address it had before, HUBS-F16), or a hub of the phase-1 seed (only an
-    ``accounts.HubMembership`` row). ``excluding``: the business that asks, whose own addresses are free to it."""
+    """A business has it, now or as the address it had before (HUBS-F16). ``excluding``: the business that asks,
+    whose own addresses are free to it."""
     businesses = Hub.objects.filter(Q(slug=slug) | Q(previous_slug=slug))
     if excluding is not None:
         businesses = businesses.exclude(pk=excluding)
-    return businesses.exists() or HubMembership.objects.filter(hub_slug=slug).exists()
+    return businesses.exists()
 
 
 def base_slug(name: str) -> str:
@@ -515,11 +516,6 @@ def free_slug(name: str) -> str:
         Hub.objects.filter(slug__startswith=base).values_list("slug", flat=True)
     )
     taken |= set(Hub.objects.filter(previous_slug__startswith=base).values_list("previous_slug", flat=True))
-    taken |= set(
-        HubMembership.objects.filter(hub_slug__startswith=base).values_list(
-            "hub_slug", flat=True
-        )
-    )
     candidate, counter = base, 1
     while candidate in taken or not is_valid_slug(candidate):
         counter += 1
@@ -964,9 +960,9 @@ def answered_business_ids(user_id: UUID) -> list[UUID]:
     )
 
 
-def mirror_migrated() -> bool:
-    """Whether accounts and hubs have no migration left to apply, so the mirror can be compared (the check
-    ``hubs.W001`` runs in ``migrate`` too, before the tables or the data migration ``0006`` are there)."""
+def tables_migrated() -> bool:
+    """Whether accounts and hubs have no migration left to apply, so their tables can be read (the database checks of
+    ``hubs.checks`` run in ``migrate`` too, before the tables are there)."""
     executor = MigrationExecutor(connection)
     targets = [
         node
@@ -976,35 +972,38 @@ def mirror_migrated() -> bool:
     return not executor.migration_plan(targets)
 
 
-#: One disagreement of the mirror: ``(slug, user id, the role it should have, the role it has)``; a
-#: ``None`` role is a row that should not be there or is missing.
-MirrorDrift = tuple[str, str, str | None, str | None]
+def _who_enters():
+    """The members who enter a hub: answered, on a business that still opens. A business being deleted lets nobody in
+    (a restore gives the access back), whatever ``business_list`` shows its owner in its days of recovery."""
+    return HubMember.objects.filter(accepted_at__isnull=False).exclude(
+        hub__status__in=[Hub.Status.DELETING, Hub.Status.DELETED]
+    )
 
 
-def verify_access_mirror() -> list[MirrorDrift]:
-    """Where ``accounts.HubMembership`` (the access the jump reads) disagrees with the answered members of
-    the businesses that still open (``hubs.services.sync_access``'s rule), sorted; empty when they agree.
+def access_of(user_id) -> list[tuple[str, str]]:
+    """``(slug, role)`` of every business the account ``user_id`` enters, by address."""
+    return list(_who_enters().filter(user_id=user_id).order_by("hub__slug").values_list("hub__slug", "role"))
 
-    A deleted business gives no access, and neither does a slug no business has (the phase-1 seed before
-    the data migration ``0006``). The system check ``hubs.W001`` reports it (``hubs.checks``).
-    """
-    should = {
-        (slug, str(user_id)): role
-        for slug, user_id, role in HubMember.objects.filter(accepted_at__isnull=False)
-        .exclude(hub__status__in=[Hub.Status.DELETING, Hub.Status.DELETED])
-        .values_list("hub__slug", "user_id", "role")
-    }
-    has = {
-        (slug, str(user_id)): role
-        for slug, user_id, role in HubMembership.objects.values_list(
-            "hub_slug", "user_id", "role"
-        )
-    }
-    return [
-        (slug, user_id, should.get((slug, user_id)), has.get((slug, user_id)))
-        for slug, user_id in sorted(should.keys() | has.keys())
-        if should.get((slug, user_id)) != has.get((slug, user_id))
-    ]
+
+def hubs_with_members() -> list[tuple[str, int]]:
+    """``(slug, people who enter)`` of every business somebody enters, by address: «Hubs» of the SaaS admin."""
+    rows = _who_enters().values("hub__slug").annotate(members=Count("id")).order_by("hub__slug")
+    return [(row["hub__slug"], row["members"]) for row in rows]
+
+
+@operation(
+    "hubs.member.list_mine",
+    kind="query",
+    permission="hubs.view",
+    input=MemberListMineIn,
+    output=MemberListMineOut,
+    ai=INTERNAL,  # accounts
+)
+def member_list_mine(ctx: OperationContext, data: MemberListMineIn) -> dict[str, Any]:
+    """The businesses the account enters with its role on each: what the jump to a hub reads. Called by its name
+    from ``accounts`` (``accounts.queries.hub_roles_of``), which never imports ``hubs``; it has no route."""
+    user = account_of(ctx)
+    return {"rows": [{"slug": slug, "role": role} for slug, role in access_of(user.pk)]}
 
 
 #: An account of ERPlora's staff on a business: ``(email, slug, "member" | "invited")``.

@@ -24,8 +24,8 @@ from django.utils import timezone, translation
 from django.utils.formats import date_format
 
 from accounts.auditlog import AuditActorMiddleware
-from accounts.models import ApiKey, HubMembership
-from accounts.tests.conftest import api_post
+from accounts.models import ApiKey
+from accounts.tests.conftest import api_post, enter
 from accounts.tests.test_admin import _as_posted, _change_page
 from hubs.tests.conftest import plans  # noqa: F401 - the plans fixture
 
@@ -52,7 +52,7 @@ class TestWhatIsAudited:
         """A model that lets someone in (the account, its businesses, its keys, its sessions) leaves a trail."""
         registered = {model.__name__ for model in auditlog.get_models()}
 
-        assert {"User", "HubMembership", "ApiKey", "UserSession"} <= registered
+        assert {"User", "HubMember", "ApiKey", "UserSession"} <= registered
 
     def test_a_change_to_the_account_is_logged_with_what_changed(self, ana):
         ana.first_name = "Ana María"
@@ -73,9 +73,20 @@ class TestWhatIsAudited:
         assert ".None" not in str(created.changes)
 
     def test_access_to_a_business_is_logged(self, ana):
-        membership = HubMembership.objects.create(user=ana, hub_slug="bar-pepe", role=HubMembership.Role.ADMIN)
+        membership = enter(ana, "bar-pepe", "hub_admin")
 
         assert _entries_for(membership).filter(action=LogEntry.Action.CREATE).exists()
+
+    def test_an_entry_of_access_names_the_account_the_business_and_the_role(self, ana):
+        """What the staff read in the trail's list: who, on which business, as what; never two identifiers."""
+        membership = enter(ana, "bar-pepe", "hub_admin")
+
+        with translation.override("en"):
+            membership.role = "hub_manager"
+            membership.save()
+
+        entry = _entries_for(membership).filter(action=LogEntry.Action.UPDATE).get()
+        assert entry.object_repr == "ana@example.com @ bar-pepe (Manager)"
 
 
 class TestNoSecretIsWritten:
@@ -90,6 +101,29 @@ class TestNoSecretIsWritten:
         assert ana.password not in written
         assert "password" not in written
         assert "first_name" in written
+
+    def test_the_words_of_an_invitation_are_never_logged(self, ana):
+        """The trail says who enters a business, never what the inviter wrote to them."""
+        member = enter(ana, "bar-pepe", "hub_admin")
+        member.invitation_message = "See you on Monday, Ana"
+        member.save()
+        member.role = "hub_manager"
+        member.save()
+
+        written = _everything_written(_entries_for(member))
+        assert "See you on Monday" not in written
+        assert "invitation_message" not in written
+        assert "hub_manager" in written
+
+    def test_opening_a_business_writes_no_entry(self, ana):
+        """``last_opened_at`` moves on every visit: as a session seen again, it would fill the trail."""
+        member = enter(ana, "bar-pepe", "hub_admin")
+        before = _entries_for(member).count()
+
+        member.last_opened_at = timezone.now()
+        member.save()
+
+        assert _entries_for(member).count() == before
 
     def test_a_password_change_alone_writes_no_entry(self, ana):
         before = _entries_for(ana).count()
@@ -280,7 +314,7 @@ class TestAnAccountThatGoes:
         """The admin's «Delete» of one's own account: the request acts as the account until the end."""
         from django.db import connection
 
-        membership = HubMembership.objects.create(user=ana, hub_slug="bar-pepe", role=HubMembership.Role.ADMIN)
+        membership = enter(ana, "bar-pepe", "hub_admin")
         account_pk = ana.pk
         request = RequestFactory().post("/admin/accounts/user/x/delete/")
 
@@ -295,6 +329,44 @@ class TestAnAccountThatGoes:
         for pk in (membership.pk, account_pk):
             gone = LogEntry.objects.get(object_pk=str(pk), action=LogEntry.Action.DELETE)
             assert (gone.actor_id, gone.actor_email) == (None, "ana@example.com")
+
+
+class TestAnEntryOfAModelThatLeftTheCode:
+    """``accounts.HubMembership`` left the code (saas#199) and ``cleanup_old_logs`` keeps 90 days of its entries: their
+    content type names no model, and the staff still read them."""
+
+    @pytest.fixture
+    def entry(self):
+        from django.contrib.contenttypes.models import ContentType
+
+        kind, _ = ContentType.objects.get_or_create(app_label="accounts", model="hubmembership")
+        return LogEntry.objects.create(
+            content_type=kind,
+            object_pk="1",
+            object_repr="ana@example.com @ bar-pepe (Admin)",
+            action=LogEntry.Action.UPDATE,
+            changes={"role": ["hub_admin", "hub_owner"]},
+        )
+
+    @pytest.fixture
+    def staff(self, client):
+        client.force_login(get_user_model().objects.create_superuser(email="root@example.com", password="x"))
+        return client
+
+    def test_the_list_opens_with_it_and_can_filter_by_it(self, staff, entry):
+        listing = staff.get("/admin/auditlog/logentry/")
+        filtered = staff.get(f"/admin/auditlog/logentry/?resource_type={entry.content_type_id}")
+
+        assert listing.status_code == 200
+        assert "bar-pepe" in listing.content.decode()
+        assert filtered.status_code == 200
+        assert "bar-pepe" in filtered.content.decode()
+
+    def test_its_page_opens_and_says_what_changed(self, staff, entry):
+        page = staff.get(f"/admin/auditlog/logentry/{entry.pk}/change/")
+
+        assert page.status_code == 200
+        assert "hub_owner" in page.content.decode()
 
 
 class TestTheAdmin:

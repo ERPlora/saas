@@ -437,7 +437,7 @@ Pasos:
 Entra: el dominio del propietario y el registro de su proveedor.
 Sale: la web pública del negocio en su dominio, con su certificado.
 Si falla: un dominio que no apunta a ERPlora se queda sin activar y se dice qué registro falta; un plan que no lo incluye no lo ofrece. La aplicación y la entrada al negocio siguen en su dirección de erplora.com.
-Implicados: website (la web pública del negocio), el negocio (sirve la web por su dominio)
+Implicados: website (la web pública del negocio), el negocio (sirve la web por su dominio), public (PUBLIC-F07: hasta entonces ni los planes ni la web lo venden, saas#233)
 
 ### HUBS-F18 Eliminar un negocio
 <!-- origen: fi:saas/hubs#borrado-cancelacion-del-terminal old-saas:SAAS_DASHBOARD-F22 old-saas:SAAS_DASHBOARD-F23 old-saas:SAAS_DASHBOARD-F24 -->
@@ -794,7 +794,7 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   la `0013`, y reverse simétrico. `included_level` se queda en el modelo, sin uso en la web pública.
 - Dirección web (F16): `hubs.business.change_address` (solo el propietario; `can.change_address` en la página),
   validada como la valida el Hub (`live.slugs`, `_chosen_slug`); sube `registry_version` y `state_version`, debe
-  `put` y empuja tras el COMMIT; `sync_access(hub, previous_slug=…)` mueve el espejo del salto. La antigua queda en
+  `put` y empuja tras el COMMIT; el salto sigue al negocio porque lee a sus miembros. La antigua queda en
   `Hub.previous_slug` y `queries.slug_taken`/`free_slug` la cuentan como cogida para los demás (migración `0015`).
   El Hub acepta el cambio en su registro (`hub/base/tests/test_services_hub.py`,
   `test_registering_again_updates_it_without_another_ready`). Tests: `hubs/tests/test_change_address.py`,
@@ -819,7 +819,9 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
 - Dominio propio (F17, `descartado` en esta versión, saas#195): decisión de mercado de APP-HUBS-2 (PLAN-SAAS §8, ronda
   2026-10-22; ADR-0502): se mantiene solo para la web pública (`website`) y en planes con `includes_custom_domain`, y
   llega con sus tres piezas (erplora.com, borde de `aws` y el host en `base` del Hub); hasta entonces no hay modelo ni
-  pantalla.
+  pantalla, y nada lo vende: `hubs/0026` quitó la línea y la descripción de Standard, el guardia es
+  `test_plan_catalogue.py::test_no_plan_sells_a_custom_domain_nobody_can_connect` (y sus gemelos de `/pricing/` y de
+  los términos en `public/tests`), y `includes_custom_domain` se queda como la puerta que leerá saas#195 (saas#233).
 - Pruebas de la parte 2: e2e en `tests/e2e/panel/hubs-settings.spec.ts` (clave `HUBS-Gnn` en el título).
 - Personas (F24–F30): `hubs.member.{list,invite,change_role,remove,resend,cancel}`,
   `hubs.invitation.{list_mine,accept,decline}` y `hubs.ownership.{transfer,accept,decline,cancel}` (`api.py`, bajo
@@ -880,7 +882,8 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   (erplora.com, la entrada de ERPlora y el Hub) — saas#195.
 - **Desde el Hub, «Mejorar plan» y «erplora.com» piden volver a entrar con la cuenta si el navegador no tenía la sesión
   abierta** (BASE-F11 del Hub, cruza esta app) — saas#190.
-- **erplora.com guarda dos veces quién está en cada negocio** (el espejo `accounts.HubMembership`) — saas#199.
+- **En la base de datos sigue la tabla de la copia de quién está en cada negocio** (`accounts_hubmembership`), que ya
+  nadie lee ni escribe — saas#220.
 
 ## Lo que NO hace, a propósito
 

@@ -620,14 +620,14 @@ Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Cuenta › Preferencias
 Pasos:
-1. En **Cuenta › Preferencias**, «Avisos por correo» enseña «Seguridad, facturas y pagos», siempre encendido («Siempre activos: códigos para entrar, avisos de seguridad, facturas, pagos y lo que te pide hacer algo.»).
+1. En **Cuenta › Preferencias**, «Avisos por correo» enseña «Seguridad, facturas y pagos», siempre encendido («Siempre activos: códigos para entrar, avisos de seguridad, facturas, pagos, los mensajes que te quedan con el asistente y lo que te pide hacer algo.»).
 2. Debajo, «Avisos de mis negocios» («Cuando un negocio tuyo está listo para abrir.»), encendido de entrada.
 3. La persona lo apaga: «Preferencias guardadas», y el siguiente negocio que cree ya no le manda el correo de que está listo.
 4. Lo vuelve a encender y el correo vuelve.
 Entra: «Avisos de mis negocios».
-Sale: con él apagado, el correo de un negocio listo no se manda; el negocio abre igual y el panel lo dice. Los demás correos se mandan siempre: los códigos y los avisos de seguridad, las facturas y los pagos fallidos, el negocio eliminado con su fecha para recuperarlo y lo que pide hacer algo, como volver a conectar WhatsApp.
+Sale: con él apagado, el correo de un negocio listo no se manda; el negocio abre igual y el panel lo dice. Los demás correos se mandan siempre: los códigos y los avisos de seguridad, las facturas y los pagos fallidos, el negocio eliminado con su fecha para recuperarlo, los avisos de que se acaban o se han gastado los mensajes del mes con el asistente del panel (ASSISTANT-F29) y lo que pide hacer algo, como volver a conectar WhatsApp.
 Si falla: si no se puede guardar, el interruptor vuelve a como estaba y un aviso dice por qué.
-Implicados: hubs (el correo de un negocio listo), billing (las facturas y los pagos, siempre), assistant (ASSISTANT-F29, aún sin hacer: el aviso de los mensajes del panel)
+Implicados: hubs (el correo de un negocio listo), billing (las facturas y los pagos, siempre), assistant (ASSISTANT-F29: los avisos de los mensajes del panel, siempre)
 
 ### ACCOUNTS-F24 Cambiar el tema desde el menú de usuario
 <!-- origen: fi:saas/auth-services#toggle-de-tema-server-side-sin-js fi:saas/auth-services#context-processor-de-tema fi:saas/support/public-core-config#context_processors-py-theme-apps-py-coreconfig pc:cloud/dashboard/theme_picker -->
@@ -815,7 +815,7 @@ Pasos:
 3. Nadie puede crear, cambiar ni borrar una entrada a mano: solo se leen.
 Entra: los cambios de las cuentas, de lo que se cobra y de la documentación fiscal, hechos desde el panel, con una clave de API, desde el admin, por las tareas de erplora.com o por Stripe al cobrar.
 Sale: una entrada por cambio, que nombra a quien actuaba en ese momento (la cuenta con la sesión abierta o la dueña de la clave de API; nadie en una tarea de erplora.com o tras cerrar la sesión) y la dirección real del visitante, nunca la que diga su navegador.
-Si falla: nunca se anota un secreto (ni la contraseña, ni la clave de API, ni la de una sesión, ni la de una compra con Stripe, ni el enlace que abre una factura de Stripe, ni los documentos de una autorización ni el sello) ni lo que se mueve solo (la última entrada, el último uso de una clave, la última vez que se vio una sesión, los contadores, los reintentos de envío de una factura a la AEAT). Anotar un cambio nunca cambia una factura ni su registro en VeriFactu. Si la cuenta se elimina, sus entradas se quedan con su correo y sin enlace a ella hasta que se borran a los 90 días (ACCOUNTS-F37). Alguien del equipo sin el permiso no puede abrirlo.
+Si falla: nunca se anota un secreto (ni la contraseña, ni la clave de API, ni la de una sesión, ni la de una compra con Stripe, ni el enlace que abre una factura de Stripe, ni los documentos de una autorización ni el sello) ni lo que escribe quien invita a una persona a un negocio, ni lo que se mueve solo (la última entrada, el último uso de una clave, la última vez que se vio una sesión, la última vez que una persona abrió un negocio, los contadores, los reintentos de envío de una factura a la AEAT). Anotar un cambio nunca cambia una factura ni su registro en VeriFactu. Si la cuenta se elimina, sus entradas se quedan con su correo y sin enlace a ella hasta que se borran a los 90 días (ACCOUNTS-F37). Alguien del equipo sin el permiso no puede abrirlo.
 Implicados: ninguno
 
 ### ACCOUNTS-F37 Borrar el registro de auditoría de más de 90 días
@@ -1195,7 +1195,8 @@ Implicados: el admin de erplora.com (la ficha de la cuenta y el registro de audi
 
 ## Lo que queda fuera
 
-- **erplora.com guarda dos veces quién está en cada negocio** (el espejo `accounts.HubMembership`) — saas#199.
+- **En la base de datos sigue la tabla de la copia de quién está en cada negocio** (`accounts_hubmembership`), que ya
+  nadie lee ni escribe — saas#220.
 - **Desde el Hub, «Mejorar plan» y «erplora.com» piden volver a entrar con la cuenta si el navegador no tenía la sesión
   abierta** (ACCOUNTS-F29, BASE-F11 del Hub): erplora.com ya acepta el pase de un solo uso del negocio (`/hub-pass/`,
   `hub_pass.py`); falta que el Hub lo firme al pulsar — ERPlora/hub#716, que cierra saas#190. Con ella, ACCOUNTS-F29

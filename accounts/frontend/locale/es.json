@@ -325,7 +325,7 @@
         "languageHint": "También el idioma de los correos que te enviamos.",
         "mails": "Avisos por correo",
         "invoices": "Seguridad, facturas y pagos",
-        "invoicesHint": "Siempre activos: códigos para entrar, avisos de seguridad, facturas, pagos y lo que te pide hacer algo.",
+        "invoicesHint": "Siempre activos: códigos para entrar, avisos de seguridad, facturas, pagos, los mensajes que te quedan con el asistente y lo que te pide hacer algo.",
         "hubAlerts": "Avisos de mis negocios",
         "hubAlertsHint": "Cuando un negocio tuyo está listo para abrir."
       },

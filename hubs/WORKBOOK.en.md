@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:d5f73cdb86561aef74ddf6dd681ceed2cb33af1b7e50a4569a936d54152ead35 -->
+<!-- generated from WORKBOOK.md sha256:f6b1fdfe6d747681833597d70342b1b67487a61c429721713504a31c928a2622 -->
 
 ## What it is for and who it is for
 
@@ -408,7 +408,7 @@ Steps:
 In: the owner's domain and their provider's record.
 Out: the business's public website on its domain, with its certificate.
 If it fails: a domain that does not point to ERPlora stays inactive and the missing record is said; a plan that does not include it does not offer it. The app and the way into the business stay at its erplora.com address.
-Involved: website (the business's public website), the business (serves the website on its domain)
+Involved: website (the business's public website), the business (serves the website on its domain), public (PUBLIC-F07: until then neither the plans nor the website sell it, saas#233)
 
 ### HUBS-F18 Delete a business
 Status: done

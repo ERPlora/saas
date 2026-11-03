@@ -23,6 +23,21 @@ REAUTHENTICATE = f"{BROWSER}/auth/reauthenticate"
 AUTHENTICATION_RECORDS = "account_authentication_methods"
 
 
+def enter(user, slug: str, role: str = "hub_owner", *, accepted: bool = True, status: str = "active"):
+    """Put ``user`` on the business at ``slug`` (made if missing): what the jump to a hub reads. ``accepted=False`` leaves
+    it invited, unanswered; ``status`` is the business's when this makes it. The business goes straight in with
+    ``bulk_create``, past ``Hub.save`` and its validators, as rows from before the shared rule of the slugs did.
+    ``accounts`` code never imports ``hubs``; its tests may."""
+    from django.utils import timezone
+
+    from hubs.models import Hub, HubMember
+
+    hub = Hub.objects.filter(slug=slug).first() or Hub.objects.bulk_create(
+        [Hub(slug=slug, name=slug or "unnamed", country="ES", status=status)]
+    )[0]
+    return HubMember.objects.create(hub=hub, user=user, role=role, accepted_at=timezone.now() if accepted else None)
+
+
 def ctx_for(user, *, request=None, language: str = "en") -> OperationContext:
     """The context a signed-in account gets from a request (``base.operations``)."""
     if user is None:
