@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:b892755cc1d0e2e5825f124855afeec440de8af4e313e560be569bb66a1ab5d5 -->
+<!-- generated from WORKBOOK.md sha256:1e73b32dc2b48b93c84ab4fcafadb51dbac2c1db9fe8aa551929c5a2ebde1f43 -->
 
 ## What it is for and who it is for
 
@@ -318,7 +318,7 @@ Steps:
 In: the new plan and period and the business's subscription with its card; when the period changes, each module's price changes too.
 Out: the plan changed (`billing.plan.changed`) or the downgrade scheduled (`billing.plan.change_scheduled`), with the table's VAT on each line, and the new plan sent to the business.
 If it fails: "The price was out of date: here it is again, check it before confirming" if too much time went by; a declined card changes nothing; the same plan and period is no change; downgrading to Free is cancelling (BILLING-F13); with a pending cancellation, "Keep the plan first to change it"; with an unpaid invoice, "First, pay the pending invoice"; over €400 without a tax ID asks for it.
-Involved: the business (receives its plan)
+Involved: the business (receives its plan), ASSISTANT-F25 (asked of the panel's assistant, which sends it here)
 
 ### BILLING-F12 Give trial days with a promo code
 <!-- origen: old-saas:SAAS_DASHBOARD-F122 -->

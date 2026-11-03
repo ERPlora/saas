@@ -332,7 +332,7 @@ Pasos:
 Entra: el plan y el periodo nuevos y la suscripción del negocio con su tarjeta; al cambiar de periodo, también cambia el precio de cada módulo.
 Sale: el plan cambiado (`billing.plan.changed`) o la bajada programada (`billing.plan.change_scheduled`), con el IVA de la tabla en cada línea, y el plan nuevo enviado al negocio.
 Si falla: «El precio estaba desactualizado: aquí lo tienes de nuevo, revísalo antes de confirmar» si pasó demasiado tiempo; la tarjeta rechazada no cambia nada; el mismo plan y periodo no es un cambio; bajar a Gratis es cancelar (BILLING-F13); con una cancelación pendiente, «Mantén antes el plan para cambiarlo»; con una factura sin pagar, «Antes, paga la factura pendiente»; más de 400 € sin NIF pide el NIF.
-Implicados: el negocio (recibe su plan)
+Implicados: el negocio (recibe su plan), ASSISTANT-F25 (pedido al asistente del panel, que manda aquí)
 
 ### BILLING-F12 Dar días de prueba con un código promocional
 <!-- origen: old-saas:SAAS_DASHBOARD-F122 -->
