@@ -1451,3 +1451,88 @@ msgstr "intentos del correo de la copia"
 #: queries.py
 msgid "The copy of the data could not be checked right now. Try again in a moment."
 msgstr "No se ha podido consultar la copia de los datos ahora mismo. Vuelve a intentarlo en un momento."
+
+#: countries.py
+msgid "Austria"
+msgstr "Austria"
+
+msgid "Belgium"
+msgstr "Bélgica"
+
+msgid "Bulgaria"
+msgstr "Bulgaria"
+
+msgid "Croatia"
+msgstr "Croacia"
+
+msgid "Cyprus"
+msgstr "Chipre"
+
+msgid "Czechia"
+msgstr "Chequia"
+
+msgid "Denmark"
+msgstr "Dinamarca"
+
+msgid "Estonia"
+msgstr "Estonia"
+
+msgid "Finland"
+msgstr "Finlandia"
+
+msgid "France"
+msgstr "Francia"
+
+msgid "Germany"
+msgstr "Alemania"
+
+msgid "Greece"
+msgstr "Grecia"
+
+msgid "Hungary"
+msgstr "Hungría"
+
+msgid "Ireland"
+msgstr "Irlanda"
+
+msgid "Italy"
+msgstr "Italia"
+
+msgid "Latvia"
+msgstr "Letonia"
+
+msgid "Lithuania"
+msgstr "Lituania"
+
+msgid "Luxembourg"
+msgstr "Luxemburgo"
+
+msgid "Malta"
+msgstr "Malta"
+
+msgid "Netherlands"
+msgstr "Países Bajos"
+
+msgid "Poland"
+msgstr "Polonia"
+
+msgid "Portugal"
+msgstr "Portugal"
+
+msgid "Romania"
+msgstr "Rumanía"
+
+msgid "Slovakia"
+msgstr "Eslovaquia"
+
+msgid "Slovenia"
+msgstr "Eslovenia"
+
+msgid "Spain"
+msgstr "España"
+
+msgid "Sweden"
+msgstr "Suecia"
+
+msgid "United Kingdom"
+msgstr "Reino Unido"

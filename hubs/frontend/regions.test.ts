@@ -46,6 +46,17 @@ describe('countries', () => {
   it('keep an unknown code as it came, never an empty label', () => {
     expect(countryName('XX', 'en')).toBe('XX');
   });
+
+  it("are named as the server names them, the assistant's card and the admin (hubs/countries.py, its catalog)", () => {
+    const server = readFileSync(join(HUBS, 'countries.py'), 'utf8');
+    const catalog = readFileSync(join(HUBS, 'locale', 'es', 'LC_MESSAGES', 'django.po'), 'utf8');
+    const names = [...server.matchAll(/"([A-Z]{2})": _\("([^"]+)"\)/g)].map(([, code, name]) => ({ code, name }));
+    expect(names).toHaveLength(28); // COUNTRIES, and the UK of a payer
+    for (const { code, name } of names) {
+      const spanish = new RegExp(`msgid "${name}"\\nmsgstr "([^"]+)"`).exec(catalog)?.[1];
+      expect([code, countryName(code, 'en'), countryName(code, 'es')]).toEqual([code, name, spanish]);
+    }
+  });
 });
 
 // flow: HUBS-F01 (HUBS-G65, old saas SAAS_DASHBOARD-F01): «the country comes suggested by the browser's language».

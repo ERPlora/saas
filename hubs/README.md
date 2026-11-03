@@ -117,6 +117,10 @@ Flujos en `WORKBOOK.md` (`HUBS-F01`…`HUBS-F14`, parte 1 de 4 de la migración;
   Resumen del negocio («En tus dispositivos»). Los filtros de las viejas se descartan.
 - **El país del alta** sale sugerido por los idiomas del navegador (`frontend/regions.ts`, `suggestedCountry`), entre
   los países que ERPlora sirve; si ninguno encaja, España.
+- **El nombre de un país en el servidor** son las `choices` de `Hub.country` y de `BillingProfile.billing_country`
+  (`countries.py`: `COUNTRY_NAMES` y `PAYER_COUNTRY_NAMES`, que suma el Reino Unido de un pagador; sin ORM, para que la web pública los lea): las leen la tarjeta del
+  asistente (`live.assistant.choice_label`, saas#217), el admin y `/compliance/`, con su español en el catálogo de `hubs`.
+  Las pantallas los nombran con `Intl`; `frontend/regions.test.ts` exige que ambos digan lo mismo.
 - **Planes**: los textos de cada plan (nombre, descripción, características, etiqueta) se escriben en inglés y en
   español en el admin. No hay API de escritura de planes para el personal: el admin es su única escritura (decisión
   de APP-HUBS-1, propuesta como ronda de PLAN-SAAS).

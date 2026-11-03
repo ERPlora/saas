@@ -43,6 +43,7 @@ const WORDS = {
     create: `Crea un negocio llamado ${NEW_BUSINESS}`,
     word: 'CONFIRMAR',
     card: 'Crear negocio en Negocios. Revisa cada dato antes de seguir.',
+    country: /País:?\s*España/,
     notCreated: 'No he creado el negocio: no ha cambiado nada.',
     receipt: 'No se hizo, cancelado: Crear negocio en Negocios',
     footerSpent: /^Has usado los 2 mensajes de este mes\. Se renuevan el 1 de \p{L}+\.$/u,
@@ -70,6 +71,7 @@ const WORDS = {
     create: `Create a business called ${NEW_BUSINESS}`,
     word: 'CONFIRM',
     card: 'Create business in Businesses. Check each datum before going on.',
+    country: /Country:?\s*Spain/,
     notCreated: 'I did not create the business: nothing changed.',
     receipt: 'Not done, cancelled: Create business in Businesses',
     footerSpent: /^You have used all 2 messages of this month\. They renew on \p{L}+ 1\.$/u,
@@ -205,6 +207,8 @@ for (const language of ['es', 'en'] as const) {
     const card = page.getByTestId('assistant-confirm');
     await expect(card).toBeVisible();
     await expect(card).toContainText(words.card);
+    // A country by its name, never its code (saas#217).
+    await expect(card).toContainText(words.country);
     await expect(card.getByText(words.word, { exact: true })).toBeVisible();
     // `ion-button` is no native button: Ionic says it is off on its host.
     await expect(page.getByTestId('assistant-confirm-submit')).toHaveAttribute('aria-disabled', 'true');
