@@ -1,8 +1,9 @@
 """Keep the AI providers' keys of the environment encrypted in the database (ASSISTANT-F09).
 
-Reads ``OPENAI_API_KEY``, ``ANTHROPIC_API_KEY``, ``GEMINI_API_KEY`` and ``DEEPSEEK_API_KEY`` (``config/settings.py``)
-and keeps each one in its provider through ``assistant.credential.import`` as the platform, adding the provider if
-missing. A key already kept with the label stays unless ``--force``. It never prints a key, only its last four
+Reads ``OPENAI_API_KEY``, ``ANTHROPIC_API_KEY``, ``GEMINI_API_KEY``, ``DEEPSEEK_API_KEY`` and ``AZURE_SPEECH_KEY``
+(``config/settings.py``) and keeps each one in its provider through ``assistant.credential.import`` as the platform,
+adding the provider if missing (Azure AI Speech, the voice, at Sweden Central's address: another region is its
+address in the admin). A key already kept with the label stays unless ``--force``. It never prints a key, only its last four
 characters.
 
     python manage.py import_ai_keys_from_env
@@ -17,12 +18,13 @@ from live.errors import OperationError
 from assistant import services
 from assistant.schemas import CredentialImportIn
 
-#: Each provider's API and the setting holding its key, in the order they are loaded.
+#: Each provider (its identifier), its API and the setting holding its key, in the order they are loaded.
 SETTINGS = {
-    "openai": "OPENAI_API_KEY",
-    "anthropic": "ANTHROPIC_API_KEY",
-    "gemini": "GEMINI_API_KEY",
-    "deepseek": "DEEPSEEK_API_KEY",
+    "openai": ("openai", "OPENAI_API_KEY"),
+    "anthropic": ("anthropic", "ANTHROPIC_API_KEY"),
+    "gemini": ("gemini", "GEMINI_API_KEY"),
+    "deepseek": ("deepseek", "DEEPSEEK_API_KEY"),
+    "azure-speech": ("azure_speech", "AZURE_SPEECH_KEY"),
 }
 
 
@@ -30,7 +32,7 @@ class Command(BaseCommand):
     help = "Keep the AI providers' keys of the environment encrypted in the database (never prints a key)."
 
     def add_arguments(self, parser):
-        parser.add_argument("--providers", default="", help="Comma-separated providers to load (default: all four).")
+        parser.add_argument("--providers", default="", help="Comma-separated providers to load (default: all five).")
         parser.add_argument("--label", default="default", help="Label of the key in its provider (default: 'default').")
         parser.add_argument("--force", action="store_true", help="Replace a key already kept with the same label.")
         parser.add_argument("--dry-run", action="store_true", help="Say what would happen without writing.")
@@ -44,7 +46,7 @@ class Command(BaseCommand):
         ctx = services.platform_context()
         counts = {"created": 0, "rotated": 0, "kept": 0, "skipped": 0}
         for slug in wanted:
-            name = SETTINGS[slug]
+            kind, name = SETTINGS[slug]
             value = (getattr(settings, name, "") or "").strip()
             if not value:
                 counts["skipped"] += 1
@@ -52,7 +54,7 @@ class Command(BaseCommand):
                 continue
             try:
                 out = services.credential_import(
-                    ctx, CredentialImportIn(kind=slug, api_key=value, label=label, force=force, dry_run=dry_run)
+                    ctx, CredentialImportIn(kind=kind, api_key=value, label=label, force=force, dry_run=dry_run)
                 )
             except OperationError as refused:
                 raise CommandError(refused.message) from None

@@ -50,7 +50,7 @@ from live.outbox import record_event
 import whatsapp.fields
 from assistant import crypto, emails, events, fields, queries
 from assistant.models import AIModel, AIProvider, AIProviderCredential, AIRoutingPolicy, AssistantUsage, DocChunk
-from assistant.models import content_hash
+from assistant.models import content_hash, provider_slug
 from assistant.queries import choosable_models, staff_with
 from hubs.models import Hub
 from assistant.schemas import (
@@ -350,22 +350,23 @@ def credential_import(ctx: OperationContext, data: CredentialImportIn) -> dict:
         with translation.override(ctx.language):
             raise PermissionDenied(_("Only the platform loads the keys of the environment."), code="assistant.platform_only")
     plaintext = data.api_key.get_secret_value().strip()
-    provider = AIProvider.objects.filter(slug=data.kind).first()
+    slug = provider_slug(data.kind)
+    provider = AIProvider.objects.filter(slug=slug).first()
     credential = (
         AIProviderCredential.objects.select_for_update().filter(provider=provider, label=data.label).first()
         if provider is not None
         else None
     )
     if credential is not None and not data.force:
-        return {"provider": data.kind, "action": "kept", "label": data.label, "masked_key": credential.masked_key}
+        return {"provider": slug, "action": "kept", "label": data.label, "masked_key": credential.masked_key}
     action = "created" if credential is None else "rotated"
-    result = {"provider": data.kind, "action": action, "label": data.label, "masked_key": f"…{plaintext[-4:]}"}
+    result = {"provider": slug, "action": action, "label": data.label, "masked_key": f"…{plaintext[-4:]}"}
     if data.dry_run:
         return result
     if not crypto.configured():
         raise _encryption_missing(ctx)
     if provider is None:
-        provider = AIProvider.objects.create(slug=data.kind, name=AIProvider.Kind(data.kind).label, kind=data.kind)
+        provider = AIProvider.objects.create(slug=slug, name=AIProvider.Kind(data.kind).label, kind=data.kind)
     if credential is None:
         credential = AIProviderCredential(provider=provider, label=data.label)
     else:

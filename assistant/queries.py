@@ -38,7 +38,15 @@ from pgvector.django import CosineDistance
 
 from assistant import media
 from base.surface import sells_nothing
-from assistant.models import AIModel, AIProvider, AIProviderCredential, AIRoutingPolicy, AssistantUsage, DocChunk
+from assistant.models import (
+    SPEECH_KINDS,
+    AIModel,
+    AIProvider,
+    AIProviderCredential,
+    AIRoutingPolicy,
+    AssistantUsage,
+    DocChunk,
+)
 from assistant.schemas import (
     Caller,
     CallerIn,
@@ -117,9 +125,10 @@ def provider_connection(ctx: OperationContext, data: ProviderRef) -> dict:
 
 
 def choosable_models():
-    """The models that may answer: available, of an enabled provider."""
+    """The models that may answer: available, of an enabled provider that answers turns (not one that reads aloud)."""
     return (
         AIModel.objects.filter(is_available=True, provider__is_enabled=True)
+        .exclude(provider__kind__in=SPEECH_KINDS)
         .select_related("provider")
         .order_by("provider__name", "display_name", "model_id")
     )
@@ -167,7 +176,12 @@ def route_candidate(model: AIModel, api_key: str) -> dict:
 
 
 def can_answer(model: AIModel | None) -> bool:
-    return model is not None and model.is_available and model.provider.is_enabled
+    return (
+        model is not None
+        and model.is_available
+        and model.provider.is_enabled
+        and model.provider.kind not in SPEECH_KINDS
+    )
 
 
 def provider_not_configured() -> Conflict:
@@ -349,7 +363,7 @@ def usage_show(ctx: OperationContext, data: Caller) -> dict:
 )
 def service_connection(ctx: OperationContext, data: NoInput) -> dict:
     """The address and the usable key of the services' provider (``ASSISTANT_SERVICE_PROVIDER``), which computes the
-    embeddings and the voice (the platform only). 409 ``assistant.provider_not_configured`` if it does not exist, is
+    embeddings and transcribes the dictation (the platform only). 409 ``assistant.provider_not_configured`` if it does not exist, is
     off, speaks another API than OpenAI's or has no active key that opens."""
     platform_only(ctx)
     service = services_provider()
@@ -367,6 +381,42 @@ def services_provider() -> dict | None:
     OpenAI's or has no active key that opens."""
     provider = AIProvider.objects.filter(
         slug=settings.ASSISTANT_SERVICE_PROVIDER, is_enabled=True, kind=AIProvider.Kind.OPENAI
+    ).first()
+    api_key = usable_key(provider) if provider is not None else ""
+    if not api_key:
+        return None
+    return {"provider": provider.slug, "base_url": provider.api_base, "api_key": api_key}
+
+
+@operation(
+    "assistant.speech.connection",
+    kind="query",
+    permission="assistant.manage",
+    input=NoInput,
+    output=ServiceConnectionOut,
+    ai=INTERNAL,  # platform
+)
+def speech_connection(ctx: OperationContext, data: NoInput) -> dict:
+    """The address (its region's endpoint) and the usable key of the provider of the voice
+    (``ASSISTANT_SPEECH_PROVIDER``), which reads the answers aloud (the platform only). 409
+    ``assistant.speech_unavailable`` if it does not exist, is off, speaks another API than Azure AI Speech's or has no
+    active key that opens: the Hub and the panel read with the device's voice."""
+    platform_only(ctx)
+    speech = speech_provider()
+    if speech is None:
+        with translation.override(ctx.language):
+            raise Conflict(
+                _("Reading aloud is not configured: add Azure AI Speech with its key."),
+                code="assistant.speech_unavailable",
+            )
+    return speech
+
+
+def speech_provider() -> dict | None:
+    """The provider of the voice with its usable key, or ``None`` if it does not exist, is off, speaks another API than
+    Azure AI Speech's or has no active key that opens."""
+    provider = AIProvider.objects.filter(
+        slug=settings.ASSISTANT_SPEECH_PROVIDER, is_enabled=True, kind=AIProvider.Kind.AZURE_SPEECH
     ).first()
     api_key = usable_key(provider) if provider is not None else ""
     if not api_key:

@@ -781,8 +781,9 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
 - Textos legales (F20, F08): la privacidad nombra a cada encargado que recibe datos y qué recibe. El dictado y la
   búsqueda del asistente (`assistant/media.py`: `whisper-1` y `text-embedding-3-small`) van al proveedor de
   `ASSISTANT_SERVICE_PROVIDER`, la API de OpenAI en `api.openai.com` por defecto, sin residencia en la UE por contrato.
-  La lectura en voz alta va a Azure AI Speech en `AZURE_SPEECH_REGION` (`swedencentral`, UE; PLAN-SAAS ronda
-  2026-11-03m): cambiar de región fuera de la UE es cambiar también el encargado de §5 (`test_legal.py`).
+  La lectura en voz alta va al proveedor de `ASSISTANT_SPEECH_PROVIDER`, Azure AI Speech en la dirección de su región
+  (`swedencentral` por defecto, UE; PLAN-SAAS ronda 2026-11-03m): poner otra región fuera de la UE en el admin es
+  cambiar también el encargado de §5 (`test_legal.py`).
   Cambiarlo es cambiar en la misma entrega §5 y §6 de la privacidad, la respuesta «storage» de `/pricing/` y la celda
   del asistente de la portada (`test_legal.py`, `test_product.py` y `test_landing.py`, en `en` y `es`). El Hub y el
   panel solo usan hoy el dictado (`base.assistant.transcribe`, cada uno el suyo); «Leer en voz alta» lee con la voz del dispositivo.

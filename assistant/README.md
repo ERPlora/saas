@@ -96,7 +96,8 @@ Todas llevan `ai=INTERNAL` (son la pasarela, no herramientas del asistente) salv
 ## Comandos y ajustes
 
 - `import_ai_keys_from_env [--providers …] [--label …] [--force] [--dry-run]`: guarda cifradas `OPENAI_API_KEY`,
-  `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` y `DEEPSEEK_API_KEY` (vacías por defecto); crea el proveedor si falta.
+  `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY` y `AZURE_SPEECH_KEY` (vacías por defecto); crea el
+  proveedor si falta (`azure-speech`, de API `azure_speech`, en la dirección de Suecia Central).
 - `rotate_encryption_keys [--dry-run]`: vuelve a cifrar con `FERNET_KEY` toda columna de `ROTATED_FIELD_CLASSES` (la
   clave del proveedor y el token y el PIN de WhatsApp); termina con error si alguna no se abre.
 - `index_docs [--full] [--dry-run]`: indexa la documentación del asistente del panel (ASSISTANT-F27); solo embebe lo
@@ -116,11 +117,12 @@ Todas llevan `ai=INTERNAL` (son la pasarela, no herramientas del asistente) salv
   de la documentación (`index_docs` y las preguntas de `assistant.docs.search`, del panel y de la puerta del Hub) y
   el dictado. La puerta `/internal/assistant/embeddings` sigue abierta, pero ningún Hub la llama: el Hub no guarda
   índice.
-- `AZURE_SPEECH_KEY` (vacía por defecto) y `AZURE_SPEECH_REGION` (`swedencentral`): la clave y la región de Azure AI
-  Speech, que lee en voz alta (`/internal/speech/synthesize` y `POST /api/assistant/speak` del panel; PLAN-SAAS ronda
-  2026-11-03m). Salen del entorno, en AWS del secreto del SaaS en Secrets Manager, no del admin. Sin clave, las dos
+- `ASSISTANT_SPEECH_PROVIDER` (`azure-speech`): el identificador del proveedor de voz (de API Azure AI Speech), que lee
+  en voz alta (`/internal/speech/synthesize` y `POST /api/assistant/speak` del panel; PLAN-SAAS ronda 2026-11-03m).
+  Como el de servicios, vive en el admin con su clave cifrada y rotable; su dirección es el endpoint de su región
+  (vacía: Suecia Central, `https://swedencentral.tts.speech.microsoft.com`). Sin él, o sin clave que se abra, las dos
   contestan 503 `assistant.speech_unavailable` y quien llama lee con la voz del dispositivo. Hoy ni el Hub ni el
-  frontend del panel las llaman.
+  frontend del panel las llaman. `AZURE_SPEECH_KEY` solo alimenta `import_ai_keys_from_env`.
 - Postgres con la extensión `vector` (pgvector, imagen `pgvector/pgvector` en local y CI, donde la crea la migración
   `assistant/0004_doc_chunks`). En Aurora no es de confianza (solo `rds_superuser`): la crea antes el arranque de
   plataforma del Hub (`bootstrap_databases`, usuario maestro) en `saas` y `pre_saas`.

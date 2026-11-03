@@ -212,6 +212,17 @@ async def services_connection():
         raise Refused(503, refused.code, refused.message, retriable=False) from None
 
 
+async def speech_connection():
+    """The provider of the voice, or 503 ``assistant.speech_unavailable`` (the caller reads with the device's voice)."""
+    try:
+        return await sync_to_async(queries.speech_connection)(platform_context(), NoInput())
+    except OperationError as refused:
+        if refused.code != "assistant.speech_unavailable":
+            raise
+        logger.warning("assistant.media.no_speech_provider")
+        raise Refused(503, refused.code, refused.message, retriable=False) from None
+
+
 def media_failed(problem: media.MediaFailed) -> JsonResponse:
     return refusal(502, problem.code, turn.MESSAGES[problem.code], retriable=problem.retriable)
 
@@ -266,16 +277,14 @@ async def transcribe(call: Call) -> HttpResponse:
 async def speech(caller: Caller, data: SpeechIn) -> bytes:
     """``data.text`` spoken for ``caller`` by Azure AI Speech (cut to ``MAX_SPEECH_CHARS``), as an mp3, in the voice
     asked or the default of ``data.language``; the characters read are counted in its month and spend no message. A
-    ``Refused`` for what it cannot read: 503 ``assistant.speech_unavailable`` without Azure's key (the caller reads with
-    the device's voice), 502 when Azure fails. Awaits Azure, so never inside a transaction. The Hub's door, and the
+    ``Refused`` for what it cannot read: 503 ``assistant.speech_unavailable`` without the provider of the voice and
+    its key (the caller reads with the device's voice), 502 when Azure fails. Awaits Azure, so never inside a transaction. The Hub's door, and the
     panel's route (``base.assistant.spoken``)."""
+    service = await speech_connection()
     voice = media.voice_of(data.language, data.voice)
     text = media.speech_text(data.text)
     try:
-        audio = await media.synthesize(text, voice)
-    except media.SpeechUnavailable:
-        code = "assistant.speech_unavailable"
-        raise Refused(503, code, turn.MESSAGES[code], retriable=False) from None
+        audio = await media.synthesize(service, text, voice)
     except media.MediaFailed as problem:
         raise Refused(502, problem.code, turn.MESSAGES[problem.code], retriable=problem.retriable) from None
     await record(caller, speech_characters=len(text))

@@ -71,7 +71,6 @@ MESSAGES = {
     "assistant.provider_rejected": "The AI provider refused the request.",
     "assistant.provider_unavailable": "The AI provider is not answering now: try again in a moment.",
     "assistant.internal_error": "The assistant failed: try again in a moment.",
-    "assistant.speech_unavailable": "Reading aloud is not available right now: use the device's voice.",
 }
 
 

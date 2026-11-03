@@ -5,9 +5,9 @@ optionally, its language) and gets the text, which it leaves in the assistant's 
 an answer (``POST /internal/speech/synthesize``: the text, its language and, optionally, a voice of the catalogue) and
 gets it spoken, as an mp3. Both through the Hub, signed: the old product took the dictation only with the session of a
 person with an erplora.com account, so whoever entered with a PIN could not dictate (SAAS_ASSISTANT-F19, «parcial»).
-The dictation goes to the services' provider (OpenAI's API, its key kept in the admin and rotatable); the reading
-aloud, to Azure AI Speech and its DragonHD voices of Spain (PLAN-SAAS round 2026-11-03m), its key from the environment
-(``AZURE_SPEECH_KEY``). Neither spends messages; each door has its own budget per business, spent after the signature
+The dictation goes to the services' provider (OpenAI's API); the reading aloud, to the provider of the voice (Azure AI
+Speech and its DragonHD voices of Spain, PLAN-SAAS round 2026-11-03m, at its region's address): each one's key kept in
+the admin and rotatable, never read from the environment by the door. Neither spends messages; each door has its own budget per business, spent after the signature
 (saas#2531), and what is dictated or read never reaches a log (the old one kept its first 50 characters). Cases of the
 old ``speech/tests/test_synthesize.py``; OpenAI and Azure are the local fake.
 """
@@ -21,8 +21,9 @@ import pytest
 from django.test import Client
 
 from assistant import media
-from assistant.models import AssistantUsage
-from assistant.tests.conftest import API_KEY
+from assistant.models import AIProvider, AIProviderCredential, AssistantUsage
+from assistant.tests.conftest import API_KEY, OTHER_FERNET_KEY
+from assistant.tests.conftest import FERNET_KEY as FERNET_KEY_OF_THE_TESTS
 from assistant.tests.doors import door, error_code
 from config.tests.test_production_settings import IGNORE_DOTENV
 from config.tests.test_settings import PRODUCTION_ENV, _settings_in_a_fresh_process
@@ -35,10 +36,27 @@ XIMENA = "es-ES-Ximena:DragonHDLatestNeural"
 TRISTAN = "es-ES-Tristan:DragonHDLatestNeural"
 AVA = "en-US-Ava:DragonHDLatestNeural"
 ANDREW = "en-US-Andrew2:DragonHDLatestNeural"
-#: A made-up key of Azure AI Speech, and the region the tests name (not the default, to see it in the path).
+#: A made-up key of Azure AI Speech, and the region the tests' address names (not the default, to see it in the path).
 AZURE_KEY = "not-a-real-azure-speech-key"
 AZURE_REGION = "westeurope"
 AZURE_PATH = f"/{AZURE_REGION}/cognitiveservices/v1"
+
+
+def speech_provider(fake_provider, *, key: str | None = AZURE_KEY, **fields) -> AIProvider:
+    """Azure AI Speech in the admin, as ``import_ai_keys_from_env`` leaves it, at the fake's ``/<region>``."""
+    provider = AIProvider.objects.create(
+        slug="azure-speech",
+        name="Azure AI Speech",
+        kind=AIProvider.Kind.AZURE_SPEECH,
+        base_url=f"{fake_provider.url}/{AZURE_REGION}",
+        **fields,
+    )
+    if key is not None:
+        credential = AIProviderCredential(provider=provider, label="default")
+        credential.api_key = key
+        credential.key_hint = key[-4:]
+        credential.save()
+    return provider
 
 pytestmark = pytest.mark.django_db
 
@@ -49,11 +67,9 @@ def client():
 
 
 @pytest.fixture
-def azure(fake_provider, settings, monkeypatch):
-    """Azure AI Speech on the local fake, with a key and a region: its endpoint becomes ``<fake>/<region>``."""
-    settings.AZURE_SPEECH_KEY = AZURE_KEY
-    settings.AZURE_SPEECH_REGION = AZURE_REGION
-    monkeypatch.setattr(media, "SPEECH_ENDPOINT", f"{fake_provider.url}/{{region}}")
+def azure(fake_provider):
+    """The provider of the voice (Azure AI Speech) on the local fake, with its key."""
+    speech_provider(fake_provider)
     return fake_provider
 
 
@@ -164,8 +180,10 @@ class TestTheCatalogueOfVoices:
 
 
 class TestTheRequestToAzure:
-    def test_the_url_names_the_region(self):
-        assert media.speech_url("swedencentral") == "https://swedencentral.tts.speech.microsoft.com/cognitiveservices/v1"
+    def test_without_an_address_of_its_own_the_voice_speaks_from_sweden_central(self, db):
+        provider = AIProvider(slug="azure-speech", name="Azure AI Speech", kind=AIProvider.Kind.AZURE_SPEECH)
+
+        assert provider.api_base == "https://swedencentral.tts.speech.microsoft.com"
 
     def test_the_ssml_names_the_voice_and_its_language(self):
         assert media.ssml("Hola", media.voice_of("en", TRISTAN)) == (
@@ -185,17 +203,17 @@ class TestTheRequestToAzure:
 
         assert ">Uno dos tres\tcuatro\ncinco</voice>" in spoken
 
-    def test_the_region_is_sweden_central_unless_the_environment_says_another(self):
-        forget = "import os; [os.environ.pop(name, None) for name in ('AZURE_SPEECH_KEY', 'AZURE_SPEECH_REGION')]\n"
-        default = _settings_in_a_fresh_process(PRODUCTION_ENV, "(s.AZURE_SPEECH_KEY, s.AZURE_SPEECH_REGION)", forget + IGNORE_DOTENV)
-        chosen = _settings_in_a_fresh_process(
-            {**PRODUCTION_ENV, "AZURE_SPEECH_KEY": "made-up", "AZURE_SPEECH_REGION": "westeurope"},
-            "(s.AZURE_SPEECH_KEY, s.AZURE_SPEECH_REGION)",
-        )
+    def test_the_provider_of_the_voice_is_azure_speech_unless_the_environment_names_another(self):
+        """The key is the admin's (``import_ai_keys_from_env`` loads ``AZURE_SPEECH_KEY`` there); the region is the
+        provider's address: no ``AZURE_SPEECH_REGION`` is read."""
+        forget = "import os; [os.environ.pop(name, None) for name in ('ASSISTANT_SPEECH_PROVIDER', 'AZURE_SPEECH_KEY')]\n"
+        expression = "(s.ASSISTANT_SPEECH_PROVIDER, s.AZURE_SPEECH_KEY, hasattr(s, 'AZURE_SPEECH_REGION'))"
+        default = _settings_in_a_fresh_process(PRODUCTION_ENV, expression, forget + IGNORE_DOTENV)
+        chosen = _settings_in_a_fresh_process({**PRODUCTION_ENV, "ASSISTANT_SPEECH_PROVIDER": "azure-eu"}, expression)
 
         assert default.returncode == 0, default.stderr
-        assert default.stdout.strip() == str(("", "swedencentral"))
-        assert chosen.stdout.strip() == str(("made-up", "westeurope"))
+        assert default.stdout.strip() == str(("azure-speech", "", False))
+        assert chosen.stdout.strip().startswith("('azure-eu',")
 
 
 def read(ssml: str) -> str:
@@ -302,18 +320,45 @@ class TestReadingAloud:
 
         assert door(client, SYNTHESIZE, reading(business)).status_code == 200
 
-    def test_without_azures_key_it_is_a_503_so_the_hub_reads_with_the_devices_voice(
-        self, client, internal, business, azure, settings, caplog
+    @pytest.mark.parametrize(
+        "without",
+        ["provider", "key", "active key", "readable key", "enabled provider", "provider of its API", "provider named"],
+    )
+    def test_without_the_provider_of_the_voice_and_its_key_it_is_a_503_so_the_hub_reads_with_the_devices_voice(
+        self, client, internal, business, fake_provider, settings, caplog, without
     ):
-        settings.AZURE_SPEECH_KEY = ""
+        if without == "key":
+            speech_provider(fake_provider, key=None)
+        elif without == "active key":
+            speech_provider(fake_provider)
+            AIProviderCredential.objects.update(is_active=False)
+        elif without == "readable key":
+            settings.FERNET_KEY = OTHER_FERNET_KEY
+            speech_provider(fake_provider)
+            settings.FERNET_KEY = FERNET_KEY_OF_THE_TESTS
+        elif without == "enabled provider":
+            speech_provider(fake_provider, is_enabled=False)
+        elif without == "provider of its API":
+            AIProvider.objects.filter(pk=speech_provider(fake_provider).pk).update(kind=AIProvider.Kind.OPENAI)
+        elif without == "provider named":
+            speech_provider(fake_provider)
+            settings.ASSISTANT_SPEECH_PROVIDER = "nobody"
 
         response = door(client, SYNTHESIZE, reading(business))
 
         assert (response.status_code, error_code(response)) == (503, "assistant.speech_unavailable")
         assert response.json()["error"]["retriable"] is False
-        assert azure.requests == []
+        assert fake_provider.requests == []
         assert not AssistantUsage.objects.filter(hub=business).exists()
-        assert "assistant.media.speech_not_configured" in caplog.text
+        assert "assistant.media.no_speech_provider" in caplog.text
+
+    def test_the_key_of_the_environment_is_not_read(self, client, internal, business, fake_provider, settings):
+        """``AZURE_SPEECH_KEY`` only feeds ``import_ai_keys_from_env``: until the admin keeps it, no voice."""
+        settings.AZURE_SPEECH_KEY = AZURE_KEY
+
+        response = door(client, SYNTHESIZE, reading(business))
+
+        assert (response.status_code, error_code(response)) == (503, "assistant.speech_unavailable")
 
     @pytest.mark.parametrize(
         ("status", "code", "retriable"),

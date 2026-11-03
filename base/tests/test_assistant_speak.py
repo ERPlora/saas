@@ -20,9 +20,10 @@ from live.operations import current_operation
 
 from assistant import media
 from assistant import turn as gateway
-from assistant.models import AssistantUsage
+from assistant.models import AIProviderCredential, AssistantUsage
 from assistant.schemas import Caller
 from assistant.tests.conftest import fake_provider, fernet_key  # noqa: F401 - the gateway's fixtures
+from assistant.tests.test_speech import AZURE_KEY, AZURE_PATH, speech_provider
 from config.api import api
 from hubs.tests.conftest import make_user, plans  # noqa: F401 - shared fixtures
 
@@ -30,8 +31,6 @@ pytestmark = pytest.mark.django_db
 
 HOST = "localhost:8001"
 ROUTE = "/api/assistant/speak"
-AZURE_KEY = "not-a-real-azure-speech-key"
-AZURE_PATH = "/westeurope/cognitiveservices/v1"
 MP3 = b"ID3\x04\x00 spoken words"
 XIMENA = "es-ES-Ximena:DragonHDLatestNeural"
 TRISTAN = "es-ES-Tristan:DragonHDLatestNeural"
@@ -54,11 +53,9 @@ def month_of(account) -> tuple[int, int]:
 
 
 @pytest.fixture
-def azure(fake_provider, settings, monkeypatch):  # noqa: F811 - the gateway's fixture, extended
-    """Azure AI Speech on the local fake, with a key and a region."""
-    settings.AZURE_SPEECH_KEY = AZURE_KEY
-    settings.AZURE_SPEECH_REGION = "westeurope"
-    monkeypatch.setattr(media, "SPEECH_ENDPOINT", f"{fake_provider.url}/{{region}}")
+def azure(fake_provider):  # noqa: F811 - the gateway's fixture, extended
+    """The provider of the voice (Azure AI Speech) in the admin, on the local fake, with its key."""
+    speech_provider(fake_provider)
     return fake_provider
 
 
@@ -150,8 +147,8 @@ class TestReadingAloud:
 
         assert month_of(account) == (0, 4)
 
-    def test_without_azures_key_it_is_a_503_that_counts_nothing(self, signed_in, account, azure, settings):
-        settings.AZURE_SPEECH_KEY = ""
+    def test_without_an_active_key_of_azure_it_is_a_503_that_counts_nothing(self, signed_in, account, azure, settings):
+        AIProviderCredential.objects.filter(provider__slug="azure-speech").update(is_active=False)
 
         response = post(signed_in, {"text": "Hola"})
 
@@ -175,7 +172,7 @@ class TestReadingAloud:
         client.force_login(make_user("es@example.com", language="es"))
         azure.reply("POST", AZURE_PATH, status=500, json={"error": {"message": "busy"}})
         failed = post(client, {"text": "Hola"})
-        settings.AZURE_SPEECH_KEY = ""
+        AIProviderCredential.objects.filter(provider__slug="azure-speech").update(is_active=False)
         unavailable = post(client, {"text": "Hola"})
 
         assert error(failed) == (503, "base.assistant_speech_failed")
@@ -225,7 +222,7 @@ class TestWhileItWaits:
     def test_no_transaction_is_open_while_azure_answers(self, signed_in, azure, monkeypatch):
         seen = []
 
-        async def spying(text, voice):
+        async def spying(service, text, voice):
             seen.append(current_operation.get())
             return MP3
 

@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:d9ce31c363e569f32a6f46290c34ce7b6e7cad06fbfd647d629962383c9b1107 -->
+<!-- generated from WORKBOOK.md sha256:b9cbd8d40c0de7bbbae424c0cfdbf10db3cf212e6012296152dddff2a33180b6 -->
 
 ## What it is for and who uses it
 
@@ -77,8 +77,9 @@ Who uses it:
   a price, the trial says the consumption and a cost of zero.
 - The index's fingerprints and the dictation are done by the services' provider (OpenAI): it must be added, enabled
   and with its key.
-- The reading aloud is done by Azure AI Speech, with its key in erplora.com's environment (and its region, Sweden
-  Central unless another is given); without it, the Hub and the panel read with the device's voice.
+- The reading aloud is done by the voice provider (Azure AI Speech): it must be added, enabled and with its key; its
+  address is its region's (Sweden Central unless another is typed). Without it, the Hub and the panel read with the
+  device's voice.
 - The message allowance of each plan ("AI assistant messages a month") is typed in the admin of "Plans".
 
 ## Screens
@@ -285,7 +286,7 @@ Status: done
 Actor: ERPlora's staff, on erplora.com's command line
 Screen: none
 Steps:
-1. With the keys of OpenAI, Anthropic, Google Gemini and DeepSeek in erplora.com's environment, run the loading of the environment's keys.
+1. With the keys of OpenAI, Anthropic, Google Gemini, DeepSeek and Azure AI Speech in erplora.com's environment, run the loading of the environment's keys.
 2. Each key is kept encrypted in its provider with the default label (or another one chosen); if the provider is missing, it is added with its name and its API.
 3. If the provider already had a key with that label, it stays as it is, unless replacing it is asked for: then it changes, it is turned on and when it changed stays.
 4. The providers to load can be chosen, and the loading can be rehearsed without keeping anything.
@@ -468,7 +469,7 @@ Steps:
 3. The characters read are counted in the month of the business (or of the account); it spends no messages.
 In: the business, the text, the language and the voice.
 Out: the audio of the answer (`assistant.usage.recorded`).
-If it fails: an empty text, a language without voices or a voice not in the catalogue are refused; without Azure's key configured, that reading aloud is not available (and the Hub reads with the device's voice); if Azure fails, a gateway error that says whether it is worth repeating. The text stays neither kept nor in a log.
+If it fails: an empty text, a language without voices or a voice not in the catalogue are refused; without the voice provider configured, that reading aloud is not available (and the Hub reads with the device's voice); if Azure fails, a gateway error that says whether it is worth repeating. The text stays neither kept nor in a log.
 Involved: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F24
 
 ### ASSISTANT-F23 Receive the report of an answer of the assistant

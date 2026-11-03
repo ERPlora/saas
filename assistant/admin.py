@@ -43,7 +43,15 @@ from live.context import OperationContext, Scope
 from live.errors import NotFound, OperationError
 
 from assistant import crypto, queries, routing, services
-from assistant.models import AIModel, AIProvider, AIProviderCredential, AIRoutingPolicy, AssistantUsage, estimate_cost
+from assistant.models import (
+    SPEECH_KINDS,
+    AIModel,
+    AIProvider,
+    AIProviderCredential,
+    AIRoutingPolicy,
+    AssistantUsage,
+    estimate_cost,
+)
 from assistant.providers.base import ProviderError, ToolSpec, TurnRequest
 from assistant.providers.factory import get_provider
 from assistant.schemas import (
@@ -282,6 +290,12 @@ class AIProviderAdmin(admin.ModelAdmin):
         (gettext_lazy("Notes"), {"fields": ("notes", "created_at", "updated_at")}),
     )
 
+    def get_inlines(self, request, obj):
+        """A provider of the voice has no models: only its keys."""
+        if obj is not None and obj.reads_aloud:
+            return [CredentialInline]
+        return super().get_inlines(request, obj)
+
     def get_queryset(self, request):
         active = AIProviderCredential.objects.filter(is_active=True).order_by("-updated_at")
         return super().get_queryset(request).prefetch_related(
@@ -362,6 +376,9 @@ class AIProviderAdmin(admin.ModelAdmin):
             provider = await sync_to_async(lambda: AIProvider.objects.filter(pk=object_id).first())()
         else:
             provider = connection
+        if error is None and connection.kind in SPEECH_KINDS:
+            error = _("This provider reads aloud: it answers no turn, so it has no models to choose.")
+        elif error is None:
             try:
                 client = get_provider(
                     kind=connection.kind, api_key=connection.api_key.get_secret_value(), base_url=connection.base_url

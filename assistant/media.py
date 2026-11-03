@@ -3,10 +3,11 @@ the Hub's index and of the panel's documentation (``index_docs``, ``assistant.do
 dictation, by OpenAI's API; the reading aloud of an answer, by Azure AI Speech (PLAN-SAAS round 2026-11-03m).
 
 The embeddings and the dictation go to the services' provider (``assistant.service.connection``:
-``ASSISTANT_SERVICE_PROVIDER``, kept in the admin with its key, rotatable). The reading aloud goes to Azure's REST API
-(``https://<region>.tts.speech.microsoft.com/cognitiveservices/v1``) with ``AZURE_SPEECH_KEY`` and
-``AZURE_SPEECH_REGION`` of the environment: its DragonHD voices (``VOICES``, the catalogue ``@erplora/ui`` shows by the
-same ids), SSML in, an mp3 out; without the key, ``SpeechUnavailable`` and the Hub reads with the device's voice.
+``ASSISTANT_SERVICE_PROVIDER``); the reading aloud, to the provider of the voice (``assistant.speech.connection``:
+``ASSISTANT_SPEECH_PROVIDER``, Azure AI Speech's REST API at its region's address,
+``https://<region>.tts.speech.microsoft.com/cognitiveservices/v1``): its DragonHD voices (``VOICES``, the catalogue
+``@erplora/ui`` shows by the same ids), SSML in, an mp3 out. Each provider is kept in the admin with its key,
+rotatable.
 
 Each call goes over ``httpx``, with no SDK, the same way as ``assistant.providers``. A failure is a ``MediaFailed``
 with the provider's class (rejected, or worth trying again) and never the key nor the provider's words (they could
@@ -24,7 +25,6 @@ from decimal import Decimal
 from xml.sax.saxutils import escape
 
 import httpx
-from django.conf import settings
 
 from assistant.providers.base import is_retriable_status
 from assistant.schemas import ServiceConnectionOut
@@ -77,8 +77,7 @@ VOICES = (
 VOICE_IDS = frozenset(voice.id for voice in VOICES)
 #: The languages there is a voice for, base code.
 SPEECH_LANGUAGES = tuple(dict.fromkeys(voice.language for voice in VOICES))
-#: Azure's endpoint of text to speech in a region, and its path.
-SPEECH_ENDPOINT = "https://{region}.tts.speech.microsoft.com"
+#: The path of text to speech on the endpoint of an Azure region (the provider's address).
 SPEECH_PATH = "/cognitiveservices/v1"
 #: An mp3 a browser plays everywhere, of the quality the HD voices are made for.
 SPEECH_FORMAT = "audio-24khz-48kbitrate-mono-mp3"
@@ -104,10 +103,6 @@ class MediaFailed(Exception):
 
 class UnknownVoice(ValueError):
     """A voice the catalogue does not have, or a language it has no voice for."""
-
-
-class SpeechUnavailable(Exception):
-    """No key of Azure AI Speech in this environment: nothing is read aloud by the server."""
 
 
 async def _post(service: ServiceConnectionOut, path: str, *, timeout: httpx.Timeout = TIMEOUT, **request) -> httpx.Response:
@@ -192,10 +187,6 @@ def voice_of(language: str, voice: str = "") -> Voice:
     raise UnknownVoice("no voice speaks this language")
 
 
-def speech_url(region: str) -> str:
-    return SPEECH_ENDPOINT.format(region=region) + SPEECH_PATH
-
-
 def ssml(text: str, voice: Voice) -> str:
     """The SSML Azure reads: ``text`` escaped as XML (and without what XML cannot carry) in ``voice``."""
     spoken = escape(NOT_XML.sub("", text))
@@ -205,20 +196,18 @@ def ssml(text: str, voice: Voice) -> str:
     )
 
 
-async def synthesize(text: str, voice: Voice) -> bytes:
-    """``text`` spoken with ``voice`` by Azure AI Speech, as an mp3; ``SpeechUnavailable`` without its key."""
-    key, region = settings.AZURE_SPEECH_KEY, settings.AZURE_SPEECH_REGION
-    if not key or not region:
-        logger.warning("assistant.media.speech_not_configured")
-        raise SpeechUnavailable
+async def synthesize(service: ServiceConnectionOut, text: str, voice: Voice) -> bytes:
+    """``text`` spoken with ``voice`` by the provider of the voice (Azure AI Speech), as an mp3. Azure takes its key in
+    ``Ocp-Apim-Subscription-Key``, not as a bearer token."""
     headers = {
-        "Ocp-Apim-Subscription-Key": key,
+        "Ocp-Apim-Subscription-Key": service.api_key.get_secret_value(),
         "Content-Type": "application/ssml+xml",
         "X-Microsoft-OutputFormat": SPEECH_FORMAT,
         "User-Agent": "erplora",
     }
     body = ssml(text, voice).encode()
-    response = await _send(speech_url(region), SPEECH_PATH, headers=headers, timeout=SPEECH_TIMEOUT, content=body)
+    url = f"{service.base_url}{SPEECH_PATH}"
+    response = await _send(url, SPEECH_PATH, headers=headers, timeout=SPEECH_TIMEOUT, content=body)
     if not response.content:
         logger.warning("assistant.media.unreadable path=%s", SPEECH_PATH)
         raise MediaFailed(retriable=True)
