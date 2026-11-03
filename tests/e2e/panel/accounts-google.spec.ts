@@ -206,6 +206,18 @@ function appCode(secret: string): string {
   );
 }
 
+/**
+ * The launcher of an account with no business, loaded: the form that creates the first one and «Go to the panel».
+ * `settled` waits for nothing here, because it leaves endless spinners aside: the page would be read while it loads.
+ */
+async function expectFirstBusinessForm(page: Page): Promise<void> {
+  await expect(page.getByTestId('launch-panel')).toBeVisible();
+  await expect(page.getByTestId('create-name')).toBeVisible();
+  await expect(page.getByTestId('create-submit')).toBeVisible();
+  await expect(page.getByTestId('launch-loading')).toHaveCount(0);
+  await expect(page.getByTestId('launch-error')).toHaveCount(0);
+}
+
 // ── The flow ──────────────────────────────────────────────────────────────────────────────────
 
 test.use({ baseURL: PANEL_MFA_URL });
@@ -252,6 +264,7 @@ for (const size of SIZES) {
 
       await expect(page).toHaveURL(/\/launch$/);
       await expect(page.getByTestId('login-google')).toHaveCount(0);
+      await expectFirstBusinessForm(page);
       await settled(page);
       expect(await sidewaysScroll(page), `the launcher scrolls sideways at ${size.name}`).toEqual([]);
       await page.screenshot({ path: shot(`CLOSE-ACCOUNTS-F06-new-account-${size.name}`), fullPage: true });
@@ -329,6 +342,7 @@ for (const size of SIZES) {
       await page.getByTestId('mfa-submit').click();
 
       await expect(page).toHaveURL(/\/launch$/);
+      await expectFirstBusinessForm(page);
       expect((await sessionOf(page.request)).user?.id).toBe(accountOf(email)?.id);
       expect(errors).toEqual([]);
     });
