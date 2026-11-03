@@ -28,7 +28,7 @@ from django.utils import timezone
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 from live.context import OperationContext, Scope, system_context
-from live.errors import Conflict, InvalidPayload, NotFound, OperationError, PermissionDenied
+from live.errors import Conflict, InvalidPayload, NotFound, PermissionDenied
 from live.operations import AI, INTERNAL, operation
 from live.outbox import record_event
 from live.slugs import (
