@@ -46,7 +46,7 @@ from assistant import turn as gateway
 from assistant.schemas import Caller
 from base import navigation
 from base.operations import ACCOUNT_ROLE
-from base.surface import ACCOUNT, account_surface
+from base.surface import sells_nothing
 
 logger = logging.getLogger(__name__)
 
@@ -65,9 +65,11 @@ SYNONYMS = (
 #: The tool a how-to question («how do I…?», «¿cómo invito…?») is for (``relevant``'s ``howto``): the search in
 #: ERPlora's documentation, which then reaches it on being such a question, not only on being always offered.
 HOWTO = ("assistant.docs.search",)
-#: The panel's screen where each app's actions are done; the store's of billing are the store's (``screen``).
+#: The panel's screen where each app's actions are done; what is of the store is the store's (``screen``).
 SCREEN_OF_APP = {"hubs": "businesses", "accounts": "account", "billing": "billing", "apps": "store"}
-#: What billing does in the store: the catalogue, its promo codes and changing a plan.
+#: What is the store's, of billing and of the businesses: the catalogue, its promo codes, changing a plan and the plans
+#: on sale with their prices.
+STORE_APPS = frozenset({"billing", "hubs"})
 STORE_ENTITIES = frozenset({"store", "promo", "plan"})
 #: The panel's roles, as the assistant's QA names them (docs plan 2026-10-31 §4): every signed-in account has the one
 #: role ``account``. Who may act on a business is decided inside each operation, so an owner's tools and an
@@ -86,7 +88,7 @@ def screen(op: Operation) -> str:
     app, entity, _ = op.name.split(".")
     if app == "assistant":
         return ""
-    if app == "billing" and entity in STORE_ENTITIES:
+    if app in STORE_APPS and entity in STORE_ENTITIES:
         return "store"
     return SCREEN_OF_APP.get(app, "account")
 
@@ -96,11 +98,6 @@ def screen_name(key: str) -> str:
     if not key:
         return gettext("Help")
     return next(str(nav.label) for nav in navigation.NAVIGATION if nav.id == key)
-
-
-def sells_nothing(request: HttpRequest | None) -> bool:
-    """Whether ``request`` comes from where nothing is sold (the app's account surface, PLAN-SAAS §3.6 point 6)."""
-    return request is not None and hasattr(request, "session") and account_surface(request) == ACCOUNT
 
 
 def is_tool(op: Operation) -> bool:
@@ -209,14 +206,32 @@ def screens(ctx: OperationContext, request: HttpRequest | None = None) -> dict[s
         }
 
 
-def instructions(*, language: str, account: str, screens: dict[str, str], docs: bool = False) -> str:
+def nothing_sold_here(language: str) -> str:
+    """The rule of a turn where nothing is sold (PLAN-SAAS §3.6 point 6), with the sentences the panel paints there."""
+    with translation.override(language):
+        buy = gettext("To change your plan or add modules, go to erplora.com in your browser.")
+        pay = gettext("To pay it, go to erplora.com in your browser.")
+    return (
+        "\n- FIRST RULE: this account is open inside ERPlora's app, where nothing is sold or charged. For any question "
+        "about buying or changing a plan, prices, modules, promo codes or coupons, paying or the card, even only how "
+        "they work and even if the documentation explains it, your whole answer is exactly this sentence, with nothing "
+        f"before or after it, no link and no screen: «{buy}» If it is about paying an unpaid invoice, exactly this one: "
+        f"«{pay}» Only looking at invoices and subscriptions and editing the fiscal details are done here."
+    )
+
+
+def instructions(
+    *, language: str, account: str, screens: dict[str, str], docs: bool = False, sells: bool = True
+) -> str:
     """The system message of every turn (the gateway's only one): who it serves, in which language, the rules of its
-    tools and money, and the screens it may link. ``docs``: the documentation search is among its tools."""
+    tools and money, and the screens it may link. ``docs``: the documentation search is among its tools; ``sells``:
+    this is not the app's account surface, where nothing is sold."""
     try:
         language_name = get_language_info(language)["name"]
     except KeyError:
         language_name = language
     links = "\n".join(f"- [{name}]({path})" for path, name in screens.items())
+    unsold = "" if sells else nothing_sold_here(language)
     how_to = (
         "- For how-to questions about ERPlora, search its documentation with `assistant__docs__search` and cite it.\n"
         if docs
@@ -224,7 +239,7 @@ def instructions(*, language: str, account: str, screens: dict[str, str], docs: 
     )
     return f"""You are the assistant of erplora.com's panel for the account «{account}»: its businesses, what it pays
 ERPlora and its account. Answer in {language_name}, short and plain. Use Markdown: bold, lists and tables.
-
+{unsold}
 - Only help with this account, its businesses as erplora.com manages them, and ERPlora. For anything that happens
   inside a business (sales, products, people on the till), say to open the business and ask its assistant there.
   To anything else, say kindly that you only help with ERPlora, in one sentence, and do not answer it.
@@ -236,7 +251,7 @@ ERPlora and its account. Answer in {language_name}, short and plain. Use Markdow
   in that currency with two decimals. Plan prices are net, VAT excluded.
 - When the person should go to a screen, link it with its path, only one of these:
 {links}
-- If something cannot be done from here (you have no tool for it), say on which screen it is done."""
+- If something {"" if sells else "else "}cannot be done from here (you have no tool for it), say on which screen it is done."""
 
 
 # ── What the tools wait on the network for, before the turn's transaction ───────────────────────────────────────

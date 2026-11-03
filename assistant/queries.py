@@ -37,6 +37,7 @@ from live.slugs import is_demo_slug, validate_hub_slug
 from pgvector.django import CosineDistance
 
 from assistant import media
+from base.surface import sells_nothing
 from assistant.models import AIModel, AIProvider, AIProviderCredential, AIRoutingPolicy, AssistantUsage, DocChunk
 from assistant.schemas import (
     Caller,
@@ -403,6 +404,13 @@ SEARCH_TIMEOUT = httpx.Timeout(connect=5.0, read=10.0, write=5.0, pool=5.0)
 QUESTION_MAX = 500
 
 
+#: The manuals that are about what ERPlora sells (paying, the store, the prices on the web): where nothing is sold they
+#: are not read, nor the plans (PLAN-SAAS §3.6 point 6). What they say of invoices has its tools and its screen there.
+SELLING_WORKBOOKS = tuple(
+    f"{app}/{name}" for app in ("billing", "apps", "public") for name in ("WORKBOOK.md", "WORKBOOK.en.md")
+)
+
+
 def docs_language(language: str) -> str:
     """The language of the documentation a person reads: Spanish for any Spanish, English for any other."""
     return "es" if media.base_language(language or "") == "es" else "en"
@@ -446,10 +454,17 @@ async def prepare_questions(questions: list[str]) -> None:
     await cache.aset_many(dict(zip(missing, vectors, strict=True)), QUESTION_CACHE_SECONDS)
 
 
-def nearest(vector: list[float], language: str, limit: int) -> list[DocChunk]:
+def nearest(vector: list[float], language: str, limit: int, *, sells: bool = True) -> list[DocChunk]:
+    """The ``limit`` excerpts of ``language`` nearest to ``vector``, exactly: the table has no approximate index, on
+    purpose (``DocChunk``), because the excerpts of a language behind 40 nearer ones of the other would be lost. Where
+    nothing is sold (``sells``), none of what only sells."""
+    excerpts = DocChunk.objects.filter(lang=language)
+    if not sells:
+        excerpts = excerpts.exclude(
+            Q(source=DocChunk.Source.PLANS) | Q(source=DocChunk.Source.WORKBOOK, path__in=SELLING_WORKBOOKS)
+        )
     return list(
-        DocChunk.objects.filter(lang=language)
-        .annotate(distance=CosineDistance("embedding", vector))
+        excerpts.annotate(distance=CosineDistance("embedding", vector))
         .order_by("distance", "path", "heading")[:limit]
     )
 
@@ -502,10 +517,12 @@ def docs_search(ctx: OperationContext, data: DocsSearchIn) -> dict:
                 status=503,
             )
     language = docs_language(ctx.language)
-    found = nearest(vector, language, data.limit)
+    sells = not sells_nothing(getattr(ctx, "request", None))
+    found = nearest(vector, language, data.limit, sells=sells)
     if language != "en" and sum(row.distance < CLOSE for row in found) < ENOUGH:
         found = sorted(
-            [*found, *nearest(vector, "en", data.limit)], key=lambda row: (row.distance, row.lang != language)
+            [*found, *nearest(vector, "en", data.limit, sells=sells)],
+            key=lambda row: (row.distance, row.lang != language),
         )[: data.limit]
     return {
         "results": [

@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:5a6c32050771d691308117d902f982783e97b54a9a942ca877a73ecddd0bf08c -->
+<!-- generated from WORKBOOK.md sha256:4e07c2cefade7905d74aa8ee150cfeebf84fccc6bfdd5c84e8009d443597bb23 -->
 
 ## What it is for and who uses it
 
@@ -19,8 +19,8 @@ Who uses it:
 - **ERPlora's staff**, in erplora.com's admin, with the AI gateway's permissions. The support group does not have
   them: the keys are ERPlora's spend.
 - The **Hub's assistant** of each business (and of each demo): it sends erplora.com each turn, its attachments, the
-  questions about how something is done in ERPlora (ASSISTANT-F28), the dictations and what is to be read aloud, and
-  shows the person what is left of the allowance.
+  questions about how something is done in ERPlora (ASSISTANT-F28) and the dictations, and shows the person what is
+  left of the allowance.
 - **ERPlora's staff**, in "Assistant usage records", see what each business spends and what it costs.
 - The **person with an account** at erplora.com, in the panel: opens the assistant with the "Assistant" button of the
   bar and asks it about their businesses, what they pay and their account (ASSISTANT-F25), with 30 messages a month
@@ -127,7 +127,7 @@ panel.
 | ASSISTANT-F11 | Know who calls and for which business | done |
 | ASSISTANT-F12 | Answer an assistant turn live | done |
 | ASSISTANT-F13 | Answer the same turn at once | done |
-| ASSISTANT-F14 | Use erplora.com's tools and the business's | partial |
+| ASSISTANT-F14 | Use erplora.com's tools and the business's | discarded |
 | ASSISTANT-F15 | Refuse a turn with its reason | done |
 | ASSISTANT-F16 | Stop a business that asks too much | done |
 | ASSISTANT-F17 | Do not keep the conversation | done |
@@ -314,7 +314,7 @@ Status: done
 Actor: the Hub's assistant of a business
 Screen: none
 Steps:
-1. When the Hub does not need to see the answer as it arrives (a task of the Hub itself, a message that is not painted), it sends the same turn as in ASSISTANT-F12 to the door that answers at once. That is how the «Ask the assistant» step of one of the business's automations arrives, with nobody in front: one more turn, with nothing that tells it from the chat.
+1. When the Hub does not need to see the answer as it arrives (a task of the Hub itself, a message that is not painted), it sends the same turn as in ASSISTANT-F12 to the door that answers at once. That is how the "Ask the assistant" step of one of the business's automations arrives, with nobody in front: one more turn, with nothing that tells it from the chat.
 2. erplora.com does the same as live: it prepares the conversation, takes the message from the allowance, calls the model (or its fallback) and runs its own tools.
 3. It sends back at once the whole answer, the tools the business has to run with their continuation pass, the consumption and the allowance left.
 In: the same as the live turn.
@@ -323,7 +323,7 @@ If it fails: the refusals before the model, the same as live; if the provider fa
 Involved: ASSISTANT-F12, ASSISTANT-F15, ASSISTANT-F18 and, in the Hub, FLOW-F39
 
 ### ASSISTANT-F14 Use erplora.com's tools and the business's
-Status: partial — the old product's web search and exchange rate between currencies come with the ERP stage; today erplora.com gives the date and the time
+Status: discarded — the old product's web search and exchange rate between currencies come with the ERP stage (saas#202); the business's tools and erplora.com's date and time do work
 Actor: the Hub's assistant of a business
 Screen: none
 Steps:
@@ -435,7 +435,7 @@ Status: done
 Actor: the Hub's assistant of a business
 Screen: none
 Steps:
-1. The person asks the assistant to read its answer; the Hub sends erplora.com the text and, if it wants, the voice (alloy, echo, fable, onyx, nova or shimmer).
+1. A Hub that wants to read an answer with erplora.com's voice sends it the text and, if it wants, the voice (alloy, echo, fable, onyx, nova or shimmer). Today's Hub does not ask for it: "Read aloud" uses the device's own voice.
 2. erplora.com asks the services' provider for the audio (at most the first 4,096 characters) and gives it back in MP3.
 3. The characters read are counted in the business's month; it spends no messages.
 In: the business, the text and the voice.
@@ -481,7 +481,7 @@ Steps:
 3. erplora.com offers the model the panel's tools this account may use (its businesses and their people, the plans, its invoices and subscriptions, its account, the catalogue of apps), first those of what was asked, and always the list of its businesses.
 4. A read the model asks for runs on its own, as the person themselves: it never sees a business that is not theirs.
 5. A change the model asks for stops at the card "Run this action?", which says what it will do, where (the panel's screen: "Businesses", "Billing", "Account" or "Store") and with which data, naming the business by its name; it is only done if the person presses "Run it", and "Cancel" changes nothing. Creating, deleting or changing the address of a business, offering it to someone else or cancelling its plan also ask to type "CONFIRM"; changing plan is not done from the chat but in the Store, which shows first what will be charged.
-6. With what the tools returned, the model answers live, piece by piece, in the person's language, and links the panel's screen where what it cannot do is done ("Go to Businesses"…); for what happens inside a business (sales, products, the people at the till) it says to open the business and ask its assistant. Under the answer stays what was done of each change ("Done: Create business in Businesses", "Not done, cancelled: …").
+6. With what the tools returned, the model answers live, piece by piece, in the person's language, and links the panel's screen where what it cannot do is done ("Go to Businesses"…); for what happens inside a business (sales, products, the people at the till) it says to open the business and ask its assistant. Under the answer stays what was done of each change ("Done: Create business in Businesses", "Not done, cancelled: …"). In the account opened from the app, where nothing is sold or charged, to what the person asks about plans, prices, modules, promo codes, payments or the card it answers, without a link, "To change your plan or add modules, go to erplora.com in your browser." (with an unpaid invoice, "To pay it, go to erplora.com in your browser."), even if the documentation explains it; looking at invoices and subscriptions and editing the fiscal details are done there.
 7. From 80 % of the month's messages, the panel's foot says how many are left and when they come back (see ASSISTANT-F26). The panel closes with ×, Escape, the veil or the same button; the device remembers whether it was left open, and the conversation is forgotten when the session is closed.
 In: the conversation (it lives in the person's browser), the tools the model asked for and the person's answer to its card.
 Out: what was done and its result, the card of the change that waits, the text as it arrives, the allowance left and the close; what each tool does leaves its own trace (`hubs.business.created`…), never the conversation.
@@ -509,10 +509,10 @@ Screen: none
 Steps:
 1. The person asks the panel's assistant how something is done in ERPlora or what a plan includes ("How do I invite someone to my business?", "What does the Starter plan include?").
 2. The assistant always has the documentation search at hand, next to the account's list of businesses, and uses it for how-to questions.
-3. erplora.com searches erplora.com's public help, the documentation of each app of the Hub that is in the store, the user part of the panel's manuals (the account, the businesses, billing, the store and the website) and the plans on sale with their prices and what each one includes.
+3. erplora.com searches erplora.com's public help, the documentation of each app of the Hub that is in the store, the user part of the panel's manuals (the account, the businesses, billing, the store and the website) and the plans on sale with their prices and what each one includes. In the account opened from the app it does not search the plans nor the manuals of billing, the store and the web.
 4. It returns up to 8 excerpts (12 at most, even if the model asks for more), the closest to the question, in the person's language; if fewer than three in their language really answer, the English ones join. Each excerpt says where it comes from and under which headings.
 5. The model answers with what those excerpts say and cites where they come from; a price or what a plan includes always comes from the plans on sale, never from memory.
-6. The documentation is brought up to date when ERPlora's team indexes it again: a change in the help, in a manual, in an app's documentation or in a plan reaches the assistant with the next run. It is not yet indexed again on its own every day.
+6. The documentation is brought up to date with each indexing run: a change in the help, in a manual, in an app's documentation or in a plan reaches the assistant with the next run.
 In: the question (up to 500 characters) and how many excerpts the model wants.
 Out: the excerpts with their source, where they come from, their headings, their text, their language and how close they are to the question; of the question only its fingerprint stays in the cache for a day (the same question again is not computed anew).
 If it fails: without the provider of the fingerprints configured, or if it fails, the search answers that the documentation cannot be searched now and the model tells the person; an account without the permission to ask the assistant does not search; while the documentation has not been indexed, it finds nothing and the model says it does not know instead of making it up.

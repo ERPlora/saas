@@ -132,6 +132,14 @@ class TestReadingAloud:
 
         assert len(fake_provider.requests[0].body["input"]) == media.MAX_SPEECH_CHARS
 
+    def test_at_most_the_first_4096_characters_are_read(self, client, internal, business, answering, fake_provider):
+        """The number the manual gives (ASSISTANT-F22, step 2): the test above follows the constant, this one pins it."""
+        fake_provider.reply("POST", "/v1/audio/speech", body=MP3)
+
+        door(client, SYNTHESIZE, {"hub": business.slug, "text": "a" * 5000})
+
+        assert len(fake_provider.requests[0].body["input"]) == 4096
+
     def test_the_characters_read_are_counted(self, client, internal, business, answering, fake_provider):
         fake_provider.reply("POST", "/v1/audio/speech", body=MP3)
 

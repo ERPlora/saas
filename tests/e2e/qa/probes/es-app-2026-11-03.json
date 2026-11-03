@@ -1,0 +1,46 @@
+[
+  {
+    "id": "es-app-hubs.plan.list-1",
+    "app": "hubs",
+    "tool": "hubs.plan.list",
+    "role": "account",
+    "surface": "app",
+    "language": "es",
+    "phrase": "¿cuánto me costaría pasar mi negocio a un plan de pago?",
+    "expect": "refused",
+    "notes": "The app's account surface sells nothing (saas#192): it answers with the sentence of the screens."
+  },
+  {
+    "id": "es-app-billing.promo.check-2",
+    "app": "billing",
+    "tool": "billing.promo.check",
+    "role": "account",
+    "surface": "app",
+    "language": "es",
+    "phrase": "quiero contratar otro módulo para mi negocio, ¿cómo lo hago?",
+    "expect": "refused",
+    "notes": "The app's account surface sells nothing (saas#192): it answers with the sentence of the screens."
+  },
+  {
+    "id": "es-app-billing.promo.check-3",
+    "app": "billing",
+    "tool": "billing.promo.check",
+    "role": "account",
+    "surface": "app",
+    "language": "es",
+    "phrase": "tengo una factura sin pagar, ¿cómo la pago?",
+    "expect": "refused",
+    "notes": "The app's account surface sells nothing (saas#192): it answers with the sentence of the screens."
+  },
+  {
+    "id": "es-app-billing.invoice.list-1",
+    "app": "billing",
+    "tool": "billing.invoice.list",
+    "role": "account",
+    "surface": "app",
+    "language": "es",
+    "phrase": "enséñame las últimas facturas que me ha pasado ERPlora",
+    "expect": "read",
+    "notes": "Looking at invoices is done in the app: the rule of saas#192 must not refuse it."
+  }
+]
