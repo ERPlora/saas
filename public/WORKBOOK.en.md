@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:31438a314430ba2d18786b196d3f787c2d1a3b7396842c50fde9ff95572c9c26 -->
+<!-- generated from WORKBOOK.md sha256:55030f72b0bd5e20f0bd20f7214a7033288ef5239e278e5d92cb0817ecfc341c -->
 
 ## What it is for and who it is for
 
@@ -264,8 +264,8 @@ Steps:
 3. The table of what one would pay separately lists only functions the apps cover and its total is the sum of its rows.
 In: nothing; the pages' text, checked against the product's apps.
 Out: nothing saved.
-If it fails: accounting, payroll, support tickets, TicketBAI, the 303, 390 and 347 tax returns, warehouses with lots and expiry dates and bank reconciliation are not advertised, because no app does them; the industries strip names the businesses served today (hospitality, retail, hair and beauty, professional services). The comparisons with other products may name what those do.
-Involved: none
+If it fails: accounting, payroll, support tickets, TicketBAI, the 303, 390 and 347 tax returns, warehouses with lots and expiry dates and bank reconciliation are not advertised, because no app does them; nor is an own domain, because no business can connect theirs yet (HUBS-F17, saas#195): neither the plans' cards nor their descriptions, Plans and prices or the terms of use name it; the industries strip names the businesses served today (hospitality, retail, hair and beauty, professional services). The comparisons with other products may name what those do.
+Involved: hubs (the copy of each plan; HUBS-F17)
 
 ### PUBLIC-F08 Read what the web says about security, data and availability
 Status: done

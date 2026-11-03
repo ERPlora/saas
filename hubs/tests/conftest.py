@@ -55,7 +55,8 @@ def make_user(db):
 
 def put_the_catalogue_back():
     """The plans the migrations leave (``hubs/0013``, the module caps of ``hubs/0019``, the paid cards of
-    ``hubs/0020`` and the cards on sale of ``hubs/0021``; pytest builds its database by running them). A
+    ``hubs/0020``, the cards on sale of ``hubs/0021`` and Standard's card without the custom domain of ``hubs/0026``;
+    pytest builds its database by running them). A
     transactional test starts from a database the one before flushed: there the data migrations that write them run
     again, in their order."""
     from importlib import import_module
@@ -69,6 +70,7 @@ def put_the_catalogue_back():
         import_module("hubs.migrations.0019_plan_max_apps").give_module_caps(apps, None)
         import_module("hubs.migrations.0020_paid_plan_copy").describe_what_the_plans_give(apps, None)
         import_module("hubs.migrations.0021_plan_copy_on_sale").describe_the_cards_on_sale(apps, None)
+        import_module("hubs.migrations.0026_no_custom_domain_on_sale").stop_selling_the_custom_domain(apps, None)
 
 
 @pytest.fixture
