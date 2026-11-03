@@ -17,11 +17,14 @@ import { execFileSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { readMails } from '@erplora/ui/testing/mail';
 import type { Locator, Page } from '@playwright/test';
 
 import { NEW_BUSINESS, type Provider, startProvider } from '../assistant-provider';
 import { djangoEnv } from '../django-env';
-import { expect, settled, shot, sidewaysScroll, signIn, test, watchPageErrors } from './fixtures';
+
+import { expect, settled, shot, sidewaysScroll, signIn, test, waitForMail, watchPageErrors } from './fixtures';
+import { PANEL_MAIL_DIR } from './project';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const PASSWORD = process.env.QA_PANEL_PASSWORD ?? 'e2e-panel';
@@ -49,6 +52,8 @@ const WORDS = {
     footerSpent: /^Has usado los 2 mensajes de este mes\. Se renuevan el 1 de \p{L}+\.$/u,
     third: '¿Cuánto pago al mes?',
     spent: 'Has usado todos los mensajes del asistente de este mes (2 de 2).',
+    spentMail: /Has usado los 2 mensajes con el asistente de este mes\./,
+    spentSubject: 'Has usado los mensajes del asistente de este mes',
     elsewhere: 'Cada negocio tiene su propio asistente, con sus propios mensajes: abre el negocio para seguir preguntando allí.',
     upgrade: /mejorar|plan/i,
     cancel: `Cancela el plan de ${BUSINESS}`,
@@ -77,6 +82,8 @@ const WORDS = {
     footerSpent: /^You have used all 2 messages of this month\. They renew on \p{L}+ 1\.$/u,
     third: 'How much do I pay a month?',
     spent: "You have used all the assistant's messages of this month (2 of 2).",
+    spentMail: /You have used all 2 messages with the assistant this month\./,
+    spentSubject: "You have used this month's messages with the assistant",
     elsewhere: 'Each business has its own assistant, with its own messages: open the business to keep asking there.',
     upgrade: /upgrade|plan/i,
     cancel: `Cancel the plan of ${BUSINESS}`,
@@ -169,6 +176,8 @@ for (const language of ['es', 'en'] as const) {
   }) => {
     seed('panel', language);
     await signIn(page.request, OWNER);
+    // From here on (the sign-in mails its code before), the only mail to the account is the month's last message's.
+    const since = Date.now();
     const errors = watchPageErrors(page);
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/dashboard/businesses');
@@ -233,6 +242,11 @@ for (const language of ['es', 'en'] as const) {
     await expect(failure).toContainText(words.elsewhere);
     await expect(failure).not.toContainText(words.upgrade);
     await expect(page.getByTestId('assistant-upgrade')).toHaveCount(0);
+    // ASSISTANT-F29: the month's last message mailed the account, in its language, once: the refused third one
+    // mails nothing more (at 1 of 2 there was no «messages left» mail: under 80 %).
+    await waitForMail(OWNER.email, since, words.spentMail);
+    const mailed = readMails(PANEL_MAIL_DIR).filter((mail) => mail.writtenAt >= since && mail.to.includes(OWNER.email));
+    expect(mailed.map((mail) => mail.subject)).toEqual([words.spentSubject]);
 
     // The same conversation at the three sizes: docked from 768 px, over a veil on a phone.
     await atEachSize(page, 'spent', language, failure);

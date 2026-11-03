@@ -238,7 +238,7 @@ test("ACCOUNTS-G115 (F23): «Business notices» is the one switch, kept after a 
   const mails = page.getByTestId("preferences-mails");
   await expect(mails).toContainText("Security, invoices and payments");
   await expect(mails).toContainText(
-    "Always on: sign-in codes, security notices, invoices, payments and anything that needs you to act.",
+    "Always on: sign-in codes, security notices, invoices, payments, the messages you have left with the assistant and anything that needs you to act.",
   );
   await expect(mails.locator("ion-toggle")).toHaveCount(2);
   await expect(page.getByTestId("preferences-invoices")).toHaveJSProperty(

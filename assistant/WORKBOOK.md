@@ -1,7 +1,7 @@
 # Workbook — Asistente de IA (assistant)
 Prefijo: ASSISTANT
 Alcance MVP: fase 1 (la pasarela de IA de erplora.com: los proveedores que paga ERPlora, sus claves cifradas, sus modelos y qué modelo contesta; el turno del asistente de cada negocio con sus herramientas y sus adjuntos, el cupo de mensajes de su plan, las huellas de su índice, el dictado y la lectura en voz alta, las denuncias de una respuesta y lo que gasta cada negocio; el asistente del panel de erplora.com para cada cuenta, con las herramientas del panel, su dictado y su propio cupo)
-Estado de la app: en uso (uno sin hacer: ASSISTANT-F29, el aviso por correo de que se acaban los mensajes del panel)
+Estado de la app: completa (2026-11-03)
 
 > Manual de uso y especificación de la app `assistant` del SaaS (erplora.com). Cuenta lo que hace el personal de
 > ERPlora para que el asistente de IA conteste (dar de alta un proveedor de modelos y su clave, elegir sus modelos,
@@ -179,7 +179,7 @@ negocio, ofrecerlo a otro o cancelar su plan piden además escribir «CONFIRMAR�
 | ASSISTANT-F26 | Contar los mensajes de una cuenta con el asistente del panel | hecho |
 | ASSISTANT-F27 | Buscar en la documentación desde el panel | hecho |
 | ASSISTANT-F28 | Buscar en la documentación desde el Hub | hecho |
-| ASSISTANT-F29 | Avisar por correo a una cuenta de que se le acaban los mensajes del asistente del panel | no hecho |
+| ASSISTANT-F29 | Avisar por correo a una cuenta de que se le acaban los mensajes del asistente del panel | hecho |
 
 ### ASSISTANT-F01 Dar de alta un proveedor de IA
 <!-- origen: fi:saas/support/auth-services#modelo-aiprovider fi:saas/django-admin#admin-aiprovider old-saas:SAAS_ASSISTANT-F22 -->
@@ -601,7 +601,7 @@ Implicados: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F27
 
 ### ASSISTANT-F29 Avisar por correo a una cuenta de que se le acaban los mensajes del asistente del panel
 <!-- origen: nuevo (PLAN-SAAS §23 y §29; gh:saas#204; avisan al acercarse al tope y otra vez al llegar: ver «Referencia adoptada») -->
-Estado: no hecho — falta mandar los dos correos al gastar los mensajes, la marca de que ya salieron ese mes, sus textos en inglés y español y que cuenten entre los correos siempre activos de ACCOUNTS-F23; hoy solo lo dice el pie del panel (ASSISTANT-F25)
+Estado: hecho
 Actor: la persona con cuenta en erplora.com
 Pantalla: ninguna
 Pasos:
@@ -763,13 +763,17 @@ propio texto por `code`.
 - **Cupo por cuenta**: `Caller(user_id=…)`, una fila `AssistantUsage(user, month)` (check «negocio, demo o cuenta»,
   única por cuenta y mes; migración `0003_account_usage`, que al volver atrás borra las filas de cuentas),
   `ASSISTANT_ACCOUNT_MESSAGES` (30).
-- **El aviso por correo de los mensajes** (ASSISTANT-F29, sin hacer, saas#204), lo que falta: `assistant/emails.py` con
-  `branded_message`, como `_send` de `hubs/emails.py` (try/except, log y si salió); dos columnas nulas en
-  `AssistantUsage` (migración reversible); en `message_claim`, solo con `data.user_id`, coger la marca con
-  `UPDATE … WHERE <columna> IS NULL`, evento `assistant.usage.warned` en la misma transacción y envío con
-  `transaction.on_commit(partial(…), robust=True)`, que limpia la marca si no sale; también cuando `claimed` es falso,
-  para que el reintento alcance al último. El umbral es el de `usageNote` de `@erplora/ui` (`NOTE_FROM`, 0,8). El e2e
-  fija `ASSISTANT_ACCOUNT_MESSAGES=2`: ahí solo sale el del 100 %.
+- **El aviso por correo de los mensajes** (ASSISTANT-F29, saas#204): `assistant/emails.py` (`send_messages_near` y
+  `send_messages_spent`, con `branded_message`; un correo que no sale se registra como `assistant.mail.not_sent` y
+  devuelve `False`, nunca lanza). Las marcas son dos columnas nulas de la fila de la cuenta, `near_warned_at` y
+  `spent_warned_at` (migración `0006_account_quota_mails`, que al volver atrás solo las quita). `message_claim`, solo
+  con `data.user_id` y también cuando `claimed` es falso (para que el reintento alcance al último), llama a
+  `_warn_the_account`: `_warning_due` da `spent` con el cupo gastado y `near` desde `NEAR_FROM` (4/5, el `NOTE_FROM` de
+  `usageNote` de `@erplora/ui`), coge la marca con `UPDATE … WHERE <marca> IS NULL` (dos turnos a la vez: uno la
+  coge), escribe `assistant.usage.warned` en la misma transacción y manda el correo con
+  `transaction.on_commit(partial(_mail_the_warning, …), robust=True)`, que suelta su propia marca si no sale. El e2e
+  fija `ASSISTANT_ACCOUNT_MESSAGES=2`: ahí solo sale el del 100 %, a la carpeta de correos del e2e, y
+  `assistant-panel.spec.ts` comprueba que sale una sola vez y en el idioma de la cuenta.
 - **El chat** (`assistant/frontend/`): el del Hub, de `@erplora/ui/components` (`AssistantPanel`, `AssistantButton`,
   `AssistantEmpty`), configurado en `options.ts` (`SAAS_ASSISTANT`: turno en `/api/assistant/turn`, sin `?surface=`,
   que el servidor lee de la sesión; cupo, denuncia y dictado por `base.assistant.usage|report|transcribe`; `canUse` =
@@ -781,7 +785,8 @@ propio texto por `code`.
   plan, es `spentNoteKey: 'saas.assistant.errors.quotaSpentAccount'` de `SAAS_ASSISTANT` (opción del paquete, ui#49),
   y las palabras del chat (`assistant.*`) van tal cual.
 - **Tests**: `base/tests/test_assistant_turn.py`, `base/tests/test_api_assistant.py`,
-  `assistant/tests/test_account_quota.py`, `test_admin_usage.py` (la cuenta en el admin) y `test_privacy.py` (la ruta
+  `assistant/tests/test_account_quota.py`, `test_emails.py` (ASSISTANT-F29, también por la ruta del panel y con dos
+  turnos a la vez), `test_admin_usage.py` (la cuenta en el admin) y `test_privacy.py` (la ruta
   del panel no guarda la conversación); Vitest de `assistant/frontend/` y `frontend/main.test.ts`; e2e
   `tests/e2e/panel/assistant-panel.spec.ts` (proveedor `tests/e2e/assistant-provider.ts`, siembra
   `assistant_seed.py panel`, `ASSISTANT_ACCOUNT_MESSAGES=2` en `panel/project.ts`).
@@ -848,8 +853,6 @@ propio texto por `code`.
 ## Lo que queda fuera
 
 - **Buscar en la web y el tipo de cambio entre monedas** (ASSISTANT-F14): llegan con la etapa ERP — saas#202.
-- **Una cuenta no recibe ningún correo cuando se le acaban los mensajes del asistente del panel** (ASSISTANT-F29) —
-  saas#204.
 
 ## Lo que NO hace, a propósito
 
