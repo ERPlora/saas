@@ -293,9 +293,10 @@ class EmbeddingsIn(CallerIn):
         return texts
 
 
-class TranscribeIn(CallerIn):
+class DictationIn(Schema):
     """A dictation: its audio in base64, its type (``audio/webm``, ``audio/ogg``, ``audio/wav``, ``audio/mp4``,
-    ``audio/mpeg`` or ``audio/flac``) and, if the Hub knows it, its language (``es`` or ``es-ES``)."""
+    ``audio/mpeg`` or ``audio/flac``) and, if the caller knows it, its language (``es`` or ``es-ES``). The audio has no
+    length here: past ``media.MAX_AUDIO_BYTES`` it is a 413, not a 422 (``assistant.internal.dictation``)."""
 
     audio: str = Field(min_length=1)
     mime_type: str
@@ -310,6 +311,10 @@ class TranscribeIn(CallerIn):
         if kind not in AUDIO_TYPES:
             raise ValueError(f"one of {', '.join(sorted(AUDIO_TYPES))}")
         return kind
+
+
+class TranscribeIn(CallerIn, DictationIn):
+    """A dictation the Hub sends for a business."""
 
 
 class SynthesizeIn(CallerIn):

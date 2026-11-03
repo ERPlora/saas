@@ -124,10 +124,13 @@ async function confirm(): Promise<void> {
             proration_date: preview.proration_date,
             promo_code: props.promoCode,
           });
+    const waiting = subscription.scheduled_change;
     void toastSuccess(
       item.kind === 'module'
         ? t('billing.modules.added', { module: item.name, business: props.business.name })
-        : t('billing.plans.changed', { business: props.business.name, plan: item.name }),
+        : waiting
+          ? t('billing.plans.changeScheduled', { business: props.business.name, plan: item.name, date: formatDate(waiting.starts_at, locale.value) })
+          : t('billing.plans.changed', { business: props.business.name, plan: item.name }),
     );
     emit('done', subscription);
     open.value = false;

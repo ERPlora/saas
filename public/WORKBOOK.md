@@ -465,7 +465,7 @@ Pasos:
 3. Los términos dan los números que el producto cumple: los días del paquete de salida, los días que espera un negocio suspendido antes de borrarse y la prueba de los planes a la venta (ninguna si ninguno la tiene).
 Entra: los planes a la venta (los términos).
 Sale: nada guardado.
-Si falla: ningún texto nombra un proveedor que ya no se usa ni otro alojamiento, ni calla a quién va el audio de un dictado, ni promete para él residencia en la UE o un plazo de conservación, ni un consentimiento o un interruptor del asistente que el hub no tiene (el asistente se usa cuando alguien del hub le escribe o le dicta, con los mensajes que dé el plan), y ningún enlace entre textos lleva a una página que no existe.
+Si falla: ningún texto nombra un proveedor que ya no se usa ni otro alojamiento, ni calla a quién va el audio de un dictado, ni promete para él residencia en la UE o un plazo de conservación, ni un consentimiento o un interruptor del asistente que el hub no tiene (el asistente se usa cuando alguien le escribe o le dicta: en el hub, con los mensajes que dé el plan; en el panel de erplora.com, con los de la cuenta), y ningún enlace entre textos lleva a una página que no existe.
 Implicados: hubs (los planes)
 
 ### PUBLIC-F21 Consultar la declaración responsable del sistema de facturación
@@ -778,8 +778,8 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   del asistente (`assistant/media.py`: `whisper-1`, `tts-1` y `text-embedding-3-small`) van al proveedor de
   `ASSISTANT_SERVICE_PROVIDER`, la API de OpenAI en `api.openai.com` por defecto, sin residencia en la UE por contrato.
   Cambiarlo es cambiar en la misma entrega §5 y §6 de la privacidad, la respuesta «storage» de `/pricing/` y la celda
-  del asistente de la portada (`test_legal.py`, `test_product.py` y `test_landing.py`, en `en` y `es`). El Hub solo usa
-  hoy el dictado (`base.assistant.transcribe`); «Leer en voz alta» lee con la voz del dispositivo.
+  del asistente de la portada (`test_legal.py`, `test_product.py` y `test_landing.py`, en `en` y `es`). El Hub y el
+  panel solo usan hoy el dictado (`base.assistant.transcribe`, cada uno el suyo); «Leer en voz alta» lee con la voz del dispositivo.
 - Cumplimiento (F09): `hubs.countries.COUNTRY_NAMES` tiene que casar con `hubs.schemas.COUNTRIES` (lo exige un test);
   `FISCAL_SYSTEMS` dice qué sistema fiscal conecta cada país, hoy solo VeriFactu en España. Un país nuevo conectado
   se añade ahí con su app, en la misma entrega.

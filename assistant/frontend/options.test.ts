@@ -1,6 +1,6 @@
 // The panel's configuration of the shared assistant (`options.ts`, plan 2026-10-30-asistente-saas §6): the same chat as
 // the Hub's, wired to the SaaS's own routes and operations (base/api.py), the account's words for its writes and its
-// screens, no microphone (D9) and nobody upgrading (an account has no plan for its 30 messages).
+// screens, its dictation (ASSISTANT-F21) and nobody upgrading (an account has no plan for its 30 messages).
 // clock: data only — no code under test compares these dates with now.
 import { createShellSession, type SessionMe } from '@erplora/ui/shell';
 import type { LiveClient } from '@erplora/ui/sdk';
@@ -71,8 +71,13 @@ describe('SAAS_ASSISTANT', () => {
     expect(call).toHaveBeenCalledWith('base.assistant.report', report);
   });
 
-  it('has no microphone: the voice stays out of the panel (D9)', () => {
-    expect(SAAS_ASSISTANT.transcribe).toBeUndefined();
+  it('dictates with base.assistant.transcribe: the microphone shows because the host transcribes', async () => {
+    const words = { text: 'Dos negocios', language: 'es' };
+    const { client, call } = clientAnswering(words);
+    const clip = { audio: 'GkXfow==', mime_type: 'audio/webm', language: 'es' };
+
+    expect(await SAAS_ASSISTANT.transcribe!(client, clip)).toEqual(words);
+    expect(call).toHaveBeenCalledWith('base.assistant.transcribe', clip);
   });
 
   it('shows the button to whoever may ask the assistant (assistant.ask), to nobody else', () => {
