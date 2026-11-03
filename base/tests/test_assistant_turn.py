@@ -609,6 +609,7 @@ class TestANoIsAnAnswer:
         assert "card is closed" in said
         assert "nothing was done" in said
         assert not said.startswith("Not confirmed")
+        assert "nothing left to confirm" not in said, "read as all confirmed: the model answered «Switched to dark mode»"
 
     def test_the_same_write_asked_again_after_a_no_shows_no_second_card(self, signed_in, account, answering, fake_provider):
         again = self.asked_again()
