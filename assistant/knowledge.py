@@ -16,6 +16,7 @@ cut into the excerpts ``assistant.docs.search`` returns and ``index_docs`` keeps
 Nothing here touches the database: the catalogue and the plans are read through their operations.
 """
 
+import hashlib
 import re
 from collections.abc import Callable
 from dataclasses import dataclass, replace
@@ -186,6 +187,26 @@ def user_part(text: str, where: str) -> str:
     if start is None or (end is not None and start >= end):
         return ""
     return "\n".join(lines[start:end])
+
+
+def en_header(spanish: str, where: str) -> str:
+    """The first line of the ``WORKBOOK.en.md`` translated from the WORKBOOK ``spanish``: the sha256 of its customer's
+    part, without the comments on a line of their own nor the blank lines they would double.
+
+    The same bytes as ``en_header(source_hash(user_part(…)))`` of the Hub's ``base.catalog`` for those comments outside
+    a code block, the only ones a WORKBOOK has. On the others they part: one inside a line or over several counts here
+    and not in the Hub; one alone on its line of a code block counts in the Hub and not here.
+    """
+    kept: list[str] = []
+    doubled = False
+    for line in user_part(spanish, where).split("\n"):
+        if _COMMENT.fullmatch(line.strip()):
+            doubled = not kept[-1].strip()
+        elif line.strip() or not doubled:
+            kept.append(line)
+            doubled = False
+    digest = hashlib.sha256(("\n".join(kept).strip() + "\n").encode()).hexdigest()
+    return f"<!-- generated from WORKBOOK.md sha256:{digest} -->"
 
 
 def workbook_chunks(root: Path) -> list[Chunk]:

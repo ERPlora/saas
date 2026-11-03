@@ -16,7 +16,7 @@ change of the people of a business is told to its owner and admins (``notify_peo
 import logging
 from collections import Counter
 from contextlib import contextmanager
-from datetime import date, timedelta
+from datetime import UTC, date, timedelta
 from functools import partial
 from uuid import UUID
 
@@ -89,6 +89,8 @@ from hubs.schemas import (
     RemovedOut,
     SubscriptionApplyIn,
     SubscriptionApplyOut,
+    UsagePruneIn,
+    UsagePruneOut,
     UsageRecordIn,
     UsageRecordOut,
     postal_code_problem,
@@ -2368,6 +2370,11 @@ USAGE_FIGURES = (
 )
 #: Counts that make ``collect_hub_usage`` end with an error, after its whole pass.
 USAGE_FAILING_COUNTS = ("unreachable", "refused", "invalid", "failed")
+#: Days a day of usage is kept: about 13 months, so that a day can be compared with the same day of the year before.
+#: The old product's ``DAILY_USAGE_RETENTION_DAYS``, and in the market's range for metrics: Grafana Cloud and New Relic
+#: keep 13 months, Google Analytics 14, CloudWatch and Datadog 15. It has to outlast the longest window
+#: ``hubs.usage.series`` reads (``UsageSeriesIn``, 365 days), and a test holds the two together.
+USAGE_RETENTION_DAYS = 400
 
 
 @operation(
@@ -2398,6 +2405,38 @@ def usage_record(ctx: OperationContext, data: UsageRecordIn) -> dict:
             HubUsageDaily.objects.filter(pk=sample.pk).update(**figures, collected_at=timezone.now())
         notify_people(ctx, events.BUSINESS_USAGE_COLLECTED, data.id)
     return {"id": data.id, "day": data.day, "changed": changed}
+
+
+@operation(
+    "hubs.usage.prune",
+    kind="command",
+    permission="hubs.manage",
+    input=UsagePruneIn,
+    output=UsagePruneOut,
+    ai=INTERNAL,  # scheduled
+)
+def usage_prune(ctx: OperationContext, data: UsagePruneIn) -> dict:
+    """Forget the days of usage past ``USAGE_RETENTION_DAYS``, of every business (HUBS-F22; ``collect_hub_usage``, at
+    the end of its pass); only the platform runs it. The day right on the limit stays, and with nothing to forget
+    nothing is recorded."""
+    if ctx.actor != "system":
+        raise PermissionDenied(_("Only the platform forgets the usage of a business."), code="internal_command")
+    before = timezone.now().astimezone(UTC).date() - timedelta(days=USAGE_RETENTION_DAYS)
+    deleted = HubUsageDaily.objects.filter(day__lt=before).delete()[0]
+    if deleted:
+        record_event(ctx, events.USAGE_PRUNED, {"before": before.isoformat(), "deleted": deleted})
+    return {"before": before, "deleted": deleted}
+
+
+def prune_usage() -> UsagePruneOut | None:
+    """The end of a pass of ``collect_hub_usage``: ``hubs.usage.prune``, or ``None`` when it failed (logged). What the
+    pass collected is already saved and said, so a failure here never takes its place: the run ends with an error
+    after it."""
+    try:
+        return usage_prune(system_context(Scope("user", "system")), UsagePruneIn())
+    except Exception:  # noqa: BLE001 - the collection is done; the run fails after saying it
+        logger.exception("hubs.usage.prune_failed")
+        return None
 
 
 def usage_run_failed(counts: Counter) -> bool:

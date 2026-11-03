@@ -16,6 +16,9 @@ BUSINESS_HUB_ERROR_CHANGED = "hubs.business.hub_error_changed"
 #: nightly; lot L4-A): recorded on the channel of its owner and of each admin (``notify_people``), who see
 #: its page. Payload ``{"business_id"}``.
 BUSINESS_USAGE_COLLECTED = "hubs.business.usage_collected"
+#: Days of usage past their retention were forgotten, of every business (``hubs.usage.prune``, at the end of
+#: ``collect_hub_usage``; HUBS-F22). No page re-runs: none reads those days. Payload ``{"before", "deleted"}``.
+USAGE_PRUNED = "hubs.usage.pruned"
 
 BUSINESS = [
     BUSINESS_CREATED,
@@ -73,4 +76,5 @@ ALL = [
     *PEOPLE,
     # Not in ``BUSINESS``: a night's figures change the page and the usage, never the list of businesses.
     BUSINESS_USAGE_COLLECTED,
+    USAGE_PRUNED,
 ]
