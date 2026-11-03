@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:92245aa0c4493515e21de25198f7c5eb2ea58e1933c8079db4da6dd63fbcd5e4 -->
+<!-- generated from WORKBOOK.md sha256:f0e8f569330253cdc6f15e168ecd70405fd0a87fc41500a5c240fc8f7b0f7a48 -->
 
 ## What it is for and who uses it
 
@@ -23,8 +23,8 @@ Who uses it:
   left of the allowance.
 - **ERPlora's staff**, in "Assistant usage records", see what each business spends and what it costs.
 - The **person with an account** at erplora.com, in the panel: opens the assistant with the "Assistant" button of the
-  bar and asks it about their businesses, what they pay and their account (ASSISTANT-F25), with 30 messages a month
-  (ASSISTANT-F26).
+  bar and asks or dictates to it (ASSISTANT-F21) about their businesses, what they pay and their account
+  (ASSISTANT-F25), with 30 messages a month (ASSISTANT-F26).
 
 ## Adopted reference
 
@@ -110,10 +110,10 @@ invoices or your account." and three shortcuts ("Which businesses do I have?", "
 I create a business?"); with one, the person's bubbles and the answers, with "Go to …" for the panel's screens they
 name, what was done under each change ("Done: …", "Not done, cancelled: …"), "Read aloud" (the device's own voice) and
 "Report a problem". At the bottom, the notice of how many messages are left (from 80 % of the month), the clip to
-attach and the box "Write a message…" with "Send" ("Stop" while it answers). A change the model asks for opens the card
+attach, the microphone "Dictate by voice" ("Stop recording" while it records; it spins while it transcribes) and the
+box "Write a message…" with "Send" ("Stop" while it answers). A change the model asks for opens the card
 "Run this action?" on top, with "Cancel" and "Run it"; creating, deleting or changing the address of a business,
-offering it to someone else or cancelling its plan also ask to type "CONFIRM". No microphone: dictation is not in the
-panel.
+offering it to someone else or cancelling its plan also ask to type "CONFIRM".
 
 ## States of each screen
 
@@ -121,7 +121,7 @@ panel.
 |---|---|
 | Loading | The normal loading of an admin page; when trying a model, "Sending…" and the "Send" button off until it ends ("Done."). In the panel's assistant, the bubble "The assistant is writing" until the first word and "Stop" instead of "Send". |
 | Empty | "0 AI providers" and the empty list; in "Assistant usage records", "0 assistant usage records" until a business's first message; a provider without a key says "No key"; without models that can answer, "No model can answer yet: add a provider with its key and choose its models." In the panel's assistant, "Ask me about your businesses, your invoices or your account." with its three shortcuts. |
-| Error | In "Choose models from the provider", the reason in red: "This provider has no active key: add one on its page and try again.", "The provider did not give its models: …" or "The provider listed no chat models."; on the pages, the error in red next to the field: "Use an https address: the provider's key travels to it.", "Type the provider's key.", "The key of the credentials is not configured: no provider key can be kept."; when trying a model, in red: "The model did not answer: …", "Too many tries in a minute: wait a moment and try again." or "The try could not be sent: check the connection and try again.". In the panel's assistant, under the question: "The assistant is not available right now. Try again in a few minutes." with "Try again"; with the month spent, "You have used all the assistant's messages of this month (30 of 30). They renew on …" and "Each business has its own assistant, with its own messages: open the business to keep asking there.", without "Upgrade plan"; without a connection, in the foot, "No connection: you can write, and send when it is back." |
+| Error | In "Choose models from the provider", the reason in red: "This provider has no active key: add one on its page and try again.", "The provider did not give its models: …" or "The provider listed no chat models."; on the pages, the error in red next to the field: "Use an https address: the provider's key travels to it.", "Type the provider's key.", "The key of the credentials is not configured: no provider key can be kept."; when trying a model, in red: "The model did not answer: …", "Too many tries in a minute: wait a moment and try again." or "The try could not be sent: check the connection and try again.". In the panel's assistant, under the question: "The assistant is not available right now. Try again in a few minutes." with "Try again"; with the month spent, "You have used all the assistant's messages of this month (30 of 30). They renew on …" and "Each business has its own assistant, with its own messages: open the business to keep asking there.", without "Upgrade plan"; without a connection, in the foot, "No connection: you can write, and send when it is back."; under the box, what stops a dictation: "Microphone access is blocked. Allow it in your browser to dictate.", "Nothing was heard. Try again closer to the microphone.", "The recording is too long: dictate a shorter message." or "The audio could not be transcribed. Try again." |
 | No permission | Without the gateway's permissions, the admin answers there is no permission; whoever may only look sees the pages without the "Key" field. "Assistant usage records" cannot be changed nor deleted, not even by a superuser. Without a session, the panel sends to sign in and there is no "Assistant" button; a session that ends mid-conversation says "Your session has ended. Sign in again to keep talking." with "Sign in again". |
 
 ## Flows
@@ -434,16 +434,16 @@ Involved: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F24
 
 ### ASSISTANT-F21 Transcribe a voice dictation
 Status: done
-Actor: the Hub's assistant of a business
-Screen: none
+Actor: the Hub's assistant of a business; the person with an account at erplora.com, in the panel's assistant
+Screen: Panel: Assistant
 Steps:
-1. The person dictates their question in the Hub; the Hub sends erplora.com the audio, its type (WebM, Ogg, WAV, MP4, MP3 or FLAC) and, if it knows it, the language.
-2. erplora.com passes it to the services' provider from memory, without writing it to disk, and gives back the text and the language.
-3. The dictation is counted in the business's month; it spends no messages (the message is spent by the turn sent with that text).
-In: the business, the audio, its type and its language.
+1. The person dictates their question in the Hub or in the assistant of erplora.com's panel: they press "Dictate by voice", the browser asks for the microphone if it does not have it yet, they speak and press "Stop recording". The Hub sends erplora.com the audio, its type (WebM, Ogg, WAV, MP4, MP3 or FLAC) and, if it knows it, the language; the panel sends the same with the account's session, without a signature.
+2. erplora.com passes it to the services' provider from memory, without writing it to disk, and gives back the text and the language. The text lands in the box, after whatever was written, for the person to read and send: a dictation is never sent by itself.
+3. The dictation is counted in the business's month or, in the panel, in the account's; it spends no messages (the message is spent by the turn sent with that text).
+In: the business or, in the panel, the session's account; the audio, its type and its language.
 Out: the dictated text and its language (`assistant.usage.recorded`).
-If it fails: an audio over 2 MB is refused as too big; empty, badly encoded or of another type, it is refused saying what fails; without the services' provider configured, that it is not configured; if the provider fails, a gateway error that says whether it is worth repeating. Neither the audio nor the text stay kept nor in a log.
-Involved: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F24
+If it fails: an audio over 2 MB is refused as too big; empty, badly encoded or of another type, it is refused saying what fails; without the services' provider configured, that it is not configured; if the provider fails, a gateway error that says whether it is worth repeating. Neither the audio nor the text stay kept nor in a log. In the panel, without a session there is no button and the request is refused; each account has the same maximum of 120 dictations an hour as a business; and what stops a dictation is said under the box, which stays as it was: a blocked microphone, where to allow it, recording nothing; a recording where nothing is heard, to try closer; too long, to dictate something shorter; and any refusal of the server (the hourly maximum and the provider included), that it could not be transcribed and to try again.
+Involved: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F24, ASSISTANT-F25, ASSISTANT-F26
 
 ### ASSISTANT-F22 Read an answer aloud
 Status: done
@@ -492,7 +492,7 @@ Actor: the person with an account at erplora.com
 Screen: Panel: Assistant
 Steps:
 1. The person, signed in to erplora.com's panel, presses "Assistant" at the end of the bar and the assistant's panel opens: beside the screen from 768 px, on top of it on a phone. Without a conversation, they see "Ask me about your businesses, your invoices or your account." with three shortcuts.
-2. They write to the assistant or press a shortcut ("Which businesses do I have?", "How much do I pay a month?", "How do I create a business?"); until the first word of the answer they see the bubble "The assistant is writing".
+2. They write to the assistant, dictate to it (see ASSISTANT-F21) or press a shortcut ("Which businesses do I have?", "How much do I pay a month?", "How do I create a business?"); until the first word of the answer they see the bubble "The assistant is writing".
 3. erplora.com offers the model the panel's tools this account may use (its businesses and their people, the plans, its invoices and subscriptions, its account, the catalogue of apps), first those of what was asked, and always the list of its businesses.
 4. A read the model asks for runs on its own, as the person themselves: it never sees a business that is not theirs.
 5. A change the model asks for stops at the card "Run this action?", which says what it will do, where (the panel's screen: "Businesses", "Billing", "Account" or "Store") and with which data, naming the business by its name; it is only done if the person presses "Run it", and "Cancel" changes nothing. Creating, deleting or changing the address of a business, offering it to someone else or cancelling its plan also ask to type "CONFIRM"; changing plan is not done from the chat but in the Store, which shows first what will be charged.
@@ -501,7 +501,7 @@ Steps:
 In: the conversation (it lives in the person's browser), the tools the model asked for and the person's answer to its card.
 Out: what was done and its result, the card of the change that waits, the text as it arrives, the allowance left and the close; what each tool does leaves its own trace (`hubs.business.created`…), never the conversation.
 If it fails: without a session, the panel sends to sign in and there is no "Assistant" button, and a session that ends mid-conversation asks to sign in again; with the month's allowance spent, the first notice is the allowance spent, with how many were used and when they come back, and that each business has its own assistant, without "Upgrade plan" (see ASSISTANT-F26); with too many turns in a row, it says to wait a moment; without a model that answers, that the assistant cannot answer now, with "Try again"; without a connection, the foot says so. A tool the account does not have, or that is not for the chat (downloading a file, creating an API key, opening the payment, entering a business), never runs. Without the word typed or with a "no", the change is not made and the model says so. Data the change does not take (a country ERPlora does not serve, a value outside its list) never reach the card: they go back to the model, which corrects them within the same question, and the person confirms only once. Where nothing is sold (the account opened from the installed app), neither the Store nor its plan changes are offered. Past six rounds of tools in a single question, it stops.
-Involved: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F23, ASSISTANT-F26, ASSISTANT-F29, HUBS-F01, HUBS-F09, BILLING-F13
+Involved: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F21, ASSISTANT-F23, ASSISTANT-F26, ASSISTANT-F29, HUBS-F01, HUBS-F09, BILLING-F13
 
 ### ASSISTANT-F26 Count an account's messages with the panel's assistant
 Status: done
@@ -509,13 +509,13 @@ Actor: the person with an account at erplora.com
 Screen: none
 Steps:
 1. Each account has 30 messages a month with the panel's assistant, whatever businesses it has and whatever their plans; each business's allowance is apart, its plan's in its Hub (see ASSISTANT-F18).
-2. Each message the person writes spends one when the turn starts, before calling the model; the return with the results of the tools the model asked for spends no other.
+2. Each message the person writes spends one when the turn starts, before calling the model; the return with the results of the tools the model asked for spends no other, nor does a dictation, which is only measured (see ASSISTANT-F21).
 3. If the turn does not answer anything (the provider fails, the person cuts), the message goes back to the month it was taken from.
 4. The panel asks how much is left (how many were used, out of how many and when they come back); the close of each turn brings the same figures. The allowance comes back on day 1 of each month at 00:00 UTC.
 In: the session's account.
 Out: the message taken or given back and what was spent in the account's month (`assistant.message.claimed`, `assistant.message.released`, `assistant.usage.recorded`, with the account).
 If it fails: with no free messages, the turn is refused with the allowance spent and the date they come back; there is no plan to go up nor loose packs. An account never spends its businesses' messages, nor a business its account's; deleting the account deletes its rows.
-Involved: ASSISTANT-F18, ASSISTANT-F24, ASSISTANT-F25, ASSISTANT-F29
+Involved: ASSISTANT-F18, ASSISTANT-F21, ASSISTANT-F24, ASSISTANT-F25, ASSISTANT-F29
 
 ### ASSISTANT-F27 Search the documentation from the panel
 Status: done
