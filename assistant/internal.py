@@ -48,6 +48,7 @@ from assistant.schemas import (
     NoInput,
     ReportIn,
     ReportSendIn,
+    SpeechIn,
     SynthesizeIn,
     TranscribeIn,
     TurnIn,
@@ -262,17 +263,29 @@ async def transcribe(call: Call) -> HttpResponse:
     return JsonResponse(await dictation(call.caller, call.data))
 
 
+async def speech(caller: Caller, data: SpeechIn) -> bytes:
+    """``data.text`` spoken for ``caller`` by Azure AI Speech (cut to ``MAX_SPEECH_CHARS``), as an mp3, in the voice
+    asked or the default of ``data.language``; the characters read are counted in its month and spend no message. A
+    ``Refused`` for what it cannot read: 503 ``assistant.speech_unavailable`` without Azure's key (the caller reads with
+    the device's voice), 502 when Azure fails. Awaits Azure, so never inside a transaction. The Hub's door, and the
+    panel's route (``base.assistant.spoken``)."""
+    voice = media.voice_of(data.language, data.voice)
+    text = media.speech_text(data.text)
+    try:
+        audio = await media.synthesize(text, voice)
+    except media.SpeechUnavailable:
+        code = "assistant.speech_unavailable"
+        raise Refused(503, code, turn.MESSAGES[code], retriable=False) from None
+    except media.MediaFailed as problem:
+        raise Refused(502, problem.code, turn.MESSAGES[problem.code], retriable=problem.retriable) from None
+    await record(caller, speech_characters=len(text))
+    return audio
+
+
 @door(SynthesizeIn, bucket="synthesize", rate="ASSISTANT_SYNTHESIZE_RATELIMIT")
 async def synthesize(call: Call) -> HttpResponse:
-    """``text`` spoken (cut to ``MAX_SPEECH_CHARS``), ``audio/mpeg``; an unknown ``voice`` is the default one."""
-    service = await services_connection()
-    text = media.speech_text(call.data.text)
-    try:
-        audio = await media.synthesize(service, text, media.voice_of(call.data.voice))
-    except media.MediaFailed as problem:
-        return media_failed(problem)
-    await record(call.caller, speech_characters=len(text))
-    return HttpResponse(audio, content_type="audio/mpeg")
+    """``text`` spoken, ``audio/mpeg`` (``speech``); a voice the catalogue does not have is a 422."""
+    return HttpResponse(await speech(call.caller, call.data), content_type="audio/mpeg")
 
 
 # --- ERPlora's documentation (ASSISTANT-F28) --------------------------------------------------------------------

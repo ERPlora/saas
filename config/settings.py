@@ -14,6 +14,7 @@ from urllib.parse import urlsplit
 
 from decouple import Config, Csv, RepositoryEmpty, RepositoryEnv
 from django.core.exceptions import ImproperlyConfigured
+from django.utils.csp import CSP
 from live.csp import base_policy, debug_policy
 from live.recaptcha import with_recaptcha
 
@@ -621,6 +622,9 @@ SECURE_CSP["form-action"] = [
     HUB_ORIGIN_PATTERN,
     HUB_ADMIN_ORIGIN,
 ]
+# «Read aloud» of the panel's assistant plays the mp3 it fetched from its own route (base.assistant.speak) as a
+# `blob:` URL; without `media-src` the browser falls back to `default-src 'self'` and refuses it.
+SECURE_CSP["media-src"] = [CSP.SELF, "blob:"]
 
 # Static files: WhiteNoise. The template pages' Ionic (the public web, the error pages) and fonts are
 # vendored under static/vendor/ (nothing from a CDN). Vite already hashes the SPA build, served under /static/spa/
@@ -777,8 +781,14 @@ ASSISTANT_DEMO_MESSAGES = config("ASSISTANT_DEMO_MESSAGES", default=10, cast=int
 # An account's messages a month with the assistant of erplora.com's own panel (PLAN-SAAS §23): fixed, whatever the
 # plans of its businesses, each of which has its own allowance in its Hub.
 ASSISTANT_ACCOUNT_MESSAGES = config("ASSISTANT_ACCOUNT_MESSAGES", default=30, cast=int)
-# The provider (its identifier in the admin, of OpenAI's API) whose key computes the embeddings and the voice.
+# The provider (its identifier in the admin, of OpenAI's API) whose key computes the embeddings and the dictation.
 ASSISTANT_SERVICE_PROVIDER = config("ASSISTANT_SERVICE_PROVIDER", default="openai")
+# Azure AI Speech reads the answers aloud (assistant/media.py: /internal/speech/synthesize and the panel's
+# base.assistant.speak; PLAN-SAAS round 2026-11-03m), with its DragonHD voices, in a region of the EU. The key comes
+# from the environment (the SaaS's secret in Secrets Manager in AWS); empty = no voice of the server: 503
+# assistant.speech_unavailable, and the Hub and the panel read with the device's voice.
+AZURE_SPEECH_KEY = config("AZURE_SPEECH_KEY", default="")
+AZURE_SPEECH_REGION = config("AZURE_SPEECH_REGION", default="swedencentral")
 # The demo hubs (PLAN-SAAS §3.5, round 2026-10-17; public/demo.py): one switch, and new demos per address
 # (django-ratelimit, over the default cache; a browser re-entering its live demo does not count). The Hub keeps
 # the cap of live demos (MAX_CONCURRENT_DEMOS) and the WAF limits /demo per IP too.

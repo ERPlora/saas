@@ -317,12 +317,13 @@ class TranscribeIn(CallerIn, DictationIn):
     """A dictation the Hub sends for a business."""
 
 
-class SynthesizeIn(CallerIn):
-    """A text to read aloud and, optionally, its voice (``alloy``, ``echo``, ``fable``, ``onyx``, ``nova`` or
-    ``shimmer``; another one is ``alloy``)."""
+class SpeechIn(Schema):
+    """A text to read aloud, its language (``es`` or ``en``) and, optionally, a voice of the catalogue
+    (``assistant.media.VOICES``: ``es-ES-Ximena:DragonHDLatestNeural``…); without one, the language's default."""
 
     text: str = Field(max_length=100_000)
-    voice: str = Field(default="", max_length=32)
+    language: Literal["es", "en"]
+    voice: str = Field(default="", max_length=64)
 
     @field_validator("text")
     @classmethod
@@ -330,6 +331,20 @@ class SynthesizeIn(CallerIn):
         if not value.strip():
             raise ValueError("write the text to read aloud")
         return value.strip()
+
+    @field_validator("voice")
+    @classmethod
+    def _a_voice_of_the_catalogue(cls, value):
+        from assistant.media import VOICE_IDS
+
+        voice = value.strip()
+        if voice and voice not in VOICE_IDS:
+            raise ValueError(f"one of {', '.join(sorted(VOICE_IDS))}")
+        return voice
+
+
+class SynthesizeIn(CallerIn, SpeechIn):
+    """A text the Hub sends for a business to read aloud."""
 
 
 class ReportFields(Schema):
