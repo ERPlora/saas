@@ -239,8 +239,8 @@ Parte 5 de 5: cada flujo `hecho` contra su código, con mutantes ejecutados; los
 ## Cierre (CLOSE-HUBS, 2026-11-01): la app completa
 
 - **F18, F20, F21 y F22**, `hecho`: la copia de los datos al recibir la baja y la medición nocturna llegaron con la
-  tenencia S2b del Hub (hub#580, en prod el 2026-11-01) sobre lo que ya hacía el SaaS (saas#168). Ojo: la pasada
-  nocturna del SaaS (`hub-usage-daily`) sigue apagada en prod (aws#35, ver «Pendiente tras L4-A»).
+  tenencia S2b del Hub (hub#580, en prod el 2026-11-01) sobre lo que ya hacía el SaaS (saas#168). La pasada
+  nocturna del SaaS (`hub-usage-daily`) quedó encendida en prod el 2026-11-03 (aws#35, ver «Pendiente tras L4-A»).
 - **F32 y F34**, `hecho`: lo que les faltaba era del Hub y ya lo aplicaba (APP-BASE-3, -4 y -5; arriba, en APP-HUBS-4).
 - **F17**, `descartado` en esta versión (saas#195): fuera de la fase 1, llega con sus tres piezas.
 - **La poda de `HubUsageDaily`** que PLAN-SAAS §1.1 dejaba a `hubs` y no existía: `hubs.usage.prune`, al final de
@@ -378,9 +378,10 @@ X-Erplora-Timestamp, X-Erplora-Signature (v1) y X-Erplora-Signature-V2 (cubre m�
 
 - ~~**Carril Hub**: implementar `GET /internal/usage`.~~ → Hecho con la tenencia S2b (hub#580): el worker del Hub mide
   cada noche a las 00:15 UTC (`base/usage.py`; `db_bytes` es el tamaño de la BD propia del negocio).
-- **`aws`**: `collect_hub_usage` está programado en `stacks/prod/scheduler.tf` (`hub-usage-daily`, 01:15 UTC), pero
-  apagado en prod desde el 2026-10-15 (`schedules_disabled`, mientras el Hub no servía su medición): el 2026-11-01
-  sigue `DISABLED` (aws#35): mientras tanto no se recoge ni se poda nada.
+- **`aws`**: `collect_hub_usage` está programado en `stacks/prod/scheduler.tf` (`hub-usage-daily`, 01:15 UTC). Estuvo
+  apagado en prod desde el 2026-10-15 (`schedules_disabled`, mientras el Hub no servía su medición) hasta el 2026-11-03
+  a las 07:08 UTC, cuando pasó de `DISABLED` a `ENABLED` (aws#35; `terraform.yml`, plan 41594080235 y apply 41594250082).
+  Falta leer su estado en vivo y su primera pasada: no se ha hecho, porque la sesión de AWS está caducada.
 - La gráfica del panel con `hubs.usage.series` (bloque 8 de PLAN-SAAS; no está en la maqueta): fuera de esta versión,
   ningún flujo la pide (HUBS-F21 enseña la última noche medida).
 

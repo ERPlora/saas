@@ -251,11 +251,6 @@ La plataforma no vive en `accounts/` sino en `base/` y `config/`; su manual es `
 
 ## Pendiente (de otros carriles)
 
-- **`hubs`**: sus correos (`hubs/emails.py`: personas, invitaciones, roles y traspaso) pasan a la plantilla común
-  (`base/emails.py`, ACCOUNTS-F46) con su porte; hoy salen en texto.
-
-- **`hubs`** conecta `signals.sessions_ended` → `revoke_after_commit(user_id)` y `account_deleting` (en curso en
-  su carril); también puede escuchar `allauth.account.signals.email_changed` para refrescar la foto del negocio.
 - **`live`**: `record_event` guarda `actor=str(ctx.actor)`, el correo de la cuenta. El arreglo bueno es guardar
   el id en `live.outbox` (próximo lote de `live`); mientras, eliminar una cuenta pasa sus filas al id
   (`services.forget_in_outbox`).

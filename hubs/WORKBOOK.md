@@ -809,7 +809,9 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
 - Admin (F23): las acciones de plataforma llevan `@traced` (`hubs/admin.py`), que escribe en el historial del admin
   («Ejecutó «…»») cada fila sobre la que corrieron. Tests: `hubs/tests/test_admin.py::TestTheTrail`.
 - Uso (F21, F22): el Hub sirve `GET /internal/usage` desde la tenencia S2b (hub#580; contrato en `hubs/README.md`):
-  `db_bytes` es el tamaño de la BD propia de cada negocio. `collect_hub_usage` lo recoge cada noche (`hub-usage-daily`);
+  `db_bytes` es el tamaño de la BD propia de cada negocio. `collect_hub_usage` lo recoge cada noche (`hub-usage-daily`,
+  encendida en prod el 2026-11-03 a las 07:08 UTC, aws#35; su estado en vivo y su primera pasada no se han leído, porque la
+  sesión de AWS está caducada);
   sin ninguna noche medida, la tarjeta dice «Sin datos todavía…». Esa pasada termina con `hubs.usage.prune`
   (`services.USAGE_RETENTION_DAYS`, 400 días; el motivo, junto a la constante y en PLAN-SAAS §27), sin programación
   propia y sin que su fallo se coma la recogida (`services.prune_usage`). La copia de los datos de F18 y F20 la hace el Hub al
@@ -878,8 +880,6 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   (erplora.com, la entrada de ERPlora y el Hub) — saas#195.
 - **Desde el Hub, «Mejorar plan» y «erplora.com» piden volver a entrar con la cuenta si el navegador no tenía la sesión
   abierta** (BASE-F11 del Hub, cruza esta app) — saas#190.
-- **En producción la tarjeta «Uso» de cada negocio dice siempre «Sin datos todavía»**: la pasada nocturna sigue apagada
-  en prod (HUBS-F22; PLAN-SAAS §27) — aws#35.
 - **erplora.com guarda dos veces quién está en cada negocio** (el espejo `accounts.HubMembership`) — saas#199.
 
 ## Lo que NO hace, a propósito

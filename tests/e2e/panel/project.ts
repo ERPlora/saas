@@ -31,8 +31,9 @@ export const PANEL_URL = `http://localhost:${STACK.panelPort}`;
 /**
  * The panel's twin with the second factor on (`ACCOUNTS_MFA_ENABLED`, off by default in phase 1): the same Django on
  * `stack`'s next port, with the same database, Vite, mail folder and Hub double, for the specs of the authenticator
- * app, the trusted browsers and the staff's second factor (accounts/WORKBOOK.md, APP-ACCOUNTS-2). Its pages are
- * `localhost` too: a spec keeps each browser context on one of the two panels, whose cookies would otherwise mix.
+ * app, the trusted browsers and the staff's second factor (accounts/WORKBOOK.md, APP-ACCOUNTS-2), and of «Continue with
+ * Google», which hands over to that second factor (`GOOGLE_E2E`, ACCOUNTS-F06). Its pages are `localhost` too: a spec
+ * keeps each browser context on one of the two panels, whose cookies would otherwise mix.
  */
 export const PANEL_MFA_URL = `http://localhost:${STACK.panelMfaPort}`;
 
@@ -65,6 +66,15 @@ export const WHATSAPP_E2E = {
   appSecret: 'e2e-meta-app-secret',
   verifyToken: 'e2e-meta-verify-token',
   configId: '987654321',
+} as const;
+
+/**
+ * Google's app as the panel's twin sees it in the e2e (ACCOUNTS-F06): made-up, so «Continue with Google» is painted
+ * and no run needs a credential of Google. Google itself is never called: accounts-google.spec.ts plays it.
+ */
+export const GOOGLE_E2E = {
+  clientId: 'e2e-google-client.apps.googleusercontent.com',
+  clientSecret: 'e2e-google-secret',
 } as const;
 
 type WebServer = Exclude<NonNullable<PlaywrightTestConfig['webServer']>, unknown[]>;
@@ -204,7 +214,13 @@ export function panelServers(
   const django = panelDjangoEnv(vitePort, stack, realProviderMode(env));
   return [
     panelDjango('panel-django', saasDir, stack.panelPort, django),
-    panelDjango('panel-mfa-django', saasDir, stack.panelMfaPort, { ...django, ACCOUNTS_MFA_ENABLED: 'True' }),
+    panelDjango('panel-mfa-django', saasDir, stack.panelMfaPort, {
+      ...django,
+      ACCOUNTS_MFA_ENABLED: 'True',
+      GOOGLE_OAUTH_CLIENT_ID: GOOGLE_E2E.clientId,
+      GOOGLE_OAUTH_CLIENT_SECRET: GOOGLE_E2E.clientSecret,
+      GOOGLE_OAUTH_TOKEN_URL: `http://127.0.0.1:${stack.googleDoublePort}/token`,
+    }),
     {
       name: 'panel-vite',
       command: 'pnpm run dev',

@@ -1042,6 +1042,26 @@ def test_the_assessments_may_go_to_another_endpoint():
     assert production(RECAPTCHA, RECAPTCHA_ENABLED="True", RECAPTCHA_ENDPOINT=url)["endpoint"] == url
 
 
+# «Continue with Google»: where the code is exchanged. What comes back from that address is believed without
+# checking its signature (allauth trusts its own TLS call to Google), so only a development server may move it:
+# the e2e's double of Google (tests/e2e/panel/accounts-google.spec.ts, ACCOUNTS-F06).
+GOOGLE_TOKEN_URL = "s.SOCIALACCOUNT_PROVIDERS['google'].get('ACCESS_TOKEN_URL')"
+GOOGLE_DOUBLE = "http://127.0.0.1:8015/token"
+
+
+def test_production_always_exchanges_the_google_code_with_google():
+    assert production(GOOGLE_TOKEN_URL, GOOGLE_OAUTH_TOKEN_URL=GOOGLE_DOUBLE) is None
+
+
+def test_development_exchanges_the_google_code_with_google_unless_moved():
+    assert development(GOOGLE_TOKEN_URL) is None
+    assert development(GOOGLE_TOKEN_URL, GOOGLE_OAUTH_TOKEN_URL="") is None
+
+
+def test_development_may_move_the_google_code_exchange_to_a_double():
+    assert development(GOOGLE_TOKEN_URL, GOOGLE_OAUTH_TOKEN_URL=GOOGLE_DOUBLE) == GOOGLE_DOUBLE
+
+
 def test_development_without_keys_checks_nothing():
     assert development(RECAPTCHA)["enabled"] is False
 
