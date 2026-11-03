@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:848bfdb705eeb197496c9cb5c3bb024e4d6f87520e622418bd38b2b81d68ef3d -->
+<!-- generated from WORKBOOK.md sha256:d9ce31c363e569f32a6f46290c34ce7b6e7cad06fbfd647d629962383c9b1107 -->
 
 ## What it is for and who uses it
 
@@ -75,8 +75,10 @@ Who uses it:
 - Each provider needs an active readable key for its models to answer or be tried.
 - The prices per million tokens of each model are typed by the staff: the providers' APIs do not give them. Without
   a price, the trial says the consumption and a cost of zero.
-- The index's fingerprints, the dictation and the reading aloud are done by the services' provider (OpenAI): it must
-  be added, enabled and with its key.
+- The index's fingerprints and the dictation are done by the services' provider (OpenAI): it must be added, enabled
+  and with its key.
+- The reading aloud is done by Azure AI Speech, with its key in erplora.com's environment (and its region, Sweden
+  Central unless another is given); without it, the Hub and the panel read with the device's voice.
 - The message allowance of each plan ("AI assistant messages a month") is typed in the admin of "Plans".
 
 ## Screens
@@ -461,12 +463,12 @@ Status: done
 Actor: the Hub's assistant of a business
 Screen: none
 Steps:
-1. A Hub that wants to read an answer with erplora.com's voice sends it the text and, if it wants, the voice (alloy, echo, fable, onyx, nova or shimmer). Today's Hub does not ask for it: "Read aloud" uses the device's own voice.
-2. erplora.com asks the services' provider for the audio (at most the first 4,096 characters) and gives it back in MP3.
-3. The characters read are counted in the business's month; it spends no messages.
-In: the business, the text and the voice.
+1. A Hub that wants to read an answer with erplora.com's voice sends it the text, its language (Spanish or English) and, if it wants, the voice: Ximena or Tristan in Spanish, Ava or Andrew in English; without one, the language's woman's voice (Ximena or Ava). The assistant of erplora.com's panel has the same reading aloud for the account. Today neither the Hub nor the panel asks for it: "Read aloud" uses the device's own voice.
+2. erplora.com asks Azure AI Speech for the audio, with its high-definition voices (at most the first 4,096 characters), and gives it back in MP3.
+3. The characters read are counted in the month of the business (or of the account); it spends no messages.
+In: the business, the text, the language and the voice.
 Out: the audio of the answer (`assistant.usage.recorded`).
-If it fails: an empty text is refused; a voice that does not exist is changed to the default one; without the services' provider configured, that it is not configured; if the provider fails, a gateway error that says whether it is worth repeating. The text stays neither kept nor in a log.
+If it fails: an empty text, a language without voices or a voice not in the catalogue are refused; without Azure's key configured, that reading aloud is not available (and the Hub reads with the device's voice); if Azure fails, a gateway error that says whether it is worth repeating. The text stays neither kept nor in a log.
 Involved: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F24
 
 ### ASSISTANT-F23 Receive the report of an answer of the assistant
