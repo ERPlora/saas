@@ -268,7 +268,7 @@ inglés» y el «mensaje en español» (vacío, quien visita en español lee el 
 | ACCOUNTS-F26 | Descargar mis datos | hecho |
 | ACCOUNTS-F27 | Eliminar mi cuenta | hecho |
 | ACCOUNTS-F28 | Entrar en mi negocio desde erplora.com | hecho |
-| ACCOUNTS-F29 | Volver a erplora.com desde mi negocio | parcial |
+| ACCOUNTS-F29 | Volver a erplora.com desde mi negocio | hecho |
 | ACCOUNTS-F30 | Abrir mi cuenta sola desde la aplicación | hecho |
 | ACCOUNTS-F31 | Crear una clave de API | hecho |
 | ACCOUNTS-F32 | Usar una clave de API: qué abre y qué no | hecho |
@@ -704,19 +704,17 @@ Implicados: hubs (los negocios de la persona y «Abrir»)
 
 ### ACCOUNTS-F29 Volver a erplora.com desde mi negocio
 <!-- origen: old-saas:SAAS_AUTH-F21 -->
-Estado: parcial — erplora.com ya acepta el pase del negocio (pasos 3 y 4); falta que el negocio lo dé al pulsar «Mejorar plan» y «erplora.com» (ERPlora/hub#716): hasta entonces esos dos enlaces siguen el paso 5
+Estado: hecho
 Actor: cualquier persona con cuenta
-Pantalla: Entrada, Cuenta, Negocios, Tienda › Planes, Página de error
+Pantalla: Entrada, Cuenta, Negocios
 Pasos:
 1. Dentro de su negocio, la persona pulsa un enlace a erplora.com: gestionar su cuenta, su negocio o su plan.
 2. Si ese navegador tiene su sesión de erplora.com (la que usó para entrar en el negocio), la página se abre sin pedirle nada.
-3. Con «Mejorar plan» y «erplora.com», el negocio le da al pulsar un pase de un solo uso. Aunque ese navegador no tenga la sesión (otro navegador, el del dispositivo desde la aplicación, o la sesión se cerró), erplora.com abre la sesión de su cuenta sin pedirle nada.
-4. Llega al plan de ese negocio en **Tienda › Planes** («Mejorar plan») o al negocio en **Negocios** («erplora.com»).
-5. Con los demás enlaces, sin la sesión, la **Entrada** le pide entrar y, ya dentro, la lleva a esa misma página.
-Entra: la página de erplora.com a la que va (solo páginas de erplora.com); con «Mejorar plan» y «erplora.com», el pase que firma el negocio.
-Sale: la página abierta con su sesión de erplora.com. El pase vale un minuto, sirve una sola vez, solo para una cuenta activa que es miembro de ese negocio, y solo lleva a su plan o a su negocio; la página a la que llega no lo cuenta a otras webs. La sesión que abre sale en **Cuenta › Seguridad › Sesiones activas** como cualquier otra y no acepta por ella los términos. Sin pase, el negocio no le pasa ninguna credencial a erplora.com: cada uno guarda su propia sesión.
-Si falla: un pase que no firmó el negocio, o que no dice adónde va, no abre nada: **Página de error** «Este enlace de tu negocio no es válido», con «Iniciar sesión». Uno caducado o ya usado tampoco: «Este enlace de tu negocio ha caducado», y «Iniciar sesión» la lleva, ya dentro, adonde iba; si su sesión ya estaba abierta en ese navegador, va directa. Una cuenta que no es miembro de ese negocio, desactivada o del personal de ERPlora: «No tienes acceso a este hub», sin abrir nada. Una dirección que no es de erplora.com no se sigue después de entrar: lleva a la **Entrada** con su sesión. Cerrar la sesión de erplora.com no cierra la del negocio (ACCOUNTS-F09).
-Implicados: hubs (los enlaces del negocio a erplora.com, quién es miembro), billing (Tienda › Planes); en el Hub, BASE-F11
+3. Si no la tiene (otro navegador, el de la aplicación, o la sesión se cerró), la **Entrada** le pide entrar y, ya dentro, la lleva a esa misma página.
+Entra: la página de erplora.com a la que va (solo páginas de erplora.com).
+Sale: la página abierta con su sesión de erplora.com. El negocio no le pasa ninguna credencial a erplora.com: cada uno guarda su propia sesión.
+Si falla: una dirección que no es de erplora.com no se sigue después de entrar: lleva a la **Entrada** con su sesión. Cerrar la sesión de erplora.com no cierra la del negocio (ACCOUNTS-F09).
+Implicados: hubs (los enlaces del negocio a erplora.com)
 
 ### ACCOUNTS-F30 Abrir mi cuenta sola desde la aplicación
 <!-- origen: old-saas:SAAS_DASHBOARD-F209 -->
@@ -1198,8 +1196,10 @@ Implicados: el admin de erplora.com (la ficha de la cuenta y el registro de audi
 ## Lo que queda fuera
 
 - **erplora.com guarda dos veces quién está en cada negocio** (el espejo `accounts.HubMembership`) — saas#199.
-- **El pase de vuelta desde el Hub (ACCOUNTS-F29, pasos 3 y 4)**: erplora.com ya lo acepta en `/hub-pass/`; falta que el
-  Hub lo firme al pulsar «Mejorar plan» y «erplora.com» (BASE-F11) — ERPlora/hub#716, que cierra saas#190.
+- **Desde el Hub, «Mejorar plan» y «erplora.com» piden volver a entrar con la cuenta si el navegador no tenía la sesión
+  abierta** (ACCOUNTS-F29, BASE-F11 del Hub): erplora.com ya acepta el pase de un solo uso del negocio (`/hub-pass/`,
+  `hub_pass.py`); falta que el Hub lo firme al pulsar — ERPlora/hub#716, que cierra saas#190. Con ella, ACCOUNTS-F29
+  se reescribe con el pase y sus tres errores (`invalid_pass`, `not_a_member`, `pass_expired`).
 
 ## Lo que NO hace, a propósito
 
