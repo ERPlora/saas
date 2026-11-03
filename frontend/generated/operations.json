@@ -2,6 +2,7 @@
   "base.session.me": { "method": "get", "path": "/api/me" },
   "base.assistant.usage": { "method": "get", "path": "/api/assistant/usage" },
   "base.assistant.report": { "method": "post", "path": "/api/assistant/report" },
+  "base.assistant.transcribe": { "method": "post", "path": "/api/assistant/transcribe" },
   "accounts.hub.list": { "method": "get", "path": "/api/accounts/hubs" },
   "hubs.business_type.list": { "method": "get", "path": "/api/catalog/business-types" },
   "hubs.plan.list": { "method": "get", "path": "/api/plans" },
