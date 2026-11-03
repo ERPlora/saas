@@ -258,7 +258,7 @@ def hub_pass_member(user_id: str, hub_slug: str):
     if user is None or not user.is_active or user.is_staff or user.is_superuser:
         return None
     business_list = operations.get(BUSINESS_LIST)
-    as_account = _as_account(user)
+    as_account = queries.as_account(user)
     offset = 0
     while True:
         page = business_list(as_account, business_list.input(search=hub_slug, limit=100, offset=offset))
