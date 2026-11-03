@@ -4,7 +4,8 @@
 // DataTable that turns into cards below 1000 px (its modules and next invoice fold first; audit 2 R-33) —
 // business, plan at its net price (and a downgrade waiting for the end of the period), its paid modules (net; «(until …)» kept on one line when cancelled), the next
 // invoice with VAT («Free from …» when cancelled) and the status. Per row only what the server computed
-// (`actions`): its leading one fixed — «View the invoice» (an unpaid one), «Keep the plan» or «Change plan»
+// (`actions`): its leading one fixed — «View the invoice» (an unpaid one), «Keep the plan» (a cancellation or a
+// downgrade waiting for the end of the period) or «Change plan»
 // (the Store with that business) —, and «Cancel plan» (CancelPlanDialog) and «View invoices» in «⋮» («View
 // invoices» a button when there is no «⋮»). The list fills the page (`fill`, Ioan 2026-10-14). Changing,
 // keeping and cancelling are web only; inside the apps a sentence says where, without a link (README §4).
@@ -141,7 +142,7 @@ const hasMenu = (row: Row) => offers(row, 'cancel_plan');
 
 /**
  * README §3b, W-F7: the row's leading action is fixed and says what it does («View the invoice», «Keep the
- * plan» or «Change plan», one slot for the three: they never apply together); «Cancel plan», with its
+ * plan» or «Change plan», one slot for the three: the first the server lists); «Cancel plan», with its
  * confirmation, lives in «⋮» (mockups at 1440, UX-AUDIT-4 W-F1). «View invoices» goes into that «⋮» when the
  * row has one, so a row shows one button and its menu (Ioan, 2026-10-14: a clean list, as the mockups paint
  * an unpaid row); without a «⋮» (nothing to cancel, or inside the apps) it stays a button. Few and fixed, the

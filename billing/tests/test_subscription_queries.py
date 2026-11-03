@@ -3,9 +3,10 @@
 Subscriptions: one row per business of the account that Stripe bills (a paid plan or paid modules), for its
 owner and for its payer: the plan and its modules at their net price, the next invoice with VAT (priced by
 the payer's place, as the checkout prices it; none while the plan is ending), its status and the row's
-actions, computed here: «Change plan» (the fixed one), «Keep the plan» once cancelled, «View the invoice»
-with one not collected; «Cancel plan» and «View invoices». Changing, cancelling and keeping need the owner
-who pays (``billing.plan.*``); anyone else sees the row to consult it.
+actions, computed here: «Change plan» (the fixed one), «Keep the plan» once cancelled or while a downgrade
+waits for the end of the period, «View the invoice» with one not collected; «Cancel plan» and «View
+invoices». Changing, cancelling and keeping need the owner who pays (``billing.plan.*``); anyone else sees the
+row to consult it.
 
 Payment details: the card of each payer of the account (one Stripe customer per business's payer), read from
 Stripe (the subscription's card, else the customer's default) and kept 10 minutes; ``customer.updated``
