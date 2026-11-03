@@ -67,6 +67,17 @@ Quién la usa:
   (https://www.odoo.com/documentation/master/applications/essentials/in_app_purchase.html). Apagarlos: el mercado está
   partido (GitHub y Vercel lo dejan; en Userflow no hay nada que configurar); aquí no se apagan por simples, son dos
   correos al mes como mucho.
+- **Cambiar de plan, en su pantalla y no en el chat** (ASSISTANT-F25): los asistentes de los productos de gestión
+  trabajan con los datos del negocio y ninguno cuenta entre lo que hace cambiar la suscripción. Square AI no toca la
+  cuenta (https://squareup.com/help/gb/en/article/8516-use-ask-ai-to-get-insights-about-your-business); Shopify Sidekick
+  (https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick), Toast IQ
+  (https://support.toasttab.com/en/article/Toast-IQ-Overview) y Lightspeed AI
+  (https://www.lightspeedhq.com/news/lightspeed-ai-expands-from-insights-to-action-with-new-agentic-capabilities-for-retail/)
+  piden aprobar cada cambio, y el plan no sale en sus manuales. El plan se cambia en su pantalla, que enseña antes lo
+  que se cobra: Shopify (https://help.shopify.com/en/manual/your-account/manage-orgs-and-stores/manage-pricing-plan/change-plan),
+  Microsoft 365 (https://learn.microsoft.com/microsoft-365/commerce/subscriptions/upgrade-to-different-plan), QuickBooks
+  (https://quickbooks.intuit.com/learn-support/en-us/help-articles/downgrade-your-quickbooks-online-plan/00/290898) y
+  WooCommerce Subscriptions (https://woocommerce.com/document/subscriptions/switching-guide/).
 
 ## Antes de empezar
 
@@ -531,13 +542,13 @@ Pasos:
 2. Escribe al asistente o pulsa un atajo («¿Qué negocios tengo?», «¿Cuánto pago al mes?», «¿Cómo creo un negocio?»); hasta la primera palabra de la respuesta ve la burbuja de «El asistente está escribiendo».
 3. erplora.com le ofrece al modelo las herramientas del panel que esa cuenta puede usar (sus negocios y su gente, los planes, sus facturas y suscripciones, su cuenta, el catálogo de apps), primero las de lo que ha preguntado, y siempre la lista de sus negocios.
 4. Una consulta que el modelo pide se ejecuta sola, como la propia persona: nunca ve un negocio que no es suyo.
-5. Un cambio que el modelo pide se para en la tarjeta «¿Ejecutar esta acción?», que dice qué va a hacer, dónde (la pantalla del panel: «Negocios», «Facturación», «Cuenta» o «Tienda») y con qué datos, nombrando el negocio por su nombre; solo se hace si la persona pulsa «Ejecutar», y «Cancelar» no cambia nada. Crear, borrar o cambiar la dirección de un negocio, ofrecerlo a otro o cancelar su plan piden además escribir «CONFIRMAR». Al cancelar el plan, la tarjeta enseña antes lo que dice el diálogo «Cancelar el plan» de Facturación (BILLING-F13): el plan en que sigue y hasta qué día está pagado (el día del negocio), que después pasa a Gratis, qué módulos se desactivan ese día, cuántas personas y dispositivos caben en Gratis frente a las personas que tiene ahora y, si la hay, la factura sin pagar, que sigue pendiente. Cambiar de plan no se hace desde el chat, sino en la Tienda, que enseña antes lo que se cobra.
+5. Un cambio que el modelo pide se para en la tarjeta «¿Ejecutar esta acción?», que dice qué va a hacer, dónde (la pantalla del panel: «Negocios», «Facturación», «Cuenta» o «Tienda») y con qué datos, nombrando el negocio por su nombre; solo se hace si la persona pulsa «Ejecutar», y «Cancelar» no cambia nada. Crear, borrar o cambiar la dirección de un negocio, ofrecerlo a otro o cancelar su plan piden además escribir «CONFIRMAR». Al cancelar el plan, la tarjeta enseña antes lo que dice el diálogo «Cancelar el plan» de Facturación (BILLING-F13): el plan en que sigue y hasta qué día está pagado (el día del negocio), que después pasa a Gratis, qué módulos se desactivan ese día, cuántas personas y dispositivos caben en Gratis frente a las personas que tiene ahora y, si la hay, la factura sin pagar, que sigue pendiente. Cambiar de plan no se hace desde el chat, sino en la Tienda (BILLING-F11), que enseña antes lo que se cobra: el asistente dice que se hace allí y la enlaza.
 6. Con lo que han devuelto las herramientas, el modelo contesta en directo, trozo a trozo, en el idioma de la persona. La tarjeta es la única pregunta de un cambio: el modelo no pregunta en su texto si lo hace ni escribe un resumen para que se apruebe, y solo pide un dato que el cambio necesita, que ninguna herramienta da y que la persona no ha dicho. Enlaza la pantalla del panel donde se hace lo que no puede hacer él («Ir a Negocios»…); para lo que pasa dentro de un negocio (ventas, productos, la gente de la caja) dice que se abra el negocio y se pregunte a su asistente. Bajo la respuesta queda lo que se hizo de cada cambio («Hecho: Crear negocio en Negocios», «No se hizo, cancelado: …»). En la cuenta que se abre desde la app, donde no se vende ni se cobra, a lo que pregunte de planes, precios, módulos, códigos promocionales, pagos o la tarjeta contesta, sin enlace, «Para cambiar de plan o añadir módulos, entra en erplora.com desde el navegador.» (con una factura sin pagar, «Para pagarla, entra en erplora.com desde el navegador.»), aunque la documentación lo explique; consultar facturas y suscripciones y editar los datos fiscales sí se hace ahí.
 7. Desde el 80 % de los mensajes del mes, el pie del panel dice cuántos quedan y cuándo vuelven (ver ASSISTANT-F26). El panel se cierra con ×, Escape, el velo o el mismo botón; el dispositivo recuerda si se dejó abierto, y la conversación se olvida al cerrar la sesión.
 Entra: la conversación (vive en el navegador de la persona), las herramientas que el modelo pidió y la respuesta de la persona a su tarjeta.
 Sale: lo que se ha hecho y su resultado, la tarjeta del cambio que espera, el texto según llega, el cupo que queda y el cierre; lo que hace cada herramienta deja su propio rastro (`hubs.business.created`…), nunca la conversación.
 Si falla: sin sesión, el panel lleva a entrar y no hay botón «Asistente», y una sesión que termina a media conversación pide volver a entrar; con el cupo del mes gastado, el primer aviso es el cupo agotado, con cuántos se han usado y cuándo vuelven, y que cada negocio tiene su propio asistente, sin «Mejorar plan» (ver ASSISTANT-F26); con demasiados turnos seguidos, avisa de que hay que esperar un momento; sin un modelo que conteste, de que el asistente no puede contestar ahora, con «Reintentar»; sin conexión, el pie lo dice. Una herramienta que la cuenta no tiene, o que no es del chat (descargar un fichero, crear una clave de API, abrir el pago, entrar en un negocio), no se ejecuta nunca. Sin la palabra escrita o con un «no», el cambio no se hace y el modelo lo dice, sin mandar a confirmar una tarjeta que ya se cerró; ese «no» vale hasta que la persona vuelva a escribir: si el modelo pide otra vez el mismo cambio, no sale otra tarjeta ni otro «No se hizo». Unos datos que el cambio no acepta (un país que no es de los que sirve ERPlora, un valor fuera de su lista) o un cambio que no se puede hacer (cancelar el plan de un negocio en Gratis, o el de uno que paga otra cuenta) no llegan a la tarjeta: vuelven al modelo, que los corrige en la misma pregunta, y la persona confirma una sola vez. Un negocio nuevo que no se puede crear (la cuenta ya tiene su negocio gratuito, es del personal de ERPlora o no hay plan Gratis) tampoco llega a la tarjeta: el modelo dice por qué y, si es el negocio gratuito, que se cambie el plan del que ya tiene (HUBS-F01). Donde no se vende (la cuenta abierta desde la aplicación instalada), no se ofrecen la Tienda ni sus cambios de plan. Pasadas seis rondas de herramientas en una misma pregunta, se para.
-Implicados: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F23, ASSISTANT-F26, ASSISTANT-F29, HUBS-F01, HUBS-F09, BILLING-F13
+Implicados: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F23, ASSISTANT-F26, ASSISTANT-F29, HUBS-F01, HUBS-F09, BILLING-F11, BILLING-F13
 
 ### ASSISTANT-F26 Contar los mensajes de una cuenta con el asistente del panel
 <!-- origen: nuevo (PLAN-SAAS §23: un cupo fijo por cuenta, como los asistentes de cuenta de Shopify, Square, Stripe, GitHub y Vercel, que van con la cuenta y no con el plan de cada tienda) -->
@@ -733,8 +744,9 @@ propio texto por `code`.
   `AssistantFieldOut` con todas las marcas de `live.assistant.field` (`titled`, `signed`, `named`, `money`), así que una
   lista que el servidor dijo elemento a elemento llega con `named` y la tarjeta de `@erplora/ui` dice sus elementos (hoy
   ninguna escritura del panel manda una lista; guarda: `TestTheCardOfAList`, saas#181). `billing.plan.change`
-  es `INTERNAL` (`preview`): pide un `proration_date` reciente del servidor que el chat no tiene; su herramienta llega
-  con las vistas previas de las escrituras de billing (plan 2026-10-30 §7, «Fuera»).
+  es `INTERNAL` a propósito (saas#211): cobra en el acto, así que se hace en la Tienda (BILLING-F11), cuyo diálogo pide
+  al servidor el `proration_date` reciente y enseña antes lo que se cobra. El modelo dice en qué pantalla se hace y la
+  enlaza (`instructions`); guarda: `test_the_account_gets_the_saas_tools_and_none_of_what_is_internal`.
 - **La pasarela en proceso**: `turn_frames` → `assistant.turn.spend` (cubo `turn` por `user:<id>`) → `turn.start`
   (cupo) → `turn.frames` → `settle`; un `turn.Refused` es el primer marco `error` (`assistant.quota_exceeded` con
   `used/limit/resets_at/demo`, `assistant.rate_limited` + `retry_after`, `assistant.too_large`,
@@ -827,8 +839,6 @@ propio texto por `code`.
 ## Lo que queda fuera
 
 - **Buscar en la web y el tipo de cambio entre monedas** (ASSISTANT-F14): llegan con la etapa ERP — saas#202.
-- **Al cancelar un plan desde el asistente del panel, la tarjeta no enseña antes cómo quedará el negocio**
-  (ASSISTANT-F25) — saas#203.
 - **Una cuenta no recibe ningún correo cuando se le acaban los mensajes del asistente del panel** (ASSISTANT-F29) —
   saas#204.
 - **El asistente del panel no deja dictar por voz como el del Hub** (ASSISTANT-F25, ASSISTANT-F21) — saas#175.
@@ -849,4 +859,6 @@ propio texto por `code`.
   el cupo es el del plan, que se edita en «Planes», y el modelo que contesta es uno para todos, con su reserva.
 - No vende paquetes de mensajes sueltos: más mensajes es subir de plan.
 - No usa dos modelos por turno (uno que razona y otro que ejecuta): el producto viejo lo tenía apagado.
+- No cambia de plan desde el chat: cobra en el acto, y lo que se cobra se ve y se confirma en la Tienda (BILLING-F11);
+  el asistente lo dice y enlaza la Tienda (saas#211).
 - No busca en la web ni da tipos de cambio: llegan con la etapa ERP (PLAN §30, saas#202).
