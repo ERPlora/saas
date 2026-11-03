@@ -20,7 +20,7 @@ pytestmark = pytest.mark.django_db
 @pytest.fixture
 def staff_client(client):
     admin = get_user_model().objects.create_superuser(email="root@example.com", password="x")
-    HubMembership.objects.create(user=admin, hub_slug="a", role=HubMembership.Role.ADMIN)
+    enter(admin, "a", "hub_admin")
     services.issue_code(admin, "a")
     client.force_login(admin)
     return client, admin
@@ -115,9 +115,9 @@ class TestWhoEntersTheAdmin:
         assert (response.status_code, response.url) == (302, "/launch?next=/admin/")
         assert client.get("/admin/").status_code == 302
 
-    @pytest.mark.parametrize("role", HubMembership.Role.values)
+    @pytest.mark.parametrize("role", HubMember.Role.values)
     def test_no_customer_role_enters_the_admin(self, client, ana, role):
-        HubMembership.objects.create(user=ana, hub_slug="a", role=role)
+        enter(ana, "a", role)
         client.force_login(ana)
 
         assert client.get("/admin/").status_code == 302
@@ -210,7 +210,7 @@ class TestOpenInTheHubAdmin:
         assert f'href="{self.HUBS}"' in html
 
     def test_the_hubs_page_lists_each_hub_once_with_its_button(self, client, platform, ana):
-        HubMembership.objects.create(user=ana, hub_slug="a", role=HubMembership.Role.EMPLOYEE)
+        enter(ana, "a", "hub_employee")
 
         response = client.get(self.HUBS)
 
@@ -227,7 +227,7 @@ class TestOpenInTheHubAdmin:
     def test_a_row_saved_with_no_valid_hub_slug_shows_no_button_and_breaks_no_page(self, client, platform, slug):
         # ``objects.create`` skips the validators, as rows that predate the shared rule.
         owner = get_user_model().objects.get(email="owner@example.com")
-        HubMembership.objects.create(user=owner, hub_slug=slug, role=HubMembership.Role.OWNER)
+        enter(owner, slug, "hub_owner")
 
         # One button per valid membership (``demo_seed``: owner and employee of ``a`` and ``b``), and
         # one per hub on the Hubs page; none for the bad row.
@@ -762,7 +762,7 @@ class TestACustomerIsNoStaff:
     @pytest.mark.parametrize("flag", ["is_staff", "is_superuser"])
     def test_a_customer_is_not_made_staff_here_and_nothing_is_saved(self, staff_client, ana, flag):
         client, _ = staff_client
-        HubMembership.objects.create(user=ana, hub_slug="a", role=HubMembership.Role.OWNER)
+        enter(ana, "a", "hub_owner")
 
         response = _save(client, ana, first_name="Anita", **{flag: "on"})
 
@@ -774,7 +774,7 @@ class TestACustomerIsNoStaff:
     def test_the_refusal_speaks_spanish(self, staff_client, ana):
         client, _ = staff_client
         client.defaults["HTTP_ACCEPT_LANGUAGE"] = "es"
-        HubMembership.objects.create(user=ana, hub_slug="a", role=HubMembership.Role.EMPLOYEE)
+        enter(ana, "a", "hub_employee")
 
         response = _save(client, ana, is_staff="on")
 

@@ -16,10 +16,10 @@ pytestmark = pytest.mark.django_db
 
 
 def test_hub_slugs_of_lists_the_user_hubs_in_alphabetical_order(ana):
-    HubMembership.objects.create(user=ana, hub_slug="b", role=HubMembership.Role.EMPLOYEE)
-    HubMembership.objects.create(user=ana, hub_slug="a", role=HubMembership.Role.ADMIN)
+    enter(ana, "b", "hub_employee")
+    enter(ana, "a", "hub_admin")
     bo = get_user_model().objects.create_user(email="bo@example.com", password="x")
-    HubMembership.objects.create(user=bo, hub_slug="c", role=HubMembership.Role.ADMIN)
+    enter(bo, "c", "hub_admin")
 
     assert queries.hub_slugs_of(ana) == ["a", "b"]
 
@@ -31,9 +31,9 @@ def test_a_user_without_memberships_has_no_hubs(ana):
 def test_hubs_with_members_lists_every_hub_once_with_its_member_count(ana):
     """The «Hubs» page of the admin (ronda 13): one row per hub, whoever its members are."""
     bo = get_user_model().objects.create_user(email="bo@example.com", password="x")
-    HubMembership.objects.create(user=ana, hub_slug="b", role=HubMembership.Role.OWNER)
-    HubMembership.objects.create(user=ana, hub_slug="a", role=HubMembership.Role.OWNER)
-    HubMembership.objects.create(user=bo, hub_slug="a", role=HubMembership.Role.EMPLOYEE)
+    enter(ana, "b", "hub_owner")
+    enter(ana, "a", "hub_owner")
+    enter(bo, "a", "hub_employee")
 
     assert queries.hubs_with_members() == [("a", 2), ("b", 1)]
 
@@ -80,10 +80,10 @@ class TestHubList:
         )
 
     def test_lists_the_hubs_of_the_account_with_their_host_and_the_jump_to_each(self, ana):
-        HubMembership.objects.create(user=ana, hub_slug="b", role=HubMembership.Role.EMPLOYEE)
-        HubMembership.objects.create(user=ana, hub_slug="a", role=HubMembership.Role.OWNER)
+        enter(ana, "b", "hub_employee")
+        enter(ana, "a", "hub_owner")
         bo = get_user_model().objects.create_user(email="bo@example.com", password="x")
-        HubMembership.objects.create(user=bo, hub_slug="c", role=HubMembership.Role.OWNER)
+        enter(bo, "c", "hub_owner")
 
         result = queries.hub_list(_ctx(ana), HubListIn())
 
@@ -99,7 +99,7 @@ class TestHubList:
 
     def test_the_host_comes_from_the_callback_setting(self, ana, settings):
         settings.HUB_CALLBACK_TEMPLATE = "https://{slug}.erplora.com/auth/callback"
-        HubMembership.objects.create(user=ana, hub_slug="a", role=HubMembership.Role.OWNER)
+        enter(ana, "a", "hub_owner")
 
         [hub] = queries.hub_list(_ctx(ana), HubListIn()).hubs
 

@@ -14,9 +14,7 @@ pytestmark = pytest.mark.django_db
 
 @pytest.fixture
 def member(ana):
-    HubMembership.objects.create(
-        user=ana, hub_slug="a", role=HubMembership.Role.MANAGER
-    )
+    enter(ana, "a", "hub_manager")
     return ana
 
 
@@ -73,9 +71,7 @@ class TestIssueCode:
         self, member, slug
     ):
         # A row saved without validation (``objects.create`` skips validators) opens nothing.
-        HubMembership.objects.create(
-            user=member, hub_slug=slug, role=HubMembership.Role.OWNER
-        )
+        enter(member, slug, "hub_owner")
 
         with pytest.raises(services.HubAccessDenied):
             services.issue_code(member, slug)
@@ -157,9 +153,7 @@ class TestRedeemCode:
         HubMembership.objects.filter(user=member, hub_slug="a").update(
             role=HubMembership.Role.OWNER
         )
-        HubMembership.objects.create(
-            user=member, hub_slug="b", role=HubMembership.Role.EMPLOYEE
-        )
+        enter(member, "b", "hub_employee")
         code_a = services.issue_code(member, "a")
         code_b = services.issue_code(member, "b")
 
@@ -171,9 +165,7 @@ class TestRedeemCode:
         self, member, slug
     ):
         # Rows saved without validation, as if they predated the shared rule.
-        HubMembership.objects.create(
-            user=member, hub_slug=slug, role=HubMembership.Role.OWNER
-        )
+        enter(member, slug, "hub_owner")
         now = timezone.now()
         AuthExchangeCode.objects.create(
             code_hash=AuthExchangeCode.hash_code("a-code"),
@@ -313,9 +305,9 @@ class TestHubAdminCode:
 
         assert AuthExchangeCode.objects.get().audience == "hub-admin"
 
-    @pytest.mark.parametrize("role", HubMembership.Role.values)
+    @pytest.mark.parametrize("role", HubMember.Role.values)
     def test_a_customer_gets_no_hub_admin_code_not_even_for_their_own_hub(self, ana, role):
-        HubMembership.objects.create(user=ana, hub_slug="a", role=role)
+        enter(ana, "a", role)
 
         with pytest.raises(services.HubAccessDenied):
             services.issue_code(ana, "a", audience=self.HUB_ADMIN)
@@ -447,7 +439,7 @@ class TestHubAdminCode:
 
 def test_the_platform_host_is_no_customer_hub_either(member):
     """``hubs`` is the Hub admin's host (ronda 13): a membership row naming it opens nothing."""
-    HubMembership.objects.create(user=member, hub_slug="hubs", role=HubMembership.Role.OWNER)
+    enter(member, "hubs", "hub_owner")
 
     with pytest.raises(services.HubAccessDenied):
         services.issue_code(member, "hubs")

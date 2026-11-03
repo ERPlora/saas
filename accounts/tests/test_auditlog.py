@@ -73,7 +73,7 @@ class TestWhatIsAudited:
         assert ".None" not in str(created.changes)
 
     def test_access_to_a_business_is_logged(self, ana):
-        membership = HubMembership.objects.create(user=ana, hub_slug="bar-pepe", role=HubMembership.Role.ADMIN)
+        membership = enter(ana, "bar-pepe", "hub_admin")
 
         assert _entries_for(membership).filter(action=LogEntry.Action.CREATE).exists()
 
@@ -280,7 +280,7 @@ class TestAnAccountThatGoes:
         """The admin's «Delete» of one's own account: the request acts as the account until the end."""
         from django.db import connection
 
-        membership = HubMembership.objects.create(user=ana, hub_slug="bar-pepe", role=HubMembership.Role.ADMIN)
+        membership = enter(ana, "bar-pepe", "hub_admin")
         account_pk = ana.pk
         request = RequestFactory().post("/admin/accounts/user/x/delete/")
 

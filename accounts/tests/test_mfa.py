@@ -171,7 +171,7 @@ def _hidden(html: str, name: str) -> str:
 
 @pytest.fixture
 def member(ana):
-    HubMembership.objects.create(user=ana, hub_slug="a", role=HubMembership.Role.ADMIN)
+    enter(ana, "a", "hub_admin")
     return ana
 
 
