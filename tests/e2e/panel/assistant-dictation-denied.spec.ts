@@ -42,7 +42,7 @@ test('a microphone the browser refuses says where to allow it, and nothing is re
   await expect(panel.getByTestId('assistant-composer-problem')).toHaveText(
     'Microphone access is blocked. Allow it in your browser to dictate.',
   );
-  await expect(mic).toHaveAttribute('aria-pressed', 'false');
+  await expect(mic).not.toHaveAttribute('aria-pressed', 'true');
   await settled(page);
   await page.screenshot({ path: shot('assistant-dictation-denied') });
 });

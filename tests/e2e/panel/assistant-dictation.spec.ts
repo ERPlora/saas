@@ -71,11 +71,12 @@ for (const language of ['es', 'en'] as const) {
 
     const mic = panel.getByTestId('assistant-mic');
     await expect(mic).toBeVisible();
-    await expect(mic).toHaveAttribute('aria-label', words.dictate);
+    // By role and name, what a screen reader hears: Ionic moves the first `aria-*` from the ion-button to its inner button.
+    await expect(panel.getByRole('button', { name: words.dictate })).toBeVisible();
 
     await mic.click();
     await expect(mic).toHaveAttribute('aria-pressed', 'true');
-    await expect(mic).toHaveAttribute('aria-label', words.stop);
+    await expect(panel.getByRole('button', { name: words.stop })).toBeVisible();
     // A second and a bit of the fake microphone's tone.
     await page.waitForTimeout(1200);
     const before = provider!.seen.length;
