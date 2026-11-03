@@ -46,7 +46,7 @@ from assistant import turn as gateway
 from assistant.schemas import Caller
 from base import navigation
 from base.operations import ACCOUNT_ROLE
-from base.surface import ACCOUNT, account_surface
+from base.surface import sells_nothing
 
 logger = logging.getLogger(__name__)
 
@@ -96,11 +96,6 @@ def screen_name(key: str) -> str:
     if not key:
         return gettext("Help")
     return next(str(nav.label) for nav in navigation.NAVIGATION if nav.id == key)
-
-
-def sells_nothing(request: HttpRequest | None) -> bool:
-    """Whether ``request`` comes from where nothing is sold (the app's account surface, PLAN-SAAS §3.6 point 6)."""
-    return request is not None and hasattr(request, "session") and account_surface(request) == ACCOUNT
 
 
 def is_tool(op: Operation) -> bool:
@@ -209,9 +204,25 @@ def screens(ctx: OperationContext, request: HttpRequest | None = None) -> dict[s
         }
 
 
-def instructions(*, language: str, account: str, screens: dict[str, str], docs: bool = False) -> str:
+def nothing_sold_here(language: str) -> str:
+    """The rule of a turn where nothing is sold (PLAN-SAAS §3.6 point 6), with the sentences the panel paints there."""
+    with translation.override(language):
+        buy = gettext("To change your plan or add modules, go to erplora.com in your browser.")
+        pay = gettext("To pay it, go to erplora.com in your browser.")
+    return f"""
+- This account is open inside ERPlora's app, where nothing is sold or charged: buying or changing a plan, prices,
+  modules, promo codes, paying and the card are not done here. If the person asks about any of them, even only how they
+  work, do not explain it, even if the documentation explains it, and do not quote a price: answer with this sentence as
+  it is, without a link: «{buy}» For an unpaid invoice: «{pay}» Looking at invoices and subscriptions and editing the
+  fiscal details are done here."""
+
+
+def instructions(
+    *, language: str, account: str, screens: dict[str, str], docs: bool = False, sells: bool = True
+) -> str:
     """The system message of every turn (the gateway's only one): who it serves, in which language, the rules of its
-    tools and money, and the screens it may link. ``docs``: the documentation search is among its tools."""
+    tools and money, and the screens it may link. ``docs``: the documentation search is among its tools; ``sells``:
+    this is not the app's account surface, where nothing is sold."""
     try:
         language_name = get_language_info(language)["name"]
     except KeyError:
@@ -236,7 +247,7 @@ ERPlora and its account. Answer in {language_name}, short and plain. Use Markdow
   in that currency with two decimals. Plan prices are net, VAT excluded.
 - When the person should go to a screen, link it with its path, only one of these:
 {links}
-- If something cannot be done from here (you have no tool for it), say on which screen it is done."""
+- If something cannot be done from here (you have no tool for it), say on which screen it is done.{"" if sells else nothing_sold_here(language)}"""
 
 
 # ── What the tools wait on the network for, before the turn's transaction ───────────────────────────────────────

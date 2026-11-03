@@ -351,15 +351,16 @@ class TestTheMigration:
         assert "assistant_docchunk" in connection.introspection.table_names()
         assert not DocChunk.objects.exists()
 
-    def test_the_index_is_hnsw_by_cosine(self):
+    def test_no_approximate_index_can_lose_an_excerpt(self):
+        """The search is exact, on purpose (``assistant.models.DocChunk``; ``TestTheIndexLosesNothing``)."""
         from django.db import connection
 
         with connection.cursor() as cursor:
-            cursor.execute("SELECT indexdef FROM pg_indexes WHERE indexname = 'assistant_docchunk_embedding'")
-            [definition] = cursor.fetchone()
+            cursor.execute("SELECT indexdef FROM pg_indexes WHERE tablename = 'assistant_docchunk'")
+            definitions = [definition for (definition,) in cursor.fetchall()]
 
-        assert "USING hnsw (embedding vector_cosine_ops)" in definition
-        assert "m='16'" in definition and "ef_construction='64'" in definition
+        assert definitions, "the table's own indexes were not read"
+        assert not [each for each in definitions if " USING hnsw " in each or " USING ivfflat " in each]
 
 
 class TestTheWrite:

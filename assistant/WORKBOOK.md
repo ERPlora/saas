@@ -518,7 +518,7 @@ Pasos:
 3. erplora.com le ofrece al modelo las herramientas del panel que esa cuenta puede usar (sus negocios y su gente, los planes, sus facturas y suscripciones, su cuenta, el catálogo de apps), primero las de lo que ha preguntado, y siempre la lista de sus negocios.
 4. Una consulta que el modelo pide se ejecuta sola, como la propia persona: nunca ve un negocio que no es suyo.
 5. Un cambio que el modelo pide se para en la tarjeta «¿Ejecutar esta acción?», que dice qué va a hacer, dónde (la pantalla del panel: «Negocios», «Facturación», «Cuenta» o «Tienda») y con qué datos, nombrando el negocio por su nombre; solo se hace si la persona pulsa «Ejecutar», y «Cancelar» no cambia nada. Crear, borrar o cambiar la dirección de un negocio, ofrecerlo a otro o cancelar su plan piden además escribir «CONFIRMAR»; cambiar de plan no se hace desde el chat, sino en la Tienda, que enseña antes lo que se cobra.
-6. Con lo que han devuelto las herramientas, el modelo contesta en directo, trozo a trozo, en el idioma de la persona, y enlaza la pantalla del panel donde se hace lo que no puede hacer él («Ir a Negocios»…); para lo que pasa dentro de un negocio (ventas, productos, la gente de la caja) dice que se abra el negocio y se pregunte a su asistente. Bajo la respuesta queda lo que se hizo de cada cambio («Hecho: Crear negocio en Negocios», «No se hizo, cancelado: …»).
+6. Con lo que han devuelto las herramientas, el modelo contesta en directo, trozo a trozo, en el idioma de la persona, y enlaza la pantalla del panel donde se hace lo que no puede hacer él («Ir a Negocios»…); para lo que pasa dentro de un negocio (ventas, productos, la gente de la caja) dice que se abra el negocio y se pregunte a su asistente. Bajo la respuesta queda lo que se hizo de cada cambio («Hecho: Crear negocio en Negocios», «No se hizo, cancelado: …»). En la cuenta que se abre desde la app, donde no se vende ni se cobra, a lo que pregunte de planes, precios, módulos, códigos promocionales, pagos o la tarjeta contesta, sin enlace, «Para cambiar de plan o añadir módulos, entra en erplora.com desde el navegador.» (con una factura sin pagar, «Para pagarla, entra en erplora.com desde el navegador.»), aunque la documentación lo explique; consultar facturas y suscripciones y editar los datos fiscales sí se hace ahí.
 7. Desde el 80 % de los mensajes del mes, el pie del panel dice cuántos quedan y cuándo vuelven (ver ASSISTANT-F26). El panel se cierra con ×, Escape, el velo o el mismo botón; el dispositivo recuerda si se dejó abierto, y la conversación se olvida al cerrar la sesión.
 Entra: la conversación (vive en el navegador de la persona), las herramientas que el modelo pidió y la respuesta de la persona a su tarjeta.
 Sale: lo que se ha hecho y su resultado, la tarjeta del cambio que espera, el texto según llega, el cupo que queda y el cierre; lo que hace cada herramienta deja su propio rastro (`hubs.business.created`…), nunca la conversación.
@@ -548,7 +548,7 @@ Pantalla: ninguna
 Pasos:
 1. La persona pregunta al asistente del panel cómo se hace algo en ERPlora o qué incluye un plan («¿Cómo invito a alguien a mi negocio?», «¿Qué incluye el plan Starter?»).
 2. El asistente tiene siempre a mano la búsqueda en la documentación, junto a la lista de negocios de la cuenta, y la usa para las preguntas de cómo se hace.
-3. erplora.com busca en la ayuda pública de erplora.com, en la documentación de cada app del Hub que está en la tienda, en la parte de usuario de los manuales del panel (la cuenta, los negocios, la facturación, la tienda y la web) y en los planes en venta con sus precios y lo que incluye cada uno.
+3. erplora.com busca en la ayuda pública de erplora.com, en la documentación de cada app del Hub que está en la tienda, en la parte de usuario de los manuales del panel (la cuenta, los negocios, la facturación, la tienda y la web) y en los planes en venta con sus precios y lo que incluye cada uno. En la cuenta que se abre desde la app no busca en los planes ni en los manuales de la facturación, la tienda y la web.
 4. Devuelve hasta 8 fragmentos (12 como mucho, aunque el modelo pida más), los más cercanos a la pregunta, en el idioma de la persona; si en su idioma hay menos de tres que de verdad respondan, se suman los de inglés. Cada fragmento dice de dónde sale y bajo qué títulos.
 5. El modelo contesta con lo que dicen esos fragmentos y cita de dónde salen; un precio o lo que incluye un plan sale siempre de los planes en venta, nunca de memoria.
 6. La documentación se pone al día con cada pasada de indexado: un cambio en la ayuda, en un manual, en la documentación de una app o en un plan llega al asistente con la siguiente pasada.
@@ -739,7 +739,9 @@ propio texto por `code`.
 
 - **Índice**: `assistant.DocChunk` en la BD de control (`id` UUIDv7, `source` `help` | `app_doc` | `workbook` |
   `plans`, `path`, `lang`, `heading`, `text`, `content_hash` único, `embedding` `vector(1536)`, `indexed_at`), con
-  índice `HnswIndex` por coseno (`m=16`, `ef_construction=64`). La extensión `vector` (pgvector) no es de confianza en
+  búsqueda exacta, sin índice aproximado: la migración `0005_drop_doc_chunk_hnsw` quitó el `HnswIndex`, porque filtraba
+  el idioma después de sus 40 filas más cercanas y perdía fragmentos, también con todas las filas vivas (run 41600831045;
+  `TestTheIndexLosesNothing`). Unos 3000 fragmentos se leen en 5 ms. La extensión `vector` (pgvector) no es de confianza en
   Aurora (solo `rds_superuser`): la crea antes, como usuario maestro, el arranque de plataforma del Hub
   (`bootstrap_databases`) en `saas` y `pre_saas`; la migración `0004_doc_chunks`
   (`CREATE EXTENSION IF NOT EXISTS vector`) la encuentra antes de mirar permisos, así que solo la crea en local y en
@@ -770,6 +772,10 @@ propio texto por `code`.
   diario a las 06:50 UTC en `saas-cron`; nace encendida con el `apply`. Para adelantarla, se lanza a mano como tarea
   suelta de `saas-cron` (`saas/README.md`, «Operación»). El paso 6 de ASSISTANT-F27 no promete la pasada diaria hasta
   que se lea su estado en producción (saas#184).
+- **Donde no se vende** (PLAN-SAAS §3.6 punto 6, `base.surface.sells_nothing`): `base.assistant.nothing_sold_here` añade
+  a las instrucciones del turno la regla con las dos frases de las pantallas (en el catálogo de Django, y un test las
+  compara con `hubs` y `billing` de `frontend/locale`), y `assistant.docs.search` no lee `queries.SELLING_WORKBOOKS` ni los
+  planes. La redacción la pone el modelo: esto se comprueba con la sonda `es-app-billing.promo.check-1` (capa 2).
 - **`assistant.docs.search`** (`queries.py`, `kind="query"`, `assistant.ask`, herramienta `assistant__docs__search`):
   nunca llama al proveedor. La huella de la pregunta la calcula antes `queries.prepare_questions`, fuera de toda
   transacción (la ruta del turno, `base.assistant.prepare`, para cada búsqueda que pidió el modelo; una llamada para
@@ -779,8 +785,8 @@ propio texto por `code`.
   de 3 a distancia < 0,55 se suman los de `en`; `limit` 8 por defecto, recortado a 12. En `base/assistant.py` está en `ALWAYS` (una
   pregunta de «cómo se hace» no comparte palabras con la herramienta y sin eso quedaba fuera de las 40) y su recibo no
   nombra una pantalla del panel sino la ayuda.
-- **Tests**: `assistant/tests/test_knowledge.py`, `test_index_docs.py` (con la migración de ida y vuelta y el índice
-  HNSW) y `test_docs_search.py` (también por el turno del panel); `apps/tests/test_queries.py` (`apps.doc.list`).
+- **Tests**: `assistant/tests/test_knowledge.py`, `test_index_docs.py` (con la migración de ida y vuelta y sin índice
+  aproximado) y `test_docs_search.py` (también por el turno del panel); `apps/tests/test_queries.py` (`apps.doc.list`).
 
 ## Lo que queda fuera
 
@@ -792,8 +798,6 @@ propio texto por `code`.
 - **El asistente del panel no deja dictar por voz como el del Hub** (ASSISTANT-F25, ASSISTANT-F21) — saas#175.
 - **El paso 6 de ASSISTANT-F27 aún no dice que la documentación se indexa sola cada día**: falta leer en producción el
   estado de `index-docs-daily` — saas#184.
-- **En la app, el asistente del panel explica cómo pagar con un cupón en vez de mandar a erplora.com**
-  (ASSISTANT-F25) — saas#192.
 - **Al pedirle un negocio nuevo, el asistente del panel a veces pide confirmación por escrito en vez de enseñar la
   tarjeta** (ASSISTANT-F25) — saas#193.
 

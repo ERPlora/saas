@@ -107,7 +107,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.sites",
     "django.contrib.sitemaps",
-    # The HNSW index of the assistant's documentation (assistant.DocChunk, pgvector): its index classes need it.
+    # The HNSW index migration assistant/0004 creates and 0005 removes (pgvector): its index classes need it.
     "django.contrib.postgres",
     "allauth",
     "allauth.account",
