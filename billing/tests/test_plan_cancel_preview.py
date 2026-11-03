@@ -27,7 +27,7 @@ from billing import queries
 from billing.models import Invoice
 from billing.schemas import HubIn, PlanCancelPreviewOut
 from billing.tests.conftest import ctx_for, pay
-from hubs.models import HubMember, Plan, Subscription, SubscriptionItem
+from hubs.models import Hub, HubMember, Plan, Subscription, SubscriptionItem
 from hubs.queries import free_plan
 from hubs.tests.conftest import add_member
 
@@ -214,6 +214,13 @@ class TestWhatCancellingWillDo:
 class TestItRefusesWhatTheCancelRefuses:
     def test_a_free_business_has_nothing_to_cancel(self, shop, owner):
         refused("billing.nothing_to_cancel", lambda: preview(owner, shop))
+
+    def test_a_deleted_business_shows_no_card_either(self, shop, owner):
+        """As the cancel (``services._owned``): a business deleted, still within its 90 days, takes no write."""
+        paid = pay(shop)
+        Hub.objects.filter(pk=paid.pk).update(status=Hub.Status.DELETING, deletion_requested_at=timezone.now())
+
+        refused("hubs.business_deleted", lambda: preview(owner, paid))
 
     @pytest.mark.parametrize("role", [HubMember.Role.ADMIN, HubMember.Role.EMPLOYEE])
     def test_nobody_but_the_owner_reads_it(self, shop, owner, make_user, role):
