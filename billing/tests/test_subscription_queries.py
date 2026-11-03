@@ -289,6 +289,24 @@ class TestTheActions:
         assert row["scheduled_change"]["plan"] == "starter"
         assert row["next_invoice"] is not None
 
+    def test_a_downgrade_that_waits_stays_on_its_business(self, owner, shop):
+        """Two businesses of one account: only the one with the downgrade says it and offers to keep it."""
+        pay(shop, plan="standard")
+        pay(create_business(owner, name="Bar Norte"), plan="standard", sub_id="sub_2")
+        PlanChangeSchedule.objects.create(
+            hub=shop,
+            stripe_schedule_id="sub_sched_1",
+            plan_slug="starter",
+            interval="month",
+            starts_at=timezone.now() + timedelta(days=30),
+        )
+
+        rows = {row["business"]["name"]: row for row in subscriptions(owner)}
+
+        assert rows["Panadería López"]["can"]["keep_plan"] is True
+        assert rows["Bar Norte"]["can"]["keep_plan"] is False
+        assert rows["Bar Norte"]["scheduled_change"] is None
+
     def test_a_downgrade_that_waits_is_not_kept_by_an_owner_who_does_not_pay(self, owner, shop, make_user):
         pay(shop, plan="standard")
         PlanChangeSchedule.objects.create(
