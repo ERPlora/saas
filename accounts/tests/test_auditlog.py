@@ -91,6 +91,29 @@ class TestNoSecretIsWritten:
         assert "password" not in written
         assert "first_name" in written
 
+    def test_the_words_of_an_invitation_are_never_logged(self, ana):
+        """The trail says who enters a business, never what the inviter wrote to them."""
+        member = enter(ana, "bar-pepe", "hub_admin")
+        member.invitation_message = "See you on Monday, Ana"
+        member.save()
+        member.role = "hub_manager"
+        member.save()
+
+        written = _everything_written(_entries_for(member))
+        assert "See you on Monday" not in written
+        assert "invitation_message" not in written
+        assert "hub_manager" in written
+
+    def test_opening_a_business_writes_no_entry(self, ana):
+        """``last_opened_at`` moves on every visit: as a session seen again, it would fill the trail."""
+        member = enter(ana, "bar-pepe", "hub_admin")
+        before = _entries_for(member).count()
+
+        member.last_opened_at = timezone.now()
+        member.save()
+
+        assert _entries_for(member).count() == before
+
     def test_a_password_change_alone_writes_no_entry(self, ana):
         before = _entries_for(ana).count()
 
