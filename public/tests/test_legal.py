@@ -1059,15 +1059,16 @@ def test_the_uk_clause_is_translated_into_spanish(client):
 @pytest.mark.django_db
 def test_the_terms_date_moved_with_the_last_change(client):
     """The page says when its text last changed: the marketplace sentences (L7), then §1 and §3.1,
-    every app on every plan and no module sold on its own (ronda 2026-10-24b, PLAN §32)."""
+    every app on every plan and no module sold on its own (ronda 2026-10-24b, PLAN §32), then §1 again,
+    no customer's own domain (saas#233)."""
     html = terms_html(client)
     spanish = terms_html(client, "es")
 
-    for old in ("August 8, 2026", "October 1, 2026", "October 13, 2026"):
+    for old in ("August 8, 2026", "October 1, 2026", "October 13, 2026", "October 25, 2026"):
         assert old not in html, old
-    assert "<strong>Last updated:</strong> October 25, 2026" in html
-    assert "13 de octubre de 2026" not in spanish
-    assert "25 de octubre de 2026" in spanish
+    assert "<strong>Last updated:</strong> November 3, 2026" in html
+    assert "25 de octubre de 2026" not in spanish
+    assert "3 de noviembre de 2026" in spanish
 
 
 @pytest.mark.django_db

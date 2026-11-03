@@ -2299,11 +2299,7 @@ msgstr "Todas las apps incluidas, listo para VeriFactu"
 msgid "Process transactions in milliseconds, with live updates on every device."
 msgstr "Procesa transacciones en milisegundos, con actualizaciones en vivo en todos los dispositivos."
 
-#: templates/public/legal/terms.html
-msgid "October 25, 2026"
-msgstr "25 de octubre de 2026"
-
-#: templates/public/legal/privacy.html
+#: templates/public/legal/privacy.html templates/public/legal/terms.html
 msgid "November 3, 2026"
 msgstr "3 de noviembre de 2026"
 
@@ -2868,8 +2864,8 @@ msgstr "Términos y Condiciones de uso de la plataforma ERPlora."
 msgid "The rules governing access to and use of ERPlora's modular ERP and POS cloud services."
 msgstr "Las reglas que rigen el acceso y el uso de los servicios en la nube de ERP y TPV modulares de ERPlora."
 
-msgid "ERPLORA CLOUD S.L., with Tax ID (CIF) B27593136 and registered address at Avda Lisboa 17, Pta. C, 28822 Coslada (Madrid) (hereinafter, \"ERPlora\"), provides cloud-based business management services (SaaS) through https://erplora.com and the <em>*.erplora.com</em> hubs or the customer's own domains."
-msgstr "ERPLORA CLOUD S.L., con CIF B27593136 y domicilio en Avda Lisboa 17, Pta. C, 28822 Coslada (Madrid) (en adelante, \"ERPlora\"), presta servicios de gestión empresarial en la nube (SaaS) a través de https://erplora.com y de los hubs <em>*.erplora.com</em> o dominios propios del cliente."
+msgid "ERPLORA CLOUD S.L., with Tax ID (CIF) B27593136 and registered address at Avda Lisboa 17, Pta. C, 28822 Coslada (Madrid) (hereinafter, \"ERPlora\"), provides cloud-based business management services (SaaS) through https://erplora.com and the <em>*.erplora.com</em> hubs."
+msgstr "ERPLORA CLOUD S.L., con CIF B27593136 y domicilio en Avda Lisboa 17, Pta. C, 28822 Coslada (Madrid) (en adelante, \"ERPlora\"), presta servicios de gestión empresarial en la nube (SaaS) a través de https://erplora.com y de los hubs <em>*.erplora.com</em>."
 
 msgid "Use of the service implies full acceptance of these terms."
 msgstr "El uso del servicio implica la aceptación plena de estas condiciones."
@@ -3761,8 +3757,8 @@ msgstr "catálogo de apps, 1 clic"
 msgid "Managed database, replicated across several European data centres, with continuous backups and point-in-time recovery for 14 days"
 msgstr "Base de datos gestionada, replicada en varios centros de datos europeos, con copias de seguridad continuas y recuperación a cualquier momento de los últimos 14 días"
 
-msgid "Every plan is priced per hub, and one hub covers all your devices and users. You start on the plan that fits you today and move up in one click when you need a custom domain or more capacity — no migration and no downtime."
-msgstr "Cada plan se cobra por hub, y un hub cubre todos tus dispositivos y usuarios. Empiezas con el plan que te encaja hoy y subes en un clic cuando necesites dominio propio o más capacidad, sin migración y sin paradas."
+msgid "Every plan is priced per hub, and one hub covers all your devices and users. You start on the plan that fits you today and move up in one click when you need more capacity — no migration and no downtime."
+msgstr "Cada plan se cobra por hub, y un hub cubre todos tus dispositivos y usuarios. Empiezas con el plan que te encaja hoy y subes en un clic cuando necesites más capacidad, sin migración y sin paradas."
 
 msgid "Plans · sign up directly"
 msgstr "Planes · regístrate directamente"
