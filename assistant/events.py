@@ -26,6 +26,9 @@ MESSAGE_RELEASED = "assistant.message.released"
 #: What a turn, an embedding or the voice spent was added: ``{"hub", "demo", "tokens_input", "tokens_output",
 #: "tokens_embedding", "transcriptions", "speech_characters", "cost_usd"}``.
 USAGE_RECORDED = "assistant.usage.recorded"
+#: An account reached the mail that its messages of the panel's assistant run out (``"near"``, 80 %) or are spent
+#: (``"spent"``), and took its mark of the month (ASSISTANT-F29): ``{"user", "warning", "used", "limit"}``.
+USAGE_WARNED = "assistant.usage.warned"
 
 #: The report of an answer was mailed to support: ``{"hub", "demo", "reason"}`` (never the question, the answer nor
 #: the comment).
@@ -45,6 +48,7 @@ ALL = [
     MESSAGE_CLAIMED,
     MESSAGE_RELEASED,
     USAGE_RECORDED,
+    USAGE_WARNED,
     REPORT_SENT,
     DOCS_INDEXED,
 ]
