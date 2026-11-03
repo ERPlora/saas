@@ -839,8 +839,6 @@ propio texto por `code`.
 ## Lo que queda fuera
 
 - **Buscar en la web y el tipo de cambio entre monedas** (ASSISTANT-F14): llegan con la etapa ERP — saas#202.
-- **Al cancelar un plan desde el asistente del panel, la tarjeta no enseña antes cómo quedará el negocio**
-  (ASSISTANT-F25) — saas#203.
 - **Una cuenta no recibe ningún correo cuando se le acaban los mensajes del asistente del panel** (ASSISTANT-F29) —
   saas#204.
 - **El asistente del panel no deja dictar por voz como el del Hub** (ASSISTANT-F25, ASSISTANT-F21) — saas#175.
