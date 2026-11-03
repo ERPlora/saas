@@ -2012,3 +2012,39 @@ msgid ""
 msgstr ""
 "No se ha cambiado nada: una factura enviada a la AEAT nunca se modifica. Si el dinero no se devolvió, emite "
 "a mano la factura que la anula."
+
+#: schemas.py
+msgid "Current plan"
+msgstr "Plan actual"
+
+#: schemas.py
+msgid "Paid until"
+msgstr "Pagado hasta"
+
+#: schemas.py
+msgid "Then it moves to"
+msgstr "Después pasa a"
+
+#: schemas.py
+msgid "Turned off that day"
+msgstr "Se desactivan ese día"
+
+#: schemas.py
+msgid "People on Free"
+msgstr "Personas en Gratis"
+
+#: schemas.py
+msgid "Devices on Free"
+msgstr "Dispositivos en Gratis"
+
+#: schemas.py
+msgid "People in the business now"
+msgstr "Personas del negocio ahora"
+
+#: schemas.py
+msgid "Unpaid invoice, still owed"
+msgstr "Factura sin pagar, sigue pendiente"
+
+#: queries.py
+msgid "and"
+msgstr "y"

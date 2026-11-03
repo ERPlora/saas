@@ -360,7 +360,7 @@ Pasos:
 Entra: la suscripción de Stripe del negocio.
 Sale: la suscripción marcada en Stripe para terminar al final del periodo (`billing.plan.cancelled`); nada más cambia hasta esa fecha (BILLING-F15).
 Si falla: si Stripe la rechaza o no contesta, nada cambia y se dice. Cancelar con una factura sin pagar se permite, pero no la anula: el diálogo lo avisa. Un negocio en Gratis no tiene nada que cancelar.
-Implicados: el negocio (recibe la fecha de fin)
+Implicados: el negocio (recibe la fecha de fin), ASSISTANT-F25 (pedido desde el asistente del panel, su tarjeta enseña lo mismo que el diálogo)
 
 ### BILLING-F14 Deshacer una cancelación o una bajada pendiente
 <!-- origen: old-saas:SAAS_DASHBOARD-F102 gh:saas#2529 gh:saas#2574 -->

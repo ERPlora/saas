@@ -1892,8 +1892,8 @@ def checkout_confirm(ctx: OperationContext, data: CheckoutConfirmIn) -> dict:
     permission="billing.pay",
     input=PlanChangeIn,
     output=SubscriptionOut,
-    # It needs a fresh preview of the server (``proration_date``, ``_require_fresh_preview``) that the chat has not: its
-    # tool comes with the previews of billing's writes (plan 2026-10-30-asistente-saas §7, «Fuera»).
+    # It needs a fresh preview of the server (``proration_date``, ``_require_fresh_preview``) that the chat has not, and
+    # ASSISTANT-F25 (step 5) sends a plan change to the Store: whether the chat changes plans at all is saas#211.
     ai=INTERNAL,  # preview
 )
 def plan_change(ctx: OperationContext, data: PlanChangeIn) -> dict:
@@ -1955,6 +1955,11 @@ def plan_change(ctx: OperationContext, data: PlanChangeIn) -> dict:
     ai=AI(
         description="Cancels the plan of a business at the end of its period: then it goes back to Free with its data.",
         risk="high",
+        # Its card first says what the «Cancel the plan» dialog of Billing says (BILLING-F13, saas#203).
+        preview={
+            "operation": "billing.plan.cancel_preview",
+            "fields": ["plan", "paid_until", "then", "modules", "free_users", "free_devices", "people", "unpaid_cents"],
+        },
         asks={
             "en": (
                 "cancel the bar's plan",

@@ -8,6 +8,9 @@
 //   Businesses;
 // - «create a business called <name>» (`crea`, `create`): asks for the write `hubs__business__create` with that name,
 //   then says whether it ran (the person said no: nothing changed);
+// - «cancel the plan of <business>» (`cancela el plan de`, `cancel the plan of`): reads the businesses for its id, then
+//   asks for the write `billing__plan__cancel` (whose card first says what cancelling will do), and says when the
+//   person said no;
 // - anything else: a short greeting.
 // Each answer comes in pieces, a little apart, so the panel paints the bubble «writing» before the first word.
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
@@ -67,6 +70,23 @@ function businessNames(result: string): string[] {
   }
 }
 
+/** The business whose plan the question asks to cancel («Cancela el plan de X», «Cancel the plan of X»), or null. */
+function cancelOf(question: string): string | null {
+  const match = /\b(?:cancela|cancel)\b.*?\bplan\s+(?:de|of)\s+«?([^»?.]+)»?/i.exec(question);
+  return match ? match[1].trim() : null;
+}
+
+/** The id of the business called `name` among those `hubs.business.list` answered, or null. */
+function businessId(result: string, name: string): string | null {
+  try {
+    const answer = JSON.parse(result) as { rows?: { id?: unknown; name?: unknown }[] };
+    const row = (answer.rows ?? []).find((each) => String(each.name ?? '').toLowerCase() === name.toLowerCase());
+    return row?.id ? String(row.id) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** «A», «A y B», «A, B y C» (or «and»), each in bold. */
 function listed(names: string[], and: string): string {
   const bold = names.map((name) => `**${name}**`);
@@ -112,6 +132,15 @@ export function answerTo(messages: Message[]): Answer {
     const asked = messages
       .flatMap((message) => message.tool_calls ?? [])
       .find((toolCall) => toolCall.id === last.tool_call_id)?.function?.name;
+    const cancelled = cancelOf(textOf([...messages].reverse().find((message) => message.role === 'user')?.content));
+    if (asked === 'hubs__business__list' && cancelled) {
+      const id = businessId(result, cancelled);
+      if (id) return call('billing__plan__cancel', { hub_id: id });
+      return text(es ? `No tienes ningún negocio llamado ${cancelled}.` : `You have no business called ${cancelled}.`);
+    }
+    if (asked === 'billing__plan__cancel' && refused(result)) {
+      return text(es ? 'No he cancelado el plan: no ha cambiado nada.' : 'I did not cancel the plan: nothing changed.');
+    }
     if (asked === 'hubs__business__list') {
       const names = businessNames(result);
       if (!names.length) return text(es ? 'Todavía no tienes ningún negocio.' : 'You have no business yet.');
@@ -133,6 +162,7 @@ export function answerTo(messages: Message[]): Answer {
   const question = textOf([...messages].reverse().find((message) => message.role === 'user')?.content);
   const create = /\b(?:crea|create)\b.*?(?:llamado|called)\s+«?([^»?.]+)»?/i.exec(question);
   if (create) return call('hubs__business__create', { name: create[1].trim(), country: 'ES' });
+  if (cancelOf(question)) return call('hubs__business__list', {});
   if (/negocios|businesses/i.test(question)) return call('hubs__business__list', {});
   return text(es ? 'Hola, soy el asistente de prueba.' : 'Hello, I am the test assistant.');
 }
