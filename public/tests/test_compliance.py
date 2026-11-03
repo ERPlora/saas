@@ -169,12 +169,12 @@ def test_every_message_of_the_page_has_its_spanish_entry():
     assert [message for message in messages if not catalog.get(message)] == []
 
 
-def test_every_country_and_system_has_its_spanish_name():
+def test_every_system_has_its_spanish_name():
+    """The countries' own names live with their field: ``hubs/tests/test_country_names.py``."""
     with CATALOG.open("rb") as compiled:
         catalog = gettext.GNUTranslations(compiled)._catalog
-    texts = [str(name) for name in compliance.COUNTRY_NAMES.values()]
     with translation.override("en"):
-        texts += [
+        texts = [
             str(system[key])
             for country in compliance.countries()
             for system in country["systems"]

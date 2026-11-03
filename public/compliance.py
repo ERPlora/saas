@@ -5,8 +5,8 @@ mandates «pending human legal review» (SAAS_PUBLIC-F62); the port left it out 
 as a fixed list in the code, released with the apps it describes, as Odoo lists its fiscal localizations and
 Business Central its countries:
 
-* the countries are the ones a business can be created in, ``hubs.schemas.COUNTRIES`` (one list: a market
-  added there without a name here fails ``test_compliance.py``);
+* the countries are the ones a business can be created in, ``hubs.schemas.COUNTRIES``, by the names their field
+  gives them (``hubs.models.COUNTRY_NAMES``: one list, and a market without a name fails ``test_compliance.py``);
 * for each, the fiscal systems the apps connect to TODAY: Spain's VeriFactu (the ``verifactu`` app of the
   Hub), and nothing else. The Spanish regions with their own system (the Basque Country's TicketBAI,
   Navarre) are said to be out, and no foreign mandate is named: nobody here has checked one, and a page
@@ -22,41 +22,11 @@ from django.shortcuts import render
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_safe
 
+from hubs.models import COUNTRY_NAMES
 from hubs.schemas import COUNTRIES
 
 #: Where the customers are: first on the page, whatever the reading language.
 HOME_MARKET = "ES"
-
-#: The name of each country a business can be created in (ISO 3166-1 alpha-2).
-COUNTRY_NAMES = {
-    "AT": _("Austria"),
-    "BE": _("Belgium"),
-    "BG": _("Bulgaria"),
-    "HR": _("Croatia"),
-    "CY": _("Cyprus"),
-    "CZ": _("Czechia"),
-    "DK": _("Denmark"),
-    "EE": _("Estonia"),
-    "FI": _("Finland"),
-    "FR": _("France"),
-    "DE": _("Germany"),
-    "GR": _("Greece"),
-    "HU": _("Hungary"),
-    "IE": _("Ireland"),
-    "IT": _("Italy"),
-    "LV": _("Latvia"),
-    "LT": _("Lithuania"),
-    "LU": _("Luxembourg"),
-    "MT": _("Malta"),
-    "NL": _("Netherlands"),
-    "PL": _("Poland"),
-    "PT": _("Portugal"),
-    "RO": _("Romania"),
-    "SK": _("Slovakia"),
-    "SI": _("Slovenia"),
-    "ES": _("Spain"),
-    "SE": _("Sweden"),
-}
 
 #: The fiscal systems the apps connect to, by country: what each does and what it leaves out.
 FISCAL_SYSTEMS = {
