@@ -95,6 +95,43 @@ def test_every_run_starts_from_scratch(seed):
     assert Hub.objects.filter(slug="e2e-assistant-panel").count() == 1
 
 
+def test_paying_leaves_the_business_on_starter_paid_by_its_owner_with_an_invoice_unpaid(seed):
+    """What ``panel/assistant-panel.spec.ts`` asks the assistant to cancel: a plan whose card says it whole."""
+    from billing import queries as billing_queries
+    from billing.schemas import HubIn
+    from billing.tests.conftest import ctx_for
+
+    made = seed.paying(ADDRESS, "en")
+
+    owner = get_user_model().objects.get(email=made["owner"])
+    hub = Hub.objects.get(slug=made["slug"])
+    shown = billing_queries.plan_cancel_preview(ctx_for(owner, "en"), HubIn(hub_id=hub.id)).model_dump()
+    assert (shown["plan"], shown["unpaid_cents"], shown["people"]) == ("Starter", made["unpaid_cents"], 1)
+    assert shown["paid_until"] is not None
+    assert owner.language == "en"
+
+
+def test_clear_leaves_nothing_of_the_paying_business(seed):
+    from billing.models import Invoice
+    from hubs.models import BillingProfile, Subscription
+
+    seed.paying(ADDRESS)
+
+    seed.clear()
+
+    assert not Subscription.objects.filter(stripe_subscription_id__startswith="sub_e2e_").exists()
+    assert not Invoice.objects.filter(stripe_invoice_id__startswith="in_e2e_").exists()
+    assert not BillingProfile.objects.filter(stripe_customer_id__startswith="cus_e2e_").exists()
+
+
+def test_paying_runs_again_from_scratch(seed):
+    seed.paying(ADDRESS)
+    seed.clear()
+    seed.paying(ADDRESS)
+
+    assert Hub.objects.filter(slug="e2e-assistant-panel").count() == 1
+
+
 def _keyed(slug: str) -> None:
     from assistant.models import AIProvider, AIProviderCredential
 

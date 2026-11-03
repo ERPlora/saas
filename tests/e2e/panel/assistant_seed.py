@@ -23,6 +23,10 @@ the account.
 - ``panel <address> [<language>]``: ``gpt-e2e-large`` answering, as in ``gateway``, and ``e2e-assistant-owner``: an
   account like any other (no staff), in ``language`` (``es`` by default), owner of one working business on the Free
   plan, «E2E Asistente Panel». Prints one line of JSON for the spec: the owner's email, the business and its address.
+- ``paying <address> [<language>]``: ``panel`` with its business paying Starter by the month with its owner's card and
+  an invoice of it not collected yet (Stripe ids ``cus_``/``sub_``/``in_e2e_assistant_…``, never sent to Stripe): what
+  the spec asks the assistant to cancel, so its card shows what cancelling will do (BILLING-F13). ``clear`` also removes
+  that invoice and that payer, which outlive a business. Its JSON adds what the invoice owes, in cents.
 
 - ``forget``: ``clear`` and the real keys of ``real`` deleted (on the run's own e2e database only): what the probes'
   spec (``assistant-probes.spec.ts``) runs after every worker, so no real key stays behind.
@@ -52,6 +56,8 @@ PREFIX = "e2e-assistant-"
 PROVIDER = "e2e-local"
 BUSINESS_PREFIX = "e2e-assistant-"
 DEMO = "demo-0e2ea55e"
+#: The Stripe ids ``paying`` gives its business, the run's own (``clear`` finds by them what outlives the business).
+STRIPE_PREFIX = {"customer": "cus_e2e_assistant_", "subscription": "sub_e2e_assistant_", "invoice": "in_e2e_assistant_"}
 #: A made-up key in the shape of OpenAI's.
 API_KEY = "sk-e2e-0000000000000000000000000000e2e1"
 VIEW_ONLY = ("view_aiprovider", "view_aiprovidercredential", "view_aimodel", "view_airoutingpolicy")
@@ -83,7 +89,8 @@ def clear() -> None:
 
     from accounts.models import HubMembership
     from assistant.models import AIProvider, AIRoutingPolicy, AssistantUsage
-    from hubs.models import Hub
+    from billing.models import Invoice
+    from hubs.models import BillingProfile, Hub
 
     AssistantUsage.objects.filter(demo=DEMO).delete()
     # Its businesses, also the ones the assistant created for an account of this seed (the battery's «QA Asistente 31»).
@@ -91,7 +98,10 @@ def clear() -> None:
     slugs = Q(slug__startswith=BUSINESS_PREFIX) | Q(pk__in=owned.values("pk"))
     HubMembership.objects.filter(hub_slug__in=Hub.objects.filter(slugs).values("slug")).delete()
     HubMembership.objects.filter(hub_slug__startswith=BUSINESS_PREFIX).delete()
+    # What ``paying`` leaves outlives the business (``SET_NULL``): its invoice and its payer go by their own ids.
+    Invoice.objects.filter(stripe_invoice_id__startswith=STRIPE_PREFIX["invoice"]).delete()
     Hub.objects.filter(slugs).delete()
+    BillingProfile.objects.filter(stripe_customer_id__startswith=STRIPE_PREFIX["customer"], hubs=None).delete()
     ours = AIProvider.objects.filter(slug__startswith="e2e-")
     AIRoutingPolicy.objects.filter(
         Q(active_model__provider__in=ours) | Q(fallback_model__provider__in=ours)
@@ -187,6 +197,53 @@ def panel(address: str, language: str = "es") -> dict:
     answering(address)
     owner, hub = _owner_with_business("owner", ("Lena", "Panel"), "E2E Asistente Panel", "panel", language)
     return {"owner": owner.email, "business": hub.name, "slug": hub.slug}
+
+
+def paying(address: str, language: str = "es") -> dict:
+    """``panel`` with its business paying Starter by the month with its owner's card, and an invoice of it not collected
+    yet: what ``panel/assistant-panel.spec.ts`` asks the assistant to cancel, so its card shows what cancelling will do
+    (``billing.plan.cancel_preview``). Stripe's ids are the run's own: the card only reads, nothing asks Stripe."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from billing.models import Invoice
+    from hubs.models import BillingProfile, Hub, Plan, Subscription
+
+    made = panel(address, language)
+    hub = Hub.objects.get(slug=made["slug"])
+    owner = hub.members.get().user
+    now = timezone.now()
+    profile = BillingProfile.objects.create(
+        owner=owner,
+        billing_name=f"{hub.name} SL",
+        billing_country="ES",
+        billing_postal_code="28001",
+        stripe_customer_id=f"{STRIPE_PREFIX['customer']}panel",
+    )
+    Hub.objects.filter(pk=hub.pk).update(billing_profile=profile)
+    Subscription.objects.create(
+        hub=hub,
+        plan=Plan.objects.get(slug="starter"),
+        status="past_due",
+        stripe_customer_id=profile.stripe_customer_id,
+        stripe_subscription_id=f"{STRIPE_PREFIX['subscription']}panel",
+        current_period_start=now - timedelta(days=10),
+        current_period_end=now + timedelta(days=20),
+        unpaid_since=now,
+    )
+    invoice = Invoice.objects.create(
+        hub=hub,
+        kind=Invoice.Kind.INVOICE,
+        stripe_invoice_id=f"{STRIPE_PREFIX['invoice']}panel",
+        payment_status=Invoice.PaymentStatus.OPEN,
+        net_cents=2999,
+        tax_cents=630,
+        total_cents=3629,
+        currency="EUR",
+        billed_at=now,
+    )
+    return {**made, "unpaid_cents": invoice.total_cents}
 
 
 def _owner_with_business(local: str, names: tuple[str, str], business: str, slug: str, language: str):
@@ -318,6 +375,7 @@ def main(action: str, address: str, language: str) -> None:
         "models": lambda: models(address),
         "gateway": lambda: gateway(address),
         "panel": lambda: panel(address, language),
+        "paying": lambda: paying(address, language),
         "real": lambda: real(keys, language),
         "forget": forget,
     }
