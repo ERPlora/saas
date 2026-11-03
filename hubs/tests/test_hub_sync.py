@@ -112,7 +112,7 @@ class TestTheSnapshot:
             "whatsapp_messages_per_month": 150,
             # The modules a business may choose to turn on (2026-10-24; what they require does not count): Starter's 40.
             "max_apps": 40,
-            # The space for the business's files its tier includes, the Hub's «Space» (BASE-F52, F53): 5 GiB.
+            # The space for the business's files its tier includes, the Hub's «Space» (BASE-F72, F73): 5 GiB.
             "max_storage_bytes": 5 * 1024**3,
         }
 

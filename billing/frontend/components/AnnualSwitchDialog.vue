@@ -14,7 +14,7 @@ import { useI18n } from 'vue-i18n';
 import { useErrorText } from '../../../hubs/frontend/error-text';
 import type { BillingInterval, PlanOut, SubscriptionOut } from '../../../frontend/sdk-types';
 import { useChargePreview } from '../charge-preview';
-import { formatCents, formatEuros } from '../format';
+import { formatCents, formatDate, formatEuros } from '../format';
 
 const props = defineProps<{
   business: { id: string; name: string };
@@ -38,6 +38,14 @@ const annual = computed(() => props.interval === 'year');
 const periodName = computed(() => t(`billing.plans.periodName.${props.interval}`));
 const money = (cents: number) => formatCents(cents, locale.value);
 const error = computed(() => confirmError.value ?? (charge.state.value === 'error' ? forDialog(charge.error.value) : null));
+/** Back to monthly waits for the end of the paid year, and a trial charges nothing until it ends: never «from now on» then. */
+const intro = computed(() => {
+  const params = { business: props.business.name, plan: props.plan?.name ?? '', period: periodName.value };
+  const startsAt = charge.preview.value?.charge_starts_at;
+  return startsAt
+    ? t('billing.annual.introScheduled', { ...params, date: formatDate(startsAt, locale.value) })
+    : t('billing.annual.intro', params);
+});
 
 async function loadPreview(): Promise<void> {
   if (!props.plan) return;
@@ -66,7 +74,13 @@ async function confirm(): Promise<void> {
       interval: props.interval,
       proration_date: preview.proration_date,
     });
-    void toastSuccess(t('billing.plans.switched', { business: props.business.name, plan: plan.name, period: periodName.value }));
+    const params = { business: props.business.name, plan: plan.name, period: periodName.value };
+    const waiting = subscription.scheduled_change;
+    void toastSuccess(
+      waiting
+        ? t('billing.plans.switchScheduled', { ...params, date: formatDate(waiting.starts_at, locale.value) })
+        : t('billing.plans.switched', params),
+    );
     emit('done', subscription);
     open.value = false;
   } catch {
@@ -96,7 +110,7 @@ async function confirm(): Promise<void> {
       class="charge-intro"
       data-testid="annual-intro"
     >
-      {{ $t('billing.annual.intro', { business: business.name, plan: plan?.name ?? '', period: periodName }) }}
+      {{ intro }}
     </p>
     <div
       v-if="charge.state.value === 'loading' || charge.state.value === 'idle'"
