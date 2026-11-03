@@ -16,6 +16,7 @@ from live.context import OperationContext
 from live.errors import OperationError, Unauthorized
 from live.operations import INTERNAL, operation
 
+from assistant import media as gateway_media
 from assistant import services as gateway_services
 from assistant import turn as gateway
 from assistant.schemas import Caller, ReportSendIn
@@ -23,6 +24,8 @@ from base import assistant
 from base.schemas import (
     AssistantReportIn,
     AssistantReportOut,
+    AssistantTranscribeIn,
+    AssistantTranscribeOut,
     AssistantTurnIn,
     AssistantTurnOut,
 )
@@ -202,3 +205,31 @@ def assistant_report(ctx: OperationContext, data: AssistantReportIn) -> dict:
                 status=503,
             ) from None
     return sent.model_dump()
+
+
+@operation(
+    "base.assistant.transcribe",
+    kind="command",
+    permission=ASK,
+    input=AssistantTranscribeIn,
+    output=AssistantTranscribeOut,
+    ai=INTERNAL,  # panel
+    # The door, with no transaction open: the route waits on the provider after it (``assistant.transcribed``), and a
+    # connection never waits on the provider inside a transaction.
+    database=False,
+)
+def assistant_transcribe(ctx: OperationContext, data: AssistantTranscribeIn) -> dict:
+    """A dictation of the panel made ready, as a turn is: the session's account, its permission, its budget of the Hub's
+    ``transcribe`` door (``ASSISTANT_TRANSCRIBE_RATELIMIT``, 429 ``rate_limited``) and the language it goes in (as asked,
+    else the account's). The words come from the route (``base.assistant.transcribed``), to the box and never sent by
+    themselves; nothing else is ever written of them."""
+    try:
+        gateway.spend(getattr(ctx, "request", None), "transcribe", settings.ASSISTANT_TRANSCRIBE_RATELIMIT, Caller(user_id=ctx.actor.pk))
+    except gateway.Refused:
+        with translation.override(ctx.language):
+            raise OperationError(
+                gettext("Too many dictations in a short time: wait a moment and try again."),
+                code="rate_limited",
+                status=429,
+            ) from None
+    return {"text": "", "language": gateway_media.base_language(data.language or ctx.language)}
