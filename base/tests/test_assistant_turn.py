@@ -106,7 +106,7 @@ class TestTheCatalog:
             "accounts.apikey.create",
             "hubs.business.open",
             "accounts.data.export",
-            # Its proration_date is a fresh preview of the server's: the chat has none (billing previews, plan §7).
+            # It charges now, so it is done in the Store, whose dialog shows the charge first (saas#211, ASSISTANT-F25).
             "billing.plan.change",
             # A link to download a whole copy of a business's data: the screen's button, never a chat bubble.
             "hubs.data_copy.link",
