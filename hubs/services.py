@@ -2357,7 +2357,15 @@ def push_snapshots(*, behind_only: bool = False) -> Counter:
 # --- Usage: the nightly collection (lot L4-A, PLAN-SAAS §5) -----------------------------------------
 
 #: The figures of a day of usage, as ``HubUsageDaily`` keeps them.
-USAGE_FIGURES = ("s3_bytes", "db_bytes", "active_users_1d", "active_users_30d")
+USAGE_FIGURES = (
+    "s3_bytes",
+    "db_bytes",
+    "active_users_1d",
+    "active_users_30d",
+    "requests",
+    "peak_connections",
+    "busy_requests",
+)
 #: Counts that make ``collect_hub_usage`` end with an error, after its whole pass.
 USAGE_FAILING_COUNTS = ("unreachable", "refused", "invalid", "failed")
 

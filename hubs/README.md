@@ -272,8 +272,10 @@ Parte 5 de 5: cada flujo `hecho` contra su código, con mutantes ejecutados; los
 
 - **`HubUsageDaily`** (migración `0010`): una fila por negocio y día, tal como lo midió el Hub esa noche
   (PLAN-SAAS §5): `s3_bytes` (sus ficheros en S3), `db_bytes` (su BD; solo para el admin), `active_users_1d` y
-  `active_users_30d`, más `collected_at`. Única escritora: la operación de sistema `hubs.usage.record`; volver a
-  recoger un día sustituye sus cifras y, si son las mismas, no escribe ni avisa.
+  `active_users_30d`, más `collected_at`; desde hub#603 (migración `0023`, PLAN-SAAS §28), también `requests`,
+  `peak_connections` y `busy_requests`, solo para el admin y `null` si el Hub no las midió. Única escritora: la
+  operación de sistema `hubs.usage.record`; volver a recoger un día sustituye sus cifras y, si son las mismas, las
+  tres últimas incluidas, no escribe ni avisa.
 - **`manage.py collect_hub_usage [--day AAAA-MM-DD]`** (`saas-cron`, cada noche): por defecto, el día de **ayer en
   UTC**; `--day` recoge otro (relleno), nunca uno que no ha acabado en UTC. Lee todas las páginas de
   `GET /internal/usage`; una fila rota o que falla no para la pasada. Lock `hashtext('erplora.saas.collect_hub_usage')`
@@ -298,8 +300,10 @@ Parte 5 de 5: cada flujo `hecho` contra su código, con mutantes ejecutados; los
 - Las dos de uso: propietario y administradores (como la página del negocio; matriz de
   `tests/test_permission_matrix.py`), vivas, en `/api/hubs/usage` y `/api/hubs/usage/series`, y abiertas a una
   clave de API con `hubs.read`.
-- **Admin**: `HubUsageDaily` de solo lectura (solo superusuarios; `support` no lo ve todavía), con los tamaños
-  legibles, la BD incluida, búsqueda por dirección o nombre y navegación por días.
+- **Admin**: `HubUsageDaily` de solo lectura (superusuarios y, desde la migración `0024`, `support`), con los tamaños
+  legibles, la BD incluida, búsqueda por dirección o nombre y navegación por días. Enseña además «Peticiones», «Pico
+  de conexiones» y «Peticiones sin hueco» (hub#603): «—» si el Hub no las midió, nunca un 0; el primer clic en su
+  columna ordena de mayor a menor, con las sin medir al final.
 - **Panel** (`frontend/components/BusinessSummary.vue`): la tarjeta «Uso» de la maqueta, con
   `UsageMeter` (almacenamiento en %, con aviso desde el 80 % y al llenarse) y dos `UsageCounter` (activos ayer o
   ese día, últimos 30 días), y «Datos de ayer: se actualizan cada noche» o «Datos del <día>»; sin datos, «Sin
@@ -323,7 +327,8 @@ X-Erplora-Timestamp, X-Erplora-Signature (v1) y X-Erplora-Signature-V2 (cubre m�
 
 200 {"day": "2026-10-13",
      "hubs": [{"id": "<UUID del hub>", "s3_bytes": 0, "db_bytes": 0,
-               "active_users_1d": 0, "active_users_30d": 0}],
+               "active_users_1d": 0, "active_users_30d": 0,
+               "requests": 0, "peak_connections": 0, "busy_requests": 0}],
      "next_cursor": "<opaco>" | null}
 ```
 
@@ -332,6 +337,12 @@ X-Erplora-Timestamp, X-Erplora-Signature (v1) y X-Erplora-Signature-V2 (cubre m�
   inventario de S3 de ese día), `db_bytes` (`pg_database_size` de `hub_<hex>`), `active_users_1d` (personas
   distintas con sesión o PIN usado ese día) y `active_users_30d` (en los 30 días que acaban ese día; nunca menos
   que `active_users_1d`). Enteros ≥ 0. Un hub sin medir ese día no sale.
+- `requests` (las peticiones de ese día), `peak_connections` (el máximo de transacciones a la vez contra su BD ese
+  día) y `busy_requests` (las veces que una petición se quedó sin hueco ese día), de hub#603 y BASE-F40: enteros ≥ 0
+  (hasta 2^63−1; `peak_connections`, hasta 2^31−1) o `null`. `null` o sin el campo, como en la fila de un Hub anterior,
+  es «sin medir»: se guarda `null`, nunca 0. Otro valor deja la fila `invalid`. Son solo para el admin
+  (PLAN-SAAS §28): `hubs.usage.get`, `hubs.usage.series` y `hubs.business.get` no las dan.
+- El SaaS ignora los campos de una fila que no conoce: el Hub puede añadir uno y desplegarse antes de que el SaaS lo lea.
 - Paginación por cursor: `next_cursor` opaco (1–512 caracteres) que el SaaS devuelve tal cual; `null` en la última
   página. Tamaño de página a elección del Hub (se recomienda ≤ 500). Repetir un cursor es un error.
 - Un día que el Hub aún no ha medido: 409 `usage_not_ready` (el SaaS falla la pasada y avisa; se rellena con
@@ -345,7 +356,6 @@ X-Erplora-Timestamp, X-Erplora-Signature (v1) y X-Erplora-Signature-V2 (cubre m�
 - **`aws-next`**: programar `python manage.py collect_hub_usage` cada noche en `scheduler.tf` (`saas-cron`), después
   de la medición del Hub (propuesta: 01:15 UTC; `push_hub_snapshots` va a las 00:30).
 - La gráfica del panel con `hubs.usage.series` (bloque 8 de PLAN-SAAS; no está en la maqueta).
-- `support` sin acceso al uso en el admin (si se quiere, migración de datos como `0007`).
 
 ## Lo que añadió la tenencia (2026-10-30): alta y demo asíncronas, y las copias de los datos
 

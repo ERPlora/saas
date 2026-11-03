@@ -281,6 +281,185 @@ class TestCollect:
         other_session.execute(f"SELECT pg_advisory_unlock({LOCK_KEY})")
 
 
+#: What the Hub measures during the day and adds to each row (hub#603, PLAN-SAAS §28, BASE-F40); for the admin only.
+DAY_FIGURES = ("requests", "peak_connections", "busy_requests")
+
+
+def day_figures(hub):
+    sample = HubUsageDaily.objects.get(hub=hub, day=DAY)
+    return tuple(getattr(sample, name) for name in DAY_FIGURES)
+
+
+class TestTheFiguresOfTheDay:
+    """The Hub is deployed first, so a row may come without them, and what nobody measured is never a 0."""
+
+    def test_they_are_kept_as_the_hub_measured_them(self, business, hub_double):
+        hub_double.usage[DAY.isoformat()] = [
+            row(business.id, requests=1200, peak_connections=5, busy_requests=2)
+        ]
+
+        output = collect()
+
+        assert day_figures(business) == (1200, 5, 2)
+        assert "recorded=1" in output
+
+    def test_a_row_without_them_keeps_them_unknown_not_zero(self, business, hub_double):
+        """The row of a Hub that does not send them yet."""
+        hub_double.usage[DAY.isoformat()] = [row(business.id, s3_bytes=7)]
+
+        output = collect()
+
+        assert day_figures(business) == (None, None, None)
+        assert figures(business)[0] == 7
+        assert "recorded=1" in output and "invalid=0" in output
+
+    def test_a_row_saying_not_measured_keeps_them_unknown(self, business, hub_double):
+        """A day before the Hub started measuring them, or one of them it could not measure."""
+        hub_double.usage[DAY.isoformat()] = [
+            row(business.id, requests=None, peak_connections=3, busy_requests=None)
+        ]
+
+        output = collect()
+
+        assert day_figures(business) == (None, 3, None)
+        assert "invalid=0" in output
+
+    def test_a_measured_zero_stays_a_zero(self, business, hub_double):
+        hub_double.usage[DAY.isoformat()] = [
+            row(business.id, requests=0, peak_connections=0, busy_requests=0)
+        ]
+
+        collect()
+
+        assert day_figures(business) == (0, 0, 0)
+
+    def test_a_figure_this_saas_does_not_know_never_breaks_the_row(
+        self, business, hub_double
+    ):
+        """The Hub may add figures before the SaaS reads them: that is why it can be deployed first."""
+        hub_double.usage[DAY.isoformat()] = [
+            row(business.id, s3_bytes=7, a_figure_of_tomorrow=3)
+        ]
+
+        output = collect()
+
+        assert figures(business)[0] == 7
+        assert "recorded=1" in output and "invalid=0" in output
+
+    @pytest.mark.parametrize(
+        ("name", "biggest"),
+        [
+            ("requests", 2**63 - 1),
+            ("peak_connections", 2**31 - 1),
+            ("busy_requests", 2**63 - 1),
+        ],
+    )
+    def test_the_contract_stops_where_the_column_does(
+        self, business, hub_double, name, biggest
+    ):
+        """Beyond it the row is off the contract (``invalid``), never a crash of the database (``failed``)."""
+        hub_double.usage[DAY.isoformat()] = [row(business.id, **{name: biggest})]
+
+        collect()
+
+        assert getattr(HubUsageDaily.objects.get(hub=business, day=DAY), name) == biggest
+
+        hub_double.usage[DAY.isoformat()] = [row(business.id, **{name: biggest + 1})]
+
+        with pytest.raises(CommandError) as failed:
+            collect()
+
+        assert "invalid=1" in str(failed.value) and "failed=0" in str(failed.value)
+
+    @pytest.mark.parametrize("name", DAY_FIGURES)
+    @pytest.mark.parametrize("broken", [-1, "many", 1.5])
+    def test_a_broken_figure_is_a_broken_row(self, business, hub_double, name, broken):
+        hub_double.usage[DAY.isoformat()] = [row(business.id, **{name: broken})]
+
+        with pytest.raises(CommandError) as failed:
+            collect()
+
+        assert "invalid=1" in str(failed.value)
+        assert not HubUsageDaily.objects.filter(hub=business).exists()
+
+
+class TestCollectingADayAgainWithTheFiguresOfTheDay:
+    """HUBS-F22: a day collected again is replaced only if it changed, and these figures are part of it."""
+
+    MEASURED = {"requests": 1200, "peak_connections": 5, "busy_requests": 2}
+
+    @pytest.mark.parametrize("name", DAY_FIGURES)
+    def test_only_one_of_them_changed_replaces_the_day_and_tells_the_page(
+        self,
+        business,
+        owner,
+        hub_double,
+        notified,
+        django_capture_on_commit_callbacks,  # noqa: F811
+        name,
+    ):
+        hub_double.usage[DAY.isoformat()] = [row(business.id, **self.MEASURED)]
+        collect()
+        first = HubUsageDaily.objects.get(hub=business, day=DAY).collected_at
+        notified.clear()
+        hub_double.usage[DAY.isoformat()] = [
+            row(business.id, **{**self.MEASURED, name: self.MEASURED[name] + 1})
+        ]
+
+        with django_capture_on_commit_callbacks(execute=True):
+            output = collect()
+
+        sample = HubUsageDaily.objects.get(hub=business, day=DAY)
+        assert getattr(sample, name) == self.MEASURED[name] + 1
+        assert sample.collected_at > first
+        assert "recorded=1" in output and "unchanged=0" in output
+        assert channels(notified, events.BUSINESS_USAGE_COLLECTED) == {str(owner.pk)}
+
+    def test_the_same_ones_again_write_nothing_and_tell_nobody(
+        self,
+        business,
+        hub_double,
+        notified,
+        django_capture_on_commit_callbacks,  # noqa: F811
+    ):
+        hub_double.usage[DAY.isoformat()] = [row(business.id, **self.MEASURED)]
+        collect()
+        first = HubUsageDaily.objects.get(hub=business, day=DAY).collected_at
+        notified.clear()
+
+        with django_capture_on_commit_callbacks(execute=True):
+            output = collect()
+
+        assert HubUsageDaily.objects.get(hub=business, day=DAY).collected_at == first
+        assert "unchanged=1" in output and "recorded=0" in output
+        assert channels(notified, events.BUSINESS_USAGE_COLLECTED) == set()
+
+    def test_a_day_kept_without_them_takes_them_when_collected_again(
+        self, business, hub_double
+    ):
+        """The backfill (``--day``) of a night collected before the Hub sent them."""
+        hub_double.usage[DAY.isoformat()] = [row(business.id)]
+        collect()
+        hub_double.usage[DAY.isoformat()] = [row(business.id, **self.MEASURED)]
+
+        output = collect()
+
+        assert day_figures(business) == (1200, 5, 2)
+        assert "recorded=1" in output
+
+    def test_a_zero_is_not_the_same_as_not_measured(self, business, hub_double):
+        hub_double.usage[DAY.isoformat()] = [row(business.id)]
+        collect()
+        hub_double.usage[DAY.isoformat()] = [
+            row(business.id, requests=0, peak_connections=0, busy_requests=0)
+        ]
+
+        output = collect()
+
+        assert day_figures(business) == (0, 0, 0)
+        assert "recorded=1" in output
+
+
 class TestTheyHearOfIt:
     def test_the_owner_and_the_admins_hear_of_a_new_day(
         self,
