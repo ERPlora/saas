@@ -99,8 +99,8 @@ function writeHeaders(doc: Document): Record<string, string> {
 
 /** The mp3 of `input` read in its server voice (`base.assistant.speak`, ASSISTANT-F22). Its answer is the file itself,
  *  not JSON, so it is the SDK's `fetchFile` with the write's method, body and headers (the session cookie, the CSRF
- *  token): anything but an mp3 rejects with the envelope's `ApiError`, and no network with the SDK's `network_error`.
- *  The chat then reads the answer in the device's voice. */
+ *  token): anything but an mp3 rejects with the envelope's `ApiError`, and no network (or an aborted request) with the
+ *  SDK's `network_error`. The chat then reads the answer in the device's voice, unless it stopped the reading. */
 export async function speak(
   input: AssistantSpeech,
   deps: SpeakDeps = { fetch: (url, init) => globalThis.fetch(url, init), doc: document },
@@ -108,8 +108,9 @@ export async function speak(
   const { path } = OPERATION_ROUTES['base.assistant.speak'];
   const body = JSON.stringify({ text: input.text, language: input.language, voice: input.voice });
   const headers = { ...writeHeaders(deps.doc), 'Content-Type': 'application/json' };
+  // The chat's `signal`: a reading stopped before its audio arrives aborts the request.
   const file = await fetchFile(path, 'audio/mpeg', (url, init) =>
-    deps.fetch(url, { ...init, method: 'POST', headers: { ...headers, ...init?.headers }, body }),
+    deps.fetch(url, { ...init, method: 'POST', headers: { ...headers, ...init?.headers }, body, signal: input.signal }),
   );
   return file.blob;
 }

@@ -308,11 +308,18 @@ class TestReadingAloud:
         row = AssistantUsage.objects.get(hub=business)
         assert (row.messages, row.speech_characters) == (0, 4)
 
-    def test_an_empty_text_is_refused(self, client, internal, business, azure):
-        response = door(client, SYNTHESIZE, reading(business, text="   "))
+    @pytest.mark.parametrize("text", ["   ", "\x00", "\x00\x0c \x1f", "\ufffe"])
+    def test_an_empty_text_is_refused(self, client, internal, business, azure, text):
+        """Nothing XML can carry is nothing to read: a 422 naming ``text``, never an empty ``<voice>`` sent to Azure."""
+        response = door(client, SYNTHESIZE, reading(business, text=text))
 
         assert (response.status_code, error_code(response)) == (422, "invalid_payload")
+        assert "text" in response.json()["error"]["fields"]
         assert azure.requests == []
+
+    def test_a_long_reading_has_a_minute_to_arrive(self):
+        """Four thousand characters may take Azure longer than 20 s to read: a minute to answer, as the other services."""
+        assert (media.SPEECH_TIMEOUT.connect, media.SPEECH_TIMEOUT.read) == (10.0, 60.0)
 
     def test_it_needs_no_services_provider_of_openai(self, client, internal, business, azure, settings):
         settings.ASSISTANT_SERVICE_PROVIDER = "nobody"

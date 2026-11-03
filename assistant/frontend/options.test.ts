@@ -210,6 +210,17 @@ describe('speak (ASSISTANT-F22): the mp3 of an answer in a server voice, base.as
     expect(JSON.parse(init.body)).toEqual(SPEECH);
   });
 
+  it("passes the chat's signal to the request, so a reading stopped before its audio arrives is aborted", async () => {
+    const controller = new AbortController();
+    const fetch = vi.fn().mockResolvedValue(new Response(new Blob(['ID3']), { status: 200, headers: { 'Content-Type': 'audio/mpeg' } }));
+
+    await speak({ ...SPEECH, signal: controller.signal }, { fetch, doc: panelPage() });
+
+    const [, init] = fetch.mock.calls[0];
+    expect(init.signal).toBe(controller.signal);
+    expect(JSON.parse(init.body)).toEqual(SPEECH);
+  });
+
   it('rejects with the envelope of a refusal, so the chat reads in the device voice', async () => {
     const refusal = { error: { code: 'assistant.speech_unavailable', message: 'Reading aloud is not available right now.' } };
     const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(refusal), { status: 503, headers: { 'Content-Type': 'application/json' } }));

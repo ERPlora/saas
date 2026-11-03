@@ -81,8 +81,9 @@ SPEECH_LANGUAGES = tuple(dict.fromkeys(voice.language for voice in VOICES))
 SPEECH_PATH = "/cognitiveservices/v1"
 #: An mp3 a browser plays everywhere, of the quality the HD voices are made for.
 SPEECH_FORMAT = "audio-24khz-48kbitrate-mono-mp3"
-#: Azure starts answering in under a second; four thousand characters take a few.
-SPEECH_TIMEOUT = httpx.Timeout(20.0)
+#: Azure starts answering in under a second, but four thousand characters may take it longer than 20 s to read: a
+#: minute to answer, as the other services.
+SPEECH_TIMEOUT = httpx.Timeout(connect=10.0, read=60.0, write=30.0, pool=10.0)
 #: What XML 1.0 cannot carry (C0 controls but tab, newline and carriage return; surrogates; U+FFFE and U+FFFF):
 #: one of them makes Azure refuse the whole SSML.
 NOT_XML = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff\ufffe\uffff]")

@@ -330,9 +330,13 @@ class SpeechIn(Schema):
     @field_validator("text")
     @classmethod
     def _something_to_read(cls, value):
-        if not value.strip():
+        from assistant.media import NOT_XML
+
+        # What XML cannot carry is dropped from the SSML (``media.ssml``): a text of only that is nothing to read.
+        text = NOT_XML.sub("", value).strip()
+        if not text:
             raise ValueError("write the text to read aloud")
-        return value.strip()
+        return text
 
     @field_validator("voice")
     @classmethod

@@ -725,7 +725,7 @@ propio texto por `code`.
   (`assistant.speech.connection`; sin él, 503 `assistant.speech_unavailable`): su `base_url` es el endpoint de su
   región (`DEFAULT_BASE_URLS`: Suecia Central) y su clave va en `Ocp-Apim-Subscription-Key`. SSML con el texto
   escapado, voces DragonHD de `media.VOICES` (el mismo catálogo e ids que `@erplora/ui`), mp3
-  `audio-24khz-48kbitrate-mono-mp3`, 20 s de tope; sus fallos son `MediaFailed`, como los de OpenAI. Un proveedor de
+  `audio-24khz-48kbitrate-mono-mp3`, 60 s de tope para leer la respuesta; sus fallos son `MediaFailed`, como los de OpenAI. Un proveedor de
   `SPEECH_KINDS` no contesta turnos: sus modelos no se ofrecen, no se eligen ni se enrutan (`choosable_models`,
   `can_answer`), y su ficha del admin no tiene «Elegir modelos del proveedor» ni lista de modelos
   (`AIProvider.reads_aloud`).
