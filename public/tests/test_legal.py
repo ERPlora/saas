@@ -28,6 +28,7 @@ from django.conf import settings
 from django.urls import resolve, reverse
 from django.utils.translation.template import templatize
 
+from hubs.tests.test_plan_catalogue import CUSTOM_DOMAIN_WORDS
 from public.sitemaps import StaticPagesSitemap
 
 ROOT = Path(settings.BASE_DIR)
@@ -706,6 +707,17 @@ def test_terms_sections_are_numbered_consecutively(client):
 
     assert numbers, "the terms page renders no numbered <h2> clause at all"
     assert numbers == list(range(1, len(numbers) + 1))
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_the_terms_name_no_custom_domain_nobody_can_connect(client, language):
+    """saas#233: §1 said the service runs on «the customer's own domains», which no business can connect (HUBS-F17
+    ``descartado``, saas#195 deferred)."""
+    html = terms_html(client, language)
+
+    match = CUSTOM_DOMAIN_WORDS.search(html)
+    assert match is None, html[max(0, match.start() - 120) : match.end() + 40]
 
 
 @pytest.mark.django_db

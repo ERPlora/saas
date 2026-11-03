@@ -38,6 +38,7 @@ from django.urls import reverse
 from django.utils import translation
 
 from hubs.models import Plan
+from hubs.tests.test_plan_catalogue import CUSTOM_DOMAIN_WORDS
 from public import pricing
 from public.tests.test_legal import template_messages
 
@@ -258,6 +259,17 @@ def test_pricing_page_publishes_no_uptime_sla(client, seeded):
 
     match = re.search(r"\d{2}[.,]\d+\s*%\s*(uptime|SLA|disponibilidad)", html, re.I)
     assert match is None, match and match.group(0)
+
+
+@pytest.mark.parametrize("path", [INDEX, "/pricing/standard/"])
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_pricing_sells_no_custom_domain_nobody_can_connect(client, seeded, path, language):
+    """saas#233: Standard's card, its description and the table's intro sold a custom domain no business can connect
+    (HUBS-F17 ``descartado``, saas#195 deferred). The whole page, structured data included, in both languages."""
+    html = unescape(html_of(client, path, language))
+
+    match = CUSTOM_DOMAIN_WORDS.search(html)
+    assert match is None, f"{path} ({language}) sells a custom domain: {html[max(0, match.start() - 90) : match.end() + 90]!r}"
 
 
 # --- test_faq_structured_data.py --------------------------------------------------------------

@@ -719,19 +719,38 @@ def test_the_api_patterns_catch_the_lines_that_were_actually_published():
         ), f"guard is blind to the claim it exists to stop: {published!r}"
 
 
-def test_custom_domain_is_only_promised_by_the_plans_that_gate_it(catalogue):
-    """The card and the door have to agree (saas#1956)."""
-    sellers = []
-    for slug, plan in catalogue.items():
-        promises = [f for f in plan.features_en if "custom domain" in f.lower()]
-        if promises:
-            sellers.append(slug)
-            assert plan.includes_custom_domain, (
-                f"[{slug}] sells {promises!r} but the gate refuses it"
-            )
-    assert "standard" in sellers, (
-        "no card mentions a custom domain any more — this guard went blind"
-    )
+#: A custom domain, in the words the copy sold it with, in both languages (saas#233).
+CUSTOM_DOMAIN_WORDS = re.compile(
+    r"\bcustom domains?\b|\bown domains?\b|\bdominios? propios?\b|\berp\.yourbusiness\b|\berp\.tunegocio\b", re.I
+)
+
+
+def test_no_plan_sells_a_custom_domain_nobody_can_connect(catalogue):
+    """saas#233: Standard sold «Custom domain (erp.yourbusiness.com)» and «your own domain», but no business can
+    connect one: HUBS-F17 is ``descartado`` until saas#195 brings its three pieces at once (PLAN-SAAS §8, round
+    2026-10-22). ``includes_custom_domain`` stays, the gate saas#195 will read. When HUBS-F17 is done, this guard goes
+    back to «only the plans that gate it promise it» (saas#1956), and then only for the business's public website."""
+    sellers = {slug: [text for text in _copy(plan) if CUSTOM_DOMAIN_WORDS.search(text)] for slug, plan in catalogue.items()}
+
+    assert {slug: texts for slug, texts in sellers.items() if texts} == {}
+
+
+def test_the_custom_domain_guard_catches_the_words_that_were_on_sale():
+    """Positive control: the exact lines Standard and the public web carried before saas#233, and the words that stay
+    (every plan's address on erplora.com) pass."""
+    for published in (
+        "Custom domain (erp.yourbusiness.com)",
+        "Dominio propio (erp.tunegocio.com)",
+        "For growing businesses: your own domain, twice the resources and priority support.",
+        "Para negocios en crecimiento: dominio propio, el doble de recursos y soporte prioritario.",
+        "move up in one click when you need a custom domain or more capacity",
+        "subes en un clic cuando necesites dominio propio o más capacidad",
+        "the *.erplora.com hubs or the customer's own domains.",
+        "de los hubs *.erplora.com o dominios propios del cliente.",
+    ):
+        assert CUSTOM_DOMAIN_WORDS.search(published), f"guard is blind to the claim it exists to stop: {published!r}"
+    for honest in (".erplora.com subdomain", "Subdominio .erplora.com", "Datos cifrados y certificado SSL automático"):
+        assert not CUSTOM_DOMAIN_WORDS.search(honest), honest
 
 
 # --- From test_plan_trial_label.py (saas#2424) ------------------------------------------------
