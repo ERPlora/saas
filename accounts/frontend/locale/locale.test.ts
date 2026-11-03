@@ -68,6 +68,16 @@ const NEW_IN_THE_VUE_PAGES = new Set([
   'accounts.loginError.tooMany.badge',
   'accounts.loginError.tooMany.heading',
   'accounts.loginError.tooMany.message',
+  // The pass back from a business (ACCOUNTS-F29, hub_pass.follow; saas#190) is new: the old SaaS had no page for it.
+  // Its «400 · Invalid link» badge is django.po's own (the invalid sign-in link), translated as it does.
+  'accounts.loginError.signIn',
+  'accounts.loginError.invalidPass.title',
+  'accounts.loginError.invalidPass.heading',
+  'accounts.loginError.invalidPass.message',
+  'accounts.loginError.passExpired.title',
+  'accounts.loginError.passExpired.badge',
+  'accounts.loginError.passExpired.heading',
+  'accounts.loginError.passExpired.message',
 ]);
 
 /**

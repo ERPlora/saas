@@ -1198,7 +1198,9 @@ Implicados: el admin de erplora.com (la ficha de la cuenta y el registro de audi
 - **En la base de datos sigue la tabla de la copia de quién está en cada negocio** (`accounts_hubmembership`), que ya
   nadie lee ni escribe — saas#220.
 - **Desde el Hub, «Mejorar plan» y «erplora.com» piden volver a entrar con la cuenta si el navegador no tenía la sesión
-  abierta** (BASE-F11 del Hub, cruza ACCOUNTS-F28) — saas#190.
+  abierta** (ACCOUNTS-F29, BASE-F11 del Hub): erplora.com ya acepta el pase de un solo uso del negocio (`/hub-pass/`,
+  `hub_pass.py`); falta que el Hub lo firme al pulsar — ERPlora/hub#716, que cierra saas#190. Con ella, ACCOUNTS-F29
+  se reescribe con el pase y sus tres errores (`invalid_pass`, `not_a_member`, `pass_expired`).
 
 ## Lo que NO hace, a propósito
 

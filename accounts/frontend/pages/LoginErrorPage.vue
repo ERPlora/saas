@@ -8,7 +8,10 @@
 //   - login_cancelled      → allauth's `socialaccount/login_cancelled.html`;
 //   - google_link_refused  → the refused «connect» of Google (`SocialAccountAdapter.pre_social_login`): Google is
 //                            linked by signing in with it, the message the adapter used to leave on the launcher;
-//   - too_many             → `handoff.hub_login` past `HUB_LOGIN_RATELIMIT`: too many jumps in a few minutes.
+//   - too_many             → `handoff.hub_login` past `HUB_LOGIN_RATELIMIT`: too many jumps in a few minutes;
+//   - invalid_pass         → `hub_pass.follow`: a link from a business the Hub did not sign (nothing is echoed);
+//   - pass_expired + next  → `hub_pass.follow`: a link from a business past its minute or already used; signing in
+//                            goes on to `next`, where it was going (the plan or the business, ACCOUNTS-F29).
 // The way back is the sign-in (keeping `next`), or the launcher when there is a session. A code it
 // does not know, or without what its text needs, is a failed Google sign-in (so is the old
 // `google_no_account`: an unknown Google address now creates its account).
@@ -30,14 +33,17 @@ type Code =
   | 'authentication_error'
   | 'login_cancelled'
   | 'google_link_refused'
-  | 'too_many';
+  | 'too_many'
+  | 'invalid_pass'
+  | 'pass_expired';
 
 interface Copy {
   /** Catalogue keys under `accounts.loginError.<copy>`; `title` and `badge` only where the template had them. */
   copy: string;
   title?: boolean;
   badge?: boolean;
-  action: 'home' | 'backToSignIn';
+  /** `signIn` reads «Home» with a session: then it leads to the launcher, where nobody signs in. */
+  action: 'home' | 'backToSignIn' | 'signIn';
   /** The hub pages' links: support, and back to the hub the person came from (not_a_member). */
   links?: boolean;
 }
@@ -49,9 +55,18 @@ const COPY: Record<Code, Copy> = {
   login_cancelled: { copy: 'loginCancelled', action: 'backToSignIn' },
   google_link_refused: { copy: 'googleLinkRefused', action: 'home' },
   too_many: { copy: 'tooMany', title: true, badge: true, action: 'home', links: true },
+  invalid_pass: { copy: 'invalidPass', title: true, badge: true, action: 'signIn', links: true },
+  pass_expired: { copy: 'passExpired', title: true, badge: true, action: 'signIn', links: true },
 };
-/** The codes that need nothing else in the URL to be told. */
-const PLAIN_CODES: readonly Code[] = ['invalid_hub', 'login_cancelled', 'google_link_refused', 'too_many'];
+/** The codes that need nothing else in the URL to be told (`pass_expired` without `next` signs in to the launcher). */
+const PLAIN_CODES: readonly Code[] = [
+  'invalid_hub',
+  'login_cancelled',
+  'google_link_refused',
+  'too_many',
+  'invalid_pass',
+  'pass_expired',
+];
 
 /**
  * First label of a hub's host: one DNS label, the format of `live.slugs.HUB_SLUG_RE` (shared by
@@ -95,6 +110,7 @@ const back = computed(() => {
   const next = localNext(param('next'));
   return next ? `${LAUNCHER}?next=${encodeURIComponent(next)}` : LAUNCHER;
 });
+const action = computed(() => (copy.value.action === 'signIn' && session.user.value ? 'home' : copy.value.action));
 
 onMounted(() => {
   const title = copy.value.title ? key('title') : key('heading');
@@ -124,7 +140,7 @@ onMounted(() => {
       size="large"
       expand="block"
     >
-      {{ $t(`accounts.loginError.${copy.action}`) }}
+      {{ $t(`accounts.loginError.${action}`) }}
     </ion-button>
     <div
       v-if="copy.links"

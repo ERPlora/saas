@@ -21,7 +21,7 @@ from functools import partial
 from django.conf import settings
 from django.contrib.auth import get_user_model, logout
 from django.contrib.auth.models import Group
-from django.db import connection, transaction
+from django.db import IntegrityError, connection, transaction
 from django.db.models import QuerySet
 from django.utils import timezone
 from django.utils.translation import gettext
@@ -242,6 +242,58 @@ def redeem_code(code: str, hub_slug: str, *, audience: str = AuthExchangeCode.HU
     )
 
 
+# --- The pass back from a business to erplora.com (accounts/hub_pass.py, ACCOUNTS-F29) ------------------------------
+
+#: The audience of the row that spends a pass: never a jump's, so ``redeem_code`` finds no pass.
+HUB_PASS_AUDIENCE = "hub-pass"
+
+
+def hub_pass_member(user_id: str, hub_slug: str):
+    """``(account, id of the business)`` if the account ``user_id`` may follow a pass of ``hub_slug``; else ``None``.
+
+    Only an active account, never one of the platform's staff (a pass carries no second factor, PLAN §17-§18), that is
+    a member of that business as ``hubs.business.list`` sees it (an accepted invitation; called by its name: accounts
+    never imports hubs)."""
+    user = get_user_model().objects.filter(pk=user_id).first()
+    if user is None or not user.is_active or user.is_staff or user.is_superuser:
+        return None
+    business_list = operations.get(BUSINESS_LIST)
+    as_account = queries.as_account(user)
+    offset = 0
+    while True:
+        page = business_list(as_account, business_list.input(search=hub_slug, limit=100, offset=offset))
+        for row in page.rows:
+            if row.slug == hub_slug:
+                return user, row.id
+        offset += page.limit
+        if offset >= page.total:
+            return None
+
+
+def spend_hub_pass(user, hub_slug: str, nonce: str, lifetime: timedelta) -> bool:
+    """Spend the pass ``nonce``; whether it was not spent before.
+
+    One row per pass, stored used, with the nonce's SHA-256 under its own audience (no jump code shares it): the unique
+    hash refuses a second one, however many browsers follow the pass at once. The row outlives the pass twice over
+    (``purge_expired_sign_in_leftovers`` deletes it past ``expires_at``): a pass the Hub dated a little ahead of this
+    clock still meets it."""
+    now = timezone.now()
+    try:
+        with transaction.atomic():
+            AuthExchangeCode.objects.create(
+                code_hash=AuthExchangeCode.hash_code(f"{HUB_PASS_AUDIENCE}:{nonce}"),
+                user=user,
+                audience=HUB_PASS_AUDIENCE,
+                hub_slug=hub_slug,
+                created_at=now,
+                used_at=now,
+                expires_at=now + 2 * lifetime,
+            )
+    except IntegrityError:
+        return False
+    return True
+
+
 def release_unproven_account(user, *, reason: str) -> None:
     """Strip every credential of an account whose holder never proved its email (saas#2541).
 
@@ -272,7 +324,10 @@ def accept_legal_texts(sender, request=None, user=None, **kwargs) -> None:
     """allauth's ``user_signed_up`` and Django's ``user_logged_in``: the account accepts today's terms and privacy
     policy (ACCOUNTS-G119). Creating the account and signing in happen under «By continuing you agree to our Terms &
     Privacy Policy» (the launcher, Google's button too), so each records when and which versions
-    (``models.TERMS_VERSION``, ``PRIVACY_VERSION``) unless the account already accepted those: the first date stays."""
+    (``models.TERMS_VERSION``, ``PRIVACY_VERSION``) unless the account already accepted those: the first date stays.
+    Not a session opened by a pass from a business (``accounts.hub_pass``): nobody saw that line on the way."""
+    if getattr(request, "hub_pass", None) is not None:
+        return
     if user is None or (user.terms_version, user.privacy_version) == (TERMS_VERSION, PRIVACY_VERSION):
         return
     accepted = {"terms_accepted_at": timezone.now(), "terms_version": TERMS_VERSION, "privacy_version": PRIVACY_VERSION}
