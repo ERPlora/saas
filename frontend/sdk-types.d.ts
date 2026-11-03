@@ -871,6 +871,8 @@ export interface StoreSubscriptionOut {
   current_period_end: string | null;
   trial_plan: string | null;
   trial_end: string | null;
+  /** A downgrade waiting for the end of the period: the card of the current plan offers to keep it. */
+  scheduled_change: ScheduledChangeOut | null;
 }
 
 /** `billing.StoreCatalogOut`. */
