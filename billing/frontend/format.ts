@@ -1,27 +1,20 @@
 // How the Store says money and dates. Money is euros in the person's language («29,99 €», «€29.99»), from
 // the cents billing sends (`apps.Module` prices, Stripe's previews) or the decimal strings of a plan
-// (`hubs.PlanOut`); a renewal is a day without the time («1 nov 2026»). Pages never format by hand.
+// (`hubs.PlanOut`), written by `formatMoney` like every amount of the panel (thousands grouped from four digits,
+// «1.099,90 €»); a renewal is a day without the time («1 nov 2026»). Pages never format by hand.
+import { formatMoney, type Money } from '@erplora/ui/components';
 
-const money = new Map<string, Intl.NumberFormat>();
+const EUROS: Money = { currency: 'EUR', decimals: 2 };
 const days = new Map<string, Intl.DateTimeFormat>();
-
-function euros(locale: string): Intl.NumberFormat {
-  let found = money.get(locale);
-  if (!found) {
-    found = new Intl.NumberFormat(locale, { style: 'currency', currency: 'EUR' });
-    money.set(locale, found);
-  }
-  return found;
-}
 
 /** Cents (an integer, as Stripe charges) as euros. */
 export function formatCents(cents: number, locale: string): string {
-  return euros(locale).format(cents / 100);
+  return formatMoney(cents, locale, EUROS);
 }
 
-/** A price in euros (a plan's decimal string, or a number) as euros. */
+/** A price in euros (a plan's decimal string, or a number) as euros, to the cent below. */
 export function formatEuros(amount: string | number, locale: string): string {
-  return euros(locale).format(Math.floor(Number(amount) * 100 + 1e-6) / 100);
+  return formatMoney(Math.floor(Number(amount) * 100 + 1e-6), locale, EUROS);
 }
 
 /** The day of `value` (ISO 8601, or Stripe's unix seconds) without the time; `''` without one. */
