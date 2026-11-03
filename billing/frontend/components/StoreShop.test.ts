@@ -39,6 +39,7 @@ import {
   subscription,
 } from '../__tests__/fixtures';
 import { LIVE_TIMEOUT_MS } from '../../../frontend/live-state';
+import type { ScheduledChangeOut } from '../../../frontend/sdk-types';
 import { errorFrame, HELLO, resultFrame } from '../../../hubs/frontend/__tests__/mount-hubs';
 import { apiError, flush, ionProps, mountBilling, optionValue, type StreamCall } from '../__tests__/mount-billing';
 import AnnualSwitchDialog from './AnnualSwitchDialog.vue';
@@ -394,7 +395,7 @@ describe('StoreShop', () => {
       modules: [],
       scheduled_change: null,
     };
-    const toStarter = { plan: 'starter', interval: 'month', starts_at: '2026-10-31T12:00:00Z' };
+    const toStarter: ScheduledChangeOut = { plan: 'starter', interval: 'month', starts_at: '2026-10-31T12:00:00Z' };
 
     it('confirmed, the current plan says to what and when, and «Keep the plan» undoes it', async () => {
       const onPro = catalog('bakery', { subscription: subscription({ plan: 'pro' }) });
