@@ -772,7 +772,8 @@ propio texto por `code`.
   `usageNote` de `@erplora/ui`), coge la marca con `UPDATE … WHERE <marca> IS NULL` (dos turnos a la vez: uno la
   coge), escribe `assistant.usage.warned` en la misma transacción y manda el correo con
   `transaction.on_commit(partial(_mail_the_warning, …), robust=True)`, que suelta su propia marca si no sale. El e2e
-  fija `ASSISTANT_ACCOUNT_MESSAGES=2`: ahí solo sale el del 100 %, a la carpeta de correos del e2e.
+  fija `ASSISTANT_ACCOUNT_MESSAGES=2`: ahí solo sale el del 100 %, a la carpeta de correos del e2e, y
+  `assistant-panel.spec.ts` comprueba que sale una sola vez y en el idioma de la cuenta.
 - **El chat** (`assistant/frontend/`): el del Hub, de `@erplora/ui/components` (`AssistantPanel`, `AssistantButton`,
   `AssistantEmpty`), configurado en `options.ts` (`SAAS_ASSISTANT`: turno en `/api/assistant/turn`, sin `?surface=`,
   que el servidor lee de la sesión; cupo, denuncia y dictado por `base.assistant.usage|report|transcribe`; `canUse` =
