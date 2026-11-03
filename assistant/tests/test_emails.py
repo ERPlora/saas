@@ -12,7 +12,7 @@ from smtplib import SMTPException
 import pytest
 from django.core import mail
 from django.core.mail.backends.locmem import EmailBackend
-from django.db import connection
+from django.db import connection, transaction
 from django.utils import timezone, translation
 from django.utils.formats import date_format
 from live.outbox import OutboxEvent
@@ -369,6 +369,7 @@ class TestNobodyElseIsMailed:
                 services.message_claim(platform_context(), Caller(demo="demo-1a2b3c4d"))
 
         assert mail.outbox == []
+        assert not OutboxEvent.objects.filter(name="assistant.usage.warned").exists()
 
     def test_an_account_gone_before_the_mail_mails_nobody(self, account, turn, monkeypatch):
         spent(account, 23)
@@ -384,6 +385,33 @@ class TestNobodyElseIsMailed:
         turn(account)
 
         assert mail.outbox == []
+
+    def test_an_account_without_messages_is_mailed_nothing(self, account, turn, settings):
+        settings.ASSISTANT_ACCOUNT_MESSAGES = 0
+
+        assert turn(account).claimed is False
+
+        assert mail.outbox == []
+        assert not OutboxEvent.objects.filter(name="assistant.usage.warned").exists()
+
+    def test_a_claim_that_goes_back_mails_nothing_and_the_next_message_does(
+        self, account, turn, django_capture_on_commit_callbacks
+    ):
+        """The mail leaves after the COMMIT: a turn whose transaction goes back sends nothing and its mark goes back
+        with it."""
+        spent(account, 23)
+
+        with django_capture_on_commit_callbacks(execute=True):
+            with pytest.raises(RuntimeError), transaction.atomic():
+                services.message_claim(platform_context(), Caller(user_id=account.pk))
+                raise RuntimeError("the turn failed")
+
+        assert mail.outbox == []
+        assert AssistantUsage.objects.get(user=account).near_warned_at is None
+
+        turn(account)
+
+        assert len(mail.outbox) == 1
 
 
 class TestTheMigration:
@@ -409,8 +437,6 @@ class TestTheMigration:
 def test_turns_at_once_refused_at_the_last_mail_it_once(make_user, settings):
     """The last mail did not leave (its mark is free) and four turns, all refused, come at once: one mail, not four. A
     turn that read the mark and wrote it apart would let the four through (ASSISTANT-F29, paso 3)."""
-    from django.db import transaction
-
     settings.PUBLIC_HOST = "erplora.com"
     account = make_user("race@example.com", language="es")
     month = this_month()
