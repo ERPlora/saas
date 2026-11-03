@@ -170,7 +170,7 @@ def test_every_message_of_the_page_has_its_spanish_entry():
 
 
 def test_every_system_has_its_spanish_name():
-    """The countries' own names live with their field: ``hubs/tests/test_country_names.py``."""
+    """The countries' own names live with their field: ``hubs/tests/test_countries.py``."""
     with CATALOG.open("rb") as compiled:
         catalog = gettext.GNUTranslations(compiled)._catalog
     with translation.override("en"):
