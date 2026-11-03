@@ -3,6 +3,7 @@
 // last access; per row ONLY the actions the server computed (`actions`, in its order); «Invite» when the
 // account may invite; the places of the plan, a pending ownership offer with «Withdraw», and what
 // each role may do.
+// clock: data only — no code under test compares these dates with now.
 import { DataTable } from '@erplora/ui/components';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Component } from 'vue';

@@ -79,6 +79,12 @@ def active_user(pk):
     return get_user_model().objects.filter(pk=pk, is_active=True).first()
 
 
+def stored_staff_flags(pk) -> tuple[bool, bool] | None:
+    """``(is_staff, is_superuser)`` of account ``pk`` as saved, or ``None`` if it is not saved yet (``User.clean``
+    tells raising a flag from keeping it)."""
+    return get_user_model().objects.filter(pk=pk).values_list("is_staff", "is_superuser").first()
+
+
 def has_totp(user) -> bool:
     """Whether ``user`` has turned on an authenticator app. Recovery codes alone are no second factor:
     they are the way back in when the phone is lost."""
@@ -218,7 +224,18 @@ def receives_business_notices(user) -> bool:
     permission="accounts.view",
     input=PreferencesGetIn,
     output=PreferencesOut,
-    ai=AI(description="The account's preferences: theme, language and alerts of its businesses."),
+    ai=AI(
+        description="The account's preferences: theme, language and alerts of its businesses.",
+        asks={
+            "en": ("what language is my account in?", "do I get alerts from my businesses?", "show my preferences"),
+            "es": (
+                "¿en qué idioma tengo la cuenta?",
+                "¿qué preferencias tengo?",
+                "¿qué tema tengo puesto?",
+                "¿tengo activados los avisos de mis negocios?",
+            ),
+        },
+    ),
 )
 def preferences_get(ctx: OperationContext, data: PreferencesGetIn) -> dict[str, Any]:
     """Account → Preferences of the signed-in account."""
@@ -337,7 +354,17 @@ def session_row(session, current: str | None) -> dict[str, Any]:
     permission="accounts.view",
     input=SessionListIn,
     output=SessionListOut,
-    ai=AI(description="The account's active sessions (browsers and apps), this one first."),
+    ai=AI(
+        description="The account's active sessions (browsers and apps), this one first.",
+        asks={
+            "en": ("where am I logged in?", "which devices have my account open?", "show my active sessions"),
+            "es": (
+                "¿dónde tengo la sesión abierta?",
+                "¿qué dispositivos están conectados a mi cuenta?",
+                "¿qué sesiones tengo abiertas?",
+            ),
+        },
+    ),
 )
 def session_list(ctx: OperationContext, data: SessionListIn) -> dict[str, Any]:
     """Account → Security → Active sessions, a page at a time: this session first, then the rest by last use."""
@@ -384,7 +411,21 @@ def browser_trusted_until(user, request) -> datetime | None:
     permission="accounts.view",
     input=BrowserTrustGetIn,
     output=BrowserTrustOut,
-    ai=AI(description="Whether this browser is trusted for two-factor authentication, and until when."),
+    ai=AI(
+        description="Whether this browser is trusted for two-factor authentication, and until when.",
+        asks={
+            "en": (
+                "is this browser trusted for 2FA?",
+                "will it ask me for the code again on this computer?",
+                "until when does this browser skip the two-step code?",
+            ),
+            "es": (
+                "¿este navegador es de confianza?",
+                "¿me volverá a pedir el código en este ordenador?",
+                "¿hasta cuándo no me pide aquí el segundo factor?",
+            ),
+        },
+    ),
 )
 def browser_trust_get(ctx: OperationContext, data: BrowserTrustGetIn) -> dict[str, Any]:
     """Security → Two-factor authentication: whether this browser is trusted, and until when."""
@@ -421,7 +462,17 @@ def api_key_scopes(language: str) -> list[dict[str, str]]:
     permission="accounts.view",
     input=ApiKeyListIn,
     output=ApiKeyListOut,
-    ai=AI(description="The account's API keys that are not revoked, with their scopes (never their secret)."),
+    ai=AI(
+        description="The account's API keys that are not revoked, with their scopes (never their secret).",
+        asks={
+            "en": ("what API keys do I have?", "show me my integration keys", "which keys can get into my account?"),
+            "es": (
+                "¿qué claves de API tengo?",
+                "enséñame las claves de la API",
+                "¿tengo alguna clave para integraciones?",
+            ),
+        },
+    ),
 )
 def apikey_list(ctx: OperationContext, data: ApiKeyListIn) -> dict[str, Any]:
     """Account → API keys: the account's keys that are not revoked, the newest first, and the scopes on offer."""

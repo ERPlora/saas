@@ -1,6 +1,7 @@
 // The Billing section's rules about an invoice, apart from the screen (mockups `billing.html`, README §3b and
 // §6.18; billing/README.md «Facturas de ERPlora (L3-C)»): how its status reads, what names it, the grace of an
 // unpaid one, the years the filter offers and the businesses whose invoices the account sees.
+// clock: data only — no code under test compares these dates with now.
 import { describe, expect, it } from 'vitest';
 
 import { invoiceRow } from './__tests__/billing-fixtures';

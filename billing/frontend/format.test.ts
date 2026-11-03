@@ -1,6 +1,7 @@
 // How the Store says money and dates: euros in the person's language («29,99 €», «€29.99»), from the
 // cents billing sends (`apps.Module` prices, Stripe's previews) or the decimal strings of a plan
 // (`hubs.PlanOut`), and a renewal as a date without the time («1 nov 2026»).
+// clock: data only — no code under test compares these dates with now.
 import { describe, expect, it } from 'vitest';
 
 import { formatCents, formatDate, formatEuros } from './format';

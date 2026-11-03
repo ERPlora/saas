@@ -2,6 +2,7 @@
 // §6.18): since when it is unpaid and until when the business keeps working; on the web, «Pay the
 // invoice» (Stripe's page, `pay_url`) when the account may pay it — waiting for another card when the
 // bank declined it — and inside the apps how to settle it, without a link.
+// clock: data only — no code under test compares these dates with now.
 import { applySurface } from '@erplora/ui/shell';
 import { afterEach, describe, expect, it } from 'vitest';
 

@@ -3,11 +3,12 @@
 // with the code every password sign-in mails (read from the panel's mail folder, as the person reads it),
 // the session /api/me reports, the three viewports, uncaught page errors and the evidence folder.
 // Import `test` and `expect` from here, not from `@playwright/test`.
-import { execFileSync } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 
 import { readMailCode, readPasswordResetLink, waitForMail as waitForMailIn } from '@erplora/ui/testing/mail';
 import { type APIRequestContext, type APIResponse, type BrowserContext, type Page, test as base, expect } from '@playwright/test';
@@ -326,19 +327,38 @@ export async function businessIdOf(request: APIRequestContext, name: string): Pr
   return found.id;
 }
 
+const DJANGO_BOOT = 'import django,os;os.environ.setdefault("DJANGO_SETTINGS_MODULE","config.settings");django.setup()';
+
 /**
  * What `code` prints, run with Django set up against the run's database (DEBUG on): the local one of `.env`,
  * or the stack's own (stack.ts). For what a spec reads from the SaaS's side and no page shows.
+ *
+ * It blocks this process until `code` ends, and the Hub a spec plays (`startHubDouble`) lives in this process: code
+ * that calls that Hub runs with `djangoPrintAsync`, or every call waits out its timeout unanswered (saas#176).
  */
 export function djangoPrint(code: string): string {
-  const boot = 'import django,os;os.environ.setdefault("DJANGO_SETTINGS_MODULE","config.settings");django.setup()';
-  return execFileSync('uv', ['run', 'python', '-c', `${boot}\n${code}`], {
+  return execFileSync('uv', ['run', 'python', '-c', `${DJANGO_BOOT}\n${code}`], {
     cwd: SAAS_DIR,
     env: djangoEnv(true),
     encoding: 'utf8',
     // stderr kept, not shown: uv's warnings; a failing snippet's traceback travels in the thrown error.
     stdio: ['ignore', 'pipe', 'pipe'],
   }).trim();
+}
+
+const execFileAsync = promisify(execFile);
+
+/**
+ * `djangoPrint` without blocking this process: the Hub the spec plays answers while `code` runs. For code that calls
+ * it, such as a pass of `reconcile_hub_states`. A failing snippet rejects, its traceback in the error.
+ */
+export async function djangoPrintAsync(code: string): Promise<string> {
+  const { stdout } = await execFileAsync('uv', ['run', 'python', '-c', `${DJANGO_BOOT}\n${code}`], {
+    cwd: SAAS_DIR,
+    env: djangoEnv(true),
+    encoding: 'utf8',
+  });
+  return stdout.trim();
 }
 
 /** `INTERNAL_SHARED_SECRET` of the local SaaS (`.env`), to sign what the Hub would send. */

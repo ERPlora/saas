@@ -866,9 +866,12 @@ class HubUsageDaily(models.Model):
 
     ``s3_bytes`` is what its files take in S3 (the storage the customer sees, as a percentage of what the
     plan includes), ``db_bytes`` what its database takes (the admin's only), ``active_users_1d`` the people
-    active that day and ``active_users_30d`` in the 30 days up to it. One row per business and day, written
-    only by the system command ``hubs.usage.record`` (``manage.py collect_hub_usage``, nightly in
-    ``saas-cron``): collecting a day again replaces its figures.
+    active that day and ``active_users_30d`` in the 30 days up to it. ``requests`` is what it served that day,
+    ``peak_connections`` the most transactions at once against its database and ``busy_requests`` the times a
+    request found no room (hub#603, PLAN-SAAS §28): for the admin only, the panel never shows them, and ``None``
+    when the Hub did not measure them, never a 0. One row per business and day, written only by the system
+    command ``hubs.usage.record`` (``manage.py collect_hub_usage``, nightly in ``saas-cron``): collecting a day
+    again replaces its figures.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
@@ -878,6 +881,9 @@ class HubUsageDaily(models.Model):
     db_bytes = models.PositiveBigIntegerField(_("database (bytes)"))
     active_users_1d = models.PositiveIntegerField(_("active that day"))
     active_users_30d = models.PositiveIntegerField(_("active in the 30 days"))
+    requests = models.PositiveBigIntegerField(_("requests"), null=True, blank=True)
+    peak_connections = models.PositiveIntegerField(_("peak connections"), null=True, blank=True)
+    busy_requests = models.PositiveBigIntegerField(_("requests with no room"), null=True, blank=True)
     collected_at = models.DateTimeField(_("collected at"), default=timezone.now)
 
     class Meta:

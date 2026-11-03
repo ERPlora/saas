@@ -11,8 +11,10 @@ from io import StringIO
 import pytest
 from django.core.management import call_command
 from django.core.management.base import SystemCheckError
+from django.utils import timezone
 
 from accounts.models import HubMembership
+from hubs.models import Hub, HubMember
 
 pytestmark = pytest.mark.django_db
 
@@ -45,6 +47,58 @@ class TestTheSystemCheck:
         HubMembership.objects.create(user=owner, hub_slug="seed-hub", role="hub_owner")
 
         assert "hubs.W001" not in self.check()
+
+
+class TestStaffOnABusiness:
+    """``hubs.W002`` (W11b): an account of ERPlora's staff (``is_staff`` or ``is_superuser``) that is also on a business,
+    as a member or with an invitation waiting, made before the doors refused it. Nothing is turned off by itself: the
+    check names them and why, and ``hubs/README.md`` says how to put each right by hand."""
+
+    def check(self, *args):
+        out, err = StringIO(), StringIO()
+        call_command("check", *args, stdout=out, stderr=err)
+        return out.getvalue() + err.getvalue()
+
+    @pytest.mark.parametrize("flag", ["is_staff", "is_superuser"])
+    def test_a_member_of_the_staff_is_named_with_its_business(self, business, team, flag):
+        employee = team["employee"]
+        type(employee).objects.filter(pk=employee.pk).update(**{flag: True})
+
+        output = self.check("--database", "default")
+
+        assert "hubs.W002" in output
+        assert f"employee@example.com on {business.slug} (member)" in output
+
+    def test_an_invitation_waiting_names_it_too(self, business, team):
+        invitee = team["invitee"]
+        type(invitee).objects.filter(pk=invitee.pk).update(is_staff=True)
+
+        assert f"invitee@example.com on {business.slug} (invited)" in self.check("--database", "default")
+
+    def test_a_deleted_business_or_an_invitation_gone_by_name_nobody(self, business, team):
+        HubMember.objects.filter(user=team["invitee"]).update(invitation_expires_at=timezone.now())
+        type(team["invitee"]).objects.filter(pk=team["invitee"].pk).update(is_staff=True)
+        assert "hubs.W002" not in self.check("--database", "default")
+
+        type(team["employee"]).objects.filter(pk=team["employee"].pk).update(is_staff=True)
+        Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETED)
+        assert "hubs.W002" not in self.check("--database", "default")
+
+    def test_it_fails_the_check_at_the_warning_level(self, business, team):
+        type(team["admin"]).objects.filter(pk=team["admin"].pk).update(is_superuser=True)
+
+        with pytest.raises(SystemCheckError, match="hubs.W002"):
+            self.check("--database", "default", "--fail-level", "WARNING")
+
+    def test_customers_and_staff_apart_say_nothing(self, business, team, make_user):
+        make_user("root@erplora.com", is_staff=True, is_superuser=True)
+
+        assert "hubs.W002" not in self.check("--database", "default")
+
+    def test_without_the_database_it_does_not_run(self, business, team):
+        type(team["employee"]).objects.filter(pk=team["employee"].pk).update(is_staff=True)
+
+        assert "hubs.W002" not in self.check()
 
 
 def test_it_skips_while_hubs_has_migrations_to_apply(owner):

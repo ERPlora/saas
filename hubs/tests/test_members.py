@@ -25,10 +25,12 @@ import pytest
 from allauth.account.models import EmailAddress
 from django.contrib.auth import get_user_model
 from django.core import mail
+from django.core.exceptions import ValidationError
 from django.utils import timezone, translation
 from live.errors import Conflict, NotFound, PermissionDenied
 
 from accounts.models import HubMembership
+from accounts.services import PlatformRoleRefused, create_platform_user
 from hubs import queries, services
 from hubs.models import BillingProfile, Hub, HubMember, Subscription
 from hubs.schemas import (
@@ -159,6 +161,20 @@ class TestInvite:
         assert (row.status, member.role) == ("pending", "hub_manager")
         assert member.invitation_expires_at > timezone.now() + timedelta(days=6)
         assert HubMember.objects.filter(hub=business, user=team["invitee"]).count() == 1
+
+    @pytest.mark.parametrize("flag", ["is_staff", "is_superuser"])
+    def test_an_expired_invitation_of_an_account_made_staff_is_not_renewed(self, business, team, flag):
+        """Renewing is inviting again: ERPlora's staff is refused as a new invitation is (W11b)."""
+        invitee = team["invitee"]
+        HubMember.objects.filter(user=invitee).update(invitation_expires_at=timezone.now() - timedelta(days=1))
+        type(invitee).objects.filter(pk=invitee.pk).update(**{flag: True})
+
+        with pytest.raises(Conflict) as refused:
+            invite(team["owner"], business, "invitee@example.com")
+
+        assert refused.value.code == "hubs.platform_account"
+        assert member_of(business, invitee).is_expired(timezone.now())
+        assert mail.outbox == []
 
     def test_an_admin_invites_managers_and_employees(self, business, team):
         assert (
@@ -537,6 +553,18 @@ class TestResendAndCancel:
         assert member.invitation_expires_at > timezone.now() + timedelta(days=6)
         assert [message.to for message in mail.outbox] == [["invitee@example.com"]]
 
+    @pytest.mark.parametrize("flag", ["is_staff", "is_superuser"])
+    def test_an_invitee_made_staff_meanwhile_gets_no_invitation_again(self, business, team, flag):
+        """As ``member_invite`` refuses ERPlora's staff, so does sending it again (W11b)."""
+        invitee = team["invitee"]
+        type(invitee).objects.filter(pk=invitee.pk).update(**{flag: True})
+
+        with pytest.raises(Conflict) as refused:
+            services.member_resend(ctx_for(team["owner"]), ByIdIn(id=member_of(business, invitee).id))
+
+        assert refused.value.code == "hubs.platform_account"
+        assert mail.outbox == []
+
     def test_an_answered_member_has_nothing_to_resend(self, business, team):
         with pytest.raises(Conflict) as refused:
             services.member_resend(
@@ -589,6 +617,59 @@ class TestResendAndCancel:
 
 
 # --- Answering an invitation ----------------------------------------------------------------------
+
+
+ON_A_BUSINESS = "This account is on a business: ERPlora's staff and the customers never share an account."
+
+
+class TestThePlatformsDoor:
+    """``manage.py create_platform_user`` makes no staff of anybody on a business, also where the mirror of who
+    enters (``HubMembership``) holds no row of theirs: an invitation still waiting, or a business in its 90 days of
+    recovery, which a restore gives back (W11b)."""
+
+    def test_an_invitee_is_never_made_staff(self, business, team):
+        invitee = team["invitee"]
+
+        with pytest.raises(PlatformRoleRefused):
+            create_platform_user(invitee.email, "support")
+
+        invitee.refresh_from_db()
+        assert (invitee.is_staff, invitee.is_superuser) == (False, False)
+
+    @pytest.mark.parametrize("flag", ["is_staff", "is_superuser"])
+    def test_nor_by_hand_through_the_model_s_validation(self, business, team, flag):
+        """The admin's form validates the model (``User.clean``): the same refusal for whoever raises a flag there."""
+        invitee = team["invitee"]
+        setattr(invitee, flag, True)
+
+        with pytest.raises(ValidationError) as refused:
+            invitee.full_clean()
+
+        assert refused.value.messages == [ON_A_BUSINESS]
+
+    def test_an_account_already_both_is_refused_nothing_else(self, business, team):
+        """Only raising a flag is refused: an account that is staff and on a business from before (``hubs.W002``,
+        put right by hand) still saves its other changes, and lowering its flags."""
+        employee = team["employee"]
+        type(employee).objects.filter(pk=employee.pk).update(is_staff=True, is_superuser=True)
+        employee.refresh_from_db()
+
+        employee.first_name = "Eva"
+        employee.full_clean()
+        employee.is_staff = employee.is_superuser = False
+        employee.full_clean()
+
+    def test_a_member_of_a_business_in_recovery_is_never_made_staff(self, business, team):
+        employee = team["employee"]
+        Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETING)
+        services.sync_access(Hub.objects.get(pk=business.pk))
+        assert not HubMembership.objects.filter(user=employee).exists()  # nobody enters a business in recovery
+
+        with pytest.raises(PlatformRoleRefused):
+            create_platform_user(employee.email, "admin")
+
+        employee.refresh_from_db()
+        assert (employee.is_staff, employee.is_superuser) == (False, False)
 
 
 class TestAccept:
@@ -660,6 +741,22 @@ class TestAccept:
 
         with pytest.raises(NotFound):
             self.accept(team["invitee"], member_of(business, team["invitee"]).id)
+
+    def test_an_account_made_staff_while_invited_cannot_enter_with_the_invitation(self, business, team):
+        """The platform's staff and the customers never share an account (``test_a_staff_account_creates_no_business``):
+        an account raised to staff while its invitation waited (in the admin, by a superuser: ``create_platform_user``
+        refuses an invitee, ``TestThePlatformsDoor``) does not enter with it, as the invitation itself would have
+        refused it (W11b)."""
+        invitee = team["invitee"]
+        type(invitee).objects.filter(pk=invitee.pk).update(is_staff=True)
+        invitee.refresh_from_db()
+
+        with pytest.raises(Conflict) as refused:
+            self.accept(invitee, member_of(business, invitee).id)
+
+        assert refused.value.code == "hubs.platform_account"
+        assert member_of(business, invitee).is_pending
+        assert not HubMembership.objects.filter(user=invitee).exists()
 
     def test_accepting_never_touches_another_business_of_mine(
         self, business, team, make_user

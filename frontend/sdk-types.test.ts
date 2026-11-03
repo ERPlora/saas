@@ -367,3 +367,28 @@ describe('sdk-types.d.ts follows the schemas of fiscal/schemas.py', () => {
     );
   });
 });
+
+describe("sdk-types.d.ts follows the panel's assistant schemas of base/schemas.py", () => {
+  const source = readFileSync(join(HERE, '..', 'base', 'schemas.py'), 'utf8');
+  const ASSISTANT_SCHEMAS = ['AssistantUsageOut', 'AssistantReportIn', 'AssistantReportOut'];
+
+  it.each(ASSISTANT_SCHEMAS)('%s has the same fields on both sides', (name) => {
+    expect(typeFields(name)).toEqual(pythonFields(name, source));
+  });
+
+  it.each(ASSISTANT_SCHEMAS)('%s types each field as its JSON is', (name) => {
+    const python = pythonTypes(name, source);
+    const types = typeTypes(name);
+    for (const [field, annotation] of Object.entries(python)) {
+      const optional = `${field}?` in types;
+      expect(union(types[optional ? `${field}?` : field]), `${name}.${field}: ${annotation}`).toBe(
+        union(toTypeScript(annotation)),
+      );
+    }
+  });
+
+  it('types the allowance and the report with their input and output', () => {
+    expect(TYPES).toContain("'base.assistant.usage': { input: AssistantUsageIn; output: AssistantUsageOut };");
+    expect(TYPES).toContain("'base.assistant.report': { input: AssistantReportIn; output: AssistantReportOut };");
+  });
+});

@@ -1,6 +1,7 @@
 // Several businesses with an unpaid invoice (audit 2026-10-14, R-15; mockups `businesses.html`): one notice,
 // not one per business — the suspended first, each line its own sentence (the day, never the minute) and,
 // on the web, its own way to pay (`UnpaidActions`); inside the apps, where to pay, without a button.
+// clock: data only — no code under test compares these dates with now.
 import { applySurface } from '@erplora/ui/shell';
 import { afterEach, describe, expect, it } from 'vitest';
 

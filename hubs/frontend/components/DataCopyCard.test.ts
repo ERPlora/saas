@@ -4,6 +4,7 @@
 // the server's). A deleted business always shows the card: «not ready yet, we will let you know» while the Hub has no
 // copy (or is away), and an error with «Retry» when the panel cannot ask. A live business shows it only once it has a
 // copy (made before its data was reset).
+// clock: data only — no code under test compares these dates with now.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@erplora/ui/shell', async (importOriginal) => ({

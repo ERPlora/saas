@@ -2,6 +2,7 @@
 // the brand and last four, when it expires and which businesses it pays; the last charge that failed; and,
 // on the web, «Change card» (Stripe's Customer Portal, «the secure payment page») — the main action after a
 // failure. Inside the apps, how to change it, without a button nor a link. Stripe away: it says so.
+// clock: data only — no code under test compares these dates with now.
 import { applySurface } from '@erplora/ui/shell';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 

@@ -3,6 +3,7 @@
 // `mfa/totp/deactivate_form.html`, `mfa/recovery_codes/index.html` and `generate.html`; the URL
 // stays `/2fa`. A change that needs a recent login goes to `/reauthenticate` and back; 2FA switched
 // off on the server (404) sends to the launcher with a notice.
+// clock: data only — no code under test compares these dates with now.
 import { formatDateTime } from '@erplora/ui/components';
 import { ionIconSrc } from '@erplora/ui/shell';
 import { IonButton, IonIcon, IonInput } from '@ionic/vue';

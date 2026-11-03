@@ -4,6 +4,7 @@
 // the pending invitations and ownership offers and the unpaid invoices; «Create business» opens the
 // dialog (form → preparing → ready) and the new row appears «Preparing» through the live list; empty,
 // the sign-up form itself.
+// clock: data only — no code under test compares these dates with now.
 import { DataTable } from '@erplora/ui/components';
 import { AppPage, applySurface } from '@erplora/ui/shell';
 import { afterEach, describe, expect, it, vi } from 'vitest';

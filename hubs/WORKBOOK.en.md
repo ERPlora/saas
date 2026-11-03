@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:933c3ab724e6358dd93da0c453ce9c362366c9d9aef174aa70b96f1292a8c70a -->
+<!-- generated from WORKBOOK.md sha256:d4cc38c4827a714eaadc9a6b0869fd07bd19f0675c0a5a13c83c5a1be174aba7 -->
 
 ## What it is for and who it is for
 
@@ -457,23 +457,25 @@ Screen: Business summary
 Steps:
 1. On the business's page, the header says its status ("Active", "Preparing", "Payment due", "Suspended" or deleted) and the Summary, its plan with the devices, the apps it can have turned on at once and the people against the seats.
 2. The "Usage" card ("How your business is doing in ERPlora") shows the "Storage" used of its plan's space, with a warning when it nears the limit, and the people "Active yesterday" and over the "Last 30 days", with "Yesterday's data: updated every night.".
+3. This card does not show each day's requests, the peak connections or the requests with no room: those are for ERPlora's team, in its admin (HUBS-F22), and for whoever runs the business, in System · Resources of its hub (BASE-F40).
 In: the business and what it measured last night.
 Out: nothing is saved; the page changes by itself when a new night arrives.
 If it fails: without any night measured, "No data yet. The figures arrive every night, from the first one after the business is created."; with data of a day before yesterday, "Data from …: updated every night.". A manager or an employee do not see the business's page, only "Open".
-Involved: the business (measures its usage)
+Involved: the business (BASE-F40: measures its usage and shows those figures to whoever runs it)
 
 ### HUBS-F22 Collect every night the usage of each business
 Status: partial — erplora.com already asks for it every night, but the businesses' service does not serve its measurement yet: a business's space is that of its own database, which comes in phase 2; until it does, the pass ends with an error and nothing is saved.
 Actor: system
 Screen: none
 Steps:
-1. Every night, erplora.com asks the businesses' service what it measured of each one the day before: the space of its files, that of its database and the people who came in that day and over the last 30.
+1. Every night, erplora.com asks the businesses' service what it measured of each one the day before: the space of its files, that of its database, the people who came in that day and over the last 30, its requests that day, the peak connections and the requests with no room.
 2. It keeps one day per business; if it collects a day already kept again, it replaces the figures only if they changed, and tells that business's page.
 3. A day that was missed is collected later, asking for it by its date.
+4. ERPlora's team sees each day in its admin, in "Daily usages": besides the above, "Requests", "Peak connections" and "Requests with no room". On erplora.com they are the admin's only: the business's panel does not show them (HUBS-F21).
 In: the night's measurement, page by page.
 Out: the usage of each business and day. Records `hubs.business.usage_collected`.
-If it fails: if the service does not answer or refuses, the pass ends with an error and alerts; a broken row does not stop the others; a business erplora.com did not sell is noted without an error. Two passes at once do not step on each other.
-Involved: the business (measures its usage)
+If it fails: if the service does not answer or refuses, the pass ends with an error and alerts; a broken row does not stop the others; a business erplora.com did not sell is noted without an error. Two passes at once do not step on each other. A figure the service did not measure, or does not send yet, is kept without a figure and the admin says "—", never a 0.
+Involved: the business (BASE-F40: measures its usage and serves it)
 
 ### HUBS-F23 ERPlora's staff acting on a business from the admin
 Status: done
@@ -512,7 +514,7 @@ Steps:
 3. Or they press "Decline" and confirm it in "Decline the invitation": "Invitation declined" shows and whoever invited them would have to invite them again.
 In: the account's invitations waiting for an answer and still within their 7 days.
 Out: on accepting, the person inside the business and the business told, with the list of people up to date; on declining, the invitation deleted. Records `hubs.invitation.accepted` or `hubs.invitation.declined`. The owner and the administrators see the change in "Members" at once.
-If it fails: an expired invitation, "This invitation expired. Ask whoever invited you to send it again."; one already answered, withdrawn or someone else's cannot be answered ("This invitation is no longer valid"). Without the email confirmed, "Confirm your email address before accepting the invitation.". If the plan has no room left, "This business has no seat left on its plan. Ask whoever invited you to free one or to change the plan.". Accepting twice gives nothing more, and it never touches the person's other businesses.
+If it fails: an expired invitation, "This invitation expired. Ask whoever invited you to send it again."; one already answered, withdrawn or someone else's cannot be answered ("This invitation is no longer valid"). Without the email confirmed, "Confirm your email address before accepting the invitation.". An account that joined ERPlora's staff while the invitation waited does not enter: "This address belongs to ERPlora's staff and cannot join a business.". If the plan has no room left, "This business has no seat left on its plan. Ask whoever invited you to free one or to change the plan.". Accepting twice gives nothing more, and it never touches the person's other businesses.
 Involved: accounts (the session and the jump into the business), the business (receives the person)
 
 ### HUBS-F26 Change the role of a person in a business

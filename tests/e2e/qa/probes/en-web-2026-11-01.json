@@ -1,0 +1,47 @@
+[
+  {
+    "id": "en-web-hubs.plan.list-1",
+    "app": "hubs",
+    "tool": "hubs.plan.list",
+    "role": "account",
+    "surface": "web",
+    "language": "en",
+    "phrase": "thinking about upgrading, what are my options and what do they cost?",
+    "expect": "read",
+    "notes": "A plan question without the word «plan»."
+  },
+  {
+    "id": "en-web-accounts.session.list-1",
+    "app": "accounts",
+    "tool": "accounts.session.list",
+    "role": "account",
+    "surface": "web",
+    "language": "en",
+    "phrase": "is my account still logged in on that old laptop I sold?",
+    "expect": "read",
+    "notes": "A question about one device: a read, not a sign-out."
+  },
+  {
+    "id": "en-web-billing.invoice.list-1",
+    "app": "billing",
+    "tool": "billing.invoice.list",
+    "role": "account",
+    "surface": "web",
+    "language": "en",
+    "phrase": "my accountant wants whatever you've billed me so far, can you pull that up?",
+    "expect": "read",
+    "notes": "Invoices named as «whatever you've billed me»."
+  },
+  {
+    "id": "en-web-accounts.preferences.update-1",
+    "app": "accounts",
+    "tool": "accounts.preferences.update",
+    "role": "account",
+    "surface": "web",
+    "language": "en",
+    "phrase": "everything's way too bright at night, can you darken this screen?",
+    "expect": "card",
+    "decide": "cancel",
+    "notes": "Dark mode without saying «dark mode»; cancelled."
+  }
+]

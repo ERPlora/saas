@@ -1,16 +1,16 @@
 # Workbook — Asistente de IA (assistant)
 Prefijo: ASSISTANT
 Alcance MVP: fase 1 (la pasarela de IA de erplora.com: los proveedores que paga ERPlora, sus claves cifradas, sus modelos y qué modelo contesta; el turno del asistente de cada negocio con sus herramientas y sus adjuntos, el cupo de mensajes de su plan, las huellas de su índice, el dictado y la lectura en voz alta, las denuncias de una respuesta y lo que gasta cada negocio; el asistente del panel de erplora.com para cada cuenta, con las herramientas del panel y su propio cupo)
-Estado de la app: en uso (dos flujos parciales: ASSISTANT-F14, cuya búsqueda en la web y tipo de cambio llegan con la etapa ERP, y ASSISTANT-F25, cuyo chat en el panel llega con su pantalla; el asistente de cada negocio, con su chat y su voz, es la app del Hub)
+Estado de la app: en uso (un flujo parcial: ASSISTANT-F14, cuya búsqueda en la web y tipo de cambio llegan con la etapa ERP; el asistente de cada negocio, con su chat y su voz, es la app del Hub)
 
 > Manual de uso y especificación de la app `assistant` del SaaS (erplora.com). Cuenta lo que hace el personal de
 > ERPlora para que el asistente de IA conteste (dar de alta un proveedor de modelos y su clave, elegir sus modelos,
 > decidir qué modelo contesta y probarlo antes, ver lo que gasta cada negocio) y lo que hace erplora.com cada vez que
-> el asistente de un negocio le pide algo: contestar un turno, leer sus adjuntos, contar sus mensajes, calcular las
-> huellas de su índice, transcribir un dictado o leer una respuesta en voz alta. También contesta al asistente del
+> el asistente de un negocio le pide algo: contestar un turno, leer sus adjuntos, contar sus mensajes, buscar en la
+> documentación de ERPlora, transcribir un dictado o leer una respuesta en voz alta. También contesta al asistente del
 > propio panel de erplora.com, el de cada cuenta: sus negocios, lo que paga a ERPlora y su cuenta. No se publica en la
-> tienda: es la referencia del equipo y de la QA. Ningún cliente ve estas pantallas; el asistente que usa el negocio
-> vive en el Hub.
+> tienda: es la referencia del equipo y de la QA. Ningún cliente ve las pantallas del admin; la cuenta ve el chat del
+> panel (ASSISTANT-F25), y el asistente que usa el negocio vive en el Hub.
 
 ## Para qué sirve y para quién
 
@@ -31,9 +31,12 @@ Quién la usa:
 
 - El **personal de ERPlora**, en el admin de erplora.com, con los permisos de la pasarela de IA. El grupo de
   soporte no los tiene: las claves son gasto de ERPlora.
-- El **asistente del Hub** de cada negocio (y el de cada demo): manda a erplora.com cada turno, sus adjuntos, los
-  textos de su índice, los dictados y lo que hay que leer en voz alta, y enseña a la persona lo que le queda del cupo.
+- El **asistente del Hub** de cada negocio (y el de cada demo): manda a erplora.com cada turno, sus adjuntos, las
+  preguntas de cómo se hace algo en ERPlora (ASSISTANT-F28), los dictados y lo que hay que leer en voz alta, y enseña
+  a la persona lo que le queda del cupo.
 - El **personal de ERPlora**, en «Registros de uso del asistente», ve lo que gasta cada negocio y lo que cuesta.
+- La **persona con cuenta** en erplora.com, en el panel: abre el asistente con el botón «Asistente» de la barra y le
+  pregunta por sus negocios, lo que paga y su cuenta (ASSISTANT-F25), con 30 mensajes al mes (ASSISTANT-F26).
 
 ## Referencia adoptada
 
@@ -96,14 +99,28 @@ con «Negocio, demo o cuenta» (de una cuenta, su correo), «Mes», «Mensajes»
 dirección del negocio, por la dirección de la demo o por el correo de la cuenta) y los meses; a la derecha, el filtro
 «Por tipo» («Negocios», «Demos» o «Cuentas») y el del mes. Cada fila se abre para verla entera, sin poder cambiarla.
 
+### Panel: Asistente
+En todas las pantallas del panel de erplora.com con la sesión abierta, al final de la barra de arriba, el botón
+«Asistente» (las chispas), marcado mientras el panel está abierto. El panel se abre a la derecha: desde 768 px de ancho
+se acopla junto a la pantalla, que se estrecha y sigue funcionando; en el móvil la cubre sobre un velo. Arriba,
+«Asistente», «Nueva conversación» (cuando ya hay una) y × («Cerrar»); en medio, la conversación: sin ella, «Pregúntame
+por tus negocios, tus facturas o tu cuenta.» y tres atajos («¿Qué negocios tengo?», «¿Cuánto pago al mes?» y «¿Cómo
+creo un negocio?»); con ella, las burbujas de la persona y las respuestas, con «Ir a …» para las pantallas del panel
+que nombran, lo hecho bajo cada cambio («Hecho: …», «No se hizo, cancelado: …»), «Leer en voz alta» (la voz del propio
+dispositivo) y «Denunciar un problema». Abajo, el aviso de cuántos mensajes quedan (desde el 80 % del mes), el clip de
+adjuntar y la caja «Escribe un mensaje…» con «Enviar» («Parar» mientras contesta). Un cambio que pide el modelo abre
+encima la tarjeta «¿Ejecutar esta acción?» con «Cancelar» y «Ejecutar»; crear, borrar o cambiar la dirección de un
+negocio, ofrecerlo a otro o cancelar su plan piden además escribir «CONFIRMAR». Sin micrófono: el dictado no está en el
+panel.
+
 ## Estados de cada pantalla
 
 | Estado | Qué ve la persona |
 |---|---|
-| Cargando | La carga normal de una página del admin; al probar un modelo, «Enviando…» y el botón «Enviar» apagado hasta que acaba («Hecho.»). |
-| Vacío | «0 proveedores de IA» y la lista vacía; en «Registros de uso del asistente», «0 registros de uso del asistente» hasta el primer mensaje de un negocio; un proveedor sin clave dice «Sin clave»; sin modelos que puedan contestar, «Todavía no puede contestar ningún modelo: añade un proveedor con su clave y elige sus modelos.» |
-| Error | En «Elegir modelos del proveedor», el motivo en rojo: «Este proveedor no tiene ninguna clave activa: añade una en su ficha y vuelve a intentarlo.», «El proveedor no ha dado sus modelos: …» o «El proveedor no tiene modelos de conversación en su lista.»; en las fichas, el error en rojo junto al campo: «Usa una dirección https: la clave del proveedor viaja a ella.», «Escribe la clave del proveedor.», «La clave de cifrado de las credenciales no está configurada: no se puede guardar ninguna clave de proveedor.»; al probar un modelo, en rojo: «El modelo no ha contestado: …», «Demasiadas pruebas en un minuto: espera un momento y vuelve a intentarlo.» o «No se ha podido enviar la prueba: revisa la conexión y vuelve a intentarlo.». |
-| Sin permiso | Sin los permisos de la pasarela, el admin contesta que no tiene permiso; quien solo puede mirar ve las fichas sin el campo «Clave». «Registros de uso del asistente» no se pueden cambiar ni borrar, ni siquiera un superusuario. |
+| Cargando | La carga normal de una página del admin; al probar un modelo, «Enviando…» y el botón «Enviar» apagado hasta que acaba («Hecho.»). En el asistente del panel, la burbuja de «El asistente está escribiendo» hasta la primera palabra y «Parar» en lugar de «Enviar». |
+| Vacío | «0 proveedores de IA» y la lista vacía; en «Registros de uso del asistente», «0 registros de uso del asistente» hasta el primer mensaje de un negocio; un proveedor sin clave dice «Sin clave»; sin modelos que puedan contestar, «Todavía no puede contestar ningún modelo: añade un proveedor con su clave y elige sus modelos.» En el asistente del panel, «Pregúntame por tus negocios, tus facturas o tu cuenta.» con sus tres atajos. |
+| Error | En «Elegir modelos del proveedor», el motivo en rojo: «Este proveedor no tiene ninguna clave activa: añade una en su ficha y vuelve a intentarlo.», «El proveedor no ha dado sus modelos: …» o «El proveedor no tiene modelos de conversación en su lista.»; en las fichas, el error en rojo junto al campo: «Usa una dirección https: la clave del proveedor viaja a ella.», «Escribe la clave del proveedor.», «La clave de cifrado de las credenciales no está configurada: no se puede guardar ninguna clave de proveedor.»; al probar un modelo, en rojo: «El modelo no ha contestado: …», «Demasiadas pruebas en un minuto: espera un momento y vuelve a intentarlo.» o «No se ha podido enviar la prueba: revisa la conexión y vuelve a intentarlo.». En el asistente del panel, bajo la pregunta: «El asistente no está disponible ahora mismo. Vuelve a intentarlo en unos minutos.» con «Reintentar»; con el mes gastado, «Has usado todos los mensajes del asistente de este mes (30 de 30). Se renuevan el 1 de …» y «Cada negocio tiene su propio asistente, con sus propios mensajes: abre el negocio para seguir preguntando allí.», sin «Mejorar plan»; sin conexión, en el pie, «Sin conexión: puedes escribir y enviar cuando vuelva.» |
+| Sin permiso | Sin los permisos de la pasarela, el admin contesta que no tiene permiso; quien solo puede mirar ve las fichas sin el campo «Clave». «Registros de uso del asistente» no se pueden cambiar ni borrar, ni siquiera un superusuario. Sin sesión, el panel lleva a entrar y no hay botón «Asistente»; una sesión que termina a media conversación dice «Tu sesión ha terminado. Vuelve a entrar para seguir hablando.» con «Volver a entrar». |
 
 ## Flujos
 
@@ -133,9 +150,10 @@ dirección del negocio, por la dirección de la demo o por el correo de la cuent
 | ASSISTANT-F22 | Leer una respuesta en voz alta | hecho |
 | ASSISTANT-F23 | Recibir la denuncia de una respuesta del asistente | hecho |
 | ASSISTANT-F24 | Ver lo que ha gastado un negocio del asistente | hecho |
-| ASSISTANT-F25 | Contestar al asistente del panel de una cuenta | parcial |
+| ASSISTANT-F25 | Contestar al asistente del panel de una cuenta | hecho |
 | ASSISTANT-F26 | Contar los mensajes de una cuenta con el asistente del panel | hecho |
 | ASSISTANT-F27 | Buscar en la documentación desde el panel | hecho |
+| ASSISTANT-F28 | Buscar en la documentación desde el Hub | hecho |
 
 ### ASSISTANT-F01 Dar de alta un proveedor de IA
 <!-- origen: fi:saas/support/auth-services#modelo-aiprovider fi:saas/django-admin#admin-aiprovider old-saas:SAAS_ASSISTANT-F22 -->
@@ -423,7 +441,7 @@ Estado: hecho
 Actor: el asistente del Hub de un negocio
 Pantalla: ninguna
 Pasos:
-1. Para que el asistente encuentre lo que busca (qué app hace qué, qué pantalla abrir), el Hub guarda un índice con la huella de cada texto y manda a erplora.com los textos de los que necesita la huella, de 1 a 256 a la vez.
+1. Un Hub que guarde un índice propio con la huella de cada texto manda a erplora.com los textos de los que necesita la huella, de 1 a 256 a la vez. El Hub de hoy no guarda ninguno: busca en la documentación de ERPlora a través de erplora.com (ver ASSISTANT-F28).
 2. erplora.com pide las huellas al proveedor de servicios, siempre con el mismo modelo de huellas, y las devuelve en el orden de los textos.
 3. Los tokens y su coste se suman al mes del negocio.
 Entra: el negocio y los textos.
@@ -490,19 +508,21 @@ Si falla: nadie puede añadir, cambiar ni borrar una fila, ni siquiera un superu
 Implicados: ASSISTANT-F18, ASSISTANT-F20, ASSISTANT-F21, ASSISTANT-F22, ASSISTANT-F26
 
 ### ASSISTANT-F25 Contestar al asistente del panel de una cuenta
-<!-- origen: nuevo (decisión de Ioan del 30/10/2026: el mismo asistente que el del Hub, con las herramientas propias de erplora.com; Shopify Sidekick, Square Assistant, Stripe Assistant y el Copilot de GitHub contestan en el panel de la cuenta; ver PLAN-SAAS §23) -->
-Estado: parcial — erplora.com ya contesta cada turno de la cuenta; el chat que lo abre desde la barra del panel llega con su pantalla
+<!-- origen: old-saas:SAAS_DASHBOARD-F220 old-saas:SAAS_DASHBOARD-F221 -->
+Estado: hecho
 Actor: la persona con cuenta en erplora.com
-Pantalla: ninguna
+Pantalla: Panel: Asistente
 Pasos:
-1. La persona, con su sesión abierta en el panel de erplora.com, escribe al asistente («¿Qué negocios tengo?», «¿Cuánto pago al mes?», «Crea un negocio para mi peluquería»).
-2. erplora.com le ofrece al modelo las herramientas del panel que esa cuenta puede usar (sus negocios y su gente, los planes, sus facturas y suscripciones, su cuenta, el catálogo de apps), primero las de lo que ha preguntado, y siempre la lista de sus negocios.
-3. Una consulta que el modelo pide se ejecuta sola, como la propia persona: nunca ve un negocio que no es suyo.
-4. Un cambio que el modelo pide se para en una tarjeta que dice qué va a hacer, dónde (la pantalla del panel: «Negocios», «Facturación», «Cuenta» o «Tienda») y con qué datos, nombrando el negocio por su nombre; solo se hace si la persona dice que sí. Crear, borrar o cambiar la dirección de un negocio, ofrecerlo a otro o cancelar su plan piden además escribir «CONFIRMAR»; cambiar de plan no se hace desde el chat, sino en la Tienda, que enseña antes lo que se cobra.
-5. Con lo que han devuelto las herramientas, el modelo contesta en directo, trozo a trozo, en el idioma de la persona, y enlaza la pantalla del panel donde se hace lo que no puede hacer él; para lo que pasa dentro de un negocio (ventas, productos, la gente de la caja) dice que se abra el negocio y se pregunte a su asistente.
+1. La persona, con su sesión abierta en el panel de erplora.com, pulsa «Asistente» al final de la barra y se abre el panel del asistente: junto a la pantalla desde 768 px, encima en el móvil. Sin conversación, ve «Pregúntame por tus negocios, tus facturas o tu cuenta.» con tres atajos.
+2. Escribe al asistente o pulsa un atajo («¿Qué negocios tengo?», «¿Cuánto pago al mes?», «¿Cómo creo un negocio?»); hasta la primera palabra de la respuesta ve la burbuja de «El asistente está escribiendo».
+3. erplora.com le ofrece al modelo las herramientas del panel que esa cuenta puede usar (sus negocios y su gente, los planes, sus facturas y suscripciones, su cuenta, el catálogo de apps), primero las de lo que ha preguntado, y siempre la lista de sus negocios.
+4. Una consulta que el modelo pide se ejecuta sola, como la propia persona: nunca ve un negocio que no es suyo.
+5. Un cambio que el modelo pide se para en la tarjeta «¿Ejecutar esta acción?», que dice qué va a hacer, dónde (la pantalla del panel: «Negocios», «Facturación», «Cuenta» o «Tienda») y con qué datos, nombrando el negocio por su nombre; solo se hace si la persona pulsa «Ejecutar», y «Cancelar» no cambia nada. Crear, borrar o cambiar la dirección de un negocio, ofrecerlo a otro o cancelar su plan piden además escribir «CONFIRMAR»; cambiar de plan no se hace desde el chat, sino en la Tienda, que enseña antes lo que se cobra.
+6. Con lo que han devuelto las herramientas, el modelo contesta en directo, trozo a trozo, en el idioma de la persona, y enlaza la pantalla del panel donde se hace lo que no puede hacer él («Ir a Negocios»…); para lo que pasa dentro de un negocio (ventas, productos, la gente de la caja) dice que se abra el negocio y se pregunte a su asistente. Bajo la respuesta queda lo que se hizo de cada cambio («Hecho: Crear negocio en Negocios», «No se hizo, cancelado: …»).
+7. Desde el 80 % de los mensajes del mes, el pie del panel dice cuántos quedan y cuándo vuelven (ver ASSISTANT-F26). El panel se cierra con ×, Escape, el velo o el mismo botón; el dispositivo recuerda si se dejó abierto, y la conversación se olvida al cerrar la sesión.
 Entra: la conversación (vive en el navegador de la persona), las herramientas que el modelo pidió y la respuesta de la persona a su tarjeta.
 Sale: lo que se ha hecho y su resultado, la tarjeta del cambio que espera, el texto según llega, el cupo que queda y el cierre; lo que hace cada herramienta deja su propio rastro (`hubs.business.created`…), nunca la conversación.
-Si falla: sin sesión, no contesta (hay que entrar); con el cupo del mes gastado, el primer aviso es el cupo agotado, con cuántos se han usado y cuándo vuelven (ver ASSISTANT-F26); con demasiados turnos seguidos, avisa de que hay que esperar un momento; sin un modelo que conteste, de que el asistente no puede contestar ahora. Una herramienta que la cuenta no tiene, o que no es del chat (descargar un fichero, crear una clave de API, abrir el pago, entrar en un negocio), no se ejecuta nunca. Sin la palabra escrita o con un «no», el cambio no se hace y el modelo lo dice. Donde no se vende (la cuenta abierta desde la aplicación instalada), no se ofrecen la Tienda ni sus cambios de plan. Pasadas seis rondas de herramientas en una misma pregunta, se para.
+Si falla: sin sesión, el panel lleva a entrar y no hay botón «Asistente», y una sesión que termina a media conversación pide volver a entrar; con el cupo del mes gastado, el primer aviso es el cupo agotado, con cuántos se han usado y cuándo vuelven, y que cada negocio tiene su propio asistente, sin «Mejorar plan» (ver ASSISTANT-F26); con demasiados turnos seguidos, avisa de que hay que esperar un momento; sin un modelo que conteste, de que el asistente no puede contestar ahora, con «Reintentar»; sin conexión, el pie lo dice. Una herramienta que la cuenta no tiene, o que no es del chat (descargar un fichero, crear una clave de API, abrir el pago, entrar en un negocio), no se ejecuta nunca. Sin la palabra escrita o con un «no», el cambio no se hace y el modelo lo dice. Unos datos que el cambio no acepta (un país que no es de los que sirve ERPlora, un valor fuera de su lista) no llegan a la tarjeta: vuelven al modelo, que los corrige en la misma pregunta, y la persona confirma una sola vez. Donde no se vende (la cuenta abierta desde la aplicación instalada), no se ofrecen la Tienda ni sus cambios de plan. Pasadas seis rondas de herramientas en una misma pregunta, se para.
 Implicados: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F23, ASSISTANT-F26, HUBS-F01, HUBS-F09, BILLING-F13
 
 ### ASSISTANT-F26 Contar los mensajes de una cuenta con el asistente del panel
@@ -521,7 +541,7 @@ Si falla: sin mensajes libres, el turno se rechaza con el cupo agotado y la fech
 Implicados: ASSISTANT-F18, ASSISTANT-F24, ASSISTANT-F25
 
 ### ASSISTANT-F27 Buscar en la documentación desde el panel
-<!-- origen: old-saas:search_cloud_docs (el índice en memoria de apps/dashboard/assistant/knowledge.py, que se rehacía en cada arranque); nuevo como herramienta del panel (plan 2026-10-30-asistente-saas §5, PLAN-SAAS §23: el Sidekick de Shopify, el Square Assistant y el asistente de Stripe contestan el «cómo se hace» con su propia ayuda y la citan) -->
+<!-- origen: old-saas:SAAS_DASHBOARD-F220 old:saas/apps/dashboard/assistant/knowledge.py old:saas/apps/dashboard/assistant/tools.py#search_cloud_docs -->
 Estado: hecho
 Actor: la persona con cuenta en erplora.com
 Pantalla: ninguna
@@ -531,11 +551,27 @@ Pasos:
 3. erplora.com busca en la ayuda pública de erplora.com, en la documentación de cada app del Hub que está en la tienda, en la parte de usuario de los manuales del panel (la cuenta, los negocios, la facturación, la tienda y la web) y en los planes en venta con sus precios y lo que incluye cada uno.
 4. Devuelve hasta 8 fragmentos (12 como mucho, aunque el modelo pida más), los más cercanos a la pregunta, en el idioma de la persona; si en su idioma hay menos de tres que de verdad respondan, se suman los de inglés. Cada fragmento dice de dónde sale y bajo qué títulos.
 5. El modelo contesta con lo que dicen esos fragmentos y cita de dónde salen; un precio o lo que incluye un plan sale siempre de los planes en venta, nunca de memoria.
-6. La documentación se vuelve a indexar cada día: un cambio en la ayuda, en un manual, en la documentación de una app o en un plan llega al asistente al día siguiente.
+6. La documentación se pone al día cuando el equipo de ERPlora la vuelve a indexar: un cambio en la ayuda, en un manual, en la documentación de una app o en un plan llega al asistente con la siguiente pasada. Todavía no se vuelve a indexar sola cada día.
 Entra: la pregunta (hasta 500 caracteres) y cuántos fragmentos quiere el modelo.
 Sale: los fragmentos con su fuente, de dónde salen, sus títulos, su texto, su idioma y lo cerca que están de la pregunta; de la pregunta solo queda su huella en la caché durante un día (la misma pregunta otra vez no se calcula de nuevo).
 Si falla: sin el proveedor de las huellas configurado, o si falla, la búsqueda contesta que ahora no se puede buscar en la documentación y el modelo se lo dice a la persona; una cuenta sin permiso para preguntar al asistente no busca; mientras la documentación no se ha indexado, no encuentra nada y el modelo dice que no lo sabe en lugar de inventarlo.
 Implicados: ASSISTANT-F20, ASSISTANT-F25, APPS-F02, HUBS-F05, PUBLIC-F15
+
+### ASSISTANT-F28 Buscar en la documentación desde el Hub
+<!-- origen: old-saas:SAAS_ASSISTANT-F17 fi:saas/auth-services#proxy-de-embeddings-rag-local-del-hub -->
+Estado: hecho
+Actor: el asistente del Hub de un negocio
+Pantalla: ninguna
+Pasos:
+1. Una persona del negocio pregunta al asistente del Hub cómo se hace algo en ERPlora, qué significa una opción o qué incluye un plan («¿Cómo abro la caja?», «¿Qué incluye el plan Starter?»).
+2. El Hub no guarda la documentación: manda a erplora.com la pregunta, el negocio (o la demo) y el idioma de la persona.
+3. erplora.com calcula la huella de la pregunta y busca en la misma documentación que el asistente del panel (ver ASSISTANT-F27): la ayuda pública de erplora.com, la documentación de cada app del Hub, la parte de usuario de los manuales del panel y los planes en venta con sus precios.
+4. Devuelve hasta 8 fragmentos (12 como mucho, aunque se pidan más), los más cercanos a la pregunta, en el idioma de la persona; si en su idioma hay menos de tres que de verdad respondan, se suman los de inglés. Cada fragmento dice de dónde sale y bajo qué títulos.
+5. El asistente del Hub contesta solo con lo que dicen esos fragmentos y cita de dónde salen; si no hay ninguno, dice que la documentación no lo cubre en lugar de inventarlo.
+Entra: el negocio o la demo, la pregunta (hasta 500 caracteres), el idioma (inglés o español) y cuántos fragmentos quiere.
+Sale: los fragmentos con su fuente, de dónde salen, sus títulos, su texto, su idioma y lo cerca que están de la pregunta; de la pregunta solo queda su huella en la caché durante un día (la misma pregunta otra vez no se calcula de nuevo). No gasta mensajes del cupo.
+Si falla: sin el proveedor de las huellas configurado, contesta que ahora no se puede buscar en la documentación porque el proveedor no está configurado; si el proveedor falla, que se vuelva a intentar en un momento; con demasiadas búsquedas seguidas del mismo negocio, que espere un momento; una llamada sin firmar, de un negocio que erplora.com no conoce o de uno que no está activo se rechaza como en cualquier puerta del Hub; mientras la documentación no se ha indexado, no encuentra nada y el asistente dice que la documentación no lo cubre.
+Implicados: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F27
 
 ## Para quien lo mantiene
 
@@ -580,7 +616,7 @@ Implicados: ASSISTANT-F20, ASSISTANT-F25, APPS-F02, HUBS-F05, PUBLIC-F15
   contestó. `seed_ai_providers` del producto viejo no se porta (sembraba dos proveedores apagados de API que no
   hablamos): los proveedores los da el admin o `import_ai_keys_from_env`.
 
-### Las puertas del Hub (`assistant/internal.py`, ASSISTANT-F11…F23)
+### Las puertas del Hub (`assistant/internal.py`, ASSISTANT-F11…F23, F28)
 
 Todas `POST`, firmadas como todo `/internal` (`accounts.signing`: v1 sobre el cuerpo o v2 sobre método, ruta y
 cuerpo; ±`INTERNAL_SIGNATURE_MAX_AGE_SECONDS`; el secreto actual o el previo), sin CSRF, asíncronas (un turno que
@@ -597,7 +633,8 @@ propio texto por `code`.
 | `/internal/assistant/chat/stream` | `hub`, `messages` (1–1000), `instructions`, `tools` (≤256, formato de OpenAI), `continuation` | `text/event-stream` (abajo) | `ASSISTANT_TURN_RATELIMIT` 600/h |
 | `/internal/assistant/chat` | igual | `{output, usage, continuation, quota}`; fallo del proveedor: 502 con `code`, `retriable` y `quota` | el mismo |
 | `/internal/assistant/usage` | `hub` | `{used, limit, resets_at, demo}` (`resets_at` UTC; `null` en una demo) | el mismo |
-| `/internal/assistant/embeddings` | `hub`, `texts` (1–256, ninguno vacío) | `{embeddings, model}` en el orden de `texts` | `ASSISTANT_EMBED_RATELIMIT` 600/h |
+| `/internal/assistant/embeddings` | `hub`, `texts` (1–256, ninguno vacío) | `{embeddings, model}` en el orden de `texts`; ningún Hub la llama hoy (no guarda índice) | `ASSISTANT_EMBED_RATELIMIT` 600/h |
+| `/internal/assistant/docs/search` | `hub`, `query` (1–500, no en blanco), `language` (`en` \| `es`), `limit` (≥1, recortado a 12; 8 por defecto) | `{results: [{source, path, heading, text, score, lang}]}` (vacío con el índice vacío); 409 `assistant.provider_not_configured`, 503 `assistant.provider_unavailable` | `ASSISTANT_DOCS_RATELIMIT` 600/h |
 | `/internal/speech/transcribe` | `hub`, `audio` (base64, ≤2 MB), `mime_type`, `language` | `{text, language}` | `ASSISTANT_TRANSCRIBE_RATELIMIT` 120/h |
 | `/internal/speech/synthesize` | `hub`, `text`, `voice` | `audio/mpeg` (≤4096 caracteres leídos) | `ASSISTANT_SYNTHESIZE_RATELIMIT` 120/h |
 | `/internal/assistant/report` | `hub`, `message_id`, `reason` (`incorrect`, `harmful`, `instructions`, `other`), `comment`, `question`, `answer` | 202 `{sent, duplicate}`; 503 `assistant.report_not_sent` | `ASSISTANT_REPORT_RATELIMIT` 60/h |
@@ -629,6 +666,11 @@ propio texto por `code`.
   temporal en disco por encima de `FILE_UPLOAD_MAX_MEMORY_SIZE` (2,5 MB) antes de la vista; `config/asgi.py`
   (`BodiesInMemory`) guarda en memoria el de `/internal/assistant/*` y `/internal/speech/*` hasta `TURN_BODY_BYTES` y
   descarta lo que pase (la puerta contesta 413), `test_body_in_memory.py`.
+- **La documentación** (`docs_search`, ASSISTANT-F28): calcula la huella de la pregunta con
+  `queries.prepare_questions` (fuera de toda transacción, en la caché un día) y corre la misma operación que el panel,
+  `assistant.docs.search`, como la plataforma (`platform_context()`) en el `language` del cuerpo: una sola búsqueda
+  para los dos asistentes y un solo índice (`DocChunk`). No toma mensaje ni apunta tokens (una pregunta son unas
+  decenas). En el Hub es la herramienta `base__docs__search` (`base.docs.search`, ERPlora/hub).
 - **Huellas y voz** (`assistant/media.py`): el proveedor de servicios es el `AIProvider` de slug
   `ASSISTANT_SERVICE_PROVIDER` («openai»), de API OpenAI, activado y con clave (`assistant.service.connection`);
   modelos fijos `text-embedding-3-small`, `whisper-1` y `tts-1`.
@@ -640,7 +682,7 @@ propio texto por `code`.
 - **Tests** (todos contra `assistant/tests/fake_provider.py`, nunca un proveedor real): `test_internal_caller.py`
   (F11), `test_turn.py` (F12, F13, F15), `test_server_tools.py` (F14), `test_ratelimit.py` (F16),
   `test_privacy.py` (F17), `test_quota.py` (F18), `test_attachments.py` (F19), `test_embeddings.py` (F20),
-  `test_speech.py` (F21, F22), `test_report.py` (F23) y `test_admin_usage.py` (F24); `assistant/tests/doors.py`
+  `test_speech.py` (F21, F22), `test_report.py` (F23), `test_admin_usage.py` (F24) y `test_internal_docs.py` (F28); `assistant/tests/doors.py`
   firma como el Hub, lee los frames y cuelga a medias (`hang_up`). e2e de las puertas y del admin:
   `tests/e2e/panel/assistant-gateway.spec.ts`.
 - Trampas del producto viejo cubiertas: saas#2531 (el freno se gastaba antes de comprobar la firma:
@@ -658,8 +700,11 @@ propio texto por `code`.
 - **Herramientas**: toda operación del SaaS declara `ai=` (`live.E017`): `AI(description=…, risk=…)` o `INTERNAL` con
   su motivo en un comentario. `catalog(ctx)` = las `AI` que la cuenta puede usar, en todas las apps (son de
   plataforma); en la superficie de la cuenta (`base.surface`) sin las de la pantalla Tienda (`navigation.WEB_ONLY`).
-  `relevant` con `ALWAYS = ("hubs.business.list",)` y las palabras de las pantallas del menú. La tarjeta
-  (`PanelWords`) nombra el negocio por `hubs.business.list` de la cuenta y la pantalla del panel. `billing.plan.change`
+  `relevant` con `ALWAYS = ("hubs.business.list", "assistant.docs.search")` y las palabras de las pantallas del menú. La tarjeta
+  (`PanelWords`) nombra el negocio por `hubs.business.list` de la cuenta y la pantalla del panel; sus datos salen por
+  `AssistantFieldOut` con todas las marcas de `live.assistant.field` (`titled`, `signed`, `named`, `money`), así que una
+  lista que el servidor dijo elemento a elemento llega con `named` y la tarjeta de `@erplora/ui` dice sus elementos (hoy
+  ninguna escritura del panel manda una lista; guarda: `TestTheCardOfAList`, saas#181). `billing.plan.change`
   es `INTERNAL` (`preview`): pide un `proration_date` reciente del servidor que el chat no tiene; su herramienta llega
   con las vistas previas de las escrituras de billing (plan 2026-10-30 §7, «Fuera»).
 - **La pasarela en proceso**: `turn_frames` → `assistant.turn.spend` (cubo `turn` por `user:<id>`) → `turn.start`
@@ -669,9 +714,21 @@ propio texto por `code`.
 - **Cupo por cuenta**: `Caller(user_id=…)`, una fila `AssistantUsage(user, month)` (check «negocio, demo o cuenta»,
   única por cuenta y mes; migración `0003_account_usage`, que al volver atrás borra las filas de cuentas),
   `ASSISTANT_ACCOUNT_MESSAGES` (30).
+- **El chat** (`assistant/frontend/`): el del Hub, de `@erplora/ui/components` (`AssistantPanel`, `AssistantButton`,
+  `AssistantEmpty`), configurado en `options.ts` (`SAAS_ASSISTANT`: turno en `/api/assistant/turn`, sin `?surface=`,
+  que el servidor lee de la sesión; cupo y denuncia por `base.assistant.usage|report`; sin `transcribe`; `canUse` =
+  `assistant.ask`; nadie sube de plan). `frontend/main.ts` lo monta con `chrome: { topbar: AssistantTopbar, background:
+  AssistantBackground }`, bajo demanda, y lo olvida al cerrar sesión. Sus palabras van en el catálogo de la entrada
+  (`saas.assistant.*` de `frontend/locale`, porque `assistant` es el espacio del chat compartido): el verbo de cada
+  escritura `AI` (`card.operations`, una por escritura: `base/tests/test_assistant_panel_words.py`), el de cada acción
+  (`card.actions`), las cuatro pantallas, el vacío y sus atajos; la frase bajo el cupo agotado, donde nadie sube de
+  plan, es `spentNoteKey: 'saas.assistant.errors.quotaSpentAccount'` de `SAAS_ASSISTANT` (opción del paquete, ui#49),
+  y las palabras del chat (`assistant.*`) van tal cual.
 - **Tests**: `base/tests/test_assistant_turn.py`, `base/tests/test_api_assistant.py`,
   `assistant/tests/test_account_quota.py`, `test_admin_usage.py` (la cuenta en el admin) y `test_privacy.py` (la ruta
-  del panel no guarda la conversación).
+  del panel no guarda la conversación); Vitest de `assistant/frontend/` y `frontend/main.test.ts`; e2e
+  `tests/e2e/panel/assistant-panel.spec.ts` (proveedor `tests/e2e/assistant-provider.ts`, siembra
+  `assistant_seed.py panel`, `ASSISTANT_ACCOUNT_MESSAGES=2` en `panel/project.ts`).
 
 ### La documentación del asistente del panel (`assistant/knowledge.py`, ASSISTANT-F27)
 
@@ -704,8 +761,9 @@ propio texto por `code`.
   `hashtext('erplora.saas.index_docs')` (`hubs.services.run_exclusively`). Evento `assistant.docs.indexed` por lote.
   Medido en local (2026-10-31): 68 fragmentos de ayuda, 2162 de las apps del Hub, 685 de los WORKBOOK y 14 de planes;
   un indexado completo ≈ 680 000 tokens ≈ 0,014 $; una pasada sin cambios, 0 llamadas.
-- **Programación**: diario a las 06:50 UTC en `saas-cron` (`index-docs-daily` de `platform_schedule_specs`, issue en
-  ERPlora/aws); el primer indexado, a mano tras el despliegue (`saas/README.md`, «Operación»).
+- **Programación**: pendiente de ERPlora/aws#25 (`index-docs-daily` de `platform_schedule_specs`, diario a las 06:50
+  UTC en `saas-cron`); hasta que se aplique, el indexado se lanza a mano como tarea suelta de `saas-cron`
+  (`saas/README.md`, «Operación»), y por eso el paso 6 de ASSISTANT-F27 no promete la pasada diaria.
 - **`assistant.docs.search`** (`queries.py`, `kind="query"`, `assistant.ask`, herramienta `assistant__docs__search`):
   nunca llama al proveedor. La huella de la pregunta la calcula antes `queries.prepare_questions`, fuera de toda
   transacción (la ruta del turno, `base.assistant.prepare`, para cada búsqueda que pidió el modelo; una llamada para
@@ -721,8 +779,9 @@ propio texto por `code`.
 ## Lo que NO hace, a propósito
 
 - No enseña nunca una clave guardada, ni a un superusuario: se vuelve a escribir.
-- No tiene pantalla en el Hub: el chat de cada negocio es la app del Hub. El del panel de erplora.com contesta ya
-  (ASSISTANT-F25) y su chat, con el botón en la barra del panel, llega con el frontend del panel.
+- No tiene pantalla en el Hub: el chat de cada negocio es la app del Hub. En el panel de erplora.com su única pantalla
+  es el chat de la cuenta (ASSISTANT-F25), el mismo componente que el del Hub.
+- No dicta por voz en el panel (el micrófono es del Hub): la voz del panel queda para cuando se pida.
 - No guarda aparte una copia de la clave de cifrado (el producto viejo la copiaba a un almacén externo): la guarda el
   gestor de secretos de la nube, con sus versiones y su plazo de recuperación, y una credencial perdida se vuelve a
   escribir.

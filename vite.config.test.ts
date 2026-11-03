@@ -139,8 +139,8 @@ describe('vite.config', () => {
     expect(config.server?.headers).toEqual({ [VITE_ROOT_HEADER]: encodeURIComponent(SAAS_DIR) });
   });
 
-  it('lists the apps with a frontend: accounts, hubs, billing and fiscal (round 16: no marketplace; apps and public have none)', () => {
-    expect(FRONTEND_APPS).toEqual(['accounts', 'hubs', 'billing', 'fiscal']);
+  it("lists the apps with a frontend: accounts, hubs, billing, fiscal and the panel's assistant (round 16: no marketplace; apps and public have none)", () => {
+    expect(FRONTEND_APPS).toEqual(['accounts', 'hubs', 'billing', 'fiscal', 'assistant']);
   });
 
   it('knows every root app with a frontend/ (saas-next has no apps/, PLAN §20.2)', () => {

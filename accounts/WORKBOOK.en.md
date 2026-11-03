@@ -382,7 +382,7 @@ Status: done
 Actor: any person with an account
 Screen: User menu, Entrance, Sign out of erplora.com
 Steps:
-1. In the panel, the person opens the **User menu** (on a phone, inside the menu) and taps "Sign out"; on the **Entrance** with a session, "Sign out" is under their account.
+1. In the panel, the person opens the **User menu** (on a phone, inside the menu) and taps "Sign out"; on the **Entrance** with a session, "Sign out" is under their account, and in the Android app it always stays above the system bar.
 2. That browser's session ends and the **Entrance** comes back, ready to sign in; the other tabs open with that session go back to the **Entrance** by themselves.
 3. A page of the panel opened afterwards leads to the **Entrance**.
 4. From a business, on a device without the PIN pad, its "Sign out" ends the business's and opens **Sign out of erplora.com**: "Sign out" ends this one too, as in step 2; "Stay signed in" leaves it open and the **Entrance** comes back with the account's businesses. Without a session, it leads to the **Entrance**.
@@ -396,7 +396,7 @@ Status: done
 Actor: anyone
 Screen: Entrance, Check your email, admin › the account's page
 Steps:
-1. At the foot of the **Entrance** (on both tabs and under "Continue with Google") and of **Check your email** one reads "By continuing you agree to our Terms & Privacy Policy", with a link to each text.
+1. At the foot of the **Entrance** (on both tabs and under "Continue with Google") and of **Check your email** one reads "By continuing you agree to our Terms & Privacy Policy", with a link to each text. In the Android app that foot always stays above the system bar, never under it.
 2. Creating the account (with a password or with Google) or signing in accepts the versions in force: the account keeps when and which version of each text (the "Last updated" date of each page).
 3. When a text changes, the next sign-in accepts the new version and keeps its date; while it does not change, the date of the first acceptance stays.
 4. The staff see it in the admin, on the account's page, "Terms and privacy", without being able to change it.

@@ -10,6 +10,7 @@
 //   - Closing destroys the checkout. The declined card is never offered: Stripe asks for a card, and the
 //     dialog says why when the account's card was declined.
 // Stripe cannot run here: `window.Stripe` is a double (`__tests__/stripe-double.ts`).
+// clock: data only — no code under test compares these dates with now.
 import { applySurface } from '@erplora/ui/shell';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { h, ref } from 'vue';

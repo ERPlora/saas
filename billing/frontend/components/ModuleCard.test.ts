@@ -7,6 +7,7 @@
 //   - cancelled but still working: until when, and «Keep · no charge today»;
 //   - off sale but still had (saas#2589): it says so, can be cancelled, never kept nor bought again;
 //   - with an unpaid invoice nothing that charges, with the reason.
+// clock: data only — no code under test compares these dates with now.
 import { describe, expect, it } from 'vitest';
 
 import { mountBilling } from '../__tests__/mount-billing';

@@ -46,7 +46,8 @@ def _refused(outcome: str, code: str, message: str) -> assistant.ToolOutcome:
 
 def _answer(ctx: OperationContext, tools: dict, call, decision, *, stopped: bool):
     """Run one pending ``call`` (a read alone; a write with the person's yes) → ``(outcome, card)``: the card when the
-    write still waits for its answer."""
+    write still waits for its answer. None for data the write would refuse (live#17): the model hears which
+    (``invalid_payload``) and asks again with them corrected, in the same turn."""
     op = assistant.shared.operation_of(call.name, tools)
     if op is None:
         return _refused("refused", "not_available", NOT_AVAILABLE), None
@@ -60,6 +61,9 @@ def _answer(ctx: OperationContext, tools: dict, call, decision, *, stopped: bool
         arguments = None
     if not isinstance(arguments, dict):
         return assistant.shared.run_tool(ctx, op, call.arguments), None
+    refused = assistant.shared.invalid_arguments(op, arguments)
+    if refused is not None:
+        return refused, None
     card = assistant.card(op, arguments, ctx)
     if decision is None or decision.call_id != call.call_id:
         if card["blocked"]:

@@ -5,6 +5,7 @@
 // the start (database.ts). Two runs on the one `saas`, or on a Hub's database whose `DB_NAME` a shell
 // still exports (`relation "django_site" does not exist`), are refused before the first server starts.
 // Node's environment: it loads the Playwright config (vite.config.test.ts, «the tests that load Playwright»).
+// clock: data only — no code under test compares these dates with now.
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 

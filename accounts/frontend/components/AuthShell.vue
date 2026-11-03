@@ -96,6 +96,12 @@ ion-router-outlet#main.split-pane-main > .ion-page > ion-content.auth-content::p
 ion-router-outlet#main.split-pane-main > .ion-page > ion-content.auth-content::part(scroll) {
   border-radius: 0;
 }
+/* The Android app lays the page out edge to edge and hands it the system's bar at the bottom as the bottom safe
+   area (saas#166): the scroll area ends where that bar begins, so no line of the screen ever lies under it, as in
+   Chrome and as the Hub's content ends above its tab bar. The background still runs to the edge. */
+.auth-content::part(scroll) {
+  bottom: var(--ion-safe-area-bottom, 0px);
+}
 .login-shell {
   min-height: 100%;
   display: grid;

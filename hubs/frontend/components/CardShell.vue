@@ -132,6 +132,11 @@ ion-router-outlet#main.split-pane-main > .ion-page > ion-content.card-shell-cont
 ion-router-outlet#main.split-pane-main > .ion-page > ion-content.card-shell-content::part(scroll) {
   border-radius: 0;
 }
+/* As the sign-in's AuthShell (saas#166): the scroll area ends where the Android app's system bar begins (the
+   bottom safe area), so «Sign out» never lies under it; the background still runs to the edge. */
+.card-shell-content::part(scroll) {
+  bottom: var(--ion-safe-area-bottom, 0px);
+}
 /* `_shell_styles.html`: the card centred in the viewport, 460 px at most. */
 .shell-page {
   min-height: 100%;

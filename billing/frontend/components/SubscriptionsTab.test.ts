@@ -5,6 +5,7 @@
 // «View the invoice» with an unpaid one, «Change plan» (→ the Store with that business), «Keep the plan»,
 // «Cancel plan» (its own dialog) and «View invoices». Changing, keeping and cancelling are web only; inside
 // the apps a sentence says where to do it. A downgrade waiting for the end of the period says so.
+// clock: data only — no code under test compares these dates with now.
 import { DataTable } from '@erplora/ui/components';
 import { applySurface } from '@erplora/ui/shell';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';

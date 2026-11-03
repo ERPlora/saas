@@ -434,6 +434,13 @@ class DocsSearchIn(Schema):
         return min(limit, DOCS_SEARCH_MAX)
 
 
+class DocsSearchDoorIn(DocsSearchIn, CallerIn):
+    """A search of the Hub's assistant (``POST /internal/assistant/docs/search``, ASSISTANT-F28): the business or the
+    demo in ``hub``, the person's question and the language of the documentation they read."""
+
+    language: DocLanguage
+
+
 class DocsSearchResult(Schema):
     """An excerpt that answers, with where it comes from to cite it."""
 

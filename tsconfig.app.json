@@ -12,6 +12,7 @@
     "hubs/frontend/**/*",
     "billing/frontend/**/*",
     "fiscal/frontend/**/*",
+    "assistant/frontend/**/*",
     "packages/ui/src/shell/shims.d.ts"
   ],
   "exclude": ["frontend/dist", "**/*.test.ts", "**/__tests__/**"]

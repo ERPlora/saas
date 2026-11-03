@@ -415,7 +415,7 @@ Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Menú de usuario, Entrada, Cerrar la sesión de erplora.com
 Pasos:
-1. En el panel, la persona abre el **Menú de usuario** (en el móvil, dentro del menú) y pulsa «Cerrar sesión»; en la **Entrada** con sesión, «Cerrar sesión» está bajo su cuenta.
+1. En el panel, la persona abre el **Menú de usuario** (en el móvil, dentro del menú) y pulsa «Cerrar sesión»; en la **Entrada** con sesión, «Cerrar sesión» está bajo su cuenta, y en la aplicación de Android queda siempre por encima de la barra del sistema.
 2. La sesión de ese navegador se cierra y vuelve la **Entrada**, lista para entrar; las demás pestañas abiertas con esa sesión vuelven solas a la **Entrada**.
 3. Una página del panel abierta después lleva a la **Entrada**.
 4. Desde un negocio, en un dispositivo sin teclado de PIN, su «Cerrar sesión» cierra la del negocio y abre **Cerrar la sesión de erplora.com**: «Cerrar sesión» cierra también esta, como en el paso 2; «Seguir conectado» la deja abierta y vuelve la **Entrada** con los negocios de la cuenta. Sin sesión, lleva a la **Entrada**.
@@ -430,7 +430,7 @@ Estado: hecho
 Actor: cualquiera
 Pantalla: Entrada, Revisa tu correo, admin › ficha de la cuenta
 Pasos:
-1. Al pie de la **Entrada** (en las dos pestañas y bajo «Continuar con Google») y de **Revisa tu correo** se lee «Al continuar aceptas nuestros Términos & Política de Privacidad», con un enlace a cada texto.
+1. Al pie de la **Entrada** (en las dos pestañas y bajo «Continuar con Google») y de **Revisa tu correo** se lee «Al continuar aceptas nuestros Términos & Política de Privacidad», con un enlace a cada texto. En la aplicación de Android ese pie queda siempre por encima de la barra del sistema, nunca debajo de ella.
 2. Crear la cuenta (con contraseña o con Google) o entrar acepta las versiones vigentes: la cuenta guarda cuándo y qué versión de cada texto (la fecha de «Última actualización» de cada página).
 3. Cuando un texto cambia, la siguiente entrada acepta la versión nueva y guarda su fecha; mientras no cambie, la fecha de la primera aceptación se queda.
 4. El personal lo ve en el admin, en la ficha de la cuenta, «Términos y privacidad», sin poder cambiarlo.

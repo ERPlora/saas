@@ -1,6 +1,7 @@
 // «New key» (mockups `account.html` «keys», README §3b and §6.17): a name (required, X-17), the permissions the
 // server offers (at least one) and when it expires (30 or 90 days, 90 by default, or never). Creating access asks
 // «Confirm it's you» when the server wants it. The whole key is shown once, with «Copy», until «I have saved it».
+// clock: data only — no code under test compares these dates with now.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { h, ref } from 'vue';
 

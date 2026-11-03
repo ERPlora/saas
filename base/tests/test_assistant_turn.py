@@ -13,9 +13,14 @@ without a session). The provider is the local fake (``fake_provider``), never a 
 """
 
 import json
+from datetime import datetime
 
 import pytest
 from django.utils import timezone
+from live.assistant import risk
+from live.operations import Operation, registry
+from live.operations import get as get_operation
+from ninja import Schema
 
 from assistant import queries
 from assistant.models import AssistantUsage
@@ -53,6 +58,20 @@ def types(got: list) -> list:
 
 def model_requests(fake_provider) -> list:
     return [seen for seen in fake_provider.requests if seen.path.endswith("/chat/completions")]
+
+
+def tool_rounds(count: int) -> list:
+    """``count`` rounds of the model asking for a tool, as the browser keeps them in the conversation."""
+    return [
+        {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [
+                {"id": f"r{i}", "type": "function", "function": {"name": "hubs__business__list", "arguments": "{}"}}
+            ],
+        }
+        for i in range(count)
+    ]
 
 
 @pytest.fixture
@@ -101,6 +120,37 @@ class TestTheCatalog:
             "whatsapp.message.claim",
         ):
             assert internal not in tools
+
+    def test_it_gets_the_tools_of_each_part_of_the_panel(self, account):
+        """Its businesses and their people, the plans, its invoices and subscriptions, its account and the catalogue of
+        apps (ASSISTANT-F25, step 3)."""
+        tools = assistant.catalog(ctx_for(account))
+
+        for name in (
+            "hubs.business.list",
+            "hubs.member.list",
+            "hubs.plan.list",
+            "billing.invoice.list",
+            "billing.subscription.list",
+            "accounts.preferences.get",
+            "apps.app.list",
+        ):
+            assert name in tools, name
+
+    def test_only_the_five_dangerous_writes_ask_to_type_the_word(self, account):
+        """Creating, deleting or changing the address of a business, offering it to another and cancelling its plan ask
+        to type the word; any other write, only «Run» (ASSISTANT-F25, step 5)."""
+        tools = assistant.catalog(ctx_for(account))
+
+        typed = {name for name, op in tools.items() if risk(op) == "high"}
+
+        assert typed == {
+            "hubs.business.create",
+            "hubs.business.delete",
+            "hubs.business.change_address",
+            "hubs.ownership.transfer",
+            "billing.plan.cancel",
+        }
 
     def test_of_the_assistants_own_only_the_documentation_search_is_a_tool(self, account):
         """ASSISTANT-F27 (``assistant/tests/test_docs_search.py``); the gateway's other operations are the platform's."""
@@ -218,6 +268,24 @@ class TestARead:
         assert got[0]["outcome"] == "ok"
         assert "Bar Ajeno" not in got[-1]["append"][0]["content"]
 
+    def test_the_answer_comes_piece_by_piece_as_the_model_writes_it(self, signed_in, account, answering, fake_provider):
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("You have ", "no business yet."))
+
+        got = frames(post_turn(signed_in, {"messages": [ask("Which businesses do I have?")]}))
+
+        assert [frame["text"] for frame in got if frame["type"] == "text"] == ["You have ", "no business yet."]
+        assert got[-1]["append"] == [{"role": "assistant", "content": "You have no business yet."}]
+
+    def test_it_answers_in_the_language_of_the_person(self, client, make_user, plans, answering, fake_provider):
+        client.force_login(make_user("sol@example.com", first_name="Sol", language="es"))
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Hola."))
+
+        frames(post_turn(client, {"messages": [ask("¿Qué negocios tengo?")]}))
+
+        system = model_requests(fake_provider)[0].body["messages"][0]["content"]
+        assert "Answer in Spanish" in system
+        assert "[Negocios](/dashboard/businesses)" in system
+
     def test_the_model_reads_the_tools_of_what_was_asked_and_the_panels_instructions(
         self, signed_in, account, answering, fake_provider
     ):
@@ -308,6 +376,43 @@ class TestAWrite:
         assert got[0]["type"] == "executed" and got[0]["outcome"] == "cancelled"
         assert not Hub.objects.filter(name="Sol Hair").exists()
 
+    def test_data_the_write_would_refuse_show_no_card_and_the_model_corrects_them_in_the_same_turn(
+        self, signed_in, account, answering, fake_provider
+    ):
+        """live#17 (QA 2026-10-31, A2.12): the card said «country: España», the person typed CONFIRMAR, the write was
+        refused and a second card came. The model hears the refusal before any card, within the same turn, and its
+        corrected call is the only card the person answers."""
+        spain = {"call_id": "call_1", "name": "hubs__business__create", "arguments": '{"name": "Sol Hair", "country": "España"}'}
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_tool_call("hubs__business__create", spain["arguments"]))
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_tool_call("hubs__business__create", self.CREATE["arguments"]))
+        first = frames(post_turn(signed_in, {"messages": [ask("Create the business Sol Hair in Spain")]}))
+        done = first[-1]
+        assert done["pending"] == [spain]
+
+        second = frames(
+            post_turn(
+                signed_in,
+                {
+                    "messages": [ask("Create the business Sol Hair in Spain"), *done["append"]],
+                    "pending": done["pending"],
+                    "continuation": done["continuation"],
+                },
+            )
+        )
+
+        assert "confirm" not in types(second)
+        assert (second[0]["type"], second[0]["outcome"], second[0]["code"]) == ("executed", "error", "invalid_payload")
+        refusal = json.loads(second[-1]["append"][0]["content"])["error"]
+        assert set(refusal["fields"]) == {"country"}
+        assert json.loads(second[-1]["pending"][0]["arguments"])["country"] == "ES"
+        assert not Hub.objects.filter(name="Sol Hair").exists()
+        assert len(model_requests(fake_provider)) == 2 and used_by(account) == 1
+
+    def test_the_model_is_told_the_countries_a_business_may_be_in(self):
+        country = assistant.tool_spec(get_operation("hubs.business.create"))["parameters"]["properties"]["country"]
+        assert "ES" in country["enum"] and "FR" in country["enum"] and "US" not in country["enum"]
+        assert "ISO 3166-1 alpha-2" in country["description"]
+
     def test_the_card_of_a_change_names_the_business_never_its_id(self, signed_in, account, answering, fake_provider):
         hub = create_business(account, name="Bar Lena")
         rename = {
@@ -323,6 +428,21 @@ class TestAWrite:
         assert (card["risk"], card["confirm_word"]) == ("normal", "")
         assert "Bar Lena" in values and "Bar Nuevo" in values
         assert str(hub.id) not in json.dumps(card)
+
+    @pytest.mark.parametrize(
+        ("operation", "where"),
+        [
+            ("hubs.business.update", "Negocios"),
+            ("billing.vat_check.run", "Facturación"),
+            ("accounts.preferences.update", "Cuenta"),
+            ("billing.plan.keep", "Tienda"),
+        ],
+    )
+    def test_the_card_says_on_which_of_the_panels_screens_it_happens(self, account, operation, where):
+        """Where a change happens is the panel's screen as its menu names it (ASSISTANT-F25, step 5)."""
+        card = assistant.card(get_operation(operation), {}, ctx_for(account, "es"))
+
+        assert card["app_name"] == where
 
     def test_a_tool_the_account_was_not_offered_never_runs(self, signed_in, account, answering, fake_provider):
         fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("I cannot."))
@@ -340,6 +460,70 @@ class TestAWrite:
             "not_available",
         )
         assert not account.api_keys.exists()
+
+
+class ListedIn(Schema):
+    """A write that sends lists: days (each said in words on its card) and codes nobody names (sent as they are)."""
+
+    starts: list[datetime]
+    codes: list[str]
+
+
+#: No write of the panel sends a list today (saas#181): this one, test-only, is the shape of the first that will.
+LISTED = Operation(
+    name="hubs.business.settle",
+    kind="command",
+    permission="hubs.manage",
+    input=ListedIn,
+    output=ListedIn,
+    expose_api=False,
+    ai={"description": "Books a business on several days."},
+    fn=lambda ctx, data: data,
+)
+
+
+class TestTheCardOfAList:
+    """saas#181 · ASSISTANT-F25 step 5: the card of a write says its data by name. A list whose every item the server
+    said in words carries ``named`` (``live.assistant.NAMED``) and the shared card says its items; the turn's schema
+    had no place for it, so it was lost on its way out and the card said «2 items»."""
+
+    CALL = {
+        "call_id": "c4",
+        "name": "hubs__business__settle",
+        "arguments": json.dumps(
+            {"starts": ["2026-11-02T09:00:00Z", "2026-11-09T09:00:00Z"], "codes": ["sale.sale.create"]}
+        ),
+    }
+
+    def test_a_list_said_item_by_item_reaches_the_card_marked_named_and_one_of_codes_does_not(
+        self, signed_in, account, answering, fake_provider, monkeypatch
+    ):
+        monkeypatch.setitem(registry, LISTED.name, LISTED)
+
+        got = frames(post_turn(signed_in, {"messages": [ask("Book my business on two days")], "pending": [self.CALL]}))
+
+        assert types(got) == ["confirm", "done"]
+        assert [(field["name"], field["kind"], field.get("named")) for field in got[0]["card"]["fields"]] == [
+            ("starts", "list", True),
+            ("codes", "list", False),
+        ]
+
+    def test_nothing_the_card_says_of_a_datum_is_lost_on_its_way_out(
+        self, signed_in, account, answering, fake_provider, monkeypatch
+    ):
+        """Every mark ``live`` puts on a datum of the card reaches the screen: the turn's schema drops none."""
+        monkeypatch.setitem(registry, LISTED.name, LISTED)
+        said = assistant.card(LISTED, json.loads(self.CALL["arguments"]), ctx_for(account))
+
+        got = frames(post_turn(signed_in, {"messages": [ask("Book my business on two days")], "pending": [self.CALL]}))
+
+        streamed = got[0]["card"]["fields"]
+        assert [field["name"] for field in streamed] == [field["name"] for field in said["fields"]]
+        lost = [
+            {key: value for key, value in sent.items() if shown.get(key) != value}
+            for sent, shown in zip(said["fields"], streamed, strict=True)
+        ]
+        assert lost == [{}, {}]
 
 
 class TestWhatStopsATurn:
@@ -389,22 +573,21 @@ class TestWhatStopsATurn:
         assert used_by(account) == 0
 
     def test_too_many_rounds_of_tools_stop_before_the_model(self, signed_in, account, answering, fake_provider):
-        rounds = [
-            {
-                "role": "assistant",
-                "content": "",
-                "tool_calls": [
-                    {"id": f"r{i}", "type": "function", "function": {"name": "hubs__business__list", "arguments": "{}"}}
-                ],
-            }
-            for i in range(assistant.MAX_ROUNDS)
-        ]
-
-        got = frames(post_turn(signed_in, {"messages": [ask("Loop"), *rounds]}))
+        got = frames(post_turn(signed_in, {"messages": [ask("Loop"), *tool_rounds(assistant.MAX_ROUNDS)]}))
 
         assert types(got) == ["error", "done"]
         assert got[0] == {"type": "error", "code": "assistant.too_many_steps"}
         assert model_requests(fake_provider) == []
+
+    def test_a_question_gets_six_rounds_of_tools_and_no_more(self, signed_in, account, answering, fake_provider):
+        """The six rounds the WORKBOOK promises: after five the model still answers; the sixth stops (above)."""
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Here."))
+
+        got = frames(post_turn(signed_in, {"messages": [ask("Loop"), *tool_rounds(5)]}))
+
+        assert assistant.MAX_ROUNDS == 6
+        assert types(got) == ["text", "usage", "done"]
+        assert len(model_requests(fake_provider)) == 1
 
     def test_without_a_session_it_is_the_envelopes_401(self, client):
         response = post_turn(client, {"messages": [ask("Hello")]})

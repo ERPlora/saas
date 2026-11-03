@@ -184,6 +184,7 @@ urlpatterns = [
     path("internal/assistant/chat", assistant_internal.chat, name="internal_assistant_chat"),
     path("internal/assistant/usage", assistant_internal.usage, name="internal_assistant_usage"),
     path("internal/assistant/embeddings", assistant_internal.embeddings, name="internal_assistant_embeddings"),
+    path("internal/assistant/docs/search", assistant_internal.docs_search, name="internal_assistant_docs_search"),
     path("internal/assistant/report", assistant_internal.report, name="internal_assistant_report"),
     path("internal/speech/transcribe", assistant_internal.transcribe, name="internal_speech_transcribe"),
     path("internal/speech/synthesize", assistant_internal.synthesize, name="internal_speech_synthesize"),

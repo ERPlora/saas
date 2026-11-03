@@ -752,6 +752,44 @@ class TestTheStoreReviewMark:
         assert (ana.is_staff, ana.is_store_review_account) == (False, True)
 
 
+ON_A_BUSINESS = "This account is on a business: ERPlora's staff and the customers never share an account."
+
+
+class TestACustomerIsNoStaff:
+    """W11b: the account's page never makes ERPlora's staff of somebody on a business (``User.clean``; the businesses
+    the mirror does not show, an invitation waiting or one in recovery, are ``hubs/tests/test_members.py``'s)."""
+
+    @pytest.mark.parametrize("flag", ["is_staff", "is_superuser"])
+    def test_a_customer_is_not_made_staff_here_and_nothing_is_saved(self, staff_client, ana, flag):
+        client, _ = staff_client
+        HubMembership.objects.create(user=ana, hub_slug="a", role=HubMembership.Role.OWNER)
+
+        response = _save(client, ana, first_name="Anita", **{flag: "on"})
+
+        assert response.status_code == 200
+        assert ON_A_BUSINESS in unescape(response.text)
+        ana.refresh_from_db()
+        assert (ana.is_staff, ana.is_superuser, ana.first_name) == (False, False, "Ana")
+
+    def test_the_refusal_speaks_spanish(self, staff_client, ana):
+        client, _ = staff_client
+        client.defaults["HTTP_ACCEPT_LANGUAGE"] = "es"
+        HubMembership.objects.create(user=ana, hub_slug="a", role=HubMembership.Role.EMPLOYEE)
+
+        response = _save(client, ana, is_staff="on")
+
+        assert "Esta cuenta está en un negocio: el personal de ERPlora y los clientes nunca comparten cuenta." in (
+            unescape(response.text)
+        )
+
+    def test_an_account_on_no_business_is_made_staff_here(self, staff_client, ana):
+        client, _ = staff_client
+
+        assert _save(client, ana, is_staff="on").status_code == 302
+        ana.refresh_from_db()
+        assert ana.is_staff is True
+
+
 def test_the_sessions_of_allauth_have_their_page(staff_client):
     client, _ = staff_client
 

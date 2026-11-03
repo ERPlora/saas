@@ -20,6 +20,7 @@ import functools
 from django import forms
 from django.contrib import admin, messages
 from django.contrib.admin.options import ActionLocation
+from django.db.models import F
 from django.template.defaultfilters import filesizeformat
 from django.utils.translation import gettext_lazy as _
 from django.utils.translation import ngettext
@@ -354,10 +355,23 @@ class SessionRevocationAdmin(PlatformActions):
 
 @admin.register(HubUsageDaily)
 class HubUsageDailyAdmin(ReadOnly, admin.ModelAdmin):
-    list_display = ["hub", "day", "files", "database", "active_users_1d", "active_users_30d", "collected_at"]
+    list_display = [
+        "hub",
+        "day",
+        "files",
+        "database",
+        "active_users_1d",
+        "active_users_30d",
+        "served",
+        "connections",
+        "without_room",
+        "collected_at",
+    ]
     list_select_related = ["hub"]
     search_fields = ["hub__slug", "hub__name"]
     date_hierarchy = "day"
+    #: What the Hub did not measure (``requests``, ``peak_connections``, ``busy_requests``): never read as a 0.
+    empty_value_display = "—"
 
     @admin.display(description=_("Files"), ordering="s3_bytes")
     def files(self, obj):
@@ -366,3 +380,17 @@ class HubUsageDailyAdmin(ReadOnly, admin.ModelAdmin):
     @admin.display(description=_("Database"), ordering="db_bytes")
     def database(self, obj):
         return filesizeformat(obj.db_bytes)
+
+    # hub#603: their first click says who is highest, with what the Hub did not measure last, not on top.
+
+    @admin.display(description=_("requests"), ordering=F("requests").desc(nulls_last=True))
+    def served(self, obj):
+        return obj.requests
+
+    @admin.display(description=_("peak connections"), ordering=F("peak_connections").desc(nulls_last=True))
+    def connections(self, obj):
+        return obj.peak_connections
+
+    @admin.display(description=_("requests with no room"), ordering=F("busy_requests").desc(nulls_last=True))
+    def without_room(self, obj):
+        return obj.busy_requests

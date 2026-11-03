@@ -3,6 +3,7 @@
 // one here (or, invited, the invitation is the card), then «Preparing» and it opens by itself; one
 // business → «Open X» or «Go to the panel», with why it does not open; several → the last opened first.
 // Live: `hubs.business.list` (also the invitations).
+// clock: data only — no code under test compares these dates with now.
 import { applySurface } from '@erplora/ui/shell';
 import { IonInput } from '@ionic/vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';

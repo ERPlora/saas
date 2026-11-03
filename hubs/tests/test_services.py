@@ -431,9 +431,11 @@ class TestTheFreeQuota:
         )
 
 
-def test_a_staff_account_creates_no_business(plans, make_user):
-    """The invariant of invitations: the platform's staff and the customers never share an account."""
-    staff = make_user("staff@erplora.com", is_staff=True)
+@pytest.mark.parametrize("flag", ["is_staff", "is_superuser"])
+def test_a_staff_account_creates_no_business(plans, make_user, flag):
+    """The invariant of invitations: the platform's staff and the customers never share an account. A superuser
+    without «staff status» (made by hand in a shell) is the platform's too."""
+    staff = make_user("staff@erplora.com", **{flag: True})
 
     with pytest.raises(Conflict) as refused:
         create(staff)

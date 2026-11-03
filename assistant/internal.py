@@ -1,7 +1,8 @@
 """The assistant's doors erplora.com serves to the Hub (PLAN-SAAS §1.1): ``POST /internal/assistant/…`` (the turn,
-live or at once, the allowance, the embeddings, the report of an answer) and ``POST /internal/speech/…`` (the
-dictation and the reading aloud). The Hub never speaks to a provider: it calls these, and erplora.com keeps the
-provider's key, chooses the model, counts the plan's messages and forgets the conversation.
+live or at once, the allowance, the search in ERPlora's documentation, the report of an answer) and
+``POST /internal/speech/…`` (the dictation and the reading aloud). The Hub never speaks to a provider: it calls these,
+and erplora.com keeps the provider's key, chooses the model, counts the plan's messages and forgets the conversation.
+The Hub keeps no index of its own: the embeddings door stays open for one that would, but no Hub calls it.
 
 Server to server, signed as every ``/internal`` call (``accounts.signing``: v1 over the body or v2 over the method,
 the path and the body; ±300 s; the current or the previous secret), so no CSRF token. Plain Django views, as
@@ -25,7 +26,7 @@ import json
 import logging
 import time
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from asgiref.sync import sync_to_async
 from django.conf import settings
@@ -40,6 +41,8 @@ from assistant import media, queries, services, turn
 from assistant.schemas import (
     Caller,
     CallerIn,
+    DocsSearchDoorIn,
+    DocsSearchIn,
     EmbeddingsIn,
     NoInput,
     ReportIn,
@@ -217,8 +220,9 @@ async def record(caller: Caller, **spent) -> None:
 
 @door(EmbeddingsIn, bucket="embed", rate="ASSISTANT_EMBED_RATELIMIT", max_bytes=EMBED_BODY_BYTES)
 async def embeddings(call: Call) -> HttpResponse:
-    """The fingerprints of ``texts`` for the Hub's index, in their order: ``{embeddings, model}``. The tokens and
-    their cost go to the business's month; the allowance of messages is not looked at."""
+    """The fingerprints of ``texts``, in their order: ``{embeddings, model}``, for a Hub that keeps an index of its
+    own (none does today: they search ERPlora's documentation through ``docs_search``). The tokens and their cost go
+    to the business's month; the allowance of messages is not looked at."""
     service = await services_connection()
     try:
         vectors, tokens = await media.embed(service, call.data.texts)
@@ -261,6 +265,24 @@ async def synthesize(call: Call) -> HttpResponse:
         return media_failed(problem)
     await record(call.caller, speech_characters=len(text))
     return HttpResponse(audio, content_type="audio/mpeg")
+
+
+# --- ERPlora's documentation (ASSISTANT-F28) --------------------------------------------------------------------
+
+
+@door(DocsSearchDoorIn, bucket="docs", rate="ASSISTANT_DOCS_RATELIMIT")
+async def docs_search(call: Call) -> HttpResponse:
+    """The excerpts of ERPlora's documentation nearest to the person's ``query``, in ``language``:
+    ``{results: [{source, path, heading, text, score, lang}]}``, at most ``limit`` (12). The very search of the panel's
+    ``assistant.docs.search`` over the same index, run as the platform in the caller's language; the question's
+    fingerprint is computed first, outside any transaction, and kept a day. 409 ``assistant.provider_not_configured``
+    without the services' provider, 503 ``assistant.provider_unavailable`` when it fails; an empty index answers no
+    excerpt. No message of the allowance is spent."""
+    data = call.data
+    await queries.prepare_questions([data.query])
+    ctx = replace(platform_context(), language=data.language)
+    found = await sync_to_async(queries.docs_search)(ctx, DocsSearchIn(query=data.query, limit=data.limit))
+    return JsonResponse(found.model_dump(mode="json"))
 
 
 # --- The report of an answer (ASSISTANT-G58) ----------------------------------------------------------------------
