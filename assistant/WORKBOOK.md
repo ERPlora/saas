@@ -565,7 +565,7 @@ Pasos:
 3. erplora.com busca en la ayuda pública de erplora.com, en la documentación de cada app del Hub que está en la tienda, en la parte de usuario de los manuales del panel (la cuenta, los negocios, la facturación, la tienda y la web) y en los planes en venta con sus precios y lo que incluye cada uno. En la cuenta que se abre desde la app no busca en los planes ni en los manuales de la facturación, la tienda y la web.
 4. Devuelve hasta 8 fragmentos (12 como mucho, aunque el modelo pida más), los más cercanos a la pregunta, en el idioma de la persona; si en su idioma hay menos de tres que de verdad respondan, se suman los de inglés. Cada fragmento dice de dónde sale y bajo qué títulos.
 5. El modelo contesta con lo que dicen esos fragmentos y cita de dónde salen; un precio o lo que incluye un plan sale siempre de los planes en venta, nunca de memoria.
-6. La documentación se pone al día con cada pasada de indexado: un cambio en la ayuda, en un manual, en la documentación de una app o en un plan llega al asistente con la siguiente pasada.
+6. La documentación se pone al día sola cada día a las 06:50 UTC: un cambio en la ayuda, en un manual, en la documentación de una app o en un plan llega al asistente con la siguiente pasada, y el equipo de ERPlora puede lanzarla a mano si quiere adelantarla.
 Entra: la pregunta (hasta 500 caracteres) y cuántos fragmentos quiere el modelo.
 Sale: los fragmentos con su fuente, de dónde salen, sus títulos, su texto, su idioma y lo cerca que están de la pregunta; de la pregunta solo queda su huella en la caché durante un día (la misma pregunta otra vez no se calcula de nuevo).
 Si falla: sin el proveedor de las huellas configurado, o si falla, la búsqueda contesta que ahora no se puede buscar en la documentación y el modelo se lo dice a la persona; una cuenta sin permiso para preguntar al asistente no busca; mientras la documentación no se ha indexado, no encuentra nada y el modelo dice que no lo sabe en lugar de inventarlo.
@@ -804,9 +804,8 @@ propio texto por `code`.
   Medido en local (2026-10-31): 68 fragmentos de ayuda, 2162 de las apps del Hub, 685 de los WORKBOOK y 14 de planes;
   un indexado completo ≈ 680 000 tokens ≈ 0,014 $; una pasada sin cambios, 0 llamadas.
 - **Programación**: `index-docs-daily` de `platform_schedule_specs` en ERPlora/aws (aws#28, mergeada el 2026-10-31),
-  diario a las 06:50 UTC en `saas-cron`; nace encendida con el `apply`. Para adelantarla, se lanza a mano como tarea
-  suelta de `saas-cron` (`saas/README.md`, «Operación»). El paso 6 de ASSISTANT-F27 no promete la pasada diaria hasta
-  que se lea su estado en producción (saas#184).
+  diario a las 06:50 UTC en `saas-cron`; encendida en producción desde el `apply` del 2026-11-01 y con la primera pasada
+  el 2026-11-02. Para adelantarla, se lanza a mano como tarea suelta de `saas-cron` (`saas/README.md`, «Operación»).
 - **Donde no se vende** (PLAN-SAAS §3.6 punto 6, `base.surface.sells_nothing`): `base.assistant.nothing_sold_here` abre
   las instrucciones del turno con la regla y las dos frases de las pantallas (en el catálogo de Django, y un test las
   compara con `hubs` y `billing` de `frontend/locale`); el catálogo no ofrece lo de la tienda, tampoco `hubs.plan.list`;
@@ -833,8 +832,6 @@ propio texto por `code`.
 - **Una cuenta no recibe ningún correo cuando se le acaban los mensajes del asistente del panel** (ASSISTANT-F29) —
   saas#204.
 - **El asistente del panel no deja dictar por voz como el del Hub** (ASSISTANT-F25, ASSISTANT-F21) — saas#175.
-- **El paso 6 de ASSISTANT-F27 aún no dice que la documentación se indexa sola cada día**: falta leer en producción el
-  estado de `index-docs-daily` — saas#184.
 - **Al pedirle un negocio nuevo, el asistente del panel a veces pide confirmación por escrito en vez de enseñar la
   tarjeta** (ASSISTANT-F25) — saas#193.
 
