@@ -1115,6 +1115,10 @@ def _module_price(module: Module | None, interval: str) -> int | None:
     return module.price_annual_cents if interval == "year" else module.price_monthly_cents
 
 
+def _plan_price(plan: Plan, interval: str) -> int:
+    return to_cents((plan.price_annual if interval == "year" else plan.price_monthly) or 0)
+
+
 def _with_vat_cents(parts: list[tuple[int, str]], payer: Payer) -> int | None:
     """What net amounts cost with VAT for this payer (``parts``: ``(cents, category)``), as the checkout
     prices them; ``None`` while the payer's place is unknown or has no rule."""
@@ -1138,6 +1142,19 @@ def _with_vat_cents(parts: list[tuple[int, str]], payer: Payer) -> int | None:
     return total
 
 
+def _next_invoice_cents(plan: Plan | None, interval: str, renewing: list[Module | None], payer: Payer) -> int | None:
+    """What the next invoice costs with VAT: the plan and the modules that renew, at their prices of ``interval``.
+    ``None`` when that cannot be told: the payer's place is unknown, or the plan left the catalogue."""
+    if plan is None:
+        return None
+    plan_cents = _plan_price(plan, interval)
+    parts = [(plan_cents, vat.SAAS_SUBSCRIPTION_CATEGORY)] if plan_cents else []
+    for module in renewing:
+        if price := _module_price(module, interval):
+            parts.append((price, vat.SOFTWARE_LICENSE_CATEGORY))
+    return _with_vat_cents(parts, payer)
+
+
 def scheduled_change_of(hub_id) -> dict | None:
     """The downgrade that waits for the end of the period of a business («Starter from 1 Nov»), if any."""
     pending = PlanChangeSchedule.objects.filter(hub_id=hub_id).first()
@@ -1147,37 +1164,44 @@ def scheduled_change_of(hub_id) -> dict | None:
 
 
 def _subscription_row(
-    subscription: Subscription, user, owned: set, unpaid: dict, modules: dict, scheduled: dict
+    subscription: Subscription, user, owned: set, unpaid: dict, modules: dict, scheduled: dict, next_plans: dict
 ) -> dict:
     hub = subscription.hub
     plan = subscription.plan
     interval = subscription.billing_interval
-    plan_cents = to_cents((plan.price_annual if interval == "year" else plan.price_monthly) or 0)
+    plan_cents = _plan_price(plan, interval)
     items = []
-    billed = [(plan_cents, vat.SAAS_SUBSCRIPTION_CATEGORY)] if plan_cents else []
+    renewing = []
     now = timezone.now()
     for item in subscription.items.all():
         if not item.is_live(now):
             # A cancelled module whose period ended is gone, as in the Hub's snapshot and in the store.
             continue
-        price = _module_price(modules.get(item.module_slug), interval)
+        module = modules.get(item.module_slug)
         items.append(
             {
                 "slug": item.module_slug,
                 "interval": interval,
-                "price_cents": price,
+                "price_cents": _module_price(module, interval),
                 "source": item.source,
                 "valid_until": item.valid_until,
             }
         )
-        if item.source == "purchase" and item.valid_until is None and price:
-            billed.append((price, vat.SOFTWARE_LICENSE_CATEGORY))
+        if item.source == "purchase" and item.valid_until is None:
+            renewing.append(module)
     cancelling = subscription.cancel_at_period_end
+    scheduled_change = scheduled.get(hub.id)
     next_invoice = None
     if not cancelling:
+        # A downgrade that waits starts on that very date: Stripe's next phase bills the new items (saas#213).
+        next_plan, next_interval = (
+            (next_plans.get(scheduled_change["plan"]), scheduled_change["interval"])
+            if scheduled_change
+            else (plan, interval)
+        )
         next_invoice = {
             "date": subscription.current_period_end,
-            "total_cents": _with_vat_cents(billed, payer_of(hub)),
+            "total_cents": _next_invoice_cents(next_plan, next_interval, renewing, payer_of(hub)),
             "currency": "EUR",
         }
     profile = hub.billing_profile
@@ -1186,7 +1210,6 @@ def _subscription_row(
     writable = hub.id in owned and hub_queries.is_writable(hub)
     manages = writable and not elsewhere
     unpaid_id = unpaid.get(hub.id)
-    scheduled_change = scheduled.get(hub.id)
     # A cancellation, or a downgrade that waits for the end of the period, is undone with «Keep the plan» until
     # that date (BILLING-F14, PLAN-SAAS §31 point 2): it leads the row.
     undoable = cancelling or scheduled_change is not None
@@ -1236,7 +1259,8 @@ def _subscription_row(
 )
 def subscription_list(ctx: OperationContext, data: SubscriptionListIn) -> dict:
     """One row per business of the account that Stripe bills (it owns it or pays it): the plan and modules at
-    their net price, the next invoice with VAT and what the row's buttons do (mockups ``billing.html``). Filtered
+    their net price, the next invoice with VAT (the new plan's, with a downgrade that waits) and what the row's
+    buttons do (mockups ``billing.html``). Filtered
     by business and by status for an integration (BILLING-G02), which reads it with a ``billing.read`` key."""
     user = _billing_account(ctx)
     owned = set(_owned_hub_ids(user).values_list("hub_id", flat=True))
@@ -1271,8 +1295,10 @@ def subscription_list(ctx: OperationContext, data: SubscriptionListIn) -> dict:
             change.hub_id: {"plan": change.plan_slug, "interval": change.interval, "starts_at": change.starts_at}
             for change in PlanChangeSchedule.objects.filter(hub_id__in=[s.hub_id for s in page])
         }
+        next_plans = Plan.objects.in_bulk({change["plan"] for change in scheduled.values()}, field_name="slug")
         rows = [
-            _subscription_row(subscription, user, owned, unpaid, modules, scheduled) for subscription in page
+            _subscription_row(subscription, user, owned, unpaid, modules, scheduled, next_plans)
+            for subscription in page
         ]
     return {"rows": rows, "total": total, "limit": data.limit, "offset": data.offset}
 
