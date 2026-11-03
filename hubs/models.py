@@ -37,6 +37,7 @@ from django.utils.translation import gettext_lazy as _
 from django.utils.translation import pgettext_lazy
 
 from apps.queries import known_verticals
+from hubs.countries import COUNTRY_NAMES, PAYER_COUNTRY_NAMES
 from hubs.spanish_copy import spanish_copy_complaint, untranslated_copy_complaint
 
 
@@ -426,42 +427,6 @@ class BusinessType(TaxonomyEntry):
 MODULE_SLUG_VALIDATOR = RegexValidator(
     r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$", _("Enter the label of an app: lowercase letters, digits and underscores.")
 )
-
-
-#: The markets ERPlora serves, each named in the person's language: a business may be created in these
-#: (``hubs.schemas.COUNTRIES``; a market added there without a name here fails ``test_country_names.py``), and these names
-#: say a country on the assistant's card (``live.assistant.choice_label``), on the admin and on ``/compliance/``.
-COUNTRY_NAMES = {
-    "AT": _("Austria"),
-    "BE": _("Belgium"),
-    "BG": _("Bulgaria"),
-    "HR": _("Croatia"),
-    "CY": _("Cyprus"),
-    "CZ": _("Czechia"),
-    "DK": _("Denmark"),
-    "EE": _("Estonia"),
-    "FI": _("Finland"),
-    "FR": _("France"),
-    "DE": _("Germany"),
-    "GR": _("Greece"),
-    "HU": _("Hungary"),
-    "IE": _("Ireland"),
-    "IT": _("Italy"),
-    "LV": _("Latvia"),
-    "LT": _("Lithuania"),
-    "LU": _("Luxembourg"),
-    "MT": _("Malta"),
-    "NL": _("Netherlands"),
-    "PL": _("Poland"),
-    "PT": _("Portugal"),
-    "RO": _("Romania"),
-    "SK": _("Slovakia"),
-    "SI": _("Slovenia"),
-    "ES": _("Spain"),
-    "SE": _("Sweden"),
-}
-#: The countries a payer may be in (``billing.vat.BILLING_COUNTRIES``): those, and the UK, where no business is created.
-PAYER_COUNTRY_NAMES = {**COUNTRY_NAMES, "GB": _("United Kingdom")}
 
 
 class BillingProfile(models.Model):

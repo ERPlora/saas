@@ -1,8 +1,9 @@
-"""HUBS-F01, HUBS-F15 and ASSISTANT-F25 · The panel's assistant names a country, never its code (saas#217).
+"""HUBS-F01, HUBS-F15, ASSISTANT-F25 and PUBLIC-F09 · A country is said by its name, never its code (saas#217).
 
 The card «Run this action?» says a value of a closed list by the label its app's models give it
 (``live.assistant.choice_label``), one way for every app: the country of a business and of its payer are named by the
-``choices`` of their fields, in the language of the person who reads the card.
+``choices`` of their fields (``hubs.countries``), in the language of the person who reads the card; ``/compliance/``
+reads the same names.
 """
 
 import gettext
@@ -14,7 +15,8 @@ from live.operations import get as get_operation
 
 from base import assistant
 from billing.vat import BILLING_COUNTRIES
-from hubs.models import PAYER_COUNTRY_NAMES, BillingProfile, Hub
+from hubs.countries import COUNTRY_NAMES, PAYER_COUNTRY_NAMES
+from hubs.models import BillingProfile, Hub
 from hubs.schemas import COUNTRIES
 from hubs.tests.conftest import create_business, ctx_for
 
@@ -67,6 +69,7 @@ def test_a_payer_without_a_country_stays_empty_on_the_card(account):
 
 
 def test_every_market_a_business_may_be_in_has_its_name():
+    assert set(COUNTRY_NAMES) == COUNTRIES
     assert {code for code, _name in Hub._meta.get_field("country").flatchoices} == COUNTRIES
 
 

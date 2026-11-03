@@ -47,10 +47,10 @@ describe('countries', () => {
     expect(countryName('XX', 'en')).toBe('XX');
   });
 
-  it("are named as the server names them, the assistant's card and the admin (hubs/models.py, its catalog)", () => {
-    const models = readFileSync(join(HUBS, 'models.py'), 'utf8');
+  it("are named as the server names them, the assistant's card and the admin (hubs/countries.py, its catalog)", () => {
+    const server = readFileSync(join(HUBS, 'countries.py'), 'utf8');
     const catalog = readFileSync(join(HUBS, 'locale', 'es', 'LC_MESSAGES', 'django.po'), 'utf8');
-    const names = [...models.matchAll(/"([A-Z]{2})": _\("([^"]+)"\)/g)].map(([, code, name]) => ({ code, name }));
+    const names = [...server.matchAll(/"([A-Z]{2})": _\("([^"]+)"\)/g)].map(([, code, name]) => ({ code, name }));
     expect(names).toHaveLength(28); // COUNTRIES, and the UK of a payer
     for (const { code, name } of names) {
       const spanish = new RegExp(`msgid "${name}"\\nmsgstr "([^"]+)"`).exec(catalog)?.[1];
