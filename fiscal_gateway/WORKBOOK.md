@@ -16,7 +16,8 @@ AEAT tal cual, sin guardar nada. Hay dos vías:
 
 - **Con el sello de ERPlora**: ERPlora presenta en nombre del negocio gracias a la autorización que el negocio
   firma (el Anexo I del Convenio 17, «otorgamiento de la representación directa») y que una persona de ERPlora
-  revisa. Sin una autorización aprobada, el sello no se usa para ese negocio.
+  revisa. Sin una autorización aprobada, el sello no presenta por ese negocio en producción; en el entorno de
+  pruebas de la AEAT no hace falta, y el negocio prueba VeriFactu mientras ERPlora revisa su autorización.
 - **Con el certificado del propio negocio**: el certificado vive en la base de datos de su Hub y solo pasa por la
   pasarela durante cada envío; ERPlora no lo guarda.
 
@@ -112,12 +113,12 @@ Actor: sistema (el Hub del negocio)
 Pantalla: ninguna
 Pasos:
 1. El Hub envía a la pasarela el sobre ya firmado y validado, con el negocio, su NIF, el entorno (pruebas o producción) y la vía: el sello de ERPlora o el certificado del propio negocio, que viaja solo en ese envío.
-2. Antes de tocar la AEAT, la pasarela comprueba que el negocio existe, que el sobre solo nombra a ese contribuyente, que el entorno de producción solo se pide desde el despliegue de producción y, por la vía de ERPlora, que el negocio tiene su autorización aprobada y que es del mismo NIF.
+2. Antes de tocar la AEAT, la pasarela comprueba que el negocio existe, que el sobre solo nombra a ese contribuyente, que el entorno de producción solo se pide desde el despliegue de producción y, por la vía de ERPlora, en producción, que el negocio tiene su autorización aprobada y que es del mismo NIF. En pruebas la autorización no se pide (allí nadie presenta en nombre de nadie): un negocio nuevo llega a la AEAT de pruebas desde su primer tique, y ningún negocio presenta con el NIF de ERPlora.
 3. Presenta el sobre a la puerta de la AEAT que toca (la de sellos de entidad o la del titular) con una conexión segura con el certificado, y devuelve la respuesta de la AEAT tal cual.
 4. Con la misma puerta, el Hub consulta lo que la AEAT ya tiene, o prueba si podría presentar ahora y con qué certificado, sin enviar nada.
 Entra: el sobre del Hub, el negocio, el NIF, el entorno, la vía y, por la vía propia, el certificado del negocio con su contraseña.
 Sale: la respuesta de la AEAT tal cual (la interpreta el Hub); en la prueba de conexión, si está lista y con qué certificado.
-Si falla: cada rechazo dice por qué y sale antes de tocar la AEAT: negocio desconocido, NIF que no casa, autorización no aprobada, sin sello, sin certificado, certificado no válido o caducado, o producción desde un despliegue que no lo es. La pasarela espera como mucho 5 s a conectar con la AEAT y 30 s a su respuesta, y nunca más de 41 s en total, menos de lo que el Hub la espera a ella, así que el Hub siempre oye a la pasarela antes de rendirse; sin respuesta de la AEAT, el Hub sabe si el envío pudo llegar o no para no repetirlo a ciegas; con demasiados envíos a la vez, le pide que lo reintente. Si el servidor de la pasarela no puede leer sus certificados de confianza (`SSL_CERT_FILE` apunta a un fichero que no existe o que no tiene ninguno), no sale nada hacia la AEAT: la pasarela lo dice nombrando la variable y el fichero, el Hub guarda el registro y lo reintenta sin duplicarlo, y la prueba de conexión sale como no lista con ese motivo. El certificado del negocio nunca se guarda ni aparece en un registro o en un error.
+Si falla: cada rechazo dice por qué y sale antes de tocar la AEAT: negocio desconocido, NIF que no casa, autorización no aprobada (solo en producción), sin sello, sin certificado, certificado no válido o caducado, o producción desde un despliegue que no lo es. La pasarela espera como mucho 5 s a conectar con la AEAT y 30 s a su respuesta, y nunca más de 41 s en total, menos de lo que el Hub la espera a ella, así que el Hub siempre oye a la pasarela antes de rendirse; sin respuesta de la AEAT, el Hub sabe si el envío pudo llegar o no para no repetirlo a ciegas; con demasiados envíos a la vez, le pide que lo reintente. Si el servidor de la pasarela no puede leer sus certificados de confianza (`SSL_CERT_FILE` apunta a un fichero que no existe o que no tiene ninguno), no sale nada hacia la AEAT: la pasarela lo dice nombrando la variable y el fichero, el Hub guarda el registro y lo reintenta sin duplicarlo, y la prueba de conexión sale como no lista con ese motivo. El certificado del negocio nunca se guarda ni aparece en un registro o en un error.
 Implicados: el Hub (VERIFACTU-F15 envía, VERIFACTU-F27 consulta, VERIFACTU-F10 prueba la conexión), FISCAL-F01 (el sello), FISCAL-F05 (la autorización aprobada)
 
 ### FISCAL-F03 Guardar cifrados los documentos de la autorización
@@ -227,11 +228,15 @@ Implicados: FISCAL-F05
   F06 de este, y la revisión del staff (aprobar, devolver, retirar) la recoge VERIFACTU-F05 del Hub.
 - `FISCAL_DOCUMENTS_KEY` es una sola clave Fernet, sin la anterior: cambiarla deja ilegibles los documentos y el sello
   guardados con ella (FISCAL-F03 y FISCAL-F06 lo dicen en pantalla); la rotación queda fuera de esta versión.
-- La vía de ERPlora pide la autorización aprobada en los dos entornos de la AEAT (`internal._identity` no mira el
-  entorno; `test_without_an_authorisation_erplora_does_not_present_for_a_customer` corre en pruebas), y la vía por
-  defecto del Hub es la de ERPlora: un negocio nuevo no llega a la AEAT de pruebas hasta que se aprueba su
-  autorización o sube su certificado. El producto actual no la pedía en pruebas (ADR-0360) y el Hub solo la exige para
-  pasar a producción: contradicción señalada en la ronda CLOSE-FISCAL_GATEWAY de `PLAN-SAAS.md` §4.
+- La vía de ERPlora pide la autorización aprobada solo en producción (`internal._identity`): en el entorno de pruebas
+  de la AEAT no se lee, como en el Hub (`hub/apps/verifactu/queries.py::_route_sending_problem`) y en ADR-0360 del
+  producto viejo, porque la AEAT solo comprueba que el titular del sello es colaborador social (fault 4112), nunca el
+  Anexo I de cada negocio. En pruebas, ningún negocio presenta con el NIF de ERPlora (`409 nif_mismatch`,
+  `_never_in_erploras_name`, saas#2524). Tests: `test_in_testing_erplora_presents_for_a_customer_without_an_authorisation`,
+  `test_in_testing_the_authorisation_is_not_read`, `test_in_testing_a_business_never_presents_in_erploras_name` y las
+  dos sondas de pruebas de `test_internal.py`; las negativas que leen la autorización corren en producción. Decidido en
+  la ronda 2026-11-03k de `PLAN-SAAS.md` (§33, FIX-FISCAL-TESTING-AUTHORISATION-CONTRADICTION), que cierra la
+  contradicción señalada en la ronda CLOSE-FISCAL_GATEWAY de §4.
 
 ## Lo que NO hace, a propósito
 

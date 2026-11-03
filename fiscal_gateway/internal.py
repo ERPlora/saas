@@ -14,10 +14,11 @@ What each door answers:
   purged one) and is not the platform's hub through ``erplora``; nothing was sent;
 - ``409 {"error": {"code", "message"}}``: nothing was sent. ``nif_mismatch`` (the envelope names a
   taxpayer other than ``nif``, decided before anything else touches the AEAT; or, through ``erplora``,
-  the business's approved authorisation covers another taxpayer, or the platform's hub names a taxpayer
-  other than the seal's holder), ``representation_not_approved`` (``erplora`` for a business without an
-  approved authorisation: none, under review, returned or withdrawn; whatever ``nif`` it declares, ERPlora's
-  own included), ``no_seal`` (``erplora`` without a usable seal),
+  the business's approved authorisation covers another taxpayer in production, a business declares ERPlora's
+  own NIF in testing, or the platform's hub names a taxpayer other than the seal's holder),
+  ``representation_not_approved`` (``erplora`` in production for a business without an approved
+  authorisation: none, under review, returned or withdrawn; whatever ``nif`` it declares, ERPlora's own
+  included), ``no_seal`` (``erplora`` without a usable seal),
   ``no_certificate`` (``own`` without one), ``certificate_invalid`` (it does not open, cannot
   authenticate as a client, has expired, or TLS refuses it: its key is not the certificate's or is too
   weak; ERPlora's seal in that case is ``no_seal``), ``environment_not_allowed`` (``production`` from a
@@ -33,15 +34,19 @@ What each door answers:
   signature, a timestamp out of the window) are refused before the body is read.
 
 ``probe`` presents nothing: ``200 {"ready", "detail"}`` says whether a presentation would leave now
-(``detail``: which certificate, or why not; an unknown business or a missing authorisation is
-``ready: false`` too). It loads the certificate into TLS as a presentation does, so a certificate TLS
+(``detail``: which certificate, or why not; an unknown business, or a missing authorisation in production,
+is ``ready: false`` too). It loads the certificate into TLS as a presentation does, so a certificate TLS
 refuses, or trusted certificates the server cannot load, is ``ready: false`` there too.
 
-ERPlora's seal presents for a business's taxpayer only with the business's approved authorisation
-(the Anexo I the staff reviewed, ``fiscal.RepresentationGrant``) whose taxpayer is ``nif``. The one
-exception is the platform's hub (``hub`` is ``settings.PLATFORM_HUB_SLUG``, a reserved slug no business
-bears): ERPlora's own records, in its own name, for the seal's holder only and without an authorisation.
-What the authorisation says never reaches an answer nor a log. The reads are ``fiscal_gateway.queries``'.
+In production, ERPlora's seal presents for a business's taxpayer only with the business's approved
+authorisation (the Anexo I the staff reviewed, ``fiscal.RepresentationGrant``) whose taxpayer is ``nif``.
+In the AEAT's testing environment nobody is represented and nothing is filed, so no authorisation is asked
+for there: a business tries VeriFactu before its Anexo I is approved, and going live is where the Hub asks
+for it (PLAN-SAAS round 2026-11-03k; ADR-0360 of the old product). The one exception is the platform's hub
+(``hub`` is ``settings.PLATFORM_HUB_SLUG``, a reserved slug no business bears): ERPlora's own records, in
+its own name, for the seal's holder only and without an authorisation; no business presents in ERPlora's
+name in either environment. What the authorisation says never reaches an answer nor a log. The reads are
+``fiscal_gateway.queries``'.
 
 The body is read here, not through ``request.body``: a submission of a thousand records weighs more
 than Django's form limit (``DATA_UPLOAD_MAX_MEMORY_SIZE``, 2.5 MB), and the gateway has its own.
@@ -285,9 +290,20 @@ def _platform_files_its_own(body: ProbeIn, holder_tax_id: str) -> None:
         )
 
 
+def _never_in_erploras_name(body: ProbeIn, holder_tax_id: str) -> None:
+    """Refuses a business ERPlora's own NIF in testing, where no authorisation is asked for: only the platform's
+    hub files in ERPlora's name (saas#2524). In production the authorisation refuses it already."""
+    if normalise_nif(body.nif) == normalise_nif(holder_tax_id):
+        raise _Refused(
+            409,
+            "nif_mismatch",
+            "Only ERPlora's own hub presents in ERPlora's name.",
+        )
+
+
 def _represented(body: ProbeIn, hub_id: UUID) -> None:
-    """Refuses ERPlora's seal for ``body.nif`` unless it is the taxpayer of the business's approved
-    authorisation. Never says whom that authorisation covers."""
+    """Refuses ERPlora's seal for ``body.nif`` in production unless it is the taxpayer of the business's
+    approved authorisation. Never says whom that authorisation covers."""
     nif = normalise_nif(body.nif)
     approved = queries.approved_taxpayer(hub_id)
     if approved is None:
@@ -320,8 +336,10 @@ def _identity(body: ProbeIn) -> tuple[seal.Identity, ssl.SSLContext]:
             )
         if platform:
             _platform_files_its_own(body, identity.holder_tax_id)
-        else:
+        elif body.environment == "production":
             _represented(body, hub_id)
+        else:
+            _never_in_erploras_name(body, identity.holder_tax_id)
         return identity, _tls(identity, "no_seal")
     if body.certificate is None:
         raise _Refused(
