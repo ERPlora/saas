@@ -21,7 +21,7 @@ from django.core.cache import cache
 from django.utils import timezone
 
 from billing import queries
-from billing.models import Invoice, PaymentFailure
+from billing.models import Invoice, PaymentFailure, PlanChangeSchedule
 from billing.schemas import PaymentMethodIn, SubscriptionListIn
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import connection_error, event, signed
@@ -268,6 +268,60 @@ class TestTheActions:
         assert row["actions"] == ["keep_plan", "change_plan", "view_invoices"]
         assert (row["cancelling"], row["next_invoice"]) == (True, None)
         assert row["ends_at"] is not None
+
+    def test_a_downgrade_that_waits_is_kept_first_and_can_still_be_cancelled(self, owner, shop):
+        """PLAN-SAAS §31 point 2 (saas#208): a downgrade that waits for the end of the period is undone from the
+        row with «Keep the plan», as a cancellation is (BILLING-F14); the plan still renews until then, so the
+        row keeps its next invoice and «Cancel plan» in its «⋮»."""
+        pay(shop, plan="standard")
+        PlanChangeSchedule.objects.create(
+            hub=shop,
+            stripe_schedule_id="sub_sched_1",
+            plan_slug="starter",
+            interval="month",
+            starts_at=timezone.now() + timedelta(days=30),
+        )
+
+        [row] = subscriptions(owner)
+
+        assert row["actions"] == ["keep_plan", "change_plan", "cancel_plan", "view_invoices"]
+        assert row["can"]["keep_plan"] is True
+        assert row["scheduled_change"]["plan"] == "starter"
+        assert row["next_invoice"] is not None
+
+    def test_a_downgrade_that_waits_stays_on_its_business(self, owner, shop):
+        """Two businesses of one account: only the one with the downgrade says it and offers to keep it."""
+        pay(shop, plan="standard")
+        pay(create_business(owner, name="Bar Norte"), plan="standard", sub_id="sub_2")
+        PlanChangeSchedule.objects.create(
+            hub=shop,
+            stripe_schedule_id="sub_sched_1",
+            plan_slug="starter",
+            interval="month",
+            starts_at=timezone.now() + timedelta(days=30),
+        )
+
+        rows = {row["business"]["name"]: row for row in subscriptions(owner)}
+
+        assert rows["Panadería López"]["can"]["keep_plan"] is True
+        assert rows["Bar Norte"]["can"]["keep_plan"] is False
+        assert rows["Bar Norte"]["scheduled_change"] is None
+
+    def test_a_downgrade_that_waits_is_not_kept_by_an_owner_who_does_not_pay(self, owner, shop, make_user):
+        pay(shop, plan="standard")
+        PlanChangeSchedule.objects.create(
+            hub=shop,
+            stripe_schedule_id="sub_sched_1",
+            plan_slug="starter",
+            interval="month",
+            starts_at=timezone.now() + timedelta(days=30),
+        )
+        BillingProfile.objects.filter(pk=shop.billing_profile_id).update(owner=make_user("payer@example.com"))
+
+        [row] = subscriptions(owner)
+
+        assert row["can"]["keep_plan"] is False
+        assert "keep_plan" not in row["actions"]
 
     def test_with_an_invoice_not_collected_it_is_viewed_first(self, owner, shop):
         pay(shop, status="past_due")
