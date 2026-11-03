@@ -316,8 +316,9 @@ tiene de dónde salir y falla sin culpa del producto).
   lookups?, notes?}`, el mismo formato que el del Hub. `expect`:
   - `read`: su herramienta es la primera que corre (pasadas las que se ofrecen siempre, `base.assistant.ALWAYS`, y
     las `lookups` de la sonda, lecturas previas legítimas), sin tarjeta;
-  - `card`: la primera tarjeta es la de su herramienta y no sale otra; `decide` `cancel` por defecto (nada nuevo en
-    el outbox) o `confirm` (corre);
+  - `card`: la primera tarjeta es la de su herramienta y no sale otra, tampoco la suya otra vez tras cancelarla (un
+    «no» vale hasta que la persona vuelve a escribir, saas#193); `decide` `cancel` por defecto (nada nuevo en el
+    outbox) o `confirm` (corre);
   - `refused`: sin tarjeta ni escritura, su herramienta no corre y la respuesta dice **por qué** no puede (un permiso,
     un rol, la app, erplora.com en el navegador); un «no puedo» suelto o «no tengo facturas» no cuentan. Es lo que la
     superficie no ofrece, como la tienda en la app;
