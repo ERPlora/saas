@@ -41,6 +41,7 @@ from assistant import media, queries, services, turn
 from assistant.schemas import (
     Caller,
     CallerIn,
+    DictationIn,
     DocsSearchDoorIn,
     DocsSearchIn,
     EmbeddingsIn,
@@ -232,12 +233,13 @@ async def embeddings(call: Call) -> HttpResponse:
     return JsonResponse({"embeddings": vectors, "model": media.EMBEDDING_MODEL})
 
 
-@door(TranscribeIn, bucket="transcribe", rate="ASSISTANT_TRANSCRIBE_RATELIMIT", max_bytes=TRANSCRIBE_BODY_BYTES)
-async def transcribe(call: Call) -> HttpResponse:
-    """The text of a dictation: ``{text, language}`` (``language`` as asked, base code; empty: the model found it).
-    413 over ``MAX_AUDIO_BYTES`` of audio."""
+async def dictation(caller: Caller, data: DictationIn) -> dict:
+    """The text of a dictation for ``caller``, counted in its month and spending no message: ``{text, language}``
+    (``language`` as asked, base code; empty: the model found it). A ``Refused`` for what it cannot transcribe: 422 what
+    is not audio, 413 over ``MAX_AUDIO_BYTES``, 503 without the services' provider, 502 when it fails. Awaits the
+    provider, so never inside a transaction. The Hub's door, and the panel's route (``base.assistant.transcribed``)."""
     try:
-        audio = base64.b64decode(call.data.audio, validate=True)
+        audio = base64.b64decode(data.audio, validate=True)
     except (binascii.Error, ValueError):
         raise Refused(422, "invalid_payload", "The body is not the door's contract.", fields={"audio": "not valid base64"}) from None
     if not audio:
@@ -245,13 +247,19 @@ async def transcribe(call: Call) -> HttpResponse:
     if len(audio) > media.MAX_AUDIO_BYTES:
         raise Refused(413, "payload_too_large", f"The audio exceeds {media.MAX_AUDIO_BYTES} bytes.")
     service = await services_connection()
-    language = media.base_language(call.data.language)
+    language = media.base_language(data.language)
     try:
-        text = await media.transcribe(service, audio, call.data.mime_type, language)
+        text = await media.transcribe(service, audio, data.mime_type, language)
     except media.MediaFailed as problem:
-        return media_failed(problem)
-    await record(call.caller, transcriptions=1)
-    return JsonResponse({"text": text, "language": language})
+        raise Refused(502, problem.code, turn.MESSAGES[problem.code], retriable=problem.retriable) from None
+    await record(caller, transcriptions=1)
+    return {"text": text, "language": language}
+
+
+@door(TranscribeIn, bucket="transcribe", rate="ASSISTANT_TRANSCRIBE_RATELIMIT", max_bytes=TRANSCRIBE_BODY_BYTES)
+async def transcribe(call: Call) -> HttpResponse:
+    """The text of a dictation (``dictation``)."""
+    return JsonResponse(await dictation(call.caller, call.data))
 
 
 @door(SynthesizeIn, bucket="synthesize", rate="ASSISTANT_SYNTHESIZE_RATELIMIT")

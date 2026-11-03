@@ -6,6 +6,8 @@ from typing import Any, Literal
 from ninja import Schema
 from pydantic import Field
 
+from assistant.schemas import DictationIn
+
 
 class SessionMeIn(Schema):
     pass
@@ -206,3 +208,12 @@ class AssistantReportIn(Schema):
 class AssistantReportOut(Schema):
     sent: bool
     duplicate: bool
+
+
+class AssistantTranscribeIn(DictationIn):
+    """The panel's dictation: the Hub's same contract, without a ``hub``: it is the session's account's."""
+
+
+class AssistantTranscribeOut(Schema):
+    text: str
+    language: str = Field(description="As asked or the account's, base code (``es``).")

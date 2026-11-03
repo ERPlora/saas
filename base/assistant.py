@@ -37,10 +37,12 @@ from django.utils.translation import get_language_info, gettext
 from live import assistant as shared
 from live.assistant import LEFT_OUT, MAX_ROUNDS, MAX_TOOLS, PlainWords, ToolOutcome, tool_spec  # noqa: F401
 from live.context import OperationContext, Scope
+from live.errors import InvalidPayload, OperationError
 from live.meta import all_live_app_configs, permissions_for_role
 from live.operations import Operation
 from live.operations import get as get_operation
 
+from assistant import internal as gateway_door
 from assistant import queries as gateway_queries
 from assistant import turn as gateway
 from assistant.schemas import Caller
@@ -419,3 +421,33 @@ def turn_response(request: HttpRequest, plan: dict) -> StreamingHttpResponse:
     response["Cache-Control"] = "no-cache"
     response["X-Accel-Buffering"] = "no"
     return response
+
+
+# ── The dictation, through the gateway in this process ───────────────────────────────────────────────────────────
+
+
+def dictation_refusal(refused: gateway.Refused) -> OperationError:
+    """A dictation the gateway did not take, in the panel's words: the codes of the Hub's ``base.assistant.transcribe``,
+    whose failures of the provider are a 503 that names neither the provider nor its answer."""
+    if refused.status == 413:
+        return OperationError(
+            gettext("The recording is too long: dictate a shorter message."), code="base.assistant_audio_too_long", status=413
+        )
+    if refused.status == 422:
+        unreadable = gettext("The recording could not be read: record it again.")
+        return InvalidPayload(unreadable, fields=dict.fromkeys(refused.fields or {"audio"}, unreadable))
+    if refused.code == "assistant.provider_not_configured":
+        return OperationError(gettext("Dictation is not available right now."), code=refused.code, status=503)
+    return OperationError(
+        gettext("The audio could not be transcribed: try again."), code="base.assistant_transcribe_failed", status=503
+    )
+
+
+async def transcribed(request: HttpRequest, data: Any, language: str) -> dict:
+    """The words of a dictation ``base.assistant.transcribe`` made ready, in ``language``, for the session's account: the
+    gateway's ``dictation``, which waits on the provider with no transaction open and counts it in the account's month."""
+    caller = Caller(user_id=request.user.pk)
+    try:
+        return await gateway_door.dictation(caller, data.model_copy(update={"language": language}))
+    except gateway.Refused as refused:
+        raise dictation_refusal(refused) from None
