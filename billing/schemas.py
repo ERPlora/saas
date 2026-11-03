@@ -5,8 +5,8 @@ from decimal import Decimal
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from ninja import Field, Schema
 from django.utils.translation import gettext_noop
+from ninja import Field, Schema
 from pydantic import AfterValidator, model_validator
 
 #: The verdict a VAT number gets (``billing.services.clear_tax_id_for_stripe``):

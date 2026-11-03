@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:110f58b5827349cdaef8b401f790e45dcc8caeb7d2bf9d6e8534c3b7179de5b0 -->
+<!-- generated from WORKBOOK.md sha256:a734e9687d0f1b5e45124be5a3f4d18e268066f97e94c0b390c5eab8a0bdac80 -->
 
 ## What it is for and who it is for
 
@@ -345,7 +345,7 @@ Steps:
 In: the business's Stripe subscription.
 Out: the subscription marked in Stripe to end at the end of the period (`billing.plan.cancelled`); nothing else changes until that date (BILLING-F15).
 If it fails: if Stripe refuses it or does not answer, nothing changes and it is said. Cancelling with an unpaid invoice is allowed, but it does not void it: the dialog warns about it. A business on Free has nothing to cancel.
-Involved: the business (receives the end date)
+Involved: the business (receives the end date), ASSISTANT-F25 (asked from the panel's assistant, its card shows what the dialog says)
 
 ### BILLING-F14 Undo a pending cancellation
 <!-- origen: old-saas:SAAS_DASHBOARD-F102 gh:saas#2529 gh:saas#2574 -->
