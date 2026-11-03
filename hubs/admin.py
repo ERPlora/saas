@@ -317,8 +317,9 @@ class HubMemberAdmin(PlatformActions):
         return format_html('<a class="button" href="{}">{}</a>', url, OPEN_IN_HUB_ADMIN)
 
 
-class AccountMemberInline(ReadOnly, admin.TabularInline):
-    """The businesses of an account on its page: seen only, people change on the business."""
+class AccountMemberInline(ReadOnly, admin.StackedInline):
+    """The businesses of an account on its page: seen only, people change on the business. Stacked: a tabular row's
+    title is cut to one line, and on a phone it lost the business."""
 
     model = HubMember
     fk_name = "user"

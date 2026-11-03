@@ -77,6 +77,17 @@ class TestWhatIsAudited:
 
         assert _entries_for(membership).filter(action=LogEntry.Action.CREATE).exists()
 
+    def test_an_entry_of_access_names_the_account_the_business_and_the_role(self, ana):
+        """What the staff read in the trail's list: who, on which business, as what; never two identifiers."""
+        membership = enter(ana, "bar-pepe", "hub_admin")
+
+        with translation.override("en"):
+            membership.role = "hub_manager"
+            membership.save()
+
+        entry = _entries_for(membership).filter(action=LogEntry.Action.UPDATE).get()
+        assert entry.object_repr == "ana@example.com @ bar-pepe (Manager)"
+
 
 class TestNoSecretIsWritten:
     def test_the_password_hash_is_never_logged(self, ana):
