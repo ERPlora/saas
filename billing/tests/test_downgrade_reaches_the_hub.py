@@ -28,7 +28,7 @@ from hubs import queries as hub_queries
 from hubs import services as hub_services
 from hubs.models import Hub, HubMember, Plan, Subscription, SubscriptionItem
 from hubs.schemas import ByIdIn, MemberInviteIn
-from hubs.tests.conftest import add_member
+from hubs.tests.conftest import add_member, create_business
 from hubs.tests.conftest import ctx_for as hub_ctx_for
 
 pytestmark = pytest.mark.django_db
@@ -155,6 +155,23 @@ class TestTheArrival:
         assert (plan["slug"], plan["max_apps"], plan["max_storage_bytes"], plan["max_users"], plan["max_devices"]) == (
             "starter", 40, 5 * GIB, 0, 0,
         )
+
+    def test_the_arrival_is_told_only_of_the_business_that_moved(self, waiting, owner, hub_double, committed, stripe_says):
+        paid = waiting()
+        neighbour = committed(
+            lambda: pay(create_business(owner, name="Bar Norte"), plan="standard", sub_id="sub_2", customer="cus_2")
+        )
+        PlanChangeSchedule.objects.create(
+            hub=neighbour, stripe_schedule_id="sub_sched_2", plan_slug="starter", interval="month", starts_at=timezone.now()
+        )
+        heard = photos(hub_double, neighbour)
+
+        stripe_says(attached(STARTER))
+
+        assert photo(hub_double, paid)["plan"]["slug"] == "starter"
+        assert photos(hub_double, neighbour) == heard
+        assert Subscription.objects.get(hub=neighbour).plan.slug == "standard"
+        assert PlanChangeSchedule.objects.get(hub=neighbour).stripe_schedule_id == "sub_sched_2"
 
     def test_the_same_event_again_changes_nothing(self, waiting, hub_double, stripe_says):
         paid = waiting()

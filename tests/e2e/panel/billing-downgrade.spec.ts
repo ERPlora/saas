@@ -153,6 +153,27 @@ test.describe('a downgrade waits for the end of the paid period', () => {
     expect(errors).toEqual([]);
   });
 
+  test('BILLING-F11: from annual back to monthly, the dialog and the notice say it waits for the end of the paid year', async ({ page }) => {
+    const errors = watchPageErrors(page);
+    djangoPrint(`from hubs.models import Subscription as S;print(S.objects.filter(hub_id='${bakery}').update(billing_interval='year'))`);
+    const until = periodEnd(bakery, 'en');
+    await page.goto(`/dashboard/store/plans?business=${bakery}`);
+
+    // The Store opens on the billing the business pays; «Monthly» shows the switch back.
+    await page.getByTestId('store-period-month').click();
+    await page.getByTestId('plan-standard').getByTestId('plan-switch').click();
+    const dialog = page.getByTestId('annual-modal');
+    await atEverySize(page, 'annual-dialog', async () => {
+      await expect(dialog.getByTestId('annual-intro')).toHaveText(`${BAKERY} · Standard is billed monthly from ${until}.`);
+    });
+    await page.getByTestId('annual-modal-submit').click();
+
+    await expect(toast(page, `${BAKERY} moves to Standard, billed monthly, on ${until}`)).toBeVisible();
+    await expect(dialog).toBeHidden();
+    expect(held(bakery)).toEqual({ plan: 'standard', waiting: 'standard' });
+    expect(errors).toEqual([]);
+  });
+
   test('BILLING-F14: «Keep the plan» on the Store card undoes it', async ({ page }) => {
     const errors = watchPageErrors(page);
     await downgradeToStarter(bakery);
