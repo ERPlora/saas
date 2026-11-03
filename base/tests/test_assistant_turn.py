@@ -523,7 +523,7 @@ class TestTheCardIsTheOnlyQuestion:
         assert "call its tool as soon as you have the data it needs" in said
         assert "never ask in your text whether to go ahead" in said
         assert "never write a summary of the change" in said
-        assert "ask only for a datum that no tool gives and the person has not said" in said
+        assert "ask only for a datum its tool requires, that no tool gives and the person has not said" in said
         assert "never refuse a change yourself" in said
         assert "«not confirmed» or with an error, nothing changed" in said, "what it had to say about a refusal stays"
         assert "«not confirmed» is the person's answer and its card is gone" in said
