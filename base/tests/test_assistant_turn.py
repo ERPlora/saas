@@ -680,6 +680,7 @@ class TestANoIsAnAnswer:
         "broken",
         [
             {"role": "assistant", "tool_calls": "nonsense"},
+            {"role": "assistant", "tool_calls": 7},
             {"role": "assistant", "tool_calls": ["nonsense"]},
             {"role": "assistant", "tool_calls": [{"id": "c1"}]},
             {"role": "assistant", "tool_calls": [{"id": "c1", "function": "nonsense"}]},
