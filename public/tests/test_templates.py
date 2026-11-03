@@ -1322,7 +1322,6 @@ def test_a_page_opened_from_the_app_has_a_way_back_and_nothing_of_the_web(client
     assert '<footer class="ep-footer"' not in body
     assert 'id="cookie-consent-banner"' not in body
     assert 'href="/launch"' not in body
-    assert re.search(r'<ion-button[^>]*data-app-back[^>]*href="/shell/"|<ion-button[^>]*href="/shell/"[^>]*data-app-back', body)
     assert ">Back<" in body
     assert f'data-surface="{surface}"' in response.content.decode()
 
@@ -1331,6 +1330,31 @@ def test_a_page_opened_from_the_app_has_a_way_back_and_nothing_of_the_web(client
 def test_the_same_page_on_the_web_asks_for_cookies(client, cookie_groups):
     """The control of the test above: with a tracker configured, the web does show the notice."""
     assert 'id="cookie-consent-banner"' in body_of(client.get(TERMS))
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("surface", ["desktop", "mobile", "account"])
+def test_back_is_a_real_link_to_the_app_that_works_before_the_page_script(client, surface):
+    """«Back» is an <a href> in the HTML, not an ion-button: an ion-button is no link until the page's script has
+    defined it, so on a slow device «Back» pressed before that did nothing (saas#236, PUBLIC-F26). The link keeps
+    the app's surface, as the app's own links to these texts do."""
+    body = body_of(client.get(f"{TERMS}?surface={surface}"))
+
+    back = re.search(r"<(\w[\w-]*)\b[^>]*\bdata-app-back\b[^>]*>", body)
+    assert back is not None
+    assert back.group(1) == "a"
+    assert f'href="/shell/?surface={surface}"' in back.group(0)
+
+
+@pytest.mark.django_db
+def test_back_keeps_the_surface_the_session_remembers(client):
+    """The app mode lasts in the session while the app moves between texts: so does «Back»'s surface."""
+    client.get(f"{TERMS}?surface=mobile")
+
+    back = re.search(r"<a\b[^>]*\bdata-app-back\b[^>]*>", body_of(client.get(PRIVACY)))
+
+    assert back is not None
+    assert 'href="/shell/?surface=mobile"' in back.group(0)
 
 
 @pytest.mark.django_db

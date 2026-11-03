@@ -545,7 +545,7 @@ Pantalla: Textos legales
 Pasos:
 1. En la aplicación instalada (y en la cuenta que la aplicación abre en el navegador), la pantalla de entrada y la de comprobar el correo enlazan los términos y la privacidad.
 2. Al pulsar uno, el texto se abre como en el visor de una aplicación: solo el texto y «Volver», sin el menú, el pie ni los botones de alta de la web.
-3. Los textos que ese texto enlaza se abren igual mientras dure la sesión de la aplicación; «Volver» lleva a la pantalla de la aplicación que lo abrió, o a su inicio si el texto se abrió suelto.
+3. Los textos que ese texto enlaza se abren igual mientras dure la sesión de la aplicación; «Volver» lleva a la pantalla de la aplicación que lo abrió, o a su inicio si el texto se abrió suelto. «Volver» responde desde el primer momento: pulsado antes de que la página termine de cargar, lleva al inicio de la aplicación.
 Entra: desde qué parte de la aplicación se abre.
 Sale: la marca de aplicación en la sesión de esa ventana.
 Si falla: dentro de la aplicación no sale el aviso de cookies ni se carga ninguna medición, aunque se aceptaran en la web; una marca que la web no conoce se trata como la web.
@@ -744,7 +744,11 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
 - Modo aplicación (F26): la entrada de la SPA (`hubs/frontend/pages/LaunchPage.vue`, `VerifyEmailPage.vue`) enlaza
   los textos con `accounts/frontend/legal.ts` (`?surface=<superficie>` fuera de la web); `context_processors.app_surface`
   lo guarda en la sesión (`public.surface`; `?surface=web` lo quita) y `public_base.html` pinta `partials/app_bar.html`
-  en lugar del menú, sin pie, aviso ni analítica; `frontend/public.ts` (`setupAppBack`) vuelve por el historial.
+  en lugar del menú, sin pie, aviso ni analítica. Su «Volver» es un `<a>` de verdad a `/shell/?surface=<superficie>`, con
+  el aspecto del `ion-button` claro al que sustituye (`components/app-bar.css`): un `ion-button` no es un enlace hasta que
+  `frontend/public.ts` lo define, y pulsado antes, en un dispositivo lento, no hacía nada (saas#236). Cuando el script ya
+  corrió, `setupAppBack` vuelve por el historial a la pantalla que abrió el texto. El e2e lo prueba también con los
+  scripts de la página retenidos (`public-web-2.spec.ts`, PUBLIC-G47 «on a slow device»).
 - Correo de soporte (F18): `SUPPORT_EMAIL` es la única fuente; las páginas de error lo leen con `{% support_email %}`
   (`public/templatetags/support.py`: la 500 se pinta sin contexto) y la SPA con el bloque JSON `support-email` de
   `base/spa.py` (`accounts/frontend/support.ts`).

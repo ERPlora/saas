@@ -389,7 +389,9 @@ describe('Mermaid on demand (spec §6)', () => {
 });
 
 describe('setupAppBack: «Back» of a page opened from the installed app (PUBLIC-F26)', () => {
-  const BAR = '<header class="ep-app-bar"><ion-button href="/shell/" data-app-back>Back</ion-button></header>';
+  // As public/partials/app_bar.html renders it: a real link, so it works before this script runs (saas#236).
+  const BAR =
+    '<header class="ep-app-bar"><a class="ep-app-bar__back" href="/shell/?surface=desktop" data-app-back>Back</a></header>';
 
   function click(doc: Document): MouseEvent {
     const event = new MouseEvent('click', { bubbles: true, cancelable: true });
