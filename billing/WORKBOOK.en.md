@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:3a35c77ba3345b2f088626b971e8a116410f056ec64e591f74b8e95de81d7465 -->
+<!-- generated from WORKBOOK.md sha256:b892755cc1d0e2e5825f124855afeec440de8af4e313e560be569bb66a1ab5d5 -->
 
 ## What it is for and who it is for
 
@@ -313,7 +313,7 @@ Screen: Store, Change plan
 Steps:
 1. In **Store › Plans** of a business that already pays, the owner taps "Change to …", "Change to annual · …" or "Change to monthly · …".
 2. The dialog works out what is charged today ("Working out what is charged today…") and shows "Today (prorated)", the VAT, the "Total today" and what will be charged "Afterwards", with the note that the modules stay the same.
-3. An upgrade is confirmed with "Pay … and change": it is charged at once with the saved card and the business moves to the new plan at once. A downgrade (a cheaper plan, or annual to monthly) charges nothing today: it moves to the new plan at the end of the paid period, and **Billing › Subscriptions** says "Changes to … on …". Until that date it is undone with "Keep the plan", on that row and on the card of the current plan in the Store (BILLING-F14).
+3. An upgrade is confirmed with "Pay … and change": it is charged at once with the saved card and the business moves to the new plan at once. A downgrade (a cheaper plan, or annual to monthly) charges nothing today: it moves to the new plan at the end of the paid period, and **Billing › Subscriptions** says "Changes to … on …" and its next invoice is already that plan's. Until that date it is undone with "Keep the plan", on that row and on the card of the current plan in the Store (BILLING-F14).
 4. Notice: "… is now on …" (or "…, paid annually").
 In: the new plan and period and the business's subscription with its card; when the period changes, each module's price changes too.
 Out: the plan changed (`billing.plan.changed`) or the downgrade scheduled (`billing.plan.change_scheduled`), with the table's VAT on each line, and the new plan sent to the business.
@@ -487,7 +487,7 @@ Status: done
 Actor: owner, paying account
 Screen: Billing › Subscriptions
 Steps:
-1. In **Billing › Subscriptions** there is one row per paying business: the plan and its paid apps at their price without VAT (a cancelled one says "(until …)" and stops showing once it ends), the next invoice with VAT and the status.
+1. In **Billing › Subscriptions** there is one row per paying business: the plan and its paid apps at their price without VAT (a cancelled one says "(until …)" and stops showing once it ends), the next invoice with VAT (with a scheduled downgrade, that of the new plan and billing, with its apps at the price of that billing; keeping the plan brings back the current one's) and the status.
 2. Each row has its actions: the main one in view ("View the invoice" if there is an uncollected one; otherwise "Keep it with my card", "Change plan" or "Keep the plan") and in "⋮" "View invoices" and "Cancel plan".
 In: the subscriptions of the businesses the account pays or owns.
 Out: nothing.

@@ -429,7 +429,9 @@ Ve una factura la cuenta que la pagó (su pagador ese día) y el propietario act
   409 `billing.invoice_paid`; anulada, 409 `billing.invoice_void`.
 - `billing.subscription.list` — `GET /api/billing/subscriptions` → una fila por negocio que Stripe cobra (del
   propietario o del pagador): plan y módulos a precio neto, `next_invoice {date, total_cents con IVA, currency}`
-  (null si se cancela; `total_cents` null sin lugar del pagador), estado, `cancelling`, `ends_at`,
+  (null si se cancela; `total_cents` null sin lugar del pagador; con una bajada que espera, el importe del plan y
+  el periodo nuevos, con sus módulos a ese precio, y null si ese plan salió del catálogo, porque Stripe cobra ese
+  día los items nuevos: `plan` y `modules` siguen diciendo lo de hoy), estado, `cancelling`, `ends_at`,
   `cancel_requested`, `unpaid_invoice_id`, `scheduled_change` (la bajada que espera), `actions` (`view_invoice`
   primero si hay una sin cobrar; si no, `change_plan` o `keep_plan`; `cancel_plan`; `view_invoices`) y `can`.
   Cambiar/cancelar/mantener: el propietario que paga. Viva. Filtros `?hub_id=` (uno ajeno da la lista vacía) y
