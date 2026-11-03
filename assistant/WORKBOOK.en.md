@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:f653ff753cce1e6d18773944d4817db640de36f2ab5b41e1200c782b0dbf3da8 -->
+<!-- generated from WORKBOOK.md sha256:9230fb99115c45898bfc229b6fcd269c5486ec61c8228546f495c1b9a31223fa -->
 
 ## What it is for and who uses it
 
@@ -42,6 +42,20 @@ Who uses it:
   are run by the server, never by the device; the voice is dictation to text and reading
   aloud by the same provider (https://platform.openai.com/docs/guides/speech-to-text,
   https://platform.openai.com/docs/guides/text-to-speech).
+- **Email notices of an allowance** (ASSISTANT-F29): one email on nearing the limit and another on reaching it, also in the
+  products that already show it on screen. GitHub, at 90 % and 100 % of what the plan includes
+  (https://docs.github.com/en/billing/concepts/budgets-and-alerts); HubSpot, at 75 % and 100 % of its monthly AI limit
+  (https://knowledge.hubspot.com/records/understand-communication-analysis-limit-notifications); Tern, at 75, 90 and
+  100 % of its AI allowance per person (https://help.tern.travel/en/articles/15303956-ai-usage-limits); Eraser
+  (https://docs.eraser.io/docs/usage-based-pricing) and Outfunnel
+  (https://support.outfunnel.com/en/articles/3245437-what-happens-if-i-exceed-my-monthly-active-contacts-plan-limit),
+  at 80 % and 100 %; Vercel, "Usage increased" and "Usage limit reached" (https://vercel.com/docs/notifications);
+  Userflow, at 90 % and on stopping at the limit
+  (https://help.userflow.com/docs/managing-the-ai-assistant-usage-notifications). The exception is Odoo, with a single
+  alert whose threshold and recipients are configurable
+  (https://www.odoo.com/documentation/master/applications/essentials/in_app_purchase.html). Turning them off: the market
+  is split (GitHub and Vercel allow it; in Userflow there is nothing to set up); here they cannot be turned off, for
+  simplicity: two emails a month at most.
 
 ## Before you start
 
@@ -142,6 +156,7 @@ panel.
 | ASSISTANT-F26 | Count an account's messages with the panel's assistant | done |
 | ASSISTANT-F27 | Search the documentation from the panel | done |
 | ASSISTANT-F28 | Search the documentation from the Hub | done |
+| ASSISTANT-F29 | Email an account that its messages with the panel's assistant are running out | not done |
 
 ### ASSISTANT-F01 Add an AI provider
 Status: done
@@ -486,7 +501,7 @@ Steps:
 In: the conversation (it lives in the person's browser), the tools the model asked for and the person's answer to its card.
 Out: what was done and its result, the card of the change that waits, the text as it arrives, the allowance left and the close; what each tool does leaves its own trace (`hubs.business.created`…), never the conversation.
 If it fails: without a session, the panel sends to sign in and there is no "Assistant" button, and a session that ends mid-conversation asks to sign in again; with the month's allowance spent, the first notice is the allowance spent, with how many were used and when they come back, and that each business has its own assistant, without "Upgrade plan" (see ASSISTANT-F26); with too many turns in a row, it says to wait a moment; without a model that answers, that the assistant cannot answer now, with "Try again"; without a connection, the foot says so. A tool the account does not have, or that is not for the chat (downloading a file, creating an API key, opening the payment, entering a business), never runs. Without the word typed or with a "no", the change is not made and the model says so. Data the change does not take (a country ERPlora does not serve, a value outside its list) or a change that cannot be made (cancelling the plan of a business on Free, or of one another account pays for) never reach the card: they go back to the model, which corrects them within the same question, and the person confirms only once. Where nothing is sold (the account opened from the installed app), neither the Store nor its plan changes are offered. Past six rounds of tools in a single question, it stops.
-Involved: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F23, ASSISTANT-F26, HUBS-F01, HUBS-F09, BILLING-F13
+Involved: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F23, ASSISTANT-F26, ASSISTANT-F29, HUBS-F01, HUBS-F09, BILLING-F13
 
 ### ASSISTANT-F26 Count an account's messages with the panel's assistant
 Status: done
@@ -500,7 +515,7 @@ Steps:
 In: the session's account.
 Out: the message taken or given back and what was spent in the account's month (`assistant.message.claimed`, `assistant.message.released`, `assistant.usage.recorded`, with the account).
 If it fails: with no free messages, the turn is refused with the allowance spent and the date they come back; there is no plan to go up nor loose packs. An account never spends its businesses' messages, nor a business its account's; deleting the account deletes its rows.
-Involved: ASSISTANT-F18, ASSISTANT-F24, ASSISTANT-F25
+Involved: ASSISTANT-F18, ASSISTANT-F24, ASSISTANT-F25, ASSISTANT-F29
 
 ### ASSISTANT-F27 Search the documentation from the panel
 Status: done
@@ -532,3 +547,16 @@ In: the business or the demo, the question (up to 500 characters), the language 
 Out: the excerpts with their source, where they come from, their headings, their text, their language and how close they are to the question; of the question only its fingerprint stays in the cache for a day (the same question again is not computed anew). It spends no message of the allowance.
 If it fails: without the provider of the fingerprints configured, it answers that the documentation cannot be searched now because the provider is not configured; if the provider fails, to try again in a moment; with too many searches in a row from the same business, to wait a moment; a call that is not signed, from a business erplora.com does not know or from one that is not active is refused as at any door of the Hub; while the documentation has not been indexed, it finds nothing and the assistant says the documentation does not cover it.
 Involved: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F27
+
+### ASSISTANT-F29 Email an account that its messages with the panel's assistant are running out
+Status: not done — still missing: sending the two emails as the messages are spent, the mark that they already went out that month, their texts in English and Spanish and counting them among the always-on emails of ACCOUNTS-F23; today only the panel's footer says it (ASSISTANT-F25)
+Actor: the person with an account at erplora.com
+Screen: none
+Steps:
+1. On spending the message that leaves them at 80 % of the month, the 24th of 30, the same point from which the panel's footer says it (ASSISTANT-F25), erplora.com sends an email to their account's address and in their language: "You have 6 of 30 messages left with the assistant this month.", when they come back ("They renew on December 1.") and a link to the panel.
+2. On spending the last one, the 30th of 30, it sends another: "You have used all 30 messages with the assistant this month.", when they come back, "Each business has its own assistant, with its own messages: open the business to keep asking there." and the link to the panel. Neither offers a plan up nor buying messages, because they do not exist (ASSISTANT-F26).
+3. Each email goes out only once per account and month, even if two turns at once reach the same point. A message given back (ASSISTANT-F26, step 3) neither cancels the notice already sent nor makes it repeat on reaching that point again. With the next month's allowance they can go out again.
+In: the message taken from the account (ASSISTANT-F26), and the person's email and language.
+Out: the email, and the mark that it went out in the account's month (`assistant.usage.warned`, with the account and the figures).
+If it fails: an email that does not go out does not stop the turn: it stays in the log and is tried again with the next message the person writes that month, with the figures of that moment, also if they have none left; with the allowance spent only the "You have used" one goes out, never the "You have left" one. A business's allowance (ASSISTANT-F18) and a demo's do not send this email. It cannot be turned off in Preferences: they are two emails a month at most, with no advertising (see ACCOUNTS-F23).
+Involved: ASSISTANT-F25, ASSISTANT-F26, ACCOUNTS-F23
