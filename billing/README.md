@@ -346,8 +346,9 @@ PDF). Aquí nunca se simula VeriFactu: sin respuesta del Hub la factura sigue «
   abonaría lo no usado del caro: una factura de Stripe en negativo). Stripe lo guarda como *subscription
   schedule*: la fase actual acaba con el periodo pagado y la siguiente cobra los items nuevos sin prorrateo; el
   negocio conserva lo pagado hasta entonces (`PlanChangeSchedule`, `scheduled_change` en la API). Las subidas se
-  cobran al momento. Mantener el plan deshace la bajada; cancelar la sustituye (gana Gratis); comprar o cancelar
-  módulos espera a deshacerla (409 `billing.plan_change_pending`).
+  cobran al momento. Mantener el plan deshace la bajada (en la fila de Suscripciones, en la tarjeta del plan
+  actual de la Tienda y por la API, sin mirar las facturas: no cobra nada); cancelar la sustituye (gana Gratis);
+  comprar o cancelar módulos espera a deshacerla (409 `billing.plan_change_pending`).
 - **Todo lo devuelto es una rectificativa** con importes negativos, la calificación y el destinatario de la
   original y su tipo VeriFactu (`rectification_type`: R1 devoluciones, duplicados y cambios de precio, art. 80.1 y
   80.2 LIVA; R4 lo demás, como un cobro fraudulento) y su motivo (`rectification_reason`, la nota o el motivo de

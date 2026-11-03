@@ -134,6 +134,7 @@ export function subscription(extra: Partial<StoreSubscriptionOut> = {}): StoreSu
     current_period_end: '2026-10-31T12:00:00Z',
     trial_plan: null,
     trial_end: null,
+    scheduled_change: null,
     ...extra,
   };
 }
