@@ -374,6 +374,17 @@ class TestOnlyAMember:
         assert response.url == self.not_a_member(other.slug)
         assert signed_in(client) is None
 
+    def test_a_member_of_a_business_whose_address_contains_this_one_opens_nothing(self, client, business, make_user):
+        """Looking the business up by its address finds «bar-manolo-2» too: only the exact one counts."""
+        bea = make_user("bea@example.com")
+        lookalike = create_business(bea, name="Bar Manolo")
+        assert lookalike.slug != business.slug and business.slug in lookalike.slug
+
+        response = follow(client, mint(bea, business.slug))
+
+        assert response.url == self.not_a_member(business.slug)
+        assert signed_in(client) is None
+
     def test_an_invitation_not_accepted_yet_opens_nothing(self, client, business, make_user):
         invited = make_user("invited@example.com")
         add_member(business, invited, HubMember.Role.EMPLOYEE, accepted=False)
