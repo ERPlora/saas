@@ -441,27 +441,54 @@ def test_privacy_counts_the_voice_provider_among_the_transfers_outside_the_eea(c
     assert voice in transfers
 
 
+# The dictation of the account's panel reaches the same provider without a hub in the way (ASSISTANT-F21, saas#175).
+PANEL_DICTATION = {
+    "en": {
+        "voice": "Used ONLY when someone in your hub, or in the assistant of your account's panel on erplora.com, uses one of these functions",
+        "route": "through your hub if you dictate there",
+    },
+    "es": {
+        "voice": "Usado ÚNICAMENTE cuando alguien de tu hub, o en el asistente del panel de tu cuenta en erplora.com, usa una de estas funciones",
+        "route": "a través de tu hub si dictas allí",
+    },
+}
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(("language", "marker"), [("en", "Voice dictation:"), ("es", "Dictado por voz:")])
+def test_privacy_counts_the_dictation_of_the_account_panel(client, language, marker):
+    """Art. 13.1.e GDPR: the panel's microphone sends the audio to the voice provider too, so «ONLY from your hub» would
+    be false, and its route to the provider has no hub in it."""
+    html = privacy(client, language)
+    [voice] = list_items_naming(html, VOICE_PROVIDER)
+    [dictation] = list_items_naming(html, marker)
+
+    assert PANEL_DICTATION[language]["voice"] in " ".join(voice.split())
+    assert PANEL_DICTATION[language]["route"] in " ".join(dictation.split())
+
+
 # What decides that the assistant is used: the Hub has no switch for it and asks for no consent. Anyone with
 # ``base.view_home`` sees its button (hub ``base/frontend/components/TopbarChrome.vue``), it is used when someone sends
 # it a message or dictates, and the plan's monthly messages (``Plan.assistant_messages_per_month``, 0 = none;
-# ``assistant/queries.py`` ``monthly_limit``) bound the questions that reach the model.
+# ``assistant/queries.py`` ``monthly_limit``) bound the questions that reach the model. The account's panel on
+# erplora.com has an assistant of its own (ASSISTANT-F25), with the same chat and the same dictation (ASSISTANT-F21).
 
 ASSISTANT_CONDITION = {
     "en": {
         "promises": ("explicit consent in the Hub", "does not enable it", "the customer enables"),
         "condition": (
-            "it is used only when someone in your hub sends it a message or dictates to it",
+            "it is used only when someone sends a message or dictates to the assistant of your hub or of your account's panel on erplora.com",
             "A plan without assistant messages sends no question to the model",
         ),
-        "basis": "Used ONLY when someone in your hub uses the assistant, to provide the contracted service (Art. 6.1.b GDPR)",
+        "basis": "Used ONLY when someone uses the assistant of your hub or of your account's panel on erplora.com, to provide the contracted service (Art. 6.1.b GDPR)",
     },
     "es": {
         "promises": ("consentimiento explícito en el Hub", "no lo activa", "el cliente activa"),
         "condition": (
-            "solo se usa cuando alguien de tu hub le envía un mensaje o le dicta",
+            "solo se usa cuando alguien envía un mensaje o dicta al asistente de tu hub o al del panel de tu cuenta en erplora.com",
             "Un plan sin mensajes del asistente no envía ninguna pregunta al modelo",
         ),
-        "basis": "Usado ÚNICAMENTE cuando alguien de tu hub usa el asistente, para prestar el servicio contratado (Art. 6.1.b RGPD)",
+        "basis": "Usado ÚNICAMENTE cuando alguien usa el asistente de tu hub o el del panel de tu cuenta en erplora.com, para prestar el servicio contratado (Art. 6.1.b RGPD)",
     },
 }
 
