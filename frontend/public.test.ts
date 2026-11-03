@@ -109,7 +109,7 @@ describe('the public entry: components and styles', () => {
 
   it('imports every component stylesheet', () => {
     expect(SOURCE).toContain("import.meta.glob('../public/static/public/components/*.css', { eager: true })");
-    expect(readdirSync(join(PUBLIC_STATIC, 'components')).filter((name) => name.endsWith('.css')).length).toBe(16);
+    expect(readdirSync(join(PUBLIC_STATIC, 'components')).filter((name) => name.endsWith('.css')).length).toBe(17);
   });
 
   it('never reaches a CDN', () => {
