@@ -131,8 +131,8 @@ class TestTheMailAtEightyPercent:
         turn(reader)
 
         body = mail.outbox[0].body
-        assert "You have 6 of 30 messages with the assistant left this month." in body
-        assert f"They come back on {comes_back(this_month(), 'en')}." in body
+        assert "You have 6 of 30 messages left with the assistant this month." in body
+        assert f"They renew on {comes_back(this_month(), 'en')}." in body
 
     def test_with_one_left_it_says_one_message(self, make_user, turn, mail_down):
         reader = make_user("reader@example.com", language="es")
@@ -307,6 +307,46 @@ class TestAMailThatDoesNotLeave:
 
         assert len(mail.outbox) == 1
         assert "Has usado los 30 mensajes" in mail.outbox[0].body
+
+
+class TestThroughThePanelsTurn:
+    """The same mails when the person writes in the panel (``POST /api/assistant/turn``, ASSISTANT-F25)."""
+
+    def test_the_turn_that_reaches_80_percent_mails_and_answers(
+        self, client, make_user, answering, fake_provider, django_capture_on_commit_callbacks
+    ):
+        from base.tests.test_assistant_turn import COMPLETIONS, ask, post_turn, types
+        from assistant.tests.conftest import openai_answer
+        from assistant.tests.doors import frames
+
+        person = make_user("lena@example.com", language="en")
+        spent(person, 23)
+        client.force_login(person)
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Hi."))
+
+        with django_capture_on_commit_callbacks(execute=True):
+            got = frames(post_turn(client, {"messages": [ask("Hello")]}))
+
+        assert "error" not in types(got)
+        assert len(mail.outbox) == 1 and mail.outbox[0].to == ["lena@example.com"]
+        assert "You have 6 of 30 messages left with the assistant this month." in mail.outbox[0].body
+
+    def test_a_turn_refused_at_the_last_tries_its_mail_again(
+        self, client, make_user, answering, fake_provider, django_capture_on_commit_callbacks
+    ):
+        from base.tests.test_assistant_turn import ask, post_turn
+        from assistant.tests.doors import frames
+
+        person = make_user("lena@example.com", language="en")
+        spent(person, 30, near_warned_at=timezone.now())
+        client.force_login(person)
+
+        with django_capture_on_commit_callbacks(execute=True):
+            got = frames(post_turn(client, {"messages": [ask("Hello")]}))
+
+        assert got[0]["code"] == "assistant.quota_exceeded"
+        assert len(mail.outbox) == 1
+        assert "You have used all 30 messages with the assistant this month." in mail.outbox[0].body
 
 
 class TestNobodyElseIsMailed:

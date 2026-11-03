@@ -31,18 +31,18 @@ def send_messages_near(user, *, used: int, limit: int, resets_on: date) -> bool:
     left = max(limit - used, 0)
     with translation.override(user.language):
         subject = ngettext(
-            "You have %(left)s message with the assistant left this month",
-            "You have %(left)s messages with the assistant left this month",
+            "You have %(left)s message left with the assistant this month",
+            "You have %(left)s messages left with the assistant this month",
             left,
         ) % {"left": left}
         lines = [
             ngettext(
-                "You have %(left)s of %(limit)s messages with the assistant left this month.",
-                "You have %(left)s of %(limit)s messages with the assistant left this month.",
+                "You have %(left)s of %(limit)s messages left with the assistant this month.",
+                "You have %(left)s of %(limit)s messages left with the assistant this month.",
                 left,
             )
             % {"left": left, "limit": limit},
-            _("They come back on %(date)s.") % {"date": _day(resets_on)},
+            _("They renew on %(date)s.") % {"date": _day(resets_on)},
             "",
             _("Open your panel: %(url)s") % {"url": _panel()},
         ]
@@ -56,7 +56,7 @@ def send_messages_spent(user, *, limit: int, resets_on: date) -> bool:
         subject = _("You have used this month's messages with the assistant")
         lines = [
             _("You have used all %(limit)s messages with the assistant this month.") % {"limit": limit},
-            _("They come back on %(date)s.") % {"date": _day(resets_on)},
+            _("They renew on %(date)s.") % {"date": _day(resets_on)},
             "",
             _("Each business has its own assistant, with its own messages: open the business to keep asking there."),
             "",
