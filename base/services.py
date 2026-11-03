@@ -223,8 +223,6 @@ def assistant_transcribe(ctx: OperationContext, data: AssistantTranscribeIn) -> 
     ``transcribe`` door (``ASSISTANT_TRANSCRIBE_RATELIMIT``, 429 ``rate_limited``) and the language it goes in (as asked,
     else the account's). The words come from the route (``base.assistant.transcribed``), to the box and never sent by
     themselves; nothing else is ever written of them."""
-    if ctx.actor is None:
-        raise Unauthorized(gettext("Sign in to talk to the assistant."))
     try:
         gateway.spend(getattr(ctx, "request", None), "transcribe", settings.ASSISTANT_TRANSCRIBE_RATELIMIT, Caller(user_id=ctx.actor.pk))
     except gateway.Refused:

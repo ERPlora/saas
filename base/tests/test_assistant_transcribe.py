@@ -20,8 +20,10 @@ from live.ninja import ensure_api_parity, operation_ids
 from live.operations import current_operation
 
 from assistant import media
+from assistant import turn as gateway
 from assistant.internal import TRANSCRIBE_BODY_BYTES
 from assistant.models import AssistantUsage
+from assistant.schemas import Caller
 from assistant.tests.conftest import (  # noqa: F401 - the gateway's fixtures
     API_KEY,
     answering,
@@ -247,6 +249,19 @@ class TestTheBudget:
 
         signed_in.force_login(make_user("otra@example.com", language="en"))
         assert post(signed_in, clip()).status_code == 200
+
+
+    def test_it_spends_the_budget_of_the_dictations_and_no_other_door(
+        self, signed_in, account, answering, fake_provider, settings
+    ):
+        """The Hub's ``transcribe`` door's, per account: a dictation never eats what a report or a reading aloud may spend."""
+        settings.ASSISTANT_TRANSCRIBE_RATELIMIT = "1/h"
+        fake_provider.reply("POST", PROVIDER, json={"text": "Hola"})
+
+        assert post(signed_in, clip()).status_code == 200
+
+        with pytest.raises(gateway.Refused):
+            gateway.spend(None, "transcribe", "1/h", Caller(user_id=account.pk))
 
 
 class TestWhileItWaits:

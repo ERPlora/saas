@@ -89,13 +89,17 @@ class TestTheDictation:
 
         assert "Rosalía" not in "\n".join(record.getMessage() for record in caplog.records)
 
-    @pytest.mark.parametrize(("status", "code"), [(401, "assistant.provider_rejected"), (500, "assistant.provider_unavailable")])
-    def test_a_failure_of_the_provider_is_a_502_with_its_code(self, client, internal, business, answering, fake_provider, status, code):
+    @pytest.mark.parametrize(
+        ("status", "code", "retriable"),
+        [(401, "assistant.provider_rejected", False), (500, "assistant.provider_unavailable", True)],
+    )
+    def test_a_failure_of_the_provider_is_a_502_with_its_code(self, client, internal, business, answering, fake_provider, status, code, retriable):
         fake_provider.reply("POST", "/v1/audio/transcriptions", status=status, json={"error": {"message": f"key {API_KEY}"}})
 
         response = door(client, TRANSCRIBE, dictation(business))
 
         assert (response.status_code, error_code(response)) == (502, code)
+        assert response.json()["error"]["retriable"] is retriable
         assert API_KEY not in response.content.decode()
 
     def test_without_the_services_provider_it_is_503(self, client, internal, business, answering, settings):
