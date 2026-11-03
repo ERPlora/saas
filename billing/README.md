@@ -272,10 +272,11 @@ trata como ninguna (`UNKNOWN`: 503 `billing.payments_unavailable`, nunca un cobr
   `purge-webhook-events-nightly`, 00:50 UTC; FIX-AWS-BILLING-SYNC-AND-PURGE-NOT-SCHEDULED), y `audit_tax_rules` y
   `retax_subscriptions` cada día (`audit-tax-rules-daily`, 05:10 UTC, y `retax-subscriptions-daily`, 05:20 UTC;
   FIX-AWS-BILLING-DAILY-TASKS-NOT-SCHEDULED), y `audit_stripe_webhooks` a las 05:40 UTC
-  (`audit-stripe-webhooks-daily`, `ERPlora/aws#21`, aplicada el 2026-10-28): sale con error cada día, y `task_failed`
-  avisa, mientras sigan activos en Stripe live los tres endpoints del stack viejo en `erplora.com`
-  (`/marketplace/webhooks/stripe/`, `/dashboard/billing/webhooks/stripe-connect/` y `/assistant/stripe/webhook/`;
-  ids en el WORKBOOK, «Para quien lo mantiene»), y por eso BILLING-F39 está `parcial`. La clave restringida `rk_live_` necesita leer *Webhook Endpoints* para esa auditoría: sin ese permiso, Stripe la
+  (`audit-stripe-webhooks-daily`, `ERPlora/aws#21`, aplicada el 2026-10-28). Los tres endpoints del stack viejo en
+  `erplora.com` (`/marketplace/webhooks/stripe/`, `/dashboard/billing/webhooks/stripe-connect/` y
+  `/assistant/stripe/webhook/`; ids en el WORKBOOK, «Para quien lo mantiene») están `disabled` desde el 2026-10-28, y las
+  ejecuciones del 29, 30 y 31 de octubre terminaron en `OK`; BILLING-F39 está `descartado` con `saas#200` porque el
+  cierre del 2026-11-03 no pudo releerlo, con las sesiones de Stripe y de AWS caducadas. La clave restringida `rk_live_` necesita leer *Webhook Endpoints* para esa auditoría: sin ese permiso, Stripe la
   rechaza y la tarea falla cada día (`task_failed`).
 
 ## La Tienda (L2-D)
