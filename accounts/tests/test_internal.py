@@ -9,8 +9,9 @@ from django.test import Client
 from django.utils import timezone
 
 from accounts import services
-from accounts.models import AuthExchangeCode, HubMembership
+from accounts.models import AuthExchangeCode
 from accounts.signing import sign, signed_headers
+from accounts.tests.conftest import enter
 
 URL = "/internal/auth/redeem"
 SECRET = "test-internal-secret"
@@ -25,9 +26,7 @@ def _secret(settings):
 
 @pytest.fixture
 def code(ana):
-    HubMembership.objects.create(
-        user=ana, hub_slug="a", role=HubMembership.Role.EMPLOYEE
-    )
+    enter(ana, "a", "hub_employee")
     return services.issue_code(ana, "a")
 
 
@@ -58,10 +57,8 @@ def test_a_signed_valid_code_returns_who_signs_in(client, code, ana):
 
 
 def test_each_hub_receives_the_role_the_account_has_on_it(client, ana):
-    HubMembership.objects.create(user=ana, hub_slug="a", role=HubMembership.Role.OWNER)
-    HubMembership.objects.create(
-        user=ana, hub_slug="b", role=HubMembership.Role.EMPLOYEE
-    )
+    enter(ana, "a", "hub_owner")
+    enter(ana, "b", "hub_employee")
     code_a = services.issue_code(ana, "a")
     code_b = services.issue_code(ana, "b")
 
@@ -95,8 +92,8 @@ def test_a_code_for_another_hub_is_refused(client, code):
 def test_a_code_for_one_business_never_opens_another_of_the_same_account_nor_is_spent_there(client, ana):
     """The code is tied to the business it was issued for (PLAN-SAAS §2): the account's role on another business does
     not make it valid there, and the refusal leaves it for its own business."""
-    HubMembership.objects.create(user=ana, hub_slug="a", role=HubMembership.Role.OWNER)
-    HubMembership.objects.create(user=ana, hub_slug="b", role=HubMembership.Role.EMPLOYEE)
+    enter(ana, "a", "hub_owner")
+    enter(ana, "b", "hub_employee")
     code_a = services.issue_code(ana, "a")
 
     refused = redeem(client, {"code": code_a, "hub": "b"})
@@ -107,9 +104,7 @@ def test_a_code_for_one_business_never_opens_another_of_the_same_account_nor_is_
 
 def test_a_reserved_hub_is_an_invalid_code(client, ana):
     # Rows saved without validation: `admin` is reserved, so no hub named so ever gets a session.
-    HubMembership.objects.create(
-        user=ana, hub_slug="admin", role=HubMembership.Role.OWNER
-    )
+    enter(ana, "admin", "hub_owner")
     now = timezone.now()
     AuthExchangeCode.objects.create(
         code_hash=AuthExchangeCode.hash_code("a-code"),
@@ -219,7 +214,7 @@ class TestHubAdminAudience:
 
     def test_a_customer_never_gets_a_platform_role_even_with_a_hub_admin_row(self, client, ana):
         # A row saved by hand: the access is re-checked at redemption, and a customer is no staff.
-        HubMembership.objects.create(user=ana, hub_slug="a", role=HubMembership.Role.OWNER)
+        enter(ana, "a", "hub_owner")
         now = timezone.now()
         AuthExchangeCode.objects.create(
             code_hash=AuthExchangeCode.hash_code("a-code"),

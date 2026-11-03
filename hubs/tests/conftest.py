@@ -123,12 +123,11 @@ def create_business(user, **data):
 
 
 def add_member(hub, user, role, *, accepted=True, invited_by=None, invited_days_ago=0):
-    """A member written as an accepted invitation would leave it (or a pending one), with its access."""
+    """A member written as an accepted invitation would leave it (or a pending one)."""
     from datetime import timedelta
 
     from django.utils import timezone
 
-    from hubs import services
     from hubs.models import HubMember
 
     invited = timezone.now() - timedelta(days=invited_days_ago)
@@ -142,8 +141,14 @@ def add_member(hub, user, role, *, accepted=True, invited_by=None, invited_days_
         joined_at=invited,
         accepted_at=timezone.now() if accepted else None,
     )
-    services.sync_access(hub)
     return member
+
+
+def role_on(user, slug: str) -> str | None:
+    """What ``user`` is on the business at ``slug`` for the jump to a hub; ``None``: it does not enter."""
+    from hubs import queries
+
+    return dict(queries.access_of(user.pk)).get(slug)
 
 
 @pytest.fixture

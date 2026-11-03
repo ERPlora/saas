@@ -29,7 +29,6 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone, translation
 from live.errors import Conflict, NotFound, PermissionDenied
 
-from accounts.models import HubMembership
 from accounts.services import PlatformRoleRefused, create_platform_user
 from hubs import queries, services
 from hubs.models import BillingProfile, Hub, HubMember, Subscription
@@ -41,7 +40,7 @@ from hubs.schemas import (
     MemberListIn,
     MemberRoleIn,
 )
-from hubs.tests.conftest import add_member, create_business, ctx_for, member_of
+from hubs.tests.conftest import add_member, create_business, ctx_for, member_of, role_on
 
 pytestmark = pytest.mark.django_db
 
@@ -136,7 +135,7 @@ class TestInvite:
         invite(owner, business, "ana@example.com")
 
         assert version(business) == before
-        assert not HubMembership.objects.filter(user__email="ana@example.com").exists()
+        assert not HubMember.objects.filter(user__email="ana@example.com", accepted_at__isnull=False).exists()
 
     def test_somebody_already_on_the_business_is_a_conflict(self, business, team):
         with pytest.raises(Conflict) as refused:
@@ -253,7 +252,7 @@ class TestInvite:
 
         assert list(User.objects.exclude(pk=owner.pk).values_list("email", flat=True)) == ["ana.lopez@example.com"]
         assert member_of(business, ana).accepted_at is not None
-        assert HubMembership.objects.filter(user=ana, hub_slug=business.slug).exists()
+        assert role_on(ana, business.slug) is not None
 
 
 # --- Changing a role ------------------------------------------------------------------------------
@@ -272,12 +271,7 @@ class TestChangeRole:
         assert self.change(team["owner"], employee, "hub_admin").role == "hub_admin"
         assert member_of(business, team["employee"]).role == "hub_admin"
         assert version(business) == before + 1
-        assert (
-            HubMembership.objects.get(
-                user=team["employee"], hub_slug=business.slug
-            ).role
-            == "hub_admin"
-        )
+        assert role_on(team["employee"], business.slug) == "hub_admin"
 
     def test_an_admin_moves_an_employee_to_manager(self, business, team):
         assert (
@@ -395,9 +389,7 @@ class TestRemove:
             hub=business, user=team["employee"]
         ).exists()
         assert HubMember.objects.filter(hub=other, user=team["employee"]).exists()
-        assert not HubMembership.objects.filter(
-            user=team["employee"], hub_slug=business.slug
-        ).exists()
+        assert role_on(team["employee"], business.slug) is None
         assert version(business) == before + 1
         revoke = hub_double.calls_to("POST", "/internal/sessions/revoke")
         assert [call.body for call in revoke] == [
@@ -623,9 +615,9 @@ ON_A_BUSINESS = "This account is on a business: ERPlora's staff and the customer
 
 
 class TestThePlatformsDoor:
-    """``manage.py create_platform_user`` makes no staff of anybody on a business, also where the mirror of who
-    enters (``HubMembership``) holds no row of theirs: an invitation still waiting, or a business in its 90 days of
-    recovery, which a restore gives back (W11b)."""
+    """``manage.py create_platform_user`` makes no staff of anybody on a business, also where the jump would not let
+    them in: an invitation still waiting, or a business in its 90 days of recovery, which a restore gives back
+    (W11b)."""
 
     def test_an_invitee_is_never_made_staff(self, business, team):
         invitee = team["invitee"]
@@ -662,8 +654,7 @@ class TestThePlatformsDoor:
     def test_a_member_of_a_business_in_recovery_is_never_made_staff(self, business, team):
         employee = team["employee"]
         Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETING)
-        services.sync_access(Hub.objects.get(pk=business.pk))
-        assert not HubMembership.objects.filter(user=employee).exists()  # nobody enters a business in recovery
+        assert role_on(employee, business.slug) is None  # nobody enters a business in recovery
 
         with pytest.raises(PlatformRoleRefused):
             create_platform_user(employee.email, "admin")
@@ -688,9 +679,7 @@ class TestAccept:
             "hub_employee",
             "hub_employee",
         )
-        assert HubMembership.objects.filter(
-            user=team["invitee"], hub_slug=business.slug
-        ).exists()
+        assert role_on(team["invitee"], business.slug) is not None
         assert version(business) == before + 1
 
     def test_the_hub_gets_the_people_with_the_newcomer_once_saved(
@@ -756,7 +745,7 @@ class TestAccept:
 
         assert refused.value.code == "hubs.platform_account"
         assert member_of(business, invitee).is_pending
-        assert not HubMembership.objects.filter(user=invitee).exists()
+        assert role_on(invitee, business.slug) is None
 
     def test_accepting_never_touches_another_business_of_mine(
         self, business, team, make_user

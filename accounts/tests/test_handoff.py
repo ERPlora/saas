@@ -21,7 +21,8 @@ from allauth.mfa.totp.internal import auth as totp_auth
 from django.contrib.auth import get_user_model
 
 from accounts import services
-from accounts.models import AuthExchangeCode, HubMembership
+from accounts.models import AuthExchangeCode
+from accounts.tests.conftest import enter
 
 pytestmark = pytest.mark.django_db
 
@@ -39,7 +40,7 @@ def _hidden(html: str, name: str) -> str:
 
 @pytest.fixture
 def member(client, ana):
-    HubMembership.objects.create(user=ana, hub_slug="a", role=HubMembership.Role.ADMIN)
+    enter(ana, "a", "hub_admin")
     client.force_login(ana)
     return ana
 
@@ -157,9 +158,7 @@ class TestHubLogin:
     ):
         # `hubs` is the Hub's staff admin host (ronda 13, PLAN §18) and `hub` stays reserved: never
         # a customer's hub.
-        HubMembership.objects.create(
-            user=member, hub_slug=hub, role=HubMembership.Role.OWNER
-        )
+        enter(member, hub, "hub_owner")
 
         response = client.get(HUB_LOGIN, {"hub": hub, "next": "/"})
 
@@ -174,9 +173,7 @@ class TestHubLogin:
         assert response.url == "/login/error?code=invalid_hub"
 
     def test_a_hub_slug_may_start_with_a_digit(self, client, member):
-        HubMembership.objects.create(
-            user=member, hub_slug="0day", role=HubMembership.Role.OWNER
-        )
+        enter(member, "0day", "hub_owner")
 
         response = client.get(HUB_LOGIN, {"hub": "0day", "next": "/"})
 
@@ -235,7 +232,7 @@ class TestTheStateOfTheJump:
     ):
         # No state the Hub mints is that long: the link is refused as a broken one, before the
         # login, without echoing it.
-        HubMembership.objects.create(user=ana, hub_slug="a", role=HubMembership.Role.ADMIN)
+        enter(ana, "a", "hub_admin")
         if signed_in:
             client.force_login(ana)
 
@@ -424,7 +421,7 @@ class TestTheBrakeOfTheJump:
         settings.HUB_LOGIN_RATELIMIT = "1/5m"
         assert self._jump(client).status_code == 200
         bea = get_user_model().objects.create_user(email="bea@example.com", password=password)
-        HubMembership.objects.create(user=bea, hub_slug="a", role=HubMembership.Role.ADMIN)
+        enter(bea, "a", "hub_admin")
         client.force_login(bea)
 
         assert self._jump(client).status_code == 200

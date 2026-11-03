@@ -174,6 +174,8 @@ def test_every_operation_on_a_business_has_its_row():
         "hubs.business.age_suspension",
         "hubs.address.propose",
         "hubs.invitation.list_mine",
+        # What the jump to a hub reads, each account about itself: ``test_access.py``.
+        "hubs.member.list_mine",
         "hubs.invitation.accept",
         "hubs.invitation.decline",
         "hubs.ownership.accept",

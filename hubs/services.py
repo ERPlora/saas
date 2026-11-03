@@ -6,11 +6,10 @@ must learn is written in the same transaction (``Hub.pending_hub_call``, ``Hub.s
 pushed after the COMMIT (``sync_hub``, which never runs inside a transaction); when the Hub is away it
 stays owed and ``manage.py reconcile_hub_states`` retries it (plan 2026-10-13 §3, the push to the Hub).
 
-Until the jump to a hub moves to ``hubs`` (plan, L1-A step 2), ``accounts.services.issue_code`` and
-``redeem_code`` check an account's access in ``accounts.HubMembership``: ``sync_access``, its only writer,
-keeps those rows equal to the answered members of each business, in the same transaction. Taking access
-away queues a ``SessionRevocation`` (delivered after the COMMIT, retried by ``reconcile_hub_states``), and a
-change of the people of a business is told to its owner and admins (``notify_people``).
+``accounts.services.issue_code`` and ``redeem_code`` read an account's access from the answered members of each
+business (``hubs.member.list_mine``), so a change of people is the jump's next answer. Taking access away queues a
+``SessionRevocation`` (delivered after the COMMIT, retried by ``reconcile_hub_states``), and a change of the people of
+a business is told to its owner and admins (``notify_people``).
 """
 
 import logging
@@ -46,7 +45,6 @@ from pydantic import ValidationError
 from accounts import queries as account_queries
 from accounts import services as account_services
 from accounts.queries import hub_start_url
-from accounts.models import HubMembership
 from hubs import emails, events, hub_client, queries
 from hubs.queries import expired_deletions
 from hubs.hub_client import HubRefused, HubUnavailable
@@ -212,7 +210,6 @@ def business_create(ctx: OperationContext, data: BusinessCreateIn) -> dict:
         hub=hub, user=user, role=Role.OWNER, joined_at=now, accepted_at=now
     )
     _subscribe_to_free(hub, plan, now)
-    sync_access(hub)
     record_event(ctx, events.BUSINESS_CREATED, {"id": str(hub.id)})
     push_after_commit(hub.id)
     return queries.business_detail(owner)
@@ -426,7 +423,6 @@ def business_change_address(ctx: OperationContext, data: BusinessAddressIn) -> d
     except IntegrityError:
         raise _slug_taken() from None  # another business took it between the check and the write
     hub.refresh_from_db()
-    sync_access(hub, previous_slug=previous)
     record_event(ctx, events.BUSINESS_ADDRESS_CHANGED, {"id": str(hub.id), "slug": slug, "previous_slug": previous})
     push_after_commit(hub.id)
     return queries.business_detail(member)
@@ -506,7 +502,6 @@ def _delete_business(ctx: OperationContext, hub: Hub, owner, *, base_url: str, u
     HubOwnershipTransfer.objects.filter(
         hub=hub, status=HubOwnershipTransfer.Status.PENDING
     ).update(status=HubOwnershipTransfer.Status.CANCELLED, resolved_at=timezone.now())
-    sync_access(hub)
     record_event(ctx, events.BUSINESS_DELETED, {"id": str(hub.id)})
     push_after_commit(hub.id)
     transaction.on_commit(
@@ -589,7 +584,6 @@ def business_restore(ctx: OperationContext, data: ByIdIn) -> dict:
         ]
     )
     hub.refresh_from_db()
-    sync_access(hub)
     record_event(ctx, events.BUSINESS_RESTORED, {"id": str(hub.id)})
     push_after_commit(hub.id)
     return queries.business_detail(member)
@@ -934,7 +928,6 @@ def member_change_role(ctx: OperationContext, data: MemberRoleIn) -> dict:
         target.role = data.role
         target.save(update_fields=["role"])
         if not target.is_pending:
-            sync_access(target.hub)
             bump_state(target.hub_id)
             push_after_commit(target.hub_id)
             # The role travels in the Hub's session (``/internal/auth/redeem``): it signs in again with the new one.
@@ -998,14 +991,13 @@ def _refuse_a_payer(target: HubMember) -> None:
 
 def _take_out(member: HubMember) -> None:
     """Take ``member`` out of its business (removed, or its account deleted): an ownership offer pending to it is
-    cancelled, its access goes with it (``sync_access``) and, once it had answered, the Hub gets a snapshot
-    without it after the COMMIT."""
+    cancelled, its access goes with its row and, once it had answered, the Hub gets a snapshot without it after the
+    COMMIT."""
     hub = member.hub
     HubOwnershipTransfer.objects.filter(
         hub=hub, to_user_id=member.user_id, status=HubOwnershipTransfer.Status.PENDING
     ).update(status=HubOwnershipTransfer.Status.CANCELLED, resolved_at=timezone.now())
     member.delete()
-    sync_access(hub)
     if member.accepted_at is not None:
         bump_state(hub.id)
         push_after_commit(hub.id)
@@ -1139,7 +1131,6 @@ def invitation_accept(ctx: OperationContext, data: ByIdIn) -> dict:
     _check_seat_to_enter(member.hub, now)
     member.accepted_at = now
     member.save(update_fields=["accepted_at"])
-    sync_access(member.hub)
     bump_state(member.hub_id)
     record_event(ctx, events.INVITATION_ACCEPTED, {"id": str(member.id), "hub_id": str(member.hub_id)})
     notify_people(ctx, events.MEMBER_CHANGED, member.hub_id)
@@ -1346,7 +1337,6 @@ def ownership_accept(ctx: OperationContext, data: ByIdIn) -> dict:
     paid_until = end_renewal_after_hand_over(transfer.hub, transfer.to_user)
     # What the previous owner left open in Stripe Checkout can no longer be paid (review of saas#89).
     transaction.on_commit(partial(expire_open_checkouts, transfer.hub_id), robust=True)
-    sync_access(transfer.hub)
     bump_state(transfer.hub_id)
     # Both roles changed, and each travels in its Hub session: both sign in again.
     revoke_after_commit(outgoing.user_id, transfer.hub_id)
@@ -1764,46 +1754,12 @@ def _apply_standing(hub: Hub, standing: str, *, was_unpaid: bool) -> bool:
 # --- Access, state and the push to the Hub (not operations: called inside or after one) ---------
 
 
-def sync_access(hub: Hub, previous_slug: str = "") -> None:
-    """Make ``accounts.HubMembership`` (what the jump checks) equal to the business's answered members.
-
-    Nobody enters a deleted business. Called in the transaction that changed the members or the status.
-    The only writer of ``HubMembership`` (``hubs/tests/test_access_mirror.py``); ``queries.verify_access_mirror``
-    and the check ``hubs.W001`` say where the two disagree. Retired with the mirror once the jump reads
-    ``HubMember`` (``hubs/README.md``, «Pendiente»).
-    """
-    if previous_slug and previous_slug != hub.slug:
-        # The business moved to another address (HUBS-F16): the jump follows it.
-        HubMembership.objects.filter(hub_slug=previous_slug).delete()
-    deleted = hub.status in (Hub.Status.DELETING, Hub.Status.DELETED)
-    wanted = (
-        {}
-        if deleted
-        else dict(
-            HubMember.objects.filter(hub=hub, accepted_at__isnull=False).values_list(
-                "user_id", "role"
-            )
-        )
-    )
-    rows = HubMembership.objects.filter(hub_slug=hub.slug)
-    rows.exclude(user_id__in=wanted).delete()
-    have = dict(rows.values_list("user_id", "role"))
-    for user_id, role in wanted.items():
-        if user_id not in have:
-            HubMembership.objects.create(user_id=user_id, hub_slug=hub.slug, role=role)
-        elif have[user_id] != role:
-            HubMembership.objects.filter(user_id=user_id, hub_slug=hub.slug).update(
-                role=role
-            )
-
-
 def seed_demo_business(slug: str, people: dict) -> Hub:
     """The business of a hub that already runs in the local Hub (``demo_seed``: ``a`` and ``b``), with
     ``people`` (account → ``hub_*`` role) answered on it; creates what is missing, changes nothing else.
 
     Adopted, not provisioned: active, ready and owing the Hub nothing (as the data migration ``0006`` adopts
     the hubs of the phase-1 seed), on the Free plan if it is seeded; named after its address, in Spain.
-    Its access goes through ``sync_access``.
     """
     roles = set(people.values())
     if not roles <= set(Role.values):
@@ -1836,7 +1792,6 @@ def seed_demo_business(slug: str, people: dict) -> Hub:
             HubMember.objects.get_or_create(
                 hub=hub, user=user, defaults={"role": role, "joined_at": joined, "accepted_at": joined}
             )
-        sync_access(hub)
     return hub
 
 
@@ -2042,9 +1997,7 @@ def _restore(hub: Hub) -> str | None:
         hub_client.restore_hub(str(hub.id))
     except HubRefused as refused:
         if refused.code == "hub_purged":
-            purged = Hub.objects.filter(pk=hub.pk).update(status=Hub.Status.DELETED, pending_hub_call="")
-            if purged:
-                sync_access(Hub.objects.get(pk=hub.pk))
+            Hub.objects.filter(pk=hub.pk).update(status=Hub.Status.DELETED, pending_hub_call="")
             logger.warning("hubs.sync.purged hub=%s", hub.id)
             return None
         if refused.status != 404:
@@ -2177,7 +2130,6 @@ def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER) -> Counter:
             status=Hub.Status.DELETED, updated_at=now
         )
         if purged:
-            sync_access(Hub.objects.get(pk=hub_id))
             counts["purged"] += 1
     for subscription in Subscription.objects.filter(status=Subscription.Status.TRIALING, trial_end__lte=now):
         ended = Subscription.objects.filter(pk=subscription.pk, status=Subscription.Status.TRIALING).update(

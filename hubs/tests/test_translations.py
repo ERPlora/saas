@@ -89,6 +89,10 @@ NEW_MESSAGES = [
     "copy of the data announced at",
     "tries of the copy's mail",
     "The copy of the data could not be checked right now. Try again in a moment.",
+    # admin.py and templates/admin/hubs: «Hubs», which moved here with the jump's read (saas#199).
+    "Hub admin",
+    "Members",
+    "No hub has members yet.",
 ]
 
 

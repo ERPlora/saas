@@ -15,7 +15,6 @@ from django.core import mail
 from django.utils import timezone
 from live.errors import Conflict, NotFound, PermissionDenied
 
-from accounts.models import HubMembership
 from hubs import queries, services
 from hubs.models import BillingProfile, Hub, HubMember, HubOwnershipTransfer
 from hubs.schemas import (
@@ -26,7 +25,7 @@ from hubs.schemas import (
     MemberListIn,
     OwnershipTransferIn,
 )
-from hubs.tests.conftest import add_member, create_business, ctx_for, member_of
+from hubs.tests.conftest import add_member, create_business, ctx_for, member_of, role_on
 
 pytestmark = pytest.mark.django_db
 
@@ -154,12 +153,7 @@ class TestAcceptingSwapsTheTwoRolesAndNothingElse:
             "manager@example.com": "hub_manager",
             "employee@example.com": "hub_owner",
         }
-        assert (
-            HubMembership.objects.get(
-                user=team["employee"], hub_slug=business.slug
-            ).role
-            == "hub_owner"
-        )
+        assert role_on(team["employee"], business.slug) == "hub_owner"
         assert Hub.objects.get(pk=business.pk).state_version == before + 1
 
     def test_the_hub_gets_both_new_roles_once_saved(self, business, team, hub_double, django_capture_on_commit_callbacks):

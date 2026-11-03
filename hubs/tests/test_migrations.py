@@ -4,6 +4,7 @@ The round trip runs inside the test's transaction (Postgres DDL is transactional
 test database as it found it.
 """
 
+import functools
 import re
 from io import StringIO
 
@@ -76,8 +77,34 @@ class _SchemaEditor:
     connection = connection
 
 
+@functools.cache
+def _with_the_copy():
+    """The apps as they were the last time ``accounts.HubMembership`` was a model (``accounts/0011`` took it out)."""
+    return (
+        MigrationLoader(connection)
+        .project_state([("accounts", "0010_user_store_review_account"), ("hubs", "0024_support_views_the_daily_usage")])
+        .apps
+    )
+
+
+def _copy():
+    """``accounts.HubMembership``, what ``0006`` read and wrote."""
+    return _with_the_copy().get_model("accounts", "HubMembership")
+
+
 def _adopt():
-    _adoption().adopt_seed_hubs(global_apps, _SchemaEditor())
+    _adoption().adopt_seed_hubs(_with_the_copy(), _SchemaEditor())
+
+
+def _answered_members():
+    from hubs.models import HubMember
+
+    answered = HubMember.objects.filter(accepted_at__isnull=False)
+    return sorted(answered.values_list("hub__slug", "user_id", "role"))
+
+
+def _rows_of_the_copy():
+    return sorted(_copy().objects.values_list("hub_slug", "user_id", "role"))
 
 
 @pytest.mark.django_db
@@ -92,10 +119,8 @@ class TestTheSeedHubsBecomeBusinesses:
         }
 
     def _membership(self, user, slug, role, days_ago=0):
-        from accounts.models import HubMembership
-
-        return HubMembership.objects.create(
-            user=user, hub_slug=slug, role=role, created_at=timezone.now() - timedelta(days=days_ago)
+        return _copy().objects.create(
+            user_id=user.pk, hub_slug=slug, role=role, created_at=timezone.now() - timedelta(days=days_ago)
         )
 
     def test_a_seed_hub_becomes_an_active_ready_business_that_owes_the_hub_nothing(self, people, plans):
@@ -129,7 +154,6 @@ class TestTheSeedHubsBecomeBusinesses:
         assert not Subscription.objects.filter(hub=Hub.objects.get(slug="bar-pepe")).exists()
 
     def test_without_an_owner_the_oldest_member_becomes_it_in_both_tables(self, people):
-        from accounts.models import HubMembership
         from hubs.models import HubMember
 
         self._membership(people["ana"], "bar-pepe", "hub_employee", days_ago=1)
@@ -138,11 +162,10 @@ class TestTheSeedHubsBecomeBusinesses:
         _adopt()
 
         assert HubMember.objects.get(user=people["eva"]).role == "hub_owner"
-        assert HubMembership.objects.get(user=people["eva"]).role == "hub_owner"
+        assert _copy().objects.get(user_id=people["eva"].pk).role == "hub_owner"
         assert HubMember.objects.get(user=people["ana"]).role == "hub_employee"
 
     def test_two_owners_keep_the_oldest_and_the_other_becomes_admin(self, people):
-        from accounts.models import HubMembership
         from hubs.models import HubMember
 
         self._membership(people["olga"], "bar-pepe", "hub_owner", days_ago=3)
@@ -152,12 +175,11 @@ class TestTheSeedHubsBecomeBusinesses:
 
         assert HubMember.objects.get(user=people["olga"]).role == "hub_owner"
         assert HubMember.objects.get(user=people["eva"]).role == "hub_admin"
-        assert HubMembership.objects.get(user=people["eva"]).role == "hub_admin"
+        assert _copy().objects.get(user_id=people["eva"].pk).role == "hub_admin"
 
     @pytest.mark.parametrize("slug", ["www", "hubs", "-bad-", "xn--abc"])
     def test_a_slug_that_is_no_hubs_gives_no_business_and_its_dead_rows_go(self, people, slug):
         """``is_hub_slug`` already refused them at the jump: they opened nothing."""
-        from accounts.models import HubMembership
         from hubs.models import Hub
 
         self._membership(people["olga"], slug, "hub_owner")
@@ -165,33 +187,27 @@ class TestTheSeedHubsBecomeBusinesses:
         _adopt()
 
         assert not Hub.objects.exists()
-        assert not HubMembership.objects.exists()
+        assert not _copy().objects.exists()
 
     def test_a_business_of_the_panel_has_its_mirror_put_right(self, business, owner, people):
-        """A row written around ``sync_access`` (``demo_seed`` before L1-A2) is dropped, a missing one is added."""
-        from accounts.models import HubMembership
-        from hubs import queries
-
-        HubMembership.objects.filter(hub_slug=business.slug).delete()
+        """A row of somebody who is no member (``demo_seed`` before L1-A2) is dropped, a missing one is added."""
         self._membership(people["ana"], business.slug, "hub_admin")
 
         _adopt()
 
-        assert queries.verify_access_mirror() == []
-        assert list(HubMembership.objects.values_list("user_id", "role")) == [(owner.pk, "hub_owner")]
+        assert list(_copy().objects.values_list("user_id", "role")) == [(owner.pk, "hub_owner")]
 
     def test_a_deleted_business_keeps_no_access(self, business, owner):
-        from accounts.models import HubMembership
         from hubs.models import Hub
 
+        self._membership(owner, business.slug, "hub_owner")
         Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETING)
 
         _adopt()
 
-        assert not HubMembership.objects.exists()
+        assert not _copy().objects.exists()
 
     def test_after_it_both_tables_agree_and_running_it_again_changes_nothing(self, people, business):
-        from hubs import queries
         from hubs.models import Hub, HubMember
 
         self._membership(people["olga"], "bar-pepe", "hub_owner")
@@ -201,7 +217,7 @@ class TestTheSeedHubsBecomeBusinesses:
         counts = (Hub.objects.count(), HubMember.objects.count())
         _adopt()
 
-        assert queries.verify_access_mirror() == []
+        assert _rows_of_the_copy() == _answered_members()
         assert (Hub.objects.count(), HubMember.objects.count()) == counts == (3, 3)
 
     def test_the_adopted_hubs_are_not_provisioned_again(self, people, hub_double):
@@ -222,7 +238,7 @@ class TestTheSeedHubsBecomeBusinesses:
         _adopt()
         first = Hub.objects.get(slug="bar-pepe").pk
 
-        _adoption().keep_the_businesses(global_apps, _SchemaEditor())
+        _adoption().keep_the_businesses(_with_the_copy(), _SchemaEditor())
         _adopt()
 
         assert list(Hub.objects.values_list("pk", flat=True)) == [first]
@@ -234,16 +250,20 @@ def test_hubs_migrates_back_before_the_adoption_and_forward_again(django_user_mo
 
     The plans are in the database (0013), so the adoption gives the business its Free subscription. The whole
     round trip runs in the test's one transaction, where a deferred foreign key check would still be pending when
-    a later migration alters ``hubs_subscription``: the checks run at once, as each migration's own COMMIT does."""
-    from accounts.models import HubMembership
+    a later migration alters ``hubs_subscription``: the checks run at once, as each migration's own COMMIT does.
+
+    Going back also takes back ``accounts/0011``, which depends on ``hubs/0024`` and rebuilds the copy from the
+    members: the seed's row goes in after it, as the copy held it before the adoption."""
     from hubs.models import Hub
 
     olga = django_user_model.objects.create_user(email="olga@example.com", password=None)
-    HubMembership.objects.create(user=olga, hub_slug="bar-pepe", role="hub_owner")
     with connection.cursor() as cursor:
         cursor.execute("SET CONSTRAINTS ALL IMMEDIATE")
 
     call_command("migrate", "hubs", "0005", verbosity=0)
+    _copy().objects.create(user_id=olga.pk, hub_slug="bar-pepe", role="hub_owner")
+    with connection.cursor() as cursor:
+        cursor.execute("SET CONSTRAINTS ALL IMMEDIATE")
     call_command("migrate", "hubs", verbosity=0)
 
     hub = Hub.objects.get(slug="bar-pepe", status="active")

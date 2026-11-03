@@ -1452,6 +1452,26 @@ msgstr "intentos del correo de la copia"
 msgid "The copy of the data could not be checked right now. Try again in a moment."
 msgstr "No se ha podido consultar la copia de los datos ahora mismo. Vuelve a intentarlo en un momento."
 
+#: hubs/admin.py hubs/templates/admin/hubs/hubs.html
+msgid "Hub admin"
+msgstr "Admin del Hub"
+
+#: hubs/admin.py hubs/templates/admin/hubs/hubmember/change_list.html
+msgid "Hubs"
+msgstr "Hubs"
+
+#: hubs/templates/admin/hubs/hubs.html
+msgid "Hub"
+msgstr "Hub"
+
+#: hubs/templates/admin/hubs/hubs.html
+msgid "Members"
+msgstr "Miembros"
+
+#: hubs/templates/admin/hubs/hubs.html
+msgid "No hub has members yet."
+msgstr "Ningún hub tiene miembros todavía."
+
 #: countries.py
 msgid "Austria"
 msgstr "Austria"

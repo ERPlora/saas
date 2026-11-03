@@ -46,10 +46,11 @@ Solo lo que necesita el salto al Hub (PLAN-SAAS §2.1 y §3.1, pasos 4–6; PLAN
   con `hub-admin`); 401 `unauthorized`; 400 `invalid_code` (también si `hub` no es un slug válido,
   es reservado o es `hubs`, o si el código es de la otra audiencia) o `invalid_request`.
 - **«Abrir en el admin del Hub»** (admin del SaaS, ronda 13, PLAN §18.1.6): en cada fila de
-  `/admin/accounts/hubmembership/` y en la página «Hubs» (`/admin/accounts/hubs/`, un hub por fila).
-  `GET /admin/accounts/hubmembership/open-hub-admin/<slug>/` acuña un código `hub-admin` (solo
-  personal activo con rol de plataforma; sin pertenencia al hub) y responde el mismo formulario
-  auto-enviado: `POST` a `HUB_ADMIN_CALLBACK_URL` con `code` y `next=/admin/hub/<slug>/`. Con
+  `/admin/hubs/hubmember/` y en la página «Hubs» (`/admin/accounts/hubs/`, un hub por fila). El botón abre
+  `<HUB_ADMIN_ORIGIN>/auth/login?hub=<slug>&next=/admin/hub/<slug>/`: el Hub ata el salto al navegador con su cookie
+  `state` y lo manda a `/hub-login/?audience=hub-admin`, que acuña un código `hub-admin` (solo personal activo con rol
+  de plataforma; sin ser miembro del hub) y responde el mismo formulario auto-enviado: `POST` a
+  `HUB_ADMIN_CALLBACK_URL` con `code` y `next=/admin/hub/<slug>/`. Con
   `ACCOUNTS_MFA_ENABLED` activo exige además el segundo factor en la sesión (ver «Segundo factor (2FA)»).
 - Cierre de sesión: `DELETE /_allauth/browser/v1/auth/session` (allauth.headless; el menú de usuario y la
   tarjeta del lanzador), y después `/launch`.
@@ -473,8 +474,6 @@ Cada punto tiene su borrador de issue en `docs/issues/` (pendiente de abrir en `
 
 - Del segundo factor: «confiar en este navegador» 14 días (`MFA_TRUST`) y llaves de acceso
   (WebAuthn/passkeys). Sin borrador de issue todavía.
-- Que el salto lea `HubMember` y retirar `HubMembership(user, hub_slug, role)`, que desde L1-A2 es solo el
-  espejo de los miembros de cada negocio (`hubs/README.md`, «Pendiente»; `membership-by-slug.md`).
 - Que cinco contraseñas falsas de otra persona no dejen fuera al dueño de la cuenta durante 5 minutos
   (`login-lockout.md`; los límites ya están escritos y el WAF del ALB frena a los bots, «Protección contra bots») y la
   sesión que no se renueva con el uso (`remember-me-not-sliding.md`).

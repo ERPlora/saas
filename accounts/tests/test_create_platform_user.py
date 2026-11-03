@@ -11,8 +11,8 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.management import CommandError, call_command
+from accounts.tests.conftest import enter
 
-from accounts.models import HubMembership
 
 pytestmark = pytest.mark.django_db
 
@@ -127,7 +127,7 @@ def test_only_admin_and_support_are_platform_roles(role):
 
 
 def test_a_customer_of_a_hub_is_never_turned_into_platform_staff(ana):
-    HubMembership.objects.create(user=ana, hub_slug="a", role=HubMembership.Role.OWNER)
+    enter(ana, "a", "hub_owner")
 
     with pytest.raises(CommandError, match="customer"):
         run("ana@example.com", "--role", "support")
