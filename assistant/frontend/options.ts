@@ -1,15 +1,18 @@
 // The panel's configuration of the shared assistant (`@erplora/ui/components`: the Hub's same chat, with erplora.com's
-// own tools; plan 2026-10-30-asistente-saas §6, PLAN-SAAS §23): `configureAssistant(SAAS_ASSISTANT)` when the SPA boots
-// (frontend/main.ts), and in the tests that mount its pieces.
+// own tools; plan 2026-10-30-asistente-saas §6, PLAN-SAAS §23): `configureAssistant(panelAssistant(doc))` when the SPA
+// boots (frontend/main.ts), and `SAAS_ASSISTANT` in the tests that mount its pieces.
 // - A turn goes to `base.assistant.turn`'s route (base/api.py); the account's allowance and the report of an answer
 //   through base's operations. Where nothing is sold (the installed app's account surface) the session says so
 //   (base/surface.py): the route carries no `?surface=`, which would stick to the session and hide the Store from the
 //   web too.
 // - Whoever may ask the assistant sees its button (`assistant.ask`, every account's); nobody upgrades a plan from it:
 //   the account's 30 messages a month are no plan's (ASSISTANT-F26). Its microphone goes to `base.assistant.transcribe`
-//   (ASSISTANT-F21): the Hub's same dictation, counted in the account's month. «Read aloud» reads in the server voice
-//   the person chooses (`speak`: `base.assistant.speak`, ASSISTANT-F22, the mp3 of Azure AI Speech), and in the device's
-//   own when it fails. No approvals: the panel has no manager's approval (the Hub's).
+//   (ASSISTANT-F21): the Hub's same dictation, counted in the account's month. «Read aloud» reads in the device's voice;
+//   only when erplora.com has a voice of its own (`spa-config.assistantSpeech`, base/spa.py) does the chat offer the
+//   server voices and read in the one the person chooses (`speak`: `base.assistant.speak`, ASSISTANT-F22, the mp3 of
+//   Azure AI Speech), falling back to the device's when it fails. Without it (none since 2026-11-04) `speak` is absent:
+//   no choice of voice and no trip to the server per reading (`panelAssistant`). No approvals: the panel has no
+//   manager's approval (the Hub's).
 // - The panel's words (`saas.assistant.*`, frontend/locale): the verb of each write the assistant may run, by its
 //   operation (`card.operations.<app>.<entity>.<action>`, one per write: guardrail base/tests/
 //   test_assistant_panel_words.py), else by its action (`card.actions.<action>`), else the chat's «Do this»; and the
@@ -115,11 +118,11 @@ export async function speak(
   return file.blob;
 }
 
+/** The panel's chat, reading aloud in the device's voice (no `speak`: no server voice to offer). */
 export const SAAS_ASSISTANT: AssistantConfig = {
   turnUrl: '/api/assistant/turn',
   usage: (client) => client.api.call('base.assistant.usage', {}),
   transcribe: (client, clip) => client.api.call('base.assistant.transcribe', clip),
-  speak: (input) => speak(input),
   report: (client, report) => client.api.call('base.assistant.report', report),
   canUse: (session) => session.can(ASK),
   canUpgrade: () => false,
@@ -128,3 +131,19 @@ export const SAAS_ASSISTANT: AssistantConfig = {
   screenKey: panelScreenKey,
   spentNoteKey: 'saas.assistant.errors.quotaSpentAccount',
 };
+
+/** Whether erplora.com has a voice of its own to read the answers aloud (`spa-config.assistantSpeech`, base/spa.py):
+ *  only `true` says so; absent, anything else or an unreadable config is no voice of the server. */
+export function readsAloud(doc: Document = document): boolean {
+  try {
+    const raw = JSON.parse(doc.getElementById('spa-config')?.textContent ?? '{}') as { assistantSpeech?: unknown };
+    return raw.assistantSpeech === true;
+  } catch {
+    return false;
+  }
+}
+
+/** The panel's chat for this page: with the server's voice (`speak`) only when erplora.com has one. */
+export function panelAssistant(doc: Document = document): AssistantConfig {
+  return readsAloud(doc) ? { ...SAAS_ASSISTANT, speak: (input) => speak(input) } : SAAS_ASSISTANT;
+}

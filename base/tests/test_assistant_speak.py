@@ -147,6 +147,15 @@ class TestReadingAloud:
 
         assert month_of(account) == (0, 4)
 
+    def test_without_any_provider_of_the_voice_it_is_a_503_that_counts_nothing(self, signed_in, account, fake_provider):  # noqa: F811
+        """erplora.com as it is since 2026-11-04 (no voice of the server): the panel does not ask (``spa-config``
+        ``assistantSpeech`` false), and whoever asks all the same gets the 503 that sends the reading to the device."""
+        response = post(signed_in, {"text": "Hola"})
+
+        assert error(response) == (503, "assistant.speech_unavailable")
+        assert fake_provider.requests == []
+        assert month_of(account) == (0, 0)
+
     def test_without_an_active_key_of_azure_it_is_a_503_that_counts_nothing(self, signed_in, account, azure, settings):
         AIProviderCredential.objects.filter(provider__slug="azure-speech").update(is_active=False)
 

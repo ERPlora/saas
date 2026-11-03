@@ -91,7 +91,8 @@ Quién la usa:
   activado y con su clave.
 - La lectura en voz alta la hace el proveedor de voz (Azure AI Speech): tiene que estar dado de alta, activado y con su
   clave; su dirección es la de su región (Suecia Central si no se escribe otra). Sin él, el Hub y el panel leen con la
-  voz del dispositivo.
+  voz del dispositivo, y el panel no ofrece elegir voz ni pide nada a erplora.com para leer. De momento no se da de alta
+  (decisión del 2026-11-04): el panel lee siempre con la voz del dispositivo.
 - El cupo de mensajes de cada plan («Mensajes del asistente de IA al mes») se escribe en el admin de «Planes».
 
 ## Pantallas
@@ -131,13 +132,14 @@ dirección del negocio, por la dirección de la demo o por el correo de la cuent
 En todas las pantallas del panel de erplora.com con la sesión abierta, al final de la barra de arriba, el botón
 «Asistente» (las chispas), marcado mientras el panel está abierto. El panel se abre a la derecha: desde 768 px de ancho
 se acopla junto a la pantalla, que se estrecha y sigue funcionando; en el móvil la cubre sobre un velo. Arriba,
-«Asistente», «Voz» (la elección de la voz que lee las respuestas: las dos de su idioma, Ximena y Tristan o Ava y
-Andrew, y «Voz del dispositivo»; la primera, si no se elige otra), «Nueva conversación» (cuando ya hay una) y ×
+«Asistente», «Voz» (solo si erplora.com tiene voz propia, es decir, con el proveedor de voz dado de alta: la elección
+de la voz que lee las respuestas, las dos de su idioma, Ximena y Tristan o Ava y Andrew, y «Voz del dispositivo»; la
+primera, si no se elige otra), «Nueva conversación» (cuando ya hay una) y ×
 («Cerrar»); en medio, la conversación: sin ella, «Pregúntame
 por tus negocios, tus facturas o tu cuenta.» y tres atajos («¿Qué negocios tengo?», «¿Cuánto pago al mes?» y «¿Cómo
 creo un negocio?»); con ella, las burbujas de la persona y las respuestas, con «Ir a …» para las pantallas del panel
 que nombran, lo hecho bajo cada cambio («Hecho: …», «No se hizo, cancelado: …»), «Leer en voz alta» (con la voz
-elegida; si la de erplora.com no está disponible, con la del propio dispositivo) y «Denunciar un problema». Abajo, el aviso de cuántos mensajes quedan (desde el 80 % del mes), el clip de
+elegida; sin voz de erplora.com, o si falla, con la del propio dispositivo) y «Denunciar un problema». Abajo, el aviso de cuántos mensajes quedan (desde el 80 % del mes), el clip de
 adjuntar, el micrófono «Dictar por voz» («Detener la grabación» mientras graba; gira mientras transcribe) y la caja
 «Escribe un mensaje…» con «Enviar» («Parar» mientras contesta). Un cambio que pide el modelo abre
 encima la tarjeta «¿Ejecutar esta acción?» con «Cancelar» y «Ejecutar»; crear, borrar o cambiar la dirección de un
@@ -500,7 +502,7 @@ Estado: hecho
 Actor: el asistente del Hub de un negocio
 Pantalla: ninguna
 Pasos:
-1. Un Hub que quiera leer una respuesta con la voz de erplora.com le manda el texto, su idioma (español o inglés) y, si quiere, la voz: Ximena o Tristan en español, Ava o Andrew en inglés; sin voz, la de mujer del idioma (Ximena o Ava). El asistente del panel de erplora.com la pide para la cuenta con la voz elegida en su cabecera; el Hub de hoy no la pide y lee con la voz del propio dispositivo.
+1. Un Hub que quiera leer una respuesta con la voz de erplora.com le manda el texto, su idioma (español o inglés) y, si quiere, la voz: Ximena o Tristan en español, Ava o Andrew en inglés; sin voz, la de mujer del idioma (Ximena o Ava). El asistente del panel de erplora.com la pide para la cuenta con la voz elegida en su cabecera, solo cuando erplora.com tiene el proveedor de voz dado de alta; sin él no ofrece voces y lee con la del dispositivo, sin pedir nada. El Hub de hoy no la pide y lee con la voz del propio dispositivo.
 2. erplora.com pide el audio a Azure AI Speech, con sus voces de alta definición (como mucho los primeros 4.096 caracteres), y lo devuelve en MP3.
 3. Los caracteres leídos se cuentan en el mes del negocio (o de la cuenta); no gasta mensajes.
 Entra: el negocio, el texto, el idioma y la voz.
@@ -783,7 +785,13 @@ propio texto por `code`.
   da 503 `assistant.speech_unavailable` sin el proveedor de voz con clave y 503 `base.assistant_speech_failed`, que no nombra al
   proveedor. El frontend del panel la pide con `speak` de `assistant/frontend/options.ts` (`fetchFile` del SDK con
   POST, sesión y CSRF: el mp3 o el `ApiError` del sobre, y entonces lee el dispositivo); la CSP del panel deja
-  reproducir su `blob:` (`media-src`). e2e: `tests/e2e/panel/assistant-voice.spec.ts`.
+  reproducir su `blob:` (`media-src`). Ese `speak` solo se le da al chat (`panelAssistant`) cuando `spa-config`
+  trae `assistantSpeech: true` (`base/spa.py`: `assistant.queries.speech_provider()`, la misma regla que
+  `assistant.speech.connection`, leída en cada carga del shell, sin caché); sin él, `@erplora/ui` no pinta la elección
+  de voz y lee con el dispositivo sin pedir la ruta (decisión del 2026-11-04: de momento sin voz de servidor; el código
+  de Azure y el tipo de proveedor `azure_speech` se quedan, dormidos). e2e: `tests/e2e/panel/assistant-voice.spec.ts`
+  (sin proveedor: sin elección ni petición; `assistant_seed.py voice`, con un proveedor de clave inventada: la
+  elección y la petición).
 - **Cupo por cuenta**: `Caller(user_id=…)`, una fila `AssistantUsage(user, month)` (check «negocio, demo o cuenta»,
   única por cuenta y mes; migración `0003_account_usage`, que al volver atrás borra las filas de cuentas),
   `ASSISTANT_ACCOUNT_MESSAGES` (30).
