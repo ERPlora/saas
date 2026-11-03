@@ -70,12 +70,14 @@ const FISCAL_ROUTES = {
 
 /**
  * The panel's assistant (base/api.py, plan 2026-10-30-asistente-saas §6): the month's allowance of the account, the
- * report of an answer and its dictation. Its turn is no call of the client: the chat posts it to its own route and reads the stream.
+ * report of an answer, its dictation and the reading aloud of an answer (an mp3). Its turn is no call of the client:
+ * the chat posts it to its own route and reads the stream.
  */
 const ASSISTANT_ROUTES = {
   'base.assistant.usage': { method: 'get', path: '/api/assistant/usage' },
   'base.assistant.report': { method: 'post', path: '/api/assistant/report' },
   'base.assistant.transcribe': { method: 'post', path: '/api/assistant/transcribe' },
+  'base.assistant.speak': { method: 'post', path: '/api/assistant/speak' },
 };
 
 /** The operations of the Account page (accounts/api.py, plan 2026-10-13 L3-A): queries GET, commands POST. */
@@ -212,7 +214,7 @@ describe('OPERATION_ROUTES', () => {
     expect(api).toEqual(FISCAL_ROUTES);
   });
 
-  it("binds the panel's assistant's allowance, report and dictation to their routes, as base/api.py does", () => {
+  it("binds the panel's assistant's allowance, report, dictation and reading aloud to their routes, as base/api.py does", () => {
     expect(OPERATION_ROUTES).toMatchObject(ASSISTANT_ROUTES);
     const api = hubsRoutes(BASE_API);
     for (const [op, route] of Object.entries(ASSISTANT_ROUTES)) expect(api[op], op).toEqual(route);

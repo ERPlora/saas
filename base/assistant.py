@@ -31,7 +31,7 @@ from typing import Any
 
 from asgiref.sync import sync_to_async
 from django.conf import settings
-from django.http import HttpRequest, StreamingHttpResponse
+from django.http import HttpRequest, HttpResponse, StreamingHttpResponse
 from django.utils import translation
 from django.utils.translation import get_language_info, gettext
 from live import assistant as shared
@@ -446,6 +446,28 @@ def dictation_refusal(refused: gateway.Refused) -> OperationError:
     return OperationError(
         gettext("The audio could not be transcribed: try again."), code="base.assistant_transcribe_failed", status=503
     )
+
+
+def speech_refusal(refused: gateway.Refused) -> OperationError:
+    """A reading aloud the gateway did not make, in the panel's words: 503 ``assistant.speech_unavailable`` without
+    Azure's key, else a 503 that names neither the provider nor its answer. Either way the panel reads with the
+    device's voice."""
+    if refused.code == "assistant.speech_unavailable":
+        return OperationError(gettext("Reading aloud is not available right now."), code=refused.code, status=503)
+    return OperationError(
+        gettext("The answer could not be read aloud: try again."), code="base.assistant_speech_failed", status=503
+    )
+
+
+async def spoken(request: HttpRequest, data: Any, language: str) -> HttpResponse:
+    """The mp3 of what ``base.assistant.speak`` made ready, in ``language``, for the session's account: the gateway's
+    ``speech``, which waits on Azure with no transaction open and counts the characters in the account's month."""
+    caller = Caller(user_id=request.user.pk)
+    try:
+        audio = await gateway_door.speech(caller, data.model_copy(update={"language": language}))
+    except gateway.Refused as refused:
+        raise speech_refusal(refused) from None
+    return HttpResponse(audio, content_type="audio/mpeg")
 
 
 async def transcribed(request: HttpRequest, data: Any, language: str) -> dict:

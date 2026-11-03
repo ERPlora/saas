@@ -17,6 +17,7 @@ def test_me_is_bound_to_session_me():
         "/assistant/usage",
         "/assistant/report",
         "/assistant/transcribe",
+        "/assistant/speak",
     }
     path, view = "/me", router.path_operations["/me"]
     [route] = view.operations
