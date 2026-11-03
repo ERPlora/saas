@@ -297,6 +297,17 @@ class TestAMailThatDoesNotLeave:
         assert "Has usado los 30 mensajes" in mail.outbox[0].body
         assert AssistantUsage.objects.get(user=account).near_warned_at is None
 
+    def test_a_last_mail_that_does_not_leave_keeps_the_mark_of_the_first(self, account, turn, mail_down):
+        """Only its own mark goes back: the «messages left» mail already sent that month is not sent again."""
+        first = timezone.now() - timedelta(days=2)
+        spent(account, 29, near_warned_at=first)
+
+        turn(account)
+
+        assert mail.outbox == []
+        row = AssistantUsage.objects.get(user=account)
+        assert (row.near_warned_at, row.spent_warned_at) == (first, None)
+
     def test_a_refused_turn_tries_the_last_one_again(self, account, turn, mail_down):
         spent(account, 29, near_warned_at=timezone.now())
         turn(account)
