@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:27d29bc9a6ef56e6c1e013907b44e348dc52ba0f3c98f9b9d8f392450a44c0a0 -->
+<!-- generated from WORKBOOK.md sha256:f653ff753cce1e6d18773944d4817db640de36f2ab5b41e1200c782b0dbf3da8 -->
 
 ## What it is for and who uses it
 
@@ -512,7 +512,7 @@ Steps:
 3. erplora.com searches erplora.com's public help, the documentation of each app of the Hub that is in the store, the user part of the panel's manuals (the account, the businesses, billing, the store and the website) and the plans on sale with their prices and what each one includes. In the account opened from the app it does not search the plans nor the manuals of billing, the store and the web.
 4. It returns up to 8 excerpts (12 at most, even if the model asks for more), the closest to the question, in the person's language; if fewer than three in their language really answer, the English ones join. Each excerpt says where it comes from and under which headings.
 5. The model answers with what those excerpts say and cites where they come from; a price or what a plan includes always comes from the plans on sale, never from memory.
-6. The documentation is brought up to date with each indexing run: a change in the help, in a manual, in an app's documentation or in a plan reaches the assistant with the next run.
+6. The documentation brings itself up to date every day at 06:50 UTC: a change in the help, in a manual, in an app's documentation or in a plan reaches the assistant with the next run, and the ERPlora team can launch it by hand to bring it forward.
 In: the question (up to 500 characters) and how many excerpts the model wants.
 Out: the excerpts with their source, where they come from, their headings, their text, their language and how close they are to the question; of the question only its fingerprint stays in the cache for a day (the same question again is not computed anew).
 If it fails: without the provider of the fingerprints configured, or if it fails, the search answers that the documentation cannot be searched now and the model tells the person; an account without the permission to ask the assistant does not search; while the documentation has not been indexed, it finds nothing and the model says it does not know instead of making it up.
