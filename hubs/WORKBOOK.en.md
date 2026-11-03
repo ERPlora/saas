@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:153bd677ea0656dfad1941196cbc6a237a8b5291d2e83970e36e2f2236e5e804 -->
+<!-- generated from WORKBOOK.md sha256:8840f75553eaf600b370b44fb413eb0daabbf0374003a4d15e303a43f40081ba -->
 
 ## What it is for and who it is for
 
@@ -472,9 +472,10 @@ Steps:
 2. It keeps one day per business; if it collects a day already kept again, it replaces the figures only if they changed, and tells that business's page.
 3. A day that was missed is collected later, asking for it by its date.
 4. ERPlora's team sees each day in its admin, in "Daily usages": besides the above, "Requests", "Peak connections" and "Requests with no room". On erplora.com they are the admin's only: the business's panel does not show them (HUBS-F21).
+5. At the end, even if the service did not answer, it deletes the days older than 400 days (about 13 months), of every business: enough stay to compare a day with the same one the year before.
 In: the night's measurement, page by page.
-Out: the usage of each business and day. Records `hubs.business.usage_collected`.
-If it fails: if the service does not answer or refuses, the pass ends with an error and alerts; a broken row does not stop the others; a business erplora.com did not sell is noted without an error. Two passes at once do not step on each other. A figure the service did not measure, or does not send yet, is kept without a figure and the admin says "—", never a 0.
+Out: the usage of each business and day, for 400 days. Records `hubs.business.usage_collected` and, when it deletes days, `hubs.usage.pruned`.
+If it fails: if the service does not answer or refuses, the pass ends with an error and alerts; a broken row does not stop the others; a business erplora.com did not sell is noted without an error. Two passes at once do not step on each other. A figure the service did not measure, or does not send yet, is kept without a figure and the admin says "—", never a 0. If it cannot delete the old days, what it collected stays and the pass ends with an error and alerts; it deletes them the next night.
 Involved: the business (BASE-F40: measures its usage and serves it)
 
 ### HUBS-F23 ERPlora's staff acting on a business from the admin

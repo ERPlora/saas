@@ -240,9 +240,11 @@ Parte 5 de 5: cada flujo `hecho` contra su código, con mutantes ejecutados; los
 
 - **F18, F20, F21 y F22**, `hecho`: la copia de los datos al recibir la baja y la medición nocturna llegaron con la
   tenencia S2b del Hub (hub#580, en prod el 2026-11-01) sobre lo que ya hacía el SaaS (saas#168). Ojo: la pasada
-  nocturna del SaaS (`hub-usage-daily`) sigue apagada en prod (ver «Pendiente tras L4-A»).
+  nocturna del SaaS (`hub-usage-daily`) sigue apagada en prod (aws#35, ver «Pendiente tras L4-A»).
 - **F32 y F34**, `hecho`: lo que les faltaba era del Hub y ya lo aplicaba (APP-BASE-3, -4 y -5; arriba, en APP-HUBS-4).
 - **F17**, `descartado` en esta versión (saas#195): fuera de la fase 1, llega con sus tres piezas.
+- **La poda de `HubUsageDaily`** que PLAN-SAAS §1.1 dejaba a `hubs` y no existía: `hubs.usage.prune`, al final de
+  `collect_hub_usage` (arriba, en L4-A, y PLAN-SAAS §27).
 - Lo que queda fuera, con su issue: `WORKBOOK.md`, «Lo que queda fuera».
 
 ## Pendiente (lotes siguientes)
@@ -253,7 +255,7 @@ Parte 5 de 5: cada flujo `hecho` contra su código, con mutantes ejecutados; los
   `HubMember` (`create_platform_user` ya lo lee por `hubs.business.list`, W11b: solo le sobra mirar el espejo); (3) `queries.slug_taken`/`free_slug` dejan de mirar el espejo; (4) se
   quitan `sync_access`, `verify_access_mirror`, el check `hubs.W001` y el guardarraíl; (5) migración que borra
   `HubMembership` (y su inline y su admin). `tests/e2e/panel/panel_seed.py` escribe hoy el espejo a mano: que llame a
-  `sync_access` (carril front). Sigue pendiente el 2026-11-01: CLOSE-HUBS lo propone como tarea aparte.
+  `sync_access` (carril front). Sigue pendiente: saas#199.
 - El Hub (carril Hub): verificar la v2 y los dos secretos en su `/internal`, firmar con v2 su canje, y adoptar por
   `id` los negocios que le llegan en la foto (los `a`/`b` adoptados aquí traen un UUID nuevo). Cuando los dos lados
   firmen v2, dejar de aceptar llamadas solo v1. `aws-next`: añadir `INTERNAL_SHARED_SECRET_PREVIOUS` (vacío) al
@@ -296,7 +298,12 @@ Parte 5 de 5: cada flujo `hecho` contra su código, con mutantes ejecutados; los
   tres últimas incluidas, no escribe ni avisa.
 - **`manage.py collect_hub_usage [--day AAAA-MM-DD]`** (`saas-cron`, cada noche): por defecto, el día de **ayer en
   UTC**; `--day` recoge otro (relleno), nunca uno que no ha acabado en UTC. Lee todas las páginas de
-  `GET /internal/usage`; una fila rota o que falla no para la pasada. Lock `hashtext('erplora.saas.collect_hub_usage')`
+  `GET /internal/usage`; una fila rota o que falla no para la pasada. Termina, con el Hub caído o sin él, olvidando los
+  días de más de `services.USAGE_RETENTION_DAYS` (400, unos 13 meses: el reloj del producto viejo y el rango del mercado;
+  más que los 365 que lee `hubs.usage.series`, y un test los ata) con la operación de sistema `hubs.usage.prune`, que
+  conserva el día justo en el corte y anota `hubs.usage.pruned` si borró algo. Sin programación propia en `aws`; si falla
+  (`services.prune_usage`, log `hubs.usage.prune_failed`), lo recogido se queda y se dice, y la pasada termina con error.
+  Lock `hashtext('erplora.saas.collect_hub_usage')`
   (`services.run_exclusively`: una segunda pasada sale al momento). Sale con error **después** de la pasada si el
   Hub no contestó o se negó (`unreachable`, `refused`), si respondió fuera del contrato (`invalid`: fila, página,
   otro día o un cursor repetido) o si una fila reventó (`failed`). Un hub que el SaaS no vendió (el de plataforma,
@@ -373,12 +380,9 @@ X-Erplora-Timestamp, X-Erplora-Signature (v1) y X-Erplora-Signature-V2 (cubre m�
   cada noche a las 00:15 UTC (`base/usage.py`; `db_bytes` es el tamaño de la BD propia del negocio).
 - **`aws`**: `collect_hub_usage` está programado en `stacks/prod/scheduler.tf` (`hub-usage-daily`, 01:15 UTC), pero
   apagado en prod desde el 2026-10-15 (`schedules_disabled`, mientras el Hub no servía su medición): el 2026-11-01
-  sigue `DISABLED`; encenderlo es de `aws` (CLOSE-HUBS lo deja propuesto).
+  sigue `DISABLED` (aws#35): mientras tanto no se recoge ni se poda nada.
 - La gráfica del panel con `hubs.usage.series` (bloque 8 de PLAN-SAAS; no está en la maqueta): fuera de esta versión,
   ningún flujo la pide (HUBS-F21 enseña la última noche medida).
-- La poda de `HubUsageDaily` vieja que PLAN-SAAS §1.1 («Limpiezas y podas diarias») deja a `hubs` no existe: las filas solo
-  se van con su negocio (`on_delete=CASCADE`). Contradicción abierta en la ronda de cierre (PLAN-SAAS §27); CLOSE-HUBS la
-  propone como tarea aparte.
 
 ## Lo que añadió la tenencia (2026-10-30): alta y demo asíncronas, y las copias de los datos
 

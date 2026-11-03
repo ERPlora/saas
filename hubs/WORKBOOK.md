@@ -506,9 +506,10 @@ Pasos:
 2. Guarda un día por negocio; si vuelve a recoger un día ya guardado, sustituye las cifras solo si cambiaron, y avisa a la página de ese negocio.
 3. Un día que se perdió se recoge después, pidiéndolo por su fecha.
 4. El equipo de ERPlora ve cada día en su admin, en «Usos diarios»: además de lo anterior, «Peticiones», «Pico de conexiones» y «Peticiones sin hueco». En erplora.com son solo del admin: el panel del negocio no las enseña (HUBS-F21).
+5. Al terminar, aunque el servicio no haya contestado, borra los días de más de 400 días (unos 13 meses), de todos los negocios: siguen los suficientes para comparar un día con el mismo del año anterior.
 Entra: la medición de la noche, página a página.
-Sale: el uso de cada negocio y día. Anota `hubs.business.usage_collected`.
-Si falla: si el servicio no contesta o se niega, la pasada termina con error y avisa; una fila rota no para las demás; un negocio que erplora.com no vendió se apunta sin error. Dos pasadas a la vez no se pisan. Una cifra que el servicio no midió, o que aún no manda, se guarda sin cifra y el admin dice «—», nunca un 0.
+Sale: el uso de cada negocio y día, durante 400 días. Anota `hubs.business.usage_collected` y, si borra días, `hubs.usage.pruned`.
+Si falla: si el servicio no contesta o se niega, la pasada termina con error y avisa; una fila rota no para las demás; un negocio que erplora.com no vendió se apunta sin error. Dos pasadas a la vez no se pisan. Una cifra que el servicio no midió, o que aún no manda, se guarda sin cifra y el admin dice «—», nunca un 0. Si no puede borrar los días viejos, lo recogido se queda y la pasada termina con error y avisa; los borra la noche siguiente.
 Implicados: el negocio (BASE-F40: mide su uso y lo sirve)
 
 ### HUBS-F23 Actuar el personal de ERPlora sobre un negocio desde el admin
@@ -809,7 +810,9 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   («Ejecutó «…»») cada fila sobre la que corrieron. Tests: `hubs/tests/test_admin.py::TestTheTrail`.
 - Uso (F21, F22): el Hub sirve `GET /internal/usage` desde la tenencia S2b (hub#580; contrato en `hubs/README.md`):
   `db_bytes` es el tamaño de la BD propia de cada negocio. `collect_hub_usage` lo recoge cada noche (`hub-usage-daily`);
-  sin ninguna noche medida, la tarjeta dice «Sin datos todavía…». La copia de los datos de F18 y F20 la hace el Hub al
+  sin ninguna noche medida, la tarjeta dice «Sin datos todavía…». Esa pasada termina con `hubs.usage.prune`
+  (`services.USAGE_RETENTION_DAYS`, 400 días; el motivo, junto a la constante y en PLAN-SAAS §27), sin programación
+  propia y sin que su fallo se coma la recogida (`services.prune_usage`). La copia de los datos de F18 y F20 la hace el Hub al
   recibir la baja (hub#580) y el SaaS la enseña y la descarga con `GET /internal/hubs/{id}/dumps` (saas#168).
 - Dominio propio (F17, `descartado` en esta versión, saas#195): decisión de mercado de APP-HUBS-2 (PLAN-SAAS §8, ronda
   2026-10-22; ADR-0502): se mantiene solo para la web pública (`website`) y en planes con `includes_custom_domain`, y
@@ -875,6 +878,9 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   (erplora.com, la entrada de ERPlora y el Hub) — saas#195.
 - **Desde el Hub, «Mejorar plan» y «erplora.com» piden volver a entrar con la cuenta si el navegador no tenía la sesión
   abierta** (BASE-F11 del Hub, cruza esta app) — saas#190.
+- **En producción la tarjeta «Uso» de cada negocio dice siempre «Sin datos todavía»**: la pasada nocturna sigue apagada
+  en prod (HUBS-F22; PLAN-SAAS §27) — aws#35.
+- **erplora.com guarda dos veces quién está en cada negocio** (el espejo `accounts.HubMembership`) — saas#199.
 
 ## Lo que NO hace, a propósito
 
