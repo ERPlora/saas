@@ -27,7 +27,7 @@ from billing import queries
 from billing.models import Invoice
 from billing.schemas import HubIn, PlanCancelPreviewOut
 from billing.tests.conftest import ctx_for, pay
-from hubs.models import HubMember, Plan, Subscription
+from hubs.models import HubMember, Plan, Subscription, SubscriptionItem
 from hubs.queries import free_plan
 from hubs.tests.conftest import add_member
 
@@ -69,6 +69,23 @@ def unpaid(hub, net_cents=2999, tax_cents=630, currency="EUR"):
         total_cents=net_cents + tax_cents,
         currency=currency,
         billed_at=timezone.now(),
+    )
+
+
+def settled(hub, net_cents=2999, tax_cents=630):
+    """An invoice of ``hub`` already paid, numbered as it is once paid."""
+    return Invoice.objects.create(
+        hub=hub,
+        kind=Invoice.Kind.INVOICE,
+        stripe_invoice_id=f"in_{hub.pk.hex[:8]}",
+        payment_status=Invoice.PaymentStatus.PAID,
+        paid_at=timezone.now(),
+        number="ERP-2026-00001",
+        issued_on=timezone.localdate(),
+        net_cents=net_cents,
+        tax_cents=tax_cents,
+        total_cents=net_cents + tax_cents,
+        billed_at=timezone.now() - dt.timedelta(days=1),
     )
 
 
@@ -127,6 +144,25 @@ class TestWhatCancellingWillDo:
         assert (answer["free_users"], answer["free_devices"]) == (free.max_users or None, free.max_devices or None)
         assert answer["people"] == 3  # the owner, a member and a live invitation, as Businesses counts its seats
 
+    def test_a_free_plan_without_a_limit_says_none_not_zero(self, shop, owner):
+        """0 on a plan is «no limit» (``Plan.max_users``): the card leaves it off rather than say «0 people»."""
+        paid = pay(shop)
+        Plan.objects.filter(pk=free_plan().pk).update(max_users=0, max_devices=0)
+
+        answer = preview(owner, paid)
+
+        assert (answer["free_users"], answer["free_devices"]) == (None, None)
+
+    def test_a_module_already_ended_does_not_turn_off_again(self, shop, owner, inventory):
+        """A module cancelled on its own (BILLING-F21) ended on its day: it is not among those the plan takes."""
+        Module.objects.create(slug="reports", tier=Module.Tier.ENTERPRISE, price_monthly_cents=500, price_annual_cents=5000)
+        paid = pay(shop, modules=("inventory", "reports"))
+        SubscriptionItem.objects.filter(subscription__hub=paid, module_slug="reports").update(
+            valid_until=timezone.now() - dt.timedelta(minutes=1)
+        )
+
+        assert preview(owner, paid)["modules"] == "inventory"
+
     def test_an_unpaid_invoice_is_said_with_what_is_owed(self, shop, owner):
         paid = pay(shop, status="past_due")
         unpaid(paid, net_cents=2999, tax_cents=630)
@@ -139,6 +175,29 @@ class TestWhatCancellingWillDo:
         answer = preview(owner, pay(shop))
 
         assert answer["unpaid_cents"] is None
+
+    def test_a_paid_invoice_is_not_owed(self, shop, owner):
+        paid = pay(shop)
+        settled(paid)
+
+        assert preview(owner, paid)["unpaid_cents"] is None
+
+    def test_a_credit_note_is_not_owed(self, shop, owner):
+        """A rectifying invoice is born «not collected» (``Invoice.payment_status``) but gives money back: never a debt."""
+        paid = pay(shop)
+        Invoice.objects.create(
+            hub=paid,
+            kind=Invoice.Kind.CREDIT_NOTE,
+            rectifies=settled(paid),
+            stripe_invoice_id=f"in_{paid.pk.hex[:8]}",
+            stripe_source_id="cn_1",
+            net_cents=-2999,
+            tax_cents=-630,
+            total_cents=-3629,
+            billed_at=timezone.now(),
+        )
+
+        assert preview(owner, paid)["unpaid_cents"] is None
 
     def test_a_plan_already_cancelled_still_says_until_when(self, shop, owner):
         """Cancelling again changes nothing (BILLING-F13): its preview says the same end."""
@@ -189,6 +248,30 @@ class TestItRefusesWhatTheCancelRefuses:
         new_owner = transferred(paid, owner, make_user)
 
         refused("billing.payer_required", lambda: preview(new_owner, paid))
+
+    def test_a_plan_still_paid_with_the_previous_owners_card_is_refused_too(self, shop, owner, make_user):
+        """The new owner already says who pays, but the plan is still billed to the previous owner's customer: as
+        the cancel, it is kept with their card first («Keep it with my card», HUBS-F28)."""
+        from billing.tests.test_checkout import transferred
+        from hubs import services as hub_services
+        from hubs.schemas import BillingProfileIn
+        from hubs.tests.conftest import ctx_for as hub_ctx
+
+        paid = pay(shop)
+        new_owner = transferred(paid, owner, make_user)
+        hub_services.billing_profile_update(
+            hub_ctx(new_owner),
+            BillingProfileIn(hub_id=paid.id, billing_name="Nuevo SL", billing_country="ES", billing_postal_code="28002"),
+        )
+
+        refused("billing.payer_required", lambda: preview(new_owner, paid))
+
+    @pytest.mark.parametrize("status", ["canceled", "incomplete_expired"])
+    def test_a_subscription_that_already_ended_has_nothing_to_cancel(self, shop, owner, status):
+        paid = pay(shop)
+        Subscription.objects.filter(hub=paid).update(status=status)
+
+        refused("billing.nothing_to_cancel", lambda: preview(owner, paid))
 
 
 class TestTheCardOfTheCancel:
