@@ -94,7 +94,6 @@
   white-space: pre;
 }
 .ep-pricing-card__cta { margin-top: 1.4rem; }
-.ep-pricing-card__cta ion-button { width: 100%; }
 @media (prefers-reduced-motion: reduce) {
   .ep-pricing-card:hover { transform: none; }
 }

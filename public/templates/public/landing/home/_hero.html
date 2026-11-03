@@ -28,18 +28,18 @@
             {% endblocktrans %}
           </p>
           <div class="mt-8 flex flex-wrap gap-3">
-            <ion-button href="/launch" size="large">
+            <a class="ep-button ep-button--large" href="/launch">
               {% trans "Start free" %}
-              <span slot="end">{% icon "lucide:arrow-right" %}</span>
-            </ion-button>
-            <ion-button fill="outline" size="large" href="{% url 'public:demo' %}">
-              <span slot="start">{% icon "lucide:sparkles" %}</span>
+              <span class="ep-button__end">{% icon "lucide:arrow-right" %}</span>
+            </a>
+            <a class="ep-button ep-button--outline ep-button--large" href="{% url 'public:demo' %}">
+              <span class="ep-button__start">{% icon "lucide:sparkles" %}</span>
               {% trans "Try the demo" %}
-            </ion-button>
-            <ion-button fill="clear" size="large" href="{% url 'public:downloads' %}">
-              <span slot="start">{% icon "lucide:download" %}</span>
+            </a>
+            <a class="ep-button ep-button--clear ep-button--large" href="{% url 'public:downloads' %}">
+              <span class="ep-button__start">{% icon "lucide:download" %}</span>
               {% trans "Downloads" %}
-            </ion-button>
+            </a>
           </div>
 
           <div class="mt-12 grid grid-cols-3 gap-6 max-w-lg">

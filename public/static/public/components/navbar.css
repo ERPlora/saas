@@ -212,7 +212,7 @@
     border-top: 1px solid var(--ep-border, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.12));
   }
   /* 3rem, not the 2.75rem floor: a subpixel measurement mid-slide must not drop under 44 px. */
-  .ep-navbar__actions ion-button {
+  .ep-navbar__actions .ep-button {
     width: 100%;
     min-height: 3rem;
     margin: 0;

@@ -30,15 +30,15 @@
       </div>
       <div class="ep-hero__actions">
         {% if user.is_authenticated %}
-        <ion-button href="{{ launcher }}">
+        <a class="ep-button" href="{{ launcher }}">
           {% trans "Go to dashboard" %}
-          <span slot="end">{% icon "arrow-forward-outline" %}</span>
-        </ion-button>
+          <span class="ep-button__end">{% icon "arrow-forward-outline" %}</span>
+        </a>
         {% else %}
-        <ion-button href="/launch">
-          <span slot="start">{% icon "rocket-outline" %}</span>
+        <a class="ep-button" href="/launch">
+          <span class="ep-button__start">{% icon "rocket-outline" %}</span>
           {% trans "Start free" %}
-        </ion-button>
+        </a>
         {% endif %}
       </div>
     </header>

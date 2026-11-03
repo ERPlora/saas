@@ -153,7 +153,7 @@ test('PUBLIC-G39 G40 G41 a message from Collaborate reaches support on its topic
 
   // From Collaborate, its button opens the form on its topic (G40).
   await page.goto('/collaborate/');
-  await page.locator('ion-button[href="/contact/?subject=collaborate"]').first().click();
+  await page.locator('a.ep-button[href="/contact/?subject=collaborate"]').first().click();
   await expect(page).toHaveURL(/\/contact\/\?subject=collaborate$/);
 
   await fill(page, 'first_name', 'Anne');
@@ -350,7 +350,7 @@ test('PUBLIC-G47 from the installed app, the terms open in app mode and «Back»
   await expect(page).toHaveURL(/\/legal\/terms\/\?surface=desktop$/);
   await expect(page.locator('nav.ep-navbar')).toHaveCount(0);
   await expect(page.locator('footer.ep-footer')).toHaveCount(0);
-  await expect(page.locator('ion-button[href="/launch"]')).toHaveCount(0);
+  await expect(page.locator('[href="/launch"]')).toHaveCount(0);
 
   // With the page's script run (a module: it runs before DOMContentLoaded), «Back» goes back through the history to
   // the screen that opened the text. Its link leads to the same address (saas#236), so only the history tells the

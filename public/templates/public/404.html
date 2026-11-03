@@ -15,6 +15,6 @@
       <h1 class="ep-section-title">{% trans "Page not found" %}</h1>
       <p class="ep-section-sub">{% trans "The page you are looking for does not exist or has moved." %}</p>
     </header>
-    <ion-button href="{% url 'home' %}">{% trans "Back to the home page" %}</ion-button>
+    <a class="ep-button" href="{% url 'home' %}">{% trans "Back to the home page" %}</a>
   </section>
 {% endblock %}

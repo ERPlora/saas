@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:f1e38da82a4ca389a68b487f8c5a395144a04351dba9349aafde72067aeb1f33 -->
+<!-- generated from WORKBOOK.md sha256:7a545c3661f23957fdd0e44cf570cdf027a5b7c661bb40ae1eacceb4c7e0e354 -->
 
 ## What it is for and who it is for
 
@@ -311,7 +311,7 @@ Status: done
 Actor: visitor
 Screen: Home, Plans and prices, Plan detail, Industries, Features, Compliance
 Steps:
-1. The person presses "Start free" (header, home, industries, features), "Get started" (paid plan cards) or "Get Started" (plan detail) on any page.
+1. The person presses "Start free" (header, home, industries, features), "Get started" (paid plan cards) or "Get Started" (plan detail) on any page. The button responds from the first moment, even if the page has not finished loading, and can be opened in another tab: it is a link, like every button of the public web that leads to another page.
 2. They reach erplora.com's sign-in screen, where the account is also created.
 3. They create the account and their business, which is born on the Free plan; the paid plan is chosen afterwards, from the panel.
 In: nothing: the button carries no parameters.

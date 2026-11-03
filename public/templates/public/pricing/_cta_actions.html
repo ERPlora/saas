@@ -1,10 +1,10 @@
 {% load i18n icons %}
 {% comment %} The actions of the closing band of /pricing/ (on the solid band an outline button turns white). {% endcomment %}
-<ion-button size="large" color="light" href="/launch">
+<a class="ep-button ep-button--large ep-button--light" href="/launch">
   {% trans "Start free" %}
-  <span slot="end">{% icon "lucide:arrow-right" %}</span>
-</ion-button>
-<ion-button size="large" fill="outline" href="/launch">
-  <span slot="start">{% icon "lucide:log-in" %}</span>
+  <span class="ep-button__end">{% icon "lucide:arrow-right" %}</span>
+</a>
+<a class="ep-button ep-button--outline ep-button--large" href="/launch">
+  <span class="ep-button__start">{% icon "lucide:log-in" %}</span>
   {% trans "Sign in" %}
-</ion-button>
+</a>

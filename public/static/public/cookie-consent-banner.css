@@ -52,7 +52,8 @@
   gap: 0.375rem;
   flex: 0 0 auto;
 }
-.cookie-consent-actions ion-button {
+.cookie-consent-actions ion-button,
+.cookie-consent-actions .ep-button {
   min-height: 2.75rem;
   height: 2.75rem;
   margin: 0;
@@ -73,7 +74,8 @@
   .cookie-consent-actions {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-  .cookie-consent-actions ion-button {
+  .cookie-consent-actions ion-button,
+  .cookie-consent-actions .ep-button {
     width: 100%;
     --padding-start: 0.375rem;
     --padding-end: 0.375rem;

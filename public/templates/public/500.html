@@ -20,7 +20,7 @@
         <h1 class="ep-section-title">{% trans "Something went wrong" %}</h1>
         <p class="ep-section-sub">{% trans "Something went wrong on our side. Please try again in a few minutes." %}</p>
       </header>
-      <ion-button href="{% url 'home' %}">{% trans "Back to the home page" %}</ion-button>
+      <a class="ep-button" href="{% url 'home' %}">{% trans "Back to the home page" %}</a>
     </section>
   </main>
 {% endblock %}

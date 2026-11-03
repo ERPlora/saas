@@ -1,0 +1,165 @@
+/* ep-button: a button that leads to another page, as a real link (saas#238, PUBLIC-F11). An ion-button is no link
+ * until frontend/public.ts has defined it: pressed before that (a slow connection) or without the script, nothing
+ * happened. This one leads on from the first paint, and middle-click and «open in a new tab» come with it. It looks
+ * like the ion-button it replaced, in iOS mode and with what public-landing.css gives the site's buttons, and takes
+ * the same custom properties, so a rule that restyles one (the solid band, the cookie notice) only has to name it.
+ * What does not navigate (a form's submit, Accept, Decline) stays an ion-button. */
+.ep-button {
+  --background: var(--ion-color-primary, #1496d6);
+  --background-activated: var(--ion-color-primary-shade, #1284bc);
+  --background-activated-opacity: 1;
+  --background-focused: var(--ion-color-primary-shade, #1284bc);
+  --background-focused-opacity: 1;
+  --background-hover: var(--ion-color-primary-tint, #2ca1da);
+  --background-hover-opacity: 1;
+  --border-color: currentColor;
+  --border-radius: 14px;
+  --border-style: none;
+  --border-width: 0;
+  --color: var(--ion-color-primary-contrast, #fff);
+  --color-activated: var(--color);
+  --color-focused: var(--color);
+  --color-hover: var(--color);
+  --padding-bottom: 13px;
+  --padding-end: 1em;
+  --padding-start: 1em;
+  --padding-top: 13px;
+  position: relative;
+  z-index: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 3.1em;
+  padding-block: var(--padding-top) var(--padding-bottom);
+  padding-inline: var(--padding-start) var(--padding-end);
+  overflow: hidden;
+  border-color: var(--border-color);
+  border-radius: var(--border-radius);
+  border-style: var(--border-style);
+  border-width: var(--border-width);
+  background: var(--background);
+  color: var(--color);
+  cursor: pointer;
+  font-family: var(--ion-font-family, inherit);
+  font-kerning: none;
+  font-size: min(1rem, 48px);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  text-align: center;
+  text-decoration: none;
+  text-transform: none;
+  vertical-align: top;
+  vertical-align: -webkit-baseline-middle;
+  white-space: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  transition: background-color, opacity 100ms linear;
+}
+/* Pressing, hovering and focus tint this layer, between the background and the text. */
+.ep-button::after {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  content: '';
+  opacity: 0;
+}
+@media (any-hover: hover) {
+  .ep-button:hover {
+    color: var(--color-hover);
+  }
+  .ep-button:hover::after {
+    background: var(--background-hover);
+    opacity: var(--background-hover-opacity);
+  }
+  .ep-button--clear:not(:active):hover,
+  .ep-button--outline:not(:active):hover {
+    opacity: 0.6;
+  }
+}
+.ep-button:active {
+  color: var(--color-activated);
+}
+.ep-button:active::after {
+  background: var(--background-activated);
+  opacity: var(--background-activated-opacity);
+}
+.ep-button:focus-visible {
+  outline: 2px solid var(--ion-color-primary, #1496d6);
+  outline-offset: 2px;
+  color: var(--color-focused);
+}
+.ep-button:focus-visible::after {
+  background: var(--background-focused);
+  opacity: var(--background-focused-opacity);
+}
+
+.ep-button--outline {
+  --background: transparent;
+  --background-activated: var(--ion-color-primary, #1496d6);
+  --background-focused: var(--ion-color-primary, #1496d6);
+  --background-focused-opacity: 0.1;
+  --background-hover: transparent;
+  --border-color: var(--ion-color-primary, #1496d6);
+  --border-style: solid;
+  --border-width: 1px;
+  --color: var(--ion-color-primary, #1496d6);
+  --color-activated: var(--ion-color-primary-contrast, #fff);
+}
+.ep-button--clear {
+  --background: transparent;
+  --background-activated: transparent;
+  --background-activated-opacity: 0;
+  --background-focused: var(--ion-color-primary, #1496d6);
+  --background-focused-opacity: 0.1;
+  --background-hover: transparent;
+  --color: var(--ion-color-primary, #1496d6);
+  font-size: min(1.0625rem, 51px);
+}
+.ep-button--clear:active {
+  opacity: 0.4;
+}
+.ep-button--light {
+  --background: var(--ion-color-light);
+  --background-activated: var(--ion-color-light-shade);
+  --background-focused: var(--ion-color-light-shade);
+  --background-hover: var(--ion-color-light-tint);
+  --color: var(--ion-color-light-contrast);
+}
+
+/* The sizes come after the fills: they set the font size a clear button changes too. */
+.ep-button--small {
+  --border-radius: 6px;
+  --padding-bottom: 4px;
+  --padding-end: 0.9em;
+  --padding-start: 0.9em;
+  --padding-top: 4px;
+  min-height: 2.1em;
+  font-size: min(0.8125rem, 39px);
+}
+.ep-button--large {
+  --border-radius: 16px;
+  --padding-bottom: 17px;
+  --padding-top: 17px;
+  font-size: min(1.25rem, 60px);
+}
+/* Full width: expand="block" of the ion-button. */
+.ep-button--block {
+  display: flex;
+}
+
+/* An icon beside the text: slot="start" and slot="end" of the ion-button. */
+.ep-button__start,
+.ep-button__end {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+.ep-button__start {
+  margin-inline-end: 0.5em;
+}
+.ep-button__end {
+  margin-inline-start: 0.5em;
+}

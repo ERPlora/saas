@@ -112,20 +112,20 @@
                A demo being prepared has none: the page goes on by itself; not ready yet, «Try again» waits for it again. {% endcomment %}
             {% if demo_state == "preparing" %}
             {% elif demo_state == "not_ready" and demo %}
-              <ion-button href="{% url 'public:demo' %}" expand="block" size="large" data-testid="demo-retry">
+              <a class="ep-button ep-button--large ep-button--block" href="{% url 'public:demo' %}" data-testid="demo-retry">
                 {% trans "Try again" %}
-                <span slot="end">{% icon "lucide:arrow-right" size=15 %}</span>
-              </ion-button>
+                <span class="ep-button__end">{% icon "lucide:arrow-right" size=15 %}</span>
+              </a>
             {% elif demo.url %}
-              <ion-button href="{{ demo.url }}" expand="block" size="large">
+              <a class="ep-button ep-button--large ep-button--block" href="{{ demo.url }}">
                 {% trans "Back to my demo" %}
-                <span slot="end">{% icon "lucide:arrow-right" size=15 %}</span>
-              </ion-button>
+                <span class="ep-button__end">{% icon "lucide:arrow-right" size=15 %}</span>
+              </a>
             {% elif demo_state == "off" or demo_state == "throttled" %}
-              <ion-button href="/launch" expand="block" size="large">
+              <a class="ep-button ep-button--large ep-button--block" href="/launch">
                 {% trans "Start free" %}
-                <span slot="end">{% icon "lucide:arrow-right" size=15 %}</span>
-              </ion-button>
+                <span class="ep-button__end">{% icon "lucide:arrow-right" size=15 %}</span>
+              </a>
             {% else %}
               <form method="post" action="{% url 'public:demo_start' %}" class="m-0"{% if RECAPTCHA_SITE_KEY %} data-recaptcha-action="demo_request" data-recaptcha-site-key="{{ RECAPTCHA_SITE_KEY }}"{% endif %}>
                 {% csrf_token %}

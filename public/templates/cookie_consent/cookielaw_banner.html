@@ -17,9 +17,9 @@
         </div>
 
         <div class="cookie-consent-actions" role="group" aria-label="{% trans 'Cookie choices' %}">
-            <ion-button id="cookie-customize" fill="outline" size="small" href="{% url 'cookie_consent_cookie_group_list' %}">
+            <a id="cookie-customize" class="ep-button ep-button--outline ep-button--small" href="{% url 'cookie_consent_cookie_group_list' %}">
                 {% trans "Customize" %}
-            </ion-button>
+            </a>
             <ion-button id="cookie-decline" fill="outline" size="small">
                 {% trans "Decline" %}
             </ion-button>

@@ -36,18 +36,18 @@
             </div>
             <div class="ep-navbar__actions">
                 {% if user.is_authenticated %}
-                <ion-button href="/launch" size="small">
+                <a class="ep-button ep-button--small" href="/launch">
                     {% trans "Dashboard" %}
-                    <span slot="end">{% icon "arrow-forward-outline" %}</span>
-                </ion-button>
+                    <span class="ep-button__end">{% icon "arrow-forward-outline" %}</span>
+                </a>
                 {% else %}
-                <ion-button fill="clear" size="small" href="{% url 'public:demo' %}">
+                <a class="ep-button ep-button--clear ep-button--small" href="{% url 'public:demo' %}">
                     {% trans "Try the demo" %}
-                </ion-button>
-                <ion-button href="/launch" size="small">
+                </a>
+                <a class="ep-button ep-button--small" href="/launch">
                     {% trans "Start free" %}
-                    <span slot="end">{% icon "arrow-forward-outline" %}</span>
-                </ion-button>
+                    <span class="ep-button__end">{% icon "arrow-forward-outline" %}</span>
+                </a>
                 {% endif %}
             </div>
         </div>

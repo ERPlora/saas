@@ -594,9 +594,11 @@ def test_the_cookie_banner_uses_the_shared_container_and_compact_ionic_actions(
     )
 
     assert 'class="ep-container cookie-consent-layout"' in banner
-    assert banner.count("<ion-button") == 3
+    # Decline and Accept act on the page; Customize leads to another, so it is a real link (saas#238).
+    assert banner.count("<ion-button") == 2
     for control in ("cookie-customize", "cookie-decline", "cookie-accept"):
         assert f'id="{control}"' in banner
+    assert re.search(r'<a id="cookie-customize" class="ep-button[^"]*" href="', banner)
     assert (
         "We use optional cookies to understand traffic and improve ERPlora." in banner
     )
@@ -607,6 +609,7 @@ def test_the_cookie_banner_uses_the_shared_container_and_compact_ionic_actions(
     for control in ("customize", "decline", "accept"):
         assert f"activateOnKeyboard({control}" in banner
     assert ".cookie-consent-actions ion-button" in banner_css
+    assert ".cookie-consent-actions .ep-button" in banner_css
     assert "min-height: 2.75rem" in banner_css
 
 
@@ -984,12 +987,15 @@ def test_component_stylesheets_only_style_their_own_ep_block():
 def test_no_public_stylesheet_washes_a_band_with_ionics_light_colour():
     """``--ion-color-light`` stays light in dark (theme.css pins it, so the CTA band's
     ``color="light"`` buttons stay white): a background mixed from it turned every page hero grey on
-    a dark page. A soft band washes with ``--ep-wash``, which theme.css darkens with the page."""
+    a dark page. A soft band washes with ``--ep-wash``, which theme.css darkens with the page. The one rule that
+    may read it is that button's own, ``.ep-button--light``: a link since saas#238."""
     offenders = []
     for sheet in PUBLIC_STATIC.rglob("*.css"):
         if sheet.name == "theme.css":
             continue
         text = re.sub(r"/\*.*?\*/", "", sheet.read_text(encoding="utf-8"), flags=re.S)
+        if sheet.name == "button.css":
+            text = re.sub(r"\.ep-button--light\s*\{[^}]*\}", "", text)
         if "--ion-color-light" in text:
             offenders.append(sheet.name)
     theme = (PUBLIC_STATIC / "theme.css").read_text(encoding="utf-8")
@@ -1397,3 +1403,99 @@ def test_inside_the_app_no_measurement_loads_even_with_every_cookie_accepted(cli
     assert "googletagmanager.com/gtag/js" in on_the_web and "clarity.ms" in on_the_web
     assert "googletagmanager.com/gtag/js" not in in_the_app
     assert "clarity.ms" not in in_the_app
+
+
+# --- A button that leads somewhere is a real link (saas#238, PUBLIC-F11) -------------------------
+
+#: An ion-button with an href, over several lines and with template tags among its attributes.
+ION_BUTTON_LINK = re.compile(r"<ion-button\b[^>]*(?<![\w-])href=")
+#: Any element dressed as the shared link button, with its tag name.
+BUTTON_LINK = re.compile(r"<([\w-]+)\b[^>]*\bclass=\"[^\"]*\bep-button\b[^\"]*\"[^>]*>")
+
+
+def ion_button_links(source: str) -> list[str]:
+    return ION_BUTTON_LINK.findall(without_comments(source))
+
+
+def test_no_button_of_the_public_web_waits_for_the_page_script_to_lead_anywhere():
+    """An ion-button is no link until frontend/public.ts has defined it: pressed before that, on a slow connection
+    or with the script blocked, nothing happens. Whatever leads to another page is an <a href> in the HTML."""
+    offenders = [
+        f"{template.relative_to(PUBLIC_TEMPLATES)}: {button}"
+        for template in public_templates()
+        for button in ion_button_links(template.read_text(encoding="utf-8"))
+    ]
+
+    assert offenders == []
+
+
+@pytest.mark.parametrize(
+    "tag",
+    [
+        '<ion-button href="/launch">',
+        '<ion-button fill="outline" size="small" href="{% url \'public:app_download\' \'linux\' %}">',
+        '<ion-button expand="block"{% if not plan.featured_label %} fill="outline"{% endif %} href="/launch">',
+        '<ion-button\n  class="mt-auto"\n  href="/launch"\n>',
+    ],
+)
+def test_the_button_sweep_catches_the_shapes_the_templates_had(tag):
+    """Positive control: a sweep that finds nothing proves nothing."""
+    assert ion_button_links(tag)
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        '<ion-button type="submit">Send</ion-button>',
+        '<ion-button id="cookie-accept" size="small">Accept</ion-button>',
+        '<ion-button data-href="/launch">Not a link</ion-button>',
+        '<a class="ep-button" href="/launch">Start free</a>',
+        '{% comment %}<ion-button href="/launch">{% endcomment %}',
+        '<ion-button type="submit"></ion-button> <a href="/launch">Start free</a>',
+    ],
+)
+def test_the_button_sweep_leaves_alone_what_is_no_link_waiting_for_the_script(source):
+    assert ion_button_links(source) == []
+
+
+def test_every_link_button_really_is_a_link():
+    """The shared class on anything but an <a href> would look like a button and lead nowhere."""
+    offenders = [
+        f"{template.relative_to(PUBLIC_TEMPLATES)}: {match.group(0)}"
+        for template in public_templates()
+        for match in BUTTON_LINK.finditer(without_comments(template.read_text(encoding="utf-8")))
+        if match.group(1) != "a" or "href=" not in match.group(0)
+    ]
+
+    assert offenders == []
+
+
+def test_every_class_of_the_link_button_has_its_style():
+    """A modifier nobody wrote fails in silence: the button just looks wrong."""
+    css = (COMPONENT_CSS / "button.css").read_text(encoding="utf-8")
+    used = {
+        name
+        for template in public_templates()
+        for name in re.findall(r"\bep-button(?:--|__)[\w-]+", without_comments(template.read_text(encoding="utf-8")))
+    }
+
+    assert used
+    assert [name for name in sorted(used) if not re.search(rf"\.{name}\b", css)] == []
+
+
+@pytest.mark.parametrize(
+    ("template", "full_width"),
+    [
+        ("appdist/android.html", 3),
+        ("appdist/index.html", 3),
+        ("demo/index.html", 3),
+        ("downloads.html", 1),
+        ("landing/home/_plan_cta.html", 1),
+        ("pricing/_card_cta.html", 1),
+    ],
+)
+def test_the_full_width_buttons_stay_full_width(template, full_width):
+    """`expand="block"` of the ion-buttons these were: the cards' buttons fill the card."""
+    source = without_comments((PUBLIC_TEMPLATES / "public" / template).read_text(encoding="utf-8"))
+
+    assert source.count("ep-button--block") == full_width

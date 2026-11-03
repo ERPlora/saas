@@ -41,10 +41,10 @@
               <li class="flex gap-2 items-start"><span class="text-success mt-1">{% icon "lucide:check" size=14 %}</span><span>{% trans "All apps included, VeriFactu ready" %}</span></li>
               <li class="flex gap-2 items-start"><span class="text-success mt-1">{% icon "lucide:check" size=14 %}</span><span>{% trans "Managed database, replicated across several European data centres, with continuous backups and point-in-time recovery for 14 days" %}</span></li>
             </ul>
-            <ion-button class="mt-auto" href="/launch" expand="block">
+            <a class="ep-button ep-button--block mt-auto" href="/launch">
               {% trans "Start free" %}
-              <span slot="end">{% icon "lucide:arrow-right" size=15 %}</span>
-            </ion-button>
+              <span class="ep-button__end">{% icon "lucide:arrow-right" size=15 %}</span>
+            </a>
           </ion-card-content>
         </ion-card>
 
@@ -62,23 +62,23 @@
             <ion-card-title class="mb-3">{% trans "Install the ERPlora app" %}</ion-card-title>
             <p class="text-fg/65 m-0 mb-5">{% trans "One free app on the device at your counter: it opens your hub and it is what prints thermal receipts and opens the cash drawer. On first launch it walks you through creating your free hub — so this path is free too." %}</p>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
-              <ion-button href="{% url 'public:app_download' 'windows' %}" fill="outline" size="small">
-                <span slot="start">{% icon "logo-windows" size=15 %}</span>
+              <a class="ep-button ep-button--outline ep-button--small" href="{% url 'public:app_download' 'windows' %}">
+                <span class="ep-button__start">{% icon "logo-windows" size=15 %}</span>
                 <span class="ml-1">Windows</span>
-              </ion-button>
-              <ion-button href="{% url 'public:app_download' 'linux' %}" fill="outline" size="small">
-                <span slot="start">{% icon "logo-tux" size=15 %}</span>
+              </a>
+              <a class="ep-button ep-button--outline ep-button--small" href="{% url 'public:app_download' 'linux' %}">
+                <span class="ep-button__start">{% icon "logo-tux" size=15 %}</span>
                 <span class="ml-1">Linux</span>
-              </ion-button>
-              <ion-button href="{% url 'public:app_download' 'android' %}" fill="outline" size="small">
-                <span slot="start">{% icon "logo-android" size=15 %}</span>
+              </a>
+              <a class="ep-button ep-button--outline ep-button--small" href="{% url 'public:app_download' 'android' %}">
+                <span class="ep-button__start">{% icon "logo-android" size=15 %}</span>
                 <span class="ml-1">Android</span>
-              </ion-button>
+              </a>
             </div>
-            <ion-button class="mt-auto" fill="clear" size="small" href="{% url 'public:app' %}">
+            <a class="ep-button ep-button--clear ep-button--small mt-auto" href="{% url 'public:app' %}">
               {% trans "See supported hardware and platforms" %}
-              <span slot="end">{% icon "lucide:arrow-right" size=15 %}</span>
-            </ion-button>
+              <span class="ep-button__end">{% icon "lucide:arrow-right" size=15 %}</span>
+            </a>
           </ion-card-content>
         </ion-card>
 

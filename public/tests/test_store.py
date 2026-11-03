@@ -465,7 +465,7 @@ def test_the_button_on_a_free_app_too(client, catalog, ana):
     """The old page left a signed-in visitor of a free module with no action at all."""
     client.force_login(ana)
 
-    assert "<ion-button" in hero_of(get_html(client, "/apps/inventory/"))
+    assert '<a class="ep-button' in hero_of(get_html(client, "/apps/inventory/"))
 
 
 def test_the_button_is_translated(client, catalog, ana):

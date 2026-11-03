@@ -5,11 +5,11 @@
   button turns white (public/components/cta_band.html). No demo CTA: /demo is out of scope
   (plan §3.b).
 {% endcomment %}
-<ion-button size="large" color="light" href="/launch">
-  <span slot="start">{% icon "rocket-outline" %}</span>
+<a class="ep-button ep-button--large ep-button--light" href="/launch">
+  <span class="ep-button__start">{% icon "rocket-outline" %}</span>
   {% trans "Get started free" %}
-</ion-button>
-<ion-button size="large" fill="outline" href="{% url 'public:store' %}">
-  <span slot="start">{% icon "storefront-outline" %}</span>
+</a>
+<a class="ep-button ep-button--outline ep-button--large" href="{% url 'public:store' %}">
+  <span class="ep-button__start">{% icon "storefront-outline" %}</span>
   {% trans "Browse apps" %}
-</ion-button>
+</a>
