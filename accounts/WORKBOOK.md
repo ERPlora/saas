@@ -1195,7 +1195,8 @@ Implicados: el admin de erplora.com (la ficha de la cuenta y el registro de audi
 
 ## Lo que queda fuera
 
-- **erplora.com guarda dos veces quién está en cada negocio** (el espejo `accounts.HubMembership`) — saas#199.
+- **En la base de datos sigue la tabla de la copia de quién está en cada negocio** (`accounts_hubmembership`), que ya
+  nadie lee ni escribe — saas#220.
 - **Desde el Hub, «Mejorar plan» y «erplora.com» piden volver a entrar con la cuenta si el navegador no tenía la sesión
   abierta** (BASE-F11 del Hub, cruza ACCOUNTS-F28) — saas#190.
 

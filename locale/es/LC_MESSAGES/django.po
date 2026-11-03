@@ -166,14 +166,6 @@ msgstr "rol"
 msgid "created at"
 msgstr "creado el"
 
-#: accounts/models.py:102
-msgid "hub membership"
-msgstr "miembro de un hub"
-
-#: accounts/models.py:103
-msgid "hub memberships"
-msgstr "miembros de hubs"
-
 #: accounts/models.py:132
 msgid "exchange code"
 msgstr "código de acceso"
@@ -378,35 +370,13 @@ msgid "You cancelled signing in with Google. Try again, or sign in with your ema
 msgstr "Has cancelado el inicio de sesión con Google. Vuelve a intentarlo o entra con tu email y tu contraseña."
 
 #: accounts/admin.py
-#: accounts/templates/admin/accounts/hubs.html
+#: hubs/templates/admin/hubs/hubs.html
 msgid "Open in the Hub admin"
 msgstr "Abrir en el admin del Hub"
-
-#: accounts/admin.py
-#: accounts/templates/admin/accounts/hubs.html
-msgid "Hub admin"
-msgstr "Admin del Hub"
 
 #: accounts/templates/accounts/hub_login_form.html
 msgid "Opening the Hub admin…"
 msgstr "Abriendo el admin del Hub…"
-
-#: accounts/admin.py
-#: accounts/templates/admin/accounts/hubmembership/change_list.html
-msgid "Hubs"
-msgstr "Hubs"
-
-#: accounts/templates/admin/accounts/hubs.html
-msgid "Hub"
-msgstr "Hub"
-
-#: accounts/templates/admin/accounts/hubs.html
-msgid "Members"
-msgstr "Miembros"
-
-#: accounts/templates/admin/accounts/hubs.html
-msgid "No hub has members yet."
-msgstr "Ningún hub tiene miembros todavía."
 
 #: accounts/admin.py
 msgid "Turn on two-factor authentication and sign in again before opening the Hub admin."

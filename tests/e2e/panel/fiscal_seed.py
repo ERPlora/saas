@@ -62,7 +62,6 @@ def clear() -> None:
     from django.contrib.auth import get_user_model
     from django.db.models import Q
 
-    from accounts.models import HubMembership
     from fiscal.models import RepresentativeStamp
     from hubs.models import BillingProfile, Hub, HubMember
 
@@ -75,11 +74,9 @@ def clear() -> None:
         user__in=users, role=HubMember.Role.OWNER
     ).values_list("hub_id", flat=True)
     hubs = Hub.objects.filter(Q(slug__startswith=PREFIX) | Q(pk__in=list(owned)))
-    slugs = list(hubs.values_list("slug", flat=True))
     profiles = list(hubs.values_list("billing_profile_id", flat=True))
     hubs.delete()
     BillingProfile.objects.filter(Q(pk__in=profiles) | Q(owner__in=users)).delete()
-    HubMembership.objects.filter(Q(hub_slug__in=slugs) | Q(user__in=users)).delete()
     users.delete()
 
 
@@ -116,7 +113,6 @@ def _business():
     from django.contrib.auth.models import Permission
     from django.utils import timezone
 
-    from accounts.models import HubMembership
     from hubs.models import BillingProfile, Hub, HubMember, Plan, Subscription
 
     now = timezone.now()
@@ -159,7 +155,6 @@ def _business():
         joined_at=now - timedelta(days=30),
         accepted_at=now - timedelta(days=30),
     )
-    HubMembership.objects.create(user=owner, hub_slug=hub.slug, role=HubMember.Role.OWNER)
     return hub.pk
 
 

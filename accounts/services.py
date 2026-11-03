@@ -354,7 +354,7 @@ def create_platform_user(email: str, role: str, password: str | None = None):
         created = user is None
         if created:
             user = user_model(email=email)
-        elif is_a_customer(user):
+        elif on_a_business(user):
             raise PlatformRoleRefused(f"{email} is a customer of a hub")
         elif user.is_store_review_account:
             # Its sign-in skips the mailed code (ACCOUNTS-F49): never a way into the admin.
@@ -701,15 +701,10 @@ def inactive_account_ids(*, inactive_days: int = INACTIVE_DAYS) -> list:
     return list(_unused_since(inactive_days).order_by("date_joined", "pk").values_list("pk", flat=True))
 
 
-def is_a_customer(user) -> bool:
-    """Whether ``user`` is on a business (``on_a_business``). Neither ``create_platform_user`` nor ``User.clean`` (the
-    admin's form) makes such an account staff."""
-    return on_a_business(user)
-
-
 def on_a_business(user) -> bool:
     """Whether ``user`` is on a business in any way ``hubs.business.list`` sees (called by its name: accounts never
-    imports hubs): a member, also of one in its days of recovery (a restore gives it back), or invited to one."""
+    imports hubs): a member, also of one in its days of recovery (a restore gives it back), or invited to one. Neither
+    ``create_platform_user`` nor ``User.clean`` (the admin's form) makes such an account staff."""
     business_list = operations.get(BUSINESS_LIST)
     page = business_list(queries.as_account(user), business_list.input(limit=1, offset=0))
     return page.total > 0 or bool(page.invitations)

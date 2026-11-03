@@ -794,7 +794,7 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   la `0013`, y reverse simétrico. `included_level` se queda en el modelo, sin uso en la web pública.
 - Dirección web (F16): `hubs.business.change_address` (solo el propietario; `can.change_address` en la página),
   validada como la valida el Hub (`live.slugs`, `_chosen_slug`); sube `registry_version` y `state_version`, debe
-  `put` y empuja tras el COMMIT; `sync_access(hub, previous_slug=…)` mueve el espejo del salto. La antigua queda en
+  `put` y empuja tras el COMMIT; el salto sigue al negocio porque lee a sus miembros. La antigua queda en
   `Hub.previous_slug` y `queries.slug_taken`/`free_slug` la cuentan como cogida para los demás (migración `0015`).
   El Hub acepta el cambio en su registro (`hub/base/tests/test_services_hub.py`,
   `test_registering_again_updates_it_without_another_ready`). Tests: `hubs/tests/test_change_address.py`,
@@ -880,7 +880,8 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   (erplora.com, la entrada de ERPlora y el Hub) — saas#195.
 - **Desde el Hub, «Mejorar plan» y «erplora.com» piden volver a entrar con la cuenta si el navegador no tenía la sesión
   abierta** (BASE-F11 del Hub, cruza esta app) — saas#190.
-- **erplora.com guarda dos veces quién está en cada negocio** (el espejo `accounts.HubMembership`) — saas#199.
+- **En la base de datos sigue la tabla de la copia de quién está en cada negocio** (`accounts_hubmembership`), que ya
+  nadie lee ni escribe — saas#220.
 
 ## Lo que NO hace, a propósito
 

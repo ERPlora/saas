@@ -63,7 +63,6 @@ def clear() -> None:
     from django.contrib.auth import get_user_model
     from django.db.models import Q
 
-    from accounts.models import HubMembership
     from hubs.models import BillingProfile, Hub, HubMember
 
     users = get_user_model().objects.filter(
@@ -73,11 +72,9 @@ def clear() -> None:
         user__in=users, role=HubMember.Role.OWNER
     ).values_list("hub_id", flat=True)
     hubs = Hub.objects.filter(Q(slug__startswith=PREFIX) | Q(pk__in=list(owned)))
-    slugs = list(hubs.values_list("slug", flat=True))
     profiles = list(hubs.values_list("billing_profile_id", flat=True))
     hubs.delete()
     BillingProfile.objects.filter(Q(pk__in=profiles) | Q(owner__in=users)).delete()
-    HubMembership.objects.filter(Q(hub_slug__in=slugs) | Q(user__in=users)).delete()
     users.delete()
 
 
@@ -101,7 +98,6 @@ def _seed() -> None:
     from django.contrib.auth import get_user_model
     from django.utils import timezone
 
-    from accounts.models import HubMembership
     from hubs.models import BillingProfile, Hub, HubMember, Plan, Subscription
 
     now = timezone.now()
@@ -161,10 +157,6 @@ def _seed() -> None:
             last_opened_at=opened,
             invited_by=users[invited_by] if invited_by else None,
         )
-        if hub.status != Hub.Status.DELETING:
-            HubMembership.objects.create(
-                user=users[local], hub_slug=hub.slug, role=role
-            )
 
     def invite(hub, local, role, by):
         HubMember.objects.create(

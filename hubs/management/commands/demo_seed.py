@@ -9,8 +9,8 @@
 
 ``a`` and ``b`` already run in the local Hub: they become businesses of the SaaS adopted as they are
 (``hubs.services.seed_demo_business``: active, ready, nothing owed to the Hub), and the jump reads their
-members. In ``hubs`` since L1-A2: it seeds businesses, which ``accounts`` does not know. Their addresses come proven, so they never owe the code a new account is mailed, only the sign-in code
-every password sign-in mails. Development only: known passwords, so it refuses to run without ``DEBUG``.
+members. In ``hubs`` since L1-A2: it seeds businesses, which ``accounts`` does not know. Their addresses come proven,
+so they never owe the code a new account is mailed, only the sign-in code every password sign-in mails. Development only: known passwords, so it refuses to run without ``DEBUG``.
 Running it again changes nothing (an account seeded before the code existed gets its address proven).
 
 They are the QA users of the root ``.env`` (README «Usuarios QA»): ``QA_OWNER_*``, ``QA_EMPLOYEE_*`` and

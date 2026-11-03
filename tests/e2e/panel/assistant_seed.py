@@ -87,7 +87,6 @@ def clear() -> None:
     from django.contrib.auth import get_user_model
     from django.db.models import Q
 
-    from accounts.models import HubMembership
     from assistant.models import AIProvider, AIRoutingPolicy, AssistantUsage
     from billing.models import Invoice
     from hubs.models import BillingProfile, Hub
@@ -96,8 +95,6 @@ def clear() -> None:
     # Its businesses, also the ones the assistant created for an account of this seed (the battery's «QA Asistente 31»).
     owned = Hub.objects.filter(members__user__email__startswith=PREFIX, members__user__email__endswith=DOMAIN)
     slugs = Q(slug__startswith=BUSINESS_PREFIX) | Q(pk__in=owned.values("pk"))
-    HubMembership.objects.filter(hub_slug__in=Hub.objects.filter(slugs).values("slug")).delete()
-    HubMembership.objects.filter(hub_slug__startswith=BUSINESS_PREFIX).delete()
     # What ``paying`` leaves outlives the business (``SET_NULL``): its invoice and its payer go by their own ids.
     Invoice.objects.filter(stripe_invoice_id__startswith=STRIPE_PREFIX["invoice"]).delete()
     Hub.objects.filter(slugs).delete()
@@ -252,7 +249,6 @@ def _owner_with_business(local: str, names: tuple[str, str], business: str, slug
     from django.contrib.auth import get_user_model
     from django.utils import timezone
 
-    from accounts.models import HubMembership
     from hubs.models import Hub, HubMember
 
     owner = get_user_model().objects.create_user(
@@ -270,7 +266,6 @@ def _owner_with_business(local: str, names: tuple[str, str], business: str, slug
         ready_at=now,
     )
     HubMember.objects.create(hub=hub, user=owner, role=HubMember.Role.OWNER, joined_at=now, accepted_at=now)
-    HubMembership.objects.create(user=owner, hub_slug=hub.slug, role=HubMembership.Role.OWNER)
     return owner, hub
 
 

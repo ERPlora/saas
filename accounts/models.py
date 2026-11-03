@@ -120,9 +120,9 @@ class User(AbstractBaseUser, PermissionsMixin):
         # raising: one that is both from before (``hubs.W002``) still saves its other changes, and lowering a flag.
         if self._raises_a_staff_flag():
             # Here, not at the top: accounts.services imports this module.
-            from accounts.services import is_a_customer
+            from accounts.services import on_a_business
 
-            if is_a_customer(self):
+            if on_a_business(self):
                 raise ValidationError(
                     _("This account is on a business: ERPlora's staff and the customers never share an account."),
                     code="staff_on_a_business",
