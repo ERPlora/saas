@@ -9,6 +9,7 @@ on the business. Anything else opens nothing and lands on ``/login/error?code=�
 
 import time
 import uuid
+from datetime import date
 from unittest import mock
 from urllib.parse import quote
 
@@ -20,6 +21,7 @@ from django.test import Client
 from accounts import hub_pass, services
 from accounts.models import AuthExchangeCode
 from accounts.tests.conftest import AUTHENTICATION_RECORDS
+from hubs.models import HubMember
 from hubs.tests.conftest import add_member, create_business, make_user, plans  # noqa: F401 - the fixtures
 
 pytestmark = pytest.mark.django_db
@@ -28,6 +30,8 @@ HUB_PASS = "/hub-pass/"
 SALT = "erplora.hub-pass.v1"
 SECRET = "the-secret-the-hub-and-the-saas-share"
 PREVIOUS = "the-secret-before-the-rotation"
+#: Versions of the terms and the privacy policy older than today's.
+OLD = date(2020, 1, 1)
 
 
 @pytest.fixture(autouse=True)
@@ -42,10 +46,15 @@ def business(plans, ana):  # noqa: F811 - the plans fixture
     return create_business(ana, name="Bar Manolo")
 
 
-def mint(user, slug: str, next_: str = "plan", *, key: str = SECRET, salt: str = SALT, age: int = 0, **extra) -> str:
-    """The pass as the Hub signs it, ``age`` seconds ago."""
-    payload = {"user": str(user.pk) if hasattr(user, "pk") else user, "hub": slug, "next": next_, "nonce": uuid.uuid4().hex}
-    payload.update(extra)
+def mint(account, slug: str, next_: str = "plan", *, key: str = SECRET, salt: str = SALT, age: int = 0, **change) -> str:
+    """The pass as the Hub signs it, ``age`` seconds ago; ``change`` overrides any of its fields."""
+    payload = {
+        "user": str(account.pk) if hasattr(account, "pk") else account,
+        "hub": slug,
+        "next": next_,
+        "nonce": uuid.uuid4().hex,
+    }
+    payload.update(change)
     with mock.patch("django.core.signing.time.time", return_value=time.time() - age):
         return signing.dumps(payload, key=key, salt=salt)
 
@@ -91,7 +100,7 @@ class TestAValidPass:
 
     def test_any_member_enters_not_only_the_owner(self, client, ana, business, make_user):
         employee = make_user("eva@example.com")
-        add_member(business, employee, "employee")
+        add_member(business, employee, HubMember.Role.EMPLOYEE)
 
         response = follow(client, mint(employee, business.slug))
 
@@ -124,14 +133,22 @@ class TestAValidPass:
 
         assert AUTHENTICATION_RECORDS not in client.session
 
+    def test_the_session_it_opens_shows_in_the_active_sessions_of_the_account(self, client, ana, business):
+        # Account → Security → Active sessions: whoever finds it there can end it, as any other.
+        from allauth.usersessions.models import UserSession
+
+        follow(client, mint(ana, business.slug))
+
+        assert UserSession.objects.filter(user=ana, session_key=client.session.session_key).exists()
+
     def test_it_accepts_no_terms_on_the_way(self, client, ana, business):
         # Only the sign-in shows «By continuing you agree…»: a pass shows nothing, so it records nothing.
-        get_user_model().objects.filter(pk=ana.pk).update(terms_version="old", privacy_version="old", terms_accepted_at=None)
+        get_user_model().objects.filter(pk=ana.pk).update(terms_version=OLD, privacy_version=OLD, terms_accepted_at=None)
 
         follow(client, mint(ana, business.slug))
 
         ana.refresh_from_db()
-        assert (ana.terms_version, ana.privacy_version, ana.terms_accepted_at) == ("old", "old", None)
+        assert (ana.terms_version, ana.privacy_version, ana.terms_accepted_at) == (OLD, OLD, None)
 
 
 class TestOnlyOnce:
@@ -201,6 +218,17 @@ class TestExpired:
         response = follow(client, mint(ana, business.slug, age=31))
 
         assert response.url == expired(plan_page(business))
+
+    def test_an_expired_pass_of_the_account_already_signed_in_takes_it_on_where_it_was_going(self, client, ana, business):
+        # A reload of the tab a while later: the session is theirs already, so there is nothing to open.
+        client.force_login(ana)
+        session_key = client.session.session_key
+
+        response = follow(client, mint(ana, business.slug, "business", age=61))
+
+        assert response.url == business_page(business)
+        assert client.session.session_key == session_key
+        assert not AuthExchangeCode.objects.filter(audience=hub_pass.AUDIENCE).exists()
 
     def test_another_account_signed_in_keeps_its_session(self, client, ana, business, make_user):
         bea = make_user("bea@example.com")
@@ -348,7 +376,7 @@ class TestOnlyAMember:
 
     def test_an_invitation_not_accepted_yet_opens_nothing(self, client, business, make_user):
         invited = make_user("invited@example.com")
-        add_member(business, invited, "employee", accepted=False)
+        add_member(business, invited, HubMember.Role.EMPLOYEE, accepted=False)
 
         response = follow(client, mint(invited, business.slug))
 
