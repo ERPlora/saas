@@ -12,6 +12,7 @@
 // a real provider and no real key is ever typed.
 // flow: ASSISTANT-F25 — the account asks the panel's assistant: reads alone, writes after the card.
 // flow: ASSISTANT-F26 — the account's messages of the month, spent without a plan to upgrade.
+// flow: BILLING-F13 — cancelling the plan: its card first says what Billing's dialog says (seed `paying`, no Stripe).
 import { execFileSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -49,6 +50,17 @@ const WORDS = {
     spent: 'Has usado todos los mensajes del asistente de este mes (2 de 2).',
     elsewhere: 'Cada negocio tiene su propio asistente, con sus propios mensajes: abre el negocio para seguir preguntando allí.',
     upgrade: /mejorar|plan/i,
+    cancel: `Cancela el plan de ${BUSINESS}`,
+    preview: [
+      'Plan actual: Starter',
+      /^Pagado hasta: .*\d.*$/,
+      'Después pasa a: Gratis',
+      /^Personas en Gratis: \d+$/,
+      /^Dispositivos en Gratis: \d+$/,
+      'Personas del negocio ahora: 1',
+      'Factura sin pagar, sigue pendiente: 36,29 €',
+    ],
+    notCancelled: 'No he cancelado el plan: no ha cambiado nada.',
   },
   en: {
     empty: 'Ask me about your businesses, your invoices or your account.',
@@ -65,13 +77,24 @@ const WORDS = {
     spent: "You have used all the assistant's messages of this month (2 of 2).",
     elsewhere: 'Each business has its own assistant, with its own messages: open the business to keep asking there.',
     upgrade: /upgrade|plan/i,
+    cancel: `Cancel the plan of ${BUSINESS}`,
+    preview: [
+      'Current plan: Starter',
+      /^Paid until: .*\d.*$/,
+      'Then it moves to: Free',
+      /^People on Free: \d+$/,
+      /^Devices on Free: \d+$/,
+      'People in the business now: 1',
+      'Unpaid invoice, still owed: €36.29',
+    ],
+    notCancelled: 'I did not cancel the plan: nothing changed.',
   },
 } as const;
 
 let provider: Provider | undefined;
 
 /** `assistant_seed.py <action> <provider address> <language>`: always from scratch. */
-function seed(action: 'clear' | 'panel', language: 'es' | 'en' = 'es'): void {
+function seed(action: 'clear' | 'panel' | 'paying', language: 'es' | 'en' = 'es'): void {
   execFileSync('uv', ['run', 'python', 'tests/e2e/panel/assistant_seed.py', action, provider?.url ?? '', language], {
     cwd: SAAS_DIR,
     env: djangoEnv(true),
@@ -214,6 +237,31 @@ for (const language of ['es', 'en'] as const) {
     await page.getByTestId('assistant-close').click();
     await expect(panel).toHaveAttribute('data-open', 'false');
     await expect(page.locator('html')).not.toHaveClass(/assistant-docked/);
+    expect(errors).toEqual([]);
+  });
+
+  test(`cancelling the plan from the assistant says first what will happen, and «Cancel» changes nothing (${language})`, async ({
+    page,
+  }) => {
+    seed('paying', language);
+    await openBusinesses(page);
+    const errors = watchPageErrors(page);
+    await page.getByTestId('assistant-button').click();
+    await expect(page.getByTestId('assistant-panel')).toHaveAttribute('data-open', 'true');
+
+    // The model reads the account's businesses alone, then asks for the cancel: it stops at its card, which asks to
+    // type the word and first says what Billing's «Cancel the plan» dialog says, read from the server.
+    await ask(page, words.cancel);
+    const card = page.getByTestId('assistant-confirm');
+    await expect(card).toBeVisible();
+    await expect(card.getByText(words.word, { exact: true })).toBeVisible();
+    await expect(page.getByTestId('assistant-confirm-submit')).toHaveAttribute('aria-disabled', 'true');
+    await expect(page.getByTestId('assistant-confirm-preview').locator('li')).toHaveText([...words.preview]);
+    await atEachSize(page, 'cancel-card', language, card);
+
+    await page.getByTestId('assistant-confirm-cancel').click();
+    await expect(card).toBeHidden();
+    await expect(page.getByTestId('assistant-bubble-assistant').last()).toContainText(words.notCancelled);
     expect(errors).toEqual([]);
   });
 }

@@ -84,6 +84,43 @@ describe('answerTo', () => {
     );
   });
 
+  it('reads the businesses first when asked to cancel the plan of one, then asks to cancel it by its id', () => {
+    const rows = JSON.stringify({ rows: [{ id: 'b0', name: 'Bar Lena' }, { id: 'b1', name: 'E2E Asistente Panel' }], total: 2 });
+    for (const [system, question] of [
+      [SPANISH, 'Cancela el plan de E2E Asistente Panel'],
+      [ENGLISH, 'Cancel the plan of E2E Asistente Panel'],
+    ] as const) {
+      expect(asked(answerTo([system, { role: 'user', content: question }]).frames)).toEqual({
+        name: 'hubs__business__list',
+        arguments: '{}',
+      });
+      expect(asked(answerTo(answered(system, question, 'hubs__business__list', rows)).frames)).toEqual({
+        name: 'billing__plan__cancel',
+        arguments: JSON.stringify({ hub_id: 'b1' }),
+      });
+    }
+  });
+
+  it("says it when the business whose plan it is told to cancel is not among the account's", () => {
+    const rows = JSON.stringify({ rows: [{ id: 'b0', name: 'Bar Lena' }], total: 1 });
+    const answer = answerTo(answered(ENGLISH, 'Cancel the plan of E2E Asistente Panel', 'hubs__business__list', rows));
+
+    expect(asked(answer.frames)).toBeNull();
+    expect(said(answer.frames)).toBe('You have no business called E2E Asistente Panel.');
+  });
+
+  it('says the plan was not cancelled when the person said no', () => {
+    const refused = JSON.stringify({ error: { code: 'base.assistant_not_confirmed', message: 'Not confirmed.' } });
+    const question = 'Cancela el plan de E2E Asistente Panel';
+
+    expect(said(answerTo(answered(SPANISH, question, 'billing__plan__cancel', refused)).frames)).toBe(
+      'No he cancelado el plan: no ha cambiado nada.',
+    );
+    expect(said(answerTo(answered(ENGLISH, question, 'billing__plan__cancel', refused)).frames)).toBe(
+      'I did not cancel the plan: nothing changed.',
+    );
+  });
+
   it('greets anything else', () => {
     expect(said(answerTo([ENGLISH, { role: 'user', content: 'Hello' }]).frames)).toBe('Hello, I am the test assistant.');
     expect(said(answerTo([SPANISH, { role: 'user', content: 'Hola' }]).frames)).toBe('Hola, soy el asistente de prueba.');

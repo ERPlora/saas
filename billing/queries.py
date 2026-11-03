@@ -13,15 +13,17 @@ import logging
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.db import DatabaseError, transaction
 from django.db.models import Q, Sum
 from django.utils import timezone
+from django.utils.text import get_text_list
 from django.utils.translation import gettext as _
 from django_ratelimit.core import is_ratelimited
 from live.context import OperationContext
-from live.errors import OperationError, Unauthorized
+from live.errors import Conflict, OperationError, Unauthorized
 from live.operations import AI, INTERNAL, operation
 
 from apps import queries as app_queries
@@ -42,7 +44,7 @@ from billing.models import (
 from billing.money import from_cents, to_cents
 from hubs.models import Plan
 from billing.schemas import PromoCheckIn, PromoCheckOut, TaxPreviewIn, TaxPreviewOut
-from billing.schemas import StoreCatalogIn, StoreCatalogOut
+from billing.schemas import HubIn, PlanCancelPreviewOut, StoreCatalogIn, StoreCatalogOut
 from hubs import queries as hub_queries
 from hubs import services as hub_services
 from hubs.models import HubMember, Subscription, SubscriptionItem
@@ -1368,3 +1370,81 @@ def payment_method_get(ctx: OperationContext, data: PaymentMethodIn) -> dict:
         )
     return {"methods": methods}
 
+
+
+# --- What cancelling the plan will do -----------------------------------------------------------------
+
+
+def _cancellable(ctx: OperationContext, hub_id) -> tuple[Hub, Subscription]:
+    """The business ``hub_id`` whose plan its account may cancel, and its subscription: what ``billing.plan.cancel``
+    refuses, refused alike (``services._owned`` and its «nothing to cancel»), so the preview of a cancel that cannot be
+    done reaches the model as the refusal, never as a card. Read without locking: nothing is written."""
+    user = hub_queries.account_of(ctx)
+    member = hub_queries.access(user, hub_id, HubMember.Role.OWNER)
+    if not hub_queries.is_writable(member.hub):
+        raise hub_services.business_deleted()
+    hub = Hub.objects.select_related("billing_profile").get(pk=member.hub_id)
+    subscription = Subscription.objects.select_related("plan", "trial_plan").filter(hub=hub).first()
+    profile = hub.billing_profile
+    if profile is None or profile.owner_id != user.pk:
+        raise Conflict(
+            _("Say who pays for this business first: its billing details are another account's."),
+            code="billing.payer_required",
+        )
+    paying = (
+        subscription is not None
+        and bool(subscription.stripe_subscription_id)
+        and subscription.status not in hub_queries.ENDED_STATUSES
+    )
+    if paying and subscription.stripe_customer_id != profile.stripe_customer_id:
+        raise Conflict(
+            _("This business's plan is still paid with its previous owner's card: keep it with yours in Billing first."),
+            code="billing.payer_required",
+        )
+    if not paying:
+        raise Conflict(_("This business is on Free: there is nothing to cancel."), code="billing.nothing_to_cancel")
+    return hub, subscription
+
+
+@operation(
+    "billing.plan.cancel_preview",
+    kind="query",
+    permission="billing.pay",
+    input=HubIn,
+    output=PlanCancelPreviewOut,
+    ai=INTERNAL,  # preview
+)
+def plan_cancel_preview(ctx: OperationContext, params: HubIn) -> dict:
+    """What cancelling the plan of a business will do, as Billing's «Cancel the plan» dialog says it (BILLING-F13):
+    it stays on its plan until the last day of its period (the business's own day), then moves to Free and is not
+    charged again; the modules it has turn off that day; what Free covers against the people it has now; an unpaid
+    invoice stays owed. ``billing.plan.cancel`` shows it on its card from the panel's assistant (ASSISTANT-F25, step 5:
+    its ``preview``). Only the owner who pays reads it, as only they cancel; never asks Stripe."""
+    hub, subscription = _cancellable(ctx, params.hub_id)
+    now = timezone.now()
+    language = ctx.language or settings.LANGUAGE_CODE
+    with translation.override(language):
+        live_slugs = sorted(item.module_slug for item in subscription.items.all() if item.is_live(now))
+        cards = app_queries.cards_of(live_slugs, language)
+        names = sorted(cards[slug]["name"] if slug in cards else slug for slug in live_slugs)
+        free = hub_queries.free_plan()
+        owed = (
+            Invoice.objects.filter(
+                hub=hub, kind=Invoice.Kind.INVOICE, payment_status=Invoice.PaymentStatus.OPEN
+            )
+            .order_by("-billed_at")
+            .first()
+        )
+        period_end = subscription.current_period_end
+        return {
+            "hub_id": hub.id,
+            "plan": subscription.plan.translated("name", language),
+            "paid_until": timezone.localtime(period_end, ZoneInfo(hub.timezone)).date() if period_end else None,
+            "then": free.translated("name", language) if free is not None else "",
+            "modules": get_text_list(names, _("and")),
+            "free_users": (free.max_users or None) if free is not None else None,
+            "free_devices": (free.max_devices or None) if free is not None else None,
+            "people": hub_queries.seats_of(hub, now)["used"],
+            "unpaid_cents": owed.total_cents if owed is not None else None,
+            "currency": owed.currency if owed is not None else "EUR",
+        }
