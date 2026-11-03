@@ -7,8 +7,9 @@ sin SSR y sin prefijo `/es/`; ronda 16 y spec `docs/superpowers/specs/2026-10-13
 
 - Flujos y comportamiento: `WORKBOOK.md` (y su traducción `WORKBOOK.en.md`, con el hash de la parte de usuario en la
   cabecera, el mismo esquema que `translate_workbooks` del Hub). El SaaS no tiene ese comando: la traducción se
-  escribe a mano y la cabecera es el sha256 de `base.catalog.user_part` del Hub sobre este `WORKBOOK.md` (del primer
-  `## ` a «Para quien lo mantiene», sin los comentarios HTML), recalculado tras cada cambio por encima del corte.
+  escribe a mano y la cabecera la calcula `assistant.knowledge.en_header` (el sha256 del primer `## ` a «Para quien lo
+  mantiene», sin los comentarios HTML). `assistant/tests/test_knowledge.py` la exige en todo `WORKBOOK.en.md` del
+  repo: tras un cambio por encima del corte falla y enseña la cabecera que toca, que se pega con la traducción.
   La lee el asistente del panel (`assistant/knowledge.py`, `WORKBOOK_APPS`).
 - Un módulo por área: `landing.py` (portada y contacto), `pricing.py` (planes), `industries.py` (sectores),
   `product.py`, `company.py`, `compliance.py`, `resources.py`, `help.py`, `legal.py`, `declaracion.py`, `store.py`
