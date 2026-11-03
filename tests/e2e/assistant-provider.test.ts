@@ -3,7 +3,7 @@
 // OpenAI's streamed shape, as the gateway of the panel's Django reads it, and its server on 127.0.0.1.
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { answerTo, type Message, NEW_BUSINESS, startProvider } from './assistant-provider';
+import { answerTo, DICTATION, type Message, NEW_BUSINESS, startProvider } from './assistant-provider';
 
 type Chunk = { choices: { delta: { content?: string; tool_calls?: { function: { name?: string; arguments?: string } }[] }; finish_reason: string | null }[] };
 
@@ -122,6 +122,20 @@ describe('startProvider', () => {
     expect(text.trim().endsWith('data: [DONE]')).toBe(true);
     expect(text).toContain('Hello, I am the test assistant.'.slice(0, 10));
     expect(provider.seen.map((request) => request.path)).toEqual(['/v1/models', '/v1/chat/completions']);
+  });
+
+  it('transcribes a dictation sent as a form, as the gateway sends the audio, and remembers it', async () => {
+    const provider = await startProvider(0);
+    close = provider.close;
+    const form = new FormData();
+    form.set('model', 'whisper-1');
+    form.set('file', new Blob([new Uint8Array([0x1a, 0x45, 0xdf, 0xa3])], { type: 'audio/webm' }), 'dictation.webm');
+
+    const answer = await fetch(`${provider.url}/audio/transcriptions`, { method: 'POST', body: form });
+
+    expect(answer.status).toBe(200);
+    expect(await answer.json()).toEqual({ text: DICTATION });
+    expect(provider.seen.map((request) => request.path)).toEqual(['/v1/audio/transcriptions']);
   });
 
   it('answers 404 to a path it does not serve', async () => {

@@ -1,5 +1,6 @@
 // The AI provider of the panel's assistant's e2e (panel/assistant-panel.spec.ts, ASSISTANT-F25): a real HTTP server on
-// 127.0.0.1 that speaks OpenAI's API (`/v1/models`, streamed `/v1/chat/completions`, `/v1/embeddings`). The panel's
+// 127.0.0.1 that speaks OpenAI's API (`/v1/models`, streamed `/v1/chat/completions`, `/v1/embeddings`,
+// `/v1/audio/transcriptions`, whose words are always `DICTATION`). The panel's
 // Django calls it through the gateway in its own process, as the model the seed sets to answer
 // (`assistant_seed.py panel http://127.0.0.1:<port>/v1`): no test reaches a real provider nor types a real key. What it
 // answers depends on the conversation, as a model would, in the language the panel's instructions ask for:
@@ -13,6 +14,9 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 
 /** The business the spec asks the assistant to create (and declines). */
 export const NEW_BUSINESS = 'E2E Panel Nuevo';
+
+/** What any dictation says (panel/assistant-dictation.spec.ts). */
+export const DICTATION = 'Dos cafés y una tostada';
 
 export interface Message {
   role: string;
@@ -180,6 +184,7 @@ export async function startProvider(port: number): Promise<Provider> {
         usage: { prompt_tokens: 4, total_tokens: 4 },
       });
     }
+    if (path === '/v1/audio/transcriptions') return json(200, { text: DICTATION });
     if (path === '/v1/chat/completions') {
       const answer = answerTo((body?.messages as Message[] | undefined) ?? []);
       response.writeHead(200, { 'Content-Type': 'text/event-stream' });
