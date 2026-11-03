@@ -1,0 +1,35 @@
+[
+  {
+    "id": "en-app-billing.promo.check-1",
+    "app": "billing",
+    "tool": "billing.promo.check",
+    "role": "account",
+    "surface": "app",
+    "language": "en",
+    "phrase": "a friend gave me the coupon SPRING20, will it make my plan cheaper?",
+    "expect": "refused",
+    "notes": "The app's account surface sells nothing (saas#192): it answers with the sentence of the screens."
+  },
+  {
+    "id": "en-app-hubs.plan.list-1",
+    "app": "hubs",
+    "tool": "hubs.plan.list",
+    "role": "account",
+    "surface": "app",
+    "language": "en",
+    "phrase": "how much would it cost me to move my business to a paid plan?",
+    "expect": "refused",
+    "notes": "The app's account surface sells nothing (saas#192): it answers with the sentence of the screens."
+  },
+  {
+    "id": "en-app-billing.invoice.list-1",
+    "app": "billing",
+    "tool": "billing.invoice.list",
+    "role": "account",
+    "surface": "app",
+    "language": "en",
+    "phrase": "show me the latest invoices ERPlora sent me",
+    "expect": "read",
+    "notes": "Looking at invoices is done in the app: the rule of saas#192 must not refuse it."
+  }
+]

@@ -166,7 +166,7 @@ class TestTheCatalog:
         request.session = {"base.surface": "account"}
         unsold = assistant.catalog(dataclasses.replace(ctx_for(account), request=request))
 
-        for sold in ("billing.plan.keep", "billing.plan.cancel", "billing.store.catalog", "apps.app.list"):
+        for sold in ("billing.plan.keep", "billing.plan.cancel", "billing.store.catalog", "apps.app.list", "hubs.plan.list"):
             assert sold in assistant.catalog(ctx_for(account))
             assert sold not in unsold
         assert {"hubs.business.list", "billing.invoice.list", "accounts.preferences.get"} <= set(unsold)
@@ -215,12 +215,15 @@ class TestTheInstructions:
 
         assert f"«{buy}»" in text and f"«{pay}»" in text
         assert "even if the documentation explains it" in text
+        rules = text.split("\n- ")
+        assert rules[1].startswith("FIRST RULE"), "it must not lose to «say on which screen»"
 
     @pytest.mark.parametrize("language", ["es", "en"])
     def test_where_it_sells_they_send_nobody_to_the_browser(self, account, language):
         text = assistant.instructions(language=language, account="Lena", screens={})
 
         assert "erplora.com desde el navegador" not in text and "erplora.com in your browser" not in text
+        assert "FIRST RULE" not in text and "- If something cannot be done from here" in text
 
     def test_the_store_is_not_offered_where_nothing_is_sold(self, account, rf):
         request = rf.get("/")

@@ -346,7 +346,8 @@ class DocChunk(models.Model):
     with ``assistant.docs.search``, nearest first by the cosine of the fingerprints.
 
     The search reads every excerpt of the language, with no approximate index: about 3000 excerpts take 5 ms that way,
-    and an HNSW index filters the language after its 40 nearest rows, so it loses excerpts (PLAN-SAAS, round 2026-11-03b).
+    and an HNSW index filters the language after its 40 nearest rows, so it loses excerpts (PLAN-SAAS, round
+    2026-11-03b).
 
     Written only by ``assistant.docs.index`` (``index_docs``), one source at a time: an excerpt is new when its
     ``content_hash`` is (``content_hash()``), so a run without changes computes no fingerprint.

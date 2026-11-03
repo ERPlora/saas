@@ -772,10 +772,12 @@ propio texto por `code`.
   diario a las 06:50 UTC en `saas-cron`; nace encendida con el `apply`. Para adelantarla, se lanza a mano como tarea
   suelta de `saas-cron` (`saas/README.md`, «Operación»). El paso 6 de ASSISTANT-F27 no promete la pasada diaria hasta
   que se lea su estado en producción (saas#184).
-- **Donde no se vende** (PLAN-SAAS §3.6 punto 6, `base.surface.sells_nothing`): `base.assistant.nothing_sold_here` añade
-  a las instrucciones del turno la regla con las dos frases de las pantallas (en el catálogo de Django, y un test las
-  compara con `hubs` y `billing` de `frontend/locale`), y `assistant.docs.search` no lee `queries.SELLING_WORKBOOKS` ni los
-  planes. La redacción la pone el modelo: esto se comprueba con la sonda `es-app-billing.promo.check-1` (capa 2).
+- **Donde no se vende** (PLAN-SAAS §3.6 punto 6, `base.surface.sells_nothing`): `base.assistant.nothing_sold_here` abre
+  las instrucciones del turno con la regla y las dos frases de las pantallas (en el catálogo de Django, y un test las
+  compara con `hubs` y `billing` de `frontend/locale`); el catálogo no ofrece lo de la tienda, tampoco `hubs.plan.list`;
+  y `assistant.docs.search` no lee `queries.SELLING_WORKBOOKS` ni los planes. La redacción la pone el modelo: se mide con
+  las sondas `*-app-*` de `tests/e2e/qa/probes/` (capa 2). Va la primera y dice «tu respuesta entera es esta frase» porque
+  medido con el modelo de verdad, detrás de las demás reglas o como consejo, a veces mandaba a Facturación.
 - **`assistant.docs.search`** (`queries.py`, `kind="query"`, `assistant.ask`, herramienta `assistant__docs__search`):
   nunca llama al proveedor. La huella de la pregunta la calcula antes `queries.prepare_questions`, fuera de toda
   transacción (la ruta del turno, `base.assistant.prepare`, para cada búsqueda que pidió el modelo; una llamada para
