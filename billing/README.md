@@ -499,6 +499,8 @@ son solo web, y en su lugar se dice, sin enlace, cómo hacerlo desde el navegado
   `billing.spec.ts` sigue vigilando que los botones no pisen la columna anterior («actions over the previous column»).
 - **e2e**: `tests/e2e/panel/billing.spec.ts` con `billing_seed.py` (cuatro negocios: facturas pagada y emitida,
   pagada emitiéndose, no cobrada con tarjeta rechazada y no cobrada con fallo blando; Gratis sin facturas).
+  `tests/e2e/panel/billing-downgrade.spec.ts` recorre la bajada programada (BILLING-F11, BILLING-F14, HUBS-F32, HUBS-F34) sobre
+  esa misma semilla; las rutas que llaman a Stripe corren en `billing_stripe_played.py`, un proceso aparte con Stripe doblado.
 
 ### Estado (L3-C)
 

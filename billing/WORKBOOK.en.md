@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:1e73b32dc2b48b93c84ab4fcafadb51dbac2c1db9fe8aa551929c5a2ebde1f43 -->
+<!-- generated from WORKBOOK.md sha256:795c84f2806a8691808c0e6c45dd8c11951ed5b5f6d922da2d6be2898d4133f8 -->
 
 ## What it is for and who it is for
 
@@ -314,7 +314,7 @@ Steps:
 1. In **Store › Plans** of a business that already pays, the owner taps "Change to …", "Change to annual · …" or "Change to monthly · …".
 2. The dialog works out what is charged today ("Working out what is charged today…") and shows "Today (prorated)", the VAT, the "Total today" and what will be charged "Afterwards", with the note that the modules stay the same.
 3. An upgrade is confirmed with "Pay … and change": it is charged at once with the saved card and the business moves to the new plan at once. A downgrade (a cheaper plan, or annual to monthly) charges nothing today: it moves to the new plan at the end of the paid period, and **Billing › Subscriptions** says "Changes to … on …" and its next invoice is already that plan's. Until that date it is undone with "Keep the plan", on that row and on the card of the current plan in the Store (BILLING-F14).
-4. Notice: "… is now on …" (or "…, paid annually").
+4. Notice: "… is now on …" (or "…, paid annually"); a downgrade, which waits, says "… moves to … on …" (or "… moves to …, billed monthly, on …").
 In: the new plan and period and the business's subscription with its card; when the period changes, each module's price changes too.
 Out: the plan changed (`billing.plan.changed`) or the downgrade scheduled (`billing.plan.change_scheduled`), with the table's VAT on each line, and the new plan sent to the business.
 If it fails: "The price was out of date: here it is again, check it before confirming" if too much time went by; a declined card changes nothing; the same plan and period is no change; downgrading to Free is cancelling (BILLING-F13); with a pending cancellation, "Keep the plan first to change it"; with an unpaid invoice, "First, pay the pending invoice"; over €400 without a tax ID asks for it.

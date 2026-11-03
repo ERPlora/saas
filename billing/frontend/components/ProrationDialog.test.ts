@@ -40,9 +40,16 @@ const SUBSCRIPTION = {
   current_period_end: '2026-10-31T12:00:00Z',
   trial_end: null,
   modules: [{ slug: 'booking', source: 'purchase', valid_until: null }],
+  scheduled_change: null,
 };
 const MODULE: ProrationItem = { kind: 'module', slug: 'booking', name: 'Bookings', recurringCents: 1500, interval: 'month' };
 const PLAN: ProrationItem = { kind: 'plan', slug: 'pro', name: 'Pro', from: 'Starter', recurringCents: 5999, interval: 'month' };
+const DOWNGRADE: ProrationItem = { kind: 'plan', slug: 'starter', name: 'Starter', from: 'Standard', recurringCents: 2999, interval: 'month' };
+const WAITING = {
+  ...SUBSCRIPTION,
+  plan: 'standard',
+  scheduled_change: { plan: 'starter', interval: 'month', starts_at: '2026-11-01T12:00:00Z' },
+};
 
 async function setup(api: (call: { path: string; body: unknown }) => Response | Promise<Response>, item: ProrationItem = MODULE, locale: 'en' | 'es' = 'en') {
   const open = ref(true);
@@ -109,6 +116,22 @@ describe('ProrationDialog', () => {
     await flush();
     expect(s.calls().at(-1)?.body).toEqual({ hub_id: 'bakery', plan: 'pro', interval: 'month', proration_date: 1792000000, promo_code: '' });
     expect(toastSuccess).toHaveBeenCalledWith('Panadería López is now on Pro');
+  });
+
+  it('a downgrade that waits says when it comes: the business is not on the new plan yet', async () => {
+    const s = await setup(({ path }) => (path.endsWith('/change') ? Response.json(WAITING) : confirmFlow({ ...PREVIEW, amount_due_cents: 0, tax_cents: 0, charge_starts_at: 1793527200 })), DOWNGRADE);
+    s.q('proration-modal-submit')?.click();
+    await flush();
+    expect(toastSuccess).toHaveBeenCalledWith('Panadería López moves to Starter on Nov 1, 2026');
+    expect(s.done).toHaveBeenCalledWith(WAITING);
+    expect(s.open.value).toBe(false);
+  });
+
+  it('a downgrade that waits says it in Spanish too', async () => {
+    const s = await setup(({ path }) => (path.endsWith('/change') ? Response.json(WAITING) : confirmFlow({ ...PREVIEW, amount_due_cents: 0, tax_cents: 0, charge_starts_at: 1793527200 })), DOWNGRADE, 'es');
+    s.q('proration-modal-submit')?.click();
+    await flush();
+    expect(toastSuccess).toHaveBeenCalledWith('Panadería López pasa a Starter el 1 nov 2026');
   });
 
   it('during a trial nothing is charged today: it says from when', async () => {
