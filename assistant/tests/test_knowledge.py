@@ -10,7 +10,9 @@ what is written for the maintainers) and one document of the plans on sale per l
 assistant never quotes a price from memory.
 """
 
+import os
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
@@ -256,8 +258,6 @@ class TestTheWorkbooks:
             knowledge.workbook_chunks(tmp_path)
 
     def test_the_workbooks_this_project_ships_are_indexed_in_both_languages(self, settings):
-        from pathlib import Path
-
         chunks = knowledge.workbook_chunks(Path(settings.BASE_DIR))
 
         assert {(chunk.path, chunk.lang) for chunk in chunks} >= {
@@ -266,6 +266,130 @@ class TestTheWorkbooks:
             for suffix, lang in ((".md", "es"), (".en.md", "en"))
         }
         assert not [chunk for chunk in chunks if "Para quien lo mantiene" in chunk.heading]
+
+
+#: A Spanish WORKBOOK with all its header leaves out: the process above its first ``##``, the comments on a line of
+#: their own, the blank line one of them would double and the maintainers' part. The two blank lines it wrote itself
+#: stay.
+COMMENTED_WORKBOOK = """# Workbook — Negocios
+Prefijo: HUBS
+Estado de la app: completa (2026-11-01)
+
+> Manual de uso.
+
+## Para qué sirve
+<!-- origen: old:a -->
+Crear negocios.
+
+<!-- origen: old:b -->
+
+### HUBS-F01 Crear un negocio
+<!-- origen: old:c -->
+Estado: hecho
+
+
+Pasos:
+1. Pulsa «Crear negocio».
+
+## Para quien lo mantiene
+
+- `hubs/services.py` crea el negocio.
+"""
+#: What the Hub's own ``base.catalog`` prints for it (``en_header(source_hash(user_part(…)))``, hub origin/main@b128e6e8).
+COMMENTED_WORKBOOK_HEADER = (
+    "<!-- generated from WORKBOOK.md sha256:a0e1874be64c5a435d434a10c04365c9766ff69e0ba0ad3f607d87fe11b46149 -->"
+)
+#: What that one does not hold: the blank line after a comment that follows text doubles nothing and stays, and a
+#: comment with spaces before it is on a line of its own all the same.
+SPACED_COMMENTS_WORKBOOK = """## Para qué sirve
+Crear negocios.
+<!-- origen: old:a -->
+
+Más texto.
+
+  <!-- origen: old:b -->
+
+### HUBS-F01 Crear un negocio
+
+## Para quien lo mantiene
+"""
+#: The Hub's own result for it too, same origin as above.
+SPACED_COMMENTS_WORKBOOK_HEADER = (
+    "<!-- generated from WORKBOOK.md sha256:6c64a7293bba370270ab81a9472e52c2f177a8acede517cb6a438d0caf278337 -->"
+)
+#: Folders that hold other repositories' files: the dependencies and the submodules.
+NOT_OURS = frozenset({"node_modules", "packages"})
+
+
+def english_workbooks(root: Path) -> list[Path]:
+    """Every ``WORKBOOK.en.md`` of the repository at ``root``."""
+    found = []
+    for folder, subfolders, files in os.walk(root):
+        subfolders[:] = [name for name in subfolders if name not in NOT_OURS and not name.startswith(".")]
+        if "WORKBOOK.en.md" in files:
+            found.append(Path(folder) / "WORKBOOK.en.md")
+    return found
+
+
+def wrong_headers(root: Path) -> dict[str, str]:
+    """The English WORKBOOKs under ``root`` whose first line is not the header of their Spanish one, with that header."""
+    wrong = {}
+    for english in english_workbooks(root):
+        spanish = english.with_name("WORKBOOK.md")
+        header = knowledge.en_header(spanish.read_text(encoding="utf-8"), str(spanish.relative_to(root)))
+        if english.read_text(encoding="utf-8").split("\n", 1)[0] != header:
+            wrong[str(english.relative_to(root))] = header
+    return wrong
+
+
+class TestTheEnglishHeader:
+    def test_it_is_the_one_the_hub_computes_for_the_same_workbook(self):
+        assert knowledge.en_header(COMMENTED_WORKBOOK, "hubs/WORKBOOK.md") == COMMENTED_WORKBOOK_HEADER
+
+    def test_it_is_the_hubs_too_with_a_comment_after_text_and_one_with_spaces_before_it(self):
+        assert knowledge.en_header(SPACED_COMMENTS_WORKBOOK, "hubs/WORKBOOK.md") == SPACED_COMMENTS_WORKBOOK_HEADER
+
+    def test_only_the_customers_part_counts(self):
+        before = knowledge.en_header(COMMENTED_WORKBOOK, "hubs/WORKBOOK.md")
+
+        process = COMMENTED_WORKBOOK.replace("completa (2026-11-01)", "en uso")
+        origin = COMMENTED_WORKBOOK.replace("old:c", "old:d")
+        maintainers = COMMENTED_WORKBOOK.replace("crea el negocio", "da de alta el negocio")
+        step = COMMENTED_WORKBOOK.replace("Pulsa «Crear negocio»", "Pulsa «Crear»")
+
+        assert knowledge.en_header(process, "hubs/WORKBOOK.md") == before
+        assert knowledge.en_header(origin, "hubs/WORKBOOK.md") == before
+        assert knowledge.en_header(maintainers, "hubs/WORKBOOK.md") == before
+        assert knowledge.en_header(step, "hubs/WORKBOOK.md") != before
+
+    def test_a_workbook_without_the_maintainers_heading_has_none(self):
+        with pytest.raises(knowledge.WorkbookWithoutCut, match="hubs/WORKBOOK.md"):
+            knowledge.en_header("# Workbook\n\n## Para qué sirve\n\nTodo.\n", "hubs/WORKBOOK.md")
+
+    def test_a_changed_character_a_second_line_or_a_lost_spanish_workbook_are_seen(self, tmp_path):
+        write(tmp_path, "hubs/WORKBOOK.md", COMMENTED_WORKBOOK)
+        write(tmp_path, "hubs/WORKBOOK.en.md", f"{COMMENTED_WORKBOOK_HEADER}\n\n## What it is for\n")
+        write(tmp_path, "node_modules/other/WORKBOOK.en.md", "not ours\n")
+        write(tmp_path, "packages/live/WORKBOOK.en.md", "not ours\n")
+        assert wrong_headers(tmp_path) == {}
+
+        changed = COMMENTED_WORKBOOK_HEADER.replace("sha256:a", "sha256:b")
+        write(tmp_path, "hubs/WORKBOOK.en.md", f"{changed}\n\n## What it is for\n")
+        assert wrong_headers(tmp_path) == {"hubs/WORKBOOK.en.md": COMMENTED_WORKBOOK_HEADER}
+
+        write(tmp_path, "hubs/WORKBOOK.en.md", f"\n{COMMENTED_WORKBOOK_HEADER}\n\n## What it is for\n")
+        assert wrong_headers(tmp_path) == {"hubs/WORKBOOK.en.md": COMMENTED_WORKBOOK_HEADER}
+
+        (tmp_path / "hubs/WORKBOOK.md").unlink()
+        with pytest.raises(FileNotFoundError):
+            wrong_headers(tmp_path)
+
+    def test_every_english_workbook_of_this_project_says_which_spanish_text_it_translates(self, settings):
+        """A stale first line: translate what changed above the cut and paste the header this shows."""
+        root = Path(settings.BASE_DIR)
+
+        assert {path.parent.name for path in english_workbooks(root)} >= set(knowledge.WORKBOOK_APPS)
+        assert wrong_headers(root) == {}
 
 
 @pytest.mark.django_db

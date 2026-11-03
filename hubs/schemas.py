@@ -793,3 +793,14 @@ class UsageRecordOut(Schema):
     #: The figures were new or different (the owner and the admins were told).
     changed: bool
 
+
+class UsagePruneIn(Schema):
+    pass
+
+
+class UsagePruneOut(Schema):
+    #: The oldest day still kept: every day before it was forgotten.
+    before: date
+    #: How many days of usage were forgotten, of every business.
+    deleted: int
+

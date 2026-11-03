@@ -145,6 +145,7 @@ def assistant_turn(ctx: OperationContext, data: AssistantTurnIn) -> dict:
         account=assistant.account_label(ctx.actor),
         screens=assistant.screens(ctx),
         docs="assistant.docs.search" in tools,
+        sells=not assistant.sells_nothing(getattr(ctx, "request", None)),
     )
     stop = ""
     if card is None and not stopped and assistant.shared.rounds(messages) >= assistant.MAX_ROUNDS:

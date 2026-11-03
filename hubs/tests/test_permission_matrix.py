@@ -168,6 +168,7 @@ def test_every_operation_on_a_business_has_its_row():
         "hubs.subscription.apply",
         # The platform's (the nightly collection): ``test_collect_hub_usage.py``.
         "hubs.usage.record",
+        "hubs.usage.prune",
         # The platform's (the clock of a suspended business): ``test_suspended_lifecycle.py``.
         "hubs.business.age_suspension",
         "hubs.address.propose",

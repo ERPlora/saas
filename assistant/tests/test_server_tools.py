@@ -110,6 +110,15 @@ class TestInTheTurn:
         assert "tools" not in sent[-1].body
         assert got[0] == {"type": "text_delta", "text": "Enough."}
 
+    def test_the_model_is_asked_again_five_times_at_most(self, internal, business, answering, fake_provider):
+        """The number the manual gives (ASSISTANT-F14, step 4): the test above follows the constant, this one pins it."""
+        for n in range(7):
+            fake_provider.reply("POST", COMPLETIONS, sse=openai_tool_call("current_datetime", "{}", call_id=f"call_{n}"))
+
+        frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business)))
+
+        assert len(self.chat_requests(fake_provider)) == 1 + 5
+
     def test_the_instructions_are_the_hubs_alone_even_with_a_search_key(self, internal, business, answering, fake_provider, settings):
         settings.TAVILY_API_KEY = "tvly-test"
         fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Ok"))

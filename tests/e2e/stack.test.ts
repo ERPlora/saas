@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { panelMailDir, panelServers } from './panel/project';
+import { GOOGLE_E2E, panelMailDir, panelServers } from './panel/project';
 import { publicServer, recaptchaDoubleServer, runId } from './playwright.config';
 import { E2E_RECAPTCHA_API_KEY } from './recaptcha';
 import { isE2eDatabase, stackFrom } from './stack';
@@ -28,6 +28,7 @@ describe('stackFrom', () => {
       publicPort: 8011,
       panelPort: 8012,
       panelMfaPort: 8013,
+      googleDoublePort: 8015,
       publicHubDoublePort: 8014,
       aiProviderPort: 8017,
       recaptchaDoublePort: 8018,
@@ -43,6 +44,7 @@ describe('stackFrom', () => {
       publicPort: 8031,
       panelPort: 8032,
       panelMfaPort: 8033,
+      googleDoublePort: 8035,
       publicHubDoublePort: 8034,
       aiProviderPort: 8037,
       recaptchaDoublePort: 8038,
@@ -52,7 +54,7 @@ describe('stackFrom', () => {
   });
 
   it("gives the assistant's fake AI provider a port of its own, apart from the stack's servers", () => {
-    const servers = [OWN.publicPort, OWN.panelPort, OWN.panelMfaPort, OWN.recaptchaDoublePort, OWN.hubDoublePort];
+    const servers = [OWN.publicPort, OWN.panelPort, OWN.panelMfaPort, OWN.googleDoublePort, OWN.recaptchaDoublePort, OWN.hubDoublePort];
     expect(servers).not.toContain(OWN.aiProviderPort);
   });
 
@@ -223,20 +225,37 @@ describe("the stack's servers", () => {
 
   // The second factor is off by default (ACCOUNTS_MFA_ENABLED, phase 1): the panel the specs play on is production's.
   // Its flows (accounts/WORKBOOK.md, APP-ACCOUNTS-2) play on a twin with it on, a port above, on the same database,
-  // Vite, mail folder and Hub double, so a spec signs in on either with the same helpers.
-  it('start a twin of the panel with the second factor on, a port above, sharing the rest', () => {
+  // Vite, mail folder and Hub double, so a spec signs in on either with the same helpers. «Continue with Google»
+  // (ACCOUNTS-F06) plays there too, because it hands over to that second factor: with a made-up Google app whose code
+  // is exchanged with the stack's double, so no run needs a credential of Google or calls it.
+  it('start a twin of the panel with the second factor on and a made-up Google app, a port above, sharing the rest', () => {
     for (const stack of [SHARED, OWN]) {
       const { 'panel-django': django, 'panel-mfa-django': mfa } = panel(stack);
       expect(mfa.command).toBe(`uv run python manage.py runserver 127.0.0.1:${stack.panelMfaPort} --novite --noreload`);
       expect(mfa.url).toBe(`http://127.0.0.1:${stack.panelMfaPort}/healthz`);
       expect(mfa.reuseExistingServer).toBe(false);
-      expect(mfa.env).toEqual({ ...django.env, ACCOUNTS_MFA_ENABLED: 'True' });
+      expect(mfa.env).toEqual({
+        ...django.env,
+        ACCOUNTS_MFA_ENABLED: 'True',
+        GOOGLE_OAUTH_CLIENT_ID: GOOGLE_E2E.clientId,
+        GOOGLE_OAUTH_CLIENT_SECRET: GOOGLE_E2E.clientSecret,
+        GOOGLE_OAUTH_TOKEN_URL: `http://127.0.0.1:${stack.googleDoublePort}/token`,
+      });
     }
   });
 
   it("leave the panel itself with the second factor as production has it (off)", () => {
     expect(panel()['panel-django'].env).not.toHaveProperty('ACCOUNTS_MFA_ENABLED');
     expect(panel(OWN)['panel-django'].env).not.toHaveProperty('ACCOUNTS_MFA_ENABLED');
+  });
+
+  it('never move the code exchange of the panel itself, nor give it a Google app the e2e made up', () => {
+    for (const stack of [SHARED, OWN]) {
+      const { env } = panel(stack)['panel-django'];
+      expect(env).not.toHaveProperty('GOOGLE_OAUTH_CLIENT_ID');
+      expect(env).not.toHaveProperty('GOOGLE_OAUTH_CLIENT_SECRET');
+      expect(env).not.toHaveProperty('GOOGLE_OAUTH_TOKEN_URL');
+    }
   });
 
   it('read the mails of each stack where its Django writes them', () => {

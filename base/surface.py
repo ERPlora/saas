@@ -23,3 +23,9 @@ def account_surface(request: HttpRequest) -> str | None:
     elif asked is not None:
         request.session.pop(SESSION_KEY, None)
     return ACCOUNT if request.session.get(SESSION_KEY) == ACCOUNT else None
+
+
+def sells_nothing(request: HttpRequest | None) -> bool:
+    """Whether ``request`` comes from where nothing is sold: the account surface. Not a call without a session (the
+    signed doors of the Hub, a context with no request)."""
+    return request is not None and hasattr(request, "session") and account_surface(request) == ACCOUNT

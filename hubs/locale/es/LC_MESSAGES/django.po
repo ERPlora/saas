@@ -1378,6 +1378,9 @@ msgstr "No hay ningún plan con este identificador."
 msgid "Only the platform records the usage of a business."
 msgstr "Solo la plataforma registra el uso de un negocio."
 
+msgid "Only the platform forgets the usage of a business."
+msgstr "Solo la plataforma olvida el uso de un negocio."
+
 #: services.py:2051
 msgid "Only the platform ages a suspension."
 msgstr "Solo la plataforma hace avanzar una suspensión."

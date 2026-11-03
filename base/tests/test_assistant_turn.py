@@ -166,7 +166,7 @@ class TestTheCatalog:
         request.session = {"base.surface": "account"}
         unsold = assistant.catalog(dataclasses.replace(ctx_for(account), request=request))
 
-        for sold in ("billing.plan.keep", "billing.plan.cancel", "billing.store.catalog", "apps.app.list"):
+        for sold in ("billing.plan.keep", "billing.plan.cancel", "billing.store.catalog", "apps.app.list", "hubs.plan.list"):
             assert sold in assistant.catalog(ctx_for(account))
             assert sold not in unsold
         assert {"hubs.business.list", "billing.invoice.list", "accounts.preferences.get"} <= set(unsold)
@@ -202,6 +202,28 @@ class TestTheInstructions:
         assert "[Facturación](/dashboard/billing)" in text
         assert "open the business" in text
         assert "never invent a plan, a price or an invoice" in text
+
+    @pytest.mark.parametrize("language", ["es", "en"])
+    def test_where_nothing_is_sold_they_give_the_sentences_of_the_screens(self, account, language, settings):
+        """PLAN-SAAS §3.6 point 6: the very sentences the panel paints there, in the person's language."""
+        billing = json.loads((settings.BASE_DIR / f"billing/frontend/locale/{language}.json").read_text("utf-8"))
+        hubs = json.loads((settings.BASE_DIR / f"hubs/frontend/locale/{language}.json").read_text("utf-8"))
+        buy = hubs["hubs"]["common"]["storeInBrowser"]
+        pay = billing["billing"]["notice"]["app"]
+
+        text = assistant.instructions(language=language, account="Lena", screens={}, sells=False)
+
+        assert f"«{buy}»" in text and f"«{pay}»" in text
+        assert "even if the documentation explains it" in text
+        rules = text.split("\n- ")
+        assert rules[1].startswith("FIRST RULE"), "it must not lose to «say on which screen»"
+
+    @pytest.mark.parametrize("language", ["es", "en"])
+    def test_where_it_sells_they_send_nobody_to_the_browser(self, account, language):
+        text = assistant.instructions(language=language, account="Lena", screens={})
+
+        assert "erplora.com desde el navegador" not in text and "erplora.com in your browser" not in text
+        assert "FIRST RULE" not in text and "- If something cannot be done from here" in text
 
     def test_the_store_is_not_offered_where_nothing_is_sold(self, account, rf):
         request = rf.get("/")
@@ -304,6 +326,28 @@ class TestARead:
             and "erplora.com" in system["content"]
             and "lena@example.com" in system["content"]
         )
+
+
+class TestTheTurnWhereNothingIsSold:
+    def test_the_model_hears_that_nothing_is_sold_here(self, signed_in, account, answering, fake_provider):
+        """The app opens the account with ``?surface=account``, sticky in the session; the turn comes after it."""
+        session = signed_in.session
+        session["base.surface"] = "account"
+        session.save()
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Hi."))
+
+        frames(post_turn(signed_in, {"messages": [ask("Is this coupon good to pay less?")]}))
+
+        system = model_requests(fake_provider)[0].body["messages"][0]["content"]
+        assert "«To change your plan or add modules, go to erplora.com in your browser.»" in system
+
+    def test_on_the_web_it_does_not(self, signed_in, account, answering, fake_provider):
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Hi."))
+
+        frames(post_turn(signed_in, {"messages": [ask("Is this coupon good to pay less?")]}))
+
+        system = model_requests(fake_provider)[0].body["messages"][0]["content"]
+        assert "erplora.com in your browser" not in system
 
 
 class TestAWrite:

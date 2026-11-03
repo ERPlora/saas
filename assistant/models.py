@@ -27,7 +27,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
-from pgvector.django import HnswIndex, VectorField
+from pgvector.django import VectorField
 
 from assistant.fields import EncryptedTextField
 
@@ -343,7 +343,11 @@ def content_hash(source: str, path: str, lang: str, heading: str, text: str) -> 
 
 class DocChunk(models.Model):
     """An excerpt of ERPlora's documentation and its fingerprint (ASSISTANT-F27): what the panel's assistant finds
-    with ``assistant.docs.search``, nearest first by the cosine of the fingerprints (``HnswIndex``).
+    with ``assistant.docs.search``, nearest first by the cosine of the fingerprints.
+
+    The search reads every excerpt of the language, with no approximate index: about 3000 excerpts take 5 ms that way,
+    and an HNSW index filters the language after its 40 nearest rows, so it loses excerpts (PLAN-SAAS, round
+    2026-11-03b).
 
     Written only by ``assistant.docs.index`` (``index_docs``), one source at a time: an excerpt is new when its
     ``content_hash`` is (``content_hash()``), so a run without changes computes no fingerprint.
@@ -372,13 +376,6 @@ class DocChunk(models.Model):
         verbose_name_plural = _("documentation excerpts")
         ordering = ["source", "path", "lang", "heading"]
         indexes = [
-            HnswIndex(
-                name="assistant_docchunk_embedding",
-                fields=["embedding"],
-                opclasses=["vector_cosine_ops"],
-                m=16,
-                ef_construction=64,
-            ),
             models.Index(fields=["source"], name="assistant_docchunk_source"),
         ]
 

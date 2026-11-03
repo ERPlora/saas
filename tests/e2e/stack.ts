@@ -26,6 +26,8 @@ export interface Stack {
   panelMfaPort: number;
   /** Where the public server calls the Hub (`HUB_INTERNAL_URL`): the demo a spec plays (`base + 4`; demo-wait.spec.ts). */
   publicHubDoublePort: number;
+  /** Where the panel's twin exchanges Google's code (`GOOGLE_OAUTH_TOKEN_URL`), which a spec plays (`base + 5`; accounts-google.spec.ts). */
+  googleDoublePort: number;
   /** The AI provider the assistant's specs start, assistant.tests.fake_provider (`base + 7`). */
   aiProviderPort: number;
   /** Where the public server asks reCAPTCHA's assessments (`RECAPTCHA_ENDPOINT`), the double of recaptcha-double.ts (`base + 8`). */
@@ -103,6 +105,7 @@ export function stackFrom(env: Env): Stack {
     panelPort: base + 2,
     panelMfaPort: base + 3,
     publicHubDoublePort: base + 4,
+    googleDoublePort: base + 5,
     aiProviderPort: base + 7,
     recaptchaDoublePort: base + 8,
     hubDoublePort: base + LAST_OFFSET,

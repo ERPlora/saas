@@ -20,13 +20,15 @@ búsqueda en la documentación viene de `search_cloud_docs`, una de las herramie
 con su índice en la BD (plan `docs/plans/2026-10-30-asistente-saas.md` §5, PLAN-SAAS §23), porque el Sidekick de
 Shopify, el Square Assistant y el asistente de Stripe contestan el «cómo se hace» con su propia ayuda y la citan.
 
+Completa desde el 2026-11-03. Lo que queda fuera, con su issue: `WORKBOOK.md`, «Lo que queda fuera».
+
 ## Anatomía
 
 | Fichero | Qué hace |
 |---|---|
 | `apps.py` | `AssistantConfig`: `assistant.manage`, de la plataforma y del personal, y `assistant.ask`, de toda cuenta (el asistente del panel); registra la auditoría. |
 | `frontend/` | El chat del panel (ASSISTANT-F25): el del Hub, de `@erplora/ui/components`, configurado en `options.ts` (`SAAS_ASSISTANT`, con su frase bajo el cupo agotado en `spentNoteKey`); `components/AssistantTopbar.vue` (el botón de la barra) y `components/AssistantBackground.vue` (el panel con su vacío y sus atajos), que `frontend/main.ts` monta como `chrome`. Sus palabras, en `saas.assistant.*` del catálogo de la entrada (`frontend/locale`). |
-| `models.py` | `AIProvider` (una de las cuatro API, su dirección), `AIProviderCredential` (clave cifrada con su final), `AIModel` (precios, contexto, qué admite), `AIRoutingPolicy` (una fila: el modelo que contesta y su reserva), `AssistantUsage` (lo gastado por negocio y mes; una demo, una fila en su vida; una cuenta, una por mes) y `DocChunk` (un fragmento de la documentación con su huella, `vector(1536)` con índice HNSW por coseno); `estimate_cost`, `content_hash`. |
+| `models.py` | `AIProvider` (una de las cuatro API, su dirección), `AIProviderCredential` (clave cifrada con su final), `AIModel` (precios, contexto, qué admite), `AIRoutingPolicy` (una fila: el modelo que contesta y su reserva), `AssistantUsage` (lo gastado por negocio y mes; una demo, una fila en su vida; una cuenta, una por mes) y `DocChunk` (un fragmento de la documentación con su huella, `vector(1536)`, sin índice aproximado: la búsqueda es exacta); `estimate_cost`, `content_hash`. |
 | `crypto.py`, `fields.py` | Fernet con `FERNET_KEY` (+ `FERNET_KEY_PREVIOUS` para leer en una rotación); la columna guarda el token. |
 | `schemas.py` | Entradas y salidas; la clave viaja como `SecretStr`. |
 | `queries.py` | Lecturas (`@operation`, `kind="query"`): la conexión de un proveedor, la política, la ruta de un turno, quién llama, el cupo que queda y el proveedor de servicios. |
@@ -34,10 +36,10 @@ Shopify, el Square Assistant y el asistente de Stripe contestan el «cómo se ha
 | `routing.py` | El turno a través de su ruta: prueba los modelos en orden y pasa a la reserva si el proveedor falla antes de contestar. |
 | `internal.py` | Las puertas del Hub, vistas asíncronas firmadas (`door`: método, tamaño, firma, contrato, quién llama y freno por negocio): el turno en directo y de una vez, el cupo, las huellas, la búsqueda en la documentación, el dictado, la lectura en voz alta y la denuncia. |
 | `turn.py` | El turno: prepara la conversación, ofrece las herramientas, emite los frames, el token de continuación de un solo uso y lo gastado (`Outcome`); y el turno tal como lo sirve una puerta, sea la del Hub o la del panel (`start`, `frames`/`stream`, `settle`, `spend`, `Refused`). |
-| `server_tools.py` | Las herramientas que ejecuta erplora.com: la fecha y la hora (la búsqueda web y el tipo de cambio esperan a la etapa ERP, PLAN §30). |
+| `server_tools.py` | Las herramientas que ejecuta erplora.com: la fecha y la hora (la búsqueda web y el tipo de cambio esperan a la etapa ERP, PLAN §30, saas#202). |
 | `attachments.py` | Los adjuntos: imágenes al modelo que ve, PDF/Word/Excel/texto a texto en memoria, con topes y el zip comprobado. El cuerpo de las puertas lo guarda en memoria el servidor (`config/asgi.py`, `BodiesInMemory`), nunca en el temporal en disco de Django. |
 | `media.py` | Huellas (`text-embedding-3-small`), dictado (`whisper-1`) y lectura en voz alta (`tts-1`) por la API de OpenAI del proveedor de servicios. |
-| `knowledge.py` | La documentación del asistente del panel (ASSISTANT-F27): `chunk_markdown` (corte por `##`/`###`, ventana de 220 palabras con solape de 50) y sus cuatro fuentes (ayuda pública, documentación de las apps del Hub por `apps.doc.list`, parte de usuario de los WORKBOOK del panel y los planes en venta por `hubs.plan.list`); sin ORM. |
+| `knowledge.py` | La documentación del asistente del panel (ASSISTANT-F27): `chunk_markdown` (corte por `##`/`###`, ventana de 220 palabras con solape de 50) y sus cuatro fuentes (ayuda pública, documentación de las apps del Hub por `apps.doc.list`, parte de usuario de los WORKBOOK del panel y los planes en venta por `hubs.plan.list`); `en_header`, la primera línea de un `WORKBOOK.en.md` (los mismos bytes que `base.catalog` del Hub para los comentarios en línea propia fuera de un bloque de código), que `tests/test_knowledge.py` exige en todos los del repo; sin ORM. |
 | `providers/` | Clientes `httpx` de OpenAI, Anthropic, Gemini y DeepSeek (`base.py`, `factory.py`): eventos normalizados, sin SDK ni caché; cada cliente toma el contexto TLS de `base.tls` (`trusted_context`): si el servidor no puede cargar sus certificados (`SSL_CERT_FILE`), el fallo es definitivo y nombra la variable y el fichero. |
 | `auditlog.py` | Registro de auditoría (django-auditlog) de los cuatro modelos, sin la clave ni `updated_at`. |
 | `events.py` | Nombres de los eventos del outbox (sin la clave ni lo que escribe una persona). |
@@ -98,8 +100,8 @@ Todas llevan `ai=INTERNAL` (son la pasarela, no herramientas del asistente) salv
   clave del proveedor y el token y el PIN de WhatsApp); termina con error si alguna no se abre.
 - `index_docs [--full] [--dry-run]`: indexa la documentación del asistente del panel (ASSISTANT-F27); solo embebe lo
   que cambió, en lotes de 64, con el proveedor de servicios; una línea por fuente con lo que costó; código 2 sin
-  proveedor. A mano como tarea suelta de `saas-cron` (`saas/README.md`, «Operación») hasta que ERPlora/aws#25
-  lo programe a diario a las 06:50 UTC.
+  proveedor. Programado a diario a las 06:50 UTC en `saas-cron` (`index-docs-daily`, ERPlora/aws#28); a mano, como
+  tarea suelta de `saas-cron` (`saas/README.md`, «Operación»).
 - `ASSISTANT_TRY_RATELIMIT` (por defecto `10/m`): pruebas de un modelo por persona del personal.
 - Freno por negocio de las puertas del Hub: `ASSISTANT_TURN_RATELIMIT` (`600/h`, turnos y cupo),
   `ASSISTANT_EMBED_RATELIMIT` (`600/h`), `ASSISTANT_DOCS_RATELIMIT` (`600/h`, búsquedas en la documentación),
@@ -111,7 +113,8 @@ Todas llevan `ai=INTERNAL` (son la pasarela, no herramientas del asistente) salv
   `ASSISTANT_TURN_RATELIMIT`, por cuenta.
 - `ASSISTANT_SERVICE_PROVIDER` (`openai`): el identificador del proveedor (de API OpenAI) que calcula las huellas
   de la documentación (`index_docs` y las preguntas de `assistant.docs.search`, del panel y de la puerta del Hub) y
-  la voz. La puerta `/internal/assistant/embeddings` sigue abierta, pero ningún Hub la llama: el Hub no guarda índice.
+  la voz. Las puertas `/internal/assistant/embeddings` y `/internal/speech/synthesize` siguen abiertas, pero ningún Hub
+  las llama: el Hub no guarda índice y lee en voz alta con la voz del dispositivo.
 - Postgres con la extensión `vector` (pgvector, imagen `pgvector/pgvector` en local y CI, donde la crea la migración
   `assistant/0004_doc_chunks`). En Aurora no es de confianza (solo `rds_superuser`): la crea antes el arranque de
   plataforma del Hub (`bootstrap_databases`, usuario maestro) en `saas` y `pre_saas`.
@@ -127,4 +130,8 @@ proveedor de verdad: los clientes hablan con `assistant/tests/fake_provider.py`,
 El e2e del admin, `tests/e2e/panel/assistant-admin.spec.ts` (datos de `tests/e2e/panel/assistant_seed.py`), arranca
 ese mismo servidor en el puerto `E2E_SAAS_PORT + 7` (`aiProviderPort` de `tests/e2e/stack.ts`; el `+ 8` es el doble de reCAPTCHA) (`uv run python -m assistant.tests.fake_provider --port …`). El e2e
 de las puertas del Hub y de «Registros de uso del asistente», `tests/e2e/panel/assistant-gateway.spec.ts`, llama firmado como el
-Hub contra el mismo servidor falso.
+Hub contra el mismo servidor falso. El del chat del panel, `tests/e2e/panel/assistant-panel.spec.ts`.
+
+La QA del asistente del panel: capa 1 en cada PR, `base/tests/test_assistant_asks.py`, sin modelo ni red; capa 2 a
+petición, con el modelo de verdad y frases nuevas de la gente, `tests/e2e/panel/assistant-probes.spec.ts` y
+`assistant-battery.spec.ts` (`tests/e2e/README.md`, «Sondas del asistente (capa 2)»).

@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:6db81734b40d52add99914ce298d8fbc311a55d8e5445e085bd629ebd5437b0b -->
+<!-- generated from WORKBOOK.md sha256:85efe546132d5e9487f56d8e71de760984f4f1aa1fa4bb0acd0b73a6de6bc47d -->
 
 ## What it is for and who it is for
 
@@ -221,7 +221,7 @@ the "message in Spanish" (empty, Spanish visitors read the English one), and the
 | ACCOUNTS-F03 | Confirm the email before using the panel | done |
 | ACCOUNTS-F04 | Sign in with the email and the password | done |
 | ACCOUNTS-F05 | Sign in with the authenticator app's code or a recovery one | done |
-| ACCOUNTS-F06 | Sign in or create the account with Google | partial |
+| ACCOUNTS-F06 | Sign in or create the account with Google | done |
 | ACCOUNTS-F07 | Recover a forgotten password | done |
 | ACCOUNTS-F08 | Change the password and end the other sessions with it | done |
 | ACCOUNTS-F09 | Sign out | done |
@@ -263,7 +263,7 @@ the "message in Spanish" (empty, Spanish visitors read the English one), and the
 | ACCOUNTS-F45 | Brake too many requests | done |
 | ACCOUNTS-F46 | Send erplora.com's emails | done |
 | ACCOUNTS-F47 | Move around the panel | done |
-| ACCOUNTS-F48 | Pass erplora.com's master QA | partial |
+| ACCOUNTS-F48 | Pass erplora.com's master QA | done |
 | ACCOUNTS-F49 | Sign in as a store review account without the email code | done |
 
 ### ACCOUNTS-F01 Create the account
@@ -336,13 +336,13 @@ If it fails: a wrong code appears under the field and the sign-in keeps waiting;
 Involved: hubs (the jump to a business)
 
 ### ACCOUNTS-F06 Sign in or create the account with Google
-Status: partial — the end-to-end test needs the real Google (the test environment does not have its credentials and the button is not shown); the way there and back is tested with Google's answers simulated
+Status: done
 Actor: anyone
 Screen: Entrance
 Steps:
 1. On the **Entrance**, the person taps "Continue with Google".
 2. They choose their Google account and accept.
-3. If there is already an erplora.com account with that email, they sign in to it, Google stays linked and its email receives the notice "third-party account linked"; if there is none, the account is created with the email already confirmed and without a form.
+3. If there is already an erplora.com account with that email, they sign in to it, Google stays linked and its email receives the notice "Google sign-in was added to your account"; if there is none, the account is created with the email already confirmed and without a form.
 4. Once in, they go where they were going or to the **Entrance** with their session; with the authenticator app, they first go through **Two-step verification**.
 In: what Google confirms (email, first and last name) and where they were going.
 Out: the Google account linked and, if new, the account, without a password (set with "Forgot your password?"). Google does not ask for the email's code: it already proves it.
@@ -374,7 +374,7 @@ Steps:
 4. The other browsers with their account are signed out: their open tabs go back to the **Entrance** by themselves. erplora.com asks each of their businesses to end the sessions open with it.
 In: the current password and the new one.
 Out: the new password; the other erplora.com sessions ended, this browser signed in; the notice to their businesses. The same happens when resetting it (ACCOUNTS-F07).
-If it fails: a wrong current password, under its field, and the new one is not saved; the new one equal to the current one, "Your new password must be different from the current one."; one that does not pass the rules, its warnings. The warnings appear in the account's language. More than 5 attempts a minute, "Too many attempts…" without looking at the password, not even the right one: someone else's open session is no way to guess it. An account without a password (it signed in with Google) sees "Create a password", which sends it the link of ACCOUNTS-F07. Today the businesses do not act on the notice yet (it comes in phase 2): a session open in a business goes on until it expires.
+If it fails: a wrong current password, under its field, and the new one is not saved; the new one equal to the current one, "Your new password must be different from the current one."; one that does not pass the rules, its warnings. The warnings appear in the account's language. More than 5 attempts a minute, "Too many attempts…" without looking at the password, not even the right one: someone else's open session is no way to guess it. An account without a password (it signed in with Google) sees "Create a password", which sends it the link of ACCOUNTS-F07. If a business does not answer the notice to close its sessions, it is retried until it acts on it.
 Involved: hubs (each business ends the account's sessions)
 
 ### ACCOUNTS-F09 Sign out
@@ -509,7 +509,7 @@ Steps:
 3. "Close other sessions" says how many will be closed, the apps too, and once confirmed closes all but this one: "Sessions closed: 2".
 In: the session picked, or "the others".
 Out: those sessions closed, here and in the account's businesses; this one stays in and the list refreshes by itself. Event `accounts.session.closed`.
-If it fails: a list that does not load says "We could not load your sessions" with "Try again"; a refused close appears in a notice and the session stays on the list. A session of another account is not found. Today the businesses do not act on the notice yet (it comes in phase 2): a session open in a business stays until it expires.
+If it fails: a list that does not load says "We could not load your sessions" with "Try again"; a refused close appears in a notice and the session stays on the list. A session of another account is not found. If a business does not answer the notice to close its sessions, it is retried until it acts on it.
 Involved: hubs (each business ends the account's sessions)
 
 ### ACCOUNTS-F19 Close an account's sessions from the admin
@@ -522,7 +522,7 @@ Steps:
 3. In **User sessions** they see who signed in where (account, address, browser and dates); a superuser ticks some and picks "Close the selected sessions".
 In: the accounts or the sessions ticked.
 Out: those sessions closed, also in the account's businesses; with the account's action, besides, no browser of it is trusted (its app and its recovery codes keep working). The account's own list of sessions refreshes by itself, and the log keeps who did it. Event `accounts.session.closed`.
-If it fails: support see the sessions without being able to close them; nobody changes or deletes a session by hand, because deleting the row would not end it. An account that no longer exists is not found. Today the businesses do not act on the notice yet (it comes in phase 2): a session open in a business stays until it expires.
+If it fails: support see the sessions without being able to close them; nobody changes or deletes a session by hand, because deleting the row would not end it. An account that no longer exists is not found. If a business does not answer the notice to close its sessions, it is retried until it acts on it.
 Involved: hubs (each business ends the account's sessions)
 
 ### ACCOUNTS-F20 Require the authenticator app from the staff in the admin
@@ -895,7 +895,7 @@ Steps:
 In: the notice, its data, the recipient and their language.
 Out: the email sent, formatted and as text. On the developer's computer and in the tests, the email is written to a folder and never leaves.
 If it fails: an email that does not leave is handled by whoever asks for it (for example, reporting a problem shows the support address to write to directly) and the screen never hangs waiting.
-Involved: billing, fiscal and whatsapp (their emails already carry the brand); hubs (those of a business's people, invitations and roles move to it with their port)
+Involved: billing, fiscal, whatsapp and hubs (their emails already carry the brand)
 
 ### ACCOUNTS-F47 Move around the panel
 Status: done
@@ -912,7 +912,7 @@ If it fails: without a session, the **Entrance**, which goes back to the page af
 Involved: hubs ("Businesses"), billing ("Store" and "Billing")
 
 ### ACCOUNTS-F48 Pass erplora.com's master QA
-Status: partial — what the QA asks for and is still missing is already a partial flow of its app: the exit package when a business is deleted and the measure of its use (hubs), the distance-selling threshold in the EU (billing), deleting what was created inside a demo (public) and opening the drawer on payment (printing, in the Hub); a business's people, invitations and roles come with their port in hubs
+Status: done
 Actor: ERPlora's QA team
 Screen: all of erplora.com's
 Steps:
@@ -921,7 +921,7 @@ Steps:
 3. It checks the billing: the invoices with their VAT (also the reverse charge within the EU), the promo codes that give trial days and the return to Free when the subscription ends.
 4. On a real business, it sells and checks that the receipt comes with its QR, signed for the AEAT in its test environment, and that it prints.
 In: the pre environment and test accounts.
-Out: each point of the QA, with the flow that covers it and its automated test in the browser; what makes no sense on today's platform stays out with its reason (see "For whoever maintains it").
+Out: each point of the QA, with the flow that covers it and its automated test, nearly always in the browser; those with server tests only are in "For whoever maintains it", where what makes no sense on today's platform also stays out, with its reason.
 If it fails: a point no flow covers is a QA failure and is noted in the app that owns it.
 Involved: hubs, billing, public, apps and fiscal; in the Hub, verifactu, invoice and printing
 

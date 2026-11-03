@@ -1,7 +1,7 @@
 # Workbook — Cuentas (accounts)
 Prefijo: ACCOUNTS
 Alcance MVP: fase 1 (la cuenta de erplora.com: crearla, entrar y salir, su contraseña y lo que acepta)
-Estado de la app: en uso (dos flujos parciales: ACCOUNTS-F06, que espera a Google de verdad en el entorno de pruebas, y ACCOUNTS-F48, la QA maestra, que espera flujos de otras apps)
+Estado de la app: completa (2026-11-03)
 
 > Manual de uso y especificación de la app `accounts` del SaaS (erplora.com). Cuenta cómo se crea una
 > cuenta, cómo se confirma el correo, cómo se entra y se sale, cómo se recupera y se cambia la contraseña,
@@ -245,7 +245,7 @@ inglés» y el «mensaje en español» (vacío, quien visita en español lee el 
 | ACCOUNTS-F03 | Confirmar el correo antes de usar el panel | hecho |
 | ACCOUNTS-F04 | Entrar con el correo y la contraseña | hecho |
 | ACCOUNTS-F05 | Entrar con el código de la app autenticadora o uno de recuperación | hecho |
-| ACCOUNTS-F06 | Entrar o crear la cuenta con Google | parcial |
+| ACCOUNTS-F06 | Entrar o crear la cuenta con Google | hecho |
 | ACCOUNTS-F07 | Recuperar la contraseña olvidada | hecho |
 | ACCOUNTS-F08 | Cambiar la contraseña y cerrar con ella las demás sesiones | hecho |
 | ACCOUNTS-F09 | Cerrar la sesión | hecho |
@@ -287,7 +287,7 @@ inglés» y el «mensaje en español» (vacío, quien visita en español lee el 
 | ACCOUNTS-F45 | Frenar el exceso de peticiones | hecho |
 | ACCOUNTS-F46 | Mandar los correos de erplora.com | hecho |
 | ACCOUNTS-F47 | Moverse por el panel | hecho |
-| ACCOUNTS-F48 | Pasar la QA maestra de erplora.com | parcial |
+| ACCOUNTS-F48 | Pasar la QA maestra de erplora.com | hecho |
 | ACCOUNTS-F49 | Entrar como cuenta de revisión de tienda sin el código por correo | hecho |
 
 ### ACCOUNTS-F01 Crear la cuenta
@@ -366,13 +366,13 @@ Implicados: hubs (el salto a un negocio)
 
 ### ACCOUNTS-F06 Entrar o crear la cuenta con Google
 <!-- origen: old-saas:SAAS_AUTH-F04 gh:saas#2552 -->
-Estado: parcial — la prueba de punta a punta necesita Google de verdad (el entorno de pruebas no tiene sus credenciales y el botón no se pinta); la ida y la vuelta están probadas con las respuestas de Google simuladas
+Estado: hecho
 Actor: cualquiera
 Pantalla: Entrada
 Pasos:
 1. En la **Entrada**, la persona pulsa «Continuar con Google».
 2. Elige su cuenta de Google y acepta.
-3. Si ya hay una cuenta de erplora.com con ese correo, entra en ella, Google queda enlazado y a su correo le llega el aviso «cuenta de terceros vinculada»; si no la hay, la cuenta se crea con el correo ya confirmado y sin formulario.
+3. Si ya hay una cuenta de erplora.com con ese correo, entra en ella, Google queda enlazado y a su correo le llega el aviso «Se ha añadido el acceso con Google a tu cuenta»; si no la hay, la cuenta se crea con el correo ya confirmado y sin formulario.
 4. Dentro, va adonde iba o a la **Entrada** con su sesión; con la app autenticadora, primero pasa por **Verificación en dos pasos**.
 Entra: lo que Google confirma (correo, nombre y apellidos) y adónde iba.
 Sale: la cuenta de Google enlazada y, si es nueva, la cuenta, sin contraseña (se pone con «¿Olvidaste tu contraseña?»). Google no pide el código del correo: ya lo prueba él.
@@ -406,7 +406,7 @@ Pasos:
 4. Los demás navegadores con su cuenta salen: sus pestañas abiertas vuelven solas a la **Entrada**. erplora.com pide a cada uno de sus negocios que cierre las sesiones abiertas con ella.
 Entra: la contraseña actual y la nueva.
 Sale: la contraseña nueva; las otras sesiones de erplora.com cerradas, este navegador dentro; el aviso a sus negocios. Lo mismo pasa al restablecerla (ACCOUNTS-F07).
-Si falla: una contraseña actual equivocada, debajo de su campo, y la nueva no se guarda; la nueva igual a la actual, «La contraseña nueva tiene que ser distinta de la actual.»; una que no pasa las reglas, sus avisos. Los avisos salen en el idioma de la cuenta. Más de 5 intentos por minuto, «Demasiados intentos…» sin mirar la contraseña, ni la buena: una sesión ajena abierta no sirve para adivinarla. Una cuenta sin contraseña (entró con Google) ve «Crear contraseña», que le manda el enlace de ACCOUNTS-F07. Hoy los negocios aún no atienden el aviso (llega en la fase 2): una sesión abierta en un negocio sigue hasta que caduca.
+Si falla: una contraseña actual equivocada, debajo de su campo, y la nueva no se guarda; la nueva igual a la actual, «La contraseña nueva tiene que ser distinta de la actual.»; una que no pasa las reglas, sus avisos. Los avisos salen en el idioma de la cuenta. Más de 5 intentos por minuto, «Demasiados intentos…» sin mirar la contraseña, ni la buena: una sesión ajena abierta no sirve para adivinarla. Una cuenta sin contraseña (entró con Google) ve «Crear contraseña», que le manda el enlace de ACCOUNTS-F07. Si un negocio no contesta al aviso de cerrar sus sesiones, se reintenta hasta que lo atiende.
 Implicados: hubs (cada negocio cierra las sesiones de la cuenta)
 
 ### ACCOUNTS-F09 Cerrar la sesión
@@ -551,7 +551,7 @@ Pasos:
 3. «Cerrar las demás sesiones» dice cuántas se cerrarán, también las apps, y al confirmarlo las cierra todas menos esta: «Sesiones cerradas: 2».
 Entra: la sesión elegida, o «las demás».
 Sale: esas sesiones cerradas, aquí y en los negocios de la cuenta; esta sigue dentro y la lista se actualiza sola. Evento `accounts.session.closed`.
-Si falla: la lista que no carga dice «No hemos podido cargar tus sesiones» con «Reintentar»; un cierre rechazado sale en un aviso y la sesión sigue en la lista. Una sesión de otra cuenta no se encuentra. Hoy los negocios aún no atienden el aviso (llega en la fase 2): una sesión abierta en un negocio sigue hasta que caduca.
+Si falla: la lista que no carga dice «No hemos podido cargar tus sesiones» con «Reintentar»; un cierre rechazado sale en un aviso y la sesión sigue en la lista. Una sesión de otra cuenta no se encuentra. Si un negocio no contesta al aviso de cerrar sus sesiones, se reintenta hasta que lo atiende.
 Implicados: hubs (cada negocio cierra las sesiones de la cuenta)
 
 ### ACCOUNTS-F19 Cerrar las sesiones de una cuenta desde el admin
@@ -565,7 +565,7 @@ Pasos:
 3. En **Sesiones de usuario** se ve quién ha entrado dónde (cuenta, dirección, navegador y fechas); un superusuario marca unas y elige «Cerrar las sesiones seleccionadas».
 Entra: las cuentas o las sesiones marcadas.
 Sale: esas sesiones cerradas, también en los negocios de la cuenta; con la acción de la cuenta, además, ningún navegador suyo es de confianza (su app y sus códigos de recuperación siguen valiendo). La lista de sesiones de la propia cuenta se actualiza sola, y el registro guarda quién lo hizo. Evento `accounts.session.closed`.
-Si falla: el soporte ve las sesiones sin poder cerrarlas; nadie cambia ni borra una sesión a mano, porque borrar la fila no la cerraría. Una cuenta que ya no existe no se encuentra. Hoy los negocios aún no atienden el aviso (llega en la fase 2): una sesión abierta en un negocio sigue hasta que caduca.
+Si falla: el soporte ve las sesiones sin poder cerrarlas; nadie cambia ni borra una sesión a mano, porque borrar la fila no la cerraría. Una cuenta que ya no existe no se encuentra. Si un negocio no contesta al aviso de cerrar sus sesiones, se reintenta hasta que lo atiende.
 Implicados: hubs (cada negocio cierra las sesiones de la cuenta)
 
 ### ACCOUNTS-F20 Exigir la app autenticadora al personal en el admin
@@ -965,7 +965,7 @@ Pasos:
 Entra: el aviso, sus datos, el destinatario y su idioma.
 Sale: el correo enviado, con formato y en texto. En el ordenador de quien programa y en las pruebas, el correo se escribe en una carpeta y nunca sale.
 Si falla: un correo que no sale lo trata quien lo pide (por ejemplo, reportar un problema enseña la dirección de soporte para escribir directamente) y la pantalla nunca se queda esperando.
-Implicados: billing, fiscal y whatsapp (sus correos ya salen con la marca); hubs (los de las personas, las invitaciones y los roles de un negocio pasan a ella con su porte)
+Implicados: billing, fiscal, whatsapp y hubs (sus correos ya salen con la marca)
 
 ### ACCOUNTS-F47 Moverse por el panel
 <!-- origen: old-saas:SAAS_DASHBOARD-F201 fi:saas/support/public-core-config#context_processors-py-config -->
@@ -984,7 +984,7 @@ Implicados: hubs («Negocios»), billing («Tienda» y «Facturación»)
 
 ### ACCOUNTS-F48 Pasar la QA maestra de erplora.com
 <!-- origen: qa:shared/qa-saas -->
-Estado: parcial — lo que la QA pide y aún falta ya es un flujo parcial de su app: el paquete de salida al eliminar un negocio y la medida de su uso (hubs), el umbral de ventas a distancia en la UE (billing), borrar lo creado dentro de una demo (public) y abrir el cajón al cobrar (impresión, en el Hub); las personas, las invitaciones y los roles de un negocio llegan con su porte en hubs
+Estado: hecho
 Actor: el equipo de QA de ERPlora
 Pantalla: todas las de erplora.com
 Pasos:
@@ -993,7 +993,7 @@ Pasos:
 3. Comprueba el cobro: las facturas con su IVA (también la inversión del sujeto pasivo dentro de la UE), los códigos promocionales que dan días de prueba y la vuelta a Gratis al terminar la suscripción.
 4. Sobre un negocio real, vende y comprueba que el tique sale con su QR, firmado para la AEAT en su entorno de pruebas, y que se imprime.
 Entra: el entorno pre y cuentas de prueba.
-Sale: cada punto de la QA, con el flujo que lo cubre y su prueba automática en el navegador; lo que no tiene sentido en la plataforma de ahora queda fuera con su motivo (ver «Para quien lo mantiene»).
+Sale: cada punto de la QA, con el flujo que lo cubre y su prueba automática, casi siempre en el navegador; los que solo tienen pruebas de servidor están en «Para quien lo mantiene», donde también queda fuera, con su motivo, lo que no tiene sentido en la plataforma de ahora.
 Si falla: un punto que ningún flujo cubre es un fallo de la QA y se apunta en la app que lo tiene.
 Implicados: hubs, billing, public, apps y fiscal; del Hub, verifactu, invoice y printing
 
@@ -1021,7 +1021,8 @@ Implicados: el admin de erplora.com (la ficha de la cuenta y el registro de audi
   (segundo factor, navegadores de confianza y sesiones) cierra F05 y añade F14–F20; la parte 3 (perfil,
   preferencias, avisos, menú de usuario, exportar y borrar la cuenta) añade F21–F27 y amplía F13; la parte 4
   (salto al Hub, llaves de API y su documentación, retención GDPR, auditlog y reportar un problema) añade F28–F38
-  y amplía F12 y F25; la parte 5 (plataforma del SaaS) añade F39–F48.
+  y amplía F12 y F25; la parte 5 (plataforma del SaaS) añade F39–F48. El cierre (CLOSE-ACCOUNTS, 2026-11-03) pasa F06
+  y F48 a `hecho` (PLAN-SAAS, ronda de `accounts`).
 - Equivalencia de claves del registro: G83, G124, G22 y G59 = F01; G84 y G21 = F02; G107 = F03; G85 y G17 =
   F04; G125 = F05; G86 = F06; G91, G123, G120, G121 y G122 = F07; G109, G92, G42, G45 y G46 = F08; G93 = F09;
   G119 = F10; G96 = F11; G20 y G58 = F12; G18 y G56 = F13. Parte 2: G60 = F04; G88, G12, G19, G55 y G57 =
@@ -1161,7 +1162,7 @@ Implicados: el admin de erplora.com (la ficha de la cuenta y el registro de audi
   `translation.override`) en `accounts`, `billing`, `fiscal`, `whatsapp` y el contacto de `public`; los de allauth, por
   `AccountAdapter.render_mail`, que pone su texto en la plantilla (allauth solo trae `.txt`) salvo los avisos propios,
   que tienen su `_message.html` junto al `.txt`. `URLIZE_ASSUME_HTTPS` abre por HTTPS un enlace sin esquema. Los de
-  `hubs/emails.py` siguen en texto hasta que los pase su porte. La navegación (F47) es `base/navigation.py` y el shell de `@erplora/ui`; el procesador de contexto que queda es
+  `hubs/emails.py` salen por la misma plantilla. La navegación (F47) es `base/navigation.py` y el shell de `@erplora/ui`; el procesador de contexto que queda es
   `base.context_processors.theme`. La QA maestra (F48) es `flows/shared/qa-saas.md` del repo `qa` viejo: §3 →
   PUBLIC-F01–F37; §4.1 → HUBS-F04, F06, F09, F21 y F22; §4.2 → HUBS-F03, BILLING-F07, F08, F10 y F11; §4.4 →
   HUBS-F18 y F19; §5 → APPS-F01–F07 y BILLING-F31–F35; §6 → BILLING-F02–F06, F12, F13, F15–F17 y F25,
@@ -1171,6 +1172,16 @@ Implicados: el admin de erplora.com (la ficha de la cuenta y el registro de audi
   hubs en ECS y una Aurora, PLAN-AWS), la descarga de módulos y el portal de desarrolladores (todos los módulos son
   nuestros y van en la imagen del Hub, PLAN §13–§15), OutfitKit (PLAN §16.11), la suspensión al 25 % (al terminar se
   vuelve a Gratis, BILLING-F15) y los 15 días de prueba de los planes de pago (sin prueba desde 2026-10-15).
+  `accounts/tests/test_master_qa.py` lee esta lista y falla si un flujo de este repositorio deja de estar `hecho` o
+  `descartado`; los del Hub (PRINTING, VERIFACTU e INVOICE) se comprueban en el registro. Medido el 2026-11-03 sobre las
+  86 claves: 85 `hecho` y PUBLIC-F36 `descartado` con su motivo. 20 de las `hecho` no tienen prueba en el navegador en el
+  registro, solo de servidor: PUBLIC-F30, F34 y F37, HUBS-F22, APPS-F01–F06, BILLING-F02–F06, F12, F15, F25 y F29, y
+  VERIFACTU-F15.
+- Google (F06) se juega en el navegador sin credenciales de Google y sin llamarle (`tests/e2e/panel/accounts-google.spec.ts`,
+  en el gemelo del panel con una app inventada, `GOOGLE_E2E`): el navegador ve a Google por el protocolo de DevTools, no por
+  `page.route`, que solo intercepta la primera dirección de una redirección y dejaría llegar al Google real; el servidor
+  canjea el código en un doble, `GOOGLE_OAUTH_TOKEN_URL`, que solo un servidor con `DEBUG` puede mover, porque allauth cree
+  lo que contesta esa dirección sin comprobar su firma. Lo demás es lo de verdad, también el `form-action` de la página.
 - Pruebas: cada test cita su clave en el nombre o el docstring. Los e2e de la parte 1 están en
   `tests/e2e/panel/accounts-flows.spec.ts`, los de la parte 2 en `tests/e2e/panel/accounts-security.spec.ts`
   los de la parte 3 en `tests/e2e/panel/accounts-profile.spec.ts` y los de la parte 4 en
@@ -1181,6 +1192,12 @@ Implicados: el admin de erplora.com (la ficha de la cuenta y el registro de audi
   el segundo factor se juega en el gemelo del panel con el interruptor encendido (`PANEL_MFA_URL`).
   `signup.spec.ts` y `login.spec.ts` siguen cubriendo las pestañas de la entrada; `login.spec.ts` juega también
   F49 con la cuenta `e2e-store-review` de `panel_seed.py`.
+
+## Lo que queda fuera
+
+- **erplora.com guarda dos veces quién está en cada negocio** (el espejo `accounts.HubMembership`) — saas#199.
+- **Desde el Hub, «Mejorar plan» y «erplora.com» piden volver a entrar con la cuenta si el navegador no tenía la sesión
+  abierta** (BASE-F11 del Hub, cruza ACCOUNTS-F28) — saas#190.
 
 ## Lo que NO hace, a propósito
 

@@ -107,7 +107,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.sites",
     "django.contrib.sitemaps",
-    # The HNSW index of the assistant's documentation (assistant.DocChunk, pgvector): its index classes need it.
+    # The HNSW index migration assistant/0004 creates and 0005 removes (pgvector): its index classes need it.
     "django.contrib.postgres",
     "allauth",
     "allauth.account",
@@ -431,6 +431,10 @@ GOOGLE_OAUTH_CLIENT_SECRET = (
     else config("GOOGLE_OAUTH_CLIENT_SECRET")
 )
 GOOGLE_OAUTH_ENABLED = bool(GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET)
+# Where Google's code is exchanged: Google, unless a development server moves it (the e2e's double,
+# tests/e2e/panel/accounts-google.spec.ts). Never in production: allauth believes what that address answers
+# without checking its signature, because it is its own call to Google.
+GOOGLE_OAUTH_TOKEN_URL = config("GOOGLE_OAUTH_TOKEN_URL", default="") if DEBUG else ""
 
 # reCAPTCHA Enterprise, score-based and invisible (no checkbox, no puzzle), on every public form: the sign-in,
 # the sign-up, «Forgot your password?» and its link, the mailed codes, the authenticator app's code, the contact
@@ -477,6 +481,7 @@ SOCIALACCOUNT_PROVIDERS = {
         # No "VERIFIED_EMAIL": Google's own `email_verified` claim decides whether the address is
         # proven. Today's SaaS forces True, which only matters when Google says the address is
         # NOT verified, the one case in which signing in by email must not happen.
+        **({"ACCESS_TOKEN_URL": GOOGLE_OAUTH_TOKEN_URL} if GOOGLE_OAUTH_TOKEN_URL else {}),
     }
 }
 # Google already proved the address it vouches for (`email_verified`): no code on top. An address it

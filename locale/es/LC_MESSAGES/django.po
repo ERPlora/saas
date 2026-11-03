@@ -1356,3 +1356,11 @@ msgstr "Demasiadas denuncias seguidas: espera un momento y vuelve a intentarlo."
 #: base/assistant.py
 msgid "Help"
 msgstr "Ayuda"
+
+#: base/assistant.py
+msgid "To change your plan or add modules, go to erplora.com in your browser."
+msgstr "Para cambiar de plan o añadir módulos, entra en erplora.com desde el navegador."
+
+#: base/assistant.py
+msgid "To pay it, go to erplora.com in your browser."
+msgstr "Para pagarla, entra en erplora.com desde el navegador."

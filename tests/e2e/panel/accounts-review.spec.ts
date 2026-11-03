@@ -1,7 +1,7 @@
 // flow: ACCOUNTS-F01 ACCOUNTS-F02 ACCOUNTS-F03 ACCOUNTS-F04 ACCOUNTS-F05 ACCOUNTS-F07 ACCOUNTS-F08 ACCOUNTS-F09
 // flow: ACCOUNTS-F10 ACCOUNTS-F11 ACCOUNTS-F12 ACCOUNTS-F13 ACCOUNTS-F14 ACCOUNTS-F15 ACCOUNTS-F16 ACCOUNTS-F17
 // flow: ACCOUNTS-F18 ACCOUNTS-F19 ACCOUNTS-F20 ACCOUNTS-F21 ACCOUNTS-F22 ACCOUNTS-F23 ACCOUNTS-F24
-// (ACCOUNTS-F06 aside: the panel's server has no Google credentials.)
+// (ACCOUNTS-F06 aside: it plays on the panel's twin, in English, in accounts-google.spec.ts.)
 // The review of the `hecho` flows of «create the account, sign in, the second factor, the sessions, the profile and the
 // preferences» (accounts/WORKBOOK.md, MIGRATION-TASK APP-ACCOUNTS-6): every screen of those flows in English AND in
 // Spanish, at the three sizes of the migration (390×844, 834×1112, 1440×900). The flows themselves are played by

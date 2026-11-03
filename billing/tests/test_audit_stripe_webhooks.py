@@ -8,6 +8,9 @@ and so is our route without an enabled endpoint. Added (PLAN-SAAS §1.1): the ev
 named. Without a usable Stripe key there is nothing to audit: it says so and exits 0. Stripe is the double: no network.
 """
 
+import ast
+import inspect
+
 import pytest
 from django.core.management import call_command
 from django.core.management.base import CommandError
@@ -62,6 +65,17 @@ class TestTheOneList:
         for event_type in services.STRIPE_WEBHOOK_EVENTS:
             assert services.process_stripe_event({"type": event_type, "data": {"object": {}}}) == "handled", event_type
         assert services.process_stripe_event({"type": "payment_intent.created", "data": {"object": {}}}) == "ignored"
+
+    def test_it_names_every_event_the_webhook_handles(self):
+        """The other direction: an event handled but off the list passes the audit with the endpoint not sending it.
+        ``invoice.payment_succeeded`` is the one handled on purpose without being subscribed (see the list)."""
+        handled = {
+            node.value.value
+            for node in ast.walk(ast.parse(inspect.getsource(services.process_stripe_event)))
+            if isinstance(node, ast.MatchValue)
+        }
+
+        assert handled - {"invoice.payment_succeeded"} == set(services.STRIPE_WEBHOOK_EVENTS)
 
     def test_it_names_each_event_once(self):
         assert len(services.STRIPE_WEBHOOK_EVENTS) == len(set(services.STRIPE_WEBHOOK_EVENTS))

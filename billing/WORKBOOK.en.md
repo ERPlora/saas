@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:370ae7e67cf3f7b4335e0903a9011d6b521433ede2cad45726318d47cb488211 -->
+<!-- generated from WORKBOOK.md sha256:110f58b5827349cdaef8b401f790e45dcc8caeb7d2bf9d6e8534c3b7179de5b0 -->
 
 ## What it is for and who it is for
 
@@ -153,7 +153,7 @@ to upgrade or change it.
 | BILLING-F36 | See an invoice | done |
 | BILLING-F37 | Forget Stripe's notices older than 30 days | done |
 | BILLING-F38 | Read the subscriptions again in Stripe every night and put right what drifted | done |
-| BILLING-F39 | Check every day that Stripe sends a notice of everything erplora.com handles | partial |
+| BILLING-F39 | Check every day that Stripe sends a notice of everything erplora.com handles | done |
 
 ### BILLING-F01 Say where the business is invoiced and with which tax ID
 <!-- origen: old-saas:SAAS_DASHBOARD-F90 fi:saas/orgs-users#informacion-de-facturacion-de-la-organizacion-ver-editar -->
@@ -712,7 +712,7 @@ Involved: hubs (the business's subscription), the business (gets its plan)
 
 ### BILLING-F39 Check every day that Stripe sends a notice of everything erplora.com handles
 <!-- origen: gh:saas#2402 -->
-Status: partial — the check is already in erplora.com and scheduled every day at 05:40 UTC, but it will fail every day while the three notice destinations of the previous system on erplora.com stay enabled in Stripe (`/marketplace/webhooks/stripe/`, `/dashboard/billing/webhooks/stripe-connect/` and `/assistant/stripe/webhook/`), addresses erplora.com does not serve; it becomes done when the team disables them in Stripe and a check ends without errors
+Status: done
 Actor: system
 Screen: none
 Steps:

@@ -11,10 +11,12 @@ At most 12, whatever is asked; each with where it comes from, to cite it. Withou
 local fake.
 """
 
+import dataclasses
 import json
 
 import pytest
 from django.core.cache import cache
+from django.db import connection, transaction
 from django.utils import timezone
 from live.assistant import tool_name
 from live.errors import OperationError, PermissionDenied
@@ -179,6 +181,150 @@ class TestTheSearch:
 
     def test_an_empty_index_finds_nothing(self, account, embedder):
         assert search(account) == []
+
+
+class Abandoned(Exception):
+    """What undoes a batch of excerpts, leaving them dead in the index."""
+
+
+def through_any_index() -> None:
+    """Make this transaction's searches read an index if there is one, as they would once a table has its statistics:
+    without them the planner reads a table this small in order, and nothing is ever lost. So an approximate index
+    brought back fails these tests every time, not only when the statistics happen to favour it."""
+    with connection.cursor() as cursor:
+        cursor.execute("SET LOCAL enable_seqscan = off")
+
+
+def around_the_question(count: int) -> list[list[float]]:
+    """``count`` different fingerprints close to the question, closer than ``FAR`` and each with its own index node."""
+    return [axis(1.0, 0.001 * number) for number in range(1, count + 1)]
+
+
+class TestTheIndexLosesNothing:
+    """An approximate index loses excerpts that exist, so the table has none. HNSW hands over its 40 nearest rows and
+    only then filters them by language (the first two cases, with every row alive: production); and rows left dead with
+    the same few fingerprints leave live ones out of its graph (the third: run 41600831045 lost one of three)."""
+
+    def test_english_excerpts_are_found_behind_the_nearer_spanish_ones(self, account, embedder):
+        """No dead row here: every excerpt is alive, as in production, where both languages share the index."""
+        for number, vector in enumerate(around_the_question(60)):
+            excerpt("es", f"Texto {number} cerca de la pregunta.", vector, heading=f"Cerca {number}")
+        for number in range(3):
+            excerpt("en", f"Text {number} further away.", axis(0.2, 1.0, 0.1 * number), heading=f"Further {number}")
+        through_any_index()
+
+        results = search(account, query="How do I open the register?", language="en")
+
+        assert sorted(result.heading for result in results) == ["Further 0", "Further 1", "Further 2"]
+
+    def test_a_person_reads_their_language_when_it_is_close_behind_nearer_english_ones(self, account, embedder):
+        """Spanish that is close enough stays alone: losing it behind the English would answer in the wrong language."""
+        for number, vector in enumerate(around_the_question(60)):
+            excerpt("en", f"Text {number} near the question.", vector, heading=f"Near {number}")
+        for number in range(3):
+            excerpt("es", f"Texto {number} también cerca.", axis(1.0, 0.5 + 0.01 * number), heading=f"Cerca {number}")
+        through_any_index()
+
+        results = search(account)
+
+        assert [(result.heading, result.lang) for result in results] == [
+            ("Cerca 0", "es"),
+            ("Cerca 1", "es"),
+            ("Cerca 2", "es"),
+        ]
+
+    def test_rows_of_an_undone_batch_take_no_place_from_the_live_ones(self, account, embedder):
+        """A rolled back or deleted row stays in the index until the next vacuum: what ``index_docs --full`` leaves, and
+        every test of this suite."""
+        with pytest.raises(Abandoned), transaction.atomic():
+            for number, vector in enumerate(around_the_question(60)):
+                excerpt("es", f"Texto {number} deshecho.", vector, heading=f"Deshecho {number}")
+            raise Abandoned
+        excerpt("es", "Abre la caja.", SAME, heading="Same")
+        excerpt("es", "Cierra la caja.", NEAR, heading="Near")
+        excerpt("es", "Los clientes.", FAR, heading="Far")
+        through_any_index()
+
+        results = search(account)
+
+        assert [result.heading for result in results] == ["Same", "Near", "Far"]
+
+
+class TestWhereNothingIsSold:
+    """The account the app opens sells nothing (PLAN-SAAS §3.6 point 6): the documentation is not a side door to how to
+    pay, what a plan costs or the store. The rest of the documentation is still read."""
+
+    def unsold(self, account, rf, language="es"):
+        request = rf.post("/api/assistant/turn")
+        request.session = {"base.surface": "account"}
+        return dataclasses.replace(ctx_for(account, language), request=request)
+
+    @pytest.fixture
+    def everything(self):
+        excerpt("es", "Plan Starter, 19 € al mes.", SAME, source="plans", path="plans", heading="Planes")
+        for app in ("billing", "apps", "public"):
+            excerpt("es", f"Lo que vende {app}.", SAME, source="workbook", path=f"{app}/WORKBOOK.md", heading=app)
+        excerpt("en", "What billing sells.", SAME, source="workbook", path="billing/WORKBOOK.en.md", heading="billing")
+        excerpt("es", "Invita a alguien.", SAME, source="workbook", path="hubs/WORKBOOK.md", heading="Invitar")
+        excerpt("es", "Tu cuenta.", SAME, source="workbook", path="accounts/WORKBOOK.md", heading="Cuenta")
+        excerpt("es", "Instala la app.", SAME, source="help", heading="Instalar")
+        excerpt("es", "Abre la caja.", SAME, source="app_doc", path="app_doc:cash", heading="Caja")
+
+    def test_what_only_sells_is_not_found(self, account, embedder, rf, everything):
+        query = "¿Cómo pago con un cupón?"
+        prepare(query)
+
+        results = queries.docs_search(self.unsold(account, rf), DocsSearchIn(query=query, limit=12)).results
+
+        assert sorted(texts(results)) == ["Abre la caja.", "Instala la app.", "Invita a alguien.", "Tu cuenta."]
+
+    def test_nor_in_english(self, account, embedder, rf, everything):
+        excerpt("en", "Open the register.", SAME, source="app_doc", path="app_doc:cash", heading="Register")
+        query = "How do I pay with a coupon?"
+        prepare(query)
+
+        results = queries.docs_search(self.unsold(account, rf, "en"), DocsSearchIn(query=query, limit=12)).results
+
+        assert texts(results) == ["Open the register."]
+
+    def test_nor_when_the_english_join_a_spanish_search(self, account, embedder, rf):
+        excerpt("es", "Lejos.", FAR, source="help", heading="Lejos")
+        excerpt("en", "What billing sells.", SAME, source="workbook", path="billing/WORKBOOK.en.md", heading="billing")
+        excerpt("en", "Plan Starter.", SAME, source="plans", path="plans", heading="Plans")
+        excerpt("en", "Open the register.", NEAR, source="app_doc", path="app_doc:cash", heading="Register")
+        query = "¿Cómo pago?"
+        prepare(query)
+
+        results = queries.docs_search(self.unsold(account, rf), DocsSearchIn(query=query, limit=12)).results
+
+        assert sorted(texts(results)) == ["Lejos.", "Open the register."]
+
+    def test_the_manuals_left_out_are_named_as_the_index_names_them(self, settings):
+        """So that renaming a manual or how the index names them does not bring its excerpts back."""
+        from pathlib import Path
+
+        from assistant import knowledge
+
+        indexed = {chunk.path for chunk in knowledge.workbook_chunks(Path(settings.BASE_DIR))}
+
+        assert set(queries.SELLING_WORKBOOKS) <= indexed
+
+    def test_on_the_web_everything_is_found(self, account, embedder, everything):
+        results = search(account, limit=12)
+
+        assert len(results) == 8
+        assert {"plans", "billing/WORKBOOK.md", "apps/WORKBOOK.md", "public/WORKBOOK.md"} <= {r.path for r in results}
+
+    def test_the_hubs_search_has_no_surface(self, account, embedder, rf, everything):
+        """A context without a session (the signed door of the Hub) is not the app's account."""
+        request = rf.post("/internal/assistant/docs/search")
+        query = "¿Cómo pago con un cupón?"
+        prepare(query)
+        ctx = dataclasses.replace(ctx_for(account, "es"), request=request)
+
+        results = queries.docs_search(ctx, DocsSearchIn(query=query, limit=12)).results
+
+        assert "plans" in {result.path for result in results}
 
 
 class TestTheQuestionsFingerprint:
