@@ -611,6 +611,19 @@ def test_a_business_declaring_erploras_nif_needs_an_authorisation_too(
     assert not respx_mock.calls
 
 
+def test_no_authorisation_covers_erploras_own_nif_for_a_business(
+    client, respx_mock, erplora_seal, business
+):
+    """Even an approved one naming ERPlora as the taxpayer: in production too, ERPlora's own NIF is the platform's
+    hub's alone (saas#2524)."""
+    make_grant(business, status="approved", taxpayer_tax_id=ISSUER)
+
+    response = call(client, "submit", payload(hub=HUB, environment="production"))
+
+    assert error_of(response) == (409, "representation_not_approved")
+    assert not respx_mock.calls
+
+
 def test_a_business_declaring_erploras_nif_with_an_authorisation_of_its_own_is_a_mismatch(
     client, respx_mock, erplora_seal, business
 ):

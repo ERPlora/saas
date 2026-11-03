@@ -39,7 +39,7 @@ o su UUID en minúsculas (con guiones). Tiene que ser un negocio que el SaaS con
 | `200 {"aeat_status", "aeat_body"}` | La AEAT contestó; su respuesta tal cual, diga lo que diga (la interpreta el Hub) |
 | `404 hub_unknown` | `hub` no es un negocio que el SaaS conozca (o está purgado) ni el hub de plataforma por `erplora`; no sale nada hacia la AEAT |
 | `409 nif_mismatch` | El sobre nombra a otro contribuyente; se decide **antes** de tocar la AEAT. Con `route = "erplora"`, también si, en producción, el otorgamiento aprobado del negocio es de otro contribuyente (sin decir de cuál), si, en pruebas, un negocio declara el NIF de ERPlora, o si el hub de plataforma pide un `nif` que no es el del titular del sello |
-| `409 representation_not_approved` | `route = "erplora"` en **producción** para un negocio sin otorgamiento aprobado (ninguno, en revisión, devuelto o retirado), declare el `nif` que declare, el de ERPlora incluido. En pruebas no se pide (abajo) |
+| `409 representation_not_approved` | `route = "erplora"` en **producción** para un negocio sin otorgamiento aprobado (ninguno, en revisión, devuelto o retirado; uno que nombre el NIF de ERPlora tampoco cuenta), declare el `nif` que declare, el de ERPlora incluido. En pruebas no se pide (abajo) |
 | `409 no_seal` | `route = "erplora"` sin sello utilizable (también si TLS rechaza el sello configurado) |
 | `409 no_certificate` | `route = "own"` sin certificado |
 | `409 certificate_invalid` | No abre con su contraseña, no permite autenticación de cliente (EKU), ha caducado o TLS lo rechaza (la clave no es la del certificado o es demasiado débil, p. ej. RSA de 1024); no sale nada hacia la AEAT |

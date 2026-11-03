@@ -17,8 +17,8 @@ What each door answers:
   the business's approved authorisation covers another taxpayer in production, a business declares ERPlora's
   own NIF in testing, or the platform's hub names a taxpayer other than the seal's holder),
   ``representation_not_approved`` (``erplora`` in production for a business without an approved
-  authorisation: none, under review, returned or withdrawn; whatever ``nif`` it declares, ERPlora's own
-  included), ``no_seal`` (``erplora`` without a usable seal),
+  authorisation: none, under review, returned or withdrawn, or one naming ERPlora's own NIF; whatever ``nif``
+  it declares, ERPlora's own included), ``no_seal`` (``erplora`` without a usable seal),
   ``no_certificate`` (``own`` without one), ``certificate_invalid`` (it does not open, cannot
   authenticate as a client, has expired, or TLS refuses it: its key is not the certificate's or is too
   weak; ERPlora's seal in that case is ``no_seal``), ``environment_not_allowed`` (``production`` from a
@@ -301,12 +301,13 @@ def _never_in_erploras_name(body: ProbeIn, holder_tax_id: str) -> None:
         )
 
 
-def _represented(body: ProbeIn, hub_id: UUID) -> None:
+def _represented(body: ProbeIn, hub_id: UUID, holder_tax_id: str) -> None:
     """Refuses ERPlora's seal for ``body.nif`` in production unless it is the taxpayer of the business's
-    approved authorisation. Never says whom that authorisation covers."""
+    approved authorisation. One naming ERPlora's own NIF (``holder_tax_id``) is none: that NIF is the
+    platform's hub's alone (saas#2524). Never says whom that authorisation covers."""
     nif = normalise_nif(body.nif)
     approved = queries.approved_taxpayer(hub_id)
-    if approved is None:
+    if approved is None or approved == normalise_nif(holder_tax_id):
         raise _Refused(
             409,
             "representation_not_approved",
@@ -337,7 +338,7 @@ def _identity(body: ProbeIn) -> tuple[seal.Identity, ssl.SSLContext]:
         if platform:
             _platform_files_its_own(body, identity.holder_tax_id)
         elif body.environment == "production":
-            _represented(body, hub_id)
+            _represented(body, hub_id, identity.holder_tax_id)
         else:
             _never_in_erploras_name(body, identity.holder_tax_id)
         return identity, _tls(identity, "no_seal")
