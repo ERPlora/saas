@@ -74,7 +74,9 @@
       "whatsappMessages": "WhatsApp: {count} message a month | WhatsApp: {count} messages a month",
       "kept": "{plan} is kept: it renews on {date}",
       "changed": "{business} is now on {plan}",
+      "changeScheduled": "{business} moves to {plan} on {date}",
       "switched": "{business} is now on {plan}, billed {period}",
+      "switchScheduled": "{business} moves to {plan}, billed {period}, on {date}",
       "periodName": {
         "month": "monthly",
         "year": "annually"
@@ -136,6 +138,7 @@
       "title": "Switch to {plan} annual",
       "titleMonthly": "Switch to {plan} monthly",
       "intro": "{business} · {plan} is billed {period} from now on.",
+      "introScheduled": "{business} · {plan} is billed {period} from {date}.",
       "price": "{plan} annual",
       "priceMonthly": "{plan} monthly",
       "equivalent": "Equivalent to",

@@ -74,7 +74,9 @@
       "whatsappMessages": "WhatsApp: {count} mensaje al mes | WhatsApp: {count} mensajes al mes",
       "kept": "{plan} se mantiene: se renovará el {date}",
       "changed": "{business} ya está en {plan}",
+      "changeScheduled": "{business} pasa a {plan} el {date}",
       "switched": "{business} ya está en {plan}, con pago {period}",
+      "switchScheduled": "{business} pasa a {plan}, con pago {period}, el {date}",
       "periodName": {
         "month": "mensual",
         "year": "anual"
@@ -136,6 +138,7 @@
       "title": "Cambiar a {plan} anual",
       "titleMonthly": "Cambiar a {plan} mensual",
       "intro": "{business} · {plan} pasa a pago {period} desde ahora.",
+      "introScheduled": "{business} · {plan} pasa a pago {period} desde el {date}.",
       "price": "{plan} anual",
       "priceMonthly": "{plan} mensual",
       "equivalent": "Equivale a",

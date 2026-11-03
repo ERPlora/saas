@@ -36,7 +36,10 @@ const SUBSCRIPTION = {
   current_period_end: '2027-10-31T12:00:00Z',
   trial_end: null,
   modules: [],
+  scheduled_change: null,
 };
+const PAID_YEAR_ENDS = { ...PREVIEW, amount_due_cents: 0, tax_cents: 0, charge_starts_at: 1793527200 };
+const WAITING = { ...SUBSCRIPTION, scheduled_change: { plan: 'starter', interval: 'month', starts_at: '2026-11-01T12:00:00Z' } };
 
 async function setup(api: (path: string) => Response, interval: 'year' | 'month' = 'year', locale: 'en' | 'es' = 'en') {
   const open = ref(true);
@@ -101,6 +104,27 @@ describe('AnnualSwitchDialog', () => {
     expect(s.q('annual-modal')?.getAttribute('aria-label')).toBe('Switch to Starter monthly');
     expect(rows(s).at(-1)).toBe('Starter monthly €29.99/month + VAT');
     expect(s.q('annual-modal-submit')?.textContent?.trim()).toBe('Switch to monthly');
+  });
+
+  it('back to monthly waits for the end of the paid year: it says from when, before and after confirming', async () => {
+    const s = await setup((path) =>
+      path.endsWith('/change') ? Response.json(WAITING) : Response.json({ flow: 'confirm', session_id: null, client_secret: null, publishable_key: null, preview: PAID_YEAR_ENDS }),
+    'month');
+    expect(s.q('annual-intro')?.textContent?.trim()).toBe('Bar La Plaza · Starter is billed monthly from Nov 1, 2026.');
+    s.q('annual-modal-submit')?.click();
+    await flush();
+    expect(toastSuccess).toHaveBeenCalledWith('Bar La Plaza moves to Starter, billed monthly, on Nov 1, 2026');
+    expect(s.done).toHaveBeenCalledWith(WAITING);
+  });
+
+  it('back to monthly says the wait in Spanish too', async () => {
+    const s = await setup((path) =>
+      path.endsWith('/change') ? Response.json(WAITING) : Response.json({ flow: 'confirm', session_id: null, client_secret: null, publishable_key: null, preview: PAID_YEAR_ENDS }),
+    'month', 'es');
+    expect(s.q('annual-intro')?.textContent?.trim()).toBe('Bar La Plaza · Starter pasa a pago mensual desde el 1 nov 2026.');
+    s.q('annual-modal-submit')?.click();
+    await flush();
+    expect(toastSuccess).toHaveBeenCalledWith('Bar La Plaza pasa a Starter, con pago mensual, el 1 nov 2026');
   });
 
   it('a refusal says why, and nothing changes', async () => {
