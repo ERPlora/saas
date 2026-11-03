@@ -28,7 +28,7 @@ Completa desde el 2026-11-03. Lo que queda fuera, con su issue: `WORKBOOK.md`, �
 |---|---|
 | `apps.py` | `AssistantConfig`: `assistant.manage`, de la plataforma y del personal, y `assistant.ask`, de toda cuenta (el asistente del panel); registra la auditoría. |
 | `frontend/` | El chat del panel (ASSISTANT-F25): el del Hub, de `@erplora/ui/components`, configurado en `options.ts` (`SAAS_ASSISTANT`, con su frase bajo el cupo agotado en `spentNoteKey`); `components/AssistantTopbar.vue` (el botón de la barra) y `components/AssistantBackground.vue` (el panel con su vacío y sus atajos), que `frontend/main.ts` monta como `chrome`. Sus palabras, en `saas.assistant.*` del catálogo de la entrada (`frontend/locale`). |
-| `models.py` | `AIProvider` (una de las cuatro API, su dirección), `AIProviderCredential` (clave cifrada con su final), `AIModel` (precios, contexto, qué admite), `AIRoutingPolicy` (una fila: el modelo que contesta y su reserva), `AssistantUsage` (lo gastado por negocio y mes; una demo, una fila en su vida; una cuenta, una por mes) y `DocChunk` (un fragmento de la documentación con su huella, `vector(1536)`, sin índice aproximado: la búsqueda es exacta); `estimate_cost`, `content_hash`. |
+| `models.py` | `AIProvider` (una de las cuatro API, su dirección), `AIProviderCredential` (clave cifrada con su final), `AIModel` (precios, contexto, qué admite), `AIRoutingPolicy` (una fila: el modelo que contesta y su reserva), `AssistantUsage` (lo gastado por negocio y mes; una demo, una fila en su vida; una cuenta, una por mes, con las marcas `near_warned_at` y `spent_warned_at` de sus correos de ASSISTANT-F29) y `DocChunk` (un fragmento de la documentación con su huella, `vector(1536)`, sin índice aproximado: la búsqueda es exacta); `estimate_cost`, `content_hash`. |
 | `crypto.py`, `fields.py` | Fernet con `FERNET_KEY` (+ `FERNET_KEY_PREVIOUS` para leer en una rotación); la columna guarda el token. |
 | `schemas.py` | Entradas y salidas; la clave viaja como `SecretStr`. |
 | `queries.py` | Lecturas (`@operation`, `kind="query"`): la conexión de un proveedor, la política, la ruta de un turno, quién llama, el cupo que queda y el proveedor de servicios. |
@@ -43,6 +43,7 @@ Completa desde el 2026-11-03. Lo que queda fuera, con su issue: `WORKBOOK.md`, �
 | `providers/` | Clientes `httpx` de OpenAI, Anthropic, Gemini y DeepSeek (`base.py`, `factory.py`): eventos normalizados, sin SDK ni caché; cada cliente toma el contexto TLS de `base.tls` (`trusted_context`): si el servidor no puede cargar sus certificados (`SSL_CERT_FILE`), el fallo es definitivo y nombra la variable y el fichero. |
 | `auditlog.py` | Registro de auditoría (django-auditlog) de los cuatro modelos, sin la clave ni `updated_at`. |
 | `events.py` | Nombres de los eventos del outbox (sin la clave ni lo que escribe una persona). |
+| `emails.py` | Los correos de ASSISTANT-F29 a una cuenta, en su idioma y con la marca de ERPlora (`base.emails.branded_message`): `send_messages_near` (80 % del mes) y `send_messages_spent` (el último); uno que no sale se registra como `assistant.mail.not_sent` y devuelve `False`. |
 | `admin.py`, `templates/admin/assistant/` | Admin de Django: proveedores con sus claves y modelos, «Elegir modelos del proveedor» (asíncrona), «Modelo que contesta», «Probar un modelo» (ejecución asíncrona en directo) y «Registros de uso del asistente» (solo lectura). |
 | `management/commands/` | `import_ai_keys_from_env`, `rotate_encryption_keys` e `index_docs`. |
 
@@ -80,7 +81,7 @@ No se guarda ninguna conversación, adjunto, audio ni texto leído: el turno pas
 | `assistant.caller.resolve` | solo la plataforma | — |
 | `assistant.usage.show` | la plataforma; el personal, `view_assistantusage` | — |
 | `assistant.service.connection` | solo la plataforma | — |
-| `assistant.message.claim` | solo la plataforma | `assistant.message.claimed` |
+| `assistant.message.claim` | solo la plataforma | `assistant.message.claimed`; el de una cuenta que llega al 80 % o al último del mes, `assistant.usage.warned` (una vez por aviso y mes, ASSISTANT-F29) |
 | `assistant.message.release` | solo la plataforma | `assistant.message.released` |
 | `assistant.usage.record` | solo la plataforma | `assistant.usage.recorded` |
 | `assistant.report.send` | solo la plataforma | `assistant.report.sent` |

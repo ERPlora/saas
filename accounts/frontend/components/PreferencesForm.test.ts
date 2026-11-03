@@ -75,7 +75,7 @@ describe('PreferencesForm', () => {
     const s = await setup(preferences());
     expect(s.q('preferences-mails')?.textContent).toContain('Security, invoices and payments');
     expect(s.q('preferences-mails')?.textContent).toContain(
-      'Always on: sign-in codes, security notices, invoices, payments and anything that needs you to act.',
+      'Always on: sign-in codes, security notices, invoices, payments, the messages you have left with the assistant and anything that needs you to act.',
     );
     expect(s.q('preferences-mails')?.textContent).toContain('When a business of yours is ready to open.');
     expect(s.q('preferences-mails')?.textContent).not.toContain('News from ERPlora');
@@ -84,6 +84,9 @@ describe('PreferencesForm', () => {
   it('says them in Spanish', async () => {
     const s = await setup(preferences(), undefined, 'es');
     expect(s.q('preferences-mails')?.textContent).toContain('Seguridad, facturas y pagos');
+    expect(s.q('preferences-mails')?.textContent).toContain(
+      'Siempre activos: códigos para entrar, avisos de seguridad, facturas, pagos, los mensajes que te quedan con el asistente y lo que te pide hacer algo.',
+    );
     expect(s.q('preferences-mails')?.textContent).toContain('Cuando un negocio tuyo está listo para abrir.');
   });
 

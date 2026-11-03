@@ -620,14 +620,14 @@ Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Cuenta › Preferencias
 Pasos:
-1. En **Cuenta › Preferencias**, «Avisos por correo» enseña «Seguridad, facturas y pagos», siempre encendido («Siempre activos: códigos para entrar, avisos de seguridad, facturas, pagos y lo que te pide hacer algo.»).
+1. En **Cuenta › Preferencias**, «Avisos por correo» enseña «Seguridad, facturas y pagos», siempre encendido («Siempre activos: códigos para entrar, avisos de seguridad, facturas, pagos, los mensajes que te quedan con el asistente y lo que te pide hacer algo.»).
 2. Debajo, «Avisos de mis negocios» («Cuando un negocio tuyo está listo para abrir.»), encendido de entrada.
 3. La persona lo apaga: «Preferencias guardadas», y el siguiente negocio que cree ya no le manda el correo de que está listo.
 4. Lo vuelve a encender y el correo vuelve.
 Entra: «Avisos de mis negocios».
-Sale: con él apagado, el correo de un negocio listo no se manda; el negocio abre igual y el panel lo dice. Los demás correos se mandan siempre: los códigos y los avisos de seguridad, las facturas y los pagos fallidos, el negocio eliminado con su fecha para recuperarlo y lo que pide hacer algo, como volver a conectar WhatsApp.
+Sale: con él apagado, el correo de un negocio listo no se manda; el negocio abre igual y el panel lo dice. Los demás correos se mandan siempre: los códigos y los avisos de seguridad, las facturas y los pagos fallidos, el negocio eliminado con su fecha para recuperarlo, los avisos de que se acaban o se han gastado los mensajes del mes con el asistente del panel (ASSISTANT-F29) y lo que pide hacer algo, como volver a conectar WhatsApp.
 Si falla: si no se puede guardar, el interruptor vuelve a como estaba y un aviso dice por qué.
-Implicados: hubs (el correo de un negocio listo), billing (las facturas y los pagos, siempre), assistant (ASSISTANT-F29, aún sin hacer: el aviso de los mensajes del panel)
+Implicados: hubs (el correo de un negocio listo), billing (las facturas y los pagos, siempre), assistant (ASSISTANT-F29: los avisos de los mensajes del panel, siempre)
 
 ### ACCOUNTS-F24 Cambiar el tema desde el menú de usuario
 <!-- origen: fi:saas/auth-services#toggle-de-tema-server-side-sin-js fi:saas/auth-services#context-processor-de-tema fi:saas/support/public-core-config#context_processors-py-theme-apps-py-coreconfig pc:cloud/dashboard/theme_picker -->

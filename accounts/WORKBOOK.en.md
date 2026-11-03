@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:003f36eb285944cdb27d8ddd16f94eccbe922ba908e69509eb4d4b639b8ec820 -->
+<!-- generated from WORKBOOK.md sha256:9870cc14e8e95f0053057d753d3b1d594a346c20c774f6115125ddefa1c8867d -->
 
 ## What it is for and who it is for
 
@@ -573,14 +573,14 @@ Status: done
 Actor: any person with an account
 Screen: Account › Preferences
 Steps:
-1. In **Account › Preferences**, "Email notices" shows "Security, invoices and payments", always on ("Always on: sign-in codes, security notices, invoices, payments and anything that needs you to act.").
+1. In **Account › Preferences**, "Email notices" shows "Security, invoices and payments", always on ("Always on: sign-in codes, security notices, invoices, payments, the messages you have left with the assistant and anything that needs you to act.").
 2. Below, "Business notices" ("When a business of yours is ready to open."), on from the start.
 3. The person turns it off: "Preferences saved", and the next business they create no longer mails them that it is ready.
 4. They turn it on again and the mail comes back.
 In: "Business notices".
-Out: with it off, the mail that a business is ready is not sent; the business opens all the same and the panel says so. The other mails are always sent: the codes and the security notices, the invoices and the failed payments, the deleted business with its date to recover it, and anything that asks them to act, such as connecting WhatsApp again.
+Out: with it off, the mail that a business is ready is not sent; the business opens all the same and the panel says so. The other mails are always sent: the codes and the security notices, the invoices and the failed payments, the deleted business with its date to recover it, the notices that the month's messages with the panel's assistant are running out or spent (ASSISTANT-F29), and anything that asks them to act, such as connecting WhatsApp again.
 If it fails: if it cannot be saved, the switch goes back to how it was and a notice says why.
-Involved: hubs (the mail of a ready business), billing (the invoices and the payments, always), assistant (ASSISTANT-F29, not done yet: the notice about the panel's messages)
+Involved: hubs (the mail of a ready business), billing (the invoices and the payments, always), assistant (ASSISTANT-F29: the notices about the panel's messages, always)
 
 ### ACCOUNTS-F24 Change the theme from the user menu
 Status: done
