@@ -11,16 +11,20 @@ with an error after it (the ``task_failed`` alarm).
 """
 
 import uuid
+import logging
 from datetime import UTC, date, datetime, timedelta
+from io import StringIO
 
 import pytest
+from django.core.management import call_command
 from django.core.management.base import CommandError
 from live.errors import PermissionDenied
 from live.live_registry import live_registry
+from live.models import OutboxEvent
 
-from hubs import events, services
+from hubs import events, queries, services
 from hubs.models import HubUsageDaily
-from hubs.schemas import UsageRecordIn
+from hubs.schemas import UsagePruneIn, UsageRecordIn, UsageSeriesIn
 from hubs.tests.conftest import create_business, ctx_for
 from hubs.tests.test_live import channels, notified  # noqa: F401 - the fixture of the notifications
 from hubs.tests.test_reconcile_hub_states import run
@@ -29,7 +33,9 @@ pytestmark = pytest.mark.django_db
 
 #: The advisory lock a run holds (the SaaS's convention, as ``push_hub_snapshots``).
 LOCK_KEY = "hashtext('erplora.saas.collect_hub_usage')"
-DAY = date(2026, 10, 13)
+#: A recent day, never a fixed one: a pass ends by forgetting what is past the retention, so a fixed day would go too
+#: once it is 400 days old, and these tests with it.
+DAY = datetime.now(UTC).date() - timedelta(days=20)
 GIB = 1024**3
 
 
@@ -76,7 +82,7 @@ class TestCollect:
 
         assert figures(business) == (5 * GIB, 300_000, 3, 4)
         (call,) = hub_double.calls_to("GET")
-        assert call.path == "/internal/usage?day=2026-10-13" and call.signed_v2
+        assert call.path == f"/internal/usage?day={DAY}" and call.signed_v2
         assert "recorded=1" in output
 
     def test_by_default_it_collects_yesterday_utc(self, business, hub_double):
@@ -130,8 +136,8 @@ class TestCollect:
 
         assert [figures(hub)[0] for hub in hubs] == [1, 2, 3]
         assert [call.path for call in hub_double.calls_to("GET")] == [
-            "/internal/usage?day=2026-10-13",
-            "/internal/usage?day=2026-10-13&cursor=2",
+            f"/internal/usage?day={DAY}",
+            f"/internal/usage?day={DAY}&cursor=2",
         ]
         assert "pages=2" in output and "recorded=3" in output
 
@@ -192,7 +198,7 @@ class TestCollect:
             "GET",
             r"^/internal/usage",
             200,
-            {"day": "2026-10-12", "hubs": [row(business.id)], "next_cursor": None},
+            {"day": (DAY - timedelta(days=1)).isoformat(), "hubs": [row(business.id)], "next_cursor": None},
         )
 
         with pytest.raises(CommandError) as failed:
@@ -522,3 +528,154 @@ class TestOnlyThePlatformRecordsIt:
 
         assert refused.value.code == "internal_command"
         assert not HubUsageDaily.objects.exists()
+
+
+def days_ago(days: int) -> date:
+    return datetime.now(UTC).date() - timedelta(days=days)
+
+
+def keep_day(hub, day: date) -> None:
+    HubUsageDaily.objects.create(hub=hub, day=day, s3_bytes=1, db_bytes=1, active_users_1d=0, active_users_30d=0)
+
+
+def days_kept(hub) -> set[date]:
+    return set(HubUsageDaily.objects.filter(hub=hub).values_list("day", flat=True))
+
+
+def collect_saying():
+    """The run's error, if any, and all it said before it: ``run`` loses what was written when the command fails."""
+    out = StringIO()
+    try:
+        call_command("collect_hub_usage", "--day", DAY.isoformat(), stdout=out)
+    except CommandError as failed:
+        return str(failed), out.getvalue()
+    return "", out.getvalue()
+
+
+def prune_breaks(monkeypatch) -> None:
+    def broken(ctx, data):
+        raise RuntimeError("the database went away")
+
+    monkeypatch.setattr(services, "usage_prune", broken)
+
+
+class TestAPassForgetsWhatIsPastTheRetention:
+    """HUBS-F22; PLAN-SAAS §1.1, «Limpiezas y podas diarias», and §27: 400 days, as the old product."""
+
+    def test_the_day_400_stays_and_the_day_401_goes(self, business, hub_double):
+        keep_day(business, days_ago(30))
+        keep_day(business, days_ago(400))
+        keep_day(business, days_ago(401))
+
+        output = collect()
+
+        assert days_kept(business) == {days_ago(30), days_ago(400)}
+        assert f"pruned=1 before={days_ago(400)}" in output
+
+    def test_it_forgets_the_old_days_of_every_business(self, owner, plans, make_user, hub_double):
+        hubs = [create_business(owner), create_business(make_user("lola@example.com"), name="Café Lola")]
+        for hub in hubs:
+            keep_day(hub, days_ago(401))
+
+        output = collect()
+
+        assert not HubUsageDaily.objects.exists()
+        assert "pruned=2" in output
+
+    def test_the_longest_window_of_a_series_is_still_whole(self, business, owner, hub_double):
+        """``hubs.usage.series`` reads up to 365 days: no prune can take a day of that window."""
+        first_read = days_ago(1) - timedelta(days=364)
+        keep_day(business, first_read)
+        keep_day(business, days_ago(1))
+        window = UsageSeriesIn(business_id=business.id, days=365)
+        before = [point.day for point in queries.usage_series(ctx_for(owner), window).points]
+
+        collect()
+
+        assert before == [first_read, days_ago(1)]
+        assert [point.day for point in queries.usage_series(ctx_for(owner), window).points] == before
+
+    def test_the_retention_outlasts_whatever_a_series_may_read(self):
+        """Holds the two numbers together: a longer window has to raise the retention with it."""
+        longest = UsageSeriesIn.model_json_schema()["properties"]["days"]["maximum"]
+
+        assert services.USAGE_RETENTION_DAYS > longest
+
+    def test_a_day_collected_by_hand_past_the_retention_goes_at_the_end_of_its_pass(self, business, hub_double):
+        old = days_ago(401)
+        hub_double.usage[old.isoformat()] = [row(business.id)]
+
+        output = run("collect_hub_usage", "--day", old.isoformat())
+
+        assert "recorded=1" in output and "pruned=1" in output
+        assert not HubUsageDaily.objects.exists()
+
+    def test_a_run_that_did_not_take_the_lock_forgets_nothing(self, business, hub_double, other_session):
+        keep_day(business, days_ago(401))
+        other_session.execute(f"SELECT pg_advisory_lock({LOCK_KEY})")
+
+        output = collect()
+
+        other_session.execute(f"SELECT pg_advisory_unlock({LOCK_KEY})")
+        assert "already running" in output
+        assert days_kept(business) == {days_ago(401)}
+
+
+class TestAPruneThatFailsNeverEatsTheCollection:
+    def test_what_was_collected_stays_said_and_the_run_ends_with_an_error(
+        self, business, hub_double, monkeypatch, caplog
+    ):
+        hub_double.usage[DAY.isoformat()] = [row(business.id, s3_bytes=7)]
+        prune_breaks(monkeypatch)
+
+        with caplog.at_level(logging.ERROR, logger="hubs.services"):
+            failed, said = collect_saying()
+
+        assert figures(business)[0] == 7
+        assert "recorded=1" in said
+        assert "did not forget" in failed and "did not get every business" not in failed
+        assert "hubs.usage.prune_failed" in caplog.text
+
+    def test_the_collection_that_failed_is_still_the_one_that_says_so(self, business, offline_hub, monkeypatch):
+        prune_breaks(monkeypatch)
+
+        failed, _ = collect_saying()
+
+        assert "unreachable=1" in failed and "did not get every business" in failed
+        assert "did not forget" in failed
+
+    def test_the_hub_away_does_not_stop_the_prune(self, business, offline_hub):
+        keep_day(business, days_ago(401))
+
+        failed, said = collect_saying()
+
+        assert "unreachable=1" in failed and "did not forget" not in failed
+        assert "pruned=1" in said
+        assert not HubUsageDaily.objects.exists()
+
+
+class TestThePruneOperation:
+    def test_only_the_platform_runs_it(self, business, owner):
+        keep_day(business, days_ago(401))
+
+        with pytest.raises(PermissionDenied) as refused:
+            services.usage_prune(ctx_for(owner), UsagePruneIn())
+
+        assert refused.value.code == "internal_command"
+        assert days_kept(business) == {days_ago(401)}
+
+    def test_what_it_forgets_leaves_its_event(self, business, hub_double):
+        keep_day(business, days_ago(401))
+
+        collect()
+
+        (event,) = OutboxEvent.objects.filter(name=events.USAGE_PRUNED)
+        assert event.payload == {"before": days_ago(400).isoformat(), "deleted": 1}
+
+    def test_with_nothing_to_forget_it_leaves_no_event(self, business, hub_double):
+        keep_day(business, days_ago(400))
+
+        output = collect()
+
+        assert "pruned=0" in output
+        assert not OutboxEvent.objects.filter(name="hubs.usage.pruned").exists()

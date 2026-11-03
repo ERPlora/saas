@@ -8,6 +8,10 @@ again replaces its figures and tells nobody when they are the same. Under the ad
 ``hashtext('erplora.saas.collect_hub_usage')`` (``services.run_exclusively``; a second run returns at once).
 A row that fails never stops the pass; the run ends with an error after it when the Hub was away or refused,
 or answered off the contract (the ``task_failed`` alarm).
+
+At the end of its pass, Hub away or not, it forgets the days of every business past their retention
+(``services.prune_usage``, ``hubs.usage.prune``; HUBS-F22), a day collected by hand past it included. A prune that
+fails never eats the collection: what was collected stays and is said, and the run ends with an error after it.
 """
 
 import logging
@@ -50,11 +54,18 @@ class Command(BaseCommand):
                 self.stdout.write("collect_hub_usage: already running, nothing done.")
                 return
             counts = services.collect_usage(day)
-        summary = " ".join(f"{key}={value}" for key, value in counts.items())
-        logger.info("hubs.collect_usage day=%s %s", day, summary)
-        self.stdout.write(f"collect_hub_usage {day}: {summary}")
+            summary = " ".join(f"{key}={value}" for key, value in counts.items())
+            logger.info("hubs.collect_usage day=%s %s", day, summary)
+            self.stdout.write(f"collect_hub_usage {day}: {summary}")
+            pruned = services.prune_usage()
+        failures = []
         if services.usage_run_failed(counts):
-            raise CommandError(
-                f"collect_hub_usage {day} did not get every business: {summary}"
-            )
+            failures.append(f"{day} did not get every business: {summary}")
+        if pruned is None:
+            failures.append("did not forget the usage past its retention (hubs.usage.prune_failed in the log)")
+        else:
+            logger.info("hubs.usage.prune deleted=%s before=%s", pruned.deleted, pruned.before)
+            self.stdout.write(f"collect_hub_usage: pruned={pruned.deleted} before={pruned.before}")
+        if failures:
+            raise CommandError(f"collect_hub_usage {'; '.join(failures)}")
 

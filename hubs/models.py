@@ -871,7 +871,8 @@ class HubUsageDaily(models.Model):
     request found no room (hub#603, PLAN-SAAS §28): for the admin only, the panel never shows them, and ``None``
     when the Hub did not measure them, never a 0. One row per business and day, written only by the system
     command ``hubs.usage.record`` (``manage.py collect_hub_usage``, nightly in ``saas-cron``): collecting a day
-    again replaces its figures.
+    again replaces its figures. That pass ends by forgetting the days past ``services.USAGE_RETENTION_DAYS``
+    (``hubs.usage.prune``).
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
