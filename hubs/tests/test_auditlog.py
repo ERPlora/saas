@@ -4,8 +4,8 @@ modelos de cuenta, cobro y fiscal»).
 Ported from ERPlora/saas ``apps/dashboard/billing/auditlog.py`` (#970, its ``Subscription``): the subscription of a
 business (plan, status, the Stripe that renews it, an unpaid renewal), the paid apps it carries, its payer's details
 and the plans' prices the staff keep, with only the logged fields serialized (#957). Never written: the link that opens
-an unpaid Stripe invoice to whoever holds it, and ``updated_at``. The rest of ``hubs`` (the business, its people, its
-usage) is not money: the access a person has travels in ``accounts.HubMembership``, already audited.
+an unpaid Stripe invoice to whoever holds it, and ``updated_at``. The rest of ``hubs`` (the business, its
+usage) is not money. Its people are audited too, but as access, not money: ``HubMember``, in ``accounts/tests/test_auditlog.py``.
 """
 
 import pytest

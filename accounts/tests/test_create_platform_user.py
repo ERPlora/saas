@@ -11,8 +11,8 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.management import CommandError, call_command
+from accounts.tests.conftest import enter
 
-from accounts.models import HubMembership
 
 pytestmark = pytest.mark.django_db
 

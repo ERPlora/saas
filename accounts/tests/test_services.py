@@ -7,7 +7,9 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from accounts import services
-from accounts.models import AuthExchangeCode, HubMembership
+from accounts.models import AuthExchangeCode
+from accounts.tests.conftest import enter
+from hubs.models import HubMember
 
 pytestmark = pytest.mark.django_db
 
@@ -138,21 +140,19 @@ class TestRedeemCode:
 
     def test_a_membership_removed_after_issuing_cannot_redeem(self, member):
         code = services.issue_code(member, "a")
-        HubMembership.objects.filter(user=member).delete()
+        HubMember.objects.filter(user=member).delete()
 
         with pytest.raises(services.InvalidCode):
             services.redeem_code(code, "a")
 
     def test_the_role_is_the_one_at_redemption(self, member):
         code = services.issue_code(member, "a")
-        HubMembership.objects.filter(user=member).update(role=HubMembership.Role.ADMIN)
+        HubMember.objects.filter(user=member).update(role=HubMember.Role.ADMIN)
 
         assert services.redeem_code(code, "a").role == "hub_admin"
 
     def test_one_account_carries_a_different_role_to_each_hub(self, member):
-        HubMembership.objects.filter(user=member, hub_slug="a").update(
-            role=HubMembership.Role.OWNER
-        )
+        HubMember.objects.filter(user=member, hub__slug="a").update(role=HubMember.Role.OWNER)
         enter(member, "b", "hub_employee")
         code_a = services.issue_code(member, "a")
         code_b = services.issue_code(member, "b")
@@ -198,7 +198,7 @@ class TestRedeemCode:
 
 class TestSeedDemoCustomer:
     """A customer account of ``demo_seed``: its businesses and roles are ``hubs.services.seed_demo_business``'s
-    (the mirror the jump reads has one writer, ``hubs.services.sync_access``; L1-A2)."""
+    (the jump reads the members of the business)."""
 
     def test_creates_a_customer_that_is_no_staff_and_belongs_to_no_hub_yet(self):
         user = services.seed_demo_customer("owner@example.com", "owner")
@@ -206,7 +206,7 @@ class TestSeedDemoCustomer:
         assert user.check_password("owner")
         assert (user.is_staff, user.is_superuser) == (False, False)
         assert not user.groups.exists()
-        assert not HubMembership.objects.exists()
+        assert not HubMember.objects.exists()
 
     def test_running_it_again_changes_nothing(self):
         first = services.seed_demo_customer("owner@example.com", "owner")
@@ -247,7 +247,7 @@ class TestSeedDemoPlatformAdmin:
 
         assert user.check_password("platform")
         assert (user.is_staff, user.is_superuser) == (True, True)
-        assert not user.hub_memberships.exists()
+        assert not user.hub_members.exists()
 
     def test_its_address_is_proven_so_it_signs_in_without_a_code(self):
         from allauth.account.models import EmailAddress

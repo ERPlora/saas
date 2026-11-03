@@ -9,8 +9,9 @@ from django.test import Client
 from django.utils import timezone
 
 from accounts import services
-from accounts.models import AuthExchangeCode, HubMembership
+from accounts.models import AuthExchangeCode
 from accounts.signing import sign, signed_headers
+from accounts.tests.conftest import enter
 
 URL = "/internal/auth/redeem"
 SECRET = "test-internal-secret"

@@ -24,8 +24,8 @@ from django.utils import timezone, translation
 from django.utils.formats import date_format
 
 from accounts.auditlog import AuditActorMiddleware
-from accounts.models import ApiKey, HubMembership
-from accounts.tests.conftest import api_post
+from accounts.models import ApiKey
+from accounts.tests.conftest import api_post, enter
 from accounts.tests.test_admin import _as_posted, _change_page
 from hubs.tests.conftest import plans  # noqa: F401 - the plans fixture
 
@@ -52,7 +52,7 @@ class TestWhatIsAudited:
         """A model that lets someone in (the account, its businesses, its keys, its sessions) leaves a trail."""
         registered = {model.__name__ for model in auditlog.get_models()}
 
-        assert {"User", "HubMembership", "ApiKey", "UserSession"} <= registered
+        assert {"User", "HubMember", "ApiKey", "UserSession"} <= registered
 
     def test_a_change_to_the_account_is_logged_with_what_changed(self, ana):
         ana.first_name = "Ana María"

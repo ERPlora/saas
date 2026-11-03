@@ -21,7 +21,8 @@ from allauth.mfa.totp.internal import auth as totp_auth
 from django.contrib.auth import get_user_model
 
 from accounts import services
-from accounts.models import AuthExchangeCode, HubMembership
+from accounts.models import AuthExchangeCode
+from accounts.tests.conftest import enter
 
 pytestmark = pytest.mark.django_db
 

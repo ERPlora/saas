@@ -1,4 +1,4 @@
-"""Models of accounts: the user, the membership of a user in a hub and the one-time code."""
+"""Models of accounts: the user and the one-time code."""
 
 import hashlib
 import uuid
@@ -7,8 +7,6 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxLengthValidator
-from django.db import IntegrityError
-from django.utils import translation
 from live.slugs import hub_slug_validator
 
 from accounts.models import (
@@ -16,7 +14,6 @@ from accounts.models import (
     API_KEY_SCOPES,
     ApiKey,
     AuthExchangeCode,
-    HubMembership,
     ProfilePhoto,
     UnknownScope,
     UserPreferences,
@@ -118,107 +115,39 @@ class TestStoreReviewAccount:
             assert refused.value.messages == ["Una cuenta del personal no puede ser cuenta de revisión de tienda."]
 
 
-class TestHubMembership:
-    def test_customer_roles_are_owner_admin_manager_and_employee_with_the_hub_prefix(
-        self,
-    ):
-        # The prefix keeps a customer's role on a hub apart from the platform's (superuser, support).
-        assert HubMembership.Role.values == [
-            "hub_owner",
-            "hub_admin",
-            "hub_manager",
-            "hub_employee",
-        ]
+class TestTheHubSlugRule:
+    """The shared rule of live.slugs (one DNS label, never a reserved name; Ioan, 2026-10-13) on the code of a jump. The
+    tests run with the development minimum (1): the demo hubs are `a` and `b`."""
 
-    def test_role_labels_drop_the_prefix_and_are_translated(self):
-        assert [str(label) for label in HubMembership.Role.labels] == [
-            "Owner",
-            "Admin",
-            "Manager",
-            "Employee",
-        ]
-        with translation.override("es"):
-            assert [str(label) for label in HubMembership.Role.labels] == [
-                "Propietario",
-                "Administrador",
-                "Gestor",
-                "Empleado",
-            ]
-
-    def test_str_shows_the_label_of_the_role_not_its_stored_value(self, ana):
-        membership = HubMembership(
-            user=ana, hub_slug="a", role=HubMembership.Role.OWNER
-        )
-
-        assert str(membership) == "ana@example.com @ a (Owner)"
-
-    @pytest.mark.parametrize(
-        "role", ["owner", "admin", "manager", "employee", "superuser", "support"]
-    )
-    def test_a_role_without_the_hub_prefix_is_not_a_customer_role(self, ana, role):
-        with pytest.raises(ValidationError):
-            HubMembership(user=ana, hub_slug="a", role=role).full_clean()
-
-    def test_is_unique_per_user_and_hub(self, ana):
-        HubMembership.objects.create(
-            user=ana, hub_slug="a", role=HubMembership.Role.ADMIN
-        )
-
-        with pytest.raises(IntegrityError):
-            HubMembership.objects.create(
-                user=ana, hub_slug="a", role=HubMembership.Role.EMPLOYEE
-            )
-
-    # The shared rule of live.slugs (one DNS label, never a reserved name; Ioan, 2026-10-13). The
-    # tests run with the development minimum (1): the demo hubs are `a` and `b`.
+    @staticmethod
+    def _validate(slug: str) -> None:
+        AuthExchangeCode._meta.get_field("hub_slug").run_validators(slug)
 
     @pytest.mark.parametrize("slug", ["a", "b", "pelu-centro", "0day", "123", "a" * 63])
-    def test_a_hub_slug_is_one_dns_label(self, ana, slug):
-        HubMembership(
-            user=ana, hub_slug=slug, role=HubMembership.Role.ADMIN
-        ).full_clean()
+    def test_a_hub_slug_is_one_dns_label(self, slug):
+        self._validate(slug)
 
     @pytest.mark.parametrize(
         "slug",
-        [
-            "",
-            "A",
-            "1a",
-            "ab",
-            "-a",
-            "abc-",
-            "a_b",
-            "a.b",
-            "a" * 64,
-            "xn--bcher-kva",
-            "www",
-            "hub",
-            "admin",
-        ],
+        ["A", "1a", "ab", "-a", "abc-", "a_b", "a.b", "a" * 64, "xn--bcher-kva", "www", "hub", "admin"],
     )
-    def test_anything_else_is_not_a_hub_slug(self, ana, slug):
+    def test_anything_else_is_not_a_hub_slug(self, slug):
         with pytest.raises(ValidationError):
-            HubMembership(
-                user=ana, hub_slug=slug, role=HubMembership.Role.ADMIN
-            ).full_clean()
+            self._validate(slug)
 
-    def test_a_reserved_name_says_so(self, ana):
+    def test_a_reserved_name_says_so(self):
         with pytest.raises(ValidationError) as caught:
-            HubMembership(
-                user=ana, hub_slug="www", role=HubMembership.Role.ADMIN
-            ).full_clean()
+            self._validate("www")
 
-        assert caught.value.error_dict["hub_slug"][0].code == "reserved"
+        assert caught.value.error_list[0].code == "reserved"
 
-    def test_production_wants_at_least_three_characters(self, ana, settings):
+    def test_production_wants_at_least_three_characters(self, settings):
         settings.LIVE = {**settings.LIVE, "hub_slug_min_length": 3}
 
         with pytest.raises(ValidationError) as caught:
-            HubMembership(
-                user=ana, hub_slug="a", role=HubMembership.Role.ADMIN
-            ).full_clean()
+            self._validate("a")
 
-        assert caught.value.error_dict["hub_slug"][0].code == "too_short"
+        assert caught.value.error_list[0].code == "too_short"
 
 
 class TestAuthExchangeCode:
@@ -229,10 +158,9 @@ class TestAuthExchangeCode:
         assert AuthExchangeCode.HUB_SESSION_AUDIENCE == "hub-session"
 
 
-@pytest.mark.parametrize("model", [HubMembership, AuthExchangeCode])
-def test_every_hub_slug_uses_the_shared_validator(model):
+def test_the_hub_slug_of_a_code_uses_the_shared_validator():
     # Besides the MaxLengthValidator every CharField adds by itself.
-    validators = model._meta.get_field("hub_slug").validators
+    validators = AuthExchangeCode._meta.get_field("hub_slug").validators
     assert [v for v in validators if not isinstance(v, MaxLengthValidator)] == [hub_slug_validator]
 
 

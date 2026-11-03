@@ -9,8 +9,8 @@ from django.utils import translation
 from live.errors import Unauthorized
 
 from accounts import queries
-from accounts.models import HubMembership
 from accounts.schemas import HubListIn
+from accounts.tests.conftest import enter
 
 pytestmark = pytest.mark.django_db
 

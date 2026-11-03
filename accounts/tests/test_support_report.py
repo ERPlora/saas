@@ -12,8 +12,7 @@ from django.contrib.auth import get_user_model
 from django.core import mail
 from django.test import override_settings
 
-from accounts.models import HubMembership
-from accounts.tests.conftest import HOST, api_post
+from accounts.tests.conftest import HOST, api_post, enter
 
 pytestmark = pytest.mark.django_db
 

@@ -12,7 +12,9 @@ from django.test import override_settings
 
 from accounts import services
 from accounts.admin import open_hub_admin_url
-from accounts.models import AuthExchangeCode, HubMembership
+from accounts.models import AuthExchangeCode
+from accounts.tests.conftest import enter
+from hubs.models import HubMember
 
 pytestmark = pytest.mark.django_db
 
@@ -26,7 +28,7 @@ def staff_client(client):
     return client, admin
 
 
-@pytest.mark.parametrize("model", ["user", "hubmembership", "authexchangecode"])
+@pytest.mark.parametrize("model", ["user", "authexchangecode"])
 def test_changelist_and_change_page_load(staff_client, model):
     client, _ = staff_client
 
@@ -133,8 +135,9 @@ class TestWhoEntersTheAdmin:
         helper.groups.add(Group.objects.get(name="support"))
         client.force_login(helper)
 
-        for model in ("user", "hubmembership", "authexchangecode"):
+        for model in ("user", "authexchangecode"):
             assert client.get(f"/admin/accounts/{model}/").status_code == 200
+        assert client.get("/admin/hubs/hubmember/").status_code == 200
         assert client.get(f"/admin/accounts/user/{ana.pk}/change/").status_code == 200
         assert client.get("/admin/accounts/user/add/").status_code == 403
         assert client.post(f"/admin/accounts/user/{ana.pk}/change/", {"email": "x@example.com"}).status_code == 403
@@ -200,7 +203,7 @@ class TestOpenInTheHubAdmin:
         assert not AuthExchangeCode.objects.exists()
 
     def test_each_membership_row_has_the_button(self, client, platform):
-        response = client.get("/admin/accounts/hubmembership/")
+        response = client.get("/admin/hubs/hubmember/")
 
         html = response.content.decode()
         assert response.status_code == 200
@@ -231,7 +234,7 @@ class TestOpenInTheHubAdmin:
 
         # One button per valid membership (``demo_seed``: owner and employee of ``a`` and ``b``), and
         # one per hub on the Hubs page; none for the bad row.
-        for page, buttons in (("/admin/accounts/hubmembership/", 4), (self.HUBS, 2)):
+        for page, buttons in (("/admin/hubs/hubmember/", 4), (self.HUBS, 2)):
             response = client.get(page)
             html = response.content.decode()
             assert response.status_code == 200
@@ -576,14 +579,14 @@ def test_the_user_page_shows_the_preferences_and_the_photo(staff_client, ana):
 
 def test_the_user_page_hides_the_preferences_and_the_photo_it_never_saved(staff_client, ana):
     """ACCOUNTS-G35/G36: an account on the defaults has no row there; an empty read-only box says nothing."""
-    from accounts.models import HubMembership, ProfilePhoto, UserPreferences
+    from accounts.models import ProfilePhoto, UserPreferences
 
     client, _ = staff_client
 
     page = client.get(f"/admin/accounts/user/{ana.pk}/change/")
 
     assert page.status_code == 200
-    assert [inline.opts.model for inline in page.context["inline_admin_formsets"]] == [HubMembership]
+    assert [inline.opts.model for inline in page.context["inline_admin_formsets"]] == [HubMember]
 
     UserPreferences.objects.create(user=ana, theme_mode="dark")
     ProfilePhoto.objects.create(user=ana, content_type="image/png", data=b"\x89PNG")
@@ -592,7 +595,7 @@ def test_the_user_page_hides_the_preferences_and_the_photo_it_never_saved(staff_
     assert [inline.opts.model for inline in page.context["inline_admin_formsets"]] == [
         UserPreferences,
         ProfilePhoto,
-        HubMembership,
+        HubMember,
     ]
 
 
