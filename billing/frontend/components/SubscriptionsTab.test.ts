@@ -262,6 +262,24 @@ describe('SubscriptionsTab: the list', () => {
     expect(toastSuccess).toHaveBeenCalledWith('Panadería López stays on Starter');
   });
 
+  it('a downgrade that waits leads with «Keep the plan», «Cancel plan» in its «⋮», and keeping it says so (PLAN-SAAS §31, saas#208)', async () => {
+    const waiting = subscriptionRow('bakery', 'Panadería López', {
+      plan: { slug: 'standard', name: 'Standard', interval: 'month', price_cents: 5999 },
+      scheduled_change: { plan: 'starter', interval: 'month', starts_at: '2026-11-01T10:00:00Z' },
+      actions: ['keep_plan', 'change_plan', 'cancel_plan', 'view_invoices'],
+      can: { take_over: false, change_plan: true, cancel_plan: true, keep_plan: true, view_invoice: false, view_invoices: true },
+    });
+    const s = await setup('en', (call) => (call.path === '/api/billing/plan/keep' ? Response.json({}) : api(call)));
+    await s.show([waiting]);
+    expect(s.testid('subscription-scheduled').text()).toBe('Changes to Starter on Nov 1, 2026');
+    expect(s.actionsOf('bakery')).toEqual(['lead', 'menu']);
+    expect(s.testid('subscriptions-row-bakery-lead').text()).toBe('Keep the plan');
+    await s.testid('subscriptions-row-bakery-lead').trigger('click');
+    await flush();
+    expect(s.calls().filter((c) => c.method === 'POST')).toEqual([{ method: 'POST', path: '/api/billing/plan/keep', body: { hub_id: 'bakery' }, query: {} }]);
+    expect(toastSuccess).toHaveBeenCalledWith('Panadería López stays on Standard');
+  });
+
   it('a refused «Keep the plan» says why', async () => {
     const s = await setup('en', (call) =>
       call.path === '/api/billing/plan/keep' ? apiError(409, 'billing.invoice_unpaid', 'Pay the pending invoice first.') : api(call),
