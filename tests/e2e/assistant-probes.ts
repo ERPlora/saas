@@ -326,6 +326,7 @@ export function probeVerdict(probe: Probe, observed: ProbeObserved, always: read
         break;
       }
       if (ok(turns, probe.tool)) reasons.push(`${probe.tool} ran after the cancel`);
+      if (turns.cards.filter((card) => card.operation === probe.tool).length > 1) reasons.push(`${probe.tool} asked again after the cancel`);
       if (observed.notices.includes(CLAIMED_CHANGE)) reasons.push(`assistant-notice-${CLAIMED_CHANGE} after the cancel`);
       if (observed.events === null) reasons.push('nothing verified in the outbox');
       unchanged(observed.events, reasons);

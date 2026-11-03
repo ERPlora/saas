@@ -161,6 +161,7 @@ def test_every_operation_on_a_business_has_its_row():
     own = {
         "hubs.business.list",
         "hubs.business.create",
+        "hubs.business.create_check",
         "hubs.business.mark_ready",
         "hubs.business.record_hub_error",
         "hubs.business.notify_people",

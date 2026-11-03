@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:ff263f994017c927fc7b50791b345402591f9dd8e9194ce0487b0dbb12154093 -->
+<!-- generated from WORKBOOK.md sha256:d5f73cdb86561aef74ddf6dd681ceed2cb33af1b7e50a4569a936d54152ead35 -->
 
 ## What it is for and who it is for
 
@@ -195,8 +195,8 @@ Steps:
 3. They press "Create my business": "Business created: …" shows and the card moves to **Preparing** (HUBS-F04).
 In: the name, the country (one of the 27 of the European Union where ERPlora sells) and, if the person knows it, the business type; the account's session.
 Out: the business on the Free plan (without a card and without a trial), with the person as owner, its address taken from the name (if it is taken it is numbered, `bar-manolo-2`; a reserved word is completed by itself) and who pays, with the business's country. The businesses' service receives the sign-up as soon as it is saved and, with the business type, the modules of its sector. Records `hubs.business.created`.
-If it fails: without a name, "Write the name of your business." and nothing is sent; a country outside the list, the error on the field. If the account already has its free business, it does not create another: the dialog says "You already have a free business" and offers "Change the plan of …". Without the Free plan available, "Businesses cannot be created right now. Try again in a few minutes.". An account of ERPlora's staff does not create businesses. Two presses in a row create a single one.
-Involved: accounts (the account and the Entrance), the business (receives its sign-up)
+If it fails: without a name, "Write the name of your business." and nothing is sent; a country outside the list, the error on the field. If the account already has its free business, it does not create another: the dialog says "You already have a free business" and offers "Change the plan of …"; asked of the panel's assistant, it shows no card and says to change the plan of the business it already has (ASSISTANT-F25). Without the Free plan available, "Businesses cannot be created right now. Try again in a few minutes.". An account of ERPlora's staff does not create businesses. Two presses in a row create a single one.
+Involved: accounts (the account and the Entrance), the business (receives its sign-up), the panel's assistant (ASSISTANT-F25)
 
 ### HUBS-F02 Create the free business from the installed app
 Status: done
