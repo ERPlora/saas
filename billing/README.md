@@ -497,6 +497,9 @@ son solo web, y en su lugar se dice, sin enlace, cómo hacerlo desde el navegado
 - **La columna de acciones** la mide la propia `DataTable` de `@erplora/ui` (`max-content` hasta medirla y después el
   ancho de sus botones, `DataTable.actions.test.ts`), sin reglas propias en Facturas ni en Suscripciones;
   `billing.spec.ts` sigue vigilando que los botones no pisen la columna anterior («actions over the previous column»).
+- **Importes**: `formatAmount` (`invoices.ts`, también en los avisos de impago de Negocios) y `formatCents`/`formatEuros`
+  (`format.ts`, la Tienda) escriben con `formatMoney` de `@erplora/ui`, el mismo de la tarjeta del asistente: millares
+  desde cuatro cifras («1.234,56 €», saas#228). No hay `Intl.NumberFormat` propio para el dinero.
 - **e2e**: `tests/e2e/panel/billing.spec.ts` con `billing_seed.py` (cuatro negocios: facturas pagada y emitida,
   pagada emitiéndose, no cobrada con tarjeta rechazada y no cobrada con fallo blando; Gratis sin facturas).
   `tests/e2e/panel/billing-downgrade.spec.ts` recorre la bajada programada (BILLING-F11, BILLING-F14, HUBS-F32, HUBS-F34) sobre

@@ -5,7 +5,7 @@
 //   - our number names it once paid; before, Stripe's reference;
 //   - an unpaid invoice leaves the business working 7 days, then it is suspended (PLAN-SAAS §3.3);
 //   - the account sees the invoices of the businesses it owns or pays.
-import { invoiceStatusPill, type StatusPillSpec } from '@erplora/ui/components';
+import { formatMoney, invoiceStatusPill, type StatusPillSpec } from '@erplora/ui/components';
 
 import type { BusinessRowOut, InvoiceRowOut } from '../../frontend/sdk-types';
 
@@ -51,18 +51,12 @@ export function invoiceBusinesses(rows: readonly BusinessRowOut[], locale: strin
     .sort((a, b) => a.name.localeCompare(b.name, locale));
 }
 
-const money = new Map<string, Intl.NumberFormat>();
-
-/** Cents in `currency` (Stripe writes it in lower case; euros without one), in the person's language. */
+/**
+ * Cents in `currency` (Stripe writes it in lower case; euros without one), in the person's language, the way the
+ * whole panel and the assistant's card say an amount (`formatMoney`: thousands grouped from four digits).
+ */
 export function formatAmount(cents: number, currency: string, locale: string): string {
-  const code = (currency || 'eur').toUpperCase();
-  const key = `${locale}|${code}`;
-  let format = money.get(key);
-  if (!format) {
-    format = new Intl.NumberFormat(locale, { style: 'currency', currency: code });
-    money.set(key, format);
-  }
-  return format.format(cents / 100);
+  return formatMoney(cents, locale, { currency: (currency || 'eur').toUpperCase(), decimals: 2 });
 }
 
 /** How a card brand writes itself (Stripe sends `visa`, `mastercard`, `amex`…). */

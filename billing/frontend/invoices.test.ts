@@ -2,6 +2,7 @@
 // §6.18; billing/README.md «Facturas de ERPlora (L3-C)»): how its status reads, what names it, the grace of an
 // unpaid one, the years the filter offers and the businesses whose invoices the account sees.
 // clock: data only — no code under test compares these dates with now.
+import { formatMoney } from '@erplora/ui/components';
 import { describe, expect, it } from 'vitest';
 
 import { invoiceRow } from './__tests__/billing-fixtures';
@@ -74,6 +75,17 @@ describe('formatAmount', () => {
 
   it('falls back to euros without a currency', () => {
     expect(formatAmount(500, '', 'en')).toBe('€5.00');
+  });
+
+  it('groups the thousands from four digits, as every ledger of the market does (saas#228)', () => {
+    expect(formatAmount(123456, 'eur', 'es')).toBe('1.234,56 €');
+    expect(formatAmount(123456, 'eur', 'en')).toBe('€1,234.56');
+  });
+
+  it('says an amount the way the assistant’s card does', () => {
+    for (const locale of ['es', 'en']) {
+      expect(formatAmount(123456, 'eur', locale)).toBe(formatMoney(123456, locale, { currency: 'EUR', decimals: 2 }));
+    }
   });
 });
 
