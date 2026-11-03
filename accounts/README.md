@@ -132,6 +132,14 @@ ningún rol tiene su permiso.
   sesiones, eliminar la cuenta o poner contraseña nueva (`password_changed/set/reset` de allauth; PLAN-SAAS
   §2.1) y `account_deleting(user_id)` antes de borrar la cuenta. Al cambiar el correo se envía `email_changed`
   de allauth. Los propietarios se leen con la operación `hubs.business.list` (por nombre, `can.delete`).
+- **El pase de vuelta desde el Hub** (`hub_pass.py`, `GET /hub-pass/?pass=…`, ACCOUNTS-F29; saas#190): el Hub
+  firma con `django.core.signing.dumps({"user", "hub", "next": "plan"|"business", "nonce"}, key=INTERNAL_SHARED_SECRET,
+  salt="erplora.hub-pass.v1")` y el SaaS solo comprueba (`signing.live_secrets`, nunca `SECRET_KEY`): vida
+  `HUB_PASS_MAX_AGE_SECONDS` (60 s), un solo uso (fila de `AuthExchangeCode` con audiencia `hub-pass` y el SHA-256 del
+  nonce; la purga nocturna la borra), solo cuenta activa, sin `is_staff`/`is_superuser` y miembro según
+  `hubs.business.list` (`services.hub_pass_member`). Errores en `/login/error`: `invalid_pass`, `not_a_member`,
+  `pass_expired&next=`. La sesión que abre no acepta los términos (`accept_legal_texts` lee `request.hub_pass`). El
+  lado del Hub (firmar al pulsar y los dos botones) es ERPlora/hub#716.
 - **Claves de API**: `erps_live_` + 48 base62 (se distinguen de las `erpk_live_` del Hub; plan §7 punto 12),
   SHA-256 y prefijo de 8 indexado; caducidad 30/90 días o nunca (90 por defecto); tope de 50 vivas por cuenta;
   `last_used_at` cada 10 min como mucho. Scopes `hubs.read`, `hubs.write`, `billing.read` (`<app>.read` abre
