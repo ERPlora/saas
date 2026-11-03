@@ -235,7 +235,7 @@ Implicados: FISCAL-F05
   `_never_in_erploras_name`, saas#2524). Tests: `test_in_testing_erplora_presents_for_a_customer_without_an_authorisation`,
   `test_in_testing_the_authorisation_is_not_read`, `test_in_testing_a_business_never_presents_in_erploras_name` y las
   dos sondas de pruebas de `test_internal.py`; las negativas que leen la autorización corren en producción. Decidido en
-  la ronda 2026-11-03k de `PLAN-SAAS.md` (§33, FIX-FISCAL-TESTING-AUTHORISATION-CONTRADICTION), que cierra la
+  la ronda 2026-11-03l de `PLAN-SAAS.md` (§33, FIX-FISCAL-TESTING-AUTHORISATION-CONTRADICTION), que cierra la
   contradicción señalada en la ronda CLOSE-FISCAL_GATEWAY de §4.
 
 ## Lo que NO hace, a propósito

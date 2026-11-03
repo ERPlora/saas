@@ -103,7 +103,7 @@ En el **entorno de pruebas** de la AEAT (`environment = "testing"`) no se pide n
 nadie presenta en nombre de nadie y nada tiene efectos, y la AEAT solo comprueba que el titular del sello es
 colaborador social (fault 4112), nunca el Anexo I de cada negocio, que guarda ERPlora. Así un negocio nuevo prueba
 VeriFactu por la vía de ERPlora antes de que se apruebe su autorización, y la pide el Hub al pasar a producción
-(PLAN-SAAS ronda 2026-11-03k, como ADR-0360 del producto viejo). Lo que no cambia en pruebas: el negocio tiene que
+(PLAN-SAAS ronda 2026-11-03l, como ADR-0360 del producto viejo). Lo que no cambia en pruebas: el negocio tiene que
 existir (`404 hub_unknown`), el sobre solo nombra al contribuyente de `nif` y ningún negocio presenta con el NIF de
 ERPlora (`409 nif_mismatch`).
 

@@ -42,7 +42,7 @@ In production, ERPlora's seal presents for a business's taxpayer only with the b
 authorisation (the Anexo I the staff reviewed, ``fiscal.RepresentationGrant``) whose taxpayer is ``nif``.
 In the AEAT's testing environment nobody is represented and nothing is filed, so no authorisation is asked
 for there: a business tries VeriFactu before its Anexo I is approved, and going live is where the Hub asks
-for it (PLAN-SAAS round 2026-11-03k; ADR-0360 of the old product). The one exception is the platform's hub
+for it (PLAN-SAAS round 2026-11-03l; ADR-0360 of the old product). The one exception is the platform's hub
 (``hub`` is ``settings.PLATFORM_HUB_SLUG``, a reserved slug no business bears): ERPlora's own records, in
 its own name, for the seal's holder only and without an authorisation; no business presents in ERPlora's
 name in either environment. What the authorisation says never reaches an answer nor a log. The reads are

@@ -11,7 +11,7 @@ envelope ``{"error": {"code", "message"}}``. Only the AEAT's preproduction is ev
 The gateway presents for a business it knows only (``hub_unknown``), and through ERPlora's seal in
 production only for the taxpayer of the business's approved authorisation (``fiscal.RepresentationGrant``).
 In the AEAT's testing environment nobody is represented, so no authorisation is asked for there (PLAN-SAAS
-round 2026-11-03k; ADR-0360 of the old product). The one exception is the platform's hub
+round 2026-11-03l; ADR-0360 of the old product). The one exception is the platform's hub
 (``PLATFORM_HUB_SLUG``, no business of the SaaS): ERPlora's own records, in its own name, for the seal's
 holder only; ERPlora's own NIF is that hub's alone in both environments.
 """
