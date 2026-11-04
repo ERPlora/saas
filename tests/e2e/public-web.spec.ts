@@ -651,3 +651,105 @@ test('PUBLIC-G51 once the page script has run, one press opens the mobile menu a
   await expect(menu.burger).toBeFocused();
   await clean('with the script');
 });
+
+/** Where the focus is, as the person would read it: the `href` of a link or ion-button, `close`, or what it is out of the panel. */
+function focusedStop(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    const active = document.activeElement!;
+    const stop = active.matches('button[data-navbar-close]') ? 'close' : (active.getAttribute('href') ?? active.tagName);
+    return active.closest('#ep-navbar-panel') ? stop : `outside: ${stop}`;
+  });
+}
+
+/** The `href` of what `selector` finds in the panel, in order, read in the page: a locator would also count the link inside each ion-button. */
+function panelLinks(page: Page, selector: string): Promise<string[]> {
+  return page.evaluate(
+    (found) => [...document.querySelectorAll(`#ep-navbar-panel :is(${found})`)].map((stop) => stop.getAttribute('href')!),
+    selector,
+  );
+}
+
+/** Presses the key once per expected stop and checks where the focus landed each time. */
+async function pressThrough(page: Page, key: 'Tab' | 'Shift+Tab', stops: string[]) {
+  for (const [press, stop] of stops.entries()) {
+    await page.keyboard.press(key);
+    expect(await focusedStop(page), `${key} number ${press + 1}`).toBe(stop);
+  }
+}
+
+test('PUBLIC-G51 with the mobile menu open, Tab goes round inside it and the page behind waits until it closes', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  const clean = await watch(page);
+  const menu = mobileMenu(page);
+  await page.goto('/');
+  // An ion-button takes the focus once it has drawn the link inside it.
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll('#ep-navbar-panel ion-button')].every((button) => button.shadowRoot?.querySelector('a, button')),
+  );
+  const behind = page.locator('footer a[href]').first();
+
+  await menu.burger.click();
+  await menu.isOpen('opened');
+  const links = await panelLinks(page, 'a[href], ion-button[href]');
+  expect(links, 'what the panel is for').toEqual(expect.arrayContaining(['/features/', '/demo/', '/launch']));
+
+  // Two whole rounds forward, from the close button that opening focused, and one back.
+  await pressThrough(page, 'Tab', [...links, 'close', ...links, 'close']);
+  await pressThrough(page, 'Shift+Tab', [...links].reverse().concat('close'));
+
+  // Pressing the bare panel takes the focus off every stop: the next Tab still comes back to it, not to the bar behind.
+  await menu.panel.click({ position: { x: 8, y: 8 } });
+  expect(await focusedStop(page), 'a press on the bare panel').toBe('outside: BODY');
+  await pressThrough(page, 'Shift+Tab', [links.at(-1)!]);
+  await pressThrough(page, 'Tab', ['close']);
+
+  // Not even by hand: what is behind takes no focus until the panel closes, also for assistive technology.
+  await behind.focus();
+  expect(await focusedStop(page), 'the page behind, open').toBe('close');
+
+  await page.keyboard.press('Escape');
+  await menu.isClosed('Escape');
+  await expect(menu.burger).toBeFocused();
+
+  // Closed, nothing stays locked: Tab goes on to the page, and what was behind takes the focus again.
+  await page.keyboard.press('Tab');
+  expect(await focusedStop(page), 'Tab with the panel closed').toMatch(/^outside: /);
+  await behind.focus();
+  await expect(behind).toBeFocused();
+
+  // The other way out that has no press in the panel: widening to the desktop bar leaves nothing locked either.
+  await menu.burger.click();
+  await menu.isOpen('before widening');
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await behind.focus();
+  await expect(behind).toBeFocused();
+  await clean('after every press');
+});
+
+test('PUBLIC-G51 on a slow device, Tab also goes round inside the open mobile menu', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  // No module (saas#243): an ion-button is an unknown element that takes no focus, so the round has to end before it.
+  const held: Route[] = [];
+  await page.route('**/static/spa/**/*.js', (route) => {
+    held.push(route);
+  });
+  const clean = await watch(page);
+  const menu = mobileMenu(page);
+  await page.goto('/', { waitUntil: 'commit' });
+
+  await menu.burger.click();
+  await menu.isOpen('opened');
+  expect(await page.evaluate(() => customElements.get('ion-button') === undefined), 'the script has not run').toBe(true);
+  const links = await panelLinks(page, 'a[href]');
+  expect(links, 'what the panel is for').toContain('/features/');
+
+  await pressThrough(page, 'Tab', [...links, 'close']);
+  await pressThrough(page, 'Shift+Tab', [...links].reverse().concat('close'));
+  await page.keyboard.press('Escape');
+  await menu.isClosed('Escape');
+  await expect(menu.burger).toBeFocused();
+  await clean('after every press');
+
+  await page.unrouteAll({ behavior: 'ignoreErrors' });
+  await Promise.all(held.map((route) => route.continue().catch(() => undefined)));
+});

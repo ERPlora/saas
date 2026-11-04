@@ -4,7 +4,8 @@
   (public/static/public/components/navbar.css) plus the few lines of script after it.
   Brand on the left; the links (public/partials/nav_links.html) and the actions on the right.
   At 800 px and below the links and the actions move into a side panel from the right that the
-  burger opens; the panel closes with its close button, the backdrop, Esc or a link. That script is
+  burger opens; the panel closes with its close button, the backdrop, Esc or a link. While it is open,
+  Tab goes round inside it and the rest of the page is inert (saas#252). That script is
   inline, with the response's nonce, and not in frontend/public.ts: it runs as the page is parsed, so
   the burger works from the first moment on a slow connection and even if the module never arrives
   (saas#243). Everything is in the light DOM: crawlable. The burger and the close button are native
@@ -62,12 +63,32 @@
         // A native button (L8): an ion-button would keep the aria-expanded it had when it loaded.
         toggle.setAttribute('aria-expanded', String(open));
         document.documentElement.classList.toggle('ep-navbar-open', open);
+        // What is behind the backdrop: nothing there takes the focus or reaches assistive technology.
+        document.querySelectorAll('body > :not([data-navbar])').forEach(function (behind) {
+            behind.toggleAttribute('inert', open);
+        });
     }
     function close() {
         if (!isOpen()) return;
         var hadFocus = panel.contains(document.activeElement);
         setOpen(false);
         if (hadFocus) toggle.focus();
+    }
+    function focusOn(stop) {
+        // An ion-button does not delegate: what takes the focus is the link inside its shadow root.
+        var inner = stop.shadowRoot && stop.shadowRoot.querySelector('a, button');
+        (inner || stop).focus();
+    }
+    // From the last stop back to the first, and the other way with Shift; a focus off the panel comes back to it.
+    function goRound(event) {
+        // An ion-button is a stop once its module has defined it, and that module may never arrive (saas#243).
+        var stops = panel.querySelectorAll('a[href], button, ion-button:defined');
+        var first = stops[0];
+        var last = stops[stops.length - 1];
+        var edge = event.shiftKey ? first : last;
+        if (panel.contains(document.activeElement) && document.activeElement !== edge) return;
+        event.preventDefault();
+        focusOn(event.shiftKey ? last : first);
     }
 
     toggle.addEventListener('click', function () {
@@ -83,6 +104,7 @@
     });
     document.addEventListener('keydown', function (event) {
         if (event.key === 'Escape') close();
+        if (event.key === 'Tab' && isOpen()) goRound(event);
     });
     // Back to the desktop bar with the panel open: the links return to the bar, nothing stays locked.
     window.matchMedia('(min-width: 801px)').addEventListener('change', function (event) {

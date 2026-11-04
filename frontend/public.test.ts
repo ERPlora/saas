@@ -234,7 +234,13 @@ describe('the navbar panel', () => {
         <div class="ep-navbar__links"><a href="/features/">Features</a></div>
       </div>
       <div data-navbar-close class="ep-navbar__backdrop"></div>
-    </nav>`;
+    </nav>
+    <main><a href="/behind/">Behind</a></main>`;
+
+  // The script listens on the one document of this file, so a run outlives its test: closed, it leaves the next run's keys alone.
+  afterEach(() => {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+  });
 
   /** The script the partial writes after the navbar: it runs as the page is parsed, with no module (saas#243). */
   function inlineScript(): string {
@@ -329,6 +335,68 @@ describe('the navbar panel', () => {
     doc.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
 
     expect(doc.activeElement).toBe(outside);
+  });
+
+  /** A key press on the page: true when the script took it over, so the browser does not move the focus on its own. */
+  function pressTab(doc: Document, shiftKey = false): boolean {
+    const press = new KeyboardEvent('keydown', { key: 'Tab', shiftKey, cancelable: true });
+    doc.dispatchEvent(press);
+    return press.defaultPrevented;
+  }
+
+  it('goes round with Tab: from the last stop to the first, and with Shift from the first to the last', () => {
+    const { doc } = opened();
+    const first = doc.querySelector<HTMLElement>('button[data-navbar-close]')!;
+    const last = doc.querySelector<HTMLElement>('.ep-navbar__links a')!;
+
+    expect(pressTab(doc, true)).toBe(true);
+    expect(doc.activeElement).toBe(last);
+
+    expect(pressTab(doc)).toBe(true);
+    expect(doc.activeElement).toBe(first);
+  });
+
+  it('leaves to the browser a Tab between two stops of the panel', () => {
+    const { doc } = opened();
+
+    expect(pressTab(doc)).toBe(false);
+    expect(doc.activeElement).toBe(doc.querySelector('button[data-navbar-close]'));
+  });
+
+  it('brings a focus that is off the panel back to it, on either side', () => {
+    const { doc } = opened();
+    (doc.activeElement as HTMLElement).blur();
+    expect(pressTab(doc, true)).toBe(true);
+    expect(doc.activeElement).toBe(doc.querySelector('.ep-navbar__links a'));
+
+    (doc.activeElement as HTMLElement).blur();
+    expect(pressTab(doc)).toBe(true);
+    expect(doc.activeElement).toBe(doc.querySelector('button[data-navbar-close]'));
+  });
+
+  it('does not touch Tab while it is closed', () => {
+    const { doc } = loaded();
+    const behind = doc.querySelector<HTMLElement>('main a')!;
+    behind.focus();
+
+    expect(pressTab(doc)).toBe(false);
+    expect(doc.activeElement).toBe(behind);
+  });
+
+  it('keeps the rest of the page inert only while it is open, and the navbar never', () => {
+    const { doc, resize } = opened();
+    const main = doc.querySelector('main')!;
+    const navbar = doc.querySelector('[data-navbar]')!;
+    expect(main.hasAttribute('inert')).toBe(true);
+    expect(navbar.hasAttribute('inert')).toBe(false);
+
+    doc.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(main.hasAttribute('inert')).toBe(false);
+
+    doc.querySelector<HTMLElement>('[data-navbar-toggle]')!.click();
+    expect(main.hasAttribute('inert')).toBe(true);
+    resize(true);
+    expect(main.hasAttribute('inert')).toBe(false);
   });
 
   it('is the only one that binds the burger: the page script answering the same press would close it', () => {
