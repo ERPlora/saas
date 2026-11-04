@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { GOOGLE_E2E, panelMailDir, panelServers } from './panel/project';
-import { publicServer, recaptchaDoubleServer, runId } from './playwright.config';
+import { publicNoticeServer, publicServer, recaptchaDoubleServer, runId } from './playwright.config';
 import { E2E_RECAPTCHA_API_KEY } from './recaptcha';
 import { isE2eDatabase, stackFrom } from './stack';
 
@@ -28,6 +28,7 @@ describe('stackFrom', () => {
       publicPort: 8011,
       panelPort: 8012,
       panelMfaPort: 8013,
+      publicNoticePort: 8016,
       googleDoublePort: 8015,
       publicHubDoublePort: 8014,
       aiProviderPort: 8017,
@@ -44,6 +45,7 @@ describe('stackFrom', () => {
       publicPort: 8031,
       panelPort: 8032,
       panelMfaPort: 8033,
+      publicNoticePort: 8036,
       googleDoublePort: 8035,
       publicHubDoublePort: 8034,
       aiProviderPort: 8037,
@@ -127,6 +129,18 @@ describe("the stack's servers", () => {
     );
     expect(server.url).toBe('http://127.0.0.1:8031/robots.txt');
     expect(server.env).toMatchObject({ DEBUG: 'False', DB_NAME: 'saas_e2e_8030' });
+  });
+
+  it("run the public server's twin on its own port, on the same database, the only one that shows the cookie notice", () => {
+    const server = publicNoticeServer(SAAS_DIR, OWN);
+    expect(server.name).toBe('public-notice');
+    // No `database.ts`: the public server, which starts before it, has already left the database ready.
+    expect(server.command).toBe('uv run python manage.py runserver 127.0.0.1:8036 --novite --insecure --noreload');
+    expect(server.url).toBe('http://127.0.0.1:8036/robots.txt');
+    expect(server.reuseExistingServer).toBe(false);
+    expect(server.env).toMatchObject({ DEBUG: 'False', DB_NAME: 'saas_e2e_8030' });
+    expect(server.env?.CLARITY_PROJECT_ID).toBeTruthy();
+    expect(publicServer(SAAS_DIR, OWN).env).not.toHaveProperty('CLARITY_PROJECT_ID');
   });
 
   it('run the public server with reCAPTCHA off by default, as production since 2026-10-23', () => {

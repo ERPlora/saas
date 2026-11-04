@@ -48,8 +48,12 @@ pnpm e2e --project=panel panel/login.spec.ts   # una spec
 Son los de la pila compartida, la de toda ejecución que no exporta nada. `E2E_SAAS_PORT` los mueve juntos para una
 segunda ejecución a la vez (`stack.ts`; ver «Dos e2e del SaaS a la vez»): `+1` el público, `+2` el panel, `+3` su
 gemelo con el segundo factor y una app de Google inventada, `+5` el doble de Google que levanta
-`panel/accounts-google.spec.ts`, `+8` el doble de reCAPTCHA y `+9` el Hub de las specs (por defecto `8010`: `:8011`,
-`:8012`, `:8013`, `:8015`, `:8018`, `:8019`).
+`panel/accounts-google.spec.ts`, `+6` el gemelo del público con el aviso de cookies, `+8` el doble de reCAPTCHA y `+9` el
+Hub de las specs (por defecto `8010`: `:8011`, `:8012`, `:8013`, `:8015`, `:8016`, `:8018`, `:8019`).
+
+- **`:8016` (el gemelo del público con el aviso de cookies)**: el mismo servidor que `:8011` (misma BD, misma CSP, sin
+  Vite) con `CLARITY_PROJECT_ID` inventado, el único que enseña el aviso (PUBLIC-F19, paso 2): producción no mide visitas
+  hoy y `:8011` tampoco. Nada carga el rastreador hasta que alguien acepta. Ahí juega `public-cookie-notice.spec.ts`.
 
 - **`:8012` (Django del panel)**: siempre propio (`reuseExistingServer: false`), sin autorecarga y con
   `HUB_INTERNAL_URL=http://127.0.0.1:8019`: las llamadas al Hub se quedan pendientes, como con el Hub
