@@ -2,10 +2,11 @@
 // every page that extends `public/public_base.html`. It registers the ion-* the templates use (from
 // @ionic/core, Ionic in `ios` mode as before), brings Ionic's CSS, the @erplora/ui tokens, the fonts
 // and the public stylesheets, and wires the few behaviours the OutfitKit components had in their
-// shadow DOM: the navbar's mobile panel, the scroll reveal, the server messages as toasts, and
-// Mermaid on demand (spec §6). No CDN, no network for icons. It also keeps the page in the colour
-// mode the server wrote on <html> (`data-ep-theme`, the account's, as the panel paints it), and in
-// `system` follows the operating system live.
+// shadow DOM: the scroll reveal, the server messages as toasts, and Mermaid on demand (spec §6). No
+// CDN, no network for icons. It also keeps the page in the colour mode the server wrote on <html>
+// (`data-ep-theme`, the account's, as the panel paints it), and in `system` follows the operating
+// system live. The navbar's mobile panel is not in the module (saas#243): its contract here runs the
+// inline script of public/partials/navbar.html.
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,7 +21,6 @@ import {
   renderDiagrams,
   setupAppBack,
   setupColorScheme,
-  setupNavbar,
   setupReveal,
   type ToastOptions,
 } from './public';
@@ -228,38 +228,84 @@ describe('the navbar panel', () => {
       <div data-navbar-close class="ep-navbar__backdrop"></div>
     </nav>`;
 
-  function opened() {
+  /** The script the partial writes after the navbar: it runs as the page is parsed, with no module (saas#243). */
+  function inlineScript(): string {
+    const partial = readFileSync(join(PUBLIC_TEMPLATES, 'public', 'partials', 'navbar.html'), 'utf8');
+    const script = /<script nonce="\{\{ csp_nonce \}\}">([\s\S]*?)<\/script>/.exec(partial);
+    expect(script, 'navbar.html has no inline script').not.toBeNull();
+    return script![1];
+  }
+
+  /** A window as wide as `wide` says, whose width can change: what the script's `(min-width: 801px)` listens to. */
+  function fakeWindowWidth(wide = false) {
+    const listeners: Array<(event: MediaQueryListEvent) => void> = [];
+    vi.spyOn(window, 'matchMedia').mockImplementation((query: string) => {
+      expect(query).toBe('(min-width: 801px)');
+      return {
+        matches: wide,
+        media: query,
+        addEventListener: (_type: 'change', listener: (event: MediaQueryListEvent) => void) => listeners.push(listener),
+      } as unknown as MediaQueryList;
+    });
+    return (matches: boolean) => {
+      for (const listener of listeners) listener({ matches } as MediaQueryListEvent);
+    };
+  }
+
+  function loaded() {
     const doc = page(NAVBAR);
-    setupNavbar(doc);
+    const resize = fakeWindowWidth();
+    // The template's own script, run as the browser would.
+    new Function(inlineScript())();
+    return { doc, resize };
+  }
+
+  function opened() {
+    const { doc, resize } = loaded();
     doc.querySelector<HTMLElement>('[data-navbar-toggle]')!.click();
-    return doc;
+    return { doc, resize };
+  }
+
+  function expectClosed(doc: Document) {
+    expect(doc.querySelector('[data-navbar]')!.hasAttribute('data-open')).toBe(false);
+    expect(doc.querySelector('[data-navbar-toggle]')!.getAttribute('aria-expanded')).toBe('false');
+    expect(doc.documentElement.classList.contains('ep-navbar-open')).toBe(false);
   }
 
   it('opens from the burger and says so to assistive technology', () => {
-    const doc = opened();
+    const { doc } = opened();
     expect(doc.querySelector('[data-navbar]')!.hasAttribute('data-open')).toBe(true);
     expect(doc.querySelector('[data-navbar-toggle]')!.getAttribute('aria-expanded')).toBe('true');
     expect(doc.documentElement.classList.contains('ep-navbar-open')).toBe(true);
   });
 
-  it('closes with the close button, the backdrop, Escape and a link', () => {
+  it('closes with the close button, the backdrop, Escape, a link and the burger again', () => {
     const closers: Array<(doc: Document) => void> = [
       (doc) => doc.querySelector<HTMLElement>('button[data-navbar-close]')!.click(),
       (doc) => doc.querySelector<HTMLElement>('.ep-navbar__backdrop')!.click(),
       (doc) => doc.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })),
       (doc) => doc.querySelector<HTMLElement>('.ep-navbar__links a')!.click(),
+      (doc) => doc.querySelector<HTMLElement>('[data-navbar-toggle]')!.click(),
     ];
     for (const close of closers) {
-      const doc = opened();
+      const { doc } = opened();
       close(doc);
-      expect(doc.querySelector('[data-navbar]')!.hasAttribute('data-open')).toBe(false);
-      expect(doc.querySelector('[data-navbar-toggle]')!.getAttribute('aria-expanded')).toBe('false');
-      expect(doc.documentElement.classList.contains('ep-navbar-open')).toBe(false);
+      expectClosed(doc);
     }
   });
 
+  it('closes when the window grows to the desktop bar, and not when it shrinks', () => {
+    const { doc, resize } = opened();
+    resize(false);
+    expect(doc.querySelector('[data-navbar]')!.hasAttribute('data-open')).toBe(true);
+
+    resize(true);
+
+    expectClosed(doc);
+  });
+
   it('takes the focus to the close button and gives it back to the burger', () => {
-    const doc = opened();
+    const { doc } = opened();
     expect(doc.activeElement).toBe(doc.querySelector('button[data-navbar-close]'));
 
     doc.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
@@ -267,8 +313,18 @@ describe('the navbar panel', () => {
     expect(doc.activeElement).toBe(doc.querySelector('button[data-navbar-toggle]'));
   });
 
-  it('does nothing on a page without the navbar (the 500 page)', () => {
-    expect(() => setupNavbar(page('<main></main>'))).not.toThrow();
+  it('leaves the focus where it is when it closes with the focus outside the panel', () => {
+    const { doc } = opened();
+    const outside = doc.body.appendChild(doc.createElement('button'));
+    outside.focus();
+
+    doc.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+
+    expect(doc.activeElement).toBe(outside);
+  });
+
+  it('is the only one that binds the burger: the page script answering the same press would close it', () => {
+    expect(SOURCE).not.toMatch(/data-navbar|setupNavbar/);
   });
 });
 

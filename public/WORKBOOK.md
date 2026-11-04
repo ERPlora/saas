@@ -337,7 +337,7 @@ Pasos:
 3. Crea la cuenta y su negocio, que nace en el plan Gratis; el plan de pago se elige después, desde el panel.
 Entra: nada: el botón no lleva parámetros.
 Sale: nada en la web; la cuenta y el negocio los crea el alta.
-Si falla: la tarjeta del plan gratuito dice «Empieza gratis» y la de un plan de pago «Empezar», porque todo negocio empieza en Gratis. Elegir un plan o un sector en la web no lo preselecciona en el alta.
+Si falla: la tarjeta del plan gratuito dice «Empieza gratis» y la de un plan de pago «Empezar», porque todo negocio empieza en Gratis. Elegir un plan o un sector en la web no lo preselecciona en el alta. En el móvil, los enlaces de la cabecera están en el menú de las tres rayas, que se abre desde el primer momento, aunque la página no haya terminado de cargar o su script no llegue nunca.
 Implicados: accounts (la entrada y el alta), hubs (el negocio en Gratis)
 
 ### PUBLIC-F12 Llegar a una página «Muy pronto» o a una dirección retirada
@@ -761,6 +761,12 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
 - Correo de soporte (F18): `SUPPORT_EMAIL` es la única fuente; las páginas de error lo leen con `{% support_email %}`
   (`public/templatetags/support.py`: la 500 se pinta sin contexto) y la SPA con el bloque JSON `support-email` de
   `base/spa.py` (`accounts/frontend/support.ts`).
+- Menú del móvil (F11): lo abre y lo cierra el script en línea de `partials/navbar.html`, con el nonce de la respuesta y
+  justo después de `</nav>`, no `frontend/public.ts`: ese módulo llega tarde, y en una conexión lenta el toque se perdía;
+  si no llegaba, el menú no se abría nunca (saas#243). Las tres rayas, la cruz, el fondo, Esc, un enlace y ensanchar la
+  ventana hasta la barra de escritorio siguen siendo el contrato, con `aria-expanded` y el foco. Vitest ejecuta el propio
+  script de la plantilla (`frontend/public.test.ts`) y dos e2e de `public-web.spec.ts` (PUBLIC-G51) pulsan con los scripts
+  retenidos y con ellos ya cargados: un segundo enganche en el módulo cerraría lo que abre el botón.
 - Equivalencia de claves del registro: G30 = F01; G31 y G14 = F02; G32 y G05 = F03; G33 = F04; G34, G06 y G09 = F05;
   G35 y G16 = F06; G49 = F07; G50 = F08; G36 y G13 = F09; G37, G12, G15 y G18 = F10; G51 = F11; G52 = F12; G42 = F13;
   G48, G22 y G23 = F14.
