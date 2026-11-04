@@ -29,7 +29,8 @@ import pytest
 from django.conf import settings
 from django.core.management import call_command
 from django.template import Context, Template
-from django.urls import reverse
+from django.template.loader import get_template
+from django.urls import NoReverseMatch, reverse
 
 from accounts.adapters import SPA_LOGIN
 from accounts.handoff import LAUNCHER
@@ -487,10 +488,18 @@ def test_the_literal_path_sweep_catches_what_was_written():
     ]
 
 
+def names_a_route(href: str) -> bool:
+    try:
+        reverse(href)
+    except NoReverseMatch:
+        return False
+    return True
+
+
 def test_navbar_and_footer_link_only_to_routes_that_exist():
     """Each later lot adds its links in its turn (plan §3.i); until then nothing points at a page
-    that does not exist. An internal link is a `{% url %}`, or a page of the SPA: its launcher or its
-    sign-in."""
+    that does not exist. An internal link is a `{% url %}` or the name of a route (the ``href`` of a
+    ``{% button %}``), or a page of the SPA: its launcher or its sign-in."""
     for name in ("navbar.html", "nav_links.html", "footer.html", "footer_links.html"):
         source = without_comments(
             (PUBLIC_TEMPLATES / "public" / "partials" / name).read_text(
@@ -501,6 +510,7 @@ def test_navbar_and_footer_link_only_to_routes_that_exist():
             assert (
                 href.startswith(("{% url ", "mailto:", "https://", "{% static "))
                 or href in (LAUNCHER, SPA_LOGIN)
+                or names_a_route(href)
             ), f"{name}: {href}"
 
 
@@ -1411,10 +1421,16 @@ def test_inside_the_app_no_measurement_loads_even_with_every_cookie_accepted(cli
 ION_BUTTON_LINK = re.compile(r"<ion-button\b[^>]*(?<![\w-])href=")
 #: Any element dressed as the shared link button, with its tag name.
 BUTTON_LINK = re.compile(r"<([\w-]+)\b[^>]*\bclass=\"[^\"]*\bep-button\b[^\"]*\"[^>]*>")
+#: A call of the button's tag. Django tags never span lines, so a call is one line of its template.
+BUTTON_CALL = re.compile(r"\{%\s*button\b.*?%\}")
 
 
 def ion_button_links(source: str) -> list[str]:
     return ION_BUTTON_LINK.findall(without_comments(source))
+
+
+def button_calls(template: Path) -> list[str]:
+    return BUTTON_CALL.findall(without_comments(template.read_text(encoding="utf-8")))
 
 
 def test_no_button_of_the_public_web_waits_for_the_page_script_to_lead_anywhere():
@@ -1470,17 +1486,38 @@ def test_every_link_button_really_is_a_link():
     assert offenders == []
 
 
-def test_every_class_of_the_link_button_has_its_style():
-    """A modifier nobody wrote fails in silence: the button just looks wrong."""
-    css = (COMPONENT_CSS / "button.css").read_text(encoding="utf-8")
-    used = {
-        name
+def test_only_the_button_component_writes_a_link_button():
+    """One component (saas#238): a button written by hand in a page is how the 50 of them would drift apart."""
+    written = {
+        str(template.relative_to(PUBLIC_TEMPLATES)): count
         for template in public_templates()
-        for name in re.findall(r"\bep-button(?:--|__)[\w-]+", without_comments(template.read_text(encoding="utf-8")))
+        if (count := len(BUTTON_LINK.findall(without_comments(template.read_text(encoding="utf-8")))))
     }
 
-    assert used
-    assert [name for name in sorted(used) if not re.search(rf"\.{name}\b", css)] == []
+    assert written == {"public/components/button.html": 1}
+
+
+def test_every_template_that_paints_a_button_compiles():
+    """A missing ``{% load buttons %}`` or a misnamed argument takes the page down, and only some pages have a test."""
+    templates = [template for template in public_templates() if button_calls(template)]
+
+    assert templates
+    for template in templates:
+        get_template(str(template.relative_to(PUBLIC_TEMPLATES)))
+
+
+def test_every_look_a_page_asks_of_a_button_has_its_style():
+    """A modifier nobody wrote fails in silence: the button just looks wrong."""
+    css = (COMPONENT_CSS / "button.css").read_text(encoding="utf-8")
+    asked = {
+        value
+        for template in public_templates()
+        for call in button_calls(template)
+        for value in re.findall(r'\b(?:fill|size|color)="(\w+)"', call)
+    }
+
+    assert asked
+    assert [name for name in sorted(asked - {"solid"}) if not re.search(rf"\.ep-button--{name}\b", css)] == []
 
 
 @pytest.mark.parametrize(
@@ -1496,6 +1533,6 @@ def test_every_class_of_the_link_button_has_its_style():
 )
 def test_the_full_width_buttons_stay_full_width(template, full_width):
     """`expand="block"` of the ion-buttons these were: the cards' buttons fill the card."""
-    source = without_comments((PUBLIC_TEMPLATES / "public" / template).read_text(encoding="utf-8"))
+    calls = button_calls(PUBLIC_TEMPLATES / "public" / template)
 
-    assert source.count("ep-button--block") == full_width
+    assert sum("block=True" in call for call in calls) == full_width

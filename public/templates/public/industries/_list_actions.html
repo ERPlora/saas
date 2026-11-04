@@ -1,12 +1,6 @@
-{% load i18n icons %}
+{% load buttons %}
 {% comment %}
   The CTAs of /industries/'s closing band: the store (/apps/, decision 19) and the contact page.
 {% endcomment %}
-<a class="ep-button" href="{% url 'public:store' %}">
-  <span class="ep-button__start">{% icon "storefront-outline" %}</span>
-  {% trans "Browse apps" %}
-</a>
-<a class="ep-button ep-button--outline" href="{% url 'public:contact' %}">
-  <span class="ep-button__start">{% icon "mail-outline" %}</span>
-  {% trans "Contact us" %}
-</a>
+{% button href="public:store" label=_("Browse apps") start_icon="storefront-outline" %}
+{% button href="public:contact" label=_("Contact us") fill="outline" start_icon="mail-outline" %}

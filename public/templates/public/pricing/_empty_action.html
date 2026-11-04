@@ -1,3 +1,3 @@
-{% load i18n %}
+{% load buttons %}
 {% comment %} The action of /pricing/ without any plan on sale: write to us. {% endcomment %}
-<a class="ep-button" href="{% url 'public:contact' %}">{% trans "Contact us" %}</a>
+{% button href="public:contact" label=_("Contact us") %}

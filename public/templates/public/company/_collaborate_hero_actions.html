@@ -1,5 +1,3 @@
-{% load i18n %}
+{% load buttons %}
 {% comment %} The CTA of the /collaborate/ hero: the contact page with its subject. {% endcomment %}
-<a class="ep-button ep-button--large" href="{% url 'public:contact' %}?subject=collaborate">
-  {% trans "Join the Program" %}
-</a>
+{% button href="public:contact" query="subject=collaborate" label=_("Join the Program") size="large" %}

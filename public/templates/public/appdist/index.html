@@ -1,5 +1,5 @@
 {% extends "public/public_base.html" %}
-{% load i18n icons %}
+{% load buttons i18n icons %}
 {% comment %}
   /app/ — port of apps/public/appdist/templates/appdist/index.html (origin/develop): the public page
   of the installable app `com.erplora.app` (ADR-0196/0160/0180). It only announces what the app does
@@ -136,9 +136,8 @@
               <p class="font-mono text-xs uppercase tracking-wider text-fg/55 m-0 mb-2">{% trans "Windows 10 / 11 · x64" %}</p>
               <ion-card-title class="mb-3">Windows</ion-card-title>
               <p class="text-sm text-fg/60 m-0 mb-6">{% trans "The usual choice for a fixed till workstation." %}</p>
-              <a class="ep-button ep-button--block mt-auto" href="{% url 'public:app_download' 'windows' %}">
-                {% icon "download-outline" %}<span class="ml-2">{% if app_ms_store %}{% trans "Get it from Microsoft Store" %}{% else %}{% trans "Download the app" %}{% endif %}</span>
-              </a>
+              {% if app_ms_store %}{% trans "Get it from Microsoft Store" as store_label %}{% else %}{% trans "Download the app" as store_label %}{% endif %}
+              {% button href="public:app_download" arg="windows" label=store_label block=True start_icon="download-outline" extra_class="mt-auto" %}
             </ion-card-content>
           </ion-card>
 
@@ -150,9 +149,7 @@
               <p class="font-mono text-xs uppercase tracking-wider text-fg/55 m-0 mb-2">{% trans "x86_64 · AppImage" %}</p>
               <ion-card-title class="mb-3">Linux</ion-card-title>
               <p class="text-sm text-fg/60 m-0 mb-6">{% trans "For a dedicated machine on your business network." %}</p>
-              <a class="ep-button ep-button--outline ep-button--block mt-auto" href="{% url 'public:app_download' 'linux' %}">
-                {% icon "download-outline" %}<span class="ml-2">{% trans "Download the app" %}</span>
-              </a>
+              {% button href="public:app_download" arg="linux" label=_("Download the app") fill="outline" block=True start_icon="download-outline" extra_class="mt-auto" %}
             </ion-card-content>
           </ion-card>
 
@@ -167,9 +164,8 @@
               {% comment %} Never «Download»: on Android the only channel is Play (hub#984). While the
                  listing is under review the button says so instead of promising it, because the
                  destination is the page of /app/download/android/, not Play (saas#1719). {% endcomment %}
-              <a class="ep-button ep-button--outline ep-button--block mt-auto" href="{% url 'public:app_download' 'android' %}">
-                {% icon "logo-google-playstore" %}<span class="ml-2">{% if app_google_play %}{% trans "Get it on Google Play" %}{% else %}{% trans "Coming to Google Play" %}{% endif %}</span>
-              </a>
+              {% if app_google_play %}{% trans "Get it on Google Play" as play_label %}{% else %}{% trans "Coming to Google Play" as play_label %}{% endif %}
+              {% button href="public:app_download" arg="android" label=play_label fill="outline" block=True start_icon="logo-google-playstore" extra_class="mt-auto" %}
             </ion-card-content>
           </ion-card>
         </div>
@@ -190,11 +186,8 @@
         <p class="ep-section-sub">{% trans "The app opens your hub, so start there: create it free, then install the app on the device at the counter. No credit card." %}</p>
       </header>
       <div class="flex flex-wrap justify-center gap-3">
-        <a class="ep-button" href="/launch">
-          {% trans "Create your free hub" %}
-          <span class="ep-button__end">{% icon "lucide:arrow-right" size=15 %}</span>
-        </a>
-        <a class="ep-button ep-button--outline" href="{% url 'public:pricing' %}">{% trans "See plans" %}</a>
+        {% button href="/launch" label=_("Create your free hub") end_icon="lucide:arrow-right" icon_size=15 %}
+        {% button href="public:pricing" label=_("See plans") fill="outline" %}
       </div>
     </div>
   </section>

@@ -1,2 +1,2 @@
-{% load i18n %}
-<a class="ep-button ep-button--outline" href="{% url 'public:store' %}">{% trans "Clear filters" %}</a>
+{% load buttons %}
+{% button href="public:store" label=_("Clear filters") fill="outline" %}

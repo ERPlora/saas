@@ -1,4 +1,4 @@
-{% load i18n %}
+{% load buttons %}
 {% comment %} The actions of the closing band of /collaborate/ (on the solid band an outline button turns white). {% endcomment %}
-<a class="ep-button ep-button--large ep-button--light" href="{% url 'public:contact' %}?subject=collaborate">{% trans "Apply Now" %}</a>
-<a class="ep-button ep-button--outline ep-button--large" href="mailto:{{ SUPPORT_EMAIL }}?subject=Collaborator%20Program">{% trans "Email Us" %}</a>
+{% button href="public:contact" query="subject=collaborate" label=_("Apply Now") size="large" color="light" %}
+{% button href="mailto:"|add:SUPPORT_EMAIL|add:"?subject=Collaborator%20Program" label=_("Email Us") fill="outline" size="large" %}

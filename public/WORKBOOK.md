@@ -750,8 +750,10 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   corrió, `setupAppBack` vuelve por el historial a la pantalla que abrió el texto. El e2e lo prueba también con los
   scripts de la página retenidos (`public-web-2.spec.ts`, PUBLIC-G47 «on a slow device»).
 - Botones que llevan a otra página (F11, y todas las páginas públicas): un `<a class="ep-button …">` de verdad, con el
-  aspecto del `ion-button` iOS (`components/button.css`, modificadores `--outline`, `--clear`, `--small`, `--large`,
-  `--block` y `--light`, y `ep-button__start` / `__end` para el icono). Un `ion-button` no es un enlace hasta que
+  aspecto del `ion-button` iOS. Solo lo escribe `public/components/button.html`; cada página lo pide en una línea con
+  `{% button %}` (`public/templatetags/buttons.py`, con `href`, `label`, `fill`, `size`, `color`, `block` e iconos
+  `start_icon` / `end_icon`; `scripts/gen-public-icons.mjs` hornea esos iconos), y los parciales `_cta_actions.html`
+  siguen siendo donde se componen. El aspecto es `components/button.css`. Un `ion-button` no es un enlace hasta que
   `frontend/public.ts` lo define, y pulsado antes no hacía nada (saas#238). Siguen siendo `ion-button` los que no
   navegan: envíos de formulario, Aceptar y Rechazar cookies, idioma del pie y «Probar la demo» de la puerta. Lo guardan
   el barrido de `public/tests/test_templates.py` y dos e2e de `public-web.spec.ts` (PUBLIC-G51): pulsar con los scripts

@@ -1,8 +1,6 @@
-{% load i18n icons %}
+{% load buttons i18n %}
 {% comment %} The CTA of a plan card on the home: the sign-in, where an account is also created. Every business
 starts on Free and moves to a paid plan later, so the free card says «Start free» and a paid one «Get started»,
 as on /pricing/ (PUBLIC-F11). {% endcomment %}
-<a class="ep-button ep-button--block{% if not plan.featured_label %} ep-button--outline{% endif %}" href="/launch">
-  <span class="ep-button__start">{% icon "lucide:arrow-right" %}</span>
-  {% if plan.price_monthly %}{% trans "Get started" %}{% else %}{% trans "Start free" %}{% endif %}
-</a>
+{% if plan.price_monthly %}{% trans "Get started" as cta_label %}{% else %}{% trans "Start free" as cta_label %}{% endif %}
+{% button href="/launch" label=cta_label fill=plan.featured_label|yesno:"solid,outline" block=True start_icon="lucide:arrow-right" %}

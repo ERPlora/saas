@@ -1,6 +1,3 @@
-{% load i18n icons %}
+{% load buttons %}
 {% comment %} The CTA of a plan card on /pricing/: sign up (the sign-in, where an account is also created). {% endcomment %}
-<a class="ep-button ep-button--block{% if not plan.featured_label %} ep-button--outline{% endif %}" href="/launch">
-  {% trans "Get started" %}
-  <span class="ep-button__end">{% icon "lucide:arrow-right" %}</span>
-</a>
+{% button href="/launch" label=_("Get started") fill=plan.featured_label|yesno:"solid,outline" block=True end_icon="lucide:arrow-right" %}

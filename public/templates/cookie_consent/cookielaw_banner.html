@@ -1,4 +1,4 @@
-{% load i18n icons %}
+{% load buttons i18n icons %}
 {% comment %}
   The global cookie banner: Customize (the /cookies/ page), Decline and Accept All. Port of
   templates/cookie_consent/cookielaw_banner.html of the old SaaS, with ep-* instead of ok-* and
@@ -17,9 +17,7 @@
         </div>
 
         <div class="cookie-consent-actions" role="group" aria-label="{% trans 'Cookie choices' %}">
-            <a id="cookie-customize" class="ep-button ep-button--outline ep-button--small" href="{% url 'cookie_consent_cookie_group_list' %}">
-                {% trans "Customize" %}
-            </a>
+            {% button href="cookie_consent_cookie_group_list" label=_("Customize") fill="outline" size="small" id="cookie-customize" %}
             <ion-button id="cookie-decline" fill="outline" size="small">
                 {% trans "Decline" %}
             </ion-button>

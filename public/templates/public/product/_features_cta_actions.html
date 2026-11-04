@@ -1,4 +1,4 @@
-{% load i18n %}
+{% load buttons %}
 {% comment %} The actions of the closing band of /features/ (on the solid band an outline button turns white). {% endcomment %}
-<a class="ep-button ep-button--large ep-button--light" href="/launch">{% trans "Start free" %}</a>
-<a class="ep-button ep-button--outline ep-button--large" href="/launch">{% trans "Sign in" %}</a>
+{% button href="/launch" label=_("Start free") size="large" color="light" %}
+{% button href="/launch" label=_("Sign in") fill="outline" size="large" %}

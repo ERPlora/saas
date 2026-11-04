@@ -1,4 +1,5 @@
-/* ep-button: a button that leads to another page, as a real link (saas#238, PUBLIC-F11). An ion-button is no link
+/* ep-button: a button that leads to another page, as a real link (saas#238, PUBLIC-F11), painted only by
+ * public/components/button.html: a page asks for it with {% button %} (public/templatetags/buttons.py). An ion-button is no link
  * until frontend/public.ts has defined it: pressed before that (a slow connection) or without the script, nothing
  * happened. This one leads on from the first paint, and middle-click and «open in a new tab» come with it. It looks
  * like the ion-button it replaced, in iOS mode and with what public-landing.css gives the site's buttons, and takes

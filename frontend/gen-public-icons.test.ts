@@ -41,20 +41,31 @@ describe('gen-public-icons', () => {
     expect(readFileSync(PUBLIC_ICONS_PATH, 'utf8')).toBe(renderPublicIcons(buildPublicIcons(SAAS_DIR)));
   });
 
-  it('reads literal {% icon %} tags and the icon arguments of {% include %} tags, nothing else', () => {
+  it('reads literal {% icon %} tags and the icon arguments of {% include %} and {% button %} tags, nothing else', () => {
     const root = templatesWith({
       'public/a.html': '{% load icons %}{% icon "construct-outline" css_class="x" %}{% icon \'lucide:check\' %}',
       'public/components/b.html': '{% icon icon %}<p>icon="lucide:not-an-include"</p>',
       'public/c.html':
         '{% include "public/components/feature_card.html" with icon="lucide:sparkles" heading=h %}' +
         '{% include "public/partials/page_hero.html" with hero_icon="mdi:star" only %}',
+      'public/e.html':
+        '{% button href="/launch" label="x" start_icon="lucide:rocket" end_icon="mdi:heart" %}' +
+        '{% button href="mailto:x?subject=A%20B" label="x" end_icon="lucide:mail" icon_size=15 %}',
       // A usage example in a comment is documentation, not a cited icon.
       'public/d.html':
         '{% comment %}Usage: {% include "public/components/x.html" with icon="lucide:example" %}' +
         '{% icon "lucide:example-too" %}{% endcomment %}{# {% icon "lucide:inline-comment" %} #}',
     });
 
-    expect(citedIcons(root)).toEqual(['ion:construct-outline', 'lucide:check', 'lucide:sparkles', 'mdi:star']);
+    expect(citedIcons(root)).toEqual([
+      'ion:construct-outline',
+      'lucide:check',
+      'lucide:mail',
+      'lucide:rocket',
+      'lucide:sparkles',
+      'mdi:heart',
+      'mdi:star',
+    ]);
   });
 
   it('reads the icon of every sector and business type of the taxonomy, with the rows that use it', () => {

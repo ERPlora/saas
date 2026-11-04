@@ -1,4 +1,4 @@
-{% load static i18n icons %}
+{% load buttons i18n static %}
 {% comment %}
   The public navbar: port of <ok-navbar sticky glass> (OutfitKit) as HTML + CSS
   (public/static/public/components/navbar.css) plus a few lines of frontend/public.ts.
@@ -36,18 +36,10 @@
             </div>
             <div class="ep-navbar__actions">
                 {% if user.is_authenticated %}
-                <a class="ep-button ep-button--small" href="/launch">
-                    {% trans "Dashboard" %}
-                    <span class="ep-button__end">{% icon "arrow-forward-outline" %}</span>
-                </a>
+                {% button href="/launch" label=_("Dashboard") size="small" end_icon="arrow-forward-outline" %}
                 {% else %}
-                <a class="ep-button ep-button--clear ep-button--small" href="{% url 'public:demo' %}">
-                    {% trans "Try the demo" %}
-                </a>
-                <a class="ep-button ep-button--small" href="/launch">
-                    {% trans "Start free" %}
-                    <span class="ep-button__end">{% icon "arrow-forward-outline" %}</span>
-                </a>
+                {% button href="public:demo" label=_("Try the demo") fill="clear" size="small" %}
+                {% button href="/launch" label=_("Start free") size="small" end_icon="arrow-forward-outline" %}
                 {% endif %}
             </div>
         </div>

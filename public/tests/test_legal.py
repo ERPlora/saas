@@ -641,9 +641,10 @@ def test_llms_txt_links_the_privacy_policy_as_optional_reading(client):
 # --- Every message has its Spanish entry -------------------------------------------------------
 
 _LITERAL = r"u?'(?:[^'\\]|\\.)*'|u?\"(?:[^\"\\]|\\.)*\""
-#: The calls ``templatize`` writes for {% trans %} and {% blocktrans %} (what makemessages reads).
+#: The calls ``templatize`` writes for {% trans %}, {% blocktrans %} and a ``_("…")`` argument of a tag, such as the
+#: label of a {% button %} (what makemessages reads).
 _CALL = re.compile(
-    rf"\b(gettext|pgettext|ngettext|npgettext)\(((?:{_LITERAL})(?:, (?:{_LITERAL}))*)"
+    rf"\b(gettext|pgettext|ngettext|npgettext|_)\(((?:{_LITERAL})(?:, (?:{_LITERAL}))*)"
 )
 
 
@@ -653,7 +654,7 @@ def template_messages(path: Path) -> list[str]:
     keys = []
     for function, arguments in _CALL.findall(source):
         literals = [ast.literal_eval(raw) for raw in re.findall(_LITERAL, arguments)]
-        if function == "gettext":
+        if function in ("gettext", "_"):
             keys.append(literals[0])
         elif function == "pgettext":
             keys.append(f"{literals[0]}\x04{literals[1]}")
@@ -668,11 +669,12 @@ def test_the_template_messages_are_read_like_makemessages(tmp_path):
     page = tmp_path / "page.html"
     page.write_text(
         '{% load i18n %}{% trans "It\'s here" %}'
-        "{% blocktrans trimmed with v=x %}\n  Version\n  {{ v }}\n{% endblocktrans %}",
+        "{% blocktrans trimmed with v=x %}\n  Version\n  {{ v }}\n{% endblocktrans %}"
+        '{% button href="/launch" label=_("It\'s a button") %}',
         encoding="utf-8",
     )
 
-    assert template_messages(page) == ["It's here", "Version %(v)s"]
+    assert template_messages(page) == ["It's here", "Version %(v)s", "It's a button"]
 
 
 @pytest.mark.parametrize(

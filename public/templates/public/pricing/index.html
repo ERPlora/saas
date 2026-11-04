@@ -1,5 +1,5 @@
 {% extends "public/public_base.html" %}
-{% load static i18n icons %}
+{% load buttons i18n icons static %}
 {% comment %}
   /pricing/ — port of apps/public/pricing/templates/pricing/index.html (origin/develop): the hero,
   the plan cards with the ex-VAT note and the trial note, the plan-by-plan table, the two competitor
@@ -80,10 +80,7 @@
         {% endfor %}
       </div>
       <div class="mt-8 text-center">
-        <a class="ep-button ep-button--outline" href="/launch">
-          {% trans "Start free and upgrade whenever you want" %}
-          <span class="ep-button__end">{% icon "lucide:arrow-right" %}</span>
-        </a>
+        {% button href="/launch" label=_("Start free and upgrade whenever you want") fill="outline" end_icon="lucide:arrow-right" %}
       </div>
     </div>
   </section>
