@@ -226,6 +226,7 @@ describe('the navbar panel', () => {
   // and never follows aria-expanded, so the burger and the close button are plain <button>s.
   const NAVBAR = `
     <nav class="ep-navbar" data-navbar>
+      <a class="ep-navbar__brand" href="/">ERPlora</a>
       <button type="button" class="ep-navbar__burger" data-navbar-toggle aria-expanded="false" aria-controls="ep-navbar-panel">menu</button>
       <div id="ep-navbar-panel" data-navbar-panel>
         <div class="ep-navbar__panel-head">
@@ -234,7 +235,13 @@ describe('the navbar panel', () => {
         <div class="ep-navbar__links"><a href="/features/">Features</a></div>
       </div>
       <div data-navbar-close class="ep-navbar__backdrop"></div>
-    </nav>`;
+    </nav>
+    <main><a href="/behind/">Behind</a></main>`;
+
+  // The script listens on the one document of this file, so a run outlives its test: closed, it leaves the next run's keys alone.
+  afterEach(() => {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+  });
 
   /** The script the partial writes after the navbar: it runs as the page is parsed, with no module (saas#243). */
   function inlineScript(): string {
@@ -329,6 +336,105 @@ describe('the navbar panel', () => {
     doc.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
 
     expect(doc.activeElement).toBe(outside);
+  });
+
+  /** A key press on the page: true when the script took it over, so the browser does not move the focus on its own. */
+  function pressTab(doc: Document, shiftKey = false): boolean {
+    const press = new KeyboardEvent('keydown', { key: 'Tab', shiftKey, cancelable: true });
+    doc.dispatchEvent(press);
+    return press.defaultPrevented;
+  }
+
+  it('goes round with Tab: from the last stop to the first, and with Shift from the first to the last', () => {
+    const { doc } = opened();
+    const first = doc.querySelector<HTMLElement>('button[data-navbar-close]')!;
+    const last = doc.querySelector<HTMLElement>('.ep-navbar__links a')!;
+
+    expect(pressTab(doc, true)).toBe(true);
+    expect(doc.activeElement).toBe(last);
+
+    expect(pressTab(doc)).toBe(true);
+    expect(doc.activeElement).toBe(first);
+  });
+
+  it('leaves to the browser a Tab between two stops of the panel', () => {
+    const { doc } = opened();
+
+    expect(pressTab(doc)).toBe(false);
+    expect(doc.activeElement).toBe(doc.querySelector('button[data-navbar-close]'));
+  });
+
+  it('brings a focus that is off the panel back to it, on either side', () => {
+    const { doc } = opened();
+    (doc.activeElement as HTMLElement).blur();
+    expect(pressTab(doc, true)).toBe(true);
+    expect(doc.activeElement).toBe(doc.querySelector('.ep-navbar__links a'));
+
+    (doc.activeElement as HTMLElement).blur();
+    expect(pressTab(doc)).toBe(true);
+    expect(doc.activeElement).toBe(doc.querySelector('button[data-navbar-close]'));
+  });
+
+  it('does not touch Tab while it is closed', () => {
+    const { doc } = loaded();
+    const behind = doc.querySelector<HTMLElement>('main a')!;
+    behind.focus();
+
+    expect(pressTab(doc)).toBe(false);
+    expect(doc.activeElement).toBe(behind);
+  });
+
+  it('keeps the rest of the page inert only while it is open, and the navbar never', () => {
+    const { doc, resize } = opened();
+    const main = doc.querySelector('main')!;
+    const navbar = doc.querySelector('[data-navbar]')!;
+    expect(main.hasAttribute('inert')).toBe(true);
+    expect(navbar.hasAttribute('inert')).toBe(false);
+
+    doc.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(main.hasAttribute('inert')).toBe(false);
+
+    doc.querySelector<HTMLElement>('[data-navbar-toggle]')!.click();
+    expect(main.hasAttribute('inert')).toBe(true);
+    resize(true);
+    expect(main.hasAttribute('inert')).toBe(false);
+  });
+
+  it('keeps the brand and the burger inert while it is open: the panel and the backdrop cover them', () => {
+    const { doc } = opened();
+    const brand = doc.querySelector('.ep-navbar__brand')!;
+    const burger = doc.querySelector('[data-navbar-toggle]')!;
+    expect(brand.hasAttribute('inert')).toBe(true);
+    expect(burger.hasAttribute('inert')).toBe(true);
+
+    doc.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(brand.hasAttribute('inert')).toBe(false);
+    expect(burger.hasAttribute('inert')).toBe(false);
+    expect(doc.activeElement).toBe(burger);
+  });
+
+  /** What the page sends after the navbar on a slow connection: the parser adds it to the body as it arrives. */
+  async function arrives(doc: Document): Promise<HTMLElement> {
+    const late = doc.createElement('footer');
+    doc.body.append(late);
+    await new Promise((resolve) => setTimeout(resolve));
+    return late;
+  }
+
+  it('keeps inert what arrives with it open, and lets it go when it closes', async () => {
+    const { doc } = opened();
+    const late = await arrives(doc);
+    expect(late.hasAttribute('inert')).toBe(true);
+
+    doc.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(late.hasAttribute('inert')).toBe(false);
+  });
+
+  it('neither opens nor marks anything when the page arrives with it closed', async () => {
+    const { doc } = loaded();
+    const late = await arrives(doc);
+    expect(late.hasAttribute('inert')).toBe(false);
+    expectClosed(doc);
   });
 
   it('is the only one that binds the burger: the page script answering the same press would close it', () => {

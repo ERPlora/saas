@@ -4,7 +4,8 @@
   (public/static/public/components/navbar.css) plus the few lines of script after it.
   Brand on the left; the links (public/partials/nav_links.html) and the actions on the right.
   At 800 px and below the links and the actions move into a side panel from the right that the
-  burger opens; the panel closes with its close button, the backdrop, Esc or a link. That script is
+  burger opens; the panel closes with its close button, the backdrop, Esc or a link. While it is open,
+  Tab goes round inside it and the rest of the page is inert (saas#252). That script is
   inline, with the response's nonce, and not in frontend/public.ts: it runs as the page is parsed, so
   the burger works from the first moment on a slow connection and even if the module never arrives
   (saas#243). Everything is in the light DOM: crawlable. The burger and the close button are native
@@ -62,12 +63,26 @@
         // A native button (L8): an ion-button would keep the aria-expanded it had when it loaded.
         toggle.setAttribute('aria-expanded', String(open));
         document.documentElement.classList.toggle('ep-navbar-open', open);
+        // What is behind the backdrop, the bar's brand and burger too: nothing there takes the focus or reaches assistive technology.
+        document.querySelectorAll('body > :not([data-navbar]), .ep-navbar__brand, [data-navbar-toggle]').forEach(function (behind) {
+            behind.toggleAttribute('inert', open);
+        });
     }
     function close() {
         if (!isOpen()) return;
         var hadFocus = panel.contains(document.activeElement);
         setOpen(false);
         if (hadFocus) toggle.focus();
+    }
+    // From the last stop back to the first, and the other way with Shift; a focus off the panel comes back to it.
+    function goRound(event) {
+        var stops = panel.querySelectorAll('a[href], button');
+        var first = stops[0];
+        var last = stops[stops.length - 1];
+        var edge = event.shiftKey ? first : last;
+        if (panel.contains(document.activeElement) && document.activeElement !== edge) return;
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
     }
 
     toggle.addEventListener('click', function () {
@@ -83,10 +98,15 @@
     });
     document.addEventListener('keydown', function (event) {
         if (event.key === 'Escape') close();
+        if (event.key === 'Tab' && isOpen()) goRound(event);
     });
     // Back to the desktop bar with the panel open: the links return to the bar, nothing stays locked.
     window.matchMedia('(min-width: 801px)').addEventListener('change', function (event) {
         if (event.matches) close();
     });
+    // On a slow connection the rest of the page can arrive with the panel already open: it waits behind as well.
+    new MutationObserver(function () {
+        if (isOpen()) setOpen(true);
+    }).observe(document.body, { childList: true });
 })();
 </script>
