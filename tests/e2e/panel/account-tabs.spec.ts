@@ -5,7 +5,7 @@
 // In a file of its own because a trace only turns off for a whole file. Closing a context first stops its trace, which
 // reopens the files it wrote one by one, and with a loaded machine each open() waits: over these 12 pages that held the
 // close for 65-90 s (under 1 s without a trace) and used up the test's time with nothing wrong on screen (saas#259). A
-// failure still says which tab, width and theme, and leaves its screenshot.
+// screen failure still says which tab, width and theme, and leaves its screenshot; page errors are only listed.
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
