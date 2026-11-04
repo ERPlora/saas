@@ -277,6 +277,28 @@ test.afterAll(async () => {
   removeOwnRows();
 });
 
+test('HUBS-G78: an address the schema refuses says why on its field, and on top to look at it until it is corrected, in the language of the account', async ({ page }) => {
+  const errors = watchPageErrors(page);
+  const id = await businessOf(page, account('invite-refused', 'Olga', 'Ruiz'), 'Bar Refused');
+  for (const { language, notice, reason } of [
+    { language: 'en', notice: 'Check the highlighted details.', reason: 'Enter a valid email address.' },
+    { language: 'es', notice: 'Revisa los datos marcados.', reason: 'Introduce un correo válido.' },
+  ]) {
+    expect((await apiPost(page.request, '/api/accounts/preferences', { language })).status()).toBe(200);
+    await page.goto(`/dashboard/businesses/${id}/members`);
+    await shown(page).getByTestId('members-add').click();
+    const modal = page.getByTestId('invite-modal');
+    // The shape of an address, so the button lets it go; too long for the server.
+    await page.getByTestId('invite-email').locator('input').fill(`${'a'.repeat(250)}@example.com`);
+    await page.getByTestId('invite-modal-submit').click();
+    await expect(modal.getByTestId('invite-modal-error')).toHaveText(notice);
+    await expect(page.getByTestId('invite-email')).toContainText(reason);
+    await page.getByTestId('invite-email').locator('input').fill(`${PREFIX}corrected-${Date.now()}@example.com`);
+    await expect(modal.getByTestId('invite-modal-error')).toBeHidden();
+  }
+  expect(errors).toEqual([]);
+});
+
 test('HUBS-G78: the owner invites a person from «Team»; the invitation waits with «Resend» and «Cancel invitation»', async ({ page, browser }) => {
   const errors = watchPageErrors(page);
   const owner = account('invite-owner', 'Olga', 'Ruiz');

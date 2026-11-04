@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:674ac7dbe26531ab764803916584659bec03987785867a2fec07cfc37ddfaa3f -->
+<!-- generated from WORKBOOK.md sha256:0e0dd0864bddb2c056ae2642bcb9c976dfa59204c173dc32ae706639e7033831 -->
 
 ## What it is for and who it is for
 
@@ -393,7 +393,7 @@ Steps:
 3. They press "Change address": "The business now opens at …" appears and the page shows the new one.
 In: the new address; the owner's session.
 Out: the business at its new address, which the business receives as soon as it is saved, and the way in from erplora.com and from the installed app towards it; the old one stays reserved for it. Records `hubs.business.address_changed`.
-If it fails: a reserved address, "This address is reserved. Choose another one."; one another business has, "This address is taken. Choose another one."; one with capitals, spaces or hyphens at the start or the end, the error on the field and "Check the highlighted details." on top. The same address changes nothing. Only the owner changes it; a deleted business does not.
+If it fails: a reserved address, "This address is reserved. Choose another one."; one another business has, "This address is taken. Choose another one."; one with capitals, spaces or hyphens at the start or the end, the error on the field and "Check the highlighted details." on top, which goes away as soon as it is corrected and comes back if the next try is refused. The same address changes nothing. Only the owner changes it; a deleted business does not.
 Involved: the business (receives its new address), accounts (the way in at the new address)
 
 ### HUBS-F17 Connect an own domain to the business's website
@@ -502,7 +502,7 @@ Steps:
 4. "Resend" sends the email again and gives it 7 more days; "Cancel invitation" withdraws it and its link no longer lets anyone in. An integration does the same with the account's session.
 In: the email, the role, the message and the business; the session of whoever invites.
 Out: the invitation, valid for 7 days, which holds a place of the plan; the account of that address if it did not exist, without a password. The business does not receive the person until they accept. Records `hubs.member.invited` (when resent, `hubs.member.invitation_resent`; when cancelled, `hubs.member.invitation_cancelled`).
-If it fails: somebody already in the business, "… is already on this business."; with an invitation still valid, "… already has an invitation waiting. Resend it instead." (an expired one is renewed by inviting again). A role equal to or above one's own, "You cannot hand out a role equal to or above yours.". Without places, the dialog says "The plan has no free places left: change the plan or remove someone to invite more people." and sends nothing. An address of ERPlora's staff, "This address belongs to ERPlora's staff and cannot join a business.". An account that never proved that address is released before being invited: it loses its password, its second factor, its Google and its sessions, and only whoever opens that mailbox gets in. A manager or an employee invites nobody; a deleted business takes no invitations; a business of another account does not exist for whoever invites. If the email does not leave, the invitation stays.
+If it fails: an address that is not valid (too long, for example), the error on the field and "Check the highlighted details." on top until it is corrected; somebody already in the business, "… is already on this business."; with an invitation still valid, "… already has an invitation waiting. Resend it instead." (an expired one is renewed by inviting again). A role equal to or above one's own, "You cannot hand out a role equal to or above yours.". Without places, the dialog says "The plan has no free places left: change the plan or remove someone to invite more people." and sends nothing. An address of ERPlora's staff, "This address belongs to ERPlora's staff and cannot join a business.". An account that never proved that address is released before being invited: it loses its password, its second factor, its Google and its sessions, and only whoever opens that mailbox gets in. A manager or an employee invites nobody; a deleted business takes no invitations; a business of another account does not exist for whoever invites. If the email does not leave, the invitation stays.
 Involved: accounts (the invited person's account and, if it never proved its address, its release), the business (receives the person when they accept)
 
 ### HUBS-F25 Accept or decline an invitation to a business

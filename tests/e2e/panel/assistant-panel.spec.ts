@@ -309,6 +309,13 @@ test('the panel closes with Escape, its own button or the veil, and the device r
   await button.click();
   await expect(panel).toHaveAttribute('data-open', 'false');
 
+  // With a keyboard and a mouse it opens with the cursor in the box, and closing gives the focus back to its button.
+  await button.click();
+  await expect(page.getByTestId('assistant-input').locator('textarea')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(panel).toHaveAttribute('data-open', 'false');
+  await expect(button).toBeFocused();
+
   // Left closed, the next visit finds it closed.
   await page.reload();
   await expect(page.getByText(BUSINESS).first()).toBeVisible();

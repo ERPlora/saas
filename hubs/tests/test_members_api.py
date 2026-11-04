@@ -505,6 +505,30 @@ class TestTheInviteDoor:
 
 # --- Reading and answering (test_invitation_accept, test_ownership_transfer_views) ----------------
 
+    @pytest.mark.parametrize(
+        "language, notice, reason",
+        [
+            ("en", "Check the highlighted details.", "Enter a valid email address."),
+            ("es", "Revisa los datos marcados.", "Introduce un correo válido."),
+        ],
+    )
+    def test_an_address_the_schema_refuses_says_to_look_at_its_field_in_the_language_of_the_account(
+        self, as_, owner, plans, language, notice, reason
+    ):
+        hub = create_business(owner)
+        User.objects.filter(pk=owner.pk).update(language=language)
+
+        response = post(
+            as_(owner),
+            "/hubs/members/invite",
+            {"hub_id": str(hub.id), "email": f"{'a' * 250}@example.com"},
+        )
+
+        assert error(response) == (422, "invalid_payload")
+        refusal = response.json()["error"]
+        assert refusal["message"] == notice
+        assert refusal["fields"] == {"email": reason}
+
 
 class TestTheAnswers:
     def test_every_invitation_waiting_gets_its_own_answer(
