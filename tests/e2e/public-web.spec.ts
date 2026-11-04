@@ -663,7 +663,7 @@ test('PUBLIC-G51 once the page script has run, one press opens the mobile menu a
   await clean('with the script');
 });
 
-/** Where the focus is, as the person would read it: the `href` of a link or ion-button, `close`, or what it is out of the panel. */
+/** Where the focus is, as the person would read it: the `href` of a link, `close`, or what it is out of the panel. */
 function focusedStop(page: Page): Promise<string> {
   return page.evaluate(() => {
     const active = document.activeElement!;
@@ -707,13 +707,22 @@ test('PUBLIC-G51 with the mobile menu open, Tab goes round inside it and the pag
   await pressThrough(page, 'Shift+Tab', [links.at(-1)!]);
   await pressThrough(page, 'Tab', ['close']);
 
-  // Not even by hand: what is behind takes no focus until the panel closes, also for assistive technology.
-  await behind.focus();
-  expect(await focusedStop(page), 'the page behind, open').toBe('close');
+  // Not even by hand: what is behind takes no focus until the panel closes, also for assistive technology. The brand and
+  // the burger are behind too: the panel and the backdrop cover them.
+  for (const [what, element] of Object.entries({ page: behind, brand: page.locator('.ep-navbar__brand'), burger: menu.burger })) {
+    await element.focus();
+    expect(await focusedStop(page), `the ${what} behind, open`).toBe('close');
+  }
+
+  // On a slow connection the rest of the page can arrive with the panel already open: it waits behind as well.
+  await page.evaluate(() => document.body.append(Object.assign(document.createElement('a'), { id: 'arrived-late', href: '/late/' })));
+  const late = page.locator('#arrived-late');
+  await expect(late, 'what arrives with the panel open').toHaveAttribute('inert', '');
 
   await page.keyboard.press('Escape');
   await menu.isClosed('Escape');
   await expect(menu.burger).toBeFocused();
+  await expect(late, 'what arrived, once closed').not.toHaveAttribute('inert', '');
 
   // Closed, nothing stays locked: Tab goes on to the page, and what was behind takes the focus again.
   await page.keyboard.press('Tab');

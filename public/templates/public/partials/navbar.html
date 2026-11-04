@@ -63,8 +63,8 @@
         // A native button (L8): an ion-button would keep the aria-expanded it had when it loaded.
         toggle.setAttribute('aria-expanded', String(open));
         document.documentElement.classList.toggle('ep-navbar-open', open);
-        // What is behind the backdrop: nothing there takes the focus or reaches assistive technology.
-        document.querySelectorAll('body > :not([data-navbar])').forEach(function (behind) {
+        // What is behind the backdrop, the bar's brand and burger too: nothing there takes the focus or reaches assistive technology.
+        document.querySelectorAll('body > :not([data-navbar]), .ep-navbar__brand, [data-navbar-toggle]').forEach(function (behind) {
             behind.toggleAttribute('inert', open);
         });
     }
@@ -104,5 +104,9 @@
     window.matchMedia('(min-width: 801px)').addEventListener('change', function (event) {
         if (event.matches) close();
     });
+    // On a slow connection the rest of the page can arrive with the panel already open: it waits behind as well.
+    new MutationObserver(function () {
+        if (isOpen()) setOpen(true);
+    }).observe(document.body, { childList: true });
 })();
 </script>
