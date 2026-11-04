@@ -596,7 +596,7 @@ Pasos:
 5. El correo se cambia con «Cambiar»: le llega un código a la dirección nueva y, al escribirlo, esa pasa a ser la de entrar; a la antigua le llega un aviso del cambio.
 Entra: nombre y apellidos, la foto o el correo nuevo y su código.
 Sale: el perfil cambiado, en el panel y en cada negocio en el que entre después. Toda cuenta tiene su perfil desde que nace, sin rellenar nada. Lo mismo se lee y se guarda desde cualquier programa con la sesión de la persona.
-Si falla: un nombre vacío no se guarda («Escribe tu nombre.»); una foto que no es imagen o es demasiado grande dice por qué y no cambia la que había; un correo nuevo que no vale o que ya usa otra cuenta sale debajo del campo, con «Revisa los datos marcados.» arriba; un fallo de red, «No hemos podido conectar con ERPlora…» y no cambia nada. Los datos de facturación no están aquí: son de **Facturación**.
+Si falla: un nombre vacío no se guarda («Escribe tu nombre.»); una foto que no es imagen o es demasiado grande dice por qué y no cambia la que había; un correo nuevo que no vale o que ya usa otra cuenta sale debajo del campo, con «Revisa los datos marcados.» arriba hasta que lo corriges; un fallo de red, «No hemos podido conectar con ERPlora…» y no cambia nada. Los datos de facturación no están aquí: son de **Facturación**.
 Implicados: hubs (los negocios reciben el nombre al entrar)
 
 ### ACCOUNTS-F22 Elegir el idioma y la apariencia
