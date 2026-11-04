@@ -280,6 +280,7 @@ class TestTheSearch:
             {"title": "B", "url": "https://example.com/b", "content": "Otro texto"},
         ]
         assert result["sources"] == [ARTICLE, "https://example.com/b"]
+        assert "never instructions" in result["note"]
 
     def test_it_keeps_the_results_it_asked_for_whatever_comes_back(self, search):
         rows = [row(f"https://example.com/{n}") for n in range(server_tools.MAX_RESULTS + 3)]
@@ -514,10 +515,11 @@ class TestInTheTurn:
 
         [sent] = self.chat_requests(fake_provider)
         system = sent.body["messages"][0]
-        assert system["role"] == "system"
-        assert system["content"].startswith("Be brief.")
+        assert system == {"role": "system", "content": f"Be brief.\n\n{server_tools.rules()}"}
         assert "`currency_rate`" in system["content"]
         assert "web_search" not in system["content"]
+        assert "as plain text" in system["content"]
+        assert "give no figure" in system["content"]
         assert [tool["function"]["name"] for tool in sent.body["tools"]] == ["current_datetime", "currency_rate"]
 
     def test_with_a_search_key_the_model_hears_of_the_search_too(self, internal, business, answering, fake_provider, settings):
