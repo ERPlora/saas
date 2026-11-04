@@ -1,13 +1,13 @@
 // @vitest-environment node
-// The e2e database of a stack beside the shared one (database.ts): the e2e's first server runs
+// The e2e database of a stack beside the shared one (database.ts): the e2e's step before its servers runs
 // `node tests/e2e/database.ts`, which creates it when missing and migrates it, and `--drop` deletes it once the
-// run is over. Two runs on the one local `saas` wrote into each other's data, and only one SaaS e2e could run
+// run is over. database-step.test.ts runs that step under Playwright. Two runs on the one local `saas` wrote into each other's data, and only one SaaS e2e could run
 // at a time; each stack now runs on its own e2e database, and these commands never touch any other (`saas`, a
 // Hub's, the test databases…), the same rules as the Hub's (hub tests/e2e/database.ts).
 // flow: ninguno — FIX accounts (aislar los datos de cada ejecución e2e del SaaS)
 import { describe, expect, it } from 'vitest';
 
-import { adminSql, dropDatabase, prepareDatabase, runCli, type AdminSql } from './database';
+import { adminSql, DATABASE_READY, dropDatabase, prepareDatabase, runCli, type AdminSql } from './database';
 import type { CommandResult, ManagePy } from './global-setup';
 import { stackFrom } from './stack';
 
@@ -168,8 +168,46 @@ describe('runCli', () => {
     const { manage } = fakeManage();
 
     expect(runCli([], { stack: stackFrom({ E2E_SAAS_PORT: '8030' }), sql: fakePostgres([]).sql, manage, ...lines })).toBe(0);
-    expect(lines.out).toEqual(['database.ts: saas_e2e_8030 created and migrated.']);
+    expect(lines.out).toEqual([
+      'database.ts: preparing saas_e2e_8030 (its first migration can take minutes on a busy machine).',
+      'database.ts: saas_e2e_8030 created and migrated.',
+    ]);
     expect(lines.err).toEqual([]);
+  });
+
+  it('says what it is doing before the wait, not after it', () => {
+    const events: string[] = [];
+    const manage: ManagePy = () => (events.push('migrate'), OK());
+    const print = (line: string) => events.push(line.includes('preparing') ? 'preparing' : 'prepared');
+
+    expect(runCli([], { stack: stackFrom({ E2E_SAAS_PORT: '8030' }), sql: fakePostgres([]).sql, manage, print, fail: () => {} })).toBe(0);
+    expect(events).toEqual(['preparing', 'migrate', 'prepared']);
+  });
+
+  // What the e2e's step waits for (playwright.config.ts, `databaseStep`): the line of a database left ready, new or
+  // reused, and never the one printed before the migration, which would start the servers on a database half migrated.
+  it.each([
+    [[], 'created and migrated'],
+    [['saas_e2e_8030'], 'migrated'],
+  ])('ends a database that existed: %j with the line the step waits for, %s', (existing, said) => {
+    const lines = io();
+
+    expect(runCli([], { stack: stackFrom({ E2E_SAAS_PORT: '8030' }), sql: fakePostgres(existing).sql, ...fakeManage(), ...lines })).toBe(0);
+    const [preparing, ready] = lines.out;
+    expect(ready).toBe(`database.ts: saas_e2e_8030 ${said}.`);
+    expect(ready).toMatch(DATABASE_READY);
+    expect(preparing).not.toMatch(DATABASE_READY);
+  });
+
+  it('prints no ready line when it fails, nor for a drop', () => {
+    const failed = io();
+    const broken = fakeManage({ migrate: FAILED('boom') });
+    expect(runCli([], { stack: stackFrom({ E2E_SAAS_PORT: '8030' }), sql: fakePostgres([]).sql, manage: broken.manage, ...failed })).toBe(1);
+    expect(failed.out.filter((line) => DATABASE_READY.test(line))).toEqual([]);
+
+    const dropped = io();
+    expect(runCli(['--drop'], { stack: stackFrom({ E2E_SAAS_PORT: '8030' }), sql: fakePostgres([]).sql, ...fakeManage(), ...dropped })).toBe(0);
+    expect(dropped.out.filter((line) => DATABASE_READY.test(line))).toEqual([]);
   });
 
   it('drops it with --drop', () => {

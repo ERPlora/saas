@@ -1,8 +1,8 @@
 // @vitest-environment node
 // The e2e's stack (stack.ts): where its servers listen and which database they open. The shared one is
 // today's (:8011, :8012, :8013, :8019 and the `saas` of `.env`); a second run at once moves the four ports
-// together with E2E_SAAS_PORT and gets a database of its own, `saas_e2e_<port>`, created and migrated at
-// the start (database.ts). Two runs on the one `saas`, or on a Hub's database whose `DB_NAME` a shell
+// together with E2E_SAAS_PORT and gets a database of its own, `saas_e2e_<port>`, created and migrated by a
+// step before its servers (database.ts, `databaseStep` of playwright.config.ts). Two runs on the one `saas`, or on a Hub's database whose `DB_NAME` a shell
 // still exports (`relation "django_site" does not exist`), are refused before the first server starts.
 // Node's environment: it loads the Playwright config (vite.config.test.ts, «the tests that load Playwright»).
 // clock: data only — no code under test compares these dates with now.
@@ -11,8 +11,9 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
+import { DATABASE_READY } from './database';
 import { GOOGLE_E2E, panelMailDir, panelServers } from './panel/project';
-import { publicNoticeServer, publicServer, recaptchaDoubleServer, runId } from './playwright.config';
+import { databaseStep, publicNoticeServer, publicServer, recaptchaDoubleServer, runId, stackServers } from './playwright.config';
 import { E2E_RECAPTCHA_API_KEY } from './recaptcha';
 import { isE2eDatabase, stackFrom } from './stack';
 
@@ -122,19 +123,50 @@ describe("the stack's servers", () => {
     expect(server.env).not.toHaveProperty('DB_NAME');
   });
 
-  it('create and migrate an own stack\'s database before its first server, which listens on its port', () => {
+  it("start an own stack's public server on its port and its database, with no migration in its two minutes", () => {
     const server = publicServer(SAAS_DIR, OWN);
-    expect(server.command).toBe(
-      'node tests/e2e/database.ts && uv run python manage.py runserver 127.0.0.1:8031 --novite --insecure --noreload',
-    );
+    expect(server.command).toBe('uv run python manage.py runserver 127.0.0.1:8031 --novite --insecure --noreload');
     expect(server.url).toBe('http://127.0.0.1:8031/robots.txt');
+    expect(server.timeout).toBe(120_000);
     expect(server.env).toMatchObject({ DEBUG: 'False', DB_NAME: 'saas_e2e_8030' });
+  });
+
+  it("prepare an own stack's database in a step of its own, before anything else starts", () => {
+    const servers = stackServers(SAAS_DIR, OWN, {});
+    expect(servers.map((server) => server.name)).toEqual([
+      'database',
+      'recaptcha-double',
+      undefined,
+      'public-notice',
+      'panel-django',
+      'panel-mfa-django',
+      'panel-vite',
+    ]);
+    expect(servers.filter((server) => server.command.includes('database.ts'))).toEqual([databaseStep(SAAS_DIR)]);
+  });
+
+  it('prepare nothing on the shared stack, whose database is the `saas` of `.env`', () => {
+    const servers = stackServers(SAAS_DIR, SHARED, {});
+    expect(servers.map((server) => server.name)).not.toContain('database');
+    expect(servers.filter((server) => server.command.includes('database.ts'))).toEqual([]);
+  });
+
+  it('give the step a tope of its own, past every server\'s, and say what it is doing', () => {
+    const step = databaseStep(SAAS_DIR);
+    const others = stackServers(SAAS_DIR, OWN, {}).filter((server) => server.name !== 'database');
+    expect(step.command).toBe('node tests/e2e/database.ts');
+    expect(step.cwd).toBe(SAAS_DIR);
+    expect(step.url).toBeUndefined();
+    expect(step.port).toBeUndefined();
+    expect(step.stdout).toBe('pipe');
+    expect(step.timeout).toBeGreaterThan(Math.max(...others.map((server) => server.timeout ?? 0)));
+    expect(step.wait?.stdout).toBe(DATABASE_READY);
   });
 
   it("run the public server's twin on its own port, on the same database, the only one that shows the cookie notice", () => {
     const server = publicNoticeServer(SAAS_DIR, OWN);
     expect(server.name).toBe('public-notice');
-    // No `database.ts`: the public server, which starts before it, has already left the database ready.
+    // No `database.ts`: its own step, which runs before every server, has already left the database ready.
     expect(server.command).toBe('uv run python manage.py runserver 127.0.0.1:8036 --novite --insecure --noreload');
     expect(server.url).toBe('http://127.0.0.1:8036/robots.txt');
     expect(server.reuseExistingServer).toBe(false);

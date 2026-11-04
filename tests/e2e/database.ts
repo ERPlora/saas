@@ -4,7 +4,7 @@
 //   E2E_SAAS_PORT=8030 node tests/e2e/database.ts          creates saas_e2e_8030 when missing and migrates it
 //   E2E_SAAS_PORT=8030 node tests/e2e/database.ts --drop   drops it once the run's servers are stopped
 //
-// The e2e runs the first itself, before its first server (playwright.config.ts, `publicServer`): it is idempotent
+// The e2e runs the first itself, as a step before its servers (playwright.config.ts, `databaseStep`): it is idempotent
 // and keeps the rows of a database that exists. The second is the run's to call at the end. Only e2e databases
 // (`isE2eDatabase`): the shared stack's `saas`, the Hub's and every other one are refused untouched. A drop is never
 // forced: with a connection open (a server still up) it fails and says so. Postgres is compose.yaml's
@@ -23,6 +23,9 @@ const SAAS_DIR = resolve(HERE, '..', '..');
 /** Where compose.yaml lives: the root of erplora-next, above saas/ and every saas-wt-*. */
 const REPO_DIR = resolve(SAAS_DIR, '..');
 const USAGE = 'Usage: node tests/e2e/database.ts [--drop]';
+
+/** The line of a database left ready, new or reused: what the e2e's step waits for before starting its servers. */
+export const DATABASE_READY = /^database\.ts: \S+ (?:created and )?migrated\.$/m;
 
 /** Runs one SQL statement on Postgres's maintenance database `postgres`. */
 export type AdminSql = (statement: string) => CommandResult;
@@ -135,6 +138,7 @@ export function runCli(
       dropDatabase(name, deps);
       deps.print(`database.ts: ${name} dropped.`);
     } else {
+      deps.print(`database.ts: preparing ${name} (its first migration can take minutes on a busy machine).`);
       const { created } = prepareDatabase(name, deps);
       deps.print(`database.ts: ${name} ${created ? 'created and migrated' : 'migrated'}.`);
     }
