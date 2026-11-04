@@ -281,6 +281,9 @@ def list_items_naming(html: str, name: str) -> list[str]:
     [
         "Hetzner",  # the old hosting, in Germany
         "Cloudflare",  # out since ADR-0499 (infra#253); AWS WAF + ALB + Route 53 replace it
+        # No voice of the server since 2026-11-04: reading aloud is the device's, and no text goes to Azure AI Speech.
+        "Microsoft Ireland Operations",
+        "Azure",
     ],
 )
 def test_no_legal_page_names_a_provider_we_no_longer_use(client, path, provider):
@@ -344,8 +347,9 @@ def test_privacy_keeps_the_ai_assistant_in_frankfurt(client):
 # --- The assistant's voice and search services (FIX-SAAS-PRIVACY-POLICY-OMITS-DICTATION-AUDIO-TO-TRANSCRIPTION) ----
 # ``assistant/media.py`` sends two services to the provider of ``ASSISTANT_SERVICE_PROVIDER`` (OpenAI's API at
 # ``api.openai.com`` by default), none of them the backup model: the transcription of a dictation (``whisper-1``, the
-# audio of the recording) and the fingerprints of the Hub's index (``text-embedding-3-small``). The reading aloud of an
-# answer goes to Azure AI Speech, in Sweden Central (PLAN-SAAS round 2026-11-03m). Google Play checks the app's
+# audio of the recording) and the fingerprints of the Hub's index (``text-embedding-3-small``). Reading an answer aloud
+# is the device's own voice (the browser's or the system's): erplora.com has no voice of its own since 2026-11-04 (its
+# Azure AI Speech door sleeps without a provider), so no processor receives that text. Google Play checks the app's
 # «Data safety › Audio» against this page (app#4).
 
 VOICE_PROVIDER = "OpenAI Ireland Ltd. ("
@@ -379,37 +383,17 @@ def test_privacy_names_the_default_provider_of_the_assistant_voice_and_search_se
     assert [claim for claim in VOICE_SERVICES[language] if claim.lower() not in voice.lower()] == []
 
 
-SPEECH_PROVIDER = "Microsoft Ireland Operations Ltd. ("
-
-SPEECH_SERVICE = {
-    "en": (
-        "Azure AI Speech, Sweden Central region",
-        "reads an answer aloud with the server's voice",
-        "it receives the text of the answer and returns its audio",
-        "with the device's own voice nothing is sent to it",
-        "Processing takes place in the European Union",
-    ),
-    "es": (
-        "Azure AI Speech, región Suecia Central",
-        "lee una respuesta en voz alta con la voz del servidor",
-        "recibe el texto de la respuesta y devuelve su audio",
-        "con la voz del propio dispositivo no se le envía nada",
-        "El tratamiento se realiza en la Unión Europea",
-    ),
-}
-
-
 @pytest.mark.django_db
 @pytest.mark.parametrize("language", ["en", "es"])
-def test_privacy_names_azure_as_the_provider_that_reads_answers_aloud_and_openai_no_longer(client, language):
-    """Art. 13.1.e GDPR: whoever receives the text of an answer read aloud is named, with what it receives and where;
-    OpenAI no longer reads aloud (``assistant.media.synthesize`` goes to Azure)."""
+def test_privacy_names_no_provider_that_reads_answers_aloud(client, language):
+    """Art. 13.1.e GDPR: nobody receives the text of an answer read aloud, so no processor is named for it, and OpenAI
+    only transcribes and computes the fingerprints."""
     html = privacy(client, language)
-    [speech] = list_items_naming(html, SPEECH_PROVIDER)
     [voice] = list_items_naming(html, VOICE_PROVIDER)
 
-    assert [claim for claim in SPEECH_SERVICE[language] if claim not in " ".join(speech.split())] == []
     assert "aloud" not in voice and "voz alta" not in voice
+    for server_voice in ("server's voice", "voz del servidor", "speech provider", "proveedor de voz"):
+        assert server_voice not in html
 
 
 @pytest.mark.django_db
@@ -420,30 +404,28 @@ def test_privacy_names_azure_as_the_provider_that_reads_answers_aloud_and_openai
             "en",
             "Reading aloud:",
             (
-                "with your device's own voice, nothing leaves the device",
-                "from the platform to the speech provider, and only the audio comes back",
-                "Neither your hub nor ERPlora keeps the text or the audio",
-                "how many characters were read",
+                "the answer is read by your device's own voice (the browser's or the system's)",
+                "its text never leaves the device",
             ),
         ),
         (
             "es",
             "Lectura en voz alta:",
             (
-                "con la voz de tu propio dispositivo, nada sale de él",
-                "de la plataforma al proveedor de voz, y solo vuelve el audio",
-                "Ni tu hub ni ERPlora guardan el texto ni el audio",
-                "cuántos caracteres se leyeron",
+                "la respuesta la lee la voz de tu propio dispositivo (la del navegador o la del sistema)",
+                "su texto no sale de él",
             ),
         ),
     ],
 )
-def test_privacy_says_where_an_answer_read_aloud_goes_and_that_nobody_here_keeps_it(client, language, marker, claims):
-    """``assistant.internal.speech`` passes the text from memory to Azure and the mp3 back: only the count of the
-    characters read stays, in the month's usage."""
+def test_privacy_says_an_answer_read_aloud_never_leaves_the_device(client, language, marker, claims):
+    """The panel and the Hub read with the device's voice (``spa-config.assistantSpeech`` false, base/spa.py): the
+    text is not sent anywhere, and nothing is counted."""
     [reading] = list_items_naming(privacy(client, language), marker)
 
     assert [claim for claim in claims if claim not in " ".join(reading.split())] == []
+    for gone in ("characters", "caracteres", "platform", "plataforma"):
+        assert gone not in reading
 
 
 @pytest.mark.django_db

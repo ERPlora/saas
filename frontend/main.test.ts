@@ -34,7 +34,7 @@ vi.mock('@erplora/ui/sdk', async (importOriginal) => ({
 
 import { chooseThemeMode, createShell, setThemeMode, setThemePersister, themeMode, toastError } from '@erplora/ui/shell';
 import { ApiError, createAllauthClient, createLiveClient, provideLiveClient } from '@erplora/ui/sdk';
-import { assistantConfig, assistantMessages, configureAssistant, forgetAssistant } from '@erplora/ui/components';
+import { assistantConfig, type AssistantConfig, assistantMessages, configureAssistant, forgetAssistant } from '@erplora/ui/components';
 import type { Component } from 'vue';
 
 import AssistantBackground from '../assistant/frontend/components/AssistantBackground.vue';
@@ -519,6 +519,25 @@ describe("the panel's assistant (plan 2026-10-30-asistente-saas §6, ASSISTANT-F
     });
     await main.boot({});
     expect(configured).toBe(SAAS_ASSISTANT);
+  });
+
+  it("gives the chat the server's voice only when the page says erplora.com has one (spa-config.assistantSpeech)", async () => {
+    const configuredWith = async (config: object) => {
+      configureAssistant(undefined);
+      renderShellHtml(ME, config);
+      let configured: AssistantConfig | undefined;
+      vi.mocked(createShell).mockImplementation(async () => {
+        configured = assistantConfig();
+        return { app: { mount: vi.fn() }, router: { isReady: () => Promise.resolve() } } as never;
+      });
+      await main.boot({});
+      return configured;
+    };
+
+    expect((await configuredWith({ assistantSpeech: true }))?.speak).toBeTypeOf('function');
+    // None (2026-11-04): no choice of voice, and «Read aloud» never asks the server.
+    expect((await configuredWith({ assistantSpeech: false }))?.speak).toBeUndefined();
+    renderShellHtml();
   });
 
   it('puts its button at the end of the topbar and its panel beside the pane, each loaded on demand', async () => {

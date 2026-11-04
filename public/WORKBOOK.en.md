@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:706fd39e7adf1d3623644b4524e05234335700b8bba9d012daf087f4dcb0fbaf -->
+<!-- generated from WORKBOOK.md sha256:a6bd585749a71a5c98e1ab10cd35adb196fe492608815c7829b48ed0447c3308 -->
 
 ## What it is for and who it is for
 
@@ -431,7 +431,7 @@ Actor: visitor
 Screen: Legal texts
 Steps:
 1. In the footer, "Legal Notice", "Privacy" and "Terms" open each text on its own page; the cookie policy opens from the privacy policy.
-2. The privacy policy names who the data is entrusted to: Amazon Web Services in the Ireland region for hosting and email, the assistant's language model in Frankfurt, without training on it, and OpenAI for the assistant's voice and search: it transcribes the audio of a dictation, which neither the hub nor ERPlora keeps, and may process it outside the European Economic Area; and Microsoft (Azure AI Speech, in Sweden, inside the European Union) to read an answer aloud with the server's voice.
+2. The privacy policy names who the data is entrusted to: Amazon Web Services in the Ireland region for hosting and email, the assistant's language model in Frankfurt, without training on it, and OpenAI for the assistant's voice and search: it transcribes the audio of a dictation, which neither the hub nor ERPlora keeps, and may process it outside the European Economic Area. An answer is read aloud by the device's own voice (the browser's or the system's): its text never leaves it.
 3. The terms give the numbers the product keeps: the days of the exit package, the days a suspended business waits before it is deleted and the trial of the plans on sale (none if none has one).
 In: the plans on sale (the terms).
 Out: nothing saved.

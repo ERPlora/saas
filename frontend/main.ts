@@ -12,8 +12,9 @@
 // account chose (Account → Preferences, in `base.session.me`) is painted before the first paint: its
 // theme mode and its own language; the user menu's theme is kept in the account.
 // The panel's assistant (plan 2026-10-30-asistente-saas §6, ASSISTANT-F25): the shared chat configured as the panel's
-// (`SAAS_ASSISTANT`), its sparkles at the end of the topbar and its panel beside the pane (`CHROME`), its words merged
-// under the apps' (`appMessages`), and the tab's conversation forgotten when the account signs out.
+// (`panelAssistant`, with the server's voice only when there is one), its sparkles at the end of the topbar and its
+// panel beside the pane (`CHROME`), its words merged under the apps' (`appMessages`), and the tab's conversation
+// forgotten when the account signs out.
 import {
   createShell,
   type CreateShellOptions,
@@ -43,7 +44,7 @@ import { isNavigationFailure, type RouteRecordRaw } from 'vue-router';
 
 import { ACCOUNT, BUSINESSES, LAUNCHER, REPORT_PROBLEM } from '../accounts/frontend/paths';
 import { recaptchaSiteKey } from '../accounts/frontend/recaptcha';
-import { SAAS_ASSISTANT } from '../assistant/frontend/options';
+import { panelAssistant } from '../assistant/frontend/options';
 import { OPERATION_ROUTES } from './generated/operation-routes';
 import en from './locale/en.json';
 import es from './locale/es.json';
@@ -190,8 +191,9 @@ export async function boot(
   doc: Document = document,
 ): Promise<void> {
   const config = readSpaConfig(doc);
-  // The shared assistant's chat as the panel's: its routes, base's operations, its words and who uses it.
-  configureAssistant(SAAS_ASSISTANT);
+  // The shared assistant's chat as the panel's: its routes, base's operations, its words and who uses it; the server's
+  // voice only when erplora.com has one (`spa-config.assistantSpeech`).
+  configureAssistant(panelAssistant(doc));
   const client = createLiveClient(config, { routes: OPERATION_ROUTES });
   const auth = createAllauthClient(config);
   const session = loadSession(client, doc);
