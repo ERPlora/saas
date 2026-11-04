@@ -74,21 +74,15 @@
         setOpen(false);
         if (hadFocus) toggle.focus();
     }
-    function focusOn(stop) {
-        // An ion-button does not delegate: what takes the focus is the link inside its shadow root.
-        var inner = stop.shadowRoot && stop.shadowRoot.querySelector('a, button');
-        (inner || stop).focus();
-    }
     // From the last stop back to the first, and the other way with Shift; a focus off the panel comes back to it.
     function goRound(event) {
-        // An ion-button is a stop once its module has defined it, and that module may never arrive (saas#243).
-        var stops = panel.querySelectorAll('a[href], button, ion-button:defined');
+        var stops = panel.querySelectorAll('a[href], button');
         var first = stops[0];
         var last = stops[stops.length - 1];
         var edge = event.shiftKey ? first : last;
         if (panel.contains(document.activeElement) && document.activeElement !== edge) return;
         event.preventDefault();
-        focusOn(event.shiftKey ? last : first);
+        (event.shiftKey ? last : first).focus();
     }
 
     toggle.addEventListener('click', function () {

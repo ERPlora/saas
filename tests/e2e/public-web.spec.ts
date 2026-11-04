@@ -587,11 +587,11 @@ test('PUBLIC-G51 on a slow device, the mobile menu opens and closes even pressed
   await page.setViewportSize({ width: 375, height: 667 });
   await menu.isClosed('widened and back');
 
-  // The keyboard too: with no module an ion-button is an unknown element that takes no focus, so the round ends before it.
+  // The keyboard too: every stop of the panel is a real link or button, so it goes round the same with no module.
   await menu.burger.click();
   await menu.isOpen('before Tab');
-  const stops = await panelLinks(page, 'a[href]');
-  expect(stops, 'what the keyboard goes through').toContain('/features/');
+  const stops = await panelLinks(page);
+  expect(stops, 'what the keyboard goes through').toEqual(expect.arrayContaining(['/features/', '/demo/', '/launch']));
   await pressThrough(page, 'Tab', [...stops, 'close']);
   await pressThrough(page, 'Shift+Tab', [...stops].reverse().concat('close'));
   await page.keyboard.press('Escape');
@@ -672,12 +672,9 @@ function focusedStop(page: Page): Promise<string> {
   });
 }
 
-/** The `href` of what `selector` finds in the panel, in order, read in the page: a locator would also count the link inside each ion-button. */
-function panelLinks(page: Page, selector: string): Promise<string[]> {
-  return page.evaluate(
-    (found) => [...document.querySelectorAll(`#ep-navbar-panel :is(${found})`)].map((stop) => stop.getAttribute('href')!),
-    selector,
-  );
+/** The `href` of each link of the panel, in order: what Tab goes through after the close button. */
+function panelLinks(page: Page): Promise<string[]> {
+  return page.locator('#ep-navbar-panel a[href]').evaluateAll((links) => links.map((link) => link.getAttribute('href')!));
 }
 
 /** Presses the key once per expected stop and checks where the focus landed each time. */
@@ -693,15 +690,11 @@ test('PUBLIC-G51 with the mobile menu open, Tab goes round inside it and the pag
   const clean = await watch(page);
   const menu = mobileMenu(page);
   await page.goto('/');
-  // An ion-button takes the focus once it has drawn the link inside it.
-  await page.waitForFunction(() =>
-    [...document.querySelectorAll('#ep-navbar-panel ion-button')].every((button) => button.shadowRoot?.querySelector('a, button')),
-  );
   const behind = page.locator('footer a[href]').first();
 
   await menu.burger.click();
   await menu.isOpen('opened');
-  const links = await panelLinks(page, 'a[href], ion-button[href]');
+  const links = await panelLinks(page);
   expect(links, 'what the panel is for').toEqual(expect.arrayContaining(['/features/', '/demo/', '/launch']));
 
   // Two whole rounds forward, from the close button that opening focused, and one back.
