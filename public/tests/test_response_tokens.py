@@ -20,6 +20,7 @@ PATH = "/compliance/"
 WORD = "SdI"
 CSRF_INPUT = re.compile(r'name="csrfmiddlewaretoken" value="([^"]+)"')
 HEADER_NONCE = re.compile(r"'nonce-([^']+)'")
+PAGE_NONCE = re.compile(r'nonce="([^"]+)"')
 
 
 def raw_page(client) -> str:
@@ -57,6 +58,8 @@ class TestTheRealTokens:
         assert f'name="csrfmiddlewaretoken" value="{WORD}' in html
 
     def test_every_response_brings_its_own_nonce_in_the_header_and_in_the_page(self, client):
+        """All the nonces of the page are the header's: under the fixed value, a second one drawn
+        for part of the page looks the same, and the comparisons of test_templates.py cannot see it."""
         responses = [client.get(PATH), client.get(PATH)]
         nonces = [
             HEADER_NONCE.search(response.headers["Content-Security-Policy"]).group(1)
@@ -65,7 +68,7 @@ class TestTheRealTokens:
 
         assert nonces[0] != nonces[1]
         for response, nonce in zip(responses, nonces):
-            assert f'nonce="{nonce}"' in response.content.decode()
+            assert set(PAGE_NONCE.findall(response.content.decode())) == {nonce}
 
     def test_every_page_brings_its_own_csrf_token(self, client):
         first, second = (CSRF_INPUT.search(raw_page(client)).group(1) for _ in range(2))
