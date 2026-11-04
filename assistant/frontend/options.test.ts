@@ -197,7 +197,7 @@ function panelPage(extra: Record<string, unknown> = {}): Document {
   return doc;
 }
 
-const SPEECH = { text: 'Tienes dos negocios.', language: 'es' as const, voice: 'es-ES-Tristan:DragonHDLatestNeural' };
+const SPEECH = { text: 'Tienes dos negocios.', language: 'es' as const, voice: 'a-voice' };
 
 describe('speak (ASSISTANT-F22): the mp3 of an answer in a server voice, base.assistant.speak', () => {
   it('posts the text, its language and its voice to the route with the CSRF token, and gives back the mp3', async () => {

@@ -799,15 +799,15 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
 - Textos legales (F20, F08): la privacidad nombra a cada encargado que recibe datos y qué recibe. El dictado y la
   búsqueda del asistente (`assistant/media.py`: `whisper-1` y `text-embedding-3-small`) van al proveedor de
   `ASSISTANT_SERVICE_PROVIDER`, la API de OpenAI en `api.openai.com` por defecto, sin residencia en la UE por contrato.
-  La lectura en voz alta es la del dispositivo: erplora.com no tiene voz propia desde el 2026-11-04 (ningún proveedor
-  de `ASSISTANT_SPEECH_PROVIDER`; la puerta de Azure AI Speech queda dormida), así que §5 no nombra a ningún encargado
-  de esa lectura (`test_legal.py` prohíbe «Azure» y «Microsoft Ireland Operations»). Dar de alta un proveedor de voz
-  es volver a nombrarlo en §5, con lo que recibe y dónde, en la misma entrega.
+  La lectura en voz alta es la del dispositivo: erplora.com no tiene voz propia (sin motor en
+  `assistant.media.SPEECH_ENGINE`; el proveedor de Azure AI Speech se retiró, saas#242), así que §5 no nombra a ningún
+  encargado de esa lectura (`test_legal.py` prohíbe «Azure» y «Microsoft Ireland Operations»). Un motor que lleve el texto
+  fuera de nuestros contenedores es volver a nombrar a su encargado en §5, con lo que recibe y dónde, en la misma entrega.
   Cambiarlo es cambiar en la misma entrega §5 y §6 de la privacidad, la respuesta «storage» de `/pricing/` y la celda
   del asistente de la portada (`test_legal.py`, `test_product.py` y `test_landing.py`, en `en` y `es`). El Hub y el
   panel usan el dictado (`base.assistant.transcribe`, cada uno el suyo); «Leer en voz alta» lee con la voz del
   dispositivo en los dos (el panel solo pediría `base.assistant.speak` con `spa-config.assistantSpeech`, que sin
-  proveedor de voz es falso).
+  motor es falso).
 - Cumplimiento (F09): `hubs.countries.COUNTRY_NAMES` tiene que casar con `hubs.schemas.COUNTRIES` (lo exige un test);
   `FISCAL_SYSTEMS` dice qué sistema fiscal conecta cada país, hoy solo VeriFactu en España. Un país nuevo conectado
   se añade ahí con su app, en la misma entrega.

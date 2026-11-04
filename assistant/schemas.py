@@ -160,9 +160,9 @@ class ModelTryOut(Schema):
 
 class CredentialImportIn(Schema):
     """A provider's key the platform loads (from the environment): the provider is the one of its API (``kind``),
-    whose identifier is the API's (``azure_speech`` is ``azure-speech``, ``assistant.models.provider_slug``)."""
+    whose identifier is the API's."""
 
-    kind: Literal["openai", "anthropic", "gemini", "deepseek", "azure_speech"]
+    kind: Literal["openai", "anthropic", "gemini", "deepseek"]
     api_key: SecretStr
     label: str = Field(default="default", min_length=1, max_length=64)
     #: Replace a key already kept with that label.
@@ -320,8 +320,8 @@ class TranscribeIn(CallerIn, DictationIn):
 
 
 class SpeechIn(Schema):
-    """A text to read aloud, its language (``es`` or ``en``) and, optionally, a voice of the catalogue
-    (``assistant.media.VOICES``: ``es-ES-Ximena:DragonHDLatestNeural``…); without one, the language's default."""
+    """A text to read aloud, its language (``es`` or ``en``) and, optionally, a voice of the engine that reads it
+    (``assistant.media.SPEECH_ENGINE``); without one, its own for the language."""
 
     text: str = Field(max_length=100_000)
     language: Literal["es", "en"]
@@ -330,23 +330,10 @@ class SpeechIn(Schema):
     @field_validator("text")
     @classmethod
     def _something_to_read(cls, value):
-        from assistant.media import NOT_XML
-
-        # What XML cannot carry is dropped from the SSML (``media.ssml``): a text of only that is nothing to read.
-        text = NOT_XML.sub("", value).strip()
+        text = value.strip()
         if not text:
             raise ValueError("write the text to read aloud")
         return text
-
-    @field_validator("voice")
-    @classmethod
-    def _a_voice_of_the_catalogue(cls, value):
-        from assistant.media import VOICE_IDS
-
-        voice = value.strip()
-        if voice and voice not in VOICE_IDS:
-            raise ValueError(f"one of {', '.join(sorted(VOICE_IDS))}")
-        return voice
 
 
 class SynthesizeIn(CallerIn, SpeechIn):

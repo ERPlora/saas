@@ -1,10 +1,8 @@
 """Keep the AI providers' keys of the environment encrypted in the database (ASSISTANT-F09).
 
-Reads ``OPENAI_API_KEY``, ``ANTHROPIC_API_KEY``, ``GEMINI_API_KEY``, ``DEEPSEEK_API_KEY`` and ``AZURE_SPEECH_KEY``
-(``config/settings.py``) and keeps each one in its provider through ``assistant.credential.import`` as the platform,
-adding the provider if missing (Azure AI Speech, the voice, at Sweden Central's address: another region is its
-address in the admin). A key already kept with the label stays unless ``--force``. It never prints a key, only its last four
-characters.
+Reads ``OPENAI_API_KEY``, ``ANTHROPIC_API_KEY``, ``GEMINI_API_KEY`` and ``DEEPSEEK_API_KEY`` (``config/settings.py``) and
+keeps each one in its provider through ``assistant.credential.import`` as the platform, adding the provider if missing. A
+key already kept with the label stays unless ``--force``. It never prints a key, only its last four characters.
 
     python manage.py import_ai_keys_from_env
     python manage.py import_ai_keys_from_env --providers openai,anthropic --label default --force
@@ -24,7 +22,6 @@ SETTINGS = {
     "anthropic": ("anthropic", "ANTHROPIC_API_KEY"),
     "gemini": ("gemini", "GEMINI_API_KEY"),
     "deepseek": ("deepseek", "DEEPSEEK_API_KEY"),
-    "azure-speech": ("azure_speech", "AZURE_SPEECH_KEY"),
 }
 
 
@@ -32,7 +29,7 @@ class Command(BaseCommand):
     help = "Keep the AI providers' keys of the environment encrypted in the database (never prints a key)."
 
     def add_arguments(self, parser):
-        parser.add_argument("--providers", default="", help="Comma-separated providers to load (default: all five).")
+        parser.add_argument("--providers", default="", help="Comma-separated providers to load (default: all four).")
         parser.add_argument("--label", default="default", help="Label of the key in its provider (default: 'default').")
         parser.add_argument("--force", action="store_true", help="Replace a key already kept with the same label.")
         parser.add_argument("--dry-run", action="store_true", help="Say what would happen without writing.")
