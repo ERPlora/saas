@@ -7,7 +7,8 @@ batch after batch, each in its own transaction (``accounts.services.prune_audit_
 ``--dry-run`` counts what a run would delete and deletes nothing. No question is asked (the old ``--no-input`` is the
 only way here). Idempotent, under the advisory lock ``hashtext('erplora.saas.cleanup_old_logs')``: a second run returns
 at once. A batch that fails ends the run with its error (the ``task_failed`` alarm); the batches before it stay
-deleted and the next run goes on from there.
+deleted and the next run goes on from there. The run that prunes the last entry of the retired copy of a business's
+members takes its content type too (saas#220).
 """
 
 import logging
@@ -47,6 +48,7 @@ class Command(BaseCommand):
                 deleted = 0
                 while batch := services.prune_audit_log_batch(cutoff):
                     deleted += batch
+                services.forget_the_retired_audit_type()
                 summary = f"deleted={deleted}"
         logger.info("accounts.cleanup_old_logs%s retention_days=%d %s", " dry_run" if dry_run else "", retention_days, summary)
         self.stdout.write(f"cleanup_old_logs{' (dry run)' if dry_run else ''}: {summary}")

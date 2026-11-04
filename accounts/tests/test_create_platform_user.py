@@ -54,7 +54,6 @@ def test_support_is_staff_in_the_support_group_and_no_superuser():
     # (whatsapp 0002, WHATSAPP-G18) and, since hub#603, the businesses' daily usage (hubs 0024, HUBS-F23).
     assert set(user.get_all_permissions()) == {
         "accounts.view_user",
-        "accounts.view_hubmembership",
         "accounts.view_authexchangecode",
         "accounts.view_apikey",
         "accounts.view_userpreferences",
