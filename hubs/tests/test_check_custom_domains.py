@@ -271,6 +271,7 @@ def test_a_pending_domain_whose_cname_went_leaves_the_snapshot(standard_business
     assert row.proven_at is None
     assert row.reason == Reason.CNAME_MISSING
     assert hub_of(standard_business).state_version == version + 1
+    assert "custom_domain" not in state_pushes(hub_double)[-1].body
 
 
 def test_a_dns_that_cannot_answer_leaves_a_pending_domain_as_it_was(standard_business, world, dns_world, hub_double):
