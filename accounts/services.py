@@ -72,6 +72,7 @@ from accounts.schemas import (
     SupportReportIn,
     SupportReportOut,
 )
+from base.refusals import fields_refused
 
 logger = logging.getLogger(__name__)
 
@@ -901,7 +902,7 @@ def purge_expired_sign_in_leftovers(now) -> dict[str, int]:
 
 
 def _email_refused(message: str) -> InvalidPayload:
-    return InvalidPayload(gettext("Invalid payload"), fields={"email": message})
+    return fields_refused({"email": message})
 
 
 def email_belongs_to_another_account(user, email: str) -> bool:
@@ -1140,7 +1141,7 @@ def photo_upload(ctx: OperationContext, data: PhotoUploadIn) -> dict:
     try:
         cleaned, content_type = photos.clean_photo(photos.decode_upload(data.image))
     except photos.PhotoRejected as refused:
-        raise InvalidPayload(gettext("Invalid payload"), fields={"image": _photo_refusal(refused.code)}) from None
+        raise fields_refused({"image": _photo_refusal(refused.code)}) from None
     if is_ratelimited(
         None,
         group="accounts.photo.upload",

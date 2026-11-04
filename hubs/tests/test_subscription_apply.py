@@ -97,6 +97,8 @@ def test_an_unknown_plan_is_an_invalid_field(business):
         apply(business, plan="platinum")
 
     assert set(refused.value.fields) == {"plan"}
+    # Only Stripe's answer gets here, with no form behind it: the reason itself is the notice.
+    assert refused.value.message == refused.value.fields["plan"]
 
 
 # --- The plan ----------------------------------------------------------------------------------------

@@ -99,6 +99,7 @@ class TestRefusals:
             change(owner, business, slug)
 
         assert "slug" in refused.value.fields
+        assert refused.value.message == "Check the highlighted details."
 
     def test_an_address_another_business_has(self, business, owner, make_user):
         create_business(make_user("other@example.com"), name="Casa Manolo")

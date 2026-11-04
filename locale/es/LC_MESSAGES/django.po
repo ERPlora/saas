@@ -915,8 +915,8 @@ msgstr "Si no lo has cambiado tú, escribe cuanto antes a %(support)s."
 msgid "There is no change of email waiting for a code: ask for a new one."
 msgstr "No hay ningún cambio de correo esperando un código: pide uno nuevo."
 
-msgid "Invalid payload"
-msgstr "Los datos enviados no son válidos."
+msgid "Check the highlighted details."
+msgstr "Revisa los datos marcados."
 
 msgid "Revoke the selected keys (they stop working at once)"
 msgstr "Revocar las claves seleccionadas (dejan de funcionar al momento)"

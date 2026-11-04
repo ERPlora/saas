@@ -323,6 +323,7 @@ class TestOverHttp:
 
         assert response.status_code == 422
         assert response.json()["error"]["fields"] == {"image": message}
+        assert response.json()["error"]["message"] == "Check the highlighted details."
         assert not ProfilePhoto.objects.exists()
 
     def test_the_refusal_speaks_spanish(self, client, ana):
@@ -333,6 +334,7 @@ class TestOverHttp:
         )
 
         assert response.json()["error"]["fields"] == {"image": "Sube una imagen JPEG, PNG o WebP."}
+        assert response.json()["error"]["message"] == "Revisa los datos marcados."
 
     def test_uploads_are_rate_limited_per_account(self, client, ana):
         client.force_login(ana)

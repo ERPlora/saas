@@ -633,6 +633,8 @@ class TestWhoAndWhat:
             start(owner, shop, plan="platinum")
 
         assert set(error.value.fields) == {"plan"}
+        # No form has a plan to mark: the reason itself is the notice.
+        assert error.value.message == error.value.fields["plan"]
 
     def test_an_internal_plan_is_not_offered_to_a_customer(self, shop, owner):
         with pytest.raises(InvalidPayload):
@@ -658,6 +660,7 @@ class TestWhoAndWhat:
             with pytest.raises(InvalidPayload) as error:
                 start(owner, shop, module=slug)
             assert set(error.value.fields) == {"module"}
+            assert error.value.message == error.value.fields["module"]
 
     def test_a_module_the_business_has_is_not_sold_again(self, shop, owner, inventory):
         paid = pay(shop, modules=["inventory"])

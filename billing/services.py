@@ -50,6 +50,7 @@ from live.outbox import notify, record_event
 
 from apps.models import Module
 from base.navigation import BILLING, BUSINESSES
+from base.refusals import fields_refused
 from billing import events, queries, stripe_service, stripe_test_clocks, vat, vies
 from billing.models import (
     CheckoutAttempt,
@@ -579,18 +580,15 @@ def vat_check_run(ctx: OperationContext, data: VatCheckIn) -> dict:
     try:
         number = vat_number_for(data.country, data.vat_number)
     except MalformedVatNumber:
-        raise InvalidPayload(
-            _("Invalid payload"),
-            fields={
+        raise fields_refused(
+            {
                 "vat_number": _(
                     "Write the VAT number with its two-letter country prefix, e.g. DE123456789."
                 )
-            },
+            }
         ) from None
     if not number:
-        raise InvalidPayload(
-            _("Invalid payload"), fields={"vat_number": _("Enter a VAT number.")}
-        )
+        raise fields_refused({"vat_number": _("Enter a VAT number.")})
     if not cache.add(in_flight_key(account), 1, timeout=IN_FLIGHT_SECONDS):
         raise OperationError(
             _("A check of yours is already running: wait for its answer."),
@@ -941,10 +939,8 @@ def _upgrade_only() -> Conflict:
 def plan_sale(user, slug: str, interval: str) -> Sale:
     plan = queries.plan_on_sale(slug)
     if plan is None or not plan.is_available_to(user):
-        raise InvalidPayload(
-            _("Invalid payload"),
-            fields={"plan": _("There is no plan with this identifier.")},
-        )
+        reason = _("There is no plan with this identifier.")
+        raise InvalidPayload(reason, fields={"plan": reason})
     if not to_cents(plan.price_monthly or 0):
         raise Conflict(
             _(
@@ -972,10 +968,8 @@ def plan_sale(user, slug: str, interval: str) -> Sale:
 def module_sale(slug: str, interval: str, *, module: Module | None = None) -> Sale:
     module = module or queries.module_on_sale(slug)
     if module is None:
-        raise InvalidPayload(
-            _("Invalid payload"),
-            fields={"module": _("There is no module with this identifier on sale.")},
-        )
+        reason = _("There is no module with this identifier on sale.")
+        raise InvalidPayload(reason, fields={"module": reason})
     price_id = (
         module.stripe_price_id_annual
         if interval == "year"

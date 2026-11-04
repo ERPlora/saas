@@ -371,6 +371,7 @@ class TestWhatIsRefused:
 
         assert response.status_code == 422
         assert response.json()["error"]["fields"] == {"email": message}
+        assert response.json()["error"]["message"] == "Check the highlighted details."
         assert mail.outbox == []
 
     @pytest.mark.parametrize("taken", ["bo@example.com", "BO@example.com"])
@@ -404,6 +405,7 @@ class TestWhatIsRefused:
         )
 
         assert response.json()["error"]["fields"] == {"email": "Ese ya es tu correo."}
+        assert response.json()["error"]["message"] == "Revisa los datos marcados."
 
 
 class TestAllauthsEmailPageIsNotASecondDoor:

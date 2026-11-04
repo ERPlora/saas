@@ -421,7 +421,7 @@ Pasos:
 3. Pulsa «Cambiar dirección»: sale «El negocio se abre ahora en …» y la página enseña la nueva.
 Entra: la nueva dirección; la sesión del propietario.
 Sale: el negocio en su nueva dirección, que el negocio recibe en cuanto se guarda, y la entrada desde erplora.com y desde la aplicación instalada hacia ella; la antigua queda reservada para él. Anota `hubs.business.address_changed`.
-Si falla: una dirección reservada, «Esta dirección está reservada. Elige otra.»; una que tiene otro negocio, «Esta dirección ya está ocupada. Elige otra.»; una con mayúsculas, espacios o guiones al principio o al final, el error en el campo. La misma dirección no cambia nada. Solo el propietario la cambia; un negocio eliminado no.
+Si falla: una dirección reservada, «Esta dirección está reservada. Elige otra.»; una que tiene otro negocio, «Esta dirección ya está ocupada. Elige otra.»; una con mayúsculas, espacios o guiones al principio o al final, el error en el campo y «Revisa los datos marcados.» arriba. La misma dirección no cambia nada. Solo el propietario la cambia; un negocio eliminado no.
 Implicados: el negocio (recibe su nueva dirección), accounts (la entrada a la nueva dirección)
 
 ### HUBS-F17 Conectar un dominio propio a la web del negocio

@@ -32,6 +32,7 @@ from live.operations import INTERNAL, operation
 from live.outbox import record_event
 from PIL import Image, UnidentifiedImageError
 
+from base.refusals import fields_refused
 from billing.nif import is_legal_person_nif, is_spanish_tax_id, normalise_nif
 from fiscal import crypto, emails, events
 from fiscal.documents import DocumentRejected, decode_pdf
@@ -189,10 +190,9 @@ def _checked(data: RepresentationSubmitIn) -> dict[str, Any]:
                 (f"documents.{name}", *_document_refusal(name, refused.code))
             )
     if problems:
-        raise InvalidPayload(
-            _("Invalid payload"),
+        raise fields_refused(
+            {field: message for field, _code, message in problems},
             code=problems[0][1],
-            fields={field: message for field, _code, message in problems},
         )
     return {
         "taxpayer_tax_id": taxpayer,
@@ -348,19 +348,17 @@ def _locked(grant_id: UUID) -> RepresentationGrant:
 def _reason(value: str) -> str:
     reason = value.strip()
     if not reason:
-        raise InvalidPayload(
-            _("Invalid payload"),
+        raise fields_refused(
+            {"reason": _("Write the reason: the customer reads it.")},
             code="fiscal.reason_required",
-            fields={"reason": _("Write the reason: the customer reads it.")},
         )
     if len(reason) > REASON_MAX_LENGTH:
-        raise InvalidPayload(
-            _("Invalid payload"),
-            code="fiscal.reason_too_long",
-            fields={
+        raise fields_refused(
+            {
                 "reason": _("The reason may be %(count)d characters at most.")
                 % {"count": REASON_MAX_LENGTH}
             },
+            code="fiscal.reason_too_long",
         )
     return reason
 
@@ -479,9 +477,7 @@ def _checked_stamp(value: str) -> bytes:
     """The PNG ``value`` holds in base64, or ``InvalidPayload`` saying why it is not one the model can carry."""
 
     def refused(code: str, message: str) -> InvalidPayload:
-        return InvalidPayload(
-            _("Invalid payload"), code=code, fields={"png_base64": message}
-        )
+        return fields_refused({"png_base64": message}, code=code)
 
     not_png = refused(
         "fiscal.stamp_not_png", _("The stamp must be a PNG image.")

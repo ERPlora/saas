@@ -714,6 +714,8 @@ class TestDelete:
             self.delete(owner, business, name="Bar")
 
         assert set(refused.value.fields) == {"confirm_name"}
+        # The dialog has its own box and marks nothing: the reason itself is the notice.
+        assert refused.value.message == refused.value.fields["confirm_name"]
         business.refresh_from_db()
         assert business.status == "preparing"
 

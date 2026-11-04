@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:f6b1fdfe6d747681833597d70342b1b67487a61c429721713504a31c928a2622 -->
+<!-- generated from WORKBOOK.md sha256:674ac7dbe26531ab764803916584659bec03987785867a2fec07cfc37ddfaa3f -->
 
 ## What it is for and who it is for
 
@@ -393,7 +393,7 @@ Steps:
 3. They press "Change address": "The business now opens at …" appears and the page shows the new one.
 In: the new address; the owner's session.
 Out: the business at its new address, which the business receives as soon as it is saved, and the way in from erplora.com and from the installed app towards it; the old one stays reserved for it. Records `hubs.business.address_changed`.
-If it fails: a reserved address, "This address is reserved. Choose another one."; one another business has, "This address is taken. Choose another one."; one with capitals, spaces or hyphens at the start or the end, the error on the field. The same address changes nothing. Only the owner changes it; a deleted business does not.
+If it fails: a reserved address, "This address is reserved. Choose another one."; one another business has, "This address is taken. Choose another one."; one with capitals, spaces or hyphens at the start or the end, the error on the field and "Check the highlighted details." on top. The same address changes nothing. Only the owner changes it; a deleted business does not.
 Involved: the business (receives its new address), accounts (the way in at the new address)
 
 ### HUBS-F17 Connect an own domain to the business's website
