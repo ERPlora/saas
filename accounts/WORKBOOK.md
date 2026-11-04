@@ -706,15 +706,16 @@ Implicados: hubs (los negocios de la persona y «Abrir»)
 <!-- origen: old-saas:SAAS_AUTH-F21 -->
 Estado: hecho
 Actor: cualquier persona con cuenta
-Pantalla: Entrada, Cuenta, Negocios
+Pantalla: Entrada, Cuenta, Negocios, Tienda
 Pasos:
-1. Dentro de su negocio, la persona pulsa un enlace a erplora.com: gestionar su cuenta, su negocio o su plan.
-2. Si ese navegador tiene su sesión de erplora.com (la que usó para entrar en el negocio), la página se abre sin pedirle nada.
-3. Si no la tiene (otro navegador, el de la aplicación, o la sesión se cerró), la **Entrada** le pide entrar y, ya dentro, la lleva a esa misma página.
-Entra: la página de erplora.com a la que va (solo páginas de erplora.com).
-Sale: la página abierta con su sesión de erplora.com. El negocio no le pasa ninguna credencial a erplora.com: cada uno guarda su propia sesión.
-Si falla: una dirección que no es de erplora.com no se sigue después de entrar: lleva a la **Entrada** con su sesión. Cerrar la sesión de erplora.com no cierra la del negocio (ACCOUNTS-F09).
-Implicados: hubs (los enlaces del negocio a erplora.com)
+1. Dentro de su negocio, la persona que entró con su cuenta pulsa «Mejorar plan» o «Gestionar en erplora.com» (BASE-F11 del Hub). El negocio firma en ese momento un pase y lo abre en erplora.com, en una pestaña nueva; en la aplicación instalada, en el navegador del dispositivo.
+2. erplora.com comprueba el pase y que esa cuenta sigue siendo de ese negocio, y abre su sesión sin pedirle nada, aunque ese navegador no la tuviera: la lleva a la página del plan de ese negocio en la **Tienda** («Mejorar plan») o a ese negocio en **Negocios** («Gestionar en erplora.com»).
+3. Si ese navegador ya tenía abierta su sesión, sigue con ella hasta el mismo sitio, aunque el pase haya caducado o ya se usara (al recargar o al volver atrás). Si tenía la de otra cuenta y el pase es bueno, entra en su lugar quien pulsó el botón.
+4. Los demás enlaces a erplora.com no llevan pase: gestionar su cuenta, «Invitar en erplora.com», «Mejorar plan» de una app de pago (abre la **Tienda** de ese negocio) y el del asistente y la Bandeja de WhatsApp, entre otros. Esos enlaces y un pase que no llega abren la dirección de siempre: si ese navegador tiene su sesión de erplora.com, la página se abre sin pedirle nada; si no, la **Entrada** le pide entrar y, ya dentro, la lleva a esa misma página.
+Entra: el pase del negocio (de qué cuenta, de qué negocio y a dónde va: el plan o el negocio) o, sin pase, la página de erplora.com a la que va (solo páginas de erplora.com).
+Sale: la página abierta con su sesión de erplora.com; el negocio y erplora.com guardan cada uno la suya. El pase vale un minuto y sirve una sola vez, y solo para esa cuenta y ese negocio; viaja en la dirección, así que la respuesta no se guarda ni se cuenta a otras webs. La sesión que abre no cuenta como entrada con contraseña, código ni segundo factor (lo que los exija los vuelve a pedir), no acepta los términos por nadie y sale en **Cuenta › Seguridad › Sesiones activas**, desde donde se puede cerrar.
+Si falla: un pase que el negocio no firmó, o que no dice lo que debe, no abre nada: «Este enlace de tu negocio no es válido», con «Iniciar sesión» y «Contactar Soporte». Una cuenta que no es miembro de ese negocio, desactivada o del personal de ERPlora no entra: «No tienes acceso a este hub», que nombra solo la dirección del negocio, con «Inicio», «Volver al hub» y «Contactar Soporte». Un pase pasado su minuto o ya usado no abre nada: «Este enlace de tu negocio ha caducado», e «Iniciar sesión» sigue hasta donde iba, con «Contactar Soporte». Ninguno de los tres toca la sesión que ya hubiera en ese navegador; con ella, «Iniciar sesión» dice «Inicio». Sin pase, una dirección que no es de erplora.com no se sigue después de entrar: lleva a la **Entrada** con su sesión. Cerrar la sesión de erplora.com no cierra la del negocio (ACCOUNTS-F09).
+Implicados: hubs (el negocio en el panel), billing (el plan en la **Tienda**), el hub (firma el pase y pinta los botones, BASE-F11)
 
 ### ACCOUNTS-F30 Abrir mi cuenta sola desde la aplicación
 <!-- origen: old-saas:SAAS_DASHBOARD-F209 -->
@@ -1135,6 +1136,11 @@ Implicados: el admin de erplora.com (la ficha de la cuenta y el registro de audi
   `services.forget_deleted_actor` suelta el autor cuando su cuenta se elimina. Los modelos de cobro y de VeriFactu
   los registran sus apps. «Reportar un problema» (F38) es `accounts.support.report`: un correo en inglés a
   `SUPPORT_EMAIL` con «Reply-To» la cuenta, limitado por cuenta (`SUPPORT_REPORT_RATELIMIT`, 5 por hora).
+- El pase de vuelta desde el negocio (F29, BASE-F11 del Hub) es `GET /hub-pass/?pass=…` (`accounts/hub_pass.py`, con el
+  contrato en su cabecera): lo firma el Hub al pulsar (`base.saas_pass.create`) y el SaaS solo lo comprueba, sin
+  consultarse entre ellos (PLAN-SAAS §2). Lo que no abre nada cae en `/login/error?code=…`: `invalid_pass` (no firmado
+  como firma el Hub, o no dice lo que debe), `not_a_member&hub=<slug>` y `pass_expired&next=<a dónde iba>` (pasado su
+  minuto o ya usado). Tests: `accounts/tests/test_hub_pass.py`; e2e `tests/e2e/panel/accounts-pass.spec.ts`.
 - Parte 5 (F39–F48): la política de contenido del panel es `settings.SECURE_CSP` sobre `live.csp.base_policy` (más
   lo que añade `base/csp.py` en una página que cobra), con nonce, `strict-dynamic` y Trusted Types en producción; la
   de la web pública es `public/csp.py`, sin `strict-dynamic` ni Trusted Types a propósito, y la del admin,
@@ -1197,10 +1203,8 @@ Implicados: el admin de erplora.com (la ficha de la cuenta y el registro de audi
 
 - **En la base de datos sigue la tabla de la copia de quién está en cada negocio** (`accounts_hubmembership`), que ya
   nadie lee ni escribe — saas#220.
-- **Desde el Hub, «Mejorar plan» y «erplora.com» piden volver a entrar con la cuenta si el navegador no tenía la sesión
-  abierta** (ACCOUNTS-F29, BASE-F11 del Hub): erplora.com ya acepta el pase de un solo uso del negocio (`/hub-pass/`,
-  `hub_pass.py`); falta que el Hub lo firme al pulsar — ERPlora/hub#716, que cierra saas#190. Con ella, ACCOUNTS-F29
-  se reescribe con el pase y sus tres errores (`invalid_pass`, `not_a_member`, `pass_expired`).
+- **«Mejorar plan» del asistente y de la Bandeja de WhatsApp del Hub aún no llevan el pase** (ACCOUNTS-F29, BASE-F11 del
+  Hub): abren la dirección de siempre, que pide entrar si ese navegador no tiene la sesión — ERPlora/hub#723.
 
 ## Lo que NO hace, a propósito
 
