@@ -386,7 +386,7 @@ Estado: parcial — las herramientas del negocio, la fecha y la hora y el tipo d
 Actor: el asistente del Hub de un negocio
 Pantalla: ninguna
 Pasos:
-1. En cada turno, el modelo puede usar las herramientas del negocio (las que manda el Hub: buscar un cliente, crear una cita…) y las de erplora.com: la fecha, la hora y el día de la semana de hoy; a cómo está una moneda frente a otra, con el tipo de referencia del Banco Central Europeo y su fecha; y, si erplora.com tiene la clave del buscador, buscar en la web.
+1. En cada turno, el modelo puede usar las herramientas del negocio (las que manda el Hub: buscar un cliente, crear una cita…) y las de erplora.com: la fecha, la hora y el día de la semana de hoy; a cómo está una moneda frente a otra, con el tipo de referencia del Banco Central Europeo y su fecha; y, si erplora.com tiene la clave del buscador, buscar en la web en el idioma de la persona (en español, en España).
 2. Si el modelo pide una herramienta de erplora.com, erplora.com la ejecuta y le devuelve el resultado sin que el Hub vea nada.
 3. Si pide una del negocio, el turno se la pasa al Hub para que la ejecute (ver ASSISTANT-F12).
 4. El modelo se vuelve a llamar como mucho cinco veces en un turno; en la última ya no se le ofrecen las herramientas de erplora.com y tiene que contestar.
@@ -434,7 +434,7 @@ Pasos:
 2. erplora.com solo apunta lo que se gastó: los mensajes, los tokens y el coste del negocio en el mes.
 3. Si el proveedor falla, el registro de erplora.com solo apunta el estado de la respuesta del proveedor, nunca sus palabras (pueden citar la conversación).
 Entra: la conversación del turno.
-Sale: la respuesta para el Hub y lo gastado; ni la base de datos, ni los registros, ni el registro de auditoría guardan una palabra de la conversación, de sus adjuntos, de sus dictados, de lo leído en voz alta ni de lo buscado en la web.
+Sale: la respuesta para el Hub y lo gastado; ni la base de datos, ni los registros, ni el registro de auditoría guardan una palabra de la conversación, de sus adjuntos, de sus dictados, de lo leído en voz alta ni de lo buscado en la web; lo que devuelve una búsqueda solo llega al modelo, en ese turno, y no se guarda ni su título ni su dirección.
 Si falla: si algo de la conversación llegara a un registro, un test lo detecta antes de salir.
 Implicados: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F19, ASSISTANT-F21, ASSISTANT-F22, ASSISTANT-F23
 
@@ -708,11 +708,15 @@ propio texto por `code`.
 - **Herramientas de erplora.com** (`assistant/server_tools.py`): `current_datetime`, `currency_rate` y `web_search`;
   como mucho `MAX_ROUNDS` (5) llamadas al modelo por turno. Ganan a una herramienta del Hub con el mismo nombre.
   `currency_rate` llama a Frankfurter (`ASSISTANT_RATES_URL`; gratis, sin clave, tipos de referencia del BCE: solo salen
-  los códigos). `web_search` llama a Linkup (`ASSISTANT_SEARCH_URL`, `LINKUP_API_KEY`), que trata los datos en la UE y da
-  20 $ de crédito gratis al mes, unas 4.000 búsquedas; se descartó Tavily, el del producto viejo, porque su plan gratuito
-  (EE. UU., sin DPA, puede reutilizar las consultas) contradice lo que promete la política de privacidad. Sin clave no se
-  ofrece y el servidor arranca igual. Una consulta sale tal como la escribe el modelo: no se guarda ni se registra, y por
-  eso no hay caché. Tope por llamante en la caché: `ASSISTANT_WEB_SEARCH_RATELIMIT` (20/d) y
+  los códigos). `web_search` llama a Brave Search (`GET` a `ASSISTANT_SEARCH_URL`, con `BRAVE_SEARCH_API_KEY` en
+  `X-Subscription-Token`; la comparación que lo eligió está en saas#202): español en España (`search_lang=es`,
+  `country=ES`) y lo demás en inglés en todo el mundo (`en`, `ALL`), con el idioma que dice el modelo, porque ninguna puerta
+  del turno lo trae. Brave contesta 422 a una clave que no conoce, así que su 422 es un ERROR en el registro; por eso la
+  consulta no pasa de sus 75 palabras. Sin clave no se ofrece y el servidor arranca igual. Una consulta sale tal como la
+  escribe el modelo, con la regla de llevar solo lo que se busca: el aviso de privacidad de Brave deja las consultas fuera
+  de su DPA, y una regla al modelo no es una garantía. No se guarda ni se registra. Sus términos no dejan guardar sus
+  resultados, ni en parte, más allá de lo transitorio (§3(b)(i)): el resultado vive en la memoria del turno, solo lo ve el
+  modelo, y por eso no hay caché. Tope por llamante en la caché: `ASSISTANT_WEB_SEARCH_RATELIMIT` (20/d) y
   `ASSISTANT_CURRENCY_RATE_RATELIMIT` (60/h), con un solo presupuesto para todas las demos (`turn.tool_budget`); cinco
   resultados de hasta 1.000 caracteres. `turn.prepare` añade `server_tools.rules()` a las instrucciones del llamante, que
   rechazan lo que no sea su tema: solo la pasarela sabe qué se ofrece, y así ni el Hub ni el panel cambian. `turn.run`

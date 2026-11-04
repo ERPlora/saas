@@ -75,7 +75,11 @@ describe('answerTo', () => {
   });
 
   it('asks the web when asked about a law, and answers naming no source', () => {
-    expect(asked(answerTo([ENGLISH, { role: 'user', content: 'What does the new law say?' }]).frames)?.name).toBe('web_search');
+    const asking = asked(answerTo([ENGLISH, { role: 'user', content: 'What does the new law say?' }]).frames);
+    expect(asking?.name).toBe('web_search');
+    expect(JSON.parse(asking?.arguments ?? '{}')).toEqual({ query: 'What does the new law say?', language: 'en' });
+    const pregunta = asked(answerTo([SPANISH, { role: 'user', content: '¿Qué dice la nueva ley?' }]).frames);
+    expect(JSON.parse(pregunta?.arguments ?? '{}')).toEqual({ query: '¿Qué dice la nueva ley?', language: 'es' });
     const found = JSON.stringify({ results: [{ url: LONG_ADDRESS }] });
     const answer = said(answerTo(answered(ENGLISH, 'What does the new law say?', 'web_search', found)).frames);
     expect(answer.length).toBeGreaterThan(0);
@@ -196,6 +200,19 @@ describe('startProvider', () => {
     expect(answer.status).toBe(200);
     expect(await answer.json()).toEqual({ text: DICTATION });
     expect(provider.seen.map((request) => request.path)).toEqual(['/v1/audio/transcriptions']);
+  });
+
+  it('plays the search as Brave does: GET, its answer under web.results, and remembers what it was asked', async () => {
+    const provider = await startProvider(0);
+    close = provider.close;
+    const origin = provider.url.replace(/\/v1$/, '');
+
+    const answer = await fetch(`${origin}/res/v1/web/search?q=ley&search_lang=es&country=ES`);
+
+    expect(answer.status).toBe(200);
+    expect(await answer.json()).toMatchObject({ type: 'search', web: { results: [{ title: 'BOE', url: LONG_ADDRESS }] } });
+    expect(provider.seen).toEqual([{ path: '/res/v1/web/search', query: 'q=ley&search_lang=es&country=ES', body: null }]);
+    expect((await fetch(`${origin}/res/v1/web/search`, { method: 'POST', body: '{}' })).status).toBe(404);
   });
 
   it('answers 404 to a path it does not serve', async () => {

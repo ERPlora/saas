@@ -187,8 +187,8 @@ function panelDjangoEnv(vitePort: number, stack: Stack, real: boolean): Record<s
       ...(real
         ? {}
         : {
-            LINKUP_API_KEY: 'e2e-made-up-key',
-            ASSISTANT_SEARCH_URL: `http://127.0.0.1:${stack.aiProviderPort}/v1/search`,
+            BRAVE_SEARCH_API_KEY: 'e2e-made-up-key',
+            ASSISTANT_SEARCH_URL: `http://127.0.0.1:${stack.aiProviderPort}/res/v1/web/search`,
             ASSISTANT_RATES_URL: `http://127.0.0.1:${stack.aiProviderPort}/v1/latest`,
           }),
     },

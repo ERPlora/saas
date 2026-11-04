@@ -52,7 +52,10 @@ for (const language of ['es', 'en'] as const) {
     // The model asked for both; the second answer went back to it with the page and the rate never reached the browser.
     const paths = provider().seen.map((seen) => seen.path);
     expect(paths).toContain('/v1/latest');
-    expect(paths).toContain('/v1/search');
+    // The provider stays up between the two languages: this language's search is the last.
+    const search = provider().seen.filter((seen) => seen.path === '/res/v1/web/search').at(-1);
+    expect(new URLSearchParams(search?.query).get('search_lang')).toBe(language);
+    expect(new URLSearchParams(search?.query).get('country')).toBe(language === 'es' ? 'ES' : 'ALL');
 
     for (const size of SIZES) {
       await page.setViewportSize({ width: size.width, height: size.height });

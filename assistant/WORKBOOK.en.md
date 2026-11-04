@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:7683ab041e6a8b99fd1ecb4ac592f5e8aa8d096cff09437b520a56bee0c3dfb0 -->
+<!-- generated from WORKBOOK.md sha256:b671af93c646e3b1d652b1c67c2764c9c9dce1303b23307e0dc4740d028c3004 -->
 
 ## What it is for and who uses it
 
@@ -359,7 +359,7 @@ Status: partial — the business's tools, the date and time and the exchange rat
 Actor: the Hub's assistant of a business
 Screen: none
 Steps:
-1. In each turn, the model can use the business's tools (those the Hub sends: find a customer, create an appointment…) and erplora.com's: today's date, time and weekday; what one currency is worth in another, at the European Central Bank's reference rate and its date; and, if erplora.com has the search engine's key, searching the web.
+1. In each turn, the model can use the business's tools (those the Hub sends: find a customer, create an appointment…) and erplora.com's: today's date, time and weekday; what one currency is worth in another, at the European Central Bank's reference rate and its date; and, if erplora.com has the search engine's key, searching the web in the person's language (in Spanish, in Spain).
 2. If the model asks for a tool of erplora.com, erplora.com runs it and gives it the result without the Hub seeing anything.
 3. If it asks for one of the business, the turn passes it to the Hub to run it (see ASSISTANT-F12).
 4. The model is asked again at most five times in a turn; in the last one erplora.com's tools are no longer offered and it has to answer.
@@ -404,7 +404,7 @@ Steps:
 2. erplora.com only notes what was spent: the business's messages, tokens and cost in the month.
 3. If the provider fails, erplora.com's log only notes the status of the provider's answer, never its words (they may quote the conversation).
 In: the turn's conversation.
-Out: the answer for the Hub and what was spent; neither the database, nor the logs, nor the audit log keep a word of the conversation, its attachments, its dictations nor what is read aloud or what was searched on the web.
+Out: the answer for the Hub and what was spent; neither the database, nor the logs, nor the audit log keep a word of the conversation, its attachments, its dictations nor what is read aloud or what was searched on the web; what a search returns only reaches the model, in that turn, and neither its title nor its address is kept.
 If it fails: if something of the conversation reached a log, a test catches it before it ships.
 Involved: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F19, ASSISTANT-F21, ASSISTANT-F22, ASSISTANT-F23
 

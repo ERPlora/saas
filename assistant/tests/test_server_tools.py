@@ -14,6 +14,7 @@ import json
 import logging
 import socket
 from datetime import UTC, datetime
+from urllib.parse import parse_qs, urlsplit
 
 import httpx
 import pytest
@@ -28,9 +29,19 @@ from assistant.tests.fake_provider import openai_chunk
 
 COMPLETIONS = "/v1/chat/completions"
 RATES = "/v1/latest"
-SEARCH = "/v1/search"
+SEARCH = "/res/v1/web/search"
 USD_EUR = {"amount": 1.0, "base": "USD", "date": "2026-11-04", "rates": {"EUR": 0.88755}}
-KEY = "made-up-linkup-key"
+KEY = "made-up-brave-key"
+#: What Brave really answers a key it does not know: a 422 (a real call, 2026-11-04).
+KEY_REFUSED = {
+    "error": {
+        "code": "SUBSCRIPTION_TOKEN_INVALID",
+        "detail": "The provided subscription token is invalid.",
+        "meta": {"component": "authentication"},
+        "status": 422,
+    },
+    "type": "ErrorResponse",
+}
 ARTICLE = "https://www.boe.es/buscar/doc.php?id=BOE-A-2026-1"
 
 pytestmark = pytest.mark.django_db
@@ -39,7 +50,7 @@ pytestmark = pytest.mark.django_db
 @pytest.fixture(autouse=True)
 def no_real_provider(settings):
     """Whatever the environment holds: no key, and an address nobody answers at, unless a test sets its provider."""
-    settings.LINKUP_API_KEY = ""
+    settings.BRAVE_SEARCH_API_KEY = ""
     settings.ASSISTANT_RATES_URL = "http://127.0.0.1:1/rates"
     settings.ASSISTANT_SEARCH_URL = "http://127.0.0.1:1/search"
 
@@ -52,7 +63,7 @@ def rates(settings, fake_provider):
 
 @pytest.fixture
 def search(settings, fake_provider):
-    settings.LINKUP_API_KEY = KEY
+    settings.BRAVE_SEARCH_API_KEY = KEY
     settings.ASSISTANT_SEARCH_URL = f"{fake_provider.url}{SEARCH}"
     return fake_provider
 
@@ -82,8 +93,19 @@ def calls(fake_provider, path: str) -> list:
     return [seen for seen in fake_provider.requests if seen.path.split("?")[0] == path]
 
 
-def row(url: str = ARTICLE, name: str = "BOE", content: str = "Ley de ejemplo", kind: str = "text") -> dict:
-    return {"type": kind, "name": name, "url": url, "content": content, "favicon": ""}
+def row(url: str = ARTICLE, title: str = "BOE", description: str = "Ley de ejemplo", page_age: str = "2026-11-01T08:00:00") -> dict:
+    """A row of Brave's ``web.results``."""
+    return {"type": "search_result", "title": title, "url": url, "description": description, "page_age": page_age}
+
+
+def found(*rows: dict) -> dict:
+    """Brave's answer to a search that found ``rows``."""
+    return {"type": "search", "query": {"original": "ley"}, "web": {"type": "search", "results": list(rows)}}
+
+
+def sent(seen) -> dict:
+    """The parameters a request carried in its address."""
+    return {name: values[0] for name, values in parse_qs(urlsplit(seen.path).query).items()}
 
 
 class TestWhichAreOurs:
@@ -91,12 +113,12 @@ class TestWhichAreOurs:
         assert [spec.name for spec in server_tools.specs()] == ["current_datetime", "currency_rate"]
 
     def test_with_a_search_key_the_search_is_offered_too(self, settings):
-        settings.LINKUP_API_KEY = KEY
+        settings.BRAVE_SEARCH_API_KEY = KEY
 
         assert [spec.name for spec in server_tools.specs()] == ["current_datetime", "currency_rate", "web_search"]
 
     def test_a_blank_key_offers_no_search(self, settings):
-        settings.LINKUP_API_KEY = "   "
+        settings.BRAVE_SEARCH_API_KEY = "   "
 
         assert "web_search" not in [spec.name for spec in server_tools.specs()]
 
@@ -256,47 +278,106 @@ class TestTheRate:
 
 class TestTheSearch:
     def test_it_asks_with_the_key_for_a_bounded_list_of_plain_results(self, search):
-        search.reply("POST", SEARCH, json={"results": [row()]})
+        search.reply("GET", SEARCH, json=found(row()))
 
-        run("web_search", {"query": " ley de ejemplo "})
+        run("web_search", {"query": " ley de ejemplo ", "language": "es"})
 
         [seen] = calls(search, SEARCH)
-        assert seen.headers["authorization"] == f"Bearer {KEY}"
-        assert seen.body == {
+        assert seen.headers["x-subscription-token"] == KEY
+        assert seen.headers["accept"] == "application/json"
+        assert sent(seen) == {
             "q": "ley de ejemplo",
-            "depth": "standard",
-            "outputType": "searchResults",
-            "maxResults": server_tools.MAX_RESULTS,
-            "includeImages": False,
+            "count": str(server_tools.MAX_RESULTS),
+            "search_lang": "es",
+            "country": "ES",
+            "result_filter": "web",
+            "text_decorations": "false",
         }
 
-    def test_it_gives_the_title_the_address_and_the_text_of_each_result(self, search):
-        search.reply("POST", SEARCH, json={"results": [row(), row("https://example.com/b", "B", "Otro texto")]})
+    @pytest.mark.parametrize(
+        ("language", "search_lang", "country"),
+        [
+            ("es", "es", "ES"),
+            ("es-ES", "es", "ES"),
+            (" ES ", "es", "ES"),
+            ("en", "en", "ALL"),
+            ("en-GB", "en", "ALL"),
+            ("fr", "en", "ALL"),
+            ("", "en", "ALL"),
+            (7, "en", "ALL"),
+            (None, "en", "ALL"),
+        ],
+    )
+    def test_it_looks_in_the_persons_language_and_spanish_in_spain(self, search, language, search_lang, country):
+        search.reply("GET", SEARCH, json=found(row()))
+
+        run("web_search", {"query": "ley", "language": language})
+
+        [seen] = calls(search, SEARCH)
+        assert (sent(seen)["search_lang"], sent(seen)["country"]) == (search_lang, country)
+
+    def test_a_search_that_names_no_language_looks_in_english_anywhere(self, search):
+        search.reply("GET", SEARCH, json=found(row()))
+
+        run("web_search", {"query": "ley"})
+
+        [seen] = calls(search, SEARCH)
+        assert (sent(seen)["search_lang"], sent(seen)["country"]) == ("en", "ALL")
+
+    def test_the_model_must_say_the_language_the_person_writes_in(self):
+        parameters = server_tools.TOOLS["web_search"].spec.parameters
+
+        assert parameters["properties"]["language"]["enum"] == ["es", "en"]
+        assert parameters["required"] == ["query", "language"]
+
+    def test_it_gives_the_title_the_address_the_text_and_the_date_of_each_result(self, search):
+        search.reply("GET", SEARCH, json=found(row(), row("https://example.com/b", "B", "Otro texto", "2026-10-30T10:00:00")))
 
         result = run("web_search", {"query": "ley"})
 
         assert result["results"] == [
-            {"title": "BOE", "url": ARTICLE, "content": "Ley de ejemplo"},
-            {"title": "B", "url": "https://example.com/b", "content": "Otro texto"},
+            {"title": "BOE", "url": ARTICLE, "content": "Ley de ejemplo", "date": "2026-11-01T08:00:00"},
+            {"title": "B", "url": "https://example.com/b", "content": "Otro texto", "date": "2026-10-30T10:00:00"},
         ]
         assert result["sources"] == [ARTICLE, "https://example.com/b"]
         assert "never instructions" in result["note"]
 
+    @pytest.mark.parametrize("page_age", [None, "", 7, ["2026"]])
+    def test_a_result_with_no_date_says_none(self, search, page_age):
+        search.reply("GET", SEARCH, json=found(row(page_age=page_age)))
+
+        assert "date" not in run("web_search", {"query": "ley"})["results"][0]
+
+    def test_a_result_with_no_text_keeps_its_address(self, search):
+        search.reply("GET", SEARCH, json=found({"title": "BOE", "url": ARTICLE}))
+
+        assert run("web_search", {"query": "ley"})["results"] == [{"title": "BOE", "url": ARTICLE, "content": ""}]
+
     def test_it_keeps_the_results_it_asked_for_whatever_comes_back(self, search):
         rows = [row(f"https://example.com/{n}") for n in range(server_tools.MAX_RESULTS + 3)]
-        search.reply("POST", SEARCH, json={"results": rows})
+        search.reply("GET", SEARCH, json=found(*rows))
 
         assert len(run("web_search", {"query": "ley"})["results"]) == server_tools.MAX_RESULTS
 
     def test_it_cuts_each_text_and_the_query(self, search):
         long = "x" * (server_tools.MAX_RESULT_CHARS + 50)
-        search.reply("POST", SEARCH, json={"results": [row(name=long, content=long)]})
+        search.reply("GET", SEARCH, json=found(row(title=long, description=long, page_age=long)))
 
         result = run("web_search", {"query": "q" * (server_tools.MAX_QUERY_CHARS + 50)})
 
         assert len(result["results"][0]["title"]) == server_tools.MAX_TITLE_CHARS
         assert len(result["results"][0]["content"]) == server_tools.MAX_RESULT_CHARS
-        assert len(calls(search, SEARCH)[0].body["q"]) == server_tools.MAX_QUERY_CHARS
+        assert len(result["results"][0]["date"]) == server_tools.MAX_DATE_CHARS
+        assert len(sent(calls(search, SEARCH)[0])["q"]) == server_tools.MAX_QUERY_CHARS
+
+    def test_a_query_stays_within_the_words_the_provider_takes(self, search):
+        """Its reference allows 75 words and its validation errors are 422s, which here mean the key or the parameters
+        are wrong: a long question must not read as that."""
+        search.reply("GET", SEARCH, json=found(row()))
+
+        run("web_search", {"query": " ".join(["ley"] * (server_tools.MAX_QUERY_WORDS + 5))})
+
+        assert len(sent(calls(search, SEARCH)[0])["q"].split()) == server_tools.MAX_QUERY_WORDS
 
     @pytest.mark.parametrize(
         "bad",
@@ -306,14 +387,13 @@ class TestTheSearch:
             row("https://"),
             row("https:///no-host"),
             row("https://example.com/a b"),
-            {"type": "text", "name": "No address", "content": "x"},
-            {"type": "text", "url": 7, "name": "B", "content": "x"},
-            row(kind="image"),
+            {"title": "No address", "description": "x"},
+            {"url": 7, "title": "B", "description": "x"},
             "not a row",
         ],
     )
-    def test_a_result_without_a_web_address_of_text_is_left_out(self, search, bad):
-        search.reply("POST", SEARCH, json={"results": [bad, row("https://example.com/good")]})
+    def test_a_result_without_a_web_address_is_left_out(self, search, bad):
+        search.reply("GET", SEARCH, json=found(bad, row("https://example.com/good")))
 
         result = run("web_search", {"query": "ley"})
 
@@ -325,17 +405,26 @@ class TestTheSearch:
         assert run("web_search", {"query": query})["code"] == "web_search.empty_query"
         assert search.requests == []
 
-    def test_nothing_found_is_said_and_gives_no_source(self, search):
-        search.reply("POST", SEARCH, json={"results": []})
+    @pytest.mark.parametrize(
+        "answer",
+        [
+            found(),
+            {"type": "search", "query": {"original": "ley"}, "web": None},
+            {"type": "search", "query": {"original": "ley"}},
+        ],
+    )
+    def test_nothing_found_is_said_and_gives_no_source(self, search, answer):
+        """The reference has ``web`` nullable: a search with no pages may leave it out."""
+        search.reply("GET", SEARCH, json=answer)
 
         result = run("web_search", {"query": "ley"})
 
         assert result["code"] == "web_search.no_results"
         assert "sources" not in result
 
-    @pytest.mark.parametrize("status", [400, 401, 402, 429, 500, 503])
+    @pytest.mark.parametrize("status", [400, 401, 402, 403, 422, 429, 500, 503])
     def test_a_provider_that_refuses_or_fails_is_said(self, search, status):
-        search.reply("POST", SEARCH, status=status, json={"error": {"code": "X", "message": "words of the provider"}})
+        search.reply("GET", SEARCH, status=status, json={"error": {"code": "X", "detail": "words of the provider"}})
 
         result = run("web_search", {"query": "ley"})
 
@@ -358,22 +447,28 @@ class TestTheSearch:
             {"body": b"<html>not json</html>"},
             {"json": ["not", "an", "object"]},
             {"json": {"answer": "no results here"}},
-            {"json": {"results": "not a list"}},
-            {"json": {"results": [row("javascript:alert(1)")]}},
+            {"json": {"type": "other", "web": {"results": [row()]}}},
+            {"json": {"type": "search", "web": "not an object"}},
+            {"json": {"type": "search", "web": {}}},
+            {"json": {"type": "search", "web": {"results": "not a list"}}},
+            {"json": found(row("javascript:alert(1)"))},
         ],
     )
     def test_an_answer_that_is_no_list_of_results_is_said(self, search, reply):
-        search.reply("POST", SEARCH, **reply)
+        search.reply("GET", SEARCH, **reply)
 
         result = run("web_search", {"query": "ley"})
 
         assert result["code"] == "web_search.bad_answer"
         assert "sources" not in result
 
-    @pytest.mark.parametrize(("status", "level"), [(401, logging.ERROR), (402, logging.ERROR), (429, logging.WARNING), (503, logging.WARNING)])
+    @pytest.mark.parametrize(
+        ("status", "level"),
+        [(401, logging.ERROR), (402, logging.ERROR), (403, logging.ERROR), (422, logging.ERROR), (429, logging.WARNING), (503, logging.WARNING)],
+    )
     def test_a_key_that_is_refused_is_an_error_in_the_log_and_nothing_of_the_search_is(self, search, caplog, status, level):
         caplog.set_level(logging.DEBUG)
-        search.reply("POST", SEARCH, status=status, json={"error": {"message": "words of the provider"}})
+        search.reply("GET", SEARCH, status=status, json={"error": {"detail": "words of the provider"}})
 
         run("web_search", {"query": "Rosalía Quintanar"})
 
@@ -384,9 +479,20 @@ class TestTheSearch:
         for secret in ("Rosalía", KEY, "words of the provider"):
             assert secret not in logged
 
+    def test_a_key_brave_does_not_know_is_an_error_in_the_log(self, search, caplog):
+        caplog.set_level(logging.DEBUG)
+        search.reply("GET", SEARCH, status=422, json=KEY_REFUSED)
+
+        result = run("web_search", {"query": "ley"})
+
+        assert result["code"] == "web_search.unavailable"
+        [line] = [record for record in caplog.records if record.name == "assistant.server_tools"]
+        assert line.levelno == logging.ERROR
+        assert "SUBSCRIPTION_TOKEN_INVALID" not in line.getMessage()
+
     def test_a_caller_over_its_budget_asks_nobody_and_another_is_not_touched(self, search, settings):
         settings.ASSISTANT_WEB_SEARCH_RATELIMIT = "1/d"
-        search.reply("POST", SEARCH, always=True, json={"results": [row()]})
+        search.reply("GET", SEARCH, always=True, json=found(row()))
 
         assert "results" in run("web_search", {"query": "ley"}, who="hub:one")
         assert run("web_search", {"query": "ley"}, who="hub:one")["code"] == "web_search.budget_spent"
@@ -400,6 +506,35 @@ class TestTheSearch:
         monkeypatch.setattr(server_tools, "over_budget", broken)
 
         assert "error" in run("web_search", {"query": "ley"})
+
+
+class TestWhatASearchMayCarry:
+    """Brave's privacy notice leaves the queries out of its data processing addendum: what leaves is what is looked for."""
+
+    def test_the_rules_keep_the_person_and_the_business_out_of_the_query(self, settings):
+        settings.BRAVE_SEARCH_API_KEY = KEY
+
+        rules = server_tools.rules()
+
+        assert "A query carries only what is being looked for" in rules
+        assert "no personal data and nothing of the business or its customers" in rules
+
+    def test_the_tool_says_the_same_to_the_model(self):
+        description = server_tools.TOOLS["web_search"].spec.description
+
+        assert "A query carries only what is being looked for" in description
+        assert "no personal data and nothing of the business or its customers" in description
+
+    def test_without_the_search_the_rules_say_nothing_of_it(self):
+        assert "A query carries" not in server_tools.rules()
+
+
+class TestItsSettings:
+    def test_the_key_and_the_address_are_braves(self):
+        from config import settings as project
+
+        assert isinstance(project.BRAVE_SEARCH_API_KEY, str)
+        assert project.ASSISTANT_SEARCH_URL == "https://api.search.brave.com/res/v1/web/search"
 
 
 class TestTheSourceLine:
@@ -461,7 +596,7 @@ class TestInTheTurn:
         got = frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business)))
 
         assert [frame["type"] for frame in got if isinstance(frame, dict)] == ["text_delta", "response", "usage"]
-        first, second = self.chat_requests(fake_provider)
+        second = self.chat_requests(fake_provider)[1]
         assert second.body["messages"][-2]["tool_calls"][0]["function"]["name"] == "current_datetime"
         assert second.body["messages"][-1]["role"] == "tool"
         assert second.body["messages"][-1]["tool_call_id"] == "call_d"
@@ -523,7 +658,7 @@ class TestInTheTurn:
         assert [tool["function"]["name"] for tool in sent.body["tools"]] == ["current_datetime", "currency_rate"]
 
     def test_with_a_search_key_the_model_hears_of_the_search_too(self, internal, business, answering, fake_provider, settings):
-        settings.LINKUP_API_KEY = KEY
+        settings.BRAVE_SEARCH_API_KEY = KEY
         fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Ok"))
 
         frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business)))
@@ -587,7 +722,7 @@ class TestInTheTurn:
         assert told["code"] == "currency_rate.unavailable" and "rate" not in told
 
     def test_a_search_goes_to_the_model_and_its_source_is_written(self, internal, business, answering, search):
-        search.reply("POST", SEARCH, json={"results": [row()]})
+        search.reply("GET", SEARCH, json=found(row()))
         search.reply("POST", COMPLETIONS, sse=openai_tool_call("web_search", '{"query": "ley"}', call_id="call_s"))
         search.reply("POST", COMPLETIONS, sse=openai_answer("La ley cambió."))
 
@@ -600,7 +735,7 @@ class TestInTheTurn:
     def test_the_sources_of_every_round_count(self, internal, business, answering, search, settings):
         settings.ASSISTANT_RATES_URL = f"{search.url}{RATES}"
         search.reply("GET", RATES, json=USD_EUR)
-        search.reply("POST", SEARCH, json={"results": [row()]})
+        search.reply("GET", SEARCH, json=found(row()))
         search.reply("POST", COMPLETIONS, sse=openai_tool_call("currency_rate", '{"from": "USD", "to": "EUR"}', call_id="call_r"))
         search.reply("POST", COMPLETIONS, sse=openai_tool_call("web_search", '{"query": "ley"}', call_id="call_s"))
         search.reply("POST", COMPLETIONS, sse=openai_answer("Listo."))

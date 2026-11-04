@@ -14,7 +14,7 @@
 // - what a currency is worth (`dólar`, `dollar`): asks for erplora.com's `currency_rate`, then gives it naming no source;
 // - a law (`ley`, `law`): asks for erplora.com's `web_search`, then answers naming no source;
 // - anything else: a short greeting.
-// It also plays the providers of those two tools, Frankfurter (`/v1/latest`) and Linkup (`/v1/search`), for a panel whose
+// It also plays the providers of those two tools, Frankfurter (`/v1/latest`) and Brave (`/res/v1/web/search`), for a panel whose
 // `ASSISTANT_RATES_URL` and `ASSISTANT_SEARCH_URL` point here (panel/project.ts, `aiProviderPort`).
 // Each answer comes in pieces, a little apart, so the panel paints the bubble «writing» before the first word.
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
@@ -38,6 +38,8 @@ export interface Message {
 
 export interface Seen {
   path: string;
+  /** What the address carried after its `?`. */
+  query: string;
   body: Record<string, unknown> | null;
 }
 
@@ -179,7 +181,7 @@ export function answerTo(messages: Message[]): Answer {
   if (cancelOf(question)) return call('hubs__business__list', {});
   if (/negocios|businesses/i.test(question)) return call('hubs__business__list', {});
   if (/d[oó]ll?ar/i.test(question)) return call('currency_rate', { from: 'USD', to: 'EUR' });
-  if (/\b(?:ley|law)\b/i.test(question)) return call('web_search', { query: question });
+  if (/\b(?:ley|law)\b/i.test(question)) return call('web_search', { query: question, language: es ? 'es' : 'en' });
   return text(es ? 'Hola, soy el asistente de prueba.' : 'Hello, I am the test assistant.');
 }
 
@@ -212,9 +214,9 @@ export interface Provider {
 export async function startProvider(port: number): Promise<Provider> {
   const seen: Seen[] = [];
   const server: Server = createServer(async (request: IncomingMessage, response: ServerResponse) => {
-    const path = (request.url ?? '').split('?', 1)[0];
+    const [path, query = ''] = (request.url ?? '').split('?', 2);
     const body = await read(request);
-    seen.push({ path, body });
+    seen.push({ path, query, body });
     const json = (status: number, value: unknown) => {
       response.writeHead(status, { 'Content-Type': 'application/json' });
       response.end(JSON.stringify(value));
@@ -232,8 +234,14 @@ export async function startProvider(port: number): Promise<Provider> {
     }
     if (path === '/v1/audio/transcriptions') return json(200, { text: DICTATION });
     if (path === '/v1/latest') return json(200, { amount: 1, base: 'USD', date: '2026-11-04', rates: { EUR: 0.88755 } });
-    if (path === '/v1/search') {
-      return json(200, { results: [{ type: 'text', name: 'BOE', url: LONG_ADDRESS, content: 'La ley entra en vigor este mes.', favicon: '' }] });
+    if (request.method === 'GET' && path === '/res/v1/web/search') {
+      return json(200, {
+        type: 'search',
+        web: {
+          type: 'search',
+          results: [{ title: 'BOE', url: LONG_ADDRESS, description: 'La ley entra en vigor este mes.', page_age: '2026-11-01T08:00:00' }],
+        },
+      });
     }
     if (path === '/v1/chat/completions') {
       const answer = answerTo((body?.messages as Message[] | undefined) ?? []);

@@ -9,8 +9,10 @@ reach a log either. Checked by dumping the whole database and reading every log 
 import io
 import json
 import logging
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
+from django.core.cache import cache
 from django.core.management import call_command
 from django.test import Client
 
@@ -21,7 +23,15 @@ SECRET_QUESTION = "Mi cliente Rosalía Quintanar debe 400 euros"
 SECRET_ANSWER = "Apunta la deuda de Rosalía Quintanar"
 SECRET_RESULT = "Una página sobre Rosalía Quintanar"
 INSTRUCTIONS = "Negocio Bar Manolo, cajera Iratxe Bengoetxea"
+SECRET_ADDRESS = "https://example.com/quintanar"
 COMPLETIONS = "/v1/chat/completions"
+SEARCH = "/res/v1/web/search"
+SEARCH_KEY = "made-up-brave-key"
+#: Brave's answer: a page whose title and text are both the secret.
+FOUND = {
+    "type": "search",
+    "web": {"type": "search", "results": [{"title": SECRET_RESULT, "url": SECRET_ADDRESS, "description": SECRET_RESULT}]},
+}
 
 pytestmark = pytest.mark.django_db
 
@@ -38,12 +48,30 @@ def every_log(caplog):
     return caplog
 
 
+def cached() -> bytes:
+    """All the (local memory) cache holds, keys and values; ``_cache`` is its pickled store."""
+    return b"".join(key.encode() + value for key, value in cache._cache.items())
+
+
 def assert_forgotten(every_log, *phrases):
     kept = everything_kept()
     logged = "\n".join(record.getMessage() for record in every_log.records)
+    held = cached()
     for phrase in phrases:
         assert phrase not in kept
         assert phrase not in logged
+        assert phrase.encode() not in held
+
+
+@pytest.fixture
+def a_search(settings, fake_provider):
+    """A turn whose model searches, gets the secret page and answers naming no source."""
+    settings.BRAVE_SEARCH_API_KEY = SEARCH_KEY
+    settings.ASSISTANT_SEARCH_URL = f"{fake_provider.url}{SEARCH}"
+    fake_provider.reply("GET", SEARCH, json=FOUND)
+    fake_provider.reply("POST", COMPLETIONS, sse=openai_tool_call("web_search", json.dumps({"query": SECRET_QUESTION})))
+    fake_provider.reply("POST", COMPLETIONS, sse=openai_answer(SECRET_ANSWER))
+    return fake_provider
 
 
 def test_a_live_turn_leaves_nothing_of_what_was_said(internal, business, answering, fake_provider, every_log):
@@ -61,13 +89,7 @@ def test_a_live_turn_leaves_nothing_of_what_was_said(internal, business, answeri
     assert_forgotten(every_log, SECRET_QUESTION, SECRET_ANSWER, INSTRUCTIONS, "Rosalía")
 
 
-def test_a_search_leaves_nothing_of_what_was_searched(internal, business, answering, fake_provider, every_log, settings):
-    settings.LINKUP_API_KEY = "made-up-linkup-key"
-    settings.ASSISTANT_SEARCH_URL = f"{fake_provider.url}/v1/search"
-    fake_provider.reply("POST", "/v1/search", json={"results": [{"type": "text", "name": SECRET_RESULT, "url": "https://example.com/a", "content": SECRET_RESULT}]})
-    fake_provider.reply("POST", COMPLETIONS, sse=openai_tool_call("web_search", json.dumps({"query": SECRET_QUESTION})))
-    fake_provider.reply("POST", COMPLETIONS, sse=openai_answer(SECRET_ANSWER))
-
+def test_a_search_leaves_nothing_of_what_was_searched(internal, business, answering, a_search, every_log):
     frames(
         door(
             Client(),
@@ -76,8 +98,50 @@ def test_a_search_leaves_nothing_of_what_was_searched(internal, business, answer
         )
     )
 
-    assert [seen.body["q"] for seen in fake_provider.requests if seen.path == "/v1/search"] == [SECRET_QUESTION]
-    assert_forgotten(every_log, SECRET_QUESTION, SECRET_ANSWER, SECRET_RESULT, "Rosalía", "made-up-linkup-key")
+    [seen] = [seen for seen in a_search.requests if seen.path.startswith(SEARCH)]
+    assert parse_qs(urlsplit(seen.path).query)["q"] == [SECRET_QUESTION]
+    assert_forgotten(every_log, SECRET_QUESTION, SECRET_ANSWER, SECRET_RESULT, SECRET_ADDRESS, "Rosalía", SEARCH_KEY)
+
+
+def test_what_a_search_returned_goes_to_the_model_and_no_further_in_a_live_turn(internal, business, answering, a_search):
+    """Brave's terms allow no keeping of its results (§3(b)(i)): the caller keeps the conversation, so what it gets is all
+    that can be kept. Its answer and where it comes from, never the page."""
+    got = frames(door(Client(), "/internal/assistant/chat/stream", {"hub": business.slug, "messages": [{"role": "user", "content": SECRET_QUESTION}]}))
+
+    second = [seen for seen in a_search.requests if seen.path == COMPLETIONS][1]
+    assert SECRET_RESULT in second.body["messages"][-1]["content"]
+    said = json.dumps(got, ensure_ascii=False)
+    assert SECRET_RESULT not in said
+    assert [frame["text"] for frame in got if isinstance(frame, dict) and frame.get("type") == "text_delta"] == [SECRET_ANSWER, f"\n\n{SECRET_ADDRESS}"]
+
+
+def test_what_a_search_returned_goes_to_the_model_and_no_further_in_a_turn_at_once(internal, business, answering, a_search, every_log):
+    response = door(Client(), "/internal/assistant/chat", {"hub": business.slug, "messages": [{"role": "user", "content": SECRET_QUESTION}]})
+
+    assert response.status_code == 200
+    said = json.dumps(response.json(), ensure_ascii=False)
+    assert SECRET_ANSWER in said
+    assert SECRET_RESULT not in said
+    assert_forgotten(every_log, SECRET_QUESTION, SECRET_ANSWER, SECRET_RESULT, SECRET_ADDRESS, "Rosalía", SEARCH_KEY)
+
+
+def test_what_a_search_returned_goes_to_the_model_and_no_further_in_the_panel(client, owner, plans, answering, a_search, every_log):
+    """The panel keeps its conversation in the browser's tab, from these frames (``done``'s ``append`` too)."""
+    client.force_login(owner)
+
+    response = client.post(
+        "/api/assistant/turn",
+        {"messages": [{"role": "user", "content": SECRET_QUESTION}]},
+        content_type="application/json",
+        HTTP_HOST="localhost:8001",
+    )
+    got = frames(response)
+
+    said = json.dumps(got, ensure_ascii=False)
+    assert SECRET_ANSWER in said
+    assert SECRET_ADDRESS in said
+    assert SECRET_RESULT not in said
+    assert_forgotten(every_log, SECRET_QUESTION, SECRET_ANSWER, SECRET_RESULT, SECRET_ADDRESS, "Rosalía", SEARCH_KEY)
 
 
 def test_a_turn_at_once_with_a_tool_leaves_nothing_either(internal, business, answering, fake_provider, every_log):

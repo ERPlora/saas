@@ -921,8 +921,8 @@ AZURE_SPEECH_KEY = config("AZURE_SPEECH_KEY", default="")
 # reads its key here, from the environment and not from the database, and without it is not offered: the assistant
 # just does not search and the server starts as usual. Before filling the key in production, the privacy policy must
 # name the provider (saas#277). Its addresses move only for the e2e's double.
-LINKUP_API_KEY = config("LINKUP_API_KEY", default="")
-ASSISTANT_SEARCH_URL = config("ASSISTANT_SEARCH_URL", default="https://api.linkup.so/v1/search")
+BRAVE_SEARCH_API_KEY = config("BRAVE_SEARCH_API_KEY", default="")
+ASSISTANT_SEARCH_URL = config("ASSISTANT_SEARCH_URL", default="https://api.search.brave.com/res/v1/web/search")
 ASSISTANT_RATES_URL = config("ASSISTANT_RATES_URL", default="https://api.frankfurter.dev/v1/latest")
 
 # WhatsApp, erplora.com's side (whatsapp/, PLAN-SAAS §1.1, round 2026-10-15b): Meta's app («ERPlora Inbox»), its
