@@ -30,6 +30,7 @@ from django.utils.translation.template import templatize
 
 from hubs.tests.test_plan_catalogue import CUSTOM_DOMAIN_WORDS
 from public.sitemaps import StaticPagesSitemap
+from public.tests.conftest import without_tokens
 
 ROOT = Path(settings.BASE_DIR)
 LEGAL_TEMPLATES = ROOT / "public" / "templates" / "public" / "legal"
@@ -286,10 +287,11 @@ def list_items_naming(html: str, name: str) -> list[str]:
         "Azure",
     ],
 )
-def test_no_legal_page_names_a_provider_we_no_longer_use(client, path, provider):
+def test_no_legal_page_names_a_provider_we_no_longer_use(client, path, provider, tokens_spelling):
     """Naming a processor that no longer holds the data is a false disclosure (art. 13.1.e GDPR)."""
-    assert provider not in client.get(path).content.decode()
-    assert provider not in spanish(client, path)
+    tokens_spelling("Hetzner", "Cloudflare", "Azure")
+    assert provider not in without_tokens(client.get(path).content.decode())
+    assert provider not in without_tokens(spanish(client, path))
 
 
 @pytest.mark.django_db
@@ -1174,10 +1176,11 @@ def test_the_terms_speak_of_our_apps_not_of_a_marketplace(client):
         ),
     ],
 )
-def test_the_service_clause_puts_every_app_on_every_plan(client, language, clause):
+def test_the_service_clause_puts_every_app_on_every_plan(client, language, clause, tokens_spelling):
     """§1 said «the free apps come with every plan, and the premium apps are included in the paid
     plans»: every plan includes all the apps now (PLAN §32), and the rest of the terms is untouched."""
-    html = terms_html(client, language)
+    tokens_spelling("premium")
+    html = without_tokens(terms_html(client, language))
 
     assert clause in html
     assert "premium" not in html.lower()
