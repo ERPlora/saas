@@ -1,11 +1,13 @@
 {% load static i18n icons %}
 {% comment %}
   The public navbar: port of <ok-navbar sticky glass> (OutfitKit) as HTML + CSS
-  (public/static/public/components/navbar.css) plus a few lines of frontend/public.ts.
+  (public/static/public/components/navbar.css) plus the few lines of script after it.
   Brand on the left; the links (public/partials/nav_links.html) and the actions on the right.
   At 800 px and below the links and the actions move into a side panel from the right that the
-  burger opens; the panel closes with its close button, the backdrop, Esc or a link. Everything is
-  in the light DOM: crawlable. The burger and the close button are native <button>s styled as the
+  burger opens; the panel closes with its close button, the backdrop, Esc or a link. That script is
+  inline, with the response's nonce, and not in frontend/public.ts: it runs as the page is parsed, so
+  the burger works from the first moment on a slow connection and even if the module never arrives
+  (saas#243). Everything is in the light DOM: crawlable. The burger and the close button are native <button>s styled as the
   component (L8): Ionic 8.8.9 copies the aria-* of an ion-button host to its inner button once and
   never follows aria-expanded, so a screen reader kept hearing «collapsed» with the panel open.
   Their bars and cross are drawn in CSS, the 22 × 2 px of the old component (L8).
@@ -54,3 +56,45 @@
         <div class="ep-navbar__backdrop" data-navbar-close></div>
     </div>
 </nav>
+<script nonce="{{ csp_nonce }}">
+(function () {
+    var navbar = document.querySelector('[data-navbar]');
+    var toggle = navbar.querySelector('button[data-navbar-toggle]');
+    var panel = navbar.querySelector('[data-navbar-panel]');
+
+    function isOpen() {
+        return navbar.hasAttribute('data-open');
+    }
+    function setOpen(open) {
+        navbar.toggleAttribute('data-open', open);
+        // A native button (L8): an ion-button would keep the aria-expanded it had when it loaded.
+        toggle.setAttribute('aria-expanded', String(open));
+        document.documentElement.classList.toggle('ep-navbar-open', open);
+    }
+    function close() {
+        if (!isOpen()) return;
+        var hadFocus = panel.contains(document.activeElement);
+        setOpen(false);
+        if (hadFocus) toggle.focus();
+    }
+
+    toggle.addEventListener('click', function () {
+        setOpen(!isOpen());
+        // The close button comes first in the panel: the focus lands on it, as in a side sheet.
+        if (isOpen()) panel.querySelector('button[data-navbar-close]').focus();
+    });
+    navbar.querySelectorAll('[data-navbar-close]').forEach(function (closer) {
+        closer.addEventListener('click', close);
+    });
+    panel.addEventListener('click', function (event) {
+        if (event.target.closest('a')) close();
+    });
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') close();
+    });
+    // Back to the desktop bar with the panel open: the links return to the bar, nothing stays locked.
+    window.matchMedia('(min-width: 801px)').addEventListener('change', function (event) {
+        if (event.matches) close();
+    });
+})();
+</script>

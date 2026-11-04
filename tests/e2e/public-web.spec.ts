@@ -11,7 +11,7 @@ import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { Page } from '@playwright/test';
+import type { Page, Route } from '@playwright/test';
 
 import { djangoEnv } from './django-env';
 import { horizontalOverflow } from './horizontal-overflow';
@@ -353,4 +353,118 @@ test('PUBLIC-G48 robots, the sitemap, llms.txt and the structured data', async (
   const blocks = await page.locator('script[type="application/ld+json"]').allTextContents();
   const application = blocks.map((block) => JSON.parse(block)).find((block) => block['@type'] === 'SoftwareApplication');
   expect(application.operatingSystem).toBe('Web, Windows, Linux, Android');
+});
+
+/** The mobile menu's pieces (public/partials/navbar.html) and what each state of it must say. */
+function mobileMenu(page: Page) {
+  const navbar = page.locator('nav[data-navbar]');
+  const burger = page.locator('button[data-navbar-toggle]');
+  const panel = page.locator('#ep-navbar-panel');
+  const close = page.locator('button[data-navbar-close]');
+  return {
+    burger,
+    close,
+    panel,
+    backdrop: page.locator('.ep-navbar__backdrop'),
+    async isOpen(where: string) {
+      await expect(navbar, where).toHaveAttribute('data-open', '');
+      await expect(panel, where).toBeVisible();
+      await expect(burger, where).toHaveAttribute('aria-expanded', 'true');
+      await expect(page.locator('html'), where).toHaveClass(/\bep-navbar-open\b/);
+      await expect(close, where).toBeFocused();
+    },
+    async isClosed(where: string) {
+      await expect(navbar, where).not.toHaveAttribute('data-open', '');
+      await expect(panel, where).toBeHidden();
+      await expect(burger, where).toHaveAttribute('aria-expanded', 'false');
+      await expect(page.locator('html'), where).not.toHaveClass(/\bep-navbar-open\b/);
+    },
+  };
+}
+
+test('PUBLIC-G51 on a slow device, the mobile menu opens and closes even pressed before the page script has run', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  // The page's scripts have not arrived when the person presses (saas#243): held until the end. The stylesheet has,
+  // so the page already reads whole and the burger shows.
+  const held: Route[] = [];
+  await page.route('**/static/spa/**/*.js', (route) => {
+    held.push(route);
+  });
+  const clean = await watch(page);
+  const menu = mobileMenu(page);
+  // The control: the page's script has really not run, so nothing but the HTML can open anything.
+  const scriptHasNotRun = async (where: string) =>
+    expect(await page.evaluate(() => customElements.get('ion-button') === undefined), where).toBe(true);
+
+  // On each policy the web answers with: the public one, the door's own and the 404's.
+  for (const path of ['/', '/demo/', '/pricing/no-such-plan/']) {
+    await page.goto(path, { waitUntil: 'commit' });
+    await menu.burger.click();
+    await menu.isOpen(`${path} opened`);
+    await scriptHasNotRun(path);
+    await clean(path);
+  }
+
+  // Each way out says it is closed; the two that leave the focus in the panel give it back to the burger.
+  await page.goto('/', { waitUntil: 'commit' });
+  await menu.burger.click();
+  await menu.isOpen('before Escape');
+  await page.keyboard.press('Escape');
+  await menu.isClosed('Escape');
+  await expect(menu.burger).toBeFocused();
+
+  await menu.burger.click();
+  await menu.isOpen('before the close button');
+  await menu.close.click();
+  await menu.isClosed('the close button');
+  await expect(menu.burger).toBeFocused();
+
+  await menu.burger.click();
+  await menu.isOpen('before the backdrop');
+  // The strip the panel leaves free on the left, above the cookie notice.
+  await menu.backdrop.click({ position: { x: 16, y: 120 } });
+  await menu.isClosed('the backdrop');
+
+  // Back to the desktop bar with the panel open: nothing stays locked.
+  await menu.burger.click();
+  await menu.isOpen('before widening');
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(page.locator('nav[data-navbar]')).not.toHaveAttribute('data-open', '');
+  await expect(page.locator('html')).not.toHaveClass(/\bep-navbar-open\b/);
+  await page.setViewportSize({ width: 375, height: 667 });
+  await menu.isClosed('widened and back');
+
+  // What the menu is for: the sign-up and the demo are in it, and a link of the panel leads on, closing it on its way.
+  await menu.burger.click();
+  await menu.isOpen('before a link');
+  await expect(menu.panel.locator('[href="/launch"]')).toBeVisible();
+  await expect(menu.panel.locator('[href="/demo/"]')).toBeVisible();
+  await menu.panel.locator('a[href="/features/"]').click();
+  await expect(page).toHaveURL(/\/features\/$/);
+  await menu.isClosed('the page the link led to');
+  await scriptHasNotRun('after every press');
+  await clean('after every press');
+
+  await page.unrouteAll({ behavior: 'ignoreErrors' });
+  await Promise.all(held.map((route) => route.continue().catch(() => undefined)));
+});
+
+test('PUBLIC-G51 once the page script has run, one press opens the mobile menu and one closes it', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  const clean = await watch(page);
+  const menu = mobileMenu(page);
+
+  // public.ts is a module with no `async`: it has run by DOMContentLoaded. A second binding of the burger would
+  // answer the same press again and close what it opened, which only shows once the script is there.
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  expect(await page.evaluate(() => customElements.get('ion-button') !== undefined)).toBe(true);
+
+  await menu.burger.click();
+  await menu.isOpen('opened');
+  await menu.close.click();
+  await menu.isClosed('closed');
+  await expect(menu.burger).toBeFocused();
+  await clean('with the script');
 });
