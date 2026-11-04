@@ -157,12 +157,18 @@ for (const language of ['es', 'en'] as const) {
 
   test(`a page told there is a voice asks the server, whose door is shut, and the device reads (${language})`, async ({ page }) => {
     seed('panel', language);
-    // The shell as an engine would leave it: the real page with its flag turned on, and everything behind it real.
-    await page.route('**/dashboard/businesses', async (route) => {
-      const response = await route.fetch();
-      const body = await response.text();
-      expect(body).toContain('"assistantSpeech": false');
-      await route.fulfill({ response, body: body.replace('"assistantSpeech": false', '"assistantSpeech": true') });
+    // The shell as an engine would leave it: the real page with its flag turned on as it is parsed, before the SPA's
+    // module runs, and everything behind it real. Not with `route.fulfill`: Chrome gives a page served that way no
+    // address, and refuses it the Vite server's scripts.
+    await page.addInitScript(() => {
+      const observer = new MutationObserver(() => {
+        const config = document.getElementById('spa-config');
+        const told = config?.textContent?.replace('"assistantSpeech": false', '"assistantSpeech": true');
+        if (!config || told === undefined || told === config.textContent) return;
+        config.textContent = told;
+        observer.disconnect();
+      });
+      observer.observe(document, { childList: true, subtree: true });
     });
     const errors = watchPageErrors(page);
     const consoleErrors = watchConsoleErrors(page);
