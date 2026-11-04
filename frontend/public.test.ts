@@ -255,7 +255,7 @@ describe('the navbar panel', () => {
   function loaded() {
     const doc = page(NAVBAR);
     const resize = fakeWindowWidth();
-    // eslint-disable-next-line no-new-func -- runs the template's own script as the browser would
+    // The template's own script, run as the browser would.
     new Function(inlineScript())();
     return { doc, resize };
   }
