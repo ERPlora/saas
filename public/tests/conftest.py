@@ -55,6 +55,18 @@ def public_manifest(settings, tmp_path):
     return manifest
 
 
+@pytest.fixture(autouse=True)
+def fixed_response_tokens(monkeypatch):
+    """Every test here gets one CSRF token and one CSP nonce that mean nothing, not a random draw.
+
+    A random token can hold whatever a test scans the raw page for, so no test may depend on the
+    draw (saas#264). Only the value is fixed: a page that stops asking for a token goes on without
+    it. ``test_response_tokens.py`` keeps the real ones, to say that this hides nothing.
+    """
+    monkeypatch.setattr("django.utils.csp.generate_nonce", lambda: "a" * 22)
+    monkeypatch.setattr("django.middleware.csrf._get_new_csrf_string", lambda: "a" * 32)
+
+
 @pytest.fixture
 def tokens_spelling(monkeypatch):
     """Make the per-response tokens spell some words, as a random one does now and then.
@@ -64,6 +76,7 @@ def tokens_spelling(monkeypatch):
     once in four thousand renders, which made scans of the raw page fail by chance and stopped a
     deploy of main (saas#261). A test that scans a page for a short word reads it with
     :func:`without_tokens`, which keeps everything else the page says, and asks for this fixture.
+    It patches the same two functions as :func:`fixed_response_tokens`, later, so it wins.
 
     The words must be alphanumeric and fit in a CSRF secret (32 characters): Django ciphers the
     secret with the mask, character by character, in its own alphabet.
