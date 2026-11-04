@@ -713,6 +713,7 @@ test('PUBLIC-G51 with the mobile menu open, Tab goes round inside it and the pag
 
   // Closed, nothing stays locked: Tab goes on to the page, and what was behind takes the focus again.
   await page.keyboard.press('Tab');
+  await expect(menu.burger, 'Tab with the panel closed moves on').not.toBeFocused();
   expect(await focusedStop(page), 'Tab with the panel closed').toMatch(/^outside: /);
   await behind.focus();
   await expect(behind).toBeFocused();
