@@ -129,6 +129,32 @@ test('HUBS-G73: the owner renames the business in «General»; an empty name is 
   expect(errors).toEqual([]);
 });
 
+test('HUBS-G74: an address the server refuses says why on its field, and on top to look at it, in the language of the account', async ({ page }) => {
+  const errors = watchPageErrors(page);
+  const { id } = await ownerOf(page, 'address-refused', 'Bar Refused');
+  for (const { language, notice, reason } of [
+    { language: 'en', notice: 'Check the highlighted details.', reason: 'Use only lowercase letters, digits and hyphens' },
+    { language: 'es', notice: 'Revisa los datos marcados.', reason: 'Usa solo minúsculas' },
+  ]) {
+    expect((await apiPost(page.request, '/api/accounts/preferences', { language })).status()).toBe(200);
+    await page.goto(`/dashboard/businesses/${id}/settings`);
+    await shown(page).getByTestId('settings-general').getByTestId('settings-change-address').click();
+    const dialog = page.getByTestId('address-dialog');
+    await typeInto(page, 'address-dialog-slug', '-casa');
+    await dialog.getByTestId('address-dialog-submit').click();
+    await expect(dialog.getByTestId('address-dialog-error')).toHaveText(notice);
+    await expect(page.getByTestId('address-dialog-slug')).toContainText(reason);
+    for (const { width, height } of [{ width: 1440, height: 900 }, { width: 820, height: 1180 }, { width: 375, height: 667 }]) {
+      await page.setViewportSize({ width, height });
+      await settled(page);
+      await expect(dialog.getByTestId('address-dialog-error')).toBeInViewport({ ratio: 1 });
+      await page.screenshot({ path: shot(`refused-address-${language}-${width}x${height}`) });
+    }
+    await page.setViewportSize({ width: 1440, height: 900 });
+  }
+  expect(errors).toEqual([]);
+});
+
 test('HUBS-G74: the owner moves the business to another web address; the old one stays its own', async ({ page }) => {
   const errors = watchPageErrors(page);
   const { id, slug } = await ownerOf(page, 'address', 'Bar Manolo');
