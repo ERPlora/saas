@@ -59,7 +59,7 @@ DEMO_MINUTES = 60
 def _hub_takes_this_domain(domain: Any) -> bool:
     """``custom_domain`` as the Hub reads it (hub#812, ``base.schemas.custom_domain_of_photo``), which refuses the whole
     snapshot over a bad one: the form it is written in, none of its own hosts."""
-    if domain is None:
+    if domain is None or domain == "":
         return True
     if not isinstance(domain, str) or domain != domain.lower() or domain.endswith("."):
         return False

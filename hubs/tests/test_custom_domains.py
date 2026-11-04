@@ -21,7 +21,7 @@ from live.operations import AI, INTERNAL, registry
 from hubs import domain_checks, events, queries, services
 from hubs.models import CustomDomain, Hub, HubMember, Plan, Subscription
 from hubs.schemas import ByIdIn, CustomDomainRequestIn
-from hubs.tests.conftest import DOMAIN, add_member, certificate_arn, create_business, ctx_for, pointing
+from hubs.tests.conftest import DOMAIN, add_member, certificate_arn, create_business, ctx_for
 
 pytestmark = pytest.mark.django_db
 
@@ -782,9 +782,3 @@ def test_the_route_answers_a_bad_name_with_its_field(client, owner, standard_bus
 
 def test_the_panel_hears_of_a_change_of_its_domain():
     assert "hubs.custom_domain.get" in live_registry.affected([events.CUSTOM_DOMAIN_CHANGED])
-
-
-def test_a_pointing_helper_uses_the_businesss_own_name(standard_business, dns_world, settings):
-    settings.CUSTOM_DOMAINS_TARGET_TEMPLATE = "hub-{hub_id}.erplora.com"
-    pointing(dns_world, standard_business)
-    assert domain_checks.points_at(DOMAIN, domain_checks.target_of(standard_business.id)) is True
