@@ -42,7 +42,7 @@ test('each tab at the three viewports, light and dark, without scrolling sideway
         await page.setViewportSize({ width, height });
         for (const { tab, ready } of TABS) {
           await page.goto(`/dashboard/account/${tab}`);
-          await expect(ready(page)).toBeVisible();
+          await expect(ready(page), `account-${tab}-${width}-${theme}`).toBeVisible();
           await page.evaluate(() => document.fonts.ready);
           await page.waitForTimeout(300);
           expect(await sidewaysScroll(page), `account-${tab}-${width}-${theme}`).toEqual([]);
