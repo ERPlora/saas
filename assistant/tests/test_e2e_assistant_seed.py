@@ -2,6 +2,8 @@
 ``panel/assistant-panel.spec.ts`` runs): the e2e's model answering, at the address of the spec's own provider, and
 ``e2e-assistant-owner``, an account like any other (no staff) with one working business, in the language the spec
 asks for. ``clear`` leaves nothing of it behind: the account, its business, its access and its month's messages.
+``voice`` adds the provider of the voice (Azure AI Speech) at the spec's provider, with a made-up key: the panel then
+offers its voices (``panel/assistant-voice.spec.ts``, ASSISTANT-F22); ``clear`` takes it away, and never a real one.
 """
 
 import importlib.util
@@ -13,7 +15,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from assistant import queries
-from assistant.models import AIRoutingPolicy, AssistantUsage
+from assistant.models import AIProvider, AIProviderCredential, AIRoutingPolicy, AssistantUsage
 from assistant.tests.conftest import fernet_key  # noqa: F401 - the credentials' key
 from hubs.models import Hub, HubMember
 from hubs.tests.conftest import plans  # noqa: F401 - the catalogue of plans
@@ -90,6 +92,47 @@ def test_every_run_starts_from_scratch(seed):
 
     assert get_user_model().objects.filter(email="e2e-assistant-owner@example.com").count() == 1
     assert Hub.objects.filter(slug="e2e-assistant-panel").count() == 1
+
+
+def test_voice_is_panel_with_a_provider_of_the_voice_the_reading_can_use(seed):
+    made = seed.voice(ADDRESS, "en")
+
+    assert made == {
+        "owner": "e2e-assistant-owner@example.com",
+        "business": "E2E Asistente Panel",
+        "slug": "e2e-assistant-panel",
+    }
+    assert get_user_model().objects.get(email=made["owner"]).language == "en"
+    provider = AIProvider.objects.get(slug="azure-speech")
+    assert (provider.name, provider.kind, provider.base_url) == (
+        "E2E Azure Speech",
+        AIProvider.Kind.AZURE_SPEECH,
+        "http://127.0.0.1:8017/westeurope",
+    )
+    # A made-up key, never a real one: what the shell's ``assistantSpeech`` and the speak route find usable.
+    assert AIProviderCredential.objects.get(provider=provider).api_key == seed.SPEECH_KEY
+    assert queries.speech_provider() is not None
+
+
+def test_clear_takes_the_e2e_voice_away_and_panel_has_none(seed):
+    seed.voice(ADDRESS)
+
+    seed.clear()
+
+    assert not AIProvider.objects.filter(slug="azure-speech").exists()
+    seed.panel(ADDRESS)
+    assert queries.speech_provider() is None
+
+
+def test_voice_never_touches_a_real_provider_of_the_voice(seed):
+    real = AIProvider.objects.create(slug="azure-speech", name="Azure AI Speech", kind=AIProvider.Kind.AZURE_SPEECH)
+
+    seed.clear()
+    with pytest.raises(SystemExit, match="azure-speech"):
+        seed.voice(ADDRESS)
+
+    assert AIProvider.objects.get(slug="azure-speech") == real
+    assert real.name == "Azure AI Speech"
 
 
 def test_paying_leaves_the_business_on_starter_paid_by_its_owner_with_an_invoice_unpaid(seed):

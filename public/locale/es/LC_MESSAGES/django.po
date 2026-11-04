@@ -721,14 +721,6 @@ msgid "provider of the voice and search services the AI assistant uses BY DEFAUL
 msgstr "proveedor de los servicios de voz y de búsqueda que el asistente IA usa POR DEFECTO. Transcribe a texto el dictado por voz (recibe el audio de la grabación) y, cuando tu hub se las pide, calcula las huellas de búsqueda (embeddings) del índice de tu hub (recibe los textos que se indexan). Usado ÚNICAMENTE cuando alguien de tu hub, o en el asistente del panel de tu cuenta en erplora.com, usa una de estas funciones. El tratamiento puede realizarse fuera del Espacio Económico Europeo (apartado 6). Bajo su propio DPA."
 
 #: templates/public/legal/privacy.html
-msgid "Microsoft Ireland Operations Ltd. (Ireland) — Azure AI Speech, Sweden Central region:"
-msgstr "Microsoft Ireland Operations Ltd. (Irlanda) — Azure AI Speech, región Suecia Central:"
-
-#: templates/public/legal/privacy.html
-msgid "provider of the server's voice of the AI assistant: when your hub, or the assistant of your account's panel on erplora.com, reads an answer aloud with the server's voice, it receives the text of the answer and returns its audio. Used ONLY for that function: with the device's own voice nothing is sent to it. Processing takes place in the European Union. Under its own DPA."
-msgstr "proveedor de la voz del servidor del asistente IA: cuando tu hub, o el asistente del panel de tu cuenta en erplora.com, lee una respuesta en voz alta con la voz del servidor, recibe el texto de la respuesta y devuelve su audio. Usado ÚNICAMENTE para esa función: con la voz del propio dispositivo no se le envía nada. El tratamiento se realiza en la Unión Europea. Bajo su propio DPA."
-
-#: templates/public/legal/privacy.html
 msgid "OpenAI Ireland Ltd. and Anthropic Ireland Ltd. (Ireland):"
 msgstr "OpenAI Ireland Ltd. y Anthropic Ireland Ltd. (Irlanda):"
 
@@ -787,8 +779,8 @@ msgid "Voice dictation: the recording travels from your device to the platform, 
 msgstr "Dictado por voz: la grabación viaja desde tu dispositivo a la plataforma, a través de tu hub si dictas allí, y de la plataforma al proveedor de transcripción, y solo vuelve su texto, a la caja del mensaje, donde lo revisas antes de enviarlo. Ni tu hub ni ERPlora guardan el audio: solo anotamos que hubo un dictado, en el uso del mes."
 
 #: templates/public/legal/privacy.html
-msgid "Reading aloud: with your device's own voice, nothing leaves the device. With the server's voice, the text of the answer travels from your hub or your account's panel to the platform, and from the platform to the speech provider, and only the audio comes back. Neither your hub nor ERPlora keeps the text or the audio: we only record how many characters were read, in the month's usage."
-msgstr "Lectura en voz alta: con la voz de tu propio dispositivo, nada sale de él. Con la voz del servidor, el texto de la respuesta viaja desde tu hub o el panel de tu cuenta a la plataforma, y de la plataforma al proveedor de voz, y solo vuelve el audio. Ni tu hub ni ERPlora guardan el texto ni el audio: solo anotamos cuántos caracteres se leyeron, en el uso del mes."
+msgid "Reading aloud: the answer is read by your device's own voice (the browser's or the system's), and its text never leaves the device."
+msgstr "Lectura en voz alta: la respuesta la lee la voz de tu propio dispositivo (la del navegador o la del sistema), y su texto no sale de él."
 
 #: templates/public/legal/privacy.html
 msgid ""

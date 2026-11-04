@@ -1,16 +1,20 @@
-// «Read aloud» of the panel's assistant in a server voice (assistant/WORKBOOK.md, ASSISTANT-F22; PLAN-SAAS round
-// 2026-11-03m), in a browser against the panel's own Django: the chat's head offers the language's two voices of Azure AI
-// Speech and the device's (`@erplora/ui` `voices.ts`, the ids of `assistant.media.VOICES`), and an answer offers «Read
-// aloud». This stack has no provider of the voice (no Azure key in the e2e's database), so `base.assistant.speak` answers
-// 503 `assistant.speech_unavailable` and the chat reads the answer in the device's voice instead, with no error on the
-// page. In Spanish and in English, at 1440, 834 and 390 (screenshots under `.artifacts/panel/`).
+// «Read aloud» of the panel's assistant (assistant/WORKBOOK.md, ASSISTANT-F22; PLAN-SAAS round 2026-11-03m), in a browser
+// against the panel's own Django. erplora.com has no voice of its own (decision of 2026-11-04): the page says so
+// (`spa-config.assistantSpeech`, base/spa.py), so the chat offers no choice of voice and reads each answer in the
+// device's, with no request to `/api/assistant/speak`. Only with a provider of the voice (Azure AI Speech, seeded with a
+// made-up key at the spec's own provider: `assistant_seed.py voice`) does its head offer the language's two server
+// voices and the device's (`@erplora/ui` `voices.ts`, the ids of `assistant.media.VOICES`) and «Read aloud» ask the
+// server; that provider answers no speech, so the chat falls back to the device's voice, with no error on the page.
+// In Spanish and in English, at 1440, 834 and 390 (screenshots under `.artifacts/panel/`).
 // The device's voice is the browser's `speechSynthesis`, which a headless Chrome cannot sound: the page's `speak` is
 // replaced by a recorder that ends each utterance at once, as the fake microphone stands in for the dictation's.
 // The model is assistant-provider.ts, a real HTTP server on 127.0.0.1 set by assistant_seed.py «panel».
-// flow: ASSISTANT-F22 — read an answer aloud: the server's voice, else the device's.
+// flow: ASSISTANT-F22 — read an answer aloud: the server's voice when erplora.com has one, else the device's.
 import { execFileSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import type { Locator, Page } from '@playwright/test';
 
 import { type Provider, startProvider } from '../assistant-provider';
 import { djangoEnv } from '../django-env';
@@ -44,7 +48,7 @@ const WORDS = {
 
 let provider: Provider | undefined;
 
-function seed(action: 'clear' | 'panel', language: 'es' | 'en' = 'es'): void {
+function seed(action: 'clear' | 'panel' | 'voice', language: 'es' | 'en' = 'es'): void {
   execFileSync('uv', ['run', 'python', 'tests/e2e/panel/assistant_seed.py', action, provider?.url ?? '', language], {
     cwd: SAAS_DIR,
     env: djangoEnv(true),
@@ -73,25 +77,95 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
+/** What the device's voice was asked to read, in which language. */
+function spoken(page: Page): Promise<Array<{ text: string; lang: string }>> {
+  return page.evaluate(() => (window as unknown as { __spoken: Array<{ text: string; lang: string }> }).__spoken);
+}
+
+/** Every request the page makes for a reading in a server voice. */
+function speakRequests(page: Page): string[] {
+  const seen: string[] = [];
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === '/api/assistant/speak') seen.push(request.method());
+  });
+  return seen;
+}
+
+/** The console's errors, but the browser's own line for an answer that is not 2xx (the network's, not the page's). */
+function watchConsoleErrors(page: Page): string[] {
+  const errors: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error' && !message.text().startsWith('Failed to load resource')) errors.push(message.text());
+  });
+  return errors;
+}
+
+/** The chat open on the panel, signed in as the owner, at 1440. */
+async function openChat(page: Page) {
+  await signIn(page.request, OWNER);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/dashboard/businesses');
+  await page.getByTestId('assistant-button').click();
+  const panel = page.getByTestId('assistant-panel');
+  await expect(panel).toHaveAttribute('data-open', 'true');
+  return panel;
+}
+
+/** Asks `question` and gives back the answer's «Read aloud», checked at every size. */
+async function answerAndListen(page: Page, panel: Locator, words: (typeof WORDS)['es' | 'en'], shotName: string) {
+  await panel.getByTestId('assistant-input').locator('textarea').fill(words.question);
+  await panel.getByTestId('assistant-send').click();
+  const answer = panel.getByTestId('assistant-bubble-assistant').last();
+  await expect(answer).toContainText(words.answer);
+  // Under the answer, beside «Report a problem» (outside its bubble).
+  const listen = panel.getByTestId('assistant-listen').last();
+  await expect(listen).toContainText(words.listen);
+  for (const size of SIZES) {
+    await page.setViewportSize({ width: size.width, height: size.height });
+    await expect(listen).toBeVisible();
+    await settled(page);
+    await page.screenshot({ path: shot(`${shotName}-${size.name}`) });
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
+  return listen;
+}
+
 for (const language of ['es', 'en'] as const) {
   const words = WORDS[language];
 
-  test(`the chat offers the voices of its language and, without the server's, reads in the device's (${language})`, async ({
+  test(`without a voice of the server the chat offers none and reads in the device's, never asking the server (${language})`, async ({
     page,
   }) => {
     seed('panel', language);
-    await signIn(page.request, OWNER);
     const errors = watchPageErrors(page);
-    const consoleErrors: string[] = [];
-    page.on('console', (message) => {
-      // The browser's own line for an answer that is not 2xx (the 503 below) is the network's, not the page's.
-      if (message.type() === 'error' && !message.text().startsWith('Failed to load resource')) consoleErrors.push(message.text());
-    });
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto('/dashboard/businesses');
-    await page.getByTestId('assistant-button').click();
-    const panel = page.getByTestId('assistant-panel');
-    await expect(panel).toHaveAttribute('data-open', 'true');
+    const consoleErrors = watchConsoleErrors(page);
+    const asked = speakRequests(page);
+    const panel = await openChat(page);
+
+    // No choice of voice: the only voice is the device's.
+    await expect(panel.getByTestId('assistant-voice')).toHaveCount(0);
+    const listen = await answerAndListen(page, panel, words, `assistant-voice-device-answer-${language}`);
+    await expect(panel.getByTestId('assistant-voice')).toHaveCount(0);
+
+    await listen.click();
+    await expect.poll(() => spoken(page)).toEqual([expect.objectContaining({ text: words.answer, lang: words.device })]);
+    expect(asked).toEqual([]);
+    await expect(panel.getByTestId('assistant-listen-failed')).toHaveCount(0);
+    await expect(listen).toContainText(words.listen);
+    await settled(page);
+    await page.screenshot({ path: shot(`assistant-voice-device-${language}`) });
+
+    expect(errors).toEqual([]);
+    expect(consoleErrors).toEqual([]);
+  });
+
+  test(`with a provider of the voice the chat offers the voices of its language and asks the server for the reading (${language})`, async ({
+    page,
+  }) => {
+    seed('voice', language);
+    const errors = watchPageErrors(page);
+    const consoleErrors = watchConsoleErrors(page);
+    const panel = await openChat(page);
 
     // The head's choice of voice: the language's two server voices, the device's last, the first by default.
     const voice = panel.getByTestId('assistant-voice');
@@ -118,37 +192,16 @@ for (const language of ['es', 'en'] as const) {
       await expect(page.locator('ion-popover.select-popover')).toHaveCount(0);
       await expect(panel).toHaveAttribute('data-open', 'true');
     }
-
-    // An answer, and its «Read aloud».
     await page.setViewportSize({ width: 1440, height: 900 });
-    await panel.getByTestId('assistant-input').locator('textarea').fill(words.question);
-    await panel.getByTestId('assistant-send').click();
-    const answer = panel.getByTestId('assistant-bubble-assistant').last();
-    await expect(answer).toContainText(words.answer);
-    // Under the answer, beside «Report a problem» (outside its bubble).
-    const listen = panel.getByTestId('assistant-listen').last();
-    await expect(listen).toContainText(words.listen);
-    for (const size of SIZES) {
-      await page.setViewportSize({ width: size.width, height: size.height });
-      await expect(listen).toBeVisible();
-      await settled(page);
-      await page.screenshot({ path: shot(`assistant-voice-answer-${size.name}-${language}`) });
-    }
+    const listen = await answerAndListen(page, panel, words, `assistant-voice-answer-${language}`);
 
-    // No provider of the voice here: the server says so, and the device reads the answer, in the chat's language.
-    await page.setViewportSize({ width: 1440, height: 900 });
-    const refused = page.waitForResponse((response) => response.url().endsWith('/api/assistant/speak'));
+    // The reading goes to the server in the chosen voice; the e2e's provider speaks none, so the device reads it.
+    const asked = page.waitForRequest((request) => new URL(request.url()).pathname === '/api/assistant/speak');
     await listen.click();
-    const speech = await refused;
-    expect(speech.status()).toBe(503);
-    expect((await speech.json()).error.code).toBe('assistant.speech_unavailable');
-    await expect
-      .poll(() => page.evaluate(() => (window as unknown as { __spoken: Array<{ text: string; lang: string }> }).__spoken))
-      .toEqual([expect.objectContaining({ text: words.answer, lang: words.device })]);
+    expect((await asked).postDataJSON()).toMatchObject({ text: words.answer, language });
+    await expect.poll(() => spoken(page)).toEqual([expect.objectContaining({ text: words.answer, lang: words.device })]);
     await expect(panel.getByTestId('assistant-listen-failed')).toHaveCount(0);
     await expect(listen).toContainText(words.listen);
-    await settled(page);
-    await page.screenshot({ path: shot(`assistant-voice-device-fallback-${language}`) });
 
     expect(errors).toEqual([]);
     expect(consoleErrors).toEqual([]);

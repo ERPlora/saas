@@ -10,7 +10,7 @@ import { ref } from 'vue';
 
 import en from '../../frontend/locale/en.json';
 import es from '../../frontend/locale/es.json';
-import { actionKey, ASK, PANEL_SCREENS, panelScreenKey, placeKey, SAAS_ASSISTANT, speak } from './options';
+import { actionKey, ASK, PANEL_SCREENS, panelAssistant, panelScreenKey, placeKey, readsAloud, SAAS_ASSISTANT, speak } from './options';
 
 type Catalogue = { [key: string]: string | Catalogue };
 
@@ -180,12 +180,18 @@ describe('panelScreenKey', () => {
 });
 
 /** A page of the panel: its SPA config and its CSRF cookie, as Django serves it. */
-function panelPage(): Document {
+function panelPage(extra: Record<string, unknown> = {}): Document {
   const doc = document.implementation.createHTMLDocument('panel');
   const config = doc.createElement('script');
   config.id = 'spa-config';
   config.type = 'application/json';
-  config.textContent = JSON.stringify({ csrfCookieName: 'csrftoken', csrfHeader: 'X-CSRFToken', lang: 'es', deviceIdStorageKey: 'erplora.device' });
+  config.textContent = JSON.stringify({
+    csrfCookieName: 'csrftoken',
+    csrfHeader: 'X-CSRFToken',
+    lang: 'es',
+    deviceIdStorageKey: 'erplora.device',
+    ...extra,
+  });
   doc.body.append(config);
   Object.defineProperty(doc, 'cookie', { value: 'csrftoken=tok123' });
   return doc;
@@ -237,8 +243,37 @@ describe('speak (ASSISTANT-F22): the mp3 of an answer in a server voice, base.as
     await expect(speak(SPEECH, { fetch, doc: panelPage() })).rejects.toMatchObject({ status: 0, code: 'network_error' });
   });
 
-  it('is what the panel gives the chat as its server voice', () => {
-    expect(SAAS_ASSISTANT.speak).toBeTypeOf('function');
+});
+
+describe("the server's voice only when erplora.com has one (spa-config.assistantSpeech, base/spa.py)", () => {
+  it('reads aloud in a server voice only when the server says it has one', () => {
+    expect(readsAloud(panelPage({ assistantSpeech: true }))).toBe(true);
+    expect(readsAloud(panelPage({ assistantSpeech: false }))).toBe(false);
+    // An older shell, or a page without the server's word: no voice of the server.
+    expect(readsAloud(panelPage())).toBe(false);
+    expect(readsAloud(panelPage({ assistantSpeech: 'true' }))).toBe(false);
+    expect(readsAloud(document.implementation.createHTMLDocument('no config'))).toBe(false);
+  });
+
+  it('gives the chat the server voice (speak) when it has one, so it offers its voices', () => {
+    const config = panelAssistant(panelPage({ assistantSpeech: true }));
+
+    expect(config.speak).toBeTypeOf('function');
+    expect({ ...config, speak: undefined }).toEqual({ ...SAAS_ASSISTANT, speak: undefined });
+  });
+
+  it('without one gives no speak: the chat offers no voice and reads with the device, with no trip to the server', () => {
+    expect(panelAssistant(panelPage({ assistantSpeech: false }))).toBe(SAAS_ASSISTANT);
+    expect(panelAssistant(panelPage())).toBe(SAAS_ASSISTANT);
+    expect(SAAS_ASSISTANT.speak).toBeUndefined();
+  });
+
+  it('an unreadable spa-config is no voice of the server (as its reCAPTCHA key, accounts/frontend/recaptcha.ts)', () => {
+    const doc = panelPage();
+    doc.getElementById('spa-config')!.textContent = '{not json';
+
+    expect(readsAloud(doc)).toBe(false);
+    expect(panelAssistant(doc)).toBe(SAAS_ASSISTANT);
   });
 });
 
