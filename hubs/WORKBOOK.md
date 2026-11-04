@@ -175,7 +175,7 @@ con buscador por negocio o por correo y filtro por rol; solo se consulta.
 | HUBS-F14 | Ver los negocios por la API | hecho |
 | HUBS-F15 | Cambiar el nombre, el idioma y la zona horaria del negocio | hecho |
 | HUBS-F16 | Cambiar la dirección web del negocio | hecho |
-| HUBS-F17 | Conectar un dominio propio a la web del negocio | descartado |
+| HUBS-F17 | Conectar un dominio propio a la web del negocio | parcial |
 | HUBS-F18 | Eliminar un negocio | hecho |
 | HUBS-F19 | Recuperar un negocio eliminado | hecho |
 | HUBS-F20 | Avisar y dar de baja un negocio suspendido por impago | hecho |
@@ -426,18 +426,19 @@ Implicados: el negocio (recibe su nueva dirección), accounts (la entrada a la n
 
 ### HUBS-F17 Conectar un dominio propio a la web del negocio
 <!-- origen: old-saas:SAAS_DASHBOARD-F11 old-saas:SAAS_DASHBOARD-F12 fi:saas/hubs#configuracion-de-dominios-subdominio-dominios-personalizados fi:saas/support/hubs#modelo-hubcustomdomain pc:cloud/dashboard/hubs-domains fi:saas/support/hubs#task-check_domain_validation old-saas:SAAS_DASHBOARD-F39 -->
-Estado: descartado — no entra en la fase 1: el dominio propio es solo de la web pública del negocio, en los planes que lo incluyen, y llega a la vez con sus tres piezas (la comprobación del dominio en erplora.com, su certificado en la entrada de ERPlora y que el negocio sirva su web por ese dominio); hasta entonces el panel no lo enseña (saas#195)
+Estado: parcial — el servidor ya lo hace donde `CUSTOM_DOMAINS_ENABLED` está encendido (pedirlo, la comprobación de cada hora y quitarlo, también por el asistente); falta la pantalla en Ajustes y, hasta que llegue, el panel no lo enseña ni los planes lo venden (saas#195)
 Actor: propietario
-Pantalla: Ajustes del negocio
+Pantalla: Ajustes del negocio (aún no existe)
 Pasos:
-1. En «Ajustes», el propietario de un negocio con un plan que incluye dominio propio escribe el suyo (por ejemplo, la web del negocio en su dominio) y erplora.com le enseña el registro que tiene que crear en su proveedor del dominio.
-2. Cuando el registro apunta bien, erplora.com lo comprueba, pide el certificado y, puesto, el dominio queda activo: la web pública del negocio se abre por él.
-3. Cada hora vuelve a mirarlo; si deja de apuntar bien tres veces seguidas, avisa al propietario y lo deja de servir hasta que vuelve.
-4. Para quitarlo, lo quita de los ajustes y lo confirma.
-Entra: el dominio del propietario y el registro de su proveedor.
+1. El propietario de un negocio con un plan que incluye dominio propio escribe el suyo, por ejemplo www.minegocio.es, y erplora.com le da los dos registros CNAME que tiene que crear en su proveedor: el de validación y el que lleva las visitas a ERPlora.
+2. Primero crea el de validación, que se queda para siempre porque renueva el certificado. Cuando ACM lo ve, el certificado se emite y erplora.com lo pone en la entrada de ERPlora.
+3. Con el certificado puesto crea el segundo, que apunta al nombre de ese negocio. Cuando la comprobación de cada hora lo ve, el negocio sirve su web por ese dominio y, si responde bien, el dominio queda activo.
+4. Cada hora vuelve a mirarlo; si deja de apuntar bien o de servirse tres veces seguidas, avisa al propietario por correo y lo deja de servir. Cuando el registro vuelve, el dominio vuelve solo.
+5. Para quitarlo, lo quita y lo confirma: deja de servirse, se borra su certificado y el nombre queda libre.
+Entra: el dominio del propietario y los dos registros de su proveedor.
 Sale: la web pública del negocio en su dominio, con su certificado.
-Si falla: un dominio que no apunta a ERPlora se queda sin activar y se dice qué registro falta; un plan que no lo incluye no lo ofrece. La aplicación y la entrada al negocio siguen en su dirección de erplora.com.
-Implicados: website (la web pública del negocio), el negocio (sirve la web por su dominio), public (PUBLIC-F07: hasta entonces ni los planes ni la web lo venden, saas#233)
+Si falla: un dominio que no apunta a ERPlora se queda sin activar y se dice qué registro falta. Un dominio raíz (minegocio.es) no se ofrece, porque ni admite CNAME ni la entrada tiene IP fija: se conecta www y el raíz se redirige en el proveedor. Un plan que no lo incluye no lo ofrece, y al bajar a uno así se deja de servir y vuelve al subir. Sin sitio para más certificados, el dominio espera y se reintenta cada hora, y lo ya activo no se entera. Un certificado rechazado o sin validar en 72 horas hay que volver a pedirlo. Si el DNS, AWS o el Hub no responden, no cuenta como fallo y se reintenta. La aplicación y la entrada al negocio siguen en su dirección de erplora.com.
+Implicados: website (la web pública del negocio), el negocio (BASE-F110: sirve la web por su dominio), public (PUBLIC-F07: hasta que llegue la pantalla ni los planes ni la web lo venden, saas#233)
 
 ### HUBS-F18 Eliminar un negocio
 <!-- origen: fi:saas/hubs#borrado-cancelacion-del-terminal old-saas:SAAS_DASHBOARD-F22 old-saas:SAAS_DASHBOARD-F23 old-saas:SAAS_DASHBOARD-F24 -->
@@ -816,12 +817,37 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   (`services.USAGE_RETENTION_DAYS`, 400 días; el motivo, junto a la constante y en PLAN-SAAS §27), sin programación
   propia y sin que su fallo se coma la recogida (`services.prune_usage`). La copia de los datos de F18 y F20 la hace el Hub al
   recibir la baja (hub#580) y el SaaS la enseña y la descarga con `GET /internal/hubs/{id}/dumps` (saas#168).
-- Dominio propio (F17, `descartado` en esta versión, saas#195): decisión de mercado de APP-HUBS-2 (PLAN-SAAS §8, ronda
-  2026-10-22; ADR-0502): se mantiene solo para la web pública (`website`) y en planes con `includes_custom_domain`, y
-  llega con sus tres piezas (erplora.com, borde de `aws` y el host en `base` del Hub); hasta entonces no hay modelo ni
-  pantalla, y nada lo vende: `hubs/0026` quitó la línea y la descripción de Standard, el guardia es
-  `test_plan_catalogue.py::test_no_plan_sells_a_custom_domain_nobody_can_connect` (y sus gemelos de `/pricing/` y de
-  los términos en `public/tests`), y `includes_custom_domain` se queda como la puerta que leerá saas#195 (saas#233).
+- Dominio propio (F17, saas#195; decisión de mercado de APP-HUBS-2, PLAN-SAAS §8 y §37 punto 2; ADR-0502): solo la web
+  pública (`website`) y en planes con `includes_custom_domain`. El contrato con AWS está en el README de `aws` («Dominio
+  propio de un negocio») y el del Hub, en BASE-F110. Aquí, `CustomDomain` (uno por negocio), las operaciones
+  `hubs.custom_domain.{request,get,remove}` y el comando `check_custom_domains`, cada hora en `saas-cron`
+  (`services.check_custom_domains`). `hubs/domain_names.py` valida el nombre: el Hub rechaza la foto entera (422) por un
+  dominio malo, así que nada de lo que él rechaza llega a una fila. `hubs/edge_client.py` son las llamadas a ACM, al ALB y
+  a CloudWatch, y `hubs/domain_checks.py`, el DNS y la sonda.
+  - **Estados**: `pending` → (certificado, en el listener, CNAME de este negocio, foto, sonda) → `active` → (tres fallos
+    seguidos) → `lapsed` → (vuelve el CNAME) → `pending`; `removing`, cuando lo quita su dueño. La fila se borra la última,
+    y eso libera el nombre (ADR-0496). Una pasada que encuentra otro estado del que leyó no escribe nada: gana el dueño.
+  - **Un nombre no es de nadie hasta que su CNAME lo prueba** (`proven_at`, único por `hostname` entre los probados): pedir
+    un dominio ajeno no se lo quita a su dueño. El CNAME de validación no prueba nada porque ACM lo reutiliza para quien lo
+    pida después desde esta cuenta; el segundo apunta a `hub-<id>`, de ese negocio y para siempre (un slug se puede volver
+    a coger).
+  - **La foto** lleva `custom_domain` desde que se prueba hasta que cae, y solo si el plan lo incluye. Sin dominio la
+    clave no va, y eso al Hub le dice «ninguno».
+  - **Qué es un fallo**: que el CNAME no llegue a este negocio, o que la sonda diga que la entrada no lo sirve (certificado
+    que no valida, Hub que no lo conoce, otro negocio detrás). **Nunca** lo es una pregunta sin respuesta (DNS caído,
+    sonda sin conexión, 5xx): tres horas de plataforma caída no pueden tirar todos los dominios. La comprobación no usa la
+    portada: una web sin publicar da 404 con el dominio bien puesto.
+  - **Orden al quitarlo o al caer**: foto sin la clave, y cuando el Hub la tiene, `RemoveListenerCertificates` y
+    `DeleteCertificate` (`ResourceInUseException`: se reintenta en la siguiente pasada).
+  - **Cupo**: `CUSTOM_DOMAINS_MAX_CERTIFICATES` se cuenta por las filas con `attached_at`, porque estos roles no pueden
+    listar el listener; en el tope no se pide certificado, y `TooManyCertificates` da lo mismo. Un certificado que espera
+    un CNAME 14 días (`CUSTOM_DOMAIN_PENDING_LIMIT`) devuelve su plaza. La pasada publica `ERPlora/CustomDomains
+    CertificatesAttached`, que lee la alarma del 80 %.
+  - **Un certificado rechazado no se vuelve a pedir solo** (`CustomDomain.RETURNS_BY_ITSELF`): cada hora, un solo CAA
+    gastaría los certificados del año de ACM.
+  - Hasta la pantalla nada lo vende: `hubs/0026` quitó la línea y la descripción de Standard, el guardia es
+    `test_plan_catalogue.py::test_no_plan_sells_a_custom_domain_nobody_can_connect` (y sus gemelos de `/pricing/` y de
+    los términos en `public/tests`).
 - Pruebas de la parte 2: e2e en `tests/e2e/panel/hubs-settings.spec.ts` (clave `HUBS-Gnn` en el título).
 - Personas (F24–F30): `hubs.member.{list,invite,change_role,remove,resend,cancel}`,
   `hubs.invitation.{list_mine,accept,decline}` y `hubs.ownership.{transfer,accept,decline,cancel}` (`api.py`, bajo
@@ -878,8 +904,8 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
 
 ## Lo que queda fuera
 
-- **Conectar un dominio propio a la web del negocio** (HUBS-F17): fuera de la fase 1, llega con sus tres piezas
-  (erplora.com, la entrada de ERPlora y el Hub) — saas#195.
+- **La pantalla de Ajustes para conectar un dominio propio** (HUBS-F17) y la vuelta de su promesa a los planes y a la web:
+  es lo único visible y entra la última — saas#195.
 
 ## Lo que NO hace, a propósito
 
@@ -892,8 +918,10 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
 - No pausa ni reinicia negocios, ni enseña su CPU, su memoria o sus conexiones: un solo servicio sirve a todos.
 - No pausa, avisa ni borra un negocio gratuito porque nadie lo use, ni lo despierta al volver: sin un servidor por
   negocio no hay nada que dormir, y no hay borrado por inactividad hasta medir lo que cuesta uno ocioso.
-- No conecta todavía un dominio propio (HUBS-F17, saas#195): la web y la entrada de cada negocio están en su dirección
-  de erplora.com.
+- No enseña todavía en el panel el dominio propio (HUBS-F17, saas#195): la web y la entrada de cada negocio están en su
+  dirección de erplora.com.
+- No conecta un dominio raíz (minegocio.es): ni admite CNAME ni la entrada de ERPlora tiene una IP fija que dar.
+- No sirve la aplicación ni la entrada por el dominio propio: la cookie de sesión no llega a otro dominio.
 - No entra sola en un negocio ya existente al abrir la Entrada, tampoco con uno solo: elige la persona.
 - No tiene una página con las personas de todos los negocios: cada negocio enseña las suyas en «Miembros» (ronda 17:
   el panel es Negocios, Tienda, Facturación y Cuenta).

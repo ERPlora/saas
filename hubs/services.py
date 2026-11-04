@@ -2476,9 +2476,7 @@ def custom_domain_remove(ctx: OperationContext, data: ByIdIn) -> dict:
 
 def _finish_removal_quietly(domain_id: UUID) -> None:
     try:
-        row = queries.custom_domain_row(domain_id)
-        if row is not None:
-            _finish_removal(row)
+        _check_custom_domain(domain_id)
     except Exception:  # noqa: BLE001 - it already answered; the hourly check finishes it
         logger.exception("hubs.custom_domain.removal_crashed domain=%s", domain_id)
 

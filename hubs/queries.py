@@ -1205,7 +1205,9 @@ def custom_domain_status(hub: Hub, language: str) -> dict[str, Any]:
 
 def _validation_of(row: CustomDomain) -> tuple[str, str] | None:
     """ACM's validation record the row does not have yet, for a few seconds: the next check keeps it."""
-    if row.validation_name or not row.certificate_arn or not settings.CUSTOM_DOMAINS_ENABLED:
+    if row.state != CustomDomain.State.PENDING or row.validation_name or not row.certificate_arn:
+        return None
+    if not settings.CUSTOM_DOMAINS_ENABLED:
         return None
     try:
         facts = edge_client.describe_certificate(row.certificate_arn)

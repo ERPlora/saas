@@ -441,6 +441,21 @@ def test_reading_asks_acm_for_a_validation_record_the_row_does_not_have_yet(owne
     assert read(owner, standard_business).domain.validation.name == f"_abc.{DOMAIN}"
 
 
+@pytest.mark.parametrize("state", [CustomDomain.State.ACTIVE, CustomDomain.State.LAPSED, CustomDomain.State.REMOVING])
+def test_reading_asks_acm_only_for_a_domain_on_its_way(owner, standard_business, custom_domains_on, state):
+    make_row(standard_business, state=state, certificate_arn=certificate_arn())
+
+    assert read(owner, standard_business).domain.validation is None
+
+
+def test_reading_with_the_variable_off_asks_acm_for_nothing(owner, standard_business, settings, aws_edge):
+    settings.CUSTOM_DOMAINS_ENABLED = False
+    settings.CUSTOM_DOMAINS_TARGET_TEMPLATE = "hub-{hub_id}.erplora.com"
+    make_row(standard_business, certificate_arn=certificate_arn())
+
+    assert read(owner, standard_business).domain.validation is None
+
+
 def test_reading_with_acm_away_gives_the_rest(owner, standard_business, custom_domains_on):
     make_row(standard_business, certificate_arn=certificate_arn())
     custom_domains_on.acm.add_client_error("describe_certificate", "ThrottlingException", "later")

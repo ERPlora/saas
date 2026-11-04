@@ -280,10 +280,13 @@ El panel de `erplora.com` (Negocios · Tienda · Facturación · Cuenta; plan
   `STRIPE_TIMEOUT_SECONDS`, `STRIPE_PORTAL_CONFIGURATION` (`bpc_…`; vacía, el portal no abre),
   `PLATFORM_INVOICING_ENABLED` (por defecto `false`: ninguna clave live cobra hasta que el hub de
   plataforma emite las facturas), `VIES_ENDPOINT`, `VIES_CONNECT_TIMEOUT_SECONDS`, `VIES_TIMEOUT_SECONDS`,
-  `VAT_CHECK_RATE`, `VAT_CHECK_GLOBAL_RATE`, `PROMO_CHECK_RATE` e `INTERNAL_SHARED_SECRET_PREVIOUS`.
+  `VAT_CHECK_RATE`, `VAT_CHECK_GLOBAL_RATE`, `PROMO_CHECK_RATE`, `INTERNAL_SHARED_SECRET_PREVIOUS` y el dominio propio de
+  un negocio (`CUSTOM_DOMAINS_ENABLED`, `CUSTOM_DOMAINS_LISTENER_ARN`, `CUSTOM_DOMAINS_TARGET_TEMPLATE`,
+  `CUSTOM_DOMAINS_MAX_CERTIFICATES`).
 - **Tareas programadas** (`saas-cron`, `aws-next/stacks/prod/scheduler.tf`): `sweep_unpaid` (cada hora),
   `reconcile_platform_invoices` (cada 15 min) y `collect_hub_usage` (01:15 UTC), además de
-  `reconcile_hub_states`, `push_hub_snapshots` y `report_seal_expiry`. En `saas-migrate`, tras `migrate`:
+  `reconcile_hub_states`, `push_hub_snapshots`, `report_seal_expiry` y `check_custom_domains` (cada hora; con
+  `CUSTOM_DOMAINS_ENABLED` apagada no hace nada). En `saas-migrate`, tras `migrate`:
   `seed_taxonomy` (y, hasta que se aplique el Terraform de ERPlora/aws#4, también `sync_hub_plans`, hoy vacío).
   Todas idempotentes y con advisory lock (una segunda ejecución vuelve al momento).
 - **Planes**: viven solo en la base de datos y se mantienen en el admin de Django (`/admin/hubs/plan/`). La

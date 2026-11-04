@@ -253,6 +253,25 @@ Parte 5 de 5: cada flujo `hecho` contra su código, con mutantes ejecutados; los
   `collect_hub_usage` (arriba, en L4-A, y PLAN-SAAS §27).
 - Lo que queda fuera, con su issue: `WORKBOOK.md`, «Lo que queda fuera».
 
+## Lo que añadió saas#195 (2026-11-04): el dominio propio, el servidor
+
+Lo que hace y por qué, en `WORKBOOK.md` (HUBS-F17 y «Para quien lo mantiene»). Lo que hay que saber para tocarlo:
+
+- `hubs.custom_domain.request` y `.remove` (solo el propietario), `.get` (administrador; también la API de claves), y
+  `.record`, sin herramienta, lo único por donde escribe la comprobación. Rutas: `GET`/`POST /api/hubs/businesses/custom-domain`
+  y `POST …/custom-domain/remove`. Códigos: `hubs.custom_domains_off`, `hubs.custom_domain_not_in_plan` y
+  `_exists`/`_taken` (409); `_invalid`, `_ours`, `_apex`, `_unregistered` (422, con el campo `domain`).
+- **Variables** (`.env.example`; las da `aws`, `custom_domains.tf`): `CUSTOM_DOMAINS_ENABLED`, `CUSTOM_DOMAINS_LISTENER_ARN`,
+  `CUSTOM_DOMAINS_TARGET_TEMPLATE` y `CUSTOM_DOMAINS_MAX_CERTIFICATES`. Ausente o en `false`: ninguna llamada a AWS ni al
+  DNS, sin métrica, y un dominio que hubiera se queda como está; encendida sin las otras, no arranca.
+- **`check_custom_domains`** corre cada hora en `saas-cron`. Sale con error solo si un dominio rompe o la métrica no se
+  publica: AWS, el DNS o el Hub caídos no son error, porque vuelven y la siguiente pasada reintenta.
+- **Pedir el dominio llama a AWS dentro de la transacción**, para que dominio y certificado lleguen juntos. Si hace
+  rollback, queda en ACM un certificado gratis, etiquetado y en ningún listener.
+- **En los tests**, AWS es el `Stubber` de botocore por `aws_edge` (`tests/conftest.py`): sus errores son `BotoCoreError` y
+  `edge_client` los convierte en `EdgeUnavailable`, así que `StrictStubber` los recuerda y hace caer el test. Sin eso, una
+  llamada inesperada pasaría por AWS caído.
+
 ## Pendiente (lotes siguientes)
 
 - El Hub (carril Hub): verificar la v2 y los dos secretos en su `/internal`, firmar con v2 su canje, y adoptar por

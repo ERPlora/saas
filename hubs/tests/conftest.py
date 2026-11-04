@@ -3,6 +3,7 @@
 from decimal import Decimal
 
 import pytest
+from botocore.exceptions import StubResponseError
 from botocore.stub import ANY, Stubber
 from django.contrib.auth import get_user_model
 from live.context import OperationContext, Scope
@@ -202,6 +203,34 @@ def certificate_arn(number: int = 1) -> str:
     return f"arn:aws:acm:eu-west-1:123456789012:certificate/0193a0a0-0000-7000-8000-{number:012d}"
 
 
+class StrictStubber(Stubber):
+    """A Stubber that remembers what it refused. Its errors are ``BotoCoreError``s, which ``hubs.edge_client`` turns into
+    ``EdgeUnavailable`` as it must: without this, a call nobody expected would pass for AWS being away, and a test that
+    expects none would prove nothing."""
+
+    def __init__(self, client):
+        super().__init__(client)
+        self.refused: list[str] = []
+
+    def _assert_expected_call_order(self, model, params):
+        try:
+            super()._assert_expected_call_order(model, params)
+        except StubResponseError as refused:
+            self.refused.append(f"{model.name}: {refused}")
+            raise
+
+    def _assert_expected_params(self, model, params, context, **kwargs):
+        try:
+            super()._assert_expected_params(model, params, context, **kwargs)
+        except StubResponseError as refused:
+            self.refused.append(f"{model.name}: {refused}")
+            raise
+
+    def assert_all_as_expected(self):
+        assert self.refused == [], "calls to AWS nobody expected, or with other parameters"
+        self.assert_no_pending_responses()
+
+
 class AwsEdge:
     """ACM, the ALB and CloudWatch, each a real client with a Stubber: a call the test did not expect fails."""
 
@@ -284,11 +313,11 @@ def aws_edge(monkeypatch):
     monkeypatch.setattr(edge_client, "_acm", lambda: acm)
     monkeypatch.setattr(edge_client, "_elbv2", lambda: elbv2)
     monkeypatch.setattr(edge_client, "_cloudwatch", lambda: cloudwatch)
-    with Stubber(acm) as acm_stub, Stubber(elbv2) as alb_stub, Stubber(cloudwatch) as metric_stub:
+    with StrictStubber(acm) as acm_stub, StrictStubber(elbv2) as alb_stub, StrictStubber(cloudwatch) as metric_stub:
         yield AwsEdge(acm_stub, alb_stub, metric_stub)
-        acm_stub.assert_no_pending_responses()
-        alb_stub.assert_no_pending_responses()
-        metric_stub.assert_no_pending_responses()
+        acm_stub.assert_all_as_expected()
+        alb_stub.assert_all_as_expected()
+        metric_stub.assert_all_as_expected()
 
 
 @pytest.fixture

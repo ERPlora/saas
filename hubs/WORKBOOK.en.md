@@ -163,7 +163,7 @@ last access, with a search by business or by email and a filter by role; it is o
 | HUBS-F14 | See the businesses through the API | done |
 | HUBS-F15 | Change the name, the language and the time zone of the business | done |
 | HUBS-F16 | Change the web address of the business | done |
-| HUBS-F17 | Connect an own domain to the business's website | discarded |
+| HUBS-F17 | Connect an own domain to the business's website | partial |
 | HUBS-F18 | Delete a business | done |
 | HUBS-F19 | Recover a deleted business | done |
 | HUBS-F20 | Warn and close a business suspended for an unpaid plan | done |
@@ -397,18 +397,19 @@ If it fails: a reserved address, "This address is reserved. Choose another one."
 Involved: the business (receives its new address), accounts (the way in at the new address)
 
 ### HUBS-F17 Connect an own domain to the business's website
-Status: discarded — not in phase 1: the own domain is only for the business's public website, on the plans that include it, and comes with its three pieces at once (the check of the domain in erplora.com, its certificate at ERPlora's entrance and the business serving its website on that domain); until then the panel does not show it (saas#195)
+Status: partial — the server already does it where `CUSTOM_DOMAINS_ENABLED` is on (asking for it, the hourly check and removing it, through the assistant too); the screen in Settings is missing and, until it comes, the panel does not show it and the plans do not sell it (saas#195)
 Actor: owner
-Screen: Business settings
+Screen: Business settings (it does not exist yet)
 Steps:
-1. In "Settings", the owner of a business on a plan that includes an own domain types theirs (for example, the business's website on its domain) and erplora.com shows the record to create at their domain provider.
-2. When the record points right, erplora.com checks it, asks for the certificate and, once set, the domain is active: the business's public website opens on it.
-3. Every hour it looks again; if it stops pointing right three times in a row, it tells the owner and stops serving it until it comes back.
-4. To remove it, they remove it from the settings and confirm it.
-In: the owner's domain and their provider's record.
+1. The owner of a business on a plan that includes an own domain types theirs, for example www.mybusiness.com, and erplora.com gives them the two CNAME records to create at their provider: the validation one and the one that takes the visits to ERPlora.
+2. First they create the validation one, which stays for good because it renews the certificate. When ACM sees it, the certificate is issued and erplora.com puts it on ERPlora's entrance.
+3. With the certificate on, they create the second one, which points at the name of that business. When the hourly check sees it, the business serves its website on that domain and, if it answers well, the domain is active.
+4. Every hour it looks again; if it stops pointing right or being served three times in a row, it tells the owner by email and stops serving it. When the record comes back, the domain comes back by itself.
+5. To remove it, they remove it and confirm: it stops being served, its certificate is deleted and the name is free.
+In: the owner's domain and the two records at their provider.
 Out: the business's public website on its domain, with its certificate.
-If it fails: a domain that does not point to ERPlora stays inactive and the missing record is said; a plan that does not include it does not offer it. The app and the way into the business stay at its erplora.com address.
-Involved: website (the business's public website), the business (serves the website on its domain), public (PUBLIC-F07: until then neither the plans nor the website sell it, saas#233)
+If it fails: a domain that does not point to ERPlora stays inactive and the missing record is said. A root domain (mybusiness.com) is not offered, because it takes no CNAME and the entrance has no fixed IP: they connect www and redirect the root to it at their provider. A plan that does not include it does not offer it, and moving down to one stops serving it, which comes back on moving up. With no room for more certificates, the domain waits and it is tried again every hour, and what is already active does not notice. A certificate that was refused or not validated in 72 hours has to be asked for again. If the DNS, AWS or the Hub do not answer, that is no failure and it is tried again. The app and the way into the business stay at its address on erplora.com.
+Involved: website (the business's public website), the business (BASE-F110: serves the website on its domain), public (PUBLIC-F07: until the screen comes, neither the plans nor the web sell it, saas#233)
 
 ### HUBS-F18 Delete a business
 Status: done

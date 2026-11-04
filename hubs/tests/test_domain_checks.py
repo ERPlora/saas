@@ -263,7 +263,7 @@ def test_the_probe_asks_for_the_customers_name_by_sni_and_host_on_the_hubs_door(
         _http(body=b"{}"),
         _http(body=b'{"hub_id": ""}'),
         _http(body=b'{"hub_id": 7}'),
-        _http(body=b"x" * (domain_checks.PROBE_MAX_BYTES + 1)),
+        _http(body=json.dumps({"hub_id": str(HUB_ID), "padding": "x" * domain_checks.PROBE_MAX_BYTES}).encode()),
     ],
     ids=[
         "another business behind the name",
@@ -275,12 +275,18 @@ def test_the_probe_asks_for_the_customers_name_by_sni_and_host_on_the_hubs_door(
         "no id",
         "an empty id",
         "an id that is no text",
-        "over the cap",
+        "this business, but over the cap",
     ],
 )
 def test_an_answer_that_is_not_this_business_is_not_served(edge, answer):
     edge(answer)
     assert domain_checks.probe(DOMAIN, TARGET, HUB_ID) == Probe.NOT_SERVED
+
+
+def test_a_body_just_inside_the_cap_is_read(edge):
+    padding = "x" * (domain_checks.PROBE_MAX_BYTES - 100)
+    edge(_http(body=json.dumps({"hub_id": str(HUB_ID), "padding": padding}).encode()))
+    assert domain_checks.probe(DOMAIN, TARGET, HUB_ID) == Probe.SERVED
 
 
 def test_a_certificate_that_does_not_verify_for_that_name_is_not_served(edge):
