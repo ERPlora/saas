@@ -3,7 +3,7 @@
 // its twin with the second factor on at :8013 (panel/project.ts), the Hub the specs play on :8019 and the `saas` of
 // `.env`. A second run at once moves the four ports together with one variable, E2E_SAAS_PORT (8030: :8031, :8032, :8033, :8039), so that it can never leave one of
 // them behind (two panels sending their Hub calls to one double), and runs on a database of its own,
-// `saas_e2e_<port>`, which its first server creates and migrates (database.ts): two runs on the one `saas`
+// `saas_e2e_<port>`, which a step before its servers creates and migrates (database.ts): two runs on the one `saas`
 // write into each other's data. The rest of the e2e reads them here (playwright.config.ts, panel/project.ts,
 // django-env.ts, database.ts).
 //
