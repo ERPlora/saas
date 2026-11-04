@@ -7,8 +7,8 @@ import { assistantMessages, createAssistant, installAssistant, type Assistant, c
 import type { TurnBody, TurnFrame, TurnOptions } from '@erplora/ui/components';
 import { createShellI18n, ION_ICONS, provideSession, provideShellConfig, type SessionMe } from '@erplora/ui/shell';
 import { LIVE_CLIENT_KEY } from '@erplora/ui/sdk';
-import { enableAutoUnmount, mount } from '@vue/test-utils';
-import { afterEach, vi } from 'vitest';
+import { mount } from '@vue/test-utils';
+import { vi } from 'vitest';
 import { type Component, createApp, ref } from 'vue';
 import { createMemoryHistory, createRouter, type RouteLocationRaw, type Router } from 'vue-router';
 
@@ -25,7 +25,6 @@ export { flush } from '../../../packages/ui/src/sdk/__tests__/live-harness';
 const ionicons = ((window as unknown as { Ionicons?: { map?: Map<string, string> } }).Ionicons ??= {});
 ionicons.map ??= new Map();
 for (const [name, url] of Object.entries(ION_ICONS)) ionicons.map.set(name, url);
-enableAutoUnmount(afterEach);
 
 /** An account of the panel: it may ask the assistant (every account may). */
 export const LENA: SessionMe = {
