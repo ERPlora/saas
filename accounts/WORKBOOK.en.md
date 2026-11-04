@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:81f2908a647b5f2e5820e1406fcbfe04fa1d151c80301357c94e53a60a998781 -->
+<!-- generated from WORKBOOK.md sha256:69e3cec7cfe68b4e81b8c4d720daebef7baf388d9f6b934a0dfc9f0e20ba6655 -->
 
 ## What it is for and who it is for
 
@@ -551,7 +551,7 @@ Steps:
 5. The email changes with "Change": a code arrives at the new address and, once typed, that one becomes the one to sign in with; the old one gets a notice of the change.
 In: first and last name, the photo, or the new email and its code.
 Out: the profile changed, in the panel and in every business entered afterwards. Every account has its profile from the start, with nothing to fill in. The same is read and saved from any program with the person's session.
-If it fails: an empty first name is not saved ("Write your first name."); a photo that is no image or is too big says why and keeps the one there was; a network failure, "We could not reach ERPlora…" and nothing changes. The billing details are not here: they belong to **Billing**.
+If it fails: an empty first name is not saved ("Write your first name."); a photo that is no image or is too big says why and keeps the one there was; a new email that is not valid or that another account already uses is shown under the field, with "Check the highlighted details." on top; a network failure, "We could not reach ERPlora…" and nothing changes. The billing details are not here: they belong to **Billing**.
 Involved: hubs (the businesses get the name at sign-in)
 
 ### ACCOUNTS-F22 Choose the language and the appearance

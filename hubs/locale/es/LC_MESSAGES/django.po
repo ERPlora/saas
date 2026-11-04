@@ -1195,11 +1195,6 @@ msgstr "La dirección no puede empezar por «xn--»."
 msgid "This address is reserved. Choose another one."
 msgstr "Esta dirección está reservada. Elige otra."
 
-#: services.py:271 services.py:408 services.py:1151 services.py:1158
-#: services.py:1240
-msgid "Invalid payload"
-msgstr "Los datos enviados no son válidos."
-
 #: services.py:281
 msgid "This address is taken. Choose another one."
 msgstr "Esta dirección ya está ocupada. Elige otra."

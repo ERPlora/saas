@@ -558,6 +558,7 @@ class TestReturn:
             "fiscal.reason_required",
             ["reason"],
         )
+        assert refused.value.message == "Check the highlighted details."
         waiting.refresh_from_db()
         assert waiting.status == "submitted"
         assert version_of(business) == before
@@ -569,6 +570,7 @@ class TestReturn:
             )
 
         assert refused.value.code == "fiscal.reason_too_long"
+        assert refused.value.message == "Check the highlighted details."
 
     def test_only_one_waiting_is_returned(self, business, reviewer):
         grant = make_grant(business, version=1, status="approved")
@@ -875,6 +877,7 @@ class TestStamp:
 
         assert refused.value.code == code
         assert "png_base64" in refused.value.fields
+        assert refused.value.message == "Check the highlighted details."
         assert not RepresentativeStamp.objects.exists()
 
     def test_a_png_whose_data_is_damaged_is_refused(self, stamp_keeper):

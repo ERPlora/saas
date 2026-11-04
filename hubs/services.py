@@ -45,6 +45,7 @@ from pydantic import ValidationError
 from accounts import queries as account_queries
 from accounts import services as account_services
 from accounts.queries import hub_start_url
+from base.refusals import fields_refused
 from hubs import emails, events, hub_client, queries
 from hubs.queries import expired_deletions
 from hubs.hub_client import HubRefused, HubUnavailable
@@ -277,7 +278,7 @@ def _chosen_slug(slug: str, excluding: UUID | None = None) -> str:
             "min": hub_slug_min_length(),
             "max": HUB_SLUG_MAX_LENGTH,
         }
-        raise InvalidPayload(_("Invalid payload"), fields={"slug": message}) from None
+        raise fields_refused({"slug": message}) from None
     if slug == account_services.PLATFORM_HOST_SLUG:
         raise Conflict(_("This address is reserved. Choose another one."), code="hubs.slug_reserved")
     if queries.slug_taken(slug, excluding=excluding):
@@ -462,10 +463,8 @@ def business_delete(ctx: OperationContext, data: BusinessDeleteIn) -> dict:
     if hub.status in (Hub.Status.DELETING, Hub.Status.DELETED):
         raise business_deleted()
     if data.confirm_name.strip().casefold() != hub.name.strip().casefold():
-        raise InvalidPayload(
-            _("Invalid payload"),
-            fields={"confirm_name": _("Type the name of the business to delete it.")},
-        )
+        reason = _("Type the name of the business to delete it.")
+        raise InvalidPayload(reason, fields={"confirm_name": reason})
     _delete_business(ctx, hub, member.user, base_url=emails.base_url(ctx.request))
     return queries.business_detail(member)
 
@@ -1464,15 +1463,13 @@ def billing_profile_update(ctx: OperationContext, data: BillingProfileIn) -> dic
         values["billing_country"] = hub.country
     problem = postal_code_problem(values["billing_country"], values["billing_postal_code"])
     if problem:
-        raise InvalidPayload(_("Invalid payload"), fields={"billing_postal_code": problem})
+        raise fields_refused({"billing_postal_code": problem})
     try:
         # Without the payer's country yet (it may wait for the first checkout), read it in the business's.
         country = values["billing_country"] or hub.country
         values["tax_id"] = validate_vat_for_profile(country, values["tax_id"]).vat_number
     except MalformedVatNumber:
-        raise InvalidPayload(
-            _("Invalid payload"), fields={"tax_id": _("Enter a valid tax ID for the country of the payer.")}
-        ) from None
+        raise fields_refused({"tax_id": _("Enter a valid tax ID for the country of the payer.")}) from None
     profile = hub.billing_profile
     if profile is None or profile.owner_id != member.user_id:
         # A payer is somebody's: the one another account set up (the owner before a transfer) keeps
@@ -1554,7 +1551,8 @@ def subscription_apply(ctx: OperationContext, data: SubscriptionApplyIn) -> dict
     if "plan" in sent:
         plan = Plan.objects.filter(slug=sent["plan"]).first()
         if plan is None:
-            raise InvalidPayload(_("Invalid payload"), fields={"plan": _("There is no plan with this identifier.")})
+            reason = _("There is no plan with this identifier.")
+            raise InvalidPayload(reason, fields={"plan": reason})
     if subscription is None:
         subscription = Subscription(hub=hub, plan=plan or queries.free_plan())
         changed = True

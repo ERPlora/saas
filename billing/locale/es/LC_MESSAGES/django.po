@@ -1636,10 +1636,6 @@ msgstr ""
 msgid "Sign in to check a VAT number."
 msgstr "Inicia sesión para comprobar un NIF-IVA."
 
-#: services.py:567 services.py:576 services.py:929 services.py:960
-msgid "Invalid payload"
-msgstr "Datos no válidos"
-
 #: services.py:570
 msgid ""
 "Write the VAT number with its two-letter country prefix, e.g. DE123456789."

@@ -53,8 +53,8 @@ describe('useErrorText', () => {
 
   it('hands a dialog the error with its message said so, its per-field messages kept', async () => {
     const { forDialog } = await texts('es');
-    const error = new ApiError(422, 'invalid_payload', 'Invalid payload', { email: 'Correo no válido.' });
-    expect(forDialog(error)).toEqual({ message: 'Invalid payload', code: 'invalid_payload', status: 422, fields: { email: 'Correo no válido.' } });
+    const error = new ApiError(422, 'invalid_payload', 'Check the highlighted details.', { email: 'Correo no válido.' });
+    expect(forDialog(error)).toEqual({ message: 'Check the highlighted details.', code: 'invalid_payload', status: 422, fields: { email: 'Correo no válido.' } });
     expect(forDialog(new ApiError(0, 'network_error', 'x'))?.message).toBe(
       'No hemos podido conectar con ERPlora. Revisa tu conexión e inténtalo de nuevo.',
     );

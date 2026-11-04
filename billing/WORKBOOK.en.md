@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:795c84f2806a8691808c0e6c45dd8c11951ed5b5f6d922da2d6be2898d4133f8 -->
+<!-- generated from WORKBOOK.md sha256:c9f297526da5b16dd1d8fb5b5db318ed80a46bc42e96891014e58e0675ebe652 -->
 
 ## What it is for and who it is for
 
@@ -169,7 +169,7 @@ Steps:
 5. Tap "Save details": "Billing details saved". They apply to the next invoices and to what Stripe sends (the page to confirm a charge the bank wants authenticated, its receipts and its payment portal); the invoices already issued do not change.
 In: what the person types; the business's country and name if they choose to use them.
 Out: the business's billing details (shared by the businesses the same account pays), the VIES check recorded and, if the payer has ever paid, its customer record in Stripe up to date; the change is announced (`hubs.billing_profile.updated`).
-If it fails: a Spanish postal code without five digits, a missing country or a tax ID that is not valid for its country are shown under their field and nothing is saved. After a transfer, if another account paid the business, the dialog says "Until now another account paid this business: say who pays from now on". If Stripe does not answer, the details are saved anyway and Stripe gets them with the next payment from the panel.
+If it fails: a Spanish postal code without five digits, a missing country or a tax ID that is not valid for its country are shown under their field, with "Check the highlighted details." on top, and nothing is saved. After a transfer, if another account paid the business, the dialog says "Until now another account paid this business: say who pays from now on". If Stripe does not answer, the details are saved anyway and Stripe gets them with the next payment from the panel.
 Involved: hubs (the business's and the payer's details)
 
 ### BILLING-F02 Work out the tax of a sale from where the payer is

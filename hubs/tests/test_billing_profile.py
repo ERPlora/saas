@@ -136,6 +136,7 @@ def test_a_tax_id_of_another_form_is_an_invalid_field(business, owner, country, 
         update(owner, business, billing_country=country, tax_id=tax_id)
 
     assert set(refused.value.fields) == {"tax_id"}
+    assert refused.value.message == "Check the highlighted details."
 
 
 @pytest.mark.parametrize("who", ["admin", "manager", "employee"])
@@ -221,6 +222,7 @@ def test_a_spanish_postal_code_has_five_digits(business, owner, postal_code):
         update(owner, business, billing_country="ES", billing_postal_code=postal_code)
 
     assert set(refused.value.fields) == {"billing_postal_code"}
+    assert refused.value.message == "Check the highlighted details."
 
 
 @pytest.mark.parametrize(

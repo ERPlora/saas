@@ -223,6 +223,36 @@ class TestAsking:
         vies.assert_not_called()
         assert VatCheck.objects.count() == 0
 
+    @pytest.mark.parametrize(
+        "number",
+        ["  ", "812871812", "ZZ12345678"],
+        ids=["blank", "no prefix nor country", "unknown prefix"],
+    )
+    def test_the_services_refusal_points_at_the_field(self, signed_in, number):
+        response = _ask(signed_in, vat_number=number)
+
+        assert response.status_code == 422
+        assert response.json()["error"]["message"] == "Check the highlighted details."
+
+    def test_the_notice_speaks_the_accounts_language_whatever_the_browser_asks(
+        self, signed_in, buyer
+    ):
+        """saas#265's «No medido»: an account's language wins over ``Accept-Language`` (``base.language``)."""
+
+        def asked_in(browser):
+            return signed_in.post(
+                URL,
+                {"vat_number": ""},
+                content_type="application/json",
+                HTTP_HOST=HOST,
+                HTTP_ACCEPT_LANGUAGE=browser,
+            ).json()["error"]["message"]
+
+        assert asked_in("es") == "Check the highlighted details."
+        buyer.language = "es"
+        buyer.save(update_fields=["language"])
+        assert asked_in("en") == "Revisa los datos marcados."
+
     def test_a_row_that_could_not_be_written_is_not_reported_as_checked(
         self, signed_in
     ):
