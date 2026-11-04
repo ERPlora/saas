@@ -603,6 +603,35 @@ test('PUBLIC-G51 on a slow device, the mobile menu opens and closes even pressed
   await Promise.all(held.map((route) => route.continue().catch(() => undefined)));
 });
 
+test('PUBLIC-G51 on a slow phone, the buttons of the menu lead on even pressed before the page script has run', async ({
+  page,
+}) => {
+  // The steps of saas#238 on a phone, where the header's buttons live in the menu (saas#243 opens it without the script).
+  await page.setViewportSize({ width: 375, height: 667 });
+  const held: Route[] = [];
+  await page.route('**/static/spa/**/*.js', (route) => {
+    held.push(route);
+  });
+  const menu = mobileMenu(page);
+
+  for (const [button, destination] of [
+    ['[href="/launch"]', /\/launch$/],
+    ['[href="/demo/"]', /\/demo\/$/],
+  ] as const) {
+    await page.goto('/pricing/', { waitUntil: 'commit' });
+    await menu.burger.click();
+    await menu.isOpen(button);
+    // The control: the page's script has really not run, so nothing but the HTML can lead anywhere.
+    expect(await page.evaluate(() => customElements.get('ion-button') === undefined), button).toBe(true);
+
+    await menu.panel.locator(button).click();
+    await expect(page, button).toHaveURL(destination);
+  }
+
+  await page.unrouteAll({ behavior: 'ignoreErrors' });
+  await Promise.all(held.map((route) => route.continue().catch(() => undefined)));
+});
+
 test('PUBLIC-G51 once the page script has run, one press opens the mobile menu and one closes it', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 667 });
   const clean = await watch(page);
