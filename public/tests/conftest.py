@@ -61,7 +61,8 @@ def fixed_response_tokens(monkeypatch):
 
     A random token can hold whatever a test scans the raw page for, so no test may depend on the
     draw (saas#264). Only the value is fixed: a page that stops asking for a token goes on without
-    it. ``test_response_tokens.py`` keeps the real ones, to say that this hides nothing.
+    it. ``test_response_tokens.py`` keeps the real ones, to say that this hides nothing, and so does
+    ``test_template_tokens.py``, to hold each template's tokens against the server's.
     """
     monkeypatch.setattr("django.utils.csp.generate_nonce", lambda: "a" * 22)
     monkeypatch.setattr("django.middleware.csrf._get_new_csrf_string", lambda: "a" * 32)
