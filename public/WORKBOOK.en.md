@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:cf9800c8bd441b3f13c760c9bd22bb3b51a9a33820697e89d2da3f12810b5b9e -->
+<!-- generated from WORKBOOK.md sha256:8265e4daf656bc3a86ce8926103d5d82f850a407b45907e72673ed5557161496 -->
 
 ## What it is for and who it is for
 
@@ -316,7 +316,7 @@ Steps:
 3. They create the account and their business, which is born on the Free plan; the paid plan is chosen afterwards, from the panel.
 In: nothing: the button carries no parameters.
 Out: nothing on the web; the account and the business are created by the sign-up.
-If it fails: the free plan's card says "Start free" and a paid plan's "Get started", because every business starts on Free. Choosing a plan or an industry on the web does not preselect it at sign-up.
+If it fails: the free plan's card says "Start free" and a paid plan's "Get started", because every business starts on Free. Choosing a plan or an industry on the web does not preselect it at sign-up. On a phone, the header's links are in the three-bar menu, which opens from the first moment, even if the page has not finished loading or its script never arrives.
 Involved: accounts (the entrance and the sign-up), hubs (the business on Free)
 
 ### PUBLIC-F12 Reach a "coming soon" page or a retired address

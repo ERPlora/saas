@@ -5,8 +5,9 @@
 //     the old base and the shell pin it) — guard: public.test.ts reads the templates;
 //   - Ionic's CSS (no structure.css: these pages scroll the document), the @erplora/ui tokens and
 //     palettes, IBM Plex, and the stylesheets of public/static/public/;
-//   - the behaviour the OutfitKit components carried in their shadow DOM: the navbar's mobile
-//     panel, the scroll reveal, and the server messages as ion-toasts;
+//   - the behaviour the OutfitKit components carried in their shadow DOM: the scroll reveal and the
+//     server messages as ion-toasts (the navbar's mobile panel is the inline script of its partial,
+//     public/partials/navbar.html, so that it never waits for this module: saas#243);
 //   - the colour mode: the one the server wrote on <html> (`data-ep-theme`), and in `system` the
 //     operating system's, followed live (the head's inline script already painted the first frame);
 //   - Mermaid, imported only when the page has a `pre.mermaid` (spec §6);
@@ -109,49 +110,6 @@ export function setupColorScheme(doc: Document): void {
     root.classList.toggle('ion-palette-dark', mode === 'dark' || (mode !== 'light' && Boolean(system?.matches)));
   apply();
   if (mode !== 'light' && mode !== 'dark') system?.addEventListener?.('change', apply);
-}
-
-// --- Navbar (public/partials/navbar.html) -----------------------------------------------------
-
-/** The navbar's side panel at 800 px and below: burger, close button, backdrop, Esc and links. */
-export function setupNavbar(doc: Document): void {
-  const navbar = doc.querySelector<HTMLElement>('[data-navbar]');
-  const toggle = navbar?.querySelector<HTMLButtonElement>('button[data-navbar-toggle]');
-  const panel = navbar?.querySelector<HTMLElement>('[data-navbar-panel]');
-  if (!navbar || !toggle || !panel) return;
-
-  const isOpen = () => navbar.hasAttribute('data-open');
-  const setOpen = (open: boolean) => {
-    navbar.toggleAttribute('data-open', open);
-    // A native <button> (L8): an ion-button would keep the aria-expanded it had when it loaded.
-    toggle.setAttribute('aria-expanded', String(open));
-    doc.documentElement.classList.toggle('ep-navbar-open', open);
-  };
-  const close = () => {
-    if (!isOpen()) return;
-    const hadFocus = panel.contains(doc.activeElement);
-    setOpen(false);
-    if (hadFocus) toggle.focus();
-  };
-
-  toggle.addEventListener('click', () => {
-    setOpen(!isOpen());
-    // The close button comes first in the panel: the focus lands on it, as in a side sheet.
-    if (isOpen()) panel.querySelector<HTMLElement>('button, a, ion-button')?.focus();
-  });
-  for (const closer of navbar.querySelectorAll<HTMLElement>('[data-navbar-close]')) {
-    closer.addEventListener('click', close);
-  }
-  panel.addEventListener('click', (event) => {
-    if ((event.target as Element | null)?.closest('a')) close();
-  });
-  doc.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') close();
-  });
-  // Back to the desktop bar with the panel open: the links return to the bar, nothing stays locked.
-  doc.defaultView?.matchMedia?.('(min-width: 801px)').addEventListener?.('change', (event) => {
-    if (event.matches) close();
-  });
 }
 
 // --- Scroll reveal (public/components/reveal.html) --------------------------------------------
@@ -271,7 +229,6 @@ export function setupAppBack(doc: Document, history: BackHistory | undefined = d
 export function boot(doc: Document): void {
   setupColorScheme(doc);
   registerIonic();
-  setupNavbar(doc);
   setupAppBack(doc);
   setupReveal(doc, doc.defaultView?.IntersectionObserver);
   presentServerMessages(doc);
