@@ -275,7 +275,7 @@ class TurnIn(CallerIn):
 
 class ServiceConnectionOut(Schema):
     """What a service needs of its provider: its address and its key (the embeddings and the dictation, of the
-    services' provider of OpenAI's API; the reading aloud, of the provider of the voice, Azure AI Speech)."""
+    services' provider of OpenAI's API)."""
 
     provider: str
     base_url: str
