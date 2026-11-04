@@ -9,9 +9,9 @@
 // `.env` has unapplied migrations (it never migrates it: sessions share it), then seeds the app the
 // specs open and removes it at the end (store_docs_seed.py).
 //
-// Ports and database are the run's stack's (stack.ts): today's unless E2E_SAAS_PORT moves the three ports
-// for a second run at once, whose own e2e database the first server creates and migrates before it starts
-// (`node tests/e2e/database.ts`; Playwright starts the servers one after another, before globalSetup).
+// Ports and database are the run's stack's (stack.ts): today's unless E2E_SAAS_PORT moves the ports for a
+// second run at once, whose own e2e database a step of its own creates and migrates before any server starts
+// (`databaseStep`; Playwright starts the `webServer` entries one after another, and all before globalSetup).
 //
 // Each run writes its traces and failure screenshots into `.artifacts/test-results/<run id>/`, and the
 // specs their evidence into `.artifacts/` (both ignored by git).
@@ -26,6 +26,7 @@ import { fileURLToPath } from 'node:url';
 
 import { defineConfig, type PlaywrightTestConfig } from '@playwright/test';
 
+import { DATABASE_READY } from './database';
 import { djangoEnv } from './django-env';
 import { panelProject, panelServers } from './panel/project';
 import { recaptchaServerEnv } from './recaptcha';
@@ -75,13 +76,32 @@ const WINDOW = browserWindow(process.env);
 type WebServer = Exclude<NonNullable<PlaywrightTestConfig['webServer']>, unknown[]>;
 
 /**
- * The public server of `stack`, the first one Playwright starts: before it, an own stack's database is created
- * when missing and migrated (database.ts), so the panel's Django and globalSetup find it ready.
+ * How long an own stack's database may take to get ready. It only has to catch a stuck migration: 170 s were measured
+ * on a first run with a load of 22, and each migration is its own transaction, so the next run goes on from there.
  */
-export function publicServer(saasDir: string, stack: Stack = STACK, env: Record<string, string | undefined> = process.env): WebServer {
-  const runserver = `uv run python manage.py runserver 127.0.0.1:${stack.publicPort} --novite --insecure --noreload`;
+const DATABASE_STEP_TIMEOUT = 600_000;
+
+/**
+ * The step that creates an own stack's database when missing and migrates it (database.ts), so that every server and
+ * globalSetup find it ready. An entry of its own and not part of the first server's command, whose two minutes a first
+ * migration ran out on a busy machine: Playwright killed it half way and the run ended without a spec. It serves
+ * nothing: it is done when it prints its last line. A failed migration ends it with its error, and the run at once.
+ */
+export function databaseStep(saasDir: string): WebServer {
   return {
-    command: stack.database === undefined ? runserver : `node tests/e2e/database.ts && ${runserver}`,
+    name: 'database',
+    command: 'node tests/e2e/database.ts',
+    cwd: saasDir,
+    wait: { stdout: DATABASE_READY },
+    stdout: 'pipe',
+    timeout: DATABASE_STEP_TIMEOUT,
+  };
+}
+
+/** The public server of `stack`, on a database already there: `databaseStep`'s or the shared `saas`. */
+export function publicServer(saasDir: string, stack: Stack = STACK, env: Record<string, string | undefined> = process.env): WebServer {
+  return {
+    command: `uv run python manage.py runserver 127.0.0.1:${stack.publicPort} --novite --insecure --noreload`,
     cwd: saasDir,
     url: `http://127.0.0.1:${stack.publicPort}/robots.txt`,
     reuseExistingServer: false,
@@ -116,8 +136,7 @@ export function publicServer(saasDir: string, stack: Stack = STACK, env: Record<
 /**
  * The public server's twin with a tracker configured (made-up: nothing loads it until a person accepts), on `stack`'s
  * own port: the only one that shows the cookie notice, as production would the day it measures visits (PUBLIC-F19,
- * step 2). The rest of the specs run with no notice, as production today. It starts after the public server, which has
- * already left the database ready.
+ * step 2). The rest of the specs run with no notice, as production today.
  */
 export function publicNoticeServer(saasDir: string, stack: Stack = STACK, env: Record<string, string | undefined> = process.env): WebServer {
   const server = publicServer(saasDir, stack, env);
@@ -142,6 +161,17 @@ export function recaptchaDoubleServer(saasDir: string, stack: Stack = STACK): We
   };
 }
 
+/** What Playwright starts for a run of `stack`, in this order: the database first, and only on a stack that owns one. */
+export function stackServers(saasDir: string, stack: Stack = STACK, env: Record<string, string | undefined> = process.env): WebServer[] {
+  return [
+    ...(stack.database === undefined ? [] : [databaseStep(saasDir)]),
+    recaptchaDoubleServer(saasDir, stack),
+    publicServer(saasDir, stack, env),
+    publicNoticeServer(saasDir, stack, env),
+    ...panelServers(saasDir, undefined, stack, env),
+  ];
+}
+
 export default defineConfig({
   testDir: '.',
   testMatch: '*.spec.ts',
@@ -163,10 +193,5 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   projects: [{ name: 'public', testIgnore: 'panel/**' }, panelProject],
-  webServer: [
-    recaptchaDoubleServer(SAAS_DIR),
-    publicServer(SAAS_DIR),
-    publicNoticeServer(SAAS_DIR),
-    ...panelServers(SAAS_DIR),
-  ],
+  webServer: stackServers(SAAS_DIR),
 });
