@@ -154,9 +154,10 @@ def test_an_icon_goes_after_the_label():
     )
 
 
-def test_an_icon_takes_its_size_and_otherwise_follows_the_text():
-    sized = render('{% button href="/launch" label="Go" end_icon="lucide:arrow-right" icon_size=15 %}')
-    free = render('{% button href="/launch" label="Go" start_icon="lucide:arrow-right" %}')
+@pytest.mark.parametrize("position", ["start_icon", "end_icon"])
+def test_an_icon_takes_its_size_and_otherwise_follows_the_text(position):
+    sized = render('{% button href="/launch" label="Go" ' + position + '="lucide:arrow-right" icon_size=15 %}')
+    free = render('{% button href="/launch" label="Go" ' + position + '="lucide:arrow-right" %}')
 
     assert 'width="15" height="15"' in sized
     assert 'width="1em" height="1em"' in free
