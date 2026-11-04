@@ -21,6 +21,7 @@ import {
   shot,
   sidewaysScroll,
   signIn,
+  signInAs,
   test,
   watchPageErrors,
 } from './fixtures';
@@ -414,8 +415,7 @@ for (const { language, locale } of LANGUAGES) {
       const id = await businessOf(page, 'Bar Manolo');
       await invite(page, browser, id, lucia, false);
 
-      await page.context().clearCookies();
-      await signIn(page.request, { email: lucia.email, password: PASSWORD });
+      await signInAs(page, { email: lucia.email, password: PASSWORD });
       await page.goto('/invitation');
       const card = shown(page);
       await atEverySize(
@@ -445,8 +445,7 @@ for (const { language, locale } of LANGUAGES) {
           'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
         ].join('\n'),
       );
-      await page.context().clearCookies();
-      await signIn(page.request, { email: staff, password: PASSWORD });
+      await signInAs(page, { email: staff, password: PASSWORD });
 
       await page.goto(`/admin/hubs/hub/${id}/change/`);
       await atEverySize(page, 'HUBS-F23', language, async () => {

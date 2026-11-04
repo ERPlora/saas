@@ -28,6 +28,7 @@ import {
   shot,
   sidewaysScroll,
   signIn,
+  signInAs,
   startHubDouble,
   test,
   waitForMail,
@@ -707,8 +708,7 @@ test('HUBS-G03: the staff finds the accesses of a person in the admin, read only
       'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
     ].join('\n'),
   );
-  await page.context().clearCookies();
-  await signIn(page.request, { email: staff, password: PASSWORD });
+  await signInAs(page, { email: staff, password: PASSWORD });
   await page.goto(`/admin/hubs/hubmember/?q=${encodeURIComponent(ana.email)}`);
   const results = page.locator('#result_list tbody tr');
   await atEverySize(page, 'HUBS-G03', async () => {
