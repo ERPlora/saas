@@ -21,9 +21,10 @@ from django.utils import timezone
 from live.errors import Conflict
 from live.models import OutboxEvent
 
-from hubs import domain_checks, events, queries, services
+from accounts.models import UserPreferences
+from hubs import domain_checks, edge_client, events, queries, services
 from hubs.domain_checks import Probe
-from hubs.models import CustomDomain, Hub, Plan, Subscription
+from hubs.models import CustomDomain, Hub, HubMember, Plan, Subscription
 from hubs.schemas import CustomDomainRequestIn
 from hubs.tests.conftest import DOMAIN, certificate_arn, create_business, ctx_for, pointing
 
@@ -376,7 +377,7 @@ def test_acm_away_leaves_a_pending_domain_as_it_was(standard_business, world):
 
 def test_a_certificate_on_the_listener_with_no_cname_for_too_long_gives_its_place_back(standard_business, world):
     """24 places shared by every business: one that never finished does not keep one for ever."""
-    attached_long_ago = timezone.now() - services.CUSTOM_DOMAIN_PENDING_LIMIT - timedelta(hours=1)
+    attached_long_ago = timezone.now() - timedelta(days=14, hours=1)
     certificate_issued(standard_business, attached_at=attached_long_ago)
     world.expect_describe("ISSUED")
     world.expect_detach()
@@ -391,7 +392,7 @@ def test_a_certificate_on_the_listener_with_no_cname_for_too_long_gives_its_plac
 
 
 def test_just_before_the_limit_it_keeps_its_place(standard_business, world):
-    recently = timezone.now() - services.CUSTOM_DOMAIN_PENDING_LIMIT + timedelta(hours=1)
+    recently = timezone.now() - timedelta(days=13, hours=23)
     certificate_issued(standard_business, attached_at=recently)
     world.expect_describe("ISSUED")
 
@@ -564,6 +565,32 @@ def test_a_mail_that_cannot_leave_does_not_undo_it(standard_business, world, mon
 
     assert row_of(standard_business).state == State.LAPSED
     assert counts["crashed"] == 0
+
+
+def test_the_mail_goes_to_the_owner_and_to_nobody_else_of_the_business(standard_business, world, make_user):
+    long_ago = timezone.now() - timedelta(days=400)
+    HubMember.objects.create(
+        hub=standard_business, user=make_user("admin@example.com"), role=HubMember.Role.ADMIN, accepted_at=long_ago, joined_at=long_ago
+    )
+    active(standard_business, failures=2)
+    world.expect_detach()
+    world.expect_delete()
+
+    run_pass(world)
+
+    assert [sent.to for sent in mail.outbox] == [["owner@example.com"]]
+
+
+def test_an_owner_who_turned_the_business_notices_off_gets_no_mail_and_it_still_falls(standard_business, world, owner):
+    UserPreferences.objects.create(user=owner, hub_alerts=False)
+    active(standard_business, failures=2)
+    world.expect_detach()
+    world.expect_delete()
+
+    run_pass(world)
+
+    assert mail.outbox == []
+    assert row_of(standard_business).state == State.LAPSED
 
 
 def test_the_mail_goes_in_the_owners_language(standard_business, world, owner):
@@ -760,11 +787,39 @@ def test_a_removal_the_alb_was_holding_up_ends_with_the_next_pass(standard_busin
 def test_a_removal_still_held_up_keeps_its_row(standard_business, world):
     removing(standard_business, certificate_arn=ARN, proven_at=timezone.now())
     world.acm.add_client_error("delete_certificate", "ResourceInUseException", "in use")
+    world.expect_detach()
 
     counts = run_pass(world)
 
     assert row_of(standard_business).state == State.REMOVING
     assert counts["certificates_in_use"] == 1
+
+
+def test_a_certificate_attached_by_a_pass_that_lost_to_its_owner_is_still_taken_off(standard_business, world, monkeypatch):
+    """The pass attaches, the owner removes before it writes so, and nothing records it is on the listener. Only trying to
+    delete it tells: without taking it off, the row stays «being removed» for ever and its place is lost to the count."""
+    row = certificate_issued(standard_business)
+    world.expect_describe("ISSUED")
+    world.expect_attach()
+    real_attach = edge_client.attach
+
+    def the_owner_removes_meanwhile(arn):
+        real_attach(arn)
+        CustomDomain.objects.filter(pk=row.pk).update(state=State.REMOVING)
+
+    monkeypatch.setattr(edge_client, "attach", the_owner_removes_meanwhile)
+    assert services._check_custom_domain(row.id) == "moved_on"
+    row.refresh_from_db()
+    assert (row.state, row.attached_at) == (State.REMOVING, None)
+
+    world.acm.add_client_error("delete_certificate", "ResourceInUseException", "in use")
+    world.expect_detach()
+    assert services._check_custom_domain(row.id) == "certificates_in_use"
+    world.alb.assert_no_pending_responses()
+
+    world.expect_delete()
+    assert services._check_custom_domain(row.id) == "removed"
+    assert not CustomDomain.objects.exists()
 
 
 def test_a_removal_takes_a_certificate_still_on_the_listener_off_it_first(standard_business, world):
@@ -884,6 +939,17 @@ def test_each_domain_is_recorded_on_its_owners_channel(standard_business, world)
 
     event = OutboxEvent.objects.filter(name=events.CUSTOM_DOMAIN_CHANGED).latest("id")
     assert event.payload == {"business_id": str(standard_business.id)}
+
+
+def test_a_pass_that_learns_nothing_new_wakes_nobody(standard_business, world, dns_world):
+    """Every domain, every hour: an event only when what its owner sees changed, or every open page reads again for nothing."""
+    active(standard_business)
+    pointing(dns_world, standard_business)
+    before = OutboxEvent.objects.filter(name=events.CUSTOM_DOMAIN_CHANGED).count()
+
+    run_pass(world, attached=1)
+
+    assert OutboxEvent.objects.filter(name=events.CUSTOM_DOMAIN_CHANGED).count() == before
 
 
 # --- The metric and the command ------------------------------------------------------------------------

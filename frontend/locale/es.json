@@ -41,6 +41,7 @@
           "invite": "Invitar",
           "keep": "Mantener",
           "remove": "Quitar",
+          "request": "Pedir",
           "resend": "Reenviar",
           "restore": "Recuperar",
           "revoke": "Revocar",
@@ -86,6 +87,10 @@
               "delete": "Eliminar negocio",
               "restore": "Recuperar negocio",
               "update": "Cambiar el negocio"
+            },
+            "custom_domain": {
+              "remove": "Desconectar el dominio",
+              "request": "Conectar un dominio"
             },
             "invitation": {
               "accept": "Aceptar invitación",

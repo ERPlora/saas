@@ -2448,7 +2448,6 @@ def _ask_for_a_certificate(row: CustomDomain) -> None:
             "Disconnects the own domain of a business: its website stops being served on it and stays at its address on "
             "erplora.com. Only its owner."
         ),
-        risk="high",
         asks={
             "en": ("disconnect my domain from the website", "remove www.barmanolo.com from the bar"),
             "es": ("desconecta mi dominio de la web", "quita www.barmanolo.com del bar"),
@@ -2763,13 +2762,18 @@ def _drop_certificate(row: CustomDomain) -> str:
         return "hub_away"
     if not row.certificate_arn:
         return ""
-    if row.attached_at:
+    known_on_the_listener = row.attached_at is not None
+    if known_on_the_listener:
         edge_client.detach(row.certificate_arn)
         row = _learned(row, attached=False)
     try:
         edge_client.delete_certificate(row.certificate_arn)
     except edge_client.CertificateInUse:
         logger.info("hubs.custom_domain.certificate_in_use domain=%s", row.hostname)
+        if not known_on_the_listener:
+            # The ALB may still be letting go, or the pass that attached it lost to the owner or died before writing it:
+            # then no row says so, and without this no later pass would ever delete it.
+            edge_client.detach(row.certificate_arn)
         return "certificates_in_use"
     _learned(row, certificate_arn="")
     return ""

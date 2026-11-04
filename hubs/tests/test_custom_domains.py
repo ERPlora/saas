@@ -542,6 +542,26 @@ def test_removing_takes_it_out_of_the_snapshot_before_anything_else(
     assert not CustomDomain.objects.exists()
 
 
+def test_removing_what_is_already_being_removed_says_nothing_new(
+    owner, standard_business, custom_domains_on, hub_double, django_capture_on_commit_callbacks
+):
+    active_row(standard_business)
+    custom_domains_on.expect_detach()
+    custom_domains_on.acm.add_client_error("delete_certificate", "ResourceInUseException", "in use")
+    with django_capture_on_commit_callbacks(execute=True):
+        remove(owner, standard_business)
+    said = OutboxEvent.objects.filter(name=events.CUSTOM_DOMAIN_CHANGED).count()
+    version = Hub.objects.get(pk=standard_business.pk).state_version
+
+    custom_domains_on.acm.add_client_error("delete_certificate", "ResourceInUseException", "in use")
+    custom_domains_on.expect_detach()
+    with django_capture_on_commit_callbacks(execute=True):
+        remove(owner, standard_business)
+
+    assert OutboxEvent.objects.filter(name=events.CUSTOM_DOMAIN_CHANGED).count() == said
+    assert Hub.objects.get(pk=standard_business.pk).state_version == version
+
+
 def test_a_certificate_the_alb_holds_stays_for_the_next_check_and_the_row_with_it(
     owner, standard_business, custom_domains_on, hub_double, django_capture_on_commit_callbacks
 ):
@@ -714,8 +734,10 @@ def test_an_api_key_reads_the_domain_and_only_reads_it():
     assert registry["hubs.custom_domain.remove"].expose_api is False
 
 
-def test_removing_is_a_high_risk_tool():
-    assert registry["hubs.custom_domain.remove"].ai_spec().risk == "high"
+def test_removing_stops_at_the_card_and_asks_to_type_no_word():
+    """It stops being served and comes back by asking for it again, with nothing lost: «Run» on the card is its confirmation.
+    Only the five writes of ASSISTANT-F25, step 5, ask to type the word (``base/tests/test_assistant_turn.py``)."""
+    assert registry["hubs.custom_domain.remove"].ai_spec().risk != "high"
 
 
 def test_what_only_the_check_writes_is_no_tool():
