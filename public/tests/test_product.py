@@ -21,6 +21,7 @@ from django.urls import reverse
 
 from apps.tests.factories import make_app
 from public.landing import TYPICAL_STACK
+from public.tests.conftest import without_tokens
 from public.tests.test_industries import make_business_type, make_sector
 from public.tests.test_stack_copy import copy_of, names_the_stack
 
@@ -34,17 +35,6 @@ def page(client, path: str, language: str = "en") -> str:
     response = client.get(path)
     assert response.status_code == 200, path
     return response.content.decode()
-
-
-#: Where a page writes its per-response tokens: the CSP nonce and the CSRF token.
-RESPONSE_TOKEN = re.compile(
-    r"""(nonce="|name="csrfmiddlewaretoken" value="|var CSRF = "|'X-CSRFToken': ')[^"']+"""
-)
-
-
-def without_tokens(html: str) -> str:
-    """The page without its per-response tokens: random strings, not what the page says."""
-    return RESPONSE_TOKEN.sub(r"\1", html)
 
 
 # --- The three pages (tests/unit/test_public_pages.py) ------------------------------------------
@@ -376,17 +366,9 @@ def test_security_names_the_perimeter_on_aws(
 # business hours, the one of the contact form.
 
 @pytest.fixture
-def tokens_spelling_the_claims(monkeypatch):
-    """The per-response tokens spell stale claims, as a random one does now and then.
-
-    Every public page carries a CSP nonce and, since the language forms of its footer
-    (PUBLIC-F13), a CSRF token: random strings, not copy. A 64-character token holds «2FA» or
-    «JWT» about once in four thousand renders, which made the scans below fail by chance.
-    """
-    monkeypatch.setattr("django.utils.csp.generate_nonce", lambda: "2FA-JWT-CDN-GitHub-x")
-    monkeypatch.setattr(
-        "django.middleware.csrf._get_new_csrf_string", lambda: "2FAJWTCDNGitHub" + "a" * 17
-    )
+def tokens_spelling_the_claims(tokens_spelling):
+    """The per-response tokens spell stale claims, as a random one does now and then."""
+    tokens_spelling("2FA", "JWT", "CDN", "GitHub")
 
 
 STALE_CLAIMS = (

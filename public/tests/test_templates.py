@@ -34,7 +34,7 @@ from django.urls import NoReverseMatch, reverse
 
 from accounts.adapters import SPA_LOGIN
 from accounts.handoff import LAUNCHER
-from public.tests.conftest import PUBLIC_CSS, PUBLIC_JS
+from public.tests.conftest import PUBLIC_CSS, PUBLIC_JS, without_tokens
 
 pytestmark = pytest.mark.urls("public.tests.urls")
 
@@ -298,8 +298,9 @@ def test_the_head_resolves_the_system_mode_before_the_first_stylesheet(client):
 
 
 @pytest.mark.django_db
-def test_no_cdn_no_runtime_icons_no_pwa_and_no_app_shell(client):
-    html = get_page(client).content.decode()
+def test_no_cdn_no_runtime_icons_no_pwa_and_no_app_shell(client, tokens_spelling):
+    tokens_spelling("htmx")
+    html = without_tokens(get_page(client).content.decode())
 
     for gone in (
         "cdn.jsdelivr.net",
