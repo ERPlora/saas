@@ -816,7 +816,7 @@ Pasos:
 3. Nadie puede crear, cambiar ni borrar una entrada a mano: solo se leen.
 Entra: los cambios de las cuentas, de lo que se cobra y de la documentación fiscal, hechos desde el panel, con una clave de API, desde el admin, por las tareas de erplora.com o por Stripe al cobrar.
 Sale: una entrada por cambio, que nombra a quien actuaba en ese momento (la cuenta con la sesión abierta o la dueña de la clave de API; nadie en una tarea de erplora.com o tras cerrar la sesión) y la dirección real del visitante, nunca la que diga su navegador.
-Si falla: nunca se anota un secreto (ni la contraseña, ni la clave de API, ni la de una sesión, ni la de una compra con Stripe, ni el enlace que abre una factura de Stripe, ni los documentos de una autorización ni el sello) ni lo que escribe quien invita a una persona a un negocio, ni lo que se mueve solo (la última entrada, el último uso de una clave, la última vez que se vio una sesión, la última vez que una persona abrió un negocio, los contadores, los reintentos de envío de una factura a la AEAT). Anotar un cambio nunca cambia una factura ni su registro en VeriFactu. Si la cuenta se elimina, sus entradas se quedan con su correo y sin enlace a ella hasta que se borran a los 90 días (ACCOUNTS-F37). Alguien del equipo sin el permiso no puede abrirlo.
+Si falla: nunca se anota un secreto (ni la contraseña, ni la clave de API, ni la de una sesión, ni la de una compra con Stripe, ni el enlace que abre una factura de Stripe, ni los documentos de una autorización ni el sello) ni lo que escribe quien invita a una persona a un negocio, ni lo que se mueve solo (la última entrada, el último uso de una clave, la última vez que se vio una sesión, la última vez que una persona abrió un negocio, los contadores, los reintentos de envío de una factura a la AEAT). Anotar un cambio nunca cambia una factura ni su registro en VeriFactu. Si la cuenta se elimina, sus entradas se quedan con su correo y sin enlace a ella hasta que se borran a los 90 días (ACCOUNTS-F37). Las entradas que quedan de la copia retirada de quién está en cada negocio también se leen hasta ese día: con su tipo de recurso por el nombre interno y sin enlace, porque su fila ya no existe. Alguien del equipo sin el permiso no puede abrirlo.
 Implicados: ninguno
 
 ### ACCOUNTS-F37 Borrar el registro de auditoría de más de 90 días
@@ -827,8 +827,9 @@ Pantalla: ninguna (una tarea diaria de erplora.com)
 Pasos:
 1. Una vez al día, erplora.com borra por tandas las entradas del registro de auditoría (ACCOUNTS-F36) de hace más de 90 días.
 2. Las de los últimos 90 días se quedan, también las de una cuenta ya eliminada.
+3. Con la última entrada de la copia retirada de quién está en cada negocio se va también su tipo de recurso; antes no, porque borrarlo se llevaría las entradas que quedan.
 Entra: la fecha de cada entrada del registro.
-Sale: el registro con solo los últimos 90 días; nada más cambia.
+Sale: el registro con solo los últimos 90 días; nada más cambia, salvo ese tipo de recurso cuando se queda sin entradas.
 Si falla: si una tanda no se puede borrar, la tarea termina con error para que el equipo lo vea; lo borrado antes se queda borrado y la pasada siguiente sigue desde ahí. Si ya hay una pasada en marcha, la segunda no hace nada. El equipo puede contar lo que se borraría sin borrar nada, y cambiar los días que se guardan.
 Implicados: ninguno
 
@@ -1201,8 +1202,6 @@ Implicados: el admin de erplora.com (la ficha de la cuenta y el registro de audi
 
 ## Lo que queda fuera
 
-- **En la base de datos sigue la tabla de la copia de quién está en cada negocio** (`accounts_hubmembership`), que ya
-  nadie lee ni escribe — saas#220.
 - **«Mejorar plan» del asistente y de la Bandeja de WhatsApp del Hub aún no llevan el pase** (ACCOUNTS-F29, BASE-F11 del
   Hub): abren la dirección de siempre, que pide entrar si ese navegador no tiene la sesión — ERPlora/hub#723.
 

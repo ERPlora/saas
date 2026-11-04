@@ -880,8 +880,6 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
 
 - **Conectar un dominio propio a la web del negocio** (HUBS-F17): fuera de la fase 1, llega con sus tres piezas
   (erplora.com, la entrada de ERPlora y el Hub) — saas#195.
-- **En la base de datos sigue la tabla de la copia de quién está en cada negocio** (`accounts_hubmembership`), que ya
-  nadie lee ni escribe — saas#220.
 
 ## Lo que NO hace, a propósito
 
