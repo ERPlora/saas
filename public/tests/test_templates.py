@@ -29,7 +29,8 @@ import pytest
 from django.conf import settings
 from django.core.management import call_command
 from django.template import Context, Template
-from django.urls import reverse
+from django.template.loader import get_template
+from django.urls import NoReverseMatch, reverse
 
 from accounts.adapters import SPA_LOGIN
 from accounts.handoff import LAUNCHER
@@ -503,10 +504,18 @@ def test_the_literal_path_sweep_catches_what_was_written():
     ]
 
 
+def names_a_route(href: str) -> bool:
+    try:
+        reverse(href)
+    except NoReverseMatch:
+        return False
+    return True
+
+
 def test_navbar_and_footer_link_only_to_routes_that_exist():
     """Each later lot adds its links in its turn (plan §3.i); until then nothing points at a page
-    that does not exist. An internal link is a `{% url %}`, or a page of the SPA: its launcher or its
-    sign-in."""
+    that does not exist. An internal link is a `{% url %}` or the name of a route (the ``href`` of a
+    ``{% button %}``), or a page of the SPA: its launcher or its sign-in."""
     for name in ("navbar.html", "nav_links.html", "footer.html", "footer_links.html"):
         source = without_comments(
             (PUBLIC_TEMPLATES / "public" / "partials" / name).read_text(
@@ -517,6 +526,7 @@ def test_navbar_and_footer_link_only_to_routes_that_exist():
             assert (
                 href.startswith(("{% url ", "mailto:", "https://", "{% static "))
                 or href in (LAUNCHER, SPA_LOGIN)
+                or names_a_route(href)
             ), f"{name}: {href}"
 
 
@@ -610,9 +620,11 @@ def test_the_cookie_banner_uses_the_shared_container_and_compact_ionic_actions(
     )
 
     assert 'class="ep-container cookie-consent-layout"' in banner
-    assert banner.count("<ion-button") == 3
+    # Decline and Accept act on the page; Customize leads to another, so it is a real link (saas#238).
+    assert banner.count("<ion-button") == 2
     for control in ("cookie-customize", "cookie-decline", "cookie-accept"):
         assert f'id="{control}"' in banner
+    assert re.search(r'<a id="cookie-customize" class="ep-button[^"]*" href="', banner)
     assert (
         "We use optional cookies to understand traffic and improve ERPlora." in banner
     )
@@ -623,6 +635,7 @@ def test_the_cookie_banner_uses_the_shared_container_and_compact_ionic_actions(
     for control in ("customize", "decline", "accept"):
         assert f"activateOnKeyboard({control}" in banner
     assert ".cookie-consent-actions ion-button" in banner_css
+    assert ".cookie-consent-actions .ep-button" in banner_css
     assert "min-height: 2.75rem" in banner_css
 
 
@@ -1000,12 +1013,15 @@ def test_component_stylesheets_only_style_their_own_ep_block():
 def test_no_public_stylesheet_washes_a_band_with_ionics_light_colour():
     """``--ion-color-light`` stays light in dark (theme.css pins it, so the CTA band's
     ``color="light"`` buttons stay white): a background mixed from it turned every page hero grey on
-    a dark page. A soft band washes with ``--ep-wash``, which theme.css darkens with the page."""
+    a dark page. A soft band washes with ``--ep-wash``, which theme.css darkens with the page. The one rule that
+    may read it is that button's own, ``.ep-button--light``: a link since saas#238."""
     offenders = []
     for sheet in PUBLIC_STATIC.rglob("*.css"):
         if sheet.name == "theme.css":
             continue
         text = re.sub(r"/\*.*?\*/", "", sheet.read_text(encoding="utf-8"), flags=re.S)
+        if sheet.name == "button.css":
+            text = re.sub(r"\.ep-button--light\s*\{[^}]*\}", "", text)
         if "--ion-color-light" in text:
             offenders.append(sheet.name)
     theme = (PUBLIC_STATIC / "theme.css").read_text(encoding="utf-8")
@@ -1413,3 +1429,154 @@ def test_inside_the_app_no_measurement_loads_even_with_every_cookie_accepted(cli
     assert "googletagmanager.com/gtag/js" in on_the_web and "clarity.ms" in on_the_web
     assert "googletagmanager.com/gtag/js" not in in_the_app
     assert "clarity.ms" not in in_the_app
+
+
+# --- A button that leads somewhere is a real link (saas#238, PUBLIC-F11) -------------------------
+
+#: An ion-button with an href, over several lines and with template tags among its attributes.
+ION_BUTTON_LINK = re.compile(r"<ion-button\b[^>]*(?<![\w-])href=")
+#: Any element dressed as the shared link button, with its tag name.
+BUTTON_LINK = re.compile(r"<([\w-]+)\b[^>]*\bclass=\"[^\"]*\bep-button\b[^\"]*\"[^>]*>")
+#: A call of the button's tag. Django tags never span lines, so a call is one line of its template.
+BUTTON_CALL = re.compile(r"\{%\s*button\b.*?%\}")
+
+
+def ion_button_links(source: str) -> list[str]:
+    return ION_BUTTON_LINK.findall(without_comments(source))
+
+
+def button_calls(template: Path) -> list[str]:
+    return BUTTON_CALL.findall(without_comments(template.read_text(encoding="utf-8")))
+
+
+def test_no_button_of_the_public_web_waits_for_the_page_script_to_lead_anywhere():
+    """An ion-button is no link until frontend/public.ts has defined it: pressed before that, on a slow connection
+    or with the script blocked, nothing happens. Whatever leads to another page is an <a href> in the HTML."""
+    offenders = [
+        f"{template.relative_to(PUBLIC_TEMPLATES)}: {button}"
+        for template in public_templates()
+        for button in ion_button_links(template.read_text(encoding="utf-8"))
+    ]
+
+    assert offenders == []
+
+
+@pytest.mark.parametrize(
+    "tag",
+    [
+        '<ion-button href="/launch">',
+        '<ion-button fill="outline" size="small" href="{% url \'public:app_download\' \'linux\' %}">',
+        '<ion-button expand="block"{% if not plan.featured_label %} fill="outline"{% endif %} href="/launch">',
+        '<ion-button\n  class="mt-auto"\n  href="/launch"\n>',
+    ],
+)
+def test_the_button_sweep_catches_the_shapes_the_templates_had(tag):
+    """Positive control: a sweep that finds nothing proves nothing."""
+    assert ion_button_links(tag)
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        '<ion-button type="submit">Send</ion-button>',
+        '<ion-button id="cookie-accept" size="small">Accept</ion-button>',
+        '<ion-button data-href="/launch">Not a link</ion-button>',
+        '<a class="ep-button" href="/launch">Start free</a>',
+        '{% comment %}<ion-button href="/launch">{% endcomment %}',
+        '<ion-button type="submit"></ion-button> <a href="/launch">Start free</a>',
+    ],
+)
+def test_the_button_sweep_leaves_alone_what_is_no_link_waiting_for_the_script(source):
+    assert ion_button_links(source) == []
+
+
+def test_every_link_button_really_is_a_link():
+    """The shared class on anything but an <a href> would look like a button and lead nowhere."""
+    offenders = [
+        f"{template.relative_to(PUBLIC_TEMPLATES)}: {match.group(0)}"
+        for template in public_templates()
+        for match in BUTTON_LINK.finditer(without_comments(template.read_text(encoding="utf-8")))
+        if match.group(1) != "a" or "href=" not in match.group(0)
+    ]
+
+    assert offenders == []
+
+
+def test_only_the_button_component_writes_a_link_button():
+    """One component (saas#238): a button written by hand in a page is how the 50 of them would drift apart."""
+    written = {
+        str(template.relative_to(PUBLIC_TEMPLATES)): count
+        for template in public_templates()
+        if (count := len(BUTTON_LINK.findall(without_comments(template.read_text(encoding="utf-8")))))
+    }
+
+    assert written == {"public/components/button.html": 1}
+
+
+def test_every_template_that_paints_a_button_compiles():
+    """A missing ``{% load buttons %}`` or a misnamed argument takes the page down, and only some pages have a test."""
+    templates = [template for template in public_templates() if button_calls(template)]
+
+    assert templates
+    for template in templates:
+        get_template(str(template.relative_to(PUBLIC_TEMPLATES)))
+
+
+def test_every_look_a_page_asks_of_a_button_has_its_style():
+    """A modifier nobody wrote fails in silence: the button just looks wrong."""
+    css = (COMPONENT_CSS / "button.css").read_text(encoding="utf-8")
+    asked = {
+        value
+        for template in public_templates()
+        for call in button_calls(template)
+        for value in re.findall(r'\b(?:fill|size|color)="(\w+)"', call)
+    }
+
+    assert asked
+    assert [name for name in sorted(asked - {"solid"}) if not re.search(rf"\.ep-button--{name}\b", css)] == []
+
+
+@pytest.mark.parametrize(
+    ("template", "full_width"),
+    [
+        ("appdist/android.html", 3),
+        ("appdist/index.html", 3),
+        ("demo/index.html", 3),
+        ("downloads.html", 1),
+        ("landing/home/_plan_cta.html", 1),
+        ("pricing/_card_cta.html", 1),
+    ],
+)
+def test_the_full_width_buttons_stay_full_width(template, full_width):
+    """`expand="block"` of the ion-buttons these were: the cards' buttons fill the card."""
+    calls = button_calls(PUBLIC_TEMPLATES / "public" / template)
+
+    assert sum("block=True" in call for call in calls) == full_width
+
+
+# --- The two download pages close with the same section: one partial, not two copies ---------------
+
+DOWNLOAD_PAGES = ("appdist/index.html", "appdist/android.html")
+
+
+@pytest.mark.parametrize("template", DOWNLOAD_PAGES)
+def test_the_download_pages_share_their_closing_section(template):
+    """«You need a hub before you need the app» (heading, lead and two buttons) was written twice, once per download
+    page, with only the second button differing: `dup-guard.sh` counts it the moment a change touches it (saas#238).
+    One partial, `appdist/_get_started.html`, and each page tells it where its second button goes."""
+    source = without_comments((PUBLIC_TEMPLATES / "public" / template).read_text(encoding="utf-8"))
+
+    assert 'id="get-started"' not in source
+    assert re.search(r'\{% include "public/appdist/_get_started\.html" with [^%]*\bsee_href=[^%]*\bonly %\}', source)
+
+
+def test_the_closing_section_of_the_download_pages_is_written_once():
+    partial = PUBLIC_TEMPLATES / "public" / "appdist" / "_get_started.html"
+
+    assert partial.exists()
+    owners = [
+        template.relative_to(PUBLIC_TEMPLATES)
+        for template in public_templates()
+        if 'id="get-started"' in without_comments(template.read_text(encoding="utf-8"))
+    ]
+    assert owners == [partial.relative_to(PUBLIC_TEMPLATES)]

@@ -1,5 +1,5 @@
 {% extends "public/public_base.html" %}
-{% load static i18n icons %}
+{% load buttons i18n icons static %}
 {% comment %}
   An app's page (public/store.py): the header and the tabs both tabs share. Port of the hero of
   modules/pages/detail.html (origin/develop) as the ep-hero of public/partials/page_hero.html, split:
@@ -30,15 +30,9 @@
       </div>
       <div class="ep-hero__actions">
         {% if user.is_authenticated %}
-        <ion-button href="{{ launcher }}">
-          {% trans "Go to dashboard" %}
-          <span slot="end">{% icon "arrow-forward-outline" %}</span>
-        </ion-button>
+        {% button href=launcher label=_("Go to dashboard") end_icon="arrow-forward-outline" %}
         {% else %}
-        <ion-button href="/launch">
-          <span slot="start">{% icon "rocket-outline" %}</span>
-          {% trans "Start free" %}
-        </ion-button>
+        {% button href="/launch" label=_("Start free") start_icon="rocket-outline" %}
         {% endif %}
       </div>
     </header>

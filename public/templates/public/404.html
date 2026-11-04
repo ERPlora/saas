@@ -1,5 +1,5 @@
 {% extends "public/public_base.html" %}
-{% load i18n %}
+{% load buttons i18n %}
 {% comment %}
   The public 404: a public page (navbar, footer, cookie banner) with a way home, never indexed.
   Rendered by the project's 404 handler (public/errors.py) with the public CSP.
@@ -15,6 +15,6 @@
       <h1 class="ep-section-title">{% trans "Page not found" %}</h1>
       <p class="ep-section-sub">{% trans "The page you are looking for does not exist or has moved." %}</p>
     </header>
-    <ion-button href="{% url 'home' %}">{% trans "Back to the home page" %}</ion-button>
+    {% button href="home" label=_("Back to the home page") %}
   </section>
 {% endblock %}

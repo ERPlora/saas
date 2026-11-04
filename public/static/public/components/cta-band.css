@@ -70,7 +70,7 @@
   margin-top: 0.6rem;
 }
 /* On the solid band an outline button turns white. */
-.ep-cta-band--solid .ep-cta-band__actions ion-button[fill='outline'] {
+.ep-cta-band--solid .ep-cta-band__actions .ep-button--outline {
   --color: var(--ep-primary-contrast, #fff);
   --color-hover: var(--ep-primary-contrast, #fff);
   --color-focused: var(--ep-primary-contrast, #fff);
@@ -79,5 +79,8 @@
   --background-hover: color-mix(in oklab, var(--ep-primary-contrast, #fff) 12%, transparent);
   --background-focused: color-mix(in oklab, var(--ep-primary-contrast, #fff) 16%, transparent);
   --background-activated: color-mix(in oklab, var(--ep-primary-contrast, #fff) 20%, transparent);
-  --ripple-color: var(--ep-primary-contrast, #fff);
+}
+/* The focus ring of a button, in the primary colour, would not show on the band. */
+.ep-cta-band--solid .ep-cta-band__actions .ep-button:focus-visible {
+  outline-color: var(--ep-primary-contrast, #fff);
 }

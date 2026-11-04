@@ -1,4 +1,4 @@
-{% load static i18n icons %}
+{% load buttons i18n static %}
 {% comment %}
   The public navbar: port of <ok-navbar sticky glass> (OutfitKit) as HTML + CSS
   (public/static/public/components/navbar.css) plus the few lines of script after it.
@@ -38,18 +38,10 @@
             </div>
             <div class="ep-navbar__actions">
                 {% if user.is_authenticated %}
-                <ion-button href="/launch" size="small">
-                    {% trans "Dashboard" %}
-                    <span slot="end">{% icon "arrow-forward-outline" %}</span>
-                </ion-button>
+                {% button href="/launch" label=_("Dashboard") size="small" end_icon="arrow-forward-outline" %}
                 {% else %}
-                <ion-button fill="clear" size="small" href="{% url 'public:demo' %}">
-                    {% trans "Try the demo" %}
-                </ion-button>
-                <ion-button href="/launch" size="small">
-                    {% trans "Start free" %}
-                    <span slot="end">{% icon "arrow-forward-outline" %}</span>
-                </ion-button>
+                {% button href="public:demo" label=_("Try the demo") fill="clear" size="small" %}
+                {% button href="/launch" label=_("Start free") size="small" end_icon="arrow-forward-outline" %}
                 {% endif %}
             </div>
         </div>

@@ -1205,17 +1205,17 @@ def test_each_upgrade_only_card_says_when_it_opens_instead_of_a_sign_up_button(c
     for card in cards:
         foot = card_foot(card)
         assert "Available once you are on Starter" in foot
-        assert "<ion-button" not in card.split('<div class="ep-pricing-card__cta">', 1)[0] + foot
+        assert 'href="' not in card.split('<div class="ep-pricing-card__cta">', 1)[0] + foot
         assert "Get started" not in foot
 
 
 def test_more_capacity_has_one_call_to_action_to_start_free(client, seeded):
     section = upgrade_section(html_of(client))
-    buttons = re.findall(r"<ion-button\b[^>]*>(.*?)</ion-button>", section, re.S)
+    buttons = re.findall(r'<a class="ep-button[^"]*" href="([^"]*)">(.*?)</a>', section, re.S)
 
     assert len(buttons) == 1
-    assert "Start free and upgrade whenever you want" in buttons[0]
-    assert re.search(r'<ion-button\b[^>]*href="/launch"', section)
+    assert buttons[0][0] == "/launch"
+    assert "Start free and upgrade whenever you want" in buttons[0][1]
 
 
 def test_more_capacity_reads_in_spanish(client, seeded):
@@ -1265,7 +1265,7 @@ def test_the_plans_to_sign_up_on_stay_as_they_were(client, seeded):
     assert re.findall(r'<div class="ep-pricing-card__name">(.*?)</div>', signable) == ["Free", "Starter", "Standard"]
     assert len(CARD_START.split(signable)[1:]) == 3
     for card in CARD_START.split(signable)[1:]:
-        assert '<ion-button href="/launch"' in card_foot(card)
+        assert re.search(r'<a class="ep-button[^"]*" href="/launch">', card_foot(card))
         assert "Available once you are on Starter" not in card
     assert painted_prices(signable) == {"Free": Decimal("0"), "Starter": Decimal("29.99"), "Standard": Decimal("54.99")}
 

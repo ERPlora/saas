@@ -61,8 +61,7 @@ async function watch(page: Page) {
 const card = (page: Page, state: string) => page.getByTestId(`demo-state-${state}`);
 const startButton = (page: Page) => page.getByTestId('demo-start');
 /**
- * The texts of the card's «Start free», as its button or as the link under it: in the light DOM only (an
- * `ion-button` with `href` draws its own `<a>` in its shadow root, which a locator would count twice).
+ * The texts of the card's «Start free», as its button or as the link under it.
  */
 const startFree = (page: Page, state: string) =>
   card(page, state).evaluate((element) =>
@@ -93,9 +92,9 @@ test.describe('in English', () => {
     await page.setViewportSize({ width: 1440, height: 900 });
 
     await page.goto('/');
-    await expect(page.locator('nav ion-button[href="/demo/"]')).toContainText('Try the demo');
-    await expect(page.locator('section.hero-bg ion-button[href="/demo/"]')).toBeVisible();
-    await page.locator('section.hero-bg ion-button[href="/demo/"]').click();
+    await expect(page.locator('nav a.ep-button[href="/demo/"]')).toContainText('Try the demo');
+    await expect(page.locator('section.hero-bg a.ep-button[href="/demo/"]')).toBeVisible();
+    await page.locator('section.hero-bg a.ep-button[href="/demo/"]').click();
 
     await expect(page).toHaveURL(/\/demo\/$/);
     await expect(card(page, 'idle')).toBeVisible();
@@ -125,7 +124,7 @@ test.describe('in English', () => {
     await expect(page).toHaveURL(/\/demo\/\?state=unavailable$/);
     await expect(card(page, 'unavailable')).toContainText('The demo is not available right now.');
     await expect(startButton(page)).toContainText('Try again');
-    await expect(page.locator('ion-button', { hasText: 'Back to my demo' })).toHaveCount(0);
+    await expect(page.getByText('Back to my demo')).toHaveCount(0);
 
     // The failed try is not this browser's demo: «Try again» asks the Hub again, it is not stuck on a broken one.
     await startButton(page).click();

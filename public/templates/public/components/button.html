@@ -1,0 +1,10 @@
+{% load icons %}
+{% comment %}
+  ep-button: a button that leads to another page, as a real link (saas#238, PUBLIC-F11). The only template that writes
+  it: pages ask for it with {% button %} (public/templatetags/buttons.py, where its arguments are explained), in one
+  line. Styles: public/static/public/components/button.css.
+
+  Usage:
+    {% button href="/launch" label=_("Start free") end_icon="lucide:arrow-right" %}
+{% endcomment %}
+<a{% if id %} id="{{ id }}"{% endif %} class="ep-button{{ modifiers }}" href="{{ url }}"{% if testid %} data-testid="{{ testid }}"{% endif %}>{% if start_icon %}<span class="ep-button__start">{% icon start_icon size=icon_size %}</span>{% endif %}{% if label_class %}<span class="{{ label_class }}">{{ label }}</span>{% else %}{{ label }}{% endif %}{% if end_icon %}<span class="ep-button__end">{% icon end_icon size=icon_size %}</span>{% endif %}</a>

@@ -24,12 +24,12 @@ PUBLIC_TEMPLATES = Path(settings.BASE_DIR) / "public" / "templates"
 ICONS_JSON = Path(settings.BASE_DIR) / "frontend" / "generated" / "public-icons.json"
 
 #: ``{% icon "set:name" … %}`` with a literal name, and ``icon="…"`` / ``<x>_icon="…"`` passed to an
-#: ``{% include %}`` (the component partials paint them with ``{% icon icon %}``). The same reading
+#: ``{% include %}`` or a ``{% button %}`` (the components paint them with ``{% icon icon %}``). The same reading
 #: as ``scripts/gen-public-icons.mjs``; usage examples inside template comments do not count.
 TEMPLATE_COMMENT = re.compile(r"\{%\s*comment\s*%\}.*?\{%\s*endcomment\s*%\}|\{#.*?#\}", re.S)
 ICON_TAG = re.compile(r"""\{%\s*icon\s+["']([^"']+)["']""")
-INCLUDE_TAG = re.compile(r"\{%\s*include\b[^%]*%\}")
-INCLUDE_ICON_ARG = re.compile(r"""\b(?:\w+_)?icon=["']([^"']+)["']""")
+COMPONENT_TAG = re.compile(r"\{%\s*(?:include|button)\b.*?%\}")
+COMPONENT_ICON_ARG = re.compile(r"""\b(?:\w+_)?icon=["']([^"']+)["']""")
 
 
 def cited_icons() -> set[str]:
@@ -42,8 +42,8 @@ def cited_icons() -> set[str]:
     for template in PUBLIC_TEMPLATES.rglob("*.html"):
         source = TEMPLATE_COMMENT.sub("", template.read_text(encoding="utf-8"))
         names.update(ICON_TAG.findall(source))
-        for include in INCLUDE_TAG.findall(source):
-            names.update(INCLUDE_ICON_ARG.findall(include))
+        for call in COMPONENT_TAG.findall(source):
+            names.update(COMPONENT_ICON_ARG.findall(call))
     taxonomy = json.loads(TAXONOMY_FILE.read_text(encoding="utf-8"))
     for row in taxonomy["sectors"] + taxonomy["activities"]:
         if row.get("icon"):
@@ -120,6 +120,8 @@ def test_the_scanner_reads_literal_tags_and_component_include_arguments(
         '{% icon "construct-outline" %}'
         '{% include "public/components/feature_card.html" with icon="lucide:check" heading="x" %}'
         '{% include "public/partials/page_hero.html" with hero_icon="mdi:star" %}'
+        '{% button href="/launch" label="x" start_icon="lucide:rocket" end_icon="mdi:heart" %}'
+        '{% button href="mailto:x?subject=A%20B" label="x" end_icon="lucide:mail" icon_size=15 %}'
         '<p>icon="lucide:not-an-include"</p>'
         '{% comment %}Usage: {% include "x.html" with icon="lucide:example" %}{% endcomment %}'
         '{# {% icon "lucide:inline-comment" %} #}',
@@ -128,7 +130,14 @@ def test_the_scanner_reads_literal_tags_and_component_include_arguments(
     monkeypatch.setattr(f"{__name__}.PUBLIC_TEMPLATES", folder)
     empty_taxonomy(tmp_path, monkeypatch)
 
-    assert cited_icons() == {"ion:construct-outline", "lucide:check", "mdi:star"}
+    assert cited_icons() == {
+        "ion:construct-outline",
+        "lucide:check",
+        "mdi:star",
+        "lucide:rocket",
+        "mdi:heart",
+        "lucide:mail",
+    }
 
 
 def test_the_scanner_reads_the_icon_of_every_sector_and_business_type(

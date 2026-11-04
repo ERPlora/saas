@@ -84,7 +84,7 @@ test('PUBLIC-G54 PUBLIC-G55 PUBLIC-G56 a press creates the demo, opens it as «D
     await page.screenshot({ path: join(ARTIFACTS, `APP-PUBLIC-3-PUBLIC-G54-${viewport.width}.png`), fullPage: true });
 
     // «Back to my demo»: the same demo, not another one.
-    await page.locator('ion-button', { hasText: 'Back to my demo' }).click();
+    await page.locator('a.ep-button', { hasText: 'Back to my demo' }).click();
     expect(await inTheDemo(page)).toBe(slug);
     await page.screenshot({ path: join(ARTIFACTS, `APP-PUBLIC-3-PUBLIC-G56-${viewport.width}.png`) });
   }

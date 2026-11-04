@@ -332,7 +332,7 @@ Estado: hecho
 Actor: visitante
 Pantalla: Portada, Planes y precios, Detalle de un plan, Sectores, Características, Cumplimiento
 Pasos:
-1. La persona pulsa «Empieza gratis» (cabecera, portada, sectores, características) «Empezar» (tarjetas de plan de pago) o «Comenzar» (detalle de un plan) en cualquier página.
+1. La persona pulsa «Empieza gratis» (cabecera, portada, sectores, características) «Empezar» (tarjetas de plan de pago) o «Comenzar» (detalle de un plan) en cualquier página. El botón responde desde el primer momento, aunque la página no haya terminado de cargar, y se puede abrir en otra pestaña: es un enlace, como todos los botones de la web pública que llevan a otra página.
 2. Llega a la pantalla de entrar de erplora.com, donde también se crea la cuenta.
 3. Crea la cuenta y su negocio, que nace en el plan Gratis; el plan de pago se elige después, desde el panel.
 Entra: nada: el botón no lleva parámetros.
@@ -749,6 +749,15 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   `frontend/public.ts` lo define, y pulsado antes, en un dispositivo lento, no hacía nada (saas#236). Cuando el script ya
   corrió, `setupAppBack` vuelve por el historial a la pantalla que abrió el texto. El e2e lo prueba también con los
   scripts de la página retenidos (`public-web-2.spec.ts`, PUBLIC-G47 «on a slow device»).
+- Botones que llevan a otra página (F11, y todas las páginas públicas): un `<a class="ep-button …">` de verdad, con el
+  aspecto del `ion-button` iOS. Solo lo escribe `public/components/button.html`; cada página lo pide en una línea con
+  `{% button %}` (`public/templatetags/buttons.py`, con `href`, `label`, `fill`, `size`, `color`, `block` e iconos
+  `start_icon` / `end_icon`; `scripts/gen-public-icons.mjs` hornea esos iconos), y los parciales `_cta_actions.html`
+  siguen siendo donde se componen. El aspecto es `components/button.css`. Un `ion-button` no es un enlace hasta que
+  `frontend/public.ts` lo define, y pulsado antes no hacía nada (saas#238). Siguen siendo `ion-button` los que no
+  navegan: envíos de formulario, Aceptar y Rechazar cookies, idioma del pie y «Probar la demo» de la puerta. Lo guardan
+  el barrido de `public/tests/test_templates.py` y dos e2e de `public-web.spec.ts` (PUBLIC-G51): pulsar con los scripts
+  retenidos y la paridad de estilos calculados frente a un `ion-button` real, en reposo y bajo el puntero.
 - Correo de soporte (F18): `SUPPORT_EMAIL` es la única fuente; las páginas de error lo leen con `{% support_email %}`
   (`public/templatetags/support.py`: la 500 se pinta sin contexto) y la SPA con el bloque JSON `support-email` de
   `base/spa.py` (`accounts/frontend/support.ts`).

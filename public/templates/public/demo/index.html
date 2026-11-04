@@ -1,5 +1,5 @@
 {% extends "public/public_base.html" %}
-{% load i18n icons %}
+{% load buttons i18n icons %}
 {% comment %}
   /demo/ — the door to a demo hub (public/demo.py; PLAN-SAAS §3.5, round 2026-10-17). One page, one state
   (`demo_state`), always 200; `data-testid="demo-state-<state>"` is the contract the tests and the e2e read,
@@ -112,20 +112,11 @@
                A demo being prepared has none: the page goes on by itself; not ready yet, «Try again» waits for it again. {% endcomment %}
             {% if demo_state == "preparing" %}
             {% elif demo_state == "not_ready" and demo %}
-              <ion-button href="{% url 'public:demo' %}" expand="block" size="large" data-testid="demo-retry">
-                {% trans "Try again" %}
-                <span slot="end">{% icon "lucide:arrow-right" size=15 %}</span>
-              </ion-button>
+              {% button href="public:demo" label=_("Try again") size="large" block=True end_icon="lucide:arrow-right" icon_size=15 testid="demo-retry" %}
             {% elif demo.url %}
-              <ion-button href="{{ demo.url }}" expand="block" size="large">
-                {% trans "Back to my demo" %}
-                <span slot="end">{% icon "lucide:arrow-right" size=15 %}</span>
-              </ion-button>
+              {% button href=demo.url label=_("Back to my demo") size="large" block=True end_icon="lucide:arrow-right" icon_size=15 %}
             {% elif demo_state == "off" or demo_state == "throttled" %}
-              <ion-button href="/launch" expand="block" size="large">
-                {% trans "Start free" %}
-                <span slot="end">{% icon "lucide:arrow-right" size=15 %}</span>
-              </ion-button>
+              {% button href="/launch" label=_("Start free") size="large" block=True end_icon="lucide:arrow-right" icon_size=15 %}
             {% else %}
               <form method="post" action="{% url 'public:demo_start' %}" class="m-0"{% if RECAPTCHA_SITE_KEY %} data-recaptcha-action="demo_request" data-recaptcha-site-key="{{ RECAPTCHA_SITE_KEY }}"{% endif %}>
                 {% csrf_token %}

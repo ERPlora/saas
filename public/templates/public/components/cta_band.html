@@ -6,7 +6,7 @@
     {% include "public/components/cta_band.html" with eyebrow=kicker heading=title subheading=text actions_template="public/<page>/_cta_actions.html" %}
 
   Variables: heading (the <h2>); eyebrow; subheading; actions_template (a template with the
-  ion-buttons; on the solid band an `ion-button fill="outline"` turns white); variant `solid`
+  buttons; on the solid band an `ep-button--outline` turns white); variant `solid`
   (default), `soft` or `glass`.
 {% endcomment %}
 <div class="ep-cta-band ep-cta-band--{{ variant|default:'solid' }}">

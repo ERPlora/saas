@@ -1,0 +1,19 @@
+{% load buttons i18n %}
+{% comment %}
+  The closing section of the download pages (/download/ and the Android page while Google Play has no listing):
+  «You need a hub before you need the app», with «Create your free hub» and a second button the page chooses.
+  Written once: the two pages had it word for word, and only the second button differed (saas#238).
+  Takes: see_href (the name of a URL, as {% button %} takes it) and see_label, with `only`.
+{% endcomment %}
+<section id="get-started" class="ep-section--compact ep-section--center">
+  <div class="ep-container ep-section-content">
+    <header class="ep-section-head">
+      <h2 class="ep-section-title">{% trans "You need a hub before you need the app." %}</h2>
+      <p class="ep-section-sub">{% trans "The app opens your hub, so start there: create it free, then install the app on the device at the counter. No credit card." %}</p>
+    </header>
+    <div class="flex flex-wrap justify-center gap-3">
+      {% button href="/launch" label=_("Create your free hub") end_icon="lucide:arrow-right" icon_size=15 %}
+      {% button href=see_href label=see_label fill="outline" %}
+    </div>
+  </div>
+</section>
