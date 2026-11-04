@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 import type { Locator, Page } from '@playwright/test';
 
 import { djangoEnv } from '../django-env';
-import { apiPost, businessIdOf, expect, panelAccount, seedPanel, settled, signIn, test, watchPageErrors } from './fixtures';
+import { apiPost, businessIdOf, expect, panelAccount, seedPanel, settled, signIn, signInAs, test, watchPageErrors } from './fixtures';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const SHOTS_DIR = process.env.SHOTS_DIR ?? '/tmp/panel-fix3';
@@ -43,12 +43,6 @@ test.afterAll(() => {
   seedPanel('clear');
   seedBilling('clear');
 });
-
-/** Signs the page's context in as `account`, signing out whoever was in (allauth refuses a second sign-in: 409). */
-async function signInAs(page: Page, account: string): Promise<void> {
-  await page.context().clearCookies();
-  await signIn(page.request, panelAccount(account));
-}
 
 /** The page on screen (Ionic keeps the ones it left in the outlet, hidden). */
 const shown = (page: Page) => page.locator('ion-router-outlet > .ion-page:not(.ion-page-hidden)').last();
@@ -124,7 +118,7 @@ test.describe('R-01/R-10: the AA theme', () => {
       measured['«Retry» on the error notice'] = await contrastOf(shown(page).getByTestId('business-retry'));
       await page.unroute(/\/api\/live\?/);
 
-      await signInAs(page, 'billing');
+      await signInAs(page, panelAccount('billing'));
       await page.goto('/dashboard/billing/subscriptions');
       const link = shown(page).locator('.billing-alert__link');
       await expect(link).toBeVisible();
@@ -300,7 +294,7 @@ test.describe('screenshots for the supervisor', () => {
       let account = '';
       for (const [name, who, where, ready] of SCREENS) {
         if (who !== account) {
-          await signInAs(page, who);
+          await signInAs(page, panelAccount(who));
           account = who;
         }
         let path = where;

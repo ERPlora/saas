@@ -26,7 +26,7 @@ const ARTIFACTS = join(HERE, '..', '.artifacts', 'panel');
 /** allauth.headless's sign-in for the browser client: what the launcher's form posts. */
 const SIGN_IN_API = '/_allauth/browser/v1/auth/login';
 /** The second step of every password sign-in: the code mailed to the account (what /verify-email posts). */
-const CONFIRM_CODE_API = '/_allauth/browser/v1/auth/code/confirm';
+export const CONFIRM_CODE_API = '/_allauth/browser/v1/auth/code/confirm';
 
 /** A SaaS account: what its sign-in asks for. */
 export interface Credentials {
@@ -102,6 +102,18 @@ export async function signIn(request: APIRequestContext, credentials: Credential
   const code = await waitForMailCode(credentials.email, since);
   const confirmed = await request.post(CONFIRM_CODE_API, { headers: { 'X-CSRFToken': csrf }, data: { code } });
   expect(confirmed.status(), `POST ${CONFIRM_CODE_API}: ${await confirmed.text()}`).toBe(200);
+}
+
+/**
+ * Signs the page's context in as `credentials`, signing out whoever was in (allauth refuses a second sign-in: 409).
+ * The page leaves first: left open, it sees its session end, reloads and asks for it again, and an answer that comes
+ * after the code to a request that carried the password step's cookie deletes the new session's
+ * (panel/sign-in-as.spec.ts).
+ */
+export async function signInAs(page: Page, credentials: Credentials): Promise<void> {
+  await page.goto('about:blank');
+  await page.context().clearCookies();
+  await signIn(page.request, credentials);
 }
 
 /**
