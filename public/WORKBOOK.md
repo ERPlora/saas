@@ -769,7 +769,7 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   retenidos y con ellos ya cargados: un segundo enganche en el módulo cerraría lo que abre el botón. Con el panel abierto,
   el tabulador da la vuelta dentro de él y lo demás de `<body>` queda `inert` hasta cerrarlo (saas#252): `goRound` cuenta un
   `ion-button` solo si su módulo lo ha definido y, como no delega el foco, enfoca el enlace de su shadow root. Vitest lo
-  cubre en la CI, que no corre los e2e, y otros dos de PUBLIC-G51 lo recorren en el navegador, en esos mismos dos estados.
+  cubre en la CI, que no corre los e2e, y PUBLIC-G51 lo recorre en el navegador, en esos mismos dos estados.
 - Equivalencia de claves del registro: G30 = F01; G31 y G14 = F02; G32 y G05 = F03; G33 = F04; G34, G06 y G09 = F05;
   G35 y G16 = F06; G49 = F07; G50 = F08; G36 y G13 = F09; G37, G12, G15 y G18 = F10; G51 = F11; G52 = F12; G42 = F13;
   G48, G22 y G23 = F14.

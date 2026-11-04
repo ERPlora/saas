@@ -587,6 +587,17 @@ test('PUBLIC-G51 on a slow device, the mobile menu opens and closes even pressed
   await page.setViewportSize({ width: 375, height: 667 });
   await menu.isClosed('widened and back');
 
+  // The keyboard too: with no module an ion-button is an unknown element that takes no focus, so the round ends before it.
+  await menu.burger.click();
+  await menu.isOpen('before Tab');
+  const stops = await panelLinks(page, 'a[href]');
+  expect(stops, 'what the keyboard goes through').toContain('/features/');
+  await pressThrough(page, 'Tab', [...stops, 'close']);
+  await pressThrough(page, 'Shift+Tab', [...stops].reverse().concat('close'));
+  await page.keyboard.press('Escape');
+  await menu.isClosed('Escape after going round');
+  await expect(menu.burger).toBeFocused();
+
   // What the menu is for: the sign-up and the demo are in it, and a link of the panel leads on, closing it on its way.
   await menu.burger.click();
   await menu.isOpen('before a link');
@@ -722,35 +733,9 @@ test('PUBLIC-G51 with the mobile menu open, Tab goes round inside it and the pag
   await menu.burger.click();
   await menu.isOpen('before widening');
   await page.setViewportSize({ width: 1440, height: 900 });
+  // The window tells the script when it can: closed in the same step, so the page is back once this says so.
+  await expect(page.locator('nav[data-navbar]')).not.toHaveAttribute('data-open', '');
   await behind.focus();
   await expect(behind).toBeFocused();
   await clean('after every press');
-});
-
-test('PUBLIC-G51 on a slow device, Tab also goes round inside the open mobile menu', async ({ page }) => {
-  await page.setViewportSize({ width: 375, height: 667 });
-  // No module (saas#243): an ion-button is an unknown element that takes no focus, so the round has to end before it.
-  const held: Route[] = [];
-  await page.route('**/static/spa/**/*.js', (route) => {
-    held.push(route);
-  });
-  const clean = await watch(page);
-  const menu = mobileMenu(page);
-  await page.goto('/', { waitUntil: 'commit' });
-
-  await menu.burger.click();
-  await menu.isOpen('opened');
-  expect(await page.evaluate(() => customElements.get('ion-button') === undefined), 'the script has not run').toBe(true);
-  const links = await panelLinks(page, 'a[href]');
-  expect(links, 'what the panel is for').toContain('/features/');
-
-  await pressThrough(page, 'Tab', [...links, 'close']);
-  await pressThrough(page, 'Shift+Tab', [...links].reverse().concat('close'));
-  await page.keyboard.press('Escape');
-  await menu.isClosed('Escape');
-  await expect(menu.burger).toBeFocused();
-  await clean('after every press');
-
-  await page.unrouteAll({ behavior: 'ignoreErrors' });
-  await Promise.all(held.map((route) => route.continue().catch(() => undefined)));
 });
