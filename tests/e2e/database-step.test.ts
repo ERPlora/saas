@@ -3,8 +3,8 @@
 // the e2e, under the real Playwright, with `uv`, `docker` and `pnpm` played by scripts, so that a slow migration needs
 // no loaded machine and the check needs neither Python nor Postgres (the CI's frontend job has neither). Migrating
 // inside the first server's command competed with that server's two minutes: on a busy machine Playwright killed the
-// migration half way and the run ended without a spec. The topes are scaled down: a server's two minutes are
-// SERVER_TOPE_MS here, and the migration lasts a little longer than that.
+// migration half way and the run ended without a spec. The timeouts are scaled down: a server's two minutes are
+// SERVER_TIMEOUT_MS here, and the migration lasts a little longer than that.
 // flow: ninguno — test tooling, nothing anyone sees changes
 import { spawn } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -18,12 +18,12 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const SAAS_DIR = resolve(HERE, '..', '..');
 const PLAYWRIGHT = join(SAAS_DIR, 'node_modules', '.bin', 'playwright');
 
-/** What the servers of the real config wait for, two minutes: the topes up to it are the servers', the scaled ones. */
-const REAL_SERVER_TOPE_MS = 120_000;
-const SERVER_TOPE_MS = 15_000;
-/** Longer than a server's tope: the migration of a stack's first run on a busy machine (170 s measured with a load of 22). */
+/** What the servers of the real config wait for, two minutes: the timeouts up to it are the servers', the scaled ones. */
+const REAL_SERVER_TIMEOUT_MS = 120_000;
+const SERVER_TIMEOUT_MS = 15_000;
+/** Longer than a server's timeout: the migration of a stack's first run on a busy machine (170 s measured with a load of 22). */
 const SLOW_MIGRATION_SECONDS = 17;
-/** Far below the database step's own tope: a run that gets here was waiting for it. */
+/** Far below the database step's own timeout: a run that gets here was waiting for it. */
 const RUN_LIMIT_MS = 75_000;
 const TEST_LIMIT_MS = 100_000;
 
@@ -61,8 +61,8 @@ const FAKE_SERVER = `require('node:http').createServer((_, response) => response
 
 const SPEC = `import { test } from '@playwright/test';\ntest('the run got to its specs', () => {});\n`;
 
-/** The run's config: the real `webServer` list, with its topes scaled down. */
-function configSource(work: string, databaseTopeMs: number | undefined): string {
+/** The run's config: the real `webServer` list, with its timeouts scaled down. */
+function configSource(work: string, databaseTimeoutMs: number | undefined): string {
   return `import { defineConfig } from '@playwright/test';
 import e2e from '../../playwright.config';
 
@@ -72,7 +72,7 @@ export default defineConfig({
   reporter: [['list']],
   webServer: [e2e.webServer ?? []].flat().map((server) => ({
     ...server,
-    timeout: (server.timeout ?? 0) > ${REAL_SERVER_TOPE_MS} ? (${databaseTopeMs ?? 'server.timeout'}) : ${SERVER_TOPE_MS},
+    timeout: (server.timeout ?? 0) > ${REAL_SERVER_TIMEOUT_MS} ? (${databaseTimeoutMs ?? 'server.timeout'}) : ${SERVER_TIMEOUT_MS},
   })),
 });
 `;
@@ -108,8 +108,8 @@ describe("a stack's database step, under Playwright", () => {
 
   const log = () => (existsSync(join(work, 'log')) ? readFileSync(join(work, 'log'), 'utf8').trim().split('\n') : []);
 
-  async function run(env: Record<string, string>, databaseTopeMs?: number): Promise<Run> {
-    writeFileSync(join(work, 'playwright.config.ts'), configSource(work, databaseTopeMs));
+  async function run(env: Record<string, string>, databaseTimeoutMs?: number): Promise<Run> {
+    writeFileSync(join(work, 'playwright.config.ts'), configSource(work, databaseTimeoutMs));
     return new Promise((done) => {
       const child = spawn(PLAYWRIGHT, ['test', '-c', join(work, 'playwright.config.ts')], {
         cwd: SAAS_DIR,
@@ -152,7 +152,7 @@ describe("a stack's database step, under Playwright", () => {
     rmSync(work, { recursive: true, force: true });
   });
 
-  it("is not cut by a server's tope: a slow first migration ends and the run reaches its specs", async () => {
+  it("is not cut by a server's timeout: a slow first migration ends and the run reaches its specs", async () => {
     const { status, output } = await run({ FAKE_MIGRATE_SECONDS: String(SLOW_MIGRATION_SECONDS) });
 
     expect(output).not.toContain('Timed out waiting');
@@ -172,12 +172,13 @@ describe("a stack's database step, under Playwright", () => {
     expect(servers).toEqual(Array.from({ length: 4 }, () => `runserver saas_e2e_${base}`));
   }, TEST_LIMIT_MS);
 
-  it('says at once that a migration failed, why, and starts no server, without waiting for any tope', async () => {
+  it('says at once that a migration failed, why, and starts no server, without waiting for any timeout', async () => {
     const { status, output } = await run({ FAKE_MIGRATE_FAILS: 'django.db.utils.ProgrammingError: boom' });
 
     expect(status, output).toBe(1);
     expect(output).toContain(`Could not migrate the e2e database saas_e2e_${base}`);
     expect(output).toContain('django.db.utils.ProgrammingError: boom');
+    expect(output).toContain('Process from config.webServer was not able to start. Exit code: 1');
     expect(output).not.toContain('Timed out waiting');
     expect(output).not.toContain('1 passed');
     expect(log().filter((line) => line.startsWith('runserver'))).toEqual([]);
@@ -193,7 +194,7 @@ describe("a stack's database step, under Playwright", () => {
     expect(log()).toContain('migrate:end');
   }, TEST_LIMIT_MS);
 
-  it('gives a stuck migration a tope of its own, saying what it was doing, and starts no server', async () => {
+  it('gives a stuck migration a timeout of its own, saying what it was doing, and starts no server', async () => {
     const { status, output } = await run({ FAKE_MIGRATE_SECONDS: '60' }, 4_000);
 
     expect(status, output).toBe(1);

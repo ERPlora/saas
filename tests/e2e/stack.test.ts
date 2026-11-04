@@ -151,7 +151,7 @@ describe("the stack's servers", () => {
     expect(servers.filter((server) => server.command.includes('database.ts'))).toEqual([]);
   });
 
-  it('give the step a tope of its own, past every server\'s, and say what it is doing', () => {
+  it('give the step a timeout of its own, past every server\'s, and say what it is doing', () => {
     const step = databaseStep(SAAS_DIR);
     const others = stackServers(SAAS_DIR, OWN, {}).filter((server) => server.name !== 'database');
     expect(step.command).toBe('node tests/e2e/database.ts');

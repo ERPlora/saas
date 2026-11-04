@@ -189,7 +189,7 @@ describe('runCli', () => {
   it.each([
     [[], 'created and migrated'],
     [['saas_e2e_8030'], 'migrated'],
-  ])('ends a database that existed: %j with the line the step waits for, %s', (existing, said) => {
+  ])('with %j already there, ends on the line the step waits for: %s', (existing, said) => {
     const lines = io();
 
     expect(runCli([], { stack: stackFrom({ E2E_SAAS_PORT: '8030' }), sql: fakePostgres(existing).sql, ...fakeManage(), ...lines })).toBe(0);
