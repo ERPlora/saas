@@ -113,6 +113,23 @@ export function publicServer(saasDir: string, stack: Stack = STACK, env: Record<
   };
 }
 
+/**
+ * The public server's twin with a tracker configured (made-up: nothing loads it until a person accepts), on `stack`'s
+ * own port: the only one that shows the cookie notice, as production would the day it measures visits (PUBLIC-F19,
+ * step 2). The rest of the specs run with no notice, as production today. It starts after the public server, which has
+ * already left the database ready.
+ */
+export function publicNoticeServer(saasDir: string, stack: Stack = STACK, env: Record<string, string | undefined> = process.env): WebServer {
+  const server = publicServer(saasDir, stack, env);
+  return {
+    ...server,
+    name: 'public-notice',
+    command: `uv run python manage.py runserver 127.0.0.1:${stack.publicNoticePort} --novite --insecure --noreload`,
+    url: `http://127.0.0.1:${stack.publicNoticePort}/robots.txt`,
+    env: { ...server.env, CLARITY_PROJECT_ID: 'e2e-cookie-notice' },
+  };
+}
+
 /** The double of reCAPTCHA's assessments the public server of `stack` asks (recaptcha-double.ts), never reused. */
 export function recaptchaDoubleServer(saasDir: string, stack: Stack = STACK): WebServer {
   return {
@@ -149,6 +166,7 @@ export default defineConfig({
   webServer: [
     recaptchaDoubleServer(SAAS_DIR),
     publicServer(SAAS_DIR),
+    publicNoticeServer(SAAS_DIR),
     ...panelServers(SAAS_DIR),
   ],
 });

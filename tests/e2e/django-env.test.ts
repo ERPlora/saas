@@ -71,11 +71,12 @@ describe("the e2e's Django servers", () => {
     return Object.fromEntries(servers.map((server) => [/runserver (\S+)/.exec(server.command)?.[1], server.env?.[variable]]));
   }
 
-  it('each says its DEBUG: the public one (:8011) off, the panel\'s (:8012) and its twin\'s (:8013) on', () => {
+  it('each says its DEBUG: the public one (:8011) and its twin (:8016) off, the panel\'s (:8012) and its twin\'s (:8013) on', () => {
     expect(byServer('DEBUG')).toEqual({
       '127.0.0.1:8011': 'False',
       '127.0.0.1:8012': 'True',
       '127.0.0.1:8013': 'True',
+      '127.0.0.1:8016': 'False',
     });
   });
 
@@ -88,6 +89,7 @@ describe("the e2e's Django servers", () => {
       '127.0.0.1:8011': undefined,
       '127.0.0.1:8012': 'True',
       '127.0.0.1:8013': 'True',
+      '127.0.0.1:8016': undefined,
     });
   });
 });

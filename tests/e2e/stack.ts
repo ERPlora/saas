@@ -28,6 +28,8 @@ export interface Stack {
   publicHubDoublePort: number;
   /** Where the panel's twin exchanges Google's code (`GOOGLE_OAUTH_TOKEN_URL`), which a spec plays (`base + 5`; accounts-google.spec.ts). */
   googleDoublePort: number;
+  /** The public server's twin with a tracker configured, the one that shows the cookie notice (`base + 6`; public-cookie-notice.spec.ts). */
+  publicNoticePort: number;
   /** The AI provider the assistant's specs start, assistant.tests.fake_provider (`base + 7`). */
   aiProviderPort: number;
   /** Where the public server asks reCAPTCHA's assessments (`RECAPTCHA_ENDPOINT`), the double of recaptcha-double.ts (`base + 8`). */
@@ -106,6 +108,7 @@ export function stackFrom(env: Env): Stack {
     panelMfaPort: base + 3,
     publicHubDoublePort: base + 4,
     googleDoublePort: base + 5,
+    publicNoticePort: base + 6,
     aiProviderPort: base + 7,
     recaptchaDoublePort: base + 8,
     hubDoublePort: base + LAST_OFFSET,
