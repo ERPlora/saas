@@ -2,11 +2,7 @@
 // serving the stream and the API) on the SaaS's op → route map, the shell's i18n with the accounts catalogues, a
 // session and a memory router. Mounted as the shell would mount them, as hubs' `mount-hubs.ts` does.
 //
-// A test that opens a dialog mocks Ionic's overlay with the ui's stub, in its own file (hoisted):
-//   vi.mock('@ionic/vue', async (importOriginal) => ({
-//     ...(await importOriginal<typeof import('@ionic/vue')>()),
-//     IonModal: (await import('../__tests__/ion-modal-stub')).IonModalStub,
-//   }));
+// A test that opens a dialog mocks Ionic's overlay with this folder's `ion-modal-stub`, as `mount-hubs.ts` shows.
 import { createShellI18n, provideSession, type SessionMe } from '@erplora/ui/shell';
 import { LIVE_CLIENT_KEY, type LiveClient, type OpName } from '@erplora/ui/sdk';
 import { mount } from '@vue/test-utils';
