@@ -201,6 +201,11 @@ ningún rol tiene su permiso.
   `OssNotice`), `fiscal/auditlog.py` (autorización y sello, sin sus documentos cifrados), `hubs/auditlog.py` (planes,
   pagador, suscripción sin `unpaid_invoice_url` y sus partidas) y `apps/auditlog.py` (`Module`). Sin `updated_at`. El
   registro solo lee un registro fiscal: escribe su propia tabla, y `cleanup_old_logs` poda también estas entradas.
+- **Entradas de un modelo que ya no existe** (saas#220): `accounts.HubMembership` estaba auditado. Su tabla y sus permisos
+  se borraron en `accounts/0012`, pero su tipo de contenido se queda mientras una entrada lo nombre:
+  `auditlog.LogEntry.content_type` es `CASCADE`, y borrarlo se llevaría lo que `cleanup_old_logs` aún guarda. Ese mismo
+  comando lo borra con la última (`services.forget_the_retired_audit_type`). El admin las sigue enseñando, con el tipo
+  por su nombre interno y sin enlace. No se corre `remove_stale_contenttypes` en producción: se llevaría las entradas.
 
 ## Plataforma del SaaS (parte 5)
 

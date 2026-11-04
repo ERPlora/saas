@@ -1,8 +1,8 @@
 """Who enters a hub is read in one place: the answered members of the businesses that still open.
 
 The jump (``accounts.services.issue_code``/``redeem_code``) reads them through ``hubs.member.list_mine``, by its name:
-accounts never imports hubs. ``accounts.HubMembership``, the copy the jump read until saas#199, left the code: its table
-stays until the contract step (``accounts/0011``), and the guardrail below keeps it out.
+accounts never imports hubs. ``accounts.HubMembership``, the copy the jump read until saas#199, left the code
+(``accounts/0011``) and its table the database (``accounts/0012``, saas#220), and the guardrail below keeps it out.
 """
 
 import ast

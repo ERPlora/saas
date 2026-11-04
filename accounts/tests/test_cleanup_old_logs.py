@@ -154,3 +154,87 @@ def _lock_is_free(name: str) -> bool:
         if taken:
             cursor.execute("SELECT pg_advisory_unlock(hashtext(%s))", [name])
     return taken
+
+
+class TestTheContentTypeOfTheRetiredCopy:
+    """saas#220: ``accounts.hubmembership`` outlives its table only while an audit entry names it. Deleting a content
+    type takes its entries with it, so it goes with the run that prunes the last one, and never before."""
+
+    KIND = {"app_label": "accounts", "model": "hubmembership"}
+
+    def _written(self, days: float) -> LogEntry:
+        kind, _ = ContentType.objects.get_or_create(**self.KIND)
+        written = LogEntry.objects.create(
+            content_type=kind, object_pk="1", object_repr="ana @ a (Admin)", action=LogEntry.Action.UPDATE
+        )
+        LogEntry.objects.filter(pk=written.pk).update(timestamp=timezone.now() - timedelta(days=days))
+        return written
+
+    def _kind_left(self) -> bool:
+        return ContentType.objects.filter(**self.KIND).exists()
+
+    def test_it_stays_while_an_entry_is_younger_than_90_days(self):
+        young, old = self._written(30), self._written(91)
+
+        _run()
+
+        assert _left(young, old) == [True, False]
+        assert self._kind_left()
+
+    def test_the_run_that_prunes_the_last_entry_takes_it(self):
+        old = self._written(91)
+
+        _run()
+
+        assert _left(old) == [False]
+        assert not self._kind_left()
+
+    def test_with_no_entry_left_a_run_that_prunes_nothing_takes_it(self):
+        ContentType.objects.get_or_create(**self.KIND)
+
+        assert "deleted=0" in _run()
+
+        assert not self._kind_left()
+
+    def test_a_dry_run_leaves_it_with_its_entry_and_without_any(self):
+        old = self._written(91)
+
+        _run("--dry-run")
+
+        assert _left(old) == [True]
+        assert self._kind_left()
+
+        LogEntry.objects.filter(pk=old.pk).delete()
+
+        _run("--dry-run")
+
+        assert self._kind_left()
+
+    def test_a_run_that_finds_another_one_running_leaves_it(self, monkeypatch):
+        from contextlib import contextmanager
+
+        @contextmanager
+        def taken(_name):
+            yield False
+
+        ContentType.objects.get_or_create(**self.KIND)
+        monkeypatch.setattr(services, "run_exclusively", taken)
+
+        assert "already running" in _run()
+
+        assert self._kind_left()
+
+    def test_no_other_type_without_a_model_goes(self):
+        other, _ = ContentType.objects.get_or_create(app_label="accounts", model="sometimeslater")
+
+        _run()
+
+        assert ContentType.objects.filter(pk=other.pk).exists()
+
+    def test_deleting_the_type_regardless_would_take_its_entries(self):
+        """The positive of the guard: the cascade is real, which is why the run looks first."""
+        young = self._written(30)
+
+        ContentType.objects.filter(**self.KIND).delete()
+
+        assert _left(young) == [False]

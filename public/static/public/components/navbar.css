@@ -1,6 +1,6 @@
 /* ep-navbar (public/partials/navbar.html): port of <ok-navbar sticky glass>. A sticky glass bar
  * with the brand, the links and the actions; at 800 px and below the links and the actions live in
- * a side panel from the right that frontend/public.ts opens (data-open), over a backdrop. */
+ * a side panel from the right that the partial's inline script opens (data-open), over a backdrop. */
 .ep-navbar {
   position: sticky;
   top: 0;

@@ -436,6 +436,22 @@ def test_the_mobile_menu_is_a_native_button_with_its_labels(client):
     assert 'id="ep-navbar-panel"' in navbar
 
 
+@pytest.mark.django_db
+def test_the_mobile_menu_opens_from_an_inline_script_with_the_nonce(client):
+    """saas#243: pressed before ``frontend/public.ts`` arrived the burger did nothing. The script that opens the panel
+    comes with the navbar, right after it, and runs as the page is parsed; under the CSP, only with the nonce."""
+    response = get_page(client)
+    html = response.content.decode()
+    nonce = re.search(r"'nonce-([^']+)'", response.headers["Content-Security-Policy"]).group(1)
+
+    after_the_navbar = html[html.index("</nav>", html.index('<nav class="ep-navbar"')) + len("</nav>") :]
+    script = re.match(r"\s*<script nonce=\"([^\"]+)\">((?:(?!</script>).)*)</script>", after_the_navbar, re.DOTALL)
+
+    assert script is not None
+    assert script.group(1) == nonce
+    assert "data-navbar-toggle" in script.group(2)
+
+
 #: A literal path in a template: an ``href`` or the fallback of a ``|default``.
 LITERAL_PATH = re.compile(r"""(?:href=|default:)["'](/[^"'{]*)["']""")
 

@@ -332,8 +332,9 @@ class TestAnAccountThatGoes:
 
 
 class TestAnEntryOfAModelThatLeftTheCode:
-    """``accounts.HubMembership`` left the code (saas#199) and ``cleanup_old_logs`` keeps 90 days of its entries: their
-    content type names no model, and the staff still read them."""
+    """``accounts.HubMembership`` left the code (saas#199) and its table the database (saas#220), and ``cleanup_old_logs``
+    keeps 90 days of its entries: their content type names no model, and the staff still read them, by the type's code
+    name and with no link to a row that no longer exists."""
 
     @pytest.fixture
     def entry(self):
@@ -359,6 +360,8 @@ class TestAnEntryOfAModelThatLeftTheCode:
 
         assert listing.status_code == 200
         assert "bar-pepe" in listing.content.decode()
+        assert "/admin/accounts/hubmembership/" not in listing.content.decode()
+        assert "hubmembership" in listing.content.decode()
         assert filtered.status_code == 200
         assert "bar-pepe" in filtered.content.decode()
 

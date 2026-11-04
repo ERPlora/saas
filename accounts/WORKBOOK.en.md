@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:9870cc14e8e95f0053057d753d3b1d594a346c20c774f6115125ddefa1c8867d -->
+<!-- generated from WORKBOOK.md sha256:81f2908a647b5f2e5820e1406fcbfe04fa1d151c80301357c94e53a60a998781 -->
 
 ## What it is for and who it is for
 
@@ -653,15 +653,16 @@ Involved: hubs (the person's businesses and "Open")
 ### ACCOUNTS-F29 Go back to erplora.com from my business
 Status: done
 Actor: any person with an account
-Screen: Entrance, Account, Businesses
+Screen: Entrance, Account, Businesses, Store
 Steps:
-1. Inside their business, the person taps a link to erplora.com: manage their account, their business or their plan.
-2. If that browser has their erplora.com session (the one they used to enter the business), the page opens without asking for anything.
-3. If it does not (another browser, the app's, or the session ended), the **Entrance** asks them to sign in and, once in, takes them to that same page.
-In: the erplora.com page they are going to (only erplora.com pages).
-Out: the page open with their erplora.com session. The business hands no credential to erplora.com: each keeps its own session.
-If it fails: an address that is not erplora.com's is not followed after signing in: it leads to the **Entrance** with their session. Signing out of erplora.com does not sign out of the business (ACCOUNTS-F09).
-Involved: hubs (the business's links to erplora.com)
+1. Inside their business, the person who came in with their account taps "Upgrade plan" or "Manage on erplora.com" (the Hub's BASE-F11). The business signs a pass at that moment and opens it on erplora.com, in a new tab; in the installed app, in the device's browser.
+2. erplora.com checks the pass and that the account still belongs to that business, and opens its session without asking for anything, even if that browser did not have it: it takes them to that business's plan page in the **Store** ("Upgrade plan") or to that business in **Businesses** ("Manage on erplora.com").
+3. If that browser already had their session open, it goes on with it to the same place, even if the pass expired or was already used (on a reload or on going back). If it had another account's session and the pass is good, whoever tapped the button comes in instead.
+4. The other links to erplora.com carry no pass: managing their account, "Invite on erplora.com", "Upgrade plan" on a paid app (it opens that business's **Store**) and the one in the assistant and in the WhatsApp Inbox, among others. Those links and a pass that does not arrive open the usual address: if that browser has their erplora.com session, the page opens without asking for anything; if not, the **Entrance** asks them to sign in and, once in, takes them to that same page.
+In: the business's pass (which account, which business and where it goes: the plan or the business) or, without a pass, the erplora.com page they are going to (only erplora.com pages).
+Out: the page open with their erplora.com session; the business and erplora.com each keep their own. The pass lasts one minute and works only once, and only for that account and that business; it travels in the address, so the answer is neither stored nor told to other sites. The session it opens does not count as a sign-in with a password, code or second factor (whatever requires one asks for it again), accepts the terms for nobody and shows in **Account › Security › Active sessions**, where it can be ended.
+If it fails: a pass the business did not sign, or that does not say what it must, opens nothing: "This link from your business is not valid", with "Sign in" and "Contact Support". An account that is not a member of that business, switched off or of ERPlora's staff does not get in: "You don't have access to this hub", naming only the business's address, with "Home", "Back to the hub" and "Contact Support". A pass past its minute or already used opens nothing: "This link from your business has expired", and "Sign in" goes on to where it was going, with "Contact Support". None of the three touches a session already open in that browser; with one, "Sign in" reads "Home". Without a pass, an address that is not erplora.com's is not followed after signing in: it leads to the **Entrance** with their session. Signing out of erplora.com does not sign out of the business (ACCOUNTS-F09).
+Involved: hubs (the business in the panel), billing (the plan in the **Store**), the hub (signs the pass and draws the buttons, BASE-F11)
 
 ### ACCOUNTS-F30 Open my account on its own from the app
 Status: done
@@ -755,7 +756,7 @@ Steps:
 3. Nobody can create, change or delete an entry by hand: they are only read.
 In: the changes to the accounts, to what is charged and to the fiscal documentation, made from the panel, with an API key, from the admin, by erplora.com's tasks or by Stripe when it charges.
 Out: one entry per change, naming whoever acted at that moment (the account with the open session or the owner of the API key; nobody in an erplora.com task or after signing out) and the visitor's real address, never the one its browser claims.
-If it fails: a secret is never written down (neither the password, nor the API key, nor a session's, nor a Stripe purchase's, nor the link that opens a Stripe invoice, nor an authorisation's documents or the stamp) nor what the inviter writes to a person invited to a business, nor what moves by itself (the last sign-in, a key's last use, the last time a session was seen, the last time a person opened a business, the counters, the retries sending an invoice to the AEAT). Writing a change down never changes an invoice or its VeriFactu record. If the account is deleted, its entries keep its email and no link to it until they are erased after 90 days (ACCOUNTS-F37). A team member without the permission cannot open it.
+If it fails: a secret is never written down (neither the password, nor the API key, nor a session's, nor a Stripe purchase's, nor the link that opens a Stripe invoice, nor an authorisation's documents or the stamp) nor what the inviter writes to a person invited to a business, nor what moves by itself (the last sign-in, a key's last use, the last time a session was seen, the last time a person opened a business, the counters, the retries sending an invoice to the AEAT). Writing a change down never changes an invoice or its VeriFactu record. If the account is deleted, its entries keep its email and no link to it until they are erased after 90 days (ACCOUNTS-F37). The entries left of the retired copy of who is in each business are also read until that day: with their resource type by its internal name and no link, because their row no longer exists. A team member without the permission cannot open it.
 Involved: none
 
 ### ACCOUNTS-F37 Erase the audit log older than 90 days
@@ -765,8 +766,9 @@ Screen: none (a daily task of erplora.com)
 Steps:
 1. Once a day, erplora.com erases, in batches, the audit log entries (ACCOUNTS-F36) older than 90 days.
 2. Those of the last 90 days stay, also those of an account already deleted.
+3. With the last entry of the retired copy of who is in each business its resource type goes too; not before, because erasing it would take the entries left with it.
 In: the date of each log entry.
-Out: the log with only the last 90 days; nothing else changes.
+Out: the log with only the last 90 days; nothing else changes, except that resource type once it has no entries left.
 If it fails: if a batch cannot be erased, the task ends with an error so the team sees it; what was erased before stays erased and the next pass goes on from there. If a pass is already running, the second does nothing. The team can count what would be erased without erasing anything, and change how many days are kept.
 Involved: none
 

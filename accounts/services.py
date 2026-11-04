@@ -844,6 +844,18 @@ def prune_audit_log_batch(cutoff) -> int:
     return deleted
 
 
+def forget_the_retired_audit_type() -> None:
+    """Delete the content type of ``accounts.HubMembership`` once no audit entry names it. ``accounts/0012`` could not
+    while one did: a content type takes its entries with it, and ``cleanup_old_logs`` still keeps them (saas#220)."""
+    from auditlog.models import LogEntry
+    from django.contrib.contenttypes.models import ContentType
+
+    with transaction.atomic():
+        retired = ContentType.objects.filter(app_label="accounts", model="hubmembership")
+        if not LogEntry.objects.filter(content_type__in=retired).exists():
+            retired.delete()
+
+
 # --- What a sign-in leaves behind (ACCOUNTS-G71; ``manage.py purge_expired_sessions``, daily) ---------------------
 
 
