@@ -23,6 +23,7 @@ from django.utils import translation
 
 from hubs.schemas import COUNTRIES
 from public import compliance
+from public.tests.conftest import without_tokens
 from public.tests.test_legal import template_messages
 
 pytestmark = pytest.mark.django_db
@@ -122,10 +123,14 @@ def test_the_spanish_regions_with_their_own_system_are_said_to_be_out(client, la
     assert "TicketBAI" in spain
 
 
-def test_no_foreign_mandate_is_named(client):
+def test_no_foreign_mandate_is_named(client, tokens_spelling):
     """Nobody here checked Italy's, Germany's or Portugal's rules: the page does not quote them."""
-    html = page(client)
+    tokens_spelling("SdI", "TSE", "ATCUD", "KSeF")
+    raw = page(client)
+    assert 'name="csrfmiddlewaretoken" value="SdI' in raw, "control: the token does spell one"
+    assert 'nonce="SdI' in raw, "control: the nonce does spell one"
 
+    html = without_tokens(raw)
     for mandate in ("SdI", "FatturaPA", "KassenSichV", "TSE", "SAF-T", "ATCUD", "KSeF", "myDATA", "Factur-X", "Peppol"):
         assert mandate not in html, mandate
 

@@ -40,6 +40,7 @@ from django.utils import translation
 from hubs.models import Plan
 from hubs.tests.test_plan_catalogue import CUSTOM_DOMAIN_WORDS
 from public import pricing
+from public.tests.conftest import without_tokens
 from public.tests.test_legal import template_messages
 
 pytestmark = [pytest.mark.django_db]
@@ -215,8 +216,9 @@ PUBLIC_SPEC_PATTERNS = [
 SIZE_PATTERN = r"\b\d+\s*(MB|GB|TB)\b"
 
 
-def test_pricing_page_never_renders_infrastructure_specs(client, seeded):
-    html = html_of(client)
+def test_pricing_page_never_renders_infrastructure_specs(client, seeded, tokens_spelling):
+    tokens_spelling("CPU", "vCPU", "RAM", "5MB")
+    html = without_tokens(html_of(client))
 
     for pattern, label in PUBLIC_SPEC_PATTERNS:
         match = re.search(pattern, html, re.I)
@@ -241,10 +243,11 @@ def test_pricing_page_states_the_billing_unit_is_the_hub(client, seeded):
     assert "per hub" in html_of(client).lower()
 
 
-def test_billing_unit_survives_translation_to_spanish(client, seeded):
+def test_billing_unit_survives_translation_to_spanish(client, seeded, tokens_spelling):
     """The template strings, not the seed's «Precio por hub»: the cards (main and upgrade-only)
     both carry the period, so the count tells them apart."""
-    html = html_of(client, language="es")
+    tokens_spelling("CPU", "vCPU", "RAM")
+    html = without_tokens(html_of(client, language="es"))
 
     assert html.count("/ mes por hub") >= 2
     assert "Mensual, por hub" in html
