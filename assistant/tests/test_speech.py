@@ -206,6 +206,11 @@ class TestTheContractOfTheDoor:
         row = AssistantUsage.objects.get(hub=business)
         assert (row.messages, row.speech_characters) == (0, 4)
 
+    def test_what_is_counted_is_what_was_read_not_what_was_sent(self, client, internal, business, speech_engine):
+        door(client, SYNTHESIZE, reading(business, text="a" * 5000))
+
+        assert AssistantUsage.objects.get(hub=business).speech_characters == media.MAX_SPEECH_CHARS
+
     @pytest.mark.parametrize("text", ["   ", "\n\t "])
     def test_an_empty_text_is_refused_and_the_engine_hears_nothing(self, client, internal, business, speech_engine, text):
         response = door(client, SYNTHESIZE, reading(business, text=text))
