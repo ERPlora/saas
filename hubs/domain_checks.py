@@ -134,7 +134,8 @@ def _hub_named_by(body: bytes) -> str | None:
 
 
 def _fetch(address: str, domain: str) -> tuple[int, bytes]:
-    """The status and at most ``PROBE_MAX_BYTES`` of the body (past them, nothing): a redirect is not followed."""
+    """The status and at most ``PROBE_MAX_BYTES`` of the body: cut there it is no JSON, so it names nobody. A redirect is
+    not followed."""
     pinned = _PinnedHTTPSConnection(address, domain)
     try:
         pinned.request(
@@ -143,8 +144,7 @@ def _fetch(address: str, domain: str) -> tuple[int, bytes]:
             headers={"Accept": "application/json", "Connection": "close", "User-Agent": "ERPlora-domain-check/1"},
         )
         response = pinned.getresponse()
-        body = response.read(PROBE_MAX_BYTES + 1)
-        return response.status, b"" if len(body) > PROBE_MAX_BYTES else body
+        return response.status, response.read(PROBE_MAX_BYTES)
     finally:
         pinned.close()
 

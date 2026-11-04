@@ -10,7 +10,8 @@ import json
 from datetime import timedelta
 
 import pytest
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, connection, transaction
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from live.live_registry import live_registry
 from live.errors import Conflict, InvalidPayload, NotFound, PermissionDenied
@@ -89,6 +90,27 @@ def test_the_domain_goes_to_acm_in_lowercase_and_its_token_is_the_rows(owner, st
     row = row_of(standard_business)
     assert row.hostname == DOMAIN
     assert len(row.certificate_token) == 32 and row.certificate_token.isalnum()
+
+
+def test_a_renamed_business_keeps_the_name_its_cname_points_at(owner, standard_business, settings):
+    """By its id, which is never taken again; a slug can be, and a CNAME left behind would prove it for a stranger."""
+    settings.CUSTOM_DOMAINS_TARGET_TEMPLATE = "hub-{hub_id}.erplora.com"
+    make_row(standard_business, validation_name="_a", validation_value="_b")
+    before = queries.custom_domain_get(ctx_for(owner), ByIdIn(id=standard_business.id)).domain.traffic.value
+
+    Hub.objects.filter(pk=standard_business.pk).update(slug="otra-direccion")
+
+    assert queries.custom_domain_get(ctx_for(owner), ByIdIn(id=standard_business.id)).domain.traffic.value == before
+
+
+def test_asking_takes_the_row_of_the_business_so_two_requests_never_interleave(owner, standard_business, custom_domains_on):
+    custom_domains_on.expect_request()
+    custom_domains_on.expect_describe()
+
+    with CaptureQueriesContext(connection) as seen:
+        ask(owner, standard_business)
+
+    assert any('FROM "hubs_hub"' in query["sql"] and "FOR UPDATE" in query["sql"] for query in seen.captured_queries)
 
 
 def test_a_token_is_never_shared_between_two_rows(owner, standard_business, make_user, plans):
