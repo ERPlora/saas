@@ -1,19 +1,13 @@
 // The panel's one «could not load» state (audit 2026-10-14, R-04/R-08): a danger notice that says what could
 // not be loaded and offers «Retry»; never an empty state, never a spinner for ever. Pages pass their own
 // sentence; without one it speaks of the page.
-import { createShellI18n, ION_ICONS } from '@erplora/ui/shell';
+import { createShellI18n } from '@erplora/ui/shell';
 import { mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import LoadFailed from './LoadFailed.vue';
 import en from './locale/en.json';
 import es from './locale/es.json';
-
-// What `createShell` does at boot (`addIcons(ION_ICONS)`): `ion:` icons paint by name. `ionicons` is
-// not a dependency of the SaaS, so its registry (`window.Ionicons.map`) is filled the way it fills it.
-const ionicons = ((window as unknown as { Ionicons?: { map?: Map<string, string> } }).Ionicons ??= {});
-ionicons.map ??= new Map();
-for (const [name, url] of Object.entries(ION_ICONS)) ionicons.map.set(name, url);
 
 function mountIt(props: Record<string, unknown> = {}, locale: 'en' | 'es' = 'en') {
   return mount(LoadFailed, {

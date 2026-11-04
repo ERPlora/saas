@@ -5,7 +5,7 @@
 // (`SAAS_ASSISTANT`). The tab's assistant is the test's own (`installAssistant`): its turns go to the test's `post`.
 import { assistantMessages, createAssistant, installAssistant, type Assistant, configureAssistant } from '@erplora/ui/components';
 import type { TurnBody, TurnFrame, TurnOptions } from '@erplora/ui/components';
-import { createShellI18n, ION_ICONS, provideSession, provideShellConfig, type SessionMe } from '@erplora/ui/shell';
+import { createShellI18n, provideSession, provideShellConfig, type SessionMe } from '@erplora/ui/shell';
 import { LIVE_CLIENT_KEY } from '@erplora/ui/sdk';
 import { mount } from '@vue/test-utils';
 import { vi } from 'vitest';
@@ -20,11 +20,6 @@ import saasEs from '../../../frontend/locale/es.json';
 import { ASK, SAAS_ASSISTANT } from '../options';
 
 export { flush } from '../../../packages/ui/src/sdk/__tests__/live-harness';
-
-// What `createShell` does at boot (`addIcons(ION_ICONS)`): `ion:` icons paint by name.
-const ionicons = ((window as unknown as { Ionicons?: { map?: Map<string, string> } }).Ionicons ??= {});
-ionicons.map ??= new Map();
-for (const [name, url] of Object.entries(ION_ICONS)) ionicons.map.set(name, url);
 
 /** An account of the panel: it may ask the assistant (every account may). */
 export const LENA: SessionMe = {
