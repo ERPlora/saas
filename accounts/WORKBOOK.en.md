@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:9870cc14e8e95f0053057d753d3b1d594a346c20c774f6115125ddefa1c8867d -->
+<!-- generated from WORKBOOK.md sha256:82e115109a681614b2dff06b03cc350c8a0f8422c6aeec15ca49e6587bf13b89 -->
 
 ## What it is for and who it is for
 
@@ -755,7 +755,7 @@ Steps:
 3. Nobody can create, change or delete an entry by hand: they are only read.
 In: the changes to the accounts, to what is charged and to the fiscal documentation, made from the panel, with an API key, from the admin, by erplora.com's tasks or by Stripe when it charges.
 Out: one entry per change, naming whoever acted at that moment (the account with the open session or the owner of the API key; nobody in an erplora.com task or after signing out) and the visitor's real address, never the one its browser claims.
-If it fails: a secret is never written down (neither the password, nor the API key, nor a session's, nor a Stripe purchase's, nor the link that opens a Stripe invoice, nor an authorisation's documents or the stamp) nor what the inviter writes to a person invited to a business, nor what moves by itself (the last sign-in, a key's last use, the last time a session was seen, the last time a person opened a business, the counters, the retries sending an invoice to the AEAT). Writing a change down never changes an invoice or its VeriFactu record. If the account is deleted, its entries keep its email and no link to it until they are erased after 90 days (ACCOUNTS-F37). A team member without the permission cannot open it.
+If it fails: a secret is never written down (neither the password, nor the API key, nor a session's, nor a Stripe purchase's, nor the link that opens a Stripe invoice, nor an authorisation's documents or the stamp) nor what the inviter writes to a person invited to a business, nor what moves by itself (the last sign-in, a key's last use, the last time a session was seen, the last time a person opened a business, the counters, the retries sending an invoice to the AEAT). Writing a change down never changes an invoice or its VeriFactu record. If the account is deleted, its entries keep its email and no link to it until they are erased after 90 days (ACCOUNTS-F37). The entries left of the retired copy of who is in each business are also read until that day: with their resource type by its internal name and no link, because their row no longer exists. A team member without the permission cannot open it.
 Involved: none
 
 ### ACCOUNTS-F37 Erase the audit log older than 90 days
@@ -765,8 +765,9 @@ Screen: none (a daily task of erplora.com)
 Steps:
 1. Once a day, erplora.com erases, in batches, the audit log entries (ACCOUNTS-F36) older than 90 days.
 2. Those of the last 90 days stay, also those of an account already deleted.
+3. With the last entry of the retired copy of who is in each business its resource type goes too; not before, because erasing it would take the entries left with it.
 In: the date of each log entry.
-Out: the log with only the last 90 days; nothing else changes.
+Out: the log with only the last 90 days; nothing else changes, except that resource type once it has no entries left.
 If it fails: if a batch cannot be erased, the task ends with an error so the team sees it; what was erased before stays erased and the next pass goes on from there. If a pass is already running, the second does nothing. The team can count what would be erased without erasing anything, and change how many days are kept.
 Involved: none
 

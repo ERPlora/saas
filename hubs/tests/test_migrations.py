@@ -109,6 +109,12 @@ def _rows_of_the_copy():
 
 @pytest.mark.django_db
 class TestTheSeedHubsBecomeBusinesses:
+    @pytest.fixture(autouse=True)
+    def the_table_of_the_copy(self):
+        """What ``0006`` read and wrote: ``accounts/0012`` dropped it, and the test's transaction takes this one away."""
+        with connection.schema_editor() as editor:
+            editor.create_model(_copy())
+
     @pytest.fixture
     def people(self):
         make = get_user_model().objects.create_user
@@ -252,8 +258,9 @@ def test_hubs_migrates_back_before_the_adoption_and_forward_again(django_user_mo
     round trip runs in the test's one transaction, where a deferred foreign key check would still be pending when
     a later migration alters ``hubs_subscription``: the checks run at once, as each migration's own COMMIT does.
 
-    Going back also takes back ``accounts/0011``, which depends on ``hubs/0024`` and rebuilds the copy from the
-    members: the seed's row goes in after it, as the copy held it before the adoption."""
+    Going back also takes back ``accounts/0012``, which recreates the copy's table, and ``accounts/0011``, which depends
+    on ``hubs/0024`` and rebuilds the copy from the members: the seed's row goes in after it, as the copy held it before
+    the adoption."""
     from hubs.models import Hub
 
     olga = django_user_model.objects.create_user(email="olga@example.com", password=None)

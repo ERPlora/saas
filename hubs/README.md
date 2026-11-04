@@ -45,8 +45,9 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
 - **El acceso son los miembros** (saas#199): el salto (`issue_code`/`redeem_code`) entra a quien es miembro respondido
   de un negocio que aún abre (`queries.access_of`, fuera `deleting` y `deleted`). `accounts` nunca importa `hubs`: lo
   pregunta por su nombre, `hubs.member.list_mine` (`accounts.queries.hub_roles_of`), sin ruta ni herramienta del
-  asistente. La copia que leía antes (`accounts.HubMembership`) salió del código en `accounts/0011`; su tabla sigue,
-  sin nadie que la lea ni la escriba (saas#220). Guardarraíl AST: `tests/test_access.py`.
+  asistente. La copia que leía antes (`accounts.HubMembership`) salió del código en `accounts/0011` y su tabla, de la
+  base de datos en `accounts/0012` (saas#220). El salto se queda en `accounts`: moverlo (`/hub-login/`,
+  `/internal/auth/redeem`, `AuthExchangeCode`) no quitaba ninguna copia. Guardarraíl AST: `tests/test_access.py`.
 - **Personal en un negocio** (`hubs.W002`, W11b): el personal de ERPlora (`is_staff` o `is_superuser`) y los clientes
   nunca comparten cuenta. Las puertas lo impiden (`hubs.business.create`, `hubs.member.invite`/`resend` e
   `hubs.invitation.accept` responden 409 `hubs.platform_account`; `create_platform_user` y `User.clean`, es decir el
@@ -254,9 +255,6 @@ Parte 5 de 5: cada flujo `hecho` contra su código, con mutantes ejecutados; los
 
 ## Pendiente (lotes siguientes)
 
-- **Borrar la tabla de la copia retirada** (`accounts_hubmembership`, su tipo de contenido y su permiso), el paso
-  «contract» de saas#199: saas#220. El salto se queda en `accounts`, que le pregunta a `hubs` por su operación:
-  moverlo (`/hub-login/`, `/internal/auth/redeem`, `AuthExchangeCode`) no quitaba ninguna copia.
 - El Hub (carril Hub): verificar la v2 y los dos secretos en su `/internal`, firmar con v2 su canje, y adoptar por
   `id` los negocios que le llegan en la foto (los `a`/`b` adoptados aquí traen un UUID nuevo). Cuando los dos lados
   firmen v2, dejar de aceptar llamadas solo v1. `aws-next`: añadir `INTERNAL_SHARED_SECRET_PREVIOUS` (vacío) al

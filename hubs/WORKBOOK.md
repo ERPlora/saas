@@ -882,8 +882,6 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   (erplora.com, la entrada de ERPlora y el Hub) — saas#195.
 - **Desde el Hub, «Mejorar plan» y «erplora.com» piden volver a entrar con la cuenta si el navegador no tenía la sesión
   abierta** (BASE-F11 del Hub, cruza esta app) — saas#190.
-- **En la base de datos sigue la tabla de la copia de quién está en cada negocio** (`accounts_hubmembership`), que ya
-  nadie lee ni escribe — saas#220.
 
 ## Lo que NO hace, a propósito
 
