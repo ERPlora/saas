@@ -164,9 +164,16 @@ Reglas que la e2e hace cumplir antes de arrancar ningún servidor (`stack.ts`):
 - En cualquier pila, una BD que no es del SaaS se rechaza: el caso típico es el `DB_NAME` del Hub
   (`hub_e2e_8030`) aún exportado en la consola, con el que el SaaS abría la BD del Hub y su login caía con
   `relation "django_site" does not exist`. La salida: `env -u DB_NAME`.
-- **La BD se crea y se migra sola al arrancar**: el primer servidor que levanta Playwright (el público) corre antes
-  `node tests/e2e/database.ts`, que crea `saas_e2e_<puerto>` si falta y la migra (idempotente: conserva sus filas;
-  unos 10 s la primera vez). Solo toca BD e2e. La pila compartida sigue sin migrar nada: su BD es la `saas` de `.env`.
+- **La BD se crea y se migra sola al arrancar**: antes que ningún servidor, Playwright corre la entrada `database` de
+  `webServer` (`databaseStep` de `playwright.config.ts`), `node tests/e2e/database.ts`, que crea `saas_e2e_<puerto>` si
+  falta y la migra (idempotente: conserva sus filas; unos 10 s la primera vez con la máquina libre y minutos con la
+  máquina cargada: 170 s con carga 22). Solo toca BD e2e. La pila compartida sigue sin migrar nada: su BD es la `saas`
+  de `.env`.
+- **Ese paso no gasta el tope de los servidores**: tiene el suyo, 10 minutos, y los servidores siguen con sus 2 minutos.
+  Lo que hace sale en las líneas `[database]`. Si la migración falla, la pasada para en el acto con su error
+  (`Could not migrate the e2e database …` y `Process from config.webServer was not able to start`). Si agota el tope
+  (`Timed out waiting 600000ms` con `[database] … preparing …` como última línea del paso), la migración está atascada;
+  cada migración es su propia transacción, así que la pasada siguiente sigue donde se quedó.
 - **El Vite no se reutiliza** en una pila propia (`reuseExistingServer: false`): dos ejecuciones del mismo checkout
   con el mismo `VITE_DEV_PORT` no comparten uno (la primera lo pararía al acabar bajo la segunda). Si el puerto está
   ocupado, Playwright lo dice al arrancar; cada pila lleva su `VITE_DEV_PORT`.
