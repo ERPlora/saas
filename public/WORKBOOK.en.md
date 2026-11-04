@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:af72f52df07519f9273e1671485fb64e1ef098e988d8d8f3f4c638b475f28121 -->
+<!-- generated from WORKBOOK.md sha256:a5f6cc0ceda28b42bbaf5a452d88a8f9a03d463906a6e707e5685e37f92b2e50 -->
 
 ## What it is for and who it is for
 
@@ -417,7 +417,7 @@ Actor: visitor
 Screen: Cookie notice and Cookie preferences
 Steps:
 1. While the web does not measure visits, it only sets the technical cookies (the session, the forms' protection, the language, the theme and the cookie choice) and shows no notice: there is nothing to consent to.
-2. If measuring visits is turned on, every page shows the notice until the person chooses "Accept All", "Decline" or "Customize".
+2. If measuring visits is turned on, every page shows the notice until the person chooses "Accept All", "Decline" or "Customize". The phone menu, when opened, lies over the notice, so its buttons show and can be pressed; when it closes, the notice is still there.
 3. "Cookies" in the footer opens "Cookie preferences": the "Essential cookies", "Always active", and each optional category ("Analytical cookies", "Marketing cookies") with its cookies and its switch; the choice lasts a year.
 4. Without accepting the analytical ones no measurement loads, and on the password and code screens it never does.
 In: the person's choice.

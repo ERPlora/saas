@@ -446,7 +446,7 @@ Actor: visitante
 Pantalla: Aviso de cookies y Preferencias de cookies
 Pasos:
 1. Mientras la web no mida visitas, solo pone las cookies técnicas (la sesión, la protección de los formularios, el idioma, el tema y la elección de cookies) y no enseña ningún aviso: no hay nada que consentir.
-2. Si se activa la medición de visitas, cada página enseña el aviso hasta que la persona elige «Aceptar todas», «Rechazar» o «Personalizar».
+2. Si se activa la medición de visitas, cada página enseña el aviso hasta que la persona elige «Aceptar todas», «Rechazar» o «Personalizar». El menú del móvil, al abrirlo, queda por encima del aviso, y sus botones se ven y se pueden pulsar; al cerrarlo, el aviso sigue ahí.
 3. «Cookies» del pie abre «Preferencias de cookies»: las «Cookies esenciales», «Siempre activas», y cada categoría opcional («Cookies analíticas», «Cookies de marketing») con sus cookies y su interruptor; la elección dura un año.
 4. Sin aceptar las analíticas no se carga ninguna medición, y en las pantallas de contraseñas y códigos no se carga nunca.
 Entra: la elección de la persona.

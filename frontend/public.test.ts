@@ -115,6 +115,14 @@ describe('the public entry: components and styles', () => {
   it('never reaches a CDN', () => {
     expect(SOURCE).not.toMatch(/https?:\/\//);
   });
+
+  it('stacks the open side menu above the cookie notice, which otherwise lies over its last buttons (saas#244)', () => {
+    // The real measure is public-cookie-notice.spec.ts, which the CI does not run: this keeps the order in the CI.
+    const sheet = (name: string) => readFileSync(join(PUBLIC_STATIC, name), 'utf8');
+    const open = /\.ep-navbar\[data-open\]\s*\{[^}]*z-index:\s*(\d+)/.exec(sheet('components/navbar.css'));
+    const notice = /#cookie-consent-banner\s*\{[^}]*z-index:\s*(\d+)/.exec(sheet('cookie-consent-banner.css'));
+    expect(Number(open?.[1])).toBeGreaterThan(Number(notice?.[1]));
+  });
 });
 
 /** A `prefers-color-scheme: dark` query the test flips, as the operating system would. */

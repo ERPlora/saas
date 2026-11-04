@@ -14,8 +14,11 @@
   font-family: var(--ep-font, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif);
 }
 /* `backdrop-filter` makes the bar the containing block of its fixed descendants: open, the bar
-   drops the glass so the side panel and its backdrop are laid out against the viewport. */
+   drops the glass so the side panel and its backdrop are laid out against the viewport.
+   The bar's stacking context holds them both: open, it lies over the cookie notice (60,
+   cookie-consent-banner.css), which covered the panel's last buttons on a small phone (saas#244). */
 .ep-navbar[data-open] {
+  z-index: 61;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   background: var(--ep-surface, var(--ion-card-background, #fff));
