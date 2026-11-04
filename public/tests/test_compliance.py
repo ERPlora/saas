@@ -128,6 +128,7 @@ def test_no_foreign_mandate_is_named(client, tokens_spelling):
     tokens_spelling("SdI", "TSE", "ATCUD", "KSeF")
     raw = page(client)
     assert 'name="csrfmiddlewaretoken" value="SdI' in raw, "control: the token does spell one"
+    assert 'nonce="SdI' in raw, "control: the nonce does spell one"
 
     html = without_tokens(raw)
     for mandate in ("SdI", "FatturaPA", "KassenSichV", "TSE", "SAF-T", "ATCUD", "KSeF", "myDATA", "Factur-X", "Peppol"):
