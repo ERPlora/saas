@@ -441,6 +441,7 @@ test('PUBLIC-G51 on a slow device, the mobile menu opens and closes even pressed
   await menu.isOpen('before a link');
   await expect(menu.panel.locator('[href="/launch"]')).toBeVisible();
   await expect(menu.panel.locator('[href="/demo/"]')).toBeVisible();
+  await page.screenshot({ path: join(ARTIFACTS, 'PUBLIC-G51-menu-before-the-script-375x667.png'), animations: 'disabled' });
   await menu.panel.locator('a[href="/features/"]').click();
   await expect(page).toHaveURL(/\/features\/$/);
   await menu.isClosed('the page the link led to');
@@ -463,6 +464,8 @@ test('PUBLIC-G51 once the page script has run, one press opens the mobile menu a
 
   await menu.burger.click();
   await menu.isOpen('opened');
+  expect(await horizontalOverflow(page), 'the open panel').toBe(0);
+  await page.screenshot({ path: join(ARTIFACTS, 'PUBLIC-G51-menu-375x667.png'), animations: 'disabled' });
   await menu.close.click();
   await menu.isClosed('closed');
   await expect(menu.burger).toBeFocused();
