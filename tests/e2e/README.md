@@ -42,6 +42,9 @@ pnpm e2e --project=panel panel/login.spec.ts   # una spec
   pila propia, su puerto: `…-8030`)
   (`retain-on-failure`; se abren con `pnpm exec playwright show-trace <ruta>/trace.zip`). Las capturas
   que dejan las specs, en `.artifacts/` (las del panel, en `.artifacts/panel/`). Todo ignorado por git.
+  Excepción: el recorrido de las pestañas de `panel/account-tabs.spec.ts` corre sin traza (`trace: 'off'`), porque con la
+  máquina cargada parar la traza de sus 12 páginas retiene el cierre del contexto hasta agotar el tiempo de la prueba
+  (saas#259); si falla, deja su captura y dice qué pestaña, ancho y tema.
 
 ## Puertos y servidores
 
