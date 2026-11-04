@@ -7,7 +7,7 @@ Estado de la app: completa (2026-11-03)
 > ERPlora para que el asistente de IA conteste (dar de alta un proveedor de modelos y su clave, elegir sus modelos,
 > decidir qué modelo contesta y probarlo antes, ver lo que gasta cada negocio) y lo que hace erplora.com cada vez que
 > el asistente de un negocio le pide algo: contestar un turno, leer sus adjuntos, contar sus mensajes, buscar en la
-> documentación de ERPlora, transcribir un dictado o leer una respuesta en voz alta. También contesta al asistente del
+> documentación de ERPlora o transcribir un dictado. También contesta al asistente del
 > propio panel de erplora.com, el de cada cuenta: sus negocios, lo que paga a ERPlora y su cuenta. No se publica en la
 > tienda: es la referencia del equipo y de la QA. Ningún cliente ve las pantallas del admin; la cuenta ve el chat del
 > panel (ASSISTANT-F25), y el asistente que usa el negocio vive en el Hub.
