@@ -25,6 +25,7 @@ import {
   shot,
   sidewaysScroll,
   signIn,
+  signInAs,
   test,
   watchLiveStreams,
   watchPageErrors,
@@ -258,8 +259,7 @@ test('HUBS-G97: an action of the staff on a business is in its history in the ad
     ].join('\n'),
   );
   // The owner's session is open on this page: the staff signs in on a clean one.
-  await page.context().clearCookies();
-  await signIn(page.request, { email: staff, password: PASSWORD });
+  await signInAs(page, { email: staff, password: PASSWORD });
   await page.goto('/admin/hubs/hub/');
   await page.locator(`input[name="_selected_action"][value="${id}"]`).check();
   await page.locator('select[name="action"]').selectOption('retry_owed');
