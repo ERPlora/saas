@@ -2,12 +2,8 @@
 // serving the stream and the API) on the SaaS's op → route map, the shell's i18n with the accounts catalogues, a
 // session and a memory router. Mounted as the shell would mount them, as hubs' `mount-hubs.ts` does.
 //
-// A test that opens a dialog mocks Ionic's overlay with the ui's stub, in its own file (hoisted):
-//   vi.mock('@ionic/vue', async (importOriginal) => ({
-//     ...(await importOriginal<typeof import('@ionic/vue')>()),
-//     IonModal: (await import('../__tests__/ion-modal-stub')).IonModalStub,
-//   }));
-import { createShellI18n, ION_ICONS, provideSession, type SessionMe } from '@erplora/ui/shell';
+// A test that opens a dialog mocks Ionic's overlay with this folder's `ion-modal-stub`, as `mount-hubs.ts` shows.
+import { createShellI18n, provideSession, type SessionMe } from '@erplora/ui/shell';
 import { LIVE_CLIENT_KEY, type LiveClient, type OpName } from '@erplora/ui/sdk';
 import { mount } from '@vue/test-utils';
 import { type Component, createApp, ref } from 'vue';
@@ -37,11 +33,6 @@ export { LIVE_TIMEOUT_MS } from '../../../frontend/live-state';
 const en = { ...saasEn, ...accountsEn };
 const es = { ...saasEs, ...accountsEs };
 export type { ApiCall, StreamCall };
-
-// What `createShell` does at boot (`addIcons(ION_ICONS)`): `ion:` icons paint by name.
-const ionicons = ((window as unknown as { Ionicons?: { map?: Map<string, string> } }).Ionicons ??= {});
-ionicons.map ??= new Map();
-for (const [name, url] of Object.entries(ION_ICONS)) ionicons.map.set(name, url);
 
 /** The SaaS's `spa-config` as the tests read it (CSRF cookie, Google on). */
 export const SAAS_CONFIG = { ...TEST_CONFIG, csrfCookieName: 'csrftoken', googleEnabled: true };
