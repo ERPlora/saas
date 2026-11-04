@@ -919,7 +919,8 @@ AZURE_SPEECH_KEY = config("AZURE_SPEECH_KEY", default="")
 
 # The providers of erplora.com's own tools (assistant/server_tools.py, ASSISTANT-F14). The rates need no key. The search
 # reads its key here, from the environment and not from the database, and without it is not offered: the assistant
-# just does not search and the server starts as usual. Its addresses move only for the e2e's double.
+# just does not search and the server starts as usual. Before filling the key in production, the privacy policy must
+# name the provider (saas#277). Its addresses move only for the e2e's double.
 LINKUP_API_KEY = config("LINKUP_API_KEY", default="")
 ASSISTANT_SEARCH_URL = config("ASSISTANT_SEARCH_URL", default="https://api.linkup.so/v1/search")
 ASSISTANT_RATES_URL = config("ASSISTANT_RATES_URL", default="https://api.frankfurter.dev/v1/latest")

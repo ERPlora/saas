@@ -6,19 +6,12 @@
 // assistant-provider.ts plays the model and both providers, a real HTTP server on 127.0.0.1 at `aiProviderPort`, where the
 // panel's ASSISTANT_RATES_URL and ASSISTANT_SEARCH_URL point (panel/project.ts): no test reaches a real provider.
 // flow: ASSISTANT-F14 — the assistant says a rate and searches the web, with its source in sight.
-import { execFileSync } from 'node:child_process';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-import type { Page } from '@playwright/test';
-
-import { LONG_ADDRESS, type Provider, startProvider } from '../assistant-provider';
-import { djangoEnv } from '../django-env';
+import { LONG_ADDRESS } from '../assistant-provider';
 import { STACK } from '../stack';
 
+import { ask, localAssistant } from './assistant-chat';
 import { expect, settled, shot, sidewaysScroll, signIn, test, watchPageErrors } from './fixtures';
 
-const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const OWNER = { email: 'e2e-assistant-owner@example.com', password: process.env.QA_PANEL_PASSWORD ?? 'e2e-panel' };
 const SIZES = [
   { name: 'phone', width: 390, height: 844 },
@@ -31,30 +24,7 @@ const WORDS = {
   en: { rate: 'What is the dollar worth?', rateAnswer: 'Today, 1 USD is 0.89 EUR.', law: 'What does the new law say?', lawAnswer: 'The law takes effect this month.' },
 } as const;
 
-let provider: Provider | undefined;
-
-function seed(action: 'clear' | 'panel', language: 'es' | 'en' = 'es'): void {
-  execFileSync('uv', ['run', 'python', 'tests/e2e/panel/assistant_seed.py', action, provider?.url ?? '', language], {
-    cwd: SAAS_DIR,
-    env: djangoEnv(true),
-    stdio: 'pipe',
-  });
-}
-
-async function ask(page: Page, text: string): Promise<void> {
-  await expect(page.getByTestId('assistant-stop')).toHaveCount(0);
-  await page.getByTestId('assistant-input').locator('textarea').fill(text);
-  await page.getByTestId('assistant-send').click();
-}
-
-test.beforeAll(async () => {
-  provider = await startProvider(STACK.aiProviderPort);
-});
-
-test.afterAll(async () => {
-  seed('clear');
-  await provider?.close();
-});
+const { provider, seed } = localAssistant(STACK.aiProviderPort);
 
 for (const language of ['es', 'en'] as const) {
   const words = WORDS[language];
@@ -80,7 +50,7 @@ for (const language of ['es', 'en'] as const) {
     await expect(law).toContainText(LONG_ADDRESS);
 
     // The model asked for both; the second answer went back to it with the page and the rate never reached the browser.
-    const paths = provider!.seen.map((seen) => seen.path);
+    const paths = provider().seen.map((seen) => seen.path);
     expect(paths).toContain('/v1/latest');
     expect(paths).toContain('/v1/search');
 

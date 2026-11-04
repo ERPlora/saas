@@ -13,20 +13,15 @@
 // flow: ASSISTANT-F25 — the account asks the panel's assistant: reads alone, writes after the card.
 // flow: ASSISTANT-F26 — the account's messages of the month, spent without a plan to upgrade.
 // flow: BILLING-F13 — cancelling the plan: its card first says what Billing's dialog says (seed `paying`, no Stripe).
-import { execFileSync } from 'node:child_process';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import { readMails } from '@erplora/ui/testing/mail';
 import type { Locator, Page } from '@playwright/test';
 
-import { NEW_BUSINESS, type Provider, startProvider } from '../assistant-provider';
-import { djangoEnv } from '../django-env';
+import { NEW_BUSINESS } from '../assistant-provider';
 
+import { ask, localAssistant } from './assistant-chat';
 import { expect, settled, shot, sidewaysScroll, signIn, test, waitForMail, watchPageErrors } from './fixtures';
 import { PANEL_MAIL_DIR } from './project';
 
-const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const PASSWORD = process.env.QA_PANEL_PASSWORD ?? 'e2e-panel';
 const OWNER = { email: 'e2e-assistant-owner@example.com', password: PASSWORD };
 const BUSINESS = 'E2E Asistente Panel';
@@ -100,23 +95,7 @@ const WORDS = {
   },
 } as const;
 
-let provider: Provider | undefined;
-
-/** `assistant_seed.py <action> <provider address> <language>`: always from scratch. */
-function seed(action: 'clear' | 'panel' | 'paying', language: 'es' | 'en' = 'es'): void {
-  execFileSync('uv', ['run', 'python', 'tests/e2e/panel/assistant_seed.py', action, provider?.url ?? '', language], {
-    cwd: SAAS_DIR,
-    env: djangoEnv(true),
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-}
-
-/** Writes `text` in the composer and sends it, once the turn before is over. */
-async function ask(page: Page, text: string): Promise<void> {
-  await expect(page.getByTestId('assistant-stop')).toHaveCount(0);
-  await page.getByTestId('assistant-input').locator('textarea').fill(text);
-  await page.getByTestId('assistant-send').click();
-}
+const { seed } = localAssistant();
 
 /** The panel's width and how far the pane is pushed from the right (0 when it is not). */
 async function docking(page: Page): Promise<{ panel: number; pushed: number }> {
@@ -158,15 +137,6 @@ async function openBusinesses(page: Page): Promise<void> {
   await page.goto('/dashboard/businesses');
   await expect(page.getByText(BUSINESS).first()).toBeVisible();
 }
-
-test.beforeAll(async () => {
-  provider = await startProvider(0);
-});
-
-test.afterAll(async () => {
-  seed('clear');
-  await provider?.close();
-});
 
 for (const language of ['es', 'en'] as const) {
   const words = WORDS[language];
