@@ -1,13 +1,19 @@
 // The panel's one «could not load» state (audit 2026-10-14, R-04/R-08): a danger notice that says what could
 // not be loaded and offers «Retry»; never an empty state, never a spinner for ever. Pages pass their own
 // sentence; without one it speaks of the page.
-import { createShellI18n } from '@erplora/ui/shell';
+import { createShellI18n, ION_ICONS } from '@erplora/ui/shell';
 import { mount } from '@vue/test-utils';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import LoadFailed from './LoadFailed.vue';
 import en from './locale/en.json';
 import es from './locale/es.json';
+
+// What `createShell` does at boot (`addIcons(ION_ICONS)`): `ion:` icons paint by name. `ionicons` is
+// not a dependency of the SaaS, so its registry (`window.Ionicons.map`) is filled the way it fills it.
+const ionicons = ((window as unknown as { Ionicons?: { map?: Map<string, string> } }).Ionicons ??= {});
+ionicons.map ??= new Map();
+for (const [name, url] of Object.entries(ION_ICONS)) ionicons.map.set(name, url);
 
 function mountIt(props: Record<string, unknown> = {}, locale: 'en' | 'es' = 'en') {
   return mount(LoadFailed, {
@@ -18,6 +24,21 @@ function mountIt(props: Record<string, unknown> = {}, locale: 'en' | 'es' = 'en'
 }
 
 describe('LoadFailed', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('«Retry» paints its icon by name, as in the app: Ionicons has nothing to warn about (saas#253)', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const icon = mountIt().get('[data-testid="load-failed-retry"] ion-icon').element;
+    // Only the message: the warning's second argument is the element, and printing it takes 3 300 lines of log.
+    const warnings = () => warn.mock.calls.map(([message]) => String(message)).filter((message) => message.includes('Ionicons'));
+    await vi.waitFor(() => {
+      expect(warnings()).toEqual([]);
+      expect(icon.shadowRoot?.querySelector('svg')).not.toBeNull();
+    });
+  });
+
   it('says the page could not be loaded and offers «Retry»', () => {
     const wrapper = mountIt();
     expect(wrapper.text()).toContain("We couldn't load this page");
